@@ -376,9 +376,12 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
       if (hard) { skip(feature, `solid ${hard}`); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
       if (soft.length) feature.overlaps = soft;
     }
-    const built = buildRockFormation(spec, ground, noise, mulberry32(job.stream), { mobile: ctx.mobile, restream: () => mulberry32(job.stream) });
-    if (!built.geometry) { skip(feature, 'empty'); continue; }
-    rockPieces.push(built.geometry);
+    // (the hitbox lane, 2026-10-11) the masses are the desktop's on every tier: a phone lays them from a fresh stream
+    const built = buildRockFormation(spec, ground, noise, mulberry32(job.stream),
+      { mobile: ctx.mobile, collision: { mobile: false, stream: () => mulberry32(job.stream) } });
+    // (whether it stands is the desktop's to say: a phone may draw none of a feature the desktop lays)
+    if (!built.laid) { skip(feature, 'empty'); continue; }
+    if (built.geometry) rockPieces.push(built.geometry);
     for (const mass of built.masses) addMass(mass);
     if (!standing) receipt.groundCoverHoles.push({ x: spec.x, z: spec.z, r: spec.radius * (spec.form === 'pavement' ? 0.85 : 0.6) });
     feature.triangles = built.triangles;
@@ -461,14 +464,14 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         placed++;
         continue;
       }
-      // (a formation under the field's lean size is lean on every tier: its own pieces are already both tiers', so it
-      // takes no desktop restream — the hitbox lane, 2026-10-11: with one, a lean formation drew the desktop's loose
-      // stones on the desktop too and stood its mass on stone it does not draw)
+      // (a formation under the field's lean size is lean on the desktop too: its masses are the lean pieces on every tier)
       const lean = r < (field.leanUnder ?? 0);
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
-        ground, noise, mulberry32(stream), { mobile: ctx.mobile || lean, restream: lean ? undefined : () => mulberry32(stream) });
-      if (!built.geometry) continue;
-      rockPieces.push(built.geometry);
+        ground, noise, mulberry32(stream), { mobile: ctx.mobile || lean, collision: { mobile: lean, stream: () => mulberry32(stream) } });
+      // (whether it counts as placed is the desktop's to say: a phone's lean pavement may draw nothing, and a count that
+      // read this tier's geometry placed the field's next formation on the phone alone — Frontier's north ridge)
+      if (!built.laid) continue;
+      if (built.geometry) rockPieces.push(built.geometry);
       for (const mass of built.masses) addMass(mass);
       if (!standing) receipt.groundCoverHoles.push({ x, z, r: r * (form === 'pavement' ? 0.85 : 0.6) });
       standingSites.push({ x, z, r: reach });

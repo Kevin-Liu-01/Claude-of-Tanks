@@ -85,10 +85,10 @@ for (const scene of Object.values(GARAGE_CREW_SCENES)) {
   }
 }
 assert.equal(members, 24, 'twenty-four workers: seventeen in the five bays, three on the mezzanine, four in the yard');
-// about 1.6k triangles a worker (fingered hands and faces since round 2); each crew is its own culled draw, so a
-// view carries one or two crews (the opening Verdant frame: the yard and mezzanine crews, about 11k triangles, 2.9 %
-// of the workshop's 374k)
-assert.ok(triangles <= 40000, `the crews stay inside 40k triangles (${triangles})`);
+// about 1.8k triangles a worker (fingered hands and faces since round 2; cheekbones, glasses, beards and arm swell in
+// round 3); each crew is its own culled draw, so a view carries one or two crews (the opening Verdant frame: the yard
+// and mezzanine crews, about 12k triangles, 3 % of the workshop's 374k)
+assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles})`);
 assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
   `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
 

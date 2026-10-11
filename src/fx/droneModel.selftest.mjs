@@ -4,7 +4,7 @@ import {DRONE_DESIGNS,createDroneModelKit,poseDroneRotor,droneRotorDirection} fr
 import {DRONE_DOCK_ENVELOPE,DRONE_DOCK_VOLUMES,DRONE_DOCK_HEIGHT_M} from '../sim/missionAttachment.ts';
 import {createDronePresentation,droneHiddenFromCamera} from './dronePresentation.ts';
 import {PerspectiveCamera} from 'three';
-const shapes=new Set(),colors=new Set(),pose=new Object3D(),point=new Vector3();
+const shapes=new Set(),rotors=new Set(),payloads=new Set(),links=new Set(),pose=new Object3D(),point=new Vector3();
 const e=DRONE_DOCK_ENVELOPE,allowed=new Box3(new Vector3(-e.halfWidth,e.bottom,-e.halfDepth),new Vector3(e.halfWidth,e.top,e.halfDepth));
 const fits=box=>allowed.containsBox(box);
 let rotorChecks=0;
@@ -30,12 +30,25 @@ for(const nation of Object.keys(DRONE_DESIGNS))for(const detail of ['full','lite
  assembly.translate(new Vector3(0,DRONE_DOCK_HEIGHT_M,0));assert.ok(fits(assembly),nation+': complete rotating airframe is inside the clearance envelope');
  assert.ok(Math.abs(assembly.min.y-.039)<.001,nation+': landing skids contact the actual cradle pads');
  assert.ok(!fits(assembly.clone().expandByScalar(.1)),'oversize airframe negative control fails');
- if(detail==='full'){shapes.add(kit.body.getAttribute('position').count);colors.add(kit.equipmentMaterial.color.getHex());}
+ if(detail==='full'){
+  shapes.add(kit.body.getAttribute('position').count);rotors.add(kit.rotor.getAttribute('position').count);
+  payloads.add(DRONE_DESIGNS[nation].payload);links.add(DRONE_DESIGNS[nation].link);
+  // A matte black airframe: dark composite colours, matte finishes, satin (not chrome) metal.
+  const c=kit.body.getAttribute('color');let sum=0;for(let i=0;i<c.count;i++)sum+=.2126*c.getX(i)+.7152*c.getY(i)+.0722*c.getZ(i);
+  assert.ok(sum/c.count<.06,nation+': the composite airframe reads matte black (mean linear luminance '+(sum/c.count).toFixed(3)+')');
+  assert.ok(kit.bodyMaterial.roughness>=.7&&kit.equipmentMaterial.roughness>=.7,'matte composite and charge paint');
+  assert.ok(kit.metalMaterial.metalness<=.6&&kit.metalMaterial.roughness>=.4,'satin anodised metal, never chrome');
+  for(const part of kit.parts)assert.ok(!part.material.vertexColors||part.geometry.getAttribute('color'),'vertex-coloured parts carry their colours');
+ }
  kit.dispose();
 }
 // Counter-rotating diagonal pairs: each prop's twist faces its own airflow (mirrored blade set).
 assert.deepEqual([0,1,2,3].map(droneRotorDirection),[1,-1,-1,1],'diagonal rotors share a direction, neighbours oppose');
-assert.ok(shapes.size>=4,'four distinct structural airframes');assert.ok(colors.size>=12,'national service palettes');
+// One airframe class (round 3): every service flies the same frame, motors and props; services differ only in the
+// charge (RPG-pattern cone or compact charge) and the link (radio whips and transmitter, or a fibre spool).
+assert.equal(rotors.size,1,'one propeller for every service');
+assert.ok(shapes.size>=2&&shapes.size<=4,'one frame; the payload and link variants alone change the composite build');
+assert.deepEqual([...payloads].sort(),['efp','pg7'],'both charge patterns are carried');assert.deepEqual([...links].sort(),['fiber','radio'],'radio and fibre links');
 const root=new Group(),pool=createDronePresentation(root);pool.begin(1);
 for(let i=0;i<60;i++)pool.write(new Vector3(),new Vector3(),i,0,1,i%2?'China':'USA');pool.end();
 assert.equal(root.children.filter(m=>m.name.includes('airframes')).reduce((sum,m)=>sum+m.count,0),42,'bounded shared aircraft capacity');
@@ -51,4 +64,4 @@ pool.begin(2);pool.end();assert.ok(root.children.every(m=>!m.visible),'expired a
  assert.equal(droneHiddenFromCamera(at,'p1',false,camera),false,'a finished flight never hides');
  camera.position.set(3,.42,0);assert.equal(droneHiddenFromCamera(at,'p1',true,camera),false,'beyond 2 m the pilot sees its launch silhouette');
 }
-console.log(`droneModel: ${rotorChecks} rotor poses, national geometry, finite dock envelope, physical skid contact, oversize negative control and bounded rendering passed`);
+console.log(`droneModel: ${rotorChecks} rotor poses, one matte-black FPV class with service payloads, finite dock envelope, physical skid contact, oversize negative control and bounded rendering passed`);

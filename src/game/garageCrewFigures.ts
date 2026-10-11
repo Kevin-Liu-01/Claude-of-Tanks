@@ -10,6 +10,8 @@
 //
 // Imported only by garageDressing.ts: the figures demand-load with the dressing and never reach boot.
 import * as THREE from 'three';
+
+import type { GarageVariant } from './garageVariants.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 type V3 = readonly [number, number, number];
@@ -32,6 +34,8 @@ interface CrewDress {
   readonly sleevesRolled?: boolean;
   /** Body build: scales torso width and limb girth (1 = average; 0.94 lean to 1.08 heavy). */
   readonly build?: number;
+  /** What the face carries besides its features: safety glasses, a moustache or a short beard. */
+  readonly face?: 'plain' | 'glasses' | 'moustache' | 'beard';
 }
 
 interface CrewPose {
@@ -288,17 +292,20 @@ function buildHand(parts: THREE.BufferGeometry[], wrist: THREE.Vector3, handDir:
   const thumbDir = x.clone().multiplyScalar(-sign);
   _hm.makeBasis(x, y, z);
   _hq.setFromRotationMatrix(_hm);
+  // Hands read at workshop range (2026-10-10, wave 357: "mitten hands that vanish into the tools"): a working hand
+  // drawn 12 % large in a contrasting glove, its fingers parted so each knuckle row breaks the silhouette.
+  scale *= 1.12;
   const palmCentre = wrist.clone().addScaledVector(y, 0.04 * scale);
   block(parts, palmCentre, [0.08 * scale, 0.082 * scale, 0.03 * scale], _hq.clone(), color);
   const [curl1, curl2] = HAND_CURL[shape];
   const lengths = [[0.044, 0.034], [0.047, 0.036], [0.043, 0.033], [0.036, 0.028]] as const;
   for (let finger = 0; finger < 4; finger++) {
     const base = palmCentre.clone().addScaledVector(y, 0.041 * scale)
-      .addScaledVector(thumbDir, (1.5 - finger) * 0.02 * scale);
+      .addScaledVector(thumbDir, (1.5 - finger) * 0.0235 * scale);
     _hd.copy(y).multiplyScalar(Math.cos(curl1)).addScaledVector(z, Math.sin(curl1)).normalize();
-    const knuckle = segment(parts, base, _hd.clone(), x, lengths[finger][0] * scale, 0.018 * scale, 0.019 * scale, color);
+    const knuckle = segment(parts, base, _hd.clone(), x, lengths[finger][0] * scale, 0.0165 * scale, 0.019 * scale, color);
     _hd.copy(y).multiplyScalar(Math.cos(curl1 + curl2)).addScaledVector(z, Math.sin(curl1 + curl2)).normalize();
-    segment(parts, knuckle, _hd.clone(), x, lengths[finger][1] * scale, 0.016 * scale, 0.017 * scale, color);
+    segment(parts, knuckle, _hd.clone(), x, lengths[finger][1] * scale, 0.0148 * scale, 0.017 * scale, color);
   }
   // the thumb: out from the heel of the palm toward the index finger, wrapping over a fist
   const thumbBase = palmCentre.clone().addScaledVector(thumbDir, 0.036 * scale).addScaledVector(y, -0.018 * scale);
@@ -319,9 +326,12 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   const parts: THREE.BufferGeometry[] = [];
   const pelvis = vec(pose.pelvis);
   // nobody stands symmetric: a little weight on one hip and a tilt of the head, seeded by the pose itself
-  const lean = Math.sin((pose.pelvis[0] * 13.1 + pose.leftFoot[2] * 7.3 + pose.rightFoot[0] * 5.7) * 9.17) * 0.035;
+  const lean = Math.sin((pose.pelvis[0] * 13.1 + pose.leftFoot[2] * 7.3 + pose.rightFoot[0] * 5.7) * 9.17) * 0.05;
   const [hipYaw, hipPitch, hipRoll] = pose.hips ?? [0, 0, lean];
-  const [bend, twist, side] = pose.spine ?? [0, 0, 0];
+  // weight on one leg: the hips drop to the free side and the shoulders answer the other way (contrapposto), unless
+  // the pose authors its own side bend
+  const [bend, twist, authoredSide] = pose.spine ?? [0, 0, 0];
+  const side = authoredSide !== 0 ? authoredSide : -hipRoll * 1.4;
   const hipQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(hipPitch, hipYaw, hipRoll, 'YXZ'));
   const spineQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(bend, twist, side, 'YXZ'));
   const chestQ = hipQ.clone().multiply(spineQ);
@@ -384,6 +394,25 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   block(parts, inHead(0, -0.022, 0.097), [0.02 * scale, 0.042 * scale, 0.026 * scale], noseQ, dress.skin);
   ball(parts, inHead(0, -0.042, 0.106), 0.012 * scale, shade(dress.skin, 0.92), [1.25, 0.8, 1], headQ, [6, 4]);
   block(parts, inHead(0, -0.062, 0.091), [0.034 * scale, 0.006 * scale, 0.008 * scale], headQ, shade(dress.skin, 0.5));
+  // cheekbones catch the light under the eyes; glasses, a moustache or a short beard tell the crew apart
+  for (const x of [-0.05, 0.05]) {
+    ball(parts, inHead(x, -0.024, 0.07), 0.026 * scale, shade(dress.skin, 1.06), [1.1, 0.8, 0.7], headQ, [5, 3]);
+  }
+  switch (dress.face) {
+    case 'glasses':
+      block(parts, inHead(0, -0.004, 0.104), [0.112 * scale, 0.026 * scale, 0.008 * scale], headQ, 0x1f2224);
+      for (const x of [-0.06, 0.06]) block(parts, inHead(x, 0.0, 0.05), [0.006 * scale, 0.008 * scale, 0.1 * scale], headQ, 0x1f2224);
+      break;
+    case 'moustache':
+      block(parts, inHead(0, -0.052, 0.1), [0.046 * scale, 0.014 * scale, 0.014 * scale], headQ, dress.hair);
+      break;
+    case 'beard':
+      ball(parts, inHead(0, -0.068, 0.048), 0.06 * scale, dress.hair, [1.0, 0.62, 0.92], headQ, [7, 4]);
+      block(parts, inHead(0, -0.052, 0.1), [0.044 * scale, 0.012 * scale, 0.012 * scale], headQ, dress.hair);
+      break;
+    default:
+      break;
+  }
   headgear(parts, dress, inHead, headQ, scale);
 
   // legs (two-bone IK from the hip joints to the ankles; knees bend forward by default)
@@ -456,6 +485,10 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
     const { mid: elbow, end: wrist } = solveTwoBone(shoulder, wristTarget, UPPER_ARM_M * scale, FOREARM_M * scale, pole);
     ball(parts, shoulder, 0.064 * scale * girth, dress.coverall, [1, 1, 1], chestQ, [6, 4]);
     limb(parts, shoulder, elbow, 0.062 * scale * girth, 0.052 * scale * girth, dress.coverall, 8);
+    // the sleeve fills over the biceps and the forearm swells below the elbow: arms, not tubes
+    const upperDir = new THREE.Vector3().subVectors(elbow, shoulder).normalize();
+    const armQ = new THREE.Quaternion().setFromUnitVectors(_up, upperDir);
+    ball(parts, shoulder.clone().lerp(elbow, 0.42), 0.06 * scale * girth, dress.coverall, [1, 1.9, 0.95], armQ, [6, 4]);
     ball(parts, elbow, 0.052 * scale * girth, dress.coverall, [1, 1, 1], null, [5, 3]);
     if (dress.sleevesRolled) {
       // the sleeve rolled to mid-forearm: a thick cuff of rolled cloth, bare forearm to the wrist
@@ -465,6 +498,12 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
       limb(parts, roll, wrist, 0.04 * scale * girth, 0.034 * scale * girth, dress.skin, 7);
     } else {
       limb(parts, elbow, wrist, 0.05 * scale * girth, 0.042 * scale * girth, dress.coverall, 8);
+    }
+    {
+      const foreDir = new THREE.Vector3().subVectors(wrist, elbow).normalize();
+      const foreQ = new THREE.Quaternion().setFromUnitVectors(_up, foreDir);
+      ball(parts, elbow.clone().lerp(wrist, 0.3), 0.05 * scale * girth, dress.sleevesRolled ? dress.skin : dress.coverall,
+        [1.05, 1.8, 0.92], foreQ, [6, 4]);
     }
     // cuff and hand: the hand continues the forearm toward the grip point
     const forearmDir = new THREE.Vector3().subVectors(wrist, elbow).normalize();
@@ -604,12 +643,20 @@ function shade(hex: number, factor: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
+// Work gloves that read against olive cloth and dark steel: tan and brown leather, grey knit with dipped palms,
+// yellow rigger gloves, and a black nitrile pair now and then; welders wear brown leather gauntlets.
+const GLOVES = Object.freeze([0xb38a5c, 0x9d998d, 0xb89746, 0x8d6b47, 0xa9a59a, 0x3a3836] as const);
+
 export function crewDress(nation: CrewNation, variant: number, headgear?: CrewHeadgear): CrewDress {
   const skin = SKIN[Math.abs(variant) % SKIN.length];
   const hairColor = HAIR[Math.abs(variant * 3 + 1) % HAIR.length];
   const sleevesRolled = headgear !== 'welding-hood' && Math.abs(variant) % 3 === 1;
   const build = 0.95 + (Math.abs(variant * 7) % 5) * 0.03;
-  return { ...crewDressBase(nation, variant, skin, hairColor, headgear), sleevesRolled, build };
+  const gloves = headgear === 'welding-hood' ? 0x6e4f32 : GLOVES[Math.abs(variant * 5 + 2) % GLOVES.length];
+  const faceIndex = Math.abs(variant * 3 + (nation === 'ru' ? 1 : nation === 'us' ? 2 : nation === 'de' ? 3 : 4)) % 6;
+  const face = headgear === 'welding-hood' ? 'plain' as const
+    : (['plain', 'glasses', 'moustache', 'plain', 'beard', 'glasses'] as const)[faceIndex];
+  return { ...crewDressBase(nation, variant, skin, hairColor, headgear), sleevesRolled, build, gloves, face };
 }
 
 function crewDressBase(nation: CrewNation, variant: number, skin: number, hairColor: number,
@@ -731,6 +778,10 @@ interface CrewSceneBuild {
   readonly geometry: THREE.BufferGeometry;
   readonly skeletons: readonly CrewSkeleton[];
   readonly triangles: number;
+  /** Per vertex: what the colour dresses (0 skin, boots, gloves and kit; 1 coverall; 2 trim; 3 pocket flap; 4 headgear). */
+  readonly roles: Uint8Array;
+  /** Per vertex: the member it belongs to. */
+  readonly memberOf: Uint8Array;
 }
 
 /** Every member of a scene, posed and merged into one vertex-coloured geometry in the scene frame. */
@@ -739,26 +790,107 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
   const skeletons: CrewSkeleton[] = [];
   let triangles = 0;
   const matrix = new THREE.Matrix4();
-  for (const member of scene.members) {
+  const roleParts: Uint8Array[] = [];
+  const memberParts: Uint8Array[] = [];
+  const probe = new THREE.Color();
+  scene.members.forEach((member, memberIndex) => {
     const build = buildCrewFigure(member.dress, member.pose);
     matrix.compose(vec(member.at), new THREE.Quaternion().setFromAxisAngle(_up, member.yaw), _s.set(1, 1, 1));
     build.geometry.applyMatrix4(matrix);
+    // tag each vertex with the dress colour it carries, so a Garage can repaint the crew's cloth without a rebuild
+    const dressColours: Array<[number, number]> = [
+      [1, member.dress.coverall], [2, member.dress.trim], [3, shade(member.dress.coverall, 1.45)], [4, member.dress.headColor],
+    ];
+    const keys = dressColours.map(([role, hex]) => { probe.setHex(hex); return [role, probe.r, probe.g, probe.b] as const; });
+    const colours = build.geometry.getAttribute('color');
+    const roles = new Uint8Array(colours.count);
+    for (let v = 0; v < colours.count; v++) {
+      const r = colours.getX(v), g = colours.getY(v), b = colours.getZ(v);
+      for (const [role, kr, kg, kb] of keys) {
+        if (Math.abs(r - kr) < 1e-4 && Math.abs(g - kg) < 1e-4 && Math.abs(b - kb) < 1e-4) { roles[v] = role; break; }
+      }
+    }
+    roleParts.push(roles);
+    memberParts.push(new Uint8Array(colours.count).fill(memberIndex));
     geometries.push(build.geometry);
     skeletons.push(build.skeleton);
     triangles += build.triangles;
-  }
+  });
   const geometry = mergeGeometries(geometries, false);
   for (const g of geometries) g.dispose();
   if (!geometry) throw new Error(`crew scene ${scene.id} failed to merge`);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return { geometry, skeletons, triangles };
+  const vertexCount = geometry.getAttribute('position').count;
+  const roles = new Uint8Array(vertexCount);
+  const memberOf = new Uint8Array(vertexCount);
+  let offset = 0;
+  roleParts.forEach((part, index) => { roles.set(part, offset); memberOf.set(memberParts[index], offset); offset += part.length; });
+  return { geometry, skeletons, triangles, roles, memberOf };
+}
+
+/**
+ * Each Garage dresses its crews for its region (2026-10-10, the coordinator: "its own crew dress"): the coverall colours
+ * the members cycle through and their headgear colour. Verdant keeps the national work dress authored per member.
+ */
+export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], { readonly coverall: readonly number[];
+  readonly head: number } | null>> = Object.freeze({
+  field_shed: null,
+  shade_depot: { coverall: [0x9a8360, 0x8c7554, 0xa08a66], head: 0x8a7a5a }, // desert tan, sun caps
+  repair_bunker: { coverall: [0xb4b8b3, 0xa5aaa5, 0x8f9590], head: 0x3b3631 }, // winter smocks, fur hats
+  brick_arsenal: { coverall: [0x2f3a4c, 0x37424f, 0x2a3442], head: 0x262d38 }, // navy arsenal overalls
+  naval_drydock: { coverall: [0xb0632a, 0xa35a26, 0x965226], head: 0xd6d6ce }, // dock orange, white hard hats
+  rail_roundhouse: { coverall: [0x34506e, 0x3d5875, 0x2f4864], head: 0x343434 }, // railway blue
+  rain_canopy: { coverall: [0x3c4a35, 0x45523b, 0x36432f], head: 0x2c3729 }, // rain ponchos
+  rock_cavern: { coverall: [0x8e3328, 0x9a5a22, 0x7d2e26], head: 0xd5d0c6 }, // alpine shells, helmets
+  recovery_yard: { coverall: [0x8a7b5a, 0x7d6e50, 0x948463], head: 0x6c6046 }, // khaki recovery crews
+  factory_line: { coverall: [0x4a4d50, 0x55585b, 0x404346], head: 0xc49c34 }, // mill greys, yellow hard hats
+});
+
+/**
+ * Repaint a built crew's cloth for a region (or restore its authored dress when `region` is null): `base` is the
+ * colour array as built, `out` the live colour array. Skin, boots, gloves and kit keep their colours.
+ */
+export function paintCrewRegion(base: Float32Array, roles: Uint8Array, memberOf: Uint8Array,
+  region: { readonly coverall: readonly number[]; readonly head: number } | null, out: Float32Array): void {
+  if (!region) { out.set(base); return; }
+  const cloth = region.coverall.map((hex) => new THREE.Color().setHex(hex));
+  const head = new THREE.Color().setHex(region.head);
+  for (let v = 0; v < roles.length; v++) {
+    const role = roles[v];
+    const at = v * 3;
+    if (role === 0) { out[at] = base[at]; out[at + 1] = base[at + 1]; out[at + 2] = base[at + 2]; continue; }
+    const c = role === 4 ? head : cloth[memberOf[v] % cloth.length];
+    const k = role === 2 ? 0.8 : role === 3 ? 1.45 : 1;
+    out[at] = Math.min(1, c.r * k); out[at + 1] = Math.min(1, c.g * k); out[at + 2] = Math.min(1, c.b * k);
+  }
 }
 
 const D = (n: 'ru' | 'us' | 'de' | 'kr', v: number, h?: CrewHeadgear): CrewDress => crewDress(n, v, h);
 const scene = (definition: CrewScene): CrewScene => Object.freeze(definition);
 const A = CREW_SOLE_BELOW_ANKLE_M;
 const HIP = CREW_STANDING_HIP_M;
+
+/**
+ * One of a pair carrying a road wheel upright between them (2026-10-10, wave 357: a wheel carried flat read as "a
+ * hollow hoop", "a grey tub", "a giant hockey puck"). The pair stand 1.36 m apart facing each other; each hooks both
+ * gloved hands over the tyre's shoulders on his side, a little below the axle, so the wheel's face, disc and hub show
+ * side-on. Knees give and the back stays straight under the weight; `stagger` sets which foot leads.
+ */
+export const WHEEL_CARRY = Object.freeze({ separationM: 1.36, gripReachM: 0.335, gripHeightM: 0.74, gripHalfSpanM: 0.118 });
+function wheelCarrierPose(stagger: 1 | -1): CrewPose {
+  const { gripReachM: reach, gripHeightM: y, gripHalfSpanM: span } = WHEEL_CARRY;
+  return {
+    pelvis: [0, 0.79, -0.06], spine: [0.17, 0.04 * stagger, 0], head: [0.2, 0.04 * stagger],
+    leftHand: [span, y, reach], rightHand: [-span, y, reach], leftGrip: 'carry', rightGrip: 'carry',
+    leftPalm: [-0.75, 0.3, 0.6], rightPalm: [0.75, 0.3, 0.6],
+    leftFoot: stagger > 0 ? [0.13, A, 0.06] : [0.12, A, -0.14],
+    rightFoot: stagger > 0 ? [-0.13, A, -0.15] : [-0.13, A, 0.07],
+    // knees track forward over the toes, not out: a lift, not a squat
+    leftKnee: [0.1, 0.45, 0.9], rightKnee: [-0.1, 0.45, 0.9],
+  };
+}
+
 
 /**
  * The five service-bay crews, each in its exhibit's floor frame (see garageDressing.ts for the frames):
@@ -783,16 +915,8 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
         pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [0.42, -0.1, 0.04], head: [0.18, -0.1],
           leftHand: [-0.21, 1.05, 0.5], rightHand: [0.19, 1.03, 0.52],
           leftFoot: [0.15, A, 0.1], rightFoot: [-0.14, A, -0.12] } },
-      { role: 'road-wheel-carrier', dress: D('ru', 3), at: [-3.6, 0, 4.25], yaw: 0,
-        pose: { pelvis: [0, 0.82, -0.05], spine: [0.16, 0.04, 0], head: [-0.06, 0.05],
-          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
-          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
-          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
-      { role: 'road-wheel-carrier', dress: D('ru', 4), at: [-3.6, 0, 5.31], yaw: Math.PI,
-        pose: { pelvis: [0, 0.81, -0.06], spine: [0.18, -0.05, 0], head: [-0.02, -0.08],
-          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
-          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
-          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
+      { role: 'road-wheel-carrier', dress: D('ru', 3), at: [-3.6, 0, 4.1], yaw: 0, pose: wheelCarrierPose(1) },
+      { role: 'road-wheel-carrier', dress: D('ru', 4), at: [-3.6, 0, 5.46], yaw: Math.PI, pose: wheelCarrierPose(-1) },
     ],
     tools: [
       { kind: 'pendant', member: 0, points: [[0, 1.235, 0.305]], anchor: [0, 3.72, 0.4] },
@@ -841,16 +965,8 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     id: 'leopard', task: 'road wheels off the lifted hull to the rack', essential: false,
     frame: { parent: 'leopard-bay', x: 0, z: 0, yaw: 0 },
     members: [
-      { role: 'road-wheel-carrier', dress: D('de', 1), at: [-1.05, 0, 5.05], yaw: -Math.PI / 2,
-        pose: { pelvis: [0, 0.82, -0.05], spine: [0.17, 0.05, 0], head: [-0.05, 0.06],
-          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
-          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
-          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
-      { role: 'road-wheel-carrier', dress: D('de', 2), at: [-2.11, 0, 5.05], yaw: Math.PI / 2,
-        pose: { pelvis: [0, 0.81, -0.06], spine: [0.19, -0.04, 0], head: [-0.03, -0.06],
-          leftHand: [0.25, 0.69, 0.25], rightHand: [-0.25, 0.69, 0.25], leftGrip: 'carry', rightGrip: 'carry',
-          leftPalm: [0, 1, 0.1], rightPalm: [0, 1, 0.1],
-          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
+      { role: 'road-wheel-carrier', dress: D('de', 1), at: [-0.9, 0, 5.05], yaw: -Math.PI / 2, pose: wheelCarrierPose(1) },
+      { role: 'road-wheel-carrier', dress: D('de', 2), at: [-2.26, 0, 5.05], yaw: Math.PI / 2, pose: wheelCarrierPose(-1) },
       { role: 'suspension-mechanic', dress: D('de', 3), at: [-2.55, 0, -0.6], yaw: Math.PI / 2,
         pose: { pelvis: [0, 0.49, -0.02], spine: [0.12, 0.06, 0], head: [-0.38, 0.05],
           leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
@@ -955,12 +1071,14 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     frame: { parent: 'workshop', x: 0, z: 0, yaw: 0 },
     props: [{ kind: 'power-pack', at: [3.4, 0, -11.4], yaw: 0.55, deckY: 0 }],
     members: [
-      { role: 'track-carrier', dress: D('ru', 11), at: [-9.7, 0, 1.65], yaw: -2.156,
+      // side by side across the opening camera's line of sight, so the menu frame shows two men and the track between
+      // them (2026-10-10, wave 357: in line with the camera they read as one idle sentry)
+      { role: 'track-carrier', dress: D('ru', 11), at: [-10.08, 0, 0.52], yaw: -0.363,
         pose: { pelvis: [0, 0.83, -0.05], spine: [0.15, 0.05, 0], head: [-0.04, 0.05],
           leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
           leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
           leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
-      { role: 'track-carrier', dress: D('ru', 12), at: [-11.0, 0, 0.8], yaw: -2.156 + Math.PI,
+      { role: 'track-carrier', dress: D('ru', 12), at: [-10.62, 0, 1.93], yaw: -0.363 + Math.PI,
         pose: { pelvis: [0, 0.82, -0.06], spine: [0.17, -0.04, 0], head: [-0.02, -0.07],
           leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
           leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],

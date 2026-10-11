@@ -92,6 +92,9 @@ export default {
     // The landmarks lane (2026-10-06; src/world/landmarks/towers.ts fireLookout): the forest's fire lookout on the western
     // ridge's crest, the highest open ground of the pine country — a steel lattice tower 26 m to its glazed cab, the
     // zig-zag stair inside its frame, seen over the canopy from both deployments.
+    // Round 3 (2026-10-07; gauntlet wave 204's next-touch items, the library at e3dd2937a): the stair in flights — steel
+    // stringers, timber treads, a handrail and a landing a panel — where each flight was one plank, and no grass up
+    // through the beaten track.
     landmarks: [
       // round 2 (2026-10-06; gauntlet waves 154-158: the set pieces "in no setting"): the towerman's compound round the
       // tower's foot, its split-rail fence and gate toward the road, and the beaten track from the gate down to the forest

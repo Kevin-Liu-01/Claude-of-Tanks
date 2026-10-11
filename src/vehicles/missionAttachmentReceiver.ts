@@ -130,7 +130,7 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
 }
 
 interface ReceiverBuilder {
-  readonly mats: { readonly hull: THREE.Material };
+  readonly mats: { readonly hull: THREE.Material; readonly dark?: THREE.Material };
   readonly disposables: { dispose(): void }[];
   postAssemble: TankBuilderPort['postAssemble'];
 }
@@ -152,15 +152,18 @@ export function addMissionAttachmentReceiver(P: ReceiverBuilder, id: ReceiverId)
     const geometry = mergeGeometries(parts, false);
     for (const part of parts) part.dispose();
     if (!geometry) throw new Error(`${id}: mission receiver geometry could not be assembled`);
-    // Painted like the turret it is welded to. The camouflage buckets project one vehicle-space pattern at a single
+    // Painted like the structure it is welded to. The camouflage buckets project one vehicle-space pattern at a single
     // density and carry baked vertex colour; this mesh bypasses the buckets, so it gets both here. It used to render
     // black (the hull material reads vertex colour, and these boxes had none) with a whole camo tile per small face.
+    // The M1A1 SA's hooks and bearers are welded to its dark-steel cage (round 3, 2026-10-10: the dock must read as
+    // tied to the cage, not as a painted shelf over it), so they take the cage lattice's own dark steel.
     boxUV(geometry, CAMO_UV_REPEATS_PER_M);
     paintedSurfaceShade(geometry);
-    const receiver = new THREE.Mesh(geometry, P.mats.hull);
+    const onDarkCage = id === 'ua_m1a1' && !!P.mats.dark;
+    const receiver = new THREE.Mesh(geometry, onDarkCage ? P.mats.dark! : P.mats.hull);
     receiver.name = 'turretMissionReceiver';
     receiver.castShadow = receiver.receiveShadow = true;
-    receiver.userData.appearanceRole = 'armorPaint';
+    receiver.userData.appearanceRole = onDarkCage ? 'gunmetal' : 'armorPaint';
     rig.turretG.add(receiver);
     P.disposables.push(geometry);
   };

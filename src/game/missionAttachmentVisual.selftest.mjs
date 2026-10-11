@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { Group, Vector3, Euler, Mesh, BoxGeometry, MeshBasicMaterial, InstancedMesh, Matrix4, Ray } from 'three';
-import { syncMissionAttachment, clearMissionAttachment, DRONE_ARRIVAL, droneArrivalHeight } from './missionAttachmentVisual.ts';
+import { syncMissionAttachment, clearMissionAttachment, missionHoldDownOpen } from './missionAttachmentVisual.ts';
+import { DRONE_ARRIVAL, droneArrivalHeight } from '../fx/droneArrival.ts';
 import { poseDroneRotor } from '../fx/droneModel.ts';
 import { Object3D, Quaternion } from 'three';
-import { missionAttachmentFor, missionAttachmentTurretPivot, missionCradleVolumes, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';
+import { missionAttachmentFor, missionAttachmentTurretPivot, missionCradleVolumes, missionAirframeVolumes, DRONE_DOCK_HEIGHT_M } from '../sim/missionAttachment.ts';
 import {createTank} from '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import {initializeAerial,stepAerial} from '../sim/aerialCombat.ts';
@@ -29,12 +30,23 @@ for(const id of ['m1a2','kf41_lynx_x','strv103'])for(const scale of [1,.8]){
  rail.traverse(o=>{if(!o.isMesh)return;for(const resource of [o.geometry,...(Array.isArray(o.material)?o.material:[o.material])]){if(disposal.has(resource))continue;disposal.set(resource,0);resource.addEventListener('dispose',()=>disposal.set(resource,disposal.get(resource)+1));}});
  const platform=rail.getObjectByName('Mission dock cradle');platform.geometry.computeBoundingBox();
  assert.ok(platform.geometry.boundingBox.max.y<.07,'low open cradle has no giant pedestal');
- // Every welded member, saddle, latch, cable and foot lies inside the audited finite cradle stock.
- const volumes=missionCradleVolumes(seat),p=[new Vector3(),new Vector3(),new Vector3()],pos=platform.geometry.attributes.position;
- for(let i=0;i<pos.count;i+=3){for(let k=0;k<3;k++)p[k].fromBufferAttribute(pos,i+k);
-  assert.ok(volumes.some(v=>p.every(q=>[0,1,2].every(a=>q.getComponent(a)>=v.min[a]-1e-6&&q.getComponent(a)<=v.max[a]+1e-6))),id+': rendered cradle triangle inside certified stock');}
+ // Every plate, leg, channel, clamp, cable and foot lies inside the audited finite stock: the cradle's own, or (the skid
+ // channels' lips, the clamp posts' tops and their swinging heads) the parked airframe's gear stock, which the native
+ // audit certifies with it.
+ const volumes=[...missionCradleVolumes(seat),...missionAirframeVolumes(seat)],p=[new Vector3(),new Vector3(),new Vector3()];
+ const inStock=(geometry,matrix,label)=>{const pos=geometry.attributes.position;
+  for(let i=0;i<pos.count;i+=3){for(let k=0;k<3;k++){p[k].fromBufferAttribute(pos,i+k);if(matrix)p[k].applyMatrix4(matrix);}
+   assert.ok(volumes.some(v=>p.every(q=>[0,1,2].every(a=>q.getComponent(a)>=v.min[a]-1e-6&&q.getComponent(a)<=v.max[a]+1e-6))),id+': '+label+' triangle inside certified stock '+p.map(q=>q.toArray().map(n=>n.toFixed(4))));}};
+ inStock(platform.geometry,null,'rendered cradle');
+ const clamps=rail.getObjectByName('Mission dock hold-down clamps'),clampMatrix=new Matrix4();
+ assert.ok(clamps&&clamps.count===4&&clamps.parent===platform,'four quick-release clamps ride with the near dock');
+ assert.ok(platform.castShadow&&clamps.castShadow&&drone.getObjectByName('Docked FPV airframe detail').levels[0].object.children.every(m=>m.castShadow),'the near dock, its clamps and the parked airframe cast with the sun');
+ assert.equal(missionHoldDownOpen(root),0,'a parked airframe is held down');
+ for(let k=0;k<4;k++){clamps.getMatrixAt(k,clampMatrix);inStock(clamps.geometry,clampMatrix,'holding clamp');}
  assert.ok(rail.getObjectByName('Mission dock cradle (far)'),'distant docks draw the audited stock itself');
  view.active=true;syncMissionAttachment(root,spec,view,false);assert.equal(drone.visible,false);
+ assert.equal(missionHoldDownOpen(root),1,'the clamps stand clear for a lift-off');
+ for(let k=0;k<4;k++){clamps.getMatrixAt(k,clampMatrix);inStock(clamps.geometry,clampMatrix,'open clamp');}
  // A wreck keeps its dock, charred with the hull; the payload is gone.
  view.active=false;syncMissionAttachment(root,spec,view,true);assert.equal(rail.visible,true);assert.equal(drone.visible,false);
  assert.ok(platform.material.color.getHex()<0x404040,'burnt-out carrier chars its dock');

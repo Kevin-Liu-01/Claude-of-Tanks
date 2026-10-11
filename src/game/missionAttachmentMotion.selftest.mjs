@@ -13,6 +13,7 @@ import {matchRulesetFor,AERIAL_RULES} from '../sim/matchRuleset.ts';
 import {PLAYER_ACTION_BITS} from '../sim/playerActions.ts';
 import {createDronePresentation} from '../fx/dronePresentation.ts';
 import {droneLaunchHeight} from '../sim/droneLaunch.ts';
+import {DRONE_CLIMB} from '../fx/droneMotion.ts';
 // Saved physical failure positions must remain rejected after the generated
 // table moves. These are not fetched from the same policy being tested.
 const oldSeats={
@@ -91,7 +92,9 @@ for(const id of['m1a2','abramsx','leo2a7v']){
   assert.ok(Math.hypot(relative.x,relative.z)<1e-8,id+': moving-carrier launch stays inside its certified vertical corridor');
   presentation.begin(20+age);presentation.write(shell.pos,shell.vel,5,entity.aerial.yaw,age,spec.nation,frame);presentation.end();
   const body=world.children[0],actual=new Matrix4();body.getMatrixAt(0,actual);const actualPosition=new Vector3(),actualOrientation=new Quaternion();actual.decompose(actualPosition,actualOrientation,new Vector3());
-  assert.ok(actualPosition.distanceTo(shell.pos)<.00011,'no bob displaces payload during launch');assert.ok(actualOrientation.angleTo(orientation)<1e-3,'airborne kit retains the real dock orientation until clear');
+  assert.ok(actualPosition.distanceTo(shell.pos)<.00011,'no bob displaces payload during launch');// Inside the carrier's kit envelope the airframe holds the dock's exact attitude; above it the climb trims and leans (bounded).
+  if(droneLaunchHeight(age)<=DRONE_CLIMB.clearM)assert.ok(actualOrientation.angleTo(orientation)<1e-3,'airborne kit retains the real dock orientation until clear');
+  else assert.ok(actualOrientation.angleTo(orientation)<.25,'above the carrier the climb leans and trims within bounds');
  }
  clearMissionAttachment(tank.root);tank.dispose();
 }
@@ -110,7 +113,9 @@ console.log('missionAttachmentMotion: live suspension/stabilization origin, orie
  const before=pose(AERIAL_RULES.drone.launchS-1e-6),after=pose(AERIAL_RULES.drone.launchS);
  assert.ok(before.distanceTo(after)<1e-5,'no position snap when the delayed dock hands off to authoritative free flight');
  const free=pose(AERIAL_RULES.drone.launchS+.4);
- assert.ok(Math.hypot(free.x-position.x,free.z-position.z)<1e-5,'launch offset is retired, never accumulated into flight authority');
+ // Free flight draws the authority plus the hover's station-keeping wander (a centimetre or two, round 3), never the
+ // 0.27 m launch offset of the delayed dock.
+ assert.ok(Math.hypot(free.x-position.x,free.z-position.z)<.025,'launch offset is retired, never accumulated into flight authority');
  presentation.reset();
 }
 console.log('missionAttachmentMotion: delayed live-frame launch/free-flight handoff stays continuous');

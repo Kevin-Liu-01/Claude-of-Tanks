@@ -20,8 +20,8 @@ import { MAP_IDS } from './maps/index.ts';
 import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts';
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
-  boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  projectsInsideHull, rockDressingFor, rockLithologyFor,
+  boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
+  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -523,10 +523,11 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const hullAt = source.indexOf('rockHulls.push(hull); // the collision proxy');
-// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular)
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
-assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos\.push\(form\.geometry\);/);
+const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision proxy');
+// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
+// the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
+assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
@@ -536,7 +537,8 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // on: each kind's strength in its patch's vertex RGB, the material a multiplicative darkening, unlit, no fog of its own,
 // gone by 160 m, no shadow — and its output law: the target × mix(1, the grey, a)
 {
-  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+) \}\);/.exec(source);
+  // (round 3: and a crushed stone's scuff, laid at its crush)
+  const strength = /const CONTACT_STRENGTH = Object\.freeze\(\{ rock: ([\d.]+), prop: ([\d.]+), stack: ([\d.]+), foundation: ([\d.]+)(?:, scuff: [\d.]+)? \}\);/.exec(source);
   assert.ok(strength, 'a strength for every kind of contact');
   const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
   assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
@@ -625,8 +627,21 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the desktop form near the camera and the phone form past ROCK_FAR_M, both into the near cascades; the far cascades
 // the phone form of every loose rock from a shadow-only pool; the crushable rocks pinned to the first near slots;
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
-assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology, angular\);/,
-  'the far form is the same rock at the phone\'s tier');
+// (the hitbox lane, 2026-10-11: the forms from one constructor, rockDressing.ts boulderVariantForms) the desktop's far
+// form is the phone's drawn rock, vertex for vertex, on an angular map and a plain one
+assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
+  'the desktop draws its far form into the far pool');
+for (const mapId of ['badlands', 'verdant']) {
+  const lith = rockLithologyFor(mapId), ang = rockAngularityFor(mapId);
+  for (let vi = 0; vi < 3; vi++) {
+    const legacy = legacyRockVariant(vi, noise);
+    const desk = boulderVariantForms(vi, noise, () => mulberry32(2002 + 60 + vi), legacy.hull, legacy.top, lith, ang, false);
+    const phone = boulderVariantForms(vi, noise, () => mulberry32(2002 + 60 + vi), legacy.hull, legacy.top, lith, ang, true);
+    assert.deepEqual(Array.from(desk.far.geometry.attributes.position.array), Array.from(phone.drawn.geometry.attributes.position.array),
+      `${mapId} stone ${vi}: the far form is the same rock at the phone's tier`);
+    for (const geometry of new Set([desk.drawn.geometry, desk.far.geometry, phone.drawn.geometry, phone.collision])) geometry.dispose();
+  }
+}
 assert.match(source, /const ROCK_FAR_M = 60;/);
 assert.match(source, /const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;/);
 assert.match(source, /markShadowOnly\(shadow\);\n\s*setShadowCasterCascades\(shadow, ROCK_FAR_CASCADES\);\n\s*setShadowCasterCascades\(near, ROCK_NEAR_CASCADES\);\n\s*setShadowCasterCascades\(far, ROCK_NEAR_CASCADES\);/,
@@ -691,12 +706,14 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     const rockBedShades = [];
     // (2026-10-08) props.ts's near-mesh vertex memo, as the plain field query it memoizes (nearMeshVertexMemo.selftest)
     const fixtureField = { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) };
+    // (round 3: a low crushable stone keeps its bed — lowStones, empty here: the crushable fixture is a small rock's)
+    const lowStones = new Set();
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'nearMeshVertexHeight', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
-      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
+      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare', 'lowStones',
       `${cellSrc}\n${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, fixtureField,
       (px, pz) => fixtureField.getHeightAt(px, pz),
       { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
-      rockContact, rockSpotOf, rockBedShades, contactShare);
+      rockContact, rockSpotOf, rockBedShades, contactShare, lowStones);
     const it = fn();
     let r = it.next();
     while (!r.done) r = it.next();

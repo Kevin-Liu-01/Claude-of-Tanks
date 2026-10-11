@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
 import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
-import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
 import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -57,8 +57,8 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
-  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  rockAngularityFor, rockDressingFor, rockLithologyFor,
+  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
+  paintBoulder, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
@@ -145,7 +145,7 @@ import {
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
 import {
-  cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
+  cloneCollisionRecord, collisionFootprintContainsPoint, setCircleShape, setCompoundShape, setConvexShape,
   setObbShape, type SimpleCollisionShape,
 } from './collision.ts';
 import {
@@ -3108,8 +3108,9 @@ function addDestructibleRecord(
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
   let placement: GroundedDestructiblePlacement;
-  if (GROUND_POSED_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
+  if ((GROUND_POSED_KINDS.has(kind) || meta.groundPose) && tiltX === 0 && tiltZ === 0) {
     // a cart or a parked vehicle sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
+    // (and a kind posed so, the map-content lane's polar works: their drums stand with the slope, no corner in the air)
     const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
     tiltX = pose.tiltX; tiltZ = pose.tiltZ;
     placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };
@@ -6683,51 +6684,27 @@ ${snowCap ? `
   const rockForms: RockForm[] = [];
   const rockSeats: RockSeat[] = [];
   function buildRockVariants(): void {
+  // (the hitbox lane and the map-revival lane, 2026-10-11) the legacy form and the boulder forms from rockDressing.ts's
+  // constructors: the drawn, collision and far forms differ only in subdivision, so every host derives the same colliders
+  const lithology = rockLithologyFor(mapId);
+  const angular = rockAngularityFor(mapId);
   for (let vi = 0; vi < 3; vi++) {
-    const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
-    const p = g.attributes.position;
-    const tmpv = new THREE.Vector3();
-    for (let i = 0; i < p.count; i++) {
-      tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
-      const ridge = 1 - Math.abs(noi.noise3d(
-        tmpv.x * 2.2 + vi * 31, tmpv.y * 2.2 - 7, tmpv.z * 2.2 + 13));
-      const crease = Math.pow(ridge, 5); // sharp valley lines
-      const f = 1
-        + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
-        + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
-        + noi.noise3d(tmpv.x * 6.8 + 91, tmpv.y * 6.8 - vi * 5, tmpv.z * 6.8) * 0.05
-        - crease * 0.115; // carved fracture valleys
-      tmpv.multiplyScalar(f);
-      tmpv.y = Math.max(tmpv.y, -0.55);
-      p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
-    }
-    const projected: Array<[number, number]> = [];
-    for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
-    const hull = convexHull2(projected);
-    rockHulls.push(hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
     // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
     // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
-    let legacyTop = 0;
-    for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
-    const lithology = rockLithologyFor(mapId);
-    const angular = rockAngularityFor(mapId);
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-    paintBoulder(form, P.rockTone, lithology);
-    rockGeos.push(form.geometry);
-    // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
-    const collisionForm = mobileProps
-      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
-      : form.geometry;
-    rockForms.push(rockFormOf(collisionForm));
-    if (collisionForm !== form.geometry) collisionForm.dispose();
-    if (!mobileProps) {
-      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-      paintBoulder(far, P.rockTone, lithology);
-      rockGeosFar.push(far.geometry);
+    const legacy = legacyRockVariant(vi, noi);
+    rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
+    const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    paintBoulder(forms.drawn, P.rockTone, lithology);
+    rockGeos.push(forms.drawn.geometry);
+    // (the desktop form on every tier, so every host derives the same colliders)
+    rockForms.push(rockFormOf(forms.collision));
+    if (forms.collision !== forms.drawn.geometry) forms.collision.dispose();
+    if (forms.far) {
+      paintBoulder(forms.far, P.rockTone, lithology);
+      rockGeosFar.push(forms.far.geometry);
     }
-    g.dispose();
   }
   }
   buildRockVariants();
