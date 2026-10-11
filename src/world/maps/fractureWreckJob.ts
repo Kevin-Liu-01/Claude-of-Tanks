@@ -14,7 +14,9 @@ import type { FortTones, PillboxStyle } from './fortKit.ts';
 /** What a deferred wreck is built from (structured-cloneable: plain numbers, strings and arrays). */
 export type FractureWreckJob =
   | { readonly kit: 'shed'; readonly kind: 'fieldhut' | 'leanto'; readonly style: ShedStyle; readonly seed: number; readonly salt: number }
-  | { readonly kit: 'pillbox'; readonly style: PillboxStyle; readonly tones: FortTones; readonly seed: number };
+  | { readonly kit: 'pillbox'; readonly style: PillboxStyle; readonly tones: FortTones; readonly seed: number }
+  /** A part-built light kind (structureKit SETTLED_WRECK_KINDS), settled from its own parts (legacyWreck.ts). */
+  | { readonly kit: 'legacy'; readonly kind: string; readonly seed: number };
 
 /** A deferred broken state: the builder the main thread runs when it must, carrying the job a worker runs ahead of it. */
 export type DeferredWreck = (() => THREE.BufferGeometry) & { readonly job: FractureWreckJob };

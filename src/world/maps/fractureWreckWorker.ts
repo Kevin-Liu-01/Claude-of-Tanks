@@ -5,6 +5,7 @@
 import type * as THREE from 'three';
 import { buildShedWreck } from './shedKit.ts';
 import { buildPillbox } from './fortKit.ts';
+import { buildSettledWreck } from './structureKit.ts';
 import { packFractureWreck } from './fractureWreckWire.ts';
 import type { FractureWreckJob } from './fractureWreckJob.ts';
 import type { FractureWreckReply, FractureWreckRequest } from './fractureWreckClient.ts';
@@ -16,9 +17,9 @@ declare const self: {
 
 /** The job's own builder: the one its deferred wreck runs on the page (structureKit.ts shedMeta, props.ts the pillbox). */
 function buildFractureWreck(job: FractureWreckJob): THREE.BufferGeometry {
-  return job.kit === 'shed'
-    ? buildShedWreck(job.kind, job.style, job.seed, job.salt)
-    : buildPillbox(job.style, job.tones, job.seed, true);
+  if (job.kit === 'shed') return buildShedWreck(job.kind, job.style, job.seed, job.salt);
+  if (job.kit === 'legacy') return buildSettledWreck(job.kind, job.seed);
+  return buildPillbox(job.style, job.tones, job.seed, true);
 }
 
 self.onmessage = ({ data }) => {

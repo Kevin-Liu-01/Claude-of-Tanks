@@ -17,7 +17,8 @@ import {
 import {
   auditRoofPlanePitch, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
-import { spentDraws, spentSeed } from './brokenDraws.ts';
+import { seededDraws, spentDraws, spentSeed } from './brokenDraws.ts';
+import { buildLegacyWreck } from './legacyWreck.ts';
 import { deferredWreck, type DeferredWreck } from './fractureWreckJob.ts';
 import {
   SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedCollision, buildShedFar,
@@ -255,6 +256,11 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return geometry;
 }
 
+// (the destructible-kits lane, round 3) the parts the last merge was handed, while a settled wreck asks for them
+// (capturedParts; legacyWreck.ts lays the broken state from them)
+let capturingParts = false;
+let lastCapturedParts: THREE.BufferGeometry[] | null = null;
+
 /**
  * Prove a lightweight building is one supported assembly before its authored
  * parts are flattened into a single instanced geometry. After merge there is
@@ -264,6 +270,10 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
  */
 function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const connectivity = certifyGroundedStructureParts(id, parts);
+  if (capturingParts) {
+    for (const part of lastCapturedParts ?? []) part.dispose();
+    lastCapturedParts = parts.map((part) => part.clone());
+  }
   const roofPlanePitches = [];
   for (const part of parts) {
     if (part.userData.roofPlanePitch) roofPlanePitches.push(auditRoofPlanePitch(part));
@@ -1406,7 +1416,8 @@ function gableLight({
   return out;
 }
 
-function debris(
+/** The shared litter a light kind broke into before its own wreck (still the draws a settled kind spends first). */
+export function debris(
   meta: Pick<DestructibleBuildingType, 'hw' | 'hl' | 'h'>,
   pal: Palette,
   rng: Rng,
@@ -1917,6 +1928,8 @@ function lightMeta(
   build: LightStructureBuilder,
   debrisMaterial: DebrisMaterial = 'wood',
   brokenBuild: LightStructureBuilder | null = null,
+  /** The settled wreck's registry key (a regional variant builds its own parts under its family's id). */
+  wreckKey: string = id,
 ): DestructibleBuildingType {
   const surfaceMaterial: DestructibleBuildingType['surfaceMaterial'] = debrisMaterial === 'canvas'
     ? 'structureCanvas'
@@ -1929,12 +1942,81 @@ function lightMeta(
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
     instanceTintStrength,
   };
+  if (!brokenBuild && SETTLED_WRECK_KINDS.has(id)) {
+    // (the destructible-kits lane, round 3, 2026-10-11) the broken state settled from the kind's own parts
+    // (legacyWreck.ts): the shared debris's draws spent from the props stream, then the kind's own (brokenDraws.ts);
+    // built when a copy first breaks or a late joiner lays one broken
+    const legacy = (rng: Rng): THREE.BufferGeometry => debris(base, pal, rng, debrisMaterial);
+    const salt = settledWreckSalt(id);
+    if (SETTLED_BUILDERS.has(wreckKey)) throw new Error(`${wreckKey}: a settled wreck registered twice`);
+    SETTLED_BUILDERS.set(wreckKey, { id, build, material: debrisMaterial });
+    const wreck = (rng: Rng): DeferredWreck => {
+      const seed = spentSeed(legacy, rng, salt);
+      return deferredWreck({ kit: 'legacy', kind: wreckKey, seed }, () => settledLegacyWreck(id, build, seed, debrisMaterial));
+    };
+    return { ...base, broken: (rng: Rng) => wreck(rng)(), brokenDeferred: wreck };
+  }
   return {
     ...base,
     // (the facades lane, 2026-10-08) a structure with its own broken state (the Quonset's buckled arch, the greenhouse's
     // stripped ribs) keeps it; the rest the shared debris
     broken: brokenBuild ?? ((rng: Rng) => debris(base, pal, rng, debrisMaterial)),
   };
+}
+
+/**
+ * (the destructible-kits lane, round 3) The light kinds whose broken state is settled from their own parts: the
+ * part-built huts, tents, posts and offices. The Quonset and the greenhouse keep their own; the orbital kits wait on
+ * the buildings lane's bodies.
+ */
+export const SETTLED_WRECK_KINDS: ReadonlySet<string> = new Set([
+  'huntingblind', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse', 'deserttent', 'commandtent',
+  'fieldhospital', 'guardpost', 'motorpool', 'transformershed', 'checkpointhut', 'securityoffice', 'servicegarage',
+  'relaystation', 'corneroffice',
+]);
+
+/**
+ * Each settled kind's builder and material by its wreck key (the family id, or a regional variant's kit/id), for a wreck
+ * built from its job (the wreck worker, fractureWreckWorker.ts).
+ */
+const SETTLED_BUILDERS = new Map<string, { id: string; build: LightStructureBuilder; material: DebrisMaterial }>();
+
+/** A settled light kind's wreck from its job's numbers: what its deferred wreck builds on the page. */
+export function buildSettledWreck(key: string, seed: number): THREE.BufferGeometry {
+  const entry = SETTLED_BUILDERS.get(key);
+  if (!entry) throw new Error(`${key}: not a settled light kind`);
+  return settledLegacyWreck(entry.id, entry.build, seed, entry.material);
+}
+
+function settledWreckSalt(id: string): number {
+  let h = 0x5e771ed;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
+  return h | 0;
+}
+
+/** The parts a kind's builder hands its merge, built from `rng` (null when the builder merges some other way). */
+function capturedParts(build: LightStructureBuilder, rng: Rng): THREE.BufferGeometry[] | null {
+  capturingParts = true;
+  lastCapturedParts = null;
+  try {
+    build(rng).dispose();
+    return lastCapturedParts;
+  } finally {
+    capturingParts = false;
+    lastCapturedParts = null;
+  }
+}
+
+/** A light kind's settled wreck from its own stream's seed: its parts drawn from the stream, then laid. */
+function settledLegacyWreck(id: string, build: LightStructureBuilder, seed: number, material: DebrisMaterial): THREE.BufferGeometry {
+  const own = seededDraws(seed);
+  const parts = capturedParts(build, own);
+  if (!parts?.length) throw new Error(`${id}: no parts to settle a wreck from`);
+  try {
+    return buildLegacyWreck(id, parts, material, own);
+  } finally {
+    for (const part of parts) part.dispose();
+  }
 }
 
 const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure,
@@ -2385,46 +2467,46 @@ function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
-  const variant = (key: string, pal: Palette, build: LightStructureBuilder, debrisMaterial: DebrisMaterial = 'wood') => {
+  const variant = (kit: string, key: string, pal: Palette, build: LightStructureBuilder, debrisMaterial: DebrisMaterial = 'wood') => {
     const b = B[key];
-    return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial);
+    return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial, null, `${kit}/${b.id}`);
   };
   return Object.freeze({
     bengal: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
-      fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+      longhouse: variant('bengal', 'longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
+      stilthouse: variant('bengal', 'stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
+      fishershack: variant('bengal', 'fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
     }),
     kohima: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
+      longhouse: variant('kohima', 'longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
+      stilthouse: variant('kohima', 'stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
     }),
     // the Serranía de Ronda: the bridgeheads' tollhouses, the farms' tool houses
     andalusian: Object.freeze({
-      guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
-      fieldhut: variant('fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
+      guardpost: variant('andalusian', 'guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
+      fieldhut: variant('andalusian', 'fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
     }),
     // (the facades lane, 2026-10-08; wave 260: the generic wetland stilt house read as a Western clapboard bungalow) the
     // stilt house the Ca Mau house on posts under rusted iron, beside the nipa long house and the pond hut
     mekong: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
-      fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.mekongPlank, makeMekongStiltHouse),
+      longhouse: variant('mekong', 'longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
+      fishershack: variant('mekong', 'fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+      stilthouse: variant('mekong', 'stilthouse', REGIONAL_PAL.mekongPlank, makeMekongStiltHouse),
     }),
     // Queenstown (Copper Mesa Mine): the works' iron sheds for the steel shelter and the block garage
     queenstown: Object.freeze({
-      motorpool: variant('motorpool', REGIONAL_PAL.lyellIron, makeLyellShed, 'metal'),
-      servicegarage: variant('servicegarage', REGIONAL_PAL.lyellIron, makeLyellWorkshop, 'metal'),
+      motorpool: variant('queenstown', 'motorpool', REGIONAL_PAL.lyellIron, makeLyellShed, 'metal'),
+      servicegarage: variant('queenstown', 'servicegarage', REGIONAL_PAL.lyellIron, makeLyellWorkshop, 'metal'),
     }),
     // Siwa (Sunscar Oasis): the checkpoint hut stands as a kershef guard post
     siwa: Object.freeze({
-      checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
+      checkpointhut: variant('siwa', 'checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
     }),
     // (Wadi Rum's barrack and post are the map's own structure variants on its plaster since the Redrock lane's round 10:
     // maps/regional/wadiRumPosts.ts, named in badlands.ts props.structureVariants)
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
     savoyard: Object.freeze({
-      alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
+      alpinerefuge: variant('savoyard', 'alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
     }),
   });
 })();

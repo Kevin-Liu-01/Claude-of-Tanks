@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Worker } from 'node:worker_threads';
 import * as THREE from 'three';
-import { shedKitTypes } from './structureKit.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES, shedKitTypes } from './structureKit.ts';
 import { buildPillbox, fortFor } from './fortKit.ts';
 import { createFractureWreckClient } from './fractureWreckClient.ts';
 import { deferredWreck } from './fractureWreckJob.ts';
@@ -27,7 +27,8 @@ function digest(g) {
   if (g.index) h.update('index').update(bytes(g.index.array));
   return h.digest('hex');
 }
-const layout = (g) => Object.entries(g.attributes).map(([n, a]) => `${n}:${a.itemSize}:${a.normalized}:${a.array.constructor.name}`).join(' ');
+// (by name: three binds a program's attributes by name, in any order)
+const layout = (g) => Object.entries(g.attributes).map(([n, a]) => `${n}:${a.itemSize}:${a.normalized}:${a.array.constructor.name}`).sort().join(' ');
 
 // the production worker in a Node thread, only its messaging port adapted (as wreckBakeWorker.selftest.mjs)
 const entry = new URL('./fractureWreckWorker.ts', import.meta.url).href;
@@ -71,8 +72,16 @@ for (const map of ['coastal', 'steppe', 'saltwind', 'verdant']) {
     intact: () => buildPillbox(f.style, f.tones, f.seed, false),
   });
 }
+// the part-built light kinds settled from their own parts (legacyWreck.ts; the destructible-kits lane, round 3)
+const SETTLED = ['huntingblind', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse', 'deserttent',
+  'commandtent', 'fieldhospital', 'guardpost', 'motorpool', 'transformershed', 'checkpointhut', 'securityoffice',
+  'servicegarage', 'relaystation', 'corneroffice'];
+for (const id of SETTLED) {
+  const meta = DESTRUCTIBLE_BUILDING_TYPES[id];
+  cases.push({ label: id, make: meta.brokenDeferred(mulberry32(17)), intact: () => meta.build(mulberry32(17)) });
+}
 assert.deepEqual(new Set(cases.map((c) => c.make.job.kit === 'pillbox' ? c.make.job.style : c.make.job.kind)),
-  new Set(['fieldhut', 'leanto', 'regelbau', 'dot', 'hex', 'logearth']), 'every deferred kind and form');
+  new Set(['fieldhut', 'leanto', 'regelbau', 'dot', 'hex', 'logearth', ...SETTLED]), 'every deferred kind and form');
 
 const client = createFractureWreckClient(nodePort, 60_000);
 try {
@@ -181,4 +190,4 @@ await assert.rejects(createFractureWreckClient(() => { throw new Error('no worke
     'a copy that breaks first (or a late joiner\'s) builds its wreck on the page before its broken slot draws');
   assert.match(props, /if \(stepDestruction\(dt\)\) updatePoleLod\(cameraPos\);\n\s*warmBrokenPools\(dt\);/, 'the warm runs from the live frame');
 }
-console.log(`fractureWreckWorker.selftest: ${cases.length} deferred wrecks (field hut, lean-to, Regelbau, DOT, hex, log and earth) built in the worker equal the page's, in the intact's layout; one job in flight; silent, refusing, failing and disposed workers end their job; the wire carries views, index and groups and refuses instanced streams; props.ts warms through it and lets it go with the world`);
+console.log(`fractureWreckWorker.selftest: ${cases.length} deferred wrecks (field hut, lean-to, Regelbau, DOT, hex, log and earth, ${SETTLED.length} part-built light kinds) built in the worker equal the page's, in the intact's layout; one job in flight; silent, refusing, failing and disposed workers end their job; the wire carries views, index and groups and refuses instanced streams; props.ts warms through it and lets it go with the world`);
