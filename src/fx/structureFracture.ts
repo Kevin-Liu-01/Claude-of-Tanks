@@ -89,8 +89,12 @@ const STATIC_CELL = -1;
 interface FaceGroup {
   material: THREE.Material;
   layout: Layout;
-  /** Triangles by cell (body frame, layout stride a vertex). */
+  /** Triangles by cell while the face is cut (body frame, layout stride a vertex); emptied once packed. */
   cells: Map<number, number[]>;
+  /** Packed, by cell: the core's triangles (what stays when the skin spalls) and the skin's (centroid within the skin's
+   *  depth, or proud of the face: render, brick face, sills, frames). */
+  core: Map<number, Float32Array>;
+  skin: Map<number, Float32Array>;
 }
 
 interface FaceDraw {
@@ -100,6 +104,9 @@ interface FaceDraw {
   groups: Map<THREE.Material, FaceGroup>;
   meshes: THREE.Mesh[];
   core: FractureSlot;
+  /** Each cell's depth through the wall to the proudest part it carries (m along the face's normal): its body's box. */
+  depthMin: Float32Array;
+  depthMax: Float32Array;
 }
 
 interface LiveBody {
@@ -112,8 +119,10 @@ interface LiveBody {
   age: number;
   sounds: number;
   pose: Float64Array;
-  /** Its geometry per material in its own frame (kept for the bake). */
+  /** Its geometry per material, in the building's body frame (the copy its cells were packed in: no per-vertex work). */
   parts: Array<{ material: THREE.Material; geometry: THREE.BufferGeometry }>;
+  /** From the body frame to its own (its box's) frame: a mesh's matrix is its pose times this. */
+  fromBody: THREE.Matrix4;
 }
 
 interface Live {
@@ -122,6 +131,11 @@ interface Live {
   faces: Map<number, FaceDraw>;
   /** The roof's sag applied so far, per span: each vertex's drop (m), so a new sag moves it by the difference. */
   sag: Map<StructureSpan, Float32Array>;
+  /** The roof's corners over the eaves (body frame, as they stood) and the gaps the sag last answered. */
+  roofCorners: Array<{ span: StructureSpan; idx: Int32Array; xyz: Float32Array }> | null;
+  sagSignature: string;
+  /** The building's triangles sorted by face (sortByFace, at its first strike), each face's dropped once taken. */
+  byFace: Map<number, { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> }> | null;
   room: THREE.Mesh[];
   roomStoreys: Set<number>;
   baked: THREE.Mesh[];
@@ -212,20 +226,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return best;
   }
 
-  const _p = new THREE.Vector3(), _n = new THREE.Vector3();
   /** Claim face `f`: every triangle of the building that is the face's, copied (body frame) and flattened in place. */
-  function claimFace(live: Live, f: number): FaceDraw {
-    const existing = live.faces.get(f);
-    if (existing) return existing;
-    const grid = live.wall.faces[f];
+  /**
+   * The building's triangles sorted by face, once (its first strike): each face's triangles copied in the body frame by
+   * material, and where each lies in its bucket (to flatten it when its face is taken). A triangle no face owns (the
+   * roof, a chimney, an interior) is left alone.
+   */
+  function sortByFace(live: Live): void {
+    if (live.byFace) return;
+    const byFace = new Map<number, { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> }>();
     const seam = live.seam;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
-    const face = seam.anatomy.storeys[grid.storey].faces[grid.faceIndex];
-    const core = face.layers.find((l) => l.material !== 'plaster' && l.material !== 'glass') ?? face.layers[face.layers.length - 1]
-      ?? { material: grid.material, bucket: face.bucket, tint: [1, 1, 1], thicknessM: grid.thickness, share: 1 };
-    const draw: FaceDraw = { seam, grid, face: f, groups: new Map(), meshes: [], core };
-    const soups = new Map<THREE.Material, number[]>();
     for (const span of seam.spans) {
       const mesh = span.mesh as THREE.Mesh;
       const geometry = mesh.geometry as THREE.BufferGeometry | undefined;
@@ -233,18 +245,16 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const material = o.materialFor(seam, span.bucket);
       if (!material) continue;
       const layout = layoutOf(geometry);
-      const pos = span.position;
-      const arr = pos.array as Float32Array;
+      const arr = span.position.array as Float32Array;
       const nrm = geometry.getAttribute('normal') as THREE.BufferAttribute | undefined;
       const attrs = layout.names.map((name) => (geometry.getAttribute(name) as THREE.BufferAttribute | undefined) ?? null);
-      let claimed = false;
       for (let t = 0; t + 2 < span.count; t += 3) {
         const i0 = span.first + t;
         // its centroid and normal in the body frame (the buckets stand at identity: world = the attribute)
         let cx = 0, cy = 0, cz = 0;
         for (let k = 0; k < 3; k++) { cx += arr[(i0 + k) * 3]; cy += arr[(i0 + k) * 3 + 1]; cz += arr[(i0 + k) * 3 + 2]; }
         cx /= 3; cy /= 3; cz /= 3;
-        // a flattened triangle (an earlier claim, a clamp) has no area: skip it
+        // a flattened triangle (a clamp, a fallen section) has no area: skip it
         const ax = arr[i0 * 3], ay = arr[i0 * 3 + 1], az = arr[i0 * 3 + 2];
         const ux = arr[(i0 + 1) * 3] - ax, uy = arr[(i0 + 1) * 3 + 1] - ay, uz = arr[(i0 + 1) * 3 + 2] - az;
         const vx = arr[(i0 + 2) * 3] - ax, vy = arr[(i0 + 2) * 3 + 1] - ay, vz = arr[(i0 + 2) * 3 + 2] - az;
@@ -254,33 +264,61 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const wx = cx - px, wz = cz - pz;
         const bx = wx * c - wz * s, by = cy - py, bz = wx * s + wz * c;
         const bnx = (fx * c - fz * s) / area2, bny = fy / area2, bnz = (fx * s + fz * c) / area2;
-        if (faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz) !== f) continue;
-        let soup = soups.get(material);
-        if (!soup) { soup = []; soups.set(material, soup); }
+        const f = faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz);
+        if (f < 0) continue;
+        let entry = byFace.get(f);
+        if (!entry) { entry = { soups: new Map(), flat: [] }; byFace.set(f, entry); }
+        let g = entry.soups.get(material);
+        if (!g) { g = { layout, soup: [] }; entry.soups.set(material, g); }
+        const soup = g.soup;
         for (let k = 0; k < 3; k++) {
           const at = i0 + k;
           const vxw = arr[at * 3] - px, vzw = arr[at * 3 + 2] - pz;
           soup.push(vxw * c - vzw * s, arr[at * 3 + 1] - py, vxw * s + vzw * c);
-          if (nrm) { _n.set(nrm.getX(at), nrm.getY(at), nrm.getZ(at)); } else _n.set(bnx, bny, bnz);
-          soup.push(_n.x * c - _n.z * s, _n.y, _n.x * s + _n.z * c);
+          let nx = bnx, ny = bny, nz = bnz;
+          if (nrm) { const wnx = nrm.getX(at), wnz = nrm.getZ(at); nx = wnx * c - wnz * s; ny = nrm.getY(at); nz = wnx * s + wnz * c; }
+          soup.push(nx, ny, nz);
           for (let a = 0; a < attrs.length; a++) {
             const attr = attrs[a], size = layout.sizes[a];
             for (let j = 0; j < size; j++) soup.push(attr && j < attr.itemSize ? attr.getComponent(at, j) : neutral(layout.names[a]));
           }
         }
-        if (!claimed) { o.keepSpan(span); claimed = true; }
-        // flattened onto its first corner: gone from the bucket, back at the reset
-        for (let k = 1; k < 3; k++) { arr[(i0 + k) * 3] = ax; arr[(i0 + k) * 3 + 1] = ay; arr[(i0 + k) * 3 + 2] = az; }
-      }
-      if (claimed) {
-        pos.addUpdateRange(span.first * 3, span.count * 3);
-        pos.needsUpdate = true;
-        if (!draw.groups.has(material)) draw.groups.set(material, { material, layout, cells: new Map() });
+        entry.flat.push([span, i0]);
       }
     }
-    for (const [material, soup] of soups) {
-      const g = draw.groups.get(material)!;
-      cutIntoCells(grid, soup, g.layout.stride, g.cells);
+    live.byFace = byFace;
+  }
+
+  /** Take face `f`: its triangles flattened in their buckets (kept for the reset) and drawn again from its cells. */
+  function claimFace(live: Live, f: number): FaceDraw {
+    const existing = live.faces.get(f);
+    if (existing) return existing;
+    sortByFace(live);
+    const grid = live.wall.faces[f];
+    const seam = live.seam;
+    const face = seam.anatomy.storeys[grid.storey].faces[grid.faceIndex];
+    const core = face.layers.find((l) => l.material !== 'plaster' && l.material !== 'glass') ?? face.layers[face.layers.length - 1]
+      ?? { material: grid.material, bucket: face.bucket, tint: [1, 1, 1], thicknessM: grid.thickness, share: 1 };
+    const draw: FaceDraw = { seam, grid, face: f, groups: new Map(), meshes: [], core,
+      depthMin: new Float32Array(grid.state.length).fill(-grid.thickness), depthMax: new Float32Array(grid.state.length) };
+    const entry = live.byFace!.get(f);
+    if (entry) {
+      // flattened onto its first corner: gone from the bucket, back at the reset
+      const touchedSpans = new Set<StructureSpan>();
+      for (const [span, i0] of entry.flat) {
+        if (!touchedSpans.has(span)) { o.keepSpan(span); touchedSpans.add(span); }
+        const arr = span.position.array as Float32Array;
+        const ax = arr[i0 * 3], ay = arr[i0 * 3 + 1], az = arr[i0 * 3 + 2];
+        for (let k = 1; k < 3; k++) { arr[(i0 + k) * 3] = ax; arr[(i0 + k) * 3 + 1] = ay; arr[(i0 + k) * 3 + 2] = az; }
+      }
+      for (const span of touchedSpans) { span.position.addUpdateRange(span.first * 3, span.count * 3); span.position.needsUpdate = true; }
+      for (const [material, { layout, soup }] of entry.soups) {
+        const g: FaceGroup = { material, layout, cells: new Map(), core: new Map(), skin: new Map() };
+        draw.groups.set(material, g);
+        cutIntoCells(grid, soup, layout.stride, g.cells);
+        packGroup(draw, g);
+      }
+      live.byFace!.delete(f);
     }
     live.faces.set(f, draw);
     seam.touchShadows();
@@ -319,12 +357,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const ou = grid.origin[0] * ux + grid.origin[2] * uz;
     const front: Poly = [], back: Poly = [];
     const tris = soup.length / (3 * stride);
-    const keep = (poly: Poly | null): void => {
-      if (!poly) return;
-      let list = cells.get(STATIC_CELL);
-      if (!list) { list = []; cells.set(STATIC_CELL, list); }
-      emitPoly(list, poly);
+    const listOf = (cell: number): number[] => {
+      let list = cells.get(cell);
+      if (!list) { list = []; cells.set(cell, list); }
+      return list;
     };
+    const keep = (poly: Poly | null): void => { if (poly) emitPoly(listOf(STATIC_CELL), poly); };
     /** The part of `poly` on the near side of a plane (back: n·p < d); what lies past it stays with the face (static). */
     const within = (poly: Poly | null, nx: number, ny: number, nz: number, d: number): Poly | null => {
       if (!poly) return null;
@@ -333,42 +371,79 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return back.length >= 3 ? back.slice() : null;
     };
     const half = grid.width / 2;
+    const y0Face = oy + grid.rowY[0], y1Face = oy + grid.rowY[rows];
+    /** The row a height falls in (clamped inside the face). */
+    const rowOf = (y: number): number => {
+      let r = 0;
+      while (r < rows - 1 && y > oy + grid.rowY[r + 1]) r++;
+      return r;
+    };
+    /** The cell of row `r` a face coordinate u falls in (clamped). */
+    const cellOf = (r: number, u: number): number => {
+      let c = grid.rowStart[r];
+      while (c < grid.rowStart[r + 1] - 1 && u > grid.cellU[2 * c + 1]) c++;
+      return c;
+    };
     for (let t = 0; t < tris; t++) {
-      const poly0: Poly = [0, 1, 2].map((k) => Float64Array.from(soup.slice((t * 3 + k) * stride, (t * 3 + k + 1) * stride)));
+      const base = t * 3 * stride;
+      // the triangle's extent on the face (height, and u along it)
+      let yMin = Infinity, yMax = -Infinity, uMin = Infinity, uMax = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        const at = base + k * stride;
+        const y = soup[at + 1], u = soup[at] * ux + soup[at + 2] * uz - ou;
+        if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+        if (u < uMin) uMin = u; if (u > uMax) uMax = u;
+      }
+      const eps = 1e-5;
+      const inside = yMin >= y0Face - eps && yMax <= y1Face + eps && uMin >= -half - eps && uMax <= half + eps;
+      // the fast path: a triangle inside one cell (most of a building's detail) goes to it whole, nothing cut
+      if (inside) {
+        const r = rowOf((yMin + yMax) / 2);
+        if (yMin >= oy + grid.rowY[r] - eps && yMax <= oy + grid.rowY[r + 1] + eps) {
+          const c = cellOf(r, (uMin + uMax) / 2);
+          if (uMin >= grid.cellU[2 * c] - eps && uMax <= grid.cellU[2 * c + 1] + eps) {
+            const list = listOf(c);
+            for (let i = 0; i < 3 * stride; i++) list.push(soup[base + i]);
+            continue;
+          }
+        }
+      }
+      const poly0: Poly = [0, 1, 2].map((k) => Float64Array.from(soup.slice(base + k * stride, base + (k + 1) * stride)));
       // the face's own rectangle: what reaches past its foot, its head or its ends (a plinth's lip, an eave's board, a
       // corner's trim) stays standing with the face, never with a cell
-      let poly: Poly | null = within(poly0, 0, -1, 0, -(oy + grid.rowY[0]));
-      poly = within(poly, 0, 1, 0, oy + grid.rowY[rows]);
-      poly = within(poly, ux, 0, uz, ou + half);
-      poly = within(poly, -ux, 0, -uz, -(ou - half));
-      if (!poly) continue;
-      // rows: from the bottom, peel each row off (what is under its top is that row's)
+      let poly: Poly | null = poly0;
+      if (!inside) {
+        poly = within(poly, 0, -1, 0, -y0Face);
+        poly = within(poly, 0, 1, 0, y1Face);
+        poly = within(poly, ux, 0, uz, ou + half);
+        poly = within(poly, -ux, 0, -uz, -(ou - half));
+        if (!poly) continue;
+      }
+      // rows the polygon spans, from its lowest: peel each row off (what is under its top is that row's)
       let rest: Poly | null = poly;
-      for (let r = 0; r < rows && rest; r++) {
+      const r1 = rowOf(Math.min(y1Face, yMax));
+      for (let r = rowOf(Math.max(y0Face, yMin)); r <= r1 && rest; r++) {
         const top = oy + grid.rowY[r + 1];
         let inRow: Poly | null;
-        if (r === rows - 1) { inRow = rest; rest = null; }
+        if (r === r1) { inRow = rest; rest = null; }
         else {
           clip(rest, 0, 1, 0, top, front, back);
           inRow = back.length >= 3 ? back.slice() : null;
           rest = front.length >= 3 ? front.slice() : null;
         }
         if (!inRow) continue;
-        // columns: along u, peel each cell off from the row's start
+        // the cells it spans along u, from its leftmost: peel each cell off
         let restU: Poly | null = inRow;
-        for (let cIdx = grid.rowStart[r]; cIdx < grid.rowStart[r + 1] && restU; cIdx++) {
-          const last = cIdx === grid.rowStart[r + 1] - 1;
+        const c1 = cellOf(r, Math.min(half, uMax));
+        for (let cIdx = cellOf(r, Math.max(-half, uMin)); cIdx <= c1 && restU; cIdx++) {
           let inCell: Poly | null;
-          if (last) { inCell = restU; restU = null; }
+          if (cIdx === c1) { inCell = restU; restU = null; }
           else {
             clip(restU, ux, 0, uz, ou + grid.cellU[2 * cIdx + 1], front, back);
             inCell = back.length >= 3 ? back.slice() : null;
             restU = front.length >= 3 ? front.slice() : null;
           }
-          if (!inCell) continue;
-          let list = cells.get(cIdx);
-          if (!list) { list = []; cells.set(cIdx, list); }
-          emitPoly(list, inCell);
+          if (inCell) emitPoly(listOf(cIdx), inCell);
         }
       }
     }
@@ -409,7 +484,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const material = o.materialFor(draw.seam, draw.core.bucket);
     if (material) {
       let g = draw.groups.get(material);
-      if (!g) { g = { material, layout: { names: ['uv', 'color'], sizes: [2, 3], stride: 11 }, cells: new Map() }; draw.groups.set(material, g); }
+      if (!g) {
+        g = { material, layout: { names: ['uv', 'color'], sizes: [2, 3], stride: 11 }, cells: new Map(), core: new Map(), skin: new Map() };
+        draw.groups.set(material, g);
+      }
       return g;
     }
     return draw.groups.values().next().value ?? null;
@@ -432,52 +510,49 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return ((h % 1000) / 1000) * 0.045 - 0.012;
   }
   /** Rebuild a face's standing meshes from its cells. */
+  /** A face group's cut triangles packed by cell into its core and its skin (typed: a redraw copies them whole), and each
+   *  cell's depth bounds widened to what it carries. */
+  function packGroup(draw: FaceDraw, fg: FaceGroup): void {
+    const g = draw.grid, stride = fg.layout.stride;
+    for (const [cell, list] of fg.cells) {
+      if (cell === STATIC_CELL) { fg.core.set(cell, Float32Array.from(list)); continue; }
+      let skinN = 0;
+      const isSkin = new Uint8Array(list.length / (stride * 3));
+      for (let t = 0, i = 0; i < list.length; t++, i += stride * 3) {
+        let depth = 0;
+        for (let k = 0; k < 3; k++) {
+          const at = i + k * stride;
+          const d = (list[at] - g.origin[0]) * g.out[0] + (list[at + 2] - g.origin[2]) * g.out[2];
+          depth += d;
+          if (d < draw.depthMin[cell]) draw.depthMin[cell] = d;
+          if (d > draw.depthMax[cell]) draw.depthMax[cell] = d;
+        }
+        if (depth / 3 > -g.skinM) { isSkin[t] = 1; skinN++; }
+      }
+      const tri = stride * 3;
+      const core = new Float32Array((isSkin.length - skinN) * tri), skin = new Float32Array(skinN * tri);
+      for (let t = 0, c = 0, k = 0; t < isSkin.length; t++) {
+        const from = t * tri;
+        if (isSkin[t]) { for (let j = 0; j < tri; j++) skin[k * tri + j] = list[from + j]; k++; }
+        else { for (let j = 0; j < tri; j++) core[c * tri + j] = list[from + j]; c++; }
+      }
+      if (core.length) fg.core.set(cell, core);
+      if (skin.length) fg.skin.set(cell, skin);
+    }
+    fg.cells.clear();
+  }
+
+  /** Rebuild a face's standing meshes from its packed cells (typed copies; the per-vertex work only where a cell sags or
+   *  stands loose). */
   function redraw(live: Live, draw: FaceDraw): void {
     for (const mesh of draw.meshes) { o.group.remove(mesh); mesh.geometry.dispose(); }
     draw.meshes.length = 0;
     const g = draw.grid;
     const rows = g.rowY.length - 1;
-    const lists = new Map<THREE.Material, number[]>();
-    // the cells' own triangles: a standing cell's, its skin left out where spalled, lowered where it sags
-    for (const fg of draw.groups.values()) {
-      const out: number[] = [];
-      const stride = fg.layout.stride;
-      for (const [cell, list] of fg.cells) {
-        if (cell === STATIC_CELL) { for (let i = 0; i < list.length; i++) out.push(list[i]); continue; }
-        const st = g.state[cell];
-        // an opening's own triangles (its frame, sash, glass, door) stand while its jambs do
-        if (!standingState(st) && st !== CELL_OPENING) continue;
-        const sag = g.sag[cell];
-        for (let i = 0; i < list.length; i += stride * 3) {
-          if (st === CELL_SPALLED) {
-            // a triangle of the skin (its centroid within the skin's depth, or proud of the face) goes with the spall
-            let depth = 0;
-            for (let k = 0; k < 3; k++) {
-              const at = i + k * stride;
-              depth += (list[at] - g.origin[0]) * g.out[0] + (list[at + 2] - g.origin[2]) * g.out[2];
-            }
-            if (depth / 3 > -g.skinM) continue;
-          }
-          for (let k = 0; k < stride * 3; k++) out.push(list[i + k]);
-          if (sag > 0) for (let k = 0; k < 3; k++) out[out.length - stride * 3 + k * stride + 1] -= sag;
-          // a cracked cell is loose in its course: shoved out of the face plane a few centimetres (or back), the joints
-          // round it opened (the cracks run course to course round the break)
-          if (st === CELL_CRACKED) {
-            const loose = looseOf(g, cell);
-            for (let k = 0; k < 3; k++) {
-              const at = out.length - stride * 3 + k * stride;
-              out[at] += g.out[0] * loose; out[at + 2] += g.out[2] * loose;
-            }
-          }
-        }
-      }
-      lists.set(fg.material, out);
-    }
-    // the reveals and recesses in the wall's core
+    // the reveals and recesses in the wall's core (small: a few quads a broken edge)
+    const caps: number[] = [];
     const cg = capGroup(draw);
     if (cg) {
-      let out = lists.get(cg.material);
-      if (!out) { out = []; lists.set(cg.material, out); }
       const tint = draw.core.tint;
       const T = g.thickness;
       for (let r = 0; r < rows; r++) {
@@ -489,20 +564,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           const sag = g.sag[c];
           const front = st === CELL_SPALLED ? -g.skinM : 0;
           if (st === CELL_SPALLED) {
-            // the recess: the core a skin's depth back, its edges a shade darker
-            pushQuad(out, cg.layout, facePoint(g, u0, y0 - sag, front), facePoint(g, u1, y0 - sag, front), facePoint(g, u1, y1 - sag, front),
+            // the recess: the core a skin's depth back, a shade darker
+            pushQuad(caps, cg.layout, facePoint(g, u0, y0 - sag, front), facePoint(g, u1, y0 - sag, front), facePoint(g, u1, y1 - sag, front),
               facePoint(g, u0, y1 - sag, front), [g.out[0], 0, g.out[2]], tint, 0.82);
           }
-          // the reveal on each side that opens onto a gone cell (or a cell whose skin is gone and this one's is not)
+          // the reveal on each side that opens onto a gone or fallen cell (an opening has its own)
           const side = (pa: number[], pb: number[], n: number[], shade: number): void => {
-            pushQuad(out!, cg.layout, pa, pb, [pb[0] - g.out[0] * (T + front), pb[1], pb[2] - g.out[2] * (T + front)],
+            pushQuad(caps, cg.layout, pa, pb, [pb[0] - g.out[0] * (T + front), pb[1], pb[2] - g.out[2] * (T + front)],
               [pa[0] - g.out[0] * (T + front), pa[1], pa[2] - g.out[2] * (T + front)], n, tint, shade);
           };
           const goneState = (state: number): boolean => state === CELL_GONE || state === CELL_FALLEN;
-          const leftGone = c > g.rowStart[r] && goneState(g.state[c - 1]);
-          const rightGone = c + 1 < g.rowStart[r + 1] && goneState(g.state[c + 1]);
-          if (leftGone) side(facePoint(g, u0, y0 - sag, front), facePoint(g, u0, y1 - sag, front), [-g.u[0], 0, -g.u[2]], 0.7);
-          if (rightGone) side(facePoint(g, u1, y1 - sag, front), facePoint(g, u1, y0 - sag, front), [g.u[0], 0, g.u[2]], 0.7);
+          if (c > g.rowStart[r] && goneState(g.state[c - 1])) side(facePoint(g, u0, y0 - sag, front), facePoint(g, u0, y1 - sag, front), [-g.u[0], 0, -g.u[2]], 0.7);
+          if (c + 1 < g.rowStart[r + 1] && goneState(g.state[c + 1])) side(facePoint(g, u1, y1 - sag, front), facePoint(g, u1, y0 - sag, front), [g.u[0], 0, g.u[2]], 0.7);
           openSpans(g, r + 1, u0, u1, _spans);
           for (let k = 0; k < _spans.length; k += 2) side(facePoint(g, _spans[k + 1], y1 - sag, front), facePoint(g, _spans[k], y1 - sag, front), [0, 1, 0], 0.85);
           openSpans(g, r - 1, u0, u1, _spans);
@@ -510,11 +583,34 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         }
       }
     }
-    for (const [material, list] of lists) {
-      if (!list.length) continue;
-      const fg = [...draw.groups.values()].find((x) => x.material === material)!;
-      const mesh = new THREE.Mesh(geometryOf(live, fg.layout, list, null), material);
+    for (const fg of draw.groups.values()) {
+      const stride = fg.layout.stride;
+      // what stands: a standing cell's core, its skin unless spalled; an opening's frame while its jambs stand
+      let total = fg === cg ? caps.length : 0;
+      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || drawnCore(g.state[cell])) total += arr.length;
+      for (const [cell, arr] of fg.skin) if (drawnSkin(g.state[cell])) total += arr.length;
+      if (!total) continue;
+      const buf = new Float32Array(total);
+      let at = 0;
+      const put = (cell: number, arr: Float32Array): void => {
+        buf.set(arr, at);
+        if (cell !== STATIC_CELL) {
+          const sag = g.sag[cell], loose = g.state[cell] === CELL_CRACKED ? looseOf(g, cell) : 0;
+          if (sag > 0 || loose !== 0) {
+            for (let i = at; i < at + arr.length; i += stride) {
+              buf[i + 1] -= sag;
+              buf[i] += g.out[0] * loose; buf[i + 2] += g.out[2] * loose;
+            }
+          }
+        }
+        at += arr.length;
+      };
+      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || drawnCore(g.state[cell])) put(cell, arr);
+      for (const [cell, arr] of fg.skin) if (drawnSkin(g.state[cell])) put(cell, arr);
+      if (fg === cg) for (let i = 0; i < caps.length; i++) buf[at + i] = caps[i];
+      const mesh = new THREE.Mesh(interleavedOf(fg.layout, buf, faceSphere(g)), fg.material);
       mesh.matrixAutoUpdate = false;
+      bodyToWorld(live, mesh.matrix);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.userData.structureFractureFace = true;
@@ -523,40 +619,32 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
     live.seam.touchShadows();
   }
+  const drawnCore = (state: number): boolean => state <= CELL_SPALLED || state === CELL_OPENING;
+  const drawnSkin = (state: number): boolean => state < CELL_SPALLED || state === CELL_OPENING;
 
-  /** A list's geometry: world space (frame null) or a body's own frame (its centre and rotation in the body frame). */
-  function geometryOf(live: Live, layout: Layout, list: number[], frame: { c: number[]; q: THREE.Quaternion } | null): THREE.BufferGeometry {
-    const verts = list.length / layout.stride;
-    const pos = new Float32Array(verts * 3), nrm = new Float32Array(verts * 3);
-    const extra = layout.sizes.map((size) => new Float32Array(verts * size));
-    const { x: px, y: py, z: pz, yaw } = live.seam.anatomy.placement;
-    const c = Math.cos(yaw), s = Math.sin(yaw);
-    const iq = frame ? frame.q.clone().invert() : null;
-    for (let i = 0; i < verts; i++) {
-      const at = i * layout.stride, o3 = i * 3;
-      if (frame && iq) {
-        _p.set(list[at] - frame.c[0], list[at + 1] - frame.c[1], list[at + 2] - frame.c[2]).applyQuaternion(iq);
-        pos[o3] = _p.x; pos[o3 + 1] = _p.y; pos[o3 + 2] = _p.z;
-        _n.set(list[at + 3], list[at + 4], list[at + 5]).applyQuaternion(iq);
-        nrm[o3] = _n.x; nrm[o3 + 1] = _n.y; nrm[o3 + 2] = _n.z;
-      } else {
-        const x = list[at], y = list[at + 1], z = list[at + 2];
-        pos[o3] = px + x * c + z * s; pos[o3 + 1] = py + y; pos[o3 + 2] = pz - x * s + z * c;
-        const nx = list[at + 3], ny = list[at + 4], nz = list[at + 5];
-        nrm[o3] = nx * c + nz * s; nrm[o3 + 1] = ny; nrm[o3 + 2] = -nx * s + nz * c;
-      }
-      let k = at + 6;
-      for (let a = 0; a < layout.sizes.length; a++) {
-        const size = layout.sizes[a];
-        for (let j = 0; j < size; j++) extra[a][i * size + j] = list[k++];
-      }
-    }
+  /** A packed list as a geometry with no copy: its stride as one interleaved buffer, the attributes at their offsets
+   *  (the building's body frame; the mesh's matrix carries it to the world). */
+  function interleavedOf(layout: Layout, list: Float32Array, sphere: THREE.Sphere | null = null): THREE.BufferGeometry {
+    const buffer = new THREE.InterleavedBuffer(list, layout.stride);
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    layout.names.forEach((name, a) => geometry.setAttribute(name, new THREE.BufferAttribute(extra[a], layout.sizes[a])));
-    geometry.computeBoundingSphere();
+    geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(buffer, 3, 0));
+    geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(buffer, 3, 3));
+    let offset = 6;
+    layout.names.forEach((name, a) => { geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(buffer, layout.sizes[a], offset)); offset += layout.sizes[a]; });
+    // the culling sphere from what the caller knows (a face's rectangle, a body's box): a pass over every corner of an
+    // interleaved buffer was a strike's slowest step
+    if (sphere) geometry.boundingSphere = sphere; else geometry.computeBoundingSphere();
     return geometry;
+  }
+  /** A face's culling sphere in the body frame: its rectangle, the wall behind it and a margin for what stands proud. */
+  function faceSphere(g: FaceGrid): THREE.Sphere {
+    const c = facePoint(g, 0, g.height / 2, -g.thickness / 2);
+    return new THREE.Sphere(new THREE.Vector3(c[0], c[1], c[2]), Math.hypot(g.width / 2, g.height / 2, g.thickness) + 0.6);
+  }
+  /** The building's body frame to the world (its placement: rotateY(yaw), then the translation). */
+  function bodyToWorld(live: Live, out: THREE.Matrix4): THREE.Matrix4 {
+    const { x, y, z, yaw } = live.seam.anatomy.placement;
+    return out.compose(_v.set(x, y, z), _q.setFromAxisAngle(_up, yaw), _s);
   }
 
   // ---- the room behind a holed storey -------------------------------------------------------------------------------
@@ -585,8 +673,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     q([-hw, y0, -hd], [-hw, y0, hd], [-hw, y1, hd], [-hw, y1, -hd], [1, 0, 0], 0.9);
     q([-hw, y0, -hd], [hw, y0, -hd], [hw, y0, hd], [-hw, y0, hd], [0, 1, 0], 1.3);
     q([-hw, y1, -hd], [hw, y1, -hd], [hw, y1, hd], [-hw, y1, hd], [0, -1, 0], 0.7);
-    const mesh = new THREE.Mesh(geometryOf(live, layout, list, null), material);
+    const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
     mesh.matrixAutoUpdate = false;
+    bodyToWorld(live, mesh.matrix);
     mesh.receiveShadow = true;
     o.group.add(mesh);
     live.room.push(mesh);
@@ -641,31 +730,50 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       }
       return drop;
     };
+    // the gaps as they stand: nothing to do when they are what they were at the last strike
+    const signature = gaps.map(([g, u0, u1]) => `${live.wall.faces.indexOf(g)}:${u0.toFixed(2)}:${u1.toFixed(2)}`).join('|');
+    if (signature === live.sagSignature) return;
+    live.sagSignature = signature;
+    // the roof's corners over the eaves (body frame, as they stood), gathered once a building
+    if (!live.roofCorners) {
+      live.roofCorners = [];
+      for (const span of live.seam.spans) {
+        if (span.partClass !== 'roof' && span.partClass !== 'trim') continue;
+        const arr = span.position.array as Float32Array;
+        const idx: number[] = [], xyz: number[] = [];
+        for (let k = 0; k < span.count; k++) {
+          const i = span.first + k;
+          const by = arr[i * 3 + 1] - py;
+          if (by < eave - 0.15) continue;
+          const wx = arr[i * 3] - px, wz = arr[i * 3 + 2] - pz;
+          idx.push(k); xyz.push(wx * c - wz * s, by, wx * s + wz * c);
+        }
+        if (idx.length) live.roofCorners.push({ span, idx: Int32Array.from(idx), xyz: Float32Array.from(xyz) });
+      }
+    }
     let changed = false;
-    for (const span of live.seam.spans) {
-      if (span.partClass !== 'roof' && span.partClass !== 'trim') continue;
+    for (const { span, idx, xyz } of live.roofCorners) {
       const arr = span.position.array as Float32Array;
       let applied = live.sag.get(span);
-      for (let k = 0; k < span.count; k++) {
-        const i = span.first + k;
-        const wx = arr[i * 3] - px, wz = arr[i * 3 + 2] - pz;
+      let moved = false;
+      for (let n = 0; n < idx.length; n++) {
+        const k = idx[n];
         const before = applied ? applied[k] : 0;
-        // the point as it stood (its sag so far undone)
-        const by = arr[i * 3 + 1] + before - py;
-        const drop = sagAt(wx * c - wz * s, by, wx * s + wz * c);
+        const drop = sagAt(xyz[n * 3], xyz[n * 3 + 1], xyz[n * 3 + 2]);
         if (Math.abs(drop - before) < 1e-4) continue;
         if (!applied) { o.keepSpan(span); applied = new Float32Array(span.count); live.sag.set(span, applied); }
-        arr[i * 3 + 1] -= drop - before;
+        arr[(span.first + k) * 3 + 1] -= drop - before;
         applied[k] = drop;
-        changed = true;
+        moved = true;
       }
-      if (changed && applied) { span.position.addUpdateRange(span.first * 3, span.count * 3); span.position.needsUpdate = true; }
+      if (moved) { span.position.addUpdateRange(span.first * 3, span.count * 3); span.position.needsUpdate = true; changed = true; }
     }
     if (changed) live.seam.touchShadows();
   }
 
   // ---- bodies --------------------------------------------------------------------------------------------------------
   const _q = new THREE.Quaternion(), _m4 = new THREE.Matrix4(), _s = new THREE.Vector3(1, 1, 1), _v = new THREE.Vector3();
+  const _up = new THREE.Vector3(0, 1, 0);
   const _basis = new THREE.Matrix4();
   /**
    * A body of cells (face, cell pairs; every cell of one face stack, so one face frame): its triangles and its caps in
@@ -696,20 +804,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const qBody = new THREE.Quaternion().setFromRotationMatrix(_basis);
     // parts: each cell a box (its rect; through the wall from its inner face to the proudest part it carries — a sill, a
     // shutter, a frame — so what it draws never sinks past what it stands on), in the body's frame
-    // each cell's depth through the wall to the proudest part it carries (a sill, a shutter, a frame)
+    // each cell's depth through the wall to the proudest part it carries (a sill, a shutter, a frame), packed at its cut
     const depthOf = (g: FaceGrid, cell: number): [number, number] => {
-      let dMin = -g.thickness, dMax = 0;
       const draw = live.faces.get(live.wall.faces.indexOf(g));
-      if (draw) for (const fg of draw.groups.values()) {
-        const src = fg.cells.get(cell);
-        if (!src) continue;
-        for (let i = 0; i < src.length; i += fg.layout.stride) {
-          const d = (src[i] - g.origin[0]) * g.out[0] + (src[i + 2] - g.origin[2]) * g.out[2];
-          if (d < dMin) dMin = d;
-          if (d > dMax) dMax = d;
-        }
-      }
-      return [dMin, dMax];
+      return draw ? [draw.depthMin[cell], draw.depthMax[cell]] : [-g.thickness, 0];
     };
     // the body's parts: a box a run of cells along one row of one face (merged edge to edge), through the wall to what
     // its cells carry, so what it draws never sinks past what it stands on
@@ -723,31 +821,50 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         last.u1 = u1; last.d0 = Math.min(last.d0, d0); last.d1 = Math.max(last.d1, d1); last.mass += mass;
       } else runs.push({ g, v0, v1, u0, u1, d0, d1, dd, mass });
     }
+    // runs stacked edge to edge with the same span along the face become one box
+    for (let i = 0; i < runs.length; i++) {
+      for (let j = i + 1; j < runs.length; j++) {
+        const a = runs[i], b = runs[j];
+        if (a.g !== b.g || Math.abs(a.u0 - b.u0) > 1e-3 || Math.abs(a.u1 - b.u1) > 1e-3 || Math.abs(a.v1 - b.v0) > 1e-3) continue;
+        a.v1 = b.v1; a.d0 = Math.min(a.d0, b.d0); a.d1 = Math.max(a.d1, b.d1); a.mass += b.mass;
+        runs.splice(j, 1);
+        j = i;
+      }
+    }
     const parts: RigidPartSpec[] = runs.map((run) => ({
       kind: 'box' as const,
       center: [(run.u0 + run.u1) / 2 - cu, (run.v0 + run.v1) / 2 - cv, (run.d0 + run.d1) / 2 + run.dd + T / 2] as [number, number, number],
       half: [Math.max(0.04, (run.u1 - run.u0) / 2), Math.max(0.04, (run.v1 - run.v0) / 2), Math.max(0.04, (run.d1 - run.d0) / 2)] as [number, number, number],
       mass: run.mass,
     }));
-    const shape = createRigidShape(parts.slice(0, 24), { restitution: 0.12, friction: 0.75, maxSpheres: Math.min(96, 24 + parts.length * 8) });
+    const shape = createRigidShape(parts.slice(0, 24), { restitution: 0.12, friction: 0.75, maxSpheres: Math.min(48, 16 + parts.length * 4) });
+    // the body's culling sphere (body frame, round its centre): the farthest corner of its parts, and a margin
+    let bodyRadius = 0.3;
+    for (const part of parts) {
+      if (part.kind !== 'box') continue;
+      bodyRadius = Math.max(bodyRadius, Math.hypot(Math.abs(part.center[0]) + part.half[0], Math.abs(part.center[1]) + part.half[1],
+        Math.abs(part.center[2]) + part.half[2]) + 0.1);
+    }
     // geometry: each cell's triangles, its caps on every side and its back
-    const byMaterial = new Map<THREE.Material, { layout: Layout; list: number[] }>();
+    // each material's packed cell arrays (copied whole below) and its caps
+    const byMaterial = new Map<THREE.Material, { layout: Layout; arrays: Float32Array[]; list: number[] }>();
     for (const [su0, su1, v0, v1, g, cell] of rects) {
       const draw = live.faces.get(live.wall.faces.indexOf(g));
       const shift = (g.origin[0] - g0.origin[0]) * g0.u[0] + (g.origin[2] - g0.origin[2]) * g0.u[2];
       const u0 = su0 - shift, u1 = su1 - shift;
       if (!draw) continue;
       for (const fg of draw.groups.values()) {
-        const src = fg.cells.get(cell);
-        if (!src?.length) continue;
-        let e = byMaterial.get(fg.material);
-        if (!e) { e = { layout: fg.layout, list: [] }; byMaterial.set(fg.material, e); }
-        for (let i = 0; i < src.length; i++) e.list.push(src[i]);
+        for (const src of [fg.core.get(cell), fg.skin.get(cell)]) {
+          if (!src?.length) continue;
+          let e = byMaterial.get(fg.material);
+          if (!e) { e = { layout: fg.layout, arrays: [], list: [] }; byMaterial.set(fg.material, e); }
+          e.arrays.push(src);
+        }
       }
       const cg = g.opening[cell] ? null : capGroup(draw);
       if (cg) {
         let e = byMaterial.get(cg.material);
-        if (!e) { e = { layout: cg.layout, list: [] }; byMaterial.set(cg.material, e); }
+        if (!e) { e = { layout: cg.layout, arrays: [], list: [] }; byMaterial.set(cg.material, e); }
         const tint = draw.core.tint, dv = g.origin[1] - g0.origin[1];
         const y0 = v0 - dv, y1 = v1 - dv;
         const p = (u: number, v: number, d: number) => facePoint(g, u, v, d);
@@ -762,11 +879,22 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
     if (!byMaterial.size) return false;
     const frame = { c: centre, q: qBody };
+    // one typed list a material: the cells' packed arrays copied whole, then their caps
+    const merged = new Map<THREE.Material, { layout: Layout; list: Float32Array }>();
+    for (const [material, e] of byMaterial) {
+      let n = e.list.length;
+      for (const a of e.arrays) n += a.length;
+      const list = new Float32Array(n);
+      let at = 0;
+      for (const a of e.arrays) { list.set(a, at); at += a.length; }
+      for (let i = 0; i < e.list.length; i++) list[at + i] = e.list[i];
+      merged.set(material, { layout: e.layout, list });
+    }
     // (receipts: every drawn corner inside one of the parts, else it sinks into what it lands on)
     if ((globalThis as { __fractureDebug?: boolean }).__fractureDebug) {
       // every drawn corner inside one of the parts (body frame: x along the face, y up, z out)
       let worst = 0, worstP: number[] = [];
-      for (const { layout, list } of byMaterial.values()) {
+      for (const { layout, list } of merged.values()) {
         for (let i = 0; i < list.length; i += layout.stride) {
           const rx = list[i] - centre[0], ry = list[i + 1] - centre[1], rz = list[i + 2] - centre[2];
           const lx = rx * g0.u[0] + rz * g0.u[2], ly = ry, lz = rx * g0.out[0] + rz * g0.out[2];
@@ -783,8 +911,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
     const partsOut: LiveBody['parts'] = [];
     const meshes: THREE.Mesh[] = [];
-    for (const [material, { layout, list }] of byMaterial) {
-      const geometry = geometryOf(live, layout, list, frame);
+    for (const [material, { layout, list }] of merged) {
+      const geometry = interleavedOf(layout, list, new THREE.Sphere(new THREE.Vector3(centre[0], centre[1], centre[2]), bodyRadius));
       partsOut.push({ material, geometry });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
@@ -807,7 +935,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return false;
     }
     const body: LiveBody = { structureIdx: live.seam.structureIdx, handle, meshes, massKg: mass, material: g0.material, still: 0, age: 0, sounds: 0,
-      pose: new Float64Array(7).fill(NaN), parts: partsOut };
+      pose: new Float64Array(7).fill(NaN), parts: partsOut,
+      fromBody: new THREE.Matrix4().compose(_v.set(frame.c[0], frame.c[1], frame.c[2]), frame.q, _s).invert() };
     bodies.set(handle, body);
     _pose[0] = _v.x; _pose[1] = _v.y; _pose[2] = _v.z; _pose[3] = qWorld.x; _pose[4] = qWorld.y; _pose[5] = qWorld.z; _pose[6] = qWorld.w;
     writePose(body, _pose);
@@ -820,7 +949,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (same) return;
     _v.set(src[0], src[1], src[2]);
     _q.set(src[3], src[4], src[5], src[6]);
-    _m4.compose(_v, _q, _s);
+    _m4.compose(_v, _q, _s).multiply(b.fromBody);
     for (const mesh of b.meshes) { mesh.matrix.copy(_m4); mesh.matrixWorldNeedsUpdate = true; }
   }
   /** A body at rest into its building's heap: its geometry baked where it lies (one static mesh a body). */
@@ -828,13 +957,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     bodies.delete(b.handle);
     if (release) o.pool.release(b.handle);
     const live = lives.get(b.structureIdx);
-    _v.set(b.pose[0], b.pose[1], b.pose[2]);
-    _q.set(b.pose[3], b.pose[4], b.pose[5], b.pose[6]);
-    _m4.compose(_v, _q, _s);
+    // (the mesh keeps its last matrix: a baked body is a static mesh where it lies, its geometry untouched)
     for (let i = 0; i < b.meshes.length; i++) {
       const mesh = b.meshes[i];
-      mesh.geometry.applyMatrix4(_m4);
-      mesh.matrix.identity();
       mesh.matrixWorldNeedsUpdate = true;
       live?.baked.push(mesh);
     }
@@ -931,7 +1056,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!(hole.radiusM > 0)) return null;
       let live = lives.get(seam.structureIdx);
       if (!live) {
-        live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), room: [], roomStoreys: new Set(), baked: [], strikes: 0 };
+        live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', byFace: null, room: [], roomStoreys: new Set(), baked: [], strikes: 0 };
         lives.set(seam.structureIdx, live);
       }
       // the round in the body frame
