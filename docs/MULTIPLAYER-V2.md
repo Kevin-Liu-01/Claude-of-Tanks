@@ -1232,7 +1232,11 @@ by the measurements in 13.9.6.
 **13.9.3 Per-peer rate adaptation.** `SNAPSHOT_SKIP_BYTES` = 16 KB (≈ 0.7 s of snapshots at 14v14): a viewer whose
 channel holds more unsent than that has its snapshot *skipped* — never delayed, never queued behind, so the next one it
 receives is the freshest and the other peers are untouched (each link is sent to on its own); above the 64 KB soft bound
-for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. The count surfaces as
+for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. During a peer's covered entry, the
+first `ENTRY_BACKPRESSURE_GRACE_MS` = 120 s after its WELCOME, the soft bound closes the link only after
+`ENTRY_BACKPRESSURE_SUSTAINED_MS` = 60 s of continuous pressure (2026-10-10: under load ~110 the entry's synchronous steps,
+4.3 s and 2.9 s, kept two peers from draining for over 2 s and the new host's actor dropped both 26 s after their
+WELCOME); a loading peer drains between its steps, which restarts the clock, and a dead link still closes. The count surfaces as
 `HostCoreStats.snapshotSkips` → `MatchHost.snapshotSkips` → `SessionP2pStatus.snapshotSkips` →
 `NetworkStatusSnapshot.hostSnapshotSkips` and `window.__peer.status().host.core.snapshotSkips`, which the soak reports.
 `matchActor.selftest`: a peer over the bound is skipped and counted, the others keep their cadence, no close, deltas
