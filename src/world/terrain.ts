@@ -4185,6 +4185,7 @@ float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 vec3 gRoadSmooth = vec3(0.0); // roads lane R3c: the carriageway's packed, traffic-smoothed tone (its wheel paths' floor)
+float gRoadMud = 0.0;        // roads lane R3d: a worked road's mud ring round its water (the paths' sweep keeps it)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
@@ -6775,19 +6776,33 @@ void splatCompute() {
     if (dW > 0.002) {
       vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
+      // (R3d, the first real frames: a dusty road's straw and grit flattened to one tone — the dust's lift was worked out
+      // per pixel, so it set every pixel to the same brightness) on the worked road the floor, the dust and the pad lifts
+      // are worked out on the carriageway's smooth estimate (roadS: the dirt layer's deep mip standing in for the ground
+      // under it) and applied to the road and the estimate alike, so the ground's own detail rides through as a ratio (half
+      // the ground's share; the paths sweep it off below, onto the estimate)
+      vec3 aS = packedRoad * uSoilTint; // (the splat draws its dirt layer in the soil tint: the ground under the road)
       // (R3, wave 341's pads: "Saltwind is grey-olive and should be terra rossa") past the Low tier the carriageway's and
       // the pads' packed earth is the place's own soil — the splat's soil tint, or the road's own (Saltmere's Léon loam)
       if (workedR) packedRoad *= uRoadSurfD.rgb;
-      vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
+      float detK = workedR ? 0.50 : 0.30;
+      vec3 roadCol = mix(packedRoad, a.rgb, detK) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
+      vec3 roadS = mix(packedRoad, aS, detK) * uRoadTint + vec3(0.014, 0.010, 0.006);
       // (roads lane, 2026-10-09: the gauntlet's "flat grey or near-black roads") a dry packed road is never darker than the
       // field it crosses — the traffic's dust and the cleared surface reflect more than the soil or the sward beside it;
       // only its wet ruts and puddles go darker (below) — and it keeps more of its soil's hue than the old grey pull
       // (the tier: Low keeps the old law)
       float floorK = uLandTier > 0.5 ? uRoadSurfB.y : 0.0;
       float roadFloorL = floorK * dot(a.rgb, vec3(0.34, 0.45, 0.21));
-      roadCol *= clamp(roadFloorL / max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2);
-      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), floorK > 0.0 ? 0.12 : 0.26);
+      float floorS = floorK * dot(aS, vec3(0.34, 0.45, 0.21));
+      float floorF = workedR ? clamp(floorS / max(dot(roadS, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2)
+        : clamp(roadFloorL / max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4), 1.0, 2.2);
+      roadCol *= floorF;
+      roadS *= floorF;
+      float greyK = floorK > 0.0 ? 0.12 : 0.26;
+      roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), greyK);
+      roadS = mix(roadS, vec3(dot(roadS, vec3(0.34, 0.45, 0.21))), greyK);
       // R3 (2026-10-10, the gauntlet's Steppe: "dark, damp-looking soil runs through tinder-dry grass. Match soil tone to
       // the season"; every map: "paler packed and dusty"): a dry road's dust — its tone lifted to the field's (the base
       // layer's mean: the floor above reads the soil the shoulder lays under the carriageway) and greyed to a warm dust
@@ -6797,16 +6812,20 @@ void splatCompute() {
       float dustK = workedR ? uRoadSurfC.x : 0.0;
       float padLiftK = workedR && uReduxD.y < 1.5 ? 0.9 * apronK : 0.0;
       if (dustK + padLiftK > 0.0) {
-        float fieldL = dot(uMeanG.rgb, vec3(0.34, 0.45, 0.21)), rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
-        vec3 lifted = roadCol * clamp(fieldL * 1.05 / rL, 1.0, 2.2);
+        float fieldL = dot(uMeanG.rgb, vec3(0.34, 0.45, 0.21)), rL = max(dot(roadS, vec3(0.34, 0.45, 0.21)), 1e-4);
+        float liftF = clamp(fieldL * 1.05 / rL, 1.0, 2.2);
+        vec3 lifted = roadCol * liftF, liftedS = roadS * liftF;
         roadCol = mix(roadCol, mix(lifted, vec3(dot(lifted, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.35), dustK);
+        roadS = mix(roadS, mix(liftedS, vec3(dot(liftedS, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.86), 0.35), dustK);
         if (padLiftK > 0.0) {
           // (the lab's second Frontier pad: still a dark slab — a pad inside the village's worn ground stands on the dirt
           // layer, so the floor above read the dark soil: its target is the sward's own tone, a fifth over the grass tile's
           // mean, whatever lies under it)
-          rL = max(dot(roadCol, vec3(0.34, 0.45, 0.21)), 1e-4);
-          vec3 padC = roadCol * clamp(max(fieldL * 1.20, roadFloorL) / rL, 1.0, 3.0);
+          rL = max(dot(roadS, vec3(0.34, 0.45, 0.21)), 1e-4);
+          float padF = clamp(max(fieldL * 1.20, floorS) / rL, 1.0, 3.0);
+          vec3 padC = roadCol * padF, padS = roadS * padF;
           roadCol = mix(roadCol, mix(padC, vec3(dot(padC, vec3(0.34, 0.45, 0.21))) * vec3(1.07, 1.0, 0.84), 0.33), padLiftK);
+          roadS = mix(roadS, mix(padS, vec3(dot(padS, vec3(0.34, 0.45, 0.21))) * vec3(1.07, 1.0, 0.84), 0.33), padLiftK);
         }
       }
       // R3 (Redrock: "saturated terracotta clay ribbons stand in for Wadi Rum's braided, paler sand tracks"): a braided
@@ -6815,7 +6834,12 @@ void splatCompute() {
       // (wave 341: "Sirocco is grey on yellow sand") the field's own tone's share of the carriageway and the pads
       float braidC = workedR ? uRoadSurfC.y : 0.0;
       float fieldK = workedR ? max(uRoadSurfD.w, braidC) : 0.0;
-      if (fieldK > 0.0) roadCol = mix(roadCol, uMeanG.rgb * vec3(1.03, 1.02, 1.0) * (0.97 + 0.06 * n2w), fieldK);
+      if (fieldK > 0.0) {
+        // (R3d: as a ratio of the smooth estimate, so the ground's own detail holds through the field's tone)
+        vec3 fieldT = mix(roadS, uMeanG.rgb * vec3(1.03, 1.02, 1.0) * (0.97 + 0.06 * n2w), fieldK);
+        roadCol *= fieldT / max(roadS, vec3(1e-3));
+        roadS = fieldT;
+      }
       // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
       // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
       // wheel tracks and spattered between them
@@ -6830,8 +6854,10 @@ void splatCompute() {
         float slush = clamp(lane * rutAmp * 1.25 + padSlush * 1.10 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
         roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);
+        roadS = mix(packedSnow, roadS * 1.05, slush);
+        roadS = mix(roadS, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);
       }
-      gRoadSmooth = roadCol;
+      gRoadSmooth = roadS;
       a.rgb = mix(a.rgb, roadCol, dW * (1.0 - 0.5 * braidC));
       // (the Redrock lane, round 10, splat.roadRuts: the wheel lanes darker where they are worn deep, and gravel strewn on
       // the crown between them near the camera — the carriageway's own stones, not a smooth smear)
@@ -6873,6 +6899,7 @@ void splatCompute() {
       a.rgb *= mix(1.0, 0.86 + drift.x * 0.28, dW);
       gRoadSmooth *= mix(1.0, 0.86 + drift.x * 0.28, dW);
       a.rgb = mix(a.rgb, a.rgb * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
+      gRoadSmooth = mix(gRoadSmooth, gRoadSmooth * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
       if (uReduxD.y < 0.5) {
         // (R3: the worked road's grass is its middle strip, drawn with the paths below)
         float crownGrass = workedR ? 0.0 : crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
@@ -6889,6 +6916,7 @@ void splatCompute() {
         gRoadPuddle = wet * pool;
         float mud = wet * smoothstep(0.52, 0.66, poolN) * (1.0 - gRoadPuddle);
         a.rgb *= 1.0 - 0.30 * mud;
+        if (workedR) gRoadMud = mud;
         a.rgb = workedR ? mix(a.rgb, a.rgb * 0.42 + uMeanD.rgb * 0.10, gRoadPuddle)
           : mix(a.rgb, a.rgb * 0.34 + vec3(0.006, 0.008, 0.010), gRoadPuddle);
         n.xy = mix(n.xy, vec2(0.5), gRoadPuddle);
@@ -6951,12 +6979,15 @@ void splatCompute() {
       // (R3c, the first real frames: the paths read as a milky, translucent haze laid over the loose surface — a whole
       // desaturated, brightened copy of its straw and grit) a path's floor is the loose stuff swept off it: the carriageway's
       // smooth packed tone, its soil's own hue, a modest lift, its edges where the loose surface begins (a flat-floored band)
+      // (R3d: the frames with R3c's floor: the paths all but vanished — the estimate still carried the ground's grain) the
+      // straw and grit swept off the path's floor onto the smooth estimate (its water and its mud ring kept), then the
+      // packed floor a shade paler in the soil's own hue: smooth, pale bands between a rougher, loose middle and verges
       float pathV = stripeVis(1.0, acrS);
       float pathT = 1.0 - smoothstep(pw * 0.55, pw * 1.05, ae);
+      float sweep = 0.75 * pathT * pathV * wR * step(0.001, uRoadSurfC.w) * (1.0 - clamp(gRoadPuddle * 1.8 + gRoadMud, 0.0, 1.0));
+      a.rgb = mix(a.rgb, gRoadSmooth, sweep);
       float pathA = mix(0.26, pathT, pathV) * (0.55 + 0.45 * rutAmp) * uRoadSurfC.w * wR;
-      vec3 paleC = mix(a.rgb, gRoadSmooth, 0.65 * pathV);
-      paleC = mix(vec3(dot(paleC, vec3(0.34, 0.45, 0.21))), paleC, 0.80) * 1.16;
-      a.rgb = mix(a.rgb, paleC, pathA);
+      a.rgb = mix(a.rgb, mix(vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))), a.rgb, 0.85) * 1.20, pathA);
       a.rgb *= 1.0 - 0.05 * berm * pathV * wR * uRoadSurfC.w;
       a.rgb *= 1.0 - 0.28 * stepK * sT * (1.0 - sT) * (1.0 - gRoadTex);
       // (3) the middle strip (R3: "a raised grassy middle strip"): the sward holds between a farm road's paths — its width
