@@ -258,8 +258,9 @@ function addTurret(P: LightTigerBuilderPort): void {
   // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: "a thin plain-grey rod as long as the main gun runs
   // beside it ... a coaxial fitting stretched to barrel length"): the 7.62 mm coax's barrel leaves the mantlet face and
   // stands 0.30 m proud of it with its flash hider, as a coaxial machine gun does; it was a 2.15 m rod out to the
-  // cannon's muzzle.
-  P.addGunExtraDark(cylZ(0.021, 0.64, 12), 0.22, -0.028, 0.56);
+  // cannon's muzzle. The barrel ends 2 cm inside its hider: a barrel cap flush with the hider's face is a duplicated disc
+  // (the circular-cap lint).
+  P.addGunExtraDark(cylZ(0.021, 0.62, 12), 0.22, -0.028, 0.55);
   P.addGunExtraDark(cylZ(0.027, 0.05, 12), 0.22, -0.028, 0.855);
   muzzleTipDot(P, 0.22, -0.028, 0.88, 0.013, { parent: 'gunG' });
   P.gunG.userData.type89GunMantletReceipt = Object.freeze({
