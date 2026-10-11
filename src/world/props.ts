@@ -9758,8 +9758,8 @@ ${snowCap ? `
       convexHull2([[ax + nx, az + nz], [bx + nx, bz + nz], [bx - nx, bz - nz], [ax - nx, az - nz]]));
   });
   const drawnWider = (kind: string): boolean => {
-    const meta = LOCAL_TYPES[kind];
-    return !!meta && meta.shape === 'circle' && meta.collisionR !== undefined && meta.r > meta.collisionR;
+    const meta = resolveDestructibleMeta(destructibleContext, kind);
+    return meta.shape === 'circle' && meta.collisionR !== undefined && meta.r > meta.collisionR;
   };
   function crushableFootprints(): CollisionRecord[] {
     const circle = (x: number, y: number, z: number, r: number, h: number): CollisionRecord => ({
@@ -9883,7 +9883,7 @@ ${snowCap ? `
         [record.x + u * hw * c + v * hl * s, record.z - u * hw * s + v * hl * c] as const);
       return [...shapePolygons(ob), band];
     };
-    type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null };
+    type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null; stone?: boolean };
     // (2026-10-08, over batch 5's hitbox lane) a stone that rises past the drive-over line but had no legacy record takes
     // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone's own contact
     // footprint, so none is seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
@@ -9903,6 +9903,31 @@ ${snowCap ? `
       }
       return { ob: seat.rec!, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 };
     });
+    // (sealed lane 2026-10-11: a Mangrove estate car's bumper through a low stone) a stone a hull drives over (it rises
+    // less than the drive-over line: no collider, and no record once the legacy ones are refitted) is still drawn: the
+    // plan of all of it standing 10 cm over its ground keeps the parked vehicles' and carts' bodies off it
+    const stoneGround = rockGroundAt(heightField);
+    const lowStones = rockSeats.filter((seat) => !seat.profile && !seat.rec).flatMap((seat) => {
+      const form = rockForms[seat.vv], e = seat.placement.elements, plan: [number, number][] = [];
+      let top = -Infinity;
+      for (let v = 0; v + 2 < form.positions.length; v += 3) {
+        const lx = form.positions[v], ly = form.positions[v + 1], lz = form.positions[v + 2];
+        const wx = e[0] * lx + e[4] * ly + e[8] * lz + e[12], wy = e[1] * lx + e[5] * ly + e[9] * lz + e[13];
+        const wz = e[2] * lx + e[6] * ly + e[10] * lz + e[14];
+        top = Math.max(top, wy);
+        if (wy - stoneGround(wx, wz) > 0.1) plan.push([wx, wz]);
+      }
+      const c = convexHull2(plan);
+      if (c.length < 6) return [];
+      const poly: (readonly [number, number])[] = [];
+      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
+      for (let i = 0; i + 1 < c.length; i += 2) {
+        poly.push([c[i], c[i + 1]] as const);
+        sx0 = Math.min(sx0, c[i]); sx1 = Math.max(sx1, c[i]); sz0 = Math.min(sz0, c[i + 1]); sz1 = Math.max(sz1, c[i + 1]);
+      }
+      const ob: CollisionRecord = { min: [sx0, seat.y, sz0], max: [sx1, top, sz1] };
+      return [{ ob, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 }];
+    });
     const nearOf = new Map<DestructibleRecord, Near[]>();
     const crushRecords = crushableFootprints();
     for (const cart of carts) {
@@ -9917,9 +9942,9 @@ ${snowCap ? `
           near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
         }
       }
-      for (const stone of risenStones) {
+      for (const stone of [...risenStones, ...lowStones]) {
         if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
-        near.push({ ob: stone.ob, polys: [stone.poly], parked: null });
+        near.push({ ob: stone.ob, polys: [stone.poly], parked: null, stone: true });
       }
       for (const ob of crushRecords) {
         if (ob.max[0] < x0 || ob.min[0] > x1 || ob.max[2] < z0 || ob.min[2] > z1) continue;
@@ -9946,22 +9971,29 @@ ${snowCap ? `
       const man = record.kind === 'handcart', lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + 0.25;
       const out = [rect(-lane, lane, hl, hl + (man ? 1.2 : record.kind === 'sled' ? 2.25 : 2.75))];
       if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
-      // (sealed lane 2026-10-11: two Alpine hand carts' handles stood through a plank fence) the shafts, the handles and
-      // the horns are dressing, out of the body's hull, and the puller's ground starts past them: the ground they reach
-      // over, from the hull's ends to the cart's own, keeps clear of the same solids
-      const hull = type.bodyHull;
-      if (hull?.length) {
-        let front = -Infinity, back = Infinity;
-        for (let k = 1; k < hull.length; k += 2) { front = Math.max(front, hull[k] * record.sc); back = Math.min(back, hull[k] * record.sc); }
-        if (hl - front > 0.05) out.push(rect(-hw, hw, front, hl));
-        if (back + hl > 0.05) out.push(rect(-hw, hw, -hl, back));
-      }
+      return out;
+    };
+    // (sealed lane 2026-10-11: two Alpine hand carts' handles stood through a plank fence, a sled's horn through a stone)
+    // the shafts, the handles and the horns are dressing, out of the body's hull, and the puller's ground starts past
+    // them: the ground they reach over, from the hull's ends to the cart's own, keeps clear of the tall solids and the
+    // stones
+    const dressingAt = (record: DestructibleRecord, x: number, z: number): FootprintPolygon[] => {
+      const type = LOCAL_TYPES[record.kind], hull = type.bodyHull;
+      if (!cartKinds.has(record.kind) || !hull?.length) return [];
+      const hw = (type.hw ?? type.r) * record.sc, hl = (type.hl ?? type.r) * record.sc;
+      const c = Math.cos(record.yaw), s = Math.sin(record.yaw), out: FootprintPolygon[] = [];
+      const rect = (z0: number, z1: number): FootprintPolygon =>
+        [[-hw, z0], [hw, z0], [hw, z1], [-hw, z1]].map(([lx, lz]) => [x + lx * c + lz * s, z - lx * s + lz * c] as const);
+      let front = -Infinity, back = Infinity;
+      for (let k = 1; k < hull.length; k += 2) { front = Math.max(front, hull[k] * record.sc); back = Math.min(back, hull[k] * record.sc); }
+      if (hl - front > 0.05) out.push(rect(front, hl));
+      if (back + hl > 0.05) out.push(rect(-hl, back));
       return out;
     };
     const tall = (ob: CollisionRecord) => ob.max[1] - ob.min[1] > 0.5;
     const meets = (cart: DestructibleRecord, x: number, z: number, seen?: (nx: number, nz: number, depth: number) => void) => {
       const body = bodyAt(cart, x, z);
-      const approach = approachAt(cart, x, z);
+      const approach = approachAt(cart, x, z), dressing = dressingAt(cart, x, z);
       let met = false;
       // (2026-10-08, over modes' symmetric deployments) its placing kept it out of every deployment slot's clearing
       // (addDestructible's veto); a seat it slides to does too: the way out is straight away from the slot
@@ -9986,8 +10018,10 @@ ${snowCap ? `
             seen(g.nx, g.nz, clearance - g.gap);
             continue;
           }
-          if (n.parked || !approach.length || !tall(n.ob)) continue;
-          for (const lane of approach) {
+          if (n.parked) continue;
+          const zones = tall(n.ob) ? [...approach, ...dressing] : n.stone ? dressing : null;
+          if (!zones?.length) continue;
+          for (const lane of zones) {
             const a = polygonGap(lane, poly);
             if (a.gap >= 0) continue;
             if (!seen) return true;
