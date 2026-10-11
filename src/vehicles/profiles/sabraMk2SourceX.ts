@@ -185,14 +185,24 @@ function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void
     if(!Number.isFinite(roof))throw new Error('Sabra cheek fitting lies outside its native roof');
     return roof+py;
   };
+  const covers=[[.67,1.19,.43,1.13,1.075],[1.225,1.90,.43,1.065,.735]] as const;
   for(const side of [-1,1]) {
-    for(const [za,zb,inner,outerA,outerB] of [[.67,1.19,.43,1.13,1.075],[1.225,1.90,.43,1.065,.735]]) {
+    for(const [za,zb,inner,outerA,outerB] of covers) {
       // A continuous finite cover follows each underlying planar facet,
       // including its ridge; a four-corner bilinear cover could float over it.
-      P.addExternalArmor('turret',sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB));
+      // round 4 (the critics: "a translucent, glass-like sheet with bolt heads"): the cover's camouflage is phased off
+      // the cheek's beneath it, so it reads as a separate bolted plate rather than glass over the same pattern
+      const cover=sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB);
+      cover.userData.camoUvOffset=[.37+.11*side,.23+.17*za];
+      P.addExternalArmor('turret',cover);
     }
+    // 2026-10-10 (fleet-weapons lane, round 3; wave 348b's critics: "floating hex bolts" beside the cupola gun): each
+    // 13 mm bolt head is seated 2 mm into the plate it fastens, the 12 mm cover where it lies on one and the cheek
+    // facet where it does not; they stood 6.5 mm above the covers and 19 mm above the bare facet.
+    const onCover=(x:number,z:number):boolean=>covers.some(([za,zb,inner,outerA,outerB])=>
+      z>=za&&z<=zb&&x>=inner&&x<=outerA+(outerB-outerA)*(z-za)/(zb-za));
     for(const [x,z] of [[.69,1.53],[.69,1.87],[.89,1.29],[.94,1.645],[.875,1.326],[.5,.76],[.78,.76]])
-      turretEquipment(P,'turretDetail',cylY(.017,.017,.013,6),side*x,cheekTop(x,z)+.025,z,.31,0,side*.42);
+      turretEquipment(P,'turretDetail',cylY(.017,.017,.013,6),side*x,cheekTop(x,z)+(onCover(x,z)?.012:0)+.0045,z,.31,0,side*.42);
     smokeBank(P,side,1.17,2.08,1.16,5);
     for(const z of [-.74,.05,.75]){
       turretEquipment(P,'turretDetail',box(.026,.029,.59),side*1.34,2.05,z,0,side*-.09);
@@ -256,18 +266,26 @@ function buildSabraCupola(P: TankBuilderPort, py: number, pz: number): void {
   optic(P,-.5758,2.972,-.0975,.326,.1406,.1509);
 }
 
+/** The cupola M2's pintle socket top (hull frame): a boss on the turret roof just ahead of the cupola. */
+export const SABRA_CUPOLA_M2_SOCKET: readonly [number, number, number] = [-.5059, 2.58, .80];
+
 function buildSabraCupolaWeapon(P: TankBuilderPort, py: number, pz: number): void {
-  // Source cupola weapon and receiver, seated to the raised structural cupola.
-  turretEquipment(P,'turretDetail',box(.12,.11,.33),-.5059,2.778,.36);
   // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
-  // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts,
-  // receiver with its feed cover and spade grips, perforated barrel support and flash hider) in place of the source
-  // study's receiver box and plain tube, carried by the cupola's own painted supports (the external cradle: no second
-  // pintle), at Codex's mount: on the source barrel's axis (x -0.5059, y 2.7738) with its receiver's back where the
-  // source receiver's back stood (z 0.28); the true-length M2 barrel reaches 0.54 m past the study's short tube. One gun,
-  // one fitting.
-  const roofGun=FITTINGS.seatMuzzle(FITTINGS.pintleMG({mats:P.mats,cls:'m2',mount:'external-cradle',tone:'two-tone',
-    ammo:false,seed:2741}),[-.5059,2.7738-py,1.8411-pz]);
+  // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts).
+  // Round 3 (wave 345's critics: the receiver "parked on the shoulder of the dome" with "no pintle or cradle under it, no
+  // spade grips or charging handle behind it and no ammunition can beside it"): the crew M2 stands on its own pintle and
+  // cradle, with its spade grips, charging handle and ammunition can.
+  // 2026-10-11 (round 3c): the pintle stands in a boss on the turret roof just ahead of the cupola, on the source
+  // barrel's line (x -0.5059), not on the dome. On the dome the pintle lifted the gun 0.26 m above the source silhouette
+  // (the geometry gate's height: 3.29 m against the source's 3.06 m), and the critics asked for a cradle and grips "at
+  // the gun's current height ... not raising" it. On the roof the barrel rides 11 cm over the source barrel's axis, the
+  // grips stand clear in front of the dome and the gun's top stays under the cupola crown. The study's receiver block on
+  // the lip went with it: the fleet M2 replaced that block in round 2 and nothing stands on it now. One gun, one fitting.
+  const socket=SABRA_CUPOLA_M2_SOCKET;
+  // The boss foot sits 4 mm into the sloping roof plate (2.524-2.544 m under its footprint).
+  turretEquipment(P,'turretDetail',cylY(.047,.056,.06,P.q?16:10),socket[0],socket[1]-.03,socket[2]);
+  const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',ammo:true,seed:2741});
+  roofGun.position.set(socket[0],socket[1]-py,socket[2]-pz);
   roofGun.name='sabraSourceCupolaWeapon';
   P.turretG.add(roofGun);
   turretEquipment(P,'turretDetail',box(.22,.10,.24),-.7259,2.783,.34);

@@ -320,14 +320,16 @@ type CloneVehicleMaterial = <T extends THREE.Material>(source: T, configure?: (c
 
 /**
  * The weapon-finish pair for one vehicle, cloned from its hardware gunmetal and fitting paint so they share every
- * vehicle hook (cascade shadows, light floor, sky trim). Weapon steel: phosphate grey-black (#2b2c29) with the grain,
- * patch and oil-streak maps, a satin phosphate (roughness 0.8, metalness 0.4, dry patches less), sky light trimmed to
- * 0.25 so a receiver top never mirrors the hangar lights; a thin, sparse line of dark bare steel on its crease edges.
- * Ammunition drab: the nation's issue colour, matte paint (roughness 0.82) whose worn edges show dull steel.
+ * vehicle hook (cascade shadows, light floor, sky trim). Weapon steel: a dark worn phosphate (#1b1c1a, round 3: the
+ * critics read the #2b2c29 matte as "pale uniform grey... plastic") with the grain, patch and oil-streak maps, satin
+ * (roughness 0.62, metalness 0.55, dry patches less), sky light trimmed to 0.3; a thin line of worn dark steel on its
+ * crease edges, chipped wider where the band reaches. Ammunition drab: the nation's issue colour, matte paint (roughness
+ * 0.82) whose worn edges show dull steel. Chosen from the round-3 variant stills (shots/wf-tune2, variant A).
  */
+export const WEAPON_STEEL_COLOR = 0x1b1c1a;
 export const WEAPON_STEEL_WEAR: Readonly<WeaponWearParams> = Object.freeze({
-  wornColor: linearRgb(0x5c5a54), wornRoughness: 0.5, wornMetalness: 0.7,
-  core: 0.002, reach: 0.008, chipLo: 0.68, chipHi: 0.76, reachWeight: 0.35,
+  wornColor: linearRgb(0x56544e), wornRoughness: 0.45, wornMetalness: 0.75,
+  core: 0.0025, reach: 0.009, chipLo: 0.64, chipHi: 0.72, reachWeight: 0.40,
 });
 export const AMMO_DRAB_WEAR: Readonly<WeaponWearParams> = Object.freeze({
   wornColor: linearRgb(0x66635b), wornRoughness: 0.6, wornMetalness: 0.5,
@@ -341,15 +343,15 @@ export function createWeaponFinishMaterials(
 ): WeaponFinishMaterials {
   const tex = weaponFinishTextures();
   const weaponSteel = cloneVehicleMaterial(dark, (m) => {
-    m.color.set(0x2b2c29);
+    m.color.set(WEAPON_STEEL_COLOR);
     m.map = tex.albedo;
-    m.roughness = 0.8;
+    m.roughness = 0.62;
     m.roughnessMap = tex.rough;
-    m.metalness = 0.4;
+    m.metalness = 0.55;
     m.metalnessMap = tex.rough;
     m.normalMap = tex.normal;
     m.normalScale = new THREE.Vector2(0.45, 0.45);
-    m.envMapIntensity = 0.25;
+    m.envMapIntensity = 0.3;
     m.vertexColors = false;
   });
   weaponSteel.name = 'cot:weapon-steel';
@@ -414,7 +416,11 @@ export function prepareWeaponFinishGeometry(geometry: THREE.BufferGeometry,
  * Rarden, the Lynx, Type 89, K21 and Dardo guns) is painted with its vehicle and keeps the camouflaged barrel bucket.
  * One table: change a barrel's finish here, never with an id literal elsewhere.
  */
-const WEAPON_STEEL_MAIN_BARRELS: ReadonlySet<string> = new Set(['m2a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker']);
+// 2026-10-10 (wave 348b's critics: the Ares station's barrel "painted in the hull's tan-brown and green camouflage instead
+// of dark steel"): a vehicle whose main weapon is a machine gun carries a bare steel barrel too (the Ares APC's L111A1
+// 12.7 mm). A main-gun thermal sleeve stays painted.
+const WEAPON_STEEL_MAIN_BARRELS: ReadonlySet<string> = new Set(['m2a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker',
+  'ares_apc_x']);
 export function mainBarrelIsWeaponSteel(specId: string): boolean { return WEAPON_STEEL_MAIN_BARRELS.has(specId); }
 
 // ---- exact-weapon link -----------------------------------------------------------------------------------------------

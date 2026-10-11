@@ -1333,6 +1333,10 @@ function fitMat(mats: Record<string, RuntimeValue>, slot: string, type = ''): TH
     if (slot === 'detail' && isMaterial(mats.weaponSteel) && isMaterial(mats.hull)) return mats.hull;
     if ((slot === MG_AMMO_CAN_SLOT || slot === MG_CARTRIDGE_SLOT) && isMaterial(mats.ammoDrab)) return mats.ammoDrab;
   }
+  // 2026-10-10 (fleet-weapons lane, round 3: "ammo cans and jerrycans in olive drab or green-grey, not mint"): a fuel
+  // can rack's cans take the army's issue drab on rendered builds, never the scheme's canvas or fitting tint
+  if (type === 'jerryCans' && (slot === 'canvasCloth' || slot === 'canvasPale' || slot === 'detail')
+      && isMaterial(mats.ammoDrab)) return mats.ammoDrab;
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
   // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds must read against the gunmetal
   // (the vehicle canvas renders near-black on several hulls), and neither ever takes the host camouflage.
@@ -2063,10 +2067,14 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
       side * 0.165 * s,0.34 * s,-0.015 * s,0,0,side * 0.075);
     parts.add('dark',box(0.027 * s,0.25 * s,0.040 * s),
       side * 0.213 * s,0.345 * s,0.010 * s,0,0,side * 0.14);
-    parts.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
+    // 2026-10-10 (fleet-weapons lane, round 3; wave 348a's critics on the Puma S1 and Type 89 panoramic towers: "a
+    // stubby fat dark cylinder over a flat grey plank ... unreadable as any real gun"): an optics-only tower carries no
+    // gun, so it carries no recoil rails or weapon cross-shaft either; its fork closes on a slim sensor spindle.
+    if (context.hasWeapon) parts.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
       side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
-  parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
+  if (context.hasWeapon) parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
+  else parts.add('dark',cylX(0.024 * s,0.36 * s,12),0,yokeCenterY,-0.015 * s);
 }
 
 function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
