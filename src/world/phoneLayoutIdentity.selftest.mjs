@@ -1,23 +1,25 @@
 // A phone places what the desktop places (destruction core lane, 2026-10-08; the coordinator's layout identity ruling):
-// every record that blocks movement, shells or sight — a tree's trunk and crown, a bush, the clutter, a hulk — stands at
-// the desktop's seat under the desktop's index, so a phone in a match shares the authority's indices (the authority plays
-// the desktop's manifests). Since today the tiers place at one richness (vegetation.ts treeRichness and the bushes,
-// props.ts environmentRichness, the wreck count); a phone's saving is in how a record draws, never in which records stand.
+// every record that blocks movement, shells or sight — a tree's trunk and crown, a bush, the clutter, a hulk, a stone, a
+// rock formation's mass — stands at the desktop's seat under the desktop's index, so a phone in a match shares the
+// authority's indices (the authority plays the desktop's manifests). The tiers place at one richness (vegetation.ts
+// treeRichness and the bushes, props.ts environmentRichness, the wreck count); a phone's saving is in how a record draws,
+// never in which records stand.
 //
-// This builds three maps at the phone tier in Node (the forests and bushes of Fjord, the clutter and hulks of Airfield,
-// Steppe's farm) through the manifest tool's phone check (tools/capture-world-collision-manifests.mjs --tier=mobile) and
-// holds them to the committed shards, which are the desktop's, index for index. The whole roster:
+// This builds five maps at the phone tier in Node through the manifest tool's phone check
+// (tools/capture-world-collision-manifests.mjs --tier=mobile) and holds them to the committed shards, which are the
+// desktop's, index for index:
+//   - Fjord's forests and bushes, Airfield's clutter and hulks, Steppe's farm;
+//   - (the hitbox lane, 2026-10-11) Badlands, whose formations built their masses from a phone's leaner pieces and whose
+//     stones a phone shaped without the map's angularity (14 small rocks fewer), and Frontier, whose ridge field counted
+//     a pavement the phone draws none of as unplaced and laid one formation more.
+// The whole roster (33 of 33 since 2026-10-11):
 //   node tools/capture-world-collision-manifests.mjs --tier=mobile
-// (22 of 33 maps identical on 2026-10-08; the rest wait on two kits that still lay records out by tier: the scenery
-// lane's rock formations, whose phone builds draw fewer stones and so other masses — Badlands, Coastal, Desert, Frontier,
-// Monsoon, Orchard, Reservoir, Saltwind, Steinburg, Verdant — and the regional rowhouses whose phone builds move their
-// contact and shell bands — the Franconian on Steinburg, the Sarajevan on Ruinspires.)
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
-const MAPS = ['fjord', 'airfield', 'steppe'];
+const MAPS = ['fjord', 'airfield', 'steppe', 'badlands', 'frontier'];
 let out = '';
 try {
   out = execFileSync(process.execPath, ['tools/capture-world-collision-manifests.mjs', '--tier=mobile', `--maps=${MAPS.join(',')}`],
