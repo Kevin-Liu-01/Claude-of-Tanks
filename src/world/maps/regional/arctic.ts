@@ -227,14 +227,25 @@ function stair(sink: PartSink, face: Face, u: number, floor: number, mobile: boo
   sink.box('structureMetal', land, [0.8, 0.06, 0.75], c, new LocalFrame(face.u, [0, 1, 0], face.out, land));
   const post = facePoint(face, u, (floor - 0.4) / 2 - 0.2, 1.35);
   sink.box('structureMetal', post, [0.07, (floor + 0.2) / 2, 0.07], c, new LocalFrame(face.u, [0, 1, 0], face.out, post));
-  const n = Math.max(2, Math.round(floor / 0.2));
+  const n = Math.max(2, Math.round(floor / 0.2)), rise = floor / n;
   for (let k = 1; k < n; k++) {
-    const p = facePoint(face, u + 0.8 + k * 0.26, floor - 0.1 - k * (floor / n), 0.75);
+    const p = facePoint(face, u + 0.8 + k * 0.26, floor - 0.1 - k * rise, 0.75);
     sink.box('structureMetal', p, [0.13, 0.03, 0.55], c, new LocalFrame(face.u, [0, 1, 0], face.out, p));
   }
+  // (the connectivity sweep, 217: the treads hung a riser apart in air) the two stringers they rest on, along their
+  // centre line from under the landing's edge to the ground, and the handrail on posts over the outer one
+  const line = (uu: number): number => floor - 0.1 - (uu - u - 0.8) / 0.26 * rise;
+  const uTop = u + 0.75, uFoot = u + 0.8 + (floor - 0.05) / rise * 0.26;
+  const string = { colour: STEEL_DARK, decor: true, exposed: true } as const;
+  for (const [o, embed] of [[0.2, 0.04], [1.3, 0.02]] as const) {
+    sink.member('structureMetal', facePoint(face, uTop, line(uTop), o), facePoint(face, uFoot, line(uFoot), o), 0.2, 0.06, face.out, string, embed);
+  }
   if (!mobile) {
-    const top = facePoint(face, u + 0.8, floor + 0.85, 1.45), foot = facePoint(face, u + 0.8 + n * 0.26, 0.85, 1.45);
-    sink.member('structureMetal', top, foot, 0.05, 0.05, face.out, { colour: STEEL_DARK, decor: true, exposed: true });
+    const rail = 0.9, posts = [uTop, (uTop + uFoot) / 2, uFoot - 0.2];
+    for (const pu of posts) sink.member('structureMetal', facePoint(face, pu, line(pu), 1.31), facePoint(face, pu, line(pu) + rail, 1.31), 0.05, 0.05, face.out, string, 0.025);
+    for (let k = 0; k + 1 < posts.length; k++) {
+      sink.member('structureMetal', facePoint(face, posts[k], line(posts[k]) + rail, 1.31), facePoint(face, posts[k + 1], line(posts[k + 1]) + rail, 1.31), 0.05, 0.05, face.out, string, 0.025);
+    }
   }
 }
 
@@ -472,6 +483,11 @@ const radarTower: RegionalBuilder = (ctx) => {
     if (!mobile) for (const [a, b] of [[[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[1, 1], [-1, 1]], [[-1, 1], [-1, -1]]] as const) {
       const r = T + 0.45;
       sink.member('structureMetal', [a[0] * r, H + 1.0, a[1] * r], [b[0] * r, H + 1.0, b[1] * r], 0.05, 0.05, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+      // (the connectivity sweep, 217: the rail stood on nothing) its posts from the platform, at the corner and mid-side
+      for (const t of [0, 0.5]) {
+        const px = (a[0] + (b[0] - a[0]) * t) * r, pz = (a[1] + (b[1] - a[1]) * t) * r;
+        sink.member('structureMetal', [px, H + 0.16, pz], [px, H + 1.03, pz], 0.05, 0.05, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true }, 0.025);
+      }
     }
     radome(sink, 0, H + 0.6, 0, clamp(T + 0.4, 1.4, 2.4), 14);
     // the equipment hut at the foot between two legs
@@ -690,7 +706,14 @@ const derelict: RegionalBuilder = (ctx) => {
     // the joists: two still up across the door end, a third fallen from the broken wall's head to the deck
     const joist = { colour: STEEL, exposed: true } as const;
     for (const z of [-D / 2 + 0.1, -D / 2 + 1.5]) sink.member('structureMetal', [-W / 2 + 0.1, top + 0.1, z], [W / 2 - 0.3, top + 0.1, z], 0.12, 0.2, [0, 1, 0], joist);
-    sink.member('structureMetal', [-W / 2 + 0.1, floor + hWall + 0.05, zSplit + 1.6], [W / 2 - 0.6, deck + 0.12, zSplit + 2.4], 0.12, 0.2, [0, 1, 0], { ...joist, decor: true });
+    // (the connectivity sweep, 217: both joists lay 8 cm over the wall heads, the second's far end on nothing) a packing
+    // plate under each end on the wall head and the corner post, and a steel prop from the deck under the second's far end
+    for (const z of [-D / 2 + 0.1, -D / 2 + 1.5]) {
+      sink.span('structureMetal', -W / 2 + 0.02, top - 0.6, z - 0.08, -W / 2 + 0.2, top + 0.09, z + 0.08, { colour: STEEL_DARK, decor: true });
+      if (z < -D / 2 + 0.2) sink.span('structureMetal', W / 2 - 0.4, top - 0.02, z - 0.08, W / 2 - 0.22, top + 0.09, z + 0.08, { colour: STEEL_DARK, decor: true });
+      else sink.span('structureMetal', W / 2 - 0.38, deck - 0.02, z - 0.07, W / 2 - 0.24, top + 0.09, z + 0.07, { colour: STEEL, decor: true });
+    }
+    sink.member('structureMetal', [-W / 2 + 0.1, floor + hWall + 0.05, zSplit + 1.6], [W / 2 - 0.6, deck + 0.02, zSplit + 2.4], 0.12, 0.2, [0, 1, 0], { ...joist, decor: true });
     // the panels down, leaning on the open side's piles (their draws round 4's three on the snow)
     for (let k = 0; k < 3; k++) {
       const z = -D / 2 + 1.4 + k * (D - 2.8) / 2 + (look() - 0.5) * 0.6;

@@ -315,17 +315,24 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     return { left: 1, right: 0, buckleAt: 0.25 + 0.5 * m, buckle: 3 + 4 * n, throw: 1.2 * (n - 0.5) };
   };
   const steps = 26;
+  // the rib's points: the arc, dented by its buckle (down and thrown sideways round its centre), and, past a break,
+  // torn down toward the floor
+  const bentAt = (r: number, t: number, end: number | null): Vec3 => {
+    const st = ribState(r), [x, y] = arcAt(t), d = Math.exp(-Math.pow((t - st.buckleAt) / 0.12, 2));
+    let yy = y - st.buckle * d, zz = ribZ[r] + st.throw * d;
+    if (end !== null) { const k = Math.max(0, Math.abs(t - end) < 0.12 ? 1 - Math.abs(t - end) / 0.12 : 0); yy -= k * k * 4.5; zz += k * 1.6; }
+    return [x, yy, zz];
+  };
   ribZ.forEach((z, r) => {
     const st = ribState(r);
     for (const sx of [-1, 1]) sink.span('stone', sx * span / 2 - 1.2, fall, z - 1.0, sx * span / 2 + 1.2, 1.3, z + 1.0);
-    // the rib's points: the arc, dented by its buckle (down and thrown sideways round its centre), and, past a break,
-    // torn down toward the floor
-    const bent = (t: number, end: number | null): Vec3 => {
-      const [x, y] = arcAt(t), d = Math.exp(-Math.pow((t - st.buckleAt) / 0.12, 2));
-      let yy = y - st.buckle * d, zz = z + st.throw * d;
-      if (end !== null) { const k = Math.max(0, Math.abs(t - end) < 0.12 ? 1 - Math.abs(t - end) / 0.12 : 0); yy -= k * k * 4.5; zz += k * 1.6; }
-      return [x, yy, zz];
-    };
+    const bent = (t: number, end: number | null): Vec3 => bentAt(r, t, end);
+    // (the connectivity sweep, 217: the chords' feet stood 9 cm over their footings, the top chord's first length on
+    // nothing) the girder's end post on each footing it stands from, up through both chords
+    for (const t of st.left >= 1 ? [0, 1] : [0, 1]) {
+      const b = bent(t, null);
+      bar(sink, 'structureMetal', [b[0], 1.25, b[2]], [b[0], b[1] + depthRib + 0.12, b[2]], 0.4, girder(r));
+    }
     const draw = (t0: number, t1: number, end: number | null) => {
       const n = Math.max(2, Math.round((t1 - t0) * steps));
       for (let k = 0; k < n; k++) {
@@ -339,22 +346,41 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     if (st.left >= 1) { draw(0, 1, null); return; }
     draw(0, st.left, st.left);
     draw(1 - st.right, 1, 1 - st.right);
-    // the fallen length between the breaks: across the wreck from one torn end to the floor, kinked
-    const [xa, ya] = arcAt(st.left), [xb] = arcAt(1 - st.right);
-    const kx = xa + (xb - xa) * (0.35 + 0.3 * noise2(r, 3.3)), ky = 3 + 6 * noise2(r * 2.1, 0.9), kz = z + (r % 2 ? 3.5 : -3.5);
-    bar(sink, 'structureMetal', [xa, Math.max(2, ya - 7), z + 1.2], [kx, ky, kz], 0.6, girder(r));
-    bar(sink, 'structureMetal', [kx, ky, kz], [xb - (xb - xa) * 0.1, 0.4, kz + (r % 2 ? 2 : -2)], 0.6, girder(r));
-    bar(sink, 'structureMetal', [xa, Math.max(2, ya - 7) + depthRib * 0.7, z + 1.2], [kx, ky + depthRib * 0.7, kz], 0.4, girder(r));
+    // the fallen length between the breaks: hanging from the first torn end, across the wreck and down to the floor,
+    // kinked (the connectivity sweep, 217: it began 2.5 m under the torn end, its chords unbraced, its foot 4 cm over
+    // the slab) — its chords braced by two diagonals, its foot on the slab
+    const [xa] = arcAt(st.left), [xb] = arcAt(1 - st.right), A = bent(st.left, st.left);
+    const kx = xa + (xb - xa) * (0.35 + 0.3 * noise2(r, 3.3)), ky = Math.min(A[1] - 1.5, 3 + 6 * noise2(r * 2.1, 0.9)), kz = z + (r % 2 ? 3.5 : -3.5);
+    const K: Vec3 = [kx, ky, kz], At: Vec3 = [A[0], A[1] + depthRib, A[2]], Kt: Vec3 = [kx, ky + depthRib * 0.7, kz];
+    bar(sink, 'structureMetal', A, K, 0.6, girder(r));
+    bar(sink, 'structureMetal', K, [xb - (xb - xa) * 0.1, 0.34, kz + (r % 2 ? 2 : -2)], 0.6, girder(r));
+    bar(sink, 'structureMetal', At, Kt, 0.4, girder(r));
+    const mid = (p: Vec3, q: Vec3): Vec3 => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+    bar(sink, 'structureMetal', A, mid(At, Kt), 0.18, girder(r));
+    bar(sink, 'structureMetal', mid(A, K), Kt, 0.18, girder(r));
+    bar(sink, 'structureMetal', K, Kt, 0.3, girder(r));
   });
   // purlins between neighbouring standing ribs, some sagging
-  const stands = (r: number, t: number) => { const s = ribState(r); return s.left >= 1 || t <= s.left - 0.05 || t >= 1 - s.right + 0.05; };
+  // (the connectivity sweep, 217: hung from the ribs' unbent arcs, the purlins over a buckle or by a torn end were metres
+  // off them) each from one rib's top chord to the next's, where both stand clear of a torn end's droop
+  const stands = (r: number, t: number) => { const s = ribState(r); return s.left >= 1 || t <= s.left - 0.13 || t >= 1 - s.right + 0.13; };
+  // a point on the rib as drawn: on the straight length between its samples (a buckle's dent bends sharper than a length)
+  const drawnAt = (r: number, t: number): Vec3 => {
+    const st = ribState(r);
+    const [t0, t1, end] = st.left >= 1 ? [0, 1, null] : t <= st.left ? [0, st.left, st.left] : [1 - st.right, 1, 1 - st.right];
+    const n = Math.max(2, Math.round((t1 - t0) * steps)), f = Math.min(n - 1e-9, Math.max(0, (t - t0) / (t1 - t0) * n)), k = Math.floor(f);
+    const a = bentAt(r, t0 + (t1 - t0) * k / n, end), b = bentAt(r, t0 + (t1 - t0) * (k + 1) / n, end), w = f - k;
+    return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w, a[2] + (b[2] - a[2]) * w];
+  };
   for (let r = 0; r + 1 < ribZ.length; r++) {
     for (const t of [0.08, 0.2, 0.32, 0.44, 0.56, 0.68, 0.8, 0.92]) {
       if (!stands(r, t) || !stands(r + 1, t) || noise2(r * 3.3, t * 9.1) < 0.3) continue;
-      const [x, y] = arcAt(t), sag = noise2(r * 1.9, t * 5.7) > 0.7 ? 1.4 : 0.1;
-      const m: Vec3 = [x, y + depthRib - sag, (ribZ[r] + ribZ[r + 1]) / 2];
-      bar(sink, 'structureMetal', [x, y + depthRib, ribZ[r]], m, 0.22, girder(r));
-      bar(sink, 'structureMetal', m, [x, y + depthRib, ribZ[r + 1]], 0.22, girder(r));
+      const sag = noise2(r * 1.9, t * 5.7) > 0.7 ? 1.4 : 0.1;
+      const a = drawnAt(r, t), b = drawnAt(r + 1, t);
+      const pa: Vec3 = [a[0], a[1] + depthRib, a[2]], pb: Vec3 = [b[0], b[1] + depthRib, b[2]];
+      const m: Vec3 = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2 - sag, (pa[2] + pb[2]) / 2];
+      bar(sink, 'structureMetal', pa, m, 0.22, girder(r));
+      bar(sink, 'structureMetal', m, pb, 0.22, girder(r));
     }
   }
   // the burnt cladding still on the back wall's girts, torn
@@ -369,12 +395,20 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
   // the fallen roof: heaps of sheeting where bays came down, and sheets strewn over the slab and the wreck
   const heaps: Array<[number, number]> = [];
   for (let k = 0; k < 7; k++) heaps.push([(noise2(k * 1.9, 2.1) - 0.5) * (W - 16), z0 + 6 + noise2(k * 0.83, 5.3) * (Dp - 12)]);
+  // (the connectivity sweep, 217: the heaps' sheets were stacked 16 cm apart at random offsets, most on nothing) each
+  // sheet lies across the last one's fold: its centre on that fold, turned well off it, its edges on it
   heaps.forEach(([hx, hz], h) => {
     const n = 7 + Math.round(6 * noise2(h, 4.4));
+    let cx = hx, cz = hz, cy = 0.06, yaw = noise2(h * 3.7, 2.5) * Math.PI * 2, l = 3.0, lift = 0.1;
     for (let k = 0; k < n; k++) {
       const colour = lerp(lerp(STEEL, RUST, noise2(h * 7 + k, 1.1)), SOOT, 0.3 + 0.6 * noise2(k * 0.41, h * 8.3));
-      sheet(sink, hx + (noise2(h + k * 0.7, 1) - 0.5) * 5, 0.06 + k * 0.16, hz + (noise2(h + k * 0.9, 2) - 0.5) * 5,
-        noise2(h * 3.7 + k, 2.5) * Math.PI * 2, 1.05, 3.0 + 1.5 * noise2(k, h), 0.15 + 0.4 * noise2(k * 5.1, h), 0.1 * (noise2(k, h * 3) - 0.5), colour);
+      if (k > 0) {
+        const v = (noise2(h + k * 0.7, 1) - 0.5) * l * 0.5;
+        cx += Math.sin(yaw) * v; cz += Math.cos(yaw) * v; cy += lift - 0.02;
+        yaw += 0.8 + 1.5 * noise2(h * 3.7 + k, 2.5);
+      }
+      l = 3.0 + 1.5 * noise2(k, h); lift = 0.1 + 0.12 * noise2(k * 5.1, h);
+      sheet(sink, cx, cy, cz, yaw, 1.05, l, lift, 0, colour);
     }
   });
   for (let k = 0; k < 40; k++) {
@@ -459,7 +493,9 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
   const wingSpan = 40.5, wingRoot = 12.6, wingTip = 4.6, wingSweep = 22.5;
   for (const side of [1, -1]) {
     // (the right half mirrored: turned over end for end, its paint read from its own top)
-    const rootX = axisX + side * 4.25, rootY = 2.7, rootZ = axisZ + 5.5, droop = Math.atan2(rootY - 0.75, wingSpan);
+    // (the connectivity sweep, 217: a wing's root stood 0.6 m off the hull and its tip 0.44 m over the slab) the root's
+    // torn end against the hull's side, the tip's underside on the slab
+    const rootX = axisX + side * 3.72, rootY = 2.7, rootZ = axisZ + 5.5, droop = Math.atan2(rootY - (0.06 + Math.max(0.12, wingTip * 0.11 / 2) - 0.04), wingSpan);
     const P = side > 0 ? pose(0.03, 0, -droop, [rootX, rootY, rootZ]) : pose(Math.PI - 0.03, Math.PI, droop, [rootX, rootY, rootZ]);
     const wingPaint = (s: number, a: number) => burntSkin((side > 0 ? Math.cos(a) : -Math.cos(a)) > 0 ? WHITE : GREY_BELLY, s + side * 50, a, Math.max(0.25, 0.9 - s / 30));
     panel(sink, P, wingSpan, wingRoot, wingTip, wingSweep, 0.11, wingPaint, { rootRag: 0.2, rng, n: 10, panels: true });
@@ -467,13 +503,16 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
     for (const [k, d] of [[0, 8.5], [1, 16.5], [2, 24.5]] as const) {
       const le = at(P, [d, 0, -(wingSweep * d / wingSpan)]);
       const away = k === 2 && side < 0;
-      const yaw = -Math.PI / 2 + (noise2(k * 3.1, side) - 0.5) * 0.6 + (away ? 1.2 : 0);
-      nacelle(sink, pose(yaw, 0, (noise2(k, side * 2) - 0.5) * 0.5, [le[0] + (away ? side * 7 : side * 0.6), 1.25, le[2] + 3.4 + (away ? 5 : 0)]), 0.35 + 0.5 * noise2(k, side), true);
+      const yaw = -Math.PI / 2 + (noise2(k * 3.1, side) - 0.5) * 0.6 + (away ? 1.2 : 0), roll = (noise2(k, side * 2) - 0.5) * 0.5;
+      // (the connectivity sweep, 217: tilted, a cowl stood 4 cm over the slab) its lowest station on the slab
+      const low = Math.min(...([[0, 1.12], [0.25, 1.24], [1.6, 1.27], [3.6, 1.1], [4.8, 0.82]] as const).map(([st, rr]) => st * Math.sin(roll) - rr * Math.cos(roll)));
+      nacelle(sink, pose(yaw, 0, roll, [le[0] + (away ? side * 7 : side * 0.6), 0.06 - 0.035 - low, le[2] + 3.4 + (away ? 5 : 0)]), 0.35 + 0.5 * noise2(k, side), true);
     }
   }
   // the tail: the stabiliser across the tail cone's top, the twin fins at its tips, the flag on their outer faces
   {
-    const sStab = -37.6, yStab = 8.7;
+    // (the connectivity sweep, 217: the stabiliser's root stood 18 cm over the tail cone's top) seated on it
+    const sStab = -37.6, yStab = 8.5;
     for (const side of [1, -1]) {
       const root = at(fuse, [sStab, yStab, 0]);
       const P = side > 0 ? pose(-0.035, 0, 0.012, [root[0], root[1], root[2] + 3.6]) : pose(Math.PI - 0.035, Math.PI, -0.012, [root[0], root[1], root[2] + 3.6]);

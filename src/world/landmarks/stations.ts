@@ -108,7 +108,8 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
   // the outside stair to the roof on the right face (+x): a ladder in its cage
   ladder(sink, h + 0.3, -h * 0.4, base, H + 0.45, false, STEEL_DARK);
-  for (let y = base + 2.2; y < H; y += 1.4) bar(sink, 'structureMetal', [h + 0.05, y, -h * 0.4 - 0.35], [h + 0.62, y, -h * 0.4 - 0.35], 0.04, { colour: STEEL_DARK, decor: true, fine: true });
+  // (the cage's side bars from the wall itself: the connectivity sweep, 217, found them 3 cm off it)
+  for (let y = base + 2.2; y < H; y += 1.4) bar(sink, 'structureMetal', [h - 0.01, y, -h * 0.4 - 0.35], [h + 0.62, y, -h * 0.4 - 0.35], 0.04, { colour: STEEL_DARK, decor: true, fine: true });
   // the roof: a snow slab, the radome's drum and sphere
   if (ctx.snowCap) sink.span('structureMetal', -h + 0.1, H + 0.45, -h + 0.1, h - 0.1, H + 0.62, h - 0.1, { colour: SNOW, decor: true });
   const drumTop = H + 0.45 + 1.1, rb = R * 0.77;
@@ -251,7 +252,12 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
   sink.span('structureMetal', mx0 - 0.1, floor + 2.8, mz0 - 0.1, mx1 + 0.1, floor + 2.95, mz1 + 0.1, { colour: STEEL });
   if (ctx.snowCap) sink.span('structureMetal', mx0, floor + 2.95, mz0, mx1, floor + 3.08, mz1, { colour: SNOW, decor: true });
   sink.quad('structureMetal', [mx0 + 0.8, floor + 0.02, mz1 + 0.03], [mx0 + 1.7, floor + 0.02, mz1 + 0.03], [mx0 + 1.7, floor + 2.0, mz1 + 0.03], [mx0 + 0.8, floor + 2.0, mz1 + 0.03], { colour: DOOR, decor: true });
-  for (let k = 0; k < 4; k++) sink.span('structureMetal', mx0 + 0.75, gl(mx0 + 1.25, mz1 + 0.6) + k * floor / 4 - 0.1, mz1 + 0.2 + (3 - k) * 0.28, mx0 + 1.75, gl(mx0 + 1.25, mz1 + 0.6) + k * floor / 4, mz1 + 0.48 + (3 - k) * 0.28, { colour: STEEL_DARK, decor: true });
+  const gs = gl(mx0 + 1.25, mz1 + 0.6);
+  for (let k = 0; k < 4; k++) sink.span('structureMetal', mx0 + 0.75, gs + k * floor / 4 - 0.1, mz1 + 0.2 + (3 - k) * 0.28, mx0 + 1.75, gs + k * floor / 4, mz1 + 0.48 + (3 - k) * 0.28, { colour: STEEL_DARK, decor: true });
+  // (the connectivity sweep, 217: the steps hung a riser apart in air) their two stringers, from the ground before the
+  // first up to the module's front under its door, along the steps' nosings
+  const nose = (z: number): number => gs + (mz1 + 1.32 - z) / 0.28 * (floor / 4) - 0.05;
+  for (const x of [mx0 + 0.73, mx0 + 1.77]) bar(sink, 'structureMetal', [x, nose(mz1 + 1.45), mz1 + 1.45], [x, nose(mz1 - 0.02), mz1 - 0.02], 0.06, { colour: STEEL_DARK, decor: true });
   return { parts: sink.finish() };
 };
 
@@ -289,9 +295,10 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
       }
     }
   }
-  // the guys from three heights to three anchors
+  // the guys from three heights to three anchors, each anchor in line with a leg and its guys made fast to that leg (the
+  // connectivity sweep, 217: the guys ended in air between the legs)
   for (let k = 0; k < 3; k++) {
-    const a = (k / 3) * Math.PI * 2 + Math.PI / 6, ax = Math.cos(a) * G, az = Math.sin(a) * G, ga = gl(ax, az);
+    const a = (k / 3) * Math.PI * 2 + Math.PI / 2, ax = Math.cos(a) * G, az = Math.sin(a) * G, ga = gl(ax, az);
     sink.span('stone', ax - 0.5, ga - 0.6, az - 0.5, ax + 0.5, ga + 0.35, az + 0.5, { decor: true });
     for (const f of [0.34, 0.66, 0.95]) {
       const y = g0 + 0.45 + (H - 0.45) * f;
@@ -327,8 +334,10 @@ export const guyedMast: LandmarkBuilder = (ctx) => {
       sink.polygon('structureMetal', [c, ring[s], ring[n]], { colour: shade(AVI_WHITE, 0.7), decor: true });
     }
   }
-  bar(sink, 'structureMetal', [0, g0 + H, 0], [0, g0 + H + 3.2, 0], 0.06, { colour: STEEL_DARK, decor: true });
-  sink.span('structureMetal', -0.14, g0 + H, -0.14, 0.14, g0 + H + 0.32, 0.14, { colour: TRIM_RED, decor: true });
+  // the head's cap plate across the legs' tops, the whip and the beacon on it
+  sink.span('structureMetal', -r - 0.06, g0 + H - 0.02, -r - 0.06, r + 0.06, g0 + H + 0.04, r + 0.06, { colour: STEEL_DARK, decor: true });
+  bar(sink, 'structureMetal', [0, g0 + H + 0.04, 0], [0, g0 + H + 3.2, 0], 0.06, { colour: STEEL_DARK, decor: true });
+  sink.span('structureMetal', -0.14, g0 + H + 0.04, -0.14, 0.14, g0 + H + 0.36, 0.14, { colour: TRIM_RED, decor: true });
   return { parts: sink.finish() };
 };
 
@@ -352,7 +361,11 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [x, 0.15, sz * (hd - 0.4)], [x, floor, sz * (hd - 0.4)], 0.24, { colour: STEEL_DARK });
   }
   sink.span('structureMetal', x0, floor - 0.25, -hd, x0 + total, floor, hd, { colour: STEEL_DARK });
-  for (const z of [-1.2, -0.6]) sink.cylinder('structureMetal', [x0, floor - 0.55, z], 'x', total, 0.18, 6, { colour: STEEL, decor: true });
+  for (const z of [-1.2, -0.6]) {
+    sink.cylinder('structureMetal', [x0, floor - 0.55, z], 'x', total, 0.18, 6, { colour: STEEL, decor: true });
+    // (the connectivity sweep, 217: the pipes hung 12 cm under the deck on nothing) a hanger from the deck at every stilt line
+    for (let k = 0; k <= n; k++) bar(sink, 'structureMetal', [x0 + k * L + (k === 0 ? 0.3 : k === n ? -0.3 : 0), floor - 0.24, z], [x0 + k * L + (k === 0 ? 0.3 : k === n ? -0.3 : 0), floor - 0.5, z], 0.04, { colour: STEEL_DARK, decor: true });
+  }
   // the modules
   for (let k = 0; k < n; k++) {
     const a = x0 + k * L, b = a + L, garage = k === n - 1 && n > 2, top = garage ? eave + 1.6 : eave;
@@ -440,11 +453,33 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
       { colourAt: (p) => (p[1] > y0 + Ht + 0.01 ? shade(tone, 0.88) : weathered(tone, y0, y0 + Ht, 0.3)(p)) });
     // the shell's courses (fine rings)
     for (let y = y0 + 1.8; y < y0 + Ht - 0.3; y += 1.8) revolve(sink, 'structureMetal', x, z, [[R + 0.02, y - 0.03], [R + 0.02, y + 0.03]], 20, { colour: shade(tone, 0.8), decor: true, fine: true });
-    // the stair up its side (a straight flight on the tangent toward the front) and the roof rail
-    const s0: Vec3 = [x - R - 0.5, gl(x - R - 0.5, z + 0.8) + 0.1, z + 0.8], s1: Vec3 = [x - R - 0.5, y0 + Ht, z - R * 0.9];
-    bar(sink, 'structureMetal', s0, s1, 0.12, { colour: STEEL_DARK, decor: true });
-    bar(sink, 'structureMetal', [s0[0] - 0.6, s0[1] + 1, s0[2]], [s1[0] - 0.6, s1[1] + 1, s1[2]], 0.05, { colour: STEEL_DARK, decor: true, fine: true });
-    revolve(sink, 'structureMetal', x, z, [[R * 0.9, y0 + Ht + R * 0.03 + 0.95], [R * 0.9, y0 + Ht + R * 0.03 + 1.0]], 16, { colour: STEEL_DARK, decor: true, fine: true });
+    // the stair up its side: a straight flight on the tangent, its head on a landing at the shell where the roof begins,
+    // its foot out toward the front — two stringers, the treads, the outer handrail on posts — and the rail round the
+    // roof on its posts (the connectivity sweep, 217: the flight's head stood two metres off the shell, its handrail and
+    // the roof's rail on nothing)
+    const top = y0 + Ht, xi = x - R - 0.04, xo = xi - 0.75, zh = z, zf = z + 0.8 + R * 0.9, zl = zh + 0.45;
+    const gf = Math.min(gl(xi, zf), gl(xo, zf)) - 0.05, rise = top - 0.04 - gf;
+    const nosing = (zz: number): number => gf + rise * (zf - zz) / (zf - zl);
+    const dark = { colour: STEEL_DARK, decor: true } as const;
+    sink.span('structureMetal', xo - 0.05, top - 0.08, zh - 0.45, xi + 0.16, top, zl, dark);
+    for (const sx of [xi, xo]) bar(sink, 'structureMetal', [sx, gf, zf], [sx, top - 0.04, zl], 0.08, dark);
+    const steps = Math.max(3, Math.ceil(rise / 0.3));
+    for (let k = 1; k < steps; k++) {
+      const zz = zf - (zf - zl) * k / steps, y = nosing(zz);
+      sink.span('structureMetal', xo, y - 0.035, zz - 0.13, xi, y + 0.005, zz + 0.13, { ...dark, fine: true });
+    }
+    const posts = [zf - 0.3, (zf + zl) / 2, zl - 0.08, zh - 0.37];
+    for (const zp of posts) bar(sink, 'structureMetal', [xo, (zp < zl ? top - 0.04 : nosing(zp)), zp], [xo, (zp < zl ? top : nosing(zp)) + 0.95, zp], 0.05, { ...dark, fine: true });
+    for (let k = 0; k + 1 < posts.length; k++) {
+      const [za, zb] = [posts[k], posts[k + 1]];
+      bar(sink, 'structureMetal', [xo, (za < zl ? top : nosing(za)) + 0.95, za], [xo, (zb < zl ? top : nosing(zb)) + 0.95, zb], 0.05, { ...dark, fine: true });
+    }
+    revolve(sink, 'structureMetal', x, z, [[R * 0.9, top + R * 0.03 + 0.95], [R * 0.9, top + R * 0.03 + 1.0]], 16, { colour: STEEL_DARK, decor: true, fine: true });
+    // the roof rail's posts at every second vertex of its ring, from the cone (0.024 R over the shell's top there)
+    for (let k = 0; k < 8; k++) {
+      const a = -(k / 8) * Math.PI * 2, px = x + Math.cos(a) * R * 0.9, pz = z + Math.sin(a) * R * 0.9;
+      bar(sink, 'structureMetal', [px, top + R * 0.024 - 0.04, pz], [px, top + R * 0.03 + 0.975, pz], 0.05, { ...dark, fine: true });
+    }
     // the pipe from the tank's foot to the manifold
     bar(sink, 'structureMetal', [x, y0 + 0.2, z + R], [x, gl(x, ez - t - 0.75) + 0.5, ez - t - 0.75], 0.24, { colour: IRON, decor: true });
   }
@@ -546,6 +581,10 @@ export const airstrip: LandmarkBuilder = (ctx) => {
   bar(sink, 'structureMetal', [wx, wg + 0.3, wz], [wx, wg + 6.5, wz], 0.12, { colour: STEEL });
   const sock: Vec3[] = [];
   for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; sock.push([wx + 0.15, wg + 6.2 + Math.sin(a) * 0.45, wz + Math.cos(a) * 0.45]); }
+  // (the connectivity sweep, 217: the sock hung 9 cm off the mast) its hoop, and the arms that carry it from the mast
+  for (let k = 0; k < 8; k++) bar(sink, 'structureMetal', sock[k], sock[(k + 1) % 8], 0.04, { colour: STEEL_DARK, decor: true });
+  bar(sink, 'structureMetal', [wx, wg + 6.42, wz], [wx + 0.15, wg + 6.65, wz], 0.04, { colour: STEEL_DARK, decor: true });
+  bar(sink, 'structureMetal', [wx, wg + 5.75, wz], [wx + 0.17, wg + 5.75, wz], 0.04, { colour: STEEL_DARK, decor: true });
   for (let k = 0; k < 8; k++) {
     const n = (k + 1) % 8, tip = (p: Vec3): Vec3 => [p[0] + 2.4, wg + 6.0 + (p[1] - wg - 6.2) * 0.4, p[2] * 0.4 + wz * 0.6];
     sink.quad('structureMetal', sock[k], sock[n], tip(sock[n]), tip(sock[k]), { colour: k % 2 ? AVI_ORANGE : AVI_WHITE, decor: true });
