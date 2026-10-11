@@ -16,6 +16,7 @@ import {
   shedFractureEdge, shedStyleFor,
 } from './shedKit.ts';
 import { paintTimberGrain } from '../timberGrain.ts';
+import { FRACTURE_PIECE_CAP, checkKitFracture } from '../fractureAnatomy.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../../engine/nightEmissionMaterial.ts';
 
 function mulberry32(a) {
@@ -37,13 +38,15 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 /** The anatomy's laws against its geometry. */
 function checkAnatomy(id, geometry, cap) {
   const anatomy = geometry.userData.fracture;
-  assert.ok(anatomy && anatomy.kind === id, `${id}: the build carries its fracture anatomy`);
+  assert.ok(anatomy && anatomy.kind === id.split('/').pop(), `${id}: the build carries its fracture anatomy`);
   assert.equal(geometry.index, null, `${id}: non-indexed (one run a piece)`);
   const pos = geometry.getAttribute('position');
   for (const name of ['normal', 'uv', 'color', NIGHT_EMISSION_ATTRIBUTE]) {
     assert.equal(geometry.getAttribute(name)?.count, pos.count, `${id}: ${name} per vertex`);
   }
   const { pieces, links } = anatomy;
+  // the core's own contract check first (it refuses a kind that fails it)
+  assert.deepEqual(checkKitFracture(anatomy, pos.array, cap), [], `${id}: the core's fracture contract holds`);
   assert.ok(pieces.length >= 20 && pieces.length <= cap, `${id}: ${pieces.length} pieces within the cap ${cap}`);
   let next = 0;
   pieces.forEach((p, i) => {
@@ -65,7 +68,10 @@ function checkAnatomy(id, geometry, cap) {
       assert.ok(p.scores.length <= 6, `${id}/${i}: at most six scores`);
       for (const s of p.scores) assert.ok(Math.abs(s) < p.h[p.scoreAxis], `${id}/${i}: a score inside its box`);
     }
-    if (p.points) assert.ok(p.points.length >= 3 && p.edgeRadiusM > 0, `${id}/${i}: contact points with a radius`);
+    if (p.points) {
+      assert.ok(p.points.length >= 3 && p.edgeRadiusM > 0, `${id}/${i}: contact points with a radius`);
+      for (const pt of p.points) for (let k = 0; k < 3; k++) assert.ok(Math.abs(pt[k]) <= p.h[k] + 0.02, `${id}/${i}: contact points in its box frame`);
+    }
   });
   assert.equal(next * 3, pos.count, `${id}: the runs cover the geometry exactly`);
   const adj = pieces.map(() => []);
@@ -92,7 +98,7 @@ for (const mapId of maps) {
   for (const id of ['fieldhut', 'leanto']) {
     const meta = types[id];
     const intact = meta.build(mulberry32(0x5eed + checked));
-    const anatomy = checkAnatomy(`${mapId}/${id}`, intact, 48);
+    const anatomy = checkAnatomy(`${mapId}/${id}`, intact, FRACTURE_PIECE_CAP.light);
     // the light family's record: its footprint stays inside the build, its roof receipts survive the merge
     intact.computeBoundingBox();
     const b = intact.boundingBox;
@@ -146,7 +152,8 @@ for (const id of ['fieldhut', 'leanto']) {
 {
   const s = 256, { lum } = paintTimberGrain(s, 0x0a4);
   const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  const texel = (u, v) => lin(Math.min(1, Math.max(0.55, lum[Math.floor(((v % 1) + 1) % 1 * s) * s + Math.floor(((u % 1) + 1) % 1 * s)])));
+  // (a CanvasTexture flips its rows: v = 1 − row/size)
+  const texel = (u, v) => lin(Math.min(1, Math.max(0.55, lum[Math.min(s - 1, Math.floor((1 - (((v % 1) + 1) % 1)) * s)) * s + Math.floor(((u % 1) + 1) % 1 * s)])));
   // the flat texel and its neighbourhood (a minified sample averages round it)
   let around = 0, n = 0;
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { around += texel(SHED_FLAT_UV[0] + dx / s, SHED_FLAT_UV[1] + dy / s); n++; }

@@ -109,7 +109,7 @@ export function checkKitFracture(anatomy: KitFractureAnatomy, positions: ArrayLi
   if (!pieces.length) say('no pieces');
   if (pieces.length > cap) say(`${pieces.length} pieces, over the cap of ${cap}`);
   // runs: contiguous, in range, disjoint, covering every triangle (the live draw draws pieces only)
-  const order = pieces.map((piece, index) => index).sort((a, b) => pieces[a].tri0 - pieces[b].tri0);
+  const order = pieces.map((_piece, index) => index).sort((a, b) => pieces[a].tri0 - pieces[b].tri0);
   let next = 0;
   for (const index of order) {
     const piece = pieces[index];
@@ -167,7 +167,7 @@ export function checkKitFracture(anatomy: KitFractureAnatomy, positions: ArrayLi
   const queue: number[] = [];
   pieces.forEach((piece, index) => { if (piece.anchor) { held[index] = 1; queue.push(index); } });
   while (queue.length) for (const other of adjacency[queue.pop()!]) if (!held[other]) { held[other] = 1; queue.push(other); }
-  const loose = pieces.map((piece, index) => index).filter((index) => !held[index]);
+  const loose = pieces.map((_piece, index) => index).filter((index) => !held[index]);
   if (loose.length) say(`pieces not held by any anchor: ${loose.slice(0, 8).join(', ')}${loose.length > 8 ? ' …' : ''}`);
   return problems;
 }
