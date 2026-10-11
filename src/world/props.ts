@@ -8206,6 +8206,26 @@ ${snowCap ? `
   // Sealed lane 2026-10-10: each placed hulk's drawn footprint (the convex hull of its geometry in plan, its gun and
   // anything else past the solids its collision keeps), for the parked vehicles' seat passes (crushableFootprints)
   const wreckDrawnFootprints: CollisionRecord[] = [];
+  /** (sealed lane) A placed wreck piece's drawn footprint: the convex hull in plan of its vertices over `over` m above the
+   *  hulk's seat, with its height, for the parked vehicles' seat passes (crushableFootprints). */
+  function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): void {
+    const p = geo.getAttribute('position') as THREE.BufferAttribute, plan: [number, number][] = [];
+    let top = y;
+    for (let i = 0; i < p.count; i++) {
+      const py = p.getY(i);
+      if (py > top) top = py;
+      if (py > y + over) plan.push([p.getX(i), p.getZ(i)]);
+    }
+    const points = convexHull2(plan);
+    if (points.length < 6) return;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, cx = 0, cz = 0;
+    for (let k = 0; k < points.length; k += 2) {
+      x0 = Math.min(x0, points[k]); x1 = Math.max(x1, points[k]); z0 = Math.min(z0, points[k + 1]); z1 = Math.max(z1, points[k + 1]);
+      cx += points[k]; cz += points[k + 1];
+    }
+    wreckDrawnFootprints.push({ min: [x0, y, z0], max: [x1, top, z1],
+      shape2: { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points } });
+  }
   function* placeTankWrecks(): Generator<PropsBuildSlice, void, void> {
     const wCfg = P.tankWrecks || null;
     const requestedWrecks = wCfg ? (wCfg.count ?? 3) : (P.wrecks ?? 0);
@@ -8313,26 +8333,8 @@ ${snowCap ? `
         g.applyQuaternion(_quat);
         g.translate(x, y, z); // settled on dead suspension across its whole footprint
         wreckGeos.push(g);
-        {
-          // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
-          const p = g.getAttribute('position') as THREE.BufferAttribute, plan: [number, number][] = [];
-          let top = y;
-          for (let i = 0; i < p.count; i++) {
-            const py = p.getY(i);
-            if (py > top) top = py;
-            if (py > y + 0.3) plan.push([p.getX(i), p.getZ(i)]);
-          }
-          const points = convexHull2(plan);
-          if (points.length >= 6) {
-            let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, cx = 0, cz = 0;
-            for (let k = 0; k < points.length; k += 2) {
-              x0 = Math.min(x0, points[k]); x1 = Math.max(x1, points[k]); z0 = Math.min(z0, points[k + 1]); z1 = Math.max(z1, points[k + 1]);
-              cx += points[k]; cz += points[k + 1];
-            }
-            wreckDrawnFootprints.push({ min: [x0, y, z0], max: [x1, top, z1],
-              shape2: { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points } });
-          }
-        }
+        // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
+        pushWreckDrawnFootprint(g, y, 0.3);
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
         // read without adding draw calls, animation, or live vehicle state.
@@ -8346,6 +8348,8 @@ ${snowCap ? `
           debris.geo.applyQuaternion(_quat);
           debris.geo.translate(x, y + 0.01, z);
           wreckGeos.push(debris.geo);
+          // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
+          pushWreckDrawnFootprint(debris.geo, y, 0.05);
           debrisTris = debris.tris;
           bakedTris += debrisTris;
         }
@@ -9968,6 +9972,10 @@ ${snowCap ? `
     });
   }
   seatCartRecords();
+  // (sealed lane 2026-10-10) the parked vehicles' and carts' obstacles, for the world's shrub seal: no shrub's crown
+  // stands inside a parked vehicle (map.ts; the core rule left a bush's cards through a Reservoir truck's cab)
+  group.userData.parkedVehicleObstacles = destructibles.filter((record) => record.ob && !record.dropped
+    && (record.kind in CIVILIAN_VEHICLE_RECEIPTS || record.kind in CART_RECEIPTS)).map((record) => record.ob!);
 
   // -------------------------------------------------------------------------
   // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
