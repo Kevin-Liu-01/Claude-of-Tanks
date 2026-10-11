@@ -14,7 +14,7 @@
  * as if a held row were a fresh pose — and continued from its own newest sample when the render time has passed it.
  */
 import { ENTITY_FLAGS, RELOAD_KIND_NAMES, TICK_MS, dequantizeAngle, dequantizePosition, dequantizeReloadS,
-  dequantizeShellVelocity, dequantizeVelocity, shellTypeName } from '../wire/index.ts';
+  dequantizeShellVelocity, dequantizeUnitComponent, dequantizeVelocity, shellTypeName } from '../wire/index.ts';
 import type { EntityRow, PhaseId, ShellRow, SnapshotFrame, VerdictId } from '../wire/index.ts';
 
 /** One presented entity in SI units (metres, m/s, radians, seconds). */
@@ -48,6 +48,14 @@ export interface EntitySample {
   ammo2: number;
   flags: number;
   eraSpent: readonly number[];
+  /**
+   * A wreck's turret body (physics lane, wire 5): present, the turret frame's world pose (m, unit quaternion) and
+   * whether it sleeps. Blended between two rows that both carry one (position linear, rotation on the short arc).
+   */
+  wreckBody: boolean;
+  wbx: number; wby: number; wbz: number;
+  wbqx: number; wbqy: number; wbqz: number; wbqw: number;
+  wreckBodyAsleep: boolean;
   /** True when this sample was produced from a single frame (no pair to blend, or a discontinuity). */
   snapped: boolean;
 }
@@ -173,7 +181,8 @@ export function createEntitySample(entityId = 0): EntitySample {
     entityId, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     hp: 0, maxHp: 1, reloadS: 0, reloadTotalS: 0, reloadKind: 'ready', gunReloadS: 0, gunReloadTotalS: 0,
     gunReloadKind: 'ready', magazineRounds: 0, magazineCapacity: 0, shellSlot: 0, ammo0: 0, ammo1: 0, ammo2: 0,
-    flags: 0, eraSpent: [], snapped: true,
+    flags: 0, eraSpent: [], wreckBody: false, wbx: 0, wby: 0, wbz: 0, wbqx: 0, wbqy: 0, wbqz: 0, wbqw: 1,
+    wreckBodyAsleep: false, snapped: true,
   };
 }
 
@@ -210,6 +219,17 @@ export function decodeRow(row: EntityRow, out: EntitySample): EntitySample {
   out.flags = row.flags;
   out.auxiliaryJson = row.auxiliaryJson || '';
   out.eraSpent = row.eraSpent;
+  const body = row.wreckBody;
+  out.wreckBody = !!body;
+  if (body) {
+    out.wbx = dequantizePosition(body.x); out.wby = dequantizePosition(body.y); out.wbz = dequantizePosition(body.z);
+    let qx = dequantizeUnitComponent(body.qx), qy = dequantizeUnitComponent(body.qy);
+    let qz = dequantizeUnitComponent(body.qz), qw = dequantizeUnitComponent(body.qw);
+    const n = 1 / (Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw) || 1);
+    qx *= n; qy *= n; qz *= n; qw *= n;
+    out.wbqx = qx; out.wbqy = qy; out.wbqz = qz; out.wbqw = qw;
+    out.wreckBodyAsleep = body.asleep;
+  }
   out.snapped = true;
   return out;
 }
@@ -547,6 +567,18 @@ export class RemoteInterpolator {
     out.gunPitch = lerpAngle(a.gunPitch, b.gunPitch, t);
     out.reloadS = a.reloadS + (b.reloadS - a.reloadS) * t;
     out.gunReloadS = a.gunReloadS + (b.gunReloadS - a.gunReloadS) * t;
+    if (a.wreckBody && b.wreckBody) {
+      // the turret body between its two rows: linear, and nlerp on the short arc
+      out.wbx = a.wbx + (b.wbx - a.wbx) * t;
+      out.wby = a.wby + (b.wby - a.wby) * t;
+      out.wbz = a.wbz + (b.wbz - a.wbz) * t;
+      const sign = a.wbqx * b.wbqx + a.wbqy * b.wbqy + a.wbqz * b.wbqz + a.wbqw * b.wbqw < 0 ? -1 : 1;
+      let qx = a.wbqx + (sign * b.wbqx - a.wbqx) * t, qy = a.wbqy + (sign * b.wbqy - a.wbqy) * t;
+      let qz = a.wbqz + (sign * b.wbqz - a.wbqz) * t, qw = a.wbqw + (sign * b.wbqw - a.wbqw) * t;
+      const n = 1 / (Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw) || 1);
+      qx *= n; qy *= n; qz *= n; qw *= n;
+      out.wbqx = qx; out.wbqy = qy; out.wbqz = qz; out.wbqw = qw;
+    }
     out.snapped = false;
   }
 

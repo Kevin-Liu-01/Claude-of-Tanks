@@ -89,4 +89,9 @@ export function quantizeMultiplier(value: number): number {
 export function dequantizeMultiplier(units: number): number { return units / MULTIPLIER_SCALE; }
 
 export function clampU16(value: number): number { return clampInt(value, 0, 65535); }
+/** A unit quaternion component as an i16 (±1 = ±32767) and back. */
+export function quantizeUnitComponent(value: number): number {
+  return clampInt(Math.round((Number.isFinite(value) ? value : 0) * 32767), -32767, 32767);
+}
+export function dequantizeUnitComponent(units: number): number { return units / 32767; }
 export function clampU8(value: number): number { return clampInt(value, 0, 255); }

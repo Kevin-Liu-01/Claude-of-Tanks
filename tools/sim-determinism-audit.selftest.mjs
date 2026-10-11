@@ -14,5 +14,12 @@ assert.equal(report.identical, true, `two runs diverged at tick ${report.firstDi
 const dug = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, craters: true });
 assert.ok(dug.countsA.craters > 0, 'the crater run dug craters to compare');
 assert.equal(dug.identical, true, `two crater runs diverged at tick ${dug.firstDiffTick} (${dug.finalA} vs ${dug.finalB})`);
+// the wrecks' turret bodies (physics lane, 2026-10-10): two hulls burn out, their turrets come off their rings as bodies the
+// authority steps; their poses are in the hash
+const burned = runDeterminismAudit({ mapId: 'verdant', ticks: 900, seed: 7, kills: true });
+assert.equal(burned.countsA.kills, 2, 'both scripted hulls burned out');
+assert.equal(burned.countsA.turretBodies, 2, 'and their turrets are bodies');
+assert.equal(burned.identical, true, `two turret runs diverged at tick ${burned.firstDiffTick} (${burned.finalA} vs ${burned.finalB})`);
 console.log(`sim determinism: two ${report.ticks}-tick runs identical (${report.countsA.crushes} crushes, ${report.countsA.hits} hits, `
-  + `${report.countsA.events} events; ${report.wallMs} ms), and with craters on (${dug.countsA.craters} craters; ${dug.wallMs} ms)`);
+  + `${report.countsA.events} events; ${report.wallMs} ms), with craters on (${dug.countsA.craters} craters; ${dug.wallMs} ms) and with `
+  + `two turret bodies (${burned.wallMs} ms)`);

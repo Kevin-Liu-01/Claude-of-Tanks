@@ -175,6 +175,20 @@ export interface EntityRow {
   flags: number;
   /** Sorted spec-order ERA plate indices that have been spent. */
   eraSpent: number[];
+  /** A wreck's turret body (physics lane, wire 5); absent or null while it has none. */
+  wreckBody?: WreckBodyRow | null;
+}
+
+/** A wreck's turret frame where its rigid body lies: mm, i16 quaternion units (WRECK_BODY_Q_SCALE), asleep. */
+export interface WreckBodyRow {
+  x: number;
+  y: number;
+  z: number;
+  qx: number;
+  qy: number;
+  qz: number;
+  qw: number;
+  asleep: boolean;
 }
 
 /** A row as decoded from a snapshot: only the groups present on the wire. */

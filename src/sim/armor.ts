@@ -50,6 +50,12 @@ export interface TankArmorPose {
   modeScale?: number;
   roofGunYaw?: number;
   roofGunPitch?: number;
+  /**
+   * A wreck's turret off its ring (physics lane, 2026-10-10; sim/wreckTurrets.ts): the turret frame's world matrix (the
+   * body's pose with the hull's scale). The turret's plates, cells, gun and barrel are traced there; the hull stays at
+   * the hull's pose. Absent: the turret sits on its ring at turretYaw.
+   */
+  turretWorld?: Matrix4 | null;
 }
 
 export interface EraProtection {
@@ -375,6 +381,7 @@ export function tankPoseFromState(
   pose.turretYaw = state.turretYaw;
   pose.gunPitch = state.gunPitch;
   pose.roofGunYaw = state.roofGunYaw ?? 0; pose.roofGunPitch = state.roofGunPitch ?? 0;
+  if (pose.turretWorld) pose.turretWorld = null;
   return pose;
 }
 
@@ -396,10 +403,13 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   const tp = armorModel.turretPivot || [0, 0, 0];
   const gp = armorModel.gunPivot || [0, 0, 0];
 
-  // Turret frame: hull · T(turretPivot) · Ry(turretYaw)
-  _mA.makeRotationY(pose.turretYaw);
-  _mA.setPosition(tp[0], tp[1], tp[2]);
-  _turretM.multiplyMatrices(_hullM, _mA);
+  // Turret frame: hull · T(turretPivot) · Ry(turretYaw) — or, for a wreck's turret off its ring, its body's own pose
+  if (pose.turretWorld) _turretM.copy(pose.turretWorld);
+  else {
+    _mA.makeRotationY(pose.turretYaw);
+    _mA.setPosition(tp[0], tp[1], tp[2]);
+    _turretM.multiplyMatrices(_hullM, _mA);
+  }
   _turretInv.copy(_turretM).invert();
 
   // Gun-follow frame: turret geometry pitched about the trunnion —

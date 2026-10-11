@@ -170,6 +170,9 @@ interface KillcamVisual {
   root: THREE.Object3D;
   syncFromState(state: ReplayPoseState, dt?: number): void;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** Physics lane: the wreck's turret pose this frame (world turret frame), and the promise that it will come. */
+  setWreckTurretPose?(pose: ArrayLike<number> | null): void;
+  awaitWreckTurretPose?(): void;
   isDestroyed?(): boolean;
   resetDestroyed?(): void;
   setVisible?(visible: boolean): void;
@@ -216,7 +219,14 @@ export interface KillcamGame {
   tanks: KillcamEntity[];
   shells: KillcamShell[];
   tankById: Map<string, KillcamEntity>;
+  /** Physics lane: the step's turret bodies (sim/wreckTurrets.ts), recorded for the replay. */
+  _wreckTurrets?: { framePose(id: string, out: Float64Array): boolean; settled(id: string): boolean } | null;
 }
+
+/** A dead hull's turret as the step moved it, one pose a fixed step from its launch (the impact beat replays it). */
+interface TurretTrack { data: Float32Array; count: number; done: boolean }
+/** Steps of a turret's flight a track keeps (10 s: every flight has settled by then). */
+const TURRET_TRACK_STEPS = 600;
 
 interface ModuleHit {
   module: string;
@@ -566,6 +576,8 @@ interface PlaybackBundle {
   it: number;
   itWall: number;
   impactVis: KillcamVisual;
+  /** Physics lane: the live turret track the impact beat replays (null: the visual simulates its own). */
+  impactTrack: TurretTrack | null;
   xrayAng0: number;
   xrayHoldS: number;
   cameraBlend: {
@@ -1392,6 +1404,9 @@ export function createKillCam(deps: KillcamDeps) {
   let busRef: EventBus | null = null;      // bound in bindBus — replay lifecycle announcements
   const traj = new Map<number, TrajectoryRecord>(); // shellId -> { pts:number[], muzzle:[3] }
   const poseHistory = new Map<string, EntityFrame>(); // entity id -> prior fixed-step presentation state
+  // physics lane (2026-10-10): each dead hull's turret flight as the step moved it, replayed by the impact beat exactly
+  const turretTracks = new Map<string, TurretTrack>();
+  const _turretPose = new Float64Array(7);
   let pendingDeath: ReplaySnapshot | null = null;    // lethal shell snapshot, target = player
   let pendingVictory: ReplaySnapshot | null = null;  // lethal shell snapshot, attacker = player
   let lastHitOnPlayer: ReplaySnapshot | null = null; // fallback for fire deaths (x-ray only)
@@ -1745,6 +1760,7 @@ export function createKillCam(deps: KillcamDeps) {
       bus.on('ui:battleStart', () => {
         traj.clear();
         poseHistory.clear();
+        turretTracks.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
         lastLethal = lastDestroyed = null;
         lastHitByTarget.clear();
@@ -1803,6 +1819,7 @@ export function createKillCam(deps: KillcamDeps) {
         // map pose).
         traj.clear();
         poseHistory.clear();
+        turretTracks.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
         lastLethal = lastDestroyed = null;
         lastHitByTarget.clear();
@@ -1833,6 +1850,17 @@ export function createKillCam(deps: KillcamDeps) {
         if (!ent || !ent.state || ent.modeActive === false) continue;
         const frame = captureEntityFrame(ent);
         if (frame) poseHistory.set(ent.id, frame);
+        // a dead hull's turret: its pose this step, until it settles (one track a hull, from its launch)
+        const turrets = game._wreckTurrets;
+        if (!turrets || !ent.combat?.destroyed) continue;
+        let track = turretTracks.get(ent.id);
+        if (track?.done) continue;
+        if (!turrets.framePose(ent.id, _turretPose)) continue;
+        if (!track) { track = { data: new Float32Array(TURRET_TRACK_STEPS * 7), count: 0, done: false }; turretTracks.set(ent.id, track); }
+        const o = track.count * 7;
+        for (let k = 0; k < 7; k++) track.data[o + k] = _turretPose[k];
+        track.count++;
+        if (track.count >= TURRET_TRACK_STEPS || turrets.settled(ent.id)) track.done = true;
       }
     },
 
@@ -2276,6 +2304,7 @@ export function createKillCam(deps: KillcamDeps) {
       wreck: null,
       it: 0, itWall: 0,
       impactVis: null!,
+      impactTrack: null,
       xrayAng0: 0,
       xrayHoldS: XRAY_HOLD_S,
       cameraBlend: null,
@@ -3765,6 +3794,13 @@ export function createKillCam(deps: KillcamDeps) {
       restageIntact();
       vis.setDestroyed({ pop: !!snap.ev.ammoRacked, ageS: 0 });
       pb.impactVis = vis;
+      // the turret flies as it flew: the step's recorded track (none: the visual's own body of the same engine)
+      pb.impactTrack = (snap.targetEnt && turretTracks.get(snap.targetEnt.id)) || null;
+      if (pb.impactTrack && vis.awaitWreckTurretPose) {
+        vis.awaitWreckTurretPose();
+        replayTurretAt(pb.impactTrack, 0);
+        vis.setWreckTurretPose?.(_turretPose);
+      } else pb.impactTrack = null;
     }
     const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
     if (fxs && fxs.destruction) {
@@ -3795,6 +3831,21 @@ export function createKillCam(deps: KillcamDeps) {
     updateImpact(0);
   }
 
+  /** A recorded turret track at `ageS` from its launch into _turretPose (linear, short-arc nlerp; held at its end). */
+  function replayTurretAt(track: TurretTrack, ageS: number): void {
+    const t = Math.max(0, ageS * 60);
+    const i = Math.min(track.count - 1, Math.floor(t));
+    const j = Math.min(track.count - 1, i + 1);
+    const u = j === i ? 0 : t - i;
+    const a = i * 7, b = j * 7, d = track.data;
+    for (let k = 0; k < 3; k++) _turretPose[k] = d[a + k] + (d[b + k] - d[a + k]) * u;
+    const sign = d[a + 3] * d[b + 3] + d[a + 4] * d[b + 4] + d[a + 5] * d[b + 5] + d[a + 6] * d[b + 6] < 0 ? -1 : 1;
+    let n = 0;
+    for (let k = 3; k < 7; k++) { _turretPose[k] = d[a + k] + (sign * d[b + k] - d[a + k]) * u; n += _turretPose[k] * _turretPose[k]; }
+    n = 1 / (Math.sqrt(n) || 1);
+    for (let k = 3; k < 7; k++) _turretPose[k] *= n;
+  }
+
   function updateImpact(dt: number): void {
     // anim time advances on the SAME dilated clock main.ts scales the fx dt
     // by (fxTimeScale getter reads impactRate(pb.it)) — window, particles
@@ -3805,6 +3856,10 @@ export function createKillCam(deps: KillcamDeps) {
     // the sim/visual sync loop is frozen during replays (main.ts step 5) —
     // the killcam drives the victim's destruction timelines itself; the
     // internal advance rides the shared fx clock, dt is just the fallback.
+    if (pb.impactVis && pb.impactTrack) {
+      replayTurretAt(pb.impactTrack, pb.it);
+      pb.impactVis.setWreckTurretPose?.(_turretPose);
+    }
     if (pb.impactVis) pb.impactVis.syncFromState(pb.snapPoseState, dt * rate);
     // camera: hold the solved x-ray vantage, pushed out for the fireball and
     // eased back onto it — u runs 0..1 over the beat, the push-out bump is 0
@@ -4060,6 +4115,7 @@ export function createKillCam(deps: KillcamDeps) {
     pb.phase = 'xray';
     pb.xt = 0;
     pb.impactVis = null!;
+    pb.impactTrack = null;
     pb.wreck = null;
     restageIntact();
     hideFx();

@@ -10,7 +10,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // Vehicle controls widen action words and add auxiliary state plus smoke envelopes.
 // 4 (destruction, 2026-10-07): snapshots carry the destruction log (SNAPSHOT_FLAGS.HAS_DESTRUCTION, destructionLog.ts)
 // and the event kinds gain structure_stage, structure_breach and terrain_crater.
-export const WIRE_VERSION = 4;
+// 5 (physics, 2026-10-10): entity rows carry a wreck's turret body (ROW_GROUP.WRECK_BODY): its pose while it flies and
+// where it lies once it sleeps, the authority's (sim/wreckTurrets.ts).
+export const WIRE_VERSION = 5;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -197,9 +199,16 @@ export const ROW_GROUP = Object.freeze({
    */
   AGE: 1 << 16,
   AUXILIARY: 1 << 17,
+  /**
+   * u8 flags (bit 0 a body, bit 1 asleep), then with a body 3 × i32 mm and 4 × i16 quaternion units (WRECK_BODY_Q_SCALE):
+   * a wreck's turret frame where its rigid body lies (physics lane, wire 5). Sent while it changes; flags 0 = no body.
+   */
+  WRECK_BODY: 1 << 18,
 } as const);
-/** The widest row mask the decoder admits (18 groups). */
-export const ROW_GROUP_MASK_MAX = (1 << 18) - 1;
+/** The widest row mask the decoder admits (19 groups). */
+export const ROW_GROUP_MASK_MAX = (1 << 19) - 1;
+/** A wreck body's quaternion components as i16: ±1 = ±WRECK_BODY_Q_SCALE. */
+export const WRECK_BODY_Q_SCALE = 32767;
 
 /** Status word layout. */
 export const STATUS_RELOAD_KIND_SHIFT = 0;
