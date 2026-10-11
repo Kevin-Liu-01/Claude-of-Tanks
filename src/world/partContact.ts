@@ -383,7 +383,9 @@ export function auditPartContact(components: readonly PartComponent[], options: 
     const { axis, centre, lo, hi, radius } = principal(c.points);
     const length = hi - lo;
     if (length < 0.4 || length < barRatio * Math.max(radius * 2, 1e-3)) continue;
-    if (Math.abs(axis[1]) > 0.9) continue;
+    // only a raking bar (15-64 degrees off level: a brace, a strut, a stringer, a rafter) must meet something at both ends;
+    // a post's top is free, and a level bar may be a cross arm held at its middle (an aerial's elements, a sign's arm)
+    if (Math.abs(axis[1]) > 0.9 || Math.abs(axis[1]) < 0.26) continue;
     // the bar's cross-section frame
     const ref: V = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
     let u = cross(axis, ref); const ul = Math.hypot(u[0], u[1], u[2]); u = [u[0] / ul, u[1] / ul, u[2] / ul];

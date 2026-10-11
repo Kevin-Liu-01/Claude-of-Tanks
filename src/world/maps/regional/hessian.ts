@@ -862,9 +862,11 @@ const church: RegionalBuilder = (ctx) => {
       faceBox(sink, 'dark', f, u, towerH - 1.9, 0.01, 0.62, 1.6, 0.03, { decor: true });
       for (let k = 0; k < 5; k++) faceBox(sink, SW, f, u, towerH - 2.55 + k * 0.32, 0.04, 0.62, 0.06, 0.06, { colour: rgb(0x403a33), decor: true });
     }
-    faceBox(sink, SW, f, 0, towerH - 4.6, 0.04, 1.15, 1.15, 0.05, { colour: rgb(0xd8d2c2), decor: true });
-    faceBox(sink, 'dark', f, 0, towerH - 4.6, 0.075, 0.07, 0.5, 0.02, { decor: true });
-    faceBox(sink, 'stone', f, 0, towerH - 6.0, 0.02, 0.3, 0.9, 0.04, { decor: true });
+    // the clock and the slit window stand on the shaft below the belfry, whose hung tiles stand 8 cm proud of it: on the
+    // shaft's own face (the connectivity sweep: both hung 7-8 cm in front of the stone)
+    faceBox(sink, SW, f, 0, towerH - 4.6, -0.045, 1.15, 1.15, 0.05, { colour: rgb(0xd8d2c2), decor: true });
+    faceBox(sink, 'dark', f, 0, towerH - 4.6, -0.01, 0.07, 0.5, 0.02, { decor: true });
+    faceBox(sink, 'stone', f, 0, towerH - 6.0, -0.065, 0.3, 0.9, 0.04, { decor: true });
   }
   sink.span('stone', -towerS / 2 - 0.2, towerH - 3.75, tz - towerS / 2 - 0.2, towerS / 2 + 0.2, towerH - 3.55, tz + towerS / 2 + 0.2, { decor: true });
   // spire: eight-sided needle from a square base

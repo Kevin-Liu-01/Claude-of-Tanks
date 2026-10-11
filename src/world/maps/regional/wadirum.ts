@@ -323,7 +323,9 @@ const ruin: RegionalBuilder = (ctx) => {
     }
   }
   sink.member('plaster', [-W * 0.35, 0.2, -D * 0.2], [W * 0.3, 1.6, D * 0.25], 2.2, 0.2, [0, 1, 0], { decor: true, exposed: true });
-  rooftop(sink, W * 0.5, D * 0.5, 0.2, rng);
+  // the fallen roof's furniture on the floor among the stumps: its rebar sticking up from the rubble, its tank stand on
+  // the ground (the connectivity sweep: they stood on nothing, 20 cm up)
+  rooftop(sink, W * 0.5, D * 0.5, -0.05, rng);
   return sink.finish();
 };
 
@@ -409,7 +411,18 @@ const concreteTower: RegionalBuilder = (ctx) => {
   }
   sink.span('plaster', -S / 2, legH, -S / 2, S / 2, legH + tankH, S / 2);
   sink.span('plaster', -S / 2 - 0.12, legH + tankH, -S / 2 - 0.12, S / 2 + 0.12, legH + tankH + 0.25, S / 2 + 0.12);
-  for (let y = 0.4; y < legH + tankH; y += 0.35) sink.span('structureMetal', c + 0.22, y, -0.25, c + 0.26, y + 0.04, 0.25, { colour: rgb(0x5a5e60), decor: true });
+  // the ladder (the buildings and landmarks lane, 2026-10-10, the connectivity sweep: its rungs hung in the air between
+  // the legs, with no stiles): two stiles from the ground up past the tank's parapet, standing off the ring beams and the
+  // tank on brackets, the rungs between them
+  const lx = S / 2 + 0.1, iron = { colour: rgb(0x5a5e60), decor: true }, top = legH + tankH + 1.15;
+  for (const z of [-0.24, 0.24]) {
+    sink.span('structureMetal', lx - 0.025, -0.1, z - 0.025, lx + 0.025, top, z + 0.025, iron);
+    for (const y of [3.35, 6.35, legH + 0.6, legH + tankH - 0.4]) {
+      const x0 = y < legH ? c + 0.1 : S / 2 - 0.02;
+      sink.span('structureMetal', x0, y - 0.025, z - 0.02, lx + 0.02, y + 0.025, z + 0.02, iron);
+    }
+  }
+  for (let y = 0.4; y < legH + tankH + 0.9; y += 0.35) sink.span('structureMetal', lx - 0.02, y, -0.24, lx + 0.02, y + 0.04, 0.24, iron);
   return sink.finish();
 };
 

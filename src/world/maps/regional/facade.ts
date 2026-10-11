@@ -635,10 +635,12 @@ export function roofDormers(sink: PartSink, roof: { s: number; halfD: number; ta
       }
       // the dormer's roof
       if (style.kind === 'shed') {
-        const t = 0.1, over = 0.18;
-        const pts: Vec3[] = [[side * (xf + over), yt + 0.05, zc - dw / 2 - 0.12], [side * (xf + over), yt + 0.05, zc + dw / 2 + 0.12],
-          [side * xb, yt + 0.32, zc + dw / 2 + 0.12], [side * xb, yt + 0.32, zc - dw / 2 - 0.12]];
-        const n = normalize3([side * 0.27, Math.abs(xf + over - xb), 0]);
+        // (the connectivity sweep: the shed roof floated 5-9 cm over the cheeks and short of the main roof) its front
+        // on the cheeks' tops, its back tucked under the main roof's covering where it meets the slope
+        const t = 0.1, over = 0.18, yFront = yt - 0.01, yBack = Math.max(yt + 0.12, (roof.topAt(side * xb, zc) ?? yt + 0.32) - 0.03);
+        const pts: Vec3[] = [[side * (xf + over), yFront, zc - dw / 2 - 0.12], [side * (xf + over), yFront, zc + dw / 2 + 0.12],
+          [side * xb, yBack, zc + dw / 2 + 0.12], [side * xb, yBack, zc - dw / 2 - 0.12]];
+        const n = normalize3([side * (yBack - yFront), Math.abs(xf + over - xb), 0]);
         orientedPrism(sink, style.covering, pts, n, t);
       } else {
         const rise = dw * 0.42, over = 0.2;
