@@ -61,12 +61,22 @@ assert.match(kit, /map: track\(hardstandAlbedo\), normalMap: hardstandNormal/,
   'the pack owns its albedo; the floor-kind normal is shared and never disposed by a pack');
 assert.doesNotMatch(kit, /texturedMaterial\('cobble'/, 'no stretched paving tile on the hardstand');
 assert.doesNotMatch(kit, /garage_service_yard_wear/, 'the yard history lives in the hardstand, not a second decal');
-assert.match(kit, /Math\.max\(samplePatch\(patch, heights, x, z\), GARAGE_PLATFORM_GEOMETRY\.terrainSurfaceYM\) \+ 0\.02/,
+assert.match(kit, /return Math\.max\(ground, GARAGE_PLATFORM_GEOMETRY\.terrainSurfaceYM\) \+ 0\.02;/,
   'the apron drapes 2 cm over the shaped terrain, at the canonical ground surface inside the podium ring');
+assert.match(kit, /if \(ground > APRON_RISE_LIMIT_M\) return ground - 0\.06;/,
+  'above the rise limit the apron sinks under the terrain, so its edge follows the slope (wave 398: "jagged polygon edges")');
 assert.ok(GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM + 0.02 < 0,
   'inside the podium ring the apron stays below the turntable base (y = 0)');
 assert.match(kit, /if \(!terrace\.label\.startsWith\('fleet-service-'\)\) continue;[\s\S]*slab\.translate\(terrace\.x, terrace\.y \+ 0\.02, terrace\.z\)/,
-  'paved slabs lie on every fleet exhibit pad');
+  'paved slabs lie on the fleet exhibit pads');
+// 2026-10-11, wave 402 ("a hard-edged darker sand patch"): open earth yards on sand, snow or rock lay no pad slab;
+// concrete yards and Monsoon's grass keep their pads
+assert.match(kit, /const padSlabs = garageHardstandKind\(GARAGE_HARDSTAND_STYLES\[variant\.architecture\]\) === 'slab'\s*\|\| recipe\.terrainSurface === 'grass';/,
+  'pad slabs only where the yard is concrete or the terrain is grass');
+// 2026-10-11, waves 393 and 398 ("repeated tread decals", "confetti speckle"): curved compacted wheel paths and clumped
+// irregular grit replace the straight painted track lanes and the square flecks
+assert.doesNotMatch(wear, /for \(let i = 0; i < 26000; i\+\+\)/, 'no square confetti speckle');
+assert.match(wear, /const wheelPath = \(/, 'curved wheel paths');
 assert.doesNotMatch(wear, /setLineDash|fillText/, 'no painted bay boxes, dashes or stencils');
 assert.doesNotMatch(wear, /requestAnimationFrame|setInterval|addEventListener/, 'no per-frame or event work');
 assert.match(kit, /masonry: \{ color: garageFacilityAlbedo\('concrete'/, 'facility footings are cast concrete, not brick');

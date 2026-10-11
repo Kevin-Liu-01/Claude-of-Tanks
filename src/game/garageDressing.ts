@@ -248,6 +248,16 @@ export function createGarageDressing(
   // 398: "a battle-footage monitor on stands in every yard", "blank navy wall panels"): their own owner, shown there.
   const battleScreenOwner = new THREE.Group();
   battleScreenOwner.name = 'garage_battle_archive_displays';
+  // Verdant's workshop furniture that the outdoor yards replace with their own kit (2026-10-11, waves 398 and 402: "the
+  // same red box and drawer cabinet in every yard"): each piece sits in its bay, on its own owner, shown in Verdant only.
+  const verdantKitOwners: THREE.Group[] = [];
+  const verdantKit = (name: string): THREE.Group => {
+    const owner = new THREE.Group();
+    owner.name = `garage_verdant_kit_${name}`;
+    legacyVerdantRoot.add(owner);
+    verdantKitOwners.push(owner);
+    return owner;
+  };
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -1417,6 +1427,7 @@ export function createGarageDressing(
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
     battleScreenOwner.visible = isVerdant;
+    for (const owner of verdantKitOwners) owner.visible = isVerdant;
     group.userData.battleScreenVisible = isVerdant;
     if (isVerdant && battleScreenCurrentTexture) scheduleBattleScreenAdvance();
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
@@ -2822,7 +2833,7 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(17.4, 0.03, -14.9);
     legacyVerdantRoot.add(pool);
-    toolChest(14.2, -18.6, -0.4, mat.blueSteel, mat.steelDark, 0.9, legacyVerdantRoot);
+    toolChest(14.2, -18.6, -0.4, mat.blueSteel, mat.steelDark, 0.9, verdantKit('burlak_tool_chest'));
     const jack = new THREE.Group();
     jack.name = 'verdant_original_floor_jack';
     jack.position.set(15.2, 0, -12.4);
@@ -2915,8 +2926,8 @@ export function createGarageDressing(
     const flatPlate = put(plateGeometry, plateMaterial,
       -3.1, 0.03, 0.6, 0, 0, 0, 1, skirts);
     flatPlate.rotation.set(-Math.PI / 2, 0, 0.4);
-    toolChest(12.6, 15.4, 2.6, mat.redCab, mat.redCabDark, 1, legacyVerdantRoot);
-    toolChest(14.0, 20.6, -2.0, mat.olive, mat.steelDark, 0.72, legacyVerdantRoot);
+    toolChest(12.6, 15.4, 2.6, mat.redCab, mat.redCabDark, 1, verdantKit('abrams_tool_chest'));
+    toolChest(14.0, 20.6, -2.0, mat.olive, mat.steelDark, 0.72, verdantKit('abrams_parts_chest'));
     const tray = put(track(new THREE.BoxGeometry(0.5, 0.07, 0.32)), mat.steelBright,
       0.2, 1.72, -2.2, 0.3, 0, 0, 1, skirts);
     tray.castShadow = false;
@@ -3310,28 +3321,54 @@ export function createGarageDressing(
       rotisserie.position.copy(tank.position);
       rotisserie.rotation.copy(tank.rotation);
       legacyVerdantRoot.add(rotisserie);
-      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, tube, 10, 64));
+      // Each ring is a box-section steel hoop, not a tube (wave 402: "a hoop threaded through the K2 hull"), and four heavy
+      // clamp arms brace it to the hull's corners: an arm square to the hull face with a bolted pad, a screw jack at the
+      // ring, and a diagonal gusset back to the ring, so the fixture visibly carries the hull.
+      const SEGMENTS = 40;
+      const ringSegment = track(new THREE.BoxGeometry(2 * Math.PI * ringRadius / SEGMENTS + 0.02, 0.24, 0.34));
       const stations = [section.min.z + length * 0.24, section.max.z - length * 0.24];
       for (const station of stations) {
-        const ring = put(ringGeometry, mat.safety, cx, cy, station, 0, 0, 0, 1, rotisserie);
-        ring.name = 'k2_rotisserie_ring';
-        // a flat web inside the tube stiffens the ring where the clamps bolt on
+        const hoop = new THREE.Group();
+        hoop.name = 'k2_rotisserie_ring';
+        hoop.position.set(cx, cy, station);
+        rotisserie.add(hoop);
+        for (let k = 0; k < SEGMENTS; k += 1) {
+          const angle = (k / SEGMENTS) * Math.PI * 2;
+          const segment = put(ringSegment, mat.safety, Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0,
+            0, 0, angle + Math.PI / 2, 1, hoop);
+          segment.name = 'k2_rotisserie_ring_segment';
+        }
+        // the ring's flanges: thin steel lips either side of the box section
+        for (const lip of [-0.18, 0.18]) {
+          put(track(new THREE.TorusGeometry(ringRadius, 0.035, 6, 64)), mat.steelDark, 0, 0, lip, 0, 0, 0, 1, hoop, false);
+        }
         for (let arm = 0; arm < 4; arm += 1) {
           const angle = Math.PI / 4 + arm * (Math.PI / 2);
           const dx = Math.cos(angle), dy = Math.sin(angle);
           const reach = Math.min(halfW / Math.abs(dx), halfH / Math.abs(dy));
-          const inner = reach - 0.02, outer = ringRadius - tube * 0.6;
+          const inner = reach + 0.05, outer = ringRadius - 0.12;
           const armLength = outer - inner;
           const mid = (inner + outer) / 2;
-          const clamp = put(track(new THREE.BoxGeometry(0.16, armLength, 0.2)), mat.steelDark,
-            cx + dx * mid, cy + dy * mid, station, 0, 0, angle - Math.PI / 2, 1, rotisserie);
+          const clamp = put(track(new THREE.BoxGeometry(0.26, armLength, 0.3)), mat.safety,
+            dx * mid, dy * mid, 0, 0, 0, angle - Math.PI / 2, 1, hoop);
           clamp.name = 'k2_rotisserie_clamp_arm';
-          // the clamp's pad bolted to the hull, a screw jack at the ring
-          const pad = put(track(new THREE.BoxGeometry(0.34, 0.06, 0.34)), mat.rubber,
-            cx + dx * (inner + 0.03), cy + dy * (inner + 0.03), station, 0, 0, angle - Math.PI / 2, 1, rotisserie);
+          // the pad bolted to the hull face: a steel shoe with a rubber face
+          const touchesSide = halfW / Math.abs(dx) <= halfH / Math.abs(dy);
+          const padAngle = touchesSide ? (dx > 0 ? 0 : Math.PI) : (dy > 0 ? Math.PI / 2 : -Math.PI / 2);
+          const pad = put(track(new THREE.BoxGeometry(0.1, 0.62, 0.5)), mat.steelDark,
+            dx * (reach + 0.05), dy * (reach + 0.05), 0, 0, 0, padAngle, 1, hoop);
           pad.name = 'k2_rotisserie_clamp_pad';
-          put(track(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 10)), mat.steelBright,
-            cx + dx * (outer - 0.22), cy + dy * (outer - 0.22), station, 0, 0, angle - Math.PI / 2, 1, rotisserie, false);
+          put(track(new THREE.BoxGeometry(0.04, 0.56, 0.44)), mat.rubber,
+            dx * (reach + 0.005), dy * (reach + 0.005), 0, 0, 0, padAngle, 1, hoop, false);
+          // the screw jack at the ring end and a gusset from the arm's mid-length back to the ring
+          put(track(new THREE.CylinderGeometry(0.09, 0.09, 0.42, 10)), mat.steelBright,
+            dx * (outer - 0.24), dy * (outer - 0.24), 0, 0, 0, angle - Math.PI / 2, 1, hoop, false);
+          const gussetFrom = new THREE.Vector3(dx * mid, dy * mid, 0);
+          const sideAngle = angle + (arm % 2 ? 0.32 : -0.32);
+          const gussetTo = new THREE.Vector3(Math.cos(sideAngle) * (ringRadius - 0.1), Math.sin(sideAngle) * (ringRadius - 0.1), 0);
+          const gusset = put(track(new THREE.BoxGeometry(0.12, gussetFrom.distanceTo(gussetTo), 0.16)), mat.safety,
+            (gussetFrom.x + gussetTo.x) / 2, (gussetFrom.y + gussetTo.y) / 2, 0, 0, 0, 0, 1, hoop, false);
+          gusset.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), gussetTo.clone().sub(gussetFrom).normalize());
         }
       }
       // each ring's floor stand, in the authored frame: a base frame, two pedestals and the rollers under the ring
@@ -3435,7 +3472,7 @@ export function createGarageDressing(
       // The Abrams bay owner nests inside the shared root but merges alone, so
       // each destination can still carry it to its own placement.
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : []),
-        battleScreenOwner],
+        battleScreenOwner, ...verdantKitOwners],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.

@@ -232,10 +232,12 @@ assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
   'the tank rear must point toward the shared physical display');
 // 2026-10-11, the redesign (waves 393 and 398: "a battle-footage monitor on stands in every yard"): the two archive
 // monitors stand in Verdant's hall only, their own static owner, and their slideshow sleeps elsewhere
-assert.match(dressing, /battleScreenOwner\.visible = isVerdant;\s*group\.userData\.battleScreenVisible = isVerdant;/,
+assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,120}group\.userData\.battleScreenVisible = isVerdant;/,
   'the battle displays show in Verdant only');
 assert.match(dressing, /if \(isVerdant && battleScreenCurrentTexture\) scheduleBattleScreenAdvance\(\);/,
   'the archive slideshow never runs where its monitors are hidden');
+// 2026-10-11, waves 398 and 402 ("the same red box and drawer cabinet in every yard"): Verdant's chests are its own
+assert.match(dressing, /for \(const owner of verdantKitOwners\) owner\.visible = isVerdant;/, 'Verdant\'s workshop chests show in Verdant only');
 assert.match(dressing, /battleScreenDisplayCount = 2/,
   'two physically separate battle displays must surround the Garage');
 assert.match(dressing, /battleScreenResidentImageLimit = 3/,
@@ -243,7 +245,7 @@ assert.match(dressing, /battleScreenResidentImageLimit = 3/,
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
   'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,
-  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\),\s*battleScreenOwner\]/,
+  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\),\s*battleScreenOwner, \.\.\.verdantKitOwners\]/,
   'the shared bays, the movable Abrams bay, the Verdant-only interior and the Verdant-only monitors collapse static leaf draws independently');
 assert.match(dressing, /sharedMaintenanceBayCount = 4/);
 assert.match(dressing, /workshopOrbitCoverageDegrees = 360/);

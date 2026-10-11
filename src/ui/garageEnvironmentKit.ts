@@ -39,6 +39,7 @@ import {
   GARAGE_HARDSTAND_STYLES,
   GARAGE_SHEETING_TILE_M,
   garageFacilityAlbedo,
+  garageHardstandKind,
   garageHardstandAlbedo,
   garageHardstandNormal,
   garageHardstandNormalKind,
@@ -724,7 +725,15 @@ function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: numb
   return garageViewPoint(side, depth);
 }
 
-function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array): THREE.BufferGeometry {
+/**
+ * Metres per texture repeat on the terrain, per surface (2026-10-11, wave 398: "a hugely over-scaled cobblestone
+ * texture whose setts are nearly a soldier's height across"): every surface used to repeat about every 9.6 m.
+ */
+const TERRAIN_TILE_M: Readonly<Partial<Record<GarageSurfaceKey, number>>> = Object.freeze({
+  cobble: 1.8, grass: 4, rock: 6, sand: 8, snow: 8,
+});
+
+function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array, tileM = 9.6): THREE.BufferGeometry {
   const positions = new Float32Array(patch.width * patch.height * 3);
   const uvs = new Float32Array(patch.width * patch.height * 2);
   let vertex = 0;
@@ -734,8 +743,8 @@ function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array):
       positions[vertex * 3] = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
       positions[vertex * 3 + 1] = values[index];
       positions[vertex * 3 + 2] = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      uvs[vertex * 2] = (column / (patch.width - 1)) * 10;
-      uvs[vertex * 2 + 1] = (row / (patch.height - 1)) * 9;
+      uvs[vertex * 2] = ((column / (patch.width - 1)) * patch.sizeXM) / tileM;
+      uvs[vertex * 2 + 1] = ((row / (patch.height - 1)) * patch.sizeZM) / tileM;
       vertex += 1;
     }
   }
@@ -1142,7 +1151,7 @@ export function buildGarageEnvironment(
   };
   const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
-  const terrainGeometry = track(createTerrainGeometry(patch, heights));
+  const terrainGeometry = track(createTerrainGeometry(patch, heights, TERRAIN_TILE_M[recipe.terrainSurface] ?? 9.6));
   const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
     color: recipe.terrainTint, roughness: 0.94, metalness: 0,
   }));
@@ -1154,9 +1163,15 @@ export function buildGarageEnvironment(
   // the old 29 x 24 m box's corner standing proud over a dip). Inside the podium's terrain-clear ring it lies at the
   // canonical ground surface as before; beyond, 2 cm over the terrain, so no edge ever floats. Paved slabs under the
   // four fleet exhibits' pads join it in the same mesh and mapping (wave 338: "bay lines painted onto grass").
-  const apronHeightAt = (x: number, z: number): number => (
-    Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02
-  );
+  // Where the ground rises more than 0.45 m above the datum the pavement stops: its vertices there sink 6 cm under the
+  // terrain, so the visible edge is the line where the two surfaces cross, following the slope's contour (2026-10-11,
+  // wave 398: the old cut left "jagged polygon edges" and "blotchy slabs with ragged hard rims").
+  const APRON_RISE_LIMIT_M = 0.45;
+  const apronHeightAt = (x: number, z: number): number => {
+    const ground = samplePatch(patch, heights, x, z);
+    if (ground > APRON_RISE_LIMIT_M) return ground - 0.06;
+    return Math.max(ground, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02;
+  };
   const apronGeometry = new THREE.PlaneGeometry(29, 24, 29, 24);
   apronGeometry.rotateX(-Math.PI / 2);
   {
@@ -1166,8 +1181,13 @@ export function buildGarageEnvironment(
     }
   }
   const slabGeometries: THREE.BufferGeometry[] = [];
+  // Worked earth yards on open sand, snow or rock lay no slab under their bays: the pad is that ground, levelled
+  // (2026-10-11, wave 402: "a hard-edged darker sand patch"); concrete yards and the laterite pads on Monsoon's grass do.
+  const padSlabs = garageHardstandKind(GARAGE_HARDSTAND_STYLES[variant.architecture]) === 'slab'
+    || recipe.terrainSurface === 'grass';
   for (const terrace of terraceRecords) {
     if (!terrace.label.startsWith('fleet-service-')) continue;
+    if (!padSlabs) continue;
     // the pad's flat full-strength core is 1.2 radii; the slab covers 1.12, on the pad's datum
     const slab = new THREE.CircleGeometry(1, 40);
     slab.rotateX(-Math.PI / 2);
@@ -1176,8 +1196,8 @@ export function buildGarageEnvironment(
       const ring = slab.getAttribute('position');
       for (let index = 1; index < ring.count; index += 1) {
         const angle = Math.atan2(ring.getZ(index), ring.getX(index));
-        const wobble = 1 + 0.07 * Math.sin(angle * 3 + terrace.side) + 0.05 * Math.sin(angle * 7 + terrace.depth)
-          + 0.03 * Math.sin(angle * 13);
+        // a broad, even irregularity only: no ragged rim (wave 398)
+        const wobble = 1 + 0.05 * Math.sin(angle * 2 + terrace.side) + 0.025 * Math.sin(angle * 3 + terrace.depth);
         ring.setXYZ(index, ring.getX(index) * wobble, 0, ring.getZ(index) * wobble);
       }
     }
@@ -1193,8 +1213,8 @@ export function buildGarageEnvironment(
     slab.dispose();
   }
   // The pavement stops at the foot of a rise (2026-10-10, wave 357: Saltmere's draped apron climbed a hill behind the
-  // hero as "a shapeless grey tarp heap"): an apron cell whose ground stands more than 0.45 m above the datum is
-  // left to the terrain.
+  // hero as "a shapeless grey tarp heap"): above 0.45 m the apron sinks under the terrain (apronHeightAt), so the slope
+  // keeps its own ground and the pavement's edge follows its contour.
   const apronNonIndexed = (() => {
     const flat = apronGeometry.toNonIndexed();
     const positions = flat.getAttribute('position');
@@ -1204,7 +1224,7 @@ export function buildGarageEnvironment(
     for (let triangle = 0; triangle < positions.count; triangle += 3) {
       let highest = -Infinity;
       for (let corner = 0; corner < 3; corner += 1) highest = Math.max(highest, positions.getY(triangle + corner));
-      if (highest > 0.45 + 0.02) continue;
+      if (highest > 6) continue; // a cliff cell: nothing to pave
       for (let corner = 0; corner < 3; corner += 1) {
         keptPositions.push(positions.getX(triangle + corner), positions.getY(triangle + corner), positions.getZ(triangle + corner));
         keptUvs.push(uvs.getX(triangle + corner), uvs.getY(triangle + corner));

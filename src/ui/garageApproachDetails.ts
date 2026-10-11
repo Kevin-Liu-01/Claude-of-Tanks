@@ -287,8 +287,9 @@ export function addGarageApproachDetails({
       const point = samplePath(points, depth);
       for (const side of [-1, 1]) {
         addGroundBox(point.side + side * offset, depth, 0.12, height, 0.12, color);
-        addGroundBox(point.side + side * offset, depth, 0.34, 0.09, 0.16,
-          side > 0 ? 0xe3b54a : 0xe9ece5, 0, baked);
+        // the reflector band near the post's head, not a painted dash on the ground beside it (wave 398: "yellow lane
+        // dashes")
+        addLiftedBox(point.side + side * offset, depth, 0.14, 0.12, 0.14, side > 0 ? 0xe3b54a : 0xe9ece5, height - 0.22);
       }
     }
   };
@@ -319,9 +320,14 @@ export function addGarageApproachDetails({
       for (const lane of approach.lanes || [0]) addRailRoad(lane);
       for (const depth of [18, 34, 45]) {
         const point = samplePath(points, depth);
+        // a signal portal: two masts and the beam across the roads at their heads (it lay on the ground as a yellow bar)
         addGroundBox(point.side - 10.2, depth, 0.26, 6.2, 0.26, 0x34383a);
         addGroundBox(point.side + 10.2, depth, 0.26, 6.2, 0.26, 0x34383a);
-        addGroundBox(point.side, depth, 20.6, 0.24, 0.28, 0xd09a2f, 0, baked);
+        addLiftedBox(point.side, depth, 20.6, 0.3, 0.3, 0x34383a, 6.0);
+        for (const lane of approach.lanes || [0]) {
+          addLiftedBox(point.side + lane, depth, 0.34, 0.7, 0.24, 0x1e2224, 5.25);
+          addLiftedBox(point.side + lane, depth + 0.13, 0.12, 0.12, 0.02, 0xc8392e, 5.7);
+        }
       }
     },
     'desert-convoy': () => {
@@ -344,7 +350,6 @@ export function addGarageApproachDetails({
       addPath(points, approach.width, 0.16);
       addEdgeCourse(-approach.width / 2, 0x676b69, 0.38, 0.28);
       addEdgeCourse(approach.width / 2, 0x676b69, 0.38, 0.28);
-      addRuts(approach.lanes || [-3, 3], 0x4f5351, 0.16);
       // street lamps, staggered one side then the other (2026-10-11, waves 393 and 398: "a row of bare black posts ...
       // tall poles on the Steinburg shed"): a cast base, the column, an outreach arm over the road and its lantern
       for (const [depth, side] of [[24, -1], [40, 1]] as const) {
@@ -362,14 +367,11 @@ export function addGarageApproachDetails({
       addPath(points, approach.width, 0.22);
       addEdgeCourse(-approach.width / 2, 0x56666a, 0.42, 0.46);
       addEdgeCourse(approach.width / 2, 0x56666a, 0.42, 0.46);
-      addRuts(approach.lanes || [-3, 3], 0x39464a, 0.20);
       for (const depth of [17, 25, 33, 41]) {
         const point = samplePath(points, depth);
         for (const side of [-1, 1]) {
           addGroundCylinder(point.side + side * (approach.width / 2 + 1.0), depth,
             0.32, 0.72, 0x283337, 12);
-          addGroundBox(point.side + side * (approach.width / 2 + 0.55), depth,
-            1.0, 0.08, 0.22, 0xb59443);
         }
       }
     },
@@ -408,7 +410,6 @@ export function addGarageApproachDetails({
       addPath(points, approach.width, 0.18);
       addEdgeCourse(-approach.width / 2, 0x4e5051, 0.34, 0.30);
       addEdgeCourse(approach.width / 2, 0x4e5051, 0.34, 0.30);
-      addRuts(approach.lanes || [-3.2, 3.2], 0x2b3032, 0.22);
       for (const lane of [-approach.width / 2 - 0.8, approach.width / 2 + 0.8]) {
         const service = points.map((point) => ({ side: point.side + lane, depth: point.depth }));
         for (let index = 0; index < service.length - 1; index += 1) {

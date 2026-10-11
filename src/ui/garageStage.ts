@@ -122,7 +122,7 @@ function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const g = get2dContext(c, { willReadFrequently: true });
-  g.fillStyle = '#4e5154'; // r5: a step darker — keeps the key-spot pool below clip
+  g.fillStyle = '#54524d'; // r5: a step darker, keeps the key-spot pool below clip; 2026-10-11: warm, not blue-grey
   g.fillRect(0, 0, S, S);
   // large tonal blotches
   for (let i = 0; i < 90; i++) {
@@ -214,8 +214,9 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = get2dContext(c, { willReadFrequently: true });
-  // base panel color: a painted grey-blue sheet that reads as a wall (2026-10-10, wave 357: "near-black navy walls")
-  g.fillStyle = '#58616a';
+  // base panel color: a painted warm grey sheet (2026-10-10, wave 357: "near-black navy walls"; 2026-10-11, wave 402:
+  // "the hall drowned in a flat dark-navy cast")
+  g.fillStyle = '#6a675f';
   g.fillRect(0, 0, W, H);
   // vertical corrugation ribs (light/shadow pairs, 16px pitch)
   for (let x = 0; x < W; x += 16) {
@@ -818,7 +819,8 @@ export function createGarageStage(
       cable.position.set(x, 8.7, z);
       group.add(shade, glow, cable);
       // reach the hangar's far corners (~33 m) so the floor never dies to black
-      const pointLight = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
+      // camo_spotting r2: the highbay cast; 2026-10-11 (wave 402: "a flat dark-navy cast"): a warm metal-halide white
+      const pointLight = new THREE.PointLight(0xffe8cc, 40, 42, 1.9);
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
@@ -1105,7 +1107,7 @@ export function createGarageStage(
   // shadow"): low bounce fill aimed at the hull lower third / running gear —
   // parked near the podium front-right, tuned so tracks/wheels read under
   // the moody key without flattening it.
-  const gearFill = new THREE.PointLight(0xcfd8e6, 14, 9, 2);
+  const gearFill = new THREE.PointLight(0xeee2d0, 14, 9, 2);
   gearFill.position.set(2.6, 0.55, 2.2);
   gearFill.castShadow = false;
   verdantLights.push(gearFill);

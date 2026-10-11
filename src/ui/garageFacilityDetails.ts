@@ -16,6 +16,7 @@ import {
   LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
+import { garageContactShadowTexture } from './garageYardWear.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -39,7 +40,7 @@ interface GarageFacilityDetailStats {
 
 interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
   readonly meshes: readonly THREE.Mesh[];
-  readonly materials: readonly THREE.MeshStandardMaterial[];
+  readonly materials: readonly THREE.Material[];
 }
 
 /**
@@ -755,59 +756,6 @@ export function addGarageFacilityDetails({
     }
   };
 
-  const addWheelRack = (side: number, depth: number): void => {
-    const cluster = fixedCluster(side, depth);
-    looseParts += 12;
-    for (const x of [-2.1, 2.1]) {
-      clusterBox(cluster, x, 0, 1.1, 0.18, 2.2, 0.18, steel, 'structure');
-    }
-    for (const y of [0.48, 1.42]) {
-      clusterBox(cluster, 0, 0, y, 4.4, 0.16, 0.20, steel, 'structure');
-    }
-    for (let index = 0; index < 6; index += 1) {
-      const x = -1.65 + index * 0.66;
-      clusterCylinder(cluster, x, -0.05, index % 2 ? 1.50 : 0.56,
-        0.36, 0.19, rubber, Math.PI / 2, 12);
-      clusterCylinder(cluster, x, -0.05, index % 2 ? 1.50 : 0.56,
-        0.18, 0.21, accent, Math.PI / 2, 10);
-    }
-  };
-
-  const addTrackRack = (side: number, depth: number): void => {
-    const cluster = fixedCluster(side, depth);
-    clusterBox(cluster, 0, 0, 1.2, 4.8, 2.4, 0.24, steel, 'structure');
-    for (let index = 0; index < 30; index += 1) {
-      const column = index % 10;
-      const row = Math.floor(index / 10);
-      clusterBox(cluster, -2.08 + column * 0.46, -0.18,
-        0.38 + row * 0.64, 0.38, 0.12, 0.54, dark, 'equipment');
-      looseParts += 1;
-    }
-  };
-
-  // A roll-cab tool chest (2026-10-10, wave 338: "a blank maroon box"): drawer fronts with pulls on both long faces,
-  // a top tray lip, a push bar on one end and four casters.
-  const addToolCart = (side: number, depth: number, tint = primer): void => {
-    const cluster = fixedCluster(side, depth);
-    clusterBox(cluster, 0, 0, 0.66, 1.05, 1.24, 0.56, tint, 'painted');
-    for (const z of [-0.23, 0.23]) for (const x of [-0.42, 0.42]) {
-      clusterCylinder(cluster, x, z, 0.12, 0.10, 0.12,
-        rubber, Math.PI / 2, 8);
-    }
-    const face = tint.clone().multiplyScalar(1.18);
-    for (const longitudinal of [-0.292, 0.292]) {
-      for (const [y, height] of [[0.3, 0.2], [0.53, 0.2], [0.76, 0.2], [0.98, 0.18], [1.16, 0.14]] as const) {
-        clusterBox(cluster, 0, longitudinal, y, 0.97, height - 0.025, 0.018, face, 'painted');
-        clusterBox(cluster, 0, longitudinal * 1.06, y + height * 0.22, 0.42, 0.022, 0.024, steel, 'equipment');
-      }
-    }
-    clusterBox(cluster, 0, 0, 1.3, 1.09, 0.035, 0.6, dark, 'equipment');
-    clusterCylinder(cluster, 0.6, 0, 1.0, 0.016, 0.5, steel, Math.PI / 2, 8);
-    for (const longitudinal of [-0.2, 0.2]) {
-      clusterBox(cluster, 0.56, longitudinal, 1.0, 0.08, 0.03, 0.03, steel, 'equipment');
-    }
-  };
-
   const addPoweredWinch = (
     cluster: FacilityCluster,
     lateral: number,
@@ -1302,21 +1250,210 @@ export function addGarageFacilityDetails({
   addPurposeBuiltServiceBay(t90Bay, -1, true, false);
   addFloodTower(layout.floods[0][0], layout.floods[0][1], 7.6);
   addFloodTower(layout.floods[1][0], layout.floods[1][1], 7.6);
-  addCrates(leftLogistics[0], leftLogistics[1], 2);
-  addDrums(rightLogistics[0], rightLogistics[1], 6);
-  addWheelRack(leftParts[0], leftParts[1]);
-  addTrackRack(rightParts[0], rightParts[1]);
-  // The track inventory now lives inside an actual connected secure cage.
-  // Its wall bars sit outside the rack envelope, so the detail reads as one
-  // purposeful store rather than intersecting piles of workshop props.
-  addPartsAndFittingsCage(
-    fixedCluster(rightParts[0], rightParts[1]), 0, 0, accent, false,
-  );
+  // Kit for the place (2026-10-11, waves 398 and 402: "one stock kit everywhere: the same crate, tool chest, wheel rack
+  // and blank panels, recoloured per yard"): each Garage furnishes its four yard stations and the two shelter flanks
+  // with what its own army keeps there.
+  const sand = new THREE.Color(0xb59c72), olive = new THREE.Color(0x4f5638), snowCap = new THREE.Color(0xe8edf0);
+  const kitBuilders = {
+    // a jerrycan rack: a welded frame holding two rows of cans, the spout ends out, a locking bar chained across
+    jerrycans: (c: FacilityCluster): void => {
+      for (const x of [-1.25, 1.25]) clusterBox(c, x, 0, 0.62, 0.06, 1.24, 0.56, steel, 'structure');
+      clusterBox(c, 0, 0.32, 0.9, 2.56, 0.05, 0.05, dark, 'equipment');
+      secureStorageSystems += 1;
+      for (const y of [0.1, 0.66]) clusterBox(c, 0, 0, y, 2.6, 0.05, 0.56, steel, 'structure');
+      for (let row = 0; row < 2; row += 1) for (let k = 0; k < 7; k += 1) {
+        const tint = (k + row) % 3 === 0 ? sand : olive;
+        clusterBox(c, -1.05 + k * 0.35, 0, 0.36 + row * 0.56, 0.17, 0.46, 0.34, tint, 'painted');
+        clusterBox(c, -1.05 + k * 0.35, 0.08, 0.62 + row * 0.56, 0.12, 0.05, 0.06, dark, 'equipment');
+      }
+      looseParts += 14;
+    },
+    // a sandbag wall in staggered courses round a fuel point
+    sandbags: (c: FacilityCluster): void => {
+      for (let course = 0; course < 4; course += 1) for (let k = 0; k < 7; k += 1) {
+        clusterBox(c, -1.95 + k * 0.62 + (course % 2) * 0.31, 0, 0.09 + course * 0.17, 0.6, 0.17, 0.34,
+          course % 2 ? sand.clone().multiplyScalar(0.94) : sand, 'masonry');
+      }
+      looseParts += 28;
+    },
+    // a water bowser on its trailer: chassis, drawbar, two wheels each side, the tank and its manway
+    bowser: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.62, 3.0, 0.14, 1.3, dark, 'structure');
+      clusterBox(c, 1.9, 0, 0.55, 1.2, 0.08, 0.08, dark, 'structure');
+      for (const x of [-0.9, 0.3]) for (const z of [-0.72, 0.72]) clusterCylinder(c, x, z, 0.42, 0.42, 0.26, rubber, Math.PI / 2, 16);
+      clusterCylinder(c, -0.2, 0, 1.36, 0.66, 2.8, sand, 0, 16, Math.PI / 2);
+      clusterCylinder(c, -0.2, 0, 2.05, 0.24, 0.14, dark, 0, 16);
+      operationalMachines += 1;
+    },
+    // a diesel space heater on its skid with the warm-air duct running to the shelter
+    heater: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.08, 1.6, 0.16, 0.9, dark, 'structure');
+      clusterBox(c, 0, 0, 0.66, 1.4, 0.96, 0.76, olive, 'painted');
+      clusterCylinder(c, -0.45, 0, 1.4, 0.07, 0.6, steel, 0, 10);
+      for (let k = 0; k < 6; k += 1) clusterCylinder(c, 0.95 + k * 0.42, 0, 0.6 - k * 0.07, 0.17, 0.42, dark, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // split logs stacked between posts, a tarp over the top
+    woodpile: (c: FacilityCluster): void => {
+      for (const x of [-1.5, 1.5]) clusterBox(c, x, 0, 0.7, 0.1, 1.4, 0.1, timber, 'equipment');
+      for (let row = 0; row < 6; row += 1) for (let k = 0; k < 9; k += 1) {
+        clusterCylinder(c, -1.3 + k * 0.32 + (row % 2) * 0.16, 0, 0.13 + row * 0.22, 0.12, 0.9, timber.clone().multiplyScalar(0.9 + (k % 3) * 0.06), Math.PI / 2, 10);
+      }
+      clusterBox(c, 0, 0, 1.45, 3.3, 0.04, 1.1, olive, 'painted');
+      looseParts += 54;
+    },
+    // oil drums on a pallet; in the snow Garages each wears a cap of snow
+    drums: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.07, 2.4, 0.14, 1.6, timber, 'equipment');
+      for (let k = 0; k < 6; k += 1) {
+        const x = -0.78 + (k % 3) * 0.78, z = k < 3 ? -0.38 : 0.38;
+        const tint = k % 3 === 0 ? olive : k % 3 === 1 ? dark : new THREE.Color(0x6a3a2a);
+        clusterCylinder(c, x, z, 0.6, 0.3, 0.88, tint, 0, 16);
+        clusterCylinder(c, x, z, 0.44, 0.31, 0.03, steel, 0, 16);
+        clusterCylinder(c, x, z, 0.78, 0.31, 0.03, steel, 0, 16);
+        if (snowy) clusterCylinder(c, x, z, 1.06, 0.29, 0.06, snowCap, 0, 16);
+      }
+      looseParts += 6;
+    },
+    // a steel pallet cage of gas bottles, chained in, caps on
+    gasCage: (c: FacilityCluster): void => {
+      for (const x of [-0.95, 0.95]) for (const z of [-0.5, 0.5]) clusterBox(c, x, z, 0.85, 0.06, 1.7, 0.06, steel, 'structure');
+      for (const y of [0.08, 0.9, 1.68]) {
+        for (const z of [-0.5, 0.5]) clusterBox(c, 0, z, y, 1.96, 0.05, 0.05, steel, 'structure');
+        for (const x of [-0.95, 0.95]) clusterBox(c, x, 0, y, 0.05, 0.05, 1.04, steel, 'structure');
+      }
+      for (let k = 0; k < 8; k += 1) {
+        const x = -0.66 + (k % 4) * 0.44, z = k < 4 ? -0.2 : 0.2;
+        const tint = k % 2 ? new THREE.Color(0x2d4f3e) : new THREE.Color(0x8a8c88);
+        clusterCylinder(c, x, z, 0.72, 0.12, 1.3, tint, 0, 10);
+        clusterCylinder(c, x, z, 1.42, 0.06, 0.12, steel, 0, 10);
+      }
+      secureStorageSystems += 1;
+      looseParts += 8;
+    },
+    // pallets of boxed spares stacked two high, strapped
+    pallets: (c: FacilityCluster): void => {
+      for (const [x, z, high] of [[-0.7, 0, 2], [0.7, 0, 1], [0, 1.15, 1]] as const) {
+        for (let level = 0; level < high; level += 1) {
+          clusterBox(c, x, z, 0.07 + level * 0.92, 1.2, 0.14, 1.0, timber, 'equipment');
+          clusterBox(c, x, z, 0.5 + level * 0.92, 1.1, 0.72, 0.92, level % 2 ? olive : sand.clone().multiplyScalar(0.8), 'painted');
+          clusterBox(c, x, z, 0.5 + level * 0.92, 0.04, 0.74, 0.94, dark, 'equipment');
+        }
+      }
+      looseParts += 8;
+    },
+    // rope coils and a chain heap on the quay, a life ring on its post
+    ropes: (c: FacilityCluster): void => {
+      for (const [x, z] of [[-0.8, 0], [0.4, 0.3]] as const) {
+        for (let turn = 0; turn < 4; turn += 1) clusterCylinder(c, x, z, 0.05 + turn * 0.09, 0.42 - turn * 0.02, 0.08, new THREE.Color(0x8c7a52), 0, 16);
+      }
+      for (let k = 0; k < 6; k += 1) clusterCylinder(c, 1.3 + (k % 3) * 0.12, -0.3 + Math.floor(k / 3) * 0.2, 0.06 + (k % 2) * 0.08, 0.22, 0.12, dark, 0, 10);
+      clusterBox(c, -1.7, 0.6, 0.75, 0.1, 1.5, 0.1, steel, 'structure');
+      clusterCylinder(c, -1.7, 0.66, 1.15, 0.32, 0.1, new THREE.Color(0xd2522e), Math.PI / 2, 16);
+      looseParts += 9;
+    },
+    // a rail trolley on a short spur with sleepers stacked beside it
+    trolley: (c: FacilityCluster): void => {
+      for (let k = 0; k < 6; k += 1) clusterBox(c, -1.5 + k * 0.6, 0, 0.06, 0.22, 0.12, 1.9, timber, 'equipment');
+      for (const z of [-0.72, 0.72]) clusterBox(c, 0, z, 0.18, 3.6, 0.12, 0.08, steel, 'structure');
+      clusterBox(c, 0, 0, 0.5, 1.6, 0.1, 1.5, dark, 'structure');
+      for (const x of [-0.55, 0.55]) for (const z of [-0.72, 0.72]) clusterCylinder(c, x, z, 0.3, 0.16, 0.08, steel, Math.PI / 2, 16);
+      for (let level = 0; level < 4; level += 1) for (let k = 0; k < 4; k += 1) {
+        clusterBox(c, 2.6, -0.75 + k * 0.5, 0.08 + level * 0.16, level % 2 ? 2.2 : 0.24, 0.15, level % 2 ? 0.24 : 2.2, timber, 'equipment');
+      }
+      railSegments += 1;
+    },
+    // a tarp-covered pallet stack lashed down against the rain, duckboards across the mud to it
+    tarped: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.07, 2.4, 0.14, 1.6, timber, 'equipment');
+      clusterBox(c, 0, 0, 0.75, 2.3, 1.2, 1.5, new THREE.Color(0x3c5a44), 'painted');
+      for (const x of [-0.8, 0, 0.8]) clusterBox(c, x, 0, 0.75, 0.03, 1.24, 1.54, dark, 'equipment');
+      for (let k = 0; k < 6; k += 1) clusterBox(c, -1.6 + k * 0.62, 1.5, 0.04, 0.5, 0.06, 1.4, timber, 'equipment');
+      looseParts += 2;
+    },
+    // a portable pump on its skid, suction and discharge hoses laid out
+    pump: (c: FacilityCluster): void => {
+      clusterBox(c, 0, 0, 0.08, 1.4, 0.16, 0.8, dark, 'structure');
+      clusterBox(c, -0.25, 0, 0.5, 0.7, 0.62, 0.6, new THREE.Color(0xa2482a), 'painted');
+      clusterCylinder(c, 0.38, 0, 0.42, 0.2, 0.44, steel, 0, 16, Math.PI / 2);
+      for (let k = 0; k < 7; k += 1) clusterCylinder(c, 0.9 + k * 0.4, 0.15 * Math.sin(k), 0.06, 0.06, 0.42, dark, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // a winch drum on its frame and recovery chains coiled beside it
+    winchDrum: (c: FacilityCluster): void => {
+      for (const x of [-0.7, 0.7]) clusterBox(c, x, 0, 0.55, 0.14, 1.1, 0.8, steel, 'structure');
+      clusterCylinder(c, 0, 0, 0.75, 0.42, 1.3, dark, 0, 16, Math.PI / 2);
+      clusterCylinder(c, 0, 0, 0.75, 0.5, 0.06, steel, 0, 16, Math.PI / 2);
+      for (let k = 0; k < 5; k += 1) clusterCylinder(c, 1.6, 0.2, 0.05 + k * 0.08, 0.36 - k * 0.03, 0.08, dark, 0, 16);
+      heavyLiftSystems += 1;
+    },
+    // spare track sections stacked on bearers, grousers up
+    trackStack: (c: FacilityCluster): void => {
+      for (const x of [-1.2, 1.2]) clusterBox(c, x, 0, 0.08, 0.2, 0.16, 1.4, timber, 'equipment');
+      for (let level = 0; level < 4; level += 1) {
+        clusterBox(c, 0, 0, 0.22 + level * 0.12, 3.0, 0.1, 0.62, dark, 'equipment');
+        for (let k = 0; k < 10; k += 1) clusterBox(c, -1.35 + k * 0.3, 0, 0.29 + level * 0.12, 0.06, 0.04, 0.62, steel, 'equipment');
+      }
+      looseParts += 4;
+    },
+    // steel billets in a crib, rust on the ends
+    billets: (c: FacilityCluster): void => {
+      for (let level = 0; level < 4; level += 1) for (let k = 0; k < 6; k += 1) {
+        clusterBox(c, level % 2 ? -1.0 + k * 0.4 : 0, level % 2 ? 0 : -1.0 + k * 0.4, 0.12 + level * 0.24,
+          level % 2 ? 0.22 : 2.4, 0.22, level % 2 ? 2.4 : 0.22, k % 2 ? new THREE.Color(0x6b4434) : dark, 'equipment');
+      }
+      looseParts += 24;
+    },
+    // a slag pot on its stand, crusted
+    slagPot: (c: FacilityCluster): void => {
+      for (const x of [-0.9, 0.9]) clusterBox(c, x, 0, 0.45, 0.2, 0.9, 1.4, steel, 'structure');
+      clusterCylinder(c, 0, 0, 1.2, 0.95, 1.1, new THREE.Color(0x3e3533), 0, 16);
+      clusterCylinder(c, 0, 0, 1.78, 0.98, 0.08, new THREE.Color(0x6b5a50), 0, 16);
+      for (const x of [-1.02, 1.02]) clusterCylinder(c, x, 0, 1.3, 0.12, 0.2, steel, 0, 10, Math.PI / 2);
+      operationalMachines += 1;
+    },
+    // probe and shovel racks against avalanches, a sled beside them
+    avalancheKit: (c: FacilityCluster): void => {
+      for (const x of [-1.0, 1.0]) clusterBox(c, x, 0, 0.8, 0.08, 1.6, 0.08, steel, 'structure');
+      clusterBox(c, 0, 0, 1.5, 2.1, 0.06, 0.08, steel, 'structure');
+      for (let k = 0; k < 9; k += 1) clusterBox(c, -0.85 + k * 0.21, 0.06, 0.85, 0.03, 1.5, 0.03, k % 3 ? steel : new THREE.Color(0xd2522e), 'equipment');
+      clusterBox(c, 0, 0.9, 0.12, 2.0, 0.1, 0.7, new THREE.Color(0xd2522e), 'painted');
+      for (const z of [0.6, 1.2]) clusterBox(c, 0, z, 0.04, 2.2, 0.06, 0.05, steel, 'structure');
+      looseParts += 10;
+    },
+  } as const;
+  type KitName = keyof typeof kitBuilders;
+  const snowy = variant.architecture === 'repair_bunker' || variant.architecture === 'rock_cavern';
+  // the four yard stations (two logistics, two parts) and the flanks of the Burlak and T-90M shelters
+  const REGIONAL_KIT: Readonly<Partial<Record<GarageVariant['architecture'], readonly KitName[]>>> = Object.freeze({
+    shade_depot: ['jerrycans', 'bowser', 'sandbags', 'pallets', 'drums', 'jerrycans'],
+    repair_bunker: ['woodpile', 'heater', 'drums', 'gasCage', 'heater', 'woodpile'],
+    brick_arsenal: ['gasCage', 'pallets', 'billets', 'gasCage', 'pallets', 'drums'],
+    naval_drydock: ['ropes', 'pallets', 'drums', 'ropes', 'gasCage', 'pallets'],
+    rail_roundhouse: ['trolley', 'drums', 'trackStack', 'pallets', 'gasCage', 'drums'],
+    rain_canopy: ['tarped', 'pump', 'sandbags', 'gasCage', 'pump', 'drums'],
+    rock_cavern: ['avalancheKit', 'heater', 'drums', 'gasCage', 'heater', 'avalancheKit'],
+    recovery_yard: ['trackStack', 'winchDrum', 'drums', 'pallets', 'winchDrum', 'jerrycans'],
+    factory_line: ['billets', 'gasCage', 'slagPot', 'billets', 'gasCage', 'drums'],
+  });
+  const kit = REGIONAL_KIT[variant.architecture] ?? ['pallets', 'drums', 'pallets', 'drums', 'pallets', 'drums'];
   const burlakView = garageWorldPointToView(burlakBay.x, burlakBay.z);
   const t90View = garageWorldPointToView(t90Bay.x, t90Bay.z);
-  addToolCart(burlakView.side - 5.8, burlakView.depth + 1.2);
-  addToolCart(t90View.side + 5.8, t90View.depth + 1.2,
-    accent.clone().multiplyScalar(0.70));
+  const stations: ReadonlyArray<readonly [number, number]> = [
+    leftLogistics, rightLogistics, leftParts, rightParts,
+    [burlakView.side - 5.8, burlakView.depth + 1.2], [t90View.side + 5.8, t90View.depth + 1.2],
+  ];
+  const KIT_PURPOSE: Readonly<Record<KitName, string>> = Object.freeze({
+    jerrycans: 'fuel-and-water-point', sandbags: 'blast-protection', bowser: 'water-supply', heater: 'cold-start-heating',
+    woodpile: 'stove-fuel-store', drums: 'lubricant-store', gasCage: 'compressed-gas-store', pallets: 'spares-staging',
+    ropes: 'mooring-and-rigging', trolley: 'rail-transfer', tarped: 'weatherproof-stores', pump: 'drainage-pumping',
+    winchDrum: 'recovery-winching', trackStack: 'track-spares', billets: 'plate-and-billet-stock', slagPot: 'slag-handling',
+    avalancheKit: 'avalanche-rescue',
+  });
+  stations.forEach(([side, depth], index) => {
+    kitBuilders[kit[index]](fixedCluster(side, depth));
+    servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
+  });
   const [featureSide, featureDepth] = layout.feature;
   const featureCluster = fixedCluster(featureSide, featureDepth);
 
@@ -1545,7 +1682,7 @@ export function addGarageFacilityDetails({
   // frames as static scenery avoids both duplicate geometry and the old
   // silhouette-only vehicle/turret proxies that looked visibly unfinished.
   const meshes: THREE.Mesh[] = [];
-  const materials: THREE.MeshStandardMaterial[] = [];
+  const materials: THREE.Material[] = [];
   const makeInstances = (
     name: string,
     geometry: THREE.BufferGeometry,
@@ -1644,6 +1781,48 @@ export function addGarageFacilityDetails({
     timber: { maps: surfaces?.timber, color: new THREE.Color(0xc2ab8c), roughness: 0.9, metalness: 0.0, normalScale: 0.6 },
     glazing: { maps: undefined, color: new THREE.Color(0x2a3338), roughness: 0.12, metalness: 0.55, normalScale: 0 },
   });
+  // Contact shadows (2026-10-11, wave 394: "add contact shadow under every figure and prop"): every box that stands on
+  // the ground with a footprint of a crate or larger gets a soft dark blot a little wider than itself, on one draw.
+  {
+    const texture = garageContactShadowTexture();
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3();
+    const euler = new THREE.Euler();
+    const blots: THREE.Matrix4[] = [];
+    for (const instance of boxInstances) {
+      instance.matrix.decompose(position, quaternion, scale);
+      euler.setFromQuaternion(quaternion, 'YXZ');
+      if (Math.abs(euler.x) > 0.2 || Math.abs(euler.z) > 0.2) continue; // braces and leaning parts cast their own
+      const ground = groundAtWorld(position.x, position.z);
+      const bottom = position.y - scale.y / 2;
+      const area = scale.x * scale.z;
+      if (Math.abs(bottom - ground) > 0.14 || area < 0.06 || area > 40 || scale.y < 0.12) continue;
+      blots.push(new THREE.Matrix4().compose(
+        new THREE.Vector3(position.x, ground + 0.03, position.z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, euler.y, 'YXZ')),
+        new THREE.Vector3(scale.x * 1.3 + 0.35, scale.z * 1.3 + 0.35, 1),
+      ));
+    }
+    if (texture && blots.length) {
+      const material = new THREE.MeshBasicMaterial({
+        map: texture, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      });
+      material.name = 'garage-facility:contact-shadow';
+      materials.push(material);
+      const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, blots.length);
+      mesh.name = 'garage_facility_contact_shadows';
+      blots.forEach((matrix, index) => mesh.setMatrixAt(index, matrix));
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.renderOrder = 1;
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      meshes.push(mesh);
+    }
+  }
   for (const [surface, geometries] of surfaceGeometries) {
     if (!geometries.length) continue;
     const merged = mergeGeometries(geometries, false);
