@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { getDeviceTier } from '../engine/quality.ts';
+import { lightTune } from '../engine/lightModelCore.ts';
 
 /**
  * Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): a world-anchored
@@ -305,6 +306,9 @@ export function createGroundPressureField(
     },
     step(dt, anchorX, anchorZ) {
       if (disposed || !Number.isFinite(dt) || dt <= 0 || !Number.isFinite(anchorX) || !Number.isFinite(anchorZ)) return;
+      // (contact round 6; QA: __LIGHT_TUNE.GROUND_PRESS_EDGE / _FEATHER compare the press laws on one frame — the shots' A/Bs)
+      uniforms.uEdge.value = lightTune('GROUND_PRESS_EDGE', GROUND_PRESSURE_EDGE_M);
+      uniforms.uFeather.value = lightTune('GROUND_PRESS_FEATHER', GROUND_PRESSURE_FEATHER_M);
       const frameS = Math.min(dt, 0.1);
       const anchorSame = Math.abs(anchorX - anchor.x) <= STAMP_TOLERANCE && Math.abs(anchorZ - anchor.z) <= STAMP_TOLERANCE;
       const settled = primed && anchorSame && !stampsChanged && !simSleepDisabled();

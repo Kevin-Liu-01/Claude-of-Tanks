@@ -69,6 +69,8 @@ assert.ok(glsl.includes('return w + uSize * floor((uAnchor - w) / uSize + 0.5);'
 assert.ok(glsl.includes('float press = c.r * exp(-uDt / uRecover);'), 'the press springs back exponentially');
 assert.ok(glsl.includes('float crush = c.a * exp(-uDt / uCrushDecay);'), 'the bruise fades on its own, slower, clock');
 assert.ok(glsl.includes('float inside = (1.0 - smoothstep(uEdge, uFeather, hullDistance(w, a, b))) * b.z;'), 'the footprint press, whole past the skirt\'s edge, feathered beyond');
+assert.ok(source.includes("uniforms.uEdge.value = lightTune('GROUND_PRESS_EDGE', GROUND_PRESSURE_EDGE_M);")
+  && source.includes("uniforms.uFeather.value = lightTune('GROUND_PRESS_FEATHER', GROUND_PRESSURE_FEATHER_M);"), 'the law\'s QA levers, the constants shipped');
 assert.ok(glsl.includes('if (inside > press) {') && glsl.includes('press = inside;'), 'a stamp only ever raises the press: the trail stays until it recovers');
 assert.ok(glsl.includes('vec2 push = b.w > 0.5 ? a.zw : normalize(rel + vec2(1e-4, 0.0));'),
   'moving: along the travel; standing: outward from the belly');
