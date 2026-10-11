@@ -329,16 +329,30 @@ function bTroughBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
-function bStall(rng: Rng): THREE.BufferGeometry { // baked: market stall — counter, posts, striped awning
+/**
+ * A stall's wooden parts on the canvas material (the stall is one material, the structures' canvas, for its awning): their
+ * UVs spread a thousandfold, so the canvas print filters to its mean at every distance — a flat tint under the parts' own
+ * colour, no weave on the wood (gauntlet wave 396a, seen at pack time: "the stall counter fronts carry the same fine woven
+ * grid as the canvas"). Positions, colours and draws untouched.
+ */
+function noWeave<T extends THREE.BufferGeometry>(geo: T): T {
+  const uv = geo.attributes.uv;
+  if (uv) {
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1000, uv.getY(i) * 1000);
+    uv.needsUpdate = true;
+  }
+  return geo;
+}
+function bStall(rng: Rng): THREE.BufferGeometry { // market stall — counter, posts, striped canvas awning
   const parts = [];
-  parts.push(P(box(2.6, 0.10, 1.3).translate(0, 0.88, 0), WOOD_PALE, 0.10, rng)); // counter
-  parts.push(P(box(2.6, 0.5, 0.06).translate(0, 0.62, 0.62), WOOD, 0.12, rng));   // skirt
+  parts.push(noWeave(P(box(2.6, 0.10, 1.3).translate(0, 0.88, 0), WOOD_PALE, 0.10, rng))); // counter
+  parts.push(noWeave(P(box(2.6, 0.5, 0.06).translate(0, 0.62, 0.62), WOOD, 0.12, rng)));   // skirt
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
       // (2026-10-11: the posts a little taller — 2.28 m at the back, 2.04 m at the front — so the awning's valance hangs
       // over the contact band's 1.8 m top and the stall's collider stays the counter's and the posts'; were 2.15 / 1.85)
       const post = box(0.09, sz < 0 ? 2.28 : 2.04, 0.09);
-      parts.push(P(post.translate(sx * 1.22, (sz < 0 ? 2.28 : 2.04) / 2, sz * 0.58), WOOD, 0.10, rng));
+      parts.push(noWeave(P(post.translate(sx * 1.22, (sz < 0 ? 2.28 : 2.04) / 2, sz * 0.58), WOOD, 0.10, rng)));
     }
   }
   // striped awning (2026-10-11, the map-revival lane; the sealed lane's frames on Saltmere: "flat, untextured vertex
@@ -356,7 +370,7 @@ function bStall(rng: Rng): THREE.BufferGeometry { // baked: market stall — cou
   parts.push(P(sack.translate(-0.6, 1.02, 0.1), LINEN, 0.10, rng));
   const sack2 = sack.clone();
   parts.push(P(sack2.translate(1.15, -0.02, -0.25), TERRA, 0.10, rng));
-  parts.push(P(box(0.4, 0.24, 0.3).translate(0.45, 1.05, -0.15), WOOD, 0.10, rng));
+  parts.push(noWeave(P(box(0.4, 0.24, 0.3).translate(0.45, 1.05, -0.15), WOOD, 0.10, rng)));
   return merge(parts);
 }
 /** The awning's own stream (mulberry32), seeded from one draw of the stall's. */
@@ -439,11 +453,11 @@ function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const counter = box(2.4, 0.09, 1.2);
   counter.rotateY(0.16); counter.rotateZ(0.10);
-  parts.push(P(counter.translate(0.1, 0.14, 0), WOOD_PALE, 0.10, rng));
+  parts.push(noWeave(P(counter.translate(0.1, 0.14, 0), WOOD_PALE, 0.10, rng)));
   for (let k = 0; k < 3; k++) { // snapped posts
     const st = box(0.09, 0.05, 0.8 + rng() * 0.7);
     st.rotateY(rng() * Math.PI);
-    parts.push(P(st.translate((rng() - 0.5) * 2, 0.05, (rng() - 0.5) * 1.4), WOOD, 0.12, rng));
+    parts.push(noWeave(P(st.translate((rng() - 0.5) * 2, 0.05, (rng() - 0.5) * 1.4), WOOD, 0.12, rng)));
   }
   // awning draped over the wreck
   const drape = box(2.5, 0.05, 1.7);
