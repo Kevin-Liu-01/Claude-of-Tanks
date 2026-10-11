@@ -76,11 +76,22 @@ interface RockFormationBuild {
   /** Pieces (blocks, beds, plates, slabs, stones) the formation laid. */
   pieces: number;
   triangles: number;
+  /** Whether the desktop lays any piece of it (the hitbox lane, 2026-10-11): a phone's lean build of a small pavement can
+   * lay none, and a placement that read this tier's geometry placed the field's next formation on the phone alone. */
+  laid: boolean;
 }
 
 interface RockBuildOptions {
   /** Phones: fewer segments and fewer loose stones. */
   mobile?: boolean;
+  /**
+   * The desktop's own `mobile` for this formation and a fresh copy of its stream (the hitbox lane, 2026-10-11: a phone
+   * built its masses from its own leaner pieces, so its collision world drifted from the authority's on every map with
+   * formations — `capture-world-collision-manifests --tier=mobile`). When this build's `mobile` differs from the
+   * desktop's, the masses come from the pieces the desktop lays from that stream: a phone's collision is the desktop's,
+   * part for part (docs/DESTRUCTION.md §8.4); it still draws its own pieces.
+   */
+  collision?: { mobile: boolean; stream: () => Rng };
 }
 
 // ---------------------------------------------------------------------------------------------- palette
@@ -1021,13 +1032,13 @@ export function buildBedrock(
   const pieces: Piece[] = [];
   let lowest = Infinity;
   for (let j = 0; j < rays; j++) lowest = Math.min(lowest, climb[j]);
-  if (!Number.isFinite(lowest) || !(top > lowest)) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  if (!Number.isFinite(lowest) || !(top > lowest)) return { geometry: null, masses: [], pieces: 0, triangles: 0, laid: false };
   const sandstone = spec.geology === 'sandstone';
   const segLen = mobile ? 3.5 : 2.5;
   // the hill's reference radius (half way up its rock) sets the joint and dip arcs
   let rs = 0, rn = 0;
   for (let j = 0; j < rays; j += 4) { const r = edge(j, (lowest + top) * 0.5); if (Number.isFinite(r)) { rs += r; rn++; } }
-  if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0, laid: false };
   const rRef = Math.max(3, rs / rn);
   const rayAngle = (j: number) => (j / rays) * Math.PI * 2;
   // ---- the hill's own bedding (the beehive read: every dome bedded alike, its beds level and even as courses): its
@@ -1264,7 +1275,8 @@ export function buildBedrock(
       col.setXYZ(v, col.getX(v) * (lr + (ur - lr) * u), col.getY(v) * (lg + (ug - lg) * u), col.getZ(v) * (lb + (ub - lb) * u));
     }
   }
-  return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0 };
+  // (a bedrock skin publishes no mass: what it lays is its own tier's business)
+  return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0, laid: count > 0 };
 }
 
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
@@ -1278,22 +1290,30 @@ const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
  * read-only. Returns the welded vertex-coloured geometry, the standing masses' collision and the counts.
  */
 export function buildRockFormation(
-  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false }: RockBuildOptions = {},
+  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, collision }: RockBuildOptions = {},
 ): RockFormationBuild {
-  const pieces: Piece[] = [];
   const { min } = lowestGround(ground, spec.x, spec.z, spec.radius);
   const form = FORMS[spec.form];
   if (!form) throw new Error(`sceneryRocks: unknown form ${spec.form}`);
-  form(spec, ground, noise, rng, mobile, pieces);
-  // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
-  if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
-    const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
-    scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
-      ground, noise, rng, mobile, pieces);
-  }
-  const mass = massOf(pieces, ground, min);
+  const lay = (stream: Rng, lean: boolean): Piece[] => {
+    const laid: Piece[] = [];
+    form(spec, ground, noise, stream, lean, laid);
+    // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
+    if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
+      const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
+      scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
+        ground, noise, stream, lean, laid);
+    }
+    return laid;
+  };
+  const pieces = lay(rng, mobile);
+  // (the collision: the desktop's pieces, laid from a fresh copy of the stream when this tier lays others)
+  const desk = collision && collision.mobile !== mobile ? lay(collision.stream(), collision.mobile) : pieces;
+  const mass = massOf(desk, ground, min);
+  const laid = desk.length > 0;
+  if (desk !== pieces) for (const piece of desk) piece.geometry.dispose();
   const count = pieces.length;
   const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
   const triangles = geometry ? geometry.attributes.position.count / 3 : 0;
-  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles };
+  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles, laid };
 }
