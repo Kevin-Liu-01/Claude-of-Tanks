@@ -707,6 +707,8 @@ export function addPintleShield(context: PintleLayout): void {
   // vision slot per leaf under its own armoured hood; four bolt heads where the leaf meets its stiffener; a chamfered
   // top beam over the receiver. The envelope, the stiffeners and the braces to the cradle are those of round 4.
   const near = context.detail === 1;
+  // (2026-10-09, fleet-weapons lane: a fitting shield's 'detail' slot draws in the hull's camouflage on rendered builds,
+  // profiles/kit.ts fitMat; the slot stays 'detail' so the merged meshes, and every geometry fingerprint, are unchanged)
   const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
   const shieldZ = trunZ + 0.035 * s;
   const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;

@@ -9,7 +9,7 @@ import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
 import { lighthouse, mole, quay, slipway } from './harbour.ts';
 import { khan, lavoir } from './village.ts';
-import { bandstand, churchyard, fountain, garden, parkGate, parkSquare, path } from './parks.ts';
+import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare, path, stairway } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
 import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
@@ -53,6 +53,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   oreBin,
   oreCars,
   parkGate,
+  outfall,
   parkSquare,
   path,
   quay,
@@ -60,6 +61,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   statue,
   slipway,
   snowFence,
+  stairway,
   stationHall,
   stoneArchBridge,
   tennisCourt,

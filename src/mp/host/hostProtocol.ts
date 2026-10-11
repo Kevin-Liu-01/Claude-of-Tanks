@@ -63,8 +63,12 @@ export interface HostBootConfig {
   hostSecret: string;
   /** Where the collision manifests are served (`<base>/index.json`, `<base>/<map>.json`); null = the bare height field. */
   manifestBase: string | null;
-  /** A migration: boot at this state, at the tick the main thread computed (the keyframe's plus the wall time since). */
-  resume: (HostResumeState & { resumeTick: number }) | null;
+  /**
+   * A migration: boot at this state, at the tick the main thread computed (the keyframe's plus the wall time since).
+   * `holdForSeats` names the players the new host waits for before its world moves (the resume hold, matchHostCore.ts):
+   * the seats that were in the match when the old host went, the elected seat among them and the old host not.
+   */
+  resume: (HostResumeState & { resumeTick: number; holdForSeats?: readonly string[] }) | null;
   /** The snapshot rate for the near tier (SNAPSHOT_HZ when absent; a divisor of the tick rate). */
   snapshotHz?: number;
   /** The room's team arrangement (sides, wave size, enemy nation, score target, respawn, Mars settings): with the mode it names the ruleset the actor plays by (hostRuleset.ts). Absent on a pre-lane sealed config: the mode's own table. */
@@ -108,6 +112,12 @@ export interface HostCoreStats {
   interest: { published: [number, number, number]; held: number; population: [number, number, number] };
   /** Own-row hints applied and refused after a migration (P3b: the migration seed for hulls this host could not see). */
   resumeHints: { applied: number; rejected: number };
+  /**
+   * The resume hold of a migrated host (null for a fresh boot, or a resume nobody else was in): how long the world stood
+   * still, why it moved ('seats': every awaited seat was back; 'timeout': RESUME_HOLD_MS ran out; null: still holding),
+   * and how many of the awaited seats came back in time.
+   */
+  resumeHold: { heldMs: number; released: 'seats' | 'timeout' | null; awaited: number; arrived: number } | null;
 }
 
 export type HostToWorkerMessage =
