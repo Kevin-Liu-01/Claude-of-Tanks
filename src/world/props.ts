@@ -6717,8 +6717,10 @@ ${snowCap ? `
     paintBoulder(form, P.rockTone, lithology, rockBaseToneFor(mapId));
     rockGeos.push(form.geometry);
     // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
+    // (2026-10-11, the map-revival lane: with the map's angularity, as the desktop form has it — a phone on an angular
+    // map (Redrock, Reservoir, Copper Mesa, Mars, the Moon) derived its stones' colliders from the rounder form)
     const collisionForm = mobileProps
-      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
+      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular).geometry
       : form.geometry;
     rockForms.push(rockFormOf(collisionForm));
     if (collisionForm !== form.geometry) collisionForm.dispose();
