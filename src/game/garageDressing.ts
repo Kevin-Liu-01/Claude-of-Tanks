@@ -927,14 +927,17 @@ export function createGarageDressing(
   // packs, plus hand tools on the shared palette. Each scene stands in its exhibit's floor frame and is added before
   // the bay owner captures its children, so the crew moves with its bay. The mobile tier keeps the essential scenes.
   let crewMaterial: THREE.MeshStandardMaterial | null = null;
-  const crewPaintables: Array<{ mesh: THREE.Mesh; base: Float32Array; roles: Uint8Array; memberOf: Uint8Array }> = [];
+  const crewPaintables: Array<{ mesh: THREE.Mesh; base: Float32Array; roles: Uint8Array; memberOf: Uint8Array;
+    winter: boolean }> = [];
   let crewPaintedFor = '';
   function paintCrewsFor(variant: GarageVariant): void {
     const key = `${variant.architecture}:${crewPaintables.length}`;
     if (crewPaintedFor === key) return;
     crewPaintedFor = key;
     const region = CREW_REGION_DRESS[variant.architecture] ?? null;
+    const winter = region?.winter === true;
     for (const crew of crewPaintables) {
+      crew.mesh.visible = crew.winter === winter;
       const colours = crew.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
       paintCrewRegion(crew.base, crew.roles, crew.memberOf, region, colours.array as Float32Array);
       colours.needsUpdate = true;
@@ -989,6 +992,23 @@ export function createGarageDressing(
       base: (build.geometry.getAttribute('color').array as Float32Array).slice(),
       roles: build.roles,
       memberOf: build.memberOf,
+      winter: false,
+    });
+    // the same crew dressed for the snow Garages (fur hats, parkas), shown there in place of this one
+    const winterBuild = buildCrewSceneGeometry(scene, { winter: true });
+    const winterFigures = new THREE.Mesh(track(winterBuild.geometry), crewMaterial);
+    winterFigures.name = `garage_crew_${scene.id}_figures_winter`;
+    winterFigures.castShadow = true;
+    winterFigures.receiveShadow = true;
+    winterFigures.userData.keepDisplayMesh = true;
+    winterFigures.visible = false;
+    root.add(winterFigures);
+    crewPaintables.push({
+      mesh: winterFigures,
+      base: (winterBuild.geometry.getAttribute('color').array as Float32Array).slice(),
+      roles: winterBuild.roles,
+      memberOf: winterBuild.memberOf,
+      winter: true,
     });
     figures.castShadow = true;
     figures.receiveShadow = true;
@@ -1695,10 +1715,13 @@ export function createGarageDressing(
   ): void {
     if (turret) turret.visible = false;
     if (hull) {
+      // Only the tracks come off (2026-10-10, wave 377: with every wheel gone the rolled hull read as "an anonymous
+      // dark-green box with a few bolt-on blocks"): road wheels, idlers, sprockets, return rollers and suspension stay
+      // on, so the hull keeps its tank anatomy in the rotisserie; the shoes lie on their pallet.
       const removedGear: THREE.Object3D[] = [];
       hull.traverse((object) => {
-        if (object.userData.runningGear
-            || /^(gear|hullRunningGear|k2_track_rubber)/.test(object.name || '')) {
+        const name = object.name || '';
+        if (/^(gearTrack|gearThrownLinks|gearShadow|hullRunningGearTrack|k2_track_rubber)/.test(name)) {
           removedGear.push(object);
         }
       });
@@ -1715,9 +1738,9 @@ export function createGarageDressing(
 
   /**
    * The rolled K2 reads as a stripped hull, not a slab (2026-10-10, wave 357: "a featureless dark-green slab with a few
-   * knobs"): with its running gear off, the hull shows what a teardown exposes, in the hull's own frame so it rolls with
-   * it: road-arm hubs and bump stops down both sides, the final drives and idler mounts, the engine deck lifted off with
-   * the bay open and its harnesses hanging, the driver's hatch swung open and the belly escape hatch out.
+   * knobs"): with its tracks off and its wheels on, the hull shows what a teardown exposes, in the hull's own frame so
+   * it rolls with it: the engine deck lifted off with the bay open and its harnesses hanging, the driver's hatch swung
+   * open and the belly escape hatch out, and the bolt rows where the mine plate came off.
    */
   function addK2StrippedAnatomy(tank: THREE.Object3D, hull: THREE.Object3D | undefined): void {
     if (!hull) return;
@@ -1743,24 +1766,6 @@ export function createGarageDressing(
     const front = box.max.z;
     const rear = box.min.z;
     const length = front - rear;
-    const hub = track(new THREE.CylinderGeometry(0.11, 0.12, 0.16, 12).rotateZ(Math.PI / 2));
-    const arm = track(new THREE.BoxGeometry(0.1, 0.12, 0.46));
-    const stop = track(new THREE.BoxGeometry(0.12, 0.1, 0.16));
-    const axleY = belly + (top - belly) * 0.3;
-    for (const side of [-1, 1]) {
-      const x = cx + side * (halfWidth + 0.05);
-      for (let station = 0; station < 6; station++) {
-        const z = rear + length * (0.2 + station * 0.12);
-        put(hub, mat.steelDark, x, axleY, z, 0, 0, 0, 1, anatomy);
-        put(arm, mat.oily, x + side * 0.07, axleY - 0.06, z - 0.2, 0, -0.35, 0, 1, anatomy);
-        put(stop, mat.steelMid, x - side * 0.01, axleY + 0.24, z + 0.1, 0, 0, 0, 1, anatomy);
-      }
-      // final drive at the rear, idler crank at the front
-      put(track(new THREE.CylinderGeometry(0.3, 0.34, 0.26, 16).rotateZ(Math.PI / 2)), mat.steelDark,
-        x + side * 0.06, belly + (top - belly) * 0.52, rear + 0.42, 0, 0, 0, 1, anatomy);
-      put(track(new THREE.CylinderGeometry(0.16, 0.16, 0.2, 12).rotateZ(Math.PI / 2)), mat.oily,
-        x + side * 0.04, belly + (top - belly) * 0.42, front - 0.5, 0, 0, 0, 1, anatomy);
-    }
     // the engine deck lifted off: a dark open bay with its frame, the radiator core and hanging harnesses
     const bayLength = Math.min(2.2, length * 0.3);
     const bayZ = rear + bayLength / 2 + 0.25;
@@ -1797,8 +1802,8 @@ export function createGarageDressing(
           rear + length * (0.15 + k * 0.05), 0, 0, 0, 1, anatomy, false);
       }
     }
-    anatomy.userData.exposed = ['road-arm-hubs', 'bump-stops', 'final-drives', 'idler-cranks', 'open-engine-bay',
-      'hanging-harnesses', 'open-drivers-hatch', 'belly-escape-hatch', 'mine-plate-bolt-rows'];
+    anatomy.userData.exposed = ['open-engine-bay', 'hanging-harnesses', 'open-drivers-hatch', 'belly-escape-hatch',
+      'mine-plate-bolt-rows'];
   }
 
   function addK2RoadWheelStacks(
@@ -2486,8 +2491,10 @@ export function createGarageDressing(
     for (const [stationId, stationX, stationZ, loadKind] of [
       ['east_front', 12.0, -9.2, 'final-drive'],
       ['east_center', 14.4, 0, 'powerpack'],
-      ['east_rear', 13.2, 9.2, 'turret-basket'],
-      ['west_front', -12.0, -9.2, 'turret-basket'],
+      // every hook carries a load that reads as one (2026-10-10, wave 377: "the crane's turret-lift ring hangs empty",
+      // "the crane chains above the tank hang empty"): the turret-basket rings gave way to a pack and a final drive
+      ['east_rear', 13.2, 9.2, 'powerpack'],
+      ['west_front', -12.0, -9.2, 'final-drive'],
       ['west_center', -14.4, 0, 'final-drive'],
       ['west_rear', -13.2, 9.2, 'powerpack'],
     ] as const) {
@@ -3020,9 +3027,16 @@ export function createGarageDressing(
       0, 4.74, 0, 0, 0, 0, 1, gantry);
     put(track(new THREE.BoxGeometry(0.42, 0.3, 0.5)), mat.steelDark,
       0, 4.6, 0.4, 0, 0, 0, 1, gantry);
-    const chainGeometry = track(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6));
-    put(chainGeometry, mat.steelBright, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gantry, false);
-    put(chainGeometry, mat.steelBright, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gantry, false);
+    // load chains a hand thick, not hairlines (2026-10-10, wave 377: "the lifted turret hangs on two hairlines")
+    const chainGeometry = track(new THREE.CylinderGeometry(0.042, 0.042, 0.85, 8));
+    put(chainGeometry, mat.steelMid, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gantry);
+    put(chainGeometry, mat.steelMid, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gantry);
+    for (const side of [-1, 1]) {
+      for (let link = 0; link < 5; link += 1) {
+        put(track(new THREE.TorusGeometry(0.05, 0.016, 5, 10)), mat.steelBright, side * (0.16 - link * 0.02), 4.42 - link * 0.16, 0.4,
+          0, link % 2 ? Math.PI / 2 : 0, side * 0.12, 1, gantry, false);
+      }
+    }
     put(track(new THREE.BoxGeometry(0.3, 0.16, 0.16)), mat.steelDark,
       0, 3.72, 0.4, 0, 0, 0, 1, gantry);
     put(track(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 6)), mat.rubber,
@@ -3046,7 +3060,7 @@ export function createGarageDressing(
       const ray = new THREE.Raycaster();
       const down = new THREE.Vector3(0, -1, 0);
       // yellow polyester round slings, the kind every armour workshop lifts turrets with
-      const slingGeometry = track(new THREE.BoxGeometry(0.05, 1, 0.014));
+      const slingGeometry = track(new THREE.BoxGeometry(0.1, 1, 0.024));
       const right = gantry.localToWorld(new THREE.Vector3(1, 0, 0)).sub(gantry.localToWorld(new THREE.Vector3()));
       const forward = gantry.localToWorld(new THREE.Vector3(0, 0, 1)).sub(gantry.localToWorld(new THREE.Vector3()));
       let slings = 0;
@@ -3592,8 +3606,9 @@ export function createGarageDressing(
       legacyVerdantRoot.updateMatrixWorld(true);
       const toAuthored = (local: THREE.Vector3): THREE.Vector3 => legacyVerdantRoot.worldToLocal(tank.localToWorld(local));
       const hullAxis = toAuthored(new THREE.Vector3(0, 1.078, 1)).sub(toAuthored(new THREE.Vector3(0, 1.078, 0))).normalize();
-      const ringRadius = 2.0;
-      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, 0.075, 6, 44));
+      // rings that clear the hull's section with its wheels on (wave 377: "the ring clips it", "thin hoops")
+      const ringRadius = 2.4;
+      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, 0.12, 8, 56));
       const rollerGeometry = track(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 12));
       const rotisserie = markModernPart(new THREE.Group(), 'k2', 'hull_rotisserie');
       rotisserie.name = 'k2_hull_rotisserie';
@@ -3601,11 +3616,20 @@ export function createGarageDressing(
       legacyVerdantRoot.add(rotisserie);
       for (const station of [-2.75, 2.45]) {
         const centre = toAuthored(new THREE.Vector3(0, 1.078, station));
-        centre.y = ringRadius + 0.075 + 0.02;
+        centre.y = ringRadius + 0.12 + 0.02;
         const ring = put(ringGeometry, mat.safety, centre.x, centre.y, centre.z, 0, 0, 0, 1, rotisserie);
         ring.name = 'k2_rotisserie_ring';
         ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), hullAxis);
         const lateral = new THREE.Vector3().crossVectors(hullAxis, new THREE.Vector3(0, 1, 0)).normalize();
+        // the ring's clamp arms reach in to the hull at four points
+        for (let arm = 0; arm < 4; arm += 1) {
+          const angle = Math.PI / 4 + arm * Math.PI / 2;
+          const radial = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0).applyQuaternion(ring.quaternion);
+          const armMesh = put(track(new THREE.BoxGeometry(0.12, 0.62, 0.14)), mat.steelDark,
+            centre.x + radial.x * (ringRadius - 0.38), centre.y + radial.y * (ringRadius - 0.38),
+            centre.z + radial.z * (ringRadius - 0.38), 0, 0, 0, 1, rotisserie);
+          armMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.normalize());
+        }
         const base = put(track(new THREE.BoxGeometry(1.5, 0.08, 0.36)), mat.steelDark,
           centre.x, 0.04, centre.z, 0, 0, 0, 1, rotisserie);
         base.rotation.y = Math.atan2(lateral.x, lateral.z) - Math.PI / 2;

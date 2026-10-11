@@ -16,7 +16,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 type V3 = readonly [number, number, number];
 
-type CrewHeadgear = 'patrol-cap' | 'shlemofon' | 'watch-cap' | 'welding-hood' | 'ear-defenders' | 'bare';
+type CrewHeadgear = 'patrol-cap' | 'shlemofon' | 'watch-cap' | 'welding-hood' | 'ear-defenders' | 'bare' | 'ushanka';
 
 interface CrewDress {
   /** Coverall body colour (sRGB hex). */
@@ -392,8 +392,14 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
   // A face that reads at workshop range: a brow ridge, dark eye sockets under it, eyebrows, a nose wedge with its tip,
   // and a mouth line over the chin.
   block(parts, inHead(0, 0.014, 0.09), [0.108 * scale, 0.016 * scale, 0.018 * scale], headQ, dress.skin);
+  const skinLuma = (((dress.skin >> 16) & 255) * 0.3 + ((dress.skin >> 8) & 255) * 0.59 + (dress.skin & 255) * 0.11) / 255;
   for (const x of [-0.031, 0.031]) {
-    block(parts, inHead(x, -0.006, 0.088), [0.032 * scale, 0.014 * scale, 0.012 * scale], headQ, shade(dress.skin, 0.4));
+    // eye sockets kept light enough on dark skin that the face never becomes a smudge (wave 377), with the whites and
+    // the pupils that make a face read as one at workshop range
+    block(parts, inHead(x, -0.006, 0.088), [0.032 * scale, 0.014 * scale, 0.012 * scale], headQ,
+      shade(dress.skin, skinLuma < 0.42 ? 0.7 : 0.45));
+    block(parts, inHead(x, -0.006, 0.0945), [0.019 * scale, 0.009 * scale, 0.004 * scale], headQ, 0xd9d3c7);
+    block(parts, inHead(x * 0.94, -0.006, 0.097), [0.007 * scale, 0.008 * scale, 0.003 * scale], headQ, 0x1b1511);
     block(parts, inHead(x, 0.026, 0.096), [0.038 * scale, 0.009 * scale, 0.01 * scale], headQ, dress.hair);
   }
   const noseQ = headQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.28, 0, 0)));
@@ -571,9 +577,22 @@ export function buildCrewFigure(dress: CrewDress, pose: CrewPose): CrewFigureBui
 function headgear(parts: THREE.BufferGeometry[], dress: CrewDress,
   inHead: (x: number, y: number, z: number) => THREE.Vector3, headQ: THREE.Quaternion, scale: number): void {
   const hair = (): void => {
-    ball(parts, inHead(0, 0.036, -0.026), 0.1 * scale, dress.hair, [0.87, 0.8, 0.93], headQ, [9, 6]);
+    // the hairline comes down to the brow so a bare head never reads bald (wave 377: "a bald head with a putty face")
+    ball(parts, inHead(0, 0.042, -0.014), 0.101 * scale, dress.hair, [0.88, 0.8, 0.95], headQ, [9, 6]);
   };
   switch (dress.headgear) {
+    case 'ushanka': {
+      // the winter fur hat: a padded crown, the fur brim and the ear flaps tied down (2026-10-10: seasonal dress)
+      ball(parts, inHead(0, 0.05, -0.008), 0.108 * scale, dress.headColor, [0.95, 0.78, 1.0], headQ, [9, 6]);
+      const brim = new THREE.CylinderGeometry(0.112, 0.116, 0.05, 12, 1, true);
+      _m.compose(inHead(0, 0.03, -0.004), headQ, _s.set(scale * 0.95, scale, scale * 1.02));
+      parts.push(finish(brim, shade(dress.headColor, 1.35), _m));
+      block(parts, inHead(0, 0.07, 0.1), [0.15 * scale, 0.06 * scale, 0.03 * scale], headQ, shade(dress.headColor, 1.35));
+      for (const x of [-0.1, 0.1]) {
+        block(parts, inHead(x, -0.03, -0.006), [0.03 * scale, 0.11 * scale, 0.1 * scale], headQ, shade(dress.headColor, 1.35));
+      }
+      break;
+    }
     case 'patrol-cap': {
       // a flat-topped field cap with a short brim (the US patrol cap, the Bundeswehr Feldmütze)
       hair();
@@ -639,7 +658,7 @@ function headgear(parts: THREE.BufferGeometry[], dress: CrewDress,
 // --- national work dress ------------------------------------------------------
 // Low-albedo coverall colours keep the hero tank the brightest read in the frame; skin tones vary across a crew.
 const SKIN = Object.freeze([0xc79a7c, 0xa8775a, 0x8a5a3e, 0xd8ad8d, 0x6e4430] as const);
-const HAIR = Object.freeze([0x2a2018, 0x17130f, 0x3d2c1e, 0x52463a] as const);
+const HAIR = Object.freeze([0x2a2018, 0x17130f, 0x3d2c1e, 0x241c15] as const);
 
 type CrewNation = 'ru' | 'us' | 'de' | 'kr';
 
@@ -810,7 +829,21 @@ interface CrewSceneBuild {
 }
 
 /** Every member of a scene, posed and merged into one vertex-coloured geometry in the scene frame. */
-export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
+/**
+ * The same worker dressed for snow (2026-10-10, wave 377: "no summer olive or white overalls in snow"): a fur ushanka in
+ * place of a cap (a welder keeps his hood), a padded parka a size bulkier, sleeves down.
+ */
+export function winterDress(dress: CrewDress): CrewDress {
+  return {
+    ...dress,
+    headgear: dress.headgear === 'welding-hood' ? 'welding-hood' : 'ushanka',
+    headColor: dress.headgear === 'welding-hood' ? dress.headColor : 0x4a3d30,
+    build: (dress.build ?? 1) + 0.12,
+    sleevesRolled: false,
+  };
+}
+
+export function buildCrewSceneGeometry(scene: CrewScene, options: { readonly winter?: boolean } = {}): CrewSceneBuild {
   const geometries: THREE.BufferGeometry[] = [];
   const skeletons: CrewSkeleton[] = [];
   let triangles = 0;
@@ -819,13 +852,16 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
   const memberParts: Uint8Array[] = [];
   const probe = new THREE.Color();
   scene.members.forEach((member, memberIndex) => {
-    const build = buildCrewFigure(member.dress, member.pose);
+    const dress = options.winter ? winterDress(member.dress) : member.dress;
+    const build = buildCrewFigure(dress, member.pose);
     matrix.compose(vec(member.at), new THREE.Quaternion().setFromAxisAngle(_up, member.yaw), _s.set(1, 1, 1));
     build.geometry.applyMatrix4(matrix);
     // tag each vertex with the dress colour it carries, so a Garage can repaint the crew's cloth without a rebuild
+    // a welder's hood stays dark whatever the region paints its caps (wave 377: "the welder needs a mask")
     const dressColours: Array<[number, number]> = [
-      [1, member.dress.coverall], [2, member.dress.trim], [3, shade(member.dress.coverall, 1.45)], [4, member.dress.headColor],
-      [5, shade(member.dress.coverall, 1.03)],
+      [1, dress.coverall], [2, dress.trim], [3, shade(dress.coverall, 1.45)],
+      ...(dress.headgear === 'welding-hood' ? [] : [[4, dress.headColor] as [number, number]]),
+      [5, shade(dress.coverall, 1.03)],
     ];
     const keys = dressColours.map(([role, hex]) => { probe.setHex(hex); return [role, probe.r, probe.g, probe.b] as const; });
     const colours = build.geometry.getAttribute('color');
@@ -860,17 +896,19 @@ export function buildCrewSceneGeometry(scene: CrewScene): CrewSceneBuild {
  * the members cycle through and their headgear colour. Verdant keeps the national work dress authored per member.
  */
 export const CREW_REGION_DRESS: Readonly<Record<GarageVariant['architecture'], { readonly coverall: readonly number[];
-  readonly head: number; readonly stripe?: number } | null>> = Object.freeze({
+  readonly head: number; readonly stripe?: number; readonly winter?: boolean } | null>> = Object.freeze({
+  // Army work dress everywhere (wave 377: "orange coveralls ... a construction crew rather than army mechanics",
+  // "dark-blue peaked-cap uniforms read as police or sailors"); the snow Garages wear winter parkas and fur hats.
   field_shed: null,
   shade_depot: { coverall: [0x9a8360, 0x8c7554, 0xa08a66], head: 0x8a7a5a }, // desert tan, sun caps
-  repair_bunker: { coverall: [0xb4b8b3, 0xa5aaa5, 0x8f9590], head: 0x3b3631 }, // winter smocks, fur hats
-  brick_arsenal: { coverall: [0x2f3a4c, 0x37424f, 0x2a3442], head: 0x262d38 }, // navy arsenal overalls
-  naval_drydock: { coverall: [0xb0632a, 0xa35a26, 0x965226], head: 0xd6d6ce, stripe: 0xd8dcd6 }, // dock orange, white hard hats
-  rail_roundhouse: { coverall: [0x34506e, 0x3d5875, 0x2f4864], head: 0x343434, stripe: 0xc9cdc8 }, // railway blue
+  repair_bunker: { coverall: [0x4f5345, 0x585c4c, 0x484b3f], head: 0x4a3d30, winter: true }, // olive parkas, fur hats
+  brick_arsenal: { coverall: [0x5a5e54, 0x63675c, 0x52564d], head: 0x474b42 }, // grey-green arsenal work dress
+  naval_drydock: { coverall: [0x3a4352, 0x434c5c, 0x353d4a], head: 0x2c323b, stripe: 0x9ea6a8 }, // blue-grey naval coveralls
+  rail_roundhouse: { coverall: [0x5b5641, 0x645e47, 0x544f3c], head: 0x3e3b30, stripe: 0xb9b8a6 }, // olive-brown, reflective
   rain_canopy: { coverall: [0x3c4a35, 0x45523b, 0x36432f], head: 0x2c3729 }, // rain ponchos
-  rock_cavern: { coverall: [0x8e3328, 0x9a5a22, 0x7d2e26], head: 0xd5d0c6, stripe: 0xcfd2cf }, // alpine shells, helmets
+  rock_cavern: { coverall: [0x4c5153, 0x555b5d, 0x45494b], head: 0x4a3e33, winter: true }, // grey alpine parkas, fur hats
   recovery_yard: { coverall: [0x8a7b5a, 0x7d6e50, 0x948463], head: 0x6c6046 }, // khaki recovery crews
-  factory_line: { coverall: [0x4a4d50, 0x55585b, 0x404346], head: 0xc49c34, stripe: 0xc8c26a }, // mill greys, yellow hard hats
+  factory_line: { coverall: [0x4c5046, 0x55594e, 0x464a41], head: 0xb89a3a, stripe: 0xbdb77a }, // olive-grey, yellow hats
 });
 
 /**
@@ -910,7 +948,7 @@ function wheelCarrierPose(stagger: 1 | -1): CrewPose {
   const { gripReachM: reach, gripHeightM: y, gripHalfSpanM: span } = WHEEL_CARRY;
   return {
     pelvis: [0, 0.79, -0.06], spine: [0.17, 0.04 * stagger, 0], head: [0.2, 0.04 * stagger],
-    leftHand: [span, y, reach], rightHand: [-span, y, reach], leftGrip: 'carry', rightGrip: 'carry',
+    leftHand: [span, y, reach], rightHand: [-span, y, reach], leftGrip: 'fist', rightGrip: 'fist',
     leftPalm: [-0.75, 0.3, 0.6], rightPalm: [0.75, 0.3, 0.6],
     leftFoot: stagger > 0 ? [0.13, A, 0.06] : [0.12, A, -0.14],
     rightFoot: stagger > 0 ? [-0.13, A, -0.15] : [-0.13, A, 0.07],
@@ -1616,9 +1654,10 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
         break;
       }
       case 'breaker-bar': {
+        // a long, thick bar a reader can see in his fists (wave 377: "just leans on the hull with nothing in his hands")
         const d = dir(p[0], p[2]);
-        meshes.push(rod(p[1].clone().addScaledVector(d, -0.1), p[2], 0.015, materials.steelMid));
-        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.07, 10), materials.steelDark);
+        meshes.push(rod(p[1].clone().addScaledVector(d, -0.32), p[2], 0.024, materials.steelMid));
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.09, 10), materials.steelDark);
         socket.position.copy(p[2]);
         socket.quaternion.setFromUnitVectors(_up, d);
         meshes.push(socket);

@@ -10,6 +10,8 @@ import {
   GARAGE_BAY_ALTERNATE_SCENES,
   GARAGE_CREW_SCENES,
   GARAGE_REGIONAL_YARD_SCENES,
+  CREW_REGION_DRESS,
+  winterDress,
 } from './garageCrewFigures.ts';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
 import {
@@ -115,17 +117,30 @@ assert.ok(triangles <= 48000, `the crews stay inside 48k triangles (${triangles}
 {
   // a Garage shows the shared crews with its own left-band task in place of the track carry
   const carry = buildCrewSceneGeometry(GARAGE_CREW_SCENES.carry).triangles;
-  const bayTriangles = (id) => buildCrewSceneGeometry(GARAGE_CREW_SCENES[id]).triangles;
   for (const variant of GARAGE_VARIANTS) {
     const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
     const alternates = GARAGE_BAY_ALTERNATES[variant.architecture];
-    let shown = triangles;
-    if (regional) shown += regionalTriangles.get(regional.id) - carry;
-    for (const bay of ['leopard', 'k2']) {
-      if (alternates[bay]) shown += regionalTriangles.get(`${bay}-alt`) - bayTriangles(bay);
-    }
+    const winter = CREW_REGION_DRESS[variant.architecture]?.winter === true;
+    const shownScenes = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')
+      && !alternates[scene.id] && (variant.id === 'verdant_motor_pool' || scene.frame.parent !== 'verdant-interior')),
+      ...(regional && variant.id !== 'verdant_motor_pool' ? [regional] : []),
+      ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
+    const shown = shownScenes.reduce((sum, scene) => sum + buildCrewSceneGeometry(scene, { winter }).triangles, 0);
     assert.ok(shown <= 48000, `${variant.id}: the Garage's crews stay inside 48k triangles (${shown})`);
   }
+  // the snow Garages dress for the snow: fur hats and parkas, never white overalls or summer dress
+  for (const [architecture, region] of Object.entries(CREW_REGION_DRESS)) {
+    if (!region) continue;
+    for (const hex of region.coverall) {
+      const luma = (((hex >> 16) & 255) * 0.3 + ((hex >> 8) & 255) * 0.59 + (hex & 255) * 0.11) / 255;
+      const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+      assert.ok(luma < 0.62, `${architecture}: army work dress, not white overalls`);
+      assert.ok(!(r > 150 && r > g * 1.35 && r > b * 1.8), `${architecture}: no orange contractor coveralls`);
+    }
+  }
+  assert.ok(CREW_REGION_DRESS.repair_bunker.winter && CREW_REGION_DRESS.rock_cavern.winter, 'the snow Garages wear winter dress');
+  assert.equal(winterDress(crewDress('ru', 1)).headgear, 'ushanka', 'a fur hat in the snow');
+  assert.equal(winterDress(crewDress('kr', 1, 'welding-hood')).headgear, 'welding-hood', 'the welder keeps his hood');
   assert.ok(Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.leopard) && Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.k2),
     'some Garages work the Leopard and K2 bays their own way');
   assert.deepEqual(GARAGE_BAY_ALTERNATES.field_shed, { leopard: false, k2: false }, 'Verdant keeps its ruled bay stories');

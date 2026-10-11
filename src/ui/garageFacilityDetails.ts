@@ -462,7 +462,7 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
   };
 
-  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster): void => {
+  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0): void => {
     // One continuous slab and four explicit reinforced footings establish a
     // common datum. Every column, roof rail, brace and machine below derives
     // from this one baseY; terrain variation can no longer pull joints apart.
@@ -485,6 +485,9 @@ export function addGarageFacilityDetails({
       // Garage yaw and caused the visibly floating braces in orbit views.
       for (const longitudinal of [-1.86, 1.86]) {
         const inward = lateral < 0 ? 1 : -1;
+        // the inspection overhang and its ladder stand on one side: no brace runs through them (wave 377: "yellow
+        // diagonals piercing the deck and ladder at random angles")
+        if (deckLateralSign !== 0 && Math.sign(lateral) === deckLateralSign) continue;
         clusterBeam(cluster,
           [lateral, longitudinal, 0.42],
           [lateral + inward * 1.42, longitudinal, 5.18],
@@ -525,7 +528,7 @@ export function addGarageFacilityDetails({
     servicePurposeTags.add('overhead-travelling-crane');
     servicePurposeTags.add('grounded-service-pit');
 
-    addPurposeBuiltServiceBayFrame(cluster);
+    addPurposeBuiltServiceBayFrame(cluster, Math.sign(-mirror * 3.55));
 
     // Bridge crane: runway rails sit on the column heads, the bridge spans
     // between them, and a visible trolley/chain/hook terminates over the real
@@ -582,11 +585,14 @@ export function addGarageFacilityDetails({
     // of the real tank. The old +3.58 placement put a solid dark wall between
     // Frosthollow's camera and its Abrams. Split panels and open gaps retain a
     // readable tool wall without ever becoming one vehicle-height occluder.
-    const pegboard = new THREE.Color(0x9a9e98);
+    // Open tool racks, not boards (2026-10-10, wave 377: "three pale grey panels with black speckled, torn edges hang
+    // across the lower half of the frame, hiding the turret"): two rails per bay carry the hung tools, and the bay stays
+    // visible through them from every side.
     const toolSteel = new THREE.Color(0x5a5e60);
     for (const lateral of [-3.05, 0, 3.05]) {
-      clusterBox(cluster, lateral, -4.08, 1.28,
-        2.38, 2.16, 0.18, pegboard, 'painted');
+      for (const railY of [1.15, 1.98]) {
+        clusterBox(cluster, lateral, -4.08, railY, 2.38, 0.06, 0.08, steel, 'structure');
+      }
       // hung hand tools: spanners in a graded row, two hammers, a pry bar and a coil of air line
       for (let spanner = 0; spanner < 7; spanner += 1) {
         clusterBox(cluster, lateral - 0.9 + spanner * 0.16, -3.97, 1.92,
@@ -621,8 +627,11 @@ export function addGarageFacilityDetails({
     // lamps bring Verdant's believable wiring language into every outdoor bay.
     clusterBox(cluster, 0, -4.02, 4.62,
       8.8, 0.10, 0.10, dark, 'equipment');
+    // the junction cabinet stands on its own post to the floor (2026-10-10, wave 377: "boxes hang unsupported")
     clusterBox(cluster, mirror * 3.85, -3.96, 3.62,
-      0.72, 1.08, 0.28, primer, 'painted');
+      0.72, 1.08, 0.28, new THREE.Color(0x56605a), 'painted');
+    clusterBox(cluster, mirror * 3.85, -4.0, 1.54, 0.12, 3.08, 0.12, steel, 'structure');
+    clusterBox(cluster, mirror * 3.85, -4.0, 0.03, 0.36, 0.06, 0.36, dark, 'equipment');
     for (const lateral of [-2.15, 2.15]) {
       clusterBeam(cluster,
         [lateral, -4.02, 4.62],
@@ -647,13 +656,18 @@ export function addGarageFacilityDetails({
   };
 
   const addCrates = (side: number, depth: number, rows = 2): void => {
+    // the stack stands on dark pallets that spread its weight and show where it meets the ground (2026-10-10, wave 377:
+    // "crates float on snow")
+    for (let column = 0; column < 4; column += 1) {
+      box(side + column * 1.05 - 1.5, depth, 0.07, 1.04, 0.14, 1.0, dark, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 'equipment');
+    }
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < 4 - row; column += 1) {
         const width = 0.88 + ((row + column) % 2) * 0.22;
         box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.44 + row * 0.82, width, 0.78, 0.82, timber);
+          0.53 + row * 0.82, width, 0.78, 0.82, timber);
         box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.44 + row * 0.82, 0.08, 0.82, 0.86, steel);
+          0.53 + row * 0.82, 0.08, 0.82, 0.86, steel);
       }
     }
   };
@@ -1186,10 +1200,23 @@ export function addGarageFacilityDetails({
       4.6, 0.34, 0.48, safety, 'painted');
     clusterBox(cluster, -1.2, 0, height - 0.72,
       0.82, 0.55, 0.78, dark, 'equipment');
-    clusterCylinder(cluster, -1.2, 0, height - 2.55,
-      0.04, 3.15, steel, 0, 8);
-    clusterBox(cluster, -1.2, 0, height - 4.20,
-      0.50, 0.24, 0.20, steel, 'equipment', 0.52);
+    // the crane takes a real load (2026-10-10, wave 377: "two goalpost-like gantries behind the tank lift nothing"): a
+    // hook block on twin falls carries a spreader and four chains down to a pulled tank power pack hanging clear of
+    // the deck
+    for (const offset of [-0.18, 0.18]) {
+      clusterCylinder(cluster, -1.2 + offset, 0, height - 2.2, 0.045, 2.6, steel, 0, 8);
+    }
+    clusterBox(cluster, -1.2, 0, height - 3.6, 0.62, 0.42, 0.42, dark, 'equipment');
+    clusterBox(cluster, -1.2, 0, height - 4.05, 2.4, 0.16, 0.22, safety, 'painted');
+    for (const [lateral, longitudinal] of [[-1.05, -0.4], [-1.05, 0.4], [1.05, -0.4], [1.05, 0.4]] as const) {
+      clusterBeam(cluster, [-1.2 + lateral, 0, height - 4.12], [-1.2 + lateral * 0.82, longitudinal, height - 5.0],
+        0.03, steel, 'equipment');
+    }
+    clusterBox(cluster, -1.2, 0, height - 5.45, 1.9, 0.9, 1.0, new THREE.Color(0x4b5040), 'painted');
+    clusterBox(cluster, -0.45, 0, height - 5.4, 0.62, 0.8, 1.06, dark, 'equipment');
+    for (const offset of [-0.32, 0.32]) {
+      clusterCylinder(cluster, -1.55, offset, height - 4.95, 0.22, 0.12, steel, 0, 12);
+    }
   };
 
   // The old scene used one identical, tightly packed prop template in all

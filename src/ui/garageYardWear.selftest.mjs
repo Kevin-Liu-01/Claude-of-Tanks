@@ -27,8 +27,9 @@ const styles = new Set(outdoor.map((variant) => GARAGE_HARDSTAND_STYLES[variant.
 assert.equal(styles.size, outdoor.length, 'each outdoor Garage has its own hardstand style');
 assert.ok(outdoor.some((variant) => garageHardstandKind(GARAGE_HARDSTAND_STYLES[variant.architecture]) === 'earth'),
   'compacted earth where the region has no slab');
-assert.equal(GARAGE_HARDSTAND_STYLES.shade_depot, 'slab-sand', 'Sirocco: a sand-blown slab');
-assert.equal(GARAGE_HARDSTAND_STYLES.repair_bunker, 'slab-snow', 'Frosthollow: snow-packed');
+assert.equal(GARAGE_HARDSTAND_STYLES.shade_depot, 'earth-sand', 'Sirocco: compacted wadi sand and gravel');
+assert.equal(GARAGE_HARDSTAND_STYLES.repair_bunker, 'earth-snow', 'Frosthollow: snow-packed');
+assert.equal(GARAGE_HARDSTAND_STYLES.factory_line, 'earth-slag', 'Ironworks: a slag yard');
 
 // the texel layout is the apron's: square texels, slabs at a real pitch, the joint grid wrapping at the canvas edge
 assert.equal(GARAGE_HARDSTAND.widthM, 29);
