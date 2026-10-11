@@ -76,13 +76,21 @@ assert.equal(pavedSurfaceUniforms(MAP_PAVED_SURFACES.foundry, town).extra[0], 0.
 // (r4 frames: Kestrel's concrete lane class read smoother than its own slab print — it keeps the print, roads and aprons)
 assert.equal(MAP_PAVED_SURFACES.airfield, undefined, 'Kestrel keeps its airfield slabs');
 
-// the layout: a catalogued path takes its surface where the map's own pathStyles leave it unstyled
+// the layout: a catalogued path takes its surface where the map's own pathStyles leave it unstyled — or style only its
+// width or crown (2026-10-11: Tidegate's dyke lanes carry the map revival's widths and crown lifts; the clinker joins them)
 {
-  const field = createHeightField(1337, getMapConfig('polders'));
+  const cfgP = getMapConfig('polders');
+  const field = createHeightField(1337, cfgP);
   const styles = field._layout.roadStyles;
   assert.ok(styles && styles.length === field._layout.roads.length, 'Tidegate: a style per road line');
   const want = MAP_PATH_SURFACES.polders;
-  for (let i = 0; i < want.length; i++) assert.deepEqual(styles[i], want[i] ? { surface: want[i], catalogue: true } : null, `Tidegate path ${i}`);
+  const own = cfgP.terrain?.roads?.pathStyles ?? [];
+  for (let i = 0; i < want.length; i++) {
+    const o = own[i] ?? null;
+    const exp = o ? (o.surface || !want[i] ? o : { ...o, surface: want[i], catalogue: true }) : want[i] ? { surface: want[i], catalogue: true } : null;
+    assert.deepEqual(styles[i], exp, `Tidegate path ${i}`);
+    if (want[i]) assert.equal(styles[i].surface, want[i], `Tidegate path ${i} keeps its catalogued ${want[i]}`);
+  }
   // the road layer marks a catalogued class with bit 7, so the Low tier draws the path as the map's own road. (2026-10-10:
   // built as production builds it — Tidegate's shore stamp (shoreDirt, seaRamp[0] 0.12) reuses the road raster after the
   // layers are taken; before, every texel read its distance to the water and the layer came out empty)

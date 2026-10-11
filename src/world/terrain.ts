@@ -1099,7 +1099,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
     // (buildPathRoads keeps every path of two or more points, in order: a style follows its path)
     // (roads lane, 2026-10-09: a path the catalogue surfaces — roadSurfaces.ts MAP_PATH_SURFACES, by the map's year — is
-    // styled with that surface where the map's own pathStyles leave it unstyled)
+    // styled with that surface where the map's own pathStyles leave it unstyled; 2026-10-11: and where the map's own style
+    // sets only its width or its crown — Tidegate's dyke lanes — the catalogue's surface joins it)
     const catalogue = (cfg?.id && MAP_PATH_SURFACES[cfg.id]) || null;
     if (t.roads.paths && (t.roads.pathStyles?.some((st) => !!st) || catalogue?.some((sf) => !!sf))) {
       roadStyles = new Array<RoadPathStyle | null>(gridCount).fill(null);
@@ -1107,7 +1108,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
         if (!Array.isArray(path) || path.length < 2) return;
         const own = t.roads !== 'country' ? t.roads?.pathStyles?.[i] ?? null : null;
         const surface = catalogue?.[i] ?? null;
-        roadStyles!.push(own ?? (surface ? { surface, catalogue: true } : null));
+        roadStyles!.push(own ? (own.surface || !surface ? own : { ...own, surface, catalogue: true })
+          : surface ? { surface, catalogue: true } : null);
       });
     }
   }
