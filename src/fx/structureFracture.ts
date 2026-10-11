@@ -47,9 +47,12 @@ export interface StructureFractureOptions {
 }
 
 export interface StructureFracture {
-  /** A round on a wall (world point and travel): true when it broke a face (the caller lays no hole of its own). */
+  /**
+   * A round on a wall (world point and travel): the faces it took and redrew, as [storey, face index] pairs, when it
+   * broke one (the caller lays no hole of its own and lets the kit's runs on those faces go); null when it struck none.
+   */
   strike(seam: StructureDamageSeam, x: number, y: number, z: number, dirX: number, dirZ: number, munition: MunitionClass,
-    chargeKg: number, caliberMm: number, radiusM?: number): boolean;
+    chargeKg: number, caliberMm: number, radiusM?: number): number[] | null;
   /** Whether a building has faces drawn here. */
   has(structureIdx: number): boolean;
   /** Its standing faces' meshes (world space): a collapse cuts them with the building. */
@@ -922,10 +925,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   return {
     strike(seam, x, y, z, dirX, dirZ, munition, chargeKg, caliberMm, radiusM) {
       const a = seam.anatomy;
-      if (!a.storeys.length) return false;
+      if (!a.storeys.length) return null;
       const hole = holeFor(munition, chargeKg, caliberMm);
       if (radiusM !== undefined && radiusM > 0) hole.radiusM = radiusM;
-      if (!(hole.radiusM > 0)) return false;
+      if (!(hole.radiusM > 0)) return null;
       let live = lives.get(seam.structureIdx);
       if (!live) {
         live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), room: [], roomStoreys: new Set(), baked: [], strikes: 0 };
@@ -940,7 +943,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const bdx = (dirX * c - dirZ * s) / dl, bdz = (dirX * s + dirZ * c) / dl;
       const seed = damageSeed(a.seed, 7001, live.strikes++, Math.round(bx * 100), Math.round(by * 100), Math.round(bz * 100));
       if (!strikeWall(live.wall, { x: bx, y: by, z: bz, dirX: bdx, dirZ: bdz, radiusM: hole.radiusM, kind: hole.kind, seed }, outcome)) {
-        return false;
+        return null;
       }
       // the faces it touched: the struck one, and every one a fallen cluster runs through
       const touched = new Set<number>([outcome.face]);
@@ -957,7 +960,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         redraw(live, draw);
       }
       sagRoof(live);
-      return true;
+      const faces: number[] = [];
+      for (const f of touched) faces.push(live.wall.faces[f].storey, live.wall.faces[f].faceIndex);
+      return faces;
     },
     has(structureIdx) { return lives.has(structureIdx); },
     standing(structureIdx) {
