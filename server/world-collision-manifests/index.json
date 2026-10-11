@@ -82,10 +82,10 @@
       "concealers": 10071
     },
     "badlands": {
-      "bytes": 1223002,
-      "sha256": "90be6af79785dbc35363c486258f5155cba73f4f361d5c636382d03354bd4c79",
+      "bytes": 1227607,
+      "sha256": "ea1d272cf8efe97403c105b5194268ddf974a09d0a09f77fb676184f456dc7f1",
       "obstacles": 1681,
-      "colliders": 1386,
+      "colliders": 1407,
       "concealers": 248
     },
     "monsoon": {
@@ -316,10 +316,10 @@
         "concealers": 10098
       },
       "badlands": {
-        "bytes": 1408447,
-        "sha256": "ef0bac9caec0f4b3abfd8527231503a1df47b2361e108aa0c1ca6f387a352af0",
+        "bytes": 1412992,
+        "sha256": "3628e74177051a6fe4be50fea015dcfe0cafbd6ba268c7b1419ba989cb96736b",
         "obstacles": 1806,
-        "colliders": 1426,
+        "colliders": 1447,
         "concealers": 248
       },
       "monsoon": {
