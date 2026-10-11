@@ -96,10 +96,10 @@
       "concealers": 11650
     },
     "alpine": {
-      "bytes": 1543187,
-      "sha256": "d04e4cd0172013c6b1c17db71977131ede43745486ba0fb9065cd6deb5817ce7",
+      "bytes": 1557799,
+      "sha256": "8e3c9b97423808b0ec41c6ac59e52a623f67511da19e51970b37109e829b377b",
       "obstacles": 2516,
-      "colliders": 2391,
+      "colliders": 2407,
       "concealers": 1139
     },
     "caldera": {
@@ -145,11 +145,11 @@
       "concealers": 2042
     },
     "polders": {
-      "bytes": 1676752,
-      "sha256": "a329341b1ae3f2a588c35c277abf78228c4e6a143030f8d0f395f65f1d592217",
-      "obstacles": 4257,
-      "colliders": 4122,
-      "concealers": 3513
+      "bytes": 1581637,
+      "sha256": "740b29c222f6b9dfa906690736a1bd526277065afa5f1c2664cb0d0d5bdf19bd",
+      "obstacles": 4007,
+      "colliders": 3935,
+      "concealers": 3381
     },
     "copper_mesa": {
       "bytes": 1511379,
@@ -180,11 +180,11 @@
       "concealers": 0
     },
     "orchard": {
-      "bytes": 1797255,
-      "sha256": "b8fa1e9f3dbb73423ad3c212b5cb0bbed5cda0a3f95a61f70ab1cced70d58896",
-      "obstacles": 4458,
-      "colliders": 4471,
-      "concealers": 4593
+      "bytes": 2066015,
+      "sha256": "e62e33a47b83129ed420afb6bd34287f812eab3b1b4a6d9b995ff42c35b6a072",
+      "obstacles": 4503,
+      "colliders": 4516,
+      "concealers": 4807
     },
     "longleaf": {
       "bytes": 988400,
@@ -330,10 +330,10 @@
         "concealers": 11322
       },
       "alpine": {
-        "bytes": 1628200,
-        "sha256": "0cc55c516d25f085ec4a79777b6733616b295c4b84b171041106fb89cc97b358",
-        "obstacles": 2587,
-        "colliders": 2415,
+        "bytes": 1645017,
+        "sha256": "faa5249dd6d0812d86cbd82bce4993f423b8ec2e6074011b73e8ca60b674be02",
+        "obstacles": 2590,
+        "colliders": 2434,
         "concealers": 1139
       },
       "caldera": {
@@ -379,11 +379,11 @@
         "concealers": 2042
       },
       "polders": {
-        "bytes": 1893163,
-        "sha256": "a7357296f624c2947dee32a9ad8fb56d5f5814950cbc7e7b7540bb5522d63b14",
-        "obstacles": 4509,
-        "colliders": 4285,
-        "concealers": 3644
+        "bytes": 1794881,
+        "sha256": "d03b573441eaaf8306fce3dd9687ee466dfeef6e29ad85724b0733457c651370",
+        "obstacles": 4306,
+        "colliders": 4145,
+        "concealers": 3550
       },
       "copper_mesa": {
         "bytes": 1741595,
@@ -414,11 +414,11 @@
         "concealers": 0
       },
       "orchard": {
-        "bytes": 1798580,
-        "sha256": "439e354c760977528125209e56399c9599fdd37b26ed318c668f96c73399e14f",
-        "obstacles": 4451,
-        "colliders": 4378,
-        "concealers": 4491
+        "bytes": 1832784,
+        "sha256": "99390c1c99e14344dfb63a472dde4dc86b95c218b0988cd5b888707231d5986f",
+        "obstacles": 4569,
+        "colliders": 4497,
+        "concealers": 4705
       },
       "longleaf": {
         "bytes": 1157173,
