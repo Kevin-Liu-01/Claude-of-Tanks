@@ -2,8 +2,9 @@
 // pillboxes needs to be improved a lot"; gauntlet wave 315: "rough boxes with a tan trim band ... on brown plinths").
 // Pinned:
 //   1. every map's form builds, intact and destroyed: position, normal, uv and a colour per vertex, finite; deterministic
-//      for its seed and drawing nothing from any stream; within its budget; the destroyed state nowhere higher than a
-//      hull crosses (a broken prop has no collider: BROKEN_CAP, bars a little over it);
+//      for its seed and drawing nothing from any stream; within its budget; a concrete work's destroyed state its own
+//      pieces settled into a wreck with volume (round 2: fractureSettle.ts; standing over its bank, never higher than a
+//      tipped plate of its slab), a log-and-earth work's still under the hull-crossing cap (BROKEN_CAP);
 //   2. the forms are what they are drawn as: a stepped embrasure's dark throat on the front, the walls' board print
 //      (concrete uvs at the print's scale), the colours in the print's frame (albedo over FORT_PRINT_MEAN);
 //   3. the bank: its rows from the wall to the toe falling, the toe at grade, open at the rear; its contact proxy cut at
@@ -35,9 +36,14 @@ for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
     assert.ok(p.count === n.count && p.count === uv.count && p.count === c.count, `${mapId}: one of each per vertex`);
     assert.ok(finite(p.array) && finite(n.array) && finite(uv.array) && finite(c.array), `${mapId}: every number finite`);
     const tris = p.count / 3;
-    assert.ok(tris <= 9000, `${mapId}${broken ? ' destroyed' : ''}: within its budget (${tris} triangles)`);
+    const settled = broken && f.style !== 'logearth';
+    assert.ok(tris <= (settled ? 12500 : 9000), `${mapId}${broken ? ' destroyed' : ''}: within its budget (${tris} triangles)`);
     const b = bbox(g);
-    if (broken) {
+    if (settled) {
+      assert.ok(b.max.y >= 1.2, `${mapId} destroyed: the wreck stands over its bank (${b.max.y.toFixed(2)} m)`);
+      assert.ok(b.max.y <= 4.5, `${mapId} destroyed: no higher than a tipped plate of its slab (${b.max.y.toFixed(2)} m)`);
+      assert.ok(b.min.y >= -0.7, `${mapId} destroyed: nothing under its room's floor (${b.min.y.toFixed(2)} m)`);
+    } else if (broken) {
       // the slabs, stubs and rubble under the cap; only thin bars may stand a little higher (a bar's face is a long
       // thin triangle: its height over its longest edge under 4 cm)
       let solidTop = 0;
@@ -62,6 +68,8 @@ for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
   const a = buildPillbox(f.style, f.tones, f.seed, false), b = buildPillbox(f.style, f.tones, f.seed, false);
   assert.deepEqual(Array.from(a.attributes.position.array), Array.from(b.attributes.position.array), 'deterministic for its seed');
   assert.deepEqual(Array.from(a.attributes.color.array), Array.from(b.attributes.color.array), 'its weather too');
+  const wa = buildPillbox(f.style, f.tones, f.seed, true), wb = buildPillbox(f.style, f.tones, f.seed, true);
+  assert.deepEqual(Array.from(wa.attributes.position.array), Array.from(wb.attributes.position.array), 'its wreck settles the same');
 }
 
 // ---------------------------------------------------------------------------------------------- 2. the forms
@@ -129,7 +137,7 @@ for (const style of STYLES) {
     'outside the runtime the destructible receipts evaluate (destructibleAuthority slices from D_CELL)');
   assert.match(props, /ob\.kind = 'earthwork';/, 'as an earthwork, not the destructible');
 }
-console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
+console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and settles into its own wreck (log and earth under a hull\'s reach), its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
 
 // ---------------------------------------------------------------------------------------------- 5. the pieces (round 2)
 // The intact concrete work carries the destruction core's anatomy (fractureAnatomy.ts): its contract holds, the stubs,

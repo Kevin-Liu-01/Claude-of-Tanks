@@ -6,7 +6,9 @@
 // at the intact pose, so released bodies fall and settle instead of springing apart: the destruction core's probe,
 // 2026-10-11); the phones' lite build carries the same pieces; the far stand-in and the shadow caster are a few hundred
 // triangles inside the build's bounds; the light family's record and receipts hold (footprint, roof orientation, night
-// panes on the hut only); the broken heap lies under the hull-crossing cap with no lit pane; the build spends exactly
+// panes on the hut only); the broken heap is the shed's own pieces settled into a wreck with volume (fractureSettle.ts:
+// a standing corner and tipped sections over the heap, lower than the shed stood, and thrown no farther than a few
+// metres) with no lit pane, the same from the same stream; the build spends exactly
 // the legacy builders' draws from the props stream (brokenDraws.ts); it is deterministic; the flat texel and the tile
 // means the colours are divided by are the painter's; the edge art caps a snapped member.
 import assert from 'node:assert/strict';
@@ -15,7 +17,7 @@ import {
   DESTRUCTIBLE_BUILDING_TYPES, LEGACY_SHED_TYPES, shedKitTypes,
 } from './structureKit.ts';
 import {
-  SHED_BROKEN_CAP, SHED_FLAT_LUM, SHED_FLAT_UV, SHED_GRAIN_LUM, SHED_STYLES, buildShedFar, buildShedFieldHut,
+  SHED_FLAT_LUM, SHED_FLAT_UV, SHED_GRAIN_LUM, SHED_STYLES, buildShedFar, buildShedFieldHut,
   buildShedLeanTo, buildShedShadow, shedFractureEdge, shedStyleFor,
 } from './shedKit.ts';
 import { paintTimberGrain } from '../timberGrain.ts';
@@ -170,8 +172,17 @@ for (const mapId of maps) {
     // the heap
     const broken = meta.broken(mulberry32(0xb0 + checked));
     broken.computeBoundingBox();
-    assert.ok(broken.boundingBox.max.y <= SHED_BROKEN_CAP + 1e-3, `${mapId}/${id}: the heap lies under the hull-crossing cap`);
-    assert.ok(broken.getAttribute('position').count >= 684, `${mapId}/${id}: the heap is the shed's own pieces`);
+    const hb = broken.boundingBox;
+    assert.ok(hb.max.y >= 1.0, `${mapId}/${id}: the wreck has volume (a standing corner, sections tipped over the heap)`);
+    assert.ok(hb.max.y <= b.max.y - 0.3, `${mapId}/${id}: the wreck lies lower than the shed stood`);
+    assert.ok(Math.max(-hb.min.x, hb.max.x, -hb.min.z, hb.max.z) <= Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 + 4.5,
+      `${mapId}/${id}: nothing thrown farther than a few metres`);
+    assert.ok(Number.isFinite(hb.min.y) && hb.min.y >= -0.4, `${mapId}/${id}: nothing sunk under the ground`);
+    assert.ok(broken.getAttribute('position').count >= meta.build(mulberry32(1)).getAttribute('position').count * 0.5,
+      `${mapId}/${id}: the heap is the shed's own pieces`);
+    const brokenAgain = meta.broken(mulberry32(0xb0 + checked));
+    assert.equal(geomDigest(brokenAgain), geomDigest(broken), `${mapId}/${id}: the same stream settles the same wreck`);
+    brokenAgain.dispose();
     assert.deepEqual([...new Set(broken.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array)], [0], `${mapId}/${id}: no lit pane in the heap`);
     // determinism
     const again = meta.build(mulberry32(0x5eed + checked));

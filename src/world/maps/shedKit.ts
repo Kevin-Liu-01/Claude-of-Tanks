@@ -39,6 +39,7 @@ import type {
 import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
 import { auditRoofPlanePitch } from '../propGeometry.ts';
 import { ensureWorldNightEmissionMask, markWorldAperture } from '../worldNightEmissionGeometry.ts';
+import { FractureSettle, type SettleBody, type SettleTris } from './fractureSettle.ts';
 
 type Rng = () => number;
 type V3 = [number, number, number];
@@ -699,7 +700,14 @@ class ShedWriter {
       tri0 += triN;
       b.geometry.dispose();
     }
-    const anatomy: KitFractureAnatomy = { kind, pieces, links: this.links.slice() };
+    // the churned ground its fall leaves: four fifths of the frame's reach from its middle
+    let reach = 0;
+    for (const p of pieces) {
+      if (p.role === 'wall' || p.role === 'post' || p.role === 'footing' || p.role === 'sill') {
+        reach = Math.max(reach, Math.hypot(Math.abs(p.c[0]) + p.h[0], Math.abs(p.c[2]) + Math.min(p.h[0], p.h[2])));
+      }
+    }
+    const anatomy: KitFractureAnatomy = { kind, pieces, links: this.links.slice(), groundScarM: Math.round(reach * 8) / 10 };
     assertSupported(anatomy);
     geometry.userData.structureConnectivity = connectivity;
     geometry.userData.roofPlanePitches = roofPlanePitches;
@@ -2092,110 +2100,255 @@ export function buildShedShadow(kind: 'fieldhut' | 'leanto'): THREE.BufferGeomet
 
 // ------------------------------------------------------------------------------------------------- the broken heap
 
-/** The broken pool has no collider: nothing of the heap stands higher than a hull crosses. */
-export const SHED_BROKEN_CAP = 0.58;
+/** The standing corner's broken boards reach no higher than this (m); the rest of the wreck lies lower. */
+export const SHED_WRECK_TOP = 2.15;
+
+const EARTH: Rgb = hexLin(0x4b3e31);
+
+/** A body's widest horizontal span (m). */
+function boxSpan(b: SettleBody): number {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let k = 0; k < b.tris.p.length; k += 3) {
+    x0 = Math.min(x0, b.tris.p[k]); x1 = Math.max(x1, b.tris.p[k]); z0 = Math.min(z0, b.tris.p[k + 2]); z1 = Math.max(z1, b.tris.p[k + 2]);
+  }
+  return Math.max(x1 - x0, z1 - z0);
+}
+
+/** The way a face looks out of the shed. */
+function faceOut(face: FractureFace | undefined): V3 | null {
+  return face === 'left' ? [-1, 0, 0] : face === 'right' ? [1, 0, 0] : face === 'front' ? [0, 0, 1] : face === 'back' ? [0, 0, -1] : null;
+}
+
+/** Clods, splinters and broken board ends at the wreck's foot and over it (the flat texel, their own colours). */
+function wreckBits(S: FractureSettle, st: ShedStyle, rng: Rng, box: [number, number, number, number], blow: V3, lite: boolean): SettleTris {
+  const t: SettleTris = { p: [], n: [], t: [], c: [] };
+  const tri = (a: V3, b: V3, c: V3, col: Rgb): void => {
+    const n = nrm(cross(sub(b, a), sub(c, a)));
+    for (const v of [a, b, c]) {
+      t.p.push(v[0], v[1], v[2]); t.n.push(n[0], n[1], n[2]); t.t.push(SHED_FLAT_UV[0], SHED_FLAT_UV[1]); t.c.push(col[0], col[1], col[2]);
+    }
+  };
+  const lump = (cx: number, cz: number, s: number, col: Rgb): void => {
+    const yaw = rng() * Math.PI, c = Math.cos(yaw), sn = Math.sin(yaw);
+    const sx = s * (0.8 + rng() * 0.6), sy = s * (0.4 + rng() * 0.35), sz = s * (0.8 + rng() * 0.6);
+    const base = S.heightAt(cx, cz) - sy * 0.3;
+    const P = (x: number, y: number, z: number): V3 => [cx + x * c - z * sn, base + sy + y, cz + x * sn + z * c];
+    const top = P((rng() - 0.5) * sx * 0.4, sy * (0.7 + rng() * 0.5), (rng() - 0.5) * sz * 0.4), bot = P(0, -sy, 0);
+    const ring = [P(sx, 0, 0), P(0, 0, sz), P(-sx, 0, 0), P(0, 0, -sz)];
+    for (let k = 0; k < 4; k++) {
+      const a = ring[k], b = ring[(k + 1) % 4];
+      tri(top, b, a, mulc(col, 0.92 + rng() * 0.16)); tri(bot, a, b, mulc(col, 0.75));
+    }
+  };
+  const stick = (cx: number, cz: number, len: number, w: number, th: number, yaw: number, pitch: number, col: Rgb): void => {
+    const u: V3 = [Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch)];
+    const v = nrm(cross(u, [0, 1, 0])), wv = nrm(cross(v, u));
+    const y = S.heightAt(cx, cz) + th * 0.5 + Math.abs(Math.sin(pitch)) * len * 0.5;
+    const o: V3 = [cx, y, cz];
+    const corner = (a: number, b: number, c: number): V3 => add(add(add(o, scl(u, a * len * 0.5)), scl(v, b * w * 0.5)), scl(wv, c * th * 0.5));
+    const q = [corner(-1, -1, -1), corner(1, -1, -1), corner(1, 1, -1), corner(-1, 1, -1), corner(-1, -1, 1), corner(1, -1, 1), corner(1, 1, 1), corner(-1, 1, 1)];
+    const quad = (a: number, b: number, c: number, d: number, k: number): void => { tri(q[a], q[b], q[c], mulc(col, k)); tri(q[a], q[c], q[d], mulc(col, k)); };
+    quad(4, 5, 6, 7, 1); quad(3, 2, 1, 0, 0.7); quad(0, 1, 5, 4, 0.85); quad(2, 3, 7, 6, 0.9); quad(1, 2, 6, 5, 0.8); quad(3, 0, 4, 7, 0.8);
+  };
+  const [x0, x1, z0, z1] = box, cxm = (x0 + x1) / 2, czm = (z0 + z1) / 2;
+  const per = 2 * (x1 - x0 + z1 - z0);
+  const onEdge = (s: number): [number, number, V3] => {
+    const w = x1 - x0, d = z1 - z0;
+    if (s < w) return [x0 + s, z1, [0, 0, 1]];
+    if (s < w + d) return [x1, z1 - (s - w), [1, 0, 0]];
+    if (s < 2 * w + d) return [x1 - (s - w - d), z0, [0, 0, -1]];
+    return [x0, z0 + (s - 2 * w - d), [-1, 0, 0]];
+  };
+  const snowy = st.snow;
+  for (let k = 0; k < (lite ? 18 : 30); k++) {
+    const [ex, ez, out] = onEdge(rng() * per);
+    const thrown = 0.1 + rng() * 1.1 + Math.max(0, dot(out, blow)) * rng() * 1.0;
+    const col = snowy && rng() < 0.45 ? mulc(SNOW, 0.9) : mulc(EARTH, 0.7 + rng() * 0.5);
+    lump(ex + out[0] * thrown + (rng() - 0.5) * 0.3, ez + out[2] * thrown + (rng() - 0.5) * 0.3, 0.06 + rng() * 0.13, col);
+  }
+  const fresh = (k: number): Rgb => mix(FRESH_WOOD, st.wood, k);
+  for (let k = 0; k < (lite ? 12 : 22); k++) {
+    const x = x0 - 0.8 + rng() * (x1 - x0 + 1.6), z = z0 - 0.8 + rng() * (z1 - z0 + 1.6);
+    stick(x, z, 0.14 + rng() * 0.42, 0.012 + rng() * 0.025, 0.008 + rng() * 0.012, rng() * Math.PI * 2, (rng() - 0.5) * 0.5, fresh(rng() * 0.5));
+  }
+  const board = st.paint ? mix(st.paint, st.wood, 0.35) : st.wood;
+  for (let k = 0; k < (lite ? 5 : 9); k++) {
+    const a = rng() * Math.PI * 2, rr = 0.4 + rng() * 1.6;
+    const x = cxm + Math.cos(a) * (x1 - x0) * 0.5 * rr * 0.8, z = czm + Math.sin(a) * (z1 - z0) * 0.5 * rr * 0.8;
+    stick(x, z, 0.3 + rng() * 0.55, 0.1 + rng() * 0.08, 0.022, rng() * Math.PI * 2, (rng() - 0.5) * 0.4, mulc(board, 0.8 + rng() * 0.3));
+  }
+  return t;
+}
 
 /**
- * The fallen shed for the broken pool (until the core's bodies settle it): the footings, sills, floor and stoop where
- * they stood; the posts snapped to stubs over their bases with their upper lengths fallen beside them; the panels,
- * roof sections, rafters and door fallen outward and lying askew over the heap; the tall fittings tipped over —
- * nothing above SHED_BROKEN_CAP, dusted and darkened where it lies.
+ * The fallen shed for the broken pool, settled from the shed's own pieces (fractureSettle.ts; round 2, waves 390a/b:
+ * "a heap with real volume, its own roof, door and window parts, a standing corner, splintered boards and churned
+ * ground, and the props beside it knocked about"). A blow from one side (the stream's): the footings, sills and stoop
+ * stay; the corner farthest from the blow stands, its post whole and its walls' nearest boards broken off in a ragged
+ * stagger falling away from it; every other post snaps at its scores over a stub; the walls break at their joints and
+ * go about their feet, in where the blow struck and mostly out elsewhere, each length with its window, until they lie
+ * or lean on what stands; plates, rafters and ridge snap and fall in; the roof sections come down on them, tipped over
+ * the wreck; the porch folds onto its stoop; the stovepipe, ladder, bench and barrel are thrown, the firewood spills;
+ * clods and splinters round the foot. The broken pool has no collider (a hull drives through a wreck as it always did).
  */
-export function buildShedBroken(build: ShedBuild, rng: Rng, salt: number): THREE.BufferGeometry {
-  const src = build.geometry;
-  const pos = src.getAttribute('position'), nor = src.getAttribute('normal'), uv = src.getAttribute('uv'), col = src.getAttribute('color');
-  const P: number[] = [], N: number[] = [], T: number[] = [], C: number[] = [];
-  const cell = 0.25, half = 24, field = new Float32Array(half * 2 * half * 2);
-  const cellAt = (x: number, z: number): number => {
-    const i = Math.floor(x / cell) + half, j = Math.floor(z / cell) + half;
-    return i < 0 || j < 0 || i >= half * 2 || j >= half * 2 ? -1 : j * half * 2 + i;
-  };
-  const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
+export function buildShedBroken(build: ShedBuild, rng: Rng, salt: number, st: ShedStyle = SHED_DEFAULT_STYLE): THREE.BufferGeometry {
   const pieces = build.anatomy.pieces;
-  const stays = (i: number): boolean => {
+  const S = new FractureSettle(build.geometry, build.anatomy, { cell: 0.08, margin: 3.2, dust: 0.8 });
+  const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
+  const pick = (p: number): boolean => rng() < p;
+  const az = rng() * Math.PI * 2;
+  const blow: V3 = [Math.cos(az), 0, Math.sin(az)]; // the way the blow pushes
+  const lite = build.geometry.getAttribute('position').count < 16000;
+  const idx = pieces.map((_, i) => i);
+  const role = (i: number): FractureRole => pieces[i].role;
+  // the footprint: the walls' and posts' boxes
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const i of idx) {
     const p = pieces[i];
-    return p.role === 'footing' || p.role === 'sill' || p.role === 'slab' || (p.role === 'fitting' && p.c[1] + p.h[1] <= SHED_BROKEN_CAP);
-  };
-  const standing = (i: number): boolean => pieces[i].role === 'post';
-  /** Lay a run's vertices (through `place` and `turn`) on the heap, under the cap, dusted. */
-  const lay = (i: number, place: (v: V3) => V3, turn: (v: V3) => V3, rest: boolean): void => {
-    const piece = pieces[i];
-    const t0 = piece.tri0 * 3, t1 = t0 + piece.triN * 3;
-    const moved: V3[] = [];
-    let minY = Infinity, maxY = -Infinity;
-    for (let v = t0; v < t1; v++) {
-      const m = place([pos.getX(v), pos.getY(v), pos.getZ(v)]);
-      moved.push(m);
-      minY = Math.min(minY, m[1]); maxY = Math.max(maxY, m[1]);
-    }
-    let lift = 0;
-    if (rest) {
-      let ground = 0;
-      for (const m of moved) { const c = cellAt(m[0], m[2]); if (c >= 0) ground = Math.max(ground, field[c]); }
-      lift = ground - minY + 0.005;
-    }
-    // over the cap: sunk into the heap and crushed flatter about its foot, never above what a hull crosses
-    const base = Math.min(minY + lift, SHED_BROKEN_CAP - 0.04);
-    const squash = Math.min(1, (SHED_BROKEN_CAP - base) / Math.max(0.001, maxY - minY));
-    for (let k = 0; k < moved.length; k++) {
-      const m = moved[k];
-      const y = rest ? base + (m[1] - minY) * squash : Math.min(m[1], SHED_BROKEN_CAP);
-      P.push(m[0], y, m[2]);
-      const nm = turn([nor.getX(t0 + k), nor.getY(t0 + k), nor.getZ(t0 + k)]);
-      N.push(nm[0], nm[1], nm[2]);
-      T.push(uv.getX(t0 + k), uv.getY(t0 + k));
-      const dust = 0.74 + 0.14 * hash3(Math.floor(m[0] * 3), Math.floor(m[2] * 3), i, salt);
-      C.push(col.getX(t0 + k) * dust, col.getY(t0 + k) * dust, col.getZ(t0 + k) * dust * 0.97);
-      const c = cellAt(m[0], m[2]);
-      if (c >= 0) field[c] = Math.max(field[c], y);
-    }
-  };
-  /** A fallen copy: the box's thinnest axis near upright, turned by the stream and tilted over what it lands on. */
-  const fall = (i: number): void => {
-    const piece = pieces[i];
-    const ax = [rotate(piece.q, [1, 0, 0]), rotate(piece.q, [0, 1, 0]), rotate(piece.q, [0, 0, 1])];
-    const thin = piece.h[0] <= piece.h[1] && piece.h[0] <= piece.h[2] ? 0 : piece.h[1] <= piece.h[2] ? 1 : 2;
-    const A = scl(ax[thin], ax[thin][1] >= 0 ? 1 : -1), B = ax[(thin + 1) % 3];
-    const Cc = nrm(cross(A, B));
-    const yaw = r(-0.7, 0.7);
-    const flatB = Math.hypot(B[0], B[2]) > 1e-3 ? nrm([B[0], 0, B[2]]) : [1, 0, 0] as V3;
-    let bb = nrm([flatB[0] * Math.cos(yaw) - flatB[2] * Math.sin(yaw), 0, flatB[0] * Math.sin(yaw) + flatB[2] * Math.cos(yaw)]);
-    let up: V3 = [0, 1, 0];
-    // askew: tipped about its long horizontal axis, its high edge up to about the cap on the heap
-    const across = Math.max(0.2, piece.h[(thin + 2) % 3] * 2);
-    const tilt = Math.min(0.75, Math.asin(Math.min(0.95, (SHED_BROKEN_CAP * r(0.55, 0.95)) / across))) * (rng() < 0.5 ? -1 : 1);
-    const third0 = cross(up, bb);
-    up = nrm(add(scl(up, Math.cos(tilt)), scl(third0, Math.sin(tilt))));
-    bb = nrm(sub(bb, scl(up, dot(bb, up))));
-    const third = cross(up, bb);
-    const turn = (v: V3): V3 => add(add(scl(up, dot(v, A)), scl(bb, dot(v, B))), scl(third, dot(v, Cc)));
-    // mostly where it stood: a wall panel a little outward, a roof section down off its plates
-    const out = nrm([piece.c[0] + r(-0.3, 0.3), 0, piece.c[2] + r(-0.3, 0.3)]);
-    const reach = Math.min(0.9, piece.c[1] * 0.18) + r(0, 0.25);
-    const T0: V3 = [piece.c[0] + out[0] * reach, 0, piece.c[2] + out[2] * reach];
-    lay(i, (v) => add(turn(sub(v, piece.c as V3)), T0), turn, true);
-  };
-  const identity = (v: V3): V3 => v;
-  const order = pieces.map((_, i) => i).sort((a, b) => Number(stays(b)) - Number(stays(a)) || pieces[a].c[1] - pieces[b].c[1]);
-  for (const i of order) {
-    if (stays(i)) { lay(i, identity, identity, false); continue; }
-    if (standing(i)) {
-      // the stub over its base (squashed to a snapped height), and the rest of it fallen beside it
-      const piece = pieces[i];
-      let low = Infinity, high = -Infinity;
-      for (let v = piece.tri0 * 3; v < (piece.tri0 + piece.triN) * 3; v++) { low = Math.min(low, pos.getY(v)); high = Math.max(high, pos.getY(v)); }
-      const stubH = r(0.22, SHED_BROKEN_CAP - 0.06) - Math.max(0, low);
-      const k = Math.max(0.05, stubH / Math.max(0.01, high - low));
-      lay(i, (v) => [v[0], low + (v[1] - low) * k, v[2]], identity, false);
-    }
-    fall(i);
+    if (p.role !== 'wall' && !(p.role === 'post' && !p.face)) continue;
+    x0 = Math.min(x0, p.c[0] - 0.05); x1 = Math.max(x1, p.c[0] + 0.05); z0 = Math.min(z0, p.c[2] - 0.05); z1 = Math.max(z1, p.c[2] + 0.05);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(T, 2));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
-  return ensureWorldNightEmissionMask(g);
+  const cxm = (x0 + x1) / 2, czm = (z0 + z1) / 2;
+  const toCentre = (p: FracturePiece): V3 => nrm([cxm - p.c[0], 0, czm - p.c[2]]);
+  // the standing corner: of the frame's corner posts that have a wall beside them, the one the blow drives away from
+  const walls = idx.filter((i) => role(i) === 'wall');
+  const near = (i: number, x: number, z: number, d: number): boolean => {
+    const p = pieces[i], ax = rotate(p.q, [1, 0, 0]), az2 = rotate(p.q, [0, 0, 1]);
+    const dx = x - p.c[0], dz = z - p.c[2];
+    const lx = Math.abs(dx * ax[0] + dz * ax[2]) - (Math.abs(ax[0]) * p.h[0] + Math.abs(ax[2]) * p.h[0]);
+    const lz = Math.abs(dx * az2[0] + dz * az2[2]) - (Math.abs(az2[0]) * p.h[2] + Math.abs(az2[2]) * p.h[2]);
+    return Math.max(lx, lz) < d;
+  };
+  const corners = idx.filter((i) => role(i) === 'post' && !pieces[i].face
+    && Math.abs(Math.abs(pieces[i].c[0] - cxm) - (x1 - x0) / 2) < 0.25
+    && walls.some((w) => near(w, pieces[i].c[0], pieces[i].c[2], 0.35)));
+  const cornerPost = corners.length
+    ? corners.reduce((a, b) => (dot([pieces[a].c[0] - cxm, 0, pieces[a].c[2] - czm], blow) >= dot([pieces[b].c[0] - cxm, 0, pieces[b].c[2] - czm], blow) ? a : b))
+    : -1;
+  const kx = cornerPost >= 0 ? pieces[cornerPost].c[0] : x1, kz = cornerPost >= 0 ? pieces[cornerPost].c[2] : z1;
+  const topC = Math.min(SHED_WRECK_TOP, r(1.2, 1.75)), slope = r(0.5, 0.8);
+  const stagger = (x: number, z: number): number => {
+    const d = Math.hypot(x - kx, z - kz), board = Math.floor(d / 0.19);
+    return Math.max(0.3, topC - slope * d + (hash3(board, 3, 1, salt) - 0.5) * 0.4);
+  };
+  // 1. what stays: footings, sills, floors and the stoop
+  for (const i of idx) if (pieces[i].anchor && role(i) !== 'fitting') S.stay(i);
+  // 2. the standing corner: its post, and its walls' boards nearest it broken off staggered
+  if (cornerPost >= 0) S.cut(cornerPost, () => Math.min(SHED_WRECK_TOP, topC + r(0.1, 0.3)), 0.92);
+  const frames = idx.filter((i) => role(i) === 'frame' || role(i) === 'shutter');
+  const carried = new Map<number, number[]>(); // a wall's windows, by the links that hold them
+  for (const f of frames) {
+    const link = build.anatomy.links.find((l) => (l.a === f && role(l.b) === 'wall') || (l.b === f && role(l.a) === 'wall'));
+    if (!link) continue;
+    const w = link.a === f ? link.b : link.a;
+    carried.set(w, [...(carried.get(w) ?? []), f]);
+  }
+  const fallWall = (b: SettleBody, p: FracturePiece): void => {
+    const out = faceOut(p.face) ?? toCentre(p).map((v) => -v) as V3;
+    const struck = dot(out, blow) < -0.4; // the face toward the blow goes in, mostly
+    const inward = struck ? pick(0.75) : pick(0.3);
+    S.topple(b, inward ? scl(out, -1) : out, r(1.3, 1.66), { maxTilt: 0.6, ceiling: 1.9 });
+  };
+  const wallLengths: Array<{ b: SettleBody; p: FracturePiece }> = [];
+  for (const w of walls) {
+    const p = pieces[w];
+    const scores = (p.scores ?? []).filter(() => pick(0.45));
+    const parts = S.snap(w, undefined, scores);
+    // its windows go with the length that holds them
+    for (const f of carried.get(w) ?? []) {
+      const fc = pieces[f].c;
+      const host = parts.reduce((a, b) => (Math.hypot(a.centre[0] - fc[0], a.centre[2] - fc[2]) <= Math.hypot(b.centre[0] - fc[0], b.centre[2] - fc[2]) ? a : b));
+      S.attach(host, f);
+    }
+    for (const b of parts) {
+      // (a length that carries a window falls with it: a break through a sash would squash it)
+      const d = Math.hypot(b.centre[0] - kx, b.centre[2] - kz);
+      if (cornerPost >= 0 && d < 1.15 && b.pieces.length === 1 && near(w, kx, kz, 0.4)) S.fix(b, stagger, 0.9);
+      else wallLengths.push({ b, p });
+    }
+  }
+  // 3. the other posts: a stub over the sill, the rest of the post fallen in
+  const memberLie = (b: SettleBody, p: FracturePiece, inward: number, spread: number): void => {
+    const c = toCentre(p);
+    const ax = rotate(p.q, p.h[0] >= p.h[1] && p.h[0] >= p.h[2] ? [1, 0, 0] : p.h[1] >= p.h[2] ? [0, 1, 0] : [0, 0, 1]);
+    const yaw0 = Math.abs(ax[1]) > 0.9 ? Math.atan2(c[2], c[0]) : Math.atan2(ax[2], ax[0]);
+    S.lie(b, yaw0 + r(-spread, spread), [c[0] * inward * r(0.5, 1.2) + blow[0] * r(0, 0.4), 0, c[2] * inward * r(0.5, 1.2) + blow[2] * r(0, 0.4)],
+      pick(0.5), r(-0.3, 0.3), { maxTilt: 0.6, ceiling: 1.3 });
+  };
+  for (const i of idx) {
+    if (role(i) !== 'post' || i === cornerPost || S.isLaid(i)) continue;
+    const p = pieces[i];
+    const parts = S.snap(i, shedFractureEdge, undefined, salt ^ i);
+    parts.forEach((b, k) => {
+      if (k === 0 && !p.face) S.fix(b, () => r(0.3, 0.55), 0.9);
+      else memberLie(b, p, p.face ? -0.4 : 0.6, 0.6);
+    });
+  }
+  // 4. the walls' lengths go about their feet (the struck face in, the rest mostly out), lowest first
+  wallLengths.sort((a, b) => a.p.c[1] - b.p.c[1]);
+  for (const { b, p } of wallLengths) fallWall(b, p);
+  // 5. the door off its hinges, the ladder and the bench
+  for (const i of idx) {
+    if (role(i) !== 'door' || S.isLaid(i)) continue;
+    const out = faceOut(pieces[i].face) ?? [0, 0, 1];
+    S.topple(S.body([i]), pick(0.7) ? out : scl(out, -1), r(1.3, 1.65), { maxTilt: 0.6, ceiling: 1.6 });
+  }
+  // 6. plates, braces, girts and studs: snapped and down
+  for (const i of idx) {
+    if (S.isLaid(i) || !['plate', 'brace', 'girt', 'stud', 'purlin', 'sill'].includes(role(i))) continue;
+    for (const b of S.snap(i, shedFractureEdge, undefined, salt ^ (i * 7))) memberLie(b, pieces[i], 0.3, 0.35);
+  }
+  // 7. the rafters and the ridge, snapped and fallen in
+  for (const i of idx) {
+    if (S.isLaid(i) || (role(i) !== 'rafter' && role(i) !== 'board') || pieces[i].c[1] < 2.4) continue;
+    const p = pieces[i];
+    const scores = (p.scores ?? []).filter(() => pick(0.6));
+    for (const b of S.snap(i, shedFractureEdge, scores, salt ^ (i * 13))) memberLie(b, p, 0.45, 1.2);
+  }
+  // 8. the roof sections down on them, each perhaps broken across, tipped over the wreck
+  const roofs = idx.filter((i) => !S.isLaid(i) && role(i) === 'roof' && pieces[i].c[1] > 2.4).sort((a, b) => pieces[a].c[1] - pieces[b].c[1]);
+  for (const i of roofs) {
+    const p = pieces[i];
+    const scores = (p.scores ?? []).length && pick(0.75) ? [(p.scores ?? [])[Math.floor(rng() * (p.scores ?? []).length)]] : [];
+    for (const b of S.snap(i, undefined, scores)) {
+      const c = toCentre(p);
+      S.drop(b, r(-0.25, 0.25), [blow[0] * r(0.1, 0.6) + c[0] * r(0.2, 0.8), 0, blow[2] * r(0.1, 0.6) + c[2] * r(0.2, 0.8)], { ceiling: 1.6 });
+    }
+  }
+  // 9. the porch folds onto its stoop: posts out, beam down, its rafters and roof together
+  for (const i of idx) {
+    if (S.isLaid(i) || role(i) !== 'post') continue;
+    S.topple(S.body([i]), [r(-0.4, 0.4), 0, 1], r(1.1, 1.6), { maxTilt: 0.7, ceiling: 1.4 });
+  }
+  const porchRafters = idx.filter((i) => !S.isLaid(i) && role(i) === 'rafter');
+  const porchRoof = idx.filter((i) => !S.isLaid(i) && role(i) === 'roof');
+  if (porchRafters.length || porchRoof.length) {
+    const b = S.body([...porchRafters, ...porchRoof]);
+    S.drop(b, r(-0.2, 0.2), [r(-0.2, 0.2), 0, r(0.1, 0.5)], { ceiling: 1.8 });
+  }
+  // 10. the stovepipe, the ladder, the bench, the barrel and the block thrown; the firewood spilled over its foot
+  for (const i of idx) {
+    if (S.isLaid(i)) continue;
+    const p = pieces[i];
+    if (role(i) === 'fitting' && p.triN > 400) {
+      // a stack: its bottom course where it stood, the rest spilled out from the wall it stood against
+      const out = faceOut(p.face) ?? nrm([p.c[0] - cxm, 0, p.c[2] - czm]);
+      for (const b of S.scatter(i)) {
+        // (the stack's dark core, the filler behind its log ends, is not a thing to throw: it goes with the stack)
+        if (b.tris.p.length <= 12 * 9 && boxSpan(b) > 0.4) continue;
+        if (b.centre[1] < 0.28 && pick(0.8)) { S.fix(b, undefined, 0.88); continue; }
+        const ax = b.axes[0];
+        S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.5, 0.5), [out[0] * r(0.1, 1.3) + r(-0.4, 0.4), 0, out[2] * r(0.1, 1.3) + r(-0.4, 0.4)],
+          false, r(0, Math.PI), { ceiling: 1.2 });
+      }
+      continue;
+    }
+    const away = nrm([p.c[0] - cxm + blow[0] * 1.5, 0, p.c[2] - czm + blow[2] * 1.5]);
+    S.lie(S.body([i]), rng() * Math.PI * 2, [away[0] * r(0.3, 1.4), 0, away[2] * r(0.3, 1.4)], pick(0.4), r(-0.4, 0.4), { ceiling: 1.4 });
+  }
+  // 11. clods and splinters round the foot
+  S.extra(wreckBits(S, st, rng, [x0, x1, z0, z1], blow, lite), 0.95);
+  return ensureWorldNightEmissionMask(S.finish());
 }
 
 // ------------------------------------------------------------------------------------------------- the edge art

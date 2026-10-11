@@ -1972,7 +1972,7 @@ function shedMeta(kind: keyof typeof LEGACY_SHED_TYPES, st: ShedStyle, mobile = 
     broken: (rng: Rng) => {
       const own = spentDraws(legacy.broken, rng, salt ^ 0x5bd1);
       const shed = build(st, own, 'lite');
-      const heap = buildShedBroken(shed, own, salt);
+      const heap = buildShedBroken(shed, own, salt, st);
       shed.geometry.dispose();
       return heap;
     },

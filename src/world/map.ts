@@ -693,8 +693,9 @@ function assembleWorld(
   installTerrainCraterMesh(terrain);
   // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
   const groundCoverCraters = createGroundCoverCraters();
-  // the pillboxes' banks: the field's grass and litter stand on them for the life of the map (props.ts fortBankLifts)
-  for (const lift of (props.group.userData.fortBankLifts as GroundCoverStaticLift[] | undefined) ?? []) groundCoverCraters.addStaticLift(lift);
+  // the pillboxes' banks and the sandbag nests' spoil: the field's grass and litter stand on them for the life of the map
+  // (props.ts groundCoverLifts)
+  for (const lift of (props.group.userData.groundCoverLifts as GroundCoverStaticLift[] | undefined) ?? []) groundCoverCraters.addStaticLift(lift);
   /** The cover in the bound overlay's reach takes its new stamps after the terrain took them (`update`'s steps after its
    * LOD walk): the terrain's `followGroundOverlay` hook, which `world.syncGround` runs after its `syncGroundOverlay` for a
    * frame rendered without an update (the Studio's export steps and captures). O(1) when nothing is new. */

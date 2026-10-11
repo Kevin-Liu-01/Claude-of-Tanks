@@ -952,6 +952,29 @@ export function buildSandbagBedding(
   x: number, z: number, yaw: number, sc: number, seed: number, soil: readonly [number, number, number], mobile = false,
   toward: readonly [number, number] | null = null,
 ): THREE.BufferGeometry {
+  const { bank: g, bag } = sandbagBeddingCore(kind, ground, x, z, yaw, sc, seed, soil, mobile, toward);
+  return finishSandbagBedding(g, bag, ground);
+}
+
+/**
+ * The same nest's bedding in its two parts (the destructible-kits lane, round 2; wave 370: "sandbag breastworks sit on
+ * separate plinths"): the spoil and its spill, indexed in world space with its soil colours (the desktops draw it with
+ * the ground's own material, props.ts), and the emptied bag lying by it (hessian, on the rock material as before). The
+ * same stream and the same forms as buildSandbagBedding.
+ */
+export function buildSandbagBeddingParts(
+  kind: SandbagStackKind, ground: { getHeightAt(x: number, z: number): number },
+  x: number, z: number, yaw: number, sc: number, seed: number, soil: readonly [number, number, number], mobile = false,
+  toward: readonly [number, number] | null = null,
+): { bank: THREE.BufferGeometry; bag: THREE.BufferGeometry } {
+  return sandbagBeddingCore(kind, ground, x, z, yaw, sc, seed, soil, mobile, toward);
+}
+
+function sandbagBeddingCore(
+  kind: SandbagStackKind, ground: { getHeightAt(x: number, z: number): number },
+  x: number, z: number, yaw: number, sc: number, seed: number, soil: readonly [number, number, number], mobile: boolean,
+  toward: readonly [number, number] | null,
+): { bank: THREE.BufferGeometry; bag: THREE.BufferGeometry } {
   const s = SANDBAG_STACKS[kind], r = sandbagRng(seed);
   const hx = (s.along === 'x' ? s.half : s.depth) * sc, hz = (s.along === 'x' ? s.depth : s.half) * sc, H = s.top * sc;
   const cos = Math.cos(yaw), sin = Math.sin(yaw);
@@ -1049,8 +1072,20 @@ export function buildSandbagBedding(
   const [wbx, wbz] = world(bx, bz);
   bag.rotateY(yaw).translate(wbx, ground.getHeightAt(wbx, wbz) + 0.012, wbz);
   bag.deleteAttribute('uv');
-  const out = mergeGeometries([g.toNonIndexed(), bag.index ? bag.toNonIndexed() : bag], false);
-  g.dispose(); bag.dispose();
+  return { bank: g, bag };
+}
+
+/** A nest's footprint's half extents (world x and z before its yaw) at scale `sc`. */
+export function sandbagFootprint(kind: SandbagStackKind, sc: number): [number, number] {
+  const s = SANDBAG_STACKS[kind];
+  return [(s.along === 'x' ? s.half : s.depth) * sc, (s.along === 'x' ? s.depth : s.half) * sc];
+}
+
+/** A bedding (or, with no bank, its emptied bag alone) as the rock material draws it: non-indexed, its ground and uv. */
+export function finishSandbagBedding(g: THREE.BufferGeometry | null, bag: THREE.BufferGeometry, ground: { getHeightAt(x: number, z: number): number }): THREE.BufferGeometry {
+  const bagFlat = bag.index ? bag.toNonIndexed() : bag;
+  const out = g ? mergeGeometries([g.toNonIndexed(), bagFlat], false) : bagFlat.clone();
+  g?.dispose(); bag.dispose(); if (bagFlat !== bag) bagFlat.dispose();
   if (!out) throw new Error('sceneryKit: the sandbag bedding merge produced no geometry');
   // (wave 34 re-shoot, "a smooth clay mound up close": the bedding draws on the props rock material, as the bocage's
   // earth banks do — its detail print and relief, the grime, the wet maps' moss greening the spoil like a bank. Its

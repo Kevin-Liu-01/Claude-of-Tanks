@@ -22,6 +22,7 @@ import { paintLimeRender, paintLimewash, paintNipaThatch } from './regionalSurfa
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
+import type { GroundCoverStaticLift } from './groundCoverCraters.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
@@ -68,7 +69,10 @@ import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
+import {
+  SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagBeddingParts, buildSandbagHeap, buildSandbagStack, finishSandbagBedding,
+  paintBurlap, sandbagFootprint,
+} from './maps/sceneryKit.ts';
 import {
   FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBankField, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
@@ -5545,11 +5549,22 @@ ${snowCap ? `
     const soil = earth ? [lin(earth[0]), lin(earth[1]), lin(earth[2])] : rockDressingFor(mapId, P.rockSoilTone ?? null).soil;
     return [soil[0] * 0.5, soil[1] * 0.5, soil[2] * 0.5];
   })();
+  // (round 2, the destructible-kits lane; wave 370: "sandbag breastworks sit on separate plinths") on the desktops the
+  // spoil is drawn with the ground's own material over the drawn terrain (merged into the boulders' bed cells as the
+  // pillboxes' banks are) and the field's grass stands on it; the emptied bag alone keeps the rock material
+  const sandbagGroundBanks: Array<{ bank: THREE.BufferGeometry; kind: 'sandbagbig' | 'sandbagsmall' | 'sandbagwall'; x: number; z: number; yaw: number; sc: number }> = [];
   function bedSandbagNest(kind: string, x: number, z: number, yaw: number, scale: number,
     toward: readonly [number, number] | null = null): void {
     if (kind !== 'sandbagbig' && kind !== 'sandbagsmall' && kind !== 'sandbagwall') return;
-    sandbagBeds.push(buildSandbagBedding(kind, heightField, x, z, yaw, scale,
-      (Math.round(x * 100) * 73856093) ^ (Math.round(z * 100) * 19349663) ^ 0x5bed, bedSoil, mobileProps, toward));
+    const seed = (Math.round(x * 100) * 73856093) ^ (Math.round(z * 100) * 19349663) ^ 0x5bed;
+    if (mobileProps) {
+      sandbagBeds.push(buildSandbagBedding(kind, heightField, x, z, yaw, scale, seed, bedSoil, mobileProps, toward));
+      return;
+    }
+    const drawn = { getHeightAt: (px: number, pz: number) => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz) };
+    const { bank, bag } = buildSandbagBeddingParts(kind, drawn, x, z, yaw, scale, seed, bedSoil, false, toward);
+    sandbagGroundBanks.push({ bank, kind, x, z, yaw, sc: scale });
+    sandbagBeds.push(finishSandbagBedding(null, bag, heightField));
   }
   // Map-specific strongpoints. Random dressing is still valuable between
   // lanes, but critical cover cannot be left to a scatter pass: these beats
@@ -8325,7 +8340,7 @@ ${snowCap ? `
   // cover's static lift: map.ts hands these to the ground cover law, so the field's own grass and litter stand on it
   if (fort && fortSeats.length) {
     const field = pillboxBankField(fort.style, fort.tones, fort.seed);
-    group.userData.fortBankLifts = fortSeats.map((seat) => {
+    group.userData.groundCoverLifts = fortSeats.map((seat) => {
       const c = Math.cos(seat.yaw), sn = Math.sin(seat.yaw), r = field.radius;
       return {
         reach: [seat.x - r, seat.z - r, seat.x + r, seat.z + r] as const,
@@ -10497,6 +10512,95 @@ ${snowCap ? `
       group.add(mesh);
     }
   }
+  if (sandbagGroundBanks.length) {
+    // each nest's spoil for the ground's material (position, normal and the ground's fold, indexed, world space; the
+    // bank keeps seven tenths of its own slope in its normal, its toe a third, as the pillboxes' banks do), merged into
+    // its 512 m bed cell, and the field's grass lifted onto it
+    const foldAt = (heightField as { _foldAt?: (x: number, z: number) => number })._foldAt;
+    const foldByte = (x: number, z: number): number => {
+      if (!foldAt) return 0;
+      const f = foldAt(x, z);
+      return Math.max(-127, Math.min(127, Math.round((f > 1 ? 1 : f < -1 ? -1 : f) * 127)));
+    };
+    const beds = (group.userData.rockBeds as THREE.BufferGeometry[] | undefined) ?? [];
+    const lifts = (group.userData.groundCoverLifts as GroundCoverStaticLift[] | undefined) ?? [];
+    for (const nest of sandbagGroundBanks) {
+      const src = nest.bank, sp = src.getAttribute('position') as THREE.BufferAttribute;
+      const idx = Array.from(src.index!.array as ArrayLike<number>);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from(sp.array as ArrayLike<number>), 3));
+      const fold = new Int8Array(sp.count), share = new Float32Array(sp.count);
+      for (let i = 0; i < sp.count; i++) {
+        const x = sp.getX(i), z = sp.getZ(i);
+        fold[i] = foldByte(x, z);
+        share[i] = sp.getY(i) - terrainNearMeshHeightAt(nearMeshVertexHeight, x, z) > 0.02 ? 0.7 : 0.35;
+      }
+      g.setAttribute('fold', new THREE.BufferAttribute(fold, 1, true));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      let up = 0;
+      const nrm = g.getAttribute('normal') as THREE.BufferAttribute;
+      for (let i = 0; i < nrm.count; i++) up += nrm.getY(i);
+      if (up < 0) {
+        for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+        g.setIndex(idx); g.computeVertexNormals();
+      }
+      const n2 = g.getAttribute('normal') as THREE.BufferAttribute;
+      for (let i = 0; i < n2.count; i++) {
+        const k = share[i];
+        const nx = n2.getX(i) * k, ny = n2.getY(i) * k + (1 - k), nz = n2.getZ(i) * k, l = Math.hypot(nx, ny, nz) || 1;
+        n2.setXYZ(i, nx / l, ny / l, nz / l);
+      }
+      g.computeBoundingSphere();
+      const cg = g.boundingSphere!.center, key = bedCellKey(cg.x, cg.z);
+      const at = beds.findIndex((b) => { if (!b.boundingSphere) b.computeBoundingSphere(); return bedCellKey(b.boundingSphere!.center.x, b.boundingSphere!.center.z) === key; });
+      const host = at >= 0 ? beds[at] : null;
+      const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
+        ? mergeGeometries([host, g], false) : null;
+      if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
+      else beds.push(g);
+      lifts.push(spoilLift(src, nest));
+      src.dispose();
+    }
+    group.userData.rockBeds = beds;
+    group.userData.groundCoverLifts = lifts;
+    sandbagGroundBanks.length = 0;
+  }
+  /** The ground-cover lift over a nest's spoil: its top rasterised every 10 cm; a hole under the stack itself. */
+  function spoilLift(bank: THREE.BufferGeometry, nest: { kind: 'sandbagbig' | 'sandbagsmall' | 'sandbagwall'; x: number; z: number; yaw: number; sc: number }): GroundCoverStaticLift {
+    const pos = bank.getAttribute('position') as THREE.BufferAttribute, index = bank.index!.array as ArrayLike<number>;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < pos.count; i++) { x0 = Math.min(x0, pos.getX(i)); x1 = Math.max(x1, pos.getX(i)); z0 = Math.min(z0, pos.getZ(i)); z1 = Math.max(z1, pos.getZ(i)); }
+    const cell = 0.1, nx = Math.ceil((x1 - x0) / cell) + 1, nz = Math.ceil((z1 - z0) / cell) + 1;
+    const top = new Float32Array(nx * nz).fill(-Infinity);
+    for (let t = 0; t < index.length; t += 3) {
+      const a = index[t], b = index[t + 1], c = index[t + 2];
+      const ax = pos.getX(a), az = pos.getZ(a), bx = pos.getX(b), bz = pos.getZ(b), cx = pos.getX(c), cz = pos.getZ(c);
+      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+      if (Math.abs(d) < 1e-9) continue;
+      const i0 = Math.max(0, Math.floor((Math.min(ax, bx, cx) - x0) / cell)), i1 = Math.min(nx - 1, Math.ceil((Math.max(ax, bx, cx) - x0) / cell));
+      const j0 = Math.max(0, Math.floor((Math.min(az, bz, cz) - z0) / cell)), j1 = Math.min(nz - 1, Math.ceil((Math.max(az, bz, cz) - z0) / cell));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = x0 + i * cell, pz = z0 + j * cell;
+        const l1 = ((bz - cz) * (px - cx) + (cx - bx) * (pz - cz)) / d, l2 = ((cz - az) * (px - cx) + (ax - cx) * (pz - cz)) / d, l3 = 1 - l1 - l2;
+        if (l1 < -0.02 || l2 < -0.02 || l3 < -0.02) continue;
+        const y = l1 * pos.getY(a) + l2 * pos.getY(b) + l3 * pos.getY(c);
+        if (y > top[j * nx + i]) top[j * nx + i] = y;
+      }
+    }
+    const [hx, hz] = sandbagFootprint(nest.kind, nest.sc), c = Math.cos(nest.yaw), sn = Math.sin(nest.yaw);
+    return {
+      reach: [x0, z0, x1, z1] as const,
+      liftAt(x: number, z: number): number {
+        const dx = x - nest.x, dz = z - nest.z;
+        if (Math.abs(dx * c - dz * sn) < hx && Math.abs(dx * sn + dz * c) < hz) return NaN;
+        const i = Math.round((x - x0) / cell), j = Math.round((z - z0) / cell);
+        if (i < 0 || j < 0 || i >= nx || j >= nz) return 0;
+        const y = top[j * nx + i];
+        return y === -Infinity ? 0 : Math.max(0, y - heightField.getHeightAt(x, z));
+      },
+    };
+  }
   if (sandbagBeds.length) {
     const beds = mergeGeometries(sandbagBeds, false);
     for (const g of sandbagBeds) g.dispose();
@@ -11210,8 +11314,11 @@ ${snowCap ? `
       // debris inherits the rammer's velocity: dir magnitude carries energy
       // (1 = shell-grade break; a 14 m/s overrun throws ~2.6x as hard)
       const throwK = 1 + Math.min(speed, 14) * 0.115;
-      emitBreakFx(rec.kind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
-        (dx / l) * throwK, (dz / l) * throwK, rec.h);
+      // (the destructible-kits lane: a pillbox breaks in the map's make; a fracture-ready kind churns its ground)
+      const fxKind = rec.kind === 'bunker' && fort ? (fort.style === 'logearth' ? 'bunker-logearth' : 'bunker-concrete') : rec.kind;
+      const scarM = (pool?.imI?.geometry.userData.fracture as { groundScarM?: number } | undefined)?.groundScarM ?? 0;
+      emitBreakFx(fxKind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
+        (dx / l) * throwK, (dz / l) * throwK, rec.h, scarM * rec.sc);
     }
     // audio seam (DESTRUCTIBLES r1): every destruction reports on the bus
     emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause });
