@@ -2,18 +2,21 @@
 //
 // Laws: every map's field hut and lean-to build in their style with a fracture anatomy the destruction core can take
 // apart (one contiguous run a piece covering the geometry exactly, every run inside its box, scores on the box, links
-// in range, every piece reaching an anchor, the caps); the light family's record and receipts hold (footprint, roof
-// orientation, night panes on the hut only); the broken heap lies under the hull-crossing cap with no lit pane; the
-// build spends exactly the legacy builders' draws from the props stream (brokenDraws.ts); it is deterministic; the
-// flat texel and the tile means the colours are divided by are the painter's; the edge art caps a snapped member.
+// in range, every piece reaching an anchor, the caps); the pieces' boxes start apart (no two overlap by more than 3 cm
+// at the intact pose, so released bodies fall and settle instead of springing apart: the destruction core's probe,
+// 2026-10-11); the phones' lite build carries the same pieces; the far stand-in and the shadow caster are a few hundred
+// triangles inside the build's bounds; the light family's record and receipts hold (footprint, roof orientation, night
+// panes on the hut only); the broken heap lies under the hull-crossing cap with no lit pane; the build spends exactly
+// the legacy builders' draws from the props stream (brokenDraws.ts); it is deterministic; the flat texel and the tile
+// means the colours are divided by are the painter's; the edge art caps a snapped member.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, LEGACY_SHED_TYPES, shedKitTypes,
 } from './structureKit.ts';
 import {
-  SHED_BROKEN_CAP, SHED_FLAT_LUM, SHED_FLAT_UV, SHED_GRAIN_LUM, SHED_STYLES, buildShedFieldHut, buildShedLeanTo,
-  shedFractureEdge, shedStyleFor,
+  SHED_BROKEN_CAP, SHED_FLAT_LUM, SHED_FLAT_UV, SHED_GRAIN_LUM, SHED_STYLES, buildShedFar, buildShedFieldHut,
+  buildShedLeanTo, buildShedShadow, shedFractureEdge, shedStyleFor,
 } from './shedKit.ts';
 import { paintTimberGrain } from '../timberGrain.ts';
 import { FRACTURE_PIECE_CAP, checkKitFracture } from '../fractureAnatomy.ts';
@@ -87,6 +90,27 @@ function checkAnatomy(id, geometry, cap) {
   return anatomy;
 }
 
+/** The deepest overlap of two pieces' boxes (the separating-axis depth the destruction core's probe measures). */
+function boxOverlap(p, q) {
+  const ap = [rotate(p.q, [1, 0, 0]), rotate(p.q, [0, 1, 0]), rotate(p.q, [0, 0, 1])];
+  const aq = [rotate(q.q, [1, 0, 0]), rotate(q.q, [0, 1, 0]), rotate(q.q, [0, 0, 1])];
+  const axes = [...ap, ...aq];
+  for (const x of ap) for (const y of aq) {
+    const c = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+    const l = Math.hypot(...c);
+    if (l > 1e-3) axes.push(c.map((v) => v / l));
+  }
+  const d = [q.c[0] - p.c[0], q.c[1] - p.c[1], q.c[2] - p.c[2]];
+  let least = Infinity;
+  for (const n of axes) {
+    const rp = ap.reduce((sum, x, i) => sum + Math.abs(dot(x, n)) * p.h[i], 0);
+    const rq = aq.reduce((sum, x, i) => sum + Math.abs(dot(x, n)) * q.h[i], 0);
+    least = Math.min(least, rp + rq - Math.abs(dot(d, n)));
+    if (least <= 0) return 0;
+  }
+  return least;
+}
+
 const geomDigest = (g) => createHash('sha256').update(Buffer.from(g.getAttribute('position').array.buffer))
   .update(Buffer.from(g.getAttribute('color').array.buffer)).digest('hex');
 
@@ -99,11 +123,41 @@ for (const mapId of maps) {
     const meta = types[id];
     const intact = meta.build(mulberry32(0x5eed + checked));
     const anatomy = checkAnatomy(`${mapId}/${id}`, intact, FRACTURE_PIECE_CAP.light);
+    // the bodies start apart: no two boxes overlap by more than 3 cm (two anchors stand still together)
+    for (let i = 0; i < anatomy.pieces.length; i++) for (let j = i + 1; j < anatomy.pieces.length; j++) {
+      const p = anatomy.pieces[i], q = anatomy.pieces[j];
+      if (p.anchor && q.anchor) continue;
+      const depth = boxOverlap(p, q);
+      assert.ok(depth <= 0.03, `${mapId}/${id}: ${p.role} ${i} and ${q.role} ${j} overlap by ${depth.toFixed(3)} m at the intact pose`);
+    }
+    // the phones' build: the same pieces, lighter
+    const lite = shedKitTypes(mapId, true)[id].build(mulberry32(0x5eed + checked));
+    const liteAnatomy = checkAnatomy(`${mapId}/lite/${id}`, lite, FRACTURE_PIECE_CAP.light);
+    assert.equal(liteAnatomy.pieces.length, anatomy.pieces.length, `${mapId}/${id}: the lite build carries the same pieces`);
+    assert.deepEqual(liteAnatomy.links, anatomy.links, `${mapId}/${id}: and the same links`);
+    assert.ok(lite.getAttribute('position').count < intact.getAttribute('position').count * 0.8, `${mapId}/${id}: the lite build is lighter`);
+    // the stand-ins: a few hundred triangles inside the build's bounds; the far one lit like the build at night
+    const far = buildShedFar(id, shedStyleFor(mapId)), shadow = buildShedShadow(id);
+    assert.ok(far.getAttribute('position').count / 3 <= 360 && shadow.getAttribute('position').count / 3 <= 220,
+      `${mapId}/${id}: stand-ins of ${far.getAttribute('position').count / 3} and ${shadow.getAttribute('position').count / 3} triangles`);
+    for (const name of ['normal', 'uv', 'color', NIGHT_EMISSION_ATTRIBUTE]) assert.equal(far.getAttribute(name)?.count, far.getAttribute('position').count, `${mapId}/${id}: the far stand-in's ${name}`);
+    for (const [label, g, slack] of [['far', far, 0.05], ['shadow', shadow, 0]]) {
+      g.computeBoundingBox();
+      const bb = g.boundingBox;
+      intact.computeBoundingBox();
+      const ib = intact.boundingBox;
+      for (const k of ['x', 'y', 'z']) {
+        assert.ok(bb.min[k] >= ib.min[k] - slack - 1e-6 && bb.max[k] <= ib.max[k] + slack + 1e-6, `${mapId}/${id}: the ${label} stand-in keeps inside the build (${k})`);
+      }
+    }
+    assert.deepEqual([...new Set(far.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array)].sort(), id === 'fieldhut' ? [0, 1] : [0], `${mapId}/${id}: the far stand-in's windows light at night`);
+    lite.dispose(); far.dispose(); shadow.dispose();
     // the light family's record: its footprint stays inside the build, its roof receipts survive the merge
     intact.computeBoundingBox();
     const b = intact.boundingBox;
-    assert.ok(meta.hw <= (b.max.x - b.min.x) / 2 + 0.1 && meta.hl <= (b.max.z - b.min.z) / 2 + 0.1,
-      `${mapId}/${id}: the movement footprint stays inside the build`);
+    // (the field hut's gables are close verges: its back stops at the cladding, its porch runs out past the record)
+    assert.ok(2 * meta.hw <= b.max.x - b.min.x + 0.2 && 2 * meta.hl <= b.max.z - b.min.z + 0.3,
+      `${mapId}/${id}: the build spans its movement footprint`);
     assert.ok(b.max.y <= meta.h + 0.45, `${mapId}/${id}: no taller than its family (stovepipe cap allowed)`);
     assert.ok((intact.userData.skillionRoofPitches ?? []).some((pitch) => pitch.drop > 0.01),
       `${mapId}/${id}: its porch or its roof drains away from its wall`);
