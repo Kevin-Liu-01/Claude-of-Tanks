@@ -158,20 +158,20 @@ export default {
       { kind: 'knoll', x: -280, z: -180, rx: 50, rz: 40, height: 2.5, yawDeg: 33, wetScale: 1 },
       { kind: 'knoll', x: 300, z: 50, rx: 60, rz: 45, height: 2.5, yawDeg: 30, wetScale: 1 },
       { kind: 'basin', x: 55, z: -22, rx: 75, rz: 65, height: -4.5, yawDeg: 20, wetScale: 1 },
-      { kind: 'knoll', x: 140, z: 10, rx: 50, rz: 45, height: 4.0, wetScale: 1 },
+      // (f3: 4.0 -> 2.0 m, so the river knoll no longer commands the meadow north of it)
+      { kind: 'knoll', x: 140, z: 10, rx: 50, rz: 45, height: 2.0, wetScale: 1 },
       { kind: 'basin', x: 312, z: 118, rx: 60, rz: 60, height: -6.0, wetScale: 1 },
       { kind: 'basin', x: 410, z: 300, rx: 110, rz: 70, height: -4.5, yawDeg: 68, wetScale: 1 },
       { kind: 'basin', x: 436, z: 384, rx: 62, rz: 52, height: -4.0, wetScale: 1 },
       { kind: 'basin', x: -290, z: -246, rx: 55, rz: 50, height: -3.0, yawDeg: 30, wetScale: 1 },
       // the FORD: the wade's bed sits at the water plane so the lane dips to a wheel-deep crossing
       { kind: 'basin', x: 186, z: 30, rx: 60, rz: 45, height: -2.4, yawDeg: 68, wetScale: 1 },
-      // (2026-10-11, the map-revival lane; the coordinator's fairness ruling: in all-bot games the north team died on the
-      // open meadow north-west of the river knoll, x 0-200 m, z 0-150 m, to the south team on the knoll and the ridges
-      // behind it — alpha won 60-62 %, first blood 57 of 80; the north bank's mirabelle rows (try f1) gave it no cover a
-      // shell respects) the river's old terrace edge on the north bank: a low bank across the meadow, parallel to the
-      // river, its crest a hull-down line facing the knoll and its lee the north team's covered way to the ford (clear of
-      // the manor lane, the zones and the kickoff by 24 m and more)
-      { kind: 'ridge', x: 85, z: 80, length: 120, width: 40, height: 3.0, yawDeg: 22 },
+      // (2026-10-11, the map-revival lane; the coordinator's fairness ruling, try f3: alpha won 60-62 % of all-bot games on
+      // main and the landing, the north team dying round zone 2 on the open north bank under the river knoll and the
+      // south-east ridges; f1's orchard rows and f2's terrace bank (91 % at 11) did not move it) the zone moved up onto the
+      // north meadow, (154, 54) -> (128, 96) (matchObjectiveLayouts), and a hedge-bank along its south edge facing the
+      // knoll: a low earth bank, 1.6 m, 54 x 8 m, its hedgerow on the crest (vegetation belts)
+      { kind: 'ridge', x: 128, z: 59, length: 54, width: 8, height: 1.6, yawDeg: 0 },
     ],
   },
 
@@ -281,6 +281,8 @@ export default {
       { x0: 390, z0: -310, x1: 390, z1: 130, gap: 9, jitter: 5, species: 'birch' },
       { x0: 408, z0: -300, x1: 408, z1: 140, gap: 9, jitter: 5, species: 'oak' },
       { x0: 426, z0: -290, x1: 426, z1: 130, gap: 10, jitter: 5, species: 'aspen' },
+      // (f3) the hedgerow on zone 2's bank, its crest along the zone's south edge facing the river knoll
+      { x0: 102, z0: 59, x1: 154, z1: 59, gap: 8, jitter: 1.5, species: 'oak' },
       // the sunken lane: hedgerows 14 m either side of the lane (south side first)
       { x0: -384, z0: -383, x1: -294, z1: -343, gap: 13, jitter: 2, species: 'oak' },
       { x0: -396, z0: -357, x1: -306, z1: -317, gap: 13, jitter: 2, species: 'oak' },
