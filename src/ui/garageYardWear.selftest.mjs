@@ -73,6 +73,6 @@ assert.match(kit, /masonry: \{ color: garageFacilityAlbedo\('concrete'/, 'facili
 assert.doesNotMatch(kit, /acquire\('brick', requestRender\)/, 'no brick on the service facilities');
 assert.match(facility, /GARAGE_SHELTER_FINISHES\[variant\.architecture\]/, 'each Garage paints and roofs its shelters its own way');
 assert.doesNotMatch(facility, /clusterBox\(cluster, 0, 0, 0\.10, 10\.8, 0\.20, 9\.0,/,
-  'no raised deck under a bay: the exhibit and its crew stand on the pad');
+  'no raised deck under a bay: the exhibit and its kit stand on the pad');
 
 console.log(`garageYardWear.selftest: ${styles.size} regional hardstands, shared facility albedos, no paint`);

@@ -191,7 +191,7 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
     radiusSide: LEOPARD_MOBILITY_FLOOR.radiusM,
     radiusDepth: LEOPARD_MOBILITY_FLOOR.radiusM,
   }));
-  // the yard crews' datum floors (the track carry and the power-pack pair beside the hero)
+  // the level yard floors beside the hero (the power pack's stand, the menu frame's open left band)
   const crewFloors = getGarageYardCrewFloors(variant).map((floor) => {
     const view = garageWorldPointToView(floor.x, floor.z);
     return Object.freeze({

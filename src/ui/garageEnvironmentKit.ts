@@ -1124,7 +1124,7 @@ export function buildGarageEnvironment(
     }
     let maxGroundContactErrorM = 0;
     for (const terrace of terraceRecords) {
-      // the crews' small floors are audited at every foot instead (garageCrewFloor.selftest.mjs)
+      // the small yard floors are audited at every kit foot instead (garageBayFloor.selftest.mjs)
       if (terrace.label.startsWith('crew-floor-')) continue;
       for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
         [-0.55, 0.55], [0.55, 0.55]] as const) {
