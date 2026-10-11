@@ -9020,17 +9020,16 @@ function* createTankOwnedSteps(
     }
   }
 
-  function startWreckPresentation(ageS: number, pop: boolean): void {
+  function startWreckPresentation(ageS: number): void {
     burnU.uBurnLo.value = root.position.y + 0.15;
     burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
     for (const decal of decalMeshes) decal.visible = false;
     wreckAge = ageS;
     burnU.uBurnT.value = ageS;
     // (fx 8p) the fire: the turret ring at the kill (before a cook-off throws the turret); the char's reach from it, its
-    // start and its spread
+    // start and its spread (a plain kill's; launchDestroyedTurret speeds a cook-off's)
     turretG.getWorldPosition(burnU.uBurnO.value);
-    burnU.uBurnK.value.set(burnReachM * Math.abs(root.scale.x || 1), BURN_CHAR_DELAY_S,
-      pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S, 0);
+    burnU.uBurnK.value.set(burnReachM * Math.abs(root.scale.x || 1), BURN_CHAR_DELAY_S, BURN_SPREAD_PLAIN_S, 0);
     burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
     burnU.uBurnEmber.value = emberHeat(ageS);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
@@ -9057,6 +9056,8 @@ function* createTankOwnedSteps(
 
   function launchDestroyedTurret(pop: boolean, ageS: number): void {
     popScale = pop ? 1 : 0.22;
+    // (fx 8p) a cook-off's fire spreads its char faster than a plain kill's or a burn-out's
+    burnU.uBurnK.value.z = pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;
     popActive = true;
     popT = ageS;
     popTrailAcc = 0;
@@ -9748,7 +9749,7 @@ function* createTankOwnedSteps(
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
-      startWreckPresentation(ageS0, !!(opts && opts.pop));
+      startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence
