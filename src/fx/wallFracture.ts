@@ -61,6 +61,18 @@ function cellLaw(material: FractureMaterial): { bonded: boolean; w: number; h: n
   }
 }
 
+/** mulberry32 over a seed (the face's own joints). */
+function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /** One face of one storey as cells. */
 export interface FaceGrid {
   readonly storey: number;
@@ -150,6 +162,8 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
   const material = faceMaterial(face);
   const law = cellLaw(material);
   const height = Math.max(0.3, face.height);
+  // the face's own joints, from the building's seed (every peer lays the same)
+  const rand = seeded((anatomy.seed ^ Math.imul(storeyIndex * 8 + faceIndex + 1, 0x9e3779b1)) >>> 0);
   // rows: the masonry's courses grouped to the law's height where the kit gave them, else even rows
   const rowsY: number[] = [0];
   const courses = face.masonry?.courses;
@@ -157,23 +171,27 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
     let last = 0;
     for (const c of courses) if (c - last >= law.h * 0.85 && height - c >= law.h * 0.5) { rowsY.push(c); last = c; }
   } else {
+    // even rows, each line nudged up or down a little (a cast or framed wall breaks in uneven bands, not a grid)
     const rows = Math.max(1, Math.round(height / law.h));
-    for (let r = 1; r < rows; r++) rowsY.push((height * r) / rows);
+    for (let r = 1; r < rows; r++) rowsY.push((height * (r + (rand() - 0.5) * (law.bonded ? 0.15 : 0.35))) / rows);
   }
   rowsY.push(height);
   const cols = Math.max(1, Math.round(face.width / law.w));
   const cw = face.width / cols;
   const rowStart: number[] = [];
   const cellU: number[] = [];
+  // each joint along a row nudged a little from the even pitch (a bonded wall's by a fifth of a cell, a cast or framed
+  // one's by two fifths): the break follows uneven joints, never a ruled grid
+  const nudge = (law.bonded ? 0.2 : 0.4) * cw;
   for (let r = 0; r + 1 < rowsY.length; r++) {
     rowStart.push(cellU.length / 2);
     const shift = law.bonded && cols > 1 && r % 2 === 1 ? cw * 0.5 : 0;
     let u = -face.width / 2;
-    if (shift > 0) { cellU.push(u, u + shift); u += shift; }
+    if (shift > 0) { const u1 = u + shift + (rand() - 0.5) * nudge * 0.5; cellU.push(u, u1); u = u1; }
     while (u < face.width / 2 - 1e-6) {
-      const u1 = Math.min(face.width / 2, u + cw);
+      const u1 = Math.min(face.width / 2, u + cw + (rand() - 0.5) * nudge);
       // a sliver at the row's end joins its neighbour
-      if (face.width / 2 - u1 < cw * 0.25) { cellU.push(u, face.width / 2); break; }
+      if (face.width / 2 - u1 < cw * 0.35) { cellU.push(u, face.width / 2); break; }
       cellU.push(u, u1);
       u = u1;
     }
