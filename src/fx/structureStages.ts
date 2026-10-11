@@ -37,6 +37,8 @@ import {
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 import type { CollapseBodies, CollapseBodiesEvent } from './collapseBodies.ts';
+import type { DebrisPhysics } from './debrisPhysics.ts';
+import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
 import type { CollapsePiece } from './collapsePieces.ts';
 
 export interface StructureStages {
@@ -66,6 +68,8 @@ export interface StructureStages {
   shiftTime(delta: number): void;
   /** Stand every building up again: the mask is the caller's to reset; the flattened parts come back here. */
   reset(): void;
+  /** The broken walls' bodies in the pool now (the pool steps while any owner has some). */
+  liveBodies(): number;
   /** receipts: buildings falling, part ranges flattened, spans whose original positions are kept, storeys dropping */
   stats(): { falling: number; flattened: number; kept: number; dropping: number };
 }
@@ -163,6 +167,15 @@ export interface StructureStagesOptions {
    * once and the heap rises under them. Absent (the phone), or when it declines: the mask's crumble.
    */
   bodies?: CollapseBodies | null;
+  /**
+   * The presentation's debris pool (the collapse bodies' own): with it a round breaks a wall where it strikes — its
+   * cells knocked through, spalled and cracked, what loses its load path falling as bodies (structureFracture.ts; dcore
+   * 2026-10-10, the owner: "the destruction of buildings needs to be a lot better too ... behaving like it would with
+   * physics"). Absent (the phone): the kit's hole in the mask.
+   */
+  pool?: DebrisPhysics | null;
+  /** A falling cell's hard landing (its dust): world point, speed, mass, the building. */
+  onPieceLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
 }
 
 /** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
@@ -426,6 +439,19 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function punch(p: PendingStrike): void {
     const { structureId, seam, x, y, z } = p;
     if (realHoles.has(structureId) || sectionsSeen.has(structureId) || downed.has(structureId)) return;
+    // a wall breaks where the round strikes (its cells: knocked through, spalled, cracked; what loses its load path
+    // falls): no cylinder in the mask, no kit hole; the cut laid ahead for a collapse is laid again from what stands
+    if (fracture) {
+      // (the same burst's breach stage struck here already: its round is that one)
+      const recent = struckAt.get(structureId);
+      if (recent && o.now() - recent[3] < 1 && Math.hypot(recent[0] - x, recent[1] - y, recent[2] - z) < 0.5) return;
+      if (fracture.strike(seam, x, y, z, p.dirX, p.dirZ, p.munition, p.chargeKg, p.caliberMm)) {
+        finishFalls(structureId);
+        notePunched(structureId, x, y, z);
+        o.bodies?.forget(seam.structureIdx);
+        return;
+      }
+    }
     // (the battle strips, b3: a strike's hole healed over when later cuts — the damaged stage's spalls — took its slot in
     // the mask's ring) a strike never takes a slot another cut holds, and leaves one for the breach stage
     if (mask.holes(seam.structureIdx) >= MAX_HOLES - 1) return;
@@ -457,6 +483,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, throwK)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed,
       cause === 'kinetic' ? 'pierce' : 'blast');
   }
+  /** The last strike a stage laid through the fracture, per structure: x, y, z, and when (the burst's own punch follows). */
+  const struckAt = new Map<number, [number, number, number, number]>();
   const nearPunched = (id: number, x: number, y: number, z: number, within: number): boolean =>
     (punched.get(id) ?? []).some(([hx, hy, hz]) => Math.hypot(hx - x, hy - y, hz - z) < within);
   const notePunched = (id: number, x: number, y: number, z: number): void => {
@@ -579,6 +607,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
   roomMaterial.name = 'fx-structure-room';
   mask.patch(roomMaterial);
+
+  // a round breaks a wall where it strikes (structureFracture.ts over wallFracture.ts): its cells redrawn as they break,
+  // what it knocks through and what loses its load path falling as bodies in the collapse bodies' pool
+  const fracture: StructureFracture | null = o.pool && o.bodies ? createStructureFracture({
+    pool: o.pool, group: debris.group, now: o.now, keepSpan: (span) => keep(span), roomMaterial,
+    materialFor: (seam, bucket) => spanMaterials(seam).get(bucket) ?? o.materialFor?.(bucket) ?? null,
+    onLanding: o.onPieceLanding,
+  }) : null;
 
   /** The world's patched shadow depth material of a bucket this structure draws in (its spans' meshes carry them). */
   function depthMaterials(seam: StructureDamageSeam): Map<string, THREE.Material> {
@@ -905,7 +941,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // as it stands, fall in the debris pool; it is gone from the mask the same frame and its heap rises under them
       // (a shaft too: it topples as a stack of drums over its stump, collapsePieces planShaft)
       if (e.stage === 'collapsed' && !settled && seam && o.bodies && (e as StructureStageEvent & { sections?: boolean }).sections !== true) {
-        const standing = debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1);
+        // (the walls a fracture redrew stand with it: cut with the building, gone with it)
+        const standing = fracture?.has(seam.structureIdx)
+          ? [...debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1), ...fracture.standing(seam.structureIdx)]
+          : debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1);
         const byBucket = spanMaterials(seam);
         // its pieces stand in its place: it goes from the mask, its rims with it, and its heap rises under them (at once
         // for a building whose cut was laid ahead; a few frames on for one felled whole by one blow)
@@ -915,6 +954,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           const fall = { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2, yaw: a.placement.yaw };
           mask.collapse(e.structureId, o.now(), Math.max(1, e.topY - e.baseY), e.dirX, e.dirZ, e.cx, e.baseY, e.cz, true, fall);
           for (const r of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) debris.dropRun(r);
+          fracture?.release(seam.structureIdx);
           o.scars?.clearStructure(e.structureId);
           seam.touchShadows();
           // the kit's heap, its fine rubble and its falling bits; its stubs, its whole wall and roof sections are the bodies'
@@ -961,6 +1001,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // with sections on (the match's ruleset), the struck section's own holes are the breach: no synthetic one
       const sections = (e as StructureStageEvent & { sections?: boolean }).sections === true || realHoles.has(e.structureId);
       // (a round's own strike hole there is the breach already: no second hole on top of it)
+      // (the fracture: a live breach is a round that breaks the wall where it struck, sized as the stage's blow)
+      if (e.stage === 'breached' && !sections && !settled && fracture && !nearPunched(e.structureId, e.x, e.y, e.z, 2)) {
+        const blow = breachBlowFor(e);
+        if (fracture.strike(seam, blow.x, blow.y, blow.z, e.dirX, e.dirZ, e.munition ?? 'he', 1, 0, e.cause === 'ram' ? Math.max(blow.radiusM, 1.6) : blow.radiusM)) {
+          notePunched(e.structureId, e.x, e.y, e.z);
+          struckAt.set(e.structureId, [e.x, e.y, e.z, o.now()]);
+          o.bodies?.forget(seam.structureIdx);
+        }
+      }
       if (e.stage === 'breached' && !sections && (settled || !nearPunched(e.structureId, e.x, e.y, e.z, 2))) {
         const blow = breachBlowFor(e);
         // a ram's breach is the hull's way in: wider than the hull is high
@@ -1126,6 +1175,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (changed) seam.touchShadows();
     },
     update() {
+      fracture?.update();
       if (pendingStrikes.length) {
         const t = o.now();
         let k = 0;
@@ -1184,14 +1234,17 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       downed.clear();
       sectionsSeen.clear();
       pendingStrikes.length = 0;
+      struckAt.clear();
       fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;
       rising.length = 0;
+      fracture?.reset();
       o.bodies?.reset();
       o.scars?.reset();
     },
+    liveBodies: () => fracture?.liveBodies() ?? 0,
     stats: () => ({ falling: falling.length, flattened: flattened.length, kept: originals.size, dropping: storeyFalls.length }),
   };
 }
