@@ -255,6 +255,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // front (+z); the footprint the skirt roof round them
   woodenTserkva: { family: 'civic', defaults: { length: 18, width: 9.4 },
     footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.35] },
+  // the Temple of the Oracle on the rock of Aghurmi (aghurmi.ts): the rock's shelves and talus, the ramp along its south
+  // flank, the temple and the village's melted walls on its summit; the footprint the talus round the foot
+  oracleTemple: { family: 'civic', defaults: { size: 28, height: 8.5 },
+    footprint: (p) => [num(p, 'size') / 2 + 2.4, num(p, 'size') / 2 + 2.4] },
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)
     // (an Orthodox church's porticos stand 3 m off the cube; a Western church's apse rounds off past its chancel)

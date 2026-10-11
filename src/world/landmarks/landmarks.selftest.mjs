@@ -85,7 +85,7 @@ assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'ever
 
 /** Desktop triangle budgets by kind (the phones build the coarse share of the same). */
 const BUDGET = {
-  church: 16000, staveChurch: 16000, woodenTserkva: 14000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
+  church: 16000, staveChurch: 16000, woodenTserkva: 14000, oracleTemple: 8000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000, outfall: 900,

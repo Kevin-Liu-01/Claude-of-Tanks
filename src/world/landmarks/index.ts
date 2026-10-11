@@ -13,6 +13,7 @@ import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare,
 import { aircraftWreck } from './wrecks.ts';
 import { staveChurch } from './stave.ts';
 import { woodenTserkva } from './carpathian.ts';
+import { oracleTemple } from './aghurmi.ts';
 import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
@@ -54,6 +55,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   moduleTrain,
   mole,
   obelisk,
+  oracleTemple,
   oreBin,
   oreCars,
   parkGate,
