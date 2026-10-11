@@ -227,7 +227,7 @@ const ROOF_BREAK_MPS = 2;
 const SHAFT_BREAK_TILT = 0.6;
 /** What a break adds to each part's own motion: a drum's tumble and sideways scatter, a roof sheet's buckle (rad/s,
  *  m/s), so the parts never lie on in a neat row or one plane. */
-const DRUM_SPIN = 2.6, DRUM_SCATTER = 3.2, DRUM_YAW = 2.4, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
+const DRUM_SPIN = 3.0, DRUM_SCATTER = 5.0, DRUM_YAW = 3.5, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
 const CRACK_KEEP = 0.7;
 
@@ -788,15 +788,19 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           // zigzag of sections, not a row with joints
           const push = (k % 2 === 0 ? 1 : -1) * (0.55 + 0.45 * hash01(sid, pid * 16 + k, 4)) * DRUM_SCATTER;
           vx += sx * push; vz += sz * push;
-          const along = (k - (p.parts.length - 1) / 2) * 0.55;
+          // (their end faces in contact rubbed the scatter away: the sections part along the line first)
+          const along = (k - (p.parts.length - 1) / 2) * 1.0;
           vx += (ax / al) * along; vz += (az / al) * along;
           wy += (hash01(sid, pid * 16 + k, 7) * 2 - 1) * DRUM_YAW;
           // every other drum thrown up off the break (the shaft snaps as it bends), so they tumble over one another
-          vy += (k % 2 === 0 ? 1.2 : 0) + hash01(sid, pid * 16 + k, 5) * 1.0;
+          vy += (k % 2 === 0 ? 2.4 : 0.4) + hash01(sid, pid * 16 + k, 5) * 1.2;
         } else vy -= hash01(sid, pid * 16 + k, 6) * ROOF_SAG;
       }
+      // a drum parts from its neighbours at the break: a few centimetres along the shaft from its middle
+      const gap = kind === 'drum' ? (k - (p.parts.length - 1) / 2) * 0.07 : 0;
+      const gx = kind === 'drum' ? _p.x * gap : 0, gy = kind === 'drum' ? _p.y * gap : 0, gz = kind === 'drum' ? _p.z * gap : 0;
       const h = pool.spawn(partShape(spec), {
-        x: pose[0] + _o.x, y: pose[1] + _o.y, z: pose[2] + _o.z, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
+        x: pose[0] + _o.x + gx, y: pose[1] + _o.y + gy, z: pose[2] + _o.z + gz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
         vx, vy, vz, wx, wy, wz,
       });
       if (keen && h >= 0) {
@@ -809,7 +813,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       part.handle = h;
       if (h >= 0) {
         byHandle.set(h, { c, p, part: k });
-        writePart(part, [pose[0] + _o.x, pose[1] + _o.y, pose[2] + _o.z, pose[3], pose[4], pose[5], pose[6]]);
+        writePart(part, [pose[0] + _o.x + gx, pose[1] + _o.y + gy, pose[2] + _o.z + gz, pose[3], pose[4], pose[5], pose[6]]);
       } else {
         // no room for it: it goes (it would hang where the panel cracked)
         for (const m of part.meshes) { m.removeFromParent(); m.geometry.dispose(); }
