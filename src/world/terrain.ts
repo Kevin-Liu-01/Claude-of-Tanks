@@ -4033,6 +4033,7 @@ float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
+float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its planted sheet satin, not a ditch's mirror
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
@@ -5502,8 +5503,18 @@ void splatCompute() {
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
         // makes it a mirror of the sky)
-        cropCol = mix(vec3(0.040, 0.046, 0.040), vec3(0.060, 0.095, 0.035), 0.25 + 0.20 * jit);
-        water = 1.0;
+        // (Caldera round 4, the map-revival lane; gauntlet wave 359: "glittering blue-white noise", "the water wants muddy
+        // reflections or paddy surfaces") a planted paddy: brown water between the rows of young rice — the rows a green
+        // stripe near the eye with the water between them, past it a green haze over the water; its sheen satin (the
+        // roughness stage, gPaddyWater), so the clouds it mirrors blur into the sky's tone instead of glittering
+        float seedRow = smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(across * 20.94)) * tileVis(0.3);
+        cropCol = mix(vec3(0.050, 0.050, 0.036), vec3(0.070, 0.105, 0.040), 0.45 + 0.20 * jit);
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.7, seedRow * 0.55);
+        // (cap9's look: from the establishing height the sheet still mirrored the cumulus as a mottle of blue-white —
+        // the young rice covers about a third of a planted paddy's water seen across it, so past the rows' fade the haze
+        // takes that share of the sheet)
+        water = (1.0 - seedRow * 0.5) * mix(0.68, 1.0, tileVis(0.3));
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.55, 0.3 * (1.0 - tileVis(0.3)));
       } else if (crop < 9.5) {
         cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
         rows = sin(across * 20.94) * 0.05 * tileVis(0.3);
@@ -5682,6 +5693,7 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
+      gPaddyWater = gFieldWater;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (uLandTier < 0.5) {
         // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
@@ -5702,8 +5714,12 @@ void splatCompute() {
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
-        float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
-        a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
+        // (Caldera round 4, wave 359: "no paddy grid" — the bunds took the field's own green or the soil's dark, so past the
+        // near fields the grid between the water and the rice was gone) the bund a little wider, its cut grass a paler,
+        // drier green over the earth than the rice or the water either side, so the grid holds into the middle distance
+        float bund = (1.0 - smoothstep(0.36, 0.66, edgeM)) * (1.0 - track);
+        vec3 bundTop = mix(soilF * 1.05, vec3(1.55, 1.78, 0.78) * baseL * bright, 0.55 + 0.25 * n1h);
+        a.rgb = mix(a.rgb, bundTop, bund * landW);
       } else {
         // a dry stone wall's footing: limestone rubble 0.8 m wide, broken into its stones and gaps and grown over in
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
@@ -7082,6 +7098,7 @@ void splatCompute() {
   // ground (a damp matte by ~36 m), only a near puddle holding the sky
   gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);
   gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
+  gSplatRough = mix(gSplatRough, 0.42, gPaddyWater); // (Caldera round 4) a planted paddy's sheet satin, a ditch's a mirror (cap9: 0.26 still mirrored the clouds)
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
@@ -7124,6 +7141,10 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "the water glitters") a flooded paddy's and a
+  // ditch's water lies level: its sheet takes the world's up, not the relief of the ground under it (the splat stage has
+  // flattened its detail), so the sky it mirrors is one sheet and not a glitter of facets
+  if (gFieldWater > 0.001) gN = normalize(mix(gN, vec3(0.0, 1.0, 0.0), gFieldWater));
   // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
   if (dot(gRingGrad, gRingGrad) > 0.0) {
     vec2 ringG0 = -gN.xz / max(gN.y, 0.05);
