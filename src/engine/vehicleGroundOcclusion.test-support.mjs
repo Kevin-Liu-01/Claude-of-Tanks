@@ -85,7 +85,7 @@ export async function vehicleGroundGlslCases() {
     packedRuns = { left: knots.slice(0, 8), right: knots.slice(8, 16) };
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
       solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray(),
-      r4: u.uVehGroundR4.value.toArray(), r5: u.uVehGroundR5.value.toArray() };
+      r4: u.uVehGroundR4.value.toArray(), r5: u.uVehGroundR5.value.toArray(), r6: u.uVehGroundR6.value.toArray() };
   };
   // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX)
   const UP = { x: 0, y: 1, z: 0 };
@@ -102,15 +102,17 @@ export async function vehicleGroundGlslCases() {
   // berm's slopes on the sun share; `hulls` the receiver in each hull's frame, `ambShare` the pixel's
   const shade = (hulls, n, card, ambShare, sun, snow, strengths, runs = null, rho = 0.25) => {
     const per = [], cores = [];
-    let band = 0, berm = 1;
+    let band = 0, berm = 1, gear = 0;
     for (const q of hulls) {
-      if (!receives(q, runs) || M.isRunShoe(q, T90M, card, runs)) continue;
+      // (round 5) no shoe skip: the shoes carry the vehicle tag, a card in the lane is grass in the running gear
+      if (!receives(q, runs)) continue;
+      gear = Math.max(gear, M.gearWeight(q, T90M, card));
       per.push(M.vehicleGroundOcclusionLocal(q, n, T90M, strengths, card, runs, M.groundWallSoft(rho)));
       cores.push(M.contactCoreOcclusion(q, T90M, runs));
       band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
       berm *= M.snowBermGain(q, n, T90M, sun, snow, runs);
     }
-    const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores), M.groundOcclusionCap(rho));
+    const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores), M.gearCap(M.groundOcclusionCap(rho), gear));
     const sunCut = 1 - (1 - band) * berm;
     if (occ <= 0.003 && Math.abs(sunCut) <= 0.003) return 0;
     return occ * ambShare + (1 - ambShare) * sunCut;
@@ -126,7 +128,7 @@ export async function vehicleGroundGlslCases() {
   const underOf = (q, runs = null) => {
     const dx = Math.abs(q.x) - T90M.hx, dz = Math.abs(q.z - 0.5 * (T90M.fz0 + T90M.fz1)) - 0.5 * (T90M.fz1 - T90M.fz0);
     const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
-    if (M.isRunShoe(q, T90M, true, runs) || (q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M)) return 0;
+    if (q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M) return 0;
     void smooth;
     return M.hullSunShadow(q, T90M, { x: 0, y: 1, z: 0 });
   };
@@ -163,7 +165,7 @@ export async function vehicleGroundGlslCases() {
   const lowSunLen = Math.hypot(...lowSun), sunL = lowSun.map((v) => v / lowSunLen);
   const kLow = 2.2, grass = M.vehicleGroundStrengths(0.25, kLow * Math.max(sunL[1], 0), M.GROUND_AO_HULL_ALBEDO, M.GROUND_AO_BELLY_VIEW);
   const lowInput = pack([rootAt(0, reader)], 0.25, M.GROUND_AO_HULL_ALBEDO);
-  const underLow = (q) => (M.isRunShoe(q, T90M, true, runs) || !receives(q, runs)) ? 0 : M.hullSunShadow(q, T90M, vec(sunL));
+  const underLow = (q) => (!receives(q, runs)) ? 0 : M.hullSunShadow(q, T90M, vec(sunL));
   const lowSunCase = {
     name: 'grass under a low sun from the left, the runs as drawn',
     input: { ...base, ...lowInput, sunLum: kLow, sunDir: sunL },

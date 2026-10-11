@@ -23,6 +23,8 @@ void main() { gl_Position = vec4( aPos, 0.0, 1.0 ); }`;
   const fs = `#version 300 es
 precision highp float;
 precision highp int;
+// (contact round 5) the block's contact blend samples the scene with three's GLSL 1 spelling (three defines it on WebGL 2)
+#define texture2D texture
 uniform vec4 uContactAmb;
 uniform float uContactSunLum;
 uniform vec3 uContactFillDir;
@@ -35,6 +37,14 @@ float cotSunVisOf( float alpha ) { return alpha < 1.5 ? -1.0 : 1.0; }
 vec3 cotNormalAt( vec2 uv, vec3 P ) { return uNrm[ int( uv.x ) ]; }
 // (contact round 4) the gap normal's guard reads the depth neighbours; the receipt hands each receiver its normal
 vec3 cotNormalAtGuarded( vec2 uv, vec3 P, vec3 up, float dist ) { return uNrm[ int( uv.x ) ]; }
+// (contact round 5) the aerial pass's scene, depth and projection the contact blend samples: declared for the compile, never
+// sampled (the receipt evaluates the ground's shade and the grime)
+uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform float uNear;
+uniform mat4 uContactViewProj;
+float cotDepthToDist( float d ) { return d; }
+vec3 cotWorldAtDepth( vec2 uv, float dist ) { return vec3( uv, dist ); }
 ${input.glsl}
 out vec4 outColor;
 void main() {
@@ -62,6 +72,7 @@ void main() {
   // (contact round 4) the round's levers as the module packs them
   gl.uniform4fv(at('uVehGroundR4'), new Float32Array(input.r4 ?? [1, 1, 0, 1]));
   gl.uniform4fv(at('uVehGroundR5'), new Float32Array(input.r5 ?? [0.7, 1, 0.55, 0]));
+  gl.uniform4fv(at('uVehGroundR6'), new Float32Array(input.r6 ?? [0, 0, 0.75, 1]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));

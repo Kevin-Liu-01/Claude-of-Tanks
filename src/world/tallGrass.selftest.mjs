@@ -74,7 +74,7 @@ const cam = new THREE.Vector3(0, 2, 0);
 // 2. Gates: the mobile tier, a map without a sward, a zero quality knob.
 {
   const mobile = createTallGrass(field, { tier: 'mobile', biome: meadow, qualityScale: () => 1 });
-  assert.equal(mobile.group.visible, false); assert.equal(mobile.pressure, null);
+  assert.equal(mobile.group.visible, false); assert.equal(mobile.pressure, null); assert.equal(mobile.pressureFine, null);
   mobile.update(1 / 60, cam); assert.equal(mobile.getState().enabled, false); assert.equal(mobile.near.count, 0);
   mobile.dispose();
   const desert = createTallGrass(field, { tier: 'desktop', mapId: 'desert', qualityScale: () => 1 });
@@ -277,6 +277,14 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
     'float hgt = aBlade.y * fade;', 'float taper = 1.0 - 0.72 * t;',
   ]) assert.ok(vertexShader.includes(term), `vertex: ${term}`);
   assert.ok(vertexShader.indexOf('float cotYaw = aBlade.x + position.z;') < vertexShader.indexOf('vec3 transformed;'), 'the yaw is set with the normal, before the strip');
+  // (contact round 5) the fine near field read inside its window after the coarse one, eased in from its outer band
+  for (const term of [
+    'uniform sampler2D uPressFine; uniform vec4 uPressFineParams;', 'if (uPressFineParams.w > 0.5) {',
+    'float winF = 1.0 - smoothstep(0.30, 0.38, max(offF.x, offF.y));', 'vec4 pf = texture2D(uPressFine, fract(root.xz / uPressFineParams.x));',
+    'press = mix(press, clamp(pf.r, 0.0, 1.0), winF);', 'crush = mix(crush, clamp(pf.a, 0.0, 1.0), winF);',
+  ]) assert.ok(vertexShader.includes(term), `vertex (fine field): ${term}`);
+  assert.ok(vertexShader.indexOf('vec4 pf = texture2D(uPressFine') > vertexShader.indexOf('vec4 p = texture2D(uPress,')
+    && vertexShader.indexOf('vec4 pf = texture2D(uPressFine') < vertexShader.indexOf('float ang = press * uBend;'), 'after the coarse read, before the bend');
   assert.ok(fragmentShader.includes(`diffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`), 'dark roots, lit tips (per-ring gradient and lift), bruised where crushed');
   assert.ok(TALL_GRASS.crushDarken >= 0.2 && TALL_GRASS.crushDarken <= 0.4, 'a bruise, not a burn');
   assert.ok(fragmentShader.includes('normal = normalize( vNormal );'), 'both faces of a strip light the same way');
