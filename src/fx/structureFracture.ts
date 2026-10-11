@@ -26,8 +26,8 @@ import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitCollapseImpact } from './collapseImpacts.ts';
 import { profEnd, profStart } from './fxProf.ts';
 import {
-  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture, createWallStrikeOutcome,
-  gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
+  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
+  createWallStrikeOutcome, gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
 export interface StructureFractureOptions {
@@ -572,10 +572,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
   }
   const _spans: number[] = [];
-  /** How far a cracked cell stands out of its face (m: mostly out, a few pushed back), from the cell's own hash. */
+  /**
+   * How far a cracked cell stands out of its face (m: mostly out, a few pushed back), from the cell's own hash: (wave
+   * 397: "at 1.00 s the whole gable has already split into a uniform mosaic of chunks") only one cell in two, and by how
+   * far its damage has gone past the crack toward a spall, so the courses near a hole stand loose and the crack ring
+   * farther out lies flush with its cracks between.
+   */
   function looseOf(g: FaceGrid, cell: number): number {
     const h = (Math.imul(cell + 1, 0x9e3779b1) ^ Math.imul(Math.round(g.origin[0] * 100) + g.storey * 131, 0x85ebca6b)) >>> 0;
-    return ((h % 1000) / 1000) * 0.045 - 0.012;
+    const h01 = (h % 1000) / 1000;
+    const k = Math.min(1, Math.max(0, (g.damage[cell] - CRACK_AT) / (SPALL_AT - CRACK_AT)));
+    if (h01 < 0.5 || k <= 0) return 0;
+    return k * ((h01 - 0.5) * 2 * 0.045 - 0.012);
   }
   /** Rebuild a face's standing meshes from its cells. */
   /** A face group's cut triangles packed by cell into its core and its skin (typed: a redraw copies them whole), and each

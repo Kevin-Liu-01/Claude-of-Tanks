@@ -43,8 +43,8 @@ export const CELL_OPENING = 5;
 export const CELL_VOID = 6;
 
 /** Damage a cell takes before it cracks, spalls and goes. */
-const CRACK_AT = 0.25;
-const SPALL_AT = 0.5;
+export const CRACK_AT = 0.25;
+export const SPALL_AT = 0.5;
 const GONE_AT = 1;
 /** A sagging cell drops this far (m) at most: one that bears on less than half of what it did. */
 const SAG_M = 0.035;

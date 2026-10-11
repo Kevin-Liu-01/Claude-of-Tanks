@@ -228,7 +228,8 @@ const ROOF_BREAK_MPS = 2;
 const SHAFT_BREAK_TILT = 0.6;
 /** What a break adds to each part's own motion: a drum's tumble and sideways scatter, a roof sheet's buckle (rad/s,
  *  m/s), so the parts never lie on in a neat row or one plane. */
-const DRUM_SPIN = 1.5, DRUM_SCATTER = 2.6, DRUM_YAW = 1.8, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
+// (wave 401: "boxes that tumble and bounce like toy blocks") a drum's own tumble is a little under the fall's
+const DRUM_SPIN = 1.0, DRUM_SCATTER = 2.6, DRUM_YAW = 1.8, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
 /** A shaft's broken section's horizontal speed off the break at most (m/s). */
 const DRUM_THROW_MAX = 4.5;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
@@ -785,6 +786,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       let vx = vel[0] + CRACK_KEEP * (_w.y * _l.z - _w.z * _l.y), vy = vel[1] + CRACK_KEEP * (_w.z * _l.x - _w.x * _l.z);
       let vz = vel[2] + CRACK_KEEP * (_w.x * _l.y - _w.y * _l.x);
       let wx = CRACK_KEEP * vel[3], wy = CRACK_KEEP * vel[4], wz = CRACK_KEEP * vel[5];
+      // the part's own speed into the ground at the break (its dust and its spill are the impact's, before the scatter)
+      const ix = vx, iy = vy, iz = vz;
       if (keen) {
         // each part its own tumble (a drum's sideways scatter, a sheet's sag), so they never lie on in a row or a plane
         const spin = kind === 'drum' ? DRUM_SPIN : ROOF_SPIN;
@@ -804,8 +807,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           const along = (k - (p.parts.length - 1) / 2) * 0.7 * last;
           vx += (ax / al) * along; vz += (az / al) * along;
           wy += (hash01(sid, pid * 16 + k, 7) * 2 - 1) * DRUM_YAW;
-          // every other drum thrown up off the break (the shaft snaps as it bends), so they tumble over one another
-          vy += (k % 2 === 0 ? 0.9 : 0.2) + hash01(sid, pid * 16 + k, 5) * 0.6;
+          // every other drum lifted a little off the break (the shaft snaps as it bends), so they tumble over one another;
+          // (wave 401: "bounce apart like toy blocks") masonry striking the ground does not leap: a hand's breadth
+          vy += (k % 2 === 0 ? 0.35 : 0.05) + hash01(sid, pid * 16 + k, 5) * 0.25;
           // (wave 401: "one long slab is thrown into the foreground and lands without dust; cap the throw") a section
           // leaves the line at a walk's pace at most: the tip's whip is the shaft's own, its pieces do not fly on with it
           const hs = Math.hypot(vx, vz);
@@ -821,10 +825,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       });
       if (keen && h >= 0) {
         // its landing's dust where it lies along the fall, and the broken masonry thrown off its broken ends
+        // (wave 401: "a real fracture at the moment of impact ... a large dust burst, heaviest at the fast-moving top")
+        // sized by the part's own speed into the ground, not its capped throw
         const x = pose[0] + _o.x, y = pose[1] + _o.y, z = pose[2] + _o.z;
-        const speed = Math.max(3, Math.hypot(vx, vy, vz));
+        const speed = Math.max(3, Math.hypot(ix, iy, iz));
         if (kind === 'drum') o.onLanding?.(x, env.groundAt(x, z) + 0.2, z, speed, spec.massKg, sid);
-        if (kind === 'drum' || k % 2 === 0) o.onShards?.(x, y, z, vx, vy, vz, spec.massKg, sid);
+        if (kind === 'drum' || k % 2 === 0) o.onShards?.(x, y, z, ix, iy, iz, spec.massKg, sid);
       }
       part.handle = h;
       if (h >= 0) {

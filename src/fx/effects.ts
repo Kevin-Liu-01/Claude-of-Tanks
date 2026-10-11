@@ -1174,7 +1174,8 @@ function* createFxSteps(
   stagesRef = stages;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
-  /** Each struck building's last burst (fx seconds) and how many came within 2.5 s of the one before (its dust thins). */
+  /** Each struck building's last burst (fx seconds) and the dust load in the air round it then (the bursts' scales, each
+   *  fading over 1.5 s): a burst's own dust thins by the load against its own size. */
   const strikeDust = new Map<number, [number, number]>();
   let patchedWorld: FxWorldSeam | null = null;
   function attachWorld(): void {
@@ -5559,17 +5560,18 @@ function* createFxSteps(
             const named = struckId >= 0 ? lookOf(struckId) : null;
             lastBlast.structureId = -1;
             // (dcore 2026-10-11, wave 397: "the actual fall happens inside an opaque dust ball") a building struck again and
-            // again within a couple of seconds throws less new dust each time: the air round it is full already
-            let crowd = 0;
+            // again within a couple of seconds throws less new dust each time: the air round it is full already; by the
+            // load against the burst's own size (wave 401: a 152 mm after five 76 mm still raises its full burst)
+            const scale = explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120;
+            let dustK = 1;
             if (struckId >= 0) {
               const nowS = particles.getTime();
               const last = strikeDust.get(struckId);
-              crowd = last && nowS - last[0] < 2.5 ? last[1] + 1 : 0;
-              strikeDust.set(struckId, [nowS, crowd]);
+              const load = last ? last[1] * Math.exp(-Math.max(0, nowS - last[0]) / 1.5) : 0;
+              dustK = 1 / (1 + 0.45 * load / Math.max(0.3, scale));
+              strikeDust.set(struckId, [nowS, load + scale]);
             }
-            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
-              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind), 0,
-              1 / (1 + 0.32 * crowd));
+            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive, scale, named ?? lookForStruckKind(e.surfaceKind), 0, dustK);
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
             // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
             // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
@@ -6354,6 +6356,7 @@ function* createFxSteps(
       skirtHead = 0; skirtCount = 0;
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;
+      strikeDust.clear();
       pendingHeCount = 0;
       burstDrawn.clear();
       burstOnHull.clear();

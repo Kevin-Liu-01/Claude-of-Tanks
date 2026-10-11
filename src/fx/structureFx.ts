@@ -549,21 +549,27 @@ export function breakShardsFx(C: BlastContext, x: number, y: number, z: number, 
   massKg: number, look: StructureLook | null): void {
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
-  const k = Math.max(0, Math.min(1, Math.log10(Math.max(1, massKg / 40)) / Math.log10(60)));
-  const n = Math.round(10 + 22 * k);
-  const hs = Math.hypot(vx, vz) * 0.35;
+  // (wave 401: "a real fracture at the moment of impact (ragged, chipped, tan brick and plaster spill with a large dust
+  // burst, heaviest at the fast-moving top)") by the break's energy, not its mass alone: a section striking the ground at
+  // speed spills a heap of broken bits and a burst; one slumping off the stump a little grit
+  const energy = 0.5 * massKg * (vx * vx + vy * vy + vz * vz);
+  const k = Math.max(0, Math.min(1, Math.log10(Math.max(1, energy / 1500)) / Math.log10(150)));
+  const n = Math.round(10 + 34 * k);
+  const hs = Math.min(4, Math.hypot(vx, vz) * 0.35);
+  // the spill carries on along the break's motion (a third of it, a brisk walk at most)
+  const carry = hs > 0 ? Math.min(0.35, 4.5 / Math.hypot(vx, vz)) : 0.35;
   for (let i = 0; i < n; i++) {
     const a = R() * TAU, v = 1.2 + R() * 3.2;
     piece(C, L, x + (R() - 0.5) * 0.8, y + (R() - 0.5) * 0.5, z + (R() - 0.5) * 0.8,
-      vx * 0.35 + Math.cos(a) * (v + hs), Math.max(0.6, vy * 0.2) + R() * 3, vz * 0.35 + Math.sin(a) * (v + hs),
+      vx * carry + Math.cos(a) * (v + hs), Math.max(0.6, vy * 0.2) + R() * 3, vz * carry + Math.sin(a) * (v + hs),
       // most of it grit and fist-sized broken bits, a few chunks
       0.05 + Math.pow(R(), 2.2) * (0.26 + 0.24 * k), 14 + R() * 6, R() * 0.05);
   }
   const dust = brickDust(L, dustOf(L, _dust), _tint);
   const dk = C.distBoost(x, y, z);
-  const life = 3.5 + R() * 1.5 + k * 2;
-  puff(C, x, y, z, vx * 0.15 + (R() - 0.5), 0.6 + R() * 0.5, vz * 0.15 + (R() - 0.5), 1.8, 0.2, 0.9, life,
-    (0.6 + 0.6 * k) * dk, (1.8 + 1.8 * k) * dk, dust, dust, 0.4, life, 1, R() * 0.05, 1.2);
+  const life = 3.5 + R() * 1.5 + k * 3;
+  puff(C, x, y, z, Math.max(-3, Math.min(3, vx * 0.15)) + (R() - 0.5), 0.6 + R() * 0.5, Math.max(-3, Math.min(3, vz * 0.15)) + (R() - 0.5),
+    1.8, 0.2, 0.9, life, (0.6 + 1.0 * k) * dk, (1.8 + 2.6 * k) * dk, dust, dust, 0.4, life, 1, R() * 0.05, 1.2);
 }
 
 export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: StructureLook | null): void {
