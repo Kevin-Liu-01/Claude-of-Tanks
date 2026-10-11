@@ -188,6 +188,13 @@ interface VegetationConfig {
   bushSpecies: Species;
   grassTexTone: ToneFunction | null;
   tuftTone: ToneFunction | null;
+  /**
+   * The map-revival lane (Longleaf round 4, 2026-10-11; the gauntlet's wave 376: "the wiregrass is a mown lawn or
+   * oversized card blades"): the tufts' card. Absent, the meadow's cards (makeGrassCardTexture); 'wiregrass', the
+   * flatwoods' bunchgrass (makeWiregrassCardTexture) — fine wiry blades in a fountain from a narrow crown, grey-green
+   * to straw. Only the cards change: every tuft keeps its seat, size and tint.
+   */
+  grassCard?: 'wiregrass' | null;
   parks: VegetationDisc[] | null;
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
@@ -1145,6 +1152,67 @@ export function makeGrassCardTexture(
   // ImageData is a native TexImageSource: the same flip/filter/mip policy
   // uploads this existing pixel buffer without retaining a second canvas.
   const pixels = finishAlphaPixels(c, ctx, 74, 88, 42, false, tone);
+  const texture = new THREE.Texture(pixels);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * The map-revival lane (Longleaf round 4, 2026-10-11; wave 376: "a mown lawn or oversized card blades"): a wiregrass
+ * bunch (Aristida beyrichiana, the longleaf flatwoods' ground cover) — a fountain of fine, wiry, in-rolled leaves from a
+ * narrow crown at the card's foot, the inner ones steep, the outer arching out and over toward their tips, grey-green
+ * at the crown and curing to straw toward the tips, last year's dry leaves among them (variant 1 the drier bunch). The
+ * blades keep the meadow card's mip floor (1.8 px at the root on the 128 px card, tapering to a point), so the bunch's
+ * crown survives the mips as a dense foot under a spreading, ragged top. Straight alpha, flooded with the bunch's
+ * mean tone; deterministic from the stream.
+ */
+export function makeWiregrassCardTexture(
+  rng: RandomSource,
+  variant: number,
+  tone: ToneFunction | null = null,
+): THREE.Texture {
+  const s = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = context2d(c, { willReadFrequently: true });
+  ctx.clearRect(0, 0, s, s);
+  const dryChance = variant === 0 ? 0.22 : 0.45;
+  const nBlades = variant === 0 ? 46 : 40;
+  for (let b = 0; b < nBlades; b++) {
+    const dry = rng() < dryChance;
+    // the crown: the blades rise from the middle fifth of the card's foot
+    const u = rng() - 0.5;
+    const bx = s * 0.5 + u * 0.2 * s;
+    const bw = 1.8 + rng() * 0.9;
+    // inner blades steep and tall, the outer ones lower and arching out (a fountain, not a fan)
+    const out = Math.min(1, Math.abs(u) * 2 * 0.6 + rng() * 0.55);
+    const side = u === 0 ? (rng() < 0.5 ? -1 : 1) : Math.sign(u);
+    const tall = (0.55 + 0.45 * rng()) * (1 - 0.35 * out);
+    const reach = side * out * (0.30 + 0.20 * rng()) * s;
+    const tipX = Math.min(s - 2, Math.max(2, bx + reach));
+    const tipY = s - tall * s * (1 - 0.45 * out * out);
+    const cpX = bx + reach * (0.18 + 0.2 * rng());
+    const cpY = s - tall * s * (1.05 + 0.15 * out);
+    const grad = ctx.createLinearGradient(0, s, 0, Math.min(tipY, cpY));
+    if (dry) {
+      grad.addColorStop(0, css(0.11, 0.22, 0.20 + rng() * 0.04));
+      grad.addColorStop(1, css(0.105, 0.26, 0.36 + rng() * 0.06));
+    } else {
+      grad.addColorStop(0, css(0.21, 0.20, 0.15 + rng() * 0.03));
+      grad.addColorStop(0.55, css(0.20, 0.24, 0.25 + rng() * 0.04));
+      grad.addColorStop(1, css(0.14 + rng() * 0.03, 0.26, 0.34 + rng() * 0.07));
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(bx - bw / 2, s + 2);
+    ctx.quadraticCurveTo(cpX - bw * 0.35, cpY, tipX, tipY);
+    ctx.quadraticCurveTo(cpX + bw * 0.35, cpY, bx + bw / 2, s + 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const pixels = finishAlphaPixels(c, ctx, 86, 88, 56, false, tone);
   const texture = new THREE.Texture(pixels);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
@@ -4061,6 +4129,13 @@ function* vegetationBuildSteps(
   yield { stage: 'grassPrep', fine: true };
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
   yield { stage: 'grassPrep', fine: true };
+  // (Longleaf round 4) a wiregrass map's tufts wear the bunchgrass cards, painted from their own streams
+  if (veg.grassCard === 'wiregrass') {
+    for (let variant = 0; variant < 2; variant++) {
+      grassTex[variant].dispose();
+      grassTex[variant] = makeWiregrassCardTexture(mulberry32(seed + 43 + variant), variant, veg.grassTexTone);
+    }
+  }
   function makeGrassMaterial(
     tex: THREE.Texture,
     farDist: number,

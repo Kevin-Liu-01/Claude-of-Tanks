@@ -42,7 +42,12 @@ export default {
       [1, -134], [8, -112], [43, -84], [22, -59],
       [-23, -68], [-47, -101], [-67, -135], [-73, -165],
       [-126, -193], [-136, -235], [-176, -259],
-    ] }],
+    ] },
+    // (round 4, 2026-10-11; wave 376: the track "a raised slab painted with a high-contrast black-and-tan zebra-noise
+    // pattern, with a hard lip standing proud" of the grass) the lookout's track is the ground itself now — the sand
+    // worn bare along its line from the compound's gate to the forest road, flush, its edges feathered into the wiregrass
+    // (was the landmarks lane's draped `path` strip)
+    { feather: 4, strength: 0.8, boundary: [[-224.84, -47.77], [-267.84, -57.27], [-268.36, -54.93], [-225.36, -45.43]] }],
     landforms: [
       { kind: 'ridge', x: -210, z: -62, length: 330, width: 70, height: 7.2, yawDeg: -24 },
       { kind: 'ridge', x: 226, z: 90, length: 330, width: 74, height: 7.8, yawDeg: -28 },
@@ -59,14 +64,20 @@ export default {
     { x: -252, z: 386 }, { x: -168, z: 424 }, { x: -84, z: 380 }, { x: 0, z: 426 },
     { x: 84, z: 382 }, { x: 168, z: 424 }, { x: 252, z: 386 },
   ] },
-  splat: { sourcedPalette: 'verdant', townWear: 1.6, fieldPatch: 0.6, midRelief: 0.80, tintA: [0.82, 0.97, 0.65], tintB: [0.54, 0.70, 0.48], tintC: [1.0, 1.02, 0.73], roadTint: [0.69, 0.61, 0.48] },
+  // (Longleaf round 4, 2026-10-11; wave 376: "a saturated lawn", "the wiregrass is a mown lawn"): the flatwoods' own
+  // floor (sourcedTextures.ts longleaf: the sward cured and dulled, grey sand where it is worn), its patchwork straw-dry
+  // wiregrass, damper olive swales and bare sand, its tracks and roads the grey-tan sand
+  splat: { sourcedPalette: 'longleaf', townWear: 1.6, fieldPatch: 0.6, midRelief: 0.80, tintA: [1.0, 0.92, 0.68], tintB: [0.66, 0.72, 0.54], tintC: [1.04, 0.98, 0.82], roadTint: [0.74, 0.68, 0.58], soilTint: [1.0, 0.97, 0.90] },
   vegetation: {
     // (round 2, wave 124: "saturated broccoli-crowned blobs rather than tall, sparse-crowned longleaf"): the flatwoods are
     // longleaf alone — open groves over the wiregrass (treeBiomes `open`), the grass-stage seedlings for scrub — and the
     // hardwoods keep to the creek bottom (the belts below)
     species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 1.0]],
     loneMix: [['pine', 0.96], ['oak', 0.04]], rimMix: [['pine', 0.92], ['oak', 0.08]],
-    clusterCount: 62, loneCount: 86, rimCount: 104, grassDensity: 1.0, bushCount: 0.9, bushSpecies: 'pine', clusterScrub: 0.5,
+    // (round 4, wave 376: "the wiregrass is a mown lawn or oversized card blades"): the ground cover is wiregrass —
+    // every tuft a bunch (vegetation.ts makeWiregrassCardTexture), half the meadow's count, with sand and thatch between
+    // them (at half the density the sparse law's taller clumps stay off: the logging bays' stubble keeps under its logs)
+    clusterCount: 62, loneCount: 86, rimCount: 104, grassDensity: 0.5, grassCard: 'wiregrass', bushCount: 0.9, bushSpecies: 'pine', clusterScrub: 0.5,
     // The two existing west loading bays are worked short. Keep every grass
     // record and the terrain/prop safety masks; only its height is reduced.
     stubblePatches: [
@@ -99,8 +110,12 @@ export default {
       // round 2 (2026-10-06; gauntlet waves 154-158: the set pieces "in no setting"): the towerman's compound round the
       // tower's foot, its split-rail fence and gate toward the road, and the beaten track from the gate down to the forest
       // road (both dressing pieces, authored before the tower: they refuse nothing)
+      // (the map-revival lane's round 4, 2026-10-11; wave 376: the draped strip read as "a raised slab painted with a
+      // high-contrast black-and-tan zebra-noise pattern, with a hard lip standing proud"): the track is the ground itself —
+      // `surface: 'ground'` draws no strip, only keeps the grass off its line, and the terrain's worked ground (above)
+      // wears the sand bare along it, flush, its edges feathered into the wiregrass
       { kind: 'garden', x: -216, z: -46, yawDeg: -90, name: "the lookout's compound", params: { width: 16, depth: 16, fence: 'fencerail', beds: false, path: 0, back: 'fence' } },
-      { kind: 'path', x: -246.6, z: -51.35, yawDeg: -102.4, name: "the track from the lookout to the road", params: { length: 44, width: 2.6, surface: 'earth' } },
+      { kind: 'path', x: -246.6, z: -51.35, yawDeg: -102.4, name: "the track from the lookout to the road", params: { length: 44, width: 2.6, surface: 'ground' } },
       { kind: 'fireLookout', x: -216, z: -46, yawDeg: 0, name: 'the fire lookout on the western ridge', params: { height: 26 } },
     ],
     loggingYard: {
@@ -155,7 +170,12 @@ export default {
   horizon: { baseHex: 0x52674a, amp: 0.3, style: 'rolling', treeline: 0.95, treelineLayers: 2, panorama: { regional: 'upland', ampM: 110, trees: 22 }, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.32, streets: 0.5, towers: 0.2, rain: 0.3 },
-  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, fogDensity: 0.00062, fogTintHex: 0x8f9f9c, fogMix: 0.52, cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.7 },
+  // (Longleaf round 4, 2026-10-11; wave 376: "flat, high-key light", "no haze to give the distance depth"): a Gulf
+  // coast September morning — a humid, turbid sky paler toward the horizon, the sun dimmer and warmer through it, the
+  // distance graded into a warm grey haze, the exposure a third of a stop down, the grade a touch warm and less saturated
+  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00098, fogTintHex: 0xa1a89f, fogMix: 0.6,
+    cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.5,
+    lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 } },
   minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48] },
   shot: { pos: [-244, 50, -250], look: [50, 1, 100] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

@@ -257,10 +257,15 @@ const PATH_TINT: Readonly<Record<string, Rgb>> = Object.freeze({ gravel: [0.95, 
  * A path (gauntlet waves 154-158: "no approach path"): a strip draped over the ground from the piece's origin `length`
  * metres along its +z, `width` wide — flagstones or setts in the map's masonry (`surface: 'stone'`), gravel, or beaten
  * earth. Dressing only: a hull drives over it as over the ground.
+ * (the map-revival lane, 2026-10-11, Longleaf round 4; wave 376 read the draped earth strip as "a raised slab painted
+ * with a high-contrast black-and-tan zebra-noise pattern"): `surface: 'ground'` draws no strip — the track is the
+ * terrain's own (the map stamps its worn ground along the line) — and keeps only the piece's ground-cover hole, so no
+ * grass stands on it.
  */
 export const path: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
+  if (surface === 'ground') return { parts: sink.finish() };
   const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
   drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };

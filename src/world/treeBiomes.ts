@@ -98,6 +98,13 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
 });
 
+/**
+ * The longleaf's crown in the flatwoods' light (Longleaf round 4): a yellow-green card tint at a little over half the
+ * conifer law's saturation (0.11, was 0.18), its hue a touch yellower (0.28, was 0.30) — the needles' own green in the
+ * atlas, dulled.
+ */
+const LONGLEAF_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({ cardHue: 0.28, cardSat: 0.11 });
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -122,7 +129,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // Longleaf, Louisiana (the map-revival lane, 2026-10-05; the trees lane's row for round 2, gauntlet wave 124): the Gulf
   // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
   // the wiregrass, the cutover's young pines in their grass stage (the map's bushes)
-  longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine' } }, 'longleafSeedling', undefined, undefined, true),
+  // (Longleaf round 4, 2026-10-11; wave 376: "flat lime-green puffball clumps", "glossy leaf-cluster or fur-ball
+  // crowns"): the pines' card tint a low-saturation yellow-green (LONGLEAF_FOLIAGE), not the conifer law's
+  longleaf: B('the Gulf coastal plain longleaf flatwoods', { pine: { form: 'longleafPine', colour: LONGLEAF_FOLIAGE } }, 'longleafSeedling',
+    undefined, undefined, true),
   // the Chouf on Mount Lebanon (the map-revival lane, 2026-10-05): the cedars of the Barouk, the Mediterranean pines of the
   // valley sides, olives on the terraces (the map's contour-planted orchard rows)
   orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },
