@@ -121,7 +121,8 @@ const FACILITY_LAYOUTS: Readonly<Record<GarageVariant['architecture'], GarageFac
     naval_drydock: {
       logistics: [[-34, 15], [18, -25]],
       parts: [[-32, -8], [4, -35]], floods: [[-39, 4], [39, 4]],
-      feature: [0, 28], featureRadius: [10, 10],
+      // the drydock crane stands on the quay, short of the shore (2026-10-11: the sea opens behind it)
+      feature: [0, 24], featureRadius: [11, 6],
     },
     rail_roundhouse: {
       logistics: [[-35, 12], [16, -27]],
@@ -1517,8 +1518,9 @@ export function addGarageFacilityDetails({
       servicePurposeTags.add('saltwater-recovery');
       addPortalCrane(featureSide, featureDepth + 1.4, 19, 7.3,
         new THREE.Color(0x437c86));
-      addTrackOnCluster(featureCluster, -5.5, 0, 28);
-      addTrackOnCluster(featureCluster, 5.5, 0, 28);
+      // the crane rails run the quay's length and stop at its edge (the shore falls away behind)
+      addTrackOnCluster(featureCluster, -5.5, -1, 16);
+      addTrackOnCluster(featureCluster, 5.5, -1, 16);
       for (const offset of [-8, 8]) {
         clusterCylinder(featureCluster, offset, -4, 0.56,
           0.46, 1.10, dark, 0, 12);

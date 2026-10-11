@@ -244,8 +244,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     treeSpecies: ['cedar', 'pine'], treeCount: 22,
     horizonStyle: 'coastal', horizonHeightM: 5.8,
     approach: {
+      // the causeway ends at the quay edge, where the shore falls to the sea (2026-10-11)
       style: 'drydock-lane', label: 'reinforced drydock causeway', surface: 'cobble', width: 8.6,
-      waypoints: [[0, 10], [-2, 27], [-1, 47]], lanes: [-3.0, 3.0],
+      waypoints: [[0, 10], [-2, 22], [-1.5, 32]], lanes: [-3.0, 3.0],
     },
     terrainProfile: 'actual Saltmere Bay spawn excerpt with wind-cut maritime ground',
     serviceFrame: 'harbor work apron, fishery dock and drydock service shelter',

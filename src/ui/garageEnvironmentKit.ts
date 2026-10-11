@@ -493,180 +493,238 @@ function createBackdropGeometry(
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
 ): THREE.BufferGeometry {
-  // Five map-derived bands close the terrain without becoming the opaque,
-  // one-height wall that previously swallowed half the outdoor view. Relief
-  // is authored by biome: rail/coastal/urban facilities stay low and broad,
-  // mesas terrace, and only the alpine recipe receives a mountain skyline.
-  // The exact sampled patch still perturbs every crest, so the result remains
-  // grounded in its source battlefield rather than becoming generic scenery.
-  const segments = 96;
+  // Five map-derived bands close the terrain. Relief is authored by biome: rail/coastal/urban facilities stay low and
+  // broad, mesas terrace, dunes crest and only the alpine recipe receives a mountain skyline; the exact sampled patch
+  // still perturbs every crest, so the result stays grounded in its source battlefield.
+  //
+  // Each band is a landform, not a fence (2026-10-11, waves 393, 398 and 402: "flat grey trapezoid mountains",
+  // "cardboard mountains", "uniform orange slabs", "smooth tan humps"): seven rows from its foot to its crest on a face
+  // that slopes away from the yard, coloured by height and slope for its biome (forest, scree, rock and snow; mesa strata
+  // over a talus; lit and shaded dune flanks; fields and woods; headlands; a built skyline), lit by its own surface
+  // under one fixed low sun, and hazed toward the horizon with distance and toward the foot with valley mist. The coast
+  // carries its sea: a water ring from the shore to the horizon under the headlands. One unlit vertex-colour program.
+  const segments = 120;
+  const ROWS = 7;
   const layers = [
-    { radius: 44, base: -5.4, height: 0.26, relief: 0.10 },
-    { radius: 54, base: -6.2, height: 0.44, relief: 0.16 },
-    { radius: 66, base: -7.0, height: 0.62, relief: 0.22 },
-    { radius: 80, base: -8.0, height: 0.82, relief: 0.28 },
-    { radius: 96, base: -9.2, height: 1.00, relief: 0.34 },
+    { radius: 44, base: -5.4, height: 0.26, relief: 0.10, slant: 5 },
+    { radius: 54, base: -6.2, height: 0.44, relief: 0.16, slant: 7 },
+    { radius: 66, base: -7.0, height: 0.62, relief: 0.22, slant: 9 },
+    { radius: 80, base: -8.0, height: 0.82, relief: 0.28, slant: 11 },
+    { radius: 96, base: -9.2, height: 1.00, relief: 0.34, slant: 13 },
   ] as const;
-  const verticesPerLayer = (segments + 1) * 2;
-  const positions = new Float32Array(verticesPerLayer * layers.length * 3);
-  const colors = new Float32Array(verticesPerLayer * layers.length * 3);
-  const indices = new Uint16Array(segments * layers.length * 6);
+  const style = recipe.horizonStyle;
   const phase = ((seed >>> 8) % 6283) / 1000;
   const datum = samplePatch(patch, values, 0, 0);
-  const low = new THREE.Color(atmosphere.silhouette)
-    .lerp(new THREE.Color(atmosphere.horizon), 0.34)
-    .multiplyScalar(0.78);
-  const high = new THREE.Color(atmosphere.silhouette);
   const horizon = new THREE.Color(atmosphere.horizon);
+  const silhouette = new THREE.Color(atmosphere.silhouette);
+  // a small value-noise in (angle, height) for patches of wood, scree and snow
+  const noiseGrid = (() => {
+    let state = seed >>> 0;
+    return Float32Array.from({ length: 64 * 16 }, () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    });
+  })();
+  const noise = (u: number, v: number): number => {
+    const x = (((u % 1) + 1) % 1) * 64, y = THREE.MathUtils.clamp(v, 0, 0.999) * 15;
+    const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
+    const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 64 + (cx % 64)];
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+  };
+  const crestProfile = (angle: number, layerIndex: number, layer: typeof layers[number]): number => {
+    const broad = Math.sin(angle * 2 + phase) * 0.22
+      + Math.sin(angle * 5 - phase * 0.6) * 0.12
+      + Math.sin(angle * 9 + phase * 0.34) * 0.055;
+    const skylineCell = Math.floor(((angle / (Math.PI * 2)) % 1) * 24);
+    const skylineHash = (() => {
+      let value = Math.imul(skylineCell + 17 + layerIndex * 29, 0x45d9f3b);
+      value = Math.imul(value ^ value >>> 16, 0x45d9f3b);
+      return ((value ^ value >>> 16) >>> 0) / 4294967295;
+    })();
+    switch (style) {
+      case 'alpine': {
+        const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
+        const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
+        const crag = Math.pow(Math.max(0, Math.sin(angle * 11 + phase * 1.4)), 5.0);
+        const fine = (noise(angle / (Math.PI * 2) * 3, 0.5 + layerIndex * 0.08) - 0.5) * 0.18;
+        const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
+        return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.2 + fine - passCut * 0.18;
+      }
+      case 'dune': {
+        const layerPhase = phase + layerIndex * 1.93;
+        const skewed = (lobes: number, offset: number): number => {
+          const x = angle * lobes + offset;
+          return x + 0.55 * Math.sin(x);
+        };
+        const ridgeA = Math.pow(1 - Math.abs(Math.sin(skewed(4, layerPhase))), 1.8);
+        const ridgeB = Math.pow(1 - Math.abs(Math.sin(skewed(9, -layerPhase * 0.7))), 2.4);
+        const shoulder = THREE.MathUtils.smoothstep(Math.cos(angle - phase * 0.5 - 2.4), 0.55, 0.86);
+        const reach = 0.36 + layer.height * 0.64;
+        return (ridgeA * 0.62 + ridgeB * 0.2 + broad * 0.25 - 0.2) * reach
+          + shoulder * 0.5 * layer.height * layer.height - layer.height * 0.5;
+      }
+      case 'mesa': {
+        const shelf = Math.sin(angle * 2 + phase) * 0.52 + Math.sin(angle * 4 - phase) * 0.20;
+        const canyon = Math.pow(Math.max(0, Math.sin(angle * 3 - phase * 0.7)), 10);
+        const butte = Math.pow(Math.max(0, Math.cos(angle * 5 + phase)), 14);
+        return Math.round(shelf * 3) / 3 + broad * 0.28 - canyon * 0.30 + butte * 0.42;
+      }
+      case 'rolling': {
+        const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
+        return broad * 1.30 + woodedShoulder;
+      }
+      case 'urban': {
+        const tower = 0.08 + skylineHash * 0.62;
+        const ruined = skylineCell % 7 === 0 ? -0.18 : 0;
+        const aerial = skylineCell % 11 === 0 ? 0.22 : 0;
+        return tower + ruined + aerial + broad * 0.12;
+      }
+      case 'coastal': {
+        const headland = Math.pow(Math.max(0, Math.sin(angle * 2.2 + phase)), 4) * 0.38;
+        return broad * 0.25 - 0.12 + headland;
+      }
+      default: {
+        if (recipe.approach.style === 'rail-fan') {
+          const shedRoof = skylineCell % 5 < 3 ? 0.22 : 0.05;
+          const waterTower = skylineCell % 13 === 0 ? 0.66 : 0;
+          return shedRoof + waterTower + broad * 0.16;
+        }
+        if (recipe.approach.style === 'foundry-haul-road') {
+          const sawtooth = skylineCell % 3 === 0 ? 0.34 : 0.15;
+          const stack = skylineCell % 9 === 0 ? 0.78 : 0;
+          return sawtooth + stack + broad * 0.12;
+        }
+        return broad * 0.42;
+      }
+    }
+  };
+  /** The band's ground colour at one point: biome, height above the datum, height up its own face, slope and patches. */
+  const ground = (out: THREE.Color, t: number, y: number, slope: number, u: number, layerIndex: number): THREE.Color => {
+    const n = noise(u * 5, t * 0.8 + layerIndex * 0.11);
+    const H = recipe.horizonHeightM;
+    switch (style) {
+      case 'alpine': {
+        const snowLine = H * (0.42 + (n - 0.5) * 0.18);
+        if (y > snowLine && slope < 0.9) return out.setHex(0xe9eef2).lerp(new THREE.Color(0xb9c8d4), Math.min(1, slope * 0.6));
+        if (y > H * 0.24 || slope > 0.9) return out.setHex(n > 0.55 ? 0x75787a : 0x5f6467);
+        return out.setHex(n > 0.45 ? 0x2c3a31 : 0x3a4836);
+      }
+      case 'mesa': {
+        if (t < 0.38) return out.setHex(0x7d5240).lerp(new THREE.Color(0x9a6a4c), n * 0.6);
+        const band = Math.floor((y + 40) / 0.9) % 4;
+        const strata = [0xa35f40, 0xbf7a54, 0x8f4e36, 0xcc916a][band];
+        return out.setHex(strata).lerp(new THREE.Color(0x6e4231), Math.max(0, (n - 0.6)) * 0.8);
+      }
+      case 'dune': return out.setHex(0xd7b585).lerp(new THREE.Color(0xc29a68), n * 0.7);
+      case 'rolling': return out.setHex(n > 0.58 ? 0x2f4a2b : 0x4f6d3c).lerp(new THREE.Color(0x6b7f4a), t * 0.25);
+      case 'coastal': {
+        if (slope > 0.75) return out.setHex(0x7f8580).lerp(new THREE.Color(0x5d6460), n * 0.5);
+        return out.setHex(n > 0.55 ? 0x41583f : 0x5a734e);
+      }
+      case 'urban': {
+        const lit = noise(u * 24, t) > 0.62 && t > 0.2 && t < 0.92;
+        return out.setHex(lit ? 0x8f8a7c : 0x58626b).lerp(new THREE.Color(0x737c84), t * 0.3);
+      }
+      default: return out.copy(silhouette).lerp(new THREE.Color(0x5a6150), n * 0.5);
+    }
+  };
+
+  const columns = segments + 1;
+  const verticesPerLayer = columns * ROWS;
+  const sea = style === 'coastal';
+  const seaVertices = sea ? columns * 3 : 0;
+  const positions = new Float32Array((verticesPerLayer * layers.length + seaVertices) * 3);
+  const colors = new Float32Array((verticesPerLayer * layers.length + seaVertices) * 3);
+  const indices: number[] = [];
   let maxHeightM = -Infinity;
-  let vertex = 0;
-  let indexCursor = 0;
+  const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
+  const colour = new THREE.Color();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), normal = new THREE.Vector3();
   layers.forEach((layer, layerIndex) => {
-    const crest = high.clone().lerp(horizon, 0.34 + layerIndex * 0.12)
-      .multiplyScalar(0.90 + layerIndex * 0.035);
+    const crestHeights = new Float32Array(columns);
     for (let segment = 0; segment <= segments; segment += 1) {
       const angle = (segment / segments) * Math.PI * 2;
       const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
-      const sampled = THREE.MathUtils.clamp(
-        samplePatch(patch, values, sourceX, sourceZ) - datum,
-        -2.4,
-        4.8,
-      );
-      const broad = Math.sin(angle * 2 + phase) * 0.22
-        + Math.sin(angle * 5 - phase * 0.6) * 0.12
-        + Math.sin(angle * 9 + phase * 0.34) * 0.055;
-      const wrappedSegment = segment === segments ? 0 : segment;
-      const skylineCell = Math.floor(wrappedSegment / segments * 24);
-      const skylineHash = (() => {
-        let value = Math.imul(skylineCell + 17 + layerIndex * 29, 0x45d9f3b);
-        value = Math.imul(value ^ value >>> 16, 0x45d9f3b);
-        return ((value ^ value >>> 16) >>> 0) / 4294967295;
-      })();
-      const profile = (() => {
-        switch (recipe.horizonStyle) {
-          case 'alpine': {
-            const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
-            const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
-            const crag = Math.pow(Math.max(0, Math.sin(angle * 11 + phase * 1.4)), 5.0);
-            const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
-            return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.20 - passCut * 0.18;
-          }
-          case 'dune': {
-            // Sharp-crested dunes (2026-10-10): 1 - |sin| peaks at a ridge and rounds into its trough, and the
-            // monotone skew steepens one flank into a slip face. Each band takes its own phase so crests stagger
-            // instead of stacking into parallel cutouts, near bands keep low dunes, and the far ring carries the
-            // source excerpt's one mesa shoulder.
-            const layerPhase = phase + layerIndex * 1.93;
-            const skewed = (lobes: number, offset: number): number => {
-              const x = angle * lobes + offset;
-              return x + 0.55 * Math.sin(x);
-            };
-            const ridgeA = Math.pow(1 - Math.abs(Math.sin(skewed(4, layerPhase))), 1.8);
-            const ridgeB = Math.pow(1 - Math.abs(Math.sin(skewed(9, -layerPhase * 0.7))), 2.4);
-            const shoulder = THREE.MathUtils.smoothstep(Math.cos(angle - phase * 0.5 - 2.4), 0.55, 0.86);
-            const reach = 0.36 + layer.height * 0.64;
-            // The bands' nominal climbs to the full ceiling on the far ring, where every crest would clamp flat;
-            // dunes give back half of it so their ridgelines, not the ceiling, draw the skyline.
-            return (ridgeA * 0.62 + ridgeB * 0.2 + broad * 0.25 - 0.2) * reach
-              + shoulder * 0.5 * layer.height * layer.height - layer.height * 0.5;
-          }
-          case 'mesa': {
-            const shelf = Math.sin(angle * 2 + phase) * 0.52
-              + Math.sin(angle * 4 - phase) * 0.20;
-            const canyon = Math.pow(Math.max(0, Math.sin(angle * 3 - phase * 0.7)), 10);
-            const butte = Math.pow(Math.max(0, Math.cos(angle * 5 + phase)), 14);
-            return Math.round(shelf * 3) / 3 + broad * 0.28 - canyon * 0.30 + butte * 0.42;
-          }
-          case 'rolling': {
-            const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
-            return broad * 1.30 + woodedShoulder;
-          }
-          case 'urban': {
-            const tower = 0.08 + skylineHash * 0.62;
-            const ruined = skylineCell % 7 === 0 ? -0.18 : 0;
-            const aerial = skylineCell % 11 === 0 ? 0.22 : 0;
-            return tower + ruined + aerial + broad * 0.12;
-          }
-          case 'coastal': {
-            const headland = Math.pow(Math.max(0, Math.sin(angle * 2.2 + phase)), 4) * 0.38;
-            return broad * 0.25 - 0.12 + headland;
-          }
-          default: {
-            if (recipe.approach.style === 'rail-fan') {
-              const shedRoof = skylineCell % 5 < 3 ? 0.22 : 0.05;
-              const waterTower = skylineCell % 13 === 0 ? 0.66 : 0;
-              return shedRoof + waterTower + broad * 0.16;
-            }
-            if (recipe.approach.style === 'foundry-haul-road') {
-              const sawtooth = skylineCell % 3 === 0 ? 0.34 : 0.15;
-              const stack = skylineCell % 9 === 0 ? 0.78 : 0;
-              return sawtooth + stack + broad * 0.12;
-            }
-            return broad * 0.42;
-          }
-        }
-      })();
+      const sampled = THREE.MathUtils.clamp(samplePatch(patch, values, sourceX, sourceZ) - datum, -2.4, 4.8);
       const nominal = recipe.horizonHeightM * layer.height;
-      const shoulder = THREE.MathUtils.clamp(
-        nominal + sampled * layer.relief + profile * recipe.horizonHeightM,
-        -0.15,
-        recipe.horizonHeightM,
+      const crest = THREE.MathUtils.clamp(
+        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM,
+        -0.15, recipe.horizonHeightM,
       );
-      maxHeightM = Math.max(maxHeightM, shoulder);
-      const x = Math.cos(angle) * layer.radius;
-      const z = Math.sin(angle) * layer.radius;
-      positions.set([x, layer.base, z, x, shoulder, z], vertex * 3);
-      low.toArray(colors, vertex * 3);
-      crest.toArray(colors, (vertex + 1) * 3);
-      if (segment < segments) {
-        const base = layerIndex * verticesPerLayer + segment * 2;
-        indices.set([base, base + 1, base + 2, base + 2, base + 1, base + 3], indexCursor);
-        indexCursor += 6;
+      crestHeights[segment] = crest;
+      maxHeightM = Math.max(maxHeightM, crest);
+    }
+    const first = layerIndex * verticesPerLayer;
+    // positions: rows from foot (k = 0) to crest (k = ROWS - 1); the face slopes back from the yard
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const angle = (segment / segments) * Math.PI * 2;
+      const crest = crestHeights[segment];
+      for (let k = 0; k < ROWS; k += 1) {
+        const t = k / (ROWS - 1);
+        let shape = 1 - Math.pow(1 - t, 1.35);
+        if (style === 'mesa') shape = t < 0.42 ? t * 0.8 : 0.336 + (t - 0.42) / 0.58 * 0.664; // a talus, then the cliff
+        const y = layer.base + (crest - layer.base) * shape;
+        const radius = layer.radius - layer.slant * (1 - t) * (style === 'mesa' && t >= 0.42 ? 0.15 : 1);
+        positions.set([Math.cos(angle) * radius, y, Math.sin(angle) * radius], (first + segment * ROWS + k) * 3);
       }
-      vertex += 2;
+    }
+    // colours: biome by height and slope, lit by the band's own surface, hazed with distance and toward the foot
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const wrapped = segment === segments ? 0 : segment;
+      const prev = (wrapped + segments - 1) % segments, next = (wrapped + 1) % segments;
+      for (let k = 0; k < ROWS; k += 1) {
+        const t = k / (ROWS - 1);
+        const at = (s: number, kk: number): THREE.Vector3 => a.fromArray(positions, (first + s * ROWS + kk) * 3);
+        const along = b.copy(at(next, k)).sub(at(prev, k));
+        const up = c.copy(at(wrapped, Math.min(ROWS - 1, k + 1))).sub(at(wrapped, Math.max(0, k - 1)));
+        normal.crossVectors(up, along).normalize();
+        // the face must look at the yard (inward)
+        const p = at(wrapped, k);
+        if (normal.x * -p.x + normal.z * -p.z < 0) normal.negate();
+        const slope = 1 - Math.max(0, Math.min(1, normal.y * 1.4));
+        ground(colour, t, p.y, slope, segment / segments, layerIndex);
+        const lit = 0.58 + 0.62 * Math.max(0, normal.dot(sun)) + 0.1 * Math.max(0, normal.y);
+        colour.multiplyScalar(lit * (0.94 + (noise(segment / segments * 9, t + layerIndex) - 0.5) * 0.12));
+        const haze = Math.min(0.85, 0.14 + layerIndex * 0.13 + (1 - t) * 0.22);
+        colour.lerp(horizon, haze);
+        colour.toArray(colors, (first + segment * ROWS + k) * 3);
+      }
+    }
+    for (let segment = 0; segment < segments; segment += 1) {
+      for (let k = 0; k < ROWS - 1; k += 1) {
+        const i0 = first + segment * ROWS + k, i1 = i0 + 1, i2 = i0 + ROWS, i3 = i2 + 1;
+        indices.push(i0, i1, i2, i2, i1, i3);
+      }
     }
   });
-  {
-    // Bands lit like landforms (2026-10-10, wave 338: "smooth cardboard ridges", "a steep faceted dune wall"; wave
-    // 377: "flat untextured hills", "untextured polygon mountains"). The bands stay one unlit vertex-colour program; each
-    // crest takes a Lambert term from a pseudo-normal
-    // (inward, up, and tilted against the crest's slope along the ring) under one fixed low sun, so a flank
-    // that climbs toward the sun is lit, its slip face falls into shade, and a mesa riser darkens under its shelf.
-    const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
-    const normal = new THREE.Vector3();
-    for (let layerIndex = 0; layerIndex < layers.length; layerIndex += 1) {
-      const first = layerIndex * verticesPerLayer;
-      const arc = (Math.PI * 2 * layers[layerIndex].radius) / segments;
-      const crestHeight = (segment: number): number => positions[(first + segment * 2 + 1) * 3 + 1];
+  if (sea) {
+    // the sea from the shore to the horizon: three rings, deep green-teal near, the horizon's haze far
+    const first = verticesPerLayer * layers.length;
+    const rings = [{ r: 34, y: -2.3, tone: 0x2f5c63 }, { r: 70, y: -2.3, tone: 0x4a7a83 }, { r: 140, y: -2.3, tone: 0x7fa3ad }];
+    rings.forEach((ring, ringIndex) => {
+      colour.setHex(ring.tone).lerp(horizon, 0.18 + ringIndex * 0.2);
       for (let segment = 0; segment <= segments; segment += 1) {
         const angle = (segment / segments) * Math.PI * 2;
-        const wrapped = segment === segments ? 0 : segment;
-        const slope = (crestHeight((wrapped + 1) % segments) - crestHeight((wrapped + segments - 1) % segments))
-          / (2 * arc);
-        // inward radial (toward the yard), up, and the ring tangent turned against the slope
-        normal.set(
-          -Math.cos(angle) + Math.sin(angle) * slope * 2.2,
-          0.9,
-          -Math.sin(angle) - Math.cos(angle) * slope * 2.2,
-        ).normalize();
-        // a little per-segment variation (woods, scree, roofs) so no band reads as one flat cut-out
-        const jitterSeed = Math.sin((segment + 1) * 12.9898 + layerIndex * 78.233) * 43758.5453;
-        const jitter = 1 + ((jitterSeed - Math.floor(jitterSeed)) - 0.5) * 0.12;
-        const lit = (0.74 + 0.5 * Math.max(0, normal.dot(sun))) * jitter;
-        const crestAt = (first + segment * 2 + 1) * 3;
-        const baseAt = crestAt - 3;
-        for (let channel = 0; channel < 3; channel += 1) {
-          colors[crestAt + channel] = Math.min(1, colors[crestAt + channel] * lit);
-          colors[baseAt + channel] = Math.min(1, colors[baseAt + channel] * (0.5 + lit * 0.5));
-        }
+        positions.set([Math.cos(angle) * ring.r, ring.y, Math.sin(angle) * ring.r], (first + ringIndex * columns + segment) * 3);
+        colour.toArray(colors, (first + ringIndex * columns + segment) * 3);
+      }
+    });
+    for (let ringIndex = 0; ringIndex < 2; ringIndex += 1) {
+      for (let segment = 0; segment < segments; segment += 1) {
+        const i0 = first + ringIndex * columns + segment, i1 = i0 + 1, i2 = i0 + columns, i3 = i2 + 1;
+        indices.push(i0, i2, i1, i1, i2, i3);
       }
     }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   geometry.userData.horizonStyle = recipe.horizonStyle;
@@ -827,6 +885,30 @@ export function buildGarageEnvironment(
     }
   };
   applyReliefScale();
+  // Saltmere's quay and shore (2026-10-11, waves 393, 398 and 402: "Saltmere never shows its sea", "a featureless green
+  // bank hides the sea"): behind the yard the bank is cut back to a level quay at the datum, and past the quay edge the
+  // ground falls to the waterline under the coastal backdrop's sea, so the opening view looks over the quay to open
+  // water. A building standing past the edge keeps the quay's level under it (the lighthouse on its point).
+  const shapeQuayAndShore = (): void => {
+    if (recipe.horizonStyle !== 'coastal') return;
+    const keep = recipe.structures.filter((placement) => placement.depth > 12);
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const { side, depth } = garageWorldPointToView(x, z);
+        if (depth < 9 || Math.abs(side) > 44) continue;
+        const index = row * patch.width + column;
+        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 34, 44));
+        const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
+        const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
+        const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
+        const target = THREE.MathUtils.lerp(0, -3.4, drop);
+        heights[index] = THREE.MathUtils.lerp(heights[index], target, Math.max(quay, drop));
+      }
+    }
+  };
+  shapeQuayAndShore();
   const root = new THREE.Group();
   root.name = `garage_environment_${variant.architecture}`;
   root.userData.perfOwner = 'garage/environment';
@@ -1110,6 +1192,7 @@ export function buildGarageEnvironment(
     }
   };
   reseatFacilityTerraces();
+
 
   const measurePlacementQuality = (): {
     readonly placementOverlaps: number;

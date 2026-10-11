@@ -85,4 +85,9 @@ assert.match(facility, /GARAGE_SHELTER_FINISHES\[variant\.architecture\]/, 'each
 assert.doesNotMatch(facility, /clusterBox\(cluster, 0, 0, 0\.10, 10\.8, 0\.20, 9\.0,/,
   'no raised deck under a bay: the exhibit and its kit stand on the pad');
 
+// 2026-10-11, waves 393-402 ("flat grey trapezoid mountains", "cardboard mountains", "Saltmere never shows its sea"):
+// the backdrop bands are landform faces of several rows, and the coast carries its sea past a cut-back quay
+assert.match(kit, /const ROWS = 7;/, 'backdrop bands carry rows from foot to crest, not a fence');
+assert.match(kit, /const sea = style === 'coastal';/, 'the coastal backdrop carries a sea ring');
+assert.match(kit, /const shapeQuayAndShore = \(\): void => \{/, 'Saltmere cuts its bank to a quay and a shore');
 console.log(`garageYardWear.selftest: ${styles.size} regional hardstands, shared facility albedos, no paint`);

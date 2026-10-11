@@ -444,11 +444,14 @@ function drawHardstand(
         }
         g.stroke();
       }
+      // asphalt reinstatements over trenches: narrow, a shade darker, their edges soft (a dark rectangle read as a decal)
       for (let i = 0; i < 4; i++) {
-        const w = (2 + rng() * 3) * PX_PER_M, h = (1.2 + rng() * 2) * PX_PER_M;
+        const w = (0.8 + rng() * 1.2) * PX_PER_M, h = (2 + rng() * 4) * PX_PER_M;
         const x = rng() * (CANVAS_W - w), y = rng() * (CANVAS_H - h);
-        g.fillStyle = 'rgba(52,52,54,0.7)';
+        g.fillStyle = 'rgba(70,70,72,0.32)';
         g.fillRect(x, y, w, h);
+        g.fillStyle = 'rgba(70,70,72,0.14)';
+        g.fillRect(x - 3, y - 3, w + 6, h + 6);
       }
       break;
     }
