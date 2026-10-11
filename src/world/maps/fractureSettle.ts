@@ -242,6 +242,9 @@ export class FractureSettle {
   /** Whether a piece has been laid (or claimed into a body). */
   isLaid(i: number): boolean { return this.laid[i] === 1; }
 
+  /** A piece the wreck does without (a room's darkness, an earth cover the kit lays as a slumped heap of its own). */
+  omit(i: number): void { this.claim(i); }
+
   /** Leaves a piece where it stood. */
   stay(i: number, dust = 0.94): void {
     this.claim(i);

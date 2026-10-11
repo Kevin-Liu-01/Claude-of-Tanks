@@ -2,9 +2,9 @@
 // pillboxes needs to be improved a lot"; gauntlet wave 315: "rough boxes with a tan trim band ... on brown plinths").
 // Pinned:
 //   1. every map's form builds, intact and destroyed: position, normal, uv and a colour per vertex, finite; deterministic
-//      for its seed and drawing nothing from any stream; within its budget; a concrete work's destroyed state its own
-//      pieces settled into a wreck with volume (round 2: fractureSettle.ts; standing over its bank, never higher than a
-//      tipped plate of its slab), a log-and-earth work's still under the hull-crossing cap (BROKEN_CAP);
+//      for its seed and drawing nothing from any stream; within its budget; its destroyed state its own pieces settled
+//      into a wreck with volume (round 2: fractureSettle.ts; standing over its bank, never higher than a tipped plate
+//      of its slab; a log-and-earth work's logs over the slumped soil of its cover);
 //   2. the forms are what they are drawn as: a stepped embrasure's dark throat on the front, the walls' board print
 //      (concrete uvs at the print's scale), the colours in the print's frame (albedo over FORT_PRINT_MEAN);
 //   3. the bank: its rows from the wall to the toe falling, the toe at grade, open at the rear; its contact proxy cut at
@@ -36,11 +36,11 @@ for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
     assert.ok(p.count === n.count && p.count === uv.count && p.count === c.count, `${mapId}: one of each per vertex`);
     assert.ok(finite(p.array) && finite(n.array) && finite(uv.array) && finite(c.array), `${mapId}: every number finite`);
     const tris = p.count / 3;
-    const settled = broken && f.style !== 'logearth';
+    const settled = broken;
     assert.ok(tris <= (settled ? 12500 : 9000), `${mapId}${broken ? ' destroyed' : ''}: within its budget (${tris} triangles)`);
     const b = bbox(g);
     if (settled) {
-      assert.ok(b.max.y >= 1.2, `${mapId} destroyed: the wreck stands over its bank (${b.max.y.toFixed(2)} m)`);
+      assert.ok(b.max.y >= (f.style === 'logearth' ? 0.9 : 1.2), `${mapId} destroyed: the wreck stands over its bank (${b.max.y.toFixed(2)} m)`);
       assert.ok(b.max.y <= 4.5, `${mapId} destroyed: no higher than a tipped plate of its slab (${b.max.y.toFixed(2)} m)`);
       assert.ok(b.min.y >= -0.7, `${mapId} destroyed: nothing under its room's floor (${b.min.y.toFixed(2)} m)`);
     } else if (broken) {
@@ -137,7 +137,7 @@ for (const style of STYLES) {
     'outside the runtime the destructible receipts evaluate (destructibleAuthority slices from D_CELL)');
   assert.match(props, /ob\.kind = 'earthwork';/, 'as an earthwork, not the destructible');
 }
-console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and settles into its own wreck (log and earth under a hull\'s reach), its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
+console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and settles into its own wreck, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
 
 // ---------------------------------------------------------------------------------------------- 5. the pieces (round 2)
 // The intact concrete work carries the destruction core's anatomy (fractureAnatomy.ts): its contract holds, the stubs,
@@ -164,28 +164,38 @@ console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and
     }
     return least;
   };
-  let checked = 0;
+  let checked = 0, logs = 0;
   for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
-    if (entry.style === 'logearth') continue;
     const f = fortFor(mapId);
     const g = buildPillbox(f.style, f.tones, f.seed, false);
     const a = g.userData.fracture;
     assert.ok(a && a.kind === 'bunker', `${mapId}: the intact work carries its fracture anatomy`);
     assert.deepEqual(checkKitFracture(a, g.attributes.position.array, FRACTURE_PIECE_CAP.fortified), [], `${mapId}: the core's contract holds`);
     assert.ok(a.pieces.length >= 25 && a.pieces.length <= FRACTURE_PIECE_CAP.fortified, `${mapId}: ${a.pieces.length} pieces`);
-    assert.ok(a.pieces.filter((p) => p.anchor).length >= 8, `${mapId}: stubs, floor and threshold anchor it`);
+    if (entry.style === 'logearth') {
+      // (the log-and-earth work: its floor and four buried courses anchor it; its roof logs snap; its earth in sections)
+      assert.ok(a.pieces.filter((p) => p.anchor).length >= 5, `${mapId}: the floor and the buried courses anchor it`);
+      assert.ok(a.pieces.filter((p) => p.role === 'rafter' && p.scores?.length === 2).length >= 12, `${mapId}: the roof's logs snap at two scores`);
+      assert.equal(a.pieces.filter((p) => p.role === 'roof' && p.material === 'earth').length, 4, `${mapId}: the earth in four sections`);
+      logs++;
+    } else assert.ok(a.pieces.filter((p) => p.anchor).length >= 8, `${mapId}: stubs, floor and threshold anchor it`);
     assert.ok(a.pieces.every((p) => p.bucket === 'fortConcrete'), `${mapId}: the kind's one bucket`);
     const linked = new Set(a.links.map((l) => `${Math.min(l.a, l.b)}-${Math.max(l.a, l.b)}`));
     for (let i = 0; i < a.pieces.length; i++) for (let j = i + 1; j < a.pieces.length; j++) {
       const p = a.pieces[i], q = a.pieces[j];
       if (p.anchor && q.anchor) continue;
       const depth = overlap(p, q);
-      const allowed = f.style === 'hex' && linked.has(`${i}-${j}`) && p.role === 'wall' && q.role === 'wall' ? 0.4 : 0.03;
+      // (the hexagon's cast corners and the log walls' butted corners overlap where they are linked at their joints)
+      const joint = linked.has(`${i}-${j}`) && p.role === 'wall' && q.role === 'wall';
+      // (and the log work's members where they are linked at a joint: the earth heaped against the walls and frame it
+      // covers, the door's posts nailed against the rear wall's log ends)
+      const rests = f.style === 'logearth' && linked.has(`${i}-${j}`);
+      const allowed = joint && f.style === 'hex' ? 0.4 : (joint && f.style === 'logearth') || rests ? 0.6 : 0.03;
       assert.ok(depth <= allowed, `${mapId}: ${p.role} ${i} and ${q.role} ${j} overlap by ${depth.toFixed(3)} m at the intact pose`);
     }
     checked++;
   }
-  assert.ok(checked >= 20, `every concrete map's work (${checked})`);
+  assert.ok(checked >= 27 && logs >= 6, `every map's work (${checked}, ${logs} of log and earth)`);
   // the edge art: a scored lift snaps with a ragged cap on both halves and its bars
   const f = fortFor('autumn'), g = buildPillbox(f.style, f.tones, f.seed, false);
   const lift = g.userData.fracture.pieces.find((p) => p.role === 'wall' && !p.anchor && p.scores?.length);

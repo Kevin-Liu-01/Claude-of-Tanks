@@ -928,113 +928,562 @@ function tuft(m: Mesh, x: number, y: number, z: number, h: number, tone: Rgb, se
 // the log-and-earth bunker (DZOT, the Japanese bunker, the maneuvers' dugout)
 
 const LOG_W = 4.6, LOG_D = 3.8, LOG_SLIT_Y = 0.86, LOG_SLIT_HW = 0.85, LOG_SLIT_HH = 0.15;
+/**
+ * The log-and-earth work's bank (round 2; wave 370: "a smooth green pillow ... sitting on a bright green apron", "a
+ * smooth green hump with a neat pit" when destroyed): a low bank of the dug spoil round its walls (to under the slit
+ * in front, a little higher on the flanks, low behind and open at the door), drawn in the ground's own material as the
+ * concrete works' banks are; the earth over the roof and down its flanks to this bank is the work's own cover, a piece
+ * of the destructible that falls with it, so a destroyed work leaves no untouched mound.
+ */
 function logEarthBermSpec(T: FortTones, seed: number, broken: boolean): BermSpec {
   return {
-    plan: ensureOutward(chamferedRect(LOG_W + 0.4, LOG_D + 0.4, 0.3)), run: 1.4, grade: GRADE, seed: seed + 11, tones: T,
+    plan: ensureOutward(chamferedRect(LOG_W + 0.4, LOG_D + 0.4, 0.3)), run: 1.5, grade: GRADE, seed: seed + 11, tones: T,
     slump: broken ? 1 : 0, cap: 0.48,
     height: (s) => {
       const role = edgeRole(s.nx, s.nz);
-      if (role === 'rear') return Math.abs(s.x) > 1.1 ? 0.95 * smooth(1.1, 1.9, Math.abs(s.x)) : 0;
-      if (role === 'front') return Math.abs(s.x) < LOG_SLIT_HW + 0.4 ? LOG_SLIT_Y - LOG_SLIT_HH - 0.1 : 1.1;
-      return 1.15;
+      if (role === 'rear') return Math.abs(s.x) > 1.0 ? 0.42 * smooth(1.0, 1.7, Math.abs(s.x)) : 0;
+      if (role === 'front') return Math.abs(s.x) < LOG_SLIT_HW + 0.4 ? LOG_SLIT_Y - LOG_SLIT_HH - 0.28 : 0.55;
+      return 0.62;
     },
   };
 }
 
-function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
+/** A log from a to b: radius r at a tapering to r * taper at b, eight-sided, its bark in bands along it, its ends'
+ *  grain pale in rings to a dark rim. */
+function roundLog(m: Mesh, a: V3, b: V3, r: number, taper: number, T: FortTones, seed: number): void {
+  const d = norm(sub(b, a));
+  const side = norm(Math.abs(d[1]) > 0.9 ? cross(d, [1, 0, 0]) : cross(d, [0, 1, 0]));
+  const up = cross(side, d);
+  const SEG = 8;
+  const bark: Shade = (p) => {
+    const along = (p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1] + (p[2] - a[2]) * d[2];
+    const band = vnoise(along * 2.3, (p[1] + p[0] + p[2]) * 9, seed * 0.01, 0.5, seed + 3);
+    const knot = smooth(0.82, 0.92, vnoise(along * 5.1, p[1] * 5, p[2] * 5, 0.4, seed + 5));
+    return mul(mix(T.timber, mul(T.timber, 0.55), knot * 0.6), 0.62 + band * 0.55);
+  };
+  const grain = (c: V3, rr: number): Shade => (p) => {
+    const t = Math.min(1, Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) / Math.max(0.01, rr));
+    const pale = mix([0.42, 0.33, 0.21], [0.33, 0.25, 0.16], 0.5 + 0.5 * Math.sin(t * 19 + seed));
+    return mix(pale, mul(T.timber, 0.6), smooth(0.78, 1, t));
+  };
+  const ring = (c: V3, rr: number, k: number): V3 => {
+    const ph = (k / SEG) * Math.PI * 2, wob = 1 + 0.07 * Math.sin(ph * 3 + seed + c[0] * 2.1 + c[2] * 1.3);
+    return add(c, add(scl(side, Math.cos(ph) * rr * wob), scl(up, Math.sin(ph) * rr * wob)));
+  };
+  const rb = r * taper;
+  for (let k = 0; k < SEG; k++) {
+    const p0 = ring(a, r, k), p1 = ring(a, r, k + 1), p2 = ring(b, rb, k + 1), p3 = ring(b, rb, k);
+    const n0 = norm(sub(p0, a)), n1 = norm(sub(p1, a));
+    m.triN(p0, n0, p3, n0, p2, n1, bark);
+    m.triN(p0, n0, p2, n1, p1, n1, bark);
+    m.tri(a, ring(a, r, k + 1), ring(a, r, k), grain(a, r), false, scl(d, -1));
+    m.tri(b, ring(b, rb, k), ring(b, rb, k + 1), grain(b, rb), false, d);
+  }
+}
+
+/** A clump of grass: five to seven curved blades, dark at the foot, paler and drier at the tips. */
+function grassClump(m: Mesh, x: number, y: number, z: number, h: number, T: FortTones, seed: number): void {
+  const blades = 5 + Math.floor(hash3(seed, 1, 0, 9) * 3);
+  const base = mul(T.turf, 0.55), tip = mix(T.turf, T.crest, 0.55 + hash3(seed, 2, 0, 9) * 0.35);
+  for (let k = 0; k < blades; k++) {
+    const a = hash3(seed, k, 3, 9) * Math.PI * 2, lean = 0.25 + hash3(seed, k, 4, 9) * 0.45, hh = h * (0.6 + hash3(seed, k, 5, 9) * 0.5);
+    const dx = Math.cos(a), dz = Math.sin(a), w = 0.012 + hash3(seed, k, 6, 9) * 0.01;
+    const p0: V3 = [x - dz * w, y, z + dx * w], p1: V3 = [x + dz * w, y, z - dx * w];
+    const mid: V3 = [x + dx * hh * lean * 0.4, y + hh * 0.55, z + dz * hh * lean * 0.4];
+    const top: V3 = [x + dx * hh * lean, y + hh, z + dz * hh * lean];
+    const midL: V3 = [mid[0] - dz * w * 0.7, mid[1], mid[2] + dx * w * 0.7], midR: V3 = [mid[0] + dz * w * 0.7, mid[1], mid[2] - dx * w * 0.7];
+    const n: V3 = norm([dx, 0.6, dz]);
+    const cBase: Shade = () => base, cMid: Shade = () => mix(base, tip, 0.55), cTip: Shade = () => tip;
+    // two-sided: each face both ways
+    for (const s of [1, -1]) {
+      const nn = scl(n, s);
+      m.vertex(p0, nn, null, cBase(p0, nn)); m.vertex(s > 0 ? midR : midL, nn, null, cMid(mid, nn)); m.vertex(s > 0 ? midL : midR, nn, null, cMid(mid, nn));
+      m.vertex(p0, nn, null, cBase(p0, nn)); m.vertex(s > 0 ? p1 : midL, nn, null, cBase(p1, nn)); m.vertex(s > 0 ? midR : p1, nn, null, cMid(mid, nn));
+      m.vertex(s > 0 ? midL : midR, nn, null, cMid(mid, nn)); m.vertex(s > 0 ? midR : midL, nn, null, cMid(mid, nn)); m.vertex(top, nn, null, cTip(top, nn));
+    }
+  }
+}
+
+/**
+ * The log-and-earth work (round 2; wave 370 on the DZOT, the Japanese bunker and the fjord's dugout: "a smooth,
+ * symmetrical green pillow with a lip overhanging one tidy row of identical log ends", "a stuffed tarp laid over the log
+ * ends rather than sod and earth over a timber roof", "stiff grey spikes for grass"), in the destruction core's pieces
+ * (fractureAnatomy.ts): walls of round logs of their own girths, course on course, butted at the corners in turn (each
+ * course's long logs run past the corner, the short ones stop at their faces), the slit between a sill course and a
+ * heavier lintel course; the doorway behind between its posts under a lintel, two bags at the threshold; the roof of
+ * sixteen logs laid front to back, their ends out over the slit unevenly; on them the earth heaped up behind and down the
+ * flanks to the bank, thinning to the brow over the log ends, lumpy, in turf with bare earth where it falls away and
+ * clumps of grass, held at the brow by a row of cut sods; the floor dug to the pit. Pieces: the floor and each wall's
+ * buried course (the anchors), each wall in bands, the door's posts and lintel, every roof log (snapping at two scores
+ * with splintered ends), the earth in four sections, the sods in two runs, the bags.
+ */
+function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
   const m = new Mesh();
-  const rng = mulberry32(O.seed);
+  const F = new FortPieces(m);
+  const rng = mulberry32((O.seed ^ 0x10ea7) >>> 0);
   const T = O.tones;
-  const W = LOG_W, D = LOG_D, X = W / 2, Z = D / 2;
-  const bark: Shade = (p) => mul(T.timber, 0.75 + vnoise(p[0] * 1.3, p[1] * 6, p[2] * 1.3, 0.25, O.seed + 3) * 0.45);
-  const endGrain: Shade = (p) => mul(mix(T.timber, [0.2, 0.15, 0.09], 0.4), 0.8 + vnoise(p[0] * 7, p[1] * 7, p[2] * 7, 0.3, O.seed + 5) * 0.35);
-  const r = 0.13;
-  const wallTop = 1.32;
-  const slitY = LOG_SLIT_Y, slitHW = LOG_SLIT_HW, slitHH = LOG_SLIT_HH;
-  // walls of horizontal logs: front (+z) with the slit, the flanks, the rear with the doorway gap
-  const courses = Math.floor((wallTop - FOOT * 0.3) / (2 * r * 0.92));
-  for (let cI = 0; cI < courses; cI++) {
-    const y = FOOT * 0.3 + r + cI * 2 * r * 0.92;
-    if (O.broken && y + r * 1.92 > BROKEN_CAP - (cI % 2) * 0.06) continue;
-    const j = (rng() - 0.5) * 0.12;
-    // front: two logs either side of the slit where the slit's course runs
-    if (Math.abs(y - slitY) < slitHH + r * 0.5) {
-      log(m, [-X - 0.18 + j, y, Z], [-slitHW, y, Z], r, 7, bark, endGrain);
-      log(m, [slitHW, y, Z], [X + 0.18 + j, y, Z], r, 7, bark, endGrain);
-    } else log(m, [-X - 0.2 + j, y, Z], [X + 0.2 + j, y, Z], r, 7, bark, endGrain);
-    log(m, [X, y + r * 0.92, Z + 0.2 + j], [X, y + r * 0.92, -Z - 0.2], r, 7, bark, endGrain);
-    log(m, [-X, y + r * 0.92, -Z - 0.2 + j], [-X, y + r * 0.92, Z + 0.2], r, 7, bark, endGrain);
-    if (y > GRADE + 1.55 || y < GRADE) log(m, [-X - 0.2, y, -Z], [X + 0.2, y, -Z], r, 7, bark, endGrain);
-    else { log(m, [-X - 0.2, y, -Z], [-0.5, y, -Z], r, 7, bark, endGrain); log(m, [0.5, y, -Z], [X + 0.2, y, -Z], r, 7, bark, endGrain); }
+  const X = LOG_W / 2, Z = LOG_D / 2;
+  const slitLo = LOG_SLIT_Y - LOG_SLIT_HH, slitHi = LOG_SLIT_Y + LOG_SLIT_HH;
+  // the courses: each its own girth, touching the one under it
+  const courses: Array<{ y: number; r: number }> = [];
+  for (let y = -0.42, prevTop = -0.42 - 0.13; ;) {
+    const r = 0.122 + rng() * 0.034;
+    y = prevTop + r;
+    courses.push({ y, r });
+    prevTop = y + r;
+    if (prevTop > 1.3) break;
   }
-  // the slit's dark and its log lintel
-  if (!O.broken) m.quad([-slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY - slitHH, Z - 0.25], [slitHW, slitY + slitHH, Z - 0.25], [-slitHW, slitY + slitHH, Z - 0.25], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
-  // the dark of the room through the rear doorway, its frame posts and lintel, two bags at the threshold
-  if (!O.broken) {
-    m.quad([0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE - 0.05, -Z + 0.35], [-0.5, GRADE + 1.5, -Z + 0.35], [0.5, GRADE + 1.5, -Z + 0.35], () => [0.006, 0.006, 0.006], false, [0, 0, -1]);
-    for (const x of [-0.55, 0.55]) log(m, [x, GRADE - 0.1, -Z - 0.05], [x, GRADE + 1.55, -Z - 0.05], 0.09, 6, bark, endGrain);
-    log(m, [-0.75, GRADE + 1.6, -Z - 0.05], [0.75, GRADE + 1.6, -Z - 0.05], 0.1, 6, bark, endGrain);
-    const brng = mulberry32(O.seed + 17);
-    for (const x of [-0.95, 0.95]) placeBag(m, brng, x, GRADE + 0.1, -Z - 0.45, 0, T.bag, 0);
-  }
-  if (!O.broken) {
-    // the roof: two layers of logs across, then the earth over them, a turfed mound to the slit's brow
-    for (let i = 0; i < 18; i++) {
-      const x = -X - 0.1 + (i * (W + 0.2)) / 17;
-      log(m, [x, wallTop + r, -Z - 0.35], [x, wallTop + r, Z + 0.45], r * 0.95, 6, bark, endGrain);
+  const wallTop = courses[courses.length - 1].y + courses[courses.length - 1].r;
+  // (the doorway: a low one, its lintel under the roof logs)
+  const doorTop = wallTop - 0.25;
+  const vol = (r: number, l: number): number => Math.PI * r * r * l;
+  const seedOf = (k: number): number => (O.seed + k * 7919) >>> 0;
+  // a wall's logs in a band of courses [c0, c1): which wall, and whether its logs run long at this course
+  type Wall = 'front' | 'back' | 'left' | 'right';
+  const longAt = (w: Wall, c: number): boolean => ((w === 'front' || w === 'back') ? c % 2 === 0 : c % 2 === 1);
+  const runOut = (c: number, end: number): number => 0.14 + hash3(c, end, 17, O.seed) * 0.2;
+  const logsOf = (w: Wall, c: number): Array<[V3, V3, number]> => {
+    const { y, r } = courses[c];
+    const long = longAt(w, c);
+    const out: Array<[V3, V3, number]> = [];
+    if (w === 'front' || w === 'back') {
+      const z = w === 'front' ? Z : -Z;
+      const x0 = long ? -X - runOut(c, w === 'front' ? 1 : 3) : -X + r * 0.9, x1 = long ? X + runOut(c, w === 'front' ? 2 : 4) : X - r * 0.9;
+      const cut = w === 'front' ? (y + r > slitLo + 0.02 && y - r < slitHi - 0.02 ? LOG_SLIT_HW : 0)
+        : (y - r < doorTop && y + r > GRADE - 0.05 ? 0.55 : 0);
+      if (cut) { out.push([[x0, y, z], [-cut, y, z], r], [[cut, y, z], [x1, y, z], r]); }
+      else out.push([[x0, y, z], [x1, y, z], r]);
+    } else {
+      const x = w === 'left' ? -X : X;
+      const z0 = long ? -Z - runOut(c, w === 'left' ? 5 : 7) : -Z + r * 0.9, z1 = long ? Z + runOut(c, w === 'left' ? 6 : 8) : Z - r * 0.9;
+      out.push([[x, y, z0], [x, y, z1], r]);
     }
-    // the earth over the roof: a turfed dome from the eaves (the roof logs' ends left showing at the front) to 0.6 m
-    const roofPlan: Plan = ensureOutward([[-X - 0.3, -Z - 0.3], [X + 0.3, -Z - 0.3], [X + 0.3, Z + 0.05], [-X - 0.3, Z + 0.05]]);
-    roofCover(m, roofPlan, wallTop + 2 * r - 0.04, 0.62, -0.06, T, O.seed + 9);
-  } else {
-    // (round 2, wave 370: "clean stone panels", "nothing shows splintered logs, spilled soil or a collapsed roof at real
-    // volume") the roof down: its earth slumped in a mound over the pit, the roof logs broken and splintered in it and
-    // thrown out of it, soil spilled round
-    const soil: Shade = (p) => mul(mix(T.earth, T.turf, smooth(0.55, 0.8, fbm(p[0], 0, p[2], 0.6, O.seed + 21)) * (T.arid ? 0.2 : 0.6)),
-      0.72 + vnoise(p[0], 0, p[2], 0.2, O.seed + 23) * 0.35);
-    const SEG = 24, RING = 6, mrx = X + 0.5, mrz = Z + 0.5, MH = 0.44;
-    const mound = (k: number, rr: number): V3 => {
-      const ph = (k / SEG) * Math.PI * 2, t = rr / RING;
-      const wob = 1 + (vnoise(Math.cos(ph) * 3, 0, Math.sin(ph) * 3, 0.8, O.seed + 25) - 0.5) * 0.35;
-      const x = Math.cos(ph) * mrx * t * wob, z = Math.sin(ph) * mrz * t * wob;
-      const hh = MH * Math.pow(1 - t * t, 1.2) + (t < 1 ? (vnoise(x * 2.7, 0, z * 2.7, 0.5, O.seed + 27) - 0.5) * 0.16 : -0.06);
-      return [x, GRADE + Math.min(BROKEN_CAP - 0.05, hh), z];
-    };
-    for (let k = 0; k < SEG; k++) for (let rr = 0; rr < RING; rr++) {
-      const a = mound(k, rr), b = mound(k + 1, rr), c = mound(k + 1, rr + 1), d = mound(k, rr + 1);
-      m.tri(a, c, d, soil, false, undefined, [0, 1, 0]);
-      if (rr > 0) m.tri(a, b, c, soil, false, undefined, [0, 1, 0]);
-    }
-    const splinter: Shade = (p) => mul(mix(T.timber, [0.55, 0.45, 0.3], 0.5), 0.8 + vnoise(p[0] * 9, p[1] * 9, p[2] * 9, 0.2, O.seed + 29) * 0.4);
-    for (let i = 0; i < 18; i++) {
-      // a broken roof log: lying in the mound or thrown out of it, one end splintered
-      const thrown = i >= 12;
-      const ang = rng() * Math.PI * 2, rr = thrown ? 1.1 + rng() * 0.6 : rng() * 0.8;
-      const x = Math.cos(ang) * mrx * rr, z = Math.sin(ang) * mrz * rr, a = rng() * Math.PI, l = 0.7 + rng() * (thrown ? 1.2 : 2.2);
-      const y = GRADE + r * 0.9 + (thrown ? 0 : rng() * 0.12);
-      const p0: V3 = [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2];
-      const p1: V3 = [x + Math.cos(a) * l / 2, Math.min(BROKEN_CAP - r, y + (rng() - 0.3) * 0.35), z + Math.sin(a) * l / 2];
-      log(m, p0, p1, r * 0.9, 6, (p, n) => mul(bark(p, n), 0.62), endGrain);
-      // the splintered end: slivers out along the grain
-      const dir = norm(sub(p1, p0));
-      for (let q = 0; q < 4; q++) {
-        const off: V3 = [Math.cos(q * 1.7 + i) * r * 0.5, Math.sin(q * 1.7 + i) * r * 0.5, Math.cos(q * 2.3 + i) * r * 0.5];
-        const base = add(p1, off), tip = add(base, scl(dir, 0.12 + hash3(i, q, 33, O.seed) * 0.25));
-        tip[1] = Math.min(BROKEN_CAP, tip[1]);
-        bar(m, base, tip, splinter, 0.025);
+    return out;
+  };
+  const AXW: Record<Wall, BoxAxes> = {
+    front: { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+    back: { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+    left: { o: [0, 0, 0], x: [0, 0, 1], y: [0, 1, 0], z: [-1, 0, 0] },
+    right: { o: [0, 0, 0], x: [0, 0, 1], y: [0, 1, 0], z: [-1, 0, 0] },
+  };
+  const band = (w: Wall, c0: number, c1: number, anchor: boolean, filter?: (a: V3, b: V3) => boolean): number => {
+    let volume = 0, any = false;
+    const first = F.pieces.length;
+    F.begin({ role: 'wall', material: 'timber', face: w, axes: AXW[w], anchor, volume: 0.01 });
+    for (let c = c0; c < c1; c++) {
+      for (const [a, b, r] of logsOf(w, c)) {
+        if (filter && !filter(a, b)) continue;
+        roundLog(m, a, b, r, 0.93 + hash3(c, a[0] * 10, a[2] * 10, O.seed) * 0.06, T, seedOf(c * 13 + (a[0] > 0 ? 1 : 0)));
+        volume += vol(r, Math.hypot(b[0] - a[0], b[2] - a[2]));
+        any = true;
       }
     }
-  }
-  // (the bank all round to the slit, open at the rear door: the static earthwork, pillboxBerm)
-  if (O.broken) {
-    // the soil spilled round the mound
-    for (let i = 0; i < 18; i++) {
-      const ang = rng() * Math.PI * 2, rr = 0.9 + rng() * 0.6;
-      lump(m, Math.cos(ang) * (X + 0.6) * rr, GRADE + 0.06, Math.sin(ang) * (Z + 0.6) * rr, 0.25 + rng() * 0.35, 0.18, 0.25 + rng() * 0.35, rng,
-        (p) => mul(T.earth, 0.7 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.35), false);
+    if (!any) { F.cancel(); return -1; }
+    const idx = F.end();
+    F.pieces[idx].massKg = Math.max(1, Math.round(volume * 600 * 10) / 10);
+    void first;
+    return idx;
+  };
+  // the floor, dug to the pit
+  F.begin({ role: 'slab', material: 'earth', face: 'floor', axes: AX, anchor: true, volume: 0.5 });
+  m.quad([-X + 0.15, PIT, -Z + 0.15], [X - 0.15, PIT, -Z + 0.15], [X - 0.15, PIT, Z - 0.15], [-X + 0.15, PIT, Z - 0.15], () => mul(T.earth, 0.45), false, [0, 1, 0]);
+  const floor = F.end();
+  // the walls in bands: the buried courses (anchors), then below the slit, the slit's course, the lintel and above
+  const cGrade = courses.findIndex((c) => c.y - c.r > -0.05);
+  const cSlit = courses.findIndex((c) => c.y + c.r > slitLo + 0.02);
+  const nC = courses.length;
+  const bands: Record<Wall, number[]> = { front: [], back: [], left: [], right: [] };
+  for (const w of ['front', 'back', 'left', 'right'] as Wall[]) {
+    bands[w].push(band(w, 0, cGrade, true));
+    if (w === 'front') {
+      bands[w].push(band(w, cGrade, cSlit, false));
+      bands[w].push(band(w, cSlit, cSlit + 1, false, (a, b) => a[0] < 0 || b[0] < 0));
+      bands[w].push(band(w, cSlit, cSlit + 1, false, (a, b) => a[0] > 0 && b[0] > 0));
+      bands[w].push(band(w, cSlit + 1, nC, false));
+    } else if (w === 'back') {
+      bands[w].push(band(w, cGrade, nC, false, (a, b) => a[0] < 0 && b[0] <= 0.01));
+      bands[w].push(band(w, cGrade, nC, false, (a, b) => a[0] >= -0.01 && b[0] > 0 && !(a[0] < 0)));
+      bands[w].push(band(w, cGrade, nC, false, (a, b) => a[0] < 0 && b[0] > 0));
+    } else {
+      const mid = Math.floor((cGrade + nC) / 2);
+      bands[w].push(band(w, cGrade, mid, false));
+      bands[w].push(band(w, mid, nC, false));
     }
   }
-  return m.geometry();
+  for (const w of ['front', 'back', 'left', 'right'] as Wall[]) bands[w] = bands[w].filter((i) => i >= 0);
+  // the slit's dark, inside the front wall, on the front's lowest band above the buried course
+  // (drawn into the band under the slit, so it falls with it)
+  // the doorway: its posts and lintel, the bags at the threshold
+  const posts: number[] = [];
+  for (const x of [-0.62, 0.62]) {
+    F.begin({ role: 'frame', material: 'timber', face: 'back', axes: AX, volume: vol(0.095, 1.95) });
+    roundLog(m, [x, -0.04, -Z - 0.17], [x, doorTop, -Z - 0.17], 0.095, 0.95, T, seedOf(91 + (x > 0 ? 1 : 0)));
+    posts.push(F.end());
+  }
+  F.begin({ role: 'frame', material: 'timber', face: 'back', axes: AX, volume: vol(0.11, 1.8), scoreAxis: 0, scores: [0] });
+  roundLog(m, [-0.9, doorTop + 0.11, -Z - 0.18], [0.9, doorTop + 0.11, -Z - 0.18], 0.105, 0.94, T, seedOf(93));
+  const lintel = F.end();
+  const bags: number[] = [];
+  const brng = mulberry32(O.seed + 17);
+  for (const x of [-1.0, 1.0]) {
+    F.begin({ role: 'bag', material: 'canvas', face: 'back', axes: AX, volume: 0.03 });
+    placeBag(m, brng, x, GRADE + 0.1, -Z - 0.5, 0, T.bag, 0);
+    bags.push(F.end());
+  }
+  // the roof: sixteen logs front to back on the wall tops, their ends out over the slit unevenly
+  const roof: number[] = [];
+  let roofTop = 0;
+  // (each its own girth, laid side by side across the span with the slack between them shared out unevenly)
+  const radii = Array.from({ length: 16 }, () => 0.104 + rng() * 0.058);
+  const span = LOG_W - 0.1, need = radii.reduce((t, r) => t + 2 * r, 0) + 15 * 0.006;
+  if (need > span) for (let i = 0; i < 16; i++) radii[i] *= (span - 15 * 0.006) / (need - 15 * 0.006);
+  const slack = Math.max(0, span - radii.reduce((t, r) => t + 2 * r, 0) - 15 * 0.006);
+  const shares = Array.from({ length: 15 }, () => 0.3 + rng());
+  const shareSum = shares.reduce((t, v) => t + v, 0);
+  let cursor = -span / 2;
+  for (let i = 0; i < 16; i++) {
+    const r = radii[i];
+    const x = cursor + r;
+    cursor = x + r + 0.006 + (i < 15 ? (slack * shares[i]) / shareSum : 0);
+    const y = wallTop + r;
+    const zb = -Z - 0.18 - rng() * 0.22, zf = rng() < 0.18 ? Z + 0.04 + rng() * 0.08 : Z + 0.12 + Math.pow(rng(), 0.7) * 0.5;
+    const s1 = (rng() - 0.5) * 0.5 - 0.7, s2 = (rng() - 0.5) * 0.5 + 0.8;
+    F.begin({ role: 'rafter', material: 'timber', face: 'roof', axes: { o: [0, 0, 0], x: [0, 0, 1], y: [0, 1, 0], z: [-1, 0, 0] },
+      volume: vol(r, zf - zb), scoreAxis: 0, scores: [s1, s2] });
+    roundLog(m, [x, y, zb], [x, y, zf], r, 0.94 + rng() * 0.05, T, seedOf(200 + i));
+    roof.push(F.end());
+    roofTop = Math.max(roofTop, y + r);
+  }
+  // the earth over it: heaped behind and down the flanks to the bank, thin at the brow over the log ends; laid in four
+  // closed solids whose boxes stand clear of the walls: the two halves over the roof (resting on its logs) and the two
+  // flanks heaped against the side walls outside them (their ends tapering to the bank short of the corners, where the
+  // corner logs show)
+  const field = pillboxBankField('logearth', T, O.seed);
+  const bankAt = (x: number, z: number): number => { const h = field.lift(x, z); return Number.isNaN(h) ? roofTop : Math.max(GRADE, h); };
+  const XE = X + 1.25, Z0 = -Z - 0.12, Z1 = Z + 0.1, XR = X + 0.16, XF = X + 0.19, ZF = Z - 0.2;
+  const topAt = (x: number, z: number): number => {
+    const tx = Math.abs(x) / XE;
+    const front = smooth(Z - 0.6, Z1, z), back = smooth(-Z + 0.3, Z0, z);
+    const crown = 0.5 * (1 - Math.pow(Math.min(1, tx / 0.7), 2.2)) * (1 - 0.78 * front) * (1 - 0.5 * back);
+    // (level out to the walls' outer faces, so the flanks rise to the roof's earth, then down to the bank)
+    const side = smooth(0.72, 1.0, tx);
+    const lumps = (fbm(x, 0, z, 0.8, O.seed + 41) - 0.5) * 0.13 + (vnoise(x, 0, z, 0.3, O.seed + 43) - 0.5) * 0.05
+      + smooth(0.74, 0.9, vnoise(x * 3, 1, z * 3, 0.5, O.seed + 45)) * 0.05;
+    const y = roofTop + 0.12 + crown + lumps * (1 - side * 0.7);
+    return y * (1 - side) + (bankAt(x, z) + 0.04) * side;
+  };
+  const turf: Shade = (p, n) => {
+    const big = fbm(p[0], 0, p[2], 1.1, O.seed + 5), mid = fbm(p[0] + 3.7, 0, p[2] - 1.9, 0.45, O.seed + 6), fine = vnoise(p[0], 0, p[2], 0.12, O.seed + 7);
+    let c = mix(T.turf, T.crest, smooth(0.42, 0.75, big));
+    c = mix(c, mul(T.turf, 0.6), smooth(0.66, 0.84, mid) * (T.arid ? 0 : 0.55));
+    c = mix(c, mul(T.earth, 0.9), smooth(0.68, 0.84, fbm(p[0], 3, p[2], 0.5, O.seed + 9)) * 0.85);
+    const steep = clamp01((1 - n[1]) * 2.2);
+    c = mix(c, mul(T.earth, 0.85), steep * (T.arid ? 0.8 : 0.6));
+    if (T.arid) c = mix(c, T.earth, 0.55);
+    return mul(c, 0.78 + fine * 0.36);
+  };
+  const soil: Shade = (p) => mul(T.earth, 0.55 + vnoise(p[0] * 3, p[1] * 3, p[2] * 3, 0.3, O.seed + 13) * 0.3);
+  /** One closed solid of the cover over [x0, x1] x [z0, z1]: its top (turf, its grass), its bottom, its faces. */
+  const coverPiece = (x0: number, x1: number, z0: number, z1: number, nx: number, nz: number,
+    top: (x: number, z: number) => number, bot: (x: number, z: number, t: number) => number): number => {
+    const gx = (i: number): number => x0 + (i * (x1 - x0)) / nx, gz = (j: number): number => z0 + (j * (z1 - z0)) / nz;
+    const ty: number[][] = [], by: number[][] = [];
+    for (let j = 0; j <= nz; j++) {
+      ty.push([]); by.push([]);
+      for (let i = 0; i <= nx; i++) { const t = top(gx(i), gz(j)); ty[j].push(t); by[j].push(Math.min(t - 0.05, bot(gx(i), gz(j), t))); }
+    }
+    const P = (i: number, j: number, up: boolean): V3 => [gx(i), up ? ty[j][i] : by[j][i], gz(j)];
+    const nAt = (i: number, j: number): V3 => {
+      const il = Math.max(0, i - 1), ir = Math.min(nx, i + 1), jl = Math.max(0, j - 1), jr = Math.min(nz, j + 1);
+      const dx = (ty[j][ir] - ty[j][il]) / (gx(ir) - gx(il)), dz = (ty[jr][i] - ty[jl][i]) / (gz(jr) - gz(jl));
+      return norm([-dx, 1, -dz]);
+    };
+    const rimFace: Shade = (p, n) => {
+      const i = Math.max(0, Math.min(nx, Math.round(((p[0] - x0) / (x1 - x0)) * nx))), j = Math.max(0, Math.min(nz, Math.round(((p[2] - z0) / (z1 - z0)) * nz)));
+      return ty[j][i] - p[1] < 0.07 ? mul(turf(p, [0, 1, 0]), 0.82) : soil(p, n);
+    };
+    let volume = 0;
+    F.begin({ role: 'roof', material: 'earth', face: 'roof', axes: AX, volume: 0.1 });
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      m.triN(P(i, j, true), nAt(i, j), P(i, j + 1, true), nAt(i, j + 1), P(i + 1, j + 1, true), nAt(i + 1, j + 1), turf);
+      m.triN(P(i, j, true), nAt(i, j), P(i + 1, j + 1, true), nAt(i + 1, j + 1), P(i + 1, j, true), nAt(i + 1, j), turf);
+      m.quad(P(i, j, false), P(i + 1, j, false), P(i + 1, j + 1, false), P(i, j + 1, false), soil, false, [0, -1, 0]);
+      volume += (ty[j][i] - by[j][i]) * (gx(1) - gx(0)) * (gz(1) - gz(0));
+    }
+    const edge = (ia: number, ja: number, ib: number, jb: number, out: V3): void => {
+      m.quad(P(ia, ja, true), P(ib, jb, true), P(ib, jb, false), P(ia, ja, false), rimFace, false, undefined, out);
+    };
+    for (let i = 0; i < nx; i++) { edge(i, 0, i + 1, 0, [0, 0, -1]); edge(i + 1, nz, i, nz, [0, 0, 1]); }
+    for (let j = 0; j < nz; j++) { edge(0, j + 1, 0, j, [-1, 0, 0]); edge(nx, j, nx, j + 1, [1, 0, 0]); }
+    // clumps of grass in it (none on bare regolith, few and dry on an arid map)
+    const clumps = T.barren ? 0 : Math.round((T.arid ? 0.25 : 1) * (x1 - x0) * (z1 - z0) * 1.6);
+    for (let k = 0; k < clumps; k++) {
+      const fi = 0.3 + hash3(k, x0 * 10, z0 * 10, O.seed) * (nx - 0.6), fj = 0.3 + hash3(k, z0 * 10, x0 * 10 + 7, O.seed) * (nz - 0.6);
+      const ii = Math.floor(fi), jj = Math.floor(fj), tx = fi - ii, tz = fj - jj;
+      const y = (ty[jj][ii] * (1 - tx) + ty[jj][ii + 1] * tx) * (1 - tz) + (ty[jj + 1][ii] * (1 - tx) + ty[jj + 1][ii + 1] * tx) * tz;
+      grassClump(m, gx(0) + fi * (gx(1) - gx(0)), y - 0.015, gz(0) + fj * (gz(1) - gz(0)), 0.13 + hash3(k, 5, x0 * 10, O.seed) * 0.13, T,
+        (O.seed + k * 31 + Math.round(x0 * 100) * 7 + Math.round(z0 * 100) * 3) >>> 0);
+    }
+    const idx = F.end();
+    F.pieces[idx].massKg = Math.max(1, Math.round(volume * 1600 * 10) / 10);
+    return idx;
+  };
+  const overRoof = (x: number, z: number): number => Math.max(roofTop + 0.07, topAt(x, z));
+  const flankTop = (x: number, z: number): number => {
+    const end = smooth(ZF - 0.65, ZF, Math.abs(z));
+    return topAt(x, z) * (1 - end) + (bankAt(x, z) + 0.03) * end;
+  };
+  const flankBot = (x: number, z: number, t: number): number => Math.max(bankAt(x, z) - 0.08, t - 0.42);
+  const cover = [
+    coverPiece(-XR, 0, Z0, Z1, 9, 14, overRoof, () => roofTop - 0.02),
+    coverPiece(0, XR, Z0, Z1, 9, 14, overRoof, () => roofTop - 0.02),
+    coverPiece(-XE, -XF, -ZF, ZF, 6, 13, flankTop, flankBot),
+    coverPiece(XF, XE, -ZF, ZF, 6, 13, flankTop, flankBot),
+  ];
+  // the brow's sods: cut turf stacked on the log ends to hold the earth, in two runs
+  const sods: number[] = [];
+  for (const side of [-1, 1]) {
+    F.begin({ role: 'bag', material: 'earth', face: 'front', axes: AX, volume: 0.05 });
+    for (let k = 0; k < 6; k++) {
+      const w = 0.32 + rng() * 0.12, x = side * (0.25 + k * 0.38 + (rng() - 0.5) * 0.04);
+      if (Math.abs(x) + w / 2 > X + 0.1) continue;
+      const zc = Z1 + 0.14 + (rng() - 0.5) * 0.04, h = 0.11 + rng() * 0.05, dd = 0.24 + rng() * 0.06;
+      const sodTop: Shade = (p) => mul(mix(T.turf, T.crest, vnoise(p[0] * 4, 0, p[2] * 4, 0.3, O.seed + 61)), 0.72 + vnoise(p[0] * 9, 0, p[2] * 9, 0.2, 3) * 0.3);
+      const sodSide: Shade = (p) => (p[1] > roofTop + h * 0.72 ? mul(T.turf, 0.55) : mul(T.earth, 0.5 + vnoise(p[0] * 6, p[1] * 6, p[2] * 6, 0.2, 5) * 0.3));
+      const yaw = (rng() - 0.5) * 0.2, c = Math.cos(yaw), s = Math.sin(yaw);
+      const at = (lx: number, ly: number, lz: number): V3 => [x + lx * c + lz * s, roofTop + ly, zc - lx * s + lz * c];
+      const v = [at(-w / 2, 0, -dd / 2), at(w / 2, 0, -dd / 2), at(w / 2, 0, dd / 2), at(-w / 2, 0, dd / 2),
+        at(-w / 2, h, -dd / 2), at(w / 2, h * (0.9 + rng() * 0.2), -dd / 2), at(w / 2, h, dd / 2), at(-w / 2, h * (0.9 + rng() * 0.2), dd / 2)];
+      m.quad(v[4], v[5], v[6], v[7], sodTop, false, undefined, [0, 1, 0]);
+      m.quad(v[3], v[2], v[6], v[7], sodSide, false, undefined, [0, 0, 1]);
+      m.quad(v[0], v[1], v[5], v[4], sodSide, false, undefined, [0, 0, -1]);
+      m.quad(v[1], v[2], v[6], v[5], sodSide, false, undefined, [1, 0, 0]);
+      m.quad(v[0], v[3], v[7], v[4], sodSide, false, undefined, [-1, 0, 0]);
+      m.quad(v[0], v[1], v[2], v[3], sodSide, false, undefined, [0, -1, 0]);
+    }
+    sods.push(F.end());
+  }
+  // the room's dark behind the slit and through the doorway (its own piece: it falls into the pit with the rest)
+  F.begin({ role: 'fitting', material: 'earth', face: 'floor', axes: AX, volume: 0.01 });
+  m.quad([-LOG_SLIT_HW, slitLo - 0.04, Z - 0.3], [LOG_SLIT_HW, slitLo - 0.04, Z - 0.3], [LOG_SLIT_HW, slitHi + 0.04, Z - 0.3], [-LOG_SLIT_HW, slitHi + 0.04, Z - 0.3], () => [0.005, 0.005, 0.005], false, [0, 0, 1]);
+  m.quad([0.5, -0.1, -Z + 0.35], [-0.5, -0.1, -Z + 0.35], [-0.5, doorTop, -Z + 0.35], [0.5, doorTop, -Z + 0.35], () => [0.006, 0.006, 0.006], false, [0, 0, -1]);
+  const room = F.end();
+  // the links: each band on the one under it, the corners nailed, the roof on the walls' tops, the earth on the roof
+  const [fBase, fLow, fSlitL, fSlitR, fUp] = bands.front.length === 5 ? bands.front : [bands.front[0], bands.front[1], -1, -1, bands.front[bands.front.length - 1]];
+  F.link(fBase, floor, 'rest');
+  F.link(fLow, fBase, 'rest');
+  if (fSlitL >= 0) { F.link(fSlitL, fLow, 'rest'); F.link(fSlitR, fLow, 'rest'); F.link(fUp, fSlitL, 'rest'); F.link(fUp, fSlitR, 'rest'); }
+  else F.link(fUp, fLow, 'rest');
+  const bk = bands.back;
+  F.link(bk[0], floor, 'rest');
+  for (let k = 1; k < bk.length; k++) F.link(bk[k], bk[0], 'rest');
+  if (bk.length >= 4) { F.link(bk[3], bk[1], 'rest'); F.link(bk[3], bk[2], 'rest'); }
+  for (const w of ['left', 'right'] as Wall[]) {
+    const b = bands[w];
+    F.link(b[0], floor, 'rest');
+    for (let k = 1; k < b.length; k++) F.link(b[k], b[k - 1], 'rest');
+  }
+  // (the corners: every band of a front or back wall nailed to every band of a flank it crosses at the corner, the
+  // butted logs' boxes overlapping there)
+  const aabb = (i: number): [number, number, number, number, number, number] => {
+    const p = F.pieces[i];
+    const sideways = p.face === 'left' || p.face === 'right';
+    const hx = sideways ? p.h[2] : p.h[0], hz = sideways ? p.h[0] : p.h[2];
+    return [p.c[0] - hx, p.c[0] + hx, p.c[1] - p.h[1], p.c[1] + p.h[1], p.c[2] - hz, p.c[2] + hz];
+  };
+  for (const a of [...bands.front, ...bands.back]) for (const c of [...bands.left, ...bands.right]) {
+    const A = aabb(a), C = aabb(c);
+    if (A[0] < C[1] && C[0] < A[1] && A[2] < C[3] && C[2] < A[3] && A[4] < C[5] && C[4] < A[5]) F.link(a, c, 'nail');
+  }
+  const topFront = bands.front[bands.front.length - 1], topBack = bands.back[bands.back.length - 1];
+  for (const i of roof) { F.link(i, topFront, 'rest'); F.link(i, topBack, 'rest'); }
+  roof.forEach((ri) => {
+    const x = F.pieces[ri].c[0];
+    if (x <= 0.2) F.link(cover[0], ri, 'rest');
+    if (x >= -0.2) F.link(cover[1], ri, 'rest');
+  });
+  F.link(cover[2], cover[0], 'rest'); F.link(cover[3], cover[1], 'rest');
+  for (const b of bands.left) F.link(cover[2], b, 'rest');
+  for (const b of bands.right) F.link(cover[3], b, 'rest');
+  for (const sd of sods) for (const ri of roof) { if (F.pieces[sd].c[0] * F.pieces[ri].c[0] >= 0) F.link(sd, ri, 'rest'); }
+  // (the earth heaped down the flanks rests against the walls it covers: linked where their boxes meet)
+  const box = (i: number): [number, number, number, number, number, number] => {
+    const p = F.pieces[i];
+    const sideways = p.face === 'left' || p.face === 'right' || p.role === 'rafter';
+    const hx = sideways ? p.h[2] : p.h[0], hz = sideways ? p.h[0] : p.h[2];
+    return [p.c[0] - hx, p.c[0] + hx, p.c[1] - p.h[1], p.c[1] + p.h[1], p.c[2] - hz, p.c[2] + hz];
+  };
+  const meets = (a: number, b: number): boolean => {
+    const A = box(a), C = box(b);
+    return A[0] < C[1] && C[0] < A[1] && A[2] < C[3] && C[2] < A[3] && A[4] < C[5] && C[4] < A[5];
+  };
+  for (const ci of cover) for (const w of ['front', 'back', 'left', 'right'] as Wall[]) for (const b of bands[w]) if (meets(ci, b)) F.link(ci, b, 'rest');
+  for (const ci of cover) for (const other of [...sods, ...posts, lintel]) if (meets(ci, other)) F.link(ci, other, 'rest');
+  for (const p of posts) { F.link(p, floor, 'rest'); for (const b of bands.back) F.link(p, b, 'nail'); }
+  F.link(lintel, posts[0], 'rest'); F.link(lintel, posts[1], 'rest');
+  for (const b of bands.back) if (meets(lintel, b)) F.link(lintel, b, 'nail');
+  for (const b of bags) F.link(b, floor, 'rest');
+  F.link(room, floor, 'rest');
+  const g = m.geometry();
+  g.userData.fracture = F.anatomy('bunker');
+  return g;
+}
+
+/**
+ * A log's broken end where it snaps at a score (the core calls it once per kind per map and caches the halves): two
+ * runs, the − half's end facing + first; each a splintered round end, slivers out along the grain from a torn middle,
+ * fresh wood inside, darker at its rim. A roof log and a door's lintel snap; walls' bands go whole.
+ */
+export function logFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
+  out: DamageMeshWriter): void {
+  if (score === 'whole' || material !== 'timber' || (piece.role !== 'rafter' && piece.role !== 'frame')) return;
+  const axis = piece.scoreAxis ?? 0;
+  const rot = (v: V3): V3 => {
+    const [x, y, z, w] = piece.q;
+    const tt: V3 = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+    return [v[0] + w * tt[0] + (y * tt[2] - z * tt[1]), v[1] + w * tt[1] + (z * tt[0] - x * tt[2]), v[2] + w * tt[2] + (x * tt[1] - y * tt[0])];
+  };
+  const unit = (k: number): V3 => rot(k === 0 ? [1, 0, 0] : k === 1 ? [0, 1, 0] : [0, 0, 1]);
+  const A = unit(axis), U = unit((axis + 1) % 3), V = unit((axis + 2) % 3);
+  const R = Math.min(piece.h[(axis + 1) % 3], piece.h[(axis + 2) % 3]) * 0.95;
+  const base = add([piece.c[0], piece.c[1], piece.c[2]], scl(A, score));
+  let state = seed >>> 0;
+  const rnd = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let x = state;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const fresh: Rgb = [0.5, 0.38, 0.24], rim: Rgb = [0.22, 0.16, 0.1];
+  const N = 10;
+  for (const side of [1, -1] as const) {
+    if (!out.begin(piece.bucket, 'rim')) return;
+    const centre = out.vertex(...add(base, scl(A, side * R * (0.3 + rnd() * 0.5))), A[0] * side, A[1] * side, A[2] * side,
+      FLAT_UV[0], FLAT_UV[1], fresh[0] / FORT_PRINT_MEAN, fresh[1] / FORT_PRINT_MEAN, fresh[2] / FORT_PRINT_MEAN);
+    const ring: number[] = [];
+    for (let k = 0; k < N; k++) {
+      const ph = (k / N) * Math.PI * 2, sliver = k % 2 ? R * (0.4 + rnd() * 1.1) : R * rnd() * 0.3;
+      const p = add(add(add(base, scl(U, Math.cos(ph) * R)), scl(V, Math.sin(ph) * R)), scl(A, side * sliver));
+      const c = k % 2 ? fresh : rim;
+      ring.push(out.vertex(p[0], p[1], p[2], A[0] * side, A[1] * side, A[2] * side, FLAT_UV[0], FLAT_UV[1],
+        c[0] / FORT_PRINT_MEAN, c[1] / FORT_PRINT_MEAN, c[2] / FORT_PRINT_MEAN));
+    }
+    for (let k = 0; k < N; k++) {
+      const a = ring[k], b = ring[(k + 1) % N];
+      if (side > 0) out.triangle(centre, a, b); else out.triangle(centre, b, a);
+    }
+    out.end();
+  }
+}
+
+/**
+ * The destroyed log-and-earth work for the broken pool (round 2; wave 370: "a smooth green hump with a neat pit holding
+ * a few logs ... the destroyed log-and-earth bunker reads as clean stone panels next to an untouched cushion"), settled
+ * from its own pieces (fractureSettle.ts) in its low bank: the floor and the buried courses stand; the roof's logs snap
+ * at their scores and fall into the pit together, splintered; the earth comes down on them in its four sections, tipped
+ * and slumped into the hole; the walls' bands spill out and in, the doorway's posts go over, the sods and the bags are
+ * thrown; the dug spoil and clods round the crater. No collider: the wreck lies about as high as the old roof.
+ */
+function buildLogEarthWreck(O: BuildOpts): THREE.BufferGeometry {
+  const intact = buildLogEarthPieces({ ...O, broken: false });
+  const anatomy = intact.userData.fracture as KitFractureAnatomy;
+  const field = pillboxBankField('logearth', O.tones, O.seed);
+  const S = new FractureSettle(intact, anatomy, {
+    cell: 0.1, margin: 3, dust: 0.82,
+    ground: (x, z) => { const h = field.lift(x, z); return Number.isNaN(h) ? PIT : Math.max(GRADE, h); },
+  });
+  const rng = mulberry32((O.seed ^ 0x2f17c) >>> 0);
+  const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
+  const T = O.tones;
+  const P = anatomy.pieces;
+  const idx = P.map((_, i) => i);
+  const az = rng() * Math.PI * 2;
+  const blow: V3 = [Math.cos(az), 0, Math.sin(az)];
+  const flat = (v: V3): V3 => norm([v[0], 0, v[2]]);
+  // 1. the floor and the buried courses; the room's dark goes (it was the room); the earth cover is laid below as the
+  // loose soil it falls as, not as its sections
+  for (const i of idx) if (P[i].anchor) S.stay(i, 0.86);
+  for (const i of idx) if (P[i].role === 'fitting' || P[i].role === 'roof') S.omit(i);
+  {
+    // the earth slumped into the hole and over its walls' feet: a heap of loose soil, lumpy, torn turf on its crown
+    const hm = new Mesh();
+    const soilS: Shade = (q, n) => {
+      const turfy = smooth(0.55, 0.75, fbm(q[0], 0, q[2], 0.7, O.seed + 71)) * clamp01(n[1] * 1.4 - 0.3);
+      return mul(mix(mul(T.earth, 0.85), mix(T.turf, T.crest, 0.4), turfy * (T.arid ? 0.25 : 0.7)), 0.7 + vnoise(q[0] * 2, 0, q[2] * 2, 0.3, O.seed + 73) * 0.4);
+    };
+    const NX = 20, NZ = 17, X0 = -LOG_W / 2 - 0.9, X1 = LOG_W / 2 + 0.9, Z0 = -LOG_D / 2 - 0.9, Z1 = LOG_D / 2 + 0.9;
+    const hgt = (x: number, z: number): number => {
+      const tx = Math.abs(x) / (LOG_W / 2 + 0.9), tz = Math.abs(z) / (LOG_D / 2 + 0.9), t = Math.max(tx, tz * 1.05);
+      const dome = 0.62 * Math.pow(Math.max(0, 1 - t * t), 1.3);
+      const lumps = (fbm(x, 0, z, 0.7, O.seed + 75) - 0.5) * 0.22 + (vnoise(x * 2, 0, z * 2, 0.3, O.seed + 77) - 0.5) * 0.08;
+      const ground = (() => { const h = field.lift(x, z); return Number.isNaN(h) ? PIT : Math.max(GRADE, h); })();
+      return Math.max(ground - 0.04, (t < 1 ? GRADE + dome + lumps * (1 - t) : ground - 0.04));
+    };
+    const at = (i: number, j: number): V3 => { const x = X0 + (i * (X1 - X0)) / NX, z = Z0 + (j * (Z1 - Z0)) / NZ; return [x, hgt(x, z), z]; };
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
+      const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+      hm.tri(a, d, c, soilS, false, undefined, [0, 1, 0]);
+      hm.tri(a, c, b, soilS, false, undefined, [0, 1, 0]);
+    }
+    S.extra({ p: hm.p, n: hm.n, t: hm.t, c: hm.c }, 0.95);
+  }
+  // 2. the roof's logs snapped and down into the pit together
+  const roof = idx.filter((i) => P[i].role === 'rafter');
+  S.together(() => {
+    for (const i of roof) {
+      for (const b of S.snap(i, logFractureEdge, undefined, O.seed ^ (i * 61))) {
+        const ax = b.axes[0], toward = scl(flat(b.centre), -1);
+        S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.6, 0.6), [toward[0] * r(0.1, 0.6) + blow[0] * r(0, 0.3), 0, toward[2] * r(0.1, 0.6) + blow[2] * r(0, 0.3)],
+          false, r(0, Math.PI), { maxTilt: 0.9, sink: r(0.03, 0.11) });
+      }
+    }
+  });
+  // 4. the walls' logs spill each its own way: out over the bank mostly, in where the blow struck, a few kept in
+  // their course where they lie low
+  for (const i of idx) {
+    if (S.isLaid(i) || P[i].role !== 'wall') continue;
+    const out = flat(P[i].c as V3);
+    const struck = dot3(out, blow) < -0.3;
+    for (const b of S.scatter(i)) {
+      if (b.centre[1] < 0.35 && rng() < 0.55) { S.fix(b, undefined, 0.86); continue; }
+      const inward = struck ? rng() < 0.65 : rng() < 0.2;
+      const ax = b.axes[0], along = Math.atan2(ax[2], ax[0]);
+      const d = inward ? r(0.3, 1.4) : r(0.4, 2.0), dir = inward ? -1 : 1;
+      S.lie(b, along + r(-0.45, 0.45), [out[0] * d * dir + r(-0.3, 0.3), 0, out[2] * d * dir + r(-0.3, 0.3)], false, r(0, Math.PI),
+        { maxTilt: 0.8, ceiling: 1.4, sink: r(0.01, 0.06) });
+    }
+  }
+  // 5. the doorway's posts over, its lintel down, the sods and bags thrown, the room's dark into the pit
+  for (const i of idx) {
+    if (S.isLaid(i)) continue;
+    const p = P[i], out = flat(p.c as V3);
+    if (p.role === 'frame' && p.h[1] > 0.5) S.lie(S.body([i]), r(0, Math.PI * 2), [out[0] * r(0.4, 1.3), 0, out[2] * r(0.4, 1.3)], false, r(0, 3), { ceiling: 1.2 });
+    else if (p.role === 'frame') { for (const b of S.snap(i, logFractureEdge, undefined, O.seed ^ (i * 67))) S.lie(b, r(0, Math.PI * 2), [out[0] * r(0.3, 1), 0, out[2] * r(0.3, 1)], false, r(0, 3), { ceiling: 1.3 }); }
+    else if (p.role === 'bag' && p.material === 'earth') {
+      for (const b of S.scatter(i)) S.lie(b, r(0, Math.PI * 2), [out[0] * r(0.2, 1.4) + r(-0.5, 0.5), 0, out[2] * r(0.2, 1.4) + r(-0.5, 0.5)], rng() < 0.3, r(-0.4, 0.4), { ceiling: 1.3 });
+    } else if (p.role === 'bag') S.lie(S.body([i]), r(0, Math.PI * 2), [out[0] * r(0.3, 1.5), 0, out[2] * r(0.3, 1.5)], false, r(-0.3, 0.3), { ceiling: 1.0 });
+    else S.drop(S.body([i]), 0, [0, 0, 0], { maxTilt: 1.5 });
+  }
+  // 6. the spoil round the crater: clods and torn turf, a few splinters
+  const m = new Mesh();
+  const clod: Shade = (q) => mul(T.earth, 0.6 + vnoise(q[0], q[1], q[2], 0.2, O.seed + 181) * 0.45);
+  const turfBit: Shade = (q) => mul(mix(T.turf, T.crest, vnoise(q[0] * 3, 0, q[2] * 3, 0.3, O.seed + 183)), 0.7 + vnoise(q[0] * 9, 0, q[2] * 9, 0.2, 2) * 0.3);
+  const ext = Math.hypot(LOG_W / 2, LOG_D / 2);
+  for (let k = 0; k < 34; k++) {
+    const a = r(0, Math.PI * 2), rr = ext * r(0.85, 1.25) + Math.max(0, Math.cos(a) * blow[0] + Math.sin(a) * blow[2]) * r(0, 1.6);
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr, s = 0.1 + rng() * 0.25;
+    lump(m, x, S.heightAt(x, z) + s * 0.1, z, s * 1.5, s * 0.55, s, rng, k % 4 === 0 ? turfBit : clod, false, r(0, Math.PI), 0.5);
+  }
+  const splinter: Shade = (q) => mul(mix(T.timber, [0.55, 0.45, 0.3], 0.5), 0.8 + vnoise(q[0] * 9, q[1] * 9, q[2] * 9, 0.2, O.seed + 29) * 0.4);
+  for (let k = 0; k < 14; k++) {
+    const a = r(0, Math.PI * 2), rr = ext * r(0.3, 1.3), x = Math.cos(a) * rr, z = Math.sin(a) * rr, y = S.heightAt(x, z) + 0.03;
+    const d = r(0, Math.PI), l = r(0.15, 0.5);
+    bar(m, [x, y, z], [x + Math.cos(d) * l, y + r(0, 0.12), z + Math.sin(d) * l], splinter, 0.018 + rng() * 0.015);
+  }
+  S.extra({ p: m.p, n: m.n, t: m.t, c: m.c }, 1);
+  intact.dispose();
+  return S.finish();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1149,6 +1598,10 @@ class FortPieces {
     if (a === b || a < 0 || b < 0) return;
     if (this.links.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return;
     this.links.push({ a, b, kind });
+  }
+  /** Drops a begun piece that drew nothing (a wall band with no logs in it). */
+  cancel(): void {
+    if (this.open && this.m.p.length / 9 === this.open.tri0) this.open = null;
   }
   anatomy(kind: string): KitFractureAnatomy {
     if (this.open) throw new Error('fortKit: unfinished piece');
@@ -1883,7 +2336,7 @@ function mulberry32(a: number): Rng {
 export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
   const O = { tones, seed, broken };
   // (round 2: the intact concrete work in the destruction core's pieces; the destroyed state is the settled heap)
-  const g = style === 'logearth' ? buildLogEarthPillbox(O) : broken ? buildConcreteWreck(style, O) : buildConcretePillboxPieces(style, O);
+  const g = style === 'logearth' ? (broken ? buildLogEarthWreck(O) : buildLogEarthPieces(O)) : broken ? buildConcreteWreck(style, O) : buildConcretePillboxPieces(style, O);
   return g;
 }
 
