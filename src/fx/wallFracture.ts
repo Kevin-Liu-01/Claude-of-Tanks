@@ -85,6 +85,8 @@ export interface FaceGrid {
   /** Each cell's span along u: [u0, u1] at 2·cell. */
   readonly cellU: Float32Array;
   readonly state: Uint8Array;
+  /** 1 where the cell is an opening's (a window's, a door's): kept when it falls with what held it. */
+  readonly opening: Uint8Array;
   readonly damage: Float32Array;
   /** How far each cell has sagged (m, down). */
   readonly sag: Float32Array;
@@ -200,7 +202,7 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
     origin: face.origin, u: face.u, out: face.out, width: face.width, height,
     thickness: faceWallThickness(face), skinM: skin, material, bonded: law.bonded,
     rowY: Float32Array.from(rowsY), rowStart: Int32Array.from(rowStart), cellU: Float32Array.from(cellU),
-    state, damage: new Float32Array(n), sag: new Float32Array(n),
+    state, opening: Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0)), damage: new Float32Array(n), sag: new Float32Array(n),
   };
 }
 
@@ -305,14 +307,21 @@ export function settleLoads(wall: WallFracture, name: string, out: Pick<WallStri
   const fresh: number[] = []; // face, cell pairs that fell this pass
   // supported[i] per face: 1 bears (through to the footing), 0 not
   const supported = stack.map((f) => new Uint8Array(wall.faces[f].state.length));
+  const bearings = new Float32Array(64);
   for (let s = 0; s < stack.length; s++) {
     const grid = wall.faces[stack[s]];
     const sup = supported[s];
     const rows = grid.rowY.length - 1;
     const below = s > 0 ? wall.faces[stack[s - 1]] : null;
     const belowSup = s > 0 ? supported[s - 1] : null;
+    // what spans a gap in a row: the wall's own bond or frame inside a storey, the floor's beams on a storey line
+    const wallSpan = spanOf(grid.material);
+    const floorSpan = s > 0 ? floorSpanOf(wall.anatomy.storeys[grid.storey]?.floor?.structure.material) : 0;
     for (let r = 0; r < rows; r++) {
-      for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
+      const c0 = grid.rowStart[r], c1 = grid.rowStart[r + 1];
+      // 1. what each cell bears on below it (or an opening's lintel on both its jambs)
+      for (let c = c0; c < c1; c++) {
+        bearings[Math.min(63, c - c0)] = 0;
         if (!standing(grid.state[c])) continue;
         const u0 = grid.cellU[2 * c], u1 = grid.cellU[2 * c + 1];
         let bearing = 0;
@@ -326,20 +335,70 @@ export function settleLoads(wall: WallFracture, name: string, out: Pick<WallStri
         }
         if (bearing > 0 || lintel) {
           sup[c] = 1;
-          // bearing on less than half of itself (an undercut cell): it sags a little (once)
-          if (!lintel && bearing < (u1 - u0) * 0.5 && grid.sag[c] === 0) {
-            grid.sag[c] = SAG_M * (1 - bearing / Math.max(1e-6, (u1 - u0) * 0.5));
-            out.sagged.push(stack[s], c);
-          }
-        } else {
+          bearings[Math.min(63, c - c0)] = lintel ? u1 - u0 : bearing;
+        }
+      }
+      // 2. a run of cells that bear on nothing is carried across when it is short enough for what spans it (a bonded
+      //    course arches over a brick's gap, a frame's rail over a panel's, a floor's beams over a pier's) and both its
+      //    ends bear (a face's end is its corner: it bears)
+      const span = r === 0 && s > 0 ? Math.max(wallSpan, floorSpan) : wallSpan;
+      for (let c = c0; c < c1;) {
+        if (!standing(grid.state[c]) || sup[c]) { c++; continue; }
+        let e = c;
+        while (e + 1 < c1 && standing(grid.state[e + 1]) && !sup[e + 1]) e++;
+        const length = grid.cellU[2 * e + 1] - grid.cellU[2 * c];
+        const leftEnd = c === c0 || (standing(grid.state[c - 1]) && sup[c - 1] === 1);
+        const rightEnd = e === c1 - 1 || (standing(grid.state[e + 1]) && sup[e + 1] === 1);
+        if (length <= span + 1e-6 && leftEnd && rightEnd) for (let k = c; k <= e; k++) sup[k] = 1;
+        c = e + 1;
+      }
+      // 3. what still bears on nothing falls; what bears on less than half of itself sags a little (once)
+      for (let c = c0; c < c1; c++) {
+        if (!standing(grid.state[c])) continue;
+        const u0 = grid.cellU[2 * c], u1 = grid.cellU[2 * c + 1];
+        if (!sup[c]) {
           grid.state[c] = CELL_FALLEN;
           fresh.push(stack[s], c);
+          continue;
         }
+        const bearing = bearings[Math.min(63, c - c0)];
+        if (bearing < (u1 - u0) * 0.5 && grid.sag[c] === 0) {
+          grid.sag[c] = SAG_M * (1 - bearing / Math.max(1e-6, (u1 - u0) * 0.5));
+          out.sagged.push(stack[s], c);
+        }
+      }
+      // 4. an opening (its frame, its sash, its door) stands in its jambs: with both of them gone it falls too (a face's
+      //    end is a corner and stands)
+      for (let c = c0; c < c1;) {
+        if (grid.state[c] !== CELL_OPENING) { c++; continue; }
+        let e = c;
+        while (e + 1 < c1 && grid.state[e + 1] === CELL_OPENING) e++;
+        const leftStands = c === c0 || standing(grid.state[c - 1]);
+        const rightStands = e === c1 - 1 || standing(grid.state[e + 1]);
+        if (!leftStands && !rightStands) for (let k = c; k <= e; k++) { grid.state[k] = CELL_FALLEN; fresh.push(stack[s], k); }
+        c = e + 1;
       }
     }
   }
   if (fresh.length) clusterFallen(wall, stack, fresh, out.fallen);
   return fresh.length / 2;
+}
+
+/** The longest gap (m) a row of a wall of this material carries across inside a storey: a bonded course arches over a
+ *  brick's width, a frame's rails over a panel's, cast concrete over its reinforcement's. */
+function spanOf(material: FractureMaterial): number {
+  switch (material) {
+    case 'brick': case 'stone': case 'rubble': case 'adobe': return 0.6;
+    case 'concrete': return 2.5;
+    case 'timber': case 'infill': case 'plank': return 2.0;
+    case 'metal': return 1.5;
+    default: return 0.6;
+  }
+}
+
+/** The longest gap (m) a storey line carries the storey over it across: its floor's beams (timber joists, a cast slab). */
+function floorSpanOf(material: FractureMaterial | undefined): number {
+  return material === 'concrete' ? 4.0 : 3.0;
 }
 
 /** How much of [u0, u1] row `r` of `grid` bears under it (m of overlap with standing, supported cells). */

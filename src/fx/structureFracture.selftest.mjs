@@ -14,6 +14,12 @@ import { streamFrom } from '../world/maps/regional/geometry.ts';
 import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture } from './structureFracture.ts';
+// every body's drawn corners inside its box parts (the fracture's own check, on here): a corner outside one would sink
+// into the ground or float over it
+globalThis.__fractureDebug = true;
+const outside = [];
+const log0 = console.log;
+console.log = (...a) => { if (String(a[0]).startsWith('[fracture-debug]')) outside.push(a.join(' ')); else log0(...a); };
 
 const material = new THREE.MeshStandardMaterial({ vertexColors: true });
 
@@ -147,6 +153,8 @@ const log = () => {
 assert.equal(log(), log(), 'deterministic');
 // a point off every wall breaks nothing
 assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), false, 'a burst off the building breaks no face');
+console.log = log0;
+assert.deepEqual(outside, [], 'every body draws inside its parts');
 console.log(`structureFracture.selftest: a round on a cottage's front face took it out of the bucket (${after.flat - whole.flat} triangles), `
   + `drew it again with its hole (${drawn.toFixed(1)} m2), threw ${s0.bodies} bodies that came to rest (${s1.baked} baked, ${r.landings.length} landings), `
   + 'a second round widened it, the reset stood it up byte for byte, the same twice');

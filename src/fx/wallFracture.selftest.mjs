@@ -122,6 +122,23 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.ok(over.every((c) => g.state[c] === CELL_FALLEN || g.state[c] === CELL_GONE), 'the lintel courses over the window fall with its jamb');
 }
 
+// ---- an opening stands in its jambs: one jamb gone leaves it, both gone bring it down -----------------------------
+{
+  const wall = createWallFracture(house());
+  const out = createWallStrikeOutcome();
+  const g = wall.faces[front0];
+  const windowCells = [];
+  for (let c = 0; c < g.state.length; c++) if (g.state[c] === CELL_OPENING && Math.abs(centreOf(g, c)[0] - 2) < 0.6) windowCells.push(c);
+  assert.ok(windowCells.length >= 4, `the window's cells (${windowCells.length})`);
+  // a round by its left jamb (the window spans 1.4 to 2.6 along the face)
+  strikeWall(wall, { x: 0.95, y: 1.0, z: 5.05, dirX: 0, dirZ: -1, radiusM: 0.4, kind: 'blast', seed: 21 }, out);
+  assert.ok(windowCells.every((c) => g.state[c] === CELL_OPENING), 'one jamb gone: the window stands in the other');
+  // a heavy round on the window itself takes both jambs
+  strikeWall(wall, { x: 2.0, y: 1.5, z: 5.05, dirX: 0, dirZ: -1, radiusM: 1.1, kind: 'blast', seed: 22 }, out);
+  assert.ok(windowCells.some((c) => g.state[c] === CELL_FALLEN), 'both jambs gone: the window comes down with them');
+  assert.ok(windowCells.every((c) => g.opening[c] === 1), 'a fallen opening is still known for one (its frame carries no caps)');
+}
+
 // ---- a breach at the foot brings the storey over it down -------------------------------------------------------
 {
   const wall = createWallFracture(house());
