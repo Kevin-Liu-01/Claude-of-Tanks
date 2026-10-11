@@ -242,7 +242,6 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
    * material, and where each lies in its bucket (to flatten it when its face is taken). A triangle no face owns (the
    * roof, a chimney, an interior) is left alone.
    */
-  function sortByFace(live: Live): void { sortByFaceSlice(live, Infinity); }
   /** One slice of the sort, until done (true) or past `deadline` (performance.now ms). */
   function sortByFaceSlice(live: Live, deadline: number): boolean {
     if (live.byFace) return true;
@@ -308,11 +307,6 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   }
 
   /** Take face `f`: its triangles flattened in their buckets (kept for the reset) and drawn again from its cells. */
-  function claimFace(live: Live, f: number): FaceDraw {
-    sortByFace(live);
-    claimFaceSlice(live, f, Infinity);
-    return live.faces.get(f)!;
-  }
   /** Triangles a slice of a face's cut takes between its budget checks. */
   const CUT_SLICE = 160;
   /**
