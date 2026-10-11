@@ -10,12 +10,9 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../src/vehicles/canvasFixture.test-support.mjs';
 
-const KNOWN = new Map([
-  // The garage lane (fix at source in flight, 2026-10-10): the packs' instanced ground-cover tufts.
-  ...['verdant_motor_pool', 'desert_forward_depot', 'winter_repair_bunker', 'urban_arsenal', 'coastal_drydock',
-    'railyard_overhaul', 'monsoon_field_bay', 'alpine_service_cavern', 'badlands_recovery_yard', 'foundry_heavy_works']
-    .map((id) => [`garage:${id}|static_battlefield_ground_cover`, 'garage lane']),
-]);
+// 2026-10-11 (integ/215): the ten Garage packs' instanced ground-cover tufts carry a colour attribute since garage look
+// round 2 (ad48a9f63), so their ten KNOWN rows are gone; nothing is in flight.
+const KNOWN = new Map([]);
 
 // Headless DOM: the canvas fixture, plus an image element that never loads (textures stay blank; geometry, materials and
 // attributes are what the scan reads) and ImageData.
