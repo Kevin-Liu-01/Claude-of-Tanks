@@ -116,6 +116,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   cv90_x: {
     id: 'cv90_x', seed: 9041, style: 'leafy', density: 0.95, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.9, hemFloorM: 0.65,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-0.22, 0.22, 0.723, 0.921, -1.052, -0.632], [-0.407, 0.407, 0.813, 13.177, -1.249, -0.435]] },
     turret: {
       top: [laid({
         x0: -1.24, x1: 1.24, z0: -1.44, z1: 1.20, nx: 31, nz: 33, y: 0.78,
@@ -258,6 +260,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   type10b: {
     id: 'type10b', seed: 1004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-1.236, -0.796, 0.538, 0.753, -1.644, -1.224], [-1.423, -0.609, 0.645, 13.009, -1.841, -1.027]] },
     turret: {
       top: [laid({
         x0: -1.68, x1: 1.70, z0: -3.41, z1: 1.97, nx: 42, nz: 67, y: 0.76,
@@ -306,6 +310,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   ariete_c2_x: {
     id: 'ariete_c2_x', seed: 2042, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.42, hemFloorM: 0.78,
+    // the drone dock on main's spot raised to the cradle's top rise, clear of the sight's view (main's seat stood in
+    // it): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[0.606, 1.046, 0.852, 1.153, -2.253, -1.833], [0.419, 1.233, 1.045, 13.409, -2.45, -1.636]] },
     turret: {
       top: [laid({
         x0: -2.09, x1: 2.09, z0: -3.27, z1: 1.70, nx: 52, nz: 62, y: 0.95,
@@ -418,6 +425,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   type96b_x: {
     id: 'type96b_x', seed: 9602, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.07,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-0.673, -0.233, 0.627, 0.825, -1.504, -1.084], [-0.86, -0.046, 0.717, 13.081, -1.701, -0.887]] },
     turret: {
       top: [laid({ x0: -1.75, x1: 1.75, z0: -1.95, z1: 1.91, nx: 44, nz: 48, y: 0.70, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-1.80, 0.39, 0.74, 0.46, 1.72, 17),
@@ -459,6 +468,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   ru_t80u_modern: {
     id: 'ru_t80u_modern', seed: 8032, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.43, hemFloorM: 0.84,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-1.278, -0.838, 0.638, 0.889, -0.93, -0.51], [-1.465, -0.651, 0.781, 13.145, -1.127, -0.313]] },
     turret: {
       // open round the bustle sides' insignia and number (their seats lie on the plates sloping into the roof)
       top: [laid({ x0: -1.84, x1: 1.86, z0: -2.28, z1: 1.90, nx: 46, nz: 52, y: 0.72, holes: pair(0.36, 0.86, -1.44, -0.96),
@@ -483,6 +494,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   t90m: {
     id: 't90m', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-1.112, -0.672, 0.373, 0.649, -2.338, -1.918], [-1.299, -0.485, 0.542, 12.906, -2.535, -1.721]] },
     turret: {
       top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
         holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],
@@ -503,6 +516,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   leo2a7v_x: {
     id: 'leo2a7v_x', seed: 2704, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.01,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[0.184, 0.624, 0.793, 0.993, -2.78, -2.36], [-0.003, 0.811, 0.885, 13.249, -2.977, -2.163]] },
     turret: {
       top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
       side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.60, 19)],
@@ -522,6 +537,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   leo2a5_x: {
     id: 'leo2a5_x', seed: 2505, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 0.97,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[0.235, 0.675, 0.76, 0.974, -2.832, -2.412], [0.048, 0.862, 0.867, 13.231, -3.029, -2.215]] },
     turret: {
       top: [laid({ x0: -1.55, x1: 1.56, z0: -3.53, z1: 2.40, nx: 39, nz: 74, y: 0.86, garnishRiseM: 0.16, seed: 11 })],
       side: [...flanks(-0.81, 1.60, 0.90, 0.46, 1.53, 17), ...flanks(-3.38, -2.54, 0.90, 0.42, 1.53, 19)],
@@ -589,6 +606,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   m1a2_tusk_x: {
     id: 'm1a2_tusk_x', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
+    // the drone dock on a lens-clear seat beside the sights (main's and the regenerated seat each stood in a sight's
+    // view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[0.865, 1.545, 0.627, 0.857, 0.479, 0.899], [0.918, 1.732, 0.749, 13.113, 0.282, 1.096]] },
     turret: {
       top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.30, nx: 44, nz: 56, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.45, -0.10, 0.90, 0.46, 1.70, 17),
@@ -609,6 +629,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   m1a3: {
     id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[0.26, 0.7, 0.684, 0.879, -1.934, -1.514], [0.073, 0.887, 0.771, 13.135, -2.131, -1.317]] },
     turret: {
       top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 1.40, nx: 49, nz: 59, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-3.05, 0.55, 0.74, 0.44, 1.80, 17),
@@ -665,6 +687,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   t90a_burlak_x: {
     id: 't90a_burlak_x', seed: 9005, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
+    // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
+    dockKeepOut: { frame: 'turret', boxes: [[-0.226, 0.214, 0.665, 0.86, -2.821, -2.401], [-0.413, 0.401, 0.753, 13.117, -3.018, -2.204]] },
     turret: {
       // open round the commander's sight (its stack carries no glass bucket, so the lens slot is authored: the window
       // looks ahead over the roof from z -0.67)
