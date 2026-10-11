@@ -525,15 +525,6 @@ function addCv90MkivScaffoldedCradle(P: CvBuilderPort): void {
     ], .028));
   }
   for (const side of [-1, 1] as const) {
-    // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: "an open box whose inner ribs and stair-stepped
-    // black-and-tan shading show through its side, reading as an open shell"): each flank is skinned just inside its
-    // truss, so the diagonal webs stand on a closed armoured cradle as external ribs; nose and tail stay open for the
-    // cannon.
-    const inset = (t: number, vertical: number): Vec3 => {
-      const p = point(side, t, vertical);
-      return [p[0] - side * .02, p[1] * .985, p[2]];
-    };
-    P.addGunExtra(panelGeometry([inset(0,-1), inset(1,-1), inset(1,1), inset(0,1)], .018));
     for (const vertical of [-1, 1])
       P.addGunExtra(beamGeometry(point(side,0,vertical),point(side,1,vertical),.046));
     for (const [rear, front] of [[.04,.30],[.36,.62],[.68,.94]])
@@ -666,7 +657,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
     P.gunG.userData.cv90GunAssemblyReceipt = Object.freeze({
       host: 'cv90_mkiv', architecture: 'buried-mask-open-50mm-diagonal-truss-v3',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
-      rootJoinedToTurretFace: true, sideOnlyOpenings: false, flankSkinsInsideTruss: true, rootRearZM: -.34,
+      rootJoinedToTurretFace: true, sideOnlyOpenings: true, rootRearZM: -.34,
       diagonalSidePortsPerSide: 3, mainGunCaliberMm: 50, barrelLengthM: 3.76,
       trunnionRecessM: gunTrunnionRecessM,
     });
