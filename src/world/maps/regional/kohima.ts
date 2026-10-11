@@ -158,18 +158,60 @@ const granary: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A shelled bungalow: the plinth, a standing chimney stack, wall stubs, the tin roof down in sheets. */
+/**
+ * A shelled bungalow (round 3, gauntlet wave 389's Monsoon frames: "the ruins are scattered pale cubes and slabs sitting
+ * on top of the grass with no rubble spread"): the plinth and its steps, the chimney stack still standing, the walls'
+ * remains round the plinth's edge as lengths of plastered wall broken to ragged tops, with the gaps where the doors and
+ * windows were and where the shells took them; a charred post or two and a fallen beam; the tin roof down in sheets on
+ * heaps of the walls' rubble, and the rubble spilt over the plinth's edge onto the ground round it.
+ */
 const shelled: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(6, ctx.info.w - 0.6), D = Math.max(7, ctx.info.d - 0.6);
-  sink.span('stone', -W / 2, -0.4, -D / 2, W / 2, 0.75, D / 2);
-  sink.span('stone', -W * 0.25 - 0.35, 0.75, -D * 0.2 - 0.35, -W * 0.25 + 0.35, 4.6 + rng(), -D * 0.2 + 0.35);
-  for (let k = 0; k < 7; k++) {
-    const side = k % 4, t = rng(), h = 0.4 + rng() * 2.0;
-    const x = side < 2 ? (side === 0 ? -1 : 1) * (W / 2 - 0.15) : (t - 0.5) * W * 0.8;
-    const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
-    sink.span('plaster', x - 0.18, 0.75, z - 0.18, x + 0.18, 0.75 + h, z + 0.18);
+  const rng = ctx.rng, look = ctx.variant;
+  const W = Math.max(6, ctx.info.w - 0.6), D = Math.max(7, ctx.info.d - 0.6), floor = 0.75, t = 0.24;
+  sink.span('stone', -W / 2, -0.4, -D / 2, W / 2, floor, D / 2);
+  sink.span('stone', -W * 0.25 - 0.35, floor, -D * 0.2 - 0.35, -W * 0.25 + 0.35, 4.6 + rng(), -D * 0.2 + 0.35);
+  // the walls' remains: each side in lengths of about a metre, each broken to its own ragged top (higher toward the
+  // corners, where the walls bound each other), some lengths gone
+  const sides: Array<[number, number, number, number, 'x' | 'z']> = [
+    [-W / 2 + 0.1, -D / 2 + 0.1, W / 2 - 0.1, -D / 2 + 0.1 + t, 'x'], [-W / 2 + 0.1, D / 2 - 0.1 - t, W / 2 - 0.1, D / 2 - 0.1, 'x'],
+    [-W / 2 + 0.1, -D / 2 + 0.1 + t, -W / 2 + 0.1 + t, D / 2 - 0.1 - t, 'z'], [W / 2 - 0.1 - t, -D / 2 + 0.1 + t, W / 2 - 0.1, D / 2 - 0.1 - t, 'z']];
+  const stubs: Array<[number, number, number]> = [];
+  for (const [a, b, c, d, axis] of sides) {
+    const len = axis === 'x' ? c - a : d - b, pieces = Math.max(4, Math.round(len / 0.95));
+    let hPrev = 0.4 + rng() * 1.6;
+    for (let k = 0; k < pieces; k++) {
+      const p0 = k / pieces, p1 = (k + 1) / pieces, gone = rng() < 0.3;
+      const corner = Math.max(0, 1 - Math.min(p0, 1 - p1) * pieces / 1.5);
+      const hNext = Math.max(0.3, Math.min(2.7, 0.35 + rng() * 1.5 + corner * 1.0));
+      if (gone) { hPrev = hNext; continue; }
+      // most lengths broke along a course (a level top, a step from the next), some raked down to the next
+      const raked = rng() < 0.35, h0 = raked ? hPrev : hNext, h1 = hNext;
+      const wall = { shade: 0.72 + look() * 0.2 } as const;
+      if (axis === 'x') {
+        const xa = a + len * p0, xb = a + len * p1;
+        sink.prism('plaster', [[xa, floor - 0.02, b], [xb, floor - 0.02, b], [xb, floor + h1, b], [xa, floor + h0, b]], [0, 0, 1], d - b, wall);
+        stubs.push([(xa + xb) / 2, floor + Math.min(h0, h1), (b + d) / 2]);
+      } else {
+        const za = b + len * p0, zb = b + len * p1;
+        sink.prism('plaster', [[a, floor - 0.02, zb], [a, floor - 0.02, za], [a, floor + h0, za], [a, floor + h1, zb]], [1, 0, 0], c - a, wall);
+        stubs.push([(a + c) / 2, floor + Math.min(h0, h1), (za + zb) / 2]);
+      }
+      hPrev = hNext;
+    }
+  }
+  // the front steps up the plinth
+  for (let k = 0; k < 2; k++) sink.span('stone', -0.8, floor - 0.25 - k * 0.25, D / 2 + k * 0.3, 0.8, floor - k * 0.25, D / 2 + 0.3 + k * 0.3, { decor: true });
+  // a charred post standing from the floor, and a beam fallen from a wall's top to the floor
+  const CHAR = rgb(0x2a2420);
+  for (let k = 0; k < 2; k++) {
+    const x = (look() - 0.5) * W * 0.5, z = (look() - 0.5) * D * 0.5, ph = 1.2 + look() * 1.4;
+    sink.span('structureWood', x - 0.09, floor - 0.02, z - 0.09, x + 0.09, floor + ph, z + 0.09, { colour: shade(CHAR, 0.9 + look() * 0.3), decor: true });
+  }
+  if (stubs.length) {
+    const s0 = stubs[Math.floor(look() * stubs.length) % stubs.length], a = look() * Math.PI * 2;
+    const foot: [number, number, number] = [Math.max(-W / 2 + 0.5, Math.min(W / 2 - 0.5, s0[0] + Math.cos(a) * 2.2)), floor + 0.08, Math.max(-D / 2 + 0.5, Math.min(D / 2 - 0.5, s0[2] + Math.sin(a) * 2.2))];
+    sink.member('structureWood', [s0[0], s0[1] + 0.06, s0[2]], foot, 0.16, 0.16, [0, 1, 0], { colour: CHAR, decor: true, exposed: true }, 0.08);
   }
   // the fallen sheets (the connectivity sweep: they hung over the floor): the low end on the floor, the raised end on a
   // heap of the walls' rubble
@@ -179,6 +221,20 @@ const shelled: RegionalBuilder = (ctx) => {
     const hy = 0.9 + rng() * 0.5, ex = x + Math.cos(a) * 1.4, ez = z + Math.sin(a) * 1.4;
     sink.member('structureMetal', [x - Math.cos(a) * 1.4, 0.75, z - Math.sin(a) * 1.4], [ex, hy, ez], 1.1, 0.04, [0, 1, 0], { colour: pick(rng, TIN), decor: true, exposed: true });
     sink.cylinder('stone', [ex, 0.73, ez], 'y', hy - 0.71, 0.3 + (hy - 0.75) * 0.5, 7, { decor: true }, 0.16, true, k * 0.9);
+  }
+  // the rubble spilt over the plinth's edge: heaps on the floor against the walls' feet and on the ground below them
+  for (let k = 0; k < 8; k++) {
+    const side = k % 4, t0 = look() - 0.5, r = 0.45 + look() * 0.6, hgt = 0.25 + look() * 0.4;
+    const onFloor = k < 4;
+    const off = onFloor ? -(r + 0.35) : r * 0.7;
+    const x = side < 2 ? (side === 0 ? -1 : 1) * (W / 2 + off) : t0 * W * 0.8;
+    const z = side < 2 ? t0 * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 + off);
+    const y = onFloor ? floor - 0.04 : -0.15;
+    // a heap of lumps, not one cone: three low mounds of the broken masonry, offset and turned
+    for (const [f, g] of [[1, 1], [0.7, 0.75], [0.5, 0.6]] as const) {
+      const dx = f < 1 ? (look() - 0.5) * r : 0, dz = f < 1 ? (look() - 0.5) * r : 0;
+      sink.cylinder('stone', [x + dx, y, z + dz], 'y', hgt * g + 0.1, r * f, 5 + (f < 1 ? 1 : 0), { decor: true, shade: 0.7 + look() * 0.15 }, r * f * 0.14, true, look() * 3);
+    }
   }
   return sink.finish();
 };
