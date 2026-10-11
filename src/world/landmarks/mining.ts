@@ -133,8 +133,12 @@ export const headframe: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
   }
   for (const sx of [-1, 1]) sink.quad('structureMetal', [sx * 0.9 - 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.6, hz1 + 0.04], [sx * 0.9 - 0.3, hy + 4.6, hz1 + 0.04], { colour: SHAFT, decor: true });
-  // the ladder up the front leg
-  for (let y = g0 + 1.6; y < H; y += 0.4) bar(sink, 'structureMetal', [half - 0.1, y, zs + half + 0.25], [half - 0.6, y, zs + half + 0.25], 0.03, { colour: IRON, decor: true, fine: true });
+  // the ladder up the front leg's outer side, from the collar to the sheave deck: two stiles bracketed to the leg, the
+  // rungs between them (the connectivity sweep, 217: the rungs hung 7 cm off the leg's front, inside the ore bin)
+  const lx = half + 0.34, lz0 = zs + half - 0.5, lz1 = zs + half;
+  for (const lz of [lz0, lz1]) bar(sink, 'structureMetal', [lx, g0 + 1.2, lz], [lx, H, lz], 0.05, { colour: IRON, decor: true });
+  for (let y = g0 + 3.0; y < H - 0.6; y += 3.0) bar(sink, 'structureMetal', [lx, y, lz1], [half, y, lz1], 0.05, { colour: IRON, decor: true });
+  for (let y = g0 + 1.6; y < H; y += 0.4) bar(sink, 'structureMetal', [lx, y, lz0], [lx, y, lz1], 0.03, { colour: IRON, decor: true, fine: true });
   // the ore bin on the legs' front and its chute, its two front legs footed on the ground
   sink.span('structureMetal', -1.8, g0 + 5.5, zs + half, 1.8, g0 + 9.0, zs + half + 2.6, { colourAt: rusting(STEEL, g0 + 5.5, g0 + 9.0, 0.45) });
   sink.polygon('structureMetal', [[-1.8, g0 + 5.5, zs + half + 2.6], [1.8, g0 + 5.5, zs + half + 2.6], [0.8, g0 + 4.2, zs + half + 3.4], [-0.8, g0 + 4.2, zs + half + 3.4]], { colour: shade(STEEL, 0.8), decor: true });
@@ -187,14 +191,28 @@ export const oreBin: LandmarkBuilder = (ctx) => {
   sink.quad('roof', [hw * 0.7 + 0.3, Ht, -hd * 0.8 - 0.3], [hw * 0.7 + 0.3, Ht, hd * 0.8 + 0.3], [0, Ht + 1.1, hd * 0.8 + 0.3], [0, Ht + 1.1, -hd * 0.8 - 0.3]);
   sink.polygon('structureMetal', [[-hw * 0.7, Ht, hd * 0.8], [hw * 0.7, Ht, hd * 0.8], [0, Ht + 1.1, hd * 0.8]], { colour: IRON_SHEET });
   sink.polygon('structureMetal', [[hw * 0.7, Ht, -hd * 0.8], [-hw * 0.7, Ht, -hd * 0.8], [0, Ht + 1.1, -hd * 0.8]], { colour: IRON_SHEET });
-  // the ladder up the back-left leg and the walkway round the hopper's top
-  for (let y = gl(-hw, -hd) + 0.8; y < top; y += 0.4) bar(sink, 'structureMetal', [-hw + 0.05, y, -hd + 0.6], [-hw + 0.05, y, -hd + 0.15], 0.03, { colour: IRON, decor: true, fine: true });
-  for (const [a, b] of [[[-hw - 0.5, -hd - 0.5], [hw + 0.5, -hd - 0.5]], [[hw + 0.5, -hd - 0.5], [hw + 0.5, hd + 0.5]], [[hw + 0.5, hd + 0.5], [-hw - 0.5, hd + 0.5]], [[-hw - 0.5, hd + 0.5], [-hw - 0.5, -hd - 0.5]]] as const) {
-    bar(sink, 'structureMetal', [a[0], top + 1.0, a[1]], [b[0], top + 1.0, b[1]], 0.05, { colour: YELLOW, decor: true });
-  }
+  // the ladder up the back-left leg's outer side to the walkway (its stiles from the ground to the walkway's floor, a
+  // bracket to the leg every 2.4 m) and the walkway round the hopper's top, its rail on posts (the connectivity sweep,
+  // 217: the rungs hung 4.5 cm off the leg, the rail a metre over the walkway on nothing)
+  const lx = -hw - 0.16, lz0 = -hd + 0.05, lz1 = -hd + 0.55, lg = gl(lx, (lz0 + lz1) / 2);
+  for (const lz of [lz0, lz1]) bar(sink, 'structureMetal', [lx, Math.min(lg, gl(lx, lz)) - 0.05, lz], [lx, top - 0.08, lz], 0.05, { colour: IRON, decor: true });
+  for (let y = lg + 2.4; y < top - 0.6; y += 2.4) bar(sink, 'structureMetal', [lx, y, -hd + 0.3], [-hw + 0.3, y, -hd + 0.3], 0.05, { colour: IRON, decor: true });
+  for (let y = lg + 0.4; y < top - 0.2; y += 0.4) bar(sink, 'structureMetal', [lx, y, lz0], [lx, y, lz1], 0.03, { colour: IRON, decor: true, fine: true });
+  const corners: Array<[number, number]> = [[-hw - 0.5, -hd - 0.5], [hw + 0.5, -hd - 0.5], [hw + 0.5, hd + 0.5], [-hw - 0.5, hd + 0.5]];
+  corners.forEach(([ax, az], i) => {
+    const [bx, bz] = corners[(i + 1) % 4];
+    const a: Vec3 = [Math.sign(ax) * (Math.abs(ax) - 0.03), top + 1.0, Math.sign(az) * (Math.abs(az) - 0.03)], b: Vec3 = [Math.sign(bx) * (Math.abs(bx) - 0.03), top + 1.0, Math.sign(bz) * (Math.abs(bz) - 0.03)];
+    bar(sink, 'structureMetal', a, b, 0.05, { colour: YELLOW, decor: true });
+    // the posts: one at the corner, others every metre and a half along the side
+    const len = Math.hypot(b[0] - a[0], b[2] - a[2]), k = Math.max(1, Math.round(len / 1.5));
+    for (let j = 0; j < k; j++) {
+      const t = j / k, px = a[0] + (b[0] - a[0]) * t, pz = a[2] + (b[2] - a[2]) * t;
+      bar(sink, 'structureMetal', [px, top - 0.02, pz], [px, top + 1.0, pz], 0.05, { colour: YELLOW, decor: true });
+    }
+  });
   sink.span('structureMetal', -hw - 0.5, top - 0.1, -hd - 0.5, hw + 0.5, top, hd + 0.5, { colour: IRON, decor: true });
-  // ore spilt under the gate (dressing)
-  const gc = gl(0, 0) + 0.06;
+  // ore spilt under the gate (dressing), lying on the ground
+  const gc = gl(0, 0) + 0.03;
   sink.polygon('structureMetal', [[-1.6, gc, 1.4], [1.6, gc, 1.4], [1.4, gc, -1.5], [-1.5, gc, -1.3]], { colour: ORE, decor: true });
   return { parts: sink.finish() };
 };
@@ -287,7 +305,8 @@ export const oreCars: LandmarkBuilder = (ctx) => {
     sink.span('stone', -1.2, Math.min(ga, gb) - 0.4, a, 1.2, Math.max(ga, gb) + 0.2, b, { decor: true });
     for (const sx of [-1, 1]) bar(sink, 'structureMetal', [sx * gauge / 2, ga + 0.38, a], [sx * gauge / 2, gb + 0.38, b], 0.08, { colour: IRON, decor: true });
   }
-  for (let z = zA + 0.3; z <= zB - 0.3; z += 0.7) { const g = track(z); sink.span('structureWood', -0.95, g + 0.2, z - 0.1, 0.95, g + 0.32, z + 0.1, { colour: TIMBER, decor: true, fine: true }); }
+  // (the connectivity sweep, 217: the rails stood 2 cm over the sleepers) the sleepers up to the rails' foot
+  for (let z = zA + 0.3; z <= zB - 0.3; z += 0.7) { const g = track(z); sink.span('structureWood', -0.95, g + 0.2, z - 0.1, 0.95, g + 0.345, z + 0.1, { colour: TIMBER, decor: true, fine: true }); }
   // the cars
   for (let k = 0; k < n; k++) {
     const cz = z0 + 1.2 + (k + 0.5) * pitch, tone = lerp(ORE, RUST, ctx.variant() * 0.6);

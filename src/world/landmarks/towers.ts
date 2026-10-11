@@ -533,8 +533,13 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     // a flight of the stair inside the frame (round 3, wave 204: "the lookout stairs need stringers"): two steel
     // stringers, the timber treads between them, a handrail on the open side, and a landing at its head where the next
     // flight turns back — zig-zag, a flight a panel, each in its own lane so the one above clears the head below
-    const dir = k % 2 ? -1 : 1, lane = dir * 0.55, run = Math.min(1.1, at(y1) - 0.55), zs = -dir * run, ze = dir * run;
-    for (const side of [-1, 1]) bar(sink, 'structureMetal', [lane + side * 0.42, y0, zs], [lane + side * 0.42, y1, ze], 0.1, { ...steel, decor: true });
+    // (every flight runs the same length, the top panel's, so each one starts where the landing below it ends)
+    const dir = k % 2 ? -1 : 1, lane = dir * 0.55, run = Math.min(1.1, half1 - 0.55), zs = -dir * run, ze = dir * run;
+    // (the first flight's stringers come down to a concrete foot on the ground; every other flight starts on the landing
+    // below it)
+    const s0 = k === 0 ? 0.04 : y0;
+    if (k === 0) sink.span('stone', lane - 0.6, -0.4, zs - 0.45, lane + 0.6, 0.06, zs + 0.3, { decor: true });
+    for (const side of [-1, 1]) bar(sink, 'structureMetal', [lane + side * 0.42, s0, zs], [lane + side * 0.42, y1, ze], 0.1, { ...steel, decor: true });
     const steps = Math.max(4, Math.round((y1 - y0) / 0.26));
     for (let n = 1; n < steps; n++) {
       const t = n / steps, y = y0 + (y1 - y0) * t, z = zs + (ze - zs) * t;
@@ -543,9 +548,10 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     const rail = lane + dir * 0.47;
     bar(sink, 'structureMetal', [rail, y0 + 0.9, zs], [rail, y1 + 0.9, ze], 0.05, { ...steel, decor: true, fine: true });
     for (const [y, z] of [[y0, zs], [y1, ze]] as const) bar(sink, 'structureMetal', [rail, y, z], [rail, y + 0.9, z], 0.05, { ...steel, decor: true, fine: true });
-    // the landing at its head, across both lanes, on the panel's ring of bars
-    const lz0 = Math.min(ze, ze + dir * 0.7), lz1 = Math.max(ze, ze + dir * 0.7);
-    sink.span('structureWood', -1.0, y1 - 0.06, lz0, 1.0, y1, lz1, { colour: TIMBER_DARK, decor: true });
+    // the landing at its head, across both lanes and out to the panel's ring of bars, which carry it (the ring stands at
+    // the frame's half-width there): its sides and its outer edge rest on the ring
+    const ring = at(y1), lz0 = dir > 0 ? ze : -ring, lz1 = dir > 0 ? ring : ze;
+    sink.span('structureWood', -ring, y1 - 0.06, lz0, ring, y1, lz1, { colour: TIMBER_DARK, decor: true });
   }
   // the cab: a floor, posts, the glazing, a balcony rail, the pyramid roof
   const cw = half1 * 2 + 0.6;
