@@ -15,16 +15,8 @@
   "floating": 1,
   "dangling": 0
  },
- "kit:chouf:farmhouse": {
-  "floating": 14,
-  "dangling": 0
- },
  "kit:chouf:marketRow": {
   "floating": 8,
-  "dangling": 0
- },
- "kit:chouf:rangerlodge": {
-  "floating": 14,
   "dangling": 0
  },
  "kit:chouf:ruin": {

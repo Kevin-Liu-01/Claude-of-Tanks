@@ -83,6 +83,10 @@ export default {
     sourcedPalette: 'desert',
     plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    // the buildings lane's round 4 (a landmark per map; the seat agreed with the map-revival lane): the Temple of the
+    // Oracle on its rock on the western ridge's flank, its gate toward the lake's north arm; its way up a stepped footpath,
+    // so the summit stays scenery (landmarks/aghurmi.ts)
+    landmarks: [{ kind: 'oracleTemple', x: -316, z: 166, yawDeg: 130, ground: 'veto', name: 'the Oracle of Amun on the rock of Aghurmi' }],
     // 2026-10-03 (maps lane B): the roadside buildings stand 16-18 m off the road (was 12-14): five walled compounds,
     // 16-28 m across, reached into the carriageway (the layout brief's solidPropsInRoad)
     buildingLat: [16, 2], destructibleBuildingLat: [16, 3],

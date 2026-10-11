@@ -118,10 +118,28 @@ function dialect(st: ChoufState): HouseDialect {
       roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, paneBucket(st.rng, 0.3));
     },
     door: (sink, face, o, y0, frame) => {
-      const big = o.w >= 1.3;
+      const big = o.w >= 1.3, floorY = frame.floors[o.storey] + o.y0;
+      // (round 4, the sealed lane's census v8: a hand cart seated by collision stood in the stoop, five dressing steps
+      // reaching 1.5 m out from the mountain house's 0.85 m base course) a door up a high base course is reached by a
+      // solid flight along the façade — its landing before the door, its steps rising to it beside the wall, 0.75 m out
+      // (inside the kit's 0.8 m plot slack) — so carts and hulls meet the steps where they are drawn
+      // (the flight runs to whichever side of the door the façade has room for; with room on neither, the old stoop)
+      const lw = o.w + 0.4, tread = 0.28, n = Math.max(2, Math.ceil(floorY / 0.24));
+      const room = (d: number) => face.width / 2 - 0.15 - d * o.u - lw / 2 >= n * tread;
+      const dir = room(1) ? 1 : room(-1) ? -1 : 0;
+      const flight = o.storey === 0 && floorY > 0.3 && dir !== 0;
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
-        leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
-      }, frame.floors[o.storey] + o.y0);
+        leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: flight ? null : { bucket: 'stone' }, leafKind: 'panel',
+      }, floorY);
+      if (flight) {
+        const out = 0.75;
+        const flightTop = (k: number) => floorY * k / (n + 1);
+        faceBox(sink, 'stone', face, o.u, (floorY - 0.02 - 0.3) / 2, out / 2, lw, floorY - 0.02 + 0.3, out);
+        for (let k = 1; k <= n; k++) {
+          const u0 = o.u + dir * (lw / 2 + (n - k) * tread);
+          faceBox(sink, 'stone', face, u0 + dir * tread / 2, (flightTop(k) - 0.3) / 2, out / 2, tread + 0.004, flightTop(k) + 0.3, out);
+        }
+      }
       if (big || o.kind === 'gate') roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18);
     },
   };
@@ -187,7 +205,8 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
   faceBox(sink, 'stone', face, u, floorY - 0.06, 0.45, step * 3 + 0.5, 0.16, 0.9, { decor: true });
   for (const k of [-1.5, 0, 1.5]) faceBox(sink, 'stone', face, u + k * step * 0.95, floorY - 0.3, 0.3, 0.2, 0.36, 0.6, { decor: true });
   faceBox(sink, 'structureMetal', face, u, floorY + 0.95, 0.86, step * 3 + 0.45, 0.04, 0.04, { colour: IRON, decor: true });
-  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.5, 0.86, 0.025, 0.9, 0.025, { colour: IRON, decor: true, fine: true });
+  // (the bars down to the slab's top: the connectivity sweep, round 4, found them 3 cm over it)
+  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.485, 0.86, 0.025, 0.93, 0.025, { colour: IRON, decor: true, fine: true });
 }
 
 interface DarOpts { storeys: 1 | 2; roof: 'tile' | 'earth'; qanatir?: boolean; stair?: boolean }
@@ -266,7 +285,8 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       }
       const rf = frame.faces[rear], sf = frame.faces[street];
       if (look() < 0.5 && opts.storeys > 1) washingLine(sink, rf, -rf.width / 2 + 0.6, Math.min(rf.width / 2 - 0.6, -rf.width / 2 + 3.4), frame.floors[1] + 2.1, look);
-      if (look() < 0.6) { const p = facePoint(sf, doorU + 1.0, 0.1, 0.5); pottedPlant(sink, p[0], p[1], p[2], 0.42, look); }
+      // (beside the door on the side its flight leaves free)
+      if (look() < 0.6) { const p = facePoint(sf, doorU - 1.0, 0.1, 0.5); pottedPlant(sink, p[0], p[1], p[2], 0.42, look); }
     });
   }, -1);
   return sink.finish();
