@@ -65,6 +65,10 @@ export interface DestructiblePropType {
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** (the destructible-kits lane, 2026-10-11) A far stand-in the pool draws in place of its build while the camera is
+   * past `farM` metres from every copy (props.ts attachDestructibleFarLod; no stream draws). */
+  farBuild?: () => THREE.BufferGeometry;
+  farM?: number;
   /** (the destructible-kits lane, 2026-10-10) The solids the pool refit derives the kind's collision from in place of
    * its full build (a fracture-ready kind is hundreds of boards: their envelopes, no stream draws). */
   collisionBuild?: () => THREE.BufferGeometry;

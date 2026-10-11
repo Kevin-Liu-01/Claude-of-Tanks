@@ -4258,7 +4258,7 @@ ${snowCap ? `
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // (the destructible-kits lane, 2026-10-10) the fracture-ready sheds in this map's style (structureKit shedKitTypes:
     // its cladding, roof, footings and climate); a regional kit's own variant below still takes its key
-    ...shedKitTypes(mapId),
+    ...shedKitTypes(mapId, mobileProps),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
@@ -10510,6 +10510,7 @@ ${snowCap ? `
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
+    if (meta.farBuild && meta.farM) attachDestructibleFarLod(kind, pool, imI, material, meta.farBuild(), meta.farM);
     if (meta.broken) {
       const geoB = meta.broken(drng);
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
@@ -10525,6 +10526,53 @@ ${snowCap ? `
       group.add(imB);
       pool.imB = imB;
     }
+  }
+  /**
+   * (the destructible-kits lane, 2026-10-11) A kind's far stand-in (meta.farBuild: a couple of hundred triangles against
+   * the build's thousands) on the pool's OWN instance matrices, colours and per-copy attributes (one shared attribute
+   * each, so a destroyed copy's hidden matrix, a restore and the night fixture's switch move it too), drawn in place of
+   * the build while the camera stands past farM metres from every copy, with four metres' hysteresis either side. The
+   * choice is per camera and made in the draw itself (the counts are restored after it), so a capture, a reflection or
+   * a probe each decide for themselves; the cascades draw neither (the pool's caster, meta.shadowBuild).
+   */
+  function attachDestructibleFarLod(
+    kind: string, pool: DestructiblePool, imI: THREE.InstancedMesh, material: THREE.Material,
+    geoF: THREE.BufferGeometry, farM: number,
+  ): void {
+    for (const [name, attribute] of Object.entries(imI.geometry.attributes)) {
+      if (attribute instanceof THREE.InstancedBufferAttribute) geoF.setAttribute(name, attribute);
+    }
+    const slots = pool.mats4.length;
+    const imF = new THREE.InstancedMesh(geoF, material, slots);
+    imF.instanceMatrix = imI.instanceMatrix;
+    imF.instanceColor = imI.instanceColor;
+    imF.castShadow = false;
+    imF.receiveShadow = true;
+    imF.matrixAutoUpdate = false;
+    imF.frustumCulled = imI.frustumCulled;
+    if (imF.frustumCulled) imF.computeBoundingSphere();
+    imF.name = 'destructible-' + kind + '-far';
+    const records = pool.records;
+    const near2 = (farM - 4) * (farM - 4), far2 = (farM + 4) * (farM + 4);
+    const nearFor = new WeakMap<THREE.Camera, boolean>();
+    const near = (camera: THREE.Camera): boolean => {
+      const e = camera.matrixWorld.elements;
+      let best = Infinity;
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i], dx = r.x - e[12], dy = r.y - e[13], dz = r.z - e[14];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < best) best = d2;
+      }
+      const was = nearFor.get(camera);
+      const now = was === undefined ? best < farM * farM : was ? best < far2 : best < near2;
+      if (now !== was) nearFor.set(camera, now);
+      return now;
+    };
+    imI.onBeforeRender = (_renderer, _scene, camera) => { imI.count = near(camera) ? slots : 0; };
+    imI.onAfterRender = () => { imI.count = slots; };
+    imF.onBeforeRender = (_renderer, _scene, camera) => { imF.count = near(camera) ? 0 : slots; };
+    imF.onAfterRender = () => { imF.count = slots; };
+    group.add(imF);
   }
   function* finalizeDestructiblePools(): Generator<PropsBuildSlice | undefined, void, void> {
     for (const [kind, pool] of dPools) {
