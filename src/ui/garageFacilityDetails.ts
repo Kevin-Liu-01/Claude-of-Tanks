@@ -502,10 +502,10 @@ export function addGarageFacilityDetails({
       clusterBox(cluster, 0, longitudinal, 5.68,
         10.15, 0.13, 1.52, roofing, 'painted');
       clusterBox(cluster, 0, longitudinal, 5.60,
-        9.72, 0.16, 0.18, accent, 'painted');
+        9.72, 0.16, 0.18, steel, 'structure');
     }
     clusterBox(cluster, 4.90, 0, 5.43, 0.20, 0.24, 8.0,
-      accent, 'painted');
+      roofing, 'painted');
     clusterBox(cluster, 4.90, 3.40, 2.70, 0.16, 5.45, 0.16,
       dark, 'structure');
   };
@@ -535,7 +535,7 @@ export function addGarageFacilityDetails({
         0.22, 0.20, 7.2, safety, 'painted');
     }
     clusterBox(cluster, 0, mirror * 0.55, 5.12,
-      8.85, 0.30, 0.42, accent, 'painted');
+      8.85, 0.30, 0.42, safety, 'painted');
     clusterBox(cluster, mirror * 0.8, mirror * 0.55, 4.86,
       0.72, 0.40, 0.68, dark, 'equipment');
     clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, 3.78,
@@ -1095,10 +1095,10 @@ export function addGarageFacilityDetails({
       clusterBox(cluster, 0, longitudinal, 5.52,
         width, 0.16, 3.15, roofColor, 'painted');
       clusterBox(cluster, 0, longitudinal - 1.52, 5.42,
-        width, 0.24, 0.12, accent, 'painted');
+        width, 0.24, 0.12, roofing, 'painted');
     }
     clusterBox(cluster, width / 2 - 0.20, 0, 5.22,
-      0.22, 0.22, 8.7, accent, 'painted');
+      0.22, 0.22, 8.7, steel, 'structure');
     clusterBox(cluster, width / 2 - 0.20, 3.58, 2.62,
       0.18, 5.2, 0.18, dark, 'structure');
     // Connected rear work wall and waist-high bench give the shelter a real
@@ -1147,7 +1147,7 @@ export function addGarageFacilityDetails({
       }
     }
     clusterBox(cluster, 0, -0.45, height - 0.35,
-      width - 1.1, 0.34, 0.44, accent, 'painted');
+      width - 1.1, 0.34, 0.44, safety, 'painted');
     clusterBox(cluster, 1.15, -0.45, height - 0.68,
       0.82, 0.44, 0.72, dark, 'equipment');
     clusterCylinder(cluster, 1.15, -0.45, height - 2.2,
@@ -1183,7 +1183,7 @@ export function addGarageFacilityDetails({
     clusterBox(cluster, 0, 0, height,
       width + 0.8, 0.52, 0.62, steel, 'structure');
     clusterBox(cluster, -1.2, 0, height - 0.28,
-      4.6, 0.34, 0.48, accent, 'painted');
+      4.6, 0.34, 0.48, safety, 'painted');
     clusterBox(cluster, -1.2, 0, height - 0.72,
       0.82, 0.55, 0.78, dark, 'equipment');
     clusterCylinder(cluster, -1.2, 0, height - 2.55,
