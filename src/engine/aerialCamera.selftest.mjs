@@ -38,4 +38,12 @@ launchRig.update(carrier,idle,1/60);assert.equal(launchCamera.userData.thermalFl
 for(let i=0;i<40;i++)launchRig.update(carrier,idle,1/60);
 assert.equal(launchCamera.userData.thermalFlight,true,'infrared starts only inside FPV');
 carrier.aerial.active=false;launchRig.update(carrier,idle,1/60);assert.equal(launchCamera.userData.thermalFlight,false);
+// The pilot tag names exactly the drone this camera rides, for the fx pass's self-hide; it clears with the flight.
+{
+ const c=new PerspectiveCamera(),r=createAerialCamera(c),pilot={id:'p7',aerial:{...e.aerial,kind:'drone',active:true,launching:true,batteryS:40},input:{aimPoint:new Vector3()}};
+ r.update(pilot,idle,1/60);assert.equal(c.userData.aerialPilotId,'p7','the riding camera names its pilot from launch on');
+ pilot.aerial.active=false;r.update(pilot,idle,1/60);assert.equal(c.userData.aerialPilotId,null,'the tag clears when the flight ends');
+ const gunship={id:'g1',aerial:{...e.aerial,kind:'gunship',active:true},input:{aimPoint:new Vector3()}};
+ r.update(gunship,idle,1/60);assert.equal(c.userData.aerialPilotId,null,'a gunship camera rides no drone');
+}
 console.log('aerialCamera: launch and camera handoff stay in color; FPV alone enables infrared');
