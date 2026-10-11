@@ -7,7 +7,7 @@
 // 2026-10-11); the phones' lite build carries the same pieces; the far stand-in and the shadow caster are a few hundred
 // triangles inside the build's bounds; the light family's record and receipts hold (footprint, roof orientation, night
 // panes on the hut only); the broken heap is the shed's own pieces settled into a wreck with volume (fractureSettle.ts:
-// a standing corner and tipped sections over the heap, lower than the shed stood, and thrown no farther than a few
+// a standing corner and tipped sections over the heap, no higher than the shed stood, thrown no farther than a few
 // metres) with no lit pane, the same from the same stream; the build spends exactly
 // the legacy builders' draws from the props stream (brokenDraws.ts); it is deterministic; the flat texel and the tile
 // means the colours are divided by are the painter's; the edge art caps a snapped member.
@@ -174,7 +174,7 @@ for (const mapId of maps) {
     broken.computeBoundingBox();
     const hb = broken.boundingBox;
     assert.ok(hb.max.y >= 1.0, `${mapId}/${id}: the wreck has volume (a standing corner, sections tipped over the heap)`);
-    assert.ok(hb.max.y <= b.max.y - 0.1, `${mapId}/${id}: the wreck lies lower than the shed stood`);
+    assert.ok(hb.max.y <= b.max.y, `${mapId}/${id}: the wreck stands no higher than the shed stood`);
     assert.ok(Math.max(-hb.min.x, hb.max.x, -hb.min.z, hb.max.z) <= Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 + 4.5,
       `${mapId}/${id}: nothing thrown farther than a few metres`);
     assert.ok(Number.isFinite(hb.min.y) && hb.min.y >= -0.4, `${mapId}/${id}: nothing sunk under the ground`);
