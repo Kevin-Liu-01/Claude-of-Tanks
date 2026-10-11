@@ -14,6 +14,9 @@
  *    SOLIDS (boxes and capsules) that the world's corners and other bodies' spheres meet. A box is a rounded box (its
  *    corners, edge midpoints and a face grid), a cylinder a chain of spheres along its axis (it rolls) plus rings on
  *    its caps (it stands), a gun barrel a chain of thin spheres.
+ *    Two plain boxes (bodies or a body and a kinematic box) meet by a contact manifold of their solids instead: a face
+ *    clipped to a face or the crossing point of two edges, so thin pieces crossed between their spheres never pass
+ *    through each other.
  *  - The world it meets: the ground (`groundAt`, the drawn contact surface with the battle's craters and rubble in it;
  *    the normal by central differences of the same sampler), the static collision records (`queryStatic`: vertical
  *    prisms — obb, circle, convex or compound parts with their own heights; the same records the shards carry), the
@@ -40,6 +43,8 @@ const SLOP_M = 0.004;
 const BAUMGARTE = 0.3;
 /** Restitution applies to approaches faster than this (m/s): slower contacts come to rest instead of chattering. */
 const RESTITUTION_MIN_MPS = 1.1;
+/** The greatest ratio of a shape's principal inertias (the least is floored at the greatest's share). */
+const INERTIA_RATIO_MAX = 20;
 /** Contacts are generated this far before touching (m), so a resting body keeps its contacts between steps. */
 const CONTACT_MARGIN_M = 0.02;
 /** Sleep: below these speeds (m/s, rad/s) for this many steps while touching something. */
@@ -81,11 +86,14 @@ const KINEMATIC_FRICTION = 0.6;
 const KINEMATIC_RESTITUTION = 0.22;
 
 // Solid layout: SOLID_STRIDE floats per solid.
-//   box:     [0, cx, cy, cz, qx, qy, qz, qw, hx, hy, hz, 0, 0, 0]
+//   box:     [0, cx, cy, cz, qx, qy, qz, qw, hx, hy, hz, ownPoints, 0, 0]  (ownPoints 1: the part meets the world on
+//            its own contact points, not its faces; such a box keeps sphere contacts against other boxes)
 //   capsule: [1, ax, ay, az, bx, by, bz, r, 0, ...]
 const SOLID_STRIDE = 14;
 const SOLID_BOX = 0;
 const SOLID_CAPSULE = 1;
+/** The box solid's own-points flag (its spheres are an outline inside the box). */
+const BOX_OWN_POINTS = 11;
 
 type Vec3 = readonly [number, number, number];
 type Quat = readonly [number, number, number, number];
@@ -426,7 +434,13 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
       total[r * 3 + c] += local[r * 3 + c] + m * ((r === c ? d2 : 0) - dv[r] * dv[c]);
     }
   }
-  const invInertia = new Float64Array([1 / Math.max(total[0], 1e-6), 1 / Math.max(total[4], 1e-6), 1 / Math.max(total[8], 1e-6)]);
+  // a thin piece's least inertia is floored at its greatest's 1/INERTIA_RATIO_MAX: a 2.9 m rafter's spin about its own
+  // axis (1/350 of the rest) took a heavy roof's every residual impulse at its edges as a kick of several rad/s and a
+  // hut's pile never came to rest (dcore, 2026-10-11). Turrets, slabs, panels and blocks (ratios under 6) keep theirs.
+  const inertiaFloor = Math.max(total[0], total[4], total[8]) / INERTIA_RATIO_MAX;
+  const invInertia = new Float64Array([
+    1 / Math.max(total[0], inertiaFloor, 1e-6), 1 / Math.max(total[4], inertiaFloor, 1e-6), 1 / Math.max(total[8], inertiaFloor, 1e-6),
+  ]);
 
   // contact spheres and solids, re-centred on the centre of mass
   const maxSpheres = Math.max(8, options.maxSpheres ?? 64);
@@ -447,7 +461,7 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
         }
         const q = part.rotation ?? [0, 0, 0, 1];
         build.solids.push(SOLID_BOX, part.center[0], part.center[1], part.center[2], q[0], q[1], q[2], q[3],
-          part.half[0], part.half[1], part.half[2], 0, 0, 0);
+          part.half[0], part.half[1], part.half[2], part.points ? 1 : 0, 0, 0);
       } else if (part.kind === 'capsule') {
         if (part.contacts !== false) capsuleSpheres(build, part.a, part.b, part.radius, (part.spacing ?? Math.max(0.25, part.radius)) * widen);
         build.solids.push(SOLID_CAPSULE, part.a[0], part.a[1], part.a[2], part.b[0], part.b[1], part.b[2], part.radius,
@@ -529,7 +543,7 @@ const PARTNER_NONE = -1;
 /** The static records' partner id in the sphere warm-start cache (bodies and kinematic boxes take 1 + their index). */
 const STATIC_PARTNER = 0x7fffffff;
 /** Feature contacts (a corner into a body, no sphere of its own) kept per body for the next step's warm start. */
-const FEATURE_CACHE = 12;
+const FEATURE_CACHE = 32;
 /** A feature contact matches last step's within this distance (m) and normal agreement. */
 const FEATURE_MATCH_M = 0.03;
 const FEATURE_MATCH_DOT = 0.95;
@@ -1029,9 +1043,12 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
    */
   // the candidate the axis search is on (module-free scratch: no closure per call)
   let axisBest = Infinity, axisX = 0, axisY = 1, axisZ = 0, axisReach = 0;
+  /** The winning candidate: 0–2 a face of A, 3–5 a face of B, 6 + 3·i + j the edge pair (A's axis i, B's axis j). */
+  let axisId = -1;
+  let satId = -1;
   let axTx = 0, axTy = 0, axTz = 0, axAo = 0, axBo = 0, axAhx = 0, axAhy = 0, axAhz = 0, axBhx = 0, axBhy = 0, axBhz = 0;
   let axAR: Float64Array = rot, axBR: Float64Array = rot;
-  function considerAxis(lx: number, ly: number, lz: number, edge: boolean): void {
+  function considerAxis(lx: number, ly: number, lz: number, edge: boolean, id: number): void {
     const len = Math.sqrt(lx * lx + ly * ly + lz * lz);
     if (len < 1e-6) return;
     lx /= len; ly /= len; lz /= len;
@@ -1051,6 +1068,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       axisX = lx * sign; axisY = ly * sign; axisZ = lz * sign;
       satOverlap = overlap;
       axisReach = rb;
+      axisId = id;
     }
   }
   function boxBoxAxis(ac: Float64Array, aco: number, aR: Float64Array, ao: number, ahx: number, ahy: number, ahz: number,
@@ -1058,16 +1076,17 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     axTx = ac[aco] - bc[0]; axTy = ac[aco + 1] - bc[1]; axTz = ac[aco + 2] - bc[2];
     axAR = aR; axBR = bR; axAo = ao; axBo = bo;
     axAhx = ahx; axAhy = ahy; axAhz = ahz; axBhx = bhx; axBhy = bhy; axBhz = bhz;
-    axisBest = Infinity; axisX = 0; axisY = 1; axisZ = 0; axisReach = 0;
-    for (let k = 0; k < 3; k++) considerAxis(aR[ao + k], aR[ao + 3 + k], aR[ao + 6 + k], false);
-    for (let k = 0; k < 3; k++) considerAxis(bR[bo + k], bR[bo + 3 + k], bR[bo + 6 + k], false);
+    axisBest = Infinity; axisX = 0; axisY = 1; axisZ = 0; axisReach = 0; axisId = -1;
+    for (let k = 0; k < 3; k++) considerAxis(aR[ao + k], aR[ao + 3 + k], aR[ao + 6 + k], false, k);
+    for (let k = 0; k < 3; k++) considerAxis(bR[bo + k], bR[bo + 3 + k], bR[bo + 6 + k], false, 3 + k);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
       const ax = aR[ao + i], ay = aR[ao + 3 + i], az = aR[ao + 6 + i];
       const ex = bR[bo + j], ey = bR[bo + 3 + j], ez = bR[bo + 6 + j];
-      considerAxis(ay * ez - az * ey, az * ex - ax * ez, ax * ey - ay * ex, true);
+      considerAxis(ay * ez - az * ey, az * ex - ax * ez, ax * ey - ay * ex, true, 6 + 3 * i + j);
     }
     satN[0] = axisX; satN[1] = axisY; satN[2] = axisZ;
     satReachB = axisReach;
+    satId = axisId;
   }
 
   // a body's box parts in the world this pair (scratch, up to MAX_PARTS per body), and their axes against one box
@@ -1131,6 +1150,163 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     }
   }
 
+  // ---- box pairs: a contact manifold (a face clipped to a face, or two crossing edges) ----
+  // Two plain box parts meet where their solids do, not only where their spheres are. Two rafters crossed between their
+  // spheres (0.7 m apart along a 2.9 m rafter) passed through each other, and a hut's pile of thin pieces stirred
+  // for good (dcore's field hut, 2026-10-11). The pair's axis of least overlap decides: on a face's axis the other
+  // box's most opposed face is clipped to that face (up to four points kept), on an edge pair's the two edges' closest
+  // points give one. Boxes with their own contact points (a turret's armour outline) keep their spheres.
+  const manAC = new Float64Array(3), manAR = new Float64Array(9), manBC = new Float64Array(3), manBR = new Float64Array(9);
+  const clipA = new Float64Array(8 * 3), clipB = new Float64Array(8 * 3);
+  const manP = new Float64Array(8 * 3), manD = new Float64Array(8);
+  const manKeep = new Uint8Array(8);
+  const manH = new Float64Array(6); // A's half extents, then B's
+  const MANIFOLD_MAX = 4;
+
+  /** Clip the polygon in src (n points) to the half space dot(p − o, d) ≤ h, into dst; returns its new count. */
+  function clipPolygon(src: Float64Array, n: number, dst: Float64Array,
+    ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, h: number): number {
+    let m = 0;
+    for (let k = 0; k < n; k++) {
+      const a = k * 3, b = ((k + 1) % n) * 3;
+      const da = (src[a] - ox) * dx + (src[a + 1] - oy) * dy + (src[a + 2] - oz) * dz - h;
+      const db = (src[b] - ox) * dx + (src[b + 1] - oy) * dy + (src[b + 2] - oz) * dz - h;
+      if (da <= 0 && m < 8) { dst[m * 3] = src[a]; dst[m * 3 + 1] = src[a + 1]; dst[m * 3 + 2] = src[a + 2]; m++; }
+      if ((da <= 0) !== (db <= 0) && m < 8) {
+        const t = da / (da - db);
+        dst[m * 3] = src[a] + (src[b] - src[a]) * t;
+        dst[m * 3 + 1] = src[a + 1] + (src[b + 1] - src[a + 1]) * t;
+        dst[m * 3 + 2] = src[a + 2] + (src[b + 2] - src[a + 2]) * t;
+        m++;
+      }
+    }
+    return m;
+  }
+
+  /**
+   * The manifold of box A (manAC, manAR, manH[0..2]) on body i against box B (manBC, manBR, manH[3..5]) of partner b
+   * (a body, or −3 − k for kinematic box k): contacts on i pushing it out of B along the pair's axis.
+   */
+  function boxManifold(i: number, b: number, friction: number, restitution: number): void {
+    boxBoxAxis(manAC, 0, manAR, 0, manH[0], manH[1], manH[2], manBC, manBR, 0, manH[3], manH[4], manH[5]);
+    if (!(satOverlap > -CONTACT_MARGIN_M) || satId < 0) return;
+    const nx = satN[0], ny = satN[1], nz = satN[2];
+    let count = 0;
+    if (satId < 6) {
+      // a face: the reference box R owns it, the incident box I meets it with its most opposed face
+      const refA = satId < 3, k = refA ? satId : satId - 3;
+      const rC = refA ? manAC : manBC, rR = refA ? manAR : manBR, iC = refA ? manBC : manAC, iR = refA ? manBR : manAR;
+      const rh = refA ? 0 : 3, ih = refA ? 3 : 0;
+      // R's face normal toward I (n points from B toward A)
+      const sgn = refA ? -1 : 1;
+      const rnx = nx * sgn, rny = ny * sgn, rnz = nz * sgn;
+      const fcx = rC[0] + rnx * manH[rh + k], fcy = rC[1] + rny * manH[rh + k], fcz = rC[2] + rnz * manH[rh + k];
+      const u = (k + 1) % 3, v = (k + 2) % 3;
+      const ux = rR[u], uy = rR[3 + u], uz = rR[6 + u], hu = manH[rh + u];
+      const vx0 = rR[v], vy0 = rR[3 + v], vz0 = rR[6 + v], hv = manH[rh + v];
+      let m = 0, most = -1, side = 1;
+      for (let q = 0; q < 3; q++) {
+        const d = iR[q] * rnx + iR[3 + q] * rny + iR[6 + q] * rnz;
+        if (Math.abs(d) > most) { most = Math.abs(d); m = q; side = d < 0 ? -1 : 1; }
+      }
+      // the incident face faces R: its outward normal is −side · I_m
+      const icx = iC[0] - side * iR[m] * manH[ih + m], icy = iC[1] - side * iR[3 + m] * manH[ih + m];
+      const icz = iC[2] - side * iR[6 + m] * manH[ih + m];
+      const m1 = (m + 1) % 3, m2 = (m + 2) % 3;
+      const e1x = iR[m1] * manH[ih + m1], e1y = iR[3 + m1] * manH[ih + m1], e1z = iR[6 + m1] * manH[ih + m1];
+      const e2x = iR[m2] * manH[ih + m2], e2y = iR[3 + m2] * manH[ih + m2], e2z = iR[6 + m2] * manH[ih + m2];
+      clipA[0] = icx + e1x + e2x; clipA[1] = icy + e1y + e2y; clipA[2] = icz + e1z + e2z;
+      clipA[3] = icx - e1x + e2x; clipA[4] = icy - e1y + e2y; clipA[5] = icz - e1z + e2z;
+      clipA[6] = icx - e1x - e2x; clipA[7] = icy - e1y - e2y; clipA[8] = icz - e1z - e2z;
+      clipA[9] = icx + e1x - e2x; clipA[10] = icy + e1y - e2y; clipA[11] = icz + e1z - e2z;
+      let n = clipPolygon(clipA, 4, clipB, fcx, fcy, fcz, ux, uy, uz, hu);
+      n = clipPolygon(clipB, n, clipA, fcx, fcy, fcz, -ux, -uy, -uz, hu);
+      n = clipPolygon(clipA, n, clipB, fcx, fcy, fcz, vx0, vy0, vz0, hv);
+      n = clipPolygon(clipB, n, clipA, fcx, fcy, fcz, -vx0, -vy0, -vz0, hv);
+      for (let q = 0; q < n; q++) {
+        const x = clipA[q * 3], y = clipA[q * 3 + 1], z = clipA[q * 3 + 2];
+        const depth = -((x - fcx) * rnx + (y - fcy) * rny + (z - fcz) * rnz);
+        if (!(depth > -CONTACT_MARGIN_M)) continue;
+        // halfway between the incident point and R's face
+        manP[count * 3] = x + rnx * depth * 0.5; manP[count * 3 + 1] = y + rny * depth * 0.5; manP[count * 3 + 2] = z + rnz * depth * 0.5;
+        manD[count] = depth;
+        count++;
+      }
+    } else {
+      // two edges: A's along its axis ia at its extreme toward B, B's along its axis jb at its extreme toward A
+      const ia = ((satId - 6) / 3) | 0, jb = (satId - 6) % 3;
+      let ax = manAC[0], ay = manAC[1], az = manAC[2], bx = manBC[0], by = manBC[1], bz = manBC[2];
+      for (let q = 0; q < 3; q++) {
+        if (q !== ia) {
+          const d = manAR[q] * nx + manAR[3 + q] * ny + manAR[6 + q] * nz;
+          const w = (d > 0 ? -1 : 1) * manH[q];
+          ax += manAR[q] * w; ay += manAR[3 + q] * w; az += manAR[6 + q] * w;
+        }
+        if (q !== jb) {
+          const d = manBR[q] * nx + manBR[3 + q] * ny + manBR[6 + q] * nz;
+          const w = (d > 0 ? 1 : -1) * manH[3 + q];
+          bx += manBR[q] * w; by += manBR[3 + q] * w; bz += manBR[6 + q] * w;
+        }
+      }
+      const dax = manAR[ia], day = manAR[3 + ia], daz = manAR[6 + ia], la = manH[ia];
+      const dbx = manBR[jb], dby = manBR[3 + jb], dbz = manBR[6 + jb], lb = manH[3 + jb];
+      const rx = ax - bx, ry = ay - by, rz = az - bz;
+      const dd = dax * dbx + day * dby + daz * dbz, c = dax * rx + day * ry + daz * rz, f = dbx * rx + dby * ry + dbz * rz;
+      const denom = 1 - dd * dd;
+      let sa = denom > 1e-9 ? (dd * f - c) / denom : 0;
+      sa = sa < -la ? -la : sa > la ? la : sa;
+      let tb = dd * sa + f;
+      tb = tb < -lb ? -lb : tb > lb ? lb : tb;
+      sa = dd * tb - c;
+      sa = sa < -la ? -la : sa > la ? la : sa;
+      const pax = ax + dax * sa, pay = ay + day * sa, paz = az + daz * sa;
+      const pbx = bx + dbx * tb, pby = by + dby * tb, pbz = bz + dbz * tb;
+      const depth = (pbx - pax) * nx + (pby - pay) * ny + (pbz - paz) * nz;
+      if (depth > -CONTACT_MARGIN_M) {
+        manP[0] = (pax + pbx) * 0.5; manP[1] = (pay + pby) * 0.5; manP[2] = (paz + pbz) * 0.5;
+        manD[0] = depth;
+        count = 1;
+      }
+    }
+    if (count === 0) return;
+    // at most four: the deepest, the farthest from it, and the farthest from their line on either side
+    for (let q = 0; q < count; q++) manKeep[q] = count <= MANIFOLD_MAX ? 1 : 0;
+    if (count > MANIFOLD_MAX) {
+      let p0 = 0;
+      for (let q = 1; q < count; q++) if (manD[q] > manD[p0]) p0 = q;
+      let p1 = -1, far = -1;
+      for (let q = 0; q < count; q++) {
+        const dx = manP[q * 3] - manP[p0 * 3], dy = manP[q * 3 + 1] - manP[p0 * 3 + 1], dz = manP[q * 3 + 2] - manP[p0 * 3 + 2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 > far) { far = d2; p1 = q; }
+      }
+      manKeep[p0] = 1; manKeep[p1] = 1;
+      const ex = manP[p1 * 3] - manP[p0 * 3], ey = manP[p1 * 3 + 1] - manP[p0 * 3 + 1], ez = manP[p1 * 3 + 2] - manP[p0 * 3 + 2];
+      let p2 = -1, p3 = -1, hi = 1e-9, lo = -1e-9;
+      for (let q = 0; q < count; q++) {
+        const dx = manP[q * 3] - manP[p0 * 3], dy = manP[q * 3 + 1] - manP[p0 * 3 + 1], dz = manP[q * 3 + 2] - manP[p0 * 3 + 2];
+        // the signed area about the normal
+        const area = (ey * dz - ez * dy) * nx + (ez * dx - ex * dz) * ny + (ex * dy - ey * dx) * nz;
+        if (area > hi) { hi = area; p2 = q; }
+        if (area < lo) { lo = area; p3 = q; }
+      }
+      if (p2 >= 0) manKeep[p2] = 1;
+      if (p3 >= 0) manKeep[p3] = 1;
+    }
+    for (let q = 0; q < count; q++) {
+      if (!manKeep[q]) continue;
+      const x = manP[q * 3], y = manP[q * 3 + 1], z = manP[q * 3 + 2];
+      let kvx0 = 0, kvy0 = 0, kvz0 = 0;
+      if (b <= -3) { kinematicPointVelocity(-3 - b, x, y, z, kvScratch); kvx0 = kvScratch[0]; kvy0 = kvScratch[1]; kvz0 = kvScratch[2]; }
+      addContact(i, b, -1, PARTNER_NONE, x, y, z, nx, ny, nz, manD[q], friction, restitution, kvx0, kvy0, kvz0);
+    }
+  }
+
+  /** Whether a solid at offset o is a plain box (meets other boxes by the manifold). */
+  function plainBox(solids: Float64Array, o: number): boolean {
+    return solids[o] === SOLID_BOX && solids[o + BOX_OWN_POINTS] === 0;
+  }
+
   // ---- kinematic boxes ----
   function kinematicPointVelocity(k: number, x: number, y: number, z: number, out: Float64Array): void {
     const o = k * 6, c = k * 3;
@@ -1154,10 +1330,24 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const dx = px[i] - kc[c], dy = py[i] - kc[c + 1], dz = pz[i] - kc[c + 2];
       if (dx * dx + dy * dy + dz * dz > rr * rr) continue;
       const hx = kh[c], hy = kh[c + 1], hz = kh[c + 2];
+      // the body's plain box parts meet the kinematic box by the manifold
+      let plainOnly = true;
+      for (let o = 0; o < shape.solids.length; o += SOLID_STRIDE) {
+        if (!plainBox(shape.solids, o)) { plainOnly = false; continue; }
+        boxPartToWorld(i, shape.solids, o, manAC, 0, manAR, 0);
+        manBC[0] = kc[c]; manBC[1] = kc[c + 1]; manBC[2] = kc[c + 2];
+        for (let m = 0; m < 9; m++) manBR[m] = kr[k * 9 + m];
+        manH[0] = shape.solids[o + 8]; manH[1] = shape.solids[o + 9]; manH[2] = shape.solids[o + 10];
+        manH[3] = hx; manH[4] = hy; manH[5] = hz;
+        boxManifold(i, -3 - k, friction, restitution);
+      }
+      if (plainOnly) continue;
       otherC[0] = kc[c]; otherC[1] = kc[c + 1]; otherC[2] = kc[c + 2];
       for (let m = 0; m < 9; m++) otherR[m] = kr[k * 9 + m];
       partState.fill(0);
       for (let s = 0, n = shape.sphereCount; s < n; s++) {
+        const part = shape.sphereSolid[s];
+        if (part >= 0 && plainBox(shape.solids, part * SOLID_STRIDE)) continue;
         const j = (base + s) * 3;
         const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
         const r = shape.spheres[s * 4 + 3];
@@ -1184,10 +1374,38 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
 
   // ---- body pairs ----
   function pairContacts(i: number, j: number): void {
-    // i's spheres against j's solids, then j's spheres against i's solids (both as contacts on the pair, normal
-    // pushing the sphere's body)
+    // the plain box parts' manifolds (contacts on i), then i's spheres against j's solids and j's spheres against i's
+    // (contacts on the pair, normal pushing the sphere's body) wherever a manifold does not stand for them
+    boxPairs(i, j);
     sphereSolids(i, j);
     sphereSolids(j, i);
+  }
+
+  function boxPairs(i: number, j: number): void {
+    const si = shapes[i]!, sj = shapes[j]!;
+    const a = si.solids, b = sj.solids;
+    let friction = -1, restitution = 0;
+    for (let o = 0; o < a.length; o += SOLID_STRIDE) {
+      if (!plainBox(a, o)) continue;
+      let ready = false;
+      for (let p = 0; p < b.length; p += SOLID_STRIDE) {
+        if (!plainBox(b, p)) continue;
+        if (!ready) {
+          boxPartToWorld(i, a, o, manAC, 0, manAR, 0);
+          manH[0] = a[o + 8]; manH[1] = a[o + 9]; manH[2] = a[o + 10];
+          ready = true;
+        }
+        boxPartToWorld(j, b, p, manBC, 0, manBR, 0);
+        manH[3] = b[p + 8]; manH[4] = b[p + 9]; manH[5] = b[p + 10];
+        // the boxes' bounding spheres first
+        const dx = manAC[0] - manBC[0], dy = manAC[1] - manBC[1], dz = manAC[2] - manBC[2];
+        const reach = Math.sqrt(manH[0] * manH[0] + manH[1] * manH[1] + manH[2] * manH[2])
+          + Math.sqrt(manH[3] * manH[3] + manH[4] * manH[4] + manH[5] * manH[5]) + CONTACT_MARGIN_M;
+        if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
+        if (friction < 0) { friction = Math.sqrt(si.friction * sj.friction); restitution = 0.5 * (si.restitution + sj.restitution); }
+        boxManifold(i, j, friction, restitution);
+      }
+    }
   }
 
   function sphereSolids(a: number, b: number): void {
@@ -1199,6 +1417,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     for (let o = 0; o < s.length; o += SOLID_STRIDE) {
       solidToWorld(b, s, o);
       const box = s[o] === SOLID_BOX;
+      const manifold = plainBox(s, o);
       if (box) {
         // b's box for the shared axes of a's box parts (computed on a sphere's first hit)
         otherC[0] = solidCx; otherC[1] = solidCy; otherC[2] = solidCz;
@@ -1206,6 +1425,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         partState.fill(0);
       }
       for (let k = 0, n = shapeA.sphereCount; k < n; k++) {
+        // a plain box's sphere against a plain box: the pair's manifold stands for it
+        if (manifold) { const part = shapeA.sphereSolid[k]; if (part >= 0 && plainBox(shapeA.solids, part * SOLID_STRIDE)) continue; }
         const j = (base + k) * 3;
         const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
         if (x < bminX[b] || x > bmaxX[b] || y < bminY[b] || y > bmaxY[b] || z < bminZ[b] || z > bmaxZ[b]) continue;
@@ -1335,12 +1556,18 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
           warm = true;
         }
       }
-      if (warm) {
-        applyContactImpulse(c,
-          cJn[c] * nx + cJt1[c] * t1x + cJt2[c] * t2x,
-          cJn[c] * ny + cJt1[c] * t1y + cJt2[c] * t2y,
-          cJn[c] * nz + cJt1[c] * t1z + cJt2[c] * t2z, false);
-      } else { cJn[c] = 0; cJt1[c] = 0; cJt2[c] = 0; }
+      if (!warm) { cJn[c] = 0; cJt1[c] = 0; cJt2[c] = 0; }
+    }
+    // the warm starts only now: every contact's approach (its bounce, its impact report) is measured on the velocities
+    // the step began with. Applied inside the first pass, a contact read its neighbours' warm starts as an approach: a
+    // thin beam under a heavy slab "bounced" off the impulses that held it and spun up without end (dcore's field hut,
+    // 2026-10-11)
+    for (let c = 0; c < contactCount; c++) {
+      if (cJn[c] === 0 && cJt1[c] === 0 && cJt2[c] === 0) continue;
+      applyContactImpulse(c,
+        cJn[c] * cNx[c] + cJt1[c] * cT1x[c] + cJt2[c] * cT2x[c],
+        cJn[c] * cNy[c] + cJt1[c] * cT1y[c] + cJt2[c] * cT2y[c],
+        cJn[c] * cNz[c] + cJt1[c] * cT1z[c] + cJt2[c] * cT2z[c], false);
     }
   }
 
@@ -1543,8 +1770,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         || bmaxZ[j] < bminZ[i] || bminZ[j] > bmaxZ[i]) continue;
       const start = contactCount;
       bodyContactStart = start;
-      sphereSolids(i, j);
-      sphereSolids(j, i);
+      pairContacts(i, j);
       let under = false;
       for (let c = start; c < contactCount; c++) {
         // i's sphere pushed up off j, or j's sphere pushed down off i

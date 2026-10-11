@@ -312,6 +312,42 @@ function slopeRun() {
   assert.ok(Math.abs(pose[1] - 0.5) < 0.01, `it sits on its points' footprint (centre ${pose[1].toFixed(3)} m; its box's face is 0.04 lower)`);
 }
 
+// --- thin pieces (dcore's field hut, 2026-10-11): two rafters crossed between their spheres rest on each other (the
+// boxes' manifold, never through), a heavy slab on two light beams comes to rest (no bounce read off the warm starts),
+// and a rafter's least inertia is floored at a twentieth of its greatest
+{
+  const rafter = createRigidBox(1.43, 0.03, 0.07, 17 / (2.86 * 0.06 * 0.14), { restitution: 0.15, friction: 0.7 });
+  const I = Array.from(rafter.invInertia, (x) => 1 / x);
+  assert.ok(Math.max(...I) / Math.min(...I) <= 20 + 1e-9, `inertia ratio floored (${(Math.max(...I) / Math.min(...I)).toFixed(1)})`);
+  for (const [dx, dz, yawDeg] of [[0.35, 0.35, 90], [0.5, -0.4, 35], [1.0, 0.2, 80]]) {
+    const world = createRigidWorld({ capacity: 2, kinematicCapacity: 0, spherePool: 256 });
+    world.bindEnvironment(flat);
+    world.spawn(rafter, { x: 0, y: 0.031, z: 0 });
+    const r = yawDeg * Math.PI / 180;
+    const b = world.spawn(rafter, { x: dx, y: 0.14, z: dz, qy: Math.sin(r / 2), qw: Math.cos(r / 2) });
+    run(world, 300);
+    // resting across A (0.090), tipped onto the ground at an end (no lower than about 0.07): never through A (0.030)
+    assert.ok(world.py[b] > 0.065, `crossed at (${dx}, ${dz}) ${yawDeg}°: B rests on A (centre ${world.py[b].toFixed(3)} m)`);
+  }
+  for (const [slabKg, beamKg] of [[600, 17], [2000, 60]]) {
+    const world = createRigidWorld({ capacity: 3, kinematicCapacity: 0, spherePool: 256, velocityIterations: 8, positionIterations: 3 });
+    world.bindEnvironment(flat);
+    const beam = createRigidBox(1.43, 0.03, 0.07, beamKg / (2.86 * 0.06 * 0.14), { restitution: 0.15, friction: 0.7 });
+    const slab = createRigidBox(0.5, 0.04, 0.5, slabKg / 0.08, { restitution: 0.15, friction: 0.7 });
+    const a = world.spawn(beam, { x: 0, y: 0.0305, z: -0.3 });
+    const c = world.spawn(beam, { x: 0, y: 0.0305, z: 0.3 });
+    const s2 = world.spawn(slab, { x: 0.05, y: 0.102, z: 0.01 });
+    let spin = 0, slept = -1;
+    for (let n = 1; n <= 240; n++) {
+      world.step();
+      if (n > 30) for (const k of [a, c, s2]) spin = Math.max(spin, Math.hypot(world.wx[k], world.wy[k], world.wz[k]));
+      if (slept < 0 && world.asleep[a] && world.asleep[c] && world.asleep[s2]) slept = n;
+    }
+    assert.ok(spin < 0.5 && slept > 0, `a ${slabKg} kg slab on two ${beamKg} kg beams rests (spin ${spin.toFixed(2)} rad/s, asleep ${slept > 0 ? (slept / 60).toFixed(2) + ' s' : 'never'})`);
+    assert.ok(world.py[s2] > 0.075, `and stays on them (centre ${world.py[s2].toFixed(3)} m, on top 0.100)`);
+  }
+}
+
 if (typeof globalThis.gc === 'function') {
   const world = createRigidWorld({ capacity: 16 });
   world.bindEnvironment(slope);
@@ -326,4 +362,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(grown < 512 * 1024, `the heap stays flat across 4,000 steps (${(grown / 1024).toFixed(0)} KB)`);
 }
 
-console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points');
+console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points, crossed thin boxes, heavy slabs on light beams');
