@@ -6962,14 +6962,24 @@ void splatCompute() {
       float fwM = max(fwA, 0.10);
       float midStr = clamp((min(ay + 0.5 * fwM, midHalf) - max(ay - 0.5 * fwM, -midHalf)) / fwM, 0.0, 1.0);
       if (uRoadSurfC.z > 0.0 && uReduxD.y < 0.5 && uLandTier > 1.5) {
+        // (R3b, the first real frames: an unbroken, evenly green stripe from the camera to the horizon, straight through
+        // a village street) the strip holds in stretches with bare ones between them (the slow field), thins to a
+        // trodden, dustier sward in patches of ~15 m (the patch field) and is gone where a village's traffic wears the
+        // street (the mask's town wear), the verges' tufts there thinned as well
         float gapN = nzq(uv, 0.25, vec2(0.37, 0.83)).x;
-        float mg = midStr * smoothstep(0.24, 0.44, nz(uv, 0.009, vec2(0.23, 0.67)).g) * (1.0 - 0.8 * smoothstep(0.62, 0.72, gapN));
-        float vg = smoothstep(hwv - 1.3, hwv - 0.15, dRoad + tuftN * 1.4) * (0.35 + 0.65 * smoothstep(0.35, 0.60, gapN));
+        float townM = 1.0 - smoothstep(0.06, 0.30, mk.a);
+        float patchM = 0.35 + 0.65 * smoothstep(0.30, 0.64, nz(uv, 0.07, vec2(0.83, 0.41)).g);
+        float mg = midStr * smoothstep(0.34, 0.56, nz(uv, 0.009, vec2(0.23, 0.67)).g) * patchM * townM
+          * (1.0 - 0.8 * smoothstep(0.62, 0.72, gapN));
+        float vg = smoothstep(hwv - 1.3, hwv - 0.15, dRoad + tuftN * 1.4) * (0.35 + 0.65 * smoothstep(0.35, 0.60, gapN))
+          * (0.45 + 0.55 * townM);
         float gw2 = max(mg, vg) * uRoadSurfC.z * wR;
         if (gw2 > 0.01) {
           vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
           float clump = nzq(uv, 0.9, vec2(0.59, 0.11)).x;
           cg.rgb *= mix(vec3(0.86, 0.93, 0.84), vec3(1.06, 1.0, 0.78), smoothstep(0.35, 0.70, clump));
+          // a thin, trodden sward is greyer with the road's dust
+          cg.rgb = mix(cg.rgb, vec3(dot(cg.rgb, vec3(0.30, 0.59, 0.11))) * vec3(1.04, 1.0, 0.92), 0.30 * (1.0 - patchM) + 0.12 * uRoadSurfC.x);
           a = mix(a, cg, gw2 * 0.9);
           if (nrmOn) n.xy += (groundNrm(uNrmG, uv * 0.93, df, mipB).xy - 0.5) * gw2 * 0.6 * tileVis(0.93);
         }

@@ -192,6 +192,9 @@ for (const line of [
   // the worked road's lanes a parallel pair weaving together on the exact signed offset; none of the old darkening
   'float laneY = workedR && gRoadYOk > 0.5 ? abs(gRoadY - roadWeave) : dRoad;',
   'float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp * mix(1.0, uRoadSurfB.z, workedK);',
+  // (R3b) the middle strip stops at a village (the mask's town wear) and holds in stretches and patches, never one stripe
+  'float townM = 1.0 - smoothstep(0.06, 0.30, mk.a);',
+  'float mg = midStr * smoothstep(0.34, 0.56, nz(uv, 0.009, vec2(0.23, 0.67)).g) * patchM * townM',
   'uniform vec4 uPaveClass, uPaveWear, uPaveTown;',
   'shader.uniforms.uRoadFrame = { value: maskStack.frame };',
   'const roadWork = roadSurfaceUniforms(mapId, groundProfile.climate, S.roadSurface, S.soilTint as [number, number, number] | undefined);',
