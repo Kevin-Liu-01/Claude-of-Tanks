@@ -198,7 +198,11 @@ export interface CollapsePlan {
     slot: FractureSlot;
     /** The breaks between the drums (bounds 1..n-1) as tilted planes n·p = d (body frame), each its own lean: a shaft
      *  snaps on a slant, never level (dcore 2026-10-11, wave 397: "two huge clean pre-cut boxes"). */
-    cuts: Array<{ n: Vec3; d: number; seed: number }> } | null;
+    cuts: Array<{ n: Vec3; d: number; seed: number }>;
+    /** Each drum split down its length into two halves (its parts), across x or across z by turns (wave 397: a drum
+     *  whole reads as a pre-cut box; split, the shaft lands as broken masonry). */
+    halves: Array<[number, number] | null>;
+    splitAxis: number[] } | null;
 }
 
 interface CollapsePlanOptions {
@@ -889,9 +893,10 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   // head: three drums of a width and more still lay on in a row — a masonry shaft breaks into many short sections)
   const span = Math.max(0.5, topWall - stumpY);
   const width = Math.max(anatomy.w, anatomy.d);
-  // (wave 397, the coordinator: "6-8 irregular drums with broken ends") six to eight where the shaft is tall enough for
-  // drums of 0.8 m, each break on its own slant
-  const n = Math.max(2, Math.min(8, Math.max(Math.min(6, Math.floor(span / 0.8)), Math.round(span / Math.max(1.0, 0.45 * width)))));
+  // (wave 397, the coordinator: "6-8 irregular drums with broken ends") six or seven where the shaft is tall enough for
+  // drums of 0.8 m, each break on its own slant and each drum split down its length
+  // (two halves a drum and its crown within a piece's PART_STRIDE: seven drums at most)
+  const n = Math.max(2, Math.min(7, Math.max(Math.min(6, Math.floor(span / 0.8)), Math.round(span / Math.max(1.0, 0.45 * width)))));
   const bounds = [stumpY];
   for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.45) / n);
   bounds.push(topWall);
@@ -912,16 +917,33 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   const frameY = (y0 + yTop) / 2;
   const parts: CollapsePart[] = [];
   const drumParts: number[] = [];
+  const drumHalves: Array<[number, number] | null> = [];
+  const gluedBoxes: CollapseBox[] = [];
+  const splitAxes: number[] = [];
   let massKg = 0;
   for (let k = 0; k + 1 < bounds.length; k++) {
     const a = bounds[k] + GAP_M / 2, b = bounds[k + 1] - GAP_M / 2;
-    if (!(b - a > 0.3)) { drumParts.push(-1); continue; }
+    if (!(b - a > 0.3)) { drumParts.push(-1); drumHalves.push(null); splitAxes.push(0); continue; }
     const band = bandAt((a + b) / 2);
     const across = (band.faces[0]?.width ?? anatomy.w) / 2 * 0.98, thick = (band.faces[1]?.width ?? anatomy.d) / 2 * 0.98;
     const slot = band.faces[0]?.layers[band.faces[0].layers.length - 1] ?? wallSlot;
     const m = Math.max(150, 8 * across * thick * (b - a) / 2 * 0.45 * (DENSITY[slot.material] ?? 1800));
-    drumParts.push(parts.length);
-    parts.push({ center: [0, (a + b) / 2 - frameY, 0], half: [across, (b - a) / 2, thick], massKg: m, rect: { u0: -across, u1: across, y0: a, y1: b } });
+    // its two halves down its length, split across x and across z by turns
+    const axis = drumHalves.length % 2 === 0 ? 0 : 2;
+    const cy = (a + b) / 2 - frameY, hy = (b - a) / 2;
+    const h0 = parts.length;
+    if (axis === 0) {
+      parts.push({ center: [-across / 2, cy, 0], half: [across / 2 - GAP_M / 2, hy, thick], massKg: m / 2, rect: { u0: -across, u1: 0, y0: a, y1: b } });
+      parts.push({ center: [across / 2, cy, 0], half: [across / 2 - GAP_M / 2, hy, thick], massKg: m / 2, rect: { u0: 0, u1: across, y0: a, y1: b } });
+    } else {
+      parts.push({ center: [0, cy, -thick / 2], half: [across, hy, thick / 2 - GAP_M / 2], massKg: m / 2, rect: { u0: -across, u1: across, y0: a, y1: b } });
+      parts.push({ center: [0, cy, thick / 2], half: [across, hy, thick / 2 - GAP_M / 2], massKg: m / 2, rect: { u0: -across, u1: across, y0: a, y1: b } });
+    }
+    drumParts.push(h0);
+    drumHalves.push([h0, h0 + 1]);
+    splitAxes.push(axis);
+    // the glued shaft's own shape keeps a box a drum (its contacts spread as before; the halves are bodies once it breaks)
+    gluedBoxes.push({ center: [0, cy, 0], half: [across, hy, thick] });
     massKg += m;
   }
   let crownBox: { min: Vec3; max: Vec3; piece: number } | null = null;
@@ -935,10 +957,11 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
       rect: { u0: crown.x0, u1: crown.x1, y0: a, y1: b } });
     massKg += m;
     crownBox = { min: [crown.x0 - 0.05, Math.max(crown.y0, topWall) - 0.05, crown.z0 - 0.05], max: [crown.x1 + 0.05, crown.y1 + 0.05, crown.z1 + 0.05], piece: 0 };
+    gluedBoxes.push({ center: parts[crownPart].center, half: parts[crownPart].half });
   }
   // the turn that just tips it over its foot's edge (its centre of mass over the edge), and a little more; given as a
   // push at its centre of percussion, so it turns about that edge and its foot does not kick back off the stump
-  const L = yTop - y0, halfBase = Math.min(parts[0]?.half[0] ?? hw, parts[0]?.half[2] ?? hd);
+  const L = yTop - y0, halfBase = Math.min(gluedBoxes[0]?.half[0] ?? hw, gluedBoxes[0]?.half[2] ?? hd);
   const hc = L / 2;
   const rise = Math.hypot(halfBase, hc) - hc;
   const inertia = (L * L + 4 * halfBase * halfBase) / 3;
@@ -946,14 +969,15 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   const percussion = (L * L + 4 * halfBase * halfBase) / (6 * Math.max(0.5, L));
   const pieces: CollapsePiece[] = [{
     index: 0, kind: 'drum', center: [cx, frameY, cz], rotation: [0, 0, 0, 1],
-    boxes: parts.map((pp) => ({ center: pp.center, half: pp.half })), massKg, material: wallSlot.material, core: wallSlot, back: wallSlot, face: null,
+    boxes: gluedBoxes, massKg, material: wallSlot.material, core: wallSlot, back: wallSlot, face: null,
     releaseS: 0, kick: [tx * omega * hc, 0, tz * omega * hc], kickAt: [0, Math.min(hc, percussion), 0], shatterS: -1,
     // its parts are its drums: by their bounds up the shaft (and the crown, whose box claims its own triangles first)
     parts, partCutsU: [], partCutsY: bounds.slice(1, -1), partFrame: { origin: [cx, 0, cz], u: [1, 0, 0], v: [0, 1, 0] },
   }];
   return { pieces, structureIdx: anatomy.structureIdx, groundY: baseY, eaveY: topWall, cx, cz, hw, hd, storeys: [], roof: [], gables: [],
     chimneys: [], struckSide: -1, chimneyBucket: wallSlot.bucket,
-    shaft: { stumpY, bounds, drums: drumParts, crown: crownBox ? { ...crownBox, piece: crownPart } : null, slot: wallSlot, cuts } };
+    shaft: { stumpY, bounds, drums: drumParts, crown: crownBox ? { ...crownBox, piece: crownPart } : null, slot: wallSlot, cuts,
+      halves: drumHalves, splitAxis: splitAxes } };
 }
 
 /** A polygon's area (its outline in order). */
@@ -1088,6 +1112,14 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     let k = 0;
     for (const c of sh.cuts) if (c.n[0] * cc[0] + c.n[1] * cc[1] + c.n[2] * cc[2] >= c.d) k++;
     k = Math.min(k, sh.drums.length - 1);
+    const hv = sh.halves[k];
+    if (hv) {
+      const axis = sh.splitAxis[k];
+      const d = axis === 0 ? plan.cx : plan.cz;
+      if (across(poly, axis === 0 ? 1 : 0, 0, axis === 2 ? 1 : 0, d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+      emit(0, poly, (axis === 0 ? cc[0] : cc[2]) < d ? hv[0] : hv[1]);
+      return;
+    }
     const part = sh.drums[k] ?? -1;
     emit(0, poly, part >= 0 ? part : Math.max(0, sh.drums.findIndex((d) => d >= 0)));
   };
@@ -1442,11 +1474,12 @@ function drumCaps(plan: CollapsePlan, piece: CollapsePiece, caps: CapQuad[]): vo
   // a plane's height over (x, z): level, or a break's slant
   const level = (y: number) => ({ n: [0, 1, 0] as Vec3, d: y, seed: 0 });
   const planeY = (pl: { n: Vec3; d: number }, x: number, z: number) => (pl.d - pl.n[0] * x - pl.n[2] * z) / pl.n[1];
-  const ragged = (pl: { n: Vec3; d: number; seed: number }, up: boolean, part: number, jag: number) => {
+  const ragged = (pl: { n: Vec3; d: number; seed: number }, up: boolean, part: number, jag: number,
+    x0 = plan.cx - hw, x1 = plan.cx + hw, z0 = plan.cz - hd, z1 = plan.cz + hd) => {
     const sgn = up ? 1 : -1;
     const nOut: Vec3 = [pl.n[0] * sgn, pl.n[1] * sgn, pl.n[2] * sgn];
     const corner = (i: number, j: number): Vec3 => {
-      const x = plan.cx - hw + (2 * hw * i) / G, z = plan.cz - hd + (2 * hd * j) / G;
+      const x = x0 + ((x1 - x0) * i) / G, z = z0 + ((z1 - z0) * j) / G;
       let y = planeY(pl, x, z);
       if (jag > 0 && i > 0 && i < G && j > 0 && j < G) {
         // a seeded push along the break's normal (both drums of a break push alike: their faces stay matched)
@@ -1468,8 +1501,40 @@ function drumCaps(plan: CollapsePlan, piece: CollapsePiece, caps: CapQuad[]): vo
     // its foot: the stump's top (level) or the break under it; its head: the break over it or the top level
     const foot = k === 0 ? level(sh.bounds[0] + GAP_M / 2) : sh.cuts[k - 1];
     const head = k === drums.length - 1 ? level(sh.bounds[sh.bounds.length - 1] - GAP_M / 2) : sh.cuts[k];
-    ragged(foot, false, part, k === 0 ? 0 : 0.12);
-    ragged(head, true, part, k === drums.length - 1 ? 0 : 0.12);
+    const jf = k === 0 ? 0 : 0.12, jh = k === drums.length - 1 ? 0 : 0.12;
+    const hv = sh.halves[k];
+    if (!hv) { ragged(foot, false, part, jf); ragged(head, true, part, jh); return; }
+    const axis = sh.splitAxis[k];
+    const x0 = plan.cx - hw, x1 = plan.cx + hw, z0 = plan.cz - hd, z1 = plan.cz + hd;
+    // each half its own share of the foot and the head
+    if (axis === 0) {
+      ragged(foot, false, hv[0], jf, x0, plan.cx, z0, z1); ragged(head, true, hv[0], jh, x0, plan.cx, z0, z1);
+      ragged(foot, false, hv[1], jf, plan.cx, x1, z0, z1); ragged(head, true, hv[1], jh, plan.cx, x1, z0, z1);
+    } else {
+      ragged(foot, false, hv[0], jf, x0, x1, z0, plan.cz); ragged(head, true, hv[0], jh, x0, x1, z0, plan.cz);
+      ragged(foot, false, hv[1], jf, x0, x1, plan.cz, z1); ragged(head, true, hv[1], jh, x0, x1, plan.cz, z1);
+    }
+    // the split down its length: a ragged face each half, the same surface facing each way
+    const seed = (head.seed ^ Math.imul(k + 11, 0x85ebca6b)) >>> 0;
+    const along = (i: number, t: number): Vec3 => {
+      // i steps across the split (z for a split across x, x for one across z), t up from foot to head
+      const w = axis === 0 ? z0 + ((z1 - z0) * i) / G : x0 + ((x1 - x0) * i) / G;
+      const x = axis === 0 ? plan.cx : w, z = axis === 0 ? w : plan.cz;
+      const y = planeY(foot, x, z) + (planeY(head, x, z) - planeY(foot, x, z)) * t;
+      let push = 0;
+      if (i > 0 && i < G && t > 0 && t < 1) {
+        let h = (seed ^ Math.imul(i * 7 + Math.round(t * G) * 13 + 3, 0x9e3779b1)) >>> 0;
+        h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
+        push = (((h >>> 8) & 0xffff) / 65535 - 0.5) * 0.2;
+      }
+      return axis === 0 ? [x + push, y, z] : [x, y, z + push];
+    };
+    for (let i = 0; i < G; i++) for (let j = 0; j < G; j++) {
+      const q: [Vec3, Vec3, Vec3, Vec3] = [along(i, j / G), along(i + 1, j / G), along(i + 1, (j + 1) / G), along(i, (j + 1) / G)];
+      const nA: Vec3 = axis === 0 ? [1, 0, 0] : [0, 0, 1];
+      caps.push({ corners: q, n: nA, slot: piece.core, shade: 0.72, part: hv[0] });
+      caps.push({ corners: [q[0], q[1], q[2], q[3]], n: [-nA[0], 0, -nA[2]], slot: piece.core, shade: 0.72, part: hv[1] });
+    }
   });
   // the crown: its broken foot only (its own roof or tank stands over it)
   if (crownPart >= 0) {
