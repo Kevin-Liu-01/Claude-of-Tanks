@@ -9890,29 +9890,15 @@ ${snowCap ? `
     };
     type Near = { ob: CollisionRecord; polys: FootprintPolygon[] | null; parked: DestructibleRecord | null; stone?: boolean };
     // (2026-10-08, over batch 5's hitbox lane) a stone that rises past the drive-over line but had no legacy record takes
-    // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone's own contact
-    // footprint, so none is seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
-    // (sealed lane 2026-10-11: an Alpine sled's runner and a Mangrove wagon's bed through a stone's foot) the contact
-    // footprint holds the stone from 0.2 m over its ground up; its foot flares past that, so the stone meets a seat by
-    // all of it that stands over the ground: the hull of its contact and of every shell slab that reaches above it
-    const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).map((seat) => {
-      const profile = seat.profile!, ground = heightField.getHeightAt(seat.x, seat.z), plan: [number, number][] = [];
-      for (const points of [profile.contact, ...profile.bands.filter((band) => band.y1 > ground).map((band) => band.points)]) {
-        for (let i = 0; i + 1 < points.length; i += 2) plan.push([points[i], points[i + 1]]);
-      }
-      const c = convexHull2(plan), poly: (readonly [number, number])[] = [];
-      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
-      for (let i = 0; i + 1 < c.length; i += 2) {
-        poly.push([c[i], c[i + 1]] as const);
-        sx0 = Math.min(sx0, c[i]); sx1 = Math.max(sx1, c[i]); sz0 = Math.min(sz0, c[i + 1]); sz1 = Math.max(sz1, c[i + 1]);
-      }
-      return { ob: seat.rec!, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 };
-    });
-    // (sealed lane 2026-10-11: a Mangrove estate car's bumper through a low stone) a stone a hull drives over (it rises
-    // less than the drive-over line: no collider, and no record once the legacy ones are refitted) is still drawn: the
-    // plan of all of it standing 10 cm over its ground keeps the parked vehicles' and carts' bodies off it
+    // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone itself, so none is
+    // seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
+    // (sealed lane 2026-10-11: an Alpine sled's runner through a stone's foot, a Mangrove estate car's bumper through a
+    // low stone) a stone meets a seat by all of it that is drawn over its ground: the plan of its form's corners standing
+    // 5 cm or more over the ground under them. The contact footprint holds only the stone from 0.2 m up, and its outlines
+    // keep a few corners; a stone a hull drives over (under the drive-over line: no collider, and no record once the
+    // legacy ones are refitted) has none at all.
     const stoneGround = rockGroundAt(heightField);
-    const lowStones = rockSeats.filter((seat) => !seat.profile && !seat.rec).flatMap((seat) => {
+    const stonePlan = (seat: RockSeat, ob: CollisionRecord | null) => {
       const form = rockForms[seat.vv], e = seat.placement.elements, plan: [number, number][] = [];
       let top = -Infinity;
       for (let v = 0; v + 2 < form.positions.length; v += 3) {
@@ -9920,7 +9906,7 @@ ${snowCap ? `
         const wx = e[0] * lx + e[4] * ly + e[8] * lz + e[12], wy = e[1] * lx + e[5] * ly + e[9] * lz + e[13];
         const wz = e[2] * lx + e[6] * ly + e[10] * lz + e[14];
         top = Math.max(top, wy);
-        if (wy - stoneGround(wx, wz) > 0.1) plan.push([wx, wz]);
+        if (wy - stoneGround(wx, wz) > 0.05) plan.push([wx, wz]);
       }
       const c = convexHull2(plan);
       if (c.length < 6) return [];
@@ -9930,9 +9916,10 @@ ${snowCap ? `
         poly.push([c[i], c[i + 1]] as const);
         sx0 = Math.min(sx0, c[i]); sx1 = Math.max(sx1, c[i]); sz0 = Math.min(sz0, c[i + 1]); sz1 = Math.max(sz1, c[i + 1]);
       }
-      const ob: CollisionRecord = { min: [sx0, seat.y, sz0], max: [sx1, top, sz1] };
-      return [{ ob, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 }];
-    });
+      return [{ ob: ob ?? { min: [sx0, seat.y, sz0], max: [sx1, top, sz1] }, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 }];
+    };
+    const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).flatMap((seat) => stonePlan(seat, seat.rec));
+    const lowStones = rockSeats.filter((seat) => !seat.profile && !seat.rec).flatMap((seat) => stonePlan(seat, null));
     const nearOf = new Map<DestructibleRecord, Near[]>();
     const crushRecords = crushableFootprints();
     for (const cart of carts) {
