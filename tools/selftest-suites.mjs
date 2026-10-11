@@ -1219,6 +1219,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
+    'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
     'src/vehicles/weaponFinish.selftest.mjs',
