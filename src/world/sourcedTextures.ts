@@ -271,6 +271,15 @@ const TERRAIN_PLAN = {
     D: { set: 'sand', tint: [0.70, 0.46, 0.36], roughMul: 1.28 },
     R: null, M: null,
   },
+  // (2026-10-11, the map-revival lane; gauntlet wave 380 on Olympus Basin: "candy-orange dune sand with almost no dark
+  // basalt") Mars's own sets, not Redrock's: the regolith a dusty butterscotch, a third of the sand photo's chroma out, and
+  // the second layer the basalt sand of the dark plains — near-neutral, a third of the regolith's value — so the macro
+  // noise lays dark drifts and patches through the ochre
+  mars: {
+    G: { set: 'sand', desat: 0.35, tint: [0.86, 0.64, 0.47], roughMul: 1.28 },
+    D: { set: 'sand', desat: 0.9, tint: [0.33, 0.29, 0.27], roughMul: 1.3 },
+    R: null, M: null,
+  },
   monsoon: {
     G: { set: 'grass', tint: [0.57, 0.82, 0.58], roughMul: 1.22 },
     D: { set: 'dirt', tint: [0.59, 0.55, 0.44], roughMul: 1.3 },

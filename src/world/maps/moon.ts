@@ -101,6 +101,9 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "the loaf boulder ... never sunk in dust") the surface stones sunk
+    // deeper into the regolith banked round them (a share of their height: .22 -> .38)
+    rockSink: 0.38,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: [] },
