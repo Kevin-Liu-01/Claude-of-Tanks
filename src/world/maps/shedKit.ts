@@ -1207,7 +1207,7 @@ function snowCushion(w: ShedWriter, rp: RoofPlane, a0: number, a1: number, b0: n
       off = -t * 0.02;
     } else if (edges.eave && !edges.lip) k = Math.min(k, (b - b0) / R);
     k = Math.max(0, Math.min(1, k));
-    const ripple = 1 + (vnoise(a * 1.7, 0.5, b * 4.1, 1, w.salt + 91) - 0.5) * 0.34 + (vnoise(a * 6.1, 1.5, b * 7.3, 1, w.salt + 93) - 0.5) * 0.1;
+    const ripple = 1 + (vnoise(a * 1.7, 0.5, b * 4.1, w.salt + 91) - 0.5) * 0.34 + (vnoise(a * 6.1, 1.5, b * 7.3, w.salt + 93) - 0.5) * 0.1;
     return [depth * Math.sin((k * Math.PI) / 2) * ripple, off];
   };
   const H: number[][] = [], O: number[][] = [];
