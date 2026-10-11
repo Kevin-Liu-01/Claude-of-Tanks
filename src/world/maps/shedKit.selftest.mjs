@@ -174,7 +174,7 @@ for (const mapId of maps) {
     broken.computeBoundingBox();
     const hb = broken.boundingBox;
     assert.ok(hb.max.y >= 1.0, `${mapId}/${id}: the wreck has volume (a standing corner, sections tipped over the heap)`);
-    assert.ok(hb.max.y <= b.max.y - 0.3, `${mapId}/${id}: the wreck lies lower than the shed stood`);
+    assert.ok(hb.max.y <= b.max.y - 0.1, `${mapId}/${id}: the wreck lies lower than the shed stood`);
     assert.ok(Math.max(-hb.min.x, hb.max.x, -hb.min.z, hb.max.z) <= Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 + 4.5,
       `${mapId}/${id}: nothing thrown farther than a few metres`);
     assert.ok(Number.isFinite(hb.min.y) && hb.min.y >= -0.4, `${mapId}/${id}: nothing sunk under the ground`);

@@ -528,9 +528,18 @@ export class FractureSettle {
     if (o.ceiling !== undefined) {
       const c = centreOf(b.tris), out = nrm([c[0] - mid[0] + 1e-3, 0, c[2] - mid[2]]);
       for (let attempt = 1; attempt < 4 && topOf(pts, xf) > o.ceiling; attempt++) {
-        // (out from the middle, farther each time; the last time laid flat, clear of the heap, on the ground)
-        const reach = attempt < 3 ? 0.55 * attempt : 1.7;
-        const to: V3 = [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach];
+        // (out from the middle, farther each time; the last time laid flat on the ground at the wreck's rim, where the
+        // heap is lowest along that bearing)
+        let to: V3;
+        if (attempt < 3) to = [c[0] + out[0] * 0.55 * attempt, c[1], c[2] + out[2] * 0.55 * attempt];
+        else {
+          let best = Infinity, at: V3 = [c[0] + out[0] * 1.7, c[1], c[2] + out[2] * 1.7];
+          for (let k = 0; k <= 8; k++) {
+            const d = 0.8 + k * 0.35, x = c[0] + out[0] * d, z = c[2] + out[2] * d, h = this.heapAt(x, z);
+            if (h < best - 0.05) { best = h; at = [x, c[1], z]; }
+          }
+          to = at;
+        }
         xf = this.rest(pts, attempt < 3 ? o : { ...o, maxTilt: 0.3 }, about(attempt < 3 ? IDENTITY.R : flatTurn(b), c, to));
       }
     }
@@ -555,7 +564,7 @@ export class FractureSettle {
     let xf = start, tilted = 0;
     const n = pts.length / 3;
     const moved = new Float64Array(pts.length), gaps = new Float64Array(n);
-    for (let iter = 0; iter < 8; iter++) {
+    for (let iter = 0; iter < 6; iter++) {
       // drop onto the highest support
       let gap = Infinity, at = -1;
       const [c0, c1, c2] = xf.R, tt = xf.t;
@@ -709,7 +718,7 @@ function topOf(pts: Float64Array, x: Xf): number {
  * SAMPLE_M, so a long board finds a ridge under its middle and a roof section the stub under its field.
  */
 const SAMPLE_M = 0.16;
-const SAMPLE_CAP = 3000;
+const SAMPLE_CAP = 1000;
 function samplesOf(t: SettleTris): Float64Array {
   const out: number[] = [];
   const put = (x: number, y: number, z: number): void => { out.push(x, y, z); };

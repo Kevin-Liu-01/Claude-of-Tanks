@@ -48,7 +48,8 @@ type Rgb = readonly [number, number, number];
 // ------------------------------------------------------------------------------------------------- the surface
 
 /** The structure tile's repeats per metre (structureKit's box uv: one 1.82 m tile). */
-const UV_PER_M = 0.55;
+// (round 2, waves 390a/b: "oversized cartoon knots") the tile a little finer on the timber: knots and checks at a board's scale
+const UV_PER_M = 0.8;
 /** The tile's plank lanes (timberGrain.ts: a seam every 56 px of 256, 4 px wide): a board keeps inside one lane. */
 const LANE_U = 56 / 256;
 const SEAM_U = 4 / 256;
@@ -218,7 +219,7 @@ export const SHED_STYLES: Readonly<Record<string, ShedStyle>> = Object.freeze({
   // Frontier Basin, the Fulda Gap around 1984: a dark-stained field barn under corrugated fibre-cement on concrete
   frontier: style({ ...KOLKHOZ, id: 'hessian', wood: hexLin(0x4c3c30), woodSpread: 0.1, frame: hexLin(0x42342a),
     trim: hexLin(0x5a4a3b), door: hexLin(0x463729), shutter: null, roof: 'fibre', roofTone: hexLin(0x7b7a74),
-    footing: 'concrete', stone: hexLin(0x8b8983), moss: 0.35, age: 0.45 }),
+    footing: 'concrete', stone: hexLin(0x6b6a66), moss: 0.35, age: 0.45 }),
   // Tidegate Polders, Zeeland: tarred lapped boards, white trim, a Dutch-green door, felt, brick piers
   polders: style({ ...KOLKHOZ, id: 'zeeland', cladding: 'lap', wood: hexLin(0x5d5349), paint: hexLin(0x262422),
     frame: hexLin(0x3a332d), trim: hexLin(0xc9c3b6), door: hexLin(0x2f4b3c), shutter: hexLin(0x2f4b3c), roof: 'felt',
@@ -324,6 +325,8 @@ class ShedWriter {
   private volume = 0;
   private density = 500;
   private spec: PieceSpec | null = null;
+  /** The current piece's vertices its roof-pitch receipt leaves out (its snow: a cushion is no part of the plane). */
+  private skipAudit: Array<[number, number]> = [];
   readonly built: BuiltPiece[] = [];
   readonly links: FractureLink[] = [];
 
@@ -353,6 +356,13 @@ class ShedWriter {
     return { grain, u0: MEMBER_U0 + (MEMBER_U1 - MEMBER_U0 - w) * this.rng(), v0: this.rng() };
   }
 
+  /** Writes something its piece's roof-pitch receipt leaves out (a snow cushion over the covering). */
+  unaudited(write: () => void): void {
+    const v0 = this.p.length / 3;
+    write();
+    this.skipAudit.push([v0, this.p.length / 3]);
+  }
+
   begin(spec: PieceSpec): number {
     if (this.spec) throw new Error('shedKit: piece begun inside another');
     this.spec = spec;
@@ -377,6 +387,19 @@ class ShedWriter {
       main.dispose();
       for (const pane of this.panes) pane.dispose();
       geometry = merged;
+    }
+    if (spec.roofPitch && this.skipAudit.length) {
+      // the plane the receipt measures: the covering without its snow
+      const keep: number[] = [];
+      const skip = this.skipAudit;
+      for (let v = 0; v < this.p.length / 3; v++) {
+        if (skip.some(([a, b]) => v >= a && v < b)) continue;
+        keep.push(this.p[v * 3], this.p[v * 3 + 1], this.p[v * 3 + 2]);
+      }
+      const audit = new THREE.BufferGeometry();
+      audit.setAttribute('position', new THREE.Float32BufferAttribute(keep, 3));
+      audit.userData.roofPlanePitch = { ...spec.roofPitch };
+      geometry.userData.roofAudit = audit;
     }
     if (spec.roofPitch) {
       geometry.userData.roofPlanePitch = { ...spec.roofPitch };
@@ -407,7 +430,7 @@ class ShedWriter {
     };
     this.built.push(piece);
     this.rescore(this.built.length - 1, spec.scores ?? []);
-    this.p = []; this.n = []; this.t = []; this.c = []; this.panes = [];
+    this.p = []; this.n = []; this.t = []; this.c = []; this.panes = []; this.skipAudit = [];
     this.spec = null;
     return this.built.length - 1;
   }
@@ -449,13 +472,13 @@ class ShedWriter {
       const mottle = fbm(p, 0.8, this.salt + 11) - 0.5;
       c = mulc(c, 1 + mottle * w * (0.18 + st.age * 0.14));
       // the damp foot: darker to half a metre, its edge wandering
-      const footTop = 0.32 + vnoise(p[0] * 2.1, p[2] * 2.1, 0.5, this.salt + 31) * 0.35;
+      const footTop = 0.42 + vnoise(p[0] * 2.1, p[2] * 2.1, 0.5, this.salt + 31) * 0.4;
       const foot = 1 - smooth(0.02, footTop, p[1]);
-      c = mix(c, mulc(c, 0.58), foot * 0.75 * w);
+      c = mix(c, mulc(mix(c, [0.05, 0.045, 0.035], 0.25), 0.55), foot * 0.85 * w);
       // vertical rain runs on the walls (value noise stretched down the wall)
       if (Math.abs(n[1]) < 0.3 && !look.roof) {
         const run = vnoise(p[0] * 9 + p[2] * 9, p[1] * 0.7, 0.5, this.salt + 41);
-        c = mulc(c, 1 - smooth(0.62, 0.92, run) * 0.18 * w * (0.5 + st.age * 0.5));
+        c = mulc(c, 1 - smooth(0.58, 0.9, run) * 0.3 * w * (0.5 + st.age * 0.5));
       }
       // moss and lichen on what faces the sky (a roof, a sill's top, a footing) and at the foot
       if (st.moss > 0) {
@@ -499,7 +522,7 @@ class ShedWriter {
     for (const i of order) this.vertex(pts[i], normals[i], uv[i][0], uv[i][1], cols[i]);
   }
 
-  private tri(a: V3, b: V3, c: V3, look: Look): void {
+  tri(a: V3, b: V3, c: V3, look: Look): void {
     const nn = nrm(cross(sub(b, a), sub(c, a)));
     for (const p of [a, b, c]) this.vertex(p, nn, FLAT_PAIR[0], FLAT_PAIR[1], this.shade(look, p, nn, false, true));
   }
@@ -679,7 +702,12 @@ class ShedWriter {
     if (this.built.length > cap) throw new Error(`shedKit: ${kind} has ${this.built.length} pieces (cap ${cap})`);
     const parts = this.built.map((b) => b.geometry);
     const connectivity = certifyGroundedStructureParts(kind, parts);
-    const roofPlanePitches = parts.filter((g) => g.userData.roofPlanePitch).map((g) => auditRoofPlanePitch(g));
+    const roofPlanePitches = parts.filter((g) => g.userData.roofPlanePitch).map((g) => {
+      const audit = g.userData.roofAudit as THREE.BufferGeometry | undefined;
+      const r = auditRoofPlanePitch(audit ?? g);
+      if (audit) { audit.dispose(); delete g.userData.roofAudit; }
+      return r;
+    });
     const geometry = mergeGeometries(parts, false);
     if (!geometry) throw new Error(`shedKit: ${kind} merge failed`);
     const pieces: FracturePiece[] = [];
@@ -929,6 +957,25 @@ function cladWall(w: ShedWriter, spec: WallSpec, dress: (panel: number, range: [
           { tone: boardTone(w, st.wood), uv: w.plankUv(BATTEN_W, 1), seg: 1, paint: st.paint }, 0.012);
       }
     }
+    // the water table along the panel's foot, proud of the boards and battens, its top bevelled to shed the rain (none
+    // across a door's opening)
+    {
+      let segs: [number, number][] = [[a, b]];
+      for (const o of spec.openings) {
+        if (o.y0 > spec.y0 + 0.2) continue;
+        const next: [number, number][] = [];
+        for (const [s0, s1] of segs) {
+          if (o.u0 - s0 > 0.05) next.push([s0, Math.min(s1, o.u0)]);
+          if (s1 - o.u1 > 0.05) next.push([Math.max(s0, o.u1), s1]);
+        }
+        segs = next;
+      }
+      // (flush with the battens' faces: a panel's box keeps its depth, so it stays clear of the verge and rafters over it)
+      const out = gz + BOARD_T + (lap ? 0.026 : BATTEN_T), look: Look = { tone: mulc(boardTone(w, st.frame), 0.9), uv: w.memberUv(0.12, 0), seg: 2 };
+      for (const [s0, s1] of segs) {
+        w.prism(frame(at(spec.f, s0, 0, 0), spec.f.x, spec.f.y), [[0, spec.y0], [s1 - s0, spec.y0], [s1 - s0, spec.y0 + 0.12], [0, spec.y0 + 0.12]].map(([u, y]) => [u, y] as [number, number]), gz, out, look);
+      }
+    }
     dress(idx, range);
     w.end();
     out.pieces.push(idx);
@@ -941,15 +988,15 @@ function cladWall(w: ShedWriter, spec: WallSpec, dress: (panel: number, range: [
  * shutters hinged open against the cladding. Nothing of it stands inside the frame's plane. */
 function windowDress(w: ShedWriter, f: Frame, o: Opening): void {
   const st = w.style;
-  const cas = 0.075, depth = st.cladding === 'lap' ? BOARD_T + 0.024 : BOARD_T;
+  const cas = 0.09, depth = st.cladding === 'lap' ? BOARD_T + 0.024 : BOARD_T;
   const trimV = (): Look => ({ tone: boardTone(w, st.trim), uv: w.plankUv(cas, 1), seg: 2 });
   const trimH = (): Look => ({ tone: boardTone(w, st.trim), uv: w.plankUv(cas, 0), seg: 2 });
   // casing boards round the opening, proud of the cladding
-  w.box(f, [o.u0 - cas, o.y0 - 0.02, depth], [o.u0, o.y1 + cas, depth + 0.022], trimV());
-  w.box(f, [o.u1, o.y0 - 0.02, depth], [o.u1 + cas, o.y1 + cas, depth + 0.022], trimV());
-  w.box(f, [o.u0 - cas - 0.02, o.y1, depth], [o.u1 + cas + 0.02, o.y1 + cas + 0.02, depth + 0.028], trimH());
-  // the sill, standing out with its drip
-  w.box(f, [o.u0 - cas - 0.03, o.y0 - 0.05, 0], [o.u1 + cas + 0.03, o.y0, depth + 0.05], trimH());
+  w.box(f, [o.u0 - cas, o.y0 - 0.02, depth], [o.u0, o.y1 + cas, depth + 0.034], trimV());
+  w.box(f, [o.u1, o.y0 - 0.02, depth], [o.u1 + cas, o.y1 + cas, depth + 0.034], trimV());
+  w.box(f, [o.u0 - cas - 0.025, o.y1, depth], [o.u1 + cas + 0.025, o.y1 + cas + 0.03, depth + 0.042], trimH());
+  // the sill, standing well out with its drip
+  w.box(f, [o.u0 - cas - 0.04, o.y0 - 0.06, 0], [o.u1 + cas + 0.04, o.y0, depth + 0.05], trimH());
   // board shutters hinged open against the cladding (on the battens)
   if (st.shutter) {
     const sw = (o.u1 - o.u0) / 2 + 0.03, h0 = o.y0 - 0.04, h1 = o.y1 + 0.03, z0 = BOARD_T + BATTEN_T + 0.002;
@@ -972,13 +1019,14 @@ function windowDress(w: ShedWriter, f: Frame, o: Opening): void {
  * the glass set back, and the dark room behind it. */
 function windowInset(w: ShedWriter, f: Frame, o: Opening): void {
   const st = w.style;
-  const rev: Look = { tone: mulc(st.trim, 0.85), uv: w.plankUv(0.1, 1), seg: 1 };
-  w.box(f, [o.u0, o.y0, -0.10], [o.u0 + 0.02, o.y1, 0], rev);
-  w.box(f, [o.u1 - 0.02, o.y0, -0.10], [o.u1, o.y1, 0], rev);
-  w.box(f, [o.u0, o.y1 - 0.02, -0.10], [o.u1, o.y1, 0], rev);
-  w.box(f, [o.u0, o.y0, -0.10], [o.u1, o.y0 + 0.012, 0], rev);
+  const rev: Look = { tone: mulc(st.trim, 1.0), uv: w.plankUv(0.1, 1), seg: 1 };
+  w.box(f, [o.u0, o.y0, -0.13], [o.u0 + 0.02, o.y1, 0], rev);
+  w.box(f, [o.u1 - 0.02, o.y0, -0.13], [o.u1, o.y1, 0], rev);
+  w.box(f, [o.u0, o.y1 - 0.02, -0.13], [o.u1, o.y1, 0], rev);
+  w.box(f, [o.u0, o.y0, -0.13], [o.u1, o.y0 + 0.012, 0], rev);
   const sash: Look = { tone: mulc(st.trim, 0.95), uv: 'flat', weather: 0.6 };
-  const s0 = -0.035, s1 = -0.005, fw = 0.04, mw = 0.022;
+  // (the sash set well back in the reveal, so the casing and the reveal's lit jamb read its depth)
+  const s0 = -0.095, s1 = -0.06, fw = 0.045, mw = 0.024;
   const iu0 = o.u0 + 0.02, iu1 = o.u1 - 0.02, iy0 = o.y0 + 0.012, iy1 = o.y1 - 0.02;
   w.box(f, [iu0, iy0, s0], [iu0 + fw, iy1, s1], sash);
   w.box(f, [iu1 - fw, iy0, s0], [iu1, iy1, s1], sash);
@@ -997,7 +1045,7 @@ function windowInset(w: ShedWriter, f: Frame, o: Opening): void {
     ]) w.pane(f, [a, c, gz0], [b, d, gz1], f.z);
   }
   // the dark room behind, so the glass reads against something
-  w.box(f, [o.u0, o.y0, -0.12], [o.u1, o.y1, -0.10], { tone: ROOM, uv: 'flat', weather: 0 });
+  w.box(f, [o.u0, o.y0, -0.15], [o.u1, o.y1, -0.13], { tone: ROOM, uv: 'flat', weather: 0 });
 }
 
 /** A ledged and braced door in its opening (its own piece): boards, ledges, a Z brace, strap hinges, a latch. */
@@ -1079,7 +1127,8 @@ function coverTop(roof: ShedRoof): number {
  * Call inside the section's piece; returns its joints along the eave (the scores).
  */
 function coverRoof(w: ShedWriter, rp: RoofPlane, a0: number, a1: number, b0: number, b1: number,
-  opts: { battens: number[]; snow: boolean; lift?: number; snowDepth?: number; snowLip?: boolean; eaveEdge?: boolean; upperEdge?: boolean }): number[] {
+  opts: { battens: number[]; snow: boolean; lift?: number; snowDepth?: number; snowLip?: boolean; eaveEdge?: boolean; upperEdge?: boolean;
+    verges?: readonly [boolean, boolean] }): number[] {
   const st = w.style, lift = opts.lift ?? 0;
   const joints: number[] = [];
   for (const bb of opts.battens) {
@@ -1123,19 +1172,69 @@ function coverRoof(w: ShedWriter, rp: RoofPlane, a0: number, a1: number, b0: num
     }
   }
   if (opts.snow) {
-    // the snow load: a slab over the covering, its eave edge rounded off and hanging a hand over (at the roof's own eave
-    // and upper edge only: across a joint between two rows it runs on)
-    const top = coverTop(st.roof) + lift, depth = opts.snowDepth ?? 0.14, snow: Look = { tone: SNOW, uv: 'flat', weather: 0 };
-    const eave = opts.eaveEdge !== false, upper = opts.upperEdge !== false;
-    const end = upper ? b1 - 0.05 : b1;
-    if (opts.snowLip === false || !eave) {
-      roofBox(w, rp, a0, a1, eave ? b0 + 0.02 : b0, end, top, top + depth, snow);
-    } else {
-      roofBox(w, rp, a0, a1, b0 + 0.08, end, top, top + depth, snow);
-      roofBox(w, rp, a0, a1, b0 - 0.06, b0 + 0.08, top - 0.02, top + depth * 0.64, snow);
-    }
+    // the snow load: a cushion over the covering, rounded off at the roof's own edges (across a joint between two
+    // sections it runs on at its depth), its cornice drooping over the eave
+    const top = coverTop(st.roof) + lift, depth = opts.snowDepth ?? 0.14;
+    w.unaudited(() => snowCushion(w, rp, a0, a1, b0, b1, top, depth, {
+      eave: opts.eaveEdge !== false, lip: opts.snowLip !== false && opts.eaveEdge !== false, upper: opts.upperEdge !== false,
+      left: opts.verges?.[0] ?? false, right: opts.verges?.[1] ?? false,
+    }));
   }
   return joints.slice(0, -1);
+}
+
+/**
+ * Snow lying on a roof section (round 2; waves 390a/b: "bare planks or knife-edged white lids"): a cushion over the
+ * covering as deep as the fall in its field, rounded off to nothing at each of the roof's own edges it reaches (the
+ * eave, a verge, the upper edge), wind-rippled along the slope, with a cornice over the eave drooping a hand past it.
+ * Its underside shows only under the cornice.
+ */
+function snowCushion(w: ShedWriter, rp: RoofPlane, a0: number, a1: number, b0: number, b1: number, base: number, depth: number,
+  edges: { eave: boolean; lip: boolean; upper: boolean; left: boolean; right: boolean }): void {
+  const rf = roofFrame(rp), fz = dot(rf.z, rp.f) >= 0 ? 1 : -1;
+  const snow: Look = { tone: SNOW, uv: 'flat', weather: 0 };
+  const lip = edges.lip ? 0.065 : 0, B0 = b0 - lip, R = 0.17;
+  const cell = w.lite ? 0.45 : 0.27;
+  const na = Math.max(3, Math.round((a1 - a0) / cell)), nb = Math.max(3, Math.round((b1 - B0) / cell));
+  const heightAt = (a: number, b: number): [number, number] => {
+    let k = 1, off = 0;
+    if (edges.left) k = Math.min(k, (a - a0) / R);
+    if (edges.right) k = Math.min(k, (a1 - a) / R);
+    if (edges.upper) k = Math.min(k, (b1 - b) / R);
+    if (edges.lip && b < b0) {
+      const t = (b0 - b) / lip;
+      k = Math.min(k, 0.92 * (1 - t * t));
+      off = -t * 0.02;
+    } else if (edges.eave && !edges.lip) k = Math.min(k, (b - b0) / R);
+    k = Math.max(0, Math.min(1, k));
+    const ripple = 1 + (vnoise(a * 1.7, 0.5, b * 4.1, 1, w.salt + 91) - 0.5) * 0.34 + (vnoise(a * 6.1, 1.5, b * 7.3, 1, w.salt + 93) - 0.5) * 0.1;
+    return [depth * Math.sin((k * Math.PI) / 2) * ripple, off];
+  };
+  const H: number[][] = [], O: number[][] = [];
+  const ga = (i: number): number => a0 + ((a1 - a0) * i) / na, gb = (j: number): number => B0 + ((b1 - B0) * j) / nb;
+  for (let j = 0; j <= nb; j++) {
+    H.push([]); O.push([]);
+    for (let i = 0; i <= na; i++) { const [h, off] = heightAt(ga(i), gb(j)); H[j].push(h); O[j].push(off); }
+  }
+  const P = (i: number, j: number, up: boolean): V3 => at(rf, ga(i), base + O[j][i] + (up ? H[j][i] : 0) + 0.002, gb(j) * fz);
+  const N = (i: number, j: number): V3 => {
+    const il = Math.max(0, i - 1), ir = Math.min(na, i + 1), jl = Math.max(0, j - 1), jr = Math.min(nb, j + 1);
+    const da = (H[j][ir] + O[j][ir] - H[j][il] - O[j][il]) / (ga(ir) - ga(il));
+    const db = (H[jr][i] + O[jr][i] - H[jl][i] - O[jl][i]) / (gb(jr) - gb(jl));
+    return nrm(add(add(rf.y, scl(rf.x, -da)), scl(rf.z, -db * fz)));
+  };
+  for (let j = 0; j < nb; j++) for (let i = 0; i < na; i++) {
+    const q = [P(i, j, true), P(i + 1, j, true), P(i + 1, j + 1, true), P(i, j + 1, true)];
+    const n = [N(i, j), N(i + 1, j), N(i + 1, j + 1), N(i, j + 1)];
+    w.quad(q, n, [FLAT_PAIR, FLAT_PAIR, FLAT_PAIR, FLAT_PAIR], q.map((p, k) => w.shade(snow, p, n[k], false, true)));
+    if (gb(j + 1) <= b0 + 1e-6 && !w.lite) {
+      // the cornice's underside
+      const u = [P(i, j, false), P(i + 1, j, false), P(i + 1, j + 1, false), P(i, j + 1, false)];
+      const dn = scl(rf.y, -1);
+      w.quad(u, [dn, dn, dn, dn], [FLAT_PAIR, FLAT_PAIR, FLAT_PAIR, FLAT_PAIR], u.map((p) => mulc(w.shade(snow, p, dn, false, true), 0.85)));
+    }
+  }
+  w.addVolume((a1 - a0) * (b1 - b0) * depth * 0.8);
 }
 
 /** One corrugated sheet in roof coordinates (a along the eave, b up the slope), lifted by `lift`. */
@@ -1205,7 +1304,9 @@ const FH = {
    * boards' faces, over the battens' tops), so a roof piece's box reaches over a gable wall's by a board at most (the
    * destruction core's bodies start apart). */
   gableZ: 2.8 + 0.024,
-  boardY0: 0.17,
+  // (round 2, waves 390a/b: "boards run straight into the grass with no sill, footing or damp foot") the boards stop over
+  // the sill, which shows under the water table, on its stones
+  boardY0: 0.31,
   door: { u0: -0.45, u1: 0.45, y0: 0.33, y1: 2.29 },
   frontWindow: { u0: -1.62, u1: -1.0, y0: 1.06, y1: 1.78 },
   sideWindow: { u0: -0.72, u1: -0.1, y0: 1.06, y1: 1.78 },
@@ -1353,7 +1454,7 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng, detail: ShedDetail = 
         role: 'roof', material: roofMaterial, face: 'roof', axes: roofFrame(rp), scoreAxis: 0,
         roofPitch: { axis: 'x', outwardSign: sx, angleRad: FH.pitch, kind: 'gable' },
       });
-      const joints = coverRoof(w, rp, z[0], z[1], eaveB, ridgeB, { battens, snow: st.snow });
+      const joints = coverRoof(w, rp, z[0], z[1], eaveB, ridgeB, { battens, snow: st.snow, upperEdge: false, verges: [z[0] < -0.1, z[1] > 0.1] });
       roofBox(w, rp, z[0], z[1], -0.19, -0.015, top, top + capT, capLook());
       w.end();
       w.rescore(idx, joints);
@@ -1520,7 +1621,7 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng, detail: ShedDetail = 
       roofPitch: { axis: 'z', outwardSign: 1, angleRad: P.a, kind: 'skillion' },
     });
     // (a thinner load on the short porch roof: it sheds its snow)
-    coverRoof(w, pPlane, -1.38, 1.38, P.eaveB, P.backB, { battens: [], snow: st.snow, snowDepth: 0.035, snowLip: false });
+    coverRoof(w, pPlane, -1.38, 1.38, P.eaveB, P.backB, { battens: [], snow: st.snow, snowDepth: 0.06, snowLip: false, upperEdge: false, verges: [true, true] });
     w.end();
     w.link(porch, porchRafters, 'nail');
   }
@@ -1763,7 +1864,7 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
     });
     const battens: number[] = [];
     for (let b = b0 + 0.12; b < b1 - 0.05; b += 0.62) battens.push(b);
-    const joints = coverRoof(w, rp, a0, a1, b0, b1, { battens, snow: st.snow, eaveEdge, upperEdge });
+    const joints = coverRoof(w, rp, a0, a1, b0, b1, { battens, snow: st.snow, eaveEdge, upperEdge, verges: [a0 <= -edge + 1e-6, a1 >= edge - 1e-6] });
     w.end();
     w.rescore(idx, joints);
     LT.rafterX.forEach((x, k) => { if (x > a0 - 0.1 && x < a1 + 0.1) w.link(idx, rafters[k], 'nail'); });
@@ -1847,34 +1948,89 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
 
 /** A stack of split firewood: the stack's body, its face of split ends (wedges and quarters) toward +z (or −z with
  * `face` −1), round logs on top. */
+/**
+ * A stack of firewood (round 2; waves 390a/b: "one pale triangle stamped in rows, or blank boxes"): split billets
+ * laid in rows, each its own cross-section (quartered, halved, a small round), its own girth and turn and a little its
+ * own length, so the stack's face is a field of end grain in light and shadow with the gaps dark between them; bark
+ * on the outside of each, the split faces fresh. A thin dark board behind the stack's middle stops the eye through the
+ * gaps. The phones' build lays chunkier billets, fewer of them; every billet is whole (the heap throws them).
+ */
 function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: number, h: number, face: 1 | -1 = 1): void {
-  if (face > 0) w.box(AXES, [x0 + 0.03, 0.0, z0], [x1 - 0.03, h - 0.06, z1 - 0.05], { tone: mulc(BARK, 0.9), uv: w.plankUv(0.2, 0), seg: 2 });
-  else w.box(AXES, [x0 + 0.03, 0.0, z0 + 0.05], [x1 - 0.03, h - 0.06, z1], { tone: mulc(BARK, 0.9), uv: w.plankUv(0.2, 0), seg: 2 });
-  const rowH = 0.155;
+  // the dark between the billets: a board in the stack's middle, short of its ends
+  const zm = (z0 + z1) / 2;
+  w.box(AXES, [x0 + 0.06, 0.0, zm - 0.012], [x1 - 0.06, h - 0.1, zm + 0.012], { tone: mulc(BARK, 0.32), uv: 'flat', weather: 0 });
+  const rowH = w.lite ? 0.2 : 0.15;
+  const snow = w.style.snow;
   let row = 0;
-  for (let y = 0.03; y < h - 0.1; y += rowH, row++) {
-    if (w.lite && row % 2) continue;
-    let x = x0 + 0.04 + (row % 2) * 0.07;
-    while (x < x1 - 0.12) {
-      const wd = 0.13 + w.rng() * 0.08;
-      const kind = w.rng();
-      const poly: [number, number][] = kind < 0.45
-        ? [[-wd / 2, -rowH * 0.42], [wd / 2, -rowH * 0.42], [0, rowH * 0.45]]
-        : kind < 0.8
-          ? [[-wd / 2, -rowH * 0.42], [wd / 2, -rowH * 0.42], [wd / 2, rowH * 0.1], [-wd * 0.05, rowH * 0.45], [-wd / 2, rowH * 0.2]]
-          : [[-wd / 2, -rowH * 0.3], [0, -rowH * 0.45], [wd / 2, -rowH * 0.3], [wd / 2, rowH * 0.3], [0, rowH * 0.45], [-wd / 2, rowH * 0.3]];
-      const f = face > 0 ? frame([x + wd / 2, y + rowH / 2, z1 - 0.06], [1, 0, 0], [0, 1, 0])
-        : frame([x + wd / 2, y + rowH / 2, z0 + 0.06], [-1, 0, 0], [0, 1, 0]);
-      w.prism(f, face > 0 ? poly : poly.map(([px, py]) => [-px, py] as [number, number]).reverse(), 0, 0.02 + w.rng() * 0.05,
-        { tone: mulc(LOG_END, 0.85 + w.rng() * 0.3), uv: 'flat', weather: 0.5, endDark: 1 }, false);
-      x += wd + 0.01;
+  for (let y = 0.0; y + rowH * 0.7 < h; y += rowH * 0.94, row++) {
+    let x = x0 + 0.03 + (row % 2) * rowH * 0.35;
+    while (x < x1 - rowH * 0.55) {
+      const cw = rowH * (0.85 + w.rng() * 0.5);
+      if (x + cw > x1 - 0.02) break;
+      const cx = x + cw / 2, cy = y + rowH / 2, R = Math.min(cw, rowH) * (0.5 + w.rng() * 0.06);
+      const kind = w.rng(), turn = w.rng() * Math.PI * 2;
+      // the cross-section (counter-clockwise), and which of its edges are bark
+      const poly: [number, number][] = [];
+      const bark: boolean[] = [];
+      if (kind < 0.5) {
+        // quartered: the heart, then the arc of the bark
+        poly.push([0, 0]); bark.push(false);
+        for (let k = 0; k <= 3; k++) { const ph = turn + (k / 3) * (Math.PI / 2); poly.push([Math.cos(ph) * R * 1.35, Math.sin(ph) * R * 1.35]); bark.push(k < 3); }
+      } else if (kind < 0.82) {
+        // halved: the arc over the split face
+        for (let k = 0; k <= 4; k++) { const ph = turn + (k / 4) * Math.PI; poly.push([Math.cos(ph) * R, Math.sin(ph) * R]); bark.push(k < 4); }
+      } else {
+        // a small round, whole
+        for (let k = 0; k < 6; k++) { const ph = turn + (k / 6) * Math.PI * 2; poly.push([Math.cos(ph) * R * 0.8, Math.sin(ph) * R * 0.8]); bark.push(true); }
+      }
+      // centred in its cell (the quarter's heart is off its middle)
+      let mx = 0, my = 0;
+      for (const [px, py] of poly) { mx += px; my += py; }
+      mx /= poly.length; my /= poly.length;
+      const pts = poly.map(([px, py]) => [cx + px - mx, cy + py - my] as [number, number]);
+      const lo = Math.min(...pts.map((q) => q[1]));
+      if (lo < y - 0.02) for (const q of pts) q[1] += y - 0.02 - lo;
+      const za = z0 + 0.01 + w.rng() * 0.03, zb2 = z1 - 0.01 - w.rng() * 0.03;
+      billet(w, pts, bark, za, zb2, face);
+      x += cw * (0.97 + w.rng() * 0.05);
     }
   }
-  for (let k = 0; k < 4; k++) {
-    const lx = x0 + 0.2 + (k / 4) * (x1 - x0 - 0.3);
-    const f = frame([lx, h - 0.02, (z0 + z1) / 2], [1, 0, 0], [0, 0, 1]);
-    w.cylinder(f, 0.07, 0.07, -(z1 - z0) / 2 + 0.03, (z1 - z0) / 2 - 0.05, 7, { tone: BARK, uv: w.plankUv(0.14, 1), seg: 1 }, true);
+  if (snow) {
+    // the snow on the top row, rounded off, a little over its front
+    w.box(AXES, [x0 + 0.04, h - 0.08, z0 - 0.02], [x1 - 0.04, h - 0.01, z1 + 0.01], { tone: SNOW, uv: 'flat', weather: 0 });
+    w.box(AXES, [x0 + 0.1, h - 0.01, z0 + 0.04], [x1 - 0.1, h + 0.04, z1 - 0.05], { tone: SNOW, uv: 'flat', weather: 0 });
   }
+}
+
+/** One billet: its cross-section extruded along z, bark on its bark edges, the split faces fresh, its ends end grain. */
+function billet(w: ShedWriter, pts: readonly [number, number][], bark: readonly boolean[], z0: number, z1: number, face: 1 | -1): void {
+  const tone = 0.82 + w.rng() * 0.36;
+  const endLook: Look = { tone: mulc(LOG_END, tone), uv: 'flat', weather: 0.5, endDark: 1 };
+  const barkLook: Look = { tone: mulc(BARK, 0.85 + w.rng() * 0.3), uv: 'flat', weather: 0.7 };
+  const freshLook: Look = { tone: mulc(FRESH_WOOD, 0.75 * tone), uv: 'flat', weather: 0.4 };
+  const P = (x: number, y: number, z: number): V3 => [x, y, z];
+  // the ends: a fan from the first corner (the front end paler, the end the stack shows)
+  for (const [zc, s] of [[z1, 1], [z0, -1]] as const) {
+    const front = (s > 0) === (face > 0);
+    const look = front ? endLook : { ...endLook, tone: mulc(endLook.tone, 0.8) };
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const tri = s > 0 ? [0, i, i + 1] : [0, i + 1, i];
+      const [c0, c1, c2] = tri.map((j) => P(pts[j][0], pts[j][1], zc));
+      w.tri(c0, c1, c2, look);
+    }
+  }
+  for (let i = 0; i < pts.length; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length];
+    const ex = bx - ax, ey = by - ay, len = Math.hypot(ex, ey);
+    if (len < 1e-5) continue;
+    const nn: V3 = [ey / len, -ex / len, 0];
+    const quad = [P(ax, ay, z0), P(bx, by, z0), P(bx, by, z1), P(ax, ay, z1)];
+    const look = bark[i] ? barkLook : freshLook;
+    w.quad(quad, [nn, nn, nn, nn], [FLAT_PAIR, FLAT_PAIR, FLAT_PAIR, FLAT_PAIR], quad.map((q) => w.shade(look, q, nn, false, true)));
+  }
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; area += x0 * y1 - x1 * y0; }
+  w.addVolume(Math.abs(area) / 2 * (z1 - z0));
 }
 
 // ------------------------------------------------------------------------------------------------- the collision
@@ -2333,13 +2489,14 @@ export function buildShedBroken(build: ShedBuild, rng: Rng, salt: number, st: Sh
     if (role(i) === 'fitting' && p.triN > 400) {
       // a stack: its bottom course where it stood, the rest spilled out from the wall it stood against
       const out = faceOut(p.face) ?? nrm([p.c[0] - cxm, 0, p.c[2] - czm]);
+      // (the stack's lower courses stand where they were stacked; its upper billets spill out over the foot of it)
+      const top = p.c[1] + p.h[1];
       for (const b of S.scatter(i)) {
-        // (the stack's dark core, the filler behind its log ends, is not a thing to throw: it goes with the stack)
+        // (the dark board behind the billets is not a thing to throw: it goes with the stack)
         if (b.tris.p.length <= 12 * 9 && boxSpan(b) > 0.4) continue;
-        if (b.centre[1] < 0.28 && pick(0.8)) { S.fix(b, undefined, 0.88); continue; }
-        const ax = b.axes[0];
-        S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.5, 0.5), [out[0] * r(0.1, 1.3) + r(-0.4, 0.4), 0, out[2] * r(0.1, 1.3) + r(-0.4, 0.4)],
-          false, r(0, Math.PI), { ceiling: 1.2 });
+        if (b.centre[1] < top * 0.45 || (b.centre[1] < top * 0.7 && pick(0.5))) { S.fix(b, undefined, 0.88); continue; }
+        S.lie(b, Math.atan2(out[2], out[0]) + Math.PI / 2 + r(-0.6, 0.6), [out[0] * r(0.2, 1.4) + r(-0.4, 0.4), 0, out[2] * r(0.2, 1.4) + r(-0.4, 0.4)],
+          false, r(0, Math.PI), { maxTilt: 0.6, ceiling: 0.9 });
       }
       continue;
     }

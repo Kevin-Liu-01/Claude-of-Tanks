@@ -1386,7 +1386,7 @@ export function logFractureEdge(material: FractureMaterial, piece: FracturePiece
  * thrown; the dug spoil and clods round the crater. No collider: the wreck lies about as high as the old roof.
  */
 function buildLogEarthWreck(O: BuildOpts): THREE.BufferGeometry {
-  const intact = buildLogEarthPieces({ ...O, broken: false });
+  const intact = keptIntact('logearth', O, () => buildLogEarthPieces({ ...O, broken: false }));
   const anatomy = intact.userData.fracture as KitFractureAnatomy;
   const field = pillboxBankField('logearth', O.tones, O.seed);
   const S = new FractureSettle(intact, anatomy, {
@@ -1482,7 +1482,6 @@ function buildLogEarthWreck(O: BuildOpts): THREE.BufferGeometry {
     bar(m, [x, y, z], [x + Math.cos(d) * l, y + r(0, 0.12), z + Math.sin(d) * l], splinter, 0.018 + rng() * 0.015);
   }
   S.extra({ p: m.p, n: m.n, t: m.t, c: m.c }, 1);
-  intact.dispose();
   return S.finish();
 }
 
@@ -2182,7 +2181,7 @@ export function fortFractureEdge(material: FractureMaterial, piece: FracturePiec
  * the crest. The broken pool has no collider: the wreck stands no higher than its standing corner.
  */
 function buildConcreteWreck(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
-  const intact = buildConcretePillboxPieces(style, { ...O, broken: false });
+  const intact = keptIntact(style, O, () => buildConcretePillboxPieces(style, { ...O, broken: false }));
   const anatomy = intact.userData.fracture as KitFractureAnatomy;
   const field = pillboxBankField(style, O.tones, O.seed);
   const S = new FractureSettle(intact, anatomy, {
@@ -2306,7 +2305,6 @@ function buildConcreteWreck(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): TH
     lump(m, x, S.heightAt(x, z) + s * 0.12, z, s * 1.4, s * 0.55, s, rng, clod, false, r(0, Math.PI), 0.5);
   }
   S.extra({ p: m.p, n: m.n, t: m.t, c: m.c }, 1);
-  intact.dispose();
   return S.finish();
 }
 
@@ -2318,11 +2316,39 @@ function mulberry32(a: number): Rng {
 }
 
 /** A map's pillbox: its intact and destroyed states (one geometry each, in the bunker's frame). */
+/**
+ * The intact works the wrecks settle from, kept by their make (style, seed, tones): the pool builds the intact work
+ * first, and its wreck settles from a copy of the same build instead of building it twice (a concrete work's pieces
+ * build is most of its cost). A few at a time; never handed to a pool.
+ */
+const INTACT_KEPT = new Map<string, THREE.BufferGeometry>();
+function intactKey(style: PillboxStyle, O: BuildOpts): string { return `${style}:${O.seed}:${JSON.stringify(O.tones)}`; }
+function keepIntact(key: string, g: THREE.BufferGeometry): void {
+  if (INTACT_KEPT.has(key)) return;
+  if (INTACT_KEPT.size >= 4) INTACT_KEPT.delete(INTACT_KEPT.keys().next().value as string);
+  const copy = g.clone();
+  copy.userData = { fracture: g.userData.fracture };
+  INTACT_KEPT.set(key, copy);
+}
+function keptIntact(style: PillboxStyle, O: BuildOpts, build: () => THREE.BufferGeometry): THREE.BufferGeometry {
+  const key = intactKey(style, O);
+  const kept = INTACT_KEPT.get(key);
+  if (kept) return kept;
+  const g = build();
+  keepIntact(key, g);
+  g.dispose();
+  return INTACT_KEPT.get(key)!;
+}
+
 export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
   const O = { tones, seed, broken };
-  // (round 2: the intact concrete work in the destruction core's pieces; the destroyed state is the settled heap)
-  const g = style === 'logearth' ? (broken ? buildLogEarthWreck(O) : buildLogEarthPieces(O)) : broken ? buildConcreteWreck(style, O) : buildConcretePillboxPieces(style, O);
-  return g;
+  if (!broken) {
+    const g = style === 'logearth' ? buildLogEarthPieces(O) : buildConcretePillboxPieces(style, O);
+    keepIntact(intactKey(style, O), g);
+    return g;
+  }
+  // (round 2: the intact work in the destruction core's pieces; the destroyed state settled from them)
+  return style === 'logearth' ? buildLogEarthWreck(O) : buildConcreteWreck(style, O);
 }
 
 /**
