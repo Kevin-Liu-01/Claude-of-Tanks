@@ -8060,6 +8060,25 @@ function* createTankOwnedSteps(
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
   };
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 386/392's critics on the Sabra Mk 2's cheek covers: "a translucent,
+  // glass-like sheet with bolt heads"): a plate laid on the armour projects the same world-scale camouflage as the face
+  // beneath it, so only its edges showed and the plate read as glass over the pattern. A part may shift its projection
+  // (userData.camoUvOffset, in camouflage-tile units) after the shared box projection; rendered builds only.
+  const shiftPartCamouflage = (list: THREE.BufferGeometry[], merged: THREE.BufferGeometry): void => {
+    const uv = merged.getAttribute('uv');
+    if (!uv) return;
+    let offset = 0, shifted = false;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const shift = part.userData.camoUvOffset as readonly [number, number] | undefined;
+      if (shift) {
+        for (let i = offset; i < offset + count && i < uv.count; i++) uv.setXY(i, uv.getX(i) + shift[0], uv.getY(i) + shift[1]);
+        shifted = true;
+      }
+      offset += count;
+    }
+    if (shifted) uv.needsUpdate = true;
+  };
   const mergeBucket = (bucket: string, list: THREE.BufferGeometry[]): void => {
     if (!list.length) return;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
@@ -8074,6 +8093,7 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
