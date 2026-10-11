@@ -1399,6 +1399,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
+    // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
+    'src/world/maps/regional/polarWorks.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
@@ -1536,6 +1538,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
+    // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
+    'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
@@ -1567,6 +1571,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/mapVehicleGaps.selftest.mjs',
     'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
