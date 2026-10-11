@@ -11,7 +11,7 @@ import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-
 function sourceHash() {
   const hash = createHash('sha256');
   for (const file of ['./cloud-history.browser.selftest.mjs', './cloud-history.browser.fixture.mjs',
-    '../src/engine/volumetricClouds.ts', '../package-lock.json']) hash.update(readFileSync(new URL(file, import.meta.url)));
+    '../src/engine/volumetricClouds.ts', '../src/engine/cloudShaders.ts', '../package-lock.json']) hash.update(readFileSync(new URL(file, import.meta.url)));
   return hash.digest('hex');
 }
 async function bounded(promise, ms, label) {
