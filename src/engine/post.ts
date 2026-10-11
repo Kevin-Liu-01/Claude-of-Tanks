@@ -1215,7 +1215,9 @@ const AerialShader = {
         // opaque lit receiver again (2 + v): the hulls' and the baked ground terms take a structure's decks, slabs and
         // floors as they always did (a tank on a bridge keeps its ground), their own normal gates keep its walls
         float cotStructCav = 1.0;
-        if ( texel.a >= ${STRUCTURE_ALPHA_MIN.toFixed(1)} ) {
+        // (a later block may keep a ground-only effect off a structure's decks and walls: the flag outlives the band)
+        bool cotStructPixel = texel.a >= ${STRUCTURE_ALPHA_MIN.toFixed(1)};
+        if ( cotStructPixel ) {
           if ( uStructOcc > 0.5 && -viewZ < ${STRUCTURE_OCCLUSION_RANGE_M.toFixed(1)} ) {
             cotStructCav = cotStructureCavityShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
           }

@@ -63,7 +63,7 @@ const props = read('../world/props.ts');
 assert.match(props, /if \(!STRUCTURE_OCCLUSION_EXCLUDED_KINDS\.has\(materialKind\)\) material\.userData\.cotStructurePixel = true;/, 'the props\' structure kinds tag their pixels');
 for (const kind of ['rock', 'fieldStone', 'fieldMud', 'ballast', 'pole', 'glass', 'vehicle']) assert.ok(STRUCTURE_OCCLUSION_EXCLUDED_KINDS.has(kind), `${kind} is not a structure`);
 const post = read('./post.ts');
-assert.match(post, /float cotStructCav = 1\.0;\s*if \( texel\.a >= \$\{STRUCTURE_ALPHA_MIN\.toFixed\(1\)\} \) \{\s*if \( uStructOcc > 0\.5 && -viewZ < \$\{STRUCTURE_OCCLUSION_RANGE_M\.toFixed\(1\)\} \) \{\s*cotStructCav = cotStructureCavityShade\( vUv, uCamPos \+ ray \* rayT, -viewZ, texel\.a \);\s*\}\s*texel\.a -= \$\{STRUCTURE_ALPHA_TAG\.toFixed\(1\)\};/,
+assert.match(post, /float cotStructCav = 1\.0;[\s\S]{0,160}bool cotStructPixel = texel\.a >= \$\{STRUCTURE_ALPHA_MIN\.toFixed\(1\)\};\s*if \( cotStructPixel \) \{\s*if \( uStructOcc > 0\.5 && -viewZ < \$\{STRUCTURE_OCCLUSION_RANGE_M\.toFixed\(1\)\} \) \{\s*cotStructCav = cotStructureCavityShade\( vUv, uCamPos \+ ray \* rayT, -viewZ, texel\.a \);\s*\}\s*texel\.a -= \$\{STRUCTURE_ALPHA_TAG\.toFixed\(1\)\};/,
   'the aerial pass: the cavity factor, then the pixel back in the opaque band (2 + v)');
 assert.ok(post.indexOf('texel.a -= ${STRUCTURE_ALPHA_TAG') < post.indexOf('texel.rgb *= cotVehicleGroundShade('),
   'a structure\'s deck or slab is a receiver of the hulls\' ground term again (a tank on a bridge keeps its ground)');
