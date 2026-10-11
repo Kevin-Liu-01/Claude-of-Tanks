@@ -1651,8 +1651,9 @@ function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly Copl
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
-/** The painted far fill's shade (sealed lane, wave 371b): a recess behind a louvre at about two fifths of its plate. */
-const FAR_FILL_CAVITY = 0.42;
+/** The painted far fill's shade (sealed lane, wave 371b): a recess behind a louvre in deep shade, near the dark backstop's
+ * value (the M1A2 TUSK's grille gaps measured 60 / 143 / 102 sRGB on main / the lit fill / 0.42) but camo-tinted. */
+const FAR_FILL_CAVITY = 0.15;
 function lodWrap(
   parent: THREE.Object3D,
   obj: THREE.Object3D,
