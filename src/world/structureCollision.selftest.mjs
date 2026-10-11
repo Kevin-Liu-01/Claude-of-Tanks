@@ -81,7 +81,8 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
   }
 
   for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
-    const buckets = { baked: [meta.build(seeded(seed))] };
+    // (the props' refit derives a fracture-ready kind's collision from its envelopes: meta.collisionBuild)
+    const buckets = { baked: [meta.collisionBuild ? meta.collisionBuild() : meta.build(seeded(seed))] };
     const profile = deriveRuntimeStructureCollisionProfile(buckets);
     const certification = certifyStructureCollisionProfile(buckets, profile);
     maximumParts = Math.max(
