@@ -27,6 +27,7 @@ interface RunningGearReceipt {
   wheelZs?: readonly number[];
   suspensionLinkCount?: number;
   suspensionJointCount?: number;
+  suspensionSharedBearings?: number;
   suspensionArmProfile?: string;
   suspensionPlacement?: string;
   [key: string]: RuntimeValue;
@@ -161,12 +162,16 @@ function auditRunningGearReceipts(
         actual: receipt.suspensionLinkCount ?? null,
       });
     }
-    if (receipt.suspensionJointCount !== expectedLinks * 2) {
+    // two joints per arm: its fixed bearing and its moving axle. Paired arms share one fixed bearing, drawn once and
+    // recorded apart (suspensionSharedBearings, 2026-10-10).
+    const sharedBearings = receipt.suspensionSharedBearings ?? 0;
+    if ((receipt.suspensionJointCount ?? 0) + sharedBearings !== expectedLinks * 2
+        || sharedBearings < 0 || sharedBearings > expectedLinks / 2) {
       issues.push({
         code: 'missing-suspension-joints',
         unitId: receipt.unitId ?? null,
         expected: expectedLinks * 2,
-        actual: receipt.suspensionJointCount ?? null,
+        actual: (receipt.suspensionJointCount ?? 0) + sharedBearings,
       });
     }
     if (receipt.suspensionArmProfile !== 'tapered-forged-arm-v1') {

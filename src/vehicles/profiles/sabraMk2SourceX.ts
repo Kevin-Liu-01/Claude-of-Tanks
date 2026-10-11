@@ -259,29 +259,16 @@ function buildSabraCupola(P: TankBuilderPort, py: number, pz: number): void {
 function buildSabraCupolaWeapon(P: TankBuilderPort, py: number, pz: number): void {
   // Source cupola weapon and receiver, seated to the raised structural cupola.
   turretEquipment(P,'turretDetail',box(.12,.11,.33),-.5059,2.778,.36);
-  // Register the actual receiver and barrel, retaining their existing stock,
-  // dark material and turret frame. Painted cupola supports stay in their
-  // original buckets so their camo projection and weathering are unchanged.
-  const gunParts=[
-    KIT.xform(cylZ(.024,.79,P.q?16:8),-.5059,2.7738-py,.9061-pz),
-    KIT.xform(box(.15,.13,.26),-.5059,2.783-py,.41-pz),
-  ];
-  const roofGunGeometry=KIT.mergeAll(gunParts);
-  for(const part of gunParts) if(part.index) part.dispose();
-  const roofGunMesh=new THREE.Mesh(roofGunGeometry,P.mats.dark);
-  roofGunMesh.name='sabraCupolaReceiverAndBarrel';
-  roofGunMesh.castShadow=roofGunMesh.receiveShadow=true;
-  P.disposables.push(roofGunGeometry);
-  // Match the former turretDark detail LOD, including LOW's shorter range.
-  const roofGunLod=new THREE.LOD();
-  roofGunLod.addLevel(roofGunMesh,0);
-  roofGunLod.addLevel(new THREE.Object3D(),P.q?150:64,.1);
-  const roofGun=new THREE.Group();
-  roofGun.add(roofGunLod);
-  FITTINGS.markExact(roofGun,'pintleMG');
+  // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
+  // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts,
+  // receiver with its feed cover and spade grips, perforated barrel support and flash hider) in place of the source
+  // study's receiver box and plain tube, carried by the cupola's own painted supports (the external cradle: no second
+  // pintle), at Codex's mount: on the source barrel's axis (x -0.5059, y 2.7738) with its receiver's back where the
+  // source receiver's back stood (z 0.28); the true-length M2 barrel reaches 0.54 m past the study's short tube. One gun,
+  // one fitting.
+  const roofGun=FITTINGS.seatMuzzle(FITTINGS.pintleMG({mats:P.mats,cls:'m2',mount:'external-cradle',tone:'two-tone',
+    ammo:false,seed:2741}),[-.5059,2.7738-py,1.8411-pz]);
   roofGun.name='sabraSourceCupolaWeapon';
-  roofGun.userData.barrelAxisLocal=[0,0,1];
-  roofGun.userData.barrelElevationRad=0;
   P.turretG.add(roofGun);
   turretEquipment(P,'turretDetail',box(.22,.10,.24),-.7259,2.783,.34);
 }

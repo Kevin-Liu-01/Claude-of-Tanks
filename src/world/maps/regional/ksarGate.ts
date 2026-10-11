@@ -16,6 +16,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
 import { DESERT_SANGAR } from './desertSangar.ts';
 import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST, RUM_SHED } from './wadiRumPosts.ts';
+import { POLAR_DRIFT_FENCE, POLAR_DRUM_ROW, POLAR_DRUM_WALL, POLAR_DRUM_WALL_BIG, POLAR_DRUM_WALL_SMALL } from './polarWorks.ts';
 
 type Rng = () => number;
 
@@ -183,6 +184,9 @@ export const KSAR_GATE_POST = Object.freeze({
 /** The structure variants a map may name in place of a generic kind (props structureVariants; the Redrock lane's round 9:
  * the desert post's sangar for the field works' pillbox, desertSangar.ts; round 10: the Desert Patrol's rendered barrack
  * and fuel post for the Quonset hut and the checkpoint hut, the Bedouin's goat-hair tents for the desert and camp tents,
- * wadiRumPosts.ts). */
+ * wadiRumPosts.ts; the map-content lane, 2026-10-10: a polar station's field works, its drum breastworks for the sandbag
+ * stacks, its drift fence for the barbed wire and its drum row for the barrier, polarWorks.ts). */
 export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, sangar: DESERT_SANGAR, rumbarrack: RUM_BARRACK,
-  rumpost: RUM_POST, rumshed: RUM_SHED, bedouintent: BEDOUIN_TENT, bedouincamp: BEDOUIN_CAMP_TENT });
+  rumpost: RUM_POST, rumshed: RUM_SHED, bedouintent: BEDOUIN_TENT, bedouincamp: BEDOUIN_CAMP_TENT,
+  polardrumwall: POLAR_DRUM_WALL, polardrumwallbig: POLAR_DRUM_WALL_BIG, polardrumwallsmall: POLAR_DRUM_WALL_SMALL,
+  polardriftfence: POLAR_DRIFT_FENCE, polardrumrow: POLAR_DRUM_ROW });

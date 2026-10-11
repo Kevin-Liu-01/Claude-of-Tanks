@@ -45,7 +45,7 @@ export interface GarageArchitectureStats {
   trees: number;
   treeDetailTier: 'battlefield-near' | 'battlefield-far' | 'none';
   backdropLayers: number;
-  horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'none';
+  horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune' | 'none';
   horizonMaxHeightM: number;
   groundCover: number;
   structures: number;
@@ -135,6 +135,7 @@ function horizonStyleStat(value: string | null | undefined): GarageArchitectureS
     case 'coastal':
     case 'alpine':
     case 'mesa':
+    case 'dune':
       return value;
     default:
       return 'none';

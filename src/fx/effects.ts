@@ -20,7 +20,8 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
-import { createDronePresentation } from './dronePresentation.ts';
+import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
+import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
@@ -72,6 +73,9 @@ interface FxEngineContext {
   camera?: THREE.Camera;
   anisotropy?: number;
   scene?: THREE.Scene;
+  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes). */
+  setupShadowMaterial?(material: THREE.Material): unknown;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface FxHeightField {
@@ -92,6 +96,9 @@ interface FxHeightField {
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
+  /** the battle world's raycast (terrain and every live collider), the one the shells sweep; a drone flying home avoids it */
+  raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
+    { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
   groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
@@ -1056,7 +1063,29 @@ function* createFxSteps(
   });
   const group = new THREE.Group();
   group.name = 'fx';
-  const drones = createDronePresentation(group);
+  // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
+  if (engineCtx?.setupShadowMaterial) {
+    configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+  }
+  // A drone whose flight ends in the air flies home over the battle world and lands on its carrier's dock.
+  let droneWorldSeam: FxWorldSeam | null = null;
+  const droneWorld = { raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number) =>
+    droneWorldSeam?.raycast?.(origin, direction, maxDist) ?? null };
+  const drones = createDronePresentation(group, {
+    world: () => { droneWorldSeam = world?.() ?? null; return droneWorldSeam?.raycast ? droneWorld : null; },
+    resolveCarrier: (ownerId) => {
+      const owner = decalEntityFor(ownerId as ShellId);
+      if (!owner) return null;
+      return { frame: owner.visual?.root ? missionAttachmentVisualFrame(owner.visual.root) : undefined,
+        destroyed: !!owner.combat?.destroyed, flying: owner.aerial?.active === true };
+    },
+    onReturnEvent: (id, event, reason) => {
+      const log = (group.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
+      log.push({ id, event, reason }); if (log.length > 32) log.shift();
+    },
+  });
+  // Diagnostics (films and probes): the flights home in progress, read off the FX group.
+  group.userData.droneFlightsHome = () => drones.returning();
   group.matrixAutoUpdate = false;
   group.add(particles.group);
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
@@ -4466,7 +4495,7 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
-    drones.begin(particles.getTime());
+    drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
@@ -4475,19 +4504,23 @@ function* createFxSteps(
     liveMissiles = 0;
     for (let i = 0; i < shells.length; i++) {
       const sh = shells[i];
-      if (!sh.dead && (sh.spec?.guided || sh.rocket === true)) liveMissiles++;
+      // (fx 9a; merged with main 216's drones) a drone's warhead flies as a drone, never a missile trail
+      if (!sh.dead && sh.spec?.tracer !== 'DRONE' && (sh.spec?.guided || sh.rocket === true)) liveMissiles++;
+    }
+    // Every live drone, outside the tracer cap: a drone missing from a frame reads as a flight that ended (it flies home).
+    for (let index = 0; index < shells.length; index++) {
+      const shell = shells[index];
+      if (shell.dead || shell.spec?.tracer !== 'DRONE') continue;
+      // The pilot's FPV lens sits inside its own airframe; every other view keeps the silhouette, however close.
+      const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+      const hidden=droneHiddenFromCamera(shell.pos, shell.shooterId, flyer?.active === true, camera);
+      drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,
+        owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined,shell.shooterId??undefined,hidden);
     }
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
-      if (shell.spec?.tracer === 'DRONE') {
-        // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
-        if (shell.pos.distanceToSquared(camera.position) > 4) {
-          const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
-          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined);
-        }
-        continue;
-      }
+      if (shell.spec?.tracer === 'DRONE') continue;
       const guided = !!shell.spec?.guided || shell.rocket === true;
       const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
       // Snapshot shells carry type/guidance, not the complete local gun record.
@@ -5651,6 +5684,7 @@ function* createFxSteps(
         else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
+        if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
         if (e.kind !== 'ricochet') tracers.strike(e.shellId, e.pos);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
@@ -5708,6 +5742,7 @@ function* createFxSteps(
         }
       });
       onFxEvent(bus, 'shell:expired', (e) => {
+        if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
         tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry

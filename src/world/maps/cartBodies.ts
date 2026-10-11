@@ -1608,7 +1608,9 @@ function evacart(c: Ctx, _s: EvaCartSpec): Assembly {
   const R = 0.36, wx = 0.42;
   const wheels: WheelPlace[] = [1, -1].map((side) => ({ x: side * wx, y: R, z: -0.15, side: side as 1 | -1, r: R, halfWidth: 0.08,
     emit: () => {
-      c.mesh.lathe([[R - 0.02, -0.07], [R, -0.065], [R, 0.065], [R - 0.02, 0.07]], c.coarse ? 14 : 22, () => ALU, { creases: [1, 2] });
+      // a closed band (sealed lane 2026-10-10: the open profile left its inner face out, so the sky showed through the
+      // wheel from above)
+      c.mesh.lathe([[R - 0.02, -0.07], [R, -0.065], [R, 0.065], [R - 0.02, 0.07], [R - 0.02, -0.07]], c.coarse ? 14 : 22, () => ALU, { creases: [1, 2, 3] });
       if (!c.coarse) for (let k = 0; k < 18; k++) {
         c.mesh.push().rotateX((k / 18) * Math.PI * 2);
         c.mesh.dressing(() => c.mesh.box(0, R + 0.004, 0, 0.13, 0.008, 0.03, fixed(0x8a8a86, 0.4, 0.8, 'steel'), 0));

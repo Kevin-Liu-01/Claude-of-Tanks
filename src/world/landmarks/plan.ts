@@ -4,7 +4,7 @@
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
 
-type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour';
+type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck' | 'harbour' | 'works';
 
 interface LandmarkKindSpec {
   family: LandmarkFamily;
@@ -32,6 +32,9 @@ interface LandmarkKindSpec {
    *  tower between thin wall stubs): the composer tests these, not the footprint, against the solids already standing,
    *  and a vetoed ground is theirs. */
   solids?: (p: LandmarkParams) => ReadonlyArray<readonly [number, number, number, number]>;
+  /** The ground it is seated on, [hw, hl], where its footprint reaches past it (a tower mill's sails sweep over ground
+   *  its base never touches): the composer seats it, and measures its fall, on this rectangle alone. */
+  seat?: (p: LandmarkParams) => readonly [number, number] | null;
 }
 
 /** True when a placement builds no solid (plan.ts `dressing`): it publishes no collision record. */
@@ -107,11 +110,22 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // and the box at the path's mouth
   garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
+  // a mill's outfall: the culvert's headwall at the bank's top and its runnel pitched in stone down to the water, along +z
+  // from the headwall (`length` m, `width` the runnel's)
+  outfall: { family: 'park', drapes: true, inWater: true, dressing: () => true, defaults: { length: 4, width: 0.8 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.6, num(p, 'length') / 2 + 0.5] },
   // a path draped over the ground from the piece's origin along its +z (`length` m, `width` wide): flagstones or setts
   // (the map's masonry), gravel or beaten earth — an approach from a road to a gate, a track to a door. It meets the road
   // it leaves (no road margin) and stands on nothing.
   path: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true, defaults: { length: 12, width: 1.6, surface: 'stone' },
     footprint: (p) => [num(p, 'width') / 2 + 0.2, num(p, 'length') / 2 + 0.2] },
+  // a stepped lane from the piece's origin along its +z (`length` m, `width` wide): its landings paved over the ground and
+  // a flight of steps set into every stretch steeper than `steep` (stone blocks, or a mule stair's curbs and treads:
+  // `steps: 'cordonata'`), risers near `rise` m, low stone kerbs either side (0.22 m past the width). It meets the road it
+  // leaves (no road margin) and stands on nothing (the map-revival lane, 2026-10-07: Orchard's village lanes).
+  stairway: { family: 'park', roadMargin: 0, drapes: true, open: true, dressing: () => true,
+    defaults: { length: 12, width: 2.4, surface: 'stone', steps: 'block', rise: 0.17, steep: 0.25, kerbs: true },
+    footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.2] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   // (`wallsLeft` / `wallsRight`: each stub's own length, -x / +x of the passage, where the road crosses a gap in the wall
   // off its middle; a negative value takes `walls`)
@@ -179,7 +193,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
-      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]) },
+      : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]),
+    // (a tower mill stands on its brick base, 4.5 m round: on a terp's crest its sails' span reaches over the batter)
+    seat: (p) => (p.style === 'tower' ? [4.6, 4.6] : null) },
   // ------------------------------------------------------------------------------------------------ civic buildings
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)
@@ -220,6 +236,47 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a collective farm's grain store (zernosklad): a long single-storey store, its loading doors and ramps on the front
   granary: { family: 'civic', defaults: { length: 30, width: 11, walls: 'brick' },
     footprint: (p) => [num(p, 'length') / 2 + 0.8, num(p, 'width') / 2 + 2.6] },
+  // ------------------------------------------------------------------------------------------------ works (stations.ts)
+  // the map-content lane (2026-10-09): a polar station's works. The radome's sphere may overhang its tower building; the
+  // billboard reaches from its struts' anchors behind to its feed tower before it (the focus of its curved face)
+  radomeTower: { family: 'works', defaults: { side: 9, height: 8, radius: 5.2 },
+    footprint: (p) => { const r = Math.max(num(p, 'side') / 2, num(p, 'radius')); return [r + 1.0, r + 1.8]; } },
+  troposcatter: { family: 'works', drapes: true, defaults: { width: 18, height: 14, clearance: 1.4 },
+    footprint: (p) => {
+      // (stations.ts sagDepth: the raking legs' footings behind to the transmitter module's stair before)
+      const w = num(p, 'width'), sag = Math.max(2.0, w / 6), fz = Math.min(2.2 + (w * w) / (16 * sag), 2.2 + 4 * sag + 7);
+      return [w / 2 + 0.6, (3.1 + fz + 1.6 + 1.4) / 2 + 0.3];
+    } },
+  guyedMast: { family: 'works', drapes: true, defaults: { height: 36, face: 1.2, guys: 0.36 },
+    footprint: (p) => { const g = Math.max(0.2, num(p, 'guys')) * num(p, 'height') + 0.6; return [g, g]; } },
+  moduleTrain: { family: 'works', defaults: { modules: 8, length: 7.4, width: 9, height: 3.4, stilts: 0.9 },
+    footprint: (p) => [Math.round(num(p, 'modules')) * num(p, 'length') / 2 + 0.4, num(p, 'width') / 2 + 2.2] },
+  fuelTankFarm: { family: 'works', drapes: true, defaults: { tanks: 4, columns: 2, radius: 5, height: 7.5 },
+    footprint: (p) => {
+      const n = Math.round(num(p, 'tanks')), cols = Math.min(n, Math.max(1, Math.round(num(p, 'columns')))), rows = Math.ceil(n / cols);
+      const pitch = 2 * num(p, 'radius') + 3;
+      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 2.8, (rows - 1) * pitch / 2 + num(p, 'radius') + 3.4];
+    } },
+  // (a Jamesway hut; a fuel cache and a drift fence are the props' own drums and fence modules: all dressing)
+  jamesway: { family: 'works', defaults: { length: 14.6, width: 4.9 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
+  drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
+    footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
+  airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
+    footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
+  snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
+    footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
+  // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
+  // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
+  headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
+    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 9.8] },
+  oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
+  conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },
+    footprint: (p) => [Math.max(2.6, num(p, 'width') / 2 + 0.9), num(p, 'length') / 2 + 0.3] },
+  oreCars: { family: 'works', drapes: true, defaults: { cars: 6, gauge: 1.067 },
+    footprint: (p) => [1.3, (Math.round(num(p, 'cars')) * 3 + 4.6) / 2 + 1.6] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

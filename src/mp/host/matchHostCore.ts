@@ -52,7 +52,20 @@ export interface MatchHostCoreOptions {
   helloTimeoutMs?: number;
   /** Ticks the actor keeps publishing after the verdict (the actor's default otherwise). */
   endedLingerTicks?: number;
+  /** The longest a migrated host holds its world still for the awaited seats (RESUME_HOLD_MS; 0 = never hold). */
+  resumeHoldMs?: number;
 }
+
+/**
+ * The resume hold (2026-10-10, the MP lane; the e2e's "B's hull as C saw it moved 10.8 / 12.5 / 17.8 m across the
+ * migration"): a migrated host used to start its loop the moment it booted, before any seat was back. A hull restored
+ * with speed (its newest row, captured while it drove) rolled on under the empty input — a released throttle coasts
+ * at 3.5 m/s², 9-17 m from 8-11 m/s — while the peers were still re-offering, and each peer's first frame from the new
+ * host showed it that far from the last one it saw. Now the world stands still, as it did through the outage, until
+ * every seat that was in the match is back or this much time has passed: the seats are welcomed together against the
+ * still world (their own-row hints land before the first tick), then the loop starts at the resume tick.
+ */
+export const RESUME_HOLD_MS = 3_000;
 
 export interface MatchHostCore {
   readonly actor: MatchActor | null;
@@ -97,6 +110,7 @@ export function createMatchHostCore({
   reportIntervalMs = ROOM_MATCH_POLL_MS,
   helloTimeoutMs = HELLO_TIMEOUT_MS,
   endedLingerTicks,
+  resumeHoldMs = RESUME_HOLD_MS,
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
@@ -123,6 +137,9 @@ export function createMatchHostCore({
   // One 'ended' report closes the match in the room (P1 records the verdict and the room is back to waiting): every report
   // after it is invalid_command there, so the cadence and the stop report end with it.
   let endedReported = false;
+  // the resume hold (RESUME_HOLD_MS): the seats awaited, those back, their deferred welcomes, and how it ended
+  let hold: { awaited: Set<string>; arrived: Set<string>; attaches: Array<() => void>; startedMs: number; timer: TimerHandle | null } | null = null;
+  let holdStats: HostCoreStats['resumeHold'] = null;
   const era: EraIndexer = createEraIndexer();
 
   const post = (message: WorkerToHostMessage, transfer?: ArrayBuffer[]): void => { if (!disposed) port.post(message, transfer); };
@@ -212,13 +229,42 @@ export function createMatchHostCore({
         return;
       }
       if (gate.timer !== null) { clearTimer(gate.timer); gate.timer = null; }
-      gate.state = 'attached';
-      const attached = live.attach(link, hello, verified.claims);
-      if (!attached) { gates.delete(peer); return; }
-      for (const queued of gate.queue.splice(0)) link.deliver(queued);
+      const attachNow = (): void => {
+        if (links.get(peer) !== link || gates.get(peer) !== gate || actor !== live) return;
+        gate.state = 'attached';
+        const attached = live.attach(link, hello, verified.claims);
+        if (!attached) { gates.delete(peer); return; }
+        for (const queued of gate.queue.splice(0)) link.deliver(queued);
+      };
+      // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves
+      if (hold) {
+        hold.attaches.push(attachNow);
+        hold.arrived.add(verified.claims.playerId);
+        if ([...hold.awaited].every((playerId) => hold!.arrived.has(playerId))) releaseHold('seats');
+        return;
+      }
+      attachNow();
     }).catch((error: unknown) => {
       if (links.get(peer) === link) link.close(CLOSE_REASON.INTERNAL_ERROR, error instanceof Error ? error.message : 'verification failed');
     });
+  }
+
+  /** The resume hold ends: every seat that came back is welcomed against the still world, then the loop starts. */
+  function releaseHold(reason: 'seats' | 'timeout'): void {
+    const current = hold;
+    if (!current) return;
+    hold = null;
+    if (current.timer !== null) { clearTimer(current.timer); current.timer = null; }
+    const arrived = [...current.awaited].filter((playerId) => current.arrived.has(playerId));
+    holdStats = { heldMs: Math.round(now() - current.startedMs), released: reason, awaited: current.awaited.size, arrived: arrived.length };
+    const live = actor;
+    if (!live || stopped || live.stopped) return;
+    // welcomed at the resume tick, in arrival order; each seat's own-row hint (queued behind its HELLO) lands now, before any tick
+    for (const attach of current.attaches.splice(0)) attach();
+    live.start();
+    post({ type: 'stats', stats: stats()! });
+    log('info', 'resume hold released', { reason, heldMs: holdStats.heldMs, awaited: holdStats.awaited, arrived: holdStats.arrived,
+      missing: [...current.awaited].filter((playerId) => !current.arrived.has(playerId)) });
   }
 
   // ------------------------------------------------------------ reports and migration state
@@ -355,9 +401,19 @@ export function createMatchHostCore({
     endedReported = false;
     // The room hears 'loading' as soon as the actor exists (P1's cadence), then every phase change and every interval.
     report(created, now());
-    created.start();
+    // A migration with other seats in it holds the world still until they are back (RESUME_HOLD_MS); anything else runs now.
+    const seatIds = new Set(next.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.playerId));
+    const awaited = resume ? [...new Set(resume.holdForSeats ?? [])].filter((playerId) => seatIds.has(playerId)) : [];
+    if (awaited.length && resumeHoldMs > 0) {
+      const current = { awaited: new Set(awaited), arrived: new Set<string>(), attaches: [] as Array<() => void>, startedMs: now(), timer: null as TimerHandle | null };
+      hold = current;
+      holdStats = { heldMs: 0, released: null, awaited: awaited.length, arrived: 0 };
+      current.timer = setTimer(() => { current.timer = null; if (hold === current) releaseHold('timeout'); }, resumeHoldMs);
+    } else {
+      created.start();
+    }
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume });
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0 });
     for (const { peer, label, frames } of pendingOpens.splice(0)) {
       openLink(peer, label);
       for (const frame of frames) admit(peer, frame);
@@ -377,6 +433,7 @@ export function createMatchHostCore({
       droppedTicks: summary.loop.droppedTicks, stalls: summary.loop.stalls, lateWakeupMaxMs: summary.loop.lateWakeupMaxMs, verdict: summary.verdict,
       snapshotHz: summary.snapshotHz, snapshotSkips: summary.droppedSnapshots, interest: summary.interest,
       resumeHints: { applied: summary.resumeHints.applied, rejected: summary.resumeHints.rejected },
+      resumeHold: holdStats ? { ...holdStats, ...(hold ? { heldMs: Math.round(now() - hold.startedMs), arrived: [...hold.awaited].filter((playerId) => hold!.arrived.has(playerId)).length } : {}) } : null,
     };
   }
 
@@ -384,6 +441,7 @@ export function createMatchHostCore({
     if (stopped) return;
     stopped = true;
     if (housekeeping !== null) { clearTimer(housekeeping); housekeeping = null; }
+    if (hold) { if (hold.timer !== null) clearTimer(hold.timer); hold = null; }
     for (const gate of gates.values()) if (gate.timer !== null) clearTimer(gate.timer);
     gates.clear();
     const live = actor;

@@ -1,0 +1,890 @@
+{
+ "heavy:arcology": {
+  "floating": 248,
+  "dangling": 4
+ },
+ "heavy:bathhouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "heavy:broadcasttower": {
+  "floating": 175,
+  "dangling": 0
+ },
+ "heavy:civichall": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "heavy:megatower": {
+  "floating": 177,
+  "dangling": 2
+ },
+ "heavy:needletower": {
+  "floating": 186,
+  "dangling": 0
+ },
+ "heavy:parkingdeck": {
+  "floating": 1,
+  "dangling": 10
+ },
+ "heavy:schoolhouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "heavy:terracetower": {
+  "floating": 170,
+  "dangling": 2
+ },
+ "kit:andalusian:barn": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:andalusian:chapel": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:andalusian:cornershop": {
+  "floating": 10,
+  "dangling": 3
+ },
+ "kit:andalusian:cottage": {
+  "floating": 3,
+  "dangling": 2
+ },
+ "kit:andalusian:farmhouse": {
+  "floating": 2,
+  "dangling": 2
+ },
+ "kit:andalusian:granary": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:andalusian:rowhouse": {
+  "floating": 12,
+  "dangling": 3
+ },
+ "kit:andalusian:schoolhouse": {
+  "floating": 12,
+  "dangling": 0
+ },
+ "kit:andalusian:tavern": {
+  "floating": 13,
+  "dangling": 0
+ },
+ "kit:andalusian:woodshed": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:arctic:firestation": {
+  "floating": 6,
+  "dangling": 2
+ },
+ "kit:arctic:foundryoffice": {
+  "floating": 21,
+  "dangling": 4
+ },
+ "kit:arctic:ruin": {
+  "floating": 2,
+  "dangling": 6
+ },
+ "kit:arctic:watertower": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:bengal:cornershop": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:bengal:depot": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:bengal:ruin": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "kit:breton:chapel": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:breton:cornershop": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "kit:breton:tavern": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "kit:chouf:bathhouse": {
+  "floating": 27,
+  "dangling": 0
+ },
+ "kit:chouf:church": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:chouf:farmhouse": {
+  "floating": 14,
+  "dangling": 0
+ },
+ "kit:chouf:market": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "kit:chouf:marketRow": {
+  "floating": 8,
+  "dangling": 0
+ },
+ "kit:chouf:rangerlodge": {
+  "floating": 14,
+  "dangling": 0
+ },
+ "kit:chouf:ruin": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:chouf:tavern": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:chouf:woodshed": {
+  "floating": 0,
+  "dangling": 13
+ },
+ "kit:dalmatian:bathhouse": {
+  "floating": 18,
+  "dangling": 2
+ },
+ "kit:dalmatian:cornershop": {
+  "floating": 0,
+  "dangling": 16
+ },
+ "kit:dalmatian:fishery": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:dalmatian:tavern": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "kit:eifel:barn": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:eifel:chapel": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:eifel:church": {
+  "floating": 9,
+  "dangling": 5
+ },
+ "kit:eifel:cottage": {
+  "floating": 125,
+  "dangling": 0
+ },
+ "kit:eifel:depot": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:eifel:farmhouse": {
+  "floating": 91,
+  "dangling": 19
+ },
+ "kit:eifel:foundryoffice": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:eifel:granary": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:eifel:rangerlodge": {
+  "floating": 136,
+  "dangling": 0
+ },
+ "kit:eifel:ruin": {
+  "floating": 0,
+  "dangling": 7
+ },
+ "kit:eifel:tavern": {
+  "floating": 27,
+  "dangling": 5
+ },
+ "kit:eifel:warehouse": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:franconian:barn": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:franconian:church": {
+  "floating": 9,
+  "dangling": 5
+ },
+ "kit:franconian:cornershop": {
+  "floating": 134,
+  "dangling": 18
+ },
+ "kit:franconian:cottage": {
+  "floating": 126,
+  "dangling": 2
+ },
+ "kit:franconian:depot": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:franconian:farmhouse": {
+  "floating": 91,
+  "dangling": 19
+ },
+ "kit:franconian:rowhouse": {
+  "floating": 70,
+  "dangling": 2
+ },
+ "kit:franconian:ruin": {
+  "floating": 0,
+  "dangling": 7
+ },
+ "kit:franconian:schoolhouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:franconian:tavern": {
+  "floating": 27,
+  "dangling": 5
+ },
+ "kit:glencanyon:arcology": {
+  "floating": 4,
+  "dangling": 8
+ },
+ "kit:glencanyon:broadcasttower": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:glencanyon:needletower": {
+  "floating": 24,
+  "dangling": 0
+ },
+ "kit:glencanyon:parkingdeck": {
+  "floating": 42,
+  "dangling": 24
+ },
+ "kit:glencanyon:ruin": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "kit:glencanyon:terracetower": {
+  "floating": 24,
+  "dangling": 26
+ },
+ "kit:glencanyon:watertower": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:hessian:barn": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:hessian:chapel": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:hessian:church": {
+  "floating": 9,
+  "dangling": 5
+ },
+ "kit:hessian:cornershop": {
+  "floating": 119,
+  "dangling": 20
+ },
+ "kit:hessian:cottage": {
+  "floating": 125,
+  "dangling": 0
+ },
+ "kit:hessian:depot": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:hessian:farmhouse": {
+  "floating": 91,
+  "dangling": 19
+ },
+ "kit:hessian:granary": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:hessian:mill": {
+  "floating": 2,
+  "dangling": 3
+ },
+ "kit:hessian:ruin": {
+  "floating": 0,
+  "dangling": 7
+ },
+ "kit:hessian:schoolhouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:hessian:tavern": {
+  "floating": 27,
+  "dangling": 5
+ },
+ "kit:hostomel:depot": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:hostomel:ruin": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "kit:hostomel:tower": {
+  "floating": 4,
+  "dangling": 4
+ },
+ "kit:hostomel:warehouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:kohima:farmhouse": {
+  "floating": 0,
+  "dangling": 3
+ },
+ "kit:kohima:granary": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:kohima:ruin": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:kohima:woodshed": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:kolkhoz:cottage": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:kolkhoz:farmhouse": {
+  "floating": 0,
+  "dangling": 12
+ },
+ "kit:kolkhoz:mill": {
+  "floating": 0,
+  "dangling": 7
+ },
+ "kit:kolkhoz:ruin": {
+  "floating": 2,
+  "dangling": 1
+ },
+ "kit:ksar:caravanserai": {
+  "floating": 27,
+  "dangling": 0
+ },
+ "kit:ksar:compound": {
+  "floating": 27,
+  "dangling": 0
+ },
+ "kit:ksar:compoundSouk": {
+  "floating": 27,
+  "dangling": 0
+ },
+ "kit:ksar:market": {
+  "floating": 21,
+  "dangling": 46
+ },
+ "kit:ksar:marketRow": {
+  "floating": 9,
+  "dangling": 0
+ },
+ "kit:kyushu:factory": {
+  "floating": 4,
+  "dangling": 2
+ },
+ "kit:kyushu:foundryoffice": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:kyushu:stack": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "kit:kyushu:watertower": {
+  "floating": 4,
+  "dangling": 6
+ },
+ "kit:longleaf:farmhouse": {
+  "floating": 6,
+  "dangling": 2
+ },
+ "kit:longleaf:logcabin": {
+  "floating": 5,
+  "dangling": 0
+ },
+ "kit:longleaf:tavern": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:longleaf:warehouse": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:mekong:cottage": {
+  "floating": 4,
+  "dangling": 2
+ },
+ "kit:navajo:adobe": {
+  "floating": 22,
+  "dangling": 0
+ },
+ "kit:navajo:caravanserai": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:navajo:compound": {
+  "floating": 93,
+  "dangling": 54
+ },
+ "kit:navajo:compoundSouk": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:navajo:factory": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:navajo:marketRow": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:navajo:ramada": {
+  "floating": 121,
+  "dangling": 105
+ },
+ "kit:navajo:warehouse": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:navajo:watertower": {
+  "floating": 12,
+  "dangling": 1
+ },
+ "kit:polder:cottage": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:polder:depot": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:polder:farmhouse": {
+  "floating": 4,
+  "dangling": 4
+ },
+ "kit:polder:fishery": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:polder:mill": {
+  "floating": 1,
+  "dangling": 14
+ },
+ "kit:polder:tavern": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:queenstown:containerRow": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:queenstown:gantry": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:queenstown:ruin": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "kit:ruhr:depot": {
+  "floating": 0,
+  "dangling": 8
+ },
+ "kit:ruhr:rowhouse": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:ruhr:shed": {
+  "floating": 0,
+  "dangling": 9
+ },
+ "kit:ruhr:warehouse": {
+  "floating": 0,
+  "dangling": 11
+ },
+ "kit:saar:cornershop": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:saar:factory": {
+  "floating": 8,
+  "dangling": 0
+ },
+ "kit:saar:firestation": {
+  "floating": 0,
+  "dangling": 9
+ },
+ "kit:saar:foundryoffice": {
+  "floating": 1,
+  "dangling": 4
+ },
+ "kit:saar:gantry": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:saar:rowhouse": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:sarajevo:broadcasttower": {
+  "floating": 16,
+  "dangling": 12
+ },
+ "kit:sarajevo:civichall": {
+  "floating": 48,
+  "dangling": 0
+ },
+ "kit:sarajevo:factory": {
+  "floating": 18,
+  "dangling": 0
+ },
+ "kit:sarajevo:firestation": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:sarajevo:foundryoffice": {
+  "floating": 3,
+  "dangling": 5
+ },
+ "kit:sarajevo:megatower": {
+  "floating": 88,
+  "dangling": 90
+ },
+ "kit:sarajevo:needletower": {
+  "floating": 8,
+  "dangling": 0
+ },
+ "kit:sarajevo:parkingdeck": {
+  "floating": 24,
+  "dangling": 24
+ },
+ "kit:sarajevo:rowhouse": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "kit:sarajevo:ruin": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "kit:sarajevo:terracetower": {
+  "floating": 92,
+  "dangling": 94
+ },
+ "kit:sarajevo:warehouse": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "kit:savoyard:chapel": {
+  "floating": 2,
+  "dangling": 4
+ },
+ "kit:savoyard:onionchurch": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "kit:savoyard:rangerlodge": {
+  "floating": 0,
+  "dangling": 5
+ },
+ "kit:savoyard:tavern": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:savoyard:tower": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "kit:savoyard:warehouse": {
+  "floating": 1,
+  "dangling": 1
+ },
+ "kit:shanghai:firestation": {
+  "floating": 16,
+  "dangling": 0
+ },
+ "kit:shanghai:parkingdeck": {
+  "floating": 285,
+  "dangling": 0
+ },
+ "kit:shanghai:ruin": {
+  "floating": 2,
+  "dangling": 2
+ },
+ "kit:shanghai:warehouse": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:siwa:market": {
+  "floating": 21,
+  "dangling": 46
+ },
+ "kit:siwa:marketRow": {
+  "floating": 43,
+  "dangling": 53
+ },
+ "kit:wadirum:containerRow": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "kit:wadirum:ruin": {
+  "floating": 13,
+  "dangling": 0
+ },
+ "kit:wadirum:watertower": {
+  "floating": 25,
+  "dangling": 50
+ },
+ "landmark:aircraftWreck": {
+  "floating": 14,
+  "dangling": 30
+ },
+ "landmark:airstrip": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "landmark:belfry": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "landmark:bengalTemple": {
+  "floating": 20,
+  "dangling": 0
+ },
+ "landmark:church": {
+  "floating": 25,
+  "dangling": 0
+ },
+ "landmark:colonialBungalow": {
+  "floating": 0,
+  "dangling": 14
+ },
+ "landmark:columnMonument": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "landmark:equestrianStatue": {
+  "floating": 23,
+  "dangling": 0
+ },
+ "landmark:fireLookout": {
+  "floating": 76,
+  "dangling": 2
+ },
+ "landmark:fuelTankFarm": {
+  "floating": 4,
+  "dangling": 8
+ },
+ "landmark:grainElevator": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "landmark:guyedMast": {
+  "floating": 2,
+  "dangling": 7
+ },
+ "landmark:headframe": {
+  "floating": 39,
+  "dangling": 74
+ },
+ "landmark:jamesway": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "landmark:liftBridge": {
+  "floating": 80,
+  "dangling": 30
+ },
+ "landmark:lighthouse": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "landmark:marketHall": {
+  "floating": 18,
+  "dangling": 0
+ },
+ "landmark:memorialWall": {
+  "floating": 3,
+  "dangling": 2
+ },
+ "landmark:moduleTrain": {
+  "floating": 42,
+  "dangling": 4
+ },
+ "landmark:mole": {
+  "floating": 4,
+  "dangling": 2
+ },
+ "landmark:obelisk": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "landmark:oreBin": {
+  "floating": 22,
+  "dangling": 34
+ },
+ "landmark:oreCars": {
+  "floating": 91,
+  "dangling": 4
+ },
+ "landmark:radomeTower": {
+  "floating": 4,
+  "dangling": 8
+ },
+ "landmark:stationHall": {
+  "floating": 28,
+  "dangling": 11
+ },
+ "landmark:torii": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "landmark:townGate": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "landmark:townHall": {
+  "floating": 50,
+  "dangling": 0
+ },
+ "landmark:trestleBridge": {
+  "floating": 93,
+  "dangling": 160
+ },
+ "landmark:triumphalArch": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "landmark:troposcatter": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "landmark:trussBridge": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "landmark:viaduct": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "landmark:waterTower": {
+  "floating": 12,
+  "dangling": 0
+ },
+ "landmark:windmill": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "light:alpinerefuge/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:ascentlander/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:commandtent/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:commsmast/intact": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "light:corneroffice/intact": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "light:deserttent/intact": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "light:fieldhospital/intact": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "light:fishershack/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:greenhouse/broken": {
+  "floating": 6,
+  "dangling": 0
+ },
+ "light:guardpost/intact": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "light:habdome/intact": {
+  "floating": 0,
+  "dangling": 6
+ },
+ "light:huntingblind/intact": {
+  "floating": 6,
+  "dangling": 0
+ },
+ "light:longhouse/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:missioncontrol/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:quonsethut/intact": {
+  "floating": 2,
+  "dangling": 2
+ },
+ "light:securityoffice/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "light:solararray/intact": {
+  "floating": 3,
+  "dangling": 6
+ },
+ "light:stilthouse/intact": {
+  "floating": 6,
+  "dangling": 2
+ },
+ "light:transformershed/intact": {
+  "floating": 14,
+  "dangling": 24
+ },
+ "regional-light:bengal:fishershack/intact": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "regional-light:kohima:longhouse/intact": {
+  "floating": 2,
+  "dangling": 6
+ },
+ "regional-light:mekong:fishershack/intact": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "regional-light:mekong:stilthouse/intact": {
+  "floating": 4,
+  "dangling": 2
+ }
+}

@@ -891,6 +891,20 @@ limit continue (`MatchActorResume`). Entities hidden from the new host resume fr
 `ROOM_MATCH_KEYFRAME_INTERVAL_MS` old. The old host's own leave drops its peers' channels without a wire CLOSE so their
 clients read a lost link and wait for the election; a match that ended still closes with `MATCH_ENDED`.
 
+**The resume hold (2026-10-10).** The world stood still through the outage, but the new actor used to start its loop
+the moment it booted, before any seat was back. A hull restored with speed (its newest row, captured while it drove)
+rolled on under the empty input — a released throttle coasts at 3.5 m/s², 9–17 m from 8–11 m/s — while the peers were
+still re-offering, so a peer's first frame from the new host showed it that far from the last one it saw (the browser
+e2e's "B's hull as C saw it moved 10.8 / 12.5 / 17.8 m across the migration" at moderate load, 4–6 m on production).
+Now the elected seat names the seats it waits for (`resume.holdForSeats`: the room's connected players with a battle
+seat, itself among them, the host that went not — `resumeHoldSeats`), and the core holds the restored world at the
+resume tick until every one of them has sent a verified HELLO, or `RESUME_HOLD_MS` (3 s) has passed. The seats are
+then welcomed together against the still world — each seat's own-row hint lands before the first tick — and the loop
+starts. A seat that never comes back costs everyone at most 3 s more stillness; the hold shows in
+`HostCoreStats.resumeHold` → `MatchHost.resumeHold` → `SessionP2pStatus.resumeHold` (the e2e's `bResumeHold`, with
+`bSpeedAtCloseMps`). Receipt: `resumeHold.selftest` (bob lets go at 9.9 m/s, carl comes back 2 s later: carl's first
+row of bob 6.32 m off his last without the hold, 0.48 m with it; a seat that never returns releases the world at 3 s).
+
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
 content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and
@@ -943,6 +957,28 @@ programs still pending — `src/main.ts` sends it) and a `compileRetry` stage in
 tab the compile takes 1–2 s; the second window covers a starved GPU process or a cold shader cache.
 `browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
 preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
+
+**A slow compile never refuses entry (2026-10-10, the MP shader-prep lane).** Production 207–211 still refused the
+returning seat at load 54–84 (`compile` 5.0 s + `compileRetry` 5.0 s, "Battle shaders could not finish preparing"), and
+the refusal itself stranded it: the Garage restore's own strict program warm missed its 5 s budget inside the covered
+return, threw, and left the Garage unready (every scene frame suppressed), the loader on and no Rejoin battle. Now:
+- `warm.compile` opens window after window while programs keep linking (a submitted program stays cached, a reflected
+  one is not visited again), the loader showing how many are still linking. Four windows in a row with nothing linked,
+  or 120 s in all, is the last resort: a `slow_reveal` beacon `compile_deferred`, and the entry goes on, the covered
+  reveal linking the rest under the loader as the solo entry does. Only a preparation that cannot succeed refuses: a
+  lost or replaced context (`invalidated`: "Battle graphics were lost while the battle prepared its shaders"), a failed
+  native query or reflection ("Battle shaders failed to prepare on this device (reason)").
+- `entryTimeoutMs` refuses only a round that stopped progressing (no stage, world or roster progress and no program
+  linked for 120 s); a round still loading waits on in 30 s windows (one `slow_reveal` beacon `entry_extended`), up to
+  10 min.
+- The Garage restore (`src/engine/garageGpuWarmRuntime.ts`) treats a readiness proof that only ran out of time like a
+  legacy compile failure: the covered settle frame links the rest (receipt `programWarmDeferred`); an invalidated proof
+  still fails closed.
+- After any refused entry the loader clears even if the Garage restore throws, and the held room's lobby opens again
+  (`showActiveRoom`) naming why, with Rejoin battle while the match runs.
+Receipts: `browserComposition.selftest` (windows while linking, the last resort reveals, broken preparations refused
+with their reason, a throwing Garage restore still clears the loader and offers the room, Rejoin under load enters, the
+entry wait extends a progressing round and refuses a stalled one) and `garageGpuWarmRuntime.selftest`.
 
 **Open.** (1) ~~Two of P1's requests are honoured by design but wait for the merge to be proven against the real
 service: `host_only` step-down and the report cadence are exercised only against the double.~~ P3 (§13.8): the step-down
@@ -1210,7 +1246,11 @@ by the measurements in 13.9.6.
 **13.9.3 Per-peer rate adaptation.** `SNAPSHOT_SKIP_BYTES` = 16 KB (≈ 0.7 s of snapshots at 14v14): a viewer whose
 channel holds more unsent than that has its snapshot *skipped* — never delayed, never queued behind, so the next one it
 receives is the freshest and the other peers are untouched (each link is sent to on its own); above the 64 KB soft bound
-for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. The count surfaces as
+for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. During a peer's covered entry, the
+first `ENTRY_BACKPRESSURE_GRACE_MS` = 120 s after its WELCOME, the soft bound closes the link only after
+`ENTRY_BACKPRESSURE_SUSTAINED_MS` = 60 s of continuous pressure (2026-10-10: under load ~110 the entry's synchronous steps,
+4.3 s and 2.9 s, kept two peers from draining for over 2 s and the new host's actor dropped both 26 s after their
+WELCOME); a loading peer drains between its steps, which restarts the clock, and a dead link still closes. The count surfaces as
 `HostCoreStats.snapshotSkips` → `MatchHost.snapshotSkips` → `SessionP2pStatus.snapshotSkips` →
 `NetworkStatusSnapshot.hostSnapshotSkips` and `window.__peer.status().host.core.snapshotSkips`, which the soak reports.
 `matchActor.selftest`: a peer over the bound is skipped and counted, the others keep their cadence, no close, deltas
