@@ -6,6 +6,7 @@
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { facadeOn } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
@@ -16,8 +17,10 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-/** Rooftop furniture: rebar stubs at the corners and columns, one or two black tanks on a steel stand. */
-function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => number): void {
+/** Rooftop furniture: rebar stubs at the corners and columns, one or two black tanks on a steel stand (on the stair head's
+ *  roof when there is one, `tanks`: its centre, size and top; the same draws either way). */
+function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => number,
+  tanks?: { cx: number; cz: number; w: number; d: number; top: number }): void {
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]] as const) {
     if (sx === 0 && rng() < 0.5) continue;
     const x = sx * (W / 2 - 0.2), z = sz * (D / 2 - 0.2);
@@ -27,12 +30,15 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
   }
   const n = rng() < 0.6 ? 1 : 2;
   for (let k = 0; k < n; k++) {
-    const x = (k - (n - 1) / 2) * 1.4 + (rng() - 0.5) * W * 0.2, z = (rng() - 0.5) * D * 0.3;
-    for (const [dx, dz] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) sink.span('structureMetal', x + dx - 0.03, top, z + dz - 0.03, x + dx + 0.03, top + 0.6, z + dz + 0.03, { colour: rgb(0x6a6e70), decor: true });
+    const ru = rng() - 0.5, rv = rng() - 0.5;
+    const x = tanks ? tanks.cx + (k - (n - 1) / 2) * Math.min(1.25, tanks.w * 0.5) + ru * Math.max(0, tanks.w - 1.2 * n - 0.3) * 0.5
+      : (k - (n - 1) / 2) * 1.4 + ru * W * 0.2;
+    const z = tanks ? tanks.cz + rv * Math.max(0, tanks.d - 1.4) * 0.5 : rv * D * 0.3, y = tanks ? tanks.top : top;
+    for (const [dx, dz] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) sink.span('structureMetal', x + dx - 0.03, y, z + dz - 0.03, x + dx + 0.03, y + 0.6, z + dz + 0.03, { colour: rgb(0x6a6e70), decor: true });
     // the stand's frame on the legs' heads, the tank on it (the connectivity sweep: the round tank sat inside the
     // square of legs, touching none)
-    sink.span('structureMetal', x - 0.48, top + 0.55, z - 0.48, x + 0.48, top + 0.6, z + 0.48, { colour: rgb(0x6a6e70), decor: true });
-    sink.cylinder('structureMetal', [x, top + 0.6, z], 'y', 1.1, 0.55, 10, { colour: TANK, decor: true });
+    sink.span('structureMetal', x - 0.48, y + 0.55, z - 0.48, x + 0.48, y + 0.6, z + 0.48, { colour: rgb(0x6a6e70), decor: true });
+    sink.cylinder('structureMetal', [x, y + 0.6, z], 'y', 1.1, 0.55, 10, { colour: TANK, decor: true });
   }
 }
 
@@ -63,7 +69,51 @@ const blockHouse: RegionalBuilder = (ctx) => {
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.2, bucket: wall, parapet: 0.6 }, gableBucket: wall,
     openings, chimneys: [], gutters: null, verge: null,
   }, dialect);
-  rooftop(sink, W, D, frame.eaveY + 0.2, rng);
+  // (round 3, the buildings lane, 2026-10-11; gauntlet wave 319, Redrock's village: plain boxes) the house as Rum's
+  // houses are built: the concrete frame showing through the render, its ring beam at each floor and its columns at the
+  // corners in the grey of bare cement; a cast hood over the door; the parapet capped; on many roofs the stair head (the
+  // room over the stair to the roof, its steel door to the terrace) with the tanks on its roof; a satellite dish. The
+  // choices are the look stream's, drawn alike on every tier.
+  const look = ctx.variant, head = look() < 0.55, dish = look() < 0.45, hood = look() < 0.75, dishAt = look();
+  const roofY = frame.eaveY + 0.2, parapetTop = frame.eaveY + 0.8, grey = { decor: true, shade: 0.95 } as const;
+  if (facadeOn()) {
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const f = frame.faces[name];
+      for (let i = 0; i < count; i++) faceBox(sink, 'plaster2', f, 0, frame.floors[i] + 2.82, 0.012, f.width + 0.05, 0.36, 0.024, grey);
+      for (const su of [-1, 1]) faceBox(sink, 'plaster2', f, su * (f.width / 2 - 0.16), (0.25 + frame.eaveY) / 2, 0.012, 0.32, frame.eaveY - 0.25, 0.024, grey, 'caps');
+    }
+  }
+  if (hood) {
+    const f = frame.faces.front, o = openings[0];
+    faceBox(sink, 'plaster2', f, o.u, o.h + 0.32, 0.36, o.w + 0.7, 0.1, 0.72, grey);
+  }
+  // the coping over the parapet's four runs
+  const e = 0.08, xa = -W / 2 - e - 0.03, xb = W / 2 + e + 0.03, za = -D / 2 - e - 0.03, zb = D / 2 + e + 0.03, cw = 0.28;
+  for (const [x0, z0, x1, z1] of [[xa, zb - cw, xb, zb], [xa, za, xb, za + cw], [xb - cw, za + cw, xb, zb - cw], [xa, za + cw, xa + cw, zb - cw]] as const) {
+    sink.span('plaster2', x0, parapetTop, z0, x1, parapetTop + 0.06, z1, grey);
+  }
+  let tanks: { cx: number; cz: number; w: number; d: number; top: number } | undefined;
+  if (head) {
+    // the stair head over the back left corner, its outer walls a hand inside the parapet's face; its door to the
+    // terrace on its front, its roof slab with a lip
+    const hw = Math.min(2.7, W * 0.44), hd = Math.min(2.7, D * 0.44), x0 = -W / 2 - e + 0.02, z0 = -D / 2 - e + 0.02, hh = 2.35;
+    sink.span(wall, x0, frame.eaveY, z0, x0 + hw, roofY + hh, z0 + hd);
+    sink.span(wall, x0 - 0.06, roofY + hh, z0 - 0.06, x0 + hw + 0.06, roofY + hh + 0.14, z0 + hd + 0.06);
+    const hf: Face = { origin: [x0 + hw / 2, 0, z0 + hd], u: [1, 0, 0], out: [0, 0, 1], width: hw };
+    faceBox(sink, 'structureMetal', hf, hw * 0.12, roofY + 1.0, 0.025, 0.85, 2.0, 0.05, { colour: door, decor: true });
+    faceBox(sink, 'plaster2', hf, hw * 0.12, roofY + 2.08, 0.04, 1.05, 0.12, 0.08, grey);
+    tanks = { cx: x0 + hw / 2, cz: z0 + hd / 2, w: hw, d: hd, top: roofY + hh + 0.14 };
+  }
+  rooftop(sink, W, D, roofY, rng, tanks);
+  if (dish) {
+    // the dish on its bracket at a front corner of the parapet, turned to the south-west's satellites
+    const sx = dishAt < 0.5 ? -1 : 1, px = sx * (W / 2 - 0.05), pz = D / 2 - 0.05, ptop = parapetTop + 0.06;
+    sink.span('structureMetal', px - 0.025, ptop, pz - 0.025, px + 0.025, ptop + 0.7, pz + 0.025, { colour: rgb(0x8a8e90), decor: true });
+    sink.placed(dishAt * 2.4 - 1.2, px, ptop + 0.62, pz, () => {
+      sink.cylinder('structureMetal', [0, 0, 0.02], 'z', 0.16, 0.06, 10, { colour: rgb(0xd8d8d2), decor: true }, 0.42);
+      sink.span('structureMetal', -0.015, -0.015, 0.1, 0.015, 0.015, 0.62, { colour: rgb(0x6a6e70), decor: true });
+    });
+  }
   return sink.finish();
 };
 
@@ -474,8 +524,17 @@ export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     // (the Redrock lane, 2026-10-07: the fort and the bare walls in the valley's own sandstone, laid in courses, where a
     // grey concrete block stood; the render finer and shallower than the shared tile — the fort's "cork" print)
     stone: { kind: 'sandstone', tint: [0.80, 0.62, 0.48] },
-    sourced: { plaster: true, wood: true },
-    relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
+    // (round 3, the buildings lane, 2026-10-11; gauntlet wave 319: the houses' walls "a coarse blotchy camouflage-like
+    // noise that reads as neither render nor concrete block", the grey house "the same speckle at the wrong scale") the
+    // houses' cement render is a floated render canvas, not the photo set, in the village's paints: a sand-ochre wash,
+    // the grey of bare cement render, a cream (the painter's own relief: the photo tile's scale-down is off)
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limeRender', seed: 0x7a4d },
+    tones: {
+      plaster: (_h, s, l) => [0.092, Math.min(1, s * 0.4 + 0.3), Math.min(1, l * 0.5 + 0.42)],
+      plaster2: (_h, s, l) => [0.085, Math.min(1, s * 0.15 + 0.05), Math.min(1, l * 0.55 + 0.3)],
+      plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.2 + 0.14), Math.min(1, l * 0.45 + 0.5)],
+    },
   },
   builders: WADIRUM_BUILDERS,
   // the courtyards: a block wall round the house's court, a gate (yards.ts)
