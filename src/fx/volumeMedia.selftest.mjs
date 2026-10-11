@@ -426,7 +426,11 @@ function captureContext(seed) {
     const kd = dust(0.8), cd = dust(0.65 * Math.cbrt(14));
     assert.ok(kd.every((m) => m.medium === 'billow' && m.aspect <= 1.5), 'a kill\'s dust billows: round cards in the turbulent medium, no flat sheet');
     assert.ok(kd.every((m) => m.vy >= 0.8 && m.rise >= 0.35), 'it rolls up as it stalls');
-    assert.ok(kd.every((m) => m.density <= 0.5 && m.fadeOut <= 0.35 && m.life <= 5.5), 'thin, thinning from a third of its life, gone within five seconds');
+    // (fx 8s, the w6p film: 8o's dust read as nothing) dense enough to read, tan, out past the hull's sides; thinning from
+    // under half its life, gone within five seconds
+    assert.ok(kd.every((m) => m.density >= 0.45 && m.density <= 0.62 && m.fadeOut <= 0.5 && m.life <= 5.5), 'it reads, then thins and is gone within five seconds');
+    assert.ok(kd.every((m) => Math.hypot(m.x + m.vx / m.drag, m.z + m.vz / m.drag) >= 2.4), 'it rolls out past the hull\'s sides');
+    assert.ok(kd.every((m) => m.size1 >= 2.6) && kd.length >= 8, `billows big enough to see (${kd.length})`);
     assert.ok(kd.length < cd.length && Math.max(...kd.map((m) => m.size1)) < Math.max(...cd.map((m) => m.size1)), 'a plain kill raises less than a cook-off');
   }
   const soot = kf.log.media.filter((m) => m.heat < 1 && m.birthOffset > 0.15 && m.r0 < 0.1);
@@ -543,7 +547,9 @@ function captureContext(seed) {
   // (fx 8o, re-pinned deliberately: wave 356's critics on a plain kill — "far too big for a kill without an ammunition
   // explosion", "a flat orange hit-flash disc", "a flat, lingering dust sheet" — the plain kill's fireball is a short
   // flash about the hull's width, every kill's flash glows inside the media, and a kill's dust is killDust's billows)
-  assert.equal(`${calls.length} ${draws} ${digest}`, '117 1408 4ff1c6a1a5d80f34',
+  // (fx 8s, re-pinned deliberately: the w6p film showed 8o's kill dust as nothing — killDust rolls out past the hull's
+  // sides, tan, dense enough to read, a cook-off's a full ring)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '119 1451 40a41f9029cb2838',
     "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
