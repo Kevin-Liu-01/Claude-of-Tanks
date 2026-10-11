@@ -145,7 +145,11 @@ for (const config of maps) {
     assert.ok(config.props.destructibleBuildings.includes(beat.structure), `${label}: landmark family is loaded`);
     assert.notEqual(hf.getGroundType(beat.x, beat.z), 'soft', `${label}/${beat.id}: dry strongpoint foundation`);
     assert.ok(hf.getNormalAt(beat.x, beat.z).y >= 0.86, `${label}/${beat.id}: stable strongpoint grade`);
-    assert.ok(beat.outcrop && (beat.redoubt || beat.role === 'scout'), `${label}: layered cover is intentional`);
+    // (2026-10-07, the map-revival lane; the coordinator after gauntlet wave 205: no boulders on the polder's marine clay) a
+    // map that lays no stone at all (rocks 0, outcrops 0) layers its strongpoints' cover with a redoubt or a wreck instead
+    const stoneless = config.props.rocks === 0 && config.props.outcrops === 0;
+    assert.ok((beat.outcrop || (stoneless && (beat.redoubt || beat.wreck))) && (beat.redoubt || beat.role === 'scout'),
+      `${label}: layered cover is intentional`);
   }
   for (let a = 0; a < beats.length; a++) for (let b = a + 1; b < beats.length; b++) {
     assert.ok(Math.hypot(beats[a].x - beats[b].x, beats[a].z - beats[b].z) >= 180,
@@ -189,10 +193,14 @@ for (const config of maps) {
     `${label}: atmosphere preserves midfield readability`);
 }
 
-assert.ok(polders.props.plan.includes('mill') && polders.terrain.lakes.length === 5
+assert.ok(polders.props.plan.includes('mill') && polders.terrain.lakes.length === 4
   && polders.terrain.lakes.every(lake => lake.radii.length === 16)
-  && !polders.terrain.marshes.length && polders.terrain.softLakes,
-  'polders couple farmland to five separately leveled irregular basins, not chains of round cells');
+  // (2026-10-06, the map-revival lane, Polders step 2: a marsh station is the lift bridge's crossing, crossing: 'bridge'
+  // over the oxbow; step 6, 2026-10-07: the oxbow is the creek's arm, a canal, and its silted west horn the one marsh
+  // cell — no chain of them)
+  && polders.terrain.marshes.filter((marsh) => marsh.crossing === 'bridge' && marsh.r <= 8).length === 1
+  && polders.terrain.marshes.filter((marsh) => !marsh.crossing).length <= 1 && polders.terrain.softLakes,
+  'polders couple farmland to four separately leveled irregular basins and the oxbow arm, not chains of round cells');
 assert.ok(copperMesa.terrain.landforms.some((form) => form.kind === 'basin' && form.height <= -10),
   'mine has a deep authored ore cut');
 assert.ok(airfield.splat.pavedRoads && airfield.vegetation.avoid.length === 5,

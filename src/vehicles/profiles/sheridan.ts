@@ -1452,50 +1452,59 @@ function addSheridanCommanderStation(
   P.turretG.add(m2);
 }
 
-/** The TTS loader-ring M2's pintle (turret frame): the post on the hatch ring, and the gun's foot on the post's arm. */
-const TTS_LOADER_M2_POST: readonly [number, number] = [0.121, -0.168];
-const TTS_LOADER_M2_FOOT: readonly [number, number, number] = [0.38, 1.16, -0.168];
+/**
+ * The TTS roof M2's pedestal (turret frame): its base plate on the flat turret roof (y 0.804 m) right of the loader's
+ * hatch, between the roof ERA rows and behind the right periscope, and the height of the gun's pintle socket on top.
+ */
+const TTS_ROOF_M2_PEDESTAL: readonly [number, number] = [0.645, 0.215];
+const TTS_ROOF_M2_SOCKET_Y = 0.945;
+const TTS_ROOF_Y = 0.804;
 
 /**
- * 2026-10-09 (owner order: "give the tts its old machine gun back, except put the new machine gun you added on it
- * somewhere else"; the coordinator's reading): the remote 30 mm station is back on the commander's rear ring
- * (sheridanTtsAutocannon, restored exactly from before a0b6b3a64), and the commander's shielded M2 that a0b6b3a64
- * activated on the cupola moves, with its ring, to the loader's hatch ring, where the loader's MAG stood. The same gun
- * (FITTINGS.americanM2: its shield, ring, tone and seed) rides a pintle arm on a post clamped to the hatch ring's inboard
- * side, the one stretch of the ring that is free (the roof ERA row covers its front, the roof sight's housing its rear).
- * The arm carries the gun outboard and high enough that the whole gun clears the roof sight's window behind the hatch
- * (glass y 0.945-1.075 m, x 0.30-0.58 m, looking forward) and its housing, its shield stays right of the 30 mm
- * station's sight head and that head's forward apertures, and the post stays left of the window. Both roof weapons work:
- * functional roof guns 1 -> 2 (the 30 mm and this M2).
+ * 2026-10-10 (owner hotfix on production 211: "move the sheridan mg onto the roof instead of floating up there", with a
+ * Tank Gallery markup of the flat turret roof, faces 420-431, anchor x 0.348 z 0.239): the shielded M2 that a0b6b3a64
+ * activated on the commander's cupola, moved off the cupola on 2026-10-09 when the remote 30 mm came back there ("give the
+ * tts its old machine gun back, except put the new machine gun you added on it somewhere else"), now stands on that roof on
+ * a pedestal: a base plate bolted to the roof plate, a tapered post, and the gun's own pintle in the socket collar on top.
+ * It replaces the pintle arm that reached out from the loader's hatch ring, which read as a gun floating over the roof.
+ * The pedestal stands at the anchor's depth and as near it as the roof allows: the roof sight's window behind the
+ * hatch looks forward through x 0.29-0.60 m at y 0.94-1.08 m, so the pedestal stands just right of that lane (x 0.645)
+ * and its short post lifts the gun's receiver over it (every gun vertex inside the lane's width above 1.08 m); the gun's
+ * left edge stays right of the 30 mm station's sight head (x 0.07); the hatches keep their discs and rings. Gameplay
+ * unchanged: functional roof guns 2 (the 30 mm and this M2).
  */
-function addTtsLoaderM2Station(P: SheridanBuilderPort): void {
+function addTtsRoofM2Station(P: SheridanBuilderPort): void {
   const { box, cylY } = KIT;
-  const [px, pz] = TTS_LOADER_M2_POST;
-  const [x, y, z] = TTS_LOADER_M2_FOOT;
-  // The clamp straddles the hatch ring (ring top 0.782 m); the tapered post rises from it to the arm, which carries the
-  // socket collar the gun's own pintle bearing sits in.
-  const armBottom = y - 0.060;
-  P.add('turretDetail', box(0.095, 0.040, 0.105), px, 0.792, pz);
-  P.add('turretDark', cylY(0.034, 0.042, armBottom - 0.800, P.q ? 14 : 10), px, (armBottom + 0.800) / 2, pz);
-  P.add('turretDark', box(x - px + 0.090, 0.045, 0.075), (x + px) / 2, armBottom + 0.0225, pz);
-  P.add('turretDark', cylY(0.052, 0.052, 0.020, P.q ? 18 : 12), x, y - 0.010, z);
+  const [x, z] = TTS_ROOF_M2_PEDESTAL;
+  const y = TTS_ROOF_M2_SOCKET_Y;
+  // base plate on the roof plate and its four bolt heads; two welded fins brace the tapered post; the socket collar the
+  // gun's pintle sits in
+  const plateTop = TTS_ROOF_Y + 0.014;
+  P.add('turretDetail', box(0.085, 0.014, 0.080), x, TTS_ROOF_Y + 0.007, z);
+  for (const [dx, dz] of [[-0.032, -0.029], [0.032, -0.029], [-0.032, 0.029], [0.032, 0.029]] as const) {
+    P.add('turretDark', cylY(0.0065, 0.0065, 0.008, P.q ? 8 : 6), x + dx, plateTop + 0.004, z + dz);
+  }
+  P.add('turretDetail', box(0.010, 0.046, 0.074), x, plateTop + 0.023, z);
+  P.add('turretDetail', box(0.074, 0.046, 0.010), x, plateTop + 0.023, z);
+  const collarBottom = y - 0.024;
+  P.add('turretDark', cylY(0.034, 0.042, collarBottom - plateTop, P.q ? 14 : 10), x, (collarBottom + plateTop) / 2, z);
+  P.add('turretDark', cylY(0.047, 0.047, 0.024, P.q ? 16 : 12), x, y - 0.012, z);
   const m2 = FITTINGS.americanM2({
     mats: P.mats,
     tone: 'dark',
     ammoSide: 1,
     barrelLength: 0.42,
     elev: 0,
-    ring: { r: 0.235, stubs: 4 },
     seed: 551,
     shield: true,
   });
   m2.position.set(x, y, z);
   m2.userData.sourceVehicle = 'm551_sheridan';
-  // The station pivots at the gun's receiver and fires along its barrel (as on the commander's cupola).
+  // The station turns on the pedestal and pitches at the gun's receiver, firing along its barrel.
   m2.updateMatrixWorld(true);
   const gunBox = new THREE.Box3().setFromObject(m2.getObjectByName('americanM2HBBody') ?? m2);
   const axisY = (gunBox.min.y + gunBox.max.y) / 2;
-  const gunStation = beginAuxiliaryStation(P, { name: 'm551a1TtsLoaderM2', caliberMm: 12.7,
+  const gunStation = beginAuxiliaryStation(P, { name: 'm551a1TtsRoofM2', caliberMm: 12.7,
     yaw: [x, y, z], pivot: [x, axisY, z], muzzle: [x, axisY, gunBox.max.z] });
   // one physical gun is one weapon fitting: the station root carries it
   delete m2.userData.fittingRoot;
@@ -1521,7 +1530,7 @@ function addSheridanLoaderStation(
     0, 0, 0, 0, 0, 0, [1, 1, 1.271]),
     station.x, 0.7720, station.z);
   if (isTts) {
-    addTtsLoaderM2Station(P);
+    addTtsRoofM2Station(P);
     return;
   }
   const mg = FITTINGS.pintleMG({

@@ -105,7 +105,12 @@ every 2 s and whenever the acknowledged baseline is no longer held (a client
 that never acknowledges receives only keyframes). Backpressure: with more than
 64 KB buffered on the socket the snapshot is dropped (never queued behind);
 above 512 KB, or 64 KB sustained for 2 s, the client is closed with
-`BACKPRESSURE`.
+`BACKPRESSURE`. For the first 120 s after a client's WELCOME (its covered
+entry, whose synchronous steps run for seconds under load) the sustained
+limit is 60 s of continuous pressure instead of 2 s
+(`ENTRY_BACKPRESSURE_GRACE_MS`, `ENTRY_BACKPRESSURE_SUSTAINED_MS`): a loading
+client drains between its steps, a dead link still closes, and the 512 KB
+bound still closes at once.
 
 ## Measured (receipts, 2026-09-25, Apple Silicon dev host)
 

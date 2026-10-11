@@ -24,6 +24,8 @@
  *   stuck     neither a reveal nor a failure within --entry-timeout-s
  *   black     a revealed sample is black or flat
  *   rescued   the watchdog applied a compatibility stage (shadows/environment/fog off): the picture changed
+ *   context-lost  the WebGL context was lost during the entry (a GPU process reset under load; the game's recovery
+ *             screen): reported apart from a stall, since the entry itself did not hang
  * With --force-black, one more run enters that map with ?diagforce=blackout (a lit pipeline black under any light and
  * any rescue stage): the negative control, which must be refused ("control-refused"; "control-missed" fails the sweep),
  * so a sweep can never pass because the watchdog stopped looking.
@@ -80,6 +82,10 @@ export function classifyRun(run, limits) {
       + ` is within ${(limits.bandWarn - WATCHDOG_THRESHOLD).toFixed(0)} of the refusal threshold ${WATCHDOG_THRESHOLD}`);
   }
   if (run.entry === 'failed') return { verdict: 'refused', why: run.reason || 'the entry failed', notes };
+  // a lost WebGL context (a GPU process reset; the game shows its own recovery screen) is reported apart from a stall
+  if (run.entry === 'context-lost' || (run.entry !== 'revealed' && (run.contextLost || run.recoveryFailed))) {
+    return { verdict: 'context-lost', why: run.reason || 'the WebGL context was lost during the entry', notes };
+  }
   if (run.entry !== 'revealed') return { verdict: 'stuck', why: run.reason || 'no reveal and no failure', notes };
   if (w && (w.status === 'failed' || result?.failed === true)) {
     return { verdict: 'refused', why: `the watchdog refused (band ${result?.before ?? '?'}) but the entry revealed`, notes };
@@ -308,7 +314,9 @@ async function main() {
       sun,
       clouds: !!D?.scene?.userData?.volumetricClouds,
       shadows: D?.renderer?.shadowMap?.enabled ?? null, environment: !!D?.scene?.environment, fog: !!D?.scene?.fog,
-      contextLost: (() => { try { return D.isGraphicsContextLost(); } catch { return null; } })(),
+      // the debug surface's getter (src/dev/debugSurface.ts graphicsContextLost); the recovery screen names a failed restore
+      contextLost: (() => { try { return D.graphicsContextLost === true; } catch { return null; } })(),
+      recoveryFailed: /Graphics could not reconnect/.test(document.body?.innerText ?? ''),
       watchdog: row ? { id: row.id, status: row.status, error: row.error ?? null, mapId: row.context?.mapId ?? null,
         entryGeneration: row.context?.entryGeneration ?? null, result: row.result ?? null,
         measurements: (row.measurements ?? []).map((m) => ({ kind: m.kind, renderMs: m.renderMs, readbackMs: m.readbackMs,
@@ -361,6 +369,7 @@ async function main() {
           const D = window.__DEBUG, loader = document.querySelector('.cot-bl');
           return { done: window.__SWEEP?.done === true, error: window.__SWEEP?.error ?? null, phase: D?.game?.phase ?? null,
             reveal: !!window.__BATTLE_REVEAL, loaderOn: !!loader?.classList.contains('on'), timeS: D?.game?.timeS ?? null,
+            contextLost: (() => { try { return D?.graphicsContextLost === true; } catch { return false; } })(),
             failed: (window.__SWEEP_ERRORS ?? []).find((e) => /\[battle\] entry failed/.test(e)) ?? null };
         });
         let state = null, playingSince = null, firstTimeS = null;
@@ -369,6 +378,7 @@ async function main() {
           try { state = await entryState(); } catch { state = null; }
           if (state?.failed || state?.error) break;
           if (state?.done) break;
+          if (state?.contextLost) { row.contextLostAtMs = Date.now() - t0; break; }
           const playing = state && state.phase === 'battle' && state.reveal && !state.loaderOn && typeof state.timeS === 'number';
           if (playing) {
             playingSince ??= Date.now(); firstTimeS ??= state.timeS;
@@ -383,6 +393,8 @@ async function main() {
           entry = 'revealed';
         } else if (state?.done) {
           entry = 'failed'; row.reason = `the entry resolved in phase ${state.phase} without a reveal`;
+        } else if (state?.contextLost) {
+          entry = 'context-lost'; row.reason = `the WebGL context was lost ${Math.round((row.contextLostAtMs ?? 0) / 1000)} s into the entry`;
         } else {
           row.reason = `no reveal and no failure in ${entryTimeoutMs / 1000} s (last state ${JSON.stringify(state)})`;
         }

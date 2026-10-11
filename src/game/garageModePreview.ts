@@ -3,6 +3,8 @@ import type { MissionCarrierSpec } from '../sim/missionAttachment.ts';
 import { JUGGERNAUT_SCALE } from '../sim/juggernautScale.ts';
 import { clearJuggernautVisual, hasGarageTankEnergyVisual, pauseGarageTankEnergyVisual, syncTankEnergyVisual, TANK_ENERGY } from './juggernautVisual.ts';
 import { clearMissionAttachment, syncFlagAttachment, syncMissionAttachment } from './missionAttachmentVisual.ts';
+import { configureDroneMaterials } from '../fx/droneModel.ts';
+import type { Material } from 'three';
 
 const dockedDrone = Object.freeze({ kind: 'drone' as const, active: false, cooldownS: 0 });
 const energyMode = (mode: string) => mode === 'juggernaut' || mode === 'infected' || mode === 'capture_the_flag';
@@ -19,7 +21,12 @@ function animatePreview(root:Object3D,spec:MissionCarrierSpec,mode:string,timeS:
   if(mode==='capture_the_flag')syncFlagAttachment(root,spec,timeS);
   else if(mode==='drone')syncMissionAttachment(root,spec,dockedDrone,false);
 }
-export function createGarageModePreview() {
+/** The Garage engine's lit-material registration, so the previewed dock and drone light like the hull under them. */
+interface PreviewEngine { setupShadowMaterial?(material: Material): unknown; releaseShadowMaterial?(material: Material): unknown }
+export function createGarageModePreview(engine?: PreviewEngine) {
+  if (engine?.setupShadowMaterial) {
+    configureDroneMaterials({ setup: (m) => engine.setupShadowMaterial?.(m), release: (m) => engine.releaseShadowMaterial?.(m) });
+  }
   let root: Object3D | null = null, mode = '', timeS = 0;
   function clear() {
     if (root) { clearJuggernautVisual(root, true); clearMissionAttachment(root); }

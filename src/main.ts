@@ -1219,7 +1219,7 @@ bus.on('ui:battleStart', () => {
 
 let garagePreviewMode = 'standard';
 const garageModePreview = createGarageModePreviewRuntime({
-  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview()),
+  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview(engineCtx)),
   prepare: async (root, current) => {
     // Match the real Garage forward targets and light layers. A generic
     // composer compile can leave the revealed frame to link a new variant.
@@ -2402,8 +2402,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               });
             }
           },
-          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
-          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
+          // Entry resilience: a strict shader preparation that outran its window (compile_extended) or reached its last
+          // resort (compile_deferred: the covered reveal links the rest), and an entry wait extended for a round still
+          // progressing (entry_extended), are beacons, never a failed entry — the kind the reveal and paint budgets report.
           recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
             kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
           }),

@@ -62,6 +62,11 @@ export function getAbramsWeldingBayPlacement(
   return variant.id === 'verdant_motor_pool' ? ABRAMS_FLAMMABLE_BAY_OFFSET : ABRAMS_WELDING_BAY_PLACEMENT;
 }
 
+// The weld light (2026-10-10): Verdant's former west-wall fill PointLight now stands at the rolled K2's belly weld,
+// 0.35 m out from the torch tip toward the welder, so the arc lights him, the plate and the floor. Garage frame,
+// Verdant layout; garageCrewFigures.selftest checks it against the K2 crew's torch.
+export const VERDANT_WELD_LIGHT = Object.freeze({ x: 15.72, y: 2.05, z: 16.3 });
+
 // The Leopard occupies the neighboring mobility square, not the Abrams
 // welding owner. Preserve its established world-space pose when the Abrams
 // service story moves independently.
@@ -108,6 +113,56 @@ export function getGarageWorkshopLayoutPose(
   variant: Pick<GarageVariant, 'layout'>,
 ): readonly [x: number, z: number, yaw: number] {
   return GARAGE_WORKSHOP_LAYOUT_POSES[variant.layout] || GARAGE_WORKSHOP_LAYOUT_POSES[0];
+}
+
+// The Leopard 2A5/A5NL mobility bay (the hull on its four-post lift, the removed-wheel rack, the impact-wrench kit and
+// the wheel-carry crew) stands at this pose inside its half-turned owner (LEOPARD_MOBILITY_BAY_OFFSET). garageDressing.ts
+// places the bay with it, and the facility terraces seat the bay's floor with it.
+export const LEOPARD_MOBILITY_BAY_LOCAL = Object.freeze({ x: 18.05, z: -11.95, yaw: -0.55 });
+
+// The Leopard bay's working floor in its own frame: one circle whose level core (1.2 radii) covers the lift's feet and
+// rails, the wheel rack, the kit and the crew's feet. 2026-10-10 ground audit: on raw terrain this bay's crew floated up
+// to 1.44 m over Saltmere's dip and stood buried to 0.79 m in Steinburg's bank, its lift and rack with them.
+export const LEOPARD_MOBILITY_FLOOR = Object.freeze({ x: -0.75, z: 1.05, radiusM: 5.6 });
+
+/** A point of the Leopard mobility bay's frame in one Garage's workshop frame (the owner's half-turn, then the layout pose). */
+export function leopardBayPointToWorkshop(
+  variant: Pick<GarageVariant, 'layout'>,
+  x: number,
+  z: number,
+): { x: number; z: number } {
+  const local = LEOPARD_MOBILITY_BAY_LOCAL;
+  const c = Math.cos(local.yaw);
+  const s = Math.sin(local.yaw);
+  const ownerX = -(local.x + x * c + z * s) + LEOPARD_MOBILITY_BAY_OFFSET.x;
+  const ownerZ = -(local.z - x * s + z * c) + LEOPARD_MOBILITY_BAY_OFFSET.z;
+  const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(variant);
+  const lc = Math.cos(layoutYaw);
+  const ls = Math.sin(layoutYaw);
+  return { x: layoutX + ownerX * lc + ownerZ * ls, z: layoutZ - ownerX * ls + ownerZ * lc };
+}
+
+// The yard crews' floors (2026-10-10 ground audit): the track carry and the power-pack pair stand in the open yard
+// beside the hero, where the raw terrain left them buried to 0.47 m (Ironworks) or 0.26 m clear (Saltmere). Each stands
+// on a datum floor circle in the shared workshop frame, its level core clear of the podium base.
+export const GARAGE_YARD_CREW_FLOORS = Object.freeze([
+  Object.freeze({ id: 'yard-track-carry', x: -11.4, z: 1.3, radiusM: 3.8 }),
+  Object.freeze({ id: 'yard-power-pack', x: 3.55, z: -11.45, radiusM: 3.8 }),
+]);
+
+/** The yard crews' floor circles in one Garage's workshop frame (its layout pose applied). */
+export function getGarageYardCrewFloors(
+  variant: Pick<GarageVariant, 'layout'>,
+): ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly radiusM: number }> {
+  const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(variant);
+  const c = Math.cos(layoutYaw);
+  const s = Math.sin(layoutYaw);
+  return GARAGE_YARD_CREW_FLOORS.map((floor) => Object.freeze({
+    id: floor.id,
+    x: layoutX + floor.x * c + floor.z * s,
+    z: layoutZ - floor.x * s + floor.z * c,
+    radiusM: floor.radiusM,
+  }));
 }
 
 export function getGarageWorkshopBayPoses(
