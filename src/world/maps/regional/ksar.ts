@@ -807,9 +807,9 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   if (y0 === 0) for (const name of faces) {
     const ff = sideAt(name, 0.1), clods = 1 + Math.floor(look() * 3);
     for (let k = 0; k < clods; k++) {
-      const u = (look() - 0.5) * (ff.width - 0.8), r = 0.18 + look() * 0.16;
-      const c: Vec3 = [ff.origin[0] + ff.u[0] * u + ff.out[0] * (r * 0.6), -0.08, ff.origin[2] + ff.u[2] * u + ff.out[2] * (r * 0.6)];
-      sink.cylinder(KERSHEF_OLD, c, 'y', 0.12 + r * 0.6, r, 6, { decor: true }, r * 0.45, true, look() * 3);
+      const u = (look() - 0.5) * (ff.width - 0.8), r = 0.12 + look() * 0.12;
+      const c: Vec3 = [ff.origin[0] + ff.u[0] * u + ff.out[0] * (r * 0.6), -0.06, ff.origin[2] + ff.u[2] * u + ff.out[2] * (r * 0.6)];
+      sink.cylinder(KERSHEF_OLD, c, 'y', 0.08 + r * 0.5, r, 5, { decor: true }, r * 0.35, true, look() * 3);
     }
   }
   // (round 3) a jerid shade on the roof terrace: four palm posts and a mat of palm ribs on their beams, in the terrace's
