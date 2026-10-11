@@ -186,6 +186,8 @@ import {
 import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
+import { createFractureWreckClient, type FractureWreckClient } from './maps/fractureWreckClient.ts';
+import { deferredWreck, type DeferredWreck } from './maps/fractureWreckJob.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -804,6 +806,8 @@ interface DestructiblePool {
   imI: THREE.InstancedMesh | null;
   imB: THREE.InstancedMesh | null;
   nBroken: number;
+  /** A deferred broken state (meta.brokenDeferred: its builder and its job), until it has been built into imB. */
+  makeBroken?: DeferredWreck | null;
 }
 
 interface PoleMatrixWriter {
@@ -4326,6 +4330,13 @@ ${snowCap ? `
       footprintBuild: () => pillboxFootprintGeometry(fort.style, fort.tones, fort.seed),
       build: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.build(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, false); },
       broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose(); return buildPillbox(fort.style, fort.tones, fort.seed, true); },
+      // (the destructible-kits lane: the settled wreck built by a worker once the battle runs, or when the work first
+      // breaks; the old draws spent now, maps/fractureWreckJob.ts)
+      brokenDeferred: (rng: () => number) => {
+        DESTRUCTIBLE_TYPES.bunker.broken!(rng).dispose();
+        return deferredWreck({ kit: 'pillbox', style: fort.style, tones: fort.tones, seed: fort.seed },
+          () => buildPillbox(fort.style, fort.tones, fort.seed, true));
+      },
     } } : {}),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
@@ -10901,7 +10912,12 @@ ${snowCap ? `
     pool.imI = imI;
     if (meta.farBuild && meta.farM) attachDestructibleFarLod(kind, pool, imI, material, meta.farBuild(), meta.farM);
     if (meta.broken) {
-      const geoB = meta.broken(drng);
+      // (the destructible-kits lane, 2026-10-11; the coordinator: "build wreck states lazily ... intact builds stay at
+      // load") a deferred broken state spends its draws now and stands as an empty geometry of the same layout until the
+      // wreck worker builds it once the battle runs (warmBrokenPools) or a copy breaks first (ensureBrokenGeometry)
+      const deferred = meta.brokenDeferred ? meta.brokenDeferred(drng) : null;
+      const geoB = deferred ? emptyLike(geoI) : meta.broken(drng);
+      if (deferred) pool.makeBroken = deferred;
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
       imB.count = 0;
       imB.visible = false;
@@ -10910,11 +10926,75 @@ ${snowCap ? `
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
-      if (castsDynamicShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(geoB, pool.mats4), instanced: true }); // round 79
+      if (castsDynamicShadow) setShadowCasterProfile(imB, { heightM: deferred ? Math.max(0.5, meta.h * 0.6) : casterHeightM(geoB, pool.mats4), instanced: true }); // round 79
       if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
       group.add(imB);
       pool.imB = imB;
     }
+  }
+  /** An empty geometry with another's attribute layout (a deferred broken pool's stand-in: it draws nothing, and the
+   *  pool's program sees the same attributes when the wreck is swapped in). */
+  function emptyLike(source: THREE.BufferGeometry): THREE.BufferGeometry {
+    const g = new THREE.BufferGeometry();
+    for (const [name, attribute] of Object.entries(source.attributes)) {
+      if (attribute instanceof THREE.InstancedBufferAttribute) continue;
+      const array = new (attribute.array.constructor as new (n: number) => THREE.TypedArray)(0);
+      g.setAttribute(name, new THREE.BufferAttribute(array, attribute.itemSize, attribute.normalized));
+    }
+    return g;
+  }
+  /** Builds a pool's deferred broken state on this thread (once): its first break or a late joiner's, before the worker. */
+  function ensureBrokenGeometry(pool: DestructiblePool): void {
+    const make = pool.makeBroken;
+    if (!make || !pool.imB) return;
+    installBrokenGeometry(pool, make());
+  }
+  /** The pool's wreck in place of its empty stand-in (the stand-in's per-copy attributes, the night fixture's switch, move over). */
+  function installBrokenGeometry(pool: DestructiblePool, geoB: THREE.BufferGeometry): void {
+    pool.makeBroken = null;
+    const imB = pool.imB!, old = imB.geometry;
+    for (const [name, attribute] of Object.entries(old.attributes)) {
+      if (attribute instanceof THREE.InstancedBufferAttribute) geoB.setAttribute(name, attribute);
+    }
+    imB.geometry = geoB;
+    old.dispose();
+    if (imB.castShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(geoB, pool.mats4), instanced: true });
+  }
+  /**
+   * The deferred broken states built off this thread once the battle runs (maps/fractureWreckWorker.ts): after
+   * BROKEN_WARM_AFTER_S of live frames, one job in flight, each reply swapped in (wrappers only); the worker goes when
+   * every pool is built or the world does (registerDestructibles). A pool broken first keeps the wreck it built itself
+   * (the reply for it is dropped). Without a worker (Node, a failed start) a pool builds its wreck when it first breaks.
+   */
+  const BROKEN_WARM_AFTER_S = 3;
+  let brokenWarmClock = 0, brokenWarmBusy = false, brokenWarmDone = false;
+  let brokenWarmClient: FractureWreckClient | null = null;
+  function stopBrokenWarm(): void {
+    brokenWarmDone = true;
+    brokenWarmClient?.dispose();
+    brokenWarmClient = null;
+  }
+  function warmBrokenPools(dt: number): void {
+    if (brokenWarmDone || brokenWarmBusy || !(dt > 0) || dt > 0.25) return;
+    brokenWarmClock += dt;
+    if (brokenWarmClock < BROKEN_WARM_AFTER_S) return;
+    let pool: DestructiblePool | null = null;
+    for (const p of dPools.values()) if (p.makeBroken && p.imB) { pool = p; break; }
+    if (!pool) { stopBrokenWarm(); return; }
+    if (!brokenWarmClient) {
+      if (typeof Worker === 'undefined') { stopBrokenWarm(); return; }
+      brokenWarmClient = createFractureWreckClient();
+    }
+    const target = pool, make = pool.makeBroken!;
+    brokenWarmBusy = true;
+    brokenWarmClient.build(make.job).then((geoB) => {
+      brokenWarmBusy = false;
+      if (target.makeBroken === make && !brokenWarmDone) installBrokenGeometry(target, geoB);
+      else geoB.dispose();
+    }, () => {
+      brokenWarmBusy = false;
+      stopBrokenWarm();
+    });
   }
   /**
    * (the destructible-kits lane, 2026-10-11) A kind's far stand-in (meta.farBuild: a couple of hundred triangles against
@@ -11089,12 +11169,12 @@ ${snowCap ? `
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
-  // Construction-only spans are now sealed into matrices/support/colliders;
-  // runtime destruction closures must not retain the placement graph.
-  wallSpans.clear();
   // the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces (above), before the
   // runtime's broad phases index the records (the loose props meet the banks too)
   pillboxEarthworks();
+  // Construction-only spans are now sealed into matrices/support/colliders;
+  // runtime destruction closures must not retain the placement graph.
+  wallSpans.clear();
   // spatial hash over destructible records for the shell paths (8 m cells)
   // settlement pass 2 (2026-09-12): every placed building's chimney tops, world space (hearth smoke).
   const hearthAnchors = exteriorChimneyTops(buckets).map(([x, y, z]) => [x, y, z] as [number, number, number]);
@@ -11286,6 +11366,7 @@ ${snowCap ? `
     pool.imI!.setMatrixAt(rec.slot, _mat4);
     pool.imI!.instanceMatrix.needsUpdate = true;
     if (!pool.imB) return;
+    ensureBrokenGeometry(pool);
     const bi = pool.nBroken++;
     if (bi >= pool.mats4.length) return;
     pool.imB.setMatrixAt(bi, pool.mats4[rec.slot]);
@@ -11488,17 +11569,21 @@ ${snowCap ? `
       }
     }
   }
-  const registerDestructibles = (): (() => void) => registerWorldDestructibles({
-    key: mapId,
-    isActive: () => {
-      for (let o: THREE.Object3D | null = group; o; o = o.parent) {
-        if (o.visible === false) return false;
-      }
-      return !!group.parent; // only once assembled into a scene
-    },
-    sweep: shellSweep,
-    impact: shellImpact,
-  });
+  const registerDestructibles = (): (() => void) => {
+    const unregister = registerWorldDestructibles({
+      key: mapId,
+      isActive: () => {
+        for (let o: THREE.Object3D | null = group; o; o = o.parent) {
+          if (o.visible === false) return false;
+        }
+        return !!group.parent; // only once assembled into a scene
+      },
+      sweep: shellSweep,
+      impact: shellImpact,
+    });
+    // (the world's dispose, map.ts) the wreck worker goes with the world
+    return () => { unregister(); stopBrokenWarm(); };
+  };
 
   // DESTRUCTIBLES r1: tossed-prop pose — ballistic arc along the impact
   // direction with tumble, composed about the prop's own center against the
@@ -11726,6 +11811,7 @@ ${snowCap ? `
       }
     }
     if (stepDestruction(dt)) updatePoleLod(cameraPos);
+    warmBrokenPools(dt);
   }
 
   /**

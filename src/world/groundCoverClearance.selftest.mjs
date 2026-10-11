@@ -241,8 +241,10 @@ const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 // (a pavement's clints, a scree fan), composed once in map.ts and handed to the grass, the litter and the tall grass
 // 2026-10-07 (the hitbox lane): the stones' colliders became their own (props.ts refitRockColliders), so the ground cover
 // reads the movement solids plus the cosmetic twins of the stones' legacy records — the footprints it was sealed against
-assert.match(map, /const queryGroundCover = rockGroundCover\.length \? createObstacleGrid\(\[\.\.\.obstacles, \.\.\.rockGroundCover\]\) : queryObstacles;/,
-  'the movement-solid grid, plus the stones\' cosmetic twins');
+// 2026-10-11 (the destructible-kits lane, round 2): less the earthworks (the pillboxes' banks), on which the field's grass
+// stands through the ground cover's static lifts (props.ts groundCoverLifts)
+assert.match(map, /const coverSolids = obstacles\.filter\(\(ob\) => \(ob as \{ kind\?: string \}\)\.kind !== 'earthwork'\);\n\s*const queryGroundCover = rockGroundCover\.length \|\| coverSolids\.length !== obstacles\.length\n\s*\? createObstacleGrid\(\[\.\.\.coverSolids, \.\.\.rockGroundCover\]\) : queryObstacles;/,
+  'the movement-solid grid less the earthworks, plus the stones\' cosmetic twins');
 assert.match(map, /const groundCoverClearance = \(\) => withGroundCoverHoles\(createGroundCoverClearance\(queryGroundCover\), groundCoverHoles\)/,
   'share actual accepted movement-solid grid, including crates absent from shell colliders');
 assert.match(map, /setGroundCoverClearance\(groundCoverClearance\(\)\)/, 'the grass carpet takes the composed admission');

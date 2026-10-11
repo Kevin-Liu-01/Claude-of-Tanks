@@ -14,6 +14,9 @@ setBreakFxProvider((...args) => calls.push(['fx', ...args]));
 emitBreakFx('fence', 1, 2, 3, 4, 5, 6);
 assert.deepEqual(calls.pop(), ['fx', 'fence', 1, 2, 3, 4, 5, 6],
   'break FX retains every authored coordinate and impulse');
+// (the destructible-kits lane, 2026-10-11) a fracture-ready kind's break hands its churned ground's radius on
+emitBreakFx('fieldhut', 1, 2, 3, 4, 5, 6, 3.5);
+assert.deepEqual(calls.pop(), ['fx', 'fieldhut', 1, 2, 3, 4, 5, 6, 3.5], 'a break with a scar hands its radius on');
 setBreakFxProvider(null);
 emitBreakFx('barrel', 0, 0, 0, 0, 0, 0);
 assert.equal(calls.length, 0, 'cleared FX provider is inert');

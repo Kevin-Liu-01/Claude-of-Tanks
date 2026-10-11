@@ -17,10 +17,11 @@ import {
 import {
   auditRoofPlanePitch, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
-import { spentDraws } from './brokenDraws.ts';
+import { spentDraws, spentSeed } from './brokenDraws.ts';
+import { deferredWreck, type DeferredWreck } from './fractureWreckJob.ts';
 import {
-  SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedBroken, buildShedCollision, buildShedFar,
-  buildShedFieldHut, buildShedLeanTo, buildShedShadow, shedStyleFor, type ShedBuild, type ShedDetail, type ShedStyle,
+  SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedCollision, buildShedFar,
+  buildShedFieldHut, buildShedLeanTo, buildShedShadow, buildShedWreck, shedStyleFor, type ShedBuild, type ShedDetail, type ShedStyle,
 } from './shedKit.ts';
 
 type Rng = () => number;
@@ -123,6 +124,8 @@ interface DestructibleBuildingType {
   build: LightStructureBuilder;
   instanceTintStrength: number;
   broken: LightStructureBuilder;
+  /** The broken state in two steps, the draws now and the geometry on demand or in a worker (inhabitKit DestructiblePropType). */
+  brokenDeferred?: (rng: Rng) => DeferredWreck;
   /** The solids its collision is derived from in place of its build (a fracture-ready kind's envelopes). */
   collisionBuild?: () => THREE.BufferGeometry;
   /** The caster the cascades draw in place of its build (inhabitKit DestructiblePropType.shadowBuild). */
@@ -1969,14 +1972,15 @@ function shedMeta(kind: keyof typeof LEGACY_SHED_TYPES, st: ShedStyle, mobile = 
     farBuild: () => buildShedFar(kind, st),
     farM: mobile ? SHED_FAR_M_PHONE : SHED_FAR_M,
     build: (rng: Rng) => build(st, spentDraws(legacy.build, rng, salt), detail).geometry,
-    broken: (rng: Rng) => {
-      const own = spentDraws(legacy.broken, rng, salt ^ 0x5bd1);
-      const shed = build(st, own, 'lite');
-      const heap = buildShedBroken(shed, own, salt, st);
-      shed.geometry.dispose();
-      return heap;
-    },
+    broken: (rng: Rng) => shedWreck(rng)(),
+    // (the wreck settled from the lighter build's pieces, built by a worker once the battle runs or when a copy first
+    // breaks: the draws spent now, fractureWreckJob.ts)
+    brokenDeferred: (rng: Rng) => shedWreck(rng),
   };
+  function shedWreck(rng: Rng): DeferredWreck {
+    const seed = spentSeed(legacy.broken, rng, salt ^ 0x5bd1);
+    return deferredWreck({ kit: 'shed', kind, style: st, seed, salt }, () => buildShedWreck(kind, st, seed, salt));
+  }
 }
 
 /** One map's sheds in its own style, for props.ts's local types (a regional kit's own variant still wins). */

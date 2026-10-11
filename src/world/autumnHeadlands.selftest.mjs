@@ -37,7 +37,7 @@ assert.match(composition, /autumnCropRows\.length = 0;\s+autumnFieldContext = nu
 const nested = ['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight',
   'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop',
   'createCropTexture', 'cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry',
-  'tryPlaceCropPlot', 'refitDestructibleColliders', 'animateBrokenRecord', 'breakRecord',
+  'tryPlaceCropPlot', 'refitDestructibleColliders', 'animateBrokenRecord', 'ensureBrokenGeometry', 'breakRecord',
   'restoreDestructibleRecord'].map(declaration).join('\n');
 const finalizer = declaration('finalizeCropFields').replace('function finalizeCropFields(', 'function realFinalize(');
 const sources = new Map();

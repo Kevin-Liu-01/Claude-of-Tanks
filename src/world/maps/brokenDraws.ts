@@ -11,8 +11,21 @@ type Rng = () => number;
  * own, seeded from the legacy's first two draws and `salt` (one per kind), so the new state draws what it likes.
  */
 export function spentDraws(legacy: (rng: Rng) => THREE.BufferGeometry, rng: Rng, salt: number): Rng {
+  return seededDraws(spentSeed(legacy, rng, salt));
+}
+
+/**
+ * (the destructible-kits lane, 2026-10-11) The same spend, returning the own stream's seed: a deferred broken state
+ * (built when a copy first breaks, or by a worker ahead of it) keeps a number, not a stream's closure.
+ */
+export function spentSeed(legacy: (rng: Rng) => THREE.BufferGeometry, rng: Rng, salt: number): number {
   let seed = salt | 0, k = 0;
   legacy(() => { const v = rng(); if (k++ < 2) seed = Math.imul(seed ^ Math.floor(v * 4294967296), 0x9e3779b1); return v; }).dispose();
+  return seed | 0;
+}
+
+/** The own stream from its seed (mulberry32): spentDraws(legacy, rng, salt) draws what seededDraws(spentSeed(...)) does. */
+export function seededDraws(seed: number): Rng {
   let a = seed | 0;
   return () => {
     a = a + 0x6D2B79F5 | 0;

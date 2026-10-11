@@ -210,6 +210,14 @@ for (const id of ['fieldhut', 'leanto']) {
     assert.equal(nowBroken.calls, legacyBroken.calls, `${id}/${seed}: the broken build spends the legacy draws, no more`);
     // and what follows on the stream is the same value
     assert.equal(nowBuild(), legacyBuild(), `${id}/${seed}: the next placement reads the same draw`);
+    // the lazy wreck (the coordinator: "build wreck states lazily"): the deferred step spends the same draws at load and
+    // builds the same geometry when it is run
+    const deferredBroken = counting(seed + 1);
+    const make = DESTRUCTIBLE_BUILDING_TYPES[id].brokenDeferred(deferredBroken);
+    assert.equal(deferredBroken.calls, legacyBroken.calls, `${id}/${seed}: the deferred wreck spends the legacy draws at load`);
+    const lazy = make(), eager = DESTRUCTIBLE_BUILDING_TYPES[id].broken(counting(seed + 1));
+    assert.equal(geomDigest(lazy), geomDigest(eager), `${id}/${seed}: and builds the same wreck when it is run`);
+    lazy.dispose(); eager.dispose();
   }
 }
 

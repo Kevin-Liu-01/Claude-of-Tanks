@@ -1506,6 +1506,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/shedKit.selftest.mjs',
+    // the destructible-kits lane (2026-10-11): the deferred wrecks built off the page's thread
+    'src/world/maps/fractureWreckWorker.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap

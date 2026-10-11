@@ -1334,7 +1334,7 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
  * runs, the − half's end facing + first; each a splintered round end, slivers out along the grain from a torn middle,
  * fresh wood inside, darker at its rim. A roof log and a door's lintel snap; walls' bands go whole.
  */
-export function logFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
+function logFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
   out: DamageMeshWriter): void {
   if (score === 'whole' || material !== 'timber' || (piece.role !== 'rafter' && piece.role !== 'frame')) return;
   const axis = piece.scoreAxis ?? 0;

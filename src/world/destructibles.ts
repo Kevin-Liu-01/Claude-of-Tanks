@@ -75,9 +75,10 @@ export function emitBreakFx(
   dx: number,
   dz: number,
   h: number,
-  scarM = 0,
+  scarM?: number,
 ): void {
-  if (fxProvider) fxProvider(kind, x, y, z, dx, dz, h, scarM);
+  // (a scar only when the break leaves one: the authored seven arguments otherwise, exactly)
+  if (fxProvider) { if (scarM) fxProvider(kind, x, y, z, dx, dz, h, scarM); else fxProvider(kind, x, y, z, dx, dz, h); }
 }
 
 // DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any

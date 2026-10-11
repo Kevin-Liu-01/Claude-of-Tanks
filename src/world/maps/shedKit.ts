@@ -40,6 +40,7 @@ import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
 import { auditRoofPlanePitch } from '../propGeometry.ts';
 import { ensureWorldNightEmissionMask, markWorldAperture } from '../worldNightEmissionGeometry.ts';
 import { FractureSettle, type SettleBody, type SettleTris } from './fractureSettle.ts';
+import { seededDraws } from './brokenDraws.ts';
 
 type Rng = () => number;
 type V3 = [number, number, number];
@@ -2257,7 +2258,7 @@ export function buildShedShadow(kind: 'fieldhut' | 'leanto'): THREE.BufferGeomet
 // ------------------------------------------------------------------------------------------------- the broken heap
 
 /** The standing corner's broken boards reach no higher than this (m); the rest of the wreck lies lower. */
-export const SHED_WRECK_TOP = 2.15;
+const SHED_WRECK_TOP = 2.15;
 
 const EARTH: Rgb = hexLin(0x4b3e31);
 
@@ -2347,7 +2348,7 @@ function wreckBits(S: FractureSettle, st: ShedStyle, rng: Rng, box: [number, num
  * the wreck; the porch folds onto its stoop; the stovepipe, ladder, bench and barrel are thrown, the firewood spills;
  * clods and splinters round the foot. The broken pool has no collider (a hull drives through a wreck as it always did).
  */
-export function buildShedBroken(build: ShedBuild, rng: Rng, salt: number, st: ShedStyle = SHED_DEFAULT_STYLE): THREE.BufferGeometry {
+function buildShedBroken(build: ShedBuild, rng: Rng, salt: number, st: ShedStyle = SHED_DEFAULT_STYLE): THREE.BufferGeometry {
   const pieces = build.anatomy.pieces;
   const S = new FractureSettle(build.geometry, build.anatomy, { cell: 0.08, margin: 3.2, dust: 0.8 });
   const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
@@ -2506,6 +2507,20 @@ export function buildShedBroken(build: ShedBuild, rng: Rng, salt: number, st: Sh
   // 11. clods and splinters round the foot
   S.extra(wreckBits(S, st, rng, [x0, x1, z0, z1], blow, lite), 0.95);
   return ensureWorldNightEmissionMask(S.finish());
+}
+
+/**
+ * (the destructible-kits lane, 2026-10-11) A shed's broken pool from numbers alone — the kind, the map's style, the own
+ * stream's seed (brokenDraws.ts spentSeed) and the kind's salt: the lighter build drawn from that stream, then the
+ * wreck settled from it. structureKit.ts defers it to a copy's first break (or a worker ahead of it,
+ * fractureWreckJob.ts); every caller builds the same wreck.
+ */
+export function buildShedWreck(kind: 'fieldhut' | 'leanto', st: ShedStyle, seed: number, salt: number): THREE.BufferGeometry {
+  const own = seededDraws(seed);
+  const shed = (kind === 'fieldhut' ? buildShedFieldHut : buildShedLeanTo)(st, own, 'lite');
+  const heap = buildShedBroken(shed, own, salt, st);
+  shed.geometry.dispose();
+  return heap;
 }
 
 // ------------------------------------------------------------------------------------------------- the edge art

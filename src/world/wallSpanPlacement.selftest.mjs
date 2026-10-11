@@ -254,6 +254,8 @@ function checkSourceLifecycle(pool) {
       const events = [], fx = [], pendingBlasts = [];
       let fxBudget = 1;
       const emitDestroyed = event => events.push(event), emitBreakFx = (...args) => fx.push(args);
+      // (the destructible-kits lane: a wall has no fort make and no deferred broken state)
+      const fort = null, ensureBrokenGeometry = () => {};
       ${breakAnimationSource}; ${breakRecordSource}; ${restoreSource};
       return { breakRecord, restoreDestructibleRecord, resetBrokenPools, events, fx };`)(
     THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive);

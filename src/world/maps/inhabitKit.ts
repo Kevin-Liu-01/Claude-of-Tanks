@@ -13,6 +13,7 @@
 // apply to all of them, so winter gets snow-covered variants for free).
 
 import * as THREE from 'three';
+import type { DeferredWreck } from './fractureWreckJob.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   certifyGroundedStructureParts, certifyStructureAttachments,
@@ -39,6 +40,12 @@ export interface DestructiblePropType {
   h: number;
   build: PropBuilder;
   broken: PropBuilder | null;
+  /** (the destructible-kits lane, 2026-10-11; the coordinator: "build wreck states lazily") The broken state in two
+   * steps: the call spends the stream's draws now (the draw law, brokenDraws.ts) and returns the builder of the
+   * geometry, which the pool runs only when a copy first breaks or a late joiner lays one broken; its job (the numbers
+   * it is built from, fractureWreckJob.ts) lets a worker build it once the battle runs, ahead of the first break.
+   * `broken` stays the one-step form (all three build the same geometry). */
+  brokenDeferred?: (rng: () => number) => DeferredWreck;
   hw?: number;
   hl?: number;
   /** The map-vehicles lane (2026-10-06): a cart's body plan (cartKit.ts CartFootprint hull), local, flat [x, z, ...]. */
