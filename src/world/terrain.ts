@@ -4762,7 +4762,8 @@ void splatCompute() {
   // less a drift of ±0.15 m over 30 m and more (field b at 0.002) — and the pair keeps its 3.1 m gauge; where the frame
   // does not hold (a junction's texels, a pad's) the lanes sit at 1.55 m without a swing
   bool workedR = uRoadSurf.x > 0.0 && uLandTier > 0.5;
-  float roadWeave = workedR ? (nz(uv, 0.002, vec2(0.37, 0.11)).g - 0.5) * 0.30 : 0.0;
+  // (R3 cost: the weave reads n2 — the slow field already sampled, features past ~20 m — not a tap of its own)
+  float roadWeave = workedR ? (n2 - 0.5) * 0.30 : 0.0;
   float laneY = workedR && gRoadYOk > 0.5 ? abs(gRoadY - roadWeave) : dRoad;
   float laneWob = workedR ? 0.0 : (n1 - 0.5) * 0.55;
   float laneD = (laneY - 1.55 - laneWob) * uLaneK;
@@ -7071,8 +7072,8 @@ void splatCompute() {
       }
       // (7) washboard: corrugations across an arid track every 0.8 m, in stretches, strongest in the wheel paths
       if (uRoadSurfB.x > 0.0 && gRoadFrameW > 0.5 && uLandTier > 1.5) {
-        float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR
-          * smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g) * (0.55 + 0.45 * path);
+        float wv = stripeVis(0.8, gRoadAlong) * uRoadSurfB.x * gRoadFrameW * wR * (0.55 + 0.45 * path);
+        if (wv > 0.01) wv *= smoothstep(0.42, 0.62, nz(uv, 0.011, vec2(0.27, 0.59)).g); // (R3 cost: the tap only where it shows)
         if (wv > 0.01) {
           float wph = 6.2831853 * gRoadS / 0.8;
           if (nrmOn) n.xy += 0.5 * 0.025 * (6.2831853 / 0.8) * sin(wph) * gRoadAlong * wv;
@@ -7428,13 +7429,17 @@ void splatCompute() {
           float agg = nz(uv, 1.9, vec2(0.31, 0.57)).r;
           float big = nz(uv, 0.021, vec2(0.17, 0.83)).g;
           vec3 asph = vec3(0.118, 0.116, 0.111) * (0.90 + 0.16 * agg) * (0.88 + 0.24 * big);
-          float aggF = nz(uv, 6.1, vec2(0.13, 0.77)).r;
-          asph *= 1.0 + (smoothstep(0.62, 0.86, aggF) * 0.45 - smoothstep(0.30, 0.10, aggF) * 0.18) * tileVis(0.06);
+          // (R4 cost: each fine term's taps only while it can resolve)
+          float aggV = tileVis(0.06);
+          if (aggV > 0.01) {
+            float aggF = nz(uv, 6.1, vec2(0.13, 0.77)).r;
+            asph *= 1.0 + (smoothstep(0.62, 0.86, aggF) * 0.45 - smoothstep(0.30, 0.10, aggF) * 0.18) * aggV;
+          }
           // (R2: the first frames' asphalt "smooth plastic") the aggregate's second octave, the binder bled dark in blotches
           // of a few metres, and on a country road its edge ravelled — the binder gone, the stone paler and broken — before
           // the verge
-          float aggG = nz(uv, 13.0, vec2(0.53, 0.29)).r;
-          asph *= 1.0 + (aggG - 0.5) * 0.22 * tileVis(0.03);
+          float aggGV = tileVis(0.03);
+          if (aggGV > 0.01) asph *= 1.0 + (nz(uv, 13.0, vec2(0.53, 0.29)).r - 0.5) * 0.22 * aggGV;
           asph *= 1.0 - 0.13 * smoothstep(0.56, 0.84, nzq(uv, 0.09, vec2(0.71, 0.37)).x);
           if (fr) {
             float ravel = smoothstep(roadHalf - 1.0, roadHalf - 0.15, dRoad) * (1.0 - paveTownW)
@@ -7578,8 +7583,11 @@ void splatCompute() {
         // relaid patches. (The patches' edges are drawn over the pixel's footprint by the fields' own slope.)
         {
           float hA = nz(uv, 0.035, vec2(0.29, 0.61)).r;
-          vec2 dipG = vec2(nz(uv + vec2(0.6, 0.0), 0.035, vec2(0.29, 0.61)).r - hA,
-            nz(uv + vec2(0.0, 0.6), 0.035, vec2(0.29, 0.61)).r - hA) / 0.6 * 0.05;
+          // (R4 cost: the dips' slope — two more taps — only where the normal is drawn and the dips' relief spans pixels;
+          // their tone below holds at every distance)
+          vec2 dipG = vec2(0.0);
+          if (nrmOn && tileVis(2.0) > 0.01) dipG = vec2(nz(uv + vec2(0.6, 0.0), 0.035, vec2(0.29, 0.61)).r - hA,
+            nz(uv + vec2(0.0, 0.6), 0.035, vec2(0.29, 0.61)).r - hA) / 0.6 * 0.05 * tileVis(2.0);
           float sagW = fr ? exp(-wpX * wpX) * wearOn : 0.0;
           vec2 sagG = 0.015 * 2.0 * wpX / 0.32 * sagW * sign(abs(rq.y) - 1.6) * sign(rq.y) * pr;
           pN -= 0.5 * (dipG + sagG) * (abs(pCls - 1.0) < 0.5 || abs(pCls - 3.0) < 0.5 ? 0.6 : 1.0);

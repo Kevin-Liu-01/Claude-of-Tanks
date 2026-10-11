@@ -45,7 +45,7 @@ assert.match(terrainSource,
   /float roadCore = 1\.0 - smoothstep\(roadHalf - 0\.55, roadHalf \+ 0\.55, dRoad\);/,
   'the compacted core ends on an analytic gauge, not on a filtered byte threshold');
 assert.match(terrainSource,
-  /bool workedR = uRoadSurf\.x > 0\.0 && uLandTier > 0\.5;\s*float roadWeave = workedR \? \(nz\(uv, 0\.002, vec2\(0\.37, 0\.11\)\)\.g - 0\.5\) \* 0\.30 : 0\.0;\s*float laneY = workedR && gRoadYOk > 0\.5 \? abs\(gRoadY - roadWeave\) : dRoad;\s*float laneWob = workedR \? 0\.0 : \(n1 - 0\.5\) \* 0\.55;\s*float laneD = \(laneY - 1\.55 - laneWob\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
+  /bool workedR = uRoadSurf\.x > 0\.0 && uLandTier > 0\.5;\s*\/\/ \(R3 cost[^\n]*\n\s*float roadWeave = workedR \? \(n2 - 0\.5\) \* 0\.30 : 0\.0;\s*float laneY = workedR && gRoadYOk > 0\.5 \? abs\(gRoadY - roadWeave\) : dRoad;\s*float laneWob = workedR \? 0\.0 : \(n1 - 0\.5\) \* 0\.55;\s*float laneD = \(laneY - 1\.55 - laneWob\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
   'twin wheel lanes sit 1.55 m either side of the centreline on the 2 m mask, swinging a quarter metre along the road (wave 69) by the old law (the Low tier, a map without the worked road); on the worked road (R3: the gauntlet\'s "worm trails") a parallel pair on the exact signed offset, weaving together ±0.15 m past 30 m; a coarse mask gets one bead-free plateau');
 assert.match(terrainSource,
   /float rutAmp = \(0\.22 \+ 0\.78 \* smoothstep\(0\.28, 0\.70, n2 \* 0\.55 \+ n1 \* 0\.45\)\) \* \(0\.72 \+ 0\.28 \* n1hs\);/,
