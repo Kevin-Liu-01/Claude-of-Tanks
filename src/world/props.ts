@@ -51,7 +51,7 @@ import {
 } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { dressMapExtras, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
@@ -2729,6 +2729,31 @@ function makeGroundDecalTexture(
   return texture;
 }
 
+/** (sealed lane 2026-10-11) Dressing's drawn footprint: the convex hull in plan of the vertices of `geos` over `over` m
+ *  above `y`, with its height — a stand-in for the parked vehicles' and carts' seat passes (crushableFootprints), never
+ *  a collider. Null when fewer than three corners stand over that line. */
+function drawnPlanRecord(geos: readonly THREE.BufferGeometry[], y: number, over: number): CollisionRecord | null {
+  const plan: [number, number][] = [];
+  let top = y;
+  for (const geo of geos) {
+    const p = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < p.count; i++) {
+      const py = p.getY(i);
+      if (py > top) top = py;
+      if (py > y + over) plan.push([p.getX(i), p.getZ(i)]);
+    }
+  }
+  const points = convexHull2(plan);
+  if (points.length < 6) return null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, cx = 0, cz = 0;
+  for (let k = 0; k < points.length; k += 2) {
+    x0 = Math.min(x0, points[k]); x1 = Math.max(x1, points[k]); z0 = Math.min(z0, points[k + 1]); z1 = Math.max(z1, points[k + 1]);
+    cx += points[k]; cz += points[k + 1];
+  }
+  return { min: [x0, y, z0], max: [x1, top, z1],
+    shape2: { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points } };
+}
+
 interface RoadsideSpotContext {
   rng: Rng;
   roads: TerrainLayout['roads'];
@@ -5052,6 +5077,11 @@ ${snowCap ? `
     chunk.computeVertexNormals();
     return chunk;
   }
+  // (sealed lane 2026-10-11: a Caldera and a Ruinspires flatbed stood through a rubble pile's metre-high block) a pile's
+  // record is the circle its chunks' centres fall in; each chunk reaches past it by up to its own size, and its charred
+  // beam further: its masonry and the beam stand in the parked vehicles' and carts' seat passes as drawn
+  // (crushableFootprints; the brick-shard apron is left to the ground)
+  const rubbleDrawnFootprints: CollisionRecord[] = [];
   function addRubblePile(x: number, z: number, pr: number, rrng: Rng): void {
     const y = heightField.getHeightAt(x, z);
     const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
@@ -5089,6 +5119,8 @@ ${snowCap ? `
       beam.translate(x, y + pr * 0.4, z);
       buckets.wood.push(beam);
     }
+    const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + n), ...buckets.wood.slice(woodStart)], y, 0.05);
+    if (drawn) rubbleDrawnFootprints.push(drawn);
     const ob = setCircleShape({ min: [x - pr, y, z - pr],
       max: [x + pr, y + pr * .7, z + pr], kind: 'rubble' }, x, z, pr);
     const col = cloneCollisionRecord(ob);
@@ -8209,22 +8241,8 @@ ${snowCap ? `
   /** (sealed lane) A placed wreck piece's drawn footprint: the convex hull in plan of its vertices over `over` m above the
    *  hulk's seat, with its height, for the parked vehicles' seat passes (crushableFootprints). */
   function pushWreckDrawnFootprint(geo: THREE.BufferGeometry, y: number, over: number): void {
-    const p = geo.getAttribute('position') as THREE.BufferAttribute, plan: [number, number][] = [];
-    let top = y;
-    for (let i = 0; i < p.count; i++) {
-      const py = p.getY(i);
-      if (py > top) top = py;
-      if (py > y + over) plan.push([p.getX(i), p.getZ(i)]);
-    }
-    const points = convexHull2(plan);
-    if (points.length < 6) return;
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, cx = 0, cz = 0;
-    for (let k = 0; k < points.length; k += 2) {
-      x0 = Math.min(x0, points[k]); x1 = Math.max(x1, points[k]); z0 = Math.min(z0, points[k + 1]); z1 = Math.max(z1, points[k + 1]);
-      cx += points[k]; cz += points[k + 1];
-    }
-    wreckDrawnFootprints.push({ min: [x0, y, z0], max: [x1, top, z1],
-      shape2: { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points } });
+    const record = drawnPlanRecord([geo], y, over);
+    if (record) wreckDrawnFootprints.push(record);
   }
   function* placeTankWrecks(): Generator<PropsBuildSlice, void, void> {
     const wCfg = P.tankWrecks || null;
@@ -8759,6 +8777,9 @@ ${snowCap ? `
 
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
+  // (sealed lane 2026-10-11: Ruinspires and Blackglass trucks stood with their wheels in a pavement) each kerb piece and
+  // the pavement behind it in plan, for the parked vehicles' and carts' seat passes (crushableFootprints)
+  const streetKerbFootprints: CollisionRecord[] = [];
   function placeStreetCurbs(): void {
     if (!P.curbs) return;
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
@@ -8849,6 +8870,12 @@ ${snowCap ? `
             walk.rotateY(yaw);
             walk.translate(cx - tz * side * WALK_OFFSET_M, 0, cz + tx * side * WALK_OFFSET_M);
             buckets[kerbBucket].push(walk);
+            const k0 = KERB_OFFSET_M - KERB_DEPTH_M / 2, k1 = WALK_OFFSET_M + WALK_DEPTH_M / 2;
+            const ux = (tx * segLen) / 2, uz = (tz * segLen) / 2, nx = -tz * side, nz = tx * side;
+            const foot = Math.min(kerbFoot[0], kerbFoot[1], walkFoot[0], walkFoot[1]);
+            streetKerbFootprints.push(setConvexShape({ min: [0, foot, 0], max: [0, foot + 0.45, 0], kind: 'kerb' }, convexHull2([
+              [cx - ux + nx * k0, cz - uz + nz * k0], [cx + ux + nx * k0, cz + uz + nz * k0],
+              [cx + ux + nx * k1, cz + uz + nz * k1], [cx - ux + nx * k1, cz - uz + nz * k1]])));
           }
         }
       }
@@ -9711,11 +9738,28 @@ ${snowCap ? `
   // never saw them. Each stands here as a circle at its contact radius from its foot up its height.
   // A placed hulk's collision keeps its hull and turret solids only (a sideways gun never walls off the ground beside it),
   // so its drawn footprint stands here too (wreckDrawnFootprints).
+  // Sealed lane 2026-10-11 (the clash census over round 2: a Badlands box truck through a road sign's panel, four
+  // Ironworks trucks and a Caldera handcart across a siding's sleepers): a destructible drawn wider than its collision
+  // circle (a sign's panel, a lamp's head, a wayside cross's arms, a stack's skirt) stands here at its drawn radius too,
+  // and so do every laid line's bed (mapKits.ts railBedSpans) and the streets' kerbs and pavements (streetKerbFootprints):
+  // dressing, with no collision record.
+  const railBeds = railBedSpans(mapId, P.extraKits, L.railSpurs).map(({ ax, az, bx, bz, hw }): CollisionRecord => {
+    const run = Math.hypot(bx - ax, bz - az), nx = (-(bz - az) / run) * hw, nz = ((bx - ax) / run) * hw;
+    const y = Math.min(heightField.getHeightAt(ax, az), heightField.getHeightAt(bx, bz));
+    return setConvexShape({ min: [0, y - 0.1, 0], max: [0, y + 0.35, 0], kind: 'rail-bed' },
+      convexHull2([[ax + nx, az + nz], [bx + nx, bz + nz], [bx - nx, bz - nz], [ax - nx, az - nz]]));
+  });
+  const drawnWider = (kind: string): boolean => {
+    const meta = LOCAL_TYPES[kind];
+    return !!meta && meta.shape === 'circle' && meta.collisionR !== undefined && meta.r > meta.collisionR;
+  };
   function crushableFootprints(): CollisionRecord[] {
-    return [...crushables.filter((c) => !c.toppled).map((c): CollisionRecord => ({
-      min: [c.x - c.r, c.y, c.z - c.r], max: [c.x + c.r, c.y + c.h, c.z + c.r],
-      shape2: { kind: 'circle', cx: c.x, cz: c.z, r: c.r },
-    })), ...wreckDrawnFootprints];
+    const circle = (x: number, y: number, z: number, r: number, h: number): CollisionRecord => ({
+      min: [x - r, y, z - r], max: [x + r, y + h, z + r], shape2: { kind: 'circle', cx: x, cz: z, r },
+    });
+    return [...crushables.filter((c) => !c.toppled).map((c) => circle(c.x, c.y, c.z, c.r, c.h)),
+      ...destructibles.filter((d) => d.state === 0 && !d.dropped && d.ob && drawnWider(d.kind)).map((d) => circle(d.x, d.y, d.z, d.r, d.h)),
+      ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...railBeds, ...streetKerbFootprints];
   }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
@@ -9747,7 +9791,14 @@ ${snowCap ? `
           }
           return true;
         };
-        return !obstacles.some(blocks) && !colliders.some(blocks) && !trees.some(blocks) && !crushRecords.some(blocks);
+        if (obstacles.some(blocks) || colliders.some(blocks) || trees.some(blocks)) return false;
+        // (sealed lane 2026-10-11) the drawn footprints by their own outlines: a rail bed or a kerb runs on a diagonal
+        // as often as not, and its bounding square would wall off the verge beside it
+        const c = Math.cos(record.yaw), s = Math.sin(record.yaw);
+        const seat: FootprintPolygon = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) =>
+          [x + u * fhw * c + v * fhl * s, z - u * fhw * s + v * fhl * c] as const);
+        return !crushRecords.some((ob) => x + ex > ob.min[0] && x - ex < ob.max[0] && z + ez > ob.min[2] && z - ez < ob.max[2]
+          && shapePolygons(ob).some((poly) => polygonGap(seat, poly).gap < 0));
       },
       move: (record, x, z) => relocateParkedVehicleRecord(destructibleContext, record, x, z),
       drop: (record) => dropParkedVehicleRecord(destructibleContext, record),
@@ -9828,8 +9879,15 @@ ${snowCap ? `
     // (2026-10-08, over batch 5's hitbox lane) a stone that rises past the drive-over line but had no legacy record takes
     // its collider only at refitRockColliders, after this pass: a cart meets it here by the stone's own contact
     // footprint, so none is seated over a stone that then turns solid (an Alpine sled stood 0.56 m into one)
+    // (sealed lane 2026-10-11: an Alpine sled's runner and a Mangrove wagon's bed through a stone's foot) the contact
+    // footprint holds the stone from 0.2 m over its ground up; its foot flares past that, so the stone meets a seat by
+    // all of it that stands over the ground: the hull of its contact and of every shell slab that reaches above it
     const risenStones = rockSeats.filter((seat) => seat.added && seat.profile && seat.rec).map((seat) => {
-      const c = seat.profile!.contact, poly: (readonly [number, number])[] = [];
+      const profile = seat.profile!, ground = heightField.getHeightAt(seat.x, seat.z), plan: [number, number][] = [];
+      for (const points of [profile.contact, ...profile.bands.filter((band) => band.y1 > ground).map((band) => band.points)]) {
+        for (let i = 0; i + 1 < points.length; i += 2) plan.push([points[i], points[i + 1]]);
+      }
+      const c = convexHull2(plan), poly: (readonly [number, number])[] = [];
       let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
       for (let i = 0; i + 1 < c.length; i += 2) {
         poly.push([c[i], c[i + 1]] as const);
@@ -9880,6 +9938,16 @@ ${snowCap ? `
       const man = record.kind === 'handcart', lane = man ? Math.max(hw, 0.45) + 0.15 : Math.max(hw, 0.6) + 0.25;
       const out = [rect(-lane, lane, hl, hl + (man ? 1.2 : record.kind === 'sled' ? 2.25 : 2.75))];
       if (type.runners) out.push(rect(-hw - 0.25, hw + 0.25, -hl - 4, -hl));
+      // (sealed lane 2026-10-11: two Alpine hand carts' handles stood through a plank fence) the shafts, the handles and
+      // the horns are dressing, out of the body's hull, and the puller's ground starts past them: the ground they reach
+      // over, from the hull's ends to the cart's own, keeps clear of the same solids
+      const hull = type.bodyHull;
+      if (hull?.length) {
+        let front = -Infinity, back = Infinity;
+        for (let k = 1; k < hull.length; k += 2) { front = Math.max(front, hull[k] * record.sc); back = Math.min(back, hull[k] * record.sc); }
+        if (hl - front > 0.05) out.push(rect(-hw, hw, front, hl));
+        if (back + hl > 0.05) out.push(rect(-hw, hw, -hl, back));
+      }
       return out;
     };
     const tall = (ob: CollisionRecord) => ob.max[1] - ob.min[1] > 0.5;
