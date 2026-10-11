@@ -111,7 +111,11 @@ export default {
   // ground lane (2026-10-03, maps lane A's census: "lush green where Dalmatian karst should be dry scrub", and "blue-grey
   // slope-rock smears on the terrace risers read as puddles"): on the coast's photo layers, the sward pulled toward a
   // garrigue's dusty grey-olive and the rock lifted to the weathered limestone's pale warm grey (the boulders' tone)
-  splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68,
+  // (2026-10-07, the map-revival lane: Saltmere's Channel water and its closed turf are Saltmere's own — Saltwind keeps
+  // the water tone and the worn-dirt breakup it inherited from the coastal splat)
+  splat: { sourcedPalette: 'coastal', ...coastal.splat,
+    mudTone: (h: number, s: number, l: number) => [Math.min(1, Math.max(0, h * 0.98)), Math.min(1, Math.max(0, s * 1.1)), Math.min(1, Math.max(0, l * 0.82))],
+    wornDirtStrength: 0.32, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68,
     // ground lane (wave 79: "… red terra rossa among limestone (Dalmatia)"): the coast's dirt layer is its beach sand
     // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks — it takes the
     // karst's terra rossa; the strand and the white gravel roads keep the sand. (wave 83: "pastel pink, mauve and beige
