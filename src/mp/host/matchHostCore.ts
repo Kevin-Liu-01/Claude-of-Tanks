@@ -244,6 +244,9 @@ export function createMatchHostCore({
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
+        // a seat welcomed after the boot (late, re-HELLOed, or back after a reconnect) holds the sealed configuration
+        // within a housekeeping beat, not at the next CONFIG_INTERVAL_MS: elected inside that window, it could not resume
+        lastConfigMs = -Infinity;
       };
       // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves
       if (hold) {
