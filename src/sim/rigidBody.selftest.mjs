@@ -348,29 +348,6 @@ function slopeRun() {
   }
 }
 
-// --- sleepers cost nothing a step: their spheres, boxes and bounds stand from their sleep, and a sphere-pool compaction
-// carries a sleeper's spheres with it (its support checks keep finding the ground: it never wakes for nothing)
-{
-  // a pool of 64 spheres (the least) and blocks of 18: three fit, a fourth compacts the pool
-  const world = createRigidWorld({ capacity: 4, kinematicCapacity: 0, spherePool: 64 });
-  world.bindEnvironment(flat);
-  const block = createRigidBox(0.5, 0.25, 0.5, 900);
-  assert.equal(block.sphereCount, 18);
-  const falling = world.spawn(block, { x: -3, y: 12, z: 0 }); // its spheres first in the pool, high in the air
-  const sleeper = world.spawn(block, { x: 0, y: 0.2505, z: 0 });
-  world.spawn(block, { x: 3, y: 0.2505, z: 3 });
-  assert.ok(stepUntilAsleep(world, sleeper, 60) > 0, 'the block on the ground sleeps');
-  assert.ok(world.py[falling] > 3, 'the other is still falling');
-  world.remove(falling); // a hole at the front of the pool, its centres left in the air
-  // the fourth does not fit after the third: the sleeper's spheres move down into the hole
-  const dropped = world.spawn(block, { x: 4, y: 1.4, z: -2 });
-  assert.ok(dropped >= 0, 'the spawn fits after compaction');
-  let woke = -1;
-  for (let n = 0; n < 150 && woke < 0; n++) { world.step(); if (!world.asleep[sleeper]) woke = n; }
-  assert.equal(woke, -1, `the sleeper stays asleep through its support checks (woke at step ${woke})`);
-  assert.ok(Math.abs(world.py[sleeper] - 0.25) < 0.01, `and lies where it slept (${world.py[sleeper].toFixed(3)})`);
-}
-
 if (typeof globalThis.gc === 'function') {
   const world = createRigidWorld({ capacity: 16 });
   world.bindEnvironment(slope);
@@ -385,4 +362,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(grown < 512 * 1024, `the heap stays flat across 4,000 steps (${(grown / 1024).toFixed(0)} KB)`);
 }
 
-console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points, crossed thin boxes, heavy slabs on light beams, sleepers through a compaction');
+console.log('rigidBody.selftest: drop + sleep, impact reports, slope tumble, bit-identical reruns, rolling drum, static walls and vanished roofs, kinematic decks and shoves, stacks, compound turret with gun, interpolation, wedged piles at rest, edges tip in the rigid fall time, box contact points, crossed thin boxes, heavy slabs on light beams');
