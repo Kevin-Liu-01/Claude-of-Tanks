@@ -33,6 +33,7 @@ import {
   type AtmosphereSummary,
 } from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
+import { earthLandTexture } from './earthLandMask.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModelCore.ts';
 import { installFogLayer } from './fogLayer.ts';
 import { HAZE_MATERIAL_FOG_SHARE } from './hazeLaw.ts';
@@ -77,6 +78,9 @@ export interface SkyPreset {
   galaxy: number;
   /** Nebula tint drawn along the band (null = none); a galaxy map paints its clouds with this. */
   nebulaHex: number | null;
+  /** (2026-10-11, the map-revival lane) a dust glow along the night dome's horizon (null = the black the stars fade to):
+   * Olympus Basin's dusty air meets its far country there instead of a thin black band. */
+  horizonGlowHex: number | null;
   /** Diameter in degrees of the disc at the night key-light direction (the moon at 0.8; a planet at 3). */
   planetDeg: number;
   /** 1 renders Earth with oceans, continents and cloud systems (lunar map). */
@@ -518,6 +522,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   nightSky: null,
   galaxy: 1,
   nebulaHex: null,
+  horizonGlowHex: null,
   planetDeg: 0.8,
   earth: 0,
   planetHex: 0xedf2ff,
@@ -607,35 +612,64 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	float maria = 0.74 + 0.26 * cotHash3( floor( mo * 3.0 + 7.0 ) ).x;
 	vec3 moonCol = planetTint * ( 0.10 + 1.30 * lit ) * maria * terminator;
 	if (earth > 0.5 && md > 0.0 && dot(mo, mo) < 1.02) {
-		// Atlantic-facing globe. Smooth coast contours live on the sphere, never
-		// a low-resolution screen-space layer that changes when firing.
-		vec2 uv = vec2(atan(mn.x, max(mn.z, .0001)), asin(clamp(mn.y, -1.0, 1.0)));
-		float coast = (cotValueNoise(mn * 18.0) - .5) * .11;
-		float africa = length((uv - vec2(.25, -.10)) / vec2(.36, .58));
-		float europe = length((uv - vec2(.32, .59)) / vec2(.39, .24));
-		float asia = length((uv - vec2(.94, .63)) / vec2(.70, .36));
-		float southAmerica = length((uv - vec2(-.63, -.28)) / vec2(.23, .62));
-		float northAmerica = length((uv - vec2(-.94, .57)) / vec2(.55, .37));
-		float land = 1.0 - smoothstep(.96 + coast, 1.04 + coast,
-			min(min(africa, europe), min(asia, min(southAmerica, northAmerica))));
-		vec3 soil = mix(vec3(.14,.29,.13), vec3(.57,.43,.23),
-			smoothstep(.25,.57,cotValueNoise(mn * 5.0 + 3.0)));
-		vec3 surface = mix(vec3(.015,.10,.31), soil, land);
-		float polar = smoothstep(1.05,1.30,abs(uv.y));
-		surface = mix(surface, vec3(.84,.91,.96), polar);
-		vec3 weatherP = mn * 10.0 + vec3(sin(uv.y * 7.0), 0.0, cos(uv.x * 6.0));
-		float weather = cotValueNoise(weatherP)*.65 + cotValueNoise(weatherP*2.7)*.35;
-		float clouds = smoothstep(.51,.69,weather);
-		surface = mix(surface, vec3(.91,.95,1.0), clouds*.88);
-		float rim = pow(1.0-mz, 4.0);
-		moonCol = surface * (.08 + .95 * lit) * terminator + vec3(.05,.25,.57) * rim * .55;
-		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo))*1.5, 1.0, length(mo));
+		// (2026-10-11, the map-revival lane; gauntlet wave 380: "a cartoon globe with made-up continents ... use real
+		// continents") the Earth as Apollo 17 saw it: the real coastlines (earthLandMask.ts, sampled on the sphere), Africa
+		// and Arabia under the camera with Antarctica at the foot, land coloured by its climate belt — the Sahara's and
+		// Arabia's sand, the Sahel's olive, the Congo's dark forest, the Kalahari, the ice caps — the sea a deep navy with
+		// paler shelves, the weather the planet's own: the subtropics clear, the storm tracks' swirls, the tropics' towers
+		const float LAT0 = -0.21, LON0 = 0.44;
+		vec3 e1 = vec3(mn.x, mn.y * cos(LAT0) + mn.z * sin(LAT0), -mn.y * sin(LAT0) + mn.z * cos(LAT0));
+		vec3 e = vec3(e1.x * cos(LON0) + e1.z * sin(LON0), e1.y, -e1.x * sin(LON0) + e1.z * cos(LON0));
+		float lon = atan(e.x, e.z), lat = asin(clamp(e.y, -1.0, 1.0));
+		vec2 luv = vec2(lon / 6.2831853 + 0.5, 0.5 - lat / 3.1415927);
+		float coast = (cotValueNoise(e * 40.0) - .5) * .35;
+		float land = smoothstep(.40, .60, texture2D(uEarthLand, luv).r + coast);
+		float shelf = smoothstep(.02, .35, texture2D(uEarthLand, luv, 3.0).r) * (1.0 - land);
+		float latD = degrees(lat), lonD = degrees(lon);
+		float grain = cotValueNoise(e * 9.0 + 3.0), grain2 = cotValueNoise(e * 23.0 - 1.7);
+		// the climate belts
+		vec3 forest = vec3(.075, .15, .055), savanna = vec3(.34, .33, .15), sand = vec3(.72, .56, .34), temperate = vec3(.22, .27, .12);
+		vec3 boreal = vec3(.11, .17, .09), tundra = vec3(.42, .39, .33), kalahari = vec3(.56, .44, .28);
+		float absLat = abs(latD);
+		vec3 soil = mix(forest, savanna, smoothstep(5.0, 11.0, absLat));
+		float aridN = smoothstep(14.0, 19.0, latD) * (1.0 - smoothstep(31.0, 36.0, latD)) * smoothstep(-20.0, -14.0, lonD) * (1.0 - smoothstep(62.0, 70.0, lonD));
+		float aridAsia = smoothstep(33.0, 37.0, latD) * (1.0 - smoothstep(46.0, 50.0, latD)) * smoothstep(48.0, 54.0, lonD) * (1.0 - smoothstep(78.0, 85.0, lonD));
+		float aridS = smoothstep(-31.0, -26.0, latD) * (1.0 - smoothstep(-19.0, -15.0, latD)) * smoothstep(10.0, 13.0, lonD) * (1.0 - smoothstep(25.0, 29.0, lonD));
+		soil = mix(soil, temperate, smoothstep(28.0, 36.0, absLat));
+		soil = mix(soil, boreal, smoothstep(50.0, 56.0, absLat));
+		soil = mix(soil, tundra, smoothstep(64.0, 70.0, absLat));
+		soil = mix(soil, sand * (0.86 + 0.28 * grain), clamp(max(aridN, aridAsia) * (0.75 + 0.5 * grain2), 0.0, 1.0));
+		soil = mix(soil, kalahari * (0.9 + 0.2 * grain), aridS * 0.85);
+		soil *= 0.82 + 0.36 * grain;
+		float ice = smoothstep(-61.0, -64.0, latD) + smoothstep(58.0, 64.0, latD) * smoothstep(-78.0, -70.0, lonD) * (1.0 - smoothstep(-18.0, -12.0, lonD));
+		soil = mix(soil, vec3(.88, .91, .95), clamp(ice, 0.0, 1.0));
+		vec3 sea = mix(vec3(.010, .045, .16), vec3(.020, .11, .26), shelf);
+		sea = mix(sea, vec3(.80, .86, .92), smoothstep(-66.0, -72.0, latD) * 0.6); // the pack ice
+		vec3 surface = mix(sea, soil, land);
+		// the weather: domain-warped swirls, dense on the storm tracks and in the tropics' towers, the subtropics and the
+		// deserts clear
+		vec3 wp = e * 4.0;
+		wp += vec3(cotValueNoise(wp * 1.7 + 11.0), cotValueNoise(wp * 1.7 - 5.0), cotValueNoise(wp * 1.7 + 2.0)) * 1.3 - 0.65;
+		float swirl = cotValueNoise(wp * 2.1) * .55 + cotValueNoise(wp * 4.6) * .30 + cotValueNoise(wp * 9.8) * .15;
+		float storm = smoothstep(32.0, 44.0, absLat) * (1.0 - smoothstep(66.0, 76.0, absLat));
+		float itcz = 1.0 - smoothstep(4.0, 12.0, abs(latD - 5.0));
+		float cover = max(storm * 1.0, itcz * 0.75) + 0.18;
+		cover *= 1.0 - 0.85 * max(aridN, aridS) * land;
+		float clouds = smoothstep(0.62 - 0.22 * cover, 0.80 - 0.14 * cover, swirl) * clamp(cover, 0.0, 1.0);
+		surface = mix(surface, vec3(.93, .95, .98) * (0.9 + 0.1 * grain2), clouds * .92);
+		// the sea's glint toward the sun, and the thin blue limb
+		float glint = pow(max(dot(reflect(-phaseL, mn), vec3(0.0, 0.0, 1.0)), 0.0), 60.0) * (1.0 - land) * (1.0 - clouds);
+		float rim = pow(1.0 - mz, 4.0);
+		moonCol = surface * (.06 + .97 * lit) * terminator + vec3(.55, .62, .70) * glint * .35 * terminator + vec3(.05, .25, .57) * rim * .55;
+		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo)) * 1.5, 1.0, length(mo));
 	}
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
 	float glowPow = max( 900.0 * 0.0070 / moonR, 160.0 );
 	float glow = (1.0 - earth) * (pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030);
+	// (the night dome's horizon glow, a preset's dust: from just under the skyline up some ten degrees, none on most maps)
+	float horizonBand = ( 1.0 - smoothstep( 0.0, 0.17, dn.y ) ) * smoothstep( -0.06, 0.0, dn.y );
 	return (1.0 - earth * disc) * ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
-		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
+		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade + uHorizonGlow * horizonBand * 0.6;
 }`;
 
 // Round 65 (2026-09-24): the physically based dome. On the desktop tier the visible sky is the Hillaire
@@ -689,6 +723,8 @@ uniform vec3 uNebula;
 uniform float uPlanetR;
 uniform vec3 uPlanetTint;
 uniform float uEarth;
+uniform sampler2D uEarthLand;
+uniform vec3 uHorizonGlow;
 ${ATMOSPHERE_SKY_GLSL}
 ${NIGHT_SKY_GLSL}
 varying vec3 vWorldPosition;
@@ -798,6 +834,13 @@ export interface AtmospherePublishedState {
   irradianceRaw: THREE.Color;
 }
 
+/** The night sky's land mask where no Earth is drawn: one sea texel (earthLandMask.ts builds the real one on demand). */
+const EARTH_LAND_PLACEHOLDER = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType);
+  t.needsUpdate = true;
+  return t;
+})();
+
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
 function configureSkyUniforms(
   sky: Sky,
@@ -819,8 +862,13 @@ function configureSkyUniforms(
   u.uGalaxy.value = preset.galaxy;
   u.uNebula ??= { value: new THREE.Color(0, 0, 0) };
   if (preset.nebulaHex == null) u.uNebula.value.setRGB(0, 0, 0); else u.uNebula.value.setHex(preset.nebulaHex);
+  u.uHorizonGlow ??= { value: new THREE.Color(0, 0, 0) };
+  if (preset.horizonGlowHex == null) u.uHorizonGlow.value.setRGB(0, 0, 0); else u.uHorizonGlow.value.setHex(preset.horizonGlowHex);
   u.uEarth ??= { value: 0 };
   u.uEarth.value = preset.earth;
+  // (the land mask only where the sky draws its Earth: a 1 x 1 placeholder elsewhere, no raster at boot)
+  u.uEarthLand ??= { value: EARTH_LAND_PLACEHOLDER };
+  if (preset.earth > 0.5) u.uEarthLand.value = earthLandTexture();
   u.uPlanetR ??= { value: 0.007 };
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
@@ -848,6 +896,8 @@ function configureSkyUniforms(
     shader.uniforms.uGalaxy = u.uGalaxy;
     shader.uniforms.uNebula = u.uNebula;
     shader.uniforms.uEarth = u.uEarth;
+    shader.uniforms.uEarthLand = u.uEarthLand;
+    shader.uniforms.uHorizonGlow = u.uHorizonGlow;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
     const patched = shader.fragmentShader.replace(
@@ -900,7 +950,7 @@ function configureSkyUniforms(
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
     shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;
-uniform float uEarth;\n${NIGHT_SKY_GLSL}\n${patched}`;
+uniform float uEarth;\nuniform sampler2D uEarthLand;\nuniform vec3 uHorizonGlow;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1211,6 +1261,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   scene.userData.sunDirWorld = sunDir;
   // r3: publish the per-map display exposure trim for post.ts's grade.
   scene.userData.postExposure = preset.postExposure;
+  // (2026-10-11, the map-revival lane) the key light is the Earth's disc on an airless map: lensFlare.ts draws none
+  scene.userData.skyEarthDisc = preset.earth > 0.5;
 
   // Round 65: the physically based dome and its LUTs (desktop tier). The Preetham mesh stays in the scene for
   // the mobile tier and as the fallback when a summary readback fails; exactly one of the two is visible.
@@ -1239,6 +1291,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
+      uEarthLand: skyUniforms.uEarthLand, uHorizonGlow: skyUniforms.uHorizonGlow,
     },
     side: THREE.BackSide,
     depthWrite: false,
@@ -1953,6 +2006,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       atmosphereKeySuffix = environmentKeySuffix();
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
       scene.userData.postExposure = preset.postExposure; // post.ts grade trim
+      scene.userData.skyEarthDisc = preset.earth > 0.5;
       // Garage variants keep the one boot PMREM resident. Rebuilding a cube
       // environment for every selector hover/rapid click caused visible frame
       // stalls even though the authored key lights already own tank shading.

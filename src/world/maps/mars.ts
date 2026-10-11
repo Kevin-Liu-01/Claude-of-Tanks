@@ -93,26 +93,30 @@ export default {
 
   splat: {
     // regolith: rust-orange with a compressed luminance range under the dim cold key light
-    grassTone: (h: number, s: number, l: number) => [0.048, 0.50, clamp01(0.20 + l * 0.66)],
-    dirtTone: (h: number, s: number, l: number) => [0.040, 0.42, clamp01(0.24 + l * 0.36)],
+    // (2026-10-11, the map-revival lane; wave 380: "candy-orange dune sand with almost no dark basalt") the regolith's
+    // chroma down a quarter (s .50 -> .38) and the second layer the dark basalt sand (was a second ochre)
+    grassTone: (h: number, s: number, l: number) => [0.050, 0.38, clamp01(0.20 + l * 0.62)],
+    dirtTone: (h: number, s: number, l: number) => [0.060, 0.16, clamp01(0.12 + l * 0.30)],
     sandstone: true,
     // round 47 (2026-09-23, owner: "ground patterns are too black"): strata midpoint 0.40 → 0.48 (desert 0.53) — this
     // IS the rendered rock here (sourcedPalette 'badlands' keeps R procedural), so the mesa walls lift a step
-    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.55), clamp01(0.48 + (l - 0.5) * 0.62)],
+    // (2026-10-11; wave 380: "round hills with painted grey stripe decals") the rock rust-brown, not greyed (s x .55 read
+    // as grey bands on the mesas), its strata half as strong
+    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.75 + 0.08), clamp01(0.44 + (l - 0.5) * 0.62)],
     mudTone: (h: number, s: number, l: number) => [0.05, 0.36, clamp01(l * 1.2 + 0.06)],
     mudRough: 1.1,
     // round 47: tintB 0.82/0.66/0.56 → 0.86/0.74/0.66 (same 23° hue, luma ×0.70 → ×0.77) under the dim cold key
     tintA: [1.06, 0.90, 0.76], tintB: [0.86, 0.74, 0.66], tintC: [1.08, 0.94, 0.82],
     roadTint: [0.86, 0.74, 0.64],
-    strata: 0.12,
+    strata: 0.06,
     microAmp: 0.42,
     rippleDir: [0.7, 0.7],
-    rippleAmp: 0.48,
+    rippleAmp: 0.26, // (2026-10-11: the dune ripples half as loud; was 0.48)
     midRelief: 0.6,
     midReliefFar: 820,
     sandMacro: 1.0,
-    // the sourced ground sets: Redrock's rust sand palette (sourcedTextures.ts TERRAIN_PLAN) until Mars owns one
-    sourcedPalette: 'badlands',
+    // the sourced ground sets: Mars's own (sourcedTextures.ts TERRAIN_PLAN; was Redrock's 'badlands')
+    sourcedPalette: 'mars',
   },
 
   vegetation: {
@@ -180,12 +184,17 @@ export default {
     wallRuns: [],
     well: false, hayCrates: false, fences: false, telegraph: false, carts: false, logs: false,
     haystacks: 0, rocks: 380, outcrops: 72, craters: 128,
+    // (2026-10-11, the map-revival lane; wave 380: "broken, half-buried rocks") the surface stones sunk deeper (.22 -> .34)
+    rockSink: 0.34,
     rubblePiles: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
     tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 't14', 'challenger_3', 'm1a3', 'kf51'] },
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "what look like timber logs lying on Mars") the sandbags filled with the
+    // basin's regolith and dusted with it — an ochre hessian, not the dark brown that read as stacked logs
+    sandbagTint: [1.32, 0.86, 0.62],
     hedgehogs: 12,
     wallStyle: 'adobe',
     inhabit: {

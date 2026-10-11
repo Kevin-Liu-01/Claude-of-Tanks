@@ -493,6 +493,10 @@ interface SplatConfig {
   /** Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road"):
    * the share of the water standing in a vegetated map's ruts and the mud ringing it (default 1; a dry month's roads 0). */
   roadPuddles?: number;
+  /** The map-revival lane (2026-10-11, gauntlet wave 380 on Earthrise Basin: the regolith "a high-frequency wavy normal-map
+   * pattern that reads as crumpled foil or rippled water"): the ground's detail normal (the sourced sets' relief) as a
+   * share of its strength (default 1, every other map). */
+  detailNormal?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -4133,6 +4137,7 @@ uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y f
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
+uniform float uDetailGain; // the map-revival lane: the detail normal's strength (splat.detailNormal, default 1)
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -7393,7 +7398,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // steep faces under a low sun it rendered as high-contrast bright/dark
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
-  float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
+  float dk = uDetailGain * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
   // Ground lane (2026-10-05, local contrast, step 2 (b'): the ground's mid-scale contrast measured at 0.17–0.28 against
   // photographs' 0.6–0.8; the detail normal at twice its strength was the strongest single ground term, +13 % on Verdant's
   // establishing view): the relief the detail normal carries is raised where its shading mips flat — from ~20 m, whole by
@@ -7682,6 +7687,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
+    shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 }; // the map-revival lane: the detail normal's strength (1 = every other map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
