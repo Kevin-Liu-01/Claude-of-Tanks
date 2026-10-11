@@ -17,11 +17,11 @@ export type LandmarkKind =
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
-  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden' | 'stairway' | 'outfall' | 'piazza'
+  | 'fountain' | 'bandstand' | 'parkGate' | 'parkSquare' | 'churchyard' | 'path' | 'garden' | 'stairway' | 'outfall' | 'piazza' | 'marketCross'
   // gates and arches
   | 'townGate' | 'triumphalArch' | 'kolkhozArch' | 'torii'
   // towers
-  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill' | 'valveTower'
+  | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill' | 'valveTower' | 'doppelbock'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
   // churches of the north (the buildings lane's round 4: a landmark per map)
@@ -29,7 +29,7 @@ export type LandmarkKind =
   // a hill station's colonial pieces
   | 'colonialBungalow' | 'tennisCourt'
   // temples
-  | 'bengalTemple' | 'oracleTemple'
+  | 'bengalTemple' | 'oracleTemple' | 'asoShrine'
   // village works
   | 'lavoir' | 'khan' | 'houseRow'
   // harbour works

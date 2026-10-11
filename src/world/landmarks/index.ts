@@ -14,6 +14,9 @@ import { aircraftWreck } from './wrecks.ts';
 import { staveChurch } from './stave.ts';
 import { woodenTserkva } from './carpathian.ts';
 import { oracleTemple } from './aghurmi.ts';
+import { marketCross } from './marketcross.ts';
+import { doppelbock } from './doppelbock.ts';
+import { asoShrine } from './shrine.ts';
 import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
@@ -22,6 +25,7 @@ import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBuilder>>> = Object.freeze({
   aircraftWreck,
   airstrip,
+  asoShrine,
   baileyBridge,
   bandstand,
   belfry,
@@ -33,6 +37,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   columnMonument,
   conveyor,
   drumCache,
+  doppelbock,
   equestrianStatue,
   fireLookout,
   fuelTankFarm,
@@ -50,6 +55,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   liftBridge,
   harbour,
   lighthouse,
+  marketCross,
   marketHall,
   memorialWall,
   moduleTrain,

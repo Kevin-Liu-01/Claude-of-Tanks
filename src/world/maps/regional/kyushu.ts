@@ -36,7 +36,7 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
  * its triangle of `gableBucket` (lattice-boarded or plastered), and the main slopes carried out over it as short slabs.
  * In the roof's own frame (ridge along z).
  */
-function irimoyaGables(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, gableBucket: RegionalBucket, colour: Rgb | undefined, gableColour?: Rgb): void {
+export function irimoyaGables(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, gableBucket: RegionalBucket, colour: Rgb | undefined, gableColour?: Rgb): void {
   if (rg.kind !== 'hip' || rg.ridgeHalf < 0.5) return;
   const cosP = Math.cos(Math.atan(rg.tanP));
   const topY = rg.ridgeY + roof.thickness / cosP;

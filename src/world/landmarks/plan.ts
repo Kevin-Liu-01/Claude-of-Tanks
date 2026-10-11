@@ -114,6 +114,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // the Franconian trough on its step, 0.6 m past the corners)
   fountain: { family: 'park', defaults: { radius: 4.5, tiers: 2, style: 'tiered' },
     footprint: (p) => { const r = (p.style === 'ottoman' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.1 : p.style === 'markt' ? num(p, 'radius') / Math.cos(Math.PI / 8) + 0.6 : num(p, 'radius')) + 0.4; return [r, r]; } },
+  // the English market cross (marketcross.ts; the covered buttercross): the octagon on its three steps, the roof's
+  // lantern and cross; the footprint its lowest step
+  marketCross: { family: 'park', defaults: { radius: 3.4 },
+    footprint: (p) => { const r = (num(p, 'radius') + 3 * 0.42 * num(p, 'radius') / 3.4) / Math.cos(Math.PI / 8) + 0.15; return [r, r]; } },
   bandstand: { family: 'park', defaults: { radius: 4.2 },
     footprint: (p) => [num(p, 'radius') + 0.9, num(p, 'radius') + 0.9] },
   // (the end piers' caps past the railings; the open leaves swing 2 m into the park)
@@ -241,6 +245,11 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   valveTower: { family: 'tower', inWater: true, defaults: { radius: 4.2, bridge: 34, width: 3.2, chamber: 5.4 },
     footprint: (p) => [Math.max(num(p, 'radius') + 1.1, num(p, 'width') / 2 + 1.2), (num(p, 'bridge') + num(p, 'radius')) / 2 + 1.1] },
   // (the sails sweep a disc across the front; the tail pole reaches back to its capstan)
+  // the Ruhr colliery's double-strut headframe over its shaft hall (doppelbock.ts; Zollverein XII): the hall's front (+z)
+  // toward the yard, the struts and the winding house behind it (toward -z); the footprint the hall, the struts' footings
+  // and the winding house
+  doppelbock: { family: 'tower', defaults: { height: 55, hallWidth: 22, hallDepth: 24 },
+    footprint: (p) => { const r = doppelbockReach(num(p, 'height'), num(p, 'hallDepth')); return [Math.max(num(p, 'hallWidth') / 2 + 0.35, 7.9), (r.front - r.back) / 2 + 0.3]; } },
   windmill: { family: 'tower', defaults: { style: 'smock', height: 14 },
     footprint: (p) => (p.style === 'post' ? [Math.min(9.5, num(p, 'height') - 3.6) + 0.6, 8.0]
       : p.style === 'tower' ? [12.0, 8.0] : [Math.min(10, num(p, 'height') - 2.1) + 0.6, 9.2]),
@@ -257,6 +266,11 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.35] },
   // the Temple of the Oracle on the rock of Aghurmi (aghurmi.ts): the rock's shelves and talus, the ramp along its south
   // flank, the temple and the village's melted walls on its summit; the footprint the talus round the foot
+  // the great shrine of the caldera (shrine.ts; Aso Shrine's type): the precinct inside its fence, the two-storey gate at
+  // its front (+z), the worship hall, the sanctuary at the back; the footprint the fence and the gate roof's eaves
+  asoShrine: { family: 'civic', defaults: { width: 20, depth: 30 },
+    // (the gate straddles the precinct's front kerb: its hip roof's eave reaches 1.6 m past it)
+    footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 1.9] },
   oracleTemple: { family: 'civic', defaults: { size: 28, height: 8.5 },
     footprint: (p) => [num(p, 'size') / 2 + 2.4, num(p, 'size') / 2 + 2.4] },
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
@@ -348,6 +362,13 @@ export function resolveLandmarkParams(placement: LandmarkPlacement): LandmarkPar
   if (!spec) throw new Error(`Unknown landmark kind ${placement.kind}`);
   const authored = Object.entries(placement.params ?? {}).filter((entry): entry is [string, number | string | boolean] => entry[1] !== undefined);
   return Object.freeze({ ...spec.defaults, ...Object.fromEntries(authored) });
+}
+
+/** The colliery works' reach along z (doppelbock.ts: the shaft hall's front to the winding house's back), from its
+ *  parameters: the struts rake back 0.42 m for each metre of the deck's height, the winding house 12 m deep behind them. */
+export function doppelbockReach(height: number, hallDepth: number): { front: number; back: number } {
+  const H = Math.max(30, height), hd = Math.max(10, hallDepth) / 2, deck = H - 2.6;
+  return { front: hd + 0.3, back: -hd - Math.max(8, (deck - 0.4) * 0.42) - 2.5 - 12 - 0.3 };
 }
 
 /** The standing footprint's half extents [across, along] of a placement. */
