@@ -61,6 +61,20 @@ export interface GroundCoverCraters {
   /** Every presentation hole gone (a battle's start): the epoch moves (the tiers restore) and the overlay's own stamps
    * are indexed again at the next sync. */
   resetHoles(): void;
+  /** A static lift (an earth bank): an entry from now on and the first entries after every start-over. */
+  addStaticLift(lift: GroundCoverStaticLift): void;
+}
+
+/**
+ * Ground built up over the base field and kept for the life of the map (the destructible-buildings lane, 2026-10-11: a
+ * pillbox's earth bank, so the field's own grass grows on it — wave 370: "grow the earthwork out of the terrain"): the
+ * cover in its reach stands on it, and is cleared where it answers NaN (inside the work's walls).
+ */
+export interface GroundCoverStaticLift {
+  /** Its reach in the world: [minX, minZ, maxX, maxZ]. */
+  readonly reach: readonly [number, number, number, number];
+  /** What the cover there stands on over its base height (0 beyond the bank), NaN inside its hole. */
+  liftAt(x: number, z: number): number;
 }
 
 /** The ring round a presentation hole the tall grass lies low in (×r), and its height there at r. */
@@ -80,6 +94,9 @@ export function createGroundCoverCraters(): GroundCoverCraters {
   const buckets: Array<number[] | undefined> = new Array(BUCKETS * BUCKETS);
   const reaches: number[] = []; // every stamp's reach box, four numbers each
   const box = [0, 0, 0, 0];
+  // the static lifts (earth banks), and per 16 m bucket the lifts that reach it
+  const statics: GroundCoverStaticLift[] = [];
+  const staticBuckets: Array<number[] | undefined> = new Array(BUCKETS * BUCKETS);
 
   function clear(): void {
     holes.length = 0;
@@ -90,6 +107,23 @@ export function createGroundCoverCraters(): GroundCoverCraters {
     count = 0;
     overlayCount = 0;
     presentationHoles = 0;
+    // the static lifts stay: the first entries again (the followers restored their base and re-apply them)
+    for (const lift of statics) { reaches.push(lift.reach[0], lift.reach[1], lift.reach[2], lift.reach[3]); count++; }
+  }
+  /** The static lifts at (x, z): the highest, or NaN inside a hole. */
+  function staticLift(x: number, z: number): number {
+    if (!statics.length) return 0;
+    const list = staticBuckets[bucketOf(z) * BUCKETS + bucketOf(x)];
+    if (!list) return 0;
+    let best = 0;
+    for (let k = 0; k < list.length; k++) {
+      const lift = statics[list[k]], r = lift.reach;
+      if (x < r[0] || x > r[2] || z < r[1] || z > r[3]) continue;
+      const v = lift.liftAt(x, z);
+      if (Number.isNaN(v)) return NaN;
+      if (v > best) best = v;
+    }
+    return best;
   }
 
   /** The ring round a cleared disc of radius r the tall grass lies low in (to r · CRATER_COVER_RING). */
@@ -182,6 +216,7 @@ export function createGroundCoverCraters(): GroundCoverCraters {
       revision = overlay ? overlay.revision - overlay.stamps.length : 0;
     },
     holeAt(x, z) {
+      if (statics.length && Number.isNaN(staticLift(x, z))) return true;
       if (!holes.length) return false;
       const list = buckets[bucketOf(z) * BUCKETS + bucketOf(x)];
       if (!list) return false;
@@ -192,7 +227,20 @@ export function createGroundCoverCraters(): GroundCoverCraters {
       return false;
     },
     liftAt(x, z) {
-      return overlay && count ? overlay.offsetAt(x, z) : 0;
+      const ground = overlay && count ? overlay.offsetAt(x, z) : 0;
+      if (!statics.length) return ground;
+      const bank = staticLift(x, z);
+      return Number.isNaN(bank) ? ground : Math.max(ground, bank);
+    },
+    addStaticLift(lift) {
+      const at = statics.length, r = lift.reach;
+      if (!(r[2] >= r[0] && r[3] >= r[1])) return;
+      statics.push(lift);
+      for (let bz = bucketOf(r[1]); bz <= bucketOf(r[3]); bz++) {
+        for (let bx = bucketOf(r[0]); bx <= bucketOf(r[2]); bx++) (staticBuckets[bz * BUCKETS + bx] ??= []).push(at);
+      }
+      reaches.push(r[0], r[1], r[2], r[3]);
+      count++;
     },
     bounds(i, out) {
       out[0] = reaches[i * 4]; out[1] = reaches[i * 4 + 1]; out[2] = reaches[i * 4 + 2]; out[3] = reaches[i * 4 + 3];

@@ -807,7 +807,11 @@ function pnoiseXY(x: number, y: number, size: number, cellsX: number, cellsY: nu
  * their contrast, the ties grouted (pale cones, not dark holes) and a rust tear under one in five, and the runoff's dark
  * streaks down the wall over the broad pour mottling.)
  */
-function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+function* boardFormed(s: number, tint: Tint, seed: number, worn = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  // (the destructible-buildings lane, 2026-10-11, `worn`: the pillboxes' eighty-year relics — wave 370, "plank-grain walls
+  // read as timber", "wood-grain planks, with knots": the boards' grain, fins and joints a third as strong, the pour's
+  // mottle and pores carrying the face)
+  const g = worn ? 0.32 : 1, mk = worn ? 1.6 : 1;
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const k = s / 256;
   const boards = 16, bh = s / boards, lift = s / 2, tie = s / 4, tieR = 2.6 * k, bleed = 24 * k;
@@ -823,14 +827,14 @@ function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSli
       const grain = smooth(0.6, 0.86, pnoiseXY(x, y, s, 5, 64, seed + 7 + b * 13));
       // the runoff: dark streaks down the wall from the lift lines, a few to a tile
       const runoff = smooth(0.55, 0.92, pnoiseXY(x, y, s, 9, 2, seed + 19));
-      let v = 0.47 + (tone - 0.5) * 0.03 + (mottle(x, y) - 0.5) * 0.1 - grain * 0.022 - runoff * 0.06;
-      let h = 0.45 + (plane - 0.5) * 0.12 - grain * 0.05;
+      let v = 0.47 + (tone - 0.5) * 0.03 * g + (mottle(x, y) - 0.5) * 0.1 * mk - grain * 0.022 * g - runoff * 0.06;
+      let h = 0.45 + (plane - 0.5) * 0.12 * g - grain * 0.05 * g + (worn ? (pores(x, y) - 0.5) * 0.08 : 0);
       let r = 0.86 + (pores(x, y) - 0.5) * 0.1;
       // the fin where it met the board above, and the shadow line under the board below's fin
-      if (yb < k) { v += 0.012; h += 0.08; r -= 0.03; } else if (yb >= bh - k) { v -= 0.012; h -= 0.04; }
+      if (yb < k) { v += 0.012 * g; h += 0.08 * g; r -= 0.03 * g; } else if (yb >= bh - k) { v -= 0.012 * g; h -= 0.04 * g; }
       // the butt joint
       const db = Math.abs(wrap(x - butt + s / 2) - s / 2);
-      if (db < 0.75 * k) { v -= 0.02; h -= 0.06; }
+      if (db < 0.75 * k) { v -= 0.02 * g; h -= 0.06 * g; }
       // the lift line: the groove of the cold joint, a lime bleed in streaks below it
       if (below < 2 * k) { v -= 0.05; h = 0.2; r = 0.96; } else if (below < bleed) {
         const t = 1 - (below - 2 * k) / (bleed - 2 * k);
@@ -905,11 +909,11 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
  * repeats per metre). `tone` recolours the albedo in place before upload (props.ts: the bucket's tone, as the render's).
  */
 export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uint8ClampedArray) => void) | null, anisotropy: number,
-  seed = 0xb0a8): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
+  seed = 0xb0a8, worn = false): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 256;
-  const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}`, () => boardFormed(s, [1, 1, 1], seed));
+  const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}${worn ? ':worn' : ''}`, () => boardFormed(s, [1, 1, 1], seed, worn));
   tone?.(px);
-  return finish(px, hgt, rough, s, anisotropy, 1.4, 0.72);
+  return finish(px, hgt, rough, s, anisotropy, worn ? 0.9 : 1.4, 0.72);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */

@@ -60,7 +60,7 @@ import {
 import { createStructureDamage } from '../sim/structureDamage.ts';
 import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
-import { createGroundCoverCraters } from './groundCoverCraters.ts';
+import { createGroundCoverCraters, type GroundCoverStaticLift } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
@@ -549,7 +549,11 @@ function assembleWorld(
   // the hitbox lane (2026-10-07): the stones' colliders are their own now (props.ts refitRockColliders); the ground cover
   // keeps the footprints it was sealed against through their cosmetic twins, so no tuft, stone or shrub moves with them
   const rockGroundCover = (props.group.userData.rockGroundCover as CollisionRecord[] | undefined) ?? [];
-  const queryGroundCover = rockGroundCover.length ? createObstacleGrid([...obstacles, ...rockGroundCover]) : queryObstacles;
+  // (the destructible-buildings lane, 2026-10-11) a pillbox's earth bank keeps its cover: the grass is lifted onto it by
+  // the ground cover law (below), not cleared by the bank's footprint
+  const coverSolids = obstacles.filter((ob) => (ob as { kind?: string }).kind !== 'earthwork');
+  const queryGroundCover = rockGroundCover.length || coverSolids.length !== obstacles.length
+    ? createObstacleGrid([...coverSolids, ...rockGroundCover]) : queryObstacles;
   const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryGroundCover), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
@@ -694,6 +698,8 @@ function assembleWorld(
   installTerrainCraterMesh(terrain);
   // ground lane (crater-render-spec §C): the ground cover follows it too — one law, synced after the terrain each frame
   const groundCoverCraters = createGroundCoverCraters();
+  // the pillboxes' banks: the field's grass and litter stand on them for the life of the map (props.ts fortBankLifts)
+  for (const lift of (props.group.userData.fortBankLifts as GroundCoverStaticLift[] | undefined) ?? []) groundCoverCraters.addStaticLift(lift);
   /** The cover in the bound overlay's reach takes its new stamps after the terrain took them (`update`'s steps after its
    * LOD walk): the terrain's `followGroundOverlay` hook, which `world.syncGround` runs after its `syncGroundOverlay` for a
    * frame rendered without an update (the Studio's export steps and captures). O(1) when nothing is new. */

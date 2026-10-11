@@ -70,7 +70,7 @@ import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import {
-  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
+  FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBankField, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
 import {
   FIELD_STONE_PRINT_SEED, liftFieldStoneMean, paintFieldStoneBuffers as paintFieldStoneBuffersInline, type FieldStoneBuffers,
@@ -3799,7 +3799,8 @@ function* propsBuildSteps(
   // the fortifications lane (2026-10-09): the pillbox's poured concrete, the board-formed print (its formwork's boards,
   // lift lines and tie holes) lifted to a neutral mean the pillbox's vertex colours divide by (maps/fortKit.ts)
   const fort = fortFor(mapId);
-  const fortPrint = fort ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED) : null;
+  // (round 2: the relics' worn print, the boards a third as strong: wave 370 read them as timber)
+  const fortPrint = fort ? yield* makeRegionalConcrete('boardFormed', liftFortPrint, aniso, FORT_PRINT_SEED, true) : null;
   yield { fine: true };
   const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
   yield { fine: true };
@@ -8297,6 +8298,23 @@ ${snowCap ? `
   const fortSeats: Array<{ x: number; y: number; z: number; yaw: number }> = [];
   if (fort && P.structureVariants?.bunker === undefined) {
     for (const rec of destructibles) if (rec.kind === 'bunker') fortSeats.push({ x: rec.x, y: rec.y, z: rec.z, yaw: rec.yaw });
+  }
+  // (round 2, the destructible-buildings lane; wave 370: "grow the earthwork out of the terrain") the bank as the ground
+  // cover's static lift: map.ts hands these to the ground cover law, so the field's own grass and litter stand on it
+  if (fort && fortSeats.length) {
+    const field = pillboxBankField(fort.style, fort.tones, fort.seed);
+    group.userData.fortBankLifts = fortSeats.map((seat) => {
+      const c = Math.cos(seat.yaw), sn = Math.sin(seat.yaw), r = field.radius;
+      return {
+        reach: [seat.x - r, seat.z - r, seat.x + r, seat.z + r] as const,
+        liftAt(x: number, z: number): number {
+          const dx = x - seat.x, dz = z - seat.z;
+          const h = field.lift(dx * c - dz * sn, dx * sn + dz * c);
+          if (Number.isNaN(h)) return NaN;
+          return h > 0 ? Math.max(0, seat.y + h - heightField.getHeightAt(x, z)) : 0;
+        },
+      };
+    });
   }
   if (fort && fortSeats.length && mobileProps) {
     const bank = pillboxBerm(fort.style, fort.tones, fort.seed, { forBaked: true });

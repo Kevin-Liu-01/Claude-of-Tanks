@@ -500,13 +500,15 @@ function concreteShade(W: Weather): Shade {
     }
     if (vertical) {
       // the damp foot: darker and greener where the splash and the berm's wet reach
-      const foot = 1 - smooth(W.grade + 0.05, W.grade + 0.75 + mot * 0.3, p[1]);
-      c = mix(c, mul(mix(c, moss, 0.35), 0.62), foot * (0.55 + T.age * 0.35));
+      const foot = 1 - smooth(W.grade + 0.05, W.grade + 0.95 + mot * 0.4, p[1]);
+      c = mix(c, mul(mix(c, moss, 0.45), 0.55), foot * (0.65 + T.age * 0.35));
       // rain runs from the drip line: dark streaks in columns, fading down the wall
       const col = vnoise(p[0] * 3.1 + p[2] * 3.1, 0, 0, 0.55, seed + 3);
       const col2 = vnoise(p[0] * 7.3 - p[2] * 7.3, 0, 0, 0.5, seed + 4);
-      const run = smooth(0.52, 0.86, col * 0.7 + col2 * 0.3) * smooth(W.drip - 1.7, W.drip - 0.05, p[1]);
-      c = mul(c, 1 - run * (0.24 + T.age * 0.3));
+      const run = smooth(0.46, 0.82, col * 0.7 + col2 * 0.3) * smooth(W.drip - 1.9, W.drip - 0.05, p[1]);
+      c = mul(c, 1 - run * (0.34 + T.age * 0.36));
+      // and the rust-brown and green stain the runs leave on an old work
+      c = mix(c, T.arid ? [0.16, 0.12, 0.08] : [0.09, 0.1, 0.06], run * T.age * 0.35);
       // the band under the overhang: sheltered, a shade cleaner and darker grey; the drip's dark tide line just under it
       const under = smooth(W.drip - 0.4, W.drip - 0.02, p[1]);
       c = mul(c, 1 - under * 0.12);
@@ -521,9 +523,12 @@ function concreteShade(W: Weather): Shade {
     // moss patches in the shade side and low, on an old work
     if (!T.arid && vertical) {
       const shadeSide = clamp01(0.5 - n[0] * 0.35 - n[2] * 0.45);
-      const m = smooth(0.55, 0.76, fbm(p[0], p[1], p[2], 0.5, seed + 17)) * shadeSide * (0.3 + T.age * 1.0)
-        * (1 - smooth(W.grade + 0.6, W.drip, p[1]) * 0.7);
-      c = mix(c, moss, clamp01(m) * 0.75);
+      const m = smooth(0.48, 0.72, fbm(p[0], p[1], p[2], 0.5, seed + 17)) * (0.35 + shadeSide * 0.65) * (0.35 + T.age * 1.1)
+        * (1 - smooth(W.grade + 0.8, W.drip, p[1]) * 0.6);
+      c = mix(c, moss, clamp01(m) * 0.85);
+      // lichen in grey-green rosettes over the weather faces
+      const lr = smooth(0.66, 0.8, vnoise(p[0] * 4.2, p[1] * 4.2, p[2] * 4.2, 0.3, seed + 19)) * (0.2 + T.age * 0.8);
+      c = mix(c, lichen, lr * 0.4);
     }
     // the embrasures: soot fanned over the opening, a run of grime from each sill corner
     for (const sl of W.slits) {
@@ -604,15 +609,22 @@ function bermGrid(B: BermSpec): { samples: PerimeterSample[]; grid: V3[][]; hs: 
   for (let i = 0; i < K; i++) {
     const s = samples[i], h0 = hs[i];
     const row: V3[] = [];
-    const jitter = (vnoise(s.x * 2.3, 0, s.z * 2.3, 0.9, B.seed) - 0.5);
+    // (round 2, wave 370: "smooth cushions, pillows, loaves") the toe wanders, the face is lumpy and slumped in places
+    const jitter = (vnoise(s.x * 2.3, 0, s.z * 2.3, 0.9, B.seed) - 0.5) + (vnoise(s.x * 6.1, 1, s.z * 6.1, 0.5, B.seed + 2) - 0.5) * 0.8;
     for (let r = 0; r < R; r++) {
       let x: number, y: number, z: number;
       if (r < BERM_T.length) {
         const t = BERM_T[r];
         const run = Math.max(0.35, h0 * B.run + 0.35);
-        const d = t * run + (t > 0 ? jitter * 0.22 * t : -0.03);
+        const d = t * run + (t > 0 ? jitter * 0.55 * t : -0.03);
         let hh = h0 * bermProfile(t);
-        if (t > 0 && t < 1) hh += (vnoise(s.x * 3.7, t * 4, s.z * 3.7, 0.7, B.seed + 5) - 0.5) * 0.09 * Math.min(1, h0 * 2);
+        if (t > 0 && t < 1) {
+          const lumps = (vnoise(s.x * 3.7, t * 4, s.z * 3.7, 0.7, B.seed + 5) - 0.5) * 0.16
+            + (vnoise(s.x * 9.3, t * 9, s.z * 9.3, 0.35, B.seed + 7) - 0.5) * 0.09
+            // spoil clods and slumps: a few sharp bumps and hollows along the face
+            + (smooth(0.72, 0.9, vnoise(s.x * 5.3, t * 6, s.z * 5.3, 0.4, B.seed + 9)) - smooth(0.78, 0.95, vnoise(s.x * 4.1, t * 3, s.z * 4.1, 0.6, B.seed + 11)) * 0.7) * 0.12;
+          hh += lumps * Math.min(1, h0 * 1.6) * (t < 0.95 ? 1 : 0.4);
+        }
         if (B.slump > 0 && t < 0.86) {
           // slumped: the crest down to the cap, a crater bite in the front; the toe (where the ground's fillet meets it,
           // props.ts) stays as it lay
@@ -630,6 +642,8 @@ function bermGrid(B: BermSpec): { samples: PerimeterSample[]; grid: V3[][]; hs: 
       }
       row.push([x, y, z]);
     }
+    // the bank still falls from the wall to its toe: a lump never rises more than a few centimetres over the row inside it
+    for (let r = 1; r < BERM_T.length; r++) if (row[r][1] > row[r - 1][1] + 0.06) row[r][1] = row[r - 1][1] + 0.06;
     grid.push(row);
   }
   if (B.clip !== undefined) {
@@ -755,7 +769,7 @@ function concreteLayout(style: 'regelbau' | 'dot' | 'hex'): ConcreteLayout {
     const role = edgeRole(nx, nz);
     if (style === 'hex') {
       if (role === 'rear') { doorEdge = i; doorS = len / 2; doorLen = len; continue; }
-      slitList.push({ edge: i, s: len / 2, y: 1.12, w: 0.62, h: 0.34, steps: 2, plate: false });
+      slitList.push({ edge: i, s: len / 2, y: 1.12, w: 0.82, h: 0.42, steps: 3, plate: false });
     } else if (style === 'dot') {
       if (role === 'front' && Math.abs(nx) < 0.2) slitList.push({ edge: i, s: len / 2, y: 0.98, w: 1.35, h: 0.5, steps: 3, plate: false });
       else if (role === 'front') slitList.push({ edge: i, s: len / 2, y: 1.05, w: 0.6, h: 0.3, steps: 2, plate: false });
@@ -829,7 +843,7 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
         if (t0 >= wallTop - 0.01 && t1 >= wallTop - 0.01) continue;
         const p0: V3 = [a[0] + u[0] * s0, t0, a[1] + u[2] * s0], p1: V3 = [a[0] + u[0] * s1, t1, a[1] + u[2] * s1];
         const q0 = add(p0, scl(n, -thick)), q1 = add(p1, scl(n, -thick));
-        const freshCore: Shade = (p) => mix(T.concrete, [0.36, 0.34, 0.3], 0.5 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 71) * 0.3);
+        const freshCore: Shade = (p) => mul(mix(T.concrete, mix(T.earth, [0.2, 0.19, 0.17], 0.5), 0.35 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 71) * 0.4), 0.72);
         m.quad(p0, p1, add(q1, [0, -0.04, 0]), add(q0, [0, -0.04, 0]), freshCore, false, [0, 1, 0]);
         // the inner face below the break (the room's wall, sooted)
         const inner: Shade = (p) => mul(T.concrete, 0.28 + vnoise(p[0], p[1], p[2], 0.4, O.seed + 73) * 0.12);
@@ -861,8 +875,8 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
     // the DOT's main embrasure under its cast visor (the hood over the opening, against splinters and the rain)
     if (style === 'dot' && sl.w > 1 && !O.broken) {
       const n: V3 = [-u[2], 0, u[0]];
-      const vy = sl.y + sl.h / 2 + 0.03, depth = 0.3, vw = sl.w + 0.36;
-      solid(m, c[0] + n[0] * depth / 2, vy, c[2] + n[2] * depth / 2, vw, 0.14, depth, Math.atan2(n[0], n[2]), conc, true);
+      const vy = sl.y + sl.h / 2 + 0.03, depth = 0.18, vw = sl.w + 0.3;
+      solid(m, c[0] + n[0] * depth / 2, vy, c[2] + n[2] * depth / 2, vw, 0.1, depth, Math.atan2(n[0], n[2]), conc, true);
     }
   }
   // the door: its reveal and the steel leaf set in it
@@ -945,9 +959,10 @@ function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): 
       solid(m, vx, sTop + 0.48, vz, 0.26, 0.05, 0.26, 0.3, vent, false);
     }
   } else {
-    // the slab broken in two: the rear plate hinged on the rear wall, sagging toward the front; the front plate fallen
-    // into the shell and down the breach
-    collapsedSlab(m, sPlan, slab, slabShade, O, rng);
+    // (round 2, wave 370: "no slab mass, rubble volume, rebar or concrete colour", "a translucent ghost panel": the old
+    // plates lay sunk below the ground) the slab broken up into its own fragments, heaped in the shell and over the
+    // breach above the ground, its earth and turf on some, the bars out of their broken faces
+    slabRubble(m, sPlan, slab, slabShade, O, rng);
   }
 
   // (the bank is not the destructible's: props.ts lays it as a static earthwork, pillboxBerm, so it outlives the
@@ -973,8 +988,14 @@ function concreteBermSpec(style: 'regelbau' | 'dot' | 'hex', L: ConcreteLayout, 
       let h = role === 'front' ? hFront : role === 'flank' ? hFlank : 0;
       if (role === 'flank' && s.nz < -0.1) h = hFlank * (0.5 + 0.5 * smooth(-2.4, -0.8, s.z));
       if (role === 'rear') {
-        // the rear stays open at the entrance; the bank wraps the corner on the far side only
-        h = (s.x < 0 ? hFlank * smooth(-0.9, -2.3, s.x) : 0);
+        // the rear: the spoil of the dig banked low either side of the way in (round 2, wave 370: "the rear wall rises
+        // straight out of flat lawn"), the far corner higher, the way to the door and its blast wall clear
+        const door = L.doorEdge >= 0 ? (() => {
+          const a = plan[L.doorEdge], b = plan[(L.doorEdge + 1) % plan.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          return { x: a[0] + (b[0] - a[0]) * (L.doorS / len), z: a[1] + (b[1] - a[1]) * (L.doorS / len) };
+        })() : null;
+        const fromDoor = door ? Math.hypot(s.x - door.x, s.z - door.z) : 9;
+        h = Math.max(s.x < 0 ? hFlank * smooth(-0.9, -2.3, s.x) : 0, 0.55 * smooth(1.6, 2.6, fromDoor));
       }
       // the field of fire: the bank cut down below each embrasure's sill
       for (const sl of notch) {
@@ -1039,7 +1060,8 @@ function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number,
   const heightAt = (x: number, z: number, t: number): number => {
     if (t >= 1) return -0.01;
     const shoulder = Math.pow(Math.cos(Math.min(1, Math.max(0, (t - 0.68) / 0.32)) * Math.PI / 2), 0.8);
-    const lumps = (fbm(x, 0, z, 0.9, seed + 3) - 0.5) * 0.28 + (vnoise(x, 0, z, 0.25, seed + 4) - 0.5) * 0.08;
+    const lumps = (fbm(x, 0, z, 0.9, seed + 3) - 0.5) * 0.36 + (vnoise(x, 0, z, 0.25, seed + 4) - 0.5) * 0.14
+      + (smooth(0.7, 0.9, vnoise(x, 1, z, 0.4, seed + 6)) - 0.35) * 0.18;
     return Math.max(0.01, thick * shoulder * (1 + lumps));
   };
   const K = samples.length;
@@ -1090,7 +1112,7 @@ function roofCover(m: Mesh, plan: Plan, y: number, thick: number, inset: number,
     for (let q = 1; q + 1 < poly.length; q++) m.triN(poly[0].p, poly[0].n, poly[q].p, poly[q].n, poly[q + 1].p, poly[q + 1].n, shade);
   }
   // tufts of grass in it (dry on an arid map: thin, few)
-  const tufts = T.barren ? 0 : T.arid ? 20 : 90;
+  const tufts = 0; // (round 2, wave 370: "sparse dark spikes", "spiky card tufts": the turf carries its own grass in its colour)
   for (let k = 0; k < tufts; k++) {
     const si = Math.floor(hash3(k, 1, 2, seed) * K), t = Math.sqrt(hash3(k, 3, 4, seed)) * 0.86;
     const s0 = samples[si];
@@ -1117,79 +1139,65 @@ function tuft(m: Mesh, x: number, y: number, z: number, h: number, tone: Rgb, se
 }
 
 /**
- * The slab fallen into the room: cracked into four plates along two ragged lines, each sagging from the wall stub it
- * still rests on down into the pit, the front ones pushed out over the blown face; the bars across the cracks. The
- * plates' tops stay under BROKEN_CAP.
+ * The slab fallen in (round 2): broken up into a dozen and more of its own fragments — each a convex block of the slab's
+ * concrete, its top the roof's face (some with their earth and turf still on), its sides fresh broken grey with the bars
+ * out of them — heaped in the shell and spilled over the blown front, every one resting above the ground and under
+ * BROKEN_CAP (a broken prop has no collider).
  */
-function collapsedSlab(m: Mesh, sPlan: Plan, slab: number, shade: Shade, O: BuildOpts, rng: Rng): void {
+function slabRubble(m: Mesh, sPlan: Plan, slab: number, shade: Shade, O: BuildOpts, rng: Rng): void {
   const T = O.tones;
   const xs = sPlan.map((p) => p[0]), zs = sPlan.map((p) => p[1]);
-  const X0 = Math.min(...xs) + 0.1, X1 = Math.max(...xs) - 0.1, Z0 = Math.min(...zs) + 0.1, Z1 = Math.max(...zs) - 0.1;
-  const cxk = (X0 + X1) / 2 + (rng() - 0.5) * 0.6, czk = (Z0 + Z1) / 2 + (rng() - 0.5) * 0.5;
-  const jag = (v: number, salt: number) => (vnoise(v * 4.3, salt, 0, 0.35, O.seed + 131) - 0.5) * 0.4;
-  const core: Shade = (p) => mix(T.concrete, [0.33, 0.31, 0.28], 0.45 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 137) * 0.3);
+  const X0 = Math.min(...xs) + 0.3, X1 = Math.max(...xs) - 0.3, Z0 = Math.min(...zs) + 0.3, Z1 = Math.max(...zs) - 0.3;
+  const core: Shade = (p) => mul(mix(T.concrete, [0.24, 0.23, 0.2], 0.4 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 137) * 0.35), 0.82);
+  const turf: Shade = (p) => mul(mix(T.turf, T.earth, smooth(0.4, 0.7, fbm(p[0], 0, p[2], 0.4, O.seed + 139))), 0.8 + vnoise(p[0], 0, p[2], 0.15, O.seed + 141) * 0.3);
   const rust: Shade = () => [0.1, 0.045, 0.022];
-  const N = 6;
-  /** One plate's outline (slab-local x, z), counter-clockwise: the outer corner, along the two outer edges, back along the cracks. */
-  const quadrant = (sx: number, sz: number): Array<[number, number]> => {
-    const xa = sx < 0 ? X0 : X1, za = sz < 0 ? Z0 : Z1;
-    const pts: Array<[number, number]> = [];
-    for (let i = 0; i <= N; i++) { const x = xa + (cxk - xa) * (i / N); pts.push([x, za]); }
-    for (let i = 1; i <= N; i++) { const z = za + (czk - za) * (i / N); pts.push([cxk + jag(z, 1), z]); }
-    for (let i = 1; i < N; i++) { const x = cxk + (xa - cxk) * (i / N); pts.push([x, czk + jag(x, 2)]); }
-    for (let i = 0; i < N; i++) { const z = czk + (za - czk) * (i / N); pts.push([xa, z]); }
-    return pts;
-  };
-  const plates: Array<(p: V3) => V3> = [];
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    const pts = quadrant(sx, sz);
-    const pcx = pts.reduce((a, p) => a + p[0], 0) / pts.length, pcz = pts.reduce((a, p) => a + p[1], 0) / pts.length;
-    // the plate sags toward the room's middle: its outer edge on the stub, its inner one down in the pit; the front pair
-    // thrown further, out over the blown face
-    const front = sz > 0;
-    const tiltX = (front ? 0.2 : 0.15) * -sz + (rng() - 0.5) * 0.08, tiltZ = 0.17 * sx + (rng() - 0.5) * 0.08;
-    const shiftZ = front ? 0.7 : 0.15, drop = front ? 0.0 : 0.04;
-    const rot = (p: V3): V3 => {
-      // about the plate's centre: tilt about x (front-back) then z (side), then sit it low
-      const x = p[0] - pcx, y = p[1] - slab / 2, z = p[2] - pcz;
-      const y1 = y * Math.cos(tiltX) - z * Math.sin(tiltX), z1 = y * Math.sin(tiltX) + z * Math.cos(tiltX);
-      const x2 = x * Math.cos(tiltZ) - y1 * Math.sin(tiltZ), y2 = x * Math.sin(tiltZ) + y1 * Math.cos(tiltZ);
-      return [pcx + x2, y2, pcz + z1 + shiftZ - drop];
+  const count = 16;
+  for (let i = 0; i < count; i++) {
+    // where it lies: most in the shell, the front ones thrown over the breach
+    const u = rng(), v = rng();
+    const x = X0 + (X1 - X0) * u, z = Z0 + (Z1 - Z0) * v + (v > 0.7 ? 0.9 : 0);
+    const w = 0.55 + rng() * 0.75, d = 0.45 + rng() * 0.6, th = Math.min(slab, 0.34 + rng() * 0.1);
+    const yaw = rng() * Math.PI, tiltX = (rng() - 0.5) * 0.7, tiltZ = (rng() - 0.5) * 0.7;
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    const rot = (lx: number, ly: number, lz: number): V3 => {
+      // tilt about x then z, then yaw
+      const y1 = ly * Math.cos(tiltX) - lz * Math.sin(tiltX), z1 = ly * Math.sin(tiltX) + lz * Math.cos(tiltX);
+      const x2 = lx * Math.cos(tiltZ) - y1 * Math.sin(tiltZ), y2 = lx * Math.sin(tiltZ) + y1 * Math.cos(tiltZ);
+      return [x + x2 * cy + z1 * sy, y2, z - x2 * sy + z1 * cy];
     };
-    // the plate's top lands at BROKEN_CAP at its highest
-    let top = -Infinity;
-    for (const [x, z] of pts) top = Math.max(top, rot([x, slab, z])[1]);
-    const lift = BROKEN_CAP - 0.04 - top;
-    const P = (x: number, y: number, z: number): V3 => { const q = rot([x, y, z]); return [q[0], q[1] + lift, q[2]]; };
-    plates.push((p) => P(p[0], p[1], p[2]));
-    const up = P(pcx, slab, pcz), dn = P(pcx, 0, pcz);
-    const nUp = norm(sub(up, dn));
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
-      m.tri(P(pcx, slab, pcz), P(a[0], slab, a[1]), P(b[0], slab, b[1]), shade, true, undefined, nUp);
-      m.tri(P(pcx, 0, pcz), P(b[0], 0, b[1]), P(a[0], 0, a[1]), (p, n) => mul(shade(p, n), 0.4), true, undefined, scl(nUp, -1));
-      // the edge: a cast face on the slab's own edges, a fresh broken one along the cracks
-      const crack = !(Math.abs(a[0] - b[0]) < 1e-6 && (Math.abs(a[0] - X0) < 1e-6 || Math.abs(a[0] - X1) < 1e-6))
-        && !(Math.abs(a[1] - b[1]) < 1e-6 && (Math.abs(a[1] - Z0) < 1e-6 || Math.abs(a[1] - Z1) < 1e-6));
-      const mid = P((a[0] + b[0]) / 2, slab / 2, (a[1] + b[1]) / 2);
-      m.quad(P(a[0], 0, a[1]), P(b[0], 0, b[1]), P(b[0], slab, b[1]), P(a[0], slab, a[1]), crack ? core : shade, !crack, undefined, sub(mid, P(pcx, slab / 2, pcz)));
-      // bars out of the broken edges
-      if (crack && hash3(i, Math.round(sx * 3 + sz), 17, O.seed) < 0.45) {
-        const base = P((a[0] + b[0]) / 2, slab * (hash3(i, 1, 19, O.seed) < 0.5 ? 0.2 : 0.8), (a[1] + b[1]) / 2);
-        const out = norm(sub(mid, P(pcx, slab / 2, pcz)));
-        const l = 0.15 + hash3(i, 2, 23, O.seed) * 0.3;
-        const tip: V3 = [base[0] + out[0] * l, Math.min(BROKEN_CAP + 0.18, base[1] + out[1] * l + 0.05), base[2] + out[2] * l];
+    // a ragged convex outline in its plane (6-8 corners), its top and bottom faces and the broken sides
+    const k = 6 + Math.floor(rng() * 3);
+    const outline: Array<[number, number]> = [];
+    for (let j = 0; j < k; j++) {
+      const a = (j / k) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+      outline.push([Math.cos(a) * w / 2 * (0.75 + rng() * 0.35), Math.sin(a) * d / 2 * (0.75 + rng() * 0.35)]);
+    }
+    const top = outline.map(([ox, oz]) => rot(ox, th / 2, oz)), bot = outline.map(([ox, oz]) => rot(ox, -th / 2, oz));
+    // sit it on the heap: its lowest corner a little into the rubble, its highest under the cap
+    const lo = Math.min(...top.map((q) => q[1]), ...bot.map((q) => q[1])), hi = Math.max(...top.map((q) => q[1]), ...bot.map((q) => q[1]));
+    const inShell = Math.abs(x) < X1 - 0.2 && z < Z1;
+    const bed = GRADE + (inShell ? 0.18 + rng() * 0.12 : 0.02);
+    const lift = Math.min(bed - lo, BROKEN_CAP - 0.03 - hi);
+    for (const q of [...top, ...bot]) q[1] += lift;
+    const up = norm(sub(rot(0, 1, 0), rot(0, 0, 0)));
+    const ctr = rot(0, 0, 0); ctr[1] += lift;
+    const covered = rng() < 0.4;
+    for (let j = 0; j < k; j++) {
+      const j1 = (j + 1) % k;
+      const tc: V3 = scl(add(add(top[0], top[j]), top[j1]), 1 / 3);
+      void tc;
+      m.tri(top[0], top[j], top[j1], covered ? turf : shade, !covered, undefined, up);
+      m.tri(bot[0], bot[j1], bot[j], (p, n) => mul(core(p, n), 0.6), true, undefined, scl(up, -1));
+      const mid = scl(add(add(top[j], top[j1]), add(bot[j], bot[j1])), 0.25);
+      m.quad(top[j], top[j1], bot[j1], bot[j], core, true, undefined, sub(mid, ctr));
+      // the bars out of the broken side
+      if (hash3(i, j, 29, O.seed) < 0.3) {
+        const base = scl(add(top[j], bot[j1]), 0.5), out = norm(sub(mid, ctr));
+        const len = 0.14 + hash3(i, j, 31, O.seed) * 0.3;
+        const tip: V3 = [base[0] + out[0] * len, Math.min(BROKEN_CAP + 0.18, base[1] + out[1] * len + 0.06), base[2] + out[2] * len];
         bar(m, base, tip, rust);
       }
     }
-  }
-  // bars spanning the cracks between neighbouring plates, sagging
-  for (let i = 0; i < 6; i++) {
-    const t = (i + 0.5) / 6;
-    const x = X0 + (X1 - X0) * t, z = czk + jag(x, 2);
-    const pa = plates[x < cxk ? 0 : 1]([x, slab * 0.25, z - 0.05]), pb = plates[x < cxk ? 2 : 3]([x, slab * 0.25, z + 0.05]);
-    const mid: V3 = [(pa[0] + pb[0]) / 2, Math.min(pa[1], pb[1]) - 0.12, (pa[2] + pb[2]) / 2];
-    bar(m, pa, mid, rust); bar(m, mid, pb, rust);
   }
 }
 
@@ -1200,8 +1208,9 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
   const front = Math.max(...zs);
   const dust: Rgb = mix(T.concrete, T.earth, 0.35);
   const heapShade: Shade = (p) => mul(mix(dust, T.concrete, vnoise(p[0], 0, p[2], 0.3, O.seed + 151)), 0.75 + vnoise(p[0], 0, p[2], 0.12, O.seed + 157) * 0.35);
-  // the heap: a low dome over the breach, spilling out of the front
-  const cx = 0, cz = front - 0.2, rx = 2.7, rz = 1.9, H = 0.4;
+  // the heap: a dome over the shell and the breach, spilling out of the front (round 2: at a real volume)
+  const xs = plan.map((p) => p[0]), backZ = Math.min(...zs);
+  const cx = 0, cz = (front + backZ) / 2 + 0.35, rx = (Math.max(...xs) - Math.min(...xs)) / 2 + 0.7, rz = (front - backZ) / 2 + 0.9, H = 0.46;
   const SEG = 20, RING = 5;
   const pt = (k: number, r: number): V3 => {
     const ph = (k / SEG) * Math.PI * 2, t = r / RING;
@@ -1219,7 +1228,7 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
   const chunkShade: Shade = (p, n) => mul(mix(mul(T.concrete, 0.66), mix(dust, [0.16, 0.15, 0.13], 0.5), vnoise(p[0], p[1], p[2], 0.25, O.seed + 171) * 0.75),
     (n[1] > 0.5 ? 0.95 : 0.78) * (0.85 + hash3(Math.round(p[0] * 3), Math.round(p[2] * 3), 1, O.seed) * 0.25));
   const rust: Shade = () => [0.1, 0.045, 0.022];
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 40; i++) {
     const ang = rng() * Math.PI * 2, rr = Math.sqrt(rng());
     const x = cx + Math.cos(ang) * rx * 1.15 * rr, z = cz + 0.3 + Math.sin(ang) * rz * 1.2 * rr;
     const s = 0.16 + rng() * rng() * 0.62;
@@ -1229,9 +1238,16 @@ function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
     if (s > 0.45 && rng() < 0.6) bar(m, [x, heapY + h * 0.5, z], [x + (rng() - 0.5) * 0.7, Math.min(BROKEN_CAP + 0.2, heapY + h * 0.5 + rng() * 0.35), z + (rng() - 0.5) * 0.7], rust);
   }
   // inside the shell: the floor heaped with the fallen ceiling's fragments
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 18; i++) {
     const x = (rng() - 0.5) * 3.6, z = (rng() - 0.5) * 3.0 - 0.2, s = 0.2 + rng() * 0.4;
-    lump(m, x, GRADE + 0.08, z, s, Math.min(0.35, s * 0.6), s, rng, chunkShade, true, rng() * Math.PI, 0.4, BROKEN_CAP - 0.02);
+    lump(m, x, GRADE + 0.2, z, s, Math.min(0.35, s * 0.6), s, rng, chunkShade, true, rng() * Math.PI, 0.4, BROKEN_CAP - 0.02);
+  }
+  // the earth of the bank and the roof thrown out with it: clods round the heap
+  const clod: Shade = (p) => mul(T.earth, 0.7 + vnoise(p[0], p[1], p[2], 0.2, O.seed + 181) * 0.35);
+  for (let i = 0; i < 22; i++) {
+    const ang = rng() * Math.PI * 2, rr = 0.8 + rng() * 0.5;
+    const x = cx + Math.cos(ang) * rx * rr, z = cz + Math.sin(ang) * rz * rr, sz = 0.12 + rng() * 0.25;
+    lump(m, x, GRADE + sz * 0.2, z, sz * 1.4, sz * 0.6, sz, rng, clod, false, rng() * Math.PI, 0.5, BROKEN_CAP - 0.1);
   }
 }
 
@@ -1298,16 +1314,52 @@ function buildLogEarthPillbox(O: BuildOpts): THREE.BufferGeometry {
     const roofPlan: Plan = ensureOutward([[-X - 0.3, -Z - 0.3], [X + 0.3, -Z - 0.3], [X + 0.3, Z + 0.05], [-X - 0.3, Z + 0.05]]);
     roofCover(m, roofPlan, wallTop + 2 * r - 0.04, 0.62, -0.06, T, O.seed + 9);
   } else {
-    // the roof down: logs fallen in and thrown, splintered
-    for (let i = 0; i < 12; i++) {
-      const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, a = rng() * Math.PI, l = 0.8 + rng() * 2;
-      const y = GRADE + 0.12 + rng() * 0.18;
-      log(m, [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2], [x + Math.cos(a) * l / 2, Math.min(BROKEN_CAP - r, y + (rng() - 0.5) * 0.3), z + Math.sin(a) * l / 2], r * 0.9, 6, (p, n) => mul(bark(p, n), 0.6), endGrain);
+    // (round 2, wave 370: "clean stone panels", "nothing shows splintered logs, spilled soil or a collapsed roof at real
+    // volume") the roof down: its earth slumped in a mound over the pit, the roof logs broken and splintered in it and
+    // thrown out of it, soil spilled round
+    const soil: Shade = (p) => mul(mix(T.earth, T.turf, smooth(0.55, 0.8, fbm(p[0], 0, p[2], 0.6, O.seed + 21)) * (T.arid ? 0.2 : 0.6)),
+      0.72 + vnoise(p[0], 0, p[2], 0.2, O.seed + 23) * 0.35);
+    const SEG = 24, RING = 6, mrx = X + 0.5, mrz = Z + 0.5, MH = 0.44;
+    const mound = (k: number, rr: number): V3 => {
+      const ph = (k / SEG) * Math.PI * 2, t = rr / RING;
+      const wob = 1 + (vnoise(Math.cos(ph) * 3, 0, Math.sin(ph) * 3, 0.8, O.seed + 25) - 0.5) * 0.35;
+      const x = Math.cos(ph) * mrx * t * wob, z = Math.sin(ph) * mrz * t * wob;
+      const hh = MH * Math.pow(1 - t * t, 1.2) + (t < 1 ? (vnoise(x * 2.7, 0, z * 2.7, 0.5, O.seed + 27) - 0.5) * 0.16 : -0.06);
+      return [x, GRADE + Math.min(BROKEN_CAP - 0.05, hh), z];
+    };
+    for (let k = 0; k < SEG; k++) for (let rr = 0; rr < RING; rr++) {
+      const a = mound(k, rr), b = mound(k + 1, rr), c = mound(k + 1, rr + 1), d = mound(k, rr + 1);
+      m.tri(a, c, d, soil, false, undefined, [0, 1, 0]);
+      if (rr > 0) m.tri(a, b, c, soil, false, undefined, [0, 1, 0]);
+    }
+    const splinter: Shade = (p) => mul(mix(T.timber, [0.55, 0.45, 0.3], 0.5), 0.8 + vnoise(p[0] * 9, p[1] * 9, p[2] * 9, 0.2, O.seed + 29) * 0.4);
+    for (let i = 0; i < 18; i++) {
+      // a broken roof log: lying in the mound or thrown out of it, one end splintered
+      const thrown = i >= 12;
+      const ang = rng() * Math.PI * 2, rr = thrown ? 1.1 + rng() * 0.6 : rng() * 0.8;
+      const x = Math.cos(ang) * mrx * rr, z = Math.sin(ang) * mrz * rr, a = rng() * Math.PI, l = 0.7 + rng() * (thrown ? 1.2 : 2.2);
+      const y = GRADE + r * 0.9 + (thrown ? 0 : rng() * 0.12);
+      const p0: V3 = [x - Math.cos(a) * l / 2, y, z - Math.sin(a) * l / 2];
+      const p1: V3 = [x + Math.cos(a) * l / 2, Math.min(BROKEN_CAP - r, y + (rng() - 0.3) * 0.35), z + Math.sin(a) * l / 2];
+      log(m, p0, p1, r * 0.9, 6, (p, n) => mul(bark(p, n), 0.62), endGrain);
+      // the splintered end: slivers out along the grain
+      const dir = norm(sub(p1, p0));
+      for (let q = 0; q < 4; q++) {
+        const off: V3 = [Math.cos(q * 1.7 + i) * r * 0.5, Math.sin(q * 1.7 + i) * r * 0.5, Math.cos(q * 2.3 + i) * r * 0.5];
+        const base = add(p1, off), tip = add(base, scl(dir, 0.12 + hash3(i, q, 33, O.seed) * 0.25));
+        tip[1] = Math.min(BROKEN_CAP, tip[1]);
+        bar(m, base, tip, splinter, 0.025);
+      }
     }
   }
   // (the bank all round to the slit, open at the rear door: the static earthwork, pillboxBerm)
   if (O.broken) {
-    for (let i = 0; i < 10; i++) lump(m, (rng() - 0.5) * 4, GRADE + 0.08, (rng() - 0.5) * 3.4, 0.3 + rng() * 0.4, 0.22, 0.3 + rng() * 0.4, rng, (p) => mul(T.earth, 0.8 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.3), false);
+    // the soil spilled round the mound
+    for (let i = 0; i < 18; i++) {
+      const ang = rng() * Math.PI * 2, rr = 0.9 + rng() * 0.6;
+      lump(m, Math.cos(ang) * (X + 0.6) * rr, GRADE + 0.06, Math.sin(ang) * (Z + 0.6) * rr, 0.25 + rng() * 0.35, 0.18, 0.25 + rng() * 0.35, rng,
+        (p) => mul(T.earth, 0.7 + vnoise(p[0], 0, p[2], 0.2, 5) * 0.35), false);
+    }
   }
   return m.geometry();
 }
@@ -1622,8 +1674,8 @@ function buildConcretePillboxPieces(style: 'regelbau' | 'dot' | 'hex', O: BuildO
       const c: V3 = [e.a[0] + e.u[0] * sl.s, sl.y, e.a[1] + e.u[2] * sl.s];
       embrasure(m, c, e.u, sl.w, sl.h, sl.steps, sl.w * 0.11, sl.h * 0.1, 0.16, t, reveal, sl.plate ? plateTone : null, sl.w * 0.32, 0.1);
       if (style === 'dot' && sl.w > 1) {
-        const vy = sl.y + sl.h / 2 + 0.03, depth = 0.3, vw = sl.w + 0.36;
-        solid(m, c[0] + e.n[0] * depth / 2, vy, c[2] + e.n[2] * depth / 2, vw, 0.14, depth, Math.atan2(e.n[0], e.n[2]), conc, true);
+        const vy = sl.y + sl.h / 2 + 0.03, depth = 0.18, vw = sl.w + 0.3;
+        solid(m, c[0] + e.n[0] * depth / 2, vy, c[2] + e.n[2] * depth / 2, vw, 0.1, depth, Math.atan2(e.n[0], e.n[2]), conc, true);
       }
     }
   };
@@ -1792,7 +1844,8 @@ function buildConcretePillboxPieces(style: 'regelbau' | 'dot' | 'hex', O: BuildO
   const sPlan = grow(plan, overhang), chamf = 0.07, sTop = wallTop + slab;
   const cPlan = grow(plan, overhang - chamf);
   const plates: number[] = [];
-  const coverThick = style === 'dot' ? 0.5 : style === 'hex' ? 0.12 : 0.24, coverInset = style === 'dot' ? 0.1 : 0.38;
+  // the earth to the slab's chamfer: no tray (round 2, wave 370: "turf sunk in a tray like a planter")
+  const coverThick = style === 'dot' ? 0.5 : style === 'hex' ? 0.16 : 0.26, coverInset = -(overhang - chamf - 0.03);
   for (const [qx, qz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]] as Array<[number, number]>) {
     const clip = (poly: Array<[number, number]>) => clipHalf(clipHalf(poly, qx, 0, 0), 0, qz, 0);
     const sQ = clip(sPlan), cQ = clip(cPlan);
@@ -2093,6 +2146,64 @@ export function pillboxBerm(style: PillboxStyle, tones: FortTones, seed: number,
   return m.geometry();
 }
 export const FORT_CONTACT_FLOOR_M = 0.35;
+
+/**
+ * A map's pillbox bank as a height field in the pillbox's frame (round 2, the destructible-buildings lane; wave 370:
+ * "grow the earthwork out of the terrain: the same material and grain as the ground"): the bank's surface over the
+ * base at (lx, lz), 0 beyond its toe, NaN inside the walls — the ground cover law's static lift (groundCoverCraters.ts),
+ * so the field's own grass stands on the bank. `radius`: how far from the centre the bank reaches.
+ */
+export function pillboxBankField(style: PillboxStyle, tones: FortTones, seed: number): { lift: (lx: number, lz: number) => number; radius: number } {
+  const B = style === 'logearth' ? logEarthBermSpec(tones, seed, false) : concreteBermSpec(style, concreteLayout(style), tones, seed, false);
+  const { grid, hs } = bermGrid(B);
+  const K = grid.length, R = BERM_T.length;
+  let ext = 0;
+  for (const row of grid) for (let r = 0; r < R; r++) ext = Math.max(ext, Math.abs(row[r][0]), Math.abs(row[r][2]));
+  const cell = 0.15, side = Math.ceil((ext * 2 + 0.6) / cell), half = (side * cell) / 2;
+  const h = new Float32Array(side * side);
+  // rasterise the bank's top (its rows from the wall to the toe), the highest surface in a cell
+  const tri = (a: V3, b: V3, c: V3): void => {
+    const x0 = Math.max(0, Math.floor((Math.min(a[0], b[0], c[0]) + half) / cell)), x1 = Math.min(side - 1, Math.floor((Math.max(a[0], b[0], c[0]) + half) / cell));
+    const z0 = Math.max(0, Math.floor((Math.min(a[2], b[2], c[2]) + half) / cell)), z1 = Math.min(side - 1, Math.floor((Math.max(a[2], b[2], c[2]) + half) / cell));
+    const d = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
+    if (Math.abs(d) < 1e-9) return;
+    for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
+      const px = -half + (ix + 0.5) * cell, pz = -half + (iz + 0.5) * cell;
+      const l1 = ((b[2] - c[2]) * (px - c[0]) + (c[0] - b[0]) * (pz - c[2])) / d;
+      const l2 = ((c[2] - a[2]) * (px - c[0]) + (a[0] - c[0]) * (pz - c[2])) / d;
+      const l3 = 1 - l1 - l2;
+      if (l1 < -0.02 || l2 < -0.02 || l3 < -0.02) continue;
+      const y = l1 * a[1] + l2 * b[1] + l3 * c[1];
+      if (y > h[iz * side + ix]) h[iz * side + ix] = y;
+    }
+  };
+  for (let i = 0; i < K; i++) {
+    const i1 = (i + 1) % K;
+    if (hs[i] < 0.02 && hs[i1] < 0.02) continue;
+    for (let r = 0; r + 1 < R; r++) { tri(grid[i][r], grid[i1][r], grid[i1][r + 1]); tri(grid[i][r], grid[i1][r + 1], grid[i][r + 1]); }
+  }
+  // the walls' plan: no cover inside the work
+  const plan = style === 'logearth' ? ensureOutward(chamferedRect(LOG_W, LOG_D, 0.05)) : concreteLayout(style).plan;
+  const sign = (() => { const a = plan[0], b = plan[1], c = plan[2]; return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0 ? 1 : -1; })();
+  const insideSigned = (x: number, z: number): boolean => {
+    for (let i = 0; i < plan.length; i++) {
+      const a = plan[i], b = plan[(i + 1) % plan.length];
+      if (sign * ((b[0] - a[0]) * (z - a[1]) - (b[1] - a[1]) * (x - a[0])) < 0) return false;
+    }
+    return true;
+  };
+  const at = (ix: number, iz: number): number => (ix < 0 || iz < 0 || ix >= side || iz >= side ? 0 : h[iz * side + ix]);
+  return {
+    radius: ext + 0.3,
+    lift(lx, lz) {
+      if (insideSigned(lx, lz)) return NaN;
+      const fx = (lx + half) / cell - 0.5, fz = (lz + half) / cell - 0.5;
+      const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz;
+      const v = (at(ix, iz) * (1 - tx) + at(ix + 1, iz) * tx) * (1 - tz) + (at(ix, iz + 1) * (1 - tx) + at(ix + 1, iz + 1) * tx) * tz;
+      return v > 0.01 ? v : 0;
+    },
+  };
+}
 
 /** The whole work's ground (the body and its bank): the field works' road and trunk checks read its band (props.ts). */
 export function pillboxFootprintGeometry(style: PillboxStyle, tones: FortTones, seed: number): THREE.BufferGeometry {
