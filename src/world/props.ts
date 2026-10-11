@@ -8353,6 +8353,38 @@ ${snowCap ? `
       };
     });
   }
+  // (round 2, the destructible-kits lane; waves 390a/b: "yards: no path, track or wear; sheds stand in furrows or
+  // lawn") each shed's yard trodden bare: the field's grass and litter gone from under it, from a ragged apron round its
+  // walls (widest before its door or open front) and from the path worn out from its door, wandering and petering out
+  {
+    const yards: GroundCoverStaticLift[] = [];
+    for (const rec of destructibles) {
+      if (rec.kind !== 'fieldhut' && rec.kind !== 'leanto') continue;
+      const hw = (rec.kind === 'fieldhut' ? 2.2 : 2.8) * rec.sc, hl = (rec.kind === 'fieldhut' ? 3.0 : 2.3) * rec.sc;
+      const c = Math.cos(rec.yaw), sn = Math.sin(rec.yaw);
+      const salt = Math.abs(Math.sin(rec.x * 12.9898 + rec.z * 78.233) * 43758.5453) % 1;
+      const pathLen = 5.5 + salt * 4, phase = salt * 6.28, reach = Math.hypot(hw, hl) + pathLen + 2.5;
+      const wobble = (t: number): number => Math.sin(t * 0.45 + phase) * 0.45 + Math.sin(t * 1.3 + phase * 2) * 0.12;
+      yards.push({
+        reach: [rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach] as const,
+        liftAt(x: number, z: number): number {
+          const dx = x - rec.x, dz = z - rec.z;
+          const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+          const ox = Math.max(0, Math.abs(lx) - hw), oz = Math.max(0, Math.abs(lz) - hl);
+          const d = Math.hypot(ox, oz), ang = Math.atan2(lz, lx);
+          // the apron: ragged, widest before the door (+z)
+          const apron = 0.55 + 0.35 * (0.5 + 0.5 * Math.sin(ang * 5 + phase)) + 0.2 * (0.5 + 0.5 * Math.sin(ang * 11 + phase * 3))
+            + 1.3 * Math.max(0, Math.sin(ang)) * Math.max(0, 1 - Math.abs(lx) / (hw + 1.5));
+          if (d < apron) return NaN;
+          // the path out from the door, petering out toward its end
+          const t = lz - hl;
+          if (t > 0 && t < pathLen && Math.abs(lx - wobble(t)) < 0.42 - 0.18 * Math.max(0, (t - pathLen * 0.6) / (pathLen * 0.4))) return NaN;
+          return 0;
+        },
+      });
+    }
+    if (yards.length) group.userData.groundCoverLifts = [...((group.userData.groundCoverLifts as GroundCoverStaticLift[] | undefined) ?? []), ...yards];
+  }
   if (fort && fortSeats.length && mobileProps) {
     const bank = pillboxBerm(fort.style, fort.tones, fort.seed, { forBaked: true });
     for (const seat of fortSeats) {
