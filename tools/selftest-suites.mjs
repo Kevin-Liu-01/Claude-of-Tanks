@@ -1382,6 +1382,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads

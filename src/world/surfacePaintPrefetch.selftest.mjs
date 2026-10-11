@@ -30,7 +30,7 @@ const props = await import('./props.ts');
   const a = new SimplexNoise({ random: props.mulberry32(2009) }), b = workerModule.propsPaintNoise(2009);
   for (let i = 0; i < 200; i++) assert.equal(b.noise(i * 0.37 - 11, i * 0.11 + 3), a.noise(i * 0.37 - 11, i * 0.11 + 3), 'the worker\'s noise is the build\'s');
 }
-const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk'];
+const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk', 'conglomerate', 'breccia'];
 const jobs = [
   { kind: 'hay', size: 256, seed: HAY_PRINT_SEED },
   { kind: 'fieldStone', size: 256, seed: FIELD_STONE_PRINT_SEED, lithology: 'fieldstone' },
