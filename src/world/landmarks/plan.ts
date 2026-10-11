@@ -239,7 +239,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => {
       const n = Math.round(num(p, 'tanks')), cols = Math.min(n, Math.max(1, Math.round(num(p, 'columns')))), rows = Math.ceil(n / cols);
       const pitch = 2 * num(p, 'radius') + 3;
-      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 2.8, (rows - 1) * pitch / 2 + num(p, 'radius') + 3.4];
+      // (R6) the berm's outer toe and its corners carried past the old wall line by a face's run (stations.ts)
+      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 4.5, (rows - 1) * pitch / 2 + num(p, 'radius') + 4.5];
     } },
   // (a Jamesway hut; a fuel cache and a drift fence are the props' own drums and fence modules: all dressing)
   jamesway: { family: 'works', defaults: { length: 14.6, width: 4.9 },
@@ -254,7 +255,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
-    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 9.8] },
+    // (R6) the shaft 3 m further forward, the winding house 6 m further back (mining.ts headframeShaftZ)
+    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 12.3] },
   oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
     footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
   conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },

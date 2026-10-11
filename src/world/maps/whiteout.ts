@@ -147,10 +147,12 @@ export default {
       { kind: 'fuelTankFarm', x: -240, z: -185, yawDeg: 90, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the motor pool tanks' },
       { kind: 'fuelTankFarm', x: 60, z: 236, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north tanks' },
       // the billboards on the high ground, facing the next stations east (Greenland) and west along the line
-      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, ground: 'veto', name: 'the east billboards (south)' },
-      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, ground: 'veto', name: 'the east billboards (north)' },
-      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, ground: 'veto', name: 'the west billboards (south)' },
-      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, ground: 'veto', name: 'the west billboards (north)' },
+      // (R6, gauntlet wave 358a: the billboards "badly undersized ... far from DYE-M's towering reflector screens") the
+      // screens at their true scale, 28 m across and 24 m high
+      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the east billboards (south)' },
+      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the east billboards (north)' },
+      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the west billboards (south)' },
+      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the west billboards (north)' },
       // the masts
       { kind: 'guyedMast', x: 370, z: 200, ground: 'veto', name: 'the north-east mast' },
       { kind: 'guyedMast', x: -190, z: -252, ground: 'veto', name: 'the south-west mast' },

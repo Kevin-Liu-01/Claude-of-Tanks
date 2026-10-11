@@ -45,6 +45,40 @@ function foot(sink: PartSink, x: number, z: number, hw: number, hd: number, y: n
   sink.span('stone', x - hw, Math.min(y - 0.8, -0.6), z - hd, x + hw, y + top, z + hd);
 }
 
+/**
+ * A snow bank along a run (the map-content lane's R6; gauntlet wave 358a on Whiteout: the station "on clean untouched snow
+ * with no ... drift, scour", "drift tails behind the screens", "drift against module piles"): a ridge whose crest stands
+ * `h` over the ground along the run from a to b, its short face 0.7 m back toward the structure and its long tail `out`
+ * metres out along (nx, nz), both toes sunk in the snow, the ends tapering. Snow maps only; dressing (no collision: a hull
+ * drives through snow).
+ */
+function snowBank(sink: PartSink, ctx: LandmarkBuildContext, ax: number, az: number, bx: number, bz: number, nx: number, nz: number,
+  h: number, out: number): void {
+  if (!ctx.snowCap) return;
+  const gl = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  const len = Math.hypot(bx - ax, bz - az), n = Math.max(2, Math.ceil(len / 2.5));
+  const face = (pts: Vec3[], up: Vec3) => {
+    const ux = pts[1][0] - pts[0][0], uy = pts[1][1] - pts[0][1], uz = pts[1][2] - pts[0][2];
+    const vx = pts[2][0] - pts[0][0], vy = pts[2][1] - pts[0][1], vz = pts[2][2] - pts[0][2];
+    const d = (uy * vz - uz * vy) * up[0] + (uz * vx - ux * vz) * up[1] + (ux * vy - uy * vx) * up[2];
+    sink.polygon('plaster', d >= 0 ? pts : [...pts].reverse(), { decor: true });
+  };
+  let prev: Vec3[] | null = null;
+  for (let k = 0; k <= n; k++) {
+    const t = k / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, taper = Math.sqrt(Math.sin(Math.PI * t)), reach = 0.55 + 0.45 * taper;
+    const back: Vec3 = [x - nx * 0.7 * reach, gl(x - nx * 0.7 * reach, z - nz * 0.7 * reach) - 0.12, z - nz * 0.7 * reach];
+    const crest: Vec3 = [x, gl(x, z) + h * (0.2 + 0.8 * taper), z];
+    const toe: Vec3 = [x + nx * out * reach, gl(x + nx * out * reach, z + nz * out * reach) - 0.12, z + nz * out * reach];
+    const row = [back, crest, toe];
+    if (prev) {
+      face([prev[0], prev[1], row[1], row[0]], [-nx, 1, -nz]);
+      face([prev[1], prev[2], row[2], row[1]], [nx, 1, nz]);
+    } else face(row, [-(bz - az), 0, bx - ax]);
+    prev = row;
+  }
+  if (prev) face([...prev].reverse(), [bx - ax, 0, bz - az]);
+}
+
 /** A rust stain down a sheet: the paint at the top, darker toward the foot (a coloured bucket's per-corner colour). */
 const weathered = (base: Rgb, y0: number, y1: number, k = 0.22) => (p: Vec3): Rgb => {
   const t = Math.min(1, Math.max(0, (p[1] - y0) / Math.max(0.01, y1 - y0)));
@@ -73,9 +107,23 @@ function ladder(sink: PartSink, x: number, z: number, y0: number, y1: number, al
  */
 export const radomeTower: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const S = num(ctx, 'side', 7), H = num(ctx, 'height', 6), R = num(ctx, 'radius', 3.5);
-  const h = S / 2, base = 0.5;
-  footing(sink, ctx, 0, 0, h + 0.3, h + 0.3, base);
+  // (R6, gauntlet wave 358a: "a radome module that sits directly on the flat snow without piles, drift or contact
+  // shading", "put the modules on piles per DEW practice") on a snow map the block stands on steel piles, its floor 1.4 m
+  // over the snow, the drifts banked in under it and along its sides
+  const lift = ctx.snowCap ? 1.4 : 0;
+  const S = num(ctx, 'side', 7), H = num(ctx, 'height', 6) + lift, R = num(ctx, 'radius', 3.5);
+  const h = S / 2, base = 0.5 + lift;
+  if (!lift) footing(sink, ctx, 0, 0, h + 0.3, h + 0.3, base);
+  else {
+    const step = S / Math.max(1, Math.round(S / 3));
+    for (let x = -h + 0.3; x <= h - 0.29; x += step - 0.6 / Math.max(1, Math.round(S / 3))) for (const z of [-h + 0.3, h - 0.3]) {
+      sink.span('structureMetal', x - 0.15, -0.6 - ctx.groundFall, z - 0.15, x + 0.15, base - 0.3, z + 0.15, { colour: STEEL_DARK });
+    }
+    for (const z of [-h + 0.3, h - 0.3]) sink.span('structureMetal', -h, base - 0.32, z - 0.18, h, base, z + 0.18, { colour: STEEL });
+    for (const x of [-h + 0.3, h - 0.3]) sink.span('structureMetal', x - 0.18, base - 0.32, -h, x + 0.18, base, h, { colour: STEEL });
+    snowBank(sink, ctx, -h - 0.4, -h + 0.6, h + 0.4, -h + 0.6, 0, -1, 1.1, 2.2);
+    snowBank(sink, ctx, -h + 0.6, h + 0.4, -h + 0.6, -h - 0.4, -1, 0, 0.9, 1.6);
+  }
   // the block, its trim band under the parapet and the rust at its foot
   // (in the regional buckets the arctic kit paints: its white panels, its safety-orange band — maps/regional/arctic.ts)
   sink.span('plaster', -h, base, -h, h, H, h);
@@ -95,7 +143,7 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
         new LocalFrame(f.u, [0, 1, 0], f.out, [0, 0, 0]));
     }
     if (i === 1) return;
-    for (const y of [2.1, H - 2.2]) {
+    for (const y of [base + 1.6, H - 2.2]) {
       for (let k = -1; k <= 1; k++) {
         const u = k * S * 0.28;
         sink.quad('glass', at(f, u - 0.6, y, 0.03), at(f, u + 0.6, y, 0.03), at(f, u + 0.6, y + 0.9, 0.03), at(f, u - 0.6, y + 0.9, 0.03), { decor: true });
@@ -105,7 +153,14 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   // the door and its canopy on the front, the steps up to it
   sink.quad('structureMetal', [-0.55, base, h + 0.03], [0.55, base, h + 0.03], [0.55, base + 2.1, h + 0.03], [-0.55, base + 2.1, h + 0.03], { colour: DOOR, decor: true });
   sink.span('structureMetal', -1.1, base + 2.3, h, 1.1, base + 2.45, h + 1.3, { colour: shade(PANEL, 0.7), decor: true });
-  for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
+  if (!lift) for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
+  else {
+    // the landing at the door and the steel flight down to the snow
+    sink.span('structureMetal', -0.9, base - 0.08, h, 0.9, base, h + 1.0, { colour: STEEL });
+    const treads = Math.ceil(base / 0.22);
+    for (let k = 1; k <= treads; k++) sink.span('structureMetal', -0.75, base - k * (base / treads) - 0.05, h + 1.0 + k * 0.26 - 0.13, 0.75, base - k * (base / treads), h + 1.0 + k * 0.26 + 0.13, { colour: STEEL, decor: true });
+    for (const sx of [-0.8, 0.8]) bar(sink, 'structureMetal', [sx, -0.2, h + 1.1 + treads * 0.26], [sx, base, h + 1.0], 0.07, { colour: STEEL_DARK, decor: true });
+  }
   // the outside stair to the roof on the right face (+x): a ladder in its cage
   ladder(sink, h + 0.3, -h * 0.4, base, H + 0.45, false, STEEL_DARK);
   for (let y = base + 2.2; y < H; y += 1.4) bar(sink, 'structureMetal', [h + 0.05, y, -h * 0.4 - 0.35], [h + 0.62, y, -h * 0.4 - 0.35], 0.04, { colour: STEEL_DARK, decor: true, fine: true });
@@ -221,6 +276,9 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     sink.member('structureMetal', [x, Math.min(g - 0.3, -0.6), rearZ - 2.6], [x, foot + H * 0.6, rearZ], 0.24, 0.24, [1, 0, 0], truss);
     sink.span('stone', x - 0.5, g - 0.4, rearZ - 3.1, x + 0.5, g + 0.25, rearZ - 2.1, { decor: true });
   }
+  // (R6, wave 358a: "drift tails behind the screens", "nothing at their bases") the drift the screen throws in its lee,
+  // banked up the raking legs' footings and tailing out behind them
+  snowBank(sink, ctx, -bw / 2 - 0.5, rearZ - 2.4, bw / 2 + 0.5, rearZ - 2.4, 0, -1, 1.3, 2.4);
   // the feed horn at the focus on its own tower: four tapering legs braced in X, a platform, the horn turned to the face
   const tw = 0.85, tz = fz + 0.9, legTop = fy - 0.7;
   const gt = Math.min(gl(-tw, tz - tw), gl(tw, tz - tw), gl(-tw, tz + tw), gl(tw, tz + tw));
@@ -392,6 +450,10 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
     sink.quad('structureMetal', [cx - 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 2.0, hd + 1.42], [cx - 0.45, floor + 2.0, hd + 1.42], { colour: DOOR, decor: true });
     for (let s = 0; s < 2; s++) sink.span('structureWood', cx - 0.7, 0, hd + 1.4 + s * 0.35, cx + 0.7, floor - s * (floor / 2), hd + 1.75 + s * 0.35, { colour: TIMBER, decor: true });
   }
+  // (R6, wave 358a: "lifting the module train onto steel piles with drift underneath") the snow banked against the
+  // train's back, into the void under its floor, and against its far end
+  snowBank(sink, ctx, x0 - 0.4, -hd + 0.5, x0 + total + 0.4, -hd + 0.5, 0, -1, Math.min(1.1, floor + 0.5), 2.4);
+  snowBank(sink, ctx, x0 + 0.5, hd + 0.4, x0 + 0.5, -hd - 0.4, -1, 0, Math.min(1.0, floor + 0.4), 1.8);
   return { parts: sink.finish() };
 };
 
@@ -409,23 +471,50 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
   const pitch = 2 * R + 3, ex = (cols - 1) * pitch / 2 + R + 2.5, ez = (rows - 1) * pitch / 2 + R + 2.5;
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   // (on falling ground — plan.ts drapes — each tank stands on its own ring footing at the highest ground under it, and
-  // the bund runs in short lengths, each from below its lowest ground to a wall's height over its highest)
-  const wallH = 1.1, t = 0.35;
-  const wall = (ax: number, az: number, bx: number, bz: number) => {
-    const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 6));
-    for (let k = 0; k < n; k++) {
-      const x0 = ax + (bx - ax) * k / n, z0 = az + (bz - az) * k / n, x1 = ax + (bx - ax) * (k + 1) / n, z1 = az + (bz - az) * (k + 1) / n;
-      const g0 = gl(x0, z0), g1 = gl(x1, z1), gm = gl((x0 + x1) / 2, (z0 + z1) / 2);
-      const lo = Math.min(g0, g1, gm), hi = Math.max(g0, g1, gm);
-      sink.span('stone', Math.min(x0, x1) - (az === bz ? 0 : t / 2), Math.min(lo - 0.6, -0.6), Math.min(z0, z1) - (az === bz ? t / 2 : 0),
-        Math.max(x0, x1) + (az === bz ? 0 : t / 2), hi + wallH, Math.max(z0, z1) + (az === bz ? t / 2 : 0));
-    }
+  // the bund runs in short lengths following the ground)
+  // (the map-content lane's R6; gauntlet wave 358a on Whiteout and Copper Mesa: the tanks "clad in a beige tiled-grid
+  // texture like masonry", the bund "a low wall of stone blocks rather than an earth-and-gravel berm") the bund an earth and
+  // gravel berm with sloped faces, snow-covered on a snow map, its crest a little over a metre; the tanks in painted plate
+  // (the kit's smooth paint: white at the polar station), their cone roofs of sheet, the ring seams and the stairs steel,
+  // their ring footings concrete (never the kit's brick)
+  const wallH = 1.2, t = 0.35, crest = 0.45, run = 1.5;
+  const bermBucket = ctx.snowCap ? 'plaster' : 'plaster3', paintBucket = ctx.snowCap ? 'plaster' : 'plaster3';
+  const concrete = ctx.brick ? 'plaster3' : 'stone';
+  /** A quad wound to face `out` (the berm's faces: whichever way the run goes). */
+  const faceOut = (pts: [Vec3, Vec3, Vec3, Vec3], out: Vec3) => {
+    const ux = pts[1][0] - pts[0][0], uy = pts[1][1] - pts[0][1], uz = pts[1][2] - pts[0][2];
+    const vx = pts[2][0] - pts[0][0], vy = pts[2][1] - pts[0][1], vz = pts[2][2] - pts[0][2];
+    const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    sink.quad(bermBucket, ...((n[0] * out[0] + n[1] * out[1] + n[2] * out[2]) >= 0 ? pts : [pts[3], pts[2], pts[1], pts[0]] as [Vec3, Vec3, Vec3, Vec3]));
   };
-  wall(-ex, -ez + t / 2, ex, -ez + t / 2);
-  wall(-ex + t / 2, -ez, -ex + t / 2, ez);
-  wall(ex - t / 2, -ez, ex - t / 2, ez);
-  wall(-ex, ez - t / 2, -1.4, ez - t / 2);
-  wall(1.4, ez - t / 2, ex, ez - t / 2);
+  /** The berm along a run from a to b (its line the old wall's), in lengths of 4 m or less, each laid on the ground under
+   * it: the inner face, the crest, the outer face; `capA`/`capB` close an end (the gap's sides). */
+  const wall = (ax: number, az: number, bx: number, bz: number, capA = false, capB = false) => {
+    const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 4));
+    const tx = (bx - ax) / len, tz = (bz - az) / len, nx = tz, nz = -tx;
+    const offs = [-crest - run, -crest, crest, crest + run];
+    const section = (x: number, z: number): Vec3[] => offs.map((o, i) => {
+      const px = x + nx * o, pz = z + nz * o, g = gl(px, pz);
+      return [px, i === 0 || i === 3 ? g - 0.15 : g + wallH, pz] as Vec3;
+    });
+    let prev = section(ax, az);
+    if (capA) faceOut([prev[0], prev[1], prev[2], prev[3]], [-tx, 0, -tz]);
+    for (let k = 1; k <= n; k++) {
+      const next = section(ax + (bx - ax) * k / n, az + (bz - az) * k / n);
+      faceOut([prev[0], prev[1], next[1], next[0]], [-nx, 0.6, -nz]);
+      faceOut([prev[1], prev[2], next[2], next[1]], [0, 1, 0]);
+      faceOut([prev[2], prev[3], next[3], next[2]], [nx, 0.6, nz]);
+      prev = next;
+    }
+    if (capB) faceOut([prev[0], prev[1], prev[2], prev[3]], [tx, 0, tz]);
+  };
+  // the runs carried past the corners by a face's run, so the corners close
+  const ov = crest + run;
+  wall(-ex - ov, -ez + t / 2, ex + ov, -ez + t / 2);
+  wall(-ex + t / 2, -ez, -ex + t / 2, ez + ov);
+  wall(ex - t / 2, -ez, ex - t / 2, ez + ov);
+  wall(-ex - ov, ez - t / 2, -1.4 - ov, ez - t / 2, false, true);
+  wall(1.4 + ov, ez - t / 2, ex + ov, ez - t / 2, true, false);
   // the tanks
   for (let i = 0; i < count; i++) {
     const c = i % cols, r = Math.floor(i / cols);
@@ -435,11 +524,12 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     lo = Math.min(lo, gl(x, z)); hi = Math.max(hi, gl(x, z));
     const y0 = hi + 0.3;
     const tone = lerp(PANEL, SNOW, ctx.variant() * 0.4);
-    revolve(sink, 'stone', x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
-    revolve(sink, 'structureMetal', x, z, [[R, y0], [R, y0 + Ht], [R * 0.25, y0 + Ht + R * 0.18], [0, y0 + Ht + R * 0.2]], 20,
-      { colourAt: (p) => (p[1] > y0 + Ht + 0.01 ? shade(tone, 0.88) : weathered(tone, y0, y0 + Ht, 0.3)(p)) });
-    // the shell's courses (fine rings)
-    for (let y = y0 + 1.8; y < y0 + Ht - 0.3; y += 1.8) revolve(sink, 'structureMetal', x, z, [[R + 0.02, y - 0.03], [R + 0.02, y + 0.03]], 20, { colour: shade(tone, 0.8), decor: true, fine: true });
+    revolve(sink, concrete, x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
+    revolve(sink, paintBucket, x, z, [[R, y0], [R, y0 + Ht]], 20);
+    revolve(sink, 'roof', x, z, [[R + 0.05, y0 + Ht], [R * 0.25, y0 + Ht + R * 0.18], [0, y0 + Ht + R * 0.2]], 20);
+    // the shell's courses (fine rings) and the seam under the roof's edge
+    for (let y = y0 + 1.8; y < y0 + Ht - 0.3; y += 1.8) revolve(sink, 'structureMetal', x, z, [[R + 0.02, y - 0.03], [R + 0.02, y + 0.03]], 20, { colour: shade(tone, 0.62), decor: true, fine: true });
+    revolve(sink, 'structureMetal', x, z, [[R + 0.03, y0 + Ht - 0.12], [R + 0.03, y0 + Ht]], 20, { colour: shade(tone, 0.55), decor: true });
     // the stair up its side (a straight flight on the tangent toward the front) and the roof rail
     const s0: Vec3 = [x - R - 0.5, gl(x - R - 0.5, z + 0.8) + 0.1, z + 0.8], s1: Vec3 = [x - R - 0.5, y0 + Ht, z - R * 0.9];
     bar(sink, 'structureMetal', s0, s1, 0.12, { colour: STEEL_DARK, decor: true });
@@ -489,6 +579,10 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   sink.quad('structureWood', [-0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 1.95, -z0 + 1.22], [-0.42, floor + 1.95, -z0 + 1.22], { colour: DOOR, decor: true });
   sink.span('structureWood', -0.6, 0, -z0 + 1.2, 0.6, floor * 0.5, -z0 + 1.55, { colour: TIMBER, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85, -z0 * 0.4], 'y', 1.4, 0.09, 6, { colour: IRON, decor: true });
+  // (R6, wave 358a: "fix their seating (timber floors, drifted ends)", "drift built up against the huts") the snow
+  // banked up the hut's windward side and against its far end
+  snowBank(sink, ctx, -r + 0.3, z0 - 0.3, -r + 0.3, -z0 + 0.3, -1, 0, 0.9, 1.6);
+  snowBank(sink, ctx, r + 0.3, z0 + 0.4, -r - 0.3, z0 + 0.4, 0, -1, 1.0, 1.6);
   return { parts: sink.finish() };
 };
 

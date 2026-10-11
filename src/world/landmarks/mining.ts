@@ -33,18 +33,28 @@ function footing(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number
 }
 
 /** A gabled corrugated-iron shed: walls from y 0 to `eave`, the ridge along z, a door on its front (+z) end. */
-function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eaveH: number, ridgeH: number, paint: Rgb, ctx: LandmarkBuildContext): number {
+function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eaveH: number, ridgeH: number, paint: Rgb, ctx: LandmarkBuildContext,
+  sheet = false): number {
   const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
   // (seated on the highest ground under it, its footing down past the lowest: plan.ts drapes)
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   const gs = [gl(x0, z0), gl(x1, z0), gl(x0, z1), gl(x1, z1), gl(cx, cz)], lo = Math.min(...gs), hi = Math.max(...gs);
   const y = hi, eave = y + eaveH, ridge = y + ridgeH;
   sink.span('stone', x0 - 0.2, Math.min(lo - 0.8, -0.6), z0 - 0.2, x1 + 0.2, y + 0.3, z1 + 0.2);
-  sink.span('structureMetal', x0, y + 0.3, z0, x1, eave, z1, { colourAt: rusting(paint, y + 0.3, eave, 0.35) });
+  // (`sheet`, the map-content lane's R6; gauntlet wave 358a on Copper Mesa: the winding houses "a tall featureless plank
+  // box", "no corrugated-iron detail") the walls and the gables in the kit's corrugated sheet (its roof surface), as the
+  // Mount Lyell winding houses are clad; otherwise painted steel with its laps
+  if (sheet) sink.span('roof', x0, y + 0.3, z0, x1, eave, z1);
+  else sink.span('structureMetal', x0, y + 0.3, z0, x1, eave, z1, { colourAt: rusting(paint, y + 0.3, eave, 0.35) });
   // the gables (front and back) and the roof's two slopes, the eaves overhanging
   const o = 0.35;
-  sink.polygon('structureMetal', [[x0, eave, z1], [x1, eave, z1], [cx, ridge, z1]], { colour: paint });
-  sink.polygon('structureMetal', [[x1, eave, z0], [x0, eave, z0], [cx, ridge, z0]], { colour: paint });
+  if (sheet) {
+    sink.polygon('roof', [[x0, eave, z1], [x1, eave, z1], [cx, ridge, z1]]);
+    sink.polygon('roof', [[x1, eave, z0], [x0, eave, z0], [cx, ridge, z0]]);
+  } else {
+    sink.polygon('structureMetal', [[x0, eave, z1], [x1, eave, z1], [cx, ridge, z1]], { colour: paint });
+    sink.polygon('structureMetal', [[x1, eave, z0], [x0, eave, z0], [cx, ridge, z0]], { colour: paint });
+  }
   sink.quad('roof', [x0 - o, eave - 0.15, z1 + o], [x0 - o, eave - 0.15, z0 - o], [cx, ridge + 0.05, z0 - o], [cx, ridge + 0.05, z1 + o]);
   sink.quad('roof', [x1 + o, eave - 0.15, z0 - o], [x1 + o, eave - 0.15, z1 + o], [cx, ridge + 0.05, z1 + o], [cx, ridge + 0.05, z0 - o]);
   // the roof's undersides (seen from below at the eaves)
@@ -58,8 +68,8 @@ function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eave
     sink.quad('glass', [x1 + 0.03, wy, z + 0.6], [x1 + 0.03, wy, z - 0.6], [x1 + 0.03, wy + 1.0, z - 0.6], [x1 + 0.03, wy + 1.0, z + 0.6], { decor: true });
     sink.quad('glass', [x0 - 0.03, wy, z - 0.6], [x0 - 0.03, wy, z + 0.6], [x0 - 0.03, wy + 1.0, z + 0.6], [x0 - 0.03, wy + 1.0, z - 0.6], { decor: true });
   }
-  // the sheet's laps (fine vertical battens) down the long sides
-  for (const x of [x0 - 0.02, x1 + 0.02]) for (let z = z0 + 0.9; z < z1 - 0.4; z += 0.9) {
+  // the sheet's laps (fine vertical battens) down the long sides (the corrugated sheet carries its own)
+  if (!sheet) for (const x of [x0 - 0.02, x1 + 0.02]) for (let z = z0 + 0.9; z < z1 - 0.4; z += 0.9) {
     sink.span('structureMetal', x - 0.02, y + 0.3, z - 0.02, x + 0.02, eave, z + 0.02, { colour: shade(paint, 0.82), decor: true, fine: true });
   }
   return y;
@@ -77,7 +87,7 @@ function sheave(sink: PartSink, c: Vec3, r: number, spokes: number, colour: Rgb,
 // ------------------------------------------------------------------------------------------------------------ headframe
 
 /** Where a headframe's shaft stands in its frame (the piece centred on its footprint): see plan.ts. */
-export function headframeShaftZ(height: number): number { return 0.25 * height + 4; }
+export function headframeShaftZ(height: number): number { return 0.25 * height + 7; }
 
 /**
  * The steel poppet headframe: four legs over the shaft collar, braced back by two raking struts toward the winding house,
@@ -121,9 +131,11 @@ export const headframe: LandmarkBuilder = (ctx) => {
     }
   };
   rail(-half - 0.55, zs - half - 0.55, half + 0.55, zs + half + 0.55);
-  // the winding house behind the struts (its own footing) and the ropes down to its drums
-  const hz1 = az - 3, hd = 10;
-  const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx);
+  // the winding house set back behind the struts (its own footing), clad in corrugated iron, and the ropes rising from its
+  // drums to the sheaves (R6, wave 358a: "the real layout sets the winding-engine house back from the headframe with
+  // ropes rising to the sheaves"; it stood 3 m behind the struts' feet, pressed against the frame)
+  const hz1 = az - 9, hd = 10;
+  const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx, true);
   const R = Math.min(2.0, Hh * 0.085), hubY = H + 0.3 + R + 0.4;
   for (const sx of [-1, 1]) {
     const c: Vec3 = [sx * 0.9, hubY, zs - 0.2];
