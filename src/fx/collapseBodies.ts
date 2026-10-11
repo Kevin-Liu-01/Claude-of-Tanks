@@ -227,7 +227,7 @@ const ROOF_BREAK_MPS = 2;
 const SHAFT_BREAK_TILT = 0.6;
 /** What a break adds to each part's own motion: a drum's tumble and sideways scatter, a roof sheet's buckle (rad/s,
  *  m/s), so the parts never lie on in a neat row or one plane. */
-const DRUM_SPIN = 3.0, DRUM_SCATTER = 5.0, DRUM_YAW = 3.5, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
+const DRUM_SPIN = 1.5, DRUM_SCATTER = 2.6, DRUM_YAW = 1.8, ROOF_SPIN = 1.7, ROOF_SAG = 0.6;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
 const CRACK_KEEP = 0.7;
 
@@ -786,14 +786,17 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           // (the decisive wave's third head: seven drums still lay on in a row) the sections kick off the line to
           // alternate sides, spread along it from the middle and turn about the vertical, so the shaft lands broken into a
           // zigzag of sections, not a row with joints
-          const push = (k % 2 === 0 ? 1 : -1) * (0.55 + 0.45 * hash01(sid, pid * 16 + k, 4)) * DRUM_SCATTER;
+          // (the decisive wave's fifth film: bounced high they read as giant dice, the crown thrown off out of sight) the
+          // sections slump apart rather than leap: the last one (the crown) barely kicked
+          const last = k === p.parts.length - 1 ? 0.4 : 1;
+          const push = (k % 2 === 0 ? 1 : -1) * (0.55 + 0.45 * hash01(sid, pid * 16 + k, 4)) * DRUM_SCATTER * last;
           vx += sx * push; vz += sz * push;
           // (their end faces in contact rubbed the scatter away: the sections part along the line first)
-          const along = (k - (p.parts.length - 1) / 2) * 1.0;
+          const along = (k - (p.parts.length - 1) / 2) * 0.7 * last;
           vx += (ax / al) * along; vz += (az / al) * along;
           wy += (hash01(sid, pid * 16 + k, 7) * 2 - 1) * DRUM_YAW;
           // every other drum thrown up off the break (the shaft snaps as it bends), so they tumble over one another
-          vy += (k % 2 === 0 ? 2.4 : 0.4) + hash01(sid, pid * 16 + k, 5) * 1.2;
+          vy += (k % 2 === 0 ? 0.9 : 0.2) + hash01(sid, pid * 16 + k, 5) * 0.6;
         } else vy -= hash01(sid, pid * 16 + k, 6) * ROOF_SAG;
       }
       // a drum parts from its neighbours at the break: a few centimetres along the shaft from its middle

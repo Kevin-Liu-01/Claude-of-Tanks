@@ -881,12 +881,12 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   const bl = Math.hypot(blow.dirX, blow.dirZ);
   const ang = rng() * Math.PI * 2;
   const tx = bl > 1e-6 ? -blow.dirX / bl : Math.cos(ang), tz = bl > 1e-6 ? -blow.dirZ / bl : Math.sin(ang);
-  // the drums: about half a width each (a metre and a fifth at the least), four to eight, of uneven lengths (the
+  // the drums: about 0.85 of a width each (1.6 m at the least), three to seven, of uneven lengths (the
   // building's cut: its own stream) (dcore 2026-10-11, waves 385/388a: "lands as one unbroken box"; the decisive wave's
   // head: three drums of a width and more still lay on in a row — a masonry shaft breaks into many short sections)
   const span = Math.max(0.5, topWall - stumpY);
   const width = Math.max(anatomy.w, anatomy.d);
-  const n = Math.max(4, Math.min(8, Math.round(span / Math.max(1.2, 0.6 * width))));
+  const n = Math.max(3, Math.min(7, Math.round(span / Math.max(1.6, 0.85 * width))));
   const bounds = [stumpY];
   for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.45) / n);
   bounds.push(topWall);
