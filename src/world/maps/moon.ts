@@ -18,7 +18,9 @@
 // (also the turbo-ball kickoff) and on two crater-free stretches of the floor either side of it.
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
-const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.60, .025, .30 + l * .35];
+// (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
+// not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
+const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .012, .30 + l * .35];
 /** The ejecta blocks' breccia (sceneryRocks.ts 'breccia'): a neutral grey a shade under the regolith, dust at the foot. */
 const LUNAR_BRECCIA: readonly [number, number, number] = [0.09, 0.04, 0.33];
 export default {
@@ -73,7 +75,8 @@ export default {
   },
   splat: { ...mars.splat, sourcedPalette: 'moon', sandstone: false,
     grassTone: grey, dirtTone: grey, rockTone: grey, mudTone: grey,
-    tintA: [.94,.96,1], tintB: [.82,.84,.88], tintC: [1,1,1], roadTint: [.76,.78,.82], rippleAmp: .05, strata: 0,
+    // (wave 346) the macro tints neutral (they leaned blue: B/R 1.06-1.07), each at its luminance
+    tintA: [.957,.957,.955], tintB: [.838,.838,.836], tintC: [1,1,1], roadTint: [.776,.776,.774], rippleAmp: .05, strata: 0,
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
@@ -145,10 +148,13 @@ export default {
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
     massif: false },
   sky: { skyIntensity: 0, nightSky: 1, galaxy: .35, nebulaHex: 0, earth: 1, planetDeg: 18, planetHex: 0x8abdff,
-    sunElevationDeg: 28, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
-    fogDensity: 0, fogMix: 0, envIntensity: .3, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
-    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .38, fillIntensity: .16, postExposure: .98,
-    atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x676b73 },
+    // (2026-10-10, the map-revival lane; wave 346: "flat shadowless light") an airless sky gives the sun no help: the sky's
+    // fill and the bounce come down (hemi .38 -> .12, fill .16 -> .05, environment .3 -> .15), so the shadows are the hard
+    // black of the photographs, and a lower sun (28 -> 20 deg) draws them long across the crater floors and rims
+    sunElevationDeg: 20, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
+    fogDensity: 0, fogMix: 0, envIntensity: .15, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
+    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .12, fillIntensity: .05, postExposure: .98,
+    atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x6b6a68 },
   },
   minimap: { ...mars.minimap, base: [108,111,118], hard: [145,148,155], soft: [90,93,100],
     roadFill: 'rgba(180,185,195,.95)', roadCasing: 'rgba(60,65,75,.9)' },

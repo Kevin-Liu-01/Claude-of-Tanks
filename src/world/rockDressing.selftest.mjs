@@ -20,8 +20,8 @@ import { MAP_IDS } from './maps/index.ts';
 import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts';
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
-  boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  projectsInsideHull, rockBaseToneFor, rockDressingFor, rockLithologyFor,
+  boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
+  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -80,9 +80,10 @@ const meanLuma = {};
 /** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
  * facing out, none above the ground line apart from the triangles it shades), as tall as the legacy rock and inside its
  * hull above the ground line, its skirt deep; broken up by the weather (hollows), its faces and arrises both present. */
-function checkForm(form, label, hull, legacyTop, subdiv) {
+function checkForm(form, label, hull, legacyTop, subdiv, plated = false) {
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
-  const cells = subdiv >= 6 ? 8 : 5;
+  // (2026-10-11, the map-revival lane: a plated stone — the slate's — a cell finer on the desktop, rockDressing.ts)
+  const cells = subdiv >= 6 ? (plated ? 9 : 8) : 5;
   assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
   assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
   assert.equal(p.count, 6 * cells * cells + 2 - (cells - 1) ** 2 + 1, `${label}: welded (one vertex per grid point, shared normals)`);
@@ -161,7 +162,7 @@ for (const lithology of LITHOLOGIES) {
       for (const subdiv of [6, 4]) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
-        const { p, n, face } = checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        const { p, n, face } = checkForm(form, label, legacy.hull, legacy.top, subdiv, lithology === 'slate');
         // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
         let bedLo = Infinity, bedHi = -Infinity;
         for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
@@ -224,7 +225,7 @@ for (const lithology of LITHOLOGIES) {
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     for (const lithology of LITHOLOGIES) for (const subdiv of [6, 4]) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
-      checkForm(buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology), label, hull, legacyTop, subdiv);
+      checkForm(buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology), label, hull, legacyTop, subdiv, lithology === 'slate');
     }
   }
 }
@@ -556,10 +557,11 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const hullAt = source.indexOf('rockHulls.push(hull); // the collision proxy');
-// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular)
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
-assert.match(source, /paintBoulder\(form, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeos\.push\(form\.geometry\);/);
+const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision proxy');
+// (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
+// the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
+assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
@@ -658,8 +660,21 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the desktop form near the camera and the phone form past ROCK_FAR_M, both into the near cascades; the far cascades
 // the phone form of every loose rock from a shadow-only pool; the crushable rocks pinned to the first near slots;
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
-assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology, angular\);/,
-  'the far form is the same rock at the phone\'s tier');
+// (the hitbox lane, 2026-10-11: the forms from one constructor, rockDressing.ts boulderVariantForms) the desktop's far
+// form is the phone's drawn rock, vertex for vertex, on an angular map and a plain one
+assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
+  'the desktop draws its far form into the far pool');
+for (const mapId of ['badlands', 'verdant']) {
+  const lith = rockLithologyFor(mapId), ang = rockAngularityFor(mapId);
+  for (let vi = 0; vi < 3; vi++) {
+    const legacy = legacyRockVariant(vi, noise);
+    const desk = boulderVariantForms(vi, noise, () => mulberry32(2002 + 60 + vi), legacy.hull, legacy.top, lith, ang, false);
+    const phone = boulderVariantForms(vi, noise, () => mulberry32(2002 + 60 + vi), legacy.hull, legacy.top, lith, ang, true);
+    assert.deepEqual(Array.from(desk.far.geometry.attributes.position.array), Array.from(phone.drawn.geometry.attributes.position.array),
+      `${mapId} stone ${vi}: the far form is the same rock at the phone's tier`);
+    for (const geometry of new Set([desk.drawn.geometry, desk.far.geometry, phone.drawn.geometry, phone.collision])) geometry.dispose();
+  }
+}
 assert.match(source, /const ROCK_FAR_M = 60;/);
 assert.match(source, /const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;/);
 assert.match(source, /markShadowOnly\(shadow\);\n\s*setShadowCasterCascades\(shadow, ROCK_FAR_CASCADES\);\n\s*setShadowCasterCascades\(near, ROCK_NEAR_CASCADES\);\n\s*setShadowCasterCascades\(far, ROCK_NEAR_CASCADES\);/,

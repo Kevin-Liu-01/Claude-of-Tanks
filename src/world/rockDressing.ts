@@ -16,7 +16,9 @@
 // rock lies inside the hull the dedicated shards already carry and no record moves. Renderer-free apart from the
 // texture helpers; Node-runnable.
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
+import { convexHull2 } from './collision.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { settledPaint, surfacePaintKey } from './surfacePaintPrefetch.ts';
 
@@ -346,9 +348,11 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28] },
   // (2026-10-10, wave 346: "steeply dipping stacks of thin plates with ragged edges") the slate's cleavage: thin plates
   // standing steep, the form stepped down at three of them (was no bedding, one notch at 0.45)
-  // (2026-10-11) built as plates: a plate two partings thick, its end up to 17 per cent of the radius out or in
+  // (2026-10-11) built as plates: a plate four partings thick, its end up to 8 per cent of the radius out or in, ramped
+  // over three fifths of the plate (the 9-cell grid of the form's triangle budget draws a plate in two or three rows: a
+  // sharper step folded its triangles past a right angle of normal)
   slate: { fractures: [2, 3], notch: 0.9, notches: 3, bed: [0.075, 0.12], steep: true,
-    plates: { beds: 2, reach: 0.17, step: 0.14, groove: 0.03 } },
+    plates: { beds: 4, reach: 0.08, step: 0.6, groove: 0.01 } },
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
   // (2026-10-10) the conglomerate's thick beds (its clasts the material's) and its rough breaks; the breccia broken all
   // round, no bedding
@@ -731,6 +735,52 @@ function plateRelief(law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology][
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
 
+/**
+ * A rock variant's legacy form (moved here from props.ts buildRockVariants unchanged, the hitbox lane, 2026-10-11): the
+ * noise-displaced icosahedron whose ground-plan hull is the placement laws' proxy (the road core, the talus, the
+ * no-overlap law) and whose top the boulder form is fitted to.
+ */
+export function legacyRockVariant(variant: number, noise: SimplexNoise): { hull: number[]; top: number } {
+  const g = mergeVertices(new THREE.IcosahedronGeometry(1, variant === 2 ? 3 : 2));
+  const p = g.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.set(p.getX(i), p.getY(i), p.getZ(i));
+    const ridge = 1 - Math.abs(noise.noise3d(v.x * 2.2 + variant * 31, v.y * 2.2 - 7, v.z * 2.2 + 13));
+    const crease = Math.pow(ridge, 5); // sharp valley lines
+    const f = 1
+      + noise.noise3d(v.x * 1.4 + variant * 9, v.y * 1.4, v.z * 1.4) * 0.30
+      + noise.noise3d(v.x * 3.1 - variant * 17, v.y * 3.1 + 40, v.z * 3.1) * 0.13
+      + noise.noise3d(v.x * 6.8 + 91, v.y * 6.8 - variant * 5, v.z * 6.8) * 0.05
+      - crease * 0.115; // carved fracture valleys
+    v.multiplyScalar(f);
+    v.y = Math.max(v.y, -0.55);
+    p.setXYZ(i, v.x, v.y * 0.82, v.z);
+  }
+  const projected: Array<[number, number]> = [];
+  let top = 0;
+  for (let i = 0; i < p.count; i++) { projected.push([p.getX(i), p.getZ(i)]); top = Math.max(top, p.getY(i)); }
+  g.dispose();
+  return { hull: convexHull2(projected), top };
+}
+
+/**
+ * A rock variant's boulder forms from one constructor (the hitbox lane and the map-revival lane, 2026-10-11): the drawn
+ * form at the tier's subdivision (6 on a desktop, 4 on a phone), the collision form at the desktop's on every tier, and
+ * the desktop's far form at 4. They differ only in subdivision: the phone's collision form was built without the map's
+ * angularity (since 3993e4fce), so a phone's Badlands stones were rounder than the host's, their records moved and 14
+ * small rocks fell under the drive-over line. Each form draws its own fresh `stream()`, so no draw moves.
+ */
+export function boulderVariantForms(
+  variant: number, noise: SimplexNoise, stream: () => () => number, hull: readonly number[], top: number,
+  lithology: BoulderLithology, angular: number, mobile: boolean,
+): { drawn: BoulderForm; collision: THREE.BufferGeometry; far: BoulderForm | null } {
+  const formOf = (subdiv: number): BoulderForm =>
+    buildBoulderForm(variant, noise, stream(), hull, subdiv, top, boulderKindFor(lithology, variant), lithology, angular);
+  const drawn = formOf(mobile ? 4 : 6);
+  return { drawn, collision: mobile ? formOf(6).geometry : drawn.geometry, far: mobile ? null : formOf(4) };
+}
+
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,
   kindIndex = variant % 3, lithology: BoulderLithology = 'granite', angular = 0,
@@ -741,9 +791,9 @@ export function buildBoulderForm(
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
   const plateLaw = LITHOLOGY_CUTS[lithology].plates ?? null;
-  // (a plated stone's grid half as fine again — 12 cells a face on the desktop, 7 on a phone — so a plate takes three or
-  // four rows: the plates are its form, not a texture)
-  const n = plateLaw ? (subdiv >= 6 ? 12 : 7) : subdiv >= 6 ? 8 : 5;
+  // (a plated stone's grid a cell finer on the desktop — 9 cells a face, the form's 900-triangle budget; a phone's 5 —
+  // so a plate takes two or three rows: the plates are its form, not a texture; the phone's far form rounds them)
+  const n = plateLaw ? (subdiv >= 6 ? 9 : 5) : subdiv >= 6 ? 8 : 5;
   // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
   const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
     * (1 - 0.66 * angular);
