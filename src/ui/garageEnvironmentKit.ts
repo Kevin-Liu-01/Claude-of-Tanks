@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import type { GarageVariant } from '../game/garageVariants.ts';
 import {
+  GARAGE_CAMERA_AZIMUTH_RAD,
   GARAGE_PLATFORM_GEOMETRY,
   garagePlatformTerrainHeight,
   garageViewPoint,
@@ -31,8 +32,10 @@ import {
 } from './garageTerrainPatches.generated.ts';
 import {
   addGarageFacilityDetails,
+  garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
+import { GARAGE_YARD_WEAR, garageYardWearTexture } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
   type GarageApproachStats,
@@ -553,14 +556,19 @@ function createBackdropGeometry(
 
 function createGroundCoverGeometry(): THREE.BufferGeometry {
   const positions: number[] = [];
+  const colors: number[] = [];
   for (let blade = 0; blade < 3; blade += 1) {
     const angle = blade * Math.PI / 3;
     const dx = Math.cos(angle) * 0.12;
     const dz = Math.sin(angle) * 0.12;
     positions.push(-dx, 0, -dz, dx, 0, dz, 0, 0.72, 0);
+    // A darker base and a lit tip. The material reads vertex colours; without this attribute every tuft drew black
+    // (wave 338's "black spikes" across the lawn and sand).
+    colors.push(0.62, 0.62, 0.62, 0.62, 0.62, 0.62, 1, 1, 1);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   return geometry;
@@ -822,7 +830,7 @@ export function buildGarageEnvironment(
     // Garage datum. Their outdoor service frames and local terrain must use
     // that same plane; sampling a dune/snowbank here previously raised the
     // frame through the tank while leaving the actual fleet graph at y=0.
-    const y = terrace.label.startsWith('fleet-service-')
+    const y = garageTerraceAtDatum(terrace, facilityTerraces)
       ? 0
       : samplePatch(patch, heights, center.x, center.z);
     return { ...terrace, ...center, y };
@@ -999,6 +1007,8 @@ export function buildGarageEnvironment(
     }
     let maxGroundContactErrorM = 0;
     for (const terrace of terraceRecords) {
+      // the crews' small floors are audited at every foot instead (garageCrewFloor.selftest.mjs)
+      if (terrace.label.startsWith('crew-floor-')) continue;
       for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
         [-0.55, 0.55], [0.55, 0.55]] as const) {
         const point = cameraPoint(
@@ -1021,16 +1031,90 @@ export function buildGarageEnvironment(
   terrain.receiveShadow = true;
   root.add(terrain);
 
-  const hardstand = new THREE.Mesh(
-    track(new THREE.BoxGeometry(29, 0.16, 24)),
-    texturedMaterial('cobble', { color: recipe.hardstandTint, roughness: 0.92, metalness: 0.02 }),
+  // The paved apron drapes onto the shaped terrain (2026-10-10, wave 338: a hard-edged "decal patch" in the sand was
+  // the old 29 x 24 m box's corner standing proud over a dip). Inside the podium's terrain-clear ring it lies at the
+  // canonical ground surface as before; beyond, 2 cm over the terrain, so no edge ever floats. Paved slabs under the
+  // four fleet exhibits' pads join it in the same mesh and mapping (wave 338: "bay lines painted onto grass").
+  const apronHeightAt = (x: number, z: number): number => (
+    Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02
   );
+  const apronGeometry = new THREE.PlaneGeometry(29, 24, 29, 24);
+  apronGeometry.rotateX(-Math.PI / 2);
+  {
+    const positions = apronGeometry.getAttribute('position');
+    for (let index = 0; index < positions.count; index += 1) {
+      positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)));
+    }
+  }
+  const slabGeometries: THREE.BufferGeometry[] = [];
+  for (const terrace of terraceRecords) {
+    if (!terrace.label.startsWith('fleet-service-')) continue;
+    // the pad's flat full-strength core is 1.2 radii; the slab covers 1.12, on the pad's datum
+    const slab = new THREE.CircleGeometry(1, 40);
+    slab.rotateX(-Math.PI / 2);
+    slab.scale(terrace.radiusSide * 1.12, 1, terrace.radiusDepth * 1.12);
+    slab.rotateY(GARAGE_CAMERA_AZIMUTH_RAD);
+    slab.translate(terrace.x, terrace.y + 0.02, terrace.z);
+    const uv = slab.getAttribute('uv');
+    const positions = slab.getAttribute('position');
+    for (let index = 0; index < positions.count; index += 1) {
+      uv.setXY(index, positions.getX(index) / 29 + 0.5, 0.5 - positions.getZ(index) / 24);
+    }
+    slabGeometries.push(slab.toNonIndexed());
+    slab.dispose();
+  }
+  const apronNonIndexed = apronGeometry.toNonIndexed();
+  apronGeometry.dispose();
+  const hardstandGeometry = mergeGeometries([apronNonIndexed, ...slabGeometries], false) ?? apronNonIndexed;
+  if (hardstandGeometry !== apronNonIndexed) apronNonIndexed.dispose();
+  for (const slab of slabGeometries) slab.dispose();
+  hardstandGeometry.computeVertexNormals();
+  track(hardstandGeometry);
+  const hardstandMaterial = texturedMaterial('cobble', { color: recipe.hardstandTint, roughness: 0.92, metalness: 0.02 });
+  hardstandMaterial.polygonOffset = true;
+  hardstandMaterial.polygonOffsetFactor = -1;
+  hardstandMaterial.polygonOffsetUnits = -1;
+  const hardstand = new THREE.Mesh(hardstandGeometry, hardstandMaterial);
   hardstand.name = 'connected_service_hardstand';
-  hardstand.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM - 0.08;
+  hardstand.userData.drapedOnTerrain = true;
+  hardstand.userData.fleetPadSlabs = slabGeometries.length;
   hardstand.receiveShadow = true;
   hardstand.matrixAutoUpdate = false;
   hardstand.updateMatrix();
   root.add(hardstand);
+
+  // The working history of the apron (2026-10-10, the owner's "more detailed ... better textures"): one shared
+  // yard-wear texture (track lanes worn in from this pack's approach road, the turntable's grime ring, oil stains,
+  // worn bay paint) on a transparent decal that receives the settled shadow. The texture is shared by every pack and
+  // never disposed with one; plain Node has no canvas and skips it.
+  const yardWear = garageYardWearTexture(engineCtx.anisotropy ?? 4);
+  if (yardWear) {
+    const [approachSide, approachDepth] = recipe.approach.waypoints[0];
+    const toward = garageViewPoint(approachSide, approachDepth);
+    const yardMaterial = plainMaterial({
+      map: yardWear, transparent: true, depthWrite: false, roughness: 0.96, metalness: 0,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+    });
+    // draped over the apron (same height field, 6 mm above it), turned to this pack's approach road
+    const yardGeometry = new THREE.PlaneGeometry(GARAGE_YARD_WEAR.widthM, GARAGE_YARD_WEAR.depthM, 29, 24);
+    yardGeometry.rotateX(-Math.PI / 2);
+    yardGeometry.rotateY(Math.atan2(-toward.x, -toward.z));
+    {
+      const positions = yardGeometry.getAttribute('position');
+      for (let index = 0; index < positions.count; index += 1) {
+        positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)) + 0.006);
+      }
+    }
+    const yard = new THREE.Mesh(track(yardGeometry), yardMaterial);
+    yard.name = 'garage_service_yard_wear';
+    yard.receiveShadow = true;
+    yard.castShadow = false;
+    yard.renderOrder = 1;
+    yard.matrixAutoUpdate = false;
+    yard.updateMatrix();
+    root.add(yard);
+    root.userData.serviceYardWear = true;
+  }
 
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color

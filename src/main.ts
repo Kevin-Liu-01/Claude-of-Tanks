@@ -2402,8 +2402,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               });
             }
           },
-          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
-          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
+          // Entry resilience: a strict shader preparation that outran its window (compile_extended) or reached its last
+          // resort (compile_deferred: the covered reveal links the rest), and an entry wait extended for a round still
+          // progressing (entry_extended), are beacons, never a failed entry — the kind the reveal and paint budgets report.
           recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
             kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
           }),
