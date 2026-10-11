@@ -301,11 +301,15 @@ export default {
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
     wallStyle: 'brick',
+    // (2026-10-11, the map-revival lane; gauntlet wave 362: "plain beige cartons with tan edge tape on bright white pallet
+    // slats ... none of it reads as 1962"; "the regionally wrong white picket fence by the shed") no carton and pallet
+    // scatter in the yard — its goods are the freight rows' crates, sheets and timber — and the yards' fences post-and-rail,
+    // as the road fences are (was coreClutter 10, the yards' default picket)
     inhabit: {
-      benches: 3, coreClutter: 10,
+      benches: 3, coreClutter: 0,
       drums: 16,
       handcarts: 1, carts: 1,
-      roadFence: 'fencerail',
+      roadFence: 'fencerail', yardFence: 'fencerail',
       // DESTRUCTIBLES r1: railhead logistics — truck ranks on the aprons,
       // fuel points between the sidings, ammo stacks
       trucks: 4, jeeps: 1, drumClusters: 4, camps: 1,
