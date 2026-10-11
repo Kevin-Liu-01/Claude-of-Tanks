@@ -13,6 +13,9 @@ import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { roundRoadBends } from './roadBends.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+/** The fractured blocks' conglomerate (sceneryRocks.ts 'breccia': its clasts the pebbles): Queenstown's pink and
+ * mauve-grey, the dust paler at the foot. */
+const CONGLOMERATE: readonly [number, number, number] = [0.96, 0.1, 0.42];
 // (Copper Mesa round 3, the map-revival lane; gauntlet wave 132: "the 'town' is a dozen isolated sheds, a power house and a
 // headframe strung along dirt roads across a vast pale plain, with no street grid, no rows of cottages and no density";
 // the roadside plan stood its cottage rows along the roads with their verandahs to the traffic) Queenstown's grid: rows
@@ -187,6 +190,22 @@ export default {
   // (Copper Mesa round 2, wave 117: the 'mesa' ring read as Monument Valley): the West Coast Range — craggy quartzite
   // peaks (Owen, Lyell, Sedgwick), dark rainforest low on them, bare grey crags above, no snow; the far country its long
   // steep ridges
+  // The hitbox lane (2026-10-08; round 2): with round 3's town the fights left the pit's east side for the west rim, and
+  // bravo, deploying north, fell from 46.2 to 36.2 % of the swap-balanced games (batch 5's fairness at 80; the stones'
+  // own colliders are not the cause: with their legacy records the stage plays the same 36.2 %). Its tanks die 40-120 m
+  // west of the pit's middle, shot from the south and south-east across open ground (the kill trace). Fields of the
+  // hills' own conglomerate there, size-graded and half sunk, three of them in the busiest firing lanes into that
+  // ground, give bravo's line cover (38.8 % at 80); the route itself is the town's.
+  scenery: {
+    rocks: [
+      { form: 'blocks', geology: 'breccia', x: -134, z: 46, radius: 6, height: 2.6, yawDeg: 40, tone: CONGLOMERATE, name: 'the conglomerate blocks on the west rim' },
+      { form: 'blocks', geology: 'breccia', x: -76, z: 64, radius: 6, height: 2.4, yawDeg: 120, tone: CONGLOMERATE, name: 'the conglomerate blocks north-west of the pit' },
+      { form: 'blocks', geology: 'breccia', x: -92, z: 18, radius: 5.5, height: 2.4, yawDeg: 75, tone: CONGLOMERATE, name: 'the conglomerate blocks west of the pit' },
+      { form: 'blocks', geology: 'breccia', x: -58, z: 20, radius: 6, height: 2.6, yawDeg: 25, tone: CONGLOMERATE, name: 'the conglomerate blocks on the pit\'s west lip' },
+      { form: 'blocks', geology: 'breccia', x: -20, z: -8, radius: 6, height: 2.5, yawDeg: 140, tone: CONGLOMERATE, name: 'the conglomerate blocks in the pit\'s mouth' },
+      { form: 'blocks', geology: 'breccia', x: -70, z: 8, radius: 5.5, height: 2.4, yawDeg: 60, tone: CONGLOMERATE, name: 'the conglomerate blocks west of the lip' },
+    ],
+  },
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
     panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
