@@ -4,7 +4,7 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -404,13 +404,17 @@ type Side = 'front' | 'right' | 'back' | 'left';
  * radius shrinking with the inset), where the dressing stands.
  */
 function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, yb: number, top: number,
-  rc: number, batter: number, ph: number, t = 0.32): (name: Side, y: number) => Face {
+  rc: number, batter: number, ph: number, t = 0.32, horn = 0): (name: Side, y: number) => Face {
   const base = roundedRing(x0, z0, x1, z1, rc, 0, yb), crown = roundedRing(x0, z0, x1, z1, rc, batter, top);
   ringBand(sink, bucket, base, crown);
   sink.polygon(bucket, crown);
   sink.polygon(bucket, [...base].reverse());
-  const out1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06, top + ph), crest = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t / 2, top + ph + 0.1);
-  const in1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top + ph), in0 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top);
+  // (round 3, gauntlet wave 358b: "pale stacked boxes with crisp edges") the parapet's corners rise into Siwa's rounded
+  // horns, `horn` over the crest at each corner's middle and a little less either side of it
+  const horned = (ring: Array<[number, number, number]>): Array<[number, number, number]> =>
+    horn > 0 ? ring.map(([x, y, z], i): [number, number, number] => [x, y + (i % 3 === 1 ? horn : horn * 0.45), z]) : ring;
+  const out1 = horned(roundedRing(x0, z0, x1, z1, rc, batter + 0.06, top + ph)), crest = horned(roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t / 2, top + ph + 0.1));
+  const in1 = horned(roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top + ph)), in0 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top);
   ringBand(sink, bucket, crown, out1);
   ringBand(sink, bucket, out1, crest);
   ringBand(sink, bucket, in1, crest, true);
@@ -426,38 +430,75 @@ function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: num
 }
 
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
-  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side> } = {}): void {
+  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean } = {}): void {
   const yb = y0 > 0 ? y0 : -0.3, top = y0 + h;
   const batter = Math.min(0.32, 0.055 * (top - yb)) * (0.8 + look() * 0.4);
   const rc = Math.max(batter + 0.3, Math.min(0.9, Math.min(x1 - x0, z1 - z0) * 0.14));
-  const sideAt = slumpedMass(sink, bucket, x0, z0, x1, z1, yb, top, rc, batter, 0.45 + look() * 0.2);
+  const ph = 0.45 + look() * 0.2, horn = 0.34 + look() * 0.26;
+  const sideAt = slumpedMass(sink, bucket, x0, z0, x1, z1, yb, top, rc, batter, ph, 0.32, horn);
+  // the door's place first: the ground storey's windows keep clear of it
+  const front = sideAt('front', 1.0), doorU = (rng() - 0.5) * Math.max(0, front.width - 2.4) * 0.6;
   for (const name of opts.faces ?? ['front', 'right', 'back', 'left'] as const) {
-    // the palm-beam ends through the wall under the parapet: thin, a few to a side, not every one
-    const fb = sideAt(name, top - 0.25), n = Math.max(1, Math.floor(fb.width / 1.2));
+    // (round 3, wave 358b: "almost no openings", "a few tiny window slots") the palm beams' ends in a row under the
+    // parapet, as Shali's roofs show them, a few missing; small square windows in rows, storey by storey, deep in the
+    // wall's thickness, some under a palm lintel or behind palm shutters, fewer on the ground storey
+    const fb = sideAt(name, top - 0.25), n = Math.max(2, Math.floor(fb.width / 0.75));
     for (let k = 0; k < n; k++) {
-      if (look() < 0.35) continue;
-      const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.3;
-      faceBox(sink, 'structureWood', fb, u, top - 0.25, 0.1, 0.1, 0.1, 0.24, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true, uv: UV_MEMBER });
+      if (look() < 0.18) continue;
+      const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.12, b = 0.11 + look() * 0.05;
+      faceBox(sink, 'structureWood', fb, u, top - 0.25, 0.1, b, b, 0.2 + look() * 0.12, { colour: shade(PALM, 0.75 + look() * 0.35), decor: true, uv: UV_MEMBER });
     }
-    // small dark windows high in the wall, one or two to a storey; a few behind palm shutters
     const storeys = Math.max(1, Math.round(h / 3.0));
     for (let st = 0; st < storeys; st++) {
-      const wy = y0 + st * 3.0 + 1.5;
-      if (wy + 0.6 > top - 0.4) continue;
-      const fw = sideAt(name, wy + 0.25), m = fw.width > 4.5 ? 2 : 1;
+      const wy = y0 + st * 3.0 + (st === 0 && y0 === 0 ? 1.3 : 1.15);
+      if (wy + 0.6 > top - 0.35) continue;
+      const ground = st === 0 && y0 === 0;
+      const fw = sideAt(name, wy + 0.25), m = Math.max(1, Math.floor((fw.width - 0.6) / (ground ? 1.5 : 1.2)));
       for (let k = 0; k < m; k++) {
-        if (rng() < 0.3) continue;
-        const u = m === 1 ? (rng() - 0.5) * fw.width * 0.4 : (k === 0 ? -1 : 1) * fw.width * (0.16 + rng() * 0.14);
-        const w = 0.32 + look() * 0.16, hh = 0.42 + look() * 0.2;
+        if (rng() < (ground ? 0.38 : 0.16)) continue;
+        const u = -fw.width / 2 + 0.3 + (k + 0.5) * (fw.width - 0.6) / m + (rng() - 0.5) * 0.2;
+        if (name === 'front' && opts.door && y0 === 0 && st === 0 && Math.abs(u - doorU) < 1.0) continue;
+        const w = 0.42 + look() * 0.14, hh = 0.48 + look() * 0.14;
         faceBox(sink, MUD, fw, u, wy + hh / 2, 0.02, w + 0.16, hh + 0.16, 0.04, { decor: true, fineSides: true, shade: 0.8 });
         faceBox(sink, 'dark', fw, u, wy + hh / 2, 0.042, w, hh, 0.004, { decor: true });
-        if (look() < 0.3) faceBox(sink, 'structureWood', fw, u, wy + hh / 2, 0.052, w - 0.04, hh - 0.04, 0.02, { colour: look() < 0.5 ? PALM : PALM_GREY, decor: true, uv: UV_MEMBER });
+        const dress = look();
+        if (dress < 0.28) faceBox(sink, 'structureWood', fw, u, wy + hh / 2, 0.052, w - 0.04, hh - 0.04, 0.02, { colour: look() < 0.5 ? PALM : PALM_GREY, decor: true, uv: UV_MEMBER });
+        else if (dress < 0.62) faceBox(sink, 'structureWood', fw, u, wy + hh + 0.13, 0.08, w + 0.4, 0.1, 0.12, { colour: shade(PALM, 0.85 + look() * 0.2), decor: true, uv: UV_MEMBER });
+      }
+    }
+    // the parapet's row of small triangular vents on some faces (Siwa's builders pierced the parapets so)
+    if (look() < 0.5) {
+      const fp = sideAt(name, top), nv = Math.max(2, Math.floor((fp.width - 0.4) / 0.85)), ty = top + ph * 0.35;
+      for (let k = 0; k < nv; k++) {
+        const u = -(fp.width - 0.4) / 2 + (k + 0.5) * (fp.width - 0.4) / nv;
+        sink.polygon('dark', [facePoint(fp, u - 0.1, ty, -0.018), facePoint(fp, u + 0.1, ty, -0.018), facePoint(fp, u, ty + 0.22, -0.018)], { decor: true });
+      }
+    }
+    // the clods fallen from the wall's crest, heaped at its foot (dressing on the ground)
+    if (y0 === 0) {
+      const ff = sideAt(name, 0.1), clods = 1 + Math.floor(look() * 3);
+      for (let k = 0; k < clods; k++) {
+        const u = (look() - 0.5) * (ff.width - 0.8), r = 0.18 + look() * 0.16;
+        const c: Vec3 = [ff.origin[0] + ff.u[0] * u + ff.out[0] * (r * 0.6), -0.08, ff.origin[2] + ff.u[2] * u + ff.out[2] * (r * 0.6)];
+        sink.cylinder(KERSHEF_OLD, c, 'y', 0.12 + r * 0.6, r, 6, { decor: true }, r * 0.45, true, look() * 3);
       }
     }
   }
   if (opts.door && y0 === 0) {
-    const f = sideAt('front', 1.0);
-    doorUnit(sink, f, (rng() - 0.5) * Math.max(0, f.width - 2.4) * 0.6, 0, 0.95, 1.95, { leaf: PALM, frame: { bucket, width: 0.2, out: 0.06 }, steps: null, leafKind: 'plank' });
+    doorUnit(sink, front, doorU, 0, 0.95, 1.95, { leaf: PALM, frame: { bucket, width: 0.2, out: 0.06 }, steps: null, leafKind: 'plank' });
+    // the palm-trunk lintel over the door, its ends in the wall
+    faceBox(sink, 'structureWood', front, doorU, 2.14, 0.06, 1.55, 0.16, 0.14, { colour: PALM, decor: true, uv: UV_MEMBER });
+  }
+  // a jerid shade on the roof terrace: four palm posts and a mat of palm ribs on their beams
+  if (opts.shade) {
+    const inset = batter + 0.06 + 0.32 + 0.15, sx0 = x0 + inset, sz0 = z0 + inset;
+    const sw = Math.min(2.6, x1 - x0 - 2 * inset), sd = Math.min(2.4, z1 - z0 - 2 * inset);
+    if (sw > 1.2 && sd > 1.2) {
+      const hs = 1.95, palm = { colour: shade(PALM, 0.9), decor: true, uv: UV_MEMBER } as const;
+      for (const [px, pz] of [[sx0, sz0], [sx0 + sw, sz0], [sx0, sz0 + sd], [sx0 + sw, sz0 + sd]] as const) sink.span('structureWood', px - 0.06, top - 0.02, pz - 0.06, px + 0.06, top + hs, pz + 0.06, palm);
+      for (const pz of [sz0, sz0 + sd]) sink.span('structureWood', sx0 - 0.1, top + hs - 0.02, pz - 0.06, sx0 + sw + 0.1, top + hs + 0.1, pz + 0.06, palm);
+      sink.span('structureWood', sx0 - 0.25, top + hs + 0.1, sz0 - 0.2, sx0 + sw + 0.25, top + hs + 0.16, sz0 + sd + 0.2, { colour: shade(PALM_GREY, 0.95 + look() * 0.1), decor: true });
+    }
   }
 }
 
@@ -467,8 +508,10 @@ const kershefHouse: RegionalBuilder = (ctx) => {
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
   const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, h = 3.1 + rng() * 0.5;
-  kershefBlock(sink, x0, z0, x1, z1, 0, h, rng() < 0.3 ? KERSHEF_OLD : MUD, rng, look, { door: true });
-  if (rng() < 0.55) {
+  const bucket = rng() < 0.3 ? KERSHEF_OLD : MUD, upper = rng() < 0.55;
+  // (a house without its upper room keeps a jerid shade on its roof terrace instead, on most plots)
+  kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: true, shade: !upper && look() < 0.7 });
+  if (upper) {
     const ux1 = x0 + (x1 - x0) * (0.5 + rng() * 0.2), uz1 = z0 + (z1 - z0) * (0.45 + rng() * 0.15);
     kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'] });
   }
@@ -498,10 +541,10 @@ const shaliCluster: RegionalBuilder = (ctx) => {
     if (i === nx - 1) outer.push('right');
     if (j === 0) outer.push('back');
     if (i === 0) outer.push('left');
-    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD;
-    kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'] });
+    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < 0.45;
+    kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4 });
     // a room set back on the roof terrace of some blocks
-    if (storeys >= 2 && rng() < 0.45) {
+    if (room) {
       const ux0 = x0 + (x1 - x0) * (0.18 + rng() * 0.12), uz0 = z0 + (z1 - z0) * (0.18 + rng() * 0.12);
       const ux1 = ux0 + (x1 - x0) * (0.4 + rng() * 0.15), uz1 = uz0 + (z1 - z0) * (0.4 + rng() * 0.15);
       kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'] });
