@@ -9765,8 +9765,13 @@ ${snowCap ? `
     const circle = (x: number, y: number, z: number, r: number, h: number): CollisionRecord => ({
       min: [x - r, y, z - r], max: [x + r, y + h, z + r], shape2: { kind: 'circle', cx: x, cz: z, r },
     });
+    // (a drawn-wider prop's reach stands at a cab's height, and so do the mirrors, which are dressing outside a
+    // vehicle's footprint: the census's box trucks kept off a road sign's panel by their bodies still met it with a
+    // mirror, so the circle takes their reach too)
+    const MIRROR_REACH_M = 0.3;
     return [...crushables.filter((c) => !c.toppled).map((c) => circle(c.x, c.y, c.z, c.r, c.h)),
-      ...destructibles.filter((d) => d.state === 0 && !d.dropped && d.ob && drawnWider(d.kind)).map((d) => circle(d.x, d.y, d.z, d.r, d.h)),
+      ...destructibles.filter((d) => d.state === 0 && !d.dropped && d.ob && drawnWider(d.kind))
+        .map((d) => circle(d.x, d.y, d.z, d.r + MIRROR_REACH_M, d.h)),
       ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...felledPoleFootprints, ...railBeds, ...streetKerbFootprints];
   }
   function separateParkedVehicleRecords(): void {
