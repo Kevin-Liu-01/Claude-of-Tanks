@@ -796,6 +796,10 @@ export const grainElevator: LandmarkBuilder = (ctx) => {
   sink.placed(0, hx0 + hw / 2, 0, 0, () => emitRoof(sink, roofGeometry(hw, hd, head, roof), roof));
   // the loading spout leaning out over the track side
   bar(sink, 'structureMetal', [hx0 + hw, head * 0.55, 0], [hx0 + hw + 4.5, head * 0.32, 0], 0.35, { colour: rgb(0x5d6062), decor: true });
+  // (the connectivity sweep: the spout's end hung in air) its hoist cable from high on the head house to the spout's
+  // end, and the drop spout hanging from that end
+  bar(sink, 'structureMetal', [hx0 + hw, head * 0.74, 0], [hx0 + hw + 4.3, head * 0.32 + 0.1, 0], 0.04, { colour: rgb(0x2e3032), decor: true });
+  bar(sink, 'structureMetal', [hx0 + hw + 4.45, head * 0.32 + 0.05, 0], [hx0 + hw + 4.55, head * 0.32 - 1.4, 0], 0.26, { colour: rgb(0x5d6062), decor: true });
   // the harvest's lorries waiting in the yard before the silos (`trucks`, the props' destructible truck, a hull crushes)
   const trucks = Math.max(0, Math.min(4, Math.round(Number(ctx.params.trucks) || 0)));
   const destructibles = Array.from({ length: trucks }, (_, k) => ({ kind: 'truck', x: x0 + 4 + k * 7.5, z: rows * r + 5.5, yawDeg: 90 + (k % 2 ? 8 : -6) }));
