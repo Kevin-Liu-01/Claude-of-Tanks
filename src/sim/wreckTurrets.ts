@@ -529,6 +529,29 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
   const seatPos = new Float64Array(3);
   const seatQ = new Float64Array(4);
 
+  // this step's bodies (centre and reach), gathered once a step for the hulls' proximity test
+  const nearX = new Float64Array(capacity), nearY = new Float64Array(capacity), nearZ = new Float64Array(capacity);
+  const nearR = new Float64Array(capacity);
+  let nearCount = 0;
+  function gatherBodies(): void {
+    nearCount = 0;
+    for (let slot = 0; slot < world.capacity; slot++) {
+      if (!world.active[slot]) continue;
+      nearX[nearCount] = world.px[slot]; nearY[nearCount] = world.py[slot]; nearZ[nearCount] = world.pz[slot];
+      nearR[nearCount] = world.shape(slot)?.radius ?? 0;
+      nearCount++;
+    }
+  }
+  /** Whether any turret body (awake or asleep) is within `reach` of a point (its own reach added). */
+  function nearBody(x: number, y: number, z: number, reach: number): boolean {
+    for (let n = 0; n < nearCount; n++) {
+      const r = reach + nearR[n];
+      const dx = nearX[n] - x, dy = nearY[n] - y, dz = nearZ[n] - z;
+      if (dx * dx + dy * dy + dz * dz <= r * r) return true;
+    }
+    return false;
+  }
+
   const turrets: WreckTurrets = {
     world,
     bind(environment) { world.bindEnvironment(environment); },
@@ -567,6 +590,7 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       if (slots.size === 0) return;
       // a hull that lives again (a respawn) takes its turret back
       released.length = 0;
+      gatherBodies();
       let k = 0;
       for (const tank of tanks) {
         if (!tank || !tank.state || tank.modeActive === false || tank.aerial?.active) continue;
@@ -575,6 +599,10 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
         const profile = wreckTurretProfile(tank.spec, tank.state.modeScale ?? 1);
         const state = tank.state;
         const s = profile.scale;
+        // only a hull within reach of a turret body is a box this step (a 14v14's other hulls cost nothing; the burn-out
+        // tick built and searched all 56 boxes every tick): its reach, a turret's, a second of its own travel
+        if (!flown && !nearBody(state.pos.x, state.pos.y, state.pos.z,
+          Math.hypot(profile.hullHalf[0], profile.hullHalf[1] * 2, profile.hullHalf[2]) * s + 1 + Math.abs(state.speed))) continue;
         hullQuaternion(state.yaw, state.visualPitch, state.visualRoll, q, 0);
         const vx0 = Math.sin(state.yaw) * state.speed, vz0 = Math.cos(state.yaw) * state.speed;
         const vy0 = Number.isFinite(state.verticalSpeed) ? state.verticalSpeed! : 0;
