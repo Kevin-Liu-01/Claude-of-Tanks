@@ -39,8 +39,8 @@ import {
   GARAGE_HARDSTAND_STYLES,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
-  garageHardstandKind,
   garageHardstandNormal,
+  garageHardstandNormalKind,
 } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
@@ -1228,11 +1228,13 @@ export function buildGarageEnvironment(
   const [approachSide, approachDepth] = recipe.approach.waypoints[0];
   const hardstandAlbedo = garageHardstandAlbedo(hardstandStyle, garageViewPoint(approachSide, approachDepth),
     engineCtx.anisotropy ?? 4);
-  const hardstandNormal = garageHardstandNormal(garageHardstandKind(hardstandStyle), engineCtx.anisotropy ?? 4);
+  const hardstandNormalKind = garageHardstandNormalKind(hardstandStyle);
+  const hardstandNormal = garageHardstandNormal(hardstandNormalKind, engineCtx.anisotropy ?? 4);
   const hardstandMaterial = hardstandAlbedo && hardstandNormal
     ? plainMaterial({
       map: track(hardstandAlbedo), normalMap: hardstandNormal,
-      normalScale: garageHardstandKind(hardstandStyle) === 'earth' ? new THREE.Vector2(0.9, 0.9) : new THREE.Vector2(0.6, 0.6),
+      normalScale: hardstandNormalKind === 'slab' ? new THREE.Vector2(0.6, 0.6)
+        : hardstandNormalKind === 'snow' ? new THREE.Vector2(0.3, 0.3) : new THREE.Vector2(0.45, 0.45),
       roughness: 0.94, metalness: 0.02,
     })
     : texturedMaterial('plaster', { color: recipe.hardstandTint, roughness: 0.94, metalness: 0.02 });

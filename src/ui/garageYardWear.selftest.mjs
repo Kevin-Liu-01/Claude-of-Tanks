@@ -7,6 +7,7 @@ import {
   garageHardstandAlbedo,
   garageHardstandKind,
   garageHardstandNormal,
+  garageHardstandNormalKind,
 } from './garageYardWear.ts';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_PLATFORM_GEOMETRY } from '../game/garagePresentationPose.ts';
@@ -30,6 +31,13 @@ assert.ok(outdoor.some((variant) => garageHardstandKind(GARAGE_HARDSTAND_STYLES[
 assert.equal(GARAGE_HARDSTAND_STYLES.shade_depot, 'earth-sand', 'Sirocco: compacted wadi sand and gravel');
 assert.equal(GARAGE_HARDSTAND_STYLES.repair_bunker, 'earth-snow', 'Frosthollow: snow-packed');
 assert.equal(GARAGE_HARDSTAND_STYLES.factory_line, 'earth-slag', 'Ironworks: a slag yard');
+// wave 393: round pebble bumps read as "a repeating dimpled cratered-foam texture"; earth relief is irregular noise at a
+// low amplitude on a 6.4 m tile, packed snow a softer field of its own, slabs keep their joints
+for (const variant of outdoor) {
+  const style = GARAGE_HARDSTAND_STYLES[variant.architecture];
+  const expected = garageHardstandKind(style) === 'slab' ? 'slab' : style === 'earth-snow' ? 'snow' : 'earth';
+  assert.equal(garageHardstandNormalKind(style), expected, `${variant.id}: ${style} takes the ${expected} relief`);
+}
 
 // the texel layout is the apron's: square texels, slabs at a real pitch, the joint grid wrapping at the canvas edge
 assert.equal(GARAGE_HARDSTAND.widthM, 29);
@@ -42,6 +50,11 @@ for (const pitch of GARAGE_HARDSTAND.slabPitchM) {
 const kit = await readFile(new URL('./garageEnvironmentKit.ts', import.meta.url), 'utf8');
 const wear = await readFile(new URL('./garageYardWear.ts', import.meta.url), 'utf8');
 const facility = await readFile(new URL('./garageFacilityDetails.ts', import.meta.url), 'utf8');
+const relief = wear.slice(wear.indexOf('export function garageHardstandNormal('), wear.indexOf('export function garageHardstandKind('));
+assert.doesNotMatch(relief, /Math\.sqrt\(1 - dd\)|pebbles?:/, 'no round pebble bumps in the floor relief');
+assert.match(wear, /const EARTH_NORMAL_TILE_M = 6\.4;/, 'the earth relief repeats no tighter than every 6.4 m');
+assert.match(kit, /hardstandNormalKind === 'snow' \? new THREE\.Vector2\(0\.3, 0\.3\) : new THREE\.Vector2\(0\.45, 0\.45\)/,
+  'earth and snow relief at a low amplitude');
 assert.match(kit, /garageHardstandAlbedo\(hardstandStyle, garageViewPoint\(approachSide, approachDepth\)/,
   'each pack draws its hardstand with track lanes down its own approach road');
 assert.match(kit, /map: track\(hardstandAlbedo\), normalMap: hardstandNormal/,
