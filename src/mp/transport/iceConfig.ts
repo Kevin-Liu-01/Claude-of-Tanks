@@ -13,6 +13,13 @@ import type { RtcIceServerLike } from './webRtcTransport.ts';
 
 /** A grant this young is handed to the next connection as is (a burst of connections shares one request). */
 export const RELAY_GRANT_REUSE_MS = 30_000;
+/**
+ * Asks after a `room_relay` that timed out or met a closed socket (`internal`) while no grant is held (2026-10-11, the MP
+ * lane): under load a seat's own starved thread or a busy room let the first request run out its budget, and the first
+ * connection was built on host candidates alone — which cannot cross a NAT (mp-p2p-headless: the first attempts linked
+ * with no servers, "internal"). One more request; the transport's next attempt shares it while it is in flight.
+ */
+export const RELAY_REQUEST_RETRIES = 1;
 /** A grant this close to its expiry is no longer handed to a new connection, as a reuse or as a fallback. */
 const GRANT_MIN_REMAINING_MS = 60_000;
 
@@ -102,17 +109,22 @@ export function createRoomIceResolver({ mode, room, reuseMs = RELAY_GRANT_REUSE_
     return latest.config;
   };
   const ask = async (source: RoomRelaySource): Promise<IceConfiguration> => {
-    let reason: string;
-    try {
-      const answered = roomConfiguration(await source.requestRelay());
-      if (answered) {
-        const receivedAt = clock();
-        latest = { config: answered, receivedAt, expiresAt: answered.expiresInSeconds !== undefined ? receivedAt + answered.expiresInSeconds * 1_000 : null };
-        return copy(answered);
+    let reason = 'relay_unavailable';
+    for (let attempt = 0; attempt <= RELAY_REQUEST_RETRIES; attempt++) {
+      try {
+        const answered = roomConfiguration(await source.requestRelay());
+        if (answered) {
+          const receivedAt = clock();
+          latest = { config: answered, receivedAt, expiresAt: answered.expiresInSeconds !== undefined ? receivedAt + answered.expiresInSeconds * 1_000 : null };
+          return copy(answered);
+        }
+        reason = 'relay_invalid';
+      } catch (error) {
+        reason = refusalReason(error);
       }
-      reason = 'relay_invalid';
-    } catch (error) {
-      reason = refusalReason(error);
+      // only a request that timed out or met a closed socket, with no grant to fall back on, is asked again: a refusal
+      // (rate_limit, relay_phase, …) answers the same a moment later
+      if (reason !== 'internal' || usable(clock(), false)) break;
     }
     const fallback = usable(clock(), false);
     return fallback ? copy(fallback, { degradedReason: reason }) : hostFallback(reason);

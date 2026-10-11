@@ -250,7 +250,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     if (connections.length < 6) failures.push(`${connections.length} peer connections (start, migration and rejoin build at least six)`);
     // (the failure names each connection built off the grant: its id, state, whether it linked, its server count)
     const ungranted = connections.filter((pc) => !(JSON.stringify(pc.config.iceServers) === expectedServers && pc.config.relayOnly === false));
-    report.steps.ice.ungranted = ungranted.map((pc) => ({ id: pc.id, state: pc.connectionState, linked: !!pc.peer, servers: (pc.config.iceServers ?? []).length }));
+    report.steps.ice.ungranted = ungranted.map((pc) => ({ id: pc.id, state: pc.connectionState, linked: !!pc.peer, servers: (pc.config.iceServers ?? []).length, source: pc.config.source ?? null, reason: pc.config.degradedReason ?? null }));
     if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant ${JSON.stringify(report.steps.ice.ungranted)}`);
     if (requests.length < 1 || requests.length >= connections.length) failures.push(`${requests.length} relay requests for ${connections.length} connections (one per burst, a grant reused)`);
   } catch (error) {
