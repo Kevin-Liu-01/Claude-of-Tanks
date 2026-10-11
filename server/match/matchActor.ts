@@ -117,6 +117,10 @@ export interface MatchActorOptions {
   endedLingerTicks?: number;
   /** Snapshots per second for the near tier (SNAPSHOT_HZ by default; must divide TICK_HZ). The WELCOME names it; the tiers halve and third it. */
   snapshotHz?: number;
+  /** A client this long after its WELCOME is still in its covered entry (ENTRY_BACKPRESSURE_GRACE_MS by default). */
+  entryBackpressureGraceMs?: number;
+  /** Continuous soft pressure that closes a client still in its entry grace (ENTRY_BACKPRESSURE_SUSTAINED_MS by default). */
+  entryBackpressureSustainedMs?: number;
 }
 
 /** Rows the interest tiers published (refreshed) and held per tier (P3b, 2026-09-29). */
@@ -237,6 +241,8 @@ interface ActorClient {
   droppedSnapshots: number;
   malformed: number;
   pressureSinceMs: number | null;
+  /** When the WELCOME went out: the start of the client's entry grace (ENTRY_BACKPRESSURE_GRACE_MS). */
+  welcomedAtMs: number;
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
   rate: { tokens: number; lastMs: number };
   closing: boolean;
@@ -260,6 +266,20 @@ export const VIEWER_CHECKPOINT_EVERY_SNAPSHOTS = 1;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
+/**
+ * 2026-10-10 (the black-screen lane; an ABBA under load ~110: the room found the creator's tab silent while its own entry
+ * blocked it and elected the next seat, whose actor then closed both peers, the demoted creator and the third seat, with
+ * BACKPRESSURE "sustained" about 26 s after their WELCOME, still in their first entry): a client's covered entry runs
+ * synchronous steps of seconds under load (the opening FX warm 4.3 s, the first shadow maps 2.9 s, a deferred shader link),
+ * and its link cannot drain meanwhile, so 2 s of soft pressure dropped seats that were loading, not dead. (The host's own
+ * loopback seat reports no pressure, so this rule only ever closes remote peers.) The client streams neutral inputs from its WELCOME on
+ * (matchClient sampleInputs), so no wire signal marks the end of its cover: for ENTRY_BACKPRESSURE_GRACE_MS after the
+ * WELCOME, soft pressure closes the link only after ENTRY_BACKPRESSURE_SUSTAINED_MS of continuous pressure (a dead link,
+ * not a busy one: a loading client drains between its synchronous steps, which resets the clock). Stale snapshots are
+ * still dropped, never queued, and the hard bound still closes at once.
+ */
+export const ENTRY_BACKPRESSURE_GRACE_MS = 120_000;
+export const ENTRY_BACKPRESSURE_SUSTAINED_MS = 60_000;
 const MAX_MESSAGES_PER_SECOND = 150;
 /**
  * The message-rate limit is a token bucket (P3b, 2026-09-29): a client sends ≈ 65 messages a second (inputs at 60 Hz
@@ -300,6 +320,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     throw new TypeError(`snapshotHz must be an integer divisor of ${TICK_HZ} (${snapshotHz})`);
   }
   const snapshotEveryTicks = TICK_HZ / snapshotHz;
+  const entryBackpressureGraceMs = options.entryBackpressureGraceMs ?? ENTRY_BACKPRESSURE_GRACE_MS;
+  const entryBackpressureSustainedMs = options.entryBackpressureSustainedMs ?? ENTRY_BACKPRESSURE_SUSTAINED_MS;
+  if (!(entryBackpressureGraceMs >= 0) || !(entryBackpressureSustainedMs >= BACKPRESSURE_SUSTAINED_MS)) {
+    throw new TypeError('entry backpressure grace must be >= 0 and its sustained limit at least the steady one');
+  }
+  /** The continuous soft pressure that closes this client now: longer while it is still in its entry grace. */
+  const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
+  );
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   // A resumed match skips the countdown and its clock limit counts from where the old host left it.
@@ -727,7 +756,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         client.droppedSnapshots++;
         totals.droppedSnapshots++;
         if (client.pressureSinceMs == null) client.pressureSinceMs = nowMs;
-        else if (nowMs - client.pressureSinceMs > BACKPRESSURE_SUSTAINED_MS) {
+        else if (nowMs - client.pressureSinceMs > sustainedPressureLimitMs(client, nowMs)) {
           totals.backpressureCloses++;
           detach(client, CLOSE_REASON.BACKPRESSURE, 'sustained');
         }
@@ -828,7 +857,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       viewerId: spectator ? `spectator:${seatSpec.playerId}` : seatSpec.playerId, spectator,
       capabilities: hello.capabilities & HELLO_CAPABILITY.SHOT_FEEDBACK,
       input: createSeatInputBuffer(), publisher: createViewerPublisher(), interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
-      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null,
+      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
     };
     clients.set(client, true);

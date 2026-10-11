@@ -35,7 +35,9 @@ const authoredBudgets = {
   // (batch 4: maps-oasis round 2, c97a5723d: Siwa's palm groves at 32 clusters and its shore palms planted closer, 13-14 m
   // apart, 38 in the two rows; wave 125 passed and its cost accepted)
   oasis: { roadNodes: 152, wallM: 421, beltTrees: 38, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
-  whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 136, outcrops: 22, plan: 16 },
+  // (2026-10-10, the map-content lane's round 1c, gauntlet wave 358a: the plateau's glacial erratics and frost-shattered
+  // outcrops, 224 rocks and 38 outcrops where the snow plain stood empty, within the geological ceiling below)
+  whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 224, outcrops: 38, plan: 16 },
   orchard: { roadNodes: 156, wallM: 884, beltTrees: 61, trees: [42, 38, 88], grass: 0.95, rocks: 138, outcrops: 20, plan: 18 },
   // (batch 4: maps-longleaf round 2, e90520dbf: the creek bottom's hardwoods planted along the basin's two banks, two more
   // rows: 118 seats before their skips; wave 144 passed and its cost accepted on census)
@@ -145,7 +147,11 @@ for (const config of maps) {
     assert.ok(config.props.destructibleBuildings.includes(beat.structure), `${label}: landmark family is loaded`);
     assert.notEqual(hf.getGroundType(beat.x, beat.z), 'soft', `${label}/${beat.id}: dry strongpoint foundation`);
     assert.ok(hf.getNormalAt(beat.x, beat.z).y >= 0.86, `${label}/${beat.id}: stable strongpoint grade`);
-    assert.ok(beat.outcrop && (beat.redoubt || beat.role === 'scout'), `${label}: layered cover is intentional`);
+    // (2026-10-07, the map-revival lane; the coordinator after gauntlet wave 205: no boulders on the polder's marine clay) a
+    // map that lays no stone at all (rocks 0, outcrops 0) layers its strongpoints' cover with a redoubt or a wreck instead
+    const stoneless = config.props.rocks === 0 && config.props.outcrops === 0;
+    assert.ok((beat.outcrop || (stoneless && (beat.redoubt || beat.wreck))) && (beat.redoubt || beat.role === 'scout'),
+      `${label}: layered cover is intentional`);
   }
   for (let a = 0; a < beats.length; a++) for (let b = a + 1; b < beats.length; b++) {
     assert.ok(Math.hypot(beats[a].x - beats[b].x, beats[a].z - beats[b].z) >= 180,
@@ -189,10 +195,14 @@ for (const config of maps) {
     `${label}: atmosphere preserves midfield readability`);
 }
 
-assert.ok(polders.props.plan.includes('mill') && polders.terrain.lakes.length === 5
+assert.ok(polders.props.plan.includes('mill') && polders.terrain.lakes.length === 4
   && polders.terrain.lakes.every(lake => lake.radii.length === 16)
-  && !polders.terrain.marshes.length && polders.terrain.softLakes,
-  'polders couple farmland to five separately leveled irregular basins, not chains of round cells');
+  // (2026-10-06, the map-revival lane, Polders step 2: a marsh station is the lift bridge's crossing, crossing: 'bridge'
+  // over the oxbow; step 6, 2026-10-07: the oxbow is the creek's arm, a canal, and its silted west horn the one marsh
+  // cell — no chain of them)
+  && polders.terrain.marshes.filter((marsh) => marsh.crossing === 'bridge' && marsh.r <= 8).length === 1
+  && polders.terrain.marshes.filter((marsh) => !marsh.crossing).length <= 1 && polders.terrain.softLakes,
+  'polders couple farmland to four separately leveled irregular basins and the oxbow arm, not chains of round cells');
 assert.ok(copperMesa.terrain.landforms.some((form) => form.kind === 'basin' && form.height <= -10),
   'mine has a deep authored ore cut');
 assert.ok(airfield.splat.pavedRoads && airfield.vegetation.avoid.length === 5,

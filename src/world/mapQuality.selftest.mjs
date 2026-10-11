@@ -38,6 +38,9 @@ const LAYERED_TREELINES = new Map([
   ['longleaf', 2], // the map-revival lane (2026-10-05, gauntlet wave 124): the flatwoods' pines close Longleaf's ring in two rows
 ]);
 const polePolicyByMap = new Map();
+// (2026-10-10, the map-content lane's L2) a line shorter than the usual twenty stations, every one of them audited:
+// Whiteout's first road is the DEW station's 520 m service street, the street its pole line marches along (eight stations)
+const UTILITY_LINE_MIN_STATIONS = { whiteout: 8 };
 const battlefieldWrecks = new Set();
 // The map-vehicles lane (2026-10-06, the integrator's period ruling): each map's hulks are its own period's, the period
 // of its civilians (vehicleFleets.ts), drawn from the curated donor pools the wreck fleet receipt bakes. A map of the
@@ -76,7 +79,7 @@ function auditUtilityPoleStations(hf, mapId) {
         `${mapId}: paired utility stations only survive on flat ground`);
     }
   }
-  assert.ok(stations.length >= 20, `${mapId}: complete utility line audited`);
+  assert.ok(stations.length >= (UTILITY_LINE_MIN_STATIONS[mapId] ?? 20), `${mapId}: complete utility line audited`);
   const policy = { pairs: 0, singles: 0, maxRejectedRelief: 0 };
   for (const station of stations) {
     if (station.paired) policy.pairs++;

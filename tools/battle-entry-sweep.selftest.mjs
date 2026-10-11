@@ -42,6 +42,14 @@ assert.equal(WATCHDOG_THRESHOLD, 6, 'the sweep reports against the game\'s refus
 }
 
 {
+  // 2026-10-10: a GPU process reset at load 172 left fjord on "Graphics could not reconnect", reported as stuck before
+  assert.equal(classifyRun({ entry: 'context-lost', reason: 'the WebGL context was lost 31 s into the entry', samples: [] }, limits).verdict, 'context-lost');
+  assert.equal(classifyRun({ entry: 'timeout', recoveryFailed: true, samples: [] }, limits).verdict, 'context-lost');
+  assert.equal(classifyRun({ entry: 'timeout', contextLost: true, samples: [] }, limits).verdict, 'context-lost');
+  passed++;
+}
+
+{
   const run = classifyRun({ entry: 'revealed', watchdog: watchdog({ before: 0, after: 18, rescued: true, stage: 'shadows-off' }), samples: picture }, limits);
   assert.equal(run.verdict, 'rescued', 'a compatibility stage changed the picture: never a pass');
   assert.match(run.why, /shadows-off/);
