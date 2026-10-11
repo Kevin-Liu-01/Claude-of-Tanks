@@ -285,8 +285,12 @@ function weapons(P: TankBuilderPort): void {
   P.muzzleZ = D.muzzleZ - gz;
   P.add('gunMount', local(prism([[1.990, -.1597, .2009, 1.70837, 2.0713],
     [2.15, -.1597, .2009, 1.70837, 2.13213], [2.6442, -.1597, .2009, 1.70837, 2.13213]]), D.trunnion));
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a plain box mantlet with three open dark slots on its
+  // side", "a plain slotted crate"; the coordinator: close dark gaps with armour): the three ribs on each side of the
+  // mantlet are welded to its faces (x -0.1597 and 0.2009, a millimetre into each) instead of standing 12 mm off the
+  // left one, so no daylight slot shows behind them (the source stations were -0.184 and 0.210).
   for (const side of [-1, 1]) for (const z of [2.175, 2.363, 2.541]) {
-    P.add('gunMount', box(.025, .246, .052), side < 0 ? -.184 - gx : .210 - gx, 1.949 - gy, z - gz);
+    P.add('gunMount', box(.025, .246, .052), side < 0 ? -.1597 - .0115 - gx : .2009 + .0115 - gx, 1.949 - gy, z - gz);
   }
   const sleeve = sectionSolid([2.53294, 2.82, 5.90, 6.1405].map(z => {
     const t = Math.max(0, (z - 2.82) / 3.3205), bottom = 1.704 + .040 * t;
