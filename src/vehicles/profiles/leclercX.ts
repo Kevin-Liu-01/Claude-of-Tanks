@@ -5,9 +5,8 @@ import { addRearFieldStowage } from './rearFieldStowage.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { addLeclercFieldProtection } from './fieldProtectionPack.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { sourceMachineGun } from './sourceMachineGun.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addLeclercXRearFittings } from './leclercXRearFittings.ts';
 import { leclercWheelSolids } from './leclercXWheels.ts';
@@ -268,12 +267,15 @@ function roofEquipment(P: TankBuilderPort): void {
   equipment(P, 'turretDetail', cylY(.071, .071, .0337, 16), .03843, 2.252, -1.658);
   // Mandatory game roof weapon on the existing crew hatch. The supplied
   // neutral source omits it; this low supported assembly is documented.
-  const mg = sourceMachineGun(P, D.turretPivot);
-  mg.add('turretDetail', box(.09, .077, .12), .90, 2.410, .358);
-  mg.add('turretDark', box(.080, .072, .265), .90, 2.475, .460);
-  mg.add('turretDark', cylZ(.019, .48, 20), .90, 2.479, .8125);
-  mg.add('turretDark', cylZ(.006, .006, 16), .90, 2.479, 1.055);
-  mg.finish();
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a toy-like dark box with a rod", "a short plain stub"):
+  // the gun is the fleet's 7.62 mm GPMG (receiver with feed cover, gas tube, carrying handle, pistol grip, flash hider)
+  // lying in its external cradle on the same low base, its receiver centred over the base, its can on the feed side; the
+  // receiver block and plain tube go. One gun, one fitting.
+  equipment(P, 'turretDetail', box(.09, .077, .12), .90, 2.410, .358);
+  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle', ammo: true, tone: 'two-tone', seed: 3301 });
+  gun.position.set(.90 - D.turretPivot[0], 2.4485 + .0005 - D.turretPivot[1], .438 - D.turretPivot[2]);
+  gun.name = 'leclercXHatchMachineGun';
+  P.turretG.add(gun);
 }
 
 function rearRack(P: TankBuilderPort): void {
