@@ -95,7 +95,10 @@ export default {
   blurb: 'Black volcanic shelves and abandoned extraction works ring an ash-choked basin',
   terrain: {
     // Dark splat/ash dressing supplies the volcanic character; the lava shelves are authored landforms off the roads.
-    hillScale: 0.55, microScale: 0.6, rimH: 56,
+    // (2026-10-11, the map-revival lane; gauntlet wave 395a: "a long straight dark bank band that reads as a stretched
+    // skirt") the rim inside the playable square half as high: its inner face rose 23 m over the last 45 m (~34 deg at its
+    // steepest), a straight dark bank along every edge; now ~12 m at ~16 deg, the caldera wall left to the horizon
+    hillScale: 0.55, microScale: 0.6, rimH: 28,
     mesas: null,
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
@@ -133,6 +136,10 @@ export default {
     // village's worn soil keeps to the yards and the roads' margins (the activity patches), and the paddies, bunds and
     // field roads run up to them — the village zone's wear was the whole rectangle, which kept every field off it
     villageWear: 'activity-patches',
+    // (2026-10-11; wave 395a: "farmyards that are mown lawn instead of bare packed earth"; "its blocky stair-stepped
+    // boundary meets bright lime-green field tiles") every building's yard trodden soil, 4 m wider than its land use's bare
+    // box (landUse.ts CALDERA_YARD_M), its edge broken and feathered: the fields end on the wear's line, not the raster's
+    yardWear: CALDERA_VILLAGE.map(({ x, z, yawDeg }) => ({ x, z, w: 30, l: 30, yawDeg })),
     landforms: [
       // a small negative knoll on the bump the hill noise raises 2.5 m by the north-east loading road at (100, 247): bravo's
       // block routes cross it at speed, and a hull launched off it took the map's worst fall (2026-10-03, 108 hp)

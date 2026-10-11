@@ -47,7 +47,7 @@ import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades, alignPolde
   stampRoadBorderCorridors, usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
 import { buildRoadStationOrigins, usesPhysicalRoadStations, buildPhysicalRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
-import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
+import { stampWorkedGroundMask, stampYardWearMask, type WorkedGroundPatch, type YardWearBox } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
@@ -343,6 +343,8 @@ interface TerrainSettings {
   /** Round 57 (2026-09-24): authored rail spurs — maps/mapKits.ts lays the track, the berth keeps vegetation and scattered props off it. */
   railSpurs?: readonly RailSpurConfig[];
   workedGround?: readonly WorkedGroundPatch[];
+  /** The map-revival lane (2026-10-11): the yards' trodden soil, a box per building (workedGroundMask.ts stampYardWearMask). */
+  yardWear?: readonly YardWearBox[];
   /** Use authored activity footprints instead of blanket settlement wear; 'plots' lays the village's ground out in
    * garden plots running back from its streets (makeMaskTexture villagePlotWear). */
   villageWear?: 'activity-patches' | 'plots';
@@ -3702,6 +3704,9 @@ export function makeMaskTexture(
   }
   if (layout.terrain.workedGround?.length) {
     stampWorkedGroundMask(px, s, MAP_SIZE, layout.terrain.workedGround, seedNoi);
+  }
+  if (layout.terrain.yardWear?.length) {
+    stampYardWearMask(px, s, MAP_SIZE, layout.terrain.yardWear, seedNoi);
   }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
