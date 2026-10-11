@@ -188,8 +188,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   // (`forecourt`: a paved front that deep before the street front; the footprint keeps its depth both ways)
   // a row of the map kit's houses side by side along x, their street fronts to +z (`kit`: an architecture id; `structure`:
   // the kit's builder each house is drawn with)
+  // (2026-10-10: the kit's facade craft now dresses each house's foot and front — its wall-foot apron and steps reach
+  // 0.7 m past a side and 1.4 m past a front or back — so the ground the row reserves and keeps clear of trees holds them)
   houseRow: { family: 'civic', defaults: { kit: 'dalmatian', structure: 'cottage', count: 3, width: 6.4, depth: 8.6 },
-    footprint: (p) => [num(p, 'count') * num(p, 'width') / 2 + 0.25, num(p, 'depth') / 2 + 0.25] },
+    footprint: (p) => [num(p, 'count') * num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 1.45] },
   khan: { family: 'civic', defaults: { width: 26, depth: 24, range: 6, form: 'court', forecourt: 0 },
     footprint: (p) => [num(p, 'width') / 2 + 0.2 + (num(p, 'forecourt') > 0 ? 0.6 : 0),
       (p.form === 'arcade' ? num(p, 'range') : num(p, 'depth')) / 2 + 0.45 + Math.max(0, num(p, 'forecourt') || 0)] },
