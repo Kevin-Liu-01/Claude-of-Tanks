@@ -1826,10 +1826,25 @@ function buildConcretePillboxPieces(style: 'regelbau' | 'dot' | 'hex', O: BuildO
     const hw = doorW / 2, D = 0.32;
     const leafShade: Shade = (p) => mix(plateTone, [0.1, 0.045, 0.02], smooth(0.55, 0.8, vnoise(p[0], p[1], p[2], 0.3, O.seed + 81)) * (0.3 + T.age));
     leaf = F.begin({ role: 'door', material: 'metal', face: e.face, axes: edgeAxes(P(-hw, 0, 0), e.u), volume: doorW * doorH * 0.012 });
-    m.quad(P(-hw, GRADE, D), P(hw, GRADE, D), P(hw, GRADE + doorH, D), P(-hw, GRADE + doorH, D), leafShade, false, e.n);
-    m.quad(P(hw, GRADE, D + 0.012), P(-hw, GRADE, D + 0.012), P(-hw, GRADE + doorH, D + 0.012), P(hw, GRADE + doorH, D + 0.012), leafShade, false, scl(e.n, -1));
-    for (const y of [GRADE + 0.3, GRADE + doorH - 0.3]) {
-      solid(m, c[0] + e.u[0] * (-hw + 0.05) - e.n[0] * (D - 0.03), y, c[2] + e.u[2] * (-hw + 0.05) - e.n[2] * (D - 0.03), 0.06, 0.12, 0.05, Math.atan2(e.u[0], e.u[2]) - Math.PI / 2, leafShade, false);
+    // (round 2, wave 370: "its door is a flat dark-brown panel with no visible frame") the steel frame in the gap, angle
+    // section round the opening, and the leaf inside it with its stiffeners, handle and hinges
+    const yaw = Math.atan2(e.u[0], e.u[2]) - Math.PI / 2;
+    const at = (du: number, dep: number): [number, number] => [c[0] + e.u[0] * du - e.n[0] * dep, c[2] + e.u[2] * du - e.n[2] * dep];
+    const frameShade: Shade = (p) => mul(leafShade(p, [0, 1, 0]), 0.82);
+    const fw = 0.06;
+    for (const du of [-hw + fw / 2, hw - fw / 2]) { const [x, z] = at(du, D - 0.02); solid(m, x, GRADE, z, fw, doorH, 0.07, yaw, frameShade, false); }
+    { const [x, z] = at(0, D - 0.02); solid(m, x, GRADE + doorH - fw, z, doorW - 2 * fw - 0.002, fw, 0.07, yaw, frameShade, false); }
+    const lw = hw - fw - 0.006;
+    m.quad(P(-lw, GRADE + 0.01, D), P(lw, GRADE + 0.01, D), P(lw, GRADE + doorH - fw - 0.006, D), P(-lw, GRADE + doorH - fw - 0.006, D), leafShade, false, e.n);
+    m.quad(P(lw, GRADE + 0.01, D + 0.012), P(-lw, GRADE + 0.01, D + 0.012), P(-lw, GRADE + doorH - fw - 0.006, D + 0.012), P(lw, GRADE + doorH - fw - 0.006, D + 0.012), leafShade, false, scl(e.n, -1));
+    for (const y of [0.32, (doorH - fw) / 2, doorH - fw - 0.3]) {
+      const [x, z] = at(0, D - 0.008);
+      solid(m, x, GRADE + y - 0.02, z, lw * 2 - 0.1, 0.04, 0.016, yaw, frameShade, false);
+    }
+    { const [x, z] = at(lw - 0.12, D - 0.03); solid(m, x, GRADE + doorH * 0.5 - 0.06, z, 0.03, 0.12, 0.04, yaw, () => [0.06, 0.055, 0.05], false); }
+    for (const y of [GRADE + 0.3, GRADE + doorH - fw - 0.32]) {
+      const [x, z] = at(-lw + 0.05, D - 0.03);
+      solid(m, x, y, z, 0.06, 0.12, 0.05, yaw, leafShade, false);
     }
     F.end();
   }
