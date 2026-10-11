@@ -5,7 +5,59 @@ import { acquireDroneModelKit, droneMaterialHooks, droneNation, poseDroneRotor, 
 import { createMissionCradleGeometry } from './missionCradleGeometry.ts';
 import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
-interface MissionVisual { root: THREE.Group; drone: THREE.Group; kind: 'drone' | 'flag'; flag?: CaptureFlag; cradles: THREE.Mesh[]; dispose(): void }
+interface MissionVisual {
+  root: THREE.Group; drone: THREE.Group; kind: 'drone' | 'flag'; flag?: CaptureFlag; cradles: THREE.Mesh[];
+  detail?: THREE.LOD; lease?: DroneKitLease; arrival?: Arrival; arriveT: number; ready: boolean | null; dispose(): void;
+}
+/**
+ * A resupplied airframe lands on the empty cradle when the payload is ready again: it settles down the dock's certified
+ * launch column (vertical, so it can never meet the carrier's own kit) from 2.4 m with its rotors at speed, brakes into a
+ * short hover a hand's width above the pads, touches down on its skids, and spools its props down to the exact angle the
+ * parked airframe holds them. Presentation only: it starts on the not-ready to ready edge (a remote client sees only that
+ * flag), and a launch in the middle of it hands straight to the flight from the dock datum.
+ */
+export const DRONE_ARRIVAL = Object.freeze({ descentS: 1.5, spoolS: .7, heightM: 2.4, hoverM: .25 });
+interface Arrival { group: THREE.Group; rotors: THREE.Mesh[]; blurs: THREE.Mesh[] }
+function createArrival(kit: DroneModelKit): Arrival {
+  const group = new THREE.Group(), rotors: THREE.Mesh[] = [], blurs: THREE.Mesh[] = [];
+  group.name = 'Docked FPV arrival'; group.rotation.order = 'YXZ'; group.visible = false;
+  for (const part of kit.parts) group.add(new THREE.Mesh(part.geometry, part.material));
+  for (let i = 0; i < 4; i++) {
+    const rotor = new THREE.Mesh(kit.rotor, kit.rotorMaterial), blur = new THREE.Mesh(kit.rotorBlur, kit.blurMaterial);
+    rotor.matrixAutoUpdate = blur.matrixAutoUpdate = false; blur.renderOrder = 2;
+    rotors.push(rotor); blurs.push(blur); group.add(rotor, blur);
+  }
+  // Shade like the parked airframe it hands over to, so a dock in shadow never brightens for the landing.
+  for (const mesh of group.children as THREE.Mesh[]) mesh.receiveShadow = true;
+  return { group, rotors, blurs };
+}
+/** Height above the pads at a descent fraction: down to a brief braking hover, then a smooth touchdown (C1 throughout). */
+export function droneArrivalHeight(u: number): number {
+  const { heightM, hoverM } = DRONE_ARRIVAL, x = Math.min(1, Math.max(0, u));
+  if (x < .75) return hoverM + (heightM - hoverM) * (1 - x / .75) ** 2;
+  const v = (x - .75) / .25;
+  return hoverM * (1 - v * v * (3 - 2 * v));
+}
+// Three full turns of a three-blade prop end where the parked pose holds it.
+const SPOOL_DOWN_RAD = 6 * Math.PI;
+function poseArrival(arrival: Arrival, t: number): void {
+  const { descentS, spoolS } = DRONE_ARRIVAL, group = arrival.group;
+  if (t < descentS) {
+    const u = t / descentS, settle = 1 - u;
+    group.position.set(0, droneArrivalHeight(u), 0);
+    // Yawing into the cradle's line and trimming small attitude errors as it comes down.
+    group.rotation.set(.035 * Math.sin(u * 11) * settle, .32 * settle * settle, .045 * Math.sin(u * 8 + 1) * settle);
+    for (let i = 0; i < 4; i++) {
+      arrival.rotors[i]!.visible = false; arrival.blurs[i]!.visible = true; poseDroneRotor(arrival.blurs[i]!, i, t * 9 + i);
+    }
+    return;
+  }
+  const s = Math.min(1, (t - descentS) / spoolS), spin = SPOOL_DOWN_RAD * (1 - (1 - s) ** 3);
+  group.position.set(0, 0, 0); group.rotation.set(0, 0, 0);
+  for (let i = 0; i < 4; i++) {
+    arrival.rotors[i]!.visible = true; arrival.blurs[i]!.visible = false; poseDroneRotor(arrival.rotors[i]!, i, spin);
+  }
+}
 const mounts=new WeakMap<THREE.Object3D,MissionVisual>();
 
 /** Refcounted build cache: one geometry per seat and paint, shared by every carrier that uses it. */
@@ -98,6 +150,7 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
   const cradle=new THREE.LOD();cradle.name='Mission dock cradle detail';cradle.addLevel(near,0);cradle.addLevel(far,DRONE_LITE_DISTANCE_M);
   root.add(cradle);
   const leases:DroneKitLease[]=[];
+  let mountDetail:THREE.LOD|undefined,mountLease:DroneKitLease|undefined;
   const flag=kind==='flag'?createCaptureFlag():undefined;
   if(flag){flag.root.position.y=.06;root.add(flag.root);}
   if(kind==='drone'){
@@ -106,15 +159,17 @@ function createMount(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,kind:'drone
     const detail=new THREE.LOD();detail.name='Docked FPV airframe detail';
     detail.addLevel(parkedAirframe(full),0);detail.addLevel(parkedAirframe(lite),DRONE_LITE_DISTANCE_M);
     drone.add(detail);root.add(drone);
+    mountDetail=detail;mountLease=full;
   }
   parent.add(root);
   let disposed=false;
-  const result={root,drone,kind,flag,cradles:[near,far],dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
+  const result:MissionVisual={root,drone,kind,flag,cradles:[near,far],detail:mountDetail,lease:mountLease,arriveT:-1,ready:null,dispose(){if(disposed)return;disposed=true;root.removeFromParent();nearShared.release();farShared.release();releaseCradleMaterials();for(const lease of leases)lease.release();flag?.dispose();mounts.delete(tankRoot);tankRoot.removeEventListener('removed',result.dispose);}};
   tankRoot.addEventListener('removed',result.dispose);return result;
 }
 /** Mode equipment is attached to the turret owner (or fixed casemate hull), so suspension and concealment apply.
- * A burnt-out carrier keeps its dock, charred with the hull; its payload went with the vehicle. */
-export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,view:Pick<AerialView,'kind'|'active'|'cooldownS'>|undefined,destroyed:boolean):void {
+ * A burnt-out carrier keeps its dock, charred with the hull; its payload went with the vehicle. `dt` (seconds of
+ * presentation time) runs the resupply landing; without it the cradle simply shows the ready airframe. */
+export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,view:Pick<AerialView,'kind'|'active'|'cooldownS'>|undefined,destroyed:boolean,dt=0):void {
   let mount=mounts.get(tankRoot);
   if(view?.kind!=='drone'){if(mount)mount.root.visible=false;return;}
   if(mount?.kind==='flag'){mount.dispose();mount=undefined;}
@@ -122,7 +177,17 @@ export function syncMissionAttachment(tankRoot:THREE.Object3D,spec:MissionCarrie
   mount.root.visible=true;
   const material=destroyed?cradleMaterials?.charred:cradleMaterials?.clean;
   if(material)for(const cradle of mount.cradles)cradle.material=material;
-  mount.drone.visible=!destroyed&&!view.active&&view.cooldownS<=0;
+  const ready=!destroyed&&!view.active&&view.cooldownS<=0;
+  mount.drone.visible=ready;
+  if(ready&&mount.ready===false&&mount.lease)mount.arriveT=0;
+  else if(!ready)mount.arriveT=-1;
+  else if(mount.arriveT>=0)mount.arriveT+=Math.max(0,dt);
+  mount.ready=ready;
+  const landing=mount.arriveT>=0&&mount.arriveT<DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS;
+  if(!landing)mount.arriveT=-1;
+  if(landing&&!mount.arrival&&mount.lease){mount.arrival=createArrival(mount.lease.kit);mount.drone.add(mount.arrival.group);}
+  if(mount.arrival){mount.arrival.group.visible=landing;if(landing)poseArrival(mount.arrival,mount.arriveT);}
+  if(mount.detail)mount.detail.visible=!landing;
 }
 
 export function syncFlagAttachment(tankRoot:THREE.Object3D,spec:MissionCarrierSpec,timeS:number):void {

@@ -261319,7 +261319,7 @@
           }
         ]
       },
-      "geometryHash": "c45177c7",
+      "geometryHash": "91ab7d03",
       "metadataHash": "e5bcda87",
       "presentationAnchor": {
         "xM": 0.0008,
@@ -261430,24 +261430,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90559,
-          "sha256": "d8457d0447522da970312f8a7a1f2839e43dd77f82e0a1b3e27fc753639a70d5"
+          "bytes": 89600,
+          "sha256": "02cd01015af96d2ca82e0fb9b26756572e8f78801a001e7db1e2ca039619b3b0"
         },
         "modulesSide": {
           "file": "leo2a6_ua_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92501,
-          "sha256": "ffb0c1f90357d664e1e287cdc2aece7c35b82d64a598b6fcea7e3d4c268cce50"
+          "bytes": 91031,
+          "sha256": "d4a677e4119c2a1fe1befb6c20319278e85a1268a207c9c36b2493d4d28e9537"
         },
         "crewSide": {
           "file": "leo2a6_ua_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79257,
-          "sha256": "79cc96407cbf3697a36a79b2e662552d085106df9a643e4d64e54b82edd1759a"
+          "bytes": 78416,
+          "sha256": "1ec1481746a1db62b916241990479ce124a848bed7d661e74ac48532c916165d"
         },
         "markings": {
           "file": "leo2a6_ua_markings.png",
@@ -1241436,7 +1241436,7 @@
           }
         ]
       },
-      "geometryHash": "fa3e20fd",
+      "geometryHash": "e77a69f7",
       "metadataHash": "f2be7ba9",
       "presentationAnchor": {
         "xM": -0.0189,
@@ -1241547,24 +1241547,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94420,
-          "sha256": "58cf05aafafe9de5e9dfa58e1e9ff5435145af0dddf1436cbfe408a863144d89"
+          "bytes": 94258,
+          "sha256": "350d7febc9d23e88b4bb85a3881f02adb8fa2942fc9c83c13b4343b4f9ac4dc6"
         },
         "modulesSide": {
           "file": "pt91_twardy_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91604,
-          "sha256": "b1f77d3528f6907ae73caad585a0ba89bfcf45ef000d532306ee7269019c57ce"
+          "bytes": 91784,
+          "sha256": "bf5fd9d00dbc6245c21192ae18364711320207db6df0548faa77bc271582d5b9"
         },
         "crewSide": {
           "file": "pt91_twardy_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81686,
-          "sha256": "f96af85be9edf0454802f80447b551ef2b53a89b92343a7b718993db42b79a7e"
+          "bytes": 82037,
+          "sha256": "30ef64edd745ff0978f654d895c0d49f9ee46b9f96c44da75cefd11f68ff84b6"
         },
         "markings": {
           "file": "pt91_twardy_markings.png",
@@ -1754953,7 +1754953,7 @@
           }
         ]
       },
-      "geometryHash": "7484a67f",
+      "geometryHash": "5fc7528f",
       "metadataHash": "44d45f4f",
       "presentationAnchor": {
         "xM": -0.0098,
@@ -1755064,24 +1755064,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 127898,
-          "sha256": "c179766544eb90f5e5c5314d551e4d5fe65efb6445526f6429bdb4b6fe19d0ed"
+          "bytes": 124533,
+          "sha256": "9592654c76a3f5087db6b4ddb5d9832373b6ee69892913478fe0c545e9bef2c0"
         },
         "modulesSide": {
           "file": "ua_m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 129121,
-          "sha256": "c6bd244d7264928aee9a9db0354c2152297a0941504446f7dd6043dad6aa8ea3"
+          "bytes": 126561,
+          "sha256": "9adb5b33a911aa64ac15b7303db1a0e1e33cbab9ea66c4e141327799d872369f"
         },
         "crewSide": {
           "file": "ua_m1a1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 118808,
-          "sha256": "584e91a8705d8ffcf96885591c70c01d8666903c0570ae0c8f5ee90515094b46"
+          "bytes": 115010,
+          "sha256": "4dee828a1f04b27b1e47a8a3b221e885f791006628efb8a7db89b51276c57334"
         },
         "markings": {
           "file": "ua_m1a1_markings.png",

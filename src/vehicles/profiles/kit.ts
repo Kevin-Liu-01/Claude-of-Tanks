@@ -3076,15 +3076,19 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   if (!group?.isGroup || !type) throw new Error('KIT.fittings.markExact: visible Group and type are required');
   let meshCount = 0;
   group.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
-    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    // three's own type flag, not instanceof: a lazily loaded profile pack can hold a second copy of three in a dev
+    // server whose dependency optimizer re-ran mid-session (2026-10-10: a Leopard 2A5 bot's exact loader gun failed
+    // here and aborted the battle start). One copy in a production bundle; identical results there.
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     if (material?.colorWrite === false) return;
     meshCount++;
-    if (!object.name) object.name = `fitting_${type}_part_${meshCount}`;
-    object.userData.fitting = type;
-    object.userData.fittingExact = true;
-    object.userData.combatHitboxRole = 'equipment';
-    object.userData.surfaceMarkupSelectable = true;
+    if (!mesh.name) mesh.name = `fitting_${type}_part_${meshCount}`;
+    mesh.userData.fitting = type;
+    mesh.userData.fittingExact = true;
+    mesh.userData.combatHitboxRole = 'equipment';
+    mesh.userData.surfaceMarkupSelectable = true;
   });
   if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
   group.name = `fitting_${type}_exact`;
