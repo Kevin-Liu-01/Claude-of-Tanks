@@ -129,6 +129,10 @@ interface LiveBody {
   /** Its cells (face, cell pairs) and whether it has cracked on a landing (a chunk of courses breaks into clumps). */
   cells: number[];
   cracked: boolean;
+  /** Its extent from its frame's origin along its axes (along the face, up, out), and whether it has been looked at
+   *  once at rest (tipped over if it stood on its edge). */
+  half: [number, number, number];
+  tipped: boolean;
 }
 
 interface Live {
@@ -640,9 +644,30 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           const sag = g.sag[c];
           const front = st === CELL_SPALLED ? -g.skinM : 0;
           if (st === CELL_SPALLED) {
-            // the recess: the core a skin's depth back, a shade darker
+            // the recess: the core a skin's depth back, darker (wave 407: "the dart hits leave crisp brick-shaped voids
+            // with no spall crater, chipping or cracks round them": the crater round a hole reads dark)
             pushQuad(caps, cg.layout, facePoint(g, u0, y0 - sag, front), facePoint(g, u1, y0 - sag, front), facePoint(g, u1, y1 - sag, front),
-              facePoint(g, u0, y1 - sag, front), [g.out[0], 0, g.out[2]], tint, 0.82);
+              facePoint(g, u0, y1 - sag, front), [g.out[0], 0, g.out[2]], tint, 0.66);
+          } else if (st === CELL_CRACKED && g.bonded) {
+            // the cracks round a hole: dark lines along a course's joints, the nearer the hole (the more hurt) the wider and
+            // the more of them, a bed joint or a head joint by the cell's own hash, so they step through the bond
+            const k = Math.min(1, Math.max(0, (g.damage[c] - CRACK_AT) / (SPALL_AT - CRACK_AT)));
+            if (k >= 0.15) {
+              const h = (Math.imul(c + 1, 0x85ebca6b) ^ Math.imul(g.storey + 3, 0x9e3779b1)) >>> 0;
+              const w = 0.007 + 0.012 * k, z = Math.max(0, looseOf(g, c)) + 0.004;
+              const nOut = [g.out[0], 0, g.out[2]];
+              if ((h & 3) !== 0 || k > 0.6) {
+                // its bed joint over it
+                pushQuad(caps, cg.layout, facePoint(g, u0, y1 - sag - w, z), facePoint(g, u1, y1 - sag - w, z), facePoint(g, u1, y1 - sag + w, z),
+                  facePoint(g, u0, y1 - sag + w, z), nOut, tint, 0.28);
+              }
+              if ((h & 4) !== 0) {
+                // a head joint at one end
+                const ue = (h & 8) !== 0 ? u1 : u0;
+                pushQuad(caps, cg.layout, facePoint(g, ue - w, y0 - sag, z), facePoint(g, ue + w, y0 - sag, z), facePoint(g, ue + w, y1 - sag, z),
+                  facePoint(g, ue - w, y1 - sag, z), nOut, tint, 0.28);
+              }
+            }
           }
           // the reveal on each side that opens onto a gone or fallen cell (an opening has its own)
           const side = (pa: number[], pb: number[], n: number[], shade: number): void => {
@@ -980,10 +1005,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         let off = 6;
         for (let a = 0; a < ci; a++) off += e.layout.sizes[a];
         const stride = e.layout.stride;
+        // (wave 407: "clean, saturated single bricks or uniform cubes") no two chunks alike: each its own share of grit
+        // (0.7-1.4 of the coat) and its own value (a sooted or a dusted one)
+        const hv = ((Math.imul(seed + 13, 0x9e3779b1) >>> 0) % 1000) / 1000, hw = ((Math.imul(seed + 71, 0x85ebca6b) >>> 0) % 1000) / 1000;
+        const coat = Math.min(0.75, DUST_COAT * (0.7 + 0.7 * hv)), value = 0.84 + 0.22 * hw;
         for (let i = off; i + 2 < list.length; i += stride) {
           const r = list[i], gg = list[i + 1], b = list[i + 2];
           const d = (0.2126 * r + 0.7152 * gg + 0.0722 * b) * 0.85 + 0.1;
-          list[i] = r + (d * 1.02 - r) * DUST_COAT; list[i + 1] = gg + (d - gg) * DUST_COAT; list[i + 2] = b + (d * 0.93 - b) * DUST_COAT;
+          list[i] = (r + (d * 1.02 - r) * coat) * value; list[i + 1] = (gg + (d - gg) * coat) * value; list[i + 2] = (b + (d * 0.93 - b) * coat) * value;
         }
       }
       merged.set(material, { layout: e.layout, list });
@@ -1042,8 +1071,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       for (const m of meshes) { o.group.remove(m); m.geometry.dispose(); }
       return false;
     }
+    const half: [number, number, number] = [0.04, 0.04, 0.04];
+    for (const part of parts) if (part.kind === 'box') for (let k = 0; k < 3; k++) half[k] = Math.max(half[k], Math.abs(part.center[k]) + part.half[k]);
     const body: LiveBody = { structureIdx: live.seam.structureIdx, handle, meshes, massKg: mass, material: g0.material, still: 0, age: 0, sounds: 0,
-      pose: new Float64Array(7).fill(NaN), parts: partsOut, cells: cells.slice(), cracked: cells.length < CRACK_MIN_CELLS * 2,
+      pose: new Float64Array(7).fill(NaN), parts: partsOut, cells: cells.slice(), cracked: cells.length < CRACK_MIN_CELLS * 2, half, tipped: false,
       fromBody: new THREE.Matrix4().compose(_atP.set(frame.c[0], frame.c[1], frame.c[2]), frame.q, _s).invert() };
     bodies.set(handle, body);
     _pose[0] = _v.x; _pose[1] = _v.y; _pose[2] = _v.z; _pose[3] = qWorld.x; _pose[4] = qWorld.y; _pose[5] = qWorld.z; _pose[6] = qWorld.w;
@@ -1097,6 +1128,27 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       spawnCells(live, clump, _crackVel[0] * 0.8, _crackVel[1] * 0.8 + 0.6, _crackVel[2] * 0.8, 4, damageSeed(b.handle * 31 + 7, i), at);
     });
   }
+  /**
+   * (wave 407: "a timber door or infill panel stays standing upright on its edge at the right of the heap") a chunk that
+   * comes to rest standing on its edge (its thin side across the world's level) is shoved over once at its top: what
+   * fell lies down on the heap. True when it was tipped.
+   */
+  function tipIfStanding(b: LiveBody, pose: ArrayLike<number>): boolean {
+    const h = b.half;
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (h[k] < h[thin]) thin = k;
+    _q.set(pose[3], pose[4], pose[5], pose[6]);
+    _tipA.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_q);
+    if (Math.abs(_tipA.y) > 0.4) return false;
+    let up = 0;
+    for (let k = 0; k < 3; k++) { _tipB.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += h[k] * Math.abs(_tipB.y); }
+    if (up < 2.5 * h[thin]) return false;
+    const hl = Math.hypot(_tipA.x, _tipA.z) || 1;
+    const j = b.massKg * 0.9 * ((Math.imul(b.handle + 7, 0x9e3779b1) >>> 0) % 2 ? 1 : -1) / hl;
+    o.pool.impulse(b.handle, _tipA.x * j, 0, _tipA.z * j, pose[0], pose[1] + up * 0.8, pose[2]);
+    return true;
+  }
+  const _tipA = new THREE.Vector3(), _tipB = new THREE.Vector3();
   function writePose(b: LiveBody, src: ArrayLike<number>): void {
     let same = true;
     for (let k = 0; k < 7; k++) if (b.pose[k] !== src[k]) { same = false; b.pose[k] = src[k]; }
@@ -1415,6 +1467,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         writePose(b, _pose);
         b.age += dt;
         b.still = o.pool.asleep(b.handle) ? b.still + dt : 0;
+        if (!b.tipped && b.still > 0.25) { b.tipped = true; if (tipIfStanding(b, _pose)) { b.still = 0; continue; } }
         if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) bake(b);
       }
       profEnd('fr.poses', tPose);

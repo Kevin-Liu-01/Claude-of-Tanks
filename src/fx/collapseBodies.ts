@@ -161,6 +161,8 @@ interface LivePart {
   pose: Float64Array;
   /** Landings that kicked dust once it broke off (each part its own, not its piece's). */
   dusts: number;
+  /** Looked at once it first lay still: tipped over if it stood on its edge. */
+  tipped: boolean;
 }
 
 interface LivePiece {
@@ -178,6 +180,8 @@ interface LivePiece {
   /** Its kick given (at its release); its burst done (a panel the failure reached). */
   kicked: boolean;
   shattered: boolean;
+  /** Looked at once it first lay still: tipped over if it stood on its edge. */
+  tipped: boolean;
   /** The last pose written (to skip a still piece's matrices). */
   pose: Float64Array;
 }
@@ -234,6 +238,9 @@ const DRUM_SPIN = 1.0, DRUM_SCATTER = 2.6, DRUM_YAW = 1.8, ROOF_SPIN = 1.7, ROOF
 const DRUM_THROW_MAX = 4.5;
 /** The share of a cracking piece's spin its parts keep (the physics lane's: a break costs energy). */
 const CRACK_KEEP = 0.7;
+/** A slab at rest counts as standing on its edge when it reaches this many times its half thickness up; the shove that
+ *  tips it over (m/s at its top across its thin side, times its mass). */
+const STAND_TALL = 2.5, STAND_TIP_MPS = 0.9;
 
 /** A deterministic hash of three integers to [0, 1) (the presentation's own: a break looks the same on every client). */
 function hash01(a: number, b: number, c: number): number {
@@ -597,7 +604,13 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // (dcore 2026-10-11, wave 388a: "carton-like sections", "clean, saturated debris") a falling piece wears the grit of
     // its own break: its colour a third of the way to a greyed dust of itself (the remnant keeps the building's)
     const ci = layout.names.indexOf('color');
-    if (piece && ci >= 0 && layout.sizes[ci] >= 3) dustCoat(extra[ci], layout.sizes[ci], 0.35);
+    if (piece && ci >= 0 && layout.sizes[ci] >= 3) {
+      // (wave 407: "clean, saturated single bricks or uniform cubes") each part its own share of grit and its own value
+      const hv = hash01(key, plan.pieces.length, 31), hw = hash01(key, plan.pieces.length, 37);
+      dustCoat(extra[ci], layout.sizes[ci], 0.26 + 0.24 * hv);
+      const value = 0.86 + 0.2 * hw, col = extra[ci], size = layout.sizes[ci];
+      for (let i = 0; i + 2 < col.length; i += size) { col[i] *= value; col[i + 1] *= value; col[i + 2] *= value; }
+    }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
@@ -733,7 +746,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         for (const m of meshes) m.castShadow = big;
         const offset = new THREE.Vector3(off[0], off[1], off[2]);
         parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-          handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0 });
+          handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false });
       }
       if (!parts.some((pp) => pp.meshes.length)) continue;
       const spawn = pieceSpawn(piece, placement);
@@ -746,7 +759,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         continue;
       }
       const lp: LivePiece = { piece, com: [shape.com[0], shape.com[1], shape.com[2]], handle, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false, shattered: false,
-        pose: new Float64Array(7).fill(NaN) };
+        tipped: false, pose: new Float64Array(7).fill(NaN) };
       writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
       lc.pieces.push(lp);
       if (handle >= 0) byHandle.set(handle, { c: lc, p: lp, part: -1 });
@@ -754,6 +767,83 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     falling.add(anatomy.structureIdx);
     live.push(lc);
     profEnd('cb.bringDown', tProf);
+  }
+
+  /**
+   * (wave 407: "a timber door or infill panel stays standing upright on its edge at the right of the heap"; wave 409's
+   * near barn: a gate panel upright in front of the pile from 3.4 s to the end) a slab that comes to rest standing on its
+   * edge is shoved over once, across its thin side at its top: panels lie down on the heap. `half`: its extent from its
+   * frame's origin along its own axes. True when it was tipped.
+   */
+  function tipIfStanding(handle: number, half: readonly number[], massKg: number, salt: number): boolean {
+    if (!pool.framePoseAt(handle, pose)) return false;
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (half[k] < half[thin]) thin = k;
+    _q.set(pose[3], pose[4], pose[5], pose[6]);
+    _o.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_q);
+    // lying: its thin side faces up or down
+    if (Math.abs(_o.y) > 0.4) return false;
+    // standing: how high it reaches over its centre (its extents up the world's vertical)
+    let up = 0;
+    for (let k = 0; k < 3; k++) { _l.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += half[k] * Math.abs(_l.y); }
+    if (up < STAND_TALL * half[thin]) return false;
+    const hl = Math.hypot(_o.x, _o.z) || 1;
+    const j = massKg * STAND_TIP_MPS * (hash01(salt, handle, 11) < 0.5 ? -1 : 1) / hl;
+    pool.impulse(handle, _o.x * j, 0, _o.z * j, pose[0], pose[1] + up * 0.8, pose[2]);
+    return true;
+  }
+  /**
+   * (wave 407: "the roof comes down as big, perfectly flat, unbroken grey corrugated sheets ... nothing bends, folds or
+   * tears") a roof sheet cracking off where it struck buckles: it arches along its length away from what it lies on, and
+   * one in two folds up along a line across it (10-25 degrees, the line within the middle three fifths). Its drawn shape
+   * only: its body stays the sheet's box, so the arch and the fold rise off what it rests on, never into it. `q`: the
+   * piece's rotation at the break (which side faces down).
+   */
+  function buckleSheet(part: LivePart, half: readonly number[], q: THREE.Quaternion, salt: number): void {
+    let thin = 0, long = 0;
+    for (let k = 1; k < 3; k++) { if (half[k] < half[thin]) thin = k; if (half[k] > half[long]) long = k; }
+    if (thin === long) return;
+    const L = Math.max(0.3, 2 * half[long]);
+    // which way is up for it now: its thin axis in the world (a sheet on edge buckles either way)
+    _l.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(q);
+    const up = Math.abs(_l.y) > 0.3 ? Math.sign(_l.y) : (hash01(salt, 1, 21) < 0.5 ? -1 : 1);
+    const arch = up * Math.min(0.3, 0.08 * L) * (0.6 + 0.8 * hash01(salt, 2, 21));
+    const fold = hash01(salt, 3, 21) < 0.5;
+    const fAt = (hash01(salt, 4, 21) - 0.5) * 0.6 * L;
+    const fSide = hash01(salt, 5, 21) < 0.5 ? -1 : 1;
+    const fAng = up * (0.17 + 0.27 * hash01(salt, 6, 21));
+    for (const m of part.meshes) {
+      const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute, nrm = m.geometry.getAttribute('normal') as THREE.BufferAttribute;
+      if (!pos || !nrm) continue;
+      for (let i = 0; i < pos.count; i++) {
+        let pl = pos.getComponent(i, long), pt = pos.getComponent(i, thin);
+        let nl = nrm.getComponent(i, long), nt = nrm.getComponent(i, thin);
+        // the arch: up in the middle, the ends where they were; the normal turned with its slope
+        const u = Math.max(-1, Math.min(1, 2 * pl / L));
+        pt += arch * (1 - u * u);
+        const a = Math.atan(-arch * 4 * pl / (L * L) * 2);
+        let ca = Math.cos(a), sa = Math.sin(a);
+        [nl, nt] = [nl * ca - nt * sa, nl * sa + nt * ca];
+        // the fold: past its line (on its side) the sheet turns up about it
+        if (fold && (pl - fAt) * fSide > 0) {
+          const d = pl - fAt;
+          const g = fAng * fSide;
+          ca = Math.cos(g); sa = Math.sin(g);
+          [pl, pt] = [fAt + d * ca - pt * sa, d * sa + pt * ca];
+          [nl, nt] = [nl * ca - nt * sa, nl * sa + nt * ca];
+        }
+        pos.setComponent(i, long, pl); pos.setComponent(i, thin, pt);
+        nrm.setComponent(i, long, nl); nrm.setComponent(i, thin, nt);
+      }
+      pos.needsUpdate = true; nrm.needsUpdate = true;
+      m.geometry.computeBoundingSphere();
+    }
+  }
+  /** A piece's extent from its frame's origin along its axes (over its proxy boxes). */
+  function pieceHalf(piece: CollapsePiece): [number, number, number] {
+    const h: [number, number, number] = [0, 0, 0];
+    for (const b of piece.boxes) for (let k = 0; k < 3; k++) h[k] = Math.max(h[k], Math.abs(b.center[k]) + b.half[k]);
+    return h;
   }
 
   /** A panel's parts each into its own body: at their places on the panel now, with the panel's motion there. */
@@ -823,6 +913,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         x: pose[0] + _o.x + gx, y: pose[1] + _o.y + gy, z: pose[2] + _o.z + gz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
         vx, vy, vz, wx, wy, wz,
       });
+      if (kind === 'roof' && h >= 0) buckleSheet(part, spec.half, _q, sid * 977 + pid * 16 + k);
       if (keen && h >= 0) {
         // its landing's dust where it lies along the fall, and the broken masonry thrown off its broken ends
         // (wave 401: "a real fracture at the moment of impact ... a large dust burst, heaviest at the fast-moving top")
@@ -972,11 +1063,18 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
               if (pieceKick(p.piece, { yaw: c.yaw }, pose, impulse)) pool.impulse(p.handle, impulse[0], impulse[1], impulse[2], impulse[3], impulse[4], impulse[5]);
             }
             settle(p.handle, p);
+            if (!p.tipped && p.still > 0.25) { p.tipped = true; tipIfStanding(p.handle, pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index); }
           } else if (p.broken) {
-            for (const part of p.parts) {
+            for (let k = 0; k < p.parts.length; k++) {
+              const part = p.parts[k];
               if (part.handle < 0) continue;
               if (pool.framePoseAt(part.handle, pose)) writePart(part, pose);
               settle(part.handle, p);
+              const spec = p.piece.parts[k];
+              if (!part.tipped && spec && pool.asleep(part.handle) && age > p.piece.releaseS + 0.5) {
+                part.tipped = true;
+                tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k);
+              }
             }
           }
         }

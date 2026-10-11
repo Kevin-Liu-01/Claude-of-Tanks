@@ -114,6 +114,27 @@ function meanHeight(group, idx) {
   assert.ok(standing > 3 && lying < standing * 0.5, `it came down (its pieces' mean height ${standing.toFixed(2)} m standing, ${lying.toFixed(2)} m after 10 s)`);
   console.log(`  hessian/cottage: taken, its pieces' mean height ${standing.toFixed(2)} m standing -> ${lying.toFixed(2)} m after 10 s`);
 }
+// (wave 407: "the roof comes down as big, perfectly flat, unbroken grey corrugated sheets ... nothing bends, folds or
+// tears") a barn's roof sheets buckle as they crack off their slab: a sheet's drawn thickness (its geometry's least
+// extent) grows by its arch and its fold
+{
+  const seam = seamOf('kolkhoz', 'barn', [9, 16, 7], 7);
+  const { bodies, group } = bodiesOver();
+  assert.equal(bodies.collapse(seam, { structureId: 7, cause: 'blast', x: 0, y: 2, z: 8, dirX: 0, dirZ: -1 }, [], () => material), true,
+    'a barn comes down as bodies');
+  for (let i = 0; i < 12; i++) bodies.update(1 / 60);
+  const thinOf = (m) => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox; return Math.min(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z); };
+  const sheets = new Map();
+  for (const m of group.children) if (/^fx-collapse-roof-7-\d+\.\d+$/.test(m.name)) sheets.set(m, thinOf(m));
+  const total = sheets.size;
+  let buckled = 0;
+  for (let i = 0; i < 60 * 6; i++) {
+    bodies.update(1 / 60);
+    if (i % 15 === 0) for (const [m, t0] of sheets) if (m.parent && thinOf(m) > t0 + 0.08) { buckled++; sheets.delete(m); }
+  }
+  assert.ok(total >= 6 && buckled >= total / 2, `its roof's sheets buckle as they crack off (${buckled} of ${total})`);
+  console.log(`  kolkhoz/barn: ${buckled} of ${total} roof sheets buckled as they cracked off`);
+}
 // no storeys: the scripted collapse
 {
   const { bodies } = bodiesOver();
