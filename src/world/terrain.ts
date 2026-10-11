@@ -50,7 +50,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
-import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
+import { createGeologyRockSampler, createGeologyZoneSampler, knollCapWeight, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
@@ -442,6 +442,10 @@ interface SplatConfig {
    * third, the caprock is bare rock whatever its hollows, and the face carries vertical flutes of three widths in its
    * normal, honeycomb pits low on the near faces and desert-varnish streaks of every width down it. Absent = off. */
   jebelFace?: readonly [number, number, number];
+  /** The map-revival lane (Titan round 6, gauntlet wave 235: the butte caps' "vertical hair-like streaks"): on an arid map
+   * the far rock's varnish runs only down the steep faces, the level rock (a mesa's bare cap) keeping the skin's tone.
+   * Absent = off: the varnish on every far rock as before (the protected arid maps keep their pixels). */
+  varnishSteepOnly?: boolean;
   /** Ground lane (2026-10-05, mr2's Glacier round 2: "the col's steep and convex ground stays white"): on a snow map the
    * snow lies on the rock layer up to this slope (degrees), fading out by snowRockFadeDeg, and a crest (the fold
    * attribute's −1) loses it snowRockCrest of slope (1 − n.y) sooner, a hollow keeps it as much longer. Absent = today's
@@ -1471,6 +1475,11 @@ function* heightFieldBuildSteps(
 
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
+  // (the map-revival lane, Titan round 6: a level-capped knoll's table, landformGeology.ts capLevel) the cap's weight at
+  // the point the macro terrain last sampled, for the micro relief after it, and each such knoll's table level (the
+  // plain's base height at its centre plus its own height), taken once
+  let macroCapW = 0;
+  const capLevels = new Map<object, number>();
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
   const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
@@ -1534,6 +1543,7 @@ function* heightFieldBuildSteps(
     marshWeight: number,
   ): number {
     let spawnClear = 1;
+    macroCapW = 0;
     // Unlike the held decorative relief pilot, these are the actual support
     // heights from the first construction sample onward. Roads and pads below
     // therefore conform to the canyon instead of retaining obsolete mesa levels.
@@ -1593,6 +1603,20 @@ function* heightFieldBuildSteps(
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
       const add = sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
+      if (form.geology?.capLevel && form.kind === 'knoll') {
+        // the cap's table stands level over the plain's relief: the ground pulled to the knoll's own level by its weight
+        const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
+        const sn = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
+        const dx = x - form.x, dz = z - form.z;
+        const w = knollCapWeight(form, dx * c + dz * sn, -dx * sn + dz * c) * spawnClear * protect;
+        if (w > 0) {
+          let level = capLevels.get(form);
+          if (level === undefined) { level = baseTerrainHeight(form.x, form.z, 0, 0) + (form.height || 0); capLevels.set(form, level); }
+          h = (h + add) + (level - (h + add)) * w;
+          macroCapW = Math.max(macroCapW, w);
+          continue;
+        }
+      }
       // (the Redrock lane: a union's members stand as one rock, the greatest of them; unionTop stays 0 on every other map)
       if (form.union) { if (add > unionTop) unionTop = add; } else h += add;
     }
@@ -2048,7 +2072,7 @@ function* heightFieldBuildSteps(
       crest *= crest;
       let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
-      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
+      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale * (1 - macroCapW);
       // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
       const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
       if (tz) micro *= 1 - 0.85 * tz.weight;
@@ -2063,7 +2087,7 @@ function* heightFieldBuildSteps(
     {
       const m1 = noi.noise(x * 0.143 + 88, z * 0.143 - 141);
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
-      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;
+      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale * (1 - macroCapW);
     }
     // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
     if (sorStation >= 0) {
@@ -3942,6 +3966,7 @@ uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
+uniform float uVarnishSteep; // the map-revival lane (Titan round 6): 1 = the far rock's varnish only down steep faces (splat.varnishSteepOnly)
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
@@ -5114,7 +5139,14 @@ void splatCompute() {
     float rockL = reduxLuma(a.rgb);
     vec3 skin = mix(vec3(rockL), a.rgb, 0.50);
     skin = mix(skin, uMeanG.rgb * rockL / max(reduxLuma(uMeanG.rgb), 1e-3), 0.25);
-    a.rgb = mix(a.rgb, skin * (0.84 + 0.32 * varnish), rockFar);
+    // (the map-revival lane, Titan round 6, gauntlet wave 235: the butte caps' "vertical hair-like streaks") the varnish
+    // runs down a face's fall line, so it reads the wall projections — on level rock (a mesa's bare cap: fR 1, steepW 0)
+    // their height coordinate is constant and their axes and signs flip with the cap's least tilt, and the noise drew one
+    // stretched row across the cap; the streaks only where the face is steep, the skin's tone everywhere — on a map that
+    // asks (splat.varnishSteepOnly: uVarnishSteep 1, a uniform branch); every other map's far rock exactly as before
+    float varnishK = 0.84 + 0.32 * varnish;
+    if (uVarnishSteep > 0.5) varnishK = mix(1.0, varnishK, smoothstep(0.20, 0.42, slope));
+    a.rgb = mix(a.rgb, skin * varnishK, rockFar);
   }
   // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
   // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
@@ -7449,6 +7481,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
     // the Redrock lane, round 9: Wadi Rum's jebel faces (splat.jebelFace; absent = off)
     shader.uniforms.uJebelFace = { value: S.jebelFace ? new THREE.Vector4(1, ...S.jebelFace) : new THREE.Vector4(0, 0, 0, 0) };
+    // the map-revival lane (Titan round 6): the far rock's varnish only down the steep faces (splat.varnishSteepOnly)
+    shader.uniforms.uVarnishSteep = { value: S.varnishSteepOnly ? 1 : 0 };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uFormationLow = formationLowUniform; // the Redrock lane
     shader.uniforms.uFormationUp = formationUpUniform;

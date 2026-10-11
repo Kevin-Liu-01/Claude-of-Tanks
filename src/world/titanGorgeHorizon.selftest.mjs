@@ -18,8 +18,10 @@ const config = getMapConfig('titan_gorge');
 // follows the local slope, the talus aprons a 70 m mean, the cliff bound its neighbours), so a cap row's change reaches
 // the rows beside it. The cap pass's own laws below (its isolation against the opt-out, its round-47 shape gates) are
 // proven with both passes off (`escarpment: false`); the shipped ring answers to the escarpment's laws further down.
-const capOnlyConfig = { ...config, horizon: { ...config.horizon, escarpment: false } };
-const historicalConfig = { ...config, horizon: { ...config.horizon, finiteTableCaps: false, escarpment: false } };
+// (2026-10-06, the map-revival lane's Titan round 4: the outer ranges' summit caps (horizonTablelands.ts) come after
+// both passes, so the cap pass's fixtures leave them off too; the shipped ring below carries them)
+const capOnlyConfig = { ...config, horizon: { ...config.horizon, escarpment: false, summitCap: undefined } };
+const historicalConfig = { ...config, horizon: { ...config.horizon, finiteTableCaps: false, escarpment: false, summitCap: undefined } };
 
 function capSurfaces(ring) {
   const p = ring.positions, y = (row, c) => p[(row * n + c) * 3 + 1];

@@ -65,6 +65,9 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
       // the classic rim the authoring queries keep (the stub's own rim) and the road grades' landform pass (off here)
       clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false,
+      // the map-revival lane (2026-10-07, Titan round 6): the level-capped knolls' table weight the macro terrain leaves
+      // for the micro relief (landformGeology.ts capLevel); this fixture's macro terrain authors none
+      macroCapW = 0,
       // the map-revival lane (2026-10-05, Orchard Valley): the contour terraces' zones (terrain.terraces); the standard
       // fixture authors none, so the micro-relief's terrace term reads nothing
       terraceZones = [] } = fixture;

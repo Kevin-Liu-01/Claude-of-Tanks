@@ -199,6 +199,9 @@ function checkSourceContract(text) {
     // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch;
     // scalar, no sampler)
     'uThatch',
+    // the map-revival lane (Titan round 6, landed 2026-10-09): the far rock's varnish only down the steep faces on a map
+    // that asks (splat.varnishSteepOnly; scalar, no sampler)
+    'uVarnishSteep',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
