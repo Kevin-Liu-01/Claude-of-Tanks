@@ -926,6 +926,14 @@ after three fresh links; a seat closed by a 2 s window re-offers once and is wel
 again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed — on main each of
 the four ends the seat (HELLO_REQUIRED twice, `handshaking`, REPLACED).
 
+**A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
+loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
+waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",
+two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
+match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
+`browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
+it is still entering).
+
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
 content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and
