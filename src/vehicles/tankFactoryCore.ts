@@ -9241,21 +9241,6 @@ function* createTankOwnedSteps(
     liveBentGun.length = 0;
   }
 
-  /** (fx 8p, wave 356's critic on a plain kill: the burn read "a material swap, not fire damage") the kill's char waits
-   *  for the fire to take hold, then spreads out of the turret ring across the hull, a cook-off's fire faster than a
-   *  plain kill's or a burn-out's (materials.ts BURN_DIFFUSE_GLSL reads uBurnO and uBurnK) */
-  const BURN_CHAR_DELAY_S = 1.0, BURN_SPREAD_COOKOFF_S = 5.0, BURN_SPREAD_PLAIN_S = 8.0;
-  /** The hull's reach from the turret ring (m): its footprint's farthest corner. */
-  const burnReachM = Math.hypot(0.5 * spec.dims.hullLengthM + Math.abs(armor.turretPivot[2]),
-    0.5 * spec.dims.widthM + Math.abs(armor.turretPivot[0]));
-  /** The burn's heat (after dcore's wave 350 fix: "embers should glow and fade, not sit as static dots"): none until the
-   *  fire takes hold, up as the char comes, then cooling to nothing (no floor: a cold wreck has no glowing specks). */
-  function emberHeat(ageS: number): number {
-    const t = ageS - BURN_CHAR_DELAY_S;
-    if (!(t > 0)) return 0;
-    return 0.95 * Math.min(1, t / 0.8) * Math.exp(-t / 7);
-  }
-
   function startWreckPresentation(ageS: number, pop: boolean): void {
     burnU.uBurnLo.value = root.position.y + 0.15;
     burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
@@ -9275,6 +9260,22 @@ function* createTankOwnedSteps(
     wreckSeat.copy(turretG.position);
     wreckSeatScale.copy(turretG.scale);
     popYaw0 = turretG.rotation.y;
+  }
+
+  // (declared after startWreckPresentation, which only runs at a kill, long after the visual's build has run these)
+  /** (fx 8p, wave 356's critic on a plain kill: the burn read "a material swap, not fire damage") the kill's char waits
+   *  for the fire to take hold, then spreads out of the turret ring across the hull, a cook-off's fire faster than a
+   *  plain kill's or a burn-out's (materials.ts BURN_DIFFUSE_GLSL reads uBurnO and uBurnK) */
+  const BURN_CHAR_DELAY_S = 1.0, BURN_SPREAD_COOKOFF_S = 5.0, BURN_SPREAD_PLAIN_S = 8.0;
+  /** The hull's reach from the turret ring (m): its footprint's farthest corner. */
+  const burnReachM = Math.hypot(0.5 * spec.dims.hullLengthM + Math.abs(armor.turretPivot[2]),
+    0.5 * spec.dims.widthM + Math.abs(armor.turretPivot[0]));
+  /** The burn's heat (after dcore's wave 350 fix: "embers should glow and fade, not sit as static dots"): none until the
+   *  fire takes hold, up as the char comes, then cooling to nothing (no floor: a cold wreck has no glowing specks). */
+  function emberHeat(ageS: number): number {
+    const t = ageS - BURN_CHAR_DELAY_S;
+    if (!(t > 0)) return 0;
+    return 0.95 * Math.min(1, t / 0.8) * Math.exp(-t / 7);
   }
 
   function launchDestroyedTurret(pop: boolean, ageS: number, explicitAge: boolean): void {
