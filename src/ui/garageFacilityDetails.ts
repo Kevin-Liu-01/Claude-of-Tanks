@@ -1803,21 +1803,24 @@ export function addGarageFacilityDetails({
       ));
     }
     if (texture && blots.length) {
+      // one merged, non-instanced decal mesh on the stock map + transparent program the bays' grime decals already use,
+      // so it adds no shader program
       const material = new THREE.MeshBasicMaterial({
         map: texture, color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
       material.name = 'garage-facility:contact-shadow';
       materials.push(material);
-      const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, blots.length);
+      const quads = blots.map((matrix) => new THREE.PlaneGeometry(1, 1).applyMatrix4(matrix));
+      const merged = mergeGeometries(quads, false);
+      for (const quad of quads) quad.dispose();
+      const mesh = new THREE.Mesh(merged ?? new THREE.PlaneGeometry(0, 0), material);
       mesh.name = 'garage_facility_contact_shadows';
-      blots.forEach((matrix, index) => mesh.setMatrixAt(index, matrix));
-      mesh.instanceMatrix.needsUpdate = true;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
       mesh.renderOrder = 1;
-      mesh.computeBoundingBox();
-      mesh.computeBoundingSphere();
+      mesh.geometry.computeBoundingBox();
+      mesh.geometry.computeBoundingSphere();
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       meshes.push(mesh);
