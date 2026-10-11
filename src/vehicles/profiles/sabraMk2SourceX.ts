@@ -262,21 +262,24 @@ function buildSabraCupola(P: TankBuilderPort, py: number, pz: number): void {
   optic(P,-.5758,2.972,-.0975,.326,.1406,.1509);
 }
 
-/** The cupola M2's pintle socket (hull frame): its top, where the gun's own pintle stands, on the cap's forward slope. */
-export const SABRA_CUPOLA_M2_SOCKET: readonly [number, number, number] = [-.5059, 2.875, .45];
+/** The cupola M2's pintle socket top (hull frame): a boss on the turret roof just ahead of the cupola. */
+export const SABRA_CUPOLA_M2_SOCKET: readonly [number, number, number] = [-.5059, 2.58, .80];
 
 function buildSabraCupolaWeapon(P: TankBuilderPort, py: number, pz: number): void {
-  // Source cupola weapon and receiver, seated to the raised structural cupola.
-  turretEquipment(P,'turretDetail',box(.12,.11,.33),-.5059,2.778,.36);
   // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
   // updating machine guns and stuff"): the cupola's M2 is the fleet's Browning construction (machineGunGeometry.ts).
   // Round 3 (wave 345's critics: the receiver "parked on the shoulder of the dome" with "no pintle or cradle under it, no
   // spade grips or charging handle behind it and no ammunition can beside it"): the crew M2 stands on its own pintle and
-  // cradle, with its spade grips, charging handle and ammunition can, in a socket boss on the cap's forward slope on the
-  // source barrel's line (x -0.5059). The pintle lifts the gun clear of the dome and the barrel clear of the smoke-tube
-  // banks below the turret front. One gun, one fitting.
+  // cradle, with its spade grips, charging handle and ammunition can.
+  // 2026-10-11 (round 3c): the pintle stands in a boss on the turret roof just ahead of the cupola, on the source
+  // barrel's line (x -0.5059), not on the dome. On the dome the pintle lifted the gun 0.26 m above the source silhouette
+  // (the geometry gate's height: 3.29 m against the source's 3.06 m), and the critics asked for a cradle and grips "at
+  // the gun's current height ... not raising" it. On the roof the barrel rides 11 cm over the source barrel's axis, the
+  // grips stand clear in front of the dome and the gun's top stays under the cupola crown. The study's receiver block on
+  // the lip went with it: the fleet M2 replaced that block in round 2 and nothing stands on it now. One gun, one fitting.
   const socket=SABRA_CUPOLA_M2_SOCKET;
-  turretEquipment(P,'turretDetail',cylY(.047,.056,.05,P.q?16:10),socket[0],socket[1]-.025,socket[2]);
+  // The boss foot sits 4 mm into the sloping roof plate (2.524-2.544 m under its footprint).
+  turretEquipment(P,'turretDetail',cylY(.047,.056,.06,P.q?16:10),socket[0],socket[1]-.03,socket[2]);
   const roofGun=FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',ammo:true,seed:2741});
   roofGun.position.set(socket[0],socket[1]-py,socket[2]-pz);
   roofGun.name='sabraSourceCupolaWeapon';

@@ -57,11 +57,18 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       assert.equal(roofWeapons.length,1,`${id}: exactly one real roof weapon fitting`);
       assert.equal(roofWeapons[0].parent,turretRig,`${id}: roof weapon remains turret-owned`);
       // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
-      // updating machine guns and stuff"): the arm's gun is the fleet's GPMG construction carried by the source's angled
-      // support (an external cradle), with its muzzle at the source muzzle, in place of the receiver box and box barrel
-      assert.equal(roofWeapons[0].userData.weaponClass,'mag',`${id}: the arm carries a 7.62 mm GPMG`);
-      assert.equal(roofWeapons[0].userData.mount,'external-cradle',`${id}: the angled support carries it`);
+      // updating machine guns and stuff"): the roof gun is the fleet's GPMG construction in place of the receiver box and
+      // box barrel. 2026-10-11 (round 3c): it stands on its own pintle with its ammunition box, in a socket collar on a
+      // short bracket at the seated foot (source x -0.976), its top within the source's side silhouette (the geometry
+      // gate's height: the source's 2.99 m and a 2% floor).
+      assert.equal(roofWeapons[0].userData.weaponClass,'mag',`${id}: the roof carries a 7.62 mm GPMG`);
+      assert.equal(roofWeapons[0].userData.mount,undefined,`${id}: the GPMG stands on its own pintle`);
+      assert.equal(roofWeapons[0].userData.hasConnectedFeed,true,`${id}: its ammunition box feeds it`);
       assert.ok(roofWeapons[0].getObjectByName('browningDerivedMachineGunBody')?.isMesh,`${id}: the fleet GPMG body is drawn`);
+      const gunBox=new THREE.Box3().setFromObject(roofWeapons[0]);
+      assert.ok(Math.abs(gunBox.min.y-2.7238)<.002&&Math.abs((gunBox.min.x+gunBox.max.x)/2+.976)<.12,
+        `${id}: the pintle stands in its collar on the foot's bracket (${gunBox.min.y})`);
+      assert.ok(gunBox.max.y<2.9893*1.02,`${id}: the gun's top stays within the source silhouette (${gunBox.max.y})`);
     } else {
       assert.equal(turretRig.userData.barakSensorReceipt, undefined,
         `${id}: non-Barak vehicles do not inherit Barak-only sensors`);

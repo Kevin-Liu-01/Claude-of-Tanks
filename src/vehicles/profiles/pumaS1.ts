@@ -421,7 +421,9 @@ function addTurret(P: PumaS1BuilderPort): void {
   // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: "a thin plain-grey rod as long as the gun runs from
   // the mantlet across the lower left beside the barrel"): the coax's barrel runs inside the cradle and stands 0.19 m
   // proud of its front with its flash hider, as a coaxial machine gun does; it was a 1.95 m rod out to the cannon's muzzle.
-  P.addGunExtraDark(cylZ(0.019, 0.87, 12), 0.20, -0.025, 1.185);
+  // The barrel ends 2 cm inside its hider: a barrel cap flush with the hider's face is a duplicated disc (the
+  // circular-cap lint).
+  P.addGunExtraDark(cylZ(0.019, 0.85, 12), 0.20, -0.025, 1.175);
   P.addGunExtraDark(cylZ(0.025, 0.05, 12), 0.20, -0.025, 1.595);
   muzzleTipDot(P, 0.20, -0.025, 1.62, 0.012, { parent: 'gunG' });
   P.gunG.userData.pumaS1OpenGunCradleReceipt = Object.freeze({

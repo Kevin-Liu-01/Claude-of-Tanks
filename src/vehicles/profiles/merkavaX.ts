@@ -811,8 +811,8 @@ function addBarakRearStowage(P: TankBuilderPort): void {
   addBarakBasket(P);
 }
 
-/** The Barak roof GPMG's socket collar top (source frame), on the pintle arm's outboard end. */
-export const BARAK_ARM_GPMG_SOCKET: readonly [number, number, number] = [-.976, 2.98, -.86];
+/** The Barak roof GPMG's socket collar top (source frame), on the bracket outboard of the seated foot. */
+export const BARAK_ARM_GPMG_SOCKET: readonly [number, number, number] = [-.976, 2.7238, -.86];
 
 function addBarakRearMissionModule(P: TankBuilderPort): void {
   // The source rear is a closed roof terminating ahead of an open cage.
@@ -824,15 +824,17 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
   // updating machine guns and stuff"): the arm's 7.62 mm gun is the fleet's GPMG construction (machineGunGeometry.ts:
   // receiver with feed cover, gas cylinder, handle, pistol grip and butt, flash hider). Round 3 (wave 345's critics: "a
-  // dark slab juts diagonally from under the receiver and drives into the roof like a clipping plate", the barrel
-  // "threads straight through the cluster of four grey tubes"): the angled support is replaced by a real pintle arm, an
-  // upright post on the seated square foot and a short arm outboard to the gun's socket collar, and the gun stands in its
-  // own cradle and pintle with its ammunition box, high enough that the barrel clears the tube cluster. One gun, one
-  // fitting, no second roof weapon.
-  const [ax,ay,az]=BARAK_ARM_GPMG_SOCKET, postX=-.77, footTop=2.6429+.1518/2, armBottom=ay-.05;
-  topPart(P,MK4,'turretOpenLatticeDark',KIT.cylY(.030,.037,armBottom-footTop,P.q?14:10),postX,(armBottom+footTop)/2,az);
-  topPart(P,MK4,'turretOpenLatticeDark',box(postX-ax+.07,.045,.06),(postX+ax)/2,armBottom+.0225,az);
-  topPart(P,MK4,'turretOpenLatticeDark',cylY(.042,.02,P.q?16:12),ax,ay-.01,az);
+  // dark slab juts diagonally from under the receiver and drives into the roof like a clipping plate"): the angled
+  // support is gone and the gun stands in its own cradle and pintle with its ammunition box.
+  // 2026-10-11 (round 3c): the pintle's socket collar sits on a short bracket welded to the seated foot's outboard face,
+  // on the source barrel's line (x -0.976), with the bracket's top just under the foot's. Round 3's upright post and
+  // arm lifted the gun 0.26 m above the source silhouette (the geometry gate's height: 3.26 m against the source's
+  // 2.99 m) and read as a thick blocky L; on the bracket the barrel rides 3 cm over the source barrel's axis. The bracket
+  // and collar are the foot's painted steel. One gun, one fitting, no second roof weapon.
+  const [ax,ay,az]=BARAK_ARM_GPMG_SOCKET, footX=-.7176, footHalfX=.2910/2;
+  const bracketTop=ay-.02, bracketIn=footX-footHalfX+.013, bracketOut=ax-.045;
+  topPart(P,MK4,'turretDetail',box(bracketIn-bracketOut,.045,.07),(bracketIn+bracketOut)/2,bracketTop-.0225,az);
+  topPart(P,MK4,'turretDetail',cylY(.042,.02,P.q?16:12),ax,ay-.01,az);
   const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417});
   roofWeapon.position.set(ax,ay-MK4.y,az-MK4.z);
   roofWeapon.name='merkava4BarakArmWeapon';
