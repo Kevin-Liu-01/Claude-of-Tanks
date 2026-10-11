@@ -266,6 +266,75 @@ export const path: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
 };
 
+/**
+ * A mill's outfall (Polders round 2, the gauntlet: the mills "need a mound, a yard and a link to the water"): where the
+ * drain under a mill's terp comes out, a brick headwall at the top of the bank with the culvert's round mouth in its face,
+ * and the runnel below it pitched in stone down the bank to the water, its kerbs a course higher, the wet down its middle.
+ * The headwall stands at the piece's -z end, the runnel runs `length` metres along +z. Dressing: no solid.
+ */
+export const outfall: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.5, Number(ctx.params.width));
+  const z0 = -L / 2, z1 = L / 2, ground = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  // the headwall: brick across the runnel's head, its coping proud of it, its face (+z) toward the water
+  const half = w / 2 + 0.45, g0 = Math.min(ground(-half, z0), ground(half, z0), ground(0, z0)), top = g0 + 0.95;
+  sink.span('stone', -half, g0 - 0.35, z0 - 0.38, half, top, z0, { decor: true });
+  sink.span('stone', -half - 0.06, top, z0 - 0.44, half + 0.06, top + 0.1, z0 + 0.06, { decor: true, shade: 0.9 });
+  // the mouth: a dark disc a hair proud of the face, ringed by its voussoirs
+  const r = Math.min(0.34, w * 0.42), cy = g0 + 0.12 + r, n = 12, zf = z0 + 0.006;
+  const ringAt = (k: number, rr: number, dz: number): Vec3 => [Math.cos(k / n * Math.PI * 2) * rr, cy + Math.sin(k / n * Math.PI * 2) * rr, zf + dz];
+  const disc: Vec3[] = [];
+  for (let k = 0; k < n; k++) disc.push(ringAt(k, r, 0));
+  sink.polygon('dark', disc, { decor: true });
+  for (let k = 0; k < n; k++) {
+    sink.quad('stone', ringAt(k, r, 0.01), ringAt(k, r + 0.14, 0.03), ringAt(k + 1, r + 0.14, 0.03), ringAt(k + 1, r, 0.01), { decor: true, shade: 0.8 });
+  }
+  // the runnel: pitched stone from the headwall's foot down the bank, its kerbs, and the wet down its middle
+  drapedPath(sink, 'stone', ctx.ground, [0, z0 + 0.02], [0, z1], w, { lift: 0.04, emit: { shade: 0.86 } });
+  for (const sx of [-1, 1]) drapedPath(sink, 'stone', ctx.ground, [sx * (w / 2 + 0.09), z0], [sx * (w / 2 + 0.09), z1], 0.18, { lift: 0.085 });
+  drapedPath(sink, 'structureWood', ctx.ground, [0, z0 + 0.02], [0, z1], Math.max(0.16, w * 0.3), { lift: 0.05, emit: { colour: WET_RUNNEL } });
+  return { parts: sink.finish() };
+};
+const WET_RUNNEL: Rgb = rgb(0x2b3330);
+// ---------------------------------------------------------------------------------------------------------- piazza
+
+/**
+ * A town's paved square (the landmarks lane, 2026-10-07, Saltwind round 4: the campanile's piazza was "a thin raised
+ * sheet… ends in a straight hard edge on bare dirt"; it needs "a kerb, thickness and contact"): the map's masonry flags
+ * draped a step over the ground inside a kerb of dressed blocks round its edge — each block its own length and tone,
+ * a hand proud of the flags, its outer face carried down past the ground's lowest point under it, so the square is set
+ * into the field rather than laid on it. The frame: `width` across x, `depth` along z, the kerb's outside the outline.
+ * Dressing: a hull drives over it as over the ground.
+ */
+export const piazza: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(4, Number(ctx.params.width)), D = Math.max(4, Number(ctx.params.depth)), K = Math.max(0.2, Number(ctx.params.kerb) || 0.38);
+  const ground = ctx.ground ?? ((): number => 0);
+  const FLAGS = 0.12, KERB_TOP = 0.17, FOOT = 0.35, JOINT = 0.012, look = ctx.variant;
+  // the flags, a step over the ground inside the kerb (their skirts behind it)
+  drapedRect(sink, 'stone', ctx.ground, { cx: 0, cz: 0, hw: W / 2 - K, hd: D / 2 - K }, { lift: FLAGS, cell: 1.5, skirt: 0.25 });
+  /** One kerb block over the rectangle [x0, x1] × [z0, z1]: from under its lowest ground to a hand over its highest. */
+  const block = (x0: number, x1: number, z0: number, z1: number) => {
+    const gs = [ground(x0, z0), ground(x1, z0), ground(x1, z1), ground(x0, z1)];
+    const tone = 0.9 + look() * 0.16;
+    sink.span('stone', x0, Math.min(...gs) - FOOT, z0, x1, Math.max(...gs) + KERB_TOP, z1, { decor: true, tint: [tone, tone * 0.99, tone * 0.96] });
+  };
+  /** A run of blocks from a to b along one axis (0.9 to 1.5 m each, a joint between). */
+  const run = (a: number, b: number, at: (t0: number, t1: number) => void) => {
+    for (let t = a; t < b - 0.05;) {
+      const t1 = Math.min(b, t + 0.9 + look() * 0.6);
+      at(t, b - t1 < 0.4 ? b : t1);
+      t = (b - t1 < 0.4 ? b : t1) + JOINT;
+    }
+  };
+  // the long runs on the front and back carry the corners; the sides run between them
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, D / 2 - K, D / 2));
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, -D / 2, -D / 2 + K));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(W / 2 - K, W / 2, t0, t1));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(-W / 2, -W / 2 + K, t0, t1));
+  return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
+};
+
 // ---------------------------------------------------------------------------------------------------------- churchyard
 
 const GREEN_IRON = rgb(0x4f7d5a);

@@ -53,7 +53,8 @@ export const obelisk: LandmarkBuilder = (ctx) => {
   revolve(sink, body, 0, 0, [[b0 * Math.SQRT1_2, shaftY], [b1 * Math.SQRT1_2, shaftY + shaftH], [0, shaftY + shaftH + b1 * 1.1]], 4, {}, Math.PI / 4);
   const top = shaftY + shaftH + b1 * 1.1;
   if (finial === 'star') {
-    sink.span('structureMetal', -0.03, top - 0.05, -0.03, 0.03, top + 0.35, 0.03, { colour: IRON, decor: true });
+    // (the mast runs up into the star and holds it at its middle)
+    sink.span('structureMetal', -0.03, top - 0.05, -0.03, 0.03, top + 0.35 + 0.42, 0.03, { colour: IRON, decor: true });
     star(sink, 'structureMetal', 0, top + 0.35 + 0.42, 0, 0.42, 0.08, { colour: STAR_RED, decor: true });
   } else if (finial === 'cross' || finial === 'latin') {
     cross(sink, 'structureMetal', 0, top - 0.05, 0, 1.0, finial === 'cross' ? 'orthodox' : 'latin', GILT);
@@ -80,7 +81,8 @@ export function figure(sink: PartSink, y: number, h: number, metal: Rgb, dark: R
   const head = h / 7.5;
   const col = { colour: metal }, colD = { colour: dark };
   // the coat or robe: a skirt flaring to the ankles, the torso, the shoulders
-  const hem = pose === 'robe' ? h * 0.02 : h * 0.16;
+  // (a robe reaches its base, set a centimetre into it; a coat stops over the boots)
+  const hem = pose === 'robe' ? -0.01 : h * 0.16;
   revolve(sink, 'structureMetal', 0, 0, [[h * 0.13, y + hem], [h * 0.11, y + h * 0.45], [h * 0.095, y + h * 0.62], [h * 0.12, y + h * 0.78],
     [h * 0.07, y + h * 0.82], [0, y + h * 0.83]], 10, col);
   if (pose !== 'robe') {
@@ -181,7 +183,8 @@ export const memorialWall: LandmarkBuilder = (ctx) => {
   }
   // the pylon with its star
   sink.span('stone', -pw / 2, terrace, wallZ - t, pw / 2, terrace + ph, wallZ + t);
-  moulding(sink, 'stone', pw, t * 2, terrace + ph - 0.25, 0.25, 0.1);
+  // (the pylon's cornice on the pylon: it was drawn round the piece's origin, a metre and a half in front of it)
+  sink.placed(0, 0, 0, wallZ, () => moulding(sink, 'stone', pw, t * 2, terrace + ph - 0.25, 0.25, 0.1));
   star(sink, 'structureMetal', 0, terrace + ph * 0.72, wallZ + t + 0.05, pw * 0.3, 0.08, { colour: GILT, decor: true });
   // the eternal flame: a five-pointed bowl before the steps, the flame in it (it glows at night)
   if (ctx.params.flame !== false) {
@@ -189,8 +192,9 @@ export const memorialWall: LandmarkBuilder = (ctx) => {
       // the bowl lies flat: a star turned face up (its depth along y)
       for (let i = 0; i < 5; i++) {
         const a = i * Math.PI * 2 / 5, b = a + Math.PI / 5, c = a - Math.PI / 5;
-        sink.prism('stone', [[0, 0.12, 0], [Math.sin(c) * 0.38, 0.12, Math.cos(c) * 0.38], [Math.sin(a) * 0.95, 0.12, Math.cos(a) * 0.95], [Math.sin(b) * 0.38, 0.12, Math.cos(b) * 0.38]],
-          [0, 1, 0], 0.24);
+        // (the bowl stands on the forecourt, a hand into it: it hovered 12 cm over it)
+        sink.prism('stone', [[0, -0.03, 0], [Math.sin(c) * 0.38, -0.03, Math.cos(c) * 0.38], [Math.sin(a) * 0.95, -0.03, Math.cos(a) * 0.95], [Math.sin(b) * 0.38, -0.03, Math.cos(b) * 0.38]],
+          [0, 1, 0], 0.39);
       }
     });
     revolve(sink, 'curtain', 0, 3.6, [[0.22, 0.36], [0.14, 0.7], [0.0, 1.0]], 6, { decor: true, window: [0, 1, 0] });
@@ -223,7 +227,8 @@ export const equestrianStatue: LandmarkBuilder = (ctx) => {
   // the legs: the near foreleg raised, the others planted
   const leg = (x: number, z: number, raised: boolean) => {
     const top: Vec3 = [x, belly, z], knee: Vec3 = raised ? [x, belly - wither * 0.25, z + 0.35 * S] : [x, belly - wither * 0.32, z + 0.02];
-    const hoof: Vec3 = raised ? [x, belly - wither * 0.42, z + 0.2 * S] : [x, y + 0.05, z - 0.05];
+    // (a planted hoof stands on the plinth, a hand's breadth into its cap: the bronze is set in lead there)
+    const hoof: Vec3 = raised ? [x, belly - wither * 0.42, z + 0.2 * S] : [x, y - 0.02, z - 0.05];
     sink.member('structureMetal', top, knee, 0.2 * S, 0.22 * S, [1, 0, 0], { ...col, exposed: true }, 0.11 * S);
     sink.member('structureMetal', knee, hoof, 0.13 * S, 0.14 * S, [1, 0, 0], { ...dark, exposed: true }, 0.07 * S);
   };
