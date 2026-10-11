@@ -9,7 +9,7 @@
 // The piece's front (+z) is the west front with the door; the sanctuary lies toward -z. Every member meets another
 // (kitConnectivity): the courses and the shingle lines are dressing on their walls and planes, the brackets meet the
 // wall and the skirt, the cupolas stand on their tiers.
-import { PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type EmitOptions, type Rgb } from '../maps/regional/geometry.ts';
 import { cross, dome, revolve } from './kit.ts';
 import { pentRing } from './stave.ts';
 import type { LandmarkBuilder } from './types.ts';
