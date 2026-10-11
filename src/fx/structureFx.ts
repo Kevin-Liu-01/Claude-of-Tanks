@@ -237,13 +237,15 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
   // (dcore 2026-10-11, waves 385/388a: "bright, undusted, same-size bricks", "glowing orange-yellow dots" for 8 s) a
   // broken piece comes off coated in its own grit: a third of its colour greyed, and once it lands it lies in the heap's
   // shade (the dust coat darkens it by 45 %), never a lit dot
+  // (the decisive wave's third head: orange specks still lit on the ruin at 11 s) nearly half its colour greyed, and once
+  // landed two thirds darker
   const lum0 = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
-  k.r = k.r * 0.68 + lum0 * 0.32; k.g = k.g * 0.68 + lum0 * 0.32; k.b = k.b * 0.68 + lum0 * 0.32;
-  k.heat = -0.45;
+  k.r = k.r * 0.55 + lum0 * 0.45; k.g = k.g * 0.55 + lum0 * 0.45; k.b = k.b * 0.55 + lum0 * 0.45;
+  k.heat = -0.65;
   // (the battle strips: a stack's burst strewed the yard with white confetti) a sunlit fleck of plaster or tile reads as
   // paper: no thrown piece brighter than weathered render
   const lum = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
-  if (lum > 0.16) { const q = 0.16 / lum; k.r *= q; k.g *= q; k.b *= q; }
+  if (lum > 0.14) { const q = 0.14 / lum; k.r *= q; k.g *= q; k.b *= q; }
   C.chunk(k);
 }
 
