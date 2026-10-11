@@ -8227,6 +8227,11 @@ ${snowCap ? `
       const wreckGeos: THREE.BufferGeometry[] = [];
       const wreckShadowGeos: THREE.BufferGeometry[] = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
+      // the placed hulks' triangle budget: no hulk is requested once the map's placed hulks pass it (2026-10-10, the
+      // destruction core with the coordinator's approval: 260k -> 300k, since the wreck crumple bisects a hulk's dented
+      // plates (wreckCrumple.ts refineForCrumple, about a sixth more triangles a hulk) and 260k had begun to stop one
+      // hulk sooner on urban, frontier, badlands, caldera and titan_gorge: every map places the hulks it did before)
+      const WRECK_TRIS_BUDGET = 300000;
       let wreckSerial = 0;
       let wreckPickSerial = 0;
       function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
@@ -8390,7 +8395,7 @@ ${snowCap ? `
         // Story-critical wrecks mark crossfires and failed assaults at authored
         // lane anchors before the seeded road pass supplies organic variation.
         for (const beat of P.tacticalBeats || []) {
-          if (!beat.wreck || placedW >= wreckCount || bakedTris > 260000) continue;
+          if (!beat.wreck || placedW >= wreckCount || bakedTris > WRECK_TRIS_BUDGET) continue;
           const yawW = THREE.MathUtils.degToRad(beat.wreckYawDeg ?? beat.yawDeg ?? 0);
           if (yield* placeWreck(beat.x + (beat.wreckOffsetX || 0),
             beat.z + (beat.wreckOffsetZ || 0), yawW)) {
@@ -8455,7 +8460,7 @@ ${snowCap ? `
           const count = authoredRoadStationCount(L, ri);
           for (let i = 5; i < count - 1 && placedW < wreckCount;
             i += 3 + ((wrng() * 2) | 0)) {
-            if (bakedTris > 260000) break;
+            if (bakedTris > WRECK_TRIS_BUDGET) break;
             yield* tryPlaceRoadWreck(ri, i);
           }
         }
