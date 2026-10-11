@@ -6,7 +6,8 @@
 //     drawn again from its cells, with a hole where the round struck: less wall there, the reveal across the thickness;
 //   - what the round knocks through flies as bodies along it, what loses its load path falls as bodies; they come to
 //     rest on the ground and are baked where they lie (never faded); a dark room stands behind the holed storey;
-//   - damage adds up across rounds; the reset stands the building up byte for byte; the same rounds break it the same.
+//   - damage adds up across rounds; the reset stands the building up byte for byte; the same rounds break it the same;
+//   - a front breached along its foot leans out off it: nothing of what fell stands in the wall's plane.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from '../world/maps/regional/index.ts';
@@ -158,10 +159,37 @@ const log = () => {
   return out;
 };
 assert.equal(log(), log(), 'deterministic');
+// (wave 397: "the whole front hangs in its own plane as a staggered mosaic of loose rectangular panels" for a second) a
+// front breached along its foot leans out off it: within a second and a half nothing of what fell stands in the wall's
+// plane, and the pieces lie out from the face, the higher ones further
+let leanOut = 0;
+{
+  bucket.attributes.position.array.set(before);
+  const q = rig(seam);
+  for (const u of [-2.4, -0.8, 0.8, 2.4]) { const [bx, by, bz] = at(u, 0.5); q.fracture.strike(seam, bx, by, bz, into[0], into[1], 'he', 2.5, 152); }
+  q.fracture.flush();
+  const v = new THREE.Vector3();
+  const pieces = () => q.group.children.filter((m) => !m.userData.structureFractureFace && m.geometry?.getAttribute('position')?.count >= 6).map((m) => {
+    const p = m.geometry.getAttribute('position'), c = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) c.add(v.fromBufferAttribute(p, i).applyMatrix4(m.matrix));
+    c.divideScalar(p.count);
+    return [(c.x - front.origin[0]) * front.out[0] + (c.z - front.origin[2]) * front.out[2], c.y];
+  });
+  const fell = pieces().length;
+  assert.ok(fell >= 8, `the storey over the breach falls as bodies (${fell})`);
+  q.step(1.5);
+  const now = pieces();
+  const standing = now.filter(([out, y]) => Math.abs(out) < 0.6 && y > 0.8).length;
+  assert.equal(standing, 0, `nothing that fell stands in the wall's plane after 1.5 s (${standing} of ${now.length})`);
+  const outs = now.map(([out]) => out).sort((a, b) => a - b);
+  leanOut = outs[Math.floor(outs.length / 2)];
+  assert.ok(leanOut > 1, `what fell lies out from the face (median ${leanOut.toFixed(2)} m)`);
+  q.fracture.reset(); q.restore();
+}
 // a point off every wall breaks nothing
 assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), null, 'a burst off the building breaks no face');
 console.log = log0;
 assert.deepEqual(outside, [], 'every body draws inside its parts');
 console.log(`structureFracture.selftest: a round on a cottage's front face took it out of the bucket (${after.flat - whole.flat} triangles), `
   + `drew it again with its hole (${drawn.toFixed(1)} m2), threw ${s0.bodies} bodies that came to rest (${s1.baked} baked, ${r.landings.length} landings), `
-  + 'a second round widened it, the reset stood it up byte for byte, the same twice');
+  + `a second round widened it, the reset stood it up byte for byte, a front breached along its foot leaned out (median ${leanOut.toFixed(1)} m out), the same twice`);

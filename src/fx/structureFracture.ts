@@ -170,6 +170,11 @@ const CRACK_MPS = 3;
 /** (the decisive wave's barn: "bright, undusted, same-size bricks") how far what broke off is greyed toward its own dust. */
 const DUST_COAT = 0.42;
 const CRACK_MIN_CELLS = 6;
+/** (dcore 2026-10-11, wave 397: "from 1.80 s to 2.46 s the whole front hangs in its own plane as a staggered mosaic of
+ *  loose rectangular panels") a wall that lost its footing leans out off its foot: every piece of a fallen cluster
+ *  leaves with the cluster's lean (rad/s about the cluster's lowest course, along the wall), so its upper pieces go out
+ *  over the street as they drop and its lowest slump into the breach, never a stack of blocks standing in the plane. */
+const TOPPLE_W = 0.55;
 const CAP_UV_DENSITY = 0.55;
 
 function neutral(name: string): number {
@@ -851,7 +856,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
    * its own frame, its box parts, spawned with the given velocity (world, m/s) and spin.
    */
   function spawnCells(live: Live, cells: number[], vx: number, vy: number, vz: number, spin: number, seed: number,
-    at: THREE.Matrix4 | null = null): boolean {
+    at: THREE.Matrix4 | null = null, lean: readonly number[] | null = null): boolean {
     if (!cells.length) return false;
     const g0 = live.wall.faces[cells[0]];
     // the body's frame: the cells' centre, axes along the face (u, up, out)
@@ -1022,7 +1027,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const rng = mulberry(seed);
     const handle = o.pool.spawn(shape, {
       x: _v.x, y: _v.y, z: _v.z, qx: qWorld.x, qy: qWorld.y, qz: qWorld.z, qw: qWorld.w,
-      vx, vy, vz, wx: (rng() - 0.5) * spin, wy: (rng() - 0.5) * spin, wz: (rng() - 0.5) * spin,
+      vx, vy, vz, wx: (rng() - 0.5) * spin + (lean ? lean[0] : 0), wy: (rng() - 0.5) * spin + (lean ? lean[1] : 0),
+      wz: (rng() - 0.5) * spin + (lean ? lean[2] : 0),
     });
     if (handle < 0) {
       for (const m of meshes) { o.group.remove(m); m.geometry.dispose(); }
@@ -1193,7 +1199,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
 
   /** The cells knocked through: a few chunks (one or two cells each) thrown along the round, the rest dust. */
   /** A body to spawn: its cells (face, cell pairs), its launch (world m/s) and spin, its seed. */
-  interface BodySpec { cells: number[]; vx: number; vy: number; vz: number; spin: number; seed: number }
+  interface BodySpec { cells: number[]; vx: number; vy: number; vz: number; spin: number; seed: number; lean?: [number, number, number] }
 
   /** The cells knocked through: a few chunks (one cell each) thrown along the round, the rest dust. */
   function planKnocked(live: Live, face: number, knocked: number[], dirBX: number, dirBZ: number, kind: WallStrikeKind,
@@ -1236,22 +1242,32 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   }
 
   /**
-   * The clusters that fell: every cell of them goes down as part of a body (nothing that fell may vanish), let go from
-   * rest with a nudge off the wall. Within the round's budget of bodies: a cluster is cut into pieces of as many cells
-   * as it takes (six at the least: a few courses wide), largest clusters first.
+   * The clusters that fell: every cell of them goes down as part of a body (nothing that fell may vanish), let go with
+   * a nudge off the wall and the cluster's lean off its foot (TOPPLE_W: a piece's speed out grows with its height over
+   * the cluster's lowest course, and it turns with the lean). Within the round's budget of bodies: a cluster is cut into
+   * pieces of as many cells as it takes (six at the least: a few courses wide), largest clusters first.
    */
   function planFallen(live: Live, fallen: number[][], budget: number, seed: number, out: BodySpec[]): void {
     if (!fallen.length) return;
     const order = fallen.slice().sort((a, b) => b.length - a.length || a[1] - b[1]);
     const cells = order.reduce((n, cl) => n + cl.length / 2, 0);
     const per = Math.min(24, Math.max(6, Math.ceil(cells / Math.max(1, budget))));
+    const heightOf = (f: number, c: number, at: number): number => { const g = live.wall.faces[f]; cellRect(g, c, rect); return g.origin[1] + rect[2] + (rect[3] - rect[2]) * at; };
     let n = 0;
     for (let i = 0; i < order.length; i++) {
-      for (const piece of splitCluster(order[i], per)) {
+      const cluster = order[i];
+      let foot = Infinity;
+      for (let k = 0; k < cluster.length; k += 2) foot = Math.min(foot, heightOf(cluster[k], cluster[k + 1], 0));
+      for (const piece of splitCluster(cluster, per)) {
         const g = live.wall.faces[piece[0]];
-        const nudge = 0.4;
+        let mid = 0;
+        for (let k = 0; k < piece.length; k += 2) mid += heightOf(piece[k], piece[k + 1], 0.5);
+        const up = Math.max(0, mid / (piece.length / 2) - foot);
         const w = dirToWorld(live, g.out[0], g.out[2], new THREE.Vector3());
-        out.push({ cells: piece, vx: w.x * nudge, vy: -0.2, vz: w.z * nudge, spin: 1.5, seed: damageSeed(seed, i, n++) });
+        const speed = 0.4 + TOPPLE_W * up;
+        // the lean's axis along the wall (up x out): the top goes out
+        out.push({ cells: piece, vx: w.x * speed, vy: -0.2, vz: w.z * speed, spin: 1.5, seed: damageSeed(seed, i, n++),
+          lean: [w.z * TOPPLE_W, 0, -w.x * TOPPLE_W] });
       }
     }
   }
@@ -1294,7 +1310,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (w.step === 2) {
         while (w.spawned < w.bodies.length) {
           const b = w.bodies[w.spawned++];
-          spawnCells(live, b.cells, b.vx, b.vy, b.vz, b.spin, b.seed);
+          spawnCells(live, b.cells, b.vx, b.vy, b.vz, b.spin, b.seed, null, b.lean ?? null);
           if (performance.now() >= deadline) return;
         }
         w.step = 3;
