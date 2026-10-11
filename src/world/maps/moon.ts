@@ -77,6 +77,10 @@ export default {
     grassTone: grey, dirtTone: grey, rockTone: grey, mudTone: grey,
     // (wave 346) the macro tints neutral (they leaned blue: B/R 1.06-1.07), each at its luminance
     tintA: [.957,.957,.955], tintB: [.838,.838,.836], tintC: [1,1,1], roadTint: [.776,.776,.774], rippleAmp: .05, strata: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "a high-frequency wavy normal-map pattern that reads as crumpled foil or
+    // rippled water") under the hard 20-degree sun the sand set's lumps and Mars's 1-5 m dapple shaded as foil: the detail
+    // normal at 0.4 of its strength and the dapple at a third of Mars's (midRelief .6 -> .2) — fine powder, gardened smooth
+    detailNormal: 0.4, midRelief: 0.2,
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
@@ -146,12 +150,16 @@ export default {
     ]),
   },
   // (2026-10-11, the map-revival lane; gauntlet wave 380: "an airless sky can't have blue haze"; "a notched black skyline
-  // wall at the far edge"; "the regolith is cool blue-white") the far country the regolith's warm neutral grey, not a
-  // blue-grey (0x686b73 / 0x858a94), its relief the rolling massifs of Taurus-Littrow, not the martian tablelands whose
-  // stepped tops stood as a notched wall; with fogDensity 0 the panorama and the far range take no air (horizonPanorama.ts
+  // wall at the far edge"; "a flat-topped slab cut into its left skyline"; "fluted, streak-banded mountains"; "the
+  // regolith is cool blue-white") the far country the regolith's warm neutral grey (was a blue-grey 0x686b73 / 0x858a94);
+  // the Taurus-Littrow massifs smooth, rounded and unbedded under their regolith — the martian far bake's tablelands
+  // (its stepped, flat-topped slabs) and strata off, rock only on the steepest faces, and the ring's relief without the
+  // bedding and varnish bands; with fogDensity 0 the panorama and the far range take no air (horizonPanorama.ts
   // uAirless, horizonFarRange.ts airless)
   horizon: { baseHex: 0x6a6865, rockHex: 0x86837e, amp: 1.35, style: 'rolling', treeline: 0,
-    treelineLayers: 0, ground: 'sand', relief: 'rolling', haze: 0, grain: .7, farRange: true,
+    treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
+    panorama: { tables: false, strata: 0, rockSlope: 0.62, sharp: 0.85 },
+    reliefCover: { varnish: 0, beds: 0 },
     // the mountains lane (2026-10-02): the moon keeps its own walls — the carved landform drew straight-flanked
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
     massif: false },
