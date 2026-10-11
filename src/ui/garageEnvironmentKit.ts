@@ -35,7 +35,13 @@ import {
   garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
-import { GARAGE_YARD_WEAR, garageYardWearTexture } from './garageYardWear.ts';
+import {
+  GARAGE_HARDSTAND_STYLES,
+  garageFacilityAlbedo,
+  garageHardstandAlbedo,
+  garageHardstandKind,
+  garageHardstandNormal,
+} from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
   type GarageApproachStats,
@@ -168,6 +174,53 @@ const SURFACE_FILES: Readonly<Record<GarageSurfaceKey, readonly [string, string]
 });
 
 const MAX_RESIDENT_TEXTURE_SETS = 9;
+
+/**
+ * Wind-laid desert sand for the Garage packs (2026-10-10, wave 338: "the sand a grain-free orange plane"): the stock
+ * Ground093C albedo is nearly flat, so sand draws a procedural near-white albedo (the terrain tint colours it) with
+ * fine grain, dark lithic specks and wind ripples about 20 cm apart on the 9.8 m tile. Drawn once per resident set.
+ */
+function proceduralSandAlbedo(): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const g = canvas.getContext('2d');
+  if (!g) return null;
+  const image = g.createImageData(size, size);
+  let seed = 0x5a1d;
+  const random = (): number => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  // low-frequency warp so the ripples meander instead of ruling straight lines
+  const warp = (x: number, y: number): number => Math.sin(x * 0.011 + Math.sin(y * 0.017) * 1.7) * 9
+    + Math.sin(y * 0.023 + x * 0.006) * 5;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const along = (x * 0.94 + y * 0.34 + warp(x, y)) * (Math.PI * 2 / 11);
+      const ripple = Math.sin(along) * 0.5 + 0.5;
+      // the lee face of each ripple is a little darker and finer
+      const lee = Math.pow(ripple, 3) * 0.07 - 0.03;
+      const patch = Math.sin(x * 0.019 + 1.3) * Math.sin(y * 0.015 + 0.4) * 0.035;
+      const grain = (random() - 0.5) * 0.09;
+      let value = 0.9 + lee + patch + grain;
+      if (random() < 0.035) value -= 0.12 + random() * 0.1;
+      if (random() < 0.01) value += 0.08;
+      const index = (y * size + x) * 4;
+      const tone = Math.max(0, Math.min(1, value));
+      image.data[index] = Math.round(255 * Math.min(1, tone * 1.02));
+      image.data[index + 1] = Math.round(255 * tone);
+      image.data[index + 2] = Math.round(255 * tone * 0.96);
+      image.data[index + 3] = 255;
+    }
+  }
+  g.putImageData(image, 0, 0);
+  return canvas;
+}
 const BUCKET_KEYS = [
   'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'baked', 'route',
 ] as const;
@@ -314,7 +367,16 @@ export function createGarageEnvironmentAssetLibrary(
         };
         entries.set(key, entry);
         const [colorUrl, normalUrl] = SURFACE_FILES[key];
-        entry.color = load(key, colorUrl, true, entry, settle);
+        const sandCanvas = key === 'sand' ? proceduralSandAlbedo() : null;
+        if (sandCanvas) {
+          const sand = new THREE.CanvasTexture(sandCanvas);
+          prepare(sand, true);
+          retainedTextures.add(sand);
+          entry.color = sand;
+          settle();
+        } else {
+          entry.color = load(key, colorUrl, true, entry, settle);
+        }
         entry.normal = load(key, normalUrl, false, entry, settle);
       }
       entry.references += 1;
@@ -487,6 +549,25 @@ function createBackdropGeometry(
             const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
             return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.20 - passCut * 0.18;
           }
+          case 'dune': {
+            // Sharp-crested dunes (2026-10-10): 1 - |sin| peaks at a ridge and rounds into its trough, and the
+            // monotone skew steepens one flank into a slip face. Each band takes its own phase so crests stagger
+            // instead of stacking into parallel cutouts, near bands keep low dunes, and the far ring carries the
+            // source excerpt's one mesa shoulder.
+            const layerPhase = phase + layerIndex * 1.93;
+            const skewed = (lobes: number, offset: number): number => {
+              const x = angle * lobes + offset;
+              return x + 0.55 * Math.sin(x);
+            };
+            const ridgeA = Math.pow(1 - Math.abs(Math.sin(skewed(4, layerPhase))), 1.8);
+            const ridgeB = Math.pow(1 - Math.abs(Math.sin(skewed(9, -layerPhase * 0.7))), 2.4);
+            const shoulder = THREE.MathUtils.smoothstep(Math.cos(angle - phase * 0.5 - 2.4), 0.55, 0.86);
+            const reach = 0.36 + layer.height * 0.64;
+            // The bands' nominal climbs to the full ceiling on the far ring, where every crest would clamp flat;
+            // dunes give back half of it so their ridgelines, not the ceiling, draw the skyline.
+            return (ridgeA * 0.62 + ridgeB * 0.2 + broad * 0.25 - 0.2) * reach
+              + shoulder * 0.5 * layer.height * layer.height - layer.height * 0.5;
+          }
           case 'mesa': {
             const shelf = Math.sin(angle * 2 + phase) * 0.52
               + Math.sin(angle * 4 - phase) * 0.20;
@@ -543,6 +624,38 @@ function createBackdropGeometry(
       vertex += 2;
     }
   });
+  if (recipe.horizonStyle === 'dune' || recipe.horizonStyle === 'mesa') {
+    // Desert bands lit like landforms (2026-10-10, wave 338: "smooth cardboard ridges", "a steep faceted dune
+    // wall"). The bands stay one unlit vertex-colour program; each crest takes a Lambert term from a pseudo-normal
+    // (inward, up, and tilted against the crest's slope along the ring) under one fixed low sun, so a flank
+    // that climbs toward the sun is lit, its slip face falls into shade, and a mesa riser darkens under its shelf.
+    const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
+    const normal = new THREE.Vector3();
+    for (let layerIndex = 0; layerIndex < layers.length; layerIndex += 1) {
+      const first = layerIndex * verticesPerLayer;
+      const arc = (Math.PI * 2 * layers[layerIndex].radius) / segments;
+      const crestHeight = (segment: number): number => positions[(first + segment * 2 + 1) * 3 + 1];
+      for (let segment = 0; segment <= segments; segment += 1) {
+        const angle = (segment / segments) * Math.PI * 2;
+        const wrapped = segment === segments ? 0 : segment;
+        const slope = (crestHeight((wrapped + 1) % segments) - crestHeight((wrapped + segments - 1) % segments))
+          / (2 * arc);
+        // inward radial (toward the yard), up, and the ring tangent turned against the slope
+        normal.set(
+          -Math.cos(angle) + Math.sin(angle) * slope * 2.2,
+          0.9,
+          -Math.sin(angle) - Math.cos(angle) * slope * 2.2,
+        ).normalize();
+        const lit = 0.74 + 0.5 * Math.max(0, normal.dot(sun));
+        const crestAt = (first + segment * 2 + 1) * 3;
+        const baseAt = crestAt - 3;
+        for (let channel = 0; channel < 3; channel += 1) {
+          colors[crestAt + channel] = Math.min(1, colors[crestAt + channel] * lit);
+          colors[baseAt + channel] = Math.min(1, colors[baseAt + channel] * (0.5 + lit * 0.5));
+        }
+      }
+    }
+  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -1070,7 +1183,20 @@ export function buildGarageEnvironment(
   for (const slab of slabGeometries) slab.dispose();
   hardstandGeometry.computeVertexNormals();
   track(hardstandGeometry);
-  const hardstandMaterial = texturedMaterial('cobble', { color: recipe.hardstandTint, roughness: 0.92, metalness: 0.02 });
+  // This Garage's own floor (garageYardWear.ts): a per-pack albedo over the apron's texel layout (slab joints or
+  // earth, the yard's working history with its track lanes down this pack's approach road, the region's sand, snow,
+  // salt, cinders, soot, mud or dust) and the shared normal for its floor kind, on the stock map + normal program.
+  const hardstandStyle = GARAGE_HARDSTAND_STYLES[variant.architecture];
+  const [approachSide, approachDepth] = recipe.approach.waypoints[0];
+  const hardstandAlbedo = garageHardstandAlbedo(hardstandStyle, garageViewPoint(approachSide, approachDepth),
+    engineCtx.anisotropy ?? 4);
+  const hardstandNormal = garageHardstandNormal(garageHardstandKind(hardstandStyle), engineCtx.anisotropy ?? 4);
+  const hardstandMaterial = hardstandAlbedo && hardstandNormal
+    ? plainMaterial({
+      map: track(hardstandAlbedo), normalMap: hardstandNormal, normalScale: new THREE.Vector2(0.6, 0.6),
+      roughness: 0.94, metalness: 0.02,
+    })
+    : texturedMaterial('plaster', { color: recipe.hardstandTint, roughness: 0.94, metalness: 0.02 });
   hardstandMaterial.polygonOffset = true;
   hardstandMaterial.polygonOffsetFactor = -1;
   hardstandMaterial.polygonOffsetUnits = -1;
@@ -1078,43 +1204,12 @@ export function buildGarageEnvironment(
   hardstand.name = 'connected_service_hardstand';
   hardstand.userData.drapedOnTerrain = true;
   hardstand.userData.fleetPadSlabs = slabGeometries.length;
+  hardstand.userData.hardstandStyle = hardstandStyle;
+  root.userData.serviceYardWear = hardstandStyle;
   hardstand.receiveShadow = true;
   hardstand.matrixAutoUpdate = false;
   hardstand.updateMatrix();
   root.add(hardstand);
-
-  // The working history of the apron (2026-10-10, the owner's "more detailed ... better textures"): one shared
-  // yard-wear texture (track lanes worn in from this pack's approach road, the turntable's grime ring, oil stains,
-  // worn bay paint) on a transparent decal that receives the settled shadow. The texture is shared by every pack and
-  // never disposed with one; plain Node has no canvas and skips it.
-  const yardWear = garageYardWearTexture(engineCtx.anisotropy ?? 4);
-  if (yardWear) {
-    const [approachSide, approachDepth] = recipe.approach.waypoints[0];
-    const toward = garageViewPoint(approachSide, approachDepth);
-    const yardMaterial = plainMaterial({
-      map: yardWear, transparent: true, depthWrite: false, roughness: 0.96, metalness: 0,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-    });
-    // draped over the apron (same height field, 6 mm above it), turned to this pack's approach road
-    const yardGeometry = new THREE.PlaneGeometry(GARAGE_YARD_WEAR.widthM, GARAGE_YARD_WEAR.depthM, 29, 24);
-    yardGeometry.rotateX(-Math.PI / 2);
-    yardGeometry.rotateY(Math.atan2(-toward.x, -toward.z));
-    {
-      const positions = yardGeometry.getAttribute('position');
-      for (let index = 0; index < positions.count; index += 1) {
-        positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)) + 0.006);
-      }
-    }
-    const yard = new THREE.Mesh(track(yardGeometry), yardMaterial);
-    yard.name = 'garage_service_yard_wear';
-    yard.receiveShadow = true;
-    yard.castShadow = false;
-    yard.renderOrder = 1;
-    yard.matrixAutoUpdate = false;
-    yard.updateMatrix();
-    root.add(yard);
-    root.userData.serviceYardWear = true;
-  }
 
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color
@@ -1160,6 +1255,15 @@ export function buildGarageEnvironment(
         && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
       ));
       if (insideStructure) return;
+      // no tufts on the working floors (2026-10-10, wave 357: "black spikes stud the sand"): the apron and every
+      // exhibit or crew pad stay clear
+      if (Math.abs(x) < 15 && Math.abs(z) < 12.5) return;
+      const view = garageWorldPointToView(x, z);
+      const onPad = terraceRecords.some((terrace) => (
+        (terrace.label.startsWith('fleet-service-') || terrace.label.startsWith('crew-floor-'))
+        && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
+      ));
+      if (onPad) return;
       const y = samplePatch(patch, heights, x, z);
       const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
       coverPosition.set(x, y + 0.01, z);
@@ -1195,6 +1299,14 @@ export function buildGarageEnvironment(
 
   const mergeStructureRecords = (): void => {
     for (const { placement, local, x, z, y } of structureRecords) {
+      // A desert minaret is mud-plastered to its dome (2026-10-10, waves 338 and 357: the white shaft under a red tiled
+      // cap read as "a red-capped lighthouse standing among the dunes"): on sand packs its dome and lantern take the
+      // shaft's adobe, one shade deeper than the courts' lime wash.
+      if (placement.catalogId === 'minaret' && recipe.terrainSurface === 'sand') {
+        local.plaster2 = [...(local.plaster2 || []), ...(local.roof || []), ...(local.plaster || [])];
+        local.roof = [];
+        local.plaster = [];
+      }
       const uniformScale = placement.scale;
       const transform = new THREE.Matrix4().compose(
         new THREE.Vector3(x, y, z),
@@ -1212,15 +1324,26 @@ export function buildGarageEnvironment(
   mergeStructureRecords();
 
   const buildFacilityPresentation = () => {
-    const facilitySurfaceHandles = variant.architecture === 'field_shed'
+    // The facility frames, panels and footings take the shared weathered steel, enamel and cast-concrete albedos
+    // (garageYardWear.ts) over the stucco normal; machinery keeps the timber normal (2026-10-10, wave 357: "flat
+    // navy, yellow and cyan beams", "blank maroon boxes", "a European red-brick deck").
+    const facilityHandles = variant.architecture === 'field_shed'
       ? null
       : Object.freeze({
-          structure: assets.acquire('roof', requestRender),
-          painted: assets.acquire('plaster', requestRender),
+          fine: assets.acquire('plaster', requestRender),
           equipment: assets.acquire('wood', requestRender),
-          masonry: assets.acquire('brick', requestRender),
         });
-    if (facilitySurfaceHandles) handles.push(...Object.values(facilitySurfaceHandles));
+    if (facilityHandles) handles.push(...Object.values(facilityHandles));
+    const anisotropy = engineCtx.anisotropy ?? 4;
+    const facilitySurfaceHandles = facilityHandles
+      ? Object.freeze({
+          structure: { color: garageFacilityAlbedo('steel', anisotropy), normal: facilityHandles.fine.normal },
+          painted: { color: garageFacilityAlbedo('panel', anisotropy), normal: facilityHandles.fine.normal },
+          equipment: { color: null, normal: facilityHandles.equipment.normal },
+          masonry: { color: garageFacilityAlbedo('concrete', anisotropy) ?? facilityHandles.fine.color,
+            normal: facilityHandles.fine.normal },
+        })
+      : null;
     const facilityDetails = variant.architecture === 'field_shed'
       ? Object.freeze({
           facilityProps: 0,
