@@ -124,52 +124,8 @@
   "dangling": 0
  },
  "landmark:aircraftWreck": {
-  "floating": 14,
-  "dangling": 3
- },
- "landmark:bengalTemple": {
-  "floating": 20,
-  "dangling": 0
- },
- "landmark:columnMonument": {
-  "floating": 4,
-  "dangling": 0
- },
- "landmark:equestrianStatue": {
-  "floating": 23,
-  "dangling": 0
- },
- "landmark:fireLookout": {
-  "floating": 4,
-  "dangling": 0
- },
- "landmark:grainElevator": {
-  "floating": 0,
-  "dangling": 1
- },
- "landmark:liftBridge": {
-  "floating": 80,
-  "dangling": 4
- },
- "landmark:memorialWall": {
-  "floating": 3,
-  "dangling": 0
- },
- "landmark:obelisk": {
-  "floating": 1,
-  "dangling": 0
- },
- "landmark:stationHall": {
-  "floating": 0,
-  "dangling": 9
- },
- "landmark:trestleBridge": {
-  "floating": 93,
-  "dangling": 0
- },
- "landmark:trussBridge": {
-  "floating": 0,
-  "dangling": 4
+  "floating": 158,
+  "dangling": 38
  },
  "light:deserttent/intact": {
   "floating": 0,
