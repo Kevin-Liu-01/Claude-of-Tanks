@@ -47,17 +47,17 @@
       "concealers": 5837
     },
     "steppe": {
-      "bytes": 1320562,
-      "sha256": "3c2e93b7229eeb7b6d98651d660f4ec0a24a1b115befc2d87067d87812d11756",
+      "bytes": 1349419,
+      "sha256": "75aad67bfd350125edbf86c9fa04e903fe90ab5a64e30d90f54e4ede9c65870a",
       "obstacles": 2031,
-      "colliders": 1870,
+      "colliders": 1877,
       "concealers": 812
     },
     "railyard": {
-      "bytes": 1331332,
-      "sha256": "a6bc6da01c82105b98a70df2b1c1c70dc8d814c195c9c4f8a8e5341c7a559add",
+      "bytes": 1514906,
+      "sha256": "db29e4fedbaf611b5c0cf985d2bc2247fb4a59a9ce0c03a9253f7b7da78d9cb3",
       "obstacles": 2385,
-      "colliders": 2470,
+      "colliders": 2509,
       "concealers": 1337
     },
     "frontier": {
@@ -110,10 +110,10 @@
       "concealers": 1070
     },
     "foundry": {
-      "bytes": 1780264,
-      "sha256": "8959b67d9e73a2944e8058e8b4d4355fd4730066c69c20eb16280b487523446f",
+      "bytes": 1922424,
+      "sha256": "23068f30ff08c93c823b4fd6f7f4ffdb707caa329320d346b34722844b09f00c",
       "obstacles": 3871,
-      "colliders": 4287,
+      "colliders": 4313,
       "concealers": 2727
     },
     "ruinspires": {
@@ -281,17 +281,17 @@
         "concealers": 5611
       },
       "steppe": {
-        "bytes": 1573149,
-        "sha256": "4b66f86970df37718fae9fd5bac4c51b4bf4f7e3ebdc1022fc5617805054ed5e",
+        "bytes": 1601995,
+        "sha256": "a59295c66f0c94a8af4c41221c431e68698c7e7f85dff4dc9140f02b6a677e2e",
         "obstacles": 2249,
-        "colliders": 1963,
+        "colliders": 1970,
         "concealers": 842
       },
       "railyard": {
-        "bytes": 1515891,
-        "sha256": "88909dfa6564ddeb3f13a7386a56243689b1fc5dd0993b9cada613d3bd936c7f",
+        "bytes": 1699465,
+        "sha256": "74bf00efcbc840ae579d4fa0c40c09ba6051385c2845a5aa6a6f9edf55397037",
         "obstacles": 2511,
-        "colliders": 2513,
+        "colliders": 2552,
         "concealers": 1337
       },
       "frontier": {
@@ -344,10 +344,10 @@
         "concealers": 1070
       },
       "foundry": {
-        "bytes": 1780264,
-        "sha256": "8959b67d9e73a2944e8058e8b4d4355fd4730066c69c20eb16280b487523446f",
+        "bytes": 1922424,
+        "sha256": "23068f30ff08c93c823b4fd6f7f4ffdb707caa329320d346b34722844b09f00c",
         "obstacles": 3871,
-        "colliders": 4287,
+        "colliders": 4313,
         "concealers": 2727
       },
       "ruinspires": {

@@ -286,9 +286,13 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   background.geometry.dispose(); background.material.dispose();
 }
 
-for (const readinessFailure of [true, false]) {
+// 2026-10-10 (the MP shader-prep lane; prod 211): a readiness proof that only ran out of time takes the same covered
+// compatibility path as a legacy compile failure — it never leaves the Garage unready (every scene frame suppressed);
+// a proof that cannot succeed (a failed query or reflection, a lost context) still fails closed.
+for (const failure of ['budget', 'reflection', 'legacy']) {
+  const readinessFailure = failure !== 'legacy';
   const error = readinessFailure
-    ? new ProgramUniformPreparationError({ status: 'incomplete', pending: 1, reason: 'budget' })
+    ? new ProgramUniformPreparationError({ status: 'incomplete', pending: 1, reason: failure })
     : new Error('legacy compile compatibility');
   const events = [];
   const run = restoreGarageGpuPipeline({
@@ -307,14 +311,17 @@ for (const readinessFailure of [true, false]) {
     yieldProgramReadiness: async () => {},
     warmScene: async () => { events.push(['upload']); return [1]; },
   });
-  if (readinessFailure) {
+  if (failure === 'reflection') {
     await assert.rejects(run, (caught) => caught === error);
     assert.deepEqual(events, [['dormant', false], ['dormant', true]],
-      'unfinished readiness fails closed before cold fallback/render and still restores static ownership');
+      'a readiness proof that cannot succeed fails closed before cold fallback/render and still restores static ownership');
   } else {
-    await run;
+    const receipt = await run;
     assert.deepEqual(events, [['dormant', false], ['fallback'], ['shadows'], ['upload'], ['render'], ['dormant', true]],
-      'unrelated legacy compile failures preserve the existing actual-render compatibility fallback');
+      failure === 'budget'
+        ? 'a readiness proof out of time takes the covered compatibility fallback: the settle frame links the rest'
+        : 'unrelated legacy compile failures preserve the existing actual-render compatibility fallback');
+    assert.equal(receipt.programWarmDeferred, failure === 'budget' ? 1 : undefined, 'the receipt names the deferred programs');
   }
 }
 
@@ -408,7 +415,7 @@ for (const mode of ['task-only-negative', 'actual-frame-ready', 'cancel-during-f
       renderer: actualRenderer, scene, camera, forwardPrograms: actualOwner,
       resourcesReleased: false, programsNeedWarm: true, simDt: 1 / 60,
       lighting: { update() {}, setStaticPresentationDormant() {},
-        async primeShadowMaps() { assert.equal(painted, true); return [1, 1]; } },
+        async primeShadowMaps() { if (mode !== 'task-only-negative') assert.equal(painted, true); return [1, 1]; } },
       post: { render() { rendered = true; } },
       warmScene: async () => [1],
       now: () => 0,
@@ -416,12 +423,15 @@ for (const mode of ['task-only-negative', 'actual-frame-ready', 'cancel-during-f
         ? { yieldProgramReadiness: async () => { taskYields += 1; } } : {}),
     });
     if (mode === 'task-only-negative') {
-      await assert.rejects(run, (error) => error instanceof ProgramUniformPreparationError
-        && error.preparation.reason === 'budget');
+      // The finite round cap with task-only progress still ends the readiness proof, without reflecting a pending
+      // program; since 2026-10-10 the restore then completes through the covered settle frame instead of leaving the
+      // Garage unready.
+      const receipt = await run;
       assert.ok(taskYields >= 1000 && taskYields <= 1025,
         'negative control reproduces the unchanged finite round cap with task-only progress');
-      assert.equal(reflections, 0);
-      assert.equal(rendered, false);
+      assert.equal(reflections, 0, 'no pending program is reflected cold');
+      assert.equal(rendered, true, 'the covered settle frame presents the Garage');
+      assert.equal(receipt.programWarmDeferred, 1);
     } else {
       for (let i = 0; i < 20 && frames.length === 0; i += 1) await Promise.resolve();
       assert.equal(frames.length, 1, 'default actual Garage scheduler awaits the native frame port');

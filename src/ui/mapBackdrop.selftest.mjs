@@ -54,7 +54,11 @@ for (const [label, viewport, expected] of cases) {
   assert.equal(mapBackdropFor('verdant', viewport), expected, `${label}: ${backdropWidthPx(viewport)} device px`);
 }
 assert.equal(backdropWidthPx(view(390, 844, 3)), 844 * 16 / 9 * 2, 'cover width, pixel ratio capped at 2');
-assert.equal(mapBackdropFor('moon', view(844, 390, 3)), MAP_HEROES.moon, 'a battlefield without a card keeps its hero');
+for (const mapId of MAPS_WITHOUT_CARD) {
+  assert.equal(mapBackdropFor(mapId, view(844, 390, 3)), MAP_HEROES[mapId], `${mapId}: a battlefield without a card keeps its hero`);
+}
+// (2026-10-10, the deploy-208 photographs: Earthrise Basin and Aegis Crossing published cards, so no battlefield lacks one)
+assert.equal(mapBackdropFor('moon', view(844, 390, 3)), '/maps/cards/moon.webp', 'Earthrise Basin now serves its card');
 assert.equal(mapBackdropFor('verdant', null), hero, 'no viewport (Node, tools) keeps the hero');
 assert.equal(mapBackdropFor('verdant', view(0, 0, 1)), hero, 'an unlaid-out window keeps the hero');
 assert.equal(featuredShotForMap('verdant', view(1366, 768, 1)).img, card, 'the battlefield transition uses the same tier');

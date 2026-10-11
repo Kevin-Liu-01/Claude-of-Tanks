@@ -131,7 +131,7 @@ import {
   type AutumnCropRow, type AutumnHeadlandSite,
 } from './autumnHeadlands.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse, shedKitTypes,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -4256,6 +4256,9 @@ ${snowCap ? `
       : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
     // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
     walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
+    // (the destructible-kits lane, 2026-10-10) the fracture-ready sheds in this map's style (structureKit shedKitTypes:
+    // its cladding, roof, footings and climate); a regional kit's own variant below still takes its key
+    ...shedKitTypes(mapId),
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
@@ -4355,7 +4358,7 @@ ${snowCap ? `
     let extents = destructibleFootprints.get(kind);
     if (!extents) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
-      const geometry = meta.build(mulberry32(0x0f0f7));
+      const geometry = meta.collisionBuild?.() ?? meta.build(mulberry32(0x0f0f7));
       const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
@@ -10321,8 +10324,11 @@ ${snowCap ? `
     // physically open instead of inheriting the metadata placement box.
     // Reuse this extraction only for building families. Crates, moving props,
     // walls (including their later terrain fit) and trees retain the cheap path.
+    // (the destructible-kits lane, 2026-10-10) a fracture-ready kind derives it from its envelopes (meta.collisionBuild)
+    const collisionSource = pool.meta.collisionBuild?.() ?? null;
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
-      ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
+      ? deriveRuntimeStructureCollisionWithSolids({ baked: [collisionSource ?? geometry] }) : null;
+    collisionSource?.dispose();
     const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;

@@ -17,6 +17,11 @@ import {
 import {
   auditRoofPlanePitch, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
+import { spentDraws } from './brokenDraws.ts';
+import {
+  SHED_DEFAULT_STYLE, buildShedBroken, buildShedCollision, buildShedFieldHut, buildShedLeanTo, shedStyleFor,
+  type ShedBuild, type ShedStyle,
+} from './shedKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -118,6 +123,8 @@ interface DestructibleBuildingType {
   build: LightStructureBuilder;
   instanceTintStrength: number;
   broken: LightStructureBuilder;
+  /** The solids its collision is derived from in place of its build (a fracture-ready kind's envelopes). */
+  collisionBuild?: () => THREE.BufferGeometry;
 }
 
 const _color = new THREE.Color();
@@ -1925,9 +1932,49 @@ function lightMeta(
 const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure,
   merge: (parts) => merge(parts.map(ensureWorldNightEmissionMask)) });
 
-export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
+// ------------------------------------------------------------------------------------------ the fracture-ready sheds
+// (the destructible-kits lane, 2026-10-10; the owner: "our destructible buildings like the shed and bunkers that need
+// complete redesigns") The field hut and the lean-to are framed member by member in shedKit.ts, every member a piece
+// of the physical destruction's anatomy (fractureAnatomy.ts). Each keeps its light family's record (footprint, class,
+// crush threshold, tint) and spends the legacy builders' draws from the props stream before drawing its own
+// (brokenDraws.ts), so every later pool and placement keeps its seat. A map's own style (its cladding, roof, footings,
+// climate) comes through props.ts's local types (shedKitTypes).
+export const LEGACY_SHED_TYPES = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
   leanto: lightMeta('leanto', 'rural', 2.9, 2.50, 3.1, PAL.paleWood, makeLeanTo),
+} as const;
+const SHED_BUILDERS: Record<keyof typeof LEGACY_SHED_TYPES, { build: (st: ShedStyle, rng: Rng) => ShedBuild; salt: number }> = {
+  fieldhut: { build: buildShedFieldHut, salt: 0x51ed1 },
+  leanto: { build: buildShedLeanTo, salt: 0x1ea71 },
+};
+
+/** A fracture-ready shed in a light family's record, in one map's style. */
+function shedMeta(kind: keyof typeof LEGACY_SHED_TYPES, st: ShedStyle): DestructibleBuildingType {
+  const legacy = LEGACY_SHED_TYPES[kind], { build, salt } = SHED_BUILDERS[kind];
+  return {
+    ...legacy,
+    // the collision comes from the shed's envelopes, not its hundreds of boards (shedKit buildShedCollision)
+    collisionBuild: () => buildShedCollision(kind, st),
+    build: (rng: Rng) => build(st, spentDraws(legacy.build, rng, salt)).geometry,
+    broken: (rng: Rng) => {
+      const own = spentDraws(legacy.broken, rng, salt ^ 0x5bd1);
+      const shed = build(st, own);
+      const heap = buildShedBroken(shed, own, salt);
+      shed.geometry.dispose();
+      return heap;
+    },
+  };
+}
+
+/** One map's sheds in its own style, for props.ts's local types (a regional kit's own variant still wins). */
+export function shedKitTypes(mapId: string): Record<string, DestructibleBuildingType> {
+  const st = shedStyleFor(mapId);
+  return { fieldhut: shedMeta('fieldhut', st), leanto: shedMeta('leanto', st) };
+}
+
+export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
+  fieldhut: shedMeta('fieldhut', SHED_DEFAULT_STYLE),
+  leanto: shedMeta('leanto', SHED_DEFAULT_STYLE),
   huntingblind: lightMeta('huntingblind', 'woodland', 1.84, 1.68, 5.5, PAL.timber, makeHuntingBlind),
   fishershack: lightMeta('fishershack', 'coastal', 2.7, 4.2, 4.7, PAL.nordic, makeFisherShack),
   saunahut: lightMeta('saunahut', 'nordic', 2.5, 3.2, 4.4, PAL.nordic, makeSaunaHut),

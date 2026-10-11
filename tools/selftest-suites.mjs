@@ -1115,6 +1115,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
+    'src/world/fractureAnatomy.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
@@ -1398,6 +1399,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
+    // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
+    'src/world/maps/periodFreight.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',
@@ -1510,6 +1513,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    'src/world/maps/shedKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap

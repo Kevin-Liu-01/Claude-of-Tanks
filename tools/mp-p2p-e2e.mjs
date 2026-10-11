@@ -24,8 +24,9 @@
  *                                                                # its log (the election record, the host's reports) take the pages' facts
  *
  * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
- * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (the entry
- * extends it once — src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
+ * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (since
+ * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
+ * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
