@@ -41,8 +41,16 @@ const centreOf = (grid, c) => { cellRect(grid, c, rect); return [(rect[0] + rect
   assert.equal(wall.faces.length, 8);
   const g = wall.faces[front0];
   assert.ok(g.bonded && g.rowY.length - 1 === 10, `ten bonded courses of 0.3 m (${g.rowY.length - 1})`);
-  const row0 = g.rowStart[1] - g.rowStart[0], row1 = g.rowStart[2] - g.rowStart[1];
-  assert.equal(row1, row0 + 1, 'every other row is offset by half a cell (one cell more)');
+  // every other row starts with a half cell (the bond), its joints a little uneven, never a ruled grid
+  const cw = 8 / Math.round(8 / 0.46);
+  for (let r = 0; r < g.rowY.length - 1; r++) {
+    const first = g.cellU[2 * g.rowStart[r] + 1] - g.cellU[2 * g.rowStart[r]];
+    if (r % 2) assert.ok(first > 0.25 * cw && first < 0.75 * cw, `row ${r} starts with half a cell (${(first / cw).toFixed(2)})`);
+    else assert.ok(first > 0.75 * cw && first < 1.25 * cw, `row ${r} starts with a whole cell (${(first / cw).toFixed(2)})`);
+  }
+  const widths = [];
+  for (let c = g.rowStart[0]; c < g.rowStart[1] - 1; c++) widths.push(g.cellU[2 * c + 1] - g.cellU[2 * c]);
+  assert.ok(Math.max(...widths) - Math.min(...widths) > 0.02, 'the joints are uneven');
   const openings = Array.from(g.state).filter((s) => s === CELL_OPENING).length;
   assert.ok(openings >= 14 && openings <= 26, `the door and the window take their cells (${openings})`);
   assert.equal(struckFace(wall, 0, 1.5, 9), null, 'a point far from every face strikes none');
