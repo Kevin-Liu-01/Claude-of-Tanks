@@ -299,7 +299,9 @@ export class LensFlarePass extends Pass {
     this.dt = this.fixedDt ?? (this.lastMs < -1e8 ? 1 / 60 : Math.min(0.1, Math.max(0, (now - this.lastMs) / 1000)));
     this.lastMs = now;
     const sunDir = this.scene.userData.sunDirWorld as THREE.Vector3 | undefined;
-    if (!active || !sunDir) {
+    // (2026-10-11, the map-revival lane; gauntlet wave 380 on Earthrise Basin: "a cartoon globe ... and a lens streak")
+    // where the sky draws the Earth's disc at the key light (an airless map, sky.ts skyEarthDisc) no flare is drawn
+    if (!active || !sunDir || this.scene.userData.skyEarthDisc === true) {
       this.target = 0;
       return;
     }
