@@ -247,6 +247,14 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     // (a tower mill stands on its brick base, 4.5 m round: on a terp's crest its sails' span reaches over the batter)
     seat: (p) => (p.style === 'tower' ? [4.6, 4.6] : null) },
   // ------------------------------------------------------------------------------------------------ civic buildings
+  // the Norwegian stave church (stave.ts; Borgund's type): its gallery round three sides, the porch on the west front
+  // (+z), the apse to the east; the footprint the gallery's roof and the porch's gable, the apse's cone
+  staveChurch: { family: 'civic', defaults: { length: 16, width: 11 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.35] },
+  // the Carpathian wooden church (carpathian.ts; the Boyko tserkva): three log frames on the axis, the door in the west
+  // front (+z); the footprint the skirt roof round them
+  woodenTserkva: { family: 'civic', defaults: { length: 18, width: 9.4 },
+    footprint: (p) => [num(p, 'width') / 2 + 0.35, num(p, 'length') / 2 + 0.35] },
   church: { family: 'civic', defaults: { tradition: 'orthodox', length: 30, width: 11, tower: 27, domes: 1 },
     // (the porticos with their steps stand 3 m off the cube's north and south faces)
     // (an Orthodox church's porticos stand 3 m off the cube; a Western church's apse rounds off past its chancel)

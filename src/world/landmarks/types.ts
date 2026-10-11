@@ -24,6 +24,8 @@ export type LandmarkKind =
   | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill' | 'valveTower'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
+  // churches of the north (the buildings lane's round 4: a landmark per map)
+  | 'staveChurch' | 'woodenTserkva'
   // a hill station's colonial pieces
   | 'colonialBungalow' | 'tennisCourt'
   // temples

@@ -11,6 +11,8 @@ import { harbour, lighthouse, mole, quay, slipway } from './harbour.ts';
 import { houseRow, khan, lavoir } from './village.ts';
 import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare, path, piazza, stairway } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
+import { staveChurch } from './stave.ts';
+import { woodenTserkva } from './carpathian.ts';
 import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
@@ -66,6 +68,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   snowFence,
   stairway,
   stationHall,
+  staveChurch,
   stoneArchBridge,
   tennisCourt,
   torii,
@@ -77,6 +80,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   trussBridge,
   viaduct,
   waterTower,
+  woodenTserkva,
   valveTower,
   windmill,
 });
