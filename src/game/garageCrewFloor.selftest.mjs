@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
-import { crewPointInScene, GARAGE_CREW_SCENES } from './garageCrewFigures.ts';
+import { crewPointInScene, GARAGE_CREW_SCENES, GARAGE_REGIONAL_YARD_SCENES } from './garageCrewFigures.ts';
 import {
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
@@ -97,7 +97,10 @@ for (const variant of GARAGE_VARIANTS) {
       failures.push(`${variant.id}: ${label} is ${error.toFixed(3)} m off the floor at (${x.toFixed(2)}, ${z.toFixed(2)})`);
     }
   };
-  for (const crew of Object.values(GARAGE_CREW_SCENES)) {
+  const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
+  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((crew) => !(regional && crew.id === 'carry')),
+    ...(regional ? [regional] : [])];
+  for (const crew of shown) {
     for (const member of crew.members) {
       if (member.at[1] > 0.05) continue; // on a stand's deck or a step, seated with the kit below
       for (const [side, foot] of [['left', member.pose.leftFoot], ['right', member.pose.rightFoot]]) {

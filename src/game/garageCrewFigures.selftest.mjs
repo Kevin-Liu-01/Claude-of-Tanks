@@ -8,6 +8,7 @@ import {
   crewDress,
   crewPointInScene,
   GARAGE_CREW_SCENES,
+  GARAGE_REGIONAL_YARD_SCENES,
 } from './garageCrewFigures.ts';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
 import {
@@ -42,15 +43,32 @@ assert.equal(standing.geometry.getAttribute('uv'), undefined, 'figures drop UVs 
 
 // --- every scene: hands on tools, soles on surfaces, bounded triangles -------------------------------------------
 const sceneIds = Object.keys(GARAGE_CREW_SCENES);
-assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2', 'mezzanine', 'yard'],
-  'one crew per exhibit, the Verdant mezzanine crew above the hero, and a yard crew in the opening frame\'s free band');
+assert.deepEqual(sceneIds, ['burlak', 'abrams', 'leopard', 't90m', 'k2', 'mezzanine', 'yard', 'carry'],
+  'one crew per exhibit, the Verdant mezzanine crew above the hero, the power pack in the opening frame\'s right band and the track carry in its left');
+// every outdoor Garage puts its own task in the left band (2026-10-10: "no copy-paste bays")
+const regionalScenes = Object.entries(GARAGE_REGIONAL_YARD_SCENES);
+const outdoorArchitectures = [...new Set(GARAGE_VARIANTS.filter((variant) => variant.id !== 'verdant_motor_pool')
+  .map((variant) => variant.architecture))];
+for (const architecture of outdoorArchitectures) {
+  assert.ok(GARAGE_REGIONAL_YARD_SCENES[architecture], `${architecture}: a regional task in the opening frame's left band`);
+}
+assert.equal(new Set(regionalScenes.map(([, scene]) => scene.task)).size, regionalScenes.length, 'every regional task is its own');
+for (const [, scene] of regionalScenes) {
+  assert.deepEqual(scene.frame, GARAGE_CREW_SCENES.carry.frame, `${scene.id}: stands in the left band it replaces`);
+}
+const regionalTriangles = new Map();
 let members = 0, essentialMembers = 0, triangles = 0;
-for (const scene of Object.values(GARAGE_CREW_SCENES)) {
+for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional)]) {
+  const regional = scene.id.startsWith('yard-');
   assert.ok(scene.members.length >= 2, `${scene.id}: a crew works in a pair or a group`);
   const build = buildCrewSceneGeometry(scene);
-  triangles += build.triangles;
-  members += scene.members.length;
-  if (scene.essential) essentialMembers += scene.members.length;
+  if (regional) {
+    regionalTriangles.set(scene.id, build.triangles);
+  } else {
+    triangles += build.triangles;
+    members += scene.members.length;
+    if (scene.essential) essentialMembers += scene.members.length;
+  }
   scene.members.forEach((member, index) => {
     const skeleton = build.skeletons[index];
     for (const [side, error] of [['left', skeleton.leftGripErrorM], ['right', skeleton.rightGripErrorM]]) {
@@ -89,6 +107,13 @@ assert.equal(members, 24, 'twenty-four workers: seventeen in the five bays, thre
 // round 3); each crew is its own culled draw, so a view carries one or two crews (the opening Verdant frame: the yard
 // and mezzanine crews, about 12k triangles, 3 % of the workshop's 374k)
 assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles})`);
+{
+  // a Garage shows the shared crews with its own left-band task in place of the track carry
+  const carry = buildCrewSceneGeometry(GARAGE_CREW_SCENES.carry).triangles;
+  for (const [id, regional] of regionalTriangles) {
+    assert.ok(triangles - carry + regional <= 46000, `${id}: the Garage's crews stay inside 46k triangles`);
+  }
+}
 assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
   `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
 
@@ -121,7 +146,10 @@ function sceneToWorkshop(scene, point, variant) {
 const [camX, camY, camZ] = GARAGE_PRESENTATION_POSE.cameraOffsetM;
 const keepClear = GARAGE_PLATFORM_GEOMETRY.baseRadiusM + 2.5;
 for (const variant of GARAGE_VARIANTS) {
-  for (const scene of Object.values(GARAGE_CREW_SCENES)) {
+  const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
+  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')),
+    ...(variant.id !== 'verdant_motor_pool' && regional ? [regional] : [])];
+  for (const scene of shown) {
     for (const member of scene.members) {
       const local = crewPointInScene(member, [0, 0, 0]);
       const p = sceneToWorkshop(scene, { x: local.x, z: local.z }, variant);
@@ -150,6 +178,12 @@ assert.ok(k2.props?.some((prop) => prop.kind === 'weld-curtain'), 'a welding cur
 assert.ok(k2.members.some((member) => member.role === 'fire-watch')
   && k2.tools.some((tool) => tool.kind === 'extinguisher'), 'a fire watch with an extinguisher stands by the weld');
 assert.ok(!k2.tools.some((tool) => tool.kind === 'sledgehammer'), 'nobody swings a sledge at the rolled hull');
+for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional)]) {
+  if (!scene.tools.some((tool) => tool.kind === 'torch')) continue;
+  assert.ok(scene.members.some((member) => member.role === 'fire-watch')
+    && scene.tools.some((tool) => tool.kind === 'extinguisher'), `${scene.id}: hot work has a fire watch with an extinguisher`);
+  assert.ok(scene.weldTip, `${scene.id}: hot work marks its arc for the glow`);
+}
 {
   // the weld light (Verdant's repurposed fill) stands just off the K2 torch tip in the Garage frame
   const verdant = GARAGE_VARIANTS.find((variant) => variant.id === 'verdant_motor_pool');
@@ -217,4 +251,4 @@ for (const scene of Object.values(GARAGE_CREW_SCENES)) {
   }
 }
 
-console.log(`garageCrewFigures.selftest: ${members} workers in ${sceneIds.length} crews, ${triangles} triangles; hands, soles and clearances pass`);
+console.log(`garageCrewFigures.selftest: ${members} workers in ${sceneIds.length} crews, ${triangles} triangles, and ${regionalScenes.length} regional left-band tasks; hands, soles and clearances pass`);

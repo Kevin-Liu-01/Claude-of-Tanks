@@ -710,7 +710,7 @@ interface CrewMember {
 
 type CrewToolKind = 'torch' | 'extinguisher' | 'pendant' | 'sledgehammer' | 'pry-bar' | 'torque-wrench'
   | 'clipboard' | 'flashlight' | 'cassette' | 'crate' | 'breaker-bar' | 'impact-wrench' | 'punch' | 'hammer'
-  | 'track-section';
+  | 'track-section' | 'lance' | 'filter' | 'shovel' | 'brush' | 'plate' | 'battery' | 'leads' | 'towbar' | 'sandbag';
 
 /** A hand tool in a member's figure frame (points: the grips first, then the working end). */
 interface CrewTool {
@@ -726,10 +726,24 @@ interface CrewTool {
  * screens hot work from the rest of the bay.
  */
 interface CrewProp {
-  readonly kind: 'work-stand' | 'weld-curtain' | 'power-pack';
+  readonly kind: 'work-stand' | 'weld-curtain' | 'power-pack' | 'parts';
   readonly at: V3;
   readonly yaw: number;
   readonly deckY: number;
+  /** For 'parts': primitive kit in the scene frame (boxes and cylinders on the workshop's shared materials). */
+  readonly parts?: readonly CrewPart[];
+}
+
+/** One primitive of a scene's kit: a box ([w, h, d]) or an upright cylinder ([radius, height]), turned by yaw/tilt/roll. */
+export interface CrewPart {
+  readonly shape: 'box' | 'cyl' | 'ring';
+  readonly at: V3;
+  readonly size: readonly number[];
+  readonly yaw?: number;
+  readonly tilt?: number;
+  readonly roll?: number;
+  readonly mat: 'steelDark' | 'steelMid' | 'steelBright' | 'olive' | 'timber' | 'timberDark' | 'rubber' | 'safety'
+    | 'extRed' | 'redCab' | 'blueSteel' | 'brass' | 'oily' | 'bottleGreen';
 }
 
 /** A road wheel the crew is moving (scene frame): its centre and axle, built from the exhibit's own wheel. */
@@ -899,7 +913,15 @@ function wheelCarrierPose(stagger: 1 | -1): CrewPose {
  * lifted hull), T-90M component rebuild (Relikt fitters and an inspector), K2 rollover teardown (belly inspection
  * with a lamp, track work with a sledge).
  */
-export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2' | 'mezzanine' | 'yard', CrewScene>> = Object.freeze({
+/**
+ * The opening frame's left free band, between the menu panel and the turntable: local +Z points at the canonical
+ * camera and +X runs across its line of sight, so a pair set out along X shows as two people side by side. The
+ * floor is the 'yard-track-carry' datum pad (garageWorkshopLayout.ts GARAGE_YARD_CREW_FLOORS).
+ */
+const YARD_BAND: CrewSceneFrame = Object.freeze({ parent: 'workshop', x: -10.35, z: 1.22, yaw: 1.206 });
+
+export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard' | 't90m' | 'k2' | 'mezzanine' | 'yard' | 'carry',
+  CrewScene>> = Object.freeze({
   // the T-90A on jack stands, its turret on the gantry hook: the hoist operator watches the lift with the pendant, a
   // fitter on a rolling stand guides the turret ring, two men carry a road wheel flat between them to the dolly
   burlak: scene({
@@ -1067,22 +1089,10 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
   // men carry a section of track toward the Abrams, and a pulled power pack stands on its stand with a mechanic at the
   // fuel pump and another checking the cooling pack. Shared by all ten Garages (their hardstand outdoors).
   yard: scene({
-    id: 'yard', task: 'a track section carried across the floor, a pulled power pack on its stand', essential: false,
+    id: 'yard', task: 'a pulled power pack on its stand', essential: false,
     frame: { parent: 'workshop', x: 0, z: 0, yaw: 0 },
     props: [{ kind: 'power-pack', at: [3.4, 0, -11.4], yaw: 0.55, deckY: 0 }],
     members: [
-      // side by side across the opening camera's line of sight, so the menu frame shows two men and the track between
-      // them (2026-10-10, wave 357: in line with the camera they read as one idle sentry)
-      { role: 'track-carrier', dress: D('ru', 11), at: [-10.08, 0, 0.52], yaw: -0.363,
-        pose: { pelvis: [0, 0.83, -0.05], spine: [0.15, 0.05, 0], head: [-0.04, 0.05],
-          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
-          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
-          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
-      { role: 'track-carrier', dress: D('ru', 12), at: [-10.62, 0, 1.93], yaw: -0.363 + Math.PI,
-        pose: { pelvis: [0, 0.82, -0.06], spine: [0.17, -0.04, 0], head: [-0.02, -0.07],
-          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
-          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
-          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
       { role: 'power-pack-mechanic', dress: D('us', 5), at: [2.25, 0, -10.75], yaw: 0.55 + Math.PI / 2,
         pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [0.36, 0.06, 0], head: [0.25, 0],
           leftHand: [0.12, 1.02, 0.48], rightHand: [-0.1, 1.08, 0.5], leftGrip: 'flat', leftPalm: [0, -1, 0.2],
@@ -1093,10 +1103,350 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
           leftFoot: [0.12, A, 0.02], rightFoot: [-0.12, A, 0.0] } },
     ],
     tools: [
+      { kind: 'torque-wrench', member: 0, points: [[-0.1, 1.08, 0.5], [0.12, 1.02, 0.48], [-0.02, 1.0, 0.82]] },
+      { kind: 'flashlight', member: 1, points: [[-0.12, 1.2, 0.42], [-0.08, 1.28, 0.62]] },
+      { kind: 'clipboard', member: 1, points: [[0.06, 1.12, 0.3], [0.0, 1.14, 0.32]] },
+    ],
+  }),
+  // The opening frame's left free band (wave 357: two men in line with the camera read as one idle sentry): two men
+  // carry a track section across the camera's line of sight. Verdant keeps it; each outdoor Garage puts its own
+  // regional task here (GARAGE_REGIONAL_YARD_SCENES).
+  carry: scene({
+    id: 'carry', task: 'a track section carried across the floor', essential: false,
+    frame: YARD_BAND,
+    members: [
+      { role: 'track-carrier', dress: D('ru', 11), at: [-0.75, 0, 0], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.83, -0.05], spine: [0.15, 0.05, 0], head: [-0.04, 0.05],
+          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
+      { role: 'track-carrier', dress: D('ru', 12), at: [0.75, 0, 0], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.82, -0.06], spine: [0.17, -0.04, 0], head: [-0.02, -0.07],
+          leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
+    ],
+    tools: [
       { kind: 'track-section', member: 0, points: [[0.24, 0.7, 0.22], [-0.24, 0.7, 0.22]] },
-      { kind: 'torque-wrench', member: 2, points: [[-0.1, 1.08, 0.5], [0.12, 1.02, 0.48], [-0.02, 1.0, 0.82]] },
-      { kind: 'flashlight', member: 3, points: [[-0.12, 1.2, 0.42], [-0.08, 1.28, 0.62]] },
-      { kind: 'clipboard', member: 3, points: [[0.06, 1.12, 0.3], [0.0, 1.14, 0.32]] },
+    ],
+  }),
+});
+
+/**
+ * Each outdoor Garage's own task in the opening frame's left band (2026-10-10, the coordinator: "no copy-paste bays";
+ * the wave builder: the same figures in the same poses in every Garage). A pair at work on regional kit, in the yard
+ * band frame (+Z toward the canonical camera, +X across its view); the shared track carry stands down where one is set.
+ */
+export const GARAGE_REGIONAL_YARD_SCENES: Readonly<Partial<Record<GarageVariant['architecture'], CrewScene>>> = Object.freeze({
+  // Sirocco: air filters blown out with the compressor after a dust run
+  shade_depot: scene({
+    id: 'yard-sirocco', task: 'engine air filters blown out with the compressor', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0, 0.06, -0.3], size: [1.0, 0.12, 0.8], mat: 'timberDark' },
+      { shape: 'cyl', at: [-0.05, 0.33, -0.3], size: [0.2, 0.42], mat: 'safety' },
+      { shape: 'cyl', at: [-0.05, 0.135, -0.3], size: [0.206, 0.025], mat: 'steelMid' },
+      { shape: 'cyl', at: [-0.05, 0.535, -0.3], size: [0.206, 0.025], mat: 'steelMid' },
+      { shape: 'cyl', at: [0.33, 0.33, -0.48], size: [0.2, 0.42], mat: 'safety' },
+      { shape: 'cyl', at: [0.33, 0.535, -0.48], size: [0.206, 0.025], mat: 'steelMid' },
+      { shape: 'cyl', at: [1.45, 0.24, -1.0], size: [0.17, 0.8], roll: Math.PI / 2, mat: 'extRed' },
+      { shape: 'box', at: [1.45, 0.55, -1.0], size: [0.42, 0.28, 0.3], mat: 'steelDark' },
+      { shape: 'cyl', at: [1.15, 0.1, -0.8], size: [0.1, 0.05], tilt: Math.PI / 2, mat: 'rubber' },
+      { shape: 'cyl', at: [1.15, 0.1, -1.2], size: [0.1, 0.05], tilt: Math.PI / 2, mat: 'rubber' },
+      { shape: 'box', at: [1.9, 0.5, -1.0], size: [0.04, 0.6, 0.36], mat: 'steelMid' },
+    ] }],
+    members: [
+      { role: 'filter-blower', dress: D('us', 21), at: [-0.82, 0, -0.3], yaw: Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.04, -0.02], spine: [0.25, 0.04, 0], head: [0.42, 0],
+          rightHand: [-0.08, 1.0, 0.3], leftHand: [0.04, 0.98, 0.5],
+          leftFoot: [0.14, A, 0.1], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'filter-inspector', dress: D('us', 22), at: [0.88, 0, -0.2], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP, 0], spine: [0.08, -0.06, 0], head: [0.3, 0.05],
+          leftHand: [0.2, 1.12, 0.36], rightHand: [-0.2, 1.12, 0.36], leftGrip: 'flat', rightGrip: 'flat',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.12, A, 0.04], rightFoot: [-0.12, A, -0.06] } },
+    ],
+    tools: [
+      { kind: 'lance', member: 0, points: [[-0.08, 1.0, 0.3], [0.04, 0.98, 0.5], [0.07, 0.72, 0.72]], anchor: [1.25, 0.5, -1.0] },
+      { kind: 'filter', member: 1, points: [[0.2, 1.12, 0.36], [-0.2, 1.12, 0.36]] },
+    ],
+  }),
+  // Frosthollow: ice grousers bolted onto a track section before the snow road
+  repair_bunker: scene({
+    id: 'yard-frosthollow', task: 'ice grousers fitted to a track section', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0.12, 0.1, -0.3], size: [0.18, 0.2, 0.7], mat: 'timberDark' },
+      { shape: 'box', at: [0.6, 0.1, -0.3], size: [0.18, 0.2, 0.7], mat: 'timberDark' },
+      { shape: 'box', at: [0.06, 0.225, -0.3], size: [0.13, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.06, 0.272, -0.3], size: [0.07, 0.045, 0.05], mat: 'steelMid' },
+      { shape: 'box', at: [0.212, 0.225, -0.3], size: [0.13, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.212, 0.272, -0.3], size: [0.07, 0.045, 0.05], mat: 'steelMid' },
+      { shape: 'box', at: [0.364, 0.225, -0.3], size: [0.13, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.364, 0.272, -0.3], size: [0.07, 0.045, 0.05], mat: 'steelMid' },
+      { shape: 'box', at: [0.364, 0.262, -0.48], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [0.364, 0.262, -0.12], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [0.516, 0.225, -0.3], size: [0.13, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.516, 0.272, -0.3], size: [0.07, 0.045, 0.05], mat: 'steelMid' },
+      { shape: 'box', at: [0.516, 0.262, -0.48], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [0.516, 0.262, -0.12], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [0.668, 0.225, -0.3], size: [0.13, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.668, 0.272, -0.3], size: [0.07, 0.045, 0.05], mat: 'steelMid' },
+      { shape: 'box', at: [0.668, 0.262, -0.48], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [0.668, 0.262, -0.12], size: [0.05, 0.04, 0.16], mat: 'steelBright' },
+      { shape: 'box', at: [1.2, 0.17, -0.85], size: [0.6, 0.34, 0.42], mat: 'olive' },
+      { shape: 'box', at: [1.2, 0.36, -0.85], size: [0.5, 0.04, 0.3], mat: 'steelBright' },
+      { shape: 'box', at: [-0.75, 0.35, -1.1], size: [0.8, 0.5, 0.5], mat: 'extRed' },
+      { shape: 'cyl', at: [-0.95, 0.75, -1.1], size: [0.06, 0.3], mat: 'steelDark' },
+      { shape: 'cyl', at: [-0.3, 0.2, -1.1], size: [0.11, 0.6], roll: Math.PI / 2, mat: 'steelMid' },
+    ] }],
+    members: [
+      { role: 'grouser-fitter', dress: D('ru', 23, 'ear-defenders'), at: [-0.45, 0, -0.3], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.49, -0.06], spine: [0.46, 0.08, 0], head: [0.48, 0],
+          leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
+          rightFoot: [-0.15, A, 0.36], rightKnee: [-0.15, 0.9, 0.9],
+          leftHand: [-0.02, 0.47, 0.5], rightHand: [-0.17, 0.66, 0.36] } },
+      { role: 'grouser-carrier', dress: D('ru', 24), at: [0.95, 0, 0.1], yaw: -Math.PI / 2 - 0.35,
+        pose: { pelvis: [0, 0.88, -0.03], spine: [0.12, 0, 0], head: [0.2, 0],
+          leftHand: [0.24, 0.92, 0.32], rightHand: [-0.24, 0.92, 0.32], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [-0.6, 0.8, 0], rightPalm: [0.6, 0.8, 0],
+          leftFoot: [0.14, A, 0.08], rightFoot: [-0.14, A, -0.12] } },
+    ],
+    tools: [
+      { kind: 'punch', member: 0, points: [[-0.02, 0.47, 0.5], [-0.04, 0.3, 0.53]] },
+      { kind: 'hammer', member: 0, points: [[-0.17, 0.66, 0.36], [-0.03, 0.6, 0.5]] },
+      { kind: 'plate', member: 1, points: [[0.24, 0.92, 0.32], [-0.24, 0.92, 0.32]] },
+    ],
+  }),
+  // Steinburg: a crate of ERA tiles carried out of the arsenal to the bays
+  brick_arsenal: scene({
+    id: 'yard-steinburg', task: 'a crate of ERA tiles carried to the bays', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0, 0.06, -1.0], size: [1.2, 0.12, 0.8], mat: 'timberDark' },
+      { shape: 'box', at: [-0.38, 0.17, -1.15], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [0.0, 0.17, -1.15], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [0.38, 0.17, -1.15], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [-0.38, 0.17, -0.85], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [0.0, 0.17, -0.85], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [-0.2, 0.27, -1.0], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [0.2, 0.27, -1.0], size: [0.36, 0.1, 0.28], mat: 'olive' },
+      { shape: 'box', at: [1.25, 0.2, -0.95], size: [0.7, 0.4, 0.45], mat: 'timber' },
+    ] }],
+    members: [
+      { role: 'era-carrier', dress: D('ru', 25), at: [0.75, 0, -0.15], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.18, 0.04, 0], head: [0.15, 0],
+          leftHand: [0.18, 0.8, 0.4], rightHand: [-0.18, 0.8, 0.4], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0], rightPalm: [0, 1, 0],
+          leftFoot: [0.15, A, 0.06], rightFoot: [-0.15, A, -0.1] } },
+      { role: 'era-carrier', dress: D('ru', 26), at: [-0.75, 0, -0.15], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.2, -0.04, 0], head: [0.2, 0.1],
+          leftHand: [0.18, 0.8, 0.4], rightHand: [-0.18, 0.8, 0.4], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [0, 1, 0], rightPalm: [0, 1, 0],
+          leftFoot: [0.14, A, 0.07], rightFoot: [-0.16, A, -0.08] } },
+    ],
+    tools: [
+      { kind: 'crate', member: 1, points: [[0.18, 0.8, 0.4], [-0.18, 0.8, 0.4], [0, 0.8, 1.08]] },
+    ],
+  }),
+  // Saltmere: salt washed off a stack of road wheels, one man on the lance and one scrubbing
+  naval_drydock: scene({
+    id: 'yard-saltmere', task: 'salt washed off a stack of road wheels', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [-0.05, 0.06, -0.3], size: [0.9, 0.12, 0.9], mat: 'timberDark' },
+      { shape: 'cyl', at: [-0.05, 0.215, -0.3], size: [0.33, 0.19], mat: 'rubber' },
+      { shape: 'cyl', at: [-0.05, 0.215, -0.3], size: [0.21, 0.195], mat: 'steelMid' },
+      { shape: 'cyl', at: [-0.05, 0.215, -0.3], size: [0.07, 0.2], mat: 'oily' },
+      { shape: 'cyl', at: [-0.05, 0.405, -0.3], size: [0.33, 0.19], mat: 'rubber' },
+      { shape: 'cyl', at: [-0.05, 0.405, -0.3], size: [0.21, 0.195], mat: 'steelMid' },
+      { shape: 'cyl', at: [-0.05, 0.405, -0.3], size: [0.07, 0.2], mat: 'oily' },
+      { shape: 'cyl', at: [-0.05, 0.595, -0.3], size: [0.33, 0.19], mat: 'rubber' },
+      { shape: 'cyl', at: [-0.05, 0.595, -0.3], size: [0.21, 0.195], mat: 'steelMid' },
+      { shape: 'cyl', at: [-0.05, 0.595, -0.3], size: [0.07, 0.2], mat: 'oily' },
+      { shape: 'box', at: [1.45, 0.38, -1.05], size: [0.6, 0.5, 0.42], mat: 'safety' },
+      { shape: 'cyl', at: [1.45, 0.78, -1.05], size: [0.2, 0.12], tilt: Math.PI / 2, mat: 'rubber' },
+      { shape: 'cyl', at: [1.2, 0.1, -0.84], size: [0.1, 0.05], tilt: Math.PI / 2, mat: 'rubber' },
+      { shape: 'cyl', at: [1.2, 0.1, -1.26], size: [0.1, 0.05], tilt: Math.PI / 2, mat: 'rubber' },
+    ] }],
+    members: [
+      { role: 'washer', dress: D('kr', 27), at: [-0.82, 0, -0.3], yaw: Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.04, -0.02], spine: [0.22, 0.04, 0], head: [0.38, 0],
+          rightHand: [-0.08, 1.0, 0.3], leftHand: [0.04, 0.98, 0.5],
+          leftFoot: [0.14, A, 0.1], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'scrubber', dress: D('kr', 28), at: [1.05, 0, -0.32], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.06, -0.02], spine: [0.3, 0, 0], head: [0.35, 0],
+          rightHand: [-0.12, 0.95, 0.3], leftHand: [0.02, 0.9, 0.46],
+          leftFoot: [0.13, A, 0.1], rightFoot: [-0.13, A, -0.14] } },
+    ],
+    tools: [
+      { kind: 'lance', member: 0, points: [[-0.08, 1.0, 0.3], [0.04, 0.98, 0.5], [0.06, 0.86, 0.72]], anchor: [1.25, 0.45, -1.0] },
+      { kind: 'brush', member: 1, points: [[-0.12, 0.95, 0.3], [0.02, 0.9, 0.46], [0.06, 0.66, 0.66]] },
+    ],
+  }),
+  // Cinder: new track shoes trolleyed down the yard rails
+  rail_roundhouse: scene({
+    id: 'yard-cinder', task: 'track shoes trolleyed down the yard rails', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0, 0.14, -0.5], size: [2.6, 0.1, 0.07], mat: 'steelMid' },
+      { shape: 'box', at: [0, 0.14, 0.3], size: [2.6, 0.1, 0.07], mat: 'steelMid' },
+      { shape: 'box', at: [-1.2, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [-0.72, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [-0.24, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [0.24, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [0.72, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [1.2, 0.04, -0.1], size: [0.2, 0.08, 1.1], mat: 'timberDark' },
+      { shape: 'box', at: [0.2, 0.42, -0.1], size: [0.9, 0.08, 0.95], mat: 'steelDark' },
+      { shape: 'cyl', at: [-0.12, 0.29, -0.5], size: [0.1, 0.06], tilt: Math.PI / 2, mat: 'steelMid' },
+      { shape: 'cyl', at: [0.52, 0.29, -0.5], size: [0.1, 0.06], tilt: Math.PI / 2, mat: 'steelMid' },
+      { shape: 'cyl', at: [-0.12, 0.29, 0.3], size: [0.1, 0.06], tilt: Math.PI / 2, mat: 'steelMid' },
+      { shape: 'cyl', at: [0.52, 0.29, 0.3], size: [0.1, 0.06], tilt: Math.PI / 2, mat: 'steelMid' },
+      { shape: 'box', at: [-0.27, 0.71, -0.42], size: [0.05, 0.58, 0.05], mat: 'safety' },
+      { shape: 'box', at: [-0.27, 0.71, 0.22], size: [0.05, 0.58, 0.05], mat: 'safety' },
+      { shape: 'box', at: [-0.27, 1.0, -0.1], size: [0.06, 0.06, 0.8], mat: 'safety' },
+      { shape: 'box', at: [0.25, 0.485, -0.1], size: [0.15, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.42, 0.485, -0.1], size: [0.15, 0.05, 0.56], mat: 'steelDark' },
+      { shape: 'box', at: [0.33, 0.535, -0.1], size: [0.15, 0.05, 0.56], mat: 'steelDark' },
+    ] }],
+    members: [
+      { role: 'trolley-pusher', dress: D('de', 29), at: [-0.74, 0, -0.1], yaw: Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.08, -0.1], spine: [0.3, 0, 0], head: [0.1, 0],
+          leftHand: [0.22, 1.0, 0.47], rightHand: [-0.22, 1.0, 0.47], leftPalm: [0, 0, 1], rightPalm: [0, 0, 1],
+          leftFoot: [0.13, A, 0.18], rightFoot: [-0.13, A + 0.048, -0.36], rightFootPitch: 0.25 } },
+      { role: 'shoe-carrier', dress: D('de', 30), at: [0.95, 0, 0.45], yaw: -Math.PI / 2 - 0.3,
+        pose: { pelvis: [0, 0.88, -0.03], spine: [0.12, 0, 0], head: [0.25, 0],
+          leftHand: [0.28, 0.9, 0.3], rightHand: [-0.28, 0.9, 0.3], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [-0.6, 0.8, 0], rightPalm: [0.6, 0.8, 0],
+          leftFoot: [0.14, A, 0.08], rightFoot: [-0.14, A, -0.12] } },
+    ],
+    tools: [
+      { kind: 'plate', member: 1, points: [[0.28, 0.9, 0.3], [-0.28, 0.9, 0.3]] },
+    ],
+  }),
+  // Monsoon: silt dug out of the yard drain, sandbags banked against the rain
+  rain_canopy: scene({
+    id: 'yard-monsoon', task: 'silt dug out of the yard drain, sandbags banked against the rain', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0.1, 0.02, -0.25], size: [0.9, 0.04, 0.5], mat: 'oily' },
+      { shape: 'box', at: [-0.275, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [-0.125, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [0.025, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [0.175, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [0.325, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [0.475, 0.045, -0.25], size: [0.03, 0.02, 0.5], mat: 'steelMid' },
+      { shape: 'box', at: [0.75, 0.05, -0.62], size: [0.5, 0.1, 0.4], mat: 'timberDark' },
+      { shape: 'box', at: [-0.55, 0.075, -1.15], size: [0.52, 0.15, 0.3], mat: 'timber' },
+      { shape: 'box', at: [0.0, 0.075, -1.15], size: [0.52, 0.15, 0.3], mat: 'timber' },
+      { shape: 'box', at: [0.55, 0.075, -1.15], size: [0.52, 0.15, 0.3], mat: 'timber' },
+      { shape: 'box', at: [-0.28, 0.225, -1.15], size: [0.52, 0.15, 0.3], mat: 'timber' },
+      { shape: 'box', at: [0.27, 0.225, -1.15], size: [0.52, 0.15, 0.3], mat: 'timber' },
+    ] }],
+    members: [
+      { role: 'drain-digger', dress: D('kr', 31), at: [-0.7, 0, -0.25], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.75, -0.08], spine: [0.6, 0.05, 0], head: [0.3, 0],
+          rightHand: [-0.12, 0.95, 0.15], leftHand: [0.0, 0.62, 0.42],
+          leftFoot: [0.15, A, 0.18], rightFoot: [-0.15, A, -0.22] } },
+      { role: 'sandbagger', dress: D('kr', 32), at: [0.9, 0, -0.55], yaw: -Math.PI / 2 - 0.5,
+        pose: { pelvis: [0, HIP - 0.04, 0], spine: [0.15, 0, 0], head: [0.25, 0],
+          leftHand: [0.22, 0.88, 0.32], rightHand: [-0.22, 0.88, 0.32], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [-0.5, 0.85, 0], rightPalm: [0.5, 0.85, 0],
+          leftFoot: [0.14, A, 0.06], rightFoot: [-0.14, A, -0.12] } },
+    ],
+    tools: [
+      { kind: 'shovel', member: 0, points: [[-0.12, 0.95, 0.15], [0.0, 0.62, 0.42], [0.2, 0.06, 0.88]] },
+      { kind: 'sandbag', member: 1, points: [[0.22, 0.88, 0.32], [-0.22, 0.88, 0.32]] },
+    ],
+  }),
+  // Glacier: batteries changed on the cart and jump leads on before a cold start
+  rock_cavern: scene({
+    id: 'yard-glacier', task: 'batteries changed and jump leads on before a cold start', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [-0.05, 0.48, -0.45], size: [0.9, 0.05, 0.6], mat: 'steelDark' },
+      { shape: 'box', at: [-0.45, 0.23, -0.7], size: [0.04, 0.46, 0.04], mat: 'steelMid' },
+      { shape: 'box', at: [0.35, 0.23, -0.7], size: [0.04, 0.46, 0.04], mat: 'steelMid' },
+      { shape: 'box', at: [-0.45, 0.23, -0.2], size: [0.04, 0.46, 0.04], mat: 'steelMid' },
+      { shape: 'box', at: [0.35, 0.23, -0.2], size: [0.04, 0.46, 0.04], mat: 'steelMid' },
+      { shape: 'box', at: [-0.05, 0.12, -0.45], size: [0.86, 0.03, 0.56], mat: 'steelMid' },
+      { shape: 'box', at: [0.25, 0.615, -0.45], size: [0.25, 0.22, 0.42], mat: 'rubber' },
+      { shape: 'box', at: [-0.2, 0.615, -0.45], size: [0.25, 0.22, 0.42], mat: 'rubber' },
+      { shape: 'cyl', at: [0.25, 0.74, -0.57], size: [0.018, 0.04], mat: 'extRed' },
+      { shape: 'cyl', at: [0.25, 0.74, -0.33], size: [0.018, 0.04], mat: 'steelDark' },
+      { shape: 'cyl', at: [-0.2, 0.74, -0.57], size: [0.018, 0.04], mat: 'extRed' },
+      { shape: 'cyl', at: [-0.2, 0.74, -0.33], size: [0.018, 0.04], mat: 'steelDark' },
+      { shape: 'box', at: [1.35, 0.2, -0.95], size: [0.45, 0.4, 0.35], mat: 'safety' },
+      { shape: 'box', at: [-0.95, 0.11, -1.0], size: [0.25, 0.22, 0.42], mat: 'rubber' },
+    ] }],
+    members: [
+      { role: 'battery-carrier', dress: D('de', 33), at: [-0.85, 0, -0.1], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.86, -0.04], spine: [0.15, 0, 0], head: [0.25, 0],
+          leftHand: [0.14, 0.72, 0.22], rightHand: [-0.14, 0.72, 0.22], leftGrip: 'carry', rightGrip: 'carry',
+          leftPalm: [-1, 0.3, 0], rightPalm: [1, 0.3, 0],
+          leftFoot: [0.15, A, 0.08], rightFoot: [-0.15, A, -0.12] } },
+      { role: 'starter-hand', dress: D('de', 34), at: [0.7, 0, -0.45], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.05, -0.03], spine: [0.45, 0, 0], head: [0.35, 0],
+          rightHand: [-0.12, 0.76, 0.45], leftHand: [0.12, 0.76, 0.45],
+          leftFoot: [0.13, A, 0.06], rightFoot: [-0.13, A, -0.14] } },
+    ],
+    tools: [
+      { kind: 'battery', member: 0, points: [[0.14, 0.72, 0.22], [-0.14, 0.72, 0.22]] },
+      { kind: 'leads', member: 1, points: [[0.12, 0.76, 0.45], [-0.12, 0.76, 0.45]], anchor: [1.2, 0.35, -0.85] },
+    ],
+  }),
+  // Redrock: an A-frame tow bar carried out for a recovery, the cable and shackles laid ready
+  recovery_yard: scene({
+    id: 'yard-redrock', task: 'a tow bar carried out for a recovery', essential: false, frame: YARD_BAND,
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'ring', at: [0.2, 0.04, -0.95], size: [0.32, 0.035], tilt: Math.PI / 2, mat: 'steelDark' },
+      { shape: 'ring', at: [0.2, 0.1, -0.95], size: [0.3, 0.035], tilt: Math.PI / 2, mat: 'steelDark' },
+      { shape: 'box', at: [0.75, 0.04, -0.7], size: [0.14, 0.08, 0.1], mat: 'safety' },
+      { shape: 'box', at: [0.95, 0.04, -0.8], size: [0.14, 0.08, 0.1], mat: 'safety' },
+      { shape: 'box', at: [-0.7, 0.12, -1.0], size: [0.8, 0.24, 0.5], mat: 'olive' },
+    ] }],
+    members: [
+      { role: 'towbar-carrier', dress: D('us', 35), at: [-0.78, 0, -0.1], yaw: Math.PI / 2,
+        pose: { pelvis: [0, 0.84, -0.05], spine: [0.16, 0.04, 0], head: [0.0, 0.05],
+          leftHand: [0.12, 0.85, 0.25], rightHand: [-0.12, 0.85, 0.25], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
+      { role: 'towbar-carrier', dress: D('us', 36), at: [0.78, 0, -0.1], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.83, -0.06], spine: [0.18, -0.04, 0], head: [-0.02, -0.07],
+          leftHand: [0.12, 0.85, 0.25], rightHand: [-0.12, 0.85, 0.25], leftGrip: 'fist', rightGrip: 'fist',
+          leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
+          leftFoot: [0.16, A, 0.1], rightFoot: [-0.17, A, -0.1] } },
+    ],
+    tools: [
+      { kind: 'towbar', member: 0, points: [[0.12, 0.85, 0.25], [-0.12, 0.85, 0.25]] },
+    ],
+  }),
+  // Ironworks: an armour plate cut on the sawhorses, the cutter in his shield and a fire watch with the extinguisher
+  factory_line: scene({
+    id: 'yard-ironworks', task: 'an armour plate cut on the sawhorses under a fire watch', essential: false, frame: YARD_BAND,
+    weldTip: [-0.17, 0.83, -0.23],
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [-0.25, 0.73, -0.25], size: [0.09, 0.09, 1.0], mat: 'timber' },
+      { shape: 'box', at: [-0.37, 0.36, -0.63], size: [0.05, 0.74, 0.05], roll: -0.15, mat: 'timber' },
+      { shape: 'box', at: [-0.37, 0.36, 0.13], size: [0.05, 0.74, 0.05], roll: -0.15, mat: 'timber' },
+      { shape: 'box', at: [-0.13, 0.36, -0.63], size: [0.05, 0.74, 0.05], roll: 0.15, mat: 'timber' },
+      { shape: 'box', at: [-0.13, 0.36, 0.13], size: [0.05, 0.74, 0.05], roll: 0.15, mat: 'timber' },
+      { shape: 'box', at: [0.65, 0.73, -0.25], size: [0.09, 0.09, 1.0], mat: 'timber' },
+      { shape: 'box', at: [0.53, 0.36, -0.63], size: [0.05, 0.74, 0.05], roll: -0.15, mat: 'timber' },
+      { shape: 'box', at: [0.53, 0.36, 0.13], size: [0.05, 0.74, 0.05], roll: -0.15, mat: 'timber' },
+      { shape: 'box', at: [0.77, 0.36, -0.63], size: [0.05, 0.74, 0.05], roll: 0.15, mat: 'timber' },
+      { shape: 'box', at: [0.77, 0.36, 0.13], size: [0.05, 0.74, 0.05], roll: 0.15, mat: 'timber' },
+      { shape: 'box', at: [0.2, 0.79, -0.25], size: [1.4, 0.025, 0.9], mat: 'steelMid' },
+      { shape: 'box', at: [-0.17, 0.8035, -0.05], size: [0.02, 0.003, 0.36], mat: 'oily' },
+
+      { shape: 'box', at: [0.4, 0.015, -0.95], size: [0.5, 0.03, 0.3], mat: 'steelDark' },
+    ] }],
+    members: [
+      { role: 'plate-cutter', dress: D('ru', 37, 'welding-hood'), at: [-0.75, 0, -0.25], yaw: Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.05, -0.03], spine: [0.4, 0.05, 0], head: [0.45, 0],
+          rightHand: [-0.05, 0.98, 0.35], leftHand: [0.12, 0.84, 0.48], leftGrip: 'flat', leftPalm: [0, -1, 0],
+          leftFoot: [0.14, A, 0.1], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'fire-watch', dress: D('ru', 38), at: [0.75, 0, 0.35], yaw: -Math.PI / 2 - 0.5,
+        pose: { pelvis: [0, HIP, 0], spine: [0.04, 0.08, 0], head: [0.25, 0.1],
+          rightHand: [-0.21, 0.77, 0.08], leftHand: [0.12, 0.98, 0.36],
+          leftFoot: [0.13, A, 0.06], rightFoot: [-0.12, A, -0.05] } },
+    ],
+    tools: [
+      { kind: 'torch', member: 0, points: [[-0.05, 0.98, 0.35], [-0.02, 0.83, 0.58]] },
+      { kind: 'extinguisher', member: 1, points: [[-0.21, 0.77, 0.08], [0.12, 0.98, 0.36]] },
     ],
   }),
 });
@@ -1260,6 +1610,116 @@ export function buildCrewTools(scene: CrewScene, materials: CrewToolMaterials): 
           meshes.push(boxAt(centre, [0.56, 0.05, 0.13], q, materials.steelDark));
           meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, 0.05, 0)), [0.05, 0.06, 0.08], q, materials.steelMid));
         }
+        break;
+      }
+      case 'lance': {
+        // a pressure-washer or air lance: trigger grip at the rear hand, the wand through the front hand to the nozzle,
+        // and the hose dropping from the grip to the floor and across to its machine (the scene-frame anchor)
+        const d = dir(p[0], p[2]);
+        meshes.push(rod(p[0].clone().addScaledVector(d, -0.06), p[2], 0.011, materials.steelMid, 6));
+        const q = new THREE.Quaternion().setFromUnitVectors(_up, d);
+        meshes.push(boxAt(p[0].clone().add(new THREE.Vector3(0, -0.05, 0)), [0.035, 0.12, 0.05], q, materials.steelDark));
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.016, 0.06, 8), materials.brass);
+        nozzle.position.copy(p[2]);
+        nozzle.quaternion.copy(q);
+        meshes.push(nozzle);
+        if (tool.anchor) {
+          const anchor = vec(tool.anchor);
+          const drop = new THREE.Vector3(p[0].x, 0.03, p[0].z);
+          const run = new THREE.Vector3(anchor.x, 0.03, anchor.z);
+          for (const [a, b] of [[p[0], drop], [drop, run], [run, anchor]] as const) meshes.push(rod(a, b, 0.012, materials.rubber, 6));
+        }
+        break;
+      }
+      case 'filter': {
+        // an engine air-filter element held between both palms: pleated body and two steel end caps
+        const centre = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const radius = Math.max(0.12, p[0].distanceTo(p[1]) / 2 - 0.012);
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.42, 16), materials.safety);
+        body.position.copy(centre);
+        meshes.push(body);
+        for (const dy of [-0.215, 0.215]) {
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.006, radius + 0.006, 0.025, 16), materials.steelMid);
+          cap.position.copy(centre).add(new THREE.Vector3(0, dy, 0));
+          meshes.push(cap);
+        }
+        break;
+      }
+      case 'shovel': {
+        const d = dir(p[0], p[2]);
+        meshes.push(rod(p[0].clone().addScaledVector(d, -0.06), p[2].clone().addScaledVector(d, -0.12), 0.016, materials.timber, 6));
+        const side = new THREE.Vector3().crossVectors(d, _up);
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        side.normalize();
+        const grip = new THREE.Quaternion().setFromUnitVectors(_up, side);
+        meshes.push(boxAt(p[0].clone().addScaledVector(d, -0.07), [0.03, 0.14, 0.03], grip, materials.steelDark));
+        const blade = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(side,
+          d, new THREE.Vector3().crossVectors(side, d).normalize()));
+        meshes.push(boxAt(p[2], [0.24, 0.28, 0.018], blade, materials.steelMid));
+        break;
+      }
+      case 'brush': {
+        const d = dir(p[0], p[2]);
+        meshes.push(rod(p[0].clone().addScaledVector(d, -0.1), p[2], 0.014, materials.timber, 6));
+        const side = new THREE.Vector3().crossVectors(d, _up);
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        const head = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), side.normalize());
+        meshes.push(boxAt(p[2], [0.3, 0.05, 0.08], head, materials.steelDark));
+        meshes.push(boxAt(p[2].clone().addScaledVector(d, 0.05), [0.28, 0.06, 0.07], head, materials.safety));
+        break;
+      }
+      case 'plate':
+      case 'battery':
+      case 'sandbag': {
+        // a load held between both hands: a track shoe, a battery or a sandbag
+        const centre = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const across = dir(p[1], p[0]);
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(across.x, 0, across.z).normalize());
+        const span = p[0].distanceTo(p[1]);
+        if (tool.kind === 'plate') {
+          meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, -0.01, 0)), [span + 0.04, 0.05, 0.16], q, materials.steelDark));
+          meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, 0.035, 0)), [0.06, 0.05, 0.1], q, materials.steelMid));
+        } else if (tool.kind === 'battery') {
+          meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, -0.02, 0)), [Math.max(0.22, span - 0.02), 0.22, 0.4], q, materials.rubber));
+          for (const [offset, material] of [[-0.12, materials.extRed], [0.12, materials.steelDark]] as const) {
+            const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 8), material);
+            stud.position.copy(centre).add(new THREE.Vector3(0, 0.11, offset).applyQuaternion(q));
+            meshes.push(stud);
+          }
+        } else {
+          meshes.push(boxAt(centre.clone().add(new THREE.Vector3(0, -0.04, 0)), [Math.max(0.45, span + 0.04), 0.16, 0.3], q, materials.timber));
+        }
+        break;
+      }
+      case 'leads': {
+        // jump leads: a clamp in each fist on the battery terminals, the cables dropping to the floor and across to the
+        // starter set (the scene-frame anchor)
+        const anchor = tool.anchor ? vec(tool.anchor) : p[0].clone().add(new THREE.Vector3(0, -0.6, 0.6));
+        for (const [point, material] of [[p[0], materials.extRed], [p[1], materials.rubber]] as const) {
+          meshes.push(boxAt(point.clone().add(new THREE.Vector3(0, -0.06, 0)), [0.05, 0.1, 0.04], new THREE.Quaternion(), material));
+          const drop = new THREE.Vector3(point.x, 0.03, point.z);
+          const run = new THREE.Vector3(anchor.x, 0.03, anchor.z);
+          for (const [a, b] of [[point, drop], [drop, run], [run, anchor]] as const) meshes.push(rod(a, b, 0.01, material, 6));
+        }
+        break;
+      }
+      case 'towbar': {
+        // an A-frame tow bar between this carrier's fists and his partner's (the next member): twin tubes spread at this
+        // end, joined at the towing eye at the partner's end
+        const partner = scene.members[tool.member + 1];
+        const a = p[0].clone().add(p[1]).multiplyScalar(0.5);
+        const b = crewPointInScene(partner, [0, tool.points[0][1], tool.points[0][2]]);
+        const along = new THREE.Vector3().subVectors(b, a).normalize();
+        const side = new THREE.Vector3().crossVectors(along, _up).normalize();
+        for (const s of [-1, 1]) {
+          meshes.push(rod(a.clone().addScaledVector(side, s * 0.2).addScaledVector(along, -0.15), b.clone().addScaledVector(along, -0.25),
+            0.032, materials.steelDark, 8));
+        }
+        meshes.push(rod(a.clone().addScaledVector(side, -0.2), a.clone().addScaledVector(side, 0.2), 0.03, materials.steelDark, 8));
+        const eye = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.025, 6, 14), materials.safety);
+        eye.position.copy(b).addScaledVector(along, -0.12);
+        eye.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), side);
+        meshes.push(eye);
         break;
       }
       case 'cassette': {

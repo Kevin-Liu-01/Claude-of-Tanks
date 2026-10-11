@@ -39,7 +39,9 @@ import {
   CREW_REGION_DRESS,
   crewPointInScene,
   GARAGE_CREW_SCENES,
+  GARAGE_REGIONAL_YARD_SCENES,
   paintCrewRegion,
+  type CrewPart,
   type CrewScene,
 } from './garageCrewFigures.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
@@ -254,6 +256,10 @@ export function createGarageDressing(
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
   let abramsBayRoot: THREE.Group | null = null;
+  // The opening frame's left band: the shared track carry (Verdant) or each outdoor Garage's own task, one owner each,
+  // shown by setVariant.
+  let yardBandCarryRoot: THREE.Group | null = null;
+  const regionalYardRoots = new Map<GarageVariant['architecture'], THREE.Group>();
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -949,6 +955,10 @@ export function createGarageDressing(
         addPowerPackOnStand(root, prop.at[0], prop.at[2], prop.yaw);
         continue;
       }
+      if (prop.kind === 'parts') {
+        for (const part of prop.parts ?? []) addCrewPart(root, part);
+        continue;
+      }
       addCrewWorkStand(root, prop.at[0], prop.at[2], prop.yaw, prop.deckY);
       // the fitter's open tool tray on the deck rail side
       const tray = put(track(new THREE.BoxGeometry(0.46, 0.09, 0.24)), mat.redCab,
@@ -988,6 +998,17 @@ export function createGarageDressing(
       scenes: [...crewScenesBuilt], members: crewMembersBuilt, triangles: crewTrianglesBuilt,
     };
     return root;
+  }
+
+  /** One primitive of a crew scene's kit (scene frame of `root`) on the shared palette. */
+  function addCrewPart(root: THREE.Object3D, part: CrewPart): void {
+    const geometry = part.shape === 'box'
+      ? new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2])
+      : part.shape === 'ring'
+        ? new THREE.TorusGeometry(part.size[0], part.size[1], 6, 20)
+        : new THREE.CylinderGeometry(part.size[0], part.size[0], part.size[1], 14);
+    put(track(geometry), mat[part.mat], part.at[0], part.at[1], part.at[2],
+      part.yaw ?? 0, part.tilt ?? 0, part.roll ?? 0, 1, root);
   }
 
   /**
@@ -1582,6 +1603,10 @@ export function createGarageDressing(
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
     placeAbramsBay(currentVariant);
     paintCrewsFor(currentVariant);
+    const regionalYard = regionalYardRoots.get(currentVariant.architecture) ?? null;
+    for (const owner of regionalYardRoots.values()) owner.visible = owner === regionalYard;
+    if (yardBandCarryRoot) yardBandCarryRoot.visible = regionalYard === null;
+    group.userData.yardBandTask = regionalYard?.userData.crewTask ?? GARAGE_CREW_SCENES.carry.task;
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
     // this tiny layout pose shifts/rotates the complete set against each
@@ -3588,8 +3613,34 @@ export function createGarageDressing(
   // Reusing one optimized static graph preserves the real models and complete
   // 360-degree composition without retaining ten copies of their geometry.
   chunks.push(function finalizeSharedMaintenanceBays() {
-    // the yard crew in the opening frame's free band, beside the hero (shared by every Garage)
+    // the yard crew in the opening frame's free band, beside the hero: the power pack (shared by every Garage), and in
+    // the left band the track carry or each outdoor Garage's own task
     addCrewScene(GARAGE_CREW_SCENES.yard, legacyVerdantRoot);
+    yardBandCarryRoot = new THREE.Group();
+    yardBandCarryRoot.name = 'garage_yard_band_carry';
+    legacyVerdantRoot.add(yardBandCarryRoot);
+    addCrewScene(GARAGE_CREW_SCENES.carry, yardBandCarryRoot);
+    for (const [architecture, scene] of Object.entries(GARAGE_REGIONAL_YARD_SCENES) as
+      Array<[GarageVariant['architecture'], CrewScene]>) {
+      const owner = new THREE.Group();
+      owner.name = `garage_yard_band_${architecture}`;
+      owner.userData.crewTask = scene.task;
+      legacyVerdantRoot.add(owner);
+      const crew = addCrewScene(scene, owner);
+      const torch = scene.tools.find((tool) => tool.kind === 'torch');
+      if (crew && torch && scene.weldTip) {
+        // hot work in the yard: the cutting set, its lead, the arc's glow and pool on the plate
+        const frame = scene.frame;
+        const toFrame = (x: number, y: number, z: number): THREE.Vector3 => {
+          const c = Math.cos(frame.yaw), sn = Math.sin(frame.yaw);
+          return new THREE.Vector3(frame.x + x * c + z * sn, y, frame.z - x * sn + z * c);
+        };
+        addWeldStation(owner, crewPoint(scene, torch.member, torch.points[0], frame),
+          crewPoint(scene, torch.member, torch.points[1], frame), toFrame(1.35, 0, -0.95), frame.yaw,
+          [toFrame(0.9, 0.05, -0.75), toFrame(-0.5, 0.05, -0.6)], new THREE.Vector3(0, 1, 0));
+      }
+      regionalYardRoots.set(architecture, owner);
+    }
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.verdantOriginalExhibitCount = 5;
     group.userData.verdantOriginalExhibitIds = [
@@ -3624,7 +3675,8 @@ export function createGarageDressing(
     optimizeGarageDressing(group, {
       // The Abrams bay owner nests inside the shared root but merges alone, so
       // each destination can still carry it to its own placement.
-      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : [])],
+      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : []),
+        ...(yardBandCarryRoot ? [yardBandCarryRoot] : []), ...regionalYardRoots.values()],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.
