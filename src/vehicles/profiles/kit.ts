@@ -2087,7 +2087,12 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
       side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
   if (context.hasWeapon) parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
-  else parts.add('dark',cylX(0.024 * s,0.36 * s,12),0,yokeCenterY,-0.015 * s);
+  else {
+    // round 4 (2026-10-11; wave 386's critics on the Puma S1 and Type 89 sight towers: "a black tube skewered through its
+    // column"): the sensor head's pitch shaft stays inside the head; only its trunnion caps show, on the fork arms'
+    // outer faces (round 3's slim spindle ran visibly across the whole fork).
+    for (const side of [-1,1]) parts.add('dark',cylX(0.034 * s,0.022 * s,12),side * 0.208 * s,yokeCenterY,-0.015 * s);
+  }
 }
 
 function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
