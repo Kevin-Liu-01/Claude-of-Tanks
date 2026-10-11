@@ -129,6 +129,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'depth') / 2 + (p.holyGate === false ? 0.4 : 0.8)] },
   // a garden: its fence round a lawn, the gate in its front (+z), the gravel path from the gate to its back, the borders
   // and the box at the path's mouth
+  // a town's paved square: limestone flags a step over the ground inside a kerb of dressed blocks (`kerb` m wide), its
+  // footprint the kerb's outside; dressing (a hull drives over it), its ground grows no grass (compose.ts holes)
+  piazza: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 18, depth: 18, kerb: 0.38 },
+    footprint: (p) => [num(p, 'width') / 2, num(p, 'depth') / 2] },
   garden: { family: 'park', drapes: true, dressing: () => true, defaults: { width: 14, depth: 10, fence: 'fencepicket', path: 1.4, back: 'open', beds: true },
     footprint: (p) => [num(p, 'width') / 2 + 0.3, num(p, 'depth') / 2 + 0.8] },
   // a mill's outfall: the culvert's headwall at the bank's top and its runnel pitched in stone down to the water, along +z
@@ -182,6 +186,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'length') / 2 + 0.6, num(p, 'depth') / 2 + 0.6] },
   // (the street range alone for `form: 'arcade'`; the gate's dressed frame 0.25 m proud of the street front)
   // (`forecourt`: a paved front that deep before the street front; the footprint keeps its depth both ways)
+  // a row of the map kit's houses side by side along x, their street fronts to +z (`kit`: an architecture id; `structure`:
+  // the kit's builder each house is drawn with)
+  houseRow: { family: 'civic', defaults: { kit: 'dalmatian', structure: 'cottage', count: 3, width: 6.4, depth: 8.6 },
+    footprint: (p) => [num(p, 'count') * num(p, 'width') / 2 + 0.25, num(p, 'depth') / 2 + 0.25] },
   khan: { family: 'civic', defaults: { width: 26, depth: 24, range: 6, form: 'court', forecourt: 0 },
     footprint: (p) => [num(p, 'width') / 2 + 0.2 + (num(p, 'forecourt') > 0 ? 0.6 : 0),
       (p.form === 'arcade' ? num(p, 'range') : num(p, 'depth')) / 2 + 0.45 + Math.max(0, num(p, 'forecourt') || 0)] },
