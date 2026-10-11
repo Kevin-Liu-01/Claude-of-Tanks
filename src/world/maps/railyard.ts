@@ -131,7 +131,11 @@ const ROW_STRUCTURE = 'terrace';
 // the back street: off the central road (on its line at z -119.5) to the works road (on its line at t 0.551)
 const COLONY_BACK_SOUTH: [number, number][] = [-39.35, 0, 100, 165.71].map((x) => [x, +(serviceZ(x) - COLONY_BACK_M).toFixed(2)]);
 const COLONY_SIDE_X = [46, 112] as const;
-const colonySideStreet = (x: number): [number, number][] => [[x, +serviceZ(x).toFixed(2)], [x, +(serviceZ(x) - COLONY_BACK_M).toFixed(2)]];
+// (a side street authored every 6.5 m: the junction grading blends three nodes either side of a junction, and a
+// street of three nodes took its far end's grade at its near one — the back street's 2 m up the hill foot stood as a
+// step at the service road, 22 per cent over its first 4 m)
+const colonySideStreet = (x: number): [number, number][] =>
+  Array.from({ length: 9 }, (_, i) => [x, +(serviceZ(x) - COLONY_BACK_M * i / 8).toFixed(2)] as [number, number]);
 /**
  * One terrace row fronting a street that runs west to east as z = streetZ(x), from easting xa to xb: on the street's
  * south side facing north (side -1) or its north side facing south (side +1). Its plot runs along the chord between the
