@@ -161,6 +161,8 @@ const SOUND_GAP_S = 0.06;
 /** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of four cells or more cracks on a
  *  landing this hard (m/s) into clumps of two or three cells along its courses, while the pool has room for them. */
 const CRACK_MPS = 3;
+/** (the decisive wave's barn: "bright, undusted, same-size bricks") how far what broke off is greyed toward its own dust. */
+const DUST_COAT = 0.42;
 const CRACK_MIN_CELLS = 4;
 const CAP_UV_DENSITY = 0.55;
 
@@ -649,7 +651,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const put = (cell: number, arr: Float32Array): void => {
         buf.set(arr, at);
         if (cell !== STATIC_CELL) {
-          const sag = g.sag[cell], loose = g.state[cell] === CELL_CRACKED ? looseOf(g, cell) : 0;
+          // (dcore 2026-10-11, the decisive wave's house: a plastered timber frame's cracked cells shoved in and out read
+          // as a mosaic of loose tiles with dark slivers between) only coursed masonry stands loose in its course
+          const sag = g.sag[cell], loose = g.bonded && g.state[cell] === CELL_CRACKED ? looseOf(g, cell) : 0;
           if (sag > 0 || loose !== 0) {
             for (let i = at; i < at + arr.length; i += stride) {
               buf[i + 1] -= sag;
@@ -949,7 +953,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       let at = 0;
       for (const a of e.arrays) { list.set(a, at); at += a.length; }
       for (let i = 0; i < e.list.length; i++) list[at + i] = e.list[i];
-      // (dcore 2026-10-11, wave 388a: "clean whole bricks") what broke off wears its break's grit: its colours a quarter
+      // (dcore 2026-10-11, wave 388a: "clean whole bricks") what broke off wears its break's grit: its colours DUST_COAT
       // of the way to a greyed dust of themselves (the standing face keeps its own)
       const ci = e.layout.names.indexOf('color');
       if (ci >= 0 && e.layout.sizes[ci] >= 3) {
@@ -959,7 +963,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         for (let i = off; i + 2 < list.length; i += stride) {
           const r = list[i], gg = list[i + 1], b = list[i + 2];
           const d = (0.2126 * r + 0.7152 * gg + 0.0722 * b) * 0.85 + 0.1;
-          list[i] = r + (d * 1.02 - r) * 0.25; list[i + 1] = gg + (d - gg) * 0.25; list[i + 2] = b + (d * 0.93 - b) * 0.25;
+          list[i] = r + (d * 1.02 - r) * DUST_COAT; list[i + 1] = gg + (d - gg) * DUST_COAT; list[i + 2] = b + (d * 0.93 - b) * DUST_COAT;
         }
       }
       merged.set(material, { layout: e.layout, list });

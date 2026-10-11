@@ -591,9 +591,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
     }
     // (dcore 2026-10-11, wave 388a: "carton-like sections", "clean, saturated debris") a falling piece wears the grit of
-    // its own break: its colour a quarter of the way to a greyed dust of itself (the remnant keeps the building's)
+    // its own break: its colour a third of the way to a greyed dust of itself (the remnant keeps the building's)
     const ci = layout.names.indexOf('color');
-    if (piece && ci >= 0 && layout.sizes[ci] >= 3) dustCoat(extra[ci], layout.sizes[ci], 0.25);
+    if (piece && ci >= 0 && layout.sizes[ci] >= 3) dustCoat(extra[ci], layout.sizes[ci], 0.35);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
