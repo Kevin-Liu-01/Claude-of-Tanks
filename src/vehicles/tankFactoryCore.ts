@@ -119,7 +119,7 @@ import {
 export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 
 
 const D2R = Math.PI / 180;
@@ -6390,6 +6390,9 @@ function jerryCan(
     can.body.userData.pairSize = 2;
     can.body.userData.pairIndex = pairIndex;
     for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) {
+      // 2026-10-10 (fleet-weapons lane, round 3: "ammo cans and jerrycans in olive drab or green-grey, not mint, cream
+      // or khaki"): issue stowage takes the army's drab on rendered builds (mergeBucket), never the scheme's tint
+      part.userData.issueDrab = true;
       addEquipmentLocal(P, bucket, part, x, y - 0.24, z, yaw, localX, 0, 0);
     }
     if (can.spout) addEquipmentLocal(P, dark, can.spout, x, y - 0.24, z, yaw, localX, 0, 0); // spout and cap
@@ -6438,9 +6441,12 @@ function ammoCan(
   body.userData.latches = 2;
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
+  body.userData.issueDrab = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
   // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
-  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
+  const lid = markEquipmentLid(box(0.155, 0.028, 0.315));
+  lid.userData.issueDrab = true;
+  P.addEquipment(bucket, lid, x, y + 0.11, z, 0, yaw, 0); // gasketed lid
   // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
   // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
   // geometry tier keeps its lighter latch blocks and barrels
@@ -8073,7 +8079,13 @@ function* createTankOwnedSteps(
     const weaponSteel = matKey === 'weaponSteel' || (station && matKey === 'dark')
       || (bucket === 'gun' && mainBarrelIsWeaponSteel(specId)) ? mats.weaponSteel : undefined;
     if (weaponSteel) prepareWeaponFinishGeometry(merged, boxUV);
-    const mesh = new THREE.Mesh(merged, weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
+    // issue stowage (cans) grouped apart on rendered builds only (the grouping key below): the army's drab, not the tint
+    const issueDrab = mats.ammoDrab && list.every((part) => part.userData.issueDrab) ? mats.ammoDrab : undefined;
+    if (issueDrab) {
+      prepareWeaponFinishGeometry(merged, boxUV);
+      paintAmmoVertexColours(merged, issueDrab, false);
+    }
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
@@ -8109,6 +8121,8 @@ function* createTankOwnedSteps(
     const station=part.userData.auxiliaryStation;
     return station?station.name+':'+station.stage:'';
   };
+  // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
+  const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -8125,7 +8139,7 @@ function* createTankOwnedSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part);
+      const key=stationKey(part)+issueDrabKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);

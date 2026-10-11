@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
+import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import type {NationalRoofLoadout} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -23,18 +25,66 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point,l:Na
   gun.add('turretDark',cylX(.073,.065,20),x+side*(half+.045),y,z);
  }
  gun.stage('pitch');
- gun.add('turretDark',box(w,cannon?.20:.155,cannon?.58:.49),x,y,z-.08);
  gun.add('turretDark',cylX(.055,half*2+.095,20),x,y,z);
- gun.add('turretDark',cylZ(cannon?.059:.047,.18,24),x,y,z+.20);
- const tip=l.muzzleZ,barrelStart=.23;
- gun.add('turretDark',cylZ(cannon?.036:.026,tip-barrelStart-.055,24),x,y,z+(barrelStart+tip-.055)/2);
- gun.add('turretDark',blindTube(cannon?.050:.038,l.caliber/2000,.10,.070,24),x,y,z+tip-.05);
- for(const at of [.31,cannon?.62:.48])gun.add('turretDark',cylZ(cannon?.055:.034,.035,20),x,y,z+at);
+ // 2026-10-10 (fleet-weapons lane, round 3; wave 348a's critics on these stations: "a fat, featureless dark-grey tube
+ // with only a muzzle ring and a collar, no receiver, feed or cooling"): the 12.7 mm gun is the fleet's heavy machine
+ // gun construction (machineGunGeometry.ts: receiver with feed cover and feedway, barrel, gas tube and flash hider) lying
+ // in an open cradle of two side rails on a tray, its bore on the station's axis and its muzzle at the loadout's muzzle;
+ // the 30 mm gun keeps its receiver and gains a cooling jacket, a gas cylinder and a baffled muzzle brake.
+ if(cannon)nationalCannon(gun,l,x,y,z,w);
+ else nationalMachineGun(gun,l,x,y,z,w,nationalMgClass(P));
  housing(gun,l,x,y,z,w);
  feed(gun,l,x,y,z,w);
  sight(gun,l,x,y,z,w);
  const root=gun.finish();root.userData.nationalRoofLoadout=l.name;
  const [cx,cy,cz]=cupola;KIT.cupola(P,'turret',cx,cy-.006,cz,.27,.11,8);
+}
+
+/** The 12.7 mm class each nation's concept station carries: the NSV family in Ukraine and Poland, the Kord in Russia,
+ * the QJC-88 in China (MG_CLASSES). */
+function nationalMgClass(P:TankBuilderPort):MgClassKey {
+ const nation=String(P.spec?.id??'').split('_')[0];
+ return nation==='ru'?'kord':nation==='cn'?'qjc88':'nsvt';
+}
+
+/** The fleet heavy machine gun in an open cradle: receiver centred where the old receiver block stood (z - 0.08),
+ * bore on the trunnion axis, muzzle at the loadout's muzzle. */
+function nationalMachineGun(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number,cls:MgClassKey):void {
+ const def=MG_CLASSES[cls];
+ const sink:{add(slot:string,geometry:THREE.BufferGeometry,px?:number,py?:number,pz?:number,rx?:number,ry?:number,rz?:number):void}={
+  add(){},
+ };
+ const probe=createPintleLayout({cls,scale:1,remote:true,ammo:false,mount:'external-cradle',feed:l.feedSide>0?'left':'right'},sink);
+ const recCentreZ=z-.08, dz=recCentreZ-probe.recZ, dy=y-probe.trunY;
+ const flash=def.flashL*probe.s;
+ const barrelLength=z+l.muzzleZ-dz-probe.trunZ-.10*probe.s-flash-.011;
+ const parts={add(slot:string,geometry:THREE.BufferGeometry,px=0,py=0,pz=0,rx=0,ry=0,rz=0):void{
+  if(slot==='shadow')return;
+  g.add(slot==='glass'?'turretGlass':'turretDark',KIT.xform(geometry,px,py,pz,rx,ry,rz),x,dy,dz);
+ }};
+ const layout=createPintleLayout({cls,scale:1,remote:true,ammo:false,mount:'external-cradle',
+  feed:l.feedSide>0?'left':'right',barrelLength},parts);
+ addPintleReceiver(layout);
+ addPintleBarrel(layout);
+ // the open cradle: a tray under the receiver and two side rails the trunnion, the sight foot and the feed bridge bear on
+ const trayTop=dy+layout.bodyBottom-.002, depth=.46;
+ g.add('turretDark',box(w,.012,depth),x,trayTop-.006,recCentreZ);
+ for(const side of [-1,1])g.add('turretDark',box(.012,y+.06-(trayTop-.012),depth),x+side*(w/2-.006),(y+.06+trayTop-.012)/2,recCentreZ);
+}
+
+/** The 30 mm gun: its receiver block, a ribbed cooling jacket, the barrel with a gas cylinder beneath it, and a
+ * three-baffle muzzle brake around a blind bore. */
+function nationalCannon(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ g.add('turretDark',box(w,.20,.58),x,y,z-.08);
+ const tip=l.muzzleZ,barrelStart=.23,brakeL=.16;
+ g.add('turretDark',cylZ(.059,.18,24),x,y,z+.20);
+ for(const at of [.14,.19,.24])g.add('turretDark',cylZ(.066,.012,24),x,y,z+at);
+ g.add('turretDark',cylZ(.036,tip-barrelStart-brakeL,24),x,y,z+(barrelStart+tip-brakeL)/2);
+ const gasEnd=barrelStart+(tip-barrelStart-brakeL)*.55;
+ g.add('turretDark',cylZ(.016,gasEnd-barrelStart,16),x,y-.058,z+(barrelStart+gasEnd)/2);
+ g.add('turretDark',box(.022,.04,.03),x,y-.038,z+gasEnd-.015);
+ g.add('turretDark',blindTube(.050,l.caliber/2000,brakeL,.070,24),x,y,z+tip-brakeL/2);
+ for(const at of [-.115,-.07,-.025])g.add('turretDark',cylZ(.058,.014,24),x,y,z+tip+at);
 }
 
 function housing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {

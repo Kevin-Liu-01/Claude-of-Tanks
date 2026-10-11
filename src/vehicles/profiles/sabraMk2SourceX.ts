@@ -185,14 +185,20 @@ function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void
     if(!Number.isFinite(roof))throw new Error('Sabra cheek fitting lies outside its native roof');
     return roof+py;
   };
+  const covers=[[.67,1.19,.43,1.13,1.075],[1.225,1.90,.43,1.065,.735]] as const;
   for(const side of [-1,1]) {
-    for(const [za,zb,inner,outerA,outerB] of [[.67,1.19,.43,1.13,1.075],[1.225,1.90,.43,1.065,.735]]) {
+    for(const [za,zb,inner,outerA,outerB] of covers) {
       // A continuous finite cover follows each underlying planar facet,
       // including its ridge; a four-corner bilinear cover could float over it.
       P.addExternalArmor('turret',sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB));
     }
+    // 2026-10-10 (fleet-weapons lane, round 3; wave 348b's critics: "floating hex bolts" beside the cupola gun): each
+    // 13 mm bolt head is seated 2 mm into the plate it fastens, the 12 mm cover where it lies on one and the cheek
+    // facet where it does not; they stood 6.5 mm above the covers and 19 mm above the bare facet.
+    const onCover=(x:number,z:number):boolean=>covers.some(([za,zb,inner,outerA,outerB])=>
+      z>=za&&z<=zb&&x>=inner&&x<=outerA+(outerB-outerA)*(z-za)/(zb-za));
     for(const [x,z] of [[.69,1.53],[.69,1.87],[.89,1.29],[.94,1.645],[.875,1.326],[.5,.76],[.78,.76]])
-      turretEquipment(P,'turretDetail',cylY(.017,.017,.013,6),side*x,cheekTop(x,z)+.025,z,.31,0,side*.42);
+      turretEquipment(P,'turretDetail',cylY(.017,.017,.013,6),side*x,cheekTop(x,z)+(onCover(x,z)?.012:0)+.0045,z,.31,0,side*.42);
     smokeBank(P,side,1.17,2.08,1.16,5);
     for(const z of [-.74,.05,.75]){
       turretEquipment(P,'turretDetail',box(.026,.029,.59),side*1.34,2.05,z,0,side*-.09);
