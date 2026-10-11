@@ -4,7 +4,7 @@
 // slopes in all (aat-chala), the kalasa finial, a triple-arched front faced with terracotta plaques.
 //
 // The frame: the front (+z) is the arched façade and the steps; y = 0 the lowest ground under the plinth.
-import { PartSink, rgb, shade, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { archedBody, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
