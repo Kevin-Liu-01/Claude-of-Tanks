@@ -39,6 +39,7 @@ import type { StructureScars } from './structureScars.ts';
 import type { CollapseBodies, CollapseBodiesEvent } from './collapseBodies.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
+import { profEnd, profStart } from './fxProf.ts';
 import type { CollapsePiece } from './collapsePieces.ts';
 
 export interface StructureStages {
@@ -466,7 +467,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // (the same burst's breach stage struck here already: its round is that one)
       const recent = struckAt.get(structureId);
       if (recent && o.now() - recent[3] < 1 && Math.hypot(recent[0] - x, recent[1] - y, recent[2] - z) < 0.5) return;
+      const tStrike = profStart();
       const faces = fracture.strike(seam, x, y, z, p.dirX, p.dirZ, p.munition, p.chargeKg, p.caliberMm);
+      profEnd('st.strike', tStrike);
       if (faces) {
         finishFalls(structureId);
         notePunched(structureId, x, y, z);
@@ -972,6 +975,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         // its pieces stand in its place: it goes from the mask, its rims with it, and its heap rises under them (at once
         // for a building whose cut was laid ahead; a few frames on for one felled whole by one blow)
         const ready = (): void => {
+          const tReady = profStart();
           finishFalls(e.structureId);
           const a = seam.anatomy;
           const fall = { eaveM: a.roof ? a.placement.y + a.roof.eaveY - e.baseY : 0, halfW: a.w / 2, halfD: a.d / 2, yaw: a.placement.yaw };
@@ -993,6 +997,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             for (const m of made) { m.matrix.makeTranslation(0, -depth, 0); m.matrixWorldNeedsUpdate = true; }
             rising.push({ meshes: made, t0: o.now(), depth });
           }
+          profEnd('st.ready', tReady);
         };
         if (o.bodies.collapse(seam, e, standing, (bucket) => byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null, ready)) {
           downed.add(e.structureId);

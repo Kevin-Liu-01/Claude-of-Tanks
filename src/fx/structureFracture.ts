@@ -24,6 +24,7 @@ import { damageSeed, type FractureSlot } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitCollapseImpact } from './collapseImpacts.ts';
+import { profEnd, profStart } from './fxProf.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, cellRect, createWallFracture, createWallStrikeOutcome,
   gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
@@ -1298,13 +1299,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     },
     flush() { advanceWork(Infinity); },
     update() {
+      const tWork = profStart();
       if (work.length) advanceWork(performance.now() + WORK_BUDGET_MS);
+      profEnd('fr.work', tWork);
       const t = o.now();
       const dt = Math.max(0, Math.min(0.25, t - lastUpdateS));
       lastUpdateS = t;
+      const tCrack = profStart();
       while (cracking.length) crackBody(cracking.pop()!);
+      profEnd('fr.crack', tCrack);
       if (!bodies.size) return;
       // (a Map tolerates deleting the entry being visited: no list a frame)
+      const tPose = profStart();
       for (const b of bodies.values()) {
         if (!o.pool.framePoseAt(b.handle, _pose)) { bodies.delete(b.handle); continue; }
         writePose(b, _pose);
@@ -1312,6 +1318,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         b.still = o.pool.asleep(b.handle) ? b.still + dt : 0;
         if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) bake(b);
       }
+      profEnd('fr.poses', tPose);
     },
     liveBodies() { return bodies.size; },
     reset() {

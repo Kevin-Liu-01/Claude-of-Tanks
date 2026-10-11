@@ -37,6 +37,7 @@ import {
   type CapQuad, type CollapseBlow, type CollapsePiece, type CollapsePlan,
 } from './collapsePieces.ts';
 import { emitCollapseImpact } from './collapseImpacts.ts';
+import { profEnd, profStart } from './fxProf.ts';
 
 /** A live collapse's stage event (StructureStageEvent's fields this module reads). */
 export interface CollapseBodiesEvent {
@@ -647,6 +648,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
 
   /** The collapse itself, its cut laid: the plan with its blow, the meshes and the bodies. */
   function bringDown(job: Prepared, seam: StructureDamageSeam, e: CollapseBodiesEvent, standing: readonly THREE.Mesh[]): void {
+    const tProf = profStart();
     const anatomy: StructureDamageAnatomy = seam.anatomy;
     bind();
     const f = frameOf(anatomy);
@@ -744,6 +746,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     falling.add(anatomy.structureIdx);
     live.push(lc);
+    profEnd('cb.bringDown', tProf);
   }
 
   /** A panel's parts each into its own body: at their places on the panel now, with the panel's motion there. */
@@ -880,6 +883,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         i++;
       }
       // the cuts laid ahead, within the frame's budget
+      const tPrep = profStart();
       if (prepared.size) {
         const deadline = now() + budgetMs;
         for (const job of prepared.values()) {
@@ -889,6 +893,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           if (now() >= deadline) break;
         }
       }
+      profEnd('cb.prepare', tPrep);
       if (!live.length && !o.alsoLive?.()) return;
       bind();
       clockS += Math.max(0, dtS);
@@ -907,9 +912,13 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const hulls = o.hulls?.();
       if (hulls) for (const t of hulls) if (t && (t as WreckTurretTank).state && (t as WreckTurretTank).spec) hullList.push(t as WreckTurretTank);
       pool.setHulls(hullList);
+      const tAdv = profStart();
       pool.advance(dtS);
+      profEnd('cb.poolAdvance', tAdv);
       // the panels that landed hard crack now (outside the pool's report)
+      const tBrk = profStart();
       while (breaking.length) { const b = breaking.pop()!; breakApart(b.c, b.p); }
+      profEnd('cb.break', tBrk);
       for (let i = 0; i < live.length; i++) {
         const c = live[i];
         if (c.done) continue;
@@ -955,7 +964,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
             }
           }
         }
-        if (allStill || (allSlow && age > BAKE_SLOW_AGE_S) || age > BAKE_AGE_S) bake(c);
+        if (allStill || (allSlow && age > BAKE_SLOW_AGE_S) || age > BAKE_AGE_S) { const tBake = profStart(); bake(c); profEnd('cb.bake', tBake); }
       }
     },
     get active() { return live.filter((c) => !c.done).length; },
