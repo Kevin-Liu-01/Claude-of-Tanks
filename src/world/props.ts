@@ -3127,8 +3127,9 @@ function addDestructibleRecord(
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
   let placement: GroundedDestructiblePlacement;
-  if (GROUND_POSED_KINDS.has(kind) && tiltX === 0 && tiltZ === 0) {
+  if ((GROUND_POSED_KINDS.has(kind) || meta.groundPose) && tiltX === 0 && tiltZ === 0) {
     // a cart or a parked vehicle sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
+    // (and a kind posed so, the map-content lane's polar works: their drums stand with the slope, no corner in the air)
     const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
     tiltX = pose.tiltX; tiltZ = pose.tiltZ;
     placement = { y: pose.y - cartSink(meta), support: { mode: 'pitched', min: pose.min, max: pose.max, spread: pose.max - pose.min } };

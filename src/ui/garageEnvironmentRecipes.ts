@@ -60,7 +60,7 @@ export interface GarageEnvironmentRecipe {
   readonly treeSpecies: readonly string[];
   readonly treeCount: number;
   /** Distant relief grammar; flat facilities must not inherit alpine walls. */
-  readonly horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa';
+  readonly horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune';
   /** Upper bound for the farthest skyline crest above the Garage datum. */
   readonly horizonHeightM: number;
   readonly approach: GarageApproachRecipe;
@@ -164,7 +164,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(MARKET_BUILDERS.compoundSouk, 'outer convoy compound', 30, 31, 0.48),
     ],
     treeSpecies: ['palm', 'acacia'], treeCount: 20,
-    horizonStyle: 'mesa', horizonHeightM: 9.8,
+    horizonStyle: 'dune', horizonHeightM: 9.8,
     approach: {
       style: 'desert-convoy', label: 'compacted convoy approach', surface: 'sand', width: 8.4,
       waypoints: [[1, 10], [3, 25], [-5, 46]], lanes: [-2.6, 2.6],
