@@ -995,6 +995,21 @@ function ledgedDoor(w: ShedWriter, f: Frame, o: Opening, hingeLeft: boolean): vo
   w.box(f, [lu, o.y0 + 0.95, z1], [lu + 0.06, o.y0 + 1.13, z1 + 0.05], { tone: IRON, uv: 'flat', weather: 0.3 });
 }
 
+/** A ladder stored flat along a wall on two iron hooks (inside its panel's piece): rails, rungs, the hooks. */
+function hungLadder(w: ShedWriter, f: Frame, u0: number, u1: number, y: number): void {
+  const st = w.style, z0 = BOARD_T + BATTEN_T + 0.05, rail = 0.055, gap = 0.36;
+  const tone = boardTone(w, mulc(st.wood, 1.05));
+  for (const dy of [0, gap]) w.box(f, [u0, y + dy, z0], [u1, y + dy + rail, z0 + 0.03], { tone, uv: w.plankUv(rail, 0), seg: 2 });
+  for (let u = u0 + 0.15; u < u1 - 0.1; u += 0.3) {
+    w.box(f, [u - 0.017, y + rail, z0 + 0.004], [u + 0.017, y + gap, z0 + 0.026], { tone: mulc(tone, 0.95), uv: w.plankUv(0.034, 1), seg: 1 });
+  }
+  // the hooks: out of the battens, up round the lower rail
+  for (const u of [u0 + 0.5, u1 - 0.5]) {
+    w.box(f, [u - 0.012, y - 0.03, BOARD_T + BATTEN_T - 0.005], [u + 0.012, y - 0.008, z0 + 0.045], { tone: IRON, uv: 'flat', weather: 0.3 });
+    w.box(f, [u - 0.012, y - 0.03, z0 + 0.03], [u + 0.012, y + 0.05, z0 + 0.045], { tone: IRON, uv: 'flat', weather: 0.3 });
+  }
+}
+
 // ------------------------------------------------------------------------------------------------- roofs
 
 /** A roof plane: points are o + e·a + f·b + up·c (e along its eave, f up its slope, up out of it). */
@@ -1270,7 +1285,10 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng): ShedBuild {
     face: 'right', f: fR, u0: -FH.hz, u1: FH.hz, y0: FH.boardY0, top: sideTop, openings: [],
     splits: [-0.95, 0.95], girts: [0.9, 1.9], girtU0: -FH.hz + FH.post, girtU1: FH.hz - FH.post,
     studs: [-1.45, 0, 1.45], studTop: FH.plateY0,
-  }, () => undefined);
+  }, (_panel, [a, b]) => {
+    // a ladder stored along the wall under the eave on two iron hooks (in the middle panel)
+    if (a < -0.5 && b > 0.5) hungLadder(w, fR, -1.55, 1.55, 1.82);
+  });
   for (const [wall, sx] of [[left, -1], [right, 1]] as const) {
     wall.pieces.forEach((pi, k) => {
       w.link(pi, sx < 0 ? sillL : sillR, 'nail');
@@ -1315,7 +1333,16 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng): ShedBuild {
   const back = cladWall(w, {
     face: 'back', f: fB, u0: -endU, u1: endU, y0: FH.boardY0, top: rakeTop, openings: [],
     splits: [0], girts: [0.9, 1.9, 2.47], girtU0: -FH.hx + FH.post, girtU1: FH.hx - FH.post, studs: [-1.0, 1.0], studTop: 2.42,
-  }, () => undefined);
+  }, (_panel, [a, b]) => {
+    // a louvred vent high in the back gable, in the panel that holds the gable's middle
+    if (a <= 0 && b > 0) {
+      for (let k = 0; k < 3; k++) {
+        const y = 3.12 + k * 0.09;
+        w.box(fB, [-0.22, y, BOARD_T], [0.22, y + 0.05, BOARD_T + 0.03], { tone: mulc(st.trim, 0.85), uv: w.plankUv(0.05, 0), seg: 1 });
+      }
+      w.box(fB, [-0.26, 3.07, BOARD_T], [0.26, 3.12, BOARD_T + 0.035], { tone: st.trim, uv: w.plankUv(0.05, 0), seg: 1 });
+    }
+  });
   if (front.pieces.length !== 3) throw new Error('shedKit: the field hut front must split round its door');
   const [frontL, overDoor, frontR] = front.pieces;
   const frontTruss = trusses[trusses.length - 1], backTruss = trusses[0];
