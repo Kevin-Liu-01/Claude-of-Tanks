@@ -206,7 +206,7 @@ const RISE_FROM_S = 0.7;
 const RISE_TO_S = 3.4;
 /** A collapse whose pieces have all lain still this long is baked; one this old whose pieces only creep (under these
  *  speeds: a slab easing on a wedge) is too; any collapse this old is. */
-const BAKE_STILL_S = 3;
+const BAKE_STILL_S = 2;
 const BAKE_SLOW_AGE_S = 7;
 const SLOW_MPS = 0.3;
 const SLOW_RADS = 0.5;
@@ -724,6 +724,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         const off = piece.parts[k]?.center ?? [0, 0, 0];
         const meshes = geometriesFor(piece.index * PART_STRIDE + k)
           .map(({ material, geometry }) => meshOf(geometry, material, `fx-collapse-${piece.kind}-${anatomy.structureIdx}-${piece.index}.${k}`));
+        // (the decisive wave's hitch probe: 2400 draw calls at a house's collapse) only a piece with a face of three square
+        // metres or more casts its own shadow while it falls (the baked heap casts them all)
+        const big = piece.boxes.some((b) => Math.max(4 * b.half[0] * b.half[1], 4 * b.half[1] * b.half[2], 4 * b.half[0] * b.half[2]) >= 3);
+        for (const m of meshes) m.castShadow = big;
         const offset = new THREE.Vector3(off[0], off[1], off[2]);
         parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
           handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0 });

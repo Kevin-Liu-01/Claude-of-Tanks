@@ -153,18 +153,23 @@ interface Live {
   room: THREE.Mesh[];
   roomStoreys: Set<number>;
   baked: THREE.Mesh[];
+  /** Baked bodies' meshes waiting to join the building's merged heap, and that heap (one mesh a material and layout:
+   *  a hundred clumps lying still drew a hundred draw calls and their shadows each, the decisive wave's hitch probe). */
+  bakedPending: THREE.Mesh[];
+  bakedMerged: Map<string, THREE.Mesh>;
+  mergedAt: number;
   strikes: number;
 }
 
-const BAKE_STILL_S = 2.5;
+const BAKE_STILL_S = 1.5;
 const BAKE_AGE_S = 30;
 const SOUND_GAP_S = 0.06;
-/** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of four cells or more cracks on a
- *  landing this hard (m/s) into clumps of two or three cells along its courses, while the pool has room for them. */
+/** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of six cells or more cracks on a
+ *  landing this hard (m/s) into clumps of three or four cells along its courses, while the pool has room for them. */
 const CRACK_MPS = 3;
 /** (the decisive wave's barn: "bright, undusted, same-size bricks") how far what broke off is greyed toward its own dust. */
 const DUST_COAT = 0.42;
-const CRACK_MIN_CELLS = 4;
+const CRACK_MIN_CELLS = 6;
 const CAP_UV_DENSITY = 0.55;
 
 function neutral(name: string): number {
@@ -995,7 +1000,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       partsOut.push({ material, geometry });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
-      mesh.castShadow = true;
+      // (the decisive wave's hitch probe: 2400 draw calls at a house's collapse) a clump of three cells or fewer casts no
+      // shadow of its own while it flies (the heap it bakes into does)
+      mesh.castShadow = cells.length >= 8;
       mesh.receiveShadow = true;
       o.group.add(mesh);
       meshes.push(mesh);
@@ -1032,7 +1039,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const _atP = new THREE.Vector3(), _atQ = new THREE.Quaternion(), _atS = new THREE.Vector3(), _atM = new THREE.Matrix4();
   const _crackVel = new Float64Array(6);
   /**
-   * A chunk that landed hard breaks along its courses into clumps of two or three cells, each a body where its cells lie
+   * A chunk that landed hard breaks along its courses into clumps of three or four cells, each a body where its cells lie
    * in the chunk now, with the chunk's motion and a tumble of its own; the chunk leaves the pool. Skipped without room.
    */
   function crackBody(b: LiveBody): void {
@@ -1054,7 +1061,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (const key of [...byRow.keys()].sort()) {
       const run = byRow.get(key)!;
       for (let i = 0; i < run.length;) {
-        const take = (2 + (Math.imul(b.handle + 1, 0x9e3779b1) + k++) % 2) * 2;
+        const take = (3 + (Math.imul(b.handle + 1, 0x9e3779b1) + k++) % 2) * 2;
         const clump = run.slice(i, i + take);
         i += take;
         if (clump.length === 2 && clumps.length && i >= run.length) clumps[clumps.length - 1].push(...clump); else clumps.push(clump);
@@ -1089,13 +1096,75 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     bodies.delete(b.handle);
     if (release) o.pool.release(b.handle);
     const live = lives.get(b.structureIdx);
-    // (the mesh keeps its last matrix: a baked body is a static mesh where it lies, its geometry untouched)
+    // (the mesh keeps its last matrix: a baked body is a static mesh where it lies, its geometry untouched) — until it
+    // joins the building's merged heap (mergeBaked, a batch at a time)
     for (let i = 0; i < b.meshes.length; i++) {
       const mesh = b.meshes[i];
       mesh.matrixWorldNeedsUpdate = true;
-      live?.baked.push(mesh);
+      if (live) live.bakedPending.push(mesh); else { o.group.remove(mesh); mesh.geometry.dispose(); }
     }
     bakedCount++;
+  }
+
+  const _mv = new THREE.Vector3(), _mn = new THREE.Vector3(), _mN = new THREE.Matrix3();
+  /**
+   * A building's baked bodies into its merged heap: every pending mesh's interleaved vertices carried through its matrix
+   * (positions and normals) and appended to its material's heap (a new buffer: the old one's vertices copied first), the
+   * pending meshes then gone — one draw call (and its shadow passes) a material for everything that lies still.
+   */
+  function mergeBaked(live: Live): void {
+    if (!live.bakedPending.length) return;
+    const groups = new Map<string, { material: THREE.Material; stride: number; meshes: THREE.Mesh[]; floats: number }>();
+    for (const mesh of live.bakedPending) {
+      const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
+      const data = pos?.data;
+      if (!data) continue;
+      const material = mesh.material as THREE.Material;
+      const key = `${material.uuid}:${data.stride}`;
+      let g = groups.get(key);
+      if (!g) { g = { material, stride: data.stride, meshes: [], floats: 0 }; groups.set(key, g); }
+      g.meshes.push(mesh);
+      g.floats += data.array.length;
+    }
+    for (const [key, g] of groups) {
+      const old = live.bakedMerged.get(key);
+      const oldData = old ? (old.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute).data : null;
+      const out = new Float32Array((oldData ? oldData.array.length : 0) + g.floats);
+      let at = 0;
+      if (oldData) { out.set(oldData.array as Float32Array, 0); at = oldData.array.length; }
+      for (const mesh of g.meshes) {
+        const src = (mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute).data.array as Float32Array;
+        out.set(src, at);
+        _mN.getNormalMatrix(mesh.matrix);
+        for (let i = at; i < at + src.length; i += g.stride) {
+          _mv.set(out[i], out[i + 1], out[i + 2]).applyMatrix4(mesh.matrix);
+          out[i] = _mv.x; out[i + 1] = _mv.y; out[i + 2] = _mv.z;
+          _mn.set(out[i + 3], out[i + 4], out[i + 5]).applyMatrix3(_mN).normalize();
+          out[i + 3] = _mn.x; out[i + 4] = _mn.y; out[i + 5] = _mn.z;
+        }
+        at += src.length;
+        o.group.remove(mesh);
+        mesh.geometry.dispose();
+      }
+      // the layout as the first mesh carried it (every mesh of a key shares it)
+      const first = g.meshes[0].geometry;
+      const geometry = new THREE.BufferGeometry();
+      const buffer = new THREE.InterleavedBuffer(out, g.stride);
+      for (const [name, attr] of Object.entries(first.attributes)) {
+        const ia = attr as THREE.InterleavedBufferAttribute;
+        geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(buffer, ia.itemSize, ia.offset));
+      }
+      geometry.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geometry, g.material);
+      mesh.matrixAutoUpdate = false;
+      mesh.matrixWorldNeedsUpdate = true;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      o.group.add(mesh);
+      if (old) { o.group.remove(old); old.geometry.dispose(); }
+      live.bakedMerged.set(key, mesh);
+    }
+    live.bakedPending.length = 0;
   }
 
   function densityOf(material: string): number {
@@ -1252,7 +1321,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!(hole.radiusM > 0)) return null;
       let live = lives.get(seam.structureIdx);
       if (!live) {
-        live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', released: false, claiming: new Map(), sortAt: [0, 0], sorting: null, byFace: null, room: [], roomStoreys: new Set(), baked: [], strikes: 0 };
+        live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', released: false, claiming: new Map(), sortAt: [0, 0], sorting: null, byFace: null, room: [], roomStoreys: new Set(), baked: [], bakedPending: [], bakedMerged: new Map(), mergedAt: 0, strikes: 0 };
         lives.set(seam.structureIdx, live);
       }
       // the round in the body frame
@@ -1308,6 +1377,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const tCrack = profStart();
       while (cracking.length) crackBody(cracking.pop()!);
       profEnd('fr.crack', tCrack);
+      const tMerge = profStart();
+      for (const live of lives.values()) {
+        if (live.bakedPending.length && (live.bakedPending.length >= 6 || t - live.mergedAt > 1)) { mergeBaked(live); live.mergedAt = t; }
+      }
+      profEnd('fr.merge', tMerge);
       if (!bodies.size) return;
       // (a Map tolerates deleting the entry being visited: no list a frame)
       const tPose = profStart();
@@ -1327,7 +1401,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       cracking.length = 0;
       for (const live of lives.values()) {
         for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
-        for (const m of [...live.room, ...live.baked]) { o.group.remove(m); m.geometry.dispose(); }
+        for (const m of [...live.room, ...live.baked, ...live.bakedPending, ...live.bakedMerged.values()]) { o.group.remove(m); m.geometry.dispose(); }
       }
       lives.clear();
       work.length = 0;
