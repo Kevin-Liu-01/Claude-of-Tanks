@@ -321,7 +321,9 @@ const constraintFactory = new Function('fixture', `
     // round 61: the road-plane blend yields under a bridge deck (bridgeTermsAt); this fixture authors none
     bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
     // 0e5fc79e2: a dry viaduct (T.bridges, Aegis Crossing) cuts shoulder noise flush with its deck; none authored here
-    T = {}, bridgeDeckOver = () => null } = fixture;
+    T = {}, bridgeDeckOver = () => null,
+    // (2026-10-07, the map-revival lane: a styled path's crowned bank, RoadPathStyle.crownLiftM) this fixture lifts none
+    gRoadLift = null, gRoadCrest = null } = fixture;
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);
