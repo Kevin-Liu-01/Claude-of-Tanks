@@ -122,10 +122,9 @@ export function flowerBox(sink: PartSink, face: Face, u: number, y: number, w: n
       bloomDisc(sink, head, facing, s * 0.45,
         [Math.min(1, bloom[0] * tone), Math.min(1, bloom[1] * tone), Math.min(1, bloom[2] * tone)], d, h * 6);
       // its stalk, from down in the leaves up to the head (the connectivity sweep: the heads hung over the leaves on
-      // nothing); one quad seen from the street
+      // nothing); one sliver of a triangle seen from the street (a quad put the tavern's 40 boxes over its budget)
       const root = out(uu + du * 0.6, by + 0.12, 0.15);
-      sink.polygon('structureWood', [[root[0] - face.u[0] * 0.006, root[1], root[2] - face.u[2] * 0.006], [root[0] + face.u[0] * 0.006, root[1], root[2] + face.u[2] * 0.006],
-        [head[0] + face.u[0] * 0.005, head[1], head[2] + face.u[2] * 0.005], [head[0] - face.u[0] * 0.005, head[1], head[2] - face.u[2] * 0.005]],
+      sink.polygon('structureWood', [root, [head[0] + face.u[0] * 0.006, head[1], head[2] + face.u[2] * 0.006], [head[0] - face.u[0] * 0.006, head[1], head[2] - face.u[2] * 0.006]],
         { ...d, colour: shade(leaf, 0.8) });
     }
   }
