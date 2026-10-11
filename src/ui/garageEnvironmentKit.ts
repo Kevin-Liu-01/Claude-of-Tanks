@@ -33,6 +33,7 @@ import {
   addGarageFacilityDetails,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
+import { GARAGE_YARD_WEAR, garageYardWearTexture } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
   type GarageApproachStats,
@@ -1031,6 +1032,32 @@ export function buildGarageEnvironment(
   hardstand.matrixAutoUpdate = false;
   hardstand.updateMatrix();
   root.add(hardstand);
+
+  // The working history of the apron (2026-10-10, the owner's "more detailed ... better textures"): one shared
+  // yard-wear texture (track lanes worn in from this pack's approach road, the turntable's grime ring, oil stains,
+  // worn bay paint) on a transparent decal that receives the settled shadow. The texture is shared by every pack and
+  // never disposed with one; plain Node has no canvas and skips it.
+  const yardWear = garageYardWearTexture(engineCtx.anisotropy ?? 4);
+  if (yardWear) {
+    const [approachSide, approachDepth] = recipe.approach.waypoints[0];
+    const toward = garageViewPoint(approachSide, approachDepth);
+    const yardMaterial = plainMaterial({
+      map: yardWear, transparent: true, depthWrite: false, roughness: 0.96, metalness: 0,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
+    const yard = new THREE.Mesh(track(new THREE.PlaneGeometry(GARAGE_YARD_WEAR.widthM, GARAGE_YARD_WEAR.depthM)), yardMaterial);
+    yard.name = 'garage_service_yard_wear';
+    yard.rotation.order = 'YXZ';
+    yard.rotation.set(-Math.PI / 2, Math.atan2(-toward.x, -toward.z), 0);
+    yard.position.y = GARAGE_PLATFORM_GEOMETRY.groundSurfaceYM + 0.004;
+    yard.receiveShadow = true;
+    yard.castShadow = false;
+    yard.renderOrder = 1;
+    yard.matrixAutoUpdate = false;
+    yard.updateMatrix();
+    root.add(yard);
+    root.userData.serviceYardWear = true;
+  }
 
   // Static battlefield ground cover sits outside the service hardstand. A
   // single three-triangle tuft is instanced across the real terrain and color
