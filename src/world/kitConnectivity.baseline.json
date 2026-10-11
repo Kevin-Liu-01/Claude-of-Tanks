@@ -1,26 +1,18 @@
 {
  "heavy:arcology": {
-  "floating": 248,
+  "floating": 0,
   "dangling": 2
  },
  "heavy:broadcasttower": {
-  "floating": 175,
-  "dangling": 0
- },
- "heavy:megatower": {
-  "floating": 177,
-  "dangling": 1
- },
- "heavy:needletower": {
-  "floating": 186,
-  "dangling": 0
- },
- "heavy:parkingdeck": {
   "floating": 1,
   "dangling": 0
  },
- "heavy:terracetower": {
-  "floating": 170,
+ "heavy:megatower": {
+  "floating": 1,
+  "dangling": 1
+ },
+ "heavy:parkingdeck": {
+  "floating": 1,
   "dangling": 0
  },
  "kit:chouf:bathhouse": {
