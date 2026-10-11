@@ -262,7 +262,9 @@ const TERRAIN_PLAN = {
     R: { set: 'rock', tint: [0.60, 0.66, 0.74], roughMul: 1.15 }, M: null,
   },
   delta: {
-    G: { set: 'grass', tint: [0.68, 0.94, 0.60], roughMul: 1.22 },
+    // (the map-revival lane, the fabric round 2, 2026-10-11; wave 396c: "a uniform open lawn") the char's sward a duller
+    // green, a little drier (was tint 0.68 / 0.94 / 0.60, undesaturated)
+    G: { set: 'grass', desat: 0.15, tint: [0.72, 0.86, 0.58], roughMul: 1.22 },
     D: { set: 'dirt', tint: [0.67, 0.59, 0.43], roughMul: 1.28 },
     R: { set: 'rock', tint: [0.88, 0.94, 0.78], roughMul: 1.18 }, M: null,
   },

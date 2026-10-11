@@ -29,6 +29,29 @@ const river = [
     [129.4, 149.3, 28]],
 ].flatMap((reach) => createMarshChannel(reach.map(station)));
 
+/** The light buildings the roadside pass seated on the fabric round 2's tree (kind, pose; rot in radians), pinned with
+ * their twins about the char's centre. */
+const LIGHT_BUILDINGS = [
+  { kind: 'stilthouse', x: -24.44, z: -47.41, rot: 34.72 * Math.PI / 180 },
+  { kind: 'longhouse', x: -9.52, z: -20.84, rot: 40.41 * Math.PI / 180 },
+  { kind: 'fishershack', x: -115.71, z: 54.07, rot: 85.59 * Math.PI / 180 },
+  { kind: 'fieldhospital', x: -20.63, z: 36.53, rot: 82.43 * Math.PI / 180 },
+] as const;
+/** The temple court's homestead plinths (bhita): centre and half-axes in metres (the fabric round 2). */
+const PLINTHS = [
+  { x: -69, z: -15, rx: 15, rz: 26 },  // the west bari: the farmhouse and the cottage
+  { x: -36.5, z: -33, rx: 24, rz: 14 }, // the south bari: the gola granary and the cottage
+] as const;
+/** A plinth's swept-earth yard: its level top (the dyke crest, 0.62 of each half-axis) as an octagon. */
+function plinthYard({ x, z, rx, rz }: (typeof PLINTHS)[number]): [number, number][] {
+  const out: [number, number][] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    out.push([+(x + Math.cos(a) * rx * 0.6).toFixed(2), +(z + Math.sin(a) * rz * 0.6).toFixed(2)]);
+  }
+  return out;
+}
+
 export default {
   id: 'delta',
   name: 'Jade River Delta',
@@ -52,6 +75,8 @@ export default {
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): at its ground's median height
       { x: 143, z: -15, width: 56, length: 56, yawDeg: 0, level: 3.0, grade: 0 },
     ],
+    // (fabric round 2) each plinth's top a swept-earth yard: the beaten earth round the houses, no sward
+    workedGround: PLINTHS.map((plinth) => ({ feather: 4, strength: 0.7, boundary: plinthYard(plinth) })),
     village: { x0: -126, x1: 40, z0: -92, z1: 180, cx: -4, cz: 14, feather: 52, flatten: 0.88, relief: 0.08 },
     landforms: [
       { kind: 'ridge', x: -214, z: -108, length: 310, width: 48, height: 3.8, yawDeg: -43, wetScale: 0.82 },
@@ -88,6 +113,13 @@ export default {
         [-68, 118, 90, -11], [110, -40, 90, -11], [-118, 68, 90, -11]]
         .map(([x, z, length, yawDeg]) => ({ kind: 'ridge', x, z, length, width: 12, height: 1.8, yawDeg,
           wetScale: 0.9 })),
+      // (the map-revival lane, round 2 of the fabric, 2026-10-11; gauntlet wave 396c: "the homesteads sit on thin brick
+      // boxes scattered across a uniform open lawn, with no earthen flood plinths, swept-earth yards") the temple court's
+      // two homesteads (baris) stand on their earthen flood plinths — the char's bhita, earth heaped 1.2 m over the flood
+      // line, a level top for the houses and the yard, its batters straight down to the paddies (the polders' dyke
+      // profile), at full height in the village and by the water (PLINTHS)
+      ...PLINTHS.map(({ x, z, rx, rz }) => ({ kind: 'knoll', x, z, rx, rz, height: 1.2, settlementScale: 1, corridorScale: 1,
+        wetScale: 1, geology: { profile: 'dyke' as const, crest: 0.62 } })),
     ],
   },
   spawns: {
@@ -103,14 +135,19 @@ export default {
     mudTone: (h: number, s: number, l: number) => [0.51, Math.min(1, s * 0.92), Math.min(1, l * 0.70)],
     seaLake: true, seaFoam: 0.08, seaRamp: [0.08, 0.42], iceDrift: 0.03,
     marshGloss: 0.86, iceSky: [0.22, 0.38, 0.36],
-    fieldPatch: 1, tintA: [0.78, 1.02, 0.68], tintB: [0.52, 0.72, 0.48],
-    tintC: [0.94, 1.08, 0.76], roadTint: [0.72, 0.67, 0.53], midRelief: 0.72,
+    // (fabric round 2, wave 396c: "a uniform open lawn") the char's patchwork a muted green: straw-dry, damp and fallow
+    fieldPatch: 1, tintA: [0.86, 0.94, 0.66], tintB: [0.56, 0.68, 0.48],
+    tintC: [0.92, 0.98, 0.74], roadTint: [0.72, 0.67, 0.53], midRelief: 0.72,
   },
   vegetation: {
-    species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['willow', 0.35], ['palm', 0.28], ['eucalyptus', 0.22], ['oak', 0.15]],
-    loneMix: [['palm', 0.30], ['willow', 0.30], ['eucalyptus', 0.25], ['oak', 0.15]], rimMix: [['willow', 0.38], ['eucalyptus', 0.28], ['palm', 0.20], ['oak', 0.14]],
-    clusterCount: 96, loneCount: 214, rimCount: 112, grassDensity: 1.22,
-    clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
+    // (the map-revival lane, the fabric round 2, 2026-10-11; the map-vehicle wave 406's Delta side view: "a dense
+    // tall-trunk jungle wall of palms and rainforest" where a Jamuna char is open flat sand, grass and river) the char
+    // opened: half the stands, fewer lone and rim trees, the scrub a third lighter — the trees gathered round the
+    // homesteads and along the banks (palms and the mango in the oak slot first, the willows and the eucalyptus fewer)
+    species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['palm', 0.40], ['oak', 0.30], ['willow', 0.18], ['eucalyptus', 0.12]],
+    loneMix: [['palm', 0.38], ['oak', 0.30], ['willow', 0.20], ['eucalyptus', 0.12]], rimMix: [['willow', 0.34], ['palm', 0.30], ['oak', 0.22], ['eucalyptus', 0.14]],
+    clusterCount: 48, loneCount: 120, rimCount: 64, grassDensity: 1.22,
+    clusterScrub: 1.4, bushCount: 1.1, bushSpecies: 'oak',
   },
   props: {
     // regional-buildings lane: the Jamuna char tin-homestead kit (maps/regional/bengal.ts)
@@ -130,6 +167,13 @@ export default {
       'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
       'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
+    // (the fabric round 2, 2026-10-11; the twin census: the roadside pass seated its four light buildings by the char's
+    // centre with no twins — a field hospital 28 m from it, a longhouse 32 m, a stilt house 61 m) the light buildings in
+    // rotational pairs about the char's centre (-4, 14), pinned (the pass draws nothing: its own stream)
+    townLightPlan: [
+      ...LIGHT_BUILDINGS,
+      ...LIGHT_BUILDINGS.map(({ kind, x, z, rot }) => ({ kind, x: +(-8 - x).toFixed(2), z: +(28 - z).toFixed(2), rot: rot + Math.PI })),
+    ],
     // (2026-10-11, the map-revival lane; gauntlet wave 361: the temple "stands alone on a bare lawn"; "plinth homesteads for
     // the delta") the temple's court among the char's homesteads: tin houses on their earthen plinths west and south of
     // it and a gola granary, fronts to the court, clear of the market square's zone disc (each 49 m or more from it).
@@ -170,12 +214,16 @@ export default {
     cropFields: 11, sandbagLines: 17, hedgehogs: 8,
     cropForm: 'wet-upright', // existing dry wetland-edge plots, not flooded paddies
     // the map-vehicles lane (2026-10-06, the period ruling): the Jamuna: the Bangladesh Army's Type 59s
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['type59'] },
+    // (the twin census: six hulks at random, none with a twin, one 55 m from the centre) no random hulks until the props
+    // pass seats them in pairs (the destructible kits lane's twin rule)
+    tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: ['type59'] },
     inhabit: {
-      stalls: 5, benches: 4, coreClutter: 24, bales: 8, stooks: 10,
+      stalls: 5, benches: 4, coreClutter: 24, bales: 0, stooks: 10,
       pots: 8, troughs: 2, laundry: 4, handcarts: 4, carts: 4,
       trucks: 5, jeeps: 5, drumClusters: 5, camps: 4, modernClutter: 18,
-      roadFence: 'fencewattle', yardFence: 'fencewattle',
+      // (fabric round 2, wave 396c: round bales and no bamboo fencing) no round bales — a char's rice straw is stacked on
+      // its poles (scenery strawstack) — and the yards fenced in split bamboo (inhabitKit.ts fencebamboo)
+      roadFence: 'fencewattle', yardFence: 'fencebamboo',
     },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Jamuna homesteads' rice
@@ -191,6 +239,11 @@ export default {
       { kind: 'strawstack', x: 112, z: -292 },
       { kind: 'strawstack', x: 264, z: 104, name: 'the straw stacks at the east homestead' },
       { kind: 'strawstack', x: 24, z: -214, name: 'the straw stacks at the levee homestead' },
+      // (fabric round 2) the temple court's two baris stack their straw at the plinths' edges
+      { kind: 'strawstack', x: -76, z: -20, name: 'the straw stacks of the west bari' },
+      { kind: 'strawstack', x: -77, z: -13 },
+      { kind: 'strawstack', x: -37, z: -42, name: 'the straw stacks of the south bari' },
+      { kind: 'strawstack', x: -31, z: -42.5 },
     ],
   },
   horizon: {
@@ -208,7 +261,9 @@ export default {
     cloudOpacity: 1.16, cloudOpacity2: 0.96, cloudTintHex: 0xdce4df,
     sunIntensity: 4.1, sunColorHex: 0xfbeed6, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.55 / 0xffe7c5 / 0.42); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
-    lighting: { groundAlbedoHex: 0x61694b },
+    // (fabric round 2, wave 396c: "bright, untextured white masonry walls") the char's ground an alluvial earth brown, so
+    // the yards' mud walls take its hue (props.ts mudEarthOfGround) instead of the plaster's white
+    lighting: { groundAlbedoHex: 0x6b5b44 },
   },
   minimap: {
     base: [63, 100, 55], hard: [105, 98, 74], soft: [48, 77, 62],

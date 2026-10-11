@@ -770,6 +770,47 @@ function bFenceWattleBroken(_rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/** A Bengal homestead's bamboo fence (the map-revival lane, Delta round 2, 2026-10-11; gauntlet wave 396c: "no earthen
+ * flood plinths, swept-earth yards or bamboo and banana groves binding them"): a bamboo culm post at the module's end, two
+ * culm rails lashed across, and a screen of split-bamboo slats between them, alternately in front of and behind the
+ * rails as they are woven — pale straw-tan bamboo going grey with the weather. */
+const BAMBOO: Palette = [0.115, 0.36, 0.47];
+const BAMBOO_GREY: Palette = [0.10, 0.18, 0.40];
+function bFenceBamboo(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  const post = new THREE.CylinderGeometry(0.035, 0.042, 1.18, 7, 1);
+  parts.push(P(post.translate(0, 0.49, -FENCE_SEG / 2), BAMBOO, 0.10, rng));
+  for (const rh of [0.32, 0.78]) {
+    const rail = new THREE.CylinderGeometry(0.024, 0.024, FENCE_SEG * 1.03, 6, 1);
+    rail.rotateX(Math.PI / 2);
+    parts.push(P(rail.translate(0, rh, 0), BAMBOO, 0.10, rng));
+  }
+  const n = 14;
+  for (let k = 0; k < n; k++) {
+    const h = 0.92 + (rng() - 0.5) * 0.12;
+    const slat = box(0.016, h, 0.06);
+    slat.rotateX((rng() - 0.5) * 0.06);
+    parts.push(P(slat.translate(k % 2 ? 0.03 : -0.03, h / 2 - 0.04, -FENCE_SEG / 2 + (k + 0.5) * (FENCE_SEG / n)),
+      rng() < 0.35 ? BAMBOO_GREY : BAMBOO, 0.14, rng));
+  }
+  return merge(parts);
+}
+function bFenceBambooBroken(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  const stub = new THREE.CylinderGeometry(0.035, 0.042, 0.4, 7, 1);
+  stub.rotateX(0.18);
+  parts.push(P(stub.translate(0, 0.17, -FENCE_SEG / 2), BAMBOO, 0.10, rng));
+  const mat = box(0.04, 0.9, FENCE_SEG * 0.85); // the slat screen knocked flat
+  mat.rotateZ(Math.PI / 2 - 0.08);
+  parts.push(P(mat.translate(0.2, 0.06, 0.05), BAMBOO_GREY, 0.14, rng));
+  for (let k = 0; k < 2; k++) {
+    const rail = new THREE.CylinderGeometry(0.024, 0.024, 1.0 + rng() * 0.9, 6, 1);
+    rail.rotateX(Math.PI / 2); rail.rotateY((rng() - 0.5) * 1.2);
+    parts.push(P(rail.translate((rng() - 0.5) * 0.6, 0.05, (rng() - 0.5) * 1.2), BAMBOO, 0.10, rng));
+  }
+  return merge(parts);
+}
+
 function bFenceRail(rng: Rng): THREE.BufferGeometry { // baked: stone posts + twin timber rails
   const parts = [];
   const post = box(0.16, 1.05, 0.16);
@@ -1825,6 +1866,7 @@ export const DESTRUCTIBLE_TYPES = {
   fencepicket: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFencePicket, broken: bFencePicketBroken, fence: true },
   fencewattle: { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFenceWattle, broken: bFenceWattleBroken, fence: true },
   fencerail:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.05, hw: 0.11, hl: 1.25, build: bFenceRail,   broken: bFenceRailBroken, fence: true },
+  fencebamboo: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.05, hw: 0.10, hl: 1.25, build: bFenceBamboo, broken: bFenceBambooBroken, fence: true },
   gate:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.0,  h: 1.3,  hw: 0.46, hl: 0.97, build: bGate,        broken: bGateBroken },
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, hw: 0.30, hl: 1.54, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },
