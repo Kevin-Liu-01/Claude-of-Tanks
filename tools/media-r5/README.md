@@ -60,6 +60,24 @@ Run from the repo root.
    peaking on theirs; a stop cuts the music) under the game's recorded SFX and masters it. The
    music bills on the account, not in its response headers: read the account's subscription
    for the true spend.
+   **A take's own sound** (owner 2026-10-09, "make sure our videos have audio"): `take-audio.mjs
+   <deliverDir> [ids]` scores each delivered site-fifty take from its scene, with no music:
+   - `sfx-cues.mjs --take` derives the cues. Every sound pans against the lens's right at its instant, every
+     moving hull (the hero, then the three nearest the lens) runs its own family's engine at its family's pitch
+     over its track set, and burning wrecks and fire fields play the game's fire loops. Each key gives distance
+     and pan every 100 ms.
+   - `score.mjs --music=none` mixes it. The take's sheet sets `gameLaw`, so each recording is levelled exactly as
+     the game levels it: the cue's own gain and distance law (`soundCues.ts`, `audioMath.ts`) on its bus's level
+     (`mixPolicy.ts`), with the game's speech duck. The films' one compressed law let three hulls' engines rival
+     the guns and a distant blast outweigh a close cannon.
+   - The 6.6 s mix is mastered to -16 LUFS, looped exactly as `site-loops.mjs` loops the picture (the last
+     0.6 s into the head, at equal power), and muxed into every delivered video with the picture copied bit for
+     bit: AAC 256/160 kbit/s in the MP4s and Opus in the WebM. `<id>-audio.wav` and `<id>.audio.json` (cues,
+     master, every file's hashes) ship beside them.
+   - `site50-encoder.mjs --audio` runs it after each delivery. Decoded recordings are cached in
+     `shots/media-r5/score-cache`.
+   - Checks: `shots/media-r5/tmp/av-offset.mjs` (sync within a frame) and `stem-split.zsh` /
+     `cue-contribution.zsh` (which layer carries a mix).
 6. **Kit** — `kit-assemble.mjs` collects films, frames, key art, posters and the site
    fifty into `shots/media-r5/kit/manifest.json`; `kit-page.mjs` renders its `index.html`.
 7. **Docs** — `docs-media.mjs [--ids=] [--stages=] [--force]` builds the Filming manual's media
@@ -68,6 +86,12 @@ Run from the repo root.
    their frames strips and cards, the page's figures, its cover and the manual index's card, with a
    manifest of every source. Re-run it as review-r6 and deliver-r6 land, then list the new stages in
    `src/docs/filming.ts`; `src/docs/filming.selftest.mjs` fails until the two agree.
+
+**Finals encodes** (`site50-encoder.mjs`, launch night): several encoders can share a round. Each claims a take, or a
+take's master, through `<renders>/films/<id>/.encoding` (atomic; a dead pid's claim is taken over), and `--nice`
+sets their children's priority. `site-loops.mjs` builds every format's seamless loop as a stream: the tail comes from
+a second seeked read of the master, so an encode holds about 18 frames of 4K, not the whole take. The single read
+held 6.5–7.6 GB an encode and helped fill the machine's swap on 2026-10-10.
 
 Review helpers: `peek.mjs`, `film-sheet.mjs`, `finals-sheet.mjs`, `mosaic.mjs`,
 `plate.mjs`, `strip.mjs`. UI capture scripts for `studio-ui.mjs` live in `ui/`.
