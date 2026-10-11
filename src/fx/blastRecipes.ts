@@ -1062,9 +1062,11 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
 
 /**
  * (fx 8o, wave 356's critics on a kill: "a flat, lingering dust sheet at 3-4 s") the dust a hull's death throws off the
- * ground round it: puffs kicked out low and fast that stall, rise and roll up into billows as they swell, thinning from a
- * third of their lives and gone within three to five seconds; round cards in the turbulent medium, never the wide flat
- * skirt a ground burst lays (dustSurge). `s` the push: ~0.8 a plain kill, ~1.6 an ammunition cook-off.
+ * ground round it: puffs kicked out from under the hull's skirts that stall, rise and roll up into billows as they swell,
+ * holding to nearly half their lives and gone within three to five seconds; round cards in the turbulent medium, never the
+ * wide flat skirt a ground burst lays (dustSurge). (fx 8s, the w6p film: 8o's dust read as nothing — seven faint, small,
+ * dark puffs that ended under the hull) out past the hull's sides, tan, dense enough to read, a cook-off's a full ring.
+ * `s` the push: ~0.8 a plain kill, ~1.6 an ammunition cook-off.
  */
 export function killDust(C: BlastContext, x: number, y: number, z: number, s: number, surface: SurfaceKind,
   bo: number): void {
@@ -1073,16 +1075,16 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
   const m = C.m;
   const sq = Math.sqrt(s);
   const dk = C.distBoost(x, y, z);
-  const n = Math.round((5 + 3 * s) * Math.sqrt(L.dustK));
+  const n = Math.round((6 + 4 * s) * Math.sqrt(L.dustK));
   for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU + (R() - 0.5) * 0.8;
-    const v = (3.5 + R() * 4) * sq;
-    place(m, x + Math.cos(a) * 1.4 * sq, y + 0.4 + R() * 0.3, z + Math.sin(a) * 1.4 * sq, bo + R() * 0.08);
-    // out low and fast, then the stalled dust rolls up: an upward push and a rise
-    move(m, Math.cos(a) * v, 0.8 + R() * 0.9, Math.sin(a) * v, 2.2, 0.35 + R() * 0.25, 0.9, 0);
-    const life = (2.6 + R() * 1.2) * Math.min(1.35, sq);
-    shape(m, life, 0.8 * sq * dk, (2.4 + R() * 1.3) * sq * Math.sqrt(L.dustK) * dk, 2.6, R);
-    look(m, mix3(L.ejecta, L.dust, 0.6), L.dust, Math.min(0.5, 0.3 * L.dustK + 0.1), 0.04, 0.3);
+    const a = (i / n) * TAU + (R() - 0.5) * 0.7;
+    const r0 = (1.6 + R() * 0.6) * sq, v = (3.0 + R() * 4.0) * sq;
+    place(m, x + Math.cos(a) * r0, y + 0.45 + R() * 0.3, z + Math.sin(a) * r0, bo + R() * 0.08);
+    // out from under the skirts, then the stalled dust rolls up: an upward push and a rise
+    move(m, Math.cos(a) * v, 0.9 + R() * 0.9, Math.sin(a) * v, 2.0, 0.4 + R() * 0.3, 0.9, 0);
+    const life = (2.8 + R() * 1.2) * Math.min(1.3, sq);
+    shape(m, life, 1.0 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk, 2.2, R);
+    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.62, 0.42 * L.dustK + 0.16), 0.03, 0.45);
     book(m, 'billow', R, life);
     card(m, 1.1 + R() * 0.35, R, 0.06);
     heat(m, 0, 1);
