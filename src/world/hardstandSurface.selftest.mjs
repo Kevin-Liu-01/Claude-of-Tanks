@@ -261,9 +261,12 @@ assert.equal(lakeField._noVeg(300, 340), false);
   // 2026-10-09 (roads lane; the gauntlet's "near-black swirl apron" on Frontier): a family's heading is a constant — any
   // heading read off noise is multiplied by |wp| in q = dot(wp, dir) and draws that noise's contours, a rut every metre —
   // its lines wander only on the slow field b (features past 26 m), and its tracks are single vehicles' pairs per strip
-  assert.ok(terrain.includes('float t = 0.62 + float(k) * 1.15;') && !/float th = [^;]*nz\(/.test(terrain),
+  assert.ok(terrain.includes('float t = 0.62 + float(k) * (padArcs ? 0.60 : 1.15);') && !/float th = [^;]*nz\(/.test(terrain),
     'the pad ruts\' families keep fixed headings');
-  assert.ok(terrain.includes('float q = dot(wp.xz, dP) + 3.5 * (nz(uv, 0.0024,') && terrain.includes('float gauge = ch.y > 0.45 ? 2.9 : 1.8;'),
+  // (R3f, the lab's Frosthollow assembly area: ruled stubs at right angles read as a lattice) past the Low tier the wander
+  // doubles over a slower field still (0.0016: gentle arcs, never metre-scale contours); the Low tier keeps R1b's
+  assert.ok(terrain.includes('float q = dot(wp.xz, dP) + (padArcs ? 7.0 : 3.5) * (nz(uv, padArcs ? 0.0016 : 0.0024,')
+    && terrain.includes('bool padArcs = uLandTier > 0.5;') && terrain.includes('float gauge = ch.y > 0.45 ? 2.9 : 1.8;'),
     'their lines wander slowly and hold one vehicle\'s pair per strip');
 }
 console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');

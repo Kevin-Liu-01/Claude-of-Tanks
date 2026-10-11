@@ -4888,22 +4888,27 @@ void splatCompute() {
     // (R3, the lab's Frosthollow pad: a smooth sheet with a few prints on it — snow shows every vehicle that crossed it, an
     // assembly area's snow is churned all over) past the Low tier a snow pad's strips are 6–8 m and fewer of them empty
     bool snowPad = uLandTier > 0.5 && uReduxD.y > 1.5;
+    // (R3f, the lab's Frosthollow assembly area: short, ruled stubs of the two families meeting at right angles read as a
+    // lattice) past the Low tier a family's lines wander twice as far over half again the length — the vehicles' gentle
+    // arcs — each print holds over longer stretches with softer ends, and a family's regions are larger
+    bool padArcs = uLandTier > 0.5;
     for (int k = 0; k < 2; k++) {
-      float t = 0.62 + float(k) * 1.15;
+      float t = 0.62 + float(k) * (padArcs ? 0.60 : 1.15); // (R3f: the families 34° apart past Low — crossings shallow, never a grid)
       vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
-      float q = dot(wp.xz, dP) + 3.5 * (nz(uv, 0.0024, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float q = dot(wp.xz, dP) + (padArcs ? 7.0 : 3.5) * (nz(uv, padArcs ? 0.0016 : 0.0024, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
       float per = snowPad ? 6.0 + 2.0 * float(k) : 9.0 + 3.0 * float(k);
       vec2 ch = cellHash2(vec2(floor(q / per), 41.0 + float(k) * 13.0));
       float gauge = ch.y > 0.45 ? 2.9 : 1.8;
       float f = fract(q / per) * per - (0.9 + ch.x * (per - gauge - 1.8)); // (3 sigma clear of the strip's edges)
       float r1 = f / 0.30, r2 = (f - gauge) / 0.30;
-      float pres = smoothstep(snowPad ? 0.30 : 0.40, snowPad ? 0.52 : 0.62, nz(uv, 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
+      float pres = smoothstep(snowPad ? 0.28 : (padArcs ? 0.38 : 0.40), snowPad ? 0.56 : (padArcs ? 0.66 : 0.62),
+          nz(uv, padArcs ? 0.007 : 0.012, vec2(0.11 + float(k) * 0.37, 0.83)).g)
         * step(snowPad ? 0.12 : 0.25, fract(ch.x * 7.31 + ch.y)) * rutVis;
       // (R3, wave 341: "a ruled lattice of thin ink-dark rut lines crossing at right angles") past the Low tier each stretch
       // of the pad is worked along one family's lines (field b at 0.006: regions of a dozen metres and more), the two
       // crossing only where the regions meet
       if (uLandTier > 0.5) {
-        float famSel = smoothstep(0.42, 0.58, nz(uv, 0.006, vec2(0.71, 0.37)).g);
+        float famSel = smoothstep(0.42, 0.58, nz(uv, 0.0042, vec2(0.71, 0.37)).g);
         pres *= k == 0 ? 1.0 - famSel : famSel;
       }
       if (uLandTier < 0.5) {
