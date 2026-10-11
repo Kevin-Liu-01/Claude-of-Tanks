@@ -14,5 +14,11 @@ assert.equal(report.identical, true, `two runs diverged at tick ${report.firstDi
 const dug = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, craters: true });
 assert.ok(dug.countsA.craters > 0, 'the crater run dug craters to compare');
 assert.equal(dug.identical, true, `two crater runs diverged at tick ${dug.firstDiffTick} (${dug.finalA} vs ${dug.finalB})`);
+// drone mode (drones lane, 2026-10-11): both humans launch, fly and recall FPV drones and the bots launch theirs; the
+// launch climbs (round 4's thrust profile), flights and recalls hash identically
+const flown = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, drone: true });
+assert.ok(flown.countsA.drones >= 2, `the drone run flew drones to compare (${flown.countsA.drones})`);
+assert.equal(flown.identical, true, `two drone runs diverged at tick ${flown.firstDiffTick} (${flown.finalA} vs ${flown.finalB})`);
+console.log(`sim determinism: drone mode identical (${flown.countsA.drones} drones flown; ${flown.wallMs} ms)`);
 console.log(`sim determinism: two ${report.ticks}-tick runs identical (${report.countsA.crushes} crushes, ${report.countsA.hits} hits, `
   + `${report.countsA.events} events; ${report.wallMs} ms), and with craters on (${dug.countsA.craters} craters; ${dug.wallMs} ms)`);

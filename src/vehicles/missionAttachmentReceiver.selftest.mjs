@@ -8,7 +8,7 @@ import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesC
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
 const ids=['pt91_twardy','leo2a6_ua','ua_m1a1','ua_t80u_modern'];
-const counts={pt91_twardy:24,leo2a6_ua:22,ua_m1a1:32,ua_t80u_modern:2};
+const counts={pt91_twardy:24,leo2a6_ua:22,ua_m1a1:37,ua_t80u_modern:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
@@ -20,14 +20,18 @@ function nativeParts(mesh,turret){
  });
 }
 // Anchors lead each part list: the welded feet, rail posts, rail sockets or seated bearers (bearerParts in the source).
-function anchorIndexes(id){return id==='pt91_twardy'?[0,1,2,3]:[0,1];}
+// ua_m1a1: the two roof-rail sockets, then (round 4) the two side-rail clamps of the posts down the cage's side frame.
+function anchorIndexes(id){return id==='pt91_twardy'||id==='ua_m1a1'?[0,1,2,3]:[0,1];}
+// The side frame's two-thirds rail: a 22.4 mm bar in the frame plane x -2.01 from (y .892, z .28) to (y .9116, z -1.28).
+const sideRail=(row)=>row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-2.025&&v.x<=-1.995&&v.y>=.875&&v.y<=.935&&v.z>=-1.281&&v.z<=.281);
+const sideRailY=(z)=>.892+(.28-z)/1.56*(.9116-.892);
 function anchorStock(id,row){
  if(row.solidBox)return false;
  if(id==='pt91_twardy')return row.name==='turret';
  // Zoria's bearers rest on the top lattice of the left roof-cage wing (rails, ties and cross rows at y 1.04).
  if(id==='ua_t80u_modern')return row.name==='turretOpenLattice'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>v.x>=-1.645&&v.x<=-.955&&v.y>=1.015&&v.y<=1.065&&v.z>=-1.235&&v.z<=.345);
  if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+1.55)<.0161&&v.y>=.8939&&v.y<=.9261&&v.z>=-2.901&&v.z<=.801);
- return row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161);
+ return (row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161))||sideRail(row);
 }
 function contactCount(id,box,rows){return rows.filter(row=>anchorStock(id,row)&&box.intersectsBox(row.bounds)&&box.intersectsTriangle(row.tri)).length;}
 function nativeTop(rows,x,z){let height=-Infinity;ray.origin.set(x,20,z);for(const row of rows)if(ray.intersectTriangle(row.tri.a,row.tri.b,row.tri.c,false,hit))height=Math.max(height,hit.y);return height;}
@@ -59,7 +63,8 @@ for(const id of ids)for(const quality of['high','low']){
   const part=parts[i];assert(contactCount(id,part,rows)>0,`${id}: finite socket ${i} meets its real structural host`);
   assert.equal(contactCount(id,part.clone().translate(new Vector3(0,.30,0)),rows),0,`${id}: floating receiver negative control`);
   const center=part.getCenter(new Vector3()),top=nativeTop(host,center.x,center.z);
-  if(id==='ua_m1a1')assert(part.max.y>top-.032&&part.max.y<top-.020,`${id}: socket engages underside without entering roof cloth`);
+  if(id==='ua_m1a1'&&i>=2){const y=sideRailY(center.z);assert(rows.some(row=>sideRail(row)&&part.intersectsTriangle(row.tri))&&part.min.y<y-.0132&&part.max.y>y+.0132&&part.min.x<-2.0232&&part.max.x>-1.9968,`${id}: side clamp ${i} wraps the cage's two-thirds rail`);}
+  else if(id==='ua_m1a1')assert(part.max.y>top-.032&&part.max.y<top-.020,`${id}: socket engages underside without entering roof cloth`);
   else assert(part.min.y<top-.002&&part.min.y>top-.035,`${id}: foot has bounded embed rather than a gap or a buried pedestal`);
  }
  // Every finite component connects to a supported socket through overlapping
