@@ -4358,7 +4358,7 @@ ${snowCap ? `
     let extents = destructibleFootprints.get(kind);
     if (!extents) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
-      const geometry = meta.build(mulberry32(0x0f0f7));
+      const geometry = meta.collisionBuild?.() ?? meta.build(mulberry32(0x0f0f7));
       const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
@@ -10324,8 +10324,11 @@ ${snowCap ? `
     // physically open instead of inheriting the metadata placement box.
     // Reuse this extraction only for building families. Crates, moving props,
     // walls (including their later terrain fit) and trees retain the cheap path.
+    // (the destructible-kits lane, 2026-10-10) a fracture-ready kind derives it from its envelopes (meta.collisionBuild)
+    const collisionSource = pool.meta.collisionBuild?.() ?? null;
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
-      ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
+      ? deriveRuntimeStructureCollisionWithSolids({ baked: [collisionSource ?? geometry] }) : null;
+    collisionSource?.dispose();
     const contactBand = source?.profile.contact ?? pool.meta?.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;

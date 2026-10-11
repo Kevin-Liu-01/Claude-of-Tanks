@@ -19,7 +19,7 @@ import {
 } from '../propGeometry.ts';
 import { spentDraws } from './brokenDraws.ts';
 import {
-  SHED_DEFAULT_STYLE, buildShedBroken, buildShedFieldHut, buildShedLeanTo, shedStyleFor,
+  SHED_DEFAULT_STYLE, buildShedBroken, buildShedCollision, buildShedFieldHut, buildShedLeanTo, shedStyleFor,
   type ShedBuild, type ShedStyle,
 } from './shedKit.ts';
 
@@ -123,6 +123,8 @@ interface DestructibleBuildingType {
   build: LightStructureBuilder;
   instanceTintStrength: number;
   broken: LightStructureBuilder;
+  /** The solids its collision is derived from in place of its build (a fracture-ready kind's envelopes). */
+  collisionBuild?: () => THREE.BufferGeometry;
 }
 
 const _color = new THREE.Color();
@@ -1951,6 +1953,8 @@ function shedMeta(kind: keyof typeof LEGACY_SHED_TYPES, st: ShedStyle): Destruct
   const legacy = LEGACY_SHED_TYPES[kind], { build, salt } = SHED_BUILDERS[kind];
   return {
     ...legacy,
+    // the collision comes from the shed's envelopes, not its hundreds of boards (shedKit buildShedCollision)
+    collisionBuild: () => buildShedCollision(kind, st),
     build: (rng: Rng) => build(st, spentDraws(legacy.build, rng, salt)).geometry,
     broken: (rng: Rng) => {
       const own = spentDraws(legacy.broken, rng, salt ^ 0x5bd1);

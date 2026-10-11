@@ -1719,6 +1719,53 @@ function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: nu
   }
 }
 
+// ------------------------------------------------------------------------------------------------- the collision
+
+/**
+ * The solids a shed's collision is derived from (props.ts refitDestructibleColliders through meta.collisionBuild): the
+ * envelopes of what stands on the ground — its walls (boards, battens and girts in one slab each), posts and pad
+ * stones, the stoop, the bench, the barrel, the firewood stacks — so the contact band is the few parts the building
+ * presents, not its hundreds of boards (a board-by-board derivation took seconds a build and published four times the
+ * parts). Built from the kit's constants alone: no stream draws, the same on every tier and peer.
+ */
+export function buildShedCollision(kind: 'fieldhut' | 'leanto', st: ShedStyle): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const add3 = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void => {
+    const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).toNonIndexed();
+    g.deleteAttribute('uv');
+    parts.push(g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2));
+  };
+  const out = BOARD_T + BATTEN_T + (st.cladding === 'lap' ? 0.012 : 0);
+  if (kind === 'fieldhut') {
+    // the closed hut is one solid to its plates, as the light family's was (a hull never threads a thin wall)
+    add3(-FH.hx - out, 0, -FH.hz - out, FH.hx + out, FH.plateY1, FH.hz + out);
+    // the porch frame's posts on their stones, the stoop and its step, the bench, the barrel
+    for (const sx of [-1, 1]) add3(sx * 1.08 - 0.15, 0, 3.66 - 0.15, sx * 1.08 + 0.15, 2.0, 3.66 + 0.15);
+    add3(-0.78, 0, FH.hz + 0.02, 0.78, 0.22, 3.5);
+    add3(-0.5, 0, 3.52, 0.5, 0.15, 3.9);
+    add3(-1.94, 0, 2.95, -0.9, 0.47, 3.29);
+    add3(1.32, 0, 3.04, 1.9, 0.84, 3.6);
+  } else {
+    // the posts on their pad stones
+    for (const z of [LT.backZ, LT.frontZ]) for (const x of LT.postX) add3(x - 0.2, 0, z - 0.2, x + 0.2, z > 0 ? 1.95 : 2.75, z + 0.2);
+    // the back wall and the side walls' boarded halves
+    add3(-2.55, 0, LT.backZ - LT.post / 2 - out, 2.55, 2.85, LT.backZ - LT.post / 2 + 0.10);
+    for (const sx of [-1, 1]) {
+      const x0 = sx < 0 ? -2.4 - LT.post / 2 - out : 2.4 + LT.post / 2 - 0.10, x1 = sx < 0 ? -2.4 - LT.post / 2 + 0.10 : 2.4 + LT.post / 2 + out;
+      add3(x0, 0, LT.backZ - LT.post / 2, x1, 2.85, 0.05);
+    }
+    // the firewood stacks, the chopping block, the sawbuck and its log
+    add3(-2.28, 0, LT.backZ + 0.12, -0.12, 1.28, LT.backZ + 0.82);
+    add3(0.12, 0, LT.backZ + 0.12, 2.28, 0.96, LT.backZ + 0.82);
+    add3(1.25 - 0.28, 0, 0.95 - 0.28, 1.25 + 0.28, 0.53, 0.95 + 0.28);
+    add3(-1.3 - 0.45, 0, 0.9 - 0.8, -1.3 + 0.45, 0.91, 0.9 + 0.8);
+  }
+  const merged = mergeGeometries(parts, false);
+  for (const part of parts) part.dispose();
+  if (!merged) throw new Error(`shedKit: ${kind} collision merge failed`);
+  return merged;
+}
+
 // ------------------------------------------------------------------------------------------------- the broken heap
 
 /** The broken pool has no collider: nothing of the heap stands higher than a hull crosses. */
