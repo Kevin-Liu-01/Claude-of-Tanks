@@ -215,18 +215,20 @@ export default {
     // the open cut's machines (vehicleSetPiecesWorks.ts): the Haulpak dump trucks on the haul roads and in the cut, the
     // D8 dozers on the benches (the australia1970s fleet's town vehicles stay the inhabit pass's)
     // (the map-content lane's R6) seated on their own gear (vehicleSetPieces.ts seatOnRunningGear); the ones on bumpy
-    // ground, a rock or a fence moved a few metres to a flatter, clear seat
+    // ground, a rock or a fence moved a few metres to a flatter, clear seat; and (the coordinator's ruling of 2026-10-11
+    // on the basin's long sight lines) the six that stood across them moved off the haul corridors to the yards' edges,
+    // each crossing none of the long lines it crossed (plan: one sweep's long rays, the seat's footprint against them)
     vehicleSetPieces: [
-      { kind: 'haulpak', x: -110, z: -34, yawDeg: 30 }, { kind: 'haulpak', x: -24, z: 68, yawDeg: 200 },
-      { kind: 'haulpak', x: -150, z: -10, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
-      { kind: 'haulpak', x: 40, z: -30, yawDeg: 0 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
+      { kind: 'haulpak', x: -194, z: -124, yawDeg: 30 }, { kind: 'haulpak', x: -24, z: 68, yawDeg: 200 },
+      { kind: 'haulpak', x: -210, z: -46, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
+      { kind: 'haulpak', x: 34, z: -30, yawDeg: 135 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
       { kind: 'haulpak', x: 390, z: -252, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
       { kind: 'd8h', x: -174, z: 78, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 376, z: 304, yawDeg: 10 },
       { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -258, z: -200, yawDeg: 25 },
-      { kind: 'haulpak', x: -330, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -364, z: 324, yawDeg: 30 },
-      { kind: 'haulpak', x: -424, z: 192, yawDeg: 190 }, { kind: 'haulpak', x: 120, z: 220, yawDeg: 270 },
+      { kind: 'haulpak', x: -324, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -364, z: 324, yawDeg: 30 },
+      { kind: 'haulpak', x: -424, z: 192, yawDeg: 190 }, { kind: 'haulpak', x: 120, z: 214, yawDeg: 270 },
       { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 372, z: -398, yawDeg: 200 },
-      { kind: 'd8h', x: 406, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 402, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -60, z: -160, yawDeg: 20 },
+      { kind: 'd8h', x: 406, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 402, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -48, z: -160, yawDeg: 155 },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
@@ -260,6 +262,13 @@ export default {
       { form: 'scree', geology: 'breccia', x: -391, z: 249, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the north-west old shaft mullock' },
     ],
   },
+  // (the coordinator's ruling of 2026-10-11, after the map-content lane's L2: the brief's 0.03 floor on long sight lines
+  // left no room for the mine) a band of the map's own: the Mount Lyell works and Queenstown stand in the basin by
+  // design, and with the open cut's rim they close its long lines (wave 358a passed the works; main's 0.031 had none of
+  // them); the galleries see-through and the haul trucks off the corridors keep what can be kept (0.026)
+  layoutBrief: { bands: {
+    sightLongShare: { band: [0.024, 0.15], reason: 'the Mount Lyell works, Queenstown and the open cut\'s rim close the basin\'s long lines by design (the works passed wave 358a; main\'s 0.031 had none of them)' },
+  } },
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
     panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun

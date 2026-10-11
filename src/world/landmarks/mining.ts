@@ -281,20 +281,27 @@ export const conveyor: LandmarkBuilder = (ctx) => {
   sink.span('structureMetal', -2.4, yH + gh + 1.4, z1 - 1.8, 2.4, yH + gh + 1.6, z1 + 2.4, { colour: shade(IRON_SHEET, 0.7) });
   movement.push({ kind: 'obb', cx: 0, cz: z1, hw: 1.9, hl: 1.9, yaw: 0, y0: hgz - 0.3, y1: yH + gh + 1.6 });
   // the gallery: segments between the bents, each a clad box on the incline
+  // (the map-content lane's R6, the coordinator's ruling of 2026-10-11 on Copper's long sight lines: a gallery is sheet
+  // cladding on a light truss, and a hull's gunner sees and shoots under it and through its sheets) a segment whose
+  // underside stands more than 3 m over the ground under it is dressing that still casts its shadow: no shell or sight
+  // record (the layout raster, which has no underside, read the elevated galleries as walls from the ground up); the
+  // segments near the tail, low over the ground, and the head tower and tail house stay solid
   const bents = Math.max(1, Math.round((z1 - z0) / 12));
   const corner = (z: number, sx: number, up: number): Vec3 => [sx * hw, yAt(z) + up, z];
   for (let k = 0; k < bents; k++) {
     const a = z0 + ((z1 - z0) * k) / bents, b = z0 + ((z1 - z0) * (k + 1)) / bents;
+    const under = Math.min(yAt(a) - Math.max(g(-hw, a), g(hw, a)), yAt(b) - Math.max(g(-hw, b), g(hw, b)), yAt((a + b) / 2) - g(0, (a + b) / 2));
+    const clad = under > 3 ? { decor: true, shadow: true } as const : {};
     const side = (sx: number) => {
       const p: Vec3[] = [corner(a, sx, 0), corner(b, sx, 0), corner(b, sx, gh), corner(a, sx, gh)];
-      sink.polygon('structureMetal', sx > 0 ? [p[1], p[0], p[3], p[2]] : p, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4) });
+      sink.polygon('structureMetal', sx > 0 ? [p[1], p[0], p[3], p[2]] : p, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4), ...clad });
       // the windows' strip (a dark band)
       const q: Vec3[] = [corner(a, sx * 1.01, gh * 0.55), corner(b, sx * 1.01, gh * 0.55), corner(b, sx * 1.01, gh * 0.8), corner(a, sx * 1.01, gh * 0.8)];
       sink.polygon('structureMetal', sx > 0 ? [q[1], q[0], q[3], q[2]] : q, { colour: IRON, decor: true });
     };
     side(1); side(-1);
-    sink.quad('structureMetal', corner(a, -1, gh), corner(a, 1, gh), corner(b, 1, gh), corner(b, -1, gh), { colour: shade(GALV, 0.85) });
-    sink.quad('structureMetal', corner(b, -1, 0), corner(b, 1, 0), corner(a, 1, 0), corner(a, -1, 0), { colour: shade(GALV, 0.5) });
+    sink.quad('structureMetal', corner(a, -1, gh), corner(a, 1, gh), corner(b, 1, gh), corner(b, -1, gh), { colour: shade(GALV, 0.85), ...clad });
+    sink.quad('structureMetal', corner(b, -1, 0), corner(b, 1, 0), corner(a, 1, 0), corner(a, -1, 0), { colour: shade(GALV, 0.5), ...clad });
     // the chords along the bottom (the truss under the cladding)
     for (const sx of [-1, 1]) bar(sink, 'structureMetal', [sx * (hw + 0.08), yAt(a) - 0.1, a], [sx * (hw + 0.08), yAt(b) - 0.1, b], 0.16, { colour: OXIDE, decor: true });
   }
