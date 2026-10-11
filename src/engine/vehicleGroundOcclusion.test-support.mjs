@@ -85,7 +85,7 @@ export async function vehicleGroundGlslCases() {
     packedRuns = { left: knots.slice(0, 8), right: knots.slice(8, 16) };
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
       solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray(),
-      r4: u.uVehGroundR4.value.toArray(), r5: u.uVehGroundR5.value.toArray(), r6: u.uVehGroundR6.value.toArray() };
+      r4: u.uVehGroundR4.value.toArray(), r5: u.uVehGroundR5.value.toArray(), r6: u.uVehGroundR6.value.toArray(), r7: u.uVehGroundR7.value.toArray() };
   };
   // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX)
   const UP = { x: 0, y: 1, z: 0 };

@@ -2927,9 +2927,13 @@ const worldFramePresentation = {
           const travel = speed < -0.05 ? -1 : 1;
           const fx = Math.sin(st.yaw ?? 0), fz = Math.cos(st.yaw ?? 0);
           if (st.grounded !== false && groundSources.length < 8) {
+            // contact round 6 (2026-10-11): the press covers the hull's whole footprint — its published length and width, the
+            // overhangs fore and aft — not only its tracks' contact (the grass under a rear overhang stood up through the hull)
+            const dims = ent.spec?.dims;
             groundSources.push({
               x: p.x, z: p.z, dirX: fx * travel, dirZ: fz * travel, speed: Math.abs(speed),
-              halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
+              halfLength: Math.max(rect?.halfLength ?? 0, (dims?.hullLengthM ?? 0) * 0.5) || undefined,
+              halfWidth: Math.max(rect?.halfWidth ?? 0, (dims?.widthM ?? 0) * 0.5) || undefined,
             });
           }
           if (!live || !field.getWaterMaskAt || wakeSources.length >= 8) continue;

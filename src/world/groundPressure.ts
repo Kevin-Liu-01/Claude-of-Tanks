@@ -29,7 +29,15 @@ export const GROUND_PRESSURE_RECOVER_S = 20;
 /** The bruise memory (s): crushed blades keep a darker tone about a minute. */
 export const GROUND_PRESSURE_CRUSH_S = 45;
 /** Feather past the hull skirt (m) over which the press falls to zero. */
-export const GROUND_PRESSURE_FEATHER_M = 0.45;
+export const GROUND_PRESSURE_FEATHER_M = 0.6;
+/**
+ * 2026-10-11 (contact round 6; waves 372/400, both critics: "upright grass standing inside the hull's footprint", "no flattened
+ * blades at the track edge"): the press stays whole GROUND_PRESSURE_EDGE_M past the stamp's edge (the track's side and the skirt
+ * push the blades out) and feathers to nothing at GROUND_PRESSURE_FEATHER_M (was whole 0.15 m inside, gone 0.45 m out: the
+ * blades beside a track stood upright). main.ts stamps the hull's whole footprint (its published length and width), not only
+ * its tracks' contact, so the grass under the overhangs lies down too.
+ */
+export const GROUND_PRESSURE_EDGE_M = 0.12;
 const SLOT_CAP = 8;
 /**
  * 2026-10-02 (the frame-budget lane): frames per step while the field is settled — every hull's stamp (position,
@@ -57,6 +65,7 @@ uniform float uDt;
 uniform float uRecover;
 uniform float uCrushDecay;
 uniform float uFeather;
+uniform float uEdge;
 uniform vec4 uHullA[8];
 uniform vec4 uHullB[8];
 uniform int uHullCount;
@@ -83,7 +92,7 @@ void main() {
     if (i >= uHullCount) break;
     vec4 a = uHullA[i];
     vec4 b = uHullB[i];
-    float inside = (1.0 - smoothstep(-0.15, uFeather, hullDistance(w, a, b))) * b.z;
+    float inside = (1.0 - smoothstep(uEdge, uFeather, hullDistance(w, a, b))) * b.z;
     if (inside > press) {
       vec2 rel = w - a.xy;
       vec2 side = vec2(-a.w, a.z);
@@ -207,6 +216,7 @@ export function createGroundPressureField(
     uRecover: { value: GROUND_PRESSURE_RECOVER_S },
     uCrushDecay: { value: GROUND_PRESSURE_CRUSH_S },
     uFeather: { value: GROUND_PRESSURE_FEATHER_M },
+    uEdge: { value: GROUND_PRESSURE_EDGE_M },
     uHullA: { value: hullA },
     uHullB: { value: hullB },
     uHullCount: { value: 0 },
@@ -342,7 +352,7 @@ export function createGroundPressureField(
 
 /** CPU twin of the shader's rounded-footprint press at a world point (the receipt and the trail metric use it). */
 export function groundPressAt(
-  x: number, z: number, hull: GroundDisturbance, feather = GROUND_PRESSURE_FEATHER_M,
+  x: number, z: number, hull: GroundDisturbance, feather = GROUND_PRESSURE_FEATHER_M, edge = GROUND_PRESSURE_EDGE_M,
 ): number {
   let fx = hull.dirX ?? 0, fz = hull.dirZ ?? 1;
   const len = Math.hypot(fx, fz);
@@ -352,7 +362,7 @@ export function groundPressAt(
   const across = Math.abs(relX * -fz + relZ * fx) - Math.max(0.3, hull.halfWidth ?? DEFAULT_HALF_WIDTH_M);
   const qx = Math.max(along, 0), qz = Math.max(across, 0);
   const d = Math.hypot(qx, qz) + Math.min(Math.max(along, across), 0);
-  const t = Math.min(1, Math.max(0, (d + 0.15) / (feather + 0.15)));
+  const t = Math.min(1, Math.max(0, (d - edge) / (feather - edge)));
   const s = t * t * (3 - 2 * t);
   return (1 - s) * Math.min(1, Math.max(0, hull.strength ?? 1));
 }

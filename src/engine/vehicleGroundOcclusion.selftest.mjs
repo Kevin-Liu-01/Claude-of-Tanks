@@ -21,6 +21,8 @@ import {
   GROUND_AO_CORE_FLAT, GROUND_AO_CORE_GAP_M, GROUND_AO_CORE_MAX, GROUND_AO_CORE_W_M, GROUND_AO_GRIME_H_M, GROUND_AO_GRIME_LANE_M, GROUND_AO_GRIME_MAX,
   GROUND_AO_SNOW_ALBEDO, GROUND_AO_WALL_SOFT, contactCoreOcclusion, shoeBandSunShadow, snowBermGain, snowWeight, vehicleGrime,
   GROUND_AO_OCC_MAX_SNOW, groundOcclusionCap, groundWallSoft,
+  GROUND_AO_SNOW_RECESS, GROUND_AO_SNOW_FOOT_M, GROUND_AO_SOIL_IN_M, GROUND_AO_SOIL_OUT_M, GROUND_AO_SOIL_END_M, GROUND_AO_SOIL_MAX,
+  GROUND_AO_SOIL_RATIO, grassHueWeight, snowRecessWeight, soilBandWeight, soilTexture,
   GROUND_AO_BLEND_H_M, GROUND_AO_BLEND_H_SNOW_M, GROUND_AO_BLEND_MAX, GROUND_AO_BLEND_MAX_SNOW, GROUND_AO_GEAR_CAP, GROUND_AO_SNOW_COOL,
   contactBlendWeight, gearCap, gearWeight, GROUND_AO_BLEND_SNOW_SOLID, GROUND_AO_BLEND_SNOW_VARY, snowBlendNoise,
 } from './vehicleGroundOcclusion.ts';
@@ -658,7 +660,9 @@ const G4 = (x, s, snow = 1, y = 0, z = 0) => snowBermGain({ x, y, z }, UP, T, s,
 assert.equal(G4(T.xo + 0.03, UP, 0), 1, 'off snow: flat');
 assert.ok(G4(T.xo + 0.03, UP) < 0.95 && Math.abs(G4(T.xo + 0.5 * GROUND_AO_BERM_W_M, UP) - 1) < 1e-9, 'a noon sun: the slopes dim, the crest is flat');
 assert.ok(G4(T.xo + 0.03, s45R) < G4(T.xo + 0.03, s45L) && G4(T.xo + 0.03, s45L) > 1.2, 'the inner slope faces the track: lit by a sun beyond it');
-assert.ok(G4(T.xo + 0.19, s45R) > 1.2 && G4(T.xo + 0.19, s45L) < 0.85, 'the outer slope faces out: lit by a sun on its side');
+// (round 6: the berm 6 cm over 32 cm) the outer slope, as far past the crest as the inner probe is before it
+const outer6 = T.xo + GROUND_AO_BERM_W_M - 0.03;
+assert.ok(G4(outer6, s45R) > 1.2 && G4(outer6, s45L) < 0.85, 'the outer slope faces out: lit by a sun on its side');
 assert.equal(G4(T.xo + GROUND_AO_BERM_W_M + 0.01, s45R), 1, 'flat past the berm'); assert.equal(G4(T.xo - 0.01, s45R), 1, 'and under the shoes');
 assert.equal(G4(T.xo + 0.03, s45R, 1, 0, T.fz1 + 0.2), 1, 'only along the ground run');
 assert.equal(G4(T.xo + 0.03, s45R, 1, 0.2), 1, 'at the run\'s foot only (a blade is no berm)');
@@ -790,4 +794,44 @@ assert.ok(post.includes('texel.rgb = cotVehicleContactBlend( texel.rgb, uCamPos 
 assert.ok(post.includes("if (groundModel?.mode !== 'physical') (aerial.uniforms as unknown as VehicleGroundOcclusionUniforms).uVehGroundR6.value.w = 0;"),
   'the blend only on the grounded rig (the battle maps): the Garage\'s turntable is a hard floor');
 
-console.log(`vehicleGroundOcclusion.selftest: box and hull-solid sky shares (closed forms, ray caster), the law against the union of the hull and both runs (${unionRows.join('; ')}; 0.3 m beside: union ${unionBeside.toFixed(3)}, old sum ${oldSum.toFixed(3)}; grid worst ${worst.toFixed(3)}, beside the wraps ${worstWrap.toFixed(3)}), the T-90M's shape (belly ${F(0, 0).toFixed(3)}), the contact as a soft rim capped at ${MAXC} (the lane keeps ${(1 - F(1.5, 0)).toFixed(3)} of its sky; a run 13 cm up keeps the solid's ${liftedRun.toFixed(3)}; crest, hollow, thrown track), the interreflection (snow belly keeps ${visSnow(0, 0).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured solid, the router-fed in-place uniforms, the gating, the GLSL's structure and the wiring; round 4: the crease's core past the cap, the shoe band's sun line, the softer broad share (${GROUND_AO_WALL_SOFT}), the snow berm, the run's grime, the gap normal's guard; round 5: no shoe skip (the lever), the running gear's cap, the contact blend, the snow's cool cast PASS`);
+// ---- 13. contact round 6 (2026-10-11; waves 400a/b, both critics: "the grass ground is already too dark, a crushed near-black
+// green noise carpet", "the pads lit brighter than the soil beside them", "pads a clean white as if painted rather than packed
+// with snow", "no berm") — nothing here darkens
+// (a) the soil band: the lane and a band beyond its faces, along the ground run and a little past its ends, at the run's foot
+const SB = (x, z = 0, y = 0) => soilBandWeight({ x, y, z }, T);
+near(SB(1.5), 1, 1e-12, 'whole under the run (seen through its gaps)'); near(SB(T.xo + GROUND_AO_SOIL_IN_M), 1, 1e-12, 'whole a band past the face');
+assert.equal(SB(T.xo + GROUND_AO_SOIL_OUT_M + 0.01), 0, 'gone past the band'); assert.equal(SB(T.xi - GROUND_AO_SOIL_OUT_M - 0.01), 0, 'and inside it');
+assert.ok(SB(T.xo + 0.5 * (GROUND_AO_SOIL_IN_M + GROUND_AO_SOIL_OUT_M)) > 0.3 && SB(T.xo + 0.5 * (GROUND_AO_SOIL_IN_M + GROUND_AO_SOIL_OUT_M)) < 0.7, 'soft between');
+near(SB(1.5, T.cz1 + 0.5 * GROUND_AO_SOIL_END_M), 0.5, 1e-9, 'half way past the ground run\'s end'); assert.equal(SB(1.5, T.fz1), 0, 'none under the nose');
+assert.equal(SB(T.xo + 0.05, 0, 0.2), 0, 'at the foot only (a hull plate or a rock above the ground is no soil)');
+assert.ok(GROUND_AO_SOIL_OUT_M <= 0.35 && GROUND_AO_SOIL_MAX <= 0.9, 'a band at the foot, never the field');
+// (b) only a green ground: grass in shade and in sun, never sand, dirt, rock or snow
+near(grassHueWeight(0.0065, 0.0168, 0.0049), 1, 1e-12, 'shaded grass'); near(grassHueWeight(0.118, 0.170, 0.026), 1, 1e-12, 'sunlit grass');
+assert.equal(grassHueWeight(0.42, 0.33, 0.20), 0, 'sand'); assert.equal(grassHueWeight(0.78, 0.80, 0.84), 0, 'snow'); assert.equal(grassHueWeight(0.2, 0.2, 0.2), 0, 'grey rock');
+// (c) the soil: lighter and warmer than the grass it replaces, never darker in any channel
+const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+for (const g of [[0.0065, 0.0168, 0.0049], [0.118, 0.170, 0.026]]) {
+  const soil = g.map((v, i) => v * GROUND_AO_SOIL_RATIO[i]);
+  assert.ok(lum(soil) / lum(g) > 1.15 && lum(soil) / lum(g) < 1.6 && soil[0] / soil[1] > g[0] / g[1], `lighter and warmer (${(lum(soil) / lum(g)).toFixed(2)}×)`);
+}
+assert.ok(GROUND_AO_SOIL_RATIO.every((v) => v >= 1), 'no channel darkens');
+for (let x = -3; x <= 3; x += 0.37) for (let z = -3; z <= 3; z += 0.41) { const t = soilTexture(x, z); assert.ok(t >= 0.85 && t <= 1.15, 'the texture 0.85..1.15'); }
+// (d) snow in the links: the recesses and the lowest centimetres take it, the pads' faces keep their steel
+near(snowRecessWeight(0.05, 1, 0.05), 1, 1e-12, 'a dark recess: whole'); near(snowRecessWeight(0.6, 1, 0.05), 0, 1e-12, 'a lit pad face: none');
+near(snowRecessWeight(0.6, 1, 0), 1, 1e-12, 'the foot whatever'); near(snowRecessWeight(0.6, 1, GROUND_AO_SNOW_FOOT_M), 0, 1e-12, 'only its lowest centimetres');
+assert.ok(GROUND_AO_SNOW_RECESS[0] < GROUND_AO_SNOW_RECESS[1] && GROUND_AO_SNOW_FOOT_M <= 0.02, 'recess bounds, a thin foot');
+// (e) the GLSL: the soil function (ground only, green only, never darker), the recess in the blend, the lever; the wiring
+for (const piece of [
+  'uniform vec4 uVehGroundR7;', 'vec3 cotVehicleSoilBand( vec3 rgb, vec3 P, float alpha ) {',
+  'if ( uVehGroundR7.x <= 0.0 || alpha < 1.5 || alpha >= 3.5000 ) return rgb;',
+  'float gw = smoothstep( 1.05, 1.35, rgb.g / max( rgb.r, 1e-4 ) ) * smoothstep( 1.2, 1.8, rgb.g / max( rgb.b, 1e-4 ) );',
+  `return rgb * max( mix( vec3( 1.0 ), vec3( ${GROUND_AO_SOIL_RATIO.map(f4).join(', ')} ) * tx, w * gw * ${f4(GROUND_AO_SOIL_MAX)} * uVehGroundR7.x ), vec3( 1.0 ) );`,
+  'w *= mix( 1.0, recess, snow * uVehGroundR7.y );',
+]) assert.ok(g.includes(piece), piece);
+const u6 = createVehicleGroundOcclusionUniforms();
+updateVehicleGroundOcclusionUniforms(u6, [], true, 0.25);
+assert.deepEqual(u6.uVehGroundR7.value.toArray(), [1, 1, 0, 0], 'the soil and the recesses on');
+assert.ok(post.includes('texel.rgb = cotVehicleSoilBand( texel.rgb, uCamPos + ray * rayT, texel.a );')
+  && post.indexOf('texel.rgb = cotVehicleSoilBand(') > groundAt, 'the soil after the ground\'s shade');
+
+console.log(`vehicleGroundOcclusion.selftest: box and hull-solid sky shares (closed forms, ray caster), the law against the union of the hull and both runs (${unionRows.join('; ')}; 0.3 m beside: union ${unionBeside.toFixed(3)}, old sum ${oldSum.toFixed(3)}; grid worst ${worst.toFixed(3)}, beside the wraps ${worstWrap.toFixed(3)}), the T-90M's shape (belly ${F(0, 0).toFixed(3)}), the contact as a soft rim capped at ${MAXC} (the lane keeps ${(1 - F(1.5, 0)).toFixed(3)} of its sky; a run 13 cm up keeps the solid's ${liftedRun.toFixed(3)}; crest, hollow, thrown track), the interreflection (snow belly keeps ${visSnow(0, 0).toFixed(3)}, sand ${visSand.toFixed(3)}), the measured solid, the router-fed in-place uniforms, the gating, the GLSL's structure and the wiring; round 4: the crease's core past the cap, the shoe band's sun line, the softer broad share (${GROUND_AO_WALL_SOFT}), the snow berm, the run's grime, the gap normal's guard; round 5: no shoe skip (the lever), the running gear's cap, the contact blend, the snow's cool cast; round 6: the soil band at the track's foot, snow in the links, the wider berm PASS`);

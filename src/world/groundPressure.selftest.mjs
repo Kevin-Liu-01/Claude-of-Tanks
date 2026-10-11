@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
   createGroundPressureField, groundPressAt, GROUND_PRESSURE_WINDOW_M, GROUND_PRESSURE_TEXELS, GROUND_PRESSURE_RECOVER_S,
   GROUND_PRESSURE_CRUSH_S, GROUND_PRESSURE_FEATHER_M, GROUND_PRESSURE_MOVING_MPS, GROUND_PRESSURE_SETTLED_STRIDE,
-  GROUND_PRESSURE_FINE_WINDOW_M,
+  GROUND_PRESSURE_FINE_WINDOW_M, GROUND_PRESSURE_EDGE_M,
 } from './groundPressure.ts';
 
 function recordingRenderer() {
@@ -57,6 +57,8 @@ fine.dispose();
 assert.ok(GROUND_PRESSURE_RECOVER_S >= 15 && GROUND_PRESSURE_RECOVER_S <= 30, 'the sward stands up again over ~20 s');
 assert.ok(GROUND_PRESSURE_CRUSH_S > GROUND_PRESSURE_RECOVER_S, 'crushed blades stay bruised longer than they stay flat');
 assert.ok(GROUND_PRESSURE_FEATHER_M > 0.2 && GROUND_PRESSURE_FEATHER_M < 1, 'the press feathers past the skirt, not across the meadow');
+// (contact round 6) whole a little past the stamp's edge (the track's side and the skirt push the blades out), then the feather
+assert.ok(GROUND_PRESSURE_EDGE_M > 0 && GROUND_PRESSURE_EDGE_M < GROUND_PRESSURE_FEATHER_M / 2, 'a pressed edge past the skirt, then the feather');
 assert.ok(GROUND_PRESSURE_MOVING_MPS > 0 && GROUND_PRESSURE_MOVING_MPS < 2, 'a crawling hull already lays the blades along its travel');
 
 // 3. The step shader: decays, the stamp, the direction, the torus, the window.
@@ -66,7 +68,7 @@ assert.ok(glsl.includes('return w + uSize * floor((uAnchor - w) / uSize + 0.5);'
   'torus: a texel is the copy of its world position nearest the anchor; texel = fract(world / size) never moves with the anchor');
 assert.ok(glsl.includes('float press = c.r * exp(-uDt / uRecover);'), 'the press springs back exponentially');
 assert.ok(glsl.includes('float crush = c.a * exp(-uDt / uCrushDecay);'), 'the bruise fades on its own, slower, clock');
-assert.ok(glsl.includes('float inside = (1.0 - smoothstep(-0.15, uFeather, hullDistance(w, a, b))) * b.z;'), 'the footprint press, feathered past the skirt');
+assert.ok(glsl.includes('float inside = (1.0 - smoothstep(uEdge, uFeather, hullDistance(w, a, b))) * b.z;'), 'the footprint press, whole past the skirt\'s edge, feathered beyond');
 assert.ok(glsl.includes('if (inside > press) {') && glsl.includes('press = inside;'), 'a stamp only ever raises the press: the trail stays until it recovers');
 assert.ok(glsl.includes('vec2 push = b.w > 0.5 ? a.zw : normalize(rel + vec2(1e-4, 0.0));'),
   'moving: along the travel; standing: outward from the belly');
@@ -173,13 +175,17 @@ assert.equal(field.steps, 3, 'and never step again');
 const hull = { x: 0, z: 0, dirX: 1, dirZ: 0, halfLength: 3.4, halfWidth: 1.8 };
 assert.equal(groundPressAt(0, 0, hull), 1, 'full press under the belly');
 assert.equal(groundPressAt(3.0, 1.5, hull), 1, 'and under the tracks');
-assert.ok(groundPressAt(3.4, 0, hull) > 0.8 && groundPressAt(3.4, 0, hull) < 0.9, 'the skirt is still pressed hard');
+assert.equal(groundPressAt(3.4, 0, hull), 1, 'the skirt\'s edge pressed whole');
+assert.equal(groundPressAt(3.4 + GROUND_PRESSURE_EDGE_M, 0, hull), 1, 'and the pressed edge past it');
+const mid6 = groundPressAt(3.4 + 0.5 * (GROUND_PRESSURE_EDGE_M + GROUND_PRESSURE_FEATHER_M), 0, hull);
+assert.ok(mid6 > 0.4 && mid6 < 0.6, `half pressed half way down the feather (${mid6.toFixed(3)})`);
 assert.ok(groundPressAt(3.4 + GROUND_PRESSURE_FEATHER_M, 0, hull) < 1e-6, 'the feather ends past the skirt');
 assert.equal(groundPressAt(0, 4, hull), 0, 'abeam, outside');
 assert.equal(groundPressAt(0, 0, { ...hull, strength: 0.5 }), 0.5, 'strength scales the press');
 assert.equal(groundPressAt(0, 3.0, { ...hull, dirX: 0, dirZ: 1 }), 1, 'the footprint turns with the heading');
 assert.equal(groundPressAt(0, 2, { x: 0, z: 0 }), 1, 'defaults: 3.4 × 1.8, facing +Z, full strength');
-assert.ok(groundPressAt(2, 0, { x: 0, z: 0 }) < 0.5, 'two metres abeam of a 1.8 m half width is past the skirt');
+assert.ok(groundPressAt(1.8 + GROUND_PRESSURE_FEATHER_M + 0.05, 0, { x: 0, z: 0 }) < 1e-6, 'past the feather abeam of a 1.8 m half width: standing');
+assert.ok(groundPressAt(2, 0, { x: 0, z: 0 }) > 0.8, '(contact round 6) 20 cm past the skirt: still pressed (the track\'s edge)');
 
 // 7. The world wiring publishes grounded hulls, including those in water.
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -187,6 +193,9 @@ assert.ok(main.includes('const groundSources: GroundDisturbance[] = [];') && mai
   'main.ts publishes the hulls\' footprints each battle frame');
 assert.match(main, /if \(st\.grounded !== false && groundSources\.length < 8\) \{/,
   'eight slots for grounded hulls; airborne vehicles cannot press the grass');
+assert.ok(main.includes('halfLength: Math.max(rect?.halfLength ?? 0, (dims?.hullLengthM ?? 0) * 0.5) || undefined,')
+  && main.includes('halfWidth: Math.max(rect?.halfWidth ?? 0, (dims?.widthM ?? 0) * 0.5) || undefined,'),
+  '(contact round 6) the hull\'s whole footprint, its overhangs included');
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.ok(map.includes('setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },'), 'the world routes them to the tall grass');
 

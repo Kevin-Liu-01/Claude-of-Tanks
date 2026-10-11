@@ -73,6 +73,7 @@ void main() {
   gl.uniform4fv(at('uVehGroundR4'), new Float32Array(input.r4 ?? [1, 1, 0, 1]));
   gl.uniform4fv(at('uVehGroundR5'), new Float32Array(input.r5 ?? [0.7, 1, 0.55, 0]));
   gl.uniform4fv(at('uVehGroundR6'), new Float32Array(input.r6 ?? [0, 0, 0.75, 1]));
+  gl.uniform4fv(at('uVehGroundR7'), new Float32Array(input.r7 ?? [1, 1, 0, 0]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));
