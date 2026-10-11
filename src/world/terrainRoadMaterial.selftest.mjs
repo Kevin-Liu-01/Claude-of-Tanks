@@ -22,8 +22,8 @@ assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD,/,
 assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
   'the dirt-road palette keeps a smoothed mip: soil grain survives, no single source clod is stamped');
 assert.match(terrainSource,
-  /vec2 packedRoadN = nrmOn \? groundNrm\(uNrmD,[\s\S]{0,240}n\.xy = mix\(n\.xy, packedRoadN, dW\);/,
-  'the dirt-road core replaces the open-ground normal with its shallow packed-earth response');
+  /vec2 packedRoadN = nrmOn \? groundNrm\(uNrmD,[\s\S]{0,400}n\.xy = mix\(n\.xy, packedRoadN, dW \* \(uLandTier > 0\.5 && uReduxD\.y > 1\.5 \? mix\(1\.0, 0\.5, apronK\) : 1\.0\)\);/,
+  'the dirt-road core replaces the open-ground normal with its shallow packed-earth response (R3: a snow pad keeps half the field\'s drift relief past the Low tier)');
 assert.match(terrainSource, /packedRoadN = mix\(vec2\(0\.5\), packedRoadN, 0\.30\);/,
   'the packed-earth normal stays shallow (30% of the smoothed sample)');
 assert.doesNotMatch(terrainSource, /vec4 (?:grav|roadGrit) = texture2D\(uAlbR,[\s\S]{0,180}roadCore/,
