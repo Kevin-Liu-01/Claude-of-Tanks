@@ -195,14 +195,15 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
-  /** Fresh links asked for after the host closed one with HELLO_REQUIRED "hello timeout" (its window ran out first). */
+  /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
   helloRetries: number;
 }
 
 /**
- * A host that closes a link with HELLO_REQUIRED "hello timeout" ran out of its window before this seat's HELLO landed (a
- * busy host or a starved seat): the seat asks for a fresh link and says hello again, this many times before it gives up
- * (2026-10-11; before, the seat read that CLOSE as the end of its seat and was never welcomed).
+ * Before its WELCOME, a seat whose link the host closes with HELLO_REQUIRED "hello timeout" (the host's window ran out
+ * before the HELLO landed: a busy host or a starved seat) or REPLACED "peer offered again" (a stale offer of the seat's
+ * own, relayed late, replaced the link it is entering on) asks for a fresh link and says hello again, this many times
+ * before it gives up (2026-10-11; before, the seat read either CLOSE as the end of its seat and was never welcomed).
  */
 export const MAX_HELLO_RETRIES = 3;
 
@@ -660,9 +661,13 @@ export class MatchClient {
         if (this.errors.length > this.maxErrors) this.errors.shift();
         break;
       case MESSAGE_TYPE.CLOSE:
-        if (message.reason === CLOSE_REASON.HELLO_REQUIRED && message.detail === 'hello timeout' && !this.welcomeMessage
-            && this.helloRetriesLeft > 0 && this.recovery.current !== 'left') {
-          // the host's window ran out before our HELLO landed: a fresh link, a fresh HELLO (MAX_HELLO_RETRIES)
+        if (!this.welcomeMessage && this.helloRetriesLeft > 0 && this.recovery.current !== 'left' && (
+          // the host's window ran out before our HELLO landed
+          (message.reason === CLOSE_REASON.HELLO_REQUIRED && message.detail === 'hello timeout')
+          // or a stale offer of ours (an attempt we gave up, relayed late) replaced the link we are entering on; after the
+          // WELCOME the same CLOSE means another tab of this seat took over, and the seat ends as before
+          || (message.reason === CLOSE_REASON.REPLACED && message.detail === 'peer offered again'))) {
+          // a fresh link, a fresh HELLO (MAX_HELLO_RETRIES)
           this.helloRetriesLeft--;
           this.helloRetries++;
           this.transport.reconnect(TRANSPORT_CLOSE.STALLED, 'hello timeout');

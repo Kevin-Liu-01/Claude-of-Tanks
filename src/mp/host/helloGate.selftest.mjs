@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { signSeatToken } from '../../../server/match/seatToken.ts';
 import * as matchClientModule from '../match/matchClient.ts';
 import { CLOSE_REASON } from '../wire/constants.ts';
+import { TRANSPORT_CLOSE } from '../transport/transport.ts';
 import { WebRtcTransport } from '../transport/index.ts';
 import { FakeSignalRelay, RtcWorld } from '../transport/rtcDouble.test-support.ts';
 import { createHostPortPair } from './hostProtocol.ts';
@@ -33,11 +34,13 @@ const tokenFor = (seat, playerId, team, specId) => signSeatToken(hostSecret, { v
 const seats = [
   { seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2', spawn: { x: -40, z: 0, yaw: 0 } },
   { seat: 1, playerId: 'bob', name: 'Bob', team: 'alpha', specId: 't90m', spawn: { x: 0, z: 0, yaw: 0 } },
+  // an enemy that never connects keeps the match running (one side alone would end it)
+  { seat: 2, playerId: 'dave', name: 'Dave', team: 'bravo', specId: 't90m', spawn: { x: 600, z: 600, yaw: Math.PI } },
 ];
 const idle = () => ({ throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 });
 
 /** One host with alice on its loopback and bob over WebRTC; `holdHelloMs` keeps bob's outgoing frames on his channel that long. */
-async function helloCase({ label, holdHelloMs, helloTimeoutMs }) {
+async function helloCase({ label, holdHelloMs, helloTimeoutMs, scenario = null }) {
   let nowMs = 200_000;
   let serial = 0;
   const timers = new Map();
@@ -115,12 +118,34 @@ async function helloCase({ label, holdHelloMs, helloTimeoutMs }) {
   bobClient.connect();
   const releaseAt = nowMs + (holdHelloMs === Infinity ? 1e12 : holdHelloMs);
   let released = false;
+  let staleSent = false;
   for (let elapsed = 0; elapsed < 20_000 && !bobClient.welcome; elapsed += 100) {
+    // a stale offer from bob reaches the host while his link is open and his HELLO not yet in
+    if (scenario === 'stale-offer' && !staleSent && bobRtc.state === 'open') {
+      staleSent = true;
+      relay.inject('bob', { to: 'alice', generation: relay.generation, kind: 'offer', sdp: 'v=0 (a stale offer from an attempt bob already gave up)' });
+    }
     if (!released && nowMs >= releaseAt) { released = true; for (const channel of held) { channel.congested = false; channel.drain(); } }
     await advance(100);
   }
+  // an optional disturbance once bob is in: the host's own client reconnects (its stall recovery), or a stale offer from bob
+  let after = null;
+  if (scenario === 'loopback-reconnect' && bobClient.welcome) {
+    const aliceWelcomes = []; const bobWelcomes = [];
+    aliceClient.onWelcome((welcome) => aliceWelcomes.push(welcome));
+    bobClient.onWelcome((welcome) => bobWelcomes.push(welcome));
+    const closesBefore = closes.length;
+    if (scenario === 'loopback-reconnect') alice.transport.reconnect(TRANSPORT_CLOSE.STALLED, 'no accepted authority for 5000 ms');
+    for (let elapsed = 0; elapsed < 10_000; elapsed += 100) {
+      await advance(100);
+      if (scenario === 'loopback-reconnect' && aliceWelcomes.length && aliceClient.phase === 'live') break;
+      if (scenario === 'stale-offer' && (closes.length > closesBefore || (bobWelcomes.length && bobClient.phase === 'live'))) break;
+    }
+    after = { aliceWelcomes: aliceWelcomes.length, alicePhase: aliceClient.phase, aliceServerErrors: aliceClient.stats().serverErrors,
+      bobWelcomes: bobWelcomes.length, bobPhase: bobClient.phase, bobNewCloses: closes.slice(closesBefore) };
+  }
   const result = {
-    label, welcomed: !!bobClient.welcome, closes, phase: bobClient.phase,
+    label, welcomed: !!bobClient.welcome, closes, phase: bobClient.phase, after,
     lastCloseReason: bobClient.lastCloseReason, helloRetries: bobClient.stats().helloRetries ?? 0, coreStats: cores[0].stats(),
   };
   for (const client of clients) client.dispose();
@@ -147,4 +172,19 @@ const retried = await helloCase({ label: 'retry', holdHelloMs: 3_000, helloTimeo
 assert.ok(retried.welcomed, `retry: bob is welcomed on a fresh link after the gate closed the first one (closes ${JSON.stringify(retried.closes)}, retries ${retried.helloRetries})`);
 assert.ok(retried.helloRetries >= 1, `retry: the client re-offered after "hello timeout" (${retried.helloRetries})`);
 
-console.log(`helloGate.selftest: a HELLO 8 s late is admitted (window ${HELLO_TIMEOUT_MS} ms); a silent link is closed at its deadline; a seat closed with "hello timeout" re-offers and is welcomed (${retried.helloRetries} retry)`);
+// ---- the host's own client reconnects its loopback (its stall recovery after a long task on the host's tab): it is
+// welcomed again (before: the core kept the old link 0, the second HELLO met UNEXPECTED_MESSAGE, the host's seat hung in
+// 'handshaking' with the world running on without it)
+const loop = await helloCase({ label: 'loopback reconnect', holdHelloMs: 0, scenario: 'loopback-reconnect' });
+assert.ok(loop.after, 'loopback reconnect: bob was in before the disturbance');
+assert.ok(loop.after.aliceWelcomes >= 1 && loop.after.alicePhase === 'live', `loopback reconnect: the host's own seat is welcomed again and live (${JSON.stringify(loop.after)})`);
+
+// ---- a stale offer from bob reaches the host while he is entering (his link open, his HELLO held 1 s): the acceptor
+// retires the link with REPLACED "peer offered again" (its second-tab rule), and bob re-offers and is welcomed (before: his
+// session read the CLOSE as the end of his seat, 'lost' for good — the headless proofs' never-welcomed seats, closeReason 15)
+const stale = await helloCase({ label: 'stale offer', holdHelloMs: 1_000, scenario: 'stale-offer' });
+assert.ok(stale.welcomed, `stale offer: bob is welcomed on a fresh link (closes ${JSON.stringify(stale.closes)}, retries ${stale.helloRetries})`);
+assert.ok(stale.helloRetries >= 1, `stale offer: bob re-offered after "peer offered again" (${stale.helloRetries})`);
+assert.equal(stale.phase, 'live', `stale offer: bob is live (${stale.phase})`);
+
+console.log(`helloGate.selftest: a HELLO 8 s late is admitted (window ${HELLO_TIMEOUT_MS} ms); a silent link is closed at its deadline; a seat closed with "hello timeout" re-offers and is welcomed (${retried.helloRetries} retry); the host's own seat is welcomed again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed`);
