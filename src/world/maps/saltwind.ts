@@ -164,18 +164,6 @@ export default {
     ],
     plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'bathhouse', 'cottage', 'depot', 'tavern', 'boatshed', 'ruin', 'cornershop', 'market', 'farmhouse', 'woodshed', 'fishery', 'cottage', 'granary', 'ruin'],
     destructibleBuildings: ['fishershack', 'fieldhut', 'guardpost', 'checkpointhut'],
-    // (2026-10-11, the map-revival lane; gauntlet wave 361: "the landmarks stand alone on bare slabs or lawns. They need the
-    // settlement fabric around them (stone houses and lanes for Dalmatia)") the campanile's square closed by the village:
-    // two stone houses on its north side and a shop and a house on its south, lanes between them, every front on the
-    // square — east and west of it the two zone discs keep their 30 m (each house 34 m or more from a zone's centre).
-    // After the roadside plan, each on its own stream (terrace), so the plan and every later placement keep their seats.
-    plannedSitesAfterPlan: true,
-    plannedSites: [
-      { structure: 'cottage', x: -89, z: 31, yawDeg: 180, terrace: true },
-      { structure: 'tavern', x: -76, z: 36, yawDeg: 185, terrace: true },
-      { structure: 'cornershop', x: -90, z: -12, yawDeg: 0, terrace: true },
-      { structure: 'cottage', x: -77, z: -18, yawDeg: 6, terrace: true },
-    ],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.16, spacingPad: 7.5,
     // One strongpoint per role, balanced across the bay's axis: the quay cooperative at the harbour's north end, the
     // toll farm below the spine's western knoll on the south side, the limestone watch on the spine's eastern knoll.
