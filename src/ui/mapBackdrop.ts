@@ -11,8 +11,9 @@
  */
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 
-/** Battlefields the media pipeline has not published a card for yet; they keep the hero. */
-export const MAPS_WITHOUT_CARD: ReadonlySet<string> = new Set(['cliffbridge', 'moon']);
+/** Battlefields the media pipeline has not published a card for yet; they keep the hero (none since the deploy-208
+ * photographs, 2026-10-10, which published cards for Aegis Crossing and Earthrise Basin too). */
+export const MAPS_WITHOUT_CARD: ReadonlySet<string> = new Set<string>();
 
 const CARD_WIDTH = 1280;
 /** A card may be stretched this far before the darkened backdrop visibly softens. */

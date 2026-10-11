@@ -9,6 +9,8 @@ import {
 } from '../game/garagePresentationPose.ts';
 import {
   getGarageWorkshopBayPoses,
+  leopardBayPointToWorkshop,
+  LEOPARD_MOBILITY_FLOOR,
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 
@@ -158,6 +160,17 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
       radiusDepth: abrams ? 6.6 : 5.4,
     }));
   }
+  // The Leopard mobility bay's floor is a datum pad too (2026-10-10, ground audit of the ten Garages: on raw terrain its
+  // crew floated up to 1.44 m at Saltmere and stood buried to 0.79 m at Steinburg, the lift and the wheel rack with it).
+  const leopardFloor = leopardBayPointToWorkshop(variant, LEOPARD_MOBILITY_FLOOR.x, LEOPARD_MOBILITY_FLOOR.z);
+  const leopardView = garageWorldPointToView(leopardFloor.x, leopardFloor.z);
+  serviceBays.push(Object.freeze({
+    label: `fleet-service-${serviceBays.length + 1}`,
+    side: leopardView.side,
+    depth: leopardView.depth,
+    radiusSide: LEOPARD_MOBILITY_FLOOR.radiusM,
+    radiusDepth: LEOPARD_MOBILITY_FLOOR.radiusM,
+  }));
   return Object.freeze([
     ...serviceBays,
     ...layout.logistics.map(([side, depth], index) => Object.freeze({

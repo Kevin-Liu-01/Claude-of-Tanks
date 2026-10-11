@@ -944,6 +944,28 @@ tab the compile takes 1–2 s; the second window covers a starved GPU process or
 `browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
 preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
 
+**A slow compile never refuses entry (2026-10-10, the MP shader-prep lane).** Production 207–211 still refused the
+returning seat at load 54–84 (`compile` 5.0 s + `compileRetry` 5.0 s, "Battle shaders could not finish preparing"), and
+the refusal itself stranded it: the Garage restore's own strict program warm missed its 5 s budget inside the covered
+return, threw, and left the Garage unready (every scene frame suppressed), the loader on and no Rejoin battle. Now:
+- `warm.compile` opens window after window while programs keep linking (a submitted program stays cached, a reflected
+  one is not visited again), the loader showing how many are still linking. Four windows in a row with nothing linked,
+  or 120 s in all, is the last resort: a `slow_reveal` beacon `compile_deferred`, and the entry goes on, the covered
+  reveal linking the rest under the loader as the solo entry does. Only a preparation that cannot succeed refuses: a
+  lost or replaced context (`invalidated`: "Battle graphics were lost while the battle prepared its shaders"), a failed
+  native query or reflection ("Battle shaders failed to prepare on this device (reason)").
+- `entryTimeoutMs` refuses only a round that stopped progressing (no stage, world or roster progress and no program
+  linked for 120 s); a round still loading waits on in 30 s windows (one `slow_reveal` beacon `entry_extended`), up to
+  10 min.
+- The Garage restore (`src/engine/garageGpuWarmRuntime.ts`) treats a readiness proof that only ran out of time like a
+  legacy compile failure: the covered settle frame links the rest (receipt `programWarmDeferred`); an invalidated proof
+  still fails closed.
+- After any refused entry the loader clears even if the Garage restore throws, and the held room's lobby opens again
+  (`showActiveRoom`) naming why, with Rejoin battle while the match runs.
+Receipts: `browserComposition.selftest` (windows while linking, the last resort reveals, broken preparations refused
+with their reason, a throwing Garage restore still clears the loader and offers the room, Rejoin under load enters, the
+entry wait extends a progressing round and refuses a stalled one) and `garageGpuWarmRuntime.selftest`.
+
 **Open.** (1) ~~Two of P1's requests are honoured by design but wait for the merge to be proven against the real
 service: `host_only` step-down and the report cadence are exercised only against the double.~~ P3 (§13.8): the step-down
 is proven on the real actor by `tools/mp-p2p-stepdown.selftest.mjs` — and found the room client reading a stale election
