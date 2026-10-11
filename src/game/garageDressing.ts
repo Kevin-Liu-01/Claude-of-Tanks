@@ -1404,7 +1404,8 @@ export function createGarageDressing(
     // yellow, so the bays and the facility around them read as one construction (wave 357: "three-colour tangles").
     if (currentVariant.id === 'verdant_motor_pool') {
       mat.safety.color.setHex(currentVariant.accent);
-      mat.blueSteel.color.setHex(0x2a4257);
+      // Verdant's hall steel in a neutral works grey, not navy (2026-10-11, wave 402: "drowned in a flat dark-navy cast")
+      mat.blueSteel.color.setHex(0x4b504e);
     } else {
       const finish = GARAGE_SHELTER_FINISHES[currentVariant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
       mat.safety.color.setHex(0xa8862c);
