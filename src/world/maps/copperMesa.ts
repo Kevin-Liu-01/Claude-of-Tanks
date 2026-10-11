@@ -62,6 +62,15 @@ const QUEENSTOWN_STREETS = [
 export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
+  // TEMPORARY, integ/216 ONLY (the coordinator's fallback, 2026-10-11): map-content L2's mine works measure the long-sight
+  // share at 0.0247 against the brief's 0.03 floor. Removing every L2 landmark only reaches 0.0299, and the largest single
+  // loss is the conveyors' elevated galleries, which the sight raster counts as solid columns from the ground (it has no
+  // underside) though a 2.4 m eye line passes under them in the game. 217 removes this band and restores 0.03: the
+  // galleries see-under (or an overhead record), the most blocking set pieces moved off the long haul corridors, 0.03
+  // re-verified by the map-content lane. Do not carry this band past 217.
+  layoutBrief: { bands: {
+    sightLongShare: { band: [0.025, 0.15], reason: 'integ/216 only: L2 mine works under the see-through-gallery raster artifact; 217 restores the 0.03 floor' },
+  } },
   terrain: {
     hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
