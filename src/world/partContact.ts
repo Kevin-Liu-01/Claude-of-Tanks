@@ -206,6 +206,9 @@ export function convexDistance(a: Float64Array, b: Float64Array, stopBelow = 0):
 interface ConnectivityOptions {
   /** two members touch within this distance (m) */
   tolerance?: number;
+  /** a flat decal (a plaque, a keystone, a clock face drawn as one plane) touches its wall within this (m): the kits lift
+   *  their decals a few centimetres off a face against depth fighting */
+  decalTolerance?: number;
   /** a member whose lowest point is under this height (the structure's frame) stands on the ground */
   groundY?: number;
   /** bar-like members (length over thickness at least this) are checked for free ends */
@@ -285,9 +288,37 @@ function principal(points: Float64Array): { axis: V; centre: V; lo: number; hi: 
  * Every member reaches the ground through touching members; every bar standing off the vertical meets something at both
  * ends. Members are the welded components of the geometries (`weldedComponents`).
  */
+/** True when every point of a component lies within 2 mm of one plane (a decal, a pane drawn as a quad). */
+function planar(points: Float64Array): boolean {
+  const n = points.length / 3;
+  if (n < 3) return true;
+  const p0: V = [points[0], points[1], points[2]];
+  // the farthest point from p0, then the point farthest from that line: the widest triangle spans the plane
+  let far = 0, a = 0;
+  for (let i = 1; i < n; i++) {
+    const d = (points[i * 3] - p0[0]) ** 2 + (points[i * 3 + 1] - p0[1]) ** 2 + (points[i * 3 + 2] - p0[2]) ** 2;
+    if (d > far) { far = d; a = i; }
+  }
+  const e: V = [points[a * 3] - p0[0], points[a * 3 + 1] - p0[1], points[a * 3 + 2] - p0[2]];
+  let best = 0, normal: V = [0, 0, 0];
+  for (let i = 1; i < n; i++) {
+    const c = cross(e, [points[i * 3] - p0[0], points[i * 3 + 1] - p0[1], points[i * 3 + 2] - p0[2]]);
+    const l = Math.hypot(c[0], c[1], c[2]);
+    if (l > best) { best = l; normal = [c[0] / l, c[1] / l, c[2] / l]; }
+  }
+  if (!(best > 1e-9)) return true;
+  for (let i = 0; i < n; i++) {
+    const d = (points[i * 3] - p0[0]) * normal[0] + (points[i * 3 + 1] - p0[1]) * normal[1] + (points[i * 3 + 2] - p0[2]) * normal[2];
+    if (Math.abs(d) > 0.002) return false;
+  }
+  return true;
+}
+
 export function auditPartContact(components: readonly PartComponent[], options: ConnectivityOptions = {}): ConnectivityReport {
   const tolerance = options.tolerance ?? 0.02, groundY = options.groundY ?? 0.03, barRatio = options.barRatio ?? 8;
+  const decalTolerance = Math.max(tolerance, options.decalTolerance ?? 0.045);
   const n = components.length;
+  const reach = components.map((c) => (planar(c.points) ? decalTolerance : tolerance));
   const touching: number[][] = Array.from({ length: n }, () => []);
   // sweep along x: only members whose x ranges come within the tolerance are compared
   const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => components[a].min[0] - components[b].min[0]);
@@ -295,9 +326,10 @@ export function auditPartContact(components: readonly PartComponent[], options: 
     const i = order[oi], ci = components[i];
     for (let oj = oi + 1; oj < n; oj++) {
       const j = order[oj], cj = components[j];
-      if (cj.min[0] > ci.max[0] + tolerance) break;
-      if (boundsGap(ci, cj) > tolerance) continue;
-      if (convexDistance(ci.points, cj.points, tolerance) <= tolerance) {
+      if (cj.min[0] > ci.max[0] + decalTolerance) break;
+      const limit = Math.max(reach[i], reach[j]);
+      if (boundsGap(ci, cj) > limit) continue;
+      if (convexDistance(ci.points, cj.points, limit) <= limit) {
         touching[i].push(j); touching[j].push(i);
       }
     }
@@ -340,7 +372,10 @@ export function auditPartContact(components: readonly PartComponent[], options: 
     islands.push(island);
   }
   islands.sort((a, b) => b.gap - a.gap);
-  // free ends of bars that stand off the vertical (a post's top is free; a rung's or a brace's end is not)
+  // free ends of bars that stand off the vertical (a post's top is free; a rung's or a brace's end is not). An end is
+  // supported when something it touches comes within the tolerance of the bar's last stretch — its last 30 %, at least
+  // its end cap — so a beam's end that overhangs its post (a trestle's cap, a rafter's tail, a torii's lintel) is
+  // supported, and a brace or a rung that stops short of its leg is not.
   const dangling: DanglingEnd[] = [];
   for (let i = 0; i < n; i++) {
     const c = components[i];
@@ -348,22 +383,34 @@ export function auditPartContact(components: readonly PartComponent[], options: 
     const { axis, centre, lo, hi, radius } = principal(c.points);
     const length = hi - lo;
     if (length < 0.4 || length < barRatio * Math.max(radius * 2, 1e-3)) continue;
-    if (Math.abs(axis[1]) > 0.9) continue;
-    for (const t of [lo, hi]) {
-      const cap: number[] = [];
-      for (let k = 0; k < c.points.length; k += 3) {
-        const p: V = [c.points[k] - centre[0], c.points[k + 1] - centre[1], c.points[k + 2] - centre[2]];
-        if (Math.abs(dot(p, axis) - t) <= Math.max(0.02, radius * 1.5)) cap.push(c.points[k], c.points[k + 1], c.points[k + 2]);
+    // only a raking bar (15-64 degrees off level: a brace, a strut, a stringer, a rafter) must meet something at both ends;
+    // a post's top is free, and a level bar may be a cross arm held at its middle (an aerial's elements, a sign's arm)
+    if (Math.abs(axis[1]) > 0.9 || Math.abs(axis[1]) < 0.26) continue;
+    // the bar's cross-section frame
+    const ref: V = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    let u = cross(axis, ref); const ul = Math.hypot(u[0], u[1], u[2]); u = [u[0] / ul, u[1] / ul, u[2] / ul];
+    const v = cross(axis, u);
+    let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity;
+    for (let k = 0; k < c.points.length; k += 3) {
+      const p: V = [c.points[k] - centre[0], c.points[k + 1] - centre[1], c.points[k + 2] - centre[2]];
+      const pu = dot(p, u), pv = dot(p, v);
+      umin = Math.min(umin, pu); umax = Math.max(umax, pu); vmin = Math.min(vmin, pv); vmax = Math.max(vmax, pv);
+    }
+    const reachIn = Math.max(Math.max(0.02, radius * 1.5), length * 0.3);
+    for (const [tEnd, sign] of [[lo, 1], [hi, -1]] as const) {
+      const slice: number[] = [];
+      for (const t of [tEnd, tEnd + sign * reachIn]) for (const a of [umin, umax]) for (const b of [vmin, vmax]) {
+        slice.push(centre[0] + axis[0] * t + u[0] * a + v[0] * b, centre[1] + axis[1] * t + u[1] * a + v[1] * b,
+          centre[2] + axis[2] * t + u[2] * a + v[2] * b);
       }
-      if (!cap.length) continue;
-      const capPoints = Float64Array.from(cap);
-      let capMinY = Infinity;
-      for (let k = 1; k < capPoints.length; k += 3) capMinY = Math.min(capMinY, capPoints[k]);
-      if (capMinY <= groundY) continue;
+      const slicePoints = Float64Array.from(slice);
+      let sliceMinY = Infinity;
+      for (let k = 1; k < slicePoints.length; k += 3) sliceMinY = Math.min(sliceMinY, slicePoints[k]);
+      if (sliceMinY <= groundY) continue;
       let gap = Infinity;
-      for (const j of touching[i]) gap = Math.min(gap, convexDistance(capPoints, components[j].points, tolerance));
-      if (gap > tolerance) {
-        dangling.push({ component: i, source: c.source, end: [centre[0] + axis[0] * t, centre[1] + axis[1] * t, centre[2] + axis[2] * t], gap });
+      for (const j of touching[i]) gap = Math.min(gap, convexDistance(slicePoints, components[j].points, Math.max(reach[i], reach[j])));
+      if (gap > Math.max(tolerance, reach[i])) {
+        dangling.push({ component: i, source: c.source, end: [centre[0] + axis[0] * tEnd, centre[1] + axis[1] * tEnd, centre[2] + axis[2] * tEnd], gap });
       }
     }
   }

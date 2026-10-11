@@ -118,8 +118,14 @@ export function flowerBox(sink: PartSink, face: Face, u: number, y: number, w: n
     for (let j = 0; j < 3; j++) {
       const h = hash01(uu, lift, j, 11), du = (j - 1) * s * 0.55 + (h - 0.5) * 0.03, dy = (j === 1 ? 0.03 : 0) + h * 0.02;
       const tone = 0.82 + hash01(uu, j, 13) * 0.3;
-      bloomDisc(sink, out(uu + du, by + 0.2 + lift + dy, o - 0.02 * j), facing, s * 0.45,
+      const head = out(uu + du, by + 0.2 + lift + dy, o - 0.02 * j);
+      bloomDisc(sink, head, facing, s * 0.45,
         [Math.min(1, bloom[0] * tone), Math.min(1, bloom[1] * tone), Math.min(1, bloom[2] * tone)], d, h * 6);
+      // its stalk, from down in the leaves up to the head (the connectivity sweep: the heads hung over the leaves on
+      // nothing); one sliver of a triangle seen from the street (a quad put the tavern's 40 boxes over its budget)
+      const root = out(uu + du * 0.6, by + 0.12, 0.15);
+      sink.polygon('structureWood', [root, [head[0] + face.u[0] * 0.006, head[1], head[2] + face.u[2] * 0.006], [head[0] - face.u[0] * 0.006, head[1], head[2] - face.u[2] * 0.006]],
+        { ...d, colour: shade(leaf, 0.8) });
     }
   }
 }
@@ -129,6 +135,9 @@ export function bench(sink: PartSink, face: Face, u: number, length: number, woo
   faceBox(sink, 'structureWood', face, u, 0.45, 0.25, length, 0.06, 0.36, { ...DECOR, colour: wood });
   faceBox(sink, 'structureWood', face, u, 0.78, 0.06, length, 0.22, 0.04, { ...DECOR, colour: wood });
   for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (length / 2 - 0.12), 0.21, 0.25, 0.06, 0.42, 0.3, { ...DECOR, colour: wood });
+  // the back's two posts from the ground up through the seat's back edge to the back board (the connectivity sweep: the
+  // board hung over the seat on nothing)
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (length / 2 - 0.12), 0.445, 0.07, 0.05, 0.89, 0.05, { ...DECOR, colour: wood });
 }
 
 /**
@@ -149,8 +158,8 @@ export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, hei
       u += len;
     }
   }
-  // a little roof of boards over the pile
-  faceBox(sink, 'structureWood', face, (u0 + u1) / 2, rows * row + 0.08, depth / 2 + 0.05, u1 - u0 + 0.2, 0.04, depth + 0.16, { ...DECOR, colour: [0.32, 0.27, 0.22] });
+  // a little roof of boards laid on the pile (the connectivity sweep: it floated 6 cm over the top course)
+  faceBox(sink, 'structureWood', face, (u0 + u1) / 2, rows * row + 0.012, depth / 2 + 0.05, u1 - u0 + 0.2, 0.04, depth + 0.16, { ...DECOR, colour: [0.32, 0.27, 0.22] });
 }
 
 /**
@@ -160,7 +169,8 @@ export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, hei
 export function roofLadder(sink: PartSink, frame: HouseFrame, side: 1 | -1, z: number, rise: number, colour: Rgb): void {
   const rg = frame.roof;
   if (rg.kind === 'flat' || rg.kind === 'shed') return;
-  const lift = 0.09;
+  // (the rails ride the tiles on their hooks, a hand over them: at 9 cm they hung 6 cm clear of the roof)
+  const lift = 0.026;
   const point = (x: number, dz: number): Vec3 => {
     const top = rg.topAt(side * x, z + dz) ?? rg.eaveY;
     return [side * x, top + lift, z + dz];
@@ -204,7 +214,10 @@ export function tvAerial(sink: PartSink, frame: HouseFrame, z: number, rng: () =
 export function wallLantern(sink: PartSink, face: Face, u: number, y: number): void {
   const iron: Rgb = [0.12, 0.12, 0.12];
   faceBox(sink, 'structureMetal', face, u, y + 0.3, 0.2, 0.04, 0.04, 0.4, { ...DECOR, colour: iron });
-  faceBox(sink, 'structureMetal', face, u, y + 0.2, 0.36, 0.2, 0.04, 0.2, { ...DECOR, colour: iron });
+  // (the connectivity sweep: the lantern hung on nothing, 6 cm under its arm, its cap 5 cm over its glass) the hanger
+  // from the arm to the cap, the cap on the glass
+  faceBox(sink, 'structureMetal', face, u, y + 0.235, 0.36, 0.02, 0.13, 0.02, { ...DECOR, colour: iron });
+  faceBox(sink, 'structureMetal', face, u, y + 0.15, 0.36, 0.2, 0.04, 0.2, { ...DECOR, colour: iron });
   faceBox(sink, 'curtain', face, u, y, 0.36, 0.16, 0.26, 0.16, { ...DECOR, window: face.out });
   faceBox(sink, 'structureMetal', face, u, y - 0.15, 0.36, 0.2, 0.04, 0.2, { ...DECOR, colour: iron });
 }

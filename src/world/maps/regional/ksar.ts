@@ -4,7 +4,7 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -31,6 +31,23 @@ function ghorfa(sink: PartSink, x: number, y: number, z: number, w: number, h: n
   if (rng() < 0.6) faceBox(sink, 'structureWood', front, (rng() - 0.5) * w * 0.4, y + h + r * 0.55, 0.3, 0.12, 0.12, 0.6, { colour: TIMBER, decor: true });
 }
 
+/**
+ * The bed of an upper ghorfa cell on the one below it (that cell at height `y`, `h` to its vault's spring, `w` wide;
+ * the upper cell's front at `z`, `d` deep, its floor `tierH` over the lower's): a course of rubble on the lower vault's
+ * crown up to the upper floor, and the spandrels between the lower vault and the course filled flush with the upper
+ * cell's front and back, wound to face out (the connectivity sweep: the upper tiers stood 0.1 m over the crowns). The
+ * spandrels' corners are the vault's own (eight segments over the half turn).
+ */
+function ghorfaBed(sink: PartSink, x: number, y: number, h: number, w: number, z: number, d: number, tierH: number, back = true): void {
+  const r = w / 2, spring = y + h, crown = spring + r;
+  sink.span(MUD, x - r, crown, z - d, x + r, y + tierH, z, { decor: true });
+  for (const [zf, nz] of back ? [[z, 1], [z - d, -1]] as const : [[z, 1]] as const) for (const s of [-1, 1]) {
+    const corner: Vec3 = [x + s * r, crown, zf];
+    const at = (j: number): Vec3 => [x + s * r * Math.sin(j * Math.PI / 8), spring + r * Math.cos(j * Math.PI / 8), zf];
+    for (let k = 0; k < 4; k++) sink.polygon(MUD, s * nz > 0 ? [corner, at(k), at(k + 1)] : [corner, at(k + 1), at(k)], { decor: true });
+  }
+}
+
 /** A ghorfa range: rows of vaulted cells stacked two or three high along the sides of a court, steps up the fronts. */
 const ghorfaRange: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -47,13 +64,17 @@ const ghorfaRange: RegionalBuilder = (ctx) => {
     const x = -W / 2 + (cw + 0.12) * (i + 0.5);
     if (t === tiers - 1 && rng() < 0.15) continue;
     ghorfa(sink, x, t * tierH, back, cw, ch, cd, rng, blue);
+    if (t > 0) ghorfaBed(sink, x, (t - 1) * tierH, ch, cw, back, cd, tierH);
   }
   for (const side of [-1, 1]) {
     const m = Math.max(2, Math.floor((D - cd - 3) / (cw + 0.12)));
     for (let t = 0; t < Math.max(1, tiers - 1); t++) for (let i = 0; i < m; i++) {
       const z = back + 0.4 + (cw + 0.12) * (i + 0.5);
       // a side range: build the cell facing +z and turn it to face the court (±x)
-      sink.placed(side > 0 ? -Math.PI / 2 : Math.PI / 2, side * (W / 2 - cd), 0, z, () => ghorfa(sink, 0, t * tierH, 0, cw, ch, cd, rng, blue));
+      sink.placed(side > 0 ? -Math.PI / 2 : Math.PI / 2, side * (W / 2 - cd), 0, z, () => {
+        ghorfa(sink, 0, t * tierH, 0, cw, ch, cd, rng, blue);
+        if (t > 0) ghorfaBed(sink, 0, (t - 1) * tierH, ch, cw, 0, cd, tierH);
+      });
     }
   }
   // steep stairs of jutting stones up the back range's front
@@ -87,8 +108,12 @@ const ghorfaShops: RegionalBuilder = (ctx) => {
   // the upper tier over the middle cells, set back a little from the lane
   const first = Math.floor((n - 1) / 2), last = n >= 4 ? first + 1 : first;
   for (let i = first; i <= last; i++) {
+    // the terrace's edge over the lower cell's front, its spandrels filled flush with the lane front: the stair's top
+    // stones stand against it
+    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2, 0.4, tierH, false);
     if (rng() < 0.2) continue;
     ghorfa(sink, cellX(i), tierH, D / 2 - 0.4, cw, ch, D - 0.4, rng, blue);
+    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2 - 0.4, D - 0.4, tierH);
   }
   // the stair stones jutting from the front between the cells, from the ground up to the upper floor
   const sx = cellX(first) - cw / 2 - 0.06;
@@ -227,6 +252,9 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
   for (const sx of [-1, 1]) sink.cylinder('structureWood', [sx * (W / 2 - 0.2), floor, postZ], 'y', top - floor, 0.14, 7, { colour: palm, uv: UV_MEMBER }, 0.12);
   sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, postZ], [W / 2 + 0.1, top + 0.08, postZ], 0.18, 0.18, [0, 1, 0], { colour: palm });
   for (const t of [-0.36, 0, 0.36]) sink.member('structureWood', [t * W, top + 0.24, wallZ - 0.1], [t * W, top + 0.24, postZ + 0.15], 0.13, 0.13, [0, 1, 0], { colour: shade(palm, 0.92) });
+  // the mat's edge: a pole of bound ribs across the joists' ends, under the last ribs that ran out past them and the
+  // fronds hung from those (the connectivity sweep: the mat's edge floated 2 cm off the joists)
+  sink.member('structureWood', [-W / 2 - 0.1, top + 0.24, postZ + 0.2], [W / 2 + 0.1, top + 0.24, postZ + 0.2], 0.2, 0.07, [0, 1, 0], { colour: shade(palm, 0.85), decor: true, exposed: true }, 0);
   // the jerid: palm ribs laid across the joists with gaps between them, fresh tan to sun-grey
   const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
   for (let k = 0; k < ribs; k++) {

@@ -8,7 +8,7 @@
 // piers, board-and-batten under tin roofs, front porches and a brick chimney; the mule barn under its hay hood; the
 // railroad's water tank on its trestle; privies and woodsheds; a house burnt to its chimney. Galvanised sheet roofs
 // over everything (the mill's fires took the shingles), the boards weathered silver or whitewashed, the trim painted.
-import { PartSink, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
 import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, washingLine } from './dressing.ts';
@@ -144,15 +144,20 @@ function porch(sink: PartSink, face: Face, floorY: number, wallTop: number, widt
     faceBox(sink, 'structureWood', face, -width / 4 - 0.3, floorY + 0.85, depth - 0.12, width / 2 - 1.0, 0.06, 0.07, { colour: post, decor: true });
     faceBox(sink, 'structureWood', face, width / 4 + 0.3, floorY + 0.85, depth - 0.12, width / 2 - 1.0, 0.06, 0.07, { colour: post, decor: true });
     for (let u = -width / 2 + 0.3; u < width / 2 - 0.2; u += 0.16) {
-      if (Math.abs(u) < 0.65) continue; // the gap for the steps
+      if (Math.abs(u) < 0.82) continue; // the gap for the steps (and no baluster beyond the rails' inner ends)
       faceBox(sink, 'structureWood', face, u, floorY + 0.45, depth - 0.12, 0.04, 0.75, 0.04, { colour: post, decor: true, fine: true });
     }
   }
-  // the steps down from the deck's middle to the ground
+  // the steps down from the deck's middle to the ground, their treads housed in two stringers that run from the ground
+  // to the deck's edge (the connectivity sweep: the treads hung in the air one over the next, with nothing under them)
   const steps = Math.max(2, Math.round((floorY - ground) / 0.2));
   for (let k = 0; k < steps; k++) {
     const y = ground + (floorY - ground) * (k + 1) / steps;
     faceBox(sink, 'structureWood', face, 0, y - 0.05, depth + 0.28 * (steps - k) - 0.14, 1.2, 0.08, 0.3, { colour: shade(WEATHERED, 0.95), decor: true });
+  }
+  for (const u of [-0.63, 0.63]) {
+    const foot = facePoint(face, u, ground - 0.04, depth + 0.28 * steps + 0.02), head = facePoint(face, u, floorY - 0.04, depth - 0.02);
+    sink.member('structureWood', foot, head, 0.06, 0.24, [0, 1, 0], { colour: shade(WEATHERED, 0.85), decor: true, exposed: true }, 0);
   }
   // the tin roof: a shed from the wall head down over the posts (its low side on the face's outward normal)
   const spec: RoofSpec = tin('shed', Math.max(6, Math.atan2(rise, depth) * 180 / Math.PI), 0.25, 0.15);
@@ -449,7 +454,8 @@ function millShed(sink: PartSink, W: number, D: number, h: number, monitor: bool
       const r = s.recess, go = r > 0 ? -r + 0.04 : 0.02;
       faceBox(s, 'structureWood', face, o.u - o.w / 4, y0 + o.y0 + o.h / 2, go, o.w / 2, o.h, 0.06, { colour: shade(WEATHERED, 0.85) });
       faceBox(s, 'dark', face, o.u + o.w / 4, y0 + o.y0 + o.h / 2, go, o.w / 2, o.h, 0.02, {});
-      faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h + 0.12, 0.08, o.w + 1.2, 0.1, 0.1, { colour: IRON, decor: true });
+      // the sliding door's track on the wall over the opening (the connectivity sweep: it stood 3 cm off the wall)
+      faceBox(s, 'structureMetal', face, o.u, y0 + o.y0 + o.h + 0.12, 0.05, o.w + 1.2, 0.1, 0.1, { colour: IRON, decor: true });
     },
   });
   battenHouse(sink, frame, 0.6, 0.6 + h * 0.5, 0.75);
