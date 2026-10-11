@@ -244,7 +244,10 @@ export default {
     // huts and the longhouse — a checkpoint hut, sentry posts, command and aid tents
     // (round 3, gauntlet wave 208: "modern tarps among the fields") no command or aid tents: the checkpoint hut and the
     // sentry posts only
-    destructibleBuildings: ['checkpointhut', 'guardpost'],
+    // (2026-10-10, the map-revival lane: Orchard round 5's authored village left the map three structure kinds, under the
+    // structure kit's four — structureKit.selftest) the village's transformer kiosk on its feeder, the concrete box every
+    // Chouf village of the war years had beside its road (no tent, no timber hut)
+    destructibleBuildings: ['checkpointhut', 'guardpost', 'transformershed'],
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,
     tacticalBeats: [
       { id: 'village-packing-court', role: 'brawl', x: 70, z: 56, yawDeg: -90, structure: 'checkpointhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
