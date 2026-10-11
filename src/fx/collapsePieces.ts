@@ -769,10 +769,10 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
       if (rects.length === 1) {
         const [ea, eb, fa, fb] = rects[0];
         // (dcore 2026-10-11, waves 385/388a: "one flat, unbroken roof slab laid dead level") sheets of two metres and a
-        // half or so: a barn's roof breaks into four to six, never one lid
-        // (the decisive wave's hitch probe: the debris pool's steps were most of a house's cost) six sheets at most
+        // half or so: a barn's roof breaks into six to nine, never one lid (the coordinator's check, 2026-10-11: capped at
+        // six for the pool's cost, a barn's roof lay as big flat sheets again — the roof keeps its nine)
         ru = spanCuts(ea, eb, eb - ea > 5 ? 3 : eb - ea > 2.4 ? 2 : 1);
-        rv = spanCuts(fa, fb, fb - fa > 2.6 ? 2 : 1);
+        rv = spanCuts(fa, fb, fb - fa > 5.5 ? 3 : fb - fa > 2.6 ? 2 : 1);
         const us = [ea, ...ru, eb], vs = [fa, ...rv, fb];
         if (us.length > 2 || vs.length > 2) for (let iv = 0; iv + 1 < vs.length; iv++) for (let iu = 0; iu + 1 < us.length; iu++) {
           const u0 = us[iu], u1 = us[iu + 1], v0 = vs[iv], v1 = vs[iv + 1];
