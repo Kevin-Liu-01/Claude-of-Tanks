@@ -193,4 +193,29 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
+// (Caldera round 4, the map-revival lane, 2026-10-11; the wave-359 recapture: "the paddies ran under the kura and the
+// naya") every building of Caldera's authored village stands in a bare yard — no field within its square — and its two
+// deployments on dry ground: no flooded paddy within 6 m of any of the 28 nominal slots
+{
+  const { getMapConfig } = await import('./maps/index.ts');
+  const { deploymentFrame, nominalBravoSlot, rotateAboutPivot } = await import('../sim/deployment.ts');
+  const cfg = getMapConfig('caldera'), p = resolveLandUseProfile('caldera'), s = createLandFieldSample();
+  const sites = cfg.props.plannedSites;
+  assert.ok(sites.length >= 30, `caldera: its authored village (${sites.length} sites)`);
+  for (const site of sites) {
+    let field = 0;
+    for (let dz = -8; dz <= 8; dz += 2) for (let dx = -8; dx <= 8; dx += 2) { landUseAt(p, site.x + dx, site.z + dz, s); if (s.active) field++; }
+    assert.equal(field, 0, `caldera: ${site.structure} at (${site.x}, ${site.z}) stands in a bare yard`);
+  }
+  const frame = deploymentFrame(cfg.spawns);
+  for (const team of ['alpha', 'bravo']) for (let k = 0; k < 14; k++) {
+    const b = nominalBravoSlot(frame, k), slot = team === 'bravo' ? b : rotateAboutPivot(frame.pivot, b);
+    for (let dz = -6; dz <= 6; dz += 1.5) for (let dx = -6; dx <= 6; dx += 1.5) {
+      if (dx * dx + dz * dz > 36) continue;
+      landUseAt(p, slot.x + dx, slot.z + dz, s);
+      assert.ok(!(s.active && s.crop === LAND_CROP.paddyWater), `caldera: ${team} slot ${k} on dry ground`);
+    }
+  }
+}
+
 console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);
