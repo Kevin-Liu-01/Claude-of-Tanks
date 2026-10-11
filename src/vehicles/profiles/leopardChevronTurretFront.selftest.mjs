@@ -120,12 +120,15 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.internalCourseCaps, false,
     `${id} has no coincident internal caps that can render as stacked layers`);
   assert.equal(receipt.faceLayersPerSide, 1, `${id} exposes one upper/lower assembly per side`);
-  assert.equal(receipt.surfacePanelLayerCount, 1,
+  // r4b: the field-ERA 2A6M carries its ERA field as the cheek's outer layer instead of the cassettes
+  // (cassettes that bend with the cheek stood through the flat tiles' edges)
+  const eraFieldCheek = id === 'leo2a6m';
+  assert.equal(receipt.surfacePanelLayerCount, eraFieldCheek ? 0 : 1,
     `${id} uses one shallow cassette layer instead of stacked cheek courses`);
-  assert.equal(receipt.surfacePanelCount, 8, `${id} carries four broad surface panels on each cheek`);
+  assert.equal(receipt.surfacePanelCount, eraFieldCheek ? 0 : 8, `${id} carries four broad surface panels on each cheek`);
   assert.equal(receipt.surfacePanelsStructuralReplacement, false,
     `${id} keeps its continuous armor cheek underneath the surface cassettes`);
-  assert.equal(receipt.exposedPanelSeams, true, `${id} leaves intentional seams between cheek panels`);
+  assert.equal(receipt.exposedPanelSeams, !eraFieldCheek, `${id} leaves intentional seams between cheek panels`);
   assert.equal(receipt.roofSightlineClosed, true,
     `${id} closes the daylight channel between the cheek roots and core turret roof`);
   assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
@@ -270,7 +273,7 @@ for (const [id, expectedProfile] of modernProfiles) {
       `${id} ${sideReceipt.side} roof bridge follows every cheek plan station`);
     assert.ok(sideReceipt.roofBridge.thicknessM >= 0.08,
       `${id} ${sideReceipt.side} roof bridge is structural rather than a zero-thickness cover`);
-    assert.equal(sideReceipt.surfacePanels.length, 4,
+    assert.equal(sideReceipt.surfacePanels.length, id === 'leo2a6m' ? 0 : 4,
       `${id} ${sideReceipt.side} divides the broad cheek into four readable cassettes`);
     if (verticalTerminalIds.has(id)) {
       const closure = sideReceipt.terminalSideClosure;
@@ -350,7 +353,9 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} panel ${panelIndex} stays within the parent cheek`);
       assert.ok(panel.thicknessM >= 0.015 && panel.thicknessM <= 0.03,
         `${id} ${sideReceipt.side} panel ${panelIndex} remains a shallow armor cassette`);
-      assert.equal(panel.triangleCount, 12,
+      // a flat cassette is one 12-triangle slab; a band that spans a cheek station
+      // bends with the parent: one closed loft, eight triangles per course plus two caps
+      assert.ok(panel.triangleCount >= 12 && (panel.triangleCount - 4) % 8 === 0,
         `${id} ${sideReceipt.side} panel ${panelIndex} is a closed shallow solid`);
       assert.ok(panel.normal[1] > 0.65 && panel.normal[2] > 0,
         `${id} ${sideReceipt.side} panel ${panelIndex} follows the upper forward slope`);

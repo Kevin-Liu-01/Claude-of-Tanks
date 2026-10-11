@@ -268,6 +268,8 @@ const expectedA6MBridge = {
   frontHalfWidth: 0.13,
   rearHalfWidth: 0.28,
   ribZ: [0.82, 1.14, 1.46],
+  // r4b: the bridge stops at the chevron cheeks' inner end plane (no 6-8 degree overlap with the cheek roof bridges)
+  cheekInnerX: 0.26,
 };
 assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, expectedA6MBridge,
   'A6M uses the narrowed fitted mantlet-roof bridge');
