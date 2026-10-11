@@ -235,6 +235,114 @@ function bWindPump(rng: Rng): THREE.BufferGeometry {
   return merge(parts, true, false);
 }
 
+
+// ---------------------------------------------------------------------------------------------- the Dutch windmotor
+
+// (the map-revival lane, 2026-10-06, Tidegate Polders step 4; the coordinator: "Dutch steel windmotors (the Bosman type)
+// were common in Zeeland's polders by the 1930s ... The critic read an American farm wind-pump. Give them the Dutch form:
+// a lattice tower, a rosette with a vane, and the pump house at the foot.")
+const BRICK_RED: Palette = [0.03, 0.42, 0.34];
+const TILE_RED: Palette = [0.02, 0.48, 0.30];
+const VANE_WHITE: Palette = [0.1, 0.04, 0.82];
+const ROSETTE_RED: Palette = [0.0, 0.62, 0.38];
+
+/**
+ * A Bosman windmotor: a slender four-legged steel lattice tower, braced bay by bay, a railed platform under the head,
+ * the rosette — a wide wheel of curved sheet-steel sails between an inner and an outer ring, its tips banded red — the
+ * long tail boom with its white vane and the small side vane that turns the wheel out of a gale, the pump rod down the
+ * tower's middle, and at the foot the brick pump house over the ditch with its tiled roof and its outfall. The rosette
+ * faces +Z, the pump house stands off the tower's -Z side.
+ */
+function bWindMotor(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const H = 13, base = 1.55, topHalf = 0.42;
+  const halfAt = (y: number) => base + (topHalf - base) * (y / H);
+  const strut = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette) => {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const len = Math.hypot(dx, dy, dz);
+    const g = new THREE.BoxGeometry(t, len, t);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx / len, dy / len, dz / len));
+    g.applyQuaternion(q);
+    g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    parts.push(paint(g, pal, 0.04, rng));
+  };
+  const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  for (const [sx, sz] of corners) {
+    strut(sx * base, 0, sz * base, sx * topHalf, H, sz * topHalf, 0.1, GALV);
+    parts.push(paint(box(0.55, 0.35, 0.55).translate(sx * base, 0.1, sz * base), CONCRETE, 0.05, rng));
+  }
+  const bays = 6;
+  for (let b = 0; b <= bays; b++) {
+    const y = 0.5 + (H - 1.0) * (b / bays), h = halfAt(y);
+    for (let k = 0; k < 4; k++) {
+      const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
+      strut(ax * h, y, az * h, bx * h, y, bz * h, 0.05, GALV);
+      if (b < bays) {
+        const y2 = 0.5 + (H - 1.0) * ((b + 1) / bays), h2 = halfAt(y2);
+        strut(ax * h, y, az * h, bx * h2, y2, bz * h2, 0.04, GALV_DARK);
+        strut(bx * h, y, bz * h, ax * h2, y2, az * h2, 0.04, GALV_DARK);
+      }
+    }
+  }
+  // the platform and its rail, the head on its turntable
+  parts.push(paint(box(1.5, 0.06, 1.5).translate(0, H - 0.05, 0), GALV_DARK, 0.04, rng));
+  for (const [sx, sz] of corners) strut(sx * 0.72, H, sz * 0.72, sx * 0.72, H + 0.9, sz * 0.72, 0.035, GALV_DARK);
+  for (let k = 0; k < 4; k++) {
+    const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
+    strut(ax * 0.72, H + 0.9, az * 0.72, bx * 0.72, H + 0.9, bz * 0.72, 0.035, GALV_DARK);
+  }
+  parts.push(paint(box(0.55, 0.5, 1.2).translate(0, H + 0.45, 0.1), GALV_DARK, 0.04, rng));
+  // the rosette: twenty-four sails between the inner and outer rings, pitched into the wind, their tips banded red
+  const R = 3.0, r0 = 1.0, hubY = H + 0.55, hubZ = 0.95;
+  const hub = new THREE.CylinderGeometry(0.22, 0.22, 0.35, 10, 1);
+  hub.rotateX(Math.PI / 2);
+  parts.push(paint(hub.translate(0, hubY, hubZ), GALV_DARK, 0.03, rng));
+  for (let i = 0; i < 6; i++) {
+    // the spokes from the hub to the outer ring
+    const a = (i / 6) * Math.PI * 2;
+    strut(Math.cos(a) * 0.2, hubY + Math.sin(a) * 0.2, hubZ, Math.cos(a) * R, hubY + Math.sin(a) * R, hubZ, 0.06, GALV_DARK);
+  }
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2, len = R - r0;
+    const sail = new THREE.BoxGeometry(0.42, len * 0.82, 0.025);
+    sail.translate(0, r0 + len * 0.41, 0);
+    sail.rotateY(0.45);
+    sail.rotateZ(a);
+    parts.push(paint(sail.translate(0, hubY, hubZ), GALV, 0.06, rng));
+    const tip = new THREE.BoxGeometry(0.44, len * 0.18, 0.027);
+    tip.translate(0, r0 + len * 0.91, 0);
+    tip.rotateY(0.45);
+    tip.rotateZ(a);
+    parts.push(paint(tip.translate(0, hubY, hubZ), ROSETTE_RED, 0.05, rng));
+  }
+  for (const ring of [r0, R]) {
+    const seg = ring === R ? 32 : 16;
+    for (let i = 0; i < seg; i++) {
+      const a0 = (i / seg) * Math.PI * 2, a1 = ((i + 1) / seg) * Math.PI * 2;
+      strut(Math.cos(a0) * ring, hubY + Math.sin(a0) * ring, hubZ, Math.cos(a1) * ring, hubY + Math.sin(a1) * ring, hubZ, 0.05, GALV_DARK);
+    }
+  }
+  // the tail: a long boom to the white vane, and the side vane that turns the wheel out of a gale
+  strut(0, H + 0.5, -0.4, 0, H + 0.75, -3.9, 0.07, GALV_DARK);
+  strut(0, H + 0.95, -0.4, 0, H + 0.8, -3.6, 0.04, GALV_DARK);
+  parts.push(paint(box(0.04, 1.5, 2.2).translate(0, H + 0.9, -4.6), VANE_WHITE, 0.04, rng));
+  parts.push(paint(box(0.9, 0.7, 0.03).translate(0.75, H + 0.7, 0.25), VANE_WHITE, 0.04, rng));
+  // the pump rod down the tower
+  parts.push(paint(box(0.05, H - 0.4, 0.05).translate(0, (H - 0.4) / 2 + 0.3, 0), GALV_DARK, 0.03, rng));
+  // the pump house at the foot over the ditch: brick walls, a door, a tiled saddle roof, the outfall trough
+  const hx = 0, hz = -2.9, hw = 1.15, hd = 0.95, hh = 2.0;
+  parts.push(paint(box(hw * 2, hh, hd * 2).translate(hx, hh / 2, hz), BRICK_RED, 0.06, rng));
+  parts.push(paint(box(0.8, 1.6, 0.05).translate(hx + 0.4, 0.8, hz + hd + 0.01), GALV_DARK, 0.05, rng));
+  for (const side of [-1, 1]) {
+    const slope = box(hw * 2 + 0.3, 0.08, hd + 0.35);
+    slope.rotateX(side * 0.55);
+    parts.push(paint(slope.translate(hx, hh + 0.42, hz + side * (hd + 0.35) / 2 * 0.85), TILE_RED, 0.05, rng));
+  }
+  parts.push(paint(box(hw * 2 + 0.1, 0.62, 0.1).translate(hx, hh + 0.28, hz), BRICK_RED, 0.05, rng));
+  parts.push(paint(box(0.6, 0.35, 1.4).translate(hx, 0.18, hz - hd - 0.7), CONCRETE, 0.05, rng));
+  return merge(parts, true, false);
+}
+
 // ---------------------------------------------------------------------------------------------- the deltas
 
 const paint_ = paint;
@@ -411,6 +519,9 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   // the mill yard (the map-revival lane, 2026-10-05, Longleaf round 2): solid stacks a hull breaks only by ramming
   lumberstack: { cls: 'break', mat: 'baked', contact: 'ob', r: 2.7, h: 2.0, hw: 1.25, hl: 2.4, build: bLumberStack, broken: bLumberStackBroken, collider: true, keep: 0.86, crushMin: 2.4 },
   logdeck: { cls: 'break', mat: 'baked', contact: 'ob', r: 4.1, h: 1.95, hw: 2.1, hl: 3.5, build: bLogDeck, broken: bLogDeckBroken, collider: true, keep: 0.86, crushMin: 2.6 },
+  // (the map-revival lane, 2026-10-07, Tidegate Polders step 4; last, so no kind before it moves) the Dutch Bosman
+  // windmotor: its tower's legs' square and the brick pump house at its foot (2.9 m off the -Z side) in the footprint
+  windmotor: { cls: 'topple', mat: 'baked', contact: 'ob', r: 3.2, h: 16.6, hw: 1.6, hl: 3.8, groundR: 1.6, build: bWindMotor, broken: null, keep: 0.86, crushMin: 2.0 },
 } satisfies Record<string, DestructiblePropType>;
 
 

@@ -8,6 +8,7 @@ import { createGarageArchitectureController } from './garageArchitecture.ts';
 import { GARAGE_ENVIRONMENT_RECIPES } from './garageEnvironmentRecipes.ts';
 import {
   GARAGE_FACILITY_AXIS_YAW_RAD,
+  garageTerraceAtDatum,
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 
@@ -82,7 +83,9 @@ for (const variant of GARAGE_VARIANTS) {
     // onto raw terrain (sunk up to 3.2 m at Steinburg, 1.5 m clear at Sirocco) and the K2 cradle stood up to 2.8 m
     // clear; the Abrams pad is the wider one (the tank, skirts, dolly and carts spread over about 11 m).
     const pads = terraces.filter((terrace) => terrace.label.startsWith('fleet-service-'));
-    assert.equal(pads.length, 4, `${variant.id}: the Burlak, Abrams, T-90M and K2 exhibits each stand on a pad`);
+    // 2026-10-10: the Leopard mobility bay (lift, wheel rack, kit and crew) joined them after its crew floated 1.44 m
+    assert.equal(pads.length, 5,
+      `${variant.id}: the Burlak, Abrams, T-90M, K2 and Leopard exhibits each stand on a pad`);
     assert.equal(pads.filter((pad) => pad.radiusSide === 7.6 && pad.radiusDepth === 6.6).length, 1,
       `${variant.id}: the Abrams welding bay's pad covers its spread`);
     for (let left = 0; left < terraces.length; left += 1) {
@@ -93,8 +96,8 @@ for (const variant of GARAGE_VARIANTS) {
           (a.side - b.side) / (a.radiusSide + b.radiusSide),
           (a.depth - b.depth) / (a.radiusDepth + b.radiusDepth),
         );
-        assert.ok(clearance >= 1,
-          `${variant.id}: ${a.label} must not overlap ${b.label}`);
+        assert.ok(clearance >= 1 || (garageTerraceAtDatum(a, terraces) && garageTerraceAtDatum(b, terraces)),
+          `${variant.id}: ${a.label} must not overlap ${b.label} unless both stand at the datum`);
       }
     }
   }
