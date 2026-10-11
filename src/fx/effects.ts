@@ -54,6 +54,7 @@ import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createCollapseBodies, type CollapseBodies } from './collapseBodies.ts';
+import { createPropFracture, type PropFracture, type PropFractureRequest } from './propFracture.ts';
 import { createWreckEnvironment } from '../sim/wreckTurrets.ts';
 import type { RigidEnvironment } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -93,6 +94,8 @@ interface FxHeightField {
 /** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  /** Who takes a fracture-ready destructible kind's live break (props.ts setPropFracture). */
+  setPropFracture?(handler: ((request: PropFractureRequest) => boolean) | null): void;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
   groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
@@ -1105,9 +1108,12 @@ function* createFxSteps(
   // one pool for a building's falling pieces: its collapse's and its walls' broken cells (structureFracture.ts)
   const debrisPool = mediaTier && structMask && structDebris ? createDebrisPhysics({ capacity: 128 }) : null;
   let stagesRef: StructureStages | null = null;
+  // (dcore 2026-10-11) a fracture-ready destructible kind (the redesigned sheds) comes apart as its own pieces in the pool
+  const propFracture: PropFracture | null = debrisPool ? createPropFracture({ pool: debrisPool, group, now: () => particles.getTime(),
+    onLanding: (x, y, z, speed, mass) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, null); } }) : null;
   const bodies: CollapseBodies | null = debrisPool ? createCollapseBodies({
     pool: debrisPool,
-    alsoLive: () => (stagesRef?.liveBodies() ?? 0) > 0,
+    alsoLive: () => (stagesRef?.liveBodies() ?? 0) + (propFracture?.liveBodies() ?? 0) > 0,
     group,
     materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
     groundAt: (x, z) => deformedGroundY(x, z),
@@ -1137,6 +1143,7 @@ function* createFxSteps(
     const w = world();
     if (!w || w === patchedWorld || typeof w.patchStructureMaterials !== 'function') return;
     patchedWorld = w;
+    if (propFracture) w.setPropFracture?.((request) => propFracture.take(request));
     bucketMaterials.clear();
     // every bucket material once, its shadow depth materials among them (role 'depth')
     w.patchStructureMaterials((material, info) => {
@@ -5314,6 +5321,7 @@ function* createFxSteps(
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
       bodies?.update(tickDt);
+      propFracture?.update();
       battleFreshS += tickDt;
       syncColumnAnchors(resolveSubject);
       updateClockDrivenLights();
@@ -6292,6 +6300,7 @@ function* createFxSteps(
       craters?.reset();
       structMask?.reset();
       structDebris?.reset();
+      propFracture?.reset();
       stages?.reset();
       skirtHead = 0; skirtCount = 0;
       lastBlast.structureId = -1;

@@ -657,6 +657,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/collapseBodies.selftest.mjs',
     'src/fx/wallFracture.selftest.mjs',
     'src/fx/structureFracture.selftest.mjs',
+    'src/fx/propFracture.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',

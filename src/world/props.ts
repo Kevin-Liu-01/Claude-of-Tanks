@@ -906,6 +906,22 @@ interface TankWreckSpot {
   supportMaxFloat: number;
 }
 
+/** A fracture-ready kind's live break, as the presentation's handler gets it (fx/propFracture.ts). */
+export interface PropBreakRequest {
+  index: number;
+  kind: string;
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material | THREE.Material[];
+  matrix: THREE.Matrix4;
+  color: THREE.Color | null;
+  point: THREE.Vector3;
+  dirX: number;
+  dirZ: number;
+  cause: string;
+  speedMps: number;
+  seed: number;
+}
+
 export interface PropsRuntime {
   group: THREE.Group;
   obstacles: PropsCollisionRecord[];
@@ -930,6 +946,13 @@ export interface PropsRuntime {
    */
   advanceDestructibles(deltaSeconds: number): void;
   resetDestructibles(): void;
+  /**
+   * (destruction core, 2026-10-11) Who takes a fracture-ready kind's live break (a kind whose intact geometry carries
+   * world/fractureAnatomy.ts's anatomy: the redesigned sheds): it gets the record's own geometry, material, matrix,
+   * tint and the blow, and draws the kind coming apart as bodies; the record's intact slot is hidden and its broken
+   * slot stays down while the handler takes it (false: the broken slot as before). Null: every kind as before.
+   */
+  setPropFracture(handler: ((request: PropBreakRequest) => boolean) | null): void;
   tankWreckSpots: TankWreckSpot[];
   utilityNetwork: UtilityNetwork | null;
   utilityPolePlacements: UtilityPolePlacementReceipt[];
@@ -10893,6 +10916,8 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.clutter) rec.clutter.setCrushed(true);
+    else if (pool && !settled && propFracture && pool.imI?.geometry.userData.fracture && rec.cls === 'break'
+      && takeFracture(rec, pool, dx / l, dz / l, speed, cause)) { /* comes apart as bodies (fx/propFracture.ts) */ }
     else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.
     if (settled) return true;
@@ -10911,6 +10936,33 @@ ${snowCap ? `
     }
     // audio seam (DESTRUCTIBLES r1): every destruction reports on the bus
     emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause });
+    return true;
+  }
+
+  /** A fracture-ready kind's live break to the presentation (its intact slot hidden; its broken slot left down). */
+  let propFracture: ((request: PropBreakRequest) => boolean) | null = null;
+  const _fractureTint = new THREE.Color();
+  function takeFracture(rec: DestructibleRecord, pool: DestructiblePool, ux: number, uz: number, speed: number,
+    cause: LoosePropKickCause): boolean {
+    const imI = pool.imI!;
+    let color: THREE.Color | null = null;
+    if (pool.meta.instanceTintStrength) {
+      writeStructureInstanceTint(_structureTint, rec.kind, rec.slot, seed, pool.meta.instanceTintStrength);
+      color = _fractureTint.copy(_structureTint);
+    } else if (imI.instanceColor) {
+      imI.getColorAt(rec.slot, _fractureTint);
+      color = _fractureTint;
+    }
+    // the blow strikes the side it came from, at half the kind's height
+    const point = new THREE.Vector3(rec.x - ux * rec.r * 0.8, rec.y + rec.h * 0.45, rec.z - uz * rec.r * 0.8);
+    const taken = propFracture!({ index: destructibles.indexOf(rec), kind: rec.kind, geometry: imI.geometry, material: imI.material,
+      matrix: pool.mats4[rec.slot].clone(), color, point, dirX: ux, dirZ: uz, cause, speedMps: speed,
+      seed: (seed ^ Math.imul(rec.slot + 1, 0x9e3779b1)) >>> 0 });
+    if (!taken) return false;
+    _quat.setFromAxisAngle(_upAxis, rec.yaw);
+    _mat4.compose(_posv.set(rec.x, rec.y, rec.z), _quat, _zeroScale);
+    imI.setMatrixAt(rec.slot, _mat4);
+    imI.instanceMatrix.needsUpdate = true;
     return true;
   }
 
@@ -11441,6 +11493,7 @@ ${snowCap ? `
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles, waterContacts,
+    setPropFracture: (handler) => { propFracture = handler; },
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
 }
