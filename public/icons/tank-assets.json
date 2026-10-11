@@ -759686,7 +759686,7 @@
           }
         ]
       },
-      "geometryHash": "64575610",
+      "geometryHash": "964f8a4b",
       "metadataHash": "d7d7bb81",
       "presentationAnchor": {
         "xM": -0.001,
@@ -759748,39 +759748,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102070,
-          "sha256": "177e75d39578950825003abe63eb5435ffd0846a35eeb452eedbf5a7357d9f0f"
+          "bytes": 102198,
+          "sha256": "34a402cb60a7fbe2f0b041cf51c8eabc0376e2a2e827f630efd402157d57273c"
         },
         "modulesSide": {
           "file": "merkava4_barak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104608,
-          "sha256": "0134aea569a00af45f2f4099c6b497679b48440e91c37de8e6b51c4521a56190"
+          "bytes": 104704,
+          "sha256": "473269ec9d0697cda24a6e8db6ccbdabf34d39a5909b1f32bb97fd93662a0a03"
         },
         "crewSide": {
           "file": "merkava4_barak_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94904,
-          "sha256": "c282aaf007dab5005bf715d61fb18acb36641da6c89f7258a33f713c35de5a9d"
+          "bytes": 94862,
+          "sha256": "decc238f81c0cf67a9f181200d00b8b56fb8853121c244a17f8ee56f15934223"
         },
         "angle": {
           "file": "merkava4_barak_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33530,
-          "sha256": "bd47936aa9d7f25974f47b58aacd565dccb797c78a322f6521f2e024e6cd5166",
+          "bytes": 33170,
+          "sha256": "e211c354b3ffd382494708207419d7e955d9d31965c193058a6e3ff293626d0f",
           "thumbnail": {
             "file": "thumbs/merkava4_barak_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 13428,
-            "sha256": "8688ce371ac0b0490d3bf068b1c130dae292361ec4f1f3e705993ad368026387"
+            "bytes": 13342,
+            "sha256": "c151eeae8b3196b8f2ab4b02b3bc5cbc35b403e881d5d4b757c84166c848f1da"
           }
         },
         "top": {
@@ -759788,16 +759788,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18046,
-          "sha256": "78aaddf7aea0ef2b9780b90e3e29e788230abfc246fbdd9bb50425aa2803dc89"
+          "bytes": 18088,
+          "sha256": "27383eec5f60ce906f7ae331df8b76edb66587ef268c21a392a6a02ee220f7ed"
         },
         "side": {
           "file": "merkava4_barak_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14544,
-          "sha256": "7efd1aba45d8035a03836940fa38ecccb2705a10a985be77a161389921ef4c44"
+          "bytes": 14464,
+          "sha256": "96f8b0ec4e74c010d2e9baf9576fc7079526efaa7f0ad16f72dea1a418458cff"
         },
         "topSilhouette": {
           "file": "merkava4_barak_top_silhouette.png",
@@ -759812,8 +759812,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5252,
-          "sha256": "0ea46dcce00e8874a92832cde67a35bd71c3820e8e24bdb8c18b26fc4998dacb"
+          "bytes": 5241,
+          "sha256": "d8ca845301108b85933ed266fd465341841fb96a68205064b58b45bce8967bcb"
         },
         "markings": {
           "file": "merkava4_barak_markings.png",
@@ -1317808,7 +1317808,7 @@
           }
         ]
       },
-      "geometryHash": "9607736e",
+      "geometryHash": "e152259b",
       "metadataHash": "7848de3a",
       "presentationAnchor": {
         "xM": -0.0026,
@@ -1317868,39 +1317868,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102336,
-          "sha256": "ff72cce9492b928609a60fa0e95470f0b13bcb0e4d5c4fa3567c90b0ec7c5e9e"
+          "bytes": 102591,
+          "sha256": "7625383392130f99d4eae52f5474d72c3d82bb2024ae0d44a85bcbf5cea1f610"
         },
         "modulesSide": {
           "file": "sabra_mk2_x_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107896,
-          "sha256": "e5d6c307ab5e015537d8107e2ee28d9379c24f6ad5fe2748ae9f3e375548b7a8"
+          "bytes": 107902,
+          "sha256": "1e68ddb4e6eab9bfbeba6e421e77227de7ed30ebf575953ccfd0c1b9b1fa3b42"
         },
         "crewSide": {
           "file": "sabra_mk2_x_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95553,
-          "sha256": "ecf939fdabca8fc4d5e8b30dc481c3edc9acecfcb382a5595827074dfc68d4cd"
+          "bytes": 95631,
+          "sha256": "17faa15406c574befb35c393876af0c3f3ddde95e0dc754b267976fca71dd585"
         },
         "angle": {
           "file": "sabra_mk2_x_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31900,
-          "sha256": "0af7033ae9e01fe57902f2753d29b8c791d8f499e457c822667388d8a70ba51d",
+          "bytes": 31444,
+          "sha256": "9d26455c77cab4291639807e15bf57b898f047b0872c931c064af3dfba18505d",
           "thumbnail": {
             "file": "thumbs/sabra_mk2_x_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 13162,
-            "sha256": "5aac0bb6de1418121fb1fc2d68785ce9c8793bba8478a56f96ff5c15f454a981"
+            "bytes": 12898,
+            "sha256": "b260f073407d023df5151d357b7e5955a1d7714f2806d8881561cbbdf4d8c329"
           }
         },
         "top": {
@@ -1317908,16 +1317908,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15050,
-          "sha256": "7eb0b7d097faa91400db4bbb41e5bf1970cfc0721712a157578d79beb66374ff"
+          "bytes": 15036,
+          "sha256": "897f26118326351082ad2d2a573a0c614dce7a353a93f4e6e0537b2a037f666a"
         },
         "side": {
           "file": "sabra_mk2_x_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14366,
-          "sha256": "ef7eae7a1838671a029349b5c57afc51e8b27f44d6b1df5bf5ddef3aa24e2b77"
+          "bytes": 14360,
+          "sha256": "6be48bfdf27e91fc857d59b859eb375668e596768f628b3dab5449b86479e71b"
         },
         "topSilhouette": {
           "file": "sabra_mk2_x_top_silhouette.png",
@@ -1317932,8 +1317932,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5163,
-          "sha256": "8e877cd4c5880911695af61f86d5a425f5739f1c5e8829800cd4774051cef579"
+          "bytes": 5154,
+          "sha256": "eb80250eec46f8e5eca6eecae2c1980b7dd54633f090172af64adf77c521b992"
         },
         "markings": {
           "file": "sabra_mk2_x_markings.png",
@@ -1320497,7 +1320497,7 @@
           }
         ]
       },
-      "geometryHash": "a43af3f9",
+      "geometryHash": "5871f220",
       "metadataHash": "6a7bf28f",
       "presentationAnchor": {
         "xM": 0.0037,
@@ -1320560,8 +1320560,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25862,
-          "sha256": "10c537fdcf52aec15d92fd648d9c45785e295e8d5e236440670a6470b9c720f6",
+          "bytes": 25858,
+          "sha256": "8906b94e3d8bf451667cb0b487d2d29ae057b606e7316283bda6407ff2b717e0",
           "thumbnail": {
             "file": "thumbs/spz_puma_s1_angle.webp",
             "width": 256,
@@ -1718994,7 +1718994,7 @@
           }
         ]
       },
-      "geometryHash": "97cec588",
+      "geometryHash": "f2feb06c",
       "metadataHash": "3da66367",
       "presentationAnchor": {
         "xM": -0.0006,
@@ -1719081,8 +1719081,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26166,
-          "sha256": "d616acc3075d275d06258ace63c2f27a804441c5ae5d8e458dfb82f1b8ebc027",
+          "bytes": 26182,
+          "sha256": "01d0ce8b16a0ce87f0344bd6065971030007c6481e60d854c7c0df15719d9b39",
           "thumbnail": {
             "file": "thumbs/type89_light_tiger_angle.webp",
             "width": 256,
