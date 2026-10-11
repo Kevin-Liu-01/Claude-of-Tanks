@@ -202,13 +202,16 @@ export default {
     // the town wall, north and south (Kronach's Tore: a square tower over the vaulted passage, its clock to the road
     // outside, a steep hipped roof, a stub of crenellated wall each side). Round 2 (2026-10-06; gauntlet wave 155: "the
     // landmarks exist but sit in no setting"; the seats agreed with the map-revival lane, which owns the wall): each
-    // gate fills its gap in the wall — the 28 m from wall end to wall end, its stubs reaching both ends, turned to the
-    // wall's line — and the Franconian Marktbrunnen (a column on an octagonal basin) stands on the market square before
+    // gate fills its gap in the wall — the 28 m from wall end to wall end, its passage on the road, its stubs reaching
+    // both ends, turned to the wall's line — and the Franconian Marktbrunnen (a column on an octagonal basin) stands on the market square before
     // the church, where the old Brunnen at the west corner gave way to it. Each is set into the map-revival lane's
     // finished town, so each vetoes its ground (landmarks/types.ts `ground`).
     landmarks: [
-      { kind: 'townGate', x: -50, z: 100.5, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 6.5, walls: 8.35, height: 22 } },
-      { kind: 'townGate', x: -52, z: -101, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 6.5, walls: 8.35, height: 22 } },
+      // (each passage on the trade road where it crosses the gap — about 2 m west of the north gap's middle and 4 m east
+      // of the south's, the road bending a metre through the tower's depth — 8.2 m wide so its piers keep out of the
+      // road's 3.5 m core; each stub to its own end of the wall)
+      { kind: 'townGate', x: -51.839, z: 100.564, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 8.2, wallsLeft: 5.67, wallsRight: 9.35, height: 22 } },
+      { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22 } },
       { kind: 'fountain', x: -62, z: 47, yawDeg: 6, ground: 'veto', name: 'the Marktbrunnen before the church', params: { style: 'markt', radius: 2.6 } },
     ],
     plan: PLAN, // consumed by blockFill for the block interiors
