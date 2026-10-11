@@ -195,7 +195,10 @@ export interface CollapsePlan {
    * stump instead: its stump's top, the drums' bounds up it (ascending, from the stump's top) and their pieces, its crown.
    */
   readonly shaft: { stumpY: number; bounds: number[]; drums: number[]; crown: { min: Vec3; max: Vec3; piece: number } | null;
-    slot: FractureSlot } | null;
+    slot: FractureSlot;
+    /** The breaks between the drums (bounds 1..n-1) as tilted planes n·p = d (body frame), each its own lean: a shaft
+     *  snaps on a slant, never level (dcore 2026-10-11, wave 397: "two huge clean pre-cut boxes"). */
+    cuts: Array<{ n: Vec3; d: number; seed: number }> } | null;
 }
 
 interface CollapsePlanOptions {
@@ -886,10 +889,23 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   // head: three drums of a width and more still lay on in a row — a masonry shaft breaks into many short sections)
   const span = Math.max(0.5, topWall - stumpY);
   const width = Math.max(anatomy.w, anatomy.d);
-  const n = Math.max(3, Math.min(7, Math.round(span / Math.max(1.6, 0.85 * width))));
+  // (wave 397, the coordinator: "6-8 irregular drums with broken ends") six to eight where the shaft is tall enough for
+  // drums of 0.8 m, each break on its own slant
+  const n = Math.max(2, Math.min(8, Math.max(Math.min(6, Math.floor(span / 0.8)), Math.round(span / Math.max(1.0, 0.45 * width)))));
   const bounds = [stumpY];
   for (let k = 1; k < n; k++) bounds.push(stumpY + span * (k + (geo() - 0.5) * 0.45) / n);
   bounds.push(topWall);
+  const cuts: Array<{ n: Vec3; d: number; seed: number }> = [];
+  for (let k = 1; k < n; k++) {
+    // a lean of 6 to 13 degrees toward its own side, kept short of the next break across the shaft's half width
+    const room = Math.min(bounds[k] - bounds[k - 1], bounds[k + 1] - bounds[k]);
+    const maxTan = Math.max(0.05, Math.min(Math.tan((13 * Math.PI) / 180), (room * 0.4) / Math.max(0.3, Math.hypot(anatomy.w, anatomy.d) / 2)));
+    const tanT = Math.min(maxTan, Math.tan(((6 + geo() * 7) * Math.PI) / 180));
+    const phi = geo() * Math.PI * 2;
+    const nx = Math.cos(phi) * tanT, nz = Math.sin(phi) * tanT, nl = Math.hypot(nx, 1, nz);
+    const nn: Vec3 = [nx / nl, 1 / nl, nz / nl];
+    cuts.push({ n: nn, d: nn[0] * cx + nn[1] * bounds[k] + nn[2] * cz, seed: Math.floor(geo() * 1e9) });
+  }
   const bandAt = (y: number) => bands.find((b) => y >= b.y0 && y <= b.y1) ?? bands[bands.length - 1];
   // its parts, drum by drum, then the crown; the body's frame at its foot's centre over the stump
   const y0 = stumpY + GAP_M / 2, yTop = crown && crown.y1 > topWall ? crown.y1 : topWall;
@@ -937,7 +953,7 @@ function planShaft(anatomy: StructureDamageAnatomy, blow: CollapseBlow, crown: S
   }];
   return { pieces, structureIdx: anatomy.structureIdx, groundY: baseY, eaveY: topWall, cx, cz, hw, hd, storeys: [], roof: [], gables: [],
     chimneys: [], struckSide: -1, chimneyBucket: wallSlot.bucket,
-    shaft: { stumpY, bounds, drums: drumParts, crown: crownBox ? { ...crownBox, piece: crownPart } : null, slot: wallSlot } };
+    shaft: { stumpY, bounds, drums: drumParts, crown: crownBox ? { ...crownBox, piece: crownPart } : null, slot: wallSlot, cuts } };
 }
 
 /** A polygon's area (its outline in order). */
@@ -1061,12 +1077,17 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       emit(0, poly, cr.piece);
       return;
     }
-    // the stump stands; the drums by their bounds up the shaft (a polygon across a bound is cut along it)
-    for (const b of sh.bounds) if (across(poly, 0, 1, 0, b, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
-    const y = centroid(poly)[1];
-    if (y < sh.stumpY) { emit(STATIC_PIECE, poly); return; }
+    // the stump stands; the drums between their breaks up the shaft (a polygon across one is cut along it): the stump's
+    // top and the top level, the breaks between on their slants
+    const last = sh.bounds.length - 1;
+    if (across(poly, 0, 1, 0, sh.bounds[0], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    if (across(poly, 0, 1, 0, sh.bounds[last], depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    for (const c of sh.cuts) if (across(poly, c.n[0], c.n[1], c.n[2], c.d, depth, (h, _s, dd) => shaftAssign(h, dd))) return;
+    const cc = centroid(poly);
+    if (cc[1] < sh.stumpY) { emit(STATIC_PIECE, poly); return; }
     let k = 0;
-    while (k + 1 < sh.bounds.length - 1 && y >= sh.bounds[k + 1]) k++;
+    for (const c of sh.cuts) if (c.n[0] * cc[0] + c.n[1] * cc[1] + c.n[2] * cc[2] >= c.d) k++;
+    k = Math.min(k, sh.drums.length - 1);
     const part = sh.drums[k] ?? -1;
     emit(0, poly, part >= 0 ? part : Math.max(0, sh.drums.findIndex((d) => d >= 0)));
   };
@@ -1390,8 +1411,10 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
       // the covering on top is the building's; its underside and edges
       boxCaps((axis, sign) => axis === 1 && sign > 0, () => piece.core, (axis, sign) => (axis === 1 && sign < 0 ? 0.85 : 0.75));
       break;
-    case 'chimney':
-    case 'drum': {
+    case 'drum':
+      if (plan.shaft?.cuts.length) { drumCaps(plan, piece, caps); break; }
+    // falls through: a shaft cut level (no slanted breaks)
+    case 'chimney': {
       // a stack's (a drum's) sides are the building's; its broken top and foot — a shaft's crown (its last part) only its
       // broken foot: over it stands its own roof or tank, which a flat cap would cut through
       const crownPart = piece.kind === 'drum' ? plan.shaft?.crown?.piece ?? -1 : -1;
@@ -1404,6 +1427,61 @@ export function capPiece(plan: CollapsePlan, piece: CollapsePiece): CapQuad[] {
   }
   void plan;
   return caps;
+}
+
+/**
+ * A shaft's drums' broken ends (dcore 2026-10-11, wave 397: "6-8 irregular drums with broken ends"): each drum's foot and
+ * head on its break's slant (the stump's top and the top level stay level), drawn ragged — a grid over the shaft's cross
+ * section, its inner corners pushed in and out of the break by up to a dozen centimetres (its edge stays on the break, where
+ * the shaft's own skin was cut), a shade darker than the stone. Body frame, each cap in its drum's part.
+ */
+function drumCaps(plan: CollapsePlan, piece: CollapsePiece, caps: CapQuad[]): void {
+  const sh = plan.shaft!;
+  const hw = plan.hw * 0.98, hd = plan.hd * 0.98;
+  const G = 3;
+  // a plane's height over (x, z): level, or a break's slant
+  const level = (y: number) => ({ n: [0, 1, 0] as Vec3, d: y, seed: 0 });
+  const planeY = (pl: { n: Vec3; d: number }, x: number, z: number) => (pl.d - pl.n[0] * x - pl.n[2] * z) / pl.n[1];
+  const ragged = (pl: { n: Vec3; d: number; seed: number }, up: boolean, part: number, jag: number) => {
+    const sgn = up ? 1 : -1;
+    const nOut: Vec3 = [pl.n[0] * sgn, pl.n[1] * sgn, pl.n[2] * sgn];
+    const corner = (i: number, j: number): Vec3 => {
+      const x = plan.cx - hw + (2 * hw * i) / G, z = plan.cz - hd + (2 * hd * j) / G;
+      let y = planeY(pl, x, z);
+      if (jag > 0 && i > 0 && i < G && j > 0 && j < G) {
+        // a seeded push along the break's normal (both drums of a break push alike: their faces stay matched)
+        let h = (pl.seed ^ Math.imul(i * 7 + j * 13 + 1, 0x9e3779b1)) >>> 0;
+        h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
+        const push = (((h >>> 8) & 0xffff) / 65535 - 0.5) * 2 * jag;
+        return [x + pl.n[0] * push, y + pl.n[1] * push, z + pl.n[2] * push];
+      }
+      return [x, y, z];
+    };
+    for (let i = 0; i < G; i++) for (let j = 0; j < G; j++) {
+      caps.push({ corners: [corner(i, j), corner(i + 1, j), corner(i + 1, j + 1), corner(i, j + 1)], n: nOut, slot: piece.core, shade: 0.72, part });
+    }
+  };
+  const crownPart = sh.crown?.piece ?? -1;
+  const drums = sh.drums;
+  drums.forEach((part, k) => {
+    if (part < 0) return;
+    // its foot: the stump's top (level) or the break under it; its head: the break over it or the top level
+    const foot = k === 0 ? level(sh.bounds[0] + GAP_M / 2) : sh.cuts[k - 1];
+    const head = k === drums.length - 1 ? level(sh.bounds[sh.bounds.length - 1] - GAP_M / 2) : sh.cuts[k];
+    ragged(foot, false, part, k === 0 ? 0 : 0.12);
+    ragged(head, true, part, k === drums.length - 1 ? 0 : 0.12);
+  });
+  // the crown: its broken foot only (its own roof or tank stands over it)
+  if (crownPart >= 0) {
+    const box = piece.parts[crownPart];
+    if (box) {
+      const y = sh.bounds[sh.bounds.length - 1] + GAP_M / 2;
+      const [cx0, , cz0] = [piece.center[0] + box.center[0], 0, piece.center[2] + box.center[2]];
+      const hx = box.half[0], hz = box.half[2];
+      caps.push({ corners: [[cx0 - hx, y, cz0 + hz], [cx0 + hx, y, cz0 + hz], [cx0 + hx, y, cz0 - hz], [cx0 - hx, y, cz0 - hz]], n: [0, -1, 0],
+        slot: piece.core, shade: 0.72, part: crownPart });
+    }
+  }
 }
 
 // ---- the stubs: what stays standing ---------------------------------------------------------------------------------

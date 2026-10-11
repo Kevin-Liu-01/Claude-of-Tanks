@@ -332,8 +332,11 @@ for (const [styleId, id] of [['breton', 'tower'], ['ksar', 'minaret'], ['wadirum
   if (crownPart >= 0) crowned++;
   for (let k = 0; k < body.parts.length; k++) {
     const mine = caps.filter((c) => c.part === k);
-    if (k === crownPart) assert.ok(mine.length === 1 && mine[0].n[1] < -0.9, `${label}: its crown is capped at its broken foot only (${mine.length})`);
-    else assert.ok(mine.length === 2 && mine.every((c) => Math.abs(c.n[1]) > 0.9), `${label}: drum ${k} is capped at its top and foot (${mine.length})`);
+    // (wave 397: the breaks between drums lean and are ragged — a grid of quads a break, its normal within 25 degrees of
+    // the shaft's axis)
+    if (k === crownPart) assert.ok(mine.length >= 1 && mine.every((c) => c.n[1] < -0.9), `${label}: its crown is capped at its broken foot only (${mine.length})`);
+    else assert.ok(mine.some((c) => c.n[1] > 0.9) && mine.some((c) => c.n[1] < -0.9) && mine.every((c) => Math.abs(c.n[1]) > 0.9),
+      `${label}: drum ${k} is capped at its top and foot (${mine.length})`);
   }
   // its triangles all land somewhere: the stump stands, the rest is the body's, part by part
   const soup = soupOf(parts), tris = soup.length / 18;
