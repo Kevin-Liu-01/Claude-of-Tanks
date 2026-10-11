@@ -1919,8 +1919,10 @@ export function buildShedCollision(kind: 'fieldhut' | 'leanto', st: ShedStyle): 
 
 // ------------------------------------------------------------------------------------------------- the stand-ins
 
-/** Past this (m from the nearest copy) the pool draws the far stand-in (props.ts; with a few metres' hysteresis). */
+/** Past this (m from the nearest copy) the pool draws the far stand-in (props.ts; with a few metres' hysteresis); the
+ * phones' smaller screens take it nearer. */
 export const SHED_FAR_M = 72;
+export const SHED_FAR_M_PHONE = 46;
 
 const OUT = BOARD_T + BATTEN_T;
 /** Metres a board takes of the tile at a stand-in's scale (one plank lane a board). */

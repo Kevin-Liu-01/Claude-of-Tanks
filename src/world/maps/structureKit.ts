@@ -19,8 +19,8 @@ import {
 } from '../propGeometry.ts';
 import { spentDraws } from './brokenDraws.ts';
 import {
-  SHED_DEFAULT_STYLE, SHED_FAR_M, buildShedBroken, buildShedCollision, buildShedFar, buildShedFieldHut, buildShedLeanTo,
-  buildShedShadow, shedStyleFor, type ShedBuild, type ShedDetail, type ShedStyle,
+  SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedBroken, buildShedCollision, buildShedFar,
+  buildShedFieldHut, buildShedLeanTo, buildShedShadow, shedStyleFor, type ShedBuild, type ShedDetail, type ShedStyle,
 } from './shedKit.ts';
 
 type Rng = () => number;
@@ -1967,7 +1967,7 @@ function shedMeta(kind: keyof typeof LEGACY_SHED_TYPES, st: ShedStyle, mobile = 
     collisionBuild: () => buildShedCollision(kind, st),
     shadowBuild: () => buildShedShadow(kind),
     farBuild: () => buildShedFar(kind, st),
-    farM: SHED_FAR_M,
+    farM: mobile ? SHED_FAR_M_PHONE : SHED_FAR_M,
     build: (rng: Rng) => build(st, spentDraws(legacy.build, rng, salt), detail).geometry,
     broken: (rng: Rng) => {
       const own = spentDraws(legacy.broken, rng, salt ^ 0x5bd1);
