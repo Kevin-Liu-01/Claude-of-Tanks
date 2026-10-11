@@ -39,10 +39,18 @@ import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
-/** The free buttes standing on the valley floor (x, z, rx, rz, height), in pairs that are each other's rotation. */
-const FREE_BUTTES = [[-188, -120, 33, 44, 30], [188, 120, 33, 44, 30], [-140, 280, 37, 37, 24], [140, -280, 37, 37, 24]] as const;
-/** The gate buttes, one in front of each deployment, each the other's rotation. */
+/** The free buttes standing on the valley floor (x, z, rx, rz, height, yaw in degrees), in pairs that are each other's
+ * rotation (an ellipse turned half a turn about the centre keeps its yaw).
+ * (Titan round 7, the map-revival lane, 2026-10-11; gauntlet wave 359: "the buttes are drums, striped boxes or layer cakes
+ * with no talus slopes at their feet") Monument Valley's buttes are long, narrow remnants of the mesa — the Mittens, Merrick,
+ * Elephant — not round towers: each footprint drawn out to twice its width or more over about the same area, and turned
+ * so its narrow end faces the nearest road (every road stays 1.3 radii or more off its talus; was 33 x 44 and 37 x 37
+ * unturned) */
+const FREE_BUTTES = [[-188, -120, 24, 56, 30, -45], [188, 120, 24, 56, 30, -45], [-140, 280, 26, 50, 24, 90], [140, -280, 26, 50, 24, 90]] as const;
+/** The gate buttes, one in front of each deployment, each the other's rotation: (round 7) long across the gorge's axis,
+ * 30 x 20 m turned 30 degrees (was 26.4 x 24.2), so each screens its deployment down the axis as a wall, not a drum. */
 const GATE_BUTTES = [[-12, -300], [12, 300]] as const;
+const GATE_RX = 30, GATE_RZ = 20, GATE_YAW = 30;
 
 export default {
   id: 'titan_gorge',
@@ -99,17 +107,20 @@ export default {
       // Organ Rock talus to 0.45 of the height, a broad pedestal; the cap a level table (capLevel: the plain's relief
       // and the beds no longer print a lumpy dome on it); the wall's grooves are the skin's, scenery.buttes, so the
       // ground's six regular flutes go — they printed the tiled ribbing)
-      ...FREE_BUTTES.map(([x, z, rx, rz, height]) => ({
-        kind: 'knoll', x, z, rx, rz, height, corridorScale: 0.44,
-        geology: { profile: 'inselberg' as const, outline: 0.22, foot: 0.46, footVary: 0.08, apron: 0.42, rim: 0.94, capLevel: true,
+      // (round 7: the long footprints turned (FREE_BUTTES); their outlines more broken, the wall's foot drawn in to 0.42 of
+      // a radius and the Organ Rock talus raised to half the height — a broad pedestal under each cliff; was outline 0.22,
+      // foot 0.46, apron 0.42)
+      ...FREE_BUTTES.map(([x, z, rx, rz, height, yawDeg]) => ({
+        kind: 'knoll', x, z, rx, rz, height, yawDeg, corridorScale: 0.44,
+        geology: { profile: 'inselberg' as const, outline: 0.3, foot: 0.42, footVary: 0.08, apron: 0.5, rim: 0.94, capLevel: true,
           rough: 0.45, boulders: 18, strata: { stepM: 8, riser: 0.2 }, gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the gate buttes: one in front of each deployment, each the other's rotation about the centre, screening the
       // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
       // (Titan round 2: the same sheer section as the free buttes, over the same footprint; round 3: 20 -> 28 m and the
       // free buttes' round-3 section)
       // (round 6: the free buttes' section, the toe 2 m further out)
-      ...GATE_BUTTES.map(([x, z]) => ({ kind: 'knoll', x, z, rx: 26.4, rz: 24.2, height: 28, corridorScale: 1,
-        geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.46, footVary: 0.08, apron: 0.42, rim: 0.94, capLevel: true,
+      ...GATE_BUTTES.map(([x, z]) => ({ kind: 'knoll', x, z, rx: GATE_RX, rz: GATE_RZ, height: 28, yawDeg: GATE_YAW, corridorScale: 1,
+        geology: { profile: 'inselberg' as const, outline: 0.28, foot: 0.42, footVary: 0.08, apron: 0.5, rim: 0.94, capLevel: true,
           rough: 0.45, boulders: 14, strata: { stepM: 8, riser: 0.2 }, gullies: { count: 3, depthM: 1.2, width: 0.4 } } })),
       // the wadi's floor, where the valley's streams braid
       { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68,
@@ -169,11 +180,15 @@ export default {
     // them 1266 -> 1424 trees, their alpha-tested shadows most of round 3's chase cost (h15 with the head's overcast:
     // +1.2 ms p25); 16 -> 14 groves brings the valley back to 1189, Monument Valley's sparse juniper)
     // (round 4: the bunchgrass 0.12 -> 0.07, so the floor reads as red sand, not grassland)
-    clusterCount: 14, loneCount: 34, rimCount: 18, grassDensity: 0.07,
+    // (round 7, wave 359: "belts of broadleaf trees" in a desert: the groves' dense clumps read as orchards; Monument
+    // Valley's juniper stands apart, a tree every few tens of metres) half the groves, more lone trees, fewer on the rim
+    // (was 14 / 34 / 18)
+    clusterCount: 7, loneCount: 44, rimCount: 12, grassDensity: 0.07,
     // (Titan round 3: no juniper stand on a butte's cap — a clump of trees on top read as a stump with a wig, and
     // Monument Valley's caps are bare caprock; the discs cover each cap and wall, the talus below keeps its trees)
-    avoid: [{ x: -188, z: -120, r: 23 }, { x: 188, z: 120, r: 23 }, { x: -140, z: 280, r: 20 }, { x: 140, z: -280, r: 20 },
-      { x: -12, z: -300, r: 14 }, { x: 12, z: 300, r: 14 }],
+    // (round 7: the discs reach the long buttes' ends, 0.5 of their long radius)
+    avoid: [{ x: -188, z: -120, r: 28 }, { x: 188, z: 120, r: 28 }, { x: -140, z: 280, r: 25 }, { x: 140, z: -280, r: 25 },
+      { x: -12, z: -300, r: 15 }, { x: 12, z: 300, r: 15 }],
     clusterScrub: 1.7, bushCount: 0.46, bushSpecies: 'oak',
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
     tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
@@ -231,7 +246,7 @@ export default {
   scenery: {
     buttes: [
       ...FREE_BUTTES.map(([x, z, rx, rz], i) => ({ x, z, rx, rz, name: ['the west butte', 'the east butte', 'the north butte', 'the south butte'][i] })),
-      ...GATE_BUTTES.map(([x, z], i) => ({ x, z, rx: 26.4, rz: 24.2, name: i ? 'the north gate butte' : 'the south gate butte' })),
+      ...GATE_BUTTES.map(([x, z], i) => ({ x, z, rx: GATE_RX, rz: GATE_RZ, name: i ? 'the north gate butte' : 'the south gate butte' })),
     ],
   },
   horizon: {

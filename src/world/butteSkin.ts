@@ -76,7 +76,9 @@ export function buildButteSkin(spec: ButteSkinSpec, ground: CastleGround, noise:
   for (let k = 0; k < rays; k++) {
     const theta = (k / rays) * Math.PI * 2;
     let brow = NaN, browY = 0, foot = NaN, footY = 0, toe = NaN, sheer = false;
-    for (let r = R * 0.2; r < R * 1.25; r += 0.25) {
+    // (round 7: a long butte's rim along its narrow axis stands inside a fifth of its long radius: the scan starts at a
+    // fifth of the short one)
+    for (let r = Math.min(spec.rx, spec.rz) * 0.2; r < R * 1.25; r += 0.25) {
       const y0 = atGrid(theta, r), y1 = atGrid(theta, r + 0.5);
       // (the brow where the cap's level breaks; the wall where the fall passes ~70 degrees; its foot where the fall eases
       // under ~60 degrees onto the scree, whose steepest is under ~50)
@@ -94,16 +96,18 @@ export function buildButteSkin(spec: ButteSkinSpec, ground: CastleGround, noise:
     return sum + (w && n ? Math.hypot(Math.cos(n.theta) * n.foot - Math.cos(w.theta) * w.foot, Math.sin(n.theta) * n.foot - Math.sin(w.theta) * w.foot) : 0);
   }, 0) || Math.PI * 2 * R * 0.5;
   const joints: Array<{ at: number; width: number; depth: number; reach: number }> = [];
-  for (let s = rng() * 4; s < perimeter; s += 3 + rng() * 8) {
+  // (Titan round 7, wave 359: "striped boxes": the joints every 3 to 11 m and the grooves every 5 to 14 m ruled the wall in
+  // close vertical stripes) blocks 6 to 18 m long, set back or proud farther, between fewer, deeper grooves
+  for (let s = rng() * 4; s < perimeter; s += 6 + rng() * 12) {
     joints.push({ at: s / perimeter, width: (0.35 + rng() * 0.6) / perimeter, depth: 0.5 + rng() * 1.1, reach: 0.35 + rng() * 0.65 });
   }
   const blockOf = (u: number): number => { let b = 0; while (b + 1 < joints.length && joints[b + 1].at <= u) b++; return b; };
-  const blockSet = joints.map(() => ({ setback: (rng() - 0.35) * 0.9, light: (rng() - 0.5) * 0.14, lean: (rng() - 0.5) * 0.5 }));
+  const blockSet = joints.map(() => ({ setback: (rng() - 0.35) * 1.3, light: (rng() - 0.5) * 0.14, lean: (rng() - 0.5) * 0.5 }));
 
   // ---- the grooves the rain cut from the rim: irregular spacing (5 to 14 m), width and depth, each reaching down a
   // share of the wall; set by their own positions, not a periodic function, so no two neighbours match
   const grooves: Array<{ at: number; width: number; depth: number; reach: number }> = [];
-  for (let s = rng() * 6; s < perimeter; s += 5 + rng() * 9) {
+  for (let s = rng() * 6; s < perimeter; s += 12 + rng() * 18) {
     grooves.push({ at: s / perimeter, width: (0.8 + rng() * 1.8) / perimeter, depth: 0.7 + rng() * 1.3, reach: 0.4 + rng() * 0.6 });
   }
 
@@ -229,7 +233,8 @@ export function buildButteSkin(spec: ButteSkinSpec, ground: CastleGround, noise:
   // ---- the rubble on the talus: fallen blocks thickest at the cliff's foot, most of them small
   const rubbleCount = mobile ? 40 : 130;
   let rubble = 0;
-  for (let n = 0; n < rubbleCount; n++) {
+  // (round 7: a long butte's narrow ends leave more rays without a wall; the count is of blocks laid, three tries a block)
+  for (let tries = 0; rubble < rubbleCount && tries < rubbleCount * 3; tries++) {
     const k = Math.floor(rng() * rays), w = walls[k];
     if (!w) continue;
     const u = rng();
