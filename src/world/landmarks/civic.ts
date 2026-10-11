@@ -478,8 +478,10 @@ export const stationHall: LandmarkBuilder = (ctx) => {
       const x = -canopyL / 2 + 0.3 + (canopyL - 0.6) * i / cols;
       revolve(sink, 'structureMetal', x, zc, [[0.17, 0], [0.17, 0.3], [0.09, 0.42], [0.085, yOut - 0.5], [0.13, yOut - 0.3], [0.13, yOut - 0.12]], 8,
         { colour: CAST_IRON });
-      // the bracket: a diagonal strut from the column to the beam under the roof
-      sink.member('structureMetal', [x, yOut - 1.3, zc], [x, yOut - 0.12, zc - 1.1], 0.07, 0.07, [1, 0, 0], { colour: CAST_IRON, decor: true, exposed: true }, 0.035);
+      // the bracket: a diagonal strut from the column up to the roof's underside (the roof climbs toward the wall: a
+      // strut ending level with the beam stopped a quarter metre under it)
+      const bz = zc - 1.1, by = yIn + (yOut - yIn) * (bz - z0) / (depth + 0.25) - 0.04;
+      sink.member('structureMetal', [x, yOut - 1.3, zc], [x, by, bz], 0.07, 0.07, [1, 0, 0], { colour: CAST_IRON, decor: true, exposed: true }, 0.035);
     }
     // the beam along the columns and the roof slab
     sink.span('structureWood', -canopyL / 2, yOut - 0.3, zc - 0.11, canopyL / 2, yOut - 0.06, zc + 0.11, { colour: CANOPY_WOOD });

@@ -183,7 +183,8 @@ export const memorialWall: LandmarkBuilder = (ctx) => {
   }
   // the pylon with its star
   sink.span('stone', -pw / 2, terrace, wallZ - t, pw / 2, terrace + ph, wallZ + t);
-  moulding(sink, 'stone', pw, t * 2, terrace + ph - 0.25, 0.25, 0.1);
+  // (the pylon's cornice on the pylon: it was drawn round the piece's origin, a metre and a half in front of it)
+  sink.placed(0, 0, 0, wallZ, () => moulding(sink, 'stone', pw, t * 2, terrace + ph - 0.25, 0.25, 0.1));
   star(sink, 'structureMetal', 0, terrace + ph * 0.72, wallZ + t + 0.05, pw * 0.3, 0.08, { colour: GILT, decor: true });
   // the eternal flame: a five-pointed bowl before the steps, the flame in it (it glows at night)
   if (ctx.params.flame !== false) {
@@ -191,8 +192,9 @@ export const memorialWall: LandmarkBuilder = (ctx) => {
       // the bowl lies flat: a star turned face up (its depth along y)
       for (let i = 0; i < 5; i++) {
         const a = i * Math.PI * 2 / 5, b = a + Math.PI / 5, c = a - Math.PI / 5;
-        sink.prism('stone', [[0, 0.12, 0], [Math.sin(c) * 0.38, 0.12, Math.cos(c) * 0.38], [Math.sin(a) * 0.95, 0.12, Math.cos(a) * 0.95], [Math.sin(b) * 0.38, 0.12, Math.cos(b) * 0.38]],
-          [0, 1, 0], 0.24);
+        // (the bowl stands on the forecourt, a hand into it: it hovered 12 cm over it)
+        sink.prism('stone', [[0, -0.03, 0], [Math.sin(c) * 0.38, -0.03, Math.cos(c) * 0.38], [Math.sin(a) * 0.95, -0.03, Math.cos(a) * 0.95], [Math.sin(b) * 0.38, -0.03, Math.cos(b) * 0.38]],
+          [0, 1, 0], 0.39);
       }
     });
     revolve(sink, 'curtain', 0, 3.6, [[0.22, 0.36], [0.14, 0.7], [0.0, 1.0]], 6, { decor: true, window: [0, 1, 0] });
