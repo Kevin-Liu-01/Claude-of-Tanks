@@ -68489,7 +68489,7 @@
           }
         ]
       },
-      "geometryHash": "eb53fd69",
+      "geometryHash": "ad0d7633",
       "metadataHash": "84d6ebe0",
       "presentationAnchor": {
         "xM": -0.0004,
@@ -68519,7 +68519,7 @@
           "opticGlass": 2,
           "unclassified": 17,
           "machineGun": 1,
-          "fittingPaint": 1
+          "fittingPaint": 3
         }
       },
       "muzzleBore": {
@@ -68548,39 +68548,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 113820,
-          "sha256": "e019482fd3f9d3801238a674ef3d281909bc56a58b90be3ea92ab40b7a4355c4"
+          "bytes": 114261,
+          "sha256": "01e08bbe6e4874e3bcb1d9fde583fc796d7c6e121baf6a40aca5268ce05b2ccd"
         },
         "modulesSide": {
           "file": "bmp3m_dragun125_x_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 124668,
-          "sha256": "d57ce819812dade37f2f485410c93180ddb205858ad0a0328a642962aece8fee"
+          "bytes": 124983,
+          "sha256": "f059aed610a9b2789b10c4bdd47fcc7d69f1c084910b50104d63bf49b06899cc"
         },
         "crewSide": {
           "file": "bmp3m_dragun125_x_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 111594,
-          "sha256": "b23dcf63f4d77e92fd9c7c738c0ad28c08491bfc3b380470516fa00600c4f73e"
+          "bytes": 112146,
+          "sha256": "75fe65686eb79c4ca441edd39075f269e7ceada9dec5de19f78c0aac6bb1f083"
         },
         "angle": {
           "file": "bmp3m_dragun125_x_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29260,
-          "sha256": "1cfa1f00ab693e4536c31cd37717328ba484f6b432add45d155dda657ed9f273",
+          "bytes": 29528,
+          "sha256": "e090e1e372c940a106017c42635634859d0b77163288271c83e21fa3bce1106d",
           "thumbnail": {
             "file": "thumbs/bmp3m_dragun125_x_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12008,
-            "sha256": "c9ec920194c2ce789bf2dd183e317a451bad40e186202e1ac0aed05aa0cd3c81"
+            "bytes": 12076,
+            "sha256": "b9c8f8e5fde78dc7c667a6cc83b7f1791df8e4847e709b80e5f6fb6c69a0c203"
           }
         },
         "top": {
@@ -68588,16 +68588,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16984,
-          "sha256": "0603c5816f5d71992ae6eded5a6077ac71b3373f1f6865564b2ed9b1f60b5e2b"
+          "bytes": 17078,
+          "sha256": "dc7a2f432d295ba98e5cc2ac5a1753268536d2c67c4329fb2ed8e3e45fa5ac0b"
         },
         "side": {
           "file": "bmp3m_dragun125_x_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13690,
-          "sha256": "8dc1dbd5f303fff9b640c85d5786df2c748189e226679de307abefb52119656b"
+          "bytes": 14062,
+          "sha256": "665bd077db76e62b866a2f695a327ac768509fc5cd1011004b65fad43ba9ede9"
         },
         "topSilhouette": {
           "file": "bmp3m_dragun125_x_top_silhouette.png",
@@ -68612,8 +68612,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5152,
-          "sha256": "bab4d2b6fd3eebf149cb4ccd5957ce2746bb16392aca178ec535b73d79e4f3a7"
+          "bytes": 5337,
+          "sha256": "4a541c4495e2d8f5b2aeb96702d5a4fb37bc309981218d752685d6715d98c400"
         },
         "markings": {
           "file": "bmp3m_dragun125_x_markings.png",
@@ -128517,7 +128517,7 @@
             "min": [
               -0.3744,
               -0.14,
-              -0.39
+              -0.4
             ],
             "max": [
               0.4649,
@@ -128528,8 +128528,8 @@
               {
                 "min": [
                   -0.1844,
-                  -0.0775,
-                  -0.325
+                  -0.068,
+                  -0.4
                 ],
                 "max": [
                   0.4649,
@@ -128613,8 +128613,8 @@
           }
         ]
       },
-      "geometryHash": "b6b6e9f8",
-      "metadataHash": "eb2691f9",
+      "geometryHash": "8799e47e",
+      "metadataHash": "c4bd8e6e",
       "presentationAnchor": {
         "xM": 0.0009,
         "zM": -0.0523
@@ -128638,11 +128638,11 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 17,
           "tireRubber": 1,
           "gunmetal": 10,
           "opticGlass": 3,
-          "fittingPaint": 7,
+          "fittingPaint": 1,
           "wood": 1,
           "unclassified": 5,
           "gearShadow": 1,
@@ -128675,39 +128675,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88775,
-          "sha256": "c16af6c2b5d201f5d16775c192e25e62fd70bac5a25b07a24a336be2b4ff4851"
+          "bytes": 88345,
+          "sha256": "62dce4fa144df61fdb02d0b789cd3b81debb694b6934c1556fff876060bb26f6"
         },
         "modulesSide": {
           "file": "cn_t72b3_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88314,
-          "sha256": "6d683c74e8f1090f201a41a972a6fd2014852e0df34aafcb8cfc76b422ee2663"
+          "bytes": 87848,
+          "sha256": "d6de90b6e59548bbd43785b55f0df20c686cd9d7d44726fdbd9a866fadbb69c8"
         },
         "crewSide": {
           "file": "cn_t72b3_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74813,
-          "sha256": "341ea2843edf370e82ef1b4745bc77d342be2547d32e2fe04414deb8a0ed7d0f"
+          "bytes": 74284,
+          "sha256": "eafaf0e48b9f8e14c9f00b32a1445bbd25415580b13f7d92208dcb4b5464c137"
         },
         "angle": {
           "file": "cn_t72b3_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24614,
-          "sha256": "bd883d4574fa8d4364aa2fc4b5d50462347036d751eefaafab88f2debd1de229",
+          "bytes": 25002,
+          "sha256": "c683f67ff5168048288efaf9c3fbd8ea831a069055bcdff27b80a11395cd5318",
           "thumbnail": {
             "file": "thumbs/cn_t72b3_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10266,
-            "sha256": "32fee1bc62ccbf1d78035bada3262d1afd34eb81bda645ed32de25f523be0cd3"
+            "bytes": 10410,
+            "sha256": "6e193fb8b3ee5fd675d1b3f9941cf69dbefd519b2da60058d46df7a7f3a906f5"
           }
         },
         "top": {
@@ -128715,16 +128715,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11474,
-          "sha256": "c85673049ec16e1cb71aaf9cc69432b9feb3fed3d63c7f1137d698bc98e525fc"
+          "bytes": 11620,
+          "sha256": "96571106311e6fd2efa062ee6e5842a4182344904b2b416343813d63f3e2d80e"
         },
         "side": {
           "file": "cn_t72b3_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8612,
-          "sha256": "2872029df88914bda2756415a29816531059d79988f0c4fa92b72636b7e3bcee"
+          "bytes": 8766,
+          "sha256": "610fdebbf785d8495aa13e59c37aa9007c042dcc1f32345fb2c51a93e946b7ee"
         },
         "topSilhouette": {
           "file": "cn_t72b3_modern_top_silhouette.png",
@@ -128739,8 +128739,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4114,
-          "sha256": "a1f319484dc75a371316492d9bd066b1245b66b4df4869239f940c6eff9a3258"
+          "bytes": 4131,
+          "sha256": "849fdcc33973961e4940009fc3880ef48145be4e6c8b75c4d75a01b6de1e171a"
         },
         "markings": {
           "file": "cn_t72b3_modern_markings.png",
@@ -147938,7 +147938,7 @@
           }
         ]
       },
-      "geometryHash": "abfe4170",
+      "geometryHash": "518480fb",
       "metadataHash": "b4bf2a54",
       "presentationAnchor": {
         "xM": 0,
@@ -147963,11 +147963,11 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 17,
           "tireRubber": 1,
           "gunmetal": 10,
           "opticGlass": 3,
-          "fittingPaint": 7,
+          "fittingPaint": 1,
           "wood": 1,
           "unclassified": 5,
           "gearShadow": 1
@@ -147999,39 +147999,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92364,
-          "sha256": "76e3880b517b91f07978b57a36ddb06dad1ed76a9d5946002072febab7d9f6b8"
+          "bytes": 90761,
+          "sha256": "2198b8cd568a1bb1c07507cae7d065dc0560d4d83c2f22b503b5ef6d94b4546c"
         },
         "modulesSide": {
           "file": "cn_t72b3m_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93811,
-          "sha256": "d2fa856d4e3997ce48d0e866be981362eeea91d8adbe49b543b9e340fea67bd3"
+          "bytes": 92647,
+          "sha256": "05bac94618e4e7e59e34dcfdc933a26be8be79fcc9ab2d85e31d5bd74c0ea65b"
         },
         "crewSide": {
           "file": "cn_t72b3m_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79949,
-          "sha256": "5900056fd722eaec06cf693252a0c8a216325ba04d027011b98bf10fd92254e6"
+          "bytes": 78376,
+          "sha256": "a0c1071daae4960c2bce2ebf78b28b434d97acf870f2291685e105f213446f1a"
         },
         "angle": {
           "file": "cn_t72b3m_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25752,
-          "sha256": "7166eb4a104c9ecad3346c6ded2594597ea30b82a9b3cedb63006ce5606bff99",
+          "bytes": 26304,
+          "sha256": "998467ba9cc8b0bd5175b7c8f5090db130ec85c9a530dccc0b861ee0981e8ca7",
           "thumbnail": {
             "file": "thumbs/cn_t72b3m_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10692,
-            "sha256": "85a77764f24e0fa4bfcdc331e3bf1463c7f6d20307117c79d714d2266113a3fe"
+            "bytes": 10856,
+            "sha256": "f4a56e44ed1c25c5c904da9622c3c40afbe5aa08659ca0d0ef0197967593f3f1"
           }
         },
         "top": {
@@ -148039,16 +148039,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12874,
-          "sha256": "bfe98b6c3e3e73b07708daab53f845e964c44d1c038ee3eb87d18fe72067182e"
+          "bytes": 13034,
+          "sha256": "438e84dbb27364ad66f583c9368babd4ea3fecab6884e0f1493efbe8ad57f56a"
         },
         "side": {
           "file": "cn_t72b3m_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9446,
-          "sha256": "7508f43d3616698520317e782ce832027a8b85cb5eb9484bfcaade66c7ddeb86"
+          "bytes": 9850,
+          "sha256": "db61cb89269b3fe70dbabcd904cf6b8cfa99b919f3a5eeb80d411ccd2f776b2c"
         },
         "topSilhouette": {
           "file": "cn_t72b3m_modern_top_silhouette.png",
@@ -148063,8 +148063,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4457,
-          "sha256": "410c36b2e5900a6d6ad46174162b37daf50a4be5f2510222740f132cfbaef4ce"
+          "bytes": 4437,
+          "sha256": "f335e9a269c394a6d7bfa2c046c3a50fac4de91c874508e07a05fec27450de08"
         },
         "markings": {
           "file": "cn_t72b3m_modern_markings.png",
@@ -170980,7 +170980,7 @@
             "min": [
               -0.4649,
               -0.14,
-              -0.39
+              -0.4
             ],
             "max": [
               0.3744,
@@ -170991,8 +170991,8 @@
               {
                 "min": [
                   -0.4649,
-                  -0.0775,
-                  -0.325
+                  -0.068,
+                  -0.4
                 ],
                 "max": [
                   0.1844,
@@ -171076,8 +171076,8 @@
           }
         ]
       },
-      "geometryHash": "37a187b8",
-      "metadataHash": "91ea8da0",
+      "geometryHash": "1578b9c2",
+      "metadataHash": "76a188bd",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.1312
@@ -171101,10 +171101,10 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 17,
           "gunmetal": 9,
           "opticGlass": 3,
-          "fittingPaint": 7,
+          "fittingPaint": 1,
           "wood": 1,
           "unclassified": 5,
           "gearShadow": 1
@@ -171136,39 +171136,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90846,
-          "sha256": "0503c6b1fe0660178db47b0b4e235f8ffcb2640a198876202c2eb49f28f4211c"
+          "bytes": 90110,
+          "sha256": "f3a3982cbf1182fbcb87951586f9a13bf78ba99084782d0f810cc1a89e92a889"
         },
         "modulesSide": {
           "file": "cn_t80u_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89723,
-          "sha256": "32e787e07752899970897fd01bbbb5ac1af330d22a42b4765ab2f6b9b69dbc2d"
+          "bytes": 88378,
+          "sha256": "6729599d0cece9b48280aa24f1f4e37072f44da918d6f56083431d527447f22e"
         },
         "crewSide": {
           "file": "cn_t80u_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75760,
-          "sha256": "61c815453088bed0b8a46be26bdda186616034821cda8290cb9ac2a7b4a2937f"
+          "bytes": 75212,
+          "sha256": "824b9c6eb7cc48bd25f86bf20160646db3ed6bd74eeacd59af2e7aff1b6d480b"
         },
         "angle": {
           "file": "cn_t80u_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25854,
-          "sha256": "896b4cd5e02c663a4cf0df3e03d9c187efab820736ef73595e25ce1e2cd687a0",
+          "bytes": 26130,
+          "sha256": "2b3fe5411a314afa5afbadbd5842968f27ba85bd7926568c16ef4a8dea4b3f64",
           "thumbnail": {
             "file": "thumbs/cn_t80u_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10578,
-            "sha256": "3bd10f0a13e9ca021a1fc9a3ee4ff5f6e56d2fc5d5d8f350654b132c90e6556e"
+            "bytes": 10718,
+            "sha256": "9a8396f55fa6aec0e7794c33af46c223922c2f1c96961aaed7bff01620e0e982"
           }
         },
         "top": {
@@ -171176,16 +171176,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11278,
-          "sha256": "2ea1acee3743309b8748eb3f9d26329a93bbf2267c33ed4457194e094e2bd0e0"
+          "bytes": 11448,
+          "sha256": "bf13087f13f4d306505870feefb78242e912d9fadbe4ab97bfba2377a7a94284"
         },
         "side": {
           "file": "cn_t80u_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9362,
-          "sha256": "272728add9b2f20e8a482fb9b499e6819137b152caee287d0446f92704b1ca4a"
+          "bytes": 9522,
+          "sha256": "ace601c3428c79539dfd62b6f21c68648d28bc07ef2023d65fb1d88523d2b4bb"
         },
         "topSilhouette": {
           "file": "cn_t80u_modern_top_silhouette.png",
@@ -171200,8 +171200,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4271,
-          "sha256": "70b6947ba0e693d7980bf54dc21829478d704e2fb026ee796de93972dc047b5a"
+          "bytes": 4289,
+          "sha256": "b95ed7ed49b5a36f7469ad11ae9ca490a961b5d0d38409c60ad2732a7af2110e"
         },
         "markings": {
           "file": "cn_t80u_modern_markings.png",
@@ -173810,7 +173810,7 @@
           }
         ]
       },
-      "geometryHash": "5439c72d",
+      "geometryHash": "8c3d181e",
       "metadataHash": "265b3bbd",
       "presentationAnchor": {
         "xM": -0.0004,
@@ -173826,9 +173826,9 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "fittingPaint": 10,
+          "fittingPaint": 9,
           "opticGlass": 8,
-          "gunmetal": 19,
+          "gunmetal": 18,
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
@@ -173838,7 +173838,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 14,
           "unclassified": 18,
           "gearShadow": 2,
           "machineGun": 5,
@@ -173872,39 +173872,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 114098,
-          "sha256": "84ce295b0732131dec91b0438c6b23a3eee5c9abed9b49572d7a3d6c9ef782d4"
+          "bytes": 114514,
+          "sha256": "5dfedb6bf5571f57975696958da851bfec0447b735b49646bac3046c2c2d2678"
         },
         "modulesSide": {
           "file": "cv90_mkiv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 128146,
-          "sha256": "c711fe68ad7460427cc451dec05f777e3146b765a4573e622876f0f6f6893442"
+          "bytes": 128210,
+          "sha256": "1c5773bdc177c9ca9bb7c2e04c7b037baa643473f2976e7a48a1f4985aaac9c6"
         },
         "crewSide": {
           "file": "cv90_mkiv_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 109795,
-          "sha256": "a137b5c91b71f835a307a8952df0607f4a887c13d05bf66b1a3ba628fc3ed9d1"
+          "bytes": 109404,
+          "sha256": "5a57a4997371006ca9f0009f7240054a1a0c2a3caa0c9561c7a115b1b5f6cfd6"
         },
         "angle": {
           "file": "cv90_mkiv_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28214,
-          "sha256": "dcd924f3e1713b0f57a70ee703efef55688c2d86618f3f5da225ad4a8b32bdaa",
+          "bytes": 28262,
+          "sha256": "d0e8addf344f431075f2dcf40fa1922fcb458bcfc4b9c9a6f0c026fb89522c1a",
           "thumbnail": {
             "file": "thumbs/cv90_mkiv_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11568,
-            "sha256": "443488eb7e2a00ab34b18b95eb48858ca5119141c8b5705be9f9d1a59d9271ec"
+            "bytes": 11590,
+            "sha256": "041f3baf06660679ee888a4f2002b07c108bd452ebde907b8321da16bd33273d"
           }
         },
         "top": {
@@ -173912,16 +173912,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19722,
-          "sha256": "e7c00c61a857a099554db469a6ce464ac55ca9638973c81f8d74f1873aa0d14b"
+          "bytes": 19858,
+          "sha256": "b349e742d29c41feb6ef69989bd73389a4cf4b7f295606291c915f09b13b5637"
         },
         "side": {
           "file": "cv90_mkiv_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14176,
-          "sha256": "2c60aa89a8cffc12a5769cade311b019d6f22eba67fc4d69399c76e1e7a93d96"
+          "bytes": 13966,
+          "sha256": "58edfa6f984fbe50a19e8b28553f97c5a66aa00cc63f3d71abf0c19e459ffb85"
         },
         "topSilhouette": {
           "file": "cv90_mkiv_top_silhouette.png",
@@ -173936,8 +173936,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4838,
-          "sha256": "ac4818e64274a947e010c02b24f1db06d299bb1336050a0fb87c0d15722fa83a"
+          "bytes": 4753,
+          "sha256": "a01d8145cf222ed9699872802c2c776c1c515d75ad2ed66d80ffa958e90dfe87"
         },
         "markings": {
           "file": "cv90_mkiv_markings.png",
@@ -759686,7 +759686,7 @@
           }
         ]
       },
-      "geometryHash": "c27fc296",
+      "geometryHash": "64575610",
       "metadataHash": "d7d7bb81",
       "presentationAnchor": {
         "xM": -0.001,
@@ -759718,7 +759718,8 @@
           "opticGlass": 1,
           "unclassified": 17,
           "gearShadow": 1,
-          "machineGun": 1
+          "machineGun": 1,
+          "fittingPaint": 2
         }
       },
       "muzzleBore": {
@@ -759747,39 +759748,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102080,
-          "sha256": "c23447d29db039d7090e1a9b7b1b7636bb03c3cabaf781b52e3e8efae0d49099"
+          "bytes": 102070,
+          "sha256": "177e75d39578950825003abe63eb5435ffd0846a35eeb452eedbf5a7357d9f0f"
         },
         "modulesSide": {
           "file": "merkava4_barak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104537,
-          "sha256": "883d1bcc691846f67ca9295c3893c8bc2ed2be40a485b65583f4f5ac469b78e2"
+          "bytes": 104608,
+          "sha256": "0134aea569a00af45f2f4099c6b497679b48440e91c37de8e6b51c4521a56190"
         },
         "crewSide": {
           "file": "merkava4_barak_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94801,
-          "sha256": "5e56cb3b7efd2097b884d59c067f3f30d8a708140988546f514b21ecb77c08d8"
+          "bytes": 94904,
+          "sha256": "c282aaf007dab5005bf715d61fb18acb36641da6c89f7258a33f713c35de5a9d"
         },
         "angle": {
           "file": "merkava4_barak_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33172,
-          "sha256": "b7fa478e589bbe559fc6ccf133fc4c0ea5d6ed716c298a23d8656cd6018ad72f",
+          "bytes": 33530,
+          "sha256": "bd47936aa9d7f25974f47b58aacd565dccb797c78a322f6521f2e024e6cd5166",
           "thumbnail": {
             "file": "thumbs/merkava4_barak_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 13318,
-            "sha256": "381a0cddb328543c1ffee95c62ea02492e6e3d08e7447098de3d1f3144deba4d"
+            "bytes": 13428,
+            "sha256": "8688ce371ac0b0490d3bf068b1c130dae292361ec4f1f3e705993ad368026387"
           }
         },
         "top": {
@@ -759787,16 +759788,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18028,
-          "sha256": "d4dfd1eaee053bdf5a555208b7cd139f329c5216d79842b2fdadc2d9cb3d02da"
+          "bytes": 18046,
+          "sha256": "78aaddf7aea0ef2b9780b90e3e29e788230abfc246fbdd9bb50425aa2803dc89"
         },
         "side": {
           "file": "merkava4_barak_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14632,
-          "sha256": "a6086c1224620ef0463233a5b786c42c9dc073b1d85cf360b4bd425ec39b94e9"
+          "bytes": 14544,
+          "sha256": "7efd1aba45d8035a03836940fa38ecccb2705a10a985be77a161389921ef4c44"
         },
         "topSilhouette": {
           "file": "merkava4_barak_top_silhouette.png",
@@ -759811,8 +759812,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5199,
-          "sha256": "ee7a31fd77efd8a3297f7e8600d5e6c9bc814b3b7a79fbee517b204257b8dc9e"
+          "bytes": 5252,
+          "sha256": "0ea46dcce00e8874a92832cde67a35bd71c3820e8e24bdb8c18b26fc4998dacb"
         },
         "markings": {
           "file": "merkava4_barak_markings.png",
@@ -862287,7 +862288,7 @@
             "min": [
               -0.33,
               -0.14,
-              -0.39
+              -0.4181
             ],
             "max": [
               0.4205,
@@ -862298,8 +862299,8 @@
               {
                 "min": [
                   -0.14,
-                  -0.0775,
-                  -0.325
+                  -0.067,
+                  -0.4181
                 ],
                 "max": [
                   0.4205,
@@ -862383,8 +862384,8 @@
           }
         ]
       },
-      "geometryHash": "429645df",
-      "metadataHash": "7225ada0",
+      "geometryHash": "cd731dbc",
+      "metadataHash": "f32e798e",
       "presentationAnchor": {
         "xM": -0.002,
         "zM": 0.057
@@ -862408,14 +862409,14 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "tireRubber": 1,
           "opticGlass": 3,
           "gunmetal": 12,
           "canvas": 5,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 9
+          "fittingPaint": 3
         }
       },
       "muzzleBore": {
@@ -862444,39 +862445,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89790,
-          "sha256": "6ce7f8c57d4c1fdfdc9847f27835ff011f6781498065393b88ce77c9dfb880ba"
+          "bytes": 90297,
+          "sha256": "22d0710ffc5a734697f1ae0bfff73b9d5f331f52681bacbfcceb7fbac032cdbc"
         },
         "modulesSide": {
           "file": "pl_t72b3_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91322,
-          "sha256": "6dd7265ec9be9e827d6ea7ca553866d88e218a318a6edc61544999477a78b3dd"
+          "bytes": 91576,
+          "sha256": "5746c16032122edd5c7db88cfd245e705e495912418c66e5a923c08229d76499"
         },
         "crewSide": {
           "file": "pl_t72b3_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77585,
-          "sha256": "28e95d4e588bde1cd3b364dd73b8f8d2e92c9f51f05e41f4a6348f8f7ef4c266"
+          "bytes": 77306,
+          "sha256": "feb81e7321201be8c3d8375907dae23562f9b952382d0b737d1753ea364d37e7"
         },
         "angle": {
           "file": "pl_t72b3_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24666,
-          "sha256": "e6f3931eab728952a312a89ce900e7cc8b76ddf7220988376073ce7f61994f95",
+          "bytes": 24798,
+          "sha256": "de183148671617699c1acdacbccf103e9cde5e984342168f513155a164514bba",
           "thumbnail": {
             "file": "thumbs/pl_t72b3_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10130,
-            "sha256": "afd67c37b9f5b87527c681df0f2ac446837890cbf51cb9c8794206dceaa45bf3"
+            "bytes": 10220,
+            "sha256": "8227ea504a5dc51b9a4f19d7ef92c1d56a2e39c6b725fdf9190148baca3f988e"
           }
         },
         "top": {
@@ -862484,16 +862485,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15028,
-          "sha256": "3967952fba44a61e70d739ab10ac6cb33206ef77123ed31c17a04283bb713cf6"
+          "bytes": 15120,
+          "sha256": "c4970b69102041e312c5c3fbe12158d98fc441c4c0dde5b77a3ca04f3e22a5e0"
         },
         "side": {
           "file": "pl_t72b3_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8410,
-          "sha256": "884b45c52eae554493a664db47f77a9e28a34828f83beb02f60b2c063d121e05"
+          "bytes": 8466,
+          "sha256": "b2f998b1783663a22a03fe57a10f9b966ea0481018ac3282d8d359007f1c7a6c"
         },
         "topSilhouette": {
           "file": "pl_t72b3_modern_top_silhouette.png",
@@ -862508,8 +862509,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4144,
-          "sha256": "4d884259f8b943b178e0d22fb8626b56e4acf8ef8b1810f90ae01d7d734663ca"
+          "bytes": 4135,
+          "sha256": "eb195c3eb16a0b16a83cb93a24b7e44660be8cc1699629015db3378dcc0b031f"
         },
         "markings": {
           "file": "pl_t72b3_modern_markings.png",
@@ -1005869,7 +1005870,7 @@
           }
         ]
       },
-      "geometryHash": "287a2c10",
+      "geometryHash": "6e3f74a7",
       "metadataHash": "79747ba7",
       "presentationAnchor": {
         "xM": -0.0015,
@@ -1005894,14 +1005895,14 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "tireRubber": 1,
           "opticGlass": 3,
           "gunmetal": 11,
           "canvas": 6,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 8
+          "fittingPaint": 2
         }
       },
       "muzzleBore": {
@@ -1005930,39 +1005931,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98208,
-          "sha256": "f5da1e74dcfc5d57556012f433b79c72ec97e91be2d07f4f03168bb12a7de569"
+          "bytes": 97572,
+          "sha256": "def726e408d0873c65588081e95c5d23d0700068b351c3b97ba5cd16763d19c1"
         },
         "modulesSide": {
           "file": "pl_t72b3_zubr_ii_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96385,
-          "sha256": "066472727762469198ebc418fa7946475c589a75ec4d5bd5e4820a9b2a3258c3"
+          "bytes": 96486,
+          "sha256": "3b85f09d6a6609b5414a9bbe4d4eb60359fe217c0c26c2f45c7c380f6261acf2"
         },
         "crewSide": {
           "file": "pl_t72b3_zubr_ii_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81267,
-          "sha256": "fa996684abdb54f079b8ce4f7a8ca06535b6123de0cb4740b79b1d8b9d9e2a1d"
+          "bytes": 81386,
+          "sha256": "b7ea294a0859ca949274068812ef41132cac1aae9ea2ca3a280f0fb74eba938d"
         },
         "angle": {
           "file": "pl_t72b3_zubr_ii_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25998,
-          "sha256": "8a0ab65dabf9652ff338bd5bdd884ffcd6fa8a311208f19ee4a524b15073840a",
+          "bytes": 26188,
+          "sha256": "2190c93d1e291ab3354bb98e0720b9dffbd94502e4557a80813082627f3df1d3",
           "thumbnail": {
             "file": "thumbs/pl_t72b3_zubr_ii_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10554,
-            "sha256": "0b61dfc4abc30d9c70eb1386288d4ae39ee87d0e6bdba3ef793e8d073c0d1662"
+            "bytes": 10600,
+            "sha256": "3350a60809f3f5c61ee89ca273eaa78add14d9d057563bb72304d0c3593caa02"
           }
         },
         "top": {
@@ -1005970,16 +1005971,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15270,
-          "sha256": "43e02356fcaddbf8ec8eb7cdaaeeb4cc17761ad4e633694c101dffae06bf4222"
+          "bytes": 15400,
+          "sha256": "9014cef208976bae74ba12f600e8cae67c29c5043a6f7c0810575b4a658cbb92"
         },
         "side": {
           "file": "pl_t72b3_zubr_ii_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10124,
-          "sha256": "4cd1028a2db4bc4b1ea358da2260363e8b4315219724a88bdaa7ed89f38957e4"
+          "bytes": 10170,
+          "sha256": "97fe72a175442ff5cd3e1467752ae8ae843db090fa6b221aa52f3906086130df"
         },
         "topSilhouette": {
           "file": "pl_t72b3_zubr_ii_top_silhouette.png",
@@ -1005994,8 +1005995,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4474,
-          "sha256": "0ae8e0c512e7e31aca008e024c4007d3ea0309a6be637d375f77efc1c21f16f6"
+          "bytes": 4458,
+          "sha256": "6c72384d484608c592254a65cc32d1a57cac8e9688eada5527096729039d184e"
         },
         "markings": {
           "file": "pl_t72b3_zubr_ii_markings.png",
@@ -1120029,7 +1120030,7 @@
           }
         ]
       },
-      "geometryHash": "b1ca15f5",
+      "geometryHash": "ef9d4cdf",
       "metadataHash": "71c98594",
       "presentationAnchor": {
         "xM": 0.0015,
@@ -1120054,14 +1120055,14 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "tireRubber": 1,
           "opticGlass": 3,
           "gunmetal": 12,
           "canvas": 4,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 8,
+          "fittingPaint": 2,
           "trackSteel": 1
         }
       },
@@ -1120091,39 +1120092,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96697,
-          "sha256": "456163cf30a5c0f548294bdc08ececa557d7dd234ebcd4cc43da25dd6902f4cf"
+          "bytes": 97025,
+          "sha256": "f5a0253c349435a9d7b382218cefb1054614d2b4e1aec2412c8b86d51d7f2bc6"
         },
         "modulesSide": {
           "file": "pl_t72b3m_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 97273,
-          "sha256": "9bd8ef6a78b0677217960bbf3ea98a0d9e7ade7bbe1e8aa2e584909a9928bad8"
+          "bytes": 97491,
+          "sha256": "bf93d248deed4c23995cb8cd256e4879189ba9020b82a3eea0fb31950093451a"
         },
         "crewSide": {
           "file": "pl_t72b3m_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82945,
-          "sha256": "61f07ad7d613be69faa30fbcda5a1ab38100ea4c3a3bd62d577faec32d6b3901"
+          "bytes": 82783,
+          "sha256": "90e8cedc19291fe6c0a2a40e2cd418977567cf0dd80addde99c40fe905ee2e25"
         },
         "angle": {
           "file": "pl_t72b3m_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26692,
-          "sha256": "61c1e33934c2c94cdb50573610257414099bcc5ca118237a5c6347f84af7cbc4",
+          "bytes": 26812,
+          "sha256": "6be4fa76b69c8afe42c72450463bf4ac01b0c2fad164976f600f3b123dac7dc8",
           "thumbnail": {
             "file": "thumbs/pl_t72b3m_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10762,
-            "sha256": "8ee06139a647f4f641a0aceb6a38c6885735b5024f4f7032c3d752c4832a309a"
+            "bytes": 10818,
+            "sha256": "6659e1d71014a7b7a65c17c38f04316c71a07c8abe49c26a131958f5627e235b"
           }
         },
         "top": {
@@ -1120131,16 +1120132,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16236,
-          "sha256": "f8b6da3ae4f81a774403032a1879696c4a1024fe2614e5b30a0f75713444244b"
+          "bytes": 16266,
+          "sha256": "feec22342b0f9efc63923103760e818d07689f687a13cabc8f3b03156b5622e9"
         },
         "side": {
           "file": "pl_t72b3m_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10256,
-          "sha256": "68defdad25f4a800981926d50dd6c903651df47afd56c340f582726140cad765"
+          "bytes": 10338,
+          "sha256": "db4c22e7585c33c0535f63ea377d415bba56164ef3e40dd4e198cd02a0294ac6"
         },
         "topSilhouette": {
           "file": "pl_t72b3m_modern_top_silhouette.png",
@@ -1120155,8 +1120156,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4277,
-          "sha256": "ec3620a0779ff18988be4e953cf64c2a3a8818b1abebe637c68c663e59ff52dc"
+          "bytes": 4251,
+          "sha256": "b601688e6ff759bb4931ed610b59abe64015ad6c7432a628c1a33ce697dcae87"
         },
         "markings": {
           "file": "pl_t72b3m_modern_markings.png",
@@ -1227876,7 +1227877,7 @@
             "min": [
               -0.4205,
               -0.14,
-              -0.39
+              -0.4181
             ],
             "max": [
               0.33,
@@ -1227887,8 +1227888,8 @@
               {
                 "min": [
                   -0.4205,
-                  -0.0775,
-                  -0.325
+                  -0.067,
+                  -0.4181
                 ],
                 "max": [
                   0.14,
@@ -1227972,8 +1227973,8 @@
           }
         ]
       },
-      "geometryHash": "6648a740",
-      "metadataHash": "74225cf6",
+      "geometryHash": "24bba8c4",
+      "metadataHash": "9d0e961c",
       "presentationAnchor": {
         "xM": -0.0011,
         "zM": -0.0451
@@ -1227997,13 +1227998,13 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "opticGlass": 3,
           "gunmetal": 11,
           "canvas": 5,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 8
+          "fittingPaint": 2
         }
       },
       "muzzleBore": {
@@ -1228032,39 +1228033,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92981,
-          "sha256": "05436d42e94a058fe07a04c94976ee6161b3b8a2e94b63c7e6a3ff1da57944f4"
+          "bytes": 93319,
+          "sha256": "d853716026ab3165302993d1fed784a95c362785e5bb42c7b0091a7f03b09aff"
         },
         "modulesSide": {
           "file": "pl_t80u_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91517,
-          "sha256": "e2c2cc0354e72215064d09c709d8b50d70dd8325d35b2156c3832989d58e7872"
+          "bytes": 90615,
+          "sha256": "571e3b0b547f3a23647d861c6fe294feb86f4607785b66b2eb7906ba7e38c542"
         },
         "crewSide": {
           "file": "pl_t80u_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77742,
-          "sha256": "b3072e3e4c26e4804225642681c38b54e62aa8b1188449b425b5e411b6bbfe4c"
+          "bytes": 77689,
+          "sha256": "7dc20285370bb7500eca1343a36eee73836260348b51d020a9a0d5f35ec22ac2"
         },
         "angle": {
           "file": "pl_t80u_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26154,
-          "sha256": "2a597755bab3373343314575b6011ce23b144211656df53da3c3710114506a7b",
+          "bytes": 26306,
+          "sha256": "d86ed88e04c093fb193e72e84f41074de4a945125423a7d7edac634a30253dfc",
           "thumbnail": {
             "file": "thumbs/pl_t80u_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10528,
-            "sha256": "91676454c425bebe3107f9b42f1253ac72c0a318975fe5941811acc0f49d6b68"
+            "bytes": 10606,
+            "sha256": "b00c8fc982ca1e3505256c5750af0016643afeab36c5738f5570dd19a1cb665a"
           }
         },
         "top": {
@@ -1228072,16 +1228073,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14012,
-          "sha256": "d9a8a166505165fa6a36f3b9f089f35fcd020680d34662ebb1d9a374351fa86d"
+          "bytes": 14124,
+          "sha256": "8b8eab96cbfdc84f26bf54f84e61f06154227cfb3a6e376e265a425b40e0bffb"
         },
         "side": {
           "file": "pl_t80u_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9154,
-          "sha256": "f02854466dd128d5f709397f5f607e4454b86b084fd09d89962331fc69e9a1c1"
+          "bytes": 9080,
+          "sha256": "7e446293601e2567669d2964e23f4f990b4de87367e1352db972a796eabe4fa6"
         },
         "topSilhouette": {
           "file": "pl_t80u_modern_top_silhouette.png",
@@ -1228096,8 +1228097,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4264,
-          "sha256": "9dcea8ee7bbacc8a0bfd274c3116d2bdf57740bbde2e97afb9504c9f0ad86ab5"
+          "bytes": 4291,
+          "sha256": "312df3109461b50256067e29d2c49696eed97347e89c8de0c9605021d9493aca"
         },
         "markings": {
           "file": "pl_t80u_modern_markings.png",
@@ -1273613,7 +1273614,7 @@
             "min": [
               -0.3744,
               -0.16,
-              -0.335
+              -0.4116
             ],
             "max": [
               0.4519,
@@ -1273625,7 +1273626,7 @@
                 "min": [
                   -0.1844,
                   -0.135,
-                  -0.325
+                  -0.4116
                 ],
                 "max": [
                   0.4519,
@@ -1273709,8 +1273710,8 @@
           }
         ]
       },
-      "geometryHash": "b5799ca5",
-      "metadataHash": "a32aeed5",
+      "geometryHash": "65dc88cc",
+      "metadataHash": "91ab4778",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0573
@@ -1273734,13 +1273735,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 10,
+          "armorPaint": 16,
           "tireRubber": 1,
           "gunmetal": 10,
           "opticGlass": 3,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 6,
           "canvas": 1
         }
       },
@@ -1273770,39 +1273770,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91972,
-          "sha256": "9daaf96360ef6147c83bd6c1bf04a78b600f87fb76281d8e907371b1545f79ae"
+          "bytes": 91766,
+          "sha256": "4e0e87824a18ad559a62abd1527ce193a1105ae6f8bd7344fa17841015210e28"
         },
         "modulesSide": {
           "file": "ru_t72b3_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91301,
-          "sha256": "3f152e5424c3e6c6a9f6835b1983419f590ec8ff25efb11f9bda63e204e80593"
+          "bytes": 91158,
+          "sha256": "7402ec845613bb28bdbd40cebd60695b2866d2d54a4bf5fe0520e5bd43992df7"
         },
         "crewSide": {
           "file": "ru_t72b3_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77908,
-          "sha256": "12f71cd7fbd8c691f76650901d93b72e37b0908a3f2144d118341fe256729f88"
+          "bytes": 77202,
+          "sha256": "4be5d17bae0d675b5daf035636914ba94e582e014bf6527d44d582958338b3d7"
         },
         "angle": {
           "file": "ru_t72b3_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26058,
-          "sha256": "960234b417ee7886b595095990774c9012e3dd87240b3edb3a7a550b7ee86744",
+          "bytes": 26320,
+          "sha256": "8d68b85e5282128dd1e1dfe4d3395c5263f748e8d0d91ae2d94f225f51b2d407",
           "thumbnail": {
             "file": "thumbs/ru_t72b3_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10764,
-            "sha256": "9454f50702ca6b077bf9bc3ccb9c2bfb1c6fbf855deb30219c9d4fc1461252ae"
+            "bytes": 10810,
+            "sha256": "3159bd9ce817e695eb535c100acaf50e96e5d5484d4c827cfaedbcc99da0d905"
           }
         },
         "top": {
@@ -1273810,16 +1273810,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12488,
-          "sha256": "f67eedffa7ee18bfbc3cc8f932c53aab4ffa8616ef675e356a87bea6920a84f8"
+          "bytes": 12636,
+          "sha256": "0cd289f6cabf56e0f379c8b7f53a4625f96158edb8b6477078b0a11a640b4aa6"
         },
         "side": {
           "file": "ru_t72b3_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9356,
-          "sha256": "619d585c31dbcc2f4e0d1afbc904279ad3e74164f9b2e3fb1f78e13bae618524"
+          "bytes": 9596,
+          "sha256": "1cd155ba64335b46c6dfe6639ad2842ea6f3927a6c75bb4931bc9d777ff3ec1e"
         },
         "topSilhouette": {
           "file": "ru_t72b3_modern_top_silhouette.png",
@@ -1273834,8 +1273834,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4031,
-          "sha256": "1f88cb10149effdd1cf6096d12daaf1ff72fafcba88b2bd25af5d7384c683200"
+          "bytes": 4059,
+          "sha256": "7bbf4dbffa6b91113d1c52b33532145f9d1f6b83974d08a31ed632f6523472e6"
         },
         "markings": {
           "file": "ru_t72b3_modern_markings.png",
@@ -1296121,7 +1296121,7 @@
           }
         ]
       },
-      "geometryHash": "4416dd2b",
+      "geometryHash": "197466b9",
       "metadataHash": "9f722df7",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -1296146,12 +1296146,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 10,
+          "armorPaint": 16,
           "tireRubber": 1,
           "canvas": 2,
           "gunmetal": 10,
           "opticGlass": 3,
-          "fittingPaint": 7,
+          "fittingPaint": 1,
           "wood": 1,
           "unclassified": 5,
           "gearShadow": 1
@@ -1296183,39 +1296183,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92892,
-          "sha256": "d3145e241a6267b43c28a4b44c461ef00a0f5442237d88d75363a2d272689746"
+          "bytes": 93182,
+          "sha256": "da0d39f8c38e1c0f71f18531838d7fae810ede1c9a436b4f43249018c96e4ad5"
         },
         "modulesSide": {
           "file": "ru_t72b3m_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95343,
-          "sha256": "b843f5dcfd9614dddff2cd1533adda01db218d0b2d4c9d6b30a1b8b224151cd1"
+          "bytes": 95229,
+          "sha256": "7fd1259e962c4724bb4207cbbe9fee44086af96a89386f6326aec8dfc17fd430"
         },
         "crewSide": {
           "file": "ru_t72b3m_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80960,
-          "sha256": "2044e83f150c59f73ed8db377d60d9b8306ccc337244ec216f8e8df0df9027b6"
+          "bytes": 80077,
+          "sha256": "71a13df5c5c8bd15d4b54d1028b27ada65a23eebda772696392f2c58375415db"
         },
         "angle": {
           "file": "ru_t72b3m_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26680,
-          "sha256": "e70407fac2394c4635ad9cf371a07579659b59eebfa3bd9c4d4e8573f8863fe7",
+          "bytes": 26854,
+          "sha256": "ca83c00a4fb8c9180b848ac669db1fdb1cfdd29bf4920483727d981ff96d71b0",
           "thumbnail": {
             "file": "thumbs/ru_t72b3m_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11066,
-            "sha256": "6553f7d96f5eb0238efb579d071f11aec33c0c57ff736714ce448d0fa86f6816"
+            "bytes": 11162,
+            "sha256": "cb58dc9cc32242439513fe6248bf03c5ab8cb73301d7079ce95320a51540146d"
           }
         },
         "top": {
@@ -1296223,16 +1296223,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14024,
-          "sha256": "a6471165370d2ceb13bb1ab8bfb48796b6e66408f861e3932cfe82d6ab583840"
+          "bytes": 14142,
+          "sha256": "3658f630e4f3d1f41d8040411b6428e04742896974c84a377376799c4e9675be"
         },
         "side": {
           "file": "ru_t72b3m_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10672,
-          "sha256": "658effc7a64c9cd51f5138b9271d93276cfa48c79a400598df99a13b236bab96"
+          "bytes": 10784,
+          "sha256": "d5cc58bb98cd0d06f847ec2f34ada3e834003ee3fba564a809b9544cfee3ff88"
         },
         "topSilhouette": {
           "file": "ru_t72b3m_modern_top_silhouette.png",
@@ -1296247,8 +1296247,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4379,
-          "sha256": "5c2e374183ac4848ed566ae3348e5596e15ad4ffe9e5231653e40cb475187c97"
+          "bytes": 4353,
+          "sha256": "12fc616462ee450d37c34e28ae88461e8cb6223ce3a104084456f5b8165fa22e"
         },
         "markings": {
           "file": "ru_t72b3m_modern_markings.png",
@@ -1316424,7 +1316424,7 @@
             "min": [
               -0.4519,
               -0.16,
-              -0.335
+              -0.4116
             ],
             "max": [
               0.3744,
@@ -1316436,7 +1316436,7 @@
                 "min": [
                   -0.4519,
                   -0.135,
-                  -0.325
+                  -0.4116
                 ],
                 "max": [
                   0.1844,
@@ -1316520,8 +1316520,8 @@
           }
         ]
       },
-      "geometryHash": "8a4fcaff",
-      "metadataHash": "d1c34d29",
+      "geometryHash": "b314a4ae",
+      "metadataHash": "fa90e800",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0485
@@ -1316545,13 +1316545,13 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 10,
+          "armorPaint": 16,
           "gunmetal": 9,
           "opticGlass": 3,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 7,
-          "canvas": 1
+          "canvas": 1,
+          "fittingPaint": 1
         }
       },
       "muzzleBore": {
@@ -1316580,39 +1316580,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92106,
-          "sha256": "f8d3cbde0978e5a15cf3498352446c0e589d623e6737773c41d4a31884d807f0"
+          "bytes": 91937,
+          "sha256": "326ffa1c90ea6bc41439254dc333c2697793f5ff1333d9f621b8139ba6adbd13"
         },
         "modulesSide": {
           "file": "ru_t80u_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92032,
-          "sha256": "a1be83e889f3ca107d64c703406f7de89fe7bcf360579c78d3f81e27b8baecd2"
+          "bytes": 90909,
+          "sha256": "7ec60fd82b61e7acae09bf234f1752858d8ac77fd08b00b00d783a7c68530ae2"
         },
         "crewSide": {
           "file": "ru_t80u_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78060,
-          "sha256": "0ecd044391ff7fa64755f80b2bc0dfd465339a730fc0e4e6b48b0a0e659700fb"
+          "bytes": 76533,
+          "sha256": "c5cb538cbc2bd9f23409d1a6d2d925496c31afb1799d1c2c9599aeb52531eb2a"
         },
         "angle": {
           "file": "ru_t80u_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26664,
-          "sha256": "d6618215fa9f2de2c2db8e8c0695bdf0c7f4193e31b621101e7010d6566aef58",
+          "bytes": 26910,
+          "sha256": "b53ca85a8b8a8e47476ce2f46b7856b6fcb400bc42f86a54014937aca16d050f",
           "thumbnail": {
             "file": "thumbs/ru_t80u_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11090,
-            "sha256": "eaef98b2cbbf33589fafdbd499bcb75748830e90035e45cd412ba626e1751986"
+            "bytes": 11064,
+            "sha256": "8a3768fe21ba2f3d27fda7397f4912a4b429c3138f6c9d6a22e7bcdecb6f4928"
           }
         },
         "top": {
@@ -1316620,16 +1316620,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12448,
-          "sha256": "828db058a2990684afbd285117e2936bd1764b95d301ea6ba9babb84e74a4aac"
+          "bytes": 12844,
+          "sha256": "d80152d340e2796d4e406899b6edaf4aec9d9b2d14b0c68734a0a79295e04a46"
         },
         "side": {
           "file": "ru_t80u_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9514,
-          "sha256": "1d4be67d42bae962cdacc4e373862bbf192684793a41465bdf09ed425b32add4"
+          "bytes": 9644,
+          "sha256": "34569d5538c451aef5e2f19b1d8701dc46ce744bbc8fb5b74c278042e2b7f959"
         },
         "topSilhouette": {
           "file": "ru_t80u_modern_top_silhouette.png",
@@ -1316644,8 +1316644,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4150,
-          "sha256": "9ea171a61b64cc1ab7b09d02bbd9c01ee8889022f2667cd6a7461a7bec36f062"
+          "bytes": 4169,
+          "sha256": "97f310f9ecd570b75911317258dd3d59de074d479fb5d62a6d3132a3ccf60a11"
         },
         "markings": {
           "file": "ru_t80u_modern_markings.png",
@@ -1317808,7 +1317808,7 @@
           }
         ]
       },
-      "geometryHash": "4af33b8a",
+      "geometryHash": "9607736e",
       "metadataHash": "7848de3a",
       "presentationAnchor": {
         "xM": -0.0026,
@@ -1317839,7 +1317839,7 @@
           "gunmetal": 5,
           "unclassified": 21,
           "machineGun": 1,
-          "fittingPaint": 1
+          "fittingPaint": 3
         }
       },
       "muzzleBore": {
@@ -1317868,39 +1317868,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102116,
-          "sha256": "1bd791a1dbaa5aab6387ef7f8cfede2a2f09b891287ba5921d6cc6693408f947"
+          "bytes": 102336,
+          "sha256": "ff72cce9492b928609a60fa0e95470f0b13bcb0e4d5c4fa3567c90b0ec7c5e9e"
         },
         "modulesSide": {
           "file": "sabra_mk2_x_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107564,
-          "sha256": "41e2bc4b21783e3824704f1511d0f62bb77bca399c829b83ae7abea4a256c0cd"
+          "bytes": 107896,
+          "sha256": "e5d6c307ab5e015537d8107e2ee28d9379c24f6ad5fe2748ae9f3e375548b7a8"
         },
         "crewSide": {
           "file": "sabra_mk2_x_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95332,
-          "sha256": "5ae1ab01a53355cce9d0005e622df323f1147bdbe320d5e458a22cfcdd41cb06"
+          "bytes": 95553,
+          "sha256": "ecf939fdabca8fc4d5e8b30dc481c3edc9acecfcb382a5595827074dfc68d4cd"
         },
         "angle": {
           "file": "sabra_mk2_x_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31192,
-          "sha256": "000adbfeb07bf0700971c17cf11af3f3fe0dc04335a68b98e14fdf79307f5e89",
+          "bytes": 31900,
+          "sha256": "0af7033ae9e01fe57902f2753d29b8c791d8f499e457c822667388d8a70ba51d",
           "thumbnail": {
             "file": "thumbs/sabra_mk2_x_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12874,
-            "sha256": "188af47beb354d9f2fcdec8a991d7205cffaf8eb60593654a2bc9f9a52feff0f"
+            "bytes": 13162,
+            "sha256": "5aac0bb6de1418121fb1fc2d68785ce9c8793bba8478a56f96ff5c15f454a981"
           }
         },
         "top": {
@@ -1317908,16 +1317908,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14950,
-          "sha256": "e23a87171732f4b4cd3bf1fa21aa6b56488d5beb77002aea103d3649af51d277"
+          "bytes": 15050,
+          "sha256": "7eb0b7d097faa91400db4bbb41e5bf1970cfc0721712a157578d79beb66374ff"
         },
         "side": {
           "file": "sabra_mk2_x_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14198,
-          "sha256": "257d515f761d82421aad2e7539f57924e60d505d419d5ef346b872bfe72664f8"
+          "bytes": 14366,
+          "sha256": "ef7eae7a1838671a029349b5c57afc51e8b27f44d6b1df5bf5ddef3aa24e2b77"
         },
         "topSilhouette": {
           "file": "sabra_mk2_x_top_silhouette.png",
@@ -1317932,8 +1317932,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5040,
-          "sha256": "13056252d6203944e5f2f7d78538d9acb85d6d09d016c5c085079dd2a677648c"
+          "bytes": 5163,
+          "sha256": "8e877cd4c5880911695af61f86d5a425f5739f1c5e8829800cd4774051cef579"
         },
         "markings": {
           "file": "sabra_mk2_x_markings.png",
@@ -1320497,7 +1320497,7 @@
           }
         ]
       },
-      "geometryHash": "f06e4cee",
+      "geometryHash": "a43af3f9",
       "metadataHash": "6a7bf28f",
       "presentationAnchor": {
         "xM": 0.0037,
@@ -1320513,9 +1320513,9 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "fittingPaint": 9,
+          "fittingPaint": 7,
           "opticGlass": 6,
-          "gunmetal": 18,
+          "gunmetal": 16,
           "wheelTire": 2,
           "wheelDish": 8,
           "suspensionLink": 1,
@@ -1320525,7 +1320525,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 15,
           "tireRubber": 1,
           "unclassified": 19,
           "gearShadow": 2,
@@ -1320560,15 +1320560,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25706,
-          "sha256": "81f91dd27d0d21180968ac3c1e4b7b99720f2687338e04abaf80fbfe54e07a50",
+          "bytes": 25862,
+          "sha256": "10c537fdcf52aec15d92fd648d9c45785e295e8d5e236440670a6470b9c720f6",
           "thumbnail": {
             "file": "thumbs/spz_puma_s1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10568,
-            "sha256": "1e270cb24c800593d8569876c4037c30a1e01b688106c68e803eee332d4b58b6"
+            "bytes": 10636,
+            "sha256": "26a61f2cab9d2999df9044ec044442130af6e054aec12ac963983c94bdee7a1a"
           }
         },
         "top": {
@@ -1320576,16 +1320576,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19284,
-          "sha256": "adea91d24a3d1b5ce3eef41a150f39c11d922c109cc4e82c613ae4d4f3b8a61a"
+          "bytes": 19366,
+          "sha256": "292c0947a1acc49ea70208c0c83f222f52024f05e48c5ed37a09653deaaea931"
         },
         "side": {
           "file": "spz_puma_s1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15184,
-          "sha256": "599eb505647b036d41c39a5d118457b136c60376587b211ca7ab8a0bd94a2c64"
+          "bytes": 15322,
+          "sha256": "01db044d18e8c67778290bb39e74582aa75ab53e63d06af495c02515b1173f09"
         },
         "topSilhouette": {
           "file": "spz_puma_s1_top_silhouette.png",
@@ -1320600,32 +1320600,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5231,
-          "sha256": "6faacf482dffeeed33f3754254976e39fd8e6652f07672ae61b30b3c40ce2e03"
+          "bytes": 5222,
+          "sha256": "38da6a211f5a77d50a286c86e108454712c1053137e275511d2aa23a2d814f77"
         },
         "armorSide": {
           "file": "spz_puma_s1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 135058,
-          "sha256": "6a2bc931aae5ed4b0c7e3a3489975e2452e4e94da7ef1aca96877a2f434fb494"
+          "bytes": 139593,
+          "sha256": "f20994668fb997b3495b603757ca05f56b93f42922cb32d9feea709b646a5f1b"
         },
         "modulesSide": {
           "file": "spz_puma_s1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 141790,
-          "sha256": "a363e7ac1fbf4f0b00242abd98f4579e859979af20c36db9e619936d482f4688"
+          "bytes": 146453,
+          "sha256": "fd6cf5b67f64851cc820fd0eb446ec56174ad941fcce0277d663e67d0b98e785"
         },
         "crewSide": {
           "file": "spz_puma_s1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 122488,
-          "sha256": "0600c4861d707e6722df92e5f343d34dd05dc03a3783466448ed91da350f2535"
+          "bytes": 128110,
+          "sha256": "ec6d15a6a866ed0e03adae79e173271172ede8db947c95b323b3d7fced3e7b95"
         },
         "markings": {
           "file": "spz_puma_s1_markings.png",
@@ -1718994,25 +1718994,25 @@
           }
         ]
       },
-      "geometryHash": "7a5428b0",
+      "geometryHash": "97cec588",
       "metadataHash": "3da66367",
       "presentationAnchor": {
-        "xM": -0.0005,
-        "zM": -0.1171
+        "xM": -0.0006,
+        "zM": -0.1176
       },
-      "presentationHash": "d07b5712",
+      "presentationHash": "0468f184",
       "presentationProjection": {
         "centerYM": 1.7973,
-        "topHalfM": 3.8337,
+        "topHalfM": 3.8332,
         "sideHalfM": 1.9231
       },
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "fittingPaint": 8,
+          "fittingPaint": 6,
           "opticGlass": 5,
-          "gunmetal": 17,
+          "gunmetal": 15,
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
@@ -1719022,7 +1719022,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 15,
           "tireRubber": 1,
           "unclassified": 21,
           "gearShadow": 3,
@@ -1719057,39 +1719057,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 129581,
-          "sha256": "38b5616555a6ba9bf45da0abb4da566d8d07a31f56c83a6c81930b5385113fcc"
+          "bytes": 130289,
+          "sha256": "cf8d9c2c8f0c4b970150966cfb0b38e3df3d8082f01395bf53419ec13e91864f"
         },
         "modulesSide": {
           "file": "type89_light_tiger_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 138692,
-          "sha256": "16d6a62d5c1c60f57b43b4eee153e86f14aa6ade48d3a21e49d0c7abd7bdff8d"
+          "bytes": 139321,
+          "sha256": "9a18b504ce6da943dd82a8135d0bb6af96f18da50e34b33f6849639b1ad029ac"
         },
         "crewSide": {
           "file": "type89_light_tiger_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 117879,
-          "sha256": "b210e6770146b9c9f19300446eac52b1ab99cd2a2251532be68c7462e6f176d0"
+          "bytes": 119130,
+          "sha256": "7b2038f78f5210f5eb6425ce4a4433ca8ef49d53d84b077f4d788fc8b7daaff2"
         },
         "angle": {
           "file": "type89_light_tiger_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26120,
-          "sha256": "8ad2efdce269e0c0088e3983cef8af30ff8bb7687d765062ddf74697837af807",
+          "bytes": 26166,
+          "sha256": "d616acc3075d275d06258ace63c2f27a804441c5ae5d8e458dfb82f1b8ebc027",
           "thumbnail": {
             "file": "thumbs/type89_light_tiger_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10686,
-            "sha256": "a23f1d8d55493611669a4688a1de6b61b871548c0fed81c4a7ce394e63e1b53e"
+            "bytes": 10700,
+            "sha256": "d4912035141cda357a868a404e04b86643e9b9801abba4f6e6297ade58d1f516"
           }
         },
         "top": {
@@ -1719097,32 +1719097,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15352,
-          "sha256": "bc6c69e7a656ae703e3bacc70101d75e9a57bbf188144709312d35c0fefcd566"
+          "bytes": 15488,
+          "sha256": "bcf675f7832583f528fe255a85836ce1986eb1ece08ad6b8a71f0968e48f446f"
         },
         "side": {
           "file": "type89_light_tiger_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14444,
-          "sha256": "178d4f241fd7ceb63156dfea98a4de10869ccfb49004c096c75ef39a4abfa7e2"
+          "bytes": 14414,
+          "sha256": "ede526dce44199b5c819ed600e7fc783cf003c59c727ae5e024772de95ce1b30"
         },
         "topSilhouette": {
           "file": "type89_light_tiger_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1556,
-          "sha256": "db78f99eb5627004443f519e7bf60de1d878583922ae40d215970d4b62d4fce2"
+          "bytes": 1526,
+          "sha256": "1b9a2ac4c300ce93f9b1681ee0176ea20bfbf78d092d458ee64e40c4598f1804"
         },
         "sideSilhouette": {
           "file": "type89_light_tiger_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5448,
-          "sha256": "0cc9b17905aec631a2446a5862a90e073be67f095b1b0a16f4e54aa20c2a5652"
+          "bytes": 5462,
+          "sha256": "f2a76785cacc5e4aa1880cb83b329312e0b5f67daf25b0bce0aeee3097052271"
         },
         "markings": {
           "file": "type89_light_tiger_markings.png",
@@ -1897990,7 +1897990,7 @@
             "min": [
               -0.4205,
               -0.1006,
-              -0.3495
+              -0.4181
             ],
             "max": [
               0.33,
@@ -1898001,8 +1898001,8 @@
               {
                 "min": [
                   -0.4205,
-                  -0.0775,
-                  -0.325
+                  -0.067,
+                  -0.4181
                 ],
                 "max": [
                   0.14,
@@ -1898086,8 +1898086,8 @@
           }
         ]
       },
-      "geometryHash": "c619834e",
-      "metadataHash": "b903f805",
+      "geometryHash": "ff62615d",
+      "metadataHash": "69e824a4",
       "presentationAnchor": {
         "xM": 0.0019,
         "zM": 0.0336
@@ -1898111,13 +1898111,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "tireRubber": 1,
           "gunmetal": 10,
           "canvas": 6,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 6,
           "opticGlass": 2
         }
       },
@@ -1898147,39 +1898146,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95681,
-          "sha256": "4f67b4bd7c7150921b14ba7c60cb46067fb265c2f1e5fff2d813aa9ea803eb67"
+          "bytes": 94566,
+          "sha256": "7069cf2c1ec68f4b1f22910b641694b1f6cf8ab2c34a8ea39b2dca046d14827e"
         },
         "modulesSide": {
           "file": "ua_t72b3_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94946,
-          "sha256": "9517db54ec6c3316cd9c2b2e57d517e841908619c083d1d074b533d316987fa9"
+          "bytes": 93569,
+          "sha256": "082c108677dcf8d033dbb43fbacfa7d5f5538cefef7c930cfc096d805d331964"
         },
         "crewSide": {
           "file": "ua_t72b3_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81976,
-          "sha256": "b6f2d45bf447585c90a7a47752e838f8f23ac8d263804aba3b475c8a42d4c789"
+          "bytes": 80289,
+          "sha256": "ff18688ef535c86fc3a086f044fd142219213b291654733b65bb3b045e9527f5"
         },
         "angle": {
           "file": "ua_t72b3_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29878,
-          "sha256": "7597714e92dd3c0b71e0b0480816b2eb2edf174d03d1d353bebf3b409f5bfd45",
+          "bytes": 30150,
+          "sha256": "770d1c47e366bfadf461b19a5f586edee7bb73d973593efb73082f0ffe5d4c8b",
           "thumbnail": {
             "file": "thumbs/ua_t72b3_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11510,
-            "sha256": "baf0a7034ff11d2fb610493a002bdf8ed579d893a4b63f4a9152b0fbbe935987"
+            "bytes": 11578,
+            "sha256": "22c4ba0105c66ac4c4c1cc48f82400ab66e92649847f852f1ec7d30a5c3e329a"
           }
         },
         "top": {
@@ -1898187,16 +1898186,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14594,
-          "sha256": "422b1adf00dd3eefd91312b38f04ae104fb01c81ada0879f54bc6bf6f9e55663"
+          "bytes": 14696,
+          "sha256": "49f627fb2de764d2baa45d6f4447df95e01c8fc61d418132dd466c45b8b6ddb3"
         },
         "side": {
           "file": "ua_t72b3_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9312,
-          "sha256": "5ff233567d7277f1ec7bbfc9d61f81f20e118408ae543d7a9d7388fdb4469d4f"
+          "bytes": 9438,
+          "sha256": "8a5a5f3022c4a12cd6ef51213cd8038f03322666ff6ca8790a148e52395dc4b0"
         },
         "topSilhouette": {
           "file": "ua_t72b3_modern_top_silhouette.png",
@@ -1898211,8 +1898210,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4140,
-          "sha256": "12fbd60eb658cabe2cc7b79a5ca34ce8274723ec716d735b6011bde39682ec8a"
+          "bytes": 4189,
+          "sha256": "72f702d29bac5ba4b06c0965f72ea5764b24b72518431f238470ade21df85f28"
         },
         "markings": {
           "file": "ua_t72b3_modern_markings.png",
@@ -1947623,7 +1947622,7 @@
           }
         ]
       },
-      "geometryHash": "234395f2",
+      "geometryHash": "bd2c137b",
       "metadataHash": "4d353824",
       "presentationAnchor": {
         "xM": 0.0041,
@@ -1947648,14 +1947647,13 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 11,
+          "armorPaint": 17,
           "tireRubber": 1,
           "gunmetal": 9,
           "wood": 1,
           "canvas": 7,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 6,
           "opticGlass": 2
         }
       },
@@ -1947685,39 +1947683,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 100493,
-          "sha256": "e911f0a6a0093b4b13bdc5386a546bb39b72e090416b3e9dac9acbd1ee24a15d"
+          "bytes": 99388,
+          "sha256": "edc6cdf2c8e3c7c5d83753c3a69f5ede00dfa570f53a8ec5c233648855088273"
         },
         "modulesSide": {
           "file": "ua_t72b3m_hetman_ii_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 103147,
-          "sha256": "f1e222f75f43b4f950f1b528b972293c05b5f1f84760f0e07ae9a7c0f4cec680"
+          "bytes": 100781,
+          "sha256": "e7dd95b457545258cbe36e3401f74b76da6ce740cc00c39c48ba7e34963b71a7"
         },
         "crewSide": {
           "file": "ua_t72b3m_hetman_ii_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87194,
-          "sha256": "50cfe5e4af1710d77b69e50d28bf0d55597646da887fce65d1cca8f98d03bc12"
+          "bytes": 85624,
+          "sha256": "9996a66b70b43b30e3a196755d5372609b262df6da8437f782d892ab6bb6cbbe"
         },
         "angle": {
           "file": "ua_t72b3m_hetman_ii_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29798,
-          "sha256": "a226f4071481e79745eaabcaa85815adafc5148459b9d3de740b6f2ca606fd9a",
+          "bytes": 30070,
+          "sha256": "269bc2561ad92f53ac1a9f1bbbbdf24f6f040cf6887618e1912af04f7beb90c9",
           "thumbnail": {
             "file": "thumbs/ua_t72b3m_hetman_ii_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11622,
-            "sha256": "b2d9a2cee66480439f647e5c00bf5651e04f13cad776feee7cf163d4bf6838d9"
+            "bytes": 11808,
+            "sha256": "e21189ce83fdb7774f1bc9f9135ddae5db355ab0af666d4271b6dca8b589e89e"
           }
         },
         "top": {
@@ -1947725,16 +1947723,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16244,
-          "sha256": "8a1deb22fb53c8217cf1eb7f787a36a001370f15f1b01318467c6a16c326d70f"
+          "bytes": 16374,
+          "sha256": "59bf2c1ae4a23af936ec5069a9c0747d2d7b8b72d801405bde5223535b7729b4"
         },
         "side": {
           "file": "ua_t72b3m_hetman_ii_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10494,
-          "sha256": "4cfc618fa37a47db253762f87d18180f8e2f61f08f15b3c5f4bfa39868b5853b"
+          "bytes": 10462,
+          "sha256": "5c291f8e5308114668ec27ca852bfb4e106e308f06991e10acedc8edfa1f573b"
         },
         "topSilhouette": {
           "file": "ua_t72b3m_hetman_ii_top_silhouette.png",
@@ -1947749,8 +1947747,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4772,
-          "sha256": "73d6345517f178b06023da6d199d9ce96f35e6acf8e59ac3052aec5bef15a53a"
+          "bytes": 4769,
+          "sha256": "cccbb9dcbe424d29730de19f693d376bffab438a97fd88d5bd6520a0a1ed9519"
         },
         "markings": {
           "file": "ua_t72b3m_hetman_ii_markings.png",
@@ -2005960,7 +2005958,7 @@
           }
         ]
       },
-      "geometryHash": "a7a0451c",
+      "geometryHash": "dabb328d",
       "metadataHash": "27a142ba",
       "presentationAnchor": {
         "xM": 0.0049,
@@ -2005985,14 +2005983,14 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 12,
+          "armorPaint": 18,
           "tireRubber": 1,
           "gunmetal": 10,
           "canvas": 6,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 7,
-          "opticGlass": 2
+          "opticGlass": 2,
+          "fittingPaint": 1
         }
       },
       "muzzleBore": {
@@ -2006021,39 +2006019,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 97811,
-          "sha256": "841a99c21a320367cf91e9d0af49603796cdefba8d5954bf6dc02150eac9325e"
+          "bytes": 97485,
+          "sha256": "13b7d5088a2071ae8786c9736778dd49f1fbcf83008aebbc7a0e4dc4f1d655c1"
         },
         "modulesSide": {
           "file": "ua_t72b3m_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99720,
-          "sha256": "1d5caf1e6ccdf9527dcb8655b394fe6dc31404ab19e8650cfba8bce943e271a1"
+          "bytes": 97795,
+          "sha256": "96bf11a9c1215fd5e9ff2a0385cbe7e42d0a6e07b2ded836a7c095ac0f3ffe5a"
         },
         "crewSide": {
           "file": "ua_t72b3m_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86180,
-          "sha256": "e22a22678c9e187192db32a0bfe1b225c7d81227d46d23b156390c44027b139c"
+          "bytes": 84468,
+          "sha256": "edb01b030e1d6cb294cdcf1b12afb5d25f500260b7ce913a9c7f503df07d652c"
         },
         "angle": {
           "file": "ua_t72b3m_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28920,
-          "sha256": "842d0d38deb777975c411398fc84ac5fec14fb0735e02ecd7c2be2080b333aa2",
+          "bytes": 29138,
+          "sha256": "66d2e3d489fcf2513886f08f861ecc43815e468ffd0249733609f4241d3730f0",
           "thumbnail": {
             "file": "thumbs/ua_t72b3m_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11404,
-            "sha256": "32243b15c0c34a206d2d0ba269f5af54084380f431f03313ce28f113d6f63c24"
+            "bytes": 11502,
+            "sha256": "2d83b4de6afccbe980d0e17c6170fa3f7d2cefdd20bc9dda3a5bcabffe91bdb6"
           }
         },
         "top": {
@@ -2006061,16 +2006059,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16284,
-          "sha256": "02e7b643d5f156cdb167836a85a6ac5f83cc9999c2cc2334e783d06f7c4871fb"
+          "bytes": 16356,
+          "sha256": "a192821fbaaa5ea784c0f300df1a3bdec81f350a90530376b4489f5dd070e29a"
         },
         "side": {
           "file": "ua_t72b3m_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10078,
-          "sha256": "cb43aefac8b6f6a9c7550fd07e227cff5cf495c0c22833627658ae0fc8b9403a"
+          "bytes": 10210,
+          "sha256": "24541be53fd6c05482a6f5e70e45f751cc285a11b6cebdcf7912085081e8590c"
         },
         "topSilhouette": {
           "file": "ua_t72b3m_modern_top_silhouette.png",
@@ -2006085,8 +2006083,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4339,
-          "sha256": "441a543ed76baf63185689ade4e570a94260cba6b2e38edd9a7caf5473278548"
+          "bytes": 4345,
+          "sha256": "3178801c6d1af539d63df8a719018f2225f33e6ba8f1850d96c8c85739e15b33"
         },
         "markings": {
           "file": "ua_t72b3m_modern_markings.png",
@@ -2062919,7 +2062917,7 @@
             "min": [
               -0.33,
               -0.1006,
-              -0.3495
+              -0.4181
             ],
             "max": [
               0.4205,
@@ -2062930,8 +2062928,8 @@
               {
                 "min": [
                   -0.14,
-                  -0.0775,
-                  -0.325
+                  -0.067,
+                  -0.4181
                 ],
                 "max": [
                   0.4205,
@@ -2063015,8 +2063013,8 @@
           }
         ]
       },
-      "geometryHash": "470c101e",
-      "metadataHash": "b9aae804",
+      "geometryHash": "fc45e8cc",
+      "metadataHash": "43d3567b",
       "presentationAnchor": {
         "xM": 0.0023,
         "zM": -0.0599
@@ -2063040,12 +2063038,11 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 13,
+          "armorPaint": 19,
           "gunmetal": 9,
           "canvas": 6,
           "unclassified": 5,
           "gearShadow": 1,
-          "fittingPaint": 6,
           "opticGlass": 2
         }
       },
@@ -2063075,39 +2063072,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95924,
-          "sha256": "fe0ec032bb39c76b20e8361409105c75ee87703399c74a06afeb5869bd1f516c"
+          "bytes": 94036,
+          "sha256": "11f2c5281d84060018c23b7022a9db4be2fe3f76ed7889cd84e0b52b94377e30"
         },
         "modulesSide": {
           "file": "ua_t80u_modern_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94793,
-          "sha256": "ac726b1008193bb80b5fbfcb25f80a7b1aaee8ae1cf1c3ce8da4c3623f5771dc"
+          "bytes": 93313,
+          "sha256": "540d3b23a423fc3191d2379d8fbd164ce9ecca3104a93e0354febac6fecc92c2"
         },
         "crewSide": {
           "file": "ua_t80u_modern_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83084,
-          "sha256": "008b17a380bbbefbffcd582c345a35dd590c358dc9747666fa90e4be1cba33ba"
+          "bytes": 79959,
+          "sha256": "18b558967adbeef8319163de025f7d22028076a7d01f3e3df7c93b8eec4079cf"
         },
         "angle": {
           "file": "ua_t80u_modern_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29924,
-          "sha256": "dae8fc0f4f324aacc99504e44ed4481ca1be41d4154a2f626320a86995176371",
+          "bytes": 30220,
+          "sha256": "150390379675ae3f01730a6fa3039ac4798a968a1c6b29327a780a5fce619c3f",
           "thumbnail": {
             "file": "thumbs/ua_t80u_modern_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11832,
-            "sha256": "716611d74f63931ad0229cfa3f8e52f5d8b5a9f525f8422ef05da1ad5d612692"
+            "bytes": 11946,
+            "sha256": "cbda47e12807d0c2612659e84df7b6c96d5235202e2e4fe4ba3e5c6f28eca438"
           }
         },
         "top": {
@@ -2063115,16 +2063112,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14690,
-          "sha256": "af7de54f1e09a62bf6628b89e450aca2cf30eca8c293ea5db4f01cdd4b08dd34"
+          "bytes": 14784,
+          "sha256": "c6efeaacd9e00f288533285fbad01038098c1fab5f888c0be66a0d25a5007cc5"
         },
         "side": {
           "file": "ua_t80u_modern_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10364,
-          "sha256": "831253a724bde15bcba89ec65275a07a7dadc0bd12dba9775d8d0c341621e1b3"
+          "bytes": 10486,
+          "sha256": "1d096066da30d07056b27d013a79f28c884dfa47199901a7bd34867ef2b2a7a5"
         },
         "topSilhouette": {
           "file": "ua_t80u_modern_top_silhouette.png",
@@ -2063139,8 +2063136,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4418,
-          "sha256": "af250e6788ecfd29252c99f88a0cdf9618d18739c7cedadbc8aaaae276677af3"
+          "bytes": 4450,
+          "sha256": "1504a791a4a9aec2c28c56b3c87b623696791b404606a2c97b00e0c56926fca9"
         },
         "markings": {
           "file": "ua_t80u_modern_markings.png",
