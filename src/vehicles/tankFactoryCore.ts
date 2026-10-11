@@ -3707,11 +3707,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     throw new Error('Running gear shoe reach drifted between the seat and the shoe build');
   }
   const shoeDetailMode = 'family-integrated';
+  // the geometry-receipt record of this unit (stage 2), completed once its suspension bosses are counted (stage 6)
+  let runningGearReceipt = null as Record<string, unknown> | null;
   const buildRunningGearReceiptStage2 = (): void => {
     if (P.geometryReceipt) {
       const runningGearReceipts = hullG.userData.runningGearReceipts
         || (hullG.userData.runningGearReceipts = []);
-      runningGearReceipts.push({
+      runningGearReceipts.push(runningGearReceipt = {
         wheelZs: [...wheelZs],
         wheelR,
         wheelY,
@@ -4227,6 +4229,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     return { anchor, axle: jointCount++ };
   });
+  // 2026-10-10 (the inherited joint reds, chieftain5 18 vs 24): the receipt counts the bosses this unit draws. A shared
+  // fixed bearing is one physical boss (a28e4d8e6 stopped drawing it twice), recorded apart so the wheel audit still
+  // reconciles two joints per arm.
+  if (runningGearReceipt) {
+    runningGearReceipt.suspensionJointCount = jointCount;
+    runningGearReceipt.suspensionSharedBearings = suspensionEntries.length * 2 - jointCount;
+  }
   const suspensionJointIM = new THREE.InstancedMesh(
     suspensionJointGeo,
     mats.dark || mats.spareTrack || mats.wheelsRecessed,
