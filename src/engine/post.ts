@@ -2879,6 +2879,9 @@ export function createPost(
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
       scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
+    // contact round 5 (2026-10-11): the contact blend sets a track's foot into soft ground — the battle maps' grounded rig;
+    // the Garage's turntable (the legacy rig) is a hard floor a track stands on, never sinks into
+    if (groundModel?.mode !== 'physical') (aerial.uniforms as unknown as VehicleGroundOcclusionUniforms).uVehGroundR6.value.w = 0;
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
