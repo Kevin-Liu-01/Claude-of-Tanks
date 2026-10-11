@@ -161,6 +161,9 @@ const DUST_MS = 1500, DUST_R = 8;
 // Sonnet 19 of 19), and Opus marked one down where it stacked on the hero's own muzzle blast (S37), sat behind the turret
 // once the lens had moved (S13), crowded another tank (S09) or left its column cut by the frame's corner (S05)
 const SHOT_CLEAR_MS = [150, 500], FIREBALL_MS = 500, EDGE = { x: 0.78, y: 0.6 }, EDGE_LOOSE = { x: 0.8, y: 0.75 }, OTHER_DX = 0.12;
+// a large burst's fireball (wave s4): its crown about 6 m up, about 7 m across (its smoke column may leave the frame, as
+// a low lens crops one; the critics marked the fireball cut, not the column)
+const BURST_TOP_M = 6, BURST_HALF_M = 3.5, BURST_FRAME = 0.97;
 const BURST_TYPES = /^(explosion|barrage|tank_kill)$/;
 /** The lens at `t` as a projection to the frame's -1..1 (null behind the lens), or null with no rail there. */
 function lensAt(shots, t) {
@@ -250,9 +253,12 @@ function stageBeats(scene, world) {
       }
       return true;
     };
-    for (const side of [gunSide, -gunSide]) {
-      // a street's facades leave only its own line: nearer the hull's track and further down it, last
-      for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5]]) {
+    // strict, the whole fireball in the frame is preferred: every spot is tried with it first, then without (so no beat
+    // is lost to it: a beat that cannot show its fireball whole keeps the spot it had)
+    for (const whole of strict ? [true, false] : [false]) for (const side of [gunSide, -gunSide]) {
+      // a street's facades leave only its own line: nearer the hull's track and further down it, last; the farthest
+      // spots (28-40 m) last of all, where a nearer fireball would be cut by the frame
+      for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5], [28, 10], [32, 7], [32, 10], [36, 7], [36, 5], [32, 5], [40, 7], [40, 10]]) {
         // screen x grows along `right`: pick the lateral sign that lands on this side of the frame
         const s = Math.sign(nx * right[0] + nz * right[2]) * side;
         const px = pose.x + ux * d + nx * lat * s, pz = pose.z + uz * d + nz * lat * s;
@@ -260,8 +266,16 @@ function stageBeats(scene, world) {
         world.query(px - 3, pz - 3, px + 3, pz + 3, near);
         if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) continue;
         // in the frame with room above for its column, off the hull's box, and not stacked on another tank
-        const q = screen([px, world.heightAt(px, pz) + 2.5, pz]);
+        const gz = world.heightAt(px, pz), q = screen([px, gz + 2.5, pz]);
         if (!q || Math.abs(q.x) > edge.x || q.y < -0.7 || q.y > edge.y || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
+        // and the whole fireball too, first (wave s4, 2026-10-10: both critics marked fireballs cut by the frame's top or
+        // right edge; the centre alone was inside): its crown BURST_TOP_M up and its flanks BURST_HALF_M either side,
+        // across the lens, all inside BURST_FRAME
+        if (whole) {
+          const top = screen([px, gz + BURST_TOP_M, pz]);
+          const flanks = [-1, 1].map((k) => screen([px + right[0] * BURST_HALF_M * k, gz + 3, pz + right[2] * BURST_HALF_M * k]));
+          if (!top || top.y > BURST_FRAME || flanks.some((f) => !f || Math.abs(f.x) > BURST_FRAME)) continue;
+        }
         if (others.some((c) => Math.abs(c.x - q.x) < OTHER_DX)) continue;
         if (!clearAfter(px, pz)) continue;
         return [+px.toFixed(2), +pz.toFixed(2)];
