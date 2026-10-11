@@ -10880,12 +10880,12 @@ ${snowCap ? `
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
-  // Construction-only spans are now sealed into matrices/support/colliders;
-  // runtime destruction closures must not retain the placement graph.
-  wallSpans.clear();
   // the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces (above), before the
   // runtime's broad phases index the records (the loose props meet the banks too)
   pillboxEarthworks();
+  // Construction-only spans are now sealed into matrices/support/colliders;
+  // runtime destruction closures must not retain the placement graph.
+  wallSpans.clear();
   // spatial hash over destructible records for the shell paths (8 m cells)
   // settlement pass 2 (2026-09-12): every placed building's chimney tops, world space (hearth smoke).
   const hearthAnchors = exteriorChimneyTops(buckets).map(([x, y, z]) => [x, y, z] as [number, number, number]);

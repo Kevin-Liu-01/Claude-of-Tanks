@@ -123,8 +123,8 @@ for (const style of STYLES) {
   assert.match(props, /broken: \(rng: \(\) => number\) => \{ DESTRUCTIBLE_TYPES\.bunker\.broken!\(rng\)\.dispose\(\); return buildPillbox\(/,
     'and so does the destroyed state');
   assert.match(props, /SLAB_SHELL_KINDS: ReadonlySet<string> = new Set\(\[[^\]]*'bunker'\]\)/, 'its shells meet its own slabs');
-  assert.match(props, /\/\/ the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces \(above\), before the\n[^\n]*\n\s*pillboxEarthworks\(\);\n\s*\/\/ spatial hash over destructible records/,
-    'the bank\'s collision laid after every placement pass, before the runtime indexes the records');
+  assert.match(props, /\/\/ the fortifications lane: the pillboxes' earthworks, once every pass has placed its pieces \(above\), before the\n[^\n]*\n\s*pillboxEarthworks\(\);\n\s*\/\/ Construction-only spans are now sealed[^\n]*\n[^\n]*\n\s*wallSpans\.clear\(\);/,
+    'the bank\'s collision laid after every placement pass, while the placement graph still stands (wallSpanPlacement slices the runtime from its clear), before the runtime indexes the records');
   assert.ok(props.indexOf('pillboxEarthworks();') < props.indexOf('  const D_CELL = 8;'),
     'outside the runtime the destructible receipts evaluate (destructibleAuthority slices from D_CELL)');
   assert.match(props, /ob\.kind = 'earthwork';/, 'as an earthwork, not the destructible');
