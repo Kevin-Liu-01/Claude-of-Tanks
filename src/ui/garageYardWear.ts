@@ -23,24 +23,29 @@ const CANVAS_H = Math.round((CANVAS_W * APRON_D_M) / APRON_W_M);
 const PX_PER_M = CANVAS_W / APRON_W_M;
 const SLABS_X = 6;
 const SLABS_Z = 5;
+/** The earth and snow floors' fine relief normal repeats every 6.4 m across the apron. */
+const EARTH_NORMAL_TILE_M = 6.4;
 
 export type GarageHardstandStyle =
   | 'slab-field' | 'slab-sand' | 'slab-snow' | 'slab-urban' | 'slab-quay'
-  | 'slab-cinder' | 'earth-wet' | 'slab-rock' | 'earth-dust' | 'slab-soot';
+  | 'slab-cinder' | 'earth-wet' | 'slab-rock' | 'earth-dust' | 'slab-soot'
+  | 'earth-sand' | 'earth-snow' | 'gravel-snow' | 'earth-slag';
 
 /** Each Garage's own working floor. */
 export const GARAGE_HARDSTAND_STYLES: Readonly<Record<GarageVariant['architecture'], GarageHardstandStyle>> =
   Object.freeze({
+    // worn concrete where a city, a quay or a railway would pour it; compacted ground everywhere else (wave 377:
+    // "pale slabs on sand"; the coordinator: earth, gravel, worn concrete, slag, snow)
     field_shed: 'slab-field',
-    shade_depot: 'slab-sand',
-    repair_bunker: 'slab-snow',
+    shade_depot: 'earth-sand',
+    repair_bunker: 'earth-snow',
     brick_arsenal: 'slab-urban',
     naval_drydock: 'slab-quay',
     rail_roundhouse: 'slab-cinder',
     rain_canopy: 'earth-wet',
-    rock_cavern: 'slab-rock',
+    rock_cavern: 'gravel-snow',
     recovery_yard: 'earth-dust',
-    factory_line: 'slab-soot',
+    factory_line: 'earth-slag',
   });
 
 interface StylePalette {
@@ -64,6 +69,10 @@ const PALETTES: Readonly<Record<GarageHardstandStyle, StylePalette>> = Object.fr
   'slab-rock': { kind: 'slab', base: [128, 132, 136], spread: 0.05, speckle: 0.08, seed: 83 },
   'earth-dust': { kind: 'earth', base: [164, 104, 74], spread: 0.07, speckle: 0.12, seed: 97 },
   'slab-soot': { kind: 'slab', base: [106, 102, 98], spread: 0.06, speckle: 0.09, seed: 101 },
+  'earth-sand': { kind: 'earth', base: [184, 160, 120], spread: 0.06, speckle: 0.14, seed: 113 },
+  'earth-snow': { kind: 'earth', base: [208, 214, 220], spread: 0.05, speckle: 0.06, seed: 127 },
+  'gravel-snow': { kind: 'earth', base: [128, 128, 126], spread: 0.07, speckle: 0.2, seed: 131 },
+  'earth-slag': { kind: 'earth', base: [76, 71, 66], spread: 0.07, speckle: 0.18, seed: 139 },
 });
 
 function mulberry(seed: number): () => number {
@@ -412,6 +421,67 @@ function drawHardstand(
       }
       break;
     }
+    case 'earth-sand': {
+      // compacted wadi sand: gravel worked into it, wind ripples, blown drifts banked at the apron's edges
+      for (let i = 0; i < 9000; i++) {
+        const [x, y] = px((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M);
+        g.fillStyle = rng() < 0.55 ? 'rgba(98,86,70,0.45)' : 'rgba(232,214,178,0.4)';
+        g.fillRect(x, y, 1 + rng() * 2.2, 1 + rng() * 2.2);
+      }
+      g.strokeStyle = 'rgba(150,124,86,0.22)';
+      g.lineWidth = 1.4;
+      for (let i = 0; i < 120; i++) {
+        const [x, y] = px((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M);
+        const length = (0.8 + rng() * 2.2) * PX_PER_M;
+        g.beginPath(); g.moveTo(x, y);
+        g.quadraticCurveTo(x + length / 2, y + (rng() - 0.5) * 8, x + length, y + (rng() - 0.5) * 4);
+        g.stroke();
+      }
+      scatter(50, 1.0, 3.2, 'rgba(226,204,160,0.3)', 'rgba(226,204,160,0.1)', [0.25, 0.5]);
+      break;
+    }
+    case 'earth-snow': {
+      // packed snow: grey slush churned along the track lanes, glazed ice where it melted and froze, grit and soot
+      for (let s2 = 6.4; s2 < 19; s2 += 0.07) {
+        for (const side of [-1, 1]) {
+          const lateral = side * gauge / 2;
+          const [x, y] = px(along.x * s2 + across.x * lateral, along.z * s2 + across.z * lateral);
+          g.fillStyle = 'rgba(96,96,92,0.12)';
+          g.beginPath(); g.ellipse(x, y, band * PX_PER_M * 0.7, 0.14 * PX_PER_M, -toward, 0, Math.PI * 2); g.fill();
+        }
+      }
+      scatter(40, 0.5, 1.8, 'rgba(176,196,214,0.35)', 'rgba(176,196,214,0.1)', [0.4, 0.8]);
+      scatter(60, 0.4, 1.4, 'rgba(118,112,104,0.22)', 'rgba(118,112,104,0.06)');
+      for (let i = 0; i < 4000; i++) {
+        const [x, y] = px((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M);
+        g.fillStyle = rng() < 0.6 ? 'rgba(80,78,74,0.25)' : 'rgba(255,255,255,0.4)';
+        g.fillRect(x, y, 1 + rng() * 1.5, 1 + rng() * 1.5);
+      }
+      break;
+    }
+    case 'gravel-snow': {
+      // crushed-rock hardstand with old snow lying in its hollows
+      for (let i = 0; i < 14000; i++) {
+        const [x, y] = px((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M);
+        const v = 60 + Math.floor(rng() * 140);
+        g.fillStyle = `rgba(${v},${v},${v - 4},0.55)`;
+        g.fillRect(x, y, 1 + rng() * 2.6, 1 + rng() * 2.6);
+      }
+      scatter(70, 0.6, 2.6, 'rgba(232,238,244,0.62)', 'rgba(232,238,244,0.18)', [0.35, 0.8]);
+      break;
+    }
+    case 'earth-slag': {
+      // the foundry's slag and cinder yard: crushed slag, rust from scrap, soot, oil and quench water
+      for (let i = 0; i < 14000; i++) {
+        const [x, y] = px((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M);
+        const pick = rng();
+        g.fillStyle = pick < 0.45 ? 'rgba(130,126,120,0.5)' : pick < 0.75 ? 'rgba(24,22,22,0.55)' : 'rgba(132,72,40,0.45)';
+        g.fillRect(x, y, 1 + rng() * 2.6, 1 + rng() * 2.6);
+      }
+      scatter(70, 0.8, 3.0, 'rgba(16,15,15,0.3)', 'rgba(16,15,15,0.09)');
+      scatter(30, 0.3, 1.0, 'rgba(120,64,32,0.3)', 'rgba(120,64,32,0.08)', [0.3, 0.7]);
+      break;
+    }
     case 'slab-field':
     default: {
       // a field motor pool: moss and grass in the joints, mud carried in on the tracks
@@ -447,68 +517,85 @@ export function garageHardstandAlbedo(
   return texture;
 }
 
-const sharedNormals = new Map<'slab' | 'earth', THREE.CanvasTexture>();
+type HardstandNormalKind = 'slab' | 'earth' | 'snow';
+const sharedNormals = new Map<HardstandNormalKind, THREE.CanvasTexture>();
 
 /**
- * The shared hardstand normal for a floor kind (never disposed by a pack): sawn joints and fine aggregate for slabs,
- * clods and rut ridges for earth, from a height field on the same apron layout.
+ * The shared hardstand normal for a floor kind (never disposed by a pack): sawn joints and fine aggregate for slabs on
+ * the apron's own layout, irregular ground relief for earth and a softer field for packed snow. The relief is smooth
+ * noise with no discrete shapes, so its mip chain averages toward flat with distance instead of aliasing.
  */
-export function garageHardstandNormal(kind: 'slab' | 'earth', anisotropy = 4): THREE.CanvasTexture | null {
+export function garageHardstandNormal(kind: HardstandNormalKind, anisotropy = 4): THREE.CanvasTexture | null {
   const cached = sharedNormals.get(kind);
   if (cached) return cached;
   if (typeof document === 'undefined') return null;
+  // Slabs: the joints on the apron's own layout (repeat 1). Earth and snow: a tileable 6.4 m field of irregular relief
+  // repeated across the apron. Wave 393 read round pebble bumps as "a repeating dimpled cratered-foam texture", so the
+  // relief is octaves of value noise only, with no discrete round features, at a low amplitude; packed snow takes just
+  // its two broad octaves.
+  const W = kind === 'slab' ? CANVAS_W : 512;
+  const H = kind === 'slab' ? CANVAS_H : 512;
   const canvas = document.createElement('canvas');
-  canvas.width = CANVAS_W;
-  canvas.height = CANVAS_H;
+  canvas.width = W;
+  canvas.height = H;
   const g = canvas.getContext('2d');
   if (!g) return null;
-  const rng = mulberry(kind === 'slab' ? 404 : 808);
-  const height = new Float32Array(CANVAS_W * CANVAS_H);
-  // fine noise: value noise at two octaves
+  const rng = mulberry(kind === 'slab' ? 404 : kind === 'snow' ? 1212 : 808);
+  const height = new Float32Array(W * H);
+  // value noise on periodic grids (cells divide the canvas exactly, so the tile wraps seamlessly), smoothstepped
   const octave = (cell: number, amplitude: number): void => {
-    const gw = Math.ceil(CANVAS_W / cell) + 1, gh = Math.ceil(CANVAS_H / cell) + 1;
+    const gw = Math.round(W / cell), gh = Math.round(H / cell);
     const grid = new Float32Array(gw * gh);
     for (let i = 0; i < grid.length; i++) grid[i] = rng();
-    for (let y = 0; y < CANVAS_H; y++) {
-      const fy = y / cell, iy = Math.floor(fy), ty = fy - iy;
-      for (let x = 0; x < CANVAS_W; x++) {
-        const fx = x / cell, ix = Math.floor(fx), tx = fx - ix;
-        const a = grid[iy * gw + ix], b = grid[iy * gw + ix + 1], c = grid[(iy + 1) * gw + ix], d = grid[(iy + 1) * gw + ix + 1];
-        height[y * CANVAS_W + x] += amplitude * ((a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty);
+    for (let y = 0; y < H; y++) {
+      const fy = (y / H) * gh, iy = Math.floor(fy), ty0 = fy - iy, ty = ty0 * ty0 * (3 - 2 * ty0);
+      for (let x = 0; x < W; x++) {
+        const fx = (x / W) * gw, ix = Math.floor(fx), tx0 = fx - ix, tx = tx0 * tx0 * (3 - 2 * tx0);
+        const at = (cx: number, cy: number): number => grid[((cy + gh) % gh) * gw + ((cx + gw) % gw)];
+        const a = at(ix, iy), b = at(ix + 1, iy), c = at(ix, iy + 1), d = at(ix + 1, iy + 1);
+        height[y * W + x] += amplitude * ((a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty);
       }
     }
   };
-  octave(kind === 'slab' ? 3 : 4, kind === 'slab' ? 0.5 : 0.9);
-  octave(kind === 'slab' ? 9 : 14, kind === 'slab' ? 0.6 : 1.6);
   if (kind === 'slab') {
-    const slabW = CANVAS_W / SLABS_X, slabH = CANVAS_H / SLABS_Z;
+    octave(Math.round(W / 341), 0.5);
+    octave(Math.round(W / 114), 0.6);
+    const slabW = W / SLABS_X, slabH = H / SLABS_Z;
     for (let i = 0; i <= SLABS_X; i++) {
       const x0 = Math.round(i * slabW);
       for (let x = x0 - 2; x <= x0 + 2; x++) {
-        const xx = (x + CANVAS_W) % CANVAS_W;
+        const xx = (x + W) % W;
         const depth = 2.4 * (1 - Math.abs(x - x0) / 3);
-        for (let y = 0; y < CANVAS_H; y++) height[y * CANVAS_W + xx] -= depth;
+        for (let y = 0; y < H; y++) height[y * W + xx] -= depth;
       }
     }
     for (let j = 0; j <= SLABS_Z; j++) {
       const y0 = Math.round(j * slabH);
       for (let y = y0 - 2; y <= y0 + 2; y++) {
-        const yy = (y + CANVAS_H) % CANVAS_H;
+        const yy = (y + H) % H;
         const depth = 2.4 * (1 - Math.abs(y - y0) / 3);
-        for (let x = 0; x < CANVAS_W; x++) height[yy * CANVAS_W + x] -= depth;
+        for (let x = 0; x < W; x++) height[yy * W + x] -= depth;
       }
     }
+  } else if (kind === 'snow') {
+    octave(64, 1.2);
+    octave(16, 0.35);
+  } else {
+    // ground relief from broad swells down to grit, each octave a different size, none a repeating round shape
+    octave(128, 1.6);
+    octave(32, 0.8);
+    octave(8, 0.4);
+    octave(2, 0.2);
   }
-  const image = g.createImageData(CANVAS_W, CANVAS_H);
-  const strength = kind === 'slab' ? 1.6 : 2.2;
-  for (let y = 0; y < CANVAS_H; y++) {
-    for (let x = 0; x < CANVAS_W; x++) {
-      const h = (xx: number, yy: number): number =>
-        height[((yy + CANVAS_H) % CANVAS_H) * CANVAS_W + ((xx + CANVAS_W) % CANVAS_W)];
+  const image = g.createImageData(W, H);
+  const strength = kind === 'slab' ? 1.6 : kind === 'snow' ? 0.5 : 0.75;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const h = (xx: number, yy: number): number => height[((yy + H) % H) * W + ((xx + W) % W)];
       const dx = (h(x + 1, y) - h(x - 1, y)) * strength;
       const dy = (h(x, y + 1) - h(x, y - 1)) * strength;
       const inv = 1 / Math.hypot(dx, dy, 1);
-      const at = (y * CANVAS_W + x) * 4;
+      const at = (y * W + x) * 4;
       // canvas rows run down while the texture's v runs up (flipY), so the green channel takes +dy
       image.data[at] = Math.round((-dx * inv * 0.5 + 0.5) * 255);
       image.data[at + 1] = Math.round((dy * inv * 0.5 + 0.5) * 255);
@@ -520,6 +607,7 @@ export function garageHardstandNormal(kind: 'slab' | 'earth', anisotropy = 4): T
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
+  if (kind !== 'slab') texture.repeat.set(APRON_W_M / EARTH_NORMAL_TILE_M, APRON_D_M / EARTH_NORMAL_TILE_M);
   texture.anisotropy = anisotropy;
   texture.userData.sharedGarageHardstandNormal = kind;
   sharedNormals.set(kind, texture);
@@ -535,6 +623,12 @@ export const GARAGE_HARDSTAND = Object.freeze({
 /** Which floor kind a style draws (slab joints or earth). */
 export function garageHardstandKind(style: GarageHardstandStyle): 'slab' | 'earth' {
   return PALETTES[style].kind;
+}
+
+/** Which shared relief normal a style takes: slab joints, earth relief, or soft packed snow. */
+export function garageHardstandNormalKind(style: GarageHardstandStyle): HardstandNormalKind {
+  if (PALETTES[style].kind === 'slab') return 'slab';
+  return style === 'earth-snow' ? 'snow' : 'earth';
 }
 
 const sharedFacilityAlbedos = new Map<'steel' | 'panel' | 'concrete', THREE.CanvasTexture>();

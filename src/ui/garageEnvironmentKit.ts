@@ -39,8 +39,8 @@ import {
   GARAGE_HARDSTAND_STYLES,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
-  garageHardstandKind,
   garageHardstandNormal,
+  garageHardstandNormalKind,
 } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
@@ -624,9 +624,10 @@ function createBackdropGeometry(
       vertex += 2;
     }
   });
-  if (recipe.horizonStyle === 'dune' || recipe.horizonStyle === 'mesa') {
-    // Desert bands lit like landforms (2026-10-10, wave 338: "smooth cardboard ridges", "a steep faceted dune
-    // wall"). The bands stay one unlit vertex-colour program; each crest takes a Lambert term from a pseudo-normal
+  {
+    // Bands lit like landforms (2026-10-10, wave 338: "smooth cardboard ridges", "a steep faceted dune wall"; wave
+    // 377: "flat untextured hills", "untextured polygon mountains"). The bands stay one unlit vertex-colour program; each
+    // crest takes a Lambert term from a pseudo-normal
     // (inward, up, and tilted against the crest's slope along the ring) under one fixed low sun, so a flank
     // that climbs toward the sun is lit, its slip face falls into shade, and a mesa riser darkens under its shelf.
     const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
@@ -646,7 +647,10 @@ function createBackdropGeometry(
           0.9,
           -Math.sin(angle) - Math.cos(angle) * slope * 2.2,
         ).normalize();
-        const lit = 0.74 + 0.5 * Math.max(0, normal.dot(sun));
+        // a little per-segment variation (woods, scree, roofs) so no band reads as one flat cut-out
+        const jitterSeed = Math.sin((segment + 1) * 12.9898 + layerIndex * 78.233) * 43758.5453;
+        const jitter = 1 + ((jitterSeed - Math.floor(jitterSeed)) - 0.5) * 0.12;
+        const lit = (0.74 + 0.5 * Math.max(0, normal.dot(sun))) * jitter;
         const crestAt = (first + segment * 2 + 1) * 3;
         const baseAt = crestAt - 3;
         for (let channel = 0; channel < 3; channel += 1) {
@@ -1120,7 +1124,7 @@ export function buildGarageEnvironment(
     }
     let maxGroundContactErrorM = 0;
     for (const terrace of terraceRecords) {
-      // the crews' small floors are audited at every foot instead (garageCrewFloor.selftest.mjs)
+      // the small yard floors are audited at every kit foot instead (garageBayFloor.selftest.mjs)
       if (terrace.label.startsWith('crew-floor-')) continue;
       for (const [sideOffset, depthOffset] of [[0, 0], [-0.55, -0.55], [0.55, -0.55],
         [-0.55, 0.55], [0.55, 0.55]] as const) {
@@ -1165,7 +1169,17 @@ export function buildGarageEnvironment(
     // the pad's flat full-strength core is 1.2 radii; the slab covers 1.12, on the pad's datum
     const slab = new THREE.CircleGeometry(1, 40);
     slab.rotateX(-Math.PI / 2);
-    slab.scale(terrace.radiusSide * 1.12, 1, terrace.radiusDepth * 1.12);
+    {
+      // a worn, irregular slab edge rather than a cut disc (wave 377: "a hard-edged disc of dirt cut into a lawn")
+      const ring = slab.getAttribute('position');
+      for (let index = 1; index < ring.count; index += 1) {
+        const angle = Math.atan2(ring.getZ(index), ring.getX(index));
+        const wobble = 1 + 0.07 * Math.sin(angle * 3 + terrace.side) + 0.05 * Math.sin(angle * 7 + terrace.depth)
+          + 0.03 * Math.sin(angle * 13);
+        ring.setXYZ(index, ring.getX(index) * wobble, 0, ring.getZ(index) * wobble);
+      }
+    }
+    slab.scale(terrace.radiusSide * 1.08, 1, terrace.radiusDepth * 1.08);
     slab.rotateY(GARAGE_CAMERA_AZIMUTH_RAD);
     slab.translate(terrace.x, terrace.y + 0.02, terrace.z);
     const uv = slab.getAttribute('uv');
@@ -1176,7 +1190,31 @@ export function buildGarageEnvironment(
     slabGeometries.push(slab.toNonIndexed());
     slab.dispose();
   }
-  const apronNonIndexed = apronGeometry.toNonIndexed();
+  // The pavement stops at the foot of a rise (2026-10-10, wave 357: Saltmere's draped apron climbed a hill behind the
+  // hero as "a shapeless grey tarp heap"): an apron cell whose ground stands more than 0.45 m above the datum is
+  // left to the terrain.
+  const apronNonIndexed = (() => {
+    const flat = apronGeometry.toNonIndexed();
+    const positions = flat.getAttribute('position');
+    const uvs = flat.getAttribute('uv');
+    const keptPositions: number[] = [];
+    const keptUvs: number[] = [];
+    for (let triangle = 0; triangle < positions.count; triangle += 3) {
+      let highest = -Infinity;
+      for (let corner = 0; corner < 3; corner += 1) highest = Math.max(highest, positions.getY(triangle + corner));
+      if (highest > 0.45 + 0.02) continue;
+      for (let corner = 0; corner < 3; corner += 1) {
+        keptPositions.push(positions.getX(triangle + corner), positions.getY(triangle + corner), positions.getZ(triangle + corner));
+        keptUvs.push(uvs.getX(triangle + corner), uvs.getY(triangle + corner));
+      }
+    }
+    flat.dispose();
+    const trimmed = new THREE.BufferGeometry();
+    trimmed.setAttribute('position', new THREE.Float32BufferAttribute(keptPositions, 3));
+    trimmed.setAttribute('uv', new THREE.Float32BufferAttribute(keptUvs, 2));
+    trimmed.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(keptPositions.length), 3));
+    return trimmed;
+  })();
   apronGeometry.dispose();
   const hardstandGeometry = mergeGeometries([apronNonIndexed, ...slabGeometries], false) ?? apronNonIndexed;
   if (hardstandGeometry !== apronNonIndexed) apronNonIndexed.dispose();
@@ -1190,10 +1228,13 @@ export function buildGarageEnvironment(
   const [approachSide, approachDepth] = recipe.approach.waypoints[0];
   const hardstandAlbedo = garageHardstandAlbedo(hardstandStyle, garageViewPoint(approachSide, approachDepth),
     engineCtx.anisotropy ?? 4);
-  const hardstandNormal = garageHardstandNormal(garageHardstandKind(hardstandStyle), engineCtx.anisotropy ?? 4);
+  const hardstandNormalKind = garageHardstandNormalKind(hardstandStyle);
+  const hardstandNormal = garageHardstandNormal(hardstandNormalKind, engineCtx.anisotropy ?? 4);
   const hardstandMaterial = hardstandAlbedo && hardstandNormal
     ? plainMaterial({
-      map: track(hardstandAlbedo), normalMap: hardstandNormal, normalScale: new THREE.Vector2(0.6, 0.6),
+      map: track(hardstandAlbedo), normalMap: hardstandNormal,
+      normalScale: hardstandNormalKind === 'slab' ? new THREE.Vector2(0.6, 0.6)
+        : hardstandNormalKind === 'snow' ? new THREE.Vector2(0.3, 0.3) : new THREE.Vector2(0.45, 0.45),
       roughness: 0.94, metalness: 0.02,
     })
     : texturedMaterial('plaster', { color: recipe.hardstandTint, roughness: 0.94, metalness: 0.02 });
@@ -1233,7 +1274,7 @@ export function buildGarageEnvironment(
       groundCoverCount,
     );
     groundCover.name = 'static_battlefield_ground_cover';
-    const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.02, 0.08, -0.22)
+    const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.03, 0.05, -0.08)
       : recipe.terrainSurface === 'snow' ? new THREE.Color(0x716d58)
         : recipe.terrainSurface === 'sand' ? new THREE.Color(0x8d744d)
           : recipe.terrainSurface === 'rock' ? new THREE.Color(0x705d49)
@@ -1303,9 +1344,10 @@ export function buildGarageEnvironment(
       // cap read as "a red-capped lighthouse standing among the dunes"): on sand packs its dome and lantern take the
       // shaft's adobe, one shade deeper than the courts' lime wash.
       if (placement.catalogId === 'minaret' && recipe.terrainSurface === 'sand') {
-        local.plaster2 = [...(local.plaster2 || []), ...(local.roof || []), ...(local.plaster || [])];
+        local.plaster2 = [...(local.plaster2 || []), ...(local.roof || []), ...(local.plaster || []), ...(local.stone || [])];
         local.roof = [];
         local.plaster = [];
+        local.stone = [];
       }
       const uniformScale = placement.scale;
       const transform = new THREE.Matrix4().compose(
@@ -1407,7 +1449,11 @@ export function buildGarageEnvironment(
       case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
       case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 1 });
       case 'stone': return texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
-      case 'roof': return texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
+      // dry-country roofs are flat earth-plastered decks, not European red tiles (wave 377: "a European red-tile house in
+      // the badlands")
+      case 'roof': return variant.architecture === 'shade_depot' || variant.architecture === 'recovery_yard'
+        ? texturedMaterial('plaster', { color: new THREE.Color(recipe.buildingTint).multiplyScalar(0.78), roughness: 1 })
+        : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
       case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });

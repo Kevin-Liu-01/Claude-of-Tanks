@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
-import { crewPointInScene, GARAGE_CREW_SCENES } from './garageCrewFigures.ts';
 import {
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
-  getAbramsWeldingBayPlacement,
   getGarageWorkshopLayoutPose,
   leopardBayPointToWorkshop,
 } from './garageWorkshopLayout.ts';
@@ -12,26 +12,31 @@ import { createGarageArchitectureController } from '../ui/garageArchitecture.ts'
 import { getGarageFacilityTerraces } from '../ui/garageFacilityDetails.ts';
 import { garageViewPoint } from './garagePresentationPose.ts';
 
-// 2026-10-10, the ground audit of the ten Garages: the shared four-bay exhibit moves by up to 0.7 m between Garages
-// over uneven floors, and the crews off the service pads floated up to 1.44 m (Saltmere's Leopard bay) or stood buried
-// to 0.79 m (Steinburg's). Every foot of every crew, every floor-standing kit and every service pad's level core must
-// meet the built floor within 3 cm in every Garage.
-const TOLERANCE_M = 0.03;
+// 2026-10-11, the owner: "for the garage redesign, remove the people, just make the garages (all of them) redesigned
+// to look a ton better". No Garage builds a figure: the crew module, its scenes and its paint are gone, and the bays
+// keep only the work in progress that reads on its own.
+const dressing = await readFile(new URL('./garageDressing.ts', import.meta.url), 'utf8');
+assert.ok(!existsSync(new URL('./garageCrewFigures.ts', import.meta.url)), 'no crew figure module');
+assert.doesNotMatch(dressing, /garageCrewFigures|addCrewScene|buildCrewSceneGeometry|paintCrew|garage_crew_/,
+  'the dressing builds no people and names nothing after them');
+assert.doesNotMatch(dressing, /weld_glow|weld_arc_pool|AdditiveBlending[\s\S]{0,200}weldTip/,
+  'no weld arc burns without a welder');
+for (const kit of ['burlak', 'k2', 'yard']) {
+  assert.match(dressing, new RegExp(`bayKitRoot\\('${kit}'`), `the ${kit} bay keeps its work-in-progress kit`);
+}
 
+// The bays' floor-standing kit meets the built floor within 3 cm in every outdoor Garage (2026-10-10, the ground
+// audit: the shared four-bay exhibit moves by up to 0.7 m between Garages over uneven floors), and every service pad
+// is level over its inner 0.6 radii, where the exhibits' supports stand.
+const TOLERANCE_M = 0.03;
 const rotate = (x, z, yaw) => ({ x: x * Math.cos(yaw) + z * Math.sin(yaw), z: -x * Math.sin(yaw) + z * Math.cos(yaw) });
-/** A scene-frame point in one Garage's workshop frame: the bay owner as garageDressing.ts applies it, then the layout. */
-function sceneToWorkshop(scene, point, variant) {
-  let p = rotate(point.x, point.z, scene.frame.yaw);
-  p = { x: p.x + scene.frame.x, z: p.z + scene.frame.z };
-  if (scene.frame.parent === 'verdant-interior') return null;
-  if (scene.frame.parent === 'leopard-bay') return leopardBayPointToWorkshop(variant, p.x, p.z);
-  if (scene.id === 'burlak') {
+/** A kit-frame point in one Garage's workshop frame: the bay owner as garageDressing.ts applies it, then the layout. */
+function kitToWorkshop(kit, point, variant) {
+  let p = rotate(point.x, point.z, kit.frame.yaw);
+  p = { x: p.x + kit.frame.x, z: p.z + kit.frame.z };
+  if (kit.bay === 'burlak') {
     p = { x: p.x + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.x, z: p.z + BURLAK_SCAFFOLD_CLEARANCE_OFFSET.z };
-  } else if (scene.id === 'abrams') {
-    const placement = getAbramsWeldingBayPlacement(variant);
-    p = rotate(p.x, p.z, placement.rotationRad);
-    p = { x: p.x + placement.x, z: p.z + placement.z };
-  } else if (scene.id === 'k2') {
+  } else if (kit.bay === 'k2') {
     p = rotate(p.x, p.z, Math.PI);
     p = { x: p.x - 0.35, z: p.z - 0.35 };
   }
@@ -39,7 +44,20 @@ function sceneToWorkshop(scene, point, variant) {
   p = rotate(p.x, p.z, lyaw);
   return { x: p.x + lx, z: p.z + lz };
 }
-
+const standFeet = (x, z) => [[-0.45, -0.6], [0.45, -0.6], [-0.45, 0.6], [0.45, 0.6]].map(([dx, dz]) => [x + dx, z + dz]);
+const KITS = [
+  // the rolling stand at the Burlak's turret ring
+  { label: 'Burlak work stand', bay: 'burlak', frame: { x: 17.8, z: -15.5, yaw: -0.55 }, feet: standFeet(2.85, -0.45) },
+  // the rolled K2's parked hot-work corner: the stand, the screen's feet and the welding set
+  { label: 'K2 hot-work kit', bay: 'k2', frame: { x: -16.25, z: -16.85, yaw: 0.35 },
+    feet: [...standFeet(0.62, 0.25), [-0.05, -1.2], [1.95, -1.2], [2.35, 0.95]] },
+  // the pulled power pack's four legs
+  { label: 'power pack stand', bay: 'yard', frame: { x: 0, z: 0, yaw: 0 },
+    feet: [[-1.05, -0.5], [1.05, -0.5], [-1.05, 0.5], [1.05, 0.5]].map(([dx, dz]) => {
+      const r = rotate(dx, dz, 0.55);
+      return [3.4 + r.x, -11.4 + r.z];
+    }) },
+];
 // The Leopard bay's floor-standing kit in its own frame (garageDressing.ts): the lift's four feet, the wheel rack's base
 // ends and the impact-wrench kit.
 const LEOPARD_BAY_KIT = [
@@ -58,16 +76,8 @@ for (const variant of GARAGE_VARIANTS) {
   controller.setVariant(variant);
   const stats = await controller.whenReady();
   if (variant.id === 'verdant_motor_pool') {
-    // Verdant's crews stand on its level workshop floor (the dressing's datum) or on an authored stand deck
+    // Verdant's kit stands on its level workshop floor
     assert.equal(stats.terrainVertices, 0);
-    for (const crew of Object.values(GARAGE_CREW_SCENES)) {
-      for (const member of crew.members) {
-        const deck = (crew.props ?? []).find((prop) => prop.kind === 'work-stand'
-          && Math.abs(prop.deckY - member.at[1]) < 1e-6);
-        assert.ok(member.at[1] === 0 || deck || member.at[1] < 0.2 || crew.frame.parent === 'verdant-interior',
-          `${crew.id}/${member.role}: stands on the floor or on its stand's deck`);
-      }
-    }
     continue;
   }
   let environment = null;
@@ -89,31 +99,18 @@ for (const variant of GARAGE_VARIANTS) {
     assert.ok(hit, `${variant.id}: a floor under (${x.toFixed(2)}, ${z.toFixed(2)})`);
     return environment.worldToLocal(hit.point.clone()).y;
   };
-  const expectLevel = (label, x, z, surfaceY = 0) => {
-    const error = Math.abs(floorAt(x, z) - surfaceY);
+  const expectLevel = (label, x, z) => {
+    const error = Math.abs(floorAt(x, z));
     worst = Math.max(worst, error);
     checked += 1;
     if (error > TOLERANCE_M) {
       failures.push(`${variant.id}: ${label} is ${error.toFixed(3)} m off the floor at (${x.toFixed(2)}, ${z.toFixed(2)})`);
     }
   };
-  for (const crew of Object.values(GARAGE_CREW_SCENES)) {
-    for (const member of crew.members) {
-      if (member.at[1] > 0.05) continue; // on a stand's deck or a step, seated with the kit below
-      for (const [side, foot] of [['left', member.pose.leftFoot], ['right', member.pose.rightFoot]]) {
-        const ankle = crewPointInScene(member, foot);
-        const p = sceneToWorkshop(crew, { x: ankle.x, z: ankle.z }, variant);
-        if (!p) continue;
-        expectLevel(`${crew.id}/${member.role} ${side} foot`, p.x, p.z);
-      }
-    }
-    for (const prop of crew.props ?? []) {
-      // a stand's four casters, a screen's or a stand's feet
-      for (const [dx, dz] of [[-0.45, -0.6], [0.45, -0.6], [-0.45, 0.6], [0.45, 0.6]]) {
-        const local = rotate(dx, dz, prop.yaw);
-        const p = sceneToWorkshop(crew, { x: prop.at[0] + local.x, z: prop.at[2] + local.z }, variant);
-        if (p) expectLevel(`${crew.id}/${prop.kind}`, p.x, p.z);
-      }
+  for (const kit of KITS) {
+    for (const [x, z] of kit.feet) {
+      const p = kitToWorkshop(kit, { x, z }, variant);
+      expectLevel(kit.label, p.x, p.z);
     }
   }
   for (const [x, z] of LEOPARD_BAY_KIT) {
@@ -137,4 +134,4 @@ for (const variant of GARAGE_VARIANTS) {
   }
 }
 assert.deepEqual(failures, [], `${failures.length} floor contacts more than ${TOLERANCE_M * 100} cm off:\n${failures.join('\n')}`);
-console.log(`garageCrewFloor.selftest: ${checked} feet, kit contacts and pad points within ${TOLERANCE_M * 100} cm of the floor in the nine outdoor Garages (worst ${(worst * 100).toFixed(1)} cm); Verdant's crews on its floor or decks`);
+console.log(`garageBayFloor.selftest: no figures in any Garage; ${checked} kit contacts and pad points within ${TOLERANCE_M * 100} cm of the floor in the nine outdoor Garages (worst ${(worst * 100).toFixed(1)} cm)`);
