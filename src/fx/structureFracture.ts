@@ -25,7 +25,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitCollapseImpact } from './collapseImpacts.ts';
 import {
-  CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, cellRect, createWallFracture, createWallStrikeOutcome, strikeWall,
+  CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, cellRect, createWallFracture, createWallStrikeOutcome, strikeWall,
   type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
@@ -423,6 +423,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
   }
   const _spans: number[] = [];
+  /** How far a cracked cell stands out of its face (m: mostly out, a few pushed back), from the cell's own hash. */
+  function looseOf(g: FaceGrid, cell: number): number {
+    const h = (Math.imul(cell + 1, 0x9e3779b1) ^ Math.imul(Math.round(g.origin[0] * 100) + g.storey * 131, 0x85ebca6b)) >>> 0;
+    return ((h % 1000) / 1000) * 0.045 - 0.012;
+  }
   /** Rebuild a face's standing meshes from its cells. */
   function redraw(live: Live, draw: FaceDraw): void {
     for (const mesh of draw.meshes) { o.group.remove(mesh); mesh.geometry.dispose(); }
@@ -452,6 +457,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           }
           for (let k = 0; k < stride * 3; k++) out.push(list[i + k]);
           if (sag > 0) for (let k = 0; k < 3; k++) out[out.length - stride * 3 + k * stride + 1] -= sag;
+          // a cracked cell is loose in its course: shoved out of the face plane a few centimetres (or back), the joints
+          // round it opened (the cracks run course to course round the break)
+          if (st === CELL_CRACKED) {
+            const loose = looseOf(g, cell);
+            for (let k = 0; k < 3; k++) {
+              const at = out.length - stride * 3 + k * stride;
+              out[at] += g.out[0] * loose; out[at + 2] += g.out[2] * loose;
+            }
+          }
         }
       }
       lists.set(fg.material, out);
