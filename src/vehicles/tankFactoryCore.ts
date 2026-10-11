@@ -1651,6 +1651,8 @@ function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly Copl
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
+/** The painted far fill's shade (sealed lane, wave 371b): a recess behind a louvre at about two fifths of its plate. */
+const FAR_FILL_CAVITY = 0.42;
 function lodWrap(
   parent: THREE.Object3D,
   obj: THREE.Object3D,
@@ -9978,6 +9980,13 @@ function* createTankOwnedSteps(
         paint: (geometry, component) => {
           boxUV(geometry, CAMO_UV_REPEATS_PER_M);
           bakeDirt(geometry, fillDirtY[component], component === 'hull' ? 1 : 0.5, !!spec.visual.bakeDirtDeckEq);
+          // Wave 371b (both critics: the M1A2 TUSK's rear grille "reads flatter" than the before's dark slats): the fill
+          // stands BEHIND the openings it closes, a recess in its own shade, so its camo is baked to FAR_FILL_CAVITY of
+          // the plate's: a louvre or a grille keeps its depth and never reads as a hole to the world, as the bare dark
+          // backstop did where a culled closure left a whole panel open
+          const color = geometry.getAttribute('color') as THREE.BufferAttribute;
+          for (let i = 0; i < color.array.length; i++) color.array[i] *= FAR_FILL_CAVITY;
+          color.needsUpdate = true;
         },
       } : null,
     });
