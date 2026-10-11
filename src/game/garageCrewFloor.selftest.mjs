@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
-import { crewPointInScene, GARAGE_CREW_SCENES, GARAGE_REGIONAL_YARD_SCENES } from './garageCrewFigures.ts';
+import {
+  crewPointInScene, GARAGE_BAY_ALTERNATE_SCENES, GARAGE_CREW_SCENES, GARAGE_REGIONAL_YARD_SCENES,
+} from './garageCrewFigures.ts';
 import {
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
+  GARAGE_BAY_ALTERNATES,
   getAbramsWeldingBayPlacement,
   getGarageWorkshopLayoutPose,
   leopardBayPointToWorkshop,
@@ -31,7 +34,7 @@ function sceneToWorkshop(scene, point, variant) {
     const placement = getAbramsWeldingBayPlacement(variant);
     p = rotate(p.x, p.z, placement.rotationRad);
     p = { x: p.x + placement.x, z: p.z + placement.z };
-  } else if (scene.id === 'k2') {
+  } else if (scene.id === 'k2' || scene.id === 'k2-alt') {
     p = rotate(p.x, p.z, Math.PI);
     p = { x: p.x - 0.35, z: p.z - 0.35 };
   }
@@ -98,8 +101,11 @@ for (const variant of GARAGE_VARIANTS) {
     }
   };
   const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
-  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((crew) => !(regional && crew.id === 'carry')),
-    ...(regional ? [regional] : [])];
+  const alternates = GARAGE_BAY_ALTERNATES[variant.architecture];
+  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((crew) => !(regional && crew.id === 'carry')
+    && !alternates[crew.id]),
+    ...(regional ? [regional] : []),
+    ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
   for (const crew of shown) {
     for (const member of crew.members) {
       if (member.at[1] > 0.05) continue; // on a stand's deck or a step, seated with the kit below

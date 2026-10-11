@@ -7,11 +7,13 @@ import {
   CREW_STANDING_HIP_M,
   crewDress,
   crewPointInScene,
+  GARAGE_BAY_ALTERNATE_SCENES,
   GARAGE_CREW_SCENES,
   GARAGE_REGIONAL_YARD_SCENES,
 } from './garageCrewFigures.ts';
 import { GARAGE_VARIANTS } from './garageVariants.ts';
 import {
+  GARAGE_BAY_ALTERNATES,
   VERDANT_WELD_LIGHT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
@@ -58,8 +60,9 @@ for (const [, scene] of regionalScenes) {
 }
 const regionalTriangles = new Map();
 let members = 0, essentialMembers = 0, triangles = 0;
-for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional)]) {
-  const regional = scene.id.startsWith('yard-');
+const alternateScenes = Object.values(GARAGE_BAY_ALTERNATE_SCENES);
+for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional), ...alternateScenes]) {
+  const regional = scene.id.startsWith('yard-') || scene.id.endsWith('-alt');
   assert.ok(scene.members.length >= 2, `${scene.id}: a crew works in a pair or a group`);
   const build = buildCrewSceneGeometry(scene);
   if (regional) {
@@ -110,9 +113,20 @@ assert.ok(triangles <= 46000, `the crews stay inside 46k triangles (${triangles}
 {
   // a Garage shows the shared crews with its own left-band task in place of the track carry
   const carry = buildCrewSceneGeometry(GARAGE_CREW_SCENES.carry).triangles;
-  for (const [id, regional] of regionalTriangles) {
-    assert.ok(triangles - carry + regional <= 46000, `${id}: the Garage's crews stay inside 46k triangles`);
+  const bayTriangles = (id) => buildCrewSceneGeometry(GARAGE_CREW_SCENES[id]).triangles;
+  for (const variant of GARAGE_VARIANTS) {
+    const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
+    const alternates = GARAGE_BAY_ALTERNATES[variant.architecture];
+    let shown = triangles;
+    if (regional) shown += regionalTriangles.get(regional.id) - carry;
+    for (const bay of ['leopard', 'k2']) {
+      if (alternates[bay]) shown += regionalTriangles.get(`${bay}-alt`) - bayTriangles(bay);
+    }
+    assert.ok(shown <= 46000, `${variant.id}: the Garage's crews stay inside 46k triangles (${shown})`);
   }
+  assert.ok(Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.leopard) && Object.values(GARAGE_BAY_ALTERNATES).some((a) => a.k2),
+    'some Garages work the Leopard and K2 bays their own way');
+  assert.deepEqual(GARAGE_BAY_ALTERNATES.field_shed, { leopard: false, k2: false }, 'Verdant keeps its ruled bay stories');
 }
 assert.ok(essentialMembers >= 6 && essentialMembers * 2 <= members + 1,
   `the mobile tier keeps at most about half the crew (${essentialMembers} of ${members})`);
@@ -136,7 +150,7 @@ function sceneToWorkshop(scene, point, variant) {
   } else if (scene.id === 'abrams') {
     const placement = getAbramsWeldingBayPlacement(variant);
     p = rotate(p.x, p.z, placement.rotationRad); p = { x: p.x + placement.x, z: p.z + placement.z };
-  } else if (scene.id === 'k2') {
+  } else if (scene.id === 'k2' || scene.id === 'k2-alt') {
     p = rotate(p.x, p.z, Math.PI); p = { x: p.x - 0.35, z: p.z - 0.35 };
   }
   const [lx, lz, lyaw] = getGarageWorkshopLayoutPose(variant);
@@ -147,8 +161,11 @@ const [camX, camY, camZ] = GARAGE_PRESENTATION_POSE.cameraOffsetM;
 const keepClear = GARAGE_PLATFORM_GEOMETRY.baseRadiusM + 2.5;
 for (const variant of GARAGE_VARIANTS) {
   const regional = GARAGE_REGIONAL_YARD_SCENES[variant.architecture];
-  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')),
-    ...(variant.id !== 'verdant_motor_pool' && regional ? [regional] : [])];
+  const alternates = GARAGE_BAY_ALTERNATES[variant.architecture];
+  const shown = [...Object.values(GARAGE_CREW_SCENES).filter((scene) => !(regional && scene.id === 'carry')
+    && !(alternates[scene.id])),
+    ...(variant.id !== 'verdant_motor_pool' && regional ? [regional] : []),
+    ...['leopard', 'k2'].filter((bay) => alternates[bay]).map((bay) => GARAGE_BAY_ALTERNATE_SCENES[bay])];
   for (const scene of shown) {
     for (const member of scene.members) {
       const local = crewPointInScene(member, [0, 0, 0]);
@@ -178,7 +195,9 @@ assert.ok(k2.props?.some((prop) => prop.kind === 'weld-curtain'), 'a welding cur
 assert.ok(k2.members.some((member) => member.role === 'fire-watch')
   && k2.tools.some((tool) => tool.kind === 'extinguisher'), 'a fire watch with an extinguisher stands by the weld');
 assert.ok(!k2.tools.some((tool) => tool.kind === 'sledgehammer'), 'nobody swings a sledge at the rolled hull');
-for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional)]) {
+assert.ok(!GARAGE_BAY_ALTERNATE_SCENES.k2.tools.some((tool) => tool.kind === 'torch')
+  && !GARAGE_BAY_ALTERNATE_SCENES.k2.weldTip, 'the K2 alternate is cold work (its Garages light no weld)');
+for (const scene of [...Object.values(GARAGE_CREW_SCENES), ...regionalScenes.map(([, regional]) => regional), ...alternateScenes]) {
   if (!scene.tools.some((tool) => tool.kind === 'torch')) continue;
   assert.ok(scene.members.some((member) => member.role === 'fire-watch')
     && scene.tools.some((tool) => tool.kind === 'extinguisher'), `${scene.id}: hot work has a fire watch with an extinguisher`);
@@ -212,22 +231,24 @@ assert.match(dressing, /if \(!scene\.essential && getDeviceTier\(\) === 'mobile'
 for (const [scene, owner] of [
   ['burlak', /addCrewScene\(GARAGE_CREW_SCENES\.burlak, legacyVerdantRoot\)[\s\S]*const burlakBayChildren = legacyVerdantRoot\.children\.slice\(firstBayChildIndex\)/],
   ['abrams', /addCrewScene\(abramsCrew, legacyVerdantRoot\)[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/],
-  ['leopard', /addCrewScene\(GARAGE_CREW_SCENES\.leopard, mobilityBay\)/],
-  ['k2', /addCrewScene\(GARAGE_CREW_SCENES\.k2, legacyVerdantRoot\)[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/],
+  ['leopard', /addCrewScene\(GARAGE_CREW_SCENES\.leopard, bayTaskOwner\('leopard', 'a', mobilityBay\)\)[\s\S]*addCrewScene\(GARAGE_BAY_ALTERNATE_SCENES\.leopard, bayTaskOwner\('leopard', 'b', mobilityBay\)\)/],
+  ['k2', /const k2TaskA = bayTaskOwner\('k2', 'a', legacyVerdantRoot\);[\s\S]*addCrewScene\(GARAGE_CREW_SCENES\.k2, k2TaskA\);\s*addCrewScene\(GARAGE_BAY_ALTERNATE_SCENES\.k2, k2TaskB\);[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/],
 ]) {
   assert.match(dressing, owner, `the ${scene} crew joins its bay before the bay owner captures it`);
 }
 assert.match(dressing, /addCrewScene\(GARAGE_CREW_SCENES\.t90m, legacyVerdantRoot/, 'the T-90M crew joins its components');
 assert.match(dressing, /const weldTip = put\([\s\S]{0,160}torchTip\.x, torchTip\.y, torchTip\.z/, 'the weld glow sits at the welder\'s torch tip');
 assert.match(dressing, /torchGrip,\s*\]\);/, 'the welding cable ends in the welder\'s hand');
-assert.match(dressing, /addK2TrackShoePallet\(pads\);[\s\S]*k2_hull_rotisserie[\s\S]*addWeldStation\(legacyVerdantRoot, grip, tip,[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
-  'the rotisserie and the weld station join the K2 bay before its owner captures it');
+assert.match(dressing, /addK2TrackShoePallet\(pads\);[\s\S]*k2_hull_rotisserie[\s\S]*addWeldStation\(k2TaskA, grip, tip,[\s\S]*placeAuthoredServiceBay\(firstBayChildIndex, 'rolled_k2', 'k2'\)/,
+  'the rotisserie and the weld station (with the welding crew\'s task) join the K2 bay before its owner captures it');
 assert.doesNotMatch(dressing.slice(dressing.indexOf('async function buildAbramsAndOriginalVerdantBay'),
   dressing.indexOf('async function buildLeopardA5NlMobilityTeardown')), /addWeldStation|addWeldingSet|weld_glow/,
   'no welding gear in the Abrams bay by the canisters');
 assert.match(dressing, /verdant_burlak_turret_sling/, 'slings from the gantry hook take the lifted turret\'s weight');
 assert.match(dressing, /removed_road_wheel_disc_fill/, 'the Leopard\'s removed road wheels are solid discs, not hoops');
 const stage = await readFile(new URL('../ui/garageStage.ts', import.meta.url), 'utf8');
+assert.match(stage, /garageK2HotWork\(variant\) \? OUTDOOR_WELD_LIGHT_INTENSITY : 0/,
+  'the weld light burns only where the K2 is welded');
 assert.match(stage, /fill\.position\.set\(-VERDANT_WELD_LIGHT\.x, VERDANT_WELD_LIGHT\.y, -VERDANT_WELD_LIGHT\.z\)/,
   'Verdant\'s former fill is the weld light (no added light, no new shader program)');
 assert.match(stage, /wall\.castShadow = true;/, 'the hangar walls stop the garage sun');

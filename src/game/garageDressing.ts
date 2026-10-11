@@ -38,6 +38,7 @@ import {
   buildCrewTools,
   CREW_REGION_DRESS,
   crewPointInScene,
+  GARAGE_BAY_ALTERNATE_SCENES,
   GARAGE_CREW_SCENES,
   GARAGE_REGIONAL_YARD_SCENES,
   paintCrewRegion,
@@ -54,6 +55,7 @@ import {
   ABRAMS_WELDING_BAY_PLACEMENT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
   getAbramsWeldingBayPlacement,
+  GARAGE_BAY_ALTERNATES,
   GARAGE_SHELTER_FINISHES,
   getGarageWorkshopLayoutPose,
   LEOPARD_MOBILITY_BAY_LOCAL,
@@ -260,6 +262,17 @@ export function createGarageDressing(
   // shown by setVariant.
   let yardBandCarryRoot: THREE.Group | null = null;
   const regionalYardRoots = new Map<GarageVariant['architecture'], THREE.Group>();
+  // The Leopard and K2 bays' standing tasks (a) and their alternates (b), one owner each, shown by setVariant.
+  const bayTaskOwners: Record<'leopard' | 'k2', { a: THREE.Group | null; b: THREE.Group | null }> = {
+    leopard: { a: null, b: null }, k2: { a: null, b: null },
+  };
+  function bayTaskOwner(bay: 'leopard' | 'k2', which: 'a' | 'b', parent: THREE.Object3D): THREE.Group {
+    const owner = new THREE.Group();
+    owner.name = `garage_${bay}_bay_task_${which}`;
+    parent.add(owner);
+    bayTaskOwners[bay][which] = owner;
+    return owner;
+  }
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -1606,6 +1619,12 @@ export function createGarageDressing(
     const regionalYard = regionalYardRoots.get(currentVariant.architecture) ?? null;
     for (const owner of regionalYardRoots.values()) owner.visible = owner === regionalYard;
     if (yardBandCarryRoot) yardBandCarryRoot.visible = regionalYard === null;
+    const alternates = GARAGE_BAY_ALTERNATES[currentVariant.architecture] ?? { leopard: false, k2: false };
+    for (const bay of ['leopard', 'k2'] as const) {
+      if (bayTaskOwners[bay].a) bayTaskOwners[bay].a!.visible = !alternates[bay];
+      if (bayTaskOwners[bay].b) bayTaskOwners[bay].b!.visible = alternates[bay];
+    }
+    group.userData.bayAlternates = { ...alternates };
     group.userData.yardBandTask = regionalYard?.userData.crewTask ?? GARAGE_CREW_SCENES.carry.task;
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
@@ -3337,7 +3356,8 @@ export function createGarageDressing(
       wheelRack.add(fill);
       track(fill);
     }
-    const leopardCrew = addCrewScene(GARAGE_CREW_SCENES.leopard, mobilityBay);
+    const leopardCrew = addCrewScene(GARAGE_CREW_SCENES.leopard, bayTaskOwner('leopard', 'a', mobilityBay));
+    addCrewScene(GARAGE_BAY_ALTERNATE_SCENES.leopard, bayTaskOwner('leopard', 'b', mobilityBay));
     addImpactWrenchKit(mobilityBay, -2.25, -3.15, 0.35);
     addCarriedRoadWheel(leopardCrew, GARAGE_CREW_SCENES.leopard, [0, 1], roadWheelTires, roadWheelDiscs, leopardDiscFill());
     mobilityBay.userData.wheelServiceMode = 'running-gear-removed-to-connected-rack';
@@ -3564,7 +3584,10 @@ export function createGarageDressing(
       }
     }
 
-    // The belly plate welding moved here from the Abrams by the canisters: torch, glow, arc pool and lead.
+    // The belly plate welding moved here from the Abrams by the canisters: torch, glow, arc pool and lead, with the
+    // welding crew (task a); the Garages listed in GARAGE_BAY_ALTERNATES inspect the belly cold instead (task b).
+    const k2TaskA = bayTaskOwner('k2', 'a', legacyVerdantRoot);
+    const k2TaskB = bayTaskOwner('k2', 'b', legacyVerdantRoot);
     {
       const k2Crew = GARAGE_CREW_SCENES.k2;
       const torch = k2Crew.tools.find((tool) => tool.kind === 'torch');
@@ -3578,7 +3601,7 @@ export function createGarageDressing(
         };
         // the belly faces the welder: scene +X tipped 22 degrees down by the roll
         const arcNormal = sceneToAuthored(0.927, -0.375, 0).sub(sceneToAuthored(0, 0, 0)).normalize();
-        addWeldStation(legacyVerdantRoot, grip, tip, sceneToAuthored(2.35, 0, 0.95), frame.yaw + Math.PI / 2,
+        addWeldStation(k2TaskA, grip, tip, sceneToAuthored(2.35, 0, 0.95), frame.yaw + Math.PI / 2,
           [sceneToAuthored(1.7, 0.05, 0.75), sceneToAuthored(1.05, 0.06, 0.55), sceneToAuthored(0.85, 0.94, 0.42)],
           arcNormal);
       }
@@ -3605,7 +3628,8 @@ export function createGarageDressing(
       0, 2.5, 0.9, '', legacyVerdantRoot);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
       0, 2.7, 0.8, '', legacyVerdantRoot);
-    addCrewScene(GARAGE_CREW_SCENES.k2, legacyVerdantRoot);
+    addCrewScene(GARAGE_CREW_SCENES.k2, k2TaskA);
+    addCrewScene(GARAGE_BAY_ALTERNATE_SCENES.k2, k2TaskB);
     placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 
@@ -3676,7 +3700,9 @@ export function createGarageDressing(
       // The Abrams bay owner nests inside the shared root but merges alone, so
       // each destination can still carry it to its own placement.
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : []),
-        ...(yardBandCarryRoot ? [yardBandCarryRoot] : []), ...regionalYardRoots.values()],
+        ...(yardBandCarryRoot ? [yardBandCarryRoot] : []), ...regionalYardRoots.values(),
+        ...Object.values(bayTaskOwners).flatMap((owners) => [owners.a, owners.b])
+          .filter((owner): owner is THREE.Group => owner !== null)],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.

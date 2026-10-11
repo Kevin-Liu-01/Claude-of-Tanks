@@ -971,9 +971,10 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
         pose: { pelvis: [0, 0.11, 0], hips: [0, -Math.PI / 2, 0], head: [-0.12, 0],
           leftHand: [0.2, 0.36, -0.42], rightHand: [-0.18, 0.37, -0.4],
           leftElbow: [0.6, 0.0, -0.1], rightElbow: [-0.6, 0.0, -0.1],
-          leftFoot: [0.16, A - 0.08, -1.05], rightFoot: [-0.18, A - 0.08, -0.92],
-          leftKnee: [0.2, 1.0, -0.6], rightKnee: [-0.2, 1.0, -0.5],
-          leftFootPitch: -0.25, rightFootPitch: -0.2 } },
+          // supine (the hips' -90 degree pitch puts the head at -Z): knees up, boots flat on the floor beyond the
+          // creeper (2026-10-10: the feet were set on the head's side and folded the legs over the chest)
+          leftFoot: [0.16, A - 0.115, 0.72], rightFoot: [-0.18, A - 0.115, 0.66],
+          leftKnee: [0.2, 0.9, 0.35], rightKnee: [-0.2, 0.9, 0.3] } },
     ],
     tools: [
       { kind: 'breaker-bar', member: 0, points: [[0.02, 0.98, 0.34], [-0.06, 1.05, 0.27], [0.05, 0.56, 0.7]] },
@@ -1128,6 +1129,73 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     ],
     tools: [
       { kind: 'track-section', member: 0, points: [[0.24, 0.7, 0.22], [-0.24, 0.7, 0.22]] },
+    ],
+  }),
+});
+
+/**
+ * The alternate tasks at two shared bays (2026-10-10, the wave builder: "the same figures in the same poses in every
+ * garage"): Garages listed in GARAGE_BAY_ALTERNATES (garageWorkshopLayout.ts) show these in place of the bay's
+ * standing crew. At the Leopard, a mechanic on a creeper inspects the road-arm housings under the lifted hull while
+ * a second checks them off from the side; at the rolled K2, cold work only: an inspector on the stand with a lamp and
+ * a check sheet, a spotter steadying the stand, the track-pin man at his pallet.
+ */
+export const GARAGE_BAY_ALTERNATE_SCENES: Readonly<Record<'leopard' | 'k2', CrewScene>> = Object.freeze({
+  leopard: scene({
+    id: 'leopard-alt', task: 'road-arm housings inspected from a creeper under the lifted hull', essential: false,
+    frame: { parent: 'leopard-bay', x: 0, z: 0, yaw: 0 },
+    props: [{ kind: 'parts', at: [0, 0, 0], yaw: 0, deckY: 0, parts: [
+      { shape: 'box', at: [0.2, 0.075, 1.12], size: [0.44, 0.035, 1.05], mat: 'steelDark' },
+      { shape: 'cyl', at: [0.02, 0.03, 0.67], size: [0.03, 0.04], mat: 'rubber' },
+      { shape: 'cyl', at: [0.38, 0.03, 0.67], size: [0.03, 0.04], mat: 'rubber' },
+      { shape: 'cyl', at: [0.02, 0.03, 1.57], size: [0.03, 0.04], mat: 'rubber' },
+      { shape: 'cyl', at: [0.38, 0.03, 1.57], size: [0.03, 0.04], mat: 'rubber' },
+      { shape: 'box', at: [-1.9, 0.04, 0.4], size: [0.5, 0.08, 0.32], mat: 'redCab' },
+    ] }],
+    members: [
+      { role: 'creeper-mechanic', dress: D('de', 41, 'bare'), at: [0.2, 0.115, 1.4], yaw: 0,
+        pose: { pelvis: [0, 0.11, 0], hips: [0, -Math.PI / 2, 0], head: [-0.12, 0],
+          leftHand: [0.2, 0.36, -0.42], rightHand: [-0.18, 0.37, -0.4],
+          leftElbow: [0.6, 0.0, -0.1], rightElbow: [-0.6, 0.0, -0.1],
+          // supine (the hips' -90 degree pitch puts the head at -Z): knees up, boots flat on the floor beyond the
+          // creeper (2026-10-10: the feet were set on the head's side and folded the legs over the chest)
+          leftFoot: [0.16, A - 0.115, 0.72], rightFoot: [-0.18, A - 0.115, 0.66],
+          leftKnee: [0.2, 0.9, 0.35], rightKnee: [-0.2, 0.9, 0.3] } },
+      { role: 'hull-inspector', dress: D('de', 42), at: [-2.25, 0, 1.35], yaw: Math.PI / 2 + 0.35,
+        pose: { pelvis: [0, HIP, 0], spine: [0.14, -0.06, 0], head: [0.5, -0.08],
+          leftHand: [0.06, 1.12, 0.3], rightHand: [-0.12, 1.1, 0.42], leftGrip: 'carry', leftPalm: [0, 1, 0],
+          leftFoot: [0.12, A, 0.02], rightFoot: [-0.12, A, -0.04] } },
+    ],
+    tools: [
+      { kind: 'flashlight', member: 0, points: [[0.2, 0.36, -0.42], [0.22, 0.42, -0.6]] },
+      { kind: 'flashlight', member: 1, points: [[-0.12, 1.1, 0.42], [-0.06, 0.95, 0.6]] },
+      { kind: 'clipboard', member: 1, points: [[0.06, 1.12, 0.3], [0.0, 1.14, 0.32]] },
+    ],
+  }),
+  k2: scene({
+    id: 'k2-alt', task: 'the rolled hull\'s belly inspected cold from the stand, track pins on the shoe pallet', essential: false,
+    frame: { parent: 'workshop', x: -16.25, z: -16.85, yaw: 0.35 },
+    props: [{ kind: 'work-stand', at: [0.62, 0, 0.25], yaw: 0, deckY: 0.9 }],
+    members: [
+      { role: 'belly-inspector', dress: D('kr', 43, 'patrol-cap'), at: [0.55, 0.9, 0.25], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, HIP - 0.04, -0.03], spine: [0.12, 0.05, 0], head: [-0.15, 0],
+          rightHand: [-0.03, 1.18, 0.5], leftHand: [0.15, 1.08, 0.3], leftGrip: 'carry', leftPalm: [0, 1, 0],
+          leftFoot: [0.13, A, 0.08], rightFoot: [-0.13, A, -0.14] } },
+      { role: 'stand-spotter', dress: D('kr', 44), at: [1.45, 0, 0.75], yaw: -Math.PI / 2 - 0.45,
+        pose: { pelvis: [0, HIP, 0], spine: [-0.04, 0.05, 0], head: [-0.4, 0.12],
+          rightHand: [-0.105, 1.375, 0.473], leftHand: [0.048, 1.375, 0.399],
+          leftFoot: [0.13, A, 0.02], rightFoot: [-0.12, A, -0.1] } },
+      { role: 'track-pin-man', dress: D('kr', 2, 'ear-defenders'), at: [-5.0, 0, 1.5], yaw: -Math.PI / 2,
+        pose: { pelvis: [0, 0.49, -0.06], spine: [0.46, 0.08, 0], head: [0.48, 0],
+          leftFoot: [0.1, 0.22, -0.4], leftFootPitch: 1.3, leftKnee: [0.1, -0.2, 0.6],
+          rightFoot: [-0.15, A, 0.36], rightKnee: [-0.15, 0.9, 0.9],
+          leftHand: [-0.02, 0.47, 0.5], rightHand: [-0.17, 0.66, 0.36] } },
+    ],
+    tools: [
+      { kind: 'flashlight', member: 0, points: [[-0.03, 1.18, 0.5], [0.0, 1.28, 0.77]] },
+      { kind: 'clipboard', member: 0, points: [[0.15, 1.08, 0.3], [0.1, 1.1, 0.32]] },
+      { kind: 'punch', member: 2, points: [[-0.02, 0.47, 0.5], [-0.04, 0.3, 0.53]] },
+      { kind: 'hammer', member: 2, points: [[-0.17, 0.66, 0.36], [-0.03, 0.6, 0.5]] },
     ],
   }),
 });

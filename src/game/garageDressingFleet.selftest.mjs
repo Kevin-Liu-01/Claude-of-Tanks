@@ -238,7 +238,7 @@ assert.match(dressing, /battleScreenResidentImageLimit = 3/,
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
   'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,
-  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\),\s*\.\.\.\(yardBandCarryRoot \? \[yardBandCarryRoot\] : \[\]\), \.\.\.regionalYardRoots\.values\(\)\]/,
+  /staticDisplayOwners:\s*\[legacyVerdantRoot, verdantInteriorRoot, \.\.\.\(abramsBayRoot \? \[abramsBayRoot\] : \[\]\),\s*\.\.\.\(yardBandCarryRoot \? \[yardBandCarryRoot\] : \[\]\), \.\.\.regionalYardRoots\.values\(\),\s*\.\.\.Object\.values\(bayTaskOwners\)/,
   'the shared bays, the movable Abrams bay, the Verdant-only interior and each left-band yard task (shown per Garage) collapse static leaf draws independently');
 assert.match(dressing, /sharedMaintenanceBayCount = 4/);
 assert.match(dressing, /workshopOrbitCoverageDegrees = 360/);

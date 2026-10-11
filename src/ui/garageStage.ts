@@ -21,7 +21,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { getGarageWorkshopLayoutPose, VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
+import { garageK2HotWork, getGarageWorkshopLayoutPose, VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -1551,7 +1551,9 @@ export function createGarageStage(
       const weldX = layoutX + VERDANT_WELD_LIGHT.x * c + VERDANT_WELD_LIGHT.z * sn;
       const weldZ = layoutZ - VERDANT_WELD_LIGHT.x * sn + VERDANT_WELD_LIGHT.z * c;
       fill.position.set(-weldX, VERDANT_WELD_LIGHT.y, -weldZ);
-      weldBaseIntensity = isVerdant ? (verdantLightIntensities.get(fill) || 0) : OUTDOOR_WELD_LIGHT_INTENSITY;
+      const variant = getGarageVariant(variantId);
+      weldBaseIntensity = isVerdant ? (verdantLightIntensities.get(fill) || 0)
+        : garageK2HotWork(variant) ? OUTDOOR_WELD_LIGHT_INTENSITY : 0;
       fill.intensity = weldBaseIntensity;
     }
     architecture.group.visible = !isVerdant;

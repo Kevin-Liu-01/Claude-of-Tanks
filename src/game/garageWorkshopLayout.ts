@@ -197,3 +197,28 @@ export const GARAGE_SHELTER_FINISHES: Readonly<Record<GarageVariant['architectur
     recovery_yard: { frame: 0x8a5a3a, roof: 0x9c7a5c }, // rust-red steel under a dust-coloured tarp
     factory_line: { frame: 0x5d6266, roof: 0x45484a }, // mill-grey steel, soot-black sheeting
   });
+
+/**
+ * Garages whose Leopard and K2 bays show their alternate tasks (garageCrewFigures.ts GARAGE_BAY_ALTERNATE_SCENES), so
+ * no two Garages repeat the same bay story with their left-band task (2026-10-10: "no copy-paste bays"). Verdant keeps
+ * the ruled originals.
+ */
+export const GARAGE_BAY_ALTERNATES: Readonly<Record<GarageVariant['architecture'],
+  { readonly leopard: boolean; readonly k2: boolean }>> = Object.freeze({
+  field_shed: { leopard: false, k2: false },
+  shade_depot: { leopard: true, k2: false },
+  repair_bunker: { leopard: false, k2: true },
+  brick_arsenal: { leopard: true, k2: false },
+  naval_drydock: { leopard: false, k2: true },
+  rail_roundhouse: { leopard: true, k2: false },
+  rain_canopy: { leopard: false, k2: true },
+  rock_cavern: { leopard: true, k2: false },
+  recovery_yard: { leopard: false, k2: true },
+  factory_line: { leopard: true, k2: false },
+});
+
+/** The rolled K2's belly is welded in this Garage (the weld light burns there). */
+export function garageK2HotWork(variant: Pick<GarageVariant, 'architecture'>): boolean {
+  return !(GARAGE_BAY_ALTERNATES[variant.architecture]?.k2 ?? false);
+}
+
