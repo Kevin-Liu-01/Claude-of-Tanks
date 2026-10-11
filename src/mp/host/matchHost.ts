@@ -149,6 +149,10 @@ export function createMatchHost({
   });
   loopback.server.onState((change) => {
     if (change.state === 'closed' && ready) post({ type: 'link_close', peer: HOST_LOOPBACK_PEER });
+    // The host's own client reconnected (its stall recovery after a long task on this tab, 2026-10-11): a fresh connection
+    // is a fresh link — the core retires the old one and gates the new HELLO. Before, link 0 stayed attached, the second
+    // HELLO met UNEXPECTED_MESSAGE and the host's own seat hung in 'handshaking' while the match ran on without it.
+    else if (change.state === 'open' && change.resumed && ready) post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host' });
   });
 
   // ------------------------------------------------------------ peers
