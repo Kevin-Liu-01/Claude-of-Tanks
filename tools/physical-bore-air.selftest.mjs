@@ -140,8 +140,17 @@ try {
   } finally { tank.dispose(); }
 } finally { rmSync(tmp, { recursive: true, force: true }); }
 
-// a tank without a declared bore has no bore air
+// 2026-10-10: a tank without a declared bore still has the owner's carved bore (a28e4d8e6) as its bore air, read from
+// its carved frame's seat receipt; a root with neither has none
 const plainTank = createTank('m1a2', null, { proceduralOnly: true });
-try { assert.equal(physicalBoreAir(plainTank.root), null, 'no declaration, no bore air'); } finally { plainTank.dispose(); }
+try {
+  const carved = physicalBoreAir(plainTank.root);
+  let frame = null;
+  plainTank.root.traverse((o) => { if (o.name === 'muzzleBoreInnerWallAndBackstop') frame = o.parent; });
+  assert.ok(carved && frame && carved.bores.length === 1, 'the carved bore is bore air');
+  near(carved.innerRadiusM, frame.userData.muzzleSeatReceipt.physicalInnerRadiusM, 1e-12, 'its radius is the carved receipt\'s');
+  near(carved.depthM, frame.userData.muzzleSeatReceipt.physicalBoreDepthM, 1e-12, 'its depth is the carved receipt\'s');
+} finally { plainTank.dispose(); }
+assert.equal(physicalBoreAir(new THREE.Group()), null, 'no declaration and no carved bore, no bore air');
 console.log(`physical-bore-air.selftest: shared wiring, installed-size record, mask == point test, Dragun bore air ${report.high.boreAirL} L reported apart `
   + `(plain leak ${report.high.plainLeakL} L), a deck hole still leaks ${report.high.holeLeakL} L, the generator leaves the bore open and the former cap still fails PASS`);
