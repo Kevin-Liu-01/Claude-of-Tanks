@@ -573,8 +573,6 @@ export function createGarageDressing(
     box1: track(new THREE.BoxGeometry(1, 1, 1)),
     cyl: track(new THREE.CylinderGeometry(1, 1, 1, 14)),
     drum: track(new THREE.CylinderGeometry(0.42, 0.42, 1.15, 16)),
-    shellBody: track(new THREE.CylinderGeometry(0.062, 0.062, 0.72, 10)),
-    shellTip: track(new THREE.CylinderGeometry(0.004, 0.058, 0.22, 10)),
     caster: track(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 10)),
     lampShade: track(new THREE.CylinderGeometry(0.14, 0.72, 0.52, 18)),
     lampGlow: track(new THREE.CylinderGeometry(0.56, 0.56, 0.05, 18)),
@@ -691,6 +689,23 @@ export function createGarageDressing(
     for (const [wx, wz] of [[-0.46, -0.24], [0.46, -0.24], [-0.46, 0.24], [0.46, 0.24]]) {
       put(G.caster, mat.steelDark, wx, 0.07, wz, 0, 0, Math.PI / 2, 1, t, false);
     }
+    // The back and ends are working faces too (2026-10-10, waves 338 and 357: "a blank maroon box"): a push bar across
+    // the back, louvred end panels with a side handle, and a bench vice and a tray of sockets on the lid.
+    const louvre = track(new THREE.BoxGeometry(0.02, 0.025, 0.42));
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 6; k++) put(louvre, trimMat, side * 0.585, 0.98 - k * 0.075, 0, 0, 0, 0, 1, t, false);
+      put(track(new THREE.BoxGeometry(0.03, 0.03, 0.34)), mat.steelBright, side * 0.62, 1.08, 0, 0, 0, 0, 1, t, false);
+    }
+    const pushBar = track(new THREE.CylinderGeometry(0.018, 0.018, 1.0, 8));
+    put(pushBar, mat.steelBright, 0, 1.12, -0.38, 0, 0, Math.PI / 2, 1, t, false);
+    for (const side of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.03, 0.03, 0.08)), mat.steelBright, side * 0.48, 1.12, -0.34, 0, 0, 0, 1, t, false);
+    }
+    put(track(new THREE.BoxGeometry(0.9, 0.012, 0.03)), mat.lamp, 0, 0.95, -0.312, 0, 0, 0, 1, t, false);
+    put(track(new THREE.BoxGeometry(0.16, 0.1, 0.14)), mat.steelDark, -0.38, 1.38, 0.08, 0, 0, 0, 1, t, false);
+    put(track(new THREE.BoxGeometry(0.4, 0.04, 0.22)), mat.steelDark, 0.2, 1.35, 0.02, 0, 0, 0, 1, t, false);
+    const socket = track(new THREE.CylinderGeometry(0.016, 0.016, 0.05, 6));
+    for (let k = 0; k < 8; k++) put(socket, mat.steelBright, 0.04 + (k % 4) * 0.1, 1.39, -0.04 + Math.floor(k / 4) * 0.1, 0, 0, 0, 1, t, false);
     return t;
   }
 
@@ -1870,31 +1885,24 @@ export function createGarageDressing(
       put(post, mat.safety, px, 0.62, -0.3, 0, 0, 0, 1, rack);
       put(post, mat.safety, px, 0.62, 0.3, 0, 0, 0, 1, rack);
     }
-    const bodies = new THREE.InstancedMesh(G.shellBody, mat.olive, 12);
-    const tips = new THREE.InstancedMesh(G.shellTip, mat.brass, 12);
-    const matrix = new THREE.Matrix4();
-    let index = 0;
-    for (const rackZ of [-0.18, 0.18]) {
-      for (let column = 0; column < 6; column++) {
-        const shellX = -0.95 + column * 0.38 + (rng() - 0.5) * 0.05;
-        matrix.makeTranslation(shellX, 0.46, rackZ);
-        bodies.setMatrixAt(index, matrix);
-        matrix.makeTranslation(shellX, 0.93, rackZ);
-        tips.setMatrixAt(index, matrix);
-        index++;
+    // The rounds stay in their sealed transport containers (2026-10-10, wave 357: "live shells stand in an open rack
+    // under a FLAMMABLE sign"): green ammunition boxes with latches and rope handles on both shelves, a stencil band,
+    // and the empty pallet beside the rack.
+    const ammoBox = track(new THREE.BoxGeometry(0.98, 0.28, 0.3));
+    const latch = track(new THREE.BoxGeometry(0.06, 0.08, 0.02));
+    const handle = track(new THREE.BoxGeometry(0.16, 0.025, 0.03));
+    const band = track(new THREE.BoxGeometry(0.4, 0.06, 0.004));
+    for (const shelfY of [0.24, 0.79]) {
+      for (const [boxX, boxZ] of [[-0.52, -0.16], [0.52, -0.16], [-0.52, 0.17], [0.52, 0.17]] as const) {
+        put(ammoBox, mat.olive, boxX, shelfY, boxZ, 0, 0, 0, 1, rack);
+        for (const lx of [-0.3, 0.3]) put(latch, mat.steelMid, boxX + lx, shelfY + 0.02, boxZ + 0.152, 0, 0, 0, 1, rack, false);
+        put(handle, mat.rubber, boxX, shelfY + 0.155, boxZ, 0, 0, 0, 1, rack, false);
+        put(band, mat.safety, boxX, shelfY - 0.06, boxZ + 0.152, 0, 0, 0, 1, rack, false);
       }
     }
-    bodies.castShadow = tips.castShadow = true;
-    rack.add(bodies, tips);
-    track(bodies);
-    track(tips);
-    // Two loose rounds lie on a pallet beside the rack.
+    rack.userData.storage = 'sealed-ammunition-containers';
     put(track(new THREE.BoxGeometry(1.1, 0.1, 0.8)), mat.timberDark,
       0.2, 0.05, 0.95, 0.2, 0, 0, 1, rack);
-    put(G.shellBody, mat.olive,
-      0.05, 0.16, 0.95, 0.2, 0, Math.PI / 2, 1, rack);
-    put(G.shellBody, mat.olive,
-      0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
   }
 
   const chunks: Array<(stillValid: () => boolean) => void | Promise<void>> = [];
@@ -2608,7 +2616,7 @@ export function createGarageDressing(
       put(track(new THREE.BoxGeometry(0.55, 1.9, 0.95)), mat.olive, 22.35, 0.95, lz, 0, 0, 0, 1);
       put(track(new THREE.BoxGeometry(0.04, 1.7, 0.8)), mat.steelDark, 22.05, 0.95, lz, 0, 0, 0, 1, group, false);
     }
-    // Shell rack: frame + two rows of standing rounds (instanced).
+    // Ammunition rack: the rounds in their sealed containers on two shelves.
     addCoreShellRack();
     wallSignAt('BAY 02', 'east_bay_02');
     extinguisherAt('east_extinguisher');

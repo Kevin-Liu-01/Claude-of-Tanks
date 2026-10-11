@@ -1255,6 +1255,15 @@ export function buildGarageEnvironment(
         && Math.abs(z - record.z) < record.dimensions.d * record.placement.scale * 0.62 + 0.8
       ));
       if (insideStructure) return;
+      // no tufts on the working floors (2026-10-10, wave 357: "black spikes stud the sand"): the apron and every
+      // exhibit or crew pad stay clear
+      if (Math.abs(x) < 15 && Math.abs(z) < 12.5) return;
+      const view = garageWorldPointToView(x, z);
+      const onPad = terraceRecords.some((terrace) => (
+        (terrace.label.startsWith('fleet-service-') || terrace.label.startsWith('crew-floor-'))
+        && Math.hypot((view.side - terrace.side) / terrace.radiusSide, (view.depth - terrace.depth) / terrace.radiusDepth) < 1.3
+      ));
+      if (onPad) return;
       const y = samplePatch(patch, heights, x, z);
       const size = (recipe.terrainSurface === 'grass' ? 0.52 : 0.34) * (0.68 + rng() * 0.62);
       coverPosition.set(x, y + 0.01, z);

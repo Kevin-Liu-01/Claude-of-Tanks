@@ -1071,12 +1071,14 @@ export const GARAGE_CREW_SCENES: Readonly<Record<'burlak' | 'abrams' | 'leopard'
     frame: { parent: 'workshop', x: 0, z: 0, yaw: 0 },
     props: [{ kind: 'power-pack', at: [3.4, 0, -11.4], yaw: 0.55, deckY: 0 }],
     members: [
-      { role: 'track-carrier', dress: D('ru', 11), at: [-9.7, 0, 1.65], yaw: -2.156,
+      // side by side across the opening camera's line of sight, so the menu frame shows two men and the track between
+      // them (2026-10-10, wave 357: in line with the camera they read as one idle sentry)
+      { role: 'track-carrier', dress: D('ru', 11), at: [-10.08, 0, 0.52], yaw: -0.363,
         pose: { pelvis: [0, 0.83, -0.05], spine: [0.15, 0.05, 0], head: [-0.04, 0.05],
           leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
           leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
           leftFoot: [0.17, A, 0.06], rightFoot: [-0.17, A, -0.14] } },
-      { role: 'track-carrier', dress: D('ru', 12), at: [-11.0, 0, 0.8], yaw: -2.156 + Math.PI,
+      { role: 'track-carrier', dress: D('ru', 12), at: [-10.62, 0, 1.93], yaw: -0.363 + Math.PI,
         pose: { pelvis: [0, 0.82, -0.06], spine: [0.17, -0.04, 0], head: [-0.02, -0.07],
           leftHand: [0.24, 0.7, 0.22], rightHand: [-0.24, 0.7, 0.22], leftGrip: 'fist', rightGrip: 'fist',
           leftPalm: [-1, 0, 0], rightPalm: [1, 0, 0],
