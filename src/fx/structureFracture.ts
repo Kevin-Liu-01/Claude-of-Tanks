@@ -180,7 +180,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const lives = new Map<number, Live>();
   const bodies = new Map<number, LiveBody>();
   const layouts = new WeakMap<THREE.BufferGeometry, Layout>();
-  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
+  // (the decisive wave's hitch probe: the pool's steps were most of a house's cost) seven bodies a round at most
+  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 7);
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
   /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */

@@ -220,7 +220,7 @@ const DUST_GAP_S = 0.05;
 /** A panel cracks into its parts on a landing this hard (a fall from 0.6 m), while the pool has fewer bodies awake than
  *  this (a step costs ~0.016 ms an awake body; at most four steps a frame). */
 const BREAK_MPS = 3.4;
-const BREAK_AWAKE_MAX = 72;
+const BREAK_AWAKE_MAX = 56;
 /** (dcore 2026-10-11, waves 385/388a: "the roof lies as one flat intact lid"; "the tower lands whole") a roof slab
  *  cracks on any real landing, whatever else is awake, and a shaft breaks into its drums at its first touch of the
  *  ground once it leans this far (rad): the impact report alone missed both. */
