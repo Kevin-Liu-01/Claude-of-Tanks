@@ -6478,6 +6478,10 @@ ${snowCap ? `
   // (per-map type, drive-through-able like saplings, shell-breakable) with
   // the odd open gate where field entrances meet the road.
   const utilityPolePlacements: UtilityPolePlacementReceipt[] = [];
+  // (sealed lane 2026-10-11: a Skybridge jeep stood over a felled pole's stump) a felled pole's stump, its length on the
+  // ground and its loose crossarm carry no record: each stands in the parked vehicles' and carts' seat passes as drawn
+  // (crushableFootprints)
+  const felledPoleFootprints: CollisionRecord[] = [];
   function placeRoadsideUtilities(): UtilityNetwork | null {
     const roadsL = L.roads;
     const roadFence = (P.inhabit && P.inhabit.roadFence) || 'fenceplank';
@@ -6690,6 +6694,10 @@ ${snowCap ? `
         arm.rotateY(yawD + 0.5 + prng2());
         arm.translate(fallPose.end.x, fallPose.end.support.min + 0.05, fallPose.end.z);
         buckets.wood.push(arm);
+        for (const [part, base] of [[stump, oy], [fall, fallPose.y - 0.15], [arm, fallPose.end.support.min]] as const) {
+          const drawn = drawnPlanRecord([part], base, -1);
+          if (drawn) felledPoleFootprints.push(drawn);
+        }
       }
     }
     placeFelledUtilityPoles();
@@ -9759,7 +9767,7 @@ ${snowCap ? `
     });
     return [...crushables.filter((c) => !c.toppled).map((c) => circle(c.x, c.y, c.z, c.r, c.h)),
       ...destructibles.filter((d) => d.state === 0 && !d.dropped && d.ob && drawnWider(d.kind)).map((d) => circle(d.x, d.y, d.z, d.r, d.h)),
-      ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...railBeds, ...streetKerbFootprints];
+      ...wreckDrawnFootprints, ...rubbleDrawnFootprints, ...felledPoleFootprints, ...railBeds, ...streetKerbFootprints];
   }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
