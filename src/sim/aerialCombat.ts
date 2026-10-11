@@ -26,6 +26,95 @@ interface Flight {
 const flights = new WeakMap<AerialEntity, Flight>();
 const direction = new Vector3();
 const launchOrientation=new Quaternion(),launchPosition=new Vector3(),launchUp=new Vector3();
+type Point3 = { x: number; y: number; z: number };
+/**
+ * The match-owned world collision, as both authorities already expose it: the solo world's raycast and the
+ * authority's collision lease (terrain plus every live collider record, the same shards the server loads). The
+ * smoke canisters use this same structural query. `tankAlong` reports a live tank on the probe (an attack run is
+ * never treated as an obstacle); without it every hit is an obstacle.
+ */
+export interface AerialWorldQuery {
+  raycast(origin: Point3, direction: Point3, maxDist: number): { dist: number; normal?: Point3 | null } | null;
+  tankAlong?(origin: Point3, direction: Point3, maxDist: number, ownerId: string): number | null;
+}
+/** Deterministic look-ahead avoidance (no randomness, no clock): climb over, side-step, or hold a standoff hover. */
+export const DRONE_AVOIDANCE = Object.freeze({
+  /** Free air the airframe keeps from any collider: rotor tips (0.34 m) plus margin for the drawn hover wobble. */
+  clearanceM: 1.1,
+  /** Look-ahead time at the commanded speed, bounded to a short hover probe and a long dash probe. */
+  lookaheadS: 1.3, minLookM: 6, maxLookM: 64,
+  /** Escape pitches above the commanded path (rad), tried in order: over the top first. */
+  climbRad: [.5, .9, 1.35] as readonly number[],
+  /** Horizontal side-step yaws (rad), each tried on the side with more room first; never a turn back. */
+  sideRad: [.55, 1.1] as readonly number[],
+});
+const _probe = new Vector3(), _escape = new Vector3(), _axis = new Vector3(), _flat = new Vector3(), _q = new Quaternion();
+const WORLD_UP = new Vector3(0, 1, 0);
+function probeClear(world: AerialWorldQuery, origin: Vector3, dir: Vector3, reach: number): number {
+  const hit = world.raycast(origin, dir, reach);
+  return hit ? Math.max(0, hit.dist) : Infinity;
+}
+/** A tank a drone may be diving at: any live vehicle but the pilot's own, as a bounding sphere around its hull. */
+export interface DroneTankTarget {
+  id: string; modeActive?: boolean; aerial?: AerialView;
+  state: { pos: Point3 } | null; combat?: { destroyed?: boolean } | null;
+  spec: { dims: { hullLengthM: number; heightM: number }; armor?: { boundingRadiusM?: number } };
+}
+/** Distance along a probe to the first live tank sphere (not the owner's), or null; shared by both authorities. */
+export function droneTankAlong(tanks: readonly DroneTankTarget[], origin: Point3, dir: Point3, maxDist: number, ownerId: string): number | null {
+  let best: number | null = null;
+  for (const tank of tanks) {
+    if (tank.id === ownerId || tank.modeActive === false || !tank.state || tank.combat?.destroyed || tank.aerial?.kind === 'gunship') continue;
+    const radius = Math.max(tank.spec.armor?.boundingRadiusM ?? 0, tank.spec.dims.hullLengthM * .55);
+    const cx = tank.state.pos.x - origin.x, cy = tank.state.pos.y + tank.spec.dims.heightM * .5 - origin.y, cz = tank.state.pos.z - origin.z;
+    const along = cx * dir.x + cy * dir.y + cz * dir.z;
+    if (along < -radius || along - radius > maxDist) continue;
+    const miss = cx * cx + cy * cy + cz * cz - along * along;
+    if (miss > radius * radius) continue;
+    const entry = Math.max(0, along - Math.sqrt(radius * radius - miss));
+    if (entry <= maxDist && (best === null || entry < best)) best = entry;
+  }
+  return best;
+}
+/** Steer the commanded velocity away from colliders ahead. Mutates `commanded`; returns true when it intervened. */
+export function avoidDroneObstacles(world: AerialWorldQuery, ownerId: string, position: Vector3, commanded: Vector3): boolean {
+  const rules = DRONE_AVOIDANCE, speed = commanded.length();
+  if (speed < 1e-4) return false;
+  _probe.copy(commanded).multiplyScalar(1 / speed);
+  const look = Math.max(rules.minLookM, Math.min(rules.maxLookM, speed * rules.lookaheadS + 4)), reach = look + rules.clearanceM;
+  const hit = world.raycast(position, _probe, reach);
+  if (!hit) return false;
+  const tank = world.tankAlong?.(position, _probe, reach, ownerId);
+  if (tank != null && tank <= hit.dist + .5) return false;
+  // Over the top: pitch the path up about the horizontal axis across it.
+  _axis.crossVectors(_probe, WORLD_UP);
+  if (_axis.lengthSq() < 1e-8) _axis.set(1, 0, 0);
+  _axis.normalize();
+  for (const pitch of rules.climbRad) {
+    _escape.copy(_probe).applyQuaternion(_q.setFromAxisAngle(_axis, pitch));
+    if (_escape.y < _probe.y) _escape.copy(_probe).applyQuaternion(_q.setFromAxisAngle(_axis, -pitch));
+    if (probeClear(world, position, _escape, reach) >= reach) { commanded.copy(_escape).multiplyScalar(speed); return true; }
+  }
+  // Around: level side-steps, the roomier side first.
+  _flat.set(_probe.x, 0, _probe.z);
+  if (_flat.lengthSq() < 1e-8) _flat.set(0, 0, 1);
+  _flat.normalize();
+  for (const yaw of rules.sideRad) {
+    const left = _escape.copy(_flat).applyAxisAngle(WORLD_UP, yaw), leftRoom = probeClear(world, position, left, reach);
+    const leftX = left.x, leftZ = left.z;
+    const right = _escape.copy(_flat).applyAxisAngle(WORLD_UP, -yaw), rightRoom = probeClear(world, position, right, reach);
+    const best = Math.max(leftRoom, rightRoom);
+    if (best >= reach * .75) {
+      if (leftRoom >= rightRoom) _escape.set(leftX, 0, leftZ);
+      commanded.copy(_escape).multiplyScalar(speed * .8);
+      return true;
+    }
+  }
+  // Boxed in: hold a standoff hover, easing back out of the clearance along the obstacle's normal.
+  commanded.set(0, 0, 0);
+  if (hit.dist < rules.clearanceM * 1.5 && hit.normal) commanded.set(hit.normal.x, hit.normal.y, hit.normal.z).multiplyScalar(2);
+  return true;
+}
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
@@ -80,7 +169,7 @@ function droneToggleRequested(entity:AerialEntity,flight:Flight,timeS:number):bo
     || (!!entity.bot&&!flight.shell&&entity.input.fire&&timeS>8&&timeS>=flight.readyAt);
 }
 
-export function stepAerial(entity: AerialEntity, timeS: number, dt: number, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void): void {
+export function stepAerial(entity: AerialEntity, timeS: number, dt: number, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void, world: AerialWorldQuery | null = null): void {
   const flight = flights.get(entity); if (!flight) return;
   const v = flight.view;
   if (entity.combat.destroyed) {
@@ -110,10 +199,10 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   v.cooldownS = Math.max(0, flight.readyAt - timeS);
   const shell = flight.shell;
   if (!shell) return;
-  advanceDrone(entity,flight,shell,timeS,dt);
+  advanceDrone(entity,flight,shell,timeS,dt,world);
 }
 
-function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellSpec>,timeS:number,dt:number):void {
+function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellSpec>,timeS:number,dt:number,world:AerialWorldQuery|null):void {
   const v=flight.view,rules=AERIAL_RULES.drone;
   const age = timeS - flight.born;
   v.launching = age < rules.launchS;
@@ -124,7 +213,15 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
     const height=droneLaunchHeight(age);
     launchOrigin(entity,launchPosition);
     launchUp.set(0,height,0).applyQuaternion(launchOrientation);launchPosition.add(launchUp);
-    direction.copy(launchPosition).sub(shell.pos).multiplyScalar(1/Math.max(dt,1e-6));
+    direction.copy(launchPosition).sub(shell.pos);
+    // A deck, bough or overhang above the dock ends the climb short of it, never through it.
+    const rise=direction.length();
+    if(world&&rise>1e-6){
+      _probe.copy(direction).multiplyScalar(1/rise);
+      const hit=world.raycast(shell.pos,_probe,rise+DRONE_AVOIDANCE.clearanceM);
+      if(hit)direction.multiplyScalar(Math.max(0,Math.min(rise,hit.dist-DRONE_AVOIDANCE.clearanceM))/rise);
+    }
+    direction.multiplyScalar(1/Math.max(dt,1e-6));
 
   }
   else {
@@ -134,7 +231,7 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
     direction.x+=.85*Math.sin(age*1.7+phase)+.35*Math.sin(age*4.3+phase);
     direction.y+=.65*Math.sin(age*2.3+phase)+.25*Math.sin(age*5.7+phase);
     direction.z+=.7*Math.sin(age*1.9+phase)+.3*Math.sin(age*3.7+phase);
-
+    if(world)avoidDroneObstacles(world,entity.id,shell.pos,direction);
   }
   if(v.launching) shell.vel.copy(direction);
   else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));

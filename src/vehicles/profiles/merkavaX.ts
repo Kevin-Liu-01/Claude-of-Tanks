@@ -819,20 +819,15 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   // Emitting only the receiver left a detached island at turret yaw 90.
   topPart(P,MK4,'turretDetail',box(.2910,.1518,.2909),-.7176,2.6429,-.8552);
   cageBar(P,MK4,[-.75,2.57,-.86],[-.976,2.85,-.82],.055,'turretOpenLatticeDark');
-  // The supported receiver and barrel are the real weapon stock. Register
-  // those visible source-measured parts for the fitting census; do not add a
-  // dummy marker or a second roof weapon.
-  const roofWeapon=new THREE.Group();
-  const weaponPart=(geometry: THREE.BufferGeometry,material: THREE.Material,
-    x:number,y:number,z:number): void=>{
-    const mesh=new THREE.Mesh(geometry,material);
-    mesh.position.set(x,y,z);mesh.castShadow=mesh.receiveShadow=true;
-    roofWeapon.add(mesh);
-  };
-  weaponPart(box(.0421,.1122,.4768),P.mats.detail,0,0,0);
-  weaponPart(box(.0411,.0435,.7131),P.mats.dark,-.0005,.0198,.4932);
-  FITTINGS.markExact(roofWeapon,'pintleMG');
-  roofWeapon.position.set(-.9759,2.8967-MK4.y,-.9093-MK4.z);
+  // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
+  // updating machine guns and stuff"): the arm's 7.62 mm gun is the fleet's GPMG construction (machineGunGeometry.ts:
+  // receiver with feed cover, gas cylinder, handle, pistol grip and butt, flash hider) carried by the source's angled
+  // support (the external cradle), in place of the receiver box and the box barrel, at Codex's mount: its muzzle on the
+  // source barrel's axis at the source muzzle (x -0.9764, y 2.9165, z -0.0595). One gun, one fitting, no second roof
+  // weapon.
+  const roofWeapon=FITTINGS.seatMuzzle(FITTINGS.pintleMG({mats:P.mats,cls:'mag',mount:'external-cradle',ammo:false,
+    tone:'two-tone',seed:4417}),[-.9764,2.9165-MK4.y,-.0595-MK4.z]);
+  roofWeapon.name='merkava4BarakArmWeapon';
   P.turretG.add(roofWeapon);
 }
 

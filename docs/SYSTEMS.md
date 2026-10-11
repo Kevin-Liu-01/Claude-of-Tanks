@@ -723,7 +723,12 @@ derives the ground-contact band with each solid's own height and the shell bands
 closed section loops at the band planes; prismatic solids reuse their whole
 projection; identical wall bands merge back into one record; sub-5 cm² trim is shed
 before the 64-part raster fallback; scanned sandbag meshes stay on the five-point
-sampled raster). The hull push skips a part the tracks clear by 0.5 m or the body
+sampled raster). A dense body (over 512 triangles) whose band closes no section
+loop and holds only zero-height pieces (walls cut round doors and windows with
+open reveals: a band of sills and lintels) takes the hull of the band's clipped
+vertices, the stand-in a light body gets (2026-10-08, the facades lane's report on
+Polders' farmhouse: level shells crossed such walls under the eaves on about 215
+structures). The hull push skips a part the tracks clear by 0.5 m or the body
 top stays 0.15 m under (`tankBodyTopM`), and the shell ray uses each part's own
 extent, so a low wing beside a tower, a porch, a raised deck or a sloped roof edge
 no longer blocks what visibly passes them. The release-gate certification scores

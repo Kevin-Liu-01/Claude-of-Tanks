@@ -306,7 +306,7 @@ function addTurret(P: LightTigerBuilderPort): void {
   // omitted and the highest EO head sits centered on the station roof.
   const tigerRoofOptics = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'k2b-compact-tower',
     scale: 0.88,
     towerRise: 0.12,
@@ -338,7 +338,7 @@ function addTurret(P: LightTigerBuilderPort): void {
   // arrow-brow station; the positive-X firing line clears the roof optics.
   const tigerRoofRws = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'light-tiger-compact-rws',
     scale: 0.66,
     towerRise: 0.09,

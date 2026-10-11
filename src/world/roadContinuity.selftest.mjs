@@ -303,7 +303,12 @@ for (const mapId of MAP_IDS) {
     cells++;
     if (Math.abs(after.getHeightAt(x, z) - field.getHeightAt(x, z)) <= 1e-4) continue;
     changedCells++;
-    if (field.getWaterMaskAt(x, z) > .8) changedLiquidCells++;
+    // (2026-10-07, the map-revival lane: on a bridge's span the road crosses its water on the deck, so the water beside the
+    // carriageway there sits inside the road's shoulder band and moves with the road plane — Polders' oxbow lane, whose
+    // completion re-samples its nodes; elsewhere every liquid cell stays exact)
+    const besideDeck = (after.bridgeDecks ?? []).some((d) => Math.abs((x - d.x) * d.ux + (z - d.z) * d.uz) <= d.halfLength
+      && Math.abs(-(x - d.x) * d.uz + (z - d.z) * d.ux) <= d.halfWidth + 18);
+    if (field.getWaterMaskAt(x, z) > .8 && !besideDeck) changedLiquidCells++;
     if (Math.max(Math.abs(x), Math.abs(z)) < 430 && field._roadDist(x, z) > 26 && after._roadDist(x, z) > 26) {
       const pads = [config.spawns.player, ...config.spawns.enemies];
       if (pads.every(p => Math.hypot(x - p.x, z - p.z) > 26)) {

@@ -10,7 +10,7 @@ import { decodeCollisionManifest } from '../../server/collisionManifestCodec.ts'
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './maps/townPlans.generated.ts';
 
-// The PR head's (0bbb0cddc) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
+// The PR head's (0bbb0cddc; polders 5d2461283) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
 // of them stood in a carriageway there (and so may move off it).
 const PR_HEAD = {
   titan_gorge: { carriageway: 5, structures: [
@@ -114,6 +114,18 @@ const PR_HEAD = {
     [-240.59, 198.51, 11.32, 11.95], [-241.88, 211.53, 11.21, 11.18], [-237.91, 232.47, 9.55, 8.28],
     [-236.07, 249.39, 10.47, 7.53], [-234.26, 264.71, 12.24, 11.64], [-233.14, 280.01, 9.6, 8.1],
   ] },
+  // (the map-revival lane, 2026-10-06: Tidegate Polders' farm court replays PR #9's head 5d2461283 while its dykes and
+  // water are rebuilt; its kit's yard sheds (the polder kit's woodshed) follow their yards, and two moved with the
+  // ground round them)
+  // (2026-10-07, step 3a on the landmarks lane's round 2) the oxbow's lift bridge and the two tower mills on their terps are
+  // set pieces (props.landmarks), not the town plan's: three more buildings over 40 m² than the PR head's
+  polders: { carriageway: 0, setPieces: 3, structures: [
+    [-167.45, -83, 6.22, 6.22], [-141.65, -77.86, 11.89, 16.05], [-145.87, -49.37, 4.37, 6.89], [-120.02, -69.5, 17.52, 8.16],
+    [-119.99, -49.09, 18.48, 7.55], [-95.6, -74.31, 6.54, 8.53], [-67.19, -46.35, 3.94, 5.12], [-93.73, 13, 10.12, 15.08],
+    [-39.16, 70.76, 10.81, 16.12], [15.33, -6.79, 13.65, 12.41], [2.25, -45.54, 14.22, 12.42], [26.77, -34.38, 8.89, 8.03],
+    [29.07, -76.73, 6.01, 6.78], [-51.09, -82.88, 10.26, 11.33], [-74.18, -69.55, 15.45, 20.74], [-39.22, -60.91, 5.94, 6.03],
+    [40.74, 79.42, 18.13, 18.14], [-104.55, -72.85, 4.62, 3.84], [29.2, -42.65, 5.23, 5.63],
+  ] },
 };
 
 for (const mapId of MAP_IDS) {
@@ -149,7 +161,7 @@ const OVER_WATER = {
     dropped: [[-197.27, 3.82], [-226.62, -24.01], [-225.05, -7.68]],
   },
 };
-function kitSeats(mapId, config, carriageway, structures, now) {
+function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
   const water = OVER_WATER[mapId] ?? { moved: [], dropped: [] };
   const same = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= 0.05;
   for (const at of [...water.dropped, ...water.moved.map(([from]) => from)]) {
@@ -184,14 +196,20 @@ function kitSeats(mapId, config, carriageway, structures, now) {
     taken.add(i); moved++; worstMove = Math.max(worstMove, d);
   }
   assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
-  const extra = now.filter((_, i) => !taken.has(i));
+  // (the map-revival lane, 2026-10-07) the landmarks lane's set pieces (props.landmarks: Polders' two tower mills and its
+  // lift bridge) stand as structures of their own on their seats: up to `setPieces` extras within 6 m of a piece's seat
+  // are those, every other extra a yard's shed
+  const onPiece = (s) => (config.props.landmarks ?? []).some((piece) => Math.hypot(s.cx - piece.x, s.cz - piece.z) <= 6);
+  const pieces = now.filter((s, i) => !taken.has(i) && onPiece(s));
+  assert.ok(pieces.length <= setPieces, `${mapId}: ${pieces.length} set pieces stand on their seats (up to ${setPieces})`);
+  const extra = now.filter((s, i) => !taken.has(i) && !(setPieces > 0 && onPiece(s)));
   for (const s of extra) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
   summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), `
     + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${extra.length} yard sheds`);
 }
-for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
+for (const [mapId, { carriageway, structures, setPieces = 0 }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
   if (!TOWN_PLANS[mapId]) {
     assert.ok(config.props.roadBuildingClearance && !config.props.townPlan, `${mapId}: a generated plan with the road clearance`);
@@ -200,7 +218,7 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8')));
   const now = manifest.obstacles.filter((o) => o.k === 'structure').map(footprint);
   if (config.props.architecture) {
-    kitSeats(mapId, config, carriageway, structures, now);
+    kitSeats(mapId, config, carriageway, structures, now, setPieces);
     continue;
   }
   assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);

@@ -195,7 +195,11 @@ for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
   for (const seed of [1337, 2049]) {
   const field = createHeightField(seed, config);
   const pads = [field._layout.spawns.player, ...field._layout.spawns.enemies];
-  for (const [kind, discs] of [['marshes', field._layout.marshes], ['lakes', field._layout.lakes]]) {
+  // (2026-10-07, the map-revival lane: a bridge's crossing marker — a station authored crossing: 'bridge' with no dip, set
+  // inside a lake on its road (Polders' lift bridge over the oxbow) — paints no marsh surface of its own; every sample of
+  // it stands on the road, so it exercises neither a core nor a bank)
+  const marshDiscs = field._layout.marshes.filter((marsh) => !(marsh.crossing === 'bridge' && !marsh.dip));
+  for (const [kind, discs] of [['marshes', marshDiscs], ['lakes', field._layout.lakes]]) {
   let coreCount = 0, bankCount = 0, maxBank = 0;
   for (const marsh of discs) {
     for (let at = 0; at < 12; at++) {

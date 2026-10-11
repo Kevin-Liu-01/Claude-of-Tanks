@@ -22,6 +22,7 @@ import {
 import { jerrycanParts, whipAntennaParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { paintAmmoVertexColours, prepareWeaponFinishGeometry, weaponFinishFor } from '../weaponFinish.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type GeometryScale = number | readonly number[];
@@ -1313,7 +1314,25 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
   return isRecord(value) && value.isMaterial === true;
 }
 
-function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Material {
+/** The material slots a fitting part may name: the vehicle material keys plus the machine gun's ammunition slots. */
+const FITTING_MATERIAL_SLOTS: ReadonlySet<string> = new Set([
+  'hull', 'barrel', 'detail', 'dark', 'shadow', 'glass', 'rubber', 'rubberCavity', 'wheels', 'wheelsRecessed',
+  'trackLink', 'spareTrack', 'canvasCloth', 'canvasPale', 'wood', 'bark', 'burnt',
+  'gunmetalAmmo', MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT,
+]);
+
+/** Fittings that are weapons (fleet-weapons lane, 2026-10-09): their bare steel is weapon steel, their cans drab. */
+const WEAPON_FITTING_TYPES: ReadonlySet<string> = new Set(['pintleMG', 'auxiliaryWeapon', 'openYokeRws']);
+
+function fitMat(mats: Record<string, RuntimeValue>, slot: string, type = ''): THREE.Material {
+  // 2026-10-09 (fleet-weapons lane, weaponFinish.ts): a weapon fitting's steel is parkerized weapon steel and its
+  // ammunition the national drab (rendered builds; the non-rendering set keeps dark/detail below).
+  if (WEAPON_FITTING_TYPES.has(type)) {
+    if (slot === 'dark' && isMaterial(mats.weaponSteel)) return mats.weaponSteel;
+    // the station's small painted hardware (brackets, brows, cheeks, rings) is painted with the vehicle, not one flat tone
+    if (slot === 'detail' && isMaterial(mats.weaponSteel) && isMaterial(mats.hull)) return mats.hull;
+    if ((slot === MG_AMMO_CAN_SLOT || slot === MG_CARTRIDGE_SLOT) && isMaterial(mats.ammoDrab)) return mats.ammoDrab;
+  }
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
   // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds must read against the gunmetal
   // (the vehicle canvas renders near-black on several hulls), and neither ever takes the host camouflage.
@@ -1321,6 +1340,11 @@ function fitMat(mats: Record<string, RuntimeValue>, slot: string): THREE.Materia
   // pale issue canvas is the desert/IDF soft-kit role, and appearanceAudit keeps it off every non-desert kit.
   if (slot === MG_AMMO_CAN_SLOT || slot === MG_CARTRIDGE_SLOT) {
     return isMaterial(mats.detail) ? mats.detail : fitMat(mats, 'gunmetalAmmo');
+  }
+  // 2026-10-09 (fleet-weapons census): an unknown slot used to fall back to the gunmetal silently, so six RWS calls
+  // naming the bucket 'turret' as their body slot drew their armoured bodies flat dark instead of in the hull's paint.
+  if (!FITTING_MATERIAL_SLOTS.has(slot)) {
+    throw new Error(`KIT.fittings: unknown material slot '${slot}' (a material key such as hull/detail/dark/glass)`);
   }
   const m = mats[slot] || mats.dark;
   if (isMaterial(m)) return m;
@@ -1346,7 +1370,7 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     prepareVehicleNightLensParts(geos);
     const merged = KIT.mergeAll(geos);
     ownFittingGeometry(merged);
-    const material = fitMat(mats, slot);
+    const material = fitMat(mats, slot, type);
     const camoUvScale = Number(material.userData?.camoUvScale);
     if (Number.isFinite(camoUvScale) && camoUvScale > 0) {
       // Project after all authored transforms have been merged. This keeps a
@@ -1360,6 +1384,12 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     if (slot !== 'bark' || !merged.getAttribute('color')) {
       merged.setAttribute('color', new THREE.BufferAttribute(
         new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
+    }
+    // weapon steel and ammunition drab: the grain's own box projection, the crease-edge wear, and the can's drab or the
+    // rounds' brass in the vertex colours (weaponFinish.ts)
+    if (material.userData?.weaponUvScale) {
+      prepareWeaponFinishGeometry(merged, KIT.boxUV);
+      if (material.userData.weaponFinish === 'ammoDrab') paintAmmoVertexColours(merged, material, slot === MG_CARTRIDGE_SLOT);
     }
     const mesh = new THREE.Mesh(merged, material);
     registerVehicleNightLensMesh(mesh, geos);
@@ -1739,6 +1769,7 @@ function createAmericanRwsBuildContext(opts: FittingOptions): AmericanRwsBuildCo
   // Keep the station in one continuous fitting-paint finish.  Sampling the
   // host hull camouflage independently on every small armor box made the
   // tower read as a stack of unrelated miniature camo tiles.
+  // (2026-10-09, fleet-weapons lane: the default 'detail' body draws in the hull's camouflage on rendered builds, fitMat)
   const body = opts.bodySlot || 'detail';
   const baseR = (low ? 0.25 : 0.28) * s;
   const pedestalH = (low ? 0.19 : armored ? 0.30 : 0.26) * s;
@@ -1994,6 +2025,7 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   const s = sizeStandard === 'm1a3-full-tower' ? 1.28 : (opts.scale || 1);
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const sensorSide = Math.sign(opts.sensorSide || -ammoSide);
+  // (2026-10-09, fleet-weapons lane: the default 'detail' body draws in the hull's camouflage on rendered builds, fitMat)
   const body = opts.bodySlot || 'detail';
   const hasWeapon = opts.weapon !== false;
   const parts = fitParts();
@@ -3008,6 +3040,32 @@ function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
   return fitAssemble('unditchingLog', parts, { ...opts, rotation: [r0[0] || 0, (r0[1] || 0) + Math.PI / 2, r0[2] || 0] });
 }
 
+// 2026-10-09 (fleet-weapons lane): an exact weapon keeps its source-measured solids but takes the fleet's weapon finish
+// like every generated gun: its hardware gunmetal becomes weapon steel (grain, oil sheen, worn crease edges) and its flat
+// fitting paint the hull's camouflage on the vehicle-scale box UV. The rendered material set links the pair
+// (tankFactoryCore linkWeaponFinish: dark -> weapon steel, detail -> hull); non-rendering builds have no link and keep
+// their materials and geometry byte-identical.
+function applyExactWeaponFinish(group: THREE.Group): void {
+  const finished = new Set<THREE.BufferGeometry>();
+  group.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.geometry || Array.isArray(object.material)) return;
+    const target = weaponFinishFor(object.material as THREE.Material);
+    if (!target) return;
+    // in place: the positions (which the asset and ledger fingerprints hash) never change
+    const geometry = object.geometry as THREE.BufferGeometry;
+    if (finished.has(geometry)) { object.material = target; return; }
+    finished.add(geometry);
+    const steel = target.userData?.weaponFinish === 'weaponSteel';
+    if (steel) prepareWeaponFinishGeometry(geometry, KIT.boxUV);
+    else {
+      const camoUvScale = Number(target.userData?.camoUvScale);
+      if (Number.isFinite(camoUvScale) && camoUvScale > 0) KIT.boxUV(geometry, camoUvScale);
+      geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count * 3).fill(1), 3));
+    }
+    object.material = target;
+  });
+}
+
 // Register a source-measured fitting whose exterior cannot be represented by
 // one of the generic constructors without losing certified geometry. The
 // caller supplies the real mesh group; this helper only validates/stamps the
@@ -3018,15 +3076,19 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
   if (!group?.isGroup || !type) throw new Error('KIT.fittings.markExact: visible Group and type are required');
   let meshCount = 0;
   group.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
-    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    // three's own type flag, not instanceof: a lazily loaded profile pack can hold a second copy of three in a dev
+    // server whose dependency optimizer re-ran mid-session (2026-10-10: a Leopard 2A5 bot's exact loader gun failed
+    // here and aborted the battle start). One copy in a production bundle; identical results there.
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     if (material?.colorWrite === false) return;
     meshCount++;
-    if (!object.name) object.name = `fitting_${type}_part_${meshCount}`;
-    object.userData.fitting = type;
-    object.userData.fittingExact = true;
-    object.userData.combatHitboxRole = 'equipment';
-    object.userData.surfaceMarkupSelectable = true;
+    if (!mesh.name) mesh.name = `fitting_${type}_part_${meshCount}`;
+    mesh.userData.fitting = type;
+    mesh.userData.fittingExact = true;
+    mesh.userData.combatHitboxRole = 'equipment';
+    mesh.userData.surfaceMarkupSelectable = true;
   });
   if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
   group.name = `fitting_${type}_exact`;
@@ -3043,13 +3105,38 @@ function fittingMarkExact(group: THREE.Group, type: string): THREE.Group {
     group.userData.browningDerivedStandard = 'cot-browning-family-v2-exact';
     group.userData.machineGunFinish = 'gunmetal';
     group.userData.sourceMeasuredMachineGun = true;
+    applyExactWeaponFinish(group);
   }
   const bb = new THREE.Box3().setFromObject(group);
   group.userData.aabb = { min: bb.min.toArray(), max: bb.max.toArray() };
   return group;
 }
 
+/**
+ * Seat a machine-gun fitting by its muzzle (fleet-weapons lane, 2026-10-10): moves the fitting so the tip of its own
+ * barrel stands at `muzzle` (the fitting parent's frame) on the barrel's own axis, read from the gun body's vertices at
+ * the tip. A source-measured gun replaced by the fleet's Browning construction keeps its authored barrel line and reach
+ * this way, whatever the class's receiver and mount dimensions. Returns the fitting.
+ */
+function fittingSeatMuzzle(fitting: THREE.Group, muzzle: readonly [number, number, number]): THREE.Group {
+  const body = fitting.getObjectByName('browningDerivedMachineGunBody')
+    ?? fitting.getObjectByName('americanM2HBBody');
+  if (!(body instanceof THREE.Mesh)) throw new Error('KIT.fittings.seatMuzzle: the fitting carries no gun body');
+  const position = body.geometry.getAttribute('position');
+  let tipZ = -Infinity;
+  for (let i = 0; i < position.count; i++) tipZ = Math.max(tipZ, position.getZ(i));
+  let axisY = 0, axisX = 0, count = 0;
+  for (let i = 0; i < position.count; i++) {
+    if (position.getZ(i) < tipZ - 0.02) continue;
+    axisX += position.getX(i); axisY += position.getY(i); count++;
+  }
+  fitting.position.set(muzzle[0] - axisX / count, muzzle[1] - axisY / count, muzzle[2] - tipZ);
+  fitting.userData.seatedMuzzle = [...muzzle];
+  return fitting;
+}
+
 export const FITTINGS = {
+  seatMuzzle: fittingSeatMuzzle,
   pintleMG: fittingPintleMG,
   americanM2: fittingAmericanM2,
   americanRws: fittingAmericanRws,

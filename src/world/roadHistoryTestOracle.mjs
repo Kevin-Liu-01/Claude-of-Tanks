@@ -67,7 +67,14 @@ const dryDeckClamp = '(T.bridges?.length ? Math.min(h, bridgeDeckOver(x, z)?.dec
 // and their apron, the pan dug and filled dead flat to its flat's level — is a relief law of the same kind (the
 // constructor fixture reverts its slice to the pre-sor text; the stations' calm and dig in the marsh loop above it are
 // current in both); the relief-law constructor restores the current slice
-const historicalNearField = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;\n    }\n';
+// (the map-revival lane, 2026-10-07, Orchard round 5) the terrace zones are stepped right after the near-field relief,
+// inside the current slice restored here; the historical slice carries the same stepping (the constructor fixture), so
+// the anchor takes it along and the zones are stepped once
+const terraceStepStart = '    // the map-revival lane (2026-10-05; round 5, 2026-10-07): a terrace zone is stepped after the near-field relief';
+const terraceStepEnd = '    if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);\n';
+assert.equal(source.split(terraceStepStart).length, 2, 'one current terrace stepping');
+const terraceStep = source.slice(source.indexOf(terraceStepStart), source.indexOf(terraceStepEnd, source.indexOf(terraceStepStart)) + terraceStepEnd.length);
+const historicalNearField = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;\n    }\n' + terraceStep;
 assert.equal(referenceSource.split(historicalNearField).length, 2, 'one historical near-field micro relief');
 const sorNearFieldStart = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;\n';
 const sorPanEnd = '      if (h < level) h = level;\n    }\n';

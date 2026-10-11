@@ -138,6 +138,17 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
     R: 'rock', M: null,
   },
+  // ground lane (2026-10-07, wave 251's Orchard bird: the lawn "mottled with dark blotches the size of houses"; "the Chouf
+  // in summer isn't uniformly green"): Orchard Valley borrowed Verdant's palette, and with it the black earth under every
+  // worn patch. Its own row: Verdant's grass; the dirt photo a third greyed and warmed to the Chouf's dry, stony soil
+  // (linear ~0.17 / 0.13 / 0.095 — a warm dusty brown, its pebbles the photo's own; the first cut's 0.19 / 0.15 / 0.11
+  // turned the village's yards to pale patches from the bird); the rock plain Rock058 (the map's
+  // sourcedTint R makes it the cream limestone, as on Verdant's row)
+  orchard: {
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.40, tint: [0.86, 0.88, 0.88], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
   // ground lane (2026-10-07, wave 248, Tidegate Polders: the plough "jet-black, like cinder or asphalt", the banks "near-black,
   // textureless slabs at the water's edge", the lanes "a uniform near-black tar strip" — all three were Verdant's black
   // earth, which the polders borrowed with Verdant's palette): the Scheldt polders' marine clay. The dirt photo greyed by

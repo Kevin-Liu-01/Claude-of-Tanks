@@ -1,4 +1,5 @@
-import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition } from './smokeBallistics.ts';
+import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type SmokePoint, type SmokeWorld, type SmokeWorldHit } from './smokeBallistics.ts';
+import { smokeClip } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
@@ -58,7 +59,13 @@ function mountFrame(entity: AuxiliaryEntity, owner: 'hull' | 'turret'): Matrix4 
   }
   return matrix;
 }
-export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryAction, now: number, ground?: (x:number,z:number)=>number): boolean {
+/** An authority's world collision as the launch reads it (the solo world; the match's, whose ray query is optional). */
+interface AuxiliaryWorld { raycast?(origin: SmokePoint, direction: SmokePoint, maxDist: number): SmokeWorldHit | null }
+/** `world` (the authority's collision: the solo world, the match's shards) makes the canisters bounce off what they
+ * strike and holds each bank's cloud outside the walls round it (smokeClip); without it they meet the terrain only. */
+export function requestAuxiliary(
+  entity: AuxiliaryEntity, action: AuxiliaryAction, now: number, ground?: (x:number,z:number)=>number, world?: AuxiliaryWorld | null,
+): boolean {
   if (entity.combat.destroyed || entity.modeActive === false) return false;
   const kit = auxiliaryCapabilities(entity.spec);
   if (!kit) return false;
@@ -67,18 +74,22 @@ export function requestAuxiliary(entity: AuxiliaryEntity, action: AuxiliaryActio
   if (action === 'roofGun' && kit.guns.length && entity.combat.modules?.roofGun?.state !== 'red') { state.gunOn = !state.gunOn; return true; }
   if (action !== 'smoke' || !kit.smoke.length || !state.smokeCharges || now < state.smokeReadyAt) return false;
   const terrain=ground ?? (()=>entity.state.pos.y);
+  const query=world&&typeof world.raycast==='function'?world as SmokeWorld:null;
   const canisters=kit.smoke.map(socket=>{
     const frame=mountFrame(entity,socket.owner);
     origin.fromArray(socket.position).applyMatrix4(frame);
     direction.fromArray(socket.direction).transformDirection(frame);
-    return createSmokeCanister(origin,direction,terrain);
+    return createSmokeCanister(origin,direction,terrain,query);
   });
   targetPoint.set(0,0,0);
   for(const shot of canisters){smokeCanisterPosition(shot,shot[6],origin);targetPoint.add(origin);}
   targetPoint.multiplyScalar(1/canisters.length);
   const smokePivot=kit.turretPivot??entity.spec.armor?.turretPivot??[0,(entity.spec.dims?.heightM??2.5)*.7,0];
+  const banks=smokeCloudBanks(canisters);
+  const clip=query?canisters.map((shot,index)=>banks.includes(index)?smokeClip(smokeCanisterPosition(shot,shot[6],{x:0,y:0,z:0}),query):0):null;
   state.smoke={x:targetPoint.x,y:targetPoint.y+1.32,z:targetPoint.z,
-    yaw:entity.state.yaw+entity.state.turretYaw,born:now,canisters,banks:smokeCloudBanks(canisters),
+    yaw:entity.state.yaw+entity.state.turretYaw,born:now,canisters,banks,
+    ...(clip?.some(c=>c)?{clip}:{}),
     source:[entity.spec.id,entity.state.pos.x,entity.state.pos.y,entity.state.pos.z,entity.state.yaw,entity.state.turretYaw,
       entity.state.visualPitch||0,entity.state.visualRoll||0,smokePivot[0]!,smokePivot[1]!,smokePivot[2]!]};
   state.smokeCharges--; state.smokeReadyAt = now + SMOKE_COOLDOWN_S;
