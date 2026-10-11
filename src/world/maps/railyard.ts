@@ -411,7 +411,8 @@ export default {
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.55), clamp01(l * 0.85)], // creosoted timber
       straw: null,
     },
-    rockTone: (h: number, s: number, l: number) => [0.085, 0.07, clamp01(l * 0.82)], // concrete rubble
+    // (round 3; wave 396b: "identical white pebbles") the stones slag and sooted rubble, half their lightness (was l x 0.82)
+    rockTone: (h: number, s: number, l: number) => [0.07, 0.06, clamp01(l * 0.45 + 0.03)], // slag and sooted rubble
     wallStoneChance: 0.75,
     // Brick walls: the yard's outer boundary behind each service road, the works compounds and field walls on the
     // approaches, each run with its 180° twin.
@@ -421,7 +422,8 @@ export default {
       [-420, -150, -360, -140, 2], [420, 150, 360, 140, 2],
     ],
     well: false, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 60,
+    // (round 3; wave 396b: "identical white pebbles" on the yard floor) a third of the loose stones (60 -> 20)
+    haystacks: 0, rocks: 20, outcrops: 4, craters: 62, rubblePiles: 60,
     lampposts: true, hedgehogs: 8,
     // Legacy-map quality backport: modern hulks on the yard aprons (baked roster tanks) —
     // the armor that fought over the railhead

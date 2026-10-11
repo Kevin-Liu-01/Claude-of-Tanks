@@ -4912,6 +4912,10 @@ void splatCompute() {
   // where the engines stood, and its clinker near the camera (the works' slag grain). The yard is the village mask's on a
   // map whose ground profile floors it so (groundRedux.ts cinderYard); 0 everywhere else, and the block is skipped.
   float yardW = uYardCinder * smoothstep(0.10, 0.55, mk.a);
+  // (2026-10-11, the map-revival lane; gauntlet wave 396b: the floor "still soft mottled brown dirt with moss patches ...
+  // not black cinder and coal dust with spillage and trodden paths") the yard floored in cinder edge to edge: the dirt
+  // layer, which carries it, over all but a twentieth of the yard (the sward's green patches showed between its own)
+  if (yardW > 0.002) fD = max(fD, 0.95 * yardW * keepM * (1.0 - seaSand));
   float cinN = 0.5, cinVis = 0.0;
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
@@ -4929,7 +4933,8 @@ void splatCompute() {
       // (2026-10-11, the map-revival lane; gauntlet wave 362: the yard floor "the same uniform brown noise as the open
       // ground"; "a 1962 coalfield yard sits on black cinder and coal-dust ballast") the yard's cinder a dark warm grey —
       // four fifths of the dirt photo's brown taken out and its tone two thirds (was three fifths of the brown, 0.85)
-      cin = mix(cin, vec3(reduxLuma(cin)), 0.8) * vec3(0.62, 0.60, 0.58);
+      // (2026-10-11, wave 396b: "push the floor much darker") two fifths of the photo's tone (was 0.62): cinder black-grey
+      cin = mix(cin, vec3(reduxLuma(cin)), 0.85) * vec3(0.44, 0.43, 0.41);
       // the floor's own lumps and hollows, trodden and spread: ~25 cm and ~60 cm of tone (the noise with no period), a
       // twelfth each way, faded before they can shimmer; and its ~3 m spreads, darker and paler by a sixth, which still
       // read at a grazing 30 m where the finer terms are gone
@@ -4939,10 +4944,18 @@ void splatCompute() {
       // the patches (~8 m, the noise with no period): coal dust, dried ash, rust
       vec2 yP = nzq(uv, 0.021, vec2(0.17, 0.43));
       // (2026-10-11: the coal dust over more of the floor and blacker — the yard handled coal)
-      float coal = smoothstep(0.48, 0.72, yP.x);
+      float coal = smoothstep(0.40, 0.66, yP.x);
       float ash = smoothstep(0.58, 0.80, 1.0 - yP.x) * smoothstep(0.30, 0.62, yP.y);
       float rust = smoothstep(0.62, 0.82, yP.y) * (1.0 - coal);
-      cin *= mix(1.0, 0.42, coal);
+      cin *= mix(1.0, 0.38, coal);
+      // (2026-10-11, wave 396b: "trodden paths") the paths across the yard — the noise's mid contour on a field drawn out
+      // along the line (~17 m along it, ~4 m across), about a metre wide, kept to a third of the floor by a ~30 m field so
+      // they run as separate paths, not a mesh: the cinder there trodden flat and compacted, a fifth darker; faded at range
+      // before its lines can shimmer
+      float pathN = nzq(vec2(uv.x * 0.26, uv.y), 0.05, vec2(0.37, 0.61)).x;
+      float trod = (1.0 - smoothstep(0.06, 0.14, abs(pathN - 0.5)))
+        * smoothstep(0.55, 0.70, nzq(uv, 0.006, vec2(0.83, 0.11)).y) * tileVis(1.2);
+      cin *= 1.0 - 0.22 * trod;
       cin = mix(cin, vec3(reduxLuma(dM) * 1.65) * vec3(1.0, 0.98, 0.95), ash * 0.62);
       cin *= mix(vec3(1.0), vec3(1.30, 0.98, 0.76), rust * 0.55);
       // the oil: stains a metre or two across where the engines stood — kept to some stretches of the yard (the ~14 m
