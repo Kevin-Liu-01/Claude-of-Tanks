@@ -215,6 +215,21 @@ export function resumeStateFromRetained(
 }
 
 /**
+ * The seats an elected host waits for before its world moves (the resume hold, matchHostCore.ts RESUME_HOLD_MS): the
+ * room's connected players with a battle seat in the boot plan, the elected seat itself among them, less the host that
+ * went (a silent host may still hold its room socket; it comes back, if ever, as a peer of the new host).
+ */
+export function resumeHoldSeats(
+  players: readonly { id: string; connected: boolean; team: string }[],
+  seats: readonly { playerId: string; team: string }[],
+  previousHostId: string | null,
+): string[] {
+  const seated = new Set(seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.playerId));
+  return players.filter((player) => player.connected && player.team !== 'spectator' && player.id !== previousHostId && seated.has(player.id))
+    .map((player) => player.id);
+}
+
+/**
  * Write a keyframe's rows and extras onto the actor's entities, and its persistent destroyed list onto the actor's world
  * (before the loop starts). Returns how many entities matched, and how many destroyed props this world restored or
  * does not have. Without the list (world state audit, 2026-10-01) the elected host stood every felled tree back up

@@ -62,6 +62,11 @@ export function getAbramsWeldingBayPlacement(
   return variant.id === 'verdant_motor_pool' ? ABRAMS_FLAMMABLE_BAY_OFFSET : ABRAMS_WELDING_BAY_PLACEMENT;
 }
 
+// The weld light (2026-10-10): Verdant's former west-wall fill PointLight now stands at the rolled K2's belly weld,
+// 0.35 m out from the torch tip toward the welder, so the arc lights him, the plate and the floor. Garage frame,
+// Verdant layout; garageCrewFigures.selftest checks it against the K2 crew's torch.
+export const VERDANT_WELD_LIGHT = Object.freeze({ x: 15.72, y: 2.05, z: 16.3 });
+
 // The Leopard occupies the neighboring mobility square, not the Abrams
 // welding owner. Preserve its established world-space pose when the Abrams
 // service story moves independently.
@@ -135,6 +140,29 @@ export function leopardBayPointToWorkshop(
   const lc = Math.cos(layoutYaw);
   const ls = Math.sin(layoutYaw);
   return { x: layoutX + ownerX * lc + ownerZ * ls, z: layoutZ - ownerX * ls + ownerZ * lc };
+}
+
+// The yard crews' floors (2026-10-10 ground audit): the track carry and the power-pack pair stand in the open yard
+// beside the hero, where the raw terrain left them buried to 0.47 m (Ironworks) or 0.26 m clear (Saltmere). Each stands
+// on a datum floor circle in the shared workshop frame, its level core clear of the podium base.
+export const GARAGE_YARD_CREW_FLOORS = Object.freeze([
+  Object.freeze({ id: 'yard-track-carry', x: -11.4, z: 1.3, radiusM: 3.8 }),
+  Object.freeze({ id: 'yard-power-pack', x: 3.55, z: -11.45, radiusM: 3.8 }),
+]);
+
+/** The yard crews' floor circles in one Garage's workshop frame (its layout pose applied). */
+export function getGarageYardCrewFloors(
+  variant: Pick<GarageVariant, 'layout'>,
+): ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly radiusM: number }> {
+  const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(variant);
+  const c = Math.cos(layoutYaw);
+  const s = Math.sin(layoutYaw);
+  return GARAGE_YARD_CREW_FLOORS.map((floor) => Object.freeze({
+    id: floor.id,
+    x: layoutX + floor.x * c + floor.z * s,
+    z: layoutZ - floor.x * s + floor.z * c,
+    radiusM: floor.radiusM,
+  }));
 }
 
 export function getGarageWorkshopBayPoses(
