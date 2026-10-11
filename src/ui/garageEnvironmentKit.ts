@@ -1176,7 +1176,31 @@ export function buildGarageEnvironment(
     slabGeometries.push(slab.toNonIndexed());
     slab.dispose();
   }
-  const apronNonIndexed = apronGeometry.toNonIndexed();
+  // The pavement stops at the foot of a rise (2026-10-10, wave 357: Saltmere's draped apron climbed a hill behind the
+  // hero as "a shapeless grey tarp heap"): an apron cell whose ground stands more than 0.45 m above the datum is
+  // left to the terrain.
+  const apronNonIndexed = (() => {
+    const flat = apronGeometry.toNonIndexed();
+    const positions = flat.getAttribute('position');
+    const uvs = flat.getAttribute('uv');
+    const keptPositions: number[] = [];
+    const keptUvs: number[] = [];
+    for (let triangle = 0; triangle < positions.count; triangle += 3) {
+      let highest = -Infinity;
+      for (let corner = 0; corner < 3; corner += 1) highest = Math.max(highest, positions.getY(triangle + corner));
+      if (highest > 0.45 + 0.02) continue;
+      for (let corner = 0; corner < 3; corner += 1) {
+        keptPositions.push(positions.getX(triangle + corner), positions.getY(triangle + corner), positions.getZ(triangle + corner));
+        keptUvs.push(uvs.getX(triangle + corner), uvs.getY(triangle + corner));
+      }
+    }
+    flat.dispose();
+    const trimmed = new THREE.BufferGeometry();
+    trimmed.setAttribute('position', new THREE.Float32BufferAttribute(keptPositions, 3));
+    trimmed.setAttribute('uv', new THREE.Float32BufferAttribute(keptUvs, 2));
+    trimmed.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(keptPositions.length), 3));
+    return trimmed;
+  })();
   apronGeometry.dispose();
   const hardstandGeometry = mergeGeometries([apronNonIndexed, ...slabGeometries], false) ?? apronNonIndexed;
   if (hardstandGeometry !== apronNonIndexed) apronNonIndexed.dispose();
