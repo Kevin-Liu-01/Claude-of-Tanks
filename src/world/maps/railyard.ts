@@ -65,7 +65,10 @@ function sidingDistanceAt(path: readonly (readonly [number, number])[], x: numbe
 }
 type StockCut = { fromX: number; kinds: readonly string[] };
 /** A north siding's cuts and their 180-degree twins on the south one (the order reversed, the vehicles turned). */
-type StockSpur = { path: [number, number][]; stock: { atM: number; kinds: readonly string[]; facingBack?: boolean }[] };
+// The yard's ballast tone (railSpurs.ts ballastShade): the sidings and stubs on cinder and coal dust at half the stone's
+// tone, the main line through the yard dusted by it at four fifths
+const YARD_BALLAST = 0.5, MAIN_BALLAST = 0.8;
+type StockSpur = { path: [number, number][]; stock: { atM: number; kinds: readonly string[]; facingBack?: boolean }[]; ballastShade: number };
 function stockPair(offsetM: number, cuts: readonly StockCut[]): [StockSpur, StockSpur] {
   const north = siding(offsetM), south = siding(-offsetM);
   const total = sidingDistanceAt(south, 236);
@@ -74,23 +77,24 @@ function stockPair(offsetM: number, cuts: readonly StockCut[]): [StockSpur, Stoc
     const length = cut.kinds.reduce((sum, kind) => sum + STOCK_LENGTH[kind], 0);
     return { atM: total - sidingDistanceAt(north, cut.fromX) - length, kinds: [...cut.kinds].reverse(), facingBack: true };
   });
-  return [{ path: north, stock: northStock }, { path: south, stock: southStock }];
+  // (round 3, 2026-10-11; waves 362 and 396b: "black cinder and coal-dust ballast") the sidings bedded in the yard's cinder
+  return [{ path: north, stock: northStock, ballastShade: YARD_BALLAST }, { path: south, stock: southStock, ballastShade: YARD_BALLAST }];
 }
 const [STOCK_9N, STOCK_9S] = stockPair(9, [{ fromX: 72, kinds: ['omm', 'omm', 'omm'] }, { fromX: -122, kinds: ['tank', 'tank'] }]);
 const [STOCK_15N, STOCK_15S] = stockPair(15, [{ fromX: -166, kinds: ['g10', 'g10'] }]);
 const [STOCK_21N, STOCK_21S] = stockPair(21, [{ fromX: 122, kinds: ['omm', 'v60'] }]);
 
 const RAIL_SPURS = [
-  { path: mainLine(2.3, 1, true), cutting: { from: [PORTAL_X, lineZ(PORTAL_X)] as [number, number] } },
-  { path: mainLine(-2.3, 1, false) },
-  { path: mainLine(-2.3, -1, true), cutting: { from: [-PORTAL_X, lineZ(-PORTAL_X)] as [number, number] } },
-  { path: mainLine(2.3, -1, false) },
+  { path: mainLine(2.3, 1, true), cutting: { from: [PORTAL_X, lineZ(PORTAL_X)] as [number, number] }, ballastShade: MAIN_BALLAST },
+  { path: mainLine(-2.3, 1, false), ballastShade: MAIN_BALLAST },
+  { path: mainLine(-2.3, -1, true), cutting: { from: [-PORTAL_X, lineZ(-PORTAL_X)] as [number, number] }, ballastShade: MAIN_BALLAST },
+  { path: mainLine(2.3, -1, false), ballastShade: MAIN_BALLAST },
   STOCK_9N, STOCK_15N, STOCK_21N,
   STOCK_9S, STOCK_15S, STOCK_21S,
   { path: [[64, lineZ(64) - 30], [180, lineZ(180) - 34]] as [number, number][], bufferStop: 'end' as const,
-    coalStage: { side: -1 as const, fromM: 4, toM: 40 } },
+    coalStage: { side: -1 as const, fromM: 4, toM: 40 }, ballastShade: YARD_BALLAST },
   { path: [[-64, lineZ(-64) + 30], [-180, lineZ(-180) + 34]] as [number, number][], bufferStop: 'end' as const,
-    coalStage: { side: -1 as const, fromM: 4, toM: 40 } },
+    coalStage: { side: -1 as const, fromM: 4, toM: 40 }, ballastShade: YARD_BALLAST },
 ];
 
 // Yard plan: the authored lots below take the landmarks (engine shed, goods shed, water towers, station hall, gantries,
@@ -260,12 +264,19 @@ export default {
       { kind: 'ridge', x: -372, z: lineZ(-372), length: 300, width: 44, height: 2.8, yawDeg: 3.8, settlementScale: 0.6 },
       { kind: 'ridge', x: 372, z: lineZ(372), length: 300, width: 44, height: 2.8, yawDeg: 3.8, settlementScale: 0.6 },
       // The spoil tips: tall black cones out on the valley floor, one in each half.
-      { kind: 'knoll', x: -322, z: -238, rx: 70, rz: 62, height: 15, yawDeg: 20 },
-      { kind: 'knoll', x: 322, z: 238, rx: 70, rz: 62, height: 15, yawDeg: 20 },
+      // (round 3, 2026-10-11; wave 396b: "bare rounded hills with empty ridges") each tip's flanks cut by the rain's rills
+      // down the shale, a rough surface and a broken foot (landformGeology.ts): a tip, not a rounded mound
+      { kind: 'knoll', x: -322, z: -238, rx: 70, rz: 62, height: 15, yawDeg: 20,
+        geology: { profile: 'cone', outline: 0.12, gullies: { count: 12, depthM: 1.4, width: 0.42 }, fans: { reach: 0.22, heightM: 0.9 }, rough: 0.7 } },
+      { kind: 'knoll', x: 322, z: 238, rx: 70, rz: 62, height: 15, yawDeg: 20,
+        geology: { profile: 'cone', outline: 0.12, gullies: { count: 12, depthM: 1.4, width: 0.42 }, fans: { reach: 0.22, heightM: 0.9 }, rough: 0.7 } },
       // The spoil banks: long flat-topped tips run out from the washeries across the valley floor, their flanks at
       // the spoil's angle of repose — south-west of the yard and, turned through 180°, north-east of it.
-      { kind: 'ridge', x: -176, z: -160, length: 150, width: 40, height: 11, yawDeg: 84 },
-      { kind: 'ridge', x: 176, z: 160, length: 150, width: 40, height: 11, yawDeg: 84 },
+      // (round 3) their flanks rilled as the tips' are
+      { kind: 'ridge', x: -176, z: -160, length: 150, width: 40, height: 11, yawDeg: 84,
+        geology: { outline: 0.12, gullies: { count: 9, depthM: 1.1, width: 0.4 }, rough: 0.6 } },
+      { kind: 'ridge', x: 176, z: 160, length: 150, width: 40, height: 11, yawDeg: 84,
+        geology: { outline: 0.12, gullies: { count: 9, depthM: 1.1, width: 0.4 }, rough: 0.6 } },
       // The drainage grades: a shallow trough in the open fields in front of each deployment's works.
       { kind: 'basin', x: 60, z: -230, rx: 150, rz: 60, height: -2.4, yawDeg: 6 },
       { kind: 'basin', x: -60, z: 230, rx: 150, rz: 60, height: -2.4, yawDeg: 6 },
@@ -464,7 +475,9 @@ export default {
     // industrial hinterland: low escarpment under smoke-grey haze
     // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Ruhr and Silesian junction country:
     // low rolling hills under the haze, no range
-    baseHex: 0x4f554a, amp: 0.6, style: 'escarpment', treeline: 0.90, panorama: { regional: 'upland', ampM: 160, trees: 10 },
+    // (round 3; wave 396b: "bare rounded hills with empty ridges") the far country's woods and tree lines taller (trees
+    // 10 -> 16 m of canopy), so its ridges carry their woods on the skyline
+    baseHex: 0x4f554a, amp: 0.6, style: 'escarpment', treeline: 0.90, panorama: { regional: 'upland', ampM: 160, trees: 16 },
     forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 
