@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createTank} from '../src/vehicles/tankFactory.ts';
+import {verifyCarvedMuzzleBore} from '../src/vehicles/carvedMuzzleBore.ts';
 
 const html=readFileSync(new URL('./procedural-fidelity.html',import.meta.url),'utf8');
 const start=html.indexOf('function isShadowHelper('),end=html.indexOf('\n}',start)+2;
@@ -28,12 +29,14 @@ for(const id of ids)for(const quality of ['high','low']) {
       assert.ok(materials.some(m=>m.colorWrite!==false),`${id}: rim is real color-writing geometry`);
       assert.ok(o.geometry.getAttribute('position').count>0,`${id}: rim has real triangles`);
       parts++;
-      if(o.name.endsWith('Rim'))rims++;
+      // 2026-10-10: the owner's carved bores (a28e4d8e6) replaced the toroidal rim/annulus helpers with the native
+      // stock's own cut rim around a 12-sided inward wall and recessed backstop; read that physical mouth on its frame
+      // (an attached native rim, the wall at three depths, the backstop) at both qualities
+      if(o.name==='muzzleBoreInnerWallAndBackstop'){verifyCarvedMuzzleBore(v.root,o.parent);rims++;}
+      else if(o.name.endsWith('Rim'))rims++;
     });
     assert.ok(parts>0,`${id}/${quality}: real assembled muzzle was checked`);
-    // Existing low quality uses a recessed disc rather than the close-LOD
-    // toroidal rim/annulus; test that actual representation, not a fake rim.
-    if(quality==='high')assert.ok(rims>0,`${id}: close-LOD physical rim was checked`);
+    assert.ok(rims>0,`${id}/${quality}: physical rim was checked`);
   }finally{v.dispose();}
 }
 console.log('fidelity-visibility: all 13 high/low real cannon mouths retained; scene shadow proxies excluded');

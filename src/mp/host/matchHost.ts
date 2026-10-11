@@ -70,6 +70,8 @@ export interface MatchHost {
   readonly uplinkBytesPerS: number;
   /** Snapshots the actor skipped for slow peers, as of the newest core stats (P3b). */
   readonly snapshotSkips: number;
+  /** A migrated host's resume hold, as of the newest core stats (the core posts them when the hold ends). */
+  readonly resumeHold: HostCoreStats['resumeHold'];
   readonly lastReport: HostMatchReport | null;
   readonly acceptor: RtcHostAcceptor | null;
   /**
@@ -313,6 +315,7 @@ export function createMatchHost({
     get relayed() { return acceptor?.relayed ?? 0; },
     get uplinkBytesPerS() { return uplinkBytesPerS; },
     get snapshotSkips() { return coreStats?.snapshotSkips ?? 0; },
+    get resumeHold() { return coreStats?.resumeHold ?? null; },
     get lastReport() { return lastReport; },
     get acceptor() { return acceptor; },
     start,

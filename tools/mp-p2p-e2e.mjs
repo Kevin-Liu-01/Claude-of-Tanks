@@ -139,7 +139,7 @@ const sample = (page, otherId) => page.evaluate((id) => {
   const v2 = window.__MULTIPLAYER_V2?.stats?.() ?? null;
   return {
     atMs: Math.round(performance.now()), phase: game?.phase ?? null, result: game?.result ?? null,
-    other: pos ? { x: pos.x, z: pos.z, visible: !!entity?.networkVisible } : null,
+    other: pos ? { x: pos.x, z: pos.z, speed: Number(entity?.state?.speed) || 0, visible: !!entity?.networkVisible } : null,
     snapshots: v2?.session?.match?.snapshotsAccepted ?? 0, matchPhase: v2?.session?.match?.phase ?? null, p2p: v2?.session?.p2p ?? null, migrations: v2?.session?.migrations ?? 0,
   };
 }, otherId);
@@ -325,6 +325,8 @@ try {
 
   // ---- A closes its tab: after the grace the room elects B; B resumes from its keyframe, C follows; no reset
   const lastSeenByC = await sample(pages.c, ids.b);
+  // B's own hull as the host goes: a hull still rolling coasts on, which the new host's resume hold keeps off C's first frame
+  const bOwnAtClose = await sample(pages.b, ids.b);
   const hostTickBefore = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report').at(-1)?.tick ?? 0;
   const closedAt = performance.now();
   await pages.a.close();
@@ -348,7 +350,7 @@ try {
   report.migration = {
     electedAfterMs, election: election ? { hostId: election.hostId, generation: election.generation, reason: election.reason, resumeTick: election.resumeTick } : null, hostTickBefore,
     b: bAfter, c: await p2pOf(pages.c), cMatchPhase: cAfter.matchPhase, cSnapshotsAfterMigration: cAfter.snapshots - cBefore, cMigrations: cAfter.migrations, bMigrations: (await stats(pages.b))?.session?.migrations ?? null,
-    bHullJumpAsCSaw: jumpM, cPhase: cAfter.phase, cResult: cAfter.result, reportsFromB, stripB,
+    bHullJumpAsCSaw: jumpM, bSpeedAtCloseMps: bOwnAtClose.other?.speed ?? null, bResumeHold: bAfter?.resumeHold ?? null, cPhase: cAfter.phase, cResult: cAfter.result, reportsFromB, stripB,
   };
   step('migrated', report.migration);
   if (election?.hostId !== ids.b || election.generation !== 2) failures.push(`the election ${JSON.stringify(election)}`);
