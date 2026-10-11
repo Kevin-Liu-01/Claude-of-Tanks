@@ -75,7 +75,7 @@ for (const map of ['coastal', 'steppe', 'saltwind', 'verdant']) {
 // the part-built light kinds settled from their own parts (legacyWreck.ts; the destructible-kits lane, round 3)
 const SETTLED = ['huntingblind', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse', 'deserttent',
   'commandtent', 'fieldhospital', 'guardpost', 'motorpool', 'transformershed', 'checkpointhut', 'securityoffice',
-  'servicegarage', 'relaystation', 'corneroffice'];
+  'servicegarage', 'corneroffice'];
 for (const id of SETTLED) {
   const meta = DESTRUCTIBLE_BUILDING_TYPES[id];
   cases.push({ label: id, make: meta.brokenDeferred(mulberry32(17)), intact: () => meta.build(mulberry32(17)) });

@@ -37,7 +37,8 @@ for (const id of SETTLED_WRECK_KINDS) kinds.push({ label: id, meta: DESTRUCTIBLE
 for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
   for (const [key, meta] of Object.entries(table)) if (SETTLED_WRECK_KINDS.has(key)) kinds.push({ label: `${kit}/${key}`, meta });
 }
-assert.equal(SETTLED_WRECK_KINDS.size, 17, 'the seventeen part-built light families');
+assert.equal(SETTLED_WRECK_KINDS.size, 16, 'the sixteen part-built light families (the relay station keeps its own broken state: its fallen lattice mast, 216)');
+assert.ok(!SETTLED_WRECK_KINDS.has('relaystation'), 'the relay station keeps the buildings lane\'s wreck');
 assert.ok(kinds.length >= 29, `the families and the regional kits' variants (${kinds.length})`);
 
 const rows = [];

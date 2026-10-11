@@ -1085,7 +1085,7 @@ function doorReveal(w: ShedWriter, f: Frame, o: Opening, y0: number): void {
   w.box(f, [o.u0 + 0.035, o.y1 - 0.035, -0.10], [o.u1 - 0.035, o.y1, 0], rev);
 }
 
-/** A ladder stored flat along a wall on two iron hooks (inside its panel's piece): rails, rungs, the hooks. */
+/** A ladder stored flat along a wall on two iron hooks at its ends (inside its panel's piece): rails, rungs, the hooks. */
 function hungLadder(w: ShedWriter, f: Frame, u0: number, u1: number, y: number): void {
   const st = w.style, z0 = BOARD_T + BATTEN_T + 0.05, rail = 0.055, gap = 0.36;
   const tone = boardTone(w, mulc(st.wood, 1.05));
@@ -1093,10 +1093,12 @@ function hungLadder(w: ShedWriter, f: Frame, u0: number, u1: number, y: number):
   for (let u = u0 + 0.15; u < u1 - 0.1; u += 0.3) {
     w.box(f, [u - 0.017, y + rail, z0 + 0.004], [u + 0.017, y + gap, z0 + 0.026], { tone: mulc(tone, 0.95), uv: w.plankUv(0.034, 1), seg: 1 });
   }
-  // the hooks: out of the battens, up round the lower rail
-  for (const u of [u0 + 0.5, u1 - 0.5]) {
+  // the hooks: out of the battens, up round the lower rail, at the rails' ends (kitConnectivity: a bar meets something at
+  // both of its ends)
+  for (const u of [u0 + 0.02, u1 - 0.02]) {
     w.box(f, [u - 0.012, y - 0.03, BOARD_T + BATTEN_T - 0.005], [u + 0.012, y - 0.008, z0 + 0.045], { tone: IRON, uv: 'flat', weather: 0.3 });
-    w.box(f, [u - 0.012, y - 0.03, z0 + 0.03], [u + 0.012, y + 0.05, z0 + 0.045], { tone: IRON, uv: 'flat', weather: 0.3 });
+    // (its strap up over both rails' faces)
+    w.box(f, [u - 0.012, y - 0.03, z0 + 0.03], [u + 0.012, y + gap + rail + 0.012, z0 + 0.045], { tone: IRON, uv: 'flat', weather: 0.3 });
   }
 }
 
@@ -1247,10 +1249,12 @@ function corrugatedSheet(w: ShedWriter, rp: RoofPlane, a0: number, a1: number, b
   // the profile across the eave: (a, height, slope of the height along a)
   const prof: [number, number, number][] = [];
   if (fibre) {
-    const n = Math.max(4, Math.round((a1 - a0) / pitch * 4));
+    // (a whole number of waves across the sheet, a trough at each edge: it bears on what it lies on there)
+    const wave = (a1 - a0) / Math.max(1, Math.round((a1 - a0) / pitch));
+    const n = Math.max(4, Math.round((a1 - a0) / wave * 4));
     for (let i = 0; i <= n; i++) {
-      const a = a0 + (a1 - a0) * (i / n), ph = ((a - a0) / pitch) * Math.PI * 2;
-      prof.push([a, depth * (1 - Math.cos(ph)) / 2, depth * Math.PI / pitch * Math.sin(ph)]);
+      const a = a0 + (a1 - a0) * (i / n), ph = ((a - a0) / wave) * Math.PI * 2;
+      prof.push([a, depth * (1 - Math.cos(ph)) / 2, depth * Math.PI / wave * Math.sin(ph)]);
     }
   } else {
     prof.push([a0, 0, 0]);
@@ -1614,6 +1618,8 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng, detail: ShedDetail = 
   for (const b of [P.eaveB + 0.15, P.eaveB * 0.5, -0.12]) {
     roofBox(w, pPlane, -1.38, 1.38, b - 0.025, b + 0.025, -P.bat, 0, { tone: boardTone(w, st.frame), uv: w.memberUv(0.05, 0), seg: 2 });
   }
+  // the fascia across the rafters' tails, up to the covering (the destructible-kits lane: the tails' ends meet it)
+  roofBox(w, pPlane, -1.38, 1.38, P.eaveB, P.eaveB + 0.03, -(P.rd + P.bat), 0, { tone: boardTone(w, st.trim), uv: w.memberUv(0.12, 0), seg: 2 });
   w.end();
   for (const pi of front.pieces) w.link(porchRafters, pi, 'nail');
   {
@@ -1627,7 +1633,8 @@ export function buildShedFieldHut(st: ShedStyle, rng: Rng, detail: ShedDetail = 
     w.link(porch, porchRafters, 'nail');
   }
   const beam = w.begin({ role: 'plate', material: 'timber', face: 'front', axes: AXES, scoreAxis: 0, scores: [-0.6, 0.6] });
-  w.box(AXES, [-1.34, P.beamTop - 0.12, P.postZ - 0.06], [1.34, P.beamTop, P.postZ + 0.06], frameLook(0.12, 0));
+  // (its ends 1.5 cm past the outer rafters it carries)
+  w.box(AXES, [-1.28, P.beamTop - 0.12, P.postZ - 0.06], [1.28, P.beamTop, P.postZ + 0.06], frameLook(0.12, 0));
   w.end();
   w.link(beam, porchRafters, 'nail');
   const porchPosts: number[] = [];
@@ -1810,12 +1817,13 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
   // --- the front beam and the back plate
   const beamF = frame([0, beamTop - 0.2, LT.frontZ], [1, 0, 0], [0, 1, 0]);
   const beam = w.begin({ role: 'plate', material: 'timber', face: 'front', axes: beamF, scoreAxis: 0, scores: [-1.2, -0.25, 0.25, 1.2] });
-  w.box(beamF, [-2.9, 0, -0.07], [2.9, 0.2, 0.07], frameLook(0.14, 0));
+  // (its ends 1.5 cm past the end rafters it carries: the destructible-kits lane, kitConnectivity)
+  w.box(beamF, [-2.845, 0, -0.07], [2.845, 0.2, 0.07], frameLook(0.14, 0));
   w.end();
   for (const p of frontPosts) w.link(beam, p, 'bolt');
   const plateF = frame([0, plateTop - 0.14, LT.backPostZ], [1, 0, 0], [0, 1, 0]);
   const plate = w.begin({ role: 'plate', material: 'timber', face: 'back', axes: plateF, scoreAxis: 0, scores: [-1.2, -0.25, 0.25, 1.2] });
-  w.box(plateF, [-2.9, 0, -0.07], [2.9, 0.14, 0.07], frameLook(0.14, 0));
+  w.box(plateF, [-2.845, 0, -0.07], [2.845, 0.14, 0.07], frameLook(0.14, 0));
   w.end();
   for (const p of backPosts) w.link(plate, p, 'bolt');
 
@@ -1863,8 +1871,12 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
       role: 'roof', material: roofMaterial, face: 'roof', axes: roofFrame(rp), scoreAxis: 0,
       roofPitch: { axis: 'z', outwardSign: 1, angleRad: LT.slope, kind: 'skillion' },
     });
-    const battens: number[] = [];
+    // (corrugated sheets bear on a purlin at either end of their run: one at the eave, one under the upper edge)
+    const sheets = st.roof === 'fibre' || st.roof === 'tin', last = sheets ? 0.03 : 0.07;
+    const battens: number[] = sheets && eaveEdge ? [b0 + 0.03] : [];
     for (let b = b0 + 0.12; b < b1 - 0.05; b += 0.62) battens.push(b);
+    // (and one under the covering's upper edge, over the rafters' tails behind the plate)
+    if (upperEdge && b1 - last - battens[battens.length - 1] > 0.2) battens.push(b1 - last);
     const joints = coverRoof(w, rp, a0, a1, b0, b1, { battens, snow: st.snow, eaveEdge, upperEdge, verges: [a0 <= -edge + 1e-6, a1 >= edge - 1e-6] });
     w.end();
     w.rescore(idx, joints);
@@ -1918,7 +1930,8 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
     w.begin({ role: 'fitting', material: 'timber', anchor: true, axes: f });
     w.cylinder(f, 0.24, 0.27, 0, 0.52, 10, { tone: BARK, uv: w.plankUv(0.2, 1), seg: 2 }, false);
     w.cylinder(f, 0.24, 0.24, 0.52, 0.53, 10, { tone: LOG_END, uv: 'flat', weather: 0.4 }, true);
-    const helve = frame(at(f, 0.05, 0.5, 0), nrm([0.45, 0.62, 0.2]), [0, 1, 0]);
+    // (driven into the block's top, its helve standing up out of it: kitConnectivity exempts a member near upright)
+    const helve = frame(at(f, 0.05, 0.5, 0), nrm([0.16, 0.95, 0.07]), [0, 0, 1]);
     w.box(helve, [0, -0.018, -0.018], [0.68, 0.018, 0.018], { tone: hexLin(0x8c7155), uv: w.memberUv(0.036, 0), seg: 2 });
     w.box(f, [-0.02, 0.47, -0.04], [0.14, 0.56, 0.04], { tone: hexLin(0x3a3936), uv: 'flat', weather: 0.3 });
     for (let k = 0; k < 4; k++) {
@@ -1957,9 +1970,10 @@ export function buildShedLeanTo(st: ShedStyle, rng: Rng, detail: ShedDetail = 'f
  * gaps. The phones' build lays chunkier billets, fewer of them; every billet is whole (the heap throws them).
  */
 function firewoodStack(w: ShedWriter, x0: number, x1: number, z0: number, z1: number, h: number, face: 1 | -1 = 1): void {
-  // the dark between the billets: a board in the stack's middle, short of its ends
+  // the dark between the billets: a board in the stack's middle, short of its ends, up to the top row (every billet
+  // runs through it, so each bears on the stack: kitConnectivity's rule)
   const zm = (z0 + z1) / 2;
-  w.box(AXES, [x0 + 0.06, 0.0, zm - 0.012], [x1 - 0.06, h - 0.1, zm + 0.012], { tone: mulc(BARK, 0.32), uv: 'flat', weather: 0 });
+  w.box(AXES, [x0 + 0.06, 0.0, zm - 0.012], [x1 - 0.06, h - 0.03, zm + 0.012], { tone: mulc(BARK, 0.32), uv: 'flat', weather: 0 });
   const rowH = w.lite ? 0.2 : 0.15;
   const snow = w.style.snow;
   let row = 0;

@@ -21,6 +21,7 @@
 import * as THREE from 'three';
 import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
 import type { FracturePiece, KitFractureAnatomy } from '../fractureAnatomy.ts';
+import { seatFloatingParts } from './wreckContact.ts';
 
 type V3 = [number, number, number];
 /** A rotation as the images of x, y and z. */
@@ -480,6 +481,10 @@ export class FractureSettle {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.out.n, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.out.t, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.out.c, 3));
+    // (kitConnectivity.selftest: every member of a wreck reaches the ground through members within 2 cm) a cell of the
+    // grid holds the highest point round it, so a body can rest a few centimetres over what it lies on, or over a gap
+    // beside a ridge: each island resting on nothing comes down until it touches (wreckContact.ts)
+    seatFloatingParts(g, { ground: this.ground });
     return g;
   }
 
