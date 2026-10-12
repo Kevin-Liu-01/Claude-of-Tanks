@@ -8,7 +8,7 @@ import {DRONE_DOCK_CRADLE,missionAttachmentMotionClear,missionAttachmentVolumesC
 import {collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision} from '../../tools/mission-attachment-geometry.mjs';
 
 const ids=['pt91_twardy','leo2a6_ua','ua_m1a1','ua_t80u_modern'];
-const counts={pt91_twardy:24,leo2a6_ua:22,ua_m1a1:37,ua_t80u_modern:2};
+const counts={pt91_twardy:24,leo2a6_ua:22,ua_m1a1:47,ua_t80u_modern:2};
 const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
