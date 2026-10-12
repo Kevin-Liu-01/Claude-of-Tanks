@@ -9099,7 +9099,9 @@ function* createTankOwnedSteps(
   /** (fx 8p, wave 356's critic on a plain kill: the burn read "a material swap, not fire damage") the kill's char waits
    *  for the fire to take hold, then spreads out of the turret ring across the hull, a cook-off's fire faster than a
    *  plain kill's or a burn-out's (materials.ts BURN_DIFFUSE_GLSL reads uBurnO and uBurnK) */
-  const BURN_CHAR_DELAY_S = 1.0, BURN_SPREAD_COOKOFF_S = 5.0, BURN_SPREAD_PLAIN_S = 8.0;
+  // (fx 9, wave 405: "char comes late and all at once") the fire takes hold in under half a second; the front then grows
+  // steadily (materials.ts: its reach as the root of the time)
+  const BURN_CHAR_DELAY_S = 0.4, BURN_SPREAD_COOKOFF_S = 5.4, BURN_SPREAD_PLAIN_S = 8.4;
   /** The hull's reach from the turret ring (m): its footprint's farthest corner. */
   const burnReachM = Math.hypot(0.5 * spec.dims.hullLengthM + Math.abs(armor.turretPivot[2]),
     0.5 * spec.dims.widthM + Math.abs(armor.turretPivot[0]));

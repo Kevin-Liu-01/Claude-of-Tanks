@@ -1078,15 +1078,17 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
   const n = Math.round((6 + 4 * s) * Math.sqrt(L.dustK));
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + (R() - 0.5) * 0.7;
-    const r0 = (1.6 + R() * 0.6) * sq, v = (3.0 + R() * 4.0) * sq;
-    place(m, x + Math.cos(a) * r0, y + 0.45 + R() * 0.3, z + Math.sin(a) * r0, bo + R() * 0.08);
-    // out from under the skirts, then the stalled dust rolls up: an upward push and a rise
-    move(m, Math.cos(a) * v, 0.9 + R() * 0.9, Math.sin(a) * v, 2.0, 0.4 + R() * 0.3, 0.9, 0);
+    // (fx 9, wave 405: "flat tan cutouts with jagged, star-shaped edges, pressed onto the hull side at hull height; it
+    // should billow up off the ground around the tracks") born at the ground just outside the tracks, small, rising as it
+    // swells, in the smooth medium (a ball that develops lobes), fading in: billows climbing off the ground round the hull
+    const r0 = (2.0 + R() * 0.6) * sq, v = (2.0 + R() * 3.0) * sq;
+    place(m, x + Math.cos(a) * r0, y + 0.12 + R() * 0.15, z + Math.sin(a) * r0, bo + R() * 0.1);
+    move(m, Math.cos(a) * v, 1.4 + R() * 1.0, Math.sin(a) * v, 2.0, 0.6 + R() * 0.3, 0.9, 0);
     const life = (2.8 + R() * 1.2) * Math.min(1.3, sq);
-    shape(m, life, 1.0 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk, 2.2, R);
-    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.62, 0.42 * L.dustK + 0.16), 0.03, 0.45);
-    book(m, 'billow', R, life);
-    card(m, 1.1 + R() * 0.35, R, 0.06);
+    shape(m, life, 0.5 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk, 2.0, R);
+    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.55, 0.38 * L.dustK + 0.14), 0.12, 0.45);
+    book(m, 'burst', R, life * 1.2);
+    card(m, 1.0 + R() * 0.2, R, 0.06);
     heat(m, 0, 1);
     C.media(m);
   }
@@ -1119,6 +1121,21 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, k
   const dk = C.distBoost(x, y, z);
   // the flash inside the fire: the media round the hull lit from within, falling off with the distance from its heart
   C.glow(x, y + 0.4, z, (rack ? 6.5 : plain ? 3.2 : 4.5) * dk, rack ? 1.6 : plain ? 1.0 : 1.2, rack ? 0.7 : plain ? 0.45 : 0.6, bo);
+  // 0. (fx 9, wave 405 on the cook-off: "a smooth peach balloon, with no white-hot core, sooty skin or turbulence") the
+  //    cook-off's white-hot heart: two short, small puffs at the hull's centre, hotter than the lobes (the ramp's pale
+  //    yellow at their cores), gone within half a second
+  if (rack) {
+    for (let i = 0; i < 2; i++) {
+      place(m, x + (R() - 0.5) * 0.8, y + 0.3 + R() * 0.5, z + (R() - 0.5) * 0.8, bo - R() * 0.02);
+      move(m, (R() - 0.5) * 1.5, 2.5 + R() * 2.0, (R() - 0.5) * 1.5, 2.0, 1.5, 0.3, 0);
+      const life = 0.38 + R() * 0.14;
+      shape(m, life, 1.2 * dk, (2.6 + R() * 1.0) * S * 0.6 * dk, 2.2, R);
+      look(m, SOOT, SOOT, 0.95, 0.0, 0.35);
+      book(m, 'burst', R, life);
+      heat(m, 1.5 + R() * 0.05, 4.5);
+      C.media(m);
+    }
+  }
   // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s (a plain kill's
   //    by ~0.6 s)
   const n = rack ? 7 : plain ? 3 : 5;
@@ -1134,12 +1151,30 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, k
     const life = plain ? 1.6 + R() * 0.8 : 2.8 + R() * 1.2;
     shape(m, life, size1 * 0.5, size1, 4, R);
     look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.5);
-    book(m, 'billow', R, life);
+    // (fx 9: "no turbulence") a cook-off's lobes start mid-billow — developed, turbulent shapes from their first frame,
+    // never a smooth balloon — each at its own stage, and roll; every flipbook still plays its whole life
+    book(m, 'billow', R, life, rack ? 8 + Math.floor(R() * 18) : 0);
+    if (rack) m.spin = (R() - 0.5) * 0.5;
     // orange-yellow at the heart (round 4 and b5: never white — at heat ~2 the blackbody ramp saturates), and gone
     // fast: a long dull glow read as brown smoke; (fx 8: "a flat salmon wash over the tank at 0.6-1.8 s") an orange
     // heart for half a second, burnt out to soot by ~1 s; a plain kill's for a third of a second
     heat(m, (plain ? 1.05 : 1.15) + R() * 0.15, plain ? 3.2 : 2.4);
     C.media(m);
+  }
+  // 1b. (fx 9: "no sooty skin") a cook-off's sooty skin: dark, faintly glowing smoke torn off the fireball's outside in
+  //     its first fifth of a second, thrown out and up with the lobes so the orange body swells inside a soot shell
+  if (rack) {
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + (R() - 0.5) * 0.9;
+      place(m, x + Math.cos(a) * 0.8 * S, y + 0.8 + R() * 1.2, z + Math.sin(a) * 0.8 * S, bo + 0.05 + R() * 0.1);
+      move(m, Math.cos(a) * (3 + R() * 2) * S, (3.5 + R() * 2.5) * S, Math.sin(a) * (3 + R() * 2) * S, 1.6, 2.8 * S, 0.7, 0);
+      const life = 2.2 + R() * 0.8;
+      shape(m, life, 2.0 * S * dk, (5.0 + R() * 2.5) * S * dk, 3.0, R);
+      look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.25), 0.9, 0.05, 0.45);
+      book(m, 'billow', R, life, 10 + Math.floor(R() * 20));
+      heat(m, 0.3, 3.5);
+      C.media(m);
+    }
   }
   // 2. the soot: black smoke rolling out of the top of the fire over the first second, climbing and spreading
   const sn = rack ? 6 : plain ? 2 : 4;

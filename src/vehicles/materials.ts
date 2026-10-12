@@ -3217,15 +3217,17 @@ if ( uBurnT >= 0.0 ) {
   float brnLimb = smoothstep( 1.0, 1.3, length( brnV.xz ) / brnR ) * smoothstep( -0.6, 0.0, brnV.y );
   // the front: quick round the fire, slowing as it reaches across the hull (all of it by uBurnK.z s after the fire takes
   // hold); a coherent front with a ragged edge (the noise a quarter of the reach: r6's half of a 0.8 span made the char a
-  // blotchy dissolve), the soot's lead (0.2) keeping everything in its own paint until the fire takes hold
+  // blotchy dissolve), the soot's lead (0.2) keeping everything in its own paint until the fire takes hold. (fx 9, wave
+  // 405: "char comes late and all at once") its reach grows as the root of the time, so the charred AREA grows steadily
+  // from the fire's first moment rather than sweeping most of the hull in its last second and a half
   float brnTau = max( uBurnT - uBurnK.y, 0.0 ) / max( uBurnK.z, 0.5 );
   float brnThr = brnD01 + brnN * 0.25 + 0.2 + 0.3 * brnLimb;
-  float brnX = 1.77 * pow( max( brnTau, 1e-4 ), 0.7 ) - brnThr;
+  float brnX = 1.7 * sqrt( brnTau ) - brnThr;
   brnM = smoothstep( 0.0, 0.24, brnX );
   // the char follows a grey soot edge: the paint greys and darkens ahead of it, never an orange line across the paint
   float brnSoot = smoothstep( 0.0, 0.24, brnX + 0.2 );
   // seconds since the char reached this point (< 0: not yet): an ember crack's own clock
-  brnAge = ( brnTau - pow( brnThr / 1.77, 1.4286 ) ) * uBurnK.z;
+  brnAge = ( brnTau - ( brnThr / 1.7 ) * ( brnThr / 1.7 ) ) * uBurnK.z;
   // the fire's own neighbourhood, the only place the front glows
   brnNear = 1.0 - smoothstep( 0.8, 2.6, length( brnV ) );
   // the ignition FRONT: a NARROW ragged edge right where the char is eating (it glows only near the fire: the emissive)
@@ -3264,9 +3266,9 @@ const BURN_EMISSIVE_GLSL = `
 if ( uBurnT >= 0.0 ) {
   // sweeping ignition edge: ember-hot rim light on the panel being eaten; (fx 8p, wave 356: "orange patches over the
   // camouflage") only near the fire (brnNear) and only in the fire's first second (from the char's start there, brnT0:
-  // the front reaching the threshold 0.2, (0.2 / 1.77)^(1 / 0.7) of the spread after the fire takes hold); everywhere
-  // else the front is the soot edge
-  float brnT0 = uBurnK.y + 0.0444 * uBurnK.z;
+  // the front reaching the threshold 0.2, (0.2 / 1.7)^2 of the spread after the fire takes hold); everywhere else the
+  // front is the soot edge
+  float brnT0 = uBurnK.y + 0.0138 * uBurnK.z;
   float brnFire = smoothstep( brnT0 - 0.25, brnT0, uBurnT ) * exp( -max( uBurnT - brnT0, 0.0 ) );
   totalEmissiveRadiance += vec3( 1.35, 0.38, 0.065 ) * brnBand * brnNear * brnFire * 1.2
     * ( 0.45 + 0.55 * brnNoise( vBrnW * 6.3 + vec3( uBurnSeed * 3.1 ) ) );
