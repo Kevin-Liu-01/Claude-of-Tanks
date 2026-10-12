@@ -34,15 +34,28 @@ const clone = value => JSON.parse(JSON.stringify(value));
 // (glass), the lantern's lit glass (curtain), the painted door (structureWood) and the painted iron of the gutters and
 // the penstock (steel) as well, each family already standing on Reservoir — draw under a ceiling of their own
 // (KIT_TRIANGLE_CEILING, 1500), the rest of the works at or under the donors as before.
+// 2026-10-11 (round 6; gauntlet wave 418a: the penstock "a candy-striped, faceted tube lying on the turf on tiny stubs and
+// butting blindly into the pump-house wall", the pump house "perched on the crest of a bare, smooth turf mound with no
+// plinth, apron, path or retaining wall"): the main is a riveted steel main on concrete saddles — the saddles in the Eifel
+// dressings' render (regionalPlaster3, a family Reservoir's houses already draw), so the kit families gain it too — with
+// its straps, lap bands, a wall plate and two flanged joints; wave 389's stone piers and dark straps (outside the kit) are
+// gone. The pump house gains its plinth under the course and a ground part (the apron with its retaining kerb and the
+// flagged path to the road), checked over the ground round the plan and along the path's line.
 const KIT_MESHES = { 'props-bucket-regionalStone': 'regionalStone', 'props-bucket-curtain': 'curtain', 'props-bucket-glass': 'glass',
-  'props-bucket-regionalRoof': 'regionalRoof', 'props-bucket-structureWood': 'structureWood', 'props-bucket-steel': 'steel' };
-/** The kit's parts' vertices by family: the walls with their reveals (94 triangles) and their dressing (280: the sills, the
- * plinth course, the quoins, the cornice, the damp, the lantern's warmth, the step, the vent's hood); the lantern's glass
- * (8); the windows' glass (4); the roof (80); the door (72); the gutters and the downpipe (84) and the penstock (492). */
-const KIT_VERTICES = { regionalStone: (94 + 280) * 3, curtain: 8 * 3, glass: 4 * 3, regionalRoof: 80 * 3, structureWood: 72 * 3, steel: (84 + 492) * 3 };
+  'props-bucket-regionalRoof': 'regionalRoof', 'props-bucket-structureWood': 'structureWood', 'props-bucket-steel': 'steel',
+  'props-bucket-regionalPlaster3': 'regionalPlaster3' };
+/** The kit's parts' vertices by family: the walls with their reveals (94 triangles), their dressing (306: the sills, the
+ * plinth and its course, the quoins, the cornice, the damp, the lantern's warmth, the step, the vent's hood) and the ground
+ * (122: the apron and its kerb, 80; the path, 42); the lantern's glass (8); the windows' glass (4); the roof (80); the door
+ * (72); the gutters and the downpipe (84) and the penstock (474: the tube 140, its ends 16, the lap bands 140, the straps
+ * 72, the wall plate 10, the two flanged joints 96); the saddles (96). */
+const KIT_VERTICES = { regionalStone: (94 + 306 + 122) * 3, curtain: 8 * 3, glass: 4 * 3, regionalRoof: 80 * 3, structureWood: 72 * 3,
+  steel: (84 + 474) * 3, regionalPlaster3: 96 * 3 };
 const KIT_PARTS = { 'reservoir-kiosk-body': 'regionalStone', 'reservoir-kiosk-dressing': 'regionalStone',
+  'reservoir-kiosk-ground': 'regionalStone',
   'reservoir-kiosk-lantern': 'curtain', 'reservoir-kiosk-glazing': 'glass', 'reservoir-kiosk-roof': 'regionalRoof',
   'reservoir-kiosk-door': 'structureWood', 'reservoir-kiosk-gutters': 'steel', 'reservoir-connected-penstock': 'steel',
+  'reservoir-penstock-saddles': 'regionalPlaster3',
   'reservoir-kiosk-ironwork': 'dark', 'reservoir-kiosk-timber': 'wood' };
 /** How far each kit part may reach past the hard plan (m) and its heights over the plan's top: the walls on the plan, the
  * dressing out to the door's step, the roof and its gutters out to the eaves, the lantern on its bracket. */
@@ -247,10 +260,17 @@ function validateKitFamily(name, before, after, parts, expected) {
 
 /** The pump house's kit parts: in their families, closed triangle lists with the families' attributes, on the plan (each
  * within its reach: KIT_REACH), the penstock along its route over the ground. */
-function validateKitKiosk(body, buckets, geometry, field) {
+/** The distance in plan from (x, z) to the segment a-b. */
+function segmentDistance(x, z, a, b) {
+  const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)) : 0;
+  return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t);
+}
+
+function validateKitKiosk(body, buckets, geometry, field, pipe, path) {
   const colour = ['color', 'normal', 'position', 'uv'], plain = ['normal', 'position', 'uv'];
-  const attributes = { regionalStone: colour, regionalRoof: colour, structureWood: colour, steel: colour, curtain: ['nightEmissionMask', 'normal', 'position', 'uv'],
-    glass: plain, dark: plain, wood: plain };
+  const attributes = { regionalStone: colour, regionalRoof: colour, structureWood: colour, steel: colour, regionalPlaster3: colour,
+    curtain: ['nightEmissionMask', 'normal', 'position', 'uv'], glass: plain, dark: plain, wood: plain };
   for (const [name, family] of Object.entries(KIT_PARTS)) {
     const parts = geometry.filter(g => g.name === name);
     assert.equal(parts.length, 1, `${name}: one part`);
@@ -266,6 +286,25 @@ function validateKitKiosk(body, buckets, geometry, field) {
       // along its route: every vertex over the ground there (a flange's rim may touch it), the tube from the pump house's
       // wall to the bank
       for (let i = 0; i < p.count; i++) assert.ok(p.getY(i) > field.getHeightAt(p.getX(i), p.getZ(i)) - 0.06, 'the penstock clears the ground');
+      continue;
+    }
+    if (name === 'reservoir-penstock-saddles') {
+      // (round 6) under the main's inner rings: every vertex within a saddle's reach of one, none over the main's centre
+      for (let i = 0; i < p.count; i++) {
+        const ring = pipe.slice(1, -1).find(v => Math.hypot(v[0] - p.getX(i), v[2] - p.getZ(i)) <= Math.hypot(0.5, 0.35) + 1e-4);
+        assert.ok(ring && p.getY(i) <= ring[1] + Math.abs(ring[1]) * 1e-6 + 0.2, 'each saddle stands under its ring');
+      }
+      continue;
+    }
+    if (name === 'reservoir-kiosk-ground') {
+      // (round 6) round the plan's plinth out to the apron's edge, or along the path's line; on the ground (its kerbs and
+      // edges sunk a hand into it, the apron's outer edge at most a retaining wall's height over it)
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), z = p.getZ(i), y = p.getY(i), ground = field.getHeightAt(x, z);
+        const apron = Math.abs(x - body.x) <= body.width / 2 + 0.94 + 1e-4 && Math.abs(z - body.z) <= body.depth / 2 + 0.94 + 1e-4;
+        assert.ok(apron || path.some((q, k) => k > 0 && segmentDistance(x, z, path[k - 1], q) <= 0.6 + 1e-4), 'the ground part round the plan or on the path');
+        assert.ok(y >= ground - 0.3 && y <= ground + 0.8, `the ground part on the ground (${(y - ground).toFixed(3)})`);
+      }
       continue;
     }
     const [reach, over] = KIT_REACH[name];
@@ -315,7 +354,7 @@ function validateAssembly(receipt, buckets, field) {
     g.computeBoundingBox();
   }
   for (const body of receipt.bodies) validateBodySupport(body, geometry, field);
-  validateKitKiosk(receipt.bodies[0], buckets, geometry, field);
+  validateKitKiosk(receipt.bodies[0], buckets, geometry, field, receipt.pipe, receipt.path);
   assert.ok(receipt.kit.triangles > 0 && receipt.kit.triangles <= KIT_TRIANGLE_CEILING, `the kit's own parts under its ceiling (${receipt.kit.triangles})`);
   const bankCap = geometry.find(g => g.name === 'reservoir-bank-cap').boundingBox;
   const hatches = geometry.filter(g => g.name === 'reservoir-bank-hatch');
@@ -327,16 +366,26 @@ function validateAssembly(receipt, buckets, field) {
     assert.ok(b.min.x >= bankCap.min.x && b.max.x <= bankCap.max.x
       && b.min.z >= bankCap.min.z && b.max.z <= bankCap.max.z, 'no unsupported hatch overhang');
   }
-  // (the penstock is a kit part since round 3c: cast iron with its flanges and collar, checked along its route there)
+  // (the penstock is a kit part since round 3c: cast iron with its flanges and collar, checked along its route there;
+  // round 6: on its saddles, each buried at its foot and cradling its ring)
   assert.equal(geometry.filter(g => g.name === 'reservoir-connected-penstock').length, 1);
-  for (const g of geometry.filter(g => g.name === 'reservoir-penstock-support')) {
-    const b = g.boundingBox, x = (b.min.x + b.max.x) / 2, z = (b.min.z + b.max.z) / 2;
-    for (const px of [b.min.x, b.max.x]) for (const pz of [b.min.z, b.max.z]) {
-      assert.ok(b.min.y < field.getHeightAt(px, pz), 'brace feet are buried across the footprint');
+  assert.equal(geometry.filter(g => g.name === 'reservoir-penstock-support').length, 0, 'wave 389\'s piers are the saddles now');
+  const saddles = geometry.find(g => g.name === 'reservoir-penstock-saddles').attributes.position;
+  assert.equal(saddles.count, 6 * 8 * 6, 'a saddle under each of the six inner rings, eight quads each');
+  for (let k = 0; k < 6; k++) {
+    const ring = receipt.pipe[k + 1];
+    let low = Infinity, high = -Infinity, buried = 0;
+    for (let i = k * 48; i < (k + 1) * 48; i++) {
+      const y = saddles.getY(i);
+      low = Math.min(low, y); high = Math.max(high, y);
+      if (y < field.getHeightAt(saddles.getX(i), saddles.getZ(i))) buried++;
     }
-    const ring = receipt.pipe.find(v => Math.hypot(v[0] - x, v[2] - z) < 1e-5);
-    assert.ok(ring && b.max.y > ring[1] - Math.sin(Math.PI / 3) * 0.34, 'brace intersects its connected pipe ring');
+    assert.ok(buried > 0 && low < field.getHeightAt(ring[0], ring[2]), 'each saddle\'s foot buried');
+    // (its cradle follows the main's fall: its cheeks under the centre line at each end, 0.35 m either side of the ring)
+    const fall = Math.max(...[receipt.pipe[k], receipt.pipe[k + 2]].map(q => Math.abs(q[1] - ring[1]) / Math.hypot(q[0] - ring[0], q[2] - ring[2])));
+    assert.ok(high > ring[1] - 0.34 && high < ring[1] + 0.35 * fall, 'each saddle cradles its ring: its cheeks over the invert, under the centre');
   }
+  assert.equal(receipt.path.length, 8, 'the path\'s line in seven lengths');
 }
 
 function meshDistance(geometries, origin, direction) {
