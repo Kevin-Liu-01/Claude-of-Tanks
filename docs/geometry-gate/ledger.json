@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-11T16:04:26.433Z",
+ "generatedAt": "2026-10-11T21:48:14.082Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 66,
+ "passed": 65,
  "total": 170,
  "rows": [
   {
@@ -630,6 +630,13 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bmp3m_dragun125_x",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false
   },
   {
    "id": "charioteer",
@@ -1776,19 +1783,6 @@
     "stations": 98.5,
     "turretCurves": 95.1,
     "wholeCurves": 93.2,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "bmp3m_dragun125_x",
-   "geoMin": 93.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.3,
     "dims": 100,
     "floaters": 100
    },
