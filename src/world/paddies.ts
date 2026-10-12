@@ -124,6 +124,39 @@ export function paddyCanals(compiled: CompiledPaddies): CanalConfig[] {
   });
 }
 
+/**
+ * The paddy water's level at (x, z) over a paddy's water and its bund (the nearest paddy's); NaN elsewhere. The
+ * shallow-water sheet's lattice is eight metres, too coarse for a paddy (a lattice point on a bund stood the sheet at the
+ * crest and tilted the water up to it, half a metre on Delta's; two terraces' levels met across one cell): the sheet skips
+ * its lattice cells here and draws each paddy's own level surface (paddyWaterQuads), and its height sampler answers the
+ * level.
+ */
+export function paddyWaterLevelAt(compiled: CompiledPaddies, x: number, z: number): number {
+  const floors = compiled.floors;
+  if (floors === null) return NaN;
+  let best = PADDY_BUND_M + PADDY_BUND_FALL_M, level = NaN;
+  for (let i = 0; i < compiled.paddies.length; i++) {
+    const sd = signedDistance(compiled.paddies[i], compiled.frames[i], x, z);
+    if (sd < best) { best = sd; level = floors[i] - PADDY_FREEBOARD_M; }
+  }
+  return level;
+}
+
+/** How far each paddy's own water surface runs in under its bund past the water's edge (the bund clips it there). */
+export const PADDY_SURFACE_TUCK_M = 0.6;
+/** Each paddy's own level water surface (the shallow-water sheet draws it instead of its eight-metre lattice there): its
+ *  centre, axes, half extents (the water's, tucked under the bund) and level. */
+export interface PaddyWaterQuad { x: number; z: number; c: number; s: number; hw: number; hl: number; level: number }
+export function paddyWaterQuads(compiled: CompiledPaddies): PaddyWaterQuad[] {
+  const floors = compiled.floors;
+  if (floors === null) return [];
+  return compiled.paddies.map((p, i) => {
+    const f = compiled.frames[i];
+    return { x: p.x, z: p.z, c: f.c, s: f.s, hw: f.hw + PADDY_SURFACE_TUCK_M, hl: f.hl + PADDY_SURFACE_TUCK_M,
+      level: floors[i] - PADDY_FREEBOARD_M };
+  });
+}
+
 /** Whether (x, z) lies on a paddy's water or bund (vegetation and props keep off; the bank is open ground). */
 export function inPaddy(compiled: CompiledPaddies, x: number, z: number): boolean {
   for (let i = 0; i < compiled.paddies.length; i++) {
