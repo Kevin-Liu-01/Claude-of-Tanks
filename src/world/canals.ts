@@ -21,6 +21,10 @@ export interface CanalConfig {
   bankSlope?: number;
   /** The underwater shelf from the waterline down to the bed, metres (default a quarter of the width, at most 2). */
   shelfM?: number;
+  /** 'round' (default): the water ends in a half circle about each end point; 'square' (a straight two-point path
+   *  only): the water is the rectangle the path and the width span, its shelf ramping at the ends as at the sides —
+   *  a flooded paddy's basin (2026-10-12, item 4) or a dock. */
+  ends?: 'round' | 'square';
   name?: string;
 }
 
@@ -29,6 +33,8 @@ interface CompiledCanal {
   ax: Float64Array; az: Float64Array; dx: Float64Array; dz: Float64Array; len2: Float64Array;
   minX: number; maxX: number; minZ: number; maxZ: number;
   half: number; level: number; slope: number; shelf: number; reach: number;
+  /** Square ends (a straight two-point path): the segment's length. 0 for round ends. */
+  squareLen: number;
 }
 
 export interface CompiledCanals {
@@ -45,6 +51,7 @@ export function compileCanals(configs: readonly CanalConfig[] | undefined): Comp
   const canals: CompiledCanal[] = [];
   for (const c of configs) {
     if (!c || c.path.length < 2 || !(c.widthM > 0) || !Number.isFinite(c.level)) throw new Error('canal: a path of two points or more, a width and a level');
+    if (c.ends === 'square' && c.path.length !== 2) throw new Error('canal: square ends take a straight two-point path');
     const n = c.path.length - 1;
     const ax = new Float64Array(n), az = new Float64Array(n), dx = new Float64Array(n), dz = new Float64Array(n), len2 = new Float64Array(n);
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -57,14 +64,24 @@ export function compileCanals(configs: readonly CanalConfig[] | undefined): Comp
     const shelf = c.shelfM ?? Math.min(2, c.widthM / 4);
     const reach = half + MAX_BANK_RISE_M / slope;
     canals.push({ ax, az, dx, dz, len2, minX: minX - reach, maxX: maxX + reach, minZ: minZ - reach, maxZ: maxZ + reach,
-      half, level: c.level, slope, shelf: Math.min(shelf, half), reach });
+      half, level: c.level, slope, shelf: Math.min(shelf, half), reach, squareLen: c.ends === 'square' ? Math.sqrt(len2[0]) : 0 });
   }
   return { canals };
 }
 
-/** The distance from (x, z) to a canal's centreline (Infinity past its reach). */
+/** The distance from (x, z) to a canal's centreline (Infinity past its reach). Square ends measure the rectangle's
+ *  edges in the same terms: past an end, the half width plus the distance out from the rectangle; inside, the half
+ *  width less the distance to the nearest edge (so the shelf and the wetness ramp in at the ends as at the sides). */
 function canalDistance(c: CompiledCanal, x: number, z: number): number {
   if (x < c.minX || x > c.maxX || z < c.minZ || z > c.maxZ) return Infinity;
+  if (c.squareLen > 0) {
+    const px = x - c.ax[0], pz = z - c.az[0], len = c.squareLen;
+    const along = (px * c.dx[0] + pz * c.dz[0]) / len;
+    const across = Math.abs(px * c.dz[0] - pz * c.dx[0]) / len;
+    const out = along < 0 ? -along : along > len ? along - len : 0;
+    if (out > 0) return c.half + Math.hypot(Math.max(0, across - c.half), out);
+    return across < c.half ? c.half - Math.min(c.half - across, along, len - along) : across;
+  }
   let best = Infinity;
   for (let i = 0; i < c.ax.length; i++) {
     const px = x - c.ax[i], pz = z - c.az[i];
