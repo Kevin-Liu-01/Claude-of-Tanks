@@ -6232,7 +6232,7 @@ export function* attachTankDecorationsSteps(
       slotFn: SlotPlacer,
       parts: DecorPartList,
       jitterSeed: number,
-    ): void {
+    ): boolean {
       slotRng = mulberry32((jitterSeed ^ 0x51a7e) >>> 0);
       try {
         const before = summary.skipped.length;
@@ -6244,6 +6244,7 @@ export function* attachTankDecorationsSteps(
         if (!ok && summary.skipped.length === before) {
           summary.skipped.push([row.kit, 'probe']);
         }
+        return !!ok;
       } catch (error) {
         summary.skipped.push([row.kit, `slot:${errorMessage(error)}`]);
         try {
@@ -6251,6 +6252,7 @@ export function* attachTankDecorationsSteps(
         } catch (_) {
           // The slot may already have consumed the part list.
         }
+        return false;
       }
     }
 
@@ -6281,7 +6283,17 @@ export function* attachTankDecorationsSteps(
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
         const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+        const before = summary.skipped.length;
+        if (!parts || placeManifestParts(row, slotFn, parts, jitterSeed)) continue;
+        // (2026-10-12, item 2d) a whip the drone dock turned away (2c: its rod enters the dock's certified volumes) stands
+        // on the roof's other side instead of leaving the tank without it — the Stb-1 lost its only whip, the M2A2, the
+        // Leopard 2A5 and the BMP-3 one each. Same seed, no further draw: every other stream is unchanged.
+        const side = (row.slot[1] as { side?: number } | undefined)?.side;
+        if ((side !== 1 && side !== -1)
+          || !summary.skipped.slice(before).some(([kit, why]) => kit === 'antenna' && why === 'drone-dock')) continue;
+        const mirrored: DecorManifestRow = { ...row, slot: [row.slot[0], { ...row.slot[1], side: -side }] };
+        const again = createManifestParts(mirrored, DECOR_KITS.antenna!, jitterSeed);
+        if (again) placeManifestParts(mirrored, slotFn, again, jitterSeed);
       }
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
