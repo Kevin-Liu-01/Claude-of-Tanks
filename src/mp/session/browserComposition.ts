@@ -585,7 +585,14 @@ function isSuperseded(error: RuntimeValue): boolean {
  * succeed refuses the entry: a renderer whose context was lost or replaced (`invalidated`), a failed native query or
  * program reflection.
  */
-const COMPILE_STALL_WINDOWS = 4;
+/**
+ * 2026-10-12 (the MP lane; production 218-219: every rejoin spent compile 5.0 s + compileRetry 20.1 s with the main
+ * thread idle, ending 'deferred' with the same 36 programs pending in every window): a window that links nothing is
+ * followed by more windows that link nothing, so one stalled window is the last resort. A cohort that is still linking
+ * keeps its windows (progress resets the count), and the covered reveal links whatever is left, as it already did
+ * after four.
+ */
+const COMPILE_STALL_WINDOWS = 1;
 const COMPILE_CEILING_MS = 120_000;
 /**
  * The entry's own wait (entryTimeoutMs) refuses only a round that stopped progressing: past it, a round that showed
