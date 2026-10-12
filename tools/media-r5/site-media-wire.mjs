@@ -255,6 +255,9 @@ function wireReadme() {
     (_, a, b, c) => `${a}public${still(R.worlds.id, R.worlds.still)}${b}${esc(take(R.worlds.id).en)}${c}`, 'README worlds');
   swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Shared world kit:<\/b>)/,
     (_, a, b, c) => `${a}public${still(R.worldKit.id, R.worldKit.still)}${b}${esc(take(R.worldKit.id).en)}${c}`, 'README world kit');
+  // the Destruction cell (owner 2026-10-12: "no more ui_explosion anymore!"): a site-fifty knockout instead of the capture
+  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Destruction:<\/b>)/,
+    (_, a, b, c) => `${a}public${still(R.destruction.id, R.destruction.still)}${b}${esc(take(R.destruction.id).en)}${c}`, 'README destruction');
   // the archive section: its source, two of the fifty frames' contact sheets, and a wall of the takes' stills
   swap(M, /`public\/media\/(?:showcase-r1\/manifest\.json` defines the source archive;|site50-r\d+\/archive\.json` is the source archive \(the fifty frames and every take's two stills\);)/,
     () => `\`public/media/${PICKS.collection}/archive.json\` is the source archive (the fifty frames and every take's two stills);`, 'README archive source');

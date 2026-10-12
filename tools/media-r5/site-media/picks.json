@@ -846,6 +846,10 @@
       "id": "s19-roof-tiles",
       "still": "moment"
     },
+    "destruction": {
+      "id": "s29-fjord-road-kill",
+      "still": "moment"
+    },
     "sheets": [
       1,
       2

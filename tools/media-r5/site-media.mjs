@@ -126,7 +126,7 @@ function slots() {
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));
   for (const [k, v] of Object.entries(PICKS.home.socialCards ?? {})) add(`home.socialCards.${k}`, v.id, v.still);
   (PICKS.readme?.stills ?? []).forEach((id, i) => add(`readme.stills[${i}]`, id, 'moment'));
-  for (const k of ['worlds', 'worldKit']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
+  for (const k of ['worlds', 'worldKit', 'destruction']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
   (PICKS.readme?.wall ?? []).forEach((p, i) => add(`readme.wall[${i}]`, p.id, p.still));
   for (const [k, v] of Object.entries(PICKS.docs.figures ?? {})) add(`docs.figures.${k}`, v.id, v.still);
   return out;
