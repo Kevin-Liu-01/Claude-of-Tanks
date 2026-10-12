@@ -264,6 +264,11 @@ export function cloudDeckMarch(preset: { readonly cells: number; readonly strati
 export const CLOUD_STEP_MIN_M = 8;
 export const CLOUD_STEP_MAX_M = 260;
 export const CLOUD_DOME_RADIUS_M = 3400;
+/**
+ * A camera this far from the world origin is no battle camera (the playable square's corners lie 665 m out,
+ * battlefieldBounds.ts): the Garage stands 2.1 km out. Only such a camera moves the dome (beforeSceneRender).
+ */
+const CLOUD_DOME_FOLLOW_GATE_M = 1200;
 /** Camera-cut thresholds: a jump (m), a turn (rad) or a zoom (relative tangent) that invalidates the history. */
 export const CLOUD_CUT_JUMP_M = 6;
 export const CLOUD_CUT_TURN_RAD = 0.35;
@@ -2092,15 +2097,14 @@ export class VolumetricCloudLayer {
     this.refreshLifetime();
     if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
     // 2026-10-11 (the garage lane; waves 408 and 419: "a blue sky disc with hard curved seams against pale corners"): the
-    // dome is a sphere about the world origin, and a camera farther than (far - radius) from its centre, like the
-    // Garage's 2.1 km out, sees its far side cut by the far plane, so the composite stops in an arc. The dome follows such
-    // a camera just far enough to keep every ray inside the far plane; a battle camera within that reach keeps it at the
-    // origin exactly as before.
+    // dome is a sphere about the world origin, and the Garage's camera, 2.1 km out, sees its far side cut by the 4 km far
+    // plane, so the composite stops in an arc. Past the follow gate the dome follows the camera just far enough to keep
+    // every ray inside the far plane; every battle camera (inside the gate) keeps it at the origin exactly as before.
     {
       const at = camera.getWorldPosition(this.domeAnchor);
       const reach = Math.max(0, camera.far - CLOUD_DOME_RADIUS_M - 100);
       const off = Math.hypot(at.x, at.z);
-      const follow = off > reach ? (off - reach) / off : 0;
+      const follow = off > CLOUD_DOME_FOLLOW_GATE_M && off > reach ? (off - reach) / off : 0;
       this.dome.position.set(at.x * follow, 0, at.z * follow);
     }
     if (width !== this.targetWidth || height !== this.targetHeight) { this.resize(width, height); this.sceneDepthReady = false; }
