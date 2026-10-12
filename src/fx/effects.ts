@@ -39,7 +39,7 @@ import type { EventBus } from '../game/stateCore.ts';
 // layer knowing about them (see src/world/destructibles.ts).
 import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
-import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
+import { createVolumeMedia, makeVolumePuff, type VolumeMedia, type VolumePuff } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
@@ -546,6 +546,9 @@ declare global {
   interface Window {
     __DEBUG?: FxDebugSurface;
     __FX_SKIP_DESTRUCTION?: boolean;
+    /** (fx 9, diagnosis tools only) when set, called with every volume-media puff as it is emitted, the fx clock and
+     *  the pool's live count: the strip tools trace which beat drew a cloud and when (wave 403's collapse dust) */
+    __FX_MEDIA_TAP?: (puff: Readonly<VolumePuff>, fxNowS: number, live: number) => void;
   }
 }
 
@@ -1999,7 +2002,11 @@ function* createFxSteps(
   const blast: BlastContext | null = vol && chunks ? {
     rand: () => rng(),
     groundY: (x: number, z: number) => groundY(x, z),
-    media: (p) => vol.emit(p),
+    media: (p) => {
+      vol.emit(p);
+      const tap = typeof window !== 'undefined' ? window.__FX_MEDIA_TAP : undefined;
+      if (tap) tap(p, particles.getTime(), vol.stats().live);
+    },
     chunk: (p) => chunks.emit(p),
     flash: (o) => particles.emit('flash', o),
     fire: (o) => particles.emit('fire', o),

@@ -188,7 +188,7 @@ function footprintEdge(e: StructureStageEvent, cosY: number, sinY: number, perim
 
 function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number,
   rise: number, windK: number, life: number, size0: number, size1: number, c0: Rgb, c1: Rgb, density: number,
-  play: number, start: number, bo: number, aspect = 1, grow = 2.6): void {
+  play: number, start: number, bo: number, aspect = 1, grow = 2.6, medium: 'burst' | 'billow' = 'burst'): void {
   const m = C.m;
   const R = C.rand;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
@@ -196,7 +196,7 @@ function puff(C: BlastContext, x: number, y: number, z: number, vx: number, vy: 
   m.life = life; m.size0 = size0; m.size1 = size1; m.growExp = grow; m.rot = (R() - 0.5) * 0.7; m.spin = (R() - 0.5) * 0.1;
   m.r0 = c0[0]; m.g0 = c0[1]; m.b0 = c0[2]; m.r1 = c1[0]; m.g1 = c1[1]; m.b1 = c1[2];
   m.density = density; m.fadeIn = 0.08; m.fadeOut = 0.45;
-  m.medium = 'burst'; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
+  m.medium = medium; m.variant = Math.floor(R() * 4); m.mirror = R() < 0.5; m.playSeconds = play; m.startFrame = start;
   m.aspect = aspect;
   m.heat = 0; m.cool = 1;
   C.media(m);
@@ -321,13 +321,38 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   // (the battle strips, final: a gable house's cloud stayed a few small puffs) the low cloud is the size of what fell, not
   // of a narrow footprint's half width: a tall narrow house throws as much dust as a squat wide one
   const low = Math.max(span, 0.45 * wallH + 2, 4.5);
+  // (fx 9, wave 403: "the pile's dust does not come with the fall: while the warehouse folds the only dust is the impact
+  // cloud ... the main cloud only spreads 3-5 s later as a broad, flat, evenly khaki sheet ... that lacks lit crowns",
+  // "the fall raises only a modest cloud that is essentially gone within three seconds, leaving a bare carpet of chips")
+  // the dust comes with the fall from its first moment, on the collapse's own clock (structureMask collapseFront: the
+  // roof drops in from 0.2 s and lands on the floors by ~0.6 s, the crumble front leaves the eaves at FRONT_T0 and reaches
+  // the base at frontEnd): the roof's air up out of the top and out through the walls as it lands, the ground floor's
+  // burst out of the base all round, the front's shed dust riding the courses down, each band's burst as its pieces land,
+  // the pile's body with lit crowns climbing over it, and a low haze that hangs over the heap long after
   // 1. the roof drops in: the air inside goes up out of the top, darker
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
     const life = 7 + R() * 3;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
-      (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.45 + R() * 0.12) * span * dk,
-      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
+      (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.42 + R() * 0.14) * span * dk,
+      tintDark, tinted, 0.5, life, 2, 0.25 + R() * 0.35, 1, 4.5);
+  }
+  // 1b. and out through the walls all round as it lands on the floors: puffs jetting out of the openings, stalling within
+  //     a metre or two and sinking as they spread (each under 0.6 of the span: none hides the walls coming down)
+  const ventN = Math.max(8, Math.min(16, Math.round(perim / 4)));
+  for (let i = 0; i < ventN; i++) {
+    footprintEdge(e, cosY, sinY, perim, (i + R()) / ventN, p);
+    const h = wallH * (0.25 + 0.5 * R()), v = 2.5 + R() * 2, life = 5.5 + R() * 2;
+    puff(C, p[0] + p[2] * 0.4, e.baseY + h, p[1] + p[3] * 0.4, p[2] * v, -0.3 - R() * 0.4, p[3] * v, 2.2, 0.1, 0.9,
+      life, 0.2 * span * dk, (0.4 + R() * 0.16) * span * dk, tintDark, tinted, 0.45, life, 1, 0.4 + R() * 0.35, 1.2 + R() * 0.3, 3.5);
+  }
+  // 1c. the roof's landing on the ground floor bursts out of the base all round: the first of the base's dust, low, fast
+  const firstN = Math.max(6, Math.min(12, Math.round(perim / 5)));
+  for (let i = 0; i < firstN; i++) {
+    footprintEdge(e, cosY, sinY, perim, (i + R()) / firstN, p);
+    const v = 3.5 + R() * 2.5, life = 9.5 + R() * 2;
+    puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.3 + R() * 0.3, p[3] * v, 2.0, 0.2, 0.9,
+      life, 0.45 * low * dk, (0.9 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, 0.65 + R() * 0.4, 2.0 + R() * 0.4, 4.5);
   }
   // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide,
   //    each band's as its pieces land
@@ -335,22 +360,24 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   for (let i = 0; i < skirtN; i++) {
     footprintEdge(e, cosY, sinY, perim, (i + R()) / skirtN, p);
     const v = 3 + R() * 3;
-    const life = 9 + R() * 2.5;
+    const life = 9.5 + R() * 2;
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
     const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
       life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
-  // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
-  const BAND = 1.8;
+  // the crumbling line sheds its dust as it passes, all round (the dust rides the falling courses down)
+  const BAND = 1.2;
   const bands = Math.max(1, Math.ceil(wallH / BAND));
   for (let b = 0; b < bands; b++) {
     const h = Math.max(0.3, wallH - (b + 0.5) * BAND);
     const tb = collapseFrontTime(h, wallH);
-    footprintEdge(e, cosY, sinY, perim, R(), p);
-    const life = 4 + R() * 1.5;
-    puff(C, p[0] + p[2] * 0.3, e.baseY + h, p[1] + p[3] * 0.3, p[2] * 0.6, -1.2 - R() * 0.6, p[3] * 0.6,
-      1.8, 0.05, 0.9, life, 0.2 * span * dk, (0.42 + R() * 0.12) * span * dk, tinted, tinted, 0.4, life, 1, tb + R() * 0.15);
+    for (let q = 0; q < 2; q++) {
+      footprintEdge(e, cosY, sinY, perim, (q + R()) / 2, p);
+      const life = 5 + R() * 2;
+      puff(C, p[0] + p[2] * 0.3, e.baseY + h, p[1] + p[3] * 0.3, p[2] * 0.8, -1.0 - R() * 0.6, p[3] * 0.8,
+        1.8, 0.05, 0.9, life, 0.2 * span * dk, (0.4 + R() * 0.14) * span * dk, tinted, tinted, 0.42, life, 1, tb + R() * 0.15);
+    }
   }
   // the walls' pieces off the front when no stage builder throws them (a building the world has no seam for: the
   // stages throw a seamed building's own, in its buckets — `crumbled`)
@@ -368,15 +395,38 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
       }
     }
   }
-  // 3. the body: one mass rising off the pile as the last courses land, born at its foot, spreading and thinning
-  const massN = Math.round(Math.min(12, 7 + perim / 8));
+  // 3. the body: one mass rising off the pile as the courses land, born at its foot from the roof's landing to the last
+  //    course; its feet low and broad, its crowns smaller, paler (the sunlit tops) and climbing over them in the
+  //    turbulent medium, so the cloud's top is lumpy and lit, never a flat sheet with a straight top
+  const massN = Math.round(Math.min(10, 6 + perim / 10));
   for (let i = 0; i < massN; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
-    const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
+    const at = 1.0 + (i / massN) * (frontEnd + 0.4) + R() * 0.3;
     const life = 10 + R() * 1.5;
-    puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1, 4.5);
+    puff(C, wx, e.baseY + 0.6 + R() * 0.35, wz, (R() - 0.5) * 1.0, 0.5 + R() * 0.5, (R() - 0.5) * 1.0,
+      1.3, 0.3 + R() * 0.25, 1.0, life, 0.5 * low * dk, (1.1 + R() * 0.4) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1.15, 4.5);
+  }
+  const lit: Rgb = [tinted[0] * 1.12, tinted[1] * 1.12, tinted[2] * 1.12];
+  const crownN = Math.round(Math.min(7, 4 + perim / 16));
+  for (let i = 0; i < crownN; i++) {
+    const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
+    const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
+    const at = frontEnd * 0.7 + (i / crownN) * 1.4 + R() * 0.3;
+    const life = 9 + R() * 2;
+    puff(C, wx, e.baseY + 0.8 + R() * 0.2, wz, (R() - 0.5) * 0.8, 1.6 + R() * 0.8, (R() - 0.5) * 0.8,
+      1.2, 0.8 + R() * 0.3, 1.0, life, 0.3 * low * dk, (0.7 + R() * 0.2) * low * dk, lit, tinted, 0.4, life, 2, at, 1, 3.5, 'billow');
+  }
+  // 4. the haze the heap breathes out for many seconds after: low, thin, broad and slow, drifting off on the wind (it
+  //    rises nowhere and hides nothing: the pile reads through it, never clean within seconds)
+  const hazeN = Math.round(Math.min(6, 3 + perim / 14));
+  for (let i = 0; i < hazeN; i++) {
+    const lx = (R() * 2 - 1) * e.hw * 0.8, lz = (R() * 2 - 1) * e.hd * 0.8;
+    const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
+    const at = frontEnd + 0.2 + (i / hazeN) * 3.5 + R() * 0.4;
+    const life = 15 + R() * 4;
+    puff(C, wx, e.baseY + 0.55, wz, (R() - 0.5) * 0.6, 0.1 + R() * 0.1, (R() - 0.5) * 0.6, 1.6, 0.06, 0.5,
+      life, 0.6 * low * dk, (1.2 + R() * 0.4) * low * dk, tinted, tinted, 0.26, life, 2, at, 1.6, 2.0);
   }
 }
 

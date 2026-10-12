@@ -624,7 +624,18 @@ function captureContext(seed) {
   const span = Math.max(base.hw, base.hd), H = base.topY - base.baseY;
   assert.ok(collapsed.media.filter((m) => m.y > base.baseY + 1).every((m) => m.size1 <= 0.6 * span),
     'nothing big above the base hides the falling walls (no ball, no column)');
-  assert.ok(!collapsed.media.some((m) => m.life >= 12), 'no pall');
+  // (fx 9, wave 403: "the pile never clean within seconds") no pall: nothing that stands over the base or climbs outlives
+  // 12 s; only the heap's low, thin haze hangs on
+  const lingering = collapsed.media.filter((m) => m.life >= 12);
+  assert.ok(lingering.length >= 3 && lingering.every((m) => m.y <= base.baseY + 1 && m.density <= 0.3 && m.vy <= 0.3 && m.rise <= 0.1),
+    `no pall: only a low thin haze outlives 12 s (${lingering.length} puffs)`);
+  // (fx 9, wave 403: "while the warehouse folds the only dust is the impact cloud", "a flat, evenly khaki sheet that
+  // lacks lit crowns") the dust comes with the fall: out of the top and through the walls as the roof lands (within
+  // its first second), out of the base at once; the pile's body carries smaller, paler crowns climbing over it
+  assert.ok(collapsed.media.filter((m) => m.birthOffset < 1.1).length >= 14, 'dust with the fall\'s first second');
+  assert.ok(collapsed.media.some((m) => m.birthOffset < 1.1 && m.y <= base.baseY + 0.5 && m.aspect >= 2), 'the base bursts out at once');
+  const crowns = collapsed.media.filter((m) => m.medium === 'billow' && m.vy >= 1.5);
+  assert.ok(crowns.length >= 4 && crowns.every((m) => m.r0 > m.r1 && m.g0 > m.g1), `lit crowns climb over the pile (${crowns.length})`);
   // the pieces leave the front as it passes their height (a fall's weight: barely pushed, gravity does the rest)
   // (the front comes down from the eaves: 0.8 of the height without the anatomy)
   for (const k of collapsed.chunk) {
