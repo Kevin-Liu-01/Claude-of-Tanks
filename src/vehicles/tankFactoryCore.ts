@@ -102,7 +102,8 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
-import { createWreckTurretDriver } from './wreckTurretDriver.ts';
+import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import type { WreckTurretDriver } from './wreckTurretDriver.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
@@ -9051,16 +9052,23 @@ function* createTankOwnedSteps(
   // position"): the arc and the settle table below now serve only the static hulks' bake (geometry-only visuals,
   // whose collision the shards hold). Every other wreck's turret follows its rigid body — the simulation's in a battle,
   // a local one of the same engine in a composition — and lies where the physics put it (wreckTurretDriver.ts).
-  const turretDriver = geometryOnly ? null : createWreckTurretDriver({
-    spec,
-    root,
-    turret: turretG,
-    gun: gunG,
-    ground: () => groundSampler,
-    random: rng,
-    trail: (x, y, z, heat, birthOffset) => emitPopTrail(x, y, z, heat, birthOffset),
-    landing: (x, y, z, speed) => emitTurretLanding(x, y, z, speed),
-  });
+  // The driver is made at the first kill once its physics has loaded (wreckTurretDriverLoader.ts: the battle's warm
+  // path and the Studio load it; the gallery and the garage never do). A kill before then keeps the scripted arc and
+  // the settle table below for that turret.
+  let turretDriver: WreckTurretDriver | null = null;
+  function ensureTurretDriver(): void {
+    if (turretDriver || geometryOnly) return;
+    turretDriver = createWreckTurretDriverIfLoaded({
+      spec,
+      root,
+      turret: turretG,
+      gun: gunG,
+      ground: () => groundSampler,
+      random: rng,
+      trail: (x, y, z, heat, birthOffset) => emitPopTrail(x, y, z, heat, birthOffset),
+      landing: (x, y, z, speed) => emitTurretLanding(x, y, z, speed),
+    });
+  }
   let turretFlying = false;
 
   /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
@@ -9918,6 +9926,8 @@ function* createTankOwnedSteps(
      */
     setDestroyed(opts) {
       if (destroyed) return;
+      // the turret's body driver, if its physics has loaded by this kill
+      ensureTurretDriver();
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
