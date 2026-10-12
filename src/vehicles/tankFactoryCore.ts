@@ -9741,8 +9741,6 @@ function* createTankOwnedSteps(
      */
     setDestroyed(opts) {
       if (destroyed) return;
-      // the turret's body driver, if its physics has loaded by this kill
-      ensureTurretDriver();
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
@@ -9770,6 +9768,9 @@ function* createTankOwnedSteps(
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
+      // the turret's body driver, if its physics has loaded by this kill (wreckTurretDriverLoader.ts); before the
+      // wreck presentation, which reads whether a body drives the turret
+      ensureTurretDriver();
       startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
