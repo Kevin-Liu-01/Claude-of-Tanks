@@ -138,6 +138,10 @@ export default {
     // the research station: station pieces carry the compound; the town plan keeps to yard gantries and
     // container rows so nothing reads as a terrestrial street
     plan: ['gantry', 'containerRow', 'containerRow', 'gantry', 'containerRow', 'gantry'],
+    // (the buildings lane, 2026-10-11; wave 418b: the plan's gantries and container rows read as "corrugated site offices
+    // with picture windows, rusted Quonsets") the plan in the outpost's own construction: habitat modules banked in
+    // regolith, the regolith plant's gantry (regional/orbital.ts)
+    architecture: 'orbital',
     // one placement per id (props.ts destructibleBuildings loop; the structureKit receipt pins
     // uniqueness): ten orbital families supplement the authored settlement districts.
     destructibleBuildings: ['habdome', 'habmodule', 'solararray', 'commsmast', 'fueltanks', 'landingpad',
