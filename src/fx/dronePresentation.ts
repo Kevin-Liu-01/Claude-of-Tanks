@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {AERIAL_RULES} from '../sim/matchRuleset.ts';
 import {droneLaunchHeight,droneFreeFlightBlend,DRONE_SPOOL_S} from '../sim/droneLaunch.ts';
 import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobbleRoll, droneHoverDrift, droneClimbCharacter, type DroneAttitude } from './droneMotion.ts';
-import { acquireDroneModelKit, droneNation, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
+import { acquireDroneModelKit, droneNation, droneRotorDirection, mirroredRotorGeometry, poseDroneRotor, DRONE_LITE_DISTANCE_M, type DroneKitLease } from './droneModel.ts';
 import { DRONE_ARRIVAL, DRONE_RETURN, droneArrivalAttitude } from './droneArrival.ts';
 import { avoidDroneObstacles, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 
@@ -23,9 +23,11 @@ interface DetailPool {
  lease:DroneKitLease;
  parts:THREE.InstancedMesh[];
  rotors:THREE.InstancedMesh;
+ /** The counter-rotating props, pre-mirrored (mirroredRotorGeometry): an instance never carries a mirrored transform. */
+ mirrorRotors:THREE.InstancedMesh;
  blurs:THREE.InstancedMesh;
  meshes:THREE.InstancedMesh[];
- count:number; bladeCount:number; blurCount:number;
+ count:number; bladeCount:number; mirrorCount:number; blurCount:number;
 }
 /** A drone's carrier as the presentation sees it: the live dock frame (the cradle's airframe datum), and whether the
  * carrier is gone or flying again (either ends a flight home). */
@@ -53,16 +55,18 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   function buildDetail(nation:string,detail:'full'|'lite'):DetailPool {
     const lease=acquireDroneModelKit(nation,detail),kit=lease.kit;
     const parts=kit.parts.map(part=>new THREE.InstancedMesh(part.geometry,part.material,CAPACITY));
-    const rotors=new THREE.InstancedMesh(kit.rotor,kit.rotorMaterial,CAPACITY*4);
+    const rotors=new THREE.InstancedMesh(kit.rotor,kit.rotorMaterial,CAPACITY*2);
+    const mirrorRotors=new THREE.InstancedMesh(lease.shared('rotor-mirrored',k=>mirroredRotorGeometry(k.rotor)),kit.rotorMaterial,CAPACITY*2);
     const blurs=new THREE.InstancedMesh(kit.rotorBlur,kit.blurMaterial,CAPACITY*4);
     blurs.renderOrder=2;
-    const meshes=[...parts,rotors,blurs];
+    const meshes=[...parts,rotors,mirrorRotors,blurs];
     // Shaded like the docked airframe (one program per material), so a launch from a shaded dock never brightens.
     for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.receiveShadow=true;parent.add(mesh);}
     // Near airframes cast with the sun (solid parts and spooling blades; never the translucent discs or the lite pool).
-    for(const mesh of [...parts,rotors])mesh.castShadow=detail==='full';
-    parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';blurs.name='FPV rotor discs';
-    return {lease,parts,rotors,blurs,meshes,count:0,bladeCount:0,blurCount:0};
+    for(const mesh of [...parts,rotors,mirrorRotors])mesh.castShadow=detail==='full';
+    parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';
+    mirrorRotors.name='FPV spinning propellers (counter-rotating)';blurs.name='FPV rotor discs';
+    return {lease,parts,rotors,mirrorRotors,blurs,meshes,count:0,bladeCount:0,mirrorCount:0,blurCount:0};
   }
   function variant(nation:string){
     const key=droneNation(nation);let entry=variants.get(key);
@@ -82,6 +86,22 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
   const dockAt=new THREE.Vector3(),drawAt=new THREE.Vector3(),handoffAt=new THREE.Vector3(),toward=new THREE.Vector3(),desired=new THREE.Vector3();
   const handoffQuat=new THREE.Quaternion(),arrivalEuler=new THREE.Euler(0,0,0,'YXZ'),arrivalQuat=new THREE.Quaternion();
   const arrivalPose={pitch:0,yaw:0,roll:0},rayDir=new THREE.Vector3();
+  /**
+   * The four rotors of one airframe into the pools, never with a mirrored instance transform (2026-10-12: two of the four
+   * props and discs drew lit from behind, near-black against the ground). A counter-rotating spinning prop draws the
+   * pre-mirrored geometry with the pose's scale held at +1; a disc is symmetric, so it takes no mirror at all.
+   */
+  function drawRotors(pool:DetailPool,base:THREE.Matrix4,blades:boolean,spin:number):void {
+    for(let n=0;n<4;n++){
+      poseDroneRotor(prop,n,spin+(blades?0:n));
+      const counter=droneRotorDirection(n)<0;
+      if(counter||!blades){prop.scale.set(1,1,1);prop.updateMatrix();}
+      matrix.multiplyMatrices(base,prop.matrix);
+      if(!blades)pool.blurs.setMatrixAt(pool.blurCount++,matrix);
+      else if(counter)pool.mirrorRotors.setMatrixAt(pool.mirrorCount++,matrix);
+      else pool.rotors.setMatrixAt(pool.bladeCount++,matrix);
+    }
+  }
   /** One airframe into the pools: `blades` draws spooling blades, otherwise rotor discs. */
   function drawAirframe(nation:string,matrixWorld:THREE.Matrix4,spin:number,blades:boolean):void {
     if(count>=CAPACITY)return;
@@ -90,9 +110,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     if(far&&!entry.lite)entry.lite=buildDetail(entry.nation,'lite');
     const pool=far?entry.lite!:entry.full,index=pool.count++;
     for(const part of pool.parts)part.setMatrixAt(index,matrixWorld);
-    const target=blades?pool.rotors:pool.blurs,base=blades?pool.bladeCount:pool.blurCount;
-    for(let n=0;n<4;n++){poseDroneRotor(prop,n,blades?spin:time*9+n);matrix.multiplyMatrices(matrixWorld,prop.matrix);target.setMatrixAt(base+n,matrix);}
-    if(blades)pool.bladeCount+=4;else pool.blurCount+=4;
+    drawRotors(pool,matrixWorld,blades,blades?spin:time*9);
     count++;
   }
   /** The landing's first pose on the carrier's dock, in the world: the hand-over point of a flight home. */
@@ -190,7 +208,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     begin(timeS:number,cameraPosition?:THREE.Vector3){
       count=0;dt=Math.min(.1,Math.max(0,timeS-time));time=timeS;frame++;
       hasCamera=!!cameraPosition;if(cameraPosition)camera.copy(cameraPosition);
-      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.blurCount=0;}
+      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.mirrorCount=0;pool.blurCount=0;}
     },
     /** Every live drone shell, every frame (a missed one reads as a flight that ended). `hidden` keeps an airframe
      * tracked without drawing it (the pilot's own, around its FPV lens). */
@@ -254,12 +272,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       pose.updateMatrix();
       for(const part of pool.parts)part.setMatrixAt(index,pose.matrix);
       const blur=spool>=1&&ageS>=Math.max(BLUR_AFTER_SPOOL,DRONE_SPOOL_S*.9);
-      const target=blur?pool.blurs:pool.rotors,base=blur?pool.blurCount:pool.bladeCount;
-      for(let n=0;n<4;n++){
-        // A disc turns slowly so its faint blade passages shimmer; spooling blades show their real direction.
-        poseDroneRotor(prop,n,blur?time*9+n:state.rotorSpin);matrix.multiplyMatrices(pose.matrix,prop.matrix);target.setMatrixAt(base+n,matrix);
-      }
-      if(blur)pool.blurCount+=4;else pool.bladeCount+=4;
+      // A disc turns slowly so its faint blade passages shimmer; spooling blades show their real direction.
+      drawRotors(pool,pose.matrix,!blur,blur?time*9:state.rotorSpin);
       count++;
     },
     end(){
@@ -277,7 +291,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       for(const v of variants.values())for(const pool of [v.full,v.lite]){
         if(!pool)continue;
         for(const part of pool.parts)part.count=pool.count;
-        pool.rotors.count=pool.bladeCount;pool.blurs.count=pool.blurCount;
+        pool.rotors.count=pool.bladeCount;pool.mirrorRotors.count=pool.mirrorCount;pool.blurs.count=pool.blurCount;
         for(const mesh of pool.meshes){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;}
       }
     },

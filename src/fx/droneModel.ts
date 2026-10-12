@@ -497,6 +497,23 @@ export function acquireDroneModelKit(nation?:string,detail:'full'|'lite'='full')
 }
 /** Diagonal pairs turn the same way (props-out), so each rotor's twist faces its own airflow. */
 export function droneRotorDirection(index:number):1|-1 { return (index < 2) === (index % 2 === 0) ? 1 : -1; }
+/**
+ * A counter-rotating propeller drawn without a mirrored transform (2026-10-12, the owner: "make sure the american drones
+ * have all 4 rotors properly there"): poseDroneRotor mirrors the two counter-rotating props with a negative x scale, and
+ * an instanced mesh cannot follow a per-instance negative determinant — the GPU then sees the props' outward faces as back
+ * faces and a double-sided material lights them from behind, so two of the four props drew near-black against the
+ * ground. This is the prop geometry mirrored once, its winding flipped, to draw with the pose's scale held at +1.
+ */
+export function mirroredRotorGeometry(rotor:THREE.BufferGeometry):THREE.BufferGeometry {
+ const mirrored = (rotor.index ? rotor.toNonIndexed() : rotor.clone()).scale(-1, 1, 1);
+ for (const attribute of Object.values(mirrored.attributes) as THREE.BufferAttribute[]) {
+  const size = attribute.itemSize, array = attribute.array as Float32Array;
+  for (let t = 0; t < attribute.count; t += 3) for (let k = 0; k < size; k++) {
+   const a = (t + 1) * size + k, b = (t + 2) * size + k, swap = array[a]!; array[a] = array[b]!; array[b] = swap;
+  }
+ }
+ return mirrored;
+}
 export function poseDroneRotor(prop:THREE.Object3D,index:number,spin:number):void {
  prop.position.set(index<2?-MOTOR_OFFSET:MOTOR_OFFSET,ROTOR_Y,index%2?MOTOR_OFFSET:-MOTOR_OFFSET).multiplyScalar(DRONE_AIRFRAME_SCALE);
  const direction = droneRotorDirection(index);
