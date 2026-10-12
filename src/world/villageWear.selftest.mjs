@@ -10,7 +10,8 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
 const pilots = ['coastal', 'saltwind'];
 // map revival lane 2 (2026-10-05): Aegis Crossing takes the activity mode off the gorge its village rect spans
-const activityMaps = ['coastal', 'foundry', 'saltwind', 'cliffbridge'];
+// (the map-revival lane, Caldera round 4, 2026-10-10: Aso's farmsteads among their paddies — the yards and margins only)
+const activityMaps = ['coastal', 'caldera', 'foundry', 'saltwind', 'cliffbridge'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
 // the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
 // Orchard Valley's walled yards and threshing floors (2026-10-05)
@@ -128,6 +129,8 @@ const activityPoints = {
   saltwind: [[-199.496, -42.573], [-184.043, -47.939], [-140, -58], [-65, -54], [-264.885, -21.707]],
   // Inside the accepted loading court, southern approach and container lane.
   foundry: [[101, -110], [102, -146], [160, -104]],
+  // (Caldera round 5) each farmstead's yard at its naya barn, both halves of the bowl
+  caldera: [[-96.5, 162.7], [-25.2, 110.3], [55.9, 166], [130.5, 152.9], [-54.9, -96.5], [39.5, -62.2], [144.7, -138.8]],
   // the towns' ground beside each square and below them, both halves, and the gorge's gravel bed
   cliffbridge: [[-70, -205], [75, -150], [-85, -235], [-70, 205], [75, 150], [-60, 30], [80, -25]],
 };
@@ -158,6 +161,16 @@ function compareTexture(before, after) {
     assert.equal(after[key], before[key], `same existing mask resource policy: ${key}`);
   }
 }
+/** A map's authored activity support: its worked-ground patches and its yard boxes as patches (the stamp's corners, its
+ * 5 m feather). */
+function authoredSupport(cfg) {
+  const yards = (cfg.terrain.yardWear ?? []).map(({ x, z, w, l, yawDeg }) => {
+    const a = (yawDeg ?? 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), hw = w / 2, hl = l / 2;
+    const corner = (u, v) => [x + u * c + v * s, z - u * s + v * c];
+    return { boundary: [corner(-hw, -hl), corner(hw, -hl), corner(hw, hl), corner(-hw, hl)], feather: 5, strength: 0.9 };
+  });
+  return [...(cfg.terrain.workedGround ?? []), ...yards];
+}
 function checkPilot(id, seed) {
   const cfg = getMapConfig(id);
   const original = bake(wearDisabled(cfg), seed), current = bake(cfg, seed);
@@ -167,7 +180,9 @@ function checkPilot(id, seed) {
     assert.deepEqual(current.rngTail, original.rngTail, 'identical caller RNG tail');
     protectedChannels(original.pixels, current.pixels, createHardstandPaintCover(cfg.terrain.hardstands) ?? undefined);
     const coverageOf = id === 'cliffbridge' ? gorgeCoverage : activityCoverage;
-    const coverage = coverageOf(original.pixels, current.pixels, current.size, cfg.terrain.workedGround);
+    // (the map-revival lane, Caldera round 5, 2026-10-11: a map's yard boxes — workedGroundMask.ts stampYardWearMask, each
+    // building's trodden yard — are authored activity support as its worked-ground patches are)
+    const coverage = coverageOf(original.pixels, current.pixels, current.size, authoredSupport(cfg));
     if (id === 'foundry') {
       assert.ok(coverage.newArea < 5000 && coverage.coreArea > 500,
         'Foundry retains substantial high-alpha soil inside a compact court, not a district apron');
@@ -182,7 +197,7 @@ function checkPilot(id, seed) {
       const repeated = bake(cfg, seed);
       try { assert.deepEqual(repeated.pixels, current.pixels, 'same input produces byte-exact activity coverage'); }
       finally { repeated.texture.dispose(); }
-      assert.throws(() => coverageOf(original.pixels, original.pixels, current.size, cfg.terrain.workedGround),
+      assert.throws(() => coverageOf(original.pixels, original.pixels, current.size, authoredSupport(cfg)),
         'restoring the rejected blanket rectangle must fail');
       assert.throws(() => coverageOf(original.pixels, new Uint8Array(current.pixels.length), current.size, cfg.terrain.workedGround),
         'removing all activity soil must fail');
