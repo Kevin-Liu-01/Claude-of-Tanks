@@ -156,6 +156,13 @@ export default {
     // the stripped hills bare: half the stands and fewer rim trees, the regrowth a low scrub, the tufts thinner (was 22
     // stands, 40 rim trees, tufts at 0.18)
     clusterCount: 11, loneCount: 26, rimCount: 22, grassDensity: 0.1, bushCount: 0.9, bushSpecies: 'acacia', clusterScrub: 1.6,
+    // (the map-content lane's R6b, 2026-10-11, the coordinator's fairness follow-up: the census about the deployments'
+    // turning point found alpha's core holding 209 concealers to bravo's 95, the woods west of the pit — four 40 m cells
+    // of 18-26 trees — with nothing at their rotation twins, where the hitbox lane's kill trace had bravo dying in the
+    // open; the Redrock lane's law, as Railyard's r3c) each tree's draws its own, and the halves either side of the
+    // turning point hold the same tree and shrub cover
+    keyedPlacement: true,
+    coverHalvesAbout: { x: -48.1, z: 2.6 },
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
@@ -185,6 +192,9 @@ export default {
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
+    // (R6b, the fairness follow-up, as Railyard's r3c: the three random field works all fell in alpha's half — its core
+    // held 18 of the map's 20 wire belts' modules — so none are drawn; the trench lines' own works stay)
+    fieldWorks: 0,
     // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
     // AS1
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5', 'leo1a5'] },
