@@ -12,7 +12,7 @@ const ROOT = resolve(arg('root') ?? '');
 const apply = process.argv.includes('--apply');
 const CATALOGS = ['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json'];
 // the namespaces whose keys only the replaced media used; a key outside them is never touched
-const NAMESPACES = [/^home\.(shots|hero)\.alt\./, /^docs\.media\.alt\./, /^garage\.featuredShot\./, /^aria\./,
+const NAMESPACES = [/^home\./, /^docs\.media\.alt\./, /^garage\.featuredShot\./, /^aria\./,
   /^docs\.hero\.reel(Caption|Approved)$/, /^docs\.studio\.(action|foreground)(Head|Sheets|Note)$/];
 
 function walk(dir, out = []) {
@@ -27,10 +27,12 @@ function walk(dir, out = []) {
 const files = ['site', 'src', 'tools', 'server', 'api', 'docs'].filter((d) => existsSync(join(ROOT, d)))
   .flatMap((d) => walk(join(ROOT, d))).concat(['index.html', '404.html'].map((f) => join(ROOT, f)).filter(existsSync))
   .filter((file) => !CATALOGS.includes(relative(ROOT, file)) && !/i18nCatalog/.test(file));
-const corpus = files.map((file) => readFileSync(file, 'utf8')).join('\n');
+// every key-shaped token the sources mention, collected in one pass (a per-key search of the joined sources took minutes)
+const mentioned = new Set();
+for (const file of files) for (const match of readFileSync(file, 'utf8').matchAll(/[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+/g)) mentioned.add(match[0]);
 
 const en = JSON.parse(readFileSync(join(ROOT, CATALOGS[0]), 'utf8'));
-const orphans = Object.keys(en).filter((key) => NAMESPACES.some((ns) => ns.test(key)) && !corpus.includes(key));
+const orphans = Object.keys(en).filter((key) => NAMESPACES.some((ns) => ns.test(key)) && !mentioned.has(key));
 console.log(`${orphans.length} orphaned keys in the replaced media's namespaces`);
 for (const key of orphans) console.log(`  ${key}: ${String(en[key]).slice(0, 70)}`);
 if (apply) {

@@ -23,6 +23,11 @@ const MANIFEST = JSON.parse(readFileSync(join(ROOT, 'public/media', PICKS.collec
 const ARCHIVE = JSON.parse(readFileSync(join(ROOT, 'public/media', PICKS.collection, 'archive.json'), 'utf8'));
 const BUILT = new Map(MANIFEST.files.map((f) => [`/${f.path}`, f]));
 const EN = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
+// The manual's wall shows the whole archive: mediaArchive.ts puts production-r1's battlefield photographs first (they
+// replace older overviews, optionalProduction.selftest), then the site fifty's frames, so its limit and both counts
+// are the two together and no frame is cut.
+const PRODUCTION = join(ROOT, 'public/media/production-r1/manifest.json');
+const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(readFileSync(PRODUCTION, 'utf8')).shots.length : 0);
 
 // --- names --------------------------------------------------------------------------------------------------------
 const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -48,10 +53,13 @@ const get = (path) => {
   if (!texts.has(path)) texts.set(path, readFileSync(join(ROOT, path), 'utf8'));
   return texts.get(path);
 };
-// `fn(match, ...groups)` returns the replacement (a function, so inserted text is never read as a $-pattern)
-function swap(path, re, fn, label) {
+// `fn(match, ...groups)` returns the replacement (a function, so inserted text is never read as a $-pattern). `wired`
+// is the block's wired form: when the old form is gone and it is there, the tree is already wired and the swap is
+// skipped, so the wiring re-runs after the picks change.
+function swap(path, re, fn, label, wired) {
   const text = get(path);
   const count = [...text.matchAll(new RegExp(re.source, `${re.flags.replace('g', '')}g`))].length;
+  if (count === 0 && wired?.test(text)) return;
   if (count !== 1) throw new Error(`${path}: ${label} matched ${count} times`);
   texts.set(path, text.replace(new RegExp(re.source, re.flags.replace('g', '')), fn));
 }
@@ -101,7 +109,7 @@ function wireDocs() {
   const seconds = String(Math.round(trailer.seconds));
   swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
     () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
-  swap(D, /<figcaption><span data-i18n="docs\.hero\.reelCaption">[^<]*<\/span><strong data-i18n="docs\.hero\.reelApproved"[^>]*>[^<]*<\/strong><\/figcaption>/,
+  swap(D, /<figcaption><span data-i18n="docs\.hero\.(?:reelCaption|trailerCaption)">[^<]*<\/span><strong data-i18n="docs\.hero\.(?:reelApproved|trailerSpec)"[^>]*>[^<]*<\/strong><\/figcaption>/,
     () => `<figcaption><span data-i18n="docs.hero.trailerCaption">${esc(COPY.en['docs.hero.trailerCaption'])}</span><strong data-i18n="docs.hero.trailerSpec" data-i18n-vars='{"seconds":"${seconds}"}'>${esc(COPY.en['docs.hero.trailerSpec'].replace('{seconds}', seconds))}</strong></figcaption>`, 'trailer caption');
   for (const [chapter, c] of Object.entries(PICKS.docs.chapters)) {
     swap(D, new RegExp(`(<a href="/docs/${chapter}"><span class="docs-chapter-media">)<img [^>]*>`),
@@ -128,15 +136,22 @@ function wireDocs() {
     return `            <a href="${url}" target="_blank"><img src="${url}" alt="${esc(SHEET_ALT.en(s))}" data-i18n-alt="docs.media.alt.framesSheet${s.sheet}" loading="lazy"></a>\n`;
   });
   const group = `        <div class="process-sheet-group">\n          <header><span data-i18n="docs.studio.framesHead">${esc(COPY.en['docs.studio.framesHead'])}</span><strong data-i18n="docs.studio.framesSheets" data-i18n-vars='{"count":"${frameCount}","sheets":"${sheets.length}"}'>${frameCount} frames // ${sheets.length} review sheets</strong></header>\n          <div class="process-sheet-grid">\n${sheetLinks.join('')}          </div>\n          <p class="process-sheet-note" data-i18n="docs.studio.framesNote">${esc(COPY.en['docs.studio.framesNote'])}</p>\n        </div>\n`;
-  swap(D, / {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n/, () => group, 'contact sheets');
+  // the old two campaign groups, or (re-run) the fifty frames' one group
+  swap(D, / {8}<div class="process-sheet-group">\n {10}<header><span data-i18n="docs\.studio\.framesHead">[\s\S]*?\n {8}<\/div>\n| {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n/, () => group, 'contact sheets');
   // the sheets are five 480×270 frames by two rows (site-media.mjs SHEET), not the old 2400×592 labelled strips
-  swap('src/docs/docs.css', /(\.process-sheet-grid img\{[^}]*aspect-ratio:)2400\/592/, (_, open) => `${open}2400/540`, 'contact sheet aspect');
+  swap('src/docs/docs.css', /(\.process-sheet-grid img\{[^}]*aspect-ratio:)2400\/592/, (_, open) => `${open}2400/540`, 'contact sheet aspect',
+    /\.process-sheet-grid img\{[^}]*aspect-ratio:2400\/540/);
   // the archive dialog's loops and both archive counts
   const loops = PICKS.docs.archiveLoops.map((id) => `      <video muted loop playsinline preload="none" poster="${built(`${C}/loops/${id}.jpg`)}"><source src="${built(`${C}/loops/${id}-960.webm`)}" type="video/webm"></video>\n`);
   swap(D, /(<div class="docs-motion-grid"[^>]*>\n)(?:[ \t]*<video [^\n]*<\/video>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${loops.join('')}${close}`, 'archive loops');
-  const n = String(ARCHIVE.shots.length);
+  const n = String(WALL_COUNT);
   swap(D, /(data-i18n="docs\.aside\.archiveTitle" data-i18n-vars=')[^']*('>)\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive card count');
   swap(D, /(data-i18n="docs\.archive\.headIdx" data-i18n-vars=')[^']*('>Visual archive \/\/ )\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive dialog count');
+  // the manual's paired figures (their captions stay; the image under each is a site fifty still)
+  for (const [caption, pick] of Object.entries(PICKS.docs.figures)) {
+    swap(D, new RegExp(`<figure><img src="/media/[^"]+" alt="[^"]*" data-i18n-alt="[^"]*" loading="lazy">(<figcaption data-i18n="${reKey(caption)}">)`),
+      (_, open) => `<figure><img src="${still(pick.id, pick.still)}" alt="${esc(take(pick.id).en)}" data-i18n-alt="${titleKey(pick.id)}" loading="lazy">${open}`, `figure ${caption}`);
+  }
   for (const key of ['docs.studio.reelsTitle', 'docs.studio.reelsLede', 'docs.studio.contactBody', 'docs.archive.lede']) swapText(D, key, COPY.en[key]);
   swapText(D, 'docs.studio.body', COPY.en['docs.studio.body'], true);
 }
@@ -153,20 +168,22 @@ function wireTopics() {
     swap(T, new RegExp(`\\['/media/[^']+(', t\\('docs\\.topic\\.${topic}\\.${media}'\\)\\])`), (_, close) => `['${url}${close}`, `topic figure ${slot}`);
   }
   swap('src/presentation/mediaArchive.ts', /const MANIFEST_URL = '[^']+';/, () => `const MANIFEST_URL = '${C}/archive.json';`, 'archive manifest');
-  swap('src/docs/docs.ts', /\{ mode: 'wall', limit: \d+, filters: false \}/, () => `{ mode: 'wall', limit: ${ARCHIVE.shots.length}, filters: false }`, 'archive wall limit');
+  swap('src/docs/docs.ts', /\{ mode: 'wall', limit: \d+, filters: false \}/, () => `{ mode: 'wall', limit: ${WALL_COUNT}, filters: false }`, 'archive wall limit');
 }
 
 // --- the battle takes ---------------------------------------------------------------------------------------------
 function wireReels() {
   const R = 'src/docs/battleReels.ts';
-  swap(R, /const MEDIA_ROOT = '[^']+';/, () => `import { t } from '../ui/i18n.ts';\n\nconst MEDIA_ROOT = '${C}/reels';`, 'reel root');
+  const importT = "import { t } from '../ui/i18n.ts';\n\n";
+  swap(R, /const MEDIA_ROOT = '[^']+';/, () => `${get(R).includes(importT) ? '' : importT}const MEDIA_ROOT = '${C}/reels';`, 'reel root');
   const rows = PICKS.docs.reels.map((id) => `  ['${id}', '${shortKey(id)}', 'map.${take(id).map}'],`);
-  swap(R, /const REEL_SOURCES: ReadonlyArray<readonly \[string, string, string\]> = \[\n[\s\S]*?\n\];/,
+  swap(R, /(?:\/\/ \[take id, its title's catalog key[^\n]*\n\/\/ [^\n]*\n)*const REEL_SOURCES: ReadonlyArray<readonly \[string, string, string\]> = \[\n[\s\S]*?\n\];/,
     () => `// [take id, its title's catalog key, its battlefield's catalog key]: twenty of the site fifty's takes, 720p with their\n// sound (tools/media-r5/site-media/picks.json)\nconst REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [\n${rows.join('\n')}\n];`, 'reel sources');
-  swap(R, /export const BATTLE_REELS: readonly BattleReel\[\] = Object\.freeze\(REEL_SOURCES\.map\(\(\[id, title, map\]\) => Object\.freeze\(\{\n  id,\n  title,\n  map,/,
+  swap(R, /export const BATTLE_REELS: readonly BattleReel\[\] = Object\.freeze\(REEL_SOURCES\.map\(\(\[id, (?:title, map|titleKey, mapKey)\]\) => Object\.freeze\(\{\n  id,\n  (?:title|title: t\(titleKey\)),\n  (?:map|map: t\(mapKey\)),/,
     () => 'export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, titleKey, mapKey]) => Object.freeze({\n  id,\n  title: t(titleKey),\n  map: t(mapKey),', 'reel table');
   swap(R, /map\.textContent = `\$\{reel\.map\} \/\/ [^`]*`;/, () => "map.textContent = `${reel.map} // ${t('docs.studio.reelSpec')}`;", 'reel status line');
-  swap(R, /video\.setAttribute\('aria-label', `\$\{reel\.title\} at \$\{reel\.map\}`\);/, () => "video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));", 'reel aria');
+  swap(R, /video\.setAttribute\('aria-label', `\$\{reel\.title\} at \$\{reel\.map\}`\);/, () => "video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));", 'reel aria',
+    /t\('docs\.studio\.reelAria'/);
 }
 
 // --- the game -----------------------------------------------------------------------------------------------------
@@ -186,9 +203,20 @@ function wireGame() {
   swap('404.html', /<link rel="preload" href="\/media\/[^"]+" as="image">/, () => `<link rel="preload" href="${still(nf.id, nf.still)}" as="image">`, '404 preload');
   swap('src/presentation/notFound.css', /url\('\/media\/[^']+'\) [\d.]+% [\d.]+%\/cover/, () => `url('${still(nf.id, nf.still)}') 50% 50%/cover`, '404 background');
   swap('src/ui/garage.ts', /  \/\/ Assets \+ captions come from the marketing-shots pipeline\n  \/\/ \(tools\/marketing-shots, encoded to public\/media\/featured\/\)\. The panel is\n/,
-    () => `  // Assets + captions are the site fifty's stills (public/media/${PICKS.collection}/stills, picked in\n  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is\n`, 'Garage panel comment');
+    () => `  // Assets + captions are the site fifty's stills (public/media/${PICKS.collection}/stills, picked in\n  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is\n`, 'Garage panel comment',
+    /Assets \+ captions are the site fifty's stills/);
   const hud = PICKS.hudEditor;
   swap('src/ui/hudEditor.ts', /const BACKDROP='[^']+';/, () => `const BACKDROP='${still(hud.id, hud.still)}';`, 'HUD editor backdrop');
+  // the tools that measure or stage these surfaces follow them
+  swap('tools/cold-load-probe.mjs', /\.filter\(\(row\) => row\.name\.includes\('\/media\/(?:featured|site50-r\d+\/stills)\/'\)\)/,
+    () => `.filter((row) => row.name.includes('${C}/stills/'))`, 'cold-load probe featured images');
+  swap('tools/battle-reports.browser.mjs', /url\("\/media\/[^"]+\.webp"\)/, () => `url("${still(hud.id, hud.still)}")`, 'battle report backdrop');
+  swap('tools/studio-example-scenarios.mjs', /\/\/ The Docs battle-reel library \(public\/media\/battle-reels-v3, listed in\n\/\/ src\/docs\/battleReels\.ts\) is a pinned/,
+    () => `// The retired Docs battle-reel library (public/media/battle-reels-v3; since 2026-10-12 the manual's battle takes\n// are the site fifty's, src/docs/battleReels.ts) was a pinned`, 'battle reel scenarios comment',
+    /The retired Docs battle-reel library/);
+  swap('tools/studio-example-scenarios.mjs', /\/\/ `battleReels\.selftest` pins them to this table\./,
+    () => '// tools/studio-example-videos.mjs records them from this table.', 'battle reel scenarios pin note',
+    /records them from this table\./);
   // the social cards' sources (generate-og-images.mjs re-renders the cards from these)
   const og = { game: PICKS.og, home: PICKS.home.hero[1], docs: PICKS.docs.hero, 'docs-vehicles': PICKS.docs.chapters.vehicles,
     'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'] };
@@ -214,7 +242,7 @@ function wireReadme() {
   const rows = [[R.stills[0], R.stills[1]], [R.stills[2], R.stills[3]]].map((pair) => `<tr>\n${pair.map(cell).join('\n')}\n</tr>`);
   swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
     () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
-  swap(M, /These are handmade, deterministic scenes captured with the current game renderer[\s\S]*?now published on the site\./,
+  swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
     () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's fifty takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
   const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
   const p = PICKS.home.paths;
@@ -224,6 +252,27 @@ function wireReadme() {
     (_, a, b, c) => `${a}public${still(R.worlds.id, R.worlds.still)}${b}${esc(take(R.worlds.id).en)}${c}`, 'README worlds');
   swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Shared world kit:<\/b>)/,
     (_, a, b, c) => `${a}public${still(R.worldKit.id, R.worldKit.still)}${b}${esc(take(R.worldKit.id).en)}${c}`, 'README world kit');
+  // the archive section: its source, two of the fifty frames' contact sheets, and a wall of the takes' stills
+  swap(M, /`public\/media\/(?:showcase-r1\/manifest\.json` defines the source archive;|site50-r\d+\/archive\.json` is the source archive \(the fifty frames and every take's two stills\);)/,
+    () => `\`public/media/${PICKS.collection}/archive.json\` is the source archive (the fifty frames and every take's two stills);`, 'README archive source');
+  const sheet = (n, side) => {
+    const url = `public${built(`${C}/frames/sheet-${n}.webp`)}`;
+    const [a, b] = [(n - 1) * 10 + 1, n * 10];
+    return `<td width="50%"><a href="${url}"><img src="${url}" alt="Contact sheet ${n} of the fifty frames, frames ${a} through ${b}"></a><br><sub><b>Review sheet ${n}:</b> ${side}</sub></td>`;
+  };
+  swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/(?:showcase-r1\/process|site50-r\d+\/frames)\/[^\n]*\n<td width="50%"><a href="public\/media\/(?:showcase-r1\/process|site50-r\d+\/frames)\/[^\n]*\n<\/tr>\n<\/table>/,
+    () => `<table>\n<tr>\n${sheet(R.sheets[0], 'ten of the fifty frames, each a 4K render of a moving scene with its motion blur.')}\n${sheet(R.sheets[1], 'the next ten, as the manual shows them beside the battle takes.')}\n</tr>\n</table>`, 'README contact sheets');
+  swap(M, /\[Open all six review sheets\]\(docs\/SHOWCASE-LIBRARY\.md#review-sheets\) and the complete admission contract\./,
+    () => 'The manual shows all five sheets; [docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the library and how it is built.', 'README sheets link',
+    /The manual shows all five sheets;/);
+  swap(M, /This smaller wall samples the action and foreground collections\nwithout repeating the six hero frames\./,
+    () => "This smaller wall samples the site fifty's key moments and close portraits\nwithout repeating the six hero frames.", 'README wall copy',
+    /samples the site fifty's key moments/);
+  const wallCell = (p) => `<td width="25%"><img src="public${still(p.id, p.still)}" alt="${esc(take(p.id).en)}"></td>`;
+  const wallRows = [0, 4, 8].map((i) => `<tr>\n${R.wall.slice(i, i + 4).map(wallCell).join('\n')}\n</tr>`);
+  swap(M, /<table>\n<tr>\n<td width="25%"><img src="public\/media\/(?:showcase-r1|site50-r\d+\/stills)\/[\s\S]*?<\/tr>\n<\/table>/, () => `<table>\n${wallRows.join('\n')}\n</table>`, 'README wall');
+  swap(M, /\[Browse the full (?:showcase manifest\]\(public\/media\/showcase-r1\/manifest\.json\)|archive\]\(public\/media\/site50-r\d+\/archive\.json\)),/,
+    () => `[Browse the full archive](public/media/${PICKS.collection}/archive.json),`, 'README archive link');
 }
 
 // --- the landing contract -----------------------------------------------------------------------------------------

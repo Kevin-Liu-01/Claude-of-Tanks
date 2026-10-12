@@ -15,7 +15,9 @@ const MEDIA = join(ROOT, 'public/media');
 
 /** The collections the site fifty replaced, wholly or in part. */
 const RETIRED = ['hero-rails-r2', 'promo-v13', 'featured', 'showcase-r1', 'presentation-r1', 'battle-reels-v3',
-  'feature-loops-r1', 'director-r4', 'web-video-r1', 'home', 'production-r1', 'modern'];
+  'feature-loops-r1', 'director-r4', 'web-video-r1', 'home', 'production-r1'];
+// Interface captures are not gameplay media: whatever references them, they stay (presentation-r1 and home keep theirs).
+const KEPT_NAME = /^ui_/;
 /** Producers of the retired collections: they name their outputs, they do not use them. */
 const PRODUCERS = /^tools\/(marketing-shots\/(publish-[a-z0-9-]+|encode-featured|build-capture-recipes)\.mjs|media-production\/publishCampaign\.mjs|publish-gameplay-capture\.mjs)$/;
 const SCAN_DIRS = ['site', 'src', 'tools', 'server', 'api', 'public'];
@@ -38,13 +40,19 @@ for (const dir of SCAN_DIRS) if (existsSync(join(ROOT, dir))) {
     const rel = relative(ROOT, file);
     if (!TEXT.test(rel) || PRODUCERS.test(rel)) continue;
     // a retired collection's own manifest, and the capture recipes (pruned with it), describe the old media
-    if (RETIRED.some((c) => rel === `public/media/${c}/manifest.json`) || rel === 'public/media/capture-recipes-r1.json') continue;
+    // (a collection's nested manifests too: director-r4/gameplay/manifest.json named its own files)
+    if (RETIRED.some((c) => rel.startsWith(`public/media/${c}/`) && rel.endsWith('/manifest.json')) || rel === 'public/media/capture-recipes-r1.json') continue;
     if (rel.startsWith('public/') && !rel.endsWith('.json') && !rel.endsWith('.css')) continue;
     sources.push(rel);
   }
 }
 for (const file of SCAN_FILES) if (existsSync(join(ROOT, file))) sources.push(file);
-const corpus = sources.map((rel) => readFileSync(join(ROOT, rel), 'utf8')).join('\n');
+// every media path the live sources name, collected once (a per-file search of the joined sources took minutes)
+const named = new Set();
+const MEDIA_PATH = new RegExp(`media/((?:${RETIRED.join('|')})/[A-Za-z0-9_\\-./]+)`, 'g');
+for (const rel of sources) {
+  for (const match of readFileSync(join(ROOT, rel), 'utf8').matchAll(MEDIA_PATH)) named.add(match[1].replace(/[.,]+$/, ''));
+}
 
 const retire = [];
 const keep = [];
@@ -54,7 +62,7 @@ for (const collection of RETIRED) {
   for (const file of walk(dir)) {
     const rel = relative(MEDIA, file).split('\\').join('/');
     if (rel === `${collection}/manifest.json`) continue;
-    (corpus.includes(`media/${rel}`) ? keep : retire).push({ rel, bytes: statSync(file).size });
+    (named.has(rel) || KEPT_NAME.test(rel.split('/').pop()) ? keep : retire).push({ rel, bytes: statSync(file).size });
   }
 }
 const mb = (list) => (list.reduce((s, f) => s + f.bytes, 0) / 1048576).toFixed(1);

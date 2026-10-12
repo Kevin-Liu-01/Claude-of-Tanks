@@ -78,10 +78,13 @@ function delivery(id) {
     const d = join(MEDIA, dir, id);
     if (!existsSync(join(d, `${id}-4k.mp4`))) continue;
     const f = (name) => (existsSync(join(d, name)) ? join(d, name) : null);
-    found = { id, round: dir, current: dir === PICKS.sources.deliver, dir: d,
+    const take = { id, round: dir, current: dir === PICKS.sources.deliver, dir: d,
       moment: f(`${id}.webp`), close: f(`${id}-close.webp`), momentPng: f(`${id}-4k.png`), closePng: f(`${id}-close-4k.png`),
       poster: f(`${id}.jpg`), webm: f(`${id}.webm`), mobile: f(`${id}-mobile.mp4`), hd: f(`${id}.mp4`),
       sound: existsSync(join(d, `${id}.audio.json`)) };
+    // a take still being delivered (site-loops writes the 4K first, the stills and web cuts after) does not count yet
+    if (!take.moment || !take.momentPng || !take.poster || !take.webm || !take.mobile || !take.hd) continue;
+    found = take;
     break;
   }
   deliveries.set(id, found);
@@ -117,6 +120,8 @@ function slots() {
   for (const [k, v] of Object.entries(PICKS.home.socialCards ?? {})) add(`home.socialCards.${k}`, v.id, v.still);
   (PICKS.readme?.stills ?? []).forEach((id, i) => add(`readme.stills[${i}]`, id, 'moment'));
   for (const k of ['worlds', 'worldKit']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
+  (PICKS.readme?.wall ?? []).forEach((p, i) => add(`readme.wall[${i}]`, p.id, p.still));
+  for (const [k, v] of Object.entries(PICKS.docs.figures ?? {})) add(`docs.figures.${k}`, v.id, v.still);
   return out;
 }
 
@@ -207,7 +212,7 @@ function buildProxies() {
   const manifest = { schemaVersion: 1, purpose: 'Mobile landing-page video proxies',
     encoding: { codec: 'h264', width: 960, height: 540, framesPerSecond: 24, audio: false },
     files: [
-      ...jobs.map((job) => ({ path: job.path, bytes: statSync(join(PROXIES, job.path)).size, crf: job.crf,
+      ...jobs.map((job) => ({ path: job.path, bytes: statSync(join(PROXIES, job.path)).size,
         source: job.path === 'reel-mobile.mp4' ? `${BASE_URL}/films/reel.mp4` : `${BASE_URL}/loops/${job.path.replace('-mobile.mp4', '.webm')}` })),
       ...kept.map((p) => ({ path: p, bytes: statSync(join(PROXIES, p)).size, source: '/media/landing-r1/studio-leclerc-knockout.mp4' })),
     ] };

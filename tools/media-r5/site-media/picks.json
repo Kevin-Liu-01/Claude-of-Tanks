@@ -603,7 +603,25 @@
       "s26-minaret-fire",
       "s16-street-duel",
       "s05-barn-advance"
-    ]
+    ],
+    "figures": {
+      "docs.graphics.figClose": {
+        "id": "s09-harbor-run",
+        "still": "close"
+      },
+      "docs.vehicles.figDiversity": {
+        "id": "s08-market-push",
+        "still": "moment"
+      },
+      "docs.combat.figEffects": {
+        "id": "s24-ice-duel",
+        "still": "close"
+      },
+      "docs.mobile.figAdaptive": {
+        "id": "s37-river-village",
+        "still": "moment"
+      }
+    }
   },
   "topics": {
     "build": "s01-main-street-push",
@@ -799,7 +817,61 @@
     "worldKit": {
       "id": "s19-roof-tiles",
       "still": "moment"
-    }
+    },
+    "sheets": [
+      1,
+      2
+    ],
+    "wall": [
+      {
+        "id": "s05-barn-advance",
+        "still": "moment"
+      },
+      {
+        "id": "s11-container-rows",
+        "still": "moment"
+      },
+      {
+        "id": "s20-road-return-fire",
+        "still": "moment"
+      },
+      {
+        "id": "s21-fields-assault",
+        "still": "moment"
+      },
+      {
+        "id": "s25-alpine-village",
+        "still": "moment"
+      },
+      {
+        "id": "s27-caravanserai-kill",
+        "still": "moment"
+      },
+      {
+        "id": "s34-furnace-salvo",
+        "still": "moment"
+      },
+      {
+        "id": "s45-harbor-wide",
+        "still": "moment"
+      },
+      {
+        "id": "s01-main-street-push",
+        "still": "close"
+      },
+      {
+        "id": "s16-street-duel",
+        "still": "close"
+      },
+      {
+        "id": "s41-church-tower",
+        "still": "close"
+      },
+      {
+        "id": "s47-ironworks-crane",
+        "still": "close"
+      }
+    ]
   },
   "posters": {
     "trailer": 9
