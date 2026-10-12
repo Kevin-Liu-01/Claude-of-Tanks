@@ -849,15 +849,31 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   linking.composition.dispose();
 }
 
+{
+  // (a) programs link for two windows, then a window links nothing: deferred right there (no further idle windows)
+  const pendingByWindow = [40, 25, 25, 25, 25];
+  const attempts = [];
+  const flat = createHarness({ compile: async () => {
+    attempts.push(1);
+    return { preparation: { status: 'incomplete', pending: pendingByWindow[attempts.length - 1] ?? 25, reason: 'budget' } };
+  } });
+  const { entry } = await enterRound(flat);
+  assert.equal(await entry, true, 'a cohort that stops linking never refuses the entry');
+  assert.equal(attempts.length, 3, 'two windows that linked, one that did not: three windows, not six');
+  assert.deepEqual(flat.ports.trace.compile, { attempts: 3, outcome: 'deferred', pending: 25 });
+  flat.composition.dispose();
+}
+
 for (const pending of [7, null]) {
-  // (a) nothing links for COMPILE_STALL_WINDOWS windows (or the cohort never finishes submitting): the last resort
-  // reports and the entry goes on; the covered reveal links the rest under the loader
+  // (a) a window links nothing (or the cohort never finishes submitting): one stalled window is the last resort
+  // (2026-10-12: production rejoins sat 4 windows, 20 s, on a flat 36 pending); the entry goes on and the covered
+  // reveal links the rest under the loader
   const attempts = [];
   const starved = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending, reason: 'budget' } }; } });
   const { entry } = await enterRound(starved);
   assert.equal(await entry, true, `a starved GPU never refuses the entry (pending ${pending})`);
-  assert.equal(attempts.length, 5, 'the first window, then four without progress');
-  assert.deepEqual(starved.ports.trace.compile, { attempts: 5, outcome: 'deferred', pending });
+  assert.equal(attempts.length, 2, 'the first window, then one without progress');
+  assert.deepEqual(starved.ports.trace.compile, { attempts: 2, outcome: 'deferred', pending });
   assert.deepEqual(starved.ports.slowEntries.map(({ stage, code, pending: left }) => [stage, code, left]),
     [['compile', 'extended', pending], ['compile', 'deferred', pending]], 'the extension and the last resort are both beacons');
   assert.equal(starved.ports.failure ?? null, null, 'no entry failure');
