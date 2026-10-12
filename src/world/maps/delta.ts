@@ -152,7 +152,8 @@ export default {
       // brick court, the temple standing on it (the court authored first: a dressing piece, it refuses nothing)
       // round 5 (2026-10-11; wave 389: "its court is a pasted paving texture"): the court a kerbed square set into the
       // field, its flags a step over the ground (the piazza; laid into the finished map, it moves nothing)
-      { kind: 'piazza', x: -44, z: -6, yawDeg: 45, ground: 'veto', name: "the temple's brick court", params: { width: 18, depth: 18, kerb: 0.42 } },
+      // (wave 418a: the court "a flat, edgeless pink decal": its flags a step up inside a kerb that stands a hand over them)
+      { kind: 'piazza', x: -44, z: -6, yawDeg: 45, ground: 'veto', name: "the temple's brick court", params: { width: 18, depth: 18, kerb: 0.42, lift: 0.26, kerbTop: 0.4 } },
       { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
     ],
     // (the maps lane, 2026-10-14: the plan is the char's own, CHAR_VILLAGE above; was the roadside plan's 26 entries

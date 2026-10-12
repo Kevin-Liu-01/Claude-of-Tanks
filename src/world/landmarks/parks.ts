@@ -803,7 +803,9 @@ export const piazza: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const W = Math.max(4, Number(ctx.params.width)), D = Math.max(4, Number(ctx.params.depth)), K = Math.max(0.2, Number(ctx.params.kerb) || 0.38);
   const ground = ctx.ground ?? flatGround, look = ctx.variant;
-  const FLAGS = 0.12, KERB_TOP = 0.17, JOINT = 0.012, LISTA = 0.32;
+  // (`lift`, `kerbTop`: the flags' step over the ground and the kerb's top over its highest ground; wave 418a read
+  // Delta's temple court at the defaults as "a flat, edgeless pink decal with no kerb, step or thickness")
+  const FLAGS = Number(ctx.params.lift) || 0.12, KERB_TOP = Math.max(FLAGS + 0.05, Number(ctx.params.kerbTop) || 0.17), JOINT = 0.012, LISTA = 0.32;
   kerbRing(sink, 'stone', ground, -W / 2, W / 2, -D / 2, D / 2, K, { top: KERB_TOP, length: [0.9, 1.5], joint: JOINT, foot: 0.35 }, look);
   const ix0 = -W / 2 + K + JOINT, ix1 = W / 2 - K - JOINT, iz0 = -D / 2 + K + JOINT, iz1 = D / 2 - K - JOINT;
   const nx = Math.max(1, Math.round((ix1 - ix0) / 4.6)), nz = Math.max(1, Math.round((iz1 - iz0) / 4.6));
@@ -835,12 +837,12 @@ export const piazza: LandmarkBuilder = (ctx) => {
   return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
 };
 
-const IRON_BLACK = rgb(0x26282a), FLAG_RED = rgb(0x9e1f24), FLAG_WHITE = rgb(0xeae6dc), BRONZE = rgb(0x6e5a34), PLANTER_BOX = rgb(0x3f5a32), GILT_FLAG = rgb(0xc9a23a);
+const IRON_BLACK = rgb(0x26282a), FLAG_RED = rgb(0xc8102e), FLAG_WHITE = rgb(0xeae6dc), FLAG_BLUE = rgb(0x171796), BRONZE = rgb(0x6e5a34), PLANTER_BOX = rgb(0x3f5a32);
 
 /**
  * A Dalmatian square's furniture (the landmarks lane, round 5: wave 389, the campanile "stands on a blank slab with no
  * closed square around it"): the well-head on its stepped platform under its iron arch and pulley at the square's north
- * end, the Venetian flag pedestal (stendardo) with its mast and flag at the south end, stone benches before the house
+ * end, the Venetian flag pedestal (stendardo) with its mast and Croatia's flag at the south end, stone benches before the house
  * fronts, an iron lamp at each quarter, two stone planters of box. All dressing (a hull drives through them as through
  * the square's other dressing); each stands a step over the ground at its own seat.
  */
@@ -863,11 +865,19 @@ function furnishSquare(sink: PartSink, W: number, D: number, flags: number, grou
     revolve(sink, 'stone', x, z, [[0.5, y + 0.3], [0.5, y + 0.45], [0.36, y + 0.55], [0.32, y + 1.9], [0.42, y + 2.0], [0.42, y + 2.12], [0.12, y + 2.12]], 8, { decor: true });
     revolve(sink, 'structureMetal', x, z, [[0.335, y + 1.2], [0.335, y + 1.32]], 8, { colour: BRONZE, decor: true });
     revolve(sink, 'structureWood', x, z, [[0.08, y + 2.1], [0.05, y + 9.5], [0.07, y + 9.6], [0.0, y + 9.75]], 8, { colour: shade(FLAG_WHITE, 0.82), decor: true });
-    // the banner of St Mark: crimson, the lion a gold field at its hoist (both faces)
-    for (const [x0, x1, y0, y1, c, dz] of [[0.06, 1.9, 8.25, 9.35, FLAG_RED, 0], [0.3, 0.95, 8.5, 9.1, GILT_FLAG, 0.004]] as const) {
-      sink.quad('structureMetal', [x + x0, y + y0, z + dz], [x + x1, y + y0 - 0.05, z + dz], [x + x1, y + y1 - 0.05, z + dz], [x + x0, y + y1, z + dz], { colour: c, decor: true });
-      sink.quad('structureMetal', [x + x1, y + y0 - 0.05, z - dz], [x + x0, y + y0, z - dz], [x + x0, y + y1, z - dz], [x + x1, y + y1 - 0.05, z - dz], { colour: c, decor: true });
-    }
+    // (round 6, wave 418a: St Mark's crimson banner "doesn't read as a Croatian flag of 1992") Croatia's flag since
+    // December 1990: the red, white and blue tricolour, the chequy shield of thirteen red and twelve white over its
+    // middle band, its crown of five small shields above (both faces; the fly drooping 5 cm)
+    const L = 1.84, H = 1.1, x0 = 0.06, y0 = 8.25, droop = (fx: number) => 0.05 * (fx - x0) / L;
+    const field = (fx0: number, fx1: number, fy0: number, fy1: number, c: Rgb, dz: number) => {
+      sink.quad('structureMetal', [x + fx0, y + fy0 - droop(fx0), z + dz], [x + fx1, y + fy0 - droop(fx1), z + dz], [x + fx1, y + fy1 - droop(fx1), z + dz], [x + fx0, y + fy1 - droop(fx0), z + dz], { colour: c, decor: true });
+      sink.quad('structureMetal', [x + fx1, y + fy0 - droop(fx1), z - dz], [x + fx0, y + fy0 - droop(fx0), z - dz], [x + fx0, y + fy1 - droop(fx0), z - dz], [x + fx1, y + fy1 - droop(fx1), z - dz], { colour: c, decor: true });
+    };
+    [FLAG_BLUE, FLAG_WHITE, FLAG_RED].forEach((c, k) => field(x0, x0 + L, y0 + (k * H) / 3, y0 + ((k + 1) * H) / 3, c, 0));
+    const sx = x0 + L / 2 - 0.25, sy = y0 + 0.18, cell = 0.1;
+    field(sx - 0.02, sx + 0.52, sy - 0.02, sy + 0.52, FLAG_WHITE, 0.004);
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) if ((i + j) % 2 === 0) field(sx + i * cell, sx + (i + 1) * cell, sy + (4 - j) * cell, sy + (5 - j) * cell, FLAG_RED, 0.008);
+    for (let k = 0; k < 5; k++) field(sx + k * 0.104, sx + k * 0.104 + 0.09, sy + 0.54, sy + 0.66 + (k === 2 ? 0.03 : 0), k % 2 ? FLAG_RED : FLAG_BLUE, 0.006);
   }
   // the benches before the house fronts: a slab on two blocks
   for (const sz of [-1, 1]) for (const x of [-5.2, 4.2]) {

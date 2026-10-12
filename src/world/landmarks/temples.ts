@@ -5,7 +5,7 @@
 //
 // The frame: the front (+z) is the arched façade and the steps; y = 0 the lowest ground under the plinth.
 import { PartSink, facePoint, rgb, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { archLine, archedBody, archedFace, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
+import { archLine, archRise, archedBody, archedFace, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 
@@ -225,13 +225,22 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
     const fade = (pt: Vec3): Rgb => { const t = Math.max(0, Math.min(1, (yTop - pt[1]) / len)); return [top[0] + (1 - top[0]) * t, top[1] + (1 - top[1]) * t, top[2] + (1 - top[2]) * t]; };
     sink.quad(wall, p(u - w / 2, yTop - len), p(u + w / 2, yTop - len), p(u + w / 2, yTop), p(u - w / 2, yTop), { decor: true, tintAt: fade });
   };
+  // (wave 418a, both arms: "each of the three arches has a rectangular brick stub hanging from its crown" — a streak
+  // over an arch ran down past its crown and hung in the opening as a slab of tinted brick: a streak over an opening
+  // ends a hand above the arch's crown, and one left too short to read is not drawn; every draw is still taken)
+  const clearOf = (name: FaceName, u0: number, u1: number): number => {
+    let top = -Infinity;
+    for (const h of holes[name] ?? []) if (u1 > h.u - h.w / 2 && u0 < h.u + h.w / 2) top = Math.max(top, h.spring + archRise(h) + 0.06);
+    return top;
+  };
   for (const name of ['front', 'right', 'back', 'left'] as const) {
     const f = faces[name];
     for (let k = 0; k < 7; k++) {
       const u = -S / 2 + 0.4 + (S - 0.8) * ((k + 0.5) / 7 + (ctx.variant() - 0.5) * 0.08);
-      const yTop = cornice(u) - 0.24, len = 0.8 + ctx.variant() * 1.8;
+      const yTop = cornice(u) - 0.24, want = 0.8 + ctx.variant() * 1.8, w = 0.12 + ctx.variant() * 0.2, lime = ctx.variant() < 0.6;
       // (the front's plaque rows keep clear: its streaks run in the joints between them)
-      streak(f, u, yTop, len, 0.12 + ctx.variant() * 0.2, ctx.variant() < 0.6 ? [1.45, 1.42, 1.36] : [0.52, 0.5, 0.48]);
+      const len = Math.min(want, yTop - clearOf(name, u - w / 2, u + w / 2));
+      if (len >= 0.3) streak(f, u, yTop, len, w, lime ? [1.45, 1.42, 1.36] : [0.52, 0.5, 0.48]);
     }
     // (wave 389, round 2: "blocks hang in its arches" — the soot streaks over the arches' heads ran down past the
     // pointed crowns into the openings; the arches keep the plaques' shade instead)
