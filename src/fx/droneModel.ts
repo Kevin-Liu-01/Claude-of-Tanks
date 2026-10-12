@@ -440,14 +440,15 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
  // Round 4b (critics, wave 411c: from a camera at dock height the discs vanished edge-on before touchdown): a thin
  // blurred ribbon at the tip circle, 3.2 cm of authoring height (inside the rotor stock's y band), so a spinning disc
  // seen side-on is a translucent line across its span, never nothing.
- const ribbonR = .985 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .42;
+ const ribbonR = .985 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .28;
+ const ribbonMask = new Array(positions.length / 3).fill(0);
  for (let s = 0; s < segments; s++) {
   const a0 = s / segments * Math.PI * 2, a1 = (s + 1) / segments * Math.PI * 2;
   const p = (a:number, y:number) => [Math.cos(a) * ribbonR, y, Math.sin(a) * ribbonR];
   const quad = [p(a0, -ribbonH), p(a1, ribbonH), p(a1, -ribbonH), p(a0, -ribbonH), p(a0, ribbonH), p(a1, ribbonH)];
   for (const [index, q] of quad.entries()) {
    const a = index === 1 || index === 2 || index === 5 ? a1 : a0;
-   positions.push(...q); normals.push(Math.cos(a), 0, Math.sin(a));
+   positions.push(...q); normals.push(Math.cos(a), 0, Math.sin(a)); ribbonMask.push(1);
    // side-on, the near and far halves of the ribbon overlap: two faint layers read as one soft line
    colors.push(ribbonTone, ribbonTone * 1.02, ribbonTone * 1.07, ribbonAlpha);
   }
@@ -456,7 +457,38 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
  g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
+ // 1 on the edge ribbon: the blur material fades it away from edge-on (installDiscRibbonFade)
+ g.setAttribute('cotRibbon', new THREE.Float32BufferAttribute(ribbonMask, 1));
  return g;
+}
+/** Round 4b (wave 416: seen face-on or at an angle the tip ribbon drew a crisp white rim, "prop guards"): the disc
+ * material keeps the ribbon only near edge-on — its alpha falls from full within about 7 degrees of the rotor plane
+ * to nothing by about 20 degrees — so a side view keeps a soft line and every other view shows the plain disc.
+ * Chained after the engine's shader hooks (call it after their setup), for instanced and single meshes alike. */
+export function installDiscRibbonFade(material:THREE.Material):void {
+ if (material.userData.cotDiscRibbonFade) return;
+ material.userData.cotDiscRibbonFade = true;
+ (material.defines ??= {}).COT_DISC_RIBBON = '';
+ const previous = material.onBeforeCompile.bind(material), previousKey = material.customProgramCacheKey.bind(material);
+ material.onBeforeCompile = (shader, renderer) => {
+  previous(shader, renderer);
+  shader.vertexShader = shader.vertexShader
+   .replace('#include <common>', '#include <common>\nattribute float cotRibbon;\nvarying float vCotRibbonFade;')
+   .replace('#include <project_vertex>', `#include <project_vertex>
+  {
+   vec4 cotAxis = vec4(0.0, 1.0, 0.0, 0.0);
+   #ifdef USE_INSTANCING
+    cotAxis = instanceMatrix * cotAxis;
+   #endif
+   float cotFace = abs(dot(normalize((modelViewMatrix * cotAxis).xyz), normalize(-mvPosition.xyz)));
+   vCotRibbonFade = mix(1.0, 1.0 - smoothstep(0.12, 0.35, cotFace), cotRibbon);
+  }`);
+  shader.fragmentShader = shader.fragmentShader
+   .replace('#include <common>', '#include <common>\nvarying float vCotRibbonFade;')
+   .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.a *= vCotRibbonFade;');
+ };
+ material.customProgramCacheKey = () => `${previousKey()}|cotDiscRibbon`;
+ material.needsUpdate = true;
 }
 
 /** Four merged materials (matte carbon and TPU, the charge's paint, anodised metal, glass) plus the propellers. Motor
@@ -529,6 +561,7 @@ export function acquireDroneModelKit(nation?:string,detail:'full'|'lite'='full')
  if (!entry) {
   const kit = createDroneModelKit(nation, detail), hooks = materialHooks;
   for (const material of [...kit.parts.map(part => part.material), kit.rotorMaterial, kit.blurMaterial]) hooks.setup?.(material);
+  installDiscRibbonFade(kit.blurMaterial);
   entry = { kit, users: 0, hooks, extras: new Map() };
   kitCache.set(key, entry);
  }
