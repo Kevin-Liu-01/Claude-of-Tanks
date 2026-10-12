@@ -471,6 +471,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     mapId: 'fixture', MATCH_OBJECTIVE_LAYOUTS: {},
     // nor one in a deployment slot's clearing (2026-10-08, a10a37b37): the fixture's map has no deployment slots
     deploymentSlots: [], DEPLOYMENT_CLEAR_M: 20,
+    // nor is it built as a 180-degree pair (2026-10-11, PropsMapConfig.rotationalCentre: no twin hulks)
+    P: {},
   };
   const api = new Function('dependencies', `
     const { ${Object.keys(dependencies).join(', ')} } = dependencies;
