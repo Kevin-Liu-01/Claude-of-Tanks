@@ -59,7 +59,10 @@ function checkTerrain(source) {
     ['fR > 0.002 && keepS > 0.002', 'aR = groundSamp(uAlbR, uMeanR, uv * 0.155, df, mipB);', 'the rock'],
     // the map-borders lane (2026-10-03): a paved map's steep faces take the bare ground (D), inside the same branch
     ['fR > 0.002 && keepS > 0.002', 'aR = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);', 'the rock on a paved map'],
-    ['dW > 0.002', 'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', 'the packed road'],
+    // (the map-revival lane, 2026-10-11: a map whose dirt layer is not its tracks' packs them from its base layer,
+    // splat.roadLayer — both fetches inside the carriageway's branch, the choice uniform)
+    ['dW > 0.002', ': groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', 'the packed road'],
+    ['dW > 0.002', 'uRoadFromG > 0.5 ? groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB + 4.0).rgb', 'the packed road from the base layer'],
     ['rockRelW > 0.002', 'texture2D(uNrmR, uv * 0.041)', 'the rock relief'],
   ];
   for (const [cond, fetch, label] of gates) {

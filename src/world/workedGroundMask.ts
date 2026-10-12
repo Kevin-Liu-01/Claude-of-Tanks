@@ -83,3 +83,34 @@ export function stampWorkedGroundMask(
   for (const patch of patches) validatePatch(patch);
   for (const patch of patches) stampPatch(pixels, size, mapSize, patch, noise);
 }
+
+/** A building's yard as a map authors it (the land use's box frame: local x = (cos, -sin), local z = (sin, cos)). */
+export interface YardWearBox { x: number; z: number; w: number; l: number; yawDeg: number }
+
+/**
+ * The map-revival lane (2026-10-11; gauntlet wave 395a on Obsidian Caldera: "farmyards that are mown lawn instead of bare
+ * packed earth"; "its blocky stair-stepped boundary meets bright lime-green field tiles"): the yards' trodden soil in the
+ * wear channel — each box a worked-ground patch with a broken, feathered edge, so the land use's fields (which the wear
+ * keeps off: terrain.ts landW) end on an irregular line instead of the field raster's steps, and the yard reads as packed
+ * earth. Overlapping boxes merge (the wear keeps the higher). Construction only, like the worked ground.
+ */
+export function stampYardWearMask(
+  pixels: Uint8ClampedArray, size: number, mapSize: number,
+  yards: readonly YardWearBox[], noise: NoiseField, feather = 5, strength = 0.9,
+): void {
+  if (!Number.isInteger(size) || size <= 0 || pixels.length !== size * size * 4 || !Number.isFinite(mapSize) || mapSize <= 0
+    || yards.length > 96) {
+    throw new Error('Yard wear requires a valid RGBA raster and at most 96 yards');
+  }
+  for (const yard of yards) {
+    if (![yard.x, yard.z, yard.w, yard.l, yard.yawDeg].every(Number.isFinite) || yard.w < 2 || yard.l < 2) {
+      throw new Error('Yard wear requires a finite box at least 2 m across');
+    }
+    const a = yard.yawDeg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), hw = yard.w / 2, hl = yard.l / 2;
+    const boundary = ([[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]] as const)
+      .map(([lx, lz]) => [yard.x + lx * c + lz * sn, yard.z - lx * sn + lz * c] as const);
+    const patch = { boundary, feather, strength };
+    validatePatch(patch);
+    stampPatch(pixels, size, mapSize, patch, noise);
+  }
+}
