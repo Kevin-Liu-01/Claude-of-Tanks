@@ -5,17 +5,17 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1977992,
-      "sha256": "56bd5bd1358b675be667341b838d84c8266c14ec8adb62a7eafd159bcab7d7d9",
-      "obstacles": 6795,
-      "colliders": 6463,
+      "bytes": 1932344,
+      "sha256": "cdf9a0b079a109e91a179d89e23192f0114266fb47f3da1a4aeea380c1b892a0",
+      "obstacles": 6799,
+      "colliders": 6468,
       "concealers": 7364
     },
     "desert": {
-      "bytes": 1324234,
-      "sha256": "927719017758aae58f152e3b39f7a66a95a674827f6728855ffb001e52459be1",
-      "obstacles": 1665,
-      "colliders": 1555,
+      "bytes": 1343962,
+      "sha256": "85c6014406ced324b06d85cef0fba235d7067d4a3006556bb1f5a7ba84622770",
+      "obstacles": 1680,
+      "colliders": 1559,
       "concealers": 1289
     },
     "winter": {
@@ -61,10 +61,10 @@
       "concealers": 1337
     },
     "frontier": {
-      "bytes": 2480883,
-      "sha256": "27132bc6d1a59dd63374e1c572851d3812566967a14df4a811ec0bb9f2bc99d5",
-      "obstacles": 7924,
-      "colliders": 7872,
+      "bytes": 2494011,
+      "sha256": "51e83ed47b2baec22a3cb273dba6cfce76ebd63ab8c6bcfe2ba0e3c9bffa3bb0",
+      "obstacles": 7927,
+      "colliders": 7874,
       "concealers": 8087
     },
     "fjord": {
@@ -82,10 +82,10 @@
       "concealers": 10071
     },
     "badlands": {
-      "bytes": 1352398,
-      "sha256": "d3703d087f5f10b11fa3af46633c8201c416b973cd5ac54de8896e8eac395e8a",
-      "obstacles": 1681,
-      "colliders": 1386,
+      "bytes": 1352110,
+      "sha256": "82676ade4b471d27928712ccbface14c44b9c008a64a92eb069daa36d762762b",
+      "obstacles": 1674,
+      "colliders": 1379,
       "concealers": 248
     },
     "monsoon": {
@@ -239,17 +239,17 @@
   "variants": {
     "assault-trenches": {
       "verdant": {
-        "bytes": 2054253,
-        "sha256": "067de76842ee3e20e0c31314cab555fdd021c8cac771cb2771668487b26bbe60",
-        "obstacles": 6800,
-        "colliders": 6375,
+        "bytes": 2099709,
+        "sha256": "85dede8baa0b8440c1e254799ea13e41755cf598febb3a041642d528b0c7f1b0",
+        "obstacles": 6803,
+        "colliders": 6379,
         "concealers": 7228
       },
       "desert": {
-        "bytes": 1514045,
-        "sha256": "cd4ce7c7cfc69704105916297fc5505f629cc0d698f3edb6ae7e71d1bf3e9c6b",
-        "obstacles": 1803,
-        "colliders": 1600,
+        "bytes": 1541668,
+        "sha256": "9b78f25a8311c3f42fc086a757ff74e46591928b295fb451d79443f3cca8d8e2",
+        "obstacles": 1819,
+        "colliders": 1605,
         "concealers": 1289
       },
       "winter": {
@@ -295,10 +295,10 @@
         "concealers": 1337
       },
       "frontier": {
-        "bytes": 2655248,
-        "sha256": "71002ddd62bcdf76894297d97577835233f343379a0d27183d22d6db46cdd06b",
-        "obstacles": 7982,
-        "colliders": 7837,
+        "bytes": 2674057,
+        "sha256": "24e29d28b238d86182bd7a5c7753ec539cd4805d1eb002bdd73838a508163d0a",
+        "obstacles": 7986,
+        "colliders": 7840,
         "concealers": 8058
       },
       "fjord": {
@@ -316,10 +316,10 @@
         "concealers": 10098
       },
       "badlands": {
-        "bytes": 1537695,
-        "sha256": "0a1317210428206d92fdef54790704ec8128a98da95b581bd66f6a0202726adf",
-        "obstacles": 1806,
-        "colliders": 1426,
+        "bytes": 1507819,
+        "sha256": "f9c7392b5de43fa6b37b7971a63dc68f49df5a8229c72da5617f827f4df5b7d8",
+        "obstacles": 1800,
+        "colliders": 1419,
         "concealers": 248
       },
       "monsoon": {
