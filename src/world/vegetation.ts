@@ -222,6 +222,16 @@ interface VegetationConfig {
    */
   coverHalvesAbout?: { x: number; z: number };
   /**
+   * The map-revival lane (2026-10-11; Cinder Junction's fairness: every authored site, road, siding and cut of stock in
+   * rotational pairs, the random woods and shrubs not — alpha's approach came up through 43 trees in a 40 m cell whose twin
+   * was bare, and the halves' counts evened by coverHalvesAbout left 58 concealers against 11 within 150 m of the square):
+   * the playable square's procedural trees and bushes in 180-degree pairs about this point. A tree or bush whose seat lies
+   * in the half that faces the first deployment is refused; every one seated in the other half inside the playable square
+   * stands its twin turned about the point (the tree's own draws replayed, the bush's form turned), where the twin's site
+   * admits it. The map's authored rows keep their own pairs. Absent on every other map.
+   */
+  rotationalCover?: { x: number; z: number };
+  /**
    * The Redrock lane (round 10, 2026-10-08; the gauntlet's wave 270 on Redrock's low sand view: "tall, flat cross-card
    * blades far out of scale", the nearest object a sprite): the map's tufts' height, a factor on every tuft's (a dry
    * tuft stands half as tall again as a green one, and the hyper-arid floor's are all dry). A test on a drawn size, no
@@ -4092,6 +4102,7 @@ function* vegetationBuildSteps(
   const _m4 = new THREE.Matrix4();
   const _q = new THREE.Quaternion();
   const _qLean = new THREE.Quaternion();
+  const _qTurn = new THREE.Quaternion(); // the map-revival lane: a twin bush's half turn (veg.rotationalCover)
   const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
   const _axLean = new THREE.Vector3();
   const _pv = new THREE.Vector3();
@@ -5768,6 +5779,25 @@ function* vegetationBuildSteps(
     return (x - halvesAbout!.x) * halvesAxis[0] + (z - halvesAbout!.z) * halvesAxis[1] < 0 ? 0 : 1;
   }
   const _coverHalves = [0, 0];
+  // the map-revival lane (veg.rotationalCover): the half a procedural seat is kept in (the one facing the second
+  // deployment, across the line through the turning point square to the deployments' axis) and its twin's seat
+  const turnAbout = veg.rotationalCover ?? null;
+  const turnAxis = [0, 1];
+  if (turnAbout) {
+    const ex = L.spawns.enemies.reduce((acc, e) => acc + e.x, 0) / L.spawns.enemies.length - L.spawns.player.x;
+    const ez = L.spawns.enemies.reduce((acc, e) => acc + e.z, 0) / L.spawns.enemies.length - L.spawns.player.z;
+    if (Math.abs(ex) > Math.abs(ez)) { turnAxis[0] = Math.sign(ex); turnAxis[1] = 0; } else turnAxis[1] = Math.sign(ez) || 1;
+  }
+  /** True for a seat inside the playable square on the first deployment's side of the turning line (its twin's half). */
+  function inTurnedHalf(x: number, z: number): boolean {
+    if (!turnAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
+    return (x - turnAbout.x) * turnAxis[0] + (z - turnAbout.z) * turnAxis[1] < 0;
+  }
+  /** True for a seat inside the playable square on the kept side (a seat there stands a twin). */
+  function inKeptHalf(x: number, z: number): boolean {
+    if (!turnAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
+    return (x - turnAbout.x) * turnAxis[0] + (z - turnAbout.z) * turnAxis[1] >= 0;
+  }
   // (symmetric deployments: the last evening counts without the trees the deployment clearings drop after it)
   function countTreeHalves(withoutClearings = false): void {
     _coverHalves[0] = 0; _coverHalves[1] = 0;
@@ -5926,7 +5956,20 @@ function* vegetationBuildSteps(
     return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
   }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1): boolean {
+    // (veg.rotationalCover: the twin's half takes no seat of its own)
+    if (turnAbout && inTurnedHalf(x, z)) return false;
     if (!siteOk(x, z, 0)) return false;
+    if (turnAbout && inKeptHalf(x, z)) {
+      // the tree, its draws kept, and its twin turned about the point on the same draws, where the twin's site admits it
+      const drawn: number[] = [];
+      pushTree(x, z, species, 0.95, 1.7, true, () => { const v = r(); drawn.push(v); return v; }, spread);
+      const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+      if (siteOk(tx, tz, 0)) {
+        let k = 0;
+        pushTree(tx, tz, species, 0.95, 1.7, true, () => (k < drawn.length ? drawn[k++] : r()), spread);
+      }
+      return true;
+    }
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
@@ -6616,12 +6659,28 @@ function* vegetationBuildSteps(
         // Fjord and Alpine spawns; 20 m still clears the tank and the camera
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
         if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
+        // (veg.rotationalCover: inside the playable square the twin's half takes no seat of its own)
+        if (turnAbout && inTurnedHalf(x, z)) continue;
         // (a hyper-arid border's trees are field trees in its hollows, not a forest ring's giants: round 3)
-        pushTree(x, z, tr() < 0.85 ? species : pickSpecies(veg.rimMix, tr()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false, tr);
+        const rimSpecies = tr() < 0.85 ? species : pickSpecies(veg.rimMix, tr());
+        const drawn: number[] = [];
+        pushTree(x, z, rimSpecies, aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false,
+          turnAbout ? () => { const v = tr(); drawn.push(v); return v; } : tr);
         placed++;
         if (dropRimTreeOutsideWoods(x, z)) continue;
         trees[trees.length - 1].wood = true;
         rimTrees.push(trees[trees.length - 1]);
+        // (and a kept tree its twin turned about the point on the same draws, the pair kept or dropped together)
+        if (turnAbout && inKeptHalf(x, z)) {
+          const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+          if (Math.max(Math.abs(tx), Math.abs(tz)) <= 506 && !noVeg(tx, tz) && !overTreeCeiling(tx, tz)
+            && isClearOfSpawns(tx, tz, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) {
+            let k = 0;
+            pushTree(tx, tz, rimSpecies, aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false, () => (k < drawn.length ? drawn[k++] : tr()));
+            trees[trees.length - 1].wood = true;
+            rimTrees.push(trees[trees.length - 1]);
+          }
+        }
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
       if (placed >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
@@ -6639,10 +6698,24 @@ function* vegetationBuildSteps(
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
       if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
-      pushTree(x, z, pickSpecies(veg.rimMix, sr()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false, sr);
+      if (turnAbout && inTurnedHalf(x, z)) continue; // (veg.rotationalCover, as the rim blocks')
+      const saddleSpecies = pickSpecies(veg.rimMix, sr());
+      const drawn: number[] = [];
+      pushTree(x, z, saddleSpecies, aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false,
+        turnAbout ? () => { const v = sr(); drawn.push(v); return v; } : sr);
       if (dropRimTreeOutsideWoods(x, z)) continue;
       trees[trees.length - 1].wood = true;
       rimTrees.push(trees[trees.length - 1]);
+      if (turnAbout && inKeptHalf(x, z)) {
+        const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+        if (Math.max(Math.abs(tx), Math.abs(tz)) <= 506 && !noVeg(tx, tz) && !overTreeCeiling(tx, tz)
+          && isClearOfSpawns(tx, tz, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) {
+          let k = 0;
+          pushTree(tx, tz, saddleSpecies, aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false, () => (k < drawn.length ? drawn[k++] : sr()));
+          trees[trees.length - 1].wood = true;
+          rimTrees.push(trees[trees.length - 1]);
+        }
+      }
     }
   }
   placeSaddleTrees();
@@ -7423,6 +7496,7 @@ function* vegetationBuildSteps(
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
+      if (turnAbout && inTurnedHalf(x, z)) return; // (veg.rotationalCover: the twin's half takes no seat of its own)
       if (br() > veg.bushCount) return; // per-map density scale
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
@@ -7484,8 +7558,26 @@ function* vegetationBuildSteps(
       const variant=(br()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
       if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
+      // (veg.rotationalCover: a seat its margin or a tree's foot moved into the twin's half is refused there too)
+      if (turnAbout && inTurnedHalf(x, z)) return;
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
       if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
+      if (turnAbout && inKeptHalf(x, z)) {
+        // its twin, the same shrub turned about the point, where the twin's site admits a bush
+        const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+        if (Math.max(Math.abs(tx), Math.abs(tz)) > 470 || inAvoid(tx, tz) || overTreeCeiling(tx, tz)) return;
+        if (admission()._roadDist(tx, tz) < 6) return;
+        if (admission().getGroundType(tx, tz) === 'soft' || (noVeg(tx, tz) && !batterAdmits(tx, tz))) return;
+        if (!steepSeedOk(admission().getNormalAt(tx, tz).y, tx, tz)) return;
+        if (placedClearances.length && overlapsStructureClearance(placedClearances, tx, tz, 2.5 * sc + 0.3)) return;
+        const ty = heightField.getHeightAt(tx, tz);
+        _qTurn.setFromAxisAngle(_up, Math.PI);
+        _q.premultiply(_qTurn);
+        _m4.compose(_pv.set(tx, ty - 0.05, tz), _q, _sv);
+        const twinKeep = !newlyUnsafeRoadSite(tx, tz, 6, .78);
+        bushPlacements[variant].push(_m4.clone()); bushKeep[variant].push(twinKeep);
+        if (twinKeep) concealers.push({ x: tx, z: tz, r: 2.0 * sc, add: 0.35 });
+      }
     }
     // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
     // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,

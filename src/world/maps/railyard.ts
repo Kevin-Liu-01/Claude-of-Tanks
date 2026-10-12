@@ -319,6 +319,13 @@ export default {
     loneMix: [['poplar', 0.44], ['birch', 0.31], ['oak', 0.25]],
     rimMix: [['poplar', 0.38], ['birch', 0.34], ['oak', 0.28]],
     clusterCount: 9,  // scrub survives only outside the worked ground
+    // (2026-10-11, round 3d, the map-revival lane; round 3b's fairness: alpha 27-13 at 40 with every authored site, road,
+    // siding and cut of stock in rotational pairs — the census of the shard: the woods south of the town stood where
+    // alpha comes up (alpha's half 157 concealers in the core, bravo's 104; a 40 m cell of 43 trees at (40..80, -280..-240)
+    // with none at its twin), and its kills came from the cover beside the square; evening the halves' counts (the Redrock
+    // lane's coverHalvesAbout, try 3c) left 58 concealers against 11 within 150 m) the playable square's trees and shrubs
+    // in rotational pairs about the square (vegetation.ts rotationalCover)
+    rotationalCover: { x: 0, z: 0 },
     loneCount: 34,
     rimCount: 66,
     grassDensity: 0.45,
@@ -464,6 +471,8 @@ export default {
     // crossing posts' own wrecks are off too: the east post's never found ground, so the west one stood alone)
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: ['m48', 'centurion5', 'm47_patton'] },
     sandbagLines: 10,
+    // (round 3c) no field works at random: round 3b's three stood both pillboxes in bravo's half (x 13-18, z 151-198)
+    fieldWorks: 0,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
     wallStyle: 'brick',
