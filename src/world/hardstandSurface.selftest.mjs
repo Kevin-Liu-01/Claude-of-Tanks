@@ -205,7 +205,7 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
-  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.36;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
+  assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.24;') && terrain.includes('n.xy -= padRutN * 0.22;'), 'they darken its ground and groove it (a worn yard: R1b)');
   assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
   // (2026-10-12, live on 217: Frontier's square drew topographic contour rings) a rut family's direction is fixed: the
   // lines project the world position on it, so a direction that varied with position made the ruts trace the direction
@@ -213,6 +213,11 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const block = terrain.slice(terrain.indexOf('if (apronK > 0.003) {'), terrain.indexOf('padRut *= apronK;'));
   const thLine = block.split('\n').find((line) => /\bfloat th = /.test(line));
   assert.ok(thLine && !/nz\(|nzq\(|uv|wp/.test(thLine), `a rut family's direction never reads position (${thLine?.trim()})`);
-  assert.match(block, /float q = dot\(wp\.xz, dP\) \+ 5\.0 \* \(nz\(uv, 0\.017/, 'the warp noise still bends the ruts');
+  // (R1b, 2026-10-12: the noise-texture warp branched the ruts into a crack net on 219) the bend is two long smooth waves
+  // along the family's own lines: no texture read in the line's phase, and wavelengths of tens of metres
+  const qLine = block.split('\n').find((line) => /\bfloat q = /.test(line));
+  assert.ok(qLine && !/nz\(|nzq\(|uv\b/.test(qLine) && /sin\(al \/ 23\.0/.test(qLine) && /sin\(al \/ 9\.7/.test(qLine),
+    `the ruts bend in long smooth waves along their lines, never by the noise texture (${qLine?.trim()})`);
+  assert.match(block, /float al = dot\(wp\.xz, vec2\(cos\(t\), sin\(t\)\)\);/, 'measured along the family\'s lines');
 }
 console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');

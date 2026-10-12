@@ -4833,12 +4833,18 @@ void splatCompute() {
     // from the world origin (q below), made the lines follow the direction field's own isolines wherever |wp| times its
     // gradient outgrew the lines' spacing: concentric rings, densest on the pads far from the origin. The noise warp of q
     // alone bends the ruts into gently curving tracks.
+    // (2026-10-12, R1b: on 219 the pads drew a polygonal crack net of dark veins — Verdant's two pads at 6 m — not tracks:
+    // the warp read the noise texture's fine detail, ±2.5 m at a few metres' scale, so each 2.9 m rut pair wandered and
+    // branched into its neighbours) the bend is two long, smooth waves along the family's lines (wavelengths ~145 m and
+    // ~61 m, at most ~12 degrees off straight): each family is a set of gently curving parallel tracks that cross the
+    // other, coming and going in the presence patches; the darkening and the groove are lighter (a worn yard, not ditches).
     float th = 0.6;
     float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
     for (int k = 0; k < 2; k++) {
       float t = th + float(k) * 1.15;
       vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
-      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
+      float al = dot(wp.xz, vec2(cos(t), sin(t))); // along them
+      float q = dot(wp.xz, dP) + 2.2 * sin(al / 23.0 + 0.9 + 1.7 * float(k)) + 1.1 * sin(al / 9.7 + 0.3 + 2.9 * float(k));
       float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
       float f = fract(q / per) * per;
       float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
@@ -6725,7 +6731,7 @@ void splatCompute() {
       }
       // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
       // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
-      a.rgb *= 1.0 - padRut * 0.36;
+      a.rgb *= 1.0 - padRut * 0.24;
       // (and the ground the tracks churned: darker, damper patches along them)
       a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
@@ -6913,7 +6919,7 @@ void splatCompute() {
     }
   }
   // (a pad's ruts: two grooves across each line, their walls turned to the light)
-  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
+  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.22;
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
