@@ -5617,7 +5617,11 @@ void splatCompute() {
       // field: inside its margin a field's tone is its crop's and its husbandry's
       float fieldVar = (0.93 + 0.14 * jit2) * (1.0 - 0.07 * clamp(vFold, -1.0, 1.0));
       vec3 aF = a.rgb / max(gMeadowTint, vec3(0.05));
-      float baseL = reduxLuma(aF);
+      // (the map-revival lane, Caldera round 6, 2026-10-11; wave 412: "unexplained bright green blurred blotches" by the
+      // farmyards) a crop's colour scales with the local sward's luminance, and at a yard's feathered edge the field kept a
+      // share while the ground under it was the yard's paler worn soil: the growing rice there lit up as a lime glow. The
+      // sward's luminance is held to 1.2 times the calibrated one (0.075), as a crop's own albedo never runs above it
+      float baseL = min(reduxLuma(aF), 0.09);
       float sw = baseL / 0.075; // the local sward against the calibrated one: a crop's albedo keeps the photo's grain
       float bright = 0.90 + 0.20 * jit;
       // pasture: a grazed field paler and yellower, a shut-up one lusher, by the field
@@ -5744,7 +5748,9 @@ void splatCompute() {
         // (cap9's look: from the establishing height the sheet still mirrored the cumulus as a mottle of blue-white —
         // the young rice covers about a third of a planted paddy's water seen across it, so past the rows' fade the haze
         // takes that share of the sheet)
-        water = (1.0 - seedRow * 0.5) * mix(0.68, 1.0, tileVis(0.3));
+        // (Caldera round 6, waves 412/414: "tiled blue water pasted in"; "dark, matte, planted water") a planted paddy's
+        // water mirrors the sky at a little over half the old share: the muddy brown and the rows carry the sheet
+        water = (1.0 - seedRow * 0.5) * mix(0.68, 1.0, tileVis(0.3)) * 0.55;
         cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.55, 0.3 * (1.0 - tileVis(0.3)));
       } else if (crop < 9.5) {
         cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
