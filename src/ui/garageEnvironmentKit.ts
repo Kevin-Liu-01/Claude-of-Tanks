@@ -519,7 +519,7 @@ function createBackdropGeometry(
   // with conifer woods, the pass has a forested foot that grows out of its snowfield, the mesas carry strata, varnish
   // and shaded cliffs, and the sea darkens toward the shore and fades into the horizon. One unlit vertex-colour program.
   // the near bands carry the most columns; the far, hazed ones need fewer (the pack's 50k-triangle budget)
-  const LAYER_SEGMENTS = [176, 176, 120, 96, 96] as const;
+  const LAYER_SEGMENTS = [160, 160, 104, 80, 80] as const;
   const segments = 120;
   const ROWS = 8;
   const layers = [
