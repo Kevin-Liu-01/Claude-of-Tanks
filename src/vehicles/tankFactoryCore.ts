@@ -5551,6 +5551,27 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     z: w.z, x: w.x, y: w.y, r: w.r, off: w.off || 0, voff: w.voff || 0, layer: w.i,
     source: !!w.suspensionSource, rec: !!w.rec,
   }));
+  // 2026-10-08 (the contact-shadow lane): the ground run as it is drawn this frame, without allocating — the side's road
+  // wheels in z order as (z, travel) pairs, hull-local metres, the travel the band's bottom run follows (deformBand; on
+  // distant gear updated at 15 or 30 Hz it holds between updates, as the drawn band does). The aerial pass's ground
+  // occlusion (vehicleGroundOcclusion.ts) reads it each frame so the darkening under a track follows where the run
+  // actually meets the ground. Returns the pairs written (out holds at most out.length / 2). Every unit on the hull joins
+  // in (the t95 four-track builds two a side on one hullG: each unit appends to the one before and the pairs are put back
+  // in z order), and a thrown track's side gives none of this unit's (its band is hidden: no run meets the ground there).
+  const priorGroundRun = hullG.userData.runningGearGroundRun as ((side: Side, out: Float32Array) => number) | undefined;
+  hullG.userData.runningGearGroundRun = (side: Side, out: Float32Array): number => {
+    const before = typeof priorGroundRun === 'function' ? priorGroundRun(side, out) : 0;
+    if (side < 0 ? brokenL : brokenR) return before;
+    const ws = suspWheels[side];
+    const n = Math.min(before + ws.length, out.length >> 1);
+    for (let i = before; i < n; i++) {
+      const w = ws[i - before], z = w.z, off = w.voff || 0;
+      let j = i;
+      for (; j > 0 && out[(j - 1) * 2] > z; j--) { out[j * 2] = out[(j - 1) * 2]; out[j * 2 + 1] = out[(j - 1) * 2 + 1]; }
+      out[j * 2] = z; out[j * 2 + 1] = off;
+    }
+    return n;
+  };
   const gearUnit: RunningGearUnit = {
     unitId: runningGearUnitId,
     contactGeom: gearContactGeom,
@@ -5903,6 +5924,7 @@ function discardRunningGear(builder: object): void {
   for (const key of [
     'runningGearReceipts', 'wheelPatternReceipts', 'trackPatternReceipts', 'nativeWheelPatterns',
     'nativeTrackPatterns', 'nativeRoadWheelStations', 'runningGearEndRelays', 'runningGearRoadWheels',
+    'runningGearGroundRun',
   ]) delete P.hullG.userData[key];
 }
 
@@ -6860,6 +6882,9 @@ const CAMO_BUCKETS = new Set([
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
+  // The opt-in independent twin-gun tubes take the same camouflaged barrel paint as `gun`, so they need its projection
+  // and its vertex-colour bake (2026-10-10: without them the BMPT's twin 30 mm tubes rendered black).
+  'gunBarrel0', 'gunBarrel1',
 ]);
 /** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
 const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
@@ -8060,6 +8085,25 @@ function* createTankOwnedSteps(
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
   };
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 386/392's critics on the Sabra Mk 2's cheek covers: "a translucent,
+  // glass-like sheet with bolt heads"): a plate laid on the armour projects the same world-scale camouflage as the face
+  // beneath it, so only its edges showed and the plate read as glass over the pattern. A part may shift its projection
+  // (userData.camoUvOffset, in camouflage-tile units) after the shared box projection; rendered builds only.
+  const shiftPartCamouflage = (list: THREE.BufferGeometry[], merged: THREE.BufferGeometry): void => {
+    const uv = merged.getAttribute('uv');
+    if (!uv) return;
+    let offset = 0, shifted = false;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const shift = part.userData.camoUvOffset as readonly [number, number] | undefined;
+      if (shift) {
+        for (let i = offset; i < offset + count && i < uv.count; i++) uv.setXY(i, uv.getX(i) + shift[0], uv.getY(i) + shift[1]);
+        shifted = true;
+      }
+      offset += count;
+    }
+    if (shifted) uv.needsUpdate = true;
+  };
   const mergeBucket = (bucket: string, list: THREE.BufferGeometry[]): void => {
     if (!list.length) return;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
@@ -8074,6 +8118,7 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
