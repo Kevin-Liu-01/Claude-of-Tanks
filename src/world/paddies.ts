@@ -21,6 +21,9 @@ export interface PaddyConfig {
 
 /** The bund: its width outside the water's edge, its crest over the floor (a paddy bund is knee high and a stride wide). */
 export const PADDY_BUND_M = 1.6, PADDY_BUND_H = 0.4;
+/** The bund's outer face: past its width the crest falls over this many metres (two neighbours' bunds, meeting at their
+ *  widths, stand as one shared bund at full crest, never a notch between them). */
+const PADDY_BUND_FALL_M = 0.7;
 /** The bank: the ground cut or filled to the floor blends back to its own height over this many metres past the bund. */
 export const PADDY_BANK_M = 7;
 /** The water stands this far under the floor's rim, so the field's own edge holds it before the bund does. */
@@ -84,7 +87,8 @@ export function resolvePaddyFloors(compiled: CompiledPaddies, heightAt: (x: numb
 
 /**
  * The ground at (x, z) with the paddies built: inside a paddy its floor; on a bund the bund's crest over the higher floor
- * it holds; past the bunds the cut or the fill blending back to the ground over the bank (the nearest paddy's).
+ * it holds (a bank cut into higher ground may stand over it); past the bunds the cut or the fill blending back to the
+ * ground over the bank (the nearest paddy's).
  */
 export function levelPaddies(compiled: CompiledPaddies, x: number, z: number, h: number): number {
   const floors = compiled.floors;
@@ -94,18 +98,16 @@ export function levelPaddies(compiled: CompiledPaddies, x: number, z: number, h:
     const sd = signedDistance(compiled.paddies[i], compiled.frames[i], x, z);
     if (sd >= PADDY_BUND_M + PADDY_BANK_M) continue;
     if (sd <= 0) return floors[i];
-    if (sd < PADDY_BUND_M) {
-      // a rounded crest, flat over its middle half: the bund rises from the water's edge and falls to the bank's floor
-      const t = sd / PADDY_BUND_M;
-      const crest = floors[i] + PADDY_BUND_H * smooth(0, 0.3, t) * (1 - smooth(0.75, 1, t));
+    if (sd < PADDY_BUND_M + PADDY_BUND_FALL_M) {
+      // the crest rises from the water's edge over its first third, holds to the bund's width and falls past it
+      const crest = floors[i] + PADDY_BUND_H * smooth(0, 0.3 * PADDY_BUND_M, sd) * (1 - smooth(PADDY_BUND_M, PADDY_BUND_M + PADDY_BUND_FALL_M, sd));
       if (crest > bund) bund = crest;
-      continue;
     }
     const w = 1 - smooth(PADDY_BUND_M, PADDY_BUND_M + PADDY_BANK_M, sd);
     if (w > bankW) { bankW = w; bankFloor = floors[i]; }
   }
-  if (bund > -Infinity) return bund;
-  return bankW > 0 ? h + (bankFloor - h) * bankW : h;
+  const banked = bankW > 0 ? h + (bankFloor - h) * bankW : h;
+  return bund > banked ? bund : banked;
 }
 
 /** The paddies' water as square-ended canals (canals.ts), at each floor less the freeboard: call once the floors are known. */
