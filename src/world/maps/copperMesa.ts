@@ -72,7 +72,9 @@ export default {
     sightLongShare: { band: [0.025, 0.15], reason: 'integ/216 only: L2 mine works under the see-through-gallery raster artifact; 217 restores the 0.03 floor' },
   } },
   terrain: {
-    hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
+    // (Copper Mesa round 3, 2026-10-11; wave 387: the floor "stippled with countless identical round hummocks") the stripped
+    // hills' micro relief two fifths lower: gravel slopes cut by rills, not a field of round hummocks
+    hillScale: 0.72, microScale: 0.48, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
     // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
     // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
@@ -136,7 +138,8 @@ export default {
     dirtTone: (h: number, s: number, l: number) => [0.09, s * 0.45, 0.18 + l * 0.58],
     // (Copper Mesa round 2: the conglomerate is not a bedded sandstone and no wind shapes it — no sandstone tile, no dune
     // macro; was sandstone, sandMacro 0.7)
-    sandstone: false, strata: 0.12, sandMacro: 0, midRelief: 0.8,
+    // (round 3, wave 387: "one uniform mauve dirt texture", "no colour bands") the conglomerate's beds show on the slopes
+    sandstone: false, strata: 0.28, sandMacro: 0, midRelief: 0.8,
     // (round 3, wave 132: the mud pan "a flat matte stain rather than reflective water or wet tailings") the pit's pan is
     // the mine's tailings: wet, glossy silt stained rust by the acid water (the Queen River's orange) — was matte
     // (2026-10-10, the map-revival lane; gauntlet wave 346, site 10: "a dark blue-black glittering scale-noise surface like
@@ -147,7 +150,10 @@ export default {
     // s * 0.5 + 0.25 at hue 0.055, gloss 0.8)
     // (cap8's look: the first cut read a saturated brick orange in the near view and a pale glare from 80 m) a muted ochre
     // silt, its sheen a damp one: saturation ~0.32-0.37, lightness ~0.33-0.41, gloss 0.22 (roughness ~0.66)
-    mudTone: (h: number, s: number, l: number) => [0.075, clamp01(s * 0.4 + 0.26), clamp01(l * 0.75 + 0.24)], marshGloss: 0.22,
+    // (round 3, wave 387: the pan "dry orange sand", "foil", "wet tarmac") the tailings a damp, matte, rust-stained grey
+    // silt: the hue a touch redder, half the saturation, darker, and almost no sheen (was 0.075 / s 0.4 + 0.26 / l 0.75 + 0.24,
+    // gloss 0.22)
+    mudTone: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.22 + 0.16), clamp01(l * 0.58 + 0.15)], marshGloss: 0.1,
     // (round 3, wave 132: "no pink, ochre or grey conglomerate") the gravel's patches: salmon-pink fields at ~80 m, the
     // grey-mauve weathered stretches at ~230 m, ochre washes at ~600 m (was a pale pink, a dark mauve and a buff)
     tintA: [1.08, 0.86, 0.80], tintB: [0.80, 0.76, 0.80], tintC: [1.10, 0.90, 0.62], roadTint: [0.62, 0.56, 0.54],
@@ -164,7 +170,9 @@ export default {
     // (round 3, wave 132: "a solid green tree line fills the mid-ground exactly where bare stripped hills should open up")
     // the stripped hills bare: half the stands and fewer rim trees, the regrowth a low scrub, the tufts thinner (was 22
     // stands, 40 rim trees, tufts at 0.18)
-    clusterCount: 11, loneCount: 26, rimCount: 22, grassDensity: 0.1, bushCount: 0.9, bushSpecies: 'acacia', clusterScrub: 1.6,
+    // (round 3, wave 387: "straw-like stick decals and identical yellow grass-tuft cards", "tree clumps") the fume-stripped
+    // hills bare: no tufts, a third of the stands and lone trees left in the gullies, the scrub half
+    clusterCount: 4, loneCount: 10, rimCount: 8, grassDensity: 0, bushCount: 0.5, bushSpecies: 'acacia', clusterScrub: 0.8,
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
@@ -269,7 +277,8 @@ export default {
     ],
   },
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
-    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
+    // (round 3, wave 387: "flat white haze bands") the ranges' haze lighter
+    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.75, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)
