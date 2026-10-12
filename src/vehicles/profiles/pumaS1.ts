@@ -75,6 +75,7 @@ function openCradleSkin(
   P: PumaS1BuilderPort,
   corners: [Vec3, Vec3, Vec3, Vec3],
   thickness: number,
+  dark = false,
 ): void {
   const points = corners.map((corner) => new THREE.Vector3(...corner));
   const normal = points[1].clone().sub(points[0])
@@ -100,7 +101,7 @@ function openCradleSkin(
     6, 7, 1, 6, 1, 0,
   ]);
   geometry.computeVertexNormals();
-  P.addGunExtra(geometry);
+  if (dark) P.addGunExtraDark(geometry); else P.addGunExtra(geometry);
 }
 
 function addOpenTrapezoidGunCradle(
@@ -175,6 +176,17 @@ function addOpenTrapezoidGunCradle(
       sidePoint(side, 0.86, -portHalfHeight), sidePoint(side, 1, -portHalfHeight),
       sidePoint(side, 1, portHalfHeight), sidePoint(side, 0.92, portHalfHeight),
     ], config.skinThickness);
+    // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: the shroud "hovers above a dark open gap with
+    // stair-stepped teeth along its edge, so the gun mount reads as an open, unattached shell"): a dark backing plate
+    // closes the slash ports 30 mm inside the flank, so they read as recessed louvres in a closed shroud.
+    const recess = (fraction: number, heightScale: number): Vec3 => {
+      const p = sidePoint(side, fraction, heightScale);
+      return [p[0] - side * .03, p[1], p[2]];
+    };
+    openCradleSkin(P, [
+      recess(0.02, -portHalfHeight * 1.08), recess(0.98, -portHalfHeight * 1.08),
+      recess(0.98, portHalfHeight * 1.08), recess(0.02, portHalfHeight * 1.08),
+    ], config.skinThickness, true);
   }
 }
 
@@ -406,8 +418,14 @@ function addTurret(P: PumaS1BuilderPort): void {
   // avoiding a second authored bore keeps the small-caliber throat perfectly
   // concentric instead of letting two independently segmented discs compete.
   buildGun(P, { len: 2.85, r: 0.056, sleeve: false, collar: true, baseR: 0.112 });
-  P.addGunExtraDark(cylZ(0.019, 1.95, 12), 0.20, -0.025, 1.72);
-  muzzleTipDot(P, 0.20, -0.025, 2.70, 0.012, { parent: 'gunG' });
+  // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: a thin plain-grey rod as long as the gun running from
+  // the gun's root across the lower left beside the barrel): the coax's barrel runs inside the cradle and stands 0.19 m
+  // proud of its front with its flash hider, as a coaxial machine gun does; it was a 1.95 m rod out to the cannon's muzzle.
+  // The barrel ends 2 cm inside its hider: a barrel cap flush with the hider's face is a duplicated disc (the
+  // circular-cap lint).
+  P.addGunExtraDark(cylZ(0.019, 0.85, 12), 0.20, -0.025, 1.175);
+  P.addGunExtraDark(cylZ(0.025, 0.05, 12), 0.20, -0.025, 1.595);
+  muzzleTipDot(P, 0.20, -0.025, 1.62, 0.012, { parent: 'gunG' });
   P.gunG.userData.pumaS1OpenGunCradleReceipt = Object.freeze({
     architecture: 'hollow-trapezoid-slash-port-cradle-v3',
     movingWithGun: true,

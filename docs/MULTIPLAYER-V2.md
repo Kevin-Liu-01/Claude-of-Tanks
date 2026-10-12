@@ -926,6 +926,14 @@ after three fresh links; a seat closed by a 2 s window re-offers once and is wel
 again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed — on main each of
 the four ends the seat (HELLO_REQUIRED twice, `handshaking`, REPLACED).
 
+**A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
+loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
+waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",
+two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
+match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
+`browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
+it is still entering).
+
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
 content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and
@@ -1244,7 +1252,10 @@ carrying a held row, or a delta whose row was refreshed before the packet (an ac
 was captured at the packet's tick; a row a delta leaves untouched keeps its baseline tick — including a fresh capture
 whose fields did not change (a hull at rest), whose older tick is then still an exact pose. The frame layout of
 protocol 1 is unchanged (`WIRE_VERSION` stays 1): a mismatch between builds is caught at the handshake as
-`PROTOCOL_VERSION`. A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
+`PROTOCOL_VERSION`. (2026-10-12: that held only while the layout stayed put. Every wire bump since 09-29 changed the
+first byte, and a host refuses a HELLO of another wire as `bad_version` with a CLOSE the other build cannot decode. So
+the client reads the first byte of any frame it cannot decode before its WELCOME, ends the join as `PROTOCOL_VERSION`
+and tells the player the host is older or newer and to refresh: `matchBuildGate.selftest`.) A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
 
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the

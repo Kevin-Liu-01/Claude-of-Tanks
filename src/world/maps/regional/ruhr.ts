@@ -2,13 +2,14 @@
 // coalfield). Soot-darkened red brick with bands of yellow brick, segmental-arched windows, slate roofs: the station
 // building with its gabled central block, low wings and a platform canopy on cast columns; long goods sheds with a
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
-// two doors and a dormer each; a shelled brick shell.
+// two doors and a dormer each; the colony's terraced rows (terraceLayout.ts); a shelled brick shell.
 import { PartSink, alongPlot, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { dentilCornice, facadeOn, faceSlab, pilaster, trimRing } from './facade.ts';
+import { dentilCornice, facadeOn, faceSlab, pilaster, sillStreaks, trimRing } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { factoryStack } from './shared.ts';
+import { terraceLayout, terraceUnits } from '../terraceLayout.ts';
 
 const YELLOW_BRICK = 'plaster2' as const; // the bands and dressings: the map's second render family
 const FRAME = rgb(0xc8c2b4), DOOR: readonly Rgb[] = [0x3e5a46, 0x6a2c22, 0x3e4e5a].map(rgb);
@@ -101,6 +102,81 @@ const cottagePair: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The colony terrace (a 'terrace' plot: map-revival's authored rows on Cinder Junction; terraceLayout.ts is the plot
+ * contract): two-storey houses of soot-dark brick sharing party walls across the plot's width, the pairs' doors side by
+ * side at their shared walls under yellow-brick arches with their steps on the pavement line, segmental-arched windows,
+ * a yellow band at the first floor and a corbelled cornice, a pier up the street front at every party wall, a stack
+ * with pots on the ridge at each party wall and inside each end gable, a continuous slate roof with verge boards at the
+ * end gables and a socle 4 cm proud; behind each pair, where the plot is deep enough, the wash-house they share under
+ * a lean-to falling to the yard, its copper's flue and a door for each house.
+ */
+const terraceRow: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const L = terraceLayout(ctx.info);
+  const { partyWalls, houses } = terraceUnits(L);
+  const door = DOOR[Math.floor(rng() * DOOR.length) % DOOR.length];
+  const zc = (L.front + L.back) / 2;
+  // openings in the row's frame: the street face (+z) and the back (-z); the body is built along local z and turned a
+  // quarter (as the cottage pair is), its local -x side (left) to the street, its +x side (right) to the back, whose
+  // u runs the other way
+  const openings: Opening[] = [];
+  const street = (o: Omit<Opening, 'face'>): void => { openings.push({ ...o, face: 'left' }); };
+  const back = (o: Omit<Opening, 'face'>): void => { openings.push({ ...o, face: 'right', u: -o.u }); };
+  const sills: Array<[number, number]> = [];
+  for (const h of houses) {
+    const xc = (h.x0 + h.x1) / 2, uw = h.x1 - h.x0;
+    // (the doors 0.9 m off the party wall: the pier up the front stands between the pair's frames)
+    const xd = h.door > 0 ? h.x1 - 0.9 : h.x0 + 0.9, xw = xc - h.door * uw * 0.17;
+    street({ storey: 0, kind: 'door', u: xd, w: 0.95, y0: 0, h: 2.2 });
+    street({ storey: 0, kind: 'window', u: xw, w: 1.1, y0: 0.85, h: 1.35 });
+    for (const x of [xc - uw * 0.2, xc + uw * 0.2]) { street({ storey: 1, kind: 'window', u: x, w: 0.9, y0: 0.7, h: 1.2 }); sills.push([x, 0.9]); }
+    if (!L.washhouses) back({ storey: 0, kind: 'door', u: xd, w: 0.85, y0: 0, h: 2.05 });
+    back({ storey: 0, kind: 'window', u: xw, w: 0.9, y0: 1.0, h: 1.1 });
+    back({ storey: 1, kind: 'window', u: xc, w: 0.9, y0: 0.85, h: 1.15 });
+  }
+  const stacks = [-L.w / 2 + 0.5, ...partyWalls, L.w / 2 - 0.5].map((z) => ({ x: 0, z, sx: 0.55, sz: 0.75, above: 1.0, bucket: 'stone' as const, cap: 'pots' as const }));
+  sink.placed(Math.PI / 2, 0, 0, zc, () => {
+    const frame = buildHouse(sink, {
+      w: L.depth, d: L.w, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'stone' }, { h: 2.7, wall: 'stone' }],
+      roof: slate(40), gableBucket: 'stone', openings, chimneys: stacks,
+      gutters: { colour: rgb(0x5a5e60) }, verge: { colour: rgb(0x34302c), bucket: 'structureWood' }, reveal: 0.15,
+    }, dialect(rng, door));
+    band(sink, frame.bodies[0], frame.floors[1] - 0.12);
+    if (facadeOn()) {
+      brickMasonry(frame, sink, ['left', 'right'], ['front', 'back'], false);
+      for (const x of partyWalls) pilaster(sink, 'stone', frame.faces.left, x, frame.floors[0], frame.eaveY - 0.31, 0.46, 0.06);
+      // the soot run off the first-floor sills
+      for (const [u, w] of sills) sillStreaks(sink, 'stone', frame.faces.left, u, frame.floors[1] + 0.7, w, frame.floors[1]);
+    }
+  });
+  if (L.washhouses) {
+    // the wash-houses behind the pairs, astride their party walls (an odd last house has its own): built along local z
+    // and turned a quarter, so the lean-to's fall (local +x) runs to the yard (-z)
+    const zw = L.back - L.washDepth / 2;
+    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.25, verge: 0.12, thickness: 0.1, bucket: 'roof' };
+    const yard: HouseDialect = {
+      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...WINDOW, bars: 'cross', head: null }, rng, 0.2),
+      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(door, 0.85), frame: { bucket: 'stone', width: 0.1, out: 0.04 }, steps: null, leafKind: 'plank' }, y0 + o.y0),
+    };
+    for (let i = 0; i < houses.length; i += 2) {
+      const pair = i + 1 < houses.length;
+      const x = pair ? houses[i].x1 : houses[i].x0 + 1.25, ww = pair ? 4.2 : 2.3;
+      const doors: Opening[] = (pair ? [-1, 1] : [0]).map((k) => ({ face: 'right', storey: 0, kind: 'door', u: -k * 1.05, w: 0.8, y0: 0, h: 1.9 }));
+      sink.placed(Math.PI / 2, x, 0, zw, () => {
+        buildHouse(sink, {
+          w: L.washDepth, d: ww, plinth: { h: 0.25, out: 0.03, bucket: 'stone' }, storeys: [{ h: 2.15, wall: 'stone' }],
+          roof: lean, gableBucket: 'stone', openings: doors,
+          chimneys: [{ x: -L.washDepth / 2 + 0.35, z: pair ? 0 : -0.4, sx: 0.38, sz: 0.38, above: 0.8, bucket: 'stone', cap: 'pots' }],
+          gutters: null, verge: null, reveal: 0.12, skirt: null,
+        }, yard);
+      });
+    }
+  }
+  return sink.finish();
+};
+
+/**
  * The goods shed: a long brick shed, sliding doors along a loading dock under a deep canopy on brackets. A yard shed's
  * plot (11.7 x 7.2 m) is wider than deep: the shed lies along it (plotAxes), its loading dock down one long side,
  * instead of running 16 m deep across the plot, 4.4 m past either side.
@@ -109,29 +185,46 @@ const goodsShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.4 : 9, Math.min(14, plot.w - 3.5)), D = Math.max(plot.turned ? 8 : 16, Math.min(26, plot.d - 0.6));
+  const D = Math.max(plot.turned ? 8 : 16, Math.min(26, plot.d - 0.6));
+  // (map-revival's wave 362: on a yard shed the dock read as "a protruding slab plinth") a shed under 12 m has no dock:
+  // it fills its plot's width instead, its floor and its doors at the ground
+  const dock = D >= 12;
+  const W = dock ? Math.max(plot.turned ? 4.4 : 9, Math.min(14, plot.w - 3.5)) : Math.max(4.4, Math.min(14, plot.w - 0.6));
+  const floor = dock ? 1.1 : 0.35;
   const openings: Opening[] = [];
   for (let k = 0, n = Math.max(3, Math.round(D / 5)); k < n; k++) {
     const u = -D / 2 + (k + 0.5) * (D / n);
-    openings.push(k % 2 === 0 ? { face: 'right', storey: 0, kind: 'gate', u, w: 2.6, y0: 1.1, h: 2.6 } : { face: 'right', storey: 0, kind: 'window', u, w: 1.1, y0: 2.2, h: 1.3 });
-    if (k % 2 === 1) openings.push({ face: 'left', storey: 0, kind: 'window', u, w: 1.1, y0: 2.2, h: 1.3 });
+    openings.push(k % 2 === 0 ? { face: 'right', storey: 0, kind: 'gate', u, w: 2.6, y0: dock ? 1.1 : 0, h: dock ? 2.6 : 2.9 }
+      : { face: 'right', storey: 0, kind: 'window', u, w: 1.1, y0: dock ? 2.2 : 1.4, h: 1.3 });
+    if (k % 2 === 1) openings.push({ face: 'left', storey: 0, kind: 'window', u, w: 1.1, y0: dock ? 2.2 : 1.4, h: 1.3 });
   }
   // the body against one side of the plot, the dock beside it (turned: in the plot-axes frame)
   const cx = plot.turned ? -plot.w / 2 + 0.3 + W / 2 : ctx.bounds.minX + 0.3 + W / 2;
   alongPlot(sink, plot.turned, () => sink.placed(0, cx, 0, 0, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 1.1, out: 0.04, bucket: 'stone' }, storeys: [{ h: 4.4, wall: 'stone' }],
+      w: W, d: D, plinth: { h: floor, out: 0.04, bucket: 'stone' }, storeys: [{ h: 4.4, wall: 'stone' }],
       roof: slate(28), gableBucket: 'stone', openings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
     }, dialect(rng, DOOR[1]));
-    band(sink, frame.bodies[0], 3.9);
+    band(sink, frame.bodies[0], floor + 2.8);
     if (facadeOn()) brickMasonry(frame, sink, ['left', 'right'], ['left'], true);
-    // the loading dock and its canopy on brackets
+    if (!dock) return;
+    // the loading dock: its stone coping along the edge, oak fenders and a rubbing strake down its face, a flight of
+    // steps up its end; its canopy on brackets
     sink.span('stone', W / 2, -0.4, -D / 2, W / 2 + 2.4, 1.1, D / 2);
+    sink.span('stone', W / 2 + 2.12, 1.1, -D / 2, W / 2 + 2.46, 1.18, D / 2, { decor: true, shade: 0.92 });
+    for (let z = -D / 2 + 0.9; z < D / 2 - 0.5; z += 2.6) sink.span('structureWood', W / 2 + 2.4, 0.15, z - 0.12, W / 2 + 2.52, 1.06, z + 0.12, { colour: rgb(0x4a3c30), decor: true });
+    sink.span('structureWood', W / 2 + 2.4, 0.7, -D / 2 + 0.3, W / 2 + 2.47, 0.85, D / 2 - 0.3, { colour: rgb(0x3e332a), decor: true });
+    for (let k = 0; k < 3; k++) sink.span('stone', W / 2 + 2.4 + (2 - k) * 0.25, -0.3, -D / 2 + 0.15, W / 2 + 2.4 + (3 - k) * 0.25, 0.32 + k * 0.26, -D / 2 + 1.35);
     const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof' };
     const cw = plot.turned ? 2.6 : 3.0;
-    sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, roofGeometry(cw, D + 0.4, 4.9, canopy), canopy));
+    const crg = roofGeometry(cw, D + 0.4, 4.9, canopy);
+    sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, crg, canopy));
+    // (the connectivity sweep: the brackets stopped 0.3 m under the canopy, which rises from the wall) each bracket up to
+    // the canopy's underside, and an iron ledger along the wall under its inner edge
+    const under = (x: number) => (crg.topAt(cw / 2 - (x - W / 2), 0) ?? 4.9) - canopy.thickness;
+    sink.span('structureWood', W / 2, under(W / 2 + 0.06) - 0.14, -D / 2, W / 2 + 0.1, under(W / 2 + 0.06) + 0.01, D / 2, { colour: IRON, decor: true });
     for (let z = -D / 2 + 1; z < D / 2; z += 3.2) {
-      sink.member('structureWood', [W / 2 + 0.05, 3.8, z], [W / 2 + 2.4, 4.85, z], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
+      sink.member('structureWood', [W / 2 + 0.05, 3.8, z], [W / 2 + 2.4, under(W / 2 + 2.4) - 0.05, z], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
     }
   }), 1);
   return sink.finish();
@@ -220,6 +313,7 @@ const ruin: RegionalBuilder = (ctx) => {
 
 export const RUHR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse: cottagePair,
+  terrace: terraceRow,
   warehouse: goodsShed,
   watertower: waterTower,
   depot: station,
@@ -238,6 +332,15 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     tones: { plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l * 1.1 + 0.08)] },
   },
   builders: RUHR_BUILDERS,
+  // soot from the junction's engines and the pits' stacks on every wall and roof (map-revival's wave 362: "clean orange
+  // brick boxes ... nothing like the dense, soot-darkened terraced streets round a 1962 Ruhr junction"): the brick from
+  // red to smoke-dark, the yellow bands dulled, the slate blackened
+  weather: {
+    plaster: [[0.9, 0.88, 0.84], [0.82, 0.8, 0.77], [0.74, 0.72, 0.7]],
+    stone: [[0.8, 0.76, 0.74], [0.7, 0.66, 0.64], [0.6, 0.57, 0.56], [0.75, 0.71, 0.68]],
+    roof: [[0.92, 0.92, 0.92], [0.8, 0.79, 0.79], [0.7, 0.69, 0.7]],
+    damp: 0.7, moss: 0.1,
+  },
   // the colliery cottages' gardens: a board fence round the vegetable plot behind the pair, a gate (yards.ts; the
   // facades lane, 2026-10-06, after waves 182-184 read the white picket as American: a Ruhr colony fenced its gardens in
   // rough boards)

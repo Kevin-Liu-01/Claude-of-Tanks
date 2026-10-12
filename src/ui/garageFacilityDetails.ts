@@ -8,6 +8,7 @@ import {
   garageWorldPointToView,
 } from '../game/garagePresentationPose.ts';
 import {
+  GARAGE_SHELTER_FINISHES,
   getGarageWorkshopBayPoses,
   getGarageYardCrewFloors,
   leopardBayPointToWorkshop,
@@ -190,7 +191,7 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
     radiusSide: LEOPARD_MOBILITY_FLOOR.radiusM,
     radiusDepth: LEOPARD_MOBILITY_FLOOR.radiusM,
   }));
-  // the yard crews' datum floors (the track carry and the power-pack pair beside the hero)
+  // the level yard floors beside the hero (the power pack's stand, the menu frame's open left band)
   const crewFloors = getGarageYardCrewFloors(variant).map((floor) => {
     const view = garageWorldPointToView(floor.x, floor.z);
     return Object.freeze({
@@ -241,13 +242,18 @@ export function addGarageFacilityDetails({
   let environmentSpecificAssemblies = 0;
   let openingSightlineIntrusions = 0;
   const servicePurposeTags = new Set<string>();
-  const accent = new THREE.Color(variant.accent).lerp(new THREE.Color(0xd7b66a), 0.24);
-  const steel = new THREE.Color(0x343a3d);
+  // Each Garage builds its service shelters its own way (2026-10-10, wave 357: "a tangle of flat navy, yellow and cyan
+  // beams"): one regional frame paint and one roofing for every column, beam and roof sheet; safety yellow stays on
+  // the braces and rails and the pack's accent on small fittings only.
+  const shelter = GARAGE_SHELTER_FINISHES[variant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
+  const steel = new THREE.Color(shelter.frame);
+  const roofing = new THREE.Color(shelter.roof);
+  const accent = new THREE.Color(variant.accent).lerp(steel, 0.45);
   const dark = new THREE.Color(0x171b1d);
   const safety = new THREE.Color(0xd19a2e);
   const timber = new THREE.Color(0x685035);
   const rubber = new THREE.Color(0x151719);
-  const primer = new THREE.Color(0x70463a);
+  const primer = new THREE.Color(0x8a3026); // tool-chest red enamel
   const unitCylinders = new Map<number, THREE.CylinderGeometry>();
   const boxInstances: PrimitiveInstance[] = [];
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
@@ -456,13 +462,13 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
   };
 
-  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster): void => {
+  const addPurposeBuiltServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0): void => {
     // One continuous slab and four explicit reinforced footings establish a
     // common datum. Every column, roof rail, brace and machine below derives
     // from this one baseY; terrain variation can no longer pull joints apart.
-    clusterBox(cluster, 0, 0, 0.10, 10.8, 0.20, 9.0,
-      new THREE.Color(0x686b68), 'masonry');
-    clusterBox(cluster, 0, 0.2, 0.23, 2.45, 0.10, 6.4, dark, 'equipment');
+    // The bay's floor is the pack's own hardstand pad (the exhibit and its crew stand at the datum); only the service
+    // pit's steel grating marks it here, flush with the slab (2026-10-10: the old 20 cm brick deck buried them).
+    clusterBox(cluster, 0, 0.2, 0.035, 2.45, 0.03, 6.4, dark, 'equipment');
     for (const lateral of [-4.65, 4.65]) {
       for (const longitudinal of [-3.65, 3.65]) {
         clusterBox(cluster, lateral, longitudinal, 0.12,
@@ -479,6 +485,9 @@ export function addGarageFacilityDetails({
       // Garage yaw and caused the visibly floating braces in orbit views.
       for (const longitudinal of [-1.86, 1.86]) {
         const inward = lateral < 0 ? 1 : -1;
+        // the inspection overhang and its ladder stand on one side: no brace runs through them (wave 377: "yellow
+        // diagonals piercing the deck and ladder at random angles")
+        if (deckLateralSign !== 0 && Math.sign(lateral) === deckLateralSign) continue;
         clusterBeam(cluster,
           [lateral, longitudinal, 0.42],
           [lateral + inward * 1.42, longitudinal, 5.18],
@@ -494,12 +503,12 @@ export function addGarageFacilityDetails({
     // hovering as one enormous slab. A gutter and downpipe close the edge.
     for (const longitudinal of [-2.9, -1.45, 0, 1.45, 2.9]) {
       clusterBox(cluster, 0, longitudinal, 5.68,
-        10.15, 0.13, 1.52, dark, 'painted');
+        10.15, 0.13, 1.52, roofing, 'painted');
       clusterBox(cluster, 0, longitudinal, 5.60,
-        9.72, 0.16, 0.18, accent, 'painted');
+        9.72, 0.16, 0.18, steel, 'structure');
     }
     clusterBox(cluster, 4.90, 0, 5.43, 0.20, 0.24, 8.0,
-      accent, 'painted');
+      roofing, 'painted');
     clusterBox(cluster, 4.90, 3.40, 2.70, 0.16, 5.45, 0.16,
       dark, 'structure');
   };
@@ -519,7 +528,7 @@ export function addGarageFacilityDetails({
     servicePurposeTags.add('overhead-travelling-crane');
     servicePurposeTags.add('grounded-service-pit');
 
-    addPurposeBuiltServiceBayFrame(cluster);
+    addPurposeBuiltServiceBayFrame(cluster, Math.sign(-mirror * 3.55));
 
     // Bridge crane: runway rails sit on the column heads, the bridge spans
     // between them, and a visible trolley/chain/hook terminates over the real
@@ -529,7 +538,7 @@ export function addGarageFacilityDetails({
         0.22, 0.20, 7.2, safety, 'painted');
     }
     clusterBox(cluster, 0, mirror * 0.55, 5.12,
-      8.85, 0.30, 0.42, accent, 'painted');
+      8.85, 0.30, 0.42, safety, 'painted');
     clusterBox(cluster, mirror * 0.8, mirror * 0.55, 4.86,
       0.72, 0.40, 0.68, dark, 'equipment');
     clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, 3.78,
@@ -576,13 +585,25 @@ export function addGarageFacilityDetails({
     // of the real tank. The old +3.58 placement put a solid dark wall between
     // Frosthollow's camera and its Abrams. Split panels and open gaps retain a
     // readable tool wall without ever becoming one vehicle-height occluder.
+    // Open tool racks, not boards (2026-10-10, wave 377: "three pale grey panels with black speckled, torn edges hang
+    // across the lower half of the frame, hiding the turret"): two rails per bay carry the hung tools, and the bay stays
+    // visible through them from every side.
+    const toolSteel = new THREE.Color(0x5a5e60);
     for (const lateral of [-3.05, 0, 3.05]) {
-      clusterBox(cluster, lateral, -4.08, 1.28,
-        2.38, 2.16, 0.18, new THREE.Color(0x30363a), 'painted');
-      for (const toolOffset of [-0.72, 0, 0.72]) {
-        clusterBox(cluster, lateral + toolOffset, -3.96, 1.30,
-          0.07, 1.62, 0.05, toolOffset === 0 ? accent : steel, 'painted');
+      for (const railY of [1.15, 1.98]) {
+        clusterBox(cluster, lateral, -4.08, railY, 2.38, 0.06, 0.08, steel, 'structure');
       }
+      // hung hand tools: spanners in a graded row, two hammers, a pry bar and a coil of air line
+      for (let spanner = 0; spanner < 7; spanner += 1) {
+        clusterBox(cluster, lateral - 0.9 + spanner * 0.16, -3.97, 1.92,
+          0.035, 0.18 + spanner * 0.035, 0.03, toolSteel, 'equipment');
+      }
+      for (const offset of [-0.55, -0.32]) {
+        clusterBox(cluster, lateral + offset, -3.97, 1.18, 0.05, 0.42, 0.04, toolSteel, 'equipment');
+        clusterBox(cluster, lateral + offset, -3.97, 1.4, 0.16, 0.06, 0.06, dark, 'equipment');
+      }
+      clusterBox(cluster, lateral + 0.15, -3.97, 1.12, 0.05, 0.9, 0.04, accent, 'painted');
+      clusterCylinder(cluster, lateral + 0.7, -3.95, 1.05, 0.2, 0.05, safety, Math.PI / 2, 12);
     }
     for (const lateral of [-4.48, -1.53, 1.53, 4.48]) {
       clusterBox(cluster, lateral, -4.08, 1.25,
@@ -606,8 +627,11 @@ export function addGarageFacilityDetails({
     // lamps bring Verdant's believable wiring language into every outdoor bay.
     clusterBox(cluster, 0, -4.02, 4.62,
       8.8, 0.10, 0.10, dark, 'equipment');
+    // the junction cabinet stands on its own post to the floor (2026-10-10, wave 377: "boxes hang unsupported")
     clusterBox(cluster, mirror * 3.85, -3.96, 3.62,
-      0.72, 1.08, 0.28, primer, 'painted');
+      0.72, 1.08, 0.28, new THREE.Color(0x56605a), 'painted');
+    clusterBox(cluster, mirror * 3.85, -4.0, 1.54, 0.12, 3.08, 0.12, steel, 'structure');
+    clusterBox(cluster, mirror * 3.85, -4.0, 0.03, 0.36, 0.06, 0.36, dark, 'equipment');
     for (const lateral of [-2.15, 2.15]) {
       clusterBeam(cluster,
         [lateral, -4.02, 4.62],
@@ -632,13 +656,18 @@ export function addGarageFacilityDetails({
   };
 
   const addCrates = (side: number, depth: number, rows = 2): void => {
+    // the stack stands on dark pallets that spread its weight and show where it meets the ground (2026-10-10, wave 377:
+    // "crates float on snow")
+    for (let column = 0; column < 4; column += 1) {
+      box(side + column * 1.05 - 1.5, depth, 0.07, 1.04, 0.14, 1.0, dark, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 'equipment');
+    }
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < 4 - row; column += 1) {
         const width = 0.88 + ((row + column) % 2) * 0.22;
         box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.44 + row * 0.82, width, 0.78, 0.82, timber);
+          0.53 + row * 0.82, width, 0.78, 0.82, timber);
         box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.44 + row * 0.82, 0.08, 0.82, 0.86, steel);
+          0.53 + row * 0.82, 0.08, 0.82, 0.86, steel);
       }
     }
   };
@@ -1080,10 +1109,10 @@ export function addGarageFacilityDetails({
       clusterBox(cluster, 0, longitudinal, 5.52,
         width, 0.16, 3.15, roofColor, 'painted');
       clusterBox(cluster, 0, longitudinal - 1.52, 5.42,
-        width, 0.24, 0.12, accent, 'painted');
+        width, 0.24, 0.12, roofing, 'painted');
     }
     clusterBox(cluster, width / 2 - 0.20, 0, 5.22,
-      0.22, 0.22, 8.7, accent, 'painted');
+      0.22, 0.22, 8.7, steel, 'structure');
     clusterBox(cluster, width / 2 - 0.20, 3.58, 2.62,
       0.18, 5.2, 0.18, dark, 'structure');
     // Connected rear work wall and waist-high bench give the shelter a real
@@ -1132,7 +1161,7 @@ export function addGarageFacilityDetails({
       }
     }
     clusterBox(cluster, 0, -0.45, height - 0.35,
-      width - 1.1, 0.34, 0.44, accent, 'painted');
+      width - 1.1, 0.34, 0.44, safety, 'painted');
     clusterBox(cluster, 1.15, -0.45, height - 0.68,
       0.82, 0.44, 0.72, dark, 'equipment');
     clusterCylinder(cluster, 1.15, -0.45, height - 2.2,
@@ -1168,13 +1197,26 @@ export function addGarageFacilityDetails({
     clusterBox(cluster, 0, 0, height,
       width + 0.8, 0.52, 0.62, steel, 'structure');
     clusterBox(cluster, -1.2, 0, height - 0.28,
-      4.6, 0.34, 0.48, accent, 'painted');
+      4.6, 0.34, 0.48, safety, 'painted');
     clusterBox(cluster, -1.2, 0, height - 0.72,
       0.82, 0.55, 0.78, dark, 'equipment');
-    clusterCylinder(cluster, -1.2, 0, height - 2.55,
-      0.04, 3.15, steel, 0, 8);
-    clusterBox(cluster, -1.2, 0, height - 4.20,
-      0.50, 0.24, 0.20, steel, 'equipment', 0.52);
+    // the crane takes a real load (2026-10-10, wave 377: "two goalpost-like gantries behind the tank lift nothing"): a
+    // hook block on twin falls carries a spreader and four chains down to a pulled tank power pack hanging clear of
+    // the deck
+    for (const offset of [-0.18, 0.18]) {
+      clusterCylinder(cluster, -1.2 + offset, 0, height - 2.2, 0.045, 2.6, steel, 0, 8);
+    }
+    clusterBox(cluster, -1.2, 0, height - 3.6, 0.62, 0.42, 0.42, dark, 'equipment');
+    clusterBox(cluster, -1.2, 0, height - 4.05, 2.4, 0.16, 0.22, safety, 'painted');
+    for (const [lateral, longitudinal] of [[-1.05, -0.4], [-1.05, 0.4], [1.05, -0.4], [1.05, 0.4]] as const) {
+      clusterBeam(cluster, [-1.2 + lateral, 0, height - 4.12], [-1.2 + lateral * 0.82, longitudinal, height - 5.0],
+        0.03, steel, 'equipment');
+    }
+    clusterBox(cluster, -1.2, 0, height - 5.45, 1.9, 0.9, 1.0, new THREE.Color(0x4b5040), 'painted');
+    clusterBox(cluster, -0.45, 0, height - 5.4, 0.62, 0.8, 1.06, dark, 'equipment');
+    for (const offset of [-0.32, 0.32]) {
+      clusterCylinder(cluster, -1.55, offset, height - 4.95, 0.22, 0.12, steel, 0, 12);
+    }
   };
 
   // The old scene used one identical, tightly packed prop template in all
@@ -1456,7 +1498,9 @@ export function addGarageFacilityDetails({
     mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.castShadow = false;
+    // Shelter roofs, frames and painted kit cast the sun's shadow (2026-10-10: light no longer leaks under a roof);
+    // machinery and masonry footings only receive.
+    mesh.castShadow = name.includes('_structure_') || name.includes('_painted_');
     mesh.receiveShadow = true;
     mesh.computeBoundingBox();
     mesh.computeBoundingSphere();
@@ -1502,7 +1546,7 @@ export function addGarageFacilityDetails({
       // unshaded CAD primitives. Reuse the pack's bounded 1K PBR residency:
       // masonry keeps its albedo while painted steel, machinery and roof
       // framing use the normal response only so safety colors stay legible.
-      map: renderClass.name === 'masonry' ? surface?.color : null,
+      map: renderClass.name === 'equipment' ? null : surface?.color ?? null,
       normalMap: surface?.normal,
       normalScale: new THREE.Vector2(
         renderClass.name === 'masonry' ? 0.42 : 0.20,

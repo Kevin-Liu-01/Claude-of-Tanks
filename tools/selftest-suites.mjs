@@ -22,12 +22,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/infectedLifecycle.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
+    'src/fx/droneRotorWinding.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
     'src/sim/droneAvoidance.selftest.mjs',
+    'src/sim/droneLowFlight.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
+    'src/fx/droneReturn.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
     'src/app/garageModePreviewRuntime.selftest.mjs',
@@ -676,8 +679,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
-    'src/game/garageCrewFigures.selftest.mjs',
-    'src/game/garageCrewFloor.selftest.mjs',
+    'src/game/garageBayFloor.selftest.mjs',
     'src/game/garageDressingDrawRange.selftest.mjs',
     'tools/garage-draw-range-probe.selftest.mjs',
     'src/game/garageVariants.selftest.mjs',
@@ -979,6 +981,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
+    'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
@@ -1218,6 +1221,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
+    'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
     'src/vehicles/weaponFinish.selftest.mjs',
@@ -1383,6 +1388,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
@@ -1399,6 +1405,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
+    // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
+    'src/world/maps/regional/polarWorks.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
@@ -1536,6 +1544,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
+    // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
+    'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
@@ -1567,6 +1577,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/mapVehicleGaps.selftest.mjs',
     'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',

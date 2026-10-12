@@ -248,7 +248,18 @@ const headframe: RegionalBuilder = (ctx) => {
     sink.span('structureMetal', ox0 - 0.2, by + bh, -oz - 0.2, ox1 + 0.2, by + bh + 0.12, oz + 0.2, { colour: pick(look, IRON_SHEET), decor: true });
     const tipY = Math.min(H - 6, by + bh + 2.6);
     sink.span('structureMetal', tx - 0.55, tipY - 0.9, -0.55, tx + 0.55, tipY + 0.9, 0.55, { colour: shade(steel, 1.15), decor: true });
-    sink.member('structureMetal', [at(1, 0, tipY)[0], tipY - 0.6, 0], [ox0 + 0.4, by + bh + 0.1, 0], 0.9, 0.18, [0, 1, 0], { colour: shade(steel, 1.1), decor: true, exposed: true }, 0);
+    // (the connectivity sweep: the skip hung in the tower's middle on nothing, the chute a metre off it) the skip runs in
+    // its guides, two steel rails up the shaft from the collar past the tipple, tied to the girts by buntons; the chute
+    // from the skip's lip
+    const guideTop = tipY + 2.2;
+    for (const sz of [-1, 1]) {
+      sink.member('structureMetal', [tx, 0.6, sz * 0.55], [tx, guideTop, sz * 0.55], 0.14, 0.08, [0, 0, sz], lattice, 0);
+      for (const y of levels) if (y > 1 && y < guideTop) {
+        const bz = bz0 + (bz1 - bz0) * y / H;
+        sink.member('structureMetal', [tx, y, sz * 0.55], [tx, y, sz * bz], 0.1, 0.1, [0, 1, 0], lattice, 0);
+      }
+    }
+    sink.member('structureMetal', [tx + 0.45, tipY - 0.6, 0], [ox0 + 0.4, by + bh + 0.1, 0], 0.9, 0.18, [0, 1, 0], { colour: shade(steel, 1.1), decor: true, exposed: true }, 0);
     // ore spilled under the bin's door
     if (ctx.tier !== 'mobile') sink.cylinder('structureWood', [oc, 0, 0], 'y', 0.6, 1.5, 9, { colour: ORE, decor: true }, 0.3);
   });
@@ -577,13 +588,16 @@ const ruin: RegionalBuilder = (ctx) => {
       if (rng() < 0.6) {
         const t0 = rng() * 0.5, t1 = t0 + 0.2 + rng() * 0.3;
         const a: Vec3 = [x0 + (x1 - x0) * t0, 0.6, z0 + (z1 - z0) * t0], b: Vec3 = [x0 + (x1 - x0) * t1, 0.6, z0 + (z1 - z0) * t1];
-        sink.member('structureWood', [a[0], 1.3, a[2]], [b[0], 1.3, b[2]], 1.4, 0.03, [0, 1, 0], { colour: pick(rng, COTTAGE), decor: true, exposed: true }, 0);
+        // the boards upright on the studs (the connectivity sweep: they lay flat as a shelf 1.4 m wide across the wall)
+        const nl = Math.hypot(x1 - x0, z1 - z0) || 1, n: Vec3 = [(z1 - z0) / nl, 0, -(x1 - x0) / nl];
+        sink.member('structureWood', [a[0], 1.3, a[2]], [b[0], 1.3, b[2]], 1.4, 0.03, n, { colour: pick(rng, COTTAGE), decor: true, exposed: true }, 0);
       }
     }
     // the sagging half of the roof, its sheets on the ground, the brick chimney still standing
     sink.member('structureMetal', [-W / 2, H * 0.9, -D * 0.1], [W / 2, H * 0.5, D * 0.3], 3.2, 0.05, [0, 1, 0], { colour: pick(rng, ROOF_PAINT), decor: true, exposed: true }, 0);
     for (let k = 0; k < 3; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W, 0.6, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 2.5, 0.6 + rng() * 0.3, a[2] + (rng() - 0.5) * 2.5];
+      // the sheets on the floor (the connectivity sweep: they lay 0.1 m over it), buckled a little
+      const a: Vec3 = [(rng() - 0.5) * W, 0.5, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 2.5, 0.5 + rng() * 0.12, a[2] + (rng() - 0.5) * 2.5];
       sink.member('structureMetal', a, b, 0.8, 0.03, [0, 1, 0], { colour: pick(rng, IRON_SHEET), decor: true, exposed: true }, 0);
     }
     sink.span(BRICK, W * 0.2, 0.5, -D * 0.15, W * 0.2 + 0.55, 4.2, -D * 0.15 + 0.7);

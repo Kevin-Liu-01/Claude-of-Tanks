@@ -16,7 +16,9 @@
 // rock lies inside the hull the dedicated shards already carry and no record moves. Renderer-free apart from the
 // texture helpers; Node-runnable.
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
+import { convexHull2 } from './collision.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { settledPaint, surfacePaintKey } from './surfacePaintPrefetch.ts';
 
@@ -625,6 +627,52 @@ interface BoulderForm {
 
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
+
+/**
+ * A rock variant's legacy form (moved here from props.ts buildRockVariants unchanged, the hitbox lane, 2026-10-11): the
+ * noise-displaced icosahedron whose ground-plan hull is the placement laws' proxy (the road core, the talus, the
+ * no-overlap law) and whose top the boulder form is fitted to.
+ */
+export function legacyRockVariant(variant: number, noise: SimplexNoise): { hull: number[]; top: number } {
+  const g = mergeVertices(new THREE.IcosahedronGeometry(1, variant === 2 ? 3 : 2));
+  const p = g.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.set(p.getX(i), p.getY(i), p.getZ(i));
+    const ridge = 1 - Math.abs(noise.noise3d(v.x * 2.2 + variant * 31, v.y * 2.2 - 7, v.z * 2.2 + 13));
+    const crease = Math.pow(ridge, 5); // sharp valley lines
+    const f = 1
+      + noise.noise3d(v.x * 1.4 + variant * 9, v.y * 1.4, v.z * 1.4) * 0.30
+      + noise.noise3d(v.x * 3.1 - variant * 17, v.y * 3.1 + 40, v.z * 3.1) * 0.13
+      + noise.noise3d(v.x * 6.8 + 91, v.y * 6.8 - variant * 5, v.z * 6.8) * 0.05
+      - crease * 0.115; // carved fracture valleys
+    v.multiplyScalar(f);
+    v.y = Math.max(v.y, -0.55);
+    p.setXYZ(i, v.x, v.y * 0.82, v.z);
+  }
+  const projected: Array<[number, number]> = [];
+  let top = 0;
+  for (let i = 0; i < p.count; i++) { projected.push([p.getX(i), p.getZ(i)]); top = Math.max(top, p.getY(i)); }
+  g.dispose();
+  return { hull: convexHull2(projected), top };
+}
+
+/**
+ * A rock variant's boulder forms from one constructor (the hitbox lane and the map-revival lane, 2026-10-11): the drawn
+ * form at the tier's subdivision (6 on a desktop, 4 on a phone), the collision form at the desktop's on every tier, and
+ * the desktop's far form at 4. They differ only in subdivision: the phone's collision form was built without the map's
+ * angularity (since 3993e4fce), so a phone's Badlands stones were rounder than the host's, their records moved and 14
+ * small rocks fell under the drive-over line. Each form draws its own fresh `stream()`, so no draw moves.
+ */
+export function boulderVariantForms(
+  variant: number, noise: SimplexNoise, stream: () => () => number, hull: readonly number[], top: number,
+  lithology: BoulderLithology, angular: number, mobile: boolean,
+): { drawn: BoulderForm; collision: THREE.BufferGeometry; far: BoulderForm | null } {
+  const formOf = (subdiv: number): BoulderForm =>
+    buildBoulderForm(variant, noise, stream(), hull, subdiv, top, boulderKindFor(lithology, variant), lithology, angular);
+  const drawn = formOf(mobile ? 4 : 6);
+  return { drawn, collision: mobile ? formOf(6).geometry : drawn.geometry, far: mobile ? null : formOf(4) };
+}
 
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,

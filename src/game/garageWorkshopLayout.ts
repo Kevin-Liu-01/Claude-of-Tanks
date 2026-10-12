@@ -62,10 +62,10 @@ export function getAbramsWeldingBayPlacement(
   return variant.id === 'verdant_motor_pool' ? ABRAMS_FLAMMABLE_BAY_OFFSET : ABRAMS_WELDING_BAY_PLACEMENT;
 }
 
-// The weld light (2026-10-10): Verdant's former west-wall fill PointLight now stands at the rolled K2's belly weld,
-// 0.35 m out from the torch tip toward the welder, so the arc lights him, the plate and the floor. Garage frame,
-// Verdant layout; garageCrewFigures.selftest checks it against the K2 crew's torch.
-export const VERDANT_WELD_LIGHT = Object.freeze({ x: 15.72, y: 2.05, z: 16.3 });
+// The K2 bay's work lamp (2026-10-11): Verdant's former west-wall fill PointLight, a weld light while crews worked
+// there, hangs over the rolled K2's parked hot-work corner as a steady warm lamp now that the Garages hold no people.
+// Garage frame, Verdant layout.
+export const VERDANT_K2_WORK_LIGHT = Object.freeze({ x: 15.72, y: 4.1, z: 16.3 });
 
 // The Leopard occupies the neighboring mobility square, not the Abrams
 // welding owner. Preserve its established world-space pose when the Abrams
@@ -142,15 +142,16 @@ export function leopardBayPointToWorkshop(
   return { x: layoutX + ownerX * lc + ownerZ * ls, z: layoutZ - ownerX * ls + ownerZ * lc };
 }
 
-// The yard crews' floors (2026-10-10 ground audit): the track carry and the power-pack pair stand in the open yard
-// beside the hero, where the raw terrain left them buried to 0.47 m (Ironworks) or 0.26 m clear (Saltmere). Each stands
-// on a datum floor circle in the shared workshop frame, its level core clear of the podium base.
-export const GARAGE_YARD_CREW_FLOORS = Object.freeze([
+// The level yard floors beside the hero (2026-10-10 ground audit; the crews that stood there left with the owner's
+// 2026-10-11 order): the pulled power pack's stand, and the open left band of the menu frame, where Ironworks' line
+// meets the datum. The raw terrain there was buried to 0.47 m (Ironworks) or 0.26 m clear (Saltmere). Each is a datum
+// floor circle in the shared workshop frame, its level core clear of the podium base.
+const GARAGE_YARD_CREW_FLOORS = Object.freeze([
   Object.freeze({ id: 'yard-track-carry', x: -11.4, z: 1.3, radiusM: 3.8 }),
   Object.freeze({ id: 'yard-power-pack', x: 3.55, z: -11.45, radiusM: 3.8 }),
 ]);
 
-/** The yard crews' floor circles in one Garage's workshop frame (its layout pose applied). */
+/** The level yard floor circles in one Garage's workshop frame (its layout pose applied). */
 export function getGarageYardCrewFloors(
   variant: Pick<GarageVariant, 'layout'>,
 ): ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly radiusM: number }> {
@@ -179,3 +180,22 @@ export function getGarageWorkshopBayPoses(
     yaw: bay.yaw + layoutYaw,
   }));
 }
+
+/**
+ * Regional shelter construction: frame paint and roofing per Garage (sRGB). The outdoor facilities build with it and
+ * the shared exhibit's own frames take the same paint in every pack (2026-10-10, wave 357: three-colour tangles).
+ */
+export const GARAGE_SHELTER_FINISHES: Readonly<Record<GarageVariant['architecture'], { readonly frame: number; readonly roof: number }>> =
+  Object.freeze({
+    field_shed: { frame: 0x58615a, roof: 0x5d6466 },
+    shade_depot: { frame: 0xa48b62, roof: 0xc8b48c }, // sand-painted steel under a desert shade cloth
+    repair_bunker: { frame: 0x4e5a4c, roof: 0xb9c2c4 }, // dark green steel, insulated panels, snow-dusted
+    brick_arsenal: { frame: 0x6b4638, roof: 0x6e7072 }, // oxide-primed steel, weathered corrugated iron
+    naval_drydock: { frame: 0x8b9296, roof: 0x9aa1a3 }, // salt-weathered galvanised steel and sheeting
+    rail_roundhouse: { frame: 0x2f3234, roof: 0x55595b }, // black railway steel, sooty sheeting
+    rain_canopy: { frame: 0x4f6a52, roof: 0x3f5a48 }, // green steel under a monsoon tarpaulin
+    rock_cavern: { frame: 0x6c7478, roof: 0x7e8588 }, // grey steel, rock-dusted sheeting
+    recovery_yard: { frame: 0x8a5a3a, roof: 0x9c7a5c }, // rust-red steel under a dust-coloured tarp
+    factory_line: { frame: 0x5d6266, roof: 0x45484a }, // mill-grey steel, soot-black sheeting
+  });
+

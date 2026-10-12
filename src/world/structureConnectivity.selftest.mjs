@@ -30,7 +30,8 @@ const entries = [
   ...Object.entries(URBAN_BUILDERS),
   ...Object.entries(STRUCTURE_BUILDERS),
 ];
-assert.equal(entries.length, 41, 'all heavyweight and site structure families are certified');
+// (2026-10-11: 41 -> 42 with the colliery colony terrace, railKit.ts makeTerrace)
+assert.equal(entries.length, 42, 'all heavyweight and site structure families are certified');
 assert.equal(new Set(entries.map(([id]) => id)).size, entries.length,
   'structure registries cannot silently replace a duplicate family id');
 

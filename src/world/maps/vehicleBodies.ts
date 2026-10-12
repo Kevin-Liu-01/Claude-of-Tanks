@@ -5,6 +5,7 @@
 // (KamAZ, TAM, Isuzu) — with their cargo bodies: wooden drop sides, a canvas tilt over hoops, a box van, a flatbed with
 // its load, a tanker, log bunks.
 
+import { ShapeUtils, Vector2 } from 'three';
 import { material, linearHex, type VehicleMesh, type VehicleMaterial, type Vec3 } from './vehicleMesh.ts';
 import {
   PAINT, GLASS, CHROME, BRIGHT, TRIM, UNDER, INTERIOR, LAMP, LAMP_RED, LAMP_AMBER, STEEL, RIM_STEEL, WOOD, CANVAS, RUBBER,
@@ -190,7 +191,25 @@ function tub(mesh: VehicleMesh, zF: number, zB: number, hw: number, bottom: numb
   mesh.mirrored(() => {
     mesh.grid(zs.length - 1, nj, (i, j, out) => { out[0] = secs[i][j][0]; out[1] = secs[i][j][1]; out[2] = zs[i]; },
       (_i, j) => (j < 2 ? UNDER : j >= 8 ? inner : outer), { creaseJ: [1, 2, 3, 6, 8, 9] });
+    // Sealed lane 2026-10-10 (owner: "some vehicles are see through"): the loft's end sections were open, so the wall
+    // and the floor slab showed their hollow, the sky through a jeep's tail and scuttle and a bed's floor ends. Each
+    // end is capped with its own section, a millimetre inside the parts that face it (the tail panel, the scuttle).
+    capSection(mesh, secs[0], zs[0] - 0.001, 1, outer);
+    capSection(mesh, secs[secs.length - 1], zs[zs.length - 1] + 0.001, -1, outer);
   });
+}
+
+/** A flat cap over one loft section (x, y points, a simple polygon) at z, facing +z (dir 1) or -z (dir -1). */
+function capSection(mesh: VehicleMesh, section: readonly (readonly [number, number])[], z: number, dir: 1 | -1, m: VehicleMaterial): void {
+  const contour = section.map(([x, y]) => new Vector2(x, y));
+  const verts = section.map(([x, y]) => mesh.vert(x, y, z, 0, 0, dir, m));
+  for (const [a, b, c] of ShapeUtils.triangulateShape(contour, [])) {
+    const [ax, ay] = section[a], [bx, by] = section[b], [cx, cy] = section[c];
+    const facing = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    if (Math.abs(facing) < 1e-12) continue;
+    if (facing * dir > 0) mesh.tri(verts[a], verts[b], verts[c]);
+    else mesh.tri(verts[a], verts[c], verts[b]);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------- pickups
@@ -222,8 +241,18 @@ export function buildPickup(mesh: VehicleMesh, m: PickupModel, o: BuildOptions):
   face(mesh, prof.zNose, 1, m.front, paint, o.coarse, (y, h, style, ov) => bumper(mesh, prof, 1, y, h, style, paint, ov));
   mesh.pop();
   const b = m.bed, wood = b.wood ? WOOD : paint;
-  tub(mesh, b.zF, b.zB, b.hw, Math.max(spec.sill, b.floor - 0.12), b.floor, b.top, 0.05,
+  const bedBottom = Math.max(spec.sill, b.floor - 0.12);
+  tub(mesh, b.zF, b.zB, b.hw, bedBottom, b.floor, b.top, 0.05,
     { axle: m.rearAxle, r: b.archR, wheelY: spec.wheelR, xWell: m.trackR / 2 - spec.tyreW / 2 - 0.05 }, paint, wood, o.coarse);
+  // Sealed lane 2026-10-10 (the owner's see-through map vehicles): the bed's lower edge stood up to 0.4 m over the floor
+  // pan with nothing between, from the cab's back to the tail, so the world showed through every pickup side-on. The
+  // ladder frame's rails under the bed close it, dark, from the pan up to the bed's underside, inboard of the wheels.
+  const railX = Math.min(0.46, m.trackR / 2 - spec.tyreW - 0.12), railBottom = spec.sill - 0.01, railH = bedBottom - railBottom;
+  if (railH > 0.01) {
+    mesh.dressing(() => {
+      for (const x of [-railX, railX]) mesh.box(x, railBottom + railH / 2, (b.zF + b.zB) / 2, 0.08, railH, b.zF - b.zB - 0.06, UNDER);
+    });
+  }
   // the bed's front wall and the tailgate
   mesh.box(0, (b.floor + b.top) / 2, b.zF - 0.025, b.hw * 2 - 0.02, b.top - b.floor, 0.05, paint, 0.01);
   mesh.box(0, (b.floor + b.top) / 2 - 0.01, b.zB + 0.03, b.hw * 2 - 0.02, b.top - b.floor - 0.02, 0.05, m.tailgate === 'wood' ? WOOD : paint, 0.012);
@@ -308,6 +337,22 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
     const f = clamp((z - bonnetZ0) / Math.max(0.01, bonnetZ1 - bonnetZ0), 0, 1);
     return { hw: m.bonnet.hw, y0: t.floor + 0.05, y1: m.bonnet.top - m.bonnet.slope * f, r: m.slopeNose ? 0.12 : 0.03, crown: 0.02, rb: 0.01 };
   }, () => paint, { coarse });
+  // Sealed lane 2026-10-10 (the owner's see-through map vehicles): the engine bay was empty, so between the bonnet's
+  // sides and the wings, and under the grille, the world showed through to the ground beneath (a U round the bonnet
+  // from the chase camera). The inner aprons (each wing's inner panel down to the frame, clear of the tyre), the bay's
+  // splash pan out to them and forward to the bumper, and the engine block under the bonnet close it, all dark.
+  mesh.dressing(() => {
+    const apronX = Math.min(m.track / 2 - m.wings.w / 2, m.track / 2 - m.tyreW / 2 - 0.03) - 0.005;
+    const bayFloor = t.floor - 0.11, bayZ0 = t.zF - 0.02, bayZ1 = zNose - 0.06, apronTop = m.wings.flatTop - 0.03;
+    mesh.box(0, bayFloor - 0.02, (bayZ0 + bayZ1) / 2, apronX * 2, 0.04, bayZ1 - bayZ0, UNDER);
+    if (apronTop > bayFloor + 0.05) {
+      mesh.mirrored(() => {
+        mesh.box(apronX, (bayFloor + apronTop) / 2, (bayZ0 + bonnetZ1) / 2, 0.02, apronTop - bayFloor, bonnetZ1 - bayZ0, UNDER);
+      });
+    }
+    const blockTop = t.floor + 0.05, blockZ = (bonnetZ1 - bayZ0) * 0.7;
+    mesh.box(0, (bayFloor + blockTop) / 2, bayZ0 + 0.04 + blockZ / 2, m.bonnet.hw * 1.5, blockTop - bayFloor, blockZ, UNDER, coarse ? 0 : 0.03);
+  });
   // the grille face: a pressed panel, its slots (Willys, CJ) or bars (GAZ-67) dark in it
   if (m.grille.style !== 'none') {
     const gz = bonnetZ1 + 0.02;
@@ -369,13 +414,17 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
   mesh.box(0, 0.02, 0, t.hw * 2 - 0.02, 0.04, 0.04, paint);
   mesh.box(0, wsH / 2, 0, t.hw * 2 - 0.08, wsH - 0.05, 0.012, GLASS);
   mesh.pop();
-  // seats, the wheel, a jerrycan
-  if (!coarse) {
+  // seats, the wheel, a jerrycan. Sealed lane 2026-10-10: the seats on both tiers (the phone's cockpit was an empty
+  // hollow through the door cuts), the front backs a padded 11 cm deep and a back to the rear bench against the tail
+  mesh.dressing(() => {
     for (const x of [-t.hw * 0.48, t.hw * 0.48]) {
       mesh.box(x, t.floor + 0.18, t.zF - 0.55, 0.42, 0.12, 0.42, CANVAS, 0.03);
-      mesh.box(x, t.floor + 0.45, t.zF - 0.78, 0.42, 0.45, 0.08, CANVAS, 0.03);
+      mesh.box(x, t.floor + 0.45, t.zF - 0.79, 0.42, 0.45, 0.11, CANVAS, 0.03);
     }
     mesh.box(0, t.floor + 0.2, zTail + 0.55, t.hw * 1.7, 0.12, 0.4, CANVAS, 0.03);
+    if (!m.rearDeck) mesh.box(0, t.floor + 0.42, zTail + 0.33, t.hw * 1.7, 0.36, 0.1, CANVAS, 0.03);
+  });
+  if (!coarse) {
     mesh.push().translate(t.hw * 0.48, t.top + 0.1, t.zF - 0.25).rotateX(-1.05);
     mesh.tube(Array.from({ length: 9 }, (_, k) => { const a = (k / 8) * Math.PI * 2; return [Math.cos(a) * 0.18, 0, Math.sin(a) * 0.18] as [number, number, number]; }),
       0.012, 4, TRIM, { closed: true });
@@ -456,9 +505,24 @@ export function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOpt
     tub(mesh, bed.zF, bed.zB, bed.hw, bed.floor - 0.1, bed.floor, bed.top, 0.045, null, WOOD, WOOD, coarse);
     mesh.box(0, (bed.floor + bed.top) / 2, bed.zF - 0.02, bed.hw * 2, bed.top - bed.floor, 0.04, WOOD, 0.008);
     mesh.box(0, (bed.floor + bed.top) / 2, bed.zB + 0.02, bed.hw * 2, bed.top - bed.floor, 0.04, WOOD, 0.008);
+    // Sealed lane 2026-10-10: the frame rails under the bed, as on the car-built pickups (buildPickup): its lower edge
+    // stood over the floor pan with nothing between, a slot through the pickup side-on
+    const railX = Math.min(0.42, full.track / 2 - full.tyreW - 0.12), railBottom = full.sill - 0.01;
+    const railH = bed.floor - 0.1 - railBottom;
+    if (railH > 0.01) {
+      mesh.dressing(() => {
+        for (const x of [-railX, railX]) mesh.box(x, railBottom + railH / 2, (bed.zF + bed.zB) / 2, 0.08, railH, bed.zF - bed.zB - 0.06, UNDER);
+      });
+    }
   }
   const R = full.wheelR + 0.07, xW = full.track / 2;
   const rb = m.runningBoardY;
+  // Sealed lane 2026-10-10 (the owner's see-through map vehicles): beside the narrow engine cover, between it and the
+  // wings, the bay was open to the ground; its floor (the splash pans out to the wings, cowl to nose) closes it, dark
+  mesh.dressing(() => {
+    const panX = xW - m.wings.w / 2 - 0.005, panZ0 = full.cowlZ + 0.02, panZ1 = prof.zNose + zOff - 0.06;
+    if (panZ1 > panZ0) mesh.box(0, full.sill - 0.01, (panZ0 + panZ1) / 2, panX * 2, 0.04, panZ1 - panZ0, UNDER);
+  });
   const frontFoot: [number, number] = [full.cowlZ - 0.05, rb + 0.02];
   // the wings reach the nose: the front wing's forward control points stretch to the body's overhang (the grille stands
   // between the wings' noses, never ahead of them); the rear wing's to the tail
@@ -627,6 +691,34 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   // ---- chassis: the rails, cross members, axles
   const railZ0 = zNose - 0.18, railZ1 = m.body.zB + 0.05;
   for (const x of [-m.frameHW, m.frameHW]) mesh.box(x, m.frameY - 0.09, (railZ0 + railZ1) / 2, 0.07, 0.18, railZ0 - railZ1, UNDER);
+  // Sealed lane 2026-10-10 (the owner: map cars and trucks "see through ... gaps in the middle of their bodies"): the
+  // cargo body's floor stood 19-27 cm over the rail tops on five 8 cm cross-bearers, so a slot under the whole body let
+  // the world through every truck from the chase camera. The subframe a body is bolted to, a longitudinal runner on
+  // each rail from its top to the floor's underside along the body, closes it, dark under the floor (both tiers).
+  // Inside the body's footprint: dressing, so the collision taken from the coarse build is unchanged.
+  const runnerTop = m.body.floorY - 0.05, runnerH = runnerTop - m.frameY;
+  if (runnerH > 0.01) {
+    // from the tail forward under the body and across the gap between it and the cab, to the cab's back
+    const runnerZ0 = Math.max(m.body.zF, m.cab.zB) - 0.02, runnerZ1 = m.body.zB + 0.02;
+    mesh.dressing(() => {
+      for (const x of [-m.frameHW, m.frameHW]) {
+        mesh.box(x, m.frameY + runnerH / 2, (runnerZ0 + runnerZ1) / 2, 0.09, runnerH, runnerZ0 - runnerZ1, UNDER);
+      }
+    });
+  }
+  // the same chase views from ahead and astern looked under the cab and under the tail between the rails to the ground:
+  // the engine and its radiator under the cab (from the frame's underside up to the cab floor or the bonnet, out to the
+  // wheel arches) and the rear crossmember under the tailgate, dark
+  mesh.dressing(() => {
+    const blockTop = m.front === 'cabover' ? m.cab.y0 + 0.02 : m.front === 'wide' ? m.frameY - 0.03 : m.frameY + 0.02;
+    const blockBottom = m.frameY - 0.32, blockHW = Math.min(m.cab.hw - 0.08, m.trackF / 2 - m.tyreW * 0.75 - 0.04);
+    const blockZ0 = zNose - 0.22, blockZ1 = m.cab.zB + 0.05;
+    if (blockTop > blockBottom + 0.05 && blockZ0 > blockZ1) {
+      mesh.box(0, (blockTop + blockBottom) / 2, (blockZ0 + blockZ1) / 2, blockHW * 2, blockTop - blockBottom, blockZ0 - blockZ1, UNDER);
+    }
+    const crossTop = m.body.floorY - 0.05, crossBottom = m.frameY - 0.18;
+    if (crossTop > crossBottom + 0.05) mesh.box(0, (crossTop + crossBottom) / 2, m.body.zB + 0.12, m.frameHW * 2 + 0.16, crossTop - crossBottom, 0.06, UNDER);
+  });
   if (!coarse) for (const z of [m.frontAxle, ...m.rearAxles, railZ1 + 0.1]) mesh.box(0, m.frameY - 0.1, z, m.frameHW * 2, 0.1, 0.07, UNDER);
   const drop = o.burnt ? m.wheelR * 0.42 : 0;
   mesh.box(0, m.wheelR - 0.04 - drop, m.frontAxle, m.trackF - m.tyreW, 0.09, 0.09, UNDER);
@@ -684,14 +776,17 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
       else rectLamp(mesh, side * l.x, l.y, m.body.zB - 0.02, l.w ?? 0.16, l.h ?? 0.08, lensMat(l), TRIM, -1);
     }
   }
-  if (!coarse) {
-    // the mudflaps behind the last axle, across the tyre (both twins of a dual) and never wider than it
+  // the mudflaps behind the last axle, across the tyre (both twins of a dual) and never wider than it. Sealed lane
+  // 2026-10-10: on the phone tier too (its open overhang behind the wheels showed the world under the tail), there as
+  // dressing so its collision solid is unchanged
+  const mudflaps = () => {
     for (const side of [1, -1]) {
       const z = m.rearAxles[m.rearAxles.length - 1] - m.wheelR - 0.12;
       const across = m.tyreW * (m.dualRear ? 2.0 : 0.96), mid = m.trackR / 2 - (m.dualRear ? m.tyreW * 0.52 : 0);
       mesh.box(side * mid, m.wheelR * 0.62, z, across, m.wheelR * 0.9, 0.012, RUBBER);
     }
-  }
+  };
+  if (coarse) mesh.dressing(mudflaps); else mudflaps();
   void zTail;
 }
 

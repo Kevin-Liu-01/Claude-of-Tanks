@@ -119,7 +119,7 @@ import {
 export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 
 
 const D2R = Math.PI / 180;
@@ -1480,8 +1480,12 @@ function collectMobileDetailObjects(
     if (combatObjects.has(object)) return;
     if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
+    // A carved muzzle (carvedMuzzleBore.ts) cut its aperture out of the barrel's own face: its wall and backstop
+    // close that hole, so hiding them with distance would let the player see through the gun (sealed lane).
+    const carvedMouth = name.startsWith('muzzleBoreShadowFallback')
+      && object.children.some((child) => child.userData?.carvedBoreStock);
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
-        || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
+        || (name.startsWith('muzzleBoreShadowFallback') && !carvedMouth)) managedGroups.add(object);
   });
   const underManagedGroup = (object: THREE.Object3D): boolean => {
     for (let parent = object.parent; parent; parent = parent.parent) {
@@ -6421,6 +6425,9 @@ function jerryCan(
     can.body.userData.pairSize = 2;
     can.body.userData.pairIndex = pairIndex;
     for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) {
+      // 2026-10-10 (fleet-weapons lane, round 3: "ammo cans and jerrycans in olive drab or green-grey, not mint, cream
+      // or khaki"): issue stowage takes the army's drab on rendered builds (mergeBucket), never the scheme's tint
+      part.userData.issueDrab = true;
       addEquipmentLocal(P, bucket, part, x, y - 0.24, z, yaw, localX, 0, 0);
     }
     if (can.spout) addEquipmentLocal(P, dark, can.spout, x, y - 0.24, z, yaw, localX, 0, 0); // spout and cap
@@ -6469,9 +6476,12 @@ function ammoCan(
   body.userData.latches = 2;
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
+  body.userData.issueDrab = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
   // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
-  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
+  const lid = markEquipmentLid(box(0.155, 0.028, 0.315));
+  lid.userData.issueDrab = true;
+  P.addEquipment(bucket, lid, x, y + 0.11, z, 0, yaw, 0); // gasketed lid
   // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
   // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
   // geometry tier keeps its lighter latch blocks and barrels
@@ -8001,6 +8011,8 @@ function* createTankOwnedSteps(
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
+  // The horizon every non-silhouette bucket culls at (mergeBucket).
+  const detailLodDistM = geometryQuality === 'low' ? 64 : LOD1_DIST;
   const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
     barrel0G: gunYOff, barrel1G: gunYOff,
@@ -8079,6 +8091,25 @@ function* createTankOwnedSteps(
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
   };
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 386/392's critics on the Sabra Mk 2's cheek covers: "a translucent,
+  // glass-like sheet with bolt heads"): a plate laid on the armour projects the same world-scale camouflage as the face
+  // beneath it, so only its edges showed and the plate read as glass over the pattern. A part may shift its projection
+  // (userData.camoUvOffset, in camouflage-tile units) after the shared box projection; rendered builds only.
+  const shiftPartCamouflage = (list: THREE.BufferGeometry[], merged: THREE.BufferGeometry): void => {
+    const uv = merged.getAttribute('uv');
+    if (!uv) return;
+    let offset = 0, shifted = false;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const shift = part.userData.camoUvOffset as readonly [number, number] | undefined;
+      if (shift) {
+        for (let i = offset; i < offset + count && i < uv.count; i++) uv.setXY(i, uv.getX(i) + shift[0], uv.getY(i) + shift[1]);
+        shifted = true;
+      }
+      offset += count;
+    }
+    if (shifted) uv.needsUpdate = true;
+  };
   const mergeBucket = (bucket: string, list: THREE.BufferGeometry[]): void => {
     if (!list.length) return;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
@@ -8093,6 +8124,7 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
@@ -8107,7 +8139,13 @@ function* createTankOwnedSteps(
     const weaponSteel = matKey === 'weaponSteel' || (station && matKey === 'dark')
       || (bucket === 'gun' && mainBarrelIsWeaponSteel(specId)) ? mats.weaponSteel : undefined;
     if (weaponSteel) prepareWeaponFinishGeometry(merged, boxUV);
-    const mesh = new THREE.Mesh(merged, weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
+    // issue stowage (cans) grouped apart on rendered builds only (the grouping key below): the army's drab, not the tint
+    const issueDrab = mats.ammoDrab && list.every((part) => part.userData.issueDrab) ? mats.ammoDrab : undefined;
+    if (issueDrab) {
+      prepareWeaponFinishGeometry(merged, boxUV);
+      paintAmmoVertexColours(merged, issueDrab, false);
+    }
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
@@ -8137,12 +8175,14 @@ function* createTankOwnedSteps(
     }
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
-    else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
+    else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
     const station=part.userData.auxiliaryStation;
     return station?station.name+':'+station.stage:'';
   };
+  // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
+  const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -8159,7 +8199,7 @@ function* createTankOwnedSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part);
+      const key=stationKey(part)+issueDrabKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);
