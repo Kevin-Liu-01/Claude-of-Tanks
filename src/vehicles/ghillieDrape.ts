@@ -85,6 +85,8 @@ export function drapeGhillieOverLoads(group: THREE.Object3D, loads: readonly THR
   if (!loads.length) return 0;
   let moved = 0;
   const lifts = new Map<string, NetLift>();
+  // each net's triangles the re-check cut away (and their scraps), for the garnish tied to them
+  const lost = new Map<string, number[]>();
   const finish = (mesh: THREE.Mesh, normals: boolean): void => {
     (mesh.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     if (normals) mesh.geometry.computeVertexNormals();
@@ -126,7 +128,12 @@ export function drapeGhillieOverLoads(group: THREE.Object3D, loads: readonly THR
       if (h > y) { pos.setY(i, h); lifted[i] = 1; moved++; changed = true; }
     }
     lifts.set(mesh.name.replace(/_net$/, ''), net);
-    if (changed) { recheckLifted(mesh, 3, lifted); finish(mesh, true); }
+    if (changed) {
+      const cut: number[] = [];
+      recheckLifted(mesh, 3, lifted, cut);
+      if (cut.length) lost.set(mesh.name.replace(/_net$/, ''), cut);
+      finish(mesh, true);
+    }
   }
   // then the garnish: a card rides with the cloth at its stem. A field suit's card (ghillieSuit.ts fieldClearanceM) is
   // drawn up vertex by vertex as far as the net under it was (2026-10-10, the netting lane: lifted whole to the loads'
@@ -167,7 +174,8 @@ export function drapeGhillieOverLoads(group: THREE.Object3D, loads: readonly THR
       for (let v = k; v < end; v++) pos.setY(v, pos.getY(v) + lift);
       changed = true;
     }
-    if (changed) { recheckLifted(mesh, per, lifted); finish(mesh, false); }
+    const tiedTo = lost.get((mesh.name || '').replace(/_leaves$/, ''));
+    if (changed || tiedTo) { recheckLifted(mesh, per, lifted, undefined, tiedTo); finish(mesh, false); }
   }
   return moved;
 }
@@ -176,11 +184,36 @@ export function drapeGhillieOverLoads(group: THREE.Object3D, loads: readonly THR
  * A field suit's blocks (a net's triangles, `block` 3, or the garnish's cards) with a lifted vertex its own clearance
  * test refuses are cut away (GHILLIE_FIELD_OK), the carriers' counts kept to what is left.
  */
-function recheckLifted(mesh: THREE.Mesh, block: number, lifted: Uint8Array): void {
+function recheckLifted(mesh: THREE.Mesh, block: number, lifted: Uint8Array, cut?: number[], tiedTo?: readonly number[]): void {
   const ok = mesh.userData[GHILLIE_FIELD_OK] as ((p: readonly number[]) => boolean) | undefined;
   if (typeof ok !== 'function' || mesh.geometry.index) return;
   const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
-  dropBlocks(mesh, block, (v) => lifted[v] === 1 && !ok([pos.getX(v), pos.getY(v), pos.getZ(v)]));
+  dropBlocks(mesh, block, (v) => (lifted[v] === 1 && !ok([pos.getX(v), pos.getY(v), pos.getZ(v)]))
+    || (!!tiedTo && nearTriangles(tiedTo, pos.getX(v), pos.getY(v), pos.getZ(v), TIED_M)), undefined, cut);
+}
+
+/**
+ * The fix round's audit (a bough left 7 cm in the air on the Merkava 4B's turret flank): a garnish card goes with the
+ * net it was tied to, any vertex this close to a cut triangle.
+ */
+const TIED_M = 0.02;
+const tieTri = new THREE.Triangle(), tieA = new THREE.Vector3(), tieB = new THREE.Vector3(), tieC = new THREE.Vector3();
+const tieP = new THREE.Vector3(), tieQ = new THREE.Vector3();
+
+/** Whether (x, y, z) lies within r of one of the triangles in the flat runs `tris` (nine floats each). */
+function nearTriangles(tris: readonly number[], x: number, y: number, z: number, r: number): boolean {
+  tieP.set(x, y, z);
+  for (let t = 0; t + 8 < tris.length; t += 9) {
+    const x0 = Math.min(tris[t], tris[t + 3], tris[t + 6]) - r, x1 = Math.max(tris[t], tris[t + 3], tris[t + 6]) + r;
+    if (x < x0 || x > x1) continue;
+    const y0 = Math.min(tris[t + 1], tris[t + 4], tris[t + 7]) - r, y1 = Math.max(tris[t + 1], tris[t + 4], tris[t + 7]) + r;
+    if (y < y0 || y > y1) continue;
+    const z0 = Math.min(tris[t + 2], tris[t + 5], tris[t + 8]) - r, z1 = Math.max(tris[t + 2], tris[t + 5], tris[t + 8]) + r;
+    if (z < z0 || z > z1) continue;
+    tieTri.set(tieA.set(tris[t], tris[t + 1], tris[t + 2]), tieB.set(tris[t + 3], tris[t + 4], tris[t + 5]), tieC.set(tris[t + 6], tris[t + 7], tris[t + 8]));
+    if (tieTri.closestPointToPoint(tieP, tieQ).distanceTo(tieP) < r) return true;
+  }
+  return false;
 }
 
 /** How far a smoke grenade's line is kept clear of a field suit (m), its half-width at the mouth and its spread. */
@@ -238,7 +271,7 @@ function keepVertices(geometry: THREE.BufferGeometry, keep: Uint8Array): void {
  * keeping its roof-and-deck counts (GHILLIE_TOP_VERTICES, GHILLIE_TOP_CARDS) to what is left. Returns the blocks cut.
  */
 function dropBlocks(mesh: THREE.Mesh, block: number, hit: (v: number) => boolean,
-  crossed?: (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => boolean): number {
+  crossed?: (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => boolean, cut?: number[]): number {
   const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
   const topVerts = mesh.userData[GHILLIE_TOP_VERTICES] as number | undefined;
   const topCards = mesh.userData[GHILLIE_TOP_CARDS] as readonly [number, number] | undefined;
@@ -258,7 +291,10 @@ function dropBlocks(mesh: THREE.Mesh, block: number, hit: (v: number) => boolean
     if (typeof topVerts === 'number' ? b < topVerts : topCards ? b / block < topCards[0] : false) goneTop++;
   }
   if (!gone) return 0;
-  // a net's scraps left by the cut (fewer than eight triangles welded together) go with it
+  // a net's scraps left by the cut (fewer than eight triangles welded together) go with it; a field net's drapes are
+  // built keeping no piece under 24 (ghillieSuit.ts dropIslands), and the fix round's audit found a smoke line's cut
+  // leaving 9- and 17-triangle scraps of the Merkava 4B's turret drapes hanging 2 cm off the walls: they go too
+  const scrap = mesh.userData.fieldSuit === true ? 24 : 8;
   if (block === 3) {
     const tris = pos.count / 3, parent = Int32Array.from({ length: tris }, (_, i) => i);
     const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
@@ -274,11 +310,16 @@ function dropBlocks(mesh: THREE.Mesh, block: number, hit: (v: number) => boolean
     const size = new Map<number, number>();
     for (let t = 0; t < tris; t++) if (keep[t * 3]) { const r = find(t); size.set(r, (size.get(r) ?? 0) + 1); }
     for (let t = 0; t < tris; t++) {
-      if (!keep[t * 3] || (size.get(find(t)) ?? 0) >= 8) continue;
+      if (!keep[t * 3] || (size.get(find(t)) ?? 0) >= scrap) continue;
       keep.fill(0, t * 3, t * 3 + 3);
       gone++;
       if (typeof topVerts === 'number' && t * 3 < topVerts) goneTop++;
     }
+  }
+  // a net's lost triangles, for the garnish tied to them
+  if (cut && block === 3) for (let v = 0; v + 2 < pos.count; v += 3) {
+    if (keep[v]) continue;
+    for (let k = 0; k < 3; k++) cut.push(pos.getX(v + k), pos.getY(v + k), pos.getZ(v + k));
   }
   keepVertices(mesh.geometry, keep);
   if (typeof topVerts === 'number') mesh.userData[GHILLIE_TOP_VERTICES] = topVerts - goneTop * block;
@@ -295,20 +336,29 @@ function dropBlocks(mesh: THREE.Mesh, block: number, hit: (v: number) => boolean
 export function clearGhillieForSmoke(group: THREE.Object3D, rows: readonly number[]): number {
   if (!rows.length) return 0;
   let removed = 0;
-  for (const child of group.children) {
+  const lost = new Map<string, number[]>();
+  const suitMeshes = group.children.filter((child): child is THREE.Mesh => {
     const mesh = child as THREE.Mesh;
-    if (!mesh.isMesh || !mesh.userData.fieldSuit || !/_ghillie_/.test(mesh.name || '') || mesh.geometry?.index) continue;
-    const pos = mesh.geometry.attributes.position as THREE.BufferAttribute | undefined;
-    if (!pos) continue;
+    return !!mesh.isMesh && !!mesh.userData.fieldSuit && /_ghillie_/.test(mesh.name || '') && !mesh.geometry?.index
+      && !!mesh.geometry?.attributes?.position;
+  });
+  // the nets first, so that the garnish tied to what they lose goes with it
+  const nets = suitMeshes.filter((mesh) => typeof mesh.userData[GHILLIE_TOP_VERTICES] === 'number');
+  for (const mesh of [...nets, ...suitMeshes.filter((mesh) => !nets.includes(mesh))]) {
+    const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
     const topCards = mesh.userData[GHILLIE_TOP_CARDS] as readonly [number, number] | undefined;
     // whole triangles of a net, whole cards of the garnish
-    const block = typeof mesh.userData[GHILLIE_TOP_VERTICES] === 'number' ? 3 : topCards ? topCards[1] : 3;
+    const block = nets.includes(mesh) ? 3 : topCards ? topCards[1] : 3;
     // a card goes with the cloth round the line it is tied to (8 cm wider), never left standing over the cut
     const extra = block > 3 ? SMOKE_CARD_EXTRA_M : 0;
-    removed += dropBlocks(mesh, block, (v) => onSmokeLine(rows, pos.getX(v), pos.getY(v), pos.getZ(v), extra), (a, b, c) => {
+    const tiedTo = block > 3 ? lost.get((mesh.name || '').replace(/_leaves$/, '')) : undefined;
+    const cut: number[] = [];
+    removed += dropBlocks(mesh, block, (v) => onSmokeLine(rows, pos.getX(v), pos.getY(v), pos.getZ(v), extra)
+      || (!!tiedTo && nearTriangles(tiedTo, pos.getX(v), pos.getY(v), pos.getZ(v), TIED_M)), (a, b, c) => {
       for (let i = 0; i < rows.length; i += 6) if (lineCrosses(rows, i, a, b, c)) return true;
       return false;
-    });
+    }, cut);
+    if (block === 3 && cut.length) lost.set((mesh.name || '').replace(/_net$/, ''), cut);
   }
   return removed;
 }

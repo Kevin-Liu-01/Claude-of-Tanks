@@ -28,6 +28,7 @@ await import('../src/vehicles/tankFactory.ts');
 const {ALL_TANK_IDS,TANK_SPECS}=await import('../src/vehicles/specs.ts');
 const {firstPartyConcept,validateSelectedIds}=await import('./first-party-concept-policy.mjs');
 const {readConceptDesign}=await import('./first-party-concept-record.mjs');
+const {boundsWithoutCamouflage}=await import('../src/vehicles/camouflageBounds.test-support.mjs');
 const {assertConceptDatums}=await import('./first-party-concept-datums.mjs');
 validateSelectedIds(ids,ALL_TANK_IDS);
 assert.ok(ids.every(firstPartyConcept),'Only explicitly authored concepts use this gate');
@@ -42,7 +43,9 @@ async function dimensions(id) {
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
     try {
       tank.root.updateMatrixWorld(true);
-      const bounds=new THREE.Box3().setFromObject(tank.root),size=bounds.getSize(new THREE.Vector3());
+      // the vehicle's own dimensions, its camouflage suit left out (a real vehicle's never include its nets and garnish;
+      // the coordinator's ruling, 2026-10-11): do not re-add it. camouflageBounds.test-support.mjs keeps the rule narrow
+      const bounds=boundsWithoutCamouflage(tank.root),size=bounds.getSize(new THREE.Vector3());
       assert.ok([...bounds.min.toArray(),...bounds.max.toArray()].every(Number.isFinite),'finite complete geometry');
       const widthError=Math.abs(size.x-design.widthM)/design.widthM;
       const lengthError=Math.abs(size.z-design.overallLengthM)/design.overallLengthM;

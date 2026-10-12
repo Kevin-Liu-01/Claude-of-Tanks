@@ -188,7 +188,7 @@ export const GARNISH_STRIP_TILES = [2, 3] as const;
 /** The strip tiles' painted hessian, sRGB: a card's tint is the linear colour it should show over this one's. */
 export const GARNISH_STRIP_BASE_SRGB: readonly [number, number, number] = [200, 189, 160];
 
-const garnishAtlasCache = new Map<SprayKind, THREE.Texture | null>();
+const garnishAtlasCache = new Map<string, THREE.Texture | null>();
 
 /** Paint one tile of knotted burlap strips (stem seat at the tile's bottom centre, tips toward the top). */
 function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
@@ -302,13 +302,17 @@ function finishGarnishTiles(d: Uint8ClampedArray, size: number, S: number, tiles
  * The ghillie garnish atlas of a species: its boughs in tiles GARNISH_BOUGH_TILES, burlap strip bunches in
  * GARNISH_STRIP_TILES, with coverage-preserving mips. Cached per species; null without a DOM (the geometry is the same).
  */
-export function ghillieGarnishAtlas(species: SprayKind): THREE.Texture | null {
-  if (garnishAtlasCache.has(species)) return garnishAtlasCache.get(species)!;
+export function ghillieGarnishAtlas(species: SprayKind, second?: SprayKind): THREE.Texture | null {
+  // the netting lane's fix round: a field net's garnish mixes two species, its second bough tile the second's first spray
+  const key = second && second !== species ? `${species}+${second}` : species;
+  if (garnishAtlasCache.has(key)) return garnishAtlasCache.get(key)!;
   let texture: THREE.Texture | null = null;
   if (typeof document !== 'undefined') {
     try {
       const sprays = makeSprayAtlas(species, seeded(kindSeed(species)), ATLAS_SIZE, null, 0);
       const source = sprays.image as unknown as MipImage;
+      const other = second && second !== species ? makeSprayAtlas(second, seeded(kindSeed(second)), ATLAS_SIZE, null, 0) : null;
+      const otherSource = other ? other.image as unknown as MipImage : null;
       const size = ATLAS_SIZE, T = FOLIAGE_ATLAS_TILES, S = size / T;
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = size;
@@ -330,9 +334,12 @@ export function ghillieGarnishAtlas(species: SprayKind): THREE.Texture | null {
       const out = image.data, src = source.data;
       for (const tile of GARNISH_BOUGH_TILES) {
         const tx = tile % T, ty = Math.floor(tile / T);
+        // the second bough tile from the second species' first spray (its tile 0), when there is one
+        const from = tile === GARNISH_BOUGH_TILES[1] && otherSource?.data && otherSource.width === size ? otherSource.data : src;
+        const fx = from === src ? tx : GARNISH_BOUGH_TILES[0] % T, fy = from === src ? ty : Math.floor(GARNISH_BOUGH_TILES[0] / T);
         for (let y = 0; y < S; y++) {
-          const at = ((ty * S + y) * size + tx * S) * 4;
-          out.set(src.subarray(at, at + S * 4), at);
+          const at = ((ty * S + y) * size + tx * S) * 4, at2 = ((fy * S + y) * size + fx * S) * 4;
+          out.set(from.subarray(at2, at2 + S * 4), at);
         }
       }
       finishGarnishTiles(out, size, S, GARNISH_STRIP_TILES);
@@ -340,14 +347,15 @@ export function ghillieGarnishAtlas(species: SprayKind): THREE.Texture | null {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 8;
       texture.needsUpdate = true;
-      texture.name = `vehicleFoliage:ghillie-garnish:${species}`;
+      texture.name = `vehicleFoliage:ghillie-garnish:${key}`;
       attachCoverageMips(texture);
       sprays.dispose();
+      other?.dispose();
     } catch {
       texture = null;
     }
   }
-  if (typeof document !== 'undefined') garnishAtlasCache.set(species, texture);
+  if (typeof document !== 'undefined') garnishAtlasCache.set(key, texture);
   return texture;
 }
 
@@ -433,6 +441,12 @@ export interface FoliageCard {
    * pressed against a drape). 0 or absent: the flat four-triangle card (the coarse level).
    */
   fold?: number;
+  /**
+   * The lighting normal's weights [card face, carrier outward, sky] (default [0.45, 0.45, 0.25]: the spray lit as part of
+   * the net's mass). The netting lane's fix round (2026-10-11): a field bough standing out of the net is lit by its own
+   * face, so the clump keeps its light and shadow sides.
+   */
+  volumeMix?: readonly [number, number, number];
 }
 
 /**
@@ -451,8 +465,9 @@ export class FoliageCardBuffer {
   push(card: FoliageCard): void {
     const { rows, faceOut, right } = cardRows(card);
     // the volume normal: the card's face, the carrier's outward normal and the sky (the spray lit as part of a mass)
-    const volume = (f: V3): [number, number, number] => norm([f[0] * 0.45 + card.out[0] * 0.45,
-      f[1] * 0.45 + card.out[1] * 0.45 + 0.25, f[2] * 0.45 + card.out[2] * 0.45]);
+    const [wf, wo, ws] = card.volumeMix ?? [0.45, 0.45, 0.25];
+    const volume = (f: V3): [number, number, number] => norm([f[0] * wf + card.out[0] * wo,
+      f[1] * wf + card.out[1] * wo + ws, f[2] * wf + card.out[2] * wo]);
     const n = volume(faceOut);
     const fold = card.fold ?? 0;
     const cf = Math.cos(fold), sf = Math.sin(fold);

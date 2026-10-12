@@ -1203,6 +1203,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 2026-10-11 (netting lane): the runtime keeps camouflage out of hits, scars, contact and LOD, as the receipts do
+    'src/vehicles/camouflageRuntime.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
     'src/vehicles/decorDrawBudget.selftest.mjs',

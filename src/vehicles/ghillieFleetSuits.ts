@@ -428,7 +428,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
     dockKeepOut: { frame: 'turret', boxes: [[-0.673, -0.233, 0.627, 0.825, -1.504, -1.084], [-0.86, -0.046, 0.717, 13.081, -1.701, -0.887]] },
     turret: {
-      top: [laid({ x0: -1.75, x1: 1.75, z0: -1.95, z1: 1.91, nx: 44, nz: 48, y: 0.70, garnishRiseM: 0.16, seed: 11 })],
+      // open round the rounded secondary hatch on the right of the roof (its stepped lid is turret detail, not a hatch
+      // bucket the builder opens; profiles/easternSourceContact "rounded secondary hatch must expose its measured lid")
+      top: [laid({ x0: -1.75, x1: 1.75, z0: -1.95, z1: 1.91, nx: 44, nz: 48, y: 0.70, garnishRiseM: 0.16, seed: 11,
+        holes: [rect(0.14, 0.74, -0.25, 0.13)] })],
       side: flanks(-1.80, 0.39, 0.74, 0.46, 1.72, 17),
       face: [face({ z: -1.96, x0: -1.30, x1: 1.30, y0: 0.30, y1: 0.68, nx: 26, ny: 6, seed: 23 })],
     },
@@ -610,7 +613,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // view): net and garnish give way round it
     dockKeepOut: { frame: 'turret', boxes: [[0.865, 1.545, 0.627, 0.857, 0.479, 0.899], [0.918, 1.732, 0.749, 13.113, 0.282, 1.096]] },
     turret: {
-      top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.30, nx: 44, nz: 56, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
+      top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.62, nx: 44, nz: 60, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.45, -0.10, 0.90, 0.46, 1.70, 17),
       face: [face({ z: -3.20, x0: -1.20, x1: 1.20, y0: 0.55, y1: 0.98, nx: 24, ny: 6, seed: 23 })],
     },
@@ -632,7 +635,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // the drone dock keeps main's seat (a regenerated seat stood in a lens's view): net and garnish give way round it
     dockKeepOut: { frame: 'turret', boxes: [[0.26, 0.7, 0.684, 0.879, -1.934, -1.514], [0.073, 0.887, 0.771, 13.135, -2.131, -1.317]] },
     turret: {
-      top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 1.40, nx: 49, nz: 59, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
+      top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 2.45, nx: 49, nz: 72, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-3.05, 0.55, 0.74, 0.44, 1.80, 17),
       face: [face({ z: -3.38, x0: -1.40, x1: 1.40, y0: 0.40, y1: 0.74, nx: 28, ny: 6, seed: 23 })],
     },
@@ -659,7 +662,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.66, x1: 1.66, z0: -0.20, z1: 3.44, nx: 33, nz: 46, y: 1.90, holes: [rect(0.28, 1.12, 0.98, 1.78)],
           garnishRiseM: 0.12, seed: 37 }),
       ],
-      side: skirts(-2.95, 3.25, 1.82, 0.55, 1.72, 41),
+      // the right flank is left bare over the towing cable (decorations.ts hullSideCable, 2.35 m long amidships: a load
+      // under a drape takes another seat, and the cable has none; profiles/griffinViper.selftest "retain the useful
+      // towing cable")
+      side: skirts(-2.95, 3.25, 1.82, 0.55, 1.72, 41, (side) => (side > 0 ? [cut(-1.25, 1.25, 0.9, 1.95)] : [])),
     },
   },
   // Leopard 2 Revolution: the wedge roof netted round the sight head, the remote station and both hatches (the
@@ -669,7 +675,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'leo2_revolution', seed: 2709, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.95,
     turret: {
-      top: [laid({ x0: -1.64, x1: 1.64, z0: -3.22, z1: 1.55, nx: 41, nz: 60, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
+      top: [laid({ x0: -1.64, x1: 1.64, z0: -3.22, z1: 1.98, nx: 41, nz: 65, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.80, 1.20, 0.70, 0.42, 1.62, 17),
       face: [face({ z: -3.28, x0: -1.10, x1: 1.10, y0: 0.32, y1: 0.68, nx: 22, ny: 6, seed: 23 })],
     },
@@ -692,7 +698,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     turret: {
       // open round the commander's sight (its stack carries no glass bucket, so the lens slot is authored: the window
       // looks ahead over the roof from z -0.67)
-      top: [laid({ x0: -1.98, x1: 1.98, z0: -3.25, z1: 1.80, nx: 50, nz: 63, y: 0.72, garnishRiseM: 0.16, seed: 11,
+      top: [laid({ x0: -1.98, x1: 1.98, z0: -3.25, z1: 2.00, nx: 50, nz: 66, y: 0.72, garnishRiseM: 0.16, seed: 11,
         holes: [rect(-0.82, -0.18, -1.12, -0.50), [[-0.70, -0.55], [-0.30, -0.55], [-0.12, 0.85], [-0.88, 0.85]]] })],
       side: [...flanks(-3.20, -1.45, 0.62, 0.40, 0.95, 17), ...flanks(-1.30, 0.40, 0.66, 0.38, 1.86, 19)],
       face: [face({ z: -3.30, x0: -0.82, x1: 0.82, y0: 0.24, y1: 0.60, nx: 16, ny: 6, seed: 23 })],

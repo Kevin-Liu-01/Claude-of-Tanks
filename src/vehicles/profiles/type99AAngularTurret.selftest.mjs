@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Box3, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
+import { boundsWithoutCamouflage } from '../camouflageBounds.test-support.mjs';
 
 function geometrySignature(mesh) {
   const positions = mesh.geometry.attributes.position.array;
@@ -38,7 +39,9 @@ function inspect(id) {
     hull,
     turret,
     chevrons,
-    hullBounds: new Box3().setFromObject(hullRig),
+    // camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets
+    // and garnish; do not re-add it (camouflageBounds.test-support.mjs)
+    hullBounds: boundsWithoutCamouflage(hullRig),
     armoredTurretBounds,
     hullSignature: geometrySignature(hull),
     turretSignature: geometrySignature(turret),

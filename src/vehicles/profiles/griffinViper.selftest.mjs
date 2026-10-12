@@ -8,6 +8,7 @@ import { VIPER_MUZZLES } from '../griffinViperLayout.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_SCALE as S } from './griffinProportions.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { verifyFixedLauncherSeats, verifyFixedLauncherNoRecoil, fixedLauncherNegatives } from '../fixedLauncherArticulation.test-support.mjs';
+import { boundsWithoutCamouflage } from '../camouflageBounds.test-support.mjs';
 const F=.90; // whole-vehicle reduction, independent of the earlier turret proportion
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 const spec=getSpec('griffin_viper');
@@ -51,7 +52,9 @@ for(const quality of ['high','low']){
     state.turretYaw=0;state.gunPitch=0;tank.syncFromState(state,0);tank.root.updateMatrixWorld(true);
     verifyFixedLauncherNoRecoil(tank,spec,0);
     fixedLauncherNegatives(tank,spec);
-    const bounds=new T.Box3().setFromObject(tank.root),size=bounds.getSize(new T.Vector3());
+    // the complete-scene witness measures the vehicle, its camouflage suit left out (a real vehicle's dimensions never
+    // include its nets and garnish; the coordinator's ruling, 2026-10-11): do not re-add it
+    const bounds=boundsWithoutCamouflage(tank.root),size=bounds.getSize(new T.Vector3());
     assert(Math.abs(size.x-3.8106*F)<.03);assert(Math.abs(size.z-GRIFFIN_HULL_LENGTH_M*F)<.02);assert(Math.abs(bounds.max.y-(2.07+1.54*S)*F)<.02);
     // A blocked mouth fails the same complete-scene witness.
     const plug=new T.Mesh(new T.BoxGeometry(.20*F,.20*F,.03*F),new T.MeshBasicMaterial());
