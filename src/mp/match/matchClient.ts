@@ -15,7 +15,7 @@ import { TRANSPORT_CLOSE } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, TransportStats } from '../transport/transport.ts';
 import {
   CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ,
-  TICK_HZ, VIEWER_MODULES, decodeMessage, dequantizeReloadS, encodeMessage,
+  TICK_HZ, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
 } from '../wire/index.ts';
 import type {
   CloseReasonId, EntityRow, ErrorMessage, EventMessage, PhaseId, PongMessage, RosterEntry, SnapshotFrame,
@@ -223,6 +223,13 @@ const VIEWER_GUN_INDEX = VIEWER_MODULES.indexOf('gun');
 const VIEWER_GUN_MOUNT_INDEX = VIEWER_MODULES.indexOf('gunMount');
 
 function u32(value: number): number { return Math.round(value) >>> 0; }
+
+/** The words a player sees when the host runs another build: what happened and what to do (refresh). */
+export function matchBuildMismatchMessage(peerWire: number): string {
+  return peerWire < WIRE_VERSION
+    ? 'The host is running an older version of the game. Ask them to refresh their page, then join again.'
+    : 'A newer version of the game is out. Refresh this page to update, then join again.';
+}
 
 export class MatchClient {
   readonly transport: Transport;
@@ -646,7 +653,8 @@ export class MatchClient {
       if (decoded.error.code === 'missing_baseline') {
         this.snapshots.noteMissingBaseline();
         this.requestKeyframe();
-      } else this.decodeErrors++;
+      } else if (decoded.error.code === 'bad_version' && !this.welcomeMessage) this.endForBuildMismatch(bytes[0] ?? 0);
+      else this.decodeErrors++;
       return;
     }
     const message = decoded.message;
@@ -683,6 +691,21 @@ export class MatchClient {
         // Client-to-server types never arrive here; the decoder already validated the frame.
         break;
     }
+  }
+
+  /**
+   * A host on another build (2026-10-12, MASTER item 5). Every frame's first byte is its WIRE_VERSION, so a frame this
+   * build cannot decode still names the host's version: an old tab still hosting a room when someone joins from the new
+   * page (the common case in peer-to-peer play), or the reverse. Before the WELCOME that ends the join with a reason the
+   * player can act on, instead of a seat that is never welcomed while decode errors pile up silently.
+   */
+  private endForBuildMismatch(peerWire: number): void {
+    if (this.recovery.current === 'left' || this.closeReason === CLOSE_REASON.PROTOCOL_VERSION) return;
+    this.closeReason = CLOSE_REASON.PROTOCOL_VERSION;
+    this.closeDetail = matchBuildMismatchMessage(peerWire);
+    this.recovery.end('closed');
+    this.transport.close(TRANSPORT_CLOSE.PROTOCOL, this.closeDetail);
+    this.notifyPhase('closed', this.closeDetail);
   }
 
   // ------------------------------------------------------------ handshake + clock

@@ -1252,7 +1252,10 @@ carrying a held row, or a delta whose row was refreshed before the packet (an ac
 was captured at the packet's tick; a row a delta leaves untouched keeps its baseline tick — including a fresh capture
 whose fields did not change (a hull at rest), whose older tick is then still an exact pose. The frame layout of
 protocol 1 is unchanged (`WIRE_VERSION` stays 1): a mismatch between builds is caught at the handshake as
-`PROTOCOL_VERSION`. A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
+`PROTOCOL_VERSION`. (2026-10-12: that held only while the layout stayed put. Every wire bump since 09-29 changed the
+first byte, and a host refuses a HELLO of another wire as `bad_version` with a CLOSE the other build cannot decode. So
+the client reads the first byte of any frame it cannot decode before its WELCOME, ends the join as `PROTOCOL_VERSION`
+and tells the player the host is older or newer and to refresh: `matchBuildGate.selftest`.) A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
 
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
