@@ -226,6 +226,8 @@ interface LightState {
   /** the light's own decay (a pulse may set a shorter one for itself: a ground burst's 0.2 s) */
   baseDur: number;
   basePow: number;
+  /** (fx 9: 8t) the pooled explosion light's reach for the pulse in flight (13 m unless the pulse sets its own) */
+  range?: number;
 }
 
 interface ShockRingState {
@@ -681,6 +683,12 @@ const EXPLOSION_LIGHT_PEAK = 520;
 const EXPLOSION_LIGHT_HEX = 0xff7f38;
 /** (fx 8) a media kill's light pool: the fireball's warm yellow-orange, not the long orange of the kill light */
 const KILL_POOL_LIGHT_HEX = 0xffa458;
+/** (fx 9: 8t, wave 405's critics on both arms: "the flat orange ground ellipse at 0.0 s") a plain kill's fire lights the
+ *  hull and the ground round it in a small, brief, paler pool, the light low over the deck: the pooled explosion light's
+ *  13 m reach from 3.2 m over the hull tinted a ~12 m disc of ground orange */
+const PLAIN_KILL_LIGHT = Object.freeze({ hex: 0xffc890, peakK: 0.12, durS: 0.25, rangeM: 6, overDeckM: 1.2 });
+/** an ammunition cook-off keeps its pool, shortened and a little nearer */
+const COOKOFF_LIGHT = Object.freeze({ peakK: 0.42, durS: 0.5, rangeM: 11 });
 // 40 (was 30) + a 35 s smolder tail (r7: "battlefield shows no lasting
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
@@ -1286,8 +1294,14 @@ function* createFxSteps(
     durS?: number,
     pow?: number,
     hex?: number,
+    range?: number,
   ): void {
     state.light.position.copy(pos);
+    // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
+    if (state.light === explosionLight) {
+      state.range = range && range > 0 ? range : 13;
+      state.light.distance = state.range;
+    }
     // (fx round 7c) a burst's pulse carries its own hue; every other use of the explosion light keeps the kill orange
     if (state.light === explosionLight) state.light.color.setHex(hex ?? EXPLOSION_LIGHT_HEX);
     state.bornAt = particles.getTime() - ageS;
@@ -3755,9 +3769,18 @@ function* createFxSteps(
       // (fx 8, the killcam critics after 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s") the pool dies with the
       // fireball's own heat — under a second, a warm yellow-orange — instead of the kill light's 1.9 s orange decay; the
       // hull fire's own flicker carries the light after it
-      flashLight(lightStates[1], _sv.set(pos.x, cy + 3.2, pos.z),
-        EXPLOSION_LIGHT_PEAK * (burn || plain ? 0.2 : rack ? 0.42 : 0.3), Math.max(0, -birthOffset),
-        burn ? 0.9 : plain ? 0.5 : 0.7, 2.2, KILL_POOL_LIGHT_HEX);
+      // (fx 9: 8t, wave 405: "the flat orange ground ellipse at 0.0 s") a plain kill's pool small, brief, paler and low
+      // over the deck (the falloff reads round the hull, never a flat disc on the ground); a cook-off keeps its own,
+      // shortened and nearer
+      if (plain) {
+        flashLight(lightStates[1], _sv.set(pos.x, cy + PLAIN_KILL_LIGHT.overDeckM, pos.z),
+          EXPLOSION_LIGHT_PEAK * PLAIN_KILL_LIGHT.peakK, Math.max(0, -birthOffset), PLAIN_KILL_LIGHT.durS, 2.2,
+          PLAIN_KILL_LIGHT.hex, PLAIN_KILL_LIGHT.rangeM);
+      } else {
+        flashLight(lightStates[1], _sv.set(pos.x, cy + 3.2, pos.z),
+          EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? COOKOFF_LIGHT.peakK : 0.3), Math.max(0, -birthOffset),
+          burn ? 0.9 : rack ? COOKOFF_LIGHT.durS : 0.7, 2.2, KILL_POOL_LIGHT_HEX, rack ? COOKOFF_LIGHT.rangeM : 13);
+      }
       // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;
@@ -4118,8 +4141,9 @@ function* createFxSteps(
       ) * col.scale * (blast ? 0.45 : 1);
       return;
     }
-    if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== 13) {
-      explosionLight.distance = 13;
+    const pulseRange = explosionState.range ?? 13;
+    if (lightAge(explosionState) < explosionState.dur && explosionLight.distance !== pulseRange) {
+      explosionLight.distance = pulseRange;
     }
   }
 
