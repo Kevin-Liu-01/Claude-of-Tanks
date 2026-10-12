@@ -275,7 +275,8 @@ await applySourcedTerrain('caldera', volcanicLayers);
 // (2026-10-05, the map-revival lane's Caldera round 2: Aso — the grass set's summer green, the black Andosol of the dirt
 // set, the lava's near-black basalt lifted 0.015 off black: the lift path still runs through the R layer)
 const volcanicPixels = {
-  G: [34, 52, 52, 125, 22, 11, 4, 100, 219, 113, 42, 255, 1, 2, 2, 25],
+  // (2026-10-11, Caldera round 4/5, wave 412 PASS: the grass set tinted the tawny susuki green, 62c452fbc)
+  G: [38, 50, 47, 125, 21, 11, 6, 100, 216, 117, 59, 255, 2, 2, 2, 25],
   D: [19, 23, 27, 130, 9, 6, 4, 104, 90, 57, 41, 255, 1, 1, 1, 26],
   R: [22, 23, 25, 130, 10, 9, 9, 104, 69, 57, 51, 255, 5, 5, 5, 26],
 };
