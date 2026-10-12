@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   STUDIO_MAX_DURATION_MS,
   STUDIO_MIN_DURATION_MS,
+  STUDIO_FILM_MAX_DURATION_MS,
   clampStudioDuration,
   normalizeStoryboard,
   upsertCameraShot,
@@ -15,6 +16,20 @@ import {
 
 assert.equal(clampStudioDuration(-4), STUDIO_MIN_DURATION_MS);
 assert.equal(clampStudioDuration(99_000), STUDIO_MAX_DURATION_MS);
+// (fx 9) a take may raise its own cap (the smoke screens' linger films, ~40 s); every other take keeps 20 s
+{
+  const plain = normalizeStoryboard({ durationMs: 40_000 });
+  assert.equal(plain.durationMs, STUDIO_MAX_DURATION_MS, 'a take that asks nothing keeps the 20 s cap');
+  assert.ok(!('maxDurationMs' in plain), 'and carries no cap of its own');
+  const film = normalizeStoryboard({ durationMs: 40_000, maxDurationMs: 40_500 });
+  assert.equal(film.durationMs, 40_000, 'a film take raises its own cap');
+  assert.equal(film.maxDurationMs, 40_500);
+  assert.equal(normalizeStoryboard({ durationMs: 90_000, maxDurationMs: 90_000 }).durationMs, STUDIO_FILM_MAX_DURATION_MS, 'never past the film ceiling');
+  assert.equal(normalizeStoryboard({ ...film, durationMs: 39_000 }).durationMs, 39_000, 'a re-normalized film take keeps its cap');
+  assert.equal(normalizeStoryboard({ durationMs: 12_000, maxDurationMs: 5_000 }).durationMs, 12_000, 'a cap under 20 s asks nothing');
+  assert.equal(upsertCameraShot(film, { id: 'late', tMs: 35_000, pos: [0, 4, -10], lookAt: [0, 2, 0] }).shots.at(-1).tMs, 35_000,
+    'a shot past 20 s stays where the film take put it');
+}
 
 const normalized = normalizeStoryboard({
   durationMs: 25_000,
