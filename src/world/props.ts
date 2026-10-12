@@ -6676,6 +6676,7 @@ ${snowCap ? `
   // come from the stone's own mesh once every placement pass has run (refitRockColliders)
   const rockForms: RockForm[] = [];
   const rockSeats: RockSeat[] = [];
+  const rockChipSum = [0, 0, 0, 0];
   function buildRockVariants(): void {
   // (the hitbox lane and the map-revival lane, 2026-10-11) the legacy form and the boulder forms from rockDressing.ts's
   // constructors: the drawn, collision and far forms differ only in subdivision, so every host derives the same colliders
@@ -6690,6 +6691,14 @@ ${snowCap ? `
     rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
     paintBoulder(forms.drawn, P.rockTone, lithology, rockBaseToneFor(mapId));
+    // (rock round 2) the stone's mean tone above the ground, for the chips its foot sheds (groundLitter.ts rockChipTint)
+    {
+      const col = forms.drawn.geometry.getAttribute('color'), pos = forms.drawn.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        if (pos.getY(i) <= 0) continue;
+        rockChipSum[0] += col.getX(i); rockChipSum[1] += col.getY(i); rockChipSum[2] += col.getZ(i); rockChipSum[3]++;
+      }
+    }
     rockGeos.push(forms.drawn.geometry);
     // (the desktop form on every tier, so every host derives the same colliders)
     rockForms.push(rockFormOf(forms.collision));
@@ -10258,6 +10267,8 @@ ${snowCap ? `
     rockSeats.length = 0;
     group.userData.rockGroundCover = rockGroundCover;
     group.userData.rockFeet = rockFeet;
+    group.userData.rockChipTint = rockChipSum[3] > 0
+      ? [rockChipSum[0] / rockChipSum[3], rockChipSum[1] / rockChipSum[3], rockChipSum[2] / rockChipSum[3]] : null;
   }
   refitRockColliders();
   // Append after every ordinary prop so existing network prop identities stay stable.

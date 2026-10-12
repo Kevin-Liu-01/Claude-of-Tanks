@@ -565,6 +565,9 @@ function assembleWorld(
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+    // (rock round 2, the map-revival lane) the chips each boulder sheds round its foot
+    rockFeet: (props.group.userData.rockFeet as Array<{ x: number; z: number; r: number }> | undefined) ?? null,
+    rockChipTint: (props.group.userData.rockChipTint as [number, number, number] | null | undefined) ?? null,
   });
   group.add(litter.group);
   // Round 73 (2026-09-25, the ground redux): the tall-grass tier — blades in a camera-centred ring, bent by the
