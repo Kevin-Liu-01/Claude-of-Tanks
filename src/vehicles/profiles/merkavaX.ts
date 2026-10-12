@@ -398,7 +398,9 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     {z:.18,ring:[[-.31,-.27],[.40,-.27],[.40,.51],[-.31,.51]]},
     {z:.43,ring:[[-.20,-.15],[.20,-.15],[.20,.20],[-.20,.20]]},
   ]));
-  KIT.buildGun(P,{len:3.4302,r:.08485,baseR:.14,sleeve:true,evac:.43,evacR:2.0,collar:true});
+  // The tube runs to the measured muzzle face (westXGeometry: it ended 20 mm short, 4.836 vs the source 4.856, once the
+  // carved cannon bores stopped adding the factory's seated lip).
+  KIT.buildGun(P,{len:3.4302,r:.08485,baseR:.14,sleeve:true,evac:.43,evacR:2.0,collar:true,fullLengthTube:true});
   const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.073,seed:333,tone:'two-tone',ammo:true,shield:false,ring:false});
   coax.position.set(.17,.2967,-.16);P.gunG.add(coax);
   P.muzzleZ=3.4302;P.topY=3.04-MK3.y;
@@ -1123,7 +1125,9 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     {z:.39,ring:[[-.15,-.14],[.15,-.14],[.15,.16],[-.15,.16]]},
   ]));
   P.add('gun',cylZ(.104,2.49,24),0,0,1.395);
-  P.add('gun',cylZ(.0811,.2155,24),0,0,2.74775);
+  // The muzzle segment runs to the muzzle face (muzzleZ 2.8755). It stopped 20 mm short for the factory's old seated
+  // bore lip, which the carved cannon bores (a28e4d8e6) no longer add (westXGeometry: 4.786 vs the source 4.806).
+  P.add('gun',cylZ(.0811,.2355,24),0,0,2.75775);
   P.add('gun',cylZ(.156,.632,24),0,.0262,.886);
   P.add('gun',cylZ(.1395,.052,20),0,.0262,.6151);
   // Source clamp centers, eccentric clamp shells and their real top clasps.

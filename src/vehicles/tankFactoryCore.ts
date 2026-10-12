@@ -558,6 +558,9 @@ interface GunBuildConfig {
   collar?: boolean;
   baseR?: number;
   evacR?: number;
+  /** 2026-10-11: a plain tube runs to the muzzle face. The default stops 20 mm short for the factory's old seated bore
+   * lip, which the carved cannon bores (a28e4d8e6) no longer add, so those tubes now end 20 mm short (item 6). */
+  fullLengthTube?: boolean;
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -6060,12 +6063,12 @@ function addMuzzleBrake(
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, fullLengthTube = false } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
-  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
+  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : fullLengthTube ? len : len - 0.02;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
   if (sleeve) addThermalSleeve(g, gd, len, r, seg, paintSleeveBands);
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);

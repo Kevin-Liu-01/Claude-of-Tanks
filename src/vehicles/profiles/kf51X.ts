@@ -359,7 +359,9 @@ export function buildKF51X(P: TankBuilderPort): void {
   // The 130 mm source tube has a constant-diameter fore section, not the
   // generic gun helper's 25% base-to-muzzle taper or bore evacuator.
   P.add('gun',cylZ(.1294,3.2091,28),0,0,1.4973);
-  P.add('gun',cylZ(.0892,2.43005,28),0,0,4.316875);
+  // The fore tube runs to the measured muzzle face (muzzleZ). It stopped 20 mm short for the factory's old seated
+  // bore lip, which the carved cannon bores (a28e4d8e6) no longer add (westXGeometry: 6.880 vs the source 6.900).
+  P.add('gun',cylZ(.0892,2.45005,28),0,0,4.326875);
   // Actual exposed tube jacket is 204 mm diameter through Z 6.527. Only
   // the final muzzle neck reduces to 178.4 mm; terminal radius is not a
   // valid measurement for the entire fore tube.
