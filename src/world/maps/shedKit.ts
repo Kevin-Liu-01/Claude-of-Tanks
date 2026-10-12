@@ -314,6 +314,8 @@ export interface ShedBuild {
 }
 
 const FLAT_PAIR: [number, number] = [SHED_FLAT_UV[0], SHED_FLAT_UV[1]];
+/** The pieces a shed's shell is made of: they draw before its frame and fittings. */
+const SHELL_ROLES: ReadonlySet<string> = new Set(['wall', 'roof', 'door', 'frame', 'board', 'chimney']);
 
 class ShedWriter {
   private p: number[] = [];
@@ -321,6 +323,8 @@ class ShedWriter {
   private t: number[] = [];
   private c: number[] = [];
   private panes: THREE.BufferGeometry[] = [];
+  /** (2026-10-11, the cost series' overdraw) where the piece's hidden members start and stop (vertex index, inner) */
+  private layers: [number, boolean][] = [];
   private volume = 0;
   private density = 500;
   private spec: PieceSpec | null = null;
@@ -353,6 +357,16 @@ class ShedWriter {
     return { grain, u0: MEMBER_U0 + (MEMBER_U1 - MEMBER_U0 - w) * this.rng(), v0: this.rng() };
   }
 
+  /**
+   * Members written from here are ones the shell hides (a girt behind the boards) until `inner(false)`: the piece draws
+   * them after its shell, so the depth test throws out their fragments instead of shading them under the cladding.
+   */
+  inner(on: boolean): void {
+    const at = this.p.length / 3, last = this.layers[this.layers.length - 1];
+    if ((last ? last[1] : false) === on) return;
+    if (last && last[0] === at) this.layers.pop(); else this.layers.push([at, on]);
+  }
+
   begin(spec: PieceSpec): number {
     if (this.spec) throw new Error('shedKit: piece begun inside another');
     this.spec = spec;
@@ -365,6 +379,24 @@ class ShedWriter {
     const spec = this.spec;
     if (!spec) throw new Error('shedKit: piece ended without a begin');
     if (!this.p.length && !this.panes.length) throw new Error(`shedKit: empty ${spec.role} piece`);
+    if (this.layers.some(([, on]) => on)) {
+      // the shell's vertices first, then the hidden members' (each run kept in its own order)
+      const count = this.p.length / 3, cuts = [...this.layers, [count, false] as [number, boolean]];
+      const shell: [number, number][] = [], hidden: [number, number][] = [];
+      let from = 0, on = false;
+      for (const [at, next] of cuts) {
+        if (at > from) (on ? hidden : shell).push([from, at]);
+        from = at; on = next;
+      }
+      const P: number[] = [], N: number[] = [], T: number[] = [], C: number[] = [];
+      for (const [a, b] of [...shell, ...hidden]) {
+        for (let v = a; v < b; v++) {
+          P.push(this.p[v * 3], this.p[v * 3 + 1], this.p[v * 3 + 2]); N.push(this.n[v * 3], this.n[v * 3 + 1], this.n[v * 3 + 2]);
+          T.push(this.t[v * 2], this.t[v * 2 + 1]); C.push(this.c[v * 3], this.c[v * 3 + 1], this.c[v * 3 + 2]);
+        }
+      }
+      this.p = P; this.n = N; this.t = T; this.c = C;
+    }
     const main = new THREE.BufferGeometry();
     main.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
     main.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
@@ -407,7 +439,7 @@ class ShedWriter {
     };
     this.built.push(piece);
     this.rescore(this.built.length - 1, spec.scores ?? []);
-    this.p = []; this.n = []; this.t = []; this.c = []; this.panes = [];
+    this.p = []; this.n = []; this.t = []; this.c = []; this.panes = []; this.layers = [];
     this.spec = null;
     return this.built.length - 1;
   }
@@ -677,14 +709,20 @@ class ShedWriter {
   finish(kind: string, cap: number): ShedBuild {
     if (this.spec) throw new Error('shedKit: unfinished piece');
     if (this.built.length > cap) throw new Error(`shedKit: ${kind} has ${this.built.length} pieces (cap ${cap})`);
-    const parts = this.built.map((b) => b.geometry);
+    // (2026-10-11) the shell's pieces draw first, the frame and the rest after them (the depth test throws out what the
+    // shell hides); the links follow the pieces' new places
+    const order = this.built.map((_, i) => i)
+      .sort((a, b) => (SHELL_ROLES.has(this.built[a].spec.role) ? 0 : 1) - (SHELL_ROLES.has(this.built[b].spec.role) ? 0 : 1) || a - b);
+    const place = new Map(order.map((old, i) => [old, i]));
+    const built = order.map((i) => this.built[i]);
+    const parts = built.map((b) => b.geometry);
     const connectivity = certifyGroundedStructureParts(kind, parts);
     const roofPlanePitches = parts.filter((g) => g.userData.roofPlanePitch).map((g) => auditRoofPlanePitch(g));
     const geometry = mergeGeometries(parts, false);
     if (!geometry) throw new Error(`shedKit: ${kind} merge failed`);
     const pieces: FracturePiece[] = [];
     let tri0 = 0;
-    for (const b of this.built) {
+    for (const b of built) {
       const triN = b.geometry.getAttribute('position').count / 3;
       pieces.push({
         role: b.spec.role, material: b.spec.material, bucket: 'structureWood', tri0, triN,
@@ -700,7 +738,7 @@ class ShedWriter {
       tri0 += triN;
       b.geometry.dispose();
     }
-    const anatomy: KitFractureAnatomy = { kind, pieces, links: this.links.slice() };
+    const anatomy: KitFractureAnatomy = { kind, pieces, links: this.links.map((l) => ({ ...l, a: place.get(l.a)!, b: place.get(l.b)! })) };
     assertSupported(anatomy);
     geometry.userData.structureConnectivity = connectivity;
     geometry.userData.roofPlanePitches = roofPlanePitches;
@@ -835,13 +873,23 @@ function lapSpans(top: (u: number) => number, s0: number, s1: number, y: number,
 }
 
 /** A board (or a batten) between u0 and u1 over its spans: a box, or a prism where its top is raked. */
-function wallBoard(w: ShedWriter, spec: WallSpec, u0: number, u1: number, z0: number, z1: number, look: Look, inset = 0): void {
+/** A board (or a batten) up the wall in its spans; `skip` faces always hidden (the box's bits), the foot's only at the
+ * wall's foot (a span over an opening shows its foot). */
+function wallBoard(w: ShedWriter, spec: WallSpec, u0: number, u1: number, z0: number, z1: number, look: Look, inset = 0,
+  skip = 0, footSkip = false): void {
   for (const [y0, t0, t1] of boardSpans(spec, u0, u1)) {
     if (Math.min(t0, t1) - y0 < 0.03) continue;
-    if (Math.abs(t0 - t1) < 0.004) w.box(spec.f, [u0, y0 + inset, z0], [u1, t0 - inset, z1], look);
+    const mask = skip | (footSkip && Math.abs(y0 - spec.y0) < 1e-4 ? 1 << 2 : 0);
+    if (Math.abs(t0 - t1) < 0.004) w.box(spec.f, [u0, y0 + inset, z0], [u1, t0 - inset, z1], look, mask);
     else w.prism(spec.f, [[u0, y0 + inset], [u1, y0 + inset], [u1, t1 - inset], [u0, t0 - inset]], z0, z1, look);
   }
 }
+/** Two neighbouring boards' spans the same (their butting sides hide each other wholly). */
+const sameSpans = (spec: WallSpec, a: [number, number], b: [number, number]): boolean => {
+  const sa = boardSpans(spec, a[0], a[1]), sb = boardSpans(spec, b[0], b[1]);
+  return sa.length === sb.length && sa.every((x, i) => Math.abs(x[0] - sb[i][0]) < 1e-4
+    && Math.abs(Math.min(x[1], x[2]) - Math.min(sb[i][1], sb[i][2])) < 1e-4);
+};
 
 /**
  * Cladding over a wall in panels: each panel is a piece holding its boards, the battens over its joints, its girts
@@ -882,9 +930,12 @@ function cladWall(w: ShedWriter, spec: WallSpec, dress: (panel: number, range: [
         }
         segs = next;
       }
+      // (behind the boards: drawn after them, its face under them left out)
+      w.inner(true);
       for (const [s0, s1] of segs) {
-        w.box(spec.f, [s0, gy - 0.05, 0], [s1, gy + 0.05, gz], { tone: boardTone(w, st.frame), uv: w.memberUv(0.1, 0), seg: 2 });
+        w.box(spec.f, [s0, gy - 0.05, 0], [s1, gy + 0.05, gz], { tone: boardTone(w, st.frame), uv: w.memberUv(0.1, 0), seg: 2 }, 1 << 5);
       }
+      w.inner(false);
     }
     if (lap) {
       // lapped boards: horizontal, each one's lower edge kicked out over the board below
@@ -912,14 +963,19 @@ function cladWall(w: ShedWriter, spec: WallSpec, dress: (panel: number, range: [
         }
       }
     } else {
-      for (const [r0, r1] of runs) {
-        if (r0 < a - 1e-4 || r1 > b + 1e-4) continue;
-        wallBoard(w, spec, r0, r1, gz, gz + BOARD_T, { tone: boardTone(w, st.wood), uv: w.plankUv(r1 - r0, 1), seg: 2, paint: st.paint });
-      }
-      // the battens over this panel's own joints (its edge joints are its neighbours')
+      runs.forEach(([r0, r1], ri) => {
+        if (r0 < a - 1e-4 || r1 > b + 1e-4) return;
+        // (a side its neighbour butts with the same spans is never seen; nor its foot on the wall's foot)
+        const prev = runs[ri - 1], next = runs[ri + 1];
+        const skip = (prev && Math.abs(prev[1] - r0) < 1e-4 && sameSpans(spec, prev, [r0, r1]) ? 1 : 0)
+          | (next && Math.abs(next[0] - r1) < 1e-4 && sameSpans(spec, next, [r0, r1]) ? 2 : 0);
+        wallBoard(w, spec, r0, r1, gz, gz + BOARD_T, { tone: boardTone(w, st.wood), uv: w.plankUv(r1 - r0, 1), seg: 2, paint: st.paint },
+          0, skip, true);
+      });
+      // the battens over this panel's own joints (its edge joints are its neighbours'): their backs on the boards unseen
       for (const j of w.lite ? [] : panelJoints) {
         wallBoard(w, spec, j - BATTEN_W / 2, j + BATTEN_W / 2, gz + BOARD_T, gz + BOARD_T + BATTEN_T,
-          { tone: boardTone(w, st.wood), uv: w.plankUv(BATTEN_W, 1), seg: 1, paint: st.paint }, 0.012);
+          { tone: boardTone(w, st.wood), uv: w.plankUv(BATTEN_W, 1), seg: 1, paint: st.paint }, 0.012, 1 << 4, true);
       }
     }
     dress(idx, range);
