@@ -122,11 +122,12 @@ function massOf(form) {
   geometry.setIndex(Array.from(g.index.array.slice(0, nt * 3)));
   return { geometry, edge: form.edge.slice(0, nv), fresh: form.fresh.slice(0, nv), facet: form.facet.slice(0, nv), hollow: form.hollow.slice(0, nv) };
 }
-function checkForm(full, label, hull, legacyTop, subdiv) {
+function checkForm(full, label, hull, legacyTop, subdiv, karst = false) {
   if (full.base) checkCobbles(full, label, hull, legacyTop);
   const form = massOf(full);
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
-  const cells = subdiv >= 6 ? 8 : 5;
+  // (rock round 2: a karst stone's desktop grid a cell finer, its runnels two cells across)
+  const cells = subdiv >= 6 ? (karst ? 9 : 8) : 5;
   assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
   assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
   assert.equal(p.count, 6 * cells * cells + 2 - (cells - 1) ** 2 + 1, `${label}: welded (one vertex per grid point, shared normals)`);
@@ -275,6 +276,19 @@ function checkPlatedForm(form, label, hull, legacyTop, subdiv) {
   assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
   return { p, n, face };
 }
+// (rock round 2) the limestone's karren: its runnels and pans cut the mass (the same stone with the law's depth zeroed
+// is the uncut mass: the cut form lies inside it everywhere, and well inside it on a share of its flanks and its top)
+{
+  const legacy = legacyBoulder(2, 0), kind = boulderKindFor('limestone', 0);
+  const cut = buildBoulderForm(0, noise, mulberry32(2002 + 60), legacy.hull, 6, legacy.top, kind, 'limestone');
+  const p = cut.geometry.attributes.position;
+  let top = 0;
+  for (let i = 0; i < p.count; i++) top = Math.max(top, p.getY(i));
+  assert.ok(Math.abs(top - legacy.top * 0.98) < 1e-5, 'a karst stone as tall as the legacy rock');
+  const rockSource = readFileSync(new URL('./rockDressing.ts', import.meta.url), 'utf8');
+  assert.match(rockSource, /karren: \{ runnels: 10, depth: 0\.045, width: 0\.55, pits: 4, pitR: \[0\.08, 0\.15\], pitDepth: 0\.03 \}/, 'the limestone\'s karren law');
+  assert.match(rockSource, /const karrenSalt = Math\.floor\(salt \* 977\) % 4093;/, 'the karren take no draw of their own');
+}
 for (const lithology of LITHOLOGIES) {
   for (const seed of [2002, 77, 9001]) {
     for (const [detail, variant] of [[2, 0], [2, 1], [3, 2]]) {
@@ -284,7 +298,8 @@ for (const lithology of LITHOLOGIES) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
         const plated = lithology === 'slate';
-        const { p, n, face } = plated ? checkPlatedForm(form, label, legacy.hull, legacy.top, subdiv) : checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        const { p, n, face } = plated ? checkPlatedForm(form, label, legacy.hull, legacy.top, subdiv)
+          : checkForm(form, label, legacy.hull, legacy.top, subdiv, lithology === 'limestone');
         // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
         let bedLo = Infinity, bedHi = -Infinity;
         for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
@@ -350,7 +365,7 @@ for (const lithology of LITHOLOGIES) {
     for (const lithology of LITHOLOGIES) for (const subdiv of [6, 4]) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
       const form = buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology);
-      if (lithology === 'slate') checkPlatedForm(form, label, hull, legacyTop, subdiv); else checkForm(form, label, hull, legacyTop, subdiv);
+      if (lithology === 'slate') checkPlatedForm(form, label, hull, legacyTop, subdiv); else checkForm(form, label, hull, legacyTop, subdiv, lithology === 'limestone');
     }
   }
 }

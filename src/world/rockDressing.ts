@@ -350,12 +350,21 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
    * none past the legacy hull or the stone's top, none crowding another; the smaller clasts stay the material's.
    */
   cobbles?: { count: number; size: readonly [number, number]; proud: number };
+  /**
+   * (rock round 2, 2026-10-11; gauntlet wave 415 on Orchard Valley: "rain grooves (karren) and pits in pale stone") the
+   * solution forms as geometry: `runnels` rain grooves round the stone (rinnenkarren) down its flanks from the crest's
+   * shoulder, each its own depth (up to `depth` of the radius), width (about `width` of its share of the round) and
+   * length, meandering a little; `pits` solution pans (kamenitza) on its top, `pitR` across (direction-space units) and
+   * `pitDepth` deep, flat-bottomed under a sharp rim. No draw: the stone's own salt.
+   */
+  karren?: { runnels: number; depth: number; width: number; pits: number; pitR: readonly [number, number]; pitDepth: number };
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
   basalt: { fractures: [3, 3], notch: 0.3, notches: 1, bed: null },
   sandstone: { fractures: [1, 2], notch: 0.9, notches: 2, bed: [0.15, 0.24] },
-  limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28] },
+  limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28],
+    karren: { runnels: 10, depth: 0.045, width: 0.55, pits: 4, pitR: [0.08, 0.15], pitDepth: 0.03 } },
   // (2026-10-10, wave 346: "steeply dipping stacks of thin plates with ragged edges") the slate's cleavage: thin plates
   // standing steep, the form stepped down at three of them (was no bedding, one notch at 0.45)
   // (2026-10-11) built as plates: a plate four partings thick, its end up to 8 per cent of the radius out or in, ramped
@@ -731,6 +740,42 @@ interface BoulderForm {
   base?: { vertices: number; triangles: number };
 }
 
+/** Smooth step (Hermite) from e0 to e1. */
+function smoothRange(e0: number, e1: number, x: number): number {
+  const q = clamp((x - e0) / (e1 - e0), 0, 1);
+  return q * q * (3 - 2 * q);
+}
+
+/**
+ * (rock round 2) A karst stone's solution forms at a direction (LITHOLOGY_CUTS karren): the factor its radius takes.
+ * The runnels: round the stone by azimuth, down the flanks (from where the top turns into the flank to a little under
+ * the ground line), each its own depth, width and lower end on the bedding hash of its index, a cosine channel; the
+ * pans: on the top, flat-bottomed under a sharp rim.
+ */
+function karrenRelief(law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology]['karren']>, ux: number, uy: number, uz: number, salt: number): number {
+  let m = 1;
+  const flank = smoothRange(-0.25, 0.1, uy) * (1 - smoothRange(0.5, 0.82, uy));
+  if (flank > 0) {
+    const N = law.runnels;
+    const u = (Math.atan2(uz, ux) / (Math.PI * 2) + 0.5) * N + 0.12 * Math.sin(uy * 4.3 + salt * 0.37);
+    const k0 = Math.floor(u), f = u - k0, k = ((k0 % N) + N) % N;
+    const depth = 0.45 + 0.55 * bedHash(k, salt + 211), width = law.width * (0.75 + 0.5 * bedHash(k, salt + 223));
+    const end = -0.2 + 0.45 * bedHash(k, salt + 227); // its lower end (a short one gone at the shoulder's foot)
+    const q = Math.abs(f - 0.5) / (width / 2);
+    if (q < 1) m -= law.depth * depth * (0.5 + 0.5 * Math.cos(Math.PI * q)) * flank * smoothRange(end, end + 0.2, uy);
+  }
+  const top = smoothRange(0.55, 0.8, uy);
+  if (top > 0) {
+    for (let i = 0; i < law.pits; i++) {
+      const a = bedHash(i, salt + 307) * Math.PI * 2, r = 0.42 * Math.sqrt(bedHash(i, salt + 311));
+      const pr = law.pitR[0] + (law.pitR[1] - law.pitR[0]) * bedHash(i, salt + 313);
+      const d = Math.hypot(ux - Math.cos(a) * r, uz - Math.sin(a) * r) / pr;
+      if (d < 1) m -= law.pitDepth * (1 - smoothRange(0.55, 1, d)) * top;
+    }
+  }
+  return m;
+}
+
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
 
@@ -790,8 +835,10 @@ export function buildBoulderForm(
   // (rock round 2) a plated stone is a stack of plates, not a weathered mass
   if (LITHOLOGY_CUTS[lithology].plates) return buildPlatedForm(variant, rng, hull, subdiv, topY, kindIndex, lithology, angular);
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
-  // (a cell must not straddle an arris's whole turn)
-  const n = subdiv >= 6 ? 8 : 5;
+  // (a cell must not straddle an arris's whole turn); (rock round 2) a karst stone's a cell finer on the desktop, nine,
+  // so a runnel takes two cells across (846 triangles, the 900 budget)
+  const karrenLaw = LITHOLOGY_CUTS[lithology].karren ?? null;
+  const n = subdiv >= 6 ? (karrenLaw ? 9 : 8) : 5;
   // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
   const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
     * (1 - 0.66 * angular);
@@ -801,6 +848,7 @@ export function buildBoulderForm(
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
+  const karrenSalt = Math.floor(salt * 977) % 4093; // (the karren's: from the stone's salt, no draw of its own)
   const lumpK = 1 - 0.6 * angular, [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
@@ -814,6 +862,10 @@ export function buildBoulderForm(
     for (let i = planes.length; i < all.length; i++) breakShare += w[i] * all[i][4];
     const weather = 1 - 0.7 * Math.min(1, breakShare);
     let x = ux * t, y = uy * t, z = uz * t;
+    if (karrenLaw) {
+      const k = karrenRelief(karrenLaw, ux, uy, uz, karrenSalt);
+      x *= k; y *= k; z *= k;
+    }
     lumpAt = (noise.noise3d(x * 1.15 + salt, y * 1.15, z * 1.15 - salt) * lumpA
       + noise.noise3d(x * 2.7 - salt, y * 2.7 + salt, z * 2.7) * lumpB) * weather;
     const f = 1 + lumpAt + noise.noise3d(x * 6.3 + salt * 0.5, y * 6.3 - salt, z * 6.3 + 7) * lumpC;
