@@ -36,6 +36,7 @@ import {
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
+import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -155,6 +156,7 @@ function* appendInstancedGeometrySteps(
   rootInv: THREE.Matrix4,
   geos: THREE.BufferGeometry[],
   owner: WreckBakeOwner,
+  crumple: WreckCrumplePlan | null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   const relative = new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld);
   const instance = new THREE.Matrix4();
@@ -163,7 +165,9 @@ function* appendInstancedGeometrySteps(
   for (let i = 0; i < count; i++) {
     mesh.getMatrixAt(i, instance);
     transform.multiplyMatrices(relative, instance);
-    geos.push(cloneWreckGeometry(mesh.geometry, transform, owner));
+    const clone = cloneWreckGeometry(mesh.geometry, transform, owner);
+    crumpleWreckGeometry(crumple, clone, mesh);
+    geos.push(clone);
     if ((i + 1) % 16 === 0 || i + 1 === count) {
       yield { fine: true, stage: `collect-instances-${i + 1}` };
     }
@@ -215,6 +219,7 @@ function* appendWreckMeshGeometrySteps(
   target: WreckGeometrySet,
   size: THREE.Vector3,
   owner: WreckBakeOwner,
+  crumple: WreckCrumplePlan | null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
   if (WRECK_BURNT_AWAY.test(mesh.name || '')) {
@@ -240,14 +245,15 @@ function* appendWreckMeshGeometrySteps(
   }
   const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
   if (material?.colorWrite === false) {
-    target.proxyGeos.push(cloneWreckGeometry(mesh.geometry,
-      new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
-      owner));
+    // the shadow proxies bend and dent with what they stand for (wreckCrumple.ts)
+    const proxy = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
+    crumpleWreckGeometry(crumple, proxy, mesh);
+    target.proxyGeos.push(proxy);
     return;
   }
   if (material?.transparent && 'map' in material && material.map) return;
   if (mesh instanceof THREE.InstancedMesh) {
-    yield* appendInstancedGeometrySteps(mesh, rootInv, target.geos, owner);
+    yield* appendInstancedGeometrySteps(mesh, rootInv, target.geos, owner, crumple);
     return;
   }
   if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
@@ -255,13 +261,18 @@ function* appendWreckMeshGeometrySteps(
   // The carved muzzle's wall and backstop close the aperture cut from the barrel's own face: never a small part.
   const small = Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M;
   if (small && !mesh.userData.carvedBoreStock) return;
-  const baked = cloneWreckGeometry(mesh.geometry,
-    new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
-    owner);
-  target.geos.push(baked);
-  if (small) target.budgetTriDelta -= ((baked.index?.count ?? baked.attributes.position.count) / 3) | 0;
+  const clone = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
+  // the plates get corners to bend first (a box plate's middle has none), then the crumple moves them
+  const refined = refineForCrumple(crumple, clone, mesh);
+  if (refined !== clone) owner.geometries.add(refined);
+  crumpleWreckGeometry(crumple, refined, mesh);
+  target.geos.push(refined);
+  // integ/218 (sealed r1 over destruction 350): the kept muzzle walls and the canvas's second faces stay out of the
+  // placement budget as they were before the crumple; the second face reverses the crumpled surface, so both windings
+  // follow the same dents
+  if (small) target.budgetTriDelta -= ((refined.index?.count ?? refined.attributes.position.count) / 3) | 0;
   if (WRECK_TWO_SIDED.test(mesh.name || '')) {
-    const back = reversedWreckGeometry(baked, owner);
+    const back = reversedWreckGeometry(refined, owner);
     target.geos.push(back);
     target.budgetTriDelta -= (back.attributes.position.count / 3) | 0;
   }
@@ -271,6 +282,7 @@ function* collectWreckGeometrySteps(
   root: THREE.Object3D,
   rootInv: THREE.Matrix4,
   owner: WreckBakeOwner,
+  crumple: WreckCrumplePlan | null = null,
 ): Generator<WreckGeometryBuildSlice, WreckGeometrySet, void> {
   const target: WreckGeometrySet = { geos: [], proxyGeos: [], burntAway: new THREE.Box3(), budgetTriDelta: 0 };
   const size = new THREE.Vector3();
@@ -281,7 +293,7 @@ function* collectWreckGeometrySteps(
   while (stack.length) {
     const object = stack.pop()!;
     if (object instanceof THREE.Mesh) {
-      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner);
+      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner, crumple);
     }
     for (let index = object.children.length - 1; index >= 0; index--) stack.push(object.children[index]);
     if (++visited % 16 === 0 || !stack.length) {
@@ -578,8 +590,12 @@ function* buildTankWreckSteps(
     const solids = collectWreckSolids(root);
     const shellSolids = collectWreckShellSolids(root);
     const rootInv = root.matrixWorld.clone().invert();
+    // the metal deformed (the owner, 2026-10-09: "crumpled not just turn rusty"): dents, sagging fenders, hanging
+    // skirts, a slack track, a bent barrel — planned from the posed hierarchy on the wreck's own seed, applied part by
+    // part as the bake collects it; the solids above are the posed hierarchy's, so collision does not move
+    const crumple = planWreckCrumple(root, seed, !!opts.pop);
     yield { fine: true, stage: 'construct' };
-    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(root, rootInv, owner);
+    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple);
     if (!geos.length) throw new Error('no bakeable geometry');
     const normalized = yield* normalizeGeometrySetSteps(geos, true, owner);
     const merged = mergeRequired(normalized, 'merge failed');

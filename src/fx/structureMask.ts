@@ -38,17 +38,19 @@ import * as THREE from 'three';
 
 const TEX_W = 512;
 /** Texels per structure: A, B, two per hole, and F (the fall's footprint). */
-export const STRUCT_STRIDE = 11;
+export const STRUCT_STRIDE = 27;
 const STRIDE = STRUCT_STRIDE;
 /** The fall's footprint texel (after the holes). */
-const F_TEXEL = 10;
+const F_TEXEL = 26;
 /** A breach outline's phase as a share of a turn (destructionKit holeOutlinePhase / 2π, from the hole's own seed: the
  *  BreachSpec's damageSeed(anatomy.seed, section, hole)); the kit's rim and the mask's cut share it. */
 export function holeOutlinePhase01(seed: number): number {
   return (Math.imul(seed >>> 0, 0x9e3779b1) >>> 0) / 4294967296;
 }
-/** Holes a structure keeps (a ring: a fifth replaces the first). */
-export const MAX_HOLES = 4;
+/** Holes a structure keeps (a ring: the thirteenth replaces the first). 2026-10-10 (the owner: "shooting buildings should
+ *  cause destruction too"): every round that strikes a wall leaves its hole there, so a building takes a dozen before it
+ *  falls; the fragment loop stops at a structure's own count, so an untouched building pays nothing for the slots. */
+export const MAX_HOLES = 12;
 /** Seconds a collapse takes from the blow to the fold (round 7: slow enough to watch it come down, ~3.5 s). */
 export const COLLAPSE_S = 4.2;
 /** The crumble front leaves the top at FRONT_T0 and reaches the base FRONT_T later, gravity-eased (h = H (1 - u^1.5)). */
@@ -268,13 +270,23 @@ if ( vStructHoles > 0.5 ) {
     float ph = pk > 0.5 ? ( pk - 1.0 ) / 255.0 * 6.2832 : fxStructHash3( floor( hc.xyz * 3.1 ) ).y * 6.2832;
     float lobe = 0.8 + 0.2 * sin( 3.0 * th + ph ) + 0.12 * sin( 5.0 * th + 2.0 * ph );
     float rl = length( lateral );
-    if ( rl < hc.w * rk * lobe ) discard;
+    // the radius's sign is the hole's kind (structureStages: a burst's is negative, a round's or a breach's positive)
+    float hr = abs( hc.w );
+    if ( rl < hr * rk * lobe ) discard;
+    // (2026-10-10, per-hit damage) round a burst's hole the face is scorched, round a round's spalled: darker out to 2.3 r
+    // (a burst) or 1.5 r, mottled in brick-sized cells, on the face only
+    if ( along > -0.06 ) {
+      float sr = hr * ( hc.w < 0.0 ? 2.3 : 1.5 );
+      float ring = 1.0 - smoothstep( hr * rk * lobe, sr, rl );
+      ring *= 0.65 + 0.35 * fxStructHash3( floor( vStructPos * 5.3 ) ).z;
+      fxCrack = max( fxCrack, ring * ( hc.w < 0.0 ? 0.68 : 0.36 ) );
+    }
     // cracks (the core asked them of the mask): thin dark runs 1-2 m along the face out of the three lobes' tips,
     // jagged, tapering, on the face only
     if ( along > -0.06 && hn.z > 0.15 ) {
       for ( int k = 0; k < 3; k++ ) {
         float tk = ( 1.5708 - ph + 6.2832 * float( k ) ) / 3.0;
-        float r0 = hc.w * ( 1.0 + 0.12 * sin( 5.0 * tk + 2.0 * ph ) );
+        float r0 = hr * ( 1.0 + 0.12 * sin( 5.0 * tk + 2.0 * ph ) );
         float len = 1.0 + fract( sin( ( ph + float( k ) ) * 43.1 ) * 977.0 );
         float dr = rl - r0;
         if ( dr < -0.05 || dr > len ) continue;
@@ -305,12 +317,12 @@ export interface StructureMask {
     fall?: { eaveM: number; halfW: number; halfD: number; yaw: number; toppleHingeM?: number }, quickS?: number): void;
   /**
    * A hole through the structure: the builder's cut in the world (centre, radius m, the face's outward normal, depth m
-   * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: a fifth hole replaces the first).
-   * Returns the slot, or -1.
+   * into the wall, m outside it), in the next of its MAX_HOLES slots (a ring: the thirteenth replaces the first). `kind`:
+   * a burst's hole is scorched round its rim, a round's ('pierce', the default) spalled. Returns the slot, or -1.
    */
   addHole(structureId: number, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
-    depthM: number, outsideM?: number, phase01?: number): number;
-  /** The holes a structure has cut so far (up to MAX_HOLES: a fifth replaces the first). */
+    depthM: number, outsideM?: number, phase01?: number, kind?: 'blast' | 'pierce'): number;
+  /** The holes a structure has cut so far (up to MAX_HOLES: the thirteenth replaces the first). */
   holes(structureId: number): number;
   /** A storey dropped (world y): the holes centred in its band [y0, y1] go with it, those above come down by `dropM`
    *  with the walls they were cut in. */
@@ -403,13 +415,14 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       data[f + 3] = fall ? fall.yaw : 0;
       touch(t + F_TEXEL, 1);
     },
-    addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3, phase01) {
+    addHole(id, x, y, z, radiusM, nx, nz, depthM, outsideM = 0.3, phase01, kind) {
       if (!inRange(id) || !(radiusM > 0)) return -1;
       const s = holeNext[id];
       holeNext[id] = (s + 1) % MAX_HOLES;
       const t = id * STRIDE + 2 + s * 2, o = t * 4;
       const nl = Math.hypot(nx, nz);
-      data[o] = x; data[o + 1] = y; data[o + 2] = z; data[o + 3] = radiusM;
+      // a burst's hole carries its radius negative: the fragment scorches its rim (a round's is spalled)
+      data[o] = x; data[o + 1] = y; data[o + 2] = z; data[o + 3] = kind === 'blast' ? -radiusM : radiusM;
       data[o + 4] = nl > 1e-6 ? nx / nl : 0; data[o + 5] = nl > 1e-6 ? nz / nl : 0;
       // w: the outline's phase index (1..256; 0: none, the shader hashes the hole's place) over the outside distance (< 1)
       const ph = phase01 !== undefined && Number.isFinite(phase01) ? Math.floor((((phase01 % 1) + 1) % 1) * 255) + 1 : 0;
@@ -430,7 +443,7 @@ export function createStructureMask(capacity = 4096, { holes = true }: { holes?:
       if (!inRange(id)) return;
       for (let k = 0; k < holeCount[id]; k++) {
         const t = id * STRIDE + 2 + k * 2, o = t * 4;
-        if (!(data[o + 3] > 0)) continue;
+        if (!(data[o + 3] !== 0)) continue;
         const y = data[o + 1];
         if (y >= y0 && y <= y1) data[o + 3] = 0;
         else if (y > y1 && dropM > 0) data[o + 1] = y - dropM;
