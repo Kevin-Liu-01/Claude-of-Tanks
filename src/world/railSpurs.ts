@@ -326,6 +326,21 @@ export function railBerthField(
 }
 
 /**
+ * The buildings lane (2026-10-11), moved here by the maps lane (2026-10-14) so the props pass keeps a call site only: does
+ * a footprint of radius `reach` round (x, z) touch a 'clearance' spur's berth? Its centre and 16 points round its reach
+ * are asked of the height field's `_railBerth` predicate (railBerthField). Verdant's stog at (278.6, 60.8) stood 3.24 m
+ * from Prokhorovka's line, inside the berth the landmarks receipt keeps clear of every solid.
+ */
+export function railBerthReaches(onBerth: (x: number, z: number) => boolean, x: number, z: number, reach: number): boolean {
+  if (onBerth(x, z)) return true;
+  for (let q = 0; q < 16; q++) {
+    const a = (q * Math.PI) / 8;
+    if (onBerth(x + Math.cos(a) * reach, z + Math.sin(a) * reach)) return true;
+  }
+  return false;
+}
+
+/**
  * The landmarks lane (2026-10-05): the trees' clearance of a map's 'clearance' spurs (the vegetation's post-placement
  * filter, vegetationClearance.ts): a rectangle along each edge of the path, the berth to each side and past each end.
  */

@@ -61,6 +61,7 @@ import {
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
+import { railBerthReaches } from './railSpurs.ts'; // the buildings lane: no stack on a clearance berth
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import type { LandmarkPlacement } from './landmarks/types.ts';
@@ -7629,6 +7630,8 @@ ${snowCap ? `
         const h = heightField.getHeightAt(px, pz);
         lo = Math.min(lo, h); hi = Math.max(hi, h);
       }
+      // (the buildings lane, 2026-10-11) never on a 'clearance' rail spur's berth: the built stack's contact reach (railSpurs.ts)
+      if (heightField._railBerth && form && railBerthReaches(heightField._railBerth, x, z, Math.max(...destructibleFootprint(form.kind)) * sc + 0.05)) continue;
       const spread = hi - lo;
       if (k === 0 && spread <= 0.35) return { x, z, y };
       if (spread < bestSpread) { bestSpread = spread; best = { x, z, y }; }
