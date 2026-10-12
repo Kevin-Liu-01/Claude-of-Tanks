@@ -4828,7 +4828,12 @@ void splatCompute() {
   float padRut = 0.0;
   vec2 padRutN = vec2(0.0);
   if (apronK > 0.003) {
-    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    // (2026-10-12, the live pads drew topographic rings — Frontier's square, the media's round 14: "dark contour-line
+    // rings, like a topographic map"): each family's direction is fixed. A direction that varied with position, projected
+    // from the world origin (q below), made the lines follow the direction field's own isolines wherever |wp| times its
+    // gradient outgrew the lines' spacing: concentric rings, densest on the pads far from the origin. The noise warp of q
+    // alone bends the ruts into gently curving tracks.
+    float th = 0.6;
     float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
     for (int k = 0; k < 2; k++) {
       float t = th + float(k) * 1.15;

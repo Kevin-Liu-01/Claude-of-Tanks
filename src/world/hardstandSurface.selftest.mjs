@@ -207,5 +207,12 @@ assert.equal(lakeField._noVeg(300, 340), false);
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
   assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.36;') && terrain.includes('n.xy -= padRutN * 0.35;'), 'they darken its ground and groove it');
   assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
+  // (2026-10-12, live on 217: Frontier's square drew topographic contour rings) a rut family's direction is fixed: the
+  // lines project the world position on it, so a direction that varied with position made the ruts trace the direction
+  // field's own isolines — rings, densest far from the origin. Only the warp noise bends them.
+  const block = terrain.slice(terrain.indexOf('if (apronK > 0.003) {'), terrain.indexOf('padRut *= apronK;'));
+  const thLine = block.split('\n').find((line) => /\bfloat th = /.test(line));
+  assert.ok(thLine && !/nz\(|nzq\(|uv|wp/.test(thLine), `a rut family's direction never reads position (${thLine?.trim()})`);
+  assert.match(block, /float q = dot\(wp\.xz, dP\) \+ 5\.0 \* \(nz\(uv, 0\.017/, 'the warp noise still bends the ruts');
 }
 console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');
