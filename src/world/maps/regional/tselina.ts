@@ -15,7 +15,7 @@ import {
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
-import { bench, tvAerial } from './dressing.ts';
+import { bench } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Window frames, shutters and doors: the settlements' blue, turquoise, green and sky blue, a brown. */
@@ -148,6 +148,12 @@ function onLot(sink: PartSink, fp: Footprint, body: (W: number, D: number, turne
  * painted verge boards and a boarded gable, the brick stack, and across the back gable the glazed veranda (boarded
  * below, small panes above) with its door to the yard side; together they fill the lot.
  */
+/** The porch bench (dressing.ts bench) with the two posts its back board stands on (2026-10-11, kitConnectivity). */
+function porchBench(sink: PartSink, face: Face, u: number, length: number, wood: Rgb): void {
+  bench(sink, face, u, length, wood);
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (length / 2 - 0.12), 0.66, 0.07, 0.05, 0.44, 0.05, { decor: true, colour: wood });
+}
+
 function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng, look = st.look;
@@ -183,8 +189,10 @@ function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
       faceBox(sink, 'dark', gf, 0, ventY, 0.01, 0.55, 0.42, 0.02, { decor: true });
       faceBox(sink, 'structureWood', gf, 0, ventY, 0.03, 0.72, 0.6, 0.04, { colour: st.paint, decor: true }, { back: true });
     }
-    tvAerial(sink, frame, (look() - 0.5) * D * 0.5, look);
-    if (look() < 0.6) bench(sink, gf, (look() - 0.5) * Math.max(0, W - 2.4), 1.4, PLANK);
+    // (2026-10-11, kitConnectivity: no TV aerial — the virgin-land settlements of the late 1950s had the wired radio, not
+    // a television mast on every roof, and the aerial's elements are bars with two free ends)
+    look();
+    if (look() < 0.6) porchBench(sink, gf, (look() - 0.5) * Math.max(0, W - 2.4), 1.4, PLANK);
   });
   // the veranda across the whole back gable, built a quarter turned: its local +x runs out to -z (away from the house),
   // its shed roof rising toward the house wall
@@ -245,7 +253,7 @@ function twoFamilyHouse(ctx: RegionalBuildContext): RegionalParts {
         chimneys: doors.map((z) => ({ x: (rng() - 0.5) * 0.6, z: z * 0.8, sx: 0.55, sz: 0.62, above: 0.75, bucket: 'stone' as const, cap: 'slab' as const })),
         gutters: null, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null, spall: wall === 'plaster' ? 'stone' : undefined,
       }, dialect(st));
-      tvAerial(sink, frame, (look() - 0.5) * L * 0.4, look);
+      look(); // (no TV aerial: the settler house's note)
     });
     // the glazed veranda along the left side: boarded below, small panes above, the two doors and their steps, a shed
     // roof rising to the house wall
@@ -420,7 +428,16 @@ const elevator = (ctx: RegionalBuildContext): RegionalParts => {
       const z = zt1 + pitch * (k + 0.5), rr = Math.min(r, pitch / 2);
       for (let y = H0 + 3.5; y < Hs - 1; y += 4.6) sink.cylinder('plaster2', [sx * r, y, z], 'y', 0.16, rr + 0.03, 16, { decor: true, shade: 0.82 }, rr + 0.03, false);
     }
-    for (const sx of [-1, 1]) sink.member('structureMetal', [sx * r * 0.55, H0 + 0.2, zb1 - 0.3], [sx * r * 0.55, Hs - 0.5, zb1 - 0.3], 0.22, 0.22, [0, 0, 1], { colour: STEEL, decor: true, exposed: true }, 0);
+    // (2026-10-11, kitConnectivity: the spouts stood 10-20 cm clear of the silos) each spout down the end silo's face, set
+    // against its curve toward the bank's end and its middle
+    {
+      const rr = Math.min(r, pitch / 2), cz = zb1 - pitch / 2, dl = Math.hypot(0.42, 0.91);
+      for (const sx of [-1, 1]) {
+        // (the centreline 2 cm out from the silo's round: the sixteen-sided shaft lies up to 6 cm inside it between corners)
+        const x = sx * (r - (0.42 / dl) * (rr + 0.02)), z = cz + (0.91 / dl) * (rr + 0.02);
+        sink.member('structureMetal', [x, H0 + 0.2, z], [x, Hs - 0.5, z], 0.22, 0.22, [0, 0, 1], { colour: STEEL, decor: true, exposed: true }, 0);
+      }
+    }
     sink.cylinder('structureMetal', [0, Ht + 4.8, hz], 'y', 6.0, 0.05, 5, { colour: STEEL_DARK, decor: true }, 0.03);
     faceBox(sink, 'structureMetal', towerFaces[0], 0, Ht - 3.6, 0.05, Math.min(3.6, towerW - 1.2), 1.0, 0.06, { colour: RED, decor: true });
   });
@@ -661,9 +678,12 @@ const rozhnovsky: RegionalBuilder = (ctx) => {
     for (const dx of [-0.22, 0.22]) sink.member('structureMetal', [dx, hp + 0.3, R + 0.18], [dx, H + 0.9, R + 0.18], 0.04, 0.04, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true }, 0);
     for (let y = hp + 0.6; y < H + 0.8; y += 0.4) sink.member('structureMetal', [-0.22, y, R + 0.18], [0.22, y, R + 0.18], 0.03, 0.03, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
     const ry = H + 1.0 + Ht + 0.55;
+    // (2026-10-11, kitConnectivity: the rail floated 4 cm over the roof) on a post at each corner from the roof's cone
+    const coneY = H + 1.0 + Ht + (Rt + 0.06 - Rt * 0.62) / (Rt + 0.06 - 0.28);
     for (let k = 0; k < 8; k++) {
       const a0 = k * Math.PI / 4, a1 = (k + 1) * Math.PI / 4, rr = Rt * 0.62;
       sink.member('structureMetal', [Math.cos(a0) * rr, ry, Math.sin(a0) * rr], [Math.cos(a1) * rr, ry, Math.sin(a1) * rr], 0.035, 0.035, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
+      sink.member('structureMetal', [Math.cos(a0) * rr, coneY - 0.04, Math.sin(a0) * rr], [Math.cos(a0) * rr, ry + 0.02, Math.sin(a0) * rr], 0.03, 0.03, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
     }
     sink.cylinder('structureMetal', [0, H + 0.95, 0], 'y', 0.3, Rt + 0.02, 14, { colour: rgb(0x7a5a44), decor: true }, Rt + 0.02, false);
   });
@@ -683,6 +703,13 @@ const boilerStack: RegionalBuilder = (ctx) => {
     const f: Face = { origin: [0, 0, fp.d / 2], u: [1, 0, 0], out: [0, 0, 1], width: fp.w };
     faceBox(sink, 'structureMetal', f, 0, 0.75, 0.02, 0.6, 0.6, 0.04, { colour: STEEL_DARK, decor: true });
     for (const dx of [-0.18, 0.18]) sink.member('structureMetal', [dx, hb + 0.1, r0 + 0.14], [dx, H - 0.4, r1 + 0.14], 0.035, 0.035, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true }, 0);
+    // (2026-10-11, kitConnectivity: the rails stood 12 cm off the steel) the ladder's brackets back to the chimney every
+    // 2.4 m, from inside its skin to each rail
+    for (let y = hb + 0.6; y < H - 0.6; y += 2.4) {
+      const f = (y - hb - 0.1) / (H - 0.5 - hb), zr = r0 + 0.14 + (r1 - r0) * f;
+      const rs = y < H - 3.1 ? r0 + (r1 + 0.03 - r0) * (y - hb) / (H - 3.1 - hb) : r1 + 0.02;
+      for (const dx of [-0.18, 0.18]) sink.member('structureMetal', [dx, y, Math.sqrt(Math.max(0, rs * rs - dx * dx)) - 0.03], [dx, y, zr + 0.01], 0.03, 0.03, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
+    }
     sink.cylinder('structureMetal', [0, H + 0.02, 0], 'y', 0.12, r1 + 0.03, 12, { colour: rgb(0x1e1c1a), decor: true }, r1 + 0.03, false);
   });
   return sink.finish();
@@ -740,6 +767,11 @@ function wagons(ctx: RegionalBuildContext): RegionalParts {
       const end: Face = { origin: [x, 0, z + wl / 2 - 0.3], u: [1, 0, 0], out: [0, 0, 1], width: ww };
       faceBox(sink, 'structureWood', end, -ww * 0.2, 1.3, 0.02, 0.75, 1.75, 0.04, { colour: shade(c, 0.7), decor: true });
       for (let s = 0; s < 2; s++) faceBox(sink, 'structureWood', end, -ww * 0.2, 0.12 + s * 0.15, 0.15 + (1 - s) * 0.15, 0.8, 0.06, 0.15, { colour: PLANK, decor: true });
+      // (2026-10-11, kitConnectivity: the treads floated) their two stringers, from the ground up to the door's sill
+      for (const su of [-0.37, 0.37]) {
+        const ux = x - ww * 0.2 + su, zf = z + wl / 2 - 0.3;
+        sink.member('structureWood', [ux, -0.04, zf + 0.4], [ux, 0.33, zf + 0.02], 0.04, 0.12, [1, 0, 0], { colour: PLANK, decor: true, exposed: true }, 0);
+      }
       const side: Face = { origin: [x + ww / 2 - 0.05, 0, z], u: [0, 0, -1], out: [1, 0, 0], width: wl };
       for (const u of [-wl * 0.25, wl * 0.25]) facePanel(sink, paneBucket(look, 0.5), side, u, 1.75, 0.015, 0.7, 0.6, { decor: true, window: [1, 0, 0] });
       sink.cylinder('structureMetal', [x - ww * 0.25, 0.3 + wh, z - wl * 0.3], 'y', 0.9, 0.07, 6, { colour: rgb(0x2a2a2a), decor: true });
@@ -842,14 +874,20 @@ const ruinedHouse: RegionalBuilder = (ctx) => {
     }
     sink.span('stone', -0.8, 0.45, -0.7, 0.7, 1.8, 0.8);
     sink.span('stone', -0.35, 1.8, -0.25, 0.3, 4.4 + rng() * 0.6, 0.35);
+    // (2026-10-11, kitConnectivity: the fallen beams' raised ends hung in the air, a sheet 3 cm over the floor) the
+    // beams lie on the floor or lean on the chimney block's top, every end on something; the sheets rest on the floor
     for (let k = 0; k < 5; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.5, (rng() - 0.5) * D * 0.8];
-      const b: Vec3 = [a[0] + (rng() - 0.5) * 3.2, 0.5 + rng() * 1.6, a[2] + (rng() - 0.5) * 3.2];
+      // (a member's depth stands up from its line: the line 2 cm under the floor's top, so the beam lies on it)
+      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.43, (rng() - 0.5) * D * 0.8];
+      const dx = (rng() - 0.5) * 3.2, rise = rng(), dz = (rng() - 0.5) * 3.2;
+      const lean = k % 2 === 1;
+      const b: Vec3 = lean ? [clamp(a[0] * 0.25, -0.7, 0.6), 1.78, clamp(a[2] * 0.25, -0.6, 0.7)]
+        : [clamp(a[0] + dx, -W / 2 + 0.25, W / 2 - 0.25), 0.43 + rise * 0.02, clamp(a[2] + dz, -D / 2 + 0.25, D / 2 - 0.25)];
       sink.member('structureWood', a, b, 0.14, 0.12, [0, 1, 0], { colour: k % 2 ? CHAR : PLANK, decor: true, exposed: true });
     }
     for (let k = 0; k < 3; k++) {
       const x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6, rise = 0.25 + rng() * 0.6;
-      const a: Vec3 = [x - 0.85, 0.5, z], b: Vec3 = [x + 0.85, 0.5 + rise, z];
+      const a: Vec3 = [x - 0.85, 0.46, z], b: Vec3 = [x + 0.85, 0.46 + rise, z];
       const len = Math.hypot(1.7, rise), up: Vec3 = [-rise / len, 1.7 / len, 0];
       sink.member('roof', a, b, 1.1, 0.03, up, { decor: true, exposed: true }, 0);
     }
