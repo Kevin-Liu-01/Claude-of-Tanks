@@ -1081,6 +1081,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/rigidBody.selftest.mjs',
     'src/sim/wreckTurrets.selftest.mjs',
     'src/vehicles/wreckTurretDriver.selftest.mjs',
+    // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
+    'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',

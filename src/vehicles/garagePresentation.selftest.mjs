@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
+import { preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
 
 const visual = createTank('m1a2', null, {
   proceduralOnly: true,
@@ -46,6 +47,8 @@ visual.recoilKick();
 visual.syncFromState(state, 0.12, 150);
 visual.hitFlinch(0.8, -0.2, 2.4, state.yaw);
 visual.setTrackState('trackL', true);
+// (physics lane, 2026-10-11) a battle loads the wreck turret's physics under its cover (wreckTurretDriverLoader.ts)
+await preloadWreckTurretDriver();
 visual.setDestroyed({ pop: true, ageS: 0.42 });
 
 assert.ok(Math.abs(root.rotation.x) > 0.05 && Math.abs(root.rotation.z) > 0.05,
