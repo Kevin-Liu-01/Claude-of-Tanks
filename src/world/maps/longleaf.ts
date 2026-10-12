@@ -173,7 +173,9 @@ export default {
   // (Longleaf round 4, 2026-10-11; wave 376: "flat, high-key light", "no haze to give the distance depth"): a Gulf
   // coast September morning — a humid, turbid sky paler toward the horizon, the sun dimmer and warmer through it, the
   // distance graded into a warm grey haze, the exposure a third of a stop down, the grade a touch warm and less saturated
-  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00098, fogTintHex: 0xa1a89f, fogMix: 0.6,
+  // (the haze 0.00085, not round 4's 0.00098: at that the panorama relight's sunset ranges stood at 0.66 of the sky
+  // toward the sun, past the silhouette law's 0.65 (horizonPanoramaRelight.selftest); at 0.00085 they stand at 0.62-0.63)
+  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00085, fogTintHex: 0xa1a89f, fogMix: 0.6,
     cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.5,
     lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 } },
   minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48] },
