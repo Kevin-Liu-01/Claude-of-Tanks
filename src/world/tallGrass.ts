@@ -72,6 +72,12 @@ interface TallGrassOptions {
   releaseMaterial?: ((material: THREE.Material) => void) | null;
   /** Candidate admissions per update while a ring is incomplete (cold rings take TALL_GRASS.coldCandidatesPerUpdate). */
   candidatesPerUpdate?: number;
+  /**
+   * (rock round 2, 2026-10-11, the map-revival lane; gauntlet wave 415: "soil, tufts and rubble at its foot") the
+   * boulders' feet (props.ts group.userData.rockFeet: centre and mean radius): the sward grows thicker and taller in the
+   * ring a metre and a half round each foot, where no hoof or blade reaches; none.
+   */
+  rockFeet?: ReadonlyArray<{ x: number; z: number; r: number }> | null;
 }
 
 export interface TallGrassRingState {
@@ -467,6 +473,25 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   const queryOff = typeof location !== 'undefined' && /[?&](tallgrass=off|ground=legacy)(&|$)/.test(location.search ?? '');
   const qualityScale = options.qualityScale ?? ((): number => (queryOff ? 0 : tallGrassQualityScale(getPreset())));
   const splatNoise = options.splatNoise ?? null;
+  // (rock round 2) the feet on a 16 m grid, and a point's weight in the ring round the nearest (1 at the foot, 0 by 1.5 m)
+  const footGrid = new Map<number, Array<{ x: number; z: number; r: number }>>();
+  for (const foot of options.rockFeet ?? []) {
+    const key = Math.floor(foot.x / 16) * 4096 + Math.floor(foot.z / 16);
+    const list = footGrid.get(key);
+    if (list) list.push(foot); else footGrid.set(key, [foot]);
+  }
+  const footWeight = (x: number, z: number): number => {
+    if (!footGrid.size) return 0;
+    let w = 0;
+    const gx = Math.floor(x / 16), gz = Math.floor(z / 16);
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      for (const foot of footGrid.get((gx + dx) * 4096 + gz + dz) ?? []) {
+        const d = Math.hypot(x - foot.x, z - foot.z) - foot.r;
+        if (d < 1.5) w = Math.max(w, d <= 0 ? 1 : 1 - d / 1.5);
+      }
+    }
+    return w;
+  };
   const group = new THREE.Group();
   group.name = 'tall-grass';
   const shared = makeSharedUniforms();
@@ -737,6 +762,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
     // some patches and grazed short in others; a sown crop stands even (no tussocks there)
     if (field._woodsAt) keep *= 1 - 0.85 * field._woodsAt(x, z); // a stand's shade: litter, little sward
+    // (rock round 2) a boulder's foot: the sward thick and tall against it (the stone's own seal keeps it out of the stone)
+    const foot = footWeight(x, z);
+    if (foot > 0) { keep *= 1 + 1.8 * foot; heightScale *= 1 + 0.4 * foot; }
     if (!cropTint && b.kind !== 'reed') {
       keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
       heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);

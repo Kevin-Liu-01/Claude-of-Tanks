@@ -579,6 +579,7 @@ function assembleWorld(
     blocked: groundCoverClearance(),
     renderer: (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null,
     splatNoise: sampleSplatNoise,
+    rockFeet: (props.group.userData.rockFeet as Array<{ x: number; z: number; r: number }> | undefined) ?? null, // (rock round 2)
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
