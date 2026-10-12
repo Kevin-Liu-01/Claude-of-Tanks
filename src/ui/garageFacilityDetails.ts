@@ -453,10 +453,11 @@ export function addGarageFacilityDetails({
     color: THREE.Color,
     materialClass: PrimitiveInstance['materialClass'],
     rotationZ = 0,
+    rotationX = 0,
   ): void => {
     boxInstances.push({
       matrix: clusterMatrix(
-        cluster, lateral, longitudinal, y, [width, height, length], 0, rotationZ,
+        cluster, lateral, longitudinal, y, [width, height, length], rotationX, rotationZ,
       ),
       color: color.clone(),
       materialClass,
@@ -636,6 +637,9 @@ export function addGarageFacilityDetails({
   });
   const shelterKind: ShelterKind = SHELTER_KINDS[variant.architecture] ?? 'portal';
   servicePurposeTags.add(`shelter:${shelterKind}`);
+  /** Whether a post stands at this lateral side's mid-bay (none on the inspection deck's side, which it would pierce). */
+  const midPostOn = (lateral: number, deckLateralSign: number): boolean => deckLateralSign === 0
+    || Math.sign(lateral) !== deckLateralSign;
   const servicePit = (cluster: FacilityCluster): void => {
     // the bay's floor is the pack's own hardstand pad; only the service pit's steel grating marks it, flush with it
     clusterBox(cluster, 0, 0.2, 0.035, 2.45, 0.03, 6.4, dark, 'equipment');
@@ -675,7 +679,7 @@ export function addGarageFacilityDetails({
     }
   };
 
-  const addTimberSnowShed = (cluster: FacilityCluster, cladLateralSign: number): void => {
+  const addTimberSnowShed = (cluster: FacilityCluster, cladLateralSign: number, deckLateralSign: number): void => {
     // Frosthollow: heavy timber posts on concrete pads carry wall plates and a steep board roof, its ridge along the bay,
     // deep in snow; the back gable and the far side are boarded; knee braces stiffen the walls. Its turret lifts on
     // shear legs (addPurposeBuiltServiceBay), so the shed carries no crane runway.
@@ -685,10 +689,12 @@ export function addGarageFacilityDetails({
     const tanPitch = (ridgeY - plateY) / postAt;
     for (const lateral of [-postAt, postAt]) {
       for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        if (longitudinal === 0 && !midPostOn(lateral, deckLateralSign)) continue;
         clusterBox(cluster, lateral, longitudinal, 0.15, 0.72, 0.3, 0.72, dark, 'masonry');
         clusterBox(cluster, lateral, longitudinal, 0.3 + (plateY - 0.3) / 2, 0.32, plateY - 0.3, 0.32, stain, 'painted');
         for (const sign of [-1, 1]) {
-          if (Math.abs(longitudinal + sign * 1.05) > BAY_HALF_L + 0.01) continue;
+          // no brace in the deck's wall: it would cross the walkway
+          if (Math.abs(longitudinal + sign * 1.05) > BAY_HALF_L + 0.01 || !midPostOn(lateral, deckLateralSign)) continue;
           clusterBeam(cluster, [lateral, longitudinal, plateY - 1.15], [lateral, longitudinal + sign * 1.05, plateY - 0.1],
             0.16, stain, 'painted');
         }
@@ -808,7 +814,7 @@ export function addGarageFacilityDetails({
     const back = -BAY_HALF_L - 0.24;
     clusterSurface(cluster, 'brick', 0, back, height / 2, 2 * BAY_HALF_W, height, 0.38);
     for (const lateral of windows) {
-      clusterSurface(cluster, 'glazing', lateral, back + 0.2, 3.45, 1.3, 2.3, 0.04);
+      clusterBox(cluster, lateral, back + 0.2, 3.45, 1.3, 2.3, 0.04, new THREE.Color(0x232a2e), 'painted'); // glazing
       clusterBox(cluster, lateral, back + 0.24, 2.26, 1.5, 0.12, 0.16, stone, 'masonry'); // sill
       for (let v = 0; v < 5; v += 1) {
         // the brick arch head: five voussoirs round the window's top
@@ -898,14 +904,15 @@ export function addGarageFacilityDetails({
     gableRoof(cluster, 'roofing', 1.25, ridgeY + 0.62, ridgeY + 0.95, 2 * BAY_HALF_L + 0.4);
   };
 
-  const addMonsoonPavilion = (cluster: FacilityCluster, cladLateralSign: number): void => {
+  const addMonsoonPavilion = (cluster: FacilityCluster, cladLateralSign: number, deckLateralSign: number): void => {
     // Monsoon: round concrete columns under a steep roof with deep eaves; gutters along both eaves run down to drain
     // channels round the bay, and the back is a ventilated timber screen over a concrete upstand.
-    const eaveY = 5.1, ridgeY = 7.6;
+    const eaveY = 5.5, ridgeY = 7.9; // the ring beams clear the Burlak gantry's bridge (5.22 m)
     const concrete = new THREE.Color(0x9a9a92);
     const drain = new THREE.Color(0x1d2224);
     for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
       for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        if (longitudinal === 0 && !midPostOn(lateral, deckLateralSign)) continue;
         clusterBox(cluster, lateral, longitudinal, 0.12, 0.8, 0.24, 0.8, dark, 'masonry');
         clusterCylinder(cluster, lateral, longitudinal, 0.24 + (eaveY - 0.24) / 2, 0.24, eaveY - 0.24, concrete, 0, 16);
       }
@@ -951,7 +958,7 @@ export function addGarageFacilityDetails({
     clusterCylinder(cluster, cladLateralSign * 2.6 || 2.6, back - 1.35, 2.25, 1.04, 0.1, dark, 0, 16);
   };
 
-  const addAvalancheGallery = (cluster: FacilityCluster, cladLateralSign: number): void => {
+  const addAvalancheGallery = (cluster: FacilityCluster, cladLateralSign: number, deckLateralSign: number): void => {
     // Glacier: a concrete avalanche gallery: a heavy back wall against the slope, the far side walled, a roof slab
     // falling from the mountain side to the valley side on columns with haunches, snow lying on it, scree behind.
     const concrete = new THREE.Color(0x8e9294);
@@ -967,7 +974,7 @@ export function addGarageFacilityDetails({
     }
     const columnSides = cladLateralSign !== 0 ? [-cladLateralSign * BAY_HALF_W] : [-BAY_HALF_W, BAY_HALF_W];
     for (const lateral of columnSides) {
-      for (const longitudinal of [0, BAY_HALF_L]) {
+      for (const longitudinal of [midPostOn(lateral, deckLateralSign) ? 0 : -1.4, BAY_HALF_L]) {
         const top = roofAt(longitudinal) - 0.3;
         clusterBox(cluster, lateral, longitudinal, top / 2, 0.6, top, 0.6, concrete, 'masonry');
         clusterBox(cluster, lateral - Math.sign(lateral) * 0.45, longitudinal, top - 0.25, 0.4, 0.5, 0.6, concrete, 'masonry');
@@ -976,10 +983,12 @@ export function addGarageFacilityDetails({
     if (cladLateralSign !== 0) {
       clusterBox(cluster, cladLateralSign * BAY_HALF_W, BAY_HALF_L, frontY / 2, 0.6, frontY, 0.6, concrete, 'masonry');
     }
-    // the roof slab and the snow on it (a mono-pitch: the slab and its cover turned about the lateral axis)
-    clusterSurface(cluster, 'render', 0, 0, (backY + frontY) / 2 + 0.05, 2 * BAY_HALF_W + 1.2, 0.5,
-      2 * BAY_HALF_L + 1.1, { rotationX: pitch });
-    clusterBox(cluster, 0, 0.2, (backY + frontY) / 2 + 0.45, 2 * BAY_HALF_W + 1.1, 0.34, 2 * BAY_HALF_L + 0.9, snow, 'painted');
+    // the roof slab and the snow on it, falling from the mountain side to the valley side (turned about the lateral axis;
+    // painted, so it casts the sun's shadow)
+    clusterBox(cluster, 0, 0, (backY + frontY) / 2 + 0.05, 2 * BAY_HALF_W + 1.2, 0.5, 2 * BAY_HALF_L + 1.1,
+      concrete, 'painted', 0, pitch);
+    clusterBox(cluster, 0, 0.1, (backY + frontY) / 2 + 0.47, 2 * BAY_HALF_W + 1.1, 0.34, 2 * BAY_HALF_L + 0.9,
+      snow, 'painted', 0, pitch);
     // scree heaped behind the back wall up to the roof, snow on it
     for (let k = 0; k < 7; k += 1) {
       const lateral = -BAY_HALF_W + k * (2 * BAY_HALF_W / 6);
@@ -1006,14 +1015,20 @@ export function addGarageFacilityDetails({
       }
     }
     clusterBox(cluster, 0, back - 1.6, 4 * layerH + 0.35, 2 * BAY_HALF_W + 2.2, 0.7, 1.2, strata[1], 'masonry', 0.06);
+    const faceSet = (layer: number): number => ((layer * 5) % 3 - 1) * 0.14;
     for (let row = 0; row < 3; row += 1) {
+      const y = 1.2 + row * 1.7;
+      const face = back + faceSet(Math.min(3, Math.floor(y / layerH)));
       for (let i = 0; i < 5; i += 1) {
-        clusterBox(cluster, -3.6 + i * 1.8 + (row % 2) * 0.9, back - 0.02, 1.2 + row * 1.7, 0.16, 0.16, 0.08, bolt, 'structure');
+        clusterBox(cluster, -3.6 + i * 1.8 + (row % 2) * 0.9, face + 0.03, y, 0.16, 0.16, 0.08, bolt, 'structure');
       }
     }
+    // scree at the foot of the faces, in the corners outside the bay
     for (let k = 0; k < 6; k += 1) {
-      const lateral = -BAY_HALF_W + 0.6 + k * 1.6;
-      clusterBox(cluster, lateral, back + 0.35, 0.18, 0.6 + (k % 3) * 0.2, 0.36, 0.5, strata[k % 4].clone().offsetHSL(0, 0, -0.04), 'masonry', (k % 3 - 1) * 0.25);
+      const sign = k % 2 ? 1 : -1;
+      const lateral = sign * (BAY_HALF_W + 0.45 + (k % 3) * 0.35);
+      clusterBox(cluster, lateral, back + 0.25 + Math.floor(k / 2) * 0.45, 0.2, 0.55 + (k % 3) * 0.2, 0.4, 0.5,
+        strata[k % 4].clone().offsetHSL(0, 0, -0.04), 'masonry', (k % 3 - 1) * 0.25);
     }
     // the lean-to: a wall plate bolted to the rock, rafters falling to a front beam on two posts, corrugated sheeting
     const backY = 6.1, frontY = 5.5;
@@ -1032,13 +1047,14 @@ export function addGarageFacilityDetails({
       2 * BAY_HALF_W + 0.9, 0.05, BAY_HALF_L - back + 0.6, { rotationX: pitch });
   };
 
-  const addMillBay = (cluster: FacilityCluster, cladLateralSign: number): void => {
+  const addMillBay = (cluster: FacilityCluster, cladLateralSign: number, deckLateralSign: number): void => {
     // Ironworks: heavy steel: deep columns at the corners and mid-sides on concrete plinths, sooty sheeting on the back
     // and the far side with X-bracing, trusses and a roof whose ridge carries a louvred monitor.
     const eaveY = 6.6, ridgeY = 7.9;
     const soot = new THREE.Color(0x3c3e40);
     for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
       for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        if (longitudinal === 0 && !midPostOn(lateral, deckLateralSign)) continue;
         clusterBox(cluster, lateral, longitudinal, 0.3, 1.0, 0.6, 1.0, dark, 'masonry');
         clusterBox(cluster, lateral, longitudinal, 0.6 + (eaveY - 0.6) / 2, 0.5, eaveY - 0.6, 0.36, steel, 'structure');
         clusterBox(cluster, lateral, longitudinal, 0.6 + (eaveY - 0.6) / 2, 0.12, eaveY - 0.6, 0.62, steel, 'structure');
@@ -1078,14 +1094,14 @@ export function addGarageFacilityDetails({
     }
     servicePit(cluster);
     switch (shelterKind) {
-      case 'timber-snow-shed': addTimberSnowShed(cluster, cladLateralSign); break;
+      case 'timber-snow-shed': addTimberSnowShed(cluster, cladLateralSign, deckLateralSign); break;
       case 'shade-hangar': addShadeHangar(cluster, cladLateralSign); break;
       case 'brick-bay': addBrickBay(cluster, cladLateralSign); break;
       case 'rail-shed': addRailShed(cluster, cladLateralSign); break;
-      case 'monsoon-pavilion': addMonsoonPavilion(cluster, cladLateralSign); break;
-      case 'avalanche-gallery': addAvalancheGallery(cluster, cladLateralSign); break;
+      case 'monsoon-pavilion': addMonsoonPavilion(cluster, cladLateralSign, deckLateralSign); break;
+      case 'avalanche-gallery': addAvalancheGallery(cluster, cladLateralSign, deckLateralSign); break;
       case 'rock-cut': addRockCut(cluster, cladLateralSign); break;
-      case 'mill-bay': addMillBay(cluster, cladLateralSign); break;
+      case 'mill-bay': addMillBay(cluster, cladLateralSign, deckLateralSign); break;
     }
   };
 
