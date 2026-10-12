@@ -20,6 +20,7 @@ import {
 } from '../propGeometry.ts';
 import { seededDraws, spentDraws, spentSeed } from './brokenDraws.ts';
 import { buildLegacyWreck } from './legacyWreck.ts';
+import { createCampKits, type CampKitBuilders } from './campKit.ts';
 import { deferredWreck, type DeferredWreck } from './fractureWreckJob.ts';
 import {
   SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedCollision, buildShedFar,
@@ -2100,29 +2101,39 @@ function lightMeta(
   brokenBuild: LightStructureBuilder | null = null,
   /** The settled wreck's registry key (a regional variant builds its own parts under its family's id). */
   wreckKey: string = id,
+  /**
+   * (the destructible-kits lane, round 4) The kind rebuilt member by member (campKit.ts) on `build`'s solids: `build`
+   * stays its collision and footprint and its draws are spent from the props stream first (the draw law); the redesign
+   * draws its own, casts through its own solids and settles its wreck from its own pieces.
+   */
+  redesign: { kit: CampKitBuilders; salt: number } | null = null,
 ): DestructibleBuildingType {
   const surfaceMaterial: DestructibleBuildingType['surfaceMaterial'] = debrisMaterial === 'canvas'
     ? 'structureCanvas'
     : debrisMaterial === 'metal' ? 'structureMetal' : 'structureWood';
   const instanceTintStrength = debrisMaterial === 'metal'
     ? 0.035 : debrisMaterial === 'canvas' ? 0.045 : 0.07;
+  const intact: LightStructureBuilder = redesign
+    ? (rng: Rng) => redesign.kit.build(spentDraws(build, rng, redesign.salt))
+    : build;
   const base = {
     id, family, cls: 'break' as const, mat: surfaceMaterial, surfaceMaterial,
     contact: 'ob' as const, collider: true as const,
-    hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
+    hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build: intact,
     instanceTintStrength,
+    ...(redesign ? { collisionBuild: () => build(_detailRng), shadowBuild: redesign.kit.shadow } : {}),
   };
   if (!brokenBuild && SETTLED_WRECK_KINDS.has(id)) {
     // (the destructible-kits lane, round 3, 2026-10-11) the broken state settled from the kind's own parts
     // (legacyWreck.ts): the shared debris's draws spent from the props stream, then the kind's own (brokenDraws.ts);
     // built when a copy first breaks or a late joiner lays one broken
     const legacy = (rng: Rng): THREE.BufferGeometry => debris(base, pal, rng, debrisMaterial);
-    const salt = settledWreckSalt(id);
+    const salt = settledWreckSalt(id), pieces = redesign ? redesign.kit.build : build;
     if (SETTLED_BUILDERS.has(wreckKey)) throw new Error(`${wreckKey}: a settled wreck registered twice`);
-    SETTLED_BUILDERS.set(wreckKey, { id, build, material: debrisMaterial });
+    SETTLED_BUILDERS.set(wreckKey, { id, build: pieces, material: debrisMaterial });
     const wreck = (rng: Rng): DeferredWreck => {
       const seed = spentSeed(legacy, rng, salt);
-      return deferredWreck({ kit: 'legacy', kind: wreckKey, seed }, () => settledLegacyWreck(id, build, seed, debrisMaterial));
+      return deferredWreck({ kit: 'legacy', kind: wreckKey, seed }, () => settledLegacyWreck(id, pieces, seed, debrisMaterial));
     };
     return { ...base, broken: (rng: Rng) => wreck(rng)(), brokenDeferred: wreck };
   }
@@ -2191,6 +2202,8 @@ function settledLegacyWreck(id: string, build: LightStructureBuilder, seed: numb
 
 const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure,
   merge: (parts) => merge(parts.map(ensureWorldNightEmissionMask)) });
+// (the destructible-kits lane, round 4) the military light kits rebuilt member by member (campKit.ts)
+const camp = createCampKits({ merge: mergeConnectedStructure });
 
 // ------------------------------------------------------------------------------------------ the fracture-ready sheds
 // (the destructible-kits lane, 2026-10-10; the owner: "our destructible buildings like the shed and bunkers that need
@@ -2251,13 +2264,17 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   stilthouse: lightMeta('stilthouse', 'wetland', 3.36, 4.46, 6.5, PAL.paleWood, makeStiltHouse),
   longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
   deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
-  commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, makeCommandTent, 'canvas'),
+  commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, makeCommandTent, 'canvas', null, 'commandtent',
+    { kit: camp.commandtent, salt: 0xc0de7 }),
   fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
-  guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, makeGuardPost, 'metal'),
-  motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, makeMotorPool, 'metal'),
+  guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, makeGuardPost, 'metal', null, 'guardpost',
+    { kit: camp.guardpost, salt: 0x6a2d7 }),
+  motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, makeMotorPool, 'metal', null, 'motorpool',
+    { kit: camp.motorpool, salt: 0x3007e }),
   quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal', makeQuonsetHutBroken),
   transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
-  checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
+  checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal', null, 'checkpointhut',
+    { kit: camp.checkpointhut, salt: 0xc4ec7 }),
   securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
   servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),

@@ -31,6 +31,7 @@ type Rng = () => number;
 type V3 = [number, number, number];
 type LegacyMaterial = 'wood' | 'metal' | 'canvas';
 type PartKind = 'ground' | 'post' | 'leaf' | 'sheet' | 'block' | 'small';
+const PART_KINDS: ReadonlySet<string> = new Set(['ground', 'post', 'leaf', 'sheet', 'block', 'small']);
 
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -39,6 +40,21 @@ const dot = (a: V3, b: V3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const nrm = (a: V3): V3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 const UP: V3 = [0, 1, 0];
+
+/** Smooth value noise in 0..1 (a named block's buckled sheet). */
+function buckleNoise(x: number, y: number, z: number, s: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const fx = x - xi, fy = y - yi, fz = z - zi;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), w = fz * fz * (3 - 2 * fz);
+  const h = (a: number, b: number, c: number): number => {
+    let q = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 2147483647) ^ Math.imul(s | 0, 1274126177);
+    q = Math.imul(q ^ (q >>> 13), 1103515245);
+    return ((q ^ (q >>> 16)) >>> 0) / 4294967296;
+  };
+  const l = (a: number, b: number, t: number): number => a + (b - a) * t;
+  return l(l(l(h(xi, yi, zi), h(xi + 1, yi, zi), u), l(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), u), v),
+    l(l(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), l(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w);
+}
 
 /** One part of the kind: its run, its box, its world bounds, what it is and the block it rides on (−1: none). */
 interface Part {
@@ -52,6 +68,10 @@ interface Part {
   owner: number;
   /** A window pane (its outward face lit at night): it shatters rather than falls whole. */
   glass: boolean;
+  /** Its members' triangle ranges within its run (one for a lone part): a cut leaves out a member wholly past it. */
+  members: [number, number][];
+  /** A piece its kit named (userData.piece): it falls as its kind says. */
+  named: boolean;
 }
 
 /** The box of a run from its own faces: the largest face's normal, the largest face's square to it, their cross. */
@@ -118,28 +138,52 @@ function classify(box: { h: V3; axes: [V3, V3, V3] }, lo: V3, hi: V3): PartKind 
   return vol < 1.2 ? 'small' : 'block';
 }
 
-/** The parts as one non-indexed geometry, each part its own run, with the anatomy the settle reads. */
+/**
+ * The parts as one non-indexed geometry, with the anatomy the settle reads: each part its own run, or (the
+ * destructible-kits lane, round 4) the parts of one piece together (userData.piece, 'kind:name': a wall with its
+ * casings and door, a roof with its fascias and gutter, a porch deck), of that kind. A pane is always its own (it
+ * shatters).
+ */
 function partsAnatomy(kind: string, parts: readonly THREE.BufferGeometry[], material: LegacyMaterial):
   { geometry: THREE.BufferGeometry; anatomy: KitFractureAnatomy; parts: Part[] } {
   const P: number[] = [], N: number[] = [], T: number[] = [], C: number[] = [];
   const runs: [number, number][] = [];
   const glass: boolean[] = [];
+  const forced: (PartKind | null)[] = [];
+  const memberRuns: [number, number][][] = [];
+  const groups: { members: THREE.BufferGeometry[]; pane: boolean; kind: PartKind | null }[] = [];
+  const byPiece = new Map<string, number>();
   for (const part of parts) {
-    const g = part.index ? part.toNonIndexed() : part;
-    const pos = g.getAttribute('position'), nor = g.getAttribute('normal'), uv = g.getAttribute('uv'), col = g.getAttribute('color');
-    const count = pos.count - (pos.count % 3);
-    runs.push([P.length / 9, count / 3]);
-    const lit = g.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+    const lit = part.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
     let pane = false;
     if (lit) for (let v = 0; v < lit.count && !pane; v++) pane = lit.getX(v) === 1;
-    glass.push(pane);
-    for (let v = 0; v < count; v++) {
-      P.push(pos.getX(v), pos.getY(v), pos.getZ(v));
-      if (nor) N.push(nor.getX(v), nor.getY(v), nor.getZ(v)); else N.push(0, 1, 0);
-      if (uv) T.push(uv.getX(v), uv.getY(v)); else T.push(0, 0);
-      if (col) C.push(col.getX(v), col.getY(v), col.getZ(v)); else C.push(0.5, 0.5, 0.5);
+    const piece = !pane && typeof part.userData.piece === 'string' ? part.userData.piece as string : null;
+    const at = piece === null ? undefined : byPiece.get(piece);
+    if (at !== undefined) { groups[at].members.push(part); continue; }
+    const head = piece?.split(':')[0] ?? '';
+    if (piece !== null) byPiece.set(piece, groups.length);
+    groups.push({ members: [part], pane, kind: PART_KINDS.has(head) ? head as PartKind : null });
+  }
+  for (const group of groups) {
+    const tri0 = P.length / 9, ranges: [number, number][] = [];
+    for (const part of group.members) {
+      const m0 = P.length / 9 - tri0;
+      const g = part.index ? part.toNonIndexed() : part;
+      const pos = g.getAttribute('position'), nor = g.getAttribute('normal'), uv = g.getAttribute('uv'), col = g.getAttribute('color');
+      const count = pos.count - (pos.count % 3);
+      for (let v = 0; v < count; v++) {
+        P.push(pos.getX(v), pos.getY(v), pos.getZ(v));
+        if (nor) N.push(nor.getX(v), nor.getY(v), nor.getZ(v)); else N.push(0, 1, 0);
+        if (uv) T.push(uv.getX(v), uv.getY(v)); else T.push(0, 0);
+        if (col) C.push(col.getX(v), col.getY(v), col.getZ(v)); else C.push(0.5, 0.5, 0.5);
+      }
+      if (g !== part) g.dispose();
+      ranges.push([m0, P.length / 9 - tri0 - m0]);
     }
-    if (g !== part) g.dispose();
+    memberRuns.push(ranges);
+    runs.push([tri0, P.length / 9 - tri0]);
+    glass.push(group.pane);
+    forced.push(group.kind);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
@@ -155,7 +199,7 @@ function partsAnatomy(kind: string, parts: readonly THREE.BufferGeometry[], mate
     for (let v = tri0 * 3; v < (tri0 + triN) * 3; v++) {
       for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], P[v * 3 + k]); hi[k] = Math.max(hi[k], P[v * 3 + k]); }
     }
-    const kindOf = triN ? classify(box, lo, hi) : 'small';
+    const kindOf = forced[index] ?? (triN ? classify(box, lo, hi) : 'small');
     const role: FractureRole = kindOf === 'ground' ? 'footing' : kindOf === 'post' ? 'post' : kindOf === 'leaf' ? 'wall'
       : kindOf === 'sheet' ? 'roof' : 'fitting';
     pieces.push({
@@ -163,13 +207,13 @@ function partsAnatomy(kind: string, parts: readonly THREE.BufferGeometry[], mate
       massKg: Math.max(1, 8 * box.h[0] * box.h[1] * box.h[2] * (material === 'metal' ? 600 : material === 'canvas' ? 40 : 350)),
       ...(kindOf === 'ground' ? { anchor: true as const } : {}),
     });
-    info.push({ index, kind: kindOf, c: box.c, h: box.h, axes: box.axes, lo, hi, owner: -1, glass: glass[index] });
+    info.push({ index, kind: kindOf, c: box.c, h: box.h, axes: box.axes, lo, hi, owner: -1, glass: glass[index], members: memberRuns[index], named: forced[index] !== null });
   });
   // what rides on a block (a window, a door, a sign, a unit on its roof; the roof it carries): within its bounds and off
-  // the ground, or a sheet lying on its top over its plan
+  // the ground, or a sheet lying on its top over its plan (a piece named by its kit falls as its kind says)
   const blocks = info.filter((p) => p.kind === 'block');
   for (const p of info) {
-    if (p.kind === 'block' || p.kind === 'ground' || p.lo[1] < 0.12) continue;
+    if (p.kind === 'block' || p.kind === 'ground' || p.lo[1] < 0.12 || forced[p.index]) continue;
     const host = blocks.find((b) => [0, 1, 2].every((k) => p.lo[k] >= b.lo[k] - 0.12 && p.hi[k] <= b.hi[k] + 0.12))
       ?? (p.kind === 'sheet' ? blocks.find((b) => Math.abs(p.lo[1] - b.hi[1]) < 0.2
         && p.c[0] > b.lo[0] && p.c[0] < b.hi[0] && p.c[2] > b.lo[2] && p.c[2] < b.hi[2]) : undefined);
@@ -198,6 +242,35 @@ function clampTris(t: SettleTris, axis: V3, at: V3, lo: number, hi: number): Set
       out.p.push(...q[k]); out.n.push(t.n[o], t.n[o + 1], t.n[o + 2]); out.c.push(t.c[o], t.c[o + 1], t.c[o + 2]);
     }
     for (let k = 0; k < 6; k++) out.t.push(t.t[tri * 6 + k]);
+  }
+  return out;
+}
+
+/** A piece of a run: its triangles and its members' ranges in them. */
+interface Cut { tris: SettleTris; members: [number, number][] }
+
+/**
+ * A run's members clamped between two planes along `axis` (clampTris): a member wholly past either plane is left out
+ * (it falls with the piece it lies in), the rest clamped and closed at the break. A lone part is clamped whole.
+ */
+function clampMembers(cut: Cut, axis: V3, at: V3, lo: number, hi: number): Cut {
+  if (cut.members.length < 2) {
+    const tris = clampTris(cut.tris, axis, at, lo, hi);
+    return { tris, members: [[0, tris.p.length / 9]] };
+  }
+  const out: Cut = { tris: { p: [], n: [], t: [], c: [] }, members: [] };
+  for (const [m0, mN] of cut.members) {
+    let mn = Infinity, mx = -Infinity;
+    for (let v = m0 * 3; v < (m0 + mN) * 3; v++) {
+      const sv = (cut.tris.p[v * 3] - at[0]) * axis[0] + (cut.tris.p[v * 3 + 1] - at[1]) * axis[1] + (cut.tris.p[v * 3 + 2] - at[2]) * axis[2];
+      mn = Math.min(mn, sv); mx = Math.max(mx, sv);
+    }
+    if (mx <= lo || mn >= hi) continue;
+    const one: SettleTris = { p: cut.tris.p.slice(m0 * 9, (m0 + mN) * 9), n: cut.tris.n.slice(m0 * 9, (m0 + mN) * 9),
+      t: cut.tris.t.slice(m0 * 6, (m0 + mN) * 6), c: cut.tris.c.slice(m0 * 9, (m0 + mN) * 9) };
+    const kept = clampTris(one, axis, at, lo, hi), start = out.tris.p.length / 9;
+    append(out.tris, kept);
+    out.members.push([start, kept.p.length / 9]);
   }
   return out;
 }
@@ -300,16 +373,18 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
   }
 
   // 2. a post from the ground snaps over a stub; its top falls once the rest has come down
-  const tops: { tris: SettleTris; axes: [V3, V3, V3]; out: V3 }[] = [];
+  const tops: { tris: SettleTris; axes: [V3, V3, V3]; out: V3; named: boolean }[] = [];
   for (const p of info) {
     if (p.kind !== 'post' || p.owner >= 0 || p.lo[1] > 0.15) continue;
-    const run = take(p);
-    const len = p.hi[1] - p.lo[1], at = p.lo[1] + Math.max(0.22, len * r(0.16, 0.5));
-    S.extra(clampTris(run, UP, [0, 0, 0], -Infinity, at), 0.88);
+    const run: Cut = { tris: take(p), members: p.members };
+    // (a steel column or post its kit named buckles low, a hand to a knee's height, and its top goes over with the blow)
+    const len = p.hi[1] - p.lo[1], at = p.lo[1] + Math.max(0.22, len * (p.named ? r(0.08, 0.24) : r(0.16, 0.5)));
+    S.extra(clampMembers(run, UP, [0, 0, 0], -Infinity, at).tris, 0.88);
     if (p.hi[1] - at > 0.12) {
       // (it falls away from the building, the way the blow pushes it: a top falling inward would stand on the heap)
-      const away = nrm(add(nrm([p.c[0] - cx + 1e-3, 0, p.c[2] - cz]), scl(blow, 0.6)));
-      tops.push({ tris: clampTris(run, UP, [0, 0, 0], at, Infinity), axes: p.axes, out: away });
+      const radial = nrm([p.c[0] - cx + 1e-3, 0, p.c[2] - cz]);
+      const away = p.named ? nrm(add(scl(radial, 0.35), blow)) : nrm(add(radial, scl(blow, 0.6)));
+      tops.push({ tris: clampMembers(run, UP, [0, 0, 0], at, Infinity).tris, axes: p.axes, out: away, named: p.named });
     }
   }
 
@@ -319,7 +394,8 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
   for (const b of info) {
     if (b.kind !== 'block' || b.owner >= 0) continue;
     const height = b.hi[1] - b.lo[1];
-    const k = material === 'canvas' ? r(0.1, 0.24) : r(0.2, 0.45), slope = r(0.05, 0.16);
+    // (a block its kit named — a clad cabin with its walls — goes lower: its sheet folds where a plain box would stand)
+    const k = material === 'canvas' ? r(0.1, 0.24) : b.named ? r(0.13, 0.3) : r(0.2, 0.45), slope = r(0.05, 0.16);
     // (never below a hand's breadth of its foot: a long block's slope would otherwise drive its struck end underground)
     const plane = (x: number, z: number): number =>
       Math.max(b.lo[1] + 0.12, b.lo[1] + height * k - slope * ((x - b.c[0]) * blow[0] + (z - b.c[2]) * blow[2]));
@@ -331,6 +407,27 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
       else p.owner = -1;
     }
     const caved = caveIn(tris, plane);
+    if (b.named) {
+      // (a block its kit named — a clad cabin, its walls with it — racks over toward the blow as it goes down: its walls
+      // lean the same way, a parallelogram, rather than standing square under the caved plane)
+      // and its sheet buckles: pushed in and out on a metre's wavelength, nothing at its foot
+      const lean0 = lean(blow, 0.35), k = r(0.22, 0.5), amp = r(0.14, 0.24), seed = Math.floor(rng() * 65536);
+      for (let i = 0; i < caved.p.length; i += 3) {
+        const x = caved.p[i], y = caved.p[i + 1], z = caved.p[i + 2], up = Math.max(0, y - b.lo[1]);
+        const fold = amp * Math.min(1, up / 0.45);
+        caved.p[i] = x + lean0[0] * k * up + fold * (buckleNoise(x * 1.45, y * 2.1, z * 1.45, seed) - 0.5) * 2;
+        caved.p[i + 2] = z + lean0[2] * k * up + fold * (buckleNoise(x * 1.45 + 17.3, y * 2.1, z * 1.45, seed + 1) - 0.5) * 2;
+      }
+      // (each facet lit as it now lies: the folds read in the light, not only at the edges)
+      for (let o = 0; o + 9 <= caved.p.length; o += 9) {
+        const e1: V3 = [caved.p[o + 3] - caved.p[o], caved.p[o + 4] - caved.p[o + 1], caved.p[o + 5] - caved.p[o + 2]];
+        const e2: V3 = [caved.p[o + 6] - caved.p[o], caved.p[o + 7] - caved.p[o + 1], caved.p[o + 8] - caved.p[o + 2]];
+        const cr = cross(e1, e2);
+        if (Math.hypot(cr[0], cr[1], cr[2]) < 1e-9) continue;
+        const n = nrm(cr);
+        for (let k3 = 0; k3 < 9; k3 += 3) { caved.n[o + k3] = n[0]; caved.n[o + k3 + 1] = n[1]; caved.n[o + k3 + 2] = n[2]; }
+      }
+    }
     if (b.lo[1] > 0.25) {
       tilt(caved, centreOf(caved), lean(blow, 0.4), r(0.22, 0.5));
       S.drop(bodyOf(caved, b.axes), r(-0.45, 0.45), scl(lean(blow, 0.6), r(0.3, 1.1)), { maxTilt: 1.1, ceiling: height + 0.7 });
@@ -342,7 +439,8 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
   ceiling = Math.max(ceiling, blockTop + 0.35);
 
   // (what stands on a roof — a mast and its rungs, a chimney, a stack — falls as one: its touching raised parts)
-  const raised = info.filter((p) => !laid.has(p.index) && p.owner < 0 && (p.kind === 'post' || p.kind === 'small') && p.lo[1] > 0.3);
+  // (a kit that names its pieces has said what falls together: its pieces are not gathered here)
+  const raised = info.filter((p) => !laid.has(p.index) && p.owner < 0 && !p.named && (p.kind === 'post' || p.kind === 'small') && p.lo[1] > 0.3);
   const group = new Map<number, number>(raised.map((p) => [p.index, p.index]));
   const root = (i: number): number => { while (group.get(i) !== i) i = group.get(i)!; return i; };
   const gap = (a: Part, b: Part): number => Math.max(0, ...[0, 1, 2].map((k) => Math.max(a.lo[k] - b.hi[k], b.lo[k] - a.hi[k])));
@@ -372,14 +470,20 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
   }
 
   // 5. the posts' tops fall about their breaks
-  for (const t of tops) S.topple(bodyOf(t.tris, t.axes), lean(t.out, 0.5), Math.PI / 2, { minSwing: 1.2, ceiling });
+  // (a named column's top lies where it fell, on what it fell on, rather than being moved out to the rim)
+  for (const t of tops) {
+    S.topple(bodyOf(t.tris, t.axes), lean(t.out, 0.5), Math.PI / 2, { minSwing: 1.2, ceiling: t.named ? Math.max(ceiling, top * 0.45) : ceiling });
+  }
 
   // 6. the small things (and whatever rode a block that fell apart) are thrown, before the roofs come down on them
   for (const p of info) {
     if (laid.has(p.index) || (p.kind === 'sheet' && p.owner < 0)) continue;
     const out = nrm(add(nrm([p.c[0] - cx + 1e-3, 0, p.c[2] - cz]), scl(blow, 0.8)));
     const tris = take(p);
-    S.lie(bodyOf(tris, p.axes), rng() * Math.PI * 2, scl(lean(out, 0.5), r(0.3, 1.6)), rng() < 0.3, r(-0.5, 0.5),
+    // (a thing its kit named — a rod, a pipe, a ladder, a lamp — comes down by where it stood, along its own length)
+    const L = p.named ? p.axes[[0, 1, 2].sort((a, b) => p.h[b] - p.h[a])[0]] : null;
+    const yaw = L ? Math.atan2(L[2], L[0] || 1e-6) + r(-0.25, 0.25) : rng() * Math.PI * 2;
+    S.lie(bodyOf(tris, p.axes), yaw, scl(lean(out, 0.5), p.named ? r(0.1, 0.6) : r(0.3, 1.6)), rng() < 0.3, r(-0.5, 0.5),
       { ceiling: Math.min(ceiling, 1.3) });
   }
 
@@ -394,21 +498,34 @@ export function buildLegacyWreck(kind: string, parts: readonly THREE.BufferGeome
         const n = Math.min(3, Math.ceil(len / 3.2));
         return Array.from({ length: n - 1 }, (_, i) => -len / 2 + (len * (i + 1)) / n + r(-0.12, 0.12) * (len / n));
       };
-      const strips = (from: SettleTris[], axis: V3, cuts: number[]): SettleTris[] => from.flatMap((piece) => {
+      const strips = (from: Cut[], axis: V3, cuts: number[]): Cut[] => from.flatMap((piece) => {
         const bounds = [-Infinity, ...cuts, Infinity];
-        return bounds.slice(1).map((hi, i) => clampTris(piece, axis, p.c, bounds[i], hi)).filter((q) => q.p.length);
+        return bounds.slice(1).map((hi, i) => clampMembers(piece, axis, p.c, bounds[i], hi)).filter((q) => q.tris.p.length);
       });
-      const halves = strips(strips([tris], p.axes[L], cutsOf(2 * p.h[L])), p.axes[M], cutsOf(2 * p.h[M]));
+      // (a roof or a truss its kit named comes down as its frame breaks it: in one to three lengths along its span, none
+      // across, each tipped a little the way the blow went and all moved together, so it lands as a roof, not as tiles)
+      const namedCuts = (len: number): number[] => {
+        const n = Math.min(3, Math.max(1, Math.round(len / 4.2)));
+        return Array.from({ length: n - 1 }, (_, i) => -len / 2 + (len * (i + 1)) / n + r(-0.1, 0.1) * (len / n));
+      };
+      const halves = (p.named
+        ? strips([{ tris, members: p.members }], p.axes[L], namedCuts(2 * p.h[L]))
+        : strips(strips([{ tris, members: p.members }], p.axes[L], cutsOf(2 * p.h[L])), p.axes[M], cutsOf(2 * p.h[M])))
+        .map((q) => q.tris);
+      const together = p.named ? scl(lean(blow, 0.3), r(0.15, 0.8)) : null;
       for (const half of halves) {
-        const body = bodyOf(half, p.axes), shift = scl(lean(blow, 0.7), r(0.1, 0.8));
+        const body = bodyOf(half, p.axes), shift = together ?? scl(lean(blow, 0.7), r(0.1, 0.8));
         if (material === 'canvas') {
           // (canvas drapes: laid out flat over what is under it, along the way it hung)
           const along = p.axes[L];
           S.lie(body, Math.atan2(along[2], along[0]) + r(-0.3, 0.3), shift, false, r(-0.12, 0.12), { ceiling });
         } else {
-          tilt(half, body.centre, lean(blow, Math.PI), r(0.05, 0.4));
+          tilt(half, body.centre, lean(blow, p.named ? 0.5 : Math.PI), p.named ? r(0.04, 0.22) : r(0.05, 0.4));
           body.centre = centreOf(half);
-          S.drop(body, r(-0.35, 0.35), shift, { maxTilt: 1.2, ceiling });
+          // (a named roof rests on what it falls on — drums, stubs, the trusses under it — rather than being moved out
+          // to the rim: a little less tipping, and the heap may stand to six tenths of the work's height under it)
+          S.drop(body, p.named ? r(-0.12, 0.12) : r(-0.35, 0.35), shift,
+            p.named ? { maxTilt: 0.7, ceiling: Math.max(ceiling, top * 0.6) } : { maxTilt: 1.2, ceiling });
         }
       }
     }

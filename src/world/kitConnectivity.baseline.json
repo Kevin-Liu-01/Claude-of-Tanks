@@ -803,10 +803,6 @@
   "floating": 0,
   "dangling": 2
  },
- "light:commandtent/intact": {
-  "floating": 0,
-  "dangling": 2
- },
  "light:commsmast/intact": {
   "floating": 0,
   "dangling": 6
@@ -829,10 +825,6 @@
  },
  "light:greenhouse/broken": {
   "floating": 6,
-  "dangling": 0
- },
- "light:guardpost/intact": {
-  "floating": 4,
   "dangling": 0
  },
  "light:habdome/intact": {

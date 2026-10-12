@@ -1531,6 +1531,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/legacyWreck.selftest.mjs',
     // ... and a wreck's every member resting on something (kitConnectivity's rule)
     'src/world/maps/wreckContact.selftest.mjs',
+    // ... and the camp kits rebuilt member by member on their old solids and draws (round 4)
+    'src/world/maps/campKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
