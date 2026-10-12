@@ -47,11 +47,11 @@
       "concealers": 5837
     },
     "steppe": {
-      "bytes": 1402974,
-      "sha256": "0f371b7591a6904b2f79b4d527399a97bf7546085589b9fb0a6b28f7ea5c99b1",
-      "obstacles": 2031,
-      "colliders": 1877,
-      "concealers": 812
+      "bytes": 1312280,
+      "sha256": "067691a5accde1be593f2673e06528a1097ca4ea25dd2e495ffba3a92068879f",
+      "obstacles": 2218,
+      "colliders": 2079,
+      "concealers": 1210
     },
     "railyard": {
       "bytes": 1532312,
@@ -281,11 +281,11 @@
         "concealers": 5611
       },
       "steppe": {
-        "bytes": 1655149,
-        "sha256": "6925278e7873074b922b06811a75133ba8415e49f53cd930ba781185b9c8133f",
-        "obstacles": 2249,
-        "colliders": 1970,
-        "concealers": 842
+        "bytes": 1547182,
+        "sha256": "6f31a95f1d261576a14c1f3561328320f63bd32e9db07a6098b17cbe6fbf0f58",
+        "obstacles": 2400,
+        "colliders": 2138,
+        "concealers": 1210
       },
       "railyard": {
         "bytes": 1716565,
