@@ -318,6 +318,32 @@ function buildFilms() {
   }
 }
 
+// --- the takes as Studio presets (owner 2026-10-12: "keep our code for these videos and setup preserved so we can always
+// tweak them, and also just show them as presets u can access in /studio") ------------------------------------------
+// Each take's scene exactly as the Studio saves it (its code in the shot library, tools/media-r5/site50-shots/<id>.json,
+// whose git history is the take's version history), and scenes/index.json, which the Studio's Director workspace lists
+// (src/ui/studioProductionPanel.ts): the take's titles in both languages, its map, its length, its thumbnail and its
+// scene. Loading a card stages the take as it was filmed, ready to change and film again.
+function buildScenes() {
+  const library = join(ROOT, 'tools/media-r5/site50-shots');
+  const takes = [];
+  for (const id of takeIds) {
+    const source = join(library, `${id}.json`);
+    if (!existsSync(source)) continue;
+    copy(join(OUT, 'scenes', `${id}.scene.json`), source);
+    const scene = JSON.parse(readFileSync(source, 'utf8'));
+    const t = PICKS.takes[id];
+    takes.push({ id, title: { en: t.en, zh: t.zh }, short: { en: t.shortEn, zh: t.shortZh }, map: scene.map ?? t.map,
+      durationMs: scene.storyboard?.durationMs ?? null, scene: `${BASE_URL}/scenes/${id}.scene.json`,
+      thumb: `${BASE_URL}/stills/${id}-thumb.webp` });
+  }
+  const index = join(OUT, 'scenes', 'index.json');
+  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection,
+    source: 'The site fifty\'s takes as Studio scenes: each the scene its 4K final was filmed from (tools/media-r5/site50-shots)',
+    takes }, null, 1)}\n`);
+  record(index, null, { takes: takes.length });
+}
+
 // --- the archive and the manifest ---------------------------------------------------------------------------------
 function mapNames() {
   const catalog = join(ROOT, 'src/ui/i18nCatalog.en-US.json');
@@ -374,6 +400,7 @@ function main() {
   if (want('reels')) buildReels();
   if (want('frames')) buildFrames(frames);
   if (want('films')) buildFilms();
+  if (want('scenes')) buildScenes();
   const proxies = want('proxies') ? buildProxies() : null;
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of

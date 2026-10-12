@@ -207,6 +207,9 @@ function wireGame() {
     /Assets \+ captions are the site fifty's stills/);
   const hud = PICKS.hudEditor;
   swap('src/ui/hudEditor.ts', /const BACKDROP='[^']+';/, () => `const BACKDROP='${still(hud.id, hud.still)}';`, 'HUD editor backdrop');
+  // the Studio's Director lists the collection's takes as presets (site-media.mjs writes scenes/index.json)
+  swap('src/ui/studioProductionPanel.ts', /const SITE_TAKES_INDEX = '\/media\/[^']+\/scenes\/index\.json';/,
+    () => `const SITE_TAKES_INDEX = '${C}/scenes/index.json';`, 'Studio takes index');
   // the tools that measure or stage these surfaces follow them
   swap('tools/cold-load-probe.mjs', /\.filter\(\(row\) => row\.name\.includes\('\/media\/(?:featured|site50-r\d+\/stills)\/'\)\)/,
     () => `.filter((row) => row.name.includes('${C}/stills/'))`, 'cold-load probe featured images');
