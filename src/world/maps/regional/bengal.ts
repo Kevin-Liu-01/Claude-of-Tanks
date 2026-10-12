@@ -8,7 +8,11 @@ import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type Regi
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, sheetWall, veranda } from './vernacular.ts';
+import { bengaliWord } from './lettering.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+
+/** The signboards' lettering: a deep red on a pale board, a warm white on a dark one. */
+const SIGN_DARK = rgb(0x8e1d1a), SIGN_PALE = rgb(0xf0e8d4);
 
 const SHUTTERS: readonly Rgb[] = [0x3f6f9a, 0x4f8a62, 0x8a4a3a, 0x6a5a46].map(rgb);
 
@@ -129,7 +133,10 @@ const brickShop: RegionalBuilder = (ctx) => {
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.2, bucket: 'plaster', parapet: 0.8 }, gableBucket: wall,
     openings, chimneys: [], gutters: null, verge: null,
   }, dialect);
-  faceBox(sink, 'structureWood', frame.faces.front, 0, 3.0, 0.05, W - 0.8, 0.6, 0.05, { colour: pick(rng, PAINTED_SHEET), decor: true });
+  // the signboard and the shop's name painted on it in Bengali, the paint dark on a pale board and pale on a dark one
+  const board = pick(rng, PAINTED_SHEET), pale = board[0] + board[1] + board[2] > 1.5;
+  faceBox(sink, 'structureWood', frame.faces.front, 0, 3.0, 0.05, W - 0.8, 0.6, 0.05, { colour: board, decor: true });
+  bengaliWord(sink, 'structureWood', frame.faces.front, 0, 3.0, 0.079, W - 1.2, 0.34, pale ? SIGN_DARK : SIGN_PALE);
   return sink.finish();
 };
 

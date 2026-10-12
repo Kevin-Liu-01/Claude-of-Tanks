@@ -4,7 +4,7 @@
 // across a facade (the render chipped to the masonry round a dark crater); a shell hole through a wall; the soot of a
 // burnt storey; a cast-iron balcony railing; the white turbaned stones (nišani) of a Muslim graveyard. All dressing (no
 // collision); the kit draws their choices from the building's look stream (ctx.variant), never the build stream.
-import { PartSink, faceBox, facePanel, facePoint, rgb, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
 
 /** The Austro-Hungarian casements, painted cream; the mahala's dark timber; the doors' oil paints. */
 export const AH_FRAME = rgb(0xe2dccb);
@@ -41,17 +41,67 @@ export function choose<T>(r: number, list: readonly T[]): T {
   return list[Math.min(list.length - 1, Math.floor(r * list.length))];
 }
 
+/** The sheeting's UV density: its surface's texture spread to a texel's breadth across a sheet (flat polythene). */
+const SHEET_DENSITY = 0.02;
 /**
- * UNHCR plastic sheeting nailed over a window mouth (the glass gone): the pale sheet a little proud of the wall, the
- * agency's blue band across it, battens holding its edges. (u, y) is the bottom-centre of the opening.
+ * The agency's name printed on its sheeting: UNHCR in its blue, block letters `lh` high, centred at (u, y) on the
+ * sheet's face `o` out, with the emblem's open wreath to their left. Flat ink (single quads a few millimetres proud).
+ */
+function unhcrPrint(sink: PartSink, face: Face, u: number, y: number, o: number, lh: number): void {
+  const ink = { ...DECOR, colour: UNHCR_BLUE, density: SHEET_DENSITY };
+  const lw = lh * 0.68, t = lh * 0.17, gap = lh * 0.26;
+  const bar = (u0: number, y0: number, u1: number, y1: number) => facePanel(sink, 'structureMetal', face, (u0 + u1) / 2, (y0 + y1) / 2, o, u1 - u0, y1 - y0, ink);
+  // a stroke between two points (the diagonals of the N and the R's leg), `t` wide across it
+  const slant = (u0: number, y0: number, u1: number, y1: number) => {
+    const len = Math.hypot(u1 - u0, y1 - y0), nu = (-(y1 - y0) / len) * t / 2, ny = ((u1 - u0) / len) * t / 2;
+    sink.quad('structureMetal', facePoint(face, u0 - nu, y0 - ny, o), facePoint(face, u1 - nu, y1 - ny, o),
+      facePoint(face, u1 + nu, y1 + ny, o), facePoint(face, u0 + nu, y0 + ny, o), ink);
+  };
+  const letters = 5, wreath = lh * 0.9, total = wreath + gap + letters * lw + (letters - 1) * gap;
+  const x = u - total / 2, y0 = y - lh / 2, y1 = y + lh / 2;
+  // the wreath: an open ring of short leaves round a figure under a roof of two hands
+  const cx = x + wreath / 2, r = wreath / 2;
+  for (let k = 0; k < 6; k++) {
+    const a0 = -Math.PI * 0.35 + (k / 6) * Math.PI * 1.7 - Math.PI / 2, a1 = a0 + Math.PI * 0.2;
+    slant(cx + Math.cos(a0) * r, y + Math.sin(a0) * r, cx + Math.cos(a1) * r, y + Math.sin(a1) * r);
+  }
+  slant(cx - r * 0.55, y - r * 0.1, cx, y + r * 0.4); slant(cx, y + r * 0.4, cx + r * 0.55, y - r * 0.1);
+  // U N H C R
+  let lx = x + wreath + gap;
+  const next = () => { const at = lx; lx += lw + gap; return at; };
+  { const a = next(); bar(a, y0, a + t, y1); bar(a + lw - t, y0, a + lw, y1); bar(a, y0, a + lw, y0 + t); }
+  { const a = next(); bar(a, y0, a + t, y1); bar(a + lw - t, y0, a + lw, y1); slant(a + t / 2, y1 - t / 2, a + lw - t / 2, y0 + t / 2); }
+  { const a = next(); bar(a, y0, a + t, y1); bar(a + lw - t, y0, a + lw, y1); bar(a + t, y - t / 2, a + lw - t, y + t / 2); }
+  { const a = next(); bar(a, y0, a + t, y1); bar(a + t, y1 - t, a + lw, y1); bar(a + t, y0, a + lw, y0 + t); }
+  { const a = next(), mid = y + lh * 0.05; bar(a, y0, a + t, y1); bar(a + t, y1 - t, a + lw - t, y1); bar(a + t, mid - t / 2, a + lw - t, mid + t / 2);
+    bar(a + lw - t, mid - t / 2, a + lw, y1 - t / 2); slant(a + t + lw * 0.12, mid, a + lw - t / 2, y0 + t / 2); }
+}
+
+/**
+ * UNHCR plastic sheeting nailed over a window mouth (the glass gone): the woven polythene sheet a little proud of the
+ * wall and creased where it was folded, the agency's name printed across it in its blue with its emblem, the battens
+ * nailed along its top and its foot. (u, y) is the bottom-centre of the opening. (Two look draws, as before: the sag and the
+ * print's height.)
  */
 export function unhcrSheet(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number): void {
-  const sag = 0.02 + look() * 0.03;
-  facePanel(sink, 'structureMetal', face, u, y + h / 2, 0.025 + sag, w + 0.08, h + 0.08, { ...DECOR, colour: UNHCR_WHITE });
-  if (h > 0.7) facePanel(sink, 'structureMetal', face, u, y + h * (0.42 + look() * 0.2), 0.03 + sag, w + 0.06, Math.min(0.22, h * 0.14), { ...DECOR, colour: UNHCR_BLUE });
-  const batten: Rgb = [0.42, 0.35, 0.27];
-  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.05, w + 0.16, 0.06, 0.04, { ...DECOR, colour: batten, fine: true });
+  const sag = 0.02 + look() * 0.03, o = 0.025 + sag;
+  // (the sheet's texture spread to a texel's breadth: flat polythene, never the ribbed sheet metal it read as)
+  facePanel(sink, 'structureMetal', face, u, y + h / 2, o, w + 0.08, h + 0.08, { ...DECOR, colour: UNHCR_WHITE, density: SHEET_DENSITY });
+  // the creases of its folding: two long folds across it, a shade down
+  const crease = { ...DECOR, colour: shade(UNHCR_WHITE, 0.86), density: SHEET_DENSITY }, k = sag * 20;
+  for (const [a, b] of [[0.2 + k * 0.1, 0.62 - k * 0.08], [0.78 - k * 0.12, 0.3 + k * 0.1]] as const) {
+    const ua = u - w / 2, ub = u + w / 2, ya = y + h * a, yb = y + h * b, n = 0.012;
+    sink.quad('structureMetal', facePoint(face, ua, ya - n, o + 0.002), facePoint(face, ub, yb - n, o + 0.002),
+      facePoint(face, ub, yb + n, o + 0.002), facePoint(face, ua, ya + n, o + 0.002), crease);
+  }
+  if (h > 0.7) {
+    const lh = Math.min(0.2, (w - 0.1) / 6.6, h * 0.22);
+    unhcrPrint(sink, face, u, y + h * (0.42 + look() * 0.2), o + 0.004, lh);
+  }
+  // the battens nailed over its edges into the wall (seated on the wall, standing a little proud of the sheet)
+  const batten: Rgb = [0.42, 0.35, 0.27], bo = { ...DECOR, colour: batten, fine: true };
+  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, bo);
+  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.04, w + 0.16, 0.06, 0.08, bo);
 }
 
 /**

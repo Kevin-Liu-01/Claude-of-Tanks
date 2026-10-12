@@ -4,6 +4,7 @@
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
 import type { WindowStyle } from './openings.ts';
+import { cjkGlyphs } from './lettering.ts';
 import type { RegionalBuildContext } from './types.ts';
 
 export function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -206,15 +207,23 @@ export function soot(sink: PartSink, face: Face, u0: number, u1: number, y0: num
  */
 export function signboard(sink: PartSink, face: Face, u: number, y: number, h: number, colour: Rgb, out = 0.75): void {
   faceBox(sink, 'structureWood', face, u, y - h / 2, out, 0.07, h, 0.6, { colour, decor: true });
-  faceBox(sink, 'structureWood', face, u, y - h / 2, out, 0.09, h * 0.8, 0.16, { colour: GILT, decor: true, fine: true });
   faceBox(sink, 'structureMetal', face, u, y + 0.04, out / 2, 0.05, 0.05, out, { colour: IRON, decor: true, fine: true });
+  // the shop's name gilded down both faces in a column of characters (wave 406b: "blank plates")
+  const cell = 0.34, count = Math.floor((h - 0.2) / cell);
+  for (const side of [-1, 1]) {
+    const n: Vec3 = [side * face.u[0], 0, side * face.u[2]], c = facePoint(face, u + side * 0.035, 0, out);
+    const board: Face = { origin: c, u: [n[2], 0, -n[0]], out: n, width: 0.6 };
+    cjkGlyphs(sink, 'structureWood', board, 0, y - 0.1 - cell / 2, 0.003, cell, count, true, GILT);
+  }
 }
 
 /** A horizontal name board over a shopfront: lacquer with a gilt lettering strip. (u, y) its centre. */
 export function nameBoard(sink: PartSink, face: Face, u: number, y: number, w: number, colour: Rgb): void {
   if (w < 0.6) return;
   faceBox(sink, 'structureWood', face, u, y, 0.05, w, 0.52, 0.06, { colour, decor: true, fineSides: true });
-  faceBox(sink, 'structureWood', face, u, y, 0.09, w * 0.72, 0.26, 0.02, { colour: GILT, decor: true, fine: true });
+  // the name gilded along it, a row of characters (wave 406b: "blank plates")
+  const cell = 0.36, count = Math.max(2, Math.min(6, Math.floor((w * 0.8) / cell)));
+  cjkGlyphs(sink, 'structureWood', face, u - ((count - 1) * cell) / 2, y, 0.082, cell, count, false, GILT);
 }
 
 /** A paper lantern hung under an eave (decor): a red drum on a cord. (u, y) its top. */

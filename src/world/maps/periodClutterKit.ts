@@ -17,6 +17,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { DESTRUCTIBLE_TYPES, type DestructiblePropType } from './inhabitKit.ts';
 import { spentDraws } from './brokenDraws.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { PartSink, type Face } from './regional/geometry.ts';
+import { letterText } from '../landmarks/lettering.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -120,6 +122,8 @@ const STRIPE_RED: Palette = [0.0, 0.58, 0.38];
 const STRIPE_WHITE: Palette = [0.1, 0.06, 0.84];
 const CRATE_OLIVE: Palette = [0.2, 0.22, 0.3];
 const STENCIL: Palette = [0.12, 0.1, 0.14];
+/** The fingerpost's weathered timber: grey-brown, never the sawn timber's warm orange. */
+const POST: Palette = [0.08, 0.14, 0.3];
 const LEAD: Palette = [0.6, 0.04, 0.42];
 
 // ---- the barrier's period form: a log barricade on cross trestles --------------------------------------------------
@@ -181,32 +185,82 @@ function bLogBarricadeBroken(rng: Rng): THREE.BufferGeometry {
 
 // ---- the road sign's period form: an enamel fingerpost --------------------------------------------------------------
 
-/** One finger board: a white enamel plate with its dark rim, pointed at its far end. */
-function fingerBoard(length: number, o: Rng): THREE.BufferGeometry[] {
+/**
+ * The fingerpost's names on each dated map (the buildings lane, 2026-10-11; wave 406b on Suzhou Creek: "a bare
+ * fingerpost with blank plates"): its two boards' places down the roads, and the place's own name on the plate, in the
+ * map's own language and its period's names, in the landmarks' sign-writer's alphabet (landmarks/lettering.ts).
+ */
+export const FINGERPOST_NAMES: Readonly<Record<string, readonly [string, string, string]>> = Object.freeze({
+  blackglass: ['THE BUND', 'NORTH STATION', 'SOOCHOW CREEK'],
+  fjord: ['NARVIK', 'GRATANGEN', 'BJERKVIK'],
+  longleaf: ['LEESVILLE', 'ALEXANDRIA', 'PEASON'],
+  verdant: ['БЕЛГОРОД', 'ОБОЯНЬ', 'ПРОХОРОВКА'],
+  autumn: ['CAEN', 'BAYEUX', 'TILLY'],
+  monsoon: ['IMPHAL', 'DIMAPUR', 'KOHIMA'],
+  polders: ['VLISSINGEN', 'BERGEN OP ZOOM', 'WOENSDRECHT'],
+  reservoir: ['SCHMIDT', 'HEIMBACH', 'RURBERG'],
+  alpine: ['SUSA', 'LANSLEBOURG', 'MONT-CENIS'],
+  foundry: ['SAARBRÜCKEN', 'SAARLOUIS', 'VÖLKLINGEN'],
+  winter: ['ZAKOPANE', 'NOWY TARG', 'PORONIN'],
+  steppe: ['АКМОЛИНСК', 'АТБАСАР', 'СОВХОЗ'],
+});
+
+/**
+ * A line of the sign-writer's alphabet as one baked part: `text` centred at `u` along `face` (a face in the part's own
+ * frame), its baseline at `y`, capitals `cap` high (set smaller to fit `maxWidth`), in the rim's enamel.
+ */
+function enamelText(text: string, face: Face, u: number, y: number, cap: number, maxWidth: number, o: Rng): THREE.BufferGeometry | null {
+  const sink = new PartSink([0, 0]);
+  letterText(sink, 'structureMetal', face, text, u, y, { capHeight: cap, maxWidth, colour: [0, 0, 0], proud: 0.0015 });
+  const strokes = sink.finish().structureMetal;
+  if (!strokes.length) return null;
+  // (the baked pool's attributes alone: position, normal, uv and the enamel's colour)
+  for (const g of strokes) for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+  return P(merge(strokes), ENAMEL_RIM, 0.03, o);
+}
+
+/**
+ * One finger board: a white enamel plate with its dark rim, pointed at its far end, the place's name along it in the
+ * rim's enamel on both faces, each read left to right from its own side.
+ */
+function fingerBoard(length: number, name: string | undefined, o: Rng): THREE.BufferGeometry[] {
   const out = [P(box(length, 0.2, 0.03), ENAMEL, 0.04, o).translate(length / 2, 0, 0)];
   for (const y of [-0.105, 0.105]) out.push(P(box(length, 0.022, 0.034), ENAMEL_RIM, 0.04, o).translate(length / 2, y, 0));
   const tip = P(box(0.15, 0.15, 0.03), ENAMEL, 0.04, o);
   tip.rotateZ(Math.PI / 4);
   out.push(tip.translate(length, 0, 0));
+  if (name) {
+    const mid = (length - 0.08) / 2 + 0.02, cap = 0.085;
+    for (const side of [-1, 1]) {
+      const face: Face = { origin: [0, 0, side * 0.015], u: [side, 0, 0], out: [0, 0, side], width: length };
+      const g = enamelText(name, face, side * mid, -cap / 2, cap, length - 0.3, o);
+      if (g) out.push(g);
+    }
+  }
   return out;
 }
 /**
  * The road sign's period form: a timber post under a small pyramid cap with two enamel finger boards at the top,
  * pointing the roads' two ways (the era's white enamel with its dark rim, the kind a crossroads in 1940s Europe
- * carried), and a small enamel place plate below them.
+ * carried), and a small enamel place plate below them; the places' names on them where the map has them.
  */
-function bFingerpost(rng: Rng): THREE.BufferGeometry {
+function bFingerpost(rng: Rng, names?: readonly [string, string, string]): THREE.BufferGeometry {
   const o = spentDraws(DESTRUCTIBLE_TYPES.roadsign.build, rng, 0x51f9);
-  const parts: THREE.BufferGeometry[] = [P(box(0.12, 2.7, 0.12), TIMBER, 0.08, o).translate(0, 1.35, 0)];
-  const cap = P(new THREE.ConeGeometry(0.11, 0.12, 4), TIMBER, 0.06, o);
+  const parts: THREE.BufferGeometry[] = [P(box(0.12, 2.7, 0.12), POST, 0.08, o).translate(0, 1.35, 0)];
+  const cap = P(new THREE.ConeGeometry(0.11, 0.12, 4), POST, 0.06, o);
   cap.rotateY(Math.PI / 4);
   parts.push(cap.translate(0, 2.76, 0));
   const a = (o() - 0.5) * 0.6;
-  for (const [y, yaw, len] of [[2.5, a, 0.95 + o() * 0.2], [2.22, a + Math.PI + (o() - 0.5) * 0.9, 0.85 + o() * 0.2]] as const) {
-    for (const g of fingerBoard(len, o)) parts.push(put(g, 0.07, 0, 0, 0, yaw, 0).translate(0, y, 0));
+  for (const [k, y, yaw, len] of [[0, 2.5, a, 0.95 + o() * 0.2], [1, 2.22, a + Math.PI + (o() - 0.5) * 0.9, 0.85 + o() * 0.2]] as const) {
+    for (const g of fingerBoard(len, names?.[k], o)) parts.push(put(g, 0.07, 0, 0, 0, yaw, 0).translate(0, y, 0));
   }
   parts.push(P(box(0.34, 0.24, 0.025), ENAMEL, 0.04, o).translate(0, 1.85, 0.075));
   parts.push(P(box(0.36, 0.26, 0.02), ENAMEL_RIM, 0.04, o).translate(0, 1.85, 0.068));
+  // the place's own name on the plate, across its upper half (above 1.8 m: the post's contact band is the post's)
+  if (names) {
+    const plate = enamelText(names[2], { origin: [0, 0, 0.0875], u: [1, 0, 0], out: [0, 0, 1], width: 0.34 }, 0, 1.865, 0.055, 0.3, o);
+    if (plate) parts.push(plate);
+  }
   return merge(parts);
 }
 
@@ -662,12 +716,231 @@ function bJuteStookBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+// -- the orbital outposts (Olympus Basin, Earthrise Basin): the station's own stores in its kit's white, grey and
+// orange (the coordinator, 2026-10-11: "Mars, 2100, drawing milk churns, buckets and bins") ---------------------------
+
+/** An orbital kit colour (its sRGB hex, orbitalStructures.ts and structureKit's PAL.orbital) as this kit's palette. */
+function hexPal(hex: number): Palette {
+  const hsl = { h: 0, s: 0, l: 0 };
+  new THREE.Color().setHex(hex, THREE.SRGBColorSpace).getHSL(hsl, THREE.SRGBColorSpace);
+  return [hsl.h, hsl.s, hsl.l];
+}
+const ORB_WHITE = hexPal(0xe7e7df), ORB_LIGHT = hexPal(0xd4d9de), ORB_FRAME = hexPal(0x66727a), ORB_DARK = hexPal(0x263846);
+const ORB_ORANGE = hexPal(0xd87736), ORB_GOLD = hexPal(0xb99a55), ORB_GLASS = hexPal(0x52849a), ORB_RED = hexPal(0xa8332a);
+
+type CanisterStyle = {
+  r: number; h: number;
+  /** the head: a domed lid, a flat lid, or a valve shoulder under its guard ring */
+  cap: 'dome' | 'flat' | 'valve';
+  body: Palette;
+  /** a painted band (its middle at `bandAt` of the height, `bandH` tall) */
+  band?: Palette; bandAt?: number; bandH?: number;
+  /** rolling hoops at these fractions of the height */
+  rings?: readonly number[];
+  /** two lifting lugs at the shoulder; a bail handle over the lid; a stencilled plate on the side */
+  lugs?: boolean; bail?: boolean; plate?: boolean;
+};
+/** A sealed store canister about +Y, base at y = 0: its shell, head, hoops, band, lugs or bail and its plate. */
+function canisterParts(st: CanisterStyle, o: Rng): THREE.BufferGeometry[] {
+  const { r, h } = st, parts: THREE.BufferGeometry[] = [P(cyl(r, r, h, 16).translate(0, h / 2, 0), st.body, 0.05, o)];
+  if (st.cap === 'dome') {
+    parts.push(P(cyl(r * 0.42, r, r * 0.42, 16).translate(0, h + r * 0.21, 0), st.body, 0.05, o));
+    parts.push(P(cyl(r * 0.36, r * 0.42, r * 0.08, 12).translate(0, h + r * 0.46, 0), ORB_FRAME, 0.04, o));
+  } else if (st.cap === 'flat') {
+    parts.push(P(cyl(r + 0.012, r + 0.012, 0.035, 16).translate(0, h + 0.0175, 0), ORB_FRAME, 0.04, o));
+  } else {
+    parts.push(P(cyl(r * 0.34, r, r * 0.6, 16).translate(0, h + r * 0.3, 0), st.body, 0.05, o));
+    const top = h + r * 0.6;
+    parts.push(P(cyl(0.025, 0.025, 0.1, 6).translate(0, top + 0.05, 0), ORB_FRAME, 0.04, o));
+    parts.push(P(new THREE.CylinderGeometry(r * 0.5, r * 0.5, 0.09, 12, 1, true).translate(0, top + 0.07, 0), ORB_FRAME, 0.04, o));
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2;
+      parts.push(P(box(0.02, 0.1, 0.02).translate(Math.cos(a) * r * 0.5, top + 0.03, Math.sin(a) * r * 0.5), ORB_FRAME, 0.04, o));
+    }
+  }
+  for (const f of st.rings ?? []) parts.push(P(new THREE.CylinderGeometry(r + 0.014, r + 0.014, 0.035, 16, 1, true).translate(0, h * f, 0), ORB_FRAME, 0.04, o));
+  if (st.band) parts.push(P(new THREE.CylinderGeometry(r + 0.005, r + 0.005, st.bandH ?? 0.06, 16, 1, true).translate(0, h * (st.bandAt ?? 0.8), 0), st.band, 0.04, o));
+  if (st.plate) parts.push(P(box(r * 0.75, h * 0.16, 0.006).translate(0, h * 0.45, r + 0.004), ORB_DARK, 0.03, o));
+  if (st.lugs) for (const s of [-1, 1]) parts.push(P(box(0.035, 0.07, 0.11).translate(s * (r + 0.01), h - 0.04, 0), ORB_FRAME, 0.04, o));
+  if (st.bail) {
+    const bail = new THREE.TorusGeometry(r * 0.95, 0.012, 5, 12, Math.PI);
+    parts.push(P(bail.translate(0, h + 0.035, 0), ORB_FRAME, 0.04, o));
+  }
+  return parts;
+}
+/** A loose stock kind's orbital form: a store canister of the station's (its body is the stock kind's). */
+function canisterForm(kind: 'churn' | 'trashcan' | 'drum' | 'bucket' | 'gasbottle', st: CanisterStyle, salt: number): (rng: Rng) => THREE.BufferGeometry {
+  return (rng) => merge(canisterParts(st, spentDraws(DESTRUCTIBLE_TYPES[kind].build, rng, salt)));
+}
+const PROPELLANT: CanisterStyle = { r: 0.29, h: 0.74, cap: 'valve', body: ORB_WHITE, band: ORB_RED, bandAt: 0.5, bandH: 0.22, rings: [0.16, 0.84], plate: true };
+/** The red drum's orbital form: a propellant tank in its red band, under its valve guard (explosive as the drum was). */
+function bPropellantTank(rng: Rng): THREE.BufferGeometry {
+  return merge(canisterParts(PROPELLANT, spentDraws(DESTRUCTIBLE_TYPES.drumred.build, rng, 0x0c31)));
+}
+/** The tank burst: its shell split in two curled halves, the head blown off, the plate and shards strewn. */
+function bPropellantTankBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.drumred.broken!, rng, 0x0c32);
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [k, colour] of [[0, ORB_WHITE], [1, ORB_RED]] as const) {
+    const half = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 10, 1, true, k * Math.PI, Math.PI * (0.8 + o() * 0.15));
+    half.rotateZ(Math.PI / 2 + (o() - 0.5) * 0.4);
+    parts.push(P(half.rotateY(o() * Math.PI).translate((k - 0.5) * 0.9 + (o() - 0.5) * 0.2, 0.22, (o() - 0.5) * 0.6), colour, 0.06, o));
+  }
+  parts.push(P(cyl(0.1, 0.29, 0.17, 12).rotateX(1.2).translate(0.2 + o() * 0.4, 0.12, 0.7 + o() * 0.3), ORB_WHITE, 0.05, o));
+  for (let k = 0; k < 6; k++) parts.push(P(box(0.12 + o() * 0.16, 0.012, 0.08 + o() * 0.1).rotateY(o() * Math.PI).translate((o() - 0.5) * 1.8, 0.01, (o() - 0.5) * 1.8), k % 2 ? ORB_RED : ORB_WHITE, 0.05, o));
+  return merge(parts);
+}
+
+/**
+ * An equipment case `w` across (x), `h` high, `d` deep (z), base at y = 0: its moulded shell, the frame down its edges,
+ * the lid's seam and its two latches, the carrying handle on top.
+ */
+function caseParts(w: number, h: number, d: number, shell: Palette, o: Rng): THREE.BufferGeometry[] {
+  const parts: THREE.BufferGeometry[] = [P(box(w, h, d).translate(0, h / 2, 0), shell, 0.05, o)];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    parts.push(P(box(0.035, h + 0.004, 0.035).translate(sx * (w / 2 - 0.012), h / 2, sz * (d / 2 - 0.012)), ORB_FRAME, 0.04, o));
+  }
+  parts.push(P(box(w + 0.008, 0.016, d + 0.008).translate(0, h * 0.74, 0), ORB_DARK, 0.03, o));
+  for (const s of [-1, 1]) parts.push(P(box(0.05, 0.07, 0.016).translate(s * w * 0.28, h * 0.74, d / 2 + 0.008), ORB_FRAME, 0.04, o));
+  for (const s of [-1, 1]) parts.push(P(box(0.025, 0.035, 0.025).translate(s * Math.min(0.08, w * 0.2), h + 0.0175, 0), ORB_FRAME, 0.04, o));
+  parts.push(P(box(Math.min(0.2, w * 0.45), 0.022, 0.028).translate(0, h + 0.046, 0), ORB_DARK, 0.03, o));
+  return parts;
+}
+/** The jerrycan's orbital form: an orange equipment case stood on its end, its handle up. */
+function bEquipmentCase(rng: Rng): THREE.BufferGeometry {
+  return merge(caseParts(0.44, 0.52, 0.24, ORB_ORANGE, spentDraws(DESTRUCTIBLE_TYPES.jerrycan.build, rng, 0x0c41)));
+}
+/** Where the barrier's stacked cases stand (x, z, length along z, shell): three below, two above set across the joins. */
+const CASE_SEATS: ReadonlyArray<readonly [number, number, number, number, Palette]> = [
+  [0, -0.96, 0.9, 0, ORB_WHITE], [0.03, 0, 0.92, 0, ORB_LIGHT], [-0.02, 0.97, 0.88, 0, ORB_WHITE],
+  [0.02, -0.48, 0.9, 1, ORB_ORANGE], [-0.03, 0.5, 0.9, 1, ORB_LIGHT],
+];
+/** The Jersey barrier's orbital form: stacked equipment cases, the barrier's length and height as it stood. */
+function bCaseStack(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.barrier.build, rng, 0x0c51);
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [x, z, l, row, shell] of CASE_SEATS) {
+    // (a case lies with its length along the barrier: built along x, turned a quarter)
+    for (const g of caseParts(l, 0.46, 0.62, shell, o)) parts.push(put(g, x, row * 0.47, z, 0, Math.PI / 2 + (o() - 0.5) * 0.04, 0));
+  }
+  return merge(parts);
+}
+/** The stack thrown down: the upper cases tumbled off onto their sides, the lower shoved askew. */
+function bCaseStackBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.barrier.broken!, rng, 0x0c52);
+  const parts: THREE.BufferGeometry[] = [];
+  CASE_SEATS.forEach(([x, z, l, row, shell], k) => {
+    const yaw = Math.PI / 2 + (o() - 0.5) * 0.9, roll = row ? Math.PI / 2 : 0;
+    for (const g of caseParts(l, 0.46, 0.62, shell, o)) {
+      if (roll) g.rotateX(roll);
+      parts.push(put(g, x + (row ? (k % 2 ? 0.9 : -0.9) : (o() - 0.5) * 0.4), row ? 0.31 : 0, z + (o() - 0.5) * 0.5, 0, yaw, 0));
+    }
+  });
+  return merge(parts);
+}
+/** The stack's contact: its cases as blocks (their frames and latches publish no parts). */
+function bCaseStackContact(): THREE.BufferGeometry {
+  return merge(CASE_SEATS.map(([x, z, l, row]) => put(box(0.64, 0.46, l + 0.02), x, row * 0.47 + 0.23, z, 0, 0, 0)));
+}
+
+/**
+ * The loose wheel's orbital form: a rover's spare wheel stood on its rim, its open tread banded in chevrons, the hub on
+ * six spokes inside it (its axle along z, as the stock wheel's).
+ */
+function bRoverWheel(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.loosewheel.build, rng, 0x0c61);
+  const R = 0.335, w = 0.24, cy = R + 0.002, n = 20;
+  // the tread as a turned ring (its outer face out, its inner face in), turned to stand on its rim
+  const tread = Prow(lathe([[R - 0.025, -w / 2], [R, -w / 2], [R, w / 2], [R - 0.025, w / 2], [R - 0.025, -w / 2]], n), 5, () => ORB_FRAME, 0.05, o);
+  const parts: THREE.BufferGeometry[] = [tread.rotateX(Math.PI / 2).translate(0, cy, 0)];
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2, chevron = box(0.035, 0.014, w * 0.86);
+    parts.push(P(put(chevron, 0, 0, 0, 0, 0, a - Math.PI / 2).translate(Math.cos(a) * (R + 0.006), cy + Math.sin(a) * (R + 0.006), 0), ORB_DARK, 0.04, o));
+  }
+  parts.push(P(cyl(0.08, 0.08, w + 0.04, 12).rotateX(Math.PI / 2).translate(0, cy, 0), ORB_LIGHT, 0.04, o));
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2, spoke = box(0.03, R - 0.1, 0.03);
+    parts.push(P(put(spoke, 0, 0, 0, 0, 0, a - Math.PI / 2).translate(Math.cos(a) * (0.08 + (R - 0.1) / 2), cy + Math.sin(a) * (0.08 + (R - 0.1) / 2), 0), ORB_LIGHT, 0.04, o));
+  }
+  return merge(parts);
+}
+
+/** The traffic cone's orbital form: a landing-field marker beacon — its weighted foot, the striped mast, the lamp. */
+function bMarkerBeacon(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.cone.build, rng, 0x0c71);
+  const parts: THREE.BufferGeometry[] = [P(cyl(0.2, 0.22, 0.05, 12).translate(0, 0.025, 0), ORB_DARK, 0.04, o)];
+  for (let k = 0; k < 4; k++) parts.push(P(cyl(0.03, 0.03, 0.14, 8).translate(0, 0.05 + 0.07 + k * 0.14, 0), k % 2 ? ORB_WHITE : ORB_ORANGE, 0.04, o));
+  parts.push(P(cyl(0.055, 0.055, 0.09, 10).translate(0, 0.66, 0), ORB_GLASS, 0.03, o));
+  parts.push(P(cyl(0.06, 0.06, 0.03, 10).translate(0, 0.72, 0), ORB_DARK, 0.03, o));
+  return merge(parts);
+}
+
+/** A rack's gas cylinder at (x, z): the shell, its shoulder in the gas's colour, the valve and its guard. */
+function rackCylinder(x: number, z: number, h: number, shoulder: Palette, o: Rng): THREE.BufferGeometry[] {
+  return canisterParts({ r: 0.13, h, cap: 'valve', body: ORB_WHITE, band: shoulder, bandAt: 0.94, bandH: 0.1 }, o).map((g) => g.translate(x, 0.06, z));
+}
+/** The pad-mount cabinet's orbital form: six gas cylinders standing in their rack, chained to its rails. */
+function bCylinderRack(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.transformer.build, rng, 0x0c81);
+  const parts: THREE.BufferGeometry[] = [P(box(1.3, 0.06, 0.86).translate(0, 0.03, 0), ORB_FRAME, 0.04, o)];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(P(box(0.05, 1.72, 0.05).translate(sx * 0.62, 0.86, sz * 0.4), ORB_FRAME, 0.04, o));
+  for (const y of [1.08, 1.7]) {
+    for (const sz of [-1, 1]) parts.push(P(box(1.28, 0.04, 0.04).translate(0, y, sz * 0.4), ORB_FRAME, 0.04, o));
+    for (const sx of [-1, 1]) parts.push(P(box(0.04, 0.04, 0.84).translate(sx * 0.62, y, 0), ORB_FRAME, 0.04, o));
+  }
+  for (const [i, x] of [-0.4, 0, 0.4].entries()) for (const [j, z] of [-0.18, 0.18].entries()) {
+    parts.push(...rackCylinder(x, z, 1.38, (i + j) % 2 ? ORB_ORANGE : ORB_GOLD, o));
+  }
+  return merge(parts);
+}
+/** The rack knocked over: its frame on its back, the cylinders spilled out across the ground. */
+function bCylinderRackBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.transformer.broken!, rng, 0x0c82);
+  const parts: THREE.BufferGeometry[] = [P(box(1.3, 0.06, 0.86).rotateX(0.3).translate(0, 0.16, -0.55), ORB_FRAME, 0.04, o)];
+  for (const sx of [-1, 1]) parts.push(P(box(0.05, 1.72, 0.05).rotateX(Math.PI / 2).translate(sx * 0.62, 0.04, 0.2), ORB_FRAME, 0.04, o));
+  for (let k = 0; k < 6; k++) {
+    const yaw = (o() - 0.5) * 1.8, x = (k - 2.5) * 0.32 + (o() - 0.5) * 0.2, z = 0.4 + o() * 0.9;
+    for (const g of rackCylinder(0, 0, 1.38, k % 2 ? ORB_ORANGE : ORB_GOLD, o)) parts.push(put(g.translate(0, -0.06, 0), x, 0.13, z, Math.PI / 2, yaw, 0));
+  }
+  return merge(parts);
+}
+/** The rack's contact: its frame as a block. */
+function bCylinderRackContact(): THREE.BufferGeometry {
+  return box(1.3, 1.72, 0.86).translate(0, 0.86, 0);
+}
+
+/** The cable drum's orbital form: a steel reel of the station's orange power cable on its axle. */
+function bCableReel(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.cablespool.build, rng, 0x0c91);
+  const parts: THREE.BufferGeometry[] = [P(cyl(0.12, 0.12, 1.06, 10).rotateZ(Math.PI / 2).translate(0, 0.7, 0), ORB_FRAME, 0.04, o)];
+  for (const x of [-0.52, 0.52]) {
+    parts.push(P(cyl(0.7, 0.7, 0.05, 16).rotateZ(Math.PI / 2).translate(x, 0.7, 0), ORB_LIGHT, 0.04, o));
+    for (let i = 0; i < 3; i++) parts.push(P(box(0.03, 1.32, 0.06).rotateX((i * Math.PI) / 3).translate(x + Math.sign(x) * 0.035, 0.7, 0), ORB_FRAME, 0.04, o));
+  }
+  parts.push(P(cyl(0.5, 0.5, 0.98, 16).rotateZ(Math.PI / 2).translate(0, 0.7, 0), ORB_ORANGE, 0.05, o));
+  for (const x of [-0.3, 0, 0.3]) parts.push(P(new THREE.CylinderGeometry(0.505, 0.505, 0.02, 16, 1, true).rotateZ(Math.PI / 2).translate(x, 0.7, 0), shadeOf(ORB_ORANGE, 0.75), 0.04, o));
+  return merge(parts);
+}
+/** The reel burst: one flange torn off and lying, the drum rolled, the cable sprung in loops across the ground. */
+function bCableReelBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(DESTRUCTIBLE_TYPES.cablespool.broken!, rng, 0x0c92);
+  const parts: THREE.BufferGeometry[] = [P(cyl(0.7, 0.7, 0.05, 16).translate(0.9, 0.03, -0.3), ORB_LIGHT, 0.04, o)];
+  parts.push(P(cyl(0.5, 0.5, 0.98, 16).rotateZ(Math.PI / 2).rotateY(0.6).translate(-0.2, 0.5, 0.1), ORB_ORANGE, 0.05, o));
+  for (let k = 0; k < 4; k++) {
+    const loop = new THREE.TorusGeometry(0.35 + o() * 0.3, 0.035, 5, 14, Math.PI * (1.1 + o() * 0.6));
+    parts.push(P(loop.rotateX(Math.PI / 2).rotateY(o() * Math.PI * 2).translate((o() - 0.5) * 1.6, 0.035, (o() - 0.5) * 1.6), ORB_ORANGE, 0.05, o));
+  }
+  return merge(parts);
+}
+/** A palette a shade down. */
+function shadeOf(p: Palette, k: number): Palette { return [p[0], p[1], p[2] * k]; }
+
 // ---- the types ------------------------------------------------------------------------------------------------------
 
 /** Each modern kind's period form: the modern record (its footprint, class, cover and physics) with the period's build. */
 const PERIOD_FORMS: Readonly<Record<string, DestructiblePropType>> = Object.freeze({
   barrier: { ...DESTRUCTIBLE_TYPES.barrier, build: bLogBarricade, broken: bLogBarricadeBroken },
-  roadsign: { ...DESTRUCTIBLE_TYPES.roadsign, build: bFingerpost },
+  roadsign: { ...DESTRUCTIBLE_TYPES.roadsign, build: (rng: Rng) => bFingerpost(rng) },
   cone: { ...DESTRUCTIBLE_TYPES.cone, build: bStripedTrestle },
   transformer: { ...DESTRUCTIBLE_TYPES.transformer, build: bCrateStack, broken: bCrateStackBroken },
   cablespool: { ...DESTRUCTIBLE_TYPES.cablespool, build: bLeadCableDrum },
@@ -679,10 +952,10 @@ const PERIOD_FORMS: Readonly<Record<string, DestructiblePropType>> = Object.free
  * ksour), the Naga hills (Kohima), and the villages of the eastern plains and hills (Prokhorovka, the Podhale, the
  * Virgin Lands' sovkhoz). A region's forms stand over the period's.
  */
-type ClutterRegion = 'bengal' | 'mekong' | 'sahara' | 'naga' | 'village';
+type ClutterRegion = 'bengal' | 'mekong' | 'sahara' | 'naga' | 'village' | 'orbital';
 export const MAP_CLUTTER_REGION: Readonly<Record<string, ClutterRegion>> = Object.freeze({
   delta: 'bengal', mangrove: 'mekong', oasis: 'sahara', desert: 'sahara', monsoon: 'naga',
-  verdant: 'village', winter: 'village', steppe: 'village',
+  verdant: 'village', winter: 'village', steppe: 'village', mars: 'orbital', moon: 'orbital',
 });
 export const REGIONAL_CLUTTER_FORMS: Readonly<Record<ClutterRegion, Readonly<Record<string, DestructiblePropType>>>> = Object.freeze({
   // the kolshi by the path, the paddy basket, the jute bales at the landing, the jute sticks set up to dry
@@ -712,6 +985,23 @@ export const REGIONAL_CLUTTER_FORMS: Readonly<Record<ClutterRegion, Readonly<Rec
     cone: PERIOD_FORMS.cone,
     trashcan: { ...DESTRUCTIBLE_TYPES.trashcan, build: bVillageTub },
   },
+  // the outposts' stores (Olympus Basin and Earthrise Basin share the orbital kit): sealed store canisters, the sample
+  // canister, the high-pressure gas cylinder, the equipment case, the rover's spare wheel, the marker beacon, the
+  // propellant tank, the stacked cases, the cylinder rack and the cable reel
+  orbital: {
+    churn: { ...DESTRUCTIBLE_TYPES.churn, build: canisterForm('churn', { r: 0.21, h: 0.66, cap: 'dome', body: ORB_WHITE, band: ORB_ORANGE, bandAt: 0.8, bandH: 0.06, rings: [0.1, 0.92], lugs: true, plate: true }, 0x0c01) },
+    trashcan: { ...DESTRUCTIBLE_TYPES.trashcan, build: canisterForm('trashcan', { r: 0.3, h: 0.68, cap: 'dome', body: ORB_LIGHT, band: ORB_DARK, bandAt: 0.5, bandH: 0.1, rings: [0.08, 0.9], lugs: true, plate: true }, 0x0c02) },
+    drum: { ...DESTRUCTIBLE_TYPES.drum, build: canisterForm('drum', { r: 0.29, h: 0.86, cap: 'flat', body: ORB_WHITE, band: ORB_ORANGE, bandAt: 0.92, bandH: 0.05, rings: [0.33, 0.66], plate: true }, 0x0c03) },
+    bucket: { ...DESTRUCTIBLE_TYPES.bucket, build: canisterForm('bucket', { r: 0.19, h: 0.44, cap: 'flat', body: ORB_LIGHT, band: ORB_GOLD, bandAt: 0.5, bandH: 0.09, bail: true }, 0x0c04) },
+    gasbottle: { ...DESTRUCTIBLE_TYPES.gasbottle, build: canisterForm('gasbottle', { r: 0.15, h: 0.74, cap: 'valve', body: ORB_WHITE, band: ORB_ORANGE, bandAt: 0.88, bandH: 0.07 }, 0x0c05) },
+    jerrycan: { ...DESTRUCTIBLE_TYPES.jerrycan, build: bEquipmentCase },
+    loosewheel: { ...DESTRUCTIBLE_TYPES.loosewheel, build: bRoverWheel },
+    cone: { ...DESTRUCTIBLE_TYPES.cone, build: bMarkerBeacon },
+    drumred: { ...DESTRUCTIBLE_TYPES.drumred, build: bPropellantTank, broken: bPropellantTankBroken },
+    barrier: withContactProxy({ ...DESTRUCTIBLE_TYPES.barrier, build: bCaseStack, broken: bCaseStackBroken }, bCaseStackContact),
+    transformer: withContactProxy({ ...DESTRUCTIBLE_TYPES.transformer, build: bCylinderRack, broken: bCylinderRackBroken }, bCylinderRackContact),
+    cablespool: { ...DESTRUCTIBLE_TYPES.cablespool, build: bCableReel, broken: bCableReelBroken },
+  },
 });
 
 /**
@@ -721,9 +1011,9 @@ export const REGIONAL_CLUTTER_FORMS: Readonly<Record<ClutterRegion, Readonly<Rec
 export function periodClutterTypes(mapId: string): Record<string, DestructiblePropType> {
   const year = MAP_SETTING_YEAR[mapId];
   if (year === undefined) return {};
-  const region = MAP_CLUTTER_REGION[mapId];
-  return {
-    ...Object.fromEntries(Object.entries(PERIOD_FORMS).filter(([kind]) => year < MODERN_KIND_INTRODUCED[kind])),
-    ...(region ? REGIONAL_CLUTTER_FORMS[region] : {}),
-  };
+  const region = MAP_CLUTTER_REGION[mapId], names = FINGERPOST_NAMES[mapId];
+  const period: Record<string, DestructiblePropType> = Object.fromEntries(Object.entries(PERIOD_FORMS).filter(([kind]) => year < MODERN_KIND_INTRODUCED[kind]));
+  // (the fingerpost lettered with the map's own places)
+  if (period.roadsign && names) period.roadsign = { ...PERIOD_FORMS.roadsign, build: (rng: Rng) => bFingerpost(rng, names) };
+  return { ...period, ...(region ? REGIONAL_CLUTTER_FORMS[region] : {}) };
 }

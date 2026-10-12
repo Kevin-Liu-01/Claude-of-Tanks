@@ -71,6 +71,66 @@ function fillOf(ctx: RegionalBuildContext, inset = 0.1, front = Infinity): Fill 
   return { w: x1 - x0, d: z1 - z0, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
 }
 
+/**
+ * A Cowper stove's dressing (wave 406b: "a giant dark striped cylinder... no openings, gantries or pipework"): the
+ * riveted seams down its shell, the caged ladder up its outer side to the walkway round the dome's foot and its
+ * railing, the burner door and the inspection door at its foot in their frames, and the hot-blast valve on its stub.
+ * The stove stands at (x, z), radius r, its shell `h` high; `out` the angle its ladder faces. Decor (no solids, no draws).
+ */
+function stoveDressing(sink: PartSink, x: number, z: number, r: number, h: number, out: number, mobile: boolean): void {
+  // (the walkways, ladders and railings in the trusses' oxide red, as the skip hoist: they read against the dark shells)
+  const steel = { colour: OXIDE, decor: true } as const, fine = { colour: OXIDE, decor: true, fine: true } as const;
+  const at = (a: number, rr: number, y: number): Vec3 => [x + Math.cos(a) * rr, y, z + Math.sin(a) * rr];
+  const radial = (a: number): Vec3 => [Math.cos(a), 0, Math.sin(a)];
+  // (the shell is a twelve-sided prism, its corners every 30 degrees from 0: the seams and the doors sit on its faces'
+  // middles, at the faces' distance)
+  const facet = r * Math.cos(Math.PI / 12);
+  // the seams: four straps down the shell
+  for (let k = 0; k < 4; k++) {
+    const a = out + Math.PI / 4 + (k * Math.PI) / 2;
+    sink.member('structureMetal', at(a, facet + 0.02, 0.2), at(a, facet + 0.02, h - 0.1), 0.12, 0.05, radial(a), { colour: shade(STOVE, 1.18), decor: true }, 0);
+  }
+  // the walkways: round the dome's foot and at half height, each deck with its railing on posts
+  const wr = r + 0.95;
+  for (const wy of [h, Math.round(h * 0.55 * 2) / 2]) {
+    sink.cylinder('structureMetal', [x, wy - 0.18, z], 'y', 0.18, wr, 16, steel, wr, true);
+    if (mobile) continue;
+    for (let k = 0; k < 16; k++) {
+      const a0 = (k / 16) * Math.PI * 2, a1 = ((k + 1) / 16) * Math.PI * 2;
+      sink.member('structureMetal', at(a0, wr - 0.05, wy), at(a0, wr - 0.05, wy + 1.05), 0.06, 0.06, radial(a0), fine, 0);
+      for (const ry of [wy + 0.55, wy + 1.05]) sink.member('structureMetal', at(a0, wr - 0.05, ry), at(a1, wr - 0.05, ry), 0.05, 0.05, [0, 1, 0], fine, 0);
+    }
+  }
+  // the ladder up the outer side: its two rails, the rungs, the cage's hoops and bars from head height
+  const lr = r + 0.3, tu: Vec3 = [-Math.sin(out), 0, Math.cos(out)];
+  const rail = (side: number, y: number): Vec3 => { const p = at(out, lr, y); return [p[0] + tu[0] * side * 0.22, y, p[2] + tu[2] * side * 0.22]; };
+  // (the ladder stands outside the walkways' decks: its rails pass their rims)
+  for (const side of [-1, 1]) sink.member('structureMetal', rail(side, 0), rail(side, h + 1.05), 0.06, 0.06, radial(out), steel, 0);
+  if (!mobile) {
+    for (let y = 0.4; y < h; y += 0.45) sink.member('structureMetal', rail(-1, y), rail(1, y), 0.035, 0.035, radial(out), fine, 0);
+    const c = at(out, lr + 0.2, 0);
+    const hoop = (a: number, y: number): Vec3 => [c[0] + (Math.cos(out) * Math.cos(a) - Math.sin(out) * Math.sin(a)) * 0.42, y, c[2] + (Math.sin(out) * Math.cos(a) + Math.cos(out) * Math.sin(a)) * 0.42];
+    for (let y = 2.4; y < h; y += 1.5) {
+      for (let k = 0; k < 4; k++) sink.member('structureMetal', hoop(-Math.PI / 2 + (k * Math.PI) / 4, y), hoop(-Math.PI / 2 + ((k + 1) * Math.PI) / 4, y), 0.045, 0.045, [0, 1, 0], fine, 0);
+    }
+    for (const a of [-Math.PI / 2, 0, Math.PI / 2]) sink.member('structureMetal', hoop(a, 2.4), hoop(a, h), 0.04, 0.04, radial(out), fine, 0);
+  }
+  // the doors at the foot: the burner door beside the ladder, the inspection door opposite, in their cast frames
+  for (const [a, w, dh] of [[out + (5 * Math.PI) / 12, 0.9, 1.3], [out + (13 * Math.PI) / 12, 0.7, 1.0]] as const) {
+    const face: Face = { origin: at(a, facet - 0.01, 0), u: [-Math.sin(a), 0, Math.cos(a)], out: radial(a), width: 1.4 };
+    facePanel(sink, 'dark', face, 0, 0.5 + dh / 2, 0.045, w, dh, { decor: true });
+    faceBox(sink, 'structureMetal', face, 0, 0.5 + dh + 0.06, 0.05, w + 0.24, 0.12, 0.1, steel);
+    faceBox(sink, 'structureMetal', face, 0, 0.44, 0.05, w + 0.24, 0.12, 0.1, steel);
+    for (const sd of [-1, 1]) faceBox(sink, 'structureMetal', face, sd * (w / 2 + 0.06), 0.5 + dh / 2, 0.05, 0.12, dh, 0.1, steel, 'caps');
+  }
+  // the hot-blast valve: its stub off the shell, the valve body, its handwheel
+  const va = out + Math.PI * 0.62, v0 = at(va, r - 0.1, 2.2), v1 = at(va, r + 1.1, 2.2);
+  sink.member('structureMetal', v0, v1, 0.5, 0.5, [0, 1, 0], { colour: PLATE, decor: true, exposed: true }, 0);
+  sink.cylinder('structureMetal', [v1[0], 1.75, v1[2]], 'y', 0.9, 0.42, 10, { colour: shade(PLATE, 0.85), decor: true }, 0.42, true);
+  sink.cylinder('structureMetal', [v1[0], 2.65, v1[2]], 'y', 0.5, 0.05, 6, fine, 0.05, true);
+  sink.cylinder('structureMetal', [v1[0], 3.15, v1[2]], 'y', 0.05, 0.32, 12, fine, 0.32, true);
+}
+
 // ------------------------------------------------------------------------------------------------ the blast furnace
 
 /**
@@ -129,6 +189,8 @@ const blastFurnace: RegionalBuilder = (ctx) => {
         dy += sr * h;
       }
       if (!mobile) for (let y = 3; y < sh - 1; y += 3.5) ring(sink, sx, y, stz, sr, 0.2);
+      // its seams, ladder and walkway, doors and hot-blast valve (the ladder on the stove's outer side)
+      stoveDressing(sink, sx, stz, sr, sh, s < 0 ? Math.PI : 0, mobile);
     }
     sink.member('structureMetal', [-(sr + 0.3), 9.5, stz + sr], [0, 9.5, fz - fr - 0.4], 1.0, 1.0, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true }, 0);
     for (let k = 0; k < 8; k++) {

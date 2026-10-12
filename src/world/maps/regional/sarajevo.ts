@@ -27,6 +27,8 @@ import { PartSink, faceBox, facePoint, rgb, shade, type Face, type RegionalBucke
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { tvAerial, woodpile, pottedPlant } from './dressing.ts';
+import { placePick } from './lettering.ts';
+import { letterText } from '../../landmarks/lettering.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
@@ -76,8 +78,10 @@ function shopfront(sink: PartSink, face: Face, o: Opening, y0: number, sign: Rgb
   for (let k = 1; k < Math.floor(sh / 0.22); k++) {
     faceBox(sink, 'structureWood', face, o.u, y + o.h - k * 0.22, back + 0.13, o.w, 0.025, 0.012, { colour: shade(ROLL_SHUTTER, 0.75), decor: true, fine: true });
   }
-  // the fascia sign over the opening
+  // the fascia sign over the opening, the shop's name painted across it
   faceBox(sink, 'structureWood', face, o.u, y + o.h + 0.32, 0.05, o.w + 0.4, 0.5, 0.06, { colour: sign, decor: true, fineSides: true });
+  const name = placePick(SHOP_NAMES, face.origin[0], face.origin[2], o.u, y);
+  letterText(sink, 'structureWood', face, name, o.u, y + o.h + 0.32 - 0.11, { capHeight: 0.22, maxWidth: o.w + 0.1, colour: SIGN_PAINT, proud: 0.084, fine: true });
 }
 
 function ahDialect(rng: () => number, door: Rgb, h: SiegeHabits, sign: Rgb): HouseDialect {
@@ -196,6 +200,11 @@ function keepsOf(openings: readonly Opening[], face: Opening['face'], frame: Hou
 }
 
 const SIGNS: readonly Rgb[] = [0x2f4f3f, 0x6a2e26, 0x2c3d57, 0x7a6a3a, 0x3c3c3c].map(rgb);
+/** The shop names' paint on the fascias: a cream enamel. */
+const SIGN_PAINT = rgb(0xe6dcc0);
+/** The shops' names on their fascias, in Bosnian (a bakery, a butcher's, a chemist's, a café, an optician's, ...). */
+const SHOP_NAMES: readonly string[] = ['PEKARA', 'MESNICA', 'APOTEKA', 'KAFANA', 'OPTIKA', 'FRIZER', 'SAMOPOSLUGA', 'PAPIRNICA', 'ZLATARA',
+  'TEKSTIL', 'ELEKTRO', 'FOTO STUDIO', 'MLJEKARA'];
 
 // ------------------------------------------------------------------------------------------------ the valley blocks
 

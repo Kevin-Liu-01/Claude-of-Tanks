@@ -26,6 +26,7 @@ import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
 import { buildStook, mapToBand } from './haystackKit.ts';
+import { spentDraws } from './brokenDraws.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -906,6 +907,52 @@ function wallStoneBrokenDraws(rng: Rng): THREE.BufferGeometry {
     blk.rotateX((rng() - 0.5) * 0.5);
     blk.translate((rng() - 0.5) * 1.7, bs * 0.3, (rng() - 0.5) * WALL_SEG * 0.95);
     parts.push(blk);
+  }
+  return merge(parts);
+}
+
+/**
+ * The coursed module broken (the buildings lane, 2026-10-11; wave 406b on Suzhou Creek: "a smooth brick-block heap"):
+ * the two stubs left standing with their courses stepped back where the wall tore, the rubble heaped in the bite and
+ * spilled to both faces, bonded lumps tumbled out of it and loose bricks among them (each a brick's face of the print).
+ * Spends the legacy remnant's draws (brokenDraws.ts), then draws from its own stream.
+ */
+function wallCoursedBroken(rng: Rng): THREE.BufferGeometry {
+  const o = spentDraws(wallStoneBrokenDraws, rng, 0xb21c);
+  const parts: THREE.BufferGeometry[] = [];
+  // the stubs: two or three courses, each shorter at the torn end (the first stub's +z end, the second's -z end)
+  for (const [z0, len, torn] of [[-WALL_SEG / 2, WALL_SEG * 0.3, 1], [WALL_SEG * 0.14, WALL_SEG * 0.34, -1]] as const) {
+    let y = 0, cut = 0;
+    const courses = o() < 0.5 ? 2 : 3;
+    for (let c = 0; c < courses; c++) {
+      const ch = 0.14 + o() * 0.06, l = Math.max(0.25, len - cut);
+      const zc = torn > 0 ? z0 + l / 2 : z0 + len - l / 2;
+      parts.push(box(0.46 - c * 0.02, ch, l, 0.7).translate((o() - 0.5) * 0.04, y + ch / 2, zc));
+      y += ch - 0.01; cut += 0.12 + o() * 0.3;
+    }
+  }
+  // the rubble heaped in the bite between them and spilled to both faces
+  const bite = (WALL_SEG * -0.2 + WALL_SEG * 0.14) / 2;
+  const heap = new THREE.DodecahedronGeometry(0.5, 0).scale(1.5 + o() * 0.4, 0.34, 1.9 + o() * 0.5);
+  parts.push(heap.translate((o() - 0.5) * 0.2, 0.06, bite));
+  for (let k = 0; k < 5; k++) {
+    const lump = box(0.35 + o() * 0.25, 0.08 + o() * 0.06, 0.3 + o() * 0.25, 0.7);
+    lump.rotateY(o() * Math.PI); lump.rotateX((o() - 0.5) * 0.4);
+    parts.push(lump.translate((o() < 0.5 ? -1 : 1) * (0.3 + o() * 0.45), 0.04, bite + (o() - 0.5) * 1.6));
+  }
+  // the bonded lumps tumbled out, the courses still in them
+  for (let k = 0; k < 6; k++) {
+    const bs = 0.2 + o() * 0.24;
+    const blk = box(bs * (1.2 + o() * 0.6), bs * 0.7, bs, 0.7);
+    blk.rotateY(o() * Math.PI); blk.rotateX((o() - 0.5) * 0.7); blk.rotateZ((o() - 0.5) * 0.5);
+    parts.push(blk.translate((o() - 0.5) * 2.0, bs * 0.3, (o() - 0.5) * WALL_SEG * 0.95));
+  }
+  // the loose bricks among them
+  for (let k = 0; k < 22; k++) {
+    const brick = box(0.23, 0.07, 0.11, 0.18);
+    brick.rotateY(o() * Math.PI); brick.rotateX((o() - 0.5) * 0.9);
+    const x = (o() - 0.5) * 2.2, z = (o() - 0.5) * WALL_SEG * 0.95, onHeap = Math.abs(z - bite) < 0.8 && Math.abs(x) < 0.6;
+    parts.push(brick.translate(x, onHeap ? 0.16 + o() * 0.06 : 0.04, z));
   }
   return merge(parts);
 }
@@ -1885,5 +1932,5 @@ export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<str
 /** The coursed wall module the brick-print maps keep (see bWallStone): the stone wall's record with its original
  * courses and remnant. */
 export const COURSED_WALLSTONE = {
-  ...DESTRUCTIBLE_TYPES.wallstone, build: wallStoneEnvelope, broken: wallStoneBrokenDraws,
+  ...DESTRUCTIBLE_TYPES.wallstone, build: wallStoneEnvelope, broken: wallCoursedBroken,
 } satisfies DestructiblePropType;

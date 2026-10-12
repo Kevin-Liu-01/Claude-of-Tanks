@@ -49,6 +49,13 @@ function chamferedSquare(cx: number, cz: number, hx: number, hz: number, c: numb
     [cx + hx - c, cz - hz], [cx - hx + c, cz - hz], [cx - hx, cz - hz + c], [cx - hx, cz + hz - c]];
 }
 const rect = (x0: number, z0: number, x1: number, z1: number): Array<[number, number]> => [[x0, z1], [x1, z1], [x1, z0], [x0, z0]];
+/** The estates' brown-varnished casements; a burnt room's far wall in the dark; a scorched curtain. */
+/**
+ * The estates' pebble-dash (kulir) at its own grain: the render's texture at twice its density on the slabs' bodies
+ * (wave 406b: "coarse pebbledash" — the houses' render scale made the pebbles fist-sized across a slab).
+ */
+const KULIR = { density: 0.84 } as const;
+const WIRED_GLASS = rgb(0x9fa9aa), CASEMENT = rgb(0x4a3526), ROOM_DARK = rgb(0x2b2621), CURTAIN_SCORCHED = rgb(0x8a7a62);
 
 type PaneState = 'glass' | 'lit' | 'gone' | 'burnt' | 'sheet';
 
@@ -79,16 +86,38 @@ function mullions(sink: PartSink, face: Face, y0: number, y1: number, step: numb
   for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, s * (face.width / 2 - 0.12), (y0 + y1) / 2, 0.08, 0.24, y1 - y0, 0.1, { decor: true, colour });
 }
 
-/** A punched window of a concrete facade: the pane (or its siege state) and a slim sill. (u, y) its bottom-centre. */
+/**
+ * A window burnt out: the glass and casements gone to the dark room, the room's far wall dimly lit in its upper half,
+ * the charred frame's stubs left in the reveal and a scorched curtain hanging, the soot up the panel above. (u, y) its
+ * bottom-centre. No draws.
+ */
+function burntWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+  facePanel(sink, 'dark', face, u, y + h / 2, 0.01, w, h, { decor: true });
+  facePanel(sink, 'structureMetal', face, u + w * 0.08, y + h * 0.68, 0.012, w * 0.7, h * 0.42, { decor: true, colour: ROOM_DARK });
+  faceBox(sink, 'structureWood', face, u, y + h - 0.03, 0.025, w * 0.62, 0.06, 0.05, { decor: true, fine: true, colour: CHAR }, 'ends');
+  facePanel(sink, 'structureWood', face, u + w * 0.3, y + h * 0.6, 0.016, w * 0.12, h * 0.62, { decor: true, colour: CURTAIN_SCORCHED });
+  sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, y + h + 1.4);
+}
+
+/**
+ * A punched window of a concrete facade: the pane in the estate's brown-varnished casements (the frame, the mullion,
+ * the transom), the slim sill; or its siege state: the UNHCR sheet,
+ * or the glass and casements burnt out to the dark room, the charred frame's stubs left in the reveal and a scorched
+ * curtain hanging, the soot up the panel above. (u, y) its bottom-centre. (Look draws as before: the roll, then the
+ * sheet's or the pane's own.)
+ */
 function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number, lit: number): void {
   const roll = look();
   if (roll < 0.1) { unhcrSheet(sink, face, u, y, w, h, look); return; }
-  if (roll < 0.2) {
-    facePanel(sink, 'dark', face, u, y + h / 2, 0.01, w, h, { decor: true });
-    sootBand(sink, 'plaster3', face, u - w / 2 - 0.2, u + w / 2 + 0.2, y + h, y + h + 1.4);
-    return;
-  }
-  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, 0.012, w, h, { decor: true, window: face.out });
+  if (roll < 0.2) { burntWindow(sink, face, u, y, w, h); return; }
+  // the casements: the frame a border of brown round the pane (one quad behind it), the mullion between the two leaves
+  // and the transom under the top light on it (three quads a window: a tower's hundreds of windows stay within the kit's
+  // triangle budget)
+  const frame = { decor: true, fine: true, colour: CASEMENT } as const;
+  facePanel(sink, 'structureWood', face, u, y + h / 2, 0.008, w + 0.1, h + 0.1, frame);
+  facePanel(sink, paneBucket(look, lit), face, u, y + h / 2, 0.016, w, h, { decor: true, window: face.out });
+  facePanel(sink, 'structureWood', face, u, y + h * 0.42, 0.024, 0.05, h * 0.84, frame);
+  facePanel(sink, 'structureWood', face, u, y + h * 0.78, 0.024, w, 0.045, frame);
   faceBox(sink, 'plaster3', face, u, y - 0.04, 0.05, w + 0.12, 0.08, 0.1, { decor: true, fine: true });
 }
 
@@ -208,7 +237,7 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
     const paint = choose(rng(), PANEL_PAINTS), paint2 = choose(rng(), PANEL_PAINTS);
     // the two slabs (structure) and the roof's parapet, lift rooms
     const slabs = [rect(-W / 2, -armW / 2, W / 2, armW / 2), rect(-armW / 2, -D / 2, armW / 2, D / 2)];
-    for (const plan of slabs) planPrism(sink, concrete, plan, -0.4, top);
+    for (const plan of slabs) planPrism(sink, concrete, plan, -0.4, top, KULIR);
     sink.span(concrete, -armW / 2 - 0.5, top, -armW / 2 - 0.5, armW / 2 + 0.5, top + 2.6, armW / 2 + 0.5);
     // the faces of the cross: the arm ends (loggias) and the arms' sides (windows)
     const hx = W / 2, hz = D / 2, a = armW / 2;
@@ -243,10 +272,8 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
         const n = Math.max(1, Math.floor((face.width - 0.6) / 2.4));
         for (let k = 0; k < n; k++) {
           const u = -face.width / 2 + 0.3 + (face.width - 0.6) * (k + 0.5) / n;
-          if (isBurnt) {
-            facePanel(sink, 'dark', face, u, y + 1.5, 0.01, 1.3, 1.3, { decor: true });
-            sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, y + fh + 0.8);
-          } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
+          if (isBurnt) burntWindow(sink, face, u, y + 0.85, 1.3, 1.3);
+          else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
         }
       }
       if (look() < 0.35) sink.dressing(mobile, () => shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone'));
@@ -332,10 +359,10 @@ const slabBlock: RegionalBuilder = (ctx) => {
     const top = gH + floors * fh;
     const concrete = 'plaster3' as const;
     const paint = choose(rng(), PANEL_PAINTS);
-    sink.span(concrete, -W / 2, -0.4, z0, W / 2, top, z1);
+    sink.span(concrete, -W / 2, -0.4, z0, W / 2, top, z1, KULIR);
     if (D / 2 - z1 > 1.5) {
       const ah = 4.2;
-      sink.span(concrete, -W / 2, -0.4, z1 - 0.2, W / 2, ah, D / 2);
+      sink.span(concrete, -W / 2, -0.4, z1 - 0.2, W / 2, ah, D / 2, KULIR);
       sink.span(concrete, -W / 2, ah, D / 2 - 0.25, W / 2, ah + 0.7, D / 2);
       const af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
       const units = Math.max(2, Math.floor(W / 4.2));
@@ -376,7 +403,20 @@ const slabBlock: RegionalBuilder = (ctx) => {
         panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06);
       }
     }
-    for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
+    for (let k = 2; k < bays; k += 4) {
+      // the stair tower's glazing: the tall light in its frame, a transom at every half landing, its panes the stairs'
+      // pale wired glass, clear glass, or gone to the dark (by the pane's place: no draws)
+      const su = -W / 2 + bw * (k + 0.5), sy0 = gH + 0.5, sy1 = top - 0.5, step = fh / 2;
+      for (let i = 0, ty = sy0; ty < sy1 - 0.05; i++, ty += step) {
+        const ph = Math.min(step, sy1 - ty), v = (k * 7 + i * 13) % 10;
+        if (v < 6) facePanel(sink, 'structureMetal', back, su, ty + ph / 2, 0.02, 1.4, ph, { decor: true, colour: WIRED_GLASS, density: 0.05 });
+        else facePanel(sink, v < 9 ? 'glass' : 'dark', back, su, ty + ph / 2, 0.02, 1.4, ph, { decor: true, window: [0, 0, -1] });
+      }
+      const frame = { decor: true, fine: true, colour: CASEMENT } as const;
+      for (const s of [-1, 1]) facePanel(sink, 'structureWood', back, su + s * 0.67, (sy0 + sy1) / 2, 0.03, 0.06, sy1 - sy0, frame);
+      for (let ty = sy0; ty <= sy1 + 1e-6; ty += fh / 2) facePanel(sink, 'structureWood', back, su, Math.min(ty, sy1 - 0.03), 0.03, 1.4, 0.06, frame);
+      facePanel(sink, 'structureWood', back, su, (sy0 + sy1) / 2, 0.03, 0.05, sy1 - sy0, frame);
+    }
     sink.dressing(mobile, () => {
       shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), [], look, 'stone');
       for (let k = 0; k < 2; k++) shellHole(sink, back, (look() - 0.5) * W * 0.8, gH + fh * (1 + look() * (floors - 2)) + 2.4, 0.45 + look() * 0.4, look, 'stone');

@@ -64,23 +64,11 @@
   "dangling": 0
  },
  "kit:sarajevo:broadcasttower": {
-  "floating": 12,
+  "floating": 8,
   "dangling": 0
  },
  "kit:sarajevo:factory": {
   "floating": 6,
-  "dangling": 0
- },
- "kit:sarajevo:megatower": {
-  "floating": 88,
-  "dangling": 0
- },
- "kit:sarajevo:parkingdeck": {
-  "floating": 24,
-  "dangling": 0
- },
- "kit:sarajevo:terracetower": {
-  "floating": 92,
   "dangling": 0
  },
  "kit:savoyard:chapel": {

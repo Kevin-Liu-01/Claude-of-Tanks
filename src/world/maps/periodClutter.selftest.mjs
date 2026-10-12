@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
-import { MAP_CLUTTER_REGION, MAP_SETTING_YEAR, MODERN_KIND_INTRODUCED, REGIONAL_CLUTTER_FORMS, periodClutterTypes } from './periodClutterKit.ts';
+import { FINGERPOST_NAMES, MAP_CLUTTER_REGION, MAP_SETTING_YEAR, MODERN_KIND_INTRODUCED, REGIONAL_CLUTTER_FORMS, periodClutterTypes } from './periodClutterKit.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -75,6 +75,19 @@ for (const kind of MODERN) {
   assert.ok(p.x <= meta.hw * 2 * 1.15 && p.z <= meta.hl * 2 * 1.15 + 0.05, `the crate stack on the cabinet's footprint (${p.x.toFixed(2)} x ${p.z.toFixed(2)})`);
   assert.ok(p.y >= 1.2, `the crate stack stands as cover (${p.y.toFixed(2)} m)`);
 }
+// 2b. (the buildings lane, 2026-10-11; wave 406b: "blank plates") every map whose road sign is the fingerpost letters its
+// boards and plate with its own places, in the sign-writer's alphabet; the lettering is the fingerpost's own stream's
+for (const mapId of MAP_IDS) {
+  const sign = periodClutterTypes(mapId).roadsign;
+  if (!sign) continue;
+  const names = FINGERPOST_NAMES[mapId];
+  assert.ok(names && names.length === 3 && names.every((n) => n.trim().length >= 3), `${mapId}: the fingerpost's places`);
+  const g = sign.build(mulberry32(9));
+  assert.ok(g.attributes.position.count > 700, `${mapId}: the boards and the plate lettered (a blank fingerpost is about 420) (${g.attributes.position.count} vertices)`);
+  g.dispose();
+}
+assert.deepEqual(Object.keys(FINGERPOST_NAMES).sort(), MAP_IDS.filter((id) => periodClutterTypes(id).roadsign).sort(), 'names for the fingerpost maps, and only them');
+
 // 3. the region's own forms: no map of a region draws the moulded cone or the galvanised dustbin; every form keeps the
 // stock record, spends the stock builder's draws, and holds the loose body or the cover
 const bounds = (g) => { g.computeBoundingBox(); const b = g.boundingBox; return { x: b.max.x - b.min.x, y: b.max.y, z: b.max.z - b.min.z, minY: b.min.y, cx: (b.max.x + b.min.x) / 2, cz: (b.max.z + b.min.z) / 2 }; };
@@ -119,18 +132,21 @@ for (const [region, forms] of Object.entries(REGIONAL_CLUTTER_FORMS)) {
     regionalForms++;
   }
 }
-// the cover: the jute bales hold the barrier's length and height, the jute stook stands on the cabinet's footprint as
-// cover; both publish their blocks' contact (a frozen band), not a part per hoop or per stick
-{
-  const bales = REGIONAL_CLUTTER_FORMS.bengal.barrier, stook = REGIONAL_CLUTTER_FORMS.bengal.transformer;
-  const m = extent(DESTRUCTIBLE_TYPES.barrier.build(mulberry32(3))), p = extent(bales.build(mulberry32(3)));
-  assert.ok(Math.abs(p.z - m.z) / m.z < 0.1, `the bale stack's length (${p.z.toFixed(2)}) is the barrier's (${m.z.toFixed(2)})`);
-  assert.ok(Math.abs(p.y - m.y) / m.y < 0.15, `the bale stack's top (${p.y.toFixed(2)} m) is the barrier's (${m.y.toFixed(2)} m)`);
-  const meta = DESTRUCTIBLE_TYPES.transformer, q = extent(stook.build(mulberry32(3)));
-  assert.ok(q.x <= meta.hw * 2 * 1.15 && q.z <= meta.hl * 2 * 1.15 + 0.05, `the stook on the cabinet's footprint (${q.x.toFixed(2)} x ${q.z.toFixed(2)})`);
-  assert.ok(q.y >= 1.2, `the stook stands as cover (${q.y.toFixed(2)} m)`);
-  assert.equal(bales.contactBand.parts.length, 4, 'the bale stack\'s contact: its four bales');
-  assert.equal(stook.contactBand.parts.length, 1, 'the stook\'s contact: its cone of sticks');
+// the cover: every region's barrier form holds the barrier's length and height, every cabinet form stands on the
+// cabinet's footprint as cover; both publish their blocks' contact (a frozen band), not a part per hoop, stick or latch
+for (const [region, forms] of Object.entries(REGIONAL_CLUTTER_FORMS)) {
+  if (forms.barrier) {
+    const m = extent(DESTRUCTIBLE_TYPES.barrier.build(mulberry32(3))), p = extent(forms.barrier.build(mulberry32(3)));
+    assert.ok(Math.abs(p.z - m.z) / m.z < 0.1, `${region}: the barrier form's length (${p.z.toFixed(2)}) is the barrier's (${m.z.toFixed(2)})`);
+    assert.ok(Math.abs(p.y - m.y) / m.y < 0.15, `${region}: the barrier form's top (${p.y.toFixed(2)} m) is the barrier's (${m.y.toFixed(2)} m)`);
+    assert.ok(forms.barrier.contactBand && forms.barrier.contactBand.parts.length <= 6, `${region}: the barrier form's contact is its blocks'`);
+  }
+  if (forms.transformer) {
+    const meta = DESTRUCTIBLE_TYPES.transformer, q = extent(forms.transformer.build(mulberry32(3)));
+    assert.ok(q.x <= meta.hw * 2 * 1.15 && q.z <= meta.hl * 2 * 1.15 + 0.05, `${region}: the cabinet form on the cabinet's footprint (${q.x.toFixed(2)} x ${q.z.toFixed(2)})`);
+    assert.ok(q.y >= 1.2, `${region}: the cabinet form stands as cover (${q.y.toFixed(2)} m)`);
+    assert.ok(forms.transformer.contactBand && forms.transformer.contactBand.parts.length <= 2, `${region}: the cabinet form's contact is its block's`);
+  }
 }
-assert.ok(regionalMaps >= 8 && regionalForms >= 11, `the regional maps (${regionalMaps}) and their forms (${regionalForms})`);
+assert.ok(regionalMaps >= 10 && regionalForms >= 23, `the regional maps (${regionalMaps}) and their forms (${regionalForms})`);
 console.log(`periodClutter.selftest: ${periodMaps} maps dated, ${swapped} anachronistic kinds swapped for their period forms at the same seats; ${regionalMaps} maps draw ${regionalForms} regional forms in place of the stock kinds their regions never set; the stock records, draws and cover kept`);
