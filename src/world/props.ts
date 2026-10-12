@@ -195,9 +195,9 @@ import {
   setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
 } from './collision.ts';
 import {
-  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFormOf, rockGroundAt,
+  applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFootprint, rockFormOf, rockGroundAt,
   rockStaysCrushable,
-  type RockCollisionProfile, type RockForm,
+  type RockCollisionProfile, type RockFoot, type RockForm,
 } from './rockCollision.ts'; // the hitbox lane, 2026-10-07
 /** A hedgehog beam's slabs are at most this tall (m; the hitbox lane, 2026-10-07). */
 const HEDGEHOG_SLAB_M = 0.35;
@@ -845,6 +845,8 @@ interface RockSeat {
   col: CollisionRecord | null;
   clutter: CrushableClutter | null;
   profile: RockCollisionProfile | null;
+  /** (rock round 2) the stone's own foot, the ground cover's seal (rockCollision.ts rockFootprint). */
+  foot?: RockFoot | null;
   /** Records the stone had none of: they join the lists at the refit. */
   added?: boolean;
 }
@@ -7723,6 +7725,7 @@ ${snowCap ? `
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
       // (round 3) a low stone under the drive-over line, past ROCK_LOW_STONE_M: a crushable small rock, its records its own
       const low = !seat.profile && !!(seat.profile = lowStoneProfile(rockForms[seat.vv], seat.placement.elements, groundAt));
+      seat.foot = rockFootprint(rockForms[seat.vv], seat.placement.elements, groundAt);
       if (!seat.profile) {
         if (seat.clutter) {
           rockClutter.delete(seat.placement);
@@ -11277,15 +11280,33 @@ ${snowCap ? `
   // The hitbox lane (2026-10-07): every placement pass has read the stones' legacy records; now each stone takes the
   // colliders of its own mesh (settleRockColliders above), a stone a hull drives over leaves both lists, and a stone
   // that rose past the drive-over line with none joins them — before the clutter takes its network identity below.
-  // The ground cover keeps the footprints it has always been sealed against: each legacy record's twin, cosmetic only
-  // (map.ts adds them to the grass, litter, tall-grass and shrub admission), so no tuft or shrub moves with a collider.
+  // The ground cover takes a twin of each legacy record, cosmetic only (map.ts adds them to the grass, litter, tall-grass
+  // and shrub admission; a shrub's cover disc stays where it is): (rock round 2, 2026-10-11, the map-revival lane; wave 415:
+  // "not a clean contact or a cleared pad with pebbles laid on the turf") the twin is the stone's own foot now
+  // (rockFootprint: its surface 2 to 30 cm over the ground), not the legacy footprint the turf stood off as a pad round
+  // every stone; the turf laps it. A stone with no foot keeps the legacy twin. And every stone's foot for the tiers that
+  // dress it (group.userData.rockFeet: the litter's fallen chips, the tall grass's tufts at its foot).
   const rockGroundCover: CollisionRecord[] = [];
+  const rockFeet: Array<{ x: number; z: number; r: number }> = [];
   function refitRockColliders(): void {
     const dropped = new Set<CollisionRecord>();
     for (const seat of rockSeats) {
       if (!seat.rec || !seat.col) continue;
+      if (seat.foot) {
+        let fx = 0, fz = 0;
+        const pts = seat.foot.points, nPts = pts.length / 2;
+        for (let i = 0; i < pts.length; i += 2) { fx += pts[i]; fz += pts[i + 1]; }
+        fx /= nPts; fz /= nPts;
+        let fr = 0;
+        for (let i = 0; i < pts.length; i += 2) fr += Math.hypot(pts[i] - fx, pts[i + 1] - fz) / nPts;
+        rockFeet.push({ x: Math.round(fx * 100) / 100, z: Math.round(fz * 100) / 100, r: Math.round(fr * 100) / 100 });
+      }
       if (!seat.added) {
         const twin = cloneCollisionRecord(seat.rec);
+        if (seat.foot) {
+          setConvexShape(twin, seat.foot.points.slice());
+          twin.min[1] = Math.min(twin.min[1], seat.foot.low - 0.3); twin.max[1] = seat.foot.top;
+        }
         letGroundCoverLap(twin);
         rockGroundCover.push(twin);
       }
@@ -11304,6 +11325,7 @@ ${snowCap ? `
     }
     rockSeats.length = 0;
     group.userData.rockGroundCover = rockGroundCover;
+    group.userData.rockFeet = rockFeet;
   }
   refitRockColliders();
   // the small props laid as destructibles (deferSmallProp): each record's obstacle and collider into its placeholders' places
