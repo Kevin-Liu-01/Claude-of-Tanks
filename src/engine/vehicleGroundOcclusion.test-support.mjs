@@ -99,11 +99,14 @@ export async function vehicleGroundGlslCases() {
     return !(q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M);
   };
   // the GLSL's shade (round 4): 1 − occ·ambShare − (1 − ambShare)·sunCut, the core past the cap, the band's shadow and the
-  // berm's slopes on the sun share; `hulls` the receiver in each hull's frame, `ambShare` the pixel's
+  // berm's slopes on the sun share; (round 6.1) + ambShare·GROUND_AO_BERM_SKY·crest, the packed snow's crest read at the face
+  // (the hulls stand at x = 0 and 6, unrotated: the face's world point is the hull's x plus the face's); `hulls` the receiver
+  // in each hull's frame, `ambShare` the pixel's
+  const HULL_X = [0, 6];
   const shade = (hulls, n, card, ambShare, sun, snow, strengths, runs = null, rho = 0.25) => {
     const per = [], cores = [];
-    let band = 0, berm = 1, gear = 0;
-    for (const q of hulls) {
+    let band = 0, berm = 1, gear = 0, crest = 0;
+    for (const [hi, q] of hulls.entries()) {
       // (round 5) no shoe skip: the shoes carry the vehicle tag, a card in the lane is grass in the running gear
       if (!receives(q, runs)) continue;
       gear = Math.max(gear, M.gearWeight(q, T90M, card));
@@ -111,11 +114,14 @@ export async function vehicleGroundGlslCases() {
       cores.push(M.contactCoreOcclusion(q, T90M, runs));
       band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
       berm *= M.snowBermGain(q, n, T90M, sun, snow, runs);
+      if (Math.abs(q.x) - T90M.xo < M.GROUND_AO_BAND_REACH_M) {
+        crest = Math.max(crest, M.snowBermCrest(q, T90M, runs, snow, { x: HULL_X[hi] + Math.sign(q.x) * T90M.xo, z: q.z }));
+      }
     }
     const occ = M.combineVehicleGroundOcclusion(per, 0, Math.max(0, ...cores), M.gearCap(M.groundOcclusionCap(rho), gear));
     const sunCut = 1 - (1 - band) * berm;
-    if (occ <= 0.003 && Math.abs(sunCut) <= 0.003) return 0;
-    return occ * ambShare + (1 - ambShare) * sunCut;
+    if (occ <= 0.003 && Math.abs(sunCut) <= 0.003 && crest <= 0.003) return 0;
+    return occ * ambShare + (1 - ambShare) * sunCut - ambShare * M.GROUND_AO_BERM_SKY * crest;
   };
   const base = { amb: [1, 1, 0, 0], fillDir: [0, 1, 0], sunDir: [0, 1, 0], points: receivers.map((r) => r[1]), normals: receivers.map((r) => r[2]),
     // the scene target's alpha: a card (no sun state) under 1.5, a lit pixel's 2 + its sun visibility

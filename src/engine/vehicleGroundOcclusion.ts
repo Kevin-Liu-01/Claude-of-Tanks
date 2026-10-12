@@ -194,31 +194,73 @@ export const GROUND_AO_BLEND_OUT_M = 0.06;
 export const GROUND_AO_BLEND_SNOW_SOLID = 0.55;
 export const GROUND_AO_BLEND_SNOW_VARY = 0.45;
 /**
- * 2026-10-11 (contact round 6; waves 400a/b, opus on the packed snow: "its pads are a clean white as if painted rather than packed
- * with snow"): on snow the packed snow fills the links — the vehicle pixels darker than GROUND_AO_SNOW_RECESS[0] of the snow
- * beside them take it whole, those over [1] keep their steel — and the lowest GROUND_AO_SNOW_FOOT_M stays packed whatever.
+ * 2026-10-11 (contact round 6.1; waves 400a/b, opus on the packed snow: "its pads are a clean white as if painted rather than
+ * packed with snow"; the lane's own round-6 frames: round 5's line, 6 cm ± 45 % and soft over its upper 45 %, laid a pale wash
+ * with the links drawn through it — a white ladder over the lower run seen from above — and round 6's luminance test could not
+ * tell a dark rubber pad from a recess: on the M1A2 it changed no pixel): on snow a run's foot is sunk in packed snow to a level
+ * — GROUND_AO_SNOW_LEVEL_M × GROUND_AO_SNOW_LEVEL_SPAN[0]..[1], uneven along the ground both smoothly (snowBlendNoise) and in
+ * clods (soilNoise), world-anchored — opaque under it and soft over GROUND_AO_SNOW_EDGE_M only. In a run's lane more than
+ * GROUND_AO_SNOW_FACE_M[1] in from both its faces (the lower run's top, the road wheels' rims, seen from above) the level is at
+ * most GROUND_AO_SNOW_INNER_M: the steel keeps its colour there and the snow lies in the links' bottoms. The law's lever
+ * (__LIGHT_TUNE.GROUND_AO_SNOW_FOOT, uVehGroundR7.y) at 0 restores round 5's line for an A/B frame.
  */
-export const GROUND_AO_SNOW_RECESS = Object.freeze([0.15, 0.45] as const);
-export const GROUND_AO_SNOW_FOOT_M = 0.015;
+export const GROUND_AO_SNOW_LEVEL_M = 0.065;
+export const GROUND_AO_SNOW_LEVEL_SPAN = Object.freeze([0.35, 1.45] as const);
+export const GROUND_AO_SNOW_EDGE_M = 0.008;
+export const GROUND_AO_SNOW_INNER_M = 0.02;
+export const GROUND_AO_SNOW_FACE_M = Object.freeze([0.015, 0.05] as const);
+/**
+ * Round 6.1 (both critics on waves 400a/b: "a crisp, straight lower edge traced by a thin pale halo rather than a berm"; the
+ * round-6 berm turns only the sun share, and Frosthollow's light is mostly sky): the crest of the packed snow beside a run sees
+ * more of the sky — the ground's ambient share gains up to GROUND_AO_BERM_SKY there, whole from GROUND_AO_BERM_CREST_M[0]
+ * beyond the outer face, gone by GROUND_AO_BERM_CREST_M[1] plus GROUND_AO_BERM_CREST_PER_LEVEL × the snow's level at the face,
+ * by that level over the span's top (a deeper foot, a taller and wider crest; the same noise as the foot, read at the face). A
+ * lift: it never darkens. On the berm's lever (GROUND_AO_BERM) and the foot's (GROUND_AO_SNOW_FOOT).
+ */
+export const GROUND_AO_BERM_SKY = 0.12;
+export const GROUND_AO_BERM_CREST_M = Object.freeze([0.025, 0.06] as const);
+export const GROUND_AO_BERM_CREST_PER_LEVEL = 2;
 /**
  * Round 6 (waves 400a/b, both critics: "the grass ground is already too dark, a crushed near-black green noise carpet",
  * "the track pads read lit brighter than the soil beside them", "a lighter, textured soil band right at the track foot"): on
- * grass the ground at a run's foot is soil the track has churned — the lane and GROUND_AO_SOIL_IN_M beyond its faces whole,
- * gone by GROUND_AO_SOIL_OUT_M, GROUND_AO_SOIL_END_M past the ground run's ends, at the run's drawn foot. A ground pixel there
- * takes up to GROUND_AO_SOIL_MAX of GROUND_AO_SOIL_RATIO, the colour a green grass ground turns into a warm soil under the same
- * light (lighter: luminance ×1.3, R and B lifted most), textured by soilTexture. Only a green ground (grassHueWeight; sand,
- * dirt, rock and snow keep their colour), never a card (the blades stay green) and never a vehicle pixel. It never darkens.
+ * grass the ground at a run's foot is soil the track has churned. Round 6.1 (the lane's round-6 frames: a per-channel ratio
+ * turned a blue-green shade into a mauve grey, and a partial mix of green and brown passes through grey): the soil is the
+ * grass's own luminance × GROUND_AO_SOIL_LIFT in a warm soil's colour (GROUND_AO_SOIL_CHROMA, unit luminance), textured by
+ * soilTexture (0.85..1.15: never darker), laid in clods and opaque — a ground pixel is soil where the clod noise (soilNoise)
+ * clears a threshold that rises from GROUND_AO_SOIL_CLOD[0] (every pixel) within GROUND_AO_SOIL_IN_M of a face to
+ * GROUND_AO_SOIL_CLOD[1] (none) at GROUND_AO_SOIL_OUT_M, the same past the ground run's ends (GROUND_AO_SOIL_END_M) and off
+ * the run's foot height, soft over GROUND_AO_SOIL_CLOD_SOFT of the noise. Only a green ground (grassHueWeight; sand, dirt,
+ * rock and snow keep their colour), never a card (the blades stay green) and never a vehicle pixel.
  */
-export const GROUND_AO_SOIL_IN_M = 0.1;
-export const GROUND_AO_SOIL_OUT_M = 0.28;
+export const GROUND_AO_SOIL_IN_M = 0.04;
+export const GROUND_AO_SOIL_OUT_M = 0.32;
 export const GROUND_AO_SOIL_END_M = 0.3;
-export const GROUND_AO_SOIL_MAX = 0.85;
-export const GROUND_AO_SOIL_RATIO = Object.freeze([3.2, 1.2, 3.0] as const);
+export const GROUND_AO_SOIL_MAX = 1;
+export const GROUND_AO_SOIL_LIFT = 1.35;
+export const GROUND_AO_SOIL_CHROMA = Object.freeze([1.347, 0.943, 0.539] as const);
+export const GROUND_AO_SOIL_CLOD = Object.freeze([-0.25, 1.15] as const);
+export const GROUND_AO_SOIL_CLOD_SOFT = 0.12;
 
 /** Round 5: the snow line's unevenness at a world point, 0..1 — three smooth sines along the ground (no per-pixel noise). */
 export function snowBlendNoise(x: number, z: number): number {
   return clamp01(0.5 + 0.22 * Math.sin(1.9 * z + 0.7 * x + 1.7) + 0.16 * Math.sin(4.7 * z - 1.3 * x + 0.4)
     + 0.12 * Math.sin(9.3 * z + 2.1 * x + 2.2));
+}
+
+/** Round 6.1: the churned ground's clods at a world point, 0..1 — three short sines along the ground (no per-pixel noise). */
+export function soilNoise(x: number, z: number): number {
+  return clamp01(0.5 + 0.2 * Math.sin(23 * x + 17 * z) + 0.15 * Math.sin(41 * z - 29 * x + 1.3) + 0.15 * Math.sin(67 * x + 53 * z + 2.1));
+}
+
+/**
+ * Round 6.1: the packed snow's level at a run's foot on full snow (GROUND_AO_SNOW_LEVEL_M), from the two noises at the point —
+ * `law` 0 is round 5's line (GROUND_AO_BLEND_H_SNOW_M ± GROUND_AO_BLEND_SNOW_VARY), 1 the sunk foot.
+ */
+export function snowFootLevel(sn: number, nc: number, law = 1): number {
+  const old = GROUND_AO_BLEND_H_SNOW_M * (1 - GROUND_AO_BLEND_SNOW_VARY + 2 * GROUND_AO_BLEND_SNOW_VARY * sn);
+  const next = GROUND_AO_SNOW_LEVEL_M * (GROUND_AO_SNOW_LEVEL_SPAN[0]
+    + (GROUND_AO_SNOW_LEVEL_SPAN[1] - GROUND_AO_SNOW_LEVEL_SPAN[0]) * (0.5 * sn + 0.5 * nc));
+  return old + (next - old) * clamp01(law);
 }
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
@@ -583,29 +625,45 @@ export function gearCap(cap: number, gear: number, gearMax = GROUND_AO_GEAR_CAP)
  * Round 5: the contact blend's weight on a vehicle pixel at q (see GROUND_AO_BLEND_H_M): within the blend height over the run's
  * drawn lower edge (squared off by a smoothstep), in its lane (its faces widened GROUND_AO_GRIME_LANE_M) along the ground run
  * (soft over its ends), at most the blend's share — on snow (`snow`, snowWeight) the snow's height and share. `scale`: the lever.
+ * Round 6.1 (`law`, GROUND_AO_SNOW_LEVEL_M): on snow the foot sunk to the packed snow's level, opaque under it, soft over
+ * GROUND_AO_SNOW_EDGE_M, at most GROUND_AO_SNOW_INNER_M in the lane's middle; `law` 0 is round 5's line.
  */
 export function contactBlendWeight(q: Vec3Like, h: VehicleGroundHull, snow: number, runs?: VehicleGroundRuns | null, scale = 1,
-  world: { x: number; z: number } | null = null): number {
+  world: { x: number; z: number } | null = null, law = 1): number {
   const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
   if (laneD < -GROUND_AO_GRIME_LANE_M || q.z < h.cz0 - 0.1 || q.z > h.cz1 + 0.1) return 0;
-  const s = clamp01(snow);
+  const s = clamp01(snow), l = clamp01(law);
   // on snow: packed snow, an uneven opaque line (its height along the ground from the world point; mid-height without one)
   const n = world ? snowBlendNoise(world.x, world.z) : 0.5;
-  const snowH = GROUND_AO_BLEND_H_SNOW_M * (1 - GROUND_AO_BLEND_SNOW_VARY + 2 * GROUND_AO_BLEND_SNOW_VARY * n);
-  const height = GROUND_AO_BLEND_H_M + (snowH - GROUND_AO_BLEND_H_M) * s;
+  const nc = world ? soilNoise(world.x, world.z) : 0.5;
+  const height0 = GROUND_AO_BLEND_H_M + (snowFootLevel(n, nc, l) - GROUND_AO_BLEND_H_M) * s;
+  // (round 6.1) the lane's middle (the lower run's top, the wheels' rims): the links' bottoms only
+  const inner = smoothstep(GROUND_AO_SNOW_FACE_M[0], GROUND_AO_SNOW_FACE_M[1], laneD) * s * l;
+  const height = height0 + (Math.min(height0, GROUND_AO_SNOW_INNER_M) - height0) * inner;
+  const solid = s * (GROUND_AO_BLEND_SNOW_SOLID * height + (height - GROUND_AO_SNOW_EDGE_M - GROUND_AO_BLEND_SNOW_SOLID * height) * l);
   const dv = q.y - (h.y0 + runTravelAt(q.x, q.z, h, runs));
   if (dv > height || dv < -0.05) return 0;
-  return (1 - smoothstep(GROUND_AO_BLEND_SNOW_SOLID * s * height, height, dv))
+  return (1 - smoothstep(solid, height, dv))
     * smoothstep(h.cz0 - 0.1, h.cz0 + 0.05, q.z) * (1 - smoothstep(h.cz1 - 0.05, h.cz1 + 0.1, q.z))
     * (GROUND_AO_BLEND_MAX + (GROUND_AO_BLEND_MAX_SNOW - GROUND_AO_BLEND_MAX) * s) * Math.max(scale, 0);
 }
 
-/** Round 6: on snow, how much of the packed snow a vehicle pixel of luminance `lum` takes beside snow of `snowLum`, `dv` over the
- * run's lower edge: whole in the links' recesses (darker than GROUND_AO_SNOW_RECESS[0] of the snow) and the lowest
- * GROUND_AO_SNOW_FOOT_M, none on a pad face (lighter than [1]). */
-export function snowRecessWeight(lum: number, snowLum: number, dv: number): number {
-  const k = lum / Math.max(snowLum, 1e-4);
-  return Math.max(1 - smoothstep(GROUND_AO_SNOW_RECESS[0], GROUND_AO_SNOW_RECESS[1], k), 1 - smoothstep(0, GROUND_AO_SNOW_FOOT_M, dv));
+/**
+ * Round 6.1: the packed snow's crest at a ground point q (root frame) beside a run (see GROUND_AO_BERM_SKY): 0..1, the share of
+ * GROUND_AO_BERM_SKY the ground's ambient share gains — beyond the outer face, along the ground run, at the run's foot, by the
+ * snow's level at the face (`face`: the face's world point beside q, the foot's noise read there). `scale` carries the snow and
+ * the levers.
+ */
+export function snowBermCrest(q: Vec3Like, h: VehicleGroundHull, runs: VehicleGroundRuns | null | undefined, scale: number,
+  face: { x: number; z: number } | null = null): number {
+  const beyond = Math.abs(q.x) - h.xo;
+  if (!(scale > 0) || beyond <= 0) return 0;
+  const zw = smoothstep(h.cz0 - 0.1, h.cz0 + 0.2, q.z) * (1 - smoothstep(h.cz1 - 0.2, h.cz1 + 0.1, q.z));
+  const vw = 1 - smoothstep(0.03, 0.08, Math.abs(q.y - h.y0 - runTravelAt(q.x, q.z, h, runs)));
+  const level = snowFootLevel(face ? snowBlendNoise(face.x, face.z) : 0.5, face ? soilNoise(face.x, face.z) : 0.5);
+  const cw = smoothstep(0, GROUND_AO_BERM_CREST_M[0], beyond)
+    * (1 - smoothstep(GROUND_AO_BERM_CREST_M[1], GROUND_AO_BERM_CREST_M[1] + GROUND_AO_BERM_CREST_PER_LEVEL * level, beyond));
+  return scale * zw * vw * cw * level / (GROUND_AO_SNOW_LEVEL_M * GROUND_AO_SNOW_LEVEL_SPAN[1]);
 }
 
 /** Round 6: a ground colour's grass weight — green over red and over blue (a sand, a dirt, a rock or snow: 0). */
@@ -613,23 +671,35 @@ export function grassHueWeight(r: number, g: number, b: number): number {
   return smoothstep(1.05, 1.35, g / Math.max(r, 1e-4)) * smoothstep(1.2, 1.8, g / Math.max(b, 1e-4));
 }
 
-/** Round 6: the churned soil's texture at a world point, 0.85..1.15 — three smooth sines along the ground (no per-pixel noise). */
+/** Round 6: the churned soil's texture at a world point, 0.85..1.15 (soilNoise). */
 export function soilTexture(x: number, z: number): number {
-  return 0.85 + 0.3 * clamp01(0.5 + 0.2 * Math.sin(23 * x + 17 * z) + 0.15 * Math.sin(41 * z - 29 * x + 1.3) + 0.15 * Math.sin(67 * x + 53 * z + 2.1));
+  return 0.85 + 0.3 * soilNoise(x, z);
+}
+
+/** Round 6.1: the soil a grass ground of linear colour `rgb` turns into — its luminance × GROUND_AO_SOIL_LIFT × `tx` (the
+ * texture), in the soil's colour (GROUND_AO_SOIL_CHROMA, unit luminance): never darker for a texture of 0.85 or more. */
+export function soilColor(rgb: readonly [number, number, number] | readonly number[], tx = 1): [number, number, number] {
+  const k = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) * GROUND_AO_SOIL_LIFT * tx;
+  return [k * GROUND_AO_SOIL_CHROMA[0], k * GROUND_AO_SOIL_CHROMA[1], k * GROUND_AO_SOIL_CHROMA[2]];
 }
 
 /**
  * Round 6: the soil band's weight at a ground point q (root frame) beside a run (see GROUND_AO_SOIL_IN_M): the lane and the band
- * beyond its faces, along the ground run and a little past its ends, at the run's drawn foot. `scale`: the lever.
+ * beyond its faces, along the ground run and a little past its ends, at the run's drawn foot. Round 6.1: in clods — whole where
+ * the clod noise at the world point (`world`; mid-noise without one) clears the threshold the distances raise. `scale`: the lever.
  */
-export function soilBandWeight(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null, scale = 1): number {
+export function soilBandWeight(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null, scale = 1,
+  world: { x: number; z: number } | null = null): number {
   const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
   const outD = -laneD;
   const past = Math.max(h.cz0 - q.z, q.z - h.cz1, 0);
   if (outD > GROUND_AO_SOIL_OUT_M || past > GROUND_AO_SOIL_END_M) return 0;
   const dv = q.y - (h.y0 + runTravelAt(q.x, q.z, h, runs));
-  return (1 - smoothstep(GROUND_AO_SOIL_IN_M, GROUND_AO_SOIL_OUT_M, outD)) * (1 - smoothstep(0, GROUND_AO_SOIL_END_M, past))
-    * (1 - smoothstep(0.05, 0.12, Math.abs(dv))) * Math.max(scale, 0);
+  const d = Math.max(smoothstep(GROUND_AO_SOIL_IN_M, GROUND_AO_SOIL_OUT_M, outD), smoothstep(0, GROUND_AO_SOIL_END_M, past),
+    smoothstep(0.05, 0.12, Math.abs(dv)));
+  const thr = GROUND_AO_SOIL_CLOD[0] + (GROUND_AO_SOIL_CLOD[1] - GROUND_AO_SOIL_CLOD[0]) * d;
+  const n = world ? soilNoise(world.x, world.z) : 0.5;
+  return smoothstep(thr - GROUND_AO_SOIL_CLOD_SOFT, thr + GROUND_AO_SOIL_CLOD_SOFT, n) * Math.max(scale, 0);
 }
 
 /**
@@ -736,7 +806,7 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundR5: THREE.IUniform<THREE.Vector4>;
   /** Round 5: (the snow's cool cast — snowWeight —, the old shoe skip 0/1, the running gear's cap, the contact blend's share). */
   uVehGroundR6: THREE.IUniform<THREE.Vector4>;
-  /** Round 6: (the soil band's lever, the snow recesses' lever, 0, 0). */
+  /** Round 6: (the soil band's lever, round 6.1's snow foot and crest — 0: round 5's line, no crest —, 0, 0). */
   uVehGroundR7: THREE.IUniform<THREE.Vector4>;
 }
 
@@ -1043,8 +1113,8 @@ export function updateVehicleGroundOcclusionUniforms(
   // (round 5; QA: __LIGHT_TUNE.GROUND_AO_COOL / _SHOE_SKIP / _GEAR_CAP / _BLEND compare the round's terms on one frame)
   u.uVehGroundR6.value.set(snow * Math.max(lightTune('GROUND_AO_COOL', 1), 0), lightTune('GROUND_AO_SHOE_SKIP', 0) > 0 ? 1 : 0,
     clamp01(lightTune('GROUND_AO_GEAR_CAP', GROUND_AO_GEAR_CAP)), Math.max(lightTune('GROUND_AO_BLEND', 1), 0));
-  // (round 6; QA: __LIGHT_TUNE.GROUND_AO_SOIL / _RECESS)
-  u.uVehGroundR7.value.set(Math.max(lightTune('GROUND_AO_SOIL', 1), 0), clamp01(lightTune('GROUND_AO_RECESS', 1)), 0, 0);
+  // (round 6; QA: __LIGHT_TUNE.GROUND_AO_SOIL / _SNOW_FOOT — round 6.1's sunk foot and crest; 0: round 5's line)
+  u.uVehGroundR7.value.set(clamp01(lightTune('GROUND_AO_SOIL', 1)), clamp01(lightTune('GROUND_AO_SNOW_FOOT', 1)), 0, 0);
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
@@ -1102,6 +1172,20 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       float t = clamp( ( z - b3.z ) / max( b3.w - b3.z, 1e-4 ), 0.0, 1.0 ) * ${(GROUND_AO_RUN_KNOTS - 1).toFixed(1)};
       return dot( k0, max( 1.0 - abs( t - vec4( 0.0, 1.0, 2.0, 3.0 ) ), 0.0 ) )
            + dot( k1, max( 1.0 - abs( t - vec4( 4.0, 5.0, 6.0, 7.0 ) ), 0.0 ) );
+    }
+    // (round 5) the snow line's unevenness (snowBlendNoise), (round 6.1) the churned ground's clods (soilNoise) and the packed
+    // snow's level at a run's foot on full snow (snowFootLevel, the sunk foot): world space, smooth sines (no per-pixel noise)
+    float cotSnowNoise( vec3 P ) {
+      return clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )
+        + 0.12 * sin( 9.3 * P.z + 2.1 * P.x + 2.2 ), 0.0, 1.0 );
+    }
+    float cotSoilNoise( vec3 P ) {
+      return clamp( 0.5 + 0.2 * sin( 23.0 * P.x + 17.0 * P.z ) + 0.15 * sin( 41.0 * P.z - 29.0 * P.x + 1.3 )
+        + 0.15 * sin( 67.0 * P.x + 53.0 * P.z + 2.1 ), 0.0, 1.0 );
+    }
+    float cotSnowFootLevel( vec3 P ) {
+      return ${f(GROUND_AO_SNOW_LEVEL_M)} * ( ${f(GROUND_AO_SNOW_LEVEL_SPAN[0])} + ${f(GROUND_AO_SNOW_LEVEL_SPAN[1] - GROUND_AO_SNOW_LEVEL_SPAN[0])}
+        * ( 0.5 * cotSnowNoise( P ) + 0.5 * cotSoilNoise( P ) ) );
     }
     // (2026-10-10, round 3) a card at q in the hull's own shadow: the ray toward the sun s (the hull frame) meets the solid
     // over the belly or either run (hullSunShadow)
@@ -1173,10 +1257,12 @@ ${GLSL_HULL_EDGES}
       bool haveN = false;
       float vis = 1.0;
       float under = 0.0; // a card in a hull's own shadow (no sun reaches it there): its light is all ambient
-      // (round 4) the contact line's core (past the joint cap), the shoe band's sun shadow, the snow berm's sun gain
+      // (round 4) the contact line's core (past the joint cap), the shoe band's sun shadow, the snow berm's sun gain;
+      // (round 6.1) the packed snow's crest (more of the sky)
       float occCore = 0.0;
       float band = 0.0;
       float bermGain = 1.0;
+      float crest = 0.0;
       // (round 5) how far a card stands in a run's running gear (its cap may reach the gear's)
       float gearW = 0.0;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
@@ -1271,14 +1357,25 @@ ${GLSL_HULL_EDGES}
             band = max( band, ( 1.0 - smoothstep( top - pen, top + pen, q.y + t * sR.y ) )
               * smoothstep( b3.z - 0.05, b3.z + 0.05, zHit ) * ( 1.0 - smoothstep( b3.w - 0.05, b3.w + 0.05, zHit ) ) );
           }
-          if ( uVehGroundR4.z > 0.0 && beyond > 0.0 && beyond < ${f(GROUND_AO_BERM_W_M)} ) {
+          if ( uVehGroundR4.z > 0.0 && beyond > 0.0 && beyond < ${f(Math.max(GROUND_AO_BERM_W_M, GROUND_AO_BERM_CREST_M[1] + GROUND_AO_BERM_CREST_PER_LEVEL * GROUND_AO_SNOW_LEVEL_M * GROUND_AO_SNOW_LEVEL_SPAN[1]))} ) {
             float zw = smoothstep( b3.z - 0.1, b3.z + 0.2, q.z ) * ( 1.0 - smoothstep( b3.w - 0.2, b3.w + 0.1, q.z ) );
             float vw = 1.0 - smoothstep( 0.03, 0.08, abs( q.y - b0.w - cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 ) ) );
-            float slope = uVehGroundR4.z * zw * vw * ${f((4 * GROUND_AO_BERM_H_M) / GROUND_AO_BERM_W_M)}
-              * ( 1.0 - 2.0 * beyond / ${f(GROUND_AO_BERM_W_M)} );
-            vec3 bn = normalize( n - vec3( slope * sign( q.x ), 0.0, 0.0 ) );
-            float t0 = max( dot( n, sR ), 0.0 );
-            if ( t0 > 1e-3 ) bermGain *= min( max( dot( bn, sR ), 0.0 ) / t0, 2.0 );
+            if ( beyond < ${f(GROUND_AO_BERM_W_M)} ) {
+              float slope = uVehGroundR4.z * zw * vw * ${f((4 * GROUND_AO_BERM_H_M) / GROUND_AO_BERM_W_M)}
+                * ( 1.0 - 2.0 * beyond / ${f(GROUND_AO_BERM_W_M)} );
+              vec3 bn = normalize( n - vec3( slope * sign( q.x ), 0.0, 0.0 ) );
+              float t0 = max( dot( n, sR ), 0.0 );
+              if ( t0 > 1e-3 ) bermGain *= min( max( dot( bn, sR ), 0.0 ) / t0, 2.0 );
+            }
+            // (round 6.1) the packed snow's crest (snowBermCrest): the foot's level read at the face beside q (row m0 is the
+            // hull's world→root x row: the world step m0.xyz / |m0|² moves q.x by one), a deeper foot a taller, wider crest
+            if ( uVehGroundR7.y > 0.0 && zw * vw > 0.0 ) {
+              vec3 Pf = P - m0.xyz * ( sign( q.x ) * beyond / dot( m0.xyz, m0.xyz ) );
+              float lvl = cotSnowFootLevel( Pf );
+              float cw = smoothstep( 0.0, ${f(GROUND_AO_BERM_CREST_M[0])}, beyond ) * ( 1.0 - smoothstep( ${f(GROUND_AO_BERM_CREST_M[1])},
+                ${f(GROUND_AO_BERM_CREST_M[1])} + ${f(GROUND_AO_BERM_CREST_PER_LEVEL)} * lvl, beyond ) );
+              crest = max( crest, uVehGroundR4.z * uVehGroundR7.y * zw * vw * cw * lvl * ${f(1 / (GROUND_AO_SNOW_LEVEL_M * GROUND_AO_SNOW_LEVEL_SPAN[1]))} );
+            }
           }
         }
         // a card (no sun state) takes the whole ambient share only in the hull's own shadow (round 3: inside the footprint
@@ -1294,7 +1391,8 @@ ${GLSL_HULL_EDGES}
       float occ = max( min( 1.0 - vis, mix( uVehGroundR5.z, max( uVehGroundR5.z, uVehGroundR6.z ), gearW ) ), occCore ) * fade;
       // (round 4) the sun share's loss: the band's shadow, the berm's slopes (a lit lip gains: negative)
       float sunCut = ( 1.0 - ( 1.0 - band ) * bermGain ) * fade;
-      if ( occ <= 0.003 && abs( sunCut ) <= 0.003 ) return 1.0;
+      crest *= fade;
+      if ( occ <= 0.003 && abs( sunCut ) <= 0.003 && crest <= 0.003 ) return 1.0;
       // a card has no sun state: half in sun in the open, all ambient in a hull's own shadow
       float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
       if ( sunVis >= 0.0 ) {
@@ -1303,7 +1401,8 @@ ${GLSL_HULL_EDGES}
           + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
         ambShare = A / max( T + A, 1e-4 );
       }
-      return 1.0 - occ * ambShare - ( 1.0 - ambShare ) * sunCut;
+      // (round 6.1) the crest's sky: a gain on the ambient share, never a loss
+      return 1.0 - occ * ambShare - ( 1.0 - ambShare ) * sunCut + ambShare * ${f(GROUND_AO_BERM_SKY)} * crest;
     }
     // (round 4) a vehicle pixel's grime: the dirt a run carries toward its foot (vehicleGrime; none on snow) — the colour
     // multiplier the aerial pass gives the hulls' own pixels
@@ -1336,11 +1435,12 @@ ${GLSL_HULL_EDGES}
     vec3 cotVehicleContactBlend( vec3 rgb, vec3 P ) {
       if ( uVehGroundR6.w <= 0.0 ) return rgb;
       float snow = clamp( uVehGroundR6.x, 0.0, 1.0 );
-      // on snow: packed snow round the foot — an uneven opaque line, its height along the ground (snowBlendNoise, world space)
-      float sn = clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )
-        + 0.12 * sin( 9.3 * P.z + 2.1 * P.x + 2.2 ), 0.0, 1.0 );
-      float height = mix( ${f(GROUND_AO_BLEND_H_M)}, ${f(GROUND_AO_BLEND_H_SNOW_M)} * ( ${f(1 - GROUND_AO_BLEND_SNOW_VARY)} + ${f(2 * GROUND_AO_BLEND_SNOW_VARY)} * sn ), snow );
-      float solid = ${f(GROUND_AO_BLEND_SNOW_SOLID)} * snow * height;
+      // on snow: packed snow round the foot — an uneven line, its height along the ground (snowBlendNoise, world space);
+      // (round 6.1, the law uVehGroundR7.y; 0: round 5's line) the foot sunk to the packed snow's level (cotSnowFootLevel),
+      // opaque under it and soft over GROUND_AO_SNOW_EDGE_M only
+      float law = clamp( uVehGroundR7.y, 0.0, 1.0 );
+      // the tallest the line stands (the noise is read only by a pixel under it)
+      float hiMax = mix( ${f(GROUND_AO_BLEND_H_M)}, ${f(Math.max(GROUND_AO_BLEND_H_SNOW_M * (1 + GROUND_AO_BLEND_SNOW_VARY), GROUND_AO_SNOW_LEVEL_M * GROUND_AO_SNOW_LEVEL_SPAN[1]))}, snow );
       float share = mix( ${f(GROUND_AO_BLEND_MAX)}, ${f(GROUND_AO_BLEND_MAX_SNOW)}, snow ) * uVehGroundR6.w;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
@@ -1352,7 +1452,16 @@ ${GLSL_HULL_EDGES}
         int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );
         float foot = b0.w + cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 );
         float dv = q.y - foot;
-        if ( dv > height || dv < -0.05 ) continue;
+        if ( dv > hiMax || dv < -0.05 ) continue;
+        float sn = cotSnowNoise( P );
+        float nc = cotSoilNoise( P );
+        float height = mix( ${f(GROUND_AO_BLEND_H_M)}, mix( ${f(GROUND_AO_BLEND_H_SNOW_M)} * ( ${f(1 - GROUND_AO_BLEND_SNOW_VARY)} + ${f(2 * GROUND_AO_BLEND_SNOW_VARY)} * sn ),
+          ${f(GROUND_AO_SNOW_LEVEL_M)} * ( ${f(GROUND_AO_SNOW_LEVEL_SPAN[0])} + ${f(GROUND_AO_SNOW_LEVEL_SPAN[1] - GROUND_AO_SNOW_LEVEL_SPAN[0])} * ( 0.5 * sn + 0.5 * nc ) ), law ), snow );
+        // (round 6.1) in the lane's middle (the lower run's top, the wheels' rims) the snow lies in the links' bottoms only
+        height = mix( height, min( height, ${f(GROUND_AO_SNOW_INNER_M)} ),
+          smoothstep( ${f(GROUND_AO_SNOW_FACE_M[0])}, ${f(GROUND_AO_SNOW_FACE_M[1])}, laneD ) * snow * law );
+        if ( dv > height ) continue;
+        float solid = snow * mix( ${f(GROUND_AO_BLEND_SNOW_SOLID)} * height, height - ${f(GROUND_AO_SNOW_EDGE_M)}, law );
         float w = ( 1.0 - smoothstep( solid, height, dv ) ) * smoothstep( b3.z - 0.1, b3.z + 0.05, q.z )
           * ( 1.0 - smoothstep( b3.w - 0.05, b3.w + 0.1, q.z ) ) * share;
         if ( w <= 0.003 ) continue;
@@ -1369,22 +1478,20 @@ ${GLSL_HULL_EDGES}
         if ( g.a >= ${f(VEHICLE_ALPHA_MIN)} ) continue;
         float gd = cotDepthToDist( texture2D( tDepth, guv ).x );
         vec3 gc = g.rgb * cotVehicleGroundShadeRgb( guv, cotWorldAtDepth( guv, gd ), g.a, gd );
-        // (round 6) on snow the packed snow fills the links' recesses, the pads' faces keep their steel; the lowest centimetres
-        // stay packed whatever (snowRecessWeight)
-        float kr = dot( rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) / max( dot( gc, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-        float recess = max( 1.0 - smoothstep( ${f(GROUND_AO_SNOW_RECESS[0])}, ${f(GROUND_AO_SNOW_RECESS[1])}, kr ),
-          1.0 - smoothstep( 0.0, ${f(GROUND_AO_SNOW_FOOT_M)}, dv ) );
-        w *= mix( 1.0, recess, snow * uVehGroundR7.y );
+        // (round 6.1) packed snow is not a mirror of the plane beside it: ±5 % in the clods
+        gc *= mix( 1.0, 0.95 + 0.1 * nc, snow * law );
         return mix( rgb, gc, w );
       }
       return rgb;
     }
-    // (round 6) the soil band at a run's foot on grass (GROUND_AO_SOIL_*): a lit green ground pixel there takes the colour a grass
-    // ground turns into a warm churned soil under the same light — lighter, textured; never a card, never a vehicle, never darker
+    // (round 6) the soil band at a run's foot on grass (GROUND_AO_SOIL_*); (round 6.1) a lit green ground pixel there is churned
+    // soil in clods — opaque where the clod noise clears a threshold the distance from the run raises — in a warm soil's colour
+    // at the grass's luminance lifted (never darker); never a card, never a vehicle
     vec3 cotVehicleSoilBand( vec3 rgb, vec3 P, float alpha ) {
       if ( uVehGroundR7.x <= 0.0 || alpha < 1.5 || alpha >= ${f(VEHICLE_ALPHA_MIN)} ) return rgb;
       float gw = smoothstep( 1.05, 1.35, rgb.g / max( rgb.r, 1e-4 ) ) * smoothstep( 1.2, 1.8, rgb.g / max( rgb.b, 1e-4 ) );
       if ( gw <= 0.0 ) return rgb;
+      float nc = -1.0; // read once, only by a pixel inside a band
       float w = 0.0;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
@@ -1396,12 +1503,14 @@ ${GLSL_HULL_EDGES}
         if ( outD > ${f(GROUND_AO_SOIL_OUT_M)} || past > ${f(GROUND_AO_SOIL_END_M)} ) continue;
         int rk = i * 4 + ( q.x < 0.0 ? 0 : 2 );
         float dv = q.y - ( b0.w + cotVgRun( uVehGroundR[ rk ], uVehGroundR[ rk + 1 ], q.z, b3 ) );
-        w = max( w, ( 1.0 - smoothstep( ${f(GROUND_AO_SOIL_IN_M)}, ${f(GROUND_AO_SOIL_OUT_M)}, outD ) )
-          * ( 1.0 - smoothstep( 0.0, ${f(GROUND_AO_SOIL_END_M)}, past ) ) * ( 1.0 - smoothstep( 0.05, 0.12, abs( dv ) ) ) );
+        if ( nc < 0.0 ) nc = cotSoilNoise( P );
+        float d = max( max( smoothstep( ${f(GROUND_AO_SOIL_IN_M)}, ${f(GROUND_AO_SOIL_OUT_M)}, outD ), smoothstep( 0.0, ${f(GROUND_AO_SOIL_END_M)}, past ) ),
+          smoothstep( 0.05, 0.12, abs( dv ) ) );
+        float thr = ${f(GROUND_AO_SOIL_CLOD[0])} + ${f(GROUND_AO_SOIL_CLOD[1] - GROUND_AO_SOIL_CLOD[0])} * d;
+        w = max( w, smoothstep( thr - ${f(GROUND_AO_SOIL_CLOD_SOFT)}, thr + ${f(GROUND_AO_SOIL_CLOD_SOFT)}, nc ) );
       }
       if ( w <= 0.003 ) return rgb;
-      float tx = 0.85 + 0.3 * clamp( 0.5 + 0.2 * sin( 23.0 * P.x + 17.0 * P.z ) + 0.15 * sin( 41.0 * P.z - 29.0 * P.x + 1.3 )
-        + 0.15 * sin( 67.0 * P.x + 53.0 * P.z + 2.1 ), 0.0, 1.0 );
-      return rgb * max( mix( vec3( 1.0 ), vec3( ${GROUND_AO_SOIL_RATIO.map(f).join(', ')} ) * tx, w * gw * ${f(GROUND_AO_SOIL_MAX)} * uVehGroundR7.x ), vec3( 1.0 ) );
+      float L = dot( rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) * ${f(GROUND_AO_SOIL_LIFT)} * ( 0.85 + 0.3 * nc );
+      return mix( rgb, vec3( ${GROUND_AO_SOIL_CHROMA.map(f).join(', ')} ) * L, w * gw * ${f(GROUND_AO_SOIL_MAX)} * uVehGroundR7.x );
     }
 `;
