@@ -18,7 +18,7 @@ for (const [id, seat] of Object.entries(MISSION_ATTACHMENT_SEATS)) {
 }
 assert.equal(dockKeepOut('no-such-vehicle', 'turret').length, 0, 'no seat, no keep-out');
 // The worst offenders of the 2026-10-11 census (triangles of stowage inside the dock volumes before the keep-out).
-const ids = ['m1a2', 'kf51_x', 'ariete_c1', 'kv2', 'k21_x', 'borsuk', 'fv510', 'amx40'];
+const ids = ['type89_x', 'type96b_x', 'leo2a4m', 'type90a', 'kf51_x', 'merkava4_barak', 'ariete_c1', 'm1a2'];
 await ensureInteriorFills(ids);
 const tri = new Triangle(), a = new Vector3(), b = new Vector3(), c = new Vector3();
 let checked = 0, rejected = 0;
