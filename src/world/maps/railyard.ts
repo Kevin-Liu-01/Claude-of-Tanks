@@ -473,6 +473,10 @@ export default {
     sandbagLines: 10,
     // (round 3c) no field works at random: round 3b's three stood both pillboxes in bravo's half (x 13-18, z 151-198)
     fieldWorks: 0,
+    // (round 3e, 2026-10-12) each planned site's twin built as one building turned about the square (props.ts
+    // plannedSiteTwins): r3d's fairness still leaned 17-11 with the woods paired, its kills from x 40-80 just south of the
+    // line, and the pairs stood as different buildings (the depots 20.3 and 17.8 m wide, the goods sheds 17.9 and 15.4 m)
+    plannedSiteTwins: { x: 0, z: 0 },
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
     wallStyle: 'brick',

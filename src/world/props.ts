@@ -459,6 +459,16 @@ interface PropsSettings {
    * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
    * sites stand first, as before. */
   plannedSitesAfterPlan?: boolean;
+  /**
+   * The map-revival lane (2026-10-12; Cinder Junction's fairness: its planned sites stand in 180-degree pairs about the
+   * square, but each was built from its own draws — the shared stream's turn for the base build, its own pose's hash for
+   * the regional kit's form, variant and weather — so the two depots of a pair stood 20.3 and 17.8 m wide, the two goods
+   * sheds 17.9 and 15.4 m deep): a site whose rotational twin about this point stands earlier in the plan (the same
+   * structure, its place turned within a metre, its yaw within two degrees of the turn) is built as that twin was — the
+   * twin's base stream (its own, by the pair's first index) and the twin's pose for the kit's hashes and form choices,
+   * the ground under it its own — so the pair is one building turned about the point. Absent on every other map.
+   */
+  plannedSiteTwins?: { x: number; z: number };
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -4771,7 +4781,8 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
+    kitPose?: { x: number; z: number; rot: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -4875,9 +4886,11 @@ ${snowCap ? `
     const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
+      // (props.plannedSiteTwins: a twin is built from its partner's pose — its hashes and form choices — on its own ground)
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
-          ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) }, px, pz, rot);
+          ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) },
+        kitPose?.x ?? px, kitPose?.z ?? pz, kitPose?.rot ?? rot);
       if (rebuilt) {
         tmp = rebuilt;
         const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
@@ -5017,12 +5030,40 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
+  // (props.plannedSiteTwins) each site's earlier rotational twin, by index
+  const plannedTwinOf = new Map<number, number>();
+  if (P.plannedSiteTwins && P.plannedSites) {
+    const { x: tx, z: tz } = P.plannedSiteTwins, sites = P.plannedSites;
+    for (let j = 0; j < sites.length; j++) {
+      for (let i = 0; i < j; i++) {
+        if (plannedTwinOf.has(i) || sites[i].structure !== sites[j].structure || !!sites[i].terrace !== !!sites[j].terrace) continue;
+        const turn = ((((sites[j].yawDeg - sites[i].yawDeg - 180) % 360) + 540) % 360) - 180;
+        if (Math.abs(sites[j].x - (2 * tx - sites[i].x)) < 1 && Math.abs(sites[j].z - (2 * tz - sites[i].z)) < 1 && Math.abs(turn) < 2) {
+          plannedTwinOf.set(j, i);
+          break;
+        }
+      }
+    }
+  }
+  /** A planned site's base stream and the pose its kit builds from (its twin's, under props.plannedSiteTwins). */
+  const plannedBuild = (index: number, site: NonNullable<PropsSettings['plannedSites']>[number]):
+    { stream: Rng; kitPose?: { x: number; z: number; rot: number } } => {
+    const twin = plannedTwinOf.get(index);
+    const lead = twin ?? index;
+    const paired = twin !== undefined || [...plannedTwinOf.values()].includes(index);
+    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat; a
+    // twinned site from its pair's (the first's index)
+    const stream = site.terrace ? mulberry32(seed + 104729 * (lead + 1)) : paired ? mulberry32(seed + 7919 * (lead + 1)) : rng;
+    if (twin === undefined) return { stream };
+    const t = P.plannedSites![twin];
+    return { stream, kitPose: { x: t.x, z: t.z, rot: THREE.MathUtils.degToRad(t.yawDeg) } };
+  };
   for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
-    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
+    const build = plannedBuild(index, site);
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
-      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+      site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -5030,8 +5071,9 @@ ${snowCap ? `
   for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    const build = plannedBuild(index, site);
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
-      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+      site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
 
