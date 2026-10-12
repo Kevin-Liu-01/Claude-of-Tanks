@@ -110,9 +110,11 @@ for (const [id, name] of [
   ['challenger2e', '7.62×51 mm M61 AP'],
   ['t14', '30×165 mm 3UBR6 AP-T'],
   ['abramsx', '30×113 mm M789 HEDP'],
-  // 2026-10-09 (owner order): the TTS carries its 30 mm station again and its M2 on the loader's ring; the M2 (its first
-  // gun) fires first here
-  ['m551a1_tts', '12.7×99 mm M2 AP'],
+  // 2026-10-12 (owner order: "make the big roof autocannon on the m551 tts the autocannon, not the tiny machine gun in
+  // front of the cupola"): the controls inventory lists a vehicle's heaviest station first, so the TTS's 30 mm station
+  // is its working roof gun and fires the lightweight 30x113 mm round (its 2026-09-30 loadout). Before, the roof M2 was
+  // built first and fired '12.7×99 mm M2 AP' while the 30 mm never aimed or fired.
+  ['m551a1_tts', '30×113 mm M789 HEDP'],
   ['m1a2', '12.7×99 mm M2 AP'],
 ]) {
   const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');
