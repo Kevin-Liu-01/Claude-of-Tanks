@@ -1,0 +1,15 @@
+await import('../src/vehicles/tankFactory.ts');
+const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
+const { wreckTurretProfile } = await import('../src/sim/wreckTurrets.ts');
+const id = process.argv.find((a) => a.startsWith('--id='))?.slice(5) ?? 'kv2';
+const prof = wreckTurretProfile(TANK_SPECS[id], 1), s = prof.shape, com = s.com;
+const rows = [];
+for (let i = 0; i < s.sphereCount; i++) if (s.sphereSolid[i] === 0) rows.push([s.spheres[i * 4] + com[0], s.spheres[i * 4 + 1] + com[1], s.spheres[i * 4 + 2] + com[2]]);
+rows.sort((a, b) => a[1] - b[1]);
+console.log(id, rows.length, 'points (frame), sorted by height:');
+for (const r of rows) console.log('  ', r.map((v) => v.toFixed(2)).join(', '));
+const a = TANK_SPECS[id].armor;
+const floored = [];
+for (const pl of a.turretPlates ?? []) for (const v of pl.verts) if (v[1] <= 0.02) floored.push(v);
+for (const c of a.collisionShells?.turret ?? []) if (c.min[1] <= 0.02) floored.push(['cell', c.min, c.max]);
+console.log('floored source points:', floored.length, JSON.stringify(floored.slice(0, 12)));
