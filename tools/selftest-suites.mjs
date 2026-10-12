@@ -677,8 +677,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
-    'src/game/garageCrewFigures.selftest.mjs',
-    'src/game/garageCrewFloor.selftest.mjs',
+    'src/game/garageBayFloor.selftest.mjs',
     'src/game/garageDressingDrawRange.selftest.mjs',
     'tools/garage-draw-range-probe.selftest.mjs',
     'src/game/garageVariants.selftest.mjs',
@@ -988,6 +987,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/matchHost.selftest.mjs',
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
+    // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
+    'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
@@ -1217,6 +1218,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
+    'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
     'src/vehicles/weaponFinish.selftest.mjs',
@@ -1382,6 +1385,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads

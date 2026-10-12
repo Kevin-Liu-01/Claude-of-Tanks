@@ -552,6 +552,19 @@ function reasonOf(error: RuntimeValue): string {
   return 'entry_failed';
 }
 
+/**
+ * The match ended while this seat was still entering it (a verdict before the reveal; 2026-10-11, prod 215 run 2: a
+ * returning seat's world loaded for 150 s while the defenders fell, and the entry then waited the whole stall window for
+ * a WELCOME the ended match could not send). Not an entry error: the lobby names it.
+ */
+class MatchEndedDuringEntryError extends Error {
+  readonly code = 'match_ended';
+  constructor() {
+    super('The match ended while you were joining.');
+    this.name = 'MatchEndedDuringEntryError';
+  }
+}
+
 class RoundSupersededError extends Error {
   readonly superseded = true;
   constructor(detail: string) { super(`multiplayer v2 round superseded: ${detail}`); this.name = 'RoundSupersededError'; }
@@ -969,7 +982,8 @@ export function createBrowserComposition({
     if (!superseded) {
       lastFailure = { message: messageOf(error), matchId: active.matchId, stage, reason: reasonOf(error) };
       load.recordEntryFailure?.(lastFailure);
-      reportError('multiplayer v2 entry', error);
+      if (error instanceof MatchEndedDuringEntryError) reportWarning('multiplayer v2 entry', messageOf(error));
+      else reportError('multiplayer v2 entry', error);
     }
     if (round !== active) { settleEntry(false); return; }
     round = null;
@@ -1336,6 +1350,12 @@ export function createBrowserComposition({
   };
 
   const handleVerdict = (): void => {
+    // A round still entering when its match ends is refused at once (MatchEndedDuringEntryError): no WELCOME can come.
+    const active = round;
+    if (active && !active.revealed && !active.failed) {
+      void failRound(active, new MatchEndedDuringEntryError(), 'ended');
+      return;
+    }
     // The presentation already presented the verdict; the lobby follows on the room's next state.
     schedule(syncMenu);
   };

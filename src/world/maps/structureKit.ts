@@ -803,18 +803,20 @@ function addTowerFacadeGrid(out: StructureParts, {
     for (let bay = 0; bay < bays; bay++) {
       const bx = x - w / 2 + bayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 3 + bay * 5) % 13 === 0 ? 'curtain' : 'glass';
+      // (the connectivity sweep: at 5.5 cm the panes stood off the wall; 4 cm keeps them mounted and clear of it in the
+      // depth buffer, as the facade craft's 2 cm bands are)
       out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front', bucket)
-        .translate(bx, y, z + d / 2 + 0.055));
+        .translate(bx, y, z + d / 2 + 0.04));
       out.glass.push(facadePanel(bayW * 0.72, 1.18, 'back')
-        .translate(bx, y, z - d / 2 - 0.055));
+        .translate(bx, y, z - d / 2 - 0.04));
     }
     for (let bay = 0; bay < sideBays; bay++) {
       const bz = z - d / 2 + sideBayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 7 + bay * 3) % 17 === 0 ? 'curtain' : 'glass';
       out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right', bucket)
-        .translate(x + w / 2 + 0.055, y, bz));
+        .translate(x + w / 2 + 0.04, y, bz));
       out.glass.push(facadePanel(sideBayW * 0.70, 1.18, 'left')
-        .translate(x - w / 2 - 0.055, y, bz));
+        .translate(x - w / 2 - 0.04, y, bz));
     }
   }
 

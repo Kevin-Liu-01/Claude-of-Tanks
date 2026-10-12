@@ -33,7 +33,7 @@ type PropBuilder = (rng: Rng) => THREE.BufferGeometry;
 
 export interface DestructiblePropType {
   cls: 'break' | 'topple' | 'physics';
-  mat: 'wood' | 'straw' | 'stone' | 'plaster' | 'baked' | 'vehicle';
+  mat: 'wood' | 'straw' | 'stone' | 'plaster' | 'baked' | 'vehicle' | 'structureCanvas';
   contact: 'ob' | 'loop' | 'none';
   r: number;
   h: number;
@@ -332,41 +332,135 @@ function bTroughBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
-function bStall(rng: Rng): THREE.BufferGeometry { // baked: market stall — counter, posts, striped awning
+/**
+ * A stall's wooden parts on the canvas material (the stall is one material, the structures' canvas, for its awning): their
+ * UVs spread a thousandfold, so the canvas print filters to its mean at every distance — a flat tint under the parts' own
+ * colour, no weave on the wood (gauntlet wave 396a, seen at pack time: "the stall counter fronts carry the same fine woven
+ * grid as the canvas"). Positions, colours and draws untouched.
+ */
+function noWeave<T extends THREE.BufferGeometry>(geo: T): T {
+  const uv = geo.attributes.uv;
+  if (uv) {
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1000, uv.getY(i) * 1000);
+    uv.needsUpdate = true;
+  }
+  return geo;
+}
+function bStall(rng: Rng): THREE.BufferGeometry { // market stall — counter, posts, striped canvas awning
   const parts = [];
-  parts.push(P(box(2.6, 0.10, 1.3).translate(0, 0.88, 0), WOOD_PALE, 0.10, rng)); // counter
-  parts.push(P(box(2.6, 0.5, 0.06).translate(0, 0.62, 0.62), WOOD, 0.12, rng));   // skirt
+  parts.push(noWeave(P(box(2.6, 0.10, 1.3).translate(0, 0.88, 0), WOOD_PALE, 0.10, rng))); // counter
+  parts.push(noWeave(P(box(2.6, 0.5, 0.06).translate(0, 0.62, 0.62), WOOD, 0.12, rng)));   // skirt
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      const post = box(0.09, sz < 0 ? 2.15 : 1.85, 0.09);
-      parts.push(P(post.translate(sx * 1.22, (sz < 0 ? 2.15 : 1.85) / 2, sz * 0.58), WOOD, 0.10, rng));
+      // (2026-10-11: the posts a little taller — 2.28 m at the back, 2.04 m at the front — so the awning's valance hangs
+      // over the contact band's 1.8 m top and the stall's collider stays the counter's and the posts'; were 2.15 / 1.85)
+      const post = box(0.09, sz < 0 ? 2.28 : 2.04, 0.09);
+      parts.push(noWeave(P(post.translate(sx * 1.22, (sz < 0 ? 2.28 : 2.04) / 2, sz * 0.58), WOOD, 0.10, rng)));
     }
   }
-  // striped awning: alternating canvas bands on a forward slope
-  for (let k = 0; k < 5; k++) {
-    const band = box(0.56, 0.035, 1.75);
-    band.rotateZ(0); band.rotateX(0.24);
-    band.translate(-1.12 + k * 0.56, 2.06, 0.14);
-    parts.push(P(band, k % 2 ? CANVAS2 : CANVAS, 0.05, rng));
-  }
+  // striped awning (2026-10-11, the map-revival lane; the sealed lane's frames on Saltmere: "flat, untextured vertex
+  // colour, reading as bare tan and brick-red polygons up close"): a sheet of real canvas — the canvas print (the stall's
+  // material is the structures' canvas), sagging between its posts and across its depth, soft folds running down from
+  // its back rail, a scalloped valance at its front edge, its stripes dyed and sun-faded by the fold
+  // (the old awning's five bands drew 120 paint draws from the shared build stream: the canvas takes exactly as many and
+  // draws its own from a stream seeded by the first, so every part and kind built after the stall keeps its draws)
+  let awningSeed = 0;
+  for (let i = 0; i < 120; i++) { const u = rng(); if (i === 0) awningSeed = (u * 4294967296) >>> 0; }
+  parts.push(...stallAwning(awningRng(awningSeed)));
   // goods: two sacks + a small box on the counter
   const sack = new THREE.SphereGeometry(0.17, 6, 5);
   sack.scale(1, 0.75, 1);
   parts.push(P(sack.translate(-0.6, 1.02, 0.1), LINEN, 0.10, rng));
   const sack2 = sack.clone();
   parts.push(P(sack2.translate(1.15, -0.02, -0.25), TERRA, 0.10, rng));
-  parts.push(P(box(0.4, 0.24, 0.3).translate(0.45, 1.05, -0.15), WOOD, 0.10, rng));
+  parts.push(noWeave(P(box(0.4, 0.24, 0.3).translate(0.45, 1.05, -0.15), WOOD, 0.10, rng)));
   return merge(parts);
+}
+/** The awning's own stream (mulberry32), seeded from one draw of the stall's. */
+function awningRng(seed: number): Rng {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/**
+ * A market stall's awning: a canvas sheet (both faces, so it reads from under it too) over the stall's four posts — the
+ * back rail at 2.3 m, the front at 2.06 m — sagging between the posts and across its depth, folds falling from the back
+ * rail, the stripes 0.54 m wide, each a shade of its dye, darker in a fold's trough and paler on the crests and the top;
+ * and the valance hanging 0.18 m from the front rail, its hem scalloped between stitch points and clear of the contact
+ * band's 1.8 m top (the stall's collider is its counter's and its posts').
+ */
+function stallAwning(rng: Rng): THREE.BufferGeometry[] {
+  const W = 2.72, D = 1.8, NX = 20, NZ = 8, back = -0.76, front = back + D, yBack = 2.3, yFront = 2.06;
+  const phase = rng() * 6.283, foldAmp = 0.012 + rng() * 0.01, sag = 0.06 + rng() * 0.03;
+  const out: THREE.BufferGeometry[] = [];
+  const sheet = (lift: number, flip: boolean): THREE.BufferGeometry => {
+    const g = new THREE.PlaneGeometry(W, D, NX, NZ);
+    g.rotateX(-Math.PI / 2); // in the x-z plane, +y up
+    const pos = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), zL = pos.getZ(i) + D / 2, t = zL / D; // t 0 at the back rail, 1 at the front
+      const z = back + zL;
+      const between = Math.max(0, 1 - (x / 1.22) ** 2); // the sag between the posts
+      const fold = Math.sin(x * 13.5 + phase) * 0.6 + Math.sin(x * 29.0 - phase * 1.7) * 0.4;
+      const y = yBack + (yFront - yBack) * t - sag * between * Math.sin(Math.PI * Math.min(1, t * 1.05))
+        - 0.035 * Math.sin(Math.PI * t) + foldAmp * fold * (0.35 + 0.65 * t) + lift;
+      pos.setXYZ(i, x, y, z);
+      uv.setXY(i, x * 0.5, zL * 0.5);
+      const stripe = Math.floor((x + W / 2) / 0.544) % 2;
+      const [h, sat, l] = stripe ? CANVAS2 : CANVAS;
+      const shade = 1 + 0.07 * fold * (0.35 + 0.65 * t) + (flip ? -0.12 : 0.04) - 0.05 * between * Math.sin(Math.PI * t);
+      _c.setHSL(h, sat * (flip ? 1 : 0.92), Math.max(0.02, Math.min(1, l * shade + (rng() - 0.5) * 0.015)), THREE.SRGBColorSpace);
+      col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (flip) {
+      const idx = g.index!;
+      for (let k = 0; k < idx.count; k += 3) { const a = idx.getX(k + 1); idx.setX(k + 1, idx.getX(k + 2)); idx.setX(k + 2, a); }
+    }
+    g.computeVertexNormals();
+    return g;
+  };
+  out.push(sheet(0.006, false), sheet(-0.006, true));
+  // the valance: a strip hung from the front rail, its hem scalloped between stitch points 0.272 m apart
+  const valance = (off: number, flip: boolean): THREE.BufferGeometry => {
+    const g = new THREE.PlaneGeometry(W, 0.18, NX * 2, 2);
+    const pos = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), v = (pos.getY(i) + 0.09) / 0.18; // v 1 at the rail, 0 at the hem
+      const between = Math.max(0, 1 - (x / 1.22) ** 2);
+      const scallop = (1 - v) * 0.06 * Math.abs(Math.sin(x * Math.PI / 0.272));
+      const y = yFront - sag * between * 0.5 - 0.18 * (1 - v) + scallop;
+      pos.setXYZ(i, x, y, front + off + 0.01 * Math.sin(x * 13.5 + phase));
+      uv.setXY(i, x * 0.5, v * 0.09);
+      const stripe = Math.floor((x + W / 2) / 0.544) % 2;
+      const [h, sat, l] = stripe ? CANVAS2 : CANVAS;
+      _c.setHSL(h, sat, Math.max(0.02, l * (flip ? 0.84 : 0.96)), THREE.SRGBColorSpace);
+      col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (flip) {
+      const idx = g.index!;
+      for (let k = 0; k < idx.count; k += 3) { const a = idx.getX(k + 1); idx.setX(k + 1, idx.getX(k + 2)); idx.setX(k + 2, a); }
+    }
+    g.computeVertexNormals();
+    return g;
+  };
+  out.push(valance(0.004, false), valance(-0.004, true));
+  return out;
 }
 function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const counter = box(2.4, 0.09, 1.2);
   counter.rotateY(0.16); counter.rotateZ(0.10);
-  parts.push(P(counter.translate(0.1, 0.14, 0), WOOD_PALE, 0.10, rng));
+  parts.push(noWeave(P(counter.translate(0.1, 0.14, 0), WOOD_PALE, 0.10, rng)));
   for (let k = 0; k < 3; k++) { // snapped posts
     const st = box(0.09, 0.05, 0.8 + rng() * 0.7);
     st.rotateY(rng() * Math.PI);
-    parts.push(P(st.translate((rng() - 0.5) * 2, 0.05, (rng() - 0.5) * 1.4), WOOD, 0.12, rng));
+    parts.push(noWeave(P(st.translate((rng() - 0.5) * 2, 0.05, (rng() - 0.5) * 1.4), WOOD, 0.12, rng)));
   }
   // awning draped over the wreck
   const drape = box(2.5, 0.05, 1.7);
@@ -1804,7 +1898,9 @@ export const DESTRUCTIBLE_TYPES = {
   stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: bStookBroken },
   firewood:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 0.95, hw: 0.84, hl: 0.69, build: bFirewood, broken: bFirewoodBroken },
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
-  stall:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
+  // (2026-10-11: the stall wears the structures' canvas print — its awning real canvas; its counter, posts and goods take
+  // their tones under the same weave)
+  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  hw: 0.88, hl: 0.28, build: bBench, broken: bBenchBroken },
   churn:       { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null, bodyR: 0.23, mass: 0.65, bounce: 0.38 },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bLamp, broken: null },

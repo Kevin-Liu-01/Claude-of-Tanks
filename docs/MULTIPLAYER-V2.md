@@ -905,6 +905,35 @@ starts. A seat that never comes back costs everyone at most 3 s more stillness; 
 `bSpeedAtCloseMps`). Receipt: `resumeHold.selftest` (bob lets go at 9.9 m/s, carl comes back 2 s later: carl's first
 row of bob 6.32 m off his last without the hold, 0.48 m with it; a seat that never returns releases the world at 3 s).
 
+**The first-boot WELCOME (2026-10-11).** The headless proofs' "every seat welcomed" timeouts at load ≥ 60 (on main as on
+every branch) were seats lost on three legs, each of which ended the seat for good where a retry was due:
+- *The HELLO window.* The browser host's gate closed any link not yet ATTACHED 5 s after it opened — a HELLO still under
+  verification included — with HELLO_REQUIRED "hello timeout", and the seat read the CLOSE as the end of its seat. A
+  HELLO is merely late when the host's main thread sits in a long task (the frame waits there on its way to the Worker),
+  when the seat sends it from a starved thread, or when a loaded machine slows the seat-token check. Now the window is
+  `HELLO_TIMEOUT_MS` = 15 s and closes only a link that has not said hello (a HELLO under verification is the host's own
+  work).
+- *A stale offer.* A seat whose first attempt timed out re-offers; when its abandoned offer reaches the host late, the
+  acceptor's second-tab rule retires the link the seat is entering on with REPLACED "peer offered again".
+- *The host's own seat.* The host's own client reconnects its loopback after a stall (5 s without authority: a long task
+  on the host's tab); the core kept the old link 0, the second HELLO met UNEXPECTED_MESSAGE and the host's seat hung in
+  `handshaking` while the match ran on without it. Now a resumed loopback is a fresh link (`link_open`), gated again.
+Before its WELCOME, a seat closed with "hello timeout" or "peer offered again" asks its transport for a fresh link and
+says hello again, `MAX_HELLO_RETRIES` = 3 times (`MatchClientStats.helloRetries`); after the WELCOME "peer offered
+again" still means another tab took over. The dedicated service's own 5 s window gets the same retry. Receipt:
+`helloGate.selftest` (virtual time, the real host runtime and core): a HELLO held 8 s is admitted; a silent link is closed
+after three fresh links; a seat closed by a 2 s window re-offers once and is welcomed; the host's own seat is welcomed
+again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed — on main each of
+the four ends the seat (HELLO_REQUIRED twice, `handshaking`, REPLACED).
+
+**A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
+loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
+waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",
+two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
+match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
+`browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
+it is still entering).
+
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
 content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and

@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
 import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
-import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
 import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -56,8 +56,8 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
-  applyRockShaderHook, boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
-  rockAngularityFor, rockDressingFor, rockLithologyFor,
+  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
+  paintBoulder, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wave 234): the rail kit's crushed-stone bed
@@ -144,7 +144,7 @@ import {
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
 import {
-  cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
+  cloneCollisionRecord, collisionFootprintContainsPoint, setCircleShape, setCompoundShape, setConvexShape,
   setObbShape, type SimpleCollisionShape,
 } from './collision.ts';
 import {
@@ -6679,51 +6679,27 @@ ${snowCap ? `
   const rockForms: RockForm[] = [];
   const rockSeats: RockSeat[] = [];
   function buildRockVariants(): void {
+  // (the hitbox lane and the map-revival lane, 2026-10-11) the legacy form and the boulder forms from rockDressing.ts's
+  // constructors: the drawn, collision and far forms differ only in subdivision, so every host derives the same colliders
+  const lithology = rockLithologyFor(mapId);
+  const angular = rockAngularityFor(mapId);
   for (let vi = 0; vi < 3; vi++) {
-    const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
-    const p = g.attributes.position;
-    const tmpv = new THREE.Vector3();
-    for (let i = 0; i < p.count; i++) {
-      tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
-      const ridge = 1 - Math.abs(noi.noise3d(
-        tmpv.x * 2.2 + vi * 31, tmpv.y * 2.2 - 7, tmpv.z * 2.2 + 13));
-      const crease = Math.pow(ridge, 5); // sharp valley lines
-      const f = 1
-        + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
-        + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
-        + noi.noise3d(tmpv.x * 6.8 + 91, tmpv.y * 6.8 - vi * 5, tmpv.z * 6.8) * 0.05
-        - crease * 0.115; // carved fracture valleys
-      tmpv.multiplyScalar(f);
-      tmpv.y = Math.max(tmpv.y, -0.55);
-      p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
-    }
-    const projected: Array<[number, number]> = [];
-    for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
-    const hull = convexHull2(projected);
-    rockHulls.push(hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
     // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
     // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
     // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
-    let legacyTop = 0;
-    for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
-    const lithology = rockLithologyFor(mapId);
-    const angular = rockAngularityFor(mapId);
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-    paintBoulder(form, P.rockTone, lithology);
-    rockGeos.push(form.geometry);
-    // (the desktop form on every tier, so every host derives the same colliders; its own stream, so no draw moves)
-    const collisionForm = mobileProps
-      ? buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 6, legacyTop, boulderKindFor(lithology, vi), lithology).geometry
-      : form.geometry;
-    rockForms.push(rockFormOf(collisionForm));
-    if (collisionForm !== form.geometry) collisionForm.dispose();
-    if (!mobileProps) {
-      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology, angular);
-      paintBoulder(far, P.rockTone, lithology);
-      rockGeosFar.push(far.geometry);
+    const legacy = legacyRockVariant(vi, noi);
+    rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
+    const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    paintBoulder(forms.drawn, P.rockTone, lithology);
+    rockGeos.push(forms.drawn.geometry);
+    // (the desktop form on every tier, so every host derives the same colliders)
+    rockForms.push(rockFormOf(forms.collision));
+    if (forms.collision !== forms.drawn.geometry) forms.collision.dispose();
+    if (forms.far) {
+      paintBoulder(forms.far, P.rockTone, lithology);
+      rockGeosFar.push(forms.far.geometry);
     }
-    g.dispose();
   }
   }
   buildRockVariants();
@@ -8252,37 +8228,40 @@ ${snowCap ? `
         yield { fine: true, tankBuilder: specId };
         const baked = yield* bakeFor(specId, pop);
         if (!baked) return false;
+        // The hulk's placement footprint (wrecks.ts placeHx/placeHz: its burnt-away camouflage suit keeps the seat it
+        // always had, so every map seats its hulks where it did; hx/hz are the visible geometry's own envelope).
+        const footHx = baked.placeHx ?? baked.hx, footHz = baked.placeHz ?? baked.hz;
         // The whole hulk keeps out of the road core, not just its centre: a hull that reaches into the carriageway
         // moves straight off the road (up to 8 m), and one that cannot is not placed here.
         const seat = shiftClearOfRoadCore(heightField, x, z,
-          (px, pz) => boxClearOfRoadCore(heightField, px, pz, baked.hx + 0.2, baked.hz + 0.2, yaw));
+          (px, pz) => boxClearOfRoadCore(heightField, px, pz, footHx + 0.2, footHz + 0.2, yaw));
         if (!seat) return false;
         if (seat[0] !== x || seat[1] !== z) {
           [x, z] = seat;
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
-        if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
+        if (!boxClearOfPoints(sharpBends, x, z, footHx + 0.2, footHz + 0.2, yaw, 10)) return false;
         // the map-vehicles lane (2026-10-08, the placement audit over the merge): a hulk never stands inside a building,
         // a hut, a garage, a wall, a fence, a barrier or a boulder placed before it (Orchard's Merkava stood in a
         // checkpoint hut, Airfield's hulks in a quonset hut and a motor pool, Urban's T-72 2 m through a plank fence):
         // its footprint against every solid over half a metre tall, a hand's breadth of slack, nor with a tree through
         // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
         // against the low things, a kerb, a log, a crate on its side)
-        if (hulkMeetsTallSolid(x, z, baked.hx, baked.hz, yaw)) return false;
+        if (hulkMeetsTallSolid(x, z, footHx, footHz, yaw)) return false;
         // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
         // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
-        if (hulkOnObjective(x, z, Math.hypot(baked.hx, baked.hz))) return false;
+        if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
         const support = planGroundedObbPose(
-          heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
+          heightField, x, z, footHx, footHz, yaw, 0.14,
         );
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
         if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return false;
-        bakedTris += baked.tris; // budget counts PLACED tris (clones render too)
+        bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         const y = support.y;
         _quat.setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
@@ -9567,7 +9546,9 @@ ${snowCap ? `
   function composeAuthoredReservoirWaterworks(): void {
     if (!waterworksRubble) return;
     group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
-      heightField, waterworksRubble, buckets, [...obstacles, ...colliders], regionalArchitecture);
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders],
+      // (whether the map draws the steel family on every tier: the atlas's own test, without its phone fallback)
+      regionalArchitecture ? { weather: regionalArchitecture.weather, steel: steelAtlasNeeded(P.plan, P.industrialCladding) } : null);
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();

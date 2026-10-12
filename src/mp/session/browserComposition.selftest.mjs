@@ -1036,4 +1036,28 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   failing.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, and loads the obstacle identities of the host manifest for a world laid out otherwise');
+// ------------------------------------------------------------ the match ends while the round is still entering: refused at once
+// (2026-10-11, prod 215 run 2: a returning seat's world loaded for 150 s while the defenders fell; the match ended in a
+// defeat, and the entry waited the whole stall window for a WELCOME the ended match could not send — "did not present in
+// time" two minutes later, behind the loader)
+{
+  const ended = createHarness({ entryTimeoutMs: 60_000 });
+  const endedRoom = makeRoomSession(ended.calls);
+  const entering = ended.composition.beginRoom({ role: 'client', session: endedRoom, lobbyState: endedRoom.lobby });
+  const endedOwner = ended.sessions[0];
+  await endedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  // no WELCOME yet (the world still loading, the channel still opening): the match ends
+  endedOwner.verdict(VERDICT.BRAVO, 'elimination');
+  const outcome = await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]);
+  assert.equal(outcome, false, `a verdict before the reveal refuses the entering round at once (${outcome})`);
+  assert.equal(ended.ports.failure.reason, 'match_ended');
+  assert.match(ended.ports.failure.message, /match ended while you were joining/);
+  await settle();
+  assert.equal(ended.battleLoad.visible, false, 'the loader clears');
+  assert.deepEqual(ended.menu.shown, [ended.ports.failure.message], 'the room\'s lobby opens once, naming why');
+  assert.ok(!ended.calls.some((call) => call.startsWith('error:multiplayer v2 entry')), 'an ended match is not an entry error (a warning names it)');
+  assert.ok(ended.calls.some((call) => call.startsWith('warn:multiplayer v2 entry:The match ended while you were joining')), 'the warning');
+  ended.composition.dispose();
+}
+
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends, and loads the obstacle identities of the host manifest for a world laid out otherwise');

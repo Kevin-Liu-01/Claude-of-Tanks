@@ -1,5 +1,5 @@
 // src/ui/garageStage.ts — procedural garage hangar environment for the
-// tank-select screen: concrete floor with painted bay markings and grime,
+// tank-select screen: concrete floor with slab joints, stains and grime,
 // corrugated-steel walls, ceiling with trusses, wall-mounted flood fixtures
 // with real lights, a hazard-striped display podium and workshop props.
 // 100% generated (canvas textures + primitive geometry) — no assets.
@@ -21,7 +21,7 @@ import {
   type GarageArchitectureStats,
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { getGarageWorkshopLayoutPose, VERDANT_WELD_LIGHT } from '../game/garageWorkshopLayout.ts';
+import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/garageWorkshopLayout.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -114,7 +114,7 @@ export function dither(
   c2d.putImageData(img, 0, 0);
 }
 
-// --- concrete floor texture: grime, expansion joints, painted bay ---
+// --- concrete floor texture: grime, expansion joints, oil stains ---
 function makeFloorTexture(rng: RandomSource): HTMLCanvasElement {
   // 512² keeps the same authored grime/marking language while cutting the
   // synchronous boot canvas work and upload footprint to one quarter.
@@ -1090,15 +1090,13 @@ export function createGarageStage(
   sign2.position.set(-HW + 0.075, 3.4, -6);
   group.add(halo2, plate2, sign2);
 
-  // The weld light (2026-10-10, the owner's free hand, wave 338: "the weld gives off no real light"). This was the
-  // low west-wall fill (hud_ui r2), which lit nothing that mattered once the room turned; it now stands at the rolled
-  // K2's belly weld, blue-white and short-ranged. Same light count, so no shader program changes. The indoor set is
-  // half-turned, hence the negated Garage-frame point. It flickers only while Verdant frames draw (the floor's
-  // onBeforeRender below), so the settled Garage never wakes for it.
-  const fill = new THREE.PointLight(0xb9d3ff, 9, 8, 2);
-  const OUTDOOR_WELD_LIGHT_INTENSITY = 14;
-  fill.name = 'garage_verdant_weld_light';
-  fill.position.set(-VERDANT_WELD_LIGHT.x, VERDANT_WELD_LIGHT.y, -VERDANT_WELD_LIGHT.z);
+  // The K2 bay's work lamp (2026-10-11). This was the low west-wall fill (hud_ui r2), then the K2 belly weld's light
+  // while crews welded there; with no people in the Garages there is no arc, so it hangs over the parked hot-work
+  // corner as a steady warm lamp in Verdant and is dark outdoors. Same light count, so no shader program changes. The
+  // indoor set is half-turned, hence the negated Garage-frame point.
+  const fill = new THREE.PointLight(0xffd9a6, 10, 9, 2);
+  fill.name = 'garage_verdant_k2_work_light';
+  fill.position.set(-VERDANT_K2_WORK_LIGHT.x, VERDANT_K2_WORK_LIGHT.y, -VERDANT_K2_WORK_LIGHT.z);
   fill.castShadow = false;
   verdantLights.push(fill);
   group.add(fill);
@@ -1436,15 +1434,6 @@ export function createGarageStage(
   const verdantLightIntensities = new Map(
     verdantLights.map((light) => [light, light.intensity] as const),
   );
-  // The weld light's arc flicker rides a draw that happens anyway (Verdant's floor indoors, the turntable outdoors),
-  // so it costs a few multiplies per drawn frame and nothing while the Garage is settled.
-  let weldBaseIntensity = verdantLightIntensities.get(fill) ?? 0;
-  const flickerWeld = (): void => {
-    const t = performance.now() * 0.001;
-    fill.intensity = weldBaseIntensity * (0.72 + 0.28 * (0.5 + 0.3 * Math.sin(t * 41.3) + 0.2 * Math.sin(t * 67.9 + 0.7)));
-  };
-  floor.onBeforeRender = flickerWeld;
-  podium.onBeforeRender = flickerWeld;
   let variantPresentationGeneration = 0;
   const ENVIRONMENT_REVEAL_ATTEMPTS = 3;
   const waitForEnvironmentRetry = (attempt: number): Promise<void> => (
@@ -1464,17 +1453,14 @@ export function createGarageStage(
       light.visible = true;
       light.intensity = isVerdant ? (verdantLightIntensities.get(light) || 0) : 0;
     }
-    // Every Garage welds at the rolled K2's belly (2026-10-10, the coordinator: a weld light in every garage with a
-    // weld bay, same light count, no new program): the weld light follows the shared exhibit's layout pose into each
-    // pack and burns at a daylight strength outdoors.
+    // The K2 work lamp follows the shared exhibit's layout pose (Verdant's pose is the origin); the loop above already
+    // leaves it dark outdoors.
     {
       const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(getGarageVariant(variantId));
       const c = Math.cos(layoutYaw), sn = Math.sin(layoutYaw);
-      const weldX = layoutX + VERDANT_WELD_LIGHT.x * c + VERDANT_WELD_LIGHT.z * sn;
-      const weldZ = layoutZ - VERDANT_WELD_LIGHT.x * sn + VERDANT_WELD_LIGHT.z * c;
-      fill.position.set(-weldX, VERDANT_WELD_LIGHT.y, -weldZ);
-      weldBaseIntensity = isVerdant ? (verdantLightIntensities.get(fill) || 0) : OUTDOOR_WELD_LIGHT_INTENSITY;
-      fill.intensity = weldBaseIntensity;
+      const lampX = layoutX + VERDANT_K2_WORK_LIGHT.x * c + VERDANT_K2_WORK_LIGHT.z * sn;
+      const lampZ = layoutZ - VERDANT_K2_WORK_LIGHT.x * sn + VERDANT_K2_WORK_LIGHT.z * c;
+      fill.position.set(-lampX, VERDANT_K2_WORK_LIGHT.y, -lampZ);
     }
     architecture.group.visible = !isVerdant;
     group.userData.garageSceneMode = isVerdant ? 'verdant-workshop' : 'authentic-scene-pack';

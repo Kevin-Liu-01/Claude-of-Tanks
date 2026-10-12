@@ -272,8 +272,9 @@ assert.match(dressing, /verdantHeroHoistOffsetM = 12\.0/,
   'every lift must park well clear of the hero tank');
 assertWorkshopSignature("['east_front', 12.0, -9.2, 'final-drive']");
 assertWorkshopSignature("['east_center', 14.4, 0, 'powerpack']");
-assertWorkshopSignature("['east_rear', 13.2, 9.2, 'turret-basket']");
-assertWorkshopSignature("['west_front', -12.0, -9.2, 'turret-basket']");
+// 2026-10-10 (wave 377: the turret-basket rings read as empty hooks): those two stations carry a pack and a final drive
+assertWorkshopSignature("['east_rear', 13.2, 9.2, 'powerpack']");
+assertWorkshopSignature("['west_front', -12.0, -9.2, 'final-drive']");
 assertWorkshopSignature("['west_center', -14.4, 0, 'final-drive']");
 assertWorkshopSignature("['west_rear', -13.2, 9.2, 'powerpack']");
 assert.match(dressing, /verdantFlammableWallHoistGapM = 5\.91/,
