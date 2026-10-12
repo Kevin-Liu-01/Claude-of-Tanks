@@ -23,11 +23,12 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const SHOTS = join(ROOT, 'shots/media-r5');
-const OUT = join(ROOT, 'public/media/filming-r1');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 const flag = (name) => process.argv.includes(`--${name}`);
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+// --shots=<dir>: the media lane's shots/media-r5 when this runs inside another tree (the r14b site export has no shots/)
+const SHOTS = resolve(arg('shots') ?? join(ROOT, 'shots/media-r5'));
+const OUT = join(ROOT, 'public/media/filming-r1');
 
 /** The featured takes: each tells part of the story (see src/docs/filming.ts for what the page says about them). */
 export const DOCS_TAKES = [
@@ -51,11 +52,17 @@ export const DOCS_STAGES = {
 export const ENGINE_LATEST = ['final', 'review3', 'review2', 'review1'];
 export const CARD_FROM = ['final', 'review3', 'review2', 'r4'];
 const FRAME_TIMES = [0, 2.2, 4.37, 6.53];
-// The cover (the manual index's card and the page's social image) is round four's still of take 13.
+// The cover (the page's social image, generate-og-images.mjs's docs-filming card) is take 13's newest delivered still:
+// --final's (round 14 delivers <id>-4k.jpg), else round seven's, else round four's (r14b, 2026-10-12: the owner asked
+// for every graphic in the current game's look; it was round four's).
+const coverStill = [`site50/${arg('final') ?? 'deliver-r7'}/s13-farm-race/s13-farm-race-4k.jpg`,
+  `site50/${arg('final') ?? 'deliver-r7'}/s13-farm-race/s13-farm-race.jpg`, 'site50/deliver-r7/s13-farm-race/s13-farm-race.jpg',
+  'site50/deliver/s13-farm-race/s13-farm-race.jpg'].find((path) => existsSync(join(SHOTS, path)))
+  ?? 'site50/deliver/s13-farm-race/s13-farm-race.jpg';
 export const FIGURES = [
   { name: 'previz-sheet', src: 'previz50-r6/s05-barn-advance.jpg', width: 1920, q: 84 },
   { name: 'plan-view', src: 'plan-view-s21.png', width: 2000, q: 84 },
-  { name: 'cover', src: 'site50/deliver/s13-farm-race/s13-farm-race.jpg', width: 1920, q: 84 },
+  { name: 'cover', src: coverStill, width: 1920, q: 84 },
 ];
 
 // The scene each take was filmed from, as the Studio saves it: the shot library's code (tools/media-r5/site50-shots/<id>.json;
@@ -131,7 +138,10 @@ export const CARD = { take: 's13-farm-race', previzS: 2.2, engineS: 1.4 };
 function cardStrip(takes) {
   const take = takes[CARD.take];
   const engine = ['review3', 'review2', 'review1'].find((stage) => take?.stages[stage]);
-  const still = [`site50/deliver-r7/${CARD.take}/${CARD.take}.jpg`, `site50/deliver/${CARD.take}/${CARD.take}.jpg`]
+  // the newest delivery's still first (--final names it; round 14 delivers <id>-4k.jpg), then the older rounds'
+  const final = arg('final') ?? 'deliver-r7';
+  const still = [`site50/${final}/${CARD.take}/${CARD.take}-4k.jpg`, `site50/${final}/${CARD.take}/${CARD.take}.jpg`,
+    `site50/deliver-r7/${CARD.take}/${CARD.take}.jpg`, `site50/deliver/${CARD.take}/${CARD.take}.jpg`]
     .find((path) => existsSync(join(SHOTS, path)));
   if (!take?.stages.previz || !engine || !still) return null;
   const png = join(TMP, 'card.png');

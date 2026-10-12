@@ -69,7 +69,10 @@ const webp = (src, out, q, size) => run('cwebp', ['-quiet', '-m', '6', '-sharp_y
   ...(size ? ['-resize', String(size[0]), String(size[1])] : []), src, '-o', out]);
 
 // --- sources ------------------------------------------------------------------------------------------------------
-const ROUNDS = [PICKS.sources.deliver, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
+// sources.deliverOver (r14b, 2026-10-12): a later round that re-filmed some takes (round 15: the rut-ring takes) is looked
+// up first, so its takes replace round 14's and the rest stay round 14's; both are current
+const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver].filter(Boolean);
+const ROUNDS = [...CURRENT, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
 const deliveries = new Map();
 function delivery(id) {
   if (deliveries.has(id)) return deliveries.get(id);
@@ -78,7 +81,7 @@ function delivery(id) {
     const d = join(MEDIA, dir, id);
     if (!existsSync(join(d, `${id}-4k.mp4`))) continue;
     const f = (name) => (existsSync(join(d, name)) ? join(d, name) : null);
-    const take = { id, round: dir, current: dir === PICKS.sources.deliver, dir: d,
+    const take = { id, round: dir, current: CURRENT.includes(dir), dir: d,
       moment: f(`${id}.webp`), close: f(`${id}-close.webp`), momentPng: f(`${id}-4k.png`), closePng: f(`${id}-close-4k.png`),
       poster: f(`${id}.jpg`), webm: f(`${id}.webm`), mobile: f(`${id}-mobile.mp4`), hd: f(`${id}.mp4`),
       sound: existsSync(join(d, `${id}.audio.json`)) };
