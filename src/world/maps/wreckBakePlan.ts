@@ -9,7 +9,7 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
   autumn: [],
   badlands: [['challenger1', 2002, 1], ['m60a3', 2133, 1], ['chieftain5', 2264, 1], ['centurion5', 2395, 0], ['challenger1', 2526, 0], ['m60a3', 2657, 0]],
   blackglass: [],
-  caldera: [['type10', 2002, 1], ['type90', 2133, 0], ['type74', 2264, 1], ['type89', 2395, 1], ['type74', 2526, 0]],
+  caldera: [['type10', 2002, 1], ['type90', 2133, 0], ['type74', 2264, 1], ['type89', 2395, 1], ['type89', 2526, 0], ['type90', 2657, 1], ['type74', 2788, 0]],
   cliffbridge: [['amx30_x', 2002, 1], ['m48', 2133, 0], ['m47_patton', 2264, 1], ['m47_patton', 2395, 0], ['amx30_x', 2526, 0], ['m48', 2657, 1]],
   coastal: [['leclerc', 2002, 1], ['t90m', 2133, 1], ['cv90', 2264, 1], ['bmp3', 2395, 1], ['leo2a7v', 2526, 1]],
   copper_mesa: [['centurion5', 2002, 1], ['centurion5', 2133, 0], ['leo1a5', 2264, 1], ['leo1a5', 2395, 0]],
@@ -40,6 +40,8 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
 };
 /** Where a variant's requests differ from its fallback (resolveWreckBakeRows): <map>@mobile, @assault, @assault-mobile. */
 export const WRECK_BAKE_PLAN_VARIANTS: Readonly<Record<string, WreckBakeRows>> = {
+  'caldera@assault': [['type10', 2002, 1], ['type90', 2133, 0], ['type74', 2264, 1], ['type89', 2395, 1], ['type89', 2526, 0], ['type10', 2657, 0], ['type90', 2788, 1], ['type74', 2919, 0]],
+  'caldera@assault-mobile': [['type10', 2002, 1], ['type90', 2133, 0], ['type74', 2264, 1], ['type89', 2395, 1], ['type89', 2526, 0], ['type10', 2657, 0], ['type90', 2788, 1], ['type74', 2919, 0]],
   'coastal@assault': [['leclerc', 2002, 1], ['t90m', 2133, 1], ['cv90', 2264, 1], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['leo2a7v', 2657, 1]],
   'coastal@assault-mobile': [['leclerc', 2002, 1], ['t90m', 2133, 1], ['cv90', 2264, 1], ['bmp3', 2395, 1], ['bmp3', 2526, 0], ['leo2a7v', 2657, 1]],
   'orchard@assault': [['merkava1b', 2002, 1], ['merkava1b', 2133, 0], ['m60a1', 2264, 1], ['centurion5', 2395, 1], ['centurion5', 2526, 0], ['t62mv1', 2657, 0], ['t72m1_jaguar', 2788, 0]],
