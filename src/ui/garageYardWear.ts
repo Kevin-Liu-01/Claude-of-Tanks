@@ -195,14 +195,15 @@ function drawHardstand(
   }
 
   if (palette.kind === 'slab') {
-    // patch repairs: later pours a shade off their slab, edges worn rather than ruled
+    // patch repairs: later pours a shade off their slab, edges worn rather than ruled (wave 408 read the old ruled,
+    // 7 %-darker rectangles as "a dark square patch")
     for (let i = 0; i < 6; i++) {
       const w = (1.2 + rng() * 2.4) * PX_PER_M, h = (0.8 + rng() * 1.8) * PX_PER_M;
       const x = rng() * (CANVAS_W - w), y = rng() * (CANVAS_H - h);
-      const shade = rng() < 0.5 ? 0.93 : 1.04;
-      g.fillStyle = rgba([br * shade, bgc * shade, bb * shade], 0.7);
+      const shade = rng() < 0.5 ? 0.965 : 1.03;
+      g.fillStyle = rgba([br * shade, bgc * shade, bb * shade], 0.4);
       g.fillRect(x, y, w, h);
-      g.strokeStyle = 'rgba(30,28,26,0.2)';
+      g.strokeStyle = 'rgba(30,28,26,0.07)';
       g.lineWidth = 1;
       g.strokeRect(x, y, w, h);
     }
@@ -290,12 +291,13 @@ function drawHardstand(
         g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
       }
     };
+    // soft compacted bands rather than ruled lines (wave 408: "faint painted circle arcs")
     for (const side of [-1, 1]) {
       const offset = side * gauge / 2;
-      stroke(offset, width * 1.9, rutDark, strength * 0.28);
-      stroke(offset, width, rutDark, strength * 0.7);
-      stroke(offset + side * width * 0.12, width * 0.3, rutDark, strength * 0.45);
-      if (berm) stroke(offset + side * (width * 0.95), width * 0.45, berm, strength * 0.55);
+      stroke(offset, width * 2.3, rutDark, strength * 0.24);
+      stroke(offset, width, rutDark, strength * 0.5);
+      stroke(offset + side * width * 0.12, width * 0.45, rutDark, strength * 0.22);
+      if (berm) stroke(offset + side * (width * 1.05), width * 0.7, berm, strength * 0.3);
     }
   };
   const [ax, az] = dir(toward);
@@ -557,8 +559,10 @@ export function garageHardstandAlbedo(
   drawHardstand(g, style, approach);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
+  // the pads beyond the apron read the canvas mirrored, so its content runs on across every edge instead of jumping to
+  // the opposite side's (wave 408: a straight seam through Frosthollow's K2 pad); the joint grid is symmetric
+  texture.wrapS = THREE.MirroredRepeatWrapping;
+  texture.wrapT = THREE.MirroredRepeatWrapping;
   texture.anisotropy = anisotropy;
   texture.userData.garageHardstandStyle = style;
   return texture;
