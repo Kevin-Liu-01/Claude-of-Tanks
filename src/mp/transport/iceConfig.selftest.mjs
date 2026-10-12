@@ -3,7 +3,11 @@
 // the newest valid grant (else host candidates) when the room refuses, times out, predates the request or answers
 // garbage — and it never rejects, so a credential never blocks a connection.
 import assert from 'node:assert/strict';
-import { RELAY_GRANT_REUSE_MS, createRoomIceResolver } from './iceConfig.ts';
+import * as iceConfig from './iceConfig.ts';
+
+const { RELAY_GRANT_REUSE_MS, createRoomIceResolver } = iceConfig;
+// (through the namespace so the timeout case also runs, and fails, against a resolver without the retry)
+const RELAY_REQUEST_RETRIES = iceConfig.RELAY_REQUEST_RETRIES ?? 0;
 
 const TURN_GRANT = {
   iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u', credential: 'c' }],
@@ -110,5 +114,37 @@ const refusal = (code) => Object.assign(new Error(code), { name: 'RoomError', co
   assert.equal(late.degradedReason, 'rate_limit');
 }
 
+// ---- a request that timed out or met a closed socket ('internal': a starved seat or a busy room under load), with no
+// grant held: asked once more before host candidates (2026-10-11; before, the first connection of a loaded seat was built
+// with no servers at all and could not cross a NAT — mp-p2p-headless' first attempts, "internal")
+{
+  const room = scriptedRoom([refusal('internal'), STUN_GRANT]);
+  const first = await createRoomIceResolver({ mode: 'private', room })();
+  assert.equal(first.source, 'room', `a timed-out first request is asked again and its grant carries the connection (${first.source}, ${first.degradedReason ?? ''})`);
+  assert.equal(first.iceServers[0].urls, 'stun:stun.cloudflare.com:3478');
+  assert.equal(room.requests, 2);
+  assert.equal(RELAY_REQUEST_RETRIES, 1);
+  // bounded: a room that never answers costs one more request, then host candidates (a LAN still links)
+  const silent = scriptedRoom([refusal('internal')]);
+  const gaveUp = await createRoomIceResolver({ mode: 'private', room: silent })();
+  assert.equal(gaveUp.source, 'host-fallback');
+  assert.equal(gaveUp.degradedReason, 'internal');
+  assert.equal(silent.requests, 1 + RELAY_REQUEST_RETRIES, 'one retry, no more');
+  // a refusal is not retried (it answers the same a moment later)
+  const limited = scriptedRoom([refusal('rate_limit'), STUN_GRANT]);
+  assert.equal((await createRoomIceResolver({ mode: 'private', room: limited })()).degradedReason, 'rate_limit');
+  assert.equal(limited.requests, 1, 'a refusal is answered once');
+  // with a valid grant held, a timeout falls back to it at once (no second request)
+  let now = 0;
+  const held = scriptedRoom([TURN_GRANT, refusal('internal'), STUN_GRANT]);
+  const resolveHeld = createRoomIceResolver({ mode: 'private', room: held, clock: () => now });
+  await resolveHeld();
+  now += RELAY_GRANT_REUSE_MS;
+  const fellBack = await resolveHeld();
+  assert.equal(fellBack.relayAvailable, true, 'the held grant carries the connection');
+  assert.equal(fellBack.degradedReason, 'internal');
+  assert.equal(held.requests, 2, 'no retry while a grant is held');
+}
+
 assert.throws(() => createRoomIceResolver({ mode: 'private', room: null, reuseMs: -1 }), /invalid/);
-console.log('iceConfig.selftest: LAN asks nothing; the room\'s grant (TURN or STUN alone), one request per burst, reuse, the newest valid grant on a refusal, host candidates last');
+console.log('iceConfig.selftest: LAN asks nothing; the room\'s grant (TURN or STUN alone), one request per burst, reuse, the newest valid grant on a refusal, a timed-out first request asked once more, host candidates last');
