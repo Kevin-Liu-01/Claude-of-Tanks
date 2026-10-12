@@ -40,7 +40,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       rand: Math.random, groundY: () => 0,
       media: (m) => puffs.push({ birth: clock.now + m.birthOffset, x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz,
         drag: m.drag, windK: m.windK, life: m.life, size0: m.size0, size1: m.size1, growExp: m.growExp, density: m.density,
-        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, heat: m.heat, cool: m.cool }),
+        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, fadeOut: m.fadeOut, heat: m.heat, cool: m.cool }),
       chunk() {}, flash: (o) => flashes.push(clock.now + o.birthOffset), fire() {}, sparks: (o) => sparks.push(clock.now + o.birthOffset),
       jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: {},
@@ -171,8 +171,8 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) <= p.size1));
     const wisps = at60.puffs.filter((p) => p.windK === 0.6 && p.drag === 1.5);
     const streamers = at60.puffs.filter((p) => p.windK === 0.5 && p.drag === 1.2);
-    assert.ok(wisps.length > 0 && near(wisps, 0.061), `the grenades' trails are threads, not dotted lines (${wisps.length} wisps)`);
-    assert.ok(streamers.length > 0 && near(streamers, 0.046), `the pellets' streamers are ropes, not beads (${streamers.length})`);
+    assert.ok(wisps.length > 0 && near(wisps, 0.046), `the grenades' trails are threads, not dotted lines (${wisps.length} wisps)`);
+    assert.ok(streamers.length > 0 && near(streamers, 0.051), `the pellets' streamers are ropes, not beads (${streamers.length})`);
     // the bloom swells with the simulation's growth: every lobe is at 85 % of its size 2.4 s after its birth, from a
     // body already two metres across, fading in out of the pop
     const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
@@ -197,11 +197,15 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const r = run(struck, 1 / 60);
     const strikes = r.puffs.filter((p) => p.windK === 0.4 || p.windK === 0.45);
     assert.equal(strikes.length, 3, `one strike at the wall: a dust kick and the grenade's own puff (${strikes.length} puffs)`);
+    // (fx 9, wave 404: "no strip shows a grenade ... dropping back outside") the struck grenade trails its fuse's thread
+    // from the knock down to where it rests
+    const drop = r.puffs.filter((p) => p.windK === 0.6 && p.drag === 1.5 && p.birth > struck.born + tb + 1e-6 && p.birth <= struck.born + bounced[6] + 1e-6);
+    assert.ok(drop.length >= 2, `its thread follows the drop back from the wall (${drop.length} wisps)`);
     for (const p of strikes) {
       assert.ok(Math.abs(p.birth - (struck.born + tb)) < 1e-6, 'the strike is born when the grenade leaves the wall');
       // (fx 8r, the w5 film: "white puffs sit against the house face") born off the face, in front of it, never half inside
       const off = (p.x - bx) * nx + (p.z - bz) * nz;
-      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 0.7 && off > 0.3, `and where it struck, off the face (${off.toFixed(2)} m out)`);
+      assert.ok(Math.hypot(p.x - bx, p.y - by, p.z - bz) < 1.0 && off > 0.3, `and where it struck, off the face (${off.toFixed(2)} m out)`);
       if (p.windK === 0.4) assert.ok(p.vx * nx + p.vz * nz > 0, 'its dust is thrown off the face, never into the wall');
     }
     assert.ok(at60.puffs.every((p) => p.windK !== 0.4 && p.windK !== 0.45), 'a screen whose grenades struck nothing strikes nothing');
@@ -245,6 +249,49 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       `by the wall the puffs fade into it more softly (${byWall.length} puffs, feather x${Math.max(...byWall.map((p) => -p.cool)).toFixed(1)})`);
     const far = walled.puffs.filter((p) => p.windK === 0 && p.drag >= 1 && Math.max(10 - (p.x + p.vx / p.drag), 0) > 5);
     assert.ok(far.every((p) => p.cool >= 0), 'away from it, the feather they always had');
+    // (fx 9, waves 404/405: "the cloud stops in a dead-straight vertical edge exactly on the house corner", "the house's
+    // front wall shows through ... as a crisp, pale rectangle", "small puffs sit right in the window openings") a salvo
+    // fired at the house's corner from the south-west: the screen meets the walls the way smoke does
+    const t2 = { ...t, state: { ...t.state, pos: { x: 3, y: 0, z: -7 }, yaw: Math.PI / 2 - 0.5 }, combat: {} };
+    assert.ok(requestAuxiliary(t2, 'smoke', 3, () => 0, world), 'a salvo at the house\'s corner');
+    const corner = run(t2.combat.auxiliary.smoke, 1 / 60);
+    const H = { x0: 10, x1: 18, z0: -4, z1: 4 };
+    const dist = (x, z) => Math.hypot(Math.max(H.x0 - x, 0, x - H.x1), Math.max(H.z0 - z, 0, z - H.z1));
+    const inHouse = (x, z) => x > H.x0 && x < H.x1 && z > H.z0 && z < H.z1;
+    assert.ok(corner.puffs.every((p) => !inHouse(p.x, p.z)), 'no puff is born inside the house');
+    const rest = corner.puffs.filter((p) => p.windK === 0 && p.drag >= 1).map((p) => ({ ...p, d: dist(p.x + p.vx / p.drag, p.z + p.vz / p.drag) }));
+    // each lobe its own standoff off the wall (never at it: the soft depth fade printed the wall's outline and windows
+    // into a puff held there), the wall-held ones ragged (never one line), thinning over the last metre or so
+    const held = rest.filter((p) => p.d < 2.5).map((p) => p.d).sort((a, b) => a - b);
+    assert.ok(held.length >= 3 && held[0] >= 0.55, `the lobes stand off the wall (${held.length} by it, the nearest ${held[0]?.toFixed(2)} m)`);
+    assert.ok(held[held.length - 1] - held[0] >= 0.5, `a ragged edge, not one line (${held[0].toFixed(2)}-${held[held.length - 1].toFixed(2)} m)`);
+    assert.ok(rest.filter((p) => p.d < 1.5).every((p) => p.density < 0.9), 'thinning over the last metre or so before the wall');
+    // and the screen comes round the corner: lobes past it, behind the west face's line, outside the house
+    assert.ok(rest.filter((p) => { const x = p.x + p.vx / p.drag, z = p.z + p.vz / p.drag; return x > H.x0 && !inHouse(x, z) && p.d < 6; }).length >= 3,
+      'the screen comes round the house\'s corner');
+  }
+  // (fx 9, wave 403: "after 15 s the whole bank fades evenly over about 5 s; it should erode from its crowns and flanks
+  // over tens of seconds") the wall erodes by role — its crowns first (~8.5 s), the row's flanks next (~10 s), its core
+  // last (~13.5 s) — and each eroding crown and flank sheds a thin wisp the scene's wind carries off for 12-18 s
+  {
+    const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
+    const settle = (p) => p.y + p.vy / p.drag;
+    const erodeAt = (p) => p.birth + p.fadeOut * p.life - screen.born;
+    const crowns = lobes.filter((p) => settle(p) > 3.5), feet = lobes.filter((p) => settle(p) < 2.5);
+    const crownErode = Math.max(...crowns.map(erodeAt)), feetErode = feet.map(erodeAt);
+    assert.ok(crownErode < 11, `the crowns erode first (by ${crownErode.toFixed(1)} s)`);
+    assert.ok(Math.min(...feetErode) <= 11 && Math.max(...feetErode) >= 13,
+      `the row's flanks before its core (${Math.min(...feetErode).toFixed(1)}-${Math.max(...feetErode).toFixed(1)} s)`);
+    assert.ok(crownErode < Math.max(...feetErode), 'the core holds longest');
+    assert.ok(crowns.every((p) => p.birth + p.life - screen.born <= 16) && feet.every((p) => p.birth + p.life - screen.born >= 16.4),
+      'the crowns gone by 16 s, the feet holding past the blocking floor');
+    const eroding = at60.puffs.filter((p) => p.windK >= 0.75 && p.drag === 0.6 && p.life >= 11.9);
+    assert.ok(eroding.length >= crowns.length, `each eroding crown and flank sheds a wisp (${eroding.length})`);
+    for (const p of eroding) {
+      const b = p.birth - screen.born;
+      assert.ok(b >= 7 && b <= 15 && p.density <= 0.3, `a thin wisp torn off as the wall thins (${b.toFixed(1)} s, density ${p.density.toFixed(2)})`);
+      assert.ok(b + p.life <= SMOKE_DURATION_S + 20 + 1e-6, 'gone within 20 s of the sight block');
+    }
   }
   // reset forgets the screens: a rematch draws nothing old
   const clock = { now: screen.born + 2 };
@@ -255,5 +302,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, the walls met as smoke meets them (standoff, ragged, thinning, round the corner), erosion by role with wind-borne wisps, reset passed`);
 }
