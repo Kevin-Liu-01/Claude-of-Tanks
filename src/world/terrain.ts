@@ -56,7 +56,8 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
-import { compilePaddies, inPaddy, levelPaddies, paddyCanals, resolvePaddyFloors, type PaddyConfig } from './paddies.ts';
+import { compilePaddies, inPaddy, levelPaddies, paddyCanals, paddyWaterLevelAt, paddyWaterQuads, resolvePaddyFloors, type PaddyConfig,
+  type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -609,6 +610,10 @@ export interface HeightField {
   getWaterMaskAt(x: number, z: number): number;
   /** Authored shallow depth used to build the sheet. Zero on ice/dry ground. */
   getWaterDepthAt?(x: number, z: number): number;
+  /** (2026-10-12, item 4) A paddy's water level over its water and bund, NaN elsewhere; only on a map with paddies. */
+  getPaddyWaterLevelAt?(x: number, z: number): number;
+  /** (item 4) Each paddy's own level water surface (paddies.ts paddyWaterQuads); only on a map with paddies. */
+  getPaddyWaterQuads?(): readonly PaddyWaterQuad[];
   /** Exact rendered triangle height, installed when the liquid mesh is built. */
   getWaterSurfaceHeightAt?(x: number, z: number): number;
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
@@ -3017,6 +3022,9 @@ function* heightFieldBuildSteps(
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
+    // (2026-10-12, item 4) the paddies' water level, for the shallow-water sheet (only on a map with paddies)
+    ...(compiledPaddies !== null ? { getPaddyWaterLevelAt: (x: number, z: number): number => paddyWaterLevelAt(compiledPaddies, x, z),
+      getPaddyWaterQuads: () => paddyWaterQuads(compiledPaddies) } : {}),
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)

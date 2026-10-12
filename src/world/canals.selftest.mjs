@@ -43,7 +43,14 @@ const take = (inserted, original = '') => {
 };
 take("import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';\n");
 // (2026-10-12, item 4) the paddies ride on the canals (their water is square-ended canals): they come out with them
-take("import { compilePaddies, inPaddy, levelPaddies, paddyCanals, resolvePaddyFloors, type PaddyConfig } from './paddies.ts';\n");
+take("import { compilePaddies, inPaddy, levelPaddies, paddyCanals, paddyWaterLevelAt, paddyWaterQuads, resolvePaddyFloors, type PaddyConfig,\n  type PaddyWaterQuad } from './paddies.ts';\n");
+take("  /** (2026-10-12, item 4) A paddy's water level over its water and bund, NaN elsewhere; only on a map with paddies. */\n"
+  + "  getPaddyWaterLevelAt?(x: number, z: number): number;\n"
+  + "  /** (item 4) Each paddy's own level water surface (paddies.ts paddyWaterQuads); only on a map with paddies. */\n"
+  + "  getPaddyWaterQuads?(): readonly PaddyWaterQuad[];\n");
+take("    // (2026-10-12, item 4) the paddies' water level, for the shallow-water sheet (only on a map with paddies)\n"
+  + "    ...(compiledPaddies !== null ? { getPaddyWaterLevelAt: (x: number, z: number): number => paddyWaterLevelAt(compiledPaddies, x, z),\n"
+  + "      getPaddyWaterQuads: () => paddyWaterQuads(compiledPaddies) } : {}),\n");
 take(source.slice(source.indexOf('  /**\n   * 2026-10-12 (item 4, the owner: "we need real water"): flooded paddies (paddies.ts)'),
   source.indexOf('  paddies?: readonly PaddyConfig[];\n') + '  paddies?: readonly PaddyConfig[];\n'.length));
 take(source.slice(source.indexOf('  // (2026-10-12, item 4) the paddies\' floors: the finished ground\'s median over each'),

@@ -8,6 +8,9 @@ import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
 
 const GRID_STEP_M = 8;
+/** (2026-10-12, item 4) A paddy's own surface's cell (m), and where a lattice cell is probed for a paddy (corners, centre). */
+const PADDY_SURFACE_CELL_M = 2;
+const PADDY_CELL_PROBES: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]];
 const MIN_COVERAGE = 0.002;
 
 interface ShallowWaterGeometry {
@@ -148,7 +151,7 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
 }
 
 export function* shallowWaterGeometrySteps(
-  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
+  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
   const segments = Math.ceil(field.size / GRID_STEP_M);
   const count = segments + 1, step = field.size / segments, half = field.size / 2;
@@ -159,6 +162,13 @@ export function* shallowWaterGeometrySteps(
   }
   const slots = new Int32Array(count * count).fill(-1);
   const admitted = new Uint8Array(Math.ceil(segments * segments / 8));
+  const paddyQuads = field.getPaddyWaterQuads?.() ?? [];
+  const paddyLevelAt = (x: number, z: number): number => field.getPaddyWaterLevelAt?.(x, z) ?? NaN;
+  // a lattice cell any of whose corners or centre stands over a paddy's water or bund
+  const paddyCell = (x0: number, z0: number, size: number): boolean => {
+    for (const [u, v] of PADDY_CELL_PROBES) if (paddyLevelAt(x0 + u * size, z0 + v * size) === paddyLevelAt(x0 + u * size, z0 + v * size)) return true;
+    return false;
+  };
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
   function vertex(x: number, z: number): number {
     const key = z * count + x;
@@ -176,10 +186,30 @@ export function* shallowWaterGeometrySteps(
       const corners = Math.max(wet[key], wet[key + 1], wet[key + count], wet[key + count + 1]);
       if (corners <= MIN_COVERAGE
         && field.getWaterMaskAt((x + 0.5) * step - half, (z + 0.5) * step - half) <= MIN_COVERAGE) continue;
+      // (2026-10-12, item 4) a paddy draws its own level surface below; the lattice keeps out of it (its nearest other
+      // water is fourteen metres off: the paddies stand clear of the river and the roads' culverts)
+      if (paddyQuads.length && paddyCell(x * step - half, z * step - half, step)) continue;
       const a = vertex(x, z), b = vertex(x + 1, z), c = vertex(x, z + 1), d = vertex(x + 1, z + 1);
       indices.push(a, c, b, b, c, d);
       const cell = z * segments + x;
       admitted[cell >> 3] |= 1 << (cell & 7);
+    }
+    yield;
+  }
+  // (2026-10-12, item 4) each paddy's own surface: a level grid at its water's level over its rectangle, tucked under its
+  // bund (the bund clips it at the shoreline), two-metre cells for the ripples and wakes
+  for (const q of paddyQuads) {
+    const nx = Math.max(1, Math.round((2 * q.hw) / PADDY_SURFACE_CELL_M)), nz = Math.max(1, Math.round((2 * q.hl) / PADDY_SURFACE_CELL_M));
+    const base = positions.length / 3;
+    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+      const b = -q.hw + (2 * q.hw * i) / nx, a = -q.hl + (2 * q.hl * j) / nz;
+      positions.push(q.x + q.s * a + q.c * b, q.level, q.z + q.c * a - q.s * b);
+      normals.push(0, 1, 0);
+    }
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const a0 = base + j * (nx + 1) + i, b0 = a0 + 1, c0 = a0 + nx + 1, d0 = c0 + 1;
+      // the winding faces +Y whatever the paddy's yaw (the lattice's a, c, b order in the paddy's own axes)
+      indices.push(a0, c0, b0, b0, c0, d0);
     }
     yield;
   }
@@ -205,7 +235,11 @@ export function* shallowWaterGeometrySteps(
     }
     return (top - h0) / SEA_SHELF_RISE_M;
   };
-  return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
+  const latticeHeightAt = waterHeightSampler(wet, admitted, field, segments);
+  return { geometry, heightAt: paddyQuads.length ? (x, z) => {
+    const level = paddyLevelAt(x, z);
+    return level === level ? level : latticeHeightAt(x, z);
+  } : latticeHeightAt };
 }
 
 /**

@@ -11,6 +11,7 @@ import { PADDY_BANK_M, PADDY_BUND_H, PADDY_BUND_M, PADDY_FREEBOARD_M, compilePad
   resolvePaddyFloors } from './paddies.ts';
 import { canalWetness, carveCanals, compileCanals } from './canals.ts';
 import { createHeightField } from './terrain.ts';
+import { shallowWaterGeometrySteps } from './shallowWater.ts';
 import { getMapConfig } from './maps/index.ts';
 import { deploymentFrame } from '../sim/deployment.ts';
 
@@ -85,6 +86,30 @@ for (const p of paddies) {
     assert.ok(field._roadDist(...at(a, b)) >= 11, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): off the roads (a culvert would dry it)`);
   }
   for (const k of keepClear) assert.ok(Math.hypot(p.x - k.x, p.z - k.z) > 75, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): clear of the deployments`);
+}
+
+// ---- (3b) the water's surface: each paddy's own level grid (the sheet's eight-metre lattice keeps out), facing up
+const steps = shallowWaterGeometrySteps(field);
+let step = steps.next();
+while (!step.done) step = steps.next();
+const sheet = step.value, sheetPos = sheet.geometry.getAttribute('position'), sheetIdx = sheet.geometry.getIndex();
+let downFacing = 0;
+for (let i = 0; i < sheetIdx.count; i += 3) {
+  const [a, b, c] = [0, 1, 2].map((k) => sheetIdx.getX(i + k));
+  const e1x = sheetPos.getX(b) - sheetPos.getX(a), e1z = sheetPos.getZ(b) - sheetPos.getZ(a);
+  const e2x = sheetPos.getX(c) - sheetPos.getX(a), e2z = sheetPos.getZ(c) - sheetPos.getZ(a);
+  if (e1z * e2x - e1x * e2z < 0) downFacing++;
+}
+assert.equal(downFacing, 0, 'every triangle of the sheet faces up (the paddies\' own grids too)');
+for (const p of paddies) {
+  const yaw = p.yawDeg * Math.PI / 180, c = Math.cos(yaw), s = Math.sin(yaw);
+  for (let a = -p.lengthM / 2; a <= p.lengthM / 2; a += 2.5) for (let b = -p.widthM / 2; b <= p.widthM / 2; b += 2.5) {
+    const x = p.x + s * a + c * b, z = p.z + c * a - s * b;
+    near(sheet.heightAt(x, z), field.getPaddyWaterLevelAt(x, z), 1e-9, `(${p.x.toFixed(1)}, ${p.z.toFixed(1)}): the surface at the level`);
+    if (Math.abs(a) < p.lengthM / 2 - 2 && Math.abs(b) < p.widthM / 2 - 2) {
+      near(field.getPaddyWaterLevelAt(x, z), field.getHeightAt(x, z) + field.getWaterDepthAt(x, z), 1e-6, 'the level is the bed plus the water');
+    }
+  }
 }
 
 // ---- (4) the terrain's wiring
