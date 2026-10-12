@@ -13,6 +13,8 @@ import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { rayCollisionRecord, setObbShape } from './collision.ts';
 import { SLAB_SHELL_KINDS } from './props.ts';
+import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
+import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { localShellSlabs, placeLocalShellSlabs } from './rockCollision.ts';
 import { box, jitterUV } from './propGeometry.ts';
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
@@ -220,11 +222,13 @@ function poolFinalizer(fixture, field, drng, overrides = {}) {
     refitDestructibleColliders: refit, sealGroundCoverPlacements: seal, fitWallSpan,
     heightField: field, wallSpans: fixture.spans, WALL_SEG,
     tintDestructibleInstances: () => {}, destructibleCastsShadow: () => false,
-    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group: new THREE.Group(), ...overrides };
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group: new THREE.Group(),
+    // (destruction-350) a light kind's broken state is its intact build broken (maps/propFracture.ts), from the build's seed
+    PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002, ...overrides };
   const functions = new Function('bindings', `const {
     THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
     heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
-    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed
   } = bindings; ${prepareSource}; ${finalSource};
   return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
   return { ...functions, group: bindings.group };
@@ -248,7 +252,18 @@ function checkSourceLifecycle(pool) {
   assert.ok(pool.records.every(record => record.cls === 'break' && !record.body),
     'this extracted lifecycle fixture covers static wall break/reset, not loose/topple/toss branches');
   assert.ok(!pool.meta.instanceTintStrength, 'wall lifecycle does not enter building-only tint generation');
-  const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive',
+  // (crush, 2026-10-10) breakRecord asks the hull's crush press first (propCrushPresentation.ts): the real press over this
+  // pool, with the props build's own eligibility (a static wall is not a kind it draws, so it declines every break here)
+  const crushPress = createPropCrushPresentation({
+    group: new THREE.Group(), records: pool.records, poolOf: (kind) => (kind === 'wallstone' ? pool : undefined),
+    near: (minX, minZ, maxX, maxZ, out) => { out.length = 0; return out; },
+    eligible: (kind) => {
+      const meta = kind === 'wallstone' ? pool.meta : null;
+      return !!meta && meta.cls === 'break' && (meta.mat === 'vehicle' || !!DESTRUCTIBLE_BUILDING_TYPES[kind] || kind === 'stall' || kind === 'tent');
+    },
+    cloth: () => false, burns: () => false, onBurn: () => {},
+  });
+  const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive', 'crushPress',
     `const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0),
       _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _zeroScale = new THREE.Vector3(1e-4,1e-4,1e-4);
       const events = [], fx = [], pendingBlasts = [];
@@ -256,7 +271,7 @@ function checkSourceLifecycle(pool) {
       const emitDestroyed = event => events.push(event), emitBreakFx = (...args) => fx.push(args);
       ${breakAnimationSource}; ${breakRecordSource}; ${restoreSource};
       return { breakRecord, restoreDestructibleRecord, resetBrokenPools, events, fx };`)(
-    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive);
+    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive, crushPress);
   const intact = pool.imI.instanceMatrix.array.slice(), placements = pool.mats4.map(m => m.elements.slice());
   const record = pool.records[0], ob = record.ob, col = record.col;
   const bounds = [ob.min.slice(), ob.max.slice(), col.min.slice(), col.max.slice()];
