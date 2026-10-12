@@ -25,6 +25,10 @@ const names = ['placeFenceRun', 'scatterDestructibles', 'fenceRun', 'placeRoadFe
   'isRoadsideSpotClear', 'findRoadsideSpot', 'tryPlaceRoadWreck', 'placeRoadWrecks', 'richCount',
   // (2026-10-07, the map-vehicles lane) a road cart's station refuses a seat past the carts' tilt cap
   'cartGroundPose'];
+// (destruction-350) the placed-hulk budget is a const of the props build's own scope: the extracted road wrecks read it
+// as production sets it
+const wreckBudgetMatch = /const WRECK_TRIS_BUDGET = (\d+);/.exec(source);
+assert.ok(wreckBudgetMatch, 'the props build sets its placed-hulk budget');
 const definitions = names.map(name => {
   assert.ok(functions.has(name), `execute the actual production ${name}`);
   return functions.get(name);
@@ -42,7 +46,7 @@ const factory = new Function('deps', `
   const noVeg = heightField._noVeg, v = L.village, town = P?.town ? { ...v, ...P.town } : v, placedB = [], seed = fixtureSeed;
   const frng = mulberry32(seed + 606);
   const junction = { x: 0, z: 0 };
-  const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0;
+  const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0, WRECK_TRIS_BUDGET = ${wreckBudgetMatch[1]};
   let placedW = 0;
   function* placeWreck(...args) { wreckRecords.push(args); return true; }
   function* placePairedWreck() {}
