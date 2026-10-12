@@ -560,6 +560,10 @@ interface PropsSettings {
   inhabit?: InhabitSettings;
   wallStyle?: string;
   sandbagLines?: number;
+  /** The map-revival lane (2026-10-11; gauntlet wave 380 on Olympus Basin, its sandbag walls read as "timber logs lying
+   * on Mars"): a multiplier on the sandbag stacks' instance tint (linear RGB) — the hessian under the place's own dust.
+   * Default none (white). */
+  sandbagTint?: readonly [number, number, number];
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
   /** The Redrock lane (2026-10-07): the field works' pillboxes keep their 8 m square off every trunk the vegetation
@@ -10347,6 +10351,7 @@ ${snowCap ? `
         const u = h - Math.floor(h), w = (h * 7.31) - Math.floor(h * 7.31);
         const l = (snowCap ? 0.84 : 0.9) + u * 0.2;
         tint.setRGB(l * (1 + (w - 0.5) * 0.06), l, l * (1 - (w - 0.5) * 0.08));
+        if (P.sandbagTint) tint.setRGB(tint.r * P.sandbagTint[0], tint.g * P.sandbagTint[1], tint.b * P.sandbagTint[2]);
         imI.setColorAt(i, tint);
       }
       imI.instanceColor!.needsUpdate = true;

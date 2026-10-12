@@ -42,6 +42,8 @@ interface HorizonFarRangeOptions {
   character: HorizonReliefCharacter;
   /** The map's cloud base (m): the peaks stay under it. */
   deckBaseM: number;
+  /** An airless map (fogDensity 0): no aerial perspective on the far range. */
+  airless?: boolean;
   sun: readonly [number, number, number];
   base: THREE.Color;
   rock: THREE.Color;
@@ -314,7 +316,8 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
       for (let d = -3; d <= 3; d++) if (d !== 0) near += heights[row * n + (k + d + n) % n];
       const rib = clamp((heights[i] - near / 6) / Math.max(1, ampM * 0.08), -1, 1);
       // aerial perspective by row toward the fog tint (the scene fog is off on this material)
-      const haze = s.hazeIn + (s.hazeOut - s.hazeIn) * aer + (1 - hT) * 0.04;
+      // (2026-10-11, the map-revival lane: an airless map's far range takes no air — gauntlet wave 380, Earthrise Basin)
+      const haze = options.airless ? 0 : s.hazeIn + (s.hazeOut - s.hazeIn) * aer + (1 - hT) * 0.04;
       params[i * 4] = hT; params[i * 4 + 1] = haze; params[i * 4 + 2] = rib; params[i * 4 + 3] = marine[i];
     }
   }

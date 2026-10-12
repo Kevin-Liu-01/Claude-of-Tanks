@@ -77,6 +77,10 @@ export default {
     grassTone: grey, dirtTone: grey, rockTone: grey, mudTone: grey,
     // (wave 346) the macro tints neutral (they leaned blue: B/R 1.06-1.07), each at its luminance
     tintA: [.957,.957,.955], tintB: [.838,.838,.836], tintC: [1,1,1], roadTint: [.776,.776,.774], rippleAmp: .05, strata: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "a high-frequency wavy normal-map pattern that reads as crumpled foil or
+    // rippled water") under the hard 20-degree sun the sand set's lumps and Mars's 1-5 m dapple shaded as foil: the detail
+    // normal at 0.4 of its strength and the dapple at a third of Mars's (midRelief .6 -> .2) — fine powder, gardened smooth
+    detailNormal: 0.4, midRelief: 0.2,
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
@@ -101,6 +105,9 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     rockTone: grey, rocks: 260, outcrops: 48, craters: 90, rubblePiles: 0, hedgehogs: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "the loaf boulder ... never sunk in dust") the surface stones sunk
+    // deeper into the regolith banked round them (a share of their height: .22 -> .38)
+    rockSink: 0.38,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: [] },
@@ -141,9 +148,27 @@ export default {
       { form: 'blocks' as const, geology: 'breccia' as const, x: -x, z: -z, radius: 6, height: 2.6, yawDeg: yawDeg + 180, tone: LUNAR_BRECCIA,
         name: `the ejecta blocks ${['south-west of the outpost', 'on the west floor', 'on the west floor, north'][i]}` },
     ]),
+    // (2026-10-11, the map-revival lane; gauntlet wave 380: a crater rim "a smooth ... billowing drift with no strata,
+    // blocks or talus ... it reads as a snowbank") the four big craters' rims (and their rotations) carry the breccia their
+    // impact threw out — blocks and scree on the rim's steeper ground, none in the bowl
+    rockFields: ([[-230, -150, 56], [205, -190, 40], [320, -150, 46], [-70, -230, 34]] as const).flatMap(([x, z, r], i) => [
+      { geology: 'breccia' as const, x, z, radius: Math.round(r * 1.45), count: 4, slopeBias: 0.85, size: [1.6, 3.4] as const,
+        avoid: [[x, z, Math.round(r * 0.7)]] as const, tone: LUNAR_BRECCIA, name: `the rim blocks of crater ${i + 1}` },
+      { geology: 'breccia' as const, x: -x, z: -z, radius: Math.round(r * 1.45), count: 4, slopeBias: 0.85, size: [1.6, 3.4] as const,
+        avoid: [[-x, -z, Math.round(r * 0.7)]] as const, tone: LUNAR_BRECCIA, name: `the rim blocks of crater ${i + 5}` },
+    ]),
   },
-  horizon: { baseHex: 0x686b73, rockHex: 0x858a94, amp: 1.35, style: 'rolling', treeline: 0,
+  // (2026-10-11, the map-revival lane; gauntlet wave 380: "an airless sky can't have blue haze"; "a notched black skyline
+  // wall at the far edge"; "a flat-topped slab cut into its left skyline"; "fluted, streak-banded mountains"; "the
+  // regolith is cool blue-white") the far country the regolith's warm neutral grey (was a blue-grey 0x686b73 / 0x858a94);
+  // the Taurus-Littrow massifs smooth, rounded and unbedded under their regolith — the martian far bake's tablelands
+  // (its stepped, flat-topped slabs) and strata off, rock only on the steepest faces, and the ring's relief without the
+  // bedding and varnish bands; with fogDensity 0 the panorama and the far range take no air (horizonPanorama.ts
+  // uAirless, horizonFarRange.ts airless)
+  horizon: { baseHex: 0x6a6865, rockHex: 0x86837e, amp: 1.35, style: 'rolling', treeline: 0,
     treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
+    panorama: { tables: false, strata: 0, rockSlope: 0.62, sharp: 0.85 },
+    reliefCover: { varnish: 0, beds: 0 },
     // the mountains lane (2026-10-02): the moon keeps its own walls — the carved landform drew straight-flanked
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
     massif: false },
@@ -153,7 +178,9 @@ export default {
     // black of the photographs, and a lower sun (28 -> 20 deg) draws them long across the crater floors and rims
     sunElevationDeg: 20, sunAzimuthDeg: 48, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
     fogDensity: 0, fogMix: 0, envIntensity: .15, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
-    sunIntensity: 3.5, sunColorHex: 0xf1f4ff, hemiIntensity: .12, fillIntensity: .05, postExposure: .98,
+    // (2026-10-11) the sun white, not blue-white (0xf1f4ff), and the air's tint the regolith's neutral grey where a law
+    // reads one (the horizon's sky term, the default 0x8fa3bd tinted it blue)
+    sunIntensity: 3.5, sunColorHex: 0xfffaf2, hemiIntensity: .12, fillIntensity: .05, postExposure: .98, fogTintHex: 0x76746f,
     atmosphere: { rayleighScale: 0, mieScale: 0, ozoneScale: 0, groundAlbedoHex: 0x6b6a68 },
   },
   minimap: { ...mars.minimap, base: [108,111,118], hard: [145,148,155], soft: [90,93,100],
