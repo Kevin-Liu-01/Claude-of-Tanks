@@ -78,9 +78,6 @@ export interface SkyPreset {
   galaxy: number;
   /** Nebula tint drawn along the band (null = none); a galaxy map paints its clouds with this. */
   nebulaHex: number | null;
-  /** (2026-10-11, the map-revival lane) a dust glow along the night dome's horizon (null = the black the stars fade to):
-   * Olympus Basin's dusty air meets its far country there instead of a thin black band. */
-  horizonGlowHex: number | null;
   /** Diameter in degrees of the disc at the night key-light direction (the moon at 0.8; a planet at 3). */
   planetDeg: number;
   /** 1 renders Earth with oceans, continents and cloud systems (lunar map). */
@@ -522,7 +519,6 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   nightSky: null,
   galaxy: 1,
   nebulaHex: null,
-  horizonGlowHex: null,
   planetDeg: 0.8,
   earth: 0,
   planetHex: 0xedf2ff,
@@ -666,10 +662,8 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
 	float glowPow = max( 900.0 * 0.0070 / moonR, 160.0 );
 	float glow = (1.0 - earth) * (pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030);
-	// (the night dome's horizon glow, a preset's dust: from just under the skyline up some ten degrees, none on most maps)
-	float horizonBand = ( 1.0 - smoothstep( 0.0, 0.17, dn.y ) ) * smoothstep( -0.06, 0.0, dn.y );
 	return (1.0 - earth * disc) * ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
-		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade + uHorizonGlow * horizonBand * 0.6;
+		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
 }`;
 
 // Round 65 (2026-09-24): the physically based dome. On the desktop tier the visible sky is the Hillaire
@@ -724,7 +718,6 @@ uniform float uPlanetR;
 uniform vec3 uPlanetTint;
 uniform float uEarth;
 uniform sampler2D uEarthLand;
-uniform vec3 uHorizonGlow;
 ${ATMOSPHERE_SKY_GLSL}
 ${NIGHT_SKY_GLSL}
 varying vec3 vWorldPosition;
@@ -862,8 +855,6 @@ function configureSkyUniforms(
   u.uGalaxy.value = preset.galaxy;
   u.uNebula ??= { value: new THREE.Color(0, 0, 0) };
   if (preset.nebulaHex == null) u.uNebula.value.setRGB(0, 0, 0); else u.uNebula.value.setHex(preset.nebulaHex);
-  u.uHorizonGlow ??= { value: new THREE.Color(0, 0, 0) };
-  if (preset.horizonGlowHex == null) u.uHorizonGlow.value.setRGB(0, 0, 0); else u.uHorizonGlow.value.setHex(preset.horizonGlowHex);
   u.uEarth ??= { value: 0 };
   u.uEarth.value = preset.earth;
   // (the land mask only where the sky draws its Earth: a 1 x 1 placeholder elsewhere, no raster at boot)
@@ -897,7 +888,6 @@ function configureSkyUniforms(
     shader.uniforms.uNebula = u.uNebula;
     shader.uniforms.uEarth = u.uEarth;
     shader.uniforms.uEarthLand = u.uEarthLand;
-    shader.uniforms.uHorizonGlow = u.uHorizonGlow;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
     const patched = shader.fragmentShader.replace(
@@ -950,7 +940,7 @@ function configureSkyUniforms(
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
     shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;
-uniform float uEarth;\nuniform sampler2D uEarthLand;\nuniform vec3 uHorizonGlow;\n${NIGHT_SKY_GLSL}\n${patched}`;
+uniform float uEarth;\nuniform sampler2D uEarthLand;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1291,7 +1281,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
-      uEarthLand: skyUniforms.uEarthLand, uHorizonGlow: skyUniforms.uHorizonGlow,
+      uEarthLand: skyUniforms.uEarthLand,
     },
     side: THREE.BackSide,
     depthWrite: false,

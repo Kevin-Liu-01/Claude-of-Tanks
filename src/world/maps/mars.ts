@@ -108,6 +108,10 @@ export default {
     // round 47: tintB 0.82/0.66/0.56 → 0.86/0.74/0.66 (same 23° hue, luma ×0.70 → ×0.77) under the dim cold key
     tintA: [1.06, 0.90, 0.76], tintB: [0.86, 0.74, 0.66], tintC: [1.08, 0.94, 0.82],
     roadTint: [0.86, 0.74, 0.64],
+    // (2026-10-11, the map-revival lane; the coordinator on gauntlet wave 417's frames: the tracks "dark enough to read as
+    // asphalt" once the dirt layer became the basalt sand) the station's tracks are the regolith packed under the wheels,
+    // and their verges keep most of it (the bare shoulder 0.4: a little of the dark sand pushed aside, not a gravel kerb)
+    roadLayer: 'ground', shoulderDirt: 0.4,
     strata: 0.06,
     microAmp: 0.42,
     rippleDir: [0.7, 0.7],

@@ -497,6 +497,10 @@ interface SplatConfig {
    * pattern that reads as crumpled foil or rippled water"): the ground's detail normal (the sourced sets' relief) as a
    * share of its strength (default 1, every other map). */
   detailNormal?: number;
+  /** The map-revival lane (2026-10-11; Olympus Basin, whose dirt layer is the dark basalt sand of its drifts: its tracks
+   * drew as asphalt): the layer the packed carriageway is made of — 'dirt' (the dirt layer, every map's by default) or
+   * 'ground' (the base layer: the regolith packed under the wheels). */
+  roadLayer?: 'dirt' | 'ground';
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -4138,6 +4142,7 @@ uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
 uniform float uDetailGain; // the map-revival lane: the detail normal's strength (splat.detailNormal, default 1)
+uniform float uRoadFromG;  // the map-revival lane: 1 when the carriageway is packed from the base layer (splat.roadLayer 'ground')
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -6746,7 +6751,10 @@ void splatCompute() {
     // without stamping round marks repeatedly down the road.
     // terrain v2: only on the carriageway (the packed-earth taps ran under every fragment at weight zero)
     if (dW > 0.002) {
-      vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
+      // (the map-revival lane: a map whose dirt layer is not its tracks' — Olympus Basin's basalt sand — packs them from its
+      // base layer, splat.roadLayer; the condition is uniform)
+      vec3 packedRoad = uRoadFromG > 0.5 ? groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB + 4.0).rgb
+        : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
@@ -7695,6 +7703,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
     shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 }; // the map-revival lane: the detail normal's strength (1 = every other map's today)
+    shader.uniforms.uRoadFromG = { value: S.roadLayer === 'ground' ? 1 : 0 }; // the map-revival lane: the carriageway's layer (0 = every other map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };

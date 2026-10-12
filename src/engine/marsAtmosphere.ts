@@ -14,12 +14,8 @@ export const MARS_SKY_PRESET = Object.freeze({
   // dimmed with the dome, so they carry a dark rust tint and read as dust bands occluding the stars — a low 700 m
   // veil of long 4200 m streaks and a thinner high sheet — and the haze they melt into is a shade more rust
   // (0x3b2a33 -> 0x46302c: the dust band along the horizon); dust casts no shadow (cloudShadowAmp 0.05)
-  // (2026-10-11, the map-revival lane; gauntlet wave 380: "pasted dark wisps and sprite smudges" on the galaxy sky, the
-  // owner's design kept; "in bird views the ground stops at a flat empty strip under a thin black band") the dust decks a
-  // third as dense (.3 / .15 -> .1 / .05), the thin ice cloudscape gone, and a dust glow along the dome's horizon in the
-  // haze's own rust (sky.ts horizonGlowHex), so the far country meets dusty air, not a black seam
-  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34, horizonGlowHex: 0x5a3b2e,
-  cloudOpacity: 0.1, cloudOpacity2: 0.05, cloudTintHex: 0x2c1c1e,
+  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34,
+  cloudOpacity: 0.3, cloudOpacity2: 0.15, cloudTintHex: 0x2c1c1e,
   cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
   sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
   postExposure: 1.04,
@@ -29,6 +25,8 @@ export const MARS_SKY_PRESET = Object.freeze({
   // sky), no ozone, a rust ground bounce. The dome stays dimmed to the galaxy; the dust glows near the key light.
   // The shared preset carries it so every map played under the Mars ruleset gets the same sky.
   atmosphere: { rayleighScale: 0.03, mieScale: 60, mieG: 0.76, ozoneScale: 0, mieTintHex: 0xe8895a, groundAlbedoHex: 0x9b6a48 },
-  // round 71 (2026-09-25) laid thin high water-ice clouds under the dust veil (the opt-in volumetric cloudscape); they drew
-  // as smudges across the galaxy (wave 380) and are gone (2026-10-11)
+  // round 71 (2026-09-25): thin high water-ice clouds under the dust veil — the opt-in volumetric layer's cloudscape
+  // (the Mars ruleset applies this shared preset directly, so the block lives here, not on the map config)
+  // (2026-10-01: an authored constant sky — the dimmed galaxy dome is Mars' day, not a terrestrial night: no diurnal law)
+  cloudscape: { regime: 'thin-ice-clouds', windDirDeg: 212, tintHex: 0x8a6a62, diurnal: false },
 } satisfies MapSkyConfig);
