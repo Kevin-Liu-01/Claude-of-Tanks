@@ -1,0 +1,12 @@
+src/vehicles/equipmentDamage.selftest.mjs
+src/vehicles/fleetPassDefault.selftest.mjs
+src/vehicles/fleetPassHigh.selftest.mjs
+src/vehicles/garagePresentation.selftest.mjs
+src/vehicles/profiles/chieftain5XSource.selftest.mjs
+src/vehicles/profiles/t14XGeometry.selftest.mjs
+src/vehicles/profiles/type100.selftest.mjs
+src/vehicles/profiles/type10X.selftest.mjs
+src/vehicles/profiles/type90X.selftest.mjs
+src/vehicles/profiles/westXGeometry.selftest.mjs
+src/vehicles/runningGearFinish.selftest.mjs
+tools/fidelity-visibility.selftest.mjs

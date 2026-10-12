@@ -1,0 +1,17 @@
+src/audio/soundAssets.selftest.mjs
+src/audio/voiceTriggers.selftest.mjs
+src/engine/sceneBlackWatchdog.selftest.mjs
+src/engine/sceneProgramWarm.selftest.mjs
+src/sim/deployment.selftest.mjs
+src/vehicles/camoWorldScale.selftest.mjs
+src/vehicles/eraSurfaceDeduplication.selftest.mjs
+src/vehicles/eraWholeFitReuse.selftest.mjs
+src/vehicles/ownedFittingGeometry.selftest.mjs
+src/vehicles/plateDistanceScratch.selftest.mjs
+src/vehicles/profiles/chieftain10XMk5Foundation.selftest.mjs
+src/vehicles/profiles/object695X.selftest.mjs
+src/vehicles/profiles/ztz100X.selftest.mjs
+src/vehicles/trackPatterns.selftest.mjs
+src/world/terrainContactSurface.selftest.mjs
+tools/battle-geometry-sharing.browser.selftest.mjs
+tools/run-selftests.selftest.mjs

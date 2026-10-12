@@ -1,0 +1,15 @@
+Physics: physics/rigid-body is ready to land at <SHA> (turret pop as a rigid body, wire 5, in its own rolling batch).
+Gates:
+- Wave <N>: PASS (pop-t90-side, pop-m1-near, pop-kv2, shot-m1, pop-m1-rest; A 786e24b97 vs B a4cb8862e).
+- Cost: authority tick CPU, 14v14 Verdant, A B B A: no-kills <a>/<b> ms mean; 8 burn-outs <a>/<b> ms. Turret-pop hitch
+  probe at desktop High, A B B A: frames > 33 ms <a>/<b>, kill frames <a>/<b>.
+- Receipts: 1,066 unique PASS over passes 1-3, plus garagePresentation (updated to body semantics). Typecheck and the
+  unused check PASS.
+- Determinism: sim-determinism-audit --kills identical (900 ticks, 2 kills, 2 turret bodies). MP: wreckBody wire,
+  wreckTurretSync (peer within 0.63 mm at rest, migration keeps the body), world-events audit/scenarios, migration/resume,
+  wire and sync PASS. Pacing PASS (969 s).
+- Bandwidth (14v14 bots, 20 kills): WRECK_BODY 165 B/s avg per viewer (0.64 % of rows), peak 1.1 KB/s.
+- Merge with origin/main 16422db6a: clean (merge-tree). Only tools/selftest-suites.mjs is touched on both sides.
+For your merged-tree closure: 10 fleet-geometry receipts that need public/models (bore-rim lengths, chieftain5
+joints/XSource, fleetPass*, fidelity-visibility), plus the 3 browser-lease receipts (source-dimension-frame,
+battle-geometry-sharing, horizon-panorama-bake), list in physics/receipt-lease3.txt.

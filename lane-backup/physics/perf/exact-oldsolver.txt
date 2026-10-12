@@ -1,0 +1,54 @@
+    hessian/cottage 8 wall from y 4.43 to 1.23/1.90/1.44 release 0.73 shatter -1.00 kick 0.00,0.00,-1.71
+    hessian/cottage 9 wall from y 4.43 to 1.82/3.24/0.14 release 0.68 shatter -1.00 kick 0.00,0.00,-1.90
+    hessian/cottage 10 wall from y 4.43 to 2.57 release 1.04 shatter -1.00 kick -0.91,0.00,0.00
+    hessian/cottage 11 wall from y 4.43 to 2.39 release 1.17 shatter -1.00 kick 0.72,0.00,0.00
+    hessian/cottage 12 wall from y 4.43 to 0.14/0.31/0.14 release 1.54 shatter -1.00 kick 0.00,0.00,-1.19
+    hessian/cottage 13 wall from y 4.43 to 0.43/0.70/0.14 release 1.45 shatter -1.00 kick 0.00,0.00,-0.82
+    hessian/cottage 14 wall from y 4.43 to 2.03/1.76/1.61 release 0.91 shatter -1.00 kick -1.12,0.00,0.00
+    hessian/cottage 15 wall from y 4.43 to 0.95/1.30/2.87 release 1.20 shatter -1.00 kick -0.87,0.00,0.00
+    hessian/cottage 16 floor from y 3.15 to 0.96/2.15/1.26/1.14/1.13/1.95 release 0.13 shatter -1.00 kick 0.00,-1.17,0.00
+    hessian/cottage 17 roof from y 6.58 to 2.59 release 0.27 shatter -1.00 kick 0.00,-1.04,-0.30
+    hessian/cottage 18 roof from y 6.58 to 2.96 release 0.32 shatter -1.00 kick 0.00,-0.85,-0.30
+    hessian/cottage 19 roof from y 6.58 to 2.52 release 0.29 shatter -1.00 kick 0.00,-0.87,-0.30
+    hessian/cottage 20 roof from y 6.58 to 3.40 release 0.24 shatter -1.00 kick 0.00,-0.95,-0.30
+    hessian/cottage 21 roof from y 10.35 to 0.08 release 0.27 shatter -1.00 kick 0.00,-0.91,-0.30
+    hessian/cottage 22 roof from y 10.35 to 0.08 release 0.40 shatter -1.00 kick 0.00,-1.08,-0.30
+  hessian/cottage: 23 pieces (7 cracked on landing) lie still at 5.12 s, fastest 12.4 m/s, 15/15 upper pieces down
+    hessian/tavern 8 wall from y 7.14 to 0.42/1.26/3.96 release 0.96 shatter -1.00 kick 0.00,0.00,-1.38
+    hessian/tavern 9 wall from y 7.14 to 2.93/2.08/2.89 release 1.32 shatter -1.00 kick -0.91,0.00,0.00
+    hessian/tavern 10 wall from y 7.14 to 3.43/2.99/0.14 release 1.60 shatter -1.00 kick 0.00,0.00,-1.12
+    hessian/tavern 11 wall from y 7.14 to 2.19/1.34/2.61 release 1.18 shatter -1.00 kick 1.00,0.00,0.00
+    hessian/tavern 12 floor from y 3.38 to 1.82/2.29/1.85/0.10/1.59/1.94 release 0.14 shatter -1.00 kick 0.00,-1.26,0.00
+    hessian/tavern 13 floor from y 5.85 to 2.64/2.56/2.69/0.95/2.65/2.60 release 0.16 shatter -1.00 kick 0.00,-1.33,0.00
+    hessian/tavern 14 roof from y 9.25 to 3.54 release 0.24 shatter -1.00 kick 0.00,-1.05,-0.30
+    hessian/tavern 15 roof from y 9.25 to 3.59 release 0.21 shatter -1.00 kick 0.00,-0.97,-0.30
+    hessian/tavern 16 roof from y 9.25 to 4.89 release 0.23 shatter -1.00 kick 0.00,-0.88,-0.30
+    hessian/tavern 17 roof from y 9.25 to 4.34 release 0.36 shatter -1.00 kick 0.00,-1.06,-0.30
+    hessian/tavern 18 roof from y 12.86 to 1.85 release 0.13 shatter -1.00 kick 0.00,-0.76,-0.30
+    hessian/tavern 19 roof from y 12.86 to 0.08 release 0.27 shatter -1.00 kick 0.00,-1.04,-0.30
+  hessian/tavern: 20 pieces (9 cracked on landing) lie still at 6.07 s, fastest 11.9 m/s, 12/12 upper pieces down
+    franconian/rowhouse 12 wall from y 10.39 to 0.61/1.15/0.89 release 1.59 shatter -1.00 kick 0.79,0.00,0.00
+    franconian/rowhouse 13 wall from y 10.39 to 0.89/0.50/0.21 release 1.90 shatter -1.00 kick -0.00,0.00,0.63
+    franconian/rowhouse 14 wall from y 10.39 to 1.95/2.12/0.45 release 1.45 shatter -1.00 kick 1.14,0.00,0.00
+    franconian/rowhouse 15 wall from y 10.39 to 1.31/0.54/0.87 release 1.33 shatter -1.00 kick 0.00,0.00,-1.12
+    franconian/rowhouse 16 floor from y 3.34 to 0.78/0.10/0.10/0.96/0.65/0.10 release 0.15 shatter -1.00 kick 0.00,-1.32,0.00
+    franconian/rowhouse 17 floor from y 6.19 to 1.14/0.37/0.69/1.75/1.50/1.24 release 0.15 shatter -1.00 kick 0.00,-1.20,0.00
+    franconian/rowhouse 18 floor from y 8.98 to 1.61/1.15/1.14/2.74/1.81/2.38 release 0.17 shatter -1.00 kick 0.00,-1.57,0.00
+    franconian/rowhouse 19 roof from y 14.68 to 0.08/0.97/0.09/1.33/1.41/1.77 release 0.31 shatter -1.00 kick 0.00,-1.09,-0.30
+    franconian/rowhouse 20 roof from y 14.68 to 0.63/0.93/0.51/2.39/2.12/1.12 release 0.27 shatter -1.00 kick 0.00,-1.01,-0.30
+    franconian/rowhouse 21 chimney from y 17.61 to 1.69 release 0.76 shatter -1.00 kick 0.00,0.00,-0.96
+    franconian/rowhouse 22 gable from y 13.89 to 0.21/0.21/0.21 release 0.35 shatter -1.00 kick 1.54,0.00,0.00
+    franconian/rowhouse 23 gable from y 13.89 to 0.45/1.22/0.21 release 0.38 shatter -1.00 kick -1.30,0.00,-0.00
+  franconian/rowhouse: 24 pieces (16 cracked on landing) lie still at 7.02 s, fastest 16.2 m/s, 12/12 upper pieces down
+    kolkhoz/cottage 8 roof from y 3.42 to 1.19 release 0.22 shatter -1.00 kick 0.00,-1.00,-0.30
+    kolkhoz/cottage 9 roof from y 3.42 to 1.31 release 0.29 shatter -1.00 kick 0.00,-0.99,-0.30
+    kolkhoz/cottage 10 roof from y 3.42 to 1.59 release 0.31 shatter -1.00 kick 0.00,-1.02,-0.30
+    kolkhoz/cottage 11 roof from y 3.42 to 1.51 release 0.33 shatter -1.00 kick 0.00,-0.72,-0.30
+    kolkhoz/cottage 12 roof from y 3.42 to 1.07 release 0.18 shatter -1.00 kick 0.00,-0.96,-0.30
+    kolkhoz/cottage 13 roof from y 3.42 to 1.52 release 0.18 shatter -1.00 kick 0.00,-0.96,-0.30
+    kolkhoz/cottage 14 roof from y 3.42 to 1.60 release 0.21 shatter -1.00 kick 0.00,-0.79,-0.30
+    kolkhoz/cottage 15 roof from y 3.42 to 1.92 release 0.24 shatter -1.00 kick 0.00,-1.05,-0.30
+  kolkhoz/cottage: 16 pieces (2 cracked on landing) lie still at 4.50 s, fastest 6.2 m/s, 8/8 upper pieces down
+  breton/tower: 13 drums (its crown the last) toppled 18.8 m toward the blow, still at 5.87 s, fastest 12.3 m/s
+  ksar/minaret: 15 drums (its crown the last) toppled 12.6 m toward the blow, still at 7.02 s, fastest 10.0 m/s
+  wadirum/watertower: 12 drums toppled 12.0 m toward the blow, still at 5.75 s, fastest 9.5 m/s

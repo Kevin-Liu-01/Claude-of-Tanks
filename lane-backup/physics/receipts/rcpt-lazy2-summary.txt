@@ -1,0 +1,20 @@
+tree 0474dcd55 start 21:32:08
+PASS src/vehicles/materialQuality.selftest.mjs 1s
+PASS src/vehicles/wreckTurretDriverLoader.selftest.mjs 65s
+PASS src/vehicles/garagePresentation.selftest.mjs 57s
+PASS src/engine/nearVehicleShadowDetail.selftest.mjs 1s
+PASS src/vehicles/eraSurfaceDeduplication.selftest.mjs 111s
+FAIL(1) src/vehicles/eraWholeFitReuse.selftest.mjs 295s
+FAIL(1) src/vehicles/ownedFittingGeometry.selftest.mjs 183s
+PASS src/vehicles/plateDistanceScratch.selftest.mjs 19s
+PASS src/world/wreckDiscardedPaint.selftest.mjs 135s
+PASS src/vehicles/camoWorldScale.selftest.mjs 214s
+PASS src/vehicles/tankFactoryStaging.selftest.mjs 458s
+PASS src/fx/lazyRuntime.selftest.mjs 4s
+PASS src/ui/loadingScreens.selftest.mjs 18s
+PASS tools/selftest-suites.selftest.mjs 37s
+PASS tools/run-selftests.selftest.mjs 14s
+PASS tools/selftest-cache.selftest.mjs 104s
+PASS src/vehicles/equipmentDamage.selftest.mjs 116s
+PASS src/gallery/damageLab.selftest.mjs 171s
+done 22:05:32

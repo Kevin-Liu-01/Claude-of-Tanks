@@ -1,0 +1,1 @@
+{"map":"verdant","seed":5,"simulatedS":187.2,"wallS":382.9,"kills":20,"snapshots":3743,"rowKBps":25.72,"wreckBps":174.9,"wreckShare":0.66,"wreckGroups":1559,"maxFlyingAtOnce":3,"peakWreckBytesInOneSecond":1155,"turretBodies":18}

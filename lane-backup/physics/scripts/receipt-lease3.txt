@@ -1,0 +1,3 @@
+tools/source-dimension-frame.browser.selftest.mjs
+tools/battle-geometry-sharing.browser.selftest.mjs
+tools/horizon-panorama-bake.browser.selftest.mjs

@@ -1,0 +1,36 @@
+{
+  "lane": "physics",
+  "splitOf": "pop-wave",
+  "kind": "picture",
+  "id": "pop1-f218b",
+  "queueArrived": 1791779767899,
+  "budgetMin": 10,
+  "queueStamp": 1791397983242,
+  "priority": true,
+  "cwd": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wt",
+  "cloudFreeze": true,
+  "gauntlet": true,
+  "clock": "offline",
+  "needs": [
+    "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218/dist"
+  ],
+  "check": [
+    "sh",
+    "-c",
+    "grep -q 1b587928a885b011b9c4eb8b993fe003f62c7850 /private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218/COMMIT"
+  ],
+  "mutex": [
+    "physics"
+  ],
+  "cmd": [
+    "zsh",
+    "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/pop-arm.zsh",
+    "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218",
+    "B",
+    "pop-t90-side,pop-m1-near",
+    "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/strips/pop1-f218b",
+    "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/strips/pop1-f218b.done",
+    "{PORT}"
+  ],
+  "submittedAt": 1791779767979
+}

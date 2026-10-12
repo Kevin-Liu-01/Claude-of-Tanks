@@ -1,0 +1,13 @@
+PASS src/sim/rigidBody.selftest.mjs 6s
+PASS src/sim/wreckTurrets.selftest.mjs 3s
+PASS src/vehicles/wreckTurretDriver.selftest.mjs 2s
+PASS src/mp/wire/wreckBody.selftest.mjs 0s
+PASS src/mp/presentation/wreckTurretSync.selftest.mjs 40s
+PASS src/fx/debrisPhysics.selftest.mjs 5s
+PASS tools/sim-determinism-audit.selftest.mjs 81s
+PASS tools/mp-world-events-audit.selftest.mjs 60s
+PASS tools/mp-world-events-scenarios.selftest.mjs 43s
+PASS src/vehicles/garagePresentation.selftest.mjs 44s
+PASS src/vehicles/equipmentDamage.selftest.mjs 52s
+PASS src/fx/collapseBodies.selftest.mjs 8s
+PASS src/fx/collapsePieces.selftest.mjs 35s

@@ -1,0 +1,38 @@
+{
+ "lane": "physics",
+ "splitOf": "pop-wave",
+ "kind": "picture",
+ "id": "pop1-f218",
+ "queueArrived": 1791764644188,
+ "budgetMin": 15,
+ "queueStamp": 1791397983242,
+ "priority": true,
+ "cwd": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wt",
+ "cloudFreeze": true,
+ "gauntlet": true,
+ "clock": "offline",
+ "needs": [
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/b4/dist",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218/dist"
+ ],
+ "check": [
+  "sh",
+  "-c",
+  "grep -q 7420887e2572fb9f9712aefd7619376288bf2703 /private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/b4/COMMIT && grep -q 1b587928a885b011b9c4eb8b993fe003f62c7850 /private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218/COMMIT"
+ ],
+ "mutex": [
+  "physics",
+  "port:5460",
+  "port:5461",
+  "port:5462"
+ ],
+ "cmd": [
+  "zsh",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/pop-part.zsh",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/b4",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/roots/f218",
+  "pop-t90-side,pop-m1-near",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/strips/pop1-f218",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/physics/wave/strips/pop1-f218.done"
+ ]
+}

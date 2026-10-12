@@ -1,0 +1,8 @@
+src/sim/wreckTurrets.selftest.mjs
+src/vehicles/wreckTurretDriver.selftest.mjs
+src/vehicles/garagePresentation.selftest.mjs
+src/vehicles/equipmentDamage.selftest.mjs
+src/mp/presentation/wreckTurretSync.selftest.mjs
+tools/sim-determinism-audit.selftest.mjs
+tools/mp-world-events-audit.selftest.mjs
+tools/mp-world-events-scenarios.selftest.mjs

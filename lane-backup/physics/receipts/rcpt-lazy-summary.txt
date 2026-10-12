@@ -1,0 +1,33 @@
+tree be6464871 start 19:31:04
+PASS src/vehicles/wreckTurretDriverLoader.selftest.mjs 59s
+PASS src/vehicles/wreckTurretDriver.selftest.mjs 3s
+PASS src/sim/wreckTurrets.selftest.mjs 4s
+PASS src/sim/rigidBody.selftest.mjs 8s
+PASS src/mp/wire/wreckBody.selftest.mjs 1s
+PASS src/mp/presentation/wreckTurretSync.selftest.mjs 57s
+PASS src/app/combatWarmComposition.selftest.mjs 2s
+PASS src/fx/lazyRuntime.selftest.mjs 0s
+PASS src/ui/loadingScreens.selftest.mjs 7s
+PASS src/mp/host/hostFleet.selftest.mjs 42s
+PASS src/game/battleWarmRuntime.selftest.mjs 10s
+PASS tools/sim-determinism-audit.selftest.mjs 118s
+PASS src/vehicles/garagePresentation.selftest.mjs 52s
+PASS src/gallery/damageLab.selftest.mjs 31s
+PASS src/vehicles/equipmentDamage.selftest.mjs 32s
+PASS src/audio/audioEngine.selftest.mjs 7s
+PASS src/fx/debrisPhysics.selftest.mjs 4s
+PASS tools/mp-world-events-scenarios.selftest.mjs 33s
+PASS tools/mp-world-events-audit.selftest.mjs 61s
+PASS src/mp/presentation/battlePresentation.selftest.mjs 11s
+PASS src/mp/host/migrationState.selftest.mjs 29s
+PASS src/world/wrecksSteps.selftest.mjs 2s
+PASS src/game/garageTankLifecycle.selftest.mjs 1s
+PASS src/sim/impactParity.selftest.mjs 25s
+PASS src/fx/effectAttachments.selftest.mjs 5s
+PASS src/dev/driveTestController.selftest.mjs 1s
+PASS src/game/killcamAccess.selftest.mjs 1s
+PASS src/game/killcamGhostPolicy.selftest.mjs 0s
+PASS src/game/killcamObserverInput.selftest.mjs 1s
+PASS src/game/killcamPresentation.selftest.mjs 0s
+PASS src/game/killcamSelection.selftest.mjs 1s
+done 19:41:13

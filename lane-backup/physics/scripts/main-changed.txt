@@ -1,0 +1,16 @@
+docs/DEPLOYS.md
+server/dedicatedWorldCollision.selftest.mjs
+server/world-collision-manifests/foundry.json
+server/world-collision-manifests/foundry@assault-trenches.json
+server/world-collision-manifests/index.json
+server/world-collision-manifests/railyard.json
+server/world-collision-manifests/railyard@assault-trenches.json
+server/world-collision-manifests/steppe.json
+server/world-collision-manifests/steppe@assault-trenches.json
+src/sim/missionAttachmentSeats.generated.ts
+src/world/foundryServiceCourt.selftest.mjs
+src/world/foundryServiceSupport.ts
+src/world/maps/periodFreight.selftest.mjs
+src/world/maps/periodFreight.ts
+src/world/maps/railKit.ts
+tools/selftest-suites.mjs

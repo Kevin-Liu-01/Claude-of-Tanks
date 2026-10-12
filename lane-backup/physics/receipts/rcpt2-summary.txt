@@ -1,0 +1,45 @@
+start 07:32:54 4ce5473d8
+PASS src/dev/driveTestController.selftest.mjs rc=0 1s w1
+PASS src/fx/debrisPhysics.selftest.mjs rc=0 1s w1
+PASS src/fx/lazyRuntime.selftest.mjs rc=0 0s w2
+PASS src/fx/effectAttachments.selftest.mjs rc=0 1s w1
+PASS src/game/battleWarmRuntime.selftest.mjs rc=0 2s w1
+PASS src/game/combatFeedbackRuntime.selftest.mjs rc=0 1s w1
+PASS src/game/garageTankLifecycle.selftest.mjs rc=0 0s w1
+PASS src/mp/presentation/battlePresentation.selftest.mjs rc=0 4s w1
+PASS src/gallery/damageLab.selftest.mjs rc=0 10s w2
+PASS src/sim/impactParity.selftest.mjs rc=0 5s w2
+PASS src/sim/rigidBody.selftest.mjs rc=0 1s w2
+PASS src/mp/presentation/wreckTurretSync.selftest.mjs rc=0 9s w1
+PASS src/sim/wreckTurrets.selftest.mjs rc=0 0s w2
+PASS src/vehicles/battleDetailLod.selftest.mjs rc=0 8s w2
+PASS src/vehicles/articulatedShadowBatchIntegration.selftest.mjs rc=0 9s w1
+PASS src/vehicles/battleGeometrySharing.selftest.mjs rc=0 10s w2
+PASS src/vehicles/equipmentDamage.selftest.mjs rc=0 11s w1
+PASS src/vehicles/materialQuality.selftest.mjs rc=0 0s w1
+FAIL src/vehicles/garagePresentation.selftest.mjs rc=1 12s w2
+PASS src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs rc=0 14s w1
+PASS src/vehicles/profiles/t72MaterialLifetime.selftest.mjs rc=0 12s w2
+PASS src/vehicles/wreckTurretDriver.selftest.mjs rc=0 1s w2
+PASS src/world/destructibleAuthority.selftest.mjs rc=0 0s w2
+PASS src/world/destructibles.selftest.mjs rc=0 0s w2
+PASS src/world/wrecksSteps.selftest.mjs rc=0 1s w2
+PASS tools/daynight-atmosphere-probe.selftest.mjs rc=0 1s w2
+PASS tools/mp-world-events-scenarios.selftest.mjs rc=0 11s w2
+PASS tools/wreck-build-profile.selftest.mjs rc=0 2s w2
+PASS src/vehicles/staticDrawMerge.selftest.mjs rc=0 30s w1
+PASS src/mp/wire/wreckBody.selftest.mjs rc=0 0s w1
+PASS src/audio/audioEngine.selftest.mjs rc=0 4s w1
+PASS src/game/killcamPresentation.selftest.mjs rc=0 0s w1
+PASS src/game/studioFilmAudio.selftest.mjs rc=0 0s w1
+PASS tools/sim-determinism-audit.selftest.mjs rc=0 27s w2
+PASS src/mp/host/matchHost.selftest.mjs rc=0 6s w2
+PASS src/sim/authoritativeMatch.selftest.mjs rc=0 33s w1
+PASS src/mp/host/migrationState.selftest.mjs rc=0 11s w2
+PASS server/match/matchActorResume.selftest.mjs rc=0 9s w1
+PASS tools/mp-world-events-audit.selftest.mjs rc=0 41s w2
+PASS server/authoritativeBots.selftest.mjs rc=0 296s w1
+PASS server/botModes.selftest.mjs rc=0 309s w2
+worker 2 done 07:40:45
+PASS server/battlePacing.selftest.mjs rc=0 969s w1
+worker 1 done 07:56:09

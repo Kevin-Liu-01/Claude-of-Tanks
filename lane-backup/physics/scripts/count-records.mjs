@@ -1,0 +1,17 @@
+import { createDedicatedWorldCollision } from './wt/server/dedicatedWorldCollision.ts';
+const map = process.argv[2] || 'steinburg';
+const t0 = performance.now();
+const w = createDedicatedWorldCollision(map, { retain: true });
+const t1 = performance.now();
+const obs = w.getObstacles(), col = w.getColliders();
+const kinds = (rs) => { const m = new Map(); for (const r of rs) { const k = (r.structureIdx !== undefined ? 'S:' : '') + (r.kind || '?') + (r.crushable ? '(c)' : ''); m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25); };
+console.log(map, 'load ms', (t1 - t0).toFixed(0), 'obstacles', obs.length, 'colliders', col.length);
+console.log('obstacles kinds', kinds(obs));
+console.log('colliders kinds', kinds(col));
+const shapeKinds = (rs) => { const m = new Map(); for (const r of rs) { const k = r.shape2?.kind || 'aabb'; m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()]; };
+console.log('obstacle shapes', shapeKinds(obs), 'collider shapes', shapeKinds(col));
+let maxParts = 0; for (const r of col) if (r.shape2?.kind === 'compound') maxParts = Math.max(maxParts, r.shape2.parts.length);
+console.log('max compound parts (colliders)', maxParts);
+const s = col.find((r) => r.structureIdx !== undefined); console.log('sample structure collider', JSON.stringify(s).slice(0, 600));
+const so = obs.find((r) => r.structureIdx !== undefined); console.log('sample structure obstacle', JSON.stringify(so).slice(0, 600));
+w.release();
