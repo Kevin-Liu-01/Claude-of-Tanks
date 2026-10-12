@@ -99,10 +99,15 @@ function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, 
     const za = z0 - 0.3 + (z1 - z0 + 0.6) * k / n, zb = z0 - 0.3 + (z1 - z0 + 0.6) * (k + 1) / n;
     sink.member('structureMetal', [x, h - 0.15, za], [x, h - 0.65, zb], 0.045, 0.045, [1, 0, 0], { colour, decor: true, exposed: true, fine: true }, 0);
   }
+  // (the connectivity sweep: the beam ran through its columns between their girts, touching neither) girts across each
+  // column's two faces at the chords' levels carry the beam
+  for (const z of [z0, z1]) for (const y of [h - 0.15, h - 0.65]) for (const sz of [-1, 1]) {
+    sink.member('structureMetal', [x - c, y, z + sz * c], [x + c, y, z + sz * c], 0.07, 0.07, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
+  }
   for (let k = 0; k < 3; k++) {
     const z = z0 + (z1 - z0) * (k + 0.5) / 3;
-    // the string: a stack of discs on its rod, the clamp and the bus tube along x
-    sink.member('structureMetal', [x, h - 0.7, z], [x, h - 1.9, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    // the string: a stack of discs on its rod hung from the bottom chord, the clamp and the bus tube along x
+    sink.member('structureMetal', [x, h - 0.65, z], [x, h - 1.96, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
     for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 8, { colour: PORCELAIN, decor: true }, 0.14);
     pipe(sink, 'structureMetal', [x - 2.6, h - 2.0, z], [x + 2.6, h - 2.0, z], 0.07, 6, { colour: ALUMINIUM, decor: true });
   }
@@ -251,6 +256,19 @@ const powerhouse: RegionalBuilder = (ctx) => {
       sink.member('structureMetal', [W * 0.38 + dx, ya + 1.4, za], [W * 0.38 + dx, yb + 1.4, zb2], 0.1, 0.1, [1, 0, 0], { colour: STEEL_GREY, decor: true, exposed: true }, 0);
     }
     sink.member('structureMetal', [W * 0.38, ya - 0.05, za], [W * 0.38, yb - 0.05, zb2], 1.8, 0.06, [0, 1, 0], { colour: shade(STEEL_GREY, 0.8), decor: true, exposed: true }, 0);
+    // (the connectivity sweep: the top chords hung 1.3 m over the bottom ones with nothing between them) the web: a
+    // post at every panel point, the broken ends' included, and a diagonal down each panel, inside the chords' depth
+    const n = Math.max(2, Math.round(Math.hypot(zb2 - za, yb - ya) / 1.6));
+    for (const dx of [-0.9, 0.9]) {
+      const xl = W * 0.38 + dx;
+      for (let k = 0; k <= n; k++) {
+        const t = k / n, z = za + (zb2 - za) * t, y = ya + (yb - ya) * t;
+        sink.member('structureMetal', [xl + 0.02, y, z], [xl + 0.02, y + 1.45, z], 0.08, 0.08, [1, 0, 0], { colour: STEEL_GREY, decor: true, exposed: true }, 0);
+        if (k === n) continue;
+        const z2 = za + (zb2 - za) * (k + 1) / n, y2 = ya + (yb - ya) * (k + 1) / n;
+        sink.member('structureMetal', [xl + 0.03, y + 0.04, z], [xl + 0.03, y2 + 1.38, z2], 0.06, 0.06, [1, 0, 0], { colour: STEEL_GREY, decor: true, exposed: true, fine: true }, 0);
+      }
+    }
   };
   span(0, 0.36);
   span(0.62, 1);
@@ -322,9 +340,23 @@ const surgeTower: RegionalBuilder = (ctx) => {
     for (let y = 4.1 + 3.8; y < 4.1 + H - 1; y += 3.8) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.22, R + 0.06, 24, { colour: shade(paint, 0.82), decor: true }, R + 0.06, false);
     sink.cylinder('structureMetal', [0, 4.1 + H, 0], 'y', 2.2, R + 0.15, 24, { colour: shade(paint, 0.92) }, 0.9);
     sink.cylinder('structureMetal', [0, 6.3 + H, 0], 'y', 1.0, 0.7, 8, { colour: IRON, decor: true }, 0.7);
-    // the ladder and its cage up the east side, a landing at the top
-    for (const dz of [-0.25, 0.25]) sink.member('structureMetal', [R + 0.45, 4.6, dz], [R + 0.45, 4.1 + H, dz], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
-    for (let y = 5.4; y < 4.1 + H; y += 1.2) sink.member('structureMetal', [R + 0.15, y, -0.45], [R + 0.15, y, 0.45], 0.04, 0.6, [0, 1, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+    // the ladder and its cage up the east side (the connectivity sweep: the stiles stood a third of a metre off the drum
+    // and the "rungs" were loose slats between them): the stiles from the base's top on standoff brackets to the shell
+    // every 3 m, rungs between them, the cage's hoops from 2.4 m up joined by its straps, the stiles' grab ends over
+    // the drum's head
+    const xs = R + 0.32, top = 4.1 + H, cage = xs + 0.72;
+    for (const dz of [-0.24, 0.24]) {
+      sink.member('structureMetal', [xs, 4.1, dz], [xs, top + 1.1, dz], 0.05, 0.06, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+      for (let y = 5.0; y < top; y += 3.0) sink.member('structureMetal', [R - 0.12, y, dz], [xs + 0.03, y, dz], 0.05, 0.05, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    }
+    for (let y = 4.4; y < top + 0.9; y += 0.3) sink.member('structureMetal', [xs + 0.01, y, -0.25], [xs + 0.01, y, 0.25], 0.025, 0.025, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+    let lastHoop = 6.5;
+    for (let y = 6.5; y <= top + 1.0; y += 1.5) {
+      lastHoop = y;
+      for (const sz of [-1, 1]) sink.member('structureMetal', [xs + 0.03, y, sz * 0.24], [cage, y, sz * 0.36], 0.012, 0.05, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+      sink.member('structureMetal', [cage, y, -0.36], [cage, y, 0.36], 0.012, 0.05, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    }
+    for (const z of [-0.34, 0, 0.34]) sink.member('structureMetal', [cage - 0.006, 6.5, z], [cage - 0.006, lastHoop + 0.05, z], 0.05, 0.012, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     // the penstock coming in at the base through the valve house on the back edge
     const vb = -hd + 0.2, vf = Math.min(-R - 0.4, -Math.max(0.5, Rb - 1.0));
     pipe(sink, 'structureMetal', [0, 2.0, vb + 0.2], [0, 2.0, -R + 0.3], Math.min(1.3, R * 0.35), 14, { colour: pick(look, PENSTOCK) });
@@ -425,7 +457,8 @@ const relayTower: RegionalBuilder = (ctx) => {
         sink.member('structureMetal', [0, y, 0.5], [0, y, 1.3], 0.15, 0.15, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
       });
     }
-    sink.cylinder('structureMetal', [tx, H, tz], 'y', 3.0, 0.06, 6, { colour: IRON, decor: true }, 0.03);
+    // the whip on the head platform (the connectivity sweep: it stood 0.2 m over the platform)
+    sink.cylinder('structureMetal', [tx, H - 0.2, tz], 'y', 3.2, 0.06, 6, { colour: IRON, decor: true }, 0.03);
     const hw = Math.min(7.0, W * 0.4), hd = Math.min(5.2, D * 0.35);
     sink.placed(0, W / 2 - hw / 2 - 1.0, 0, D / 2 - hd / 2 - 1.2, () => {
       buildHouse(sink, {
@@ -714,6 +747,31 @@ const waterTower: RegionalBuilder = (ctx) => {
   sink.cylinder('structureMetal', [0, legH + 0.36, 0], 'y', 0.05, tankR + 0.5, 20, { colour: IRON, decor: true });
   // the town's name: a dark band round the tank's upper third
   sink.cylinder('structureMetal', [0, legH + 2.2, 0], 'y', 0.55, tankR + 0.012, 20, { colour: rgb(0x2f4f6a), decor: true }, tankR + 0.012, false);
+  // (the connectivity sweep: the tank stood a third of a metre over its legs' heads) each leg runs on up its own line
+  // onto the tank's shell, a metre past the bowl, as the columns of an elevated tank are welded to it
+  const legRise = (legH + 1.4) / (legH + 0.4);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const at = (t: number): Vec3 => [sx * (lb + (lt - lb) * t), -0.4 + (legH + 0.4) * t, sz * (lb + (lt - lb) * t)];
+    sink.member('structureMetal', at(0.97), at(legRise), 0.2, 0.2, [sx, 0, 0], { colour: shade(paint, 0.85), decor: true, exposed: true }, 0);
+  }
+  // the riser up the middle into the bowl, the balcony's rail on its posts, and the ladder up the east side from the
+  // ground to the balcony, braced to the legs' girts
+  sink.cylinder('structureMetal', [0, -0.2, 0], 'y', legH + 0.3, 0.32, 10, { colour: shade(paint, 0.8), decor: true });
+  const railR = tankR + 0.45;
+  for (let k = 0; k < 16; k++) {
+    const a = (k + 0.5) / 16 * Math.PI * 2;
+    sink.cylinder('structureMetal', [Math.cos(a) * railR, legH + 0.4, Math.sin(a) * railR], 'y', 1.02, 0.025, 5, { colour: IRON, decor: true });
+  }
+  sink.cylinder('structureMetal', [0, legH + 1.38, 0], 'y', 0.05, railR + 0.02, 20, { colour: IRON, decor: true }, railR + 0.02, false);
+  const lx = tankR + 0.2;
+  for (const dz of [-0.22, 0.22]) {
+    sink.member('structureMetal', [lx, 0, dz], [lx, legH + 0.38, dz], 0.05, 0.06, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    for (const y of [legH * 0.35, legH * 0.7]) {
+      const r = lb + (lt - lb) * y / legH;
+      sink.member('structureMetal', [r - 0.04, y, dz], [lx + 0.03, y, dz], 0.05, 0.05, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    }
+  }
+  for (let y = 0.3; y < legH + 0.3; y += 0.3) sink.member('structureMetal', [lx + 0.01, y, -0.23], [lx + 0.01, y, 0.23], 0.025, 0.025, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
   return sink.finish();
 };
 
@@ -736,9 +794,12 @@ const ruin: RegionalBuilder = (ctx) => {
     }
   }
   sink.span(BLOCK, W * 0.2, 0.3, -D * 0.2, W * 0.2 + 0.6, 4.2, -D * 0.2 + 0.6);
+  // the fallen roof timbers (the connectivity sweep: they hung 0.1 m over the floor): each lies on the floor slab at one
+  // end, its other end up on a heap of the walls' rubble
   for (let k = 0; k < 4; k++) {
-    const a: Vec3 = [(rng() - 0.5) * W * 0.7, 0.4, (rng() - 0.5) * D * 0.7], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.4 + rng() * 0.8, a[2] + (rng() - 0.5) * 3];
+    const a: Vec3 = [(rng() - 0.5) * W * 0.7, 0.3, (rng() - 0.5) * D * 0.7], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.3 + rng() * 0.8, a[2] + (rng() - 0.5) * 3];
     sink.member('structureWood', a, b, 0.14, 0.2, [0, 1, 0], { colour: rgb(0x2e2925), decor: true, exposed: true }, 0);
+    if (b[1] > 0.38) sink.cylinder(BLOCK, [b[0], 0.28, b[2]], 'y', b[1] - 0.24, 0.55, 7, { decor: true }, 0.18, true, k * 0.9);
   }
   sink.cylinder(CONCRETE, [0, 0.2, 0], 'y', 0.5, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());
   });

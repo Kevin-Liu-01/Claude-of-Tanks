@@ -569,6 +569,8 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     }
     sink.span('stone', -b - 0.17, ridge + 1.55, tz - b - 0.17, b + 0.17, ridge + 1.72, tz + b + 0.17);
     sink.cylinder('structureMetal', [0, ridge + 0.6, tz], 'y', 0.55, 0.28, 8, { colour: BELL, decor: true }, 0.14);
+    // (the connectivity sweep, 217: the bell hung in air between the piers) its crown's iron stem up to the turret's slab
+    sink.span('structureMetal', -0.04, ridge + 1.1, tz - 0.04, 0.04, ridge + 1.57, tz + 0.04, { colour: shade(BELL, 0.6), decor: true });
     const cap: RoofSpec = { kind: 'hip', pitchDeg: 40, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: null };
     sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(2 * b + 0.34, 2 * b + 0.34, ridge + 1.72, cap), cap));
   });

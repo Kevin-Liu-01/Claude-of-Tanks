@@ -280,15 +280,24 @@ function dome(sink: PartSink, x: number, y: number, z: number, r: number, bucket
     const y0 = y + Math.sin(a0) * r, y1 = y + Math.sin(a1) * r;
     sink.cylinder(bucket, [x, y0, z], 'y', y1 - y0, Math.cos(a0) * r, 14, {}, Math.max(0.04, Math.cos(a1) * r), k === 0 || k === n - 1);
   }
-  // the qamariyyat: small glass lights set in rings in the dome (each a little quad on the sphere)
+  // the qamariyyat: small glass lights set in rings in the dome, each a little quad laid on the facet it pierces (the
+  // connectivity sweep, 217: laid on the true sphere they stood up to 6 cm off the faceted dome)
+  const seg = (Math.PI * 2) / 14, ring = Math.PI / 2 / n;
   for (const [theta, count] of [[0.55, oculi], [0.95, Math.max(3, Math.round(oculi * 0.6))]] as const) {
+    const kk = Math.min(n - 1, Math.floor(theta / ring)), a0 = ring * kk, a1 = ring * (kk + 1);
+    const rho0 = Math.cos(a0) * r * Math.cos(seg / 2), rho1 = Math.max(0.04, Math.cos(a1) * r) * Math.cos(seg / 2);
+    const y0r = Math.sin(a0) * r, dy = (Math.sin(a1) - Math.sin(a0)) * r, drho = rho1 - rho0, len = Math.hypot(dy, drho);
     for (let k = 0; k < count; k++) {
       const phi = (k + look() * 0.3) * Math.PI * 2 / count, s = Math.min(0.14, r * 0.08);
+      const tc = (Math.floor((((phi % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / seg) + 0.5) * seg;
       const nrm: Vec3 = [Math.cos(theta) * Math.cos(phi), Math.sin(theta), Math.cos(theta) * Math.sin(phi)];
-      const c: Vec3 = [x + nrm[0] * (r + 0.012), y + nrm[1] * (r + 0.012), z + nrm[2] * (r + 0.012)];
-      const t1: Vec3 = [-Math.sin(phi), 0, Math.cos(phi)], t2: Vec3 = [-Math.sin(theta) * Math.cos(phi), Math.cos(theta), -Math.sin(theta) * Math.sin(phi)];
+      // the facet's plane (its normal out and up the dome) and where the light's ray from the centre meets it
+      const N: Vec3 = [dy * Math.cos(tc) / len, -drho / len, dy * Math.sin(tc) / len];
+      const lam = (dy * rho0 - drho * y0r) / (dy * Math.cos(theta) * Math.cos(phi - tc) - drho * Math.sin(theta));
+      const c: Vec3 = [x + nrm[0] * lam + N[0] * 0.012, y + nrm[1] * lam + N[1] * 0.012, z + nrm[2] * lam + N[2] * 0.012];
+      const t1: Vec3 = [-Math.sin(tc), 0, Math.cos(tc)], t2: Vec3 = [drho * Math.cos(tc) / len, dy / len, drho * Math.sin(tc) / len];
       const p = (a: number, b: number): Vec3 => [c[0] + t1[0] * a + t2[0] * b, c[1] + t1[1] * a + t2[1] * b, c[2] + t1[2] * a + t2[2] * b];
-      sink.quad('curtain', p(-s, -s), p(-s, s), p(s, s), p(s, -s), { decor: true, window: nrm });
+      sink.quad('curtain', p(-s, -s), p(-s, s), p(s, s), p(s, -s), { decor: true, window: N });
     }
   }
 }

@@ -87,7 +87,15 @@ interface PortLink extends ClientLink {
 }
 
 const CONFIG_INTERVAL_MS = 10_000;
-const HELLO_TIMEOUT_MS = 5_000;
+/**
+ * How long a link may stay open without its HELLO (2026-10-11, the MP lane): 5 s closed seats whose HELLO was merely late —
+ * a host main thread inside a long task holds the frame on its way to this thread, a starved seat sends it late, a
+ * loaded machine slows the seat-token check — with HELLO_REQUIRED "hello timeout", which the seat read as the end of its
+ * seat (never welcomed: mp-world-events-audit / mp-room-lifecycle / mp-p2p-headless "every seat welcomed" at load >= 60).
+ * The window only bounds a link that never says hello; once the HELLO is here, the check is this host's own work and has
+ * no deadline (helloGate.selftest).
+ */
+export const HELLO_TIMEOUT_MS = 15_000;
 const HOUSEKEEPING_MS = 250;
 /** The vehicles the booted match fields (spectators ride none): the calibration groups the host loads. */
 const rosterSpecIds = (config: HostBootConfig): string[] => [
@@ -198,7 +206,8 @@ export function createMatchHostCore({
     gates.set(peer, gate);
     gate.timer = setTimer(() => {
       gate.timer = null;
-      if (gates.get(peer) === gate && gate.state !== 'attached') link.close(CLOSE_REASON.HELLO_REQUIRED, 'hello timeout');
+      // only a link that has not said hello: a HELLO under verification is the host's own pending work, never the seat's fault
+      if (gates.get(peer) === gate && gate.state === 'hello') link.close(CLOSE_REASON.HELLO_REQUIRED, 'hello timeout');
     }, helloTimeoutMs);
   }
 
@@ -235,6 +244,9 @@ export function createMatchHostCore({
         const attached = live.attach(link, hello, verified.claims);
         if (!attached) { gates.delete(peer); return; }
         for (const queued of gate.queue.splice(0)) link.deliver(queued);
+        // a seat welcomed after the boot (late, re-HELLOed, or back after a reconnect) holds the sealed configuration
+        // within a housekeeping beat, not at the next CONFIG_INTERVAL_MS: elected inside that window, it could not resume
+        lastConfigMs = -Infinity;
       };
       // during the resume hold the seat waits, its frames queued, and is welcomed with the others when the world moves
       if (hold) {

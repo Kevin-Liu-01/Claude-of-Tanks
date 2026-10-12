@@ -159,6 +159,9 @@ function hoganBody(sink: PartSink, rng: () => number, look: () => number, o: Hog
   // low mound heaped on it
   const deckTop = wallTop + 0.5;
   sink.cylinder('plaster2', [0, wallTop - 0.1, 0], 'y', deckTop - wallTop + 0.1, A * 0.84 / Math.cos(OCT / 2), 8, {}, A * 0.78 / Math.cos(OCT / 2), true, OCT / 2);
+  // the mud packed between the walls' top course and the deck (dressing): the deck stood inside the walls' inner face,
+  // the roof hanging 8 cm clear of the walls that carry it
+  sink.cylinder('plaster2', [0, wallTop - 0.14, 0], 'y', 0.22, A * 0.97 / Math.cos(OCT / 2), 8, { decor: true, shade: 0.9 }, A * 0.83 / Math.cos(OCT / 2), false, OCT / 2);
   const prof: Array<[number, number]> = [[0.78, 0], [0.6, 0.3], [0.38, 0.6], [0.2, 0.8]];
   let mound = deckTop;
   for (let i = 0; i + 1 < prof.length; i++) {
@@ -306,7 +309,10 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
   const px = W / 2 - 0.15, pz = D / 2 - 0.15;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const lean = (look() - 0.5) * 0.12;
-    pole(sink, [sx * px, -0.3, sz * pz], [sx * px + lean, H, sz * pz], 0.085, shade(post, 0.9 + look() * 0.2), false);
+    const tone = shade(post, 0.9 + look() * 0.2);
+    pole(sink, [sx * px, -0.3, sz * pz], [sx * px + lean, H, sz * pz], 0.085, tone, false);
+    // the post's fork, its two tines up round the stringer (dressing: the stringer sat 6 cm over the post's cut top)
+    for (const side of [-1, 1]) pole(sink, [sx * px + side * 0.05, H - 0.1, sz * pz], [sx * px + side * 0.05, H + 0.14, sz * pz], 0.03, tone, true);
   }
   for (const sz of [-1, 1]) pole(sink, [-px - 0.25, H + 0.06, sz * pz], [px + 0.25, H + 0.06, sz * pz], 0.075, post, true);
   const n = Math.max(4, Math.round(W / 0.55));
@@ -336,9 +342,11 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
   // the hanging ends of the boughs over the eaves
   for (let k = 0; k < 14; k++) {
     const onX = look() < 0.5, s = look() < 0.5 ? -1 : 1, t = (look() - 0.5) * (onX ? W : D);
-    const x = onX ? t : s * (W / 2 + 0.25), z = onX ? s * (D / 2 + 0.25) : t;
-    const dx = onX ? 0 : s * 0.3, dz = onX ? s * 0.3 : 0, drop = 0.25 + look() * 0.35;
-    sink.member('structureWood', [x, H + 0.3, z], [x + dx, H + 0.3 - drop, z + dz], 0.18 + look() * 0.2, 0.05, onX ? [0, 0, s] : [s, 0, 0],
+    // (each hanging end starts on the mat over the poles' ends and falls past the eave: they started 25 cm out in the
+    // air beyond the mat)
+    const x = onX ? t : s * (W / 2 - 0.35), z = onX ? s * (D / 2 + 0.05) : t;
+    const dx = onX ? 0 : s * 0.8, dz = onX ? s * 0.5 : 0, drop = 0.25 + look() * 0.35;
+    sink.member('structureWood', [x, H + 0.25, z], [x + dx, H + 0.25 - drop, z + dz], 0.18 + look() * 0.2, 0.05, onX ? [0, 0, s] : [s, 0, 0],
       { colour: tone(), decor: true, exposed: true, shadow: true }, 0);
   }
 }

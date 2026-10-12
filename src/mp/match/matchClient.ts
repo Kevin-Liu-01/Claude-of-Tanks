@@ -195,7 +195,17 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
+  /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
+  helloRetries: number;
 }
+
+/**
+ * Before its WELCOME, a seat whose link the host closes with HELLO_REQUIRED "hello timeout" (the host's window ran out
+ * before the HELLO landed: a busy host or a starved seat) or REPLACED "peer offered again" (a stale offer of the seat's
+ * own, relayed late, replaced the link it is entering on) asks for a fresh link and says hello again, this many times
+ * before it gives up (2026-10-11; before, the seat read either CLOSE as the end of its seat and was never welcomed).
+ */
+export const MAX_HELLO_RETRIES = 3;
 
 interface PendingPing {
   key: number;
@@ -284,6 +294,8 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private helloRetries = 0;
+  private helloRetriesLeft = MAX_HELLO_RETRIES;
   private snapshotsAccepted = 0;
   private rateWindowStartMs: number | null = null;
   private rateWindowBytesIn = 0;
@@ -545,6 +557,7 @@ export class MatchClient {
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
+      helloRetries: this.helloRetries,
     };
   }
 
@@ -648,6 +661,18 @@ export class MatchClient {
         if (this.errors.length > this.maxErrors) this.errors.shift();
         break;
       case MESSAGE_TYPE.CLOSE:
+        if (!this.welcomeMessage && this.helloRetriesLeft > 0 && this.recovery.current !== 'left' && (
+          // the host's window ran out before our HELLO landed
+          (message.reason === CLOSE_REASON.HELLO_REQUIRED && message.detail === 'hello timeout')
+          // or a stale offer of ours (an attempt we gave up, relayed late) replaced the link we are entering on; after the
+          // WELCOME the same CLOSE means another tab of this seat took over, and the seat ends as before
+          || (message.reason === CLOSE_REASON.REPLACED && message.detail === 'peer offered again'))) {
+          // a fresh link, a fresh HELLO (MAX_HELLO_RETRIES)
+          this.helloRetriesLeft--;
+          this.helloRetries++;
+          this.transport.reconnect(TRANSPORT_CLOSE.STALLED, 'hello timeout');
+          break;
+        }
         this.closeReason = message.reason;
         this.closeDetail = message.detail;
         if (this.recovery.current !== 'left') this.recovery.end('closed');
@@ -687,6 +712,7 @@ export class MatchClient {
       this.snapshots.setTicksPerSnapshot(TICK_HZ / welcome.snapshotHz);
     }
     this.welcomeMessage = welcome;
+    this.helloRetriesLeft = MAX_HELLO_RETRIES;
     this.timeUnwrap.reset();
     const serverTimeMs = this.timeUnwrap.unwrap(welcome.serverTimeMs);
     this.tickClock.observe(welcome.serverTick, serverTimeMs);
