@@ -97,6 +97,9 @@ const proxyIds = [PICKS.home.destruction, ...PICKS.home.paths];
 const reelIds = PICKS.docs.reels;
 const fourK = PICKS.featured.filter((f) => f.fourK).map((f) => f.id);
 const bootId = PICKS.featured.find((f) => f.boot)?.id;
+// a featured take may show its close portrait (`still: 'close'`, 2026-10-12: monsoon's best frame is s30's close),
+// except the boot splash and the 4K showcase, which are made from the key moment's PNG
+for (const f of PICKS.featured) if (f.still === 'close' && (f.fourK || f.boot)) throw new Error(`featured ${f.id}: the boot and 4K shots are key moments`);
 
 // every slot that names a take, for --plan and for the checks below
 function slots() {
@@ -114,7 +117,7 @@ function slots() {
   PICKS.docs.archiveLoops.forEach((id, i) => add(`docs.archiveLoops[${i}]`, id, 'loop'));
   for (const [k, id] of Object.entries(PICKS.topics)) add(`topics.${k}`, id, 'loop');
   for (const [k, v] of Object.entries(PICKS.topicMedia)) if (v.id) add(`topicMedia.${k}`, v.id, v.still);
-  PICKS.featured.forEach((f, i) => add(`featured[${i}]`, f.id, 'moment'));
+  PICKS.featured.forEach((f, i) => add(`featured[${i}]`, f.id, f.still ?? 'moment'));
   for (const k of ['notFound', 'hudEditor', 'og']) add(k, PICKS[k].id, PICKS[k].still);
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));
   for (const [k, v] of Object.entries(PICKS.home.socialCards ?? {})) add(`home.socialCards.${k}`, v.id, v.still);
@@ -209,6 +212,9 @@ function buildProxies() {
     console.log(`[site-media] proxies ${total} B over the ${PROXY_BUDGET_BYTES} B budget: one CRF step down`);
     for (const job of jobs) job.crf += 1;
   }
+  // a re-pick leaves proxies of takes no path names any more (retire.mjs would also drop them as unreferenced)
+  const current = new Set(jobs.map((job) => job.path));
+  for (const name of readdirSync(PROXIES)) if (/^s\d\d-[a-z0-9-]+-mobile\.mp4$/.test(name) && !current.has(name)) rmSync(join(PROXIES, name));
   const manifest = { schemaVersion: 1, purpose: 'Mobile landing-page video proxies',
     encoding: { codec: 'h264', width: 960, height: 540, framesPerSecond: 24, audio: false },
     files: [
@@ -366,6 +372,19 @@ function main() {
   if (want('films')) buildFilms();
   const proxies = want('proxies') ? buildProxies() : null;
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
+  // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
+  // takes no slot names any more, and the stage copies the draft's collection forward
+  const recorded = new Set(files.map((f) => f.path));
+  let pruned = 0, prunedBytes = 0;
+  for (const name of readdirSync(OUT, { recursive: true })) {
+    const abs = join(OUT, String(name));
+    if (statSync(abs).isDirectory() || /^(manifest|archive)\.json$/.test(String(name))) continue;
+    if (recorded.has(relative(join(ROOT, 'public'), abs).split('\\').join('/'))) continue;
+    prunedBytes += statSync(abs).size;
+    rmSync(abs);
+    pruned++;
+  }
+  if (pruned) console.log(`[site-media] ${pruned} files no pick names any more were removed (${(prunedBytes / 1048576).toFixed(1)} MB)`);
   const takes = Object.fromEntries(takeIds.map((id) => {
     const d = delivery(id);
     return [id, { map: PICKS.takes[id].map, title: PICKS.takes[id].en, round: d ? relative('shots/media-r5/site50', d.round) : null,

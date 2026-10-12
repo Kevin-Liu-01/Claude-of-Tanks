@@ -190,14 +190,14 @@ function wireReels() {
 function wireGame() {
   const F = 'src/ui/featuredShots.ts';
   const entries = PICKS.featured.map((f) => {
-    const lines = [`    img: '${f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id)}',`];
+    const lines = [`    img: '${f.fourK ? built(`${C}/stills/${f.id}-4k.webp`) : still(f.id, f.still)}',`];
     if (f.boot) lines.push(`    bootImg: '${built(`${C}/stills/${f.id}-boot.webp`)}',`);
     lines.push(`    capKey: '${titleKey(f.id)}',`);
     lines.push(`    ${f.maps?.length ? `maps: [${f.maps.map((m) => `'${m}'`).join(', ')}], ` : ''}focal: '${f.focal ?? '50% 50%'}',`);
     return `  {\n${lines.join('\n')}\n  },`;
   });
   swap(F, /(export const FEATURED_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[\n)[\s\S]*?(\n\]\);)/, (_, open, close) => `${open}${entries.join('\n')}${close}`, 'featured shots');
-  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${still(f.id)}"`);
+  const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${still(f.id, f.still)}"`);
   swap('index.html', /("screenshot": \[\n)(?:[ \t]*"https:\/\/cot\.kevinliu\.studio\/media\/[^"]+",?\n)+/, (_, open) => `${open}${shots.join(',\n')}\n`, 'JSON-LD screenshots');
   const nf = PICKS.notFound;
   swap('404.html', /<link rel="preload" href="\/media\/[^"]+" as="image">/, () => `<link rel="preload" href="${still(nf.id, nf.still)}" as="image">`, '404 preload');

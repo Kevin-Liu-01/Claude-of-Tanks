@@ -368,87 +368,47 @@
         "focus": "55% 60%"
       },
       {
-        "id": "s13-farm-race",
-        "still": "moment",
-        "focus": "58% 55%"
+        "id": "s21-fields-assault",
+        "still": "close",
+        "focus": "52% 62%"
       },
       {
-        "id": "s09-harbor-run",
+        "id": "s39-lakeside-village",
         "still": "moment",
-        "focus": "55% 60%"
+        "focus": "40% 52%"
       },
       {
-        "id": "s44-oasis-sunset",
-        "still": "moment",
-        "focus": "38% 55%"
+        "id": "s26-minaret-fire",
+        "still": "close",
+        "focus": "38% 58%"
       },
       {
-        "id": "s10-ford-shellfire",
-        "still": "moment",
-        "focus": "60% 50%"
+        "id": "s38-church-knockout",
+        "still": "close",
+        "focus": "46% 57%"
       },
       {
-        "id": "s16-street-duel",
+        "id": "s18-street-knockout",
         "still": "moment",
-        "focus": "70% 55%"
+        "focus": "57% 66%"
       }
     ],
     "rail": [
       "s05-barn-advance",
       "s26-minaret-fire",
-      "s11-container-rows",
       "s20-road-return-fire",
       "s21-fields-assault",
       "s24-ice-duel",
-      "s25-alpine-village",
+      "s23-village-crossroads",
+      "s19-roof-tiles",
+      "s06-farm-charge",
+      "s08-market-push",
       "s27-caravanserai-kill",
-      "s34-furnace-salvo",
-      "s45-harbor-wide",
-      "s47-ironworks-crane"
+      "s34-furnace-salvo"
     ],
     "mosaic": [
       {
-        "id": "s01-main-street-push",
-        "still": "moment"
-      },
-      {
-        "id": "s07-lake-shellfire",
-        "still": "close"
-      },
-      {
-        "id": "s02-factory-road",
-        "still": "moment"
-      },
-      {
-        "id": "s09-harbor-run",
-        "still": "close"
-      },
-      {
-        "id": "s04-column-under-fire",
-        "still": "moment"
-      },
-      {
-        "id": "s13-farm-race",
-        "still": "close"
-      },
-      {
-        "id": "s06-farm-charge",
-        "still": "moment"
-      },
-      {
-        "id": "s16-street-duel",
-        "still": "close"
-      },
-      {
-        "id": "s14-snow-push",
-        "still": "moment"
-      },
-      {
-        "id": "s18-street-knockout",
-        "still": "close"
-      },
-      {
-        "id": "s15-orchard-column",
+        "id": "s49-orchard-sunset",
         "still": "moment"
       },
       {
@@ -456,83 +416,123 @@
         "still": "close"
       },
       {
-        "id": "s19-roof-tiles",
+        "id": "s04-column-under-fire",
         "still": "moment"
       },
       {
-        "id": "s24-ice-duel",
+        "id": "s33-water-tower",
         "still": "close"
-      },
-      {
-        "id": "s22-walking-barrage",
-        "still": "moment"
-      },
-      {
-        "id": "s25-alpine-village",
-        "still": "close"
-      },
-      {
-        "id": "s23-village-crossroads",
-        "still": "moment"
-      },
-      {
-        "id": "s26-minaret-fire",
-        "still": "close"
-      },
-      {
-        "id": "s32-yard-salvo",
-        "still": "moment"
       },
       {
         "id": "s38-church-knockout",
-        "still": "close"
-      },
-      {
-        "id": "s35-farm-village",
         "still": "moment"
       },
       {
-        "id": "s41-church-tower",
+        "id": "s07-lake-shellfire",
         "still": "close"
+      },
+      {
+        "id": "s29-fjord-road-kill",
+        "still": "moment"
+      },
+      {
+        "id": "s19-roof-tiles",
+        "still": "close"
+      },
+      {
+        "id": "s11-container-rows",
+        "still": "moment"
+      },
+      {
+        "id": "s30-temple-village",
+        "still": "close"
+      },
+      {
+        "id": "s33-water-tower",
+        "still": "moment"
       },
       {
         "id": "s39-lakeside-village",
+        "still": "close"
+      },
+      {
+        "id": "s46-river-drone",
         "still": "moment"
       },
       {
-        "id": "s44-oasis-sunset",
+        "id": "s18-street-knockout",
+        "still": "close"
+      },
+      {
+        "id": "s03-square-pass",
+        "still": "moment"
+      },
+      {
+        "id": "s05-barn-advance",
+        "still": "close"
+      },
+      {
+        "id": "s40-rooftop-smoke",
+        "still": "moment"
+      },
+      {
+        "id": "s06-farm-charge",
+        "still": "close"
+      },
+      {
+        "id": "s15-orchard-column",
+        "still": "moment"
+      },
+      {
+        "id": "s04-column-under-fire",
+        "still": "close"
+      },
+      {
+        "id": "s02-factory-road",
+        "still": "moment"
+      },
+      {
+        "id": "s23-village-crossroads",
+        "still": "close"
+      },
+      {
+        "id": "s09-harbor-run",
+        "still": "moment"
+      },
+      {
+        "id": "s27-caravanserai-kill",
         "still": "close"
       }
     ],
     "cta": {
-      "id": "s43-lake-crane",
-      "still": "moment"
+      "id": "s24-ice-duel",
+      "still": "close"
     },
     "reel": {
       "takes": [
-        "s06-farm-charge",
+        "s20-road-return-fire",
+        "s23-village-crossroads",
+        "s33-water-tower",
         "s24-ice-duel",
-        "s11-container-rows",
-        "s27-caravanserai-kill",
-        "s34-furnace-salvo"
+        "s06-farm-charge"
       ],
       "crossfadeS": 0.5
     },
     "destruction": "s27-caravanserai-kill",
     "paths": [
-      "s45-harbor-wide",
       "s05-barn-advance",
-      "s10-ford-shellfire",
-      "s47-ironworks-crane"
+      "s07-lake-shellfire",
+      "s18-street-knockout",
+      "s26-minaret-fire"
     ],
     "socialCards": {
       "urban-crossfire": {
-        "id": "s17-crossroads-fire",
-        "still": "moment"
+        "id": "s19-roof-tiles",
+        "still": "close"
       },
       "desert-duel": {
         "id": "s27-caravanserai-kill",
-        "still": "close"
+        "still": "moment"
       },
       "winter-breaker": {
         "id": "s24-ice-duel",
@@ -543,24 +543,24 @@
         "still": "moment"
       },
       "coastal-harbor": {
-        "id": "s45-harbor-wide",
-        "still": "close"
+        "id": "s29-fjord-road-kill",
+        "still": "moment"
       }
     }
   },
   "docs": {
     "hero": {
-      "id": "s47-ironworks-crane",
-      "still": "moment"
+      "id": "s33-water-tower",
+      "still": "close"
     },
     "player": "trailer",
     "chapters": {
       "build": {
-        "id": "s01-main-street-push",
+        "id": "s23-village-crossroads",
         "still": "moment"
       },
       "simulation": {
-        "id": "s36-barn-knockout",
+        "id": "s24-ice-duel",
         "still": "moment"
       },
       "vehicles": {
@@ -568,8 +568,8 @@
         "still": "close"
       },
       "rendering": {
-        "id": "s44-oasis-sunset",
-        "still": "moment"
+        "id": "s20-road-return-fire",
+        "still": "close"
       },
       "ai": {
         "id": "s04-column-under-fire",
@@ -578,62 +578,62 @@
     },
     "reels": [
       "s01-main-street-push",
-      "s02-factory-road",
       "s04-column-under-fire",
+      "s05-barn-advance",
       "s06-farm-charge",
       "s07-lake-shellfire",
-      "s09-harbor-run",
-      "s10-ford-shellfire",
+      "s08-market-push",
       "s11-container-rows",
-      "s13-farm-race",
-      "s16-street-duel",
       "s18-street-knockout",
       "s19-roof-tiles",
       "s20-road-return-fire",
       "s21-fields-assault",
+      "s23-village-crossroads",
       "s24-ice-duel",
-      "s25-alpine-village",
       "s26-minaret-fire",
       "s27-caravanserai-kill",
+      "s29-fjord-road-kill",
+      "s33-water-tower",
       "s34-furnace-salvo",
-      "s38-church-knockout"
+      "s38-church-knockout",
+      "s39-lakeside-village"
     ],
     "archiveLoops": [
       "s07-lake-shellfire",
       "s26-minaret-fire",
-      "s16-street-duel",
+      "s18-street-knockout",
       "s05-barn-advance"
     ],
     "figures": {
       "docs.graphics.figClose": {
-        "id": "s09-harbor-run",
+        "id": "s21-fields-assault",
         "still": "close"
       },
       "docs.vehicles.figDiversity": {
         "id": "s08-market-push",
-        "still": "moment"
+        "still": "close"
       },
       "docs.combat.figEffects": {
         "id": "s24-ice-duel",
         "still": "close"
       },
       "docs.mobile.figAdaptive": {
-        "id": "s37-river-village",
+        "id": "s39-lakeside-village",
         "still": "moment"
       }
     }
   },
   "topics": {
-    "build": "s01-main-street-push",
+    "build": "s23-village-crossroads",
     "models": "s07-lake-shellfire",
     "ai": "s04-column-under-fire",
     "audio": "s34-furnace-salvo",
-    "performance": "s11-container-rows",
+    "performance": "s39-lakeside-village",
     "simulation": "s24-ice-duel",
     "vehicles": "s05-barn-advance",
-    "rendering": "s44-oasis-sunset",
-    "multiplayer": "s09-harbor-run",
-    "studio": "s22-walking-barrage",
+    "rendering": "s20-road-return-fire",
+    "multiplayer": "s18-street-knockout",
+    "studio": "s33-water-tower",
     "filming": "s21-fields-assault"
   },
   "topicMedia": {
@@ -642,7 +642,7 @@
       "still": "close"
     },
     "ai.media2": {
-      "id": "s35-farm-village",
+      "id": "s06-farm-charge",
       "still": "moment"
     },
     "audio.media1": {
@@ -654,7 +654,7 @@
       "still": "moment"
     },
     "rendering.media2": {
-      "id": "s44-oasis-sunset",
+      "id": "s38-church-knockout",
       "still": "close"
     },
     "build.media2": {
@@ -675,21 +675,22 @@
       "focal": "55% 60%"
     },
     {
-      "id": "s16-street-duel",
+      "id": "s19-roof-tiles",
+      "still": "close",
       "maps": [
         "urban",
         "ruinspires"
       ],
-      "focal": "70% 55%"
+      "focal": "50% 55%"
     },
     {
-      "id": "s09-harbor-run",
+      "id": "s29-fjord-road-kill",
       "maps": [
         "fjord",
         "saltwind",
         "coastal"
       ],
-      "focal": "55% 60%"
+      "focal": "50% 55%"
     },
     {
       "id": "s13-farm-race",
@@ -711,49 +712,57 @@
     },
     {
       "id": "s05-barn-advance",
+      "still": "close",
       "maps": [
         "verdant",
         "polders"
       ]
     },
     {
-      "id": "s10-ford-shellfire",
+      "id": "s30-temple-village",
+      "still": "close",
       "maps": [
         "monsoon",
         "mangrove"
       ],
-      "focal": "60% 50%"
+      "focal": "45% 55%"
     },
     {
-      "id": "s11-container-rows",
+      "id": "s33-water-tower",
+      "still": "close",
       "maps": [
         "railyard",
         "airfield"
-      ]
+      ],
+      "focal": "50% 55%"
     },
     {
-      "id": "s47-ironworks-crane",
+      "id": "s34-furnace-salvo",
       "maps": [
         "foundry",
         "caldera",
         "blackglass"
-      ]
+      ],
+      "fourK": true
     },
     {
       "id": "s38-church-knockout",
+      "still": "close",
       "maps": [
         "winter"
       ]
     },
     {
-      "id": "s15-orchard-column",
+      "id": "s49-orchard-sunset",
       "maps": [
         "orchard",
         "autumn"
-      ]
+      ],
+      "focal": "50% 62%"
     },
     {
       "id": "s37-river-village",
+      "still": "close",
       "maps": [
         "delta"
       ]
@@ -768,27 +777,28 @@
       ]
     },
     {
-      "id": "s44-oasis-sunset",
-      "focal": "38% 55%"
+      "id": "s23-village-crossroads"
     },
     {
-      "id": "s45-harbor-wide"
+      "id": "s06-farm-charge"
     },
     {
-      "id": "s24-ice-duel"
+      "id": "s24-ice-duel",
+      "still": "close"
     },
     {
-      "id": "s25-alpine-village"
+      "id": "s04-column-under-fire"
     },
     {
-      "id": "s20-road-return-fire"
+      "id": "s20-road-return-fire",
+      "still": "close"
     },
     {
-      "id": "s21-fields-assault"
+      "id": "s21-fields-assault",
+      "still": "close"
     },
     {
-      "id": "s34-furnace-salvo",
-      "fourK": true
+      "id": "s18-street-knockout"
     }
   ],
   "notFound": {
@@ -796,7 +806,7 @@
     "still": "moment"
   },
   "hudEditor": {
-    "id": "s02-factory-road",
+    "id": "s19-roof-tiles",
     "still": "moment"
   },
   "og": {
@@ -806,12 +816,12 @@
   "readme": {
     "stills": [
       "s07-lake-shellfire",
-      "s13-farm-race",
-      "s09-harbor-run",
-      "s44-oasis-sunset"
+      "s23-village-crossroads",
+      "s39-lakeside-village",
+      "s20-road-return-fire"
     ],
     "worlds": {
-      "id": "s45-harbor-wide",
+      "id": "s26-minaret-fire",
       "still": "moment"
     },
     "worldKit": {
@@ -828,19 +838,11 @@
         "still": "moment"
       },
       {
-        "id": "s11-container-rows",
-        "still": "moment"
-      },
-      {
         "id": "s20-road-return-fire",
         "still": "moment"
       },
       {
         "id": "s21-fields-assault",
-        "still": "moment"
-      },
-      {
-        "id": "s25-alpine-village",
         "still": "moment"
       },
       {
@@ -852,23 +854,31 @@
         "still": "moment"
       },
       {
-        "id": "s45-harbor-wide",
+        "id": "s06-farm-charge",
         "still": "moment"
       },
       {
-        "id": "s01-main-street-push",
+        "id": "s23-village-crossroads",
+        "still": "moment"
+      },
+      {
+        "id": "s24-ice-duel",
+        "still": "moment"
+      },
+      {
+        "id": "s33-water-tower",
         "still": "close"
       },
       {
-        "id": "s16-street-duel",
+        "id": "s38-church-knockout",
         "still": "close"
       },
       {
-        "id": "s41-church-tower",
+        "id": "s18-street-knockout",
         "still": "close"
       },
       {
-        "id": "s47-ironworks-crane",
+        "id": "s19-roof-tiles",
         "still": "close"
       }
     ]
