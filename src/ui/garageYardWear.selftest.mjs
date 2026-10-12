@@ -67,12 +67,27 @@ assert.match(kit, /if \(ground > APRON_RISE_LIMIT_M\) return ground - 0\.06;/,
   'above the rise limit the apron sinks under the terrain, so its edge follows the slope (wave 398: "jagged polygon edges")');
 assert.ok(GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM + 0.02 < 0,
   'inside the podium ring the apron stays below the turntable base (y = 0)');
-assert.match(kit, /if \(!terrace\.label\.startsWith\('fleet-service-'\)\) continue;[\s\S]*slab\.translate\(terrace\.x, terrace\.y \+ 0\.02, terrace\.z\)/,
-  'paved slabs lie on the fleet exhibit pads');
-// 2026-10-11, wave 402 ("a hard-edged darker sand patch"): open earth yards on sand, snow or rock lay no pad slab;
-// concrete yards and Monsoon's grass keep their pads
-assert.match(kit, /const padSlabs = garageHardstandKind\(GARAGE_HARDSTAND_STYLES\[variant\.architecture\]\) === 'slab'\s*\|\| recipe\.terrainSurface === 'grass';/,
-  'pad slabs only where the yard is concrete or the terrain is grass');
+// 2026-10-11, wave 408 (Ironworks' K2 "on raw moss-and-rock moorland", "cookie-cut pads", Frosthollow's "ruler-straight
+// seam"): every fleet pad lays the yard's own worked ground, its level core on the pad's datum and its margin draped over
+// the terrain's feather, and the whole hardstand thins out into the terrain on a graded edge
+assert.doesNotMatch(kit, /const padSlabs =/, 'no yard kind leaves its exhibits on raw terrain');
+assert.match(kit, /if \(!terrace\.label\.startsWith\('fleet-service-'\)\) continue;[\s\S]*const y = \(radius \* PAD_REACH \* 1\.075 <= 1\.2 \? terrace\.y : samplePatch\(patch, heights, x, z\)\) \+ 0\.02;/,
+  'worked ground lies on the fleet exhibit pads: the core on the datum, the margin draped');
+assert.match(kit, /const PAD_RINGS = \[\[0, 1\], \[0\.5, 1\], \[0\.68, 1\], \[0\.84, 0\.45\], \[1, 0\]\] as const;/,
+  'each pad thins out over its outer third');
+assert.match(kit, /const edge = Math\.min\(14\.5 - Math\.abs\(x\), 12 - Math\.abs\(z\)\) \/ GARAGE_HARDSTAND_FEATHER_M;/,
+  'the apron thins out over its outer metres instead of stopping at a cut');
+assert.match(kit, /const rise = 1 - THREE\.MathUtils\.smoothstep\(ground, 0\.18, APRON_RISE_LIMIT_M - 0\.01\);/,
+  'the apron is gone before the ground climbs to the rise limit, so no crossing line shows on a slope');
+assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);\s*engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
+  'the graded floor blends over the terrain on its own keyed program after the cascade hook');
+assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
+const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
+assert.match(program, /attribute float hardstandBlend;/, 'each vertex carries its share of worked ground');
+assert.match(program, /diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72\);/,
+  'the margin is broken by noise, not a ruled line');
+const stage = await readFile(new URL('./garageStage.ts', import.meta.url), 'utf8');
+assert.match(stage, /addOutdoorSeed\('hardstand-graded'/, 'the stage compiles the graded floor\'s program with the outdoor seeds');
 // 2026-10-11, waves 393 and 398 ("repeated tread decals", "confetti speckle"): curved compacted wheel paths and clumped
 // irregular grit replace the straight painted track lanes and the square flecks
 assert.doesNotMatch(wear, /for \(let i = 0; i < 26000; i\+\+\)/, 'no square confetti speckle');

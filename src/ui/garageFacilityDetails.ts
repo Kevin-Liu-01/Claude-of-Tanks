@@ -659,8 +659,10 @@ export function addGarageFacilityDetails({
     }
 
     // Column-supported inspection deck on the open side, its rails and a steel ladder to it, all inside the frame. The
-    // T-90M bay works its turret on the ground, so it has none (wave 398: the deck stood against the turret).
-    const deckSide = -mirror * 3.55;
+    // T-90M bay works its turret on the ground, so it has none (wave 398: the deck stood against the turret). It stands
+    // 0.9 m clear of the Burlak's own turret gantry, whose legs read through it from the yard (wave 408: "braces that
+    // pass through the deck without meeting any joint").
+    const deckSide = -mirror * 4.0;
     if (withDeck) {
     clusterBox(cluster, deckSide, 1.55, 3.36, 1.35, 0.18, 3.2, steel, 'structure');
     for (const longitudinal of [0.25, 2.85]) {

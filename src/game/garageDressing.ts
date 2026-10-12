@@ -2899,7 +2899,8 @@ export function createGarageDressing(
     // Cold work only beside the FLAMMABLE canisters (2026-10-10, wave 338: "welding beside fuel drums and live
     // rounds"): skirts off, a road-wheel change and a creeper left half under the bow. The welding moved to the rolled
     // K2's belly.
-    const creeperAt = { x: 13.761, z: 16.761 };
+    // (the creeper lies half out from under the bow's centre, clear of the front crib stacks)
+    const creeperAt = { x: 13.762, z: 16.037 };
     const roadWheelTires = tank.getObjectByName('gearRoadWheelTires') as
       THREE.Mesh | undefined;
     const roadWheelDiscs = (tank.getObjectByName('gearRoadWheelDiscs')
@@ -2915,8 +2916,10 @@ export function createGarageDressing(
     skirts.rotation.y = -2.03;
     legacyVerdantRoot.add(skirts);
     const plateGeometry = track(new THREE.BoxGeometry(1.7, 0.85, 0.045));
+    // the skirts in the hull's own tan delivery coat, worn (wave 408 read the grey plate lying on the pad as "a dark
+    // square patch" in the floor)
     const plateMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
-      color: 0x3a3d33, roughness: 0.6, metalness: 0.45,
+      color: 0x9c8460, roughness: 0.66, metalness: 0.2,
     })));
     for (const [plateZ, lean] of [[-1.5, 0.34], [0.1, 0.3], [1.6, 0.38]]) {
       const plate = put(plateGeometry, plateMaterial,
@@ -2932,8 +2935,71 @@ export function createGarageDressing(
     const tray = put(track(new THREE.BoxGeometry(0.5, 0.07, 0.32)), mat.steelBright,
       0.2, 1.72, -2.2, 0.3, 0, 0, 1, skirts);
     tray.castShadow = false;
-    put(track(new THREE.CylinderGeometry(0.28, 0.32, 0.09, 14)), mat.oily,
-      14.9, 0.05, 15.9, 0, 0, 0, 1, legacyVerdantRoot);
+    // The hull on its blocks (2026-10-11, wave 408: "the tan Abrams hull hangs in the air over a loose black jack pad
+    // with nothing between them"): for the road-wheel change the belly plate (0.42 m, measured flat from 2.8 m ahead of
+    // the hull's centre to 2.8 m behind it) rests on timber crib stacks of three crossed courses of 140 mm timbers, two
+    // under the bow where the yard sees them and one under the engine, with a bottle jack between the front pair carrying
+    // it on its saddle, all in the hull's own frame. The round drip tray that read as a loose jack pad is gone.
+    const ABRAMS_BELLY_Y = 0.42;
+    const blocks = new THREE.Group();
+    blocks.name = 'verdant_original_abrams_belly_cribbing';
+    blocks.position.set(16.9, 0, 17.7);
+    blocks.rotation.y = -2.03;
+    blocks.userData.supportMode = 'belly-crib-stacks-and-bottle-jacks';
+    blocks.userData.bellyY = ABRAMS_BELLY_Y;
+    legacyVerdantRoot.add(blocks);
+    const course = ABRAMS_BELLY_Y / 3;
+    const cribStack = (stackX: number, stackZ: number, length: number): void => {
+      const beam = track(new THREE.BoxGeometry(0.14, course, length));
+      const offset = length / 2 - 0.1;
+      for (let layer = 0; layer < 3; layer += 1) {
+        const across = layer % 2 === 0; // timbers spanning the belly, then along it
+        for (const side of [-1, 1]) {
+          put(beam, layer === 1 ? mat.timberDark : mat.timber,
+            stackX + (across ? 0 : side * offset), course / 2 + layer * course, stackZ + (across ? side * offset : 0),
+            across ? Math.PI / 2 : 0, 0, 0, 1, blocks);
+        }
+      }
+    };
+    cribStack(-0.58, 2.5, 0.6);
+    cribStack(0.58, 2.5, 0.6);
+    cribStack(0, -1.95, 0.92);
+    const jackZ = 2.15;
+    put(track(new THREE.BoxGeometry(0.24, 0.025, 0.24)), mat.steelDark, 0, 0.0125, jackZ, 0, 0, 0, 1, blocks);
+    put(track(new THREE.CylinderGeometry(0.075, 0.08, 0.2, 14)), mat.extRed, 0, 0.125, jackZ, 0, 0, 0, 1, blocks);
+    put(track(new THREE.CylinderGeometry(0.042, 0.042, 0.18, 12)), mat.steelBright, 0, 0.31, jackZ, 0, 0, 0, 1, blocks);
+    put(track(new THREE.CylinderGeometry(0.058, 0.05, 0.02, 12)), mat.steelDark, 0, ABRAMS_BELLY_Y - 0.01, jackZ,
+      0, 0, 0, 1, blocks);
+    put(track(new THREE.BoxGeometry(0.13, 0.05, 0.05)), mat.steelDark, 0.12, 0.08, jackZ, 0, 0, 0, 1, blocks);
+    // the hull's own shade on the floor, dark under the belly and gone past the tracks, so the blocks stand in shadow
+    // instead of in open daylight under the bow
+    const shadeCanvas = document.createElement('canvas');
+    shadeCanvas.width = 64;
+    shadeCanvas.height = 128;
+    {
+      const shadeContext = shadeCanvas.getContext('2d')!;
+      const image = shadeContext.createImageData(64, 128);
+      for (let y = 0; y < 128; y += 1) {
+        for (let x = 0; x < 64; x += 1) {
+          const u = ((x + 0.5) / 64) * 2 - 1, v = ((y + 0.5) / 128) * 2 - 1;
+          const reach = Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(v), 4), 0.25);
+          // full under the hull's outline (0.86 of the quad's half-length, 0.76 of its half-width), gone 0.65 m past it
+          const share = Math.max(0, Math.min(1, (1 - reach) / 0.16));
+          const index = (y * 64 + x) * 4;
+          image.data[index] = image.data[index + 1] = image.data[index + 2] = 10;
+          image.data[index + 3] = Math.round(255 * 0.8 * share * share * (3 - 2 * share));
+        }
+      }
+      shadeContext.putImageData(image, 0, 0);
+    }
+    const hullShade = new THREE.Mesh(track(new THREE.PlaneGeometry(4.8, 9.2)), track(new THREE.MeshBasicMaterial({
+      map: track(canvasTexture(shadeCanvas)), transparent: true, depthWrite: false,
+    })));
+    hullShade.name = 'verdant_original_abrams_hull_contact_shade';
+    hullShade.rotation.x = -Math.PI / 2;
+    hullShade.position.set(0, 0.024, 0);
+    hullShade.renderOrder = 2;
+    blocks.add(hullShade);
     const creeper = new THREE.Group();
     creeper.name = 'verdant_original_creeper';
     creeper.position.set(creeperAt.x, 0, creeperAt.z);
@@ -2945,10 +3011,11 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.045, wheelZ,
         0, 0, Math.PI / 2, 0.7, creeper, false);
     }
+    // the roof lamp's throw on the floor exists only under Verdant's roof (outdoors it lit the floor under the bow)
     const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7, 7)), poolMat);
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
-    legacyVerdantRoot.add(pool);
+    verdantKit('abrams_lamp_pool').add(pool);
     addServiceRoadWheelDolly(
       legacyVerdantRoot, 'm1a2', roadWheelTires, roadWheelDiscs,
       12.7, 17.7, -2.03 + Math.PI / 2,

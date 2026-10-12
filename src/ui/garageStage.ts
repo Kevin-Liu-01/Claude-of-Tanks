@@ -22,6 +22,7 @@ import {
 } from './garageArchitecture.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getGarageWorkshopLayoutPose, VERDANT_K2_WORK_LIGHT } from '../game/garageWorkshopLayout.ts';
+import { GARAGE_HARDSTAND_PROGRAM_KEY, garageHardstandGradedHook } from './garageHardstandProgram.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -34,7 +35,7 @@ interface CanvasTextureOptions {
 
 interface GarageStageEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?(material: THREE.Material): void;
+  setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
 }
 
 export interface GarageStageRuntime {
@@ -537,6 +538,16 @@ export function createGarageStage(
     metalness: 0,
     side: THREE.DoubleSide,
   }), { instanced: true, instanceColor: true });
+  // the outdoor packs' graded hardstand (garageHardstandProgram.ts): transparent, writing no depth, its own program
+  {
+    const hardstandSeed = new THREE.MeshStandardMaterial({
+      color: 0xffffff, map: outdoorSeedColor, normalMap: outdoorSeedNormal, normalScale: new THREE.Vector2(0.45, 0.45),
+      roughness: 0.94, metalness: 0.02, transparent: true, depthWrite: false, colorWrite: false,
+    });
+    engineCtx?.setupShadowMaterial?.(hardstandSeed, garageHardstandGradedHook);
+    hardstandSeed.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
+    addOutdoorSeed('hardstand-graded', track(hardstandSeed));
+  }
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
     roughness: 0.88,
