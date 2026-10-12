@@ -117,6 +117,12 @@ export interface PintleOptions {
   /** An explicit drawn barrel length (m, from the trunnion's barrel station): a station whose muzzle is a datum. */
   barrelLength?: number;
   /**
+   * A real recessed bore at the muzzle (m deep; round 4, 2026-10-11): the muzzle device's mouth takes a blind insert
+   * around a bore of the calibre, its face on the device's front, in place of the small end marker that stands 11 mm
+   * ahead of it. For stations whose receipts look into the bore at the firing socket (the national roof stations).
+   */
+  muzzleBoreDepth?: number;
+  /**
    * A gun whose size is measured from a source study (round 5): it keeps its authored scale above the station floor
    * (MG_TRUE_SCALE_FLOOR) instead of the crew guns' true-scale floor.
    */
@@ -161,11 +167,35 @@ export interface PintleLayout {
   readonly reflexSight: boolean;
   /** The drawn barrel's length from the trunnion's barrel station (the class's crewL or barrelL, times s). */
   readonly barrelLength: number;
+  /** The recessed bore's depth at the muzzle (0: the end marker; PintleOptions.muzzleBoreDepth). */
+  readonly muzzleBoreDepth: number;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
 function aim(geometry: THREE.BufferGeometry, dz: number, dy = 0): THREE.BufferGeometry {
   return xform(geometry, 0, dy, dz);
+}
+
+/** A muzzle device's lathe profile carried on into its bore (muzzleBoreDepth): from the mouth's rim in to a bore of the
+ * calibre at the front face, down the bore and across its floor to the axis, so the lathe closes there with no front cap. */
+function withMuzzleBore(context: PintleLayout, profile: ReadonlyArray<readonly [number, number]>,
+  front: number): Array<readonly [number, number]> {
+  const depth = context.muzzleBoreDepth;
+  if (!(depth > 0)) return [...profile];
+  const bore = context.cls.caliber / 2000;
+  return [...profile, [bore, front], [bore, front - depth], [0.0005, front - depth]];
+}
+
+/** The small end marker ahead of a muzzle device without a recessed bore; with one, the plug that seals the lathe's
+ * half-millimetre axis eye a millimetre behind the bore's floor (latheY keeps every station off the axis). */
+function muzzleMarker(context: PintleLayout, front: number): void {
+  const { barrelR0: r0, parts, trunY, trunZ, weaponSlot } = context;
+  const depth = context.muzzleBoreDepth;
+  if (depth > 0) {
+    parts.add(weaponSlot, aim(cylZ(context.cls.caliber / 2000 * 1.02, 0.002, 8), front - depth - 0.002), 0, trunY, trunZ);
+    return;
+  }
+  parts.add(weaponSlot, aim(cylZ(r0 * 0.55, 0.010, context.detail === 1 ? 10 : 6), front + 0.006), 0, trunY, trunZ);
 }
 
 export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts): PintleLayout {
@@ -214,6 +244,7 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
     riser,
     reflexSight: Boolean(opts.reflexSight) && !remote,
     barrelLength: opts.barrelLength ?? ((opts.datumBarrel ?? (remote || Boolean(opts.sourceScale))) ? cls.barrelL : cls.crewL) * s,
+    muzzleBoreDepth: Math.max(0, opts.muzzleBoreDepth ?? 0),
   };
 }
 
@@ -509,8 +540,9 @@ export function addPintleBarrel(context: PintleLayout): void {
   parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.12, 0], [r0 * 1.12, bl * 0.3], [r0 * 0.95, bl * 0.4], [r0 * 0.95, bl]], near ? 10 : 8), 0.10 * s),
     0, trunY, trunZ);
   const fr = Math.max(cls.flashR * s, r0 * 1.3);
-  parts.add(weaponSlot, aim(barrelLathe(muzzleDeviceProfile(classKey, r0 * 0.95, fr, fl), seg), muzzleBase), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(r0 * 0.55, 0.010, near ? 10 : 6), muzzleBase + fl + 0.006), 0, trunY, trunZ);
+  parts.add(weaponSlot, aim(barrelLathe(withMuzzleBore(context, muzzleDeviceProfile(classKey, r0 * 0.95, fr, fl), fl), seg), muzzleBase),
+    0, trunY, trunZ);
+  muzzleMarker(context, muzzleBase + fl);
   const gasZ1 = 0.10 * s + bl * cls.gasEnd;
   if (cls.gas) {
     // the gas cylinder under the barrel with its gas block (GPMGs, Kord, DShK; the QJC-88's thick one)
@@ -849,9 +881,9 @@ function addNsvtBarrel(context: PintleLayout): void {
   parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.06, 0], [r0 * 1.06, bl * 0.22], [r0 * 0.93, bl * 0.32], [r0 * 0.9, hiderZ - 0.10 * s + 0.004]],
     near ? 10 : 8), 0.10 * s), 0, trunY, trunZ);
   const fr = Math.max(cls.flashR * s * 1.1, r0 * 2.0);
-  parts.add(weaponSlot, aim(barrelLathe([[r0 * 1.0, 0], [r0 * 1.22, 0.016 * s], [fr * 0.6, hiderL * 0.42], [fr * 0.86, hiderL * 0.78],
-    [fr, hiderL * 0.95], [fr * 0.95, hiderL], [r0 * 0.75, hiderL]], seg), hiderZ), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(r0 * 0.55, 0.010, near ? 10 : 6), 0.10 * s + bl + fl + 0.006), 0, trunY, trunZ);
+  parts.add(weaponSlot, aim(barrelLathe(withMuzzleBore(context, [[r0 * 1.0, 0], [r0 * 1.22, 0.016 * s], [fr * 0.6, hiderL * 0.42],
+    [fr * 0.86, hiderL * 0.78], [fr, hiderL * 0.95], [fr * 0.95, hiderL], [r0 * 0.75, hiderL]], hiderL), seg), hiderZ), 0, trunY, trunZ);
+  muzzleMarker(context, 0.10 * s + bl + fl);
   // the gas tube under the barrel's rear half, ending in the regulator block
   const gasZ0 = 0.10 * s, gasZ1 = 0.10 * s + bl * cls.gasEnd;
   parts.add(weaponSlot, aim(cylZ(r0 * 0.66, gasZ1 - gasZ0, near ? 8 : 6), (gasZ0 + gasZ1) / 2, -r0 * 1.8), 0, trunY, trunZ);

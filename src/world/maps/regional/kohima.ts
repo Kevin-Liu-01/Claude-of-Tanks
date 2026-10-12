@@ -134,7 +134,9 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     // the crossed horns (kika) over the front gable
     const z = D / 2 + roof.verge - 0.1, apex = rg.ridgeTopY;
     for (const side of [-1, 1]) {
-      sink.member('structureWood', [side * 0.9, apex - 1.0, z], [-side * 0.55, apex + 1.4, z], 0.22, 0.12, [0, 0, 1], { colour: rgb(0x5a4636), decor: true, exposed: true });
+      // (the connectivity sweep) the horns are the bargeboards run on up past the apex: each from down the verge, on the
+      // thatch, so the pair cross in their heads' last third
+      sink.member('structureWood', [side * 1.48, apex - 1.96, z], [-side * 0.55, apex + 1.4, z], 0.22, 0.12, [0, 0, 1], { colour: rgb(0x5a4636), decor: true, exposed: true });
     }
   });
   return sink.finish();
@@ -164,9 +166,14 @@ const shelled: RegionalBuilder = (ctx) => {
     const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
     sink.span('plaster', x - 0.18, 0.75, z - 0.18, x + 0.18, 0.75 + h, z + 0.18);
   }
+  // the fallen sheets (the connectivity sweep: they hung over the floor): the low end on the floor, the raised end on a
+  // heap of the walls' rubble
   for (let k = 0; k < 5; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
-    sink.member('structureMetal', [x - Math.cos(a) * 1.4, 0.8 + rng() * 0.3, z - Math.sin(a) * 1.4], [x + Math.cos(a) * 1.4, 1.0 + rng() * 1.4, z + Math.sin(a) * 1.4], 1.1, 0.04, [0, 1, 0], { colour: pick(rng, TIN), decor: true, exposed: true });
+    rng();
+    const hy = 0.9 + rng() * 0.5, ex = x + Math.cos(a) * 1.4, ez = z + Math.sin(a) * 1.4;
+    sink.member('structureMetal', [x - Math.cos(a) * 1.4, 0.75, z - Math.sin(a) * 1.4], [ex, hy, ez], 1.1, 0.04, [0, 1, 0], { colour: pick(rng, TIN), decor: true, exposed: true });
+    sink.cylinder('stone', [ex, 0.73, ez], 'y', hy - 0.71, 0.3 + (hy - 0.75) * 0.5, 7, { decor: true }, 0.16, true, k * 0.9);
   }
   return sink.finish();
 };

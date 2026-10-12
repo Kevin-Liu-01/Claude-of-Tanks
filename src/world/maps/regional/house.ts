@@ -713,6 +713,17 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       [half, rt - 0.06, -ridgeLen], [half, rt + 0.04, -ridgeLen], [0, rt + 0.11, -ridgeLen], [-half, rt + 0.04, -ridgeLen]];
     // extrude the cap profile along z (points ccw seen from +z)
     sink.prism(bucket, capPts, [0, 0, 1], 2 * ridgeLen, { ...dec, ...CAP_WEATHER }, { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
+    // its mortar bed (the buildings and landmarks lane, 2026-10-10, the connectivity sweep): the slabs' top edges stop
+    // sinP·t either side of the apex at cosP·t over the ridge line, so on a steep roof the cap's flat underside stood
+    // up to 15 cm over them with sky between; the bed fills that wedge from the slabs' edges to the cap, as a ridge
+    // tile's mortar does (dressing: the cap and the slabs keep their collision)
+    const edgeX = sinP * t, edgeY = ridgeY + cosP * t - 0.012, bedTop = rt - 0.05;
+    if (bedTop > edgeY + 0.01) {
+      const w = Math.min(half - 0.01, Math.max(edgeX + 0.02, half * 0.85));
+      const bedPts: Vec3[] = [[-edgeX - 0.01, edgeY, -ridgeLen], [edgeX + 0.01, edgeY, -ridgeLen], [w, bedTop, -ridgeLen], [-w, bedTop, -ridgeLen]];
+      sink.prism(bucket, bedPts, [0, 0, 1], 2 * ridgeLen, { ...dec, decor: true, ...CAP_WEATHER, shade: 0.72 },
+        { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
+    }
   }
 }
 

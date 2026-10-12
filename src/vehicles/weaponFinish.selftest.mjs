@@ -88,7 +88,7 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
   assert.equal(shader.uniforms.uWeaponWornRoughness.value, 0.61, 'a live wear parameter applies in place');
   assert.deepEqual(shader.uniforms.uWeaponWornColor.value.toArray(), [0.1, 0.2, 0.3]);
   assert.deepEqual(JSON.parse(JSON.stringify(material.userData)).weaponWear, material.userData.weaponWear, 'the parameters are plain data');
-  assert.equal(WEAPON_STEEL_WEAR.wornRoughness, 0.5, 'installing copies the defaults (the frozen table is untouched)');
+  assert.ok(Object.isFrozen(WEAPON_STEEL_WEAR) && WEAPON_STEEL_WEAR.wornRoughness !== 0.61, 'installing copies the defaults (the frozen table is untouched)');
   material.dispose();
   // 2026-10-10 (the first garage close-ups read chrome): the wear stays a thin line of dark steel, never a bright
   // band — the worn steel's luminance, its band and its gloss are bounded for both finishes

@@ -38,6 +38,9 @@ export interface WreckBakeWire {
   hz: number;
   h: number;
   tris: number;
+  budgetTris?: number;
+  placeHx?: number;
+  placeHz?: number;
 }
 
 function packAttribute(
@@ -111,6 +114,8 @@ export function packWreckBake(baked: WreckBake): { wire: WreckBakeWire; transfer
     hz: baked.hz,
     h: baked.h,
     tris: baked.tris,
+    ...(baked.budgetTris !== undefined ? { budgetTris: baked.budgetTris } : {}),
+    ...(baked.placeHx !== undefined ? { placeHx: baked.placeHx, placeHz: baked.placeHz } : {}),
   };
   return { wire, transfer: [...buffers] };
 }
@@ -167,6 +172,8 @@ export function unpackWreckBake(wire: WreckBakeWire): WreckBake {
       hz: wire.hz,
       h: wire.h,
       tris: wire.tris,
+      ...(wire.budgetTris !== undefined ? { budgetTris: wire.budgetTris } : {}),
+      ...(wire.placeHx !== undefined ? { placeHx: wire.placeHx, placeHz: wire.placeHz } : {}),
     };
   } catch (error) {
     geo.dispose();

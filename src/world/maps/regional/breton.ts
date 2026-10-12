@@ -361,6 +361,8 @@ const chapel: RegionalBuilder = (ctx) => {
   sink.span('stone', 0.3, top - 0.6, z - 0.22, 0.95, top + 1.9, z + 0.22);
   sink.span('stone', -0.95, top + 1.9, z - 0.25, 0.95, top + 2.25, z + 0.25);
   sink.cylinder('dark', [0, top + 0.95, z], 'y', 0.5, 0.26, 8, { decor: true }, 0.12);
+  // the bell's headstock across the opening between the piers (the connectivity sweep: the bell hung on nothing)
+  sink.span('dark', -0.3, top + 1.45, z - 0.07, 0.3, top + 1.6, z + 0.07, { decor: true });
   sink.span('dark', -0.05, top + 2.25, z - 0.05, 0.05, top + 3.0, z + 0.05, { decor: true });
   sink.span('dark', -0.28, top + 2.6, z - 0.05, 0.28, top + 2.7, z + 0.05, { decor: true });
   quoins(sink, frame);

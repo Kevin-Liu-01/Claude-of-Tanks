@@ -200,9 +200,14 @@ const wrecked: RegionalBuilder = (ctx) => {
     const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D;
     sink.member('structureWood', [x, 0.8, z], [x + (rng() - 0.5) * 0.6, 0.8 + 0.8 + rng() * 1.6, z + (rng() - 0.5) * 0.6], 0.12, 0.12, [1, 0, 0], { colour: pick(rng, WEATHERED_PLANK), exposed: true });
   }
+  // the fallen sheets (the connectivity sweep: they hung over the slab): each with its low end on the slab, its raised
+  // end propped on a broken bamboo post
   for (let k = 0; k < 6; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.7, z = (rng() - 0.5) * D * 0.7;
-    sink.member('structureMetal', [x - Math.cos(a), 0.85 + rng() * 0.3, z - Math.sin(a)], [x + Math.cos(a), 0.9 + rng() * 1.2, z + Math.sin(a)], 0.9, 0.04, [0, 1, 0], { colour: sheetColour(rng), decor: true, exposed: true });
+    rng();
+    const hy = 0.9 + rng() * 1.2, ex = x + Math.cos(a), ez = z + Math.sin(a);
+    sink.member('structureMetal', [x - Math.cos(a), 0.8, z - Math.sin(a)], [ex, hy, ez], 0.9, 0.04, [0, 1, 0], { colour: sheetColour(rng), decor: true, exposed: true });
+    sink.cylinder('structureWood', [ex, 0.78, ez], 'y', hy - 0.76, 0.06, 6, { colour: BAMBOO_MAT, decor: true }, 0.05);
   }
   return sink.finish();
 };

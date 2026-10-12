@@ -131,7 +131,9 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     };
     if (startElection?.reason !== 'start' || startElection.generation !== 1) failures.push(`the start election ${JSON.stringify(startElection)}`);
     if (report.steps.connected.migrationsSeen.some((count) => count !== 0)) failures.push('the start election counted as a migration');
-    if (report.steps.connected.offers !== 2) failures.push(`${report.steps.connected.offers} offers relayed`);
+    // one offer per peer at least; a peer whose first attempt timed out under load re-offers (the transport's own retry,
+    // RTC_OFFER_CONNECT_TIMEOUT_MS) and must still be welcomed (2026-10-11: the first-boot WELCOME legs)
+    if (report.steps.connected.offers < 2) failures.push(`${report.steps.connected.offers} offers relayed`);
     log(`connected: ${hostStats.peersConnected} peers on p1 (${hostStats.state}), ${report.steps.connected.signals} signals relayed, ${report.steps.connected.refused} refused, ${report.steps.connected.reports} reports`);
     if (hostStats.peersConnected !== 2) failures.push(`p1 serves ${hostStats.peersConnected} peers`);
     if (report.steps.connected.reports < 1) failures.push('no match_report reached the room');
@@ -246,7 +248,10 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     report.steps.ice = { connections: connections.length, granted, requests: requests.length, bySeat: Object.fromEntries([...new Set(requests.map((event) => event.playerId))].map((id) => [id, requests.filter((event) => event.playerId === id).length])) };
     log(`ice: ${granted} of ${connections.length} peer connections built with the room's grant from ${requests.length} relay requests ${JSON.stringify(report.steps.ice.bySeat)}`);
     if (connections.length < 6) failures.push(`${connections.length} peer connections (start, migration and rejoin build at least six)`);
-    if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant`);
+    // (the failure names each connection built off the grant: its id, state, whether it linked, its server count)
+    const ungranted = connections.filter((pc) => !(JSON.stringify(pc.config.iceServers) === expectedServers && pc.config.relayOnly === false));
+    report.steps.ice.ungranted = ungranted.map((pc) => ({ id: pc.id, state: pc.connectionState, linked: !!pc.peer, servers: (pc.config.iceServers ?? []).length }));
+    if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant ${JSON.stringify(report.steps.ice.ungranted)}`);
     if (requests.length < 1 || requests.length >= connections.length) failures.push(`${requests.length} relay requests for ${connections.length} connections (one per burst, a grant reused)`);
   } catch (error) {
     failures.push(error instanceof Error ? error.stack ?? error.message : String(error));

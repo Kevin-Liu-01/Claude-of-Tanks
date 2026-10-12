@@ -72,11 +72,14 @@ const pantiles = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => 
 });
 
 /** Gable stacks: brick chimneys in the gable walls rising past the ridge (one or both ends). */
-function gableStacks(sink: PartSink, rg: { ridgeTopY: number; halfD: number }, both: boolean): void {
+function gableStacks(sink: PartSink, rg: { ridgeTopY: number; halfD: number }, both: boolean, foot: number): void {
   for (const end of both ? [1, -1] : [1]) {
     const z = end * (rg.halfD - 0.35);
     sink.span('stone', -0.4, rg.ridgeTopY - 1.4, z - 0.3, 0.4, rg.ridgeTopY + 0.85, z + 0.3);
     sink.span('stone', -0.48, rg.ridgeTopY + 0.85, z - 0.38, 0.48, rg.ridgeTopY + 1.0, z + 0.38);
+    // the breast down through the roof to the gable wall's head (the connectivity sweep: under a half-hip the stack
+    // stood 0.2 m over the hip's slope)
+    if (foot < rg.ridgeTopY - 1.4) sink.span('stone', -0.4, foot, z - 0.3, 0.4, rg.ridgeTopY - 1.4, z + 0.3, { decor: true });
   }
 }
 
@@ -125,7 +128,7 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
     w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: sts, roof, gableBucket: 'stone', openings,
     chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null,
   }, dialect(st));
-  gableStacks(sink, frame.roof, opts.farm === true || rng() < 0.4);
+  gableStacks(sink, frame.roof, opts.farm === true || rng() < 0.4, frame.eaveY);
   if (facadeOn()) zeelandEaves(sink, frame);
   if (frame.roof.gable) {
     const g = frame.roof.gable, top = Math.max(...g.map(([, y]) => y));
@@ -237,7 +240,7 @@ const pakhuis: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 3.4, wall: 'stone' }, { h: 2.6, wall: 'stone' }],
       roof: pantiles(46), gableBucket: 'stone', openings, chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: null,
     }, dialect({ ...st, litShare: 0.1 }));
-    gableStacks(sink, frame.roof, false);
+    gableStacks(sink, frame.roof, false, frame.eaveY);
   });
   return sink.finish();
 };

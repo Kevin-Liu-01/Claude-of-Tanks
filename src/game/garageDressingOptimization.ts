@@ -136,10 +136,15 @@ function canMergeStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
   return geometryLayoutKey(mesh.geometry) !== null;
 }
 
+/**
+ * Visible inside its owner. The owner's own visibility is a per-Garage switch (a left-band task, a bay's alternate
+ * task, Verdant's interior), so a hidden owner still merges its contents: the merged batches live under the owner and
+ * follow its switch (2026-10-10: Frosthollow's band task, hidden while Verdant optimized, drew 28 unmerged parts).
+ */
 function isVisibleWithin(object: THREE.Object3D, owner: THREE.Object3D): boolean {
   for (let current: THREE.Object3D | null = object; current; current = current.parent) {
-    if (!current.visible) return false;
     if (current === owner) return true;
+    if (!current.visible) return false;
   }
   return false;
 }
