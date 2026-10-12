@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { initTopMaskRig, prepareTopDownMasks, getTopDownMasks, TOP_DOWN_MASK_RETRY } from './tankThumbs.ts';
+import { topMaskCoverageMaterial } from './topMaskCoverage.ts';
 
 function deferred() {
   let resolve;
@@ -270,7 +271,8 @@ function fakeRenderer(sources) {
     assert.notStrictEqual(root, source.root, 'render work owns a hierarchy clone');
     const mesh = root.getObjectByName('test-hull');
     assert.strictEqual(mesh.geometry, source.geometry);
-    assert.strictEqual(mesh.material, source.material);
+    assert.strictEqual(mesh.material, topMaskCoverageMaterial(source.material),
+      'a mask pass draws the coverage stand-in of the borrowed material, never the material itself');
     return { id: root.name, layer: root.getObjectByName('rig_turret').visible ? 'turret' : 'hull' };
   };
   const gl = {
@@ -354,7 +356,8 @@ function fakeRenderer(sources) {
       const material = scene.children[0].getObjectByName('test-hull').material;
       const key = `${frame.id}:${frame.layer}`;
       const retained = properties.get(material);
-      if (reusePrograms.has(frame.id) && retained) {
+      // Coverage stand-ins are shared between tanks: only this tank's own earlier pass is a retained cache.
+      if (reusePrograms.has(frame.id) && retained?.id === frame.id) {
         compileHooks.get(key)?.(retained);
         return new Set([material]);
       }
@@ -384,7 +387,7 @@ function fakeRenderer(sources) {
         renderer.info.programs.push(program);
         return program;
       });
-      const cache = { currentProgram: variants.at(-1), programs: new Map(variants.map((program, index) => [index, program])) };
+      const cache = { id: frame.id, currentProgram: variants.at(-1), programs: new Map(variants.map((program, index) => [index, program])) };
       properties.set(material, cache);
       compileHooks.get(key)?.(cache);
       return new Set([material]);
@@ -499,8 +502,8 @@ try {
   assert.strictEqual(window.__TOP_MASK_LOAD, latestTrace, 'an older transaction cannot replace the latest trace');
   a.assertCloneDisposals(0);
   b.assertCloneDisposals(0);
-  const submittedProgram = fake.renderer.properties.get(a.material).currentProgram;
-  fake.renderer.properties.get(a.material).currentProgram = { program: {}, isReady: () => true };
+  const submittedProgram = fake.renderer.properties.get(topMaskCoverageMaterial(a.material)).currentProgram;
+  fake.renderer.properties.get(topMaskCoverageMaterial(a.material)).currentProgram = { program: {}, isReady: () => true };
   await advanceUntil(() => submittedProgram.checks > 0);
   assert(!fake.events.some((event) => event.kind === 'render'),
     'a ready world variant cannot replace the pending captured mask program');
@@ -609,7 +612,7 @@ try {
   const disposedTrace = window.__TOP_MASK_LOAD;
   const afterDisposedRequest = prepareTopDownMasks(spec(afterDisposedSource.root.name), afterDisposedSource.visual);
   await advanceUntil(() => fake.events.some((event) => event.kind === 'compile' && event.id === disposedSource.root.name));
-  fake.renderer.properties.get(disposedSource.material).currentProgram.program = undefined;
+  fake.renderer.properties.get(topMaskCoverageMaterial(disposedSource.material)).currentProgram.program = undefined;
   const [disposedResult, afterDisposedResult] = await settle(Promise.all([disposedRequest, afterDisposedRequest]));
   assert.equal(disposedResult, null, 'a destroyed captured program fails to the existing mask fallback');
   assert(afterDisposedResult?.ready, 'destroyed program ownership does not stall the next queued tank');
