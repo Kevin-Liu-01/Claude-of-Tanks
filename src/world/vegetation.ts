@@ -160,6 +160,12 @@ interface VegetationBelt {
   jitter?: number;
   skip?: number;
   species?: Species;
+  /**
+   * The map-revival lane (2026-10-11, the steppe's field-protective belts: the coordinator's ruling on the layout brief's
+   * lanes band): the belt's stations are the map's shrubs, not trees — a shelterbelt's edge row of yellow acacia. Planted
+   * whole: no density draw or thicket gate thins them (the site's own rules still refuse a seat); their own stream.
+   */
+  shrub?: boolean;
 }
 
 interface GrassStubblePatch {
@@ -6561,6 +6567,7 @@ function* vegetationBuildSteps(
         const gap = b.gap ?? 8;
         const jit = b.jitter ?? 2.5;
         const nB = Math.max(2, Math.round(len / gap));
+        if (b.shrub) continue; // (a shrub row's stations are the bushes': placeBeltShrubs)
         for (let i = 0; i <= nB; i++) {
           const t = i / nB;
           const bx = b.x0 + (b.x1 - b.x0) * t + (rng() - 0.5) * jit;
@@ -7484,17 +7491,17 @@ function* vegetationBuildSteps(
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
-    function addBush(x: number, z: number, hedge = false, br: RandomSource = rng): void {
+    function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
-      if (br() > veg.bushCount) return; // per-map density scale
+      if (!planted && br() > veg.bushCount) return; // per-map density scale (a planted row keeps every station)
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
       if (admission()._roadDist(x, z) < 6) return;
       if (admission().getGroundType(x, z) === 'soft' || (noVeg(x, z) && !batterAdmits(x, z))) return;
       if (!steepSeedOk(admission().getNormalAt(x, z).y, x, z)) return;
       let clump = 1;
-      if (veg.bushCount < 1) {
+      if (veg.bushCount < 1 && !planted) {
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
         // thicket cores — shrubs knot into dense washes/hollow thickets with
         // clean ground between, instead of the r5 near-uniform pepper noise
@@ -7795,7 +7802,24 @@ function* vegetationBuildSteps(
         addBush(seat[0], seat[1], true, br);
       }
     }
+    // the map-revival lane (VegetationBelt.shrub): the shelterbelts' shrub rows, every station planted, their own stream
+    function placeBeltShrubs(): void {
+      if (!veg.belts) return;
+      veg.belts.forEach((b, index) => {
+        if (!b.shrub) return;
+        const sr = mulberry32((seed ^ 0x5b17e) + index * 977);
+        const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0), gap = b.gap ?? 4, jit = b.jitter ?? 1.2;
+        const nB = Math.max(2, Math.round(len / gap));
+        for (let i = 0; i <= nB; i++) {
+          const t = i / nB;
+          const bx = b.x0 + (b.x1 - b.x0) * t + (sr() - 0.5) * jit, bz = b.z0 + (b.z1 - b.z0) * t + (sr() - 0.5) * jit;
+          if (sr() < (b.skip ?? 0.08)) continue;
+          addBush(bx, bz, false, sr, true);
+        }
+      });
+    }
     placeBushFringes();
+    placeBeltShrubs();
     placeFieldBushes();
     placeBushClumps();
     evenBushHalves();

@@ -63,6 +63,30 @@ function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: reado
   }));
 }
 
+/**
+ * (2026-10-11, the map-revival lane; the coordinator's ruling on the layout brief's lanes band: "make the three middle
+ * belts real Barayev shelterbelts") a field-protective belt as the virgin lands planted them: three rows of trees 3 m
+ * apart (the middle row staggered half a station), a row of yellow acacia (the map's shrub) along each edge 6 m out —
+ * a 12 m screen that splits the open fields into lanes as the single lines could not (the lanes metric read the
+ * middle slices as one 880 m lane through them) — the runs' gaps where a field track crosses kept in every row.
+ */
+function barayevBelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
+  const len = Math.hypot(x1 - x0, z1 - z0) || 1, px = -(z1 - z0) / len, pz = (x1 - x0) / len;
+  const rows = [];
+  for (const [k, off] of [[0, -3], [1, 0], [2, 3]] as const) {
+    for (const row of shelterbelt(x0 + px * off, z0 + pz * off, x1 + px * off, z1 + pz * off, runs)) {
+      rows.push(k === 1 ? { ...row, x0: row.x0 + Math.round(((x1 - x0) / len) * row.gap * 0.5), z0: row.z0 + Math.round(((z1 - z0) / len) * row.gap * 0.5) } : row);
+    }
+  }
+  for (const off of [-6, 6]) {
+    for (const [t0, t1] of runs.map(([a, b]) => [a, b] as const)) {
+      rows.push({ x0: Math.round(x0 + (x1 - x0) * t0 + px * off), z0: Math.round(z0 + (z1 - z0) * t0 + pz * off),
+        x1: Math.round(x0 + (x1 - x0) * t1 + px * off), z1: Math.round(z0 + (z1 - z0) * t1 + pz * off), gap: 4, jitter: 1.2, skip: 0.08, shrub: true });
+    }
+  }
+  return rows;
+}
+
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
 // one gap on the south side, radius r around (cx, cz).
 function kurganKerb(cx: number, cz: number, r: number): readonly [number, number, number, number, number][] {
@@ -298,9 +322,10 @@ export default {
       ...shelterbelt(380, 30, 412, 300, [[0, 0.44, 'poplar', 8, 0.12, 0], [0.5, 1, 'poplar', 9, 0.14, 0]]), // east fields
       // (2026-10-07, wave 204) the loose trees' cover as three more field-protective belts across the open middle, on the
       // strips' long lines like Barayev's, with a gap where a field track crosses
-      ...shelterbelt(18, -80, 42, 130, [[0, 0.48, 'poplar', 9, 0.14, 0], [0.55, 1, 'oak', 10, 0.18, 0]]),    // the middle fields
-      ...shelterbelt(-262, -60, -244, 140, [[0, 0.5, 'oak', 9, 0.16, 0], [0.57, 1, 'poplar', 9, 0.14, 0]]),  // west of the farm track
-      ...shelterbelt(318, -10, 340, 190, [[0, 0.45, 'poplar', 9, 0.14, 0], [0.52, 1, 'poplar', 8, 0.14, 0]]), // east of the station road
+      // (2026-10-11) the three as real Barayev belts: three rows and the acacia edges (barayevBelt)
+      ...barayevBelt(18, -80, 42, 130, [[0, 0.48, 'poplar', 9, 0.14, 0], [0.55, 1, 'oak', 10, 0.18, 0]]),    // the middle fields
+      ...barayevBelt(-262, -60, -244, 140, [[0, 0.5, 'oak', 9, 0.16, 0], [0.57, 1, 'poplar', 9, 0.14, 0]]),  // west of the farm track
+      ...barayevBelt(318, -10, 340, 190, [[0, 0.45, 'poplar', 9, 0.14, 0], [0.52, 1, 'poplar', 8, 0.14, 0]]), // east of the station road
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
