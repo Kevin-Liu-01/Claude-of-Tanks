@@ -104,12 +104,13 @@ const TOWN = { x0: -200, x1: -20, z0: 20, z1: 190 };
 // cart stand (the kit's dressing). Lanes break the rows into blocks; the square and the gates stay open. Every plot is a
 // terrace site (props.ts plannedSites: its own stream, its author holds the footprints apart), its plot the kit's.
 const SQUARE = { x: -110, z: 100, r: 30 };
-/** The four arms: the coach road south and north of the square, the mill lane west, the north lane east. */
+/** The three arms: the coach road south and north of the square, the mill lane west. (2026-10-11, the coordinator's
+ * fairness ruling, try f4: the north lane east kept no frontage — its rows walled the north team's approach to the
+ * centre, alpha 30-10 at 40 all-bot games with them, main 22-18 without the village) */
 const STREET_ARMS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
   [[-110, 100], [-90, 40], [-53, -33]],
   [[-110, 100], [-130, 170], [-150, 240]],
   [[-110, 100], [-180, 60], [-230, 0]],
-  [[-110, 100], [-30, 140], [60, 165]],
 ];
 /** From the road's line to the frontage: the carriageway's half width and the usoir (5-8 m). */
 const USOIR_FRONT_M = [9.0, 11.5] as const;
@@ -245,13 +246,17 @@ export default {
       { kind: 'knoll', x: -280, z: -180, rx: 50, rz: 40, height: 2.5, yawDeg: 33, wetScale: 1 },
       { kind: 'knoll', x: 300, z: 50, rx: 60, rz: 45, height: 2.5, yawDeg: 30, wetScale: 1 },
       { kind: 'basin', x: 55, z: -22, rx: 75, rz: 65, height: -4.5, yawDeg: 20, wetScale: 1 },
-      { kind: 'knoll', x: 140, z: 10, rx: 50, rz: 45, height: 4.0, wetScale: 1 },
+      // (f3: 4.0 -> 2.0 m, so the river knoll no longer commands the meadow north of it)
+      { kind: 'knoll', x: 140, z: 10, rx: 50, rz: 45, height: 2.0, wetScale: 1 },
       { kind: 'basin', x: 312, z: 118, rx: 60, rz: 60, height: -6.0, wetScale: 1 },
       { kind: 'basin', x: 410, z: 300, rx: 110, rz: 70, height: -4.5, yawDeg: 68, wetScale: 1 },
       { kind: 'basin', x: 436, z: 384, rx: 62, rz: 52, height: -4.0, wetScale: 1 },
       { kind: 'basin', x: -290, z: -246, rx: 55, rz: 50, height: -3.0, yawDeg: 30, wetScale: 1 },
       // the FORD: the wade's bed sits at the water plane so the lane dips to a wheel-deep crossing
       { kind: 'basin', x: 186, z: 30, rx: 60, rz: 45, height: -2.4, yawDeg: 68, wetScale: 1 },
+      // (2026-10-11, the map-revival lane; the coordinator's fairness ruling, try f3) zone 2's hedge-bank along its south
+      // edge facing the river knoll: a low earth bank, 1.6 m, 54 x 8 m, its hedgerow on the crest (vegetation belts)
+      { kind: 'ridge', x: 128, z: 59, length: 54, width: 8, height: 1.6, yawDeg: 0 },
     ],
   },
 
@@ -263,7 +268,8 @@ export default {
     // opening drive drops to the cross lanes and chooses the bridge or the ford.
     // The upland is uneven beyond the pad, so the allies deploy in Reservoir's
     // compact columns instead of the wide lateral arc.
-    player: { x: 303, z: -327, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
+    // (2026-10-10, the fairness ruling: 25 m farther up the shelf, as far as the zones' drives stay even)
+    player: { x: 318, z: -352, formation: { columnSpacingM: 8, rowSpacingM: 13 } },
     // one enemy arc north of the town, clear of the coach road and the park
     // Flat-scanned on the marsh-less field ($SP/r48a/design.mjs pads): minNy >= 0.90
     // and relief <= 4 m over the 22 m pad, >= 30 m off a lane, >= 45 m apart, >= 800 m
@@ -360,6 +366,8 @@ export default {
       { x0: 390, z0: -310, x1: 390, z1: 130, gap: 9, jitter: 5, species: 'birch' },
       { x0: 408, z0: -300, x1: 408, z1: 140, gap: 9, jitter: 5, species: 'oak' },
       { x0: 426, z0: -290, x1: 426, z1: 130, gap: 10, jitter: 5, species: 'aspen' },
+      // (f3) the hedgerow on zone 2's bank, its crest along the zone's south edge facing the river knoll
+      { x0: 102, z0: 59, x1: 154, z1: 59, gap: 8, jitter: 1.5, species: 'oak' },
       // the sunken lane: hedgerows 14 m either side of the lane (south side first)
       { x0: -384, z0: -383, x1: -294, z1: -343, gap: 13, jitter: 2, species: 'oak' },
       { x0: -396, z0: -357, x1: -306, z1: -317, gap: 13, jitter: 2, species: 'oak' },
