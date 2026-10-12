@@ -80,7 +80,51 @@ const meanLuma = {};
 /** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
  * facing out, none above the ground line apart from the triangles it shades), as tall as the legacy rock and inside its
  * hull above the ground line, its skirt deep; broken up by the weather (hollows), its faces and arrises both present. */
-function checkForm(form, label, hull, legacyTop, subdiv) {
+/**
+ * (rock round 2) A clastic stone's cobbles (BoulderForm.clast, after the weathered mass's own vertices and triangles,
+ * BoulderForm.base): at least ten on the desktop form, every cobble vertex flagged, every crown inside the legacy hull
+ * above the ground line and under the stone's top, their triangles wound out (their normals agree), the weathered mass
+ * with them inside the desktop budget for a cobbled stone; checked, the weathered mass is checked alone.
+ */
+function checkCobbles(form, label, hull, legacyTop) {
+  const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array, base = form.base;
+  assert.ok(base && form.clast && form.clast.length === p.count, `${label}: the cobbles' facts`);
+  const cobbleVerts = p.count - base.vertices, cobbleTris = index.length / 3 - base.triangles;
+  assert.ok(cobbleTris % 18 === 0 && cobbleVerts === (cobbleTris / 18) * 13, `${label}: whole domes (${cobbleTris} triangles)`);
+  assert.ok(cobbleTris / 18 >= 10, `${label}: cobbles in its faces (${cobbleTris / 18})`);
+  assert.ok(index.length / 3 <= 1300, `${label}: within a cobbled stone's budget (${index.length / 3})`);
+  for (let i = 0; i < p.count; i++) assert.equal(form.clast[i] > 0, i >= base.vertices, `${label}: the cobbles flagged, the matrix not`);
+  const out = [];
+  for (let i = base.vertices; i < p.count; i++) {
+    assert.ok(p.getY(i) <= legacyTop * 0.98 + 1e-5, `${label}: no cobble over the stone's top`);
+    if (p.getY(i) >= BOULDER_SEAT_Y) out.push(p.getX(i), 0, p.getZ(i));
+  }
+  const g2 = new THREE.BufferGeometry();
+  g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+  assert.ok(projectsInsideHull(g2, hull), `${label}: the cobbles inside the legacy hull above the ground line`);
+  for (let t = base.triangles * 3; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+    e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
+    e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
+    tri.crossVectors(e1, e2).normalize();
+    assert.ok(tri.x * n.getX(c) + tri.y * n.getY(c) + tri.z * n.getZ(c) > 0, `${label}: a cobble's faces wound out`);
+  }
+}
+/** The weathered mass alone: the leading vertices and triangles of a form that carries cobbles after it. */
+function massOf(form) {
+  if (!form.base) return form;
+  const g = form.geometry, nv = form.base.vertices, nt = form.base.triangles;
+  const geometry = new THREE.BufferGeometry();
+  for (const key of ['position', 'normal', 'aRockFace']) {
+    const a = g.getAttribute(key);
+    geometry.setAttribute(key, new THREE.BufferAttribute(a.array.slice(0, nv * a.itemSize), a.itemSize));
+  }
+  geometry.setIndex(Array.from(g.index.array.slice(0, nt * 3)));
+  return { geometry, edge: form.edge.slice(0, nv), fresh: form.fresh.slice(0, nv), facet: form.facet.slice(0, nv), hollow: form.hollow.slice(0, nv) };
+}
+function checkForm(full, label, hull, legacyTop, subdiv) {
+  if (full.base) checkCobbles(full, label, hull, legacyTop);
+  const form = massOf(full);
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
   const cells = subdiv >= 6 ? 8 : 5;
   assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
@@ -263,7 +307,7 @@ for (const lithology of LITHOLOGIES) {
         // rest, its hollows greyer
         paintBoulder(form, null, lithology);
         const col = g.attributes.color;
-        assert.ok(col && col.count === p.count, `${label}: a vertex tone`);
+        assert.ok(col && col.count === g.attributes.position.count, `${label}: a vertex tone`);
         let luma = 0, freshL = 0, freshN = 0, oldL = 0, oldN = 0, hollowS = 0, hollowN = 0, proudS = 0, proudN = 0;
         const hsl = { h: 0, s: 0, l: 0 }, c3 = new THREE.Color();
         for (let i = 0; i < p.count; i++) {

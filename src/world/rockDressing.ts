@@ -343,6 +343,13 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
    * a stair of plate edges, not one plane); every plate its own tone.
    */
   plates?: { count: number; crest: number; ends: number; jag: number; spall: number };
+  /**
+   * (rock round 2, 2026-10-11; gauntlet wave 415 on Copper Mesa: "cobbles and clasts cemented into the faces") the
+   * stone's cobbles as geometry on its desktop form: up to `count` half-ellipsoid domes of pale quartzite seated in its
+   * faces (`size` the cobble's reach, a share of the stone's radius; `proud` the share of it standing out of the matrix),
+   * none past the legacy hull or the stone's top, none crowding another; the smaller clasts stay the material's.
+   */
+  cobbles?: { count: number; size: readonly [number, number]; proud: number };
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
@@ -359,7 +366,7 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
   // (2026-10-10) the conglomerate's thick beds (its clasts the material's) and its rough breaks; the breccia broken all
   // round, no bedding
-  conglomerate: { fractures: [2, 3], notch: 0.6, notches: 1, bed: [0.3, 0.46] },
+  conglomerate: { fractures: [2, 3], notch: 0.6, notches: 1, bed: [0.3, 0.46], cobbles: { count: 30, size: [0.04, 0.11], proud: 0.45 } },
   breccia: { fractures: [3, 4], notch: 0.5, notches: 1, bed: null },
 });
 
@@ -718,6 +725,10 @@ interface BoulderForm {
   facet: Float32Array;
   /** How far the weather has hollowed the stone there (0..1): the chalk greys only in its hollows. */
   hollow: Float32Array;
+  /** (rock round 2) a clastic stone's cobbles: per vertex 0 on the matrix, else the cobble's own tone roll (0..1]. */
+  clast?: Float32Array;
+  /** (rock round 2) the weathered mass's own vertices and triangles, first in the buffers (the cobbles follow). */
+  base?: { vertices: number; triangles: number };
 }
 
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
@@ -937,6 +948,8 @@ export function buildBoulderForm(
     face[v * 4 + 2] = fresh[v];
     face[v * 4 + 3] = hollow[v];
   }
+  const cobbleLaw = subdiv >= 6 ? LITHOLOGY_CUTS[lithology].cobbles ?? null : null;
+  if (cobbleLaw) return withCobbles({ pos, nor, face, index, edge, fresh, facet, hollow, count, cuts, raw }, cobbleLaw, rng, hull, fittedTop);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
@@ -945,6 +958,92 @@ export function buildBoulderForm(
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, edge, fresh, facet, hollow };
+}
+
+/**
+ * (rock round 2) A clastic stone's cobbles (LITHOLOGY_CUTS cobbles): half-ellipsoid domes seated on the weathered form's
+ * faces at its own vertices (drawn in turn from `rng`), each on its face's normal, its base sunk below the face so only
+ * `proud` of its reach stands out, a little flatter across its face than along it and flatter still out of it; none on
+ * an underside, none whose crown passes the legacy hull (above the ground line) or the stone's top, none within 0.85 of
+ * two reaches of another. Six sides and two rings a dome (18 triangles), its normals the ellipsoid's own; the cobble's
+ * vertices carry its tone roll (BoulderForm.clast) and a small break share (its rind worn through).
+ */
+function withCobbles(
+  m: { pos: Float32Array; nor: Float32Array; face: Float32Array; index: number[]; edge: Float32Array; fresh: Float32Array;
+    facet: Float32Array; hollow: Float32Array; count: number; cuts: BoulderCuts; raw: Float64Array },
+  law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology]['cobbles']>, rng: () => number, hull: readonly number[], fittedTop: number,
+): BoulderForm {
+  const S = 6;
+  const placed: Array<{ x: number; y: number; z: number; r: number }> = [];
+  const pos: number[] = [], nor: number[] = [], face: number[] = [], idx: number[] = [];
+  const clastV: number[] = [], freshV: number[] = [];
+  const bed = m.cuts.bedding;
+  for (let attempt = 0; attempt < law.count * 6 && placed.length < law.count; attempt++) {
+    const v = Math.floor(rng() * m.count) % m.count, roll = rng(), sizeRoll = rng(), squash = 0.6 + rng() * 0.4, turn = rng() * Math.PI * 2;
+    // (each its own outline: the base and middle rings' reaches wander, so no cobble reads as a hexagon)
+    const wander = [rng(), rng(), rng(), rng(), rng(), rng()];
+    const px = m.pos[v * 3], py = m.pos[v * 3 + 1], pz = m.pos[v * 3 + 2];
+    const nx = m.nor[v * 3], ny = m.nor[v * 3 + 1], nz = m.nor[v * 3 + 2];
+    if (py < BOULDER_SEAT_Y - 0.1 || ny < -0.2) continue;
+    const rc = law.size[0] + (law.size[1] - law.size[0]) * sizeRoll * sizeRoll, h = rc * 0.55;
+    // the dome's frame: its axis the face's normal, two tangents turned by its own roll
+    const ax = Math.abs(ny) < 0.9 ? 0 : 1, ay = Math.abs(ny) < 0.9 ? 1 : 0;
+    let t1x = ay * nz, t1y = -ax * nz, t1z = ax * ny - ay * nx;
+    const t1l = Math.hypot(t1x, t1y, t1z) || 1; t1x /= t1l; t1y /= t1l; t1z /= t1l;
+    const t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
+    const c = Math.cos(turn), sn = Math.sin(turn);
+    const ux = t1x * c + t2x * sn, uy = t1y * c + t2y * sn, uz = t1z * c + t2z * sn;
+    const wx = t2x * c - t1x * sn, wy = t2y * c - t1y * sn, wz = t2z * c - t1z * sn;
+    const sink = h * (1 - law.proud);
+    const cx = px - nx * sink, cy = py - ny * sink, cz = pz - nz * sink;
+    // its crown inside the legacy hull and under the stone's top; no crowding
+    const kx = cx + nx * h, ky = cy + ny * h, kz = cz + nz * h, kr = Math.hypot(kx, kz);
+    if (ky > fittedTop || (ky >= BOULDER_SEAT_Y && kr > 1e-6 && kr + rc * 0.5 > hullRadiusAt(hull, kx / kr, kz / kr) * 0.985)) continue;
+    if (placed.some((q) => Math.hypot(q.x - px, q.y - py, q.z - pz) < (q.r + rc) * 0.85)) continue;
+    placed.push({ x: px, y: py, z: pz, r: rc });
+    const base = m.count + pos.length / 3;
+    const ringAt = (phi: number, th: number, k = 0): void => {
+      const reach = phi < Math.PI / 2 - 1e-6 ? 0.82 + 0.34 * wander[k % 6] : 1;
+      const a = rc * reach * Math.cos(phi) * Math.cos(th), b = rc * reach * squash * Math.cos(phi) * Math.sin(th), e = h * Math.sin(phi);
+      const x = cx + ux * a + wx * b + nx * e, y = cy + uy * a + wy * b + ny * e, z = cz + uz * a + wz * b + nz * e;
+      const gu = Math.cos(phi) * Math.cos(th) / rc, gw = Math.cos(phi) * Math.sin(th) / (rc * squash), gn = Math.sin(phi) / h;
+      let qx = ux * gu + wx * gw + nx * gn, qy = uy * gu + wy * gw + ny * gn, qz = uz * gu + wz * gw + nz * gn;
+      const ql = Math.hypot(qx, qy, qz) || 1; qx /= ql; qy /= ql; qz /= ql;
+      pos.push(x, y, z); nor.push(qx, qy, qz);
+      face.push(bed ? (bed.n[0] * x + bed.n[1] * y + bed.n[2] * z) / bed.thickness + bed.salt : 0, clamp(y / Math.max(1e-6, fittedTop), -1, 1), 0.2, 0);
+      clastV.push(0.05 + 0.95 * roll); freshV.push(0.2);
+    };
+    for (const phi of [0, Math.PI / 4]) for (let k = 0; k < S; k++) ringAt(phi, (k / S) * Math.PI * 2, k);
+    ringAt(Math.PI / 2, 0);
+    for (let k = 0; k < S; k++) {
+      const k1 = (k + 1) % S;
+      const a0 = base + k, a1 = base + k1, b0 = base + S + k, b1 = base + S + k1, top = base + 2 * S;
+      // wound out: the rings turn from u toward w about the face's normal
+      idx.push(a0, a1, b1, a0, b1, b0, b0, b1, top);
+    }
+  }
+  const total = m.count + pos.length / 3;
+  const P = new Float32Array(total * 3), N = new Float32Array(total * 3), F = new Float32Array(total * 4);
+  P.set(m.pos); P.set(pos, m.count * 3); N.set(m.nor); N.set(nor, m.count * 3); F.set(m.face); F.set(face, m.count * 4);
+  const grow = (a: Float32Array, extra: number[], fill: number): Float32Array => {
+    const out = new Float32Array(total); out.set(a);
+    for (let i = 0; i < extra.length; i++) out[m.count + i] = extra[i];
+    if (!extra.length) for (let i = m.count; i < total; i++) out[i] = fill;
+    return out;
+  };
+  const clast = new Float32Array(total); clast.set(clastV, m.count);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+  geometry.setAttribute('aRockFace', new THREE.BufferAttribute(F, 4));
+  geometry.setIndex([...m.index, ...idx]);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  const zeros = new Array(pos.length / 3).fill(0);
+  return {
+    geometry, edge: grow(m.edge, zeros, 0), fresh: grow(m.fresh, freshV, 0.2), facet: grow(m.facet, zeros, 0), hollow: grow(m.hollow, zeros, 0),
+    clast, base: { vertices: m.count, triangles: m.index.length / 3 },
+  };
 }
 
 /**
@@ -1200,6 +1299,11 @@ export function paintBoulder(
     let h = bh + form.facet[i] * 0.008, s = bs * (1 - fresh * 0.5) * (1 - hollow * (chalk ? 0.85 : 0.3));
     let lt = clamp(l, 0.15, chalk ? 0.76 : bl > 0.4 ? 0.82 : 0.5);
     if (tone) { const t = tone(h, s, lt); h = t[0]; s = t[1]; lt = clamp(t[2], 0, 1); }
+    // (rock round 2) a cobble its own pale quartzite — white, grey or rose by its roll — not the matrix's tone
+    const cobble = form.clast ? form.clast[i] : 0;
+    if (cobble > 0) {
+      h = 0.03 + 0.07 * cobble; s = 0.04 + 0.14 * ((cobble * 7.13) % 1); lt = 0.5 + 0.2 * ((cobble * 3.71) % 1) + up * 0.05;
+    }
     _soil.setHSL(h, s, clamp(lt * (0.86 + up * (chalk ? 0.1 : 0.22)), 0, 1), THREE.SRGBColorSpace);
     col[i * 3] = _soil.r; col[i * 3 + 1] = _soil.g; col[i * 3 + 2] = _soil.b;
   }
