@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES, RELAY_TOWER_AXIS } from './maps/structureKit.ts';
 import { makeLighthouse } from './maps/railKit.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture,
   setWorldNightFixtureActive, WORLD_FIXTURE_ACTIVE_ATTRIBUTE } from './worldNightFixtureInstances.ts';
@@ -64,7 +64,8 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
     if (id === 'relaystation' && mode === 'build') {
       const position = geometry.getAttribute('position');
       for (let i = 0; i < mask.count; i++) if (mask.getX(i) === 2) {
-        assert(position.getY(i) > 12.7 && Math.hypot(position.getX(i), position.getZ(i)) < .281,
+        // (round 6, the buildings lane: the tower stands beside the hut, its beacon on the tower's axis)
+        assert(position.getY(i) > 12.7 && Math.hypot(position.getX(i) - RELAY_TOWER_AXIS[0], position.getZ(i) - RELAY_TOWER_AXIS[1]) < .281,
           'only the original relay tip bulb, not antenna legs or cooling louvers');
       }
     }

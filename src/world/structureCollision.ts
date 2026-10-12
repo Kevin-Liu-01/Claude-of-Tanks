@@ -1106,16 +1106,23 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
 /**
  * A merged geometry whose surface dressing is flagged per vertex (`userData.noCollisionVertices`: the map vehicles'
  * seams, handles, trim and mirrors, maps/vehicleMesh.ts) seen without the triangles that lie wholly on flagged vertices,
- * as a separate noCollision geometry's would be; any other geometry as it is.
+ * as a separate noCollision geometry's would be; any other geometry as it is. (2026-10-11, the buildings lane) A
+ * non-indexed geometry's triangles are read as they stream, three vertices each: a merged light kit (structureKit.ts) is
+ * non-indexed, and the relay station flags its tower's lattice above the foot, its head and dish and its ice bridge.
  */
 function withoutDressing(geometry: BufferGeometry): BufferGeometry {
   const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  if (!flags) return geometry;
   const index = geometry.getIndex();
-  if (!flags || !index) return geometry;
   const kept: number[] = [];
-  for (let t = 0; t + 2 < index.count; t += 3) {
-    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
-    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  if (index) {
+    for (let t = 0; t + 2 < index.count; t += 3) {
+      const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+      if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+    }
+  } else {
+    const count = geometry.getAttribute('position')?.count ?? 0;
+    for (let t = 0; t + 2 < count; t += 3) if (!(flags[t] && flags[t + 1] && flags[t + 2])) kept.push(t, t + 1, t + 2);
   }
   const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
   return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;

@@ -87,6 +87,10 @@ interface LatticeMastOptions {
   height: number;
   /** the face width of the triangular section (m) */
   face: number;
+  /** (round 6) a self-supporting tower's face width at its head: the legs taper straight from `face` at the base */
+  topFace?: number;
+  /** (round 6) each leg on its own base plate (the caller's footing under it), in place of the one plate under all three */
+  footed?: boolean;
   /** section length between flanged joints (m) */
   section?: number;
   legRadius?: number;
@@ -127,18 +131,31 @@ export function buildLatticeMast(options: LatticeMastOptions, emit: MastEmit): L
   const sectionLength = options.section ?? 2.2;
   const rLeg = options.legRadius ?? 0.034, rBrace = options.braceRadius ?? 0.016, rGirt = rBrace * 1.15;
   const yaw = options.yaw ?? 0;
-  const R = face / Math.sqrt(3);
+  const R = face / Math.sqrt(3), RTop = (options.topFace ?? face) / Math.sqrt(3);
   const legAngle = (i: number) => yaw + Math.PI / 2 + (i * 2 * Math.PI) / 3;
-  const legAt = (i: number, y: number): Vec3 => [cx + Math.cos(legAngle(i)) * R, y, cz + Math.sin(legAngle(i)) * R];
   const plate = 0.03, foot = baseY + plate, top = foot + height;
+  // (a tapered tower's legs run straight from the base's radius to the head's; an untapered mast's stay at R)
+  const radiusAt = (y: number) => (RTop === R ? R : R + (RTop - R) * Math.max(0, Math.min(1, (y - foot) / height)));
+  const legAt = (i: number, y: number): Vec3 => [cx + Math.cos(legAngle(i)) * radiusAt(y), y, cz + Math.sin(legAngle(i)) * radiusAt(y)];
   let members = 0;
-  // the base plate on its support, a bolt at each leg
-  const basePlate = new THREE.CylinderGeometry(R * 1.55, R * 1.55, plate, 3, 1);
-  basePlate.rotateY(yaw);
-  emit(basePlate.translate(cx, baseY + plate / 2, cz), c.head, 'mast-base');
-  for (let i = 0; i < 3; i++) {
-    const [lx, , lz] = legAt(i, 0);
-    emit(new THREE.CylinderGeometry(rLeg * 1.6, rLeg * 1.9, 0.07, 6, 1).translate(lx, foot + 0.035, lz), c.joint, 'mast-base');
+  if (options.footed) {
+    // each leg's square base plate on its footing, the leg's shoe on it
+    for (let i = 0; i < 3; i++) {
+      const [lx, , lz] = legAt(i, foot);
+      const shoe = new THREE.BoxGeometry(0.3, plate, 0.3);
+      shoe.rotateY(-legAngle(i));
+      emit(shoe.translate(lx, baseY + plate / 2, lz), c.head, 'mast-base');
+      emit(new THREE.CylinderGeometry(rLeg * 1.6, rLeg * 1.9, 0.07, 6, 1).translate(lx, foot + 0.035, lz), c.joint, 'mast-base');
+    }
+  } else {
+    // the base plate on its support, a bolt at each leg
+    const basePlate = new THREE.CylinderGeometry(R * 1.55, R * 1.55, plate, 3, 1);
+    basePlate.rotateY(yaw);
+    emit(basePlate.translate(cx, baseY + plate / 2, cz), c.head, 'mast-base');
+    for (let i = 0; i < 3; i++) {
+      const [lx, , lz] = legAt(i, 0);
+      emit(new THREE.CylinderGeometry(rLeg * 1.6, rLeg * 1.9, 0.07, 6, 1).translate(lx, foot + 0.035, lz), c.joint, 'mast-base');
+    }
   }
   // the sections: legs, the flange collars at each joint, the girts at both ends, the zig-zag diagonals between
   const sections = Math.max(1, Math.ceil(height / sectionLength - 1e-6));
@@ -147,11 +164,12 @@ export function buildLatticeMast(options: LatticeMastOptions, emit: MastEmit): L
     for (let i = 0; i < 3; i++) { emit(strut(legAt(i, y0), legAt(i, y1), rLeg, 6), c.leg, piece); members++; }
     if (s < sections - 1) {
       for (let i = 0; i < 3; i++) {
-        const [lx, , lz] = legAt(i, 0);
+        const [lx, , lz] = legAt(i, y1);
         emit(new THREE.CylinderGeometry(rLeg * 2.0, rLeg * 2.0, 0.07, 6, 1).translate(lx, y1, lz), c.joint, piece);
       }
     }
-    const panels = Math.max(2, Math.round((y1 - y0) / face));
+    // (a tapered tower's panels by its face at the section's middle: the bracing keeps its angle as the legs close in)
+    const panels = Math.max(2, Math.round((y1 - y0) / (RTop === R ? face : radiusAt((y0 + y1) / 2) * Math.sqrt(3))));
     const ph = (y1 - y0) / panels;
     for (let i = 0; i < 3; i++) {
       const j = (i + 1) % 3;
@@ -168,7 +186,7 @@ export function buildLatticeMast(options: LatticeMastOptions, emit: MastEmit): L
     }
   }
   // the head plate over the legs, the pole standing in it, the beacon on the pole
-  const headPlate = new THREE.CylinderGeometry(R * 1.35, R * 1.35, 0.04, 3, 1);
+  const headPlate = new THREE.CylinderGeometry(RTop * 1.35, RTop * 1.35, 0.04, 3, 1);
   headPlate.rotateY(yaw);
   emit(headPlate.translate(cx, top + 0.02, cz), c.head, 'mast-head');
   const poleLength = options.pole ?? 1.2, rPole = Math.max(0.035, rLeg * 1.2);
