@@ -190,7 +190,11 @@ function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void
     for(const [za,zb,inner,outerA,outerB] of covers) {
       // A continuous finite cover follows each underlying planar facet,
       // including its ridge; a four-corner bilinear cover could float over it.
-      P.addExternalArmor('turret',sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB));
+      // round 4 (the critics: "a translucent, glass-like sheet with bolt heads"): the cover's camouflage is phased off
+      // the cheek's beneath it, so it reads as a separate bolted plate rather than glass over the same pattern
+      const cover=sabraCheekCover(frontShell,side,za-pz,zb-pz,inner,outerA,outerB);
+      cover.userData.camoUvOffset=[.37+.11*side,.23+.17*za];
+      P.addExternalArmor('turret',cover);
     }
     // 2026-10-10 (fleet-weapons lane, round 3; wave 348b's critics: "floating hex bolts" beside the cupola gun): each
     // 13 mm bolt head is seated 2 mm into the plate it fastens, the 12 mm cover where it lies on one and the cheek
