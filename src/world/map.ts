@@ -446,6 +446,10 @@ function bindRockBeds(terrain: TerrainRoot, propsGroup: THREE.Group): void {
     mesh.name = 'rock-beds';
     mesh.castShadow = false;
     mesh.receiveShadow = true;
+    // (the destructible-kits lane, 2026-10-11; the fort cost series fcw: +0.8-1 ms GPU at the pillbox views) a cell
+    // holding a pillbox's bank draws before the terrain: the bank stands over the ground, so the depth test throws out
+    // the ground's fragments under it instead of shading them twice in the dearest shader there is
+    if (geometry.userData.fortBank) mesh.renderOrder = -1;
     propsGroup.add(mesh);
   }
 }

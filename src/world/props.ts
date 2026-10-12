@@ -8328,7 +8328,9 @@ ${snowCap ? `
       for (const f of footing) {
         const ox = f.nx * c + f.nz * sn, oz = -f.nx * sn + f.nz * c;
         const crest = toWorld(f.rows[0]);
-        const ring: Array<[number, number, number]> = [[crest[0], seat.y - 0.6, crest[2]]];
+        // (the inner face a lip under the crest, not down below grade: the wall hides it, and the bank draws before the
+        // wall now — every fragment of it behind the wall would be the ground's dearest shader spent for nothing)
+        const ring: Array<[number, number, number]> = [[crest[0], crest[1] - 0.35, crest[2]]];
         for (let r = 0; r < BANK_ROWS; r++) {
           const q = toWorld(f.rows[r]);
           ring.push([q[0], Math.max(q[1] + 0.02, meshAt(q[0], q[2]) + 0.02), q[2]]);
@@ -8381,8 +8383,8 @@ ${snowCap ? `
       const host = at >= 0 ? beds[at] : null;
       const merged = host && host.index && host.getAttribute('normal') && host.getAttribute('fold') && Object.keys(host.attributes).length === 3
         ? mergeGeometries([host, g], false) : null;
-      if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); beds[at] = merged; }
-      else beds.push(g);
+      if (host && merged) { host.dispose(); g.dispose(); merged.computeBoundingSphere(); merged.userData.fortBank = true; beds[at] = merged; }
+      else { g.userData.fortBank = true; beds.push(g); }
     }
     group.userData.rockBeds = beds;
   }
