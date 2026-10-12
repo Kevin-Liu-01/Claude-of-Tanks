@@ -172,6 +172,9 @@ interface DressingContext {
   animated?: AnimatedDressing[];
   /** The map-vehicles lane (P5): the map's authored vehicle set pieces (vehicleSetPieces.ts). */
   vehicleSetPieces?: readonly VehicleSetPiece[];
+  /** 2026-10-12 (item 7): an intact set piece handed to the props as a destructible (setPieceDestructibles.ts) instead of
+   *  baked scenery; omitted (a sandboxed dressing), every piece is baked as before. */
+  setPieceDestructible?: (piece: VehicleSetPiece) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -179,7 +182,7 @@ interface DressingContext {
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'setPieceDestructible'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1144,12 +1147,12 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees,
+  obstacles, colliders, animated, vehicleSetPieces, trees, setPieceDestructible,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees) };
+    trunks: trunksOf(trees), setPieceDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1213,6 +1216,8 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
     return made;
   };
   for (const piece of pieces) {
+    // (2026-10-12, item 7) an intact piece is a destructible of the props: it breaks under fire and under a hull
+    if (!piece.wrecked && ctx.setPieceDestructible) { ctx.setPieceDestructible(piece); continue; }
     const solid = solidOf(piece.kind, !!piece.wrecked), geo = solid.geo;
     const size = SET_PIECE_SIZE[piece.kind], yaw = (piece.yawDeg * Math.PI) / 180;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), sx = fz, sz = -fx;

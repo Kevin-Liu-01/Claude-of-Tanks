@@ -239,9 +239,26 @@ export interface CollisionRecord {
   openings?: StructureOpenings | null;
 }
 
+/** (2026-10-12, item 7) the heavy vehicle set pieces (maps/setPieceDestructibles.ts SET_PIECE_MASS dense): real cover that
+ *  stops a round, and the round that stops on one breaks it (breaksOnShellStop). A receipt keeps this list and the mass
+ *  table together (setPieceDestructibles.selftest). */
+export const DENSE_SET_PIECE_KINDS: ReadonlySet<string> = new Set([
+  'setpiece_stz3', 'setpiece_bv206', 'setpiece_snocat', 'setpiece_an26', 'setpiece_d8h', 'setpiece_k2tram', 'setpiece_haulpak',
+]);
+
 function isDenseCrushableCover(kind: string | undefined): boolean {
   return kind === 'wallstone' || kind === 'walladobe' ||
-    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock';
+    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
+    || (kind != null && DENSE_SET_PIECE_KINDS.has(kind));
+}
+
+/**
+ * (2026-10-12, item 7; the owner: construction vehicles "not breaking on impact or being fired") a round that stops on a
+ * heavy vehicle set piece breaks it: the round is spent in it (it stays real cover for the tank behind it), and the
+ * machine is wrecked by it. Both authorities break the record where the round stops.
+ */
+export function breaksOnShellStop(record: CollisionRecord | null | undefined): record is CollisionRecord {
+  return record?.crushable === true && !record.crushed && record.kind != null && DENSE_SET_PIECE_KINDS.has(record.kind);
 }
 
 /**

@@ -92,7 +92,7 @@ import type {
 import {
   pushHullFromHull, createHullFootprint, hullFootprint,
   hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, breaksOnShellStop,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -1959,6 +1959,8 @@ export function createAuthoritativeMatch({
       if (distance >= tankDistance) return null;
       // A drone is an airframe, not a slug: light cover that a shell punches through stops it (it detonates there).
       if (shell.spec.tracer === 'DRONE' || !shellPassesThroughCollisionRecord(worldHit.record)) {
+        // (2026-10-12, item 7) a round that stops on a heavy vehicle set piece wrecks it there (collision.ts)
+        if (breaksOnShellStop(worldHit.record)) destroyShellObstacle(shell, worldHit);
         worldHit.t = distance / segmentLength;
         return worldHit;
       }
