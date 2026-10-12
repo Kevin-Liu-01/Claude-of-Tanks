@@ -231,7 +231,9 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
     direction.x+=.85*Math.sin(age*1.7+phase)+.35*Math.sin(age*4.3+phase);
     direction.y+=.65*Math.sin(age*2.3+phase)+.25*Math.sin(age*5.7+phase);
     direction.z+=.7*Math.sin(age*1.9+phase)+.3*Math.sin(age*3.7+phase);
-    if(world)avoidDroneObstacles(world,entity.id,shell.pos,direction);
+    // Owner 2026-10-12: a human pilot flies wherever they steer, down to the ground (deploy 212). Only a bot's
+    // airframe takes the look-ahead avoidance; a human's contact is the shell sweep's alone.
+    if(world&&entity.bot)avoidDroneObstacles(world,entity.id,shell.pos,direction);
   }
   if(v.launching) shell.vel.copy(direction);
   else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));
