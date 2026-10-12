@@ -48,7 +48,7 @@ import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { breakShardsFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { breakShardsFx, landingSpillFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
@@ -1161,7 +1161,9 @@ function* createFxSteps(
       }
       return bodiesEnv;
     },
-    onLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); },
+    onLanding: (x, y, z, speed, mass, id) => {
+      if (blast) { const look = lookOf(id); pieceLandingFx(blast, x, y, z, speed, mass, look); landingSpillFx(blast, x, y, z, speed, mass, look); }
+    },
     onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
     hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
   }) : null;
@@ -1169,7 +1171,9 @@ function* createFxSteps(
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
       materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15, bodies,
       pool: debrisPool,
-      onPieceLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); } })
+      onPieceLanding: (x, y, z, speed, mass, id) => {
+        if (blast) { const look = lookOf(id); pieceLandingFx(blast, x, y, z, speed, mass, look); landingSpillFx(blast, x, y, z, speed, mass, look); }
+      } })
     : null;
   stagesRef = stages;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */

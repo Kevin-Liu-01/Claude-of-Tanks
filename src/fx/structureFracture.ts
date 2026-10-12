@@ -1085,33 +1085,46 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const _atP = new THREE.Vector3(), _atQ = new THREE.Quaternion(), _atS = new THREE.Vector3(), _atM = new THREE.Matrix4();
   const _crackVel = new Float64Array(6);
   /**
-   * A chunk that landed hard breaks along its courses into clumps of three or four cells, each a body where its cells lie
+   * A chunk that landed hard breaks across its courses into clumps of one to five cells, each a body where its cells lie
    * in the chunk now, with the chunk's motion and a tumble of its own; the chunk leaves the pool. Skipped without room.
    */
   function crackBody(b: LiveBody): void {
     const live = lives.get(b.structureIdx);
     if (!live || !bodies.has(b.handle)) return;
-    // its cells by face and row, along the row: runs of two or three (a single left over joins the last)
-    const byRow = new Map<string, number[]>();
-    for (let i = 0; i < b.cells.length; i += 2) {
-      const f = b.cells[i], c = b.cells[i + 1], g = live.wall.faces[f];
+    // (wave 407: "the masonry breaks into clean, saturated single bricks or uniform cubes, sometimes peeling off in evenly
+    // spaced rows") its cells into clumps of one to five grown from seeds across its courses (edge to edge along a row, and
+    // up or down a course where they overlap), so what lands is a mix of blocks, short runs and stepped lumps, never rows
+    const n = b.cells.length / 2;
+    const rowOf = new Int32Array(n), uOf = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      const f = b.cells[2 * i], c = b.cells[2 * i + 1], g = live.wall.faces[f];
       let r = 0;
       while (r + 1 < g.rowStart.length && g.rowStart[r + 1] <= c) r++;
-      const key = `${f}:${r}`;
-      const list = byRow.get(key) ?? [];
-      list.push(f, c);
-      byRow.set(key, list);
+      rowOf[i] = r; uOf[2 * i] = g.cellU[2 * c]; uOf[2 * i + 1] = g.cellU[2 * c + 1];
     }
+    const touches = (i: number, j: number): boolean => b.cells[2 * i] === b.cells[2 * j] && (rowOf[i] === rowOf[j]
+      ? Math.abs(uOf[2 * i + 1] - uOf[2 * j]) < 1e-3 || Math.abs(uOf[2 * j + 1] - uOf[2 * i]) < 1e-3
+      : Math.abs(rowOf[i] - rowOf[j]) === 1 && Math.min(uOf[2 * i + 1], uOf[2 * j + 1]) - Math.max(uOf[2 * i], uOf[2 * j]) > 0.05);
+    const hashOf = (i: number, salt: number): number => (Math.imul(b.handle + 1, 0x9e3779b1) ^ Math.imul(i + salt, 0x85ebca6b)) >>> 0;
+    const order = Array.from({ length: n }, (_, i) => i).sort((p, q) => hashOf(p, 3) - hashOf(q, 3) || p - q);
+    const owner = new Int32Array(n).fill(-1);
     const clumps: number[][] = [];
-    let k = 0;
-    for (const key of [...byRow.keys()].sort()) {
-      const run = byRow.get(key)!;
-      for (let i = 0; i < run.length;) {
-        const take = (3 + (Math.imul(b.handle + 1, 0x9e3779b1) + k++) % 2) * 2;
-        const clump = run.slice(i, i + take);
-        i += take;
-        if (clump.length === 2 && clumps.length && i >= run.length) clumps[clumps.length - 1].push(...clump); else clumps.push(clump);
+    for (const seed of order) {
+      if (owner[seed] >= 0) continue;
+      const u = hashOf(clumps.length, 17) % 100;
+      const want = u < 12 ? 1 : u < 37 ? 2 : u < 67 ? 3 : u < 87 ? 4 : 5;
+      const members = [seed];
+      owner[seed] = clumps.length;
+      const off = hashOf(clumps.length, 29) % n;
+      for (let m = 0; m < members.length && members.length < want; m++) {
+        for (let t = 0; t < n && members.length < want; t++) {
+          const j = (t + off) % n;
+          if (owner[j] < 0 && touches(members[m], j)) { owner[j] = clumps.length; members.push(j); }
+        }
       }
+      const clump: number[] = [];
+      for (const i of members) clump.push(b.cells[2 * i], b.cells[2 * i + 1]);
+      clumps.push(clump);
     }
     if (clumps.length < 2) return;
     const capacity = (o.pool.world as { capacity?: number }).capacity ?? 128;

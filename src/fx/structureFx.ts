@@ -224,11 +224,11 @@ function hot(C: BlastContext, x: number, y: number, z: number, vx: number, vy: n
 }
 
 function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: number, vx: number, vy: number, vz: number,
-  scale: number, life: number, bo: number): void {
+  scale: number, life: number, bo: number, shape: ChunkShape | null = null, grey = 0.45): void {
   const k = C.k;
   const R = C.rand;
   const s = pickRubble(look, R());
-  k.shape = shapeFor(s.material);
+  k.shape = shape ?? shapeFor(s.material);
   k.x = x; k.y = y; k.z = z; k.birthOffset = bo; k.vx = vx; k.vy = vy; k.vz = vz; k.life = life;
   k.ax = R() - 0.5; k.ay = R() - 0.5; k.az = R() - 0.5; k.spin = 4 + R() * 10;
   k.scale = scale; k.groundY = C.groundY(x, z); k.drag = 0.2;
@@ -240,7 +240,7 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
   // (the decisive wave's third head: orange specks still lit on the ruin at 11 s) nearly half its colour greyed, and once
   // landed two thirds darker
   const lum0 = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
-  k.r = k.r * 0.55 + lum0 * 0.45; k.g = k.g * 0.55 + lum0 * 0.45; k.b = k.b * 0.55 + lum0 * 0.45;
+  k.r = k.r * (1 - grey) + lum0 * grey; k.g = k.g * (1 - grey) + lum0 * grey; k.b = k.b * (1 - grey) + lum0 * grey;
   k.heat = -0.65;
   // (the battle strips: a stack's burst strewed the yard with white confetti) a sunlit fleck of plaster or tile reads as
   // paper: no thrown piece brighter than weathered render
@@ -536,6 +536,30 @@ export function pieceLandingFx(C: BlastContext, x: number, y: number, z: number,
     const life = 9 + R() * 3;
     puff(C, x + (R() - 0.5), y + 0.8, z + (R() - 0.5), (R() - 0.5) * 0.8, 0.6 + R() * 0.4, (R() - 0.5) * 0.8,
       1.3, 0.4, 1.0, life, 1.2 * k * dk, (3.5 + 3 * k) * dk, dust, dust, 0.3, life, 2, 0.25 + R() * 0.3, 1.1);
+  }
+}
+
+/**
+ * (wave 407: "the masonry breaks into clean, saturated single bricks or uniform cubes ... with no half-bricks, mortar
+ * clumps, fines or settled dust") what a heavy landing knocks off a falling piece: grit, fines and mortar clumps at its
+ * foot, and a few broken bits of its material, thrown low and out, sized by the landing's energy. Small and greyed (the
+ * clods' pool is the deep one: the heap's fines never recycle its bricks), never a lit dot.
+ */
+export function landingSpillFx(C: BlastContext, x: number, y: number, z: number, speedMps: number, massKg: number,
+  look: StructureLook | null): void {
+  const energyKj = 0.5 * massKg * speedMps * speedMps / 1000;
+  if (!(energyKj > 2)) return;
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  const k = Math.max(0, Math.min(1, Math.log10(energyKj / 2) / 2));
+  const n = Math.round(2 + 9 * k);
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, v = 0.6 + R() * (1.2 + 1.8 * k);
+    const fines = R() < 0.72;
+    piece(C, L, x + (R() - 0.5) * 0.8, y + 0.15 + R() * 0.2, z + (R() - 0.5) * 0.8,
+      Math.cos(a) * v, 0.5 + R() * 1.4 * (0.5 + k), Math.sin(a) * v,
+      fines ? 0.03 + Math.pow(R(), 1.6) * 0.07 : 0.06 + Math.pow(R(), 1.8) * 0.12, 16 + R() * 6, R() * 0.04,
+      fines ? 'clod' : null, fines ? 0.75 : 0.5);
   }
 }
 
