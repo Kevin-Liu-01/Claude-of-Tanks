@@ -16,19 +16,14 @@
 // rock lies inside the hull the dedicated shards already carry and no record moves. Renderer-free apart from the
 // texture helpers; Node-runnable.
 import * as THREE from 'three';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
-import { convexHull2 } from './collision.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { settledPaint, surfacePaintKey } from './surfacePaintPrefetch.ts';
 
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
 /** The rock a battlefield's boulders are made of: what their forms and their detail tile draw. */
-export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk'
-  // (2026-10-10, the map-revival lane; gauntlet wave 346: "Owen conglomerate needs rounded quartzite pebbles and cobbles
-  // in a darker matrix", "lunar breccia": the clastic rocks, their clasts drawn by the material, ROCK_CLAST_GLSL)
-  | 'conglomerate' | 'breccia';
+export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
 
 export interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
@@ -53,9 +48,6 @@ export interface RockDressing {
   beds: readonly [number, number, number, number];
   /** The stone's fabric (b18): the cross-bedded laminae, the foliation's bands, the quartz veins, the sand's grain. */
   fabric: readonly [number, number, number, number];
-  /** The stone's second fabric (2026-10-10, wave 346): the conglomerate's rounded clasts, the breccia's angular ones,
-   * the slate's cleavage, the limestone's solution grooves and pits (ROCK_CLAST_GLSL). */
-  fabric2: readonly [number, number, number, number];
 }
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
@@ -74,8 +66,6 @@ interface RockClimate {
    * weathered lumps down to two fifths, up to two more fracture faces and every stone notched at its beds. Absent = 0
    * (every other map, draw for draw). */
   angular?: number;
-  /** (2026-10-10, wave 346) the map's own stone's base tone (sRGB HSL), under its rock tone law: else the lithology's. */
-  tone?: readonly [number, number, number];
 }
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
@@ -90,15 +80,9 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   mangrove: { moss: 0.85, dust: 0, lith: 'limestone', lichen: [0.19, PALE, ORANGE, 0.7] },
   delta: { moss: 0.7, dust: 0, lith: 'limestone', lichen: [0.17, PALE, GREY_GREEN, 0.6] },
   polders: { moss: 0.65, dust: 0, lith: 'granite', lichen: [0.22, GREY_GREEN, ORANGE, 0.6] },
-  // (2026-10-10, the map-revival lane; gauntlet wave 346, Orchard: "mid blue-grey ... granite set down on the turf
-  // rather than pale, karst-pitted Chouf limestone"): Mount Lebanon's Jurassic limestone, pale grey-cream, fluted and
-  // pitted (ROCK_CLAST_GLSL's karren), dark lichen streaks, less moss than a wet map (was granite, moss 0.7)
-  orchard: { moss: 0.4, dust: 0.08, lith: 'limestone', lichen: [0.22, PALE, BLACK, 0.55], tone: [0.11, 0.1, 0.52] },
+  orchard: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, PALE, 0.65] },
   longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.19, GREY_GREEN, PALE, 0.7] },
-  // (2026-10-10, wave 346, Reservoir: "a dark teal-green, near-rectangular box ... no cleavage planes"; "Eifel slate crops
-  // out as steeply dipping stacks of thin plates with ragged edges and grey-brown weathering"): the slate's cleavage
-  // steep (LITHOLOGY_CUTS: thin beds standing on edge, the form stepped at them), crisper arrises, a brown-grey stone
-  reservoir: { moss: 0.7, dust: 0, lith: 'slate', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.6], angular: 0.45, tone: [0.08, 0.085, 0.3] },
+  reservoir: { moss: 0.7, dust: 0, lith: 'slate', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.6] },
   saltwind: { moss: 0.55, dust: 0, lith: 'limestone', lichen: [0.26, ORANGE, PALE, 0.5] },
   frontier: { moss: 0.5, dust: 0, lith: 'sandstone', lichen: [0.15, ORANGE, GREY_GREEN, 0.55], varnish: 0.07 },
   alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55] },
@@ -113,20 +97,11 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   airfield: { moss: 0.2, dust: 0.4, lith: 'granite', lichen: [0.12, GREY_GREEN, ORANGE, 0.6], varnish: 0.05 },
   desert: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.33 },
   badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3, angular: 1 },
-  // (2026-10-10, wave 346, Copper Mesa: "lilac-purple cuboids with flat, untextured faces and bevelled box edges";
-  // "Owen conglomerate is a dull pink-purple-grey with rounded quartzite clasts in a darker matrix", "rough fracture
-  // faces"): the Owen conglomerate — its clasts the material's, its breaks rougher, a dull mauve-grey matrix (was
-  // sandstone, varnish 0.3, dust 0.75)
-  copper_mesa: { moss: 0, dust: 0.55, lith: 'conglomerate', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.12, angular: 0.35, tone: [0.96, 0.1, 0.4] },
+  copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.3 },
   titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27 },
   oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.24 },
-  // (2026-10-10, wave 346, Olympus Basin: "flat-shaded maroon slabs ... like a broken brick pile"; "dark grey basalt
-  // dusted tan": the map's rock tone law, mars.ts) its basalt's breaks crisper
-  mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1], angular: 0.3 },
-  // (2026-10-10, wave 346, Earthrise: "smooth, near-identical egg-shaped domes ... rather than lunar breccia"; "rounded-
-  // angular fractured masses, dust-coated and half-sunk"): the highland breccia, its angular clasts the material's, its
-  // forms fractured blocks (was basalt)
-  moon: { moss: 0, dust: 0.7, lith: 'breccia', lichen: [0, PALE, PALE, 1], angular: 0.55 },
+  mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
+  moon: { moss: 0, dust: 0.7, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
   cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.19, ORANGE, PALE, 0.5] },
   winter: { moss: 0, dust: 0, lith: 'granite', lichen: [0.16, BLACK, YELLOW_GREEN, 0.6] },
   whiteout: { moss: 0, dust: 0, lith: 'granite', lichen: [0.12, BLACK, YELLOW_GREEN, 0.7] },
@@ -152,10 +127,6 @@ const LITHOLOGY_PHOTO: Readonly<Record<BoulderLithology, readonly [number, numbe
   // (b18; wave 121: Verdant's "smooth grey granite texture reads as neither chalk nor any local field stone": the
   // photographed stone's crystalline mottle softer on the chalk, its pores and grain its own — LITHOLOGY_FABRIC)
   chalk: [0.55, 0.1, 0.7],
-  // (2026-10-10) the clastic rocks: the photographed stone under the clasts their fabric draws — the conglomerate's matrix
-  // a soft grit (its own colour a little), the breccia's a fine dust-grey (its colour hardly)
-  conglomerate: [0.8, 0.3, 0.75],
-  breccia: [1.0, 0.12, 0.9],
 });
 
 /**
@@ -170,8 +141,6 @@ const LITHOLOGY_SURFACE: Readonly<Record<BoulderLithology, readonly [number, num
   limestone: [0, 0.35, 0.5],
   slate: [0, 0, 0],
   chalk: [1, 0.45, 1],
-  conglomerate: [0, 0, 0],
-  breccia: [0, 0, 0],
 });
 
 /**
@@ -190,30 +159,6 @@ const LITHOLOGY_FABRIC: Readonly<Record<BoulderLithology, readonly [number, numb
   limestone: [0, 0, 0, 0],
   slate: [0, 0, 0, 0],
   chalk: [0, 0, 0, 0.6],
-  // (the matrix's grit between the clasts)
-  conglomerate: [0, 0, 0, 0.7],
-  breccia: [0, 0, 0, 0.45],
-});
-
-/**
- * The stone's second fabric (2026-10-10, the map-revival lane; gauntlet wave 346 on the rock cover: "Owen conglomerate
- * needs rounded quartzite pebbles and cobbles in a darker matrix"; lunar "breccia"; Eifel slate's "cleavage planes";
- * Chouf limestone "fluted and pitted", "karren grooves"), drawn by the material in each stone's own frame
- * (ROCK_CLAST_GLSL): the conglomerate's rounded clasts — pebbles and cobbles of pale quartzite, each its own tone, in a
- * darker matrix, standing a little proud; the breccia's angular clasts, broken fragments with dark seams between; the
- * slate's cleavage — close fine lines across the stone on its steep cleavage plane; the limestone's karren — the rain's
- * grooves down its steep faces and solution pits on its tops. The rest draw none.
- */
-const LITHOLOGY_FABRIC2: Readonly<Record<BoulderLithology, readonly [number, number, number, number]>> = Object.freeze({
-  granite: [0, 0, 0, 0],
-  gneiss: [0, 0, 0, 0],
-  basalt: [0, 0, 0, 0],
-  sandstone: [0, 0, 0, 0],
-  limestone: [0, 0, 0, 1],
-  slate: [0, 0, 1, 0],
-  chalk: [0, 0, 0, 0],
-  conglomerate: [1, 0, 0, 0],
-  breccia: [0, 1, 0, 0],
 });
 
 /**
@@ -223,13 +168,11 @@ const LITHOLOGY_FABRIC2: Readonly<Record<BoulderLithology, readonly [number, num
  */
 function rockBedsFor(climate: RockClimate): [number, number, number, number] {
   const bedded = LITHOLOGY_CUTS[climate.lith].bed !== null, sandstone = climate.lith === 'sandstone';
-  // (2026-10-10) the slate's cleavage partings the plates' own: strong and a little deeper, the plates' tones close
-  const slate = climate.lith === 'slate';
   return [
-    bedded ? (sandstone ? 1 : slate ? 0.9 : 0.75) : 0,
-    bedded ? (sandstone ? 1 : slate ? 0.3 : 0.5) : 0,
+    bedded ? (sandstone ? 1 : 0.75) : 0,
+    bedded ? (sandstone ? 1 : 0.5) : 0,
     sandstone ? Math.min(1, climate.dust * 1.25 + (climate.varnish ?? 0)) : 0,
-    slate ? 0.03 : 0.02,
+    0.02,
   ];
 }
 
@@ -272,13 +215,7 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
     surface: LITHOLOGY_SURFACE[climate.lith],
     beds: rockBedsFor(climate),
     fabric: LITHOLOGY_FABRIC[climate.lith],
-    fabric2: LITHOLOGY_FABRIC2[climate.lith],
   };
-}
-
-/** (2026-10-10) The map's own stone's base tone (sRGB HSL) its boulders are painted from, or null: the lithology's. */
-export function rockBaseToneFor(mapId: string): readonly [number, number, number] | null {
-  return (ROCK_CLIMATE[mapId] ?? DEFAULT_CLIMATE).tone ?? null;
 }
 
 // ---------------------------------------------------------------------------------------------- geometry
@@ -330,34 +267,14 @@ const KIND_SHAPES: Readonly<Record<BoulderKindName, BoulderKindShape>> = Object.
  */
 const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   fractures: readonly [number, number]; notch: number; notches: number; bed: readonly [number, number] | null;
-  /** (2026-10-10) the beds stand steep — a slate's cleavage, 60 to 80 degrees off the level — not laid flat. */
-  steep?: boolean;
-  /**
-   * (2026-10-11, the rock round's final: "Reservoir slate needs real plate geometry") the stone built as a stack of
-   * plates on its cleavage: each plate (`beds` partings thick) stands out or back of the mass by up to `reach` of the
-   * radius on its own hash, the step to the next over `step` of a plate, a shallow groove (`groove` of the radius) on
-   * the parting between them — ragged plate ends along the flanks and a crest of plates at their own heights, the
-   * cleavage faces themselves left plane. No draw: the hash of the plate's index and the bedding's salt.
-   */
-  plates?: { beds: number; reach: number; step: number; groove: number };
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
   basalt: { fractures: [3, 3], notch: 0.3, notches: 1, bed: null },
   sandstone: { fractures: [1, 2], notch: 0.9, notches: 2, bed: [0.15, 0.24] },
   limestone: { fractures: [2, 3], notch: 0.65, notches: 2, bed: [0.18, 0.28] },
-  // (2026-10-10, wave 346: "steeply dipping stacks of thin plates with ragged edges") the slate's cleavage: thin plates
-  // standing steep, the form stepped down at three of them (was no bedding, one notch at 0.45)
-  // (2026-10-11) built as plates: a plate four partings thick, its end up to 8 per cent of the radius out or in, ramped
-  // over three fifths of the plate (the 9-cell grid of the form's triangle budget draws a plate in two or three rows: a
-  // sharper step folded its triangles past a right angle of normal)
-  slate: { fractures: [2, 3], notch: 0.9, notches: 3, bed: [0.075, 0.12], steep: true,
-    plates: { beds: 4, reach: 0.08, step: 0.6, groove: 0.01 } },
+  slate: { fractures: [2, 3], notch: 0.45, notches: 1, bed: null },
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
-  // (2026-10-10) the conglomerate's thick beds (its clasts the material's) and its rough breaks; the breccia broken all
-  // round, no bedding
-  conglomerate: { fractures: [2, 3], notch: 0.6, notches: 1, bed: [0.3, 0.46] },
-  breccia: { fractures: [3, 4], notch: 0.5, notches: 1, bed: null },
 });
 
 /** A fresh fracture's arris: the smooth maximum's width between the weathered mass and the break (unit space). */
@@ -390,15 +307,9 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   basalt: { kinds: ['block', 'rounded', 'block'], soft: 0.85 },
   sandstone: { kinds: ['block', 'slab', 'block'], soft: 0.9 },
   limestone: { kinds: ['block', 'slab', 'rounded'], soft: 1 },
-  // (2026-10-10: the plates stand on edge — blocks stepped at their cleavage, one slab; was slab, block, slab)
-  slate: { kinds: ['block', 'slab', 'block'], soft: 0.6 },
+  slate: { kinds: ['slab', 'block', 'slab'], soft: 0.7 },
   // (b12: the marshmallow — two of three rounded, the softest weather — gives way to fractured blocks and a slab)
   chalk: { kinds: ['block', 'rounded', 'slab'], soft: 0.95 },
-  // (2026-10-10, wave 346: "no egg domes") the clastic rocks break as blocks and slabs, never a corestone
-  conglomerate: { kinds: ['block', 'slab', 'block'], soft: 0.8 },
-  // (2026-10-11, gauntlet wave 380 on the Moon: "rims read as snow drifts capped by card-like slabs") three blocks, no
-  // slab — the thin slab stood on the crater rims as a card
-  breccia: { kinds: ['block', 'block', 'block'], soft: 0.7 },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
@@ -503,12 +414,7 @@ function boulderCuts(kind: BoulderKindName, lithology: BoulderLithology, variant
   }
   let bedding: BoulderCuts['bedding'] = null;
   if (law.bed) {
-    // (a steep cleavage: its normal 10 to 30 degrees off the level at its own azimuth — the plates dip 60 to 80 degrees;
-    // the same two draws as a laid bed's tilt)
-    const a = jitter(0.07), b = jitter(0.07);
-    const az = (a / 0.07 + 1) * Math.PI, e = 0.17 + 0.175 * (b / 0.07 + 1);
-    const n = law.steep ? [Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az)] : [a, 1, b];
-    const l = Math.hypot(n[0], n[1], n[2]);
+    const n = [jitter(0.07), 1, jitter(0.07)], l = Math.hypot(n[0], n[1], n[2]);
     bedding = { n: [n[0] / l, n[1] / l, n[2] / l], thickness: range(law.bed[0], law.bed[1]), salt: variant * 37 + Math.floor(rng() * 512) };
   }
   const notches: Array<readonly [JointPlane, JointPlane]> = [];
@@ -717,69 +623,8 @@ interface BoulderForm {
   hollow: Float32Array;
 }
 
-/**
- * A plated stone's relief at a point of its mass (unit space): the factor its radius takes there (LITHOLOGY_CUTS
- * plates) — the plate's own reach, ramped from the plate before it over the law's step, less the parting's groove.
- */
-function plateRelief(law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology]['plates']>,
-  bedding: NonNullable<BoulderCuts['bedding']>, x: number, y: number, z: number): number {
-  const s = (bedding.n[0] * x + bedding.n[1] * y + bedding.n[2] * z) / (bedding.thickness * law.beds) + bedding.salt * 0.37;
-  const k = Math.floor(s), f = s - k;
-  const q = Math.min(1, f / law.step), ramp = q * q * (3 - 2 * q);
-  const before = bedHash(k - 1, bedding.salt + 101), own = bedHash(k, bedding.salt + 101);
-  const reach = (before + (own - before) * ramp) * 2 - 1;
-  const g = Math.max(0, 1 - Math.min(f, 1 - f) / 0.12), groove = g * g * (3 - 2 * g);
-  return 1 + law.reach * reach - law.groove * groove;
-}
-
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
-
-/**
- * A rock variant's legacy form (moved here from props.ts buildRockVariants unchanged, the hitbox lane, 2026-10-11): the
- * noise-displaced icosahedron whose ground-plan hull is the placement laws' proxy (the road core, the talus, the
- * no-overlap law) and whose top the boulder form is fitted to.
- */
-export function legacyRockVariant(variant: number, noise: SimplexNoise): { hull: number[]; top: number } {
-  const g = mergeVertices(new THREE.IcosahedronGeometry(1, variant === 2 ? 3 : 2));
-  const p = g.attributes.position;
-  const v = new THREE.Vector3();
-  for (let i = 0; i < p.count; i++) {
-    v.set(p.getX(i), p.getY(i), p.getZ(i));
-    const ridge = 1 - Math.abs(noise.noise3d(v.x * 2.2 + variant * 31, v.y * 2.2 - 7, v.z * 2.2 + 13));
-    const crease = Math.pow(ridge, 5); // sharp valley lines
-    const f = 1
-      + noise.noise3d(v.x * 1.4 + variant * 9, v.y * 1.4, v.z * 1.4) * 0.30
-      + noise.noise3d(v.x * 3.1 - variant * 17, v.y * 3.1 + 40, v.z * 3.1) * 0.13
-      + noise.noise3d(v.x * 6.8 + 91, v.y * 6.8 - variant * 5, v.z * 6.8) * 0.05
-      - crease * 0.115; // carved fracture valleys
-    v.multiplyScalar(f);
-    v.y = Math.max(v.y, -0.55);
-    p.setXYZ(i, v.x, v.y * 0.82, v.z);
-  }
-  const projected: Array<[number, number]> = [];
-  let top = 0;
-  for (let i = 0; i < p.count; i++) { projected.push([p.getX(i), p.getZ(i)]); top = Math.max(top, p.getY(i)); }
-  g.dispose();
-  return { hull: convexHull2(projected), top };
-}
-
-/**
- * A rock variant's boulder forms from one constructor (the hitbox lane and the map-revival lane, 2026-10-11): the drawn
- * form at the tier's subdivision (6 on a desktop, 4 on a phone), the collision form at the desktop's on every tier, and
- * the desktop's far form at 4. They differ only in subdivision: the phone's collision form was built without the map's
- * angularity (since 3993e4fce), so a phone's Badlands stones were rounder than the host's, their records moved and 14
- * small rocks fell under the drive-over line. Each form draws its own fresh `stream()`, so no draw moves.
- */
-export function boulderVariantForms(
-  variant: number, noise: SimplexNoise, stream: () => () => number, hull: readonly number[], top: number,
-  lithology: BoulderLithology, angular: number, mobile: boolean,
-): { drawn: BoulderForm; collision: THREE.BufferGeometry; far: BoulderForm | null } {
-  const formOf = (subdiv: number): BoulderForm =>
-    buildBoulderForm(variant, noise, stream(), hull, subdiv, top, boulderKindFor(lithology, variant), lithology, angular);
-  const drawn = formOf(mobile ? 4 : 6);
-  return { drawn, collision: mobile ? formOf(6).geometry : drawn.geometry, far: mobile ? null : formOf(4) };
-}
 
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,
@@ -790,10 +635,7 @@ export function buildBoulderForm(
   const [sx, sy, sz] = shape.size;
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
-  const plateLaw = LITHOLOGY_CUTS[lithology].plates ?? null;
-  // (a plated stone's grid a cell finer on the desktop — 9 cells a face, the form's 900-triangle budget; a phone's 5 —
-  // so a plate takes two or three rows: the plates are its form, not a texture; the phone's far form rounds them)
-  const n = plateLaw ? (subdiv >= 6 ? 9 : 5) : subdiv >= 6 ? 8 : 5;
+  const n = subdiv >= 6 ? 8 : 5;
   // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
   const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
     * (1 - 0.66 * angular);
@@ -803,8 +645,7 @@ export function buildBoulderForm(
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
-  // (a plated stone's weather half as lumpy again: its plates are its relief)
-  const lumpK = (1 - 0.6 * angular) * (plateLaw ? 0.5 : 1), [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
+  const lumpK = 1 - 0.6 * angular, [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
   let lumpAt = 0;
@@ -817,10 +658,6 @@ export function buildBoulderForm(
     for (let i = planes.length; i < all.length; i++) breakShare += w[i] * all[i][4];
     const weather = 1 - 0.7 * Math.min(1, breakShare);
     let x = ux * t, y = uy * t, z = uz * t;
-    if (plateLaw && cuts.bedding) {
-      const m = plateRelief(plateLaw, cuts.bedding, x, y, z);
-      x *= m; y *= m; z *= m;
-    }
     lumpAt = (noise.noise3d(x * 1.15 + salt, y * 1.15, z * 1.15 - salt) * lumpA
       + noise.noise3d(x * 2.7 - salt, y * 2.7 + salt, z * 2.7) * lumpB) * weather;
     const f = 1 + lumpAt + noise.noise3d(x * 6.3 + salt * 0.5, y * 6.3 - salt, z * 6.3 + 7) * lumpC;
@@ -980,14 +817,10 @@ const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number
  * paler and greyer, the arrises a little paler (worn), the upward faces taking the map's cap tone harder, the hollows a
  * little darker — and the chalk greyer there, its only grey. Linear RGB in a 'color' attribute.
  */
-export function paintBoulder(
-  form: BoulderForm, tone: ToneFunction | null | undefined, lithology: BoulderLithology = 'granite',
-  base: readonly [number, number, number] | null = null,
-): void {
+export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | undefined, lithology: BoulderLithology = 'granite'): void {
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal;
   const col = new Float32Array(p.count * 3);
-  // (2026-10-10: a map's own stone, rockBaseToneFor, before its lithology's)
-  const [bh, bs, bl] = base ?? LITHOLOGY_TONE[lithology] ?? [0.09, 0.07, 0.28];
+  const [bh, bs, bl] = LITHOLOGY_TONE[lithology] ?? [0.09, 0.07, 0.28];
   const chalk = lithology === 'chalk';
   for (let i = 0; i < p.count; i++) {
     const up = clamp(n.getY(i), 0, 1), worn = clamp(form.edge[i] * 1.6, 0, 1), fresh = clamp(form.fresh[i], 0, 1);
@@ -1149,8 +982,7 @@ export function* paintRockDetailBuffers(
   const cavity = new Float32Array(s * s);
   const pit = { d1: 0, d2: 0, id: 0 };
   const cell = { d1: 0, d2: 0, id: 0 }, colony = { d1: 0, d2: 0, id: 0 };
-  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7, chalk: 0.3,
-    conglomerate: 0.45, breccia: 0.7 }[lithology];
+  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7, chalk: 0.3 }[lithology];
   for (let y = 0; y < s; y++) {
     for (let x = 0; x < s; x++) {
       const u = (x + 0.5) / s, v = (y + 0.5) / s, i = y * s + x, j = i * 4;
@@ -1193,18 +1025,6 @@ export function* paintRockDetailBuffers(
         const pore = tileableTorusNoise(noi, u, v, 83, 83, 477) * 0.5 + 0.5;
         lum += 0.06 - flint * 0.5 - (pore > 0.82 ? 0.08 : 0) + (grain - 0.5) * -0.05;
         height -= flint * 0.2 + (pore > 0.82 ? 0.1 : 0);
-      } else if (lithology === 'conglomerate' || lithology === 'breccia') {
-        // (2026-10-10) the clastic rocks' stand-in: clasts in a darker matrix — the conglomerate's rounded pebbles, each
-        // its own tone and standing proud; the breccia's broken fragments between dark seams (the material draws the
-        // clasts in the stone's frame, ROCK_CLAST_GLSL; this tile is the photographed stone's fallback)
-        const angular = lithology === 'breccia';
-        cellular(u, v, angular ? 22 : 30, 491, cell);
-        const roll = hash3(cell.id, 9, 497);
-        const clast = angular
-          ? clamp((cell.d2 - cell.d1 - 0.035) / 0.05, 0, 1) * (roll < 0.8 ? 1 : 0)
-          : (roll < 0.62 ? 1 - clamp((cell.d1 - (0.16 + roll * 0.14)) / 0.05, 0, 1) : 0);
-        lum += clast * (0.1 + (hash3(cell.id, 13, 499) - 0.5) * 0.22) - (1 - clast) * 0.08;
-        height += clast * 0.14;
       } else {
         // slate: the cleavage streaks, close and parallel
         const streak = tileableTorusNoise(noi, u, v, 2, 70, 457);
@@ -1273,32 +1093,6 @@ const ROCK_BEDS_COMMON_GLSL = /* glsl */`
 varying vec4 vRockFace;
 uniform vec4 uRockBeds;
 uniform vec4 uRockFabric;
-uniform vec4 uRockFabric2;
-// (2026-10-10, the map-revival lane) a clast field on a face's plane: cells about their jittered points; x the clast
-// (a rounded pebble about its point, or an angular fragment — the cell's interior inside a dark seam), y the clast's own
-// roll, z the cell's pixel footprint (the caller fades the field where a cell spans too few pixels)
-vec3 cotClast(vec2 p, float angular) {
-  vec2 gi = floor(p), gf = fract(p);
-  float d1 = 8.0, d2 = 8.0;
-  vec2 c1 = gi;
-  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-    vec2 o = vec2(float(i), float(j)), c = gi + o;
-    vec2 h = fract(sin(vec2(dot(c, vec2(127.1, 311.7)), dot(c, vec2(269.5, 183.3)))) * 43758.5453);
-    vec2 r = o + 0.1 + h * 0.8 - gf;
-    float d = dot(r, r);
-    if (d < d1) { d2 = d1; d1 = d; c1 = c; } else if (d < d2) d2 = d;
-  }
-  float k = fract(sin(dot(c1, vec2(41.37, 289.13))) * 15731.743);
-  float w = fwidth(p.x) + fwidth(p.y);
-  d1 = sqrt(d1); d2 = sqrt(d2);
-  float m;
-  if (angular > 0.5) m = smoothstep(0.035, 0.085 + w, d2 - d1) * step(k, 0.86);
-  else {
-    float r0 = 0.2 + 0.26 * fract(k * 7.31);
-    m = (1.0 - smoothstep(r0 - 0.05 - w, r0 + w, d1)) * step(k, 0.7);
-  }
-  return vec3(m, k, w);
-}
 float cotBedHash(float k, float salt) {
   uint h = uint(int(k) + 1024) * 747796405u + uint(int(salt)) * 2891336453u + 1u;
   h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
@@ -1436,64 +1230,6 @@ const ROCK_FABRIC_GLSL = /* glsl */`
     }
 `;
 
-/**
- * The stone's second fabric (2026-10-10, the map-revival lane; gauntlet wave 346 on the rock cover), in the colour stage
- * of an instanced boulder after its first fabric:
- *   - the clasts (x: the conglomerate's rounded pebbles and cobbles, y: the breccia's angular fragments): a clast field
- *     on each face's plane in the stone's own frame, triplanar (a plane under a sixth of the blend skipped) — the clasts
- *     pale quartzite, cream, grey and rose, or the breccia's greys, each its own tone and standing a little proud, the
- *     matrix between them the stone's colour darkened; past the near ground (or where a cell spans too few pixels) the
- *     field gives way to its own mean, so a far stone keeps its brightness;
- *   - the slate's cleavage (z): close fine lines on the cleavage plane, a fifth of a bed apart (the bed coordinate is the
- *     cleavage's, LITHOLOGY_CUTS steep), each its own weight, faded where they crowd under a few pixels;
- *   - the limestone's karren (w): the rain's grooves down the steep faces from the crest, a few centimetres apart, and
- *     solution pits on the tops (the honeycomb's cells, finer).
- */
-const ROCK_CLAST_GLSL = /* glsl */`
-    if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {
-      float clastAng = step(uRockFabric2.x, uRockFabric2.y), clastK = max(uRockFabric2.x, uRockFabric2.y);
-      float clastScale = mix(13.0, 9.0, clastAng);
-      vec3 clastX = rockTp.x > 0.15 ? cotClast(rockPw.yz * clastScale + 3.7, clastAng) : vec3(0.0, 0.5, 0.0);
-      vec3 clastY = rockTp.y > 0.15 ? cotClast(rockPw.xz * clastScale + 9.1, clastAng) : vec3(0.0, 0.5, 0.0);
-      vec3 clastZ = rockTp.z > 0.15 ? cotClast(rockPw.xy * clastScale + 1.3, clastAng) : vec3(0.0, 0.5, 0.0);
-      float clastM = clastX.x * rockTp.x + clastY.x * rockTp.y + clastZ.x * rockTp.z;
-      float clastR = clastX.y * rockTp.x + clastY.y * rockTp.y + clastZ.y * rockTp.z;
-      float clastW = max(clastX.z, max(clastY.z, clastZ.z));
-      float clastNear = (1.0 - smoothstep(22.0, 55.0, length(vViewPosition))) * (1.0 - smoothstep(0.3, 0.7, clastW));
-      float clastL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-      vec3 clastTint = clastAng > 0.5
-        ? vec3(0.78 + 0.5 * clastR)
-        : (clastR < 0.4 ? vec3(1.1, 1.04, 0.92) : clastR < 0.7 ? vec3(1.0, 1.0, 1.0) : vec3(1.12, 0.94, 0.92)) * (1.35 + 0.6 * fract(clastR * 5.3));
-      vec3 clastMatrix = diffuseColor.rgb * mix(0.78, 0.86, clastAng);
-      vec3 clastNearC = mix(clastMatrix, vec3(clastL) * clastTint, clastM);
-      vec3 clastFarC = mix(clastMatrix, vec3(clastL) * mix(vec3(1.64, 1.56, 1.46), vec3(1.03), clastAng), mix(0.42, 0.78, clastAng));
-      diffuseColor.rgb = mix(diffuseColor.rgb, mix(clastFarC, clastNearC, clastNear), clastK);
-      rockBump += clastM * clastNear * clastK * mix(0.006, 0.003, clastAng);
-    }
-    if (uRockFabric2.z > 0.0) {
-      float cleaveU = vRockFace.x * 5.0 + texture2D(uGrime, vGrimeW.xz * 0.9 + vGrimeW.y * 0.37).r * 0.7;
-      float cleaveW = fwidth(cleaveU);
-      float cleaveD = min(fract(cleaveU), 1.0 - fract(cleaveU));
-      float cleaveK = cotBedHash(floor(cleaveU + 0.5), 6.0);
-      float cleave = (1.0 - smoothstep(0.035, 0.035 + 1.5 * cleaveW, cleaveD)) * (1.0 - smoothstep(0.25, 0.55, cleaveW)) * (0.35 + 0.65 * cleaveK);
-      diffuseColor.rgb *= (1.0 - cleave * 0.34 * uRockFabric2.z) * (1.0 + (cotBedHash(floor(cleaveU), 7.0) - 0.5) * 0.08 * uRockFabric2.z);
-      rockBump -= cleave * 0.002 * uRockFabric2.z;
-    }
-    if (uRockFabric2.w > 0.0) {
-      vec2 karstT = normalize(vec2(-vGrimeN.z, vGrimeN.x) + vec2(1e-4, 0.0));
-      float karstA = dot(vGrimeW.xz, karstT) * 26.0 + (texture2D(uGrime, vec2(dot(vGrimeW.xz, karstT) * 0.6, vGrimeW.y * 0.11 + vRockSeed)).g - 0.5) * 1.6;
-      float karstW = fwidth(karstA);
-      float karstSteep = 1.0 - smoothstep(0.45, 0.8, abs(vGrimeN.y));
-      float karstHang = smoothstep(0.3, 0.8, vRockFace.y) * smoothstep(0.42, 0.6, texture2D(uGrime, vec2(karstA * 0.031, vRockSeed * 2.3)).r);
-      float groove = smoothstep(0.62, 1.0, abs(fract(karstA) - 0.5) * 2.0) * (1.0 - smoothstep(0.3, 0.6, karstW)) * karstSteep * karstHang * (1.0 - 0.8 * vRockFace.z);
-      vec3 karstP = rockPw * 3.1 + vec3(0.21, 0.57, 0.13);
-      float karstCav = texture2D(uRockLichenTile, karstP.yz).b * rockTp.x + texture2D(uRockLichenTile, karstP.xz).b * rockTp.y + texture2D(uRockLichenTile, karstP.xy).b * rockTp.z;
-      float karstPit = smoothstep(0.55, 0.85, vGrimeN.y) * smoothstep(0.6, 0.8, karstCav) * smoothstep(0.1, 0.4, vRockAbove);
-      diffuseColor.rgb *= 1.0 - (groove * 0.24 + karstPit * 0.3) * uRockFabric2.w;
-      rockBump -= (groove * 0.004 + karstPit * 0.01) * uRockFabric2.w;
-    }
-`;
-
 /** The partings' and the honeycomb's relief (after the triplanar normal), near the eye only. */
 const ROCK_BUMP_GLSL = /* glsl */`
 {
@@ -1566,7 +1302,6 @@ export function applyRockShaderHook(
   shader.uniforms.uRockSurface = { value: new THREE.Vector3(...dressing.surface) };
   shader.uniforms.uRockBeds = { value: new THREE.Vector4(...dressing.beds) };
   shader.uniforms.uRockFabric = { value: new THREE.Vector4(...dressing.fabric) };
-  shader.uniforms.uRockFabric2 = { value: new THREE.Vector4(...dressing.fabric2) };
   // the stone's linear mean, per channel: the procedural stand-in's mid grey until the photographed stone lands (its
   // owner updates the vector in place, sourcedTextures.ts applySourcedRock)
   shader.uniforms.uRockStoneMean = { value: stoneMean ?? new THREE.Vector3(0.214, 0.214, 0.214) };
@@ -1679,7 +1414,6 @@ ${ROCK_BUMP_GLSL}`);
     }
 ${ROCK_BEDS_GLSL}
 ${ROCK_FABRIC_GLSL}
-${ROCK_CLAST_GLSL}
     // desert varnish (b14; wave 97: "no … varnish streaks"): a patina over the exposed faces, and streaks hung from the
     // crown down the steep faces — narrow, long, broken, darkest high, where the water leaves the brow; none on a
     // fresh break

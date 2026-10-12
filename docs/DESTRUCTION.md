@@ -495,25 +495,9 @@ phone's saving is in how a record draws, never in which records stand.
     16469bc6a, a phone's formations collide with the desktop's stone set;
   - the regional rowhouses, whose phone builds moved their bands (Franconian on Steinburg, Sarajevan on Ruinspires):
     `visual/facades-phone-bands` c4c542d44, a phone's kit builds run their dressing muted, so the streams stay aligned.
-- With both on this core, the phone tier matched **33 of 33** shards (2026-10-08). The check: `node
-  tools/capture-world-collision-manifests.mjs --tier=mobile`.
-- **2026-10-11 (the hitbox lane): only the facades fix reached main.** `visual/scenery-phone-masses` never landed, and a
-  later change brought a third cause, so main matched 23 of 33 at the phone tier. Ten maps drifted: Verdant, Desert,
-  Urban, Coastal, Frontier, Badlands, Monsoon, Orchard, Saltwind, Reservoir. Three causes, all fixed on
-  `fix/collision-tier-identity`:
-  - a formation's masses came from the stones the phone drew (the same fix as 16469bc6a): `buildRockFormation`'s
-    `collision` option lays the desktop's pieces from a fresh copy of the formation's stream for the masses alone;
-  - a rock field counted a formation as placed by the phone's geometry, so a small pavement the phone draws none of let
-    it place one more (Frontier): the build's `laid` is the desktop's;
-  - since 3993e4fce (2026-10-08) the boulder forms take the map's angularity, but the phone's collision form was built
-    without it (Badlands' stones rounder on a phone, 14 small rocks fewer): `rockDressing.ts boulderVariantForms` builds
-    the drawn, collision and far forms from one constructor that differs only in subdivision.
-  Every desktop shard is unchanged and the phone tier matches 33 of 33 again. Receipts:
-  - `src/world/sceneryTierIdentity.selftest.mjs`: every formation form; the laid count; the stones of every map with an
-    angular rock climate.
-  - `src/world/scenery.selftest.mjs`: composeScenery's records byte for byte on both tiers.
-  - `src/world/phoneLayoutIdentity.selftest.mjs`: Fjord, Airfield and Steppe, plus Badlands and Frontier, at the
-    phone tier against the shards.
+- With both on this core, the phone tier matches **33 of 33** shards (2026-10-08). The check: `node
+  tools/capture-world-collision-manifests.mjs --tier=mobile`. Receipt (three clean maps):
+  `src/world/phoneLayoutIdentity.selftest.mjs`.
 - `authorityObstacles` shares the indices on a phone now. An event whose record at its index is another prop still turns
   that off and finds its prop by identity, so a layout that drifts again degrades to the identity path. This needs both
   fixes in the build: land them before or with this flip.

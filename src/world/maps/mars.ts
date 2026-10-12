@@ -176,10 +176,7 @@ export default {
       wood: (h: number, s: number, l: number) => [0.06, clamp01(s * 0.6), clamp01(l * 0.9)],
       straw: null,
     },
-    // (2026-10-10, the map-revival lane; gauntlet wave 346: "flat-shaded maroon slabs ... like a broken brick pile"; "the
-    // rocks should move toward dark grey basalt dusted tan") the boulders a dark basalt grey with a trace of the iron's
-    // warmth — the dust laid over them is the map's own (rockDressing.ts: dust 0.9) (was hue 0.035 at saturation 0.40)
-    rockTone: (h: number, s: number, l: number) => [0.06, 0.1, clamp01(l * 0.78 + 0.02)],
+    rockTone: (h: number, s: number, l: number) => [0.035, 0.40, clamp01(l * 0.92 + 0.04)],
     wallStoneChance: 1.0,
     wallRuns: [],
     well: false, hayCrates: false, fences: false, telegraph: false, carts: false, logs: false,
