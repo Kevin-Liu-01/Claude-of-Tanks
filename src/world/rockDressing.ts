@@ -333,13 +333,16 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   /** (2026-10-10) the beds stand steep — a slate's cleavage, 60 to 80 degrees off the level — not laid flat. */
   steep?: boolean;
   /**
-   * (2026-10-11, the rock round's final: "Reservoir slate needs real plate geometry") the stone built as a stack of
-   * plates on its cleavage: each plate (`beds` partings thick) stands out or back of the mass by up to `reach` of the
-   * radius on its own hash, the step to the next over `step` of a plate, a shallow groove (`groove` of the radius) on
-   * the parting between them — ragged plate ends along the flanks and a crest of plates at their own heights, the
-   * cleavage faces themselves left plane. No draw: the hash of the plate's index and the bedding's salt.
+   * (rock round 2, 2026-10-11; gauntlet wave 415 on Reservoir: "steep, thin plates with ragged ends" — the first
+   * round's plate relief on the weathered mass read as a smooth block) the stone built as a stack of plates on its
+   * cleavage (buildPlatedForm): each plate between two of the partings the material draws (one bed thick, two or more
+   * where the stone is too thick for `count` plates; a far form half as many), its outline the stone's section on its
+   * mid-plane, broken at its top (down by up to `crest` of its height, its own roll), at its two ends (in by up to
+   * `ends` of its reach) and in bites along its upper edge (up to `jag`); the outer plates spalled back (by up to
+   * `spall` of their reach at the stone's two faces, the weather's work on its outer skins, so its cleavage faces read as
+   * a stair of plate edges, not one plane); every plate its own tone.
    */
-  plates?: { beds: number; reach: number; step: number; groove: number };
+  plates?: { count: number; crest: number; ends: number; jag: number; spall: number };
 }>> = Object.freeze({
   granite: { fractures: [2, 3], notch: 0.35, notches: 1, bed: null },
   gneiss: { fractures: [2, 3], notch: 0.4, notches: 1, bed: null },
@@ -352,7 +355,7 @@ const LITHOLOGY_CUTS: Readonly<Record<BoulderLithology, {
   // over three fifths of the plate (the 9-cell grid of the form's triangle budget draws a plate in two or three rows: a
   // sharper step folded its triangles past a right angle of normal)
   slate: { fractures: [2, 3], notch: 0.9, notches: 3, bed: [0.075, 0.12], steep: true,
-    plates: { beds: 4, reach: 0.08, step: 0.6, groove: 0.01 } },
+    plates: { count: 22, crest: 0.45, ends: 0.3, jag: 0.12, spall: 0.3 } },
   chalk: { fractures: [2, 3], notch: 0.5, notches: 1, bed: null },
   // (2026-10-10) the conglomerate's thick beds (its clasts the material's) and its rough breaks; the breccia broken all
   // round, no bedding
@@ -717,21 +720,6 @@ interface BoulderForm {
   hollow: Float32Array;
 }
 
-/**
- * A plated stone's relief at a point of its mass (unit space): the factor its radius takes there (LITHOLOGY_CUTS
- * plates) — the plate's own reach, ramped from the plate before it over the law's step, less the parting's groove.
- */
-function plateRelief(law: NonNullable<(typeof LITHOLOGY_CUTS)[BoulderLithology]['plates']>,
-  bedding: NonNullable<BoulderCuts['bedding']>, x: number, y: number, z: number): number {
-  const s = (bedding.n[0] * x + bedding.n[1] * y + bedding.n[2] * z) / (bedding.thickness * law.beds) + bedding.salt * 0.37;
-  const k = Math.floor(s), f = s - k;
-  const q = Math.min(1, f / law.step), ramp = q * q * (3 - 2 * q);
-  const before = bedHash(k - 1, bedding.salt + 101), own = bedHash(k, bedding.salt + 101);
-  const reach = (before + (own - before) * ramp) * 2 - 1;
-  const g = Math.max(0, 1 - Math.min(f, 1 - f) / 0.12), groove = g * g * (3 - 2 * g);
-  return 1 + law.reach * reach - law.groove * groove;
-}
-
 /** The ground line in the form's unit space: above it the form keeps inside the legacy hull. */
 export const BOULDER_SEAT_Y = 0;
 
@@ -788,12 +776,11 @@ export function buildBoulderForm(
   const kind = BOULDER_KINDS[kindIndex] ?? BOULDER_KINDS[0];
   const shape = KIND_SHAPES[kind];
   const [sx, sy, sz] = shape.size;
+  // (rock round 2) a plated stone is a stack of plates, not a weathered mass
+  if (LITHOLOGY_CUTS[lithology].plates) return buildPlatedForm(variant, rng, hull, subdiv, topY, kindIndex, lithology, angular);
   // the grid: eight cells a face on the desktop, five on a phone, whose coarser rows round the arrises a third wider
   // (a cell must not straddle an arris's whole turn)
-  const plateLaw = LITHOLOGY_CUTS[lithology].plates ?? null;
-  // (a plated stone's grid a cell finer on the desktop — 9 cells a face, the form's 900-triangle budget; a phone's 5 —
-  // so a plate takes two or three rows: the plates are its form, not a texture; the phone's far form rounds them)
-  const n = plateLaw ? (subdiv >= 6 ? 9 : 5) : subdiv >= 6 ? 8 : 5;
+  const n = subdiv >= 6 ? 8 : 5;
   // (an angular map's arrises a third as round, down to the grid's own floor: RockClimate.angular)
   const round = Math.max(n < 8 ? 0.11 : 0.08, shape.round * LITHOLOGY_FORMS[lithology].soft * (n < 8 ? 1.35 : 1))
     * (1 - 0.66 * angular);
@@ -803,8 +790,7 @@ export function buildBoulderForm(
   const all: readonly JointPlane[] = [...planes, ...cuts.fractures, ...cuts.notches.flat()];
   const tones = all.map(() => rng() * 2 - 1);
   const salt = variant * 11.3 + rng() * 40;
-  // (a plated stone's weather half as lumpy again: its plates are its relief)
-  const lumpK = (1 - 0.6 * angular) * (plateLaw ? 0.5 : 1), [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
+  const lumpK = 1 - 0.6 * angular, [lumpA, lumpB, lumpC] = shape.lumps.map((v) => v * lumpK);
   const out = [0, 0, 0];
   const scratch = new Float64Array(all.length);
   let lumpAt = 0;
@@ -817,10 +803,6 @@ export function buildBoulderForm(
     for (let i = planes.length; i < all.length; i++) breakShare += w[i] * all[i][4];
     const weather = 1 - 0.7 * Math.min(1, breakShare);
     let x = ux * t, y = uy * t, z = uz * t;
-    if (plateLaw && cuts.bedding) {
-      const m = plateRelief(plateLaw, cuts.bedding, x, y, z);
-      x *= m; y *= m; z *= m;
-    }
     lumpAt = (noise.noise3d(x * 1.15 + salt, y * 1.15, z * 1.15 - salt) * lumpA
       + noise.noise3d(x * 2.7 - salt, y * 2.7 + salt, z * 2.7) * lumpB) * weather;
     const f = 1 + lumpAt + noise.noise3d(x * 6.3 + salt * 0.5, y * 6.3 - salt, z * 6.3 + 7) * lumpC;
@@ -963,6 +945,225 @@ export function buildBoulderForm(
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, edge, fresh, facet, hollow };
+}
+
+/**
+ * (rock round 2, 2026-10-11) A plated stone (LITHOLOGY_CUTS plates: the slate): a stack of plates on its steep cleavage.
+ * The envelope is the weathered mass's joint planes, fractures and notches (no weather lumps: a plate's faces are its
+ * cleavage, plane); its plates lie between the partings the material draws (the bed coordinate's partings, so the
+ * material's partings fall on the plates' joints), one bed thick, two or more where the stone is thick; each is a prism
+ * on the stone's section at its mid-plane, outlined from a point inside that section by `M` rays (12; a far form's 8),
+ * then broken: its top down by its own share of the law's crest, its two ends in by theirs, small bites along its upper
+ * edge — above the ground only (the buried stone stays whole, a slope bares a buried flank). Fitted as the weathered form
+ * is: as tall as the legacy rock and inside its hull above the ground line, held softly to it below. Every face flat
+ * (each plate end a fresh break, its cleavage faces weathered, every plate its own tone); unwelded, each plate closed.
+ */
+function buildPlatedForm(
+  variant: number, rng: () => number, hull: readonly number[], subdiv: number, topY: number,
+  kindIndex: number, lithology: BoulderLithology, angular: number,
+): BoulderForm {
+  const law = LITHOLOGY_CUTS[lithology].plates!;
+  const kind = BOULDER_KINDS[kindIndex] ?? BOULDER_KINDS[0];
+  const shape = KIND_SHAPES[kind];
+  const [, sy] = shape.size;
+  const far = subdiv < 6, M = far ? 8 : 10, maxPlates = far ? Math.ceil(law.count / 2) : law.count;
+  const round = Math.max(0.08, shape.round * LITHOLOGY_FORMS[lithology].soft) * (1 - 0.66 * angular);
+  const planes = jointPlanes(kind, rng);
+  const cuts = boulderCuts(kind, lithology, variant, rng, angular);
+  const bedding = cuts.bedding!;
+  const scratch = new Float64Array(planes.length + cuts.fractures.length + cuts.notches.length * 2);
+  const envelope = (ux: number, uy: number, uz: number): number => cutRadius(planes, cuts, round, ux, uy, uz, scratch);
+  const inside = (x: number, y: number, z: number): boolean => {
+    const l = Math.hypot(x, y, z);
+    return l < 1e-9 || l < envelope(x / l, y / l, z / l);
+  };
+  // the skirt's floor as deep under the fitted stone as the weathered form's (at least 1.5 under the ground line)
+  const DIRS = 160, dirs: number[] = [];
+  for (let i = 0; i < DIRS; i++) {
+    const y = 1 - ((i + 0.5) / DIRS) * 2, r = Math.sqrt(Math.max(0, 1 - y * y)), a = i * 2.39996;
+    dirs.push(Math.cos(a) * r, y, Math.sin(a) * r);
+  }
+  let top0 = 0;
+  for (let i = 0; i < DIRS; i++) if (dirs[i * 3 + 1] > 0) top0 = Math.max(top0, dirs[i * 3 + 1] * envelope(dirs[i * 3], dirs[i * 3 + 1], dirs[i * 3 + 2]));
+  const ky0 = topY > 0 && top0 > 0 ? (topY * 0.98) / top0 : 1;
+  const floorPlane = planes.find((q) => q[1] === -1);
+  if (floorPlane) floorPlane[3] = Math.max(floorPlane[3], 1.5 / ky0);
+  // the cleavage frame: n across the plates, u along the strike (level), v up the plate
+  const [nx, ny, nz] = bedding.n;
+  let ux = -nz, uz = nx;
+  const ul = Math.hypot(ux, uz) || 1;
+  ux /= ul; uz /= ul;
+  let vx = ny * uz, vy = nz * ux - nx * uz, vz = -ny * ux;
+  if (vy < 0) { vx = -vx; vy = -vy; vz = -vz; }
+  // the stone's reach across its cleavage, and its plates: the partings in it, every `beds` of them a joint
+  let sLo = Infinity, sHi = -Infinity;
+  for (let i = 0; i < DIRS; i++) {
+    const t = envelope(dirs[i * 3], dirs[i * 3 + 1], dirs[i * 3 + 2]);
+    const sAt = (dirs[i * 3] * nx + dirs[i * 3 + 1] * ny + dirs[i * 3 + 2] * nz) * t;
+    sLo = Math.min(sLo, sAt); sHi = Math.max(sHi, sAt);
+  }
+  const T = bedding.thickness, bedOf = (sv: number): number => sv / T + bedding.salt;
+  const k0 = Math.floor(bedOf(sLo)) - 1, k1 = Math.ceil(bedOf(sHi)) + 1;
+  const beds = Math.max(1, Math.ceil((k1 - k0) / maxPlates));
+  const joints: number[] = [];
+  for (let k = k0; k <= k1; k += beds) joints.push((beddingParting(k) - bedding.salt) * T);
+  // the plates' prisms in raw space: per plate its two caps (a fan about its inner point) and its M end faces
+  interface Plate { a: number; b: number; cx: number; cy: number; cz: number; px: Float64Array; py: Float64Array; pz: Float64Array; tone: number; split: number }
+  const plates: Plate[] = [];
+  for (let j = 0; j + 1 < joints.length; j++) {
+    const a = Math.max(joints[j], sLo), b = Math.min(joints[j + 1], sHi);
+    if (b - a < T * 0.35) continue;
+    const mid = (a + b) / 2;
+    // a point inside the section: the mean of a coarse grid's inside points (the section is convex but for a notch)
+    let gx = 0, gy = 0, gz = 0, count = 0, near: number[] | null = null;
+    for (let gi = -6; gi <= 6; gi++) for (let gj = -6; gj <= 6; gj++) {
+      const x = nx * mid + ux * gi * 0.22 + vx * gj * 0.22, y = ny * mid + vy * gj * 0.22, z = nz * mid + uz * gi * 0.22 + vz * gj * 0.22;
+      if (inside(x, y, z)) { gx += x; gy += y; gz += z; count++; near ??= [x, y, z]; }
+    }
+    if (count < 3) continue;
+    let cx = gx / count, cy = gy / count, cz = gz / count;
+    if (!inside(cx, cy, cz)) [cx, cy, cz] = near!;
+    const phase = rng() * (Math.PI * 2 / M);
+    const radius = new Float64Array(M);
+    for (let m = 0; m < M; m++) {
+      const th = phase + (m / M) * Math.PI * 2, du = Math.cos(th), dv = Math.sin(th);
+      const dx = ux * du + vx * dv, dy = vy * dv, dz = uz * du + vz * dv;
+      let lo = 0, hi = 0.05;
+      while (hi < 3.2 && inside(cx + dx * hi, cy + dy * hi, cz + dz * hi)) { lo = hi; hi += 0.05; }
+      for (let it = 0; it < 18; it++) {
+        const md = (lo + hi) / 2;
+        if (inside(cx + dx * md, cy + dy * md, cz + dz * md)) lo = md; else hi = md;
+      }
+      radius[m] = lo;
+    }
+    // its breaks: the top down, the two ends in, bites along the upper edge — above the ground only
+    const crest = law.crest * Math.pow(rng(), 1.6), endA = law.ends * Math.pow(rng(), 1.3), endB = law.ends * Math.pow(rng(), 1.3);
+    // (the outer plates spalled back: how far out across the cleavage this plate lies, 0 at the middle, 1 at a face)
+    const outer = Math.abs(mid - (sLo + sHi) / 2) / Math.max(1e-6, (sHi - sLo) / 2);
+    const spall = law.spall * (0.5 + 0.5 * rng()) * Math.max(0, Math.min(1, (outer - 0.45) / 0.55)) ** 2;
+    const tone = rng() * 2 - 1, split = rng() < 0.12 ? 1 : 0;
+    let yMin = Infinity, yMax = -Infinity;
+    for (let m = 0; m < M; m++) {
+      const th = phase + (m / M) * Math.PI * 2, y = cy + vy * Math.sin(th) * radius[m];
+      yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+    }
+    const px = new Float64Array(M), py = new Float64Array(M), pz = new Float64Array(M);
+    for (let m = 0; m < M; m++) {
+      const th = phase + (m / M) * Math.PI * 2, du = Math.cos(th), dv = Math.sin(th);
+      const y0 = cy + vy * dv * radius[m];
+      const above = clamp(y0 / (0.25 * sy), 0, 1), rel = clamp((y0 - yMin) / Math.max(1e-6, yMax - yMin), 0, 1);
+      const sm = (e0: number, e1: number, x: number): number => { const q = clamp((x - e0) / (e1 - e0), 0, 1); return q * q * (3 - 2 * q); };
+      let r = radius[m];
+      r *= 1 - crest * sm(0.55, 1, rel) * above;
+      r *= 1 - (du > 0 ? endA : endB) * sm(0.5, 0.95, Math.abs(du)) * above;
+      r *= 1 - law.jag * rng() * sm(0.3, 0.8, rel) * above;
+      r *= 1 - spall * above;
+      px[m] = cx + (ux * du + vx * dv) * r; py[m] = cy + vy * dv * r; pz[m] = cz + (uz * du + vz * dv) * r;
+    }
+    plates.push({ a, b, cx, cy, cz, px, py, pz, tone, split });
+  }
+  // the fit: as tall as the legacy rock; inside its hull above the ground line
+  let top = -Infinity;
+  for (const pl of plates) {
+    // (both caps: a cap's ring rides up or down its plate's half thickness along the cleavage's normal)
+    const c0 = pl.cx * nx + pl.cy * ny + pl.cz * nz;
+    for (let m = 0; m < M; m++) top = Math.max(top, pl.py[m] + ny * (pl.a - c0), pl.py[m] + ny * (pl.b - c0));
+  }
+  const ky = topY > 0 && top > 0 ? (topY * 0.98) / top : 1;
+  let kx = Infinity;
+  const consider = (x: number, y: number, z: number): void => {
+    if (y * ky < BOULDER_SEAT_Y) return;
+    const r = Math.hypot(x, z);
+    if (r > 1e-6) kx = Math.min(kx, (hullRadiusAt(hull, x / r, z / r) * 0.985) / r);
+  };
+  for (const pl of plates) for (const sv of [pl.a, pl.b]) {
+    const off = sv - (pl.cx * nx + pl.cy * ny + pl.cz * nz);
+    for (let m = 0; m < M; m++) consider(pl.px[m] + nx * off, pl.py[m] + ny * off, pl.pz[m] + nz * off);
+    // (and each cap's fan centre: above the ground where its ring has sunk under it, the hull's soft hold reaches its ring
+    // and not it)
+    consider(pl.cx + nx * off, pl.cy + ny * off, pl.cz + nz * off);
+  }
+  if (!Number.isFinite(kx)) kx = 1;
+  const fit = (x: number, y: number, z: number, out: number[]): void => {
+    x *= kx; y *= ky; z *= kx;
+    const r = Math.hypot(x, z);
+    if (y < BOULDER_SEAT_Y && r > 1e-6) {
+      const deep = clamp((-y - 0.4) / 0.3, 0, 1);
+      const limit = hullRadiusAt(hull, x / r, z / r) * (1.03 + 0.12 * deep * deep * (3 - 2 * deep));
+      const soft = 0.04 * limit, k = (limit - soft * Math.log(1 + Math.exp((limit - r) / soft))) / r;
+      x *= k; z *= k;
+    }
+    out[0] = x; out[1] = y; out[2] = z;
+  };
+  // the mesh: per plate its caps (a fan about the inner point) and its end faces, every face flat
+  const pos: number[] = [], nor: number[] = [], face: number[] = [], index: number[] = [];
+  const edgeA: number[] = [], freshA: number[] = [], facetA: number[] = [], hollowA: number[] = [];
+  const fittedTop = topY > 0 ? topY * 0.98 : top * ky;
+  const tmp = [0, 0, 0];
+  const vertex = (x: number, y: number, z: number, fresh: number, edge: number, tone: number): number => {
+    fit(x, y, z, tmp);
+    pos.push(tmp[0], tmp[1], tmp[2]);
+    nor.push(0, 0, 0);
+    face.push((nx * x + ny * y + nz * z) / T + bedding.salt, clamp(tmp[1] / Math.max(1e-6, fittedTop), -1, 1), fresh, 0);
+    edgeA.push(edge); freshA.push(fresh); facetA.push(tone); hollowA.push(0);
+    return pos.length / 3 - 1;
+  };
+  // the in-plane rays turn from u toward v, about u x v: +n or -n as v was turned up (uvn), and the windings follow it
+  const uvn = Math.sign((uz * vx - ux * vz) * ny + (ux * vy) * nz - (uz * vy) * nx + 0) || 1;
+  /** A flat face from triangles already wound outward: its normal from them, written to each of its vertices. */
+  const flatNormal = (tris: number[]): void => {
+    let fx = 0, fy = 0, fz = 0;
+    for (let t = 0; t < tris.length; t += 3) {
+      const o = tris[t] * 3, p1 = tris[t + 1] * 3, p2 = tris[t + 2] * 3;
+      const ax = pos[p1] - pos[o], ay = pos[p1 + 1] - pos[o + 1], az = pos[p1 + 2] - pos[o + 2];
+      const bx = pos[p2] - pos[o], by = pos[p2 + 1] - pos[o + 1], bz = pos[p2 + 2] - pos[o + 2];
+      fx += ay * bz - az * by; fy += az * bx - ax * bz; fz += ax * by - ay * bx;
+    }
+    const l = Math.hypot(fx, fy, fz) || 1;
+    for (const id of tris) { nor[id * 3] = fx / l; nor[id * 3 + 1] = fy / l; nor[id * 3 + 2] = fz / l; }
+  };
+  for (const pl of plates) {
+    const c0 = pl.cx * nx + pl.cy * ny + pl.cz * nz;
+    for (const [sv, sign] of [[pl.a, -1], [pl.b, 1]] as const) {
+      const off = sv - c0, capFresh = pl.split * 0.4;
+      const centre = vertex(pl.cx + nx * off, pl.cy + ny * off, pl.cz + nz * off, capFresh, 0, pl.tone);
+      const ring: number[] = [];
+      for (let m = 0; m < M; m++) ring.push(vertex(pl.px[m] + nx * off, pl.py[m] + ny * off, pl.pz[m] + nz * off, capFresh, 0, pl.tone));
+      // the fan faces along the rays' turning axis when the ring runs forward: forward on the cap that faces that way
+      const forward = sign * uvn > 0, tris: number[] = [];
+      for (let m = 0; m < M; m++) {
+        const i0 = ring[m], i1 = ring[(m + 1) % M];
+        if (forward) tris.push(centre, i0, i1); else tris.push(centre, i1, i0);
+      }
+      index.push(...tris);
+      flatNormal(tris);
+    }
+    for (let m = 0; m < M; m++) {
+      const m1 = (m + 1) % M;
+      const upper = clamp(((pl.py[m] + pl.py[m1]) / 2) / (0.25 * sy), 0, 1);
+      const fresh = 0.15 + 0.45 * upper, edge = 0.25;
+      const offA = pl.a - c0, offB = pl.b - c0;
+      const q0 = vertex(pl.px[m] + nx * offA, pl.py[m] + ny * offA, pl.pz[m] + nz * offA, fresh, edge, pl.tone);
+      const q1 = vertex(pl.px[m1] + nx * offA, pl.py[m1] + ny * offA, pl.pz[m1] + nz * offA, fresh, edge, pl.tone);
+      const q2 = vertex(pl.px[m1] + nx * offB, pl.py[m1] + ny * offB, pl.pz[m1] + nz * offB, fresh, edge, pl.tone);
+      const q3 = vertex(pl.px[m] + nx * offB, pl.py[m] + ny * offB, pl.pz[m] + nz * offB, fresh, edge, pl.tone);
+      // (q0, q1, q2) faces (q1 - q0) x n's way: outward round a ring that runs about +n, inward about -n
+      const tris = uvn > 0 ? [q0, q1, q2, q0, q2, q3] : [q0, q2, q1, q0, q3, q2];
+      index.push(...tris);
+      flatNormal(tris);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3));
+  geometry.setAttribute('aRockFace', new THREE.BufferAttribute(new Float32Array(face), 4));
+  geometry.setIndex(index);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return {
+    geometry, edge: Float32Array.from(edgeA), fresh: Float32Array.from(freshA), facet: Float32Array.from(facetA),
+    hollow: Float32Array.from(hollowA),
+  };
 }
 
 /**

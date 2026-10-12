@@ -80,10 +80,9 @@ const meanLuma = {};
 /** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
  * facing out, none above the ground line apart from the triangles it shades), as tall as the legacy rock and inside its
  * hull above the ground line, its skirt deep; broken up by the weather (hollows), its faces and arrises both present. */
-function checkForm(form, label, hull, legacyTop, subdiv, plated = false) {
+function checkForm(form, label, hull, legacyTop, subdiv) {
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
-  // (2026-10-11, the map-revival lane: a plated stone — the slate's — a cell finer on the desktop, rockDressing.ts)
-  const cells = subdiv >= 6 ? (plated ? 9 : 8) : 5;
+  const cells = subdiv >= 6 ? 8 : 5;
   assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
   assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
   assert.equal(p.count, 6 * cells * cells + 2 - (cells - 1) ** 2 + 1, `${label}: welded (one vertex per grid point, shared normals)`);
@@ -154,6 +153,84 @@ function checkForm(form, label, hull, legacyTop, subdiv, plated = false) {
   assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
   return { p, n, face };
 }
+/**
+ * (rock round 2, 2026-10-11) A plated stone (the slate's): a stack of closed plates, every face flat and wound out (each
+ * plate its own welded component, its signed volume positive), its cleavage faces steep, at least five plates above the
+ * ground; as tall as the legacy rock and inside its hull above the ground line as the weathered form is, its buried part
+ * deep; the plate ends a fresh break above the ground; the material's facts per vertex.
+ */
+function checkPlatedForm(form, label, hull, legacyTop, subdiv) {
+  const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
+  assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
+  assert.ok([form.edge, form.fresh, form.facet, form.hollow].every((a) => a.length === p.count), `${label}: per-vertex facts`);
+  assert.ok(closedWelded(p, index), `${label}: every plate closed`);
+  // the plates: welded components (by position), each wound out (a positive signed volume)
+  const ids = new Map(), canon = new Int32Array(p.count);
+  for (let i = 0; i < p.count; i++) {
+    const key = `${Math.round(p.getX(i) * 1e4)},${Math.round(p.getY(i) * 1e4)},${Math.round(p.getZ(i) * 1e4)}`;
+    if (!ids.has(key)) ids.set(key, ids.size);
+    canon[i] = ids.get(key);
+  }
+  const parent = Array.from({ length: ids.size }, (_, i) => i);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (let t = 0; t < index.length; t += 3) {
+    const a = find(canon[index[t]]);
+    for (const k of [1, 2]) { const b = find(canon[index[t + k]]); if (a !== b) parent[b] = a; }
+  }
+  const volume = new Map(), plateTop = new Map();
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+    const root = find(canon[a]);
+    const v = p.getX(a) * (p.getY(b) * p.getZ(c) - p.getZ(b) * p.getY(c)) - p.getY(a) * (p.getX(b) * p.getZ(c) - p.getZ(b) * p.getX(c))
+      + p.getZ(a) * (p.getX(b) * p.getY(c) - p.getY(b) * p.getX(c));
+    volume.set(root, (volume.get(root) ?? 0) + v / 6);
+    plateTop.set(root, Math.max(plateTop.get(root) ?? -Infinity, p.getY(a), p.getY(b), p.getY(c)));
+    e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
+    e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
+    tri.crossVectors(e1, e2);
+    if (tri.length() < 1e-9) continue;
+    tri.normalize();
+    // (above the ground, where the fit is a scale; under it the hull's soft hold bends a buried face a little)
+    if (Math.min(p.getY(a), p.getY(b), p.getY(c)) < BOULDER_SEAT_Y) continue;
+    for (const v2 of [a, b, c]) assert.ok(tri.x * n.getX(v2) + tri.y * n.getY(v2) + tri.z * n.getZ(v2) > 0.98, `${label}: every face flat above the ground, its normal its winding's`);
+  }
+  assert.ok([...volume.values()].every((v) => v > 0), `${label}: every plate wound out`);
+  const above = [...plateTop.values()].filter((y) => y > BOULDER_SEAT_Y + 0.05).length;
+  // (a phone's and the far form's plates are two beds thick: half as many)
+  assert.ok(above >= (subdiv >= 6 ? 5 : 3), `${label}: a stack of plates above the ground (${above})`);
+  let top = -Infinity, floor = Infinity, steepCaps = 0, caps = 0;
+  for (let i = 0; i < p.count; i++) {
+    top = Math.max(top, p.getY(i)); floor = Math.min(floor, p.getY(i));
+    assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-4, `${label}: unit normals`);
+    if (form.edge[i] === 0 && p.getY(i) > BOULDER_SEAT_Y) { caps++; if (Math.abs(n.getY(i)) < 0.6) steepCaps++; }
+  }
+  assert.ok(caps > 0 && steepCaps / caps > 0.9, `${label}: the cleavage faces steep (${(steepCaps / Math.max(1, caps) * 100).toFixed(0)} %)`);
+  assert.ok(Math.abs(top - legacyTop * 0.98) < 1e-5, `${label}: as tall as the legacy rock (its collider's cover)`);
+  assert.ok(floor < -1.2, `${label}: its plates run deep under the ground (${floor.toFixed(2)})`);
+  const band = (lo, hi) => {
+    const g2 = new THREE.BufferGeometry(), out = [];
+    for (let i = 0; i < p.count; i++) if (p.getY(i) >= lo && p.getY(i) < hi) out.push(p.getX(i), 0, p.getZ(i));
+    g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+    return g2;
+  };
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y, Infinity), hull), `${label}: inside the legacy hull above the ground line`);
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y - 0.4, BOULDER_SEAT_Y), hull.map((c) => c * 1.04)), `${label}: within 4 % of it to 0.4 under the ground line`);
+  assert.ok(projectsInsideHull(band(-Infinity, BOULDER_SEAT_Y - 0.4), hull.map((c) => c * 1.16)), `${label}: within 16 % of it deeper down`);
+  assert.ok(form.fresh.every((f) => f >= 0 && f <= 1), `${label}: a bounded break share`);
+  let aboveN = 0, broken = 0;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { aboveN++; if (form.fresh[i] > 0.3) broken++; }
+  assert.ok(broken / aboveN >= 0.1, `${label}: the plate ends a fresh break above the ground (${(broken / aboveN * 100).toFixed(0)} %)`);
+  const face = g.getAttribute('aRockFace');
+  assert.ok(face && face.itemSize === 4 && face.count === p.count, `${label}: a face fact for every vertex`);
+  let topFrac = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    topFrac = Math.max(topFrac, face.getY(i));
+    assert.ok(face.getY(i) >= -1 && face.getY(i) <= 1 && Math.abs(face.getZ(i) - form.fresh[i]) < 1e-6 && Math.abs(face.getW(i) - form.hollow[i]) < 1e-6,
+      `${label}: the height's share, the break and the hollow as the tone reads them`);
+  }
+  assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
+  return { p, n, face };
+}
 for (const lithology of LITHOLOGIES) {
   for (const seed of [2002, 77, 9001]) {
     for (const [detail, variant] of [[2, 0], [2, 1], [3, 2]]) {
@@ -162,7 +239,8 @@ for (const lithology of LITHOLOGIES) {
       for (const subdiv of [6, 4]) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
-        const { p, n, face } = checkForm(form, label, legacy.hull, legacy.top, subdiv, lithology === 'slate');
+        const plated = lithology === 'slate';
+        const { p, n, face } = plated ? checkPlatedForm(form, label, legacy.hull, legacy.top, subdiv) : checkForm(form, label, legacy.hull, legacy.top, subdiv);
         // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
         let bedLo = Infinity, bedHi = -Infinity;
         for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
@@ -172,7 +250,9 @@ for (const lithology of LITHOLOGIES) {
         // broad faces and rounded arrises, both (the corestone is all arris)
         const faces = form.edge.filter((e) => e < 0.1).length / p.count, arrises = form.edge.filter((e) => e > 0.3).length / p.count;
         if (BOULDER_KINDS[kind] !== 'rounded') assert.ok(faces > (subdiv === 6 ? 0.1 : 0.05), `${label}: joint faces (${faces.toFixed(2)})`);
-        assert.ok(arrises > 0.05, `${label}: rounded arrises (${arrises.toFixed(2)})`);
+        // (a plated stone's arrises are its plates' ends: edge 0.25 on every end face)
+        if (plated) assert.ok(form.edge.filter((e) => e > 0.2).length / p.count > 0.3, `${label}: the plates' ends`);
+        else assert.ok(arrises > 0.05, `${label}: rounded arrises (${arrises.toFixed(2)})`);
         if (subdiv === 6) {
           const again = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
           assert.equal(hashOf(again.geometry), hashOf(g), `${label}: a function of its seed`);
@@ -225,7 +305,8 @@ for (const lithology of LITHOLOGIES) {
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     for (const lithology of LITHOLOGIES) for (const subdiv of [6, 4]) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
-      checkForm(buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology), label, hull, legacyTop, subdiv, lithology === 'slate');
+      const form = buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology);
+      if (lithology === 'slate') checkPlatedForm(form, label, hull, legacyTop, subdiv); else checkForm(form, label, hull, legacyTop, subdiv);
     }
   }
 }
