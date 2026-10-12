@@ -408,7 +408,9 @@ void main() {
   // a screen over sand creams, dust over turf or asphalt keeps the sun-and-sky tan it always had; (fx 8q, wave 381: the
   // warehouse's dust "browner" over Caldera's warm dark ground) only the near-white media take it (screens, snow powder,
   // sand dust: albedo over ~0.5) — masonry powder (held under 0.4, structureFx dustOf) and earth shade exactly as before
-  vec3 amb1 = skyC * skyL * 0.7 + uGroundCol * ( 0.6 * D + 0.15 * ( R + L ) + 0.25 );
+  // (fx 9, wave 403: "over warm sand the shaded sides stay neutral grey") the ground's share of a near-white medium's
+  // shade doubled (its hue only: the luminance stays the reference's), so a screen's shade creams over warm sand
+  vec3 amb1 = skyC * skyL * 0.55 + uGroundCol * ( 1.0 * D + 0.3 * ( R + L ) + 0.45 );
   float gLum = dot( uGroundCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   float warmG = smoothstep( 0.02, 0.16, ( uGroundCol.r - uGroundCol.g ) / max( gLum, 1e-4 ) );
   float lum0 = dot( amb0, vec3( 0.2126, 0.7152, 0.0722 ) ), lum1 = dot( amb1, vec3( 0.2126, 0.7152, 0.0722 ) );
