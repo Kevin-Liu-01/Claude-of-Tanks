@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
+import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
 
 // Execute the actual world-owned pipeline with a small deterministic Three
 // hierarchy. Only the synchronous vehicle constructor is replaced here;
@@ -117,13 +118,16 @@ function* compactObserved(geometry) {
 }
 // collectWreckSolids: main's f6be3a54d bakes the wreck's hull/turret collision solids alongside the paint (the
 // fixture visual names no hull or turret mesh, so it bakes none); collectWreckShellSolids (the hitbox lane, e7c724c1d):
-// their convex-hull corners for the shell record, beside them (none here either).
+// their convex-hull corners for the shell record, beside them (none here either); the crumple (destruction-350,
+// wreckCrumple.ts): its plan over the posed hierarchy, the plates' refinement and the dents, as the bake calls them.
 const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
   'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
+  'planWreckCrumple', 'refineForCrumple', 'crumpleWreckGeometry',
   stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
   THREE, mergeObserved, compactObserved, compactWreckGeometrySteps, makeVisual,
   { warn(...args) { active.warnings.push(args); } },
-  () => { active.painted++; }, collectWreckSolids, collectWreckShellSolids);
+  () => { active.painted++; }, collectWreckSolids, collectWreckShellSolids,
+  planWreckCrumple, refineForCrumple, crumpleWreckGeometry);
 
 function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, pop: f.pop }); }
 function advance(f, steps) { return inFixture(f, () => steps.next()); }
