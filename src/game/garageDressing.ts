@@ -540,9 +540,11 @@ export function createGarageDressing(
       grad.addColorStop(0, `rgba(16,15,14,${a0})`); grad.addColorStop(0.6, `rgba(18,17,15,${a1})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = grad; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.restore();
     };
+    // fewer, fainter broad blots (waves 408 and 419: "large soft dark blotches that read as dirty shadow artifacts"); the
+    // small drips below carry the oil
     for (let i = 0; i < 70; i++) {
       const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.36;
-      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 18 + grimeRng() * 70, 0.3 + grimeRng() * 0.14, 0.12, 0.5 + grimeRng() * 0.5);
+      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 18 + grimeRng() * 46, 0.14 + grimeRng() * 0.08, 0.05, 0.5 + grimeRng() * 0.5);
     }
     for (let i = 0; i < 26; i++) {
       const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.3;

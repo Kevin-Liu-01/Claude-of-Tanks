@@ -513,6 +513,21 @@ assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), clo
 }
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
+// 2026-10-11 (the garage lane; waves 408 and 419: "a blue sky disc with hard curved seams against pale corners"): a camera
+// farther than (far - radius) from the dome's centre, like the Garage's 2.1 km out, pulls the dome just far enough to keep
+// every ray inside its far plane; a camera within that reach leaves it at the origin
+assert.match(layerSource, /const reach = Math\.max\(0, camera\.far - CLOUD_DOME_RADIUS_M - 100\);\s*const off = Math\.hypot\(at\.x, at\.z\);\s*const follow = off > reach \? \(off - reach\) \/ off : 0;\s*this\.dome\.position\.set\(at\.x \* follow, 0, at\.z \* follow\);/,
+  'the dome follows a far-off camera just enough to stay inside its far plane');
+{
+  const far = 4000, R = 3400, reach = far - R - 100;
+  for (const [x, z] of [[0, 0], [300, -200], [-1488, -1490]]) {
+    const off = Math.hypot(x, z), follow = off > reach ? (off - reach) / off : 0;
+    const cx = x * follow, cz = z * follow;
+    const worst = R + Math.hypot(x - cx, z - cz);
+    assert.ok(worst < far, `every ray from (${x}, ${z}) meets the dome inside the far plane (${worst.toFixed(0)} m)`);
+    if (off <= reach) assert.equal(follow, 0, 'a battle camera keeps the dome at the origin');
+  }
+}
 assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);

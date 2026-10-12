@@ -544,7 +544,7 @@ export function createGarageStage(
       color: 0xffffff, map: outdoorSeedColor, normalMap: outdoorSeedNormal, normalScale: new THREE.Vector2(0.45, 0.45),
       roughness: 0.94, metalness: 0.02, transparent: true, depthWrite: false, colorWrite: false,
     });
-    engineCtx?.setupShadowMaterial?.(hardstandSeed, garageHardstandGradedHook);
+    engineCtx?.setupShadowMaterial?.(hardstandSeed, garageHardstandGradedHook(outdoorSeedColor, 0) as THREE.Material['onBeforeCompile']);
     hardstandSeed.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     addOutdoorSeed('hardstand-graded', track(hardstandSeed));
   }

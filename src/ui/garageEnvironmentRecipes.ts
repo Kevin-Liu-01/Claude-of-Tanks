@@ -204,7 +204,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'heated recovery schoolhouse', 'avalanche command post', 'snowbound chapel cluster'],
   },
   brick_arsenal: {
-    terrainSurface: 'cobble', terrainTint: 0x8a8881, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
+    // the banks round the arsenal are dusty grass embankments; only its boulevard is cobbled (waves 408 and 419: "a huge
+    // cobblestone embankment curls up around the bay like the inside of a bowl")
+    terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
     structures: [
       at(makeFactory, 'urban factory', -36, -6, 0.76),
       at(makeFireStation, 'Steinburg fire station', -30, -30, 0.78),
@@ -350,7 +352,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(MARKET_BUILDERS.compound, 'salvage fortification', -41, 23, 0.50),
       at(makeGantry, 'canyon recovery bridge', 31, 31, 0.56),
     ],
-    treeSpecies: ['acacia', 'cedar'], treeCount: 16, reliefScale: 0.72,
+    // acacia and scrub oak only: a cedar read as "a stray spruce instead of badlands" (wave 408)
+    treeSpecies: ['acacia', 'oak'], treeCount: 12, reliefScale: 0.72,
     horizonStyle: 'mesa', horizonHeightM: 11.8,
     approach: {
       style: 'recovery-trail', label: 'tracked recovery trail', surface: 'rock', width: 8.0,

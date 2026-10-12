@@ -239,8 +239,20 @@ for (const variant of GARAGE_VARIANTS) {
   }
   if (variant.architecture === 'brick_arsenal') {
     assert.equal(stats.horizonStyle, 'urban');
-    assert.ok(stats.horizonMaxHeightM >= 8 && stats.horizonMaxHeightM <= 10,
-      `${variant.id} must retain a readable but bounded city skyline`);
+    // round 5d-2 (waves 408 and 419: "one enormous flat, untextured grey-blue slab", "city fabric beyond the arsenal"):
+    // the town is real blocks, houses and a spire behind low land, not stepped slabs in a silhouette tint
+    assert.ok(stats.horizonMaxHeightM <= 10, `${variant.id} keeps its land low`);
+    assert.ok(stats.builtHorizonMassTopM >= 8 && stats.builtHorizonMassTopM <= 13.2,
+      `${variant.id} must retain a readable but bounded city skyline (${stats.builtHorizonMassTopM} m)`);
+  }
+  // the steelworks and the railway stand as building masses too; only slender accents rise past the biome ceiling
+  if (['brick_arsenal', 'rail_roundhouse', 'factory_line'].includes(variant.architecture)) {
+    assert.ok(stats.builtHorizonMassTopM > 6 && stats.builtHorizonMassTopM <= 13.2,
+      `${variant.id} built horizon masses stay under the biome ceiling (${stats.builtHorizonMassTopM} m)`);
+    assert.ok(stats.builtHorizonAccentTopM > stats.builtHorizonMassTopM && stats.builtHorizonAccentTopM <= 26,
+      `${variant.id} built horizon accents stay slender and bounded (${stats.builtHorizonAccentTopM} m)`);
+  } else {
+    assert.equal(stats.builtHorizonMassTopM, 0, `${variant.id} has no built horizon`);
   }
   if (['naval_drydock', 'rail_roundhouse'].includes(variant.architecture)) {
     assert.ok(stats.horizonMaxHeightM <= 6.5,

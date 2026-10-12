@@ -63,7 +63,7 @@ const PALETTES: Readonly<Record<GarageHardstandStyle, StylePalette>> = Object.fr
   'slab-sand': { kind: 'slab', base: [190, 172, 142], spread: 0.045, speckle: 0.07, seed: 23 },
   'slab-snow': { kind: 'slab', base: [138, 142, 146], spread: 0.05, speckle: 0.07, seed: 37 },
   'slab-urban': { kind: 'slab', base: [140, 139, 135], spread: 0.06, speckle: 0.08, seed: 41 },
-  'slab-quay': { kind: 'slab', base: [132, 136, 136], spread: 0.055, speckle: 0.08, seed: 53 },
+  'slab-quay': { kind: 'slab', base: [138, 134, 126], spread: 0.055, speckle: 0.08, seed: 53 },
   'slab-cinder': { kind: 'slab', base: [124, 120, 114], spread: 0.06, speckle: 0.1, seed: 67 },
   'earth-wet': { kind: 'earth', base: [122, 88, 62], spread: 0.08, speckle: 0.12, seed: 71 },
   'slab-rock': { kind: 'slab', base: [128, 132, 136], spread: 0.05, speckle: 0.08, seed: 83 },
@@ -178,11 +178,12 @@ function drawHardstand(
       }
     }
   }
-  // low-frequency mottling at two scales (both kinds)
+  // low-frequency mottling at two scales (both kinds); the big soft blots are few and faint (waves 408 and 419: "large
+  // soft dark blotches that read as dirty shadow artifacts")
   for (let i = 0; i < (earth ? 260 : 140); i++) {
     const dark = rng() < 0.5;
-    const a = earth ? 0.09 : 0.05;
-    const big = rng() < 0.3;
+    const big = rng() < 0.12;
+    const a = (earth ? 0.09 : 0.05) * (big ? 0.55 : 1);
     blotWrapped((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M, big ? 2.5 + rng() * 4 : 0.5 + rng() * 1.8,
       dark ? `rgba(30,26,22,${a})` : `rgba(255,248,236,${a * 0.8})`, dark ? `rgba(30,26,22,${a * 0.4})` : `rgba(255,248,236,${a * 0.3})`,
       0.45 + rng() * 0.55);
@@ -419,17 +420,15 @@ function drawHardstand(
       break;
     }
     case 'slab-quay': {
-      // salt bloom crusting along joints and in drying puddle rings, rust bleeding from quay steel, standing water
-      alongJoints(130, 0.35, 'rgba(236,236,228,0.38)', 'rgba(236,236,228,0.1)');
+      // a little salt in the joints, standing water, rust bleeding from quay steel (waves 408 and 419: the old white bloom
+      // and drying rings read as "frost or snow crust" and "painted circle arcs")
+      alongJoints(130, 0.35, 'rgba(226,224,214,0.16)', 'rgba(226,224,214,0.05)');
       for (let i = 0; i < 14; i++) {
         const xM = (rng() - 0.5) * APRON_W_M, zM = (rng() - 0.5) * APRON_D_M, r = 0.6 + rng() * 1.6;
         blotWrapped(xM, zM, r, 'rgba(40,46,50,0.26)', 'rgba(40,46,50,0.1)', 0.5 + rng() * 0.4);
-        const [x, y] = px(xM, zM);
-        g.strokeStyle = 'rgba(236,236,226,0.22)';
-        g.lineWidth = 2;
-        g.beginPath(); g.ellipse(x, y, r * PX_PER_M, r * PX_PER_M * 0.7, rng() * Math.PI, 0, Math.PI * 2); g.stroke();
+        rng(); // (the ring's angle; its stroke is gone)
       }
-      scatter(30, 0.2, 0.7, 'rgba(126,66,34,0.28)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
+      scatter(44, 0.2, 0.8, 'rgba(126,66,34,0.3)', 'rgba(126,66,34,0.08)', [0.2, 0.5]);
       break;
     }
     case 'slab-urban': {

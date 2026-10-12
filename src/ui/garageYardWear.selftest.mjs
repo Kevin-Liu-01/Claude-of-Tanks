@@ -79,13 +79,17 @@ assert.match(kit, /const edge = Math\.min\(14\.5 - Math\.abs\(x\), 12 - Math\.ab
   'the apron thins out over its outer metres instead of stopping at a cut');
 assert.match(kit, /const rise = 1 - THREE\.MathUtils\.smoothstep\(ground, 0\.18, APRON_RISE_LIMIT_M - 0\.01\);/,
   'the apron is gone before the ground climbs to the rise limit, so no crossing line shows on a slope');
-assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);\s*engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
-  'the graded floor blends over the terrain on its own keyed program after the cascade hook');
+assert.match(kit, /new THREE\.MeshStandardMaterial\(\{ \.\.\.options, transparent: true, depthWrite: false \}\);[\s\S]{0,260}engineCtx\.setupShadowMaterial\?\.\(material, garageHardstandGradedHook\(garageHardstandGrainTexture\([^)]*\), grainStrength\)[\s\S]{0,80}\);\s*material\.customProgramCacheKey = \(\) => GARAGE_HARDSTAND_PROGRAM_KEY;/,
+  'the graded floor blends over the terrain on its own keyed program after the cascade hook, with the shared grain');
 assert.match(kit, /hardstand\.renderOrder = -1;/, 'the floor draws before the decals that lie on it');
 const program = await readFile(new URL('./garageHardstandProgram.ts', import.meta.url), 'utf8');
 assert.match(program, /attribute float hardstandBlend;/, 'each vertex carries its share of worked ground');
 assert.match(program, /diffuseColor\.a \*= smoothstep\(0\.36, 0\.64, vHardstandBlend \+ \(hardstandBreak - 0\.5\) \* 0\.72\);/,
   'the margin is broken by noise, not a ruled line');
+// round 5d-2 (waves 408 and 419: "a blurry, smeared texture", "stretched low-resolution image"): a shared 256 px/m grain
+// multiplies into the yard's 35 px/m layout, neutral on average so it fades with distance
+assert.match(program, /export const GARAGE_HARDSTAND_GRAIN_TILE_M = 2;/, 'the grain repeats every 2 m');
+assert.match(program, /diffuseColor\.rgb \*= mix\(vec3\(1\.0\), texture2D\(hardstandGrain, vHardstandGround \* \$\{/, 'the grain multiplies into the albedo in the ground plane');
 const stage = await readFile(new URL('./garageStage.ts', import.meta.url), 'utf8');
 assert.match(stage, /addOutdoorSeed\('hardstand-graded'/, 'the stage compiles the graded floor\'s program with the outdoor seeds');
 // 2026-10-11, waves 393 and 398 ("repeated tread decals", "confetti speckle"): curved compacted wheel paths and clumped
@@ -102,7 +106,12 @@ assert.doesNotMatch(facility, /clusterBox\(cluster, 0, 0, 0\.10, 10\.8, 0\.20, 9
 
 // 2026-10-11, waves 393-402 ("flat grey trapezoid mountains", "cardboard mountains", "Saltmere never shows its sea"):
 // the backdrop bands are landform faces of several rows, and the coast carries its sea past a cut-back quay
-assert.match(kit, /const ROWS = 7;/, 'backdrop bands carry rows from foot to crest, not a fence');
-assert.match(kit, /const sea = style === 'coastal';/, 'the coastal backdrop carries a sea ring');
+assert.match(kit, /const ROWS = 8;/, 'backdrop bands carry rows from foot to crest, not a fence');
+assert.match(kit, /if \(style === 'coastal'\) \{\s*\/\/ the sea from the shore to the horizon/, 'the coastal backdrop carries its sea');
+// round 5d-2 (waves 408 and 419: "flat untextured grey trapezoid slabs", "flat grey-blue blocks"): no stepped skyline
+// crest in a silhouette tint; the town, the steelworks and the railway are building masses behind low land
+assert.doesNotMatch(kit, /const sawtooth = skylineCell % 3 === 0|const shedRoof = skylineCell % 5 < 3|const tower = 0\.08 \+ skylineHash/,
+  'no stepped skyline slabs');
+assert.match(kit, /function addBuiltHorizon\(/, 'a built horizon of building masses');
 assert.match(kit, /const shapeQuayAndShore = \(\): void => \{/, 'Saltmere cuts its bank to a quay and a shore');
 console.log(`garageYardWear.selftest: ${styles.size} regional hardstands, shared facility albedos, no paint`);
