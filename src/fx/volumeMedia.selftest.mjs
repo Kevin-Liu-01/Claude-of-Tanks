@@ -407,7 +407,14 @@ function captureContext(seed) {
   const fire = kf.log.media.filter((m) => m.heat > 1);
   assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
   assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
-  assert.ok(fire.every((m) => m.heat <= 1.4), 'orange-yellow at the heart, never white (b5: heat ~2 saturated the ramp)');
+  // orange-yellow lobes (b5: heat ~2 saturated the whole ramp white); (fx 9, wave 405 on the cook-off: "a smooth peach
+  // balloon, with no white-hot core, sooty skin or turbulence") a white-hot heart of at most two short puffs, the lobes
+  // churning, a soot skin torn off the outside in the first fifth of a second
+  const core = fire.filter((m) => m.heat > 1.4);
+  assert.ok(core.length >= 1 && core.length <= 2 && core.every((m) => m.heat <= 1.56 && m.life <= 0.55), `a short white-hot heart (${core.length} puffs)`);
+  assert.ok(fire.filter((m) => m.heat <= 1.4).every((m) => m.startFrame >= 8), 'the cook-off\'s lobes start mid-billow: turbulent from their first frame, never a smooth balloon');
+  const skin = kf.log.media.filter((m) => m.heat > 0.2 && m.heat < 0.5 && m.birthOffset <= 0.2 && m.r0 < 0.06);
+  assert.ok(skin.length >= 3, `a sooty skin round the fire (${skin.length} puffs)`);
   assert.ok(kf.log.glows === 1 && kf.log.glowR >= 6, 'a cook-off\'s flash lights the media round the hull from inside');
   // (fx 8o, wave 356's critics on a plain kill: "far too big for a kill without an ammunition explosion", "a flat orange
   // hit-flash disc at 0.20-0.50 s", "a flat, lingering dust sheet at 3-4 s") a plain kill's fire is a short flash about
@@ -424,8 +431,11 @@ function captureContext(seed) {
     assert.ok(pk.log.glows === 1 && pk.log.glowR <= 3.5 && pk.log.glowDur <= 0.5, 'its flash lights the media round the hull from inside');
     const dust = (s) => { const c = captureContext(6); killDust(c.ctx, 0, 0, 0, s, 'soil', 0); return c.log.media; };
     const kd = dust(0.8), cd = dust(0.65 * Math.cbrt(14));
-    assert.ok(kd.every((m) => m.medium === 'billow' && m.aspect <= 1.5), 'a kill\'s dust billows: round cards in the turbulent medium, no flat sheet');
-    assert.ok(kd.every((m) => m.vy >= 0.8 && m.rise >= 0.35), 'it rolls up as it stalls');
+    // (fx 9, wave 405: "flat tan cutouts with jagged, star-shaped edges, pressed onto the hull side at hull height")
+    // round, smooth billows born at the ground just outside the tracks, fading in, climbing as they swell
+    assert.ok(kd.every((m) => m.medium === 'burst' && m.aspect <= 1.25 && m.fadeIn >= 0.1), 'a kill\'s dust: round billows in the smooth medium that fade in');
+    assert.ok(kd.every((m) => m.y <= 0.3 && m.size0 <= 0.6 && Math.hypot(m.x, m.z) >= 1.7), 'born at the ground just outside the tracks, small');
+    assert.ok(kd.every((m) => m.vy >= 1.4 && m.rise >= 0.6), 'and climbs off the ground as it swells');
     // (fx 8s, the w6p film: 8o's dust read as nothing) dense enough to read, tan, out past the hull's sides; thinning from
     // under half its life, gone within five seconds
     assert.ok(kd.every((m) => m.density >= 0.45 && m.density <= 0.62 && m.fadeOut <= 0.5 && m.life <= 5.5), 'it reads, then thins and is gone within five seconds');
@@ -549,7 +559,10 @@ function captureContext(seed) {
   // flash about the hull's width, every kill's flash glows inside the media, and a kill's dust is killDust's billows)
   // (fx 8s, re-pinned deliberately: the w6p film showed 8o's kill dust as nothing — killDust rolls out past the hull's
   // sides, tan, dense enough to read, a cook-off's a full ring)
-  assert.equal(`${calls.length} ${draws} ${digest}`, '119 1451 40a41f9029cb2838',
+  // (fx 9, re-pinned deliberately: wave 405's critics on the kills — the cook-off's "smooth peach balloon, with no
+  // white-hot core, sooty skin or turbulence" (a two-puff heart, a soot skin, lobes from mid-billow) and the dust's "flat
+  // tan cutouts ... pressed onto the hull side" (killDust born at the ground outside the tracks, smooth, climbing))
+  assert.equal(`${calls.length} ${draws} ${digest}`, '125 1544 520573737c275a66',
     "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
