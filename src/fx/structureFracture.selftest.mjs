@@ -68,7 +68,7 @@ function area(geometry, matrix = null) {
   return { sum, flat };
 }
 
-function rig(seam) {
+function rig(seam, extra = {}) {
   const group = new THREE.Group();
   const pool = createDebrisPhysics({ capacity: 96 });
   pool.bind({ groundAt: () => 0 });
@@ -79,6 +79,7 @@ function rig(seam) {
     pool, group, materialFor: () => material, now: () => clock,
     keepSpan: (span) => { if (!kept.has(span)) kept.set(span, Float32Array.from(span.position.array)); },
     onLanding: (x, y, z, speed, mass) => landings.push([speed, mass]),
+    ...extra,
   });
   const step = (seconds) => {
     for (let t = 0; t < seconds; t += 1 / 30) { clock += 1 / 30; pool.advance(1 / 30); fracture.update(); }
@@ -191,10 +192,35 @@ let leanOut = 0;
   assert.ok(leanOut > 1, `what fell lies out from the face (median ${leanOut.toFixed(2)} m)`);
   q.fracture.reset(); q.restore();
 }
+// (wave 422: the house's cracked clumps filled the debris pool its collapse shares, and the collapse stood frozen on a
+// bare frame over the heap) the fracture holds its share of the pool at most: a barrage at the foot never puts more bodies
+// in it than the share, what it throws past the share is counted, and the share frees as what fell comes to rest
+let shareMost = 0, shareSkipped = 0;
+{
+  bucket.attributes.position.array.set(before);
+  const share = 12;
+  const q = rig(seam, { poolShare: share });
+  const note = () => { shareMost = Math.max(shareMost, q.fracture.stats().bodies, q.pool.stats().bodies); };
+  for (const u of [-2.4, -0.8, 0.8, 2.4]) {
+    const [bx, by, bz] = at(u, 0.5);
+    q.fracture.strike(seam, bx, by, bz, into[0], into[1], 'he', 2.5, 152);
+    q.fracture.flush();
+    note();
+  }
+  for (let k = 0; k < 90; k++) { q.step(1 / 30); note(); }
+  shareSkipped = q.fracture.stats().skipped;
+  assert.ok(shareMost <= share, `the fracture never holds more than its share of the pool (${shareMost} of ${share})`);
+  assert.ok(shareSkipped > 0, `what a barrage throws past the share is counted (${shareSkipped})`);
+  q.step(4);
+  const rest = q.fracture.stats();
+  assert.ok(rest.bodies < share && rest.baked > 0, `the share frees as what fell comes to rest (${JSON.stringify(rest)})`);
+  q.fracture.reset(); q.restore();
+}
 // a point off every wall breaks nothing
 assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), null, 'a burst off the building breaks no face');
 console.log = log0;
 assert.deepEqual(outside, [], 'every body draws inside its parts');
 console.log(`structureFracture.selftest: a round on a cottage's front face took it out of the bucket (${after.flat - whole.flat} triangles), `
   + `drew it again with its hole (${drawn.toFixed(1)} m2), threw ${s0.bodies} bodies that came to rest (${s1.baked} baked, ${r.landings.length} landings), `
-  + `a second round widened it, the reset stood it up byte for byte, a front breached along its foot leaned out (median ${leanOut.toFixed(1)} m out), the same twice`);
+  + `a second round widened it, the reset stood it up byte for byte, a front breached along its foot leaned out (median ${leanOut.toFixed(1)} m out), the same twice, `
+  + `a barrage held to its share of the pool (${shareMost} of 12, ${shareSkipped} past it)`);

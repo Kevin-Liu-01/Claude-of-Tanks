@@ -168,6 +168,8 @@ interface Live {
 }
 
 const BAKE_STILL_S = 1.5;
+/** A body still this long (s) may bake early to make room in the fracture's share of the pool for a new round's body. */
+const SHARE_STILL_S = 0.5;
 const BAKE_AGE_S = 30;
 const SOUND_GAP_S = 0.06;
 /** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of six cells or more cracks on a
@@ -195,8 +197,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   // were in) ten bodies a round, as wave 397 judged it
   const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
   // (wave 422: the house's upper storey and roof stood on a bare frame over the heap from 7 s to 12 s, its collapse
-  // waiting outside a pool its cracked clumps had filled) the fracture holds half the pool at most: what a round throws
-  // past that is lost in its dust, and a chunk cracks into no more clumps than the share has room for
+  // waiting outside a pool its cracked clumps had filled) the fracture holds half the pool at most: a round's body past
+  // that takes the place of one that has lain still a while (baked into the heap a little early), else it is lost in
+  // the round's dust; a chunk cracks into no more clumps than the share has room for
   const poolShare = Math.max(2, o.poolShare ?? 64);
   let skipped = 0;
   const outcome = createWallStrikeOutcome();
@@ -899,7 +902,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   function spawnCells(live: Live, cells: number[], vx: number, vy: number, vz: number, spin: number, seed: number,
     at: THREE.Matrix4 | null = null, lean: readonly number[] | null = null): boolean {
     if (!cells.length) return false;
-    if (bodies.size >= poolShare) { skipped++; return false; }
+    if (bodies.size >= poolShare && !bakeStillest()) { skipped++; return false; }
     const g0 = live.wall.faces[cells[0]];
     // the body's frame: the cells' centre, axes along the face (u, up, out)
     let cu = 0, cv = 0, n = 0, mass = 0;
@@ -1088,6 +1091,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     bodies.set(handle, body);
     _pose[0] = _v.x; _pose[1] = _v.y; _pose[2] = _v.z; _pose[3] = qWorld.x; _pose[4] = qWorld.y; _pose[5] = qWorld.z; _pose[6] = qWorld.w;
     writePose(body, _pose);
+    return true;
+  }
+  /** (the share full) the body that has lain still longest, half a second at least, bakes into its heap now. */
+  function bakeStillest(): boolean {
+    let pick: LiveBody | null = null;
+    for (const b of bodies.values()) if (b.still >= SHARE_STILL_S && (!pick || b.still > pick.still)) pick = b;
+    if (!pick) return false;
+    bake(pick);
     return true;
   }
   const _pose = new Float64Array(7);
