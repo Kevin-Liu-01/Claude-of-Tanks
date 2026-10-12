@@ -5981,11 +5981,23 @@ void splatCompute() {
       if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
           // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
-          float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
-          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch);
+          // (2026-10-11, the map-revival lane; the sealed lane's vehicle frames on Tidegate Polders: "a drainage stream's
+          // water surface runs down the dike face") still water lies level: the ditch's water shows only where the ground
+          // is level (gone by ~4 degrees); on a tilted field (the road embankments' and the dykes' aprons lie at 5-7
+          // degrees) the ditch is its dug channel — a dark, damp bottom of wet soil and rushes between its rank banks, no
+          // water — and a dyke's batter (18 degrees) carries no ditch at all (the channel gone by ~12 degrees). The slope
+          // is the face's own (the mesh triangle's) where it is steeper than the smoothed normal's, which still leans to the
+          // sky over the first metres of a rising batter (cap11's frames, gated on the smoothed slope alone: the water ran
+          // a third of the way up a gentle rise from the road, and the channel on the tilted field before the camera went)
+          float ditchSlope = max(slope, 1.0 - abs(faceNrmT.y));
+          float channelGate = 1.0 - smoothstep(0.012, 0.022, ditchSlope);
+          float waterGate = 1.0 - smoothstep(0.0008, 0.0024, ditchSlope);
+          float ditch = (1.0 - smoothstep(0.55, 0.85, edgeM)) * channelGate;
+          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch) * channelGate;
           a.rgb = mix(a.rgb, a.rgb * vec3(0.72, 0.82, 0.70), bank * track * landW);
-          a.rgb = mix(a.rgb, vec3(0.030, 0.036, 0.032), ditch * track * landW);
-          gFieldWater = max(gFieldWater, ditch * track * landW);
+          vec3 ditchFloor = mix(soilF * vec3(0.42, 0.40, 0.36), vec3(0.030, 0.036, 0.032), waterGate);
+          a.rgb = mix(a.rgb, ditchFloor, ditch * track * landW);
+          gFieldWater = max(gFieldWater, ditch * waterGate * track * landW);
         } else {
           // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
           // (wave 71, Frontier's close-up: the track "a ring of dirt … like a decal mask" — "its edge is too clean and too
