@@ -43,6 +43,8 @@ export interface StructureFractureOptions {
   onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
   /** Bodies a round throws at most (chunks knocked through and clusters fallen together; default 10). */
   bodiesPerStrike?: number;
+  /** The pool's bodies this fracture holds at once at most (default 64, half the pool): a collapse always finds room. */
+  poolShare?: number;
   /** The room behind a hole's material (structureStages' fx-structure-room: dim, vertex-tinted, warmed). */
   roomMaterial?: THREE.Material;
 }
@@ -67,7 +69,7 @@ export interface StructureFracture {
   /** Bodies in the pool now (the pool steps while any owner has some). */
   liveBodies(): number;
   reset(): void;
-  stats(): { buildings: number; faces: number; bodies: number; baked: number };
+  stats(): { buildings: number; faces: number; bodies: number; baked: number; skipped: number };
 }
 
 /** A round's hole on a wall by its munition (structureStages strikeHoleRadius / pierceHoleRadius, the same law). */
@@ -192,6 +194,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   // (the coordinator's budget test, 2026-10-11: the house came down as whole slabs and a bare frame once the hitch's cuts
   // were in) ten bodies a round, as wave 397 judged it
   const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
+  // (wave 422: the house's upper storey and roof stood on a bare frame over the heap from 7 s to 12 s, its collapse
+  // waiting outside a pool its cracked clumps had filled) the fracture holds half the pool at most: what a round throws
+  // past that is lost in its dust, and a chunk cracks into no more clumps than the share has room for
+  const poolShare = Math.max(2, o.poolShare ?? 64);
+  let skipped = 0;
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
   /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */
@@ -892,6 +899,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   function spawnCells(live: Live, cells: number[], vx: number, vy: number, vz: number, spin: number, seed: number,
     at: THREE.Matrix4 | null = null, lean: readonly number[] | null = null): boolean {
     if (!cells.length) return false;
+    if (bodies.size >= poolShare) { skipped++; return false; }
     const g0 = live.wall.faces[cells[0]];
     // the body's frame: the cells' centre, axes along the face (u, up, out)
     let cu = 0, cv = 0, n = 0, mass = 0;
@@ -1129,9 +1137,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
     if (clumps.length < 2) return;
     const capacity = (o.pool.world as { capacity?: number }).capacity ?? 128;
-    // (the budget test) it cracks whatever else is awake: into as many clumps as the pool has room for, neighbours merged,
-    // never left whole while there is room for two
-    const room = capacity - o.pool.world.awakeCount + 1;
+    // (the budget test) it cracks whatever else is awake: into as many clumps as the pool has room for (within the
+    // fracture's share of it, the chunk's own place counted), neighbours merged, never left whole while there is room for two
+    const room = Math.min(capacity - o.pool.world.awakeCount, poolShare - bodies.size) + 1;
     if (room < 2) return;
     while (clumps.length > room) { const last = clumps.pop()!; clumps[clumps.length - 1].push(...last); }
     if (!o.pool.framePoseAt(b.handle, _pose)) return;
@@ -1495,6 +1503,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       for (const b of bodies.values()) { o.pool.release(b.handle); for (const m of b.meshes) { o.group.remove(m); m.geometry.dispose(); } }
       bodies.clear();
       cracking.length = 0;
+      skipped = 0;
       for (const live of lives.values()) {
         for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
         for (const m of [...live.room, ...live.baked, ...live.bakedPending, ...live.bakedMerged.values()]) { o.group.remove(m); m.geometry.dispose(); }
@@ -1506,7 +1515,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     stats() {
       let faces = 0;
       for (const live of lives.values()) faces += live.faces.size;
-      return { buildings: lives.size, faces, bodies: bodies.size, baked: bakedCount };
+      return { buildings: lives.size, faces, bodies: bodies.size, baked: bakedCount, skipped };
     },
   };
 }
