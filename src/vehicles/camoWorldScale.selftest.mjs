@@ -34,9 +34,9 @@ assert.equal(camoPatchWorldScale(NaN), 1, 'a broken density falls back to the re
 // (type74 took the 0.6 seat when tiger1 retired with the hidden fleet, 2026-09-23).
 const HULLS = ['t90m', 'm1a2', 'type74', 'spz_puma_s1'];
 const AXIS = { x: (p, i) => [p.getZ(i), p.getY(i)], y: (p, i) => [p.getX(i), p.getZ(i)], z: (p, i) => [p.getX(i), p.getY(i)] };
-// 2026-10-11: a builder may opt into per-triangle projection (TankBuilderPort.camoFaceProjection, faceBoxUV): the axis
-// comes from the triangle's face normal, so a rounded box's blended bevel normals cannot smear one block to a flat tone.
-const FACE_PROJECTED = new Set(['t90m']);
+// 2026-10-11 (r4c): every hull projects per triangle (faceBoxUV): the axis comes from the triangle's face normal, so a
+// rounded box's blended bevel normals cannot smear one block to a flat tone.
+const FACE_PROJECTED = { has: () => true };
 function measureUvDensity(mesh, faceAxes = false) {
   const p = mesh.geometry.attributes.position, n = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv;
   assert.ok(p && n && uv, `${mesh.name}: position, normal and uv`);
@@ -237,8 +237,7 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
 
 // --- source pins: no per-hull UV density survives anywhere on the camo path ----------------------------------------
 const core = source('./tankFactoryCore.ts');
-assert.ok(/boxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the hull/turret merge projects at the constant');
-assert.ok(/faceBoxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the per-face projection opt-in projects at the same constant');
+assert.ok(/faceBoxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the hull/turret merge projects per face at the constant');
 assert.ok(!/camoScale \?\? 0?\.34/.test(core), 'no legacy per-hull UV density in the factory core');
 const mats = source('./materials.ts');
 assert.ok(/const camoUvScale = CAMO_UV_REPEATS_PER_M;/.test(mats), 'fittings publish the constant density');

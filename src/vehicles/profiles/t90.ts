@@ -64,8 +64,6 @@ interface T90BuilderPort {
   readonly rng: () => number;
   readonly q?: boolean;
   topY?: number;
-  /** TankBuilderPort.camoFaceProjection: per-face camouflage projection (rendered builds). */
-  camoFaceProjection?: boolean;
   _shtoraRed?: THREE.MeshStandardMaterial;
   gear?: {
     contactGeom?: { halfWidM: number };
@@ -7599,9 +7597,6 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
 // tapered bustle. External GLBs are comparison oracles only; no source
 // vertices, generated payloads or runtime meshes enter this builder.
 function buildT90MProryvNative2026(P: T90BuilderPort): void {
-  // 2026-10-11 (wave 402b, the Garage hero): the rounded glacis/ERA blocks smeared the camouflage to one flat
-  // darker tone under the shared box projection, reading as a second, differently painted hull: per-face projection.
-  P.camoFaceProjection = true;
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
