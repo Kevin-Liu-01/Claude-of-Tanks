@@ -48,7 +48,7 @@ const MOTOR_OFFSET = .48, ROTOR_Y = .137, SKID_Y = -.2, SKID_R = .0189, PROP_R =
 const ARM_Y0 = .029, ARM_Y1 = .045, MOUNT_Y = .021;
 const MOTORS = [[-1,-1],[-1,1],[1,-1],[1,1]] as const;
 // Matte black carbon and printed TPU, anodised metal and glass share four merged materials; colour rides in vertex colours.
-const CARBON_PLATE = 0x3a3e44, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
+const CARBON_PLATE = 0x25282c, TPU = 0x18191b, PCB = 0x1c3a2b, WIRE = 0x141516, WIRE_RED = 0x6e1f17,
  WIRE_WHITE = 0xcfccc2, RUBBER = 0x121314, STRAP = 0x151617, BUCKLE = 0x8e3024, COPPER = 0x5a3a24, STEEL = 0x7d8084,
  BLACK_ANODE = 0x1b1d20, BELL = 0x2b2e33, BELL_RING = 0x8f9399, VENT = 0x0a0b0c, FIBER = 0xd8d4c6, HAZARD = 0xb8902a,
  PROP = 0x3a3f45, PROP_TIP = 0xb0b4b8;
@@ -104,19 +104,28 @@ function boxProjectedUV(geometry:THREE.BufferGeometry, repeats:number):void {
 }
 /** Carbon twill, 2/2: four rounded tows each way per tile, the over-and-under stepping one tow per row. Built from
  * data (no canvas), mipmapped so it averages to an even sheen at a distance. */
-function createCarbonTwill():THREE.DataTexture {
+function createCarbonTwill(sheen = false):THREE.DataTexture {
  const size = 32, data = new Uint8Array(size * size * 4);
  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
   const warp = (((i >> 3) + (j >> 3)) & 3) < 2, across = warp ? (j & 7) : (i & 7);
-  const crown = Math.sin((across + .5) / 8 * Math.PI), value = Math.round((warp ? 238 : 188) * (.8 + .2 * crown));
+  // Round 4b (critics: the light plates read as grey plastic): dark carbon carries its weave in the sheen — the tows
+  // differ strongly here, and the plates read this map as both albedo and roughness.
+  // The sheen copy (the roughness map) spans a narrow band (about .6 to .8 of the material's roughness): tows that
+  // catch the light differently, never a lacquer mirror (round 4b review: the full range glared white in the Garage).
+  const crown = Math.sin((across + .5) / 8 * Math.PI), weave = (warp ? 1 : 0) * .6 + .4 * crown;
+  const value = sheen ? Math.round(195 + 60 * weave) : Math.round((warp ? 255 : 150) * (.72 + .28 * crown));
   const o = (j * size + i) * 4; data[o] = data[o + 1] = data[o + 2] = value; data[o + 3] = 255;
  }
  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
  texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.magFilter = THREE.LinearFilter;
- texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true; texture.colorSpace = THREE.SRGBColorSpace;
- texture.name = 'FPV carbon twill'; texture.needsUpdate = true;
+ texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true;
+ // colour in sRGB; the sheen copy is data (roughness), read linear
+ texture.colorSpace = sheen ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+ texture.name = sheen ? 'FPV carbon twill sheen' : 'FPV carbon twill'; texture.needsUpdate = true;
  return texture;
 }
+/** The landing spin-down's disc strengths, strongest first (droneArrival.ts steps through them). */
+export const DRONE_ROTOR_FADE_STEPS = Object.freeze([.82, .64, .46, .3, .16]);
 /** One twill tile every 10 mm of finished airframe. */
 const TWILL_REPEATS = DRONE_AIRFRAME_SCALE / .01;
 
@@ -374,6 +383,8 @@ export interface DroneModelKit {
  rotor:THREE.BufferGeometry; rotorBlur:THREE.BufferGeometry;
  /** The disc at under half strength: shown over the blades while they spool up or slow down. */
  rotorBlurFaint:THREE.BufferGeometry;
+ /** The disc fading in five steps (strength .82 to .16): a landing's spin-down shows a different disc every frame. */
+ rotorBlurSteps:readonly THREE.BufferGeometry[];
  bodyMaterial:THREE.MeshStandardMaterial; plateMaterial:THREE.MeshStandardMaterial; equipmentMaterial:THREE.MeshStandardMaterial; metalMaterial:THREE.MeshStandardMaterial;
  lensMaterial:THREE.MeshStandardMaterial; rotorMaterial:THREE.MeshStandardMaterial; blurMaterial:THREE.MeshStandardMaterial;
  /** Rigid airframe parts in draw order, each a merged mesh with its own material. */
@@ -425,9 +436,25 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
   const corner = (r:number,a:number) => { positions.push(Math.cos(a) * r, 0, Math.sin(a) * r); colors.push(tone, tone * 1.02, tone * 1.07, alpha(r) * (.8 + .2 * Math.cos(3 * a))); };
   corner(r0, a0); corner(r1, a1); corner(r1, a0); corner(r0, a0); corner(r0, a1); corner(r1, a1);
  }
+ const normals = Array.from({ length: positions.length / 3 }, () => [0, 1, 0]).flat();
+ // Round 4b (critics, wave 411c: from a camera at dock height the discs vanished edge-on before touchdown): a thin
+ // blurred ribbon at the tip circle, 3.2 cm of authoring height (inside the rotor stock's y band), so a spinning disc
+ // seen side-on is a translucent line across its span, never nothing.
+ const ribbonR = .985 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .42;
+ for (let s = 0; s < segments; s++) {
+  const a0 = s / segments * Math.PI * 2, a1 = (s + 1) / segments * Math.PI * 2;
+  const p = (a:number, y:number) => [Math.cos(a) * ribbonR, y, Math.sin(a) * ribbonR];
+  const quad = [p(a0, -ribbonH), p(a1, ribbonH), p(a1, -ribbonH), p(a0, -ribbonH), p(a0, ribbonH), p(a1, ribbonH)];
+  for (const [index, q] of quad.entries()) {
+   const a = index === 1 || index === 2 || index === 5 ? a1 : a0;
+   positions.push(...q); normals.push(Math.cos(a), 0, Math.sin(a));
+   // side-on, the near and far halves of the ribbon overlap: two faint layers read as one soft line
+   colors.push(ribbonTone, ribbonTone * 1.02, ribbonTone * 1.07, ribbonAlpha);
+  }
+ }
  const g = new THREE.BufferGeometry();
  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
- g.setAttribute('normal', new THREE.Float32BufferAttribute(Array.from({ length: positions.length / 3 }, () => [0, 1, 0]).flat(), 3));
+ g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
  return g;
 }
@@ -453,19 +480,20 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  // Field wear before scaling (authoring units): dust on what faces up, the charge's belly grimy. The gear stays dark
  // (round 4: dusted legs read pale, a camera drone's).
  weatherVertexColors(body, .3, -1, 1, MUD);
- weatherVertexColors(plateGeometry, .26, -1);
+ weatherVertexColors(plateGeometry, .12, -1);
  weatherVertexColors(equipment, .3, -.14);
  weatherVertexColors(metal, .2, -1, 1, MUD);
  for (const geometry of [body, plateGeometry, equipment, metal, lens]) geometry.scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotor = createRotor(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotorBlur = createRotorBlur(PROP_R).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
  const rotorBlurFaint = createRotorBlur(PROP_R, .42).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE);
+ const rotorBlurSteps = DRONE_ROTOR_FADE_STEPS.map(strength => createRotorBlur(PROP_R, strength).scale(DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE, DRONE_AIRFRAME_SCALE));
  // Matte composite and matte anodised metal: carbon and printed parts scatter; the metal keeps a soft machined highlight
  // without mirroring the sky (a bright bell or belly read as chrome).
  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .74, metalness: .03 });
  // The frame plates' twill under a thin lacquer: a little more sheen than the printed and wrapped parts.
- const twill = createCarbonTwill();
- const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughness: .5, metalness: .06 });
+ const twill = createCarbonTwill(), twillSheen = createCarbonTwill(true);
+ const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, map: twill, roughnessMap: twillSheen, roughness: .8, metalness: .04 });
  const equipmentMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .8, metalness: .02 });
  const metalMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: .6, metalness: .35 });
  const lensMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a56, emissive: 0x0b1f28, roughness: .08, metalness: .55 });
@@ -473,12 +501,12 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
  const blurMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, transparent: true, depthWrite: false, roughness: .7, metalness: 0, side: THREE.DoubleSide });
  for (const [material, label] of [[bodyMaterial,'composite'],[plateMaterial,'carbon plate'],[equipmentMaterial,'paint'],[metalMaterial,'metal'],[lensMaterial,'glass'],[rotorMaterial,'propellers'],[blurMaterial,'rotor blur']] as const) material.name = `FPV ${design.name} ${label}`;
  const parts = [{ geometry: body, material: bodyMaterial },{ geometry: plateGeometry, material: plateMaterial },{ geometry: equipment, material: equipmentMaterial },{ geometry: metal, material: metalMaterial },{ geometry: lens, material: lensMaterial }];
- return { body, plate: plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial, parts,
+ return { body, plate: plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, rotorBlurSteps, bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial, parts,
   name: design.name,
   dispose() {
-   for (const geometry of [body, plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint]) geometry.dispose();
+   for (const geometry of [body, plateGeometry, equipment, metal, lens, rotor, rotorBlur, rotorBlurFaint, ...rotorBlurSteps]) geometry.dispose();
    for (const material of [bodyMaterial, plateMaterial, equipmentMaterial, metalMaterial, lensMaterial, rotorMaterial, blurMaterial]) material.dispose();
-   twill.dispose();
+   twill.dispose(); twillSheen.dispose();
   } };
 }
 /** Engine lit-material registration (cascaded shadows), installed once by the battle FX and the Garage preview. */

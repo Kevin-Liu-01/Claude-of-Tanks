@@ -17,8 +17,9 @@ export function droneHiddenFromCamera(position:THREE.Vector3,shooterId:string|nu
   return flightActive&&shooterId!=null&&camera.userData.aerialPilotId===shooterId&&position.distanceToSquared(camera.position)<=4;
 }
 /** The blades read individually only while they spool; at speed each rotor is a translucent disc. From `FAINT_DISC_S`
- * a faint disc shows over the quickening blades, so the spool-up reads blades, then blades under a disc, then a disc. */
-const BLUR_AFTER_SPOOL = .62, FAINT_DISC_S = .3;
+ * a faint disc shows over the quickening blades, so the spool-up reads blades, then blades under a disc, then a disc —
+ * all on the cradle (round 4b: the disc is full just before the 0.6 s lift, DRONE_SPOOL_S). */
+const BLUR_AFTER_SPOOL = .5, FAINT_DISC_S = .2;
 
 interface DetailPool {
  lease:DroneKitLease;

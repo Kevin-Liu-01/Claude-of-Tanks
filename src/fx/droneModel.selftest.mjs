@@ -27,7 +27,8 @@ for(const nation of Object.keys(DRONE_DESIGNS))for(const detail of ['full','lite
  const assembly=new Box3();
  for(const geometry of [kit.body,kit.plate,kit.equipment,kit.metal,kit.lens]){proveCovered(geometry);geometry.computeBoundingBox();assembly.union(geometry.boundingBox);assert.ok(Array.from(geometry.attributes.position.array).every(Number.isFinite),'finite mesh positions');}
  kit.rotor.computeBoundingBox();
- for(const rotor of [kit.rotor,kit.rotorBlur,kit.rotorBlurFaint])for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<rotor.attributes.position.count;v++){point.fromBufferAttribute(rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor (blades and blur disc) stays inside finite rotor stock');}rotorChecks++;}
+ assert.equal(kit.rotorBlurSteps.length,5,'five fading discs for the landing spin-down');
+ for(const rotor of [kit.rotor,kit.rotorBlur,kit.rotorBlurFaint,...kit.rotorBlurSteps])for(let i=0;i<4;i++)for(let step=0;step<72;step++){poseDroneRotor(pose,i,step*Math.PI/36);for(let v=0;v<rotor.attributes.position.count;v++){point.fromBufferAttribute(rotor.attributes.position,v).applyMatrix4(pose.matrix);assembly.expandByPoint(point);point.y+=DRONE_DOCK_HEIGHT_M;assert.ok(pointFits(point),'spinning rotor (blades and blur disc) stays inside finite rotor stock');}rotorChecks++;}
  assembly.translate(new Vector3(0,DRONE_DOCK_HEIGHT_M,0));assert.ok(fits(assembly),nation+': complete rotating airframe is inside the clearance envelope');
  assert.ok(Math.abs(assembly.min.y-.039)<.001,nation+': landing skids contact the actual cradle pads');
  assert.ok(!fits(assembly.clone().expandByScalar(.1)),'oversize airframe negative control fails');

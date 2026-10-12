@@ -5,11 +5,12 @@
  * Round 4 (critics, 2026-10-11): the airframe comes straight down the dock's certified launch column from `heightM`
  * with its rotors at speed and brakes with a nose-up flare into a short hover `hoverM` above the pads, where a pilot's
  * small quick corrections show, then sets down on its skids. The discs hold until the skids touch; then the props spin
- * down where the eye can follow them: discs for `discS`, discs fading as the blades show over `blendS`, then blades
- * slowing to the exact angle the parked airframe holds them, about a second and a half in all.
+ * down where the eye can follow them: discs for `discS`, then the disc fading in five steps over `blendS` while the
+ * slowing blades show through it (round 4b: one faint step read as discs-then-stopped in 0.1 s stills), then blades
+ * slowing to the exact angle the parked airframe holds them, 1.6 s in all. The clamps close after.
  */
 export const DRONE_ARRIVAL = Object.freeze({
-  descentS: 1.7, spoolS: 1.6, discS: .25, blendS: .45, heightM: 2.4, hoverM: .3,
+  descentS: 1.7, spoolS: 1.6, discS: .15, blendS: .75, heightM: 2.4, hoverM: .3,
   /** Within the descent (seconds): braking ends and the hover begins; the hover ends and the set-down begins. */
   hoverAtS: .95, setDownAtS: 1.35,
 });
@@ -22,6 +23,11 @@ export function droneSpinDownAngle(u:number):number {
 /** The post-touchdown rotor phase at `s` seconds after the skids touch: full discs, discs fading under blades, blades. */
 export function droneSpinDownPhase(s:number):'discs'|'blend'|'blades' {
   return s < DRONE_ARRIVAL.discS ? 'discs' : s < DRONE_ARRIVAL.discS + DRONE_ARRIVAL.blendS ? 'blend' : 'blades';
+}
+/** Which of `steps` fading discs shows at `s` seconds after touchdown during the blend (strongest first). */
+export function droneSpinDownFadeStep(s:number, steps:number):number {
+  const u = (s - DRONE_ARRIVAL.discS) / DRONE_ARRIVAL.blendS;
+  return Math.min(steps - 1, Math.max(0, Math.floor(u * steps)));
 }
 
 const smooth = (x:number) => x * x * (3 - 2 * x);

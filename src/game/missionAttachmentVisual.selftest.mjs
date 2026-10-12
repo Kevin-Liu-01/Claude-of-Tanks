@@ -85,17 +85,21 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  assert.ok(arrival?.visible&&!detail.visible,'the ready edge starts the landing in place of the parked airframe');
  assert.equal(arrival.position.y,DRONE_ARRIVAL.heightM,'the landing begins up the launch column');
  let last=Infinity,frames=0,spoolFrames=0,lastSpin=null;
- const blades=arrival.children.filter(o=>o.name==='FPV arrival blades'),discs=arrival.children.filter(o=>o.name==='FPV arrival disc'),fading=arrival.children.filter(o=>o.name==='FPV arrival fading disc');
- assert.equal(blades.length,4);assert.equal(discs.length,4);assert.equal(fading.length,4);
- const order={discs:0,blend:1,blades:2};let reached=-1,blendFrames=0;
+ const blades=arrival.children.filter(o=>o.name==='FPV arrival blades'),discs=arrival.children.filter(o=>o.name==='FPV arrival disc');
+ assert.equal(blades.length,4);assert.equal(discs.length,4);
+ // Round 4b: the full disc in the air; after touchdown the discs fade in steps (each strictly fainter) over the slowing
+ // blades, so 0.1 s stills read a spin-down rather than discs-then-stopped.
+ const fullDisc=discs[0].geometry,maxAlpha=g=>{const c=g.attributes.color;let m=0;for(let i=0;i<c.count;i++)m=Math.max(m,c.getW(i));return m;};
+ const order={discs:0,blend:1,blades:2};let reached=-1,blendFrames=0;const stepsSeen=[];
  while(arrival.visible){
   assert.ok(arrival.position.y>=0&&(arrival.position.y<=last+1e-12||arrival.position.y-last<.012),'descends, with only the hover\'s centimetre corrections');last=arrival.position.y;
   assert.equal(arrival.position.x,0);assert.equal(arrival.position.z,0,'straight down the certified column');
   assert.ok(drone.position.equals(datum),'the launch datum never moves');
   // discs until the skids touch; then discs fading over the showing blades; then the blades alone, never back
-  const all=(list,on)=>list.every(m=>m.visible===on);
-  const phase=all(discs,true)&&all(blades,false)&&all(fading,false)?'discs':all(discs,false)&&all(blades,true)&&all(fading,true)?'blend':all(discs,false)&&all(blades,true)&&all(fading,false)?'blades':null;
+  const all=(list,on)=>list.every(m=>m.visible===on),sameDisc=discs.every(m=>m.geometry===discs[0].geometry);
+  const phase=all(discs,true)&&all(blades,false)&&discs[0].geometry===fullDisc?'discs':all(discs,true)&&all(blades,true)&&sameDisc&&discs[0].geometry!==fullDisc?'blend':all(discs,false)&&all(blades,true)?'blades':null;
   assert.ok(phase,'one rotor phase at a time: discs, discs fading over blades, or blades');
+  if(phase==='blend'){const g=discs[0].geometry;if(stepsSeen.at(-1)!==g){assert.ok(!stepsSeen.includes(g),'the fading discs never repeat a step');if(stepsSeen.length)assert.ok(maxAlpha(g)<maxAlpha(stepsSeen.at(-1))-.05,'each fading step is fainter');stepsSeen.push(g);}}
   assert.ok(order[phase]>=reached,'the spin-down never returns to an earlier phase');reached=order[phase];
   if(phase!=='discs')assert.equal(arrival.position.y,0,'blades show only after touchdown');
   if(phase==='blend')blendFrames++;
@@ -106,6 +110,8 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  assert.ok(Math.abs(frames*dt-(DRONE_ARRIVAL.descentS+DRONE_ARRIVAL.spoolS))<2*dt,'descent and spool-down take their authored time');
  assert.ok(spoolFrames>30&&detail.visible,'the parked airframe returns after the spool-down');
  assert.ok(blendFrames>=Math.floor(DRONE_ARRIVAL.blendS/dt)-1,'the discs fade over the showing blades for their authored time');
+ assert.equal(stepsSeen.length,5,'five fading discs, one after another');
+ assert.ok(maxAlpha(stepsSeen[0])<maxAlpha(fullDisc),'the first fading disc is fainter than the flying disc');
  const parked=new Object3D(),q=new Quaternion(),qp=new Quaternion();
  for(let i=0;i<4;i++){poseDroneRotor(parked,i,0);lastSpin[i].decompose(new Vector3(),q,new Vector3());parked.matrix.decompose(new Vector3(),qp,new Vector3());
   assert.ok(q.angleTo(qp)<2e-3,'props stop at the parked angle: no pop when the parked airframe takes over');}
