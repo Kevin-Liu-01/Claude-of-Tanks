@@ -74,6 +74,7 @@ assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
 const signatures = new Set();
+const shelterKinds = new Map();
 let maxBuildMs = 0;
 let maxColdTransactionMs = 0;
 for (const variant of GARAGE_VARIANTS) {
@@ -221,6 +222,11 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must pair shared service hardware with signature machinery`);
   assert.ok(stats.servicePurposeTags.length >= 8,
     `${variant.id} must communicate a real maintenance workflow`);
+  // round 6 (waves 408, 419 and 424: "every yard repeats the same shelter frame ... with only colour swaps"): each Garage
+  // builds its bays its own way
+  const shelterTags = stats.servicePurposeTags.filter((tag) => tag.startsWith('shelter:'));
+  assert.equal(shelterTags.length, 1, `${variant.id} names one shelter kind`);
+  shelterKinds.set(variant.id, shelterTags[0]);
   assert.ok(stats.facilityMaterialClasses >= 4,
     `${variant.id} facility must retain steel, paint, equipment and masonry readings`);
   assert.equal(stats.openingSightlineIntrusions, 0,
@@ -273,6 +279,9 @@ for (const variant of GARAGE_VARIANTS) {
 }
 assert.equal(signatures.size, GARAGE_VARIANTS.length,
   'every Garage choice must have a distinct environment signature');
+assert.equal(new Set(shelterKinds.values()).size, shelterKinds.size,
+  `every outdoor Garage builds its own kind of shelter: ${[...shelterKinds].map(([id, kind]) => `${id}=${kind}`).join(', ')}`);
+assert.equal(shelterKinds.size, GARAGE_VARIANTS.length - 1, 'the nine outdoor Garages each name a shelter kind');
 assert.equal(controller.stats().cached, 2);
 assert.ok(controller.stats().residentTextureSets <= 9,
   'PBR residency must remain bounded after visiting every environment');

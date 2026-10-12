@@ -494,7 +494,7 @@ export function addGarageFacilityDetails({
   // courses and plank widths keep one scale on a 0.3 m fascia and on a 20 m wall.
   const surfaceGeometries = new Map<FacilitySurface, THREE.BufferGeometry[]>();
   const surfaceTile: Readonly<Record<FacilitySurface, number>> = Object.freeze({
-    sheeting: sheetingTileM, roofing: sheetingTileM, brick: 2, render: 2.4, timber: 2, glazing: 1,
+    sheeting: sheetingTileM, roofing: sheetingTileM, brick: 1.2, render: 2.4, timber: 2, glazing: 1,
   });
   /**
    * A box of one building surface in a cluster's frame. `ribsAcross` turns the top and bottom faces' mapping so roof
@@ -530,9 +530,10 @@ export function addGarageFacilityDetails({
     geometry.applyMatrix4(clusterMatrix(cluster, lateral, longitudinal, y, [1, 1, 1],
       options.rotationX ?? 0, options.rotationZ ?? 0));
     facilityProps += 1;
-    // render and planks ride the pack's own plaster and wood buckets (same albedos, no extra draw)
-    if (surface === 'render' || surface === 'timber') {
-      const bucket = surface === 'render' ? 'plaster2' : 'wood';
+    // render, planks and brick ride the pack's own plaster, wood and brick buckets (same albedos, no extra draw where
+    // the pack builds in them already: the regional shelters lay brick only in Steinburg and Cinder, which do)
+    if (surface === 'render' || surface === 'timber' || surface === 'brick') {
+      const bucket = surface === 'render' ? 'plaster2' : surface === 'timber' ? 'wood' : 'stone';
       (buckets[bucket] ||= []).push(geometry);
       return;
     }
@@ -614,6 +615,495 @@ export function addGarageFacilityDetails({
     }
   };
 
+  // ---------------------------------------------------------------------------------------------------------------------
+  // Regional shelters (round 6, 2026-10-11; waves 408, 419 and 424: "every yard repeats the same shelter frame ... with
+  // only colour swaps"; the owner: "make the garages (all of them) redesigned to look a ton better"). Each Garage builds
+  // its bays the way its region would, on the same 9.3 x 7.3 m footprint, open to the yard: a back wall that carries the
+  // tool wall, supports for the turret crane's runway, the roof clear of the Burlak's turret gantry (5.2 m).
+  type ShelterKind = 'portal' | 'timber-snow-shed' | 'shade-hangar' | 'brick-bay' | 'rail-shed'
+    | 'monsoon-pavilion' | 'avalanche-gallery' | 'rock-cut' | 'mill-bay';
+  const SHELTER_KINDS: Readonly<Record<GarageVariant['architecture'], ShelterKind>> = Object.freeze({
+    field_shed: 'portal',
+    shade_depot: 'shade-hangar', // canvas vault on arched hoops, sandbagged
+    repair_bunker: 'timber-snow-shed', // heavy timber, a steep board roof deep in snow
+    brick_arsenal: 'brick-bay', // brick piers and walls, steel trusses
+    naval_drydock: 'portal', // galvanised dockyard steel
+    rail_roundhouse: 'rail-shed', // brick, cast-iron columns, a smoke-vent roof
+    rain_canopy: 'monsoon-pavilion', // round columns, deep eaves, gutters into drains
+    rock_cavern: 'avalanche-gallery', // concrete gallery under snow, backed by scree
+    recovery_yard: 'rock-cut', // a bay cut into the red rock, a lean-to on posts
+    factory_line: 'mill-bay', // heavy steel, a monitor roof, sooty sheeting
+  });
+  const shelterKind: ShelterKind = SHELTER_KINDS[variant.architecture] ?? 'portal';
+  servicePurposeTags.add(`shelter:${shelterKind}`);
+  const servicePit = (cluster: FacilityCluster): void => {
+    // the bay's floor is the pack's own hardstand pad; only the service pit's steel grating marks it, flush with it
+    clusterBox(cluster, 0, 0.2, 0.035, 2.45, 0.03, 6.4, dark, 'equipment');
+  };
+  /** A wall of stacked bags (lateral run when `alongLateral`), every course offset half a bag. */
+  const sandbagWall = (cluster: FacilityCluster, lateral: number, longitudinal: number, run: number, courses: number,
+    alongLateral: boolean, tone: THREE.Color): void => {
+    const bag = 0.62;
+    for (let course = 0; course < courses; course += 1) {
+      const count = Math.floor(run / bag);
+      const shift = course % 2 ? bag / 2 : 0;
+      for (let i = 0; i < count - (course % 2); i += 1) {
+        const along = -run / 2 + shift + bag / 2 + i * bag;
+        const shade = tone.clone().offsetHSL(0, 0, ((i * 7 + course * 3) % 5 - 2) * 0.012);
+        clusterBox(cluster, alongLateral ? lateral + along : lateral, alongLateral ? longitudinal : longitudinal + along,
+          0.11 + course * 0.2, alongLateral ? bag - 0.04 : 0.34, 0.2, alongLateral ? 0.34 : bag - 0.04, shade, 'painted');
+      }
+    }
+  };
+  /** A pitched roof's two slopes (ridge along the bay) of one surface, with an optional covering on each (snow). */
+  const gableRoof = (cluster: FacilityCluster, surface: FacilitySurface, eaveLateral: number, eaveY: number, ridgeY: number,
+    length: number, covering?: THREE.Color): void => {
+    const pitch = Math.atan2(ridgeY - eaveY, eaveLateral);
+    const slope = Math.hypot(eaveLateral, ridgeY - eaveY);
+    for (const sign of [-1, 1]) {
+      const midLateral = sign * eaveLateral / 2;
+      const midY = (eaveY + ridgeY) / 2;
+      // the slope falls outward: its width axis turned by -sign * pitch
+      clusterSurface(cluster, surface, midLateral, 0, midY, slope + 0.12, 0.06, length, {
+        rotationZ: -sign * pitch, ribsAcross: true,
+      });
+      if (covering) {
+        const lift = 0.15;
+        clusterBox(cluster, midLateral + sign * Math.sin(pitch) * lift, 0, midY + Math.cos(pitch) * lift,
+          slope - 0.1, 0.24, length - 0.2, covering, 'painted', -sign * pitch);
+      }
+    }
+  };
+
+  const addTimberSnowShed = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Frosthollow: heavy timber posts on concrete pads carry wall plates and a steep board roof, its ridge along the bay,
+    // deep in snow; the back gable and the far side are boarded; knee braces stiffen the walls. Its turret lifts on
+    // shear legs (addPurposeBuiltServiceBay), so the shed carries no crane runway.
+    const stain = new THREE.Color(0x45352a);
+    const snow = new THREE.Color(0xeef3f6);
+    const plateY = 4.4, ridgeY = 7.3, postAt = 4.45;
+    const tanPitch = (ridgeY - plateY) / postAt;
+    for (const lateral of [-postAt, postAt]) {
+      for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        clusterBox(cluster, lateral, longitudinal, 0.15, 0.72, 0.3, 0.72, dark, 'masonry');
+        clusterBox(cluster, lateral, longitudinal, 0.3 + (plateY - 0.3) / 2, 0.32, plateY - 0.3, 0.32, stain, 'painted');
+        for (const sign of [-1, 1]) {
+          if (Math.abs(longitudinal + sign * 1.05) > BAY_HALF_L + 0.01) continue;
+          clusterBeam(cluster, [lateral, longitudinal, plateY - 1.15], [lateral, longitudinal + sign * 1.05, plateY - 0.1],
+            0.16, stain, 'painted');
+        }
+      }
+      clusterBox(cluster, lateral, 0, plateY + 0.13, 0.36, 0.26, 2 * BAY_HALF_L + 0.5, stain, 'painted');
+    }
+    const eaveOut = postAt + 0.8;
+    const eaveY = plateY - (eaveOut - postAt) * tanPitch;
+    for (let i = 0; i <= 5; i += 1) {
+      const longitudinal = -BAY_HALF_L - 0.1 + i * ((2 * BAY_HALF_L + 0.2) / 5);
+      for (const sign of [-1, 1]) {
+        clusterBeam(cluster, [sign * eaveOut, longitudinal, eaveY - 0.14], [0, longitudinal, ridgeY - 0.14], 0.2, stain, 'painted');
+      }
+      const tieY = ridgeY - 1.2;
+      const tieHalf = postAt - (tieY - plateY) / tanPitch;
+      clusterBox(cluster, 0, longitudinal, tieY, 2 * tieHalf, 0.16, 0.14, stain, 'painted');
+    }
+    clusterBox(cluster, 0, 0, ridgeY - 0.05, 0.24, 0.3, 2 * BAY_HALF_L + 0.6, stain, 'painted');
+    gableRoof(cluster, 'timber', eaveOut, eaveY, ridgeY, 2 * BAY_HALF_L + 0.9, snow);
+    // the snow piles up on the ridge and hangs a little over the front gable
+    clusterBox(cluster, 0, 0, ridgeY + 0.22, 0.9, 0.28, 2 * BAY_HALF_L + 0.7, snow, 'painted');
+    // the boarded back gable on a concrete upstand, stepped up under the roof
+    const back = -BAY_HALF_L - 0.22;
+    clusterBox(cluster, 0, back, 0.25, 2 * postAt + 0.4, 0.5, 0.3, dark, 'masonry');
+    clusterSurface(cluster, 'timber', 0, back, 0.5 + (plateY - 0.5) / 2, 2 * postAt + 0.3, plateY - 0.5, 0.08);
+    for (let step = 0; step < 4; step += 1) {
+      const y0 = plateY + step * (ridgeY - plateY) / 4, y1 = plateY + (step + 1) * (ridgeY - plateY) / 4;
+      const half = postAt - (y1 - plateY) / tanPitch + 0.12;
+      clusterSurface(cluster, 'timber', 0, back, (y0 + y1) / 2, 2 * Math.max(0.3, half), y1 - y0, 0.08);
+    }
+    // the far side boarded over its back half
+    if (cladLateralSign !== 0) {
+      const far = cladLateralSign * (postAt + 0.2);
+      clusterBox(cluster, far, -BAY_HALF_L / 2, 0.25, 0.3, 0.5, BAY_HALF_L + 0.3, dark, 'masonry');
+      clusterSurface(cluster, 'timber', far, -BAY_HALF_L / 2, 0.5 + (plateY - 0.5) / 2, 0.08, plateY - 0.5, BAY_HALF_L + 0.3);
+    }
+    // a drift banked against the back wall outside
+    clusterBox(cluster, 0, back - 0.8, 0.3, 2 * postAt + 1.2, 0.6, 1.2, snow, 'painted');
+  };
+
+  const addShadeHangar = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Sirocco: a canvas vault on arched steel hoops standing on straight legs (the turret crane runs on the legs), the
+    // back and the far side closed in canvas over a sandbag wall, guyed to ground anchors.
+    const canvas = new THREE.Color(0xd8c7a0);
+    const canvasEdge = new THREE.Color(0x9c8660);
+    const bags = new THREE.Color(0xb39a6e);
+    const legTop = 5.2, apexY = 7.1, half = BAY_HALF_W;
+    const ARCH = 8;
+    const archPoint = (k: number): readonly [number, number] => {
+      const angle = Math.PI * (1 - k / ARCH);
+      return [Math.cos(angle) * half, legTop + Math.sin(angle) * (apexY - legTop)];
+    };
+    const hoops = [-BAY_HALF_L, -BAY_HALF_L / 3, BAY_HALF_L / 3, BAY_HALF_L];
+    for (const longitudinal of hoops) {
+      for (const lateral of [-half, half]) {
+        clusterBox(cluster, lateral, longitudinal, 0.1, 0.55, 0.2, 0.55, dark, 'masonry');
+        clusterBox(cluster, lateral, longitudinal, legTop / 2, 0.2, legTop, 0.2, steel, 'structure');
+      }
+      for (let k = 0; k < ARCH; k += 1) {
+        const [x0, y0] = archPoint(k), [x1, y1] = archPoint(k + 1);
+        clusterBeam(cluster, [x0, longitudinal, y0], [x1, longitudinal, y1], 0.2, steel, 'structure');
+      }
+    }
+    for (let k = 1; k < ARCH; k += 1) {
+      const [x, y] = archPoint(k);
+      clusterBox(cluster, x, 0, y - 0.04, 0.09, 0.09, 2 * BAY_HALF_L, steel, 'structure');
+    }
+    for (let k = 0; k < ARCH; k += 1) {
+      const [x0, y0] = archPoint(k), [x1, y1] = archPoint(k + 1);
+      const angle = Math.atan2(y1 - y0, x1 - x0);
+      const out = 0.13;
+      clusterBox(cluster, (x0 + x1) / 2 - Math.sin(angle) * out, 0, (y0 + y1) / 2 + Math.cos(angle) * out,
+        Math.hypot(x1 - x0, y1 - y0) + 0.07, 0.05, 2 * BAY_HALF_L + 0.8, canvas, 'painted', angle);
+    }
+    // the canvas's laced valance along both eaves
+    for (const lateral of [-half - 0.12, half + 0.12]) {
+      clusterBox(cluster, lateral, 0, legTop - 0.25, 0.05, 0.5, 2 * BAY_HALF_L + 0.8, canvasEdge, 'painted');
+    }
+    // the back closed in canvas, stepped up into the vault, over a sandbag wall
+    const back = -BAY_HALF_L - 0.24;
+    clusterBox(cluster, 0, back, 1.0 + (legTop - 1.0) / 2, 2 * half, legTop - 1.0, 0.05, canvas, 'painted');
+    for (let step = 0; step < 4; step += 1) {
+      const y0 = legTop + step * (apexY - legTop) / 4, y1 = legTop + (step + 1) * (apexY - legTop) / 4;
+      const t = Math.min(1, (y1 - legTop) / (apexY - legTop));
+      clusterBox(cluster, 0, back, (y0 + y1) / 2, 2 * half * Math.sqrt(Math.max(0.02, 1 - t * t)) + 0.2, y1 - y0, 0.05, canvas, 'painted');
+    }
+    sandbagWall(cluster, 0, back - 0.22, 2 * half + 0.4, 5, true, bags);
+    if (cladLateralSign !== 0) {
+      const far = cladLateralSign * (half + 0.14);
+      clusterBox(cluster, far, 0, 1.0 + (legTop - 1.0) / 2, 0.05, legTop - 1.0, 2 * BAY_HALF_L + 0.4, canvas, 'painted');
+      sandbagWall(cluster, far + cladLateralSign * 0.24, 0, 2 * BAY_HALF_L + 0.4, 5, false, bags);
+    }
+    // guy lines from the end hoops' shoulders to ground anchors
+    for (const longitudinal of [-BAY_HALF_L, BAY_HALF_L]) {
+      for (const k of [2, ARCH - 2]) {
+        const [x, y] = archPoint(k);
+        const outward = Math.sign(x);
+        const anchor: readonly [number, number, number] = [x + outward * 2.6, longitudinal + Math.sign(longitudinal) * 1.4, 0.12];
+        clusterBeam(cluster, [x, longitudinal, y], anchor, 0.03, canvasEdge, 'equipment');
+        clusterBox(cluster, anchor[0], anchor[1], 0.08, 0.22, 0.16, 0.22, dark, 'masonry');
+      }
+    }
+  };
+
+  /** Brick piers at the four corners with stone caps. */
+  const brickPiers = (cluster: FacilityCluster, height: number, cap: THREE.Color): void => {
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      for (const longitudinal of [-BAY_HALF_L, BAY_HALF_L]) {
+        clusterSurface(cluster, 'brick', lateral, longitudinal, height / 2, 0.8, height, 0.8);
+        clusterBox(cluster, lateral, longitudinal, height + 0.08, 0.92, 0.16, 0.92, cap, 'masonry');
+      }
+    }
+  };
+  /** The back wall in brick to `height` with tall round-headed windows high in it, and a gable stepped up to `ridgeY`. */
+  const brickBackWall = (cluster: FacilityCluster, height: number, ridgeY: number, windows: readonly number[],
+    stone: THREE.Color): void => {
+    const back = -BAY_HALF_L - 0.24;
+    clusterSurface(cluster, 'brick', 0, back, height / 2, 2 * BAY_HALF_W, height, 0.38);
+    for (const lateral of windows) {
+      clusterSurface(cluster, 'glazing', lateral, back + 0.2, 3.45, 1.3, 2.3, 0.04);
+      clusterBox(cluster, lateral, back + 0.24, 2.26, 1.5, 0.12, 0.16, stone, 'masonry'); // sill
+      for (let v = 0; v < 5; v += 1) {
+        // the brick arch head: five voussoirs round the window's top
+        const a = Math.PI * (v + 0.5) / 5;
+        clusterBox(cluster, lateral + Math.cos(a) * 0.76, back + 0.21, 4.6 + Math.sin(a) * 0.5, 0.34, 0.22, 0.1,
+          new THREE.Color(0x6e3f30), 'masonry', a - Math.PI / 2);
+      }
+    }
+    for (let step = 0; step < 4; step += 1) {
+      const y0 = height + step * (ridgeY - height) / 4, y1 = height + (step + 1) * (ridgeY - height) / 4;
+      const half = BAY_HALF_W * (1 - (y1 - height) / (ridgeY - height)) + 0.25;
+      clusterSurface(cluster, 'brick', 0, back, (y0 + y1) / 2, 2 * Math.max(0.35, half), y1 - y0, 0.38);
+    }
+  };
+  /** Lattice roof trusses across the bay (top chords to the ridge, a bottom chord at the eaves, diagonal webs). */
+  const roofTrusses = (cluster: FacilityCluster, eaveY: number, ridgeY: number, at: readonly number[], color: THREE.Color): void => {
+    for (const longitudinal of at) {
+      for (const sign of [-1, 1]) {
+        clusterBeam(cluster, [sign * BAY_HALF_W, longitudinal, eaveY], [0, longitudinal, ridgeY - 0.1], 0.18, color, 'structure');
+        for (let web = 1; web <= 3; web += 1) {
+          const lateral = sign * BAY_HALF_W * (1 - web / 4);
+          const top = eaveY + (ridgeY - 0.1 - eaveY) * (web / 4);
+          clusterBeam(cluster, [lateral, longitudinal, eaveY], [lateral, longitudinal, top], 0.08, color, 'structure');
+          clusterBeam(cluster, [lateral, longitudinal, eaveY], [lateral + sign * BAY_HALF_W / 4, longitudinal, top - (ridgeY - eaveY) / 4],
+            0.07, color, 'structure');
+        }
+      }
+      clusterBox(cluster, 0, longitudinal, eaveY, 2 * BAY_HALF_W, 0.14, 0.14, color, 'structure');
+    }
+  };
+
+  const addBrickBay = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Steinburg: the arsenal's own workshop bays in brick: corner piers with stone caps, a back wall with tall
+    // round-headed windows, the far side walled in brick over its back half, steel lattice trusses and a sheeted roof.
+    const eaveY = 5.6, ridgeY = 7.5;
+    const stone = new THREE.Color(0x9a9286);
+    brickPiers(cluster, eaveY, stone);
+    brickBackWall(cluster, eaveY, ridgeY, [-2.4, 2.4], stone);
+    if (cladLateralSign !== 0) {
+      clusterSurface(cluster, 'brick', cladLateralSign * (BAY_HALF_W + 0.05), -BAY_HALF_L / 2, eaveY / 2, 0.36, eaveY, BAY_HALF_L);
+      clusterBox(cluster, cladLateralSign * (BAY_HALF_W + 0.05), -BAY_HALF_L / 2, eaveY + 0.06, 0.46, 0.12, BAY_HALF_L + 0.1, stone, 'masonry');
+    }
+    const ironwork = new THREE.Color(0x2f3337);
+    roofTrusses(cluster, eaveY, ridgeY, [-BAY_HALF_L, 0, BAY_HALF_L], ironwork);
+    for (let i = 0; i <= 4; i += 1) {
+      const t = i / 4;
+      for (const sign of [-1, 1]) {
+        clusterBox(cluster, sign * BAY_HALF_W * (1 - t), 0, eaveY + (ridgeY - eaveY) * t + 0.1, 0.12, 0.14, 2 * BAY_HALF_L + 0.3, ironwork, 'structure');
+      }
+    }
+    gableRoof(cluster, 'roofing', BAY_HALF_W + 0.55, eaveY - 0.55 * (ridgeY - eaveY) / BAY_HALF_W, ridgeY + 0.12, 2 * BAY_HALF_L + 0.8);
+    // a riveted plate lintel across the open front
+    clusterBox(cluster, 0, BAY_HALF_L, eaveY - 0.35, 2 * BAY_HALF_W - 0.6, 0.7, 0.3, ironwork, 'structure');
+  };
+
+  const addRailShed = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Cinder: a railway shed: a brick back wall with tall round-headed windows, brick piers behind and cast-iron columns
+    // with a plate girder at the open front, iron trusses and a sooty roof with a raised smoke vent along its ridge.
+    const eaveY = 5.4, ridgeY = 7.2;
+    const stone = new THREE.Color(0x8b8378);
+    const iron = new THREE.Color(0x26292b);
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      clusterSurface(cluster, 'brick', lateral, -BAY_HALF_L, eaveY / 2, 0.8, eaveY, 0.8);
+      clusterBox(cluster, lateral, -BAY_HALF_L, eaveY + 0.08, 0.92, 0.16, 0.92, stone, 'masonry');
+      // the cast-iron front column on its plinth, with a flared capital
+      clusterBox(cluster, lateral, BAY_HALF_L, 0.3, 0.7, 0.6, 0.7, stone, 'masonry');
+      clusterCylinder(cluster, lateral, BAY_HALF_L, 0.6 + (eaveY - 0.9) / 2, 0.17, eaveY - 0.9, iron, 0, 16);
+      clusterCylinder(cluster, lateral, BAY_HALF_L, eaveY - 0.18, 0.32, 0.36, iron, 0, 16);
+    }
+    brickBackWall(cluster, eaveY, ridgeY, [-2.9, 0, 2.9], stone);
+    if (cladLateralSign !== 0) {
+      clusterSurface(cluster, 'brick', cladLateralSign * (BAY_HALF_W + 0.05), -BAY_HALF_L / 2, eaveY / 2, 0.36, eaveY, BAY_HALF_L);
+    }
+    clusterBox(cluster, 0, BAY_HALF_L, eaveY + 0.1, 2 * BAY_HALF_W + 0.5, 0.8, 0.34, iron, 'structure'); // plate girder
+    for (let rivet = -8; rivet <= 8; rivet += 1) {
+      clusterBox(cluster, rivet * 0.55, BAY_HALF_L + 0.18, eaveY + 0.1, 0.06, 0.62, 0.04, new THREE.Color(0x3a3e40), 'structure');
+    }
+    roofTrusses(cluster, eaveY + 0.5, ridgeY, [-BAY_HALF_L + 0.4, 0, BAY_HALF_L - 0.2], iron);
+    gableRoof(cluster, 'roofing', BAY_HALF_W + 0.5, eaveY + 0.5 - 0.5 * (ridgeY - eaveY - 0.5) / BAY_HALF_W, ridgeY, 2 * BAY_HALF_L + 0.8);
+    // the smoke vent: a raised roof over louvred sides along the ridge
+    for (const sign of [-1, 1]) {
+      clusterBox(cluster, sign * 0.95, 0, ridgeY + 0.35, 0.06, 0.7, 2 * BAY_HALF_L + 0.2, iron, 'painted');
+      for (let louvre = 0; louvre < 3; louvre += 1) {
+        clusterBox(cluster, sign * 1.0, 0, ridgeY + 0.12 + louvre * 0.22, 0.04, 0.05, 2 * BAY_HALF_L + 0.1, new THREE.Color(0x45494c), 'painted', sign * 0.5);
+      }
+    }
+    gableRoof(cluster, 'roofing', 1.25, ridgeY + 0.62, ridgeY + 0.95, 2 * BAY_HALF_L + 0.4);
+  };
+
+  const addMonsoonPavilion = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Monsoon: round concrete columns under a steep roof with deep eaves; gutters along both eaves run down to drain
+    // channels round the bay, and the back is a ventilated timber screen over a concrete upstand.
+    const eaveY = 5.1, ridgeY = 7.6;
+    const concrete = new THREE.Color(0x9a9a92);
+    const drain = new THREE.Color(0x1d2224);
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        clusterBox(cluster, lateral, longitudinal, 0.12, 0.8, 0.24, 0.8, dark, 'masonry');
+        clusterCylinder(cluster, lateral, longitudinal, 0.24 + (eaveY - 0.24) / 2, 0.24, eaveY - 0.24, concrete, 0, 16);
+      }
+      clusterBox(cluster, lateral, 0, eaveY + 0.15, 0.44, 0.3, 2 * BAY_HALF_L + 0.44, concrete, 'masonry');
+    }
+    for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+      clusterBox(cluster, 0, longitudinal, eaveY + 0.15, 2 * BAY_HALF_W, 0.3, 0.3, concrete, 'masonry');
+      for (const sign of [-1, 1]) {
+        clusterBeam(cluster, [sign * (BAY_HALF_W + 1.4), longitudinal, eaveY - 0.62], [0, longitudinal, ridgeY - 0.12], 0.18, steel, 'structure');
+      }
+    }
+    const eaveOut = BAY_HALF_W + 1.4;
+    const eaveDrop = eaveY - 1.4 * (ridgeY - eaveY) / BAY_HALF_W;
+    gableRoof(cluster, 'roofing', eaveOut, eaveDrop + 0.1, ridgeY, 2 * BAY_HALF_L + 1.2);
+    for (const sign of [-1, 1]) {
+      const gutter = sign * (eaveOut + 0.1);
+      clusterBox(cluster, gutter, 0, eaveDrop - 0.02, 0.22, 0.18, 2 * BAY_HALF_L + 1.2, dark, 'painted');
+      for (const longitudinal of [-BAY_HALF_L - 0.4, BAY_HALF_L + 0.4]) {
+        clusterBox(cluster, gutter, longitudinal, eaveDrop / 2, 0.11, eaveDrop, 0.11, dark, 'painted');
+      }
+      // the drain channel under the eave line: a dark grated trough with a sump at each downpipe
+      clusterBox(cluster, gutter, 0, 0.03, 0.46, 0.04, 2 * BAY_HALF_L + 1.6, drain, 'equipment');
+      for (const longitudinal of [-BAY_HALF_L - 0.4, BAY_HALF_L + 0.4]) {
+        clusterBox(cluster, gutter, longitudinal, 0.05, 0.7, 0.08, 0.7, concrete, 'masonry');
+      }
+      for (let bar = 0; bar < 18; bar += 1) {
+        clusterBox(cluster, gutter, -BAY_HALF_L - 0.6 + bar * ((2 * BAY_HALF_L + 1.2) / 17), 0.06, 0.5, 0.02, 0.04, steel, 'structure');
+      }
+    }
+    clusterBox(cluster, 0, -BAY_HALF_L - 0.9, 0.03, 2 * eaveOut + 0.6, 0.04, 0.46, drain, 'equipment');
+    // the back: a concrete upstand and a louvred timber screen above it
+    const back = -BAY_HALF_L - 0.24;
+    clusterBox(cluster, 0, back, 0.5, 2 * BAY_HALF_W, 1.0, 0.24, concrete, 'masonry');
+    clusterSurface(cluster, 'timber', 0, back, 1.0 + 1.6, 2 * BAY_HALF_W, 3.2, 0.06);
+    for (let slat = 0; slat < 6; slat += 1) {
+      clusterBox(cluster, 0, back + 0.1, 4.35 + slat * 0.12, 2 * BAY_HALF_W, 0.04, 0.12, new THREE.Color(0x5b4632), 'painted', 0);
+    }
+    if (cladLateralSign !== 0) {
+      clusterBox(cluster, cladLateralSign * BAY_HALF_W, -BAY_HALF_L / 2, 0.5, 0.24, 1.0, BAY_HALF_L, concrete, 'masonry');
+    }
+    // the rainwater tank behind the bay
+    clusterCylinder(cluster, cladLateralSign * 2.6 || 2.6, back - 1.35, 1.1, 1.0, 2.2, new THREE.Color(0x2f5a4c), 0, 16);
+    clusterCylinder(cluster, cladLateralSign * 2.6 || 2.6, back - 1.35, 2.25, 1.04, 0.1, dark, 0, 16);
+  };
+
+  const addAvalancheGallery = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Glacier: a concrete avalanche gallery: a heavy back wall against the slope, the far side walled, a roof slab
+    // falling from the mountain side to the valley side on columns with haunches, snow lying on it, scree behind.
+    const concrete = new THREE.Color(0x8e9294);
+    const snow = new THREE.Color(0xeef3f6);
+    const rock = new THREE.Color(0x6a6c6b);
+    const backY = 6.4, frontY = 5.75;
+    const roofAt = (longitudinal: number): number => backY + (frontY - backY) * ((longitudinal + BAY_HALF_L) / (2 * BAY_HALF_L));
+    const pitch = Math.atan2(backY - frontY, 2 * BAY_HALF_L);
+    const back = -BAY_HALF_L - 0.45;
+    clusterBox(cluster, 0, back, backY / 2, 2 * BAY_HALF_W + 1.0, backY, 0.62, concrete, 'masonry');
+    if (cladLateralSign !== 0) {
+      clusterBox(cluster, cladLateralSign * (BAY_HALF_W + 0.25), 0, frontY / 2, 0.5, frontY, 2 * BAY_HALF_L + 0.4, concrete, 'masonry');
+    }
+    const columnSides = cladLateralSign !== 0 ? [-cladLateralSign * BAY_HALF_W] : [-BAY_HALF_W, BAY_HALF_W];
+    for (const lateral of columnSides) {
+      for (const longitudinal of [0, BAY_HALF_L]) {
+        const top = roofAt(longitudinal) - 0.3;
+        clusterBox(cluster, lateral, longitudinal, top / 2, 0.6, top, 0.6, concrete, 'masonry');
+        clusterBox(cluster, lateral - Math.sign(lateral) * 0.45, longitudinal, top - 0.25, 0.4, 0.5, 0.6, concrete, 'masonry');
+      }
+    }
+    if (cladLateralSign !== 0) {
+      clusterBox(cluster, cladLateralSign * BAY_HALF_W, BAY_HALF_L, frontY / 2, 0.6, frontY, 0.6, concrete, 'masonry');
+    }
+    // the roof slab and the snow on it (a mono-pitch: the slab and its cover turned about the lateral axis)
+    clusterSurface(cluster, 'render', 0, 0, (backY + frontY) / 2 + 0.05, 2 * BAY_HALF_W + 1.2, 0.5,
+      2 * BAY_HALF_L + 1.1, { rotationX: pitch });
+    clusterBox(cluster, 0, 0.2, (backY + frontY) / 2 + 0.45, 2 * BAY_HALF_W + 1.1, 0.34, 2 * BAY_HALF_L + 0.9, snow, 'painted');
+    // scree heaped behind the back wall up to the roof, snow on it
+    for (let k = 0; k < 7; k += 1) {
+      const lateral = -BAY_HALF_W + k * (2 * BAY_HALF_W / 6);
+      const height = 4.6 + ((k * 37) % 5) * 0.35;
+      clusterBox(cluster, lateral, back - 1.3 - (k % 2) * 0.4, height / 2, 2.1, height, 2.2, rock.clone().offsetHSL(0, 0, ((k % 3) - 1) * 0.03), 'masonry', ((k % 3) - 1) * 0.12);
+      clusterBox(cluster, lateral, back - 1.2 - (k % 2) * 0.4, height + 0.12, 1.9, 0.26, 2.0, snow, 'painted', ((k % 3) - 1) * 0.12);
+    }
+  };
+
+  const addRockCut = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Redrock: the bay is cut back into the red rock: stratified faces at the back and on the far side, rock bolts in
+    // them, scree at their foot; a corrugated lean-to bears on the rock and on timber posts at the open front.
+    const strata = [0x9c5a3e, 0xb06a48, 0x8a4c34, 0xa86244].map((hex) => new THREE.Color(hex));
+    const post = new THREE.Color(0x5a3f2b);
+    const bolt = new THREE.Color(0x2a2624);
+    const layerH = 1.6;
+    const back = -BAY_HALF_L - 0.3;
+    for (let layer = 0; layer < 4; layer += 1) {
+      const y = layerH * layer + layerH / 2;
+      const set = ((layer * 5) % 3 - 1) * 0.14;
+      clusterBox(cluster, 0, back - 1.1 + set, y, 2 * BAY_HALF_W + 3.2, layerH, 2.2, strata[layer], 'masonry');
+      if (cladLateralSign !== 0) {
+        clusterBox(cluster, cladLateralSign * (BAY_HALF_W + 0.3 + 1.1 - set), 0, y, 2.2, layerH, 2 * BAY_HALF_L + 1.6, strata[(layer + 2) % 4], 'masonry');
+      }
+    }
+    clusterBox(cluster, 0, back - 1.6, 4 * layerH + 0.35, 2 * BAY_HALF_W + 2.2, 0.7, 1.2, strata[1], 'masonry', 0.06);
+    for (let row = 0; row < 3; row += 1) {
+      for (let i = 0; i < 5; i += 1) {
+        clusterBox(cluster, -3.6 + i * 1.8 + (row % 2) * 0.9, back - 0.02, 1.2 + row * 1.7, 0.16, 0.16, 0.08, bolt, 'structure');
+      }
+    }
+    for (let k = 0; k < 6; k += 1) {
+      const lateral = -BAY_HALF_W + 0.6 + k * 1.6;
+      clusterBox(cluster, lateral, back + 0.35, 0.18, 0.6 + (k % 3) * 0.2, 0.36, 0.5, strata[k % 4].clone().offsetHSL(0, 0, -0.04), 'masonry', (k % 3 - 1) * 0.25);
+    }
+    // the lean-to: a wall plate bolted to the rock, rafters falling to a front beam on two posts, corrugated sheeting
+    const backY = 6.1, frontY = 5.5;
+    const pitch = Math.atan2(backY - frontY, 2 * BAY_HALF_L);
+    clusterBox(cluster, 0, back + 0.1, backY - 0.2, 2 * BAY_HALF_W + 0.4, 0.24, 0.2, post, 'painted');
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      clusterBox(cluster, lateral, BAY_HALF_L, 0.12, 0.6, 0.24, 0.6, dark, 'masonry');
+      clusterCylinder(cluster, lateral, BAY_HALF_L, frontY / 2, 0.15, frontY, post, 0, 10);
+    }
+    clusterBox(cluster, 0, BAY_HALF_L, frontY - 0.12, 2 * BAY_HALF_W + 0.5, 0.26, 0.26, post, 'painted');
+    for (let i = 0; i <= 5; i += 1) {
+      const lateral = -BAY_HALF_W + i * (2 * BAY_HALF_W / 5);
+      clusterBeam(cluster, [lateral, back + 0.1, backY - 0.05], [lateral, BAY_HALF_L + 0.4, frontY + 0.02], 0.16, post, 'painted');
+    }
+    clusterSurface(cluster, 'roofing', 0, (back + BAY_HALF_L + 0.6) / 2, (backY + frontY) / 2 + 0.16,
+      2 * BAY_HALF_W + 0.9, 0.05, BAY_HALF_L - back + 0.6, { rotationX: pitch });
+  };
+
+  const addMillBay = (cluster: FacilityCluster, cladLateralSign: number): void => {
+    // Ironworks: heavy steel: deep columns at the corners and mid-sides on concrete plinths, sooty sheeting on the back
+    // and the far side with X-bracing, trusses and a roof whose ridge carries a louvred monitor.
+    const eaveY = 6.6, ridgeY = 7.9;
+    const soot = new THREE.Color(0x3c3e40);
+    for (const lateral of [-BAY_HALF_W, BAY_HALF_W]) {
+      for (const longitudinal of [-BAY_HALF_L, 0, BAY_HALF_L]) {
+        clusterBox(cluster, lateral, longitudinal, 0.3, 1.0, 0.6, 1.0, dark, 'masonry');
+        clusterBox(cluster, lateral, longitudinal, 0.6 + (eaveY - 0.6) / 2, 0.5, eaveY - 0.6, 0.36, steel, 'structure');
+        clusterBox(cluster, lateral, longitudinal, 0.6 + (eaveY - 0.6) / 2, 0.12, eaveY - 0.6, 0.62, steel, 'structure');
+      }
+      clusterBox(cluster, lateral, 0, eaveY + 0.2, 0.42, 0.4, 2 * BAY_HALF_L + 0.6, steel, 'structure');
+    }
+    const back = -BAY_HALF_L - 0.24;
+    clusterBox(cluster, 0, back, 0.45, 2 * BAY_HALF_W + 0.5, 0.9, 0.3, dark, 'masonry');
+    clusterSurface(cluster, 'sheeting', 0, back, 0.9 + (eaveY - 0.9) / 2, 2 * BAY_HALF_W + 0.4, eaveY - 0.9, 0.05);
+    for (const sign of [-1, 1]) {
+      clusterBeam(cluster, [sign * BAY_HALF_W, back + 0.14, 1.0], [0, back + 0.14, eaveY - 0.3], 0.12, steel, 'structure');
+    }
+    if (cladLateralSign !== 0) {
+      const far = cladLateralSign * (BAY_HALF_W + 0.25);
+      clusterSurface(cluster, 'sheeting', far, 0, 0.9 + (eaveY - 0.9) / 2, 0.05, eaveY - 0.9, 2 * BAY_HALF_L + 0.4);
+      clusterBeam(cluster, [far - cladLateralSign * 0.12, -BAY_HALF_L, 1.0], [far - cladLateralSign * 0.12, 0, eaveY - 0.3], 0.12, steel, 'structure');
+      clusterBeam(cluster, [far - cladLateralSign * 0.12, 0, 1.0], [far - cladLateralSign * 0.12, -BAY_HALF_L, eaveY - 0.3], 0.12, steel, 'structure');
+    }
+    roofTrusses(cluster, eaveY + 0.35, ridgeY, [-BAY_HALF_L, 0, BAY_HALF_L], steel);
+    gableRoof(cluster, 'roofing', BAY_HALF_W + 0.45, eaveY + 0.35 - 0.45 * (ridgeY - eaveY - 0.35) / BAY_HALF_W, ridgeY, 2 * BAY_HALF_L + 0.8);
+    for (const sign of [-1, 1]) {
+      clusterBox(cluster, sign * 1.15, 0, ridgeY + 0.45, 0.08, 0.9, 2 * BAY_HALF_L + 0.4, soot, 'painted');
+      for (let louvre = 0; louvre < 3; louvre += 1) {
+        clusterBox(cluster, sign * 1.2, 0, ridgeY + 0.15 + louvre * 0.28, 0.05, 0.06, 2 * BAY_HALF_L + 0.3, dark, 'painted', sign * 0.5);
+      }
+    }
+    gableRoof(cluster, 'roofing', 1.5, ridgeY + 0.85, ridgeY + 1.25, 2 * BAY_HALF_L + 0.6);
+    // soot-blackened sheeting high on the back wall where the monitor's smoke rolls down
+    clusterBox(cluster, 0, back + 0.04, eaveY - 0.8, 2 * BAY_HALF_W + 0.3, 1.6, 0.02, soot, 'painted');
+  };
+
+  /** Each Garage's own shelter on a bay (SHELTER_KINDS); the portal frame where the region builds in plain steel. */
+  const addRegionalServiceBayFrame = (cluster: FacilityCluster, deckLateralSign = 0, cladLateralSign = -deckLateralSign): void => {
+    if (shelterKind === 'portal') {
+      addPurposeBuiltServiceBayFrame(cluster, deckLateralSign, cladLateralSign);
+      return;
+    }
+    servicePit(cluster);
+    switch (shelterKind) {
+      case 'timber-snow-shed': addTimberSnowShed(cluster, cladLateralSign); break;
+      case 'shade-hangar': addShadeHangar(cluster, cladLateralSign); break;
+      case 'brick-bay': addBrickBay(cluster, cladLateralSign); break;
+      case 'rail-shed': addRailShed(cluster, cladLateralSign); break;
+      case 'monsoon-pavilion': addMonsoonPavilion(cluster, cladLateralSign); break;
+      case 'avalanche-gallery': addAvalancheGallery(cluster, cladLateralSign); break;
+      case 'rock-cut': addRockCut(cluster, cladLateralSign); break;
+      case 'mill-bay': addMillBay(cluster, cladLateralSign); break;
+    }
+  };
+
+  /** Frosthollow's turret lift: timber shear legs over the turret, a back stay to a ground anchor, a chain hoist. */
+  const addShearLegs = (cluster: FacilityCluster, hookLateral: number, hookLongitudinal: number): void => {
+    const pole = new THREE.Color(0x4a392b);
+    const apex: readonly [number, number, number] = [hookLateral, hookLongitudinal, 5.6];
+    for (const sign of [-1, 1]) {
+      const foot: readonly [number, number, number] = [hookLateral + sign * 2.9, hookLongitudinal - 1.1, 0.05];
+      clusterBeam(cluster, foot, apex, 0.24, pole, 'painted');
+      clusterBox(cluster, foot[0], foot[1], 0.08, 0.5, 0.16, 0.5, dark, 'masonry');
+    }
+    const anchor: readonly [number, number, number] = [hookLateral, -BAY_HALF_L + 0.5, 0.2];
+    clusterBeam(cluster, apex, anchor, 0.04, dark, 'equipment');
+    clusterBox(cluster, anchor[0], anchor[1], 0.15, 0.4, 0.3, 0.4, dark, 'masonry');
+    clusterBox(cluster, hookLateral, hookLongitudinal, 5.45, 0.5, 0.3, 0.5, steel, 'structure'); // the head lashing and shackle
+  };
+
   const addPurposeBuiltServiceBay = (
     pose: GarageWorkshopBayPose,
     mirror: -1 | 1,
@@ -631,22 +1121,30 @@ export function addGarageFacilityDetails({
     servicePurposeTags.add('overhead-travelling-crane');
     servicePurposeTags.add('grounded-service-pit');
 
-    addPurposeBuiltServiceBayFrame(cluster, withDeck ? -mirror : 0, mirror);
+    addRegionalServiceBayFrame(cluster, withDeck ? -mirror : 0, mirror);
 
     // Bridge crane: runway beams on brackets inside the rafters, the bridge spanning them, a trolley with its hook
     // block, a spreader beam and two slings over the bay centre. The Burlak's own turret gantry does its lift, so its
     // shelter carries none.
     const runwayY = BACK_EAVE_Y - 0.55;
-    if (withCrane) for (const lateral of [-4.3, 4.3]) {
+    // Frosthollow's timber shed lifts its turret on shear legs; every other shelter carries the runway
+    const shearLegs = withCrane && shelterKind === 'timber-snow-shed';
+    if (withCrane && !shearLegs) for (const lateral of [-4.3, 4.3]) {
       clusterBox(cluster, lateral, 0, runwayY, 0.24, 0.3, 2 * BAY_HALF_L - 0.2, safety, 'painted');
       for (const longitudinal of [-BAY_HALF_L + 0.25, BAY_HALF_L - 0.25]) {
         clusterBox(cluster, lateral + Math.sign(lateral) * 0.18, longitudinal, runwayY + 0.1, 0.34, 0.12, 0.3, steel, 'structure');
       }
     }
     if (withCrane) {
-      clusterBox(cluster, 0, mirror * 0.55, runwayY - 0.12, 8.85, 0.34, 0.42, safety, 'painted');
-      clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 0.42, 0.72, 0.4, 0.68, dark, 'equipment');
-      clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, runwayY - 1.4, 0.04, 1.6, steel, 0, 8);
+      if (shearLegs) {
+        addShearLegs(cluster, mirror * 0.8, mirror * 0.55);
+        clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, 4.02, 0.035, 2.56, steel, 0, 8);
+        clusterBox(cluster, mirror * 0.8, mirror * 0.55, 4.45, 0.36, 0.5, 0.3, safety, 'painted'); // the chain block
+      } else {
+        clusterBox(cluster, 0, mirror * 0.55, runwayY - 0.12, 8.85, 0.34, 0.42, safety, 'painted');
+        clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 0.42, 0.72, 0.4, 0.68, dark, 'equipment');
+        clusterCylinder(cluster, mirror * 0.8, mirror * 0.55, runwayY - 1.4, 0.04, 1.6, steel, 0, 8);
+      }
       clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 2.28, 0.42, 0.24, 0.2, steel, 'equipment', 0.48);
       clusterBox(cluster, mirror * 0.8, mirror * 0.55, runwayY - 2.5, 2.8, 0.16, 0.2, safety, 'painted');
       for (const lateralOffset of [-1.22, 1.22]) {
