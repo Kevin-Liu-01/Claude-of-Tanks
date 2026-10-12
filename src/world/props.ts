@@ -4251,7 +4251,10 @@ ${snowCap ? `
     ...civilianVehicleTypes(mapId, mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
-    // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
+    // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge).
+    // (the buildings lane, 2026-10-11; wave 406a) and a map whose region never set the stock kinds by its tracks draws
+    // its region's own forms for them, the trashcan among them (the Jamuna char's kolshi, paddy basket, jute bales and
+    // jute stook; REGIONAL_CLUTTER_FORMS)
     ...periodClutterTypes(mapId),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {

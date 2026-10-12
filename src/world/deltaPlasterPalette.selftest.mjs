@@ -130,9 +130,12 @@ if (process.argv[2] === '--fixture') {
     Object.values(buckets).forEach((array, index) => assert.equal(array, arrays[index],
       `${mapId}: palette fold does not replace geometry or bucket identities`));
   }
+  // (the buildings lane, 2026-10-11, for the coordinator: the Delta fixture builds the whole map's props, 94-175 s
+  // under a loaded machine against the old 60 s child limit; this is a palette check, not a timing check, so the limit
+  // only bounds a hang)
   const build = control => {
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--fixture', control],
-      { encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+      { encoding: 'utf8', timeout: 300000, maxBuffer: 8 * 1024 * 1024 });
     assert.equal(child.status, 0, child.stderr || String(child.error));
     return JSON.parse(child.stdout);
   };
