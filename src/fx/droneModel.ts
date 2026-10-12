@@ -436,9 +436,25 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
   const corner = (r:number,a:number) => { positions.push(Math.cos(a) * r, 0, Math.sin(a) * r); colors.push(tone, tone * 1.02, tone * 1.07, alpha(r) * (.8 + .2 * Math.cos(3 * a))); };
   corner(r0, a0); corner(r1, a1); corner(r1, a0); corner(r0, a0); corner(r0, a1); corner(r1, a1);
  }
+ const normals = Array.from({ length: positions.length / 3 }, () => [0, 1, 0]).flat();
+ // Round 4b (critics, wave 411c: from a camera at dock height the discs vanished edge-on before touchdown): a thin
+ // blurred ribbon at the tip circle, 3.2 cm of authoring height (inside the rotor stock's y band), so a spinning disc
+ // seen side-on is a translucent line across its span, never nothing.
+ const ribbonR = .985 * radius, ribbonH = .016, ribbonAlpha = .3 * strength, ribbonTone = .42;
+ for (let s = 0; s < segments; s++) {
+  const a0 = s / segments * Math.PI * 2, a1 = (s + 1) / segments * Math.PI * 2;
+  const p = (a:number, y:number) => [Math.cos(a) * ribbonR, y, Math.sin(a) * ribbonR];
+  const quad = [p(a0, -ribbonH), p(a1, ribbonH), p(a1, -ribbonH), p(a0, -ribbonH), p(a0, ribbonH), p(a1, ribbonH)];
+  for (const [index, q] of quad.entries()) {
+   const a = index === 1 || index === 2 || index === 5 ? a1 : a0;
+   positions.push(...q); normals.push(Math.cos(a), 0, Math.sin(a));
+   // side-on, the near and far halves of the ribbon overlap: two faint layers read as one soft line
+   colors.push(ribbonTone, ribbonTone * 1.02, ribbonTone * 1.07, ribbonAlpha);
+  }
+ }
  const g = new THREE.BufferGeometry();
  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
- g.setAttribute('normal', new THREE.Float32BufferAttribute(Array.from({ length: positions.length / 3 }, () => [0, 1, 0]).flat(), 3));
+ g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
  return g;
 }
