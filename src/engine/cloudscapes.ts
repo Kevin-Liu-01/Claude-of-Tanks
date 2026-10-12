@@ -107,6 +107,15 @@ export interface CloudscapeConfig {
   /** Whether the layer casts real cloud shadows through the CSM. */
   shadow?: boolean;
   /**
+   * 2026-10-09 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): 0..1 the share of the clear
+   * sun's beam a stratiform deck (a regime that casts no cloud shadows) still passes where it is thickest — its optical
+   * thinness. A thin polar stratus or a high altocumulus shows the sun as a bright patch and the ground keeps soft
+   * directional shadows under it; the light model (lightModel.ts deriveSun) floors the deck's direct cut at it and the
+   * cloud shade map's cells (volumetricClouds.ts updateFarShade) take at most 1 − it. 0 / absent: the regime's thick
+   * cell (CLOUD_LAYER_RULES.deckShadowCore) and OVERCAST_DIRECT_CUT unchanged.
+   */
+  deckBeam?: number;
+  /**
    * Round 76 (the deck pass): 0..1 cellular structure of a deck — each column's thickness follows the inverted-Worley
    * cells at the deck scale (thick cores hanging a little lower, thin borders that open where the coverage is
    * marginal); 0 = round 71's uniform sheet.
