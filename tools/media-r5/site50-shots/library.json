@@ -122,6 +122,15 @@
      "at": "2026-10-10T23:06:35.260Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -251,6 +260,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "af751366acfe3cb382d1d53763ffdb5230c29f4e5a3a7b7e0a48cd5cd6611fd5",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
@@ -380,6 +398,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "a123eb7856561924c0a11faed7e0fb162f846b61d2dda4fe820a8a59270c20cd",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leclerc XLR crosses the burning square",
@@ -518,6 +545,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-90M column drives into the fight on the country road",
@@ -656,6 +692,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -794,6 +839,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A KF51 Panther charges past the farmhouse through artillery",
@@ -916,6 +970,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "d65b440fcd2266a823479c009beca0c2deb54c0dfeb2b36dc067c5bd6c5c800e",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
@@ -1038,6 +1101,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "2edcf9123585d6d863a28f91d9c017e9a2600195095d9c4a08372c7c4e2c5ea9",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
@@ -1166,6 +1238,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "b48f8543d3569e85639138a4b89d492d8b58da841dd218a6bd31e974b36e6a42",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
@@ -1278,6 +1359,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A ZTZ-100 fords the river as shells land around it",
@@ -1402,6 +1492,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
@@ -1511,6 +1610,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "aacf0ad875cb239de8abdb69e486bab886596946b30e31ff953b11e8abf13cd9",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-90MS Tagil column advances under the Ironworks gantries",
@@ -1635,6 +1743,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A K2 Black Panther races past the red-roofed farm at sunset",
@@ -1750,6 +1867,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "dc5a38437d053fc47143e70845db13177c702dfbc369eda7335b76b1ef220666",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-80U pushes through snowy Frosthollow",
@@ -1853,6 +1979,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "bd72dbe1ccaed7b19b50f9b5337a35c3fcf44d8013b4bd8848558da66081fa98",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A C1 Ariete column drives through the orchard village under fire",
@@ -1971,6 +2106,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
@@ -2089,6 +2233,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Fire at the Steinburg crossroads at noon",
@@ -2201,6 +2354,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-90A is knocked out at the end of a Steinburg street at night",
@@ -2304,6 +2466,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "0a8b68f3e26fa71ed7ba8de28489f2d7f952bc2ae685ed63c74432976bbfa948",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Roof tiles rain down as a PL-01 fires up the street",
@@ -2407,6 +2578,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
@@ -2525,6 +2705,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-90SM wedge assaults through the burning fields",
@@ -2637,6 +2826,15 @@
      "at": "2026-10-10T23:06:36.223Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Artillery walks across the fields toward the wedge at night",
@@ -2746,6 +2944,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "6192513c437c968f57933b25ceedb745da0253107d93f93e51d18392b89121fb",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
@@ -2849,6 +3056,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "4ad30670a207172fc1217fa75e76941f4c56a0dd40abd234f4637ca3c9a7ea0f",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A duel on the frozen lake: a T-80U takes the hit",
@@ -2952,6 +3168,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leopard 2A5 and a CV90105 fight through the alpine village",
@@ -3070,6 +3295,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Merkava Mk 3D fires at Sunscar Oasis",
@@ -3176,6 +3410,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-62MV-1 is knocked out by the caravanserai",
@@ -3285,6 +3528,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "cb1306dee4dccda6e1ab66c2d62bf06b67e3ea1b1541e3b8d8a42fbf051e2058",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Challenger 2E and a Challenger 3 hold the fjord village",
@@ -3388,6 +3640,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "85dbe62f9c985070959f77d374bb76cc51f452507ffc24e7ea1f8e8d8174e1f7",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A T-90 burns on the road above the fjord",
@@ -3503,6 +3764,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "bb506ab286ef05654df8965ddc79be485219e3afc8e19ff69ea9be3bfd9eaa18",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
@@ -3618,6 +3888,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "12f1af000536a64e51327ec094c5ce455ced6bb4ae6995bde1972bf9ff8bdc9c",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Type 96B fires across the river ford",
@@ -3721,6 +4000,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "dcf10f602b90706a58fb14cecfd895cdf6e4d49a592f8df158232dddddfbc147",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
@@ -3830,6 +4118,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "a37d48afea88c6de07abf9f528518651fd7605a72e25a3a2220910f49e7ad964",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "The line advances past the burning water tower at night",
@@ -3942,6 +4239,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
@@ -4051,6 +4357,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "1123ccecf6df830e9009e7ebcc88074c2d2d05c40e4f9a797a79ba766a185ec3",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
@@ -4160,6 +4475,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "c776eb0533318eb866b835c423ec0416780a9a2294bdb8c7907050a78439d6f1",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Type 10 knocks out a T-90M beside the burning barn",
@@ -4269,6 +4593,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "6b665e10fc4a63aa9c47f77b8b19765ff99bcab51001a0101739bbbcdd20a9d0",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
@@ -4381,6 +4714,15 @@
      "at": "2026-10-10T23:06:36.873Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
@@ -4484,6 +4826,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "d37c70dfbceb5903da79e1d36542f61fd3e65b22d8714cb7cf7f42bf4698c5c4",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
@@ -4606,6 +4957,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "65394b204f2cb31ccbcaab97aa49de4799889051a64d2c2d8a3b2761b7b2b582",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Smoke columns rise over the rooftops of Steinburg",
@@ -4709,6 +5069,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "ccdfb512432db10c0b9b97602460223eb46dd3c4db29c39049209a34e3b68d2b",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "A Leopard 2A6 UA halts in Steinburg's night street fight",
@@ -4812,6 +5181,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "83232305a75ae00134d479688a4b5bcc9761c96b4a87b246459a1b4830da48ee",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Verdant Fields from above as the assault rolls in",
@@ -4921,6 +5299,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "187347b3572d66d05d4324cb70eec88ff07a5fd31c1386d4c517edd0d02d7a5c",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
@@ -5039,6 +5426,15 @@
      "at": "2026-10-10T23:06:38.121Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v15",
+     "sceneSha256": "99a0e920f97e7c43bde5f07667540040da4bbaa8fd148aca757b8c773fcd8562",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
@@ -5179,6 +5575,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v15",
+     "sceneSha256": "9acd40a210945e4d69e1f7a7eda5aa159fa20e0556d80a249ddca659e504d0e2",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
@@ -5301,6 +5706,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "b1c647bf9c7ede59d2bb23c9b17e033b82f0c06b1e4d27f924ab394b1083ecd4",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Monsoon Ridge: shells land along the jungle river",
@@ -5419,6 +5833,15 @@
      "at": "2026-10-10T23:06:38.121Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 13, the launch finals at 4K on the launch tree (PR 9 push 6, the clouds fix, the cough fix); delivered with the game sound since 2026-10-10"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v15",
+     "sceneSha256": "62cabe9528b3948fdc25c7ad9c67d2a46f776a67ffb2e25ae695aea4290dc5d3",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Ironworks at night: the yard burns between the smoke stacks",
@@ -5528,6 +5951,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "116e02da1253d96961957aca1eb1ac9b8b8a0bf185fb5e52f898d0a130485a90",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Jade River Delta: the river village under fire, mountains beyond",
@@ -5656,6 +6088,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v14",
+     "sceneSha256": "f33dd63921c38c19de2f273ca6d5f20cd704521ff88814d4baf05fcf8478fe84",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Orchard Valley: smoke drifts over the orchards",
@@ -5771,6 +6212,15 @@
      "at": "2026-10-07T22:44:02.183Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "engine review 3: 960 px, 15 fps, a light probe per take (chain7), on the 2.0 maps with main's vehicle surfaces; clips in shots/media-r5/site50/review-r7"
+    },
+    {
+     "round": "r14",
+     "sceneVersion": "v15",
+     "sceneSha256": "85fa053c0465da77fa19c271084b17ec2f302036c13bda4e432b5af9a6b61af1",
+     "renderer": "fae1ff042",
+     "at": "2026-10-12T14:43:12.179Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
     }
    ],
    "title": "Highland Reservoir at sunset: the lake beyond the burning village",
