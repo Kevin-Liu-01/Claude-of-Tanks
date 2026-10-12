@@ -34,9 +34,9 @@ assert.ok(Math.abs(state.pitch)<1e-6&&Math.abs(state.roll)<1e-6,'stabilizer sett
  droneClimbCharacter(launch,launch,1,12,1,out);assert.ok(out.pitch>DRONE_CLIMB.lean*.6,'the nose leans toward forward flight at the top of the climb');
  let peak=0,dip=0,swings=0,prev=0,prevRate=0;
  for(let age=launch;age<launch+1.5;age+=1/60){droneClimbCharacter(age,launch,1,12,1,out);
-  assert.ok(Math.abs(out.roll)<.04&&out.pitch<.2,'bounded trim');peak=Math.max(peak,out.lift);dip=Math.min(dip,out.lift);
+  assert.ok(Math.abs(out.roll)<.04&&out.pitch<.22,'bounded trim');peak=Math.max(peak,out.lift);dip=Math.min(dip,out.lift);
   const rate=out.lift-prev;if(rate*prevRate<0)swings++;prevRate=rate;prev=out.lift;}
- assert.ok(peak>.15&&peak<.3,'a small overshoot over the launch height ('+peak.toFixed(3)+' m)');
+ assert.ok(peak>.2&&peak<.4,'a small overshoot over the launch height ('+peak.toFixed(3)+' m)');
  assert.ok(dip<-.02&&dip>-.1,'one shallow correction below it');assert.ok(swings>=3,'quick corrections settle it');
  droneClimbCharacter(launch+1.5,launch,1,12,1,out);assert.ok(Math.abs(out.lift)<.003,'settled within a second and a half');
 }

@@ -50,7 +50,7 @@ export function droneHoverDrift(timeS:number,phase:number,out:{x:number;z:number
  * ends, a short vertical overshoot of the launch height settles in a few quick corrections. `liftM` is the climb's
  * height above the dock, `u` its fraction (0 seated, 1 at the launch height). Pitch and roll in radians (positive pitch
  * puts the nose down), lift in metres along the world's up. */
-export const DRONE_CLIMB = Object.freeze({ clearM: 3, lean: .12, overshootM: .45, overshootRadS: 10, overshootDecay: 4.5 });
+export const DRONE_CLIMB = Object.freeze({ clearM: 3, lean: .16, overshootM: .7, overshootRadS: 10, overshootDecay: 4.5 });
 export function droneClimbCharacter(ageS:number,launchS:number,u:number,liftM:number,phase:number,out:{pitch:number;roll:number;lift:number}):typeof out {
   const free=smoothstep(DRONE_CLIMB.clearM,DRONE_CLIMB.clearM+1.5,liftM);
   out.pitch=(DRONE_CLIMB.lean*smoothstep(.5,1,u)+.03*Math.sin(ageS*13.1+phase)+.012*Math.sin(ageS*23.7+phase*2))*free;

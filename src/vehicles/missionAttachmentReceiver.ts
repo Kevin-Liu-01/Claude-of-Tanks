@@ -8,7 +8,8 @@ type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 'ua_t80u_modern';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
   readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
-    | 'bearer-plate' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset';
+    | 'bearer-plate' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset'
+    | 'side-rail-clamp' | 'cage-post' | 'cage-tie';
   readonly size: Vec3;
   readonly center: Vec3;
 }
@@ -101,7 +102,11 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
     // reach around its existing edge, keeping both the cloth and the launch
     // column intact. Only the short return reaches outside the cage; the
     // drone itself remains over the turret, inside the hull's width.
-    const sockets: MissionReceiverPart[] = [], members: MissionReceiverPart[] = [];
+    // Round 4 (critics, 2026-10-11: the dock read as a bench beside the cage): each arm also drops a post down the
+    // outside of the cage's side frame to a clamp on its two-thirds rail, and a tie welds the two posts together, so the
+    // bracket is visibly part of the cage. The posts stay outboard of the side lattice; the clamps grip the rail.
+    const sockets: MissionReceiverPart[] = [], clamps: MissionReceiverPart[] = [], members: MissionReceiverPart[] = [];
+    const postX = -2.066, tieY = 1.08;
     for (const dz of [-.09, .09]) {
       const z = seat.z + dz, railX = -2.01, outerX = -2.30;
       const slope = .04 / 1.56;
@@ -111,6 +116,13 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       // the pitched 32 mm rail. A top-side clamp would pierce the cloth.
       sockets.push({ role: 'rail-socket', size: [.04, .074, .045],
         center: [railX, railTop - .061, z] });
+      // The side frame's two-thirds rail (ukraine.ts addAbramsCageSideFrames: a 22 mm bar in the frame plane x -2.01,
+      // lerp of base and roof at 0.66 between the stations at z .28 and -1.28), wrapped by a clamp block that reaches
+      // in from the post.
+      const t = (.28 - z) / 1.56, sideRailY = (.10 + .66 * 1.20) + t * ((.08 + .66 * 1.26) - (.10 + .66 * 1.20));
+      clamps.push({ role: 'side-rail-clamp', size: [.066, .04, .032], center: [-2.029, sideRailY, z] });
+      members.push({ role: 'cage-post', size: [.022, bottom - sideRailY - .004, .022],
+        center: [postX, (bottom - .009 + sideRailY + .013) / 2, z] });
       members.push({ role: 'lower-arm', size: [.31, .026, .045],
         center: [(railX + outerX) / 2, bottom, z] });
       members.push({ role: 'edge-return', size: [.028, seat.topY - bottom, .045],
@@ -121,7 +133,8 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       const span = seat.x + .175 - outerX;
       members.push(...bearerParts([span, .028, .116], [(seat.x + .175 + outerX) / 2, seat.topY - .014, z], feet.map(x => x - (seat.x + .175 + outerX) / 2)));
     }
-    return [...sockets, ...members];
+    members.push({ role: 'cage-tie', size: [.018, .02, .18 + .022], center: [postX, tieY, seat.z] });
+    return [...sockets, ...clamps, ...members];
   }
   for (const z of [-.09, .09]) {
     parts.push(...bearerParts([.35, .028, .116], [seat.x, seat.topY - .014, seat.z + z], feet.map(x => x - seat.x)));
@@ -133,6 +146,16 @@ interface ReceiverBuilder {
   readonly mats: { readonly hull: THREE.Material; readonly dark?: THREE.Material };
   readonly disposables: { dispose(): void }[];
   postAssemble: TankBuilderPort['postAssemble'];
+}
+
+/** Darken the up-facing vertices' shade (vertex colour) by `factor`. */
+function grimeTopFaces(geometry: THREE.BufferGeometry, factor: number): void {
+  const normal = geometry.getAttribute('normal'), colour = geometry.getAttribute('color');
+  for (let index = 0; index < normal.count; index++) {
+    if (normal.getY(index) <= .5) continue;
+    colour.setXYZ(index, colour.getX(index) * factor, colour.getY(index) * factor, colour.getZ(index) * factor);
+  }
+  colour.needsUpdate = true;
 }
 
 /** Permanent equipment, separate from the armor shell and removable drone.
@@ -160,6 +183,9 @@ export function addMissionAttachmentReceiver(P: ReceiverBuilder, id: ReceiverId)
     boxUV(geometry, CAMO_UV_REPEATS_PER_M);
     paintedSurfaceShade(geometry);
     const onDarkCage = id === 'ua_m1a1' && !!P.mats.dark;
+    // Round 4 (critics: "pale planks or a bench"): the bearers' wide tops caught the overhead light far brighter than
+    // the cage's thin bars; they carry the cage's grime instead, so the bracket reads as one dark steel structure.
+    if (onDarkCage) grimeTopFaces(geometry, .62);
     const receiver = new THREE.Mesh(geometry, onDarkCage ? P.mats.dark! : P.mats.hull);
     receiver.name = 'turretMissionReceiver';
     receiver.castShadow = receiver.receiveShadow = true;
