@@ -21,6 +21,7 @@ import {
 import { seededDraws, spentDraws, spentSeed } from './brokenDraws.ts';
 import { buildLegacyWreck } from './legacyWreck.ts';
 import { createCampKits, type CampKitBuilders } from './campKit.ts';
+import { createTownKits } from './townKit.ts';
 import { deferredWreck, type DeferredWreck } from './fractureWreckJob.ts';
 import {
   SHED_DEFAULT_STYLE, SHED_FAR_M, SHED_FAR_M_PHONE, buildShedCollision, buildShedFar,
@@ -2202,8 +2203,10 @@ function settledLegacyWreck(id: string, build: LightStructureBuilder, seed: numb
 
 const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnectedStructure,
   merge: (parts) => merge(parts.map(ensureWorldNightEmissionMask)) });
-// (the destructible-kits lane, round 4) the military light kits rebuilt member by member (campKit.ts)
+// (the destructible-kits lane, round 4) the military light kits rebuilt member by member (campKit.ts); (round 5) the
+// canvas pair with them and the town and works kits (townKit.ts)
 const camp = createCampKits({ merge: mergeConnectedStructure });
+const town = createTownKits({ merge: mergeConnectedStructure });
 
 // ------------------------------------------------------------------------------------------ the fracture-ready sheds
 // (the destructible-kits lane, 2026-10-10; the owner: "our destructible buildings like the shed and bunkers that need
@@ -2263,22 +2266,28 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   alpinerefuge: lightMeta('alpinerefuge', 'alpine', 3.3, 4.29, 5.8, PAL.nordic, makeAlpineRefuge),
   stilthouse: lightMeta('stilthouse', 'wetland', 3.36, 4.46, 6.5, PAL.paleWood, makeStiltHouse),
   longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
-  deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
+  deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas', null, 'deserttent',
+    { kit: camp.deserttent, salt: 0xde577 }),
   commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, makeCommandTent, 'canvas', null, 'commandtent',
     { kit: camp.commandtent, salt: 0xc0de7 }),
-  fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
+  fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas', null,
+    'fieldhospital', { kit: camp.fieldhospital, salt: 0xf1e57 }),
   guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, makeGuardPost, 'metal', null, 'guardpost',
     { kit: camp.guardpost, salt: 0x6a2d7 }),
   motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, makeMotorPool, 'metal', null, 'motorpool',
     { kit: camp.motorpool, salt: 0x3007e }),
   quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal', makeQuonsetHutBroken),
-  transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
+  transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal', null,
+    'transformershed', { kit: town.transformershed, salt: 0x75ed7 }),
   checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal', null, 'checkpointhut',
     { kit: camp.checkpointhut, salt: 0xc4ec7 }),
-  securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
-  servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
+  securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal', null,
+    'securityoffice', { kit: town.securityoffice, salt: 0x5ec07 }),
+  servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal',
+    null, 'servicegarage', { kit: town.servicegarage, salt: 0x5e6a7 }),
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
-  corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
+  corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal', null,
+    'corneroffice', { kit: town.corneroffice, salt: 0xc0f17 }),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
   missioncontrol: lightMeta('missioncontrol', 'orbital', 7.5, 6.2, 12.6, PAL.orbital, orbital.missioncontrol, 'metal'),
   greenhouse: lightMeta('greenhouse', 'orbital', 4.9, 8.5, 5.9, PAL.orbital, orbital.greenhouse, 'metal', orbital.greenhouseBroken),

@@ -5,7 +5,9 @@
 // The checkpoint hut, the guard post, the command tent and the motor pool were a handful of boxes each (structureKit's
 // first light kit). Each is now built as the thing it is: a clad cabin on its plinth with its windows, door, roof,
 // gutter and porch; a guard cabin on braced legs with its ladder; a wall tent on its poles and guy lines; a steel shelter
-// on its columns and beams over its pit. Each stands on the old one's solids (its body, posts, deck, drums and crate
+// on its columns and beams over its pit; and (round 5) the field hospital's two wards with their red crosses, flag and
+// stretcher, the desert tent's canvas to the ground with its rolled flaps, rug and fire ring. The writer is
+// lightKitWriter.ts, shared with the town kits (townKit.ts). Each stands on the old one's solids (its body, posts, deck, drums and crate
 // where the old ones were): structureKit keeps the old build for the collision, so every placement, footprint and
 // collision shard stays where it was. Every part carries its piece (userData.piece, 'kind:name') so the settled wreck
 // (legacyWreck.ts) breaks the kit by its walls, roofs and posts rather than by its hundreds of members; every member
@@ -13,273 +15,15 @@
 // receipt. Deterministic in the stream it is given (structureKit spends the old build's draws first: the draw law); the
 // stream only paints, so the parts a settled wreck captures are the intact's own.
 import * as THREE from 'three';
-import { markWorldAperture } from '../worldNightEmissionGeometry.ts';
 import { pitchRoofPlane, pitchSkillionRoof } from '../propGeometry.ts';
-
-type Rng = () => number;
-type V3 = [number, number, number];
-/** A part's piece in the settled wreck: what it does when it falls ('kind') and which members fall with it ('name'). */
-type Piece = `${'ground' | 'post' | 'leaf' | 'sheet' | 'block' | 'small'}:${string}`;
+import {
+  Kit, type Opening, type Piece, type Rng, type V3, type Weather, bar, bx, bxn, cladWall, cyl, displace, doorIn, hipRoof,
+  hipShell, hoop, pane, prism, solid, windowIn,
+} from './lightKitWriter.ts';
 
 /** What the kits need of structureKit: its certifying merge (the connectivity receipt, the settled wreck's capture). */
 export interface CampKitContext {
   merge(id: string, parts: THREE.BufferGeometry[]): THREE.BufferGeometry;
-}
-
-// ------------------------------------------------------------------------------------------------ noise and colour
-
-function hash3(x: number, y: number, z: number, s: number): number {
-  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 2147483647) ^ Math.imul(s | 0, 1274126177);
-  h = Math.imul(h ^ (h >>> 13), 1103515245);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
-function vnoise(x: number, y: number, z: number, s: number): number {
-  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
-  const xf = x - xi, yf = y - yi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
-  const l = (a: number, b: number, t: number): number => a + (b - a) * t;
-  const c = (dx: number, dy: number, dz: number): number => hash3(xi + dx, yi + dy, zi + dz, s);
-  return l(l(l(c(0, 0, 0), c(1, 0, 0), u), l(c(0, 1, 0), c(1, 1, 0), u), v),
-    l(l(c(0, 0, 1), c(1, 0, 1), u), l(c(0, 1, 1), c(1, 1, 1), u), v), w);
-}
-const smooth = (a: number, b: number, x: number): number => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-const _color = new THREE.Color();
-/** An authored sRGB hex in the renderer's linear working space (THREE.Color.set converts). */
-function lin(hex: number): V3 { _color.set(hex); return [_color.r, _color.g, _color.b]; }
-const mix = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-
-/** How a part's vertex colours weather (amounts 0..1), in the kit's own frame. */
-interface Weather {
-  /** the damp, dirty foot: darker toward the ground, to half a metre or so */
-  foot?: number;
-  /** rain runs and grime down an upright face */
-  runs?: number;
-  /** rust in patches, and streaks down an upright face (steel) */
-  rust?: number;
-  /** dust on what faces the sky */
-  dust?: number;
-  /** sun-bleached high up (canvas, paint) */
-  bleach?: number;
-}
-const RUST = lin(0x6b3f26), GRIME = lin(0x1c1915), DUST = lin(0x8d877a);
-
-// ------------------------------------------------------------------------------------------------ surfaces
-
-/**
- * How a part takes its material's tile (structureDetailTile.ts): 'sheet' the tile at the kit's 0.55 uv/m by the face's
- * plane (the steel's ribs upright on a wall, along z on a face toward the sky); 'roof' the ribs along x on a face toward
- * the sky (down a roof pitched along x); 'hip' down each face of a hipped roof; 'flat' one plain texel of the steel's
- * valley (a frame, a door, a plate, a board: no ribs). Mapped from the part's placed vertices, so neighbouring panels'
- * ribs and seams run on.
- */
-type UvMode = 'sheet' | 'roof' | 'hip' | 'flat';
-const UV_PER_M = 0.55;
-const FLAT_TEXEL: [number, number] = [15.5 / 256, 64.5 / 256];
-
-function mapUv(geo: THREE.BufferGeometry, mode: UvMode): void {
-  const pos = geo.getAttribute('position'), nor = geo.getAttribute('normal');
-  const uv = new Float32Array(pos.count * 2);
-  for (let i = 0; i < pos.count; i++) {
-    let u = FLAT_TEXEL[0], v = FLAT_TEXEL[1];
-    if (mode !== 'flat') {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
-      if (ay >= ax && ay >= az) {
-        const alongX = mode === 'roof' || (mode === 'hip' && ax >= az);
-        u = (alongX ? z : x) * UV_PER_M; v = (alongX ? x : z) * UV_PER_M;
-      } else if (ax >= az) { u = z * UV_PER_M; v = y * UV_PER_M; }
-      else { u = x * UV_PER_M; v = y * UV_PER_M; }
-    }
-    uv[i * 2] = u; uv[i * 2 + 1] = v;
-  }
-  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-}
-
-/** A box w x h x d about its centre; `s` > 0 subdivides it about every `s` metres (its weathering's resolution). */
-function bx(w: number, h: number, d: number, s = 0): THREE.BufferGeometry {
-  const n = (L: number): number => (s > 0 ? Math.max(1, Math.round(L / s)) : 1);
-  return new THREE.BoxGeometry(w, h, d, n(w), n(h), n(d));
-}
-/** An upright cylinder (y) about its centre. */
-function cyl(rTop: number, rBottom: number, h: number, sides: number): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(rTop, rBottom, h, sides, 1);
-}
-/** A prism: the polygon (x, y; counter-clockwise) extruded along z from z0 to z1. */
-function prism(poly: readonly (readonly [number, number])[], z0: number, z1: number): THREE.BufferGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(poly[0][0], poly[0][1]);
-  for (let i = 1; i < poly.length; i++) shape.lineTo(poly[i][0], poly[i][1]);
-  shape.closePath();
-  const g = new THREE.ExtrudeGeometry(shape, { depth: z1 - z0, bevelEnabled: false, curveSegments: 1 });
-  g.translate(0, 0, z0);
-  const flat = g.index ? g.toNonIndexed() : g;
-  if (flat !== g) g.dispose();
-  flat.clearGroups();
-  flat.computeVertexNormals();
-  return flat;
-}
-/** A bar from a to b, its section w across (level) by h (in the upright plane through it). */
-function bar(a: V3, b: V3, w: number, h: number): THREE.BufferGeometry {
-  const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const g = bx(w, h, d.length());
-  const zAxis = d.clone().normalize();
-  const side = Math.abs(zAxis.y) > 0.999 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0).cross(zAxis).normalize();
-  const up = zAxis.clone().cross(side).normalize();
-  g.applyMatrix4(new THREE.Matrix4().makeBasis(side, up, zAxis));
-  g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-  return g;
-}
-/** A glass pane (its outward face lit at night): `w` across the opening, `h` high, facing `outward` (an axis). */
-function pane(w: number, h: number, outward: V3): THREE.BufferGeometry {
-  const alongX = Math.abs(outward[0]) > 0.5;
-  return markWorldAperture(bx(alongX ? 0.012 : w, h, alongX ? w : 0.012), outward);
-}
-
-// ------------------------------------------------------------------------------------------------ the writer
-
-/**
- * How a part is painted: its tile mapping, its weathering, its colour jitter; `inner` for a part the shell hides (a
- * cabin's dark room, a tent's poles): drawn after the shell, so the depth test throws its fragments out rather than
- * shading them under the cladding.
- */
-interface Paint { uv?: UvMode; w?: Weather; jitter?: number; inner?: boolean }
-
-/** One kit's parts: each mapped, painted, weathered and given its piece, then certified and merged by the context. */
-class Kit {
-  private readonly shell: THREE.BufferGeometry[] = [];
-  private readonly inside: THREE.BufferGeometry[] = [];
-  /** The parts in draw order: the shell first, then what it hides. */
-  get out(): THREE.BufferGeometry[] { return [...this.shell, ...this.inside]; }
-  readonly rng: Rng;
-  readonly salt: number;
-  constructor(rng: Rng, salt: number) { this.rng = rng; this.salt = salt; }
-
-  add(geo: THREE.BufferGeometry, hex: number, piece: Piece, { uv = 'flat', w = {}, jitter = 0.04, inner = false }: Paint = {}): THREE.BufferGeometry {
-    if (!geo.getAttribute('normal')) geo.computeVertexNormals();
-    mapUv(geo, uv);
-    const pos = geo.getAttribute('position'), nor = geo.getAttribute('normal');
-    const base = lin(hex), s = this.salt;
-    const col = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), ny = nor.getY(i);
-      const j = 1 + (this.rng() - 0.5) * 2 * jitter;
-      let c: V3 = [base[0] * j, base[1] * j, base[2] * j];
-      if (w.foot) {
-        const top = 0.3 + vnoise(x * 1.3, 0.5, z * 1.3, s + 3) * 0.32;
-        c = mix(c, mix(c, GRIME, 0.6), (1 - smooth(0.0, top, y)) * w.foot);
-      }
-      if (w.runs && Math.abs(ny) < 0.5) {
-        const run = vnoise((x + z) * 2.4, y * 0.45, 0.5, s + 7);
-        c = mix(c, GRIME, smooth(0.58, 0.9, run) * 0.3 * w.runs);
-      }
-      if (w.rust) {
-        const patch = smooth(0.6, 0.85, vnoise(x * 1.9, y * 1.9, z * 1.9, s + 11) * 0.7 + vnoise(x * 4.1, y * 4.1, z * 4.1, s + 13) * 0.3);
-        const streak = Math.abs(ny) < 0.5 ? smooth(0.64, 0.93, vnoise((x + z) * 3.3, y * 0.4, 1.5, s + 17)) : 0;
-        c = mix(c, RUST, Math.min(1, patch * 0.5 + streak * 0.35) * w.rust);
-      }
-      if (w.dust && ny > 0.5) c = mix(c, DUST, (ny - 0.5) * 2 * 0.35 * w.dust);
-      if (w.bleach) {
-        const g = (c[0] + c[1] + c[2]) / 3 * 1.18;
-        c = mix(c, [g, g * 0.985, g * 0.95], Math.min(1, Math.max(0, (y - 0.6) / 2.4)) * 0.3 * w.bleach);
-      }
-      col[i * 3] = Math.min(1, c[0]); col[i * 3 + 1] = Math.min(1, c[1]); col[i * 3 + 2] = Math.min(1, c[2]);
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    geo.userData.piece = piece;
-    (inner ? this.inside : this.shell).push(geo);
-    return geo;
-  }
-}
-
-/** An opening in a wall: [a0, a1] along it, [y0, y1] up it. */
-interface Opening { a0: number; a1: number; y0: number; y1: number }
-
-/**
- * Clad one wall: `axis` the wall's normal axis, `face` its outer plane's coordinate (the panels lie inside it, `t`
- * thick), `top(a)` the wall's head along it. The face is cut at the openings' edges into columns; each column runs from
- * `y0` to the head less its openings. Panels are subdivided about every `s` metres for their weathering.
- */
-function cladWall(k: Kit, piece: Piece, hex: number, w: Weather, axis: 'x' | 'z', face: number, t: number,
-  a0: number, a1: number, y0: number, top: (a: number) => number, holes: readonly Opening[], s = 0.45): void {
-  const plane = face + (face > 0 ? -1 : 1) * t / 2;
-  const cuts = [...new Set([a0, a1, ...holes.flatMap((h) => [h.a0, h.a1])])].filter((a) => a >= a0 && a <= a1).sort((p, q) => p - q);
-  for (let c = 0; c + 1 < cuts.length; c++) {
-    const c0 = cuts[c], c1 = cuts[c + 1], cm = (c0 + c1) / 2;
-    if (c1 - c0 < 1e-3) continue;
-    let y = y0;
-    const spans: [number, number | null][] = [];
-    for (const h of holes.filter((o) => cm > o.a0 && cm < o.a1).sort((p, q) => p.y0 - q.y0)) {
-      if (h.y0 > y + 1e-3) spans.push([y, h.y0]);
-      y = h.y1;
-    }
-    spans.push([y, null]);
-    for (const [s0, s1] of spans) {
-      if (s1 === null && Math.abs(top(c0) - top(c1)) > 1e-3) {
-        // under a pitched head: trapezoids, in strips for its weathering (a z wall's run is x; an x wall's is z)
-        const strips = Math.max(1, Math.round((c1 - c0) / s));
-        for (let i = 0; i < strips; i++) {
-          const u0 = c0 + (c1 - c0) * i / strips, u1 = c0 + (c1 - c0) * (i + 1) / strips;
-          // (an x wall: the prism's x is the run along z and its z the wall's normal, turned a quarter about y — rotateY(-pi/2)
-          // takes x to z and z to -x, so it is extruded about -plane)
-          const poly: [number, number][] = [[u0, s0], [u1, s0], [u1, top(u1)], [u0, top(u0)]];
-          const g = axis === 'x' ? prism(poly, -plane - t / 2, -plane + t / 2).rotateY(-Math.PI / 2) : prism(poly, plane - t / 2, plane + t / 2);
-          k.add(g, hex, piece, { uv: 'sheet', w });
-        }
-        continue;
-      }
-      const yTop = s1 ?? top(c0);
-      if (yTop - s0 < 1e-3) continue;
-      const g = axis === 'x'
-        ? bx(t, yTop - s0, c1 - c0, s).translate(plane, (s0 + yTop) / 2, cm)
-        : bx(c1 - c0, yTop - s0, t, s).translate(cm, (s0 + yTop) / 2, plane);
-      k.add(g, hex, piece, { uv: 'sheet', w });
-    }
-  }
-}
-
-/**
- * A window in a wall: its casing proud of the face (head, jambs) and a deeper sill, its mullions and the pane set back
- * on the room behind. `axis` the wall's normal axis, `face` the outer plane, [a0, a1] x [y0, y1] the opening, `back`
- * the reveal's depth (the room's face behind).
- */
-function windowIn(k: Kit, piece: Piece, frameHex: number, glassHex: number, w: Weather, axis: 'x' | 'z', face: number,
-  o: Opening, lights: number, back: number): void {
-  const out = face > 0 ? 1 : -1, cs = 0.07, proud = 0.03;
-  const at = (a: number, y: number, n: number, wa: number, h: number, dn: number): THREE.BufferGeometry => (axis === 'x'
-    ? bx(dn, h, wa).translate(n, y, a) : bx(wa, h, dn).translate(a, y, n));
-  const { a0, a1, y0, y1 } = o, am = (a0 + a1) / 2, ym = (y0 + y1) / 2, nf = face + out * (proud / 2 - 0.005);
-  k.add(at(am, y1 + cs / 2, nf, a1 - a0 + 2 * cs, cs, proud + 0.01), frameHex, piece, { w });
-  k.add(at(am, y0 - 0.025, face + out * 0.035, a1 - a0 + 2 * cs + 0.06, 0.05, 0.08), frameHex, piece, { w });
-  for (const a of [a0 - cs / 2, a1 + cs / 2]) k.add(at(a, ym, nf, cs, y1 - y0, proud + 0.01), frameHex, piece, { w });
-  for (let i = 1; i < lights; i++) {
-    const a = a0 + (a1 - a0) * i / lights;
-    k.add(at(a, ym, face - out * (back / 2 - 0.002), 0.045, y1 - y0, back + 0.004), frameHex, piece, {});
-  }
-  // (a pane a light, between its mullions)
-  const n = face - out * (back - 0.004), lw = (a1 - a0) / lights;
-  for (let i = 0; i < lights; i++) {
-    const g = pane(lights > 1 ? lw - 0.03 : lw, y1 - y0, axis === 'x' ? [out, 0, 0] : [0, 0, out]), ac = a0 + lw * (i + 0.5);
-    k.add(axis === 'x' ? g.translate(n, ym, ac) : g.translate(ac, ym, n), glassHex, piece, { jitter: 0.015 });
-  }
-}
-
-/** The caster's solids as one plain geometry (position, normal, a zero uv): no colours, no stream. */
-function solid(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const flat = parts.map((p) => (p.index ? p.toNonIndexed() : p));
-  const pos: number[] = [], nor: number[] = [];
-  for (const p of flat) {
-    for (const v of p.getAttribute('position').array as Float32Array) pos.push(v);
-    for (const v of p.getAttribute('normal').array as Float32Array) nor.push(v);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3 * 2), 2));
-  for (const p of new Set([...parts, ...flat])) p.dispose();
-  return g;
 }
 
 // ------------------------------------------------------------------------------------------------ the checkpoint hut
@@ -443,67 +187,6 @@ function checkpointHutShadow(): THREE.BufferGeometry {
     bx(2.8, 0.14, 1.85).rotateX(0.09).translate(0, 2.42, hd + 0.93),
     bx(0.1, 2.1, 0.1).translate(-1.0, 1.19, 4.15), bx(0.1, 2.1, 0.1).translate(1.0, 1.19, 4.15),
   ]);
-}
-
-// ------------------------------------------------------------------------------------------------ shared shapes
-
-/** A box with its own segment counts along each axis. */
-function bxn(w: number, h: number, d: number, nw: number, nh: number, nd: number): THREE.BufferGeometry {
-  return new THREE.BoxGeometry(w, h, d, Math.max(1, nw), Math.max(1, nh), Math.max(1, nd));
-}
-/** An open ring (a hoop): radius r, height h, about the y axis. */
-function hoop(r: number, h: number, sides: number): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(r, r, h, sides, 1, true);
-}
-/** A hipped roof: four faces from a w x w eave square (its base at y 0) up h to a point, lit face by face. */
-function hipRoof(w: number, h: number): THREE.BufferGeometry {
-  const g = new THREE.ConeGeometry(w / Math.SQRT2, h, 4, 1);
-  g.rotateY(Math.PI / 4);
-  g.translate(0, h / 2, 0);
-  const flat = g.toNonIndexed();
-  g.dispose();
-  flat.computeVertexNormals();
-  return flat;
-}
-/**
- * A hipped roof as four thin faces (each `t` thick under its outer plane) from a w x w eave square (its eaves at y 0) up
- * h to a point: a shell open beneath, so a broken piece of it is a piece of roof, not a solid wedge.
- */
-function hipShell(w: number, h: number, t: number): THREE.BufferGeometry[] {
-  const a = w / 2, L = Math.hypot(a, h), faces: THREE.BufferGeometry[] = [];
-  const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, h / L, -a / L), new THREE.Vector3(0, a / L, h / L));
-  for (let q = 0; q < 4; q++) {
-    faces.push(prism([[-a, 0], [a, 0], [0, L]], -t, 0).applyMatrix4(basis).translate(0, 0, a).rotateY(q * Math.PI / 2));
-  }
-  return faces;
-}
-/** Moves every vertex by `f` (in the part's own frame) and relights it (canvas billowing, sagging between its frame). */
-function displace(g: THREE.BufferGeometry, f: (x: number, y: number, z: number) => V3): THREE.BufferGeometry {
-  const pos = g.getAttribute('position');
-  for (let i = 0; i < pos.count; i++) {
-    const d = f(pos.getX(i), pos.getY(i), pos.getZ(i));
-    pos.setXYZ(i, pos.getX(i) + d[0], pos.getY(i) + d[1], pos.getZ(i) + d[2]);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-
-/** A door in a wall: its frame proud of the face, the leaf a little in with its vision panel, kick plate, handle, hinges. */
-function doorIn(k: Kit, piece: Piece, axis: 'x' | 'z', face: number, o: Opening, w: Weather, leafW: Weather,
-  pal: { frame: number; door: number; glass: number; kick: number; handle: number; ink: number }): void {
-  const out = face > 0 ? 1 : -1, cs = 0.07;
-  const at = (a: number, y: number, n: number, wa: number, h: number, dn: number): THREE.BufferGeometry => (axis === 'x'
-    ? bx(dn, h, wa).translate(n, y, a) : bx(wa, h, dn).translate(a, y, n));
-  const { a0, a1, y0, y1 } = o, am = (a0 + a1) / 2, ym = (y0 + y1) / 2, nf = face + out * 0.01, leaf = face - out * 0.03;
-  k.add(at(am, y1 + cs / 2, nf, a1 - a0 + 2 * cs, cs, 0.04), pal.frame, piece, { w });
-  for (const a of [a0 - cs / 2, a1 + cs / 2]) k.add(at(a, ym, nf, cs, y1 - y0, 0.04), pal.frame, piece, { w });
-  k.add(at(am, ym, leaf, a1 - a0, y1 - y0, 0.045), pal.door, piece, { w: leafW });
-  const g = pane(0.3, 0.36, axis === 'x' ? [out, 0, 0] : [0, 0, out]), pn = leaf + out * 0.024;
-  k.add(axis === 'x' ? g.translate(pn, y1 - 0.45, am) : g.translate(am, y1 - 0.45, pn), pal.glass, piece, { jitter: 0.015 });
-  k.add(at(am, y0 + 0.14, leaf + out * 0.026, a1 - a0 - 0.08, 0.24, 0.008), pal.kick, piece, { w: { foot: 1, rust: 0.5 } });
-  k.add(at(a1 - 0.14, y0 + 0.98, leaf + out * 0.042, 0.14, 0.03, 0.04), pal.handle, piece);
-  k.add(at(a1 - 0.08, y0 + 0.98, leaf + out * 0.035, 0.05, 0.11, 0.035), pal.ink, piece);
-  for (const y of [y0 + 0.32, y1 - 0.32]) k.add(at(a0 + 0.012, y, leaf + out * 0.025, 0.035, 0.13, 0.055), pal.frame, piece);
 }
 
 // ------------------------------------------------------------------------------------------------ the guard post
@@ -885,6 +568,247 @@ function motorPoolShadow(): THREE.BufferGeometry {
   return solid(parts);
 }
 
+// ------------------------------------------------------------------------------------------------ the field hospital
+
+// The old hospital's solids (structureKit makeFieldHospital): two canvas wards 4.5 x 1.05 x 8.8 at x -2.7 and 2.7 under
+// gable roofs to 3.05 m, a pole to 3.3 m in the middle of each; a red-cross panel 2.15 m up between them at the front
+// (z 4.48); cots inside.
+const FH = { w: 4.5, d: 8.8, wall: 1.05, ridge: 3.05, over: 0.12, t: 0.03 };
+const FH_PITCH = Math.atan2(FH.ridge - FH.wall, FH.w / 2);
+const FH_PAL = {
+  wall: 0x93866a, roof: 0xa49779, end: 0x8b7f64, band: 0x5f5946, dark: 0x1d1c18, mesh: 0x2a2922, flap: 0x857a60,
+  pole: 0x3b3e35, rope: 0x8a8366, stake: 0x4a4436, white: 0xd9d6cc, red: 0x9b2a24, wood: 0x7b6447, batten: 0x5a4a36,
+  steel: 0x55595a, cot: 0x5f6b4f, flag: 0xe2dfd5,
+};
+
+/**
+ * One ward: canvas walls bowed between its frame's stations with a sod cloth, windows under rolled flaps, the end walls with
+ * the door open under its rolled flap, the sagging roof with seams, eave bands and a ridge cap, a red cross on its outer
+ * slope, the ridge pole and uprights, guy lines on its outer side and from the ridge pole's ends. Centred at x = cx.
+ */
+function ward(k: Kit, T: Piece, cx: number, outer: 1 | -1, canvas: Weather): void {
+  const { w, d, wall, ridge, over, t } = FH, hw = w / 2, hd = d / 2, pitch = FH_PITCH, P = FH_PAL;
+  const bay = (z: number): number => Math.sin(Math.PI * (z + hd) / (d / 4)) ** 2;
+  const put = (g: THREE.BufferGeometry): THREE.BufferGeometry => g.translate(cx, 0, 0);
+  for (const s of [-1, 1]) {
+    const g = displace(bxn(t, wall, d, 1, 2, 16), (_x, y, z) => [s * 0.016 * Math.sin(Math.PI * (y + wall / 2) / wall) * bay(z), 0, 0]);
+    k.add(put(g.translate(s * (hw - t / 2), wall / 2, 0)), P.wall, T, { uv: 'sheet', w: canvas });
+    k.add(put(bx(0.012, 0.15, d).translate(s * (hw + 0.004), 0.075, 0)), P.band, T, { uv: 'sheet', w: { foot: 1 } });
+    for (const zc of [-1.1, 1.1]) {
+      k.add(put(bx(0.01, 0.42, 0.8).translate(s * (hw + 0.026), 0.62, zc)), P.mesh, T, { uv: 'sheet', jitter: 0.03 });
+      k.add(put(cyl(0.05, 0.05, 0.9, 8).rotateX(Math.PI / 2).translate(s * (hw + 0.064), 0.9, zc)), P.flap, T, { uv: 'sheet', w: canvas });
+    }
+  }
+  const pent: [number, number][] = [[-hw, 0], [hw, 0], [hw, wall], [0, ridge], [-hw, wall]];
+  for (const s of [-1, 1]) k.add(put(prism(pent, s > 0 ? hd - t : -hd, s > 0 ? hd : -hd + t)), P.end, T, { uv: 'sheet', w: canvas });
+  k.add(put(bx(1.3, 1.85, 0.01).translate(0, 0.925, hd + 0.006)), P.dark, T, { jitter: 0.03 });
+  for (const x of [-0.68, 0.68]) k.add(put(bx(0.07, 1.9, 0.014).translate(x, 0.95, hd + 0.008)), P.band, T, { uv: 'sheet' });
+  k.add(put(cyl(0.085, 0.085, 1.5, 10).rotateZ(Math.PI / 2).translate(0, 1.94, hd + 0.09)), P.flap, T, { uv: 'sheet', w: canvas });
+  k.add(put(bx(0.5, 0.3, 0.01).translate(0, 2.2, -hd - 0.006)), P.mesh, T, { jitter: 0.03 });
+  const slope = hw / Math.cos(pitch), rd = d + 0.2, len = slope + over;
+  for (const s of [-1, 1] as const) {
+    const sag = (x: number, z: number): number => {
+      const u = (s > 0 ? x + len / 2 : len / 2 - x) / slope;
+      return u < 1 ? -0.06 * Math.sin(Math.PI * u) * bay(z) : 0;
+    };
+    const g = displace(bxn(len, t, rd, 6, 1, 16), (x, _y, z) => [0, sag(x, z), 0]);
+    pitchRoofPlane(g, 'x', s, pitch, 'gable');
+    const rx = s * (len / 2) * Math.cos(pitch) + s * (t / 2) * Math.sin(pitch), ry = ridge - (len / 2) * Math.sin(pitch) + (t / 2) * Math.cos(pitch);
+    k.add(put(g.translate(rx, ry, 0)), P.roof, T, { uv: 'sheet', w: { ...canvas, foot: 0 } });
+    const onRoof = (geo: THREE.BufferGeometry): THREE.BufferGeometry => put(geo.rotateZ(-s * pitch).translate(rx, ry, 0));
+    for (const z of [-hd, -hd / 2, 0, hd / 2, hd]) k.add(onRoof(bx(len, 0.006, 0.06).translate(0, t / 2 + 0.002, z)), P.band, T, { uv: 'sheet' });
+    k.add(onRoof(bx(0.18, 0.006, rd).translate(s * (len / 2 - 0.09), t / 2 + 0.002, 0)), P.band, T, { uv: 'sheet' });
+    if (s === outer) {
+      // the red cross on its white ground, painted on the canvas (following its sag)
+      const xm = s * (slope / 2 - len / 2), lay = (gw: number, gd: number, lift: number): THREE.BufferGeometry =>
+        displace(bxn(gw, 0.004, gd, 6, 1, 6).translate(xm, t / 2 + lift, 0), (x, _y, z) => [0, sag(x, z), 0]);
+      k.add(onRoof(lay(1.7, 1.7, 0.003)), P.white, T, { uv: 'sheet', w: { runs: 0.3 } });
+      k.add(onRoof(lay(1.24, 0.38, 0.006)), P.red, T, { uv: 'sheet' });
+      k.add(onRoof(lay(0.38, 1.24, 0.006)), P.red, T, { uv: 'sheet' });
+    }
+  }
+  k.add(put(bx(0.24, 0.02, rd).translate(0, ridge + t / Math.cos(pitch) + 0.005, 0)), P.band, T, { uv: 'sheet' });
+  k.add(put(cyl(0.04, 0.04, d + 0.2, 8).rotateX(Math.PI / 2).translate(0, ridge - 0.045, 0)), P.pole, T, { inner: true });
+  for (const z of [-hd + 0.12, hd - 0.12]) k.add(put(cyl(0.035, 0.035, ridge - 0.04, 8).translate(0, (ridge - 0.04) / 2, z)), P.pole, T, { inner: true });
+  k.add(put(cyl(0.04, 0.04, 3.3, 8).translate(0, 1.65, 0)), P.pole, T, { inner: true });
+  k.add(put(cyl(0.05, 0.05, 0.05, 8).translate(0, 3.3, 0)), P.pole, T);
+  const ex = hw + over * Math.cos(pitch), ey = wall - over * Math.sin(pitch);
+  for (let i = 0; i < 5; i++) {
+    const z = -hd + i * d / 4, sx = outer * (hw + 1.2);
+    k.add(put(bar([outer * ex, ey, z], [sx, 0.02, z], 0.014, 0.014)), P.rope, T, { jitter: 0.03 });
+    k.add(put(bx(0.035, 0.3, 0.035).rotateZ(-outer * 0.35).translate(sx + outer * 0.03, 0.09, z)), P.stake, T);
+  }
+  for (const s of [-1, 1]) {
+    k.add(put(bar([0, ridge - 0.045, s * (hd + 0.1)], [0, 0.02, s * (hd + 1.3)], 0.014, 0.014)), P.rope, T, { jitter: 0.03 });
+    k.add(put(bx(0.035, 0.3, 0.035).rotateX(s * 0.35).translate(0, 0.09, s * (hd + 1.33))), P.stake, T);
+  }
+}
+
+function buildFieldHospital(ctx: CampKitContext, rng: Rng): THREE.BufferGeometry {
+  const k = new Kit(rng, 0xf1e5);
+  const P = FH_PAL, hd = FH.d / 2, canvas: Weather = { foot: 0.7, runs: 0.45, dust: 0.5, bleach: 0.9 };
+  ward(k, 'block:ward-l', -2.7, -1, canvas);
+  ward(k, 'block:ward-r', 2.7, 1, canvas);
+  // the red-cross flag on its pole between the wards' fronts
+  {
+    const F: Piece = 'post:flag', fz = hd + 0.3, top = 3.6;
+    k.add(bx(0.24, 0.02, 0.24).translate(0, 0.01, fz), P.steel, F);
+    k.add(cyl(0.03, 0.035, top, 8).translate(0, top / 2, fz), P.pole, F, { w: { foot: 0.6 } });
+    k.add(cyl(0.05, 0.05, 0.05, 8).translate(0, top + 0.02, fz), P.pole, F);
+    const fy = top - 0.38;
+    k.add(bxn(0.9, 0.6, 0.012, 4, 3, 1).translate(0.48, fy, fz), P.flag, F, { w: { runs: 0.4 } });
+    for (const s of [-1, 1]) {
+      k.add(bx(0.5, 0.15, 0.004).translate(0.48, fy, fz + s * 0.008), P.red, F);
+      k.add(bx(0.15, 0.5, 0.004).translate(0.48, fy, fz + s * 0.008), P.red, F);
+    }
+  }
+  // a stretcher on two trestles before the left ward's door; supply crates by the right ward's
+  {
+    const S: Piece = 'small:stretcher', sx = -2.7, sz = hd + 1.3;
+    for (const dz of [-0.8, 0.8]) {
+      for (const dx of [-0.25, 0.25]) k.add(bar([sx + dx, 0.02, sz + dz - 0.18], [sx + dx * 0.8, 0.615, sz + dz], 0.035, 0.035), P.wood, S);
+      for (const dx of [-0.25, 0.25]) k.add(bar([sx + dx, 0.02, sz + dz + 0.18], [sx + dx * 0.8, 0.615, sz + dz], 0.035, 0.035), P.wood, S);
+      k.add(bx(0.56, 0.04, 0.06).translate(sx, 0.637, sz + dz), P.wood, S);
+    }
+    for (const dx of [-0.26, 0.26]) k.add(cyl(0.022, 0.022, 1.66, 6).rotateX(Math.PI / 2).translate(sx + dx, 0.68, sz), P.wood, S);
+    k.add(bxn(0.5, 0.02, 1.6, 2, 1, 6).translate(sx, 0.69, sz), P.cot, S, { uv: 'sheet', w: { dust: 0.5 } });
+  }
+  {
+    const G: Piece = 'ground:crates', cz = hd + 0.9;
+    const boxes: [number, number, number, number, number, number][] = [
+      [3.4, 0.22, cz, 0.8, 0.44, 0.55], [4.25, 0.22, cz + 0.1, 0.8, 0.44, 0.55], [3.8, 0.6, cz + 0.05, 0.7, 0.32, 0.5]];
+    for (const [x, y, z, w, h, d] of boxes) {
+      k.add(bx(w, h, d).translate(x, y, z), P.white, G, { uv: 'sheet', w: { foot: 0.6, dust: 0.6, runs: 0.5 } });
+      k.add(bx(w * 0.36, h * 0.16, 0.006).translate(x, y + h * 0.05, z + d / 2 + 0.003), P.red, G);
+      k.add(bx(w * 0.12, h * 0.5, 0.006).translate(x, y + h * 0.05, z + d / 2 + 0.003), P.red, G);
+    }
+  }
+  return ctx.merge('fieldhospital', k.out);
+}
+
+function fieldHospitalShadow(): THREE.BufferGeometry {
+  const { w, d, wall, ridge } = FH, hw = w / 2, hd = d / 2, parts: THREE.BufferGeometry[] = [];
+  for (const cx of [-2.7, 2.7]) {
+    parts.push(bx(w, wall, d).translate(cx, wall / 2, 0));
+    parts.push(prism([[-hw - 0.09, wall - 0.08], [hw + 0.09, wall - 0.08], [0, ridge + 0.03]], -hd - 0.1, hd + 0.1).translate(cx, 0, 0));
+  }
+  parts.push(bx(0.06, 3.6, 0.06).translate(0, 1.8, hd + 0.3), bx(0.9, 0.6, 0.02).translate(0.48, 3.22, hd + 0.3));
+  return solid(parts);
+}
+
+// ------------------------------------------------------------------------------------------------ the desert tent
+
+// The old tent's solids (structureKit makeDesertTent): a ridge tent 5.2 wide and 7.6 long to 2.8 m, its canvas down to the
+// ground both sides; a pole at each end to 3.4 m (z +-3.95); four corner guys; a mat 3.8 x 2.2 before its front (+z).
+const DT = { w: 5.2, d: 7.6, ridge: 2.8, t: 0.03, poleZ: 3.95, poleTop: 3.4 };
+const DT_PITCH = Math.atan2(DT.ridge, DT.w / 2);
+const DT_PAL = {
+  roof: 0xb39c74, end: 0xa8916b, band: 0x7c6a4c, dark: 0x1e1b16, flap: 0x9e8862, pole: 0x5a4a36, rope: 0x9b8f70,
+  stake: 0x4a4436, rug: 0x7e2f22, rugA: 0x2f3f5f, rugB: 0xcdbf9a, rugC: 0x241d18, cushion: 0x6a2420, cushion2: 0x2c3a58,
+  brass: 0x9a7a3a, stone: 0x8a7f6c, char: 0x26211c, can: 0x4f5a3a,
+};
+
+function buildDesertTent(ctx: CampKitContext, rng: Rng): THREE.BufferGeometry {
+  const k = new Kit(rng, 0xde57);
+  const { w, d, ridge, t } = DT, hw = w / 2, hd = d / 2, pitch = DT_PITCH, P = DT_PAL, T: Piece = 'block:tent';
+  const canvas: Weather = { foot: 0.8, runs: 0.35, dust: 0.7, bleach: 1.0 };
+  // the two canvas planes from the ridge to the ground, sagging between the ridge and the hem, and between the poles; their
+  // hems along the ground and the seams down them
+  const slope = hw / Math.cos(pitch), rd = d;
+  const sagOf = (s: number) => (x: number, z: number): number => {
+    const u = (s > 0 ? x + slope / 2 : slope / 2 - x) / slope;
+    return -0.09 * Math.sin(Math.PI * u) * (0.55 + 0.45 * Math.sin(Math.PI * (z + hd) / d));
+  };
+  const rxOf = (s: number): number => s * (slope / 2) * Math.cos(pitch) + s * (t / 2) * Math.sin(pitch);
+  const ry = ridge - (slope / 2) * Math.sin(pitch) + (t / 2) * Math.cos(pitch);
+  /** The canvas's top at the middle of its slope (side s), at z: where a guy's loop is sewn on. */
+  const loopAt = (s: number, z: number): V3 => {
+    const lift = t / 2 + sagOf(s)(0, z);
+    return [rxOf(s) + s * Math.sin(pitch) * lift, ry + Math.cos(pitch) * lift, z];
+  };
+  for (const s of [-1, 1] as const) {
+    const sag = sagOf(s);
+    const g = displace(bxn(slope, t, rd, 8, 1, 14), (x, _y, z) => [0, sag(x, z), 0]);
+    pitchRoofPlane(g, 'x', s, pitch, 'gable');
+    const rx = rxOf(s);
+    k.add(g.translate(rx, ry, 0), P.roof, T, { uv: 'sheet', w: canvas });
+    const onRoof = (geo: THREE.BufferGeometry): THREE.BufferGeometry => geo.rotateZ(-s * pitch).translate(rx, ry, 0);
+    for (const z of [-hd / 2, 0, hd / 2]) {
+      k.add(onRoof(displace(bxn(slope, 0.006, 0.05, 8, 1, 1).translate(0, t / 2 + 0.002, z), (x, _y, zz) => [0, sag(x, zz), 0])), P.band, T, { uv: 'sheet' });
+    }
+    k.add(onRoof(bx(0.2, 0.006, rd).translate(s * (slope / 2 - 0.1), t / 2 + 0.002, 0)), P.band, T, { uv: 'sheet', w: { foot: 1 } });
+  }
+  k.add(bx(0.22, 0.02, rd).translate(0, ridge + t / Math.cos(pitch) + 0.005, 0), P.band, T, { uv: 'sheet' });
+  // the back closed; the front open, its two flaps rolled up the edges, the dark inside, a rug's edge at the threshold
+  k.add(prism([[-hw, 0], [hw, 0], [0, ridge]], -hd, -hd + t), P.end, T, { uv: 'sheet', w: canvas });
+  k.add(prism([[-hw + 0.2, 0.01], [hw - 0.2, 0.01], [0, ridge - 0.25]], hd - 0.45, hd - 0.44), P.dark, T, { jitter: 0.03 });
+  for (const s of [-1, 1]) {
+    const a: V3 = [s * 0.12, ridge - 0.1, hd + 0.03], b: V3 = [s * (hw - 0.25), 0.22, hd + 0.03];
+    k.add(bar(a, b, 0.16, 0.16), P.flap, T, { uv: 'sheet', w: canvas });
+    for (const f of [0.3, 0.7]) {
+      const m: V3 = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+      k.add(bx(0.03, 0.2, 0.03).translate(m[0], m[1], m[2] + 0.1), P.rope, T);
+    }
+  }
+  // the ridge pole out past both ends to the poles; the poles; guys from their heads, and down each side to stakes
+  k.add(cyl(0.04, 0.04, 2 * DT.poleZ, 8).rotateX(Math.PI / 2).translate(0, ridge - 0.045, 0), P.pole, T, { inner: true });
+  for (const s of [-1, 1]) {
+    const Pp: Piece = s > 0 ? 'post:pole-f' : 'post:pole-b', z = s * DT.poleZ;
+    k.add(cyl(0.05, 0.055, DT.poleTop, 8).translate(0, DT.poleTop / 2, z), P.pole, Pp, { w: { foot: 0.7 } });
+    k.add(cyl(0.065, 0.065, 0.06, 8).translate(0, DT.poleTop + 0.02, z), P.pole, Pp);
+    k.add(bar([0, DT.poleTop - 0.05, z], [0, 0.02, s * (hd + 1.45)], 0.014, 0.014), P.rope, T, { jitter: 0.03 });
+    k.add(bx(0.035, 0.3, 0.035).rotateX(s * 0.35).translate(0, 0.09, s * (hd + 1.48)), P.stake, T);
+    for (const z2 of [-2.5, 0, 2.5]) {
+      const from = loopAt(s, z2), to: V3 = [s * (hw + 0.95), 0.02, z2];
+      k.add(bar(from, to, 0.014, 0.014), P.rope, T, { jitter: 0.03 });
+      k.add(bx(0.035, 0.3, 0.035).rotateZ(-s * 0.35).translate(to[0] + s * 0.03, 0.09, z2), P.stake, T);
+    }
+  }
+  // the rug before the door in its bands, cushions, a tray with its teapot
+  {
+    const R: Piece = 'ground:rug', rz = hd + 1.2;
+    k.add(bxn(3.8, 0.025, 2.2, 6, 1, 4).translate(0, 0.0125, rz), P.rug, R, { w: { dust: 0.8, foot: 0.3 } });
+    for (const [dz, hex] of [[-0.85, P.rugA], [-0.6, P.rugB], [0.6, P.rugB], [0.85, P.rugA]] as const) {
+      k.add(bx(3.7, 0.004, 0.12).translate(0, 0.027, rz + dz), hex, R, { w: { dust: 0.8 } });
+    }
+    for (const dx of [-1.5, 1.5]) k.add(bx(0.18, 0.004, 2.0).translate(dx, 0.027, rz), P.rugC, R, { w: { dust: 0.8 } });
+    [[-1.0, -0.6, P.cushion], [-0.35, -0.75, P.cushion2], [1.1, -0.55, P.cushion]].forEach(([x, dz, hex]) => {
+      k.add(displace(bxn(0.55, 0.16, 0.4, 3, 1, 3).translate(x as number, 0.025 + 0.08, rz + (dz as number)),
+        (xx, yy, zz) => [0, (yy > 0.1 ? 0.03 : 0) * Math.cos((xx - (x as number)) * 4) * Math.cos((zz - rz - (dz as number)) * 5), 0]), hex as number, R, { w: { dust: 0.5 } });
+    });
+    k.add(cyl(0.26, 0.26, 0.03, 14).translate(0.2, 0.025 + 0.13, rz + 0.1), P.brass, R, { w: { rust: 0.3 } });
+    for (let i = 0; i < 3; i++) {
+      const a = i * 2.09;
+      k.add(bx(0.03, 0.12, 0.03).translate(0.2 + Math.cos(a) * 0.18, 0.025 + 0.06, rz + 0.1 + Math.sin(a) * 0.18), P.brass, R);
+    }
+    k.add(cyl(0.06, 0.08, 0.14, 10).translate(0.25, 0.175 + 0.07, rz + 0.12), P.brass, R, { w: { rust: 0.4 } });
+  }
+  // the fire ring off to the side: its stones and the charred sticks in it
+  {
+    const F: Piece = 'ground:fire', fx = 3.4, fz = 2.8;
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      k.add(bx(0.2, 0.13, 0.16).rotateY(a).translate(fx + Math.cos(a) * 0.42, 0.065, fz + Math.sin(a) * 0.42), P.stone, F, { w: { dust: 0.7 } });
+    }
+    for (const [a, l] of [[0.3, 0.6], [1.9, 0.55], [3.4, 0.5]]) {
+      k.add(bar([fx - Math.cos(a) * l / 2, 0.025, fz - Math.sin(a) * l / 2], [fx + Math.cos(a) * l / 2, 0.045, fz + Math.sin(a) * l / 2], 0.05, 0.05), P.char, F);
+    }
+  }
+  // two jerrycans against the tent's side
+  for (const dz of [-0.6, -0.15]) {
+    k.add(bx(0.17, 0.47, 0.34).translate(hw + 0.35, 0.235, dz), P.can, 'small:jerrycans', { w: { foot: 0.6, rust: 0.4, dust: 0.6 } });
+  }
+  return ctx.merge('deserttent', k.out);
+}
+
+function desertTentShadow(): THREE.BufferGeometry {
+  const { w, d, ridge, poleZ, poleTop } = DT, hw = w / 2, hd = d / 2;
+  return solid([
+    prism([[-hw, 0], [hw, 0], [0, ridge + 0.03]], -hd, hd),
+    bx(0.1, poleTop, 0.1).translate(0, poleTop / 2, poleZ), bx(0.1, poleTop, 0.1).translate(0, poleTop / 2, -poleZ),
+  ]);
+}
+
 // ------------------------------------------------------------------------------------------------ the kits
 
 /** A redesigned kit: its build from its own stream (the old build's draws already spent) and its caster. */
@@ -894,7 +818,7 @@ export interface CampKitBuilders {
   shadow(): THREE.BufferGeometry;
 }
 
-export const CAMP_KIT_IDS = ['checkpointhut', 'guardpost', 'commandtent', 'motorpool'] as const;
+export const CAMP_KIT_IDS = ['checkpointhut', 'guardpost', 'commandtent', 'motorpool', 'fieldhospital', 'deserttent'] as const;
 export type CampKitId = typeof CAMP_KIT_IDS[number];
 
 /** The redesigned military light kits by id, merged through structureKit's certifying merge. */
@@ -904,5 +828,7 @@ export function createCampKits(ctx: CampKitContext): Record<CampKitId, CampKitBu
     guardpost: { build: (rng) => buildGuardPost(ctx, rng), shadow: guardPostShadow },
     commandtent: { build: (rng) => buildCommandTent(ctx, rng), shadow: commandTentShadow },
     motorpool: { build: (rng) => buildMotorPool(ctx, rng), shadow: motorPoolShadow },
+    fieldhospital: { build: (rng) => buildFieldHospital(ctx, rng), shadow: fieldHospitalShadow },
+    deserttent: { build: (rng) => buildDesertTent(ctx, rng), shadow: desertTentShadow },
   };
 }
