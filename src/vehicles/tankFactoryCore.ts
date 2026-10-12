@@ -962,9 +962,6 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
    * declaration still draws only the added ring + disc (never a carve), is clamped inside the
    * measured face, and cannot be combined with a physical bore. */
   muzzleMouth?: DeclaredMuzzleMouth;
-  /** 2026-10-11 (T-90AM, the Garage's default hero): project the camouflage per triangle from its face normal
-   * (faceBoxUV), so rounded boxes' blended bevel normals cannot smear one block to a flat tone. Rendered only. */
-  camoFaceProjection?: boolean;
   /** Measured permanent armor that extends the profile's primary shell. */
   additionalShadowSources?: {
     hull?: readonly ('hullExternalArmor' | 'hullHatch' | 'hullCupola')[];
@@ -8152,8 +8149,10 @@ function* createTankOwnedSteps(
       // Round 35 (owner 2026-09-21: "the look of identical camos looks completely different if you switch between
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
-      if (P.camoFaceProjection) faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
-      else boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // 2026-10-11 (r4c): the axis per triangle from its face normal (faceBoxUV). Rounded boxes' bevel normals are
+      // blended, so a per-vertex axis landed one triangle's corners on different projections and the mips smeared the
+      // pattern to one flat darker tone on 165 hulls (the T-90AM's "second hull"); camo now stays crisp to every edge.
+      faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);

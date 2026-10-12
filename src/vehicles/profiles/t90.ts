@@ -66,8 +66,6 @@ interface T90BuilderPort {
   readonly rng: () => number;
   readonly q?: boolean;
   topY?: number;
-  /** TankBuilderPort.camoFaceProjection: per-face camouflage projection (rendered builds). */
-  camoFaceProjection?: boolean;
   _shtoraRed?: THREE.MeshStandardMaterial;
   gear?: {
     contactGeom?: { halfWidM: number };
@@ -7603,9 +7601,6 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
 function buildT90MProryvNative2026(P: T90BuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  // 2026-10-11 (wave 402b, the Garage hero): the rounded glacis/ERA blocks smeared the camouflage to one flat
-  // darker tone under the shared box projection, reading as a second, differently painted hull: per-face projection.
-  P.camoFaceProjection = true;
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
