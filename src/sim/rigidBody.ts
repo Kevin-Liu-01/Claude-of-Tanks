@@ -659,8 +659,10 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   const bestImpact = new Float64Array(capacity);
   const bestImpactContact = new Int32Array(capacity);
 
-  // sweep order for the body pairs (insertion sort on min x every step)
+  // sweep order for the body pairs (insertion sort every step on the reach sphere's min x: the order the contacts are
+  // solved in, kept as it was when the collapses were cleared; the solids' bounds only cull)
   const order = new Int32Array(capacity);
+  const sortKey = new Float64Array(capacity);
   let orderCount = 0;
 
   let gravity = Math.max(0, options.gravity ?? 9.81);
@@ -999,10 +1001,15 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     const env = environment!;
     if (!env.queryStatic) return;
     const shape = shapes[i]!;
-    const boxes = shape.allPlainBoxes;
+    // (a box-footprint prism met a plain box by the boxes' manifold in bf5439dc1: a collapse's pieces came to rest flat
+    // on its wall stubs, the roof "one dead-level, unbroken lid on neat wall stubs" (wave 409). The stubs keep the
+    // sphere-by-sphere contacts the collapses were cleared on; staticBox stays for a later round with its own wave.)
+    const boxes = false && shape.allPlainBoxes;
     const friction = Math.sqrt(shape.friction * STATIC_FRICTION);
     const restitution = 0.5 * (shape.restitution + STATIC_RESTITUTION);
-    const records = env.queryStatic(bminX[i], bminZ[i], bmaxX[i], bmaxZ[i], staticOut);
+    // (queried over the reach sphere's square as the collapses were cleared on: the same records in the same order)
+    const reach = shape.radius + CONTACT_MARGIN_M;
+    const records = env.queryStatic(px[i] - reach, pz[i] - reach, px[i] + reach, pz[i] + reach, staticOut);
     for (let index = 0; index < records.length; index++) {
       const record = records[index];
       if (env.isSolid ? !env.isSolid(record) : (record.crushed || record.dead)) continue;
@@ -1309,7 +1316,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
    * (a body, or −3 − k for kinematic box k): contacts on i pushing it out of B along the pair's axis.
    */
   function boxManifold(i: number, b: number, friction: number, restitution: number): void {
-    boxBoxAxis(manAC, 0, manAR, 0, manH[0], manH[1], manH[2], manBC, manBR, 0, manH[3], manH[4], manH[5], -CONTACT_MARGIN_M);
+    boxBoxAxis(manAC, 0, manAR, 0, manH[0], manH[1], manH[2], manBC, manBR, 0, manH[3], manH[4], manH[5]);
     if (!(satOverlap > -CONTACT_MARGIN_M) || satId < 0) return;
     const nx = satN[0], ny = satN[1], nz = satN[2];
     let count = 0;
@@ -1672,8 +1679,11 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       cBias[c] = cDepth[c] < 0 ? cDepth[c] / dt : vn < -RESTITUTION_MIN_MPS ? -cRestitution[c] * vn : 0;
       cBiasP[c] = (BAUMGARTE / dt) * Math.max(0, cDepth[c] - SLOP_M);
       cJp[c] = 0;
-      // the strongest approach of the body (impact reports)
+      // the strongest approach of each body (impact reports): both bodies of a pair's contact land on each other. A box
+      // pair's manifold sits on one of them only, and the other's landing went unreported (a roof on a heap never
+      // cracked: wave 409's "one dead-level, unbroken lid", its gables whole, its heap thin)
       if (-vn > bestImpact[a]) { bestImpact[a] = -vn; bestImpactContact[a] = c; }
+      if (b >= 0 && -vn > bestImpact[b]) { bestImpact[b] = -vn; bestImpactContact[b] = c; }
       // warm start from the same sphere on the same partner last step
       const sphere = cSphere[c];
       let warm = false;
@@ -1689,10 +1699,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         let bestD2 = FEATURE_MATCH_M * FEATURE_MATCH_M, best = -1;
         for (let f = 0, n = featureCount[a]; f < n; f++) {
           const fo = base + f * FEATURE_STRIDE;
-          // never another body's impulse (a piece spawned where another lay is not its heir); a sleeping partner's
-          // contacts are the static world's while it sleeps, so a body key and the static key carry over each other
-          const was = featureCache[fo + 9];
-          if (was >= 1 && key >= 1 && was !== key) continue;
+          // (by place and normal alone, as the collapses were cleared on; featureKey is recorded for a later round)
+          void key;
           if (featureCache[fo + 3] * nx + featureCache[fo + 4] * ny + featureCache[fo + 5] * nz < FEATURE_MATCH_DOT) continue;
           const dx = featureCache[fo] - cPx[c], dy = featureCache[fo + 1] - cPy[c], dz = featureCache[fo + 2] - cPz[c];
           const d2 = dx * dx + dy * dy + dz * dz;
@@ -1910,13 +1918,17 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   // ---- the step ----
   function sortOrder(): void {
     orderCount = 0;
-    for (let i = 0; i < capacity; i++) if (active[i]) order[orderCount++] = i;
-    // insertion sort by min x, slot order on ties (deterministic, near-linear for coherent motion)
+    for (let i = 0; i < capacity; i++) {
+      if (!active[i]) continue;
+      order[orderCount++] = i;
+      sortKey[i] = px[i] - shapes[i]!.radius - CONTACT_MARGIN_M;
+    }
+    // insertion sort by the key, slot order on ties (deterministic, near-linear for coherent motion)
     for (let a = 1; a < orderCount; a++) {
       const v = order[a];
-      const key = bminX[v];
+      const key = sortKey[v];
       let b = a - 1;
-      while (b >= 0 && (bminX[order[b]] > key || (bminX[order[b]] === key && order[b] > v))) { order[b + 1] = order[b]; b--; }
+      while (b >= 0 && (sortKey[order[b]] > key || (sortKey[order[b]] === key && order[b] > v))) { order[b + 1] = order[b]; b--; }
       order[b + 1] = v;
     }
   }
@@ -2020,11 +2032,13 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     // body pairs by the sweep on min x (each overlapping pair once, its own budget)
     for (let n = 0; n < orderCount; n++) {
       const i = order[n];
+      const reachX = px[i] + shapes[i]!.radius + CONTACT_MARGIN_M;
       for (let m = n + 1; m < orderCount; m++) {
         const j = order[m];
-        if (bminX[j] > bmaxX[i]) break;
+        if (sortKey[j] > reachX) break;
         if (asleep[i] && asleep[j]) continue;
-        if (bmaxY[j] < bminY[i] || bminY[j] > bmaxY[i] || bmaxZ[j] < bminZ[i] || bminZ[j] > bmaxZ[i]) continue;
+        if (bmaxX[j] < bminX[i] || bminX[j] > bmaxX[i] || bmaxY[j] < bminY[i] || bminY[j] > bmaxY[i]
+          || bmaxZ[j] < bminZ[i] || bminZ[j] > bmaxZ[i]) continue;
         const start = contactCount;
         bodyContactStart = start;
         pairContacts(i, j);
