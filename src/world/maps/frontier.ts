@@ -146,6 +146,9 @@ export default {
       { structure: 'farmhouse', x: -214, z: 112, yawDeg: 180 }, { structure: 'barn', x: -238, z: 88, yawDeg: 270 },
     ],
     destructibleBuildings: ['fieldhut', 'huntingblind', 'commandtent', 'checkpointhut'],
+    // (the destructible-kits lane, 2026-10-11: the fairness ask) the layout turns about [0, 0] (its beats pair there):
+    // the roadside light buildings and the random hulks stand in twins about it (props.ts PropsMapConfig.rotationalCentre)
+    rotationalCentre: [0, 0],
     tacticalBeats: [
       { id: 'south-saddle-checkpoint', role: 'scout', x: 90, z: -330, yawDeg: 8,
         structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },

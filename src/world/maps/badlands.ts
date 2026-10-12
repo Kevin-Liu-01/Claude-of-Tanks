@@ -240,6 +240,9 @@ export default {
       'adobe', 'adobe', 'adobe', 'marketRow', 'adobe', 'depot', 'adobe', 'adobe', 'ruin', 'adobe', 'marketRow',
       'adobe', 'adobe', 'adobe'],
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
+    // (the destructible-kits lane, 2026-10-11: the fairness ask) the layout turns about [8, 0] (its beats pair there):
+    // the roadside light buildings and the random hulks stand in twins about it (props.ts PropsMapConfig.rotationalCentre)
+    rotationalCentre: [8, 0],
     // (the scenery lane, b16; gauntlet wave 121 on the steel checkpoint hut, "a jarring modern blue shed") the fuel points'
     // and the scattered checkpoints are desert posts of plastered mud brick (maps/regional/ksarGate.ts), same footprint
     // (round 9, the gauntlet's wave 261: the field works' pillbox, "an untextured grey box ... a flat black rectangle for a

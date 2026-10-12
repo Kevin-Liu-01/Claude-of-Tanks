@@ -117,6 +117,9 @@ export default {
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
       'granary', 'schoolhouse', 'mill', 'cottage', 'farmhouse', 'cottage'],
     destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'commandtent'],
+    // (the destructible-kits lane, 2026-10-11: the fairness ask) the layout turns about [10, 20] (its beats pair there):
+    // the roadside light buildings and the random hulks stand in twins about it (props.ts PropsMapConfig.rotationalCentre)
+    rotationalCentre: [10, 20],
     // Three strongpoint pairs by the country roads and the swells, each the other's rotation about the village.
     tacticalBeats: [
       { id: 'south-road-observer', role: 'scout', x: -60, z: -200, yawDeg: 8,
