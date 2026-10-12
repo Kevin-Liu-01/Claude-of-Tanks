@@ -261,7 +261,10 @@ const TERRAIN_PLAN = {
   // banks' red-brown clay on the steep ground
   longleaf: {
     G: { set: 'grass', desat: 0.35, tint: [0.82, 0.80, 0.62], roughMul: 1.28 },
-    D: { set: 'sand', desat: 0.6, tint: [0.70, 0.68, 0.64], roughMul: 1.3 },
+    // (cap11's frames: the pale sand set turned the clearcut into white dunes and the lookout's track into a beach) the
+    // worn ground is the flatwoods' own floor — the dirt set's twigs and straw for the pine litter and the cutover's
+    // slash, greyed and darkened toward the grey sandy loam (≈ 0.24/0.20/0.15)
+    D: { set: 'dirt', desat: 0.45, tint: [0.62, 0.58, 0.52], roughMul: 1.3 },
     R: { set: 'dirt', desat: 0.3, tint: [0.62, 0.50, 0.40], roughMul: 1.3 }, M: null,
   },
   fjord: {

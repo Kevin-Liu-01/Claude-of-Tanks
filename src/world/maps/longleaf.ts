@@ -47,7 +47,7 @@ export default {
     // pattern, with a hard lip standing proud" of the grass) the lookout's track is the ground itself now — the sand
     // worn bare along its line from the compound's gate to the forest road, flush, its edges feathered into the wiregrass
     // (was the landmarks lane's draped `path` strip)
-    { feather: 4, strength: 0.8, boundary: [[-224.84, -47.77], [-267.84, -57.27], [-268.36, -54.93], [-225.36, -45.43]] }],
+    { feather: 4, strength: 0.6, boundary: [[-224.95, -47.26], [-267.95, -56.76], [-268.25, -55.44], [-225.25, -45.94]] }],
     landforms: [
       { kind: 'ridge', x: -210, z: -62, length: 330, width: 70, height: 7.2, yawDeg: -24 },
       { kind: 'ridge', x: 226, z: 90, length: 330, width: 74, height: 7.8, yawDeg: -28 },
