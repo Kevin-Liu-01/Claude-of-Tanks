@@ -230,9 +230,12 @@ function sfxEvent(e) {
   throw Error(`unknown sfx ${e.kind}`);
 }
 /** Run a mono buffer through an ffmpeg filter chain at 48 kHz (the radio's intercom and headset stages). */
+// 2026-10-12: one of these piped calls hung for 31 min (ffmpeg and the score both idle, s28's radio static) and held
+// its encoder; a call takes milliseconds, so after two minutes it is killed (SIGKILL: ffmpeg defers SIGTERM while a
+// read blocks), the score fails, and the encoder's silent-take catch-up runs the take again.
 function filtered(src, chain) {
   const raw = execFileSync('ffmpeg', ['-v', 'error', '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-i', '-', '-af', chain, '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-'],
-    { input: Buffer.from(src.buffer, src.byteOffset, src.byteLength), maxBuffer: 1 << 28 });
+    { input: Buffer.from(src.buffer, src.byteOffset, src.byteLength), maxBuffer: 1 << 28, timeout: 120_000, killSignal: 'SIGKILL' });
   return new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
 }
 // crewRadio.ts's intercom: a 24 dB/oct 320 Hz–3.4 kHz band, the 1.9 kHz presence peak (+5 dB), the radio compressor
