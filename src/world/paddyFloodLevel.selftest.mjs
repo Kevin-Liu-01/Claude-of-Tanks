@@ -37,14 +37,14 @@ for (const id of ['delta', 'caldera']) {
     const spread = floor[Math.floor(floor.length * 0.9)] - floor[Math.floor(floor.length * 0.1)];
     assert.ok(spread <= PADDY_LEVEL_M + 0.1, `${id}: flooded field ${fieldId} is level (${spread.toFixed(2)} m)`);
   }
-  // The rotation alone floods about a fifth of the paddies; the level rule keeps a few percent of the field ground.
+  // The rotation floods its share of the paddies (item 31's Caldera r5 rotation floods 7.8% raw; the floor only ensures the level check has paddies to test); the level rule keeps a few percent of the field ground.
   const raw = resolveLandUseProfile(id);
   let rawFlooded = 0;
   for (let z = -510; z < 510; z += 2.5) for (let x = -510; x < 510; x += 2.5) {
     landUseAt(raw, x, z, sample);
     if (sample.active && sample.crop === LAND_CROP.paddyWater) rawFlooded++;
   }
-  assert.ok(rawFlooded > fields * 0.1, `${id}: the rotation floods its share (${(rawFlooded / fields).toFixed(3)})`);
+  assert.ok(rawFlooded > fields * 0.05, `${id}: the rotation floods its share (${(rawFlooded / fields).toFixed(3)})`);
   assert.ok(flooded < rawFlooded * 0.15, `${id}: water only on level floors (${(flooded / fields).toFixed(4)} of the field ground)`);
   // No painted water where the players deploy: within 90 m of either anchor no field floods unless it is level.
   const frame = deploymentFrame(cfg.spawns);
