@@ -34,7 +34,7 @@ import type { EventBus } from '../game/stateCore.ts';
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
 // layer knowing about them (see src/world/destructibles.ts).
-import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
+import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } from '../world/destructibles.ts';
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
@@ -653,6 +653,8 @@ const EXPLOSION_LIGHT_HEX = 0xff7f38;
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
 const SMOKE_COLUMN_S = 40;
+/** A burning map vehicle's fire and smoke (s): it chars over the first seconds, then smoulders out. */
+const VEHICLE_BURN_S = 18;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
@@ -4699,6 +4701,7 @@ function* createFxSteps(
   type PropBreakFamily =
     | 'drumblast'
     | 'woodbuilding'
+    | 'vehicleburn'
     | 'canvasbuilding'
     | 'metalbuilding'
     | 'masonry'
@@ -4714,6 +4717,7 @@ function* createFxSteps(
 
   function propBreakFamily(kind: string): PropBreakFamily {
     if (kind === 'drumblast') return 'drumblast';
+    if (kind === 'vehicleburn') return 'vehicleburn';
     if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
@@ -5389,6 +5393,8 @@ function* createFxSteps(
         } else lastBlast.structureId = -1;
         lastGroundBlast.x = b.x; lastGroundBlast.z = b.z;
         lastGroundBlast.craterId = typeof b.craterId === 'number' ? b.craterId : -1;
+        // (dcore 2026-10-10, wave 351) the vehicles round it take the near miss: dents, glass, a shove (props.ts)
+        if (Number.isFinite(b.chargeKg)) notifyBlast(b.x, b.y, b.z, b.chargeKg);
       });
       // a deforming crater (crater-render-spec §D): its own surface draped on the deformed ground (the terrain follows
       // the overlay in its LOD pass, before this update reads it), its edge ragged by the simulation's wobble; a live one
@@ -6213,6 +6219,16 @@ function* createFxSteps(
       // a ramming hull scales it with its overrun speed (props.ts breakRecord)
       // so every throw velocity below inherits the tank's momentum.
       const family = propBreakFamily(kind);
+      // (dcore 2026-10-10, waves 350/351: a killed map vehicle flipped to the burnt wreck in a frame) a vehicle a round
+      // destroys burns: its fire and smoke column take hold over it while its paint chars (props.ts, the crush copy)
+      if (family === 'vehicleburn') {
+        const col: SmokeColumn = { key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: VEHICLE_BURN_S,
+          scale: Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true };
+        columns.push(col);
+        emitColumnPuff(col);
+        capColumns();
+        return;
+      }
       // destruction-fx lane: on the media tiers a prop breaks into its own material's pieces and dust (main threw the
       // charred-metal wreck chunks for a wooden hut and a fieldstone wall alike)
       if (blast && (family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding'

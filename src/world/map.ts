@@ -200,6 +200,14 @@ export interface WorldRuntime {
   ): boolean;
   resetDestructibles(): void;
   /**
+   * A hull this frame (world centre, yaw, its contact half extents): the map vehicles, small buildings, stalls and tents
+   * it meets give under it (props.ts pressHull, propCrushPresentation.ts). Presentation only: never a sim input.
+   */
+  pressHull(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
+  /** Whether a crush event the presentation never pressed sweeps a hull across the prop (the battle: on; the Studio,
+   *  which presses with every hull on its tracks: off). */
+  setCrushSweeps(on: boolean): void;
+  /**
    * Step only the destruction's clock — props' falls, tosses and loose dressing, the felled trunks — by `dt` seconds
    * (2026-10-06: the Scene Studio's hulls crush what they overrun on its timeline, its world update held at dt 0).
    */
@@ -824,6 +832,10 @@ function assembleWorld(
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
     },
+    pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => {
+      props.pressHull?.(x, z, yaw, halfLength, halfWidth);
+    },
+    setCrushSweeps: (on: boolean) => { props.setCrushSweeps?.(on); },
     advanceDestruction: (dt: number) => {
       props.advanceDestructibles?.(dt);
       vegetation.advanceToppled?.(dt);

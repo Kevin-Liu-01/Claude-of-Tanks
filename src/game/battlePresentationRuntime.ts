@@ -14,6 +14,7 @@ import {
 } from 'three';
 
 import type { BattleClientAccess } from './battleClientAccess.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
 
@@ -111,6 +112,8 @@ interface PresentationWorld {
   };
   crushables?: CrushableProp[];
   crushProp(index: number, dirX: number, dirZ: number, speed: number): boolean;
+  /** The props a hull's box meets give under it (map.ts pressHull: presentation only, never a sim input). */
+  pressHull?(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
 }
 
 type PosePorts = Pick<BattleClientAccess,
@@ -439,6 +442,14 @@ export function createBattlePresentationRuntime({
     emitDust(entity, fx, presented, speed, topSpeedMps, fxTicks);
     emitExhaust(entity, fx, presented, speed, topSpeedMps);
     crushNearbyProps(entity, fx, world, speed);
+    // (dcore 2026-10-10; the owner: "just let physics work") a map vehicle, a hut, a stall or a tent its box meets gives
+    // under it from that moment (props.ts pressHull: presentation only, the simulation's crush ghosts the obstacle)
+    if (world?.pressHull) {
+      const rect = tankContactRect(entity.spec);
+      const c = Math.cos(presented.yaw), sn = Math.sin(presented.yaw);
+      world.pressHull(presented.pos.x + rect.centerX * c + rect.centerZ * sn, presented.pos.z + rect.centerZ * c - rect.centerX * sn,
+        presented.yaw, rect.halfLength, rect.halfWidth);
+    }
   };
 
   // physics lane (2026-10-10): a wreck's turret follows its body — the solo step's, interpolated between two steps like
