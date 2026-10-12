@@ -1,0 +1,807 @@
+{
+  "about": "The public site's gameplay media from the site fifty (owner, 2026-10-11: \"replace the old media with all my new ones\", after every set is done). tools/media-r5/site-media.mjs builds public/media/site50-r14 from these picks: the round's deliveries (each take's 4K loop, stills and sound), the fifty frames and the films. Slots name a take id and, for stills, which still: moment (the key moment) or close (the close portrait).",
+  "collection": "site50-r14",
+  "round": "r14",
+  "sources": {
+    "deliver": "shots/media-r5/site50/deliver-r14",
+    "frames": "shots/media-r5/final/blur-r14/renders",
+    "framesFallback": "shots/media-r5/final/blur-r13/renders",
+    "trailer": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4"
+  },
+  "takes": {
+    "s01-main-street-push": {
+      "map": "urban",
+      "en": "A Leopard 2A6 pushes up the main street of burning Steinburg",
+      "zh": "一辆 Leopard 2A6 沿燃烧的斯泰因堡主街推进",
+      "shortEn": "Leopard 2A6, main street",
+      "shortZh": "Leopard 2A6，主街"
+    },
+    "s02-factory-road": {
+      "map": "urban",
+      "en": "An M1A2 Abrams TUSK rolls past the factory under fire",
+      "zh": "一辆 M1A2 Abrams TUSK 在炮火中驶过工厂",
+      "shortEn": "M1A2 Abrams TUSK, factory road",
+      "shortZh": "M1A2 Abrams TUSK，工厂公路"
+    },
+    "s03-square-pass": {
+      "map": "urban",
+      "en": "A Leclerc XLR crosses the burning square",
+      "zh": "一辆 Leclerc XLR 穿过燃烧的广场",
+      "shortEn": "Leclerc XLR, burning square",
+      "shortZh": "Leclerc XLR，燃烧的广场"
+    },
+    "s04-column-under-fire": {
+      "map": "verdant",
+      "en": "A T-90M column drives into the fight on the country road",
+      "zh": "一支 T-90M 纵队沿乡间公路驶入战斗",
+      "shortEn": "T-90M column under fire",
+      "shortZh": "炮火下的 T-90M 纵队"
+    },
+    "s05-barn-advance": {
+      "map": "verdant",
+      "en": "A T-14 Armata advances past the barns of Verdant Fields",
+      "zh": "一辆 T-14 Armata 驶过翠野原的谷仓向前推进",
+      "shortEn": "T-14 Armata past the barns",
+      "shortZh": "驶过谷仓的 T-14 Armata"
+    },
+    "s06-farm-charge": {
+      "map": "verdant",
+      "en": "A KF51 Panther charges past the farmhouse through artillery",
+      "zh": "一辆 KF51 Panther 冒着炮击冲过农舍",
+      "shortEn": "KF51 Panther charge",
+      "shortZh": "KF51 Panther 冲锋"
+    },
+    "s07-lake-shellfire": {
+      "map": "alpine",
+      "en": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+      "zh": "一辆 Stridsvagn 122 冒着炮火穿越冰封湖面",
+      "shortEn": "Strv 122 on the frozen lake",
+      "shortZh": "冰湖上的 Strv 122"
+    },
+    "s08-market-push": {
+      "map": "oasis",
+      "en": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
+      "zh": "一辆 M6 Linebacker 引领 Abrams 纵队穿过日痕绿洲的集市街",
+      "shortEn": "M6 Linebacker, market street",
+      "shortZh": "M6 Linebacker，集市街"
+    },
+    "s09-harbor-run": {
+      "map": "fjord",
+      "en": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
+      "zh": "一辆 Leopard 2A7V 在炮火中驶过诺德港的港口公路",
+      "shortEn": "Leopard 2A7V, harbor run",
+      "shortZh": "Leopard 2A7V，港口突进"
+    },
+    "s10-ford-shellfire": {
+      "map": "monsoon",
+      "en": "A ZTZ-100 fords the river as shells land around it",
+      "zh": "一辆 ZTZ-100 涉水渡河，炮弹在四周落下",
+      "shortEn": "ZTZ-100 fords the river",
+      "shortZh": "ZTZ-100 涉水渡河"
+    },
+    "s11-container-rows": {
+      "map": "railyard",
+      "en": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
+      "zh": "一支 Challenger 1 纵队穿过灰渣枢纽的铁路编组场",
+      "shortEn": "Challenger 1 column, rail yard",
+      "shortZh": "Challenger 1 纵队，铁路编组场"
+    },
+    "s12-gantry-advance": {
+      "map": "foundry",
+      "en": "A T-90MS Tagil column advances under the Ironworks gantries",
+      "zh": "一支 T-90MS Tagil 纵队在钢铁厂的龙门吊下推进",
+      "shortEn": "T-90MS column under the gantries",
+      "shortZh": "龙门吊下的 T-90MS 纵队"
+    },
+    "s13-farm-race": {
+      "map": "frontier",
+      "en": "A K2 Black Panther races past the red-roofed farm at sunset",
+      "zh": "日落时分，一辆 K2 Black Panther 疾驰驶过红顶农场",
+      "shortEn": "K2 Black Panther at sunset",
+      "shortZh": "日落中的 K2 Black Panther"
+    },
+    "s14-snow-push": {
+      "map": "winter",
+      "en": "A T-80U pushes through snowy Frosthollow",
+      "zh": "一辆 T-80U 在白雪覆盖的霜谷中推进",
+      "shortEn": "T-80U in the snow",
+      "shortZh": "雪中的 T-80U"
+    },
+    "s15-orchard-column": {
+      "map": "orchard",
+      "en": "A C1 Ariete column drives through the orchard village under fire",
+      "zh": "一支 C1 Ariete 纵队在炮火中驶过果园村庄",
+      "shortEn": "C1 Ariete column, orchard village",
+      "shortZh": "C1 Ariete 纵队，果园村庄"
+    },
+    "s16-street-duel": {
+      "map": "urban",
+      "en": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
+      "zh": "夜间街道决斗：一辆 Griffin 在斯泰因堡街道上与一辆 T-80U 交火",
+      "shortEn": "Griffin vs T-80U at night",
+      "shortZh": "夜战：Griffin 对 T-80U"
+    },
+    "s17-crossroads-fire": {
+      "map": "urban",
+      "en": "Fire at the Steinburg crossroads at noon",
+      "zh": "正午时分，斯泰因堡十字路口燃起大火",
+      "shortEn": "Crossroads fire at noon",
+      "shortZh": "正午的十字路口大火"
+    },
+    "s18-street-knockout": {
+      "map": "urban",
+      "en": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "zh": "夜间，一辆 T-90A 在斯泰因堡街道尽头被击毁",
+      "shortEn": "T-90A knocked out at night",
+      "shortZh": "夜间被击毁的 T-90A"
+    },
+    "s19-roof-tiles": {
+      "map": "urban",
+      "en": "Roof tiles rain down as a PL-01 fires up the street",
+      "zh": "一辆 PL-01 沿街开火，屋瓦纷纷坠落",
+      "shortEn": "PL-01, falling roof tiles",
+      "shortZh": "PL-01，屋瓦坠落"
+    },
+    "s20-road-return-fire": {
+      "map": "verdant",
+      "en": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
+      "zh": "日落时分，一辆 Challenger 2 率领乌克兰纵队隔着田野还击",
+      "shortEn": "Challenger 2 returns fire",
+      "shortZh": "Challenger 2 还击"
+    },
+    "s21-fields-assault": {
+      "map": "verdant",
+      "en": "A T-90SM wedge assaults through the burning fields",
+      "zh": "T-90SM 楔形编队穿过燃烧的田野发起突击",
+      "shortEn": "T-90SM wedge assault",
+      "shortZh": "T-90SM 楔形突击"
+    },
+    "s22-walking-barrage": {
+      "map": "verdant",
+      "en": "Artillery walks across the fields toward the wedge at night",
+      "zh": "夜间，炮火越过田野逐步逼近楔形编队",
+      "shortEn": "Walking barrage at night",
+      "shortZh": "夜间徐进弹幕"
+    },
+    "s23-village-crossroads": {
+      "map": "verdant",
+      "en": "A T-80U Husarz and a PL-01 hold the village crossroads",
+      "zh": "一辆 T-80U Husarz 与一辆 PL-01 坚守村庄十字路口",
+      "shortEn": "Husarz and PL-01 hold the crossroads",
+      "shortZh": "Husarz 与 PL-01 坚守十字路口"
+    },
+    "s24-ice-duel": {
+      "map": "alpine",
+      "en": "A duel on the frozen lake: a T-80U takes the hit",
+      "zh": "冰湖上的对决：一辆 T-80U 中弹",
+      "shortEn": "T-80U hit on the ice",
+      "shortZh": "冰面上中弹的 T-80U"
+    },
+    "s25-alpine-village": {
+      "map": "alpine",
+      "en": "A Leopard 2A5 and a CV90105 fight through the alpine village",
+      "zh": "一辆 Leopard 2A5 与一辆 CV90105 在高山村庄中激战",
+      "shortEn": "Leopard 2A5 and CV90105, alpine village",
+      "shortZh": "Leopard 2A5 与 CV90105，高山村庄"
+    },
+    "s26-minaret-fire": {
+      "map": "oasis",
+      "en": "A Merkava Mk 3D fires at Sunscar Oasis",
+      "zh": "一辆 Merkava Mk 3D 在日痕绿洲开火",
+      "shortEn": "Merkava Mk 3D fires",
+      "shortZh": "Merkava Mk 3D 开火"
+    },
+    "s27-caravanserai-kill": {
+      "map": "oasis",
+      "en": "A T-62MV-1 is knocked out by the caravanserai",
+      "zh": "一辆 T-62MV-1 在商队驿站旁被击毁",
+      "shortEn": "T-62MV-1 knocked out",
+      "shortZh": "被击毁的 T-62MV-1"
+    },
+    "s28-fjord-village": {
+      "map": "fjord",
+      "en": "A Challenger 2E and a Challenger 3 hold the fjord village",
+      "zh": "一辆 Challenger 2E 与一辆 Challenger 3 坚守峡湾村庄",
+      "shortEn": "Challenger 2E and 3, fjord village",
+      "shortZh": "Challenger 2E 与 3，峡湾村庄"
+    },
+    "s29-fjord-road-kill": {
+      "map": "fjord",
+      "en": "A T-90 burns on the road above the fjord",
+      "zh": "一辆 T-90 在峡湾上方的公路上燃烧",
+      "shortEn": "T-90 burning above the fjord",
+      "shortZh": "峡湾上方燃烧的 T-90"
+    },
+    "s30-temple-village": {
+      "map": "monsoon",
+      "en": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
+      "zh": "一辆 K1A1 与一辆 K21 在季风雨脊的寺庙村庄中激战",
+      "shortEn": "K1A1 and K21, temple village",
+      "shortZh": "K1A1 与 K21，寺庙村庄"
+    },
+    "s31-ford-fire": {
+      "map": "monsoon",
+      "en": "A Type 96B fires across the river ford",
+      "zh": "一辆 Type 96B 隔着河流浅滩开火",
+      "shortEn": "Type 96B at the ford",
+      "shortZh": "浅滩上的 Type 96B"
+    },
+    "s32-yard-salvo": {
+      "map": "railyard",
+      "en": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
+      "zh": "黄金时刻，M1A2 SEPv3 坦克隔着铁路编组场开火",
+      "shortEn": "SEPv3 salvo at golden hour",
+      "shortZh": "黄金时刻的 SEPv3 齐射"
+    },
+    "s33-water-tower": {
+      "map": "railyard",
+      "en": "The line advances past the burning water tower at night",
+      "zh": "夜间，战线越过燃烧的水塔向前推进",
+      "shortEn": "Past the water tower at night",
+      "shortZh": "夜间越过水塔"
+    },
+    "s34-furnace-salvo": {
+      "map": "foundry",
+      "en": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
+      "zh": "夜间，TOS-1A 发射车在钢铁厂场区打出连续齐射",
+      "shortEn": "TOS-1A salvo at night",
+      "shortZh": "夜间 TOS-1A 齐射"
+    },
+    "s35-farm-village": {
+      "map": "frontier",
+      "en": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
+      "zh": "一辆 Type 90 与一辆 Type 89 在边疆盆地的农庄中激战",
+      "shortEn": "Type 90 and Type 89, farm village",
+      "shortZh": "Type 90 与 Type 89，农庄"
+    },
+    "s36-barn-knockout": {
+      "map": "frontier",
+      "en": "A Type 10 knocks out a T-90M beside the burning barn",
+      "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M",
+      "shortEn": "Type 10 knocks out a T-90M",
+      "shortZh": "Type 10 击毁 T-90M"
+    },
+    "s37-river-village": {
+      "map": "delta",
+      "en": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
+      "zh": "一辆 VT-4A1 与一辆 ZTZ-100 在翡翠江三角洲的河畔村庄中激战",
+      "shortEn": "VT-4A1 and ZTZ-100, river village",
+      "shortZh": "VT-4A1 与 ZTZ-100，河畔村庄"
+    },
+    "s38-church-knockout": {
+      "map": "winter",
+      "en": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+      "zh": "夜间，一辆 Leopard 2A6 在洋葱顶教堂旁被击毁",
+      "shortEn": "Leopard 2A6 knocked out by the church",
+      "shortZh": "教堂旁被击毁的 Leopard 2A6"
+    },
+    "s39-lakeside-village": {
+      "map": "reservoir",
+      "en": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+      "zh": "一辆 Chieftain Mk 10 在高地水库隔着村庄开火",
+      "shortEn": "Chieftain Mk 10, lakeside village",
+      "shortZh": "Chieftain Mk 10，湖畔村庄"
+    },
+    "s40-rooftop-smoke": {
+      "map": "urban",
+      "en": "Smoke columns rise over the rooftops of Steinburg",
+      "zh": "斯泰因堡的屋顶上空升起道道烟柱",
+      "shortEn": "Smoke over Steinburg",
+      "shortZh": "斯泰因堡上空的硝烟"
+    },
+    "s41-church-tower": {
+      "map": "urban",
+      "en": "A Leopard 2A6 UA halts in Steinburg's night street fight",
+      "zh": "一辆 Leopard 2A6 UA 在斯泰因堡的夜间巷战中停下",
+      "shortEn": "Leopard 2A6 UA, night street",
+      "shortZh": "Leopard 2A6 UA，夜间街道"
+    },
+    "s42-assault-above": {
+      "map": "verdant",
+      "en": "Verdant Fields from above as the assault rolls in",
+      "zh": "俯瞰翠野原，攻势滚滚而来",
+      "shortEn": "Verdant Fields from above",
+      "shortZh": "俯瞰翠野原"
+    },
+    "s43-lake-crane": {
+      "map": "alpine",
+      "en": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
+      "zh": "日落时分的冰川关：烟雾在冰湖与群峰之上升起",
+      "shortEn": "Glacier Pass at sunset",
+      "shortZh": "日落时分的冰川关"
+    },
+    "s44-oasis-sunset": {
+      "map": "oasis",
+      "en": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
+      "zh": "日落时分的日痕绿洲：烟雾笼罩棕榈树与宣礼塔",
+      "shortEn": "Sunscar Oasis at sunset",
+      "shortZh": "日落时分的日痕绿洲"
+    },
+    "s45-harbor-wide": {
+      "map": "fjord",
+      "en": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
+      "zh": "黄金时刻的诺德港：群山之下港口公路上的战斗",
+      "shortEn": "Nordhavn at golden hour",
+      "shortZh": "黄金时刻的诺德港"
+    },
+    "s46-river-drone": {
+      "map": "monsoon",
+      "en": "Monsoon Ridge: shells land along the jungle river",
+      "zh": "季风雨脊：炮弹沿丛林河流落下",
+      "shortEn": "Shells along the jungle river",
+      "shortZh": "丛林河畔的炮火"
+    },
+    "s47-ironworks-crane": {
+      "map": "foundry",
+      "en": "Ironworks at night: the yard burns between the smoke stacks",
+      "zh": "夜色中的钢铁厂：场区在烟囱之间燃烧",
+      "shortEn": "Ironworks at night",
+      "shortZh": "夜色中的钢铁厂"
+    },
+    "s48-delta-crane": {
+      "map": "delta",
+      "en": "Jade River Delta: the river village under fire, mountains beyond",
+      "zh": "翡翠江三角洲：炮火下的河畔村庄，远处群山连绵",
+      "shortEn": "Jade River Delta under fire",
+      "shortZh": "炮火下的翡翠江三角洲"
+    },
+    "s49-orchard-sunset": {
+      "map": "orchard",
+      "en": "Orchard Valley: smoke drifts over the orchards",
+      "zh": "果园谷：烟雾飘过果园",
+      "shortEn": "Smoke over Orchard Valley",
+      "shortZh": "果园谷上空的硝烟"
+    },
+    "s50-reservoir-crane": {
+      "map": "reservoir",
+      "en": "Highland Reservoir at sunset: the lake beyond the burning village",
+      "zh": "日落时分的高地水库：燃烧村庄之外的湖面",
+      "shortEn": "Highland Reservoir at sunset",
+      "shortZh": "日落时分的高地水库"
+    }
+  },
+  "home": {
+    "hero": [
+      {
+        "id": "s07-lake-shellfire",
+        "still": "moment",
+        "focus": "55% 60%"
+      },
+      {
+        "id": "s13-farm-race",
+        "still": "moment",
+        "focus": "58% 55%"
+      },
+      {
+        "id": "s09-harbor-run",
+        "still": "moment",
+        "focus": "55% 60%"
+      },
+      {
+        "id": "s44-oasis-sunset",
+        "still": "moment",
+        "focus": "38% 55%"
+      },
+      {
+        "id": "s10-ford-shellfire",
+        "still": "moment",
+        "focus": "60% 50%"
+      },
+      {
+        "id": "s16-street-duel",
+        "still": "moment",
+        "focus": "70% 55%"
+      }
+    ],
+    "rail": [
+      "s05-barn-advance",
+      "s26-minaret-fire",
+      "s11-container-rows",
+      "s20-road-return-fire",
+      "s21-fields-assault",
+      "s24-ice-duel",
+      "s25-alpine-village",
+      "s27-caravanserai-kill",
+      "s34-furnace-salvo",
+      "s45-harbor-wide",
+      "s47-ironworks-crane"
+    ],
+    "mosaic": [
+      {
+        "id": "s01-main-street-push",
+        "still": "moment"
+      },
+      {
+        "id": "s07-lake-shellfire",
+        "still": "close"
+      },
+      {
+        "id": "s02-factory-road",
+        "still": "moment"
+      },
+      {
+        "id": "s09-harbor-run",
+        "still": "close"
+      },
+      {
+        "id": "s04-column-under-fire",
+        "still": "moment"
+      },
+      {
+        "id": "s13-farm-race",
+        "still": "close"
+      },
+      {
+        "id": "s06-farm-charge",
+        "still": "moment"
+      },
+      {
+        "id": "s16-street-duel",
+        "still": "close"
+      },
+      {
+        "id": "s14-snow-push",
+        "still": "moment"
+      },
+      {
+        "id": "s18-street-knockout",
+        "still": "close"
+      },
+      {
+        "id": "s15-orchard-column",
+        "still": "moment"
+      },
+      {
+        "id": "s20-road-return-fire",
+        "still": "close"
+      },
+      {
+        "id": "s19-roof-tiles",
+        "still": "moment"
+      },
+      {
+        "id": "s24-ice-duel",
+        "still": "close"
+      },
+      {
+        "id": "s22-walking-barrage",
+        "still": "moment"
+      },
+      {
+        "id": "s25-alpine-village",
+        "still": "close"
+      },
+      {
+        "id": "s23-village-crossroads",
+        "still": "moment"
+      },
+      {
+        "id": "s26-minaret-fire",
+        "still": "close"
+      },
+      {
+        "id": "s32-yard-salvo",
+        "still": "moment"
+      },
+      {
+        "id": "s38-church-knockout",
+        "still": "close"
+      },
+      {
+        "id": "s35-farm-village",
+        "still": "moment"
+      },
+      {
+        "id": "s41-church-tower",
+        "still": "close"
+      },
+      {
+        "id": "s39-lakeside-village",
+        "still": "moment"
+      },
+      {
+        "id": "s44-oasis-sunset",
+        "still": "close"
+      }
+    ],
+    "cta": {
+      "id": "s43-lake-crane",
+      "still": "moment"
+    },
+    "reel": {
+      "takes": [
+        "s06-farm-charge",
+        "s24-ice-duel",
+        "s11-container-rows",
+        "s27-caravanserai-kill",
+        "s34-furnace-salvo"
+      ],
+      "crossfadeS": 0.5
+    },
+    "destruction": "s27-caravanserai-kill",
+    "paths": [
+      "s45-harbor-wide",
+      "s05-barn-advance",
+      "s10-ford-shellfire",
+      "s47-ironworks-crane"
+    ],
+    "socialCards": {
+      "urban-crossfire": {
+        "id": "s17-crossroads-fire",
+        "still": "moment"
+      },
+      "desert-duel": {
+        "id": "s27-caravanserai-kill",
+        "still": "close"
+      },
+      "winter-breaker": {
+        "id": "s24-ice-duel",
+        "still": "moment"
+      },
+      "verdant-column": {
+        "id": "s04-column-under-fire",
+        "still": "moment"
+      },
+      "coastal-harbor": {
+        "id": "s45-harbor-wide",
+        "still": "close"
+      }
+    }
+  },
+  "docs": {
+    "hero": {
+      "id": "s11-container-rows",
+      "still": "moment"
+    },
+    "player": "trailer",
+    "chapters": {
+      "build": {
+        "id": "s01-main-street-push",
+        "still": "moment"
+      },
+      "simulation": {
+        "id": "s36-barn-knockout",
+        "still": "moment"
+      },
+      "vehicles": {
+        "id": "s05-barn-advance",
+        "still": "close"
+      },
+      "rendering": {
+        "id": "s44-oasis-sunset",
+        "still": "moment"
+      },
+      "ai": {
+        "id": "s04-column-under-fire",
+        "still": "moment"
+      }
+    },
+    "reels": [
+      "s01-main-street-push",
+      "s02-factory-road",
+      "s04-column-under-fire",
+      "s06-farm-charge",
+      "s07-lake-shellfire",
+      "s09-harbor-run",
+      "s10-ford-shellfire",
+      "s11-container-rows",
+      "s13-farm-race",
+      "s16-street-duel",
+      "s18-street-knockout",
+      "s19-roof-tiles",
+      "s20-road-return-fire",
+      "s21-fields-assault",
+      "s24-ice-duel",
+      "s25-alpine-village",
+      "s26-minaret-fire",
+      "s27-caravanserai-kill",
+      "s34-furnace-salvo",
+      "s38-church-knockout"
+    ],
+    "archiveLoops": [
+      "s07-lake-shellfire",
+      "s26-minaret-fire",
+      "s16-street-duel",
+      "s05-barn-advance"
+    ]
+  },
+  "topics": {
+    "build": "s01-main-street-push",
+    "models": "s07-lake-shellfire",
+    "ai": "s04-column-under-fire",
+    "audio": "s34-furnace-salvo",
+    "performance": "s11-container-rows",
+    "simulation": "s24-ice-duel",
+    "vehicles": "s05-barn-advance",
+    "rendering": "s44-oasis-sunset",
+    "multiplayer": "s09-harbor-run",
+    "studio": "s22-walking-barrage",
+    "filming": "s21-fields-assault"
+  },
+  "topicMedia": {
+    "ai.media1": {
+      "id": "s04-column-under-fire",
+      "still": "close"
+    },
+    "ai.media2": {
+      "id": "s35-farm-village",
+      "still": "moment"
+    },
+    "audio.media1": {
+      "id": "s34-furnace-salvo",
+      "still": "close"
+    },
+    "simulation.media2": {
+      "id": "s27-caravanserai-kill",
+      "still": "moment"
+    },
+    "rendering.media2": {
+      "id": "s44-oasis-sunset",
+      "still": "close"
+    },
+    "build.media2": {
+      "sheet": 2
+    },
+    "studio.media2": {
+      "sheet": 2
+    }
+  },
+  "featured": [
+    {
+      "id": "s07-lake-shellfire",
+      "maps": [
+        "alpine",
+        "whiteout"
+      ],
+      "boot": true,
+      "focal": "55% 60%"
+    },
+    {
+      "id": "s16-street-duel",
+      "maps": [
+        "urban",
+        "ruinspires"
+      ],
+      "focal": "70% 55%"
+    },
+    {
+      "id": "s09-harbor-run",
+      "maps": [
+        "fjord",
+        "saltwind",
+        "coastal"
+      ],
+      "focal": "55% 60%"
+    },
+    {
+      "id": "s13-farm-race",
+      "maps": [
+        "frontier",
+        "steppe",
+        "longleaf"
+      ],
+      "focal": "58% 55%"
+    },
+    {
+      "id": "s26-minaret-fire",
+      "maps": [
+        "oasis",
+        "desert",
+        "badlands",
+        "copper_mesa"
+      ]
+    },
+    {
+      "id": "s05-barn-advance",
+      "maps": [
+        "verdant",
+        "polders"
+      ]
+    },
+    {
+      "id": "s10-ford-shellfire",
+      "maps": [
+        "monsoon",
+        "mangrove"
+      ],
+      "focal": "60% 50%"
+    },
+    {
+      "id": "s11-container-rows",
+      "maps": [
+        "railyard",
+        "airfield"
+      ]
+    },
+    {
+      "id": "s47-ironworks-crane",
+      "maps": [
+        "foundry",
+        "caldera",
+        "blackglass"
+      ]
+    },
+    {
+      "id": "s38-church-knockout",
+      "maps": [
+        "winter"
+      ]
+    },
+    {
+      "id": "s15-orchard-column",
+      "maps": [
+        "orchard",
+        "autumn"
+      ]
+    },
+    {
+      "id": "s37-river-village",
+      "maps": [
+        "delta"
+      ]
+    },
+    {
+      "id": "s39-lakeside-village",
+      "maps": [
+        "reservoir",
+        "cliffbridge",
+        "titan_gorge",
+        "skybridge"
+      ]
+    },
+    {
+      "id": "s44-oasis-sunset",
+      "focal": "38% 55%"
+    },
+    {
+      "id": "s45-harbor-wide"
+    },
+    {
+      "id": "s24-ice-duel"
+    },
+    {
+      "id": "s25-alpine-village"
+    },
+    {
+      "id": "s20-road-return-fire"
+    },
+    {
+      "id": "s21-fields-assault"
+    },
+    {
+      "id": "s34-furnace-salvo",
+      "fourK": true
+    }
+  ],
+  "notFound": {
+    "id": "s38-church-knockout",
+    "still": "moment"
+  },
+  "hudEditor": {
+    "id": "s02-factory-road",
+    "still": "moment"
+  },
+  "og": {
+    "id": "s07-lake-shellfire",
+    "still": "moment"
+  },
+  "readme": {
+    "stills": [
+      "s07-lake-shellfire",
+      "s13-farm-race",
+      "s09-harbor-run",
+      "s44-oasis-sunset"
+    ],
+    "worlds": {
+      "id": "s45-harbor-wide",
+      "still": "moment"
+    },
+    "worldKit": {
+      "id": "s19-roof-tiles",
+      "still": "moment"
+    }
+  },
+  "posters": {
+    "trailer": 9
+  }
+}
