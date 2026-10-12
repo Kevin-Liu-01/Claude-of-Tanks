@@ -726,6 +726,7 @@ export function createGarageDressing(
     h = 1.0,
     wallBayId = '',
     parent: THREE.Object3D = group,
+    freestanding = parent === legacyVerdantRoot,
   ): void {
     const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
     signTextures.push(tex);
@@ -736,10 +737,10 @@ export function createGarageDressing(
     const mount = new THREE.Group();
     mount.position.set(x, 0, z);
     mount.rotation.y = ry;
-    mount.name = parent === legacyVerdantRoot
+    mount.name = freestanding
       ? `garage_freestanding_service_sign_${text.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`
       : `garage_wall_sign_${wallBayId || 'panel'}`;
-    mount.userData.mountMode = parent === legacyVerdantRoot
+    mount.userData.mountMode = freestanding
       ? 'grounded-freestanding-frame'
       : 'wall-supported';
     parent.add(mount);
@@ -751,7 +752,7 @@ export function createGarageDressing(
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
     mount.add(board);
-    if (parent === legacyVerdantRoot) {
+    if (freestanding) {
       // These three labels used to borrow Verdant's wall even when the shared
       // fleet graph moved outdoors. Two posts, feet, a lower tie and diagonal
       // braces make each sign a self-contained yard fixture in all ten
@@ -3326,8 +3327,9 @@ export function createGarageDressing(
         put(box, cassetteMaterial, bx, by, bz, ry, 0, 0, 1, pallet);
       }
     }
+    // the bay labels are Verdant's own (round 6; waves 408, 419 and 424: "neon teardown signs repeat in every garage")
     wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86,
-      Math.PI, 2.8, 0.9, '', legacyVerdantRoot);
+      Math.PI, 2.8, 0.9, '', verdantKit('t90m_service_sign'), true);
   });
 
   // ==========================================================================
@@ -3495,9 +3497,9 @@ export function createGarageDressing(
     serviceMachineGun(weaponRack, 'dshk', false, 0, 1902);
     serviceMachineGun(weaponRack, 'm2', true, 1.20, 1903);
     wallSign('K2 TEARDOWN', -16.35, 3.20, -22.86,
-      0, 2.5, 0.9, '', legacyVerdantRoot);
+      0, 2.5, 0.9, '', verdantKit('k2_service_sign'), true);
     wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86,
-      0, 2.7, 0.8, '', legacyVerdantRoot);
+      0, 2.7, 0.8, '', verdantKit('weapon_service_sign'), true);
     placeAuthoredServiceBay(firstBayChildIndex, 'rolled_k2', 'k2');
   });
 

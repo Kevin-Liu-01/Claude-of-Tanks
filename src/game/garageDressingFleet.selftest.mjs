@@ -203,7 +203,7 @@ assert.match(dressing,
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
   'the complete four-bay composition must surround every Garage environment');
 for (const signature of [
-  "mountMode = parent === legacyVerdantRoot",
+  "mountMode = freestanding",
   "'grounded-freestanding-frame'",
   'garage_service_sign_ground_post',
   'garage_service_sign_ground_foot',
@@ -212,7 +212,14 @@ for (const signature of [
   'supportConnections = 9',
 ]) {
   assert.ok(dressing.includes(signature),
-    `outdoor service labels must retain their grounded support: ${signature}`);
+    `freestanding service labels must retain their grounded support: ${signature}`);
+}
+// round 6 (waves 408, 419 and 424: "neon teardown signs repeat in every garage regardless of region"): the bay labels
+// stand only in Verdant, on its own kit owners
+for (const [text, owner] of [['T-90M / RELIKT', 't90m_service_sign'], ['K2 TEARDOWN', 'k2_service_sign'],
+  ['WEAPON SERVICE', 'weapon_service_sign']]) {
+  assert.ok(dressing.includes(`wallSign('${text}'`), `${text} label exists`);
+  assert.match(dressing, new RegExp(`verdantKit\\('${owner}'\\), true\\)`), `${text} stands only in Verdant`);
 }
 assert.match(dressing, /verdantInteriorRoot\.visible = isVerdant/,
   'indoor wall clutter must remain exclusive to Verdant');
