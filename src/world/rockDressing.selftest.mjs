@@ -515,8 +515,45 @@ assert.match(shader.vertexShader, /vRockFace = aRockFace;/);
 assert.match(frag, /float hang = smoothstep\(0\.05, 0\.75, vRockFace\.y\);/, 'the streaks darkest high');
 assert.match(frag, /\(1\.0 - 0\.85 \* vRockFace\.z\)\n\s*\* smoothstep\(0\.15, 0\.7, vRockAbove\);/, 'no varnish on a fresh break');
 assert.match(frag, /\* \(1\.0 - 0\.85 \* vRockFace\.z\);\n/, 'nor lichen');
-assert.match(frag, /float lichenRim = lichen \* \(1\.0 - smoothstep\(1\.0 - cover \+ edge, 1\.0 - cover \+ edge \+ cover \* 0\.3, lc\.x\)\);/,
+assert.match(frag, /float lichenRim = lichen \* \(1\.0 - smoothstep\(thr \+ edge, thr \+ edge \+ 0\.18 \* \(1\.0 - thr\), lc\.x\)\);/,
   'a colony\'s rim a shade darker than its heart (Sonnet, wave 97: "airbrushed")');
+// (rock round 2, 2026-10-11; gauntlet wave 415: "a pale, translucent ... smear or vertical rectangle" on the slate) the
+// colonies in 3D in the stone's space, so no facet's projection blend cuts one into a sheet; the coverage law is the
+// field's own, measured here on a port of the shader's function; the crust keeps to the grain's highs
+assert.match(frag, /vec2 cotColony3\(vec3 p\) \{/, 'the colony field');
+assert.match(frag, /vec2 lc = cotColony3\(vGrimeW \* 2\.4 \+ vRockSeed \* vec3\(17\.3, 5\.1, 11\.7\)\);/, 'the colonies in 3D, each boulder its own');
+assert.match(frag, /float thr = 1\.0 - pow\(clamp\(cover \/ 0\.416, 0\.0, 1\.0\), 0\.3333\);/, 'the field\'s coverage law');
+assert.match(frag, /lichen \*= 0\.35 \+ 0\.65 \* smoothstep\(0\.42, 0\.78, rockDetail\);/, 'a crust on the grain, not a film');
+assert.ok(!frag.includes('texture2D(uRockLichenTile, lPw.yz).rg'), 'no projected colony ranks');
+{
+  const fract = (x) => x - Math.floor(x);
+  const colony = (px, py, pz) => {
+    const gx = Math.floor(px - 0.5), gy = Math.floor(py - 0.5), gz = Math.floor(pz - 0.5);
+    let best = 0;
+    for (let k = 0; k < 8; k++) {
+      const ox = k % 2, oy = Math.floor(k / 2) % 2, oz = Math.floor(k / 4), cx = gx + ox, cy = gy + oy, cz = gz + oz;
+      const hx = fract(Math.sin(cx * 127.1 + cy * 311.7 + cz * 74.7) * 43758.5453);
+      const hy = fract(Math.sin(cx * 269.5 + cy * 183.3 + cz * 246.1) * 43758.5453);
+      const hz = fract(Math.sin(cx * 113.5 + cy * 271.9 + cz * 124.6) * 43758.5453);
+      const rx = ox + 0.15 + 0.7 * hx - (px - gx), ry = oy + 0.15 + 0.7 * hy - (py - gy), rz = oz + 0.15 + 0.7 * hz - (pz - gz);
+      const rad = 0.28 + 0.34 * fract(hx * 7.31 + hy * 3.17);
+      const lob = 1 + 0.16 * Math.sin((rx * hx + ry * hy + rz * hz) * 14 + hz * 40) + 0.09 * Math.sin((rz * hy + rx * hz + ry * hx) * 23 + hy * 17);
+      const q = Math.hypot(rx, ry, rz) / (rad * lob);
+      if (q < 1) best = Math.max(best, (0.2 + 0.8 * fract(hz * 13.7)) * (1 - q * q));
+    }
+    return best;
+  };
+  let seed = 9001;
+  const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const N = 60000, vals = new Float64Array(N);
+  for (let i = 0; i < N; i++) vals[i] = colony(rnd() * 160, rnd() * 160, rnd() * 160);
+  const share = (t) => vals.reduce((n, v) => n + (v > t ? 1 : 0), 0) / N;
+  assert.ok(Math.abs(share(0) - 0.416) < 0.02, `the colonies fill 41.6 % of space (${(share(0) * 100).toFixed(1)} %)`);
+  for (const c of [0.05, 0.12, 0.25]) {
+    const thr = 1 - Math.pow(c / 0.416, 1 / 3);
+    assert.ok(Math.abs(share(thr) - c) < 0.25 * c + 0.01, `a cover ${c} takes ${(share(thr) * 100).toFixed(1)} % of the stone`);
+  }
+}
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 'the dressing mixes after the vertex tone');
 assert.ok(frag.indexOf('rockDetail') < frag.indexOf('{ grime }'), 'the detail multiplies before the grime block');
 assert.ok(frag.indexOf('if (vRockSeed >= 0.0) {') < frag.indexOf('float lichen ='), 'the lichen on the boulders only');
@@ -540,7 +577,7 @@ assert.match(frag, /mat3 rockR = mat3\(1\.0\);\nvec3 rockPw = vGrimeW \* 0\.55;\
 assert.match(frag, /rockPw = rockR \* vGrimeW \* \(0\.44 \+ 0\.25 \* fract\(vRockSeed \* 3\.71\)\) \+ vRockSeed \* vec3\(31\.7, 7\.3, 19\.1\);/, 'its scale and phase');
 assert.match(frag, /vec3 rockTp = abs\(rockR \* vGrimeN\);/, 'the photo\'s weights in its frame');
 assert.ok(frag.includes('texture2D(map, rockPw.yz).rgb * rockTp.x') && frag.includes('rockPert = transpose(rockR) * rockPert;'), 'the stone and its relief drawn in that frame, the relief turned back');
-assert.ok(frag.includes('texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x'), 'the lichen keeps the world frame');
+assert.ok(frag.includes('cotColony3(vGrimeW * 2.4'), 'the lichen keeps the world frame');
 // the carbonate surface (b12): the rind on the tops and the weather side, the flints in bands, the stain up the foot
 assert.match(frag, /float rind = uRockSurface\.y \* smoothstep\(0\.25, 0\.95, 0\.5 \+ 0\.45 \* vGrimeN\.y/, 'the rind');
 assert.match(frag, /float flint = uRockSurface\.x \* \(1\.0 - smoothstep\(0\.07, 0\.17, flintBand\)\)/, 'the flints in their bands');

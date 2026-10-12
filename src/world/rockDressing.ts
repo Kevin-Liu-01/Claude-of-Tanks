@@ -1275,6 +1275,26 @@ uniform vec4 uRockFabric2;
 // (2026-10-10, the map-revival lane) a clast field on a face's plane: cells about their jittered points; x the clast
 // (a rounded pebble about its point, or an angular fragment — the cell's interior inside a dark seam), y the clast's own
 // roll, z the cell's pixel footprint (the caller fades the field where a cell spans too few pixels)
+// (rock round 2, 2026-10-11) the lichen's colonies in 3D, in the stone's own space: lobed blobs about jittered points
+// (the 2 x 2 x 2 cells round the nearest lattice corner), each its own reach and priority, the priority falling from its
+// heart to its rim (a growing cover grows every colony outward); x the priority (0 outside every colony), y its roll
+vec2 cotColony3(vec3 p) {
+  vec3 gi = floor(p - 0.5), gf = p - gi;
+  float best = 0.0, roll = 0.0;
+  for (int k = 0; k < 8; k++) {
+    vec3 o = vec3(float(k % 2), float((k / 2) % 2), float(k / 4)), c = gi + o;
+    vec3 h = fract(sin(vec3(dot(c, vec3(127.1, 311.7, 74.7)), dot(c, vec3(269.5, 183.3, 246.1)), dot(c, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
+    vec3 r = o + 0.15 + 0.7 * h - gf;
+    float rad = 0.28 + 0.34 * fract(h.x * 7.31 + h.y * 3.17);
+    float lob = 1.0 + 0.16 * sin(dot(r, h) * 14.0 + h.z * 40.0) + 0.09 * sin(dot(r.zxy, h.yzx) * 23.0 + h.y * 17.0);
+    float q = length(r) / (rad * lob);
+    if (q < 1.0) {
+      float pr = (0.2 + 0.8 * fract(h.z * 13.7)) * (1.0 - q * q);
+      if (pr > best) { best = pr; roll = fract(h.y * 17.3 + h.x); }
+    }
+  }
+  return vec2(best, roll);
+}
 vec3 cotClast(vec2 p, float angular) {
   vec2 gi = floor(p), gf = fract(p);
   float d1 = 8.0, d2 = 8.0;
@@ -1695,8 +1715,11 @@ ${ROCK_CLAST_GLSL}
     // to a rock where the cluster field allows, on its tops and its weather side (none under), merging where they are
     // dense; a crust over the stone, not a paint on it (on a snowy map only the steep faces the snow leaves bare)
     if (uRockLichen.x > 0.0) {
-      vec3 lPw = vGrimeW * 0.3 + vRockSeed * 3.7;
-      vec2 lc = texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x + texture2D(uRockLichenTile, lPw.xz).rg * rockTw.y + texture2D(uRockLichenTile, lPw.xy).rg * rockTw.z;
+      // (rock round 2, 2026-10-11; gauntlet wave 415 on Reservoir's slate: "a pale, translucent, roughly human-shaped
+      // smear or vertical rectangle") the colonies in the stone's own space (cotColony3), not the tile's three
+      // projections: the projections' ranks blended across a plated stone's flat facets cut a colony along each facet's
+      // blend into a straight-edged sheet. A colony now crosses an arris whole, and its crust keeps to the grain's highs
+      vec2 lc = cotColony3(vGrimeW * 2.4 + vRockSeed * vec3(17.3, 5.1, 11.7));
       vec2 lFlank = normalize(vGrimeN.xz + vec2(1e-4, 0.0));
       float weather = dot(lFlank, vec2(0.55, -0.83)) * length(vGrimeN.xz);
       float exposed = smoothstep(0.15, 0.75, vGrimeN.y + 0.45 * weather) * smoothstep(0.25, 0.6, vRockAbove)
@@ -1704,14 +1727,20 @@ ${ROCK_CLAST_GLSL}
       float cluster = smoothstep(0.5, 0.68, texture2D(uGrime, vGrimeW.xz * 0.09 + vec2(vRockSeed * 0.37, 0.61)).r);
       // (b14: a fresh break is bare stone, the lichen on the weathered skin round it)
       float cover = min(0.72, uRockLichen.x * 3.0 * exposed * cluster * (0.6 + 0.8 * fract(vRockSeed * 3.31))) * (1.0 - 0.85 * vRockFace.z);
-      float edge = 0.02 + length(fwidth(lPw)) * 2.0;
-      float lichen = smoothstep(1.0 - cover - edge, 1.0 - cover + edge, lc.x);
-      // (b14; Sonnet, wave 97: "blotches … airbrushed onto its surface rather than grown") a colony's growing rim, the
-      // outer quarter of its rank, a shade darker than its heart
-      float lichenRim = lichen * (1.0 - smoothstep(1.0 - cover + edge, 1.0 - cover + edge + cover * 0.3, lc.x));
+      // the field's own coverage law (measured: 41.6 % of space inside a colony, the share past a priority t 0.416 (1 - t)^3)
+      float thr = 1.0 - pow(clamp(cover / 0.416, 0.0, 1.0), 0.3333);
+      float edge = 0.015 + fwidth(lc.x) * 1.5;
+      float lichen = cover > 0.001 ? smoothstep(thr - edge, thr + edge, lc.x) : 0.0;
+      // (b14; Sonnet, wave 97: "blotches … airbrushed onto its surface rather than grown") a colony's growing rim a shade
+      // darker than its heart
+      float lichenRim = lichen * (1.0 - smoothstep(thr + edge, thr + edge + 0.18 * (1.0 - thr), lc.x));
+      // a crust, not a film: it fills the grain's highs and leaves its pits and cracks bare
+      lichen *= 0.35 + 0.65 * smoothstep(0.42, 0.78, rockDetail);
       vec3 lichenColor = mix(uRockLichenB, uRockLichenA, step(lc.y, uRockLichen.y)) * (0.72 + 0.3 * rockDetail) * (1.0 - 0.32 * lichenRim);
       lichenColor = mix(lichenColor, diffuseColor.rgb, 0.3);
-      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.42 + 0.26 * fract(lc.y * 7.0)));
+      // (and a dark stone's crust a little less proud of it: the pale colonies on the slate read as paint at 60 %)
+      float stoneL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.42 + 0.26 * fract(lc.y * 7.0)) * mix(0.72, 1.0, smoothstep(0.03, 0.14, stoneL)));
     }
   }
   // a snow map's boulders carry the snow on their tops and shelves, laid after their tone (the grime hook's snow lies
