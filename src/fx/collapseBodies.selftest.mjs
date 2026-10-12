@@ -108,8 +108,10 @@ function meanHeight(group, idx) {
   const standing = meanHeight(group, 7);
   for (let i = 0; i < 60 * 10; i++) bodies.update(1 / 60);
   // (its heap rises under its pieces in the pool's ground, the drawn ground here flat: pieces lie in it as in the heap)
+  // (the physics lane, 2026-10-11, bf5439dc1: across numerically equivalent engines the same house lies at 1.75 to
+  // 2.02 m, pieces resting on the stubs instead of sinking into them: the line stands outside that noise, at half)
   const lying = meanHeight(group, 7);
-  assert.ok(standing > 3 && lying < standing * 0.45, `it came down (its pieces' mean height ${standing.toFixed(2)} m standing, ${lying.toFixed(2)} m after 10 s)`);
+  assert.ok(standing > 3 && lying < standing * 0.5, `it came down (its pieces' mean height ${standing.toFixed(2)} m standing, ${lying.toFixed(2)} m after 10 s)`);
   console.log(`  hessian/cottage: taken, its pieces' mean height ${standing.toFixed(2)} m standing -> ${lying.toFixed(2)} m after 10 s`);
 }
 // (wave 407: "the roof comes down as big, perfectly flat, unbroken grey corrugated sheets ... nothing bends, folds or
