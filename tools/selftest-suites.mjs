@@ -743,6 +743,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
+    'src/vehicles/decorDockKeepOut.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',

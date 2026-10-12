@@ -52,6 +52,8 @@ import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 // safe).
 
 import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
+import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
@@ -3876,6 +3878,21 @@ function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Bo
  * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
  * and geometry; running gear and decor never.
  */
+/** Clearance kept round the drone dock's certified volumes (m). */
+export const DOCK_KEEP_OUT_CLEAR = 0.03;
+/**
+ * The drone dock's keep-out boxes in one decor frame (that frame's own coordinates): the seat record's cradle volumes,
+ * its parked-airframe volumes and their launch column, each grown by DOCK_KEEP_OUT_CLEAR. Empty for a vehicle whose
+ * seat rides the other frame or that has no seat.
+ */
+export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
+  const seat = MISSION_ATTACHMENT_SEATS[specId];
+  if (!seat || seat.frame !== frame) return [];
+  const at = new THREE.Vector3(seat.x, seat.y, seat.z);
+  return [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>
+    new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_KEEP_OUT_CLEAR));
+}
+
 function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
   const out: THREE.Box3[] = [];
   const rack = group.userData.rearFieldStowage as
@@ -4712,6 +4729,10 @@ export function* attachTankDecorationsSteps(
     };
     // round 5: the roof guns' own bodies (collectGunBodies), out of every decor piece's placed box (GUN_BODY_EXEMPT aside)
     const gunBodies: Record<DecorFrame, THREE.Box3[]> = { hull: collectGunBodies(hullG), turret: collectGunBodies(turretG) };
+    // 2026-10-11 (the drones lane; landed 2026-10-12, the owner: "make sure the american drones have all 4 rotors"): the drone dock's certified volumes on this vehicle's own seat
+    // record (dockKeepOut) — the cradle, the parked airframe and its launch column, 3 cm clear — out of every decor
+    // piece's placed box, so stowage packs round the dock instead of through it (107 of 220 seats had loads inside).
+    const dockVolumes: Record<DecorFrame, THREE.Box3[]> = { hull: dockKeepOut(spec.id, 'hull'), turret: dockKeepOut(spec.id, 'turret') };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -5057,6 +5078,7 @@ export function* attachTankDecorationsSteps(
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
+      if (dockVolumes[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'drone-dock');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
