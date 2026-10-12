@@ -16,16 +16,19 @@ const CAPACITY = 42;
 export function droneHiddenFromCamera(position:THREE.Vector3,shooterId:string|number|null|undefined,flightActive:boolean,camera:THREE.Camera):boolean {
   return flightActive&&shooterId!=null&&camera.userData.aerialPilotId===shooterId&&position.distanceToSquared(camera.position)<=4;
 }
-/** The blades read individually only while they spool; at speed each rotor is a translucent disc. */
-const BLUR_AFTER_SPOOL = .62;
+/** The blades read individually only while they spool; at speed each rotor is a translucent disc. From `FAINT_DISC_S`
+ * a faint disc shows over the quickening blades, so the spool-up reads blades, then blades under a disc, then a disc —
+ * all on the cradle (round 4b: the disc is full just before the 0.6 s lift, DRONE_SPOOL_S). */
+const BLUR_AFTER_SPOOL = .5, FAINT_DISC_S = .2;
 
 interface DetailPool {
  lease:DroneKitLease;
  parts:THREE.InstancedMesh[];
  rotors:THREE.InstancedMesh;
  blurs:THREE.InstancedMesh;
+ faint:THREE.InstancedMesh;
  meshes:THREE.InstancedMesh[];
- count:number; bladeCount:number; blurCount:number;
+ count:number; bladeCount:number; blurCount:number; faintCount:number;
 }
 /** A drone's carrier as the presentation sees it: the live dock frame (the cradle's airframe datum), and whether the
  * carrier is gone or flying again (either ends a flight home). */
@@ -55,14 +58,15 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     const parts=kit.parts.map(part=>new THREE.InstancedMesh(part.geometry,part.material,CAPACITY));
     const rotors=new THREE.InstancedMesh(kit.rotor,kit.rotorMaterial,CAPACITY*4);
     const blurs=new THREE.InstancedMesh(kit.rotorBlur,kit.blurMaterial,CAPACITY*4);
-    blurs.renderOrder=2;
-    const meshes=[...parts,rotors,blurs];
+    const faint=new THREE.InstancedMesh(kit.rotorBlurFaint,kit.blurMaterial,CAPACITY*4);
+    blurs.renderOrder=faint.renderOrder=2;
+    const meshes=[...parts,rotors,blurs,faint];
     // Shaded like the docked airframe (one program per material), so a launch from a shaded dock never brightens.
     for(const mesh of meshes){mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.receiveShadow=true;parent.add(mesh);}
     // Near airframes cast with the sun (solid parts and spooling blades; never the translucent discs or the lite pool).
     for(const mesh of [...parts,rotors])mesh.castShadow=detail==='full';
-    parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';blurs.name='FPV rotor discs';
-    return {lease,parts,rotors,blurs,meshes,count:0,bladeCount:0,blurCount:0};
+    parts[0]!.name=`FPV ${kit.name} airframes${detail==='lite'?' (lite)':''}`;rotors.name='FPV spinning propellers';blurs.name='FPV rotor discs';faint.name='FPV fading rotor discs';
+    return {lease,parts,rotors,blurs,faint,meshes,count:0,bladeCount:0,blurCount:0,faintCount:0};
   }
   function variant(nation:string){
     const key=droneNation(nation);let entry=variants.get(key);
@@ -190,7 +194,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     begin(timeS:number,cameraPosition?:THREE.Vector3){
       count=0;dt=Math.min(.1,Math.max(0,timeS-time));time=timeS;frame++;
       hasCamera=!!cameraPosition;if(cameraPosition)camera.copy(cameraPosition);
-      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.blurCount=0;}
+      for(const v of variants.values())for(const pool of [v.full,v.lite])if(pool){pool.count=0;pool.bladeCount=0;pool.blurCount=0;pool.faintCount=0;}
     },
     /** Every live drone shell, every frame (a missed one reads as a flight that ended). `hidden` keeps an airframe
      * tracked without drawing it (the pilot's own, around its FPV lens). */
@@ -253,13 +257,15 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       }
       pose.updateMatrix();
       for(const part of pool.parts)part.setMatrixAt(index,pose.matrix);
-      const blur=spool>=1&&ageS>=Math.max(BLUR_AFTER_SPOOL,DRONE_SPOOL_S*.9);
+      const blur=spool>=1&&ageS>=Math.max(BLUR_AFTER_SPOOL,DRONE_SPOOL_S*.9),fading=!blur&&ageS>=FAINT_DISC_S;
       const target=blur?pool.blurs:pool.rotors,base=blur?pool.blurCount:pool.bladeCount;
       for(let n=0;n<4;n++){
         // A disc turns slowly so its faint blade passages shimmer; spooling blades show their real direction.
         poseDroneRotor(prop,n,blur?time*9+n:state.rotorSpin);matrix.multiplyMatrices(pose.matrix,prop.matrix);target.setMatrixAt(base+n,matrix);
+        if(fading){poseDroneRotor(prop,n,time*9+n);matrix.multiplyMatrices(pose.matrix,prop.matrix);pool.faint.setMatrixAt(pool.faintCount+n,matrix);}
       }
       if(blur)pool.blurCount+=4;else pool.bladeCount+=4;
+      if(fading)pool.faintCount+=4;
       count++;
     },
     end(){
@@ -277,7 +283,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       for(const v of variants.values())for(const pool of [v.full,v.lite]){
         if(!pool)continue;
         for(const part of pool.parts)part.count=pool.count;
-        pool.rotors.count=pool.bladeCount;pool.blurs.count=pool.blurCount;
+        pool.rotors.count=pool.bladeCount;pool.blurs.count=pool.blurCount;pool.faint.count=pool.faintCount;
         for(const mesh of pool.meshes){mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;}
       }
     },
