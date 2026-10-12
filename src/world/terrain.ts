@@ -56,6 +56,7 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { compilePaddies, inPaddy, levelPaddies, paddyCanals, resolvePaddyFloors, type PaddyConfig } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -354,6 +355,12 @@ interface TerrainSettings {
    * sheet lies on it at the level. Unset: no query calls in.
    */
   canals?: readonly CanalConfig[];
+  /**
+   * 2026-10-12 (item 4, the owner: "we need real water"): flooded paddies (paddies.ts) — level basins cut and filled into
+   * the ground, each held by a bund, its water a square-ended canal at its floor (the floors resolve on the finished
+   * ground, then the paddies' canals join the compiled set). Unset: no query calls in.
+   */
+  paddies?: readonly PaddyConfig[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
   bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
@@ -1286,7 +1293,9 @@ function* heightFieldBuildSteps(
   const mounds = T.mounds ?? [];
   let moundCrestYs: Float64Array | null = null;
   // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one
-  const compiledCanals = compileCanals(T.canals);
+  let compiledCanals = compileCanals(T.canals);
+  // (2026-10-12, item 4) the paddies: their floors resolve on the finished ground below, then their water joins the canals
+  const compiledPaddies = compilePaddies(T.paddies);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const terraceZones = prepareTerraceZones(T.terraces);
@@ -2278,6 +2287,8 @@ function* heightFieldBuildSteps(
     // (the map-revival lane, 2026-10-07) the canals carved to their profiles, a road keeping its ground over each (a
     // culvert: full inside 6 m of its line, fading out by 10 m) except under a bridge's span (the water runs under the
     // deck), on final queries only
+    // (2026-10-12, item 4) the paddies' floors cut and filled level, their bunds raised (their water is carved with the canals)
+    if (compiledPaddies !== null && roadsOn && padsOn) h = levelPaddies(compiledPaddies, x, z, h);
     if (compiledCanals !== null && roadsOn && padsOn) {
       const culvert = 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z));
       h = carveCanals(compiledCanals, x, z, h, liquidDepthM, bridgeDecks.length ? culvert * (1 - bridgeTermsAt(x, z).span) : culvert);
@@ -2656,6 +2667,15 @@ function* heightFieldBuildSteps(
     moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
     landformPhase = phase;
   }
+  // (2026-10-12, item 4) the paddies' floors: the finished ground's median over each (sampled before any paddy is built),
+  // then their water joins the canals at those floors
+  if (compiledPaddies !== null) {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    resolvePaddyFloors(compiledPaddies, (x, z) => heightAt(x, z, true, true));
+    compiledCanals = compileCanals([...(T.canals ?? []), ...paddyCanals(compiledPaddies)]);
+    landformPhase = phase;
+  }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
@@ -2885,6 +2905,7 @@ function* heightFieldBuildSteps(
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
     if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot
+    if (compiledPaddies !== null && inPaddy(compiledPaddies, x, z)) return true; // (item 4) a paddy's water and its bund
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
     if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {

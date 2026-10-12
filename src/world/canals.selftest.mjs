@@ -42,9 +42,18 @@ const take = (inserted, original = '') => {
   source = source.replace(inserted, original);
 };
 take("import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';\n");
+// (2026-10-12, item 4) the paddies ride on the canals (their water is square-ended canals): they come out with them
+take("import { compilePaddies, inPaddy, levelPaddies, paddyCanals, resolvePaddyFloors, type PaddyConfig } from './paddies.ts';\n");
+take(source.slice(source.indexOf('  /**\n   * 2026-10-12 (item 4, the owner: "we need real water"): flooded paddies (paddies.ts)'),
+  source.indexOf('  paddies?: readonly PaddyConfig[];\n') + '  paddies?: readonly PaddyConfig[];\n'.length));
+take(source.slice(source.indexOf('  // (2026-10-12, item 4) the paddies\' floors: the finished ground\'s median over each'),
+  source.indexOf('  // Explicit second phase: all legacy support targets above are frozen.')));
+take("    if (compiledPaddies !== null && inPaddy(compiledPaddies, x, z)) return true; // (item 4) a paddy's water and its bund\n");
 take(source.slice(source.indexOf('  /**\n   * The map-revival lane (2026-10-07, Tidegate Polders step 5; canals.ts)'),
   source.indexOf('  canals?: readonly CanalConfig[];\n') + '  canals?: readonly CanalConfig[];\n'.length));
-take("  // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one\n  const compiledCanals = compileCanals(T.canals);\n");
+take("  // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one\n  let compiledCanals = compileCanals(T.canals);\n"
+  + "  // (2026-10-12, item 4) the paddies: their floors resolve on the finished ground below, then their water joins the canals\n"
+  + "  const compiledPaddies = compilePaddies(T.paddies);\n");
 take(source.slice(source.indexOf('    // (the map-revival lane, 2026-10-07) the canals carved to their profiles'),
   source.indexOf('    // the built mounds stand last, over every constraint above (final queries only)')));
 take(source.slice(source.indexOf("    // (the map-revival lane, 2026-10-07) a canal's water, bank to bank, up to a road's culvert"),
@@ -54,7 +63,8 @@ take('    if (wetness <= 0) return canalWet;\n    for (const pad of padPts) {', 
 take('    return canalWet > wetness ? canalWet : wetness;\n  }', '    return wetness;\n  }');
 take("    if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot\n");
 take("    // (the map-revival lane, 2026-10-07) a canal's water drives as a soft lake's\n    if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';\n");
-assert.ok(!source.includes('compiledCanals') && !source.includes("from './canals.ts'"), 'the reconstruction holds no canal line');
+assert.ok(!source.includes('compiledCanals') && !source.includes("from './canals.ts'") && !source.includes('compiledPaddies')
+  && !source.includes("from './paddies.ts'"), 'the reconstruction holds no canal or paddy line');
 const beforeURL = new URL('./terrain.ts?before-canals', import.meta.url).href;
 const hooks = registerHooks({ load(url, context, next) {
   if (url === beforeURL) return { format: 'module-typescript', shortCircuit: true, source };
@@ -72,7 +82,7 @@ const digest = (field) => {
   }
   return h.digest('hex').slice(0, 16);
 };
-const unset = MAP_IDS.filter((id) => !getMapConfig(id).terrain?.canals?.length);
+const unset = MAP_IDS.filter((id) => !getMapConfig(id).terrain?.canals?.length && !getMapConfig(id).terrain?.paddies?.length);
 for (const id of unset) {
   const cfg = getMapConfig(id);
   assert.equal(digest(createHeightField(1337, cfg)), digest(before(1337, cfg)), `${id}: no canal, the same terrain to the bit`);
