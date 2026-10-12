@@ -254,6 +254,19 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', desat: 0.35, tint: [0.66, 0.68, 0.68], roughMul: 1.3 },
     R: { set: 'rock', tint: [1.02, 1.0, 0.92], roughMul: 1.15 }, M: null,
   },
+  // the map-revival lane (Longleaf round 4, 2026-10-11; the gauntlet's wave 376: "a saturated lawn", "a mown lawn"):
+  // the longleaf flatwoods' floor — the wiregrass sward cured toward straw and dulled (the photo grass at two thirds of its
+  // saturation under an olive-straw tint, ≈ 0.25/0.26/0.10 against Verdant's 0.27/0.32/0.12), the Gulf coastal plain's
+  // grey sand where the ground is worn, a track or a cut (the sand set greyed toward 0.52/0.48/0.40), and the creek
+  // banks' red-brown clay on the steep ground
+  longleaf: {
+    G: { set: 'grass', desat: 0.35, tint: [0.82, 0.80, 0.62], roughMul: 1.28 },
+    // (cap11's frames: the pale sand set turned the clearcut into white dunes and the lookout's track into a beach) the
+    // worn ground is the flatwoods' own floor — the dirt set's twigs and straw for the pine litter and the cutover's
+    // slash, greyed and darkened toward the grey sandy loam (≈ 0.24/0.20/0.15)
+    D: { set: 'dirt', desat: 0.45, tint: [0.62, 0.58, 0.52], roughMul: 1.3 },
+    R: { set: 'dirt', desat: 0.3, tint: [0.62, 0.50, 0.40], roughMul: 1.3 }, M: null,
+  },
   fjord: {
     G: { set: 'grass', tint: [0.76, 0.86, 0.80], roughMul: 1.28 },
     D: { set: 'dirt', tint: [0.68, 0.70, 0.68], roughMul: 1.35 },
