@@ -7334,8 +7334,8 @@ ${snowCap ? `
    * A region's stack stands where its builder would have built it: on the most level ground within fourteen metres of
    * its seat — the seat itself if the ground under its foot is within 0.35 m from side to side, else the levellest of
    * sixteen stands round it within 0.6 m — clear of the village, the spawns and the road by its reach; null where none
-   * is. The ground under the foot: eight points round a round stack's foot, a hooiberg's or a Diemen's corners and
-   * sides. No draws (every later placement keeps its seat).
+   * is, and never on a 'clearance' rail spur's berth. The ground under the foot: eight points round a round stack's foot, a
+   * hooiberg's or a Diemen's corners and sides. No draws (every later placement keeps its seat).
    */
   function haystackStand(x0: number, z0: number, yaw: number, sc: number): { x: number; z: number; y: number } | null {
     if (!meta) return null;
@@ -7363,6 +7363,19 @@ ${snowCap ? `
         }
         const h = heightField.getHeightAt(px, pz);
         lo = Math.min(lo, h); hi = Math.max(hi, h);
+      }
+      // (the buildings lane, 2026-10-11: a stack never stands on a 'clearance' rail spur's berth — Verdant's stog at
+      // (278.6, 60.8) stood 3.24 m from the line, inside the berth the landmarks receipt keeps clear of every solid. Its
+      // reach is the built stack's contact footprint, measured once off every stream; a map with no clearance spur never
+      // asks, so it builds nothing more)
+      if (heightField._railBerth && form) {
+        const [fx, fz] = destructibleFootprint(form.kind), reach = Math.max(fx, fz) * sc + 0.05;
+        let onBerth = !!heightField._railBerth(x, z);
+        for (let q = 0; q < 16 && !onBerth; q++) {
+          const a = (q * Math.PI) / 8;
+          onBerth = !!heightField._railBerth(x + Math.cos(a) * reach, z + Math.sin(a) * reach);
+        }
+        if (onBerth) continue;
       }
       const spread = hi - lo;
       if (k === 0 && spread <= 0.35) return { x, z, y };

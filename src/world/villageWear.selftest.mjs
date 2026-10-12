@@ -16,7 +16,8 @@ const activityMaps = ['foundry', 'saltwind', 'cliffbridge'];
 // the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
 // Orchard Valley's walled yards and threshing floors (2026-10-05), Saltmere Bay's bourg (2026-10-06) and Frontier Basin's
 // Hofreiten (2026-10-05)
-const plotMaps = ['verdant', 'orchard', 'coastal', 'frontier'];
+// (in MAP_IDS order: the scope check compares the filtered registry to this list)
+const plotMaps = ['verdant', 'coastal', 'frontier', 'orchard'];
 // 2026-10-01 (frozen pins retired): the all28 parent mask digests (desktop/mobile, baked on historical road, shoreline,
 // exit, Badlands and Foundry inputs), the archived pilot masks, the parent config digest and the literal Alpine/Autumn/
 // Foundry config pins were change detectors of past outputs and authored data. Every comparison below is live: each
