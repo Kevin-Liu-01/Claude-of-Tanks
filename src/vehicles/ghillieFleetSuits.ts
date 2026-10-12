@@ -72,6 +72,21 @@ function skirts(z0: number, z1: number, top: number, drop: number, out: number, 
 /** A box [z0, z1, yLo, yHi] a flank drape is cut away over. */
 const cut = (z0: number, z1: number, lo: number, hi: number): readonly [number, number, number, number] => [z0, z1, lo, hi];
 
+/** A deck height along z by stations (z, y), linear between them and held past the ends (the S-tanks' sloped hulls). */
+function profile(stations: ReadonlyArray<readonly [number, number]>): (z: number) => number {
+  return (z) => {
+    if (z <= stations[0][0]) return stations[0][1];
+    for (let i = 1; i < stations.length; i++) {
+      const [z0, y0] = stations[i - 1], [z1, y1] = stations[i];
+      if (z <= z1) return y0 + ((y1 - y0) * (z - z0)) / (z1 - z0);
+    }
+    return stations[stations.length - 1][1];
+  };
+}
+/** The Strv 103B's and 103A's hull deck lines (the round-5 suits' measured profiles, ghillieSuit.ts). */
+const STRV103B_DECK = profile([[-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63], [2.61, 1.53], [3.22, 1.55]]);
+const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
+
 export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Object.freeze({
   // ---- Group A: the new ghillie and netting --------------------------------------------------------------------
   // CV90 (CV9040 IFV): the turret roof and bustle under one net, opened round the commander's panorama and its ring,
@@ -710,6 +725,50 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.76, x1: 1.76, z0: 0.10, z1: 3.62, nx: 35, nz: 35, y: 1.40, garnishRiseM: 0.12, seed: 37 }),
       ],
       side: skirts(-3.10, 3.40, 1.42, 0.46, 1.90, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
+    },
+  },
+  // ---- the S-tanks (the coordinator, 2026-10-11, wave 411a: the Strv 103's drone dock stood on bare armour between
+  // two round-5 net panels and the band read as frosted glass) --------------------------------------------------------
+  // Strv 103B: the field net closed over the whole deck and the gun housing, held clear of the drone dock (its seat's
+  // cradle and launch column); a corridor only over the fixed gun's barrel where it lies along the deck (z 1.05 on), the
+  // commander's cupola with its machine gun and the driver's hatch opened as the round-5 suit had them, the lens slots
+  // by the builder; each flank one drape from the deck edge over the upper running gear.
+  strv103: {
+    id: 'strv103', seed: 1032, style: 'leafy', density: 1.25, leafScale: 0.92, foliageKind: 'spruce', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.95,
+    dockKeepOut: { frame: 'hull', boxes: [[-0.22, 0.22, 1.521, 1.814, 1.354, 1.774], [-0.407, 0.407, 1.706, 14.07, 1.157, 1.971]] },
+    hull: {
+      top: [laid({
+        x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 33, nz: 70, y: 1.75,
+        outline: [[-1.42, -3.76], [1.42, -3.76], [1.66, -2.70], [1.64, 2.35], [0.92, 3.24], [-0.92, 3.24], [-1.64, 2.35], [-1.66, -2.70]],
+        holes: [rect(-0.16, 0.16, 1.05, 3.36), rect(-0.22, 0.92, -0.88, 0.58), rect(-0.98, -0.30, -1.44, -0.72)],
+        garnishRiseM: 0.14, seed: 87,
+      })],
+      side: [-1, 1].map((side) => ({ side, z0: -3.58, z1: 2.72, nz: 44, ny: 7,
+        topAt: (z: number) => STRV103B_DECK(z) - 0.02,
+        bottomAt: (z: number) => 0.98 + Math.sin(z * 2.5) * 0.04,
+        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
+    },
+  },
+  // Strv 103A: as the 103B; its barrel lies on the deck from z 1.5, its spare links on the right glacis shoulder keep
+  // their opening (round 4), the cupola's opening reaches over the machine gun.
+  strv103a: {
+    id: 'strv103a', seed: 1031, style: 'leafy', density: 1.25, leafScale: 0.90, foliageKind: 'spruce', ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.98,
+    dockKeepOut: { frame: 'hull', boxes: [[-0.22, 0.22, 1.666, 1.89, 1.125, 1.545], [-0.407, 0.407, 1.783, 14.147, 0.928, 1.742]] },
+    hull: {
+      top: [laid({
+        x0: -1.66, x1: 1.66, z0: -3.30, z1: 3.46, nx: 33, nz: 68, y: 1.85,
+        outline: [[-1.30, -3.30], [1.30, -3.30], [1.66, -2.65], [1.65, 2.40], [1.16, 3.46], [-1.16, 3.46], [-1.65, 2.40], [-1.66, -2.65]],
+        holes: [rect(-0.16, 0.16, 1.50, 3.58), rect(0.03, 0.91, -1.30, 0.62), rect(-0.90, -0.28, -1.22, -0.46),
+          rect(0.62, 1.34, 1.96, 2.64)],
+        garnishRiseM: 0.14, seed: 71,
+      })],
+      side: [-1, 1].flatMap((side) => [[-3.12, -0.62, 0], [0.12, 2.40, 1]].map(([z0, z1, k]) => ({ side, z0, z1,
+        nz: k ? 18 : 20, ny: 7,
+        topAt: (z: number) => STRV103A_DECK(z) - 0.02,
+        bottomAt: (z: number) => 1.02 + Math.sin(z * 2.7) * 0.04,
+        outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
 });

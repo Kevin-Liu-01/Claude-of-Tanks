@@ -2310,6 +2310,12 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   // on a drape v is the share of its height (0 hem .. 1 top): spacing is measured in metres along it
   const vScale = top ? 1 : Math.max(0.3, area / Math.max(0.2, Math.abs(spanU)));
   const seats: Array<{ u: number; v: number; r: number }> = [];
+  // the fix round: a tuck point only where a bough can stand (5 cm off the cloth passes the card rule): the clumps a
+  // swept deck or a sight's view refuses are tied in where garnish may stand, instead of being lost
+  const stands = (u: number, v: number): boolean => {
+    const at = surface.sample(u, v);
+    return !!at && surface.cardOk([at.p[0] + at.n[0] * 0.05, at.p[1] + at.n[1] * 0.05, at.p[2] + at.n[2] * 0.05]);
+  };
   for (let attempt = 0; attempt < 40 + want * 40 && seats.length < want; attempt++) {
     const u = u0 + rng() * spanU, v = v0 + (top ? rng() : 0.04 + rng() * 0.93) * spanV;
     const r = 0.15 + rng() * 0.12;
@@ -2317,6 +2323,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     if (!seatOk(u, v)) continue;
     if (accept > 0.25 + 0.75 * Math.pow(stuffing(u, v), 1.3)) continue;
     if (seats.some((c) => Math.hypot(c.u - u, (c.v - v) * vScale) < c.r + r)) continue;
+    if (!stands(u, v)) continue;
     seats.push({ u, v, r });
   }
   // the sticks pushed under a roof net stand out of their humps as the biggest clumps
@@ -3515,9 +3522,10 @@ const FLAT_PROBES = [0.04, 0, -0.05, -0.1, -0.2, -0.3];
 /** A cloth's view cone off a lens: its reach (m) and the tangent of its half-angle (25 degrees). */
 const CLOTH_LENS_REACH_M = 1.0;
 const CLOTH_LENS_TAN = Math.tan(25 * Math.PI / 180);
-/** The fix round's field garnish view (FieldClearance.fieldLinesOk): clear ahead of a glass to 0.6 m; to 1.6 m, below
- * 10 degrees under the line of sight. */
-const FIELD_LENS_NEAR_M = 0.6;
+/** The fix round's field garnish view (FieldClearance.fieldLinesOk): clear ahead of a glass to 0.85 m (the coordinator:
+ * nothing inside a sight's view cone, which the audit takes 0.8 m out); to 1.6 m, below 10 degrees under the line of
+ * sight. */
+const FIELD_LENS_NEAR_M = 0.85;
 const FIELD_LENS_REACH_M = 1.6;
 const FIELD_LENS_BELOW_TAN = Math.tan(10 * Math.PI / 180);
 /** How far ahead of a sideways- or forward-looking lens a roof net is slotted open (m); a fleet field net's (fix round). */
@@ -3741,8 +3749,12 @@ function ownerSmokeLines(parent: THREE.Object3D, others: readonly THREE.Object3D
 }
 
 interface FieldClearance {
-  /** A suit point of this owner (owner-local) keeps the vehicle's working clearances. */
-  netOk(owner: GhillieOwner, p: readonly number[]): boolean;
+  /**
+   * A suit point of this owner (owner-local) keeps the vehicle's working clearances. `garnish`: a garnish point, which
+   * keeps out of the gun's whole swept volume (full depression included) even over a deck the bare gun already reaches;
+   * only the cloth may lie flat there.
+   */
+  netOk(owner: GhillieOwner, p: readonly number[], garnish?: boolean): boolean;
   /** And a cloth point keeps the smoke dischargers' lines of fire clear besides. */
   clothOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /** And a garnish point keeps the lens views and smoke lines clear besides. */
@@ -3750,7 +3762,7 @@ interface FieldClearance {
   /** Only the thin lines: a point outside every lens view and smoke line of the owner. */
   linesOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /**
-   * The fix round's field garnish: the lens views as a crew keeps them on a camouflaged vehicle (nothing within 60 cm in
+   * The fix round's field garnish: the lens views as a crew keeps them on a camouflaged vehicle (nothing within 85 cm in
    * front of any glass; beyond, to 1.6 m, a bough may stand only lower than 10 degrees under the line of sight), the
    * smoke lines and the dock as linesOk.
    */
@@ -3803,7 +3815,9 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
     const k = cellOf(Math.hypot(x - pivot.x, z - pivot.z), y - pivot.y);
     if (k >= 0) occ[k] = 1;
   };
-  forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.06, (x, y, z) => mark(turretOcc, x, y, z));
+  // 3 cm samples (the fix round's audit on the T-90M: at 6 cm the turret's front lower face read 5 cm higher than it
+  // reaches, and a bough under its edge stood inside its sweep)
+  forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.03, (x, y, z) => mark(turretOcc, x, y, z));
   // and the span the turret reaches at each radius through the traverse, lowest cell to highest: a hull point between
   // them lies inside its swept body, its hollow included (a deck plate running on under the turret's floor), not only
   // beside its skin
@@ -3887,13 +3901,35 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
     }
     return top;
   };
-  // the main gun: its radius by station along the bore (gun frame), its trunnion in the turret frame, its pitch limits
-  const gunAt = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld).applyMatrix4(new THREE.Matrix4().copy(turret.matrixWorld).invert());
+  // the main gun: its radius by station along the bore, its trunnion off the turret's axis, its pitch limits, all in the
+  // hull's units like the hull's points and the turret's occupancy (the fix round: the T-90M's and the Merkavas' turret
+  // rigs carry a non-uniform scale, and in the turret's own frame the trunnion read up to 8 cm higher and 10 cm farther
+  // forward than it stands, the bore's stations stretched with it). A turret owner's points are brought into the same
+  // units (turretUnits). The rotations are the rigs' rest poses (identity on every built hull).
+  const restQ = (o: THREE.Object3D): THREE.Quaternion => {
+    const q = new THREE.Quaternion(), sh = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+    hull.matrixWorld.decompose(v, sh, sc);
+    o.matrixWorld.decompose(v, q, sc);
+    return sh.invert().multiply(q);
+  };
+  const scaleOf = (o: THREE.Object3D): THREE.Vector3 => {
+    const v = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    o.matrixWorld.decompose(v, q, sc);
+    return sc;
+  };
+  const hullScale = scaleOf(hull), turretScale = scaleOf(turret);
+  const turretUnits = new THREE.Vector3(turretScale.x / hullScale.x, turretScale.y / hullScale.y, turretScale.z / hullScale.z);
+  const toTurretAxes = restQ(turret).invert(), toGunAxes = restQ(gun).invert();
+  const gunHull = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld).applyMatrix4(toHull);
+  const gunAt = gunHull.clone().sub(pivot).applyQuaternion(toTurretAxes);
   // the gun's extent by station along the bore: its left and right edges and how far above and below its axis it
   // reaches (a box, not a circle: a mantlet's corners must not be read as reaching under the deck; and lopsided, a
   // launcher on one side of the cradle widening only that side)
   const radius = new Map<number, number>(), extent = new Map<number, [number, number, number, number]>();
-  forTrianglePoints(ownerTriangles(gun, [], gun, notSuit), 0.04, (x, y, z) => {
+  const gunPoint = new THREE.Vector3();
+  forTrianglePoints(ownerTriangles(gun, [], hull, notSuit), 0.04, (hx, hy, hz) => {
+    gunPoint.set(hx - gunHull.x, hy - gunHull.y, hz - gunHull.z).applyQuaternion(toGunAxes);
+    const x = gunPoint.x, y = gunPoint.y, z = gunPoint.z;
     const k = Math.floor(z / SWEEP_BIN_M), r = Math.hypot(x, y);
     if (r > (radius.get(k) ?? -1)) radius.set(k, r);
     const e = extent.get(k) ?? [Infinity, -Infinity, -Infinity, -Infinity];
@@ -3954,7 +3990,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
     }
     return false;
   };
-  const workingOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
+  const workingOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => {
     if (owner === 'hull') {
       const dx = p[0] - pivot.x, dz = p[2] - pivot.z, r = Math.hypot(dx, dz);
       const qy = p[1] - pivot.y;
@@ -3978,7 +4014,9 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
         // of the armour under it (or into it), the cloth lying flat on that armour stays (the alternative is no net on
         // that deck at all); no garnish stands up there. Only ahead of the trunnion (behind it the breech swings
         // inside the turret)
-        if (!flat || along - gunAt.z < 0.05) return true;
+        // the coordinator on the fix round's audit (the TUSK's and Type 90's decks): garnish clears the gun's whole
+        // elevation sweep, full depression included; it never takes the cloth's lying-flat exemption
+        if (garnish || !flat || along - gunAt.z < 0.05) return true;
         for (const dy of FLAT_PROBES) if (sweptBy(lateral, plate! + dy - pivot.y, along, lo, lo, clearance, 0)) return false;
         return true;
       };
@@ -4009,13 +4047,15 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
       // (the declared trunnion stations, straight up and down through the turret) carry nothing of the suit
       for (const [sx, , sz] of cradleStations) if (Math.abs(p[0] - sx) < CRADLE_KEEP_M && Math.abs(p[2] - sz) < CRADLE_KEEP_M) return false;
       // the hull's armour, fittings and suit within 10 cm across through the traverse
-      if (occupied(hullOcc, Math.hypot(p[0], p[2]), p[1], 5)) return false;
-      return !sweptBy(p[0] - gunAt.x, p[1], p[2], tMinFront, tMax);
+      // in the hull's units about the turret's axis (a scaled turret rig: see gunAt)
+      const qx = p[0] * turretUnits.x, qy = p[1] * turretUnits.y, qz = p[2] * turretUnits.z;
+      if (occupied(hullOcc, Math.hypot(qx, qz), qy, 5)) return false;
+      return !sweptBy(qx - gunAt.x, qy, qz, tMinFront, tMax);
     }
     return true;
   };
   // and never inside the drone dock's boxes (cloth, garnish and every card vertex: dockKeepOut)
-  const netOk = (owner: GhillieOwner, p: readonly number[]): boolean => !inDock(owner, p) && workingOk(owner, p);
+  const netOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => !inDock(owner, p) && workingOk(owner, p, garnish);
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
   const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
   /** Whether p lies in a cone or tube along a run of [origin, axis] rows. */
@@ -4085,7 +4125,10 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
     },
     // a drape's hem keeps above what stands on the hull under the turret's line (60 cm over its ring: decks, bins,
     // hatches and the hull's own suit, never a frame or a cage reaching up round the turret)
-    turretHemFloor(x, z) { return hullTopUnder(Math.hypot(x, z), 0.6) + clearance + 0.02; },
+    // a turret owner's plan point and height in the turret's own frame (a scaled turret rig: see gunAt)
+    turretHemFloor(x, z) {
+      return (hullTopUnder(Math.hypot(x * turretUnits.x, z * turretUnits.z), 0.6) + clearance + 0.02) / turretUnits.y;
+    },
     addHullSuit() {
       hull.updateWorldMatrix(true, true);
       forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => !notSuit(mesh)), 0.06, (x, y, z) => mark(hullOcc, x, y, z));
@@ -4102,7 +4145,8 @@ function fieldOk(mesh: THREE.Object3D, ok: (p: readonly number[]) => boolean): v
 }
 
 /** Drop a carrier's triangles with a corner the clearance refuses (the cloth's garnish is held to the same rule). */
-function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number[]) => boolean): THREE.BufferGeometry {
+function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number[]) => boolean,
+  triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean): THREE.BufferGeometry {
   const pos = geometry.attributes.position as THREE.BufferAttribute, uv = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   const positions: number[] = [], uvs: number[] = [];
   // a corner shared by several triangles is asked once
@@ -4120,6 +4164,10 @@ function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number
     // and the triangle's middle (a cloth bridging a gap between corners that rest on armour)
     if (keep) keep = ok([(pos.getX(t) + pos.getX(t + 1) + pos.getX(t + 2)) / 3, (pos.getY(t) + pos.getY(t + 1) + pos.getY(t + 2)) / 3,
       (pos.getZ(t) + pos.getZ(t + 1) + pos.getZ(t + 2)) / 3]);
+    if (keep && triangleOk) {
+      keep = triangleOk([pos.getX(t), pos.getY(t), pos.getZ(t)], [pos.getX(t + 1), pos.getY(t + 1), pos.getZ(t + 1)],
+        [pos.getX(t + 2), pos.getY(t + 2), pos.getZ(t + 2)]);
+    }
     if (!keep) { dropped++; continue; }
     for (let k = 0; k < 3; k++) {
       positions.push(pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k));
@@ -4261,15 +4309,25 @@ function addGhillieOwner(
   const tops: TopCloth[] = [];
   const dock = owner === 'turret' ? missionDockOf(parent) : null;
   // the netting lane: a cloth point keeps the vehicle's clearances, and where it stands off the armour under it (a
-  // drape down a wall, a net carried over a gap) every lens's view besides; cloth lying on the armour (4 cm at its
-  // corners, so that a triangle's middle over a dip stays within 5 cm: the fix round's audit on the Challenger 2 UA's
-  // roof) is under a lens's view, not in it
-  const lying = (p: readonly number[]): boolean => {
-    for (const h of probe?.surfacesAt?.(p[0], p[2]) ?? []) if (h.up && h.y <= p[1] + 0.005) return p[1] - h.y < 0.04;
+  // drape down a wall, a net carried over a gap) every lens's view besides; cloth lying on the armour is under a lens's
+  // view, not in it. The coordinator on the fix round's audit (a Challenger 2 UA roof net 5.4 cm up, 0.72 m out of a
+  // sight): nothing stands in a view cone, so there the cloth lies within 2.5 cm at its corners and within 4 cm along
+  // its edges and through its middle (a dip under a triangle), and whatever does not is cut back
+  const lying = (p: readonly number[], within = 0.025): boolean => {
+    for (const h of probe?.surfacesAt?.(p[0], p[2]) ?? []) if (h.up && h.y <= p[1] + 0.005) return p[1] - h.y < within;
     return false;
   };
   const coverOk = clearance
     ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p)) : undefined;
+  const coverEdgesOk = clearance
+    ? (a: readonly number[], b: readonly number[], c: readonly number[]): boolean => {
+      for (const [p, q] of [[a, b], [b, c], [c, a]] as const) {
+        const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+        if (!clearance.lensClear(owner, m) && !lying(m, 0.04)) return false;
+      }
+      const m = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+      return clearance.lensClear(owner, m) || lying(m, 0.04);
+    } : undefined;
   const support: OwnerSupport = {
     probe, hull, owner, fitted: !leafy, turretless: !cfg.turret,
     hemFloor: hull ? cfg.hemFloorM ?? NET_HEM_FLOOR_M : -Infinity,
@@ -4323,7 +4381,7 @@ function addGhillieOwner(
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
     if (coverOk) {
-      const geometry = clearedGeometry(laid.geometry, coverOk);
+      const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk);
       // the cells whose cloth is really there (torn perimeter cells, islands and what the clearance took are not): a
       // drape starts only on cloth that exists
       const { x0, x1, z0, z1, nx = 18, nz = 30 } = panel;
@@ -4363,9 +4421,9 @@ function addGhillieOwner(
         // carriers were filtered as they were laid and drapes cut column by column as they were built (keepPoint); a
         // roof cage wing's cloths are filtered here
         geometry: surface.kind === 'top' && !tops.includes(surface as TopCloth) && coverOk
-          ? clearedGeometry(surface.geometry, coverOk) : surface.geometry,
+          ? clearedGeometry(surface.geometry, coverOk, coverEdgesOk) : surface.geometry,
         // the fix round: a field net's garnish keeps the lenses' field views (FieldClearance.fieldLinesOk)
-        cardOk: (p) => surface.cardOk(p) && (isFieldNet(cfg) ? clearance.netOk(owner, p) && clearance.fieldLinesOk(owner, p)
+        cardOk: (p) => surface.cardOk(p) && (isFieldNet(cfg) ? clearance.netOk(owner, p, true) && clearance.fieldLinesOk(owner, p)
           : clearance.garnishOk(owner, p)) };
     });
   }
@@ -4437,7 +4495,7 @@ function addGhillieOwner(
     if (clearance) {
       mesh.userData.fieldSuit = true;
       // the fix round: a field card lifted over a load keeps the rule it was placed by (the field lens views)
-      fieldOk(mesh, isFieldNet(cfg) ? (p) => clearance.netOk(owner, p) && clearance.fieldLinesOk(owner, p)
+      fieldOk(mesh, isFieldNet(cfg) ? (p) => clearance.netOk(owner, p, true) && clearance.fieldLinesOk(owner, p)
         : (p) => clearance.garnishOk(owner, p));
     }
     mesh.userData.vehicleFoliage = leafy ? (field ? fieldSpecies(cfg, theatre)[0] : garnishSpecies(cfg)) : cfg.foliageKind ?? defaultFoliageKind(cfg.style);
