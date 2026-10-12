@@ -598,11 +598,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   const warmPartner = new Int32Array(spherePool).fill(PARTNER_NONE);
   const warmN = new Float64Array(spherePool), warmT1 = new Float64Array(spherePool), warmT2 = new Float64Array(spherePool);
   // per body: last step's feature contacts (point, normal, impulses) for a match by place
-  // per cached feature contact: point (3), normal (3), impulses (3), partner key (1): FEATURE_STRIDE floats
-  const FEATURE_STRIDE = 10;
-  const featureCache = new Float64Array(capacity * FEATURE_CACHE * FEATURE_STRIDE);
-  /** Each slot's generation (a spawn into a slot is a new body: its old partners' caches must not match it). */
-  const slotGeneration = new Uint32Array(capacity);
+  const featureCache = new Float64Array(capacity * FEATURE_CACHE * 9);
   const featureCount = new Int32Array(capacity);
   let sphereTop = 0;
   // body bounds this step
@@ -1573,61 +1569,49 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   }
 
   // ---- solver ----
-  // Each contact's Jacobian, built once a step (prepareContacts): for its normal and its two tangents, r × d on each
-  // side and that side's I⁻¹ (r × d). A relative velocity along d is then d·(vA − vB) + wA·(rA × d) − wB·(rB × d), and an
-  // impulse j along d moves vA by j/mA d and wA by j I⁻¹(rA × d): dot products and sums in the iterations, no cross
-  // products and no inertia products (the solver was half of a collapsing house's pool step, dcore 2026-10-11).
-  // Layout per contact (JSTRIDE floats): for each axis (normal 0, t1 12, t2 24): rA×d, IA⁻¹(rA×d), rB×d, IB⁻¹(rB×d).
-  const JSTRIDE = 36;
-  const cJac = new Float64Array(maxContacts * JSTRIDE);
-  const cIma = new Float64Array(maxContacts), cImb = new Float64Array(maxContacts);
-
-  /** Fill contact c's terms for axis d at offset o of its Jacobian; returns the effective mass along d. */
-  function axisTerms(c: number, o: number, dx: number, dy: number, dz: number): number {
-    const a = cA[c], b = cB[c], J = cJac;
+  function relativeVelocity(c: number, out: Float64Array): void {
+    const a = cA[c], b = cB[c];
     const rax = cRax[c], ray = cRay[c], raz = cRaz[c];
-    const ux = ray * dz - raz * dy, uy = raz * dx - rax * dz, uz = rax * dy - ray * dx;
-    let m = a * 6;
-    const ix = iiw[m] * ux + iiw[m + 1] * uy + iiw[m + 2] * uz;
-    const iy = iiw[m + 1] * ux + iiw[m + 3] * uy + iiw[m + 4] * uz;
-    const iz = iiw[m + 2] * ux + iiw[m + 4] * uy + iiw[m + 5] * uz;
-    J[o] = ux; J[o + 1] = uy; J[o + 2] = uz; J[o + 3] = ix; J[o + 4] = iy; J[o + 5] = iz;
-    let k = cIma[c] + ux * ix + uy * iy + uz * iz;
+    let x = vx[a] + wy[a] * raz - wz[a] * ray;
+    let y = vy[a] + wz[a] * rax - wx[a] * raz;
+    let z = vz[a] + wx[a] * ray - wy[a] * rax;
     if (b >= 0) {
       const rbx = cRbx[c], rby = cRby[c], rbz = cRbz[c];
-      const qx0 = rby * dz - rbz * dy, qy0 = rbz * dx - rbx * dz, qz0 = rbx * dy - rby * dx;
-      m = b * 6;
-      const jx = iiw[m] * qx0 + iiw[m + 1] * qy0 + iiw[m + 2] * qz0;
-      const jy = iiw[m + 1] * qx0 + iiw[m + 3] * qy0 + iiw[m + 4] * qz0;
-      const jz = iiw[m + 2] * qx0 + iiw[m + 4] * qy0 + iiw[m + 5] * qz0;
-      J[o + 6] = qx0; J[o + 7] = qy0; J[o + 8] = qz0; J[o + 9] = jx; J[o + 10] = jy; J[o + 11] = jz;
-      k += cImb[c] + qx0 * jx + qy0 * jy + qz0 * jz;
-    } else {
-      J[o + 6] = 0; J[o + 7] = 0; J[o + 8] = 0; J[o + 9] = 0; J[o + 10] = 0; J[o + 11] = 0;
+      x -= vx[b] + wy[b] * rbz - wz[b] * rby;
+      y -= vy[b] + wz[b] * rbx - wx[b] * rbz;
+      z -= vz[b] + wx[b] * rby - wy[b] * rbx;
+    } else { x -= cKvx[c]; y -= cKvy[c]; z -= cKvz[c]; }
+    out[0] = x; out[1] = y; out[2] = z;
+  }
+  const rv = new Float64Array(3);
+
+  /** k = 1/m + n·(I⁻¹ (r × n)) × r, summed over the dynamic sides. */
+  function effectiveMass(c: number, nx: number, ny: number, nz: number): number {
+    const a = cA[c], b = cB[c];
+    let k = shapes[a]!.invMass;
+    k += angularTerm(a, cRax[c], cRay[c], cRaz[c], nx, ny, nz);
+    if (b >= 0) {
+      k += shapes[b]!.invMass;
+      k += angularTerm(b, cRbx[c], cRby[c], cRbz[c], nx, ny, nz);
     }
     return k > 1e-12 ? 1 / k : 0;
   }
 
-  /** Contact c's relative velocity along axis d (its Jacobian at offset o). */
-  function velAlong(c: number, o: number, dx: number, dy: number, dz: number): number {
-    const a = cA[c], b = cB[c], J = cJac;
-    let v = vx[a] * dx + vy[a] * dy + vz[a] * dz + wx[a] * J[o] + wy[a] * J[o + 1] + wz[a] * J[o + 2];
-    if (b >= 0) v -= vx[b] * dx + vy[b] * dy + vz[b] * dz + wx[b] * J[o + 6] + wy[b] * J[o + 7] + wz[b] * J[o + 8];
-    else v -= cKvx[c] * dx + cKvy[c] * dy + cKvz[c] * dz;
-    return v;
+  function angularTerm(i: number, rx: number, ry: number, rz: number, nx: number, ny: number, nz: number): number {
+    // u = r × n; return u · (I⁻¹ u)
+    const ux = ry * nz - rz * ny, uy = rz * nx - rx * nz, uz = rx * ny - ry * nx;
+    const m = i * 6;
+    const ix = iiw[m] * ux + iiw[m + 1] * uy + iiw[m + 2] * uz;
+    const iy = iiw[m + 1] * ux + iiw[m + 3] * uy + iiw[m + 4] * uz;
+    const iz = iiw[m + 2] * ux + iiw[m + 4] * uy + iiw[m + 5] * uz;
+    return ux * ix + uy * iy + uz * iz;
   }
 
-  /** An impulse j along axis d at contact c: +j on a, −j on b. */
-  function applyAlong(c: number, o: number, j: number, dx: number, dy: number, dz: number): void {
-    const a = cA[c], b = cB[c], J = cJac;
-    const ja = j * cIma[c];
-    vx[a] += ja * dx; vy[a] += ja * dy; vz[a] += ja * dz;
-    wx[a] += j * J[o + 3]; wy[a] += j * J[o + 4]; wz[a] += j * J[o + 5];
-    if (b >= 0) {
-      const jb = j * cImb[c];
-      vx[b] -= jb * dx; vy[b] -= jb * dy; vz[b] -= jb * dz;
-      wx[b] -= j * J[o + 9]; wy[b] -= j * J[o + 10]; wz[b] -= j * J[o + 11];
-    }
+  /** Apply impulse j (world) at the contact: +j on a, −j on b. `pseudo` writes the split-impulse velocities. */
+  function applyContactImpulse(c: number, jx: number, jy: number, jz: number, pseudo: boolean): void {
+    const a = cA[c], b = cB[c];
+    applyBodyImpulse(a, jx, jy, jz, cRax[c], cRay[c], cRaz[c], pseudo);
+    if (b >= 0) applyBodyImpulse(b, -jx, -jy, -jz, cRbx[c], cRby[c], cRbz[c], pseudo);
   }
 
   function applyBodyImpulse(i: number, jx: number, jy: number, jz: number, rx: number, ry: number, rz: number, pseudo: boolean): void {
@@ -1647,19 +1631,12 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     }
   }
 
-  /** A feature contact's partner as a number: a body by slot and generation, else its kind (ground, static, box k). */
-  function featureKey(b: number): number {
-    return b >= 0 ? 1 + b + capacity * slotGeneration[b] : b;
-  }
-
   function prepareContacts(dt: number): void {
     for (let c = 0; c < contactCount; c++) {
       const a = cA[c], b = cB[c];
       cRax[c] = cPx[c] - px[a]; cRay[c] = cPy[c] - py[a]; cRaz[c] = cPz[c] - pz[a];
       if (b >= 0) { cRbx[c] = cPx[c] - px[b]; cRby[c] = cPy[c] - py[b]; cRbz[c] = cPz[c] - pz[b]; }
       else { cRbx[c] = 0; cRby[c] = 0; cRbz[c] = 0; }
-      cIma[c] = shapes[a]!.invMass;
-      cImb[c] = b >= 0 ? shapes[b]!.invMass : 0;
       const nx = cNx[c], ny = cNy[c], nz = cNz[c];
       // a fixed tangent basis from the normal
       let t1x: number, t1y: number, t1z: number;
@@ -1669,19 +1646,17 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
       cT1x[c] = t1x; cT1y[c] = t1y; cT1z[c] = t1z;
       cT2x[c] = t2x; cT2y[c] = t2y; cT2z[c] = t2z;
-      const o = c * JSTRIDE;
-      cMassN[c] = axisTerms(c, o, nx, ny, nz);
-      cMassT1[c] = axisTerms(c, o + 12, t1x, t1y, t1z);
-      cMassT2[c] = axisTerms(c, o + 24, t2x, t2y, t2z);
-      const vn = velAlong(c, o, nx, ny, nz);
+      cMassN[c] = effectiveMass(c, nx, ny, nz);
+      cMassT1[c] = effectiveMass(c, t1x, t1y, t1z);
+      cMassT2[c] = effectiveMass(c, t2x, t2y, t2z);
+      relativeVelocity(c, rv);
+      const vn = rv[0] * nx + rv[1] * ny + rv[2] * nz;
       // a contact still apart (inside the margin) lets the body close its gap this step and no more (speculative);
       // a touching one bounces back faster approaches
       cBias[c] = cDepth[c] < 0 ? cDepth[c] / dt : vn < -RESTITUTION_MIN_MPS ? -cRestitution[c] * vn : 0;
       cBiasP[c] = (BAUMGARTE / dt) * Math.max(0, cDepth[c] - SLOP_M);
       cJp[c] = 0;
-      // the strongest approach of each body (impact reports): both bodies of a pair's contact land on each other. A box
-      // pair's manifold sits on one of them only, and the other's landing went unreported (a roof on a heap never
-      // cracked: wave 409's "one dead-level, unbroken lid", its gables whole, its heap thin)
+      // the strongest approach of the body (impact reports)
       if (-vn > bestImpact[a]) { bestImpact[a] = -vn; bestImpactContact[a] = c; }
       if (b >= 0 && -vn > bestImpact[b]) { bestImpact[b] = -vn; bestImpactContact[b] = c; }
       // warm start from the same sphere on the same partner last step
@@ -1694,17 +1669,14 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         }
       } else {
         // a feature contact: last step's at the same place on the same body, by distance and normal
-        const base = a * FEATURE_CACHE * FEATURE_STRIDE;
-        const key = featureKey(b);
+        const base = a * FEATURE_CACHE * 9;
         let bestD2 = FEATURE_MATCH_M * FEATURE_MATCH_M, best = -1;
         for (let f = 0, n = featureCount[a]; f < n; f++) {
-          const fo = base + f * FEATURE_STRIDE;
-          // (by place and normal alone, as the collapses were cleared on; featureKey is recorded for a later round)
-          void key;
-          if (featureCache[fo + 3] * nx + featureCache[fo + 4] * ny + featureCache[fo + 5] * nz < FEATURE_MATCH_DOT) continue;
-          const dx = featureCache[fo] - cPx[c], dy = featureCache[fo + 1] - cPy[c], dz = featureCache[fo + 2] - cPz[c];
+          const o = base + f * 9;
+          if (featureCache[o + 3] * nx + featureCache[o + 4] * ny + featureCache[o + 5] * nz < FEATURE_MATCH_DOT) continue;
+          const dx = featureCache[o] - cPx[c], dy = featureCache[o + 1] - cPy[c], dz = featureCache[o + 2] - cPz[c];
           const d2 = dx * dx + dy * dy + dz * dz;
-          if (d2 < bestD2) { bestD2 = d2; best = fo; }
+          if (d2 < bestD2) { bestD2 = d2; best = o; }
         }
         if (best >= 0) {
           cJn[c] = featureCache[best + 6] * 0.85; cJt1[c] = featureCache[best + 7] * 0.85; cJt2[c] = featureCache[best + 8] * 0.85;
@@ -1718,102 +1690,68 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     // thin beam under a heavy slab "bounced" off the impulses that held it and spun up without end (dcore's field hut,
     // 2026-10-11)
     for (let c = 0; c < contactCount; c++) {
-      const o = c * JSTRIDE;
-      if (cJn[c] !== 0) applyAlong(c, o, cJn[c], cNx[c], cNy[c], cNz[c]);
-      if (cJt1[c] !== 0) applyAlong(c, o + 12, cJt1[c], cT1x[c], cT1y[c], cT1z[c]);
-      if (cJt2[c] !== 0) applyAlong(c, o + 24, cJt2[c], cT2x[c], cT2y[c], cT2z[c]);
+      if (cJn[c] === 0 && cJt1[c] === 0 && cJt2[c] === 0) continue;
+      applyContactImpulse(c,
+        cJn[c] * cNx[c] + cJt1[c] * cT1x[c] + cJt2[c] * cT2x[c],
+        cJn[c] * cNy[c] + cJt1[c] * cT1y[c] + cJt2[c] * cT2y[c],
+        cJn[c] * cNz[c] + cJt1[c] * cT1z[c] + cJt2[c] * cT2z[c], false);
     }
   }
 
   function solveVelocities(): void {
-    // the normal, then the two tangents, of each contact in turn: velAlong/applyAlong fused, every load hoisted
-    const J = cJac;
     for (let iteration = 0; iteration < velocityIterations; iteration++) {
       for (let c = 0; c < contactCount; c++) {
-        const a = cA[c], b = cB[c], o = c * JSTRIDE;
-        const ima = cIma[c], imb = cImb[c];
         const nx = cNx[c], ny = cNy[c], nz = cNz[c];
-        let avx = vx[a], avy = vy[a], avz = vz[a], awx = wx[a], awy = wy[a], awz = wz[a];
-        let bvx = 0, bvy = 0, bvz = 0, bwx = 0, bwy = 0, bwz = 0;
-        const body = b >= 0;
-        if (body) { bvx = vx[b]; bvy = vy[b]; bvz = vz[b]; bwx = wx[b]; bwy = wy[b]; bwz = wz[b]; }
-        else { bvx = cKvx[c]; bvy = cKvy[c]; bvz = cKvz[c]; }
-        // normal
-        let rvx = avx - bvx, rvy = avy - bvy, rvz = avz - bvz;
-        let vn = rvx * nx + rvy * ny + rvz * nz + awx * J[o] + awy * J[o + 1] + awz * J[o + 2];
-        if (body) vn -= bwx * J[o + 6] + bwy * J[o + 7] + bwz * J[o + 8];
+        relativeVelocity(c, rv);
+        const vn = rv[0] * nx + rv[1] * ny + rv[2] * nz;
         let dj = cMassN[c] * (cBias[c] - vn);
         const j0 = cJn[c];
-        const jn = j0 + dj > 0 ? j0 + dj : 0;
-        cJn[c] = jn;
-        dj = jn - j0;
-        if (dj !== 0) {
-          const ja = dj * ima;
-          avx += ja * nx; avy += ja * ny; avz += ja * nz;
-          awx += dj * J[o + 3]; awy += dj * J[o + 4]; awz += dj * J[o + 5];
-          if (body) {
-            const jb = dj * imb;
-            bvx -= jb * nx; bvy -= jb * ny; bvz -= jb * nz;
-            bwx -= dj * J[o + 9]; bwy -= dj * J[o + 10]; bwz -= dj * J[o + 11];
-          }
-        }
+        cJn[c] = Math.max(0, j0 + dj);
+        dj = cJn[c] - j0;
+        if (dj !== 0) applyContactImpulse(c, dj * nx, dj * ny, dj * nz, false);
         // friction in the box cone
-        const limit = cFriction[c] * jn;
-        const t1x = cT1x[c], t1y = cT1y[c], t1z = cT1z[c], t2x = cT2x[c], t2y = cT2y[c], t2z = cT2z[c];
-        rvx = avx - bvx; rvy = avy - bvy; rvz = avz - bvz;
-        let vt1 = rvx * t1x + rvy * t1y + rvz * t1z + awx * J[o + 12] + awy * J[o + 13] + awz * J[o + 14];
-        let vt2 = rvx * t2x + rvy * t2y + rvz * t2z + awx * J[o + 24] + awy * J[o + 25] + awz * J[o + 26];
-        if (body) {
-          vt1 -= bwx * J[o + 18] + bwy * J[o + 19] + bwz * J[o + 20];
-          vt2 -= bwx * J[o + 30] + bwy * J[o + 31] + bwz * J[o + 32];
-        }
+        const limit = cFriction[c] * cJn[c];
+        relativeVelocity(c, rv);
+        const vt1 = rv[0] * cT1x[c] + rv[1] * cT1y[c] + rv[2] * cT1z[c];
+        let d1 = -cMassT1[c] * vt1;
         const t10 = cJt1[c];
-        let t1 = t10 - cMassT1[c] * vt1;
-        t1 = t1 < -limit ? -limit : t1 > limit ? limit : t1;
-        cJt1[c] = t1;
-        const d1 = t1 - t10;
+        cJt1[c] = Math.max(-limit, Math.min(limit, t10 + d1));
+        d1 = cJt1[c] - t10;
+        const vt2 = rv[0] * cT2x[c] + rv[1] * cT2y[c] + rv[2] * cT2z[c];
+        let d2 = -cMassT2[c] * vt2;
         const t20 = cJt2[c];
-        let t2 = t20 - cMassT2[c] * vt2;
-        t2 = t2 < -limit ? -limit : t2 > limit ? limit : t2;
-        cJt2[c] = t2;
-        const d2 = t2 - t20;
+        cJt2[c] = Math.max(-limit, Math.min(limit, t20 + d2));
+        d2 = cJt2[c] - t20;
         if (d1 !== 0 || d2 !== 0) {
-          const fx = d1 * t1x + d2 * t2x, fy = d1 * t1y + d2 * t2y, fz = d1 * t1z + d2 * t2z;
-          avx += fx * ima; avy += fy * ima; avz += fz * ima;
-          awx += d1 * J[o + 15] + d2 * J[o + 27]; awy += d1 * J[o + 16] + d2 * J[o + 28]; awz += d1 * J[o + 17] + d2 * J[o + 29];
-          if (body) {
-            bvx -= fx * imb; bvy -= fy * imb; bvz -= fz * imb;
-            bwx -= d1 * J[o + 21] + d2 * J[o + 33]; bwy -= d1 * J[o + 22] + d2 * J[o + 34]; bwz -= d1 * J[o + 23] + d2 * J[o + 35];
-          }
+          applyContactImpulse(c,
+            d1 * cT1x[c] + d2 * cT2x[c], d1 * cT1y[c] + d2 * cT2y[c], d1 * cT1z[c] + d2 * cT2z[c], false);
         }
-        vx[a] = avx; vy[a] = avy; vz[a] = avz; wx[a] = awx; wy[a] = awy; wz[a] = awz;
-        if (body) { vx[b] = bvx; vy[b] = bvy; vz[b] = bvz; wx[b] = bwx; wy[b] = bwy; wz[b] = bwz; }
       }
     }
   }
 
   function solvePositions(): void {
-    const J = cJac;
     for (let iteration = 0; iteration < positionIterations; iteration++) {
       for (let c = 0; c < contactCount; c++) {
         if (cBiasP[c] <= 0) continue;
-        const a = cA[c], b = cB[c], o = c * JSTRIDE;
+        const a = cA[c], b = cB[c];
         const nx = cNx[c], ny = cNy[c], nz = cNz[c];
-        let vn = pvx[a] * nx + pvy[a] * ny + pvz[a] * nz + pwx[a] * J[o] + pwy[a] * J[o + 1] + pwz[a] * J[o + 2];
-        if (b >= 0) vn -= pvx[b] * nx + pvy[b] * ny + pvz[b] * nz + pwx[b] * J[o + 6] + pwy[b] * J[o + 7] + pwz[b] * J[o + 8];
+        const rax = cRax[c], ray = cRay[c], raz = cRaz[c];
+        let x = pvx[a] + pwy[a] * raz - pwz[a] * ray;
+        let y = pvy[a] + pwz[a] * rax - pwx[a] * raz;
+        let z = pvz[a] + pwx[a] * ray - pwy[a] * rax;
+        if (b >= 0) {
+          const rbx = cRbx[c], rby = cRby[c], rbz = cRbz[c];
+          x -= pvx[b] + pwy[b] * rbz - pwz[b] * rby;
+          y -= pvy[b] + pwz[b] * rbx - pwx[b] * rbz;
+          z -= pvz[b] + pwx[b] * rby - pwy[b] * rbx;
+        }
+        const vn = x * nx + y * ny + z * nz;
         let dj = cMassN[c] * (cBiasP[c] - vn);
         const j0 = cJp[c];
         cJp[c] = Math.max(0, j0 + dj);
         dj = cJp[c] - j0;
-        if (dj === 0) continue;
-        const ja = dj * cIma[c];
-        pvx[a] += ja * nx; pvy[a] += ja * ny; pvz[a] += ja * nz;
-        pwx[a] += dj * J[o + 3]; pwy[a] += dj * J[o + 4]; pwz[a] += dj * J[o + 5];
-        if (b >= 0) {
-          const jb = dj * cImb[c];
-          pvx[b] -= jb * nx; pvy[b] -= jb * ny; pvz[b] -= jb * nz;
-          pwx[b] -= dj * J[o + 9]; pwy[b] -= dj * J[o + 10]; pwz[b] -= dj * J[o + 11];
-        }
+        if (dj !== 0) applyContactImpulse(c, dj * nx, dj * ny, dj * nz, true);
       }
     }
   }
@@ -1833,11 +1771,10 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const a = cA[c];
       const n = featureCount[a];
       if (n >= FEATURE_CACHE) continue;
-      const o = (a * FEATURE_CACHE + n) * FEATURE_STRIDE;
+      const o = (a * FEATURE_CACHE + n) * 9;
       featureCache[o] = cPx[c]; featureCache[o + 1] = cPy[c]; featureCache[o + 2] = cPz[c];
       featureCache[o + 3] = cNx[c]; featureCache[o + 4] = cNy[c]; featureCache[o + 5] = cNz[c];
       featureCache[o + 6] = cJn[c]; featureCache[o + 7] = cJt1[c]; featureCache[o + 8] = cJt2[c];
-      featureCache[o + 9] = featureKey(cB[c]);
       featureCount[a] = n + 1;
     }
   }
@@ -2090,7 +2027,6 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   }
 
   /** Relative normal velocity before the solve (used to decide whether a sleeper was hit). */
-  const rv = new Float64Array(3);
   function relativeVelocityRaw(c: number, out: Float64Array): void {
     const a = cA[c], b = cB[c];
     const rax = cPx[c] - px[a], ray = cPy[c] - py[a], raz = cPz[c] - pz[a];
@@ -2137,7 +2073,6 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     if (sphereTop + shape.sphereCount > spherePool) compactSpheres();
     if (sphereTop + shape.sphereCount > spherePool) return -1;
     shapes[slot] = shape;
-    slotGeneration[slot] = (slotGeneration[slot] + 1) >>> 0;
     sphereBase[slot] = sphereTop;
     sphereCount[slot] = shape.sphereCount;
     for (let k = 0; k < shape.sphereCount; k++) warmPartner[sphereTop + k] = PARTNER_NONE;
