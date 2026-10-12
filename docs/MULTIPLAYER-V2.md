@@ -1851,6 +1851,18 @@ back to the newest grant with at least a minute left, else to host candidates; i
 resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
 `VITE_ICE_CONFIG_URL` are gone.
 
+**A timed-out first request is asked again (2026-10-11).** Under load the first `room_relay` of a seat could run out its
+6 s budget (`internal`: the seat's own thread starved inside its battle entry, or a busy room) with no grant held yet, and
+the first connection was built on host candidates alone — no STUN, no TURN — which links on a LAN but cannot cross a
+NAT, so the attempt died and the seat re-offered seconds later (mp-p2p-headless: the first attempts linked with no
+servers, reason `internal`). Such a request is now asked once more (`RELAY_REQUEST_RETRIES` = 1) before the host
+candidates; the transport's next attempt shares the retry while it is in flight. A refusal (`rate_limit`, `relay_phase`,
+…) is not retried, and a held grant still answers a timeout at once. What this does not change: until the owner sets
+the TURN secrets on cot-rooms (`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TURN_API_TOKEN`), every grant is the
+Worker's `COT_STUN_URLS` alone, so a symmetric NAT still cannot connect. Receipt: `iceConfig.selftest` (a timed-out
+first request asked again and its grant used; a silent room costs one retry, then host candidates; a refusal answered
+once; a held grant answers a timeout; on main the timed-out first request goes straight to host candidates).
+
 **`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
 loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list
 on any error, a 404 included — so old tabs would lose STUN, not just TURN. For one release the route answers
