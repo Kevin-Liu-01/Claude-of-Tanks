@@ -4199,6 +4199,27 @@ function placedBox(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): 
   return out;
 }
 
+// (2026-10-12, item 2c) whether any triangle of the placed parts enters one of `boxes`: the dock's volumes are certified
+// shapes and a raked 1.75 m whip's box is mostly air, so the box alone turned away whips that stand clear of the dock
+// (the Chieftain 5's tall whip among thirteen tanks'); exact, and only run where the boxes already meet
+const _enterTri = new THREE.Triangle(), _enterA = new THREE.Vector3(), _enterB = new THREE.Vector3(), _enterC = new THREE.Vector3();
+function placedPartsEnter(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler, boxes: readonly THREE.Box3[]): boolean {
+  const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
+  for (const p of parts) {
+    const at = p.geo.getAttribute('position'), idx = p.geo.getIndex();
+    if (!at) continue;
+    const n = idx ? idx.count : at.count;
+    for (let i = 0; i + 2 < n; i += 3) {
+      _enterA.fromBufferAttribute(at, idx ? idx.getX(i) : i).applyMatrix4(m);
+      _enterB.fromBufferAttribute(at, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m);
+      _enterC.fromBufferAttribute(at, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m);
+      _enterTri.set(_enterA, _enterB, _enterC);
+      for (const box of boxes) if (box.intersectsTriangle(_enterTri)) return true;
+    }
+  }
+  return false;
+}
+
 // per-part placed boxes (gun-guard granularity: no empty-corner false hits)
 function placedPartBoxes(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): THREE.Box3[] {
   const m = new THREE.Matrix4().compose(
@@ -5078,7 +5099,8 @@ export function* attachTankDecorationsSteps(
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
-      if (dockVolumes[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'drone-dock');
+      const dockMet = dockVolumes[frame].filter((box) => box.intersectsBox(bb));
+      if (dockMet.length && placedPartsEnter(parts, pos, rot, dockMet)) return rejectCommit(name, parts, 'drone-dock');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
