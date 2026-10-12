@@ -9,7 +9,9 @@
  * (fx 9, the owner 2026-10-11: "make sure the effects and smoke and dust from tank driving and from engine and tracers
  * are correct for the times of days as well") the battle's pools were self-lit at the daylight level at every hour —
  * pale dust and exhaust glowing in a moonlit field; the Studio's cinematic layer alone tinted them. Battle and Studio
- * now read the same tint. Emissive media (fire's burning core, sparks, flashes, tracers) are never tinted.
+ * now read the same tint. Emissive media (fire's burning core, sparks, flashes, tracers) are never tinted. (2026-10-12,
+ * the coordinator) The battle measures it on the grounded light model wherever that lights the scene
+ * (battleLightTintForModel below), on the rig elsewhere.
  */
 import type * as THREE from 'three';
 
@@ -53,12 +55,13 @@ export function lightTintFromRig(scene: THREE.Scene | null | undefined, out: THR
 }
 
 /**
- * The battle's measure (2026-10-12, the coordinator): the light a puff of dust or smoke receives under the rig, as a
- * share of what it receives under the engine's default noon rig (engine/lighting.ts: sun 4.5 #fff1dc, sky .36 #aac8f5
- * over ground #94815f, fill .66 #bdd2f2). Every term counts at its colour's luminance — the cinematic measure above
- * counted the sky term at full strength whatever its colour, so under the night's dim navy sky it lit the pools about
- * three times brighter than the ground they rose from. A puff takes the sun on its whole lit side (no cosine: it has no
- * single facing), the sky dome from above with a little of the ground's bounce, and the anti-sun fill.
+ * The battle's measure on the authored rig (the phone tier's Preetham sky, a galaxy sky, any scene without the grounded
+ * model): the light a puff of dust or smoke receives under the rig, as a share of what it receives under the engine's
+ * default noon rig (engine/lighting.ts: sun 4.5 #fff1dc, sky .36 #aac8f5 over ground #94815f, fill .66 #bdd2f2). Every
+ * term counts at its colour's luminance — the cinematic measure above counted the sky term at full strength whatever its
+ * colour, so under the night's dim navy sky it lit the pools about three times brighter than the ground they rose from.
+ * A puff takes the sun on its whole lit side (no cosine: it has no single facing), the sky dome from above with a little
+ * of the ground's bounce, and the anti-sun fill.
  */
 const srgbLin = (c: number): number => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 const hexLin = (hex: number): Rgb => ({ r: srgbLin(((hex >> 16) & 255) / 255), g: srgbLin(((hex >> 8) & 255) / 255), b: srgbLin((hex & 255) / 255) });
@@ -77,15 +80,56 @@ const NOON_RIG: LightRigLike = { sunIntensity: 4.5, sunColor: hexLin(0xfff1dc), 
   hemiGround: hexLin(0x94815f), fillIntensity: 0.66, fillColor: hexLin(0xbdd2f2) };
 const NOON_LUM = lumOf(puffIrradiance(NOON_RIG, { r: 0, g: 0, b: 0 }));
 const _irr: Rgb = { r: 0, g: 0, b: 0 };
-/** The battle pools' tint for a rig (out, linear RGB): white on a clear day; its own light's share and hue otherwise. */
-export function battleLightTintForRig(rig: LightRigLike | null | undefined, out: THREE.Color): THREE.Color {
-  if (!rig || !rig.sunColor || !rig.hemiSky) return out.setRGB(1, 1, 1);
-  const e = puffIrradiance(rig, _irr), level = clamp(lumOf(e) / NOON_LUM, 0.03, 1);
+function tintFromLight(e: Rgb, level: number, out: THREE.Color): THREE.Color {
   const peak = Math.max(e.r, e.g, e.b, 1e-6);
   const white = clamp((level - TINT_WHITE_FROM_BATTLE) / 0.13, 0, 1), k = level * (1 - white);
   return out.setRGB((e.r / peak) * k + white, (e.g / peak) * k + white, (e.b / peak) * k + white);
 }
-/** The battle pools' tint for a scene's published light rig. */
+/** The battle pools' tint for a rig (out, linear RGB): white on a clear day; its own light's share and hue otherwise. */
+export function battleLightTintForRig(rig: LightRigLike | null | undefined, out: THREE.Color): THREE.Color {
+  if (!rig || !rig.sunColor || !rig.hemiSky) return out.setRGB(1, 1, 1);
+  const e = puffIrradiance(rig, _irr);
+  return tintFromLight(e, clamp(lumOf(e) / NOON_LUM, 0.03, 1), out);
+}
+
+/**
+ * The battle's measure under the grounded light model (engine/lightModel.ts, every open sky on the desktop tiers): the
+ * rig it publishes has no sky term by day — the sky lights the scene through the environment (scene.environmentIntensity
+ * over the dome's raw irradiance) — so the rig alone left out a fifth of the day's light and most of a sunset's. A puff
+ * is a scattering volume: it takes light from every direction, so its measure is the light arriving over the whole
+ * sphere — the sun at normal incidence, and the sky dome, the deck's glow and the ground's reflection each from its own
+ * half of the sphere, twice the irradiance it gives a level face (a uniform hemisphere of radiance L sends π L onto a
+ * level face and 2π L through a point). Against Verdant's clear day (VERDANT_DAY_PUFF_LIGHT, pinned by the receipt on
+ * the model itself): sunset about half, warm; a moonlit night about a sixth, blue; an overcast deck about two fifths. The
+ * camera's exposure lifts the pools and the ground alike, so a puff keeps the ground's own relation to it at every hour.
+ */
+interface LightModelLike {
+  mode?: string; sunIntensity: number; sunColor: ArrayLike<number>; envIntensity: number; envDiffuseGain: number;
+  hemiIntensity: number; hemiSky: ArrayLike<number>; hemiGround: ArrayLike<number>; groundAlbedo: ArrayLike<number>; illuminance: number;
+}
+/** The puff light of Verdant's clear day under the grounded model (sun 4.02, sky 1.13, the ground's reflection 0.98). */
+export const VERDANT_DAY_PUFF_LIGHT = 6.136;
+/** The light a puff receives under the grounded model (out, linear RGB; its luminance is the measure). */
+export function puffLightForModel(model: LightModelLike, skyIrradianceRaw: Rgb, out: Rgb): Rgb {
+  const sun = model.sunIntensity;
+  const sky2 = 2 * Math.PI * model.envIntensity * model.envDiffuseGain; // × the dome's raw irradiance, per channel
+  const hemi2 = 2 * model.hemiIntensity, ground2 = 2 * model.illuminance;
+  const s = model.sunColor, hs = model.hemiSky, hg = model.hemiGround, ga = model.groundAlbedo;
+  out.r = s[0] * sun + skyIrradianceRaw.r * sky2 + (hs[0] + hg[0]) * hemi2 + ga[0] * ground2;
+  out.g = s[1] * sun + skyIrradianceRaw.g * sky2 + (hs[1] + hg[1]) * hemi2 + ga[1] * ground2;
+  out.b = s[2] * sun + skyIrradianceRaw.b * sky2 + (hs[2] + hg[2]) * hemi2 + ga[2] * ground2;
+  return out;
+}
+/** The battle pools' tint under the grounded model (out, linear RGB). */
+export function battleLightTintForModel(model: LightModelLike, skyIrradianceRaw: Rgb, out: THREE.Color): THREE.Color {
+  const e = puffLightForModel(model, skyIrradianceRaw, _irr);
+  return tintFromLight(e, clamp(lumOf(e) / VERDANT_DAY_PUFF_LIGHT, 0.03, 1), out);
+}
+/** The battle pools' tint for a scene: the grounded model's measure where it lights the scene, the rig's otherwise. */
 export function battleLightTintFromRig(scene: THREE.Scene | null | undefined, out: THREE.Color): THREE.Color {
-  return battleLightTintForRig((scene?.userData?.lightRig ?? null) as LightRigLike | null, out);
+  const data = scene?.userData;
+  const model = data?.lightModel as LightModelLike | undefined;
+  const irr = (data?.atmosphere as { irradianceRaw?: Rgb | null } | undefined)?.irradianceRaw;
+  if (model && model.mode === 'physical' && irr) return battleLightTintForModel(model, irr, out);
+  return battleLightTintForRig((data?.lightRig ?? null) as LightRigLike | null, out);
 }
