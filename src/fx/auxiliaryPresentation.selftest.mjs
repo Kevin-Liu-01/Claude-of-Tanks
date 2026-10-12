@@ -159,7 +159,8 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const lobes = at60.puffs.filter((p) => p.windK === 0 && p.drag >= 1);
     assert.ok(lobes.every((p) => p.birth + p.life >= screen.born + holdAge), 'every lobe holds while the density does');
     assert.ok(lobes.every((p) => p.birth + p.life <= screen.born + 18.4 + 1e-6), 'and its last wisps are gone by 18.4 s');
-    const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2);
+    // (the haze's near-constant drift: drag 0.05; fx 9's drifting bodies, drag 0.02, fade in over 0.7 of their life)
+    const hazes = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.2 && p.fadeIn !== 0.7);
     assert.ok(hazes.length >= banks, `a haze tail in every bank (${hazes.length})`);
     for (const p of hazes) {
       assert.ok(p.birth >= screen.born + 13 - 1e-6 && p.density <= 0.4, 'the tail is thin and late');
@@ -292,6 +293,12 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     assert.ok(crownErode < Math.max(...feetErode), 'the core holds longest');
     assert.ok(crowns.every((p) => p.birth + p.life - screen.born <= 16) && feet.every((p) => p.birth + p.life - screen.born >= 16.4),
       'the crowns gone by 16 s, the feet holding past the blocking floor');
+    // (fx 9, wave 403: "a nearly frozen footprint from 8 s to 15 s") in the open the wall's bodies drift on the
+    // simulation's own breeze for their whole lives, as the blocking volume does
+    const { SMOKE_WIND_X, SMOKE_WIND_Z } = await import('../sim/smokeScreen.ts');
+    const drifting = at60.puffs.filter((p) => p.windK === 0 && p.drag < 0.05 && p.fadeIn === 0.7);
+    assert.ok(drifting.length >= banks && drifting.every((p) => Math.hypot(p.vx - SMOKE_WIND_X, p.vz - SMOKE_WIND_Z) < 0.06 && p.vy < 0.12),
+      `the bodies drift on the breeze (${drifting.length})`);
     const eroding = at60.puffs.filter((p) => p.windK >= 0.75 && p.drag === 0.6 && p.life >= 11.9);
     assert.ok(eroding.length >= crowns.length, `each eroding crown and flank sheds a wisp (${eroding.length})`);
     for (const p of eroding) {
@@ -309,5 +316,5 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
   const before = rec.puffs.length;
   fx.reset(); clock.now += 1; fx.update();
   assert.equal(rec.puffs.length, before, 'reset drops every screen');
-  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, the walls met as smoke meets them (standoff, ragged, thinning, round the corner), erosion by role with wind-borne wisps, reset passed`);
+  console.log(`auxiliaryPresentation media: ${at60.puffs.length} puffs for a ${banks}-bank screen, frame-rate independent (20/60/144 fps), inside the envelope, late join, crowd share (${crowded.puffs.length} for 14 banks), launch puffs, one continuous wall, fade to the blocking floor with a haze tail, threads and ropes, the swelling bloom, sunlit crowns, the wall strike, low wide pops and the row's skirt, wall feathers, the walls met as smoke meets them (standoff, ragged, thinning, round the corner), erosion by role with wind-borne wisps, bodies drifting on the breeze, reset passed`);
 }

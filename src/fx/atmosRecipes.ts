@@ -320,11 +320,15 @@ export function smokeBankLobe(C: BlastContext, R: () => number, I: SmokeLobeInpu
 
 /** A body puff: born inside the bank (already where the drifting bank is), swelling in from small to fill it. */
 export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: number, z: number, size: number,
-  life: number, fadeOut: number, bo: number, feather = 1, densityK = 1): void {
+  life: number, fadeOut: number, bo: number, feather = 1, densityK = 1, driftX = 0, driftZ = 0): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
-  m.vx = (R() - 0.5) * 0.5; m.vy = 0.15 + R() * 0.15; m.vz = (R() - 0.5) * 0.5;
-  m.drag = 0.8; m.rise = 0.07; m.windK = 0; m.grav = 0;
+  // (fx 9, wave 403: "a nearly frozen footprint from 8 s to 15 s") a body in the open drifts on the simulation's own breeze
+  // (driftX/Z, m/s: the blocking volume drifts so) for its whole life, the wall's mass moving off downwind
+  const drifting = driftX !== 0 || driftZ !== 0;
+  m.vx = driftX + (R() - 0.5) * (drifting ? 0.08 : 0.5); m.vy = drifting ? 0.07 + R() * 0.03 : 0.15 + R() * 0.15;
+  m.vz = driftZ + (R() - 0.5) * (drifting ? 0.08 : 0.5);
+  m.drag = drifting ? 0.02 : 0.8; m.rise = 0.07; m.windK = 0; m.grav = 0;
   m.life = life; m.size0 = size * 0.35; m.size1 = size; m.growExp = 2.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.03;
   // fades in from inside the wall, never popping on at its edge; (fx 8m) the wall's inside a shade under its sunlit

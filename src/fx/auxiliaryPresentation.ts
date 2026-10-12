@@ -53,12 +53,10 @@ const BODY_START_S = 2.4, BODY_EVERY_S = 1.6, BODIES = 6;
 const TOP_START_S = 3.0, TOP_EVERY_S = 2.4, TOPS = 4;
 /** the screen's own end on its age (the simulation's density reaches 0 at 18 s): nothing outlives it */
 const SCREEN_END_S = SMOKE_DURATION_S - 0.2;
-/** (r2, wave 311: "see-through by 15 s") the wall holds dense while the simulation's density does, and its lobes erode
- *  as the density falls to the sight-blocking floor (0.22 at ~16.6 s); (fx 8l, wave 354a: "a full-bodied wall at 15 s
- *  that's gone at 18 s, a hard switch-off") the erosion starts earlier and runs longer — from 12 s (the crowns, the
- *  wall's top, from 11 s), most of a lobe gone by the blocking floor, its last wisps by 18.4 s — and the wall's remains
- *  go on as the decay haze below */
-const LOBE_END_S = 18.4, LOBE_ERODE_S = 12.0, CROWN_ERODE_S = 11.0, CROWN_END_S = 17.4;
+/** (r2, wave 311: "see-through by 15 s") the wall holds dense while the simulation's density does; (fx 8l, wave 354a: "a
+ *  full-bodied wall at 15 s that's gone at 18 s, a hard switch-off") a lobe's last wisps are gone by 18.4 s and the
+ *  wall's remains go on as the decay haze below; (fx 9) the erosion by role is EROSION's */
+const LOBE_END_S = 18.4;
 /** (fx 9, wave 403's critics: "after 15 s the whole bank fades evenly over about 5 s; it should erode from its crowns and
  *  flanks over tens of seconds"; the coordinator: erosion from ~8-10 s, the core dense until the sim stops blocking)
  *  the wall erodes by role: its crowns (the top) from 8.5 s, gone by 15.5 s; the feet at the row's ends (its flanks)
@@ -66,8 +64,8 @@ const LOBE_END_S = 18.4, LOBE_ERODE_S = 12.0, CROWN_ERODE_S = 11.0, CROWN_END_S 
  *  and flank foot sheds a wisp the scene's wind carries off (smokeErosionWisp), lingering 12-18 s. */
 const EROSION = Object.freeze({ crownStart: 8.5, crownEnd: 15.5, flankStart: 10.0, flankEnd: 16.8, coreStart: 13.5,
   wispLife: [12, 18] as const });
-/** the bodies thin from 12.5 s and are gone by 18.6 s */
-const BODY_ERODE_S = 12.5, BODY_END_S = 18.6;
+/** the bodies thin from 12.5 s and are gone by 18.6 s; (fx 9) one with more room than this by a wall (m) drifts */
+const BODY_ERODE_S = 12.5, BODY_END_S = 18.6, BODY_DRIFT_ROOM_M = 4;
 /** (fx 8l) the decay haze: broad thin veils born in the eroding bank that the scene's wind takes, lingering 10-20 s
  *  past the sight block (cosmetic: thin, the gameplay duration untouched) */
 const DECAY_START_S = 9.5, DECAY_EVERY_S = 1.6, DECAYS = 4, DECAY_LIFE_S = [13, 20] as const;
@@ -106,6 +104,8 @@ const WALL_STANDOFF_M = [0.6, 1.5] as const;
  *  facade (away from its bank's middle) by this share; a puff carried past a wall's end comes round it by this share of
  *  how far past it went (at most WALL_WRAP_M) */
 const WALL_PILE_K = 0.35, WALL_SLIDE_K = 0.6, WALL_WRAP_K = 0.8, WALL_WRAP_M = 2;
+/** (a place drawn far behind a wall: the row of banks running into the house) piled and slid no farther than this (m) */
+const WALL_PILE_MAX_M = 1.5, WALL_SLIDE_MAX_M = 2.5;
 /** the simulation's margin off a wall (smokeScreen.ts WALL_MARGIN_M): a puff's room is counted from it */
 const WALL_ROOM_MARGIN_M = 0.3;
 /** the burst and the lobes' births keep this share of a puff's standoff off the wall; a burst this near a wall (m) throws
@@ -248,7 +248,7 @@ function holdOffWalls(W:BankWalls|null,screen:SmokeScreen,b:number,volume:SmokeV
   if(s>=standoff)return 0;
   const depth=standoff-s,side=(out.x-volume.x)*tx+(out.z-volume.z)*tz;
   const sgn=Math.abs(side)>.2?Math.sign(side):(h<.5?-1:1);
-  const push=depth+(pile?depth*WALL_PILE_K:0),slide=pile?depth*WALL_SLIDE_K*sgn:0;
+  const push=depth+(pile?Math.min(depth*WALL_PILE_K,WALL_PILE_MAX_M):0),slide=pile?Math.min(depth*WALL_SLIDE_K,WALL_SLIDE_MAX_M)*sgn:0;
   let px=qx+nx*push+tx*slide,pz=qz+nz*push+tz*slide;
   if(pile&&kind>=2){
     // carried past the wall's end: round the corner, behind the wall's line (still past the free ray, off the house)
@@ -599,7 +599,10 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       const x=at.x,z=at.z;
       const bodyRoom=mediaRoom(st.walls,bank,x,z);
       const y=smokeBankBase(screen,bank-2,x,z,ports.ground)+1.5+R()*2.0+Math.min(1.2,bodyBite*.35),size=Math.min(8+R()*2.5,Math.max(1.6,2*(bodyRoom+1)));
-      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to,wallFeather(bodyRoom),wallDensity(bodyRoom));
+      // (fx 9) in the open it drifts on the simulation's breeze as the blocking volume does; by a wall it stays
+      const drift=bodyRoom>BODY_DRIFT_ROOM_M?1:0;
+      smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to,wallFeather(bodyRoom),wallDensity(bodyRoom),
+        SMOKE_WIND_X*drift,SMOKE_WIND_Z*drift);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
