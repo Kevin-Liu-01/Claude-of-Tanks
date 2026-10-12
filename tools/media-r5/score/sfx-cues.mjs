@@ -84,29 +84,71 @@ function propAsset(kind, height = 0) {
 const sfx = [], calls = [];
 const seedOf = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 /**
- * The hero crew's calls in one cut, as crewRadio.ts would make them: the gunner's "firing" as the round goes, the
- * result once it lands (target destroyed, penetration, non-penetration, ricochet), a near miss when a shell bursts
- * close, an ally's kill. Candidates only: the radio discipline below places them.
+ * The hero crew's calls in one cut, as crewRadio.ts would make them, written as slots: each slot lists the lines that
+ * fit its moment equally. The commander's contact report (ahead, left, right, behind, several) or the gunner's
+ * lock-on before the first shot; "firing" (a launcher's "missile away") as the round goes; the loader's call for the
+ * next round after it; the result once it lands (target destroyed, an ammunition-rack kill, a double kill,
+ * penetration or a critical hit, non-penetration, ricochet); "reloaded" once the gun is ready again; a near miss when
+ * a shell bursts close; an ally's kill; the hull on the move before it engages. Which line a slot speaks, and which recorded take of it, is chosen in the
+ * radio discipline below from the voice ledger, so the fifty takes and the films spread across the crew's whole
+ * repertoire instead of three lines (owner 2026-10-12: "our videos need to use different voice lines").
  */
 function crewCalls(scene, cut, cutIndex, inMs, outMs, rate) {
   const heroId = scene.actors.find((a) => a.name === 'hero')?.id ?? '', spec = specOf(heroId);
   const lang = spec ? resolveVehicleAudioIdentity(spec).crew : 'en-US';
   const fx = (scene.effects ?? []).filter((e) => e.tMs >= inMs - 400 && e.tMs < outMs).sort((a, b) => a.tMs - b.tMs);
   const at = (tMs) => +(cut.start + (tMs - inMs) / 1000 / rate).toFixed(3);
-  const out = [], call = (line, tMs) => out.push({ line, lang, t: at(tMs), cutStart: cut.start, cutEnd: cut.start + cut.dur, cutIndex });
+  const out = [], call = (lines, tMs, slot) => out.push({ lines: [].concat(lines), slot, lang, t: at(tMs), cutStart: cut.start, cutEnd: cut.start + cut.dur, cutIndex });
+  const calibre = spec?.gun?.caliberMm ?? 120, launcher = /rocket|missile|mlrs|launcher|thermobaric/i.test(`${spec?.gun?.soundProfile ?? ''} ${spec?.gun?.kind ?? ''} ${heroId}`) || /^tos1/.test(heroId);
+  // the loader's next round: a main gun names its ammunition, a launcher its missile, an autocannon reloads its box
+  const reloadLines = launcher ? ['load_missile', 'reloading'] : calibre >= 90 ? ['load_kinetic', 'load_heat', 'load_he', 'reloading'] : calibre >= 60 ? ['load_he', 'reloading'] : [];
+  const heroAt = (tMs) => actorAt(scene, 'hero', tMs);
+  const facingAt = (tMs) => {
+    const k = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys ?? [];
+    const key = k.find((x) => x.tMs >= tMs) ?? k.at(-1);
+    return ((key?.facingDeg ?? scene.actors.find((a) => a.name === 'hero')?.facingDeg ?? 0) * Math.PI) / 180;
+  };
+  /** Where a point lies from the hero at tMs, as the commander calls it (forward is +Z turned by the hull's yaw). */
+  const bearing = (p, tMs) => {
+    const h = heroAt(tMs); if (!h || !p) return 'spotted_front';
+    const yaw = facingAt(tMs), fx2 = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
+    const dx = p[0] - h[0], dz = p[1] - h[1], ahead = dx * fx2 + dz * fz, side = dx * rx + dz * rz;
+    return ahead >= Math.abs(side) ? 'spotted_front' : ahead <= -Math.abs(side) ? 'spotted_rear' : side > 0 ? 'spotted_right' : 'spotted_left';
+  };
+  const heroShots = fx.filter((e) => e.type === 'fire' && e.actor === 'hero');
+  const foes = scene.actors.filter((a) => a.name.startsWith('foe') && !/destroyed|wreck|burning/i.test(a.state ?? ''));
+  // contact as the cut opens, before shells start landing round the hull; a hero that fires within two seconds gets the
+  // gunner's lock-on or the commander's bearing just before the round instead
+  if (foes.length) {
+    const first = heroShots[0], early = first && first.tMs < inMs + 2000;
+    const tContact = early ? Math.max(inMs + 100, first.tMs - 1100) : inMs + 150;
+    const nearest = foes.map((a) => actorAt(scene, a.name, tContact)).filter(Boolean)
+      .sort((p, q) => Math.hypot(p[0] - (heroAt(tContact)?.[0] ?? 0), p[1] - (heroAt(tContact)?.[1] ?? 0)) - Math.hypot(q[0] - (heroAt(tContact)?.[0] ?? 0), q[1] - (heroAt(tContact)?.[1] ?? 0)))[0];
+    call(early ? ['target_locked', bearing(nearest, tContact)] : ['enemy_spotted', bearing(nearest, tContact), ...(foes.length > 1 ? ['spotted_multiple'] : []), ...(first ? ['target_locked'] : [])], tContact, 'contact');
+  }
+  // the hull on the move before it engages
+  const k0 = heroAt(inMs), k1 = heroAt(inMs + 1000);
+  if (k0 && k1 && Math.hypot(k1[0] - k0[0], k1[1] - k0[1]) > 4 && !heroShots.some((f) => f.tMs < inMs + 2600)) call(['on_the_move'], inMs + 700, 'move');
   for (const f of fx.filter((e) => e.type === 'fire')) {
     const after = fx.filter((e) => e.tMs > f.tMs && e.tMs <= f.tMs + 1600 && (e.actor ?? '').startsWith('foe'));
     const kill = after.find((e) => e.type === 'tank_kill'), hit = after.find((e) => e.type === 'impact');
     if (f.actor === 'hero') {
-      call('firing', f.tMs - 520);
-      if (kill) call('target_destroyed', kill.tMs + 380);
-      else if (hit) call({ pen: 'penetration', nonpen: 'nonpen', ricochet: 'ricochet' }[hit.params?.kind] ?? 'penetration', hit.tMs + 280);
-    } else if (kill && (f.actor ?? '').startsWith('ally')) call('ally_kill', kill.tMs + 420);
+      call(launcher ? ['missile_away', 'firing'] : ['firing'], f.tMs - 520, 'fire');
+      if (kill) {
+        const double = fx.some((e) => e.type === 'tank_kill' && e !== kill && Math.abs(e.tMs - kill.tMs) < 3000);
+        call(['target_destroyed', ...(kill.params?.pop ? ['enemy_ammo_rack'] : []), ...(double ? ['double_kill'] : [])], kill.tMs + 380, 'result');
+      } else if (hit) call({ pen: ['penetration', 'enemy_crit'], nonpen: ['nonpen'], ricochet: ['ricochet'] }[hit.params?.kind] ?? ['penetration', 'enemy_crit'], hit.tMs + 280, 'result');
+      if (reloadLines.length) call(reloadLines, f.tMs + 1350, 'reload');
+      // the gun ready again ("reloaded", as audioEngine.ts says it when a reload of 1.25 s or more ends): before the
+      // hero's next round, or after its reload when no other round follows inside the cut
+      const next = heroShots.find((s) => s.tMs > f.tMs);
+      const readyMs = next ? next.tMs - 700 : f.tMs + 1000 * (spec?.gun?.autoloader?.intraClipS ?? spec?.gun?.reloadS ?? 99);
+      if (readyMs - f.tMs >= 2600 && readyMs < outMs - 300) call(['reloaded'], readyMs, 'ready');
+    } else if (kill && (f.actor ?? '').startsWith('ally')) call(['ally_kill'], kill.tMs + 420, 'ally');
   }
-  const heroAt = (tMs) => actorAt(scene, 'hero', tMs);
   for (const e of fx.filter((x) => x.type === 'explosion' && Array.isArray(x.at))) {
     const h = heroAt(e.tMs);
-    if (h && Math.hypot(e.at[0] - h[0], e.at[1] - h[1]) < 16) call('near_miss', e.tMs + 260);
+    if (h && Math.hypot(e.at[0] - h[0], e.at[1] - h[1]) < 16) call(['near_miss'], e.tMs + 260, 'incoming');
   }
   return out;
 }
@@ -242,18 +284,44 @@ for (const cut of edl.shots) {
 // inside its own cut, since the next cut may be another nation's crew. A transmission is the key-up, the take, the
 // release (score.mjs plays all three from the recorded library).
 const KEY_LEAD_S = 0.1, KEY_TAIL_S = 0.32;
+// The voice ledger (VOICE_LEDGER=<file>, shared by every take and film of a round): how often each line, and each
+// recorded take of it in each language, has gone out already. A slot speaks its least-used line that the crew's
+// language has, in its least-used take; ties go by a hash of the cut, so a lone run still varies.
+const LEDGER_FILE = process.env.VOICE_LEDGER;
+const ledger = LEDGER_FILE && existsSync(LEDGER_FILE) ? JSON.parse(readFileSync(LEDGER_FILE, 'utf8')) : { lines: {}, takes: {} };
+// A fair share: once the round has a dozen calls, a line already above 22 % of them stays off the air, so the commonest
+// moment (a shell bursting near the hull: "near miss") cannot fill every take's radio and the other calls get through.
+const overShare = (l) => {
+  const total = Object.values(ledger.lines).reduce((a, b) => a + b, 0);
+  return total >= 12 && (ledger.lines[l] ?? 0) / total > 0.22;
+};
+const choose = (c) => {
+  const lines = c.lines.filter((l) => VOICE_LINES[l] && VOICE_PACKS[c.lang]?.[l]?.length && !overShare(l));
+  if (!lines.length) return null;
+  const tie = (l) => seedOf(`${edlFile}|${c.cutIndex}|${c.slot}|${l}`);
+  const line = [...lines].sort((a, b) => (ledger.lines[a] ?? 0) - (ledger.lines[b] ?? 0) || tie(a) - tie(b))[0];
+  const durs = VOICE_PACKS[c.lang][line];
+  const take = [...durs.keys()].sort((a, b) => (ledger.takes[`${c.lang}/${line}/${a}`] ?? 0) - (ledger.takes[`${c.lang}/${line}/${b}`] ?? 0) || tie(`${line}${a}`) - tie(`${line}${b}`))[0];
+  return { ...c, line, take, meta: VOICE_LINES[line] };
+};
 const placed = [];
-for (const c of calls.map((c) => ({ ...c, meta: VOICE_LINES[c.line] })).filter((c) => c.meta && VOICE_PACKS[c.lang]?.[c.line]?.length)
-  .sort((a, b) => b.meta.pri - a.meta.pri || a.t - b.t)) {
-  const takes = VOICE_PACKS[c.lang][c.line], take = seedOf(`${edlFile}|${c.cutIndex}|${c.line}`) % takes.length;
+// ordered by the first choice's priority; each call then chooses again with this take's earlier placements counted,
+// so two calls of one take do not speak the same line
+for (const first of calls.map(choose).filter(Boolean).sort((a, b) => b.meta.pri - a.meta.pri || a.t - b.t)) {
+  const c = choose(first);
+  if (!c) continue;
+  const takes = VOICE_PACKS[c.lang][c.line], take = c.take;
   const span = KEY_LEAD_S + takes[take] + KEY_TAIL_S;
   for (let s = Math.max(c.t, c.cutStart + 0.15); s <= c.t + c.meta.staleS; s += 0.05) {
     if (s + span > c.cutEnd + 0.25) break;
     if (placed.some((p) => s < p.t + p.span + RADIO_DISCIPLINE.gapS && p.t < s + span + RADIO_DISCIPLINE.gapS)) continue;
     placed.push({ kind: 'radio', t: +s.toFixed(3), lang: c.lang, line: c.line, take, voiceDur: takes[take], span: +span.toFixed(3) });
+    ledger.lines[c.line] = (ledger.lines[c.line] ?? 0) + 1;
+    ledger.takes[`${c.lang}/${c.line}/${take}`] = (ledger.takes[`${c.lang}/${c.line}/${take}`] ?? 0) + 1;
     break;
   }
 }
+if (LEDGER_FILE) writeFileSync(LEDGER_FILE, `${JSON.stringify(ledger, null, 1)}\n`);
 sfx.push(...placed);
 sfx.sort((a, b) => a.t - b.t);
 // thin dense clusters: keep the nearest one-shot within 60 ms of the same kind (beds and drives stay)
