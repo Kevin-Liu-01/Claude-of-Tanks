@@ -1178,9 +1178,10 @@ function* createFxSteps(
   stagesRef = stages;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
-  /** Each struck building's last burst (fx seconds) and the dust load in the air round it then (the bursts' scales, each
-   *  fading over 1.5 s): a burst's own dust thins by the load against its own size. */
-  const strikeDust = new Map<number, [number, number]>();
+  /** Each struck building's last burst (fx seconds), the dust load in the air round it then (the bursts' scales, each
+   *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
+   *  own size, unless it is far bigger than what raised the load. */
+  const strikeDust = new Map<number, [number, number, number]>();
   let patchedWorld: FxWorldSeam | null = null;
   function attachWorld(): void {
     if (!structMask || !world) return;
@@ -5571,9 +5572,13 @@ function* createFxSteps(
             if (struckId >= 0) {
               const nowS = particles.getTime();
               const last = strikeDust.get(struckId);
-              const load = last ? last[1] * Math.exp(-Math.max(0, nowS - last[0]) / 1.5) : 0;
+              const fade = last ? Math.exp(-Math.max(0, nowS - last[0]) / 1.5) : 0;
+              const load = last ? last[1] * fade : 0, biggest = last ? last[2] * fade : 0;
               dustK = 1 / (1 + 0.45 * load / Math.max(0.3, scale));
-              strikeDust.set(struckId, [nowS, load + scale]);
+              // (wave 401: "the 152 mm hit raises far too small a burst" after five 76 mm) a burst half again bigger than any
+              // in the air keeps nine tenths of its cloud
+              if (scale > 1.5 * biggest) dustK = Math.max(dustK, 0.9);
+              strikeDust.set(struckId, [nowS, load + scale, Math.max(biggest, scale)]);
             }
             wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive, scale, named ?? lookForStruckKind(e.surfaceKind), 0, dustK);
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
