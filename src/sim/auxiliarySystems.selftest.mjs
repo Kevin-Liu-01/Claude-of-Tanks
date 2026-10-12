@@ -75,13 +75,19 @@ assert.equal(smokeBlocks([screen],{x:later.x,y:later.y+9,z:later.z-10},{x:later.
 
 // Authority and visible lobes use the same destination terrain, including a
 // hillside higher or lower than the tank which fired the smoke canisters.
+// (2026-10-11: a canister's rest over half a metre above the ground is a roof
+// its cloud stands on, bounced there or not: smokeScreen.ts smokeBankBase. The
+// canisters are solved on the hillside they land on, as the match solves them.)
 for (const elevation of [-8, 8]) {
   const ground = (x,z) => elevation + z*.04;
-  const v = smokeVolume(screen,screen.born+4,-2,{},ground);
+  const hill = entity(`hill${elevation}`);
+  assert.equal(requestAuxiliary(hill,'smoke',0,ground),true);
+  const hs = hill.combat.auxiliary.smoke;
+  const v = smokeVolume(hs,hs.born+4,-2,{},ground);
   const a={x:v.x,y:v.y,z:v.z-10},b={x:v.x,y:v.y,z:v.z+10};
-  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+(4-screen.canisters[screen.banks[0]][6])*.055))<1e-9);
-  assert.equal(smokeBlocks([screen],a,b,screen.born+4,ground),true,'terrain-seated visible smoke blocks sight');
-  assert.equal(smokeBlocks([screen],{...a,y:v.y+9},{...b,y:v.y+9},screen.born+4,ground),false,'clear air above the bank stays visible');
+  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+(4-hs.canisters[hs.banks[0]][6])*.055))<1e-9);
+  assert.equal(smokeBlocks([hs],a,b,hs.born+4,ground),true,'terrain-seated visible smoke blocks sight');
+  assert.equal(smokeBlocks([hs],{...a,y:v.y+9},{...b,y:v.y+9},hs.born+4,ground),false,'clear air above the bank stays visible');
 }
 
 // The mount can see past an edge while its articulated muzzle is obstructed.
