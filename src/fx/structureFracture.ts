@@ -180,8 +180,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const lives = new Map<number, Live>();
   const bodies = new Map<number, LiveBody>();
   const layouts = new WeakMap<THREE.BufferGeometry, Layout>();
-  // (the decisive wave's hitch probe: the pool's steps were most of a house's cost) seven bodies a round at most
-  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 7);
+  // (the coordinator's budget test, 2026-10-11: the house came down as whole slabs and a bare frame once the hitch's cuts
+  // were in) ten bodies a round, as wave 397 judged it
+  const bodiesPerStrike = Math.max(1, o.bodiesPerStrike ?? 10);
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
   /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */
@@ -1070,7 +1071,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     }
     if (clumps.length < 2) return;
     const capacity = (o.pool.world as { capacity?: number }).capacity ?? 128;
-    if (capacity - o.pool.world.awakeCount + 1 < clumps.length) return;
+    // (the budget test) it cracks whatever else is awake: into as many clumps as the pool has room for, neighbours merged,
+    // never left whole while there is room for two
+    const room = capacity - o.pool.world.awakeCount + 1;
+    if (room < 2) return;
+    while (clumps.length > room) { const last = clumps.pop()!; clumps[clumps.length - 1].push(...last); }
     if (!o.pool.framePoseAt(b.handle, _pose)) return;
     o.pool.velocity(b.handle, _crackVel);
     // where its cells lie now: the chunk's pose through its body frame
