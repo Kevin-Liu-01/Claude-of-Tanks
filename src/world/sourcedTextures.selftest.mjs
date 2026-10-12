@@ -233,7 +233,8 @@ const newMapPalettes = {
   mangrove: ['monsoon', 'delta'],
   saltwind: ['coastal', 'coastal'],
   reservoir: ['frontier', 'frontier'],
-  mars: ['badlands', 'badlands'], // 2026-09-19: Olympus Basin — rust regolith and dust-toned station huts
+  mars: ['mars', 'badlands'], // 2026-09-19: Olympus Basin — rust regolith and dust-toned station huts (2026-10-11, the
+  // map-revival lane's round 2: its own ground sets, the regolith and the dark basalt sand; the huts keep Redrock's)
   // 2026-10-01 (terrain lane, the gate's map-policy cluster): the two maps registered after Mars route deliberately too —
   // Earthrise Basin's grey regolith is its own TERRAIN_PLAN row with frost-toned station huts, Aegis Crossing is
   // pastoral Verdant ground with its own-id (legacy) building route

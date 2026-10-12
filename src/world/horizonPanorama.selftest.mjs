@@ -333,8 +333,15 @@ for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Obje
 {
   const strip = HORIZON_PANORAMA_SHADERS.strip, height = HORIZON_PANORAMA_SHADERS.height;
   assert.ok(strip.includes('hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)'), 'the far path takes the map\'s share of the law\'s σ');
-  assert.ok(/if \(uAir\.y > 0\.5\) \{[\s\S]*?if \(uHaze\.w > 0\.5\) \{[\s\S]*?fill = cover \* TF \+ lawTarget \* \(1\.0 - TF\);[\s\S]*?fill = mix\(cover, uFog \* 0\.95, 1\.0 - exp\(-800\.0 \* recede \/ 13000\.0\)\);/.test(strip),
+  assert.ok(/if \(uAir\.y > 0\.5\) \{[\s\S]*?if \(uHaze\.w > 0\.5\) \{[\s\S]*?fill = cover \* TF \+ lawTarget \* \(1\.0 - TF\);[\s\S]*?fill = mix\(cover, uFog \* 0\.95, \(1\.0 - exp\(-800\.0 \* recede \/ 13000\.0\)\) \* \(1\.0 - uAirless\)\);/.test(strip),
     'the fill law: the lowland\'s own cover under the air of its own reach (the law\'s with a published sky, the bake\'s own without)');
+  // (the map-revival lane, 2026-10-11; gauntlet wave 380 on Earthrise Basin: "an airless sky can't have blue haze") an
+  // airless map (fogDensity 0) takes none of the bake's own air toward the fog tint: the fill, the march's band and the
+  // far path all scale it by (1 - uAirless), and only the airless map sets it
+  assert.ok(strip.includes('uniform float uAirless;'), 'the airless switch');
+  assert.ok(strip.includes('fill = mix(fill, uFog * 1.05, (0.25 + 0.35 * recede) * (1.0 - uAirless));')
+    && strip.includes('col = mix(col, uFog * 0.95, (1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0)) * (1.0 - uAirless));'),
+    'no air on an airless map\'s march band or far path');
   assert.ok(height.includes('if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);'), 'the scrub holds the gullies (the grid\'s tree cover)');
   assert.ok(strip.includes('smoothstep(uAir.z - 0.12, uAir.z + 0.12, hT + 0.05 * n1 - climb)'), 'bare rock above its floor, the floor climbing with the scrub');
   assert.ok(strip.includes('float fallStreak(vec2 xz)') && strip.includes('float streak = uTrees.z > 0.0 ? smoothstep(-0.2, 0.6, fallStreak(wp.xz)) : 0.0;'),
