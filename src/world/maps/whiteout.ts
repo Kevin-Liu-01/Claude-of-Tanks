@@ -1,7 +1,13 @@
 // Wind-scoured polar logistics station, not an alpine-village reskin:
 // staggered snow berms screen a wide service grid and a frozen melt pan.
+//
+// Reference: DYE-M (Dye Main), the Distant Early Warning Line's eastern main station at Cape Dyer, Baffin Island
+// (Nunavut), in the 1980s, as the North Warning System took the line over: the Upper Camp on a bare plateau some 700 m
+// above Davis Strait at the island's most easterly point, among the Cumberland Peninsula's mountains, the strait's pack
+// ice below. Rock and snow on permafrost, frost-shattered tors, the gravel ridges the ice left and frozen tarns, no
+// tree for hundreds of kilometres. Nothing the station built stands on the ground: its modules ride on steel piles so
+// their heat cannot thaw it (map revival lane 2's reference, rounds 1-5; folded in by the map-content lane).
 import winter from './winter.ts';
-import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -81,6 +87,11 @@ export default {
     palettes: winter.vegetation.palettes,
   },
   props: {
+    // the arctic kit (maps/regional/arctic.ts; map-revival lane 2's rounds 1-5, gauntlet waves 130 and 224, brought in by
+    // the map-content lane, 2026-10-09): DYE-M's own buildings — the module trains on their piles under the radome, the
+    // tropo billboards, the radar on its lattice tower, the steel garages, the Jamesway huts, the plywood sheds, a
+    // stripped module — on the plan's seats; the kit paints its own panels (the map's tones only tone the old halls)
+    architecture: 'arctic',
     sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
     destructibleBuildings: ['quonsethut', 'relaystation', 'motorpool', 'servicegarage'],
@@ -93,17 +104,171 @@ export default {
       { id: 'eastern-weather-relay', role: 'scout', x: 320, z: -10, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
       { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
-    tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
+    // (the map-content lane's L2, gauntlet wave 355: "brick pieces that have no place at a DEW Line station", "brick-
+    // textured crates") the fieldstone field walls are gone from the station (drift fences stand on their lines, in the
+    // landmarks below), and with them the brick rubble heaps; fewer crates in the yards, more of the station's drums
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
-    wallRuns: [[-148, -76, -148, -16, 2], [-148, 20, -148, 84, 3], [-66, -58, -4, -58, 2], [-66, 52, -4, 52, 3], [-26, 296, 56, 296, 2], [316, 0, 316, 74, 2]],
-    well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: true,
-    rocks: 136, outcrops: 22, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
+    wallRuns: [],
+    // (L2, gauntlet wave 358a, both critics: "sandbags and barbed wire don't belong at a 1985 radar station"; the
+    // coordinator's ruling: the owner's works on every map keep their cover and seats in the region's materials) the
+    // station's field works in its own stock (maps/regional/polarWorks.ts): drum breastworks for the sandbag stacks, the
+    // drift fence for the wire belts, a drum row for the concrete barrier, each seated on its slope
+    structureVariants: { sandbagwall: 'polardrumwall', sandbagbig: 'polardrumwallbig', sandbagsmall: 'polardrumwallsmall',
+      barbedwire: 'polardriftfence', barrier: 'polardrumrow' },
+    well: false, hayCrates: false, fences: true,
+    // (the map-content lane's round 1c, 2026-10-09) the station's pole line along its service roads; the glacial erratics
+    // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
+    telegraph: true, carts: false, logs: true,
+    rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48', 'strv103', 't80b', 'bmp2'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
+    // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
+    // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below
+    inhabit: { stalls: 0, benches: 0, coreClutter: 8, sleds: 10, drums: 16, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
+    // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
+    // the service street). Reference: DYE-M, the Distant Early Warning Line's main station at Cape Dyer on Baffin Island,
+    // as it stood in 1985 (landmarks/stations.ts): the module train on its stilts with the search radar's radome at its
+    // east end, the POL tank farms, the tropospheric-scatter billboards on the high ground facing the next stations east
+    // (Greenland) and west, the guyed masts. Set into the finished map (ground 'veto': every pass after them draws as
+    // before and only what would stand on a piece's ground is left out); off the zone discs, the pads and the field works.
+    landmarks: [
+      // the station: the module train with the search radar at its east end, the fuel caches by its doors
+      { kind: 'moduleTrain', x: -30, z: -30, yawDeg: 0, params: { modules: 8 }, ground: 'veto', name: 'the module train' },
+      { kind: 'radomeTower', x: 6, z: -29, yawDeg: 0, ground: 'veto', name: 'the search radar' },
+      { kind: 'drumCache', x: 40, z: -62, yawDeg: 0, ground: 'veto', name: 'the station fuel cache' },
+      // the POL tank farms: the main farm south-east of the melt pan, the motor pool's and the north berm's tanks
+      { kind: 'fuelTankFarm', x: 110, z: -150, yawDeg: 0, ground: 'veto', name: 'the POL tank farm' },
+      { kind: 'drumCache', x: 140, z: -170, yawDeg: 90, ground: 'veto', name: 'the tank farm drums' },
+      { kind: 'fuelTankFarm', x: -240, z: -185, yawDeg: 90, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the motor pool tanks' },
+      { kind: 'fuelTankFarm', x: 60, z: 236, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north tanks' },
+      // the billboards on the high ground, facing the next stations east (Greenland) and west along the line
+      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, ground: 'veto', name: 'the east billboards (south)' },
+      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, ground: 'veto', name: 'the east billboards (north)' },
+      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, ground: 'veto', name: 'the west billboards (south)' },
+      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, ground: 'veto', name: 'the west billboards (north)' },
+      // the masts
+      { kind: 'guyedMast', x: 370, z: 200, ground: 'veto', name: 'the north-east mast' },
+      { kind: 'guyedMast', x: -190, z: -252, ground: 'veto', name: 'the south-west mast' },
+      { kind: 'guyedMast', x: 190, z: -252, params: { height: 30 }, ground: 'veto', name: 'the south-east mast' },
+      // the Jamesway camps out on the tundra (the summer survey and the billboard crews), each with its fuel cache
+      { kind: 'jamesway', x: -232, z: 196, yawDeg: 0, ground: 'veto', name: 'the north-west camp (west hut)' },
+      { kind: 'jamesway', x: -214, z: 196, yawDeg: 0, ground: 'veto', name: 'the north-west camp (east hut)' },
+      { kind: 'jamesway', x: -196, z: 230, yawDeg: 0, ground: 'veto', name: 'the north-west camp (north hut)' },
+      { kind: 'drumCache', x: -250, z: 228, yawDeg: 0, ground: 'veto', name: 'the north-west camp drums' },
+      { kind: 'jamesway', x: 330, z: 300, yawDeg: 20, ground: 'veto', name: 'the north-east camp (west hut)' },
+      { kind: 'jamesway', x: 350, z: 296, yawDeg: 20, ground: 'veto', name: 'the north-east camp (east hut)' },
+      { kind: 'drumCache', x: 340, z: 322, yawDeg: 20, ground: 'veto', name: 'the north-east camp drums' },
+      { kind: 'jamesway', x: 320, z: -350, yawDeg: -30, ground: 'veto', name: 'the south-east camp (west hut)' },
+      { kind: 'jamesway', x: 340, z: -340, yawDeg: -30, ground: 'veto', name: 'the south-east camp (east hut)' },
+      { kind: 'drumCache', x: 300, z: -330, yawDeg: 60, ground: 'veto', name: 'the south-east camp drums' },
+      { kind: 'jamesway', x: -400, z: -400, yawDeg: 10, ground: 'veto', name: 'the dump hut' },
+      { kind: 'drumCache', x: -380, z: -380, yawDeg: 0, params: { rows: 4, columns: 10 }, ground: 'veto', name: 'the dump drums' },
+      // the west strip's camps, the airstrip beacon, the south and south-east camps, the dump's tanks
+      { kind: 'jamesway', x: -430, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (south hut)' },
+      { kind: 'jamesway', x: -412, z: -230, yawDeg: 0, ground: 'veto', name: 'the west camp (north hut)' },
+      { kind: 'drumCache', x: -430, z: -258, yawDeg: 0, ground: 'veto', name: 'the west camp drums' },
+      { kind: 'jamesway', x: -405, z: 150, yawDeg: 0, ground: 'veto', name: 'the billboard camp (west hut)' },
+      { kind: 'jamesway', x: -387, z: 150, yawDeg: 0, ground: 'veto', name: 'the billboard camp (east hut)' },
+      { kind: 'drumCache', x: -396, z: 172, yawDeg: 0, ground: 'veto', name: 'the billboard camp drums' },
+      // the airstrip on the plateau's west edge, its markers, windsock and radio shack
+      { kind: 'airstrip', x: -440, z: 30, yawDeg: 0, ground: 'veto', name: 'the airstrip' },
+      { kind: 'guyedMast', x: -420, z: 330, params: { height: 30 }, ground: 'veto', name: 'the beacon mast' },
+      { kind: 'jamesway', x: 420, z: 420, yawDeg: 90, ground: 'veto', name: 'the north-east outpost' },
+      { kind: 'drumCache', x: 250, z: 330, yawDeg: 30, ground: 'veto', name: 'the north road cache' },
+      { kind: 'jamesway', x: 220, z: -400, yawDeg: 0, ground: 'veto', name: 'the south-east survey hut' },
+      { kind: 'drumCache', x: 240, z: -410, yawDeg: 90, ground: 'veto', name: 'the south-east survey drums' },
+      { kind: 'drumCache', x: 300, z: 120, yawDeg: 0, ground: 'veto', name: 'the east road cache' },
+      { kind: 'jamesway', x: 40, z: -420, yawDeg: 90, ground: 'veto', name: 'the south camp hut' },
+      { kind: 'drumCache', x: 70, z: -415, yawDeg: 0, ground: 'veto', name: 'the south camp drums' },
+      { kind: 'fuelTankFarm', x: -330, z: -330, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the dump tanks' },
+      { kind: 'jamesway', x: 200, z: 60, yawDeg: 90, ground: 'veto', name: 'the melt pan hut' },
+      { kind: 'drumCache', x: 210, z: 40, yawDeg: 0, ground: 'veto', name: 'the melt pan drums' },
+      // (round 1c) four more camps and two drum dumps out in the voids the census still found
+      { kind: 'jamesway', x: -392, z: 250, yawDeg: 15, ground: 'veto', name: 'the lake camp' },
+      { kind: 'drumCache', x: -410, z: 230, yawDeg: 15, ground: 'veto', name: 'the lake camp drums' },
+      { kind: 'jamesway', x: 404, z: -262, yawDeg: -20, ground: 'veto', name: 'the south-east trail camp' },
+      { kind: 'jamesway', x: 150, z: -332, yawDeg: 85, ground: 'veto', name: 'the south survey camp' },
+      { kind: 'drumCache', x: 172, z: -318, yawDeg: 85, ground: 'veto', name: 'the south survey drums' },
+      { kind: 'jamesway', x: 424, z: 40, yawDeg: 0, ground: 'veto', name: 'the east outpost' },
+      { kind: 'drumCache', x: 380, z: -160, yawDeg: 30, params: { rows: 5, columns: 12 }, ground: 'veto', name: 'the east drum dump' },
+      { kind: 'drumCache', x: -424, z: 290, yawDeg: 70, params: { rows: 4, columns: 12 }, ground: 'veto', name: 'the lake drum dump' },
+      // the drift fences across the wind, windward of the station's roads
+      { kind: 'snowFence', x: 0, z: -200, yawDeg: 0, ground: 'veto', name: 'the south drift fence' },
+      { kind: 'snowFence', x: 160, z: -210, yawDeg: 10, ground: 'veto', name: 'the south-east drift fence' },
+      { kind: 'snowFence', x: 0, z: 190, yawDeg: 0, ground: 'veto', name: 'the north drift fence' },
+      { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, ground: 'veto', name: 'the north-west drift fence' },
+      { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, ground: 'veto', name: 'the east drift fence' },
+      { kind: 'snowFence', x: -398, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
+      // (L2, wave 355) drift fences on the lines the fieldstone walls held round the station (a hull breaks through a module)
+      { kind: 'snowFence', x: -148, z: -46, yawDeg: 90, params: { length: 60 }, ground: 'veto', name: 'the motor pool drift fence (south)' },
+      { kind: 'snowFence', x: -148, z: 52, yawDeg: 90, params: { length: 64 }, ground: 'veto', name: 'the motor pool drift fence (north)' },
+      { kind: 'snowFence', x: -35, z: -58, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (south)' },
+      { kind: 'snowFence', x: -35, z: 52, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (north)' },
+      { kind: 'snowFence', x: 15, z: 296, yawDeg: 0, params: { length: 82 }, ground: 'veto', name: 'the fuel shelter drift fence' },
+      { kind: 'snowFence', x: 316, z: 37, yawDeg: 90, params: { length: 74 }, ground: 'veto', name: 'the relay drift fence' },
+    ],
+    // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
+    // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
+    vehicleSetPieces: [
+      { kind: 'bv206', x: -8, z: -12, yawDeg: 80 }, { kind: 'bv206', x: -72, z: -64, yawDeg: 90 },
+      { kind: 'snocat', x: 18, z: -62, yawDeg: -60 }, { kind: 'd8h', x: 132, z: -126, yawDeg: 30 },
+      { kind: 'snocat', x: -212, z: -22, yawDeg: 170 }, { kind: 'bv206', x: -236, z: -138, yawDeg: 10 },
+      { kind: 'd8h', x: -58, z: 246, yawDeg: 200 }, { kind: 'bv206', x: 312, z: 40, yawDeg: 2 },
+      { kind: 'snocat', x: -344, z: 62, yawDeg: 20 }, { kind: 'd8h', x: 168, z: 206, yawDeg: 120 },
+      { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
+      { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
+      { kind: 'snocat', x: -392, z: -264, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
+      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
+      { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
+      { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
+      // (round 1c) the stripped trail south-east of the station, its abandoned machines; more working machines out in the voids
+      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 254, z: -250, yawDeg: 140, wrecked: true },
+      { kind: 'bv206', x: 330, z: -296, yawDeg: 120, wrecked: true }, { kind: 'snocat', x: 392, z: -340, yawDeg: 150, wrecked: true },
+      { kind: 'bv206', x: 432, z: -404, yawDeg: 135, wrecked: true },
+      { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },
+      { kind: 'd8h', x: 128, z: -300, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
+      { kind: 'snocat', x: 406, z: 22, yawDeg: 300 }, { kind: 'd8h', x: 398, z: -182, yawDeg: 20 },
+      // the dump's burnt-out carrier
+      { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+    ],
+  },
+  // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
+  // gneiss — tors and outcrops standing out of the snow on the knolls, the ridges and the esker, a field in each quarter
+  // and on each flank, mirrored north and south of the station so neither deployment gains cover
+  scenery: {
+    // (round 1c) inuksuit, the Inuit's stone figures that mark a route across the land, beside the service roads and on two
+    // knolls (scenery cairns of the plateau's gneiss)
+    landmarks: [
+      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk on the east road (south)' },
+      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the east road' },
+      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the relay' },
+      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the east road (north)' },
+      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk at the east fork' },
+      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the west road (south)' },
+      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the motor pool' },
+      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the west road (north)' },
+      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk by the lake' },
+      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the south road' },
+      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the east knoll' },
+      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the west knoll' },
+    ],
+    rockFields: [
+      { geology: 'granite', x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
+      { geology: 'granite', x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
+      { geology: 'granite', x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
+      { geology: 'granite', x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
+      { geology: 'granite', x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
+      { geology: 'granite', x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
+      { geology: 'granite', x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
+      { geology: 'granite', x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
+      // (round 1c) the east flank's tors beyond the relay
+      { geology: 'granite', x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
+    ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
   // round 49 (2026-09-23): the layers probe (ring mesh hidden: skyline ratio 1.005 -> 1.009, edge row unchanged) shows
