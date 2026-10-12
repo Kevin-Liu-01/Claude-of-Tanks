@@ -37,6 +37,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
+import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
@@ -438,7 +439,8 @@ export interface FxCinematicPort {
   setLateFxActive(fn: (() => boolean) | null): void;
   /** Concurrent smoke-column cap; null restores the battle budget. */
   setColumnCap(cap: number | null): void;
-  /** Ambient-tinted shading of the battle pools' normal-blended media. */
+  /** (fx 9) the battle pools' normal-blended media are tinted by the scene's light in every quality (sceneLightTint.ts);
+   *  true hands the tint to the Studio's cinematic layer (it writes its own measure), false takes it back. */
   setLightTintShading(on: boolean): void;
   /**
    * Night exposure discipline for Studio cinematic shots: scales the pooled
@@ -1003,6 +1005,10 @@ function* createFxSteps(
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
   const particles = createParticleSystem(engineCtx, { seed });
+  // (fx 9, the owner 2026-10-11: the driving dust, exhaust and smoke "correct for the times of days") the pooled dust,
+  // smoke and debris take the scene's light (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), every
+  // frame in update() below; the emissive pools (fire's core, sparks, flashes) never do
+  particles.setLightTintShading(true);
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
   // (the clock advances by render dt); frozen/stepped captures now hold and
@@ -1507,6 +1513,8 @@ function* createFxSteps(
   let extraLateFxActive: (() => boolean) | null = null;
   // Studio night exposure scale for the pooled muzzle light (always 1 in battle).
   let muzzleLightScale = 1;
+  // (fx 9) the Studio's cinematic quality writes the pools' scene tint itself (FxCinematicPort.setLightTintShading)
+  let cinematicTintOwner = false;
   group.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
@@ -5297,6 +5305,7 @@ function* createFxSteps(
       attachWorld();
       resolvePendingHe();
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
+      if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
@@ -6343,7 +6352,7 @@ function* createFxSteps(
           columnCap = cap == null ? MAX_COLUMNS : Math.max(1, Math.floor(cap));
           capColumns();
         },
-        setLightTintShading: (on) => particles.setLightTintShading(on),
+        setLightTintShading: (on) => { cinematicTintOwner = on; },
         setMuzzleExposure: (light, cards) => {
           muzzleLightScale = light;
           for (const pool of ['flash', 'jet'] as const) {
