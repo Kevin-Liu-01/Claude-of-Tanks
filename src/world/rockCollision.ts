@@ -647,6 +647,30 @@ export function rockCollisionProfile(
   return { contact: tiers[0].points, tiers, top: bands[bands.length - 1].y1, exposed: s.exposed, bands };
 }
 
+/** A placed stone's foot as the ground cover sees it (rockFootprint). */
+export interface RockFoot {
+  /** The hull of its surface 2 to 30 cm over the ground under it (world [x, z, ...], every corner to the centimetre). */
+  points: number[];
+  /** The lowest point of the surface over its ground and its highest point (world y). */
+  low: number;
+  top: number;
+}
+
+/**
+ * (rock round 2, 2026-10-11, the map-revival lane; gauntlet wave 415 on every stone: "soil, tufts and rubble at its foot,
+ * not a clean contact or a cleared pad with pebbles laid on the turf") a placed stone's foot: the hull of its surface from
+ * 2 to 30 cm over the ground under it, so the turf, the litter and the tall grass grow against the stone and its low toe
+ * instead of round the legacy footprint (2.2 times the stone's area: the hitbox lane's audit); null where it rises
+ * nowhere past 2 cm. Pure and deterministic, the same arithmetic on every tier (the collision form).
+ */
+export function rockFootprint(form: RockForm, matrix: ArrayLike<number>, groundAt: (x: number, z: number) => number): RockFoot | null {
+  const s = placeSurface(form.positions, form.edges, matrix, groundAt);
+  if (!Number.isFinite(s.low) || !(s.top > s.low)) return null;
+  gatherBox(s, -Infinity, Infinity, 0.02, 0.3);
+  const points = scratchHullOf(ROCK_HULL_POINTS);
+  return points ? { points, low: s.low, top: s.top } : null;
+}
+
 function centroid(points: readonly number[]): [number, number] {
   let x = 0, z = 0;
   for (let i = 0; i < points.length; i += 2) { x += points[i]; z += points[i + 1]; }
