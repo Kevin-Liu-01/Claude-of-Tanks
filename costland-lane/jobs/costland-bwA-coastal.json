@@ -1,0 +1,27 @@
+{
+ "lane": "costland",
+ "id": "bwA-coastal",
+ "cwd": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA",
+ "kind": "picture",
+ "cloudFreeze": true,
+ "gauntlet": true,
+ "budgetMin": 7,
+ "needs": [
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA/dist"
+ ],
+ "cmd": [
+  "node",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA/.qa-dev/visual-census-keep.mjs",
+  "capture",
+  "--root=/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA",
+  "--out=/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/borders/A-coastal",
+  "--set=border2",
+  "--views=edge-e,corner-ne-up",
+  "--maps=coastal",
+  "--pose=coastal/bird:-420,300,-420:60,0,60+coastal/apron:360,150,100:660,0,120+coastal/apron2:430,90,190:600,0,360+fjord/bird:-420,300,-420:60,0,60+fjord/apron:330,150,20:660,0,0+saltwind/bird:-420,300,-420:60,0,60+saltwind/apron:-330,150,0:-660,0,0+verdant/rim-n:70,2.6,466:70,1.5,720",
+  "--batch=24",
+  "--budget-min=6.5",
+  "--port={PORT}"
+ ],
+ "log": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/borders/A-coastal.log"
+}

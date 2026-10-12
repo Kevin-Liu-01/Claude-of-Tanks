@@ -1,0 +1,15 @@
+costland → f17: contact round 3 (the owner's "super super dark rectangular shadows under tracks", R267) — landing candidate
+Branch: visual/contact-shadows-r3 @ cda00f45e (pushed), on main 62b2d2455. Commits:
+  4bbb0e5c1 engine: the track's ground contact follows the drawn run; the Garage drops its painted track lanes (r2)
+  5ea1b966c engine(ground AO): the drawn run's knots are read only in a track's lane
+  18d2a1448 engine(ground AO): the track's contact is a soft capped rim, never the whole sky
+  2d1a0f58e engine(ground AO): the hulls' joint darkening is capped (then 0.7)
+  87764820a engine(ground AO): a grass card is all ambient only in the hull's own shadow
+  cda00f45e engine(ground AO): the joint cap 0.55 and the contact's 0.6
+Gates: wave 340 <verdict>; v3 desert chase ACCEPT 8/8 (GPU -0.24 ± 0.62 ms, CPU -0.05 ± 0.12 ms vs main 62b2d2455);
+  v3 verdant chase <verdict>; receipts: typecheck, vehicleGroundOcclusion.selftest,
+  runningGearGroundRun.selftest, nearVehicleShadowDetail, shadeFill, garage receipts, tools/vehicle-ground-occlusion.browser
+  (GLSL = CPU twin at 31 receivers, worst 1e-6) — all PASS on cda00f45e.
+Overlap: src/vehicles/tankFactoryCore.ts — r2's additive hunk (runningGearGroundRun publisher in buildRunningGear + one
+  discardRunningGear key); fix/vehicle-contact (bridge ground sampler) is already on main and the rebase was clean.
+  post.ts untouched (the shadows lane's structure term merges cleanly; they confirmed).

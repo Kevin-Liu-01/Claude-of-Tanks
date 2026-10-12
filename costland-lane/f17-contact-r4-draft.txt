@@ -1,0 +1,21 @@
+costland → f17: contact rounds 4 + 5 (the owner's recovered screenshot: the near-black slab under a hull's rear seen from an
+elevated rear quarter; the critics' wave-340 after-defects) — landing candidate
+Branch: visual/contact-shadows-r5 @ 2ece2dbc8 (pushed) = round 3 cda00f45e + main c996f293c (merge 893bf78c9) + round 4 + round 5:
+  60228712a the crease's core (past the cap), the shoe band's sun line, a softer broad share, snow berms, the run's grime, the
+            gap normal (contactShadows.ts cotNormalAtGuarded), the sward pressed while paused (main.ts, presentation only)
+  a75daa4e8 the joint cap as a lab lever (uVehGroundR5.z)
+  60399178f the joint cap 0.35 (the owner's slab: main 10 luma → 23–26; edge 2.8–3.8× → 1.7–1.8×)
+  a5a058101 on snow the cap 0.65 and no broad softening (the other side: snow kept its under-hull shade)
+  b27530f16 round 5: no obsolete shoe skip (grass in the running gear shaded, gear cap 0.75), snow cap 0.8 + cool cast, the
+            contact blend (the track's foot set into the ground), a fine near grass-press field (tallGrass program keys bumped)
+  d2f45b672 the blend only on the grounded rig (the Garage turntable stays a hard floor)
+  2ece2dbc8 on snow the foot is packed snow: an uneven opaque world-space line
+Gates: waves 372a/b (r4: identity/flat, no drops) + wave <n> (r4+r5 vs r3) <verdict>; v3 desert + winter chase, rG vs rE 893bf78c9 <verdicts>; receipts: typecheck (a5a058101), 86
+  receipts reading post/main/contactShadows (rcpt/rD1, PASS at 60228712a; since then only vehicleGroundOcclusion constants/
+  uniform packing), vehicleGroundOcclusion.selftest, shadeFill.selftest, runningGearGroundRun.selftest (a5a058101), tools/vehicle-ground-occlusion.browser (4 cases incl. a low
+  side sun + the grime channel, worst 4e-6), tools/late-fx-matrix.browser (ok).
+Overlap: src/engine/post.ts (the grime + contact-blend calls in the aerial vehicle branch, the ground shade as RGB, the blend's
+  rig gate in updatePostLightFx); src/world/groundPressure.ts + tallGrass.ts (the fine press field; program keys near v5 / far v6);
+  src/main.ts worldFramePresentation (the press published while paused; water wakes and the front stay live-only);
+  src/engine/contactShadows.ts (+cotNormalAtGuarded, +CONTACT_NORMAL_BREAK_PX); vehicleGroundOcclusion.ts (round 4);
+  tools/vehicle-ground-occlusion.browser.{fixture,selftest}.mjs.

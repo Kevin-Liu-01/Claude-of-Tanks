@@ -1,0 +1,2 @@
+v3: ACCEPT (8 valid of 8 cycles)
+  chase: GPU 8 cycles -0.238 ± 0.616 ms -> ACCEPT; CPU 8 cycles -0.053 ± 0.123 ms -> ACCEPT

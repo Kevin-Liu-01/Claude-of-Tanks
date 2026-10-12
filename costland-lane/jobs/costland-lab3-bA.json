@@ -1,0 +1,28 @@
+{
+ "lane": "costland",
+ "cwd": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rM",
+ "kind": "picture",
+ "cloudFreeze": true,
+ "priority": true,
+ "launch": true,
+ "id": "lab3-bA",
+ "budgetMin": 16,
+ "queueStamp": 1791397983252,
+ "gauntlet": true,
+ "needs": [
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rM/dist"
+ ],
+ "cmd": [
+  "node",
+  ".qa-dev/contact-lab3.mjs",
+  "--dists=a:/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rM/dist",
+  "--specs=m1a2,spz_puma,challenger2e",
+  "--camo=desert",
+  "--maps=verdant,desert",
+  "--views=side,low,rear",
+  "--variants=a:full",
+  "--out=/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/r3/battle",
+  "--port={PORT}"
+ ],
+ "log": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/r3/battle-a.log"
+}

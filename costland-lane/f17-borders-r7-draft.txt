@@ -1,0 +1,12 @@
+costland → f17: borders r7 (R097: batch 6 + Verdant's far rise + the far-earth/apron slab fix) — landing candidate
+Branch: visual/borders-r7-land @ 8c94fa52f (pushed) on main 62b2d2455 (+ main's 6fdac8edc docs row). Batch 6 is OPT-IN per
+map (borderLandform.ts MAP_BORDERS[...].batch6 / borderBatch6): coastal (Saltmere), fjord (Nordhavn), verdant and saltwind take
+it; every other map keeps main's edge exactly (legacy paths for the tuft cull, the treeline/snow stands, the hedges, the far
+rise and the relief share).
+Gates: waves 313 (Saltwind stands), 330/331 (Verdant fixed + coastal/fjord no drop), the owner's free hand (Verdant and Saltwind
+opt in; coordinator 00:25); v3 vs main 62b: verdant <nv>, coastal <nc> (the coordinator's landing gate: nv + nc); receipts:
+tier-1 affected set PASS (rcpt/rB-t1, rB-t1b; horizonRelief and borderFarmsteads fixed in 8c94fa52f; the load flakes
+visual-census-lock and dedicatedWorldCollisionMemory PASS alone, rcpt/rB-t1c); borderBatch6.selftest (new, registered after
+horizonFarRise); typecheck rc=0 (8c94fa52f).
+Overlap: tools/selftest-suites.mjs (one registration); docs/DEPLOYS.md only through main's own 6fdac8edc row; merge-tree
+clean against main 786e24b97 (10-10 09:25) — re-check against the current main at integration.

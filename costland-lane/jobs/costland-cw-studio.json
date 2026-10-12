@@ -1,0 +1,26 @@
+{
+ "lane": "costland",
+ "cwd": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA",
+ "kind": "picture",
+ "cloudFreeze": true,
+ "gauntlet": true,
+ "id": "cw-studio",
+ "budgetMin": 12,
+ "cmd": [
+  "node",
+  ".qa-dev/contact-wave.mjs",
+  "--part=studio",
+  "--maps=desert,verdant",
+  "--kinds=crest,hollow",
+  "--rigs=side,front",
+  "--times=2000,3750,5500",
+  "--dists=a:/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA/dist,b:/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rC/dist",
+  "--out=/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/contact/studio",
+  "--port={PORT}"
+ ],
+ "log": "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/wave/contact/studio.log",
+ "needs": [
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rA/dist",
+  "/private/tmp/claude-501/-Users-kevinliu--codex-worktrees-cot-restore-1049-visuals-20260911/6412983f-6279-4f04-92ea-e3d886747505/scratchpad/costland/rC/dist"
+ ]
+}
