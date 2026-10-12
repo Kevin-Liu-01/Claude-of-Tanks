@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
+import { applyTopMaskCoverage } from './topMaskCoverage.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
@@ -441,10 +442,11 @@ export function ensureTankThumbs(_specs: RuntimeValue, _opts: RuntimeValue = {})
 //
 // Render specifics:
 //  - Uses the game's own renderer via a WebGLRenderTarget (no second GL
-//    context). Materials render UNLIT/black — only alpha coverage is read —
-//    which also keeps the shadow-proxy meshes out (their colorWrite:false is
-//    respected; a scene.overrideMaterial would have painted their fat
-//    stand-in boxes into the mask).
+//    context). Only alpha coverage is read, so each mesh draws with a
+//    coverage-only stand-in of its material (topMaskCoverage.ts: side, alpha
+//    inputs, colour-write and depth state kept per mesh). Shadow-proxy meshes
+//    stay out (their colorWrite:false is kept; a scene.overrideMaterial would
+//    have painted their fat stand-in boxes into the mask).
 //  - Camera: y-down ortho with up=+Z, so the mask is nose-up with the
 //    vehicle's RIGHT side on the image's right (screen-x = -world-x — the
 //    same handedness the live top-down view has).
@@ -949,6 +951,9 @@ async function renderMaskEntry(
   const turretG = root.getObjectByName('rig_turret');
   if (!hullG || !turretG) { scene.remove(root); return null; }
   const passes: PendingMaskPass[] = [];
+  // Alpha coverage is all a pass reads: draw it with coverage-only stand-ins, not the tank's real materials, so the
+  // masks link a few shared basic programs instead of ~38 physical ones (topMaskCoverage.ts).
+  const restoreMaterials = applyTopMaskCoverage(root);
   try {
   // neutral articulation for the canonical masks
   turretG.rotation.y = 0;
@@ -1011,6 +1016,7 @@ async function renderMaskEntry(
     // Compile/render/source failures must join every submitted writer before
     // clone disposal, cache publication, or the next tank can reuse pixels.
     await Promise.all(passes.map((pass) => pass.completion));
+    restoreMaterials();
     hullG.visible = true;
     turretG.visible = true;
     scene.remove(root);
