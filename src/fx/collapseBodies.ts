@@ -753,7 +753,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (!parts.some((pp) => pp.meshes.length)) continue;
       const spawn = pieceSpawn(piece, placement);
       const shape = pieceShape(piece);
-      const handle = pool.spawn(shape, { ...spawn, asleep: true }, piece.releaseS);
+      // (the physics lane, 2026-10-11, wave 409: "a released piece with zero kick, perfectly upright, stays balanced unless
+      // something hits it") a piece let go without a shove (a floor, a panel that waits for its support) leaves with a
+      // small tumble of its own about a level axis, so nothing balances on an edge
+      const [kx, ky, kz] = piece.kick;
+      const tumble = kx * kx + ky * ky + kz * kz > 1e-6 ? null : ((): { wx: number; wz: number } => {
+        const a = hash01(anatomy.structureIdx, piece.index, 41) * Math.PI * 2, w = 0.2 + 0.2 * hash01(anatomy.structureIdx, piece.index, 43);
+        return { wx: Math.cos(a) * w, wz: Math.sin(a) * w };
+      })();
+      const handle = pool.spawn(shape, { ...spawn, ...(tumble ?? {}), asleep: true }, piece.releaseS);
       if (handle < 0) {
         // the pool is full (a barrage's collapses at once): this piece bursts where it stands rather than hang there
         for (const pp of parts) for (const m of pp.meshes) { m.removeFromParent(); m.geometry.dispose(); }
