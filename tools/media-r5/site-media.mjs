@@ -119,6 +119,7 @@ function slots() {
   for (const [k, v] of Object.entries(PICKS.topicMedia)) if (v.id) add(`topicMedia.${k}`, v.id, v.still);
   PICKS.featured.forEach((f, i) => add(`featured[${i}]`, f.id, f.still ?? 'moment'));
   for (const k of ['notFound', 'hudEditor', 'og']) add(k, PICKS[k].id, PICKS[k].still);
+  for (const [k, v] of Object.entries(PICKS.ogCards ?? {})) add(`ogCards.${k}`, v.id, v.still);
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));
   for (const [k, v] of Object.entries(PICKS.home.socialCards ?? {})) add(`home.socialCards.${k}`, v.id, v.still);
   (PICKS.readme?.stills ?? []).forEach((id, i) => add(`readme.stills[${i}]`, id, 'moment'));

@@ -219,11 +219,14 @@ function wireGame() {
     /records them from this table\./);
   // the social cards' sources (generate-og-images.mjs re-renders the cards from these)
   const og = { game: PICKS.og, home: PICKS.home.hero[1], docs: PICKS.docs.hero, 'docs-vehicles': PICKS.docs.chapters.vehicles,
-    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'] };
+    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'], ...PICKS.ogCards };
   for (const [card, pick] of Object.entries(og)) {
-    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/media/[^']+(', ')[^']+('\\])`),
+    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/[^']+(', ')[^']+('\\])`),
       (_, a, b, c) => `${a}public${still(pick.id, pick.still)}${b}50% 50%${c}`, `social card ${card}`);
   }
+  // the 404 page shares its own card (r14b, owner: "all pages with their custom ogs"), no longer the landing page's
+  swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og\/)[a-z0-9-]+(\.jpg">)/,
+    (_, a, b) => `${a}404${b}`, '404 social card');
 }
 
 // --- the landing page's social cards (their battle photos sit at low opacity behind each quote) -------------------

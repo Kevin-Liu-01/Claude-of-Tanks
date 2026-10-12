@@ -813,6 +813,24 @@
     "id": "s07-lake-shellfire",
     "still": "moment"
   },
+  "ogCards": {
+    "private-room": {
+      "id": "s16-street-duel",
+      "still": "moment"
+    },
+    "docs-rendering": {
+      "id": "s44-oasis-sunset",
+      "still": "moment"
+    },
+    "docs-studio": {
+      "id": "s47-ironworks-crane",
+      "still": "close"
+    },
+    "404": {
+      "id": "s38-church-knockout",
+      "still": "close"
+    }
+  },
   "readme": {
     "stills": [
       "s07-lake-shellfire",
