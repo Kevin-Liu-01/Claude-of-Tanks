@@ -213,11 +213,14 @@ assert.equal(lakeField._noVeg(300, 340), false);
   const block = terrain.slice(terrain.indexOf('if (apronK > 0.003) {'), terrain.indexOf('padRut *= apronK;'));
   const thLine = block.split('\n').find((line) => /\bfloat th = /.test(line));
   assert.ok(thLine && !/nz\(|nzq\(|uv|wp/.test(thLine), `a rut family's direction never reads position (${thLine?.trim()})`);
-  // (R1b, 2026-10-12: the noise-texture warp branched the ruts into a crack net on 219) the bend is two long smooth waves
-  // along the family's own lines: no texture read in the line's phase, and wavelengths of tens of metres
-  const qLine = block.split('\n').find((line) => /\bfloat q = /.test(line));
-  assert.ok(qLine && !/nz\(|nzq\(|uv\b/.test(qLine) && /sin\(al \/ 23\.0/.test(qLine) && /sin\(al \/ 9\.7/.test(qLine),
-    `the ruts bend in long smooth waves along their lines, never by the noise texture (${qLine?.trim()})`);
-  assert.match(block, /float al = dot\(wp\.xz, vec2\(cos\(t\), sin\(t\)\)\);/, 'measured along the family\'s lines');
+  // (R1b, 2026-10-12: the noise-texture warp branched the ruts into a crack net on 219; a shared smooth bend made a woven
+  // grid) each family is cut into lanes; under half carry a track, each meandering on bends hashed from its lane, never
+  // read from the noise texture, and kept inside its lane
+  assert.match(block, /float lane = floor\(q0 \/ per\);/, 'each family is cut into lanes');
+  assert.match(block, /float pres = step\(0\.55, h1\) \*/, 'under half the lanes carry a track');
+  const bendLine = block.split('\n').find((line) => /\bfloat bend = /.test(line));
+  assert.ok(bendLine && !/nz\(|nzq\(|uv\b/.test(bendLine) && /h1/.test(bendLine) && /h2/.test(bendLine),
+    `a track meanders on its own lane's bends, never by the noise texture (${bendLine?.trim()})`);
+  assert.ok(1.1 + 0.5 + 1.45 + 2 * 0.30 < 9.0 / 2, 'the widest meander keeps both ruts inside the narrowest lane');
 }
 console.log('hardstandSurface.selftest: local rotated exclusions, remote road controls, additive water and the pads\' worn ground passed');
