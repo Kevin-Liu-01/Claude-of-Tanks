@@ -9218,6 +9218,9 @@ function* createTankOwnedSteps(
     if (!bend) return;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
+      // (f17, 218: articulatedShadowBatchIntegration) the authored shadow proxies are never mutated: the articulated
+      // shadow batch holds their packed copies, so the bend stays on the drawn gun
+      if (object.userData.authoredShadowProxy) return;
       toGun.multiplyMatrices(gunInv, object.matrixWorld);
       const bent = object.geometry.clone();
       bendGeometry(bent, bend, toGun, toGun.clone().invert());
