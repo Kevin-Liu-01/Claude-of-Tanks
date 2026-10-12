@@ -655,6 +655,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
+    'src/fx/debrisPhysics.selftest.mjs',
+    // 2026-10-10 (dcore, the owner: "make thier collapses much more natural ... just let physics work"): a building cut
+    // into its own pieces (walls over their stubs, floors, roof slabs, gables, chimneys), none starting inside another,
+    // its triangles' area kept, brought down in the pool and laid the same twice.
+    'src/fx/collapsePieces.selftest.mjs',
+    // (dcore 2026-10-10) the same end to end in collapseBodies with a building's own triangles: a shaft (one glued body)
+    // and a house taken, standing in their place, brought down; a building with no storeys left to the scripted collapse.
+    'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
+    'src/fx/propFracture.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
@@ -969,6 +981,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
+    // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
+    'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
     'src/mp/match/clock.selftest.mjs',
@@ -1000,6 +1014,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
     // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
     'src/mp/presentation/craterSync.selftest.mjs',
+    // 2026-10-10 (physics lane): the host's turret body through the rows, the peer's interpolated pose, a migrated host.
+    'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1084,6 +1100,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
+    // the game's own rigid bodies, and a dead hull's turret as one.
+    'src/sim/rigidBody.selftest.mjs',
+    'src/sim/wreckTurrets.selftest.mjs',
+    'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
@@ -1114,6 +1135,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
+    'src/world/fractureAnatomy.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
@@ -1521,6 +1543,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    'src/world/maps/shedKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap

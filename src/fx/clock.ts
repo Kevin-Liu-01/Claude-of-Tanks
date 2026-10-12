@@ -88,3 +88,27 @@ export function emitPopTrail(
 ): void {
   if (popTrailFn) popTrailFn(x, y, z, heat, birthOffset);
 }
+
+// ---------------------------------------------------------------------------
+// Turret landing bridge (physics lane, 2026-10-10)
+// ---------------------------------------------------------------------------
+// A popped turret is a rigid body now (sim/wreckTurrets.ts); the visual that follows it reports each hard landing
+// here, where it happens, so the dust rises from the impact and the landing's sound plays at it — not on a timer
+// beside the hull. Any number of listeners (the fx and the audio); none is a no-op.
+
+type TurretLandingListener = (x: number, y: number, z: number, speedMps: number) => void;
+const turretLandingListeners: TurretLandingListener[] = [];
+
+/** Listen for turret landings; returns the unsubscribe. */
+export function onTurretLanding(fn: TurretLandingListener): () => void {
+  turretLandingListeners.push(fn);
+  return () => {
+    const index = turretLandingListeners.indexOf(fn);
+    if (index >= 0) turretLandingListeners.splice(index, 1);
+  };
+}
+
+/** A turret hit the ground (or a hull, or a wall) at x, y, z falling at `speedMps`. */
+export function emitTurretLanding(x: number, y: number, z: number, speedMps: number): void {
+  for (let i = 0; i < turretLandingListeners.length; i++) turretLandingListeners[i](x, y, z, speedMps);
+}

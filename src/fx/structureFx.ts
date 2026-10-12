@@ -155,6 +155,10 @@ function dustOf(look: StructureLook, out: [number, number, number]): Rgb {
   }
   if (w <= 0) { out[0] = 0.55; out[1] = 0.52; out[2] = 0.47; return out; }
   out[0] = r / w; out[1] = g / w; out[2] = b / w;
+  // (dcore 2026-10-11, wave 388a: "real brick dust is paler and greyer than this") a third of its saturation goes: brick
+  // powder is a greyed tan, never the brick's own orange
+  const lum0 = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
+  for (let i = 0; i < 3; i++) out[i] = out[i] * 0.66 + lum0 * 0.34;
   // (round 4: a rendered house's breach still threw near-white cotton in full sun) masonry powder is never brighter
   // than a pale stone: its luminance is held under 0.4
   const lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
@@ -229,11 +233,19 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
   k.ax = R() - 0.5; k.ay = R() - 0.5; k.az = R() - 0.5; k.spin = 4 + R() * 10;
   k.scale = scale; k.groundY = C.groundY(x, z); k.drag = 0.2;
   const tint = 0.82 + R() * 0.36;
-  k.r = s.color[0] * tint; k.g = s.color[1] * tint; k.b = s.color[2] * tint; k.heat = 0; k.seed = R();
+  k.r = s.color[0] * tint; k.g = s.color[1] * tint; k.b = s.color[2] * tint; k.seed = R();
+  // (dcore 2026-10-11, waves 385/388a: "bright, undusted, same-size bricks", "glowing orange-yellow dots" for 8 s) a
+  // broken piece comes off coated in its own grit: a third of its colour greyed, and once it lands it lies in the heap's
+  // shade (the dust coat darkens it by 45 %), never a lit dot
+  // (the decisive wave's third head: orange specks still lit on the ruin at 11 s) nearly half its colour greyed, and once
+  // landed two thirds darker
+  const lum0 = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
+  k.r = k.r * 0.55 + lum0 * 0.45; k.g = k.g * 0.55 + lum0 * 0.45; k.b = k.b * 0.55 + lum0 * 0.45;
+  k.heat = -0.65;
   // (the battle strips: a stack's burst strewed the yard with white confetti) a sunlit fleck of plaster or tile reads as
   // paper: no thrown piece brighter than weathered render
   const lum = 0.2126 * k.r + 0.7152 * k.g + 0.0722 * k.b;
-  if (lum > 0.2) { const q = 0.2 / lum; k.r *= q; k.g *= q; k.b *= q; }
+  if (lum > 0.14) { const q = 0.14 / lum; k.r *= q; k.g *= q; k.b *= q; }
   C.chunk(k);
 }
 
@@ -242,7 +254,7 @@ function piece(C: BlastContext, look: StructureLook, x: number, y: number, z: nu
  * or null for the masonry fallback.
  */
 export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: StructureLook | null, crumbled = false,
-  eaveM: number | null = null, topple: ToppleFx | null = null): void {
+  eaveM: number | null = null, topple: ToppleFx | null = null, bodies = false): void {
   if (e.settled) return;
   const L = look ?? FALLBACK_LOOK;
   const R = C.rand;
@@ -321,29 +333,37 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
   // (the battle strips, final: a gable house's cloud stayed a few small puffs) the low cloud is the size of what fell, not
   // of a narrow footprint's half width: a tall narrow house throws as much dust as a squat wide one
   const low = Math.max(span, 0.45 * wallH + 2, 4.5);
+  // (dcore 2026-10-10) a collapse as bodies (fx/collapseBodies.ts) is seen falling: its dust comes thinner and later — the
+  // pieces' own landings kick theirs (pieceLandingFx) — no crumble front to shed from, the skirt as the walls land
+  // (half a second to two), the body off the pile after
+  const thin = bodies ? 0.72 : 1;
+  // (dcore 2026-10-11, waves 385/388a: "the collapse is never seen: the intact gable disappears into an opaque cloud";
+  // the coordinator: "dust rising after the fall, not hiding it") as bodies nothing is born before the pieces land: no
+  // air out of the top, no skirt on a clock — each piece's landing kicks its own (pieceLandingFx), and the pile's body
+  // rises off the heap once the fall is over, low, slow and lingering
   // 1. the roof drops in: the air inside goes up out of the top, darker
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < (bodies ? 0 : 4); i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.6, lz = (R() * 2 - 1) * e.hd * 0.6;
     const life = 7 + R() * 3;
     puff(C, e.cx + lx * cosY + lz * sinY, e.baseY + wallH * (0.75 + 0.2 * R()), e.cz - lx * sinY + lz * cosY,
       (R() - 0.5) * 1.5, 1.4 + R() * 1.0, (R() - 0.5) * 1.5, 1.4, 0.6, 1.0, life, 0.25 * span * dk, (0.45 + R() * 0.12) * span * dk,
-      tintDark, tinted, 0.5, life, 2, 0.3 + R() * 0.5, 1, 4.5);
+      tintDark, tinted, 0.5 * thin, life, 2, (bodies ? 0.5 : 0.3) + R() * 0.5, 1, 4.5);
   }
   // 2. the walls pour their dust out of their foot as the front comes down: a low skirt all round, rolling out wide,
   //    each band's as its pieces land
-  const skirtN = Math.max(10, Math.min(20, Math.round(perim / 3)));
+  const skirtN = bodies ? 0 : Math.max(10, Math.min(20, Math.round(perim / 3)));
   for (let i = 0; i < skirtN; i++) {
     footprintEdge(e, cosY, sinY, perim, (i + R()) / skirtN, p);
     const v = 3 + R() * 3;
     const life = 9 + R() * 2.5;
     const h = wallH * (0.08 + 0.84 * (i + R()) / skirtN);
-    const at = Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
+    const at = bodies ? 0.5 + 1.6 * (i + R()) / skirtN : Math.min(frontEnd + 0.3, collapseFrontTime(h, wallH) + Math.sqrt((2 * h) / 9.8));
     puff(C, p[0] + p[2] * 0.6, e.baseY + 0.45, p[1] + p[3] * 0.6, p[2] * v, 0.35 + R() * 0.4, p[3] * v, 2.0, 0.25, 0.9,
-      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5, life, 1, at, 2.0 + R() * 0.5, 4.5);
+      life, 0.5 * low * dk, (1.0 + R() * 0.3) * low * dk, tintDark, tinted, 0.5 * thin, life, 1, at, 2.0 + R() * 0.5, 4.5);
   }
   // a little shed off the crumbling line as it passes (the dust rides the falling courses down)
   const BAND = 1.8;
-  const bands = Math.max(1, Math.ceil(wallH / BAND));
+  const bands = bodies ? 0 : Math.max(1, Math.ceil(wallH / BAND));
   for (let b = 0; b < bands; b++) {
     const h = Math.max(0.3, wallH - (b + 0.5) * BAND);
     const tb = collapseFrontTime(h, wallH);
@@ -369,14 +389,23 @@ export function structureStageFx(C: BlastContext, e: StructureStageEvent, look: 
     }
   }
   // 3. the body: one mass rising off the pile as the last courses land, born at its foot, spreading and thinning
+  //    (as bodies: once the fall is over — the pieces land within two and a half seconds — off the heap's foot, slower,
+  //    thinner and longer, so it drifts over the ruin instead of walling the fall off)
   const massN = Math.round(Math.min(12, 7 + perim / 8));
   for (let i = 0; i < massN; i++) {
     const lx = (R() * 2 - 1) * e.hw * 0.75, lz = (R() * 2 - 1) * e.hd * 0.75;
     const wx = e.cx + lx * cosY + lz * sinY, wz = e.cz - lx * sinY + lz * cosY;
+    if (bodies) {
+      const life = 13 + R() * 3;
+      puff(C, wx, e.baseY + 0.5, wz, (R() - 0.5) * 1.4, 0.45 + R() * 0.35, (R() - 0.5) * 1.4,
+        1.3, 0.32 + R() * 0.2, 1.0, life, 0.4 * low * dk, (1.15 + R() * 0.3) * low * dk, tintDark, tinted, 0.3, life, 2,
+        2.3 + (i / massN) * 1.6 + R() * 0.4, 1.2, 4.5);
+      continue;
+    }
     const at = frontEnd * 0.55 + (i / massN) * (frontEnd * 0.45 + 0.8) + R() * 0.3;
     const life = 10 + R() * 1.5;
     puff(C, wx, e.baseY + 0.9, wz, (R() - 0.5) * 1.0, 0.8 + R() * 0.6, (R() - 0.5) * 1.0,
-      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42, life, 2, at, 1, 4.5);
+      1.3, 0.5 + R() * 0.3, 1.0, life, 0.55 * low * dk, (1.3 + R() * 0.3) * low * dk, tintDark, tinted, 0.42 * thin, life, 2, at, 1, 4.5);
   }
 }
 
@@ -452,11 +481,13 @@ function brickDust(look: StructureLook, powder: Rgb, out: [number, number, numbe
   // medium's sun and sky lift it a long way, so a brick building's cloud reads brick-brown, a stone one's grey-buff
   // (the battle strips, b3: a brick farmhouse's cloud came out salmon-orange) a third of the way to the rubble's hue,
   // then a third of its saturation taken back: brick dust is a reddish grey-tan, never a dyed orange
-  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.35;
-  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.35;
-  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.35;
+  // (dcore 2026-10-11, waves 385/388a: "cocoa-brown", "real brick dust is paler and greyer") a quarter of the way, and
+  // half its saturation taken back
+  out[0] = powder[0] + (main.color[0] * 0.85 - powder[0]) * 0.25;
+  out[1] = powder[1] + (main.color[1] * 0.85 - powder[1]) * 0.25;
+  out[2] = powder[2] + (main.color[2] * 0.85 - powder[2]) * 0.25;
   let lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
-  for (let i = 0; i < 3; i++) out[i] = out[i] * 0.7 + lum * 0.3;
+  for (let i = 0; i < 3; i++) out[i] = out[i] * 0.55 + lum * 0.45;
   lum = 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2];
   if (lum > 0.26) { const k = 0.26 / lum; out[0] *= k; out[1] *= k; out[2] *= k; }
   return out;
@@ -473,6 +504,67 @@ const _tint: [number, number, number] = [0, 0, 0];
 type SectionFallEvent = StructureBreachEvent & {
   storeyDown?: boolean; baseY?: number; cx?: number; cz?: number; hw?: number; hd?: number;
 };
+/**
+ * A collapsing building's piece striking the ground, the heap or another piece (fx/collapseBodies.ts; dcore 2026-10-10):
+ * a skirt of the building's own dust rolling out from where it hit, sized by the blow — a panel slapping down a few
+ * puffs low along the ground, a roof slab dropped from the eaves a broad cloud.
+ */
+export function pieceLandingFx(C: BlastContext, x: number, y: number, z: number, speedMps: number, massKg: number,
+  look: StructureLook | null): void {
+  const energyKj = 0.5 * massKg * speedMps * speedMps / 1000;
+  if (!(energyKj > 1)) return;
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  // (dcore 2026-10-11: the collapse's dust is its pieces' landings now, nothing on a clock) a panel slapping down a few
+  // low puffs, a roof slab or a drum of a tower a broad skirt rolling out along the ground and a body rising off it a
+  // beat later
+  const k = Math.max(0, Math.min(1, Math.log10(energyKj) / Math.log10(120)));
+  const dust = brickDust(L, dustOf(L, _dust), _tint);
+  const dark: Rgb = [dust[0] * 0.7, dust[1] * 0.7, dust[2] * 0.7];
+  const dk = C.distBoost(x, y, z);
+  const n = 2 + Math.round(6 * k);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + R() * 0.8;
+    const v = (1.4 + R() * 2) * (0.6 + k);
+    const life = 4 + R() * 2 + k * 3;
+    puff(C, x + Math.cos(a) * 0.5, y + 0.3, z + Math.sin(a) * 0.5, Math.cos(a) * v, 0.3 + R() * 0.5 * k, Math.sin(a) * v,
+      1.8, 0.12 + 0.1 * k, 0.9, life, (0.8 + 0.8 * k) * dk, (2.2 + 3.0 * k + R()) * dk, dark, dust, 0.38 + 0.22 * k, life, 1,
+      R() * 0.15, 1.5);
+  }
+  if (k > 0.45) {
+    const life = 9 + R() * 3;
+    puff(C, x + (R() - 0.5), y + 0.8, z + (R() - 0.5), (R() - 0.5) * 0.8, 0.6 + R() * 0.4, (R() - 0.5) * 0.8,
+      1.3, 0.4, 1.0, life, 1.2 * k * dk, (3.5 + 3 * k) * dk, dust, dust, 0.3, life, 2, 0.25 + R() * 0.3, 1.1);
+  }
+}
+
+/**
+ * A collapsing piece breaking apart where it struck (fx/collapseBodies.ts: a shaft's drums at its touchdown, a roof's
+ * sheets; dcore 2026-10-11, waves 385/388a: "ragged, crumbled break faces, broken-off masonry and a heavy dust burst
+ * along the body at impact"): its broken masonry and grit thrown off the break with the piece's motion there, mostly
+ * low and out, and a little dust off the break, sized by the mass that broke.
+ */
+export function breakShardsFx(C: BlastContext, x: number, y: number, z: number, vx: number, vy: number, vz: number,
+  massKg: number, look: StructureLook | null): void {
+  const L = look ?? FALLBACK_LOOK;
+  const R = C.rand;
+  const k = Math.max(0, Math.min(1, Math.log10(Math.max(1, massKg / 40)) / Math.log10(60)));
+  const n = Math.round(10 + 22 * k);
+  const hs = Math.hypot(vx, vz) * 0.35;
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, v = 1.2 + R() * 3.2;
+    piece(C, L, x + (R() - 0.5) * 0.8, y + (R() - 0.5) * 0.5, z + (R() - 0.5) * 0.8,
+      vx * 0.35 + Math.cos(a) * (v + hs), Math.max(0.6, vy * 0.2) + R() * 3, vz * 0.35 + Math.sin(a) * (v + hs),
+      // most of it grit and fist-sized broken bits, a few chunks
+      0.05 + Math.pow(R(), 2.2) * (0.26 + 0.24 * k), 14 + R() * 6, R() * 0.05);
+  }
+  const dust = brickDust(L, dustOf(L, _dust), _tint);
+  const dk = C.distBoost(x, y, z);
+  const life = 3.5 + R() * 1.5 + k * 2;
+  puff(C, x, y, z, vx * 0.15 + (R() - 0.5), 0.6 + R() * 0.5, vz * 0.15 + (R() - 0.5), 1.8, 0.2, 0.9, life,
+    (0.6 + 0.6 * k) * dk, (1.8 + 1.8 * k) * dk, dust, dust, 0.4, life, 1, R() * 0.05, 1.2);
+}
+
 export function sectionFallFx(C: BlastContext, e: SectionFallEvent, look: StructureLook | null): void {
   if (e.settled || !e.sectionDown) return;
   const L = look ?? FALLBACK_LOOK;
@@ -559,14 +651,14 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
       const sp = (2 + R() * 2) * Math.sqrt(k);
       const life = 1.6 + R() * 0.6;
       hot(C, x + nx * 0.6, y + ny * 0.6 + 0.2, z + nz * 0.6, nx * sp + (R() - 0.5), ny * sp + 1.5 + R(), nz * sp + (R() - 0.5),
-        2.2, 1.2, 0.5, life, 1.2 * k * dk, (3.2 + R()) * k * dk, dark, dark, 0.92, 1.05, 5.5, bo - 0.02);
+        2.2, 1.2, 0.5, life, 1.2 * k * dk, (2.7 + R()) * k * dk, dark, dark, 0.88, 1.05, 5.5, bo - 0.02);
     }
     // (round 7, wave 277: a grey ball hid the building at the moment it came down) the detonation's smoke goes up off
     // the face in the wall's own dust, one puff
     {
       const life = 4 + R() * 1.5;
       hot(C, x + nx * 1.0, y + 0.8, z + nz * 1.0, nx * 0.6 + (R() - 0.5) * 0.6, 1.6 + R() * 0.6, nz * 0.6 + (R() - 0.5) * 0.6,
-        1.2, 0.9 + R() * 0.3, 1, life, 1.0 * k * dk, (2.6 + R()) * k * dk, dark, dust, 0.4, 0, 1, bo + 0.15 + R() * 0.2);
+        1.2, 0.9 + R() * 0.3, 1, life, 1.0 * k * dk, (2.2 + R()) * k * dk, dark, dust, 0.3, 0, 1, bo + 0.15 + R() * 0.2);
     }
   }
   // (wave 266: a struck house vanished in opaque dust for seconds) the strike's cloud bursts off the face dense and
@@ -578,10 +670,12 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
   for (let i = 0; i < n; i++) {
     const sp = (explosive ? 6 : 4) * (0.6 + 0.6 * R()) * Math.sqrt(k);
     const side = (i / Math.max(1, n - 1) - 0.5) * 2 * (explosive ? 1.1 : 0.4) + (R() - 0.5) * 0.4;
-    const life = (explosive ? 3.2 : 2.6) + R() * 1.4;
+    // (dcore 2026-10-11, waves 385/388a: ten 152 mm bursts in three seconds built one opaque cloud that hid the whole
+    // fall) each burst's cloud thinner and briefer: a barrage's stays dense at the face while the building shows behind
+    const life = (explosive ? 2.7 : 2.6) + R() * 1.2;
     puff(C, x + nx * 0.3, y + ny * 0.3, z + nz * 0.3, (nx * 0.7 + tx * side) * sp, ny * sp + 0.8 + R(), (nz * 0.7 + tz * side) * sp,
-      2.4, 0.3, 0.9, life, 0.45 * k * dk, (explosive ? 2.7 : 2) * k * dk, i === 0 ? dark : dust, dust,
-      explosive ? 0.58 : 0.6, life, 2, R() * 0.04);
+      2.4, 0.3, 0.9, life, 0.45 * k * dk, (explosive ? 2.3 : 2) * k * dk, i === 0 ? dark : dust, dust,
+      explosive ? 0.44 : 0.6, life, 2, R() * 0.04);
   }
   const pieces = Math.round((explosive ? 14 : 5) * Math.min(2, k));
   for (let i = 0; i < pieces; i++) {

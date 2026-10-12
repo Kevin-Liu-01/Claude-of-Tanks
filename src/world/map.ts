@@ -35,7 +35,7 @@ import {
   preloadPropModels,
 } from './props.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
-import type { CrushableRecord } from './props.ts';
+import type { CrushableRecord, PropBreakRequest } from './props.ts';
 import type { BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
@@ -233,6 +233,8 @@ export interface WorldRuntime {
    * `aDamage` (structureIdx + 1; 0 for anything else). Every bucket mesh and batch is in world space.
    */
   patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  /** Who takes a fracture-ready destructible kind's live break (props.ts setPropFracture; fx/propFracture.ts). */
+  setPropFracture(handler: ((request: PropBreakRequest) => boolean) | null): void;
   /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
   touchStructureShadows(structureIdx: number): void;
   /**
@@ -767,6 +769,7 @@ function assembleWorld(
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     structureDamage: getStructureDamage,
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
+    setPropFracture: (handler) => props.setPropFracture(handler),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
     groundOverlay: () => boundGroundOverlay,

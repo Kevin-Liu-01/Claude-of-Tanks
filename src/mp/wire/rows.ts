@@ -9,9 +9,9 @@ import { WireError } from './bytes.ts';
 import {
   ENTITY_FLAG_BITS, MAX_ENTITIES, MAX_ERA_PER_ROW, MAX_POS_REL_MM, MAX_TILT_REL_UNITS, ROW_GROUP, ROW_GROUP_MASK_MAX,
   STATUS_FLAGS_SHIFT, STATUS_GUN_RELOAD_KIND_SHIFT, STATUS_GUN_RELOAD_MIRRORS, STATUS_RELOAD_KIND_SHIFT,
-  STATUS_SHELL_SLOT_SHIFT,
+  STATUS_SHELL_SLOT_SHIFT, WRECK_BODY_Q_SCALE,
 } from './constants.ts';
-import type { EntityRow, EntityRowPatch } from './messages.ts';
+import type { EntityRow, EntityRowPatch, WreckBodyRow } from './messages.ts';
 import { angleUnitsDelta } from './quantize.ts';
 
 const FLAGS_MASK = (1 << ENTITY_FLAG_BITS) - 1;
@@ -45,6 +45,12 @@ export function packStatus(row: EntityRow): number {
     (row.shellSlot & 3) << STATUS_SHELL_SLOT_SHIFT |
     (gunReloadMirrors(row) ? STATUS_GUN_RELOAD_MIRRORS : 0) |
     (row.flags & FLAGS_MASK) << STATUS_FLAGS_SHIFT;
+}
+
+function sameWreckBody(a: WreckBodyRow | null | undefined, b: WreckBodyRow | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.x === b.x && a.y === b.y && a.z === b.z && a.qx === b.qx && a.qy === b.qy && a.qz === b.qz && a.qw === b.qw
+    && a.asleep === b.asleep;
 }
 
 function sameEra(a: readonly number[], b: readonly number[]): boolean {
@@ -90,6 +96,10 @@ export function diffEntityRow(row: EntityRow, base: EntityRow | null, packetTick
     mask |= ROW_GROUP.AUXILIARY; fields.auxiliaryJson = row.auxiliaryJson || '';
   }
   if (row.tick !== undefined) fields.tick = row.tick;
+  // a wreck's turret body: on a keyframe while it has one, on a delta when it moved, slept or went
+  if (base ? !sameWreckBody(row.wreckBody, base.wreckBody) : !!row.wreckBody) {
+    mask |= ROW_GROUP.WRECK_BODY; fields.wreckBody = row.wreckBody ?? null;
+  }
   if (!base) {
     mask |= KEYFRAME_GROUPS | ageGroup(row, packetTick);
     fields.x = row.x; fields.y = row.y; fields.z = row.z;
@@ -215,7 +225,7 @@ export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, b
   if (!Number.isInteger(patch.entityId) || patch.entityId < 1 || patch.entityId > MAX_ENTITIES) {
     throw new WireError('range', `entity id out of range: ${patch.entityId}`);
   }
-  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 17 bits');
+  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 19 bits');
   if ((mask & ROW_GROUP.POS_ABS) && (mask & ROW_GROUP.POS_REL)) throw new WireError('invalid_message', 'both position groups set');
   if ((mask & ROW_GROUP.TILT_ABS) && (mask & ROW_GROUP.TILT_REL)) throw new WireError('invalid_message', 'both tilt groups set');
   if ((mask & ROW_GROUP.ERA_ADD) && (mask & ROW_GROUP.ERA_RESET)) throw new WireError('invalid_message', 'both era groups set');
@@ -248,6 +258,14 @@ export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, b
     writer.varint(packetTick - tick);
   }
   if (mask & ROW_GROUP.AUXILIARY) writer.string(fields.auxiliaryJson || '', 512);
+  if (mask & ROW_GROUP.WRECK_BODY) {
+    const body = fields.wreckBody;
+    writer.u8(body ? (1 | (body.asleep ? 2 : 0)) : 0);
+    if (body) {
+      writer.i32(body.x); writer.i32(body.y); writer.i32(body.z);
+      writer.i16(body.qx); writer.i16(body.qy); writer.i16(body.qz); writer.i16(body.qw);
+    }
+  }
 }
 
 /**
@@ -261,7 +279,7 @@ export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: n
   const entityId = reader.u8();
   if (entityId < 1 || entityId > MAX_ENTITIES) throw new WireError('range', `entity id out of range: ${entityId}`);
   const mask = reader.varint();
-  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 17 bits');
+  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 19 bits');
   if ((mask & ROW_GROUP.POS_ABS) && (mask & ROW_GROUP.POS_REL)) throw new WireError('invalid_message', 'both position groups set');
   if ((mask & ROW_GROUP.TILT_ABS) && (mask & ROW_GROUP.TILT_REL)) throw new WireError('invalid_message', 'both tilt groups set');
   if ((mask & ROW_GROUP.ERA_ADD) && (mask & ROW_GROUP.ERA_RESET)) throw new WireError('invalid_message', 'both era groups set');
@@ -302,6 +320,18 @@ export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: n
     fields.tick = packetTick - age;
   } else fields.tick = packetTick;
   if (mask & ROW_GROUP.AUXILIARY) fields.auxiliaryJson = reader.string(512);
+  if (mask & ROW_GROUP.WRECK_BODY) {
+    const flags = reader.u8();
+    if (flags & ~3) throw new WireError('range', `wreck body flags out of range: ${flags}`);
+    if (flags & 1) {
+      const x = reader.i32(), y = reader.i32(), z = reader.i32();
+      const qx = reader.i16(), qy = reader.i16(), qz = reader.i16(), qw = reader.i16();
+      if (Math.max(Math.abs(qx), Math.abs(qy), Math.abs(qz), Math.abs(qw)) > WRECK_BODY_Q_SCALE) {
+        throw new WireError('range', 'wreck body quaternion out of range');
+      }
+      fields.wreckBody = { x, y, z, qx, qy, qz, qw, asleep: (flags & 2) !== 0 };
+    } else fields.wreckBody = null;
+  }
   return { entityId, mask, fields, mirrors, era };
 }
 

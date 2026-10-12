@@ -24,7 +24,7 @@ import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type Aerial
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
-import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
+import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -48,11 +48,17 @@ import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { breakShardsFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
+import { createDebrisPhysics } from './debrisPhysics.ts';
+import { createCollapseBodies, type CollapseBodies } from './collapseBodies.ts';
+import { createPropFracture, type PropFracture, type PropFractureRequest } from './propFracture.ts';
+import { createWreckEnvironment } from '../sim/wreckTurrets.ts';
+import type { RigidEnvironment } from '../sim/rigidBody.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
@@ -92,6 +98,8 @@ interface FxHeightField {
 /** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
+  /** Who takes a fracture-ready destructible kind's live break (props.ts setPropFracture). */
+  setPropFracture?(handler: ((request: PropFractureRequest) => boolean) | null): void;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
   /** the battle world's raycast (terrain and every live collider), the one the shells sweep; a drone flying home avoids it */
   raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
@@ -102,6 +110,9 @@ export interface FxWorldSeam {
    *  match; presentation only (the sim's overlay never carries marks), called once per mark at event time */
   clearCoverAt?(x: number, z: number, radiusM: number): void;
   readonly mapId?: string;
+  /** the world's static records (a collapse's pieces land on and against them) */
+  getObstacles?(): readonly CollisionRecord[];
+  getColliders?(): readonly CollisionRecord[];
 }
 
 interface FxOptions {
@@ -961,6 +972,9 @@ const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0
  * fx seed and live presentation-entity resolver
  * @returns {object} Fx per ARCHITECTURE §3.8.2
  */
+/** The live fx runtime's turret-landing listener (one at a time: a new runtime replaces the last one's). */
+let detachTurretLandingDust: (() => void) | null = null;
+
 export function createFx(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
@@ -1037,6 +1051,31 @@ function* createFxSteps(
       col3(0xffb662, _strkO.col); _strkO.alpha = 0.5 + 0.4 * heat; _strkO.seed = rng();
       _strkO.birthOffset = birthOffset;
       particles.emit('sparks', _strkO);
+    }
+  });
+  // physics lane (2026-10-10): a popped turret is a rigid body now; where it hits the ground (or a hull, a wall) its own
+  // dust kicks out round the impact, sized by how fast it fell — not on a timer beside the hull
+  detachTurretLandingDust?.();
+  detachTurretLandingDust = onTurretLanding((x, y, z, speed) => {
+    const gy = groundY(x, z);
+    const ground = heightField?.getGroundType?.(x, z) ?? 'medium';
+    updateDryDustColors(ground);
+    const k = Math.min(1, Math.max(0.25, (speed - 2) / 8));
+    const count = 4 + Math.round(8 * k);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + rng() * 0.6;
+      const out = (1.2 + rng() * 1.6) * (0.5 + k);
+      _puffO.pos[0] = x + Math.cos(a) * 0.6; _puffO.pos[1] = Math.max(y, gy) + 0.15 + rng() * 0.3; _puffO.pos[2] = z + Math.sin(a) * 0.6;
+      _puffO.vel[0] = Math.cos(a) * out + COLUMN_WIND_X * 0.3;
+      _puffO.vel[1] = 0.35 + rng() * 0.9 * k;
+      _puffO.vel[2] = Math.sin(a) * out + COLUMN_WIND_Z * 0.3;
+      _puffO.life = 1.6 + rng() * 1.4;
+      _puffO.size0 = (0.6 + rng() * 0.4) * (0.7 + 0.6 * k); _puffO.size1 = (2.0 + rng() * 1.2) * (0.7 + 0.6 * k);
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+      col3(dustColor0, _puffO.col0); col3(dustColor1, _puffO.col1);
+      _puffO.alpha = 0.34 + 0.24 * k; _puffO.grav = 0.25;
+      _puffO.birthOffset = 0;
+      particles.emit('smoke', _puffO);
     }
   });
   const group = new THREE.Group();
@@ -1121,10 +1160,41 @@ function* createFxSteps(
   // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
   const scars: StructureScars | null = mediaTier ? null : createStructureScars();
   if (scars) group.add(scars.mesh);
+  // (dcore 2026-10-10, the owner: "just let physics work") a building comes down as its own pieces, bodies in the
+  // presentation's debris pool (fx/collapseBodies.ts over fx/debrisPhysics.ts); the phone keeps the mask's crumble
+  let bodiesWorld: FxWorldSeam | null = null;
+  let bodiesEnv: RigidEnvironment | null = null;
+  // one pool for a building's falling pieces: its collapse's and its walls' broken cells (structureFracture.ts)
+  const debrisPool = mediaTier && structMask && structDebris ? createDebrisPhysics({ capacity: 128 }) : null;
+  let stagesRef: StructureStages | null = null;
+  // (dcore 2026-10-11) a fracture-ready destructible kind (the redesigned sheds) comes apart as its own pieces in the pool
+  const propFracture: PropFracture | null = debrisPool ? createPropFracture({ pool: debrisPool, group, now: () => particles.getTime(),
+    onLanding: (x, y, z, speed, mass) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, null); } }) : null;
+  const bodies: CollapseBodies | null = debrisPool ? createCollapseBodies({
+    pool: debrisPool,
+    alsoLive: () => (stagesRef?.liveBodies() ?? 0) + (propFracture?.liveBodies() ?? 0) > 0,
+    group,
+    materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
+    groundAt: (x, z) => deformedGroundY(x, z),
+    environment: () => {
+      const w = world ? world() : null;
+      if (w !== bodiesWorld) {
+        bodiesWorld = w;
+        bodiesEnv = w?.getObstacles ? createWreckEnvironment((x, z) => deformedGroundY(x, z), w.getObstacles(), w.getColliders?.() ?? []) : null;
+      }
+      return bodiesEnv;
+    },
+    onLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); },
+    onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
+    hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
+  }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15 })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15, bodies,
+      pool: debrisPool,
+      onPieceLanding: (x, y, z, speed, mass, id) => { if (blast) pieceLandingFx(blast, x, y, z, speed, mass, lookOf(id)); } })
     : null;
+  stagesRef = stages;
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   let patchedWorld: FxWorldSeam | null = null;
@@ -1133,6 +1203,7 @@ function* createFxSteps(
     const w = world();
     if (!w || w === patchedWorld || typeof w.patchStructureMaterials !== 'function') return;
     patchedWorld = w;
+    if (propFracture) w.setPropFracture?.((request) => propFracture.take(request));
     bucketMaterials.clear();
     // every bucket material once, its shadow depth materials among them (role 'depth')
     w.patchStructureMaterials((material, info) => {
@@ -5314,6 +5385,8 @@ function* createFxSteps(
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
+      bodies?.update(tickDt);
+      propFracture?.update();
       battleFreshS += tickDt;
       syncColumnAnchors(resolveSubject);
       updateClockDrivenLights();
@@ -5345,8 +5418,10 @@ function* createFxSteps(
         const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
         if (blast) {
           // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
-          const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
-          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple);
+          // (a shaft that came down as bodies falls where its drums fall: its dust is a collapse's, not the scripted line's)
+          const asBodies = e.stage === 'collapsed' && !!bodies?.took(e.structureId);
+          const topple = e.stage === 'collapsed' && !asBodies ? structureTopple(anat, e) : null;
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple, asBodies);
         }
         else phoneStageBeat(e);
       });
@@ -6304,6 +6379,7 @@ function* createFxSteps(
       craters?.reset();
       structMask?.reset();
       structDebris?.reset();
+      propFracture?.reset();
       stages?.reset();
       skirtHead = 0; skirtCount = 0;
       lastBlast.structureId = -1;

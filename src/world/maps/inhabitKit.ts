@@ -65,6 +65,9 @@ export interface DestructiblePropType {
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** (the destructible-kits lane, 2026-10-10) The solids the pool refit derives the kind's collision from in place of
+   * its full build (a fracture-ready kind is hundreds of boards: their envelopes, no stream draws). */
+  collisionBuild?: () => THREE.BufferGeometry;
   /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
   castShadow?: boolean;
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them

@@ -193,7 +193,28 @@ vStructRoof = 0.0;` : ''}
         }
         float u = clamp( ( t - ${FRONT_T0.toFixed(2)} * ( 1.0 - side ) ) / ${FRONT_T.toFixed(2)} * ( 1.0 + 0.8 * side ), 0.0, 1.0 );
         float front = eave * ( 1.0 - pow( u, 1.5 ) );
+        // (2026-10-10, the owner: "make their collapses much more natural") a building of storeys pancakes: the front holds
+        // at each floor line, then the storey over it drops onto the one below
+        if ( eave > 5.2 ) {
+          float k = front / 3.0;
+          front = ( floor( k ) + smoothstep( 0.62, 1.0, fract( k ) ) ) * 3.0;
+        }
         float roof = step( eave - 0.05, p.y );
+        // a wall gives first: the face the blow struck leans in about its foot as it comes down, top first, gravity-eased
+        // (its corners with it), ahead of the rest of the walls the front takes standing
+        if ( roof < 0.5 && side > 0.5 ) {
+          vec2 bd = normalize( vec2( SA.z, SA.w ) + vec2( 1e-6, 0.0 ) );
+          float ca = cos( SF.w ), sa = sin( SF.w );
+          vec2 bb = vec2( bd.x * ca - bd.y * sa, bd.x * sa + bd.y * ca );
+          float e = abs( bb.x ) * max( SF.y, 0.5 ) + abs( bb.y ) * max( SF.z, 0.5 );
+          float sv = dot( p.xz, -bd ), r = sv - e;
+          float tl = max( 0.0, t - 0.08 );
+          float th = min( 1.1, 4.9 * tl * tl / max( 2.0, eave ) ) * smoothstep( 0.5, 0.85, side );
+          float c = cos( th ), sn = sin( th );
+          float r1 = r * c - p.y * sn, y1 = r * sn + p.y * c;
+          p.xz += -bd * ( r1 - r );
+          p.y = max( 0.0, y1 );
+        }
         if ( roof > 0.5 ) {
           // the roof drops into the building as the blow lands, its middle first (the farther from the eaves line, the
           // deeper it sags), and rests on what still stands: it rides the front down, its pitch flattening
@@ -201,7 +222,8 @@ vStructRoof = 0.0;` : ''}
           float bx = p.x * ca - p.z * sa, bz = p.x * sa + p.z * ca;
           float mid = 1.0 - clamp( max( abs( bx ) / max( SF.y, 0.5 ), abs( bz ) / max( SF.z, 0.5 ) ), 0.0, 1.0 );
           float tr = max( 0.0, t - 0.2 );
-          float drop = 4.9 * tr * tr + 1.4 * mid * smoothstep( 0.0, 0.5, tr );
+          // ... and it tips toward the wall that gave first (it loses that eave's support before the others')
+          float drop = 4.9 * tr * tr + 1.4 * mid * smoothstep( 0.0, 0.5, tr ) + 1.6 * side * smoothstep( 0.05, 0.8, t );
           // (dcore 2026-10-09, waves 294a/b: debris vanishing in view at the swap) as the front reaches the base the
           // roof's wreck settles into the heap rather than lying on it, so the fold takes nothing the eye still sees
           // (wave 322: "the roof skin vanishes" — flattened to a third of its pitch, a lid at the eaves the eye lost) it keeps

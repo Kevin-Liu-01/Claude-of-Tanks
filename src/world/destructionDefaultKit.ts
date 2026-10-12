@@ -642,9 +642,10 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
   const mesh = out.mesh;
   const ground = anatomy.storeys[0];
   if (!ground) return { cuts: [], hides: [{ section: null, partClass: null }] };
-  // the stubs: ragged runs along each ground-storey face, taller at a masonry building's corners
+  // the stubs: ragged runs along each ground-storey face, taller at a masonry building's corners (a collapse as bodies
+  // keeps its own walls' stubs: fx/collapseBodies.ts)
   const stub = anatomy.remnant.stubHeightM;
-  for (const face of ground.faces) {
+  for (const face of out.bodies ? [] : ground.faces) {
     const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
     if (!mesh.begin(slot.bucket, 'remnant')) continue;
     const yaw = Math.atan2(face.out[0], face.out[2]) + Math.PI / 2;
