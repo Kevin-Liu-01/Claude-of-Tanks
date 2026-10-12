@@ -31,8 +31,9 @@ function boxWorld(boxes, groundY = 0) {
     },
   };
 }
-function carrier(id, x, z, yaw = 0) {
-  return { id, team: 'alpha', isPlayer: true, state: { pos: new Vector3(x, 0, z), yaw, turretYaw: 0, speed: 0 }, combat: { destroyed: false },
+// Owner 2026-10-12: the avoidance flies bot airframes only; a human pilot flies wherever they steer (deploy 212).
+function carrier(id, x, z, yaw = 0, { bot = true } = {}) {
+  return { id, team: 'alpha', bot, isPlayer: !bot, state: { pos: new Vector3(x, 0, z), yaw, turretYaw: 0, speed: 0 }, combat: { destroyed: false },
     input: { auxiliaryBits: PLAYER_ACTION_BITS.DRONE, throttle: 1, steer: 0, fire: false, brake: false, aimPoint: new Vector3() } };
 }
 /** Fly one sortie; return the airframe track and whether any fixed-step segment crossed a building. */
@@ -54,7 +55,7 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   return { track, crossed, shell };
 }
 
-// 1. Ordered straight through a 14 m block: the drone climbs over or turns around it, never through, and gets past.
+// 1. A bot ordered straight through a 14 m block: the drone climbs over or turns around it, never through, and gets past.
 {
   const building = new Box3(new Vector3(-12, 0, 40), new Vector3(12, 14, 60));
   const world = boxWorld([building]);
@@ -70,7 +71,7 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   console.log(`droneAvoidance: building crossed ${over ? 'over the roof' : 'around the side'}; peak ${Math.max(...track.map(p => p.y)).toFixed(1)} m`);
 }
 
-// 2. A wall too tall to top and too wide to skirt inside the look-ahead: the drone holds a standoff hover.
+// 2. A wall too tall to top and too wide to skirt inside the look-ahead: a bot's drone holds a standoff hover.
 {
   const wall = new Box3(new Vector3(-400, 0, 30), new Vector3(400, 400, 34));
   const world = boxWorld([wall]);
@@ -83,11 +84,15 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   console.log(`droneAvoidance: boxed in, standing off ${(wall.min.z - last.z).toFixed(1)} m from the wall`);
 }
 
-// 3. Terrain: a shallow dive at the ground pulls up instead of burying the airframe.
+// 3. Terrain: a bot's shallow dive at the ground pulls up; a human pilot's same dive goes all the way down.
 {
   const world = boxWorld([]);
   const { track } = fly(world, carrier('pilot', 0, 0), new Vector3(0, -40, 120), 8);
-  assert.ok(track.every(p => p.y > DRONE_AVOIDANCE.clearanceM * .4), 'the airframe never meets the ground it was ordered into');
+  assert.ok(track.every(p => p.y > DRONE_AVOIDANCE.clearanceM * .4), 'a bot airframe never meets the ground it was ordered into');
+  const human = fly(world, carrier('pilot', 0, 0, 0, { bot: false }), new Vector3(0, -40, 120), 8).track;
+  const lowest = Math.min(...human.map(p => p.y));
+  assert.ok(lowest < .25, `a human pilot flies as low as they steer, to the ground (lowest ${lowest.toFixed(2)} m)`);
+  console.log(`droneAvoidance: human dive reaches ${lowest.toFixed(2)} m; bot dive holds above ${Math.min(...track.map(p => p.y)).toFixed(2)} m`);
 }
 
 // 4. An attack run is not an obstacle: a tank in front of the ground stays the target and the drone is not turned.
@@ -104,11 +109,11 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   assert.equal(droneTankAlong([target], position, before.clone().normalize(), 80, 'pilot'), null, 'a wreck is no longer a target');
 }
 
-// 5. Launch under a deck: the climb stops short of the overhang, never through it.
+// 5. Launch under a deck (any pilot): the climb stops short of the overhang, never through it.
 {
   const deck = new Box3(new Vector3(-6, 7, -6), new Vector3(6, 8, 6));
   const world = boxWorld([deck]);
-  const entity = carrier('pilot', 0, 0);
+  const entity = carrier('pilot', 0, 0, 0, { bot: false });
   const { track, crossed } = fly(world, entity, new Vector3(0, 6, 0), AERIAL_RULES.drone.launchS, { boxes: [deck], throttleAfter: 0 });
   assert.equal(crossed, false, 'launch never rises through the deck');
   const top = Math.max(...track.map(p => p.y));
@@ -131,4 +136,15 @@ function fly(world, entity, aim, seconds, { boxes = [], throttleAfter = 1 } = {}
   assert.equal(free.length, open.length);
   assert.ok(free.every((p, i) => p.distanceTo(open[i]) < 1e-9), 'open air: the world probe never perturbs flight');
 }
-console.log('droneAvoidance: building routed, boxed-in standoff, ground pull-up, attack-run exemption, launch under a deck, determinism and open-air parity passed');
+
+// 8. Deploy-212 parity for human pilots: buildings and ground ahead never bend a human's steering (after the launch
+// climb, which every pilot shares); contact is the shell sweep's alone.
+{
+  const building = new Box3(new Vector3(-12, 0, 40), new Vector3(12, 14, 60));
+  const aim = new Vector3(0, 2, 140);
+  const human = () => carrier('pilot', 0, 0, 0, { bot: false });
+  const free = fly(null, human(), aim, 8).track, walled = fly(boxWorld([building]), human(), aim, 8).track;
+  assert.equal(free.length, walled.length);
+  assert.ok(free.every((p, i) => p.distanceTo(walled[i]) < 1e-9), 'a human pilot steers through the world probe untouched');
+}
+console.log('droneAvoidance: bot building routed, boxed-in standoff, bot ground pull-up, human free flight to the ground, attack-run exemption, launch under a deck, determinism, open-air and deploy-212 human parity passed');
