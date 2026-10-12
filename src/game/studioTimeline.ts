@@ -10,6 +10,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export const STUDIO_MIN_DURATION_MS = 1000;
 export const STUDIO_MAX_DURATION_MS = 20000;
+/** (fx 9, 2026-10-11, the coordinator: judge a smoke screen's linger past its 18 s sight block) a take may raise its own
+ *  timeline cap (storyboard maxDurationMs) up to this; every other take keeps the 20 s cap */
+export const STUDIO_FILM_MAX_DURATION_MS = 60000;
 const STUDIO_DEFAULT_DURATION_MS = 12000;
 const STUDIO_MAX_CAMERA_SHOTS = 32;
 const STUDIO_MAX_CAMERA_CUES = 48;
@@ -77,6 +80,8 @@ export interface ActorTrack {
 
 export interface StoryboardInput {
   durationMs?: RuntimeValue;
+  /** a take's own timeline cap (ms, 20 000..STUDIO_FILM_MAX_DURATION_MS); absent: the 20 s cap */
+  maxDurationMs?: RuntimeValue;
   shots?: readonly CameraShotInput[] | RuntimeValue;
   cameraCues?: readonly CameraCueInput[] | RuntimeValue;
   actorTracks?: readonly ActorTrackInput[] | RuntimeValue;
@@ -85,6 +90,8 @@ export interface StoryboardInput {
 export interface Storyboard {
   version: 2;
   durationMs: number;
+  /** present only when the take raised its own cap past 20 s */
+  maxDurationMs?: number;
   shots: CameraShot[];
   cameraCues: CameraCue[];
   actorTracks: ActorTrack[];
@@ -151,16 +158,23 @@ const finite = (value: RuntimeValue, fallback = 0): number => Number.isFinite(Nu
   : fallback;
 const clamp = (value: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, value));
 
-export function clampStudioDuration(value: RuntimeValue): number {
+export function clampStudioDuration(value: RuntimeValue, maxMs: number = STUDIO_MAX_DURATION_MS): number {
   return Math.round(clamp(
     finite(value, STUDIO_DEFAULT_DURATION_MS),
     STUDIO_MIN_DURATION_MS,
-    STUDIO_MAX_DURATION_MS,
+    maxMs,
   ));
 }
 
+/** A take's own timeline cap: the 20 s cap, or its storyboard's maxDurationMs up to STUDIO_FILM_MAX_DURATION_MS. */
+function storyboardMaxMs(value: RuntimeValue): number {
+  const asked = finite(value, STUDIO_MAX_DURATION_MS);
+  return Math.round(clamp(asked, STUDIO_MAX_DURATION_MS, STUDIO_FILM_MAX_DURATION_MS));
+}
+
 export function clampStudioTime(value: RuntimeValue, durationMs: RuntimeValue = STUDIO_DEFAULT_DURATION_MS): number {
-  return Math.round(clamp(finite(value, 0), 0, clampStudioDuration(durationMs)));
+  // a storyboard's duration is held to its own cap where it is normalized; here only the film ceiling applies
+  return Math.round(clamp(finite(value, 0), 0, clampStudioDuration(durationMs, STUDIO_FILM_MAX_DURATION_MS)));
 }
 
 function vec3(value: RuntimeValue, fallback: StudioVec3): StudioVec3 {
@@ -250,7 +264,8 @@ function normalizeActorKey(raw: ActorKeyInput | undefined, index: number, durati
 
 /** Return a canonical, bounded, JSON-safe storyboard. */
 export function normalizeStoryboard(input: StoryboardInput = {}): Storyboard {
-  const durationMs = clampStudioDuration(input.durationMs);
+  const maxMs = storyboardMaxMs(input.maxDurationMs);
+  const durationMs = clampStudioDuration(input.durationMs, maxMs);
   const sourceShots = Array.isArray(input.shots) ? input.shots : [];
   const normalizedShots: CameraShot[] = [];
   const shotCount = Math.min(sourceShots.length, STUDIO_MAX_CAMERA_SHOTS);
@@ -286,7 +301,7 @@ export function normalizeStoryboard(input: StoryboardInput = {}): Storyboard {
     if (normalizedKeys.length) actorTracks.push({ actor, keys: normalizedKeys });
   }
 
-  return { version: 2, durationMs, shots, cameraCues, actorTracks };
+  return { version: 2, durationMs, shots, cameraCues, actorTracks, ...(maxMs > STUDIO_MAX_DURATION_MS ? { maxDurationMs: maxMs } : {}) };
 }
 
 export function upsertCameraShot(storyboard: StoryboardInput, shot: CameraShotInput): Storyboard {
