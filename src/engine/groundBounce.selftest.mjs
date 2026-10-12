@@ -157,7 +157,8 @@ assert.match(lighting, /float cotAmbVis = cotSunVis;\s*#ifdef OPAQUE\s*if \( uCo
 assert.match(lighting, /uCotShadowFacing \);\s*\}\s*\/\/ 2026-10-04 \(groundBounce\.ts uCotShadowDepth\)[^\n]*\n[^\n]*\n\s*cotAmbVis = 1\.0 - \( 1\.0 - cotAmbVis \) \* uCotShadowDepth;\s*#endif\s*vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotAmbVis \);/,
   'the depth scales a solid face\'s shadowed share before both dims read it (the cards keep theirs: inside a crown they hide each other\'s sky)');
 // (2026-10-05: by the deck's closure — a broken deck's gaps keep their circumsolar sky, its cells shade through the map)
-assert.match(lighting, /groundBounceUniforms\.uCotShadowDepth\.value = 1 - Math\.min\(1, Math\.max\(0, model\.overcast \* model\.deckClosure\)\) \* lightTune\('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST\);/,
+// (2026-10-09, the shadows lane: and by a thin deck's beam — the sun's glow through it is circumsolar sky an occluder hides)
+assert.match(lighting, /groundBounceUniforms\.uCotShadowDepth\.value = 1 - Math\.min\(1, Math\.max\(0, model\.overcast \* model\.deckClosure \* \(1 - \(model\.deckBeam \?\? 0\)\)\)\)\s*\* lightTune\('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST\);/,
   'the grounded rig: the dims fade with the closed share of the overcast (QA: SHADOW_DIM_OVERCAST)');
 assert.match(lighting, /groundBounceUniforms\.uCotShadowDepth\.value = 1;\s*groundBounceUniforms\.uCotShadowFacing\.value = 0;/, 'the legacy rig keeps them whole');
 assert.match(lighting, /const SHADOW_DIM_OVERCAST = 1;/);
