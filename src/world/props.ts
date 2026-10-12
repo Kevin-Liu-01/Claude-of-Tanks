@@ -1,6 +1,7 @@
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { boxCorners, convexSlabs, slabParts } from './slabCollision.ts';
 import { rubbleCollisionRecords } from './rubbleCollision.ts'; // the hitbox lane, round 3, 2026-10-09
+import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -512,6 +513,17 @@ interface PropsSettings {
   outcrops: number;
   craters: number;
   rubblePiles: number;
+  /**
+   * The hitbox lane (round 3, 2026-10-12; the coordinator's ruling on Blackglass's fairness, map revival's banded halves):
+   * the point the deployments turn about. Once a pile's records follow the chunks it draws, where the piles lie decides
+   * whose cover they are, so the street rubble balances along the deployments' axis (from the player's deployment to the
+   * enemies' centroid) through this point, band by band: the piles in the band `band` m wide at a signed distance from
+   * the point are counted against the band at the same distance on the other side, and a pile whose seat lies in the
+   * fuller of the two (every rubble record so far counts, a ruin's included) waits for a seat in the other. Whole halves
+   * can even out while the fight zone still leans. The rubble's own stream draws on, so no other prop moves. Absent = no
+   * balance (every other map).
+   */
+  rubbleHalvesAbout?: { x: number; z: number; band?: number };
   wrecks: number;
   cropFields: number;
   cropForm?: 'harvest' | 'wet-upright' | 'grain';
@@ -8703,6 +8715,26 @@ ${snowCap ? `
   function placeStreetRubble(): void {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
+    // (P.rubbleHalvesAbout) the band a seat lies in along the deployments' axis through the turning point, and its side
+    const halvesAbout = P.rubbleHalvesAbout ?? null;
+    const bandM = halvesAbout?.band ?? 75;
+    const bands = new Map<number, number>(), axis = [0, 1];
+    const bandKey = (x: number, z: number): number => {
+      const d = (x - halvesAbout!.x) * axis[0] + (z - halvesAbout!.z) * axis[1];
+      return (d < 0 ? -1 : 1) * (Math.floor(Math.abs(d) / bandM) + 1);
+    };
+    const inPlay = (x: number, z: number): boolean => Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M;
+    if (halvesAbout) {
+      const ex = L.spawns.enemies.reduce((acc, e) => acc + e.x, 0) / L.spawns.enemies.length - L.spawns.player.x;
+      const ez = L.spawns.enemies.reduce((acc, e) => acc + e.z, 0) / L.spawns.enemies.length - L.spawns.player.z;
+      const len = Math.hypot(ex, ez) || 1;
+      axis[0] = ex / len; axis[1] = ez / len;
+      for (const record of obstacles) {
+        if (record.kind !== 'rubble') continue;
+        const cx = (record.min[0] + record.max[0]) / 2, cz = (record.min[2] + record.max[2]) / 2;
+        if (inPlay(cx, cz)) { const key = bandKey(cx, cz); bands.set(key, (bands.get(key) ?? 0) + 1); }
+      }
+    }
     const placeRubbleCandidate = (candidateIndex: number): boolean => {
       const extension = candidateIndex % 4 === 0 ? 90 : 0;
       const x = town.x0 - extension + rrng() * (town.x1 - town.x0 + extension * 2);
@@ -8729,6 +8761,10 @@ ${snowCap ? `
       if (tankWreckSpots.some((w) => Math.hypot(Math.max(0, Math.abs(seat[0] - w.x) - w.hx), Math.max(0, Math.abs(seat[1] - w.z) - w.hz)) < pr + 0.5)) {
         return false;
       }
+      // (P.rubbleHalvesAbout) a seat in the fuller of its band and the band mirroring it waits for one in the other
+      const key = halvesAbout && inPlay(seat[0], seat[1]) ? bandKey(seat[0], seat[1]) : 0;
+      if (key !== 0 && (bands.get(key) ?? 0) > (bands.get(-key) ?? 0)) return false;
+      if (key !== 0) bands.set(key, (bands.get(key) ?? 0) + 1);
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
