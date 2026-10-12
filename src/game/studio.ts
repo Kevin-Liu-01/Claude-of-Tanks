@@ -1685,6 +1685,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function releaseStudioFx(): void {
     cinematics?.dispose();
     cinematics = null;
+    // (fx 8n) the battle-quality salvos' screens go with the Studio's FX (fx.resetAll has dropped their presentation)
+    studioScreens.length = 0;
     fxSettings = normalizeStudioFx(null);
     trackAdapters.clear();
   }
@@ -5002,7 +5004,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     effectLog.length = 0;
     activeEffectIds.clear();
     fx.resetAll();
-    studioScreens.length = 0;
     studioStages.clear();
     resetStudioGround(true);
     fx.setFrozen(false);
