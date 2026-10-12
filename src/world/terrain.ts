@@ -47,7 +47,7 @@ import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades, alignPolde
   stampRoadBorderCorridors, usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
 import { buildRoadStationOrigins, usesPhysicalRoadStations, buildPhysicalRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
-import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
+import { stampWorkedGroundMask, stampYardWearMask, type WorkedGroundPatch, type YardWearBox } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
@@ -382,6 +382,8 @@ interface TerrainSettings {
   /** Round 57 (2026-09-24): authored rail spurs — maps/mapKits.ts lays the track, the berth keeps vegetation and scattered props off it. */
   railSpurs?: readonly RailSpurConfig[];
   workedGround?: readonly WorkedGroundPatch[];
+  /** The map-revival lane (2026-10-11): the yards' trodden soil, a box per building (workedGroundMask.ts stampYardWearMask). */
+  yardWear?: readonly YardWearBox[];
   /** Use authored activity footprints instead of blanket settlement wear; 'plots' lays the village's ground out in
    * garden plots running back from its streets (makeMaskTexture villagePlotWear). */
   villageWear?: 'activity-patches' | 'plots';
@@ -491,6 +493,14 @@ interface SplatConfig {
   /** Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road"):
    * the share of the water standing in a vegetated map's ruts and the mud ringing it (default 1; a dry month's roads 0). */
   roadPuddles?: number;
+  /** The map-revival lane (2026-10-11, gauntlet wave 380 on Earthrise Basin: the regolith "a high-frequency wavy normal-map
+   * pattern that reads as crumpled foil or rippled water"): the ground's detail normal (the sourced sets' relief) as a
+   * share of its strength (default 1, every other map). */
+  detailNormal?: number;
+  /** The map-revival lane (2026-10-11; Olympus Basin, whose dirt layer is the dark basalt sand of its drifts: its tracks
+   * drew as asphalt): the layer the packed carriageway is made of — 'dirt' (the dirt layer, every map's by default) or
+   * 'ground' (the base layer: the regolith packed under the wheels). */
+  roadLayer?: 'dirt' | 'ground';
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -3889,6 +3899,9 @@ export function makeMaskTexture(
   if (layout.terrain.workedGround?.length) {
     stampWorkedGroundMask(px, s, MAP_SIZE, layout.terrain.workedGround, seedNoi);
   }
+  if (layout.terrain.yardWear?.length) {
+    stampYardWearMask(px, s, MAP_SIZE, layout.terrain.yardWear, seedNoi);
+  }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
   // store is premultiplied, so putImageData ZEROES the road/rut/marsh RGB
@@ -4131,6 +4144,8 @@ uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y f
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
+uniform float uDetailGain; // the map-revival lane: the detail normal's strength (splat.detailNormal, default 1)
+uniform float uRoadFromG;  // the map-revival lane: 1 when the carriageway is packed from the base layer (splat.roadLayer 'ground')
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -4219,6 +4234,7 @@ float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
+float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its planted sheet satin, not a ditch's mirror
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
@@ -5736,8 +5752,18 @@ void splatCompute() {
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
         // makes it a mirror of the sky)
-        cropCol = mix(vec3(0.040, 0.046, 0.040), vec3(0.060, 0.095, 0.035), 0.25 + 0.20 * jit);
-        water = 1.0;
+        // (Caldera round 4, the map-revival lane; gauntlet wave 359: "glittering blue-white noise", "the water wants muddy
+        // reflections or paddy surfaces") a planted paddy: brown water between the rows of young rice — the rows a green
+        // stripe near the eye with the water between them, past it a green haze over the water; its sheen satin (the
+        // roughness stage, gPaddyWater), so the clouds it mirrors blur into the sky's tone instead of glittering
+        float seedRow = smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(across * 20.94)) * tileVis(0.3);
+        cropCol = mix(vec3(0.050, 0.050, 0.036), vec3(0.070, 0.105, 0.040), 0.45 + 0.20 * jit);
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.7, seedRow * 0.55);
+        // (cap9's look: from the establishing height the sheet still mirrored the cumulus as a mottle of blue-white —
+        // the young rice covers about a third of a planted paddy's water seen across it, so past the rows' fade the haze
+        // takes that share of the sheet)
+        water = (1.0 - seedRow * 0.5) * mix(0.68, 1.0, tileVis(0.3));
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.55, 0.3 * (1.0 - tileVis(0.3)));
       } else if (crop < 9.5) {
         cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
         rows = sin(across * 20.94) * 0.05 * tileVis(0.3);
@@ -5916,6 +5942,7 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
+      gPaddyWater = gFieldWater;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (uLandTier < 0.5) {
         // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
@@ -5936,8 +5963,12 @@ void splatCompute() {
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
-        float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
-        a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
+        // (Caldera round 4, wave 359: "no paddy grid" — the bunds took the field's own green or the soil's dark, so past the
+        // near fields the grid between the water and the rice was gone) the bund a little wider, its cut grass a paler,
+        // drier green over the earth than the rice or the water either side, so the grid holds into the middle distance
+        float bund = (1.0 - smoothstep(0.36, 0.66, edgeM)) * (1.0 - track);
+        vec3 bundTop = mix(soilF * 1.05, vec3(1.55, 1.78, 0.78) * baseL * bright, 0.55 + 0.25 * n1h);
+        a.rgb = mix(a.rgb, bundTop, bund * landW);
       } else {
         // a dry stone wall's footing: limestone rubble 0.8 m wide, broken into its stones and gaps and grown over in
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
@@ -5958,11 +5989,23 @@ void splatCompute() {
       if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
           // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
-          float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
-          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch);
+          // (2026-10-11, the map-revival lane; the sealed lane's vehicle frames on Tidegate Polders: "a drainage stream's
+          // water surface runs down the dike face") still water lies level: the ditch's water shows only where the ground
+          // is level (gone by ~4 degrees); on a tilted field (the road embankments' and the dykes' aprons lie at 5-7
+          // degrees) the ditch is its dug channel — a dark, damp bottom of wet soil and rushes between its rank banks, no
+          // water — and a dyke's batter (18 degrees) carries no ditch at all (the channel gone by ~12 degrees). The slope
+          // is the face's own (the mesh triangle's) where it is steeper than the smoothed normal's, which still leans to the
+          // sky over the first metres of a rising batter (cap11's frames, gated on the smoothed slope alone: the water ran
+          // a third of the way up a gentle rise from the road, and the channel on the tilted field before the camera went)
+          float ditchSlope = max(slope, 1.0 - abs(faceNrmT.y));
+          float channelGate = 1.0 - smoothstep(0.012, 0.022, ditchSlope);
+          float waterGate = 1.0 - smoothstep(0.0008, 0.0024, ditchSlope);
+          float ditch = (1.0 - smoothstep(0.55, 0.85, edgeM)) * channelGate;
+          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch) * channelGate;
           a.rgb = mix(a.rgb, a.rgb * vec3(0.72, 0.82, 0.70), bank * track * landW);
-          a.rgb = mix(a.rgb, vec3(0.030, 0.036, 0.032), ditch * track * landW);
-          gFieldWater = max(gFieldWater, ditch * track * landW);
+          vec3 ditchFloor = mix(soilF * vec3(0.42, 0.40, 0.36), vec3(0.030, 0.036, 0.032), waterGate);
+          a.rgb = mix(a.rgb, ditchFloor, ditch * track * landW);
+          gFieldWater = max(gFieldWater, ditch * waterGate * track * landW);
         } else {
           // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
           // (wave 71, Frontier's close-up: the track "a ring of dirt … like a decal mask" — "its edge is too clean and too
@@ -6704,7 +6747,10 @@ void splatCompute() {
     // without stamping round marks repeatedly down the road.
     // terrain v2: only on the carriageway (the packed-earth taps ran under every fragment at weight zero)
     if (dW > 0.002) {
-      vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
+      // (the map-revival lane: a map whose dirt layer is not its tracks' — Olympus Basin's basalt sand — packs them from its
+      // base layer, splat.roadLayer; the condition is uniform)
+      vec3 packedRoad = uRoadFromG > 0.5 ? groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB + 4.0).rgb
+        : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
@@ -7306,6 +7352,7 @@ void splatCompute() {
   // ground (a damp matte by ~36 m), only a near puddle holding the sky
   gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);
   gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
+  gSplatRough = mix(gSplatRough, 0.42, gPaddyWater); // (Caldera round 4) a planted paddy's sheet satin, a ditch's a mirror (cap9: 0.26 still mirrored the clouds)
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
@@ -7348,6 +7395,10 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "the water glitters") a flooded paddy's and a
+  // ditch's water lies level: its sheet takes the world's up, not the relief of the ground under it (the splat stage has
+  // flattened its detail), so the sky it mirrors is one sheet and not a glitter of facets
+  if (gFieldWater > 0.001) gN = normalize(mix(gN, vec3(0.0, 1.0, 0.0), gFieldWater));
   // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
   if (dot(gRingGrad, gRingGrad) > 0.0) {
     vec2 ringG0 = -gN.xz / max(gN.y, 0.05);
@@ -7358,7 +7409,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // steep faces under a low sun it rendered as high-contrast bright/dark
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
-  float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
+  float dk = uDetailGain * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
   // Ground lane (2026-10-05, local contrast, step 2 (b'): the ground's mid-scale contrast measured at 0.17–0.28 against
   // photographs' 0.6–0.8; the detail normal at twice its strength was the strongest single ground term, +13 % on Verdant's
   // establishing view): the relief the detail normal carries is raised where its shading mips flat — from ~20 m, whole by
@@ -7649,6 +7700,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
+    shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 }; // the map-revival lane: the detail normal's strength (1 = every other map's today)
+    shader.uniforms.uRoadFromG = { value: S.roadLayer === 'ground' ? 1 : 0 }; // the map-revival lane: the carriageway's layer (0 = every other map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };

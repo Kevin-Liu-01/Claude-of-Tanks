@@ -54,7 +54,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.241,
   beech: 0.292, chestnut: 0.337, holmOak: 0.198, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
-  longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
+  longleafPine: 0.143, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
   'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
   apple: APPLE_COVERAGE,
 });
@@ -117,8 +117,10 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   pinyon: { hue: 0.29, sat: 0.24, light: 0.16 },
   // trees round 5: the longleaf's bright, glossy, yellow-green needles (its seedlings' the same), the cedar of Lebanon's
   // dark blue-green, sugi's deep green awl needles, the Japanese red pine's slender bright needles
-  longleafPine: { hue: 0.265, sat: 0.42, light: 0.2 },
-  longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
+  // (the map-revival lane, Longleaf round 4, 2026-10-11; wave 376: "flat lime-green puffball clumps"): the longleaf's
+  // needles a deeper, duller yellow-green in the crown's mass — the lime was the young shoot's, not the crown's
+  longleafPine: { hue: 0.27, sat: 0.30, light: 0.17 },
+  longleafSeedling: { hue: 0.27, sat: 0.30, light: 0.18 },
   // the buddleia's grey-green, felted leaves
   buddleia: { hue: 0.25, sat: 0.2, light: 0.21 },
   // the winter kinds: the oak's grey-brown twigs, the poplar's olive-brown shoots, the buddleia's dry rust-brown
@@ -829,7 +831,7 @@ function paintBrushTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind
   const p0 = { x: S * 0.5, y: S * 0.95 };
   const longleaf = kind === 'longleafPine';
   const needleL = longleaf ? 0.34 : 0.15, droopN = longleaf ? 0.5 : 0.12;
-  const density = longleaf ? 980 : 480, reach = longleaf ? 0.6 : 0.48, mainLen = longleaf ? 0.56 : 0.78;
+  const density = longleaf ? 560 : 480, reach = longleaf ? 0.6 : 0.48, mainLen = longleaf ? 0.56 : 0.78;
   const sideCount = longleaf ? 1 : 4, splay = longleaf ? 1.75 : 1.3;
   const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
   const shoots: Pt[][] = [main];
@@ -839,7 +841,7 @@ function paintBrushTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind
     shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.35), S * (0.2 + rng() * 0.1) * (1.15 - t * 0.6),
       side * (0.1 + rng() * 0.2), 5));
   }
-  const needleW = Math.max(0.7, S / 256 * 1.2);
+  const needleW = Math.max(0.7, S / 256 * (longleaf ? 1.75 : 1.2));
   const needles: BrushNeedle[] = [];
   for (let si = 0; si < shoots.length; si++) {
     const shoot = shoots[si];
