@@ -97,14 +97,14 @@ Update these when behavior changes. Paths are relative to `docs/`.
 | Document | Scope |
 | --- | --- |
 | [MEDIA-PRODUCTION.md](MEDIA-PRODUCTION.md) | Media production tooling and the owner-directed media rule |
-| [SHOWCASE-LIBRARY.md](SHOWCASE-LIBRARY.md) | Published 88-frame archive, admission contract, review sheets and rebuild procedure |
+| [SHOWCASE-LIBRARY.md](SHOWCASE-LIBRARY.md) | The site fifty, the published media since 2026-10-12, and the retired showcase-r1 library |
 
-The current public presentation is image-led and sourced from a reproducible
-88-frame archive: 13 owner-selected features, 60 approved 4K campaign frames,
-five directed Studio keyframes, and ten deterministic interface captures. The
-manifest lives at `../public/media/showcase-r1/manifest.json`; the landing page,
-field manual, Tank Gallery, and Scene Studio share its filtering and inspection
-component. Six published campaign contact sheets preserve the human
+The current public presentation is sourced from the site fifty: fifty takes
+rendered at 4K in the game engine with their sound, the fifty frames and the
+films (`../public/media/site50-r14/`, picked in
+`../tools/media-r5/site-media/picks.json`). The landing page, field manual and
+Scene Studio share its archive (`archive.json`) through one filtering and
+inspection component. Five contact sheets of the fifty frames preserve the
 visual-review pass; the owner-approved ten-Garage contact sheet documents the
 complete current environment set.
 

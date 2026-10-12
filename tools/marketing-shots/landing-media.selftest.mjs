@@ -3,6 +3,8 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve('.');
+const picks = JSON.parse(await readFile(resolve(root, 'tools/media-r5/site-media/picks.json'), 'utf8'));
+const site50 = `/media/${picks.collection}`;
 const manifest = JSON.parse(await readFile(resolve(root, 'public/media/landing-r1/manifest.json'), 'utf8'));
 const mobileVideoManifest = JSON.parse(await readFile(resolve(root, 'public/media/web-video-r1/manifest.json'), 'utf8'));
 const home = await readFile(resolve(root, 'site/home.html'), 'utf8');
@@ -42,16 +44,12 @@ assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
 assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
 assert.equal(manifest.hero.length, 6, 'hero has six reviewed in-engine stills');
-assert.deepEqual(manifest.hero.slice(0, 4).map((slide) => slide.src), [
-  '/media/featured/f10_studio_urban_crossfire.webp',
-  '/media/featured/f9_studio_fjord_firefight.webp',
-  '/media/featured/f8_studio_m1_firefight.webp',
-  '/media/featured/f6_studio_strv_steinburg_duel.webp',
-], 'the four owner-selected battle captures lead the hero in priority order');
-assert.equal(manifest.hero.some((slide) => slide.src.includes('urban_hero_leo2a6')), false,
-  'the washed-out Leopard frame is retired from the hero');
-assert.ok(manifest.hero.some((slide) => slide.collection === 'action'));
-assert.ok(manifest.hero.some((slide) => slide.collection === 'foreground'));
+assert.deepEqual(manifest.hero.map((slide) => slide.id), picks.home.hero.map((slide) => slide.id),
+  'the hero shows the site fifty picks in their order');
+assert.ok(manifest.hero.every((slide) => slide.src.startsWith(`${site50}/stills/`)),
+  'every hero frame is a site fifty still (owner, 2026-10-11: replace the old media with the new)');
+assert.equal(new Set(manifest.hero.map((slide) => picks.takes[slide.id].map)).size, manifest.hero.length,
+  'each hero frame opens on a different battlefield');
 
 const heroMarkup = home.match(/<div class="v5-hero-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
 assert.equal(heroMarkup.includes('<video'), false, 'hero uses stills, not video');
@@ -66,7 +64,7 @@ for (const slide of manifest.hero) {
   assert.ok((await stat(file)).size > 50_000, `${slide.id} is a substantial image`);
 }
 
-assert.equal(manifest.featureReel.video, '/media/promo-v13/claude-of-tanks-promo-clean.mp4');
+assert.equal(manifest.featureReel.video, `${site50}/films/reel.mp4`);
 assert.equal(manifest.featureReel.width, 1920);
 assert.equal(manifest.featureReel.height, 1080);
 assert.equal(home.split(manifest.featureReel.video).length - 1, 1,
@@ -79,25 +77,29 @@ for (const path of [manifest.featureReel.video, manifest.featureReel.poster]) {
 }
 
 assert.equal('gameplay' in manifest, false, 'the retired duplicate gameplay block is absent from the landing contract');
-assert.equal(home.split('Watch live tank combat').length - 1, 1,
-  'the live-combat heading appears once on the complete-game reel');
-assert.equal(home.split('The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.').length - 1, 1,
-  'the live-combat description appears once on the complete-game reel');
+assert.equal(home.split('Watch tank combat in the game engine').length - 1, 1,
+  'the combat heading appears once on the reel');
+assert.equal(home.split("Every vehicle, shot, impact, fire and wreck in this reel is the game's own, rendered by its engine at 4K.").length - 1, 1,
+  'the combat description appears once on the reel');
+assert.equal(home.includes('Watch live tank combat'), false,
+  'the reel no longer calls its offline 4K renders live combat');
 assert.equal(home.includes('See the complete game in one video'), false,
   'the previous feature-reel heading is retired');
 assert.equal(home.includes('gameplay-urban-overhead-1080.mp4'), false,
   'the duplicate gameplay proxy is not mounted on the landing page');
 
-assert.equal(manifest.relocatedRails.length, 4, 'all non-destruction hero rails move into the film grid');
-for (const rail of manifest.relocatedRails) {
+assert.equal(manifest.rails.length, 4, 'four site fifty loops fill the camera-path grid');
+assert.deepEqual(manifest.rails.map((rail) => rail.id), picks.home.paths);
+for (const rail of manifest.rails) {
   assert.equal(home.split(rail.video).length - 1, 1, `${rail.id} is used once outside the hero`);
   for (const path of [rail.video, rail.poster]) {
     const file = resolve(root, 'public', path.replace(/^\//, ''));
     assert.ok((await stat(file)).size > 100_000, `${rail.id} ${path} exists`);
   }
 }
-assert.equal(home.split(manifest.winterDestructionRail).length - 1, 1,
-  'the remaining rail appears once in the destruction section');
+assert.equal(manifest.destructionRail, `${site50}/loops/${picks.home.destruction}.webm`);
+assert.equal(home.split(manifest.destructionRail).length - 1, 1,
+  'the destruction loop appears once in the destruction section');
 
 const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].map((match) => match[1]);
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
@@ -115,8 +117,9 @@ for (const proxy of mobileVideoManifest.files) {
 }
 
 assert.equal(manifest.mosaic.length, 24);
-assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'action').length, 12);
-assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'foreground').length, 12);
+assert.equal(manifest.mosaic.filter((shot) => shot.still === 'moment').length, 12, 'twelve key moments');
+assert.equal(manifest.mosaic.filter((shot) => shot.still === 'close').length, 12, 'twelve close portraits');
+assert.ok(manifest.mosaic.every((shot) => shot.src.startsWith(`${site50}/stills/`)));
 assert.equal(new Set(manifest.mosaic.map((shot) => shot.src)).size, manifest.mosaic.length);
 for (const shot of manifest.mosaic) {
   assert.equal(home.split(shot.src).length - 1, 1, `${shot.id} appears once in the bottom mosaic`);
@@ -139,7 +142,7 @@ for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes]
   assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
 }
 
-console.log('landing-media.selftest: single combat reel, owner-directed hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
+console.log('landing-media.selftest: the site fifty hero, reel, loops, mosaic and the Studio knockout pass');
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);

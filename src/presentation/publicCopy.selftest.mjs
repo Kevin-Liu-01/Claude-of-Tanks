@@ -47,7 +47,13 @@ for (const file of pageFiles) {
 const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.ts'), 'utf8');
 const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.ts'), 'utf8');
 assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
-assert.match(docsScriptSource, /mountMediaArchive\([\s\S]*?\{ mode: 'wall', limit: 88, filters: false \}/);
+// the visual archive is the site fifty's (public/media/site50-r14/archive.json: the fifty frames and each take's
+// stills) after production-r1's battlefield photographs; the manual's wall shows all of it
+const siteArchive = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/archive.json'), 'utf8'));
+const productionShots = JSON.parse(readFileSync(join(ROOT, 'public/media/production-r1/manifest.json'), 'utf8')).shots;
+const archiveCount = siteArchive.shots.length + productionShots.length;
+assert.ok(docsScriptSource.includes(`{ mode: 'wall', limit: ${archiveCount}, filters: false }`),
+  'the manual\'s wall shows the whole archive');
 
 const homeSource = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const homeStyles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
@@ -55,12 +61,14 @@ const docsSource = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
 const galleryHtmlSource = readFileSync(join(ROOT, 'site/gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
 assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|galleryArchiveTitle/);
-assert.match(docsSource, /id="docsArchiveOpen"[\s\S]*?Visual archive[\s\S]*?88 field frames/);
+assert.ok(new RegExp(`id="docsArchiveOpen"[\\s\\S]*?Visual archive[\\s\\S]*?${archiveCount} field frames`).test(docsSource),
+  'the archive card counts the archive');
 assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
-assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
-assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
-assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
-assert.match(docsSource, /<track kind="captions"[^>]+claude-of-tanks-promo-v13\.vtt/);
+// the home page loops cut-30 silent; the manual plays the trailer with its score (public/media/site50-r14/films)
+assert.match(homeSource, /\/media\/site50-r14\/films\/reel\.mp4/);
+assert.doesNotMatch(homeSource, /\/media\/site50-r14\/films\/trailer\.mp4/);
+assert.match(docsSource, /<video controls[^>]*poster="\/media\/site50-r14\/films\/trailer\.jpg"[^>]*><source src="\/media\/site50-r14\/films\/trailer\.mp4"/);
+assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 assert.match(
   homeStyles,
   /html\[lang\^='zh'\] \.v5-hero-copy h1\{[^}]*font-family:'PingFang SC','Noto Sans CJK SC','Microsoft YaHei'[^}]*\}/,
@@ -91,13 +99,8 @@ const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
 assert.match(docsMark, /data-vehicle="m1a2"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
 assert.doesNotMatch(docsMark, /<image|data:image\//, 'Docs mark must use crisp native vector geometry');
 
-const promoRoot = join(ROOT, 'public/media/promo-v13');
-const promoManifest = JSON.parse(readFileSync(join(promoRoot, 'manifest.json'), 'utf8'));
-assert.equal(promoManifest.version, 13);
-for (const asset of Object.values(promoManifest.assets)) {
-  assert.ok(existsSync(join(ROOT, 'public', asset.file)), `missing approved promo: ${asset.file}`);
-  assert.ok(existsSync(join(ROOT, 'public', asset.poster)), `missing approved poster: ${asset.poster}`);
-  if (asset.captions) assert.ok(existsSync(join(ROOT, 'public', asset.captions)), `missing promo captions: ${asset.captions}`);
+for (const film of ['trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {
+  assert.ok(existsSync(join(ROOT, 'public/media/site50-r14/films', film)), `missing film: ${film}`);
 }
 
 console.log('public copy selftest passed');

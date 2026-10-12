@@ -27,7 +27,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.build.label'),
     title: t('docs.topic.build.title'),
     lede: t('docs.topic.build.lede'),
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/site50-r14/loops/s23-village-crossroads.webm',
     icon: 'build',
     sectionIcons: ['architecture', 'workflow', 'isolation', 'evidence', 'memory', 'landing'],
     sections: [
@@ -40,14 +40,14 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/showcase-r2/15_studio_workspace.webp', t('docs.topic.build.media1')],
-      ['/media/showcase-r1/process/action-review-02.webp', t('docs.topic.build.media2')],
+      ['/media/site50-r14/frames/sheet-2.webp', t('docs.topic.build.media2')],
     ],
   },
   models: {
     label: t('docs.topic.models.label'),
     title: t('docs.topic.models.title'),
     lede: t('docs.topic.models.lede'),
-    hero: '/media/hero-rails-r2/03_steppe-charge-thread.webm',
+    hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
     icon: 'models',
     sectionIcons: ['research', 'construction', 'rig', 'anatomy', 'iconPipeline', 'critique'],
     sections: [
@@ -67,7 +67,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.ai.label'),
     title: t('docs.topic.ai.title'),
     lede: t('docs.topic.ai.lede'),
-    hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
+    hero: '/media/site50-r14/loops/s04-column-under-fire.webm',
     icon: 'ai',
     sectionIcons: ['perception', 'navigation', 'aiming', 'teamwork', 'survival', 'verification'],
     sections: [
@@ -79,15 +79,15 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.ai.s6.t'), t('docs.topic.ai.s6.p1'), t('docs.topic.ai.s6.p2')],
     ],
     media: [
-      ['/media/presentation-r1/04_desert_last_stand.webp', t('docs.topic.ai.media1')],
-      ['/media/presentation-r1/43_frontier_contact.webp', t('docs.topic.ai.media2')],
+      ['/media/site50-r14/stills/s04-column-under-fire-close.webp', t('docs.topic.ai.media1')],
+      ['/media/site50-r14/stills/s06-farm-charge.webp', t('docs.topic.ai.media2')],
     ],
   },
   audio: {
     label: t('docs.topic.audio.label'),
     title: t('docs.topic.audio.title'),
     lede: t('docs.topic.audio.lede'),
-    hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
+    hero: '/media/site50-r14/loops/s34-furnace-salvo.webm',
     icon: 'audio',
     // Player-facing guide to the sound engine; docs/AUDIO.md is the engineering source of truth.
     sectionIcons: ['assets', 'weapons', 'armor', 'loading', 'vehicles', 'radio', 'spatial', 'modes', 'mix'],
@@ -103,7 +103,7 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.audio.s9.t'), t('docs.topic.audio.s9.p1'), t('docs.topic.audio.s9.p2')],
     ],
     media: [
-      ['/media/presentation-r1/04_desert_last_stand.webp', t('docs.topic.audio.media1')],
+      ['/media/site50-r14/stills/s34-furnace-salvo-close.webp', t('docs.topic.audio.media1')],
       ['/media/showcase-r2/19_live_sniper.webp', t('docs.topic.audio.media2')],
     ],
   },
@@ -111,7 +111,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.performance.label'),
     title: t('docs.topic.performance.title'),
     lede: t('docs.topic.performance.lede'),
-    hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
+    hero: '/media/site50-r14/loops/s39-lakeside-village.webm',
     icon: 'performance',
     sectionIcons: ['loading', 'profiling', 'optimization', 'device', 'budgets', 'verification'],
     sections: [
@@ -131,7 +131,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.simulation.label'),
     title: t('docs.topic.simulation.title'),
     lede: t('docs.topic.simulation.lede'),
-    hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
+    hero: '/media/site50-r14/loops/s24-ice-duel.webm',
     icon: 'combat',
     sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'modes', 'aiming', 'verification'],
     sections: [
@@ -146,14 +146,14 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/showcase-r2/25_live_killcam_xray.webp', t('docs.topic.simulation.media1')],
-      ['/media/presentation-r1/04_desert_last_stand.webp', t('docs.topic.simulation.media2')],
+      ['/media/site50-r14/stills/s27-caravanserai-kill.webp', t('docs.topic.simulation.media2')],
     ],
   },
   vehicles: {
     label: t('docs.topic.vehicles.label'),
     title: t('docs.topic.vehicles.title'),
     lede: t('docs.topic.vehicles.lede'),
-    hero: '/media/hero-rails-r2/03_steppe-charge-thread.webm',
+    hero: '/media/site50-r14/loops/s05-barn-advance.webm',
     icon: 'vehicles',
     sectionIcons: ['specification', 'rig', 'vehicles', 'anatomy', 'release'],
     sections: [
@@ -172,7 +172,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.rendering.label'),
     title: t('docs.topic.rendering.title'),
     lede: t('docs.topic.rendering.lede'),
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/site50-r14/loops/s20-road-return-fire.webm',
     icon: 'rendering',
     sectionIcons: ['rendering', 'measured', 'device', 'loading', 'performance'],
     sections: [
@@ -184,7 +184,7 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/showcase-r2/19_live_sniper.webp', t('docs.topic.rendering.media1')],
-      ['/media/showcase-r1/105_foreground_urban_hero_abramsx.webp', t('docs.topic.rendering.media2')],
+      ['/media/site50-r14/stills/s38-church-knockout-close.webp', t('docs.topic.rendering.media2')],
     ],
   },
   worlds: {
@@ -210,7 +210,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.multiplayer.label'),
     title: t('docs.topic.multiplayer.title'),
     lede: t('docs.topic.multiplayer.lede'),
-    hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
+    hero: '/media/site50-r14/loops/s18-street-knockout.webm',
     icon: 'multiplayer',
     sectionIcons: ['multiplayer', 'interface', 'perception', 'combat', 'verification'],
     sections: [
@@ -248,7 +248,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.studio.label'),
     title: t('docs.topic.studio.title'),
     lede: t('docs.topic.studio.lede'),
-    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
+    hero: '/media/site50-r14/loops/s33-water-tower.webm',
     icon: 'studio',
     sectionIcons: ['specification', 'workflow', 'weapons', 'studio', 'critique'],
     sections: [
@@ -260,7 +260,7 @@ export const topics: Record<string, TopicDefinition> = {
     ],
     media: [
       ['/media/showcase-r2/15_studio_workspace.webp', t('docs.topic.studio.media1')],
-      ['/media/showcase-r1/process/action-review-02.webp', t('docs.topic.studio.media2')],
+      ['/media/site50-r14/frames/sheet-2.webp', t('docs.topic.studio.media2')],
     ],
   },
   // How the media rounds were filmed (2026-10-06). The second section holds the take viewer and the third the
@@ -269,7 +269,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.filming.label'),
     title: t('docs.topic.filming.title'),
     lede: t('docs.topic.filming.lede'),
-    hero: '/media/director-r4/silent-loop.mp4',
+    hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'filming',
     sectionIcons: ['specification', 'filming', 'workflow', 'navigation', 'perception', 'studio', 'critique', 'rendering', 'audio', 'release'],
     sections: [

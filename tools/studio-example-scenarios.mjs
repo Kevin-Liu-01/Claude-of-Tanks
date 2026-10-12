@@ -47,12 +47,12 @@ export const DUEL_SCENARIOS=MAP_IDS.map((map,index)=>{
     camo:camoForMap(map),seed:24001+index*137};
 });
 
-// The Docs battle-reel library (public/media/battle-reels-v3, listed in
-// src/docs/battleReels.ts) is a pinned twenty-reel set rendered on 2026-08-19
+// The retired Docs battle-reel library (public/media/battle-reels-v3; since 2026-10-12 the manual's battle takes
+// are the site fifty's, src/docs/battleReels.ts) was a pinned twenty-reel set rendered on 2026-08-19
 // from the sixteen maps registered then plus four repeats (desert, winter,
 // verdant, coastal) with the tank pairs above, `directDuel({variant: index})`
 // and the seeds 24001 + 137 (index - 1). Its ids are `NN_alpha_vs_bravo_map`;
-// `battleReels.selftest` pins them to this table.
+// tools/studio-example-videos.mjs records them from this table.
 export const BATTLE_REEL_MAPS=Object.freeze([
   'verdant','desert','winter','urban','coastal','autumn','steppe','railyard',
   'frontier','fjord','delta','badlands','monsoon','alpine','caldera','foundry',

@@ -778,8 +778,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
-  // Assets + captions come from the marketing-shots pipeline
-  // (tools/marketing-shots, encoded to public/media/featured/). The panel is
+  // Assets + captions are the site fifty's stills (public/media/site50-r14/stills, picked in
+  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is
   // created programmatically so the main markup block stays untouched; it
   // crossfades every 8 s, click advances, hover pauses. Images lazy-load —
   // a missing set simply never shows the panel's layers (gradient card).

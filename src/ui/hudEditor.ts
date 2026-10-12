@@ -10,7 +10,7 @@ const PART_ICONS:Record<HudPartId,UiIconId>={score:'clock',objective:'modeZones'
 const label=(id:string)=>t(`hudEditor.${id}`);
 const PROFILES:HudProfile[]=['desktop','portrait','landscape'];
 const SIZES:Record<HudProfile,[number,number]>={desktop:[1440,900],portrait:[390,844],landscape:[844,390]};
-const BACKDROP='/media/home/p2_46_verdant_meadow_duel.webp';
+const BACKDROP='/media/site50-r14/stills/s19-roof-tiles.webp';
 function element<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement){
   const node=document.createElement(tag);node.className=cls;parent.append(node);return node;
 }

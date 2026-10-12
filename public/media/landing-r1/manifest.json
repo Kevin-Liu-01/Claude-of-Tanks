@@ -1,224 +1,232 @@
 {
   "libraryId": "claude-of-tanks-landing-r1",
   "schemaVersion": 1,
-  "source": "Owner-directed selection from first-party Scene Studio and marketing-shot libraries",
+  "source": "The site fifty (public/media/site50-r14): takes staged in Scene Studio and rendered at 4K in the game engine, picked in tools/media-r5/site-media/picks.json",
   "hero": [
     {
-      "id": "urban-crossfire",
-      "title": "Urban crossfire",
-      "src": "/media/featured/f10_studio_urban_crossfire.webp",
-      "collection": "owner-directed"
+      "id": "s07-lake-shellfire",
+      "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+      "src": "/media/site50-r14/stills/s07-lake-shellfire.webp",
+      "still": "moment"
     },
     {
-      "id": "fjord-firefight",
-      "title": "Fjord firefight",
-      "src": "/media/featured/f9_studio_fjord_firefight.webp",
-      "collection": "owner-directed"
+      "id": "s21-fields-assault",
+      "title": "A T-90SM wedge assaults through the burning fields",
+      "src": "/media/site50-r14/stills/s21-fields-assault-close.webp",
+      "still": "close"
     },
     {
-      "id": "m1-firefight",
-      "title": "M1 firefight",
-      "src": "/media/featured/f8_studio_m1_firefight.webp",
-      "collection": "owner-directed"
+      "id": "s39-lakeside-village",
+      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+      "src": "/media/site50-r14/stills/s39-lakeside-village.webp",
+      "still": "moment"
     },
     {
-      "id": "strv-steinburg-duel",
-      "title": "Strv 103 Steinburg duel",
-      "src": "/media/featured/f6_studio_strv_steinburg_duel.webp",
-      "collection": "owner-directed"
+      "id": "s26-minaret-fire",
+      "title": "A Merkava Mk 3D fires at Sunscar Oasis",
+      "src": "/media/site50-r14/stills/s26-minaret-fire-close.webp",
+      "still": "close"
     },
     {
-      "id": "desert-armored-contact",
-      "title": "Desert armored contact",
-      "src": "/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp",
-      "collection": "action"
+      "id": "s38-church-knockout",
+      "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+      "src": "/media/site50-r14/stills/s38-church-knockout-close.webp",
+      "still": "close"
     },
     {
-      "id": "winter-ice-breaker",
-      "title": "Winter ice breaker",
-      "src": "/media/showcase-r1/113_foreground_winter_ice_breaker.webp",
-      "collection": "foreground"
+      "id": "s18-street-knockout",
+      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "src": "/media/site50-r14/stills/s18-street-knockout.webp",
+      "still": "moment"
     }
   ],
   "featureReel": {
-    "video": "/media/promo-v13/claude-of-tanks-promo-clean.mp4",
-    "poster": "/media/promo-v13/claude-of-tanks-promo-clean.jpg",
+    "video": "/media/site50-r14/films/reel.mp4",
+    "poster": "/media/site50-r14/films/reel.jpg",
     "width": 1920,
     "height": 1080,
-    "durationMs": 24933,
-    "fps": 60
+    "durationMs": 28067,
+    "fps": 30,
+    "takes": [
+      "s20-road-return-fire",
+      "s23-village-crossroads",
+      "s33-water-tower",
+      "s24-ice-duel",
+      "s06-farm-charge"
+    ],
+    "crossfadeS": 0.5
   },
-  "relocatedRails": [
+  "rails": [
     {
-      "id": "desert-ground-rush",
-      "title": "Desert ground rush",
-      "video": "/media/hero-rails-r2/01_desert-ground-rush.webm",
-      "poster": "/media/hero-rails-r2/01_desert-ground-rush.jpg"
+      "id": "s05-barn-advance",
+      "title": "A T-14 Armata advances past the barns of Verdant Fields",
+      "video": "/media/site50-r14/loops/s05-barn-advance.webm",
+      "poster": "/media/site50-r14/loops/s05-barn-advance.jpg"
     },
     {
-      "id": "steppe-charge-thread",
-      "title": "Steppe charge thread",
-      "video": "/media/hero-rails-r2/03_steppe-charge-thread.webm",
-      "poster": "/media/hero-rails-r2/03_steppe-charge-thread.jpg"
+      "id": "s07-lake-shellfire",
+      "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+      "video": "/media/site50-r14/loops/s07-lake-shellfire.webm",
+      "poster": "/media/site50-r14/loops/s07-lake-shellfire.jpg"
     },
     {
-      "id": "urban-overhead-dive",
-      "title": "Urban overhead dive",
-      "video": "/media/hero-rails-r2/04_urban-overhead-dive.webm",
-      "poster": "/media/hero-rails-r2/04_urban-overhead-dive.jpg"
+      "id": "s18-street-knockout",
+      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "video": "/media/site50-r14/loops/s18-street-knockout.webm",
+      "poster": "/media/site50-r14/loops/s18-street-knockout.jpg"
     },
     {
-      "id": "coastal-shell-skim",
-      "title": "Coastal shell skim",
-      "video": "/media/hero-rails-r2/05_coastal-shell-skim.webm",
-      "poster": "/media/hero-rails-r2/05_coastal-shell-skim.jpg"
+      "id": "s26-minaret-fire",
+      "title": "A Merkava Mk 3D fires at Sunscar Oasis",
+      "video": "/media/site50-r14/loops/s26-minaret-fire.webm",
+      "poster": "/media/site50-r14/loops/s26-minaret-fire.jpg"
     }
   ],
-  "winterDestructionRail": "/media/hero-rails-r2/02_winter-ice-orbit.webm",
+  "destructionRail": "/media/site50-r14/loops/s27-caravanserai-kill.webm",
   "mosaic": [
     {
-      "id": "61_action_desert_duel_leclerc_kill",
-      "title": "desert duel leclerc kill",
-      "collection": "action",
-      "src": "/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp"
+      "id": "s49-orchard-sunset",
+      "title": "Orchard Valley: smoke drifts over the orchards",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s49-orchard-sunset.webp"
     },
     {
-      "id": "63_action_desert_overwatch_line",
-      "title": "desert overwatch line",
-      "collection": "action",
-      "src": "/media/showcase-r1/63_action_desert_overwatch_line.webp"
+      "id": "s20-road-return-fire",
+      "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s20-road-return-fire-close.webp"
     },
     {
-      "id": "67_action_winter_lake_duel",
-      "title": "winter lake duel",
-      "collection": "action",
-      "src": "/media/showcase-r1/67_action_winter_lake_duel.webp"
+      "id": "s04-column-under-fire",
+      "title": "A T-90M column drives into the fight on the country road",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s04-column-under-fire.webp"
     },
     {
-      "id": "69_action_winter_village_brawl",
-      "title": "winter village brawl",
-      "collection": "action",
-      "src": "/media/showcase-r1/69_action_winter_village_brawl.webp"
+      "id": "s33-water-tower",
+      "title": "The line advances past the burning water tower at night",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s33-water-tower-close.webp"
     },
     {
-      "id": "71_action_urban_street_duel",
-      "title": "urban street duel",
-      "collection": "action",
-      "src": "/media/showcase-r1/71_action_urban_street_duel.webp"
+      "id": "s38-church-knockout",
+      "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s38-church-knockout.webp"
     },
     {
-      "id": "74_action_urban_ruin_brawl",
-      "title": "urban ruin brawl",
-      "collection": "action",
-      "src": "/media/showcase-r1/74_action_urban_ruin_brawl.webp"
+      "id": "s07-lake-shellfire",
+      "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s07-lake-shellfire-close.webp"
     },
     {
-      "id": "76_action_verdant_field_duel",
-      "title": "verdant field duel",
-      "collection": "action",
-      "src": "/media/showcase-r1/76_action_verdant_field_duel.webp"
+      "id": "s29-fjord-road-kill",
+      "title": "A T-90 burns on the road above the fjord",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s29-fjord-road-kill.webp"
     },
     {
-      "id": "78_action_verdant_village_brawl",
-      "title": "verdant village brawl",
-      "collection": "action",
-      "src": "/media/showcase-r1/78_action_verdant_village_brawl.webp"
+      "id": "s19-roof-tiles",
+      "title": "Roof tiles rain down as a PL-01 fires up the street",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s19-roof-tiles-close.webp"
     },
     {
-      "id": "80_action_desert_wadi_gauntlet",
-      "title": "desert wadi gauntlet",
-      "collection": "action",
-      "src": "/media/showcase-r1/80_action_desert_wadi_gauntlet.webp"
+      "id": "s11-container-rows",
+      "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s11-container-rows.webp"
     },
     {
-      "id": "84_action_steppe_horizon_charge",
-      "title": "steppe horizon charge",
-      "collection": "action",
-      "src": "/media/showcase-r1/84_action_steppe_horizon_charge.webp"
+      "id": "s30-temple-village",
+      "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s30-temple-village-close.webp"
     },
     {
-      "id": "86_action_coastal_harbor_kill",
-      "title": "coastal harbor kill",
-      "collection": "action",
-      "src": "/media/showcase-r1/86_action_coastal_harbor_kill.webp"
+      "id": "s33-water-tower",
+      "title": "The line advances past the burning water tower at night",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s33-water-tower.webp"
     },
     {
-      "id": "89_action_coastal_beach_storm",
-      "title": "coastal beach storm",
-      "collection": "action",
-      "src": "/media/showcase-r1/89_action_coastal_beach_storm.webp"
+      "id": "s39-lakeside-village",
+      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s39-lakeside-village-close.webp"
     },
     {
-      "id": "93_foreground_desert_overwatch_line",
-      "title": "desert overwatch line",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/93_foreground_desert_overwatch_line.webp"
+      "id": "s46-river-drone",
+      "title": "Monsoon Ridge: shells land along the jungle river",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s46-river-drone.webp"
     },
     {
-      "id": "95_foreground_coastal_dune_ambush",
-      "title": "coastal dune ambush",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/95_foreground_coastal_dune_ambush.webp"
+      "id": "s18-street-knockout",
+      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s18-street-knockout-close.webp"
     },
     {
-      "id": "97_foreground_winter_lake_duel",
-      "title": "winter lake duel",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/97_foreground_winter_lake_duel.webp"
+      "id": "s03-square-pass",
+      "title": "A Leclerc XLR crosses the burning square",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s03-square-pass.webp"
     },
     {
-      "id": "99_foreground_winter_village_brawl",
-      "title": "winter village brawl",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/99_foreground_winter_village_brawl.webp"
+      "id": "s05-barn-advance",
+      "title": "A T-14 Armata advances past the barns of Verdant Fields",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s05-barn-advance-close.webp"
     },
     {
-      "id": "101_foreground_urban_street_duel",
-      "title": "urban street duel",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/101_foreground_urban_street_duel.webp"
+      "id": "s40-rooftop-smoke",
+      "title": "Smoke columns rise over the rooftops of Steinburg",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s40-rooftop-smoke.webp"
     },
     {
-      "id": "104_foreground_urban_ruin_brawl",
-      "title": "urban ruin brawl",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/104_foreground_urban_ruin_brawl.webp"
+      "id": "s06-farm-charge",
+      "title": "A KF51 Panther charges past the farmhouse through artillery",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s06-farm-charge-close.webp"
     },
     {
-      "id": "106_foreground_verdant_field_duel",
-      "title": "verdant field duel",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/106_foreground_verdant_field_duel.webp"
+      "id": "s15-orchard-column",
+      "title": "A C1 Ariete column drives through the orchard village under fire",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s15-orchard-column.webp"
     },
     {
-      "id": "109_foreground_verdant_hero_challenger1",
-      "title": "verdant hero challenger1",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp"
+      "id": "s04-column-under-fire",
+      "title": "A T-90M column drives into the fight on the country road",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s04-column-under-fire-close.webp"
     },
     {
-      "id": "111_foreground_steppe_windbreak_snipe",
-      "title": "steppe windbreak snipe",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp"
+      "id": "s02-factory-road",
+      "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s02-factory-road.webp"
     },
     {
-      "id": "115_foreground_urban_alley_flash",
-      "title": "urban alley flash",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/115_foreground_urban_alley_flash.webp"
+      "id": "s23-village-crossroads",
+      "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s23-village-crossroads-close.webp"
     },
     {
-      "id": "118_foreground_verdant_meadow_duel",
-      "title": "verdant meadow duel",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/118_foreground_verdant_meadow_duel.webp"
+      "id": "s09-harbor-run",
+      "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
+      "still": "moment",
+      "src": "/media/site50-r14/stills/s09-harbor-run.webp"
     },
     {
-      "id": "120_foreground_verdant_overwatch_ridge",
-      "title": "verdant overwatch ridge",
-      "collection": "foreground",
-      "src": "/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp"
+      "id": "s27-caravanserai-kill",
+      "title": "A T-62MV-1 is knocked out by the caravanserai",
+      "still": "close",
+      "src": "/media/site50-r14/stills/s27-caravanserai-kill-close.webp"
     }
   ],
   "studio": {
