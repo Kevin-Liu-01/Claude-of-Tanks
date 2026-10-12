@@ -64,6 +64,8 @@ interface T90BuilderPort {
   readonly rng: () => number;
   readonly q?: boolean;
   topY?: number;
+  /** TankBuilderPort.camoFaceProjection: per-face camouflage projection (rendered builds). */
+  camoFaceProjection?: boolean;
   _shtoraRed?: THREE.MeshStandardMaterial;
   gear?: {
     contactGeom?: { halfWidM: number };
@@ -7597,6 +7599,9 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
 // tapered bustle. External GLBs are comparison oracles only; no source
 // vertices, generated payloads or runtime meshes enter this builder.
 function buildT90MProryvNative2026(P: T90BuilderPort): void {
+  // 2026-10-11 (wave 402b, the Garage hero): the rounded glacis/ERA blocks smeared the camouflage to one flat
+  // darker tone under the shared box projection, reading as a second, differently painted hull: per-face projection.
+  P.camoFaceProjection = true;
   buildT90MProryv(P);
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
@@ -7661,6 +7666,25 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   if (remoteKord) remoteKord.scale.y /= installedTurretY;
   const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
   if (hullLengthFactor !== 1) P.extendHullLength(hullLengthFactor);
+  // 2026-10-11 (wave 402b, the Garage hero): the 160 mm ride-height lift left a clear sightline under the bow,
+  // through which the far track showed beneath the glacis like a second, offset hull. The T-90M's folded
+  // self-entrenching blade now hangs under the lower-glacis toe, track to track, in the final (lifted, lengthened)
+  // frame: a two-facet moldboard whose top laps the toe, braced back to the belly.
+  {
+    const toeY = 0.43, toeZ = 2.79, halfW = 1.12;
+    P.add('hull', orientedSlab(
+      [-halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.035], [-halfW, 0.19, toeZ + 0.035],
+      [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
+    ));
+    P.add('hull', orientedSlab(
+      [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
+      [-halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ - 0.02], [-halfW, toeY + 0.012, toeZ - 0.02],
+    ));
+    P.add('hullDark', KIT.box(halfW * 2 - 0.04, 0.022, 0.03), 0, 0.205, toeZ + 0.078);
+    for (const x of [-0.62, 0.62]) {
+      P.add('hullDark', KIT.box(0.07, 0.07, 0.42), x, 0.30, toeZ - 0.17, 0.42, 0, 0);
+    }
+  }
   P.hullG.userData.t90mProryvTrackReceipt = {
     roadWheelRadiusM: 0.31,
     roadWheelCenterY: 0.395,
