@@ -124,7 +124,9 @@ for (const variant of GARAGE_VARIANTS) {
 //    the 2026-10-10 live scan of all 33 maps found no wall, prop or vehicle mesh missing its colour.
 const { DESTRUCTIBLE_TYPES, civilianVehicleTypes } = await import('../src/world/maps/inhabitKit.ts');
 const { MAP_IDS } = await import('../src/world/maps/index.ts');
-const FAMILIES = new Set(['wood', 'straw', 'stone', 'plaster', 'baked', 'vehicle']);
+// 2026-10-11 (integ/217): the market stall draws in the canvas family since the maprev stall fix (7153064d9: its awning
+// real canvas on its own stream); props.ts's structureCanvas reads vertex colour, and the stall carries it intact and broken.
+const FAMILIES = new Set(['wood', 'straw', 'stone', 'plaster', 'baked', 'vehicle', 'structureCanvas']);
 const readsVertexColour = (family) => family !== 'wood' && family !== 'straw';
 let kits = 0;
 const rng = (seed) => () => { seed = (seed + 0x6D2B79F5) | 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
