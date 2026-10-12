@@ -227,7 +227,9 @@ const newMapPalettes = {
   whiteout: ['winter', 'winter'],
   // (2026-10-07, ground lane, wave 251: Orchard's own dry stony soil under its worn ground, Verdant's grass and rock)
   orchard: ['orchard', 'orchard'],
-  longleaf: ['verdant', 'frontier'],
+  // (the map-revival lane, Longleaf r4, 2026-10-11: the flatwoods' own sets — wiregrass over grey loam, its litter-strewn
+  // worn ground, the clay track; sourcedTextures.ts TERRAIN_PLAN longleaf)
+  longleaf: ['longleaf', 'frontier'],
   mangrove: ['monsoon', 'delta'],
   saltwind: ['coastal', 'coastal'],
   reservoir: ['frontier', 'frontier'],
