@@ -156,13 +156,6 @@ export default {
     // the stripped hills bare: half the stands and fewer rim trees, the regrowth a low scrub, the tufts thinner (was 22
     // stands, 40 rim trees, tufts at 0.18)
     clusterCount: 11, loneCount: 26, rimCount: 22, grassDensity: 0.1, bushCount: 0.9, bushSpecies: 'acacia', clusterScrub: 1.6,
-    // (the map-content lane's R6b, 2026-10-11, the coordinator's fairness follow-up: the census about the deployments'
-    // turning point found alpha's core holding 209 concealers to bravo's 95, the woods west of the pit — four 40 m cells
-    // of 18-26 trees — with nothing at their rotation twins, where the hitbox lane's kill trace had bravo dying in the
-    // open; the Redrock lane's law, as Railyard's r3c) each tree's draws its own, and the halves either side of the
-    // turning point hold the same tree and shrub cover
-    keyedPlacement: true,
-    coverHalvesAbout: { x: -48.1, z: 2.6 },
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
@@ -192,9 +185,6 @@ export default {
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
-    // (R6b, the fairness follow-up, as Railyard's r3c: the three random field works all fell in alpha's half — its core
-    // held 18 of the map's 20 wire belts' modules — so none are drawn; the trench lines' own works stay)
-    fieldWorks: 0,
     // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
     // AS1
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5', 'leo1a5'] },
@@ -273,6 +263,16 @@ export default {
       { form: 'blocks', geology: 'breccia', x: -70, z: 8, radius: 5.5, height: 2.4, yawDeg: 60, tone: CONGLOMERATE, name: 'the conglomerate blocks west of the lip' },
       // (the map-content lane's R6; gauntlet wave 358a: "no mullock heaps ... round the shaft") the waste rock tipped beside
       // each shaft's collar, on its open side (mining.ts: the skip road runs out the other way): loose stone a hull rolls over
+      // (the map-content lane's R6c, 2026-10-11, the fairness follow-up on main's 67.5 % alpha lean: the cover census of the
+      // contested middle about the deployments' turning point (-48.1, 2.6) found alpha's forward line just south of the
+      // centre covered — 60 m blocks at (14, -56), (-105, -55), (75, -55) and (134, -54), 16-25 covered cells of 34-36,
+      // the town standing mostly in alpha's half — and its rotation twins on bravo's forward line open (0-8), where the
+      // fairness probe's deaths put bravo dying; the cover alpha has there, turned about the point: the hills' own
+      // conglomerate in blocks, as the hitbox lane's fields above)
+      { form: 'blocks', geology: 'breccia', x: -111, z: 61, radius: 7, height: 2.5, yawDeg: 15, tone: CONGLOMERATE, name: 'the conglomerate blocks north-west of the pit (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: 9, z: 61, radius: 7, height: 2.5, yawDeg: 95, tone: CONGLOMERATE, name: 'the conglomerate blocks north of the pit (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: -171, z: 60, radius: 7, height: 2.4, yawDeg: 50, tone: CONGLOMERATE, name: 'the conglomerate blocks on the west flat (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: -230, z: 59, radius: 7, height: 2.4, yawDeg: 130, tone: CONGLOMERATE, name: 'the conglomerate blocks under the west rim (bravo\'s forward line)' },
       { form: 'scree', geology: 'breccia', x: 9, z: 190, radius: 5, height: 1.4, yawDeg: 180, tone: CONGLOMERATE, name: 'the North Lyell mullock' },
       { form: 'scree', geology: 'breccia', x: 31, z: -200, radius: 5, height: 1.4, yawDeg: 0, tone: CONGLOMERATE, name: 'the Prince Lyell mullock' },
       { form: 'scree', geology: 'breccia', x: 309, z: -151, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the east shaft mullock' },
