@@ -64,7 +64,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -622,6 +622,8 @@ export interface HeightField {
   /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
    * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** The land use _landUseAt samples (its flooded paddies kept to level floors): the profile the material bakes. */
+  _landUseProfile?: LandUseProfile | null;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
   /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
@@ -2968,7 +2970,8 @@ function* heightFieldBuildSteps(
     };
   }
   const mesaWeight = createMesaWeightSampler();
-  const landUseProfile = resolveLandUseProfile(cfg?.id); // ground lane
+  // ground lane; 2026-10-12: a flooded paddy holds water only on a level floor (landUse.ts withLevelPaddies)
+  const landUseProfile = withLevelPaddies(resolveLandUseProfile(cfg?.id), getHeightAt, MAP_SIZE / 2);
   const legacyGroundLanes = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
 
   // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch (and the road
@@ -3007,7 +3010,7 @@ function* heightFieldBuildSteps(
     // client, the browser host and the server's collision shards place hedgerow trees and field bushes alike;
     // `?ground=legacy` draws no fields and grows no crops
     ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
-      landUseAt(landUseProfile, x, z, out) } : {}),
+      landUseAt(landUseProfile, x, z, out), _landUseProfile: landUseProfile } : {}),
     // ground lane (2026-10-08, the gauntlet's wave 260): a cinder yard's weeds in clumps, on the map whose ground profile
     // floors its village so (Cinder Junction); `?ground=legacy` grows the old scatter
     ...((resolveGroundReduxProfile(cfg?.id).cinderYard ?? 0) > 0 && !legacyGroundLanes ? { _yardWeedsAt: cinderYardWeedsAt } : {}),
@@ -7445,6 +7448,7 @@ function* createSplatMaterialSteps(
   sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null = null,
   outlandWaterAt: HeightField['getOutlandWaterAt'] | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
+  landUseProfileOverride: LandUseProfile | null = null,
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
@@ -7555,7 +7559,8 @@ function* createSplatMaterialSteps(
   const redux = groundReduxUniformValues(groundProfile);
   // ground lane (2026-10-03): the map's land use (landUse.ts) — its field system's three packed vectors (zero
   // strength on a map without a row)
-  const landUseProfile = resolveLandUseProfile(mapId);
+  // (2026-10-12: the height field's own profile when the build passes it — its flooded paddies kept to level floors)
+  const landUseProfile = landUseProfileOverride ?? resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
   // ground lane (2026-10-08): the village floored in cinder (groundRedux.ts cinderYard: Cinder Junction's yard)
   let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
@@ -8323,6 +8328,7 @@ function* terrainBuildSteps(
     cfg?.sky ?? null,
     heightField.getOutlandWaterAt ?? null,
     heightField._sorWetnessAt ?? null,
+    heightField._landUseProfile ?? null,
   );
   let materialStep = materialSteps.next();
   try {

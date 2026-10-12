@@ -1370,6 +1370,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/saltwindSoil.selftest.mjs', // ground lane (2026-10-08, waves 286b/287): Saltwind's terra rossa, footing and garrigue
     'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask
+    'src/world/paddyFloodLevel.selftest.mjs', // 2026-10-12: a flooded paddy holds water only on a level floor
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',

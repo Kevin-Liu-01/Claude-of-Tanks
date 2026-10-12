@@ -67,6 +67,13 @@ export interface LandUseProfile {
    * the profile's region.
    */
   zones?: readonly LandZone[];
+  /**
+   * 2026-10-12 (the owner: "we can see fake water. no more of that, we need real water"): the flooded paddies that may
+   * hold water — the ids of the fields whose floor is level (levelFloodFields). A paddy the rotation floods anywhere else
+   * grows as a green one: water cannot lie on a sloped or hummocky floor, and paint that pretends to was the fake water
+   * at Jade River Delta's spawn. Absent (a sandboxed receipt, a map without paddies): the rotation's crop unchanged.
+   */
+  floodIds?: ReadonlySet<number> | null;
 }
 
 /** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
@@ -658,7 +665,10 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     if (!found) return out; // past the zones: no land use (the bake's LAND_CROP_NONE)
     cum = found.cum; kinds = found.kinds; trackShare = found.trackShare; hedgeShare = found.hedgeShare;
   }
-  const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  let crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  const fieldId = U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003;
+  // a flooded paddy holds water only on a level floor (LandUseProfile.floodIds); elsewhere its rice grows green
+  if (crop === LAND_CROP.paddyWater && profile.floodIds && !profile.floodIds.has(fieldId)) crop = LAND_CROP.paddyGreen;
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
   const lineIdx = lv < blockV * 0.5 ? row : row + 1;
@@ -693,7 +703,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const albedo = LAND_CROP_ALBEDO[crop], growth = LAND_CROP_GROWTH[crop];
   out.tintR = albedo[0]; out.tintG = albedo[1]; out.tintB = albedo[2];
   out.sward = growth.sward ? 1 : 0; out.cropHeight = growth.height; out.cropKeep = growth.keep; out.weed = growth.weed ? 1 : 0;
-  out.id = (U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003);
+  out.id = fieldId;
   return out;
 }
 
@@ -801,6 +811,57 @@ export function* bakeLandUseSteps(
     if ((j + 1) % rowsPerSlice === 0 && j + 1 < n) yield;
   }
   return out;
+}
+
+/** A flooded paddy's floor counts as level when 80 % of it (p10..p90) lies within this many metres. */
+export const PADDY_LEVEL_M = 0.35;
+/**
+ * The flooded paddies whose floor is level enough to hold water (2026-10-12): every field the rotation floods, sampled
+ * on a `stepM` grid over the square past its bund footing, kept when its floor's p10..p90 spread is within levelM. The
+ * rotation's own crop is read (the profile's floodIds ignored), so the scan is the same whatever the profile carries.
+ */
+export function levelFloodFields(
+  profile: LandUseProfile, heightAt: (x: number, z: number) => number, halfExtentM: number, stepM = 5, levelM = PADDY_LEVEL_M,
+): Set<number> {
+  const raw: LandUseProfile = { ...profile, floodIds: null };
+  const sample = createLandFieldSample(), floors = new Map<number, number[]>();
+  for (let z = -halfExtentM + stepM / 2; z < halfExtentM; z += stepM) {
+    for (let x = -halfExtentM + stepM / 2; x < halfExtentM; x += stepM) {
+      landUseAt(raw, x, z, sample);
+      if (!sample.active || sample.crop !== LAND_CROP.paddyWater || sample.edgeM < sample.marginM + 0.5) continue;
+      let floor = floors.get(sample.id);
+      if (!floor) floors.set(sample.id, floor = []);
+      floor.push(heightAt(x, z));
+    }
+  }
+  const level = new Set<number>();
+  for (const [id, floor] of floors) {
+    if (floor.length < 8) continue;
+    floor.sort((a, b) => a - b);
+    if (floor[Math.floor(floor.length * 0.9)]! - floor[Math.floor(floor.length * 0.1)]! <= levelM) level.add(id);
+  }
+  return level;
+}
+/** Whether a profile's rotation can flood a paddy at all (its region's or a zone's). */
+function profileFloods(profile: LandUseProfile): boolean {
+  const regions = [profile.region, ...(profile.zones ?? []).map((zone) => zone.region)];
+  return regions.some((region) => (ROTATIONS[region] ?? []).some(([crop]) => crop === LAND_CROP.paddyWater));
+}
+/**
+ * The map's land use with its flooded paddies kept to level floors (levelFloodFields, scanned once, on first need): the
+ * profile the terrain material bakes and every CPU reader shares. A profile that floods nothing is returned as it is.
+ */
+export function withLevelPaddies(
+  profile: LandUseProfile | null, heightAt: (x: number, z: number) => number, halfExtentM: number,
+): LandUseProfile | null {
+  if (!profile || !(profile.strength > 0) || !profileFloods(profile)) return profile;
+  let level: Set<number> | null = null;
+  const derived: LandUseProfile = { ...profile };
+  Object.defineProperty(derived, 'floodIds', {
+    enumerable: true,
+    get: () => (level ??= levelFloodFields(profile, heightAt, halfExtentM)),
+  });
+  return derived;
 }
 
 // --------------------------------------------------------------------------------------------- the GLSL
