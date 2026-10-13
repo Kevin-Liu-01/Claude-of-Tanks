@@ -578,6 +578,17 @@ export const RECIPES = {
         return p?.aerial?.active ? { kind: p.aerial.kind, y: Math.round(p.aerial.y) } : null;
       }, { timeoutS: 30, label: 'the gunship aloft' });
       ctx.log('aerial', JSON.stringify(air));
+      // r2 laid the gimbal on the attackers while the convoy was still out of frame: let the attack close to within
+      // 120 m of the convoy first, so the convoy (and the extraction marker it heads for) share the frame with the burst
+      const closing = await ctx.until(() => {
+        const H = window.__MB.H, ms = H.ms(), p = H.player();
+        if (!p) return null;
+        const ours = H.liveTanks().filter((t) => t.team === p.team && t !== p);
+        let best = Infinity;
+        for (const e of H.enemies()) for (const s of ours) best = Math.min(best, H.dist(e.state.pos, s.state.pos));
+        return best < 120 ? { closestM: Math.round(best), convoy: ours.length, extraction: !!ms?.zones?.some((z) => z.id === 'extraction') } : null;
+      }, { ffStepS: 2, timeoutS: 90, label: 'the attack within 120 m of the convoy' });
+      ctx.log('closing', JSON.stringify(closing));
       await ctx.eval(() => window.__MB.H.tap('shell2'));
       // lay the gimbal on the enemy nearest the convoy, pan through the touch-aim path; fire when on target
       await ctx.mb('setOnFrame', `
@@ -611,18 +622,24 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 45,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 700, minRangeM: 280, dists: [520, 450, 600, 380], enemies: 2 })));
+      // r2 filmed from behind the target looking 677 m back at the launcher: the Shillelagh (about 800 m/s) arrives in
+      // under a second and its trail never read, only the impact dust. The target now stands 340-460 m out (AI kept,
+      // so it moves and the round's path bends), and the cameras ride beside and behind the launcher looking downrange
+      // so the trail's world-space history ribbon runs from the launch flash toward the target; the burst covers the
+      // half second of flight.
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 480, minRangeM: 300, dists: [380, 420, 340, 460], enemies: 2 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
       await settle(ctx, 1);
       await ctx.capture({
         cameras: [
-          { kind: 'between', from: 'aimTarget', to: 'player', backM: 16, sideM: 9, heightM: 1.6, lookAtFrac: 0.35, fov: 40, smoothS: 0.2, hud: 'hidden' },
-          { kind: 'between', from: 'player', to: 'aimTarget', backM: 10, sideM: 7, heightM: 2.4, lookAtFrac: 0.5, fov: 40, smoothS: 0.2, hud: 'hidden' },
+          { kind: 'between', from: 'player', to: 'aimTarget', backM: 10, sideM: 12, heightM: 3.2, lookAtFrac: 0.3, lookAtHeightM: 2, fov: 42, smoothS: 0.2, hud: 'hidden' },
+          { kind: 'between', from: 'player', to: 'aimTarget', backM: 8, sideM: -14, heightM: 2.6, lookAtFrac: 0.35, lookAtHeightM: 2, fov: 38, smoothS: 0.2, hud: 'hidden' },
+          { kind: 'between', from: 'player', to: 'aimTarget', backM: 16, sideM: 6, heightM: 5, lookAtFrac: 0.45, lookAtHeightM: 1.5, fov: 34, smoothS: 0.2, hud: 'hidden' },
         ],
-        cameraEvery: 4,
-        everyS: 4,
-        triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [120, 500, 900, 1400, 1900, 2400], burst: true }],
+        cameraEvery: 5,
+        everyS: 5,
+        triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [70, 160, 260, 380, 520, 700], burst: true }],
       });
     },
   },
