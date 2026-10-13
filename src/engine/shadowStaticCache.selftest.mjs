@@ -57,6 +57,17 @@ import {
   for (let i = 1; i < STATIC_SHADOW_DEMOTE_FRAMES; i++) assert.equal(stepCasterMotion(r, 4), 'none');
   assert.equal(stepCasterMotion(r, 4), 'demote', `still for ${STATIC_SHADOW_DEMOTE_FRAMES} frames: back to the static layer`);
   assert.equal(r.dynamic, false);
+  // the A/B windows (2026-10-13, __SHADOW_DEBUG.casterPromoteFrames / casterDemoteFrames): promote on the first change,
+  // demote after a longer stillness
+  assert.equal(stepCasterMotion(r, 5, 1, 300), 'promote', 'a one-frame promotion window promotes on the first change');
+  for (let i = 1; i < 300; i++) assert.equal(stepCasterMotion(r, 5, 1, 300), 'none');
+  assert.equal(stepCasterMotion(r, 5, 1, 300), 'demote', 'a 300-frame demotion window');
+}
+{
+  const source = await readFile(new URL('./shadowStaticCache.ts', import.meta.url), 'utf8');
+  assert.match(source, /const promoteFrames = debug\?\.casterPromoteFrames \?\? STATIC_SHADOW_PROMOTE_FRAMES;/);
+  assert.match(source, /const demoteFrames = debug\?\.casterDemoteFrames \?\? STATIC_SHADOW_DEMOTE_FRAMES;/);
+  assert.equal(source.match(/, promoteFrames, demoteFrames\) === '(?:promote|demote)'/g)?.length, 2, 'both bookkeeping calls take the windows');
 }
 {
   const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);

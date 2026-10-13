@@ -71,6 +71,9 @@ interface ShadowDebugOptions {
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
+  /** 2026-10-13: the static cache's promotion and demotion windows, frames (A/B probes; shadowStaticCache.ts). */
+  casterPromoteFrames?: number;
+  casterDemoteFrames?: number;
 }
 
 declare global {

@@ -89,18 +89,21 @@ export function planCascade(input: {
  * becomes dynamic; a dynamic caster still for DEMOTE frames becomes static again.
  */
 interface CasterMotionRecord { sig: number; changedRun: number; stillRun: number; dynamic: boolean }
-export function stepCasterMotion(record: CasterMotionRecord, sig: number): 'none' | 'changed' | 'promote' | 'demote' {
+export function stepCasterMotion(
+  record: CasterMotionRecord, sig: number,
+  promoteFrames = STATIC_SHADOW_PROMOTE_FRAMES, demoteFrames = STATIC_SHADOW_DEMOTE_FRAMES,
+): 'none' | 'changed' | 'promote' | 'demote' {
   const changed = sig !== record.sig;
   record.sig = sig;
   if (changed) {
     record.changedRun++;
     record.stillRun = 0;
-    if (!record.dynamic && record.changedRun >= STATIC_SHADOW_PROMOTE_FRAMES) { record.dynamic = true; return 'promote'; }
+    if (!record.dynamic && record.changedRun >= promoteFrames) { record.dynamic = true; return 'promote'; }
     return record.dynamic ? 'none' : 'changed';
   }
   record.changedRun = 0;
   record.stillRun++;
-  if (record.dynamic && record.stillRun >= STATIC_SHADOW_DEMOTE_FRAMES) { record.dynamic = false; return 'demote'; }
+  if (record.dynamic && record.stillRun >= demoteFrames) { record.dynamic = false; return 'demote'; }
   return 'none';
 }
 
@@ -472,12 +475,17 @@ export function createShadowStaticCache(): ShadowStaticCache {
 
   /** Hash the static world (every caster's signature, in traversal order) and run the promotion bookkeeping. */
   function hashStaticContent(): number {
+    // 2026-10-13 (the perf stream, A/B probes): the promotion and demotion windows (__SHADOW_DEBUG.casterPromoteFrames /
+    // casterDemoteFrames), against the vegetation's LOD cross-fades churning the static layer while a camera drives
+    const debug = typeof window !== 'undefined' ? window.__SHADOW_DEBUG : undefined;
+    const promoteFrames = debug?.casterPromoteFrames ?? STATIC_SHADOW_PROMOTE_FRAMES;
+    const demoteFrames = debug?.casterDemoteFrames ?? STATIC_SHADOW_DEMOTE_FRAMES;
     // the promoted casters first: back to the static layer once still (hashed below this same frame), out of the
     // set once gone from the world
     for (const object of promoted) {
       if (!underStaticRoot(object)) { promoted.delete(object); coverDirty = true; continue; }
       const record = motion.get(object)!;
-      if (stepCasterMotion(record, casterSignature(object as CasterLike)) === 'demote') {
+      if (stepCasterMotion(record, casterSignature(object as CasterLike), promoteFrames, demoteFrames) === 'demote') {
         promoted.delete(object); coverDirty = true; stats.demotions++;
       }
     }
@@ -494,7 +502,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
         const sig = casterSignature(o);
         let record = motion.get(o);
         if (!record) { record = { sig, changedRun: 0, stillRun: 0, dynamic: false }; motion.set(o, record); }
-        else if (stepCasterMotion(record, sig) === 'promote') {
+        else if (stepCasterMotion(record, sig, promoteFrames, demoteFrames) === 'promote') {
           // moving on consecutive frames: dynamic from this frame on (its subtree draws with the dynamic layer)
           promoted.add(o);
           coverDirty = true;
