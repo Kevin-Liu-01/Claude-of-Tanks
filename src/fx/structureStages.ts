@@ -35,6 +35,7 @@ import {
   COLLAPSE_S, MAX_HOLES, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
 } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
+import { bindMaterialEnvIntensity } from '../engine/materialEnvIntensity.ts';
 import type { StructureScars } from './structureScars.ts';
 
 export interface StructureStages {
@@ -468,7 +469,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
   function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number,
-    holeKind?: 'blast' | 'pierce'): void {
+    holeKind?: 'blast' | 'pierce', made: readonly THREE.Mesh[] = []): void {
     if (!result) return;
     let changed = false;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
@@ -480,6 +481,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // a breach's cuts follow the outline the kit's rim does (its own seed's phase)
       mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3,
         holeSeed !== undefined ? holeOutlinePhase01(holeSeed) : undefined, holeKind);
+      // a hole through the wall opens through the earlier runs there too (a spall's render ring cuts only the skin: none)
+      if (cut.depthM >= 0.2 && o.scars == null) {
+        trimRuns(seam, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3,
+          holeSeed !== undefined ? holeOutlinePhase01(holeSeed) * Math.PI * 2 : null, made);
+      }
       // a hole goes through the wall's layers; a spall or the render ring only through its render
       o.scars?.add(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM >= 0.2,
         (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
@@ -567,10 +573,29 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // own tint, never brighter: the dark interiors stay dim through their small light of their own
   // (wave 326: still "a glowing white bar along a storey seam" — the floor slab over a hole, cream in the sun) the room
   // at six tenths of its tint: in shade, as a room's inside is
-  const roomMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.6, 0.6, 0.6), roughness: 1, metalness: 0,
-    vertexColors: true, envMapIntensity: 0, emissive: new THREE.Color(0.016, 0.014, 0.012) });
-  roomMaterial.name = 'fx-structure-room';
-  mask.patch(roomMaterial);
+  // (2026-10-12, the owner's Steinburg screenshot: "big flat untextured grey-blue rectangles ... in the wall where it
+  // broke") the room was one flat untextured material whose envMapIntensity 0 three never honoured (materialEnvIntensity.ts):
+  // the sky's light and its grazing sheen made every room box a slate-blue slab. It is drawn in the building's own bucket
+  // texture now (the wall's plaster or brick, its floor's boards), shaded by the writer's interior tints, and takes only a
+  // share of the sky's light (bound, so it holds); one program for every bucket (a map always: white where none)
+  const ROOM_WHITE = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  ROOM_WHITE.needsUpdate = true;
+  const roomMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  function roomMaterialFor(source: THREE.Material | null | undefined): THREE.MeshStandardMaterial {
+    const map = (source as (THREE.Material & { map?: THREE.Texture | null }) | null | undefined)?.map ?? null;
+    const key = map ? map.uuid : 'none';
+    let m = roomMaterials.get(key);
+    if (!m) {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: map ?? ROOM_WHITE, roughness: 1, metalness: 0,
+        vertexColors: true, envMapIntensity: 0.35, emissive: new THREE.Color(0.012, 0.0105, 0.009) });
+      mat.name = 'fx-structure-room';
+      mat.onBeforeCompile = (shader) => { bindMaterialEnvIntensity(shader as unknown as { uniforms: Record<string, THREE.IUniform> }, mat); };
+      mask.patch(mat);
+      roomMaterials.set(key, mat);
+      m = mat;
+    }
+    return m;
+  }
 
   /** The world's patched shadow depth material of a bucket this structure draws in (its spans' meshes carry them). */
   function depthMaterials(seam: StructureDamageSeam): Map<string, THREE.Material> {
@@ -587,18 +612,155 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
     standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number, holeKind?: 'blast' | 'pierce'): void {
     const byBucket = spanMaterials(seam);
-    const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
-      : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
+    const resolve = (bucket: string, role?: DamageRole): THREE.Material => {
+      const own = byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null;
+      return role === 'room' ? roomMaterialFor(own) : own ?? fallbackFor(bucket);
+    };
     const depths = standing ? depthMaterials(seam) : null;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
       ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly,
         pieces: !noPieces }
       : { meshes: !piecesOnly, pieces: !noPieces });
+    // (2026-10-12) a kit's dark box behind each hole stood beside the next hole's, so a wall with several holes showed
+    // their edges and sides as flat panels: the storey's one interior (layInterior) is the room every hole on it opens
+    // into. A kit that lays no room (a ruin, open to the sky) never asks, and gets none
+    let wantsRoom = false;
+    const mesh0 = out.mesh;
+    const meshW = Object.create(mesh0) as DamageWriters['mesh'];
+    meshW.begin = (bucket: string, role: DamageRole): boolean => {
+      if (role === 'room' && bucket === 'dark') { wantsRoom = true; return false; }
+      return mesh0.begin(bucket, role);
+    };
+    const writers: DamageWriters = { mesh: meshW, pieces: out.pieces };
     let result: DamageStageResult | null = null;
-    try { result = build(out); } catch { result = null; }
+    try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result, holeSeed, holeKind);
+    apply(seam, result, holeSeed, holeKind, made);
+    if (wantsRoom && standing && !piecesOnly) layInterior(seam, owner && owner.storey >= 0 ? owner.storey : 0, settled);
+  }
+
+  /** The storeys whose interior is laid, per structure. */
+  const interiors = new Map<number, Set<number>>();
+  /** The bucket's tile density (repeats a metre) the kits' fallback surface uses (regional fracture.ts fallbackSurface). */
+  const tileDensity = (bucket: string): number => bucket.includes('Stone') || bucket === 'stone' ? 0.5
+    : /laster/i.test(bucket) ? 0.42 : 0.55;
+  /**
+   * A storey's interior, laid once at its first hole (2026-10-12, the owner: broken faces show the building's own
+   * material with proper inner faces): the inside of its walls, its floor and its ceiling as one inward-facing box just
+   * behind the walls' thickness, in the building's own buckets (the walls' render or masonry, the floor's boards or
+   * stone, the ceiling's joists), dimly lit. A standing run: holes look into it (no cut takes it), it falls, folds and
+   * drops with its storey like the rest of the building.
+   */
+  function layInterior(seam: StructureDamageSeam, storeyIndex: number, settled: boolean): void {
+    const a = seam.anatomy;
+    const storey = a.storeys[storeyIndex];
+    if (!storey || !storey.faces.length) return;
+    let laid = interiors.get(seam.structureIdx);
+    if (!laid) { laid = new Set(); interiors.set(seam.structureIdx, laid); }
+    if (laid.has(storeyIndex)) return;
+    laid.add(storeyIndex);
+    // the footprint the storey's faces enclose (body frame), inside their thickness
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, thick = 0.2;
+    for (const f of storey.faces) {
+      const hw = f.width / 2;
+      for (const k of [-1, 1]) {
+        const x = f.origin[0] + f.u[0] * hw * k, z = f.origin[2] + f.u[2] * hw * k;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+      }
+      thick = Math.max(thick, f.layers.reduce((sum, l) => sum + l.thicknessM, 0));
+    }
+    const inset = Math.min(thick + 0.08, 0.9);
+    x0 += inset; x1 -= inset; z0 += inset; z1 -= inset;
+    if (!(x1 - x0 > 0.6 && z1 - z0 > 0.6)) return;
+    const above = a.storeys[storeyIndex + 1];
+    const y0 = storey.y0 + 0.03;
+    // under the eaves: the mask lets what stands over them ride the roof down (the battle strips: the old room boxes reached
+    // the eaves, rode the falling roof and stood over the heap as slate panels until the fold)
+    const eaveCap = a.roof ? a.roof.eaveY - 0.15 : Infinity;
+    const y1 = Math.min(eaveCap, Math.max(y0 + 1, (above ? above.y0 : storey.y1) - 0.06));
+    if (!(y1 - y0 > 0.8)) return;
+    // its materials: the walls' render or infill where they have one (an interior is plastered), else their masonry
+    const face = storey.faces[0]!;
+    const wallSlot = face.layers.find((l) => l.material === 'plaster' || l.material === 'infill')
+      ?? face.layers[face.layers.length - 1] ?? face.layers[0];
+    if (!wallSlot) return;
+    const coreSlot = face.layers[face.layers.length - 1] ?? wallSlot;
+    const floorSlot = storey.floor?.structure ?? coreSlot;
+    const ceilSlot = above?.floor?.structure ?? a.roof?.structure ?? floorSlot;
+    const byBucket = spanMaterials(seam);
+    const resolve = (bucket: string): THREE.Material => roomMaterialFor(byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null);
+    const out = debris.begin(a.placement, resolve, 0, settled, { tag: STAGE_RUN_TAG + seam.structureIdx + 1, pieces: false });
+    const m = out.mesh;
+    // a quad facing `n` (body frame), its tile laid by the bucket's density on the plane it faces
+    const quad = (bucket: string, tint: readonly number[], shade: number, n: readonly [number, number, number],
+      corners: ReadonlyArray<readonly [number, number, number]>): void => {
+      if (!m.begin(bucket, 'room')) return;
+      const d = tileDensity(bucket);
+      const ids = corners.map(([x, y, z]) => {
+        const u = n[1] !== 0 ? x * d : Math.abs(n[0]) > 0.5 ? z * d : x * d;
+        const v = n[1] !== 0 ? z * d : y * d;
+        return m.vertex(x, y, z, n[0], n[1], n[2], u, v, tint[0]! * shade, tint[1]! * shade, tint[2]! * shade);
+      });
+      m.triangle(ids[0]!, ids[1]!, ids[2]!);
+      m.triangle(ids[0]!, ids[2]!, ids[3]!);
+      m.end();
+    };
+    const wt = wallSlot.tint, wb = wallSlot.bucket;
+    // walls, facing in: the front (+z) faces -z, the back faces +z, the right (+x) faces -x, the left faces +x
+    quad(wb, wt, 0.42, [0, 0, -1], [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]]);
+    quad(wb, wt, 0.42, [0, 0, 1], [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]]);
+    quad(wb, wt, 0.4, [-1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]);
+    quad(wb, wt, 0.4, [1, 0, 0], [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]]);
+    // its floor (up) and its ceiling (down)
+    quad(floorSlot.bucket, floorSlot.tint, 0.45, [0, 1, 0], [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]);
+    quad(ceilSlot.bucket, ceilSlot.tint, 0.26, [0, -1, 0], [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]);
+    const made = debris.commit();
+    for (const mesh of made) mesh.userData.runOwner = { section: -1, storey: storeyIndex } satisfies RunOwner;
+  }
+
+  /**
+   * A new hole takes the earlier runs it opens through with it (2026-10-12, the owner's Steinburg strips: a hole's rim of
+   * the wall's own units is a run no hole cuts, so a later hole beside it left those units hanging in the opening as
+   * strips of brick): every triangle of the structure's standing runs (not the ones this stage just laid) whose centre
+   * stands inside the new cut — within its depth through the wall, inside the inner edge of its ragged outline — is
+   * folded to a point, as the mask discards the wall there. A room behind a hole stands beyond the cut's depth and stays.
+   */
+  function trimRuns(seam: StructureDamageSeam, x: number, y: number, z: number, radiusM: number, nx: number, nz: number,
+    depthM: number, outsideM: number, phase: number | null, keep: readonly THREE.Mesh[]): boolean {
+    let trimmed = false;
+    for (const mesh of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+      // the room the holes look into is never in a cut (it stands behind the wall's thickness)
+      if (keep.includes(mesh) || mesh.name.startsWith('fx-structure-room-')) continue;
+      const geo = mesh.geometry;
+      const index = geo.getIndex();
+      const pos = geo.getAttribute('position');
+      if (!index || !pos) continue;
+      const idx = index.array as Uint16Array | Uint32Array;
+      let touched = false;
+      for (let t = 0; t + 2 < idx.length; t += 3) {
+        const a = idx[t]!, b = idx[t + 1]!, c = idx[t + 2]!;
+        if (a === b && b === c) continue;
+        const dx = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3 - x;
+        const dy = (pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3 - y;
+        const dz = (pos.getZ(a) + pos.getZ(b) + pos.getZ(c)) / 3 - z;
+        const along = dx * nx + dz * nz;
+        if (along > outsideM || along < -depthM) continue;
+        const lx = dx - nx * along, lz = dz - nz * along;
+        const rl = Math.hypot(lx, dy, lz);
+        // the outline's inner edge (the mask's blocky cells reach in to 0.85 of it)
+        let lobe = 0.48;
+        if (phase !== null) {
+          const th = Math.atan2(dy, lx * nz - lz * nx);
+          lobe = 0.8 + 0.2 * Math.sin(3 * th + phase) + 0.12 * Math.sin(5 * th + 2 * phase);
+        }
+        if (rl >= radiusM * 0.85 * lobe) continue;
+        idx[t + 1] = a; idx[t + 2] = a;
+        touched = true;
+      }
+      if (touched) { index.needsUpdate = true; trimmed = true; }
+    }
+    return trimmed;
   }
 
   // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
@@ -930,7 +1092,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     },
     warm(at, buckets) {
       const list = [...buckets].filter((bucket) => !!o.materialFor?.(bucket));
-      const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
+      const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterialFor(o.materialFor?.(bucket))
         : o.materialFor?.(bucket) ?? fallbackFor(bucket);
       const out = debris.begin({ x: at.x, y: at.y, z: at.z, yaw: 0 }, resolve, 0, false, { tag: STAGE_RUN_TAG + 1 });
       const tri = (bucket: string, role: DamageRole, k: number): void => {
@@ -946,7 +1108,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // collapse compiled exactly two programs the world had not: the room behind a hole and the pieces' material) the
       // room and one piece, nothing else (R262: the warm keeps battle entry within half a second)
       tri(list[0] ?? 'stone', 'room', 0);
-      out.pieces.push(list[0] ?? 'stone', 'chunk', 0, 0, 0.5, 0, 0, 0, 0, 1, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0, 0, 0);
+      // (a still piece on a standing building is laid in its run now: the warm's piece falls, so it draws the pool's program)
+      out.pieces.push(list[0] ?? 'stone', 'chunk', 0, 0, 0.5, 0, 0, 0, 0, 1, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0, -0.5, 0);
       const made = debris.commit();
       for (const mesh of made) mesh.frustumCulled = false;
       return made.length;
@@ -1070,6 +1233,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       originals.clear();
       realHoles.clear();
       punched.clear();
+      interiors.clear();
       downed.clear();
       sectionsSeen.clear();
       pendingStrikes.length = 0;
