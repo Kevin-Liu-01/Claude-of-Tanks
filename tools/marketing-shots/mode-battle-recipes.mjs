@@ -800,4 +800,485 @@ async function openCrewRadio(ctx) {
   return { ...result, select };
 }
 
+// ================================================================================================ UI and multi-page slots
+// These run as `custom` recipes inside the same capture-lock holds as the battles: the recipe drives the page itself.
+
+/** Boot the Garage and stage a vehicle on a Garage variant (the capture-showcase-r2-ui.mjs garage flow). */
+async function openGarage(ctx, { variantId, vehicleId }) {
+  const page = ctx.page;
+  await page.goto(`${ctx.baseUrl}/?nosplash=1`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP && window.__DEBUG, { timeout: 240000, polling: 250 });
+  await page.waitForFunction(() => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return stats.architecture?.ready === true && stats.architecture.presented === true;
+  }, { timeout: 120000, polling: 250 });
+  await page.waitForFunction(() => window.__GARAGE_WORKSHOP.stats().built === true, { timeout: 90000 })
+    .catch(() => ctx.note('garage workshop dressing did not finish before the capture'));
+  await page.evaluate(async ({ variantId, vehicleId }) => {
+    window.__DEBUG.selectGarageTank(vehicleId);
+    await window.__DEBUG.stagePedestalTank(vehicleId);
+    window.__GARAGE_WORKSHOP.set(variantId);
+  }, { variantId, vehicleId });
+  await page.waitForFunction(({ variantId, vehicleId }) => {
+    const stats = window.__GARAGE_WORKSHOP.stats();
+    return window.__DEBUG.selectedSpecId === vehicleId && stats.selected === variantId
+      && stats.architecture?.ready === true && stats.architecture.presented === true;
+  }, { timeout: 90000, polling: 250 }, { variantId, vehicleId });
+  await page.waitForFunction(() => window.__GARAGE_WORKSHOP.stats().built === true, { timeout: 60000 }).catch(() => {});
+  await page.evaluate(() => document.fonts.ready);
+  await ctx.sleep(2500);
+}
+
+/** The Tank Gallery on a vehicle and layer, framed from its hero (elevated front-left) view. */
+async function openGallery(ctx, { vehicleId, layer, view = 'hero' }) {
+  const page = ctx.page;
+  await page.goto(`${ctx.baseUrl}/gallery?id=${vehicleId}&layer=${layer}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true, { timeout: 240000, polling: 250 });
+  await page.evaluate(async (args) => {
+    await window.__TANK_GALLERY.loadTank(args.vehicleId, { mode: args.layer, view: args.view });
+    window.__TANK_GALLERY.frameView(args.view);
+  }, { vehicleId, layer, view });
+  await page.waitForFunction((args) => {
+    const state = window.__TANK_GALLERY.getState();
+    return state.selectedId === args.vehicleId && state.mode === args.layer;
+  }, { timeout: 60000 }, { vehicleId, layer });
+  await page.evaluate(() => document.fonts.ready);
+  await ctx.sleep(2500);
+}
+
+/** Scene Studio with its Director workspace showing and the site's takes listed. */
+async function openStudio(ctx, { map = null } = {}) {
+  const page = ctx.page;
+  await page.goto(`${ctx.baseUrl}/?studio=1&nogate=1${map ? `&map=${map}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true, { timeout: 240000, polling: 250 });
+  await page.evaluate(() => {
+    window.__STUDIO.setRailVisible?.(true);
+    document.querySelector('[data-workspace="director"]')?.click();
+  });
+  await page.waitForFunction(() => document.querySelectorAll('[data-site-take]').length > 0, { timeout: 60000 })
+    .catch(() => ctx.note('the Director workspace did not list the site takes'));
+  await page.evaluate(() => document.fonts.ready);
+}
+
+/** The site's s36 barn knockout (a Type 10 knocks out a T-90M on Frontier Basin), actors named for the landing
+ *  contract: the hero is the shooter and foe0 the victim; golden hour. */
+async function studioLoopScene(root) {
+  const { readFileSync } = await import('node:fs');
+  const scene = JSON.parse(readFileSync(`${root}/public/media/site50-r14/scenes/s36-barn-knockout.scene.json`, 'utf8'));
+  const rename = { hero: 'shooter', foe0: 'victim' };
+  const swap = (name) => rename[name] || name;
+  for (const actor of scene.actors) actor.name = swap(actor.name);
+  for (const effect of scene.effects) if (effect.actor) effect.actor = swap(effect.actor);
+  for (const track of scene.storyboard?.actorTracks || []) if (track.actor) track.actor = swap(track.actor);
+  if (scene.camera?.target) scene.camera.target = swap(scene.camera.target);
+  scene.timeOfDay = 'golden';
+  delete scene.still;
+  delete scene.stillsExtra;
+  return scene;
+}
+
+function serviceRecordSeed() {
+  const at = Date.UTC(2026, 9, 11, 19);
+  const medal = (count, daysAgo) => ({ count, first: at - daysAgo * 86400000, last: at - 3600000 });
+  const medals = {
+    chain_of_thought: medal(14, 30), step_by_step: medal(9, 26), zero_shot: medal(6, 21), few_shot: medal(11, 28),
+    first_blood: medal(41, 40), ace_gunner: medal(7, 18), high_caliber: medal(12, 33), sharpshooter: medal(19, 35),
+    long_shot: medal(8, 19), one_shot: medal(5, 12), detonator: medal(9, 22), steel_wall: medal(13, 29),
+    close_call: medal(6, 15), eagle_eye: medal(10, 25), flag_runner: medal(4, 9), wave_breaker: medal(3, 6),
+    gunship_ace: medal(2, 4), drone_ace: medal(3, 5),
+  };
+  const history = [{
+    id: 'home-r2-battle', at, vehicleId: 'leo2a7v_x', mapId: 'verdant', mode: 'standard', result: 'victory', durationS: 342,
+    kills: 5, damage: 9120, shots: 11, hits: 9, bestChain: 4, medals: ['chain_of_thought', 'step_by_step', 'ace_gunner'], achievements: [],
+    trace: [{ t: 31, specId: 't90m_x', distM: 820, cause: 'shot' }, { t: 37, specId: 't72b3m_x', distM: 610, cause: 'ammorack' },
+      { t: 44, specId: 'ztz99a2', distM: 455, cause: 'shot' }],
+  }];
+  return {
+    'cot.service.v1': JSON.stringify({ version: 1, medals,
+      stats: { battles: 212, wins: 131, kills: 688, damage: 812450, bestChain: 6, bestStreak: 11, bestKills: 10, longestKillM: 1460 },
+      achievements: { chain_thinker: { tier: 2, at } }, unseen: [], history }),
+    'cot.profile.v2': JSON.stringify({ version: 2, matches: 212, wins: 131, losses: 78, draws: 3, kills: 688, damage: 812450, bestDamage: 15230 }),
+  };
+}
+
+Object.assign(RECIPES, {
+  'features/garage': {
+    windowS: 50,
+    battle: { specId: 'kf51_x' },
+    storage: {
+      'cot.camo.kf51_x': 'flecktarn',
+      'cot.equip.kf51_x': JSON.stringify(['rammer', 'optics', 'spall_liner']),
+      'cot.garage.variant': 'verdant_motor_pool',
+    },
+    async custom(ctx) {
+      await openGarage(ctx, { variantId: 'verdant_motor_pool', vehicleId: 'kf51_x' });
+      await ctx.snap('garage as staged');
+      const tab = await ctx.eval(() => {
+        const tabs = [...document.querySelectorAll('[data-technical-view]')];
+        const armor = tabs.find((b) => b.dataset.technicalLayer === 'armor') || tabs.find((b) => /armou?r/i.test(b.textContent || ''));
+        if (armor) armor.click();
+        return { tabs: tabs.map((b) => `${b.dataset.technicalView}:${b.dataset.technicalLayer}:${(b.textContent || '').trim()}`), clicked: armor?.dataset.technicalView ?? null };
+      });
+      ctx.log('technical tabs', JSON.stringify(tab));
+      await ctx.sleep(1200);
+      await ctx.snap('garage dossier armor tab', { tabs: tab });
+      const loadout = await ctx.eval(() => [...document.querySelectorAll('.eqslot')].map((e) => (e.textContent || '').trim()));
+      ctx.log('loadout', JSON.stringify(loadout));
+    },
+  },
+
+  'mechanics/equipment': {
+    windowS: 50,
+    battle: { specId: 'k2_x' },
+    storage: {
+      'cot.equip.k2_x': JSON.stringify(['vstab', 'binoculars']),
+      'cot.garage.variant': 'urban_arsenal',
+    },
+    async custom(ctx) {
+      await openGarage(ctx, { variantId: 'urban_arsenal', vehicleId: 'k2_x' });
+      const opened = await ctx.page.click('.eqslot[data-slot="2"]').then(() => true).catch(() => false);
+      await ctx.page.waitForSelector('.cot-eqpick.open', { timeout: 8000 }).catch(() => ctx.note('the equipment picker did not open'));
+      await ctx.sleep(800);
+      await ctx.snap('equipment picker on slot 3', { opened });
+      for (const cat of ['survival', 'recon', 'mobility']) {
+        const chip = await ctx.page.$(`.cot-eqpick .chip[data-cat="${cat}"]`);
+        if (!chip) continue;
+        await chip.click();
+        await ctx.sleep(500);
+        const tile = await ctx.page.$('.cot-eqpick .cot-eqtile:not(.remove)');
+        if (tile) { await tile.hover(); await ctx.sleep(900); }
+        await ctx.snap(`equipment picker ${cat} with a tile hovered`);
+      }
+    },
+  },
+
+  'mechanics/modules': {
+    windowS: 40,
+    battle: { specId: 'merkava4_barak' },
+    async custom(ctx) {
+      await openGallery(ctx, { vehicleId: 'merkava4_barak', layer: 'modules' });
+      await ctx.snap('gallery modules hero');
+      await ctx.eval(() => window.__TANK_GALLERY.frameView('elevated-left'));
+      await ctx.sleep(1500);
+      await ctx.snap('gallery modules elevated-left');
+    },
+  },
+
+  'mechanics/dossiers': {
+    windowS: 40,
+    battle: { specId: 'challenger_3x' },
+    async custom(ctx) {
+      await openGallery(ctx, { vehicleId: 'challenger_3x', layer: 'armor' });
+      await ctx.snap('gallery armor hero');
+      await ctx.eval(() => window.__TANK_GALLERY.frameView('elevated-left'));
+      await ctx.sleep(1500);
+      await ctx.snap('gallery armor elevated-left');
+    },
+  },
+
+  'mechanics/medals': {
+    windowS: 40,
+    battle: { specId: 'leo2a7v_x' },
+    storage: serviceRecordSeed(),
+    async custom(ctx) {
+      await openGarage(ctx, { variantId: 'verdant_motor_pool', vehicleId: 'leo2a7v_x' });
+      await ctx.page.click('.cot-record-trigger').catch(() => ctx.note('no Service Record trigger'));
+      await ctx.page.waitForSelector('.cot-service-record.is-open', { timeout: 10000 }).catch(() => ctx.note('the Service Record did not open'));
+      await ctx.page.click('[data-record-tab="medals"]').catch(() => ctx.note('no medals tab'));
+      await ctx.sleep(900);
+      await ctx.snap('service record medals');
+    },
+  },
+
+  'mechanics/presets': {
+    windowS: 60,
+    battle: { specId: 't90m_x' },
+    async custom(ctx) {
+      await openStudio(ctx);
+      await ctx.snap('studio director as opened');
+      const loaded = await ctx.eval(async () => {
+        const card = document.querySelector('[data-site-take="s21-fields-assault"]');
+        if (!card) return { card: false };
+        card.scrollIntoView({ block: 'center' });
+        card.click();
+        for (let i = 0; i < 240 && card.getAttribute('aria-pressed') !== 'true'; i++) await new Promise((r) => setTimeout(r, 250));
+        return { card: true, pressed: card.getAttribute('aria-pressed') };
+      });
+      ctx.log('take', JSON.stringify(loaded));
+      await ctx.sleep(2500);
+      // the take's explosions land at 0.95, 2.1 and 4.6 s; hold the viewport just after each
+      for (const tMs of [1050, 2250, 4200, 4750]) {
+        await ctx.eval((t) => { window.__STUDIO.pause?.(); window.__STUDIO.seek(t); }, tMs);
+        await ctx.sleep(1200);
+        await ctx.snap(`studio s21 at ${tMs} ms`, { seekMs: tMs });
+      }
+    },
+  },
+
+  'features/studio': {
+    windowS: 70,
+    battle: { specId: 'type10_x' },
+    async custom(ctx) {
+      const { writeFileSync, mkdirSync, statSync } = await import('node:fs');
+      const { join, resolve } = await import('node:path');
+      const root = process.cwd();
+      const out = resolve(root, 'shots/media-r5/home-r2/studio-loop');
+      mkdirSync(out, { recursive: true });
+      const scene = await studioLoopScene(root);
+      writeFileSync(join(out, 'scene.json'), `${JSON.stringify(scene, null, 1)}\n`);
+      await ctx.page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+      await openStudio(ctx, { map: scene.map });
+      const staged = await ctx.eval(async (input) => {
+        const S = window.__STUDIO;
+        await S.load(input);
+        S.setRailVisible?.(true);
+        document.querySelector('[data-workspace="director"]')?.click();
+        S.pause?.();
+        S.seek(0);
+        const board = S.getStoryboard();
+        return { durationMs: board.durationMs, shots: board.shots.length, actors: S.listActors().map((a) => ({ id: a.id, name: a.name })) };
+      }, scene);
+      ctx.log('studio loop staged', JSON.stringify(staged));
+      await ctx.sleep(2500);
+      const master = join(out, 'studio-knockout.webm');
+      const recorder = await ctx.page.screencast({ path: master, fps: 30, quality: 24, ffmpegPath: '/opt/homebrew/bin/ffmpeg' });
+      await ctx.eval(() => window.__STUDIO.play());
+      await ctx.page.waitForFunction('window.__STUDIO.playing === false && window.__STUDIO.fxTimeMs >= window.__STUDIO.durationMs - 1', { timeout: 40000 })
+        .catch(() => ctx.note('the Studio loop did not report its end'));
+      await ctx.sleep(300);
+      await recorder.stop();
+      const bytes = statSync(master).size;
+      const manifest = {
+        version: 1, renderer: { width: 1920, height: 1080, fps: 30 }, scene: 'scene.json',
+        source: '/media/site50-r14/scenes/s36-barn-knockout.scene.json (hero -> shooter, foe0 -> victim, golden hour)',
+        master: 'studio-knockout.webm', durationMs: staged.durationMs, mimeType: 'video/webm', bytes,
+        captureMode: 'studio-ui', workspace: 'director',
+        actors: scene.actors.map(({ id, name }) => ({ id, name })),
+        effects: scene.effects.map(({ type, actor, tMs }) => ({ type, actor: actor || null, tMs })),
+      };
+      writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      await ctx.eval(() => { window.__STUDIO.pause?.(); window.__STUDIO.seek(2150); });
+      await ctx.sleep(1200);
+      await ctx.snap('studio loop poster at 2150 ms');
+      ctx.log(`studio loop ${bytes} bytes -> ${master}`);
+      ctx.note(`studio loop recorded to ${out} (deliver as features/studio.webm + studio.json after review)`);
+    },
+  },
+});
+
+// ================================================================================================ spotting
+Object.assign(RECIPES, {
+  'mechanics/spotting': {
+    hour: 'sunset',
+    windowS: 50,
+    async run(ctx) {
+      // a bush on the player's side with an open sight line ~300 m toward the enemy, preferring a seat above the column
+      const plan = await ctx.eval(() => {
+        const H = window.__MB.H, D = H.D(), p = H.player();
+        const discs = (D.world.getConcealment?.() || []).filter((c) => !c.dead && c.r >= 1.5 && c.r <= 9);
+        const enemies = H.enemies();
+        const ex = enemies.reduce((a, t) => a + t.state.pos.x, 0) / Math.max(1, enemies.length);
+        const ez = enemies.reduce((a, t) => a + t.state.pos.z, 0) / Math.max(1, enemies.length);
+        const toEnemy = Math.atan2(ex - p.state.pos.x, ez - p.state.pos.z);
+        const canopyOnLine = (sx, sz, px, pz, skip) => {
+          const dx = px - sx, dz = pz - sz, len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
+          for (const q of discs) {
+            if (q === skip) continue;
+            const wx = q.x - sx, wz = q.z - sz, along = wx * ux + wz * uz, across = Math.abs(wx * uz - wz * ux);
+            if (along > 12 && along < len - 10 && across < q.r + 1) return true;
+          }
+          return false;
+        };
+        let best = null;
+        for (const c of discs) {
+          if (H.dist(c, p.state.pos) > 240) continue;
+          const sx = c.x + Math.sin(toEnemy) * c.r * 0.3, sz = c.z + Math.cos(toEnemy) * c.r * 0.3;
+          if (Math.abs(sx) > 430 || Math.abs(sz) > 430) continue;
+          const sy = H.groundY(sx, sz);
+          for (const dist of [300, 270, 330, 240, 360]) {
+            for (const lateral of [0, 45, -45, 90, -90]) {
+              const px = sx + Math.sin(toEnemy) * dist + Math.cos(toEnemy) * lateral;
+              const pz = sz + Math.cos(toEnemy) * dist - Math.sin(toEnemy) * lateral;
+              if (Math.abs(px) > 430 || Math.abs(pz) > 430) continue;
+              const py = H.groundY(px, pz);
+              if (H.raycastBlock({ x: sx, y: sy + 2.6, z: sz }, { x: px, y: py + 1.6, z: pz }, 3) != null) continue;
+              if (canopyOnLine(sx, sz, px, pz, c)) continue;
+              const score = (sy - py) * 0.6 - Math.abs(dist - 300) / 40 - Math.abs(lateral) / 60;
+              if (!best || score > best.score) best = { seat: { x: sx, z: sz, r: c.r }, column: { x: px, z: pz }, score, riseM: Math.round(sy - py), dist, lateral };
+            }
+          }
+        }
+        return best;
+      });
+      ctx.log('spotting plan', JSON.stringify(plan));
+      if (!plan) { ctx.note('no bush with an open sight line was found; the slot falls back to a contact frame'); }
+      else {
+        await ctx.eval((pl) => {
+          const H = window.__MB.H, p = H.player();
+          const yaw = Math.atan2(pl.column.x - pl.seat.x, pl.column.z - pl.seat.z);
+          H.place(p, pl.seat.x, pl.seat.z, yaw);
+          const crossing = yaw + Math.PI / 2;
+          const column = H.enemies().sort((a, b) => H.dist(a.state.pos, pl.column) - H.dist(b.state.pos, pl.column)).slice(0, 3);
+          column.forEach((t, i) => {
+            H.place(t, pl.column.x - Math.sin(crossing) * i * 17, pl.column.z - Math.cos(crossing) * i * 17, crossing);
+            t.aiCtl = null; t.input.throttle = 0.45; t.input.steer = 0; t.input.brake = false; t.input.fire = false;
+          });
+          window.__MB.columnIds = column.map((t) => t.id);
+        }, plan);
+        await ctx.mb('defineSelector', 'columnLead', 'const id = (window.__MB.columnIds || [])[1] || (window.__MB.columnIds || [])[0]; return id ? H.info(g.tankById.get(id)) : null;');
+        ctx.note('player placed in a bush facing the enemy side; three enemy bots placed as a column crossing ~300 m below with their AI paused (driving straight)');
+        const spotted = await ctx.until(() => {
+          const D = window.__DEBUG, ids = window.__MB.columnIds || [];
+          const team = D.game.player?.team;
+          return ids.filter((id) => D.game.spotting?.isSpotted?.(id, team)).length || null;
+        }, { timeoutS: 20, label: 'the column spotted' });
+        ctx.log('spotted', spotted);
+      }
+      await ctx.capture({
+        cameras: [
+          { kind: 'between', from: 'player', to: plan ? 'columnLead' : 'nearestEnemy', backM: 8, sideM: 3, heightM: 2.0, lookAtFrac: 0.8, fov: 38, hud: 'noreticle' },
+          { kind: 'between', from: 'player', to: plan ? 'columnLead' : 'nearestEnemy', backM: 6, sideM: -2.5, heightM: 1.4, lookAtFrac: 0.85, fov: 34, hud: 'noreticle' },
+          { kind: 'chase', target: plan ? 'columnLead' : 'nearestEnemy', step: 2, hud: 'full' },
+        ],
+        cameraEvery: 3,
+        everyS: 1.1,
+        triggers: [{ type: 'tank:spotted', who: 'any', onscreen: false, delays: [120, 400] }],
+      });
+    },
+  },
+});
+
+// ================================================================================================ the two-client room
+/** Open one client in its own browser context (own storage), director installed, focus pinned (two live pages). */
+async function openClient(ctx, { tank, name }) {
+  const context = await ctx.browser.createBrowserContext();
+  const page = await context.newPage();
+  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
+  await page.evaluateOnNewDocument((seed) => {
+    try { localStorage.clear(); for (const [k, v] of Object.entries(seed)) localStorage.setItem(k, v); } catch { /* defaults */ }
+    // two battles render at once in one headless Chrome: each page counts as focused (the frame loop pauses unfocused pages)
+    Document.prototype.hasFocus = function hasFocus() { return true; };
+  }, { 'cot.lastTank.v1': tank, 'cot.gfxPreset': 'ultra', 'cot.locale': 'en-US', 'cot.player.name.v1': name, 'cot.battle.times.v2': '["sunset"]' });
+  await page.evaluateOnNewDocument(ctx.installDirector);
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(String(error).slice(0, 300)));
+  return { context, page, errors };
+}
+
+/** Set a lobby menu-select (map, vehicle, team, size) the way tools/mp-p2p-e2e.mjs does. */
+const setLobby = (page, control, value) => page.evaluate((c, v) => {
+  const el = document.querySelector(`.cot-play [data-control="${c}"]`);
+  if (!el) return `no ${c} control`;
+  if (el.value !== v) { el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }
+  return el.value;
+}, control, value);
+
+Object.assign(RECIPES, {
+  'features/multiplayer': {
+    windowS: 200,
+    battle: { specId: 'challenger_3x' },
+    async custom(ctx) {
+      if (!ctx.rooms) { ctx.note('the multiplayer slot needs a run started with --rooms-double'); return; }
+      const { spawnSync } = await import('node:child_process');
+      const { writeFileSync, appendFileSync } = await import('node:fs');
+      const { join } = await import('node:path');
+      const A = await openClient(ctx, { tank: 'challenger_3x', name: 'Alpha Lead' });
+      const B = await openClient(ctx, { tank: 't90m_x', name: 'Bravo Lead' });
+      try {
+        const ready = () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage';
+        await A.page.goto(`${ctx.baseUrl}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+        await A.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
+        await A.page.click('.cot-multiplayer-entry');
+        await A.page.waitForFunction(() => document.querySelector('.cot-play')?.classList.contains('show'), { timeout: 30000 });
+        await A.page.click('.cot-play .modes [data-mode="lan"]');
+        await A.page.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10000 });
+        await A.page.evaluate(() => {
+          const size = document.querySelector('.cot-play [data-field="create-size"]');
+          if (size) size.value = '1';
+        });
+        await A.page.click('.cot-play [data-action="create"]');
+        await A.page.waitForFunction(() => document.querySelector('.cot-play .lobby')?.classList.contains('show') && /[?&]room=[A-Z0-9]{6}/.test(location.search), { timeout: 30000 });
+        const invite = new URL(await A.page.evaluate(() => location.href));
+        invite.searchParams.set('nosplash', '1');
+        invite.searchParams.set('tier', 'desktop');
+        ctx.log('room', invite.searchParams.get('room'));
+        ctx.log('host lobby', await setLobby(A.page, 'map', 'verdant'), await setLobby(A.page, 'vehicle', 'challenger_3x'), await setLobby(A.page, 'team', 'alpha'));
+        await B.page.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 240000 });
+        await B.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
+        await B.page.waitForFunction(() => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2, { timeout: 60000 });
+        ctx.log('guest lobby', await setLobby(B.page, 'team', 'bravo'), await setLobby(B.page, 'vehicle', 't90m_x'));
+        await ctx.sleep(800);
+        await B.page.click('.cot-play [data-action="ready"]');
+        await A.page.click('.cot-play [data-action="ready"]');
+        await A.page.waitForFunction(() => !document.querySelector('.cot-play [data-action="start"]')?.disabled, { timeout: 30000 });
+        await A.page.click('.cot-play [data-action="start"]');
+        const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
+          && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
+        await Promise.all([A.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 }), B.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 })]);
+        for (const client of [A, B]) {
+          await client.page.evaluate(async () => {
+            const D = window.__DEBUG;
+            D.post?.pinDynScale?.(1); D.post?.resetPerfTrims?.(); D.post?.setAdaptiveSuspended?.(true);
+            window.__MB.attach();
+            window.__MB.setHud('full');
+            try { await window.__SHOTS.battleTime('sunset'); } catch { /* the match's own hour stays */ }
+          });
+        }
+        const sides = await Promise.all([A, B].map((c) => c.page.evaluate(() => {
+          const g = window.__DEBUG.game;
+          return { me: g.player?.specId, team: g.player?.team, tanks: g.tanks.map((t) => `${t.specId}:${t.team}`) };
+        })));
+        ctx.log('seated', JSON.stringify(sides));
+        // close the distance: both drive at each other until the other is within ~330 m (spotted, so drawn)
+        for (const c of [A, B]) await c.page.evaluate(() => window.__MB.setDrive({ to: 'nearestEnemy', arriveM: 330, throttle: 1 }));
+        for (let i = 0; i < 70; i++) {
+          const d = await A.page.evaluate(() => { const H = window.__MB.H, p = H.player(), e = H.sel('nearestEnemy'); return p && e ? Math.round(H.dist(p.state.pos, e)) : null; });
+          if (d != null && d < 340) break;
+          await ctx.sleep(500);
+        }
+        for (const c of [A, B]) {
+          await c.page.evaluate(() => {
+            window.__MB.setDrive(null);
+            window.__MB.setAim({ target: 'nearestEnemy' });
+            window.__MB.setCamera({ kind: 'scope', target: 'nearestEnemy', zoom: 8 });
+          });
+        }
+        await ctx.sleep(2500);
+        // rounds: one side fires; both pages freeze together a beat after the shot and are captured as a pair
+        const dir = ctx.dir;
+        for (let round = 0; round < 8; round++) {
+          const shooter = round % 2 === 0 ? A : B, other = shooter === A ? B : A;
+          const delay = [70, 140, 220][round % 3];
+          await shooter.page.evaluate((d) => {
+            window.__MB.setFire({ mode: 'once', maxErrMrad: 4 });
+            window.__MB.arm({ triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [d] }], periodicMs: 0 });
+          }, delay);
+          let frozen = false;
+          for (let w = 0; w < 120 && !frozen; w++) { frozen = (await shooter.page.evaluate(() => window.__MB.poll())).frozen; if (!frozen) await ctx.sleep(50); }
+          if (!frozen) { ctx.note(`round ${round + 1}: no shot within 6 s`); await shooter.page.evaluate(() => { window.__MB.arm(null); window.__MB.setFire(null); }); continue; }
+          await other.page.evaluate(() => window.__MB.freezeIn(0, { type: 'pair' }));
+          for (let w = 0; w < 40 && !(await other.page.evaluate(() => window.__MB.poll())).frozen; w++) await ctx.sleep(25);
+          const k = ctx.bump();
+          const files = { a: `pair${String(k).padStart(3, '0')}-a.png`, b: `pair${String(k).padStart(3, '0')}-b.png` };
+          await Promise.all([A.page.screenshot({ path: join(dir, files.a), type: 'png' }), B.page.screenshot({ path: join(dir, files.b), type: 'png' })]);
+          // the 24:7 band: full-height halves (all of each HUD) and a tighter centre pair around the targets
+          const out = `c${String(k).padStart(3, '0')}.png`;
+          spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', join(dir, files.a), '-i', join(dir, files.b), '-filter_complex',
+            '[0]crop=3703:2160:68:0[a];[1]crop=3703:2160:68:0[b];[a][b]hstack', join(dir, out)]);
+          spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', join(dir, files.a), '-i', join(dir, files.b), '-filter_complex',
+            '[0]crop=2400:1400:720:380[a];[1]crop=2400:1400:720:380[b];[a][b]hstack', join(dir, out.replace('.png', '-tight.png'))]);
+          appendFileSync(join(dir, 'meta.jsonl'), `${JSON.stringify({ n: k, file: out, label: `pair round ${round + 1}`, reason: { type: 'pair', shooter: shooter === A ? 'A' : 'B', delayMs: delay }, pair: files })}\n`);
+          for (const c of [A, B]) await c.page.evaluate(() => { window.__MB.arm(null); window.__MB.resume(); window.__MB.setFire(null); });
+          await ctx.sleep(1200);
+        }
+        ctx.note('two clients of one LAN room through the room double (A host alpha Challenger 3, B bravo T-90M); hour: the battle presets of __SHOTS.battleTime("sunset") on both');
+      } finally {
+        if (A.errors.length || B.errors.length) ctx.note(`client errors: ${[...A.errors, ...B.errors].slice(0, 4).join(' | ')}`);
+        await A.context.close().catch(() => {});
+        await B.context.close().catch(() => {});
+      }
+    },
+  },
+});
+
 export function recipeFor(slot) { return RECIPES[slot] || null; }

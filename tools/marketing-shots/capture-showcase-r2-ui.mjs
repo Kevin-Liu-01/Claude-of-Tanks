@@ -22,7 +22,13 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const outDir = resolve(option('out', join(ROOT, 'shots/showcase-r2/raw')));
-const config = JSON.parse(readFileSync(join(HERE, 'showcase-r2.json'), 'utf8'));
+// --config <file>: another shot list in the showcase-r2.json shape (home r2, 2026-10-12), so new pages can be captured
+// without adding rows to the pinned showcase list. Garage rows may carry `localStorage` (seeded before the page loads:
+// camouflage cot.camo.<id>, equipment cot.equip.<id>), `technicalView` (the dossier tab to open: a
+// data-technical-view id or a data-technical-layer such as armor) and `equipmentSlot` (an equipment slot to open the
+// picker on, 0-based).
+const configPath = option('config', null) ? resolve(option('config')) : join(HERE, 'showcase-r2.json');
+const config = JSON.parse(readFileSync(configPath, 'utf8'));
 const onlyIds = new Set((option('ids', '') || '').split(',').filter(Boolean));
 const productShots = config.shots.filter((shot) =>
   ['garage', 'gallery', 'studio', 'mobile'].includes(shot.sourceType)
@@ -81,6 +87,13 @@ try {
   };
 
   await page.setViewport(desktopViewport);
+  const seeded = Object.assign({}, ...productShots.map((shot) => shot.localStorage || {}));
+  if (Object.keys(seeded).length) {
+    await page.evaluateOnNewDocument((entries) => {
+      try { for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value)); }
+      catch { /* storage blocked: defaults apply */ }
+    }, seeded);
+  }
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
@@ -108,7 +121,19 @@ try {
         && stats.selected === variantId && stats.architecture?.ready === true
         && stats.architecture.presented === true;
     }, { timeout: 60000 }, shot);
+    if (shot.technicalView) {
+      await page.evaluate((view) => {
+        const tabs = [...document.querySelectorAll('[data-technical-view]')];
+        (tabs.find((tab) => tab.dataset.technicalView === view) || tabs.find((tab) => tab.dataset.technicalLayer === view))?.click();
+      }, shot.technicalView);
+      await new Promise((resolveWait) => setTimeout(resolveWait, 900));
+    }
+    if (Number.isInteger(shot.equipmentSlot)) {
+      await page.click(`.eqslot[data-slot="${shot.equipmentSlot}"]`);
+      await page.waitForSelector('.cot-eqpick.open', { timeout: 10000 });
+    }
     await capture(shot);
+    if (Number.isInteger(shot.equipmentSlot)) await page.keyboard.press('Escape');
   }
 
   const mobileShot = productShots.find((entry) => entry.sourceType === 'mobile');

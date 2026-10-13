@@ -86,12 +86,14 @@ if (opt('pick')) {
   const picks = existsSync(picksPath) ? JSON.parse(readFileSync(picksPath, 'utf8')) : {};
   for (const pair of opt('pick').split(',').filter(Boolean)) {
     const at = pair.lastIndexOf(':');
-    const slot = pair.slice(0, at), n = Number(pair.slice(at + 1));
+    // <slot>:<n> or <slot>:<n>-<variant> (a recipe's alternate crop of candidate n, e.g. c003-tight.png)
+    const slot = pair.slice(0, at), [num, ...variant] = pair.slice(at + 1).split('-'), n = Number(num);
     const entry = entryBySlot.get(slot);
-    if (!entry || !Number.isInteger(n)) throw new Error(`--pick wants <slot>:<candidate number>, got ${pair}`);
-    const source = join(slotDir(slot), `c${String(n).padStart(3, '0')}.png`);
+    if (!entry || !Number.isInteger(n)) throw new Error(`--pick wants <slot>:<candidate number>[-variant], got ${pair}`);
+    const source = join(slotDir(slot), `c${String(n).padStart(3, '0')}${variant.length ? `-${variant.join('-')}` : ''}.png`);
     const { width, height } = pngSize(source);
-    if (width < 1280 || Math.abs(width / height - 16 / 9) > 0.01) throw new Error(`${source}: ${width}x${height} does not fit ${entry.frame}`);
+    const want = /24:7/.test(entry.frame || '') ? 24 / 7 : 16 / 9;
+    if (width < 1280 || Math.abs(width / height - want) > 0.01) throw new Error(`${source}: ${width}x${height} does not fit ${entry.frame}`);
     const deliver = resolve(ROOT, entry.deliver.split(' ')[0]);
     mkdirSync(dirname(deliver), { recursive: true });
     copyFileSync(source, deliver);
@@ -215,18 +217,22 @@ async function closeBrowser() {
   log(`chrome ${pid} closed`);
 }
 async function takeLock(label) {
-  if (heldSince) return;
-  await machineGate(label, Number(opt('headroom-gb', '8')));
-  log(`queueing for the capture lock (normal ticket) for ${label}`);
-  const asked = Date.now();
-  await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000);
-  heldSince = Date.now();
-  lockRefresh = setInterval(() => lock.refresh(), 30000);
-  log(`lock held after ${Math.round((heldSince - asked) / 1000)} s in the queue`);
-  // the machine may have changed while we queued
-  if (existsSync(join(MEMGUARD, 'PAUSE')) || existsSync(join(MEMGUARD, 'WARN'))) {
-    await dropLock('memory guard flag at acquisition');
-    throw Object.assign(new Error('memory guard WARN/PAUSE at acquisition'), { code: 'PAUSE' });
+  for (;;) {
+    if (heldSince) return;
+    await machineGate(label, Number(opt('headroom-gb', '8')));
+    log(`queueing for the capture lock (normal ticket) for ${label}`);
+    const asked = Date.now();
+    await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000);
+    heldSince = Date.now();
+    lockRefresh = setInterval(() => lock.refresh(), 30000);
+    log(`lock held after ${Math.round((heldSince - asked) / 1000)} s in the queue`);
+    // the machine may have changed while we queued: a PAUSE stops the run, a WARN gives the turn back and waits
+    if (existsSync(join(MEMGUARD, 'PAUSE'))) {
+      await dropLock('memory guard PAUSE at acquisition');
+      throw Object.assign(new Error('memory guard PAUSE at acquisition'), { code: 'PAUSE' });
+    }
+    if (!existsSync(join(MEMGUARD, 'WARN'))) return;
+    await dropLock('memory guard WARN at acquisition');
   }
 }
 async function dropLock(reason) {
@@ -269,6 +275,16 @@ const holdMaxMs = Number(opt('hold-max-min', '9')) * 60 * 1000;
 const port = Number(opt('port', '7613'));
 let server = null;
 let base = opt('base');
+// --rooms-double: the multiplayer slot's room signaling double (tools/mp-p2p-room-double.ts), started before the dev
+// server so the pages are built against it (VITE_ROOMS_URL), as tools/mp-p2p-e2e.mjs does.
+let rooms = null;
+if (opt('rooms-double') === 'true' && !base) {
+  const { createP2pRoomDouble } = await import('../mp-p2p-room-double.ts');
+  const { randomBytes } = await import('node:crypto');
+  rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: 3000 });
+  process.env.VITE_ROOMS_URL = rooms.url;
+  log(`room double ${rooms.url}`);
+}
 if (!base) {
   const cacheDir = resolve(ROOT, opt('cache-dir', 'shots/.vite-mode-battle-shots'));
   server = await createServer({
@@ -313,11 +329,14 @@ try {
     mkdirSync(slotDir(slot), { recursive: true });
     writeFileSync(join(slotDir(slot), 'run.json'), `${JSON.stringify(result, null, 1)}\n`);
     log(`${slot}: ${result.count ?? 0} candidates in ${result.wallS} s${result.error ? ' (ERROR)' : ''}${result.notes?.length ? `; notes: ${result.notes.join(' | ')}` : ''}`);
+    if (existsSync(join(MEMGUARD, 'PAUSE'))) { stopReason = 'memory guard PAUSE'; break; }
+    if (existsSync(join(MEMGUARD, 'WARN'))) await dropLock('memory guard WARN');
   }
 } finally {
   await dropLock('run end');
   await closeBrowser();
   if (server) await server.close().catch(() => {});
+  if (rooms) await rooms.close().catch(() => {});
   const totalMin = holds.reduce((a, h) => a + h.ms, 0) / 60000;
   log(`done: ${summary.map((s) => `${s.slot}=${s.error ? 'ERROR' : s.count}`).join(' ')}; lock ${totalMin.toFixed(1)} min in ${holds.length} holds${stopReason ? `; stopped: ${stopReason}` : ''}`);
 }
@@ -348,7 +367,7 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
     else await page.setViewport(recipe.viewport ?? { width: 1920, height: 1080, deviceScaleFactor: Number(opt('dpr', '2')) });
     const storage = {
       'cot.battle.times.v2': JSON.stringify([hour]),
-      'cot.lastTank.v1': battle.specId,
+      ...(battle.specId ? { 'cot.lastTank.v1': battle.specId } : {}),
       'cot.game.mode.v1': battle.gameMode,
       'cot.locale': 'en-US',
       ...(recipe.preset === null ? {} : { 'cot.gfxPreset': recipe.preset ?? 'ultra' }),
@@ -366,7 +385,7 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
       // UI and multi-page slots (Garage, Gallery, Studio, Service Record, a two-client room): the recipe drives the
       // pages itself; the harness supplies the lock, the browser, the dev server and the candidate bookkeeping.
       const ctx = makeContext({ page, slot, entry, recipe, dir, notes, errors, battle, hour });
-      Object.assign(ctx, { browser: browserHandle, baseUrl, storage });
+      Object.assign(ctx, { browser: browserHandle, baseUrl, storage, rooms, installDirector: installModeBattleDirector });
       await recipe.custom(ctx);
       return { slot, custom: true, count: ctx.count(), notes, errors: [...new Set(errors)].slice(0, 30),
         lockHeldAtEndS: heldSince ? Math.round((Date.now() - heldSince) / 1000) : 0 };
