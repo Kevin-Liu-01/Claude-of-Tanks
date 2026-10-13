@@ -57,6 +57,8 @@ export function installModeBattleDirector() {
     if (!MB.frozen) return false;
     MB.offsetMs += nowMs() - MB.frozenAtMs;
     MB.frozen = false;
+    // gaps between candidates count from the resume: the screenshot's own time never shortens the play between frames
+    MB.lastFreezeMs = nowMs();
     const held = MB.held;
     MB.held = [];
     for (const cb of held) nativeRaf(wrap(cb));

@@ -80,7 +80,7 @@ export const RECIPES = {
   // ============================================================== the thirteen modes
   'modes/standard': {
     hour: 'sunset',
-    windowS: 80,
+    windowS: 45,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 420 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
@@ -99,7 +99,7 @@ export const RECIPES = {
 
   'modes/capture_the_flag': {
     hour: 'day',
-    windowS: 75,
+    windowS: 45,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
       const carried = await ctx.until(() => {
@@ -125,7 +125,7 @@ export const RECIPES = {
 
   'modes/zone_control': {
     hour: 'day',
-    windowS: 75,
+    windowS: 40,
     async run(ctx) {
       const contested = await ctx.until(() => {
         const z = window.__MB.H.ms()?.zones?.find((x) => x.contested);
@@ -150,7 +150,7 @@ export const RECIPES = {
 
   'modes/turbo_ball': {
     hour: 'day',
-    windowS: 80,
+    windowS: 45,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
       // drive at the ball and jump (F, the self-right / mode jump) when close
@@ -181,7 +181,7 @@ export const RECIPES = {
 
   'modes/endless_horde': {
     hour: 'sunset',
-    windowS: 80,
+    windowS: 40,
     async run(ctx) {
       // clear the first waves through the QA kill (credited to the player) so wave 3 marches
       const wave = await ctx.until(() => {
@@ -211,7 +211,7 @@ export const RECIPES = {
 
   'modes/frontline_assault': {
     hour: 'day',
-    windowS: 85,
+    windowS: 40,
     async run(ctx) {
       // the assault-trenches variant (sim/assaultLines.ts AssaultTrenchPlan): cross the nearest carved line
       const plan = await ctx.eval(() => {
@@ -260,7 +260,7 @@ export const RECIPES = {
 
   'modes/mars': {
     hour: 'night',
-    windowS: 70,
+    windowS: 40,
     hud: 'hidden',
     async run(ctx) {
       await ctx.mb('setDrive', { heading: null, to: 'nearestEnemy', arriveM: 150, throttle: 1 });
@@ -285,7 +285,7 @@ export const RECIPES = {
 
   'modes/juggernaut': {
     hour: 'night',
-    windowS: 80,
+    windowS: 40,
     storage: { 'cot.game.teams.v1': JSON.stringify({ juggernaut: { juggernautRole: 'boss' } }) },
     async run(ctx) {
       const boss = await ctx.eval(() => { const ms = window.__MB.H.ms(); return ms?.boss ? { id: ms.boss.id, isPlayer: ms.boss.id === window.__MB.H.player()?.id } : null; });
@@ -308,7 +308,7 @@ export const RECIPES = {
 
   'modes/infected': {
     hour: 'night',
-    windowS: 80,
+    windowS: 40,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
       // the outbreak opens with four infected far across the map: wait until the horde is on the survivors
@@ -335,7 +335,7 @@ export const RECIPES = {
 
   'modes/realistic': {
     hour: 'day',
-    windowS: 90,
+    windowS: 50,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 450 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
@@ -357,7 +357,7 @@ export const RECIPES = {
 
   'modes/gun_game': {
     hour: 'sunset',
-    windowS: 80,
+    windowS: 45,
     async run(ctx) {
       const stage = await ctx.eval(() => window.__MB.H.setWeaponStage(window.__MB.H.player(), 3));
       ctx.log('stage', JSON.stringify(stage));
@@ -382,7 +382,7 @@ export const RECIPES = {
 
   'modes/drone': {
     hour: 'day',
-    windowS: 45,
+    windowS: 40,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520 })));
       await settle(ctx, 1.5);
@@ -412,7 +412,7 @@ export const RECIPES = {
 
   'modes/ac130': {
     hour: 'night',
-    windowS: 70,
+    windowS: 45,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
       const air = await ctx.until(() => {
@@ -451,7 +451,7 @@ export const RECIPES = {
   // ============================================================== mechanics (battle captures)
   'mechanics/missiles': {
     hour: 'sunset',
-    windowS: 80,
+    windowS: 45,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 700, minRangeM: 280 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
@@ -463,7 +463,7 @@ export const RECIPES = {
           { kind: 'between', from: 'player', to: 'aimTarget', backM: 10, sideM: 7, heightM: 2.4, lookAtFrac: 0.5, fov: 40, smoothS: 0.2, hud: 'hidden' },
         ],
         cameraEvery: 4,
-        everyS: 0,
+        everyS: 4,
         triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [120, 500, 900, 1400, 1900, 2400], burst: true }],
       });
     },
@@ -471,7 +471,7 @@ export const RECIPES = {
 
   'mechanics/autoloader': {
     hour: 'sunset',
-    windowS: 75,
+    windowS: 40,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 400 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
@@ -491,7 +491,7 @@ export const RECIPES = {
 
   'mechanics/thermal': {
     hour: 'night',
-    windowS: 80,
+    windowS: 45,
     storage: { 'cot.scopeVision': 'infrared' },
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 380 })));
@@ -511,7 +511,7 @@ export const RECIPES = {
 
   'mechanics/armor': {
     hour: 'day',
-    windowS: 60,
+    windowS: 30,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, minRangeM: 250 })));
       // the armour flashlight is the player's setting (H toggles it; off by default)
@@ -532,7 +532,7 @@ export const RECIPES = {
 
   'mechanics/bots': {
     hour: 'sunset',
-    windowS: 80,
+    windowS: 40,
     hud: 'hidden',
     storage: { 'cot.game.teams.v1': JSON.stringify({ standard: { allies: 13, enemies: 14 } }) },
     async run(ctx) {
@@ -555,7 +555,7 @@ export const RECIPES = {
 
   'mechanics/mobile': {
     hour: 'day',
-    windowS: 70,
+    windowS: 35,
     emulate: {
       viewport: { width: 880, height: 495, deviceScaleFactor: 3, isMobile: true, hasTouch: true, isLandscape: true },
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
@@ -575,7 +575,7 @@ export const RECIPES = {
 
   'mechanics/consumables': {
     hour: 'day',
-    windowS: 50,
+    windowS: 30,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, throttle: 0.5 })));
       await settle(ctx, 1);
@@ -668,7 +668,7 @@ export const RECIPES = {
 
   'mechanics/crushing': {
     hour: 'day',
-    windowS: 60,
+    windowS: 45,
     battle: { specId: 'leo2a7v_x', mapId: 'verdant', gameMode: 'standard' },
     hud: 'hidden',
     async run(ctx) {
@@ -680,7 +680,7 @@ export const RECIPES = {
         await ctx.capture({
           windowS: 9, everyS: 0.6, max: 12, label: `crush run ${i + 1} (${run.kind})`,
           cameras: [{ kind: 'follow', subject: 'player', azimuthDeg: i % 2 ? -30 : 30, distM: 13, heightM: 0.9, lookAtHeightM: 1.4, fov: 46, headingFrom: 'velocity', smoothS: 0.25, hud: 'hidden' }],
-          triggers: [T.crushOnScreen([30, 90, 180])],
+          triggers: [T.crushOnScreen([30, 90, 180]), { type: 'tank:ram', who: 'player', onscreen: false, delays: [40, 140] }],
           minGapMs: 250,
         });
       }
@@ -690,7 +690,7 @@ export const RECIPES = {
 
   'mechanics/map-vehicles': {
     hour: 'day',
-    windowS: 60,
+    windowS: 45,
     battle: { specId: 't90m_x', mapId: 'urban', gameMode: 'standard' },
     hud: 'hidden',
     async run(ctx) {
@@ -703,7 +703,7 @@ export const RECIPES = {
         await ctx.capture({
           windowS: 9, everyS: 0.6, max: 12, label: `vehicle run ${i + 1} (${run.kind})`,
           cameras: [{ kind: 'follow', subject: 'player', azimuthDeg: i % 2 ? -28 : 28, distM: 12, heightM: 1.0, lookAtHeightM: 1.3, fov: 46, headingFrom: 'velocity', smoothS: 0.25, hud: 'hidden' }],
-          triggers: [T.crushOnScreen([30, 90, 180, 320])],
+          triggers: [T.crushOnScreen([30, 90, 180, 320]), { type: 'tank:ram', who: 'player', onscreen: false, delays: [40, 140, 260] }],
           minGapMs: 250,
         });
       }
@@ -722,9 +722,12 @@ async function findCrushRuns(ctx, { kinds, treeNearM = 14, maxRuns = 4, vehicles
     const found = [];
     const enemyX = H.enemies().reduce((a, t) => a + t.state.pos.x, 0) / Math.max(1, H.enemies().length);
     const enemyZ = H.enemies().reduce((a, t) => a + t.state.pos.z, 0) / Math.max(1, H.enemies().length);
+    let index = 0;
     for (const o of obstacles) {
       if (!cfg.kinds.includes(o.kind) || o.crushed || o.dead) continue;
-      const x = (o.min[0] + o.max[0]) / 2, z = (o.min[2] + o.max[2]) / 2;
+      // the record's own footprint: an OBB with hl along (sin yaw, cos yaw) — a fence segment's run, a vehicle's length
+      const obb = o.shape2 && o.shape2.kind === 'obb' ? o.shape2 : null;
+      const x = obb ? obb.cx : (o.min[0] + o.max[0]) / 2, z = obb ? obb.cz : (o.min[2] + o.max[2]) / 2;
       // stay well away from the enemy side so the run is not interrupted by a fight
       if (Math.hypot(x - enemyX, z - enemyZ) < 350) continue;
       if (Math.abs(x) > 440 || Math.abs(z) > 440) continue;
@@ -733,16 +736,25 @@ async function findCrushRuns(ctx, { kinds, treeNearM = 14, maxRuns = 4, vehicles
         for (const t of trees) {
           const tx = (t.min[0] + t.max[0]) / 2, tz = (t.min[2] + t.max[2]) / 2;
           const d = Math.hypot(tx - x, tz - z);
-          if (d < cfg.treeNearM && (!tree || d < tree.d)) tree = { x: tx, z: tz, d, h: t.max[1] - t.min[1] };
+          if (d > 3 && d < cfg.treeNearM && (!tree || d < tree.d)) tree = { x: tx, z: tz, d, h: t.max[1] - t.min[1] };
         }
         if (!tree) continue;
       }
-      // the approach crosses the record's long axis (a fence) or runs along a vehicle's length
-      const sx = o.max[0] - o.min[0], sz = o.max[2] - o.min[2];
-      const yaw = cfg.vehicles ? (sx > sz ? Math.PI / 2 : 0) : (sx > sz ? 0 : Math.PI / 2);
-      // aim through the fence toward the tree side when there is one
-      let heading = yaw;
-      if (tree) { const toTree = Math.atan2(tree.x - x, tree.z - z); if (Math.cos(toTree - heading) < 0) heading += Math.PI; }
+      const recordYaw = obb ? obb.yaw : ((o.max[0] - o.min[0]) > (o.max[2] - o.min[2]) ? Math.PI / 2 : 0);
+      let heading;
+      if (cfg.vehicles) {
+        // alternate side-on (over the roof line) and lengthwise runs across the parked vehicles
+        heading = recordYaw + (index++ % 2 === 0 ? Math.PI / 2 : 0);
+      } else {
+        // across the fence; straight at the tree behind it when that still crosses the fence steeply
+        const normal = recordYaw + Math.PI / 2;
+        heading = normal;
+        if (tree) {
+          const toTree = Math.atan2(tree.x - x, tree.z - z);
+          if (Math.abs(Math.cos(toTree - normal)) >= 0.6) heading = toTree;
+          else if (Math.cos(toTree - heading) < 0) heading += Math.PI;
+        }
+      }
       const sx0 = x - Math.sin(heading) * 45, sz0 = z - Math.cos(heading) * 45;
       const slope = Math.abs(H.groundY(sx0, sz0) - H.groundY(x, z));
       if (slope > 6) continue;
@@ -910,7 +922,7 @@ function serviceRecordSeed() {
 
 Object.assign(RECIPES, {
   'features/garage': {
-    windowS: 50,
+    windowS: 20,
     battle: { specId: 'kf51_x' },
     storage: {
       'cot.camo.kf51_x': 'flecktarn',
@@ -935,7 +947,7 @@ Object.assign(RECIPES, {
   },
 
   'mechanics/equipment': {
-    windowS: 50,
+    windowS: 20,
     battle: { specId: 'k2_x' },
     storage: {
       'cot.equip.k2_x': JSON.stringify(['vstab', 'binoculars']),
@@ -960,7 +972,7 @@ Object.assign(RECIPES, {
   },
 
   'mechanics/modules': {
-    windowS: 40,
+    windowS: 15,
     battle: { specId: 'merkava4_barak' },
     async custom(ctx) {
       await openGallery(ctx, { vehicleId: 'merkava4_barak', layer: 'modules' });
@@ -972,7 +984,7 @@ Object.assign(RECIPES, {
   },
 
   'mechanics/dossiers': {
-    windowS: 40,
+    windowS: 15,
     battle: { specId: 'challenger_3x' },
     async custom(ctx) {
       await openGallery(ctx, { vehicleId: 'challenger_3x', layer: 'armor' });
@@ -984,7 +996,7 @@ Object.assign(RECIPES, {
   },
 
   'mechanics/medals': {
-    windowS: 40,
+    windowS: 15,
     battle: { specId: 'leo2a7v_x' },
     storage: serviceRecordSeed(),
     async custom(ctx) {
@@ -998,7 +1010,7 @@ Object.assign(RECIPES, {
   },
 
   'mechanics/presets': {
-    windowS: 60,
+    windowS: 25,
     battle: { specId: 't90m_x' },
     async custom(ctx) {
       await openStudio(ctx);
@@ -1023,7 +1035,7 @@ Object.assign(RECIPES, {
   },
 
   'features/studio': {
-    windowS: 70,
+    windowS: 30,
     battle: { specId: 'type10_x' },
     async custom(ctx) {
       const { writeFileSync, mkdirSync, statSync } = await import('node:fs');
@@ -1077,7 +1089,7 @@ Object.assign(RECIPES, {
 Object.assign(RECIPES, {
   'mechanics/spotting': {
     hour: 'sunset',
-    windowS: 50,
+    windowS: 35,
     async run(ctx) {
       // a bush on the player's side with an open sight line ~300 m toward the enemy, preferring a seat above the column
       const plan = await ctx.eval(() => {
