@@ -1371,6 +1371,56 @@ function addGableServiceDetails(
   ), dark, _detailRng);
 }
 
+/**
+ * (the looks lane, 2026-10-13; LOOKS-BRIEF section 7) the gabled light huts' members over their shell: the field hut,
+ * the fisher's shack, the sauna, the refuge, the stilt house and the long house were one painted box under a slab roof.
+ * Corner posts standing proud, the sill and top plates, board-and-batten walls (a batten every 45 cm on every face), the
+ * door's frame, the barge boards up both gables' rakes and the ridge cap, the roof's courses in strips; all on the
+ * family's palette. Painted without a draw (_detailRng): the hut's stream draws exactly as before.
+ */
+function addGableCraft(out: THREE.BufferGeometry[], w: number, d: number, wallH: number, roofH: number, y0: number, pal: Palette): void {
+  const [wall, trim, dark] = pal, r = _detailRng;
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    colored(out, box(0.16, wallH + 0.06, 0.16).translate(x * (w / 2 - 0.04), y0 + wallH / 2, z * (d / 2 - 0.04)), dark, r, 0);
+  }
+  for (const y of [y0 + 0.08, y0 + wallH - 0.08]) {
+    for (const sgn of [-1, 1]) {
+      colored(out, box(0.08, 0.14, d + 0.08).translate(sgn * (w / 2 + 0.01), y, 0), trim, r, 0);
+      colored(out, box(w + 0.08, 0.14, 0.08).translate(0, y, sgn * (d / 2 + 0.01)), trim, r, 0);
+    }
+  }
+  // the battens: down the long walls and the end walls (the door's middle left clear)
+  for (const sgn of [-1, 1]) {
+    for (let z = -d / 2 + 0.45; z < d / 2 - 0.2; z += 0.45) {
+      colored(out, box(0.035, wallH - 0.3, 0.06).translate(sgn * (w / 2 + 0.012), y0 + wallH / 2, z), trim, r, 0);
+    }
+    for (let x = -w / 2 + 0.45; x < w / 2 - 0.2; x += 0.45) {
+      if (sgn > 0 && Math.abs(x) < w * 0.14) continue;
+      colored(out, box(0.06, wallH - 0.3, 0.035).translate(x, y0 + wallH / 2, sgn * (d / 2 + 0.012)), trim, r, 0);
+    }
+  }
+  // the door's frame: two jambs and the head round the leaf
+  for (const sgn of [-1, 1]) colored(out, box(0.09, wallH * 0.7, 0.07).translate(sgn * (w * 0.12 + 0.05), y0 + wallH * 0.35, d / 2 + 0.05), trim, r, 0);
+  colored(out, box(w * 0.24 + 0.28, 0.1, 0.07).translate(0, y0 + wallH * 0.7 + 0.04, d / 2 + 0.05), trim, r, 0);
+  // the barge boards up each gable's two rakes, the ridge cap along the apex
+  const slope = Math.hypot(w / 2 + 0.28, roofH + 0.05), ang = Math.atan2(roofH + 0.05, w / 2 + 0.28);
+  for (const zs of [-1, 1]) for (const side of [-1, 1]) {
+    const board = box(slope + 0.1, 0.2, 0.05);
+    board.rotateZ(-side * ang);
+    colored(out, board.translate(side * (w / 4 + 0.14), y0 + wallH + roofH / 2 - 0.02, zs * (d / 2 + 0.33)), trim, r, 0);
+  }
+  colored(out, box(0.2, 0.14, d + 0.62).translate(0, y0 + wallH + roofH + 0.06, 0), dark, r, 0);
+  // the roof's courses: strips across each slope every 0.5 m down the slant
+  for (const side of [-1, 1]) {
+    for (let k = 1; k < Math.floor(slope / 0.5); k++) {
+      const t = k / Math.floor(slope / 0.5), x = side * (w / 2 + 0.28) * (1 - t), y = y0 + wallH + (roofH + 0.05) * t + 0.08;
+      const strip = box(0.05, 0.035, d + 0.56);
+      strip.rotateZ(-side * ang);
+      colored(out, strip.translate(x, y, 0), dark, r, 0);
+    }
+  }
+}
+
 function gableLight({
   w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2,
 }: GableLightOptions, rng: Rng): THREE.BufferGeometry[] {
@@ -1391,6 +1441,7 @@ function gableLight({
   // the utility box/conduit both penetrate the side wall: no decorative part
   // can hover beside the building after instancing on uneven terrain.
   addGableServiceDetails(out, w, d, wallH, y0, trim, dark);
+  addGableCraft(out, w, d, wallH, roofH, y0, pal);
   return out;
 }
 
