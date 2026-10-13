@@ -146,6 +146,90 @@ export function installModeBattleDirector() {
     if (t.input?.aimPoint?.copy && s.aimPoint) t.input.aimPoint.copy(s.aimPoint);
     try { t.visual?.syncFromState?.(s); } catch { /* visual optional */ }
   };
+  // ---- open lanes: a sight line that neither terrain/props (world.raycast) nor foliage (concealment discs) blocks
+  H.concealers = () => { try { return (H.D().world.getConcealment?.() || []).filter((c) => !c.dead); } catch { return []; } };
+  H.laneClear = (eye, to, h = 2.4, discs = H.concealers()) => {
+    const gy = H.groundY(to.x, to.z);
+    for (const f of [0.3, 0.6, 0.9]) if (H.raycastBlock(eye, { x: to.x, y: gy + h * f, z: to.z }, 2) != null) return false;
+    const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
+    for (const c of discs) {
+      const wx = c.x - eye.x, wz = c.z - eye.z, along = wx * ux + wz * uz;
+      if (along < 12 || along > len - 6) continue;
+      if (Math.abs(wx * uz - wz * ux) < c.r + 1.2) return false;
+    }
+    return true;
+  };
+  /** Ground a tank can sit on: inside the map, flat enough, no solid record or foliage disc within `clearM`. */
+  H.openGround = (x, z, clearM = 7, discs = H.concealers()) => {
+    if (Math.abs(x) > 440 || Math.abs(z) > 440) return false;
+    const y = H.groundY(x, z), s = 4;
+    if (Math.abs(H.groundY(x + s, z) - y) > 1.6 || Math.abs(H.groundY(x, z + s) - y) > 1.6) return false;
+    for (const c of discs) if (Math.hypot(c.x - x, c.z - z) < c.r + clearM * 0.6) return false;
+    const obstacles = H.D().world.getObstacles?.() || [];
+    for (const o of obstacles) {
+      if (o.crushed || o.dead || o.crushable) continue;
+      if (x > o.min[0] - clearM && x < o.max[0] + clearM && z > o.min[2] - clearM && z < o.max[2] + clearM) return false;
+    }
+    return true;
+  };
+  /**
+   * Stage an engagement across open ground (the promo tool's surveyed-lane staging, 2026-09): from the player's spot,
+   * or an open spot near it, find lanes toward the enemy that nothing hides, and move the nearest live enemies (their
+   * AI kept) onto them; two allies take open ground beside the player. Returns what moved.
+   */
+  H.stageEngagement = ({ dists = [260, 220, 300, 180, 340], enemies: wantEnemies = 2, allies: wantAllies = 2, spotSearchM = [0, 40, 80, 130] } = {}) => {
+    const p = H.player();
+    if (!H.live(p)) return null;
+    const discs = H.concealers();
+    const foes = H.enemies();
+    const cx = foes.reduce((a, t) => a + t.state.pos.x, 0) / Math.max(1, foes.length);
+    const cz = foes.reduce((a, t) => a + t.state.pos.z, 0) / Math.max(1, foes.length);
+    const eyeH = (p.spec?.dims?.heightM ?? 2.4) * 0.92;
+    const spots = [];
+    for (const r of spotSearchM) {
+      for (let k = 0; k < (r ? 10 : 1); k++) {
+        const a = (k / 10) * Math.PI * 2;
+        spots.push({ x: p.state.pos.x + Math.sin(a) * r, z: p.state.pos.z + Math.cos(a) * r });
+      }
+    }
+    for (const spot of spots) {
+      if (spot !== spots[0] && !H.openGround(spot.x, spot.z, 9, discs)) continue;
+      const eye = { x: spot.x, y: H.groundY(spot.x, spot.z) + eyeH, z: spot.z };
+      const toward = Math.atan2(cx - spot.x, cz - spot.z);
+      const lanes = [];
+      for (const d of dists) {
+        for (const lat of [0, 9, -9, 18, -18, 27, -27]) {
+          const yaw = toward + lat * Math.PI / 180;
+          const q = { x: spot.x + Math.sin(yaw) * d, z: spot.z + Math.cos(yaw) * d };
+          if (!H.openGround(q.x, q.z, 6, discs) || !H.laneClear(eye, q, 2.4, discs)) continue;
+          if (lanes.every((l) => Math.hypot(l.x - q.x, l.z - q.z) > 35)) lanes.push({ ...q, d, yaw });
+          if (lanes.length >= wantEnemies) break;
+        }
+        if (lanes.length >= wantEnemies) break;
+      }
+      if (!lanes.length) continue;
+      const moved = { spot: spot === spots[0] ? 'kept' : 'moved', lanes: [], allies: [] };
+      if (spot !== spots[0]) H.place(p, spot.x, spot.z, toward);
+      const nearest = foes.slice().sort((a, b) => H.dist(a.state.pos, spot) - H.dist(b.state.pos, spot));
+      lanes.forEach((lane, i) => {
+        const t = nearest[i];
+        if (!t) return;
+        // angled about 30 degrees off the line to the player: a three-quarter target, never a flat side
+        H.place(t, lane.x, lane.z, lane.yaw + Math.PI + (i % 2 ? -0.52 : 0.52));
+        moved.lanes.push({ id: t.id, specId: t.specId, d: Math.round(lane.d) });
+      });
+      const friends = H.allies().sort((a, b) => H.dist(a.state.pos, spot) - H.dist(b.state.pos, spot)).slice(0, wantAllies);
+      friends.forEach((t, i) => {
+        const side = (i % 2 ? -1 : 1) * (14 + 6 * Math.floor(i / 2));
+        const x = spot.x + Math.cos(toward) * side - Math.sin(toward) * 6, z = spot.z - Math.sin(toward) * side - Math.cos(toward) * 6;
+        if (!H.openGround(x, z, 4, discs)) return;
+        H.place(t, x, z, toward);
+        moved.allies.push(t.id);
+      });
+      return moved;
+    }
+    return null;
+  };
   /** Destroy every live enemy except `keepIds` the way __DEBUG.slayEnemies does (the last one is left for a real shell). */
   H.killExcept = (keepIds = [], cause = 'shot') => {
     const D = H.D(), g = H.g();
@@ -212,10 +296,20 @@ export function installModeBattleDirector() {
     player: () => H.info(H.player()),
     nearestEnemy: () => { const p = H.player(); return p ? H.info(H.nearest(p.state.pos, H.enemies())) : null; },
     nearestEnemyClear: () => {
-      const p = H.player(); if (!p) return null;
-      const list = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos));
-      for (const t of list.slice(0, 8)) if (H.clearShot(p, t)) return H.info(t);
-      return null;
+      // the nearest enemy nothing hides (terrain, props or foliage), memoised per frame: three hooks ask each frame
+      if (MB.clearMemo && MB.clearMemo.frame === MB.frames) return MB.clearMemo.value;
+      const p = H.player();
+      let value = null;
+      if (p) {
+        const discs = H.concealers();
+        const eye = H.turretPoint(p);
+        const list = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos));
+        for (const t of list.slice(0, 8)) {
+          if (H.laneClear(eye, t.state.pos, t.spec?.dims?.heightM ?? 2.4, discs)) { value = H.info(t); break; }
+        }
+      }
+      MB.clearMemo = { frame: MB.frames, value };
+      return value;
     },
     aimTarget: () => H.info(MB.aimTargetId ? H.g()?.tankById?.get(MB.aimTargetId) : null),
     flagCarrier: () => {

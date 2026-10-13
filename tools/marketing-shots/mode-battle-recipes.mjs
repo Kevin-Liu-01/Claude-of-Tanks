@@ -23,26 +23,34 @@ const T = {
 };
 
 // ------------------------------------------------------------------------------------------------ shared steps
-/** Fast-forward (no rendering) while the player rolls toward the enemy until one is within range with a clear line. */
-async function toContact(ctx, { rangeM = 450, maxS = 180, throttle = 0.75, stepS = 2, minRangeM = 0 } = {}) {
-  return ctx.until((cfg) => {
+/**
+ * Contact across open ground. The player holds while the lines close (fast-forwarded, nothing drawn) until an enemy
+ * stands in range on a lane nothing hides (terrain, props or foliage: H.laneClear); failing that within `maxS`, the
+ * engagement is staged (H.stageEngagement): the nearest enemies (their AI kept) move onto surveyed open lanes in
+ * front of the player, from its spot or an open one near it, and two allies take the ground beside it. The first
+ * r14 run drove the player at the nearest enemy and parked it against a Verdant tree line with nothing in sight.
+ */
+async function toContact(ctx, { rangeM = 450, maxS = 40, stepS = 2, minRangeM = 0, stage = true, enemies = 2, allies = 2, dists } = {}) {
+  const natural = await ctx.until((cfg) => {
     const H = window.__MB.H, p = H.player();
     if (!p || !H.live(p)) return { dead: true };
+    const discs = H.concealers();
+    const eye = H.turretPoint(p);
     const list = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos));
     for (const t of list.slice(0, 6)) {
       const d = H.dist(t.state.pos, p.state.pos);
-      if (d < cfg.rangeM && d > cfg.minRangeM && H.clearShot(p, t)) { p.input.throttle = 0; p.input.steer = 0; return { id: t.id, spec: t.specId, d: Math.round(d) }; }
-    }
-    const goal = list[0];
-    if (goal && cfg.throttle > 0) {
-      const want = Math.atan2(goal.state.pos.x - p.state.pos.x, goal.state.pos.z - p.state.pos.z);
-      let diff = want - p.state.yaw;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      p.input.steer = Math.max(-1, Math.min(1, diff * 2));
-      p.input.throttle = Math.abs(diff) > 1 ? 0.3 : cfg.throttle;
+      if (d < cfg.rangeM && d > cfg.minRangeM && H.laneClear(eye, t.state.pos, t.spec?.dims?.heightM ?? 2.4, discs)) {
+        return { id: t.id, spec: t.specId, d: Math.round(d), natural: true };
+      }
     }
     return null;
-  }, { ffStepS: stepS, timeoutS: maxS, label: 'contact', args: [{ rangeM, throttle, minRangeM }] });
+  }, { ffStepS: stepS, timeoutS: maxS, label: 'natural contact', args: [{ rangeM, minRangeM }] });
+  if (natural || !stage) return natural;
+  const staged = await ctx.eval((cfg) => window.__MB.H.stageEngagement(cfg),
+    { enemies, allies, ...(dists ? { dists } : {}) });
+  ctx.note(staged ? `engagement staged on open ground: ${JSON.stringify(staged)}` : 'no open lane toward the enemy was found');
+  await ctx.ff(0.5);
+  return staged;
 }
 
 /** Let the rendered battle run a moment so effects spawned during a fast-forward settle before candidates. */
@@ -453,7 +461,7 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 45,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 700, minRangeM: 280 })));
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 700, minRangeM: 280, dists: [520, 450, 600, 380], enemies: 2 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
       await settle(ctx, 1);
@@ -513,7 +521,7 @@ export const RECIPES = {
     hour: 'day',
     windowS: 30,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, minRangeM: 250 })));
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, minRangeM: 250, dists: [320, 380, 280, 420] })));
       // the armour flashlight is the player's setting (H toggles it; off by default)
       await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
@@ -1081,6 +1089,46 @@ Object.assign(RECIPES, {
       await ctx.snap('studio loop poster at 2150 ms');
       ctx.log(`studio loop ${bytes} bytes -> ${master}`);
       ctx.note(`studio loop recorded to ${out} (deliver as features/studio.webm + studio.json after review)`);
+    },
+  },
+});
+
+// ================================================================================================ roof guns
+Object.assign(RECIPES, {
+  // Roof weapon stations are on by default (sim/auxiliarySystems.ts: gunOn when the spec carries a gun) and engage
+  // spotted enemies in range on a clear lane by themselves; their rounds join game.shells without a bus event, so
+  // the frame hook watches the player's own small-calibre shells and freezes a beat after each burst starts.
+  'mechanics/roof-guns': {
+    hour: 'sunset',
+    windowS: 40,
+    hud: 'hidden',
+    battle: { specId: 'm1a2_sepv3_x', mapId: 'oasis', gameMode: 'standard' },
+    async run(ctx) {
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 320, dists: [170, 210, 140, 250], enemies: 2, allies: 1 })));
+      // the main gun stays laid where it was; only the roof station tracks and fires
+      await ctx.mb('setOnFrame', `
+        const p = H.player(); if (!p || !H.live(p)) return;
+        const st = MB.onFrameState; st.seen = st.seen || new Set(); st.k = st.k || 0;
+        for (const s of g.shells) {
+          if (!s || s.dead || s.shooterId !== p.id || st.seen.has(s.id)) continue;
+          st.seen.add(s.id);
+          const cal = s.spec?.caliberMm ?? s.caliberMm ?? 0;
+          if (cal > 0 && cal < 40 && performance.now() - (st.last || 0) > 700) {
+            st.last = performance.now();
+            MB.freezeIn([40, 90, 160][st.k++ % 3], { type: 'roof-gun', caliberMm: cal });
+          }
+        }`);
+      await settle(ctx, 1.5);
+      await ctx.capture({
+        cameras: [
+          { kind: 'follow', subject: 'player', azimuthDeg: 32, distM: 11, heightM: 0.9, lookAtHeightM: 2.6, fov: 35, hud: 'hidden' },
+          { kind: 'follow', subject: 'player', azimuthDeg: -38, distM: 10, heightM: 1.1, lookAtHeightM: 2.6, fov: 35, hud: 'hidden' },
+        ],
+        cameraEvery: 4,
+        everyS: 2.5,
+        minGapMs: 300,
+        triggers: [],
+      });
     },
   },
 });
