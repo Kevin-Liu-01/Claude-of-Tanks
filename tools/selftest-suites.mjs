@@ -862,6 +862,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
+    'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
     'src/ui/hitEventFormat.selftest.mjs',
     'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/shotSchematic.selftest.mjs',
@@ -1597,6 +1600,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
+    'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
