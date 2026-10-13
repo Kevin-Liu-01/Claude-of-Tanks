@@ -185,8 +185,10 @@ async function machineGate(label, gb) {
     const headroom = spawnSync('headroom', ['can-start', '--gb', String(gb), '--label', label], { encoding: 'utf8' });
     if (!headroom.error && headroom.status === 1) headroomOk = false;
     if (!warn && headroomOk) return;
-    if (waited >= 30 * 60) throw Object.assign(new Error(`machine busy for 30 min (WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'})`), { code: 'BUSY' });
-    log(`waiting: memory guard WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'} (${waited}s)`);
+    // a WARN can last hours on a shared machine (swap from other sessions): wait it out without a ticket or a server
+    const limitS = Number(opt('gate-wait-min', '240')) * 60;
+    if (waited >= limitS) throw Object.assign(new Error(`machine busy for ${limitS / 60} min (WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'})`), { code: 'BUSY' });
+    if (waited % 600 === 0) log(`waiting: memory guard WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'} (${waited}s)`);
     await sleep(30000);
   }
 }
