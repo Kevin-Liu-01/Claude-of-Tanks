@@ -769,10 +769,52 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     moving: false, fired: false, inBush: false, spotted: false,
   };
 
-  function hullBushBonus(position: SpottingVector3, bloom: number): number {
-    let bush = 0;
+  // PERF (2026-10-13, the perf stream): the hull's own bush bonus is asked for every frame (the HUD's concealment
+  // snapshot) and walked every concealer of the map (~0.7 % of the battle's main thread on Verdant). The discs' places
+  // never move, so a 16 m grid of them (indexed once, again if the list's length changes) yields every disc that can
+  // reach the hull — the box of the largest disc's reach — and they are visited in ascending index order with the walk's
+  // own tests, so the sum, its order and the cap's early return are the walk's.
+  const CONCEALER_CELL_M = 16;
+  const concealerCells = new Map<number, number[]>();
+  let concealerCellsN = -1;
+  let concealerMaxR = 0;
+  const hullCandidates: number[] = [];
+  const ascending = (a: number, b: number): number => a - b;
+  const concealerCellKey = (ix: number, iz: number): number => (ix + 32768) * 65536 + (iz + 32768);
+  function indexConcealers(): void {
+    concealerCells.clear();
+    concealerMaxR = 0;
     for (let i = 0; i < concealers.length; i++) {
-      const concealer = concealers[i];
+      const c = concealers[i];
+      const key = concealerCellKey(Math.floor(c.x / CONCEALER_CELL_M), Math.floor(c.z / CONCEALER_CELL_M));
+      let list = concealerCells.get(key);
+      if (!list) concealerCells.set(key, list = []);
+      list.push(i);
+      if (c.r > concealerMaxR) concealerMaxR = c.r;
+    }
+    concealerCellsN = concealers.length;
+  }
+
+  function hullBushBonus(position: SpottingVector3, bloom: number): number {
+    if (concealerCellsN !== concealers.length) indexConcealers();
+    const reach = concealerMaxR + 1.2;
+    hullCandidates.length = 0;
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) {
+      for (let i = 0; i < concealers.length; i++) hullCandidates.push(i); // (a non-finite place: the walk's own verdict)
+    } else {
+      const x0 = Math.floor((position.x - reach) / CONCEALER_CELL_M), x1 = Math.floor((position.x + reach) / CONCEALER_CELL_M);
+      const z0 = Math.floor((position.z - reach) / CONCEALER_CELL_M), z1 = Math.floor((position.z + reach) / CONCEALER_CELL_M);
+      for (let ix = x0; ix <= x1; ix++) {
+        for (let iz = z0; iz <= z1; iz++) {
+          const list = concealerCells.get(concealerCellKey(ix, iz));
+          if (list) for (let k = 0; k < list.length; k++) hullCandidates.push(list[k]);
+        }
+      }
+    }
+    if (hullCandidates.length > 1) hullCandidates.sort(ascending);
+    let bush = 0;
+    for (let k = 0; k < hullCandidates.length; k++) {
+      const concealer = concealers[hullCandidates[k]];
       if (concealer.dead) continue;
       const dx = concealer.x - position.x;
       const dz = concealer.z - position.z;
