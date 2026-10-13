@@ -129,6 +129,14 @@ function drifts(sink: PartSink, frame: HouseFrame, openings: readonly Opening[],
       sink.polygon('plaster', [a, d, c, b], opts);
       sink.polygon('plaster', [a, facePoint(face, u0, foot, 0.01), d], opts);
       sink.polygon('plaster', [b, c, facePoint(face, u1, foot, 0.01)], opts);
+      // (the buildings stream, 2026-10-13, the integrity check: a drift runs on past the wall's ends, where no wall stands
+      // behind it, so from beside the corner its open back showed) its back closed beyond each end of the wall, facing in
+      const hAt = (uu: number): number => h0 + (h1 - h0) * (uu - u0) / (u1 - u0);
+      for (const [ua, ub] of [[u0, Math.min(u1, -half)], [Math.max(u0, half), u1]]) {
+        if (ub - ua < 0.02) continue;
+        sink.polygon('plaster', [facePoint(face, ub, foot, 0.01), facePoint(face, ua, foot, 0.01), facePoint(face, ua, hAt(ua), 0.01),
+          facePoint(face, ub, hAt(ub), 0.01)], opts);
+      }
     }
   }
 }
