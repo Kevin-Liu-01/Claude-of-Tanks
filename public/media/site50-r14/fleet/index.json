@@ -1,5 +1,6 @@
 {
  "schemaVersion": 1,
+ "tankIdSchema": 2,
  "collection": "site50-r14",
  "vehicles": {
   "m1a3": {
@@ -197,7 +198,7 @@
    "poster": "/media/site50-r14/fleet/mbt70.jpg",
    "scene": "/media/site50-r14/scenes/s58-mbt70-orchard.scene.json"
   },
-  "fv510_milan_x": {
+  "warrior_tes_h": {
    "take": "s24-ice-duel",
    "map": "alpine",
    "title": {
@@ -208,8 +209,8 @@
     "en": "T-80U hit on the ice",
     "zh": "冰面上中弹的 T-80U"
    },
-   "loop": "/media/site50-r14/fleet/fv510_milan_x.webm",
-   "poster": "/media/site50-r14/fleet/fv510_milan_x.jpg",
+   "loop": "/media/site50-r14/fleet/warrior_tes_h.webm",
+   "poster": "/media/site50-r14/fleet/warrior_tes_h.jpg",
    "scene": "/media/site50-r14/scenes/s24-ice-duel.scene.json"
   },
   "ajax_x": {

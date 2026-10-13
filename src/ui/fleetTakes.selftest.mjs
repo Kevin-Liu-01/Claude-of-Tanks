@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFakeDom, settle } from './fleetTakes.test-support.mjs';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const dom = createFakeDom();
@@ -246,7 +247,8 @@ if (existsSync(shipped)) {
     }
     const scene = JSON.parse(readFileSync(join(ROOT, 'public', entry.scene), 'utf8'));
     assert.equal(scene.map, entry.map, `${entry.vehicle}: the index names its scene's map`);
-    assert.ok(scene.actors?.some((actor) => actor.id === entry.vehicle), `${entry.vehicle}: its take stages it`);
+    // a take's scene stays as filmed, its ids in the schema it was written under (the alias layer resolves them at load)
+    assert.ok(scene.actors?.some((actor) => resolveTankId(actor.id, scene.tankIdSchema) === entry.vehicle), `${entry.vehicle}: its take stages it`);
   }
   coverage = `the shipped index gives ${takes.size} of ${production.size} production vehicles their take`;
 }
