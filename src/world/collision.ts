@@ -968,7 +968,8 @@ const LEAN_MIN_SIN = 0.05;
  * plane times sin p — forward for a hull nosing down, back for one reared up. A T-90M driven down a 18-degree slope into a
  * 2.4 m boulder stopped with its footprint at the boulder's foot and its glacis 1.1 m inside the stone. The plate is
  * probed at its lip (the shell's lift over the track plane at that end) and halfway from there to the hull's top: the
- * strip each leans over, against the stone's section at that height over the track plane, pushes the hull off by the
+ * strip each leans over, against the stone's climb surface's section at that height over the track plane (the wall the
+ * footprint meets, carried out by the lean: a plate rides up a face the tracks climb), pushes the hull off by the
  * overlap (the larger of the two; the caller takes it or the footprint's own push, whichever is larger). True when it
  * meets the stone.
  */
@@ -989,7 +990,7 @@ function endPlateLean(
     const h = k === 0 ? lip : 0.5 * (lip + height);
     const reach = h * Math.abs(sin);
     if (reach < 0.02) continue;
-    if (!collisionPartSection(part, u.y + h, _leanPoints, u.slopeX, u.slopeZ, u.cx, u.cz)) continue;
+    if (!collisionPartSection(part, u.y + h, _leanPoints, u.slopeX, u.slopeZ, u.cx, u.cz, null, CLIMB_ALLOWANCE_M)) continue;
     let sx = 0, sz = 0;
     for (let i = 0; i < _leanPoints.length; i += 2) { sx += _leanPoints[i]; sz += _leanPoints[i + 1]; }
     _leanShape.cx = sx / (_leanPoints.length / 2); _leanShape.cz = sz / (_leanPoints.length / 2);
