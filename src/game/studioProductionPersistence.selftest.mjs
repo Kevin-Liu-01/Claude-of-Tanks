@@ -11,7 +11,7 @@ import { isStudioTime, normalizeStudioLight, studioTimeFor } from './studioLight
 // Execute the real serialization, loading and reframing callers, retaining
 // authored camera positions. A recipe-only round trip misses private format state.
 const source = ts.createSourceFile('studio.ts', readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
-const names = new Set(['stateJson', 'pictureStateEntry', 'load', 'setProductionFormat', 'directProduction']);
+const names = new Set(['stateJson', 'actorStateJson', 'pictureStateEntry', 'load', 'setProductionFormat', 'directProduction']);
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));

@@ -4528,6 +4528,37 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- scene JSON --------------------------------------------------------------
+  /** One actor as the scene JSON records it (state()'s actors; studioSuspensionAim.selftest round-trips it). */
+  function actorStateJson(a: StudioActor) {
+    return {
+      id: a.specId,
+      ...(a.name ? { name: a.name } : {}),
+      pos: [r2(a.pose.x), r2(a.pose.z)],
+      facingDeg: r2(a.pose.facingDeg),
+      turretDeg: r2(a.pose.turretDeg),
+      gunDeg: r2(a.pose.gunDeg),
+      ...(a.camo ? { camo: a.camo } : {}),
+      camoSeed: a.camoSeed,
+      state: a.stateName,
+      ...(a.stateName !== a.authoredStateName
+        ? { authoredState: a.authoredStateName }
+        : {}),
+      ...(a.stateAgeS != null ? { stateAgeS: a.stateAgeS } : {}),
+      ...(a.stateAgeS !== a.authoredStateAgeS
+        ? { authoredStateAgeS: a.authoredStateAgeS }
+        : {}),
+      ...(a.recoilAgeS != null ? { recoilAgeS: a.recoilAgeS } : {}),
+      ...(a.recoilAgeS !== a.authoredRecoilAgeS
+        ? { authoredRecoilAgeS: a.authoredRecoilAgeS }
+        : {}),
+      ...(a.authoredSuspensionAimDeg != null ? { suspensionAimDeg: r2(a.authoredSuspensionAimDeg) } : {}),
+      ...(a.smoking && a.stateName !== 'engine-smoking' ? { smoking: true } : {}),
+      ...(a.burning && a.stateName !== 'burning' ? { burning: true } : {}),
+      ...(a.smoking !== a.authoredSmoking ? { authoredSmoking: a.authoredSmoking } : {}),
+      ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
+    };
+  }
+
   /** @returns {object} round-trippable scene JSON (docs/STUDIO.md schema). */
   function stateJson() {
     const w = getWorld();
@@ -4539,33 +4570,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       productionFormat,
       ...(studioFxState(fxSettings) ? { fx: studioFxState(fxSettings) } : {}),
       seed: sceneMeta.seed || 5000,
-      actors: actors.map((a) => ({
-        id: a.specId,
-        ...(a.name ? { name: a.name } : {}),
-        pos: [r2(a.pose.x), r2(a.pose.z)],
-        facingDeg: r2(a.pose.facingDeg),
-        turretDeg: r2(a.pose.turretDeg),
-        gunDeg: r2(a.pose.gunDeg),
-        ...(a.camo ? { camo: a.camo } : {}),
-        camoSeed: a.camoSeed,
-        state: a.stateName,
-        ...(a.stateName !== a.authoredStateName
-          ? { authoredState: a.authoredStateName }
-          : {}),
-        ...(a.stateAgeS != null ? { stateAgeS: a.stateAgeS } : {}),
-        ...(a.stateAgeS !== a.authoredStateAgeS
-          ? { authoredStateAgeS: a.authoredStateAgeS }
-          : {}),
-        ...(a.recoilAgeS != null ? { recoilAgeS: a.recoilAgeS } : {}),
-        ...(a.recoilAgeS !== a.authoredRecoilAgeS
-          ? { authoredRecoilAgeS: a.authoredRecoilAgeS }
-          : {}),
-        ...(a.authoredSuspensionAimDeg != null ? { suspensionAimDeg: r2(a.authoredSuspensionAimDeg) } : {}),
-        ...(a.smoking && a.stateName !== 'engine-smoking' ? { smoking: true } : {}),
-        ...(a.burning && a.stateName !== 'burning' ? { burning: true } : {}),
-        ...(a.smoking !== a.authoredSmoking ? { authoredSmoking: a.authoredSmoking } : {}),
-        ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
-      })),
+      actors: actors.map(actorStateJson),
       effects: effectLog.map((e) => ({ ...e, params: { ...e.params } })),
       storyboard: getStoryboard(),
       camera: getCamera(),
@@ -4602,10 +4607,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     await yieldForFrameBudget();
     for (const cfg of json.actors || []) {
       const a = addActor(cfg);
+      await yieldForFrameBudget();
       // a siege vehicle's aim is part of its pose: the scene's sight-line elevation runs the real hydropneumatic aim, so
       // the pitched hull and its loaded track runs round-trip through state() (the home page's suspension still)
       if (Number.isFinite(cfg.suspensionAimDeg)) setHydropneumaticAim(a, Number(cfg.suspensionAimDeg));
-      await yieldForFrameBudget();
     }
   }
 
