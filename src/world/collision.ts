@@ -159,7 +159,7 @@ export function setConvexTopShape(rec: CollisionRecord, points: number[], tp: nu
 const OVERPASS_CLEARANCE_M = 0.5;
 /** The track plane of the hull hullUndersideOver last read over a record (its height at the footprint's centre and its
  * rise per world metre in x and z): a drawn top's wall section is cut against it point by point (pushHullFromObstacle). */
-const _underPlane = { valid: false, y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0 };
+const _underPlane = { valid: false, y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0, frontLift: 0, rearLift: 0 };
 /** The track plane's height under (x, z) for the hull hullUndersideOver last read, or NaN when it read none. */
 export function hullUndersideAt(x: number, z: number): number {
   return _underPlane.valid ? _underPlane.y + _underPlane.slopeX * (x - _underPlane.cx) + _underPlane.slopeZ * (z - _underPlane.cz) : NaN;
@@ -284,6 +284,7 @@ export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, 
   _underPlane.valid = true; _underPlane.y = centerY; _underPlane.cx = centerX; _underPlane.cz = centerZ;
   _underPlane.slopeX = foot.riseAlong * forwardX + foot.riseAcross * rightX;
   _underPlane.slopeZ = foot.riseAlong * forwardZ + foot.riseAcross * rightZ;
+  _underPlane.frontLift = Math.max(0, foot.frontLift); _underPlane.rearLift = Math.max(0, foot.rearLift);
   let tracks = Infinity, ends = Infinity, endsTrack = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
@@ -951,6 +952,61 @@ function testObbAxis(
  * Tight hull-OBB vs environment-footprint push-out. Adds the minimum
  * translation to `outPush`; returns false when separated.
  */
+/** A pitched hull's end-plate probe (endPlateLean): its section, its strip and whether it pushed this call. */
+const _leanPoints: number[] = [];
+const _leanShape: Extract<SimpleCollisionShape, { kind: 'convex' }> = { kind: 'convex', cx: 0, cz: 0, points: _leanPoints };
+const _leanPos = { x: 0, z: 0 };
+const _leanBest = { overlap: Infinity, nx: 0, nz: 0 };
+let _leanHit = false;
+let _leanPushX = 0, _leanPushZ = 0;
+/** Under this sine of pitch (3 degrees) an end plate leans past its footprint by under a few centimetres. */
+const LEAN_MIN_SIN = 0.05;
+/**
+ * A pitched hull's end plate against a drawn top (physics stream, 2026-10-13; the coordinator: "add an upper-hull probe
+ * against wall parts ... so the push holds the hull's upper front too, not just its footprint at track level"). The
+ * footprint is the hull's at its track plane; pitched by p, the plate at its end leans past it by its height over that
+ * plane times sin p — forward for a hull nosing down, back for one reared up. A T-90M driven down a 18-degree slope into a
+ * 2.4 m boulder stopped with its footprint at the boulder's foot and its glacis 1.1 m inside the stone. The plate is
+ * probed at its lip (the shell's lift over the track plane at that end) and halfway from there to the hull's top: the
+ * strip each leans over, against the stone's section at that height over the track plane, pushes the hull off by the
+ * overlap (the larger of the two; the caller takes it or the footprint's own push, whichever is larger). True when it
+ * meets the stone.
+ */
+function endPlateLean(
+  part: Extract<SimpleCollisionShape, { kind: 'convex' }>, pos: Position2, fx: number, fz: number, rx: number, rz: number,
+  halfL: number, halfW: number, spanTop: number,
+): boolean {
+  _leanHit = false; _leanPushX = 0; _leanPushZ = 0;
+  const u = _underPlane;
+  const rise = u.slopeX * fx + u.slopeZ * fz;
+  const sin = rise / Math.sqrt(1 + rise * rise);
+  if (Math.abs(sin) < LEAN_MIN_SIN) return false;
+  const dir = sin < 0 ? 1 : -1;
+  const lip = sin < 0 ? u.frontLift : u.rearLift;
+  const height = Math.max(lip, spanTop - u.y);
+  let pushX = 0, pushZ = 0;
+  for (let k = 0; k < 2; k++) {
+    const h = k === 0 ? lip : 0.5 * (lip + height);
+    const reach = h * Math.abs(sin);
+    if (reach < 0.02) continue;
+    if (!collisionPartSection(part, u.y + h, _leanPoints, u.slopeX, u.slopeZ, u.cx, u.cz)) continue;
+    let sx = 0, sz = 0;
+    for (let i = 0; i < _leanPoints.length; i += 2) { sx += _leanPoints[i]; sz += _leanPoints[i + 1]; }
+    _leanShape.cx = sx / (_leanPoints.length / 2); _leanShape.cz = sz / (_leanPoints.length / 2);
+    // the strip the plate leans over: past the footprint's end, the reach long, the hull wide
+    _leanPos.x = pos.x + fx * dir * (halfL + reach * 0.5);
+    _leanPos.z = pos.z + fz * dir * (halfL + reach * 0.5);
+    _leanBest.overlap = Infinity; _leanBest.nx = 0; _leanBest.nz = 0;
+    if (!overlapsConvexObstacle(_leanShape, _leanPos, fx, fz, rx, rz, reach * 0.5, halfW, _leanBest)) continue;
+    const x = _leanBest.nx * _leanBest.overlap, z = _leanBest.nz * _leanBest.overlap;
+    if (x * x + z * z > pushX * pushX + pushZ * pushZ) { pushX = x; pushZ = z; }
+  }
+  if (pushX === 0 && pushZ === 0) return false;
+  _leanPushX = pushX; _leanPushZ = pushZ;
+  _leanHit = true;
+  return true;
+}
+
 export function pushHullFromObstacle(
   pos: Position2,
   fx: number, fz: number, rx: number, rz: number,
@@ -1009,7 +1065,17 @@ export function pushHullFromObstacle(
     const cut = u.valid
       ? collisionPartSection(convex, u.y + HULL_STEP_UP_M, _sectionPoints, u.slopeX, u.slopeZ, u.cx, u.cz, null, CLIMB_ALLOWANCE_M)
       : collisionPartSection(convex, spanBottom + HULL_STEP_UP_M, _sectionPoints, 0, 0, 0, 0, null, CLIMB_ALLOWANCE_M);
-    if (!cut) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
+    // a pitched hull's end plate leans past its footprint at track level (the bow of a hull nosing down a slope into a
+    // boulder, the stern of one reared up it): the strip it leans over meets the stone where the stone stands over the
+    // plate there (endPlateLean)
+    const lean = u.valid ? endPlateLean(convex, pos, fx, fz, rx, rz, halfL, halfW, spanTop) : (_leanHit = false);
+    if (!cut) {
+      if (lean) {
+        outPush.x += _leanPushX; outPush.z += _leanPushZ;
+        _contactTop = ob.max[1]; _contactBottom = ob.min[1]; return true;
+      }
+      _contactTop = -Infinity; _contactBottom = -Infinity; return false;
+    }
     let sx = 0, sz = 0;
     for (let i = 0; i < _sectionPoints.length; i += 2) { sx += _sectionPoints[i]; sz += _sectionPoints[i + 1]; }
     _sectionShape.points = _sectionPoints;
@@ -1020,9 +1086,14 @@ export function pushHullFromObstacle(
     ? overlapsConvexObstacle(convex, pos, fx, fz, rx, rz, halfL, halfW, best)
     : overlapsBoxObstacle(ob, sh?.kind === 'obb' ? sh : null,
       pos, fx, fz, rx, rz, halfL, halfW, best);
-  if (!overlaps) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
-  outPush.x += best.nx * best.overlap;
-  outPush.z += best.nz * best.overlap;
+  const leaned = convex === _sectionShape && _leanHit;
+  if (!overlaps && !leaned) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
+  if (leaned && (!overlaps || _leanPushX * _leanPushX + _leanPushZ * _leanPushZ > best.overlap * best.overlap)) {
+    outPush.x += _leanPushX; outPush.z += _leanPushZ;
+  } else {
+    outPush.x += best.nx * best.overlap;
+    outPush.z += best.nz * best.overlap;
+  }
   _contactTop = ob.max[1];
   _contactBottom = ob.min[1];
   return true;

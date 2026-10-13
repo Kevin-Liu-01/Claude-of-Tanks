@@ -741,7 +741,7 @@ let _wholeTrackOnGround = true;
 let _supportRate = 0;
 /** This step's climb cap for the whole-hull floor lift (EDGE_CLIMB_*; set by updateVerticalContact from the travel). */
 let _climbCapM = 0.25;
-/** Whether this step's hull is slow enough for an edge to be climbed at its pace (EDGE_EASE_MAX_MPS). */
+/** Whether this step's hull climbs an edge at its pace (EDGE_CLIMB_*: its support read a record's top). */
 let _edgeEase = false;
 /** The entity's climb pace hint this step (MovementEntity.climbPaceMps), set by updateTank. */
 let _climbPaceMps = 0;
@@ -1003,12 +1003,11 @@ const EDGE_CLIMB_BASE_M = 0.04;
 const EDGE_CLIMB_GRADE = 1;
 /** The climb's ease in and out (m/s^2): its vertical speed changes by at most this much a second. */
 const EDGE_CLIMB_ACCEL_MPS2 = 60;
-/**
- * Over this speed a floor that outruns the climb is lifted as before (FLOOR_LIFT_MAX_M_PER_STEP a step): a hull at speed
- * meets faces, ramps and trench walls, not rock tiers, and easing its climb sank it into them (the stress matrix: body
- * penetration on Turbo's quarter-pipe and kicker, the Moon's bank hop). The field audit's rock jolts were all under it.
- */
-const EDGE_EASE_MAX_MPS = 7;
+// (physics stream, 2026-10-13; the coordinator: "the lift rate is capped by the track's climb speed, not stepped") the
+// ease holds at every speed: its cap grows with the pace (EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE x the step's travel), so a
+// fast hull climbs a record's edge as fast as its tracks roll up a 45-degree face. Over 7 m/s it was lifted 0.25 m a step
+// instead (the destruction stream's gate, for Turbo's quarter-pipe and kicker and the Moon's bank hop), and a hull
+// crossing a 0.8 m stone at 8-10 m/s jolted 0.15-0.19 m; eased it jolts 0.09-0.14 m.
 /** The most a floor's lift at a partial contact's leading station adds to the hull's pitch rate in one step (rad/s):
  * the turn is eased in, its angular acceleration bounded (15 rad/s^2), not thrown at once. */
 const STATION_TURN_STEP = 0.25;
@@ -2516,7 +2515,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   _climbCapM = Math.min(FLOOR_LIFT_MAX_M_PER_STEP, EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE * pace * dt);
   // (a record's top under the hull: a rock's tier, a roof; a terrain face — a trench's far wall — lifts as before: easing
   // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
-  _edgeEase = pace <= EDGE_EASE_MAX_MPS && _supportOnRecord;
+  _edgeEase = _supportOnRecord;
   const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
