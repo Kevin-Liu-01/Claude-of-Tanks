@@ -198,6 +198,15 @@ export interface GhillieConfig {
    * texture pair (camoNetTexture.ts caches by theatre and seed); each panel's own offset keeps them from matching.
    */
   netTextureSeed?: number;
+  /**
+   * 2026-10-13 (netting-pl; the coordinator on the owner's performance push: "thin the garnish's triangle cost (fewer
+   * cards per clump, LOD the far clumps) rather than raise ceilings"): a field suit's garnish budget. `clumpCards` keeps
+   * that share of each clump's boughs and strips (at least two), each kept card longer by its share's -0.4 power and
+   * wider by its -0.6 power, so a clump spreads over the same net with fewer, broader cuts; `lowShare` is the share of
+   * the cards a LOW build (the far tier: distant bots, LOW quality) keeps, chosen card by card from a hash of the seat
+   * and the card, every draw of a dropped card still made (HIGH and LOW lay the same clumps). Unset: every card.
+   */
+  garnishBudget?: { clumpCards?: number; lowShare?: number };
   hull?: GhilliePanels;
   turret?: GhilliePanels;
   gun?: GhilliePanels;
@@ -2374,6 +2383,10 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   const panel = surface.panel as TopPanel;
   const top = surface.kind === 'top';
   const laidNet = top ? surface as TopCloth : null;
+  // netting-pl: the suit's garnish budget (GhillieConfig.garnishBudget): fewer, broader cards a clump; fewer at LOW
+  const thin = THREE.MathUtils.clamp(cfg.garnishBudget?.clumpCards ?? 1, 0.3, 1);
+  const lowKeep = ctx.q ? 1 : THREE.MathUtils.clamp(cfg.garnishBudget?.lowShare ?? 1, 0, 1);
+  const grow = Math.pow(thin, -0.4), widen = Math.pow(thin, -0.6);
   const margin = top ? (panel.garnishOpeningMarginM ?? 0.09) : 0.06;
   const band = top ? panel.garnishEdgeBandM : undefined;
   // netting-proper: how high over its net any point of a roof or deck card may stand (the panel's own rise when lower)
@@ -2582,7 +2595,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const t2 = norm3([nn[1] * t1[2] - nn[2] * t1[1], nn[2] * t1[0] - nn[0] * t1[2], nn[0] * t1[1] - nn[1] * t1[0]]);
     return { t1, t2, slope };
   };
-  for (const seatAt of seats) {
+  for (const [seatIndex, seatAt] of seats.entries()) {
     const seat = surface.sample(seatAt.u, seatAt.v);
     if (!seat || clothAt(seat.p) > 0.006) continue;
     // a drape's garnish hangs no lower than 4 cm under its hem there (391a: "lime leaf clusters dangling over the road
@@ -2614,8 +2627,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const boughBase = clumpTint(cfg, rng);
     const clumpTone = pickWeighted(FIELD_BOUGH_TONES[theatre], rng);
     const stripTone = pickStripTone(pal, rng);
-    const n = boughs ? FIELD_BOUGHS_PER_CLUMP[Math.floor(rng() * FIELD_BOUGHS_PER_CLUMP.length)] : 3 + Math.floor(rng() * 3);
-    const strips = boughs ? (rng() < 0.75 ? 1 + Math.floor(rng() * 2) : 0) : n;
+    const drawn = boughs ? FIELD_BOUGHS_PER_CLUMP[Math.floor(rng() * FIELD_BOUGHS_PER_CLUMP.length)] : 3 + Math.floor(rng() * 3);
+    const strips = boughs ? Math.round((rng() < 0.75 ? 1 + Math.floor(rng() * 2) : 0) * thin) : drawn;
+    const n = thin < 1 ? Math.max(2, Math.round(drawn * thin)) : drawn;
     const cards = boughs ? n + strips : n;
     for (let k = 0; k < cards; k++) {
       const bough = boughs && k < n;
@@ -2625,6 +2639,8 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
       const ja = rng(), jo = rng(), jh = rng();
       const ownTone = rng() < 0.3 ? pickWeighted(FIELD_BOUGH_TONES[theatre], rng) : clumpTone;
       const tileK = rng();
+      // netting-pl: the far tier's share of the cards (its draws made above, so the clumps after it lie as at HIGH)
+      if (lowKeep < 1 && hash01(seatIndex, k, seedBase) >= lowKeep) continue;
       // netting-proper: the clump's stems staggered across its line (side by side, overlapping like shingles) and a little
       // along it; a strip knotted in among them
       const across = bough ? share * 1.8 * seatAt.r + (ja - 0.5) * 0.06 : (ja - 0.5) * 1.2 * seatAt.r;
@@ -2655,8 +2671,8 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
       // 2026-10-12 (cam-netting): a sand hull's boughs a quarter longer (the holm oak and olive sprigs read as specks
       // on sand paint at hero distance; the woodland spruce and beech boughs are broad already)
       const base = (cfg.leafScale ?? 1) * (bough ? (theatre === 'desert' ? 0.75 : 0.6) : 0.4);
-      const length = base * (bough ? 0.78 + jl * 0.72 : 0.75 + jl * 0.6);
-      const width = length * (bough ? 0.58 : 0.5);
+      const length = base * (bough ? 0.78 + jl * 0.72 : 0.75 + jl * 0.6) * grow;
+      const width = length * (bough ? 0.58 : 0.5) * (widen / grow);
       const value = bough ? 0.76 + jv * 0.26 : 0.6 + jv * 0.32;
       const tint: [number, number, number] = bough
         ? [boughBase[0] * pal.boughTint[0] * ownTone[0] * value, boughBase[1] * pal.boughTint[1] * ownTone[1] * value,

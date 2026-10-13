@@ -59,6 +59,20 @@ function zubrMainGunCorner(t){
   }
  }finally{[turret.rotation.y,gun.rotation.x,recoil.position.z]=saved;t.root.updateMatrixWorld(true);}
 }
+// The drawn whole-model cost (visible colour passes, instanced copies counted; profiles/arieteC2X.selftest's census)
+// and the suit's part of it (its nets and garnish).
+function census(t){
+ let triangles=0,suit=0,garnish=0;
+ t.root.traverse(o=>{
+  if(!o.isMesh)return;let visible=true;for(let p=o;p;p=p.parent)visible&&=p.visible;
+  if(!visible||o.userData.shadowOnly||o.userData.authoredShadowProxy||o.name.startsWith('procShadow_'))return;
+  const mats=Array.isArray(o.material)?o.material:[o.material];if(!mats.some(m=>m.colorWrite))return;
+  const n=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);
+  triangles+=n;if(/_ghillie_/.test(o.name))suit+=n;if(/_ghillie_.*_leaves$/.test(o.name))garnish+=n;
+ });
+ return{triangles,suit,garnish};
+}
+const costs={};
 let supportShoes=0;
 for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality of ['high','low']){
  const added=[],permanent={hull:[],turret:[]},turretEra=[];
@@ -156,10 +170,27 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
   }
   if(field)assert(suitMargin>=.008,`${label}: the field suit stays under the roof gun's swept floor at every radius (${suitMargin.toFixed(4)})`);
   else assert(low-scrimTop>.20,`${label}: the screen scrim remains below the entire roof-gun sweep (${low-scrimTop})`);
+  (costs[id]??={})[quality]=census(t);
   console.log(`${label}: ${eraBodies} ERA bodies, ${added.length} frame parts, ${(low-high).toFixed(3)} m continuous roof-gun clearance, suit ${field?`${suitMargin.toFixed(3)} m under the swept floor`:`${(low-scrimTop).toFixed(3)} m under the sweep`}`);
  }finally{
   t.dispose();for(const d of [...added.map(p=>p.g),...permanent.hull,...permanent.turret,...turretEra])d.dispose();
  }
 }
 assert(supportShoes>=120,'all four layouts on both geometry tiers exercised their physical mounting shoes');
+// 2026-10-13 (netting-pl; the coordinator on the owner's performance push: "thin the garnish's triangle cost (fewer cards
+// per clump, LOD the far clumps) rather than raise ceilings ... Fix the Zubr II LOW ratio by dropping more garnish on LOW,
+// not by trimming HIGH coverage"): the three field-suited hulls had no frozen whole-model ceiling. Before their suits
+// (main 7a257c3ed, ledger rows) they drew 132.3k (Husarz), 129.4k (Zubr) and 141.2k (Zubr II) triangles at HIGH, the
+// Zubr II's LOW already 75.4 % of its HIGH. The suit (garnishBudget: 70 % of each clump's cards, broader; 35 % of them
+// at LOW) adds 7.3-7.9k at HIGH over the screen scrim it replaces: this census 140.0k, 136.5k and 148.6k at HIGH, LOW
+// 73.4, 72.8 and 74.8 %. Frozen here with 1.5k over that census: each stays under its ceiling at HIGH, LOW under 75 % of
+// HIGH, and the LOW garnish under a quarter of the HIGH's.
+const CEILINGS={pl_t80u_modern:141600,pl_t72b3_modern:138100,pl_t72b3_zubr_ii:150200};
+for(const [id,ceiling] of Object.entries(CEILINGS)){
+ const {high,low}=costs[id];
+ console.log(`${id}: HIGH ${high.triangles} (suit ${high.suit}, garnish ${high.garnish}) LOW ${low.triangles} (suit ${low.suit}, garnish ${low.garnish}) = ${(100*low.triangles/high.triangles).toFixed(1)} %`);
+ assert(high.triangles<=ceiling,`${id}: frozen whole-model HIGH ceiling ${ceiling} (${high.triangles})`);
+ assert(low.triangles<=high.triangles*.75,`${id}: LOW <= 75 % of HIGH (${low.triangles} / ${high.triangles})`);
+ assert(low.garnish<=high.garnish*.25,`${id}: the far tier draws under a quarter of the garnish (${low.garnish} / ${high.garnish})`);
+}
 console.log(`Polish protection: ${supportShoes} armor contact shoes; all four variants pass.`);

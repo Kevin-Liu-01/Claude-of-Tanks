@@ -97,6 +97,9 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
   return {
     id: d.id, seed: 7400 + m * 97, style: 'leafy', density: 1.8, leafScale: .9, boughShare: .42,
     fieldClearanceM: .03, hemFloorM: d.hullBottom - .05, maxHalfWidth: d.hullX + .14,
+    // the owner's performance push (the coordinator, 2026-10-13): 70 % of each clump's cards, broader, so the clump covers
+    // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
+    garnishBudget: {clumpCards: .7, lowShare: .35},
     light: [0x68724b, 0x73744d, 0x657547, 0x747852][m]!, dark: 0x2f3a2c, netColor: 'rgba(49,61,37,0.88)', netTextureSeed: 1101,
     hull: {
       top: [laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: f.bow, nx: 42, nz: Math.round((f.bow - f.stern) / .1), yAt: deckAt,
