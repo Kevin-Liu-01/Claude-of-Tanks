@@ -100,8 +100,15 @@ export interface BrowserLoadTrace {
   totalMs?: number;
   blackCheck?: RuntimeValue;
   /** The strict shader preparation: its windows, how it ended, and the programs left to link at the covered reveal. */
-  compile?: { attempts: number; outcome: 'complete' | 'deferred'; pending: number | null };
+  compile?: {
+    attempts: number; outcome: 'complete' | 'deferred'; pending: number | null;
+    /** At deferral (2026-10-13): the programs left pending, named (src/engine/programWarm.ts PendingProgramNote). */
+    programs?: readonly BrowserPendingProgram[];
+  };
 }
+
+/** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
+export interface BrowserPendingProgram { name: string; cacheKey: string; linked: boolean | null }
 
 export interface BrowserEntryFailure {
   message: string;
@@ -177,7 +184,7 @@ export interface BrowserWarmPorts {
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
-  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation } | null | undefined>;
+  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
   openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
@@ -601,7 +608,14 @@ function isSuperseded(error: RuntimeValue): boolean {
  * succeed refuses the entry: a renderer whose context was lost or replaced (`invalidated`), a failed native query or
  * program reflection.
  */
-const COMPILE_STALL_WINDOWS = 4;
+/**
+ * 2026-10-12 (the MP lane; production 218-219: every rejoin spent compile 5.0 s + compileRetry 20.1 s with the main
+ * thread idle, ending 'deferred' with the same 36 programs pending in every window): a window that links nothing is
+ * followed by more windows that link nothing, so one stalled window is the last resort. A cohort that is still linking
+ * keeps its windows (progress resets the count), and the covered reveal links whatever is left, as it already did
+ * after four.
+ */
+const COMPILE_STALL_WINDOWS = 1;
 const COMPILE_CEILING_MS = 120_000;
 /**
  * The entry's own wait (entryTimeoutMs) refuses only a round that stopped progressing: past it, a round that showed
@@ -618,6 +632,21 @@ function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWar
   const after = current?.pending ?? null;
   if (after === null) return false;
   return before === null || after < before;
+}
+
+/** "name ×count (linked n/unlinked n/unqueried n)" per material, most frequent first, bounded for a console line. */
+function pendingProgramSummary(programs: readonly BrowserPendingProgram[]): string {
+  const byName = new Map<string, { count: number; linked: number; unlinked: number; unqueried: number }>();
+  for (const program of programs) {
+    const row = byName.get(program.name) ?? { count: 0, linked: 0, unlinked: 0, unqueried: 0 };
+    row.count++;
+    if (program.linked === true) row.linked++;
+    else if (program.linked === false) row.unlinked++;
+    else row.unqueried++;
+    byName.set(program.name, row);
+  }
+  return [...byName].sort((a, b) => b[1].count - a[1].count).slice(0, 16)
+    .map(([name, row]) => `${name} ×${row.count} (linked ${row.linked}/unlinked ${row.unlinked}/unqueried ${row.unqueried})`).join(', ');
 }
 
 /** The refusal for a preparation that cannot complete, with what broke. */
@@ -1171,14 +1200,16 @@ export function createBrowserComposition({
     let attempts = 0;
     let stalled = 0;
     let retried = false;
+    let programs: readonly BrowserPendingProgram[] | undefined;
     const finish = (outcome: 'complete' | 'deferred', pending: number | null): void => {
       markStage(active, retried ? 'compileRetry' : 'compile');
-      active.trace.compile = { attempts, outcome, pending };
+      active.trace.compile = { attempts, outcome, pending, ...(outcome === 'deferred' && programs?.length ? { programs } : {}) };
     };
     while (true) {
       attempts++;
       const compiled = await warm.compile?.(signal);
       check(retried ? 'compileRetry' : 'compile');
+      programs = Array.isArray(compiled?.pendingPrograms) ? compiled.pendingPrograms : undefined;
       const preparation = compiled?.preparation;
       if (!preparationIncomplete(preparation)) { finish('complete', 0); return; }
       if (!preparationOutOfBudget(preparation)) throw shaderPreparationFailure(preparation);
@@ -1197,6 +1228,9 @@ export function createBrowserComposition({
         // The last resort reports and goes on: the covered reveal links the rest under the loader.
         load.recordSlowEntry?.({ stage: 'compile', code: 'deferred', ms: Math.round(now() - startedAt), pending });
         finish('deferred', pending);
+        // 2026-10-13 (MP stream, plan step 4): name the programs that never link — every traced production rejoin ended
+        // "deferred, pending 36" — by material and link state; the full cache keys stay in the trace (__NETWORK_LOAD)
+        if (programs?.length) reportWarning('multiplayer v2 entry', `shader preparation deferred with ${pending ?? programs.length} pending: ${pendingProgramSummary(programs)}`);
         return;
       }
       load.battleLoad.progress(0.87, pending === null
