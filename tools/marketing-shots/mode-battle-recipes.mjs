@@ -147,9 +147,10 @@ export const RECIPES = {
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'crane', center: 'contestedZone', azimuthDeg: 210, distM: 75, heightM: 40, fov: 42, smoothS: 0, hud: 'noreticle' },
-          { kind: 'crane', center: 'contestedZone', azimuthDeg: 300, distM: 62, heightM: 30, fov: 44, smoothS: 0, hud: 'noreticle' },
-          { kind: 'crane', center: 'contestedZone', azimuthDeg: 120, distM: 85, heightM: 48, fov: 40, smoothS: 0, hud: 'noreticle' },
+          // a low crane (r14 run 1's 40-75 m heights left the tanks small on a flat amber disc)
+          { kind: 'crane', center: 'contestedZone', azimuthDeg: 210, distM: 58, heightM: 21, lookAtHeightM: 1.5, fov: 44, smoothS: 0, hud: 'noreticle' },
+          { kind: 'crane', center: 'contestedZone', azimuthDeg: 300, distM: 50, heightM: 15, lookAtHeightM: 1.5, fov: 46, smoothS: 0, hud: 'noreticle' },
+          { kind: 'crane', center: 'contestedZone', azimuthDeg: 120, distM: 66, heightM: 28, lookAtHeightM: 1.5, fov: 42, smoothS: 0, hud: 'noreticle' },
         ],
         cameraEvery: 4,
         triggers: [T.anyFireOnScreen([35, 90], 400), T.hitOnScreen([30, 80], 400), T.killOnScreen()],
