@@ -300,18 +300,17 @@ function buildFieldGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGeo
   const m = new Mesh({ kind: 'wood' });
   const W = GATE_WIDTH.gate, timber = hexLin(st.timber);
   const post = mix(timber, [0.08, 0.07, 0.06], 0.25);
+  // the hanging post only: the gap's far side is the road a field gate stands open beside (placeFenceRun), or in a yard
+  // the next module's own post (the fence modules carry theirs at their start)
   if (st.field === 'fivebar') {
     gatePost(m, 0.0, 1.5, 0.19, post, false, r, broken, { cap: 'none', u0: 0.07 });
-    gatePost(m, W - 0.04, 1.32, 0.15, post, false, r, broken, { cap: 'none', u0: 0.31 });
     fiveBarLeaf(m, st, W, r, broken);
   } else if (st.field === 'ranch') {
     gatePost(m, 0.0, 1.65, 0.24, post, true, r, broken, { u0: 0.07 });
-    gatePost(m, W - 0.04, 1.5, 0.22, post, true, r, broken, { u0: 0.31 });
     ranchLeaf(m, st, W, r, broken);
   } else {
     const bamboo = st.field === 'bamboo';
     gatePost(m, 0.0, 1.45, bamboo ? 0.1 : 0.16, post, true, r, broken, { u0: 0.07, bamboo });
-    gatePost(m, W - 0.04, 1.35, bamboo ? 0.09 : 0.14, post, true, r, broken, { u0: 0.31, bamboo });
     poleLeaf(m, st, W, r, broken, bamboo);
   }
   return m.geometry();
@@ -419,8 +418,8 @@ function buildWattleGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
   // the other forms: stakes at both ends, the leaf
   const bamboo = form === 'bamboo', palm = form === 'palm', coyote = form === 'coyote';
   const post = palm ? mix(timber, [0.25, 0.2, 0.15], 0.3) : mix(timber, [0.08, 0.07, 0.06], 0.2);
+  // (the hanging stake only, as the field gate: the far side is the road's or the next module's)
   gatePost(m, 0.0, 1.3, bamboo ? 0.09 : palm ? 0.2 : 0.12, post, true, r, broken, { u0: 0.07, bamboo });
-  gatePost(m, W - 0.04, 1.25, bamboo ? 0.09 : palm ? 0.2 : 0.12, post, true, r, broken, { u0: 0.31, bamboo });
   const start = m.mark;
   const L = W - 0.22;
   if (form === 'hurdle') {

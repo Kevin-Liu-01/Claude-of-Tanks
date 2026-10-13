@@ -55,6 +55,7 @@ export const STONE_FLAT_TEXEL: Readonly<Record<string, { uv: readonly [number, n
   greywacke: { uv: [0.8525, 0.7764], srgb: [0.855, 0.851, 0.847] },
   fieldstone: { uv: [0.29, 0.9404], srgb: [0.886, 0.859, 0.827] },
   gneiss: { uv: [0.7549, 0.7725], srgb: [0.808, 0.796, 0.78] },
+  block: { uv: [0.0791, 0.167], srgb: [0.961, 0.945, 0.925] },
 });
 
 /** How one gate's surfaces map: the timber gates (structure wood), the stone gate (kit stone), the mud gate (render). */
