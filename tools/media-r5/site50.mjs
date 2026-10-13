@@ -646,6 +646,44 @@ const RECAST = {
   47: { lineup: [CAST.burlak, CAST.t90a, CAST.t14] },
   48: { lineup: [CAST.type96_72m, CAST.vt4a1, CAST.type96b] },
 };
+// The owner's nine (2026-10-12: "add videos for the leo 2a7, leopard 2 revokutuin, leopard 2a6m, leopard 2a5m, leopard
+// 2a5, kf41 lynx, puma s1, mbt 70, strv 103b"; the Leopard 2A7 in the fleet is the 2A7V): each leads a take of its own,
+// staged on the set, lens, effects and motion plan of one of the fifty's best-scored takes (wave m3, the lower critic
+// counting: eight of its top ten, and s18 for the Leopard 2 Revolution, the urban-fighting Leopard, on a Steinburg
+// street; on s23's crossroads its wider hull lost the hero behind a pole, and the lens nudged clear of the pole grazed
+// a hunting blind), among allies of its own kind and against an opposing force. Paint keeps the fifty's law
+// (a scheme no other take wears): the Leopards wear the NATO three-tone, the Bundeswehr's own coat, each in another of
+// the catalog's mixes; the ice duel a whitewash, the Puma in the desert a three-colour sand, the MBT-70 its own
+// Flecktarn and the Strv 103B the Swedish woodland. The enemy keeps the template's paint unless the sides swapped (s21's
+// Leopards were the enemy). The Stridsvagn 103B's gun is laid by the hull (the model holds its trunnion on the hull
+// line), so its rounds go where it points: no flank swing.
+// [n, template n, id, title, lineup, foes, hero paint or [hero, enemy], turret style]
+const OWNER_NINE_TABLE = [
+  [51, 20, 'leo2a7v-sunset-fire', 'A Leopard 2A7V leads the column returning fire across the fields at sunset',
+    [CAST.leo, CAST.leo2a6, CAST.puma], RU_FOES, 'service_leclerc_xlr'],
+  [52, 18, 'revolution-street-knockout', 'A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night',
+    [CAST.leo2rev, CAST.leo2a5, CAST.puma], [CAST.t90a, CAST.t72b3], 'sig_k2'],
+  [53, 21, 'leo2a6m-assault', 'A Leopard 2A6M wedge assaults through the burning fields',
+    [CAST.leo2a6m, CAST.leo2a5m, CAST.leo2a6, CAST.lynx], [CAST.t90a, CAST.t72b3, CAST.t80u], ['sig_borsuk', 'sig_t90sm']],
+  [54, 24, 'leo2a5m-ice-duel', 'A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U',
+    [CAST.leo2a5m, CAST.leo2a6], null, 'washworn'],
+  [55, 33, 'leo2a5-water-tower', 'A Leopard 2A5 advances past the burning water tower at night',
+    [CAST.leo2a5, CAST.leo2a6m], RU_FOES, 'sig_amx10p_25'],
+  [56, 39, 'lynx-lakeside', 'A KF41 Lynx fires across the village at Highland Reservoir',
+    [CAST.lynx, CAST.leo2a6, CAST.puma], RU_FOES, 'sig_dardo'],
+  [57, 26, 'puma-minaret', 'A Puma S1 fires at Sunscar Oasis',
+    [CAST.puma, CAST.lynx], null, 'sig_namer_ifv'],
+  [58, 49, 'mbt70-orchard', 'An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards',
+    [CAST.mbt70, CAST.amx30, CAST.amx30], null, 'sig_mbt70'],
+  [59, 6, 'strv103b-farm-charge', 'A Stridsvagn 103B charges past the farmhouse through artillery',
+    [CAST.strv103b], null, 'paint_strv81', 'sectors'],
+];
+export const OWNER_NINE = OWNER_NINE_TABLE.map(([n, from, id, title, lineup, foes, paint, style]) => {
+  const [, , kind, , setRef, film, still] = SHOTS.find(([m]) => m === from);
+  const [unit, enemy = PAINT[from]?.[1] ?? null] = [paint].flat();
+  return [n, id, kind, title, setRef, { ...film, from, lineup, ...(foes ? { foes } : {}), paint: [unit, enemy],
+    turretStyle: style ?? turretStyle(from) }, still];
+});
 // The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
 // MEDIA_R5_FEATURES points at another dump (a fresh one under review).
 const models = new Map();
@@ -683,7 +721,8 @@ function parkNudges(scene, model) {
   return moved ? nudge : null;
 }
 export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
-  const planned = !ownFilm.routes ? MOTION_PLAN[n] : null;
+  // a take staged on another's set (OWNER_NINE: `from`) flies that take's motion plan unless the plan holds its own
+  const planned = !ownFilm.routes ? MOTION_PLAN[n] ?? MOTION_PLAN[ownFilm.from] : null;
   const film = planned ? { ...Object.fromEntries(Object.entries(ownFilm).filter(([k]) => !OWN_MOTION.includes(k))), ...Object.fromEntries(Object.entries(planned).filter(([k]) => k !== 'note' && k !== 'checks')) } : ownFilm;
   const set = typeof setRef === 'string' ? setById(setRef) : setRef;
   const time = film.time ?? set.time;
@@ -696,7 +735,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     base.lineup = recast.lineup;
     if (recast.foes && base.enemies) base.enemies = { ...base.enemies, lineup: recast.foes };
   }
-  const [camo, foeCamo] = PAINT[n] ?? [];
+  if (film.foes && base.enemies) base.enemies = { ...base.enemies, lineup: film.foes };
+  const [camo, foeCamo] = film.paint ?? PAINT[n] ?? [];
   if (camo) base.camo = camo;
   if (foeCamo && base.enemies) base.enemies = { ...base.enemies, camo: foeCamo };
   // parked foes stand clear of the props (2026-10-06: with the lab's spiral nudge off for routed takes, two stood in
@@ -721,7 +761,7 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // before the loop wraps; the FLANK shots swing the hero's first round out across the frame
   // A moving shot that keys `aim` keeps its guns on their targets through the swerves (stabilised); the choreographer's
   // hull-relative sweeps would fight that, so it stands down and the shot's own rounds go where the guns point.
-  const style = turretStyle(n);
+  const style = film.turretStyle ?? turretStyle(n);
   const choreo = film.aim ? { turrets: undefined, guns: undefined, effects: [], notes: ['stabilised: ' + Object.entries(film.aim).map(([a, b]) => `${a} on ${b}`).join(', ')] }
     : choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
   scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
@@ -761,7 +801,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const only = process.argv[3]?.split(',');
   mkdirSync(out, { recursive: true });
   const manifest = [];
-  for (const shot of SHOTS) {
+  for (const shot of [...SHOTS, ...OWNER_NINE]) {
     const scene = siteScene(shot);
     if (only && !only.some(o => scene.meta.id.includes(o))) continue;
     writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));
