@@ -149,6 +149,9 @@ export default {
     // the research station: station pieces carry the compound; the town plan keeps to yard gantries and
     // container rows so nothing reads as a terrestrial street
     plan: ['gantry', 'containerRow', 'containerRow', 'gantry', 'containerRow', 'gantry'],
+    // (the looks lane, 2026-10-13) the plan's gantries and container rows as the station builds them: the regolith works
+    // under its gantry and the cargo modules banked in sintered regolith (maps/regional/olympus.ts), not a goods yard
+    architecture: 'olympus',
     // one placement per id (props.ts destructibleBuildings loop; the structureKit receipt pins
     // uniqueness): ten orbital families supplement the authored settlement districts.
     destructibleBuildings: ['habdome', 'habmodule', 'solararray', 'commsmast', 'fueltanks', 'landingpad',

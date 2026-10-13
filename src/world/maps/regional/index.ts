@@ -43,6 +43,7 @@ import { LONGLEAF_STYLE } from './longleaf.ts';
 import { SARAJEVO_STYLE } from './sarajevo.ts';
 import { ANDALUSIAN_STYLE } from './andalusian.ts';
 import { CHOUF_STYLE } from './chouf.ts';
+import { OLYMPUS_STYLE } from './olympus.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -88,6 +89,8 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   sarajevo: SARAJEVO_STYLE,
   andalusian: ANDALUSIAN_STYLE,
   chouf: CHOUF_STYLE,
+  // (the looks lane, 2026-10-13) the Olympus Basin station: its regolith works and its cargo modules
+  olympus: OLYMPUS_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
