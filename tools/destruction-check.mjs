@@ -35,7 +35,7 @@ const STEP = 1 / 60;
 
 /** The check, as a function: the report (pass, per-building rows, failures). */
 export async function runDestructionCheck({
-  mapId = 'urban', builders = null, perBuilder = 1, rounds = 20, settleS = 12, roundGapS = 0.45, log = () => {},
+  mapId = 'urban', builders = null, perBuilder = 1, rounds = 20, settleS = 14, roundGapS = 0.45, log = () => {},
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -307,7 +307,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const report = await runDestructionCheck({
     mapId: args.map ?? 'urban',
     builders: typeof args.builders === 'string' ? args.builders.split(',') : null,
-    perBuilder: Number(args['per-builder'] ?? 1), rounds: Number(args.rounds ?? 20), settleS: Number(args.settle ?? 12),
+    perBuilder: Number(args['per-builder'] ?? 1), rounds: Number(args.rounds ?? 20), settleS: Number(args.settle ?? 14),
     log: (...m) => console.log('[destruction-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));
