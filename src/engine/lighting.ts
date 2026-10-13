@@ -68,6 +68,8 @@ interface ShadowDebugOptions {
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
    *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
   legacyBias?: boolean;
+  /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for CascadePoseHold). */
+  noPoseHold?: boolean;
 }
 
 declare global {
@@ -108,6 +110,50 @@ const _stableCenter = new THREE.Vector3();
 const _stableOrigin = new THREE.Vector3();
 const _stableUp = new THREE.Vector3(0, 1, 0);
 const _stableDesiredCenters: THREE.Vector3[] = [];
+const _holdBounds = new THREE.Box3();
+const _holdVertex = new THREE.Vector3();
+
+/**
+ * Held cascade poses (2026-10-13, the perf stream; the owner's 11 fps report). A cascade's light used to re-centre
+ * on its view slice every frame: the slice's light-space centre snapped to the cascade's texel grid, the light's depth
+ * not snapped at all. So a camera on the move gave every cascade a new pose every frame, and the static caster cache
+ * (shadowStaticCache.ts) only reuses a pose that holds: driving, it re-rendered the whole world into all four maps
+ * every frame (315 of 315 cascade renders in its 2026-10-02 runs; 7.9 ms of CPU on Verdant).
+ *
+ * The box is the slice's diagonal plus three's fade margin, so in most views it has a hundred texels of room around
+ * the slice. A cascade now keeps its light-space centre while the slice as the shader samples it — extended by
+ * three's CSM_FADE overlap at both ends, which the box never strictly covered — stays POSE_HOLD_MARGIN_TEXELS inside
+ * the box, and keeps its depth while the light stays at least lightMargin above the slice (as before) and at most
+ * POSE_HOLD_Z_WINDOW_M above that, with the slice's deepest point inside the light's far plane. A held centre was
+ * snapped on the same texel lattice as the re-centred one, and a light moved along its own ray shifts the stored and
+ * the receivers' depths alike, so the map holds the same texels at the same world places: only which part of the
+ * lattice the map spans differs, and every sampled point stays inside it. A slice that does not fit even re-centred
+ * (a steep look down the far cascade) takes today's pose. The sun moving, a texel change (a box regrid, a map
+ * resize) or a desired pose outside the hold re-centres. Desktop only, while the static cache is loaded: there a
+ * held pose lets the cache copy its static depth and draw the moving casters alone.
+ */
+const POSE_HOLD_MARGIN_TEXELS = 4;
+const POSE_HOLD_Z_WINDOW_M = 100;
+interface CascadePoseHold {
+  enabled: boolean;
+  /** csm.lightDirection the held centres were taken under */
+  readonly lightDirection: THREE.Vector3;
+  /** light-space centres, one per cascade */
+  readonly centers: THREE.Vector3[];
+  /** texel width and height each centre was snapped on (NaN: nothing held) */
+  readonly texels: number[];
+  /** re-centred poses per cascade (telemetry) */
+  readonly recentres: number[];
+}
+function createCascadePoseHold(count: number): CascadePoseHold {
+  return {
+    enabled: false,
+    lightDirection: new THREE.Vector3(NaN, NaN, NaN),
+    centers: Array.from({ length: count }, () => new THREE.Vector3()),
+    texels: new Array<number>(count * 2).fill(NaN),
+    recentres: new Array<number>(count).fill(0),
+  };
+}
 
 /**
  * Allocation-free CSM refit with per-cascade texel snapping.
@@ -117,11 +163,20 @@ const _stableDesiredCenters: THREE.Vector3[] = [];
  * in half-texel increments and makes its shadows shimmer as the camera moves.
  * @returns {number} bit mask of cascades whose desired snapped pose changed
  */
-function prepareStableCascades(csm: CSM): number {
+function prepareStableCascades(csm: CSM, hold: CascadePoseHold | null = null): number {
   const camera = csm.camera;
   _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
   _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
   _stableCameraToLight.multiplyMatrices(_stableLightOrientationInverse, camera.matrixWorld);
+  const farVertices = csm.mainFrustum.vertices.far;
+  const frustumFar = -farVertices[0].z;
+  const holding = !!hold?.enabled && frustumFar > 0;
+  if (hold && (!holding || !hold.lightDirection.equals(csm.lightDirection))) {
+    hold.lightDirection.copy(csm.lightDirection);
+    hold.texels.fill(NaN);
+  }
+  const view = camera as THREE.PerspectiveCamera;
+  const span = Math.max(0, Math.min(view.far, csm.maxFar) - view.near);
 
   let changedMask = 0;
   for (let i = 0; i < csm.frustums.length; i++) {
@@ -142,6 +197,7 @@ function prepareStableCascades(csm: CSM): number {
     _stableCenter.z = _stableBounds.max.z + csm.lightMargin;
     _stableCenter.x = snapShadowCoordinate(_stableCenter.x, texelWidth);
     _stableCenter.y = snapShadowCoordinate(_stableCenter.y, texelHeight);
+    if (holding) holdCascadePose(hold!, i, csm, shadowCam, texelWidth, texelHeight, farVertices, frustumFar, span);
     _stableCenter.applyMatrix4(_stableLightOrientation);
 
     let desired = _stableDesiredCenters[i];
@@ -155,6 +211,46 @@ function prepareStableCascades(csm: CSM): number {
     }
   }
   return changedMask;
+}
+
+/** Keep cascade `index`'s held light-space centre in _stableCenter when the slice still fits it (CascadePoseHold). */
+function holdCascadePose(
+  hold: CascadePoseHold, index: number, csm: CSM, shadowCam: THREE.OrthographicCamera, texelWidth: number,
+  texelHeight: number, farVertices: readonly THREE.Vector3[], frustumFar: number, span: number,
+): void {
+  // the slice as the shader samples it: three's CSM_FADE overlap at both ends (linear depth x - x²/8 to y + y²/8)
+  const from = index === 0 ? 0 : csm.breaks[index - 1];
+  const to = csm.breaks[index];
+  const nearM = Math.max((csm.camera as THREE.PerspectiveCamera).near, (csm.fade ? from - 0.125 * from * from : from) * span);
+  const farM = (csm.fade ? to + 0.125 * to * to : to) * span;
+  _holdBounds.makeEmpty();
+  for (let j = 0; j < 4; j++) {
+    _holdBounds.expandByPoint(_holdVertex.copy(farVertices[j]).multiplyScalar(nearM / frustumFar).applyMatrix4(_stableCameraToLight));
+    _holdBounds.expandByPoint(_holdVertex.copy(farVertices[j]).multiplyScalar(farM / frustumFar).applyMatrix4(_stableCameraToLight));
+  }
+  const halfW = (shadowCam.right - shadowCam.left) / 2 - POSE_HOLD_MARGIN_TEXELS * texelWidth;
+  const halfH = (shadowCam.top - shadowCam.bottom) / 2 - POSE_HOLD_MARGIN_TEXELS * texelHeight;
+  const z0 = _stableCenter.z;
+  // the deepest sampled point stays inside the light's far plane (or no deeper than the re-centred pose puts it)
+  const depthRoom = Math.max(shadowCam.far - 1, z0 - _holdBounds.min.z) + _holdBounds.min.z;
+  const fits = (x: number, y: number): boolean => _holdBounds.min.x >= x - halfW && _holdBounds.max.x <= x + halfW
+    && _holdBounds.min.y >= y - halfH && _holdBounds.max.y <= y + halfH;
+  const held = hold.centers[index];
+  if (hold.texels[index * 2] === texelWidth && hold.texels[index * 2 + 1] === texelHeight && fits(held.x, held.y)
+    && held.z >= z0 && held.z <= z0 + POSE_HOLD_Z_WINDOW_M && held.z <= depthRoom) {
+    _stableCenter.copy(held);
+    return;
+  }
+  hold.recentres[index]++;
+  if (!fits(_stableCenter.x, _stableCenter.y)) {
+    // the slice outgrows the box even re-centred: today's pose, nothing held
+    hold.texels[index * 2] = NaN;
+    return;
+  }
+  _stableCenter.z = Math.min(z0 + POSE_HOLD_Z_WINDOW_M / 2, Math.max(z0, depthRoom));
+  held.copy(_stableCenter);
+  hold.texels[index * 2] = texelWidth;
+  hold.texels[index * 2 + 1] = texelHeight;
 }
 
 /** Apply prepared light poses only to cascades whose depth map renders now. */
@@ -876,6 +972,8 @@ export function createLighting(
   /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
   const heldCascadeBoxSizes: number[] = [];
 
+  // held cascade poses while the static cache can use them (CascadePoseHold above)
+  const cascadePoseHold = createCascadePoseHold(csm.lights.length);
   const prepareCurrentCascadeFits = (force = false): number => {
     csm.lightDirection.toArray(fitLightDirection);
     const fitChanged = shadowFitCache.changed({
@@ -884,7 +982,9 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    return prepareStableCascades(csm);
+    cascadePoseHold.enabled = !!staticShadowCache
+      && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noPoseHold);
+    return prepareStableCascades(csm, cascadePoseHold);
   };
 
   // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
@@ -1680,6 +1780,7 @@ export function createLighting(
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         staticCache: staticShadowCache?.telemetry() ?? null,
+        poseHold: { enabled: cascadePoseHold.enabled, recentres: [...cascadePoseHold.recentres] },
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {

@@ -22,10 +22,11 @@
  * textures); the dynamic pass renders into the live map with `renderer.clear` suppressed.
  *
  * Only a cascade whose snapped pose has held for STATIC_SHADOW_SETTLE_FRAMES frames goes through the cache. A camera
- * on the move re-snaps nearly every cascade every frame (the 2026-10-02 flicker runs, driving and turning: 315 of
+ * on the move used to re-snap every cascade every frame (the 2026-10-02 flicker runs, driving and turning: 315 of
  * 315 cascade renders were re-renders, none a reuse), and a re-render costs the ordinary render plus the copy and a
- * second pass, so a moving cascade renders the ordinary way and the cache takes over once it holds still: a parked
- * or aiming hull, the overview, a held sniper view.
+ * second pass, so a moving cascade renders the ordinary way and the cache takes over once it holds still. Since
+ * 2026-10-13 (lighting.ts CascadePoseHold) a cascade keeps its pose while its view slice fits the box, so driving
+ * re-centres each cascade every few seconds and the frames between reuse the copy.
  *
  * The cache is armed per frame by `lighting.update()` (`beginFrame`) and each cascade is consumed once: a second
  * render in the same frame, the deployment warm, the covered shadow prime, a forced lighting update (every cascade
