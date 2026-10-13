@@ -1379,7 +1379,7 @@ function addGableServiceDetails(
  * family's palette. Painted without a draw (_detailRng): the hut's stream draws exactly as before.
  */
 function addGableCraft(out: THREE.BufferGeometry[], w: number, d: number, wallH: number, roofH: number, y0: number, pal: Palette): void {
-  const [wall, trim, dark] = pal, r = _detailRng;
+  const [, trim, dark] = pal, r = _detailRng;
   for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
     colored(out, box(0.16, wallH + 0.06, 0.16).translate(x * (w / 2 - 0.04), y0 + wallH / 2, z * (d / 2 - 0.04)), dark, r, 0);
   }
