@@ -79,6 +79,9 @@ const hostThrottle = Number(argValue('host-throttle', 0));
 const seatThrottle = Number(argValue('seat-throttle', 0));
 // the seat-pause probe (MP-SINCE-0930 plan step 9): B's main thread blocked for each duration while it drives
 const seatPauses = argValue('seat-pause', '').split(',').map(Number).filter((ms) => ms > 0 && ms <= 10_000);
+// --ice=relay (plan step 1's relay-only check): every peer connection on every page is built relay-only
+// (iceTransportPolicy 'relay'), so a link exists only through the TURN servers the room granted
+const forceRelay = argValue('ice', '') === 'relay';
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -93,7 +96,7 @@ const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
-  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null },
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
@@ -120,7 +123,7 @@ async function activate(page,selector){
  * its room client's host_changed (the room's reason), its declines and relay grants (counts and URL schemes only, never a
  * credential), its session's p2p events. window.__MP_E2E_LOG (bounded), window.__MP_E2E_PCS.
  */
-function installPageRecorder() {
+function installPageRecorder(forceRelay = false) {
   if (window.__MP_E2E_LOG) return;
   const log = window.__MP_E2E_LOG = [];
   const push = (entry) => { if (log.length < 600) log.push({ atMs: Math.round(performance.now()), ...entry }); };
@@ -153,6 +156,7 @@ function installPageRecorder() {
   if (typeof Native === 'function') {
     const pcs = window.__MP_E2E_PCS = [];
     const Recorded = function RTCPeerConnection(configuration, ...rest) {
+      if (forceRelay) configuration = { ...(configuration ?? {}), iceTransportPolicy: 'relay' };
       const pc = new Native(configuration, ...rest);
       pcs.push(pc);
       pc.addEventListener('datachannel', (event) => watchChannel(event.channel));
@@ -457,7 +461,7 @@ try {
     const phone = label === phoneSeat;
     if (phone) touchPages.add(page);
     await page.setViewport(phone ? phoneViewport : testViewport);
-    await page.evaluateOnNewDocument(installPageRecorder);
+    await page.evaluateOnNewDocument(installPageRecorder, forceRelay);
     observe(page, label.toUpperCase());
   }
 
@@ -720,6 +724,7 @@ try {
   pages.a2 = await contextA.newPage();
   await pages.a2.setViewport(testViewport);
   observe(pages.a2, 'A2');
+  await pages.a2.evaluateOnNewDocument(installPageRecorder, forceRelay);
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
   step('a2-garage-ready');
