@@ -447,6 +447,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // throw, never up: they fall out of the hole and lie at the wall's foot
     // a round's hole throws less, and slower, than a burst's: the spall falls out of it
     const throwK = cause === 'kinetic' ? 0.3 : 0.5;
+    bodiesNext = strikeBodies(cause === 'kinetic' ? 'pierce' : 'blast', p.chargeKg);
     run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, throwK)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed,
       cause === 'kinetic' ? 'pierce' : 'blast');
   }
@@ -607,6 +608,16 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     return byBucket;
   }
 
+  /**
+   * How many of the next stage's larger pieces fall as bodies of the engine (rubbleBodies.ts; 2026-10-12, the owner: one
+   * physics engine for everything that falls): set by the caller just before `run`, consumed by it. A strike's by its
+   * charge (a rifle round's spall stays grit; a howitzer's hole throws blocks), a falling panel and a collapse the most.
+   */
+  let bodiesNext = 0;
+  const STRIKE_BODIES_MAX = 8;
+  /** A strike hole's bodies by the burst's charge (kg): a pierce two, a tank HE round three to five, a howitzer eight. */
+  const strikeBodies = (kind: 'blast' | 'pierce', chargeKg: number): number => kind === 'pierce' ? 2
+    : Math.max(2, Math.min(STRIKE_BODIES_MAX, Math.round(2 + 1.6 * Math.sqrt(Math.max(0, chargeKg)))));
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
@@ -617,10 +628,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       return role === 'room' ? roomMaterialFor(own) : own ?? fallbackFor(bucket);
     };
     const depths = standing ? depthMaterials(seam) : null;
+    const bodies = bodiesNext;
+    bodiesNext = 0;
     const out = debris.begin(seam.anatomy.placement, resolve, delayS, settled, standing
       ? { tag: STAGE_RUN_TAG + seam.structureIdx + 1, depthFor: (bucket) => depths?.get(bucket) ?? null, meshes: !piecesOnly,
-        pieces: !noPieces }
-      : { meshes: !piecesOnly, pieces: !noPieces });
+        pieces: !noPieces, bodies, structure: seam.structureIdx }
+      : { meshes: !piecesOnly, pieces: !noPieces, bodies, structure: seam.structureIdx });
     // (2026-10-12) a kit's dark box behind each hole stood beside the next hole's, so a wall with several holes showed
     // their edges and sides as flat panels: the storey's one interior (layInterior) is the room every hole on it opens
     // into. A kit that lays no room (a ruin, open to the sky) never asks, and gets none
@@ -802,6 +815,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     for (let b = 0; b < bands; b++) {
       const h1 = H - b * CRUMBLE_BAND, h0 = Math.max(0, h1 - CRUMBLE_BAND);
       const y0 = baseRel + h0, y1 = baseRel + h1;
+      bodiesNext = 2;
       run(seam, collapseFrontTime(0.5 * (h0 + h1), H), false, (out) => {
         for (const storey of a.storeys) {
           for (const face of storey.faces) {
@@ -864,6 +878,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const storeyDown = (seam as StructureDamageSeam & { storeyDown?(storey: number, seed: number, out: DamageWriters): DamageStageResult })
       .storeyDown;
     if (typeof storeyDown === 'function') {
+      bodiesNext = 10;
       run(seam, 0, settled, (out) => storeyDown.call(seam, storey.index, damageSeed(a.seed, 1000 + storey.index), out), true,
         { section: -1, storey: storey.index });
     }
@@ -1031,6 +1046,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const spec = seam.holeAt(blow.x, blow.y, blow.z, radiusM, e.dirX, e.dirZ, e.munition, e.cause, 0);
         if (spec) {
           notePunched(e.structureId, e.x, e.y, e.z);
+          bodiesNext = 8;
           run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
         }
       }
@@ -1060,6 +1076,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           const spec = seam.holeAt(hx, blow.y, hz, r, e.dirX, e.dirZ, e.munition, e.cause, hole);
           if (!spec) continue;
           notePunched(e.structureId, hx, blow.y, hz);
+          bodiesNext = 6;
           run(seam, 0, false, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
         }
       }
@@ -1077,6 +1094,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           const { yaw } = seam.anatomy.placement;
           const c = Math.cos(yaw), sn = Math.sin(yaw);
           const axis: [number, number] = [topple.dirX * c - topple.dirZ * sn, topple.dirX * sn + topple.dirZ * c];
+          bodiesNext = 12;
           run(seam, topple.landS, settled, (out) => {
             (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis = axis;
             return seam.collapse(stageSeed(3), out);
@@ -1085,6 +1103,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // (dcore 2026-10-09, waves 294a/b: "flat carpets spread metres across the street") the walls' pieces topple
           // off them and land at their foot: the kit's throw at 0.55 of its speed, never up
           const eaveY = seam.anatomy.roof ? seam.anatomy.roof.eaveY : Infinity;
+          bodiesNext = 18;
           run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), dampPieces(out, 0.55, eaveY)), false);
           if (!settled) crumble(seam, e);
         }
@@ -1131,7 +1150,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (!(e.radiusM > 0)) return;
         realHoles.add(e.structureId);
         const spec = seam.holeAt(e.x, e.y, e.z, e.radiusM, 0, 0, e.munition, cause, e.hole);
-        if (spec) run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+        if (spec) {
+          bodiesNext = 5;
+          run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+        }
         return;
       }
       // a section fell (hole 255, radius 0, standing at the section's centre on its face): the kit's section there
@@ -1148,6 +1170,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
             (owner) => owner.section === roof.section) || changed;
           o.scars?.clearWhere(e.structureId, (_x, y) => y >= a.placement.y + roof.eaveY - 0.25);
+          bodiesNext = 8;
           run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out), true,
             { section: roof.section, storey: -1 });
         }
@@ -1176,6 +1199,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           });
           // falling with its storey (the core 2026-10-08: its stub and room were laid only to be hidden by the drop), the
           // panel throws its pieces only; the storey's own fall lays what is left
+          bodiesNext = 12;
           run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out), true,
             { section: spec.section, storey: storey.index }, ev.storeyDown === true);
         }

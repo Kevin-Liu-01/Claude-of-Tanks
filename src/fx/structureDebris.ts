@@ -23,6 +23,7 @@ import type {
   DamageMeshWriter, DamagePieceWriter, DamageRole, DamageWriters, DebrisShape,
 } from '../world/destructionKit.ts';
 import { mulberry32 } from './particles.ts';
+import type { RubbleBodies } from './rubbleBodies.ts';
 
 export const DEBRIS_SHAPES: readonly DebrisShape[] = Object.freeze([
   'chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard', 'clod', 'straw',
@@ -329,6 +330,10 @@ export interface StageRunOptions {
   /** false: the builder throws no pieces (the pieces writer's capacity is 0), only lays its runs — a collapse after the
    *  P2 cascade, whose storeys threw theirs as they dropped. */
   pieces?: boolean;
+  /** How many of the stage's larger pieces fall as rigid bodies (rubbleBodies.ts; 0: none, the rest stay pieces). */
+  bodies?: number;
+  /** The structure throwing them (its own records are not solid to its bodies while they leave it). */
+  structure?: number;
 }
 
 export interface StructureDebrisOptions {
@@ -346,6 +351,8 @@ export interface StructureDebrisOptions {
   stageVertexCap?: number;
   /** Falling pieces per stage (the phone tier throws fewer). */
   pieceCap?: number;
+  /** The engine's bodies the stages' larger pieces fall as (null: every piece stays in the program). */
+  bodies?: RubbleBodies | null;
 }
 
 export interface StructureDebris {
@@ -456,6 +463,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
   let stageMeshes = true;
   let stagePiecesOn = true;
+  let stageBodies = 0;
+  let stageStructure = -1;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
@@ -526,6 +535,25 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       }
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls
       if (stageSettled || !stagePiecesOn || stagePieces >= pieceCap) return false;
+      // (2026-10-12, the owner: one physics engine for everything that falls) the stage's larger pieces, up to its
+      // budget, are bodies in the engine: they tumble, strike the ground as drawn, the walls and each other, and rest
+      // where they come to rest
+      if (stageBodies > 0 && o.bodies && o.bodies.takes(shape, sx, sy, sz)) {
+        const wx = place.x + px * cosY + pz * sinY, wy = place.y + py, wz = place.z - px * sinY + pz * cosY;
+        const wvx = vx * cosY + vz * sinY, wvz = -vx * sinY + vz * cosY;
+        _qy.setFromAxisAngle(_up, place.yaw);
+        _q.set(qx, qy, qz, qw).normalize().premultiply(_qy);
+        // its spin: about an axis of its own (the program's law), as fast as it was thrown
+        const ax = _q.y + 0.31, ay = _q.z - 0.17, az = _q.x + 0.23, al = Math.hypot(ax, ay, az) || 1;
+        const speed = Math.hypot(wvx, vy, wvz);
+        const rate = (3 + ((stagePieces * 7919) % 100) * 0.06) * Math.min(1, speed / 3);
+        if (o.bodies.throw(bucket, shape, wx, wy, wz, _q.x, _q.y, _q.z, _q.w, sx, sy, sz, wvx, vy, wvz,
+          ax / al * rate, ay / al * rate, az / al * rate, r, g, b, stageDelay, stageStructure)) {
+          stageBodies--;
+          stagePieces++;
+          return true;
+        }
+      }
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
       const map = mat && 'map' in mat ? (mat.map ?? null) : null;
       const pool = poolFor(map, shape, variant);
@@ -616,6 +644,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       stageDepth = options.depthFor ?? null;
       stageMeshes = options.meshes !== false;
       stagePiecesOn = options.pieces !== false;
+      stageBodies = o.bodies && !settled ? Math.max(0, options.bodies ?? 0) | 0 : 0;
+      stageStructure = options.structure ?? -1;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;
