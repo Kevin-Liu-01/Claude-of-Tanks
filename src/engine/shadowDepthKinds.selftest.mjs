@@ -100,16 +100,20 @@ assert.equal(withDistance.customDepthMaterial, proxyDepth);
 
 // the shadow hook settles every caster with the material three selected, before its draw
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
-assert.match(lighting, /settleShadowDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);/);
+assert.match(lighting, /if \(settleDepthKind\) settleDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);\n\s*else if \(!depthKindsRequested && \(object as \{ isInstancedMesh\?: boolean \}\)\.isInstancedMesh\) requestDepthKinds\(\);/);
 assert.match(lighting, /THREE\.Mesh\.prototype\.onBeforeShadow = hook;/);
-assert.match(lighting, /THREE\.BatchedMesh\.prototype\.onBeforeShadow = function[\s\S]{0,200}batchedBefore\.call\(this[\s\S]{0,120}settleShadowDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);/,
+assert.match(lighting, /THREE\.BatchedMesh\.prototype\.onBeforeShadow = function[\s\S]{0,200}batchedBefore\.call\(this[\s\S]{0,120}if \(settleDepthKind\) settleDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);\n\s*else if \(!depthKindsRequested\) requestDepthKinds\(\);/,
   'the batched casters settle too (three\'s BatchedMesh keeps its own onBeforeShadow)');
+// out of the game entry (2026-10-13, the bundle budget): the kinds load as their own chunk, the alias alone is static
+assert.match(lighting, /import\('\.\/shadowDepthKinds\.ts'\)\.then\(\(module\) => \{ settleDepthKind = module\.settleShadowDepthKind; \}/);
+assert.doesNotMatch(lighting, /^import [^\n]*'\.\/shadowDepthKinds\.ts';$/m, 'no static import of the kinds');
+assert.match(lighting, /^import \{ installBatchedColorTextureAlias \} from '\.\/batchedColorAlias\.ts';$/m);
 
 // 2026-10-13: a batch's colour kind is three's `_colorsTexture` (what getParameters reads for USE_BATCHING_COLOR), and
 // setProgram's colour check reads `colorTexture`, which r185's BatchedMesh lacks: undefined !== null asked every draw of
 // a colourless batch for a program change. The alias makes that check read the real texture.
 {
-  const { installBatchedColorTextureAlias } = await import('./shadowDepthKinds.ts');
+  const { installBatchedColorTextureAlias } = await import('./batchedColorAlias.ts');
   const plainBatch = new THREE.BatchedMesh(2, 64, 64, plainMaterial);
   assert.equal(casterKind(plainBatch), 20);
   const colouredBatch = new THREE.BatchedMesh(2, 64, 64, plainMaterial);
