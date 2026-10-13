@@ -932,7 +932,12 @@ waited out the whole stall window for a WELCOME the ended match could not send (
 two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
 match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
 `browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
-it is still entering).
+it is still entering). **Named at once (2026-10-13, MU.03).** The lobby could name it only after the covered Garage
+restore, the slowest step of the teardown under load: production 219 showed it 16 s late (a 72 s Garage task), 221 not
+within 20 s. The loader still covering the entry now carries it as its title ("Deployment ended" · "Returning to
+Garage") before the seat leaves the match and before the restore, and the lobby repeats it once the loader fades
+(`browserComposition.selftest`: with the Garage restore held open, the loader already names the refusal; on main it does
+not).
 
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map

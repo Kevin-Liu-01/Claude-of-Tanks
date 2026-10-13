@@ -1041,13 +1041,28 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
 // defeat, and the entry waited the whole stall window for a WELCOME the ended match could not send — "did not present in
 // time" two minutes later, behind the loader)
 {
-  const ended = createHarness({ entryTimeoutMs: 60_000 });
+  // the Garage restore is the slow step under load (prod 219: a 72 s Garage task): it is held open here so the receipt can
+  // read what the player sees while it runs
+  let releaseGarage = null;
+  const ended = createHarness({ entryTimeoutMs: 60_000, enterGarage: () => new Promise((resolve) => { releaseGarage = resolve; }) });
   const endedRoom = makeRoomSession(ended.calls);
   const entering = ended.composition.beginRoom({ role: 'client', session: endedRoom, lobbyState: endedRoom.lobby });
   const endedOwner = ended.sessions[0];
   await endedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
   // no WELCOME yet (the world still loading, the channel still opening): the match ends
   endedOwner.verdict(VERDICT.BRAVO, 'elimination');
+  await settle();
+  // 2026-10-13 (MU.03; prod 219 shown 16 s late, prod 221 not within 20 s): named at once on the loader, before the
+  // seat leaves the match and before the Garage restore — not only in the lobby after it
+  assert.ok(ended.calls.includes('enterGarage') && releaseGarage, 'the Garage restore is running (held open)');
+  const named = ended.calls.findIndex((call) => /^load\.show:The match ended while you were joining/.test(call));
+  assert.ok(named >= 0, `the loader names the refusal while the Garage restore runs (${ended.calls.filter((call) => call.startsWith('load.')).join(', ')})`);
+  assert.ok(named < ended.calls.indexOf('leaveMatch:entry_failed') && named < ended.calls.indexOf('enterGarage'), 'before the leave and the restore');
+  assert.equal(ended.battleLoad.shows.at(-1).mode, 'Deployment ended');
+  assert.deepEqual(ended.battleLoad.progressLabels.slice(-2).map(([, label]) => label), ['Returning to Garage', 'Returning to Garage'],
+    'the restore keeps the refusal on screen (no "Restoring Garage" over it)');
+  assert.equal(ended.battleLoad.visible, true, 'the cover holds while the Garage restores');
+  releaseGarage();
   const outcome = await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]);
   assert.equal(outcome, false, `a verdict before the reveal refuses the entering round at once (${outcome})`);
   assert.equal(ended.ports.failure.reason, 'match_ended');
@@ -1060,4 +1075,4 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   ended.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends, and loads the obstacle identities of the host manifest for a world laid out otherwise');
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends (named on the loader before the Garage restore), and loads the obstacle identities of the host manifest for a world laid out otherwise');

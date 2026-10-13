@@ -940,11 +940,11 @@ export function createBrowserComposition({
   );
 
   /** v1's `stopLoading`: reacquire opaque coverage, restore the Garage under it, then fade the loader. */
-  const stopLoading = async (): Promise<void> => {
+  const stopLoading = async (label = 'Restoring Garage'): Promise<void> => {
     if (!load.battleLoad.visible) {
       load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
     }
-    load.battleLoad.progress(1, 'Restoring Garage');
+    load.battleLoad.progress(1, label);
     lifecycle.coverRendering();
     load.audio.loadingOn(false);
     try {
@@ -987,9 +987,18 @@ export function createBrowserComposition({
     }
     if (round !== active) { settleEntry(false); return; }
     round = null;
+    // 2026-10-13 (MU.03; prod 219: shown 16 s late, prod 221: not shown within 20 s): the refusal reached the player only
+    // through the lobby, after the covered Garage restore — which under load is the slowest step of the teardown (a 72 s
+    // Garage task in 219). The loader still covering the entry now names it at once, before the seat leaves the match and
+    // before the restore; the lobby repeats it once the loader fades.
+    const notice = !superseded && error instanceof MatchEndedDuringEntryError ? messageOf(error) : null;
+    if (notice) {
+      load.battleLoad.show({ mapName: notice, thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
+      load.battleLoad.progress(1, 'Returning to Garage');
+    }
     try {
       if (session) await session.leaveMatch(superseded ? 'superseded' : 'entry_failed');
-      await stopLoading();
+      await stopLoading(notice ? 'Returning to Garage' : undefined);
     } catch (restoreError) {
       reportError('multiplayer v2 entry', restoreError);
     } finally {
