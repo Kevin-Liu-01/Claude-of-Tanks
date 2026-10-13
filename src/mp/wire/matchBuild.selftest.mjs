@@ -10,8 +10,10 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  MATCH_BUILD, compareMatchBuilds, formatMatchBuild, matchBuildRefusalMessage, matchBuildRefused, parseMatchBuild,
+  MATCH_BUILD, compareMatchBuilds, formatMatchBuild, matchBuildRefusalCode, matchBuildRefused, matchRefusalCodeOf, matchRefusalMessage,
+  parseMatchBuild,
 } from './matchBuild.ts';
+import { matchBuildMismatchMessage } from '../match/matchClient.ts';
 import { CLOSE_REASON, MAX_BUILD_BYTES, MAX_DETAIL_BYTES, MESSAGE_TYPE, PROTOCOL_VERSION, WIRE_VERSION } from './constants.ts';
 import { decodeMessage, encodeMessage } from './codec.ts';
 import { AUTHORITY_ENTRIES, PREDICTION_ENTRIES, closureDigest, resolveMatchBuild, sourceClosure } from '../../../tools/matchBuild.ts';
@@ -20,6 +22,11 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { createLoopbackPair } from '../transport/index.ts';
 import { MatchClient } from '../match/index.ts';
+import { WebSocket } from 'ws';
+import { createP2pRoomDouble } from '../../../tools/mp-p2p-room-double.ts';
+import { createHeadlessSession, memoryStorage, scriptedControls } from '../session/headlessSession.ts';
+import { createInProcessHostPort } from '../host/inProcessHost.ts';
+import { RtcWorld } from '../transport/rtcDouble.test-support.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const line = (prediction, authority, { version = 'v1.0.0+g1234567', committedAt = 1_760_000_000 } = {}) =>
@@ -58,13 +65,32 @@ const P1 = 'aaaaaaaaaaaa', P2 = 'bbbbbbbbbbbb', A1 = 'cccccccccccc', A2 = 'ddddd
     assert.equal(comparison.newer, newerSide, `${host} / ${seat}: newer`);
     assert.equal(matchBuildRefused(comparison), refused, `${host} / ${seat}: refused`);
   }
-  const seatNewer = matchBuildRefusalMessage({ verdict: 'prediction', newer: 'seat' });
-  const hostNewer = matchBuildRefusalMessage({ verdict: 'prediction', newer: 'host' });
-  const unknown = matchBuildRefusalMessage({ verdict: 'prediction', newer: null });
-  assert.match(seatNewer, /host is running an older version.*refresh/i);
-  assert.match(hostNewer, /newer version.*Refresh this page/);
-  assert.match(unknown, /different version.*Refresh/);
-  for (const words of [seatNewer, hostNewer, unknown]) assert.ok(new TextEncoder().encode(words).byteLength <= MAX_DETAIL_BYTES);
+  // the host sends a code; the joining client words it ("Refresh the page to join: your game version differs from the
+  // host's"), the lobby localizes it by code (playMenu ENTRY_REFUSAL_KEYS)
+  assert.equal(matchBuildRefusalCode({ verdict: 'prediction', newer: 'seat' }), 'build_host_older');
+  assert.equal(matchBuildRefusalCode({ verdict: 'prediction', newer: 'host' }), 'build_host_newer');
+  assert.equal(matchBuildRefusalCode({ verdict: 'prediction', newer: null }), 'build_mismatch');
+  for (const code of ['build_mismatch', 'build_host_older', 'build_host_newer']) {
+    const words = matchRefusalMessage(code);
+    assert.ok(words.startsWith("Refresh the page to join: your game version differs from the host's."), `${code}: says exactly what to do`);
+    assert.ok(new TextEncoder().encode(code).byteLength <= MAX_DETAIL_BYTES);
+    assert.equal(matchRefusalCodeOf(code), code, `${code}: read back from the code`);
+    assert.equal(matchRefusalCodeOf(words), code, `${code}: read back from its words`);
+  }
+  assert.match(matchRefusalMessage('build_host_older'), /older version.*refresh too/);
+  assert.match(matchRefusalMessage('build_host_newer'), /newer version/);
+  for (const other of ['bad token', 'server 6', '', null, 'build_other']) assert.equal(matchRefusalCodeOf(other), null);
+  // the other-wire gate speaks the same vocabulary, so the lobby localizes it the same way
+  assert.equal(matchRefusalCodeOf(matchBuildMismatchMessage(WIRE_VERSION - 1)), 'build_host_older');
+  assert.equal(matchRefusalCodeOf(matchBuildMismatchMessage(WIRE_VERSION + 1)), 'build_host_newer');
+  for (const [locale, catalog] of [['en-US', 'i18nCatalog.en-US.json'], ['zh-CN', 'i18nCatalog.zh-CN.json']]) {
+    const strings = JSON.parse(readFileSync(join(ROOT, 'src/ui', catalog), 'utf8'));
+    for (const key of ['buildMismatch', 'buildHostOlder', 'buildHostNewer', 'matchEnded']) {
+      assert.ok(typeof strings[`playMenu.entryRefusal.${key}`] === 'string' && strings[`playMenu.entryRefusal.${key}`].length > 4, `${locale}: playMenu.entryRefusal.${key}`);
+    }
+  }
+  const en = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
+  assert.equal(en['playMenu.entryRefusal.buildMismatch'], matchRefusalMessage('build_mismatch'), 'the English catalog and the fallback agree');
 }
 
 // ---- the digests: a prediction-closure edit moves p, an authority-only edit moves a alone, a type-only import is not followed
@@ -179,13 +205,13 @@ await ensureAuthorityFleet();
   assert.equal(refused.attached, false, 'a seat on other prediction code is refused');
   assert.equal(refused.welcome, null, 'never welcomed');
   assert.equal(refused.closed?.reason, CLOSE_REASON.PROTOCOL_VERSION, `as the protocol-version close (${JSON.stringify(refused.closed)})`);
-  assert.match(refused.closed.detail, /host is running an older version.*refresh/i, 'with the words the player can act on');
+  assert.equal(refused.closed.detail, 'build_host_older', 'with the refusal code (the seat newer: the host is older)');
   assert.ok(before && actor.clientStats().some((client) => client.seat === 1), 'the seat\'s live link was not replaced by the refused one');
   assert.equal(authorityOnly.closed, null, 'the live link stays open');
   assert.ok(logs.some(([level, message]) => level === 'warn' && message === 'client refused: another build'));
   const older = join(1, 'p2', line(P2, A1, { committedAt: 1_750_000_000 }));
   await flush();
-  assert.match(older.closed?.detail ?? '', /newer version of the game is out\. Refresh this page/);
+  assert.equal(older.closed?.detail, 'build_host_newer');
   actor.stop?.();
 }
 
@@ -194,13 +220,13 @@ await ensureAuthorityFleet();
   let nowMs = 10_000;
   const clock = () => nowMs;
   const pair = createLoopbackPair({ clock, clientToServer: { latencyMs: 20 }, serverToClient: { latencyMs: 20 } });
-  const words = matchBuildRefusalMessage({ verdict: 'prediction', newer: 'seat' });
+  const words = matchRefusalMessage('build_host_older');
   let hello = null;
   pair.server.onFrame((frame) => {
     const decoded = decodeMessage(frame);
     if (decoded.ok && decoded.message.type === MESSAGE_TYPE.HELLO) {
       hello = decoded.message;
-      pair.server.send(encodeMessage({ type: MESSAGE_TYPE.CLOSE, reason: CLOSE_REASON.PROTOCOL_VERSION, detail: words }));
+      pair.server.send(encodeMessage({ type: MESSAGE_TYPE.CLOSE, reason: CLOSE_REASON.PROTOCOL_VERSION, detail: 'build_host_older' }));
     }
   });
   pair.server.open();
@@ -213,9 +239,82 @@ await ensureAuthorityFleet();
   assert.equal(hello?.clientBuild, line(P2, A2), 'the HELLO carries the stamped line');
   const closed = phases.find((p) => p.phase === 'closed');
   assert.ok(closed, 'the join ends');
-  assert.equal(closed.detail, words, 'with the host\'s words');
+  assert.equal(closed.detail, words, 'worded by this build from the host\'s code');
   assert.equal(client.lastCloseReason, CLOSE_REASON.PROTOCOL_VERSION);
   client.dispose?.();
 }
 
-console.log(`matchBuild.selftest: the same-wire build check (wire ${WIRE_VERSION}) — stamped lines, prediction refuses with "refresh", authority or version alone admits and logs, unstamped admits; the closures and digests; the host refuses before replacing a live link; the client ends its join with the host's words`);
+// ---- in a room: a refused seat fails only its own entry — never a host decline, never an election (the coordinator's
+// rule, 2026-10-13): the host keeps hosting at generation 1, the room hears no host_decline and elects nobody
+{
+  const HOST = line(P1, A1, { committedAt: 1_760_000_000 });
+  const OTHER = line(P2, A1, { committedAt: 1_760_090_000 });
+  const events = [];
+  const rooms = await createP2pRoomDouble({ seatSecret: 'match-build-selftest-seat-secret-0123456789', hostGraceMs: 800, onEvent: (event) => events.push(event) });
+  const rtc = new RtcWorld();
+  const sessions = [];
+  let ticking = true;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const until = async (predicate, label, timeoutMs) => {
+    const started = Date.now();
+    while (!predicate()) { if (Date.now() - started > timeoutMs) throw new Error(`timeout: ${label}`); await sleep(25); }
+  };
+  const ticker = (async () => {
+    let last = performance.now();
+    while (ticking) {
+      const nowMs = performance.now();
+      rtc.flush();
+      for (const entry of sessions) entry.step(nowMs, Math.min(0.25, (nowMs - last) / 1000));
+      last = nowMs;
+      rtc.flush();
+      await sleep(33);
+    }
+  })();
+  const spawn = (id, index, clientBuild) => {
+    const headless = createHeadlessSession({
+      endpoint: rooms.url, player: { id, name: id }, createSocket: (url) => new WebSocket(url), controls: scriptedControls(index), storage: memoryStorage(),
+      clientBuild,
+      session: { p2p: {
+        ice: () => ({ iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' }), createPeerConnection: rtc.createPeerConnection,
+        createHostPort: createInProcessHostPort({ world: 'terrain', build: HOST, keyframeIntervalMs: 500, reportIntervalMs: 500 }),
+        manifestBase: null, tier: 'desktop', countdownS: 1,
+      } },
+    });
+    sessions.push(headless);
+    return headless;
+  };
+  try {
+    const p1 = spawn('p1', 0, HOST);
+    const created = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 1, mapId: 'verdant', botsFill: false } });
+    const p2 = spawn('p2', 1, OTHER);
+    const p2Phases = [];
+    p2.session.onPhase(({ phase, detail }) => p2Phases.push({ phase, detail }));
+    await p2.room.join({ roomCode: created.roomCode, selection: { specId: 't90m' } });
+    await until(() => p1.room.room?.players.length === 2, 'two seats', 10_000);
+    await Promise.all(sessions.map((entry) => entry.room.setReady(true)));
+    await until(() => p1.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
+    await p1.room.start();
+    await until(() => p1.session.match?.welcome, 'the host seat welcomed by its own actor', 20_000);
+    await until(() => p2.session.stats().phase === 'lost', 'the other build refused', 20_000);
+    const refusedAt = events.length;
+    assert.equal(p2Phases.find((change) => change.phase === 'lost')?.detail, matchRefusalMessage('build_host_older'),
+      `the other build's seat is refused for its build, worded by its own client (${JSON.stringify(p2Phases)})`);
+    // hold past the room's host grace: nothing the refusal did may elect or decline
+    await sleep(2_500);
+    assert.equal(p1.session.role, 'host', 'the host keeps hosting');
+    assert.equal(p1.room.generation, 1, 'generation 1: no election');
+    assert.equal(p1.session.stats().phase, 'match', 'the host\'s match runs on');
+    const declines = events.filter((event) => event.kind === 'host_decline');
+    const elections = events.filter((event) => event.kind === 'host_changed');
+    assert.deepEqual(declines, [], `a refused seat is never a host decline (${JSON.stringify(declines)})`);
+    assert.deepEqual(elections.filter((event) => event.generation > 1), [], `and never an election (${JSON.stringify(elections)})`);
+    assert.ok(!events.slice(refusedAt).some((event) => event.kind === 'match_lost' || event.kind === 'match_ended'), 'the match is not ended by it');
+  } finally {
+    ticking = false;
+    await ticker;
+    for (const entry of sessions) entry.dispose();
+    await Promise.race([rooms.close(), sleep(5000)]);
+  }
+}
+
+console.log(`matchBuild.selftest: the same-wire build check (wire ${WIRE_VERSION}) — stamped lines, prediction refuses with "refresh", authority or version alone admits and logs, unstamped admits; the closures and digests; the host refuses before replacing a live link; the client words the host's refusal code; in a room the refused seat is never a host decline or an election`);

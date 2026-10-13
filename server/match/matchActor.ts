@@ -31,7 +31,7 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
-import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalMessage, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
+import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
 import { captureEntityRow, captureMeta, captureViewerState, createEraIndexer } from './entityRows.ts';
 import {
   INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, beginSnapshot, createViewerInterest, engageEntity, needsFreshRow, recordRow, viewerTierFor,
@@ -124,7 +124,7 @@ export interface MatchActorOptions {
   entryBackpressureSustainedMs?: number;
   /**
    * This host's build line (src/mp/wire/matchBuild.ts; default MATCH_BUILD): a HELLO whose prediction code differs is
-   * refused with PROTOCOL_VERSION and "refresh" words, one whose authority alone differs is admitted and logged.
+   * refused with PROTOCOL_VERSION and a refusal code, one whose authority alone differs is admitted and logged.
    */
   build?: string;
 }
@@ -858,7 +858,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const builds = compareMatchBuilds(build, hello.clientBuild);
     if (matchBuildRefused(builds)) {
       actorLog.warn('client refused: another build', { seat: claims.seat, player: claims.playerId, host: build.slice(0, 64), client: hello.clientBuild.slice(0, 64), newer: builds.newer });
-      link.close(CLOSE_REASON.PROTOCOL_VERSION, matchBuildRefusalMessage(builds));
+      // a code, worded by the joining client in its own build and locale (matchRefusalMessage, playMenu.entryRefusal.*)
+      link.close(CLOSE_REASON.PROTOCOL_VERSION, matchBuildRefusalCode(builds));
       return false;
     }
     if (builds.verdict === 'authority' || builds.verdict === 'version') {

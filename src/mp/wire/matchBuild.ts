@@ -10,7 +10,9 @@
  * the HELLO's free-form `clientBuild` (tools/matchBuild.ts computes it at build time; vite defines
  * `__COT_MATCH_BUILD__`). The digests hash the source closures of the seat's prediction (the predictor, its world, the
  * match client, the vehicle specs) and of the host's authority (the actor and the host core). The host compares:
- *   - prediction differs: the seat is refused with PROTOCOL_VERSION and the words the player can act on ("refresh");
+ *   - prediction differs: the seat is refused with PROTOCOL_VERSION and a refusal code its client words ("Refresh the
+ *     page to join: your game version differs from the host's", localized in the lobby); never a host decline or an
+ *     election — the seat only fails its own entry;
  *   - authority differs alone: admitted (the host is authoritative, the seat predicts the same), and logged;
  *   - the version alone, or either side without a stamp (a build before this check, a dev or headless run): admitted.
  * Node-runnable: no DOM, no Node built-ins.
@@ -84,11 +86,34 @@ export function matchBuildRefused(comparison: MatchBuildComparison): boolean {
 }
 
 /**
- * What a refused seat reads (the CLOSE detail, at most MAX_DETAIL_BYTES): what happened and what to do. The words match
- * the other-wire gate's (matchClient.ts matchBuildMismatchMessage) so a player meets one vocabulary.
+ * Why a seat cannot play on this host, as the host's CLOSE detail carries it: a code, never prose — the joining client
+ * words it in its own build (matchRefusalMessage) and the lobby in the player's locale (playMenu
+ * `playMenu.entryRefusal.*`). The other-wire gate (matchClient.ts matchBuildMismatchMessage) uses the same codes.
  */
-export function matchBuildRefusalMessage(comparison: MatchBuildComparison): string {
-  if (comparison.newer === 'seat') return 'The host is running an older version of the game. Ask them to refresh their page, then join again.';
-  if (comparison.newer === 'host') return 'A newer version of the game is out. Refresh this page to update, then join again.';
-  return 'The host is running a different version of the game. Refresh this page, ask the host to refresh too, then join again.';
+export type MatchRefusalCode = 'build_mismatch' | 'build_host_older' | 'build_host_newer';
+
+const REFUSAL_WORDS: Readonly<Record<MatchRefusalCode, string>> = Object.freeze({
+  build_mismatch: "Refresh the page to join: your game version differs from the host's.",
+  build_host_older: "Refresh the page to join: your game version differs from the host's. The host is running an older version, so ask them to refresh too.",
+  build_host_newer: "Refresh the page to join: your game version differs from the host's. A newer version of the game is out.",
+});
+
+/** The code a refused seat's CLOSE carries (at most MAX_DETAIL_BYTES). */
+export function matchBuildRefusalCode(comparison: MatchBuildComparison): MatchRefusalCode {
+  if (comparison.newer === 'seat') return 'build_host_older';
+  if (comparison.newer === 'host') return 'build_host_newer';
+  return 'build_mismatch';
+}
+
+/** The English words of a refusal (the fallback wherever no locale reaches: logs, the loader, a missing catalog key). */
+export function matchRefusalMessage(code: MatchRefusalCode): string {
+  return REFUSAL_WORDS[code];
+}
+
+/** A refusal's code from its code or its English words (exact), else null. */
+export function matchRefusalCodeOf(text: unknown): MatchRefusalCode | null {
+  if (typeof text !== 'string') return null;
+  const value = text.trim();
+  for (const code of Object.keys(REFUSAL_WORDS) as MatchRefusalCode[]) if (value === code || value === REFUSAL_WORDS[code]) return code;
+  return null;
 }

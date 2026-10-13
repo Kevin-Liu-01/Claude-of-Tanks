@@ -45,7 +45,7 @@ import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
-import { MATCH_BUILD } from '../wire/matchBuild.ts';
+import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 type RuntimeValue = {} | null | undefined;
@@ -244,7 +244,8 @@ export interface BrowserRoomMenu {
   detachActiveRoom(): void;
   showRoomFailure(reason: string, mode?: RoomMode): void;
   /** Open the attached room's lobby (its Rejoin battle while the match runs), naming why the last entry failed. */
-  showActiveRoom?(notice?: string | null): boolean;
+  /** `code`: a known refusal (`match_ended`, `build_*`) the menu words in the player's locale; `notice` is the fallback. */
+  showActiveRoom?(notice?: string | null, code?: string | null): boolean;
 }
 
 export interface BrowserGarageRoomStatus {
@@ -604,6 +605,19 @@ function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWar
   const after = current?.pending ?? null;
   if (after === null) return false;
   return before === null || after < before;
+}
+
+/**
+ * The host refused this seat's HELLO for its build (2026-10-13, the same-wire check, or the other-wire gate): the entry
+ * fails with the refusal's code so the lobby words it in the player's locale.
+ */
+class MatchRefusedError extends Error {
+  readonly code: MatchRefusalCode;
+  constructor(code: MatchRefusalCode) {
+    super(matchRefusalMessage(code));
+    this.name = 'MatchRefusedError';
+    this.code = code;
+  }
 }
 
 /** The refusal for a preparation that cannot complete, with what broke. */
@@ -998,7 +1012,7 @@ export function createBrowserComposition({
       settleEntry(false);
       if (!superseded) {
         syncMenu();
-        offerRoomAfterFailure(messageOf(error));
+        offerRoomAfterFailure(messageOf(error), reasonOf(error));
       }
     }
   };
@@ -1008,14 +1022,14 @@ export function createBrowserComposition({
    * reminder): after any refused entry the held room's lobby opens again, naming why, with Rejoin battle while its
    * match still runs. Joins syncMenu's attach on the same menu promise, so the room is attached first.
    */
-  const offerRoomAfterFailure = (message: string): void => {
+  const offerRoomAfterFailure = (message: string, code: string | null = null): void => {
     const current = roomSession;
     const menuPromise = current ? roomPorts.getMenu() : null;
     if (!current || !menuPromise) return;
     const generation = roomGeneration;
     menuPromise.then((menu) => {
       if (disposed || roomSession !== current || generation !== roomGeneration || !menuAttached || round) return;
-      menu.showActiveRoom?.(message);
+      menu.showActiveRoom?.(message, code);
     }).catch((error: RuntimeValue) => reportError('multiplayer v2 lobby', error));
   };
 
@@ -1348,7 +1362,8 @@ export function createBrowserComposition({
       active.presentation?.endDisconnected();
       return;
     }
-    void failRound(active, new Error(detail || 'The match link was lost while loading.'), 'connect');
+    const refusal = matchRefusalCodeOf(detail);
+    void failRound(active, refusal ? new MatchRefusedError(refusal) : new Error(detail || 'The match link was lost while loading.'), 'connect');
   };
 
   const handleVerdict = (): void => {

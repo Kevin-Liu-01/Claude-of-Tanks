@@ -265,7 +265,8 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     detachActiveRoom() { menu.detached++; menu.attached = null; calls.push('menu.detach'); },
     showRoomFailure(reason, mode) { menu.failures.push([reason, mode]); calls.push(`menu.failure:${reason}:${mode}`); },
     shown: [],
-    showActiveRoom(notice) { menu.shown.push(notice); calls.push(`menu.show:${notice}`); return true; },
+    shownCodes: [],
+    showActiveRoom(notice, code = null) { menu.shown.push(notice); menu.shownCodes.push(code); calls.push(`menu.show:${notice}`); return true; },
   };
   const battleLoad = {
     visible: false, progressLabels: [], shows: [],
@@ -1058,6 +1059,41 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   assert.ok(!ended.calls.some((call) => call.startsWith('error:multiplayer v2 entry')), 'an ended match is not an entry error (a warning names it)');
   assert.ok(ended.calls.some((call) => call.startsWith('warn:multiplayer v2 entry:The match ended while you were joining')), 'the warning');
   ended.composition.dispose();
+}
+
+// ------------------------------------------------------------ a host on another build refuses the entering seat (2026-10-13, the same-wire
+// check and the other-wire gate): the entry fails with the refusal's code, so the lobby words it in the player's locale
+for (const [code, words] of [
+  ['build_host_older', "Refresh the page to join: your game version differs from the host's. The host is running an older version, so ask them to refresh too."],
+  ['build_mismatch', "Refresh the page to join: your game version differs from the host's."],
+]) {
+  const refused = createHarness();
+  const refusedRoom = makeRoomSession(refused.calls);
+  const entering = refused.composition.beginRoom({ role: 'client', session: refusedRoom, lobbyState: refusedRoom.lobby });
+  const refusedOwner = refused.sessions[0];
+  await refusedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  refusedOwner.dropSeat(1, words);
+  assert.equal(await entering, false, `${code}: the entry is refused`);
+  await settle();
+  assert.equal(refused.ports.failure.reason, code, `${code}: the failure names the refusal`);
+  assert.equal(refused.ports.failure.message, words);
+  assert.deepEqual(refused.menu.shown, [words], `${code}: the lobby opens once with the English fallback`);
+  assert.deepEqual(refused.menu.shownCodes, [code], `${code}: and the code the menu localizes`);
+  assert.equal(refused.battleLoad.visible, false, 'the loader clears');
+  refused.composition.dispose();
+}
+{
+  // an unrelated lost link keeps its words and carries no refusal code
+  const plain = createHarness();
+  const plainRoom = makeRoomSession(plain.calls);
+  const entering = plain.composition.beginRoom({ role: 'client', session: plainRoom, lobbyState: plainRoom.lobby });
+  await plain.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  plain.sessions[0].setPhase('lost', 'transport exhausted');
+  assert.equal(await entering, false);
+  await settle();
+  assert.deepEqual(plain.menu.shownCodes, ['entry_failed']);
+  assert.deepEqual(plain.menu.shown, ['transport exhausted']);
+  plain.composition.dispose();
 }
 
 console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends, and loads the obstacle identities of the host manifest for a world laid out otherwise');

@@ -135,7 +135,8 @@ export interface PlayMenuRuntime {
   updateActiveRoom(state: SerializedLobby): boolean;
   detachActiveRoom(): void;
   /** The held room's lobby again; `notice` (why the last battle entry failed) takes the status line. */
-  showActiveRoom(notice?: string | null): boolean;
+  /** `code`: a known entry refusal, worded in the player's locale (ENTRY_REFUSAL_KEYS); `notice` is the fallback. */
+  showActiveRoom(notice?: string | null, code?: string | null): boolean;
   showCurrentRoom(): boolean;
   showRoomFailure(reason: string, mode?: PlayMode): void;
   syncGarageSelection(): boolean;
@@ -158,6 +159,17 @@ interface MenuBinding {
   control: MenuSelectElement;
   controller: MenuSelectController;
 }
+
+/**
+ * Entry refusals the lobby words in the player's locale (2026-10-13): the match ending during the entry, and a host on
+ * another build (src/mp/wire/matchBuild.ts MatchRefusalCode — the same-wire check and the other-wire gate).
+ */
+const ENTRY_REFUSAL_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  match_ended: 'playMenu.entryRefusal.matchEnded',
+  build_mismatch: 'playMenu.entryRefusal.buildMismatch',
+  build_host_older: 'playMenu.entryRefusal.buildHostOlder',
+  build_host_newer: 'playMenu.entryRefusal.buildHostNewer',
+});
 
 /** Warm only code implied by an explicit garage mode selection. */
 export function preloadPlayMode(_mode: PlayMode): Promise<null> {
@@ -2058,9 +2070,11 @@ export function createPlayMenu({
   }
   // 2026-10-10 (the MP shader-prep lane): the composition opens the held room after a refused entry, with the reason;
   // the lobby's Rejoin battle shows while the match still runs (canRejoinBattle).
-  function showActiveRoom(notice?: string | null): boolean {
+  function showActiveRoom(notice?: string | null, code?: string | null): boolean {
     if (!showCurrentRoom()) return false;
-    if (notice) setStatus(notice, true);
+    const key = code ? ENTRY_REFUSAL_KEYS[code] : undefined;
+    const text = key ? t(key) : notice;
+    if (text) setStatus(text, true);
     return true;
   }
   return {

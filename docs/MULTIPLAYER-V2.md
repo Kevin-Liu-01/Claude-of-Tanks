@@ -1267,18 +1267,25 @@ and the host Worker alike). `p` hashes the source closure of the seat's predicti
 `matchClient.ts`, the vehicle specs: about 52 files, no render, FX, audio or UI code), `a` the host's authority
 (`matchActor.ts`, `matchHostCore.ts`: about 430 files); type-only imports and packages are not followed. The actor
 compares the HELLO with its own line after the token checks and before the seat's live link is replaced: another `p` is
-refused with `PROTOCOL_VERSION` and the other-wire gate's words ("The host is running an older version… Ask them to
-refresh", "A newer version of the game is out. Refresh this page", or, without commit times, "a different version …
-Refresh this page, ask the host to refresh too"), which the session shows as the entry failure; another `a` or another
-version alone is admitted and logged (the host is authoritative; the seat predicts the same). An unstamped side (a build
+refused with `PROTOCOL_VERSION` and a refusal code as the CLOSE detail (`build_mismatch`, or `build_host_older` /
+`build_host_newer` when the commit times order them). The joining client words the code in its own build ("Refresh the
+page to join: your game version differs from the host's." plus "The host is running an older version, so ask them to
+refresh too." or "A newer version of the game is out."), the entry fails with the code (`MatchRefusedError`), and the
+lobby shows it in the player's locale (`playMenu.entryRefusal.*` in both catalogs; the other-wire gate and "the match
+ended while you were joining" use the same path). A refused seat only fails its own entry: it is a peer, so its
+`leaveMatch` sends no `host_decline`, and the room elects nobody. Another `a` or another version alone is admitted and
+logged (the host is authoritative; the seat predicts the same). An unstamped side (a build
 before this check sent its vite mode, `production`; Node, dev and headless runs send `dev`) is admitted as before, so the
 check takes effect between two builds that both carry it. Of the deploys 214-222, the prediction closure changed in
 215 (`matchObjectiveLayouts`), 217 and 218 (`matchClient`), 219 (wire 5, which the first byte already caught) and 222
 (`matchModes`, `matchRuleset`, `collision.ts`).
-Receipt: `matchBuild.selftest` (the line and its bounds; the verdicts; the closures on a scratch tree — an authority-only
-edit moves `a` alone, shared movement both, a type-only dependency neither; this tree's closures; the actor refusing
-before it replaces a live link, admitting and logging an authority-only seat; the client ending its join with the host's
-words).
+Receipts: `matchBuild.selftest` (the line and its bounds; the verdicts and refusal codes, their words and both catalogs'
+keys; the closures on a scratch tree — an authority-only edit moves `a` alone, shared movement both, a type-only
+dependency neither; this tree's closures; the actor refusing before it replaces a live link, admitting and logging an
+authority-only seat; the client wording the host's code; in a room of the signaling double, a refused seat is never a
+`host_decline` and never an election — the host keeps generation 1 and its match), `browserComposition.selftest` (the
+entry fails with the code, the lobby gets the code and the English fallback), `playMenu.selftest` (the codes map to
+catalog keys).
 
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
