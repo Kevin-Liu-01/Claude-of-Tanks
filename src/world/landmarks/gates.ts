@@ -4,7 +4,7 @@
 // on the ground and everything over the passage (the lintel, the arch ring, the tower above it) is a separate solid
 // lifted clear of them (kit.ts ARCH_GAP_M), so the movement record leaves the passage open while shells and sight
 // still meet the arch.
-import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
