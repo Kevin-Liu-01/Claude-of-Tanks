@@ -74,6 +74,9 @@ const gameModeOption = argValue('game-mode', '');
 const mapOption = argValue('map', '');
 const phoneSeat = ['b', 'c'].includes(argValue('phone', '')) ? argValue('phone', '') : '';
 const phoneViewport = { width: 844, height: 390, deviceScaleFactor: 1, isMobile: true, hasTouch: true };
+// the side-by-side measurement (MP-SINCE-0930 §7): CPU throttling on the host's page alone, or on C's (CDP rates)
+const hostThrottle = Number(argValue('host-throttle', 0));
+const seatThrottle = Number(argValue('seat-throttle', 0));
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -88,7 +91,8 @@ const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
-  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null }, roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null };
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null },
+  roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 const errors = report.errors;
@@ -122,12 +126,36 @@ function installPageRecorder() {
     const urls = (Array.isArray(servers) ? servers : []).flatMap((server) => [].concat(server?.urls ?? []));
     return { servers: Array.isArray(servers) ? servers.length : 0, stun: urls.filter((url) => /^stun:/i.test(url)).length, turn: urls.filter((url) => /^turns?:/i.test(url)).length };
   };
+  // the side-by-side measurement's page facts: long tasks, presented frames, each data channel's message arrivals
+  const longtasks = window.__MP_E2E_LONGTASKS = [];
+  try {
+    new PerformanceObserver((list) => { for (const entry of list.getEntries()) if (longtasks.length < 2000) longtasks.push({ start: Math.round(entry.startTime), ms: Math.round(entry.duration) }); })
+      .observe({ type: 'longtask', buffered: true });
+  } catch { /* no long-task timing in this browser */ }
+  const frames = window.__MP_E2E_FRAMES = { count: 0 };
+  const frame = () => { frames.count++; requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+  const arrivals = window.__MP_E2E_ARRIVALS = {};
+  const watchChannel = (channel) => {
+    if (!channel || channel.__mpE2e) return;
+    channel.__mpE2e = true;
+    channel.addEventListener('message', () => {
+      const now = performance.now();
+      const row = arrivals[channel.label] ??= { count: 0, last: null, gaps: [] };
+      if (row.last !== null && row.gaps.length < 20_000) row.gaps.push(now - row.last);
+      row.last = now;
+      row.count++;
+    });
+  };
   const Native = window.RTCPeerConnection;
   if (typeof Native === 'function') {
     const pcs = window.__MP_E2E_PCS = [];
     const Recorded = function RTCPeerConnection(configuration, ...rest) {
       const pc = new Native(configuration, ...rest);
       pcs.push(pc);
+      pc.addEventListener('datachannel', (event) => watchChannel(event.channel));
+      const create = pc.createDataChannel.bind(pc);
+      pc.createDataChannel = (...args) => { const channel = create(...args); watchChannel(channel); return channel; };
       push({ kind: 'pc', index: pcs.length - 1, ...schemes(configuration?.iceServers), relayOnly: configuration?.iceTransportPolicy === 'relay' });
       return pc;
     };
@@ -213,6 +241,83 @@ function bandwidthBetween(before, after) {
   for (const row of Object.values(channels)) { row.upKbps = kbps(row.sentBytes); row.downKbps = kbps(row.receivedBytes); }
   return { seconds: Math.round(seconds * 10) / 10, upKbps: kbps(up), downKbps: kbps(down), channels,
     pairs: after.links.map((link) => ({ index: link.index, state: link.state, ...(link.pair ?? {}) })) };
+}
+
+/** A page's counters at a point in time (frames, input ticks, snapshots), arrivals and long tasks reset for the window. */
+const pageCounters = (page, reset) => page.evaluate((resetArrivals) => {
+  const m = window.__MULTIPLAYER_V2?.stats?.().session?.match ?? null;
+  const out = {
+    atMs: performance.now(), frames: window.__MP_E2E_FRAMES?.count ?? null,
+    sampledTicks: m?.sampledTicks ?? null, skippedTicks: m?.skippedTicks ?? null, snapshots: m?.snapshotsAccepted ?? null, arrivalJitterMs: m?.arrivalJitterMs ?? null,
+    arrivals: Object.fromEntries(Object.entries(window.__MP_E2E_ARRIVALS ?? {}).map(([label, row]) => [label, { count: row.count, gaps: row.gaps.slice() }])),
+    longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(),
+  };
+  if (resetArrivals) for (const row of Object.values(window.__MP_E2E_ARRIVALS ?? {})) row.gaps.length = 0;
+  return out;
+}, reset).catch(() => null);
+/** Every hull this page shows, at one wall time (the §13.12 divergence sampler, re-made 2026-10-13). */
+const hullsOf = (page) => page.evaluate(() => {
+  const tanks = window.__DEBUG?.game?.tankById;
+  const out = { wallMs: performance.timeOrigin + performance.now(), hulls: {} };
+  if (tanks?.forEach) tanks.forEach((entity, id) => { const p = entity?.state?.pos; if (p) out.hulls[id] = [p.x, p.z, Math.abs(Number(entity.state.speed) || 0), entity.networkVisible !== false && !entity.combat?.destroyed]; });
+  return out;
+}).catch(() => null);
+const percentile = (values, q) => { if (!values.length) return null; const sorted = [...values].sort((x, y) => x - y); return sorted[Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1) + 0.5))]; };
+const round1 = (value) => (value === null || value === undefined ? null : Math.round(value * 10) / 10);
+/**
+ * The side-by-side measurement window (MP-SINCE-0930 §7): every 500 ms each page's hulls, then per page the presented
+ * fps, the share of input ticks skipped, snapshot and channel inter-arrival (p50/p95/max), long tasks; and the hull
+ * divergence between pages for hulls shown on both (moving > 1 m/s, and at rest).
+ */
+async function measureWindow(labels, seconds) {
+  const start = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await pageCounters(pages[label], true)])));
+  const samples = [];
+  const until = performance.now() + seconds * 1000;
+  while (performance.now() < until) {
+    samples.push(Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await hullsOf(pages[label])]))));
+    await sleep(500);
+  }
+  const end = Object.fromEntries(await Promise.all(labels.map(async (label) => [label, await pageCounters(pages[label], false)])));
+  const perPage = {};
+  for (const label of labels) {
+    const a = start[label], b = end[label];
+    if (!a || !b) { perPage[label.toUpperCase()] = null; continue; }
+    const windowS = (b.atMs - a.atMs) / 1000;
+    const sampled = (b.sampledTicks ?? 0) - (a.sampledTicks ?? 0), skipped = (b.skippedTicks ?? 0) - (a.skippedTicks ?? 0);
+    const tasks = b.longtasks.filter((task) => task.start >= a.atMs);
+    perPage[label.toUpperCase()] = {
+      fps: b.frames !== null && a.frames !== null ? round1((b.frames - a.frames) / windowS) : null,
+      skippedTickPct: sampled + skipped > 0 ? round1(100 * skipped / (sampled + skipped)) : null,
+      snapshotHz: b.snapshots !== null && a.snapshots !== null ? round1((b.snapshots - a.snapshots) / windowS) : null,
+      arrivalJitterMs: round1(b.arrivalJitterMs),
+      channels: Object.fromEntries(Object.entries(b.arrivals).map(([name, row]) => [name, { messages: row.count - (a.arrivals[name]?.count ?? 0),
+        gapP50Ms: round1(percentile(row.gaps, 0.5)), gapP95Ms: round1(percentile(row.gaps, 0.95)), gapMaxMs: round1(row.gaps.length ? Math.max(...row.gaps) : null) }])),
+      longtasks: { count: tasks.length, over200: tasks.filter((task) => task.ms >= 200).length, maxMs: tasks.length ? Math.max(...tasks.map((task) => task.ms)) : 0,
+        totalMs: tasks.reduce((sum, task) => sum + task.ms, 0) },
+    };
+  }
+  const moving = [], rest = [], skew = [];
+  for (const sample of samples) {
+    const views = labels.map((label) => sample[label]).filter(Boolean);
+    if (views.length < 2) continue;
+    skew.push(Math.max(...views.map((view) => view.wallMs)) - Math.min(...views.map((view) => view.wallMs)));
+    const ids = new Set(views.flatMap((view) => Object.keys(view.hulls)));
+    for (const id of ids) {
+      const shown = views.map((view) => view.hulls[id]).filter((hull) => hull && hull[3]);
+      if (shown.length < 2) continue;
+      let worst = 0;
+      for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) worst = Math.max(worst, Math.hypot(shown[i][0] - shown[j][0], shown[i][1] - shown[j][1]));
+      (Math.max(...shown.map((hull) => hull[2])) > 1 ? moving : rest).push(worst);
+    }
+  }
+  const summary = (values) => ({ n: values.length, p50: round1(percentile(values, 0.5)), p95: round1(percentile(values, 0.95)), max: round1(values.length ? Math.max(...values) : null) });
+  return { windowS: seconds, samples: samples.length, wallSkewMs: summary(skew), divergence: { moving: summary(moving), rest: summary(rest) }, perPage };
+}
+/** CDP CPU throttling on one page (1 = off). */
+async function throttle(page, rate) {
+  const session = await page.createCDPSession();
+  await session.send('Emulation.setCPUThrottlingRate', { rate: Math.max(1, rate) });
+  return session;
 }
 
 /** The entry pipeline's own failure on a page (it returns the player to the Garage): the wait ends at once, with its reason. */
@@ -419,6 +524,13 @@ try {
   await waitFor(pages.a, () => !document.querySelector('.cot-play [data-action="start"]')?.disabled, 'A start enabled', 30_000);
   await activate(pages.a,'.cot-play [data-action="start"]');
   step('a-started');
+  const startedAtMs = elapsedMs();
+  // start to revealed, per seat (MP-SINCE-0930 §7's first metric), whichever seat reveals first
+  report.entry = { startedAtMs, revealedAfterMs: {} };
+  for (const label of ['a', 'b', 'c']) {
+    void pages[label].waitForFunction(inBattle, { timeout: 300_000, polling: 100 })
+      .then(() => { report.entry.revealedAfterMs[label.toUpperCase()] = elapsedMs() - startedAtMs; }).catch(() => {});
+  }
 
   // ---- every seat reaches the battle over WebRTC: A hosts, B and C are its peers
   await Promise.all([
@@ -488,7 +600,13 @@ try {
   }else{
     await pages.b.keyboard.down('KeyW');await pages.b.keyboard.down('KeyA');
   }
-  await sleep(playS * 1000);
+  const throttles = [];
+  if (hostThrottle > 1) throttles.push(await throttle(pages.a, hostThrottle));
+  if (seatThrottle > 1) throttles.push(await throttle(pages.c, seatThrottle));
+  report.measure = await measureWindow(['a', 'b', 'c'], playS);
+  for (const session of throttles) await session.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {});
+  step('measured', { divergence: report.measure.divergence, fps: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.fps ?? null])),
+    skipped: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.skippedTickPct ?? null])) });
   const linksAfter = { A: await linkStats(pages.a), B: await linkStats(pages.b), C: await linkStats(pages.c) };
   report.bandwidth = Object.fromEntries(Object.keys(linksAfter).map((label) => [label, bandwidthBetween(linksBefore[label], linksAfter[label])]));
   step('bandwidth', Object.fromEntries(Object.entries(report.bandwidth).map(([label, row]) => [label, row ? { upKbps: row.upKbps, downKbps: row.downKbps, pairs: row.pairs.map((pair) => `${pair.local ?? '?'}/${pair.remote ?? '?'}`).join(',') } : null])));
