@@ -2100,6 +2100,80 @@ function makeCommandTentCraft(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('commandtent', out);
 }
 
+/**
+ * The field tent of a desert camp: a ridge tent of sand canvas on its two poles and ridge pole, the low side walls
+ * pegged out, the roof in bays sagging between the rafters' lines, the guy ropes to their pegs, the door's flap tied
+ * back, a sand-bag skirt along its windward wall, its ground sheet before the door.
+ */
+function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.desert, w = 4.8, d = 7.0, wall = 0.8, rise = 1.95, bays = 3, bay = d / bays;
+  for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
+    const z = -d / 2 + (k + 0.5) * bay;
+    const wallPanel = box(0.04, wall, bay - 0.03);
+    wallPanel.rotateZ(side * 0.12);
+    colored(out, wallPanel.translate(side * (w / 2 + 0.05), wall / 2, z), k % 2 ? p[0] : p[1], rng, 0.05);
+    const slope = Math.hypot(w / 2, rise), ang = Math.atan2(rise, w / 2);
+    const panel = slab(slope, 0.04, bay + 0.02);
+    pitchRoofPlane(panel, 'x', -side as -1 | 1, ang, 'gable');
+    colored(out, panel.translate(-side * (w / 4), wall + rise / 2 - 0.03, z), k % 2 ? p[1] : p[0], rng, 0.05);
+  }
+  for (const zs of [-1, 1]) {
+    colored(out, gable(w, rise, 0.04).translate(0, wall, zs * (d / 2 - 0.02)), p[0], rng, 0.05);
+    if (zs < 0) colored(out, box(w, wall, 0.04).translate(0, wall / 2, -d / 2 + 0.02), p[0], rng, 0.05);
+    else for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.55, wall, 0.04).translate(sgn * (w / 4 + 0.28), wall / 2, d / 2 - 0.02), p[0], rng, 0.05);
+  }
+  colored(out, box(0.08, 0.08, d + 0.4).translate(0, wall + rise, 0), p[2], rng, 0.03);
+  for (const zs of [-1, 1]) colored(out, box(0.1, wall + rise + 0.35, 0.1).translate(0, (wall + rise + 0.35) / 2, zs * (d / 2 + 0.1)), p[2], rng, 0.03);
+  // the door's flap tied back, the ground sheet
+  colored(out, cylinder(0.09, 0.09, 1.2, 8).translate(0.55, wall + 0.6, d / 2 + 0.03), p[1], rng, 0.05);
+  colored(out, slab(3.4, 0.04, 1.9).translate(0, 0.05, d / 2 + 1.05), p[1], rng, 0.06);
+  // the guy ropes and pegs, the ridge's guys from the pole heads
+  for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
+    const z = -d / 2 + k * bay;
+    colored(out, beam([side * (w / 2 + 0.1), wall, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), 0x8a7c62, rng, 0.03);
+    colored(out, box(0.05, 0.22, 0.05).translate(side * (w / 2 + 1.0), 0.1, z), p[2], rng, 0.03);
+  }
+  for (const zs of [-1, 1]) colored(out, beam([0, wall + rise + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + 1.3)], 0.022, 0.022), 0x8a7c62, rng, 0.03);
+  // the sand-bag skirt along the windward wall
+  for (let z = -d / 2 + 0.3; z < d / 2 - 0.2; z += 0.62) colored(out, box(0.32, 0.2, 0.58).translate(-w / 2 - 0.32, 0.1, z), 0xa89a76, rng, 0.08);
+  return mergeConnectedStructure('deserttent', out);
+}
+
+/**
+ * The lean-to: four posts and their plates, rafters falling to the front, the roof boards on them, a back wall of
+ * vertical boards on its rails, the braces, firewood stacked in billets under it and a chopping block.
+ */
+function makeLeanToCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.paleWood, t = PAL.timber;
+  const hiY = 2.75, loY = 1.95, dz = 2.0, dx = 2.4, yAt = (z: number) => hiY - (z + dz) / (2 * dz) * (hiY - loY);
+  for (const x of [-dx, 0, dx]) for (const z of [-dz, dz]) {
+    const h = yAt(z) - 0.12;
+    colored(out, box(0.15, h, 0.15).translate(x, h / 2, z), p[2], rng, 0.05);
+  }
+  for (const z of [-dz, dz]) colored(out, box(2 * dx + 0.4, 0.14, 0.14).translate(0, yAt(z) - 0.05, z), p[2], rng, 0.04);
+  for (let k = 0; k <= 6; k++) {
+    const x = -dx - 0.1 + k * (2 * dx + 0.2) / 6;
+    colored(out, beam([x, yAt(-dz - 0.3) + 0.06, -dz - 0.3], [x, yAt(dz + 0.4) + 0.06, dz + 0.4], 0.07, 0.12), p[2], rng, 0.04);
+  }
+  for (let k = 0; k < 14; k++) {
+    const z = -dz - 0.25 + (k + 0.5) * (2 * dz + 0.6) / 14;
+    colored(out, box(2 * dx + 0.7, 0.03, 0.36).translate(0, yAt(z) + 0.14 + (k % 2) * 0.012, z), k % 3 ? p[1] : p[0], rng, 0.06);
+  }
+  // the back wall: rails and the vertical boards nailed to them
+  for (const y of [0.4, 1.6]) colored(out, box(2 * dx, 0.09, 0.07).translate(0, y, -dz + 0.1), p[2], rng, 0.04);
+  for (let k = 0; k < 18; k++) {
+    const x = -dx + 0.12 + k * (2 * dx - 0.24) / 17;
+    colored(out, box(0.25, yAt(-dz) - 0.25, 0.025).translate(x, (yAt(-dz) - 0.25) / 2 + 0.05, -dz + 0.15), k % 2 ? p[0] : p[1], rng, 0.05);
+  }
+  for (const x of [-dx, dx]) colored(out, beam([x, 0.1, -dz + 1.0], [x, 1.6, -dz], 0.08, 0.08), p[2], rng, 0.04);
+  // the billets stacked under it, their end grain to the front, and the chopping block
+  for (let r = 0; r < 5; r++) for (let k = 0; k < 13; k++) {
+    colored(out, cylinder(0.1, 0.1, 0.55, 6).rotateX(Math.PI / 2).translate(-dx + 0.35 + k * 0.33 + (r % 2) * 0.16, 0.12 + r * 0.19, -dz + 0.55), t[r % 2 ? 0 : 1], rng, 0.08);
+  }
+  colored(out, cylinder(0.24, 0.26, 0.5, 8).translate(1.2, 0.25, 1.1), t[2], rng, 0.05);
+  return mergeConnectedStructure('leanto', out);
+}
+
 function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
@@ -2501,14 +2575,14 @@ const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnected
 
 export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
-  leanto: lightMeta('leanto', 'rural', 2.9, 2.50, 3.1, PAL.paleWood, makeLeanTo),
+  leanto: lightMeta('leanto', 'rural', 2.9, 2.50, 3.1, PAL.paleWood, (rng) => { makeLeanTo(rng).dispose(); return makeLeanToCraft(kindStream('leanto')); }),
   huntingblind: lightMeta('huntingblind', 'woodland', 1.84, 1.68, 5.5, PAL.timber, (rng) => { makeHuntingBlind(rng).dispose(); return makeHuntingBlindCraft(kindStream('huntingblind')); }),
   fishershack: lightMeta('fishershack', 'coastal', 2.7, 4.2, 4.7, PAL.nordic, makeFisherShack),
   saunahut: lightMeta('saunahut', 'nordic', 2.5, 3.2, 4.4, PAL.nordic, makeSaunaHut),
   alpinerefuge: lightMeta('alpinerefuge', 'alpine', 3.3, 4.29, 5.8, PAL.nordic, makeAlpineRefuge),
   stilthouse: lightMeta('stilthouse', 'wetland', 3.36, 4.46, 6.5, PAL.paleWood, makeStiltHouse),
   longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
-  deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
+  deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, (rng) => { makeDesertTent(rng).dispose(); return makeDesertTentCraft(kindStream('deserttent')); }, 'canvas'),
   commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, (rng) => { makeCommandTent(rng).dispose(); return makeCommandTentCraft(kindStream('commandtent')); }, 'canvas'),
   fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
   // (the looks lane, 2026-10-13: the old builder's draws spent, the post built member by member on its own stream)
