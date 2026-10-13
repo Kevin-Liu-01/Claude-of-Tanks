@@ -815,7 +815,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     for (let b = 0; b < bands; b++) {
       const h1 = H - b * CRUMBLE_BAND, h0 = Math.max(0, h1 - CRUMBLE_BAND);
       const y0 = baseRel + h0, y1 = baseRel + h1;
-      bodiesNext = 2;
+      bodiesNext = 1;
       run(seam, collapseFrontTime(0.5 * (h0 + h1), H), false, (out) => {
         for (const storey of a.storeys) {
           for (const face of storey.faces) {
@@ -1103,7 +1103,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // (dcore 2026-10-09, waves 294a/b: "flat carpets spread metres across the street") the walls' pieces topple
           // off them and land at their foot: the kit's throw at 0.55 of its speed, never up
           const eaveY = seam.anatomy.roof ? seam.anatomy.roof.eaveY : Infinity;
-          bodiesNext = 18;
+          bodiesNext = 14;
           run(seam, 0.7, settled, (out) => seam.collapse(stageSeed(3), dampPieces(out, 0.55, eaveY)), false);
           if (!settled) crumble(seam, e);
         }

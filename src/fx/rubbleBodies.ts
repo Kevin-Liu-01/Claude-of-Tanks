@@ -125,8 +125,11 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
     let s = shapes.get(key);
     if (!s) {
       const m = bodyMaterial(shape);
+      // (the destruction check: a 56-body heap cost 3-10 ms a frame at its p95, a few pieces creeping in it 12 s on) a
+      // rubble piece's own drag and rolling resistance settle a heap in a few seconds, a coarser sphere grid halves its
+      // contacts, and one that still creeps after 7 s sleeps where it lies (the turret's body keeps the engine's own)
       s = createRigidBox(q(hx) / 20, q(hy) / 20, q(hz) / 20, m.density, { restitution: m.restitution, friction: m.friction,
-        rolling: 0.25, maxSpheres: 26 });
+        rolling: 0.6, linearDrag: 0.05, angularDrag: 0.35, maxSpheres: 14, forceSleepS: 7 });
       shapes.set(key, s);
     }
     return s;
