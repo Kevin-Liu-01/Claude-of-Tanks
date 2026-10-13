@@ -9,6 +9,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GAME_MODE_DEFINITIONS, GAME_MODE_IDS } from '../../src/sim/matchModes.ts';
+import { renderProductStats } from '../../src/productStats.ts';
+import { replaceAppVersionTokens } from '../appVersion.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
@@ -124,4 +126,13 @@ for (const [section] of groups) {
   assert.equal((narrow + 2 * wide) % 4, 0, `${section.slice(0, 80)}: rows of four`);
 }
 
+// --- the page as served: vite's HTML transforms (vite.config.ts: the app version, then cot-product-stats) leave no
+// {{...}} token behind (the coordinator, 2026-10-13: a raw "{{COT_BATTLE_MODES}}" heading must never ship)
+{
+  const served = renderProductStats(replaceAppVersionTokens(home, 'v0.0.0+selftest'));
+  const left = [...new Set(served.match(/\{\{[^{}]*\}\}/g) ?? [])];
+  assert.deepEqual(left, [], `site/home.html as served carries no unresolved token (${left.join(', ')})`);
+  const modesHeading = served.match(/<h2 id="modes-title"[^>]*>([^<]*)</)?.[1] ?? '';
+  assert.match(modesHeading, new RegExp(`\\b${GAME_MODE_IDS.length}\\b`), `the modes heading as served counts the modes (${modesHeading})`);
+}
 console.log(`home-shots.selftest: ${picked.length + 1} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);
