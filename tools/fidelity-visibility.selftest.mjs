@@ -13,7 +13,9 @@ assert.equal(isShadowHelper({name:'gun',userData:{}}),false);
 assert.equal(isShadowHelper({name:'muzzleBoreShadowFallbackRim',userData:{cannonBoreFallbackPart:true}}),false);
 assert.equal(isShadowHelper({name:'muzzleBoreShadowFallbackAnnulus',userData:{cannonBorePrimaryPart:true}}),false);
 assert.equal(isShadowHelper({name:'shadow',userData:{shadowOnly:true,cannonBorePrimaryPart:true}}),true);
-assert.match(html,/baseVisible\.set\(o, effectivelyVisible\(o\) && !isShadowHelper\(o\)\)/,
+// 2026-10-12 (cam-netting): the netting lane's field suits leave the masks too (procedural-fidelity.html
+// isCamouflageSuit: only alpha-tested _ghillie_ decor; the masks' overrideMaterial drops alphaTest)
+assert.match(html,/baseVisible\.set\(o, effectivelyVisible\(o\) && !isShadowHelper\(o\) && !isCamouflageSuit\(o\)\)/,
   'actual mask visibility uses the tested helper classification');
 
 const ids=['leo2a7v_x','leo2a6m_x','leo2a4m_x','leo2a5_x','merkava4_x','merkava3d_x',

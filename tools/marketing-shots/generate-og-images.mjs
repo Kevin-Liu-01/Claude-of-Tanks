@@ -14,8 +14,8 @@ const OUTPUT = join(ROOT, 'public/brand/og');
 const LOGO = join(ROOT, 'public/brand/logo-mark.svg');
 
 export const OG_IMAGE_CARDS = [
-  ['game', '', 'public/media/site50-r14/stills/s07-lake-shellfire.webp', '50% 50%'],
-  ['home', 'HOME', 'public/media/site50-r14/stills/s21-fields-assault-close.webp', '50% 50%'],
+  ['game', '', 'public/media/site50-r14/stills/s21-fields-assault-close.webp', '50% 50%'],
+  ['home', 'HOME', 'public/media/site50-r14/stills/s49-orchard-sunset.webp', '50% 50%'],
   ['gallery', 'TANK GALLERY', 'public/media/showcase-r2/11_gallery_hero.webp', '50% 48%'],
   ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%'],
   ['private-room', 'PRIVATE BATTLE', 'public/media/site50-r14/stills/s16-street-duel.webp', '50% 50%'],

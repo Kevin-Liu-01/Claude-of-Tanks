@@ -9,6 +9,7 @@ import { KIT, convexSlab } from './kit.ts';
 import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, deckGrille, turretEquipment } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const {box,cylX,cylY,cylZ}=KIT;
 
 function hull(P: TankBuilderPort): void {
@@ -131,4 +132,6 @@ function gun(P: TankBuilderPort): void {
 export function buildCv9040CX(P: TankBuilderPort): void {
   hull(P);gear(P);turret(P);gun(P);P.topY=1.03;
   P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretExternalArmor','turretHatch']};
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts)
+  addVehicleGhillieSuit(P);
 }

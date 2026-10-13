@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { adaptiveFrameSeconds, AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
+import { adaptiveFrameSeconds, AdaptiveQualityPolicy, HOLD_DOWN_STRIKES } from './adaptiveQualityPolicy.ts';
 
 assert.equal(adaptiveFrameSeconds(.1, .5), 0, 'a true long hitch is excluded despite bounded presentation dt');
 assert.equal(adaptiveFrameSeconds(.1, .12), .12, 'sustained 120ms frames remain real overload evidence');
@@ -420,6 +420,58 @@ assertNoTrimAfterTwoWindows(
   assert.equal(policy.evaluate(healthy({ clockSeconds: 23 })), 'none',
     'the pre-resize flapping history still delays resolution recovery');
   assert.equal(policy.evaluate(healthy({ clockSeconds: 25 })), 'resolution-up');
+}
+
+// 2026-10-13 (the perf stream; the coordinator's DPR ruling): Auto High on a retina panel holds a 1.25 raster
+// (0.8334 of its 1.5 cap) under load. One cut from the full raster lands on the hold; the raster goes toward the 1.0
+// floor only after HOLD_DOWN_STRIKES consecutive overloaded windows; recovery climbs back to the hold first, then to
+// the full raster in one step when the measured GPU time predicts room, with the anti-flap backoff as before.
+{
+  const held = (overrides = {}) => ({ dynamicScaleFloor: 0.667, dynamicScaleHold: 0.8334, maximumTrim: 0, ...overrides });
+  const policy = new AdaptiveQualityPolicy(1);
+  assert.equal(policy.evaluate(overloaded(held({ clockSeconds: 10 }))), 'resolution-down');
+  assert.equal(policy.dynamicScale, 0.8334, 'one cut lands on the hold rung (1.5 -> 1.25), not on 0.91 (1.365)');
+  for (let i = 1; i < HOLD_DOWN_STRIKES; i++) {
+    assert.equal(policy.evaluate(overloaded(held({ clockSeconds: 10 + 1.5 * i }))), 'none', `held through window ${i}`);
+    assert.equal(policy.dynamicScale, 0.8334);
+  }
+  assert.equal(policy.evaluate(overloaded(held({ clockSeconds: 10 + 1.5 * HOLD_DOWN_STRIKES }))), 'resolution-down',
+    'a sustained overload takes the raster below the hold');
+  assert.ok(Math.abs(policy.dynamicScale - 0.7434) < 1e-9, 'one ordinary step below the hold');
+  // a clean window between overloaded ones restarts the count at the hold
+  const brief = new AdaptiveQualityPolicy(0.8334);
+  brief.evaluate(overloaded(held({ clockSeconds: 20 })));
+  brief.evaluate(overloaded(held({ clockSeconds: 21.5 })));
+  brief.evaluate(healthy(held({ clockSeconds: 23, frameEmaMs: 17.5, missedFrameRatio: 0.1 })));
+  brief.evaluate(overloaded(held({ clockSeconds: 24.5 })));
+  brief.evaluate(overloaded(held({ clockSeconds: 26 })));
+  assert.equal(brief.dynamicScale, 0.8334, 'brief overloads never leave the hold');
+  // recovery: back to the hold first, then the full raster in one step
+  const up = new AdaptiveQualityPolicy(0.7434);
+  assert.equal(up.evaluate(healthy(held({ clockSeconds: 40 }))), 'resolution-up');
+  assert.equal(up.dynamicScale, 0.8334, 'below the hold, recovery climbs to the hold (not past it)');
+  assert.equal(up.evaluate(healthy(held({ clockSeconds: 42 }))), 'resolution-up');
+  assert.equal(up.dynamicScale, 1, 'the hold returns to the full raster in one step');
+  // with a GPU sample the step up from the hold must fit: 1/0.8334 squared = 1.44x the pixels
+  const gpuBound = new AdaptiveQualityPolicy(0.8334);
+  assert.equal(gpuBound.evaluate(healthy(held({ clockSeconds: 50, gpuFrameMs: 11 }))), 'none',
+    '11 ms at 1.25 predicts 15.8 ms at 1.5, over 0.85 of the budget: hold');
+  assert.equal(gpuBound.evaluate(healthy(held({ clockSeconds: 52, gpuFrameMs: 9 }))), 'resolution-up',
+    '9 ms predicts 13 ms: room');
+  // a flapped return to the full raster backs off before the next try
+  const flap = new AdaptiveQualityPolicy(0.8334);
+  assert.equal(flap.evaluate(healthy(held({ clockSeconds: 60 }))), 'resolution-up');
+  assert.equal(flap.evaluate(overloaded(held({ clockSeconds: 61.5 }))), 'resolution-down');
+  assert.equal(flap.dynamicScale, 0.8334);
+  assert.equal(flap.evaluate(healthy(held({ clockSeconds: 63 }))), 'none', 'the backoff doubled: no immediate retry');
+  assert.equal(flap.evaluate(healthy(held({ clockSeconds: 64.6 }))), 'resolution-up');
+  // without a declared hold (explicit High, native-density panels) the plain 0.09 ladder is unchanged
+  const plain = new AdaptiveQualityPolicy(1);
+  plain.evaluate(overloaded({ clockSeconds: 10, maximumTrim: 0, dynamicScaleFloor: 0.667 }));
+  assert.equal(plain.dynamicScale, 0.91);
+  const sameAsFloor = new AdaptiveQualityPolicy(1);
+  sameAsFloor.evaluate(overloaded({ clockSeconds: 10, maximumTrim: 0, dynamicScaleFloor: 0.9, dynamicScaleHold: 0.9 }));
+  assert.equal(sameAsFloor.dynamicScale, 0.91, 'a hold at the floor is the plain ladder');
 }
 
 console.log('adaptiveQualityPolicy.selftest: ordered relief and recovery policy passed');

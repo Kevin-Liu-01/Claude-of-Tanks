@@ -2463,301 +2463,301 @@
    "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",
    "bytes": 90156,
    "sha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s01-main-street-push.json"
+   "source": "tools/media-r5/site50-shots/s01-main-street-push.json"
   },
   {
    "path": "media/site50-r14/scenes/s02-factory-road.scene.json",
    "bytes": 72359,
    "sha256": "af751366acfe3cb382d1d53763ffdb5230c29f4e5a3a7b7e0a48cd5cd6611fd5",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s02-factory-road.json"
+   "source": "tools/media-r5/site50-shots/s02-factory-road.json"
   },
   {
    "path": "media/site50-r14/scenes/s03-square-pass.scene.json",
    "bytes": 73382,
    "sha256": "a123eb7856561924c0a11faed7e0fb162f846b61d2dda4fe820a8a59270c20cd",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s03-square-pass.json"
+   "source": "tools/media-r5/site50-shots/s03-square-pass.json"
   },
   {
    "path": "media/site50-r14/scenes/s04-column-under-fire.scene.json",
    "bytes": 107488,
    "sha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s04-column-under-fire.json"
+   "source": "tools/media-r5/site50-shots/s04-column-under-fire.json"
   },
   {
    "path": "media/site50-r14/scenes/s05-barn-advance.scene.json",
    "bytes": 75948,
    "sha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s05-barn-advance.json"
+   "source": "tools/media-r5/site50-shots/s05-barn-advance.json"
   },
   {
    "path": "media/site50-r14/scenes/s06-farm-charge.scene.json",
    "bytes": 60875,
    "sha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s06-farm-charge.json"
+   "source": "tools/media-r5/site50-shots/s06-farm-charge.json"
   },
   {
    "path": "media/site50-r14/scenes/s07-lake-shellfire.scene.json",
    "bytes": 88814,
    "sha256": "d65b440fcd2266a823479c009beca0c2deb54c0dfeb2b36dc067c5bd6c5c800e",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s07-lake-shellfire.json"
+   "source": "tools/media-r5/site50-shots/s07-lake-shellfire.json"
   },
   {
    "path": "media/site50-r14/scenes/s08-market-push.scene.json",
    "bytes": 91851,
    "sha256": "2edcf9123585d6d863a28f91d9c017e9a2600195095d9c4a08372c7c4e2c5ea9",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s08-market-push.json"
+   "source": "tools/media-r5/site50-shots/s08-market-push.json"
   },
   {
    "path": "media/site50-r14/scenes/s09-harbor-run.scene.json",
    "bytes": 90798,
    "sha256": "b48f8543d3569e85639138a4b89d492d8b58da841dd218a6bd31e974b36e6a42",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s09-harbor-run.json"
+   "source": "tools/media-r5/site50-shots/s09-harbor-run.json"
   },
   {
    "path": "media/site50-r14/scenes/s10-ford-shellfire.scene.json",
    "bytes": 75815,
    "sha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s10-ford-shellfire.json"
+   "source": "tools/media-r5/site50-shots/s10-ford-shellfire.json"
   },
   {
    "path": "media/site50-r14/scenes/s11-container-rows.scene.json",
    "bytes": 92002,
    "sha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s11-container-rows.json"
+   "source": "tools/media-r5/site50-shots/s11-container-rows.json"
   },
   {
    "path": "media/site50-r14/scenes/s12-gantry-advance.scene.json",
    "bytes": 90721,
    "sha256": "aacf0ad875cb239de8abdb69e486bab886596946b30e31ff953b11e8abf13cd9",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s12-gantry-advance.json"
+   "source": "tools/media-r5/site50-shots/s12-gantry-advance.json"
   },
   {
    "path": "media/site50-r14/scenes/s13-farm-race.scene.json",
    "bytes": 29870,
    "sha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s13-farm-race.json"
+   "source": "tools/media-r5/site50-shots/s13-farm-race.json"
   },
   {
    "path": "media/site50-r14/scenes/s14-snow-push.scene.json",
    "bytes": 71160,
    "sha256": "dc5a38437d053fc47143e70845db13177c702dfbc369eda7335b76b1ef220666",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s14-snow-push.json"
+   "source": "tools/media-r5/site50-shots/s14-snow-push.json"
   },
   {
    "path": "media/site50-r14/scenes/s15-orchard-column.scene.json",
    "bytes": 94668,
    "sha256": "bd72dbe1ccaed7b19b50f9b5337a35c3fcf44d8013b4bd8848558da66081fa98",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s15-orchard-column.json"
+   "source": "tools/media-r5/site50-shots/s15-orchard-column.json"
   },
   {
    "path": "media/site50-r14/scenes/s16-street-duel.scene.json",
    "bytes": 74368,
    "sha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s16-street-duel.json"
+   "source": "tools/media-r5/site50-shots/s16-street-duel.json"
   },
   {
    "path": "media/site50-r14/scenes/s17-crossroads-fire.scene.json",
    "bytes": 72309,
    "sha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s17-crossroads-fire.json"
+   "source": "tools/media-r5/site50-shots/s17-crossroads-fire.json"
   },
   {
    "path": "media/site50-r14/scenes/s18-street-knockout.scene.json",
    "bytes": 74580,
    "sha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s18-street-knockout.json"
+   "source": "tools/media-r5/site50-shots/s18-street-knockout.json"
   },
   {
    "path": "media/site50-r14/scenes/s19-roof-tiles.scene.json",
    "bytes": 88653,
    "sha256": "0a8b68f3e26fa71ed7ba8de28489f2d7f952bc2ae685ed63c74432976bbfa948",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s19-roof-tiles.json"
+   "source": "tools/media-r5/site50-shots/s19-roof-tiles.json"
   },
   {
    "path": "media/site50-r14/scenes/s20-road-return-fire.scene.json",
    "bytes": 107099,
    "sha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s20-road-return-fire.json"
+   "source": "tools/media-r5/site50-shots/s20-road-return-fire.json"
   },
   {
    "path": "media/site50-r14/scenes/s21-fields-assault.scene.json",
    "bytes": 121844,
    "sha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s21-fields-assault.json"
+   "source": "tools/media-r5/site50-shots/s21-fields-assault.json"
   },
   {
    "path": "media/site50-r14/scenes/s22-walking-barrage.scene.json",
    "bytes": 138004,
    "sha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s22-walking-barrage.json"
+   "source": "tools/media-r5/site50-shots/s22-walking-barrage.json"
   },
   {
    "path": "media/site50-r14/scenes/s23-village-crossroads.scene.json",
    "bytes": 76682,
    "sha256": "6192513c437c968f57933b25ceedb745da0253107d93f93e51d18392b89121fb",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s23-village-crossroads.json"
+   "source": "tools/media-r5/site50-shots/s23-village-crossroads.json"
   },
   {
    "path": "media/site50-r14/scenes/s24-ice-duel.scene.json",
    "bytes": 88046,
    "sha256": "4ad30670a207172fc1217fa75e76941f4c56a0dd40abd234f4637ca3c9a7ea0f",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s24-ice-duel.json"
+   "source": "tools/media-r5/site50-shots/s24-ice-duel.json"
   },
   {
    "path": "media/site50-r14/scenes/s25-alpine-village.scene.json",
    "bytes": 76338,
    "sha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s25-alpine-village.json"
+   "source": "tools/media-r5/site50-shots/s25-alpine-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s26-minaret-fire.scene.json",
    "bytes": 75595,
    "sha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s26-minaret-fire.json"
+   "source": "tools/media-r5/site50-shots/s26-minaret-fire.json"
   },
   {
    "path": "media/site50-r14/scenes/s27-caravanserai-kill.scene.json",
    "bytes": 76904,
    "sha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s27-caravanserai-kill.json"
+   "source": "tools/media-r5/site50-shots/s27-caravanserai-kill.json"
   },
   {
    "path": "media/site50-r14/scenes/s28-fjord-village.scene.json",
    "bytes": 75849,
    "sha256": "cb1306dee4dccda6e1ab66c2d62bf06b67e3ea1b1541e3b8d8a42fbf051e2058",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s28-fjord-village.json"
+   "source": "tools/media-r5/site50-shots/s28-fjord-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s29-fjord-road-kill.scene.json",
    "bytes": 75910,
    "sha256": "85dbe62f9c985070959f77d374bb76cc51f452507ffc24e7ea1f8e8d8174e1f7",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s29-fjord-road-kill.json"
+   "source": "tools/media-r5/site50-shots/s29-fjord-road-kill.json"
   },
   {
    "path": "media/site50-r14/scenes/s30-temple-village.scene.json",
    "bytes": 61022,
    "sha256": "bb506ab286ef05654df8965ddc79be485219e3afc8e19ff69ea9be3bfd9eaa18",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s30-temple-village.json"
+   "source": "tools/media-r5/site50-shots/s30-temple-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s31-ford-fire.scene.json",
    "bytes": 75581,
    "sha256": "12f1af000536a64e51327ec094c5ce455ced6bb4ae6995bde1972bf9ff8bdc9c",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s31-ford-fire.json"
+   "source": "tools/media-r5/site50-shots/s31-ford-fire.json"
   },
   {
    "path": "media/site50-r14/scenes/s32-yard-salvo.scene.json",
    "bytes": 90677,
    "sha256": "dcf10f602b90706a58fb14cecfd895cdf6e4d49a592f8df158232dddddfbc147",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s32-yard-salvo.json"
+   "source": "tools/media-r5/site50-shots/s32-yard-salvo.json"
   },
   {
    "path": "media/site50-r14/scenes/s33-water-tower.scene.json",
    "bytes": 77118,
    "sha256": "a37d48afea88c6de07abf9f528518651fd7605a72e25a3a2220910f49e7ad964",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s33-water-tower.json"
+   "source": "tools/media-r5/site50-shots/s33-water-tower.json"
   },
   {
    "path": "media/site50-r14/scenes/s34-furnace-salvo.scene.json",
    "bytes": 119323,
    "sha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s34-furnace-salvo.json"
+   "source": "tools/media-r5/site50-shots/s34-furnace-salvo.json"
   },
   {
    "path": "media/site50-r14/scenes/s35-farm-village.scene.json",
    "bytes": 75912,
    "sha256": "1123ccecf6df830e9009e7ebcc88074c2d2d05c40e4f9a797a79ba766a185ec3",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s35-farm-village.json"
+   "source": "tools/media-r5/site50-shots/s35-farm-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s36-barn-knockout.scene.json",
    "bytes": 76337,
    "sha256": "c776eb0533318eb866b835c423ec0416780a9a2294bdb8c7907050a78439d6f1",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s36-barn-knockout.json"
+   "source": "tools/media-r5/site50-shots/s36-barn-knockout.json"
   },
   {
    "path": "media/site50-r14/scenes/s37-river-village.scene.json",
    "bytes": 92310,
    "sha256": "6b665e10fc4a63aa9c47f77b8b19765ff99bcab51001a0101739bbbcdd20a9d0",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s37-river-village.json"
+   "source": "tools/media-r5/site50-shots/s37-river-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s38-church-knockout.scene.json",
    "bytes": 60734,
    "sha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s38-church-knockout.json"
+   "source": "tools/media-r5/site50-shots/s38-church-knockout.json"
   },
   {
    "path": "media/site50-r14/scenes/s39-lakeside-village.scene.json",
    "bytes": 78141,
    "sha256": "d37c70dfbceb5903da79e1d36542f61fd3e65b22d8714cb7cf7f42bf4698c5c4",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s39-lakeside-village.json"
+   "source": "tools/media-r5/site50-shots/s39-lakeside-village.json"
   },
   {
    "path": "media/site50-r14/scenes/s40-rooftop-smoke.scene.json",
    "bytes": 102249,
    "sha256": "65394b204f2cb31ccbcaab97aa49de4799889051a64d2c2d8a3b2761b7b2b582",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s40-rooftop-smoke.json"
+   "source": "tools/media-r5/site50-shots/s40-rooftop-smoke.json"
   },
   {
    "path": "media/site50-r14/scenes/s41-church-tower.scene.json",
    "bytes": 89268,
    "sha256": "ccdfb512432db10c0b9b97602460223eb46dd3c4db29c39049209a34e3b68d2b",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s41-church-tower.json"
+   "source": "tools/media-r5/site50-shots/s41-church-tower.json"
   },
   {
    "path": "media/site50-r14/scenes/s42-assault-above.scene.json",
    "bytes": 123076,
    "sha256": "83232305a75ae00134d479688a4b5bcc9761c96b4a87b246459a1b4830da48ee",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s42-assault-above.json"
+   "source": "tools/media-r5/site50-shots/s42-assault-above.json"
   },
   {
    "path": "media/site50-r14/scenes/s43-lake-crane.scene.json",
    "bytes": 89426,
    "sha256": "187347b3572d66d05d4324cb70eec88ff07a5fd31c1386d4c517edd0d02d7a5c",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s43-lake-crane.json"
+   "source": "tools/media-r5/site50-shots/s43-lake-crane.json"
   },
   {
    "path": "media/site50-r14/scenes/s44-oasis-sunset.scene.json",
    "bytes": 77261,
    "sha256": "99a0e920f97e7c43bde5f07667540040da4bbaa8fd148aca757b8c773fcd8562",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s44-oasis-sunset.json"
+   "source": "tools/media-r5/site50-shots/s44-oasis-sunset.json"
   },
   {
    "path": "media/site50-r14/scenes/s45-harbor-wide.scene.json",
    "bytes": 92180,
    "sha256": "9acd40a210945e4d69e1f7a7eda5aa159fa20e0556d80a249ddca659e504d0e2",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s45-harbor-wide.json"
+   "source": "tools/media-r5/site50-shots/s45-harbor-wide.json"
   },
   {
    "path": "media/site50-r14/scenes/s46-river-drone.scene.json",
    "bytes": 74927,
    "sha256": "b1c647bf9c7ede59d2bb23c9b17e033b82f0c06b1e4d27f924ab394b1083ecd4",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s46-river-drone.json"
+   "source": "tools/media-r5/site50-shots/s46-river-drone.json"
   },
   {
    "path": "media/site50-r14/scenes/s47-ironworks-crane.scene.json",
    "bytes": 120096,
    "sha256": "62cabe9528b3948fdc25c7ad9c67d2a46f776a67ffb2e25ae695aea4290dc5d3",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s47-ironworks-crane.json"
+   "source": "tools/media-r5/site50-shots/s47-ironworks-crane.json"
   },
   {
    "path": "media/site50-r14/scenes/s48-delta-crane.scene.json",
    "bytes": 92751,
    "sha256": "116e02da1253d96961957aca1eb1ac9b8b8a0bf185fb5e52f898d0a130485a90",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s48-delta-crane.json"
+   "source": "tools/media-r5/site50-shots/s48-delta-crane.json"
   },
   {
    "path": "media/site50-r14/scenes/s49-orchard-sunset.scene.json",
    "bytes": 93608,
    "sha256": "f33dd63921c38c19de2f273ca6d5f20cd704521ff88814d4baf05fcf8478fe84",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s49-orchard-sunset.json"
+   "source": "tools/media-r5/site50-shots/s49-orchard-sunset.json"
   },
   {
    "path": "media/site50-r14/scenes/s50-reservoir-crane.scene.json",
    "bytes": 77493,
    "sha256": "85fa053c0465da77fa19c271084b17ec2f302036c13bda4e432b5af9a6b61af1",
-   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s50-reservoir-crane.json"
+   "source": "tools/media-r5/site50-shots/s50-reservoir-crane.json"
   },
   {
    "path": "media/site50-r14/stills/s01-main-street-push-close-thumb.webp",
@@ -2949,14 +2949,6 @@
    "sha256": "404a16f6996cab7ad8b95ba3f74f3b0bb55c9f282b654806e21f41100f9506f1",
    "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge.webp",
    "take": "s06-farm-charge",
-   "round": "shots/media-r5/site50/deliver-r14"
-  },
-  {
-   "path": "media/site50-r14/stills/s07-lake-shellfire-boot.webp",
-   "bytes": 69444,
-   "sha256": "f47eb6186e7368ab4f1f43539c6f7ca563ca47252c12c9a6130822d8a2f3dfea",
-   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-4k.png",
-   "take": "s07-lake-shellfire",
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
@@ -3405,6 +3397,14 @@
    "sha256": "9607359d01b255fde8e93e090fb7b3a774eb6e8f54cac9d6090b9f4110f46651",
    "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.webp",
    "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s21-fields-assault-boot.webp",
+   "bytes": 103416,
+   "sha256": "82bb88de2393e35d22a88854f401a197d99f1f9a5bb50dd2d4c546b31a7fc0c2",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-close-4k.png",
+   "take": "s21-fields-assault",
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {

@@ -31,6 +31,13 @@ building's stages into the world's own geometry through the core's seam
 <!-- agent-docs:fill:patterns -->
 Pool hot objects, bound lifetime/count, use event positions as presentation
 inputs only, and respect pause/killcam/shot-mode time scaling.
+A moving source's media trail (track skirt, exhaust) is laid by the distance it
+travels through `trailCadence.ts`, never by a per-call coin toss, and each body is
+sized against that spacing so neighbours overlap (EF.01: deploy 208's random gate
+broke trails into separate clouds). `trailCadence.selftest.mjs` measures the
+side-view coverage at 15-60 Hz. A running hull's exhaust is the predecessor's
+sprite streak; the media billow is only the cold start and throttle-ups
+(`exhaustTrail.selftest.mjs`).
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

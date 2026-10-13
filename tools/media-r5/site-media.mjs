@@ -54,7 +54,9 @@ const SHEET = { cols: 5, rows: 2, tile: [480, 270], gap: 0, per: 10 };
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1 << 26 });
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const want = (part) => !only || only.includes(part);
-const rel = (file) => relative(MEDIA, file);
+// a source inside the tree being built (the takes' scenes) is recorded by its path in the repo, not by where the export
+// sits in the media worktree (2026-10-12: every export renamed fifty manifest rows); the deliveries stay worktree paths
+const rel = (file) => { const inTree = relative(ROOT, file); return inTree.startsWith('..') ? relative(MEDIA, file) : inTree; };
 function probe(file) {
   const info = JSON.parse(run('ffprobe', ['-v', 'error', '-show_entries',
     'stream=codec_type,codec_name,width,height,r_frame_rate:format=duration', '-of', 'json', file]));
@@ -99,10 +101,11 @@ const loopIds = [...new Set([PICKS.home.destruction, ...PICKS.home.paths, ...Obj
 const proxyIds = [PICKS.home.destruction, ...PICKS.home.paths];
 const reelIds = PICKS.docs.reels;
 const fourK = PICKS.featured.filter((f) => f.fourK).map((f) => f.id);
-const bootId = PICKS.featured.find((f) => f.boot)?.id;
+const boot = PICKS.featured.find((f) => f.boot), bootId = boot?.id;
 // a featured take may show its close portrait (`still: 'close'`, 2026-10-12: monsoon's best frame is s30's close),
-// except the boot splash and the 4K showcase, which are made from the key moment's PNG
-for (const f of PICKS.featured) if (f.still === 'close' && (f.fourK || f.boot)) throw new Error(`featured ${f.id}: the boot and 4K shots are key moments`);
+// except the 4K showcase, which is made from the key moment's PNG; the boot splash is made from its own still's PNG
+// (owner 2026-10-12: the default became s21's close, the T-90SM under a fireball)
+for (const f of PICKS.featured) if (f.still === 'close' && f.fourK) throw new Error(`featured ${f.id}: the 4K shot is a key moment`);
 
 // every slot that names a take, for --plan and for the checks below
 function slots() {
@@ -173,7 +176,8 @@ function buildStills() {
     if (d.momentPng) make(join(OUT, 'stills', `${id}-thumb.webp`), d.momentPng, (tmp) => webp(d.momentPng, tmp, 80, THUMB), take);
     if (d.closePng) make(join(OUT, 'stills', `${id}-close-thumb.webp`), d.closePng, (tmp) => webp(d.closePng, tmp, 80, THUMB), take);
     if (fourK.includes(id) && d.momentPng) make(join(OUT, 'stills', `${id}-4k.webp`), d.momentPng, (tmp) => webp(d.momentPng, tmp, 88), take);
-    if (id === bootId && d.momentPng) make(join(OUT, 'stills', `${id}-boot.webp`), d.momentPng, (tmp) => webp(d.momentPng, tmp, 80, [1280, 720]), take);
+    const bootPng = boot?.still === 'close' ? d.closePng : d.momentPng;
+    if (id === bootId && bootPng) make(join(OUT, 'stills', `${id}-boot.webp`), bootPng, (tmp) => webp(bootPng, tmp, 80, [1280, 720]), take);
   }
 }
 

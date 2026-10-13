@@ -66,7 +66,9 @@ import {
 import {
   baseDynamicScale,
   dynamicScaleFloor,
+  dynamicScaleHold,
   internalPixelRatio,
+  RCAS_MIN_SCALE,
   reconstructionMode,
   reconstructionSharpness,
   type ReconstructionMode,
@@ -763,6 +765,8 @@ class FsrUpscalePass extends Pass {
   inputScale: number;
   /** Temporal AA has settled the sub-pixel sparkle: RCAS may lift to its temporal floor (2026-09-13). */
   temporalAccumulation = false;
+  /** The input scale from which RCAS follows EASU: the preset's rcasMinScale (2026-10-13), else RCAS_MIN_SCALE. */
+  rcasMinScale = RCAS_MIN_SCALE;
   readonly intermediate: THREE.WebGLRenderTarget;
   readonly easuMaterial: THREE.ShaderMaterial;
   readonly rcasMaterial: THREE.ShaderMaterial;
@@ -890,7 +894,7 @@ class FsrUpscalePass extends Pass {
     const outW = this.outputSize.x, outH = this.outputSize.y;
     const upscale = inW !== outW || inH !== outH;
     const inputScale = upscale ? Math.min(inW / outW, inH / outH) : 1;
-    const mode = reconstructionMode(inputScale);
+    const mode = reconstructionMode(inputScale, this.rcasMinScale);
     const applyRcas = mode.includes('rcas');
     this.inputSize.set(inW, inH);
     this.inputScale = inputScale;
@@ -2386,6 +2390,7 @@ export function createPost(
   // stretch a smaller canvas a second time.
   const upscaler = new FsrUpscalePass();
   upscaler.temporalAccumulation = taaEnabled;
+  upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
   composer.addPass(upscaler);
   {
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
@@ -2682,6 +2687,7 @@ export function createPost(
       missedFrameRatio: missRatio,
       achievedFps: windowFps,
       dynamicScaleFloor: dynamicScaleFloor(renderer.getPixelRatio(), preset),
+      dynamicScaleHold: dynamicScaleHold(renderer.getPixelRatio(), preset),
       maximumTrim: trimMax(),
       mayRaiseTier: canRecoverAutoTier(),
       gpuFrameMs: gpuFrameTimer?.takeWindow() ?? null,
@@ -2944,6 +2950,7 @@ export function createPost(
     taa.enabled = taaEnabled;
     taa.resetHistory();
     upscaler.temporalAccumulation = taaEnabled;
+    upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
     publishAAState();
     resolveLightFx();
     // perf-governor r1: a preset switch is a new baseline — release every

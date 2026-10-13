@@ -1,0 +1,435 @@
+{
+ "title": "Around the Clock — 30s cut",
+ "bpm": 96,
+ "durationSec": 30,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1.2,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "cold",
+   "fromBar": 0,
+   "toBar": 0,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -10
+  },
+  {
+   "name": "title",
+   "fromBar": 1,
+   "toBar": 1,
+   "layers": [
+    "drone"
+   ],
+   "gainDb": -5
+  },
+  {
+   "name": "dawn",
+   "fromBar": 2,
+   "toBar": 3,
+   "layers": [
+    "drone",
+    "ticks",
+    "pulse",
+    "pad",
+    "taiko"
+   ],
+   "gainDb": -6
+  },
+  {
+   "name": "noon",
+   "fromBar": 4,
+   "toBar": 5,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "toms",
+    "hats",
+    "rim"
+   ],
+   "gainDb": -2
+  },
+  {
+   "name": "golden",
+   "fromBar": 6,
+   "toBar": 6,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "slowmo",
+   "fromBar": 7,
+   "toBar": 7,
+   "layers": [
+    "heartbeat",
+    "drone"
+   ],
+   "gainDb": -8
+  },
+  {
+   "name": "night",
+   "fromBar": 8,
+   "toBar": 9,
+   "layers": [
+    "taiko2",
+    "toms",
+    "hats16",
+    "rim",
+    "pulse16",
+    "open",
+    "drone"
+   ],
+   "gainDb": 0
+  },
+  {
+   "name": "end",
+   "fromBar": 10,
+   "toBar": 11,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 2.5,
+   "sec": 2.2
+  },
+  {
+   "kind": "braam",
+   "t": 2.5,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 2.5,
+   "sec": 3
+  },
+  {
+   "kind": "riser",
+   "t": 10,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "Bb",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 10,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 15,
+   "chord": "F",
+   "sec": 4
+  },
+  {
+   "kind": "boom",
+   "t": 17.5,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "riser",
+   "t": 20,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 20,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 20,
+   "sec": 3
+  },
+  {
+   "kind": "braam",
+   "t": 22.5,
+   "chord": "C",
+   "sec": 4
+  },
+  {
+   "kind": "swell",
+   "t": 25,
+   "sec": 2
+  },
+  {
+   "kind": "braam",
+   "t": 25,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 25,
+   "sec": 4
+  },
+  {
+   "kind": "stop",
+   "t": 29.2
+  }
+ ],
+ "ducks": [],
+ "sfx": [
+  {
+   "kind": "cannon",
+   "t": 3.4,
+   "cls": "huge",
+   "gain": 0.93,
+   "dist": 0.11,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 4.4,
+   "cls": "huge",
+   "gain": 0.98,
+   "dist": 0.03,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 5,
+   "dur": 2.5,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.52
+  },
+  {
+   "kind": "he",
+   "t": 5.9,
+   "gain": 0.96,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 7.5,
+   "dur": 2.5,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 8.7,
+   "cls": "large",
+   "gain": 0.74,
+   "dist": 0.39,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 8.81,
+   "gain": 0.92,
+   "alt": 0
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 9.8,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 9.875,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 9.95,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "drive",
+   "t": 10,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.025,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.1,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.175,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.25,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.325,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "sample",
+   "name": "fire_small_crack",
+   "t": 10.4,
+   "gain": 0.35,
+   "send": 0.1
+  },
+  {
+   "kind": "drive",
+   "t": 13.75,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 14.85,
+   "cls": "huge",
+   "gain": 0.98,
+   "dist": 0.03,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 15,
+   "dur": 2.5,
+   "speed": 3.2,
+   "turbine": false,
+   "gain": 0.45
+  },
+  {
+   "kind": "he",
+   "t": 15.9,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 16.12,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 16.34,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 16.56,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 16.78,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 17,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "cannon",
+   "t": 18.9,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "pen",
+   "t": 18.99,
+   "gain": 0.6480000000000001
+  },
+  {
+   "kind": "kill",
+   "t": 19.11,
+   "gain": 0.9600000000000001,
+   "pop": true
+  },
+  {
+   "kind": "drive",
+   "t": 20,
+   "dur": 1.25,
+   "speed": 3,
+   "turbine": false,
+   "gain": 0.32
+  },
+  {
+   "kind": "cannon",
+   "t": 22.35,
+   "cls": "huge",
+   "gain": 0.97,
+   "dist": 0.04,
+   "pan": 0
+  }
+ ],
+ "rampSec": 0.4
+}

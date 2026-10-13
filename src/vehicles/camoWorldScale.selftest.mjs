@@ -224,6 +224,31 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
   assert.equal(cold.width, CAMO_SWATCH_WIDTH, 'cold swatch painted by the drain');
   assert.ok(hasCachedCamoSwatch(abrams, 'winterbands'));
 }
+// 2026-10-13 (the perf stream): the Garage's gate holds cold swatches while it is closed or under the battle loader
+// (~0.9 s of a battle entry's main thread was the picker's queue); they paint unchanged once it opens
+{
+  const { setCamoSwatchDrainGate } = await import('../ui/camoSwatchPainter.ts');
+  let open = false;
+  setCamoSwatchDrainGate(() => open);
+  const held = createCanvas(4, 4);
+  assert.ok(!hasCachedCamoSwatch(abrams, 'national_fr'));
+  queueCamoSwatch(held, abrams, 'national_fr');
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(pendingCamoSwatchCount(), 1, 'held while the gate is shut: nothing painted under the loader');
+  assert.equal(held.width, 4);
+  open = true;
+  await new Promise((resolve) => setTimeout(resolve, 700)); // the held queue looks again within 500 ms
+  assert.equal(pendingCamoSwatchCount(), 0, 'drained once the gate opens');
+  const direct = createCanvas(4, 4);
+  paintCamoSwatch(direct, abrams, 'national_fr');
+  assert.deepEqual(pixels(held), pixels(direct), 'the held swatch is the swatch, byte for byte');
+  setCamoSwatchDrainGate(null);
+  const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+  assert.match(garage, /loaded\.setCamoSwatchDrainGate\(swatchDrainOpen\);/, 'the Garage installs its gate');
+  assert.match(garage, /const swatchDrainOpen = \(\): boolean => garageSwatchOpen && !garageSwatchCover\(\);/);
+  const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  assert.match(mainSource, /garage\.setDecorativeWorkGate\(\(\) => battleLoad\.covering\);/, 'main covers it with the battle loader');
+}
 
 // --- source pins: no per-hull UV density survives anywhere on the camo path ----------------------------------------
 const core = source('./tankFactoryCore.ts');

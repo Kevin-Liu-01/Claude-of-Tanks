@@ -6,7 +6,7 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 interface EntryLoadScreen {
-  showPending(): void;
+  showPending(mapId?: string | null): void;
   hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -88,7 +88,7 @@ export function createSoloBattleEntryRuntime({
     try {
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
-      battleLoad.showPending();
+      battleLoad.showPending(mapId);
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {

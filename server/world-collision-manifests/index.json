@@ -33,8 +33,8 @@
       "concealers": 2473
     },
     "coastal": {
-      "bytes": 1778556,
-      "sha256": "18e03527ad42f5ce11a644a7480c224741ce52a1ca56f282e4f1d470d925404e",
+      "bytes": 1778573,
+      "sha256": "4c838f5f819d9eefe82f9dd6b0d1e62d0703a1832b5b2a848d033b7e89709aa6",
       "obstacles": 4470,
       "colliders": 4427,
       "concealers": 4325
@@ -173,8 +173,8 @@
       "concealers": 784
     },
     "whiteout": {
-      "bytes": 1816212,
-      "sha256": "b459deeec5a17d0abce45408d84ae2f64587d47141dd216469ecfc78c1262785",
+      "bytes": 1816222,
+      "sha256": "db439a6dcc9011652efce6f6760c217980b973a4f5085960c11b220c5e0d32f4",
       "obstacles": 1179,
       "colliders": 1193,
       "concealers": 0
@@ -215,8 +215,8 @@
       "concealers": 7024
     },
     "mars": {
-      "bytes": 851251,
-      "sha256": "e235aa9ab16c8fe1b28d50ab0d38667284893a7a9407f7c430ec0520d206e4f0",
+      "bytes": 851247,
+      "sha256": "67b4e430d882ae6de8d457443dd8fb93a446284c526d16621746f5c407f8b131",
       "obstacles": 820,
       "colliders": 827,
       "concealers": 0
@@ -267,8 +267,8 @@
         "concealers": 2473
       },
       "coastal": {
-        "bytes": 2020446,
-        "sha256": "55517dc6e14f543494c7cd6b92eaf0b6fc9350ce5f0ee22020e4fb7a61c6935f",
+        "bytes": 2020444,
+        "sha256": "384a38a904b19560081bcb41b346d30f818c4bdc155a7fd1a3760d85bda6118a",
         "obstacles": 4673,
         "colliders": 4519,
         "concealers": 4343
@@ -407,8 +407,8 @@
         "concealers": 784
       },
       "whiteout": {
-        "bytes": 2092971,
-        "sha256": "2ea0044015ab458fe0dfc4e6ca4294a1b8d12984cee144a03915f44d6a716f61",
+        "bytes": 2092981,
+        "sha256": "5a93e60d3b8a2b4dc27f07ec25869f0b4809d869d4f7a364aa993dcf517dd4fe",
         "obstacles": 1318,
         "colliders": 1243,
         "concealers": 0
@@ -449,8 +449,8 @@
         "concealers": 7086
       },
       "mars": {
-        "bytes": 1012538,
-        "sha256": "b44ab027bdcd15bde5097d08aa5a3b8a23545e8c57447f005bbebc509db266a7",
+        "bytes": 1012534,
+        "sha256": "bfb2a0914a94bf06b026757b7a29d924757caa336b929790860654223ffe2302",
         "obstacles": 942,
         "colliders": 867,
         "concealers": 0

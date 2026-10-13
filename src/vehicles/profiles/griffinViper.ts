@@ -5,6 +5,7 @@ import { buildGriffin50Chassis } from './griffin50X.ts';
 import { KIT } from './kit.ts';
 import { VIPER as D, VIPER_MUZZLES } from '../griffinViperLayout.ts';
 import { GRIFFIN_TURRET_SCALE as S, reduceGriffinTurret } from './griffinProportions.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const { box, cylX, cylY } = KIT;
 
 function launchPods(P: TankBuilderPort): void {
@@ -58,6 +59,8 @@ function sights(P: TankBuilderPort): void {
   }
 }
 export function buildGriffinViper(P: TankBuilderPort): void {
+  // 2026-10-10 (owner): the field net and garnish (ghillieFleetSuits.ts Group C), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildGriffin50Chassis(P);
   P.turretG.position.set(0,2.07,-.36); P.gunG.position.set(0,1.20,0);
   // One convex structural base; no collision hull spanning separated pods.

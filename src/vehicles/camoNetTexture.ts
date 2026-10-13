@@ -54,6 +54,34 @@ export const NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Object.fr
   },
 });
 
+/**
+ * The fleet field nets' palettes (the netting lane's fix round, 2026-10-11; waves 391a and 391c: "a thin layer of flat
+ * pale slivers, like paper or wood shavings ... almost no colour variety"). A crew's field net is dark cord with hessian
+ * and scrim in the theatre's greens and browns: the cord and every strip a step darker than the round-5 issue palette,
+ * olive and brown taken into the desert strips, and boughs kept green-olive rather than straw. The round-5 suits keep
+ * NET_PALETTES.
+ */
+export const FIELD_NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Object.freeze({
+  woodland: {
+    cord: [30, 34, 24],
+    strips: [[[28, 34, 22], 0.2], [[42, 52, 30], 0.24], [[58, 68, 38], 0.18], [[76, 66, 44], 0.16], [[54, 44, 31], 0.22]],
+    boughs: 0.74, boughTint: [0.9, 0.92, 0.84],
+  },
+  // a desert-painted hull in the field wears an olive-drab net and green-olive cut boughs (the references' sand Abrams
+  // under spruce and dark netting): the garnish reads against the sand paint instead of vanishing into it
+  desert: {
+    cord: [52, 52, 38],
+    strips: [[[58, 58, 38], 0.22], [[74, 72, 46], 0.22], [[92, 86, 56], 0.2], [[108, 94, 62], 0.18], [[70, 58, 40], 0.18]],
+    // 2026-10-12 (cam-netting): more of a sand hull's garnish cut boughs than hessian (0.64 -> 0.82): the khaki strips
+    // vanish into the paint, the boughs carry the cover
+    boughs: 0.82, boughTint: [1.0, 0.97, 0.8],
+  },
+  snow: {
+    cord: [104, 104, 98],
+    strips: [[[140, 138, 130], 0.14], [[168, 168, 160], 0.2], [[196, 196, 190], 0.26], [[220, 220, 214], 0.26], [[206, 208, 214], 0.14]],
+    boughs: 0.3, boughTint: [0.95, 0.97, 0.95],
+  },
+});
 
 // ---------------------------------------------------------------------------------------------------------------
 // The garnished net (round 5). Wave 253: "a uniform black square grid ... reading as wire fencing rather than a draped,
@@ -209,9 +237,12 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   }
 }
 
-/** The garnished net and its height map for a theatre (cached per theatre and seed; null without a DOM). */
-export function garnishedNetTextures(theatre: SuitTheatre, seed: number): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
-  const key = `${theatre}:${seed}`;
+/**
+ * The garnished net and its height map for a theatre (cached per theatre, seed and palette set; null without a DOM).
+ * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES).
+ */
+export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+  const key = `${field ? 'field:' : ''}${theatre}:${seed}`;
   if (netCache.has(key)) return netCache.get(key)!;
   let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
@@ -220,7 +251,7 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number): { map:
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d'), hctx = height.getContext('2d');
       if (ctx && hctx) {
-        paintGarnishedNet(ctx, hctx, NET_TEXTURE_PX, NET_PALETTES[theatre], seed);
+        paintGarnishedNet(ctx, hctx, NET_TEXTURE_PX, (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], seed);
         const map = new THREE.CanvasTexture(canvas);
         map.colorSpace = THREE.SRGBColorSpace;
         const bump = new THREE.CanvasTexture(height);

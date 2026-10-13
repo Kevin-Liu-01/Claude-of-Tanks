@@ -11,6 +11,7 @@ import {
   utimesSync,
   writeFileSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
@@ -138,6 +139,26 @@ function restoreTicket(queueDir, name) {
 export function ticketAt(stamp) {
   if (!Number.isSafeInteger(stamp) || stamp <= 0 || stamp >= 1e15) throw new Error(`not a ticket stamp: ${stamp}`);
   return `${String(stamp).padStart(15, '0')}-${'0'.repeat(12)}-${process.pid}.t`;
+}
+
+/** Where a back-dated (place-keeping) lease rejoins the queue (2026-10-13, the coordinator: the media lane's finals
+ *  re-joined at their pre-band stamp ahead of a perf cost hold waiting in the band, so perf waited behind every media
+ *  lease): behind the waiting band tickets whose process `owner` names (its command line matching `pattern`), one past
+ *  the last of them, else at `stamp`. A band ticket is back-dated by more than `bandAgeMs`; normal tickets (stamped as
+ *  they join) never move the stamp. `commandOf(pid)` reads a process's command line (ps by default). */
+export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAULT_QUEUE_DIR, bandAgeMs = 24 * 3600 * 1000,
+  now = Date.now(), commandOf = (pid) => execFileSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' }) } = {}) {
+  let names = [];
+  try { names = readdirSync(queueDir).filter((n) => /^\d{15}-\d{12}-\d+\.t$/.test(n)); } catch { return stamp; }
+  let behind = stamp;
+  for (const name of names) {
+    const at = Number(name.slice(0, 15)), pid = ticketPid(name);
+    if (pid === process.pid || at >= now - bandAgeMs || at < stamp) continue;
+    let command = '';
+    try { command = commandOf(pid); } catch { continue; }
+    if (pattern.test(command)) behind = Math.max(behind, at + 1);
+  }
+  return behind;
 }
 
 export function createCaptureLock({

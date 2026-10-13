@@ -121,6 +121,7 @@ import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
+import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -256,7 +257,7 @@ import { describeError, getEntryTelemetry, installEntryErrorTelemetry } from './
 import {
   bootCapabilityScreen, browserCapabilityHost, capabilitySummary, haltRefusedRenderer, runBootCapabilityGate,
 } from './engine/capabilityGate.ts';
-import { createBattleLoadScreen } from './ui/battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
@@ -1348,6 +1349,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onMapSelect: (mapId: string) => {
     battleIntent.invalidateMapPlan();
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
+    // 2026-10-12 (the perf stream): the loading screen's art for the chosen battlefield, fetched and decoded in idle time
+    if (mapId !== 'random') preloadImageWhenIdle(battleBackdrop(mapId));
     // Guests can browse locally without changing the host's room map. Keep
     // that build alive until canonical room state accepts another map.
     if (!multiplayerLobby?.prepareLobby()) {
@@ -1386,6 +1389,9 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
 const battleLoad = createBattleLoadScreen();
+// 2026-10-13 (the perf stream): the Garage's decorative work (the camo picker's cold swatches) holds under the battle
+// loader, so a battle's entry keeps the main thread for its world build
+garage.setDecorativeWorkGate(() => battleLoad.covering);
 
 // STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
@@ -3508,6 +3514,10 @@ if (pendingRoomInvitePromise) {
 }
 window.__GAME_READY = true;
 pedestal.queueNeighbors();
+// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
+if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
+// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
+primeMapLqipWhenIdle();
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
