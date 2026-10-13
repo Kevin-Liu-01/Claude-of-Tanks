@@ -8,6 +8,7 @@
  * before any lit material compiles.
  */
 import * as THREE from 'three';
+import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
@@ -522,9 +523,20 @@ const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.m
 // receives the SELECTED depth material (shared singleton, variant clone, or
 // custom), so the flip covers all three paths and is a one-time recompile per
 // depth-material variant.
+// The perf stream (2026-10-12/13): the caster-kind settling (shadowDepthKinds.ts) is its own chunk, out of the game
+// entry: the first instanced or batched caster's shadow draw asks for it (the world, the hulls' gear batches and the
+// garage stand's instanced casters draw from the first frames), and until it lands three derives
+// its depth programs as it always did (the same maps either way; the kinds only spare the re-derivations).
+let settleDepthKind: typeof import('./shadowDepthKinds.ts').settleShadowDepthKind | null = null;
+let depthKindsRequested = false;
+function requestDepthKinds(): void {
+  depthKindsRequested = true;
+  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
+    () => { /* three's own derivation for the session */ });
+}
 function patchShadowDepthPacking(): void {
   const hook: THREE.Mesh['onBeforeShadow'] = function (
-    _renderer,
+    renderer,
     object,
     _camera,
     shadowCamera,
@@ -536,6 +548,10 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
+    // three stops re-deriving the shared depth program at every instanced / batched / plain switch
+    if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
+    else if (!depthKindsRequested && (object as { isInstancedMesh?: boolean }).isInstancedMesh) requestDepthKinds();
     // r8 cascade caster proxies (shadowCasterProxies.ts)
     casterProxies?.casterProxyBeforeShadow(object, shadowCamera);
   };
@@ -544,8 +560,19 @@ function patchShadowDepthPacking(): void {
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
+  // the perf stream (2026-10-12): three's BatchedMesh has its own onBeforeShadow (its per-instance culling for the
+  // shadow camera), so the batched casters (the tanks' articulated shadow batch, the gear batches) settle here
+  const batchedBefore = THREE.BatchedMesh.prototype.onBeforeShadow;
+  THREE.BatchedMesh.prototype.onBeforeShadow = function (renderer, object, camera, shadowCamera, geometry, depthMaterial, group) {
+    batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
+    if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
+    else if (!depthKindsRequested) requestDepthKinds();
+  };
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
+  // the perf stream (2026-10-13): three's batch-colour program check reads a property BatchedMesh lacks (every batched
+  // draw re-derived its program); the alias gives it `_colorsTexture` (batchedColorAlias.ts)
+  installBatchedColorTextureAlias();
 }
 
 /** 2026-10-03 (cloudShadeMap.ts): a sun cascade's light × the clouds' share, before its shadow. */
