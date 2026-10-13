@@ -18,6 +18,10 @@
  *    it (the strips over the heap's plateau); one buried by a heap risen after it landed is counted, not failed;
  *  - bodies rest on support: every rigid body comes to rest within the settling time, its lowest point on the ground, on
  *    another body or on a record (none hanging);
+ *  - nothing hangs from the fall: the vertex patch's crumble on every triangle of the building's own parts (the GLSL's
+ *    twin, structureMask crumbleVertexY), sampled as the cut keeps it, 3.6 and 4.1 s into the fall: no fragment stands
+ *    over the front's ragged band and the heap (the owner's "big rectangles": a roof slope or a tower's glazing hung from
+ *    its vertex under the eave band until the fold);
  *  - budget: bodies within the pool's cap, a stage's pieces and run vertices within its caps.
  *
  *   node tools/destruction-check.mjs [--map=urban] [--builders=firestation,cornershop,rowhouse] [--per-builder=1]
@@ -41,7 +45,8 @@ export async function runDestructionCheck({
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
     import('../src/world/maps/index.ts'), import('../src/world/terrain.ts'), import('../src/world/vegetation.ts'),
     import('../src/world/props.ts'), import('../src/world/propsModelStore.ts'), import('../src/vehicles/fleetFactory.ts')]);
-  const { createStructureMask } = await import('../src/fx/structureMask.ts');
+  const maskMod = await import('../src/fx/structureMask.ts');
+  const { createStructureMask } = maskMod;
   const debrisMod = await import('../src/fx/structureDebris.ts');
   const { createStructureStages } = await import('../src/fx/structureStages.ts');
   // (a tree without the rigid rubble — main before 2026-10-12 — is judged too: its pieces by their own program's law)
@@ -272,7 +277,57 @@ export async function runDestructionCheck({
     const moving = lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length;
     if (moving) failures.push(`${moving} of ${inWorld} bodies still moving ${settleS} s after the collapse`);
     if (hangingBody) failures.push(`${hangingBody} bodies at rest in the air`);
-    // 6. budgets
+    // 6. nothing hangs from the fall (a house's crumble, not a shaft's topple): the patch's law on the building's own
+    // triangles (crumbleVertexY; on a tree without it, the law as it stood: a wall vertex never moved), each sampled on a
+    // barycentric grid as the cut keeps it — a fragment over the front's ragged band is cut unless its triangle reaches
+    // the roof
+    let hangingPanel = 0, hangingPanelM = 0;
+    {
+      const stride = maskMod.STRUCT_STRIDE, data = mask.texture.image.data;
+      const A = id * stride * 4, Bt = (id * stride + 1) * 4, Ft = (id * stride + stride - 1) * 4;
+      const start = data[A], H = data[A + 1], baseY = data[Bt + 1], eave = data[Ft] > 0 ? data[Ft] : 0.8 * H;
+      const law = maskMod.crumbleVertexY ?? ((py, t, e) => {
+        const u = Math.min(1, Math.max(0, (t - 0.3) / 3.4)), front = e * (1 - Math.pow(u, 1.5)), roof = py >= e - 0.05;
+        if (!roof) return { y: py, roof };
+        const tr = Math.max(0, t - 0.2);
+        return { y: Math.max(py - 4.9 * tr * tr, front + (py - e) * 0.75 * (1 - u * u) - 1.2 * u * u), roof };
+      });
+      const mound = mounds[0] ?? null;
+      if (start > 0 && data[Ft] >= 0) for (const t of [3.6, 4.1]) {
+        const u = Math.min(1, Math.max(0, (t - 0.3) / 3.4)), front = eave * (1 - Math.pow(u, 1.5));
+        let n = 0;
+        for (const span of seam.spans) {
+          const g = span.mesh.geometry, pos = span.position, ix = g?.index ? g.index.array : null;
+          span.mesh.updateMatrixWorld?.(true);
+          const e = span.mesh.matrixWorld.elements;
+          const lo = span.first, hi = span.first + span.count;
+          const P = [{}, {}, {}];
+          for (let k = ix ? 0 : lo; k + 2 < (ix ? ix.length : hi); k += 3) {
+            const tri = ix ? [ix[k], ix[k + 1], ix[k + 2]] : [k, k + 1, k + 2];
+            if (tri.some((i) => i < lo || i >= hi)) continue;
+            for (let v = 0; v < 3; v++) {
+              const i = tri[v], x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+              P[v].x = x * e[0] + y * e[4] + z * e[8] + e[12];
+              P[v].z = x * e[2] + y * e[6] + z * e[10] + e[14];
+              const r = law(x * e[1] + y * e[5] + z * e[9] + e[13] - baseY, t, eave);
+              P[v].y = r.y; P[v].roof = r.roof ? 1 : 0;
+            }
+            let hangs = false;
+            for (let a = 0; a <= 6 && !hangs; a++) for (let b = 0; b <= 6 - a && !hangs; b++) {
+              const w1 = a / 6, w2 = b / 6, w0 = 1 - w1 - w2;
+              const y = P[0].y * w0 + P[1].y * w1 + P[2].y * w2, roof = P[0].roof * w0 + P[1].roof * w1 + P[2].roof * w2;
+              if (u > 0 && roof < 0.02 && y > front + 0.78) continue;
+              const heap = mound ? rubbleMoundHeightAt(mound, P[0].x * w0 + P[1].x * w1 + P[2].x * w2, P[0].z * w0 + P[1].z * w1 + P[2].z * w2) : 0;
+              if (y > front + 1.05 && y > heap + 1.05) { hangs = true; hangingPanelM = Math.max(hangingPanelM, y); }
+            }
+            if (hangs) n++;
+          }
+        }
+        hangingPanel = Math.max(hangingPanel, n);
+      }
+    }
+    if (hangingPanel) failures.push(`${hangingPanel} of the building's triangles hang over the heap late in its fall (up to ${hangingPanelM.toFixed(1)} m)`);
+    // 7. budgets
     const bs = bodies ? bodies.stats() : { live: 0, settled: 0 };
     if (rubbleMod && bs.live > rubbleMod.RUBBLE_BODY_CAPACITY * 4) failures.push(`bodies over budget (${bs.live})`);
     if (stageCaps.pieces > 1024) failures.push(`a stage threw ${stageCaps.pieces} pieces (cap 1024)`);
@@ -283,7 +338,7 @@ export async function runDestructionCheck({
     frameMs.sort((p, q) => p - q);
     const row = {
       id, builder: seam.builder, kit: a.kit, style: seam.style, fired, collapsedAtS: +collapsedAt.toFixed(2), lastStageS: +lastStage.toFixed(2),
-      holes: holes.length, runs: runs.length, untextured: untextured.length, hangingRim,
+      holes: holes.length, runs: runs.length, untextured: untextured.length, hangingRim, hangingPanel, hangingPanelM: +hangingPanelM.toFixed(2),
       pieces: { thrown, still, stillHanging, overGround, buried, neverLand },
       bodies: { live: bs.live, inWorld, asleep, moving: lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length, onGround, onBody, onRecord, hanging: hangingBody, buried: buriedBody, settled: bs.settled,
         awakeSample: lows.filter((b) => b.awake).slice(0, 4).map((b) => ({ v: +b.v.toFixed(3), w: +b.w.toFixed(3), age: b.age,
