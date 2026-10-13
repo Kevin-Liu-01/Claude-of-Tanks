@@ -51,7 +51,7 @@ import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
-import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
+import { bucketAliases, createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { createRubbleBodies, RUBBLE_BODY_CAPACITY, type RubbleBodies } from './rubbleBodies.ts';
@@ -1144,7 +1144,8 @@ function* createFxSteps(
   };
   const rubble: RubbleBodies | null = mediaTier
     ? createRubbleBodies({ now: () => particles.getTime(), environment: bodyEnvironment, capacity: RUBBLE_BODY_CAPACITY,
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material
+        ?? bucketAliases(bucket).map((alias) => bucketMaterials.get(alias)?.material).find(Boolean) ?? null,
       setupMaterial: (material) => engineCtx?.setupShadowMaterial?.(material) })
     : null;
   if (rubble) group.add(rubble.group);
