@@ -20,7 +20,7 @@
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
 
-export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
+export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'podhale' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
   | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry' | 'terraceSummer' | 'bare';
 
@@ -192,6 +192,11 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   upland: [[0, 0.50], [13, 0.20], [3, 0.08], [1, 0.07], [4, 0.07], [5, 0.08], [2, 0.0]],
   // the strip fields of a Franconian / Saxon village (Gewannflur): many narrow strips, every crop of the rotation
   strip: [[0, 0.16], [1, 0.20], [2, 0.12], [3, 0.14], [4, 0.14], [7, 0.12], [5, 0.12]],
+  // the Podhale's strip fields in January (map revival lane 2, 2026-10-05): oats and potatoes ploughed in, the furrows
+  // showing through a thin snow; the stubble of the rye and the oats; the hay meadows; a strip of barley stubble
+  // (round 2, gauntlet wave 110b: "hard-edged dirt rectangles ... the strips read as yellow bands") the snow lies on all
+  // of them: the plough's share small, the stubble and the meadows most of the rotation, the whole under half the strength
+  podhale: [[4, 0.08], [5, 0.40], [13, 0.40], [2, 0.12]],
   // the chars of the Jamuna: small paddies, flooded, green and ripe, jute and a little grazing
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
@@ -256,6 +261,7 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
+  podhale: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
@@ -336,6 +342,9 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.62, blockU: 200, blockV: 84, maxSplit: 4, marginM: 1.2, trackShare: 0.5, hedgeShare: 0.15,
     warpM: 18, region: 'strip', salt: 67,
   },
+  // Frosthollow (winter) has no land use (map revival lane 2, round 3, 2026-10-06): the Podhale's strip fields under
+  // the January snow showed as a trace at most (strength 0.14–0.26), while the land-use path cost the chase view 1.0–1.5 ms
+  // of GPU in an in-page toggle hold; the 'podhale' region stays for a map that shows its strips.
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)
   delta: {
     strength: 1, heading: 1.05, blockU: 80, blockV: 52, maxSplit: 3, marginM: 0.7, trackShare: 0.12, hedgeShare: 0.12,

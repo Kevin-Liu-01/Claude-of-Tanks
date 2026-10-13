@@ -79,6 +79,9 @@ export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' |
 export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
+  /** map revival lane 2 (2026-10-06, Frosthollow's cost): 0 leaves out the wood and the joinery's cavity map (the AO
+   * sample over a village of log walls; an in-page toggle read it at ~2 ms of the chase view). Absent, unchanged. */
+  woodAo?: 0;
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
   /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
   stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
