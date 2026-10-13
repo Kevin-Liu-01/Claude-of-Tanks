@@ -755,7 +755,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     quad(floorSlot.bucket, floorSlot.tint, 0.45, [0, 1, 0], [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]);
     quad(ceilSlot.bucket, ceilSlot.tint, 0.26, [0, -1, 0], [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]);
     const made = debris.commit();
-    for (const mesh of made) mesh.userData.runOwner = { section: -1, storey: storeyIndex } satisfies RunOwner;
+    for (const mesh of made) {
+      mesh.userData.runOwner = { section: -1, storey: storeyIndex } satisfies RunOwner;
+      // inside the walls its shadow is the building's own; drawn through the default depth program it would stand as a
+      // box's shadow once the building folded away
+      mesh.castShadow = false;
+    }
   }
 
   /**
