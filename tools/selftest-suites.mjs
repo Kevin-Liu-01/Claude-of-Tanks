@@ -1366,6 +1366,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
+    'src/world/terrainSplatFold.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
     'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
