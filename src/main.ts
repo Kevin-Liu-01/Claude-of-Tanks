@@ -3236,6 +3236,8 @@ if (bootWorld) {
   battlePresentation.update();
 }
 await bootStage('post', async () => {
+  // The lazily loaded post passes (SMAA: engine/post.ts) take their places before any frame is warmed or shown.
+  await post.ready;
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;

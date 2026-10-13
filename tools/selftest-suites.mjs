@@ -958,6 +958,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowPrime.selftest.mjs',
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
+    'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
     'src/engine/shadowGeometryClaims.selftest.mjs',
     'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
