@@ -517,11 +517,15 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
   // (the buildings stream, 2026-10-12, the integrity check: the parapet's inside was its culled back, open from above;
   // the lantern stood 0.55 m over the balcony on nothing and the dome hung over it, open underneath) the parapet's
   // inner face, the shaft's core rising through the balcony to the lantern, a cornice under the dome closing it
+  // (parts new to the placement stream take none of its UV draws: props.ts jitterBuildingUvs, so every later
+  // placement on the map keeps its seat)
   const railIn = new THREE.CylinderGeometry(r * 1.12, r * 1.12, 0.62, 12, 1, true);
   scaleUV(railIn, 4, 0.5);
+  railIn.userData.uvJitter = 'none';
   parts.wood.push(insideOut(railIn).translate(0, h + 1.75, 0));
   const core = new THREE.CylinderGeometry(r * 0.66, r * 0.72, 0.9, 12, 1);
   scaleUV(core, 4, 0.5);
+  core.userData.uvJitter = 'none';
   parts.plaster.push(core.translate(0, h + 1.6, 0));
   // lantern + dome + finial
   const lant = new THREE.CylinderGeometry(r * 0.62, r * 0.68, 1.5, 10, 1);
@@ -529,6 +533,7 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
   parts.plaster.push(lant.translate(0, h + 2.75, 0));
   const cornice = new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.16, 12, 1);
   scaleUV(cornice, 3, 0.2);
+  cornice.userData.uvJitter = 'none';
   parts.stone.push(cornice.translate(0, h + 3.47, 0));
   for (let k = 0; k < 4; k++) {
     const op = box(0.34, 0.9, 0.1);

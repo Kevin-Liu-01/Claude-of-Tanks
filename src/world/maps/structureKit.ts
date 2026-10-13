@@ -1198,6 +1198,8 @@ export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 
   for (let i = 0; i < index.count; i += 3) { const b = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b); }
   const normal = shell.getAttribute('normal');
   for (let i = 0; i < normal.count; i++) normal.setXYZ(i, -normal.getX(i), -normal.getY(i), -normal.getZ(i));
+  // (new to the placement stream: it takes none of its UV draws, props.ts jitterBuildingUvs)
+  shell.userData.uvJitter = 'none';
   shell.scale(1, 0.51, 1); shell.translate(-3.0, h, -1.0); out.roof.push(shell);
   // Missing dome quarter and exposed ribs are suggested with black blast
   // panels and leaning steel members rather than overlapping alpha geometry.
