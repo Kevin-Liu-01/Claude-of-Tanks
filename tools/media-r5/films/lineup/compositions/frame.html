@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.bar{position:absolute;left:0;width:100%;height:277px;background:#07090c}
+#lb-top{top:0}#lb-bot{bottom:0}
+</style>
+<div id="root" data-composition-id="frame" data-width="3840" data-height="2160" data-duration="39.5">
+<div id="lb-top" class="bar"></div><div id="lb-bot" class="bar"></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#lb-top', {yPercent:-100}, {yPercent:0, duration:0.9, ease:'power3.out'}, 0.15);
+tl.fromTo('#lb-bot', {yPercent:100}, {yPercent:0, duration:0.9, ease:'power3.out'}, 0.15);
+window.__timelines["frame"] = tl;
+</script>
+</template>
+</body></html>

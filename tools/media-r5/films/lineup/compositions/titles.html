@@ -1,0 +1,113 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.ttl{pointer-events:none}
+.ttl .inner{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end}
+.ttl-section .inner,.ttl-stat .inner,.ttl-line .inner,.ttl-tank .inner{padding:0 0 405px 192px}
+.ttl-section.right .inner{align-items:flex-end;padding-right:192px}
+.ttl-section .word{display:flex;overflow:hidden;font-weight:700;font-size:416px;line-height:.9;letter-spacing:-.02em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.45)}
+.ttl-section .lt,.ttl-tank .lt{display:block}
+.ttl-stat .num{font-weight:700;font-size:368px;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;display:flex;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-stat .lab{font-weight:700;font-size:144px;letter-spacing:.1em;text-transform:uppercase;margin-top:12px;text-shadow:0 4px 30px rgba(7,9,12,.5)}
+.ttl-line.center .inner{align-items:center;justify-content:center;padding:0}
+.ttl-line .ln{font-weight:700;font-size:176px;letter-spacing:.03em;text-transform:uppercase;line-height:1.02;max-width:3456px;text-wrap:balance;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-line.center .ln{text-align:center}
+.ttl-logo .dim{position:absolute;inset:0;background:#07090c}
+.ttl-logo .lockup{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:80px}
+.ttl-logo .mk{width:400px;height:400px}
+.ttl-logo .wm{display:flex;flex-direction:column;gap:16px}
+.ttl-logo .wm span{display:inline-block}
+.ttl-logo .a{font-weight:700;font-size:312px;line-height:.9;letter-spacing:.02em}
+.ttl-logo .b{font-weight:500;font-size:128px;line-height:1;letter-spacing:.34em;color:#ffd27a}
+.ttl-tank .word{display:flex;overflow:hidden;font-weight:700;font-size:304px;line-height:.92;letter-spacing:-.01em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+</style>
+<div id="root" data-composition-id="titles" data-width="3840" data-height="2160" data-duration="39.5">
+<div id="t0" class="clip ttl ttl-line center" data-start="0.625" data-duration="4.063"><div class="inner"><div class="ln">The lineup</div></div></div>
+<div id="t1" class="clip ttl ttl-tank" data-start="5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">K</span><span class="lt">F</span><span class="lt">5</span><span class="lt">1</span><span class="lt">&nbsp;</span><span class="lt">P</span><span class="lt">A</span><span class="lt">N</span><span class="lt">T</span><span class="lt">H</span><span class="lt">E</span><span class="lt">R</span></div></div></div>
+<div id="t2" class="clip ttl ttl-tank" data-start="6.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">L</span><span class="lt">E</span><span class="lt">O</span><span class="lt">P</span><span class="lt">A</span><span class="lt">R</span><span class="lt">D</span><span class="lt">&nbsp;</span><span class="lt">2</span><span class="lt">A</span><span class="lt">6</span></div></div></div>
+<div id="t3" class="clip ttl ttl-tank" data-start="7.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">1</span><span class="lt">A</span><span class="lt">2</span><span class="lt">&nbsp;</span><span class="lt">A</span><span class="lt">B</span><span class="lt">R</span><span class="lt">A</span><span class="lt">M</span><span class="lt">S</span><span class="lt">&nbsp;</span><span class="lt">T</span><span class="lt">U</span><span class="lt">S</span><span class="lt">K</span></div></div></div>
+<div id="t4" class="clip ttl ttl-tank" data-start="8.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">L</span><span class="lt">E</span><span class="lt">C</span><span class="lt">L</span><span class="lt">E</span><span class="lt">R</span><span class="lt">C</span><span class="lt">&nbsp;</span><span class="lt">X</span><span class="lt">L</span><span class="lt">R</span></div></div></div>
+<div id="t5" class="clip ttl ttl-tank" data-start="10" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">-</span><span class="lt">9</span><span class="lt">0</span><span class="lt">M</span></div></div></div>
+<div id="t6" class="clip ttl ttl-tank" data-start="11.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">-</span><span class="lt">1</span><span class="lt">4</span><span class="lt">&nbsp;</span><span class="lt">A</span><span class="lt">R</span><span class="lt">M</span><span class="lt">A</span><span class="lt">T</span><span class="lt">A</span></div></div></div>
+<div id="t7" class="clip ttl ttl-tank" data-start="12.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">S</span><span class="lt">T</span><span class="lt">R</span><span class="lt">I</span><span class="lt">D</span><span class="lt">S</span><span class="lt">V</span><span class="lt">A</span><span class="lt">G</span><span class="lt">N</span><span class="lt">&nbsp;</span><span class="lt">1</span><span class="lt">2</span><span class="lt">2</span></div></div></div>
+<div id="t8" class="clip ttl ttl-tank" data-start="13.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">1</span><span class="lt">A</span><span class="lt">2</span><span class="lt">&nbsp;</span><span class="lt">A</span><span class="lt">B</span><span class="lt">R</span><span class="lt">A</span><span class="lt">M</span><span class="lt">S</span></div></div></div>
+<div id="t9" class="clip ttl ttl-tank" data-start="15" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">L</span><span class="lt">E</span><span class="lt">O</span><span class="lt">P</span><span class="lt">A</span><span class="lt">R</span><span class="lt">D</span><span class="lt">&nbsp;</span><span class="lt">2</span><span class="lt">A</span><span class="lt">7</span><span class="lt">V</span></div></div></div>
+<div id="t10" class="clip ttl ttl-tank" data-start="16.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">Z</span><span class="lt">T</span><span class="lt">Z</span><span class="lt">-</span><span class="lt">1</span><span class="lt">0</span><span class="lt">0</span></div></div></div>
+<div id="t11" class="clip ttl ttl-tank" data-start="17.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">C</span><span class="lt">H</span><span class="lt">A</span><span class="lt">L</span><span class="lt">L</span><span class="lt">E</span><span class="lt">N</span><span class="lt">G</span><span class="lt">E</span><span class="lt">R</span><span class="lt">&nbsp;</span><span class="lt">1</span></div></div></div>
+<div id="t12" class="clip ttl ttl-tank" data-start="18.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">-</span><span class="lt">9</span><span class="lt">0</span><span class="lt">M</span><span class="lt">S</span><span class="lt">&nbsp;</span><span class="lt">T</span><span class="lt">A</span><span class="lt">G</span><span class="lt">I</span><span class="lt">L</span></div></div></div>
+<div id="t13" class="clip ttl ttl-tank" data-start="20" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">K</span><span class="lt">2</span><span class="lt">&nbsp;</span><span class="lt">B</span><span class="lt">L</span><span class="lt">A</span><span class="lt">C</span><span class="lt">K</span><span class="lt">&nbsp;</span><span class="lt">P</span><span class="lt">A</span><span class="lt">N</span><span class="lt">T</span><span class="lt">H</span><span class="lt">E</span><span class="lt">R</span></div></div></div>
+<div id="t14" class="clip ttl ttl-tank" data-start="21.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">-</span><span class="lt">8</span><span class="lt">0</span><span class="lt">U</span></div></div></div>
+<div id="t15" class="clip ttl ttl-tank" data-start="22.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">C</span><span class="lt">1</span><span class="lt">&nbsp;</span><span class="lt">A</span><span class="lt">R</span><span class="lt">I</span><span class="lt">E</span><span class="lt">T</span><span class="lt">E</span></div></div></div>
+<div id="t16" class="clip ttl ttl-tank" data-start="23.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">E</span><span class="lt">R</span><span class="lt">K</span><span class="lt">A</span><span class="lt">V</span><span class="lt">A</span><span class="lt">&nbsp;</span><span class="lt">M</span><span class="lt">K</span><span class="lt">&nbsp;</span><span class="lt">3</span><span class="lt">D</span></div></div></div>
+<div id="t17" class="clip ttl ttl-tank" data-start="25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">E</span><span class="lt">R</span><span class="lt">K</span><span class="lt">A</span><span class="lt">V</span><span class="lt">A</span><span class="lt">&nbsp;</span><span class="lt">M</span><span class="lt">K</span><span class="lt">&nbsp;</span><span class="lt">4</span></div></div></div>
+<div id="t18" class="clip ttl ttl-tank" data-start="26.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">K</span><span class="lt">1</span><span class="lt">A</span><span class="lt">1</span></div></div></div>
+<div id="t19" class="clip ttl ttl-tank" data-start="27.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">Y</span><span class="lt">P</span><span class="lt">E</span><span class="lt">&nbsp;</span><span class="lt">9</span><span class="lt">0</span></div></div></div>
+<div id="t20" class="clip ttl ttl-tank" data-start="28.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">Y</span><span class="lt">P</span><span class="lt">E</span><span class="lt">&nbsp;</span><span class="lt">1</span><span class="lt">0</span></div></div></div>
+<div id="t21" class="clip ttl ttl-tank" data-start="30" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">C</span><span class="lt">H</span><span class="lt">I</span><span class="lt">E</span><span class="lt">F</span><span class="lt">T</span><span class="lt">A</span><span class="lt">I</span><span class="lt">N</span><span class="lt">&nbsp;</span><span class="lt">M</span><span class="lt">K</span><span class="lt">&nbsp;</span><span class="lt">1</span><span class="lt">0</span></div></div></div>
+<div id="t22" class="clip ttl ttl-tank" data-start="31.25" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">1</span><span class="lt">A</span><span class="lt">2</span><span class="lt">&nbsp;</span><span class="lt">A</span><span class="lt">B</span><span class="lt">R</span><span class="lt">A</span><span class="lt">M</span><span class="lt">S</span><span class="lt">&nbsp;</span><span class="lt">S</span><span class="lt">E</span><span class="lt">P</span><span class="lt">V</span><span class="lt">3</span></div></div></div>
+<div id="t23" class="clip ttl ttl-tank" data-start="32.5" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">T</span><span class="lt">-</span><span class="lt">9</span><span class="lt">0</span><span class="lt">S</span><span class="lt">M</span></div></div></div>
+<div id="t24" class="clip ttl ttl-tank" data-start="33.75" data-duration="1.25"><div class="inner"><div class="word"><span class="lt">L</span><span class="lt">E</span><span class="lt">O</span><span class="lt">P</span><span class="lt">A</span><span class="lt">R</span><span class="lt">D</span><span class="lt">&nbsp;</span><span class="lt">2</span><span class="lt">A</span><span class="lt">5</span></div></div></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#t0 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 0.625);
+tl.fromTo('#t0 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 4.368);
+tl.fromTo('#t1 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 5.04);
+tl.to('#t1 .inner', {opacity:0, duration:0.14, ease:'none'}, 6.11);
+tl.fromTo('#t2 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 6.29);
+tl.to('#t2 .inner', {opacity:0, duration:0.14, ease:'none'}, 7.36);
+tl.fromTo('#t3 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 7.54);
+tl.to('#t3 .inner', {opacity:0, duration:0.14, ease:'none'}, 8.61);
+tl.fromTo('#t4 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 8.79);
+tl.to('#t4 .inner', {opacity:0, duration:0.14, ease:'none'}, 9.86);
+tl.fromTo('#t5 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 10.04);
+tl.to('#t5 .inner', {opacity:0, duration:0.14, ease:'none'}, 11.11);
+tl.fromTo('#t6 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 11.29);
+tl.to('#t6 .inner', {opacity:0, duration:0.14, ease:'none'}, 12.36);
+tl.fromTo('#t7 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 12.54);
+tl.to('#t7 .inner', {opacity:0, duration:0.14, ease:'none'}, 13.61);
+tl.fromTo('#t8 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 13.79);
+tl.to('#t8 .inner', {opacity:0, duration:0.14, ease:'none'}, 14.86);
+tl.fromTo('#t9 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 15.04);
+tl.to('#t9 .inner', {opacity:0, duration:0.14, ease:'none'}, 16.11);
+tl.fromTo('#t10 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 16.29);
+tl.to('#t10 .inner', {opacity:0, duration:0.14, ease:'none'}, 17.36);
+tl.fromTo('#t11 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 17.54);
+tl.to('#t11 .inner', {opacity:0, duration:0.14, ease:'none'}, 18.61);
+tl.fromTo('#t12 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 18.79);
+tl.to('#t12 .inner', {opacity:0, duration:0.14, ease:'none'}, 19.86);
+tl.fromTo('#t13 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 20.04);
+tl.to('#t13 .inner', {opacity:0, duration:0.14, ease:'none'}, 21.11);
+tl.fromTo('#t14 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 21.29);
+tl.to('#t14 .inner', {opacity:0, duration:0.14, ease:'none'}, 22.36);
+tl.fromTo('#t15 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 22.54);
+tl.to('#t15 .inner', {opacity:0, duration:0.14, ease:'none'}, 23.61);
+tl.fromTo('#t16 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 23.79);
+tl.to('#t16 .inner', {opacity:0, duration:0.14, ease:'none'}, 24.86);
+tl.fromTo('#t17 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 25.04);
+tl.to('#t17 .inner', {opacity:0, duration:0.14, ease:'none'}, 26.11);
+tl.fromTo('#t18 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 26.29);
+tl.to('#t18 .inner', {opacity:0, duration:0.14, ease:'none'}, 27.36);
+tl.fromTo('#t19 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 27.54);
+tl.to('#t19 .inner', {opacity:0, duration:0.14, ease:'none'}, 28.61);
+tl.fromTo('#t20 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 28.79);
+tl.to('#t20 .inner', {opacity:0, duration:0.14, ease:'none'}, 29.86);
+tl.fromTo('#t21 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 30.04);
+tl.to('#t21 .inner', {opacity:0, duration:0.14, ease:'none'}, 31.11);
+tl.fromTo('#t22 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 31.29);
+tl.to('#t22 .inner', {opacity:0, duration:0.14, ease:'none'}, 32.36);
+tl.fromTo('#t23 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 32.54);
+tl.to('#t23 .inner', {opacity:0, duration:0.14, ease:'none'}, 33.61);
+tl.fromTo('#t24 .lt', {yPercent:105}, {yPercent:0, duration:0.42, ease:'expo.out', stagger:0.022}, 33.79);
+tl.to('#t24 .inner', {opacity:0, duration:0.14, ease:'none'}, 34.86);
+window.__timelines["titles"] = tl;
+</script>
+</template>
+</body></html>

@@ -1,0 +1,366 @@
+{
+ "map": "winter",
+ "timeOfDay": "night",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 414,
+ "actors": [
+  {
+   "id": "leo2a7v_x",
+   "name": "hero",
+   "pos": [
+    -81.08,
+    -97.2
+   ],
+   "facingDeg": 0,
+   "turretDeg": 1.91,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2898,
+   "state": "intact"
+  },
+  {
+   "id": "kf51_x",
+   "name": "ally1",
+   "pos": [
+    -78,
+    -118
+   ],
+   "facingDeg": 0,
+   "turretDeg": 0.83,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2899,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a7v_x",
+   "name": "ally2",
+   "pos": [
+    -82,
+    -136
+   ],
+   "facingDeg": 0,
+   "turretDeg": 2.2,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2900,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "foe0",
+   "pos": [
+    -76,
+    20
+   ],
+   "facingDeg": -178.09,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5382,
+   "state": "burning",
+   "stateAgeS": 30,
+   "authoredBurning": false
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "flare",
+   "at": [
+    -80,
+    -40
+   ],
+   "params": {
+    "heightM": 105,
+    "burnS": 40,
+    "intensity": 1.2,
+    "driftMps": 1.2,
+    "fallMps": 2.6,
+    "color": "white",
+    "launch": false
+   },
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "burning",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx3",
+   "type": "mg_burst",
+   "actor": "hero",
+   "params": {
+    "count": 18
+   },
+   "tMs": 900
+  },
+  {
+   "id": "fx4",
+   "type": "mg_burst",
+   "actor": "ally1",
+   "params": {
+    "count": 18
+   },
+   "tMs": 1000
+  },
+  {
+   "id": "fx5",
+   "type": "mg_burst",
+   "actor": "ally2",
+   "params": {
+    "count": 14
+   },
+   "tMs": 1100
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 2000,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534427,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534427,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534425,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534425,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534425,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534425,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534425,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1750",
+    "tMs": 1750,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534427,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-8",
+    "label": "t2000",
+    "tMs": 2000,
+    "pos": [
+     -78.08484629589489,
+     1.2673885915745624,
+     -111.20301796318189
+    ],
+    "lookAt": [
+     -81.08484629589489,
+     1.1881916026534427,
+     -57.20301796318189
+    ],
+    "fov": 44,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -78.08,
+   1.27,
+   -111.2
+  ],
+  "yawDeg": 176.82,
+  "pitchDeg": -0.08,
+  "rollDeg": 0,
+  "fov": 44,
+  "lookAt": [
+   -79.19,
+   1.24,
+   -91.23
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "ember",
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 29,
+  "id": "b29-tracers",
+  "technique": "Long exposure",
+  "title": "Half-second exposure: machine-gun tracers draw lines across Frosthollow",
+  "set": "frosthollow-night-village",
+  "map": "winter",
+  "time": "night",
+  "film": null,
+  "hero": "leo2a7v_x",
+  "heroName": "Leopard 2A7V",
+  "exposureMs": 500,
+  "tMs": 1250
+ },
+ "crushes": []
+}

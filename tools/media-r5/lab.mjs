@@ -11,7 +11,7 @@ import { resolve, join, basename } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const ROOT = process.cwd();
-const { createCaptureLock, CAPTURE_LOCK_DIR, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
+const { createCaptureLock, CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z0-9-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
 const out = resolve(args.out ?? 'shots/media-r5/lab');
 const WIDTH = Number(args.width ?? 960);
@@ -146,15 +146,35 @@ if (FIFO2) {
 const STAMP = args['ticket-stamp'] ? Number(args['ticket-stamp']) : null;
 const YIELD_HOLDS = Math.max(0, Number(args['yield-holds'] ?? 2));
 const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
+// Only a normal-band hold pays a yield (2026-10-12: two media labs at the same priority stamp each counted the other's
+// hold as the yield it owed and passed the lock between them for 25 minutes, starving every normal ticket). A ticket's
+// name starts with its 15-digit stamp; a priority ticket is stamped back in time (ticketAt), a normal one at about the
+// moment it joined. A new hold whose vanished ticket was back-dated by more than a day is another priority lease.
+const PRIORITY_AGE_MS = 24 * 3600 * 1000;
+const queueTickets = () => { try { return new Map(readdirSync(CAPTURE_QUEUE_DIR).filter((n) => n.endsWith('.t')).map((n) => [n, Number(n.slice(0, 15))])); } catch { return new Map(); } };
 let leaseCount = 0;
 async function take(ms) {
   // (--yield-first: also before the first lease, for a run that follows another media lease straight away)
   if (STAMP && args.lease === 'budget' && (leaseCount > 0 || args['yield-first']) && YIELD_HOLDS) {
-    const seen = new Set();
-    let freeSince = Date.now(), served = 0, readAt = 0;
+    const seen = new Set(), skipped = new Set(), pending = new Map();
+    let freeSince = Date.now(), served = 0, readAt = 0, queue = queueTickets(), left = [];
     for (;;) {
-      const id = holdId();
-      if (id) { seen.add(id); freeSince = Date.now(); }
+      const id = holdId(), tickets = queueTickets(), t = Date.now();
+      // the tickets that left the queue in the last five seconds ([stamp, when]); a new hold is classed by the ticket
+      // that left within three seconds of it (its owner's), waiting up to three seconds for that ticket to go
+      for (const [name, stamp] of queue) if (!tickets.has(name)) left.push([stamp, t]);
+      left = left.filter(([, at]) => t - at < 5000);
+      queue = tickets;
+      if (id && !seen.has(id) && !skipped.has(id) && !pending.has(id)) pending.set(id, t);
+      for (const [hold, first] of pending) {
+        const owners = left.filter(([, at]) => Math.abs(at - first) < 3000);
+        if (!owners.length && t - first < 3000) continue;
+        const priority = owners.length > 0 && owners.every(([stamp]) => stamp < t - PRIORITY_AGE_MS);
+        (priority ? skipped : seen).add(hold);
+        pending.delete(hold);
+        if (priority) console.log(`[lab] a priority-band hold (another media lease) is not a yield ${new Date().toTimeString().slice(0, 8)}`);
+      }
+      if (id) freeSince = t;
       if (FIFO2 && Date.now() - readAt > 5000) {
         readAt = Date.now();
         const now = fifo2Holds();
