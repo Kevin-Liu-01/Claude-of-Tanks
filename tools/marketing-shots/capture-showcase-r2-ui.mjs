@@ -22,13 +22,11 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const outDir = resolve(option('out', join(ROOT, 'shots/showcase-r2/raw')));
-// --config <file>: another shot list in the showcase-r2.json shape (home r2, 2026-10-12), so new pages can be captured
-// without adding rows to the pinned showcase list. Garage rows may carry `localStorage` (seeded before the page loads:
-// camouflage cot.camo.<id>, equipment cot.equip.<id>), `technicalView` (the dossier tab to open: a
-// data-technical-view id or a data-technical-layer such as armor) and `equipmentSlot` (an equipment slot to open the
-// picker on, 0-based).
-const configPath = option('config', null) ? resolve(option('config')) : join(HERE, 'showcase-r2.json');
-const config = JSON.parse(readFileSync(configPath, 'utf8'));
+// COT_CAPTURE_LOAD_TIMEOUT_MS: the page-load waits on a loaded, shared machine (a cold dev-server load of the game
+// can outlast the default there); the default is unchanged.
+const LOAD_MS = Number(process.env.COT_CAPTURE_LOAD_TIMEOUT_MS) || 120000;
+// --config <file>: another shot list in the same shape (r14b: the home page's Garage, tools/marketing-shots/home-garage.json)
+const config = JSON.parse(readFileSync(resolve(HERE, option('config', 'showcase-r2.json')), 'utf8'));
 const onlyIds = new Set((option('ids', '') || '').split(',').filter(Boolean));
 const productShots = config.shots.filter((shot) =>
   ['garage', 'gallery', 'studio', 'mobile'].includes(shot.sourceType)
@@ -87,24 +85,17 @@ try {
   };
 
   await page.setViewport(desktopViewport);
-  const seeded = Object.assign({}, ...productShots.map((shot) => shot.localStorage || {}));
-  if (Object.keys(seeded).length) {
-    await page.evaluateOnNewDocument((entries) => {
-      try { for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value)); }
-      catch { /* storage blocked: defaults apply */ }
-    }, seeded);
-  }
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, {
-    waitUntil: 'domcontentloaded', timeout: 120000,
+    waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
   await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
-    { timeout: 120000 });
+    { timeout: LOAD_MS });
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return stats.architecture?.ready === true && stats.architecture.presented === true;
-  }, { timeout: 120000 });
+  }, { timeout: LOAD_MS });
   await page.waitForFunction(() => window.__GARAGE_WORKSHOP.stats().built === true,
-    { timeout: 120000 }).catch(() => {
+    { timeout: LOAD_MS }).catch(() => {
     console.warn('[showcase-r2-ui] optional workshop did not finish before capture window');
   });
 
@@ -121,19 +112,7 @@ try {
         && stats.selected === variantId && stats.architecture?.ready === true
         && stats.architecture.presented === true;
     }, { timeout: 60000 }, shot);
-    if (shot.technicalView) {
-      await page.evaluate((view) => {
-        const tabs = [...document.querySelectorAll('[data-technical-view]')];
-        (tabs.find((tab) => tab.dataset.technicalView === view) || tabs.find((tab) => tab.dataset.technicalLayer === view))?.click();
-      }, shot.technicalView);
-      await new Promise((resolveWait) => setTimeout(resolveWait, 900));
-    }
-    if (Number.isInteger(shot.equipmentSlot)) {
-      await page.click(`.eqslot[data-slot="${shot.equipmentSlot}"]`);
-      await page.waitForSelector('.cot-eqpick.open', { timeout: 10000 });
-    }
     await capture(shot);
-    if (Number.isInteger(shot.equipmentSlot)) await page.keyboard.press('Escape');
   }
 
   const mobileShot = productShots.find((entry) => entry.sourceType === 'mobile');
@@ -157,10 +136,10 @@ try {
   await page.setViewport(desktopViewport);
   const galleryShots = productShots.filter((entry) => entry.sourceType === 'gallery');
   await page.goto(`${baseUrl}/gallery.html?id=${galleryShots[0]?.vehicleId || 'k2'}`, {
-    waitUntil: 'domcontentloaded', timeout: 120000,
+    waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true,
-    { timeout: 120000 });
+    { timeout: LOAD_MS });
   for (const shot of galleryShots) {
     errors = [];
     const mode = shot.mode === 'hero' ? 'appearance' : shot.mode;
@@ -181,10 +160,10 @@ try {
     const scene = JSON.parse(readFileSync(
       join(HERE, 'scenes-action-r3/85_action_urban_alley_flash.json'), 'utf8'));
     await page.goto(`${baseUrl}/?studio=1&map=urban&nogate=1`, {
-      waitUntil: 'domcontentloaded', timeout: 120000,
+      waitUntil: 'domcontentloaded', timeout: LOAD_MS,
     });
     await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true,
-      { timeout: 120000 });
+      { timeout: LOAD_MS });
     await page.evaluate(async (nextScene) => {
       await window.__STUDIO.load(nextScene);
       window.__STUDIO.seek(nextScene.fxTime || 0);
