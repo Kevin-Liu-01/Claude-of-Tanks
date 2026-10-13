@@ -237,8 +237,10 @@ function gasHolder(ctx: RegionalBuildContext): RegionalParts {
       const u = (look() - 0.5) * R, py = H * (0.3 + look() * 0.4), pw = 1.2 + look(), ph = 0.9 + look() * 0.6;
       // (on the lift it falls on: each lift 0.35 m inside the one below)
       const rr = R - Math.min(lifts - 1, Math.max(0, Math.floor((py + 0.4) / ((H + 0.4) / lifts)))) * 0.35;
-      const a = Math.asin(Math.max(-0.95, Math.min(0.95, u / rr)));
-      facePanel(sink, 'dark', { origin: [Math.sin(a) * rr, 0, Math.cos(a) * rr], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.0, pw, ph, { decor: true });
+      // (the lift is a 16-sided drum: the patch lies on the flat side nearest where it falls, at that side's distance)
+      const seg = Math.PI / 8, th = Math.PI / 2 - Math.asin(Math.max(-0.95, Math.min(0.95, u / rr)));
+      const a = Math.PI / 2 - (Math.floor(th / seg) + 0.5) * seg, ap = rr * Math.cos(seg / 2);
+      facePanel(sink, 'dark', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { decor: true });
     }
     // the station's wall round the lot under a brick coping, the gate's leaves shut in its front run
     const wy = 2.0;
