@@ -12,7 +12,10 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // and the event kinds gain structure_stage, structure_breach and terrain_crater.
 // 5 (physics, 2026-10-10): entity rows carry a wreck's turret body (ROW_GROUP.WRECK_BODY): its pose while it flies and
 // where it lies once it sleeps, the authority's (sim/wreckTurrets.ts).
-export const WIRE_VERSION = 5;
+// 6 (the MP stream, 2026-10-13): a snapshot's destroyed-prop set is the smaller of a gap list and a bitset over the
+// obstacle index (destroyedSet.ts) — wire 5's list was capped at 4,096 and the encoder threw past it, below Monsoon's
+// 9,119 crushable props; now any legal set fits (at most 8 KB).
+export const WIRE_VERSION = 6;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -37,7 +40,8 @@ export const MAX_SHELLS = 256;
 export const MAX_SEATS = 64;
 export const MAX_CONTROLS_PER_INPUT = 3;
 export const MAX_EVENTS_PER_MESSAGE = 64;
-export const MAX_DESTROYED_PER_SNAPSHOT = 4096;
+/** Destroyed props one snapshot can name: every obstacle index 0..MAX_DESTROYED_INDEX (wire 6, destroyedSet.ts). */
+export const MAX_DESTROYED_PER_SNAPSHOT = 0x10000;
 export const MAX_ERA_PER_ROW = 4096;
 export const MAX_MOVEMENT_VALUES = 64;
 
