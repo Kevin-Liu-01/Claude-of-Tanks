@@ -112,7 +112,7 @@ const OPEN_BY_DESIGN = new Set(['ruin', 'watertower', 'gantry', 'broadcasttower'
   'snowFence', 'oreBin', 'valveTower', 'jamesway', 'airstrip', 'containerRow', 'parkingdeck',
   // kit builders standing for frames under a plot's name: Ironworks' pit headframe and blast furnace, Caldera's lattice
   // stack, Skybridge's switchyard
-  'saar/firestation', 'saar/factory', 'kyushu/stack', 'glencanyon/terracetower']);
+  'saar/firestation', 'saar/factory', 'kyushu/stack', 'glencanyon/terracetower', 'shanghai/civichall']);
 const openByDesign = (builder, kit) => OPEN_BY_DESIGN.has(builder) || (!!kit && OPEN_BY_DESIGN.has(`${kit}/${builder}`));
 /** The maps source's views: four rings and the overhead view, 7 cm pixels up to 288 px. */
 const MAP_VIEW_OPTIONS = Object.freeze({ elevations: [-25, 0, 20, 45], pxM: 0.07, maxRes: 288 });
