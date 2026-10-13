@@ -162,6 +162,23 @@ export interface StructureStagesOptions {
  *  section): a section's fall takes its own runs, a storey's drop its storey's. */
 interface RunOwner { section: number; storey: number }
 
+/**
+ * (the destruction check, Monsoon: a thatched granary's heap in the default kit's 'straw' bucket fell to the untextured
+ * fallback while the world draws its thatch as 'thatch') a bucket the world does not draw under that name takes the
+ * world's own material of the same stuff: thatch, straw and hay; a regional bucket and its base twin.
+ */
+const BUCKET_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  straw: ['thatch', 'hay'], hay: ['thatch', 'straw'], thatch: ['straw', 'hay'],
+  stone: ['regionalStone'], regionalStone: ['stone'], roof: ['regionalRoof'], regionalRoof: ['roof'],
+  wood: ['structureWood'], structureWood: ['wood'], plaster: ['regionalPlaster', 'plaster2'], regionalPlaster: ['plaster'],
+  plaster2: ['regionalPlaster2', 'plaster'], regionalPlaster2: ['plaster2', 'regionalPlaster'],
+  plaster3: ['regionalPlaster3', 'plaster'], regionalPlaster3: ['plaster3', 'regionalPlaster'],
+});
+/** The world's buckets of the same stuff as `bucket`, in the order a missing one is looked for. */
+export function bucketAliases(bucket: string): readonly string[] {
+  return BUCKET_ALIASES[bucket] ?? [];
+}
+
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
   const { mask, debris } = o;
 
@@ -551,6 +568,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     return changed;
   }
 
+  const worldMaterial = (byBucket: Map<string, THREE.Material>, bucket: string): THREE.Material | null => {
+    const own = byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null;
+    if (own) return own;
+    for (const alias of bucketAliases(bucket)) {
+      const m = byBucket.get(alias) ?? o.materialFor?.(alias) ?? null;
+      if (m) return m;
+    }
+    return null;
+  };
   // a bucket no mesh of this world draws: a plain lit material over the writer's own vertex tints (made once per bucket)
   const fallbacks = new Map<string, THREE.Material>();
   function fallbackFor(bucket: string): THREE.Material {
@@ -624,7 +650,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number, holeKind?: 'blast' | 'pierce'): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => {
-      const own = byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null;
+      const own = worldMaterial(byBucket, bucket);
       return role === 'room' ? roomMaterialFor(own) : own ?? fallbackFor(bucket);
     };
     const depths = standing ? depthMaterials(seam) : null;
@@ -702,7 +728,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const floorSlot = storey.floor?.structure ?? coreSlot;
     const ceilSlot = above?.floor?.structure ?? a.roof?.structure ?? floorSlot;
     const byBucket = spanMaterials(seam);
-    const resolve = (bucket: string): THREE.Material => roomMaterialFor(byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? null);
+    const resolve = (bucket: string): THREE.Material => roomMaterialFor(worldMaterial(byBucket, bucket));
     const out = debris.begin(a.placement, resolve, 0, settled, { tag: STAGE_RUN_TAG + seam.structureIdx + 1, pieces: false });
     const m = out.mesh;
     // a quad facing `n` (body frame), its tile laid by the bucket's density on the plane it faces
