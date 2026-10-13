@@ -116,9 +116,15 @@ assert.match(main,
   /onGarageVariantMenuIntent:[\s\S]{0,900}previewWarmVariant[\s\S]{0,900}garageStage\.prepareVariant\(previewWarmVariant\.id\)/,
   'selector intent must warm one bounded outdoor scene before its first reveal');
 
+// The post-ready block runs from GAME_READY to the boot_ready report (__BOOT_TIMINGS). The dressing scheduler is armed
+// inside it, in order, not within a character distance: 2026-10-13 (integ/222) the battle loader's idle preloads (the
+// pending map's loading art, 77c55d021, and its blurred placeholders, 03b3001d6) moved the call past the old 500-char
+// window while the block itself was unchanged.
 const readyAt = main.indexOf('window.__GAME_READY = true;');
-assert(readyAt >= 0);
-assert.match(main.slice(readyAt, readyAt + 500), /scheduleGarageDressingBuild\(\)/,
+const bootReportAt = main.indexOf('window.__BOOT_TIMINGS = BOOT_TIMINGS;', readyAt);
+assert(readyAt >= 0 && bootReportAt > readyAt, 'the post-ready block ends at the boot_ready report');
+const armAt = main.indexOf('scheduleGarageDressingBuild()', readyAt);
+assert(armAt > readyAt && armAt < bootReportAt,
   'the post-ready garage path must arm the dressing scheduler');
 
 assert.match(garageReturn,
