@@ -184,9 +184,10 @@ const kapelle: RegionalBuilder = (ctx) => {
   faceBox(sink, 'dark', front, 0, 3.12, 0.1, 0.44, 0.82, 0.02, DECOR);
   faceBox(sink, 'stone', front, 0, 3.14, 0.18, 0.16, 0.66, 0.12, DECOR);
   if (frame.roof.gable) {
-    const top = frame.roof.ridgeTopY;
-    sink.span('stone', -0.06, top - 0.1, D / 2 + 0.05, 0.06, top + 0.75, D / 2 + 0.17, DECOR);
-    sink.span('stone', -0.26, top + 0.38, D / 2 + 0.05, 0.26, top + 0.5, D / 2 + 0.17, DECOR);
+    // (stood on the half-hip's toe over the gable wall: the hip clips the gable below the ridge)
+    const cz = D / 2 - 0.06, top = frame.roof.topAt(0, cz) ?? frame.roof.ridgeTopY;
+    sink.span('stone', -0.06, top - 0.2, cz - 0.06, 0.06, top + 0.75, cz + 0.06, DECOR);
+    sink.span('stone', -0.26, top + 0.38, cz - 0.06, 0.26, top + 0.5, cz + 0.06, DECOR);
   }
   // the ridge turret: a slated square stage with its bell openings, its spire and finial, a third of the way back
   const rg = frame.roof, z = rg.halfD * 0.42;
