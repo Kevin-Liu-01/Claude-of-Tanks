@@ -55,23 +55,27 @@ const isruGantry: RegionalBuilder = (ctx) => {
   for (let k = 0; k <= 4; k++) strut(sink, [-span / 2 + k * span / 4, y1, -hz], [-span / 2 + k * span / 4, y1, hz], 0.12, WHITE, true);
   // the trolley over the hopper, its bucket hanging on its cables
   const tx = -span * 0.12 + (rng() - 0.5) * span * 0.2;
-  sink.span(M, tx - 0.9, y0 - 0.5, -hz + 0.2, tx + 0.9, y0 - 0.05, hz - 0.2, { colour: ORANGE });
-  for (const z of [-0.5, 0.5]) strut(sink, [tx, y0 - 0.5, z], [tx, 5.2, z], 0.04, DARK, true);
+  // (its frame under the bottom chords, its wheels on them)
+  sink.span(M, tx - 0.9, y0 - 0.5, -hz - 0.05, tx + 0.9, y0 + 0.02, hz + 0.05, { colour: ORANGE });
+  for (const z of [-0.5, 0.5]) strut(sink, [tx, y0 - 0.48, z], [tx, 5.18, z], 0.04, DARK, true);
   sink.span(M, tx - 0.8, 4.3, -0.8, tx + 0.8, 5.2, 0.8, { colour: shade(ORANGE, 0.8), decor: true });
   // the hopper and the processing drum under the bridge, on their stands
   sink.span(M, -1.2, 0, -1.2, 1.2, 0.35, 1.2, { colour: DARK });
   for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) sink.span(M, x - 0.1, 0.35, z - 0.1, x + 0.1, 3.2, z + 0.1, { colour: STEEL });
   sink.cylinder(M, [0, 3.2, 0], 'y', 1.4, 1.35, 12, { colour: WHITE }, 0.35);
   sink.cylinder(M, [0, 4.6, 0], 'y', 0.5, 1.35, 12, { colour: PANEL });
-  sink.cylinder(M, [span * 0.22, 0.6, 0], 'x', span * 0.18, 1.0, 14, { colour: WHITE });
+  // (the drum on its two saddles, its inspection port let into its side at the axis)
+  sink.cylinder(M, [span * 0.22, 1.15, 0], 'x', span * 0.18, 1.0, 14, { colour: WHITE });
   for (const x of [span * 0.22 + 0.2, span * 0.22 + span * 0.18 - 0.2]) sink.span(M, x - 0.12, 0, -0.9, x + 0.12, 0.6, 0.9, { colour: DARK });
-  faceBox(sink, M, { origin: [span * 0.22 + span * 0.09, 0, 1.0], u: [1, 0, 0], out: [0, 0, 1], width: span * 0.18 }, 0, 1.2, 0.02, 0.6, 0.6, 0.04, { colour: CELL, decor: true });
+  faceBox(sink, M, { origin: [span * 0.22 + span * 0.09, 0, 0.9], u: [1, 0, 0], out: [0, 0, 1], width: span * 0.18 }, 0, 1.15, 0.05, 0.6, 0.6, 0.12, { colour: CELL, decor: true });
   // the feed conveyor rising from the heap at the -x pier to the hopper's mouth
   if (!mobile) {
+    // (its tail pulley's frame on the ground, its trestles under the belt)
     strut(sink, [-span / 2 + 1.4, 0.6, 0], [-1.3, 4.6, 0], 0.5, STEEL);
+    sink.span(M, -span / 2 + 1.0, 0, -0.4, -span / 2 + 1.8, 0.75, 0.4, { colour: DARK });
     for (let k = 1; k < 4; k++) {
       const x = -span / 2 + 1.4 + k * (span / 2 - 2.7) / 4, y = 0.6 + k * 4.0 / 4;
-      strut(sink, [x, 0, -0.3], [x, y - 0.3, -0.3], 0.1, STEEL, true);
+      strut(sink, [x, 0, 0], [x, y - 0.15, 0], 0.1, STEEL, true);
     }
   }
   // the regolith heap at the conveyor's foot (the masonry's own stone in rough blocks, low)
@@ -117,7 +121,7 @@ const cargoModules: RegionalBuilder = (ctx) => {
     for (let c = 0; c < 3; c++) sink.span('stone', s < 0 ? ex : ex - (1.0 - c * 0.3), c * 0.55 - (c === 0 ? 0.3 : 0), zc - len / 2 + 0.2,
       s < 0 ? ex + (1.0 - c * 0.3) : ex, (c + 1) * 0.55, zc + len / 2 - 0.3);
   }
-  const cy = 2 * r + 0.45;
+  const cy = 2 * r + 0.32; // (the catwalk's deck on the hulls' crowns)
   sink.span(M, bb.minX + 0.4, cy, zc - 0.35, bb.maxX - 0.4, cy + 0.06, zc + 0.35, { colour: STEEL, decor: true });
   if (!mobile) {
     // the catwalk's handrails on their posts
