@@ -183,8 +183,9 @@ assert(supportShoes>=120,'all four layouts on both geometry tiers exercised thei
 // (main 7a257c3ed, ledger rows) they drew 132.3k (Husarz), 129.4k (Zubr) and 141.2k (Zubr II) triangles at HIGH, the
 // Zubr II's LOW already 75.4 % of its HIGH. The suit (garnishBudget: 70 % of each clump's cards, broader; 35 % of them
 // at LOW) adds 7.3-7.9k at HIGH over the screen scrim it replaces: this census 140.0k, 136.5k and 148.6k at HIGH, LOW
-// 73.4, 72.8 and 74.8 %. Frozen here with 1.5k over that census: each stays under its ceiling at HIGH, LOW under 75 % of
-// HIGH, and the LOW garnish under a quarter of the HIGH's.
+// 73.4, 72.8 and 74.8 % (with netting-proper's turned fallbacks, a76057e82: 140.2k, 136.7k, 148.7k; 73.3, 72.7, 74.7 %).
+// Frozen here with 1.5k over the first census: each stays under its ceiling at HIGH, LOW under 75 % of HIGH, and the
+// LOW garnish under a quarter of the HIGH's.
 const CEILINGS={pl_t80u_modern:141600,pl_t72b3_modern:138100,pl_t72b3_zubr_ii:150200};
 for(const [id,ceiling] of Object.entries(CEILINGS)){
  const {high,low}=costs[id];
