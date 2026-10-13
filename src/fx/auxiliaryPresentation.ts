@@ -386,7 +386,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
-      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
+      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)),SMOKE_DURATION_S-t);
     }
     // 7. (fx 8l) the decay: the eroding wall's top and edges taken by the scene's wind, thinning for 10-20 s past the
     //    sight block (born inside the drifting bank while the simulation still blocks)
@@ -401,7 +401,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       smokeHoldInside(screen,bank-2,volume,at);
       const x=at.x,z=at.z;
       const life=DECAY_LIFE_S[0]+R()*(DECAY_LIFE_S[1]-DECAY_LIFE_S[0]);
-      smokeDecayHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.6+R()*2.4,z,life,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)));
+      // (EF.03, the SSOT rule) past the 18 s sight block a veil only fades: its fade is under way by then
+      smokeDecayHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.6+R()*2.4,z,life,t-to,Math.max(1.6,2*(smokeWallRoom(screen,bank-2,x,z)+1)),SMOKE_DURATION_S-t);
     }
   }
   /** (fx 8m, wave 337: "no visible strike or bounce at the wall") every canister's strikes on its way, over screen ages

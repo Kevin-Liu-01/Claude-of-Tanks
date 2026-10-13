@@ -40,7 +40,7 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
       rand: Math.random, groundY: () => 0,
       media: (m) => puffs.push({ birth: clock.now + m.birthOffset, x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz,
         drag: m.drag, windK: m.windK, life: m.life, size0: m.size0, size1: m.size1, growExp: m.growExp, density: m.density,
-        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, heat: m.heat, cool: m.cool }),
+        r0: m.r0, medium: m.medium, aspect: m.aspect, fadeIn: m.fadeIn, fadeOut: m.fadeOut, heat: m.heat, cool: m.cool }),
       chunk() {}, flash: (o) => flashes.push(clock.now + o.birthOffset), fire() {}, sparks: (o) => sparks.push(clock.now + o.birthOffset),
       jet() {}, shockRing() {}, lightPulse() {}, glow() {}, distBoost: () => 1, tier: 1,
       m: makeVolumePuff(), k: {},
@@ -82,6 +82,13 @@ console.log('auxiliaryPresentation: visible flight, delayed snapshot parity, tra
     const end = p.birth + p.life - (screen.born + SMOKE_DURATION_S);
     if (end > 0.65) assert.ok(p.density <= 0.3 && end <= 20 + 1e-6, `only a thin haze outlives the screen (+${end.toFixed(1)} s, density ${p.density})`);
     assert.ok(Number.isFinite(p.x + p.y + p.z + p.vx + p.vy + p.vz + p.life + p.size1), 'finite records');
+  }
+  // (EF.03, the SSOT rule: visible smoke may not outlast the 18 s sight block by more than its fade) whatever lives past
+  // the sight block is already fading by its end: no veil holds its density after the screen stops blocking
+  for (const p of at60.puffs) {
+    if (p.birth + p.life <= screen.born + SMOKE_DURATION_S + 0.65) continue;
+    assert.ok(p.birth + p.fadeOut * p.life <= screen.born + SMOKE_DURATION_S + 1e-6,
+      `past the sight block a puff only fades (its fade from +${(p.birth + p.fadeOut * p.life - screen.born).toFixed(1)} s)`);
   }
   {
     const tail = at60.puffs.filter((p) => p.birth + p.life > screen.born + SMOKE_DURATION_S + 8);

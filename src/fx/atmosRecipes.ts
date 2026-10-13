@@ -323,7 +323,7 @@ export function smokeBankBody(C: BlastContext, R: () => number, x: number, y: nu
  * and fraying away by the screen's end. Its density hides nothing: the simulation stops blocking sight by then.
  */
 export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, wx: number,
-  wz: number, life: number, bo: number, maxSize = Infinity): void {
+  wz: number, life: number, bo: number, maxSize = Infinity, fadeBy = Infinity): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   // a near-constant drift (drag 0.05 keeps ~90 % of it over the tail's few seconds)
@@ -331,7 +331,9 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
   m.drag = 0.05; m.rise = 0.04; m.windK = 0; m.grav = 0;
   m.life = life; m.size1 = Math.min(13 + R() * 2.5, maxSize); m.size0 = Math.min(9, m.size1 * 0.7); m.growExp = 1.4;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
-  look(C, SCREEN_AGED, SCREEN_AGED, 0.26, 1.0, 0.45);
+  // (EF.03, the SSOT rule: visible smoke may not outlast the 18 s sight block by more than its fade) `fadeBy`: the
+  // seconds after its birth by which its fade has begun (the sight block's end)
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.26, 1.0, Math.min(0.45, Math.max(0, fadeBy / life)));
   book(C, R, 'billow', life * 1.1, 24 + Math.floor(R() * 20), 1.45 + R() * 0.3);
   C.media(m);
 }
@@ -343,7 +345,7 @@ export function smokeScreenHaze(C: BlastContext, R: () => number, x: number, y: 
  * simulation still blocks and lingering 10-20 s after it stops (the gameplay duration is matchRuleset's, untouched).
  */
 export function smokeDecayHaze(C: BlastContext, R: () => number, x: number, y: number, z: number, life: number,
-  bo: number, maxSize = Infinity): void {
+  bo: number, maxSize = Infinity, fadeBy = Infinity): void {
   const m = C.m;
   m.x = x; m.y = y; m.z = z; m.birthOffset = bo;
   m.vx = (R() - 0.5) * 0.4; m.vy = 0.15 + R() * 0.2; m.vz = (R() - 0.5) * 0.4;
@@ -351,7 +353,8 @@ export function smokeDecayHaze(C: BlastContext, R: () => number, x: number, y: n
   // (fx 8m) `maxSize`: a veil born by a wall is no wider than the caller's room there (fix/smoke-collision's walls)
   m.life = life; m.size1 = Math.min(15 + R() * 5, maxSize); m.size0 = Math.min(7 + R() * 2, m.size1 * 0.6); m.growExp = 1.5;
   m.rot = (R() - 0.5) * 0.6; m.spin = (R() - 0.5) * 0.02;
-  look(C, SCREEN_AGED, SCREEN_AGED, 0.18 + R() * 0.06, 1.6, 0.3);
+  // (EF.03) its fade under way by `fadeBy` seconds after its birth (the sight block's end)
+  look(C, SCREEN_AGED, SCREEN_AGED, 0.18 + R() * 0.06, 1.6, Math.min(0.3, Math.max(0, fadeBy / life)));
   book(C, R, 'billow', life * 1.05, 16 + Math.floor(R() * 24), 1.3 + R() * 0.4);
   C.media(m);
 }
