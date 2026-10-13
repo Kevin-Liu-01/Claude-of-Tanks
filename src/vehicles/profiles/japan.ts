@@ -13,6 +13,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as mountFitting } from './fittingMount.ts';
 import { sampleConvexArmorFace as sampleFace } from './armorFaceSampling.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -30,6 +31,8 @@ interface JapaneseBuilderPort {
     readonly dark: THREE.Material;
     readonly detail: THREE.Material;
     readonly shadow: THREE.Material;
+    readonly canvasCloth: THREE.MeshStandardMaterial;
+    readonly wheels?: THREE.MeshStandardMaterial;
   };
   readonly q?: boolean;
   readonly rng: () => number;
@@ -52,6 +55,7 @@ interface JapaneseBuilderPort {
     ): void;
   };
   readonly spec: {
+    readonly id: string;
     readonly armor: {
       readonly gunPivot: readonly [number, number, number];
       readonly turretPivot: readonly [number, number, number];
@@ -807,6 +811,8 @@ function addType90APackage(P: JapaneseBuilderPort): void {
 }
 
 function buildType90A(P: JapaneseBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildType90(P);
   addType90APackage(P);
 }
@@ -930,6 +936,8 @@ function addType10BPackage(P: JapaneseBuilderPort): void {
 }
 
 function buildType10B(P: JapaneseBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   // §5.336: the shared base is the rebuilt ×1.10 buildType10Native2026
   // (the §5.299 byte-pin retired by owner authority; buildType10BBase now
   // delegates). The B-variant identity rides on top, re-seated at scale.

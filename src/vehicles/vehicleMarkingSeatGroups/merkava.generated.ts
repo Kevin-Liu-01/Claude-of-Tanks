@@ -161,14 +161,14 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.8391329,
-          1.1283463,
+          1.8363856,
+          0.9290424,
           -0.2934999
         ],
         "quaternion": [
-          -0.0063639,
-          0.7070781,
           0.0063639,
+          0.7070781,
+          -0.0063639,
           0.7070781
         ],
         "surfaceMesh": "hull",
@@ -176,21 +176,21 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.001684
+        "maximumSurfaceErrorM": 0.0071278
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.8358741,
-          1.1281303,
+          1.8386214,
+          0.9292584,
           -1.1129999
         ],
         "quaternion": [
-          0.0063639,
-          0.7070781,
           -0.0063639,
+          0.7070781,
+          0.0063639,
           0.7070781
         ],
         "surfaceMesh": "hull",
@@ -198,7 +198,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.001684
+        "maximumSurfaceErrorM": 0.0118842
       }
     ]
   },
@@ -259,30 +259,30 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.7025481,
-          0.3380616,
-          -1.8754328
+          1.3770334,
+          0.5099118,
+          -1.2745715
         ],
         "quaternion": [
-          -0.0366797,
-          0.7061546,
-          0.0366797,
-          0.706155
+          -0.2403536,
+          0.6832785,
+          0.2287873,
+          0.6503976
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava4b",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.1868234
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0055723
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.6849731,
-          0.5067816,
+          1.6969981,
+          0.3913416,
           -2.148686
         ],
         "quaternion": [

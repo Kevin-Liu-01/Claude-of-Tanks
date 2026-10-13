@@ -499,44 +499,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.5899027,
+          1.3176955,
           0.35844,
-          -1.6185497
+          -2.8959367
         ],
         "quaternion": [
           0,
-          0.7365307,
+          0.8591076,
           0,
-          0.6764041
+          0.511795
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "leo2_revolution",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0093714
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.5227652,
-          0.35844,
-          -2.4032029
+          1.5597404,
+          0.2542283,
+          -1.9126882
         ],
         "quaternion": [
-          0,
-          0.7372812,
-          0,
-          0.675586
+          0.2310901,
+          0.6932702,
+          -0.2158643,
+          0.6475928
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "leo2_revolution",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.5014593
       }
     ]
   },
@@ -690,15 +690,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4791912,
-          0.4168,
-          -0.5265962
+          -1.4570104,
+          0.1012577,
+          -0.5262544
         ],
         "quaternion": [
-          0,
-          -0.7449088,
-          0,
-          0.6671663
+          0.1447271,
+          -0.7109613,
+          0.1372737,
+          0.6743471
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "kf51b",

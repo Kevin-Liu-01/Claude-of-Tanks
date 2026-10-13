@@ -18,6 +18,13 @@ const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json')
 // hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
 const AUTHORED_DOCKS=[
  {id:'bmpt_t90',chosen:{frame:'turret',x:.07,y:1.3280000162124634,z:.09,payloadOffset:[-.24,-.24],braced:true},riseM:.32},
+ // Lens-clear docks (the netting lane, 2026-10-11): at these spots the generator's first trial stood in a sight's or
+ // periscope's view (each tagged lens's 25-degree cone met the dock's boxes before armour), so the clear seat and its
+ // rise are authored and survive a regeneration; every support, weapon, launch and seed/LOD check still runs.
+ {id:'ariete_c2',chosen:{frame:'turret',x:.8387,y:.8912415813239872,z:1.0499,payloadOffset:[0,.36]},riseM:.045},
+ {id:'ariete_c2_x',chosen:{frame:'turret',x:.8264,y:1.056710478085595,z:-2.0435},riseM:.125},
+ {id:'m1a2_tusk_x',chosen:{frame:'turret',x:1.0848,y:.7605683361436865,z:.6888,payloadOffset:[.24,0]},riseM:.045},
+ {id:'ua_t72b3m_hetman_ii',chosen:{frame:'turret',x:.43,y:.8780769258984433,z:-1.92,payloadOffset:[0,-.48]},riseM:.085},
 ];
 const hintsPath=value('--hints',''),fileHints=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
 const hintRows=[...AUTHORED_DOCKS.filter(dock=>!fileHints.some(row=>row.id===dock.id)),...fileHints];
