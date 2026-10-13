@@ -6,7 +6,8 @@
     "deliver": "shots/media-r5/site50/deliver-r14",
     "frames": "shots/media-r5/final/blur-r14/renders",
     "framesFallback": "shots/media-r5/final/blur-r13/renders",
-    "trailer": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4"
+    "trailer": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
+    "home": "shots/media-r5/home-r2/deliver"
   },
   "takes": {
     "s01-main-street-push": {
@@ -546,7 +547,508 @@
         "id": "s29-fjord-road-kill",
         "still": "moment"
       }
-    }
+    },
+    "shots": "The home page's own shots (home r2, 2026-10-12; owner: \"update all of these images to use new shots that are a lot better! and add far more mechanics ... and make a new section highlighting all game modes with custom shots for all of them\"). Each slot of features, mechanics and modes is delivered as <sources.home>/<group>/<id>.png (shots/media-r5/home-r2/shot-list.json says what it must show and how it is staged); site-media.mjs builds it into home/<group>/<id>.webp and site-media-wire.mjs points the slot at it. Until then the slot shows its stand-in, a site fifty still. The Studio card's loop is delivered as features/studio.webm with the recorder's manifest as features/studio.json.",
+    "features": [
+      {
+        "id": "garage",
+        "alt": {
+          "en": "The Garage in the Verdant Motor Pool: a KF51 Panther on the pedestal with its armor card, equipment loadout and the vehicle carousel",
+          "zh": "翠绿集结场里的车库：基座上的 KF51 Panther，旁边是它的装甲卡、装备配置与载具轮播"
+        },
+        "standIn": {
+          "id": "s01-main-street-push",
+          "still": "close"
+        }
+      },
+      {
+        "id": "multiplayer",
+        "alt": {
+          "en": "Two players' live views from one room: a Challenger 3 and a T-90M aim at each other across Verdant Fields at sunset",
+          "zh": "同一房间里两名玩家的实时视角：日落时分，Challenger 3 与 T-90M 隔着翠野原互相瞄准"
+        },
+        "standIn": {
+          "id": "s41-church-tower",
+          "still": "moment"
+        },
+        "size": [
+          2400,
+          700
+        ],
+        "sizes": "100vw"
+      },
+      {
+        "id": "killcam",
+        "alt": {
+          "en": "The X-ray kill cam: a Leopard 2A7V's shell path through a T-90M's armor into its ammunition, with the hit card and the damaged modules",
+          "zh": "X 光击杀回放：Leopard 2A7V 的炮弹穿过 T-90M 的装甲直入弹药架，旁边是命中卡与受损模块"
+        },
+        "standIn": {
+          "id": "s36-barn-knockout",
+          "still": "close"
+        }
+      }
+    ],
+    "studio": {
+      "label": "Scene Studio staging a Type 10 knocking out a T-90M at Frontier Basin, with the Director workspace and its storyboard",
+      "posterS": 2.4,
+      "standIn": {
+        "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
+        "poster": "/media/landing-r1/studio-leclerc-knockout.jpg",
+        "mobile": "/media/web-video-r1/studio-knockout-mobile.mp4",
+        "label": "Scene Studio interface staging and replaying a Stridsvagn 122 attack on a Leclerc"
+      }
+    },
+    "mechanics": [
+      {
+        "id": "armor",
+        "alt": {
+          "en": "The scoped armor flashlight paints an angled T-90M's plates red, amber and green by the loaded shell's chance to penetrate",
+          "zh": "瞄准镜中的装甲透视按当前弹种的击穿概率，把侧斜的 T-90M 各块装甲涂成红、琥珀与绿色"
+        },
+        "standIn": {
+          "id": "s09-harbor-run",
+          "still": "close"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
+      },
+      {
+        "id": "ricochet",
+        "alt": {
+          "en": "A shell ricochets off a T-90M's sloped glacis in a fan of sparks on the snow of Frosthollow",
+          "zh": "在霜谷的雪地上，一发炮弹从 T-90M 倾斜的首上装甲跳飞，溅起扇形火花"
+        },
+        "standIn": {
+          "id": "s02-factory-road",
+          "still": "close"
+        }
+      },
+      {
+        "id": "modules",
+        "alt": {
+          "en": "The Tank Gallery's modules layer shows a Merkava Mk 4 Barak's engine forward and its crew and ammunition behind it",
+          "zh": "坦克画廊的模块图层：Merkava Mk 4 Barak 的引擎在前，乘员与弹药在后"
+        },
+        "standIn": {
+          "id": "s29-fjord-road-kill",
+          "still": "close"
+        }
+      },
+      {
+        "id": "ammunition",
+        "alt": {
+          "en": "M1A2 Abrams SEPv3 tanks fire down the line at Cinder Junction at golden hour, a tracer and an HE burst downrange",
+          "zh": "金色时刻的灰渣枢纽，M1A2 艾布拉姆斯 SEPv3 沿射击线开火，远处是曳光弹与高爆弹的爆炸"
+        },
+        "standIn": {
+          "id": "s32-yard-salvo",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "missiles",
+        "alt": {
+          "en": "An MBT-70's guided Shillelagh curves toward a moving T-90M Proryv across the Tarkhan Steppe at sunset",
+          "zh": "日落时分的塔尔罕草原，MBT-70 发射的 Shillelagh 制导导弹划出弧线，追向移动中的 T-90M 突破"
+        },
+        "standIn": {
+          "id": "s37-river-village",
+          "still": "close"
+        }
+      },
+      {
+        "id": "autoloader",
+        "alt": {
+          "en": "An AbramsX fires the second round of its magazine, the reticle's clip indicator counting the rounds left",
+          "zh": "AbramsX 打出弹匣里的第二发，准星旁的弹匣指示显示剩余弹数"
+        },
+        "standIn": {
+          "id": "s12-gantry-advance",
+          "still": "close"
+        }
+      },
+      {
+        "id": "era",
+        "alt": {
+          "en": "An explosive reactive block bursts on a T-72B3M's turret as a HEAT round strikes it",
+          "zh": "一发破甲弹击中 T-72B3M 的炮塔，一块爆炸反应装甲随之炸开"
+        },
+        "standIn": {
+          "id": "s14-snow-push",
+          "still": "close"
+        }
+      },
+      {
+        "id": "spotting",
+        "alt": {
+          "en": "A Type 10 waits in a hedgerow above Verdant Fields as an enemy T-90M column is spotted on the road below",
+          "zh": "一辆 Type 10 隐蔽在翠野原高处的树篱里，下方公路上的敌方 T-90M 纵队已被点亮"
+        },
+        "standIn": {
+          "id": "s17-crossroads-fire",
+          "still": "close"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
+      },
+      {
+        "id": "thermal",
+        "alt": {
+          "en": "The white-hot thermal sight picks out a T-90M's hot engine deck in a Steinburg street at night",
+          "zh": "夜晚的斯泰因堡街道上，白热热成像瞄准镜清楚映出 T-90M 发烫的发动机舱盖"
+        },
+        "standIn": {
+          "id": "s22-walking-barrage",
+          "still": "close"
+        }
+      },
+      {
+        "id": "smoke",
+        "alt": {
+          "en": "A Leopard 2A7V fires its smoke canisters as the screen blooms across a Steinburg street",
+          "zh": "一辆 Leopard 2A7V 发射烟幕弹，烟幕在斯泰因堡的街道上迅速铺开"
+        },
+        "standIn": {
+          "id": "s40-rooftop-smoke",
+          "still": "close"
+        }
+      },
+      {
+        "id": "equipment",
+        "alt": {
+          "en": "The Garage's equipment loadout on a K2 Black Panther, with the item picker open on a slot",
+          "zh": "车库中 K2 Black Panther 的装备配置，其中一个装备栏的选择面板已经打开"
+        },
+        "standIn": {
+          "id": "s03-square-pass",
+          "still": "close"
+        }
+      },
+      {
+        "id": "consumables",
+        "alt": {
+          "en": "A Challenger 3 puts out an engine fire with its extinguisher, the consumables bar cooling down",
+          "zh": "一辆 Challenger 3 用灭火器扑灭发动机起火，消耗品栏正在冷却"
+        },
+        "standIn": {
+          "id": "s13-farm-race",
+          "still": "close"
+        }
+      },
+      {
+        "id": "field-kit",
+        "alt": {
+          "en": "An FPV drone bursts on the welded cage of a Ukrainian M1A1 Abrams while a ghillie-netted T-84BM Oplot-M holds the treeline",
+          "zh": "一架 FPV 无人机在乌克兰 M1A1 艾布拉姆斯的焊接防护笼上炸开，一辆披着伪装网的 T-84BM Oplot-M 守在林线边"
+        },
+        "standIn": {
+          "id": "s31-ford-fire",
+          "still": "close"
+        }
+      },
+      {
+        "id": "roof-guns",
+        "alt": {
+          "en": "An M1A2 Abrams SEPv3's roof gun fires tracer down the market street of Sunscar Oasis",
+          "zh": "一辆 M1A2 艾布拉姆斯 SEPv3 的车顶武器朝日痕绿洲的集市街道打出曳光弹"
+        },
+        "standIn": {
+          "id": "s08-market-push",
+          "still": "close"
+        }
+      },
+      {
+        "id": "buildings",
+        "alt": {
+          "en": "A farmhouse collapses in a cloud of dust and debris as a T-14 Armata fires into it at Verdant Fields",
+          "zh": "在翠野原，T-14 Armata 朝一座农舍开火，农舍在尘土与碎片中坍塌"
+        },
+        "standIn": {
+          "id": "s30-temple-village",
+          "still": "moment"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
+      },
+      {
+        "id": "crushing",
+        "alt": {
+          "en": "A Leopard 2A7V flattens an orchard fence and fells a tree as it charges through Orchard Valley",
+          "zh": "一辆 Leopard 2A7V 冲过果园谷，压倒果园围栏并撞断一棵树"
+        },
+        "standIn": {
+          "id": "s35-farm-village",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "map-vehicles",
+        "alt": {
+          "en": "A T-90M crushes a parked car on a Steinburg street while a truck burns behind it",
+          "zh": "一辆 T-90M 在斯泰因堡的街道上压扁一辆停放的汽车，后方一辆卡车正在燃烧"
+        },
+        "standIn": {
+          "id": "s11-container-rows",
+          "still": "close"
+        }
+      },
+      {
+        "id": "time-of-day",
+        "alt": {
+          "en": "Headlights and tracers cut through a night battle in the rail yard of Cinder Junction",
+          "zh": "车灯与曳光弹划破灰渣枢纽铁路货场的夜战"
+        },
+        "standIn": {
+          "id": "s43-lake-crane",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "impact",
+        "alt": {
+          "en": "A T-90M rams a Leopard 2A6 in a burst of dust at Sirocco Wadi",
+          "zh": "在西罗科旱谷，一辆 T-90M 在飞扬的尘土中撞上 Leopard 2A6"
+        },
+        "standIn": {
+          "id": "s10-ford-shellfire",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "suspension",
+        "alt": {
+          "en": "A Stridsvagn 103 tilts its whole hull on its suspension to aim and fire across the snow",
+          "zh": "一辆 Stridsvagn 103 借助悬挂让整个车体俯仰瞄准，并越过雪地开火"
+        },
+        "standIn": {
+          "id": "s28-fjord-village",
+          "still": "close"
+        }
+      },
+      {
+        "id": "radio",
+        "alt": {
+          "en": "The crew radio settings list the national crews and their languages over a paused battle",
+          "zh": "暂停的战斗画面上，乘员无线电设置列出各国乘员及其语言"
+        },
+        "standIn": {
+          "id": "s28-fjord-village",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "replays",
+        "alt": {
+          "en": "The final-kill replay: a K2 Black Panther's last shot throws a T-90M's turret at sunset",
+          "zh": "最终击杀回放：日落时分，K2 Black Panther 的最后一炮掀飞了 T-90M 的炮塔"
+        },
+        "standIn": {
+          "id": "s16-street-duel",
+          "still": "close"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
+      },
+      {
+        "id": "medals",
+        "alt": {
+          "en": "The Service Record's medals: Chain of Thought, Zero-Shot and the rest of a commander's awards",
+          "zh": "服役记录中的勋章：思维链、零样本以及指挥官获得的其他奖章"
+        },
+        "standIn": {
+          "id": "s45-harbor-wide",
+          "still": "close"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
+      },
+      {
+        "id": "dossiers",
+        "alt": {
+          "en": "The Tank Gallery's armor layer and dossier for the Challenger 3",
+          "zh": "坦克画廊中 Challenger 3 的装甲图层与档案"
+        },
+        "standIn": {
+          "id": "s15-orchard-column",
+          "still": "close"
+        }
+      },
+      {
+        "id": "presets",
+        "alt": {
+          "en": "Scene Studio's Director workspace with the site's filmed takes as presets, one of them playing",
+          "zh": "Scene Studio 的导演工作区：网站拍摄的镜头作为预设排列，其中一个正在播放"
+        },
+        "standIn": {
+          "id": "s50-reservoir-crane",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "bots",
+        "alt": {
+          "en": "Bots on both sides fight across Frontier Basin at golden hour, a flanking pair breaking around the farm",
+          "zh": "金色时刻的边疆盆地，双方机器人展开交战，一对坦克绕过农场实施侧翼包抄"
+        },
+        "standIn": {
+          "id": "s17-crossroads-fire",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "mobile",
+        "alt": {
+          "en": "The touch controls on a phone: the joystick, swipe aim and the fire and scope buttons over a live battle",
+          "zh": "手机上的触控操作：实时战斗画面上的摇杆、滑动瞄准以及开火与瞄准镜按钮"
+        },
+        "standIn": {
+          "id": "s10-ford-shellfire",
+          "still": "close"
+        }
+      }
+    ],
+    "modes": [
+      {
+        "id": "standard",
+        "alt": {
+          "en": "A standard battle at Verdant Fields: a Leopard 2A7V fires as both lines trade shots at sunset",
+          "zh": "翠野原的标准战斗：日落时分双方交火，一辆 Leopard 2A7V 正在开炮"
+        },
+        "standIn": {
+          "id": "s36-barn-knockout",
+          "still": "moment"
+        },
+        "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 100vw, 50vw"
+      },
+      {
+        "id": "capture_the_flag",
+        "alt": {
+          "en": "A K2 Black Panther races home with the enemy flag across Saltmere Bay",
+          "zh": "一辆 K2 Black Panther 带着敌方旗帜穿过盐沼湾，全速驶回基地"
+        },
+        "standIn": {
+          "id": "s25-alpine-village",
+          "still": "close"
+        }
+      },
+      {
+        "id": "zone_control",
+        "alt": {
+          "en": "Tanks contest a capture zone at Frontier Basin as its ring turns amber",
+          "zh": "坦克在边疆盆地争夺一处占领区，区域圆环转为琥珀色"
+        },
+        "standIn": {
+          "id": "s37-river-village",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "turbo_ball",
+        "alt": {
+          "en": "A K2 Black Panther leaps after the ball as it rolls toward the goal in Turbo Ball",
+          "zh": "极速球中，一辆 K2 Black Panther 腾空追向滚向球门的球"
+        },
+        "standIn": {
+          "id": "s13-farm-race",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "endless_horde",
+        "alt": {
+          "en": "An Endless Horde wave charges a Challenger 3 across Cinder Junction as a supply cache floats nearby",
+          "zh": "无尽潮涌的一波敌人冲向灰渣枢纽的一辆 Challenger 3，附近漂浮着一个补给箱"
+        },
+        "standIn": {
+          "id": "s12-gantry-advance",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "frontline_assault",
+        "alt": {
+          "en": "Frontline Assault: tanks cross the trench line toward the next sector under an artillery barrage",
+          "zh": "前线突击：坦克顶着炮火越过堑壕线，冲向下一段防区"
+        },
+        "standIn": {
+          "id": "s42-assault-above",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "mars",
+        "alt": {
+          "en": "A T-14 Armata rocket-jumps over Olympus Basin under the galaxy sky in Gravity Mode",
+          "zh": "重力模式中，一辆 T-14 Armata 在银河星空下火箭跳跃，飞越奥林匹斯盆地"
+        },
+        "standIn": {
+          "id": "s44-oasis-sunset",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "juggernaut",
+        "alt": {
+          "en": "The Juggernaut, a shielded Merkava Mk 4 Barak, fights off the hunters in the Ironworks yard at night",
+          "zh": "夜晚的钢铁厂货场，带护盾的重装首领 Merkava Mk 4 Barak 正在击退猎手"
+        },
+        "standIn": {
+          "id": "s32-yard-salvo",
+          "still": "close"
+        }
+      },
+      {
+        "id": "infected",
+        "alt": {
+          "en": "Infected tanks close in on the last survivors in a Steinburg street at night",
+          "zh": "夜晚的斯泰因堡街道上，感染者坦克逼近最后的幸存者"
+        },
+        "standIn": {
+          "id": "s47-ironworks-crane",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "realistic",
+        "alt": {
+          "en": "Realistic mode: a Stridsvagn 122's shot detonates a T-90M's ammunition",
+          "zh": "真实模式：Stridsvagn 122 的一炮引爆了 T-90M 的弹药"
+        },
+        "standIn": {
+          "id": "s35-farm-village",
+          "still": "close"
+        }
+      },
+      {
+        "id": "gun_game",
+        "alt": {
+          "en": "Gun Game: a tank fires the howitzer stage of the weapon ladder at Sunscar Oasis",
+          "zh": "武器进阶：一辆坦克在日痕绿洲打出武器阶梯中的榴弹炮一阶"
+        },
+        "standIn": {
+          "id": "s16-street-duel",
+          "still": "moment"
+        }
+      },
+      {
+        "id": "drone",
+        "alt": {
+          "en": "Drone mode: an FPV drone's view dives on a T-90M above Nordhavn Fjord",
+          "zh": "无人机模式：FPV 无人机的视角从诺德港峡湾上空俯冲向一辆 T-90M"
+        },
+        "standIn": {
+          "id": "s46-river-drone",
+          "still": "close"
+        }
+      },
+      {
+        "id": "ac130",
+        "alt": {
+          "en": "The AC-130's scope: a howitzer round lands beside the convoy as it drives to extraction",
+          "zh": "AC-130 的瞄准镜：一发榴弹落在驶向撤离点的车队旁"
+        },
+        "standIn": {
+          "id": "s48-delta-crane",
+          "still": "moment"
+        }
+      }
+    ]
   },
   "docs": {
     "hero": {
@@ -817,6 +1319,10 @@
     "still": "close"
   },
   "ogCards": {
+    "404": {
+      "id": "s38-church-knockout",
+      "still": "close"
+    },
     "private-room": {
       "id": "s16-street-duel",
       "still": "moment"
@@ -827,10 +1333,6 @@
     },
     "docs-studio": {
       "id": "s47-ironworks-crane",
-      "still": "close"
-    },
-    "404": {
-      "id": "s38-church-knockout",
       "still": "close"
     },
     "home": {

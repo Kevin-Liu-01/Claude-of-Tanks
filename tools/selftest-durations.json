@@ -1036,6 +1036,7 @@
     "tools/map-metrics.selftest.mjs": 1400,
     "tools/marketing-shots/battle-campaign.selftest.mjs": 100,
     "tools/marketing-shots/feature-evidence.selftest.mjs": 100,
+    "tools/marketing-shots/home-shots.selftest.mjs": 100,
     "tools/marketing-shots/landing-media.selftest.mjs": 100,
     "tools/marketing-shots/showcase-r2.selftest.mjs": 100,
     "tools/marketing-shots/site50-media.selftest.mjs": 100,
