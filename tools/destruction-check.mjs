@@ -252,7 +252,8 @@ export async function runDestructionCheck({
       const sol = W.shape(slot).solids, hx = sol[8], hy = sol[9], hz = sol[10];
       const qx = W.qx[slot], qy = W.qy[slot], qz = W.qz[slot], qw = W.qw[slot];
       const reach = Math.abs(2 * (qx * qy + qz * qw)) * hx + Math.abs(1 - 2 * (qx * qx + qz * qz)) * hy + Math.abs(2 * (qy * qz - qx * qw)) * hz;
-      lows.push({ x: W.px[slot], z: W.pz[slot], low: W.py[slot] - reach, top: W.py[slot] + reach });
+      lows.push({ x: W.px[slot], z: W.pz[slot], low: W.py[slot] - reach, top: W.py[slot] + reach,
+        awake: !W.asleep[slot], v: Math.hypot(W.vx[slot], W.vy[slot], W.vz[slot]), w: Math.hypot(W.wx[slot], W.wy[slot], W.wz[slot]), age: W.age[slot] });
     }
     for (const b of lows) {
       const gap = b.low - ground(b.x, b.z);
@@ -262,7 +263,9 @@ export async function runDestructionCheck({
       else if (query(b.x - 0.6, b.z - 0.6, b.x + 0.6, b.z + 0.6, queryOut).some((r) => !r.crushed && !r.dead && r.max[1] >= b.low - 0.35 && r.min[1] <= b.low + 0.2)) onRecord++;
       else hangingBody++;
     }
-    if (asleep < inWorld) failures.push(`${inWorld - asleep} of ${inWorld} bodies still moving ${settleS} s after the collapse`);
+    // moving: awake and visibly so (an awake body at rest, its sleep window still open, is at rest)
+    const moving = lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length;
+    if (moving) failures.push(`${moving} of ${inWorld} bodies still moving ${settleS} s after the collapse`);
     if (hangingBody) failures.push(`${hangingBody} bodies at rest in the air`);
     // 6. budgets
     const bs = bodies ? bodies.stats() : { live: 0, settled: 0 };
@@ -276,7 +279,9 @@ export async function runDestructionCheck({
       id, builder: seam.builder, kit: a.kit, style: seam.style, fired, collapsedAtS: +collapsedAt.toFixed(2), lastStageS: +lastStage.toFixed(2),
       holes: holes.length, runs: runs.length, untextured: untextured.length, hangingRim,
       pieces: { thrown, still, stillHanging, overGround, buried, neverLand },
-      bodies: { live: bs.live, inWorld, asleep, onGround, onBody, onRecord, hanging: hangingBody, buried: buriedBody, settled: bs.settled },
+      bodies: { live: bs.live, inWorld, asleep, moving: lows.filter((b) => b.awake && (b.v > 0.05 || b.w > 0.15)).length, onGround, onBody, onRecord, hanging: hangingBody, buried: buriedBody, settled: bs.settled,
+        awakeSample: lows.filter((b) => b.awake).slice(0, 4).map((b) => ({ v: +b.v.toFixed(3), w: +b.w.toFixed(3), age: b.age,
+          gap: +(b.low - ground(b.x, b.z)).toFixed(3) })) },
       caps: stageCaps, bodyUpdateMs: { p50: +updMs[Math.floor(updMs.length * 0.5)].toFixed(3), p95: +updMs[Math.floor(updMs.length * 0.95)].toFixed(3),
         max: +updMs[updMs.length - 1].toFixed(3) },
       standing: collapsedAt < 0, pass: failures.length === 0, failures,

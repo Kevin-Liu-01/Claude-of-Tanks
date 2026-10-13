@@ -18,7 +18,7 @@ for (const r of report.rows) {
   assert.equal(r.hangingRim, 0, `${r.builder}: no rim unit hangs in a later hole`);
   assert.equal(r.pieces.stillHanging, 0, `${r.builder}: no still piece in the air`);
   assert.equal(r.pieces.overGround, 0, `${r.builder}: every thrown piece lies on the ground where it lands`);
-  assert.ok(r.bodies.inWorld > 0 && r.bodies.asleep === r.bodies.inWorld, `${r.builder}: its rigid rubble came to rest (${r.bodies.asleep}/${r.bodies.inWorld})`);
+  assert.ok(r.bodies.inWorld > 0 && r.bodies.moving === 0, `${r.builder}: its rigid rubble came to rest (${r.bodies.asleep}/${r.bodies.inWorld} asleep, ${r.bodies.moving} moving)`);
   assert.equal(r.bodies.hanging, 0, `${r.builder}: no body at rest in the air`);
   assert.ok(r.bodies.onGround >= r.bodies.inWorld * 0.6, `${r.builder}: most of its bodies lie on the ground (${r.bodies.onGround}/${r.bodies.inWorld})`);
   assert.ok(r.pass, `${r.builder}: ${r.failures.join('; ')}`);
