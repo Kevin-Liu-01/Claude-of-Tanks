@@ -135,7 +135,13 @@ function checkTerrain(source) {
   }
   assert.ok(source.includes('sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);'), 'the means follow the sourced swap');
   // 3. the noise texture: low-frequency reads through the explicit isotropic level
-  unique(frag, /vec4 nz\(vec2 p, float s, vec2 o\) \{ return textureLod\(uNoise, p \* s \+ o, max\(0\.0, gNoiseLog \+ log2\(s\)\)\); \}/g, 'the nz helper');
+  // the perf stream (2026-10-13): a read at or past the 256 px texture's last level returns its one texel, fetched once
+  // per fragment (gNoiseTop), instead of tapping again; below it the explicit isotropic level as before
+  const nzBody = unique(frag, /vec4 nz\(vec2 p, float s, vec2 o\) \{([\s\S]*?)\n\}/g, 'the nz helper')[1];
+  assert.ok(nzBody.includes('float l = gNoiseLog + log2(s);') && nzBody.includes('if (l >= 8.0) return gNoiseTop;')
+    && nzBody.includes('return textureLod(uNoise, p * s + o, max(0.0, l));'), 'nz: the top-level early-out, then the explicit level');
+  unique(frag, /gNoiseTop = textureLod\(uNoise, vec2\(0\.5\), 8\.0\);/g, 'the last level fetched once');
+  assert.ok(source.includes('const SPLAT_FIELD_S = 256;'), 'level 8 is the 256 px noise texture\'s last (1x1) level');
   unique(frag, /gNoiseLog = log2\(max\(max\(length\(dFdx\(wp\)\), length\(dFdy\(wp\)\)\) \* 256\.0, 1e-6\)\);/g, 'the footprint level');
   for (const m of frag.matchAll(/texture2D\(uNoise, ([^;]*?)\)\.[rgba]/g)) {
     const scale = /\* ([0-9.]+)/.exec(m[1]);

@@ -3099,7 +3099,7 @@ let _splatFields: SplatFields | null = null; // { a, b: Float32Array } — see s
 // (bit-identical texture to the old analytic bake). The analytic->bilinear
 // delta on these smooth fields only flips statistically-marginal tuft
 // placements; grass<->dirt correlation is exact-by-construction now.
-const SPLAT_FIELD_S = 256;
+const SPLAT_FIELD_S = 256; // (its last mip level, 8, is nz's early-out level in SPLAT_COMMON_FRAG)
 function splatFields(): SplatFields {
   if (_splatFields) return _splatFields;
   const steps = splatFieldSteps();
@@ -4266,7 +4266,16 @@ float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set w
 // gNoiseLog is log2 of the fragment's footprint in noise texels at scale 1 (set once in splatCompute); a field read
 // at scale s sits at level log2(footprint × s × 256), the level the hardware would pick for an isotropic footprint.
 float gNoiseLog = 0.0;
-vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0, gNoiseLog + log2(s))); }
+// The perf stream (2026-10-13, the 100–250 m band): a read at or past the texture's last level (the 1×1 mean of the
+// 256 px tile, level 8) is that one texel wherever it is sampled, so it returns the texel splatCompute fetched once
+// (gNoiseTop) instead of tapping again — exactly what the tap returned. Most of the fine fields' reads (a few metres
+// and under) land there past ~100 m at a grazing view.
+vec4 gNoiseTop = vec4(0.5);
+vec4 nz(vec2 p, float s, vec2 o) {
+  float l = gNoiseLog + log2(s);
+  if (l >= 8.0) return gNoiseTop;
+  return textureLod(uNoise, p * s + o, max(0.0, l));
+}
 // Ground lane (2026-10-03, the gauntlet's "moiré of concentric arcs in the grass"): a tiled texture read at a world
 // period P is a periodic signal however well its mip chain is filtered — once one period spans only a few pixels of the
 // fragment's footprint, the tile repeat itself beats against the pixel grid (concentric arcs from a raised camera, the
@@ -4689,6 +4698,7 @@ void splatCompute() {
   // terrain v2: the noise reads' level of detail — the major axis of the fragment's world footprint (a wall's vertical
   // footprint counts too: the wall projections read the same texture) in texels of the 256 px noise at scale 1
   gNoiseLog = log2(max(max(length(dFdx(wp)), length(dFdy(wp))) * 256.0, 1e-6));
+  gNoiseTop = textureLod(uNoise, vec2(0.5), 8.0); // the last level's one texel (nz)
   gFootM = exp2(gNoiseLog) / 256.0; // ground lane: the same footprint, in metres per pixel, for tileVis
   gDwX = dFdx(wp.xz); gDwY = dFdy(wp.xz); // ground lane (farmland): its axes, for stripeVis
   gFarVis = tileVis(18.0);
