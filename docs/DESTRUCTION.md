@@ -416,13 +416,26 @@ eye sees.
 
 | Wire kind | Bus (solo / presentation) | Payload (`destructionEvents.ts`) | Who receives it |
 |---|---|---|---|
-| `structure_stage` | `structure:stage` | `StructureStageEvent` | every viewer (world state names no shooter) |
-| `structure_breach` (P2) | `structure:breach` | `StructureBreachEvent` | every viewer |
-| `terrain_crater` | `terrain:crater` | `TerrainCraterEvent` | every viewer when it deforms; a mark follows its shell's observable-shooter rule |
+| `structure_stage` | `structure:stage` | `StructureStageEvent` | every viewer (world state names no shooter); how it was dealt withheld from a viewer that does not see the source (below) |
+| `structure_breach` (P2) | `structure:breach` | `StructureBreachEvent` | every viewer; the munition withheld likewise |
+| `terrain_crater` | `terrain:crater` | `TerrainCraterEvent` | every viewer when it deforms (the munition withheld likewise); a mark follows its shell's observable-shooter rule |
 | `shell_impact` / `shell_hit` (existing) | `shell:expired` / `shell:hit` | + `munition`, `chargeKg` | unchanged rules |
 
 `canObserveEvent` admits the new kinds as it admits `world_prop_destroyed`. A building breaking is visible world
 state; its event carries the blow's point and push direction but never the shooter.
+
+**How it was dealt stays with the hidden (2026-10-13, the MP stream).** The blow's point and push direction still told
+every seat where a hidden tank was: a ram's point is the hull's contact and its direction the hull's heading; a shot's
+direction is the bearing to its gun; the munition names the weapon. The destruction core now carries the blow's source
+(`StructureBlow.sourceId`: the rammer, the shooter, the dead hull) into its stage, breach and crater events — on the
+authority only, never in the log or on the wire — and the authority (`authoritativeMatch.ts viewerWorldEvent`) hands a
+viewer whose team does not see that source a copy without `cause`, `munition`, `x/y/z`, `dirX/dirZ` (a stage), without
+`munition` (a breach, a crater), and a prop's fall without `cause`, `directionX/Z`, `speedMps`. The world state is
+unchanged for everyone (the log, the destroyed list, which structure, which stage, the hole, the crater), so a rejoin
+and a migration read one history; the presentation lays a withheld event with neutral values (the structure's centre,
+the prop's own fall axis; `destructionMirror` already fell back to them). Its own team, a spotting team and a spectator
+read events whole. Receipt: `hiddenWorldEvents.selftest`; the world-events audit reports the withheld deliveries (36 of
+155 in its 4v4 run) and judges them like the rest.
 
 ### 8.2 Settled state
 

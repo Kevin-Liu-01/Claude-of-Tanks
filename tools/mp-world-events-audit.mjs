@@ -235,7 +235,9 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         const key = WORLD_KINDS.has(type) ? keyOf(type, payload) : `${entry.id}/${keyOf(type, payload)}`;
         hostLog.push({ host: entry.id, generation: entry.generation, tick, wallMs, viewerId, type, key, pos,
           index: type === 'world_prop_destroyed' ? Number(payload.obstacleIndex) : null, cause: payload.cause ?? null, shooterId: typeof payload.shooterId === 'string' ? payload.shooterId : null,
-          dir: type === 'world_prop_destroyed' ? [Number(payload.directionX) || 0, Number(payload.directionZ) || 0] : null, speed: typeof payload.speedMps === 'number' ? payload.speedMps : null });
+          dir: type === 'world_prop_destroyed' ? [Number(payload.directionX) || 0, Number(payload.directionZ) || 0] : null, speed: typeof payload.speedMps === 'number' ? payload.speedMps : null,
+          // (2026-10-13) the authority withheld how it was dealt: its source was a hull this viewer's team did not see
+          withheld: WORLD_KINDS.has(type) ? !('cause' in payload) && !('munition' in payload) : false });
       }
       return events;
     };
@@ -764,6 +766,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   report.matrix = matrix;
   report.perPeer = perPeer;
   report.hostEvents = hostLog.length;
+  // world events a viewer received without how they were dealt (a hidden source) — presented like the rest above
+  report.withheldWorldEvents = { sent: hostLog.filter((e) => WORLD_KINDS.has(e.type)).length, withheld: hostLog.filter((e) => e.withheld).length };
   report.failures = failures;
   report.pass = failures.length === 0;
   report.raw = { hostLog, peers: peers.map((peer) => ({ id: peer.id, label: peer.label, rounds: peer.rounds.map((round) => ({ roundIndex: round.roundIndex, welcomeTick: round.welcomeTick, welcomeAtMs: round.welcomeAtMs, frames: round.frames, applied: round.applied })) })), marks, roomEvents: roomEvents.filter((e) => e.kind === 'host_changed' || e.kind === 'match_report') };
@@ -774,7 +778,7 @@ export function formatMatrix(report) {
   const lines = [];
   lines.push(`# World-events audit${report.label ? ` — ${report.label}` : ''}`);
   lines.push('');
-  lines.push(`Map ${report.mapId}, ${report.teamSize}v${report.teamSize} (3 seats + bots), live ${report.playMs / 1000} s, ${report.afterMs / 1000} s after each scenario, host grace ${report.hostGraceMs} ms; ${report.hostEvents} per-viewer event deliveries logged; ${report.wallMs} ms wall.`);
+  lines.push(`Map ${report.mapId}, ${report.teamSize}v${report.teamSize} (3 seats + bots), live ${report.playMs / 1000} s, ${report.afterMs / 1000} s after each scenario, host grace ${report.hostGraceMs} ms; ${report.hostEvents} per-viewer event deliveries logged (world events ${report.withheldWorldEvents.sent}, ${report.withheldWorldEvents.withheld} of them withheld for a hidden source); ${report.wallMs} ms wall.`);
   lines.push('');
   for (const [step, detail] of Object.entries(report.steps)) lines.push(`- **${step}**: ${JSON.stringify(detail)}`);
   lines.push('');

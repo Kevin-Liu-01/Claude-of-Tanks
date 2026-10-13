@@ -1807,6 +1807,23 @@ one-shot effect is gone (1 impact and 1 hit in the final run's reconnect and hos
 presentations carry no actors (the fleet factory configures once per process), so own-shot feedback is receipted, not
 measured, here.
 
+**Hidden enemies and world events (2026-10-13, MP stream; MP-SINCE-0930 §5b C).** `world_prop_destroyed`,
+`structure_stage`, `structure_breach` and `terrain_crater` went to every viewer with the cause, the heading and speed of
+the hull that rammed (a prop's `directionX/Z`, `speedMps`; a stage's `dirX/Z` and its blow point, the hull's contact),
+the shot's bearing and the munition: a hidden tank crushing a tree or ramming a wall told every seat where it was and
+which way it went, against the rule that a hidden enemy's coordinates are never sent. The authority now keeps each world
+event's source (the rammer, the shooter, the dead hull; threaded through `destructionMatch` / `structureDamage` as
+`StructureBlow.sourceId`, never in the log or on the wire) and `eventsForViewer` hands a viewer whose team does not see
+that source one shared copy without those fields (docs/DESTRUCTION.md §8.1 lists them). The fall, the stage, the hole
+and the crater still reach every seat when they happen, and the persistent state (the destroyed list, the destruction
+log) is one for every viewer, so rejoins and migrations are unchanged; the presentation lays a withheld event with
+neutral values. Delaying the events until observable was not done: the list and the log name the same state at the next
+snapshot anyway, so a delay would hide nothing and only make the fall arrive late. Receipts:
+`hiddenWorldEvents.selftest` (structures, a rammed fence, a shot tree: hidden, spotted, teammate, spectator; one log;
+fails on main), `mp-world-events-audit` (36 of 155 world-event deliveries withheld in its 4v4 run, all presented, no
+missing or late), `sim-determinism-audit`, the destruction receipts (`destructionShard` and `destructionCraters` now
+read the hidden viewer's events as withheld).
+
 ### 13.14 Relay credentials from the room (lane `mp/room-relay-credentials`, 2026-10-02)
 
 **Why.** `/api/ice` (a Vercel function) minted one-hour Cloudflare TURN credentials for any request that passed its origin

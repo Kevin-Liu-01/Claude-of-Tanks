@@ -1127,6 +1127,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
+    'src/sim/hiddenWorldEvents.selftest.mjs',
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',
