@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import * as seam from './destructibles.ts';
 import * as loose from './loosePropPhysics.ts';
+import { createLoosePropBodies } from './loosePropBodies.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { registerWorldNightLighting } from './worldNightLighting.ts';
 import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
@@ -88,7 +89,7 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   const events = [];
   seam.setDestroyedEventSink((event) => events.push(event));
   const context = {
-    THREE, ...seam, ...loose, setToppleAxis, settledToppleAngle,
+    THREE, ...seam, ...loose, createLoosePropBodies, setToppleAxis, settledToppleAngle,
     registerWorldNightLighting, setWorldNightFixtureActive, mats,
     destructibles: records, dPools: pools, obstacles, looseRecords: bodies, activeLoose: [],
     heightField: { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) },

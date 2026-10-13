@@ -280,8 +280,16 @@ function maxStep(presented, from = 1) {
   const alongside = { x: 3.4, z: 0, yaw: 0 }; // parallel, 0.3 m into the lane for the whole run
   const plainAlongside = staleHullRun(alongside, false);
   const seatedAlongside = staleHullRun(alongside, true);
-  assert.ok(plainAlongside.stats.contactReconciliations > 50 && plainAlongside.stats.maxPositionErrorM > 0.3,
-    `control: without the anchor every replay starts inside the presented hull (${plainAlongside.stats.contactReconciliations} contact reconciliations, ${plainAlongside.stats.maxPositionErrorM.toFixed(3)} m)`);
+  // (2026-10-13, physics stream: the control is relative to the anchored run. The destruction stream's gradual
+  // depenetration (item/destruct-s3-rough-ground 9eb995834: an overlap a hull already stands in leaves over a few steps)
+  // shrinks the un-anchored shove's absolute error, 0.394 m on main to 0.280 m, while the anchored run stays at 0.0016 m —
+  // 240x and 172x. The control must still show every replay starting inside the presented hull: its reconciliations, and
+  // an error at least CONTROL_RATIO times the anchored one (floored at 5 mm so a perfect anchor does not void the bound).)
+  const CONTROL_RATIO = 20;
+  const anchoredFloorM = Math.max(seatedAlongside.stats.maxPositionErrorM, 0.005);
+  assert.ok(plainAlongside.stats.contactReconciliations > 50
+    && plainAlongside.stats.maxPositionErrorM >= CONTROL_RATIO * anchoredFloorM,
+    `control: without the anchor every replay starts inside the presented hull (${plainAlongside.stats.contactReconciliations} contact reconciliations, ${plainAlongside.stats.maxPositionErrorM.toFixed(3)} m against the anchored ${seatedAlongside.stats.maxPositionErrorM.toFixed(4)} m)`);
   assert.equal(seatedAlongside.stats.contactReconciliations, 0, 'the seated hull never touches the lane the authority drives');
   assert.ok(seatedAlongside.stats.maxPositionErrorM < 0.01, `seated: ${seatedAlongside.stats.maxPositionErrorM.toFixed(4)} m`);
   assert.ok(seatedAlongside.lateralM < 0.01, 'the prediction keeps the authority\'s lane');
