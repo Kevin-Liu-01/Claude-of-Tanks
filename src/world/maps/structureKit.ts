@@ -1614,6 +1614,21 @@ function makeFieldHospital(rng: Rng): THREE.BufferGeometry {
   colored(out, box(0.22, 0.05, 0.82).translate(0, 2.19, 4.52), 0x7b2c28, rng, 0.02);
   colored(out, box(0.82, 0.05, 0.22).translate(0, 2.20, 4.53), 0x7b2c28, rng, 0.02);
   for (let i = 0; i < 4; i++) colored(out, box(1.65, 0.14, 0.62).translate(-2.7 + (i % 2) * 5.4, 0.48, -2.8 + ((i / 2) | 0) * 5.6), PAL.steel[1], rng);
+  // (the looks lane, 2026-10-13: the wards' members, painted without a draw) the uprights between the canvas bays, the
+  // eave lines, the guy ropes to their pegs, the duckboard walk between the wards, the stretchers on their trestles
+  const r = _detailRng;
+  for (const x of [-2.7, 2.7]) {
+    for (const z of [-4.4, -2.2, 0, 2.2, 4.4]) for (const sgn of [-1, 1]) {
+      colored(out, box(0.07, 1.1, 0.07).translate(x + sgn * 2.27, 0.55, z), p[2], r, 0);
+      colored(out, beam([x + sgn * 2.3, 1.05, z], [x + sgn * 2.95, 0.04, z], 0.02, 0.02), 0xb0a68a, r, 0);
+    }
+    for (const sgn of [-1, 1]) colored(out, box(0.04, 0.05, 8.8).translate(x + sgn * 2.27, 1.07, 0), p[2], r, 0);
+  }
+  for (let z = -4.0; z <= 4.0; z += 0.4) colored(out, box(0.85, 0.05, 0.3).translate(0, 0.05, z), PAL.timber[1], r, 0);
+  for (const [x, z] of [[-3.6, 3.4], [3.6, -3.4]] as const) {
+    colored(out, box(0.6, 0.05, 1.9).translate(x, 0.62, z), 0x5c6348, r, 0);
+    for (const dz of [-0.75, 0.75]) colored(out, box(0.55, 0.6, 0.06).translate(x, 0.3, z + dz), PAL.timber[2], r, 0);
+  }
   return mergeConnectedStructure('fieldhospital', out);
 }
 
@@ -2229,6 +2244,18 @@ function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
   colored(out, box(2.6, 1.0, 1.45).translate(-3.25, 0.5, -d / 2 - 0.66), p[1], rng);
   colored(out, box(0.22, 5.85, 0.22).translate(3.65, 2.92, -4.45), p[2], rng);
   colored(out, cylinder(0.30, 0.30, 0.24, 10).translate(3.65, 5.90, -4.45), p[1], rng);
+  // (the looks lane, 2026-10-13: the shell's members, painted without a draw) the cladding's ribs down the side and back
+  // walls, the gutters and their downpipes, the side door in its frame, the roof's edge flashing, the plinth
+  const r = _detailRng;
+  for (const side of [-1, 1]) {
+    for (let z = -d / 2 + 0.35; z < d / 2 - 0.2; z += 0.5) colored(out, box(0.05, h - 0.4, 0.07).translate(side * (w / 2 + 0.02), h / 2 + 0.1, z), p[1], r, 0);
+    colored(out, box(0.16, 0.14, d + 0.5).translate(side * (w / 2 + 0.33), h - 0.05 + (side > 0 ? 0.48 : -0.05), 0), p[2], r, 0);
+    for (const z of [-d / 2 + 0.3, d / 2 - 0.3]) colored(out, box(0.1, h, 0.1).translate(side * (w / 2 + 0.3), h / 2, z), p[2], r, 0);
+  }
+  for (let x = -w / 2 + 0.35; x < w / 2 - 0.2; x += 0.5) colored(out, box(0.07, h - 0.4, 0.05).translate(x, h / 2 + 0.1, -d / 2 - 0.02), p[1], r, 0);
+  colored(out, box(0.08, 2.3, 1.05).translate(w / 2 + 0.05, 1.15, 2.4), p[2], r, 0);
+  for (const z of [1.82, 2.98]) colored(out, box(0.1, 2.4, 0.1).translate(w / 2 + 0.07, 1.2, z), p[1], r, 0);
+  colored(out, box(w + 0.2, 0.3, d + 0.2).translate(0, 0.15, 0), 0x8a8780, r, 0);
   return mergeConnectedStructure('servicegarage', out);
 }
 
