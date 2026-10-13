@@ -58,6 +58,21 @@ const out = new Float64Array(4);
   assert.equal(tInf, Infinity, 'no ground within the horizon');
 }
 
+// ---- a high piece takes long steps until it nears the ground (a collapse throws hundreds in one frame): a brick off a
+// 12 m eave lands where the closed form says, on fewer than a third of the ground reads a 1/24 s walk took
+{
+  let reads = 0;
+  const flat = () => { reads++; return 0; };
+  const half = 0.1, k = PIECE_DRAG;
+  const t = pieceLanding(0, 12, 0, 2.5, 1, 0, half, flat, out);
+  // the closed form's fall: 12 + 1·(1 − e^(−kt))/k − 4.9 t² = the piece's half height above the ground (the bisection
+  // brackets the 1/24 s step to 0.65 ms: under 2 cm at the fall's 16 m/s)
+  const y = (s) => 12 + (1 - Math.exp(-k * s)) / k - 4.9 * s * s - half;
+  assert.ok(Math.abs(y(t)) < 0.02, `it lands where its flight meets the ground (${y(t).toFixed(4)} m off)`);
+  const walked = Math.ceil(t * 24) + 7;
+  assert.ok(reads * 3 <= walked, `on ${reads} ground reads (a 1/24 s walk: ${walked})`);
+}
+
 // ---- the writer: a thrown piece carries its landing to the program; a still piece on a standing building becomes a box in
 // the building's own run (tagged, so it falls and folds with it), not a pool piece that outlives it
 {
