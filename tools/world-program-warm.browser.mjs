@@ -4,8 +4,9 @@
 //
 //   entry    a first entry of a session: the warm draws; it compiled under the light signature the revealed battle has,
 //            and the battle draws its terrain with the programs it linked (no second variant).
-//   failed   the minimap transfer fails mid-entry: the entry returns to the Garage with the Garage's own light signature,
-//            the night pool detached and the Garage's GPU residency restored; the next entry warms and plays.
+//   failed   the minimap transfer is held and then fails once the terrain stands (the warm armed and running): the entry
+//            returns to the Garage with the Garage's own light signature, the night pool detached, the warm stopped and
+//            the Garage's GPU residency restored; the next entry warms and plays.
 //   context  the WebGL context is lost after the terrain stands and restored 0.5 s later: the warm abandons without
 //            touching the renderer, and the entry ends as the control dist's does (played or recovered to the Garage).
 //   studio   the Studio (F8) is entered and left from the Garage: its world builds are never warmed; the next battle
@@ -82,9 +83,11 @@ async function openPage(browser, port, { failMinimap = false } = {}) {
   page.on('pageerror', (e) => errors.push(String(e?.message ?? e).slice(0, 300)));
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
   if (failMinimap) {
+    // the minimap request is held, then failed by the caller (abortHeld) once the world build is past its terrain
+    page.__held = [];
     await page.setRequestInterception(true);
     page.on('request', (request) => {
-      if (page.__failMinimap !== false && /\/minimaps\/[^/?]+\.webp/.test(request.url())) request.abort('failed');
+      if (page.__failMinimap !== false && /\/minimaps\/[^/?]+\.webp/.test(request.url())) page.__held.push(request);
       else request.continue();
     });
   }
@@ -150,9 +153,22 @@ async function failedPath(browser, port) {
   const { page, errors } = await openPage(browser, port, { failMinimap: true });
   try {
     const garageSignature = await page.evaluate(PAGE_SIGNATURE);
-    const failed = await enter(page, { timeoutMs: 180000 });
+    const startedAt = Date.now();
+    const failed = await enter(page, {
+      timeoutMs: 180000,
+      onTick: async (st) => {
+        if (!page.__held.length || (st.percent < 36 && Date.now() - startedAt < 60000)) return;
+        record.failedAt = { percent: st.percent, warm: st.warm?.status ?? null };
+        for (const request of page.__held.splice(0)) await request.abort('failed').catch(() => {});
+      },
+    });
     record.outcome = failed.outcome;
-    record.warmAfterFailure = failed.last?.warm ?? null;
+    await sleep(1000); // a warm stops at its next poll after the Garage's disarm
+    record.warmAfterFailure = (await state(page)).warm;
+    if (!control && record.warmAfterFailure) {
+      check(record, record.warmAfterFailure.status !== 'linking' && record.warmAfterFailure.status !== 'waiting-for-lights',
+        `the warm stopped with the entry (${record.warmAfterFailure.status})`);
+    }
     record.garageSignature = garageSignature;
     record.signatureAfter = await page.evaluate(PAGE_SIGNATURE);
     const after = await state(page);
