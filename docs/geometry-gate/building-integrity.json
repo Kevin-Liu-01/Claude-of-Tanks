@@ -618,8 +618,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.429,
-   "gapM2": 0.088,
+   "insideM2": 2.463,
+   "gapM2": 0.086,
    "invertedM2": 0
   },
   "arctic/containerRow": {
@@ -3003,8 +3003,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.103,
-   "gapM2": 0.817,
+   "insideM2": 1.058,
+   "gapM2": 0.768,
    "invertedM2": 0
   },
   "sarajevo/arcology": {
@@ -3629,5 +3629,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-13T13:43:41.280Z"
+ "updatedAt": "2026-10-13T16:37:07.457Z"
 }
