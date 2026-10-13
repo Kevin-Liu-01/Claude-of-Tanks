@@ -2329,7 +2329,10 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
           tier: getDeviceTier(),
-          createIceResolver: (mode, room) => createRoomIceResolver({ mode, room }),
+          // a seat linking without a relay (a fallback, or a grant with no TURN server) leaves one `ice_degraded` note per reason
+          createIceResolver: (mode, room) => createRoomIceResolver({
+            mode, room, onDegraded: (reason) => entryTelemetry.send({ kind: 'ice_degraded', mode: 'network', code: reason }),
+          }),
         },
       },
     });
