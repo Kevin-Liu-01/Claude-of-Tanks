@@ -498,6 +498,25 @@ export const RECIPES = {
       const target = mark ? `entity:${mark}` : 'nearestEnemyClear';
       await ctx.mb('setAim', { target, aimAt: 'ammoRack', aimTurret: true, heightFrac: 0.35, fallback: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 2 });
+      // Four passes put rounds into side-on targets and their racks (nonpen, screen_pierce, module hits with no rack
+      // damage) and never cooked one off. Pass 5 stages the detonation: on the player's first real hit on the marked
+      // target that the damage model does not kill, the target goes up through the QA kill (cause 'ammorack': the pop
+      // and the thrown turret, H.killOne) and a burst films the second after.
+      await ctx.mb('setOnFrame', `
+        const st = MB.onFrameState, p = H.player(); if (!p || st.forced) return;
+        const markId = ${JSON.stringify(mark)};
+        for (const ev of MB.events) {
+          if (ev.seq <= (st.lastSeq || 0)) continue;
+          st.lastSeq = ev.seq;
+          // (a hit's shooter is its attackerId: game/state.ts emits shell:hit with attackerId and targetId)
+          if (ev.type !== 'shell:hit' || ((ev.attackerId ?? ev.shooterId) !== p.id && ev.isPlayer !== true)) continue;
+          if (markId && ev.targetId !== markId) continue;
+          const t = H.g().tankById.get(ev.targetId); if (!t) continue;
+          if (t.combat.destroyed) { st.forced = 'real'; return; }
+          if (H.killOne(t, 'ammorack')) { st.forced = t.id; MB.burstIn([60, 160, 320, 600, 900, 1300], { type: 'cook-off', victim: t.id, hitKind: ev.kind }); }
+          return;
+        }`);
+      ctx.note('the ammunition detonation is staged: the player\'s first real hit on the marked target sets it off through the QA kill (cause ammorack, turret thrown); Realistic\'s damage model reached no rack in passes 1-4');
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
@@ -1439,7 +1458,9 @@ Object.assign(RECIPES, {
         invite.searchParams.set('nosplash', '1');
         invite.searchParams.set('tier', 'desktop');
         ctx.log('room', invite.searchParams.get('room'));
-        ctx.log('host lobby', await setLobby(A.page, 'map', 'verdant'), await setLobby(A.page, 'vehicle', 'challenger_3x'), await setLobby(A.page, 'team', 'alpha'));
+        // Steppe (r14 attempt 6): on Verdant the town and the farm (one farmhouse on the Challenger's drive every time)
+        // kept the seats out of each other's sight through attempts 3-5; the steppe's open grass keeps the lanes clear
+        ctx.log('host lobby', await setLobby(A.page, 'map', 'steppe'), await setLobby(A.page, 'vehicle', 'challenger_3x'), await setLobby(A.page, 'team', 'alpha'));
         await B.page.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 240000 });
         await B.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await B.page.waitForFunction(() => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2, { timeout: 60000 });
@@ -1503,6 +1524,33 @@ Object.assign(RECIPES, {
             }
             return true;
           };
+          // first: spots each seat reaches in a straight line (140-300 m out toward the other seat, open ground, nothing
+          // solid on the way), then the pair 140-340 m apart that see each other (r14 attempt 5: no centre pair had
+          // clear drives, and the Challenger stuck on the same farmhouse again)
+          if (seats[0] && seats[1]) {
+            const reach = (from, toward) => {
+              const out = [], base = Math.atan2(toward[0] - from[0], toward[1] - from[1]);
+              for (const r of [140, 180, 220, 260, 300]) {
+                for (const da of [0, 15, -15, 30, -30, 45, -45]) {
+                  const ang = base + (da * Math.PI) / 180, p = [from[0] + Math.sin(ang) * r, from[1] + Math.cos(ang) * r];
+                  if (H.openGround(p[0], p[1], 10, discs) && pathClear(from, p)) out.push(p);
+                }
+              }
+              return out;
+            };
+            const sa = reach(seats[0], seats[1]), sb = reach(seats[1], seats[0]);
+            let best = null;
+            for (const pa of sa) {
+              for (const pb of sb) {
+                const dist = d(pa, pb);
+                if (dist < 140 || dist > 340) continue;
+                if (!H.laneClear(eye(pa), { x: pb[0], z: pb[1] }, 2.4, discs) || !H.laneClear(eye(pb), { x: pa[0], z: pa[1] }, 2.4, discs)) continue;
+                const score = -Math.abs(dist - 200);
+                if (!best || score > best.score) best = { a: pa.map(Math.round), b: pb.map(Math.round), d: Math.round(dist), paths: [true, true], score, reach: [sa.length, sb.length] };
+              }
+            }
+            if (best) return best;
+          }
           let partial = null;
           for (const r of [0, 70, 140, 210, 280]) {
             for (let k = 0; k < (r ? 12 : 1); k++) {
@@ -1614,7 +1662,7 @@ Object.assign(RECIPES, {
           for (const c of [A, B]) await c.page.evaluate(() => { window.__MB.arm(null); window.__MB.resume(); window.__MB.setFire(null); });
           await ctx.sleep(1200);
         }
-        ctx.note('two clients of one LAN room through the room double (A host alpha Challenger 3, B bravo T-90M); hour: the battle presets of __SHOTS.battleTime("sunset") on both');
+        ctx.note('two clients of one LAN room on Steppe through the room double (A host alpha Challenger 3, B bravo T-90M); hour: the battle presets of __SHOTS.battleTime("sunset") on both');
       } finally {
         if (A.errors.length || B.errors.length) ctx.note(`client errors: ${[...A.errors, ...B.errors].slice(0, 4).join(' | ')}`);
         await A.context.close().catch(() => {});

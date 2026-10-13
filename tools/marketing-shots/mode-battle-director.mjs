@@ -262,6 +262,17 @@ export function installModeBattleDirector() {
     }
     return n;
   };
+  /** Destroy one tank the way H.killExcept does (cause 'ammorack' pops it and throws its turret), credited to the player. */
+  H.killOne = (t, cause = 'shot') => {
+    const D = H.D(), g = H.g();
+    if (!H.live(t) || t._destroyedAnnounced) return false;
+    t.combat.hp = 0; t.combat.destroyed = true; t.combat.fire.burning = false;
+    t._destroyedAnnounced = true;
+    try { t.visual?.setDestroyed?.({ pop: cause === 'ammorack' }); } catch { /* visual optional */ }
+    try { g._wreckTurrets?.launch(t, cause, Math.round(g.timeS * 60)); } catch { /* optional */ }
+    D.bus.emit('tank:destroyed', { id: t.id, specId: t.specId, pos: [t.state.pos.x, t.state.pos.y, t.state.pos.z], killerId: g.player ? g.player.id : null, cause });
+    return true;
+  };
   /** Stage an engine fire on a tank, as a real engine hit starts one (module state + fire ticks + the bus events). */
   H.igniteEngine = (t, { ticks = 40, modules = ['engine'] } = {}) => {
     const D = H.D();
