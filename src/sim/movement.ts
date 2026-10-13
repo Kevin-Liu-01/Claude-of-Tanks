@@ -3660,6 +3660,9 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
   if (diveV * excess > 0) suspension.cv += diveV;
 }
 
+/** Where guardDepthAt last read the ground (world x, z). */
+let _guardGroundX = 0;
+let _guardGroundZ = 0;
 /** The ground over (+) or under (−) one end guard's height at an attitude (the reachable ground: beginReachableGround). */
 function guardDepthAt(guards: readonly number[], index: number, state: TankState, pitch: number, roll: number): number {
   const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
@@ -3671,6 +3674,7 @@ function guardDepthAt(guards: readonly number[], index: number, state: TankState
   const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
   const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
   const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
+  _guardGroundX = worldX; _guardGroundZ = worldZ;
   return reachableGroundAt(worldX, worldZ) - (state.pos.y + rolledY * cosNegPitch - localZ * sinNegPitch);
 }
 
@@ -3691,6 +3695,7 @@ function restDrawnEndsOnGround(
   terrainAt: HeightSampler,
   seatPitch: number,
   seatRoll: number,
+  dt: number,
 ): void {
   const hold = state._hold;
   const suspension = state._susp;
@@ -3734,13 +3739,19 @@ function restDrawnEndsOnGround(
   // share: an end the seat itself leaves in the ground is the support solve's)
   const leftPitch = hold.p + suspension.d * SUSP_VIS_P;
   const leftRoll = hold.r;
-  let residual = 0;
+  let residual = 0, onRecord = false;
   for (let index = 0; index + 2 < guards.length; index += 3) {
     const drawn = guardDepthAt(guards, index, state, seatPitch + leftPitch, seatRoll + leftRoll);
     if (!(drawn > residual)) continue;
+    const x = _guardGroundX, z = _guardGroundZ;
     const extra = drawn - Math.max(0, guardDepthAt(guards, index, state, seatPitch, seatRoll));
-    if (extra > residual) residual = extra;
+    if (extra > residual) { residual = extra; onRecord = hAt(x, z) > terrainAt(x, z) + 1e-4; }
   }
+  // (physics stream, 2026-10-13) an end resting on a record's top — a stone's drawn surface, which a turned end can reach
+  // across its edge up to the hull's climb over the ground beside it — is climbed onto at the climb's pace (EDGE_CLIMB_*),
+  // as the tracks are: lifting the root by the whole depth at once threw a reversing T-90M 0.93 m up a boulder's flank
+  // in one step
+  if (onRecord) residual = Math.min(residual, EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE * Math.max(Math.abs(state.speed), _climbPaceMps) * dt);
   if (residual > 0) {
     state.pos.y += residual;
     state._ride.y += residual;
@@ -4519,6 +4530,11 @@ function supportCacheIsFresh(
   rigidGear: boolean,
 ): boolean {
   const cache = state._sup;
+  // (physics stream, 2026-10-13) a hull still climbing onto its floor is not parked: a cached solve reads no record, so
+  // the edge climb's ease (EDGE_CLIMB_*, which a record read arms) dropped out after one step and a hull stopped against
+  // a stone was lifted onto its top 0.25 m a step, 0.5 m in three
+  const ride = state._ride;
+  if (ride && ride.y < cache.floorY - 0.001) return false;
   return Math.abs(state.pos.x - cache.x) < 0.004 &&
     Math.abs(state.pos.z - cache.z) < 0.004 &&
     Math.abs(wrapAngle(state.yaw - cache.yaw)) < 0.0012 &&
@@ -5216,7 +5232,7 @@ export function updateTank(
     state.fallImpactMps *= landingFaceShare(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   limitDiveToTravel(entity, spec, state);
-  restDrawnEndsOnGround(spec, state, hAt, terrainAt, pitchEff + _stationTurn.angle, rollEff);
+  restDrawnEndsOnGround(spec, state, hAt, terrainAt, pitchEff + _stationTurn.angle, rollEff, dt);
   // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
   // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.
