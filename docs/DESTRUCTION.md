@@ -913,6 +913,12 @@ stuff falling around and pieces of buildings and destruction use the same kind o
   never at the height of the ground it was thrown from. A still piece on a standing building (a damaged roof's slipped
   tiles) is a box in that building's own run: it falls and folds with it. A fall's piece thrown with next to no speed
   over the ground drops to it.
+- **Nothing hangs from the fall.** The owner's "big rectangles" were the building's own triangles straddling the eave
+  band (a roof's overhang under the eave line, a tower's glazing from under the eave to over it): the desktop cut spares
+  a triangle that reaches the roof, and only its roof vertices rode the front down, so it hung from its wall vertex as a
+  flat panel of slate or dark glazing until the fold. The vertex patch brings a wall's vertex over the front down to
+  `FOLD_ABOVE_FRONT_M` (1 m) over it — over the cut's ragged band, so nothing the cut shows changes — and the phone keeps
+  folding it onto the front (`structureMask` `crumbleVertexY` is the GLSL's twin for the receipts).
 - **A hole opens through the earlier runs.** Rims are runs no hole cuts; every through-hole folds the triangles of the
   structure's earlier rims inside its cut (`structureStages` trimRuns), as the mask discards the wall there.
 - **One interior a storey.** The kits' dark box behind each hole is replaced by the storey's interior (`layInterior`):
@@ -931,6 +937,7 @@ stuff falling around and pieces of buildings and destruction use the same kind o
 - **Rounds break light cover.** A round breaks the crushable props it flies through before what stops it (fences,
   crates, carts, tents, stalls, stacks, the parked cars: `sim/shellLightCover.ts`, the solo step and the authority).
 - **Receipts.** `tools/destruction-check.mjs` stages every destructible building kind of a map, brings it down under HE
-  and judges what it left: textured runs, no rim in a later through-hole, no still piece in the air, every thrown piece on
+  and judges what it left: textured runs, no rim in a later through-hole, nothing of the building hanging over the heap
+  late in its fall (the crumble's law on every triangle of its spans), no still piece in the air, every thrown piece on
   the ground where it lands, every body at rest on the ground, a body or a record, the budgets. Its selftest runs four
   Steinburg kinds; main before this section failed every one.
