@@ -1443,6 +1443,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
     'src/world/vegetationResources.selftest.mjs',
+    'src/world/foliageOcclusionSweep.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/tidalMangrove.selftest.mjs',
     'src/world/vegetationClearance.selftest.mjs',

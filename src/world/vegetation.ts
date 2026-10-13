@@ -6,6 +6,7 @@
 // Contract: docs/ARCHITECTURE.md §3.2; visuals per docs/research/graphics-aaa.md §8.
 
 import * as THREE from 'three';
+import { createFoliageFadeSweep } from './foliageOcclusionSweep.ts';
 import { keepStreams } from './geometryStreams.ts';
 import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.ts';
 import { shapeFarTreeBase } from './farTreeBase.ts';
@@ -7957,35 +7958,41 @@ function* vegetationBuildSteps(
     const radius = tree.cr + OCCL_PAD_M;
     return px * px + py * py + pz * pz < radius * radius ? 1 : 0;
   }
-  function updateTreeOcclusionFades(smoothing: number): boolean {
-    let any = false;
-    for (const tree of trees) {
-      const target = treeOcclusionTarget(tree);
-      if (tree.fade !== target) {
-        tree.fade += (target - tree.fade) * smoothing;
-        if (Math.abs(tree.fade - target) < 0.02) tree.fade = target;
-        if (tree.slot >= 0) writeTreeFade(tree);
-      }
-      if (tree.fade !== 0) any = true;
+  // PERF (2026-10-13, the perf stream): each sweep visits only the trees and bushes it can change — those in the
+  // capsule's broadphase box and those still easing (foliageOcclusionSweep.ts); the walk over every tree and bush of the
+  // map was ~1 % of the battle's main thread on Verdant, every frame. Each ease below reads its own record only.
+  let fadeSmoothing = 1;
+  const treeFadeSweep = createFoliageFadeSweep<TreeRecord>((tree) => {
+    const target = treeOcclusionTarget(tree);
+    if (tree.fade !== target) {
+      tree.fade += (target - tree.fade) * fadeSmoothing;
+      if (Math.abs(tree.fade - target) < 0.02) tree.fade = target;
+      if (tree.slot >= 0) writeTreeFade(tree);
     }
-    return any;
+  });
+  const bushFadeSweep = createFoliageFadeSweep<BushFadeRecord>((bush) => {
+    const segment = occlusionSegment;
+    const bx = bush.x - segment.ax, bz = bush.z - segment.az;
+    const target = segment.active && bx * bx + bz * bz < BUSH_FADE_R2 ? 1 : 0;
+    if (bush.fade !== target) {
+      bush.fade += (target - bush.fade) * fadeSmoothing;
+      if (Math.abs(bush.fade - target) < 0.02) bush.fade = target;
+      bush.attr.array[bush.slot] = bush.fade;
+      bush.attr.addUpdateRange(bush.slot, 1);
+      _dirtyFadeAttrs.add(bush.attr);
+    }
+  });
+  const BUSH_FADE_R = Math.sqrt(BUSH_FADE_R2);
+  function updateTreeOcclusionFades(smoothing: number): boolean {
+    const segment = occlusionSegment;
+    fadeSmoothing = smoothing;
+    return treeFadeSweep.run(trees, segment.active, segment.minX, segment.maxX, segment.minZ, segment.maxZ);
   }
   function updateBushOcclusionFades(smoothing: number): boolean {
-    let any = false;
     const segment = occlusionSegment;
-    for (const bush of bushFadeReg) {
-      const bx = bush.x - segment.ax, bz = bush.z - segment.az;
-      const target = segment.active && bx * bx + bz * bz < BUSH_FADE_R2 ? 1 : 0;
-      if (bush.fade !== target) {
-        bush.fade += (target - bush.fade) * smoothing;
-        if (Math.abs(bush.fade - target) < 0.02) bush.fade = target;
-        bush.attr.array[bush.slot] = bush.fade;
-        bush.attr.addUpdateRange(bush.slot, 1);
-        _dirtyFadeAttrs.add(bush.attr);
-      }
-      if (bush.fade !== 0) any = true;
-    }
-    return any;
+    fadeSmoothing = smoothing;
+    return bushFadeSweep.run(bushFadeReg, segment.active,
+      segment.ax - BUSH_FADE_R, segment.ax + BUSH_FADE_R, segment.az - BUSH_FADE_R, segment.az + BUSH_FADE_R);
   }
   function flushTreeFadeUploads(): void {
     for (const attr of _dirtyFadeAttrs) attr.needsUpdate = true;
