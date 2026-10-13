@@ -2816,6 +2816,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
+  // 2026-10-13 (the perf stream): the pending cover names the battlefield (a Random pick planned now, as the loading
+  // owner will consume it) while the loading owner itself still downloads
+  describePendingMap: (specId: string, mapId: string | null) => {
+    const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
+    return (MAP_IDS as readonly string[]).includes(resolved)
+      ? { mapId: resolved, mapName: getMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+  },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
   presentFailure: (error) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error)),

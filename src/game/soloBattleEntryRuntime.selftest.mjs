@@ -212,4 +212,34 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /onFailure: \(error\) => entryTelemetry\.send\(\{[\s\S]{0,160}kind: 'entry_result'/,
   'a failed solo entry is beaconed as an entry_result');
 
-console.log('soloBattleEntryRuntime.selftest: selection and covered failure recovery pass');
+// 2026-10-13: the pending cover names the battlefield before the loading owner's import (Slow 4G: ~1.8 s); a failing
+// description never holds the cover back
+{
+  const covers = [];
+  const pendingLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {} });
+  const make = (describePendingMap) => createSoloBattleEntryRuntime({
+    lifecycle: pendingLifecycle,
+    loading: { async begin(...args) { covers.push(['load', args[1]]); } },
+    battleLoad: { showPending: (map) => covers.push(['cover', map]), hide: async () => {} },
+    audio: { loadingOn() {} }, enterGarage() {}, nextFrame: async () => {},
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'random',
+    ...(describePendingMap ? { describePendingMap } : {}),
+  });
+  await make((specId, mapId) => {
+    assert.equal(specId, 'm1a2'); assert.equal(mapId, 'random');
+    return { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' };
+  }).beginSelected({});
+  assert.deepEqual(covers, [['cover', { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' }], ['load', 'random']],
+    'the cover is named before the loading owner runs, which still receives the request itself');
+  covers.length = 0;
+  await make(() => { throw new Error('no names yet'); }).beginSelected({ mapId: 'winter' });
+  assert.deepEqual(covers, [['cover', 'winter'], ['load', 'winter']], 'a failing description falls back to the map id');
+  covers.length = 0;
+  await make(null).beginSelected({ mapId: 'winter' });
+  assert.deepEqual(covers, [['cover', 'winter'], ['load', 'winter']]);
+}
+const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
+  'the composition names the map the intent will consume, from the same pending map the loading owner falls back to');
+
+console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');
