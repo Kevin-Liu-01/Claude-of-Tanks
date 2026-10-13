@@ -49,8 +49,12 @@ interface WorldProgramWarmReceipt {
   maxUploadMs: number;
   /** the wait for the GPU's queue to drain before the draw (its first-use program queries are synchronous) */
   fenceMs: number;
+  /** the programs' first-use queries (their uniforms and attributes: synchronous), timed apart from the draw */
+  programInfoMs: number;
   /** the covered draw's own time */
   renderMs: number;
+  /** the meshes the stand-ins were shaped after */
+  drawnFrom: string[];
   error?: string;
 }
 
@@ -71,6 +75,10 @@ interface BattleWorldProgramWarmPorts {
   upload?(texture: unknown): void;
   /** Fences the GPU's command queue; the returned check is true once everything issued before it has run. */
   fence?(): () => boolean;
+  /** Makes the programs' first-use queries (receipts time them apart from the draw). */
+  programInfo?(materials: readonly Material[]): void;
+  /** The meshes the last draw's stand-ins were shaped after (receipts). */
+  drawnFrom?(): string[];
   /** Captures the renderer context current now; the check is false once that context is lost or replaced. */
   lifetime(): () => boolean;
   /** One covered draw of each distinct material under the root; returns how many were drawn. */
@@ -141,7 +149,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     const own: WorldProgramWarmReceipt = receipt = {
       mapId, status: 'waiting-for-lights', startedMs: null, linkedMs: null, drawnMs: null,
       materials: 0, pending: 0, drawn: 0, signature: null, drawSignature: null, programIds: [],
-      textures: 0, uploadMs: 0, maxUploadMs: 0, fenceMs: 0, renderMs: 0,
+      textures: 0, uploadMs: 0, maxUploadMs: 0, fenceMs: 0, programInfoMs: 0, renderMs: 0, drawnFrom: [],
     };
     const current = (): boolean => stamp === generation;
     const stop = (status: WorldProgramWarmStatus, error?: unknown): WorldProgramWarmReceipt => {
@@ -230,6 +238,9 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     own.drawSignature = ports.signature();
     // a draw under another signature would link a program synchronously on the main thread; leave it to the warm
     if (own.drawSignature !== own.signature || !ports.isSignatureFinal()) return stop('signature-moved');
+    const infoAt = ports.now();
+    try { ports.programInfo?.(submitted); } catch (error) { return stop('abandoned', error); }
+    own.programInfoMs = Math.round(ports.now() - infoAt);
     const drawAt = ports.now();
     try {
       own.drawn = ports.drawPipelines(root);
@@ -237,6 +248,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
       return stop('abandoned', error);
     }
     own.renderMs = Math.round(ports.now() - drawAt);
+    own.drawnFrom = ports.drawnFrom?.() ?? [];
     own.drawnMs = since();
     return stop('drawn');
   }
@@ -296,19 +308,52 @@ export function createRendererWorldProgramWarm(
       renderer.setRenderTarget(priorTarget, priorFace, priorMip);
     }
   };
-  // One proxy per distinct material: the chunk's own geometry and material (the same program and vertex layout), never
-  // the chunk itself, which may not stand in the scene yet. A material's per-draw hook (the terrain's receiver-only shadow
-  // guard, lighting.ts) sees the proxy, which shares the chunk's userData and casts no shadow.
-  const proxiesFor = (root: Object3D): THREE.Mesh[] => {
-    const proxies: THREE.Mesh[] = [];
-    const seen = new Set<Material>();
+  // One proxy per distinct material and vertex layout, never the chunk itself (which may not stand in the scene yet).
+  // A proxy draws a three-vertex stand-in with the source's attribute names, formats, strides and offsets: the program
+  // and the GPU pipeline (its vertex descriptor) are the source's, while the draw uploads ~nothing (block 18b: a draw of
+  // the source geometry itself, the horizon ring among them, held the main thread 0.37-5.5 s). A material's per-draw hook
+  // (the terrain's receiver-only shadow guard, lighting.ts) sees a proxy that shares the source's userData and casts no
+  // shadow. A geometry with morph attributes is drawn as it is (none in the terrain today).
+  const stubGeometry = (source: THREE.BufferGeometry): { geometry: THREE.BufferGeometry; layout: string; stub: boolean } => {
+    if (Object.keys(source.morphAttributes).length) return { geometry: source, layout: `source:${source.uuid}`, stub: false };
+    const geometry = new THREE.BufferGeometry();
+    const interleaved = new Map<THREE.InterleavedBuffer, THREE.InterleavedBuffer>();
+    const layout: string[] = [];
+    for (const [name, attribute] of Object.entries(source.attributes)) {
+      const Ctor = attribute.array.constructor as new (length: number) => THREE.TypedArray;
+      if ((attribute as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute) {
+        const shared = attribute as THREE.InterleavedBufferAttribute;
+        let buffer = interleaved.get(shared.data);
+        if (!buffer) { buffer = new THREE.InterleavedBuffer(new Ctor(shared.data.stride * 3), shared.data.stride); interleaved.set(shared.data, buffer); }
+        geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(buffer, shared.itemSize, shared.offset, shared.normalized));
+        layout.push(`${name}:${shared.itemSize}:${Ctor.name}:${shared.normalized ? 1 : 0}:i${shared.data.stride}@${shared.offset}`);
+      } else {
+        const plain = attribute as THREE.BufferAttribute;
+        geometry.setAttribute(name, new THREE.BufferAttribute(new Ctor(plain.itemSize * 3), plain.itemSize, plain.normalized));
+        layout.push(`${name}:${plain.itemSize}:${Ctor.name}:${plain.normalized ? 1 : 0}`);
+      }
+    }
+    const index = source.getIndex();
+    if (index) {
+      const IndexCtor = index.array.constructor as new (values: number[]) => THREE.TypedArray;
+      geometry.setIndex(new THREE.BufferAttribute(new IndexCtor([0, 1, 2]), 1));
+    }
+    return { geometry, layout: layout.sort().join('|'), stub: true };
+  };
+  const proxiesFor = (root: Object3D): { proxies: THREE.Mesh[]; stubs: THREE.BufferGeometry[]; from: string[] } => {
+    const proxies: THREE.Mesh[] = [], stubs: THREE.BufferGeometry[] = [], from: string[] = [];
+    const seen = new Set<string>();
     root.traverse((object) => {
       const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; isSkinnedMesh?: boolean };
       const material = mesh.material;
       if (!mesh.isMesh || mesh.isInstancedMesh || mesh.isBatchedMesh || mesh.isSkinnedMesh || !mesh.geometry
-        || !material || Array.isArray(material) || seen.has(material)) return;
-      seen.add(material);
-      const proxy = new THREE.Mesh(mesh.geometry, material);
+        || !material || Array.isArray(material)) return;
+      const { geometry, layout, stub } = stubGeometry(mesh.geometry);
+      const key = `${material.uuid}|${layout}`;
+      if (seen.has(key)) { if (stub) geometry.dispose(); return; }
+      seen.add(key);
+      if (stub) stubs.push(geometry);
+      const proxy = new THREE.Mesh(geometry, material);
       proxy.name = 'world-program-warm-proxy';
       proxy.userData = mesh.userData;
       proxy.frustumCulled = false;
@@ -317,11 +362,14 @@ export function createRendererWorldProgramWarm(
       proxy.castShadow = false;
       proxy.layers.enableAll();
       proxies.push(proxy);
+      from.push(mesh.name || mesh.type);
     });
-    return proxies;
+    return { proxies, stubs, from };
   };
+  let lastFrom: string[] = [];
   const drawPipelines = (root: Object3D): number => {
-    const proxies = proxiesFor(root);
+    const { proxies, stubs, from } = proxiesFor(root);
+    lastFrom = from;
     if (!proxies.length) return 0;
     const sceneTarget = getSceneTarget();
     if (!pipelineTarget || pipelineTarget.samples !== sceneTarget.samples
@@ -362,6 +410,8 @@ export function createRendererWorldProgramWarm(
       shadowMap.render = shadowRender;
       for (const object of hidden) object.visible = true;
       holder.clear();
+      // the stand-ins' few bytes leave the GPU with them; the sources' buffers upload when they first draw, as before
+      for (const stub of stubs) stub.dispose();
     }
     return proxies.length;
   };
@@ -374,6 +424,14 @@ export function createRendererWorldProgramWarm(
       return !program?.isReady || program.isReady() === true;
     },
     programOf: (material) => (renderer.properties.get(material) as { currentProgram?: { id?: number } }).currentProgram?.id ?? null,
+    programInfo: (materials) => {
+      for (const material of materials) {
+        const program = (renderer.properties.get(material) as { currentProgram?: { getUniforms?(): unknown; getAttributes?(): unknown } }).currentProgram;
+        program?.getUniforms?.();
+        program?.getAttributes?.();
+      }
+    },
+    drawnFrom: () => lastFrom,
     // the linked programs' own uniforms (onBeforeCompile's included): data textures not yet resident, render targets aside
     pendingTextures: (materials) => {
       const pending = new Set<THREE.Texture>();

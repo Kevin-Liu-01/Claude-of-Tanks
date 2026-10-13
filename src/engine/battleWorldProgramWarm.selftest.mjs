@@ -227,7 +227,17 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   chunkB.visible = false; // a coarse level not shown yet still keys the same program
   const skirtMesh = new THREE.Mesh(new THREE.PlaneGeometry(), skirt);
   const pebbles = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);
-  terrain.add(chunkA, chunkB, skirtMesh, pebbles, new THREE.Mesh(new THREE.PlaneGeometry(), hooked));
+  // the horizon ring draws its faces with the splat material over its own layout (a normalized byte attribute, and an
+  // interleaved pair): a pipeline of its own
+  const ringGeometry = new THREE.BufferGeometry();
+  const ringSource = new THREE.InterleavedBuffer(new Float32Array(5 * 400), 5);
+  ringGeometry.setAttribute('position', new THREE.InterleavedBufferAttribute(ringSource, 3, 0));
+  ringGeometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(ringSource, 2, 3));
+  ringGeometry.setAttribute('shore', new THREE.BufferAttribute(new Uint8Array(400), 1, true));
+  ringGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(1200), 1));
+  const ring = new THREE.Mesh(ringGeometry, splat); ring.name = 'horizon-ring';
+  terrain.add(ring, chunkA, chunkB, skirtMesh, pebbles, new THREE.Mesh(new THREE.PlaneGeometry(), hooked));
+  const disposedStubs = [];
   // WebGL2's fence: busy for two polls, then signalled
   const gl = { lost: false, isContextLost() { return this.lost; },
     SYNC_GPU_COMMANDS_COMPLETE: 0x9117, TIMEOUT_EXPIRED: 0x911b, ALREADY_SIGNALED: 0x911a, fences: [], deleted: 0,
@@ -263,6 +273,7 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
     },
     render(renderScene, cam) {
       const visible = [];
+      renderScene.traverseVisible((object) => { if (object.isMesh) object.geometry.addEventListener('dispose', () => disposedStubs.push(object.geometry)); });
       renderScene.traverseVisible((object) => { if (object.isMesh) visible.push(object); });
       for (const mesh of visible) mesh.material.onBeforeRender(renderer, renderScene, cam, mesh.geometry, mesh, null);
       log.push(['render', target, visible, renderer.shadowMap.render !== shadowRender, renderScene.background]);
@@ -279,7 +290,7 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   const receipt = await warm.settled();
   assert.equal(receipt.status, 'drawn', JSON.stringify(receipt));
   assert.equal(receipt.materials, 4, 'every terrain material is submitted (the link needs no draw)');
-  assert.equal(receipt.drawn, 3, 'one pipeline draw per distinct material, the instanced dressing left to the warm');
+  assert.equal(receipt.drawn, 4, 'one pipeline draw per distinct material and vertex layout, the instanced dressing left to the warm');
   assert.deepEqual(receipt.programIds, [100, 101, 102, 103], 'the receipt names the programs the battle should draw with');
   assert.deepEqual(log.filter((entry) => entry[0] === 'upload').map((entry) => entry[1]), ['grass', 'rock'],
     'the textures the draw binds that are not resident upload first, each once (resident, empty and render targets aside)');
@@ -295,11 +306,27 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   assert.equal(render[1].width, 8); assert.equal(render[1].height, 8);
   assert.equal(render[1].samples, 4); assert.equal(render[1].texture.type, THREE.HalfFloatType);
   assert.equal(render[1].depthTexture.type, sceneTarget.depthTexture.type, 'the scene target\'s formats');
-  assert.equal(render[2].length, 3, 'only the proxies draw');
+  assert.equal(render[2].length, 4, 'only the proxies draw');
   assert.ok(render[2].every((mesh) => mesh.name === 'world-program-warm-proxy' && mesh.frustumCulled === false));
-  assert.deepEqual(render[2].map((mesh) => mesh.material), [splat, skirt, hooked]);
-  assert.deepEqual(hookSaw, [[false, 'a']], 'the per-draw hook sees a proxy that casts nothing and shares the chunk\'s userData');
-  assert.ok(render[2][0].geometry === chunkA.geometry, 'the chunk\'s own vertex layout');
+  assert.deepEqual(render[2].map((mesh) => mesh.material), [splat, splat, skirt, hooked]);
+  assert.deepEqual(hookSaw, [[false, undefined], [false, 'a']], 'the per-draw hook sees proxies that cast nothing and share their source\'s userData');
+  // the stand-ins: three vertices in the source's own layout (names, formats, normalization, interleaved stride and offset)
+  const [ringStub, chunkStub] = render[2].map((mesh) => mesh.geometry);
+  assert.notStrictEqual(chunkStub, chunkA.geometry, 'never the source geometry (its upload stays where it was)');
+  for (const [stub, source] of [[ringStub, ringGeometry], [chunkStub, chunkA.geometry]]) {
+    assert.deepEqual(Object.keys(stub.attributes).sort(), Object.keys(source.attributes).sort());
+    for (const [name, attribute] of Object.entries(source.attributes)) {
+      const copy = stub.attributes[name];
+      assert.equal(copy.count, 3, `${name}: three vertices`);
+      assert.equal(copy.itemSize, attribute.itemSize); assert.equal(copy.normalized, attribute.normalized);
+      assert.equal(copy.array.constructor, attribute.array.constructor);
+      assert.equal(!!copy.isInterleavedBufferAttribute, !!attribute.isInterleavedBufferAttribute);
+      if (attribute.isInterleavedBufferAttribute) { assert.equal(copy.data.stride, attribute.data.stride); assert.equal(copy.offset, attribute.offset); }
+    }
+    assert.equal(stub.getIndex().count, 3); assert.equal(stub.getIndex().array.constructor, source.getIndex().array.constructor);
+  }
+  assert.strictEqual(ringStub.attributes.position.data, ringStub.attributes.uv.data, 'one interleaved buffer, as the source');
+  assert.deepEqual(disposedStubs.length, 4, 'every stand-in leaves the GPU after the draw');
   assert.equal(render[3], true, 'the shadow pass does not run during the draw');
   assert.equal(render[4], null, 'no background pass');
   assert.equal(target, null, 'the prior target is restored');
