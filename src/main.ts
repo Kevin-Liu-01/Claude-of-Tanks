@@ -484,7 +484,25 @@ const engineCtx = {
   releaseShadowMaterial: (mat: THREE.Material) => lighting.releaseShadowMaterial(mat),
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
+  // the perf stream (2026-10-13, the reworked terrain fold): a map's terrain program is its own (terrainSplatFold.ts), so
+  // the world build hands the terrain here as soon as it stands and its programs link in the parallel compiler, against
+  // the scene pass's target, the scene's lights and fog, while the vegetation and the props build; the deployment warm
+  // (soloBattleDeploymentRuntime.ts prepareWorldRootPrograms) then finds them linked instead of linking them under cover
+  prepareTerrainPrograms: (root: THREE.Object3D): void => {
+    const target = postRuntime?.sceneAA.sceneTarget;
+    if (!target) return;
+    const priorTarget = renderer.getRenderTarget();
+    const priorFace = renderer.getActiveCubeFace(), priorMip = renderer.getActiveMipmapLevel();
+    try {
+      renderer.setRenderTarget(target);
+      void renderer.compileAsync(root, camera, scene).catch(() => { /* the deployment warm links whatever is left */ });
+    } catch { /* the deployment warm links it */ } finally {
+      renderer.setRenderTarget(priorTarget, priorFace, priorMip);
+    }
+  },
 };
+// (the post runtime, built below: the terrain program compile above targets its scene pass)
+let postRuntime: { sceneAA: { sceneTarget: THREE.WebGLRenderTarget } } | null = null;
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
 // Worlds are lazy-built per map config and cached. One typed runtime owns the
 // active-world choice, atmosphere, collider/minimap readiness, GPU warm,
@@ -1597,6 +1615,7 @@ const nightLighting = createNightLightingAccess({
     : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+postRuntime = post;
 // 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
 post.setGroundHeightSource((x, z) => hfProxy.getHeightAt(x, z));
 const viewport = createViewportRuntime({

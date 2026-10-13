@@ -68,6 +68,8 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   scene: THREE.Scene;
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
+  /** Starts the built terrain's program links in the parallel compiler (main.ts engine context; the reworked fold). */
+  prepareTerrainPrograms?(root: THREE.Object3D): void;
 };
 
 interface WorldOptions {
@@ -386,6 +388,8 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
+    // the perf stream (2026-10-13): the map's own terrain program (terrainSplatFold.ts) links while the rest builds
+    engineCtx.prepareTerrainPrograms?.(terrain);
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
