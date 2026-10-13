@@ -366,8 +366,12 @@ collapse's work is 1–4 ms of CPU (§10), most of it the route grid's refresh r
 
 - **crater**: a bowl `−depth·(1 − (r/R)²)²` inside `0.8 R` blending into a rim `+rim·exp(−((r − R)/0.35R)²)`, ragged by
   `seed` (a three-harmonic angular wobble of ±8 %), influence radius `1.6 R`;
-- **rubble**: a mound over the structure's footprint rectangle, height `clamp(0.18·(topY − baseY), 0.6, 2.6)` m on the
-  inner 70 %, a cosine skirt `max(3, 2.2·h)` m wide beyond the footprint edge (grade under 25 %: every hull climbs it).
+- **rubble**: a mound over the structure's footprint rectangle, at most `h = clamp(0.18·(topY − baseY), 0.6, 2.6)` m on
+  the inner 70 %, a cosine skirt `max(3, 2.2·h)` m wide beyond the footprint edge (grade under 25 %: every hull climbs it).
+  The inner 70 % is a crown, not a level plateau (2026-10-13): its top lies between 0.58 h and h, leaning to one side
+  and broken by two crossed swells no shorter than 4.5 m, the skirt running down from the crown's height at the edge.
+  Lean and swells come from a hash of the footprint's centre to the centimetre, so the authority, every mirror and the
+  kits' `rubbleMoundHeightAt` raise the same heap and no two heaps are alike; the steepest grade stays under main's.
 
 Stamps are bucketed on a 16 m grid (64 × 64 heads, ≤ 8 stamps per bucket). The sum is clamped to [−2.5, +3] m.
 
