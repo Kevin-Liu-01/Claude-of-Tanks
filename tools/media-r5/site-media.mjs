@@ -447,11 +447,14 @@ function buildScenes(fleet = {}) {
       durationMs: scene.storyboard?.durationMs ?? null, scene: `${BASE_URL}/scenes/${id}.scene.json`,
       thumb: `${BASE_URL}/stills/${id}-thumb.webp` });
   }
-  // the fleet's takes join the Director's list as their own group, each with its vehicle (the site's own takes stay first)
+  // the fleet's takes join the Director's list as their own group, each with its vehicle (the site's own takes stay first).
+  // A fleet take's scene is the one its film was made from: the library's when the take has one there, else the scene
+  // its delivery carries (the fleet's own takes are planned from the roster and kept as their delivered scenes).
   for (const [vehicle, entry] of Object.entries(fleet)) {
     if (takes.some((t) => t.id === entry.take)) continue;
-    const source = join(library, `${entry.take}.json`);
-    if (!existsSync(source)) continue;
+    const kept = join(library, `${entry.take}.json`), filmed = join(delivery(entry.take)?.dir ?? '', `${entry.take}.scene.json`);
+    const source = existsSync(kept) ? kept : existsSync(filmed) ? filmed : null;
+    if (!source) continue;
     copy(join(OUT, 'scenes', `${entry.take}.scene.json`), source);
     const scene = JSON.parse(readFileSync(source, 'utf8'));
     takes.push({ id: entry.take, group: 'fleet', vehicle, title: entry.title, short: entry.short, map: scene.map ?? entry.map,
