@@ -155,9 +155,11 @@ export function installModeBattleDirector() {
     for (const c of discs) {
       const wx = c.x - eye.x, wz = c.z - eye.z, along = wx * ux + wz * uz;
       if (along < 10 || along > len - 4) continue;
-      // a canopy anywhere hides the line; a bush only near either end (it fills the foreground or covers the
-      // target); small shrubs mid-field pass under a 2.5 m sight line (r14 run 1: the strict test found no lane)
-      if (c.r < 5 && along > 25 && along < len - 45) continue;
+      // foliage matters near either end: it fills the foreground or covers the target. Mid-field, a 2.5 m sight
+      // line passes under canopies and over the lane's shrubs at frame scale (r14: on Verdant every 200 m line
+      // crossed some disc, so the stricter tests found no lane at all); terrain, buildings and props still block
+      // through the raycast above.
+      if (along > 30 && along < len - 40) continue;
       if (Math.abs(wx * uz - wz * ux) < c.r + 1.0) return false;
     }
     return true;
@@ -193,6 +195,16 @@ export function installModeBattleDirector() {
       for (let k = 0; k < (r ? 10 : 1); k++) {
         const a = (k / 10) * Math.PI * 2;
         spots.push({ x: p.state.pos.x + Math.sin(a) * r, z: p.state.pos.z + Math.cos(a) * r });
+      }
+    }
+    // then open ground forward along the line to the enemy (a spawn in the woods: Verdant, r14)
+    for (const f of [0.2, 0.32, 0.44]) {
+      const bx = p.state.pos.x + (cx - p.state.pos.x) * f, bz = p.state.pos.z + (cz - p.state.pos.z) * f;
+      for (const r of [0, 45, 90]) {
+        for (let k = 0; k < (r ? 8 : 1); k++) {
+          const a = (k / 8) * Math.PI * 2;
+          spots.push({ x: bx + Math.sin(a) * r, z: bz + Math.cos(a) * r });
+        }
       }
     }
     for (const spot of spots) {
@@ -423,14 +435,33 @@ export function installModeBattleDirector() {
     const slot = clamp(p.combat?.shellSlot ?? 0, 0, (p.spec?.gun?.shells?.length || 1) - 1);
     const shell = p.spec?.gun?.shells?.[slot];
     const vel = shell?.velocityMps || 1500;
-    let ax = t.x, az = t.z;
-    const ay = t.y + t.h * (MB.aim?.heightFrac ?? 0.5);
+    // MB.setAim({ aimAt: 'ammoRack' }) lays the gun on a module's own volume (spec.armor.modules) instead of the hull
+    const module = MB.aim?.aimAt && t.ent ? H.moduleWorld(t.ent, MB.aim.aimAt) : null;
+    const ox = module ? module.x - t.x : 0, oz = module ? module.z - t.z : 0;
+    let ax = t.x + ox, az = t.z + oz;
+    const ay = module ? module.y : t.y + t.h * (MB.aim?.heightFrac ?? 0.5);
     for (let i = 0; i < 2; i++) {
       const travel = Math.hypot(ax - pivot.x, ay - pivot.y, az - pivot.z) / vel;
-      ax = t.x + t.vx * travel; az = t.z + t.vz * travel;
+      ax = t.x + ox + t.vx * travel; az = t.z + oz + t.vz * travel;
     }
     return { x: ax, y: ay, z: az, pivot };
   }
+  /** World centre of a tank's largest module box of that name (src/vehicles/specHelpers.ts ModuleBox). */
+  H.moduleWorld = (t, name) => {
+    const boxes = (t?.spec?.armor?.modules || []).filter((b) => b.module === name && b.min && b.max);
+    if (!boxes.length) return null;
+    const volume = (b) => Math.abs((b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]));
+    const b = boxes.reduce((a, c) => (volume(c) > volume(a) ? c : a));
+    let lx = (b.min[0] + b.max[0]) / 2, ly = (b.min[1] + b.max[1]) / 2, lz = (b.min[2] + b.max[2]) / 2;
+    if (b.turretLocal) {
+      const pivotLocal = t.spec.armor.turretPivot || [0, 0, 0];
+      const ty = t.state.turretYaw || 0, c = Math.cos(ty), s = Math.sin(ty);
+      const rx = lx * c + lz * s, rz = -lx * s + lz * c;
+      lx = pivotLocal[0] + rx; ly = pivotLocal[1] + ly; lz = pivotLocal[2] + rz;
+    }
+    const y = t.state.yaw || 0, c = Math.cos(y), s = Math.sin(y);
+    return { x: t.state.pos.x + lx * c + lz * s, y: t.state.pos.y + ly, z: t.state.pos.z - lx * s + lz * c };
+  };
   function aimHook(D) {
     const spec = MB.aim;
     if (!spec) return;

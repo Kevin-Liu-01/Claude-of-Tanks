@@ -350,7 +350,8 @@ export const RECIPES = {
       // close lanes and a low aim (the hull's ammunition sits under the turret ring): a penetrating APFSDS round at
       // 170-230 m is what cooks a rack off; r14's first pass at 260 m with a 2.5 mrad gate fired once in 50 s
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 320, dists: [190, 170, 220, 240], enemies: 2 })));
-      await ctx.mb('setAim', { target: 'nearestEnemyClear', heightFrac: 0.35 });
+      // lay the gun on the ammunition's own volume (Realistic damages modules only, every module hit counts)
+      await ctx.mb('setAim', { target: 'nearestEnemyClear', aimAt: 'ammoRack', heightFrac: 0.35 });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
       await settle(ctx, 2);
       await ctx.capture({
