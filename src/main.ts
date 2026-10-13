@@ -3118,12 +3118,6 @@ bus.on('phase:change', () => {
 // ordinary garage/battle download until set() is explicitly called.
 window.__SHOTS = {
   views: [...SHOT_VIEWS],
-  /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
-   *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
-  async battleTime(time: 'day' | 'sunset' | 'night') {
-    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
-    return battleAtmosphere.current?.weather?.timeOfDay ?? null;
-  },
   async set(name: string) {
     if (!isShotViewName(name)) {
       throw new Error(`Unknown screenshot view: ${name}`);
@@ -3203,6 +3197,12 @@ window.__SHOTS = {
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
       'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
+  },
+  /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
+   *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
+  async battleTime(time: 'day' | 'sunset' | 'night') {
+    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },
 };
 
