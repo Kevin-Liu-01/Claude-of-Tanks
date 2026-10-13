@@ -72,12 +72,14 @@ export const HOME_STILLS = [
   // the firing line on open steppe at golden hour (round 2's rail yard hid the third tank behind its sheds from every
   // lens): the lead Abrams' APFSDS leaving in its blast, the second's HEAT a beat older, the Challenger's HE older still,
   // and an enemy HE round throwing soil short of the wedge
+  // round 4: round 3 was lit from behind the wedge (silhouettes in the glare); the sun now stands behind the lens
   still('ammunition', 'steppe', 'golden', 802, [-41, -181.3], 280.3, 'm1a2_sepv3_x', { lineup: ['m1a2_sepv3_x', 'm1a2_sepv3_x', 'challenger_3x'],
+    light: { sunAzimuthDeg: 300 },
     formation: [[0, 0], [-6, -12], [11, -14]], count: 3,
     enemies: { along: 500, lat: 0, count: 2, formation: 'pair', lineup: ['t90m_x', 't72b3m'], camo: own('t90m_x') },
     effects: [boom(H(8, -3), 150, 'small', { munition: 'he', cause: 'shot' }), dust('hero', 380, 8, 0.7),
       moment('hero', 400, 0.035, 0), moment('ally1', 400, 0.09, 1), moment('ally2', 400, 0.16, 2)],
-    fxTime: 400, lenses: [lens('front', -2, 15, 0.5, 46, [0, -7, 2.0]), lens('front-l', -4, 16, 0.6, 46, [0, -7, 2.0]),
+    fxTime: 400, lenses: [lens('front', -2, 15, 0.5, 46, [0, -7, 2.0]), lens('front-close', -1.5, 11, 0.45, 52, [0, -6, 2.1]),
       lens('low', 0, 13, 0.35, 50, [0, -6, 2.2])] }),
   // explosive reactive armor firing on the T-72B3M's left turret cheek, the side its turret has swung to the shooter
   still('era', 'verdant', 'day', 803, [6.7, -64], 191, 't72b3m', { formation: [[0, 0, { yaw: -15 }]],
@@ -101,15 +103,16 @@ export const HOME_STILLS = [
   // turret still turned back on it and the muzzle smoke hanging: the roof gone, the walls crumbling along the collapse
   // front 1.6 s into its 4.2 s (fx/structureMask.ts COLLAPSE_S), the blast's dust rolling out. Two stands from the survey
   // probe (shots/media-r5/tmp/house-probe.mjs), each clear of records with the house 20-22° beside the hero in the lens.
-  ...[['buildings', [19.8, -9.1], 345], ['buildings-b', [47.8, -39.9], 105]].map(([id, at, facing]) =>
-    still(id, 'verdant', 'day', 807, at, facing, 't14_x', { slot: 'buildings', aimAtFoes: false, turret: 180,
+  // round 4: round 3's medium HE burst smoked the house out of every lens at 1.6 s, and stand B's lenses met a tree and
+  // a wall; stand A only, a small burst, the collapse at 0.8, 1.2 and 1.6 s, and a wider lens for more of the house
+  ...[['buildings', 1900], ['buildings-12', 1500], ['buildings-08', 1100]].map(([id, fxTime]) =>
+    still(id, 'verdant', 'day', 807, [19.8, -9.1], 345, 't14_x', { slot: 'buildings', aimAtFoes: false, turret: 180,
       effects: [fire('hero', 250, { tracer: false }),
-        boom(wall(FARMHOUSE, 2.5), 290, 'medium', { munition: 'he', cause: 'shot' }),
-        { type: 'structure', at: FARMHOUSE, tMs: 300, params: { stage: 'collapsed', cause: 'blast', munition: 'he', dirDeg: facing + 180, hitH: 2.5 } },
+        boom(wall(FARMHOUSE, 2.5), 290, 'small', { munition: 'he', cause: 'shot' }),
+        { type: 'structure', at: FARMHOUSE, tMs: 300, params: { stage: 'collapsed', cause: 'blast', munition: 'he', dirDeg: 165, hitH: 2.5 } },
         debris(wall(FARMHOUSE, 3), 300, { count: 40, speedMps: 16, hot: 0.3, scale: 1.2 }), shockwave(wall(FARMHOUSE, 0.5), 300, { radiusM: 18 }),
-        exhaust('hero', 1700), dust('hero', 1750, 8, 0.7)],
-      fxTime: 1900, lenses: [lens('front-r', 4.5, 7.8, 0.7, 46, [1, -8, 3]), lens('front-r12', 6, 10.4, 0.8, 44, [1, -8, 3]),
-        lens('front-l', -4.5, 7.8, 0.7, 46, [-1, -8, 3])] })),
+        exhaust('hero', fxTime - 200), dust('hero', fxTime - 150, 8, 0.7)],
+      fxTime, lenses: [lens('front-r', 4.5, 7.8, 0.7, 46, [1, -8, 3]), lens('front-r-wide', 6, 12.5, 0.8, 50, [3, -12, 3.5])] })),
   // a T-90M ramming a Leopard 2A6 at the moment of contact: its front-right corner meets the Leopard's flank 22° off
   // square, 1.5 m behind the Leopard's centre, in a shower of sparks out of the wedge between nose and flank (a square
   // T-bone hides the contact behind the rammed hull from every front three-quarter lens)
@@ -120,11 +123,11 @@ export const HOME_STILLS = [
       dust('hero', 0, 14, 1), { type: 'dust', actor: 'foe0', tMs: 0, params: { count: 14, intensity: 1, dirDeg: 118.4 } },
       { type: 'armor_scar', actor: 'foe0', tMs: 0, params: {} }],
     fxTime: 50, lenses: [lens('front-l', -5.5, 7.5, 0.6, 44, [0.8, 3.6, 1.0]), lens('front-l2', -4, 9.5, 0.45, 46, [0.8, 3.6, 1.1]),
-      lens('left-low', -6.5, 5, 0.4, 46, [0.5, 3.4, 1.0])] }),
+      lens('left-low', -6.5, 5, 0.4, 46, [0.5, 3.4, 1.0]), lens('front-l3', -7, 9.5, 0.5, 40, [0.5, 3.5, 1.0])] }),
   // the Strv 103 aimed up on its hydropneumatic suspension, firing
   still('suspension', 'winter', 'day', 809, [-78, 26.7], 4, 'strv103', { aimAtFoes: false,
     enemies: { along: 320, lat: -30, count: 1, formation: 'line', lineup: ['t90m_x'], camo: own('t90m_x') },
-    effects: [moment('hero', 300, 0.04, 0), dust('hero', 290, 12, 0.9)], suspensionAimDeg: 10,
+    effects: [moment('hero', 300, 0.04, 0), dust('hero', 290, 3, 0.4)], suspensionAimDeg: 10,
     fxTime: 300, lenses: [lens('front-l', -5.5, 8, 0.5, 40, [0, 1.5, 1.4]), lens('front-r', 5.5, 8, 0.5, 40, [0, 1.5, 1.4]),
       lens('low', -2.5, 9, 0.35, 44, [0, 1.5, 1.6])] }),
 ];
@@ -322,10 +325,12 @@ export function checkScene(scene) {
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()) && process.argv[2] === '--final') {
   // the picks as their finals: each still's scene with the lab's placement baked in and its one lens, as cinema.mjs
   // renders it (--stills at the scene's fxTime), written to <outDir>/<slot>.json
-  //   node tools/media-r5/home-stills.mjs --final id:lens[,id:lens...] [outDir=shots/media-r5/home-r2/finals]
-  const out = process.argv[4] ?? 'shots/media-r5/home-r2/finals';
+  //   node tools/media-r5/home-stills.mjs --final id:lens[,id:lens...] [outDir=shots/media-r5/home-r2/finals] [--by-pick]
+  // --by-pick names each file <id>__<lens>.json (review variants of one slot side by side) instead of <slot>.json
+  const byPick = process.argv.includes('--by-pick'), rest = process.argv.slice(3).filter((a) => a !== '--by-pick');
+  const out = rest[1] ?? 'shots/media-r5/home-r2/finals';
   mkdirSync(out, { recursive: true });
-  for (const pick of process.argv[3].split(',')) {
+  for (const pick of rest[0].split(',')) {
     const [id, name] = pick.split(':'), s = HOME_STILLS.find((x) => x.id === id);
     if (!s) throw new Error(`no still ${id}`);
     const scene = homeScene(s), moves = labPlace(scene), cam = scene.cameraVariants.find((c) => c.name === name);
@@ -333,8 +338,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()
     scene.camera = { ...cam };
     scene.cameraVariants = [cam];
     scene.meta = { ...scene.meta, lens: name, pick: `${id}:${name}` };
-    writeFileSync(join(out, `${s.slot ?? s.id}.json`), JSON.stringify(scene, null, 1));
-    console.log(`[home-stills] ${s.slot ?? s.id}: ${id} through ${name} at ${scene.fxTime} ms${moves.length ? ` (placed: ${moves.map((m) => `${m.name} ${m.m} m`).join(', ')})` : ''}`);
+    const file = byPick ? `${id}__${name}` : s.slot ?? s.id;
+    writeFileSync(join(out, `${file}.json`), JSON.stringify(scene, null, 1));
+    console.log(`[home-stills] ${file}: ${id} through ${name} at ${scene.fxTime} ms${moves.length ? ` (placed: ${moves.map((m) => `${m.name} ${m.m} m`).join(', ')})` : ''}`);
   }
 } else if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()) && process.argv[2] === '--check-file') {
   // a written scene (an earlier round's, say) through the same check
