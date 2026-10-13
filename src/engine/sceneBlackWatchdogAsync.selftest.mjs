@@ -314,6 +314,46 @@ for (const outcome of ['healthy', 'cancelled', 'throw', 'skipped']) {
   });
 }
 
+// 2026-10-12 (the perf stream; railyard at load 326: one 3,953 ms probe draw, the cover frozen): programs a covered warm
+// left linking are awaited between tasks before the probe draw, which then never links them on the main thread; with
+// none pending the submission stays synchronous (the test above), and an owner change during the wait rejects with no draw.
+await test('pending program links are awaited between tasks before the probe draw', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  let polls = 0;
+  const slow = { isReady: () => ++polls > 3 };
+  f.renderer.info.programs = [{ isReady: () => true }, slow, {}];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ measureTimings: true });
+  assert.ok(!f.names().includes('render'), 'no probe draw while a program is still linking');
+  assert.equal(clock.waits.length, 1);
+  assert.equal(clock.waits[0].ms, 16, 'the wait polls between tasks');
+  await clock.resume();
+  await clock.resume();
+  assert.ok(!f.names().includes('render'));
+  await clock.resume();
+  assert.ok(f.names().includes('render'), 'the draw follows once the links completed');
+  await clock.resume(); // the PBO fence
+  const result = await pending;
+  assert.equal(result.before, 12);
+  const timing = result.measurements[0];
+  assert.deepEqual([timing.linkPending, timing.linkLeft], [1, 0], 'the receipt names the links waited for');
+  assert.ok(timing.linkWaitMs >= 48);
+  f.assertReleased(1);
+});
+
+await test('an owner change while links are awaited rejects before any probe draw', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  let current = true;
+  f.renderer.info.programs = [{ isReady: () => false }];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ isCurrent: () => current }).then(() => null, (error) => error);
+  current = false;
+  await clock.resume();
+  assert.match(String(await pending), /owner changed/);
+  assert.ok(!f.names().includes('render'), 'a superseded entry never draws its probe');
+  f.assertReleased(0);
+});
+
 await test('healthy submission is synchronous and restores all bindings before the poll task', async (clock) => {
   const f = fixture({ asyncSamples: [[0, 0, 18, 0]] });
   const pending = f.run();
