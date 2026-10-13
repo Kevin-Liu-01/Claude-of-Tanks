@@ -93,6 +93,10 @@ const out = new Float64Array(4);
   const pool = debris.group.children.find((m) => m.name === 'fx-structure-pieces-brick');
   assert.ok(pool, 'the thrown brick has its pool');
   const g = pool.geometry;
+  // (2026-10-13) a piece thrown a metre up lands after the collapse's frame: its landing is solved in the next update,
+  // not in the frame that threw it (LANDING_DEFER_S), and the program flies it until then
+  assert.equal(g.getAttribute('aLD').getX(0), 1e4, 'its landing waits for the next update');
+  debris.update();
   const tLand = g.getAttribute('aLD').getX(0), restGround = g.getAttribute('aCG').getW(0);
   assert.ok(Number.isFinite(tLand) && tLand > 0 && tLand < 5, `it lands (${tLand})`);
   assert.equal(restGround, 0.5, 'on the ground where it lands, below the plateau it was thrown from');
@@ -130,6 +134,36 @@ const out = new Float64Array(4);
   legacy.emit(k);
   const lg = legacy.group.children.find((m) => m.name === 'fx-chunks-brick').geometry;
   assert.ok(lg.getAttribute('aLT').getX(0) < 0);
+}
+
+
+// ---- (2026-10-13, the bar for deploy 223: a collapse costs its frame at most 3 ms over production) a collapse's hundreds
+// of pieces solve their landings over the frames after it, each before it lands: the frame that throws them solves only
+// those about to land
+{
+  let now = 0;
+  let reads = 0;
+  const ground = () => { reads++; return 0; };
+  const debris = createStructureDebris({ now: () => now, groundY: ground, baseGroundY: ground, poolCapacity: 256, pieceCap: 1024 });
+  const mat = new THREE.MeshStandardMaterial({ name: 'stone' });
+  const w = debris.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => mat, 0, false, {});
+  for (let k = 0; k < 600; k++) w.pieces.push('stone', 'chunk', k % 3, (k % 20) * 0.5, 1 + (k % 9), 0, 0, 0, 0, 1, 0.3, 0.3, 0.3, 1, 1, 1, 1, 0.5, 0.3);
+  debris.commit();
+  const atThrow = reads;
+  assert.ok(atThrow < 2000, `the throwing frame reads the ground ${atThrow} times (each piece once, the near ones' flights)`);
+  const pools = debris.group.children.filter((m) => /fx-structure-pieces/.test(m.name));
+  const late = () => { let n = 0; for (const m of pools) { const a = m.geometry.getAttribute('aLD'), b = m.geometry.getAttribute('aPB');
+    for (let i = 0; i < m.geometry.instanceCount; i++) if (a.getX(i) > 1e3 && b.getW(i) + 0.05 < now) n++; } return n; };
+  let frames = 0;
+  for (; frames < 60; frames++) {
+    now += 1 / 60;
+    debris.update();
+    // every piece's landing is known before its flight could reach the ground (the soonest a 1 m drop takes: 0.45 s)
+    if (now > 0.4) assert.equal(late(), 0, `no piece in flight without its landing at ${now.toFixed(2)} s`);
+  }
+  let unsolved = 0;
+  for (const m of pools) { const a = m.geometry.getAttribute('aLD'); for (let i = 0; i < m.geometry.instanceCount; i++) if (a.getX(i) > 1e3) unsolved++; }
+  assert.equal(unsolved, 0, 'every landing solved within a second');
 }
 
 console.log('structureDebris selftest: ok');
