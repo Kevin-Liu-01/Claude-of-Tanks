@@ -1,5 +1,6 @@
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
 import { casemateGunYaw } from './casemateGunPose.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
@@ -4766,7 +4767,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const shadePalette = trackPattern.shadePalette;
   let shadePhase = 0;
   const buildRunningGearAssemblyStage16 = (): void => {
-    for (const ch of builderSpec.id) shadePhase = (shadePhase * 33 + ch.charCodeAt(0)) >>> 0;
+    // The schema-1 spelling (tankIdAliases.ts): an id rename keeps the track shade.
+    for (const ch of tankSeedId(builderSpec.id)) shadePhase = (shadePhase * 33 + ch.charCodeAt(0)) >>> 0;
   };
   const buildRunningGearRunningGearStage29 = (): void => {
     buildRunningGearAssemblyStage16();

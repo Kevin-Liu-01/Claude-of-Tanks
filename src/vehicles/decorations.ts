@@ -1,5 +1,6 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -447,9 +448,12 @@ function fnv1a(str: string): number {
 }
 
 function decorIdentityFor(specId: string): string {
+  // The kit is seeded from the id's schema-1 spelling, so an id rename never
+  // moves a load (SSOT 2.19, tankIdAliases.ts).
+  const seedId = tankSeedId(specId);
   // Keep the prototype hull-kit seed stable across its turret redesign.
   // Both Revolution variants choose their explicit manifests below.
-  return specId === 'leo2_revolution_proto' ? 'leo2_revolution' : specId;
+  return seedId === 'leo2_revolution_proto' ? 'leo2_revolution' : seedId;
 }
 
 const D2R = Math.PI / 180;

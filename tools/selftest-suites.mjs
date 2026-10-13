@@ -1227,6 +1227,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/rosterPolicy.selftest.mjs',
     // 2026-10-13 (SSOT 2.19 ID.01): the tank id rename table's slug engine and the owner's Leopard example.
     'tools/tank-id-rename-table.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.03): the versioned tank id alias layer and its boundaries (save, replay, scene link,
+    // gallery URL, room seat, telemetry) resolve swapped ids by schema.
+    'src/vehicles/tankIdAliases.selftest.mjs',
+    'src/game/tankIdBoundaries.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',

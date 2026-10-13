@@ -1,6 +1,7 @@
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
+import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
@@ -313,6 +314,8 @@ interface EntityFrame {
 }
 
 export interface ReplaySnapshot {
+  /** The tank id schema a staged payload was written under (missing = 1; tankIdAliases.ts). */
+  tankIdSchema?: number;
   replayKind: ReplayKind;
   ev: KillcamHitEvent;
   timeS: number;
@@ -1967,6 +1970,8 @@ export function createKillCam(deps: KillcamDeps) {
      * @param {'xray'|'firing'|'collision'} [phase]
      */
     stageReplayShot(snap: ReplaySnapshot, phase: 'xray' | 'firing' | 'collision' = 'xray') {
+      // A staged payload names its vehicles under its own id schema (missing = 1, SSOT 2.19).
+      snap = replayInCurrentTankIds(snap);
       api.cancel();
       begin(snap, 'death', null, phase === 'xray');
       if (phase === 'firing') {

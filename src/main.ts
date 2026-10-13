@@ -260,6 +260,7 @@ import { createBattleLoadScreen } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
+import { migrateStoredTankIds } from './game/tankIdStorageMigration.ts';
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
@@ -306,6 +307,9 @@ const {
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
+
+// Saved tank ids follow the id renames (SSOT 2.19) before anything reads them.
+migrateStoredTankIds((() => { try { return globalThis.localStorage; } catch { return null; } })());
 
 // Resolve the remembered hero and begin its exact family transfers before
 // renderer/garage construction. This overlaps network work with the staged

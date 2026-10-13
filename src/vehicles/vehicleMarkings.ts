@@ -1,4 +1,5 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
 export interface VehicleMarkingAnchor {
@@ -407,7 +408,8 @@ export function vehicleMarkingIncludesPermanentHullArmor(
  */
 function stableNumber(id: string | null | undefined): string {
   let hash = 0x811c9dc5;
-  for (const ch of String(id || 'tank')) {
+  // The schema-1 spelling (tankIdAliases.ts): an id rename keeps the hull number.
+  for (const ch of String(id ? tankSeedId(id) : 'tank')) {
     hash ^= ch.charCodeAt(0);
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }

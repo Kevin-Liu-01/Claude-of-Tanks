@@ -23,6 +23,7 @@ import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { ensureFonts } from './fonts.ts';
+import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { ensureStyle } from './dom.ts';
 import { t } from './i18n.ts';
 import {
@@ -612,7 +613,8 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     if (!sink) return;
     try {
       sink.send({
-        kind: 'hud_mask_failed', stage: 'damagePanel', code, reason: failedSpec.id,
+        // The id carries its schema once a rename has landed (SSOT 2.19): `<id>.s<N>`.
+        kind: 'hud_mask_failed', stage: 'damagePanel', code, reason: telemetryTankId(failedSpec.id),
         error: { message, frames: [] },
       });
     } catch { /* the beacon never breaks the HUD */ }
