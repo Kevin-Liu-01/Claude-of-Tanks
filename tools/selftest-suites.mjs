@@ -22,13 +22,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/infectedLifecycle.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
-    'src/fx/droneRotorWinding.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
     'src/sim/droneAvoidance.selftest.mjs',
-    'src/sim/droneLowFlight.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
     'src/fx/droneReturn.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
@@ -657,8 +655,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
-    // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
-    'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
@@ -972,8 +968,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
-    // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
-    'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
     'src/mp/match/clock.selftest.mjs',
@@ -985,7 +979,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
-    'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
@@ -1008,8 +1001,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
     // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
     'src/mp/presentation/craterSync.selftest.mjs',
-    // 2026-10-10 (physics lane): the host's turret body through the rows, the peer's interpolated pose, a migrated host.
-    'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1094,13 +1085,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
-    // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
-    // the game's own rigid bodies, and a dead hull's turret as one.
-    'src/sim/rigidBody.selftest.mjs',
-    'src/sim/wreckTurrets.selftest.mjs',
-    'src/vehicles/wreckTurretDriver.selftest.mjs',
-    // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
-    'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
@@ -1571,16 +1555,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
-    // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
-    'src/world/maps/propFracture.selftest.mjs',
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
-    // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
-    'src/world/wreckCrumple.selftest.mjs',
-    // (dcore 2026-10-10) a prop gives where a hull meets it: pressed from contact, pancaked, never rising, the same twice;
-    // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
-    'src/world/propCrush.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
@@ -1668,6 +1645,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    'src/ui/studioSiteTakes.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

@@ -399,6 +399,7 @@
     "src/ui/shotInfo.selftest.mjs": 100,
     "src/ui/shotSchematic.selftest.mjs": 700,
     "src/ui/spectatorSwitcher.selftest.mjs": 100,
+    "src/ui/studioSiteTakes.selftest.mjs": 100,
     "src/ui/studioProductionPanel.selftest.mjs": 300,
     "src/ui/tankThumbs.selftest.mjs": 2300,
     "src/ui/topAccentBorders.selftest.mjs": 200,

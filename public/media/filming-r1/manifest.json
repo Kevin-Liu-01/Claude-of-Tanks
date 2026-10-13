@@ -78,7 +78,7 @@
           "seconds": 6,
           "bytes": 3449474,
           "source": "site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
-          "sourceSha256": "ed794ad72d9a870c"
+          "sourceSha256": "ba7deecbba3e69fa"
         }
       },
       "scene": {
@@ -172,7 +172,7 @@
           "seconds": 6,
           "bytes": 3626029,
           "source": "site50/deliver-r14/s22-walking-barrage/s22-walking-barrage.mp4",
-          "sourceSha256": "247d1da8b43f3868"
+          "sourceSha256": "b3546930ae5e20f5"
         }
       },
       "scene": {
@@ -266,7 +266,7 @@
           "seconds": 6,
           "bytes": 3617126,
           "source": "site50/deliver-r14/s21-fields-assault/s21-fields-assault.mp4",
-          "sourceSha256": "6b3e9b7723e490ac"
+          "sourceSha256": "efb5986360202a29"
         }
       },
       "scene": {
@@ -454,7 +454,7 @@
           "seconds": 6,
           "bytes": 3710534,
           "source": "site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.mp4",
-          "sourceSha256": "226eba9ad51b8ac1"
+          "sourceSha256": "26d42e4ee2a02543"
         }
       },
       "scene": {
@@ -642,7 +642,7 @@
           "seconds": 6,
           "bytes": 3707280,
           "source": "site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset.mp4",
-          "sourceSha256": "01afaa046762ee8d"
+          "sourceSha256": "1171546c8fa4c245"
         }
       },
       "scene": {
@@ -736,7 +736,7 @@
           "seconds": 6,
           "bytes": 3620876,
           "source": "site50/deliver-r14/s11-container-rows/s11-container-rows.mp4",
-          "sourceSha256": "0a9e752f0cfecae2"
+          "sourceSha256": "5b085841266a2632"
         }
       },
       "scene": {
@@ -780,25 +780,25 @@
       "width": 2000,
       "height": 594,
       "source": "plan-view-s21.png",
-      "sourceSha256": "e4b9d5eaab6f4e8b",
-      "bytes": 54296
+      "sourceSha256": "d9ad3929a86c6d94",
+      "bytes": 52342
     },
     {
       "name": "cover",
       "image": "/media/filming-r1/cover.webp",
-      "width": 1920,
-      "height": 1080,
-      "source": "site50/deliver/s13-farm-race/s13-farm-race.jpg",
-      "sourceSha256": "377215e9b9fe4e5b",
-      "bytes": 84592
+      "width": 1440,
+      "height": 810,
+      "source": "site50/deliver-r14/s13-farm-race/s13-farm-race-4k.jpg",
+      "sourceSha256": "18cdc6fc9cf867f6",
+      "bytes": 196918
     },
     {
       "name": "card",
       "image": "/media/filming-r1/card.webp",
       "width": 1928,
       "height": 360,
-      "source": "s13-farm-race: previz at 2.2 s | review3 at 1.4 s | site50/deliver/s13-farm-race/s13-farm-race.jpg",
-      "bytes": 68116
+      "source": "s13-farm-race: previz at 2.2 s | review3 at 1.4 s | site50/deliver-r14/s13-farm-race/s13-farm-race-4k.jpg",
+      "bytes": 101116
     }
   ],
   "videoBytes": 83113998

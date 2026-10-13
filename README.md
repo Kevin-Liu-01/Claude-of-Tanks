@@ -146,7 +146,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </tr>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_explosion.webp" alt="Tank destruction with fire, sparks, fragments, and smoke"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s29-fjord-road-kill.webp" alt="A T-90 burns on the road above the fjord"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
 </tr>
 </table>
 

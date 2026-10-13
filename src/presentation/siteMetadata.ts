@@ -54,6 +54,11 @@ export const STUDIO_METADATA: SiteMetadata = {
   ogDescription: 'Compose cinematic tank scenes with current vehicles, maps, cameras, weather, effects, timelines, stills, GIFs, and video.',
 };
 
+/** A page's social card: the English card, or its zh-CN twin with the label in Chinese (tools/marketing-shots/generate-og-images.mjs). */
+export function socialCardUrl(card: string, locale: SupportedLocale): string {
+  return `${SITE_ORIGIN}/brand/og/${locale === 'zh-CN' ? 'zh/' : ''}${card}.jpg`;
+}
+
 export function localizedGameMetadata(locale: SupportedLocale): SiteMetadata {
   if (locale === 'en-US') return GAME_METADATA;
   const canonical = `${SITE_ORIGIN}${hrefForLocale('/', locale)}`;
@@ -82,6 +87,7 @@ export function localizedStudioMetadata(locale: SupportedLocale): SiteMetadata {
     description,
     canonical,
     url: canonical,
+    image: socialCardUrl('studio', locale),
     imageAlt: catalogText(locale, 'metadata.imageAlt'),
     ogTitle: title,
     ogDescription: description,
@@ -126,7 +132,7 @@ export function privateRoomMetadata(url: URL, locale: SupportedLocale = 'en-US')
     description,
     canonical,
     url: url.href,
-    image: `${SITE_ORIGIN}/brand/og/private-room.jpg`,
+    image: socialCardUrl('private-room', locale),
     imageAlt: catalogText(locale, 'metadata.room.imageAlt'),
     type: 'website',
     robots: PRIVATE_ROBOTS,
