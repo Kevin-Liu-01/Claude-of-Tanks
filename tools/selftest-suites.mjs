@@ -1141,6 +1141,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
+    'src/world/fractureAnatomy.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',

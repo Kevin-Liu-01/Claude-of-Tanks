@@ -130,3 +130,66 @@ for (const style of STYLES) {
   assert.match(props, /ob\.kind = 'earthwork';/, 'as an earthwork, not the destructible');
 }
 console.log('fortKit.selftest: every map\'s pillbox (Regelbau, DOT, hex, log and earth) builds intact and razed under a hull\'s reach, its embrasures dark in board-formed concrete, its bank falling to the toe with its contact cut at 0.35 m, the old draws spent, shells on its slabs, the bank a static earthwork');
+
+// ---------------------------------------------------------------------------------------------- 5. the pieces (round 2)
+// The intact concrete work carries the destruction core's anatomy (fractureAnatomy.ts): its contract holds, the stubs,
+// floor and threshold anchor it, every piece reaches them, and the pieces' boxes start apart (no two over 3 cm save
+// the hexagon's corners: walls at 120 degrees, their cast joints linked); the edge art caps a snapped lift.
+{
+  const { checkKitFracture, FRACTURE_PIECE_CAP } = await import('../fractureAnatomy.ts');
+  const { fortFractureEdge } = await import('./fortKit.ts');
+  const rot = (q, v) => { const [x, y, z, w] = q; const tx = 2 * (y * v[2] - z * v[1]), ty = 2 * (z * v[0] - x * v[2]), tz = 2 * (x * v[1] - y * v[0]); return [v[0] + w * tx + (y * tz - z * ty), v[1] + w * ty + (z * tx - x * tz), v[2] + w * tz + (x * ty - y * tx)]; };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const overlap = (p, q) => {
+    const ap = [0, 1, 2].map((k) => rot(p.q, [k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0]));
+    const aq = [0, 1, 2].map((k) => rot(q.q, [k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0]));
+    const axes = [...ap, ...aq];
+    for (const x of ap) for (const y of aq) {
+      const c = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]], l = Math.hypot(...c);
+      if (l > 1e-3) axes.push(c.map((v) => v / l));
+    }
+    const d = [q.c[0] - p.c[0], q.c[1] - p.c[1], q.c[2] - p.c[2]];
+    let least = Infinity;
+    for (const n of axes) {
+      least = Math.min(least, ap.reduce((s, x, i) => s + Math.abs(dot(x, n)) * p.h[i], 0) + aq.reduce((s, x, i) => s + Math.abs(dot(x, n)) * q.h[i], 0) - Math.abs(dot(d, n)));
+      if (least <= 0) return 0;
+    }
+    return least;
+  };
+  let checked = 0;
+  for (const [mapId, entry] of Object.entries(FORT_MAPS)) {
+    if (entry.style === 'logearth') continue;
+    const f = fortFor(mapId);
+    const g = buildPillbox(f.style, f.tones, f.seed, false);
+    const a = g.userData.fracture;
+    assert.ok(a && a.kind === 'bunker', `${mapId}: the intact work carries its fracture anatomy`);
+    assert.deepEqual(checkKitFracture(a, g.attributes.position.array, FRACTURE_PIECE_CAP.fortified), [], `${mapId}: the core's contract holds`);
+    assert.ok(a.pieces.length >= 25 && a.pieces.length <= FRACTURE_PIECE_CAP.fortified, `${mapId}: ${a.pieces.length} pieces`);
+    assert.ok(a.pieces.filter((p) => p.anchor).length >= 8, `${mapId}: stubs, floor and threshold anchor it`);
+    assert.ok(a.pieces.every((p) => p.bucket === 'fortConcrete'), `${mapId}: the kind's one bucket`);
+    const linked = new Set(a.links.map((l) => `${Math.min(l.a, l.b)}-${Math.max(l.a, l.b)}`));
+    for (let i = 0; i < a.pieces.length; i++) for (let j = i + 1; j < a.pieces.length; j++) {
+      const p = a.pieces[i], q = a.pieces[j];
+      if (p.anchor && q.anchor) continue;
+      const depth = overlap(p, q);
+      const allowed = f.style === 'hex' && linked.has(`${i}-${j}`) && p.role === 'wall' && q.role === 'wall' ? 0.4 : 0.03;
+      assert.ok(depth <= allowed, `${mapId}: ${p.role} ${i} and ${q.role} ${j} overlap by ${depth.toFixed(3)} m at the intact pose`);
+    }
+    checked++;
+  }
+  assert.ok(checked >= 20, `every concrete map's work (${checked})`);
+  // the edge art: a scored lift snaps with a ragged cap on both halves and its bars
+  const f = fortFor('autumn'), g = buildPillbox(f.style, f.tones, f.seed, false);
+  const lift = g.userData.fracture.pieces.find((p) => p.role === 'wall' && !p.anchor && p.scores?.length);
+  const runs = [];
+  const writer = {
+    vertices: 0, capacity: 1e6, run: null,
+    begin(bucket, role) { this.run = { bucket, role, v: [], t: 0 }; return true; },
+    vertex(px, py, pz) { this.run.v.push([px, py, pz]); return this.vertices++; },
+    triangle() { this.run.t++; },
+    end() { runs.push(this.run); },
+  };
+  fortFractureEdge('concrete', lift, lift.scores[0], 0x4321, writer);
+  assert.equal(runs.length, 2, 'a cap on each half');
+  for (const run of runs) assert.ok(run.t >= 50 && run.role === 'rim', 'a ragged cap with its bars');
+}
