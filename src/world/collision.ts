@@ -63,6 +63,45 @@ export function hullPassesObstacleTop(
   return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
 }
 
+/** A hull coming down onto what it meets faster than this (m/s, its fall less its ground's own) loads it from above
+ * (crushableLoadedFromAbove). */
+export const CRUSH_FALL_MPS = 1;
+/** A hull's underside within this of a part's top, and this far over its bottom, rests on it (crushableLoadedFromAbove):
+ * a floor slab or a berm a hull rolls against at ground level is met from the side. */
+const CRUSH_BEAR_M = 0.25;
+
+/**
+ * A crushable record a hull comes onto from above bears the hull's weight, and gives way under it (physics stream,
+ * 2026-10-13; the owner: "if they land on top of buildings or other weird objects! all physics engine stuff i want to
+ * account for"). Crushable cover — a car, a crate, a sandbag stack, a shed — is never a floor (structureSupport.ts): it is
+ * crushed by a hull's travel (its speed past the record's crushMin, or a held press). A hull that meets it coming down
+ * (`fallMps`, its fall less the ground's: a hull landing on a car, or dropping into a shed's open bay and meeting its
+ * benches) or resting on the part it meets (its underside within CRUSH_BEAR_M of the part's top and that far over its
+ * bottom: driven down onto it, perched over it on a rock) is not travelling into its side but loading it from above, and its
+ * weight crushes it whatever its speed: the tank-world census found every hull dropped on a crushable record falling into
+ * it and shoved out sideways a metre a step. A hull at ground level against a berm, a floor slab or a wall's foot meets
+ * them from the side, as before.
+ */
+export function crushableLoadedFromAbove(
+  record: Pick<CollisionRecord, 'crushable' | 'min' | 'max'>, spanBottom: number, fallMps = 0, contactTop = record.max[1],
+  contactBottom = record.min[1],
+): boolean {
+  if (!record.crushable) return false;
+  if (fallMps > CRUSH_FALL_MPS) return true;
+  return spanBottom > contactTop - CRUSH_BEAR_M && spanBottom > contactBottom + CRUSH_BEAR_M;
+}
+
+/** The part the last pushHullFromObstacle call found the hull overlapping with the lowest top: its top and bottom (a
+ * compound record's low parts under a hull beside its tall ones: crushableLoadedFromAbove reads the part it bears on). */
+let _contactTop = -Infinity;
+let _contactBottom = -Infinity;
+export function obstacleContactTop(): number {
+  return _contactTop;
+}
+export function obstacleContactBottom(): number {
+  return _contactBottom;
+}
+
 /**
  * The standing rule's span bottom for a tilted hull (physics lane, 2026-10-03): the lowest point of the hull's
  * underside (its track-bottom plane at its pitch and roll, sampled on a 5 x 3 grid over its rect; the nose and tail
@@ -773,6 +812,7 @@ export function pushHullFromObstacle(
     const startX = outPush.x;
     const startZ = outPush.z;
     let hit = false;
+    let lowest = Infinity, lowestBottom = -Infinity;
     for (const part of sh.parts) {
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
@@ -783,14 +823,20 @@ export function pushHullFromObstacle(
       _compoundRec.shape2 = part;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
+      const partTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
       if (pushHullFromObstacle(
         _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop, clearBottom,
-      )) hit = true;
+      )) { hit = true; if (partTop < lowest) { lowest = partTop; lowestBottom = partBottom; } }
     }
+    _contactTop = hit ? lowest : -Infinity;
+    _contactBottom = hit ? lowestBottom : -Infinity;
     return hit;
   }
   if (sh?.kind === 'circle') {
-    return pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
+    const hit = pushHullFromCircle(pos, fx, fz, rx, rz, halfL, halfW, sh, outPush);
+    _contactTop = hit ? ob.max[1] : -Infinity;
+    _contactBottom = hit ? ob.min[1] : -Infinity;
+    return hit;
   }
 
   const best = _pushBest;
@@ -799,9 +845,11 @@ export function pushHullFromObstacle(
     ? overlapsConvexObstacle(sh, pos, fx, fz, rx, rz, halfL, halfW, best)
     : overlapsBoxObstacle(ob, sh?.kind === 'obb' ? sh : null,
       pos, fx, fz, rx, rz, halfL, halfW, best);
-  if (!overlaps) return false;
+  if (!overlaps) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
   outPush.x += best.nx * best.overlap;
   outPush.z += best.nz * best.overlap;
+  _contactTop = ob.max[1];
+  _contactBottom = ob.min[1];
   return true;
 }
 

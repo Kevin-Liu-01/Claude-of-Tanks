@@ -90,7 +90,7 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull, createHullFootprint, hullFootprint,
+  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
@@ -1176,7 +1176,12 @@ export function createAuthoritativeMatch({
   function obstacleIsPressedThrough(
     entity: AuthoritativeEntity,
     obstacle: AuthoritativeObstacle,
+    spanBottom: number,
   ): boolean {
+    // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove)
+    const state = entity.state;
+    if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
+        obstacleContactBottom())) return true;
     if (Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
     if (Math.abs(entity.input.throttle || 0) <= 0.35) return false;
     if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
@@ -1247,7 +1252,7 @@ export function createAuthoritativeMatch({
         obstacle, outPush, spanBottom, spanTop, clearBottom,
       );
       if (!pushed) continue;
-      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
+      if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle, spanBottom)) {
         // destruction (docs/DESTRUCTION.md §4.4): a structure this ram brings down yields, as a crushed prop does
         if (obstacle.structureIdx !== undefined && destruction.enabled) {
           const keep = structureYield(entity, obstacle, outPush.x - beforeX, outPush.z - beforeZ);

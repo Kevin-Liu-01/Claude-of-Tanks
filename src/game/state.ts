@@ -105,7 +105,7 @@ import {
   type NavigationWreck,
 } from '../sim/botRoutePlanner.ts';
 import {
-  pushHullFromHull, createHullFootprint, hullFootprint,
+  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
   type HullFootprint, type HullFootprintRect,
@@ -1612,7 +1612,12 @@ function shouldCrushObstacle(
   self: SoloEntity,
   obstacle: SoloObstacle,
   speed: number,
+  spanBottom: number,
 ): boolean {
+  // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
+  const state = self.state;
+  if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
+      obstacleContactBottom())) return true;
   if (speed > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
   if (Math.abs(self.input.throttle || 0) <= 0.35) return false;
   if (game.timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
@@ -1709,7 +1714,7 @@ function resolveObstacleCollisions(
       clearBottom,
     )) continue;
     if (obstacle.crushable && self &&
-        shouldCrushObstacle(game, self, obstacle, selfSpeed)) {
+        shouldCrushObstacle(game, self, obstacle, selfSpeed, spanBottom)) {
       queueCrush(obstacle, self, pendingCrush);
       outPush.x = beforeX;
       outPush.z = beforeZ;

@@ -61,6 +61,9 @@ const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pus
 const footprintAt = collisionModule.hullFootprint ?? null;
 const footprintScratch = footprintAt ? collisionModule.createHullFootprint() : null;
 const hullUndersideOver = collisionModule.hullUndersideOver ?? null;
+// (census) a crushable the tree crushes under a hull that comes onto it from above (world/collision.ts
+// crushableLoadedFromAbove, where the tree has it): the step that meets its top crushes it, so no overlap is charged
+const crushableLoadedFromAbove = collisionModule.crushableLoadedFromAbove ?? null;
 /** Fill `out` ({ centerX, centerZ, forwardX, ..., halfLength, halfWidth }) with the footprint the tree pushes. */
 function obstacleFootprint(rect, state, out) {
   if (footprintAt) return footprintAt(rect, state.pos.x, state.pos.z, state.yaw, state.visualPitch || 0, state.visualRoll || 0, out);
@@ -1059,7 +1062,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       }
       push.x = 0; push.z = 0;
       if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        record, push, floors[i], state.pos.y + bodyTop, clears[i])) {
+        record, push, floors[i], state.pos.y + bodyTop, clears[i])
+        && !crushableLoadedFromAbove?.(record, floors[i], (state._ride.groundV ?? 0) - state._ride.v, collisionModule.obstacleContactTop?.(),
+          collisionModule.obstacleContactBottom?.())) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
       }
     }
