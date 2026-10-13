@@ -626,8 +626,8 @@
       {
         "id": "multiplayer",
         "alt": {
-          "en": "Two players' live views from one room: a Challenger 3 and a T-90M aim at each other across Verdant Fields at sunset",
-          "zh": "同一房间里两名玩家的实时视角：日落时分，Challenger 3 与 T-90M 隔着翠野原互相瞄准"
+          "en": "Two players' live views from one room: a Challenger 3 and a T-90M aim at each other across the Tarkhan Steppe at sunset",
+          "zh": "同一房间里两名玩家的实时视角：日落时分，Challenger 3 与 T-90M 隔着塔尔罕草原互相瞄准"
         },
         "standIn": null,
         "size": [
@@ -684,24 +684,24 @@
       {
         "id": "ammunition",
         "alt": {
-          "en": "M1A2 Abrams SEPv3 tanks fire down the line at Cinder Junction at golden hour, a tracer and an HE burst downrange",
-          "zh": "金色时刻的灰渣枢纽，M1A2 艾布拉姆斯 SEPv3 沿射击线开火，远处是曳光弹与高爆弹的爆炸"
+          "en": "M1A2 Abrams SEPv3 tanks and a Challenger 3 fire across the Tarkhan Steppe at golden hour, a tracer and an HE burst downrange",
+          "zh": "金色时刻的塔尔罕草原，M1A2 艾布拉姆斯 SEPv3 与一辆 Challenger 3 开火，远处是曳光弹与高爆弹的爆炸"
         },
         "standIn": null
       },
       {
         "id": "missiles",
         "alt": {
-          "en": "An MBT-70's guided Shillelagh curves toward a moving T-90M Proryv across the Tarkhan Steppe at sunset",
-          "zh": "日落时分的塔尔罕草原，MBT-70 发射的 Shillelagh 制导导弹划出弧线，追向移动中的 T-90M 突破"
+          "en": "An MBT-70's guided Shillelagh streaks low across the Tarkhan Steppe at sunset, its motor glowing",
+          "zh": "日落时分的塔尔罕草原，MBT-70 发射的 Shillelagh 制导导弹贴着草地飞行，尾焰发亮"
         },
         "standIn": null
       },
       {
         "id": "autoloader",
         "alt": {
-          "en": "An AbramsX fires the second round of its magazine, the reticle's clip indicator counting the rounds left",
-          "zh": "AbramsX 打出弹匣里的第二发，准星旁的弹匣指示显示剩余弹数"
+          "en": "An AbramsX engages a T-14 Armata at Sirocco Wadi at sunset, its autoloader's magazine counted beside the reticle",
+          "zh": "日落时分的西罗科旱谷，AbramsX 与一辆 T-14 Armata 交战，准星旁的弹匣指示显示自动装弹机的剩余弹数"
         },
         "standIn": null
       },
@@ -725,8 +725,8 @@
       {
         "id": "thermal",
         "alt": {
-          "en": "The white-hot thermal sight picks out a T-90M's hot engine deck in a Steinburg street at night",
-          "zh": "夜晚的斯泰因堡街道上，白热热成像瞄准镜清楚映出 T-90M 发烫的发动机舱盖"
+          "en": "The white-hot thermal sight picks out a K2 Black Panther among Steinburg's houses at night, allied tanks glowing beside it",
+          "zh": "夜晚的斯泰因堡，白热热成像瞄准镜在房屋之间映出一辆 K2 Black Panther，旁边的友军坦克同样发亮"
         },
         "standIn": null
       },
@@ -757,8 +757,8 @@
       {
         "id": "field-kit",
         "alt": {
-          "en": "An FPV drone bursts on the welded cage of a Ukrainian M1A1 Abrams while a ghillie-netted T-84BM Oplot-M holds the treeline",
-          "zh": "一架 FPV 无人机在乌克兰 M1A1 艾布拉姆斯的焊接防护笼上炸开，一辆披着伪装网的 T-84BM Oplot-M 守在林线边"
+          "en": "An FPV drone bursts on the welded cage over a Ukrainian M1A1 Abrams at Saltwind Narrows, netting and garnish hung from the frame",
+          "zh": "在盐风海峡，一架 FPV 无人机在乌克兰 M1A1 艾布拉姆斯的焊接防护笼上炸开，笼架上挂着伪装网与植被"
         },
         "standIn": null
       },
@@ -773,8 +773,8 @@
       {
         "id": "buildings",
         "alt": {
-          "en": "A farmhouse collapses in a cloud of dust and debris as a T-14 Armata fires into it at Verdant Fields",
-          "zh": "在翠野原，T-14 Armata 朝一座农舍开火，农舍在尘土与碎片中坍塌"
+          "en": "A house caves in under dust and debris beside a T-14 Armata at Verdant Fields",
+          "zh": "在翠野原，一座房屋在 T-14 Armata 旁的尘土与碎片中坍塌"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
@@ -798,16 +798,16 @@
       {
         "id": "time-of-day",
         "alt": {
-          "en": "Headlights and tracers cut through a night battle in the rail yard of Cinder Junction",
-          "zh": "车灯与曳光弹划破灰渣枢纽铁路货场的夜战"
+          "en": "A Leopard 2A5 and a Leopard 2A6M advance with their headlights on past a blast at Cinder Junction at night",
+          "zh": "夜晚的灰渣枢纽，Leopard 2A5 与 Leopard 2A6M 亮着车灯驶过一团爆炸"
         },
         "standIn": null
       },
       {
         "id": "impact",
         "alt": {
-          "en": "A T-90M rams a Leopard 2A6 in a burst of dust at Sirocco Wadi",
-          "zh": "在西罗科旱谷，一辆 T-90M 在飞扬的尘土中撞上 Leopard 2A6"
+          "en": "A T-90M rams a Leopard 2A6 in a shower of sparks at Sirocco Wadi",
+          "zh": "在西罗科旱谷，一辆 T-90M 撞上 Leopard 2A6，火花四溅"
         },
         "standIn": null
       },
@@ -856,8 +856,8 @@
       {
         "id": "presets",
         "alt": {
-          "en": "Scene Studio's Director workspace with the site's filmed takes as presets, one of them playing",
-          "zh": "Scene Studio 的导演工作区：网站拍摄的镜头作为预设排列，其中一个正在播放"
+          "en": "Scene Studio's Director with the site's filmed takes as presets, the T-90SM wedge assault loaded in the viewport",
+          "zh": "Scene Studio 的导演工作区：网站拍摄的镜头作为预设排列，视口中载入了 T-90SM 楔形突击"
         },
         "standIn": {
           "id": "s50-reservoir-crane",
@@ -885,8 +885,8 @@
       {
         "id": "standard",
         "alt": {
-          "en": "A standard battle at Verdant Fields: a Leopard 2A7V fires as both lines trade shots at sunset",
-          "zh": "翠野原的标准战斗：日落时分双方交火，一辆 Leopard 2A7V 正在开炮"
+          "en": "A standard battle at Verdant Fields at sunset: a Leopard 2A7V fires from the tall grass, its penetration card on a ZTZ-99A2",
+          "zh": "日落时分翠野原的标准战斗：一辆 Leopard 2A7V 在高草中开炮，穿深卡片显示对 ZTZ-99A2 的结果"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 100vw, 50vw"
@@ -894,8 +894,8 @@
       {
         "id": "capture_the_flag",
         "alt": {
-          "en": "A K2 Black Panther races home with the enemy flag across Saltmere Bay",
-          "zh": "一辆 K2 Black Panther 带着敌方旗帜穿过盐沼湾，全速驶回基地"
+          "en": "A T-90M races home with the enemy flag across Saltmere Bay",
+          "zh": "一辆 T-90M 带着敌方旗帜穿过盐沼湾，全速驶回基地"
         },
         "standIn": null
       },
@@ -910,24 +910,24 @@
       {
         "id": "turbo_ball",
         "alt": {
-          "en": "A K2 Black Panther leaps after the ball as it rolls toward the goal in Turbo Ball",
-          "zh": "极速球中，一辆 K2 Black Panther 腾空追向滚向球门的球"
+          "en": "Turbo Ball at Verdant Fields: a BMPT Terminator 2 rams the ball between the goal's arcs as a T-90A leaps overhead",
+          "zh": "翠野原的极速球：一辆 BMPT Terminator 2 在球门的弧框之间撞击足球，一辆 T-90A 从上方跃过"
         },
         "standIn": null
       },
       {
         "id": "endless_horde",
         "alt": {
-          "en": "An Endless Horde wave charges a Challenger 3 across Cinder Junction as a supply cache floats nearby",
-          "zh": "无尽潮涌的一波敌人冲向灰渣枢纽的一辆 Challenger 3，附近漂浮着一个补给箱"
+          "en": "Endless Horde at Cinder Junction at sunset: a Challenger 3's tracers converge on an M551A1 TTS of the third wave",
+          "zh": "日落时分灰渣枢纽的无尽潮涌：Challenger 3 的曳光弹汇聚在第三波的一辆 M551A1 TTS 上"
         },
         "standIn": null
       },
       {
         "id": "frontline_assault",
         "alt": {
-          "en": "Frontline Assault: tanks cross the trench line toward the next sector under an artillery barrage",
-          "zh": "前线突击：坦克顶着炮火越过堑壕线，冲向下一段防区"
+          "en": "Frontline Assault at Verdant Fields: a Leopard 2A7V climbs out of a trench past the wire toward the next sector",
+          "zh": "翠野原的前线突击：一辆 Leopard 2A7V 越过铁丝网爬出堑壕，冲向下一段防区"
         },
         "standIn": null
       },
@@ -950,40 +950,40 @@
       {
         "id": "infected",
         "alt": {
-          "en": "Infected tanks close in on the last survivors in a Steinburg street at night",
-          "zh": "夜晚的斯泰因堡街道上，感染者坦克逼近最后的幸存者"
+          "en": "Infected at Steinburg by night: an infected tank, glowing green, fires on the survivors",
+          "zh": "夜晚斯泰因堡的感染模式：一辆发着绿光的感染者坦克向幸存者开火"
         },
         "standIn": null
       },
       {
         "id": "realistic",
         "alt": {
-          "en": "Realistic mode: a Stridsvagn 122's shot detonates a T-90M's ammunition",
-          "zh": "真实模式：Stridsvagn 122 的一炮引爆了 T-90M 的弹药"
+          "en": "Realistic mode at Frosthollow: through a Stridsvagn 122's sight, a Schützenpanzer Puma's ammunition goes up in a fireball among the birches",
+          "zh": "霜谷的真实模式：透过 Stridsvagn 122 的瞄准镜，一辆 Schützenpanzer Puma 的弹药在白桦林间化作火球"
         },
         "standIn": null
       },
       {
         "id": "gun_game",
         "alt": {
-          "en": "Gun Game: a tank fires the howitzer stage of the weapon ladder at Sunscar Oasis",
-          "zh": "武器进阶：一辆坦克在日痕绿洲打出武器阶梯中的榴弹炮一阶"
+          "en": "Gun Game at Sunscar Oasis: a K2 Black Panther's round from the ladder's 152 mm howitzer bursts downrange",
+          "zh": "日痕绿洲的武器进阶：K2 Black Panther 用阶梯中的 152 毫米榴弹炮开火，炮弹在远处炸开"
         },
         "standIn": null
       },
       {
         "id": "drone",
         "alt": {
-          "en": "Drone mode: an FPV drone's view dives on a T-90M above Nordhavn Fjord",
-          "zh": "无人机模式：FPV 无人机的视角从诺德港峡湾上空俯冲向一辆 T-90M"
+          "en": "Drone mode at Nordhavn Fjord: the FPV drone's infrared view picks out enemy tanks among the pines as it dives",
+          "zh": "诺德港峡湾的无人机模式：FPV 无人机俯冲时，红外视角在松林间映出敌方坦克"
         },
         "standIn": null
       },
       {
         "id": "ac130",
         "alt": {
-          "en": "The AC-130's scope: a howitzer round lands beside the convoy as it drives to extraction",
-          "zh": "AC-130 的瞄准镜：一发榴弹落在驶向撤离点的车队旁"
+          "en": "The AC-130's infrared view: a 152 mm round bursts among enemy tanks, the gunship's three weapons listed below",
+          "zh": "AC-130 的红外视角：一发 152 毫米炮弹在敌方坦克之间炸开，下方列出炮艇机的三种武器"
         },
         "standIn": null
       }
