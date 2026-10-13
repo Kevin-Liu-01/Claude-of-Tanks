@@ -23,6 +23,19 @@
  *                                                                # diagnostics hook is up because puppeteer sets navigator.webdriver
  *                                                                # its log (the election record, the host's reports) take the pages' facts
  *
+ * The honest-check options (2026-10-13, the MP stream; MP-SINCE-0930 plan steps 7 and 14):
+ *   --mode=private          an internet room (the Play menu's Private): every connection asks the room for its ICE
+ *                           (`room_relay`); the release check's LAN rooms never do (iceConfig.ts: LAN asks nothing)
+ *   --game-mode=<id> --map=<id>   the admin sets the room's mode and battlefield in the lobby before Ready
+ *   --phone=b|c             that seat is a phone: the mobile tier (it never hosts), a phone viewport and touch input
+ *   The run is role-agnostic: the room may elect another host during a slow entry (MP-S03) or elect C rather than B
+ *   when A leaves; the labels follow the roles (A is the host at the reveal, B the seat elected when A leaves), the
+ *   swaps are recorded in report.roles, and a failure is a broken role, not an unexpected name.
+ *   Every page records its room client's host_changed (with the room's reason), its declines, its relay grants
+ *   (server counts and schemes, never a credential) and its session's p2p events: report.roomLog per page, and in
+ *   live mode the election's reason comes from there. report.bandwidth: getStats bytes per page and data channel over
+ *   the play window, and each link's selected candidate pair (host / srflx / relay).
+ *
  * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
  * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (since
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
@@ -56,6 +69,11 @@ const roomsUrl = argValue('rooms', '');
 const siteUrl = argValue('site', '').replace(/\/+$/, '');
 const live = roomsUrl !== '' || siteUrl !== '';
 const requestedVitePort = Number(argValue('port', 0));
+const roomKind = argValue('mode', 'lan') === 'private' ? 'private' : 'lan';
+const gameModeOption = argValue('game-mode', '');
+const mapOption = argValue('map', '');
+const phoneSeat = ['b', 'c'].includes(argValue('phone', '')) ? argValue('phone', '') : '';
+const phoneViewport = { width: 844, height: 390, deviceScaleFactor: 1, isMobile: true, hasTouch: true };
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -69,7 +87,8 @@ const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms)
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
-const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [] };
+const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null }, roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 const errors = report.errors;
@@ -79,13 +98,121 @@ function observe(page, label) {
 }
 // A/B retain a host-capable graphics tier; touch/viewport emulation is independent.
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
+/** Pages driven by touch: every page with --mobile, the phone seat's with --phone. */
+const touchPages = new WeakSet();
 async function activate(page,selector){
-  if(!mobile)return page.click(selector);
+  if(!mobile&&!touchPages.has(page))return page.click(selector);
   const el=await page.waitForSelector(selector,{visible:true});await el.scrollIntoView();
   const box=await el.boundingBox();
   if(!box||box.width<43.5||box.height<43.5)throw new Error(`Mobile control too small: ${selector} ${JSON.stringify(box)}`);
   if(!await el.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(hit===el||el.contains(hit));}))throw new Error(`Mobile control blocked: ${selector}`);
   await el.tap();
+}
+
+/**
+ * The page's own record of its room and links (2026-10-13), installed before any script: the RTCPeerConnections it makes,
+ * its room client's host_changed (the room's reason), its declines and relay grants (counts and URL schemes only, never a
+ * credential), its session's p2p events. window.__MP_E2E_LOG (bounded), window.__MP_E2E_PCS.
+ */
+function installPageRecorder() {
+  if (window.__MP_E2E_LOG) return;
+  const log = window.__MP_E2E_LOG = [];
+  const push = (entry) => { if (log.length < 600) log.push({ atMs: Math.round(performance.now()), ...entry }); };
+  const schemes = (servers) => {
+    const urls = (Array.isArray(servers) ? servers : []).flatMap((server) => [].concat(server?.urls ?? []));
+    return { servers: Array.isArray(servers) ? servers.length : 0, stun: urls.filter((url) => /^stun:/i.test(url)).length, turn: urls.filter((url) => /^turns?:/i.test(url)).length };
+  };
+  const Native = window.RTCPeerConnection;
+  if (typeof Native === 'function') {
+    const pcs = window.__MP_E2E_PCS = [];
+    const Recorded = function RTCPeerConnection(configuration, ...rest) {
+      const pc = new Native(configuration, ...rest);
+      pcs.push(pc);
+      push({ kind: 'pc', index: pcs.length - 1, ...schemes(configuration?.iceServers), relayOnly: configuration?.iceTransportPolicy === 'relay' });
+      return pc;
+    };
+    Recorded.prototype = Native.prototype;
+    Object.setPrototypeOf(Recorded, Native);
+    window.RTCPeerConnection = Recorded;
+  }
+  let room = null;
+  let session = null;
+  setInterval(() => {
+    const v2 = window.__MULTIPLAYER_V2;
+    const client = v2?.room?.client ?? null;
+    if (client && client !== room) {
+      room = client;
+      push({ kind: 'room', playerId: client.playerId ?? null });
+      client.onHostChanged?.((change) => push({ kind: 'host_changed', hostId: change?.hostId ?? null, generation: change?.generation ?? null, reason: change?.reason ?? null, resumeTick: change?.resumeTick ?? null }));
+      if (typeof client.declineHost === 'function') {
+        const decline = client.declineHost.bind(client);
+        client.declineHost = (declined, options) => { push({ kind: 'decline', declined: !!declined, unable: !!options?.unable }); return decline(declined, options); };
+      }
+      if (typeof client.requestRelay === 'function') {
+        const request = client.requestRelay.bind(client);
+        client.requestRelay = async () => {
+          try { const grant = await request(); push({ kind: 'relay', ...schemes(grant?.iceServers), relay: grant?.relay === true, expiresInSeconds: grant?.expiresInSeconds ?? null }); return grant; }
+          catch (error) { push({ kind: 'relay', error: typeof error?.code === 'string' ? error.code : 'error' }); throw error; }
+        };
+      }
+    }
+    const owner = v2?.session ?? null;
+    if (owner && owner !== session && typeof owner.onP2p === 'function') {
+      session = owner;
+      owner.onP2p((event) => push({ kind: 'p2p', event: event?.kind ?? null, role: event?.role ?? null, phase: event?.phase ?? null, hostId: event?.hostId ?? null, generation: event?.generation ?? null, detail: event?.detail ?? null }));
+    }
+  }, 100);
+}
+/** The page's record so far (a closing page is read first). */
+async function collectRoomLog(label, page) {
+  const entries = await page.evaluate(() => (window.__MP_E2E_LOG ?? []).slice()).catch(() => null);
+  if (entries) report.roomLog[label] = entries;
+  return entries ?? report.roomLog[label] ?? [];
+}
+/** getStats per peer connection: each data channel's bytes, the selected pair's bytes, RTT and candidate types. */
+const linkStats = (page) => page.evaluate(async () => {
+  const out = [];
+  for (const [index, pc] of (window.__MP_E2E_PCS ?? []).entries()) {
+    if (pc.connectionState === 'closed') continue;
+    const report = await pc.getStats().catch(() => null);
+    if (!report) continue;
+    const channels = [];
+    const candidates = new Map();
+    let pair = null;
+    report.forEach((entry) => {
+      if (entry.type === 'data-channel') channels.push({ label: entry.label, bytesSent: entry.bytesSent ?? 0, bytesReceived: entry.bytesReceived ?? 0, messagesSent: entry.messagesSent ?? 0, messagesReceived: entry.messagesReceived ?? 0 });
+      if (entry.type === 'local-candidate' || entry.type === 'remote-candidate') candidates.set(entry.id, entry);
+      if (entry.type === 'candidate-pair' && entry.state === 'succeeded' && (entry.nominated || !pair)) pair = entry;
+    });
+    out.push({ index, state: pc.connectionState, channels, pair: pair ? {
+      bytesSent: pair.bytesSent ?? 0, bytesReceived: pair.bytesReceived ?? 0,
+      rttMs: Number.isFinite(pair.currentRoundTripTime) ? Math.round(pair.currentRoundTripTime * 1000) : null,
+      local: candidates.get(pair.localCandidateId)?.candidateType ?? null, remote: candidates.get(pair.remoteCandidateId)?.candidateType ?? null,
+      protocol: candidates.get(pair.localCandidateId)?.protocol ?? null,
+    } : null });
+  }
+  return { atMs: Math.round(performance.now()), links: out };
+}).catch(() => null);
+/** kbit/s per page and channel label between two linkStats samples (links matched by index). */
+function bandwidthBetween(before, after) {
+  if (!before || !after) return null;
+  const seconds = Math.max(0.001, (after.atMs - before.atMs) / 1000);
+  const kbps = (bytes) => Math.round((bytes * 8 / 1000 / seconds) * 10) / 10;
+  const channels = {};
+  let up = 0, down = 0;
+  for (const link of after.links) {
+    const prior = before.links.find((entry) => entry.index === link.index);
+    for (const channel of link.channels) {
+      const was = prior?.channels.find((entry) => entry.label === channel.label);
+      const sent = channel.bytesSent - (was?.bytesSent ?? 0), received = channel.bytesReceived - (was?.bytesReceived ?? 0);
+      const row = channels[channel.label] ??= { upKbps: 0, downKbps: 0, sentBytes: 0, receivedBytes: 0 };
+      row.sentBytes += sent; row.receivedBytes += received;
+      up += sent; down += received;
+    }
+  }
+  for (const row of Object.values(channels)) { row.upKbps = kbps(row.sentBytes); row.downKbps = kbps(row.receivedBytes); }
+  return { seconds: Math.round(seconds * 10) / 10, upKbps: kbps(up), downKbps: kbps(down), channels,
+    pairs: after.links.map((link) => ({ index: link.index, state: link.state, ...(link.pair ?? {}) })) };
 }
 
 /** The entry pipeline's own failure on a page (it returns the player to the Garage): the wait ends at once, with its reason. */
@@ -145,7 +272,10 @@ const sample = (page, otherId) => page.evaluate((id) => {
 }, otherId);
 
 async function joinAsAlly(page, label, invite) {
-  await page.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  // the phone seat loads the mobile tier (it never hosts); every other seat keeps the host-capable desktop tier
+  const url = new URL(invite.href);
+  if (label.toLowerCase() === phoneSeat) url.searchParams.set('tier', 'mobile');
+  await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 240_000);
   await waitFor(page, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), `${label} joined the lobby`, 60_000);
   const joinError = await page.evaluate(() => (document.querySelector('.cot-play .status')?.classList.contains('err') ? document.querySelector('.cot-play .status').textContent : ''));
@@ -161,6 +291,21 @@ let vite = null;
 let browser = null;
 const pages = { a: null, b: null, c: null, a2: null };
 let contextA = null;
+const contexts = { a: null, b: null, c: null };
+const ids = { a: null, b: null, c: null };
+/**
+ * Role-agnostic labels (2026-10-13): swap two seats' pages, contexts and ids so the labels name the roles the run
+ * checks (A the host at the reveal, B the seat elected when A leaves). Recorded in report.roles.swaps.
+ */
+function swapSeats(x, y, why) {
+  [pages[x], pages[y]] = [pages[y], pages[x]];
+  [contexts[x], contexts[y]] = [contexts[y], contexts[x]];
+  [ids[x], ids[y]] = [ids[y], ids[x]];
+  [report.roomLog[x.toUpperCase()], report.roomLog[y.toUpperCase()]] = [report.roomLog[y.toUpperCase()], report.roomLog[x.toUpperCase()]];
+  contextA = contexts.a;
+  report.roles.swaps.push({ seats: [x, y], why, atMs: elapsedMs() });
+  step('roles-swapped', { seats: `${x}<->${y}`, why });
+}
 try {
   await mkdir(outputDir, { recursive: true });
   if (siteUrl) {
@@ -192,10 +337,18 @@ try {
   contextA = await browser.createBrowserContext();
   const contextB = await browser.createBrowserContext();
   const contextC = await browser.createBrowserContext();
+  Object.assign(contexts, { a: contextA, b: contextB, c: contextC });
   pages.a = await contextA.newPage();
   pages.b = await contextB.newPage();
   pages.c = await contextC.newPage();
-  for (const [label, page] of Object.entries(pages)) if (page) { await page.setViewport(testViewport); observe(page, label.toUpperCase()); }
+  for (const [label, page] of Object.entries(pages)) {
+    if (!page) continue;
+    const phone = label === phoneSeat;
+    if (phone) touchPages.add(page);
+    await page.setViewport(phone ? phoneViewport : testViewport);
+    await page.evaluateOnNewDocument(installPageRecorder);
+    observe(page, label.toUpperCase());
+  }
 
   // ---- A: boot, create the LAN room with three seats per side
   await pages.a.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
@@ -204,8 +357,8 @@ try {
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
   await activate(pages.a,'.cot-multiplayer-entry');
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-  await activate(pages.a,'.cot-play .modes [data-mode="lan"]');
-  await waitFor(pages.a, () => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), 'A LAN mode', 10_000);
+  await activate(pages.a,`.cot-play .modes [data-mode="${roomKind}"]`);
+  await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-mode="${kind}"]`)?.classList.contains('on'), `A ${roomKind} mode`, 10_000, { args: [roomKind] });
   await pages.a.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';
@@ -226,7 +379,6 @@ try {
   await joinAsAlly(pages.c, 'C', invite);
   step('c-joined');
   await waitFor(pages.a, () => document.querySelector('.cot-play .lobby.show .players')?.children.length === 3, 'A sees three seats', 30_000);
-  const ids = { a: null, b: null, c: null };
   if (live) {
     // Without the double the teams are read from the lobby controls; the seats' ids come from their sessions once the battle begins.
     const teamOf = (page) => page.evaluate(() => document.querySelector('.cot-play [data-control="team"]')?.value ?? null);
@@ -248,6 +400,19 @@ try {
     if (seated.length !== 3 || !ids.a || !ids.b || !ids.c || rooms.room(roomCode)?.room?.adminId !== ids.a) throw new Error(`the lobby seats read ${JSON.stringify(seated.map((player) => [player.id, player.joinedAt]))}`);
     step('lobby-ready', ids);
   }
+  // --game-mode / --map: the admin sets them in the lobby (the controls the player uses), before anyone readies
+  if (gameModeOption) {
+    await activate(pages.a, `.cot-play [data-game-mode="${gameModeOption}"]`);
+    await waitFor(pages.a, (mode) => document.querySelector(`.cot-play [data-game-mode="${mode}"]`)?.classList.contains('on'), `A game mode ${gameModeOption}`, 15_000, { args: [gameModeOption] });
+  }
+  if (mapOption) {
+    await pages.a.evaluate((mapId) => {
+      const select = document.querySelector('.cot-play [data-control="map"]');
+      if (select && select.value !== mapId) { select.value = mapId; select.dispatchEvent(new Event('change', { bubbles: true })); }
+    }, mapOption);
+    await waitFor(pages.c, (mapId) => document.querySelector('.cot-play [data-control="map"]')?.value === mapId, `C sees map ${mapOption}`, 15_000, { args: [mapOption] });
+  }
+  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null });
   await activate(pages.c,'.cot-play [data-action="ready"]');
   await activate(pages.b,'.cot-play [data-action="ready"]');
   await activate(pages.a,'.cot-play [data-action="ready"]');
@@ -261,8 +426,9 @@ try {
     waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
     waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
-  if(mobile){
-    for(const viewport of [mobileViewport,{...mobileViewport,width:568,height:256},{...mobileViewport,width:320,height:568},mobileViewport]){
+  if(mobile||phoneSeat==='c'){
+    const baseViewport = mobile ? mobileViewport : phoneViewport;
+    for(const viewport of [baseViewport,{...baseViewport,width:568,height:256},{...baseViewport,width:320,height:568},baseViewport]){
       await pages.c.setViewport(viewport);await sleep(200);
       const issues=await pages.c.evaluate(()=>{
         const issues=[];
@@ -284,6 +450,14 @@ try {
     if (!ids.a || !ids.b || !ids.c || new Set(Object.values(ids)).size !== 3) throw new Error(`the seats' ids read ${JSON.stringify(ids)}`);
     step('seats', ids);
   }
+  // role-agnostic (2026-10-13): a slow entry can re-elect (MP-S03) — the seat hosting at the reveal is A from here on
+  const roleAt = async () => Object.fromEntries(await Promise.all(['a', 'b', 'c'].map(async (label) => [label, (await p2pOf(pages[label]))?.role ?? null])));
+  let revealRoles = await roleAt();
+  for (let waited = 0; !Object.values(revealRoles).includes('host') && waited < 30_000; waited += 250) { await sleep(250); revealRoles = await roleAt(); }
+  const hostLabel = Object.keys(revealRoles).find((label) => revealRoles[label] === 'host') ?? null;
+  report.roles.hostAtReveal = hostLabel ? { label: hostLabel, id: ids[hostLabel] } : null;
+  report.roles.revealRoles = revealRoles;
+  if (hostLabel && hostLabel !== 'a') swapSeats('a', hostLabel, `the room elected ${hostLabel.toUpperCase()} during the entry`);
   const startOf = async (page) => { const s = await stats(page); return { matchUrl: s?.session?.matchUrl ?? null, role: s?.session?.p2p?.role ?? null, hostId: s?.session?.p2p?.hostId ?? null, generation: s?.session?.p2p?.generation ?? null, peers: s?.session?.p2p?.peersConnected ?? null, transport: s?.session?.match?.transportState ?? null, candidate: s?.session?.p2p?.candidateType ?? null, viaTurn: s?.session?.p2p?.viaTurn ?? null, snapshots: s?.session?.match?.snapshotsAccepted ?? 0, actors: s?.round?.actors ?? 0, welcomed: s?.session?.match?.welcomed ?? false }; };
   await waitFor(pages.a, (count) => (window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.peersConnected ?? 0) >= count, 'A serves two peers', 60_000, { args: [2] });
   report.start = { a: await startOf(pages.a), b: await startOf(pages.b), c: await startOf(pages.c), matchUrl: live ? null : rooms.room(roomCode)?.matchUrl ?? null };
@@ -304,7 +478,8 @@ try {
 
   // ---- play: B drives, C sees B move, every seat keeps receiving snapshots
   const before = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
-  if(mobile){
+  const linksBefore = { A: await linkStats(pages.a), B: await linkStats(pages.b), C: await linkStats(pages.c) };
+  if(mobile||touchPages.has(pages.b)){
     const joy=await pages.b.$('.cot-touch.on .joy');const box=await joy?.boundingBox();
     if(!box)throw new Error('Mobile joystick is missing');
     const x=box.x+box.width/2,y=box.y+box.height/2;
@@ -314,7 +489,10 @@ try {
     await pages.b.keyboard.down('KeyW');await pages.b.keyboard.down('KeyA');
   }
   await sleep(playS * 1000);
-  if(mobile)await pages.b.touchscreen.touchEnd();
+  const linksAfter = { A: await linkStats(pages.a), B: await linkStats(pages.b), C: await linkStats(pages.c) };
+  report.bandwidth = Object.fromEntries(Object.keys(linksAfter).map((label) => [label, bandwidthBetween(linksBefore[label], linksAfter[label])]));
+  step('bandwidth', Object.fromEntries(Object.entries(report.bandwidth).map(([label, row]) => [label, row ? { upKbps: row.upKbps, downKbps: row.downKbps, pairs: row.pairs.map((pair) => `${pair.local ?? '?'}/${pair.remote ?? '?'}`).join(',') } : null])));
+  if(mobile||touchPages.has(pages.b))await pages.b.touchscreen.touchEnd();
   else{await pages.b.keyboard.up('KeyA');await pages.b.keyboard.up('KeyW');}
   const after = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
   const movedM = after.c.other && before.c.other ? Math.hypot(after.c.other.x - before.c.other.x, after.c.other.z - before.c.other.z) : 0;
@@ -324,15 +502,41 @@ try {
   if (report.play.snapshotsC < playS * 15) failures.push(`C received ${report.play.snapshotsC} snapshots in ${playS} s`);
 
   // ---- A closes its tab: after the grace the room elects B; B resumes from its keyframe, C follows; no reset
-  const lastSeenByC = await sample(pages.c, ids.b);
+  // both peers' views of each other and of themselves: the room may elect either (the labels follow the election)
+  let lastSeenByC = await sample(pages.c, ids.b);
+  const lastSeenByB = await sample(pages.b, ids.c);
   // B's own hull as the host goes: a hull still rolling coasts on, which the new host's resume hold keeps off C's first frame
-  const bOwnAtClose = await sample(pages.b, ids.b);
+  let bOwnAtClose = await sample(pages.b, ids.b);
+  const cOwnAtClose = await sample(pages.c, ids.c);
+  await collectRoomLog('A', pages.a);
   const hostTickBefore = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report').at(-1)?.tick ?? 0;
   const closedAt = performance.now();
   await pages.a.close();
   pages.a = null;
   step('a-closed');
-  await waitFor(pages.b, (id) => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === 'host' && window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.hostId === id, 'B hosts', graceMs + 90_000, { args: [ids.b], polling: 250 });
+  // role-agnostic (2026-10-13): whichever peer the room elects is B from here on (MP-S03: a seat that declined during
+  // the entry is passed over; the e2e used to fail "B hosts" while the match lived on under C)
+  const hostingNow = () => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === 'host';
+  const electedLabel = await new Promise((resolveElected, rejectElected) => {
+    let settled = false;
+    const deadline = setTimeout(() => { settled = true; rejectElected(new Error(`neither B nor C hosts ${graceMs + 90_000} ms after A closed`)); }, graceMs + 90_000);
+    const poll = async () => {
+      while (!settled) {
+        for (const label of ['b', 'c']) {
+          if (await pages[label].evaluate(hostingNow).catch(() => false)) { settled = true; clearTimeout(deadline); resolveElected(label); return; }
+        }
+        await sleep(250);
+      }
+    };
+    void poll();
+  });
+  report.roles.elected = { label: electedLabel, id: ids[electedLabel] };
+  if (electedLabel === 'c') {
+    swapSeats('b', 'c', 'the room elected C when A left');
+    lastSeenByC = lastSeenByB;
+    bOwnAtClose = cOwnAtClose;
+  }
+  await waitFor(pages.b, (id) => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === 'host' && window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.hostId === id, 'B hosts', 30_000, { args: [ids.b], polling: 250 });
   const electedAfterMs = Math.round(performance.now() - closedAt);
   await waitFor(pages.c, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.hostId === id && p?.session?.p2p?.migrating === false && p?.session?.match?.phase === 'live'; }, 'C live on B', 90_000, { args: [ids.b], polling: 250 });
   const firstSeenByC = await sample(pages.c, ids.b);
@@ -342,9 +546,14 @@ try {
   const jumpM = lastSeenByC.other && firstSeenByC.other ? Math.hypot(firstSeenByC.other.x - lastSeenByC.other.x, firstSeenByC.other.z - lastSeenByC.other.z) : null;
   const bAfter = await p2pOf(pages.b);
   // The election as the double logged it; against the real service the elected seat's own facts (host, generation) stand in.
+  // live: the election as B's own room client heard it (the room's reason); against the double, the double's log
+  const startGeneration = report.start?.a?.generation ?? 1;
+  const bLog = await collectRoomLog('B', pages.b);
+  const heard = bLog.filter((entry) => entry.kind === 'host_changed' && entry.hostId === ids.b).at(-1) ?? null;
   const election = live
-    ? (bAfter ? { hostId: bAfter.hostId, generation: bAfter.generation, reason: 'unobserved', resumeTick: null } : null)
-    : report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === 2);
+    ? (bAfter ? { hostId: bAfter.hostId, generation: bAfter.generation, reason: heard?.reason ?? 'unobserved', resumeTick: heard?.resumeTick ?? null } : null)
+    : report.roomEvents.find((event) => event.kind === 'host_changed' && event.hostId === ids.b && event.generation === startGeneration + 1)
+      ?? report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === startGeneration + 1);
   const reportsFromB = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
   const stripB = await pages.b.evaluate(() => ({ host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false, banner: document.querySelector('.cot-mp-banner')?.hidden === false ? document.querySelector('.cot-mp-banner .text')?.textContent : null }));
   report.migration = {
@@ -353,7 +562,7 @@ try {
     bHullJumpAsCSaw: jumpM, bSpeedAtCloseMps: bOwnAtClose.other?.speed ?? null, bResumeHold: bAfter?.resumeHold ?? null, cPhase: cAfter.phase, cResult: cAfter.result, reportsFromB, stripB,
   };
   step('migrated', report.migration);
-  if (election?.hostId !== ids.b || election.generation !== 2) failures.push(`the election ${JSON.stringify(election)}`);
+  if (election?.hostId !== ids.b || election.generation !== startGeneration + 1) failures.push(`the election ${JSON.stringify(election)} (the start ran at generation ${startGeneration})`);
   if (electedAfterMs < graceMs) failures.push(`B hosted before the grace (${electedAfterMs} ms)`);
   if (report.migration.b?.role !== 'host' || report.migration.b?.peersConnected < 1) failures.push(`B ${JSON.stringify(report.migration.b)}`);
   if (report.migration.c?.role !== 'peer' || report.migration.c?.hostId !== ids.b) failures.push(`C ${JSON.stringify(report.migration.c)}`);
@@ -433,6 +642,10 @@ try {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
   for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await screenshot(page,`${label}-failure.png`).catch(()=>{});
 } finally {
+  for (const [label, page] of Object.entries(pages)) if (page && !page.isClosed()) await collectRoomLog(label.toUpperCase(), page);
+  // every election each page heard, with the room's reason: the ones before the reveal are MP-S03's entry elections
+  report.elections = Object.fromEntries(Object.entries(report.roomLog).map(([label, entries]) => [label,
+    (entries ?? []).filter((entry) => entry.kind === 'host_changed' || entry.kind === 'decline').map((entry) => ({ atMs: entry.atMs, kind: entry.kind, hostId: entry.hostId ?? null, generation: entry.generation ?? null, reason: entry.reason ?? null, unable: entry.unable ?? null }))]));
   report.wallMs = elapsedMs();
   const relevant = errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
   if (relevant.length) failures.push(`${relevant.length} browser error(s): ${relevant.slice(0, 3).map((entry) => `${entry.page} ${entry.kind}: ${entry.text.slice(0, 240)}`).join(' | ')}`);
