@@ -97,11 +97,15 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 45,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 420 })));
+      // two lines across open ground: r2-r3 staged one or two enemies 260-340 m out and the chase view showed specks
+      // on a tree line; four enemies now stand 160-220 m out with three allies beside the player
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 240, minRangeM: 120, enemies: 4, allies: 3, dists: [160, 180, 200, 220] })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 3 });
       await settle(ctx, 2);
       await ctx.capture({
+        // (the chase view stays on the gun line: the arcade camera's centre ray is the aim, so an orbit offset would
+        // lay the gun off the target)
         cameras: [
           { kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' },
           { kind: 'chase', target: 'nearestEnemyClear', step: 3, hud: 'full' },
@@ -1485,17 +1489,19 @@ Object.assign(RECIPES, {
         })))));
         if (seen[0] == null || seen[1] == null) ctx.note(`the seats did not both see each other (A ${seen[0]}, B ${seen[1]})`);
         ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two live battles in one headless Chrome');
-        for (const c of [A, B]) {
-          await c.page.evaluate(() => {
-            window.__MB.setDrive(null);
-            window.__MB.setAim({ target: 'nearestEnemy' });
-            window.__MB.setCamera({ kind: 'scope', target: 'nearestEnemy', zoom: 8 });
-          });
-        }
+        // each client's own chase view with its gun on the other tank (the staging's camera); the last two rounds
+        // in the sights
+        const view = (kind) => Promise.all([A, B].map((c) => c.page.evaluate((k) => {
+          window.__MB.setDrive(null);
+          window.__MB.setAim({ target: 'nearestEnemy' });
+          window.__MB.setCamera(k === 'scope' ? { kind: 'scope', target: 'nearestEnemy', zoom: 6 } : { kind: 'chase', target: 'nearestEnemy', step: 2 });
+        }, kind)));
+        await view('chase');
         await ctx.sleep(2500);
         // rounds: one side fires; both pages freeze together a beat after the shot and are captured as a pair
         const dir = ctx.dir;
         for (let round = 0; round < 8; round++) {
+          if (round === 6) { await view('scope'); await ctx.sleep(1500); }
           const shooter = round % 2 === 0 ? A : B, other = shooter === A ? B : A;
           const delay = [70, 140, 220][round % 3];
           await shooter.page.evaluate((d) => {
