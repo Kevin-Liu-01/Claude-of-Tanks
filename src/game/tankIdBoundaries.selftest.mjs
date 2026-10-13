@@ -104,7 +104,7 @@ assert.equal(shown(replay.targetEnt.specId), 'T-90AM');
 assert.equal(oldReplay.attackerEnt.specId, 'leo2a6m', 'the payload is not mutated');
 const stampedReplay = { ...oldReplay, ...fixture.stamp() };
 assert.equal(shown(replayInCurrentTankIds(stampedReplay, fixture).attackerEnt.specId), 'Leopard 2A6M', 'a stamped schema-2 replay is read as written');
-assert.equal(replayInCurrentTankIds(oldReplay), oldReplay, 'the live schema-1 build reads an old replay as written');
+assert.deepEqual(replayInCurrentTankIds(oldReplay), oldReplay, 'the live build: an old replay naming unrenamed ids reads as written');
 
 // ---- an old scene link: /studio?scene=<file> loads that file under its own schema
 const link = new URL('https://cot.kevinliu.studio/studio?scene=/media/site50-r14/scenes/s05-barn-advance.scene.json');
@@ -119,7 +119,7 @@ assert.deepEqual(loaded.actors.map((a) => shown(a.id)), ['T-14 Armata', 'T-90M',
 const oldScene = { map: 'verdant', actors: [{ id: 'leo2a6m', pos: [0, 0] }, { specId: 't90m', pos: [10, 0] }] };
 assert.deepEqual(sceneInCurrentTankIds(oldScene, fixture).actors.map((a) => shown(a.id ?? a.specId)), ['Leopard 2A4 OTCO', 'T-90AM']);
 assert.equal(sceneInCurrentTankIds({ ...oldScene, tankIdSchema: 2 }, fixture).actors[0].id, 'leo2a6m', 'a stamped scene is read as written');
-assert.equal(sceneInCurrentTankIds(sceneFile), sceneFile, 'the live schema-1 build loads the file as written');
+assert.deepEqual(sceneInCurrentTankIds(sceneFile), sceneFile, 'the live build loads a file naming unrenamed ids as written');
 
 // ---- an old gallery URL
 const oldUrl = new URL('https://cot.kevinliu.studio/gallery?id=leo2a6m&layer=armor');
@@ -148,11 +148,36 @@ assert.equal(shown(seats.find((s) => s.playerId === 'p2').specId), 'Leopard 2A6M
 const started = planFromMatchStart({ plan: { seats: [{ seat: 0, playerId: 'p1', name: 'K', team: 'alpha', specId: 't90m_x' }], bots: [{ playerId: 'b', name: 'B', team: 'bravo', specId: 't14_x' }] } }, fixture);
 assert.equal(shown(started.seats[0].specId), 'T-90M');
 assert.equal(shown(started.bots[0].specId), 'T-14 Armata');
-assert.equal(planFromRoom(room).seats[0].specId, 'leo2a6m_x', 'the live schema-1 build passes room ids through');
+assert.equal(planFromRoom(room).seats[0].specId, 'leo2a6m_x', 'the live build passes current room ids through');
 
 // ---- telemetry notes name the schema once a rename lands
 assert.equal(telemetryTankId('leo2a6m', fixture), 'leo2a6m.s2');
 if (TANK_IDS.schema === 1) assert.equal(telemetryTankId('leo2a6m'), 'leo2a6m');
+
+// ---- the live schema 2 (2026-10-13, VEH-11): the Warrior MILAN X is the Warrior TES(H) at every boundary
+if (TANK_IDS.schema >= 2) {
+  const warriorSave = memoryStorage({
+    'cot.lastTank.v1': 'fv510_milan_x', 'cot.camo.fv510_milan_x': 'dpm', 'cot.equip.fv510_milan_x': '["smoke"]',
+    'cot.garage.nationTank.v1': JSON.stringify({ uk: 'fv510_milan_x' }),
+    'cot.service.v1': JSON.stringify({ version: 1, vehicles: ['fv510_milan_x'], history: [] }),
+  });
+  migrateStoredTankIds(warriorSave);
+  assert.equal(warriorSave.getItem('cot.lastTank.v1'), 'warrior_tes_h', 'an old save keeps its Warrior');
+  assert.equal(warriorSave.getItem('cot.camo.warrior_tes_h'), 'dpm');
+  assert.equal(warriorSave.getItem('cot.equip.warrior_tes_h'), '["smoke"]');
+  assert.deepEqual(JSON.parse(warriorSave.getItem('cot.garage.nationTank.v1')), { uk: 'warrior_tes_h' });
+  assert.deepEqual(JSON.parse(warriorSave.getItem('cot.service.v1')).vehicles, ['warrior_tes_h']);
+  assert.equal(warriorSave.getItem(TANK_ID_STORAGE_SCHEMA_KEY), String(TANK_IDS.schema));
+  const warriorScene = JSON.parse(readFileSync(new URL('../../public/media/site50-r14/scenes/s11-container-rows.scene.json', import.meta.url), 'utf8'));
+  assert.ok(warriorScene.actors.some((a) => a.id === 'fv510_milan_x'), 'the published scene names the Warrior MILAN X');
+  assert.ok(sceneInCurrentTankIds(warriorScene).actors.some((a) => a.id === 'warrior_tes_h'), 'an old scene link loads the Warrior TES(H)');
+  assert.equal(replayInCurrentTankIds({ attackerEnt: { specId: 'fv510_milan_x' } }).attackerEnt.specId, 'warrior_tes_h');
+  assert.equal(linkTankId(new URL('https://x/gallery?id=fv510_milan_x').searchParams), 'warrior_tes_h', 'an old gallery link');
+  assert.equal(galleryHref('warrior_tes_h'), `/gallery?id=warrior_tes_h&ids=${TANK_IDS.schema}`, 'new links carry the schema');
+  assert.equal(planFromRoom({ ...room, players: [{ ...room.players[0], specId: 'fv510_milan_x' }] }).seats[0].specId, 'warrior_tes_h',
+    'a room seat from an older build');
+  assert.equal(telemetryTankId('warrior_tes_h'), `warrior_tes_h.s${TANK_IDS.schema}`);
+}
 
 console.log('tankIdBoundaries selftest: an old save, replay, scene link, gallery URL and room seat naming leo2a6m '
   + '(2A4 OTCO) and t90m (T-90AM) resolve to the right vehicles; schema-2 data is read as written');

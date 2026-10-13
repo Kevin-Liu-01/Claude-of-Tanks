@@ -517,7 +517,10 @@ function renderMarkdown(table) {
   lines.push('# Tank id rename table (ID.01)', '');
   lines.push(`Generated ${table.generatedAt} from \`${table.source.commit}\` by \`node tools/tank-id-rename-table.mjs\`. Display names are unchanged; ids become a slug of the display name in the existing id style. The JSON beside this file carries every path.`, '');
   lines.push('## Summary', '');
-  lines.push(`- Saved spec ids: **${summary.total}**; already match their display name: **${summary.matching}**; change: **${summary.changing}**.`);
+  lines.push(`- Saved spec ids: **${summary.total}**; already match their display name: **${summary.matching}**; change: **${summary.changing}** (today's ids are tank id schema ${table.tankIdSchema}; the rename makes schema ${table.tankIdSchema + 1}).`);
+  if (table.landedRenames.length) {
+    lines.push(`- Already landed: ${table.landedRenames.map((map, k) => `schema ${k + 2} (${Object.entries(map).map(([a, b]) => `\`${a}\` -> \`${b}\``).join(', ')})`).join('; ')}. A schema-1 key applies these first.`);
+  }
   lines.push(`- Mismatch classes: ${Object.entries(summary.byClass).map(([k, v]) => `${k} ${v}`).join(', ')}.`);
   lines.push(`- Swaps (a new id that another vehicle used to have): **${summary.swaps}**. These ids change meaning, so every stored or sent id carries the id schema and old inputs resolve through the versioned alias map (\`src/vehicles/tankIdAliases.ts\`). No proposal takes an id that stays.`);
   lines.push(`- Display-name problems for the coordinator: **${summary.nameProblems}** vehicles.`);
@@ -553,6 +556,7 @@ function renderMarkdown(table) {
 }
 
 async function main() {
+  const aliases = await import('../src/vehicles/tankIdAliases.ts');
   const fleet = applyRuledNames(await loadFleet());
   const plan = planRenames(fleet, { forcedIds: COORDINATOR_RULINGS.ids });
   const problems = nameProblems(fleet);
@@ -606,7 +610,12 @@ async function main() {
       changingOccurrences: changing.reduce((s, r) => s + (r.usage?.occurrences || 0), 0),
       changingPathNamed: changing.reduce((s, r) => s + (r.usage?.filesNamedById || 0), 0),
     },
+    // The pending rename: today's ids (tank id schema `tankIdSchema`) to the proposed ones (the next schema).
+    tankIdSchema: aliases.TANK_ID_SCHEMA,
     renames: Object.fromEntries(changing.map((r) => [r.id, r.proposed])),
+    // Renames already landed: landedRenames[k] turns schema k+1 ids into schema k+2 ids (src/vehicles/tankIdAliases.ts).
+    // A schema-1 key (a media fleet index, an old scene) applies these in order, then `renames`.
+    landedRenames: aliases.TANK_ID_RENAMES,
     rows,
   };
   const outDirs = option('out');
