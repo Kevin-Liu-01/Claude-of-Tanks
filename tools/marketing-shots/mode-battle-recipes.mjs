@@ -1279,6 +1279,19 @@ Object.assign(RECIPES, {
         await B.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await B.page.waitForFunction(() => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2, { timeout: 60000 });
         ctx.log('guest lobby', await setLobby(B.page, 'team', 'bravo'), await setLobby(B.page, 'vehicle', 't90m_x'));
+        // the room is the authority on seats: confirm B sits on bravo, through the team list's own option if needed
+        // (r14 attempts 1-2: neither client ever held the other seat)
+        const code = invite.searchParams.get('room');
+        const seats = () => (ctx.rooms?.room(code)?.room?.players ?? []).map((pl) => `${pl.name ?? pl.id}:${pl.team}`);
+        for (let i = 0; i < 20 && !seats().some((s) => /:bravo$/.test(s)); i++) await ctx.sleep(250);
+        if (!seats().some((s) => /:bravo$/.test(s))) {
+          await B.page.click('.cot-play [data-control="team"] [data-select-trigger]').catch(() => {});
+          await ctx.sleep(300);
+          await B.page.click('.cot-play [data-control="team"] .menu-select-option[data-value="bravo"]').catch(() => {});
+          for (let i = 0; i < 20 && !seats().some((s) => /:bravo$/.test(s)); i++) await ctx.sleep(250);
+        }
+        ctx.log('room seats', JSON.stringify(seats()), 'lobby mode', await A.page.evaluate(() => document.querySelector('.cot-play .lobby')?.dataset?.mode ?? null));
+        if (!seats().some((s) => /:bravo$/.test(s))) ctx.note(`B never took the bravo seat: ${JSON.stringify(seats())}`);
         await ctx.sleep(800);
         await B.page.click('.cot-play [data-action="ready"]');
         await A.page.click('.cot-play [data-action="ready"]');
@@ -1298,7 +1311,10 @@ Object.assign(RECIPES, {
         }
         const sides = await Promise.all([A, B].map((c) => c.page.evaluate(() => {
           const g = window.__DEBUG.game;
-          return { me: g.player?.specId, team: g.player?.team, tanks: g.tanks.map((t) => `${t.specId}:${t.team}`) };
+          const ms = g.matchModeState;
+          return { me: g.player?.specId, team: g.player?.team, tanks: g.tanks.map((t) => `${t.specId}:${t.team}`),
+            pos: g.player ? [Math.round(g.player.state.pos.x), Math.round(g.player.state.pos.z)] : null,
+            perspective: ms?.perspectiveTeam ?? null, spawns: (ms?.spawns ?? []).map((sp) => `${sp.team}@${Math.round(sp.x)},${Math.round(sp.z)}`) };
         })));
         ctx.log('seated', JSON.stringify(sides));
         // close the distance. A client holds the other seat only once it is spotted (snapshots are filtered for
@@ -1322,7 +1338,9 @@ Object.assign(RECIPES, {
           if (seen[0] != null && seen[1] != null) break;
           await ctx.sleep(500);
         }
-        ctx.log('in sight', JSON.stringify(seen));
+        ctx.log('in sight', JSON.stringify(seen), JSON.stringify(await Promise.all([A, B].map((c) => c.page.evaluate(() => {
+          const g = window.__DEBUG.game; return g.player ? [Math.round(g.player.state.pos.x), Math.round(g.player.state.pos.z), g.tanks.length] : null;
+        })))));
         if (seen[0] == null || seen[1] == null) ctx.note(`the seats did not both see each other (A ${seen[0]}, B ${seen[1]})`);
         ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two live battles in one headless Chrome');
         for (const c of [A, B]) {
