@@ -97,13 +97,15 @@ export function missileLaunch(C: BlastContext, R: () => number, L: MissileLook, 
       // grass") the backblast's ground dust is a soft, ground-hugging billow: rounder bodies centred clear of the grass so
       // the ground never cuts their edges (the media's soft depth fade feathers the contact instead), spreading out and
       // lifting a little, drifting with the wind, swelling, fading in over a beat and thinning from their edges early
-      for (let i = 0; i < 4; i++) {
-        const a = (R() - 0.5) * 1.8, r = 2.0 + R() * 3.0;
+      // (filmed again: four bodies stood as separate round lumps by the tracks) six overlapping, fainter bodies fanned
+      // round the rear spread into one low cloud
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 5 - 0.5) * 2.2 + (R() - 0.5) * 0.35, r = 1.5 + R() * 4.0;
         const ux = -dx * Math.cos(a) + sx * Math.sin(a), uz = -dz * Math.cos(a) + sz * Math.sin(a);
-        const v = 3 + 2 * R();
-        puff(C, R, x + ux * r, gy + 0.55 + R() * 0.25, z + uz * r, ux * v, 0.35 + R() * 0.3, uz * v, 1.2, 0.15, 1.0,
-          4 + R() * 2, 0.9 * k, (2.6 + R() * 1.2) * k, 1.8, DUST, DUST_AGED, 0.3, 0.12, 0.28,
-          bo + 0.05 + R() * 0.08, 1.3);
+        const v = 2.5 + 2.5 * R();
+        puff(C, R, x + ux * r, gy + 0.55 + R() * 0.25, z + uz * r, ux * v, 0.3 + R() * 0.3, uz * v, 1.2, 0.15, 1.0,
+          4 + R() * 2.5, 1.0 * k, (3.0 + R() * 1.5) * k, 1.8, DUST, DUST_AGED, 0.2, 0.2, 0.25,
+          bo + 0.05 + R() * 0.1, 1.3);
       }
     }
     return;
