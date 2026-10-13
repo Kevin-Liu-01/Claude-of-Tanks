@@ -8171,7 +8171,7 @@ ${snowCap ? `
         const dx = d.x - x, dz = d.z - z;
         return Math.abs(dx * fz - dz * fx) < hw + 0.6 && Math.abs(dx * fx + dz * fz) < hl + 0.6;
       })) return false;
-      if (!trunks.length) return true;
+      if (!trunks.length || berth === -Infinity) return true;
       return !trunks.some((t) => {
         const dx = t.x - x, dz = t.z - z;
         return Math.abs(dx * fz - dz * fx) < hw + t.half + berth && Math.abs(dx * fx + dz * fz) < hl + t.half + berth;
@@ -8232,8 +8232,11 @@ ${snowCap ? `
           else if (got) { at = got; break; }
         }
         // (b40) where the trunks bar every seat the ground allows, the pillbox steps further along the line or back from
-        // it, so the work keeps its pillbox (on Caldera and Saltmere the trunks barred all three usual seats)
-        if (!at && barred) {
+        // it, so the work keeps its pillbox (on Caldera and Saltmere the trunks barred all three usual seats); (the looks
+        // lane, 2026-10-13) and where the road refuses them: the work's whole ground (its bank) reaches farther than the
+        // old pillbox's square did, and on current main Orchard's first work lost its pillbox to the road beside it, and
+        // with it the ammunition boxes' draw, so every later work moved (two pillboxes became one)
+        if (!at) {
           const far = reach + 3.5;
           for (const [ox, oz] of [[lx * first * far, lz * first * far], [-lx * first * far, -lz * first * far], [-fx * 8, -fz * 8],
             [lx * first * reach - fx * 4, lz * first * reach - fz * 4], [-lx * first * reach - fx * 4, -lz * first * reach - fz * 4]]) {
@@ -8245,9 +8248,12 @@ ${snowCap ? `
         // Orchard's): the seat nearest an end of the work, out to 20 m along the line either way and 20 m back from it,
         // whose footprint the trunks leave clear by the berth, else by 0.3 m (no trunk in the box) — every work keeps its
         // pillbox; no draw is taken, so nothing after it moves
-        if (!at && barred) {
+        if (!at) {
           let best: readonly [number, number] | null = null;
-          for (const berth of [PILLBOX_TRUNK_BERTH_M, 0.3]) {
+          // (the looks lane, 2026-10-13: on Orchard's groves on current main both berths left no seat and the work lost its
+          // pillbox, and with it the ammunition boxes' draw, so every later work moved: a last pass seats it among the
+          // trunks, still clear of the pieces already laid)
+          for (const berth of [PILLBOX_TRUNK_BERTH_M, 0.3, -Infinity]) {
             let bestScore = Infinity;
             for (let u = -20; u <= 20; u += 2.5) {
               for (let v = 0; v <= 20; v += 2.5) {
