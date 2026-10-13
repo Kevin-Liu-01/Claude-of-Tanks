@@ -121,14 +121,42 @@ for(const id of Object.keys(NATIONAL_POLAND_GHILLIE_CONFIGS))for(const quality o
   // tinted between the suit's light and dark colours (ghillieSuit.ts, clumpTint), so the turret carries the merged net
   // and one garnish mesh whose cards hold both scrim colours
   const clothMeshes=[];
-  turret.traverse(o=>{if(!o.isMesh||!o.name.includes('_ghillie_turret_'))return;const b=new Box3().setFromObject(o).applyMatrix4(inverseTurret);
-   high=Math.max(high,b.max.y);clothMeshes.push(o);});
+  turret.traverse(o=>{if(!o.isMesh||!o.name.includes('_ghillie_turret_'))return;clothMeshes.push(o);});
   assert.deepEqual(clothMeshes.map(o=>o.name.slice(id.length)).sort(),['_ghillie_turret_leaves','_ghillie_turret_net'],`${label}: merged net plus one scrim garnish layer`);
   const tint=clothMeshes.find(o=>o.name.endsWith('_leaves')).geometry.getAttribute('color'),tints=new Set();
   for(let i=0;i<(tint?.count??0);i++)tints.add([tint.getX(i),tint.getY(i),tint.getZ(i)].map(v=>v.toFixed(3)).join());
   assert(tints.size>=2,`${label}: the scrim garnish carries cards of more than one colour (${tints.size})`);
-  assert(low-high>.20,`${label}: every new ERA/cage/scrim surface remains below the entire roof-gun sweep (${low-high})`);
-  console.log(`${label}: ${eraBodies} ERA bodies, ${added.length} frame parts, ${(low-high).toFixed(3)} m continuous roof-gun clearance`);
+  assert(low-high>.20,`${label}: every new ERA and cage surface remains below the entire roof-gun sweep (${low-high})`);
+  // 2026-10-13 (netting-pl; the owner: "also add a bunch of ghillie on the husarz and zubr polish tanks"): the Husarz and
+  // both Zubrs wear the full field suit, its roof net laid on the turret roof under the station (nationalPolandProtectionConfig
+  // fieldSuit), so the suit is held to the sweep where the weapon passes over it instead of to one plane under its lowest
+  // reach: every turret suit vertex lies 8 mm (nationalRoof.selftest's margin) under the lowest the weapon's stock comes
+  // at its distance from the station's yaw axis through the weapon's whole pitch range (25 pitches, 2 cm radial bins and
+  // their neighbours). The scrim-only Wilk's screen scrim keeps the 20 cm plane.
+  const axis=new Vector3().setFromMatrixPosition(station.matrixWorld).applyMatrix4(inverseTurret),floor=[];
+  const savedPitch=weapon.rotation.x,toTurret=new Matrix4();
+  for(let k=0;k<=24;k++){
+   weapon.rotation.x=-profile.elevationRad+(profile.elevationRad+profile.depressionRad)*k/24;weapon.updateMatrixWorld(true);
+   weapon.traverse(o=>{if(!o.isMesh)return;toTurret.multiplyMatrices(inverseTurret,o.matrixWorld);const p=o.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){const v=new Vector3().fromBufferAttribute(p,i).applyMatrix4(toTurret),bin=Math.floor(Math.hypot(v.x-axis.x,v.z-axis.z)/.02);
+     floor[bin]=Math.min(floor[bin]??Infinity,v.y);}
+   });
+  }
+  weapon.rotation.x=savedPitch;t.root.updateMatrixWorld(true);
+  const field=!!NATIONAL_POLAND_GHILLIE_CONFIGS[id].fieldClearanceM;
+  let suitMargin=Infinity,scrimTop=-Infinity;
+  for(const mesh of clothMeshes){
+   toTurret.multiplyMatrices(inverseTurret,mesh.matrixWorld);const p=mesh.geometry.attributes.position;
+   for(let i=0;i<p.count;i++){
+    const v=new Vector3().fromBufferAttribute(p,i).applyMatrix4(toTurret),bin=Math.floor(Math.hypot(v.x-axis.x,v.z-axis.z)/.02);
+    scrimTop=Math.max(scrimTop,v.y);
+    let under=Infinity;for(let b=Math.max(0,bin-1);b<=bin+1;b++)under=Math.min(under,floor[b]??Infinity);
+    if(Number.isFinite(under))suitMargin=Math.min(suitMargin,under-v.y);
+   }
+  }
+  if(field)assert(suitMargin>=.008,`${label}: the field suit stays under the roof gun's swept floor at every radius (${suitMargin.toFixed(4)})`);
+  else assert(low-scrimTop>.20,`${label}: the screen scrim remains below the entire roof-gun sweep (${low-scrimTop})`);
+  console.log(`${label}: ${eraBodies} ERA bodies, ${added.length} frame parts, ${(low-high).toFixed(3)} m continuous roof-gun clearance, suit ${field?`${suitMargin.toFixed(3)} m under the swept floor`:`${(low-scrimTop).toFixed(3)} m under the sweep`}`);
  }finally{
   t.dispose();for(const d of [...added.map(p=>p.g),...permanent.hull,...permanent.turret,...turretEra])d.dispose();
  }
