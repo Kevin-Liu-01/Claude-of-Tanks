@@ -721,6 +721,22 @@ Do not compare frames per second without recording viewport, device pixel
 ratio, quality tier, render scale, browser, scene, and whether diagnostics were
 open.
 
+Measuring a cost (the perf stream, 2026-10-13):
+- Run cost A/Bs in one page, with a null control. Record the load average with
+  the result, and gate it at 100. If the load stays over 100 after a five-minute
+  wait, take the best of three interleaved rounds.
+- Judge a change on a cache or reuse path (a static shadow cache, a held
+  cascade pose) by the presented interval, not the GPU timer. On ANGLE/Metal
+  the timer sums the spans of the command buffers a frame was split into, so a
+  depth blit or a split pass can raise it while the presented frame gets
+  faster.
+- An entry cost has two numbers:
+  - cached: a program and pipeline the machine has compiled before;
+  - first sight: a program source new to the machine. Metal keeps compiled
+    pipelines machine-wide, across browser profiles.
+  To measure first sight, change the program's source, for example with a
+  salted scratch build, instead of picking maps nobody has entered.
+
 ## Scene Studio and public images
 
 Open Studio:
