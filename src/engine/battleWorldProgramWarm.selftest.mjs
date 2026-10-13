@@ -32,10 +32,10 @@ import { createBattleWorldProgramWarm, createRendererWorldProgramWarm, lightSign
 }
 
 // ---- 2. the state machine
-function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
+function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter = 3 } = {}) {
   const state = {
     final, clock: 0, compiles: [], draws: [], published: [], alive: true, signature: 'battle',
-    links: new Map(), linkAfter, compileError,
+    links: new Map(), linkAfter, compileError, fenceAfter, fences: 0, drainedAt: null,
   };
   const material = (name) => ({ name });
   const ports = {
@@ -54,7 +54,8 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
       return left <= 0;
     },
     lifetime: () => () => state.alive,
-    drawPipelines: (root) => { state.draws.push(root); return root.materials.length; },
+    fence: () => { state.fences++; let polls = state.fenceAfter; return () => { if (--polls >= 0) return false; state.drainedAt ??= state.clock; return true; }; },
+    drawPipelines: (root) => { assert.notEqual(state.drainedAt, null, 'the draw waits for the GPU queue to drain'); state.draws.push(root); return root.materials.length; },
     wait: async (ms) => { state.clock += ms; await new Promise((resolve) => setImmediate(resolve)); },
     now: () => state.clock,
     publish: (receipt) => state.published.push(receipt.status),
@@ -84,6 +85,8 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   assert.equal(receipt.drawSignature, 'battle');
   assert.ok(receipt.linkedMs >= 32, 'the links are polled, never waited on synchronously');
   assert.deepEqual(state.draws, [terrain], 'the pipelines draw once the links land');
+  assert.equal(state.fences, 1, 'one fence per warm');
+  assert.ok(receipt.fenceMs >= 48, `the fence is polled across tasks (${receipt.fenceMs} ms), never waited on`);
   assert.deepEqual(state.published, ['waiting-for-lights', 'linking', 'drawn']);
   warm.arm('railyard');
   warm.offer(terrain, 'railyard');
@@ -152,6 +155,27 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
 }
 
 {
+  const { state, warm, root } = harness({ fenceAfter: 1e9 });
+  warm.arm('urban');
+  warm.offer(root(), 'urban');
+  for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve));
+  warm.disarm(); // the Garage came back while the GPU queue was still busy
+  const receipt = await warm.settled();
+  assert.equal(receipt.status, 'abandoned', 'a disarm during the fence wait abandons');
+  assert.equal(state.draws.length, 0);
+}
+
+{
+  const { state, warm, root } = harness({ fenceAfter: 1e9 });
+  warm.arm('urban');
+  warm.offer(root(), 'urban');
+  const receipt = await warm.settled();
+  assert.equal(receipt.status, 'link-timeout', 'a GPU queue that never drains leaves the draw to the deployment warm');
+  assert.match(receipt.error, /never drained/);
+  assert.equal(state.draws.length, 0);
+}
+
+{
   const { state, warm, root } = harness({ linkAfter: 3 });
   warm.arm('urban');
   warm.offer(root(), 'urban');
@@ -204,7 +228,12 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   const skirtMesh = new THREE.Mesh(new THREE.PlaneGeometry(), skirt);
   const pebbles = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);
   terrain.add(chunkA, chunkB, skirtMesh, pebbles, new THREE.Mesh(new THREE.PlaneGeometry(), hooked));
-  const gl = { lost: false, isContextLost() { return this.lost; } };
+  // WebGL2's fence: busy for two polls, then signalled
+  const gl = { lost: false, isContextLost() { return this.lost; },
+    SYNC_GPU_COMMANDS_COMPLETE: 0x9117, TIMEOUT_EXPIRED: 0x911b, ALREADY_SIGNALED: 0x911a, fences: [], deleted: 0,
+    fenceSync() { const sync = { polls: 0 }; this.fences.push(sync); return sync; }, flush() {},
+    clientWaitSync(sync, flags, timeout) { assert.equal(timeout, 0, 'never a blocking wait'); return ++sync.polls > 2 ? this.ALREADY_SIGNALED : this.TIMEOUT_EXPIRED; },
+    deleteSync() { this.deleted++; } };
   const resident = new Map(), programUniforms = new Map();
   const texture = (name) => { const t = new THREE.Texture(); t.name = name; t.needsUpdate = true; return t; };
   const grass = texture('grass'), rock = texture('rock'), uploaded = texture('uploaded'), empty = new THREE.Texture();
@@ -255,6 +284,7 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   assert.deepEqual(log.filter((entry) => entry[0] === 'upload').map((entry) => entry[1]), ['grass', 'rock'],
     'the textures the draw binds that are not resident upload first, each once (resident, empty and render targets aside)');
   assert.equal(receipt.textures, 2);
+  assert.equal(gl.fences.length, 1); assert.equal(gl.fences[0].polls, 3); assert.equal(gl.deleted, 1, 'the fence is polled until signalled, then deleted');
   assert.equal(log.findIndex((entry) => entry[0] === 'render'), 3, 'and only then the draw');
   const [compile, , , render] = log;
   assert.equal(compile[0], 'compile');
