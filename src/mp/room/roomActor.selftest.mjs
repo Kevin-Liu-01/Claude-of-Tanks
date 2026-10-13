@@ -16,7 +16,7 @@ import {
   ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS,
   ROOM_RATE_MAX_MESSAGES, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_SEAT_DISCONNECT_TTL_MS, ROOM_SIGNAL_MAX_BYTES,
   ROOM_STATE_COALESCE_MS, ROOM_UNAUTHENTICATED_TIMEOUT_MS,
-  readRoomSnapshot,
+  isRoomHostChangedPayload, readRoomSnapshot,
 } from './protocol.ts';
 import { signSeatToken, verifySeatToken } from '../../../server/match/seatToken.ts';
 
@@ -520,8 +520,8 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.deepEqual(room.host, { transport: 'p2p', hostId: 'guest', generation: 2, since: h.now });
   assert.equal(room.phase, 'playing', 'the match runs on');
   assert.equal(room.adminId, 'admin', 'the admin lease (30 s) is a separate matter');
-  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
-  assert.deepEqual(h.last('w', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout' });
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout', detail: 'socket_lease', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('w', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 420, reason: 'timeout', detail: 'socket_lease' });
   assert.equal(h.last('g', 'room_state').payload.room.host.generation, 2);
   assert.equal(h.actor.exportState().hostReport, null, 'the successor starts without a report');
   assert.equal(h.actor.exportState().hostReportDueAt, h.now + ROOM_MATCH_REPORT_STALE_AFTER_MS);
@@ -569,9 +569,43 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   await h.actor.tick();
   assert.equal(h.actor.snapshot.host.hostId, 'admin');
   await h.advance(1);
-  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 100, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 100, reason: 'timeout', detail: 'report_deadline', hostSecret: hostSecretOf(matchId) },
+    'a connected host that stopped reporting is the report deadline, not the socket lease (2026-10-13)');
   assert.equal(h.last('a2', 'host_changed').payload.hostSecret, undefined, 'the silent host, still seated, is a peer now');
   assert.equal(h.actor.snapshot.host.hostId, 'guest');
+}
+
+// ---- why the room elected whom (2026-10-13, MP-SINCE-0930 plan step 7b; production's entry elections went to C): a
+// timeout names its deadline — the socket lease or the report deadline — and every host_changed names the commanders it
+// passed over: a guest that declined while its own entry was loading stays passed over when the host's socket drops
+{
+  const { h, matchId } = await startedP2pRoom({ third: true });
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 300 });
+  // the guest, still entering, declines (not hosting: no election, the flag sticks for the match)
+  assert.equal((await h.command('g', { type: 'host_decline', declined: true })).type, 'room_ack');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin');
+  h.drain('g'); h.drain('t');
+  h.actor.handleClose('a');
+  await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
+  const changed = h.last('t', 'host_changed').payload;
+  assert.deepEqual(changed, { hostId: 'third', generation: 2, resumeTick: 300, reason: 'timeout', detail: 'socket_lease',
+    passedOver: [{ playerId: 'guest', why: 'declined' }], hostSecret: hostSecretOf(matchId) },
+  'the third seat hosts because the guest declined; the socket lease ran out');
+  assert.deepEqual(h.last('g', 'host_changed').payload.passedOver, [{ playerId: 'guest', why: 'declined' }], 'every seat reads why');
+  assert.ok(isRoomHostChangedPayload(changed), 'the payload validates');
+  const { detail: _detail, passedOver: _passed, ...older } = changed;
+  assert.ok(isRoomHostChangedPayload(older), 'an older room\'s host_changed (neither field) still validates');
+  assert.equal(isRoomHostChangedPayload({ ...changed, detail: 'whenever' }), false, 'an unknown deadline is refused');
+  assert.equal(isRoomHostChangedPayload({ ...changed, passedOver: [{ playerId: 'guest', why: 'vibes' }] }), false, 'an unknown why is refused');
+  assert.equal(isRoomHostChangedPayload({ ...changed, passedOver: 'guest' }), false);
+  // the new host goes silent while connected: the report deadline, the guest still passed over, the admin gone
+  h.drain('g');
+  h.now = h.actor.exportState().hostReportDueAt;
+  await h.actor.tick();
+  const silent = h.last('g', 'host_changed').payload;
+  assert.equal(silent.detail, 'report_deadline');
+  assert.equal(silent.hostId, 'guest', 'the declined guest is the last resort with the admin gone');
+  assert.deepEqual(silent.passedOver, [{ playerId: 'admin', why: 'disconnected' }]);
 }
 
 // ---- declines (P1b: a departure from hosting — the next candidate at once, never a seat that stepped down), a leave, a kick, and the lost end
@@ -584,7 +618,9 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   await h.command('g', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 75 });
   // the host declines mid-match: the third seat is the willing successor, elected at once from the reported tick
   assert.equal((await h.command('g', { type: 'host_decline', declined: true })).type, 'room_ack');
-  assert.deepEqual(h.last('t', 'host_changed').payload, { hostId: 'third', generation: 2, resumeTick: 75, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('t', 'host_changed').payload, { hostId: 'third', generation: 2, resumeTick: 75, reason: 'declined',
+    passedOver: [{ playerId: 'admin', why: 'declined' }], hostSecret: hostSecretOf(matchId) },
+  'the seats the ladder passed over ride the message (2026-10-13): the admin declined, so the third seat hosts');
   assert.equal(h.last('a', 'host_changed').payload.hostSecret, undefined);
   assert.equal(h.last('w', 'host_changed').payload.generation, 2);
   assert.deepEqual(h.actor.exportState().steppedDown, ['guest'], 'the seat that declined while hosting stepped down for this match');
@@ -592,7 +628,8 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   // budget): the admin — declined, but the last resort — takes over at once, reason declined, from tick 0 (the third
   // seat never reported); the guest, which stepped down, is not handed the match back
   assert.equal((await h.command('t', { type: 'host_decline', declined: true })).type, 'room_ack');
-  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('a', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined',
+    passedOver: [{ playerId: 'guest', why: 'stepped_down' }], hostSecret: hostSecretOf(matchId) });
   assert.equal(h.last('g', 'host_changed').payload.hostSecret, undefined);
   assert.equal(h.last('g', 'host_changed').payload.generation, 3);
   assert.equal(h.actor.snapshot.host.hostId, 'admin');
@@ -606,7 +643,8 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.deepEqual(h.actor.exportState().steppedDown, ['guest', 'third', 'admin']);
   // the host leaves: at once, by the full ladder — the guest, lowest joinedAt among the declined, stepped down or not
   await h.send('a', 'room_leave', {}, 'leave');
-  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 4, resumeTick: 0, reason: 'left',
+    passedOver: [{ playerId: 'third', why: 'ranked_lower' }], hostSecret: hostSecretOf(matchId) });
   assert.equal(h.actor.snapshot.phase, 'playing');
   assert.equal(h.actor.snapshot.adminId, 'guest', 'the admin role moved with the leave');
   // the guest leaves: the third seat, the last commander, hosts and is the admin now
@@ -669,7 +707,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.equal(h2.actor.exportState().matchUrl, 'rtc://ROOM01/1');
   h2.now = state.hostLeaseAt;
   await h2.actor.tick();
-  assert.deepEqual(h2.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 800, reason: 'timeout', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h2.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 800, reason: 'timeout', detail: 'socket_lease', hostSecret: hostSecretOf(matchId) });
   // a restore without a lease (the host was connected when the state was written) starts one when the host is absent
   const h3 = createHarness({ transport: 'p2p' });
   h3.now = h.now + 5000;
@@ -840,7 +878,8 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.equal(h2.actor.snapshot.host.hostId, 'third');
   // the restored host declines: the guest (stepped down before the restart) is skipped, the admin takes over
   await h2.command('t2', { type: 'host_decline', declined: true });
-  assert.deepEqual(h2.last('a2', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined', hostSecret: hostSecretOf(matchId) });
+  assert.deepEqual(h2.last('a2', 'host_changed').payload, { hostId: 'admin', generation: 3, resumeTick: 0, reason: 'declined',
+    passedOver: [{ playerId: 'guest', why: 'stepped_down' }], hostSecret: hostSecretOf(matchId) });
   const legacy = { ...state, steppedDown: undefined };
   const h3 = createHarness({ transport: 'p2p' });
   h3.actor.restore(legacy);
@@ -976,7 +1015,7 @@ async function startedP2pRoom({ adminDeclines = false, third = false } = {}) {
   assert.equal(h.actor.snapshot.host.hostId, 'admin');
   h.actor.handleClose('a');
   await h.advance(ROOM_HOST_DISCONNECT_GRACE_MS);
-  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 0, reason: 'timeout', hostSecret: hostSecretOf(matchId) }, 'the last resort is elected');
+  assert.deepEqual(h.last('g', 'host_changed').payload, { hostId: 'guest', generation: 2, resumeTick: 0, reason: 'timeout', detail: 'socket_lease', hostSecret: hostSecretOf(matchId) }, 'the last resort is elected');
   // its client answers at once: elected but unable
   const resolvedAt = h.now;
   assert.equal((await h.command('g', { type: 'host_decline', declined: true, unable: true })).type, 'room_ack');

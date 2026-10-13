@@ -1653,6 +1653,21 @@ owner, the un-re-armed lease and the admission migration, the lease across a lea
 `a80a8b8c3`: `roomPolicy` "the first seat to join an emptied room owns it", `roomClient` "timeout: the refused resume ends
 the client").
 
+**Why the room elected whom (2026-10-13, the MP stream; MP-SINCE-0930 plan step 7b — a rooms Worker change, deployed
+only through `node tools/release.mjs workers <sha> --only=rooms` on the coordinator's word).** Production's slow entries
+re-elected at match start and, when the creator left, handed the match to C instead of B; the room logged the reason
+(left / declined / timeout) only to a 10 %-sampled Worker log, and `timeout` covered two different deadlines. Every
+`host_changed` now carries, beside the unchanged `reason`, `detail` on a timeout — `socket_lease` (the host's room socket
+stayed away past its grace) or `report_deadline` (a connected host sent no report inside the budget: a host still deep in
+its own entry) — and `passedOver`, the commanders the ladder did not choose and why (`declined`: a `host_decline`, sticky
+for the match, so a seat that declined while its own entry loaded stays passed over; `stepped_down`; `disconnected`;
+`ranked_lower`). The actor's log line carries both; the signaling double mirrors them. Compatibility: `reason` keeps its
+four values and both fields are optional, so an older client reads the message unchanged and a newer client of an older
+room reads neither. Receipts: `roomActor.selftest` (a guest that declined during its entry is passed over when the host's
+socket drops, the third seat hosts — `socket_lease`; the new host's silence is `report_deadline`; the validation of both
+fields and an older room's message), `cloudflare/rooms` `test/p2p.test.ts` under the Workers runtime (24/24), the
+lifecycle proofs, `mp-p2p-headless`, `mp-world-events-audit`.
+
 ### 13.12 UI states and syncing walked (lane `mp/ui-sync-check`, 2026-09-30)
 
 **The owner's request**: "double check UI states and syncing." Three headless Chromes (puppeteer, `nice -n 19`, one probe
