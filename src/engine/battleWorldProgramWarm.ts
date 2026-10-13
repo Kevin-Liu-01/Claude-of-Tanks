@@ -47,6 +47,8 @@ interface WorldProgramWarmReceipt {
   textures: number;
   uploadMs: number;
   maxUploadMs: number;
+  /** the wait for the GPU's queue to drain before the draw (its first-use program queries are synchronous) */
+  fenceMs: number;
   /** the covered draw's own time */
   renderMs: number;
   error?: string;
@@ -67,6 +69,8 @@ interface BattleWorldProgramWarmPorts {
   pendingTextures?(materials: readonly Material[]): unknown[];
   /** Uploads one texture. */
   upload?(texture: unknown): void;
+  /** Fences the GPU's command queue; the returned check is true once everything issued before it has run. */
+  fence?(): () => boolean;
   /** Captures the renderer context current now; the check is false once that context is lost or replaced. */
   lifetime(): () => boolean;
   /** One covered draw of each distinct material under the root; returns how many were drawn. */
@@ -95,6 +99,8 @@ const LINK_POLL_MS = 16;
 const LINK_DEADLINE_MS = 20000;
 /** The FX and kill-cam pools load beside the world; a battle whose lights never settle leaves it to the warm. */
 const LIGHTS_DEADLINE_MS = 60000;
+/** A GPU queue still busy after this long leaves the draw to the deployment warm. */
+const FENCE_DEADLINE_MS = 30000;
 
 interface LightLike {
   isLight?: boolean; isDirectionalLight?: boolean; isSpotLight?: boolean; isPointLight?: boolean;
@@ -135,7 +141,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     const own: WorldProgramWarmReceipt = receipt = {
       mapId, status: 'waiting-for-lights', startedMs: null, linkedMs: null, drawnMs: null,
       materials: 0, pending: 0, drawn: 0, signature: null, drawSignature: null, programIds: [],
-      textures: 0, uploadMs: 0, maxUploadMs: 0, renderMs: 0,
+      textures: 0, uploadMs: 0, maxUploadMs: 0, fenceMs: 0, renderMs: 0,
     };
     const current = (): boolean => stamp === generation;
     const stop = (status: WorldProgramWarmStatus, error?: unknown): WorldProgramWarmReceipt => {
@@ -202,6 +208,24 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
         await ports.wait(LINK_POLL_MS);
       }
       if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+    }
+    // A program's first draw asks the GPU process for its uniforms and link log: synchronous queries that wait for
+    // every command issued before them. Under the world build that queue holds the build's uploads and compiles, and
+    // block 18 measured the draw blocking the main thread 5-7 s behind it. A fence polled across tasks lets the queue
+    // drain while the build goes on; the draw follows in the task that sees it signalled.
+    if (ports.fence) {
+      const fenceAt = ports.now();
+      let drained: () => boolean;
+      try { drained = ports.fence(); } catch (error) { return stop('abandoned', error); }
+      for (;;) {
+        if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+        let done = false;
+        try { done = drained(); } catch (error) { return stop('abandoned', error); }
+        if (done) break;
+        if (ports.now() - fenceAt > FENCE_DEADLINE_MS) { own.fenceMs = Math.round(ports.now() - fenceAt); return stop('link-timeout', 'the GPU queue never drained'); }
+        await ports.wait(LINK_POLL_MS);
+      }
+      own.fenceMs = Math.round(ports.now() - fenceAt);
     }
     own.drawSignature = ports.signature();
     // a draw under another signature would link a program synchronously on the main thread; leave it to the warm
@@ -367,6 +391,23 @@ export function createRendererWorldProgramWarm(
       return [...pending];
     },
     upload: (texture) => renderer.initTexture(texture as THREE.Texture),
+    fence: () => {
+      const gl = renderer.getContext() as WebGL2RenderingContext;
+      if (typeof gl.fenceSync !== 'function') return () => true;
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      if (!sync) return () => true;
+      gl.flush();
+      let done = false;
+      return () => {
+        if (done) return true;
+        // a zero timeout never blocks (WebGL's maximum client wait); a lost context answers WAIT_FAILED
+        const status = gl.clientWaitSync(sync, 0, 0);
+        if (status === gl.TIMEOUT_EXPIRED) return false;
+        gl.deleteSync(sync);
+        done = true;
+        return true;
+      };
+    },
     lifetime: () => {
       const gl = renderer.getContext(), info = renderer.info;
       return () => renderer.getContext() === gl && renderer.info === info && !gl.isContextLost();
