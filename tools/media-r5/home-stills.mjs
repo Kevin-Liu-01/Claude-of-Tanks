@@ -169,6 +169,44 @@ function seat(scene, model, m) {
   return { p: [ox + frame.r[0] * side + frame.f[0] * along + nx * m.out, ground + up + ny * m.out, oz + frame.r[1] * side + frame.f[1] * along + nz * m.out], n: [nx, ny, nz] };
 }
 
+/**
+ * The lab's placement (lab.mjs autoPlace), replayed on the survey: each actor in turn to the nearest spot on a widening
+ * spiral (3 m rings, 16 bearings) under the slope limit, dry, 4 m clear of every record's box over 0.6 m and 9 m from
+ * the actors placed before it; the lenses follow the hero. cinema.mjs renders a scene as written, so a still the lab
+ * reviewed with placement on is baked with it before its final.
+ */
+export function labPlace(scene) {
+  const { features, model } = featuresOf(scene.map), moves = [];
+  if (!model || scene.autoPlace === false) return moves;
+  const boxes = features.obstacles.map((o) => o.b).filter((b) => b[4] - b[1] > 0.6);
+  const blocked = (x, z, r = 4) => boxes.some((b) => x > b[0] - r && x < b[3] + r && z > b[2] - r && z < b[5] + r);
+  const placed = [], ok = (x, z, a) => model.slopeAt(x, z) < (scene.maxSlope ?? 0.16) && !blocked(x, z)
+    && (a.allowWater || model.wetAt(x, z) < 0.3) && placed.every((p) => Math.hypot(p[0] - x, p[1] - z) > 9);
+  for (const a of scene.actors) {
+    let best = ok(a.pos[0], a.pos[1], a) ? a.pos : null;
+    for (let ring = 1; ring < 14 && !best; ring++) for (let k = 0; k < 16 && !best; k++) {
+      const ang = k / 16 * Math.PI * 2 + ring * 0.37, x = a.pos[0] + Math.cos(ang) * ring * 3, z = a.pos[1] + Math.sin(ang) * ring * 3;
+      if (ok(x, z, a)) best = [x, z];
+    }
+    if (best && best !== a.pos) moves.push({ name: a.name, from: a.pos, to: best, m: +Math.hypot(best[0] - a.pos[0], best[1] - a.pos[1]).toFixed(1) });
+    if (best) a.pos = best;
+    placed.push(a.pos);
+  }
+  const hero = moves.find((m) => m.name === 'hero');
+  if (hero) {
+    const dx = hero.to[0] - hero.from[0], dz = hero.to[1] - hero.from[1];
+    for (const c of [scene.camera, ...(scene.cameraVariants ?? [])]) {
+      if (!c) continue;
+      c.pos = [r2(c.pos[0] + dx), c.pos[1], r2(c.pos[2] + dz)];
+      if (c.lookAt) c.lookAt = [r2(c.lookAt[0] + dx), c.lookAt[1], r2(c.lookAt[2] + dz)];
+    }
+    for (const fx of scene.effects) if (fx.heroRel && Array.isArray(fx.at) && fx.at.length === 2) fx.at = [r2(fx.at[0] + dx), r2(fx.at[1] + dz)];
+  }
+  for (const a of scene.actors) a.pos = a.pos.map(r2);
+  scene.autoPlace = false;
+  return moves;
+}
+
 /** One still's scene: buildScene, then its armour points seated, its deflections aimed, its lenses in the hero frame. */
 export function homeScene(s) {
   const scene = buildScene(s), model = modelOf(s.map);
@@ -281,7 +319,24 @@ export function checkScene(scene) {
   return [`${scene.meta.id} (${scene.map}, fx ${scene.fxTime} ms)`, ...lines];
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()) && process.argv[2] === '--check-file') {
+if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()) && process.argv[2] === '--final') {
+  // the picks as their finals: each still's scene with the lab's placement baked in and its one lens, as cinema.mjs
+  // renders it (--stills at the scene's fxTime), written to <outDir>/<slot>.json
+  //   node tools/media-r5/home-stills.mjs --final id:lens[,id:lens...] [outDir=shots/media-r5/home-r2/finals]
+  const out = process.argv[4] ?? 'shots/media-r5/home-r2/finals';
+  mkdirSync(out, { recursive: true });
+  for (const pick of process.argv[3].split(',')) {
+    const [id, name] = pick.split(':'), s = HOME_STILLS.find((x) => x.id === id);
+    if (!s) throw new Error(`no still ${id}`);
+    const scene = homeScene(s), moves = labPlace(scene), cam = scene.cameraVariants.find((c) => c.name === name);
+    if (!cam) throw new Error(`${id}: no lens ${name} (${scene.cameraVariants.map((c) => c.name).join(', ')})`);
+    scene.camera = { ...cam };
+    scene.cameraVariants = [cam];
+    scene.meta = { ...scene.meta, lens: name, pick: `${id}:${name}` };
+    writeFileSync(join(out, `${s.slot ?? s.id}.json`), JSON.stringify(scene, null, 1));
+    console.log(`[home-stills] ${s.slot ?? s.id}: ${id} through ${name} at ${scene.fxTime} ms${moves.length ? ` (placed: ${moves.map((m) => `${m.name} ${m.m} m`).join(', ')})` : ''}`);
+  }
+} else if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()) && process.argv[2] === '--check-file') {
   // a written scene (an earlier round's, say) through the same check
   for (const file of process.argv.slice(3)) {
     const scene = JSON.parse(readFileSync(file, 'utf8'));
