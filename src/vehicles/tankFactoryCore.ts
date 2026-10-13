@@ -9278,14 +9278,15 @@ function* createTankOwnedSteps(
   }
 
   function launchDestroyedTurret(pop: boolean, ageS: number, explicitAge: boolean): void {
+    // (fx 8p) a cook-off's fire spreads its char faster than a plain kill's or a burn-out's, whether its turret then
+    // flies as a body (the turret driver) or on the table's arc
+    burnU.uBurnK.value.z = pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;
     if (turretDriver) {
       turretFlying = false;
       turretDriver.begin(pop, wreckSeat, explicitAge ? ageS : null);
       if (turretDriver.active) return;
     }
     popScale = pop ? 1 : 0.22;
-    // (fx 8p) a cook-off's fire spreads its char faster than a plain kill's or a burn-out's
-    burnU.uBurnK.value.z = pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;
     popActive = true;
     popT = ageS;
     popTrailAcc = 0;

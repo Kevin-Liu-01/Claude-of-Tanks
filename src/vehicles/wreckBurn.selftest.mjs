@@ -45,9 +45,11 @@ assert.ok(D >= 0.8 && D <= 1.5, `the char waits for the fire to take hold (${D} 
 assert.ok(Math.abs(D + SC - 6) <= 0.6 && Math.abs(D + SP - 9) <= 0.8, `~6 s a cook-off, ~9 s a plain kill or a burn-out (${D + SC}, ${D + SP})`);
 assert.match(core, /turretG\.getWorldPosition\(burnU\.uBurnO\.value\);\s*burnU\.uBurnK\.value\.set\(burnReachM \* Math\.abs\(root\.scale\.x \|\| 1\), BURN_CHAR_DELAY_S, BURN_SPREAD_PLAIN_S, 0\);/,
   'the fire is the turret ring at the kill');
-assert.match(core, /function launchDestroyedTurret\(pop: boolean, ageS: number\): void \{\s*popScale = pop \? 1 : 0\.22;[^}]*burnU\.uBurnK\.value\.z = pop \? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;/,
-  'a cook-off spreads faster');
-assert.match(core, /startWreckPresentation\(ageS0\);\s*\/\/[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*launchDestroyedTurret\(!!\(opts && opts\.pop\), ageS0\);/,
+// (EF.03 on main's physics wire 5: the turret may fly as a body, and launchDestroyedTurret then returns early) the
+// cook-off's spread is set first, for either flight
+assert.match(core, /function launchDestroyedTurret\(pop: boolean, ageS: number, explicitAge: boolean\): void \{\s*(?:\/\/[^\n]*\n\s*)*burnU\.uBurnK\.value\.z = pop \? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;\s*if \(turretDriver\)/,
+  'a cook-off spreads faster, whether its turret flies as a body or on the arc');
+assert.match(core, /startWreckPresentation\(ageS0\);\s*\/\/[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*launchDestroyedTurret\(!!\(opts && opts\.pop\), ageS0, /,
   'the kill sets the burn, then says whether it was a cook-off');
 assert.match(core, /function emberHeat\(ageS: number\): number \{\s*const t = ageS - BURN_CHAR_DELAY_S;\s*if \(!\(t > 0\)\) return 0;\s*return 0\.95 \* Math\.min\(1, t \/ 0\.8\) \* Math\.exp\(-t \/ 7\);/,
   'no heat before the fire takes hold, none left on a cold wreck');
