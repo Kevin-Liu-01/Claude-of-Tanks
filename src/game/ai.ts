@@ -45,6 +45,7 @@ import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobili
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
   collisionFootprintContainsPoint,
+  hullYieldingRecord,
   rayCollisionFootprintEntry2,
   type CollisionRecord,
   type CollisionShape,
@@ -2225,8 +2226,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // and with authority. The old ×0.6 damping (and the ease-in) parked
       // bots at 0.4 throttle against saplings forever, just under the
       // held-press crush threshold (coastal trace: spawn-exit wedge, 30 s at
-      // spd 0). WoT hulls flatten small trees on the move.
-      if (o.crushable) {
+      // spd 0). WoT hulls flatten small trees on the move. A pillbox is no
+      // crushable to a hull (world/collision.ts hullYieldingRecord): around it.
+      if (hullYieldingRecord(o)) {
         if (input.throttle > 0.05) input.throttle = Math.max(input.throttle, 0.7);
         continue;
       }
@@ -2745,7 +2747,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let box: AiObstacle | null = null;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
-      if (o.crushed || o.crushable || o.kind === 'bridge') continue;
+      if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
       const entry = rayCollisionFootprintEntry2(
         o as CollisionRecord,
         sourceX, sourceZ, directionX, directionZ,
@@ -2916,7 +2918,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let clear = 34;
       for (let i = 0; i < obstacles.length; i++) {
         const o = obstacles[i];
-        if (o.crushed || o.crushable || o.kind === 'bridge') continue;
+        if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
         const entry = rayCollisionFootprintEntry2(
           o as CollisionRecord, sx, sz, ux, uz, clear, margin,
         );

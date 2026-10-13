@@ -48,7 +48,7 @@ function studioTrace() {
   const { api } = studioTrace();
   const collisionSource = readFileSync(new URL('../world/collision.ts', import.meta.url), 'utf8');
   const kinds = new Set(['structure', 'tree', 'fencepicket', 'fencerail', 'quonsethut', 'barrel', 'crate', undefined]);
-  for (const m of collisionSource.matchAll(/kind === '([a-z0-9_]+)'/g)) kinds.add(m[1]);
+  for (const m of collisionSource.matchAll(/kind === '([a-z0-9_-]+)'/g)) kinds.add(m[1]); // (a hyphen too: 'small-rock')
   for (const kind of kinds) {
     for (const crushable of [true, false, undefined]) {
       const record = { kind, crushable };

@@ -239,9 +239,25 @@ export interface CollisionRecord {
   openings?: StructureOpenings | null;
 }
 
+/**
+ * Reinforced-concrete cover — the pillbox (inhabitKit 'bunker'). It stops every round and holds against a hull, and only
+ * accumulated heavy damage brings it down (sim/fortifiedCover.ts: a few large-calibre HE hits or a heavy ram; small
+ * calibre never). Until 2026-10-09 it was a crushable like a crate to everything but a hull's overrun speed: a shell
+ * broke it and flew on into the tank behind, a held press of any hull pushed it over, and the bots drove into it.
+ */
+export function isFortifiedCoverKind(kind: string | undefined): boolean {
+  return kind === 'bunker';
+}
+
+/** A crushable a hull drives through (the bots' lanes and routes read it so): not fortified cover. */
+export function hullYieldingRecord(record: { crushable?: boolean; kind?: string }): boolean {
+  return record.crushable === true && !isFortifiedCoverKind(record.kind);
+}
+
 function isDenseCrushableCover(kind: string | undefined): boolean {
   return kind === 'wallstone' || kind === 'walladobe' ||
-    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock';
+    kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
+    || isFortifiedCoverKind(kind);
 }
 
 /**
@@ -249,7 +265,8 @@ function isDenseCrushableCover(kind: string | undefined): boolean {
  * masonry/adobe walls and sandbag fortifications remain real ballistic cover
  * even though a sufficiently forceful hull can eventually crush them.
  * (the hitbox lane, 2026-10-07: and a stone a hull crushes is still stone to a shell — the crushable small rocks rise
- * 0.45-1.5 m, a shell flew through them while the bots' gun lane and every sight line stopped on them)
+ * 0.45-1.5 m, a shell flew through them while the bots' gun lane and every sight line stopped on them; 2026-10-09: and
+ * the pillbox, fortified cover, stops every round)
  */
 export function shellPassesThroughCollisionRecord(
   record: CollisionRecord | null | undefined,
