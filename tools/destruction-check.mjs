@@ -189,8 +189,9 @@ export async function runDestructionCheck({
       || (/^fx-structure-room-/.test(m.name) && !m.material?.map));
     if (untextured.length) failures.push(`untextured runs: ${untextured.map((m) => m.name).join(', ')}`);
     // 2. rims in later holes
+    // (a through-hole only: a render ring or a spall cuts the skin, and the units behind it stand in the core it leaves)
     const inLaterHole = (x, y, z, after) => holes.some((h) => {
-      if (!(h.t > after + 1e-6)) return false;
+      if (!(h.t > after + 1e-6) || h.depth < 0.2) return false;
       const dx = x - h.x, dy = y - h.y, dz = z - h.z, along = dx * h.nx + dz * h.nz;
       if (along > h.outside || along < -h.depth) return false;
       const px = dx - h.nx * along, pz = dz - h.nz * along;
