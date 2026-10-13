@@ -77,6 +77,8 @@ const phoneViewport = { width: 844, height: 390, deviceScaleFactor: 1, isMobile:
 // the side-by-side measurement (MP-SINCE-0930 §7): CPU throttling on the host's page alone, or on C's (CDP rates)
 const hostThrottle = Number(argValue('host-throttle', 0));
 const seatThrottle = Number(argValue('seat-throttle', 0));
+// the seat-pause probe (MP-SINCE-0930 plan step 9): B's main thread blocked for each duration while it drives
+const seatPauses = argValue('seat-pause', '').split(',').map(Number).filter((ms) => ms > 0 && ms <= 10_000);
 
 function freePort() {
   return new Promise((resolvePort, reject) => {
@@ -249,6 +251,7 @@ const pageCounters = (page, reset) => page.evaluate((resetArrivals) => {
   const out = {
     atMs: performance.now(), frames: window.__MP_E2E_FRAMES?.count ?? null,
     sampledTicks: m?.sampledTicks ?? null, skippedTicks: m?.skippedTicks ?? null, snapshots: m?.snapshotsAccepted ?? null, arrivalJitterMs: m?.arrivalJitterMs ?? null,
+    predictor: (m?.prediction ?? m?.predictorStats) ? (({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks }) => ({ reconciliations, hardSnaps, maxPositionErrorM, lastPositionErrorM, heldTicks }))(m.prediction ?? m.predictorStats) : null,
     arrivals: Object.fromEntries(Object.entries(window.__MP_E2E_ARRIVALS ?? {}).map(([label, row]) => [label, { count: row.count, gaps: row.gaps.slice() }])),
     longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(),
   };
@@ -294,6 +297,9 @@ async function measureWindow(labels, seconds) {
         gapP50Ms: round1(percentile(row.gaps, 0.5)), gapP95Ms: round1(percentile(row.gaps, 0.95)), gapMaxMs: round1(row.gaps.length ? Math.max(...row.gaps) : null) }])),
       longtasks: { count: tasks.length, over200: tasks.filter((task) => task.ms >= 200).length, maxMs: tasks.length ? Math.max(...tasks.map((task) => task.ms)) : 0,
         totalMs: tasks.reduce((sum, task) => sum + task.ms, 0) },
+      // the own hull's prediction over the window: corrections, hard snaps, the worst misprediction so far (metres)
+      prediction: a.predictor && b.predictor ? { reconciliations: b.predictor.reconciliations - a.predictor.reconciliations, hardSnaps: b.predictor.hardSnaps - a.predictor.hardSnaps,
+        maxPositionErrorM: round1(b.predictor.maxPositionErrorM), maxRoseInWindow: b.predictor.maxPositionErrorM > a.predictor.maxPositionErrorM } : null,
     };
   }
   const moving = [], rest = [], skew = [];
@@ -605,6 +611,21 @@ try {
   if (seatThrottle > 1) throttles.push(await throttle(pages.c, seatThrottle));
   report.measure = await measureWindow(['a', 'b', 'c'], playS);
   for (const session of throttles) await session.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {});
+  // the seat-pause probe: B still drives; its main thread stops for each duration, then 3 s settle; B's own prediction
+  // read before and after (a step between 0.3 and 0.6 s would confirm the 0.5 s held-input release, plan step 9)
+  if (seatPauses.length) {
+    report.seatPause = [];
+    for (const ms of seatPauses) {
+      const before = await pageCounters(pages.b, false);
+      await pages.b.evaluate((block) => { const end = performance.now() + block; while (performance.now() < end) { /* the seat's frame stops */ } }, ms).catch(() => {});
+      await sleep(3000);
+      const after = await pageCounters(pages.b, false);
+      const p0 = before?.predictor, p1 = after?.predictor;
+      report.seatPause.push({ pauseMs: ms, reconciliations: p0 && p1 ? p1.reconciliations - p0.reconciliations : null, hardSnaps: p0 && p1 ? p1.hardSnaps - p0.hardSnaps : null,
+        lastPositionErrorM: round1(p1?.lastPositionErrorM ?? null), maxPositionErrorM: round1(p1?.maxPositionErrorM ?? null), maxRose: !!(p0 && p1 && p1.maxPositionErrorM > p0.maxPositionErrorM) });
+    }
+    step('seat-pause', { rows: report.seatPause });
+  }
   step('measured', { divergence: report.measure.divergence, fps: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.fps ?? null])),
     skipped: Object.fromEntries(Object.entries(report.measure.perPage).map(([label, row]) => [label, row?.skippedTickPct ?? null])) });
   const linksAfter = { A: await linkStats(pages.a), B: await linkStats(pages.b), C: await linkStats(pages.c) };
