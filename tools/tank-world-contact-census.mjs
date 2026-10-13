@@ -665,7 +665,8 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
         if (only && id !== only) return;
         resetWorld(world);
-        const near = world.query(site.x, site.z, 45);
+        // (the records the metrics read: those round the site, without the trees, which every hull fells on contact)
+        const near = world.query(site.x, site.z, 40).filter((r) => r.treeIdx == null && r.kind !== 'tree');
         const caseDef = {
           id, mapId, seconds: plan.seconds, spawn: plan.spawn, input: plan.input, rest: plan.rest, mustMove: plan.mustMove,
           allowBlocked: plan.allowBlocked, extras: plan.extras, worldHalfM: WORLD_HALF_M - 2, floorY: world.hf.minY - 20,

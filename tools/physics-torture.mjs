@@ -537,7 +537,8 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
   for (let i = 0; i < obstacles.length; i++) {
     const record = obstacles[i];
     const limit = floors ? floors[i] + 0.55 : ceiling;
-    if (record.crushed) continue;
+    // (the sim's rule, sim/structureSupport.ts structureTopAt: crushable cover is crushed, not stood on)
+    if (record.crushed || record.dead || record.crushable) continue;
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
     const shape = record.shape2 ?? null;
     if (shape?.kind === 'compound') {
