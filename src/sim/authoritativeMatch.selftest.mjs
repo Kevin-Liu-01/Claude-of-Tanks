@@ -290,6 +290,49 @@ assert.ok(treeEvents.some((event) => event.type === 'shell_hit'
   && event.targetId === 'tree-b'),
 'the same authoritative projectile continues through a toppled tree into the tank behind it');
 
+// (2026-10-12, the owner: "all props below a certain size are destructible whether from ramming or shooting"; MASTER
+// item 17) a parked car — a movement record a hull crushes, no shell record of its own — breaks under the round that flies
+// through it, and the round flies on into the tank behind it; a sandbag stack (dense cover) beside its path stays
+let carCrush = null;
+// (the records stand the whole height, as the wall above does: the receipt pins the sweep, not the map's ground)
+const parkedCar = { min: [-1.2, -100, -31], max: [1.2, 100, -27], kind: 'sedan', crushable: true, propIdx: 41,
+  shape2: { kind: 'obb', cx: 0, cz: -29, hw: 1.1, hl: 2.0, yaw: 0 } };
+const sandbags = { min: [3, -100, -31], max: [5, 100, -27], kind: 'sandbagbig', crushable: true, propIdx: 42,
+  shape2: { kind: 'obb', cx: 4, cz: -29, hw: 1, hl: 2, yaw: 0 } };
+const carWorld = {
+  getObstacles: () => [parkedCar, sandbags],
+  queryObstacles: (minX, minZ, maxX, maxZ, out) => {
+    out.length = 0;
+    for (const r of [parkedCar, sandbags]) if (r.max[0] >= minX && r.min[0] <= maxX && r.max[2] >= minZ && r.min[2] <= maxZ) out.push(r);
+    return out;
+  },
+  raycast: () => null,
+  crushObstacle(obstacle, directionX, directionZ, speedMps) {
+    carCrush = { obstacle, directionX, directionZ, speedMps };
+    obstacle.crushed = true;
+    return true;
+  },
+};
+const carMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0, worldCollision: carWorld,
+  players: [
+    { id: 'car-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'car-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+  ],
+});
+carMatch.onMatchReady();
+const carFire = new Map([['car-a', { throttle: 0, steer: 0, brake: false, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);
+for (let index = 0; index < 90; index++) carMatch.step({ dt: 1 / 60, inputs: carFire });
+const carEvents = carMatch.snapshot({ tick: 90, serverTimeMs: 1500, viewerId: 'car-a', ackInputSeq: 1 }).events;
+assert.equal(parkedCar.crushed, true, 'a round breaks the parked car it flies through');
+assert.equal(carCrush?.obstacle, parkedCar, 'through the world collision owner');
+assert.ok(carCrush?.directionZ > 0.9 && carCrush?.speedMps > 100, 'along the round\'s flight, at its speed');
+assert.ok(carEvents.some((event) => event.type === 'world_prop_destroyed' && event.propIdx === 41 && event.kind === 'sedan'
+  && event.cause === 'shell'), 'the car\'s break replicates as a world prop destroyed by a shell');
+assert.ok(carEvents.some((event) => event.type === 'shell_hit' && event.targetId === 'car-b'),
+  'the round flies on through the car into the tank behind it');
+assert.equal(sandbags.crushed, undefined, 'the sandbag stack beside its path stands');
+
 const crushWall = {
   ...wall,
   min: wall.min.slice(),
