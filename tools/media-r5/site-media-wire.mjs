@@ -207,6 +207,9 @@ function wireGame() {
     /Assets \+ captions are the site fifty's stills/);
   const hud = PICKS.hudEditor;
   swap('src/ui/hudEditor.ts', /const BACKDROP='[^']+';/, () => `const BACKDROP='${still(hud.id, hud.still)}';`, 'HUD editor backdrop');
+  // the Studio's Director lists the collection's takes as presets (site-media.mjs writes scenes/index.json)
+  swap('src/ui/studioProductionPanel.ts', /const SITE_TAKES_INDEX = '\/media\/[^']+\/scenes\/index\.json';/,
+    () => `const SITE_TAKES_INDEX = '${C}/scenes/index.json';`, 'Studio takes index');
   // the tools that measure or stage these surfaces follow them
   swap('tools/cold-load-probe.mjs', /\.filter\(\(row\) => row\.name\.includes\('\/media\/(?:featured|site50-r\d+\/stills)\/'\)\)/,
     () => `.filter((row) => row.name.includes('${C}/stills/'))`, 'cold-load probe featured images');
@@ -219,11 +222,14 @@ function wireGame() {
     /records them from this table\./);
   // the social cards' sources (generate-og-images.mjs re-renders the cards from these)
   const og = { game: PICKS.og, home: PICKS.home.hero[1], docs: PICKS.docs.hero, 'docs-vehicles': PICKS.docs.chapters.vehicles,
-    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'] };
+    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'], ...PICKS.ogCards };
   for (const [card, pick] of Object.entries(og)) {
-    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/media/[^']+(', ')[^']+('\\])`),
+    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/[^']+(', ')[^']+('\\])`),
       (_, a, b, c) => `${a}public${still(pick.id, pick.still)}${b}50% 50%${c}`, `social card ${card}`);
   }
+  // the 404 page shares its own card (r14b, owner: "all pages with their custom ogs"), no longer the landing page's
+  swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og\/)[a-z0-9-]+(\.jpg">)/,
+    (_, a, b) => `${a}404${b}`, '404 social card');
 }
 
 // --- the landing page's social cards (their battle photos sit at low opacity behind each quote) -------------------
@@ -252,6 +258,9 @@ function wireReadme() {
     (_, a, b, c) => `${a}public${still(R.worlds.id, R.worlds.still)}${b}${esc(take(R.worlds.id).en)}${c}`, 'README worlds');
   swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Shared world kit:<\/b>)/,
     (_, a, b, c) => `${a}public${still(R.worldKit.id, R.worldKit.still)}${b}${esc(take(R.worldKit.id).en)}${c}`, 'README world kit');
+  // the Destruction cell (owner 2026-10-12: "no more ui_explosion anymore!"): a site-fifty knockout instead of the capture
+  swap(M, /(<td width="50%"><img src=")public\/media\/[^"]+(" alt=")[^"]*("><br><sub><b>Destruction:<\/b>)/,
+    (_, a, b, c) => `${a}public${still(R.destruction.id, R.destruction.still)}${b}${esc(take(R.destruction.id).en)}${c}`, 'README destruction');
   // the archive section: its source, two of the fifty frames' contact sheets, and a wall of the takes' stills
   swap(M, /`public\/media\/(?:showcase-r1\/manifest\.json` defines the source archive;|site50-r\d+\/archive\.json` is the source archive \(the fifty frames and every take's two stills\);)/,
     () => `\`public/media/${PICKS.collection}/archive.json\` is the source archive (the fifty frames and every take's two stills);`, 'README archive source');

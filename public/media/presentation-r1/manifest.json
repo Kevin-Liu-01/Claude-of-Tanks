@@ -7,7 +7,7 @@
   "battleShotCount": 0,
   "studioShotCount": 0,
   "interfaceShotCount": 10,
-  "totalShotCount": 10,
+  "totalShotCount": 9,
   "authoritativeManifest": "/media/showcase-r1/manifest.json",
   "shots": [
     {
@@ -41,22 +41,6 @@
         "ownerApproved": true
       },
       "sequence": 20
-    },
-    {
-      "id": "ui_explosion",
-      "src": "/media/presentation-r1/ui_explosion.webp",
-      "title": "Destruction event",
-      "map": "Live game",
-      "feature": "Destruction",
-      "kind": "interface",
-      "collection": "live-interface-r1",
-      "alt": "Destruction event captured from the live Claude of Tanks game",
-      "actors": [],
-      "effects": [],
-      "quality": {
-        "ownerApproved": true
-      },
-      "sequence": 21
     },
     {
       "id": "ui_gallery",

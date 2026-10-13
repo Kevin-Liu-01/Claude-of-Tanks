@@ -31,6 +31,7 @@ fifty frames (R181, motion-blur stills) and the films. The owner chose it to rep
 | `public/media/site50-r14/reels/` | The manual's twenty battle takes, 1280×720 with their sound |
 | `public/media/site50-r14/frames/` | The fifty frames at 1920×1080 and 640×360, and five contact sheets of ten |
 | `public/media/site50-r14/films/` | The trailer (1080p with its score) and the landing page's reel (five takes crossfaded, 1080p, silent) |
+| `public/media/site50-r14/scenes/` | Each take's scene as the Studio loads it, and index.json, which the Studio's Director lists as presets |
 | `public/media/web-video-r1/` | The landing page's 960×540 mobile proxies, inside its nine-megabyte budget |
 
 `tools/media-r5/site-media/picks.json` names the take for every slot: the landing page's hero, screenshot rail, loops,
@@ -52,8 +53,21 @@ def main():
     path = f'{ROOT}/docs/SHOWCASE-LIBRARY.md'
     text = open(path, encoding='utf-8').read()
     head = '# Showcase library\n\n'
-    if not text.startswith(head) or '## Current: the site fifty' in text:
-        raise SystemExit('docs/SHOWCASE-LIBRARY.md: unexpected opening (or already updated)')
+    # Re-run on a tree that already carries the swap (r14v and later, 2026-10-12): the docs were moved with it; only the
+    # rows added since (the takes' scenes, the Studio presets) come in.
+    if '## Current: the site fifty' in text:
+        films = '| `public/media/site50-r14/films/` |'
+        scenes = next(line for line in CURRENT.split('\n') if line.startswith('| `public/media/site50-r14/scenes/`'))
+        if scenes not in text:
+            at = text.index('\n', text.index(films)) + 1
+            text = text[:at] + scenes + '\n' + text[at:]
+            open(path, 'w', encoding='utf-8').write(text)
+            print('updated docs/SHOWCASE-LIBRARY.md (the scenes row)')
+        else:
+            print('docs/SHOWCASE-LIBRARY.md already current')
+        return
+    if not text.startswith(head):
+        raise SystemExit('docs/SHOWCASE-LIBRARY.md: unexpected opening')
     rest = re.sub(r'^## ', '### ', text[len(head):], flags=re.M)
     open(path, 'w', encoding='utf-8').write(head + CURRENT + rest)
     print('updated docs/SHOWCASE-LIBRARY.md')

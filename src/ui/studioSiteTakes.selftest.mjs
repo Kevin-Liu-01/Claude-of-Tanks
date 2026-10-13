@@ -1,0 +1,37 @@
+// studioSiteTakes.selftest.mjs — the site's takes as Studio presets (owner 2026-10-12: "keep our code for these videos
+// and setup preserved so we can always tweak them, and also just show them as presets u can access in /studio"). The
+// Director workspace lists the index tools/media-r5/site-media.mjs writes beside the site fifty; every take on it must be
+// the scene its 4K final was filmed from, today's code in the shot library, loadable as a scene link, with its picture.
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { sceneLinkPath } from '../game/studioSceneLink.ts';
+
+const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const panel = readFileSync(join(ROOT, 'src/ui/studioProductionPanel.ts'), 'utf8');
+const indexPath = panel.match(/const SITE_TAKES_INDEX = '([^']+)';/)?.[1];
+assert.ok(indexPath, 'the Director panel names the takes index');
+assert.equal(sceneLinkPath(indexPath), indexPath, 'the index is a path on this site');
+const index = JSON.parse(readFileSync(join(ROOT, 'public', indexPath), 'utf8'));
+const picks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
+assert.equal(index.collection, picks.collection, 'the index belongs to the collection the site shows');
+assert.deepEqual(index.takes.map((take) => take.id), Object.keys(picks.takes).sort(), 'every take of the site fifty, in order');
+const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+for (const take of index.takes) {
+  assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
+  const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
+  assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);
+  assert.ok(Array.isArray(scene.actors) && scene.actors.length > 0, `${take.id}: the scene stages its tanks`);
+  assert.ok(scene.storyboard?.shots?.length > 0 && scene.storyboard.durationMs === take.durationMs,
+    `${take.id}: the scene carries its storyboard and the card its length`);
+  const library = join(ROOT, 'tools/media-r5/site50-shots', `${take.id}.json`);
+  assert.ok(existsSync(library), `${take.id}: the shot library holds its code`);
+  assert.equal(sha(join(ROOT, 'public', take.scene)), sha(library), `${take.id}: the preset is the library's current code`);
+  assert.ok(existsSync(join(ROOT, 'public', take.thumb)), `${take.id}: its card picture ships`);
+  assert.ok(take.title.en && take.title.zh && take.short.en && take.short.zh, `${take.id}: titled in both languages`);
+}
+assert.match(panel, /sceneLinkPath\(take\.scene\)/, 'a preset loads only this site\'s own files, as a scene link does');
+assert.match(panel, /\.then\(\(json\) => S\.load\(json\)\)/, 'a preset stages through the Studio\'s own load, as Load JSON does');
+console.log(`studioSiteTakes.selftest: ${index.takes.length} takes, each its filmed scene, loadable from the Director workspace`);

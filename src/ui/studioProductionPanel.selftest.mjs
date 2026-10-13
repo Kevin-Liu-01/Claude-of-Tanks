@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
+import { sceneLinkPath } from '../game/studioSceneLink.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
 // outside this test: only user intent, asynchronous locking and exact export
@@ -32,7 +33,22 @@ const presets = [
 ];
 const source = readFileSync(new URL('./studioProductionPanel.ts', import.meta.url), 'utf8');
 const executable = stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export /gm, ''));
-const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error };
+// The site's takes (the Director's second library): a small index, one scene, and a take whose scene is on another
+// origin, which a scene link must refuse.
+const siteIndex = { takes: [
+  { id: 's01-street', title: { en: 'A tank pushes up the street', zh: '坦克沿街推进' }, short: { en: 'Street push', zh: '街道推进' },
+    map: 'urban', durationMs: 6600, scene: '/media/site50-r14/scenes/s01-street.scene.json', thumb: '/media/site50-r14/stills/s01-street-thumb.webp' },
+  { id: 's02-foreign', title: { en: 'Elsewhere', zh: '别处' }, short: { en: 'Elsewhere', zh: '别处' },
+    map: 'desert', durationMs: 6600, scene: 'https://example.com/take.scene.json', thumb: '/media/site50-r14/stills/s02-foreign-thumb.webp' },
+] };
+const takeScene = { map: 'urban', actors: [{ id: 'leo2a6', name: 'hero' }] };
+const fetches = [];
+const fetch = (url) => {
+  fetches.push(url);
+  const body = url.endsWith('/scenes/index.json') ? siteIndex : takeScene;
+  return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+};
+const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel;`, context);
 const calls = [];
 let resolveStage, rejectStage;
@@ -52,6 +68,7 @@ const S = {
   addCameraShot() { calls.push(['saveCamera']); },
   setProductionFormat(format) { this.productionFormat = format; calls.push(['format', format]); },
   applyProductionCamera(rig) { calls.push(['rig', rig]); }, setCamera(camera) { calls.push(['camera', camera]); },
+  load(json) { calls.push(['load', json]); return Promise.resolve(json); },
 };
 const root = new Element('div'), dock = new Element('div'); root.append(dock);
 const panelSource = readFileSync(new URL('./studioPanel.ts', import.meta.url), 'utf8');
@@ -92,6 +109,24 @@ for (const [workspace, group] of [['director', 'director'], ['battlefield', 'bat
 byData('workspace', 'effects').fire('click');
 assert.equal(byData('group', 'effects').hidden, false);
 assert.equal(byData('group', 'director').hidden, true);
+// The site's takes: listed once, the first time the Director opens; a card stages its scene through S.load, as Load
+// JSON does; a scene on another origin is never fetched. (Each step chains fetch, json and load: two ticks.)
+await tick();
+assert.deepEqual(fetches, ['/media/site50-r14/scenes/index.json'], 'the takes index is fetched once, when the Studio opens');
+const streetTake = byData('siteTake', 's01-street');
+assert.ok(streetTake, 'each take of the index becomes a card');
+assert.ok(streetTake.children.some(child => child.textContent === 'Street push'), 'a card carries the take\'s short title');
+assert.ok(streetTake.children.some(child => child.textContent === 'urban'), 'and its map');
+streetTake.fire('click'); await tick(); await tick();
+assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s01-street.scene.json', 'a card fetches its own scene');
+assert.deepEqual(calls.filter(call => call[0] === 'load').map(call => call[1]), [takeScene], 'the take is staged through the Studio\'s load');
+assert.equal(streetTake.attributes['aria-pressed'], 'true', 'the staged take is marked');
+assert.ok(all().some(element => element.textContent === 'Take staged as filmed. Play it, change it, or film it again.'));
+byData('siteTake', 's02-foreign').fire('click'); await tick(); await tick();
+assert.ok(!fetches.includes('https://example.com/take.scene.json'), 'a scene on another origin is refused');
+assert.equal(calls.filter(call => call[0] === 'load').length, 1);
+panel.setVisible(true); panel.setVisible(false); await tick();
+assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1, 'reopening the Studio does not fetch the index again');
 byData('productionPreset', 'two').fire('click');
 const frame = byData('productionFormat'); frame.value = 'portrait'; frame.fire('change');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');
@@ -119,7 +154,8 @@ panel.refresh(); panel.refresh(); assert.equal(shots.replacements, count, 'uncha
 S.recordingStatus = () => ({ active: true, supported: true }); panel.refresh();
 assert.equal(stage.disabled, true); assert.equal(byText('Stop recording').disabled, false);
 assert.equal(byText('Hide controls').disabled, true, 'recording keeps a stable native canvas size');
+assert.equal(byData('siteTake', 's01-street').disabled, true, 'a take cannot be loaded over a recording');
 S.productionFormat = 'square'; panel.refresh();
 assert.equal(frame.value, 'square', 'loading or scripting a different format synchronizes the export selector');
 locale = 'zh-CN'; assert.equal(context.label('director'), '导演台');
-console.log('studioProductionPanel.selftest: workspace selection, staging races, exports, transport, recording locks and localization passed');
+console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, staging races, exports, transport, recording locks and localization passed');

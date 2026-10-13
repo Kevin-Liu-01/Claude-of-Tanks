@@ -1672,6 +1672,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    'src/ui/studioSiteTakes.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

@@ -6,7 +6,7 @@ import {
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
 import { renderProductStats } from '../productStats.ts';
-import { SITE_ORIGIN } from './siteMetadata.ts';
+import { SITE_ORIGIN, socialCardUrl } from './siteMetadata.ts';
 
 function escapeAttribute(value: string): string {
   return value.replace(/[&<>"]/g, (character) => ({
@@ -31,6 +31,17 @@ function replaceMeta(
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = new RegExp(`<meta\\b[^>]*\\b${selector}\\s*=\\s*["']${escapedKey}["'][^>]*>`, 'i');
   return html.replace(pattern, (tag) => replaceAttribute(tag, 'content', value));
+}
+
+/**
+ * A localized twin shares its page's picture but not its English label: every
+ * /brand/og/<card>.jpg (Open Graph, Twitter and JSON-LD) becomes the locale's
+ * card. The default og-image.png carries no label and stays.
+ */
+function localizeSocialCards(html: string, locale: SupportedLocale): string {
+  const origin = SITE_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return html.replace(new RegExp(`${origin}/brand/og/([a-z0-9-]+)\\.jpg`, 'g'),
+    (_, card: string) => socialCardUrl(card, locale));
 }
 
 function translation(locale: SupportedLocale, key: string): string {
@@ -189,6 +200,7 @@ export function localizeHtmlDocument(
     output = replaceMeta(output, 'property', 'og:image:alt', imageAlt);
     output = replaceMeta(output, 'name', 'twitter:image:alt', imageAlt);
   }
+  if (locale !== DEFAULT_LOCALE) output = localizeSocialCards(output, locale);
   output = output.replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/i,
     (tag) => replaceAttribute(tag, 'href', canonical));
   output = replaceMeta(output, 'property', 'og:url', canonical);
