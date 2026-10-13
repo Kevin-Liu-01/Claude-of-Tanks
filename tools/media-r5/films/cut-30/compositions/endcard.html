@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+#end-bg{position:absolute;inset:0;background:#0b0e11}
+#end-glow{position:absolute;left:50%;top:44%;width:2800px;height:1800px;margin:-900px 0 0 -1400px;background:radial-gradient(closest-side,rgba(240,161,46,.22),rgba(240,161,46,0))}
+#crest{position:absolute;left:50%;top:259px;width:600px;height:600px;margin-left:-300px}
+#trace{position:absolute;left:50%;top:222px;width:675px;height:675px;margin-left:-337px;overflow:visible}
+#trace .tr{fill:none;stroke:rgba(240,161,46,.9);stroke-width:2.6;stroke-linejoin:miter;stroke-linecap:round;stroke-dasharray:1000;filter:drop-shadow(0 0 12px rgba(240,161,46,.6))}
+#wordmark{position:absolute;left:0;right:0;top:1015px;display:flex;flex-direction:column;align-items:center;gap:24px}
+#wordmark span{display:inline-block}
+#w1{font-weight:700;font-size:264px;line-height:1;letter-spacing:.06em}
+#w2{font-weight:500;font-size:112px;line-height:1;letter-spacing:.24em;color:#ffd27a}
+#url{position:absolute;left:0;right:0;top:1598px;text-align:center;font-weight:700;font-size:112px;letter-spacing:.08em;color:#f0a12e}
+</style>
+<div id="root" data-composition-id="endcard" data-width="3840" data-height="2160" data-duration="5">
+<div id="end-bg"></div><div id="end-glow"></div>
+<svg id="trace" viewBox="-16 -16 288 288"><path class="tr" pathLength="1000" d="M128 254.96 C206.88 227.12 253.28 180.72 253.28 108.8 V25.28 L237.04 9.04 H128"/><path class="tr" pathLength="1000" d="M128 254.96 C49.12 227.12 2.72 180.72 2.72 108.8 V25.28 L18.96 9.04 H128"/></svg>
+<img id="crest" src="assets/brand/logo-mark-metal.svg" alt="">
+<div id="wordmark"><div id="w1"><span>C</span><span>L</span><span>A</span><span>U</span><span>D</span><span>E</span></div><div id="w2"><span>O</span><span>F</span><span>&nbsp;</span><span>T</span><span>A</span><span>N</span><span>K</span><span>S</span></div></div>
+<div id="url">cot.kevinliu.studio</div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#end-bg', {opacity:0}, {opacity:1, duration:0.5, ease:'power2.inOut'}, 0);
+tl.fromTo('#end-glow', {opacity:0, scale:0.8}, {opacity:1, scale:1, duration:2.4, ease:'power2.out'}, 0.2);
+tl.fromTo('#crest', {opacity:0, scale:1.18, filter:'blur(14px)'}, {opacity:1, scale:1, filter:'blur(0px)', duration:0.9, ease:'expo.out'}, 0.25);
+tl.fromTo('#trace .tr', {strokeDashoffset:1000}, {strokeDashoffset:0, duration:1.5, ease:'power3.inOut'}, 0.15);
+tl.fromTo('#w1 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*92}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.6);
+tl.fromTo('#w2 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*60}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.75);
+tl.fromTo('#url', {opacity:0, y:14}, {opacity:1, y:0, duration:0.6, ease:'power3.out'}, 1.6);
+window.__timelines["endcard"] = tl;
+</script>
+</template>
+</body></html>

@@ -1,0 +1,469 @@
+{
+ "fps": 30,
+ "width": 3840,
+ "height": 2160,
+ "duration": 39.5,
+ "letterbox": 2.39,
+ "letterboxIn": 0.15,
+ "audio": "assets/audio/mix.wav",
+ "grain": 0.06,
+ "shots": [
+  {
+   "id": "s06-farm-charge",
+   "src": "assets/shots/s06-farm-charge.mp4",
+   "start": 0,
+   "dur": 5,
+   "in": 0
+  },
+  {
+   "id": "s06-farm-charge",
+   "src": "assets/shots/s06-farm-charge.mp4",
+   "start": 5,
+   "dur": 1.25,
+   "in": 3.88
+  },
+  {
+   "id": "s01-main-street-push",
+   "src": "assets/shots/s01-main-street-push.mp4",
+   "start": 6.25,
+   "dur": 1.25,
+   "in": 2.98
+  },
+  {
+   "id": "s02-factory-road",
+   "src": "assets/shots/s02-factory-road.mp4",
+   "start": 7.5,
+   "dur": 1.25,
+   "in": 3.48
+  },
+  {
+   "id": "s03-square-pass",
+   "src": "assets/shots/s03-square-pass.mp4",
+   "start": 8.75,
+   "dur": 1.25,
+   "in": 2.8
+  },
+  {
+   "id": "s04-column-under-fire",
+   "src": "assets/shots/s04-column-under-fire.mp4",
+   "start": 10,
+   "dur": 1.25,
+   "in": 2.2
+  },
+  {
+   "id": "s05-barn-advance",
+   "src": "assets/shots/s05-barn-advance.mp4",
+   "start": 11.25,
+   "dur": 1.25,
+   "in": 3.28
+  },
+  {
+   "id": "s07-lake-shellfire",
+   "src": "assets/shots/s07-lake-shellfire.mp4",
+   "start": 12.5,
+   "dur": 1.25,
+   "in": 2.56
+  },
+  {
+   "id": "s08-market-push",
+   "src": "assets/shots/s08-market-push.mp4",
+   "start": 13.75,
+   "dur": 1.25,
+   "in": 3.18
+  },
+  {
+   "id": "s09-harbor-run",
+   "src": "assets/shots/s09-harbor-run.mp4",
+   "start": 15,
+   "dur": 1.25,
+   "in": 3.68
+  },
+  {
+   "id": "s10-ford-shellfire",
+   "src": "assets/shots/s10-ford-shellfire.mp4",
+   "start": 16.25,
+   "dur": 1.25,
+   "in": 3.98
+  },
+  {
+   "id": "s11-container-rows",
+   "src": "assets/shots/s11-container-rows.mp4",
+   "start": 17.5,
+   "dur": 1.25,
+   "in": 3.48
+  },
+  {
+   "id": "s12-gantry-advance",
+   "src": "assets/shots/s12-gantry-advance.mp4",
+   "start": 18.75,
+   "dur": 1.25,
+   "in": 2.88
+  },
+  {
+   "id": "s13-farm-race",
+   "src": "assets/shots/s13-farm-race.mp4",
+   "start": 20,
+   "dur": 1.25,
+   "in": 2.88
+  },
+  {
+   "id": "s14-snow-push",
+   "src": "assets/shots/s14-snow-push.mp4",
+   "start": 21.25,
+   "dur": 1.25,
+   "in": 3.18
+  },
+  {
+   "id": "s15-orchard-column",
+   "src": "assets/shots/s15-orchard-column.mp4",
+   "start": 22.5,
+   "dur": 1.25,
+   "in": 3.08
+  },
+  {
+   "id": "s26-minaret-fire",
+   "src": "assets/shots/s26-minaret-fire.mp4",
+   "start": 23.75,
+   "dur": 1.25,
+   "in": 1.18
+  },
+  {
+   "id": "s27-caravanserai-kill",
+   "src": "assets/shots/s27-caravanserai-kill.mp4",
+   "start": 25,
+   "dur": 1.25,
+   "in": 1.66
+  },
+  {
+   "id": "s30-temple-village",
+   "src": "assets/shots/s30-temple-village.mp4",
+   "start": 26.25,
+   "dur": 1.25,
+   "in": 2.78
+  },
+  {
+   "id": "s35-farm-village",
+   "src": "assets/shots/s35-farm-village.mp4",
+   "start": 27.5,
+   "dur": 1.25,
+   "in": 2.88
+  },
+  {
+   "id": "s36-barn-knockout",
+   "src": "assets/shots/s36-barn-knockout.mp4",
+   "start": 28.75,
+   "dur": 1.25,
+   "in": 1.56
+  },
+  {
+   "id": "s39-lakeside-village",
+   "src": "assets/shots/s39-lakeside-village.mp4",
+   "start": 30,
+   "dur": 1.25,
+   "in": 2.88
+  },
+  {
+   "id": "s32-yard-salvo",
+   "src": "assets/shots/s32-yard-salvo.mp4",
+   "start": 31.25,
+   "dur": 1.25,
+   "in": 0.88
+  },
+  {
+   "id": "s21-fields-assault",
+   "src": "assets/shots/s21-fields-assault.mp4",
+   "start": 32.5,
+   "dur": 1.25,
+   "in": 3.22
+  },
+  {
+   "id": "s25-alpine-village",
+   "src": "assets/shots/s25-alpine-village.mp4",
+   "start": 33.75,
+   "dur": 1.25,
+   "in": 2.78
+  }
+ ],
+ "titles": [
+  {
+   "kind": "line",
+   "text": "The lineup",
+   "start": 0.625,
+   "dur": 4.0625,
+   "align": "center"
+  },
+  {
+   "kind": "tank",
+   "name": "KF51 Panther",
+   "start": 5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Leopard 2A6",
+   "start": 6.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "M1A2 Abrams TUSK",
+   "start": 7.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Leclerc XLR",
+   "start": 8.75,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "T-90M",
+   "start": 10,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "T-14 Armata",
+   "start": 11.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Stridsvagn 122",
+   "start": 12.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "M1A2 Abrams",
+   "start": 13.75,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Leopard 2A7V",
+   "start": 15,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "ZTZ-100",
+   "start": 16.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Challenger 1",
+   "start": 17.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "T-90MS Tagil",
+   "start": 18.75,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "K2 Black Panther",
+   "start": 20,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "T-80U",
+   "start": 21.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "C1 Ariete",
+   "start": 22.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Merkava Mk 3D",
+   "start": 23.75,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Merkava Mk 4",
+   "start": 25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "K1A1",
+   "start": 26.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Type 90",
+   "start": 27.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Type 10",
+   "start": 28.75,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Chieftain Mk 10",
+   "start": 30,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "M1A2 Abrams SEPv3",
+   "start": 31.25,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "T-90SM",
+   "start": 32.5,
+   "dur": 1.25
+  },
+  {
+   "kind": "tank",
+   "name": "Leopard 2A5",
+   "start": 33.75,
+   "dur": 1.25
+  }
+ ],
+ "flashes": [
+  {
+   "t": 5,
+   "frames": 3
+  },
+  {
+   "t": 6.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 7.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 8.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 10,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 11.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 12.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 13.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 15,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 16.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 17.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 18.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 20,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 21.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 22.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 23.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 26.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 27.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 28.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 30,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 31.25,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 32.5,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 33.75,
+   "frames": 1,
+   "peak": 0.35
+  },
+  {
+   "t": 35,
+   "frames": 3
+  }
+ ],
+ "endcard": {
+  "start": 35,
+  "url": "cot.kevinliu.studio"
+ }
+}

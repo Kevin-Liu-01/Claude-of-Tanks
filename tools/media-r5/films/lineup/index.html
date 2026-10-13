@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=3840, height=2160" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:3840px;height:2160px;overflow:hidden;background:#07090c}
+#root{position:relative;width:100%;height:100%;overflow:hidden;background:#07090c}
+.clip{position:absolute;inset:0}
+video.shot{width:100%;height:100%;object-fit:cover;background:#07090c}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="39.5" data-width="3840" data-height="2160">
+<video id="v01" class="clip shot" src="assets/shots/s06-farm-charge.mp4" muted playsinline data-start="0" data-duration="5" data-media-start="0" data-track-index="1"></video>
+<video id="v02" class="clip shot" src="assets/shots/s06-farm-charge.mp4" muted playsinline data-start="5" data-duration="1.25" data-media-start="3.88" data-track-index="2"></video>
+<video id="v03" class="clip shot" src="assets/shots/s01-main-street-push.mp4" muted playsinline data-start="6.25" data-duration="1.25" data-media-start="2.98" data-track-index="1"></video>
+<video id="v04" class="clip shot" src="assets/shots/s02-factory-road.mp4" muted playsinline data-start="7.5" data-duration="1.25" data-media-start="3.48" data-track-index="2"></video>
+<video id="v05" class="clip shot" src="assets/shots/s03-square-pass.mp4" muted playsinline data-start="8.75" data-duration="1.25" data-media-start="2.8" data-track-index="1"></video>
+<video id="v06" class="clip shot" src="assets/shots/s04-column-under-fire.mp4" muted playsinline data-start="10" data-duration="1.25" data-media-start="2.2" data-track-index="2"></video>
+<video id="v07" class="clip shot" src="assets/shots/s05-barn-advance.mp4" muted playsinline data-start="11.25" data-duration="1.25" data-media-start="3.28" data-track-index="1"></video>
+<video id="v08" class="clip shot" src="assets/shots/s07-lake-shellfire.mp4" muted playsinline data-start="12.5" data-duration="1.25" data-media-start="2.56" data-track-index="2"></video>
+<video id="v09" class="clip shot" src="assets/shots/s08-market-push.mp4" muted playsinline data-start="13.75" data-duration="1.25" data-media-start="3.18" data-track-index="1"></video>
+<video id="v10" class="clip shot" src="assets/shots/s09-harbor-run.mp4" muted playsinline data-start="15" data-duration="1.25" data-media-start="3.68" data-track-index="2"></video>
+<video id="v11" class="clip shot" src="assets/shots/s10-ford-shellfire.mp4" muted playsinline data-start="16.25" data-duration="1.25" data-media-start="3.98" data-track-index="1"></video>
+<video id="v12" class="clip shot" src="assets/shots/s11-container-rows.mp4" muted playsinline data-start="17.5" data-duration="1.25" data-media-start="3.48" data-track-index="2"></video>
+<video id="v13" class="clip shot" src="assets/shots/s12-gantry-advance.mp4" muted playsinline data-start="18.75" data-duration="1.25" data-media-start="2.88" data-track-index="1"></video>
+<video id="v14" class="clip shot" src="assets/shots/s13-farm-race.mp4" muted playsinline data-start="20" data-duration="1.25" data-media-start="2.88" data-track-index="2"></video>
+<video id="v15" class="clip shot" src="assets/shots/s14-snow-push.mp4" muted playsinline data-start="21.25" data-duration="1.25" data-media-start="3.18" data-track-index="1"></video>
+<video id="v16" class="clip shot" src="assets/shots/s15-orchard-column.mp4" muted playsinline data-start="22.5" data-duration="1.25" data-media-start="3.08" data-track-index="2"></video>
+<video id="v17" class="clip shot" src="assets/shots/s26-minaret-fire.mp4" muted playsinline data-start="23.75" data-duration="1.25" data-media-start="1.18" data-track-index="1"></video>
+<video id="v18" class="clip shot" src="assets/shots/s27-caravanserai-kill.mp4" muted playsinline data-start="25" data-duration="1.25" data-media-start="1.66" data-track-index="2"></video>
+<video id="v19" class="clip shot" src="assets/shots/s30-temple-village.mp4" muted playsinline data-start="26.25" data-duration="1.25" data-media-start="2.78" data-track-index="1"></video>
+<video id="v20" class="clip shot" src="assets/shots/s35-farm-village.mp4" muted playsinline data-start="27.5" data-duration="1.25" data-media-start="2.88" data-track-index="2"></video>
+<video id="v21" class="clip shot" src="assets/shots/s36-barn-knockout.mp4" muted playsinline data-start="28.75" data-duration="1.25" data-media-start="1.56" data-track-index="1"></video>
+<video id="v22" class="clip shot" src="assets/shots/s39-lakeside-village.mp4" muted playsinline data-start="30" data-duration="1.25" data-media-start="2.88" data-track-index="2"></video>
+<video id="v23" class="clip shot" src="assets/shots/s32-yard-salvo.mp4" muted playsinline data-start="31.25" data-duration="1.25" data-media-start="0.88" data-track-index="1"></video>
+<video id="v24" class="clip shot" src="assets/shots/s21-fields-assault.mp4" muted playsinline data-start="32.5" data-duration="1.25" data-media-start="3.22" data-track-index="2"></video>
+<video id="v25" class="clip shot" src="assets/shots/s25-alpine-village.mp4" muted playsinline data-start="33.75" data-duration="1.25" data-media-start="2.78" data-track-index="1"></video>
+<div id="flashes-host" data-composition-id="flashes" data-composition-src="compositions/flashes.html" data-start="0" data-duration="39.5" data-track-index="5" data-width="3840" data-height="2160"></div>
+<div id="frame-host" data-composition-id="frame" data-composition-src="compositions/frame.html" data-start="0" data-duration="39.5" data-track-index="6" data-width="3840" data-height="2160"></div>
+<div id="titles-host" data-composition-id="titles" data-composition-src="compositions/titles.html" data-start="0" data-duration="39.5" data-track-index="7" data-width="3840" data-height="2160"></div>
+<div id="endcard-host" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="35" data-duration="4.5" data-track-index="8" data-width="3840" data-height="2160"></div>
+<div id="grain-host" data-composition-id="grain" data-composition-src="compositions/grain.html" data-start="0" data-duration="39.5" data-track-index="9" data-width="3840" data-height="2160"></div>
+<audio id="mix" src="assets/audio/mix.wav" data-start="0" data-duration="39.5" data-track-index="20" data-volume="1"></audio>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>
