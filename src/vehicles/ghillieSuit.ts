@@ -2493,6 +2493,20 @@ function makeCloth(
   });
 }
 
+/**
+ * One suit's net and garnish materials, shared by its hull, turret and gun parts (2026-10-13, integ/222: each part had
+ * built its own copy of the same net and of the same garnish material, the same textures and settings, so a netted
+ * Merkava 3C drew 27 materials against appearanceAudit's 26). Keyed by the build's port, so a build never shares
+ * with another vehicle's.
+ */
+const SUIT_MATERIALS = new WeakMap<GhillieBuilderPort, { net?: THREE.MeshStandardMaterial;
+  leaves: Map<unknown, THREE.MeshStandardMaterial> }>();
+function suitMaterialsOf(P: GhillieBuilderPort): { net?: THREE.MeshStandardMaterial; leaves: Map<unknown, THREE.MeshStandardMaterial> } {
+  let mats = SUIT_MATERIALS.get(P);
+  if (!mats) SUIT_MATERIALS.set(P, mats = { leaves: new Map() });
+  return mats;
+}
+
 function makeNet(
   P: GhillieBuilderPort,
   cfg: GhillieConfig,
@@ -4613,8 +4627,12 @@ function addGhillieOwner(
       if (k < tops.length) topCards = foliage.cardCount;
     });
   }
-  const netMat = makeNet(P, cfg, theatre, cover);
-  const netMesh = addMerged(P, parent, surfaces.map((s) => s.geometry), netMat, `${cfg.id}_ghillie_${owner}_net`);
+  const suitMats = suitMaterialsOf(P), netGeos = surfaces.map((s) => s.geometry);
+  // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
+  const netShared = netGeos.length > 0 && suitMats.net !== undefined;
+  const netMat = netShared ? suitMats.net! : makeNet(P, cfg, theatre, cover);
+  const netMesh = addMerged(P, parent, netGeos, netMat, `${cfg.id}_ghillie_${owner}_net`);
+  if (netMesh && !netShared) suitMats.net = netMat;
   // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
   // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)
   if (netMesh && clearance) {
@@ -4624,7 +4642,7 @@ function addGhillieOwner(
     fieldOk(netMesh, coverOk ?? ((p) => clearance.clothOk(owner, p)));
   }
   // a garage pattern switch repaints the vehicle in place: the net swaps to the new theatre's (a cover to the new scheme)
-  if (netMesh && P.mats.wheels) {
+  if (netMesh && !netShared && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
       const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
@@ -4638,7 +4656,9 @@ function addGhillieOwner(
   if (leaves) {
     const atlas = leafy ? (field ? ghillieGarnishAtlas(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlas(garnishSpecies(cfg)))
       : vehicleFoliageAtlas(theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland');
-    const mat = makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    const leavesShared = suitMats.leaves.has(atlas);
+    const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${cfg.id}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
@@ -4655,7 +4675,7 @@ function addGhillieOwner(
     if (leafy) mesh.userData[GHILLIE_TOP_CARDS] = [topCards, P.q !== false ? 24 : 12];
     parent.add(mesh);
     // the garnish was tinted for the build's theatre; on a pattern switch its colour shifts to the new theatre's
-    if (P.mats.wheels) {
+    if (P.mats.wheels && !leavesShared) {
       const built = meanStrip(theatre, field);
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
@@ -4668,7 +4688,8 @@ function addGhillieOwner(
       });
     }
     // the atlas is shared fleet-wide (vehicleFoliage.ts) and never joins a visual's disposables
-    P.disposables.push(leaves, mat);
+    P.disposables.push(leaves);
+    if (!leavesShared) P.disposables.push(mat);
   }
 }
 
