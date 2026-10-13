@@ -359,6 +359,8 @@ function buildFleet() {
   for (const [vehicle, takeId] of Object.entries(map)) {
     const d = delivery(takeId), meta = takeTitles(takeId);
     if (!d?.hd || !d.momentPng || !meta) continue;
+    // a fleet take counts once its sound is muxed: the mux rewrites the film, which would make the loop encode twice
+    if (fleetEntry(takeId) && !d.sound) continue;
     const take = { take: takeId, round: d.round, vehicle };
     make(join(OUT, 'fleet', `${vehicle}.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
       '-vf', 'scale=640:360:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '48', '-b:v', '680k', '-row-mt', '1',
