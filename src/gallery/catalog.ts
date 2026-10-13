@@ -292,11 +292,10 @@ function galleryBrief(
     modules: protection.modules.length,
     crew: protection.crew.length,
   });
-  // A vehicle's own note (tankLabels.ts noteKey), e.g. the Warrior TES(H)'s MILAN firing post.
+  // A vehicle's own note (tankLabels.ts noteKey), e.g. the Warrior TES(H)'s MILAN firing post, closes the second
+  // paragraph: the brief stays two paragraphs.
   const note = noteKey ? t(noteKey) : '';
-  return note && note !== noteKey
-    ? [firstParagraph, secondParagraph + featureSentence, note]
-    : [firstParagraph, secondParagraph + featureSentence];
+  return [firstParagraph, secondParagraph + featureSentence + (note && note !== noteKey ? ` ${note}` : '')];
 }
 
 function galleryHighlights(
