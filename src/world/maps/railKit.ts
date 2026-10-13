@@ -109,7 +109,7 @@ export function makeWarehouse(
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
   parts.dark.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length + 0.15, 0.13, d + 0.7, 0.35);
+    const slab = box(seat.length, 0.13, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
@@ -643,7 +643,7 @@ export function makeBoatshed(
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.11);
   buckets.wood.push(gableAttic(w, roofH, d).translate(0, wallH + 0.2, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length + 0.15, 0.11, d + 0.7, 0.35);
+    const slab = box(seat.length, 0.11, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     slab.translate(-side * seat.out, wallH + 0.2 + seat.up, 0);
     buckets.roof.push(slab);
@@ -734,7 +734,7 @@ export function makeTerrace(
   const seat = gableSlabSeat(half, roofH, over, thick);
   walls.push(gableAttic(layout.depth, roofH, W).rotateY(Math.PI / 2).translate(0, wallH, zc));
   for (const side of [-1, 1] as const) {
-    const slab = slabBox(W + 2 * verge, thick, seat.length + 0.15, 0.35);
+    const slab = slabBox(W + 2 * verge, thick, seat.length, 0.35);
     pitchRoofPlane(slab, 'z', side, seat.pitch, 'gable');
     buckets.roof.push(slab.translate(0, wallH + seat.up, zc + side * seat.out));
   }

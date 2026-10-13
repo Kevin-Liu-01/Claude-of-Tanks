@@ -191,23 +191,30 @@ export function gablePrism(
 /**
  * Where a gable roof's slab sits so that its underside lies on the gable's own slope: through the wall top's line and the
  * apex, and out over the eave. (The buildings stream, 2026-10-13, the building integrity check: the generic builders
- * pitched their slabs from the eave's tip to 10 cm over the apex. That is shallower than the gables, so the slabs stood
- * 15-20 cm over the wall tops along both eaves, a dark slot into the attic under every eave.) `pitch` is the slab's
- * angle, `length` its run along the slope from the ridge line to the eave's tip, and `out` and `up` the slab's centre
- * from the ridge line and the wall top.
+ * pitched their slabs from the eave's tip to `rise` over the apex. That is shallower than the gables, so the slabs stood
+ * 5-25 cm over the wall tops along both eaves, a dark slot into the attic under every eave.) The slab runs from `extra`/2
+ * past the ridge line out to the old slab's outermost reach, so the roof's plan extent stays the old one: a regional kit
+ * sizes its building to its generic base's bounds, and a yard plans round that building (round two: 5 cm more eave lost
+ * a Glacier Pass yard its shed). `pitch` is the slab's angle, `length` its whole length along the slope, and `out` and
+ * `up` the slab's centre from the ridge line and the wall top.
  */
 export function gableSlabSeat(
   halfSpan: number,
   roofH: number,
   over: number,
   thick: number,
+  extra = 0.15,
+  rise = 0.1,
 ): { pitch: number; length: number; out: number; up: number } {
-  const pitch = Math.atan2(roofH, halfSpan), run = halfSpan + over, mid = run / 2;
+  const pitch = Math.atan2(roofH, halfSpan), run = halfSpan + over, tan = roofH / halfSpan;
+  const was = Math.atan2(roofH + rise, run);
+  const reach = run + extra / 2 * Math.cos(was) + thick / 2 * Math.sin(was);
+  const eave = reach - thick * Math.sin(pitch), ridge = -extra / 2 * Math.cos(pitch), mid = (eave + ridge) / 2;
   return {
     pitch,
-    length: run / Math.cos(pitch),
+    length: (eave - ridge) / Math.cos(pitch),
     out: mid + Math.sin(pitch) * thick / 2,
-    up: roofH - mid * roofH / halfSpan + Math.cos(pitch) * thick / 2,
+    up: roofH - mid * tan + Math.cos(pitch) * thick / 2,
   };
 }
 

@@ -1855,7 +1855,7 @@ function makeCottage(
   // under them; the slabs stood 20 cm over the wall tops along both eaves)
   const seat = gableSlabSeat(w / 2, roofH, over, 0.12);
   for (const side of [-1, 1]) {
-    const slab = slabBox(seat.length + 0.15, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
+    const slab = slabBox(seat.length, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
@@ -1914,7 +1914,7 @@ function makeBarn(rng: Rng, buckets: PropsBuckets): StructureDimensions {
   // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the loft closed under them)
   const seat = gableSlabSeat(w / 2, roofH, over, 0.14);
   for (const side of [-1, 1]) {
-    const slab = slabBox(seat.length + 0.15, 0.14, d + over * 2, 0.35); // r2: real tile rows
+    const slab = slabBox(seat.length, 0.14, d + over * 2, 0.35); // r2: real tile rows
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
@@ -2130,7 +2130,7 @@ function addRowhouseRoof(
   const seat = gableSlabSeat(w / 2, roofH, over, 0.13);
   if (!flatRoof) {
     for (const side of [-1, 1]) {
-      const slab = slabBox(seat.length + 0.15, 0.13, d + over * 2, 0.35);
+      const slab = slabBox(seat.length, 0.13, d + over * 2, 0.35);
       pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
       parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
     }

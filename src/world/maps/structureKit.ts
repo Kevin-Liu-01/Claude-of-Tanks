@@ -466,10 +466,10 @@ function addGableRoof(
   // (the buildings stream, 2026-10-13, the building integrity check: the slabs ran shallower than the gables and stood
   // 15-25 cm over the wall tops along both eaves, a dark slot into the roof space) each slab's underside on the gable's
   // own slope, the roof space closed under them
-  const seat = gableSlabSeat(w / 2, roofH, over, 0.13);
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.13, 0.14, 0.08);
   out.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const roof = slab(seat.length + 0.14, 0.13, d + over * 2);
+    const roof = slab(seat.length, 0.13, d + over * 2);
     pitchRoofPlane(roof, 'x', -side as -1 | 1, seat.pitch, 'gable');
     roof.translate(-side * seat.out, wallH + seat.up, 0);
     out.roof.push(roof);

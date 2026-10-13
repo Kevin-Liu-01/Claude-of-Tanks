@@ -107,7 +107,7 @@ export function makeChurch(_rng: () => number, buckets: GeometryBuckets): Struct
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13);
   parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, -1.2));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length + 0.15, 0.13, d + 0.6, 0.35);
+    const slab = box(seat.length, 0.13, d + 0.6, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, -1.2);
     parts.roof.push(slab);
@@ -175,7 +175,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.14);
   parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length + 0.15, 0.14, d + 0.7, 0.35);
+    const slab = box(seat.length, 0.14, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);

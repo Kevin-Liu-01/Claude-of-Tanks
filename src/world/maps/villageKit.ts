@@ -52,7 +52,7 @@ function gableRoof(
   // (the buildings stream, 2026-10-13) each slab's underside on the gable's own slope, the attic closed under them
   const seat = gableSlabSeat(w / 2, roofH, over, thick);
   for (const side of [-1, 1]) {
-    const slab = slabBox(seat.length + 0.15, thick, d + over * 2, 0.35);
+    const slab = slabBox(seat.length, thick, d + over * 2, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
