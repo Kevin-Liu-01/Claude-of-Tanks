@@ -1643,6 +1643,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/fonts.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
+    'src/ui/mapLqip.selftest.mjs',
     'src/ui/chunkRecovery.selftest.mjs',
     'src/entry/telemetry.selftest.mjs',
     'src/entry/inlineWatchdogSink.selftest.mjs',
