@@ -92,6 +92,19 @@ export interface QualityPreset {
    * An explicit preset keeps `dynMin`; absent means none (dynMin).
    */
   readonly autoDynMin?: number;
+  /**
+   * 2026-10-13 (the perf stream; the coordinator's DPR ruling): on Auto, the rung a retina raster holds at under load
+   * (renderScalePolicy.dynamicScaleHold): one cut from the full raster lands on it, and it goes below only under a
+   * sustained overload. getPreset() carries it as `dynHold` on the Auto variant; an explicit preset has none.
+   */
+  readonly autoDynHold?: number;
+  /** The governor's hold rung in effect (set on the Auto variant from autoDynHold). */
+  readonly dynHold?: number;
+  /**
+   * 2026-10-13: the input/output scale from which the final FSR pass sharpens with RCAS after EASU
+   * (renderScalePolicy.reconstructionMode; absent keeps RCAS_MIN_SCALE, 0.6, which keeps phones on EASU alone).
+   */
+  readonly rcasMinScale?: number;
   readonly aoScale: number;
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
@@ -325,6 +338,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     nativeDynMin: 0.67,
     // 2026-10-12 (the perf stream): on Auto the retina raster may fall to 1.0 (0.667 of 1.5) before the tier steps down
     autoDynMin: 0.667,
+    // 2026-10-13: ... but it holds at 1.25 (0.8334 of 1.5) while it can, and below 1.35 RCAS keeps sharpening down to
+    // the 1.0 raster on a DPR-2 panel (input scale 0.5; 0.49 absorbs the composer's pixel rounding)
+    autoDynHold: 0.8334,
+    rcasMinScale: 0.49,
     aoScale: 0,
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
@@ -650,7 +667,11 @@ export function getPreset(): QualityPreset {
   if (preset.autoDynMin === undefined || getStoredChoice() !== 'auto') return preset;
   let variant = autoVariants.get(name);
   if (!variant) {
-    variant = Object.freeze({ ...preset, dynMin: Math.min(preset.dynMin, preset.autoDynMin) });
+    variant = Object.freeze({
+      ...preset,
+      dynMin: Math.min(preset.dynMin, preset.autoDynMin),
+      ...(preset.autoDynHold !== undefined ? { dynHold: preset.autoDynHold } : {}),
+    });
     autoVariants.set(name, variant);
   }
   return variant;

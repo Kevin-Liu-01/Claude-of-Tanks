@@ -177,4 +177,18 @@ console.log('quality.selftest: device, texture, preset, and subscription contrac
   assert.equal(seen.dynMin, 0.667, 'back on Auto the governor gets the lower floor');
   assert.equal(q.PRESETS.high.dynMin, 0.9, 'the preset table itself is unchanged');
   assert.equal(browser.storage.get('cot.gfxPreset'), 'auto');
+  // 2026-10-13 (the coordinator's DPR ruling): Auto High holds a 1.25 raster under load before it goes toward 1.0, and
+  // keeps RCAS down to the 1.0 raster; the explicit High has no hold (its floor is 1.35)
+  const { dynamicScaleHold, reconstructionMode } = await import('./renderScalePolicy.ts');
+  const autoAgain = q.getPreset();
+  assert.equal(autoAgain.dynHold, 0.8334, 'the Auto variant carries the hold rung');
+  assert.ok(Math.abs(internalPixelRatio(2, autoAgain, dynamicScaleHold(2, autoAgain)) - 1.2501) < 1e-9, 'held at 1.25');
+  assert.equal(dynamicScaleHold(1, autoAgain), 0.67, 'a native-density display has no hold: its floor');
+  assert.equal(q.PRESETS.high.dynHold, undefined, 'the explicit High has none');
+  assert.equal(dynamicScaleHold(2, q.PRESETS.high), 0.9, 'the explicit High holds at its own floor');
+  assert.equal(q.PRESETS.high.rcasMinScale, 0.49);
+  assert.equal(reconstructionMode(1729 / 3456, autoAgain.rcasMinScale), 'easu+rcas', 'Auto High\'s 1.0 raster keeps RCAS');
+  for (const name of ['mobile', 'mobile-high']) {
+    assert.equal(q.PRESETS[name]?.rcasMinScale, undefined, `${name} keeps the default RCAS threshold`);
+  }
 }
