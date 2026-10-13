@@ -11,7 +11,7 @@ import { resolve, join, basename } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const ROOT = process.cwd();
-const { createCaptureLock, CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
+const { createCaptureLock, CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR, stampBehindWaiting, ticketAt } = await import(join(ROOT, 'tools/capture-lock.mjs'));
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = /^--([a-z0-9-]+)=(.*)$/.exec(a); if (!m) throw Error('bad arg ' + a); return [m[1], m[2]]; }));
 const out = resolve(args.out ?? 'shots/media-r5/lab');
 const WIDTH = Number(args.width ?? 960);
@@ -192,7 +192,8 @@ async function take(ms) {
     console.log(`[lab] yielded to ${yielded}; rejoining the queue at ${STAMP} ${new Date().toTimeString().slice(0, 8)}`);
   }
   leaseCount++;
-  await lock.acquire(ms, STAMP ? { ticket: ticketAt(STAMP) } : {});
+  // (2026-10-13) a waiting perf cost hold goes first: the lease rejoins one past the last perf band ticket
+  await lock.acquire(ms, STAMP ? { ticket: ticketAt(stampBehindWaiting(STAMP)) } : {});
   // (2026-10-08: the coordinator could not tell from the log when a lab held the shared lock)
   console.log(`[lab] lease ${leaseCount} taken ${new Date().toTimeString().slice(0, 8)}`);
 }
