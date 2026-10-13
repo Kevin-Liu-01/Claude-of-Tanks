@@ -41,7 +41,8 @@ assert.match(runtime, /synchronizeLocaleRoute\(locale\)/,
   'the standalone 404 runtime must preserve locale-prefixed missing routes');
 assert.match(runtime, /document\.title = t\('notFound\.metaTitle'\)/,
   'the localized 404 must update its browser title');
-assert.match(css, /f10_studio_urban_crossfire\.webp/,
+// (the site media, 7acc117fd: the site fifty replaced the old gameplay stills; the 404 wears take s38's knockout still)
+assert.match(css, /url\('\/media\/site50-r14\/stills\/s38-church-knockout\.webp'\)/,
   'the branded 404 must use an in-engine battle capture');
 assert.match(css, /place-items:center/,
   'the minimal 404 composition must remain centered in the viewport');
