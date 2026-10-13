@@ -1048,6 +1048,8 @@
     "tools/media-production/campaignPublication.selftest.mjs": 200,
     "tools/media-production/pipeline.selftest.mjs": 200,
     "tools/media-r5/films/restore.selftest.mjs": 1800,
+    "tools/media-r5/fleet-media.selftest.mjs": 900,
+    "tools/media-r5/fleet.selftest.mjs": 120000,
     "tools/mp-client-soak.selftest.mjs": 2500,
     "tools/mp-exit-e2e.selftest.mjs": 38300,
     "tools/mp-p2p-decline.selftest.mjs": 14100,
