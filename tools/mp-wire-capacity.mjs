@@ -129,7 +129,9 @@ async function simulate(mapId, minutes) {
   const world = createDedicatedWorldCollision(mapId, { retain: true });
   const players = Array.from({ length: 28 }, (_, i) => ({ id: `bot-${i}`, specId: ['m1a2', 't90m', 'leo2a7v'][i % 3], team: i % 2 ? 'bravo' : 'alpha', bot: true }));
   // a respawning mode keeps 28 hulls fighting for the whole window (an elimination match ends in ~3.5 min)
-  const match = createAuthoritativeMatch({ mapId, seed: 11, countdownS: 0, worldCollision: world, players, gameMode: simMode, battleLimitS: minutes * 60 + 60 });
+  // (bots reach a mode's score target in ~3 min; a close human match runs to the clock: the target is lifted)
+  const match = createAuthoritativeMatch({ mapId, seed: 11, countdownS: 0, worldCollision: world, players, gameMode: simMode, battleLimitS: minutes * 60 + 60,
+    ruleset: { ...matchRulesetFor(simMode), scoreTarget: 1e9, timeLimitS: minutes * 60 + 60 } });
   match.onMatchReady();
   const samples = [];
   const ticksPerMinute = Math.round(60 / SIM_DT);
