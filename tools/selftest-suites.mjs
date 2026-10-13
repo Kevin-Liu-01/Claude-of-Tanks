@@ -1564,6 +1564,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
     'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
+    'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
     'src/world/structureCollisionMergeKeys.selftest.mjs',

@@ -161,8 +161,10 @@ export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'san
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
-  deriveRuntimeStructureContactBand,
+  deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands,
 } from './structureCollision.ts';
+import { structureShellPoolFor } from './structureShellPool.ts';
+import { unpackStructureShellWire } from './structureShellWire.ts';
 import {
   attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
   type GroundCoverSolidProfile,
@@ -851,6 +853,8 @@ interface PropsBuildSlice {
   wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
   /** (the time-to-battle lane) a fixed-input print the async build may hand in painted ahead (surfacePaintPrefetch.ts) */
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
+  /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
+  structureShells?: Promise<void>;
   stage?: string;
 }
 
@@ -861,6 +865,8 @@ interface PropsAwaitTiming {
 }
 
 interface PropsBuildDetail {
+  /** (Plan W) the structure shell pool's counts (absent when every structure derived inline) */
+  structureShells?: { posted: number; answered: number; failed: number; packMs: number };
   sliceCount: number;
   synchronousMs: number;
   maxSliceMs: number;
@@ -878,6 +884,9 @@ interface PropsBuildDetail {
     wreckCheckpoints: PropsAwaitTiming;
     builderImports: PropsAwaitTiming;
     wreckBakes: PropsAwaitTiming;
+    /** (Plan W) the pacing ticks while the build waited at the join for the shell pool, and the waits themselves */
+    structureShells: PropsAwaitTiming;
+    structureShellWaits: PropsAwaitTiming;
     wreckRowsLimit: number;
     wreckRowsDropped: number;
     wreckRows: Array<{ specId: string; startMs: number; endMs: number;
@@ -961,6 +970,8 @@ export interface PropsRuntime {
   structureSpans: Map<number, StructureSpan[]>;
   /** Every props-bucket material with the mesh that draws it (world.patchStructureMaterials). */
   structureMaterials: StructureMaterialEntry[];
+  /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
+  structureShellStats?: { posted: number; answered: number; failed: number; packMs: number } | null;
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -3432,6 +3443,8 @@ export async function createPropsAsync(
     wreckCheckpoints: { count: 0, totalMs: 0, maxMs: 0 },
     builderImports: { count: 0, totalMs: 0, maxMs: 0 },
     wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShells: { count: 0, totalMs: 0, maxMs: 0 },
+    structureShellWaits: { count: 0, totalMs: 0, maxMs: 0 },
     wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
   };
   const wreckFallbacks = { count: 0, missing: 0 };
@@ -3481,6 +3494,17 @@ export async function createPropsAsync(
         if (ahead) {
           try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
         }
+      }
+      if (step?.structureShells) {
+        // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
+        const startedAt = performance.now();
+        let settled = false;
+        void step.structureShells.then(() => { settled = true; });
+        while (!settled) {
+          await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
+          if (!settled) await observeTick(awaitTimings.structureShells);
+        }
+        recordPropsAwait(awaitTimings.structureShellWaits, startedAt);
       }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
@@ -3554,6 +3578,7 @@ export async function createPropsAsync(
       awaitTimings,
       ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
       ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
+      ...(runtime.structureShellStats ? { structureShells: runtime.structureShellStats } : {}),
       ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
         reason: describePropsFailure(wreckWorkerFailure) } } : {}),
     };
@@ -3629,6 +3654,19 @@ function closeIncompletePropsBuild(
   // IteratorClose cleanup must not replace the failed import/tick/build.
   try { iterator.return?.(); } catch (_) { /* retain the original failure */ }
 }
+
+/** A pooled structure's place in the colliders until joinStructureShells (Plan W): any read of it before then throws. */
+function pendingShellRecord(id: string): CollisionRecord {
+  return new Proxy({} as CollisionRecord, {
+    get(_target, key) {
+      if (typeof key === 'symbol') return undefined;
+      throw new Error(`${id}: structure shell record read (${key}) before the build joined the pool`);
+    },
+    set(_target, key) { throw new Error(`${id}: structure shell record written (${String(key)}) before the build joined the pool`); },
+  });
+}
+/** How long the async build waits at the join for the pool's answers before deriving the rest itself (ms). */
+const STRUCTURE_SHELL_WAIT_MS = 15000;
 
 function* propsBuildSteps(
   heightField: HeightField,
@@ -4565,9 +4603,24 @@ ${snowCap ? `
     });
     structureDamage.set(structureIdx, { builder, style, anatomy });
   }
+  // Plan W (2026-10-13, the perf stream): in the browser's async build a structure's shell bands — 84 % of its collision
+  // derivation — are derived in the pool's workers while the build goes on (structureShellPool.ts). The contact band, the
+  // placement, the feature link and the anatomy stand as before; the shell records join the colliders at
+  // joinStructureShells, in each structure's own place in the list, before anything reads them (the Plan A reader
+  // audit: the map kits' clearance scans in dressMapExtras and after, the parked-vehicle seats, the destruction table).
+  // A structure whose packet moves or reads its records before then (a carriageway building, a foundry donor, the
+  // wharf's fishery) derives everything here, as every structure does in the Node builds.
+  const shellPool = structureShellPoolFor(sourceApplication.worker === true);
+  let shellsJoined = false;
+  interface PendingShells {
+    structureIdx: number; job: number; placeholder: CollisionRecord; id: string;
+    x: number; baseY: number; z: number; yaw: number; contact: CollisionRecord;
+  }
+  const pendingShells: PendingShells[] = [];
   function addStructureCollision(
-    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
+    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number, profileNow = false,
   ) {
+    if (shellPool && !shellsJoined && !profileNow) return addPooledStructureCollision(id, tmp, x, baseY, z, yaw);
     let profile;
     try {
       profile = deriveRuntimeStructureCollisionProfile(tmp);
@@ -4591,6 +4644,73 @@ ${snowCap ? `
     structurePlacements.set(structureIdx, { feature: null, contact, contactMinY: profile.contact.minY });
     describeStructureAt(structureIdx, id, tmp, x, baseY, z, yaw, [contact], shells);
     return profile;
+  }
+  /** addStructureCollision with the shells in the pool: the contact band now, a placeholder in the colliders' order. */
+  function addPooledStructureCollision(
+    id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
+  ): null {
+    let contactBand;
+    try {
+      contactBand = deriveRuntimeStructureContactBand(tmp);
+    } catch (error) {
+      throw new Error(`${id}: unable to derive structure collision`, { cause: error });
+    }
+    const structureIdx = structureSerial++;
+    const contact = appendStructureCollisionBand(obstacles, contactBand, x, baseY, z, yaw);
+    contact.kind = 'structure';
+    contact.structureIdx = structureIdx;
+    const placeholder = pendingShellRecord(id);
+    colliders.push(placeholder);
+    const job = shellPool!.post(tmp);
+    for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) {
+      geometry.userData.structureIdx = structureIdx;
+    }
+    structurePlacements.set(structureIdx, { feature: null, contact, contactMinY: contactBand.minY });
+    // the anatomy is the same but for its mass class, which reads the shells: joinStructureShells sets it
+    describeStructureAt(structureIdx, id, tmp, x, baseY, z, yaw, [contact], []);
+    pendingShells.push({ structureIdx, job, placeholder, id, x, baseY, z, yaw, contact });
+    return null;
+  }
+  /**
+   * The pooled structures' shell records take their placeholders' places in the colliders (the order the inline build
+   * gives them), each built as addStructureCollision builds them; an answer that has not arrived is derived here from
+   * the geometry the pool kept. The anatomy's mass class is then read from the structure's records, as
+   * describeStructureAt reads it. After the join every structure derives inline.
+   */
+  function joinStructureShells(): void {
+    if (!shellPool || shellsJoined) return;
+    shellsJoined = true;
+    const replacements = new Map<CollisionRecord, CollisionRecord[]>();
+    for (const pending of pendingShells) {
+      let bands = shellPool.take(pending.job);
+      if (!bands) {
+        try {
+          bands = deriveRuntimeStructureShellBands(unpackStructureShellWire(shellPool.wire(pending.job)));
+        } catch (error) {
+          throw new Error(`${pending.id}: unable to derive structure collision`, { cause: error });
+        }
+      }
+      const shells: CollisionRecord[] = [];
+      for (const band of bands) {
+        const shell = appendStructureCollisionBand(shells, band, pending.x, pending.baseY, pending.z, pending.yaw);
+        shell.kind = 'structure';
+        shell.structureIdx = pending.structureIdx;
+      }
+      replacements.set(pending.placeholder, shells);
+      const described = structureDamage.get(pending.structureIdx);
+      const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
+      if (described && state) described.anatomy.massClass = state.massClass;
+    }
+    const joined: CollisionRecord[] = [];
+    for (const record of colliders) {
+      const shells = replacements.get(record);
+      if (shells) for (const shell of shells) joined.push(shell);
+      else joined.push(record);
+    }
+    colliders.length = 0;
+    for (const record of joined) colliders.push(record);
+    pendingShells.length = 0;
+    shellPool.dispose();
   }
   /** The building just pushed onto the features is the structure just placed (its placement reads back from it). */
   function linkStructureFeature(): void {
@@ -4745,7 +4865,7 @@ ${snowCap ? `
    * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
   const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
   type CarriagewayPacket = {
-    kind: string; buckets: PropsBuckets; profile: ReturnType<typeof addStructureCollision>; records: CollisionRecord[];
+    kind: string; buckets: PropsBuckets; profile: NonNullable<ReturnType<typeof addStructureCollision>>; records: CollisionRecord[];
     feature: (typeof buildingFeatures)[number]; placement: PlacedRadius; source: { x: number; y: number; z: number; rot: number };
     w: number; d: number; chimneys: [number, number, number][];
   };
@@ -4903,7 +5023,10 @@ ${snowCap ? `
       return true;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
-    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
+    // (Plan W) a building whose packet moves or reads its records below derives them all now
+    const packetNow = !!carriageway || (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
+      || !!(foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot, packetNow);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
@@ -4918,13 +5041,13 @@ ${snowCap ? `
     }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
-      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile,
+      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile: profile!,
         records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
         placement: placedB[placedB.length - 1], source: { x: px, y: fit.y + 0.05, z: pz, rot }, w: carriageway.w, d: carriageway.d,
         chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
     }
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId)) {
-      foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile,
+      foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile: profile!,
         source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
@@ -4989,7 +5112,10 @@ ${snowCap ? `
         entry.x, entry.z, entry.rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
-    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+    // (Plan W) a building whose packet moves or reads its records below derives them all now
+    const packetNow = !!carriageway
+      || !!(foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure));
+    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot, packetNow);
     const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, entry.rot);
     _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
@@ -4998,14 +5124,14 @@ ${snowCap ? `
     linkStructureFeature();
     placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
     if (carriageway) {
-      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile,
+      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile: profile!,
         records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
         placement: placedB[placedB.length - 1], source: { x: entry.x, y: fit.y + 0.05, z: entry.z, rot: entry.rot },
         w: carriageway.w, d: carriageway.d, chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
     }
     // Ironworks' service court relocates its donors after the plan stands, as it does for a generated plan
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure)) {
-      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile,
+      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile: profile!,
         source: { x: entry.x, y: fit.y + 0.05, z: entry.z, yaw: entry.rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
@@ -9536,6 +9662,10 @@ ${snowCap ? `
   // the kit lays it into the wood bucket as before and hands the same geometries here; they leave the merged mesh
   // below for one mesh each on the shared wood material.
   const animatedDressing: AnimatedDressing[] = [];
+  // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
+  // below scan every record); the async build waits here for the pool's workers
+  if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
+  joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -11461,7 +11591,9 @@ ${snowCap ? `
     placement.y = entry.contact.min[1] - entry.contactMinY;
   }
   nearMeshVertexHeights = null; // (a query after the build asks the field)
-  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
+  joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
+  return { structureShellStats: shellPool ? { ...shellPool.stats } : null,
+    group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
     setCrushSweeps: (on: boolean) => crushPress.setSweeps(on),
