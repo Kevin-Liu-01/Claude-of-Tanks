@@ -4766,6 +4766,23 @@ ${snowCap ? `
     }
     return { w, d };
   }
+  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
+   * rectangles, each grown by half the gap. */
+  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
+    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
+    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
+    for (const angle of axes) {
+      const ux = Math.cos(angle), uz = -Math.sin(angle);
+      const reach = (f: typeof a) => {
+        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
+        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
+        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
+      };
+      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
+      if (separation > reach(a) + reach(b)) return false;
+    }
+    return true;
+  }
   function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
     rot: number): { w: number; d: number } | null {
     const { w, d } = footprintOf(tmp, info);
@@ -4790,6 +4807,30 @@ ${snowCap ? `
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
+    // (the buildings stream, 2026-10-13, the weird-buildings survey) a block-fill building, or a road building with no
+    // frontage site, stands clear of the buildings already standing. Its site was cleared by its centre alone
+    // (isRoadBuildingSiteClear), so a large plan building
+    // could stand into the row beside it (Steinburg's factory, 3 m into the shelled house at its north end, the house's
+    // gable through its roof). One whose footprint meets a standing building's moves by the least distance that clears
+    // it (rings of 0.5 m out to 8 m), on the block fill's own terms; with no such place it stays. No draws move.
+    if (fromRoad && !roadSite && !explicitStructure) {
+      const reach = footprintOf(tmp, info);
+      const meets = (x: number, z: number): boolean => buildingFeatures.some((other) =>
+        footprintsMeet({ x, z, w: reach.w, d: reach.d, rot }, other, 0.5));
+      if (meets(px, pz)) {
+        let clear: { x: number; z: number; fit: ReturnType<typeof groundFit> } | null = null;
+        for (let ring = 1; ring <= 16 && !clear; ring++) {
+          for (let k = 0; k < 24 && !clear; k++) {
+            const a = k * Math.PI / 12, x = px + Math.cos(a) * ring * 0.5, z = pz + Math.sin(a) * ring * 0.5;
+            if (meets(x, z) || noVeg(x, z) || heightField._roadDist(x, z) < 11 || conflictsTacticalReservation(x, z)) continue;
+            if (!buildingFootprintClearsRoads({ x, z, rot }, reach.w, reach.d, roads, CARRIAGEWAY_CLEARANCE)) continue;
+            const moved = groundFit(x, z, info.w, info.d, rot);
+            if (moved.spread <= P.maxSpread) clear = { x, z, fit: moved };
+          }
+        }
+        if (clear) { px = clear.x; pz = clear.z; fit = clear.fit; }
+      }
+    }
     jitterBuildingUvs(tmp, stream);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -5380,23 +5421,6 @@ ${snowCap ? `
   // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
   // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
   // collision bands, footprint record and chimney tops move with it.
-  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
-   * rectangles, each grown by half the gap. */
-  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
-    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
-    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
-    for (const angle of axes) {
-      const ux = Math.cos(angle), uz = -Math.sin(angle);
-      const reach = (f: typeof a) => {
-        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
-        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
-        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
-      };
-      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
-      if (separation > reach(a) + reach(b)) return false;
-    }
-    return true;
-  }
   function moveBuildingsOffCarriageways(): void {
     for (const packet of carriagewayPackets) {
       const { source, w, d } = packet;
