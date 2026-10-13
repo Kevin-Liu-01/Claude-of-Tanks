@@ -429,7 +429,11 @@ function buildFleet() {
   }
   const index = join(OUT, 'fleet', 'index.json');
   mkdirSync(dirname(index), { recursive: true });
-  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection, vehicles }, null, 1)}\n`);
+  // the index is keyed as vehicle-takes.json is, so it stands at the media record's tank-id schema (fleet-rekey.mjs
+  // writes tools/media-r5/tank-id-schema.json and stamps the index the same way); a tree without the record has none
+  const idRecord = join(ROOT, 'tools/media-r5/tank-id-schema.json');
+  const tankIdSchema = existsSync(idRecord) ? JSON.parse(readFileSync(idRecord, 'utf8')).tankIdSchema : null;
+  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, ...(tankIdSchema ? { tankIdSchema } : {}), collection: PICKS.collection, vehicles }, null, 1)}\n`);
   record(index, null, { vehicles: Object.keys(vehicles).length });
   return vehicles;
 }
