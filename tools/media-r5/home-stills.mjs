@@ -113,6 +113,17 @@ export const HOME_STILLS = [
         debris(wall(FARMHOUSE, 3), 300, { count: 40, speedMps: 16, hot: 0.3, scale: 1.2 }), shockwave(wall(FARMHOUSE, 0.5), 300, { radiusM: 18 }),
         exhaust('hero', fxTime - 200), dust('hero', fxTime - 150, 8, 0.7)],
       fxTime, lenses: [lens('front-r', 4.5, 7.8, 0.7, 46, [1, -8, 3]), lens('front-r-wide', 6, 12.5, 0.8, 50, [3, -12, 3.5])] })),
+  // round 5: from stand A the house stood 34-39 m off the lens, a fifth of the frame's height, and its collapse read as a
+  // smoke puff behind the T-14; stand C keeps the T-14 12 m south of the house (7.5 m off its wall, turret reversed on
+  // it), so the house fills a third of the frame; its moment comes from a time series (600-2400 ms)
+  still('buildings-c', 'verdant', 'day', 807, [20.5, -44.6], 210, 't14_x', { slot: 'buildings', aimAtFoes: false, turret: 180,
+    effects: [fire('hero', 250, { tracer: false }),
+      boom(wall(FARMHOUSE, 2.5), 290, 'small', { munition: 'he', cause: 'shot' }),
+      { type: 'structure', at: FARMHOUSE, tMs: 300, params: { stage: 'collapsed', cause: 'blast', munition: 'he', dirDeg: 30, hitH: 2.5 } },
+      debris(wall(FARMHOUSE, 3), 300, { count: 40, speedMps: 16, hot: 0.3, scale: 1.2 }), shockwave(wall(FARMHOUSE, 0.5), 300, { radiusM: 18 }),
+      exhaust('hero', 1000), dust('hero', 1050, 8, 0.7)],
+    fxTime: 1200, lenses: [lens('r40', 5.8, 6.9, 0.7, 46, [2, -8, 3]), lens('l40', -5.8, 6.9, 0.7, 46, [-2, -8, 3]),
+      lens('r30w', 6, 10.4, 0.8, 50, [2.5, -10, 3.5])] }),
   // a T-90M ramming a Leopard 2A6 at the moment of contact: its front-right corner meets the Leopard's flank 22° off
   // square, 1.5 m behind the Leopard's centre, in a shower of sparks out of the wedge between nose and flank (a square
   // T-bone hides the contact behind the rammed hull from every front three-quarter lens)
