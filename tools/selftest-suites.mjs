@@ -1531,6 +1531,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/beachedBoat.selftest.mjs',
     'src/world/maps/boatHulls.selftest.mjs',
     'src/world/maps/cartKit.selftest.mjs',
+    // b45 (visual/scenery-b45): the ammunition crates as painted wooden crates, stacked with contact; a phone keeps the
+    // legacy boxes
+    'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
