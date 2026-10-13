@@ -26,6 +26,7 @@
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
 
 interface DeviceDiagResult {
@@ -468,6 +469,23 @@ function timedSceneProbeStep<T>(
  * brighten a failed lit pipeline into a pass. No shader defines/light counts
  * change, and no temporary radiance is retained across an async checkpoint.
  */
+/**
+ * 2026-10-12 (the perf stream, black screen on entry): a probe draw sees the frame the scene pass draws — the camera's
+ * layers without the late-FX layer (sceneSourcePass.ts), as the forward program warm compiles them (main.ts, "do not
+ * compile late FX under ordinary scene lights"). The probe used to render with the camera's full mask, so the late-FX
+ * layer's effects and lights joined the ordinary scene: every one of those materials, and every lit material under the
+ * extra lights, linked a program variant no battle frame uses (36 on the MP lane's traced entry, 199 -> 235 programs,
+ * one synchronous 21.7 s frame on the loaded harness) — inside the covered entry, before the reveal.
+ */
+function withSceneProbeLayers<T>(camera: THREE.Camera, render: () => T): T {
+  const layers = (camera as { layers?: THREE.Layers }).layers;
+  if (!layers) return render();
+  const mask = layers.mask;
+  layers.disable(LATE_FX_LAYER);
+  try { return render(); }
+  finally { layers.mask = mask; }
+}
+
 function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: () => T): T {
   if (scale === 1) return render();
   if (!Number.isFinite(scale) || scale <= 0 || scale > 1) {
@@ -679,7 +697,7 @@ function createSceneBandProbe(
         });
         recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
         timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
-          scene, radianceScale, () => renderer.render(scene, camera)));
+          scene, radianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
         recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
         timedSceneProbeStep(timing, 'readbackMs', () => {
           renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
@@ -705,7 +723,7 @@ function createSceneBandProbe(
       const prevMip = renderer.getActiveMipmapLevel();
       try {
         renderer.setRenderTarget(rt);
-        renderer.compile(scene, camera);
+        withSceneProbeLayers(camera, () => renderer.compile(scene, camera));
         return true;
       } finally {
         renderer.setRenderTarget(prev, prevFace, prevMip);
@@ -988,7 +1006,7 @@ async function measureSceneBandAsync(
       });
       recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
       timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
-        scene, nightRadianceScale, () => renderer.render(scene, camera)));
+        scene, nightRadianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
       recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
       if (timing) timing.readbackSteps = {};
       readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
