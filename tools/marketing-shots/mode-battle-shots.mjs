@@ -15,7 +15,7 @@
 //     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=7613] [--cache-dir=<dir>]
 //        [--base=http://127.0.0.1:<port>] [--hold-max-min=9] [--headroom-gb=8] [--dpr=2] [--lock-timeout-min=600]
 //        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double]
-//   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...]
+//   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...] [--alt="what the frame shows"]
 //   node tools/marketing-shots/mode-battle-shots.mjs --sheet=modes/standard   (rebuild a slot's contact sheets)
 //
 // Recipes and the director are imported afresh for every slot, so a long run that is still queued for the lock picks
@@ -85,6 +85,11 @@ function readMeta(slot) {
 if (opt('pick')) {
   const picksPath = join(OUT, 'picks.json');
   const picks = existsSync(picksPath) ? JSON.parse(readFileSync(picksPath, 'utf8')) : {};
+  // --alt="<what the delivered frame shows>" (the lead, 2026-10-13: the home alts are written from the frames, never
+  // from the shot list's plan): the mode or feature, the map's display name, the hour if it shows, the vehicles one can
+  // name and the action. Stored with the pick and logged; one slot per --pick when an alt is given.
+  const alt = opt('alt');
+  if (alt != null && opt('pick').split(',').filter(Boolean).length !== 1) throw new Error('--alt describes one pick: give one <slot>:<n>');
   for (const pair of opt('pick').split(',').filter(Boolean)) {
     const at = pair.lastIndexOf(':');
     // <slot>:<n> or <slot>:<n>-<variant> (a recipe's alternate crop of candidate n, e.g. c003-tight.png)
@@ -99,8 +104,9 @@ if (opt('pick')) {
     mkdirSync(dirname(deliver), { recursive: true });
     copyFileSync(source, deliver);
     picks[slot] = { candidate: n, source, deliver, width, height, pickedAt: new Date().toISOString(),
-      meta: readMeta(slot).find((m) => m.n === n) || null };
+      ...(alt != null ? { alt } : {}), meta: readMeta(slot).find((m) => m.n === n) || null };
     log(`picked ${slot} #${n} (${width}x${height}) -> ${deliver}`);
+    if (alt != null) log(`alt: ${alt}`);
   }
   writeFileSync(picksPath, `${JSON.stringify(picks, null, 1)}\n`);
   process.exit(0);
