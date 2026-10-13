@@ -62,7 +62,9 @@ const coverStill = [`site50/${arg('final') ?? 'deliver-r7'}/s13-farm-race/s13-fa
 export const FIGURES = [
   { name: 'previz-sheet', src: 'previz50-r6/s05-barn-advance.jpg', width: 1920, q: 84 },
   { name: 'plan-view', src: 'plan-view-s21.png', width: 2000, q: 84 },
-  { name: 'cover', src: coverStill, width: 1920, q: 84 },
+  // the cover is only drawn as the 1200×630 social card: 1440 px keeps it crisp there and the collection in its
+  // budget (round 14's still is far more detailed than round four's: 351 KB at 1920 px against 85 KB)
+  { name: 'cover', src: coverStill, width: 1440, q: 82 },
 ];
 
 // The scene each take was filmed from, as the Studio saves it: the shot library's code (tools/media-r5/site50-shots/<id>.json;
