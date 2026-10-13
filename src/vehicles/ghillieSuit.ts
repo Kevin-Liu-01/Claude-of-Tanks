@@ -16,6 +16,8 @@ import {
 } from './camoNetTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
+import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];
@@ -179,14 +181,6 @@ export interface GhillieConfig {
    * their receipts.
    */
   fieldClearanceM?: number;
-  /**
-   * The netting lane (2026-10-10, the regenerated mission seats): a drone dock the suit keeps clear, as boxes
-   * [x0, x1, y0, y1, z0, z1] in the dock's frame (missionAttachmentSeats.generated.ts: a turret seat is in the turret's
-   * own space, a hull seat in the vehicle root's). No cloth or garnish point of that owner stands in a box. Set where the
-   * suit covers every other seat the generator finds; ghillieSuit.selftest holds each box to its seat record and the
-   * sim's dock volumes (cradle, airframe and launch column). Needs fieldClearanceM.
-   */
-  dockKeepOut?: { readonly frame: 'turret' | 'hull'; readonly boxes: readonly (readonly number[])[] };
 
   /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
@@ -2198,9 +2192,13 @@ const FIELD_BOUGH_TONES: Readonly<Record<SuitTheatre, ReadonlyArray<readonly [re
     [[0.62, 0.64, 0.56], 0.12]],
   snow: [[[1, 1, 1], 1]],
 });
-/** Clumps per square metre of garnished cloth (before the suit's density), and boughs per bough clump. */
-const FIELD_CLUMPS_TOP = 1.45;
-const FIELD_CLUMPS_DRAPE = 1.6;
+/**
+ * Clumps per square metre of garnished cloth (before the suit's density), and boughs per bough clump. 2026-10-12
+ * (cam-netting; the owner: "a ton more netting and camo leaves all over", asked again on 10-12): a third more clumps
+ * than the fix round's 1.45 / 1.6, which left the roofs reading as bare plate between sparse patches.
+ */
+const FIELD_CLUMPS_TOP = 1.95;
+const FIELD_CLUMPS_DRAPE = 2.1;
 const FIELD_BOUGHS_PER_CLUMP = [3, 4, 4, 5, 5, 6, 6, 7] as const;
 /** The highest a field bough may stand over a roof or deck net (its owner's clearances decide below that). */
 const FIELD_RISE_M: Readonly<Record<GhillieOwner, number>> = Object.freeze({ hull: 0.42, turret: 0.55, gun: 0.1 });
@@ -2316,7 +2314,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const at = surface.sample(u, v);
     return !!at && surface.cardOk([at.p[0] + at.n[0] * 0.05, at.p[1] + at.n[1] * 0.05, at.p[2] + at.n[2] * 0.05]);
   };
-  for (let attempt = 0; attempt < 40 + want * 40 && seats.length < want; attempt++) {
+  for (let attempt = 0; attempt < 60 + want * 60 && seats.length < want; attempt++) {
     const u = u0 + rng() * spanU, v = v0 + (top ? rng() : 0.04 + rng() * 0.93) * spanV;
     const r = 0.15 + rng() * 0.12;
     const accept = rng();
@@ -3777,19 +3775,51 @@ interface FieldClearance {
   addHullSuit(): void;
 }
 
-function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: GhillieConfig['dockKeepOut']): FieldClearance {
+/**
+ * What a field suit keeps round the drone dock (m): the decor's 3 cm (decorations.ts DOCK_KEEP_OUT_CLEAR) and 2 cm for a
+ * cloth roll's lift and a card's spray.
+ */
+export const SUIT_DOCK_CLEAR_M = 0.05;
+
+/**
+ * The drone dock a field suit keeps clear (2026-10-12, cam-netting: replaces the netting lane's hand-copied boxes, which
+ * went stale whenever a seat moved and read a scaled turret's seat in the rig's scaled units): the vehicle's own seat
+ * record (missionDockSeats.generated.ts, the one the decor's keep-out reads), as two boxes in the seat's frame, the
+ * union of the cradle's solids and the union of the parked airframe with its launch column, each grown by
+ * SUIT_DOCK_CLEAR_M (one clean opening the dock stands in, no slivers of net between its feet). A turret seat's frame
+ * is the turret rig without its own scale and a hull seat's the vehicle root without its own, as the seat generator
+ * measures them (tools/mission-attachment-geometry.mjs collectMissionStock). Empty without a seat record.
+ */
+export function suitDockBoxes(specId: string): { frame: 'turret' | 'hull'; boxes: THREE.Box3[] } | null {
+  const seat = MISSION_DOCK_SEATS[specId];
+  if (!seat) return null;
+  const at = new THREE.Vector3(seat.x, seat.y, seat.z);
+  const union = (volumes: ReadonlyArray<{ min: readonly number[]; max: readonly number[] }>): THREE.Box3 => {
+    const box = new THREE.Box3();
+    for (const v of volumes) box.union(new THREE.Box3(new THREE.Vector3(v.min[0], v.min[1], v.min[2]), new THREE.Vector3(v.max[0], v.max[1], v.max[2])));
+    return box.translate(at).expandByScalar(SUIT_DOCK_CLEAR_M);
+  };
+  return { frame: seat.frame === 'turret' ? 'turret' : 'hull', boxes: [union(missionCradleVolumes(seat)), union(missionAirframeVolumes(seat, true))] };
+}
+
+function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearance {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
   const toHull = new THREE.Matrix4().copy(hull.matrixWorld).invert();
-  // the drone dock's keep-out boxes in the owner's space: a turret seat's frame is the turret's own, a hull seat's the
-  // vehicle root's (brought into the hull's space corner by corner; the rigs carry no rotation at the build)
-  const dockOwner: GhillieOwner | null = dock ? (dock.frame === 'turret' ? 'turret' : 'hull') : null;
-  const dockBoxes: THREE.Box3[] = (dock?.boxes ?? []).map((b) => {
-    const box = new THREE.Box3(new THREE.Vector3(b[0], b[2], b[4]), new THREE.Vector3(b[1], b[3], b[5]));
-    const root = hull.parent;
-    return dock!.frame === 'hull' && root ? box.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toHull, root.matrixWorld)) : box;
-  });
+  // the drone dock's keep-out boxes (suitDockBoxes) brought from the seat's frame into the owner's space corner by corner
+  // (the rigs carry no rotation at the build; a scaled turret rig's own scale divides back out)
+  const dock = suitDockBoxes(P.spec.id);
+  const dockOwner: GhillieOwner | null = dock ? dock.frame : null;
+  const dockBoxes: THREE.Box3[] = [];
+  if (dock) {
+    const frame = dock.frame === 'turret' ? turret : (hull.parent ?? hull), group = dock.frame === 'turret' ? turret : hull;
+    frame.updateWorldMatrix(true, false);
+    const sc = frame.scale;
+    const seatToOwner = new THREE.Matrix4().copy(group.matrixWorld).invert()
+      .multiply(frame.matrixWorld).multiply(new THREE.Matrix4().makeScale(1 / sc.x, 1 / sc.y, 1 / sc.z));
+    for (const box of dock.boxes) dockBoxes.push(box.clone().applyMatrix4(seatToOwner));
+  }
   const dockPoint = new THREE.Vector3();
   // an open cradle's declared trunnion receiving stations (turret frame), whose columns the suit keeps clear
   const cradleStations: ReadonlyArray<readonly number[]> = (turret.userData?.gunCradleSeats?.stations ?? [])
@@ -4054,7 +4084,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, dock?: Ghillie
     }
     return true;
   };
-  // and never inside the drone dock's boxes (cloth, garnish and every card vertex: dockKeepOut)
+  // and never inside the drone dock's boxes (cloth, garnish and every card vertex: suitDockBoxes)
   const netOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => !inDock(owner, p) && workingOk(owner, p, garnish);
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
   const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
@@ -4209,11 +4239,15 @@ function ownerProbe(parent: THREE.Object3D, others: readonly THREE.Object3D[], c
  * a LOD's coarse levels and anything the suit or decor added are left out). Components under 1.5 cm (a lamp's bezel
  * seam) and over 1.4 m (no lid is that wide) are skipped.
  */
-function lidBoxes(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Array<[number, number, number, number]> {
+/**
+ * The lid pieces of an owner (one connected piece of a Glass, Hatch or Cupola bucket each), as plan boxes
+ * [x0, x1, z0, z1] with their height span [y0, y1], owner frame.
+ */
+function lidPieces(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Array<{ box: [number, number, number, number]; y0: number; y1: number }> {
   parent.updateWorldMatrix(true, true);
   const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
   const m = new THREE.Matrix4(), v = new THREE.Vector3();
-  const out: Array<[number, number, number, number]> = [];
+  const out: Array<{ box: [number, number, number, number]; y0: number; y1: number }> = [];
   const visit = (o: THREE.Object3D): void => {
     if (o.visible === false || others.includes(o) || /_ghillie_|^rig_decor/.test(o.name || '')) return;
     if ((o as THREE.LOD).isLOD) { const first = (o as THREE.LOD).levels[0]?.object; if (first) visit(first); return; }
@@ -4234,15 +4268,16 @@ function lidBoxes(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Ar
         if (w === undefined) weld.set(key, i); else parentOf[find(i)] = find(w);
       }
       for (let t = 0; t + 2 < count; t += 3) { parentOf[find(t + 1)] = find(t); parentOf[find(t + 2)] = find(t); }
-      const boxes = new Map<number, [number, number, number, number]>();
+      const boxes = new Map<number, { box: [number, number, number, number]; y0: number; y1: number }>();
       for (let i = 0; i < count; i++) {
-        const r = find(i), b = boxes.get(r) ?? [Infinity, -Infinity, Infinity, -Infinity];
-        b[0] = Math.min(b[0], pts[i * 3]); b[1] = Math.max(b[1], pts[i * 3]);
-        b[2] = Math.min(b[2], pts[i * 3 + 2]); b[3] = Math.max(b[3], pts[i * 3 + 2]);
+        const r = find(i), b = boxes.get(r) ?? { box: [Infinity, -Infinity, Infinity, -Infinity], y0: Infinity, y1: -Infinity };
+        b.box[0] = Math.min(b.box[0], pts[i * 3]); b.box[1] = Math.max(b.box[1], pts[i * 3]);
+        b.box[2] = Math.min(b.box[2], pts[i * 3 + 2]); b.box[3] = Math.max(b.box[3], pts[i * 3 + 2]);
+        b.y0 = Math.min(b.y0, pts[i * 3 + 1]); b.y1 = Math.max(b.y1, pts[i * 3 + 1]);
         boxes.set(r, b);
       }
       for (const b of boxes.values()) {
-        const w = b[1] - b[0], d = b[3] - b[2];
+        const w = b.box[1] - b.box[0], d = b.box[3] - b.box[2];
         if (Math.max(w, d) < 0.015 || w > 1.4 || d > 1.4) continue;
         out.push(b);
       }
@@ -4251,6 +4286,29 @@ function lidBoxes(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Ar
   };
   for (const child of parent.children) visit(child);
   return out;
+}
+
+/**
+ * 2026-10-12 (cam-netting; the owner on the TUSK and M1A3: "be unafraid of adding these on roofs of hulls or turrets"):
+ * a flat lid piece of 0.7 m2 or more and at most 7 cm thick is no crew hatch but an ammunition bay's blow-off panel (the
+ * Abrams' BlastPanelLeft/Right, 0.80 x 1.12 m, drawn in the hatch bucket): the crew never opens it, and its field net
+ * lies over it as over the roof round it. Every crew lid (the largest, a CV90 troop hatch, is 0.54 m2) stays open.
+ */
+export function blowOffPanel(w: number, d: number, h: number): boolean {
+  return w * d >= 0.7 && h <= 0.07;
+}
+
+/** The plan boxes of an owner's crew lids, lenses and cupolas (blow-off panels left out: blowOffPanel). */
+function lidBoxes(parent: THREE.Object3D, others: readonly THREE.Object3D[]): Array<[number, number, number, number]> {
+  return lidPieces(parent, others)
+    .filter((b) => !blowOffPanel(b.box[1] - b.box[0], b.box[3] - b.box[2], b.y1 - b.y0))
+    .map((b) => b.box);
+}
+
+/** An owner's blow-off panels (blowOffPanel) as boxes in its own frame, for the receipts that keep the suit off lids. */
+export function ghillieBlowOffPanels(parent: THREE.Object3D): THREE.Box3[] {
+  return lidPieces(parent, []).filter((b) => blowOffPanel(b.box[1] - b.box[0], b.box[3] - b.box[2], b.y1 - b.y0))
+    .map((b) => new THREE.Box3(new THREE.Vector3(b.box[0], b.y0, b.box[2]), new THREE.Vector3(b.box[1], b.y1, b.box[3])));
 }
 
 /** The theatre this build is painted for: its scheme wheel paint (materials.ts), woodland without one. */
@@ -4584,7 +4642,7 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   ];
   // the netting lane: the working vehicle's clearances, read once off the assembled build (the hull's top re-read
   // before the turret's suit, so that suit also clears the hull's)
-  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.dockKeepOut) : null;
+  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];

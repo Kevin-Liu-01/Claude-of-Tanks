@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { addVehicleGhillieSuit, GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
+import { addVehicleGhillieSuit, blowOffPanel, ghillieBlowOffPanels, GHILLIE_SUIT_CONFIGS, suitDockBoxes } from './ghillieSuit.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -465,11 +465,19 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
       assert.equal(ray.intersectObjects(all, false).length, 0, `${id}: the smoke discharger on ${o.name} fires clear of the suit`);
     }
   });
+  // 2026-10-12 (cam-netting): an ammunition bay's blow-off panels (the Abrams' blast panels, drawn in the hatch bucket)
+  // are no crew lid and carry the net (ghillieSuit.ts blowOffPanel); every crew lid and cupola stays clear
+  const blowOff = { hull: ghillieBlowOffPanels(rigs.hull), turret: ghillieBlowOffPanels(rigs.turret) };
+  for (const owner of ['hull', 'turret']) for (const b of blowOff[owner]) {
+    const size = b.getSize(new THREE.Vector3());
+    assert.ok(blowOffPanel(size.x, size.z, size.y), `${id}: a blow-off panel is broad and flat`);
+  }
   tank.root.traverse((o) => {
     const lid = /^(hull|turret)(Hatch|Cupola)$/.exec(o.name);
     if (!o.isMesh || !lid) return;
     const own = suit[lid[1]];
     const box = new THREE.Box3().setFromObject(o);
+    const toOwner = new THREE.Matrix4().copy(rigs[lid[1]].matrixWorld).invert();
     for (const mesh of own) {
       const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
       for (let i = 0; i < pos.count; i++) {
@@ -478,7 +486,11 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
         // lid; a net thrown over a cage a metre above the hatches leaves them free to open)
         if (v.y < box.max.y - 0.03 || v.y > box.max.y + 0.6) continue;
         ray.set(v, new THREE.Vector3(0, -1, 0)); ray.far = 0.62;
-        assert.equal(ray.intersectObject(o, false).length, 0, `${id}: ${mesh.name} lies over ${o.name} at ${v.toArray().map((q) => q.toFixed(2))}`);
+        const hits = ray.intersectObject(o, false).filter((hit) => {
+          const q = hit.point.clone().applyMatrix4(toOwner);
+          return !blowOff[lid[1]].some((b) => b.clone().expandByScalar(0.01).containsPoint(q));
+        });
+        assert.equal(hits.length, 0, `${id}: ${mesh.name} lies over ${o.name} at ${v.toArray().map((q) => q.toFixed(2))}`);
       }
     }
   });
@@ -490,27 +502,33 @@ for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
       .intersectObject(net, false);
     assert.deepEqual(hits.map((hit) => hit.point.toArray().map((v) => +v.toFixed(2))), [], `${id} leaves the gun's bore line open`);
   }
-  // 2026-10-10 (the netting lane, the regenerated mission seats): a suit that keeps a drone dock clear holds the dock's
-  // native seat: every cradle, airframe and launch-column volume of the record sits inside a keep-out box with 3 cm to
-  // spare, and no vertex of that owner's suit lies in a box (gen-mission-attachment-seats --check is the dock's own gate)
-  if (cfg.dockKeepOut) {
-    const seat = MISSION_ATTACHMENT_SEATS[id];
-    assert.ok(seat, `${id}: a dock keep-out needs the hull's native seat record`);
-    assert.equal(seat.frame, cfg.dockKeepOut.frame, `${id}: the dock keep-out is in its seat's frame`);
-    const keep = cfg.dockKeepOut.boxes.map((b) => new THREE.Box3(new THREE.Vector3(b[0], b[2], b[4]), new THREE.Vector3(b[1], b[3], b[5])));
-    for (const volume of [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)]) {
-      const box = new THREE.Box3(new THREE.Vector3(...volume.min), new THREE.Vector3(...volume.max)).translate(new THREE.Vector3(seat.x, seat.y, seat.z));
-      assert.ok(keep.some((k) => k.clone().expandByScalar(-0.03).containsBox(box)),
-        `${id}: the dock volume ${box.min.toArray().map((v) => v.toFixed(3))}..${box.max.toArray().map((v) => v.toFixed(3))} lies inside a keep-out box with 3 cm to spare`);
-    }
+  // 2026-10-12 (cam-netting; the netting lane's rule of 2026-10-10, now off the seat record itself): every fleet suit holds
+  // its vehicle's drone dock where the seat record puts it. Each cradle, airframe and launch-column volume lies inside
+  // suitDockBoxes with 3 cm to spare (the decor's DOCK_KEEP_OUT_CLEAR), and no vertex of that owner's suit lies within
+  // 3 cm of a volume, measured in the seat's own frame as the seat generator measures it (the owner rig, or the vehicle
+  // root, without its own scale: the T-90M's and the Merkavas' turret rigs are scaled). gen-mission-attachment-seats
+  // --check is the dock's own gate.
+  const seat = MISSION_ATTACHMENT_SEATS[id];
+  assert.ok(seat, `${id}: a suited hull keeps its native drone dock seat record`);
+  const dock = suitDockBoxes(id);
+  assert.equal(dock?.frame, seat.frame, `${id}: the suit's dock keep-out is in its seat's frame`);
+  const volumes = [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((volume) =>
+    new THREE.Box3(new THREE.Vector3(...volume.min), new THREE.Vector3(...volume.max)).translate(new THREE.Vector3(seat.x, seat.y, seat.z)));
+  for (const box of volumes) {
+    assert.ok(dock.boxes.some((k) => k.clone().expandByScalar(-0.03).containsBox(box)),
+      `${id}: the dock volume ${box.min.toArray().map((v) => v.toFixed(3))}..${box.max.toArray().map((v) => v.toFixed(3))} lies inside a keep-out box with 3 cm to spare`);
+  }
+  {
     const owner = seat.frame === 'turret' ? 'turret' : 'hull';
     const frame = seat.frame === 'turret' ? rigs.turret : tank.root;
-    const toFrame = new THREE.Matrix4().copy(frame.matrixWorld).invert();
+    const toSeat = new THREE.Matrix4().copy(frame.matrixWorld)
+      .multiply(new THREE.Matrix4().makeScale(1 / frame.scale.x, 1 / frame.scale.y, 1 / frame.scale.z)).invert();
+    const near = volumes.map((box) => box.clone().expandByScalar(0.03));
     for (const mesh of suit[owner]) {
       const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
       for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(toFrame);
-        assert.ok(!keep.some((k) => k.containsPoint(v)), `${id}: ${mesh.name} stands in the drone dock's keep-out at ${v.toArray().map((q) => q.toFixed(2))}`);
+        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(toSeat);
+        assert.ok(!near.some((k) => k.containsPoint(v)), `${id}: ${mesh.name} stands within 3 cm of the drone dock at ${v.toArray().map((q) => q.toFixed(2))}`);
       }
     }
   }
