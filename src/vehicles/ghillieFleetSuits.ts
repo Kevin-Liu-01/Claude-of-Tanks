@@ -712,7 +712,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       // looks ahead over the roof from z -0.67)
       top: [laid({ x0: -1.98, x1: 1.98, z0: -3.25, z1: 2.00, nx: 50, nz: 66, y: 0.72, garnishRiseM: 0.16, seed: 11,
         holes: [rect(-0.82, -0.18, -1.12, -0.50), [[-0.70, -0.55], [-0.30, -0.55], [-0.12, 0.85], [-0.88, 0.85]]] })],
-      side: [...flanks(-3.20, -1.45, 0.62, 0.40, 0.95, 17), ...flanks(-1.30, 0.40, 0.66, 0.38, 1.86, 19)],
+      // the left bustle drape parts over the national insignia (2026-10-12, cam-netting: with the denser garnish the
+      // marking solver found no seat with all nine footprint rays clear, sourceXSecondWaveMarkings.selftest)
+      side: [...flanks(-3.20, -1.45, 0.62, 0.40, 0.95, 17, {}, (side) => (side < 0 ? [cut(-2.95, -2.33, 0, 0.66)] : [])),
+        ...flanks(-1.30, 0.40, 0.66, 0.38, 1.86, 19)],
       face: [face({ z: -3.30, x0: -0.82, x1: 0.82, y0: 0.24, y1: 0.60, nx: 16, ny: 6, seed: 23 })],
     },
     hull: {

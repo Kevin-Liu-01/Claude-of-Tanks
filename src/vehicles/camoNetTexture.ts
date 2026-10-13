@@ -72,7 +72,9 @@ export const FIELD_NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Obj
   desert: {
     cord: [52, 52, 38],
     strips: [[[58, 58, 38], 0.22], [[74, 72, 46], 0.22], [[92, 86, 56], 0.2], [[108, 94, 62], 0.18], [[70, 58, 40], 0.18]],
-    boughs: 0.64, boughTint: [1.0, 0.97, 0.8],
+    // 2026-10-12 (cam-netting): more of a sand hull's garnish cut boughs than hessian (0.64 -> 0.82): the khaki strips
+    // vanish into the paint, the boughs carry the cover
+    boughs: 0.82, boughTint: [1.0, 0.97, 0.8],
   },
   snow: {
     cord: [104, 104, 98],

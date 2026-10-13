@@ -2432,7 +2432,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
         elev = bough ? 0.28 + je * 0.6 : 0.04 + je * 0.14;
       }
       const dir = inPlane(theta);
-      const base = (cfg.leafScale ?? 1) * (bough ? 0.6 : 0.4);
+      // 2026-10-12 (cam-netting): a sand hull's boughs a quarter longer (the holm oak and olive sprigs read as specks
+      // on sand paint at hero distance; the woodland spruce and beech boughs are broad already)
+      const base = (cfg.leafScale ?? 1) * (bough ? (theatre === 'desert' ? 0.75 : 0.6) : 0.4);
       const length = base * (bough ? 0.78 + jl * 0.72 : 0.75 + jl * 0.6);
       const width = length * (bough ? 0.58 : 0.5);
       const value = bough ? 0.76 + jv * 0.26 : 0.6 + jv * 0.32;

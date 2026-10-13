@@ -42,12 +42,18 @@ function hullCageTop(id:ProtectionId,z:number):number{
  * the hull frame, and the turret roof's height in the turret frame (measured on the built hulls; every net is laid on
  * the armour, so these are only where it starts its search).
  */
-const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:number;glacisTop:number;roof:number}>>={
-  ua_t80u_modern:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68},
-  ua_t72b3m_modern:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72},
-  ua_t72b3_modern:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68},
-  ua_t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72},
+const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:number;glacisTop:number;roof:number;marks:readonly(readonly[number,number])[]}>>={
+  ua_t80u_modern:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
+  ua_t72b3m_modern:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
+  ua_t72b3_modern:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
+  ua_t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
 };
+/**
+ * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
+ * solver chose on the bare kit, tools/gen-vehicle-marking-seats.mjs): the roof net is opened 26 cm round each, so the
+ * finished vehicle still shows them (tank-assets-check's visibility receipt).
+ */
+const markOpening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
 
 /** A roof or deck net laid over the armour (ghillieFleetSuits.ts laid: clipped to the armour, opened round every lid). */
 function laidNet(panel:Omit<NonNullable<NonNullable<GhillieConfig['hull']>['top']>[number],'yFromArmour'|'clipToArmour'|'autoOpeningsM'|'rimScale'>){
@@ -93,7 +99,7 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
       // 2026-10-12 (cam-netting): the whole turret roof netted round the hatches, sights, the roof gun and the drone
       // dock (the builder opens each), from the bustle screen to the brow
       top:[laidNet({x0:-d.turretX+.04,x1:d.turretX-.04,z0:d.rearZ+.02,z1:1.75,nx:38,nz:Math.round((1.73-d.rearZ)/.1),
-        yAt:()=>k.roof,garnishRiseM:.16,seed:151})],
+        yAt:()=>k.roof,garnishRiseM:.16,seed:151,holes:k.marks.map(markOpening)})],
       side:[-1,1].map(side=>({side,z0:d.sideBack+.04,z1:d.sideFront-.055,nz:index===3?23:17,ny:7,seed:71+side,
         topAt:()=>d.top-.026,bottomAt:(z:number)=>d.bottom+.068+.017*Math.sin(z*5.2),
         outAt:(_z:number,t:number)=>d.turretX+.028+(1-t)*.015})),
