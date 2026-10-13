@@ -398,6 +398,15 @@ function captureContext(seed) {
     assert.match(mat.vertexShader, /\* \( 0\.050 \* size \* min\( age, 4\.0 \) \);/, 'eddies push a puff about by its size as it ages');
     assert.match(mat.fragmentShader, /vec2 warp = wn \* tileSize \* uWarpK \* \( 0\.5 \+ 0\.8 \* vT \);/, 'the lookup is warped: no clean round ball');
     assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
+    // (the coordinator: the billow "reads as a cut-out cloud with a defined lobed silhouette") the billow's rim thins and
+    // its outer lobes fall away on a noisy radius; its lobes' shading is pulled toward their mean; the burst keeps its rim
+    assert.match(mat.vertexShader, /vSoft = vec3\( local, band < 1\.0 - 0\.5 \? 1\.0 : 0\.0 \);/, 'the billow (band 0) is marked');
+    assert.match(mat.fragmentShader, /float covS = mix\( covE, pow\( covE, 1\.45 \) \* fall, sb \);/, 'its density thins toward the rim');
+    assert.match(mat.fragmentShader, /float fall = 1\.0 - smoothstep\( 0\.4 \+ 0\.36 \* \( wn\.x \+ 0\.5 \), 1\.02, rr \);/,
+      'its outer lobes fall away on a noisy radius (no extra fetch)');
+    assert.match(mat.fragmentShader, /float lb = 0\.33 \* sb;/, 'its lobes blend into one another');
+    assert.match(mat.fragmentShader, /float sb = vSoft\.z \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
+      'a burning fireball keeps its lobes; it softens as it cools into smoke');
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
     rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;

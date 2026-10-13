@@ -189,6 +189,7 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying vec2 vDetail;
+varying vec3 vSoft;       // card-local uv, 1 for the billow medium (its softened silhouette)
 ${FOG_PARS_V}
 void main() {
   float life = aVL.w;
@@ -196,7 +197,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0; vGlow = 0.0;
+    vFeather = 1.0; vGlow = 0.0; vSoft = vec3( 0.5, 0.5, 0.0 );
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -242,6 +243,7 @@ void main() {
   float f1 = min( f0 + 1.0, frames - 1.0 );
   vBlend = fpos - f0;
   vec2 local = vec2( mirror < 0.0 ? 1.0 - uv.x : uv.x, uv.y );
+  vSoft = vec3( local, band < ${VOLUME_ATLAS.media.billow.firstBand + VOLUME_ATLAS.media.billow.variants}.0 - 0.5 ? 1.0 : 0.0 );
   float cols = uAtlas.x, rows = uAtlas.y;
   vec2 tileA = vec2( mod( f0, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f0 / cols ) ) );
   vec2 tileB = vec2( mod( f1, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f1 / cols ) ) );
@@ -322,6 +324,7 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying float vGlow;
+varying vec3 vSoft;
 ${FOG_PARS_F}
 float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
@@ -362,7 +365,16 @@ void main() {
   float dn = texture2D( uDetail, vDetail ).r * 0.62 + texture2D( uDetail, vDetail * 2.31 + 0.37 ).r * 0.38;
   float er = uDetailK * ( 1.0 - smoothstep( 0.2, 0.9, cov ) ) * dn;
   covE = clamp( ( covE - er ) / max( 1.0 - er, 0.05 ), 0.0, 1.0 );
-  float a = covE * vColor.a * ( 1.0 - k * k ) * uGrade.x;
+  // (the coordinator, at chase range: the billow "still reads as a cut-out cloud with a defined lobed silhouette") the
+  // billow's density thins toward its rim (a gentler coverage response) and the card's outer lobes fall away on a
+  // noisy radius (the warp's own low-frequency noise: no extra fetch), so its silhouette dissolves into the air rather
+  // than ending on a drawn lobe line; the burst medium (dust, soil) keeps its torn rim, and a fireball keeps its lobes
+  // while it burns (the softening comes in as its heat dies into smoke)
+  float sb = vSoft.z * ( 1.0 - smoothstep( 0.05, 0.4, vHeat ) );
+  float rr = length( vSoft.xy - 0.5 ) * 2.0;
+  float fall = 1.0 - smoothstep( 0.4 + 0.36 * ( wn.x + 0.5 ), 1.02, rr );
+  float covS = mix( covE, pow( covE, 1.45 ) * fall, sb );
+  float a = covS * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
   if ( a < 0.003 ) discard;
@@ -371,6 +383,11 @@ void main() {
   float R = vMirror > 0.0 ? rx : lx;
   float L = vMirror > 0.0 ? lx : rx;
   float U = A.g * A.g, D = B.r * B.r;
+  // the billow's lobes blend into one another: their six-way shading pulled a third of the way to its mean (each lobe's
+  // light kept, the hard step between neighbouring lobes softened)
+  float m4 = 0.25 * ( R + L + U + D );
+  float lb = 0.33 * sb;
+  R = mix( R, m4, lb ); L = mix( L, m4, lb ); U = mix( U, m4, lb ); D = mix( D, m4, lb );
   float tau = -log( max( 1.0 - cov * 0.995, 1e-3 ) );
   float front = 1.0 - 0.5 * cov;
   float back = clamp( tau * ( 1.0 - cov ) / max( cov, 1e-3 ), 0.0, 1.0 );
