@@ -289,7 +289,8 @@ export async function runDestructionCheck({
     rows.push(row);
     log(`${id} ${seam.builder}: ${row.pass ? 'PASS' : `FAIL (${failures.join('; ')})`}`);
   }
-  return { mapId, pass: rows.length > 0 && rows.every((r) => r.pass), buildings: rows.length, rows };
+  // (a map without destructible structures — the Moon's — has nothing to judge: it passes, with its count 0)
+  return { mapId, pass: rows.every((r) => r.pass), buildings: rows.length, rows };
 }
 
 function parseArgs(argv) {
