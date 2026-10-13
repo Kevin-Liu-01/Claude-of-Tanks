@@ -256,7 +256,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "pos": [
           -1.861,
           1.1445,
-          -1.2249999
+          -1.7169998
         ],
         "quaternion": [
           0,
