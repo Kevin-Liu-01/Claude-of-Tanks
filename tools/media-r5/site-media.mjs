@@ -331,7 +331,9 @@ function buildFilms() {
 // scene. Loading a card stages the take as it was filmed, ready to change and film again.
 // The fleet (owner 2026-10-12: "make a special video for all tanks ... and use that everywhere"): every production
 // vehicle's own take (tools/media-r5/vehicle-takes.json: its fleet take, else its take among the owner's nine, else the
-// first of the fifty it leads) as a 960×540 silent VP9 loop and a poster, and fleet/index.json, which the Tank Gallery's
+// first of the fifty it leads) as a 640×360 silent VP9 loop (crf 48 held under 680 kbit/s, constrained quality: about
+// 0.4-0.6 MB, where 960×540 crf 36 made ~2 MB; the panels show it a few hundred pixels wide) and a 640×360 poster (the
+// coordinator's budget, 2026-10-13: loops ≤ 0.6 MB, posters ≤ 120 KB, fleet-media.selftest), and fleet/index.json, which the Tank Gallery's
 // dossiers, the Garage's battle gallery, the manual and the Studio's Director read. A vehicle whose take is not delivered
 // yet is left out of the index (the app shows nothing for it).
 const FLEET_TAKES = join(ROOT, 'tools/media-r5/vehicle-takes.json'), FLEET_ROSTER = join(ROOT, 'tools/media-r5/fleet-roster.json');
@@ -352,10 +354,10 @@ function buildFleet() {
     if (!d?.hd || !d.poster || !meta) continue;
     const take = { take: takeId, round: d.round, vehicle };
     make(join(OUT, 'fleet', `${vehicle}.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
-      '-vf', 'scale=960:540:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '36', '-b:v', '0', '-row-mt', '1',
+      '-vf', 'scale=640:360:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '48', '-b:v', '680k', '-row-mt', '1',
       '-deadline', 'good', '-cpu-used', '2', tmp]), take);
     make(join(OUT, 'fleet', `${vehicle}.jpg`), d.poster, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.poster,
-      '-vf', 'scale=960:540:flags=lanczos', '-q:v', '4', tmp]), take);
+      '-vf', 'scale=640:360:flags=lanczos', '-q:v', '5', tmp]), take);
     vehicles[vehicle] = { take: takeId, map: meta.map, title: meta.title, short: meta.short,
       loop: `${BASE_URL}/fleet/${vehicle}.webm`, poster: `${BASE_URL}/fleet/${vehicle}.jpg`, scene: `${BASE_URL}/scenes/${takeId}.scene.json` };
   }

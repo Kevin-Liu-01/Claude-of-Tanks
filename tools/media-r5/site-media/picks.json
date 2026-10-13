@@ -3,7 +3,9 @@
   "collection": "site50-r14",
   "round": "r14",
   "sources": {
+    "deliverOver": "shots/media-r5/site50/deliver-r15",
     "deliver": "shots/media-r5/site50/deliver-r14",
+    "deliverFleet": "shots/media-r5/site50/deliver-fleet",
     "frames": "shots/media-r5/final/blur-r14/renders",
     "framesFallback": "shots/media-r5/final/blur-r13/renders",
     "trailer": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4"
