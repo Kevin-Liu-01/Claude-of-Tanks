@@ -621,6 +621,16 @@ function weatheredSheet(c: Rgb, lo: number, hi: number): (p: Vec3) => Rgb {
   };
 }
 
+/**
+ * The gable ends a bare roof leaves open (the buildings stream, 2026-10-12, the integrity check: a shop's tin roof or a
+ * granary's thatch drawn with emitRoof alone showed sky through its ends): the roof's gable polygon run through from end
+ * to end under the slabs, so both ends close and the roof's inside is solid. Dressing (decor) unless told otherwise.
+ */
+export function closeGables(sink: PartSink, rg: RoofGeometry, bucket: RegionalBucket, opts: EmitOptions = {}): void {
+  if (!rg.gable) return;
+  sink.prism(bucket, rg.gable.map(([u, yy]): Vec3 => [u, yy, -rg.halfD]), [0, 0, 1], 2 * rg.halfD, { decor: true, ...opts });
+}
+
 /** Emit the roof slabs, ridge and hip caps. */
 /**
  * The ridge and hip caps' weather (the facades lane, round 6; gauntlet wave 241: "unweathered clay roofs": "moss, lichen

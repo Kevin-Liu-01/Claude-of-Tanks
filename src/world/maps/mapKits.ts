@@ -288,12 +288,18 @@ function makeMarketRow(rng: Rng, buckets: GeometryBuckets): StructureDimensions 
   };
   const b = makeMarketStall(rng, tmp);
   const off = a.w / 2 + b.w / 2 - 1.2;
+  // (the buildings stream, 2026-10-12, the integrity check: each part of the second stall took its own turn and shift,
+  // so its canopy, posts and crates stood apart in the air) the stall turned and shifted whole by its first draw; the
+  // stream still draws a pair per part, so every later placement on the map draws as before
+  let turn: number | null = null, shift = 0;
   for (const [key, geometries] of Object.entries(tmp)) {
     const target = buckets[key];
     if (!geometries || !target) continue;
     for (const g of geometries) {
-      g.rotateY(Math.PI + (rng() - 0.5) * 0.2);
-      g.translate(off, 0, (rng() - 0.5) * 1.2);
+      const ry = Math.PI + (rng() - 0.5) * 0.2, rz = (rng() - 0.5) * 1.2;
+      if (turn === null) { turn = ry; shift = rz; }
+      g.rotateY(turn);
+      g.translate(off, 0, shift);
       target.push(g);
     }
   }

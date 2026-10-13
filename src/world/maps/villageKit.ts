@@ -470,13 +470,15 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
     parts.roof.push(roof.translate(0.1, (hLo + hHi) / 2 + 0.22, 0));
   }
   // firewood fill: two visible stacked rows in the open bay
+  // (the buildings stream, 2026-10-12, the integrity check: the logs stood apart in the air, the lower row 4 cm over the
+  // base, the upper 4 cm over it) each log laid on the base or the row under it and against its neighbours
   for (let row = 0; row < 2; row++) {
     for (let k = 0, n = Math.floor(d / 0.30) - 1; k < n; k++) {
-      const log = new THREE.CylinderGeometry(0.115, 0.13, w * 0.7, 6, 1);
+      const log = new THREE.CylinderGeometry(0.145, 0.155, w * 0.7, 6, 1);
       scaleUV(log, 0.8, 0.8);
       log.rotateZ(Math.PI / 2);
       log.rotateY((rng() - 0.5) * 0.06);
-      parts.wood.push(log.translate(-0.1, 0.35 + row * 0.30, -d / 2 + 0.5 + k * 0.30));
+      parts.wood.push(log.translate(-0.1, 0.32 + row * 0.29, -d / 2 + 0.5 + k * 0.30));
     }
   }
   pushParts(buckets, parts);
@@ -486,6 +488,15 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
 // ---------------------------------------------------------------------------
 // DESERT / URBAN / RAILYARD
 // ---------------------------------------------------------------------------
+
+/** A copy of an open shell wound to face inward (the inner side of a parapet ring or a broken dome). */
+function insideOut(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const index = geometry.index;
+  if (index) for (let i = 0; i < index.count; i += 3) { const b = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b); }
+  const normal = geometry.getAttribute('normal');
+  if (normal) for (let i = 0; i < normal.count; i++) normal.setXYZ(i, -normal.getX(i), -normal.getY(i), -normal.getZ(i));
+  return geometry;
+}
 
 /** Minaret: tapered round shaft, balcony ring, lantern + small dome. */
 export function makeMinaret(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
@@ -503,10 +514,22 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
   const rail = new THREE.CylinderGeometry(r * 1.16, r * 1.16, 0.62, 12, 1, true);
   scaleUV(rail, 4, 0.5);
   parts.wood.push(rail.translate(0, h + 1.75, 0));
+  // (the buildings stream, 2026-10-12, the integrity check: the parapet's inside was its culled back, open from above;
+  // the lantern stood 0.55 m over the balcony on nothing and the dome hung over it, open underneath) the parapet's
+  // inner face, the shaft's core rising through the balcony to the lantern, a cornice under the dome closing it
+  const railIn = new THREE.CylinderGeometry(r * 1.12, r * 1.12, 0.62, 12, 1, true);
+  scaleUV(railIn, 4, 0.5);
+  parts.wood.push(insideOut(railIn).translate(0, h + 1.75, 0));
+  const core = new THREE.CylinderGeometry(r * 0.66, r * 0.72, 0.9, 12, 1);
+  scaleUV(core, 4, 0.5);
+  parts.plaster.push(core.translate(0, h + 1.6, 0));
   // lantern + dome + finial
   const lant = new THREE.CylinderGeometry(r * 0.62, r * 0.68, 1.5, 10, 1);
   scaleUV(lant, 3, 1);
   parts.plaster.push(lant.translate(0, h + 2.75, 0));
+  const cornice = new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.16, 12, 1);
+  scaleUV(cornice, 3, 0.2);
+  parts.stone.push(cornice.translate(0, h + 3.47, 0));
   for (let k = 0; k < 4; k++) {
     const op = box(0.34, 0.9, 0.1);
     op.rotateY(k * Math.PI / 2);

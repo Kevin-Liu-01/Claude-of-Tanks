@@ -28,8 +28,13 @@ const INFO = {
   civichall: [33.2, 22.8, 14.7], parkingdeck: [27.4, 22.4, 13.7], broadcasttower: [24.2, 20.2, 60.1],
 };
 
-/** The census's views: three rings and the overhead view, coarser than the maps source's (the selftest's budget). */
+/** The census's views: three rings and the overhead view, coarser than the maps source's. */
 export const KIT_VIEW_OPTIONS = Object.freeze({ elevations: [-20, 0, 25], pxM: 0.1, maxRes: 192 });
+/**
+ * The gate's profile (the selftest and its ledger): one seed, the same rings at 12 cm pixels up to 160 px, each set
+ * piece once per distinct authoring (a map's repeated headframes are one row) — about two minutes of CPU.
+ */
+export const GATE_PROFILE = Object.freeze({ seeds: [11], viewOptions: Object.freeze({ elevations: [-20, 0, 25], pxM: 0.12, maxRes: 160 }), dedupeLandmarks: true });
 
 const mulberry = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
@@ -46,7 +51,7 @@ function worstOf(rows) {
 }
 
 export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29], generic = true, landmarks = true, only = '',
-  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS, images = null }) {
+  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS, images = null, dedupeLandmarks = false }) {
   const wantKit = (id) => !kits.length || kits.includes(id);
   const wantBuilder = (id) => !builders.length || builders.includes(id);
   const mapOfStyle = new Map(); const mapConfigs = new Map();
@@ -59,7 +64,7 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
     if (!own.pos.length) return null;
     const r = analyseBuilding(own, { groundFn: () => 0, ...viewOptions, keepRasters: !!images });
     if (images) images(`${key.replace(/[^\w.-]+/g, '_')}_s${seed}`, r.rasters);
-    return { key, kit, builder, seed, tris: r.tris, severity: severity(r, builder), summary: summarise(r, builder), detail: r, ...extra };
+    return { key, kit, builder, seed, tris: r.tris, severity: severity(r, builder, kit), summary: summarise(r, builder), detail: r, ...extra };
   };
   if (!only || only === 'kits') {
     for (const style of ARCHITECTURE_STYLES) {
@@ -99,11 +104,15 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
     }
   }
   if (landmarks && (!only || only === 'landmarks')) {
+    const authored = new Set();
     for (const [mapId, cfg] of mapConfigs) {
       const pieces = cfg.props?.landmarks ?? [];
       pieces.forEach((placement, i) => {
         const builder = LANDMARK_BUILDERS[placement.kind];
         if (!builder || !wantKit('landmark') || !wantBuilder(placement.kind)) return;
+        const authoring = `${mapId}:${placement.kind}:${JSON.stringify(resolveLandmarkParams(placement))}`;
+        if (dedupeLandmarks && authored.has(authoring)) return;
+        authored.add(authoring);
         const style = cfg.props?.architecture;
         const perSeed = [];
         for (const seed of seeds) {

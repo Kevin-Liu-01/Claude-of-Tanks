@@ -72,8 +72,8 @@ function packParts(parts, { includeFine = true, matrix = null } = {}) {
   return { pos, flags, bucketOf, buckets };
 }
 
-function severity(r, builder = '') {
-  if (!OPEN_BY_DESIGN.has(builder)) return coreSeverity(r);
+function severity(r, builder = '', kit = null) {
+  if (!openByDesign(builder, kit)) return coreSeverity(r);
   return coreSeverity({ ...r, kinds: { hole: r.kinds?.hole, inverted: r.kinds?.inverted } });
 }
 
@@ -109,7 +109,11 @@ async function writeRasters(dir, stem, rasters = []) {
 const OPEN_BY_DESIGN = new Set(['ruin', 'watertower', 'gantry', 'broadcasttower', 'mill', 'windmill', 'headframe', 'conveyor',
   'guyedMast', 'fireLookout', 'radomeTower', 'troposcatter', 'trussBridge', 'baileyBridge', 'trestleBridge', 'liftBridge',
   'viaduct', 'stoneArchBridge', 'belfry', 'campanile', 'bandstand', 'torii', 'parkGate', 'triumphalArch', 'kolkhozArch',
-  'snowFence', 'oreBin', 'valveTower', 'jamesway', 'airstrip', 'containerRow']);
+  'snowFence', 'oreBin', 'valveTower', 'jamesway', 'airstrip', 'containerRow', 'parkingdeck',
+  // kit builders standing for frames under a plot's name: Ironworks' pit headframe and blast furnace, Caldera's lattice
+  // stack, Skybridge's switchyard
+  'saar/firestation', 'saar/factory', 'kyushu/stack', 'glencanyon/terracetower']);
+const openByDesign = (builder, kit) => OPEN_BY_DESIGN.has(builder) || (!!kit && OPEN_BY_DESIGN.has(`${kit}/${builder}`));
 /** The maps source's views: four rings and the overhead view, 7 cm pixels up to 288 px. */
 const MAP_VIEW_OPTIONS = Object.freeze({ elevations: [-25, 0, 20, 45], pxM: 0.07, maxRes: 288 });
 function summarise(r, builder = '') {
@@ -197,7 +201,7 @@ async function checkStructures(mapId, structures, groundOf) {
     const row = { key: `${mapId}/${s.builder}#${s.idx}`, map: mapId, kit: s.style, builder: s.builder, idx: s.idx,
       centre: [(s.box[0] + s.box[3]) / 2, s.box[1], (s.box[2] + s.box[5]) / 2].map((v) => +v.toFixed(1)),
       size: [s.box[3] - s.box[0], s.box[4] - s.box[1], s.box[5] - s.box[2]].map((v) => +v.toFixed(1)),
-      tris: r.tris, severity: severity(r, s.builder), summary: summarise(r, s.builder), detail: r };
+      tris: r.tris, severity: severity(r, s.builder, s.style), summary: summarise(r, s.builder), detail: r };
     rows.push(row); checked++;
     if (flag('verbose')) printRow(row);
   }
@@ -271,8 +275,12 @@ if (fromJson) { /* rows read */ } else if (source === 'maps' && fromDump) {
 
 // ------------------------------------------------------------------------------------------------ kits
 if (source === 'kits' && !fromJson) {
-  const { runKitCensus } = await import('./building-integrity-kits.mjs');
-  await runKitCensus({ kits: list('kits'), builders: list('builders'), seeds: (opt('seeds', '11,29') || '11,29').split(',').map(Number),
+  const { runKitCensus, GATE_PROFILE } = await import('./building-integrity-kits.mjs');
+  // --profile=gate: the selftest's census (one seed, coarser views, each authored set piece once), its ledger's rows
+  const gateProfile = opt('profile', '') === 'gate';
+  await runKitCensus({ kits: list('kits'), builders: list('builders'),
+    seeds: gateProfile ? GATE_PROFILE.seeds : (opt('seeds', '11,29') || '11,29').split(',').map(Number),
+    ...(gateProfile ? { viewOptions: GATE_PROFILE.viewOptions, dedupeLandmarks: true } : {}),
     generic: !flag('no-generic'), landmarks: !flag('no-landmarks'), only: opt('only', ''),
     onRow: (row) => { rows.push(row); if (flag('verbose')) printRow(row); }, packParts, analyseBuilding, severity, summarise,
     images: opt('images', '') ? (stem, rasters) => writeRasters(opt('images', ''), stem, rasters) : null });

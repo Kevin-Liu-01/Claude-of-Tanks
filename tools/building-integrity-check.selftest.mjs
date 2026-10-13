@@ -24,7 +24,7 @@ for (const key of keys.filter((k) => /^landmark\/urban:townGate#/.test(k))) {
   assert.equal(ledger.rows[key].gapM2, 0, `${key}: no sky between its roof and walls`);
 }
 
-const gate = run('--source=kits', `--ledger=${LEDGER}`, '--gate');
+const gate = run('--source=kits', '--profile=gate', `--ledger=${LEDGER}`, '--gate');
 assert.equal(gate.status, 0, `ledger gate exit ${gate.status}\n${gate.stdout.split('\n').filter((l) => /LEDGER|ledger:/.test(l)).join('\n')}\n${gate.stderr}`);
 assert.match(gate.stdout, /ledger: \d+ rows hold, 0 regress, 0 without a row/);
 console.log(`building-integrity-check.selftest: self-test, gate towers and ${keys.length} ledger rows hold PASS`);
