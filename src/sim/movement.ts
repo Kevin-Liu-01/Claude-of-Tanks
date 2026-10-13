@@ -898,6 +898,15 @@ const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
 const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
 /** Round 30: the longest obstacle push one fixed step applies (60 steps/s → a 7 m intrusion resolves in ~120 ms). */
 const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
+/**
+ * (destruction stream, 2026-10-12; the owner: "tanks driving on odd surfaces like rocks and other irregularities will stop
+ * being glitchy and weird") the part of an obstacle push that is not this step's own travel being stopped — an overlap a
+ * changed attitude, a support change on a rock or a refused crush left — leaves over a few steps: at most this share of
+ * itself a step, never less than DEPENETRATION_MIN_M (the field audit's pops: a parked hull thrown 0.4 m off a bunker in
+ * one tick, a hull stepping off a rock 0.9 m sideways). The travel into the obstacle is still stopped at once.
+ */
+const DEPENETRATION_SHARE = 0.25;
+const DEPENETRATION_MIN_M = 0.06;
 /** state.impactSource values: what absorbed this tick's blocked closing speed. */
 export const IMPACT_SOURCE_NONE = 0;
 export const IMPACT_SOURCE_CLIFF = 1;
@@ -2832,6 +2841,23 @@ function integrateHorizontalMotion(
   const radiusM = spec.armor?.boundingRadiusM ?? spec.dims.hullLengthM * 0.5;
   _push.set(0, 0, 0);
   if (!collide(state.pos, radiusM, _push)) return;
+  // the push splits into the part that undoes this step's own travel into the obstacle (applied at once: a wall stops a
+  // hull) and the rest, an overlap the hull already stood in, which leaves gradually (DEPENETRATION_SHARE)
+  const travelX = (forwardX * state.speed + spring.recoilVX) * dt, travelZ = (forwardZ * state.speed + spring.recoilVZ) * dt;
+  const travelLen = Math.hypot(travelX, travelZ);
+  let cancelX = 0, cancelZ = 0;
+  if (travelLen > 1e-9) {
+    const along = (_push.x * travelX + _push.z * travelZ) / travelLen;
+    if (along < 0) {
+      const undo = Math.min(-along, travelLen);
+      cancelX = -travelX / travelLen * undo; cancelZ = -travelZ / travelLen * undo;
+    }
+  }
+  const restX = _push.x - cancelX, restZ = _push.z - cancelZ;
+  const restLen = Math.hypot(restX, restZ);
+  const restMax = Math.max(DEPENETRATION_MIN_M, restLen * DEPENETRATION_SHARE);
+  const restK = restLen > restMax ? restMax / restLen : 1;
+  _push.set(cancelX + restX * restK, 0, cancelZ + restZ * restK);
   // Round 30: a hull found deep inside a primitive (a clip through a wall, a roof it fell through, a spawn inside a
   // footprint) leaves it over a few steps instead of one 7 m teleport — the visible "goes crazy" pop.
   const pushLen = Math.hypot(_push.x, _push.z);
