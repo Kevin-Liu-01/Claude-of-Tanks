@@ -1935,6 +1935,59 @@ const battlePresentation = createBattlePresentationRuntime({
 // The opaque deployment transition has one typed owner. main.ts coordinates
 // acquisition and phase changes; this runtime owns the exact shader, shadow,
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
+// the perf stream (2026-10-13, the reworked terrain fold, step b): a map's terrain program is new to the GPU process the
+// first time a machine sees it, and its first draw compiles the GPU pipeline (1.3-2.4 s on block 11's runs) behind
+// whatever reads back next (the covered scene watchdog). Once its links land, one terrain chunk is drawn into an 8 x 8
+// target of the scene pass's formats (half-float colour, its depth texture's type, its samples) with the scene's own
+// lights and fog, every other renderable hidden for that one render and the cascades' shadow updates held, so that
+// compile runs while the deployment warm goes on. Nothing of it is presented; every flag is restored in the same task.
+let terrainPipelineTarget: THREE.WebGLRenderTarget | null = null;
+function drawTerrainPipeline(terrain: THREE.Object3D): void {
+  if (!terrain.parent || !terrain.visible) return;
+  let chunk: THREE.Mesh | null = null;
+  terrain.traverseVisible((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!chunk && mesh.isMesh && mesh.geometry?.getAttribute('fold')) chunk = mesh;
+  });
+  if (!chunk) return;
+  const sceneTarget = post.sceneAA.sceneTarget;
+  if (!terrainPipelineTarget || terrainPipelineTarget.samples !== sceneTarget.samples) {
+    terrainPipelineTarget?.dispose();
+    terrainPipelineTarget = new THREE.WebGLRenderTarget(8, 8, {
+      type: sceneTarget.texture.type,
+      depthTexture: new THREE.DepthTexture(8, 8, sceneTarget.depthTexture?.type),
+      stencilBuffer: false,
+      samples: sceneTarget.samples,
+    });
+    terrainPipelineTarget.texture.name = 'TerrainPipelineWarm.color';
+  }
+  const hidden: THREE.Object3D[] = [];
+  const shadows = lighting.csm.lights.map((light) => [light.shadow, light.shadow.autoUpdate, light.shadow.needsUpdate] as const);
+  const shadowAuto = renderer.shadowMap.autoUpdate, shadowNeeds = renderer.shadowMap.needsUpdate;
+  const target = chunk as THREE.Mesh;
+  const culled = target.frustumCulled;
+  const priorTarget = renderer.getRenderTarget();
+  const priorFace = renderer.getActiveCubeFace(), priorMip = renderer.getActiveMipmapLevel();
+  try {
+    scene.traverseVisible((object) => {
+      const r = object as THREE.Mesh;
+      if (object !== target && (r.isMesh || (object as THREE.Line).isLine || (object as THREE.Points).isPoints || (object as THREE.Sprite).isSprite)) hidden.push(object);
+    });
+    for (const object of hidden) object.visible = false;
+    for (const [shadow] of shadows) { shadow.autoUpdate = false; shadow.needsUpdate = false; }
+    renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = false;
+    target.frustumCulled = false;
+    renderer.setRenderTarget(terrainPipelineTarget);
+    renderer.render(scene, camera);
+  } catch { /* the watchdog's draw compiles it, as before */ } finally {
+    renderer.setRenderTarget(priorTarget, priorFace, priorMip);
+    target.frustumCulled = culled;
+    renderer.shadowMap.autoUpdate = shadowAuto; renderer.shadowMap.needsUpdate = shadowNeeds;
+    for (const [shadow, auto, needs] of shadows) { shadow.autoUpdate = auto; shadow.needsUpdate = needs; }
+    for (const object of hidden) object.visible = true;
+  }
+}
+
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
     warmVisionSteps: combatWarmComposition.warmVisionSteps,
@@ -1980,7 +2033,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       const priorFace = renderer.getActiveCubeFace(), priorMip = renderer.getActiveMipmapLevel();
       try {
         renderer.setRenderTarget(post.sceneAA.sceneTarget);
-        void renderer.compileAsync(terrain, camera, scene).catch(() => { /* prepareWorldPrograms links what is left */ });
+        renderer.compileAsync(terrain, camera, scene)
+          .then(() => drawTerrainPipeline(terrain), () => { /* prepareWorldPrograms links what is left */ });
       } catch { /* prepareWorldPrograms links it */ } finally {
         renderer.setRenderTarget(priorTarget, priorFace, priorMip);
       }
