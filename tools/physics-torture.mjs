@@ -64,6 +64,11 @@ const hullUndersideOver = collisionModule.hullUndersideOver ?? null;
 // (census) a crushable the tree crushes under a hull that comes onto it from above (world/collision.ts
 // crushableLoadedFromAbove, where the tree has it): the step that meets its top crushes it, so no overlap is charged
 const crushableLoadedFromAbove = collisionModule.crushableLoadedFromAbove ?? null;
+// (census) a part's top under (x, z) as the tree's support reads it: a drawn top where the tree has them
+const partTopAt = collisionModule.collisionPartTopAt ?? ((record, part) => part?.y1 ?? record.max[1]);
+/** The tree's broad standing test for a whole record (hullPassesRecordTop where the tree has it). */
+const passesRecord = collisionModule.hullPassesRecordTop
+  ?? ((record, under, clear) => hullPassesObstacleTop(under, record.max[1], record.min[1], !record.crushable, clear));
 /** Fill `out` ({ centerX, centerZ, forwardX, ..., halfLength, halfWidth }) with the footprint the tree pushes. */
 function obstacleFootprint(rect, state, out) {
   if (footprintAt) return footprintAt(rect, state.pos.x, state.pos.z, state.yaw, state.visualPitch || 0, state.visualRoll || 0, out);
@@ -547,14 +552,15 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
     if (shape?.kind === 'compound') {
       // a compound record part by part, each at its own vertical extent (a viaduct span's slab, parapets and pier)
       for (const part of shape.parts) {
-        const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
+        const top = part.tp ? partTopAt(record, part, x, z) : part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
         if (top - bottom < 0.9 || top > limit) continue;
         if (pointInsideCollisionRecord(record, part, x, z) && top > best) best = top;
       }
       continue;
     }
-    if (record.max[1] - record.min[1] < 0.9 || record.max[1] > limit) continue;
-    if (pointInsideCollisionRecord(record, shape, x, z) && record.max[1] > best) best = record.max[1];
+    const flat = shape?.tp ? partTopAt(record, shape, x, z) : record.max[1];
+    if (record.max[1] - record.min[1] < 0.9 || flat > limit) continue;
+    if (pointInsideCollisionRecord(record, shape, x, z) && flat > best) best = flat;
   }
   return best;
 }
@@ -1057,6 +1063,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       // a wreck's hull and turret): the sink is read part by part, from the underside over that part alone
       if (record.shape2?.kind === 'compound' && !record.crushable && record.max[1] - record.min[1] >= 0.9) {
         for (const part of record.shape2.parts) {
+          // (a drawn top is read by the shell's depth under the ground and tops: bodyPen)
+          if (part.tp) continue;
           const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
           partRecord.min[0] = record.min[0]; partRecord.min[2] = record.min[2]; partRecord.min[1] = bottom;
           partRecord.max[0] = record.max[0]; partRecord.max[2] = record.max[2]; partRecord.max[1] = top;
@@ -1068,16 +1076,19 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
             metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, top - under);
           }
         }
-        if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) continue;
-      } else if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
-        // standing on it: the hull's underside over it must not sink below its top
-        if (record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
+        if (passesRecord(record, floors[i], clears[i])) continue;
+      } else if (passesRecord(record, floors[i], clears[i])) {
+        // standing on it: the hull's underside over it must not sink below its top (a drawn top: bodyPen reads it)
+        if (!record.shape2?.tp && record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
           || insideRecord(record, state.pos.x, state.pos.z))) {
           metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, record.max[1] - floors[i]);
         }
         continue;
       }
       push.x = 0; push.z = 0;
+      // (the tree reads the hull's underside over each record just before its push, as the sim's solver does: a drawn top's
+      // section is cut against that read)
+      undersideOver(record, foot, rect, state);
       if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
         record, push, floors[i], state.pos.y + bodyTop, clears[i])
         && !crushableLoadedFromAbove?.(record, floors[i], (state._ride.groundV ?? 0) - state._ride.v, collisionModule.obstacleContactTop?.(),
@@ -1275,7 +1286,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         const shape = record.shape2 ?? null;
         const parts = shape?.kind === 'compound' ? shape.parts : [shape];
         for (const part of parts) {
-          const top = part?.y1 ?? record.max[1], bottom = part?.y0 ?? record.min[1];
+          const top = part?.tp ? partTopAt(record, part, state.pos.x, state.pos.z) : part?.y1 ?? record.max[1];
+          const bottom = part?.y0 ?? record.min[1];
           if (state.pos.y <= bottom + 0.3) continue;
           if (!pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;
           inside = Math.max(inside, top - state.pos.y);

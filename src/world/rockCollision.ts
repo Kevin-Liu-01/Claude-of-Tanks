@@ -25,7 +25,9 @@
 // Pure and deterministic: no randomness, the same arithmetic on every tier (the collision form is the desktop form), and
 // every outline to the centimetre.
 import type { BufferGeometry } from 'three';
-import { convexOutlineInPlace, setCompoundShape, setConvexShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
+import {
+  convexOutlineInPlace, setCompoundShape, setConvexShape, setConvexTopShape, type CollisionRecord, type SimpleCollisionShape,
+} from './collision.ts';
 
 /** A stone rising less than this above the ground under it is driven over: no collider (a hull's belly line). */
 export const ROCK_DRIVE_OVER_M = 0.45;
@@ -131,6 +133,9 @@ export interface RockBand {
 export interface RockCollisionProfile {
   /** The movement footprint (world [x, z, ...]): the stone's hull over its rise floor, the first tier's. */
   contact: number[];
+  /** The stone's drawn top over its footprint (world/collision.ts collisionPartTopAt: [ox, oz, a, b, c, ...]; null when
+   * the stone has too few exposed points to bound): the movement record's one part. */
+  cap: number[] | null;
   /** The movement tiers, bottom up: nested columns (each inside the one under it), `y0` its tier's floor, `y1` its top
    * (the record's parts reach down to the record's floor: applyRockCollisionProfile). */
   tiers: RockBand[];
@@ -644,7 +649,140 @@ export function rockCollisionProfile(
       bands.unshift({ points: toe, y0: bands[0].y0, y1: Math.round((s.low + ROCK_TOE_M) * 100) / 100 });
     }
   }
-  return { contact: tiers[0].points, tiers, top: bands[bands.length - 1].y1, exposed: s.exposed, bands };
+  const top = bands[bands.length - 1].y1;
+  return { contact: tiers[0].points, cap: stoneCapPlanes(s, tiers[0].points, top), tiers, top, exposed: s.exposed, bands };
+}
+
+/**
+ * The directions a stone's drawn top may be bounded in (physics stream, 2026-10-13): straight up and six staggered rings,
+ * 80 to 8 degrees over the horizon (103 bearings in all). Each gives the stone's support plane in that direction — no
+ * point of the stone above it — and the lowest of them over a point is the stone's top there for the convex forms the
+ * dressing draws. stoneCapPlanes keeps the few that shape the top over the footprint.
+ */
+const CAP_DIRECTIONS: readonly number[] = (() => {
+  const out = [0, 1, 0];
+  for (const [elevation, count] of [[80, 6], [65, 12], [50, 16], [35, 20], [20, 24], [8, 24]] as const) {
+    const e = elevation * Math.PI / 180, stagger = (elevation / 15) % 2 ? 0.5 : 0;
+    for (let i = 0; i < count; i++) {
+      const a = ((i + stagger) * 2 * Math.PI) / count;
+      out.push(Math.cos(e) * Math.sin(a), Math.sin(e), Math.cos(e) * Math.cos(a));
+    }
+  }
+  return out;
+})();
+/** At most this many planes a stone's top keeps. */
+const CAP_MAX_PLANES = 12;
+/** ... and fewer once the kept ones read the whole set's top within this everywhere over the footprint (m). */
+const CAP_TOLERANCE_M = 0.02;
+/** The footprint is sampled at this spacing for the planes that shape its top (m). */
+const CAP_SAMPLE_M = 0.25;
+
+/**
+ * A stone's drawn top over its footprint as support planes ([ox, oz, a0, b0, c0, ...]: its top at (x, z) is the lowest
+ * of a·(x − ox) + b·(z − oz) + c; world/collision.ts collisionPartTopAt), from the stone that stands over its ground and
+ * the points where it enters the ground. Of the support planes in all CAP_DIRECTIONS, the kept ones are chosen one at a
+ * time from the top plane, each the one that brings the kept top down the most toward the whole set's (the stone's top
+ * to within its convex form) over the footprint, until they read it within CAP_TOLERANCE_M or CAP_MAX_PLANES are kept; to the millimetre (inside the
+ * shards' own rounding, so a shard and the rendered world read the same top). Deterministic, allocation per stone only.
+ */
+function stoneCapPlanes(s: PlacedSurface, footprint: readonly number[], top: number): number[] | null {
+  const { wx, wy, wz, rise, edges } = s;
+  const px: number[] = [], py: number[] = [], pz: number[] = [];
+  for (let v = 0; v < wx.length; v++) if (rise[v] >= 0) { px.push(wx[v]); py.push(wy[v]); pz.push(wz[v]); }
+  for (let k = 0; k < edges.length; k += 2) {
+    const a = edges[k], b = edges[k + 1], ra = rise[a], rb = rise[b];
+    if ((ra < 0) === (rb < 0)) continue;
+    const t = ra / (ra - rb);
+    px.push(wx[a] + (wx[b] - wx[a]) * t); py.push(wy[a] + (wy[b] - wy[a]) * t); pz.push(wz[a] + (wz[b] - wz[a]) * t);
+  }
+  if (px.length < 4 || footprint.length < 6) return null;
+  let ox = 0, oz = 0;
+  for (let i = 0; i < footprint.length; i += 2) { ox += footprint[i]; oz += footprint[i + 1]; }
+  ox = Math.round((ox / (footprint.length / 2)) * 100) / 100;
+  oz = Math.round((oz / (footprint.length / 2)) * 100) / 100;
+  // (to the millimetre: a plane's slope times the few metres to its origin stays under 5 mm, and the shards stay small;
+  // the offset rounded up past that, so no stone stands through its top)
+  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+  const count = CAP_DIRECTIONS.length / 3;
+  const planes = new Float64Array(count * 3);
+  for (let d = 0; d < count; d++) {
+    const nx = CAP_DIRECTIONS[3 * d], ny = CAP_DIRECTIONS[3 * d + 1], nz = CAP_DIRECTIONS[3 * d + 2];
+    let support = -Infinity;
+    for (let i = 0; i < px.length; i++) {
+      const v = nx * px[i] + ny * py[i] + nz * pz[i];
+      if (v > support) support = v;
+    }
+    planes[3 * d] = r3(-nx / ny);
+    planes[3 * d + 1] = r3(-nz / ny);
+    planes[3 * d + 2] = Math.ceil(((support - nx * ox - nz * oz) / ny + 0.004) * 1000) / 1000;
+  }
+  // the footprint's samples: its corners and a grid inside it
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (let i = 0; i < footprint.length; i += 2) {
+    minX = Math.min(minX, footprint[i]); maxX = Math.max(maxX, footprint[i]);
+    minZ = Math.min(minZ, footprint[i + 1]); maxZ = Math.max(maxZ, footprint[i + 1]);
+  }
+  const inside = (x: number, z: number): boolean => {
+    let sign = 0;
+    for (let i = 0; i < footprint.length; i += 2) {
+      const j = (i + 2) % footprint.length;
+      const cross = (footprint[j] - footprint[i]) * (z - footprint[i + 1]) - (footprint[j + 1] - footprint[i + 1]) * (x - footprint[i]);
+      if (Math.abs(cross) < 1e-12) continue;
+      const side = cross > 0 ? 1 : -1;
+      if (sign === 0) sign = side; else if (side !== sign) return false;
+    }
+    return true;
+  };
+  const sx: number[] = [], sz: number[] = [];
+  for (let i = 0; i < footprint.length; i += 2) { sx.push(footprint[i] - ox); sz.push(footprint[i + 1] - oz); }
+  for (let x = minX + CAP_SAMPLE_M / 2; x < maxX; x += CAP_SAMPLE_M) {
+    for (let z = minZ + CAP_SAMPLE_M / 2; z < maxZ; z += CAP_SAMPLE_M) if (inside(x, z)) { sx.push(x - ox); sz.push(z - oz); }
+  }
+  const n = sx.length;
+  // the whole set's top at each sample and the plane that gives it; the kept planes' top, from the top plane alone
+  const ref = new Float64Array(n), kept = new Float64Array(n);
+  // (the candidates: the planes that are the whole set's top somewhere over the footprint)
+  const candidate = new Uint8Array(count);
+  for (let i = 0; i < n; i++) {
+    let low = Infinity, at = 0;
+    for (let d = 0; d < count; d++) {
+      const y = planes[3 * d] * sx[i] + planes[3 * d + 1] * sz[i] + planes[3 * d + 2];
+      if (y < low) { low = y; at = d; }
+    }
+    ref[i] = low;
+    candidate[at] = 1;
+    kept[i] = planes[2];
+  }
+  // one plane at a time, the one that brings the kept top down the most over the footprint's samples (in all), until the
+  // kept top reads the whole set's within CAP_TOLERANCE_M everywhere or CAP_MAX_PLANES are kept
+  const order = [0];
+  const heights = new Float64Array(n);
+  while (order.length < CAP_MAX_PLANES) {
+    let over = 0;
+    for (let i = 0; i < n; i++) if (kept[i] - ref[i] > over) over = kept[i] - ref[i];
+    if (over <= CAP_TOLERANCE_M) break;
+    let best = -1, gain = 1e-6;
+    for (let d = 0; d < count; d++) {
+      if (!candidate[d] || order.includes(d)) continue;
+      let g = 0;
+      for (let i = 0; i < n; i++) {
+        const y = planes[3 * d] * sx[i] + planes[3 * d + 1] * sz[i] + planes[3 * d + 2];
+        if (y < kept[i]) g += kept[i] - y;
+      }
+      if (g > gain) { gain = g; best = d; }
+    }
+    if (best < 0) break;
+    order.push(best);
+    for (let i = 0; i < n; i++) {
+      heights[i] = planes[3 * best] * sx[i] + planes[3 * best + 1] * sz[i] + planes[3 * best + 2];
+      if (heights[i] < kept[i]) kept[i] = heights[i];
+    }
+  }
+  order.sort((p, q) => p - q);
+  const out = [ox, oz];
+  for (const d of order) out.push(planes[3 * d], planes[3 * d + 1], planes[3 * d + 2]);
+  void top;
+  return out;
 }
 
 function centroid(points: readonly number[]): [number, number] {
@@ -673,8 +811,11 @@ export function applyRockCollisionProfile(
   obstacle: CollisionRecord, collider: CollisionRecord, profile: RockCollisionProfile, seatY: number,
 ): void {
   const floorY = Math.min(seatY, profile.bands[0].y0, profile.tiers[0].y0);
+  // (physics stream, 2026-10-13) one part over the stone's footprint, its top the stone's own drawn top (stoneCapPlanes);
+  // a stone too sparse to bound keeps its tier columns
+  if (profile.cap) setConvexTopShape(obstacle, profile.tiers[0].points.slice(), profile.cap, floorY, profile.top);
   // (one tier: a convex record from the floor to the stone's top, the same column)
-  if (profile.tiers.length === 1) setConvexShape(obstacle, profile.tiers[0].points.slice());
+  else if (profile.tiers.length === 1) setConvexShape(obstacle, profile.tiers[0].points.slice());
   else setCompoundShape(obstacle, tierParts(profile.tiers, floorY));
   obstacle.min[1] = floorY;
   obstacle.max[1] = profile.top;
@@ -746,6 +887,9 @@ export interface FormationCollisionProfile {
   contact: number[][];
   /** Every block's movement tiers (movementTiers: nested columns per block), at most FORMATION_MAX_PARTS. */
   tiers: RockBand[];
+  /** (physics stream, 2026-10-13) every block as one part with its drawn top (stoneCapPlanes), when every block bounds
+   * one and they fit a record; else null and the record keeps the tiers. */
+  caps: Array<{ points: number[]; cap: number[]; top: number }> | null;
   bands: RockBand[];
   top: number;
   low: number;
@@ -803,6 +947,16 @@ export function formationCollisionProfile(
   if (!(top > low)) return null;
   const tiers = formationTiers(surfaces);
   if (!tiers.length) return null;
+  // each block its footprint (its first tier) under its own drawn top
+  let caps: FormationCollisionProfile['caps'] = surfaces.length <= FORMATION_MAX_PARTS ? [] : null;
+  for (const s of surfaces) {
+    if (!caps) break;
+    const first = movementTiers(s, ROCK_CONTACT_TOP_M, Infinity, FORMATION_TIER_FLOOR_M)[0];
+    const cap = first ? stoneCapPlanes(s, first.points, Math.round(s.top * 100) / 100) : null;
+    if (first && !cap) { caps = null; break; }
+    if (first && cap) caps.push({ points: first.points, cap, top: Math.round(s.top * 100) / 100 });
+  }
+  if (caps && !caps.length) caps = null;
   // (the ground outlines: each block's first column, all of it over the ground within the band)
   const grounds: Outline[] = [];
   for (const s of surfaces) {
@@ -834,7 +988,7 @@ export function formationCollisionProfile(
       }
     }
     if (bands.length <= FORMATION_MAX_PARTS || count === 1) {
-      return { contact, tiers, bands: bands.slice(0, FORMATION_MAX_PARTS), top: Math.round(top * 100) / 100, low: Math.round(low * 100) / 100 };
+      return { contact, tiers, caps, bands: bands.slice(0, FORMATION_MAX_PARTS), top: Math.round(top * 100) / 100, low: Math.round(low * 100) / 100 };
     }
   }
 }
@@ -848,7 +1002,15 @@ export function applyFormationCollision(
   obstacle: CollisionRecord, collider: CollisionRecord, profile: FormationCollisionProfile, floorY: number,
 ): void {
   const recordFloor = Math.min(floorY, profile.low);
-  setCompoundShape(obstacle, tierParts(profile.tiers, recordFloor));
+  if (profile.caps?.length === 1) {
+    setConvexTopShape(obstacle, profile.caps[0].points.slice(), profile.caps[0].cap, recordFloor, profile.caps[0].top);
+  } else if (profile.caps) {
+    // (physics stream, 2026-10-13) each block one part under its own drawn top (stoneCapPlanes)
+    setCompoundShape(obstacle, profile.caps.map((block) => {
+      const [cx, cz] = centroid(block.points);
+      return { kind: 'convex' as const, cx, cz, points: block.points.slice(), y0: recordFloor, y1: block.top, tp: block.cap };
+    }));
+  } else setCompoundShape(obstacle, tierParts(profile.tiers, recordFloor));
   obstacle.min[1] = recordFloor;
   obstacle.max[1] = profile.top;
   setCompoundShape(collider, profile.bands.map((band) => rangedPart(band.points, band.y0, band.y1)));

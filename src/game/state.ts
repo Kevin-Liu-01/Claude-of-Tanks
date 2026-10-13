@@ -106,7 +106,7 @@ import {
 } from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
-  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
+  hullPassesObstacleTop, hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';
@@ -1691,7 +1691,7 @@ function resolveObstacleCollisions(
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
     const clearBottom = foot.clearBottom;
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+    if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
     const deltaX = foot.centerX - closestX;
@@ -1741,7 +1741,7 @@ function resolveObstacleCollisions(
     foot.centerZ = centerZ + outPush.z - startZ;
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
+    if (hullPassesRecordTop(obstacle, spanBottom, foot.clearBottom)) continue;
     pushHullFromObstacle(_obstacleCenter, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth, obstacle, outPush,
       spanBottom, spanTop, foot.clearBottom);
   }

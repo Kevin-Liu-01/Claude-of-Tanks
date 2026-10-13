@@ -11,7 +11,7 @@
 //                 the visible surface floats the hull on air, a top under it sinks the hull into what it sees; a point
 //                 inside the record's box where the mesh stands a hull's height over the ground with no top under it is a
 //                 hole a hull falls into
-import { createObstacleGrid, pointInsideCollisionRecord, HULL_STANDABLE_HEIGHT_M } from '../src/world/collision.ts';
+import * as collision from '../src/world/collision.ts';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 import { auditMapWorld, buildPropsSoup, kindTotals, rayTriangles } from './worldColliderAudit.mjs';
 
@@ -30,11 +30,14 @@ export function supportGroup(record) {
   return ['objects', record.kind];
 }
 
+const { createObstacleGrid, pointInsideCollisionRecord, HULL_STANDABLE_HEIGHT_M } = collision;
+/** A part's top under (x, z), as the tree's support reads it (a drawn top where the tree has them). */
+const partTopAt = collision.collisionPartTopAt ?? ((record, part) => part?.y1 ?? record.max[1]);
 const partsOf = (record) => (record.shape2?.kind === 'compound' ? record.shape2.parts : [record.shape2 ?? null]);
 function ownTopAt(record, x, z) {
   let best = -Infinity;
   for (const part of partsOf(record)) {
-    const top = part?.y1 ?? record.max[1];
+    const top = part?.tp ? partTopAt(record, part, x, z) : part?.y1 ?? record.max[1];
     if (top > best && pointInsideCollisionRecord(record, part, x, z)) best = top;
   }
   return best;

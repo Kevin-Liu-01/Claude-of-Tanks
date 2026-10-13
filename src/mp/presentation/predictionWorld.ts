@@ -25,7 +25,7 @@ import type { MovementCollisionResolver, MovementHeightField, TankState } from '
 import { tankBodyTopM, tankContactRect } from '../../sim/tankContactShape.ts';
 import { pushHullInsidePlayableBounds } from '../../world/battlefieldBounds.ts';
 import {
-  createHullFootprint, crushableLoadedFromAbove, hullFootprint, hullPassesObstacleTop, hullUndersideOver, obstacleContactBottom, obstacleContactTop,
+  createHullFootprint, crushableLoadedFromAbove, hullFootprint, hullPassesRecordTop, hullUndersideOver, obstacleContactBottom, obstacleContactTop,
   pushHullFromHull, pushHullFromObstacle,
 } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
@@ -206,7 +206,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
       const clearBottom = foot.clearBottom;
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+      if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
@@ -232,7 +232,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       foot.centerZ = baseZ + outPush.z - startZ;
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
+      if (hullPassesRecordTop(obstacle, spanBottom, foot.clearBottom)) continue;
       pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
         spanBottom, spanTop, foot.clearBottom,

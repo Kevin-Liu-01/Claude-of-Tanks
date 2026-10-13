@@ -91,7 +91,7 @@ import type {
 } from './worldSnapshot.ts';
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
-  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
+  hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -1239,7 +1239,7 @@ export function createAuthoritativeMatch({
       _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
       const clearBottom = foot.clearBottom;
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+      if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
       const dx = foot.centerX - closestX;
@@ -1280,7 +1280,7 @@ export function createAuthoritativeMatch({
       foot.centerZ = centerZ + outPush.z - startZ;
       _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
+      if (hullPassesRecordTop(obstacle, spanBottom, foot.clearBottom)) continue;
       pushHullFromObstacle(
         _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
         obstacle, outPush, spanBottom, spanTop, foot.clearBottom,
