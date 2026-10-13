@@ -72,6 +72,7 @@ varying float vT;
 varying vec3 vCol;
 varying vec2 vN;
 varying float vTear;
+varying vec3 vWorld;
 #ifdef USE_FOG
   varying float vFogDepth;
 #endif
@@ -79,7 +80,7 @@ void main() {
   float age = uTime - aP.w;
   float t = age / max( aW.z, 0.05 );
   if ( age < 0.0 || t >= 1.0 || aW.w <= 0.0 ) {
-    vSide = 0.0; vA = 0.0; vT = 0.0; vCol = vec3( 0.0 ); vN = vec2( 0.0 ); vTear = 0.0;
+    vSide = 0.0; vA = 0.0; vT = 0.0; vCol = vec3( 0.0 ); vN = vec2( 0.0 ); vTear = 0.0; vWorld = vec3( 0.0 );
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -101,6 +102,7 @@ void main() {
   float sl = length( side );
   side = sl > 1e-5 ? side / sl : vec3( 0.0, 1.0, 0.0 );
   vec3 p = c + side * ( 0.5 * w * aT.w );
+  vWorld = p;
   vSide = aT.w;
   vT = t;
   // opacity: in at once behind the motor (a fraction of a second), thinning through the second half of its life; a
@@ -108,7 +110,9 @@ void main() {
   // ease it only a little (filmed: at 0.55 the player's own trail all but vanished behind the launcher)
   float endOn = abs( dot( normalize( aT.xyz ), normalize( view ) ) );
   vA = min( 0.95, aW.w * ( 1.0 + 0.7 * early ) ) * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) )
-    * mix( 1.0, 0.85, endOn * endOn );
+    * mix( 1.0, 0.85 - 0.4 * t, endOn * endOn );
+  // (filmed from the chase camera: an old, wide stretch seen end-on drew as a flat pale band with straight edges) the
+  // young line stays bright end-on; an old one, widened and torn, gives way
   // lit as the media are: the sun through thin smoke (forward scattering when it stands behind), the sky, the ground
   vec3 vd = normalize( view );
   float fwd = 0.55 + 0.45 * pow( max( 0.0, dot( -vd, uSunDir ) ), 3.0 );
@@ -133,6 +137,7 @@ varying float vT;
 varying vec3 vCol;
 varying vec2 vN;
 varying float vTear;
+varying vec3 vWorld;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   #ifdef FOG_EXP2
@@ -153,7 +158,10 @@ void main() {
   if ( vA <= 0.002 ) discard;
   float s = abs( vSide );
   // a soft round profile across the strip, its edge torn by noise that grows with age
-  float n = vnoise( vec2( vN.x, vSide * 1.7 + vN.y ) ) * 0.65 + vnoise( vec2( vN.x * 2.3, vSide * 3.1 - vN.y ) ) * 0.35;
+  float n = vnoise( vec2( vN.x, vSide * 1.7 + vN.y ) ) * 0.45 + vnoise( vec2( vN.x * 2.3, vSide * 3.1 - vN.y ) ) * 0.25;
+  // and torn in the world too: seen end-on the strip's own coordinates barely change across it, so a noise on the
+  // world position keeps its edge broken from every side
+  n += vnoise( vWorld.xz * 0.55 + vWorld.y * 0.35 + vN.y ) * 0.3;
   float edge = 1.0 - smoothstep( 0.35 - 0.3 * vTear, 1.0, s + vTear * ( n - 0.5 ) * 1.2 );
   float core = mix( 1.0, 0.55 + 0.9 * n, vTear );
   float a = vA * edge * clamp( core, 0.0, 1.2 );
