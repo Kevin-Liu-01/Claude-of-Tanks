@@ -828,6 +828,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/fx/trackContact.selftest.mjs',
+    'src/fx/trailCadence.selftest.mjs',
     'src/world/trackSurface.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
