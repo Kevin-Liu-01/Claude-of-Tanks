@@ -24,7 +24,7 @@
 import type { CollisionRecord } from '../world/collision.ts';
 import { DESTRUCTION_BUS_EVENTS, type DestructionRules, type StructureBreachEvent, type StructureStageEvent } from '../sim/destructionEvents.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
-import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
+import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, propFellRadiusM, type MunitionShellLike } from '../sim/munitionBlast.ts';
 import type { StructureMaterial } from '../sim/structureMaterial.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -48,7 +48,9 @@ export interface StudioDestruction {
   /**
    * A round meeting the world at (x, y, z) heading (dirX, dirZ): `record` the record it met (null on the ground). `dig`:
    * the match digs a crater for a burst on the ground (default: on the ground); the Studio digs its own (studio.ts
-   * studioDig, one crater count with its explosion effects) and passes false.
+   * studioDig, one crater count with its explosion effects) and passes false. A pillbox (fortified cover) books the
+   * round on the scene's ledger as the battle's does (game/state.ts crushWorldPropFromShell): the blow that brings it
+   * over its points breaks it by the world's own crush (the looks lane, 2026-10-13: the Studio films a pillbox falling).
    */
   strike(spec: MunitionShellLike, record: CollisionRecord | null, x: number, y: number, z: number, dirX: number, dirZ: number,
     dig?: boolean): void;
@@ -121,9 +123,12 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
     candidates.length = 0;
     felled.length = 0;
   }
+  /** The scene's pillbox damage (sim/fortifiedCover.ts), fresh with every match, as a battle's. */
+  let fortified: FortifiedCoverLedger = createFortifiedCoverLedger();
   const build = (): DestructionMatch => {
     resetStructureRecords(obstacles, colliders);
     blasts.length = 0;
+    fortified = createFortifiedCoverLedger();
     return createDestructionMatch({ rules, obstacles, colliders, wallMaterial: options.wallMaterial, ground: options.ground ?? null,
       onBlast: (x, y, z, chargeKg) => { blasts.push(x, y, z, chargeKg); } });
   };
@@ -131,6 +136,10 @@ export function createStudioDestruction(world: StudioWorld, bus: StudioBus, opti
   return {
     get match() { return match; },
     strike(spec, record, x, y, z, dirX, dirZ, dig = !record) {
+      // a pillbox stops the round and falls only to accumulated heavy damage, the battle's ledger (state.ts)
+      if (record && !record.crushed && isFortifiedCoverRecord(record) && fortified.shellHit(record, spec) && world.crushObstacle) {
+        world.crushObstacle(record, dirX, dirZ, Number((spec as { velocityMps?: number }).velocityMps) || 0, 'shell');
+      }
       match.shellWorldHit(spec, record, x, y, z, dirX, dirZ, dig && !record);
     },
     ram(record, massTons, closingMps, x, y, z, dirX, dirZ) {
