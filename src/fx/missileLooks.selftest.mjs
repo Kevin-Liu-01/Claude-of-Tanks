@@ -121,7 +121,12 @@ const tube = launch(L.tow), gun = launch(L.arkan), soft = launch(L.spike), rail 
 assert.deepEqual(launch(L.tow), tube, 'the same launch twice');
 assert.ok(tube.media.some((m) => m.vx < -4) && tube.media.some((m) => m.vx > 4) && tube.flash === 1,
   'a tube launch: gas out of the mouth, a backblast out of the rear, a short flash');
-assert.ok(tube.media.some((m) => m.aspect > 2 && m.y < 1), 'the backblast kicks the ground dust up');
+// (EF.04, filmed: low wide sheets read as paper cut-outs on the grass) the ground dust is a soft billow centred clear
+// of the ground (its card never cut by it), rounder, fading in over a beat and thinning from its edges early
+const groundDust = tube.media.filter((m) => m.y < 1.2 && m.medium === 'billow' && m.vy < 1);
+assert.ok(groundDust.length >= 3, 'the backblast kicks the ground dust up');
+assert.ok(groundDust.every((m) => m.aspect <= 1.4 && m.y >= 0.5 && m.fadeIn >= 0.1 && m.fadeOut <= 0.3 && m.density <= 0.35),
+  'a soft ground-hugging billow, not a flat sheet');
 assert.ok(gun.media.length === 1 && gun.flash === 0, "a gun launch is the gun's own blast and a wisp");
 assert.ok(soft.flash === 0 && soft.media.length === 3 && soft.media.every((m) => m.size1 < 2), 'a soft launch: a small eject puff, no flash');
 assert.ok(rail.flash === 1 && rail.media.length >= 5 && rail.media.every((m) => m.density >= 0.7), 'a rail launch: a flash in a dense cloud');
