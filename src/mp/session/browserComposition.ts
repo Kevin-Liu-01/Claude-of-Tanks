@@ -45,6 +45,7 @@ import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
+import { MATCH_BUILD } from '../wire/matchBuild.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 type RuntimeValue = {} | null | undefined;
@@ -354,6 +355,7 @@ export interface BrowserCompositionOptions {
   ports: BrowserCompositionPorts;
   factories?: Partial<BrowserCompositionFactories>;
   clock?: () => number;
+  /** The HELLO's build line (default: this build's, src/mp/wire/matchBuild.ts — the host's same-wire build check). */
   clientBuild?: string;
   /** How long `beginRoom` waits for the room's match_start before restoring the Garage (charter §6.4). */
   entryTimeoutMs?: number;
@@ -653,7 +655,7 @@ export function createBrowserComposition({
   ports,
   factories = {},
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
-  clientBuild = 'dev',
+  clientBuild = MATCH_BUILD,
   entryTimeoutMs = 120_000,
   dropNoticeMs = 3000,
   schedule = (callback) => queueMicrotask(callback),

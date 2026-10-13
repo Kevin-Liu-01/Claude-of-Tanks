@@ -1257,6 +1257,29 @@ first byte, and a host refuses a HELLO of another wire as `bad_version` with a C
 the client reads the first byte of any frame it cannot decode before its WELCOME, ends the join as `PROTOCOL_VERSION`
 and tells the player the host is older or newer and to refresh: `matchBuildGate.selftest`.) A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
 
+**Same wire, other code (2026-10-13, MP stream plan step 13).** The first byte names the layout, not the code behind it:
+deploys 219-222 all speak wire 5 / protocol 6, so a tab left open on one build can host a seat of the next, and after
+every deploy the peer-to-peer host is often an old tab. The host's authority and the seat's prediction both run
+`src/sim`'s movement; when they differ the seat mispredicts silently. Every build now stamps the HELLO's free-form
+`clientBuild` with one line, `<app version> t<commit seconds, base36> p<12 hex> a<12 hex>` (`src/mp/wire/matchBuild.ts`;
+`tools/matchBuild.ts` computes it at build time and `vite.config.ts` defines `__COT_MATCH_BUILD__`, which reaches the page
+and the host Worker alike). `p` hashes the source closure of the seat's prediction (`prediction.ts`, `predictionWorld.ts`,
+`matchClient.ts`, the vehicle specs: about 52 files, no render, FX, audio or UI code), `a` the host's authority
+(`matchActor.ts`, `matchHostCore.ts`: about 430 files); type-only imports and packages are not followed. The actor
+compares the HELLO with its own line after the token checks and before the seat's live link is replaced: another `p` is
+refused with `PROTOCOL_VERSION` and the other-wire gate's words ("The host is running an older version… Ask them to
+refresh", "A newer version of the game is out. Refresh this page", or, without commit times, "a different version …
+Refresh this page, ask the host to refresh too"), which the session shows as the entry failure; another `a` or another
+version alone is admitted and logged (the host is authoritative; the seat predicts the same). An unstamped side (a build
+before this check sent its vite mode, `production`; Node, dev and headless runs send `dev`) is admitted as before, so the
+check takes effect between two builds that both carry it. Of the deploys 214-222, the prediction closure changed in
+215 (`matchObjectiveLayouts`), 217 and 218 (`matchClient`), 219 (wire 5, which the first byte already caught) and 222
+(`matchModes`, `matchRuleset`, `collision.ts`).
+Receipt: `matchBuild.selftest` (the line and its bounds; the verdicts; the closures on a scratch tree — an authority-only
+edit moves `a` alone, shared movement both, a type-only dependency neither; this tree's closures; the actor refusing
+before it replaces a live link, admitting and logging an authority-only seat; the client ending its join with the host's
+words).
+
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
 render time has passed it — never a held row read as a fresh pose. With the delay at two snapshot intervals behind the
