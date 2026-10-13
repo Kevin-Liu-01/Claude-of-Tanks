@@ -1123,6 +1123,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
     'src/sim/structureDamage.selftest.mjs',
+    'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',

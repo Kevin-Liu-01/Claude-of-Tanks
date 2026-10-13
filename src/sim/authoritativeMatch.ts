@@ -83,6 +83,7 @@ import type {
 } from './spotting.ts';
 import { captureWorldSnapshot } from './worldSnapshot.ts';
 import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
+import { sweepLightCover, type LightCoverQuery } from './shellLightCover.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
@@ -2064,10 +2065,28 @@ export function createAuthoritativeMatch({
     compactLiveShells();
   }
 
+  /** (2026-10-12) the light cover a round flies through before what stops it breaks (sim/shellLightCover.ts; the solo
+   *  step sweeps the same): fences, crates, carts, the parked cars, nearest first, through destroyObstacle's one law. */
+  const _lightCoverDir = new Vector3();
+  const _lightCoverScratch: AuthoritativeObstacle[] = [];
+  function breakLightCoverAlong(shell: DamageShell, stop: number): void {
+    if (!worldCollision || typeof worldCollision.queryObstacles !== 'function' || shell.spec.tracer === 'DRONE') return;
+    _lightCoverDir.subVectors(shell.pos, shell.prevPos);
+    const length = _lightCoverDir.length();
+    if (length <= 1e-9) return;
+    _lightCoverDir.multiplyScalar(1 / length);
+    sweepLightCover(worldCollision.queryObstacles.bind(worldCollision) as LightCoverQuery, shell.prevPos, _lightCoverDir,
+      Math.min(stop, length), _lightCoverScratch as CollisionRecord[], (record) => {
+        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps);
+      });
+  }
+
   function resolveShellSweep(shell: DamageShell): void {
     const tankHit = firstTankTrace(shell, entities);
     const segmentLength = shell.prevPos.distanceTo(shell.pos);
     const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
+    breakLightCoverAlong(shell, Math.min(segmentLength, worldHit ? worldHit.t * segmentLength : Infinity,
+      tankHit ? tankHit.distance : Infinity));
     if (worldHit) {
       resolveWorldShellHit(shell, worldHit);
       return;
