@@ -4312,6 +4312,19 @@ ${snowCap ? `
     quaternion: _dq,
     euler: _de,
   };
+  /**
+   * The small props that were static geometry and became destructible (destruction stream, 2026-10-13: the village well,
+   * the square's monument): placed where they always were, their placeholder records in the lists at once so every
+   * placement after them keeps its place, and laid as destructible records at the end of the build (beside the clutter,
+   * after every ordinary prop: no pool's geometry stream and no other prop's identity moves); the record's own obstacle
+   * and collider then take the placeholders' places in the lists.
+   */
+  const deferredSmallProps: Array<{ kind: string; x: number; y: number; z: number; ob: CollisionRecord; col: CollisionRecord }> = [];
+  function deferSmallProp(kind: string, x: number, y: number, z: number, ob: CollisionRecord, col: CollisionRecord): void {
+    obstacles.push(ob);
+    colliders.push(col);
+    deferredSmallProps.push({ kind, x, y, z, ob, col });
+  }
   // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
   // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
   // would stand on a piece's ground is left out here — its draws already taken, and no record, pool slot, body or
@@ -6053,23 +6066,11 @@ ${snowCap ? `
       [wx, wz] = seat;
     }
     const wy = heightField.getHeightAt(wx, wz);
-    const ring = new THREE.CylinderGeometry(1.0, 1.1, 0.9, 10, 1);
-    scaleUV(ring, 3, 0.5);
-    ring.translate(wx, wy + 0.45, wz);
-    buckets.stone.push(ring);
-    for (const s of [-1, 1]) {
-      const post = box(0.14, 1.9, 0.14);
-      post.translate(wx + s * 0.85, wy + 0.95, wz);
-      buckets.wood.push(post);
-    }
-    const wroof = gablePrism(2.4, 0.7, 1.4);
-    wroof.rotateY(Math.PI / 2);
-    wroof.translate(wx, wy + 1.9, wz);
-    buckets.roof.push(wroof);
-    obstacles.push(setCircleShape(
-      { min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
-    colliders.push(setCircleShape(
-      { min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
+    // (destruction stream, 2026-10-13) a destructible prop now, laid with the small props at the end of the build
+    // (deferSmallProp); its placeholder records hold its place for every placement after it
+    deferSmallProp('well', wx, wy, wz,
+      setCircleShape({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1),
+      setCircleShape({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
   }
   placeVillageWell();
 
@@ -8821,18 +8822,12 @@ ${snowCap ? `
     let ox = junction.x - 8, oz = junction.z - 9;
     for (let i = 0; i < 24 && heightField._roadDist(ox, oz) < 6; i++) { ox -= 1.5; oz -= 1; }
     const oy = heightField.getHeightAt(ox, oz);
-    buckets.stone.push(box(2.4, 0.5, 2.4, 0.8).translate(ox, oy + 0.2, oz));
-    buckets.stone.push(box(1.5, 0.6, 1.5, 0.8).translate(ox, oy + 0.72, oz));
-    const shaft = box(0.72, 3.4, 0.72, 1.2);
-    jitterUV(shaft, rng);
-    buckets.stone.push(shaft.translate(ox, oy + 2.7, oz));
-    const tip = new THREE.ConeGeometry(0.5, 0.7, 4, 1);
-    tip.rotateY(Math.PI / 4);
-    scaleUV(tip, 1, 1);
-    tip.translate(ox, oy + 4.75, oz);
-    buckets.stone.push(tip);
-    obstacles.push({ min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
-    colliders.push({ min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
+    // (the shaft's UV jitter's four draws, so every placement after it keeps its stream)
+    rng(); rng(); rng(); rng();
+    // (destruction stream, 2026-10-13) a destructible prop now, laid with the small props at the end of the build
+    deferSmallProp('monument', ox, oy, oz,
+      { min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] },
+      { min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
   }
   placeCentralMonument();
   yield { fine: true, stage: 'street-details' };
@@ -9546,6 +9541,7 @@ ${snowCap ? `
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
+    clutter: (clutter) => pendingClutter.push(clutter),
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
@@ -10272,6 +10268,21 @@ ${snowCap ? `
     group.userData.rockGroundCover = rockGroundCover;
   }
   refitRockColliders();
+  // the small props laid as destructibles (deferSmallProp): each record's obstacle and collider into its placeholders' places
+  for (const small of deferredSmallProps) {
+    const before = obstacles.length, beforeCol = colliders.length;
+    const record = addDestructibleRecord(destructibleContext, small.kind, small.x, small.y, small.z, 0);
+    const swap = (list: CollisionRecord[], from: number, placeholder: CollisionRecord): void => {
+      if (list.length !== from + 1) return;
+      const at = list.indexOf(placeholder);
+      if (at < 0) return;
+      list[at] = list[from]!;
+      list.length = from;
+    };
+    if (record.ob) swap(obstacles, before, small.ob);
+    if (record.col) swap(colliders, beforeCol, small.col);
+  }
+  deferredSmallProps.length = 0;
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;

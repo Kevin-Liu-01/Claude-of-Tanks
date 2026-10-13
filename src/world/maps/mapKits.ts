@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -175,11 +176,14 @@ interface DressingContext {
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
+  /** (destruction stream, 2026-10-13) the props' sink for dressing a hull or a round flattens (crushableClutter.ts): the
+   *  rail yard's coal stockpiles. Omitted, it stays solid. */
+  clutter?: (clutter: CrushableClutter) => void;
 }
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1144,11 +1148,11 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
     trunks: trunksOf(trees) };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
@@ -2655,8 +2659,21 @@ function registerCoalStockpile(geometry: THREE.BufferGeometry, ctx: FocusedDress
   // Same ordinary conservative vertical prism as authored rocks: exact
   // projected convex footprint/Y bounds, not a rectangular invisible wall.
   const record = setConvexShape({min: [0, low, 0], max: [0, high, 0], kind: 'coal-heap'}, convexHull2(points));
+  const shell = cloneCollisionRecord(record);
   ctx.obstacles?.push(record);
-  ctx.colliders?.push(cloneCollisionRecord(record));
+  ctx.colliders?.push(shell);
+  // (destruction stream, 2026-10-13; the owner: every prop under a size destructible by ramming or shooting) a hull
+  // drives through a coal pile and a round bursts it: crushed, the pile lies flattened where it stood
+  if (ctx.clutter) {
+    let cx = 0, cz = 0;
+    for (const [x, z] of points) { cx += x; cz += z; }
+    cx /= Math.max(1, points.length); cz /= Math.max(1, points.length);
+    let r = 0;
+    for (const [x, z] of points) r = Math.max(r, Math.hypot(x - cx, z - cz));
+    const pile = new CrushableClutter('coal-heap', cx, low, cz, r, high - low, [record], [shell]);
+    pile.ownPiece(geometry);
+    ctx.clutter(pile);
+  }
 }
 
 function addRailYardCoalHeaps(
