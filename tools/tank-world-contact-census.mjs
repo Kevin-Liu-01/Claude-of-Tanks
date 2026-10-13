@@ -27,6 +27,10 @@
  *                                                    the ranked defect ledger (and the change against a base census)
  *   node tools/tank-world-contact-census.mjs --maps=urban --only=<run id> --trace=<file.json>
  *                                                    one run again, its hull pose every step
+ *   node tools/tank-world-contact-census.mjs --fidelity --maps=urban,titan_gorge --out=<dir>
+ *                                                    hitbox fidelity (tools/tankWorldContactFidelity.mjs): support tops
+ *                                                    against the drawn tops, contact-band phantom and leak per kind
+ *   ... --ledger=<dir> --fidelity-dir=<dir>          the ledger with the fidelity tables
  */
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -623,7 +627,9 @@ export const DEFECTS = Object.freeze([
   { id: 'obstaclePen', what: 'left overlapping a collider > 10 cm after the step', sev: 6, value: (m) => m.obstaclePenMaxM, max: 0.10 },
   { id: 'roofSink', what: 'stood more than 25 cm into a top it stands on', sev: 6, value: (m) => m.roofSinkMaxM, max: 0.25 },
   { id: 'tip', what: 'overturned where nothing should overturn it', sev: 6, value: (m) => m.overturnedS, max: 0, when: (r) => !r.mayTip },
-  { id: 'joltY', what: 'vertical jolt > 12 cm (second difference over three steps)', sev: 5, value: (m) => m.joltYMaxM, max: 0.12 },
+  // (jolts are judged on the grounded maneuvers: a drop's own landing stops a fall in a few steps by design)
+  { id: 'joltY', what: 'vertical jolt > 12 cm while driving or standing (second difference over three steps)', sev: 5, value: (m) => m.joltYMaxM,
+    max: 0.12, when: (r) => r.grounded },
   { id: 'snap', what: 'attitude snap > 0.05 rad in a step', sev: 5, value: (m) => m.snapMaxRad, max: 0.05 },
   { id: 'hullPen', what: 'left overlapping another hull > 15 cm', sev: 5, value: (m) => m.hullPenMaxM, max: 0.15 },
   { id: 'stuck', what: 'wedged: made no way for > 0.6 s backing out', sev: 5, value: (m) => m.longestStuckS, max: 0.6, when: (r) => r.mustMove },
@@ -633,7 +639,8 @@ export const DEFECTS = Object.freeze([
     value: (m) => (m.rest ? Math.max(m.rest.jitterYRmsMm, m.rest.jitterAttRmsMrad) : 0), max: 0.5 },
   { id: 'jink', what: 'contact push flipping side to side (> 3 reversals)', sev: 4, value: (m) => m.pushFlips, max: 3 },
   { id: 'restCreep', what: 'creeping at rest (> 5 mm/s)', sev: 3, value: (m) => (m.rest ? Math.abs(m.rest.creepMmS) : 0), max: 5 },
-  { id: 'joltYfelt', what: 'vertical jolt > 6 cm (felt)', sev: 2, value: (m) => m.joltYMaxM, max: 0.06 },
+  { id: 'joltYfelt', what: 'vertical jolt > 6 cm while driving or standing (felt)', sev: 2, value: (m) => m.joltYMaxM, max: 0.06,
+    when: (r) => r.grounded },
 ]);
 
 export function defectsOf(row) {
@@ -789,6 +796,48 @@ export function ledger(rows, baseRows = null) {
   return { runs: rows.length, withDefect: rows.filter((r) => r.defects.length).length, byClass, byMap, ranked, compare };
 }
 
+/** Fidelity rows from a directory of tankWorldContactFidelity outputs, summed per support group and per contact kind. */
+export function fidelityTotals(dir) {
+  const support = {}, contact = {}, worst = [];
+  for (const name of readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
+    const data = JSON.parse(readFileSync(`${dir}/${name}`, 'utf8'));
+    for (const [group, g] of Object.entries(data.support ?? {})) {
+      const t = support[group] ??= { maps: 0, records: 0, points: 0, float: 0, sink: 0, air: 0, holes: 0, p90: [] };
+      t.maps++; t.records += g.records; t.points += g.points; t.float += g.floatShare * g.points; t.sink += g.sinkShare * g.points;
+      t.air += g.airShare * g.points; t.holes += g.holePoints; t.p90.push(g.errP90M);
+    }
+    // (the audit's legacy-* rows are its comparison against the retired colliders, not what ships)
+    for (const k of (data.contact ?? []).filter((row) => !row.kind.startsWith('legacy-'))) {
+      const t = contact[k.kind] ??= { n: 0, colliderM2: 0, meshM2: 0, phantomM2: 0, leakM2: 0 };
+      t.n += k.n; t.colliderM2 += k.colliderM2; t.meshM2 += k.meshM2; t.phantomM2 += k.phantomShare * k.colliderM2; t.leakM2 += k.leakShare * k.meshM2;
+    }
+    for (const w of data.worst ?? []) worst.push({ map: data.mapId, ...w });
+  }
+  worst.sort((a, b) => b.worstM - a.worstM);
+  return { support, contact, worst: worst.slice(0, 25) };
+}
+
+export function fidelityMarkdown(totals) {
+  const lines = ['## Hitbox fidelity: what a hull stands on against what is drawn', '',
+    'Support: every standable record\'s tops sampled on a 0.75 m grid against the drawn top under the same point (cast down).',
+    'Float = the top over the drawn surface by > 15 cm (the hull stands on air); sink = under it (the hull sinks into what it',
+    'sees); air = a top where nothing is drawn; holes = drawn a hull\'s height over the ground with no top under it.', '',
+    '| Class / group | Maps | Records | Points | Float | Sink | Air | Hole points | Error p90 (median of maps) |', '|---|---|---|---|---|---|---|---|---|'];
+  const pct = (a, b) => (b ? `${(100 * a / b).toFixed(1)} %` : '-');
+  for (const [group, t] of Object.entries(totals.support).sort((a, b) => b[1].points - a[1].points)) {
+    const p90 = [...t.p90].sort((a, b) => a - b)[Math.floor(t.p90.length / 2)] ?? 0;
+    lines.push(`| ${group} | ${t.maps} | ${t.records} | ${t.points} | ${pct(t.float, t.points)} | ${pct(t.sink, t.points)} | ${pct(t.air, t.points)} | ${t.holes} | ${p90.toFixed(2)} m |`);
+  }
+  lines.push('', 'Contact band (0.2-1.4 m over the ground): phantom = collider area where nothing stands (invisible wall); leak = drawn',
+    'area with no collider (drive-through).', '', '| Kind | Objects | Collider m2 | Phantom | Leak |', '|---|---|---|---|---|');
+  for (const [kind, t] of Object.entries(totals.contact).sort((a, b) => b[1].colliderM2 - a[1].colliderM2).slice(0, 30)) {
+    lines.push(`| ${kind} | ${t.n} | ${t.colliderM2.toFixed(0)} | ${pct(t.phantomM2, t.colliderM2)} | ${pct(t.leakM2, t.meshM2)} |`);
+  }
+  lines.push('', 'Worst records (support error):', '');
+  for (const w of totals.worst.slice(0, 12)) lines.push(`- ${w.map} ${w.group} ${w.kind ?? ''} at (${w.x}, ${w.z}): ${w.worstM} m (${w.at?.[2] ?? ''}), ${w.holes} hole points`);
+  return lines.join('\n') + '\n';
+}
+
 export function ledgerMarkdown(report, { title = 'Tank-world contact census', note = '' } = {}) {
   const lines = [`# ${title}`, ''];
   if (note) lines.push(note, '');
@@ -836,13 +885,29 @@ async function main() {
     const base = args.base ? readCensus(args.base) : null;
     const report = ledger(rows, base);
     if (args.json) writeFileSync(args.json, JSON.stringify(report, null, 1));
-    const md = ledgerMarkdown(report, { note: args.note ?? '' });
+    let md = ledgerMarkdown(report, { note: args.note ?? '' });
+    if (args['fidelity-dir']) md += '\n' + fidelityMarkdown(fidelityTotals(args['fidelity-dir']));
     if (args.md) writeFileSync(args.md, md);
     else console.log(md);
     return;
   }
   const maps = list(args.maps, [...MAP_IDS]);
   for (const id of maps) if (!MAP_IDS.includes(id)) throw new Error(`unknown map ${id}`);
+  if (args.fidelity) {
+    const { fidelityMap } = await import('./tankWorldContactFidelity.mjs');
+    if (args.out) mkdirSync(args.out, { recursive: true });
+    for (const mapId of maps) {
+      for (const variant of list(args.variants, ['base'])) {
+        const started = performance.now();
+        const result = await fidelityMap(mapId, { variant });
+        result.seconds = +((performance.now() - started) / 1000).toFixed(1);
+        const label = variant === 'base' ? mapId : `${mapId}@${variant}`;
+        console.log(`== fidelity ${label} (${result.seconds} s)`);
+        if (args.out) writeFileSync(`${args.out}/${label}.json`, JSON.stringify(result) + '\n');
+      }
+    }
+    return;
+  }
   const variants = list(args.variants, ['base']);
   const classes = list(args.classes, [...CLASSES]);
   const sites = Number(args.sites ?? 4);

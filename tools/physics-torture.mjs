@@ -815,6 +815,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   const footCenter = { x: 0, y: 0, z: 0 };
   const footScratch = { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0 };
   const floors = new Float64Array(Math.max(1, world.obstacles.length));
+  const partRecord = { min: [0, 0, 0], max: [0, 0, 0], shape2: null };
   // the underside as it is over each record, which clears a top or not (world/collision.ts hullPassesObstacleTop)
   const clears = new Float64Array(Math.max(1, world.obstacles.length));
   const att = { pitch: 0, roll: 0 };
@@ -1052,7 +1053,23 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     for (let i = 0; i < world.obstacles.length; i++) {
       const record = world.obstacles[i];
       if (record.crushed) continue;
-      if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
+      // (census v3) a compound record stands a hull on its parts, each at its own top (a roof's band stairs, a stone's tiers,
+      // a wreck's hull and turret): the sink is read part by part, from the underside over that part alone
+      if (record.shape2?.kind === 'compound' && !record.crushable && record.max[1] - record.min[1] >= 0.9) {
+        for (const part of record.shape2.parts) {
+          const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
+          partRecord.min[0] = record.min[0]; partRecord.min[2] = record.min[2]; partRecord.min[1] = bottom;
+          partRecord.max[0] = record.max[0]; partRecord.max[2] = record.max[2]; partRecord.max[1] = top;
+          partRecord.shape2 = part;
+          const under = undersideOver(partRecord, foot, rect, state);
+          if (under === state.pos.y && !pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;
+          const clear = Number.isFinite(foot.clearBottom) ? foot.clearBottom : under;
+          if (hullPassesObstacleTop(under, top, record.min[1], true, clear) && clear <= top + 0.5) {
+            metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, top - under);
+          }
+        }
+        if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) continue;
+      } else if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
         // standing on it: the hull's underside over it must not sink below its top
         if (record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
           || insideRecord(record, state.pos.x, state.pos.z))) {
