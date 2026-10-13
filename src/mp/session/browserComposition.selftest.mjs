@@ -1075,4 +1075,42 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   ended.composition.dispose();
 }
 
+// ------------------------------------------------------------ the same refusal after a long rejoin (2026-10-13, deploy 222's MP window: the
+// message 18.6–18.7 s late, and once missing after a 145 s rejoin load): a returning seat welcomed, its shaders still
+// preparing 145 s into the entry (past the entry's own 120 s wait, extended because it progresses), the match ends —
+// the loader names the refusal at once, while the Garage restore is still running
+{
+  let time = 1000;
+  let releaseGarage = null;
+  let releaseCompile = null;
+  const long = createHarness({
+    clock: () => time,
+    enterGarage: () => new Promise((resolve) => { releaseGarage = resolve; }),
+    // the strict preparation is still running when the match ends (its windows outlast the entry: 145 s on the clock)
+    compile: () => new Promise((resolve) => { releaseCompile = () => resolve({ preparation: { status: 'complete', pending: 0 } }); }),
+  });
+  const longRoom = makeRoomSession(long.calls);
+  const entering = long.composition.beginRoom({ role: 'client', session: longRoom, lobbyState: longRoom.lobby });
+  const longOwner = long.sessions[0];
+  await longOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  await longOwner.welcome();
+  longOwner.frame(frame());
+  await settle(8);
+  assert.ok(releaseCompile, 'the seat is welcomed and preparing its shaders');
+  time += 145_000;
+  assert.ok(!long.calls.includes('load.hide'), 'still under the loader, 145 s into the entry');
+  longOwner.verdict(VERDICT.BRAVO, 'time_limit');
+  await settle();
+  assert.ok(long.calls.some((call) => /^load\.show:The match ended while you were joining/.test(call)), 'after 145 s the loader names the refusal at once');
+  assert.ok(releaseGarage, 'while the Garage restore runs');
+  assert.equal(long.battleLoad.visible, true);
+  releaseGarage();
+  releaseCompile();
+  assert.equal(await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]), false);
+  await settle();
+  assert.equal(long.ports.failure.reason, 'match_ended');
+  assert.deepEqual(long.menu.shown, [long.ports.failure.message], 'and the lobby repeats it once the loader fades');
+  long.composition.dispose();
+}
+
 console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends (named on the loader before the Garage restore), and loads the obstacle identities of the host manifest for a world laid out otherwise');
