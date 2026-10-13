@@ -79,6 +79,12 @@ export interface RubbleBodies {
   throw(bucket: string, shape: DebrisShape, x: number, y: number, z: number, qx: number, qy: number, qz: number, qw: number,
     lx: number, ly: number, lz: number, vx: number, vy: number, vz: number, wx: number, wy: number, wz: number,
     r: number, g: number, b: number, delayS: number, structureIdx?: number): boolean;
+  /**
+   * Every body mesh a bucket's pieces can take (each palette shape in its material), made now rather than at a first
+   * throw mid-battle: the battle warm calls it with the world's buckets, and a bucket's first throw makes all of its own
+   * (destruction stream, 2026-10-13; the collapse frame's bar). Returns the meshes made.
+   */
+  prewarm(buckets: Iterable<string>): number;
   /** Per render frame: the engine's fixed steps on the fx clock, the moving bodies' instances. */
   update(): void;
   shiftTime(delta: number): void;
@@ -164,6 +170,8 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       const mesh = new THREE.InstancedMesh(geometry, material, INSTANCES);
       mesh.name = `fx-rubble-body-${shape}`;
       mesh.count = 0;
+      // (a prewarmed mesh no body has used yet draws nothing: no draw call, no shadow pass)
+      mesh.visible = false;
       mesh.frustumCulled = false;
       mesh.castShadow = shape !== 'tile' && shape !== 'slate' && shape !== 'sheet';
       mesh.receiveShadow = true;
@@ -233,9 +241,24 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
     body.mesh.mesh.instanceMatrix.needsUpdate = true;
   }
 
+  const warmed = new Set<string>();
+  function prewarmBucket(bucket: string): number {
+    if (warmed.has(bucket)) return 0;
+    warmed.add(bucket);
+    const before = meshes.size;
+    for (const shape of BODY_SHAPES) meshFor(bucket, shape);
+    return meshes.size - before;
+  }
+
   return {
     group,
     pool,
+    prewarm(buckets) {
+      if (capacity <= 0) return 0;
+      let made = 0;
+      for (const bucket of buckets) made += prewarmBucket(bucket);
+      return made;
+    },
     takes(shape, lx, ly, lz) {
       if (capacity <= 0 || !BODY_SHAPES.has(shape)) return false;
       const e = EXTENTS[shape];
@@ -263,6 +286,7 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       const hx = Math.max(0.02, e[0] * lx * 0.5), hy = Math.max(0.02, e[1] * ly * 0.5), hz = Math.max(0.02, e[2] * lz * 0.5);
       const handle = pool.spawn(shapeFor(shape, hx, hy, hz), { x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz }, Math.max(0, delayS));
       if (handle < 0) return false;
+      prewarmBucket(bucket);
       const bm = meshFor(bucket, shape);
       // its instance: the next slot of the ring; a settled body there gives way (the oldest rubble first), a live one
       // that still owns it is let go of where it is
@@ -272,6 +296,7 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       if (prior >= 0) { live.delete(prior); pool.release(prior); } else if (bm.used >= INSTANCES) settled = Math.max(0, settled - 1);
       bm.used = Math.min(INSTANCES, bm.used + 1);
       bm.mesh.count = Math.max(bm.mesh.count, index + 1);
+      bm.mesh.visible = true;
       bm.slotHandle[index] = handle;
       bm.mesh.setColorAt(index, _c.setRGB(r, g, b));
       if (bm.mesh.instanceColor) bm.mesh.instanceColor.needsUpdate = true;
@@ -324,6 +349,7 @@ export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
       settled = 0;
       for (const bm of meshes.values()) {
         bm.mesh.count = 0;
+        bm.mesh.visible = false;
         bm.cursor = 0;
         bm.used = 0;
         bm.slotHandle.fill(-1);
