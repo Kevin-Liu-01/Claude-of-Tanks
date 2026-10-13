@@ -234,11 +234,18 @@ interface BattleLoadInfo {
   readonly enemies: readonly BattleLoadRosterRow[];
 }
 
+/** The battlefield a pending entry is about to load, known before its loading owner is imported. */
+export interface PendingBattlefield {
+  readonly mapId: string;
+  readonly mapName?: string;
+  readonly thumb?: string;
+}
+
 export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
   readonly covering: boolean;
-  showPending(mapId?: string | null): void;
+  showPending(map?: string | PendingBattlefield | null): void;
   show(info: BattleLoadInfo): void;
   rosters(
     allies: readonly BattleLoadRosterRow[],
@@ -391,13 +398,17 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     get visible() { return visible; },
     get covering() { return covering; },
 
-    /** Own the existing opaque surface before a cold loading-owner import; a requested battlefield's own tones and
-     * placeholder are up from this first frame. */
-    showPending(mapId?: string | null) {
+    /** Own the existing opaque surface before a cold loading-owner import; a chosen battlefield's name, tones,
+     * placeholder and art are up from this first frame (2026-10-13: a slow first entry read "BATTLEFIELD" for ~1.8 s
+     * while the loading owner downloaded). */
+    showPending(map?: string | PendingBattlefield | null) {
+      const pending = typeof map === 'string' ? { mapId: map } : map ?? null;
+      const chosen: PendingBattlefield | null = pending?.mapId && pending.mapId !== 'random' ? pending : null;
       api.show({
-        mapName: '',
+        mapName: chosen?.mapName ?? '',
         mode: t('battleLoad.kicker'),
-        ...(mapId && mapId !== 'random' ? { biome: mapId } : {}),
+        ...(chosen ? { biome: chosen.mapId } : {}),
+        ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         allies: [],
         enemies: [],
       });
