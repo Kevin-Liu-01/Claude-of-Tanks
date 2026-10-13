@@ -191,7 +191,11 @@ for (const config of maps) {
   assert.equal(config.props.tankWrecks.count, config.props.tankWrecks.era === 'ww2' ? 0 : 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,
     `${label}: bounded inhabited-detail pools`);
-  assert.ok(config.sky.fogDensity <= 0.00072 && config.sky.fogMix <= 0.56,
+  // (item 31, Longleaf round 4, 2026-10-11, the gauntlet's wave 376 "no haze to give the distance depth": a humid Gulf
+  // morning's haze, 0.00085 and a 0.6 mix, held under the panorama relight's sunset silhouette law, as dense as Monsoon's
+  // 0.00088 / 0.66 and Caldera's 0.00082 / 0.67 outside this set; every other expansion map keeps the ceiling)
+  const [fogCeiling, mixCeiling] = label === 'longleaf' ? [0.00085, 0.6] : [0.00072, 0.56];
+  assert.ok(config.sky.fogDensity <= fogCeiling && config.sky.fogMix <= mixCeiling,
     `${label}: atmosphere preserves midfield readability`);
 }
 
