@@ -900,3 +900,37 @@ round its hole inside the wall's thickness with the dark room behind it; the pil
 merge; and Verdant's real build describes every structure, finds its spans (plain and batched) where it stands, tags
 them, stands every bucket at identity, casts each structure bucket through a patchable depth material, and touches
 exactly a structure's casting meshes.
+
+## 17. What falls, on the one engine (2026-10-12)
+
+The owner (2026-10-12), after a Steinburg screenshot of a broken brick building ("big flat untextured grey-blue
+rectangles ... rows of brick chunks hanging in the air in strips"): "make sure that destructible buildings are properly
+evaluated and their rubble properly falls down onto ground that can potentially be uneven", and "make the physics for
+stuff falling around and pieces of buildings and destruction use the same kind of physics engine".
+
+- **Pieces land where they land.** The GPU debris programs (`structureDebris` pieces, `debrisChunks` chunks) stop each
+  piece at the point its flight meets the ground as drawn (`fx/ballisticLanding.ts`, solved at the write; `aLD` / `aLT`),
+  never at the height of the ground it was thrown from. A still piece on a standing building (a damaged roof's slipped
+  tiles) is a box in that building's own run: it falls and folds with it. A fall's piece thrown with next to no speed
+  over the ground drops to it.
+- **A hole opens through the earlier runs.** Rims are runs no hole cuts; every through-hole folds the triangles of the
+  structure's earlier rims inside its cut (`structureStages` trimRuns), as the mask discards the wall there.
+- **One interior a storey.** The kits' dark box behind each hole is replaced by the storey's interior (`layInterior`):
+  inward faces behind the walls' thickness, under the eaves, in the building's own bucket textures (`roomMaterialFor`:
+  the bucket's map, a bound share of the sky's light), laid at the storey's first hole; a ruin's kit asks for none.
+  A bucket the world draws under another name takes that material (`bucketAliases`: thatch/straw/hay, a regional bucket
+  and its base twin) before the untextured fallback.
+- **Rubble on the engine.** A stage's larger pieces, up to its budget (a strike by its charge 2-8, a breach 8, a falling
+  panel 12, a storey 10, a collapse 14 and one a crumble band), are bodies of `sim/rigidBody.ts` — the turret pops' engine
+  — in `fx/rubbleBodies.ts` over `fx/debrisPhysics.ts`: the ground as drawn (its craters and the sim's heap),
+  `world.bodyRecordQuery()` (shell bands and solid records; the throwing building's own pass its bodies for 6 s), each
+  other. Drawn as instances in the bucket's texture; a settled body the pool lets go of stays an instance. Desktop 56
+  bodies, the phone none. Presentation only: the sim's heap and the destroyed lists stay the authority.
+- **Kicked clutter on the engine.** Drums, churns, bins, bottles, buckets, jerrycans and loose wheels kicked by a hull run
+  on the same engine (`world/loosePropBodies.ts`); the traffic cone keeps its ground-constrained law.
+- **Rounds break light cover.** A round breaks the crushable props it flies through before what stops it (fences,
+  crates, carts, tents, stalls, stacks, the parked cars: `sim/shellLightCover.ts`, the solo step and the authority).
+- **Receipts.** `tools/destruction-check.mjs` stages every destructible building kind of a map, brings it down under HE
+  and judges what it left: textured runs, no rim in a later through-hole, no still piece in the air, every thrown piece on
+  the ground where it lands, every body at rest on the ground, a body or a record, the budgets. Its selftest runs four
+  Steinburg kinds; main before this section failed every one.
