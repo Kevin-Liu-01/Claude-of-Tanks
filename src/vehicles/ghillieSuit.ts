@@ -4715,8 +4715,29 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
   const root = P.hullG.parent;
   if (!root) return null;
   root.updateMatrixWorld(true);
-  const box = new THREE.Box3();
-  root.traverse((o) => { if ((o as THREE.Mesh).isMesh && !/_ghillie_/.test(o.name || '')) box.expandByObject(o, false); });
+  // 2026-10-12 (cam-netting; battleGeometrySharing.selftest, type90 and type90a: 20 -> 16 shared stocks): Box3
+  // expandByObject computes and keeps every geometry's bounding box, and the battle geometry share keys a stock by its
+  // bounds too, so a suited build's gear stocks no longer matched its unsuited sibling's. The bounds are read here
+  // without writing them back.
+  const box = new THREE.Box3(), local = new THREE.Box3(), placed = new THREE.Box3(), at = new THREE.Matrix4();
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || /_ghillie_/.test(mesh.name || '')) return;
+    const position = mesh.geometry?.attributes?.position as THREE.BufferAttribute | undefined;
+    if (!position) return;
+    if (mesh.geometry.boundingBox) local.copy(mesh.geometry.boundingBox); else local.setFromBufferAttribute(position);
+    if (local.isEmpty()) return;
+    // an instanced stock (the running gear's rollers and links) once per instance
+    const instanced = mesh as THREE.Mesh & { isInstancedMesh?: boolean; count?: number; getMatrixAt?: (i: number, m: THREE.Matrix4) => void };
+    if (instanced.isInstancedMesh && instanced.getMatrixAt) {
+      for (let i = 0; i < (instanced.count ?? 0); i++) {
+        instanced.getMatrixAt(i, at);
+        box.union(placed.copy(local).applyMatrix4(at).applyMatrix4(mesh.matrixWorld));
+      }
+      return;
+    }
+    box.union(placed.copy(local).applyMatrix4(mesh.matrixWorld));
+  });
   if (box.isEmpty()) return null;
   return { halfWidth: Math.max(-box.min.x, box.max.x) + FIELD_CAP_M, zMin: box.min.z - FIELD_CAP_M, zMax: box.max.z + FIELD_CAP_M,
     top: box.max.y + FIELD_CAP_M };
