@@ -505,7 +505,10 @@ function assertCoalStockpiles(mapId, mapWorld) {
       'small stockpiles cannot regress to giant placeholder bounds');
     assert.ok(obstacle.max[1] - mapWorld.heightField.getHeightAt(x, z) < 1,
       'captured piles remain sub-metre above their terrain support');
-    assert.equal(shellPassesThroughCollisionRecord(collider), false);
+    // (destruction stream, 2026-10-13) a pile is crushable clutter now: a hull flattens it and a round breaks it as it
+    // flies through (sim/shellLightCover.ts), as the loose rocks are
+    assert.equal(shellPassesThroughCollisionRecord(collider), true, 'a round breaks the pile it flies through');
+    assert.ok(obstacle.crushable && collider.crushable && Number.isInteger(obstacle.propIdx), 'the pile is crushable clutter');
     assertAuthoredContact(mapWorld, obstacle, collider, x, z, `${mapId} coal ${index}`);
     for (const [railX, railZ] of coalTrackPoints(mapId, x, z)) {
       assert.equal(pushHullFromObstacle({ x: railX, z: railZ }, 0, 1, 1, 0, 2, 1.5, obstacle, { x: 0, z: 0 }), false,
