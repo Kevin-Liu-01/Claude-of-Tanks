@@ -102,7 +102,7 @@ void main() {
   // opacity: in at once behind the motor (a fraction of a second), thinning through the second half of its life; a
   // ribbon seen end-on (its tangent toward the eye) is denser where it overlaps itself, so ease it
   float endOn = abs( dot( normalize( aT.xyz ), normalize( view ) ) );
-  vA = aW.w * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.35, 1.0, t ) ) * mix( 1.0, 0.55, endOn * endOn );
+  vA = aW.w * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) ) * mix( 1.0, 0.55, endOn * endOn );
   // lit as the media are: the sun through thin smoke (forward scattering when it stands behind), the sky, the ground
   vec3 vd = normalize( view );
   float fwd = 0.55 + 0.45 * pow( max( 0.0, dot( -vd, uSunDir ) ), 3.0 );

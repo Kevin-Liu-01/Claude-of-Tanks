@@ -155,6 +155,14 @@ try {
   const camera = new PerspectiveCamera(50, 16 / 9, 0.5, 3000); camera.position.set(-30, 6, 40); camera.lookAt(80, 2, 0);
   camera.updateMatrixWorld();
   const named = (n) => { let o = null; fx.group.traverse((c) => { if (!o && c.name === n && c.geometry) o = c; }); return o; };
+  // (EF.04) the smoke ribbon's joined segments (non-degenerate quads in its index)
+  const ribbonQuads = () => {
+    const r = named('fx-smoke-ribbons');
+    if (!r) return -1;
+    const a = r.geometry.index.array; let q = 0;
+    for (let o = 0; o < a.length; o += 6) if (a[o] !== a[o + 2]) q++;
+    return q;
+  };
   const fly = (name, sound, speed, frames) => {
     fx.resetAll();
     bus.emit('shell:fired', { shellId: 9001, shooterId: 'x', muzzlePos: [0, 2.2, 0], dir: [1, 0, 0], caliberMm: 152,
@@ -167,7 +175,7 @@ try {
       shell.prevPos.copy(shell.pos); shell.pos.x += speed * dt; shell.distM += speed * dt; shell.ageS += dt;
       fx.update(dt, [shell], camera);
       out.push({ dbg: fx.getGuidedMissileDebug(), tracers: named('Projectile tracers')?.geometry.instanceCount ?? 0,
-        media: named('fx-volume-media')?.geometry.instanceCount ?? 0 });
+        media: named('fx-volume-media')?.geometry.instanceCount ?? 0, ribbon: ribbonQuads() });
     }
     return out;
   };
@@ -178,7 +186,10 @@ try {
   const kornet = fly('Kornet guided missile', 'spike-launch', 240, 12);
   assert.ok(kornet.at(-1).tracers >= 1 && kornet.at(-1).tracers < 6, 'a beam-rider trails no wires');
   if (named('fx-volume-media')) {
-    assert.ok(tow.at(-1).media > kornet.at(-1).media, `a TOW's trail outweighs a Kornet's (${tow.at(-1).media} vs ${kornet.at(-1).media})`);
+    assert.ok(tow.at(-1).media > kornet.at(-1).media, `a TOW's launch outweighs a Kornet's (${tow.at(-1).media} vs ${kornet.at(-1).media})`);
+    // (EF.04) its smoke trail is one ribbon joined point to point along the flight (12 frames at 195 m/s: ~78 m), not
+    // a string of media puffs
+    assert.ok(tow.at(-1).ribbon >= 20, `the TOW lays a continuous ribbon (${tow.at(-1).ribbon} joined segments)`);
   }
   const spike = fly('Spike LR', 'spike-launch', 117, 2);
   assert.equal(spike[0].dbg.trailSegments, 0, 'a soft-launched Spike coasts unlit for its first metres');

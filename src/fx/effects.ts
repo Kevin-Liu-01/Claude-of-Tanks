@@ -4388,19 +4388,22 @@ function* createFxSteps(
     if (!sm) return null;
     let r = ribbonLooks.get(look.id);
     if (!r) {
-      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * 0.7, life: sm.life,
-        density: Math.min(0.85, sm.density * 1.05), c0: sm.c0, c1: sm.c1, rise: sm.rise, windK: sm.windK,
-        tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
+      // (filmed: the ribbon alone carries the trail; it lasts as long as the media puffs it replaced lingered, a dense
+      // motor's wider and thicker)
+      const dense = ribbonDense(look);
+      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * (dense ? 0.9 : 0.7),
+        life: sm.life * 1.3, density: Math.min(0.9, sm.density * (dense ? 1.2 : 1.05)), c0: sm.c0, c1: sm.c1,
+        rise: sm.rise, windK: sm.windK, tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
       ribbonLooks.set(look.id, r);
     }
     return r;
   }
-  /** a ribbon point every RIBBON_STEP_M of flight; the media puffs then only give the trail body, one per
-   *  spacing x RIBBON_PUFF_K (a dense motor's trail keeps more of them than a thin sustainer's) */
+  /** a ribbon point every RIBBON_STEP_M of flight */
   const RIBBON_STEP_M = 2.5;
-  function ribbonPuffK(look: MissileLook): number {
+  /** a dense motor's trail (rail, rocket, MANPADS, MCLOS, gun IR, old SACLOS): a wider, thicker ribbon */
+  function ribbonDense(look: MissileLook): boolean {
     const f = look.family;
-    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old' ? 2 : 4;
+    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old';
   }
 
   /** (EF.04) the ribbon's points since the last frame, where the motor passed and when */
@@ -4440,9 +4443,11 @@ function* createFxSteps(
     const sm = look.smoke;
     if (!sm || !blast) return;
     // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
+    // (EF.04, filmed in battle: puffs left along the ribbon outlived it as a string of beads) where the ribbons draw,
+    // the ribbon alone is the trail; the media keep the launch, the motor's ignition and the strike
+    if (ribbons) { layRibbon(trail, look, shell, d, t, speed, seedU); return; }
     const coarse = Math.max(1, liveMissiles / 4);
-    const spacing = sm.spacingM * coarse * (ribbons ? ribbonPuffK(look) : 1);
-    if (ribbons) layRibbon(trail, look, shell, d, t, speed, seedU);
+    const spacing = sm.spacingM * coarse;
     let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
     const dir = _v1;
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
