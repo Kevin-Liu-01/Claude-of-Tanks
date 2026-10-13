@@ -255,8 +255,14 @@ function addTurret(P: LightTigerBuilderPort): void {
   }
   buildGun(P, { len: 3.10, r: 0.062, sleeve: false, collar: true, baseR: 0.120 });
   muzzleBore(P, { len: 3.10, r: 0.062, boreR: 0.038 });
-  P.addGunExtraDark(cylZ(0.021, 2.15, 12), 0.22, -0.028, 1.82);
-  muzzleTipDot(P, 0.22, -0.028, 2.90, 0.013, { parent: 'gunG' });
+  // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: "a thin plain-grey rod as long as the main gun runs
+  // beside it ... a coaxial fitting stretched to barrel length"): the 7.62 mm coax's barrel leaves the mantlet face and
+  // stands 0.30 m proud of it with its flash hider, as a coaxial machine gun does; it was a 2.15 m rod out to the
+  // cannon's muzzle. The barrel ends 2 cm inside its hider: a barrel cap flush with the hider's face is a duplicated disc
+  // (the circular-cap lint).
+  P.addGunExtraDark(cylZ(0.021, 0.62, 12), 0.22, -0.028, 0.55);
+  P.addGunExtraDark(cylZ(0.027, 0.05, 12), 0.22, -0.028, 0.855);
+  muzzleTipDot(P, 0.22, -0.028, 0.88, 0.013, { parent: 'gunG' });
   P.gunG.userData.type89GunMantletReceipt = Object.freeze({
     architecture: 'flat-mask-compact-rocking-mantlet-v1',
     movingWithGun: true,
@@ -306,7 +312,7 @@ function addTurret(P: LightTigerBuilderPort): void {
   // omitted and the highest EO head sits centered on the station roof.
   const tigerRoofOptics = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'k2b-compact-tower',
     scale: 0.88,
     towerRise: 0.12,
@@ -338,7 +344,7 @@ function addTurret(P: LightTigerBuilderPort): void {
   // arrow-brow station; the positive-X firing line clears the roof optics.
   const tigerRoofRws = FITTINGS.openYokeRws({
     mats: P.mats,
-    bodySlot: 'turret',
+    bodySlot: 'hull',
     sizeStandard: 'light-tiger-compact-rws',
     scale: 0.66,
     towerRise: 0.09,

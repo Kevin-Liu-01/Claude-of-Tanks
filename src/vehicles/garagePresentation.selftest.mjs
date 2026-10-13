@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { createTankState } from '../sim/movement.ts';
+import { preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
 
 const visual = createTank('m1a2', null, {
   proceduralOnly: true,
@@ -27,6 +28,7 @@ assert.ok(turret && gun && recoil && wheelMesh && trackBand,
 assert.ok(detailGroups.length > 0, 'probe tank exposes distance-managed battle detail');
 
 const restWheels = Array.from(wheelMesh.instanceMatrix.array);
+const restTurretPosition = turret.position.clone();
 const restBand = Array.from(trackBand.geometry.getAttribute('position').array);
 const state = createTankState(getSpec('m1a2'), new THREE.Vector3(12, 0.7, -9), 0.83);
 state.visualPitch = 0.13;
@@ -45,11 +47,16 @@ visual.recoilKick();
 visual.syncFromState(state, 0.12, 150);
 visual.hitFlinch(0.8, -0.2, 2.4, state.yaw);
 visual.setTrackState('trackL', true);
+// (physics lane, 2026-10-11) a battle loads the wreck turret's physics under its cover (wreckTurretDriverLoader.ts)
+await preloadWreckTurretDriver();
 visual.setDestroyed({ pop: true, ageS: 0.42 });
 
 assert.ok(Math.abs(root.rotation.x) > 0.05 && Math.abs(root.rotation.z) > 0.05,
   'battle pose rocks the hull away from its showroom rest pose');
-assert.ok(Math.abs(turret.rotation.y) > 0.4 && Math.abs(gun.rotation.x) > 0.1,
+// (physics lane, 2026-10-10) the popped turret is a rigid body: 0.42 s into a cook-off it is in flight, off its ring and
+// turned by its tumble, and the gun has dropped to the wreck's droop — whatever pose the physics gave it
+const turretTurn = 2 * Math.acos(Math.min(1, Math.abs(turret.quaternion.w)));
+assert.ok(turret.position.distanceTo(restTurretPosition) > 0.3 && turretTurn > 0.4 && Math.abs(gun.rotation.x) > 0.05,
   'battle pose articulates the turret and gun');
 assert.ok(Math.abs(recoil.position.z) > 0.05, 'battle recoil leaves the gun out of battery');
 assert.notDeepEqual(Array.from(wheelMesh.instanceMatrix.array), restWheels,

@@ -252,7 +252,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -264,6 +264,8 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     updateActiveRoom(state) { menu.updates++; calls.push(`menu.update:${state.phase}`); return true; },
     detachActiveRoom() { menu.detached++; menu.attached = null; calls.push('menu.detach'); },
     showRoomFailure(reason, mode) { menu.failures.push([reason, mode]); calls.push(`menu.failure:${reason}:${mode}`); },
+    shown: [],
+    showActiveRoom(notice) { menu.shown.push(notice); calls.push(`menu.show:${notice}`); return true; },
   };
   const battleLoad = {
     visible: false, progressLabels: [], shows: [],
@@ -343,7 +345,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       setGarageStatus: (status) => { garageStatus.push(status); },
       emitRoomState: (payload) => { roomStates.push(payload); },
       clearInput: () => calls.push('clearInput'),
-      enterGarage: async () => { game.phase = 'garage'; calls.push('enterGarage'); },
+      enterGarage: async () => { game.phase = 'garage'; calls.push('enterGarage'); if (enterGarage) await enterGarage(); },
       returnToGarage: async () => { game.phase = 'garage'; calls.push('returnToGarage'); },
       getPhase: () => game.phase,
       hasResult: () => !!game.result,
@@ -372,7 +374,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       createSession: (options) => { const session = createScriptedSession(options, calls); sessions.push(session); return session; },
       createPresentation: (options) => { const presentation = createRecordedPresentation(options, calls); presentations.push(presentation); return presentation; },
     },
-    clock: () => 1000,
+    clock,
     clientBuild: 'receipt',
     entryTimeoutMs,
     schedule: (callback) => setTimeout(callback, 0),
@@ -382,6 +384,17 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     reportWarning: (scope, detail) => calls.push(`warn:${scope}:${detail}`),
   });
   return { calls, bus, game, sessions, presentations, menu, battleLoad, lifecycle, garageStatus, roomStates, statusSurfaces, statusEvents, statusReports, timers, ports, composition };
+}
+
+/** Start a room entry and drive its round to the first frame (the warm, activation and reveal follow). */
+async function enterRound(harness, { role = 'host', round = 1, mapId = 'alpine', session: roomSession = null } = {}) {
+  const room = roomSession ?? makeRoomSession(harness.calls);
+  const entry = harness.composition.beginRoom({ role, session: room, lobbyState: room.lobby });
+  const owner = harness.sessions[0];
+  await owner.enter({ matchStart: matchStart(round, mapId), room: snapshot({ phase: 'starting', round }), spectator: false, playerId: 'me' });
+  await owner.welcome();
+  owner.frame(frame());
+  return { room, entry, owner };
 }
 
 // ------------------------------------------------------------ port validation and session guard
@@ -791,68 +804,172 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.equal(await slow.composition.beginRoom({ session: slowRoom }), false, 'a disposed composition launches nothing');
 }
 
-// ------------------------------------------------------------ entry resilience: a shader preparation past its wall-clock budget runs once more with a fresh deadline, then the entry proceeds
+// ------------------------------------------------------------ 2026-10-10 (the MP shader-prep lane): a slow compile never refuses entry
+// Production 207-211: the returning seat's strict preparation ran out of its 5 s window twice ("compile 5.0 s + retry
+// 5.0 s") at load 54-84 and the entry was refused ("Battle shaders could not finish preparing"). A window that runs out
+// resumes in the next one while programs keep linking; the last resort reports and lets the covered reveal link the rest.
 {
+  // one window past the budget, then complete: the extension is a beacon, the entry proceeds
   const attempts = [];
   const slowGpu = createHarness({ compile: async () => {
     attempts.push(attempts.length + 1);
     return attempts.length === 1 ? { preparation: { status: 'incomplete', pending: 7, reason: 'budget' } } : { preparation: { status: 'complete', pending: 0 } };
   } });
-  const slowRoom = makeRoomSession(slowGpu.calls);
-  const slowEntry = slowGpu.composition.beginRoom({ role: 'host', session: slowRoom, lobbyState: slowRoom.lobby });
-  const slowOwner = slowGpu.sessions[0];
-  await slowOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
-  await slowOwner.welcome();
-  slowOwner.frame(frame());
-  assert.equal(await slowEntry, true, 'the entry proceeds once the second preparation completes');
-  assert.deepEqual(attempts, [1, 2], 'the compile ran exactly twice');
+  const { entry } = await enterRound(slowGpu);
+  assert.equal(await entry, true, 'the entry proceeds once the second window completes');
+  assert.deepEqual(attempts, [1, 2]);
   assert.equal(slowGpu.ports.trace.status, 'complete');
-  assert.ok(slowGpu.ports.trace.stages.compile >= 0 && slowGpu.ports.trace.stages.compileRetry >= 0, `the trace carries both attempts (${JSON.stringify(slowGpu.ports.trace.stages)})`);
+  assert.ok(slowGpu.ports.trace.stages.compile >= 0 && slowGpu.ports.trace.stages.compileRetry >= 0, `the trace carries the first window and the rest (${JSON.stringify(slowGpu.ports.trace.stages)})`);
+  assert.deepEqual(slowGpu.ports.trace.compile, { attempts: 2, outcome: 'complete', pending: 0 });
   assert.equal(slowGpu.ports.slowEntries.length, 1, 'one beacon for the extension');
   assert.deepEqual({ ...slowGpu.ports.slowEntries[0], ms: 0 }, { stage: 'compile', code: 'extended', ms: 0, pending: 7 });
-  assert.ok(Number.isFinite(slowGpu.ports.slowEntries[0].ms) && slowGpu.ports.slowEntries[0].ms >= 0);
   assert.equal(slowGpu.ports.failure ?? null, null, 'no entry failure');
-  assert.ok(slowGpu.calls.includes('slowEntry:compile:extended:7'));
   const progress = slowGpu.battleLoad.progressLabels.map(([, label]) => label);
-  assert.ok(progress.includes('Compiling combat shaders (still preparing)'), 'the loader says the compile is still preparing');
+  assert.ok(progress.includes('Compiling combat shaders (7 still linking)'), 'the loader says how many programs are still linking');
   slowGpu.composition.dispose();
 }
 
-// ------------------------------------------------------------ twice past the budget: the hard failure with the same message, no third attempt
 {
+  // (a) programs keep linking across many windows: the entry waits for them, window after window, and completes
+  const pendingByWindow = [40, 25, 10];
   const attempts = [];
-  const starved = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending: 7, reason: 'budget' } }; } });
-  const starvedRoom = makeRoomSession(starved.calls);
-  const starvedEntry = starved.composition.beginRoom({ role: 'host', session: starvedRoom, lobbyState: starvedRoom.lobby });
-  const starvedOwner = starved.sessions[0];
-  await starvedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
-  await starvedOwner.welcome();
-  starvedOwner.frame(frame());
-  assert.equal(await starvedEntry, false, 'the second verdict is final');
-  assert.equal(attempts.length, 2, 'no third attempt');
-  assert.match(starved.ports.failure.message, /Battle shaders could not finish preparing\. Please retry from the Garage\./);
-  assert.equal(starved.ports.trace.status, 'failed');
-  assert.ok(starved.ports.trace.stages.compile >= 0 && starved.ports.trace.stages.compileRetry >= 0, `the failed trace records both attempts (${JSON.stringify(starved.ports.trace.stages)})`);
-  assert.equal(starved.ports.slowEntries.length, 1, 'the extension was beaconed once; the failure is the entry result');
-  assert.ok(starved.calls.includes('enterGarage') && starved.calls.includes('load.hide'), 'the covered Garage restore runs');
+  const linking = createHarness({ compile: async () => {
+    attempts.push(1);
+    const pending = pendingByWindow[attempts.length - 1];
+    return pending === undefined ? { preparation: { status: 'complete', pending: 0 } } : { preparation: { status: 'incomplete', pending, reason: 'budget' } };
+  } });
+  const { entry } = await enterRound(linking);
+  assert.equal(await entry, true, 'four windows, three of them past the budget: entered');
+  assert.equal(attempts.length, 4);
+  assert.deepEqual(linking.ports.trace.compile, { attempts: 4, outcome: 'complete', pending: 0 });
+  assert.deepEqual(linking.ports.slowEntries.map(({ stage, code, pending }) => [stage, code, pending]), [['compile', 'extended', 40]],
+    'the extension is beaconed once; programs that keep linking are never a last resort');
+  const progress = linking.battleLoad.progressLabels.map(([, label]) => label);
+  for (const pending of pendingByWindow) assert.ok(progress.includes(`Compiling combat shaders (${pending} still linking)`), `progress shows ${pending} left`);
+  linking.composition.dispose();
+}
+
+for (const pending of [7, null]) {
+  // (a) nothing links for COMPILE_STALL_WINDOWS windows (or the cohort never finishes submitting): the last resort
+  // reports and the entry goes on; the covered reveal links the rest under the loader
+  const attempts = [];
+  const starved = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending, reason: 'budget' } }; } });
+  const { entry } = await enterRound(starved);
+  assert.equal(await entry, true, `a starved GPU never refuses the entry (pending ${pending})`);
+  assert.equal(attempts.length, 5, 'the first window, then four without progress');
+  assert.deepEqual(starved.ports.trace.compile, { attempts: 5, outcome: 'deferred', pending });
+  assert.deepEqual(starved.ports.slowEntries.map(({ stage, code, pending: left }) => [stage, code, left]),
+    [['compile', 'extended', pending], ['compile', 'deferred', pending]], 'the extension and the last resort are both beacons');
+  assert.equal(starved.ports.failure ?? null, null, 'no entry failure');
+  assert.equal(starved.ports.trace.status, 'complete');
+  const order = starved.calls.filter((call) => ['blackWatchdog', 'primeReveal', 'load.hide'].includes(call) || (typeof call === 'string' && call.startsWith('warm.fx')));
+  assert.deepEqual(order, ['warm.fx:function:2', 'blackWatchdog', 'primeReveal', 'load.hide'],
+    'the deferred compile still runs the opening warm, the watchdog and the covered reveal');
   starved.composition.dispose();
 }
 
-// ------------------------------------------------------------ an incomplete preparation for any other reason never retries
-{
+// ------------------------------------------------------------ (b) a preparation that cannot succeed is refused at once, with what broke
+for (const [reason, message] of [
+  ['reflection', /^Battle shaders failed to prepare on this device \(reflection\)\. Please retry from the Garage\.$/],
+  ['query', /^Battle shaders failed to prepare on this device \(query\)\. Please retry from the Garage\.$/],
+  ['invalidated', /^Battle graphics were lost while the battle prepared its shaders\. Please retry from the Garage\.$/],
+]) {
   const attempts = [];
-  const lost = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending: null, reason: 'invalidated' } }; } });
-  const lostRoom = makeRoomSession(lost.calls);
-  const lostEntry = lost.composition.beginRoom({ role: 'host', session: lostRoom, lobbyState: lostRoom.lobby });
-  const lostOwner = lost.sessions[0];
-  await lostOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
-  await lostOwner.welcome();
-  lostOwner.frame(frame());
-  assert.equal(await lostEntry, false);
-  assert.equal(attempts.length, 1, 'an invalidated preparation fails at once');
-  assert.match(lost.ports.failure.message, /could not finish preparing/);
-  assert.equal(lost.ports.slowEntries, undefined, 'no beacon');
-  lost.composition.dispose();
+  const broken = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending: reason === 'invalidated' ? null : 3, reason } }; } });
+  const { entry } = await enterRound(broken);
+  assert.equal(await entry, false, `a ${reason} preparation refuses the entry`);
+  assert.equal(attempts.length, 1, 'no second window for a preparation that cannot succeed');
+  assert.match(broken.ports.failure.message, message);
+  assert.equal(broken.ports.failure.stage, 'warm');
+  assert.equal(broken.ports.slowEntries, undefined, 'a refusal is the entry result, not a slow-entry beacon');
+  assert.ok(!broken.calls.includes('primeReveal'), 'nothing reveals');
+  // (c) after any refused entry the loader clears and the held room opens again with its reason (Rejoin battle);
+  // the entry settles when the round's presentation goes, the covered Garage restore finishes after it
+  await settle();
+  const tail = broken.calls.filter((call) => ['cover', 'enterGarage', 'uncover', 'load.hide'].includes(call));
+  assert.deepEqual(tail.slice(-4), ['cover', 'enterGarage', 'uncover', 'load.hide'], 'the covered Garage restore, then the loader clears');
+  assert.equal(broken.battleLoad.visible, false, 'the loader is gone');
+  await settle();
+  assert.ok(broken.menu.attached, 'the room is attached to the menu');
+  assert.deepEqual(broken.menu.shown, [broken.ports.failure.message], 'the lobby opens once, naming why the entry failed');
+  assert.equal(broken.lifecycle.pending, false);
+  broken.composition.dispose();
+}
+
+// ------------------------------------------------------------ (c) a Garage restore that throws still clears the loader and offers the room
+{
+  const restoreError = new Error('Program uniform preparation incomplete: budget');
+  restoreError.name = 'ProgramUniformPreparationError';
+  const stuck = createHarness({
+    compile: async () => ({ preparation: { status: 'incomplete', pending: 2, reason: 'reflection' } }),
+    enterGarage: async () => { throw restoreError; },
+  });
+  const { entry } = await enterRound(stuck);
+  assert.equal(await entry, false);
+  await settle();
+  const tail = stuck.calls.filter((call) => ['cover', 'enterGarage', 'uncover', 'load.hide'].includes(call));
+  assert.deepEqual(tail.slice(-4), ['cover', 'enterGarage', 'uncover', 'load.hide'], 'prod 211: the loader stayed on when the restore threw');
+  assert.equal(stuck.battleLoad.visible, false, 'the loader is gone even though the Garage restore threw');
+  assert.ok(stuck.calls.includes('error:multiplayer v2 entry:Program uniform preparation incomplete: budget'), 'the restore error is reported');
+  assert.equal(stuck.menu.shown.length, 1, 'Rejoin is offered: the room opens again');
+  assert.equal(stuck.lifecycle.pending, false, 'the entry critical section is released');
+  stuck.composition.dispose();
+}
+
+// ------------------------------------------------------------ (d) the rejoin path: a refused entry, the room again, Rejoin under load enters
+{
+  let phase = 'broken';
+  const attempts = [];
+  const rejoin = createHarness({ compile: async () => {
+    attempts.push(phase);
+    if (phase === 'broken') return { preparation: { status: 'incomplete', pending: null, reason: 'invalidated' } };
+    // the second entry runs on a starved GPU: three windows past the budget, programs linking, then complete
+    const windows = attempts.filter((value) => value === 'starved').length;
+    return windows <= 3 ? { preparation: { status: 'incomplete', pending: 30 - windows * 9, reason: 'budget' } } : { preparation: { status: 'complete', pending: 0 } };
+  } });
+  const { room, entry, owner } = await enterRound(rejoin, { role: 'client' });
+  assert.equal(await entry, false, 'the first entry is refused (its context was replaced)');
+  await settle();
+  assert.equal(rejoin.menu.shown.length, 1, 'the room is offered again');
+  assert.equal(rejoin.composition.room, room, 'the seat keeps its room');
+  phase = 'starved';
+  const again = rejoin.composition.beginRoom({ role: 'client', session: room, lobbyState: room.lobby });
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  await owner.welcome();
+  owner.frame(frame());
+  assert.equal(await again, true, 'Rejoin enters the running match under load');
+  assert.deepEqual(rejoin.ports.trace.compile, { attempts: 4, outcome: 'complete', pending: 0 });
+  assert.equal(rejoin.ports.trace.status, 'complete');
+  rejoin.composition.dispose();
+}
+
+// ------------------------------------------------------------ the entry's own wait: a progressing round is slow, a stalled one is refused
+{
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const slow = createHarness({ entryTimeoutMs: 20, compile: async () => { await gate; return { preparation: { status: 'complete', pending: 0 } }; } });
+  const { entry } = await enterRound(slow);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.deepEqual(slow.ports.slowEntries?.map(({ stage, code }) => [stage, code]), [['entry', 'extended']], 'past entryTimeoutMs a progressing round extends (one beacon)');
+  release();
+  assert.equal(await entry, true, 'the slow round enters');
+  assert.equal(slow.ports.failure ?? null, null);
+  slow.composition.dispose();
+}
+
+{
+  let time = 1000;
+  // the compile hangs and the clock moves on: nothing has progressed for over two minutes when the wait checks
+  const stalled = createHarness({ entryTimeoutMs: 20, clock: () => time, compile: () => { time += 130_000; return new Promise(() => {}); } });
+  const { entry } = await enterRound(stalled);
+  assert.equal(await entry, false, 'a stalled round is refused at the check');
+  assert.equal(stalled.ports.failure.reason, 'entry_failed');
+  assert.equal(stalled.ports.failure.stage, 'timeout');
+  assert.match(stalled.ports.failure.message, /did not present in time/);
+  await settle();
+  assert.equal(stalled.battleLoad.visible, false, 'the loader clears');
+  assert.equal(stalled.menu.shown.length, 1, 'the room opens again');
+  stalled.composition.dispose();
 }
 
 composition.dispose();
@@ -919,4 +1036,28 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   failing.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, runs a shader preparation past its budget once more before failing, and loads the obstacle identities of the host manifest for a world laid out otherwise');
+// ------------------------------------------------------------ the match ends while the round is still entering: refused at once
+// (2026-10-11, prod 215 run 2: a returning seat's world loaded for 150 s while the defenders fell; the match ended in a
+// defeat, and the entry waited the whole stall window for a WELCOME the ended match could not send — "did not present in
+// time" two minutes later, behind the loader)
+{
+  const ended = createHarness({ entryTimeoutMs: 60_000 });
+  const endedRoom = makeRoomSession(ended.calls);
+  const entering = ended.composition.beginRoom({ role: 'client', session: endedRoom, lobbyState: endedRoom.lobby });
+  const endedOwner = ended.sessions[0];
+  await endedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  // no WELCOME yet (the world still loading, the channel still opening): the match ends
+  endedOwner.verdict(VERDICT.BRAVO, 'elimination');
+  const outcome = await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]);
+  assert.equal(outcome, false, `a verdict before the reveal refuses the entering round at once (${outcome})`);
+  assert.equal(ended.ports.failure.reason, 'match_ended');
+  assert.match(ended.ports.failure.message, /match ended while you were joining/);
+  await settle();
+  assert.equal(ended.battleLoad.visible, false, 'the loader clears');
+  assert.deepEqual(ended.menu.shown, [ended.ports.failure.message], 'the room\'s lobby opens once, naming why');
+  assert.ok(!ended.calls.some((call) => call.startsWith('error:multiplayer v2 entry')), 'an ended match is not an entry error (a warning names it)');
+  assert.ok(ended.calls.some((call) => call.startsWith('warn:multiplayer v2 entry:The match ended while you were joining')), 'the warning');
+  ended.composition.dispose();
+}
+
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends, and loads the obstacle identities of the host manifest for a world laid out otherwise');

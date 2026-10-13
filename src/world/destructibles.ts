@@ -45,6 +45,8 @@ interface WorldDestructibleEntry {
   isActive(): boolean;
   sweep(ax: number, ay: number, az: number, bx: number, by: number, bz: number): void;
   impact(x: number, y: number, z: number, options: ShellImpactOptions): void;
+  /** A burst of `chargeKg` at (x, y, z) (a near miss shows on the vehicles round it: propCrushPresentation.ts blast). */
+  blast?(x: number, y: number, z: number, chargeKg: number): void;
 }
 
 type DestroyedEventSink = (event: DestroyedPropEvent) => void;
@@ -143,4 +145,13 @@ export function notifyShellImpact(
   options: ShellImpactOptions,
 ): void {
   for (const w of worlds) if (w.isActive()) w.impact(x, y, z, options);
+}
+
+/**
+ * A burst (effects.ts: every DESTRUCTION_BUS_EVENTS.blast, the battle's and the Studio's): the vehicles round it dent,
+ * lose their glass and are shoved (wave 351: "a near miss must show on a civilian vehicle"). Presentation only.
+ */
+export function notifyBlast(x: number, y: number, z: number, chargeKg: number): void {
+  if (!(chargeKg > 0)) return;
+  for (const w of worlds) if (w.isActive()) w.blast?.(x, y, z, chargeKg);
 }

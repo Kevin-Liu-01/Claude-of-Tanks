@@ -50,7 +50,7 @@ export interface StructureStages {
    * keeps four), one per place; none once the sim cuts its own holes (sections on) or it is coming down.
    */
   strike(structureId: number, seam: StructureDamageSeam | null, x: number, y: number, z: number, dirX: number, dirZ: number,
-    munition: MunitionClass, chargeKg: number): void;
+    munition: MunitionClass, chargeKg: number, caliberMm?: number): void;
   /**
    * The combat warm (before reveal; dcore 2026-10-09, the collapse spike: the first collapse compiled its programs
    * mid-battle): a building's first damage draws two programs the world does not — the room behind a hole and the
@@ -85,8 +85,15 @@ function dampPieces(out: DamageWriters, k: number, maxY = Infinity): DamageWrite
   return Object.assign(Object.create(Object.getPrototypeOf(out) as object) as DamageWriters, out, { pieces });
 }
 
-/** Strike holes a standing building takes (the mask keeps MAX_HOLES: one is left for the breach stage's). */
-const STRIKE_HOLES = 3;
+/** Strike holes a standing building takes (the mask keeps MAX_HOLES; three are left for the stages' own cuts). 2026-10-10
+ *  (the owner: "shooting buildings should cause destruction too"): every burst and every armour-piercing round leaves its
+ *  hole, a dozen hits a building before it falls (it went from three, the rest of a battle's hits showing nothing). */
+const STRIKE_HOLES = 9;
+/** A tank round's hole through a wall (no charge: the shot's own): a ragged pierce sized by its calibre, its rim spalled. */
+function pierceHoleRadius(munition: MunitionClass, caliberMm: number): number {
+  if (munition !== 'kinetic') return 0;
+  return Math.min(0.45, Math.max(0.22, 0.1 + 0.0024 * (caliberMm > 0 ? caliberMm : 105)));
+}
 /** A burst's hole on a wall (P1 strike holes): smaller than the breach stage's blow (structureFx breachBlowFor) — a
  *  tank's HE round punches through a metre, a howitzer's or a missile's more; under a kilogram of charge, a pock. */
 function strikeHoleRadius(munition: MunitionClass, chargeKg: number): number {
@@ -403,7 +410,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   const sectionsSeen = new Set<number>();
   interface PendingStrike {
     structureId: number; seam: StructureDamageSeam; x: number; y: number; z: number; dirX: number; dirZ: number;
-    munition: MunitionClass; chargeKg: number; at: number;
+    munition: MunitionClass; chargeKg: number; caliberMm: number; at: number;
   }
   const pendingStrikes: PendingStrike[] = [];
   /** The wait before a strike's hole is punched (s): the burst's flash covers it, the step's own events land first. */
@@ -415,9 +422,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // the mask's ring) a strike never takes a slot another cut holds, and leaves one for the breach stage
     if (mask.holes(seam.structureIdx) >= MAX_HOLES - 1) return;
     const list = punched.get(structureId);
-    if ((list?.length ?? 0) >= STRIKE_HOLES || nearPunched(structureId, x, y, z, 1.2)) return;
-    const radiusM = strikeHoleRadius(p.munition, p.chargeKg);
     const cause = p.munition === 'kinetic' || p.munition === 'autocannon_ap' ? 'kinetic' : 'blast';
+    // a round's hole may sit closer to another than a burst's (a burst blows the wall round it)
+    if ((list?.length ?? 0) >= STRIKE_HOLES || nearPunched(structureId, x, y, z, cause === 'kinetic' ? 0.6 : 1.1)) return;
+    const radiusM = cause === 'kinetic' ? pierceHoleRadius(p.munition, p.caliberMm) : strikeHoleRadius(p.munition, p.chargeKg);
+    if (!(radiusM > 0)) return;
     let spec = seam.holeAt(x, y, z, radiusM, p.dirX, p.dirZ, p.munition, cause, 1 + (list?.length ?? 0));
     if (!spec) return;
     // (the battle strips, b3: a sheet hall's torn sheet curled up past its eaves round a hole at the wall's head) a
@@ -435,7 +444,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     notePunched(structureId, x, y, z);
     // (wave 322 / the stack strips: a strike's pieces strewed the yard thirty metres out like confetti) at half the kit's
     // throw, never up: they fall out of the hole and lie at the wall's foot
-    run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, 0.5)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+    // a round's hole throws less, and slower, than a burst's: the spall falls out of it
+    const throwK = cause === 'kinetic' ? 0.3 : 0.5;
+    run(seam, 0, false, (out) => seam.breach(spec, dampPieces(out, throwK)), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed,
+      cause === 'kinetic' ? 'pierce' : 'blast');
   }
   const nearPunched = (id: number, x: number, y: number, z: number, within: number): boolean =>
     (punched.get(id) ?? []).some(([hx, hy, hz]) => Math.hypot(hx - x, hy - y, hz - z) < within);
@@ -455,7 +467,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   };
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
-  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number): void {
+  function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number,
+    holeKind?: 'blast' | 'pierce'): void {
     if (!result) return;
     let changed = false;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
@@ -466,7 +479,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       const wnx = cut.nx * c + cut.nz * s, wnz = -cut.nx * s + cut.nz * c;
       // a breach's cuts follow the outline the kit's rim does (its own seed's phase)
       mask.addHole(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM, cut.outsideM ?? 0.3,
-        holeSeed !== undefined ? holeOutlinePhase01(holeSeed) : undefined);
+        holeSeed !== undefined ? holeOutlinePhase01(holeSeed) : undefined, holeKind);
       // a hole goes through the wall's layers; a spall or the render ring only through its render
       o.scars?.add(seam.structureIdx, wx, py + cut.y, wz, cut.radiusM, wnx, wnz, cut.depthM >= 0.2,
         (seam.anatomy.seed + Math.round(cut.x * 100) + Math.round(cut.y * 100)) >>> 0);
@@ -572,7 +585,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
-    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number): void {
+    standing = true, owner?: RunOwner, piecesOnly = false, noPieces = false, holeSeed?: number, holeKind?: 'blast' | 'pierce'): void {
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string, role?: DamageRole): THREE.Material => role === 'room' ? roomMaterial
       : byBucket.get(bucket) ?? o.materialFor?.(bucket) ?? fallbackFor(bucket);
@@ -585,7 +598,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     try { result = build(out); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result, holeSeed);
+    apply(seam, result, holeSeed, holeKind);
   }
 
   // ---- the collapse's crumble (round 7, wave 277: "no wall, roof or masonry is ever seen falling in pieces or with any
@@ -938,12 +951,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const mesh of made) mesh.frustumCulled = false;
       return made.length;
     },
-    strike(structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg) {
+    strike(structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg, caliberMm = 0) {
       // punched a moment later, under the burst's flash: the same step's stage and breach events land first (with
       // sections on the sim's own hole is the hole; a collapse takes the building down instead)
       // (the phone tier draws scars, not cuts, and its event-time budget is small: a strike there stays the wall's burst)
-      if (!seam || o.scars || !(strikeHoleRadius(munition, chargeKg) > 0)) return;
-      pendingStrikes.push({ structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg, at: o.now() });
+      if (!seam || o.scars || !(strikeHoleRadius(munition, chargeKg) > 0 || pierceHoleRadius(munition, caliberMm) > 0)) return;
+      pendingStrikes.push({ structureId, seam, x, y, z, dirX, dirZ, munition, chargeKg, caliberMm, at: o.now() });
     },
     breach(e, seam) {
       finishFalls(e.structureId);

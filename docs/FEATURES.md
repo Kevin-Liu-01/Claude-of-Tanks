@@ -517,14 +517,15 @@ See docs/GALLERY.md.
 
 ## Public visual archive
 
-`public/media/showcase-r1/manifest.json` is the contract for the current
-88-frame archive: 13 owner-selected features, 30 action compositions, 30
-foreground compositions, five directed Studio keyframes, and ten live interface
-states. The publisher also records six 2400×592 contact sheets that preserve the
-human collection-review pass before 4K admission. Checked-in scene data, the
-serialized capture harness, automated image grading, owner approval, and the
-publisher keep the archive reproducible and prevent hand-curated imagery from
-drifting away from the game.
+`public/media/site50-r14/archive.json` is the contract for the current archive
+(since 2026-10-12): the fifty frames, then the key moment and close portrait of
+each of the site fifty's takes, all rendered at 4K in the game engine. Its
+`manifest.json` records every published file with its source delivery, bytes
+and sha256, and five 2400×540 contact sheets of the fifty frames preserve the
+review pass. Each take's scene is checked-in code
+(`tools/media-r5/site50-shots/`), so the archive stays reproducible and cannot
+drift away from the game. The previous 88-frame showcase-r1 archive is retired
+(docs/SHOWCASE-LIBRARY.md).
 
 ## Verification as a product feature
 

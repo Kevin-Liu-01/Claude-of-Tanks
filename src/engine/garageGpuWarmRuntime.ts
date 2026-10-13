@@ -99,6 +99,8 @@ export interface GarageGpuRestoreReceipt {
   sceneUploadBatches: number[];
   sceneUploadMax: number;
   settleFrameMs: number;
+  /** Programs still linking when the readiness proof ran out of time; the covered settle frame linked them (2026-10-10). */
+  programWarmDeferred?: number | null;
 }
 
 interface GarageGpuRestoreOptions {
@@ -176,6 +178,7 @@ export async function restoreGarageGpuPipeline({
   let shadowPasses: number[] = [];
   let sceneUploadBatches: number[] = [];
   let settleFrameMs = 0;
+  let programWarmDeferred: number | null | undefined;
 
   lighting.setStaticPresentationDormant(false);
   try {
@@ -196,11 +199,14 @@ export async function restoreGarageGpuPipeline({
           yieldProgramReadiness,
         );
       } catch (error) {
-        // A pending/failed readiness proof is not permission to immediately
+        // A failed readiness proof (a lost or replaced context, a failed query or reflection) is not permission to
         // force the same cold reflection in an unbounded fallback render.
-        if (error instanceof ProgramUniformPreparationError) throw error;
-        // Scoped compile remains the compatibility fallback. The covered exact
-        // frame below still proves every draw-time path before reveal.
+        if (error instanceof ProgramUniformPreparationError && error.preparation.reason !== 'budget') throw error;
+        // 2026-10-10 (prod 211: a refused network entry's Garage restore threw here under load, leaving the Garage
+        // unready forever: every scene frame suppressed, the loader on, no Rejoin): a proof that only ran out of time is
+        // slow, not broken. Scoped compile remains the compatibility fallback, and the covered exact frame below links
+        // what is still pending under the opaque transition before reveal.
+        if (error instanceof ProgramUniformPreparationError) programWarmDeferred = error.preparation.pending ?? null;
         try { forwardPrograms.compile(scene); } catch { /* exact frame is fallback */ }
       }
       programWarmMs = Math.round(now() - programWarmAt);
@@ -251,6 +257,7 @@ export async function restoreGarageGpuPipeline({
     sceneUploadBatches,
     sceneUploadMax: Math.max(0, ...sceneUploadBatches),
     settleFrameMs,
+    ...(programWarmDeferred === undefined ? {} : { programWarmDeferred }),
   };
 }
 

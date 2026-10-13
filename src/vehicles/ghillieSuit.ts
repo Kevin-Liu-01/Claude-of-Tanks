@@ -405,23 +405,32 @@ const PROBE_CELL_M = 0.05;
  * into each cell it covers, so the thousands of queries a suit makes never test it from far away.
  */
 const PROBE_BROAD_CELLS = 60000;
+/** Half the side of the probe grids' fixed window round the owner's origin, in metres. */
+const PROBE_WINDOW_M = 8;
+/** How far past a triangle's box its probe cells reach (0.1 mm: the window's cell edges fall on authored round
+ * coordinates, where a hit test's tolerance meets a point a hair outside the box). */
+const PROBE_SPAN_PAD_M = 1e-4;
 
 function probeGrid(tri: Float32Array, a0: number, a1: number): ProbeGrid {
   const count = tri.length / 9;
-  let lo0 = Infinity, lo1 = Infinity, hi0 = -Infinity, hi1 = -Infinity;
-  for (let i = 0; i < tri.length; i += 3) {
-    lo0 = Math.min(lo0, tri[i + a0]); hi0 = Math.max(hi0, tri[i + a0]);
-    lo1 = Math.min(lo1, tri[i + a1]); hi1 = Math.max(hi1, tri[i + a1]);
-  }
   if (!count) return { min0: 0, min1: 0, n0: 1, n1: 1, start: new Int32Array(2), items: new Int32Array(0), broad: new Int32Array(0) };
+  // the netting lane (2026-10-10): one fixed window round the owner's origin, not the triangles' measured bounds. With
+  // the bounds pass, a build that followed others in the same process intermittently laid leclerc_xlr's deck nets
+  // without their left halves (never with node --single-threaded); a probe minimum forced to +0.35 m reproduces that
+  // loss, as if the pass (a min/max over every corner, tens of thousands of iterations) had come out short. A fixed
+  // window has no such pass; every vehicle's owner frame lies well inside it (a corner outside is clamped to the edge
+  // cells).
+  const lo0 = -PROBE_WINDOW_M, lo1 = -PROBE_WINDOW_M;
   const inv = 1 / PROBE_CELL_M;
-  const n0 = Math.max(1, Math.floor((hi0 - lo0) * inv) + 1), n1 = Math.max(1, Math.floor((hi1 - lo1) * inv) + 1);
+  const n0 = Math.round((2 * PROBE_WINDOW_M) * inv), n1 = n0;
   const span = (t: number): [number, number, number, number] => {
     const o = t * 9;
     const u0 = Math.min(tri[o + a0], tri[o + 3 + a0], tri[o + 6 + a0]), u1 = Math.max(tri[o + a0], tri[o + 3 + a0], tri[o + 6 + a0]);
     const v0 = Math.min(tri[o + a1], tri[o + 3 + a1], tri[o + 6 + a1]), v1 = Math.max(tri[o + a1], tri[o + 3 + a1], tri[o + 6 + a1]);
-    return [Math.max(0, Math.floor((u0 - lo0) * inv)), Math.min(n0 - 1, Math.floor((u1 - lo0) * inv)),
-      Math.max(0, Math.floor((v0 - lo1) * inv)), Math.min(n1 - 1, Math.floor((v1 - lo1) * inv))];
+    // padded by PROBE_SPAN_PAD_M: a query within the hit tests' tolerance of a triangle's box (a point on an edge that
+    // lies on a cell boundary) finds it from either side of that boundary
+    return [Math.max(0, Math.floor((u0 - PROBE_SPAN_PAD_M - lo0) * inv)), Math.min(n0 - 1, Math.floor((u1 + PROBE_SPAN_PAD_M - lo0) * inv)),
+      Math.max(0, Math.floor((v0 - PROBE_SPAN_PAD_M - lo1) * inv)), Math.min(n1 - 1, Math.floor((v1 + PROBE_SPAN_PAD_M - lo1) * inv))];
   };
   const counts = new Int32Array(n0 * n1 + 1);
   const broad: number[] = [];

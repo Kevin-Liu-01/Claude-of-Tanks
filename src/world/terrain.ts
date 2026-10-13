@@ -47,7 +47,7 @@ import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades, alignPolde
   stampRoadBorderCorridors, usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
 import { buildRoadStationOrigins, usesPhysicalRoadStations, buildPhysicalRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
-import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
+import { stampWorkedGroundMask, stampYardWearMask, type WorkedGroundPatch, type YardWearBox } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
@@ -55,6 +55,7 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
+import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
@@ -63,7 +64,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -118,6 +119,18 @@ export interface RoadPathStyle {
   surface?: RoadSurface;
   /** The carriageway's full width (m), 4–18; absent: the map's ~7.7 m gauge. */
   widthM?: number;
+  /**
+   * The map-revival lane (2026-10-07, Tidegate Polders' lanes on the dyke crowns): the carriageway standing at least this
+   * many metres over the ground it crosses (a road already on an embankment as high is left as it is), on a crowned bank
+   * of its own — a crest the carriageway's width and a metre and a fifth of verge either side, its
+   * shoulders down to the graded road plane over six metres — the lift ramped out over `crownRampM` from wherever a road
+   * that keeps its grade comes within eight metres (a junction or a crossing meets it at that road's level), and faded
+   * over a bridge's approaches (they grade to its deck as before). Absent: the path grades as before, and a map that lifts
+   * no path builds its terrain as before.
+   */
+  crownLiftM?: number;
+  /** The crown lift's ramp toward a road that keeps its grade (m; default 40). */
+  crownRampM?: number;
 }
 /** The road layer's class codes (R): 0 the map's own road. */
 const ROAD_SURFACE_CODE: Readonly<Record<RoadSurface, number>> = Object.freeze({ asphalt: 1, cobble: 2, patched: 3, dirt: 4 });
@@ -249,6 +262,18 @@ export interface TerraceZoneConfig {
    * 0.05 and 0.1): level ground keeps its own shape instead of breaking into islands at a bench's level. */
   minGrade?: number;
   fullGrade?: number;
+  /** (the map-revival lane, 2026-10-07, Orchard round 5: the village stacked on its terraced hill) the share of the steps
+   * kept inside the settlement (0..1). Absent: 0 — a settlement lies on its own levelled ground, as before. */
+  settlement?: number;
+  /**
+   * (the map-revival lane, 2026-10-07, Orchard round 5: the village's mule track — the coordinator's "a ramped mule track
+   * from the cross road up to the church square … no road grading needed") ramped tracks through the zone, each a
+   * polyline whose nodes carry the track's height ([x, z, y], metres): within `halfWidth` m of the line (default 1.6) the
+   * stepped ground is cut and filled level across to the track's height there (interpolated along each leg), easing back
+   * to the steps over `feather` m more (default 2). Where two legs' bands meet (a switchback) the ground takes their
+   * weighted mean. The zone's own edge weight fades a track, and nothing outside its bands moves.
+   */
+  ramps?: readonly { nodes: readonly (readonly [number, number, number])[]; halfWidth?: number; feather?: number }[];
 }
 
 /** A splat's two-formation bedrock (TerrainSplatConfig.formation). */
@@ -315,6 +340,20 @@ interface MesaConfig {
 }
 
 interface TerrainSettings {
+  /**
+   * The map-revival lane (2026-10-06, Tidegate Polders' molenbergen): built mounds raised over the finished ground — a
+   * level crest `height` metres over the ground at the centre out to `crestR`, then a batter to the foot at `baseR`,
+   * its shoulder and toe rounded — last, on final queries only, after the water's banks, the roads and the pads: a
+   * landform beside water is graded back toward the waterline by its lake's fitted bank, and would widen that bank.
+   */
+  mounds?: readonly { x: number; z: number; crestR: number; baseR: number; height: number }[];
+  /**
+   * The map-revival lane (2026-10-07, Tidegate Polders step 5; canals.ts): canals as polylines, each with a width, one
+   * water level and a bank or ditch profile — carved on final queries, after every constraint and before the mounds, a
+   * road keeping its ground over each (a culvert); their water is liquid wetness from bank to bank, so the shallow-water
+   * sheet lies on it at the level. Unset: no query calls in.
+   */
+  canals?: readonly CanalConfig[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
   bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
   hillScale: number;
@@ -343,6 +382,8 @@ interface TerrainSettings {
   /** Round 57 (2026-09-24): authored rail spurs — maps/mapKits.ts lays the track, the berth keeps vegetation and scattered props off it. */
   railSpurs?: readonly RailSpurConfig[];
   workedGround?: readonly WorkedGroundPatch[];
+  /** The map-revival lane (2026-10-11): the yards' trodden soil, a box per building (workedGroundMask.ts stampYardWearMask). */
+  yardWear?: readonly YardWearBox[];
   /** Use authored activity footprints instead of blanket settlement wear; 'plots' lays the village's ground out in
    * garden plots running back from its streets (makeMaskTexture villagePlotWear). */
   villageWear?: 'activity-patches' | 'plots';
@@ -452,6 +493,14 @@ interface SplatConfig {
   /** Ground lane (2026-10-05, Longleaf's wave: "a mirror-like specular streak baked into the centre of every dirt road"):
    * the share of the water standing in a vegetated map's ruts and the mud ringing it (default 1; a dry month's roads 0). */
   roadPuddles?: number;
+  /** The map-revival lane (2026-10-11, gauntlet wave 380 on Earthrise Basin: the regolith "a high-frequency wavy normal-map
+   * pattern that reads as crumpled foil or rippled water"): the ground's detail normal (the sourced sets' relief) as a
+   * share of its strength (default 1, every other map). */
+  detailNormal?: number;
+  /** The map-revival lane (2026-10-11; Olympus Basin, whose dirt layer is the dark basalt sand of its drifts: its tracks
+   * drew as asphalt): the layer the packed carriageway is made of — 'dirt' (the dirt layer, every map's by default) or
+   * 'ground' (the base layer: the regolith packed under the wheels). */
+  roadLayer?: 'dirt' | 'ground';
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -583,6 +632,8 @@ export interface HeightField {
   /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
    * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** The land use _landUseAt samples (its flooded paddies kept to level floors): the profile the material bakes. */
+  _landUseProfile?: LandUseProfile | null;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
   /** Ground lane (2026-10-08): a cinder yard's weed clumps (groundRedux.ts cinderYardWeedsAt, 0..1) — present only on a
@@ -717,7 +768,14 @@ const MAP_SIZE = 1024;
 interface TerraceZone {
   xs: Float64Array; zs: Float64Array;
   minX: number; maxX: number; minZ: number; maxZ: number;
-  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number;
+  feather: number; stepM: number; riserGrade: number; minGrade: number; fullGrade: number; settlement: number;
+  ramps: TerraceRamp[];
+}
+/** A prepared ramped track (TerraceZoneConfig.ramps): its nodes, its band and the bounds the band reaches. */
+interface TerraceRamp {
+  nodes: readonly (readonly [number, number, number])[];
+  halfWidth: number; feather: number;
+  minX: number; maxX: number; minZ: number; maxZ: number;
 }
 interface TerraceZoneHit { zone: TerraceZone; weight: number }
 
@@ -728,8 +786,40 @@ function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): T
       xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
       feather: Math.max(1, z.feather ?? 24), stepM: z.stepM, riserGrade: z.riserGrade ?? 0.6,
       minGrade: z.minGrade ?? 0.05, fullGrade: Math.max((z.minGrade ?? 0.05) + 0.01, z.fullGrade ?? 0.1),
+      settlement: clamp(z.settlement ?? 0, 0, 1),
+      ramps: (z.ramps ?? []).filter((r) => r.nodes.length >= 2).map((r) => {
+        const halfWidth = Math.max(0.5, r.halfWidth ?? 1.6), feather = Math.max(0.5, r.feather ?? 2), reach = halfWidth + feather;
+        const nx = r.nodes.map((n) => n[0]), nz = r.nodes.map((n) => n[1]);
+        return { nodes: r.nodes, halfWidth, feather, minX: Math.min(...nx) - reach, maxX: Math.max(...nx) + reach,
+          minZ: Math.min(...nz) - reach, maxZ: Math.max(...nz) + reach };
+      }),
     };
   });
+}
+
+/**
+ * A terrace zone's ramped tracks over its stepped ground (TerraceZoneConfig.ramps): inside a track's band the ground lies
+ * level across at the track's height there (its legs' heights interpolated along them; where two legs' bands meet, their
+ * weighted mean), easing back to the steps over the feather; `weight` (the zone's own edge weight) fades it.
+ */
+function rampTerraceGround(ramps: readonly TerraceRamp[], weight: number, x: number, z: number, h: number): number {
+  let out = h;
+  for (const ramp of ramps) {
+    if (x < ramp.minX || x > ramp.maxX || z < ramp.minZ || z > ramp.maxZ) continue;
+    const { nodes, halfWidth, feather } = ramp;
+    let wsum = 0, ysum = 0, kmax = 0;
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      const ax = nodes[i][0], az = nodes[i][1], ay = nodes[i][2];
+      const dx = nodes[i + 1][0] - ax, dz = nodes[i + 1][1] - az, len2 = dx * dx + dz * dz;
+      const t = len2 > 0 ? clamp(((x - ax) * dx + (z - az) * dz) / len2, 0, 1) : 0;
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (d >= halfWidth + feather) continue;
+      const k = 1 - smoothstep(halfWidth, halfWidth + feather, d);
+      wsum += k; ysum += k * (ay + (nodes[i + 1][2] - ay) * t); kmax = Math.max(kmax, k);
+    }
+    if (kmax > 0) out += (ysum / wsum - out) * kmax * weight;
+  }
+  return out;
 }
 
 /** The material's terrace uniforms (T2): each zone's bounding rect (up to four) and the riser band — a face whose slope
@@ -1061,6 +1151,22 @@ function segDist(
   return { d: Math.sqrt(ex * ex + ez * ez), t };
 }
 
+/**
+ * The built mounds (TerrainSettings.mounds): each blends the ground to its level crest, the batter between the crest and
+ * the foot straight with its shoulder and toe rounded over an eighth of the run each (landformGeology.ts 'dyke').
+ */
+function raiseMounds(x: number, z: number, h: number,
+  mounds: readonly { x: number; z: number; crestR: number; baseR: number }[], crestYs: Float64Array): number {
+  for (let i = 0; i < mounds.length; i++) {
+    const m = mounds[i], d = Math.hypot(x - m.x, z - m.z);
+    if (d >= m.baseR) continue;
+    const t = d <= m.crestR ? 0 : (d - m.crestR) / Math.max(0.01, m.baseR - m.crestR), r = 0.125, k = 1 / (1 - r);
+    const w = t < r ? 1 - k * t * t / (2 * r) : t > 1 - r ? k * (1 - t) * (1 - t) / (2 * r) : 1 - k * (r / 2 + (t - r));
+    h += (crestYs[i] - h) * w;
+  }
+  return h;
+}
+
 /** Pure analytical height contribution for an authored tactical landform. */
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
@@ -1175,6 +1281,12 @@ function* heightFieldBuildSteps(
   // the open lines past the edge (resolved once the portals stand, from the uncut outland)
   let railOpenLines: (RailOpenLine | null)[] | null = null;
   let railCuttingsOn = false, railCuttingsSuspended = false;
+  // (the map-revival lane, 2026-10-06) the built mounds' crest levels, resolved once the surface is frozen (below); null
+  // until then and on every map without one, so no construction query sees a mound
+  const mounds = T.mounds ?? [];
+  let moundCrestYs: Float64Array | null = null;
+  // (the map-revival lane, 2026-10-07) the canals, compiled once; null on every map without one
+  const compiledCanals = compileCanals(T.canals);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
   const terraceZones = prepareTerraceZones(T.terraces);
@@ -1373,6 +1485,13 @@ function* heightFieldBuildSteps(
   let gSegIdx: Int16Array | null = new Int16Array(GN * GN);
   let gSegT: Float32Array | null = new Float32Array(GN * GN);
   const gCorridor = new Float32Array(GN * GN);
+  // (the map-revival lane, 2026-10-07; RoadPathStyle.crownLiftM) the crowned banks of the lifted paths: per cell, the
+  // nearest line's lift (its nodes' ramped lifts, interpolated as the elevation is) and its crest's half-width; null on
+  // every map that lifts no path, and in the road placement sampler (placementOnly: the settlement keeps the seats the
+  // original field gave it; the banks are a finished-road law)
+  const crownStyles = !placementOnly && layout.roadStyles?.some((style) => (style?.crownLiftM ?? 0) > 0) ? layout.roadStyles : null;
+  const gRoadLift = crownStyles ? new Float32Array(GN * GN) : null;
+  const gRoadCrest = crownStyles ? new Float32Array(GN * GN) : null;
 
   const roads = layout.roads;
   // Count completed segments, corridor rows, support setup and range rows;
@@ -1651,6 +1770,18 @@ function* heightFieldBuildSteps(
         roadElevation += (bridge.deckY - roadElevation) * bridge.approach;
         h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd)) * (1 - bridge.span);
       } else h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+      // (the map-revival lane, 2026-10-07) a lifted path's crowned bank over the graded plane: the crest to the
+      // carriageway's edge and its verge, the shoulders down over six metres; a bridge's approaches grade to its deck
+      // as before (the lift fades with the approach, and is nil on the span); the bank runs out from 400 m to the square's
+      // 430 m line, so a road leaves the field on the grade every road leaves it on
+      if (gRoadLift) {
+        const lift = sampleHeightGridCell(gRoadLift, GN, gridIndex, gridFx, gridFz)
+          * (1 - smoothstep(400, 430, Math.max(Math.abs(x), Math.abs(z))));
+        if (lift > 0) {
+          const crest = sampleHeightGridCell(gRoadCrest!, GN, gridIndex, gridFx, gridFz);
+          h += lift * (1 - smoothstep(crest, crest + 6, rd)) * (bridgeDecks.length ? 1 - bridgeTermsAt(x, z).approach : 1);
+        }
+      }
     }
     const detailed = applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
     // Dry viaduct abutments cut any sub-metre shoulder noise flush with the
@@ -2041,6 +2172,7 @@ function* heightFieldBuildSteps(
     // the open midfield offers hull-down folds instead of a flat golf course.
     // Attenuated (not zeroed) on drive corridors so they stay drivable, and
     // suppressed in the village/marshes.
+    const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
     {
       const f1 = noi.noise(x * 0.0104 + 610, z * 0.0104 - 320);
       const f2 = noi.noise(x * 0.0233 - 105, z * 0.0233 + 77);
@@ -2050,10 +2182,8 @@ function* heightFieldBuildSteps(
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
       // the map-revival lane (2026-10-05): a terrace zone's benches are level — its berms and scrapes stand down
-      const tz = terraceZones.length ? terraceZoneWeight(terraceZones, x, z) : null;
       if (tz) micro *= 1 - 0.85 * tz.weight;
       h += micro;
-      if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
     // and settling (~10-25 cm) so the ground stops reading as a smooth
@@ -2065,6 +2195,10 @@ function* heightFieldBuildSteps(
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
       h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;
     }
+    // the map-revival lane (2026-10-05; round 5, 2026-10-07): a terrace zone is stepped after the near-field relief, so
+    // its humps are taken into the steps — the benches level, each riser one clean face (the relief laid over the steps
+    // broke the risers into lit and shaded facets at range, the ground lane's read of gauntlet wave 251)
+    if (tz) h = applyTerraces(tz, x, z, h, cw, vm, marshW);
     // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
     if (sorStation >= 0) {
       h -= sorDig;
@@ -2141,6 +2275,15 @@ function* heightFieldBuildSteps(
     if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
       h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
+    // (the map-revival lane, 2026-10-07) the canals carved to their profiles, a road keeping its ground over each (a
+    // culvert: full inside 6 m of its line, fading out by 10 m) except under a bridge's span (the water runs under the
+    // deck), on final queries only
+    if (compiledCanals !== null && roadsOn && padsOn) {
+      const culvert = 1 - smoothstep(6, 10, gridSample(gRoadDist, x, z));
+      h = carveCanals(compiledCanals, x, z, h, liquidDepthM, bridgeDecks.length ? culvert * (1 - bridgeTermsAt(x, z).span) : culvert);
+    }
+    // the built mounds stand last, over every constraint above (final queries only)
+    if (moundCrestYs !== null && roadsOn && padsOn) h = raiseMounds(x, z, h, mounds, moundCrestYs);
     return h;
   }
 
@@ -2153,8 +2296,13 @@ function* heightFieldBuildSteps(
    * settlement, the marshes.
    */
   function applyTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
+    const stepped = stepTerraces(tz, x, z, h, cw, vm, marshW);
+    // (the map-revival lane, 2026-10-07) the zone's ramped tracks, cut and filled level across over its steps
+    return tz.zone.ramps.length ? rampTerraceGround(tz.zone.ramps, tz.weight, x, z, stepped) : stepped;
+  }
+  function stepTerraces(tz: TerraceZoneHit, x: number, z: number, h: number, cw: number, vm: number, marshW: number): number {
     const zone = tz.zone;
-    const protect = (1 - cw * 0.85) * (1 - vm) * (1 - marshW);
+    const protect = (1 - cw * 0.85) * (1 - vm * (1 - zone.settlement)) * (1 - marshW);
     if (protect <= 0.001) return h;
     const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
     const h0 = smooth(x, z);
@@ -2308,6 +2456,36 @@ function* heightFieldBuildSteps(
       const e = nodeElev[gSegRoad![i]];
       const s = gSegIdx![i];
       gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
+    }
+    if (crownStyles) fillRoadCrowns(crownStyles, nodeElev);
+  }
+  /**
+   * The lifted paths' banks (RoadPathStyle.crownLiftM): each node's lift what its graded plane still lacks of the lift over
+   * the ground it crosses (a road already on an embankment as high takes none), ramped toward the roads that keep their
+   * grade.
+   */
+  function fillRoadCrowns(styles: readonly (RoadPathStyle | null)[], elev: readonly (readonly number[])[]): void {
+    const keepsGrade = roads.map((_, r) => !((styles[r]?.crownLiftM ?? 0) > 0));
+    const nodeLift = roads.map((nodes, r) => {
+      const lift = styles[r]?.crownLiftM ?? 0;
+      if (!(lift > 0)) return nodes.map(() => 0);
+      const ramp = styles[r]?.crownRampM ?? 40;
+      return nodes.map(([x, z], i) => {
+        let d = Infinity;
+        for (let q = 0; q < roads.length; q++) {
+          if (!keepsGrade[q]) continue;
+          const other = roads[q];
+          for (let k = 0; k + 1 < other.length; k++) d = Math.min(d, segDist(x, z, other[k][0], other[k][1], other[k + 1][0], other[k + 1][1]).d);
+        }
+        const lacks = clamp(lift - (elev[r][i] - heightAt(x, z, false, false)), 0, lift);
+        return lacks * smoothstep(8, 8 + ramp, d);
+      });
+    });
+    for (let i = 0; i < GN * GN; i++) {
+      if (!(gRoadDist[i] < 1e8)) continue;
+      const r = gSegRoad![i], s = gSegIdx![i], l = nodeLift[r];
+      gRoadLift![i] = l[s] + (l[s + 1] - l[s]) * gSegT![i];
+      gRoadCrest![i] = (styles[r]?.widthM ? clamp(styles[r]!.widthM! / 2, 2, 9) : 3.85) + 1.2;
     }
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
@@ -2470,6 +2648,14 @@ function* heightFieldBuildSteps(
     railCuttingsOn = true;
     railOpenLines = railCuttings.map((cut, i) => resolveRailOpenLine(cut, railCuttingPortalYs[i], outlandHeightAt));
   }
+  // the built mounds' crests: the finished ground at each centre (sampled in the final phase; moundCrestYs is still null
+  // here, so no mound sees another) plus its height
+  if (mounds.length) {
+    const phase = landformPhase;
+    landformPhase = 'authored-relief';
+    moundCrestYs = Float64Array.from(mounds, (m) => heightAt(m.x, m.z, true, true) + m.height);
+    landformPhase = phase;
+  }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
@@ -2607,6 +2793,8 @@ function* heightFieldBuildSteps(
     for (const m of _MARSHES) {
       if (shorelineDistance(m, x, z, 0.65) < 0.65) return T.frozenMarshes ? 'hard' : 'soft';
     }
+    // (the map-revival lane, 2026-10-07) a canal's water drives as a soft lake's
+    if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
 
@@ -2671,25 +2859,32 @@ function* heightFieldBuildSteps(
       wetness = Math.max(wetness, shorelineWetness(lake, x, z, true));
       if (wetness === 1) break;
     }
-    if (wetness <= 0) return 0;
+    // (the map-revival lane, 2026-10-07) a canal's water, bank to bank, up to a road's culvert: the water starts where the
+    // carve is whole again (10 m off the road's line; the lakes' 14–18 m band would leave a dry trench either side of every
+    // crossing, and inside 10 m the culvert's wall stands over the level)
+    const canalWet = compiledCanals === null ? 0 : canalWetness(compiledCanals, x, z) * (bridgeDecks.length
+      ? Math.max(smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)), bridgeTermsAt(x, z).span)
+      : smoothstep(9.5, 10.5, gridSample(gRoadDist, x, z)));
+    if (wetness <= 0) return canalWet;
     // Surface heights deliberately yield to these dry height constraints.
     // The identical callback feeds the existing mask bake and wake queries;
     // neither may paint water over the resulting ford/pad ramps.
     // round 61: under a bridge deck the river keeps its wetness — the deck, not a causeway, carries the road
     const roadDry = smoothstep(14, 18, gridSample(gRoadDist, x, z));
     wetness *= bridgeDecks.length ? roadDry + (1 - roadDry) * bridgeTermsAt(x, z).span : roadDry;
-    if (wetness <= 0) return 0;
+    if (wetness <= 0) return canalWet;
     for (const pad of padPts) {
       const dx = x - pad.x, dz = z - pad.z;
       if (dx * dx + dz * dz >= 26 * 26) continue;
       const distance = Math.hypot(dx, dz);
       if (distance < 26) wetness *= smoothstep(22, 26, distance);
     }
-    return wetness;
+    return canalWet > wetness ? canalWet : wetness;
   }
 
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
+    if (compiledCanals !== null && inCanal(compiledCanals, x, z)) return true; // the map-revival lane: a canal and its banks' foot
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
     if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {
@@ -2785,7 +2980,8 @@ function* heightFieldBuildSteps(
     };
   }
   const mesaWeight = createMesaWeightSampler();
-  const landUseProfile = resolveLandUseProfile(cfg?.id); // ground lane
+  // ground lane; 2026-10-12: a flooded paddy holds water only on a level floor (landUse.ts withLevelPaddies)
+  const landUseProfile = withLevelPaddies(resolveLandUseProfile(cfg?.id), getHeightAt, MAP_SIZE / 2);
   const legacyGroundLanes = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
 
   // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch (and the road
@@ -2824,7 +3020,7 @@ function* heightFieldBuildSteps(
     // client, the browser host and the server's collision shards place hedgerow trees and field bushes alike;
     // `?ground=legacy` draws no fields and grows no crops
     ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
-      landUseAt(landUseProfile, x, z, out) } : {}),
+      landUseAt(landUseProfile, x, z, out), _landUseProfile: landUseProfile } : {}),
     // ground lane (2026-10-08, the gauntlet's wave 260): a cinder yard's weeds in clumps, on the map whose ground profile
     // floors its village so (Cinder Junction); `?ground=legacy` grows the old scatter
     ...((resolveGroundReduxProfile(cfg?.id).cinderYard ?? 0) > 0 && !legacyGroundLanes ? { _yardWeedsAt: cinderYardWeedsAt } : {}),
@@ -3703,6 +3899,9 @@ export function makeMaskTexture(
   if (layout.terrain.workedGround?.length) {
     stampWorkedGroundMask(px, s, MAP_SIZE, layout.terrain.workedGround, seedNoi);
   }
+  if (layout.terrain.yardWear?.length) {
+    stampYardWearMask(px, s, MAP_SIZE, layout.terrain.yardWear, seedNoi);
+  }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing
   // store is premultiplied, so putImageData ZEROES the road/rut/marsh RGB
@@ -3945,6 +4144,8 @@ uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y f
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
 uniform vec3 uRoadRuts;    // the Redrock lane, round 10: the wheel lanes' relief gain, darkening and the carriageway's gravel
 uniform float uRoadPuddle; // ground lane: the map's share of the ruts' puddles and their mud (splat.roadPuddles, default 1)
+uniform float uDetailGain; // the map-revival lane: the detail normal's strength (splat.detailNormal, default 1)
+uniform float uRoadFromG;  // the map-revival lane: 1 when the carriageway is packed from the base layer (splat.roadLayer 'ground')
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -4033,6 +4234,7 @@ float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
+float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its planted sheet satin, not a ditch's mirror
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
@@ -4069,6 +4271,9 @@ vec4 nz(vec2 p, float s, vec2 o) { return textureLod(uNoise, p * s + o, max(0.0,
 // fragment's footprint, the tile repeat itself beats against the pixel grid (concentric arcs from a raised camera, the
 // round-73 mid octave's 1.08 m tile at 100–190 m). gFootM is the footprint's major axis (m per pixel, set once in
 // splatCompute); tileVis(P) keeps a term whole while a period spans 10 px or more and fades it out by 4 px.
+// ground lane (2026-10-07, Orchard's dry-stone risers): the terrace riser band's weight, set where the rock takes the
+// risers (splatCompute) and read by the rock layer's coursed-stone pass
+float gRiserW = 0.0;
 float gFootM = 0.01;
 float tileVis(float periodM) { return smoothstep(4.0, 10.0, periodM / max(gFootM, 1e-4)); }
 // ground lane (farmland): the world xz a pixel steps across and down the screen — a stripe of period P across the unit
@@ -4642,16 +4847,32 @@ void splatCompute() {
   float padRut = 0.0;
   vec2 padRutN = vec2(0.0);
   if (apronK > 0.003) {
-    float th = 0.6 + 2.4 * nz(uv, 0.006, vec2(0.31, 0.77)).r;
+    // (2026-10-12, the live pads drew topographic rings — Frontier's square, the media's round 14: "dark contour-line
+    // rings, like a topographic map"): each family's direction is fixed. A direction that varied with position, projected
+    // from the world origin (q below), made the lines follow the direction field's own isolines wherever |wp| times its
+    // gradient outgrew the lines' spacing: concentric rings, densest on the pads far from the origin. The noise warp of q
+    // alone bends the ruts into gently curving tracks.
+    // (2026-10-12, R1b: on 219 the pads drew a polygonal crack net of dark veins — Verdant's two pads at 6 m — not tracks:
+    // the warp read the noise texture's fine detail, ±2.5 m at a few metres' scale, so each rut pair wandered and branched
+    // into its neighbours; a smooth shared bend then made a regular woven grid, a tiled floor) a yard is packed ground with
+    // a few vehicle tracks on it. Each family is cut into lanes about ten metres wide; under half the lanes carry a track,
+    // each track a pair of ruts 2.9 m apart that meanders on its own long bends (a hash of its lane) and comes and goes
+    // in the presence patches, so the tracks cross at random, never as a lattice. The darkening and the groove are light.
+    float th = 0.6;
     float rutVis = smoothstep(0.12, 0.40, 0.30 / max(gFootM, 1e-3)); // gone as the footprint outgrows a rut
     for (int k = 0; k < 2; k++) {
       float t = th + float(k) * 1.15;
-      vec2 dP = vec2(-sin(t), cos(t)); // across the family's lines
-      float q = dot(wp.xz, dP) + 5.0 * (nz(uv, 0.017, vec2(0.53 + float(k) * 0.21, 0.29)).g - 0.5);
-      float per = 6.0 + 1.5 * float(k); // (a vehicle every few metres: the lab's 9.5 m read as two thin lines)
-      float f = fract(q / per) * per;
-      float r1 = (f - 3.0) / 0.30, r2 = (f - 5.9) / 0.30;
-      float pres = smoothstep(0.34, 0.58, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
+      vec2 dP = vec2(-sin(t), cos(t)); // across the family's lanes
+      float al = dot(wp.xz, vec2(cos(t), sin(t))); // along them
+      float per = 9.0 + 2.0 * float(k); // a lane's width (m)
+      float q0 = dot(wp.xz, dP);
+      float lane = floor(q0 / per);
+      float h1 = fract(sin(lane * 12.9898 + float(k) * 78.233) * 43758.5453);
+      float h2 = fract(sin(lane * 39.3468 + float(k) * 11.135) * 24634.6345);
+      float bend = 1.1 * sin(al / (18.0 + 14.0 * h2) + 6.2832 * h2) + 0.5 * sin(al / (7.0 + 5.0 * h1) + 6.2832 * h1);
+      float f = q0 - (lane + 0.5) * per - bend; // across the lane from its track's centre line (|bend| < 1.6 m: in lane)
+      float r1 = (f + 1.45) / 0.30, r2 = (f - 1.45) / 0.30;
+      float pres = step(0.55, h1) * smoothstep(0.38, 0.62, nz(uv, 0.043, vec2(0.11 + float(k) * 0.37, 0.83)).r) * rutVis;
       float e1 = exp(-r1 * r1), e2 = exp(-r2 * r2);
       padRut = max(padRut, (e1 + e2) * pres);
       padRutN += dP * (r1 * e1 + r2 * e2) * pres;
@@ -4661,6 +4882,16 @@ void splatCompute() {
     rut = max(rut, padRut * rutAmp * 1.2);
   }
   float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt * (1.0 - apronRim), mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // ground lane (2026-10-07, wave 251's Orchard bird: "the Chouf in summer isn't uniformly green") a terrace map's dry
+  // ground: on the terraces' treads, between the olives, the soil lies bare and stony in patches, and on the valley's
+  // steeper slopes (~15-35 deg) the turf thins to dry, stony ground in places — the D layer, the map's own dry stony soil
+  // (its palette row); every map without terrace zones as it was
+  if (uTerraceParam.x > 0.5) {
+    float dryN = nzq(uvW, 0.045, vec2(0.71, 0.33)).x * 0.7 + n1h * 0.3; // ~22 m patches, ragged at the ~5 m scale
+    float treadW = terraceZoneW(wp.xz) * (1.0 - smoothstep(uTerraceParam.z, uTerraceParam.w, slope)) * (1.0 - roadCore);
+    float steepDry = smoothstep(0.06, 0.18, slope) * (1.0 - smoothstep(0.30, 0.42, slope)) * (1.0 - roadCore);
+    fD = max(fD, max(treadW * smoothstep(0.50, 0.72, dryN) * 0.80, steepDry * smoothstep(0.44, 0.70, dryN) * 0.70));
+  }
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4771,7 +5002,10 @@ void splatCompute() {
   // the map-revival lane (2026-10-05, Orchard Valley's terraces T2): a terrace zone's risers are its dry-stone walls — the
   // faces the steps stand steeper than the benches (applyTerraces) take the rock layer whatever the turf's hold, the
   // benches keep their ground; the carriageways stay road
-  if (uTerraceParam.x > 0.5) fR = max(fR, terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope));
+  if (uTerraceParam.x > 0.5) {
+    gRiserW = terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope);
+    fR = max(fR, gRiserW);
+  }
   // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
@@ -5098,6 +5332,33 @@ void splatCompute() {
       a = mix(a, aS, steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
+  }
+  // ground lane (2026-10-07, wave 212's Orchard: the risers read as bare rock gashes): a terrace riser is a dry-stone
+  // wall — courses 0.30 m high of blocks 0.45–0.85 m long laid along the face, each block's own tone round the
+  // palette rock's mean, dark joints (exact cells; the coursing fades out by tileVis before it can alias), the photo's
+  // relief flattened — after the rock and the steep wall passes, which both lay the photo rock on a riser. Only where the
+  // riser band holds (gRiserW, terrace zones only: every other map draws as before)
+  if (gRiserW > 0.002) {
+    float cy = wp.y / 0.30, ci = floor(cy);
+    vec2 ch = cellHash2(vec2(ci, 41.0));
+    float along = abs(wn.x) > abs(wn.z) ? wp.z : wp.x;
+    float bw = 0.45 + 0.40 * ch.y;
+    float sb = (along + ch.x * bw) / bw, bi = floor(sb);
+    vec2 bh = cellHash2(vec2(ci, bi + 77.0));
+    vec2 bf = vec2(fract(cy) * 0.30, fract(sb) * bw);
+    float jd = min(min(bf.x, 0.30 - bf.x), min(bf.y, bw - bf.y));
+    float stoneVis = tileVis(0.45);
+    float joint = (1.0 - smoothstep(0.018, 0.034 + 0.5 * gFootM, jd)) * stoneVis;
+    // (2026-10-07, wave 252's Orchard bird on mr4's r4: "the terraced knoll shows its risers as bright sandy contour
+    // stripes", "rounded pale-cream rock patches that read as golf-course sand bunkers") an old wall is weathered grey
+    // limestone, not the cream of a fresh face (its tone 30 % toward its own luminance), and its far tone is the near
+    // coursing's mean — the blocks' with their joints' (a quarter of the face at 0.32) — not the bright face alone: the
+    // coursing faded to 0.96 of the stone, ~15 % over the walls it stood for
+    vec3 wallGrey = mix(uMeanR.rgb, vec3(dot(uMeanR.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.30);
+    vec3 stone = wallGrey * (0.80 + 0.40 * bh.x) * vec3(1.0 + 0.06 * (bh.y - 0.5), 1.0, 1.0 - 0.08 * (bh.y - 0.5));
+    vec3 dry = mix(mix(wallGrey * 0.83, stone, stoneVis) * (0.92 + 0.16 * smoothstep(0.30, 0.70, n1h)), wallGrey * 0.32, joint);
+    a.rgb = mix(a.rgb, dry, gRiserW);
+    if (nrmOn) n = mix(n, NRM_MEAN, gRiserW * 0.6);
   }
   // Ground lane (wave 80, Titan Gorge's and Redrock's establishing views: "a glaring magenta/pink wavy decal stripe
   // across the ground" — the 38–76° scarps of their ridges and knolls seen edge-on 350–770 m out, each one flat,
@@ -5502,8 +5763,18 @@ void splatCompute() {
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
         // makes it a mirror of the sky)
-        cropCol = mix(vec3(0.040, 0.046, 0.040), vec3(0.060, 0.095, 0.035), 0.25 + 0.20 * jit);
-        water = 1.0;
+        // (Caldera round 4, the map-revival lane; gauntlet wave 359: "glittering blue-white noise", "the water wants muddy
+        // reflections or paddy surfaces") a planted paddy: brown water between the rows of young rice — the rows a green
+        // stripe near the eye with the water between them, past it a green haze over the water; its sheen satin (the
+        // roughness stage, gPaddyWater), so the clouds it mirrors blur into the sky's tone instead of glittering
+        float seedRow = smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(across * 20.94)) * tileVis(0.3);
+        cropCol = mix(vec3(0.050, 0.050, 0.036), vec3(0.070, 0.105, 0.040), 0.45 + 0.20 * jit);
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.7, seedRow * 0.55);
+        // (cap9's look: from the establishing height the sheet still mirrored the cumulus as a mottle of blue-white —
+        // the young rice covers about a third of a planted paddy's water seen across it, so past the rows' fade the haze
+        // takes that share of the sheet)
+        water = (1.0 - seedRow * 0.5) * mix(0.68, 1.0, tileVis(0.3));
+        cropCol = mix(cropCol, vec3(1.333, 3.067, 0.600) * baseL * bright * 0.55, 0.3 * (1.0 - tileVis(0.3)));
       } else if (crop < 9.5) {
         cropCol = vec3(1.333, 3.067, 0.600) * baseL * bright; // growing rice: one even, bright green
         rows = sin(across * 20.94) * 0.05 * tileVis(0.3);
@@ -5682,6 +5953,7 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
+      gPaddyWater = gFieldWater;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (uLandTier < 0.5) {
         // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
@@ -5702,8 +5974,12 @@ void splatCompute() {
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
-        float bund = (1.0 - smoothstep(0.30, 0.55, edgeM)) * (1.0 - track);
-        a.rgb = mix(a.rgb, mix(soilF * 0.95, a.rgb * vec3(0.95, 1.0, 0.85), 0.40 + 0.25 * n1h), bund * landW);
+        // (Caldera round 4, wave 359: "no paddy grid" — the bunds took the field's own green or the soil's dark, so past the
+        // near fields the grid between the water and the rice was gone) the bund a little wider, its cut grass a paler,
+        // drier green over the earth than the rice or the water either side, so the grid holds into the middle distance
+        float bund = (1.0 - smoothstep(0.36, 0.66, edgeM)) * (1.0 - track);
+        vec3 bundTop = mix(soilF * 1.05, vec3(1.55, 1.78, 0.78) * baseL * bright, 0.55 + 0.25 * n1h);
+        a.rgb = mix(a.rgb, bundTop, bund * landW);
       } else {
         // a dry stone wall's footing: limestone rubble 0.8 m wide, broken into its stones and gaps and grown over in
         // places, its foot shaded on the field side (the round-2 chase frame: a pale unbroken strip read as a painted
@@ -5724,11 +6000,23 @@ void splatCompute() {
       if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
           // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
-          float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
-          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch);
+          // (2026-10-11, the map-revival lane; the sealed lane's vehicle frames on Tidegate Polders: "a drainage stream's
+          // water surface runs down the dike face") still water lies level: the ditch's water shows only where the ground
+          // is level (gone by ~4 degrees); on a tilted field (the road embankments' and the dykes' aprons lie at 5-7
+          // degrees) the ditch is its dug channel — a dark, damp bottom of wet soil and rushes between its rank banks, no
+          // water — and a dyke's batter (18 degrees) carries no ditch at all (the channel gone by ~12 degrees). The slope
+          // is the face's own (the mesh triangle's) where it is steeper than the smoothed normal's, which still leans to the
+          // sky over the first metres of a rising batter (cap11's frames, gated on the smoothed slope alone: the water ran
+          // a third of the way up a gentle rise from the road, and the channel on the tilted field before the camera went)
+          float ditchSlope = max(slope, 1.0 - abs(faceNrmT.y));
+          float channelGate = 1.0 - smoothstep(0.012, 0.022, ditchSlope);
+          float waterGate = 1.0 - smoothstep(0.0008, 0.0024, ditchSlope);
+          float ditch = (1.0 - smoothstep(0.55, 0.85, edgeM)) * channelGate;
+          float bank = (1.0 - smoothstep(0.85, 1.9, edgeM)) * (1.0 - ditch) * channelGate;
           a.rgb = mix(a.rgb, a.rgb * vec3(0.72, 0.82, 0.70), bank * track * landW);
-          a.rgb = mix(a.rgb, vec3(0.030, 0.036, 0.032), ditch * track * landW);
-          gFieldWater = max(gFieldWater, ditch * track * landW);
+          vec3 ditchFloor = mix(soilF * vec3(0.42, 0.40, 0.36), vec3(0.030, 0.036, 0.032), waterGate);
+          a.rgb = mix(a.rgb, ditchFloor, ditch * track * landW);
+          gFieldWater = max(gFieldWater, ditch * waterGate * track * landW);
         } else {
           // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
           // (wave 71, Frontier's close-up: the track "a ring of dirt … like a decal mask" — "its edge is too clean and too
@@ -6186,7 +6474,8 @@ void splatCompute() {
   // faces past ~300 m into featureless sheets — re-project the rock layer at
   // a coarse world scale + its normals so distant mesa/cut walls stay craggy
   {
-    float farRock = fR * farM * (1.0 - gSnowRock); // ground lane (wave 62): not the rock's grain on the snow lying on it
+    // (2026-10-07: nor on a terrace riser, a dry-stone wall: its coursing is the riser pass's)
+    float farRock = fR * farM * (1.0 - gSnowRock) * (1.0 - gRiserW); // ground lane (wave 62): not the rock's grain on the snow lying on it
     if (farRock > 0.003) {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across
@@ -6469,7 +6758,10 @@ void splatCompute() {
     // without stamping round marks repeatedly down the road.
     // terrain v2: only on the carriageway (the packed-earth taps ran under every fragment at weight zero)
     if (dW > 0.002) {
-      vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
+      // (the map-revival lane: a map whose dirt layer is not its tracks' — Olympus Basin's basalt sand — packs them from its
+      // base layer, splat.roadLayer; the condition is uniform)
+      vec3 packedRoad = uRoadFromG > 0.5 ? groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB + 4.0).rgb
+        : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
@@ -6493,7 +6785,7 @@ void splatCompute() {
       }
       // (a pad's vehicle ruts darken its packed ground here: a road's own wheel lanes give way to their trodden middle
       // past a 0.08 m footprint, which a pad seen low across its 30-60 m loses at once)
-      a.rgb *= 1.0 - padRut * 0.36;
+      a.rgb *= 1.0 - padRut * 0.24;
       // (and the ground the tracks churned: darker, damper patches along them)
       a.rgb *= 1.0 - 0.14 * apronK * smoothstep(0.50, 0.80, nzq(uv, 0.12, vec2(0.37, 0.61)).x) * (1.0 - gRoadTex);
       // The sourced dirt normal contains deep clod/pothole forms intended for
@@ -6681,7 +6973,7 @@ void splatCompute() {
     }
   }
   // (a pad's ruts: two grooves across each line, their walls turned to the light)
-  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.35;
+  if (nrmOn && padRut > 0.003) n.xy -= padRutN * 0.22;
   // wheel-lane relief and tyre streaks from the distance field: its gradient
   // is the across-road direction and the lane profile's analytic slope shapes
   // two smooth grooves, so a straight road carries no per-texel bumps.
@@ -7071,6 +7363,7 @@ void splatCompute() {
   // ground (a damp matte by ~36 m), only a near puddle holding the sky
   gSplatRough = mix(gSplatRough, mix(0.12, 0.62, smoothstep(16.0, 36.0, camDist)), gRoadPuddle);
   gSplatRough = mix(gSplatRough, 0.08, gFieldWater); // ... and so is a paddy's or a ditch's
+  gSplatRough = mix(gSplatRough, 0.42, gPaddyWater); // (Caldera round 4) a planted paddy's sheet satin, a ditch's a mirror (cap9: 0.26 still mirrored the clouds)
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
@@ -7113,6 +7406,10 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "the water glitters") a flooded paddy's and a
+  // ditch's water lies level: its sheet takes the world's up, not the relief of the ground under it (the splat stage has
+  // flattened its detail), so the sky it mirrors is one sheet and not a glitter of facets
+  if (gFieldWater > 0.001) gN = normalize(mix(gN, vec3(0.0, 1.0, 0.0), gFieldWater));
   // round 72b: the ring bands' lighting normal carries the atlas gradient the splat slope already read
   if (dot(gRingGrad, gRingGrad) > 0.0) {
     vec2 ringG0 = -gN.xz / max(gN.y, 0.05);
@@ -7123,7 +7420,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // steep faces under a low sun it rendered as high-contrast bright/dark
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
-  float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
+  float dk = uDetailGain * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
   // Ground lane (2026-10-05, local contrast, step 2 (b'): the ground's mid-scale contrast measured at 0.17–0.28 against
   // photographs' 0.6–0.8; the detail normal at twice its strength was the strongest single ground term, +13 % on Verdant's
   // establishing view): the relief the detail normal carries is raised where its shading mips flat — from ~20 m, whole by
@@ -7213,6 +7510,7 @@ function* createSplatMaterialSteps(
   sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null = null,
   outlandWaterAt: HeightField['getOutlandWaterAt'] | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
+  landUseProfileOverride: LandUseProfile | null = null,
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
@@ -7323,7 +7621,8 @@ function* createSplatMaterialSteps(
   const redux = groundReduxUniformValues(groundProfile);
   // ground lane (2026-10-03): the map's land use (landUse.ts) — its field system's three packed vectors (zero
   // strength on a map without a row)
-  const landUseProfile = resolveLandUseProfile(mapId);
+  // (2026-10-12: the height field's own profile when the build passes it — its flooded paddies kept to level floors)
+  const landUseProfile = landUseProfileOverride ?? resolveLandUseProfile(mapId);
   const landUse = landUseUniformValues(landUseProfile);
   // ground lane (2026-10-08): the village floored in cinder (groundRedux.ts cinderYard: Cinder Junction's yard)
   let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
@@ -7412,6 +7711,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
+    shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 }; // the map-revival lane: the detail normal's strength (1 = every other map's today)
+    shader.uniforms.uRoadFromG = { value: S.roadLayer === 'ground' ? 1 : 0 }; // the map-revival lane: the carriageway's layer (0 = every other map's today)
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     // the Redrock lane: a sheer wall's weathering under a grazing sun (splat.wallWeather; absent = today's 0.26, 0.50)
     shader.uniforms.uWallWeather = { value: new THREE.Vector2(...(S.wallWeather ?? [0.26, 0.50])) };
@@ -8091,6 +8392,7 @@ function* terrainBuildSteps(
     cfg?.sky ?? null,
     heightField.getOutlandWaterAt ?? null,
     heightField._sorWetnessAt ?? null,
+    heightField._landUseProfile ?? null,
   );
   let materialStep = materialSteps.next();
   try {

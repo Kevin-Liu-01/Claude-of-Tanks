@@ -16,7 +16,10 @@ const num = (name) => { const m = new RegExp(`#define ${name} ([0-9.]+)`).exec(s
 const dkGain = num('DK_RANGE_GAIN');
 assert.ok(dkGain > 0 && dkGain <= 1.5, `the range gain (${dkGain}) raises the relief and stays under ×2.5`);
 has('dk *= 1.0 + DK_RANGE_GAIN * smoothstep(18.0, 45.0, camDk) * (1.0 - smoothstep(300.0, 600.0, camDk)) * (1.0 - clamp(gSplatSteepAtt / 0.62, 0.0, 1.0)) * (1.0 - max(gCropW, gSoilW));');
-has('float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));');
+// (item 31, the map revival, 2026-10-11: the detail normal's base strength is the map's splat.detailNormal, uDetailGain,
+// 1 on every map but Earthrise Basin's softened regolith)
+has('float dk = uDetailGain * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));');
+has('shader.uniforms.uDetailGain = { value: S.detailNormal ?? 1 };');
 // (b'')
 const swardGain = num('MID_SWARD_GAIN');
 assert.ok(swardGain > 0 && swardGain <= 1.5, `the sward's dapple gain (${swardGain})`);

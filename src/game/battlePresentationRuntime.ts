@@ -14,6 +14,7 @@ import {
 } from 'three';
 
 import type { BattleClientAccess } from './battleClientAccess.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import type { GameState } from './stateCore.ts';
 
@@ -42,6 +43,8 @@ type PresentedTankState = TankState;
 interface TankVisual {
   root: Object3D;
   setVisible(visible: boolean): void;
+  /** Physics lane: the wreck's turret body pose for this frame (world turret frame), or null. */
+  setWreckTurretPose?(pose: ArrayLike<number> | null): void;
   setTrackState?(module: 'trackL' | 'trackR', broken: boolean): void;
   setWeaponModuleState?(module: string, state: 'ok' | 'yellow' | 'red'): void;
   syncFromState(
@@ -74,6 +77,13 @@ interface TankEntity {
   _dustTravelAcc?: number;
   _offscreenPresentationS?: number;
   _wasDetailVisible?: boolean;
+  /** A network peer's wreck turret pose, interpolated from its host's rows (mp/presentation/battlePresentation.ts). */
+  _wreckTurretPose?: Float64Array | null;
+}
+
+/** The solo step's turret bodies, as the presentation reads them (sim/wreckTurrets.ts). */
+interface WreckTurretPoses {
+  framePoseAt(id: string, alpha: number, out: Float64Array): boolean;
 }
 
 interface SpottingState {
@@ -102,6 +112,8 @@ interface PresentationWorld {
   };
   crushables?: CrushableProp[];
   crushProp(index: number, dirX: number, dirZ: number, speed: number): boolean;
+  /** The props a hull's box meets give under it (map.ts pressHull: presentation only, never a sim input). */
+  pressHull?(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
 }
 
 type PosePorts = Pick<BattleClientAccess,
@@ -121,7 +133,7 @@ interface BattlePresentationRuntime {
 }
 
 interface BattlePresentationRuntimeOptions {
-  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'>;
+  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'> & { _wreckTurrets?: WreckTurretPoses | null };
   camera: PerspectiveCamera;
   scene: Scene;
   battleClient: PosePorts;
@@ -261,7 +273,7 @@ export function createBattlePresentationRuntime({
       syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
         entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
     } else clearJuggernautVisual(visual.root);
-    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed,dtFrame ?? 0);
     else if (entity.aerial) void loadMissionAttachmentVisual();
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);
@@ -430,6 +442,25 @@ export function createBattlePresentationRuntime({
     emitDust(entity, fx, presented, speed, topSpeedMps, fxTicks);
     emitExhaust(entity, fx, presented, speed, topSpeedMps);
     crushNearbyProps(entity, fx, world, speed);
+    // (dcore 2026-10-10; the owner: "just let physics work") a map vehicle, a hut, a stall or a tent its box meets gives
+    // under it from that moment (props.ts pressHull: presentation only, the simulation's crush ghosts the obstacle)
+    if (world?.pressHull) {
+      const rect = tankContactRect(entity.spec);
+      const c = Math.cos(presented.yaw), sn = Math.sin(presented.yaw);
+      world.pressHull(presented.pos.x + rect.centerX * c + rect.centerZ * sn, presented.pos.z + rect.centerZ * c - rect.centerX * sn,
+        presented.yaw, rect.halfLength, rect.halfWidth);
+    }
+  };
+
+  // physics lane (2026-10-10): a wreck's turret follows its body — the solo step's, interpolated between two steps like
+  // the hulls, or the pose a network peer's host sent
+  const wreckTurretPose = new Float64Array(7);
+  const feedWreckTurret = (entity: TankEntity, alpha: number, networkActive: boolean): void => {
+    const visual = entity.visual;
+    if (!visual?.setWreckTurretPose) return;
+    if (networkActive) { visual.setWreckTurretPose(entity._wreckTurretPose ?? null); return; }
+    const turrets = game._wreckTurrets;
+    visual.setWreckTurretPose(turrets && turrets.framePoseAt(entity.id, alpha, wreckTurretPose) ? wreckTurretPose : null);
   };
 
   const updateTank = (
@@ -450,6 +481,7 @@ export function createBattlePresentationRuntime({
       return;
     }
     const presented = presentationStateFor(entity, presentationAlpha, networkActive);
+    if (entity.combat.destroyed) feedWreckTurret(entity, presentationAlpha, networkActive);
     const viewDistanceM = syncTankVisual(entity, presented, dtFrame, pedestalVisual);
     updateVehicleFx(entity, fx, world, presented, viewDistanceM, dtFrame);
   };

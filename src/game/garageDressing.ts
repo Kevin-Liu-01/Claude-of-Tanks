@@ -33,14 +33,18 @@ import {
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
-import { getGarageVariant } from './garageVariants.ts';
+import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
 import { GARAGE_HERO_HEADING_RAD, GARAGE_PLATFORM_GEOMETRY } from './garagePresentationPose.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 import {
+  ABRAMS_FLAMMABLE_BAY_OFFSET,
   ABRAMS_WELDING_BAY_PLACEMENT,
   BURLAK_SCAFFOLD_CLEARANCE_OFFSET,
+  getAbramsWeldingBayPlacement,
+  GARAGE_SHELTER_FINISHES,
   getGarageWorkshopLayoutPose,
+  LEOPARD_MOBILITY_BAY_LOCAL,
   LEOPARD_MOBILITY_BAY_OFFSET,
 } from './garageWorkshopLayout.ts';
 
@@ -132,9 +136,14 @@ const WORKSHOP_CHUNK_LABELS = Object.freeze([
 const SHARED_MAINTENANCE_BAY_IDS = Object.freeze([
   'burlak_gantry', 'abrams_welding', 't90m_relikt', 'rolled_k2',
 ] as const);
-const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze([
-  'north-east', 'north', 'south-west', 'north-west',
-] as const);
+// The Abrams bay's quadrant follows its destination placement
+// (garageWorkshopLayout.ts): Verdant's half-turned canister station in the
+// south-east, the outdoor packs' station on the north floor (the bays' own
+// compass: +x north).
+const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze({
+  verdant: Object.freeze(['north-east', 'south-east', 'south-west', 'north-west'] as const),
+  outdoor: Object.freeze(['north-east', 'north', 'south-west', 'north-west'] as const),
+});
 
 // The workshop monitor is a field archive, not a location preview. Reuse the
 // canonical player-facing captures so filenames cannot drift from disk, but
@@ -234,6 +243,7 @@ export function createGarageDressing(
   let preparedVisual: { specId: string; visual: GarageWorkshopVisual } | null = null;
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
+  let abramsBayRoot: THREE.Group | null = null;
   const hidePendingTankReveal = (): void => {
     if (pendingTankReveal) pendingTankReveal.visible = false;
   };
@@ -395,30 +405,6 @@ export function createGarageDressing(
     return c;
   }
 
-  // worn dashed white paint box — the side-bay floor outline decal
-  function makeBayOutlineTexture(): HTMLCanvasElement {
-    const S = 256;
-    const c = document.createElement('canvas');
-    c.width = c.height = S;
-    const g = c.getContext('2d')!;
-    g.strokeStyle = 'rgba(206,210,214,0.5)';
-    g.lineWidth = 7;
-    g.setLineDash([26, 18]);
-    g.strokeRect(10, 10, S - 20, S - 20);
-    g.setLineDash([]);
-    // corner Ls painted heavier
-    g.lineWidth = 10;
-    for (const [x, y, dx, dy] of [[10, 10, 1, 1], [S - 10, 10, -1, 1], [10, S - 10, 1, -1], [S - 10, S - 10, -1, -1]]) {
-      g.beginPath();
-      g.moveTo(x + dx * 34, y); g.lineTo(x, y); g.lineTo(x, y + dy * 34);
-      g.stroke();
-    }
-    for (let i = 0; i < 200; i++) { // chip the paint
-      g.clearRect(rng() * S, rng() * S, 1 + rng() * 4, 1 + rng() * 2);
-    }
-    return c;
-  }
-
   // rubber tread skid arc
   function makeSkidTexture(): HTMLCanvasElement {
     const c = document.createElement('canvas');
@@ -524,6 +510,49 @@ export function createGarageDressing(
     map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     opacity: 0.5,
   }));
+  // Heavy-bay grime: the oil, hydraulic fluid and tyre-dust a working service square collects, drawn once and laid
+  // under the bays (2026-10-10: the floor under the Burlak gantry read as a blown-out clean slab).
+  let bayGrimeMaterial: THREE.MeshBasicMaterial | null = null;
+  function makeBayGrimeTexture(): HTMLCanvasElement {
+    const S = 512;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d')!;
+    // a private stream: the shared workshop rng keeps its sequence for every other authored placement
+    const grimeRng = mulberry32(20261010);
+    const blot = (x: number, y: number, r: number, a0: number, a1: number, squash: number): void => {
+      g.save(); g.translate(x, y); g.rotate(grimeRng() * Math.PI); g.scale(1, squash);
+      const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
+      grad.addColorStop(0, `rgba(16,15,14,${a0})`); grad.addColorStop(0.6, `rgba(18,17,15,${a1})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.restore();
+    };
+    for (let i = 0; i < 70; i++) {
+      const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.36;
+      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 18 + grimeRng() * 70, 0.3 + grimeRng() * 0.14, 0.12, 0.5 + grimeRng() * 0.5);
+    }
+    for (let i = 0; i < 26; i++) {
+      const a = grimeRng() * Math.PI * 2, d = Math.sqrt(grimeRng()) * S * 0.3;
+      blot(S / 2 + Math.cos(a) * d, S / 2 + Math.sin(a) * d, 6 + grimeRng() * 22, 0.5, 0.22, 0.6 + grimeRng() * 0.4);
+    }
+    g.save();
+    g.globalCompositeOperation = 'destination-in';
+    const edge = g.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.5);
+    edge.addColorStop(0, 'rgba(0,0,0,1)'); edge.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = edge; g.fillRect(0, 0, S, S);
+    g.restore();
+    return c;
+  }
+  function addBayGrime(parent: THREE.Object3D, x: number, z: number, sizeM: number, ry: number): void {
+    bayGrimeMaterial ||= track(new THREE.MeshBasicMaterial({
+      map: track(canvasTexture(makeBayGrimeTexture())), transparent: true, depthWrite: false,
+    }));
+    const grime = new THREE.Mesh(track(new THREE.PlaneGeometry(sizeM, sizeM)), bayGrimeMaterial);
+    grime.name = 'garage_bay_grime';
+    grime.rotation.set(-Math.PI / 2, 0, ry);
+    grime.position.set(x, 0.019, z);
+    grime.renderOrder = 1;
+    parent.add(grime);
+  }
   const stainC = makePoolTexture('rgba(13,13,15,0.5)', 'rgba(13,13,15,0.2)');
   const stainMat = track(new THREE.MeshBasicMaterial({
     map: track(canvasTexture(stainC)), transparent: true, depthWrite: false,
@@ -534,8 +563,6 @@ export function createGarageDressing(
     box1: track(new THREE.BoxGeometry(1, 1, 1)),
     cyl: track(new THREE.CylinderGeometry(1, 1, 1, 14)),
     drum: track(new THREE.CylinderGeometry(0.42, 0.42, 1.15, 16)),
-    shellBody: track(new THREE.CylinderGeometry(0.062, 0.062, 0.72, 10)),
-    shellTip: track(new THREE.CylinderGeometry(0.004, 0.058, 0.22, 10)),
     caster: track(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 10)),
     lampShade: track(new THREE.CylinderGeometry(0.14, 0.72, 0.52, 18)),
     lampGlow: track(new THREE.CylinderGeometry(0.56, 0.56, 0.05, 18)),
@@ -652,6 +679,23 @@ export function createGarageDressing(
     for (const [wx, wz] of [[-0.46, -0.24], [0.46, -0.24], [-0.46, 0.24], [0.46, 0.24]]) {
       put(G.caster, mat.steelDark, wx, 0.07, wz, 0, 0, Math.PI / 2, 1, t, false);
     }
+    // The back and ends are working faces too (2026-10-10, waves 338 and 357: "a blank maroon box"): a push bar across
+    // the back, louvred end panels with a side handle, and a bench vice and a tray of sockets on the lid.
+    const louvre = track(new THREE.BoxGeometry(0.02, 0.025, 0.42));
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 6; k++) put(louvre, trimMat, side * 0.585, 0.98 - k * 0.075, 0, 0, 0, 0, 1, t, false);
+      put(track(new THREE.BoxGeometry(0.03, 0.03, 0.34)), mat.steelBright, side * 0.62, 1.08, 0, 0, 0, 0, 1, t, false);
+    }
+    const pushBar = track(new THREE.CylinderGeometry(0.018, 0.018, 1.0, 8));
+    put(pushBar, mat.steelBright, 0, 1.12, -0.38, 0, 0, Math.PI / 2, 1, t, false);
+    for (const side of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.03, 0.03, 0.08)), mat.steelBright, side * 0.48, 1.12, -0.34, 0, 0, 0, 1, t, false);
+    }
+    put(track(new THREE.BoxGeometry(0.9, 0.012, 0.03)), mat.lamp, 0, 0.95, -0.312, 0, 0, 0, 1, t, false);
+    put(track(new THREE.BoxGeometry(0.16, 0.1, 0.14)), mat.steelDark, -0.38, 1.38, 0.08, 0, 0, 0, 1, t, false);
+    put(track(new THREE.BoxGeometry(0.4, 0.04, 0.22)), mat.steelDark, 0.2, 1.35, 0.02, 0, 0, 0, 1, t, false);
+    const socket = track(new THREE.CylinderGeometry(0.016, 0.016, 0.05, 6));
+    for (let k = 0; k < 8; k++) put(socket, mat.steelBright, 0.04 + (k % 4) * 0.1, 1.39, -0.04 + Math.floor(k / 4) * 0.1, 0, 0, 0, 1, t, false);
     return t;
   }
 
@@ -790,6 +834,32 @@ export function createGarageDressing(
     return object;
   }
 
+  // Carry the complete Abrams welding bay owner to its destination placement
+  // (garageWorkshopLayout.ts): the owner's half-turned canister station in
+  // Verdant, the station beside the camera in the nine outdoor packs. The
+  // owner is its own static display owner, so the shared optimization keeps
+  // it movable while the other bays merge into the shared root.
+  function placeAbramsBay(variant: GarageVariant): void {
+    if (!abramsBayRoot) return;
+    const placement = getAbramsWeldingBayPlacement(variant);
+    const verdant = placement === ABRAMS_FLAMMABLE_BAY_OFFSET;
+    abramsBayRoot.position.set(placement.x, 0, placement.z);
+    abramsBayRoot.rotation.y = placement.rotationRad;
+    abramsBayRoot.updateMatrix();
+    abramsBayRoot.userData.layoutRotationRad = placement.rotationRad;
+    abramsBayRoot.userData.inwardAdvanceM = Number(Math.hypot(placement.x, placement.z).toFixed(2));
+    abramsBayRoot.userData.serviceLandmark = verdant ? 'east-flammable-canisters' : 'west-center-hoist';
+    if (verdant) {
+      abramsBayRoot.userData.canisterCenterSeparationM = ABRAMS_FLAMMABLE_BAY_OFFSET.canisterCenterSeparationM;
+      abramsBayRoot.userData.swappedWith = 'rolled_k2';
+      delete abramsBayRoot.userData.heroSilhouettePx;
+    } else {
+      abramsBayRoot.userData.heroSilhouettePx = ABRAMS_WELDING_BAY_PLACEMENT.heroSilhouettePx;
+      delete abramsBayRoot.userData.canisterCenterSeparationM;
+      delete abramsBayRoot.userData.swappedWith;
+    }
+  }
+
   function placeAuthoredServiceBay(
     firstChildIndex: number,
     bayId: 'abrams_welding' | 'rolled_k2',
@@ -799,27 +869,241 @@ export function createGarageDressing(
     const bayRoot = markModernPart(
       new THREE.Group(), sourceVehicleId, `${bayId}_service_bay`,
     );
-    // The Abrams stands beside the Garage camera, out of the hero's sight line, in its authored orientation
-    // (garageWorkshopLayout.ts ABRAMS_WELDING_BAY_PLACEMENT); K2 keeps its half-turn and small perimeter-crane clearance
-    // correction. Both are complete owner transforms so tools and supports cannot drift away from the hull.
-    const abrams = bayId === 'abrams_welding';
-    bayRoot.name = abrams ? 'garage_abrams_welding_service_bay' : `garage_${bayId}_half_turn`;
-    const rotation = abrams ? ABRAMS_WELDING_BAY_PLACEMENT.rotationRad : Math.PI;
-    const offset = abrams ? ABRAMS_WELDING_BAY_PLACEMENT : { x: -0.35, z: -0.35 };
-    bayRoot.rotation.y = rotation;
-    bayRoot.position.set(offset.x, 0, offset.z);
-    bayRoot.userData.layoutRotationRad = rotation;
-    bayRoot.userData.inwardAdvanceM = Number(Math.hypot(offset.x, offset.z).toFixed(2));
-    if (abrams) {
-      bayRoot.userData.heroSilhouettePx = ABRAMS_WELDING_BAY_PLACEMENT.heroSilhouettePx;
-      bayRoot.userData.serviceLandmark = 'west-center-hoist';
-    }
+    // The Abrams follows its destination placement (placeAbramsBay); K2 keeps
+    // its half-turn into the Abrams's authored quadrant and its small
+    // perimeter-crane clearance correction. Both are complete owner transforms
+    // so tools and supports cannot drift away from the hull.
     bayRoot.userData.perimeterCraneClearance = true;
-    if (!abrams) bayRoot.userData.swappedWith = 'abrams_welding';
     for (const child of authoredChildren) bayRoot.add(child);
     legacyVerdantRoot.add(bayRoot);
+    if (bayId === 'abrams_welding') {
+      bayRoot.name = 'garage_abrams_welding_service_bay';
+      abramsBayRoot = bayRoot;
+      placeAbramsBay(currentVariant);
+      return bayRoot;
+    }
+    bayRoot.name = `garage_${bayId}_half_turn`;
+    bayRoot.rotation.y = Math.PI;
+    const offset = { x: -0.35, z: -0.35 };
+    bayRoot.position.set(offset.x, 0, offset.z);
+    bayRoot.userData.layoutRotationRad = Math.PI;
+    bayRoot.userData.inwardAdvanceM = Number(Math.hypot(offset.x, offset.z).toFixed(2));
+    bayRoot.userData.swappedWith = 'abrams_welding';
     bayRoot.updateMatrix();
     return bayRoot;
+  }
+
+  // Work in progress without people (the owner, 2026-10-11: "remove the people, just make the garages (all of them)
+  // redesigned to look a ton better"). A bay keeps only the kit that reads on its own: a rolling stand beside a hull, a
+  // hot-work screen and a parked welding set, a pulled power pack on its stand. Each kit stands in its exhibit's floor
+  // frame and is added before the bay owner captures its children, so it moves with its bay.
+  function bayKitRoot(name: string, frame: Readonly<{ x: number; z: number; yaw: number }>,
+    parent: THREE.Object3D): THREE.Group {
+    const root = new THREE.Group();
+    root.name = `garage_bay_kit_${name}`;
+    root.position.set(frame.x, 0, frame.z);
+    root.rotation.y = frame.yaw;
+    parent.add(root);
+    return root;
+  }
+
+  /** A rolling work stand with an open tool tray on its deck rail side (kit frame of `root`). */
+  function addStandWithTray(root: THREE.Object3D, x: number, z: number, deckY: number): void {
+    addWorkStand(root, x, z, 0, deckY);
+    const tray = put(track(new THREE.BoxGeometry(0.46, 0.09, 0.24)), mat.redCab,
+      x + 0.24, deckY + 0.045, z + 0.42, 0, 0, 0, 1, root);
+    tray.name = 'garage_stand_tool_tray';
+    put(track(new THREE.BoxGeometry(0.3, 0.02, 0.05)), mat.steelBright,
+      x + 0.24, deckY + 0.1, z + 0.42, 0.3, 0, 0, 1, root, false);
+  }
+
+  /**
+   * A rolling work stand (the kind every armour workshop pushes beside a hull): a grated deck on four posts with
+   * casters, guard rails on three sides and a four-tread stair, all connected; `deckY` is the standing surface.
+   */
+  function addWorkStand(parent: THREE.Object3D, x: number, z: number, yaw: number, deckY: number): void {
+    const stand = new THREE.Group();
+    stand.name = 'garage_work_stand';
+    stand.position.set(x, 0, z);
+    stand.rotation.y = yaw;
+    stand.userData.supportMode = 'connected-rolling-work-stand';
+    stand.userData.deckY = deckY;
+    parent.add(stand);
+    const W = 1.0, L = 1.3, post = 0.06, rail = 0.95;
+    put(track(new THREE.BoxGeometry(W, 0.05, L)), mat.steelMid, 0, deckY - 0.025, 0, 0, 0, 0, 1, stand)
+      .name = 'garage_work_stand_deck';
+    const postGeometry = track(new THREE.BoxGeometry(post, deckY, post));
+    const railPostGeometry = track(new THREE.BoxGeometry(0.045, rail, 0.045));
+    for (const [px, pz] of [[-W / 2 + 0.05, -L / 2 + 0.05], [W / 2 - 0.05, -L / 2 + 0.05], [-W / 2 + 0.05, L / 2 - 0.05], [W / 2 - 0.05, L / 2 - 0.05]]) {
+      put(postGeometry, mat.safety, px, deckY / 2, pz, 0, 0, 0, 1, stand);
+      put(G.caster, mat.rubber, px, 0.06, pz, 0, 0, Math.PI / 2, 0.9, stand, false);
+      if (px > 0 || pz !== -L / 2 + 0.05) put(railPostGeometry, mat.safety, px, deckY + rail / 2, pz, 0, 0, 0, 1, stand);
+    }
+    const sideRail = track(new THREE.BoxGeometry(0.045, 0.045, L - 0.1));
+    const endRail = track(new THREE.BoxGeometry(W - 0.1, 0.045, 0.045));
+    for (const y of [deckY + rail, deckY + rail * 0.5]) {
+      put(sideRail, mat.safety, W / 2 - 0.05, y, 0, 0, 0, 0, 1, stand);
+      put(endRail, mat.safety, 0, y, L / 2 - 0.05, 0, 0, 0, 1, stand);
+    }
+    const braceGeometry = track(new THREE.BoxGeometry(0.04, 0.04, Math.hypot(L - 0.1, deckY * 0.8)));
+    for (const px of [-W / 2 + 0.05, W / 2 - 0.05]) {
+      put(braceGeometry, mat.steelDark, px, deckY * 0.45, 0, 0, Math.atan2(deckY * 0.8, L - 0.1), 0, 1, stand);
+    }
+    const treadGeometry = track(new THREE.BoxGeometry(W - 0.12, 0.04, 0.24));
+    for (let step = 1; step <= 4; step++) {
+      put(treadGeometry, mat.steelMid, 0, deckY * step / 5, -L / 2 - 0.12 - (4 - step) * 0.22,
+        0, 0, 0, 1, stand);
+    }
+    const stringerLength = Math.hypot(deckY, 0.95);
+    const stringerGeometry = track(new THREE.BoxGeometry(0.05, 0.08, stringerLength));
+    for (const px of [-W / 2 + 0.08, W / 2 - 0.08]) {
+      put(stringerGeometry, mat.safety, px, deckY / 2, -L / 2 - 0.47, 0, -Math.atan2(deckY, 0.95), 0, 1, stand);
+    }
+  }
+
+  /**
+   * A MIG welding set on its trolley: the power unit with dials and a wire-feed door, a shielding-gas bottle strapped
+   * to the back, the torch lead leaving the front. Every welding cable in the workshop starts at one.
+   */
+  function addWeldingSet(parent: THREE.Object3D, x: number, z: number, yaw: number): THREE.Group {
+    const set = new THREE.Group();
+    set.name = 'garage_welding_set';
+    set.position.set(x, 0, z);
+    set.rotation.y = yaw;
+    parent.add(set);
+    put(track(new THREE.BoxGeometry(0.62, 0.05, 0.9)), mat.steelDark, 0, 0.16, 0, 0, 0, 0, 1, set);
+    put(track(new THREE.BoxGeometry(0.5, 0.62, 0.68)), mat.blueSteel, 0, 0.5, 0.04, 0, 0, 0, 1, set);
+    put(track(new THREE.BoxGeometry(0.42, 0.24, 0.02)), mat.steelDark, 0, 0.62, 0.39, 0, 0, 0, 1, set, false);
+    for (const dx of [-0.11, 0.11]) {
+      put(track(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 10)), mat.steelBright, dx, 0.66, 0.405,
+        0, Math.PI / 2, 0, 1, set, false);
+    }
+    put(track(new THREE.CylinderGeometry(0.11, 0.11, 1.15, 12)), mat.bottleGreen, 0, 0.75, -0.42, 0, 0, 0, 1, set);
+    put(track(new THREE.CylinderGeometry(0.035, 0.05, 0.12, 8)), mat.brass, 0, 1.38, -0.42, 0, 0, 0, 1, set, false);
+    put(track(new THREE.BoxGeometry(0.05, 0.05, 0.36)), mat.steelMid, 0.2, 1.0, -0.26, 0, 0, 0, 1, set, false);
+    for (const [cx, cz] of [[-0.25, 0.36], [0.25, 0.36], [-0.25, -0.36], [0.25, -0.36]]) {
+      put(G.caster, mat.rubber, cx, 0.07, cz, 0, 0, Math.PI / 2, 1, set, false);
+    }
+    set.userData.servicePurpose = 'welding-power-and-gas';
+    return set;
+  }
+
+  /** An air impact wrench and its coiled hose on the floor, with a tray of road-arm bolts beside it. */
+  function addImpactWrenchKit(parent: THREE.Object3D, x: number, z: number, yaw: number): void {
+    const kit = new THREE.Group();
+    kit.name = 'garage_impact_wrench_kit';
+    kit.position.set(x, 0, z);
+    kit.rotation.y = yaw;
+    parent.add(kit);
+    put(track(new THREE.BoxGeometry(0.62, 0.07, 0.4)), mat.redCabDark, 0, 0.035, 0, 0, 0, 0, 1, kit);
+    const bolt = track(new THREE.CylinderGeometry(0.022, 0.022, 0.12, 6));
+    for (let i = 0; i < 9; i++) {
+      put(bolt, mat.steelBright, -0.22 + (i % 3) * 0.2, 0.09, -0.12 + Math.floor(i / 3) * 0.12,
+        0, 0, Math.PI / 2, 1, kit, false);
+    }
+    put(track(new THREE.BoxGeometry(0.1, 0.14, 0.24)), mat.steelDark, 0.62, 0.07, 0.1, 0.4, 0, 0, 1, kit);
+    put(track(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8)), mat.steelMid, 0.62, 0.09, -0.08, 0.4, Math.PI / 2, 0, 1, kit, false);
+    const hose = new THREE.TorusGeometry(0.22, 0.014, 5, 22);
+    for (let loop = 0; loop < 3; loop++) {
+      put(track(hose), mat.rubber, 1.05 + loop * 0.03, 0.016 + loop * 0.028, 0.32 - loop * 0.02,
+        0, Math.PI / 2, 0, 1, kit, false);
+    }
+  }
+
+  let leopardDiscFillGeometry: THREE.BufferGeometry | null = null;
+  /** A Leopard 2 road-wheel disc (axle along X) to fill the fleet wheel's tyre round its hub. */
+  function leopardDiscFill(): THREE.BufferGeometry {
+    if (!leopardDiscFillGeometry) {
+      // a closed disc between the tyre's inner lip and the hub (axle along X, like the fleet wheel geometry)
+      leopardDiscFillGeometry = track(new THREE.CylinderGeometry(0.3, 0.3, 0.26, 20, 1, false).rotateZ(Math.PI / 2));
+    }
+    return leopardDiscFillGeometry;
+  }
+
+  /**
+   * A welding set parked at a bay with nobody on the torch (2026-10-11: hot work needs a welder, so no arc, glow or
+   * light): the MIG set, its lead across the floor and up to the torch laid on a stand deck. Points are in the frame of
+   * `parent`; `torchAxis` runs from the torch's handle toward its nozzle.
+   */
+  function addParkedWeldingSet(
+    parent: THREE.Object3D, weldSet: THREE.Vector3, weldSetYaw: number, via: readonly THREE.Vector3[],
+    torchRest: THREE.Vector3, torchAxis: THREE.Vector3,
+  ): void {
+    addWeldingSet(parent, weldSet.x, weldSet.z, weldSetYaw);
+    const cableMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0x141618, roughness: 0.88, metalness: 0.05,
+    })));
+    const cable = new THREE.CatmullRomCurve3([new THREE.Vector3(weldSet.x, 0.28, weldSet.z), ...via, torchRest]);
+    const cableMesh = new THREE.Mesh(track(new THREE.TubeGeometry(cable, 32, 0.033, 7)), cableMaterial);
+    cableMesh.name = 'verdant_original_welding_cable';
+    cableMesh.castShadow = true;
+    parent.add(cableMesh);
+    const axis = torchAxis.clone().normalize();
+    const along = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+    const handle = put(track(new THREE.CylinderGeometry(0.03, 0.034, 0.24, 10)), mat.rubber,
+      torchRest.x + axis.x * 0.12, torchRest.y, torchRest.z + axis.z * 0.12, 0, 0, 0, 1, parent);
+    handle.quaternion.copy(along);
+    const nozzle = put(track(new THREE.CylinderGeometry(0.016, 0.022, 0.12, 8)), mat.brass,
+      torchRest.x + axis.x * 0.3, torchRest.y, torchRest.z + axis.z * 0.3, 0, 0, 0, 1, parent, false);
+    nozzle.quaternion.copy(along);
+  }
+
+  /**
+   * A pulled tank power pack on its service stand: engine block with its exhaust manifolds and air cleaner, the
+   * transmission at one end, two cooling-fan shrouds on top, all on a four-leg stand (scene frame of `root`).
+   */
+  function addPowerPackOnStand(root: THREE.Object3D, x: number, z: number, yaw: number): void {
+    const pack = new THREE.Group();
+    pack.name = 'garage_power_pack_stand';
+    pack.position.set(x, 0, z);
+    pack.rotation.y = yaw;
+    pack.userData.servicePurpose = 'power-pack-service';
+    root.add(pack);
+    const legGeometry = track(new THREE.BoxGeometry(0.1, 0.46, 0.1));
+    for (const [lx, lz] of [[-1.05, -0.5], [1.05, -0.5], [-1.05, 0.5], [1.05, 0.5]]) {
+      put(legGeometry, mat.safety, lx, 0.23, lz, 0, 0, 0, 1, pack);
+      put(track(new THREE.BoxGeometry(0.28, 0.03, 0.28)), mat.steelDark, lx, 0.015, lz, 0, 0, 0, 1, pack);
+    }
+    for (const lz of [-0.5, 0.5]) put(track(new THREE.BoxGeometry(2.3, 0.1, 0.12)), mat.steelMid, 0, 0.48, lz, 0, 0, 0, 1, pack);
+    put(track(new THREE.BoxGeometry(1.55, 0.72, 0.95)), mat.olive, -0.2, 0.9, 0, 0, 0, 0, 1, pack);
+    put(track(new THREE.BoxGeometry(0.62, 0.66, 1.05)), mat.steelDark, 0.88, 0.87, 0, 0, 0, 0, 1, pack);
+    for (const lz of [-0.5, 0.5]) {
+      put(track(new THREE.CylinderGeometry(0.07, 0.07, 1.4, 10)), mat.steelBright, -0.2, 1.1, lz * 1.06,
+        0, 0, Math.PI / 2, 1, pack);
+    }
+    put(track(new THREE.BoxGeometry(0.5, 0.3, 0.6)), mat.steelMid, -0.55, 1.41, 0, 0, 0, 0, 1, pack);
+    for (const fx of [0.12, 0.62]) {
+      put(track(new THREE.CylinderGeometry(0.26, 0.26, 0.12, 18)), mat.steelDark, fx, 1.32, 0, 0, 0, 0, 1, pack);
+      put(track(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 14)), mat.rubber, fx, 1.39, 0, 0, 0, 0, 1, pack, false);
+    }
+    put(track(new THREE.TorusGeometry(0.16, 0.025, 6, 14)), mat.rubber, -1.02, 0.95, 0.2, 0, Math.PI / 2, 0, 1, pack);
+  }
+
+  /** A welding curtain on its frame: two posts on feet, a top rail, an orange screen (scene frame of `root`). */
+  function addWeldCurtain(root: THREE.Object3D, x: number, z: number, yaw: number,
+    screen: readonly [number, number] = [2.0, 1.95]): void {
+    const frame = new THREE.Group();
+    frame.name = 'garage_weld_curtain';
+    frame.position.set(x, 0, z);
+    frame.rotation.y = yaw;
+    frame.userData.servicePurpose = 'hot-work-screen';
+    root.add(frame);
+    const [W, H] = screen;
+    for (const px of [-W / 2, W / 2]) {
+      put(track(new THREE.BoxGeometry(0.045, H, 0.045)), mat.steelDark, px, H / 2, 0, 0, 0, 0, 1, frame);
+      put(track(new THREE.BoxGeometry(0.06, 0.04, 0.62)), mat.steelDark, px, 0.02, 0, 0, 0, 0, 1, frame);
+    }
+    put(track(new THREE.BoxGeometry(W, 0.04, 0.04)), mat.steelDark, 0, H, 0, 0, 0, 0, 1, frame);
+    const curtain = new THREE.Mesh(track(new THREE.PlaneGeometry(W - 0.08, H - 0.22)), track(shadowMat(
+      new THREE.MeshStandardMaterial({
+        color: 0xd2621c, emissive: 0x3a1404, roughness: 0.6, metalness: 0,
+        transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false,
+      }))));
+    curtain.name = 'garage_weld_curtain_screen';
+    curtain.position.set(0, H / 2 + 0.08, 0);
+    curtain.castShadow = false;
+    curtain.receiveShadow = true;
+    frame.add(curtain);
   }
 
   async function createLegacyVisual(
@@ -855,6 +1139,47 @@ export function createGarageDressing(
 
   function requireGarageWork(stillValid: () => boolean): void {
     if (disposed || !stillValid()) throw pausedWork;
+  }
+
+  /**
+   * A barrel stand under a turret's gun (2026-10-10, wave 357: "its long gun barrel unsupported"): a splayed A-frame
+   * on a base plate with a rubber-lined V-block under the barrel at `along` of its length, painted the Garage's
+   * safety colour. Built in the workshop frame from the gun's own world pose.
+   */
+  function addBarrelStand(gunRoot: THREE.Object3D | undefined, along: number, name: string): void {
+    if (!gunRoot) return;
+    legacyVerdantRoot.updateMatrixWorld(true);
+    const origin = gunRoot.getWorldPosition(new THREE.Vector3());
+    const axis = new THREE.Vector3(0, 0, 1).transformDirection(gunRoot.matrixWorld);
+    const bounds = new THREE.Box3().setFromObject(gunRoot);
+    if (bounds.isEmpty()) return;
+    // the barrel's reach along its axis: the farthest bounds corner
+    let reach = 0;
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) {
+      for (const z of [bounds.min.z, bounds.max.z]) reach = Math.max(reach, new THREE.Vector3(x, y, z).sub(origin).dot(axis));
+    }
+    if (reach < 1.5) return;
+    const atWorld = origin.clone().addScaledVector(axis, reach * along);
+    const at = legacyVerdantRoot.worldToLocal(atWorld.clone());
+    const top = at.y - 0.1;
+    if (top < 0.4) return;
+    const stand = new THREE.Group();
+    stand.name = name;
+    stand.position.set(at.x, 0, at.z);
+    const axisLocal = legacyVerdantRoot.worldToLocal(atWorld.clone().add(axis)).sub(at);
+    stand.rotation.y = Math.atan2(axisLocal.x, axisLocal.z);
+    stand.userData.supportMode = 'a-frame-barrel-stand';
+    legacyVerdantRoot.add(stand);
+    put(track(new THREE.BoxGeometry(0.62, 0.04, 0.44)), mat.steelDark, 0, 0.02, 0, 0, 0, 0, 1, stand);
+    const leg = track(new THREE.BoxGeometry(0.07, Math.hypot(top - 0.08, 0.24), 0.07));
+    for (const side of [-1, 1]) {
+      put(leg, mat.safety, side * 0.12, (top - 0.04) / 2, 0, 0, 0, side * Math.atan2(0.24, top - 0.08), 1, stand);
+    }
+    put(track(new THREE.BoxGeometry(0.34, 0.06, 0.08)), mat.safety, 0, top * 0.45, 0, 0, 0, 0, 1, stand);
+    for (const side of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.14, 0.05, 0.12)), mat.steelMid, side * 0.07, top - 0.01, 0, 0, 0, side * -0.6, 1, stand);
+    }
+    put(track(new THREE.BoxGeometry(0.1, 0.02, 0.1)), mat.rubber, 0, top + 0.01, 0, 0, 0, 0, 1, stand);
   }
 
   function placeGunRig(
@@ -1061,13 +1386,23 @@ export function createGarageDressing(
     currentVariant = getGarageVariant(variantId);
     group.userData.garageVariantId = currentVariant.id;
     group.userData.garageMapId = currentVariant.mapId;
-    mat.safety.color.setHex(currentVariant.accent);
+    // Verdant keeps its hall's own paint; outdoors the exhibit's frames take the pack's shelter paint and one safety
+    // yellow, so the bays and the facility around them read as one construction (wave 357: "three-colour tangles").
+    if (currentVariant.id === 'verdant_motor_pool') {
+      mat.safety.color.setHex(currentVariant.accent);
+      mat.blueSteel.color.setHex(0x2a4257);
+    } else {
+      const finish = GARAGE_SHELTER_FINISHES[currentVariant.architecture] ?? GARAGE_SHELTER_FINISHES.field_shed;
+      mat.safety.color.setHex(0xa8862c);
+      mat.blueSteel.color.setHex(finish.frame);
+    }
     bayFill.color.setHex(currentVariant.lightTint);
     const [layoutX, layoutZ, layoutYaw] = getGarageWorkshopLayoutPose(currentVariant);
     legacyVerdantRoot.position.set(layoutX, 0, layoutZ);
     legacyVerdantRoot.rotation.y = layoutYaw;
     legacyVerdantRoot.updateMatrix();
     const isVerdant = currentVariant.id === 'verdant_motor_pool';
+    placeAbramsBay(currentVariant);
     // One demand-loaded four-bay exhibit is shared by every Garage. The four
     // diagonally opposed service stations already fill all quadrants, while
     // this tiny layout pose shifts/rotates the complete set against each
@@ -1086,7 +1421,13 @@ export function createGarageDressing(
     group.userData.workshopExhibitCount = 5;
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
-    group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
+    group.userData.sharedMaintenanceBayQuadrants = [
+      ...SHARED_MAINTENANCE_BAY_QUADRANTS[isVerdant ? 'verdant' : 'outdoor'],
+    ];
+    // Verdant's Abrams and K2 bays exchange quadrants as two half-turned owners;
+    // outdoors only the K2 keeps that swap.
+    group.userData.swappedServiceBayIds = isVerdant ? ['abrams_welding', 'rolled_k2'] : ['rolled_k2'];
+    group.userData.abramsServiceLandmark = isVerdant ? 'east-flammable-canisters' : 'west-center-hoist';
     group.userData.workshopOrbitCoverageDegrees = 360;
     group.userData.workshopSceneMode = isVerdant
       ? 'verdant-workshop' : 'environment-service-exhibits';
@@ -1100,10 +1441,13 @@ export function createGarageDressing(
   ): void {
     if (turret) turret.visible = false;
     if (hull) {
+      // Only the tracks come off (2026-10-10, wave 377: with every wheel gone the rolled hull read as "an anonymous
+      // dark-green box with a few bolt-on blocks"): road wheels, idlers, sprockets, return rollers and suspension stay
+      // on, so the hull keeps its tank anatomy in the rotisserie; the shoes lie on their pallet.
       const removedGear: THREE.Object3D[] = [];
       hull.traverse((object) => {
-        if (object.userData.runningGear
-            || /^(gear|hullRunningGear|k2_track_rubber)/.test(object.name || '')) {
+        const name = object.name || '';
+        if (/^(gearTrack|gearThrownLinks|gearShadow|hullRunningGearTrack|k2_track_rubber)/.test(name)) {
           removedGear.push(object);
         }
       });
@@ -1116,6 +1460,76 @@ export function createGarageDressing(
     tank.traverse((object) => {
       if (object.userData.authoredShadowProxy) object.visible = false;
     });
+  }
+
+  /**
+   * The rolled K2 reads as a stripped hull, not a slab (2026-10-10, wave 357: "a featureless dark-green slab with a few
+   * knobs"): with its tracks off and its wheels on, the hull shows what a teardown exposes, in the hull's own frame so
+   * it rolls with it: the engine deck lifted off with the bay open and its harnesses hanging, the driver's hatch swung
+   * open and the belly escape hatch out, and the bolt rows where the mine plate came off.
+   */
+  function addK2StrippedAnatomy(tank: THREE.Object3D, hull: THREE.Object3D | undefined): void {
+    if (!hull) return;
+    tank.updateMatrixWorld(true);
+    const inverse = tank.matrixWorld.clone().invert();
+    const box = new THREE.Box3();
+    const local = new THREE.Box3();
+    hull.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.visible || !mesh.geometry) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      local.copy(mesh.geometry.boundingBox!).applyMatrix4(inverse.clone().multiply(mesh.matrixWorld));
+      box.union(local);
+    });
+    if (box.isEmpty()) return;
+    const anatomy = markModernPart(new THREE.Group(), 'k2', 'stripped_hull_anatomy');
+    anatomy.name = 'k2_stripped_hull_anatomy';
+    tank.add(anatomy);
+    const halfWidth = (box.max.x - box.min.x) / 2;
+    const cx = (box.max.x + box.min.x) / 2;
+    const top = box.max.y;
+    const belly = box.min.y;
+    const front = box.max.z;
+    const rear = box.min.z;
+    const length = front - rear;
+    // the engine deck lifted off: a dark open bay with its frame, the radiator core and hanging harnesses
+    const bayLength = Math.min(2.2, length * 0.3);
+    const bayZ = rear + bayLength / 2 + 0.25;
+    put(track(new THREE.BoxGeometry(halfWidth * 1.5, 0.02, bayLength)), mat.rubber, cx, top + 0.005, bayZ, 0, 0, 0, 1, anatomy);
+    for (const sx of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(0.08, 0.06, bayLength)), mat.steelMid, cx + sx * halfWidth * 0.76, top + 0.03, bayZ,
+        0, 0, 0, 1, anatomy);
+    }
+    for (const sz of [-1, 1]) {
+      put(track(new THREE.BoxGeometry(halfWidth * 1.6, 0.06, 0.08)), mat.steelMid, cx, top + 0.03, bayZ + sz * bayLength / 2,
+        0, 0, 0, 1, anatomy);
+    }
+    put(track(new THREE.BoxGeometry(halfWidth * 1.1, 0.12, 0.5)), mat.steelDark, cx, top + 0.07, bayZ - bayLength * 0.25,
+      0, 0, 0, 1, anatomy);
+    const harness = track(new THREE.CylinderGeometry(0.018, 0.018, 0.55, 6));
+    for (let lead = 0; lead < 4; lead++) {
+      put(harness, lead % 2 ? mat.rubber : mat.extRed, cx - halfWidth * 0.5 + lead * halfWidth * 0.32, top + 0.25,
+        bayZ + bayLength * 0.2, 0.2 * lead, 0.5 + lead * 0.15, 0, 1, anatomy);
+    }
+    // the driver's hatch swung open on its hinge, the belly escape hatch out beside its ring
+    const hatch = track(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 18));
+    put(hatch, mat.olive, cx + halfWidth * 0.35, top + 0.3, front - 0.85, 0, 0, 1.2, 1, anatomy);
+    put(track(new THREE.TorusGeometry(0.33, 0.03, 6, 20).rotateX(Math.PI / 2)), mat.steelDark,
+      cx + halfWidth * 0.1, top + 0.01, front - 0.85, 0, 0, 0, 1, anatomy);
+    put(track(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 18)), mat.rubber, cx - halfWidth * 0.2, belly - 0.012,
+      (front + rear) / 2 + 0.6, 0, 0, 0, 1, anatomy);
+    put(track(new THREE.TorusGeometry(0.31, 0.025, 6, 20).rotateX(Math.PI / 2)), mat.steelMid, cx - halfWidth * 0.2,
+      belly - 0.02, (front + rear) / 2 + 0.6, 0, 0, 0, 1, anatomy);
+    // belly bolt rows where the add-on mine plate came off
+    const bolt = track(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6));
+    for (let row = 0; row < 2; row++) {
+      for (let k = 0; k < 14; k++) {
+        put(bolt, mat.steelBright, cx + (row ? 1 : -1) * halfWidth * 0.62, belly - 0.012,
+          rear + length * (0.15 + k * 0.05), 0, 0, 0, 1, anatomy, false);
+      }
+    }
+    anatomy.userData.exposed = ['open-engine-bay', 'hanging-harnesses', 'open-drivers-hatch', 'belly-escape-hatch',
+      'mine-plate-bolt-rows'];
   }
 
   function addK2RoadWheelStacks(
@@ -1277,31 +1691,24 @@ export function createGarageDressing(
       put(post, mat.safety, px, 0.62, -0.3, 0, 0, 0, 1, rack);
       put(post, mat.safety, px, 0.62, 0.3, 0, 0, 0, 1, rack);
     }
-    const bodies = new THREE.InstancedMesh(G.shellBody, mat.olive, 12);
-    const tips = new THREE.InstancedMesh(G.shellTip, mat.brass, 12);
-    const matrix = new THREE.Matrix4();
-    let index = 0;
-    for (const rackZ of [-0.18, 0.18]) {
-      for (let column = 0; column < 6; column++) {
-        const shellX = -0.95 + column * 0.38 + (rng() - 0.5) * 0.05;
-        matrix.makeTranslation(shellX, 0.46, rackZ);
-        bodies.setMatrixAt(index, matrix);
-        matrix.makeTranslation(shellX, 0.93, rackZ);
-        tips.setMatrixAt(index, matrix);
-        index++;
+    // The rounds stay in their sealed transport containers (2026-10-10, wave 357: "live shells stand in an open rack
+    // under a FLAMMABLE sign"): green ammunition boxes with latches and rope handles on both shelves, a stencil band,
+    // and the empty pallet beside the rack.
+    const ammoBox = track(new THREE.BoxGeometry(0.98, 0.28, 0.3));
+    const latch = track(new THREE.BoxGeometry(0.06, 0.08, 0.02));
+    const handle = track(new THREE.BoxGeometry(0.16, 0.025, 0.03));
+    const band = track(new THREE.BoxGeometry(0.4, 0.06, 0.004));
+    for (const shelfY of [0.24, 0.79]) {
+      for (const [boxX, boxZ] of [[-0.52, -0.16], [0.52, -0.16], [-0.52, 0.17], [0.52, 0.17]] as const) {
+        put(ammoBox, mat.olive, boxX, shelfY, boxZ, 0, 0, 0, 1, rack);
+        for (const lx of [-0.3, 0.3]) put(latch, mat.steelMid, boxX + lx, shelfY + 0.02, boxZ + 0.152, 0, 0, 0, 1, rack, false);
+        put(handle, mat.rubber, boxX, shelfY + 0.155, boxZ, 0, 0, 0, 1, rack, false);
+        put(band, mat.safety, boxX, shelfY - 0.06, boxZ + 0.152, 0, 0, 0, 1, rack, false);
       }
     }
-    bodies.castShadow = tips.castShadow = true;
-    rack.add(bodies, tips);
-    track(bodies);
-    track(tips);
-    // Two loose rounds lie on a pallet beside the rack.
+    rack.userData.storage = 'sealed-ammunition-containers';
     put(track(new THREE.BoxGeometry(1.1, 0.1, 0.8)), mat.timberDark,
       0.2, 0.05, 0.95, 0.2, 0, 0, 1, rack);
-    put(G.shellBody, mat.olive,
-      0.05, 0.16, 0.95, 0.2, 0, Math.PI / 2, 1, rack);
-    put(G.shellBody, mat.olive,
-      0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
   }
 
   const chunks: Array<(stillValid: () => boolean) => void | Promise<void>> = [];
@@ -1810,8 +2217,10 @@ export function createGarageDressing(
     for (const [stationId, stationX, stationZ, loadKind] of [
       ['east_front', 12.0, -9.2, 'final-drive'],
       ['east_center', 14.4, 0, 'powerpack'],
-      ['east_rear', 13.2, 9.2, 'turret-basket'],
-      ['west_front', -12.0, -9.2, 'turret-basket'],
+      // every hook carries a load that reads as one (2026-10-10, wave 377: "the crane's turret-lift ring hangs empty",
+      // "the crane chains above the tank hang empty"): the turret-basket rings gave way to a pack and a final drive
+      ['east_rear', 13.2, 9.2, 'powerpack'],
+      ['west_front', -12.0, -9.2, 'final-drive'],
       ['west_center', -14.4, 0, 'final-drive'],
       ['west_rear', -13.2, 9.2, 'powerpack'],
     ] as const) {
@@ -2013,7 +2422,7 @@ export function createGarageDressing(
       put(track(new THREE.BoxGeometry(0.55, 1.9, 0.95)), mat.olive, 22.35, 0.95, lz, 0, 0, 0, 1);
       put(track(new THREE.BoxGeometry(0.04, 1.7, 0.8)), mat.steelDark, 22.05, 0.95, lz, 0, 0, 0, 1, group, false);
     }
-    // Shell rack: frame + two rows of standing rounds (instanced).
+    // Ammunition rack: the rounds in their sealed containers on two shelves.
     addCoreShellRack();
     wallSignAt('BAY 02', 'east_bay_02');
     extinguisherAt('east_extinguisher');
@@ -2188,28 +2597,8 @@ export function createGarageDressing(
     // The NW floor band stays open for the real K2 side-hull teardown in the
     // modern component chunk.
 
-    // --- FLOOR: bay outlines, oil, skids, painted spur lane ------------------
-    const outlineMat = track(new THREE.MeshBasicMaterial({
-      map: track(canvasTexture(makeBayOutlineTexture())), transparent: true, depthWrite: false,
-    }));
-    const addBayOutline = (
-      parent: THREE.Object3D,
-      bx: number,
-      bz: number,
-      ry2: number,
-      w: number,
-      h: number,
-      name: string,
-    ): void => {
-      const q = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), outlineMat);
-      q.name = name;
-      q.rotation.set(-Math.PI / 2, 0, ry2);
-      q.scale.set(w, h, 1);
-      q.position.set(bx, 0.024, bz);
-      parent.add(q);
-    };
-    addBayOutline(group, 16.4, -13.6, -0.55, 9.4, 7.2,
-      'verdant_leopard_mobility_bay_outline');
+    // --- FLOOR: oil and skids (2026-10-10, wave 357: the dashed bay outlines and the painted spur lane read as
+    // "car-park lane dashes" in every Garage, so the floors keep only their working history) ----------------------
     abramsServiceFloorRoot = markModernPart(
       new THREE.Group(), 'm1a2', 'welding_service_floor',
     );
@@ -2218,8 +2607,6 @@ export function createGarageDressing(
     // Build the outline and stain off-scene. The complete Abrams bay owns its
     // first visible attachment after the async vehicle transfer finishes, so
     // the floor cannot flash at these raw authored coordinates and then jump.
-    addBayOutline(abramsServiceFloorRoot, 15.3, 16.2, -2.03, 9.6, 7.4,
-      'verdant_abrams_welding_bay_outline');
     for (const [sx, sz, ss] of [[17.2, -13.2, 3.2], [15.6, 15.8, 3.6], [21.3, -6.4, 2.0], [11.6, 19.2, 1.7], [-14.2, 19.8, 2.2], [3.4, -20.7, 1.9]]) {
       const stain = new THREE.Mesh(track(new THREE.PlaneGeometry(ss, ss)), stainMat);
       const belongsToAbramsBay = sx === 15.6 && sz === 15.8;
@@ -2252,25 +2639,6 @@ export function createGarageDressing(
       wear.scale.set(wearSpanM, wearSpanM, 1);
       wear.position.set(0, 0.023, 0);
       group.add(wear);
-    }
-    // painted guide spur splitting from the center lane toward bay A
-    {
-      const laneC = document.createElement('canvas');
-      laneC.width = 256; laneC.height = 32;
-      const lg2 = laneC.getContext('2d')!;
-      lg2.strokeStyle = 'rgba(196,164,44,0.42)';
-      lg2.lineWidth = 12;
-      lg2.setLineDash([30, 20]);
-      lg2.beginPath();
-      lg2.moveTo(0, 16); lg2.lineTo(256, 16);
-      lg2.stroke();
-      const laneMat = track(new THREE.MeshBasicMaterial({
-        map: track(canvasTexture(laneC)), transparent: true, depthWrite: false,
-      }));
-      const lane = new THREE.Mesh(track(new THREE.PlaneGeometry(11, 1.2)), laneMat);
-      lane.rotation.set(-Math.PI / 2, 0, 0.62);
-      lane.position.set(11.2, 0.023, -6.8);
-      group.add(lane);
     }
     // The scrolling battle display is already owned by the shared workshop
     // root. Everything authored after it is wall/floor clutter
@@ -2383,9 +2751,16 @@ export function createGarageDressing(
       0, 4.74, 0, 0, 0, 0, 1, gantry);
     put(track(new THREE.BoxGeometry(0.42, 0.3, 0.5)), mat.steelDark,
       0, 4.6, 0.4, 0, 0, 0, 1, gantry);
-    const chainGeometry = track(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6));
-    put(chainGeometry, mat.steelBright, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gantry, false);
-    put(chainGeometry, mat.steelBright, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gantry, false);
+    // load chains a hand thick, not hairlines (2026-10-10, wave 377: "the lifted turret hangs on two hairlines")
+    const chainGeometry = track(new THREE.CylinderGeometry(0.042, 0.042, 0.85, 8));
+    put(chainGeometry, mat.steelMid, -0.16, 4.1, 0.4, 0, 0, 0.12, 1, gantry);
+    put(chainGeometry, mat.steelMid, 0.16, 4.1, 0.4, 0, 0, -0.12, 1, gantry);
+    for (const side of [-1, 1]) {
+      for (let link = 0; link < 5; link += 1) {
+        put(track(new THREE.TorusGeometry(0.05, 0.016, 5, 10)), mat.steelBright, side * (0.16 - link * 0.02), 4.42 - link * 0.16, 0.4,
+          0, link % 2 ? Math.PI / 2 : 0, side * 0.12, 1, gantry, false);
+      }
+    }
     put(track(new THREE.BoxGeometry(0.3, 0.16, 0.16)), mat.steelDark,
       0, 3.72, 0.4, 0, 0, 0, 1, gantry);
     put(track(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 6)), mat.rubber,
@@ -2395,6 +2770,46 @@ export function createGarageDressing(
     bulb.castShadow = false;
     put(track(new THREE.CylinderGeometry(0.09, 0.07, 0.16, 10)), mat.steelDark,
       0.05, 2.82, -1.4, 0, 0, 0, 1, gantry, false);
+    // The hoist takes the turret's weight (2026-10-10, wave 338: "nothing explains why tanks are lifted"): a hook
+    // under the chain block and four slings down to lifting eyes found on the lifted turret's roof.
+    if (turret) {
+      legacyVerdantRoot.updateMatrixWorld(true);
+      const toAuthored = (world: THREE.Vector3): THREE.Vector3 => legacyVerdantRoot.worldToLocal(world.clone());
+      const hookWorld = gantry.localToWorld(new THREE.Vector3(0, 3.5, 0.4));
+      const hook = toAuthored(hookWorld);
+      put(track(new THREE.BoxGeometry(0.16, 0.22, 0.1)), mat.steelDark, hook.x, hook.y + 0.06, hook.z,
+        -0.55, 0, 0, 1, legacyVerdantRoot);
+      const turretBox = new THREE.Box3().setFromObject(turret);
+      const centreWorld = turretBox.getCenter(new THREE.Vector3());
+      const ray = new THREE.Raycaster();
+      const down = new THREE.Vector3(0, -1, 0);
+      // yellow polyester round slings, the kind every armour workshop lifts turrets with
+      const slingGeometry = track(new THREE.BoxGeometry(0.1, 1, 0.024));
+      const right = gantry.localToWorld(new THREE.Vector3(1, 0, 0)).sub(gantry.localToWorld(new THREE.Vector3()));
+      const forward = gantry.localToWorld(new THREE.Vector3(0, 0, 1)).sub(gantry.localToWorld(new THREE.Vector3()));
+      let slings = 0;
+      for (const [sx, sz] of [[-0.62, -0.7], [0.62, -0.7], [-0.62, 0.75], [0.62, 0.75]] as const) {
+        const origin = centreWorld.clone().addScaledVector(right, sx).addScaledVector(forward, sz);
+        origin.y = turretBox.max.y + 1;
+        ray.set(origin, down);
+        const hit = ray.intersectObject(turret, true).find((candidate) => candidate.object.visible);
+        if (!hit) continue;
+        const eye = toAuthored(hit.point);
+        const delta = new THREE.Vector3().subVectors(eye, hook);
+        const sling = new THREE.Mesh(slingGeometry, mat.safety);
+        sling.name = 'verdant_burlak_turret_sling';
+        sling.position.copy(hook).addScaledVector(delta, 0.5);
+        sling.scale.set(1, delta.length(), 1);
+        sling.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+        sling.castShadow = true;
+        legacyVerdantRoot.add(sling);
+        put(track(new THREE.TorusGeometry(0.04, 0.012, 4, 10)), mat.steelBright, eye.x, eye.y + 0.03, eye.z,
+          0, 0, 0, 1, legacyVerdantRoot, false);
+        slings += 1;
+      }
+      gantry.userData.turretSlings = slings;
+    }
+
     const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7.5, 7.5)), poolMat);
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(17.4, 0.03, -14.9);
@@ -2419,6 +2834,10 @@ export function createGarageDressing(
       legacyVerdantRoot, 't90a_burlak', roadWheelTires, roadWheelDiscs,
       12.4, -15.0, -0.55 + Math.PI / 2,
     );
+
+    addBayGrime(legacyVerdantRoot, 15.6, -13.2, 13, 0.4);
+    // a rolling stand at the turret ring with its tool tray open (2026-10-11: no people; the stand reads on its own)
+    addStandWithTray(bayKitRoot('burlak', { x: 17.8, z: -15.5, yaw: -0.55 }, legacyVerdantRoot), 2.85, -0.45, 1.2);
 
     // This bay used to be six independent root children, which made a safe
     // clearance correction impossible: moving only the tank detached it from
@@ -2457,6 +2876,10 @@ export function createGarageDressing(
     tank.rotation.y = -2.03;
     tank.position.set(16.9, 0, 17.7);
     legacyVerdantRoot.add(tank);
+    // Cold work only beside the FLAMMABLE canisters (2026-10-10, wave 338: "welding beside fuel drums and live
+    // rounds"): skirts off, a road-wheel change and a creeper left half under the bow. The welding moved to the rolled
+    // K2's belly.
+    const creeperAt = { x: 13.761, z: 16.761 };
     const roadWheelTires = tank.getObjectByName('gearRoadWheelTires') as
       THREE.Mesh | undefined;
     const roadWheelDiscs = (tank.getObjectByName('gearRoadWheelDiscs')
@@ -2493,8 +2916,8 @@ export function createGarageDressing(
       14.9, 0.05, 15.9, 0, 0, 0, 1, legacyVerdantRoot);
     const creeper = new THREE.Group();
     creeper.name = 'verdant_original_creeper';
-    creeper.position.set(14.35, 0, 17.1);
-    creeper.rotation.y = 1.1;
+    creeper.position.set(creeperAt.x, 0, creeperAt.z);
+    creeper.rotation.y = -2.03;
     legacyVerdantRoot.add(creeper);
     put(track(new THREE.BoxGeometry(0.55, 0.05, 1.35)), mat.redCabDark,
       0, 0.09, 0, 0, 0, 0, 1, creeper);
@@ -2502,38 +2925,6 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.045, wheelZ,
         0, 0, Math.PI / 2, 0.7, creeper, false);
     }
-    const cableMaterial = track(shadowMat(new THREE.MeshStandardMaterial({
-      color: 0x141618, roughness: 0.88, metalness: 0.05,
-    })));
-    const cable = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(11.6, 0.22, 19.6),
-      new THREE.Vector3(13.2, 0.05, 18.6),
-      new THREE.Vector3(15.4, 0.05, 17.0),
-      new THREE.Vector3(17.35, 0.4, 15.95),
-    ]);
-    const cableMesh = new THREE.Mesh(
-      track(new THREE.TubeGeometry(cable, 24, 0.035, 7)), cableMaterial,
-    );
-    cableMesh.name = 'verdant_original_welding_cable';
-    cableMesh.castShadow = true;
-    legacyVerdantRoot.add(cableMesh);
-    const weldTip = put(track(new THREE.SphereGeometry(0.028, 8, 6)),
-      track(new THREE.MeshBasicMaterial({ color: 0xffe0b0 })),
-      17.4, 0.45, 15.92, 0, 0, 0, 1, legacyVerdantRoot, false);
-    weldTip.castShadow = false;
-    const glowMaterial = track(new THREE.SpriteMaterial({
-      map: track(canvasTexture(makePoolTexture(
-        'rgba(255,208,140,0.5)', 'rgba(255,160,70,0.14)',
-      ))),
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }));
-    const spark = new THREE.Sprite(glowMaterial);
-    spark.name = 'verdant_original_weld_glow';
-    spark.scale.setScalar(0.7);
-    spark.position.set(17.4, 0.47, 15.92);
-    legacyVerdantRoot.add(spark);
     const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(7, 7)), poolMat);
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
@@ -2545,20 +2936,26 @@ export function createGarageDressing(
 
     // This fixture hangs from Verdant's roof. Outdoor environments use the
     // stable Garage sun and hero lights, so never leave it in open sky.
-    // The lamp remains an indoor roof fixture over the bay's floor station (authored at 15.9, 16.6), carried by the
-    // same placement as the tank. The interior root is half-turned, so the lamp's world point enters it negated.
-    {
-      const { x, z, rotationRad } = ABRAMS_WELDING_BAY_PLACEMENT;
-      const cos = Math.cos(rotationRad), sin = Math.sin(rotationRad);
-      workLamp(-(x + 15.9 * cos + 16.6 * sin), -(z - 15.9 * sin + 16.6 * cos), 0, 7.4, verdantInteriorRoot);
-    }
+    // The lamp remains an indoor roof fixture, but follows the same bay
+    // translation so its cone lands on the moved pad instead of the empty old
+    // scaffold square. The interior already supplies the half-turn, hence the
+    // inverse offset in its authored coordinate space. It exists only in
+    // Verdant, whose Abrams bay stands at the canister station.
+    workLamp(
+      15.9 - ABRAMS_FLAMMABLE_BAY_OFFSET.x,
+      16.6 - ABRAMS_FLAMMABLE_BAY_OFFSET.z,
+      0,
+      7.4,
+      verdantInteriorRoot,
+    );
     if (!abramsServiceFloorRoot) {
       throw new Error('Abrams welding service floor was not constructed');
     }
     // Reparent the complete painted square immediately before the bay owner
     // captures its authored children. The outline and oil staining therefore
     // inherit exactly the same placement as the tank, removed skirts, wheel
-    // dolly, cable and carts.
+    // dolly, cable and carts: the half-turn and FLAMMABLE-wall offset in
+    // Verdant, the station beside the camera outdoors.
     legacyVerdantRoot.add(abramsServiceFloorRoot);
     placeAuthoredServiceBay(firstBayChildIndex, 'abrams_welding', 'm1a2');
   });
@@ -2595,8 +2992,8 @@ export function createGarageDressing(
       new THREE.Group(), 'leo2a5_a5nl', 'mobility_teardown_service_bay',
     );
     mobilityBay.name = 'garage_leopard_a5nl_mobility_teardown';
-    mobilityBay.position.set(18.05, 0, -11.95);
-    mobilityBay.rotation.y = -0.55;
+    mobilityBay.position.set(LEOPARD_MOBILITY_BAY_LOCAL.x, 0, LEOPARD_MOBILITY_BAY_LOCAL.z);
+    mobilityBay.rotation.y = LEOPARD_MOBILITY_BAY_LOCAL.yaw;
     leopardServiceBayRoot.add(mobilityBay);
 
     mobilityTeardownTank.name = 'dressing_tank_leo2a5_a5nl_mobility_teardown';
@@ -2710,7 +3107,20 @@ export function createGarageDressing(
       wheelRack.add(removedTires, removedDiscs);
       track(removedTires);
       track(removedDiscs);
+      // The fleet Leopard's road-wheel "disc" is only its hub cap (the hull hides the rest on a running tank), so a
+      // removed wheel read as a hollow hoop (wave 338). Fill each with its dished disc in the hub's paint.
+      const fill = markModernPart(new THREE.InstancedMesh(leopardDiscFill(), roadWheelDiscs.material, removedWheelPositions.length),
+        'leo2a5_a5nl', 'removed_road_wheel_disc_fill');
+      removedWheelPositions.forEach(([x, y, z], index) => {
+        wheelMatrix.makeRotationFromEuler(wheelRotation).setPosition(x, y, z);
+        fill.setMatrixAt(index, wheelMatrix);
+      });
+      fill.instanceMatrix.needsUpdate = true;
+      fill.castShadow = fill.receiveShadow = true;
+      wheelRack.add(fill);
+      track(fill);
     }
+    addImpactWrenchKit(mobilityBay, -2.25, -3.15, 0.35);
     mobilityBay.userData.wheelServiceMode = 'running-gear-removed-to-connected-rack';
     mobilityBay.userData.paintSquareOccupied = true;
     mobilityBay.userData.finalVerdantCenter = [-16.4, 13.6];
@@ -2741,17 +3151,28 @@ export function createGarageDressing(
     cradle.position.set(-6.6, 0, 20.5);
     cradle.rotation.y = 2.4;
     legacyVerdantRoot.add(cradle);
-    const blockGeometry = track(new THREE.BoxGeometry(0.68, 0.46, 0.68));
-    for (const [blockX, blockZ] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
-      put(blockGeometry, mat.timber, blockX, 0.23, blockZ,
-        0, 0, 0, 1, cradle);
+    // Timber cribbing under the turret ring (2026-10-10, wave 357: the old solid blocks read as "plain cardboard
+    // boxes"): four crib stacks of three crossed courses, two 150 mm timbers a course with a gap between them, the
+    // way a turret is set down off its hull; the bearers above carry the ring.
+    const cribTimber = track(new THREE.BoxGeometry(0.15, 0.15, 0.72));
+    for (const [cribX, cribZ] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
+      for (let course = 0; course < 3; course++) {
+        const across = course % 2 === 1;
+        for (const offset of [-0.21, 0.21]) {
+          put(cribTimber, course === 1 ? mat.timberDark : mat.timber,
+            cribX + (across ? 0 : offset), 0.077 + course * 0.153, cribZ + (across ? offset : 0),
+            across ? Math.PI / 2 : 0, 0, 0, 1, cradle);
+        }
+      }
     }
+    cradle.userData.supportMode = 'timber-crib-stacks';
     const bearerGeometry = track(new THREE.BoxGeometry(2.85, 0.16, 0.28));
     put(bearerGeometry, mat.timberDark, 0, 0.49, -0.70,
       0, 0, 0, 1, cradle);
     put(bearerGeometry, mat.timberDark, 0, 0.49, 0.70,
       0, 0, 0, 1, cradle);
     placeGunRig(gun, 't90m', 2.75, 1.08, 21.39, 0.92);
+    addBarrelStand(gun, 0.62, 'garage_t90m_barrel_stand');
 
     const turretMesh = turret?.getObjectByName('turretCloth') as THREE.Mesh | undefined;
     const reliktMaterial = turretMesh?.material || mat.olive;
@@ -2801,6 +3222,21 @@ export function createGarageDressing(
     cassettes.receiveShadow = true;
     rack.add(cassettes);
     track(cassettes);
+    const cassetteMaterial = Array.isArray(reliktMaterial) ? mat.olive : reliktMaterial;
+    {
+      // the next cassettes waiting on a pallet between the rack and the turret
+      const pallet = new THREE.Group();
+      pallet.name = 'garage_relikt_pallet';
+      pallet.position.set(-10.15, 0, 19.15);
+      pallet.rotation.y = 0.25;
+      legacyVerdantRoot.add(pallet);
+      put(track(new THREE.BoxGeometry(1.2, 0.13, 1.0)), mat.timberDark, 0, 0.065, 0, 0, 0, 0, 1, pallet);
+      const box = track(new THREE.BoxGeometry(0.44, 0.32, 0.4));
+      for (const [bx, by, bz, ry] of [[-0.27, 0.29, -0.22, 0.05], [0.25, 0.29, -0.21, -0.04], [-0.26, 0.29, 0.23, 0.02],
+        [0.24, 0.29, 0.22, 0.06], [-0.02, 0.61, -0.02, 0.18]] as const) {
+        put(box, cassetteMaterial, bx, by, bz, ry, 0, 0, 1, pallet);
+      }
+    }
     wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86,
       Math.PI, 2.8, 0.9, '', legacyVerdantRoot);
   });
@@ -2825,6 +3261,8 @@ export function createGarageDressing(
     tank.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
     legacyVerdantRoot.add(tank);
     seatVisibleRoot(tank, 0.20);
+    // after seating, so the exposed parts never lift the hull off its saddles or the weld off the belly
+    addK2StrippedAnatomy(tank, hull);
 
     const cradle = markModernPart(new THREE.Group(), 'k2', 'hull_support');
     cradle.position.set(-16.25, 0, -16.85);
@@ -2874,6 +3312,57 @@ export function createGarageDressing(
     addK2RoadWheelStacks(tires, discs);
     addK2TrackShoePallet(pads);
 
+    // The hull rolled for belly access stands in a two-ring rotisserie (2026-10-10, wave 338: "a K2 tipped
+    // nose-down off its stand" read as an accident): each ring circles the hull's section on its long axis and rides
+    // two floor rollers, so the roll reads as a fixture setting.
+    {
+      legacyVerdantRoot.updateMatrixWorld(true);
+      const toAuthored = (local: THREE.Vector3): THREE.Vector3 => legacyVerdantRoot.worldToLocal(tank.localToWorld(local));
+      const hullAxis = toAuthored(new THREE.Vector3(0, 1.078, 1)).sub(toAuthored(new THREE.Vector3(0, 1.078, 0))).normalize();
+      // rings that clear the hull's section with its wheels on (wave 377: "the ring clips it", "thin hoops")
+      const ringRadius = 2.4;
+      const ringGeometry = track(new THREE.TorusGeometry(ringRadius, 0.12, 8, 56));
+      const rollerGeometry = track(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 12));
+      const rotisserie = markModernPart(new THREE.Group(), 'k2', 'hull_rotisserie');
+      rotisserie.name = 'k2_hull_rotisserie';
+      rotisserie.userData.supportMode = 'two-ring-hull-rotisserie';
+      legacyVerdantRoot.add(rotisserie);
+      for (const station of [-2.75, 2.45]) {
+        const centre = toAuthored(new THREE.Vector3(0, 1.078, station));
+        centre.y = ringRadius + 0.12 + 0.02;
+        const ring = put(ringGeometry, mat.safety, centre.x, centre.y, centre.z, 0, 0, 0, 1, rotisserie);
+        ring.name = 'k2_rotisserie_ring';
+        ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), hullAxis);
+        const lateral = new THREE.Vector3().crossVectors(hullAxis, new THREE.Vector3(0, 1, 0)).normalize();
+        // the ring's clamp arms reach in to the hull at four points
+        for (let arm = 0; arm < 4; arm += 1) {
+          const angle = Math.PI / 4 + arm * Math.PI / 2;
+          const radial = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0).applyQuaternion(ring.quaternion);
+          const armMesh = put(track(new THREE.BoxGeometry(0.12, 0.62, 0.14)), mat.steelDark,
+            centre.x + radial.x * (ringRadius - 0.38), centre.y + radial.y * (ringRadius - 0.38),
+            centre.z + radial.z * (ringRadius - 0.38), 0, 0, 0, 1, rotisserie);
+          armMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), radial.normalize());
+        }
+        const base = put(track(new THREE.BoxGeometry(1.5, 0.08, 0.36)), mat.steelDark,
+          centre.x, 0.04, centre.z, 0, 0, 0, 1, rotisserie);
+        base.rotation.y = Math.atan2(lateral.x, lateral.z) - Math.PI / 2;
+        for (const side of [-0.42, 0.42]) {
+          const roller = put(rollerGeometry, mat.steelMid,
+            centre.x + lateral.x * side, 0.095, centre.z + lateral.z * side, 0, 0, 0, 1, rotisserie);
+          roller.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hullAxis);
+        }
+      }
+    }
+
+    // The rolled K2's hot-work corner, parked (2026-10-11: no people, so no arc): a rolling stand at the belly with the
+    // torch laid on its deck, the welding set and its lead across the floor, the orange screen behind.
+    const k2Kit = bayKitRoot('k2', { x: -16.25, z: -16.85, yaw: 0.35 }, legacyVerdantRoot);
+    addStandWithTray(k2Kit, 0.62, 0.25, 0.9);
+    addWeldCurtain(k2Kit, 0.95, -1.2, 0);
+    addParkedWeldingSet(k2Kit, new THREE.Vector3(2.35, 0, 0.95), Math.PI / 2,
+      [new THREE.Vector3(1.7, 0.05, 0.75), new THREE.Vector3(1.05, 0.06, 0.55), new THREE.Vector3(0.88, 0.94, 0.5)],
+      new THREE.Vector3(0.72, 0.935, 0.42), new THREE.Vector3(-0.75, 0, -0.66));
+
     const weaponRack = new THREE.Group();
     weaponRack.name = 'dressing_modern_machine_gun_service_rack';
     weaponRack.userData.sourceVehicleIds = ['m1a2', 't90m'];
@@ -2902,6 +3391,8 @@ export function createGarageDressing(
   // Reusing one optimized static graph preserves the real models and complete
   // 360-degree composition without retaining ten copies of their geometry.
   chunks.push(function finalizeSharedMaintenanceBays() {
+    // the pulled power pack on its stand in the yard beside the hero (shared by every Garage; nobody at it)
+    addPowerPackOnStand(bayKitRoot('yard', { x: 0, z: 0, yaw: 0 }, legacyVerdantRoot), 3.4, -11.4, 0.55);
     group.userData.verdantOriginalTriangleCount = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.verdantOriginalExhibitCount = 5;
     group.userData.verdantOriginalExhibitIds = [
@@ -2924,9 +3415,6 @@ export function createGarageDressing(
     ];
     group.userData.sharedMaintenanceBayCount = 4;
     group.userData.sharedMaintenanceBayIds = [...SHARED_MAINTENANCE_BAY_IDS];
-    group.userData.sharedMaintenanceBayQuadrants = [...SHARED_MAINTENANCE_BAY_QUADRANTS];
-    group.userData.swappedServiceBayIds = ['rolled_k2'];
-    group.userData.abramsServiceLandmark = 'west-center-hoist';
     group.userData.leopardServiceOwnerIndependent = true;
     group.userData.workshopOrbitCoverageDegrees = 360;
     setVariant(currentVariant.id);
@@ -2937,7 +3425,9 @@ export function createGarageDressing(
   chunks.push(function optimizeWorkshopDisplays() {
     const sourceTriangles = group.userData.verdantOriginalTriangleCount || 0;
     optimizeGarageDressing(group, {
-      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
+      // The Abrams bay owner nests inside the shared root but merges alone, so
+      // each destination can still carry it to its own placement.
+      staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : [])],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
         // Variant accents stay on the shared mutable palette.

@@ -36,6 +36,14 @@ export interface RoofSpec {
   ridge?: 'round' | 'saddle' | null;
   /** flat roof parapet height (m) */
   parapet?: number;
+  /**
+   * (map revival lane, 2026-10-07, Orchard's earth roofs) a flat roof's parapet in a bucket of its own (the walls' stone
+   * round a rolled earth roof): the covering then lies inside the parapet's ring, never coplanar with its faces. Absent,
+   * the parapet takes the covering's bucket (plaster under a tiled one), as before
+   */
+  parapetBucket?: RegionalBucket;
+  /** paint over the covering (EmitOptions.tint, a weathered bucket): clay on a render's canvas. Absent, none */
+  tint?: Rgb;
   /** dressing only (a second covering over a structural slab): no collision */
   decor?: boolean;
   /**
@@ -612,16 +620,19 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   // a vertex-coloured covering (painted sheet in structureMetal) takes its livery here, weathered down the slope
   const lowY = eaveY - roof.eave * tanP, highY = roof.kind === 'shed' ? eaveY + 2 * s * tanP : ridgeY;
   const dec: EmitOptions = { ...(roof.decor ? { decor: true } : {}), ...(colour ? { colour } : {}),
-    ...(colour && roof.kind !== 'flat' ? { colourAt: weatheredSheet(colour, lowY, highY + t) } : {}) };
+    ...(colour && roof.kind !== 'flat' ? { colourAt: weatheredSheet(colour, lowY, highY + t) } : {}), ...(roof.tint ? { tint: roof.tint } : {}) };
   if (roof.kind === 'flat') {
-    const e = roof.eave;
-    sink.span(bucket, -s - e, eaveY, -halfD - e, s + e, eaveY + t, halfD + e, dec);
+    const e = roof.eave, th = 0.22;
+    const pb = roof.parapetBucket ?? (bucket === 'roof' ? 'plaster' : bucket);
+    // a parapet of another bucket rings the covering: the covering lies inside it (no coplanar faces of two surfaces)
+    const inset = roof.parapet && pb !== bucket ? th : 0;
+    sink.span(bucket, -s - e + inset, eaveY, -halfD - e + inset, s + e - inset, eaveY + t, halfD + e - inset, dec);
     if (roof.parapet) {
-      const p = roof.parapet, th = 0.22, top = eaveY + t + p;
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, halfD + e - th, s + e, top, halfD + e);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, -halfD - e, s + e, top, -halfD - e + th);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, s + e - th, eaveY, -halfD - e + th, s + e, top, halfD + e - th);
-      sink.span(bucket === 'roof' ? 'plaster' : bucket, -s - e, eaveY, -halfD - e + th, -s - e + th, top, halfD + e - th);
+      const p = roof.parapet, top = eaveY + t + p;
+      sink.span(pb, -s - e, eaveY, halfD + e - th, s + e, top, halfD + e);
+      sink.span(pb, -s - e, eaveY, -halfD - e, s + e, top, -halfD - e + th);
+      sink.span(pb, s + e - th, eaveY, -halfD - e + th, s + e, top, halfD + e - th);
+      sink.span(pb, -s - e, eaveY, -halfD - e + th, -s - e + th, top, halfD + e - th);
     }
     return;
   }
@@ -702,6 +713,17 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       [half, rt - 0.06, -ridgeLen], [half, rt + 0.04, -ridgeLen], [0, rt + 0.11, -ridgeLen], [-half, rt + 0.04, -ridgeLen]];
     // extrude the cap profile along z (points ccw seen from +z)
     sink.prism(bucket, capPts, [0, 0, 1], 2 * ridgeLen, { ...dec, ...CAP_WEATHER }, { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
+    // its mortar bed (the buildings and landmarks lane, 2026-10-10, the connectivity sweep): the slabs' top edges stop
+    // sinP·t either side of the apex at cosP·t over the ridge line, so on a steep roof the cap's flat underside stood
+    // up to 15 cm over them with sky between; the bed fills that wedge from the slabs' edges to the cap, as a ridge
+    // tile's mortar does (dressing: the cap and the slabs keep their collision)
+    const edgeX = sinP * t, edgeY = ridgeY + cosP * t - 0.012, bedTop = rt - 0.05;
+    if (bedTop > edgeY + 0.01) {
+      const w = Math.min(half - 0.01, Math.max(edgeX + 0.02, half * 0.85));
+      const bedPts: Vec3[] = [[-edgeX - 0.01, edgeY, -ridgeLen], [edgeX + 0.01, edgeY, -ridgeLen], [w, bedTop, -ridgeLen], [-w, bedTop, -ridgeLen]];
+      sink.prism(bucket, bedPts, [0, 0, 1], 2 * ridgeLen, { ...dec, decor: true, ...CAP_WEATHER, shade: 0.72 },
+        { kind: 'plane', origin: [0, rt, 0], u: [1, 0, 0], v: [0, 0, 1] });
+    }
   }
 }
 

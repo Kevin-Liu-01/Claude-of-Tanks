@@ -1,0 +1,4379 @@
+{
+ "libraryId": "claude-of-tanks-site50-r14",
+ "schemaVersion": 1,
+ "round": "r14",
+ "source": "The site fifty, rendered at 4K in the game engine (tools/media-r5): fifty takes with their sound, the fifty frames and the films; picks in tools/media-r5/site-media/picks.json, built by tools/media-r5/site-media.mjs",
+ "takes": {
+  "s01-main-street-push": {
+   "map": "urban",
+   "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s02-factory-road": {
+   "map": "urban",
+   "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s03-square-pass": {
+   "map": "urban",
+   "title": "A Leclerc XLR crosses the burning square",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s04-column-under-fire": {
+   "map": "verdant",
+   "title": "A T-90M column drives into the fight on the country road",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s05-barn-advance": {
+   "map": "verdant",
+   "title": "A T-14 Armata advances past the barns of Verdant Fields",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s06-farm-charge": {
+   "map": "verdant",
+   "title": "A KF51 Panther charges past the farmhouse through artillery",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s07-lake-shellfire": {
+   "map": "alpine",
+   "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s08-market-push": {
+   "map": "oasis",
+   "title": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s09-harbor-run": {
+   "map": "fjord",
+   "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s10-ford-shellfire": {
+   "map": "monsoon",
+   "title": "A ZTZ-100 fords the river as shells land around it",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s11-container-rows": {
+   "map": "railyard",
+   "title": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s12-gantry-advance": {
+   "map": "foundry",
+   "title": "A T-90MS Tagil column advances under the Ironworks gantries",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s13-farm-race": {
+   "map": "frontier",
+   "title": "A K2 Black Panther races past the red-roofed farm at sunset",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s14-snow-push": {
+   "map": "winter",
+   "title": "A T-80U pushes through snowy Frosthollow",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s15-orchard-column": {
+   "map": "orchard",
+   "title": "A C1 Ariete column drives through the orchard village under fire",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s16-street-duel": {
+   "map": "urban",
+   "title": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s17-crossroads-fire": {
+   "map": "urban",
+   "title": "Fire at the Steinburg crossroads at noon",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s18-street-knockout": {
+   "map": "urban",
+   "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s19-roof-tiles": {
+   "map": "urban",
+   "title": "Roof tiles rain down as a PL-01 fires up the street",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s20-road-return-fire": {
+   "map": "verdant",
+   "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s21-fields-assault": {
+   "map": "verdant",
+   "title": "A T-90SM wedge assaults through the burning fields",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s22-walking-barrage": {
+   "map": "verdant",
+   "title": "Artillery walks across the fields toward the wedge at night",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s23-village-crossroads": {
+   "map": "verdant",
+   "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s24-ice-duel": {
+   "map": "alpine",
+   "title": "A duel on the frozen lake: a T-80U takes the hit",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s25-alpine-village": {
+   "map": "alpine",
+   "title": "A Leopard 2A5 and a CV90105 fight through the alpine village",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s26-minaret-fire": {
+   "map": "oasis",
+   "title": "A Merkava Mk 3D fires at Sunscar Oasis",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s27-caravanserai-kill": {
+   "map": "oasis",
+   "title": "A T-62MV-1 is knocked out by the caravanserai",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s28-fjord-village": {
+   "map": "fjord",
+   "title": "A Challenger 2E and a Challenger 3 hold the fjord village",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s29-fjord-road-kill": {
+   "map": "fjord",
+   "title": "A T-90 burns on the road above the fjord",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s30-temple-village": {
+   "map": "monsoon",
+   "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s31-ford-fire": {
+   "map": "monsoon",
+   "title": "A Type 96B fires across the river ford",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s32-yard-salvo": {
+   "map": "railyard",
+   "title": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s33-water-tower": {
+   "map": "railyard",
+   "title": "The line advances past the burning water tower at night",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s34-furnace-salvo": {
+   "map": "foundry",
+   "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s35-farm-village": {
+   "map": "frontier",
+   "title": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s36-barn-knockout": {
+   "map": "frontier",
+   "title": "A Type 10 knocks out a T-90M beside the burning barn",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s37-river-village": {
+   "map": "delta",
+   "title": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s38-church-knockout": {
+   "map": "winter",
+   "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s39-lakeside-village": {
+   "map": "reservoir",
+   "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s40-rooftop-smoke": {
+   "map": "urban",
+   "title": "Smoke columns rise over the rooftops of Steinburg",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s41-church-tower": {
+   "map": "urban",
+   "title": "A Leopard 2A6 UA halts in Steinburg's night street fight",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s42-assault-above": {
+   "map": "verdant",
+   "title": "Verdant Fields from above as the assault rolls in",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s43-lake-crane": {
+   "map": "alpine",
+   "title": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s44-oasis-sunset": {
+   "map": "oasis",
+   "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s45-harbor-wide": {
+   "map": "fjord",
+   "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s46-river-drone": {
+   "map": "monsoon",
+   "title": "Monsoon Ridge: shells land along the jungle river",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s47-ironworks-crane": {
+   "map": "foundry",
+   "title": "Ironworks at night: the yard burns between the smoke stacks",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s48-delta-crane": {
+   "map": "delta",
+   "title": "Jade River Delta: the river village under fire, mountains beyond",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s49-orchard-sunset": {
+   "map": "orchard",
+   "title": "Orchard Valley: smoke drifts over the orchards",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  },
+  "s50-reservoir-crane": {
+   "map": "reservoir",
+   "title": "Highland Reservoir at sunset: the lake beyond the burning village",
+   "round": "deliver-r14",
+   "current": true,
+   "sound": true
+  }
+ },
+ "frames": [
+  {
+   "id": "b01-pan-runway",
+   "n": 1,
+   "technique": "Panning shot",
+   "title": "Tele pan at 1/15 s: the SEPv3 platoon sharp, the runway torn into streaks",
+   "map": "airfield",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b02-lead-runway",
+   "n": 2,
+   "technique": "Lead-car dolly",
+   "title": "Camera car ahead at 50 km/h, 1/30 s: the platoon charges the lens",
+   "map": "airfield",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b03-pan-wadi",
+   "n": 3,
+   "technique": "Panning shot",
+   "title": "Leclerc XLR at 43 km/h through the wadi, panned at 1/20 s",
+   "map": "desert",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b04-pan-ice",
+   "n": 4,
+   "technique": "Panning shot",
+   "title": "KF51 Panther column across the frozen lake, long-lens pan at 1/15 s",
+   "map": "alpine",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b05-track-ice",
+   "n": 5,
+   "technique": "Tracking shot",
+   "title": "Car-to-car at ice level, 1/30 s: the lake surface becomes speed lines",
+   "map": "alpine",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b06-track-strand",
+   "n": 6,
+   "technique": "Tracking shot",
+   "title": "Leclerc XLR on the strand at sunset, tracked at 1/25 s",
+   "map": "coastal",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b07-track-harbor",
+   "n": 7,
+   "technique": "Tracking shot",
+   "title": "C2 Ariete column on the harbor road, tracked at 1/30 s",
+   "map": "saltwind",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b08-track-night",
+   "n": 8,
+   "technique": "Tracking shot",
+   "title": "Leopard 2A7V under the street lamps, 1/15 s: every lamp a streak",
+   "map": "urban",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b09-passby-fjord",
+   "n": 9,
+   "technique": "Pass-by pan",
+   "title": "Leopard 2A7V passes a metre from the lens at blue hour, 1/30 s",
+   "map": "fjord",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b10-passby-lighthouse",
+   "n": 10,
+   "technique": "Pass-by pan",
+   "title": "SEPv3 sweeping past the lighthouse at sunset, 1/25 s",
+   "map": "coastal",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b11-static-speed",
+   "n": 11,
+   "technique": "Locked-off speed blur",
+   "title": "Locked-off camera, 1/20 s: the world holds still and the Leopard is a blur",
+   "map": "fjord",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b12-chase-dust",
+   "n": 12,
+   "technique": "Chase shot",
+   "title": "Low chase behind the Leclerc XLR through its own dust, 1/30 s",
+   "map": "badlands",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b13-lead-canyon",
+   "n": 13,
+   "technique": "Lead-car dolly",
+   "title": "Leclerc XLR wedge charging the camera car down the canyon floor",
+   "map": "badlands",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b14-orbit-canyon",
+   "n": 14,
+   "technique": "Orbiting follow",
+   "title": "Camera circling a moving Leclerc: the canyon wheels around it at 1/20 s",
+   "map": "badlands",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b15-drone-mars",
+   "n": 15,
+   "technique": "Drone follow",
+   "title": "Top-down drone over the ZTZ-100 convoy on Olympus Basin, 1/25 s",
+   "map": "mars",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b16-drone-strand",
+   "n": 16,
+   "technique": "Drone follow",
+   "title": "Drone over the surf line: Leclerc XLR echelon on the beach at sunset",
+   "map": "coastal",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b17-running-gear",
+   "n": 17,
+   "technique": "Macro tracking",
+   "title": "Running gear at 30 km/h, 1/30 s: road wheels and track links in motion",
+   "map": "monsoon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b18-crane-ice",
+   "n": 18,
+   "technique": "Crane rise",
+   "title": "Crane rising behind the column: the lake opens beneath the KF51s",
+   "map": "alpine",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b19-viaduct-pan",
+   "n": 19,
+   "technique": "Panning shot",
+   "title": "C2 Ariete column on the 200 m viaduct, panned from across the gorge",
+   "map": "cliffbridge",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b20-fireball-silhouette",
+   "n": 20,
+   "technique": "Explosion",
+   "title": "HE fireball over the Verdant farmsteads as the T-14 line advances",
+   "map": "verdant",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b21-zoom-burst",
+   "n": 21,
+   "technique": "Zoom burst",
+   "title": "Zoomed through the exposure as the SEPv3 fires: the frame bursts outward",
+   "map": "urban",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b22-spin",
+   "n": 22,
+   "technique": "Rotational blur",
+   "title": "Camera rolled 20 degrees inside 1/8 s: Blackglass spins around the KF51",
+   "map": "blackglass",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b23-whip-pan",
+   "n": 23,
+   "technique": "Whip pan",
+   "title": "Whip pan from one T-14 to the next as the line fires",
+   "map": "verdant",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b24-dolly-zoom",
+   "n": 24,
+   "technique": "Dolly zoom",
+   "title": "Vertigo: the camera rushes in while the lens widens, the avenue stretches behind the T-14",
+   "map": "ruinspires",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b25-shake-impact",
+   "n": 25,
+   "technique": "Shock shake",
+   "title": "Near miss: the HE round lands beside the Leopard and the camera takes the blast",
+   "map": "urban",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b26-turret-whip",
+   "n": 26,
+   "technique": "Turret slew",
+   "title": "Leclerc XLR slews its turret 100 degrees in a third of a second, 1/15 s",
+   "map": "desert",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b27-recoil",
+   "n": 27,
+   "technique": "Recoil and blast",
+   "title": "T-90M fires: recoil, muzzle blast and the dust ring at 1/25 s",
+   "map": "verdant",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b28-handheld",
+   "n": 28,
+   "technique": "Handheld chase",
+   "title": "Handheld behind the Leopard in the burning village, 1/30 s",
+   "map": "winter",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b29-tracers",
+   "n": 29,
+   "technique": "Long exposure",
+   "title": "Half-second exposure: machine-gun tracers draw lines across Frosthollow",
+   "map": "winter",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b30-salvo-longexp",
+   "n": 30,
+   "technique": "Long exposure",
+   "title": "Four T-14 and T-90M guns in one half-second frame",
+   "map": "foundry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b31-barrage-longexp",
+   "n": 31,
+   "technique": "Long exposure",
+   "title": "Counter-battery barrage behind the Ironworks line, 0.4 s exposure",
+   "map": "foundry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b32-embers",
+   "n": 32,
+   "technique": "Long exposure",
+   "title": "Embers streaming off a burning T-90M wreck, 1/4 s",
+   "map": "foundry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b33-flare-fall",
+   "n": 33,
+   "technique": "Long exposure",
+   "title": "An illumination flare sinks over the snow; its light swings the Leopard's shadow",
+   "map": "winter",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b34-headlights",
+   "n": 34,
+   "technique": "Light trails",
+   "title": "Blacked-out street, headlights on: the Leopard column drawn as light at 1/4 s",
+   "map": "urban",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b35-silhouette-sun",
+   "n": 35,
+   "technique": "Silhouette",
+   "title": "SEPv3 column on the sun line at Saltmere",
+   "map": "coastal",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b36-backlit-dust",
+   "n": 36,
+   "technique": "Backlight",
+   "title": "Leclerc XLR backlit through its own dust at golden hour",
+   "map": "badlands",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b37-rack-near",
+   "n": 37,
+   "technique": "Rack focus (near)",
+   "title": "Focus on the K2 Black Panther in the foreground, the burning T-90M soft",
+   "map": "autumn",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b38-rack-far",
+   "n": 38,
+   "technique": "Rack focus (far)",
+   "title": "The same frame racked to the burning T-90M",
+   "map": "autumn",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b39-dutch",
+   "n": 39,
+   "technique": "Dutch angle",
+   "title": "T-14 Armata at a 14 degree Dutch tilt in the Ruinspires",
+   "map": "ruinspires",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b40-ultrawide",
+   "n": 40,
+   "technique": "Ultra-wide worm",
+   "title": "KF51 Panther gun tube over an ultra-wide lens, towers behind",
+   "map": "blackglass",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b41-tele-compress",
+   "n": 41,
+   "technique": "Telephoto compression",
+   "title": "The SEPv3 platoon stacked by a long lens, 260 m down the runway",
+   "map": "airfield",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b42-ots",
+   "n": 42,
+   "technique": "Over the shoulder",
+   "title": "Over the T-90M's turret toward the burning line",
+   "map": "verdant",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b43-cookoff",
+   "n": 43,
+   "technique": "Explosion",
+   "title": "Ammunition cook-off: the T-90M turret leaves the hull",
+   "map": "badlands",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b44-leading-lines",
+   "n": 44,
+   "technique": "Leading lines",
+   "title": "Parapets converge on the C2 Ariete column across the Aegis viaduct",
+   "map": "cliffbridge",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b45-symmetry",
+   "n": 45,
+   "technique": "Symmetry",
+   "title": "Head-on down the Kestrel runway: SEPv3 and Leopard 2A7V in perfect symmetry",
+   "map": "airfield",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b46-reflection",
+   "n": 46,
+   "technique": "Reflection",
+   "title": "KF51 Panther mirrored in the frozen lake",
+   "map": "alpine",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b47-split-light",
+   "n": 47,
+   "technique": "Split lighting",
+   "title": "T-14 between foundry fire and moonlight",
+   "map": "foundry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b48-blue-hour",
+   "n": 48,
+   "technique": "Blue hour",
+   "title": "Leopard 2A7V and CV90 Mk IV at the fjord, harbor lights coming on",
+   "map": "fjord",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b49-earthrise",
+   "n": 49,
+   "technique": "Scale",
+   "title": "KF51 Panther under Earthrise",
+   "map": "moon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "id": "b50-mars-scale",
+   "n": 50,
+   "technique": "Scale",
+   "title": "The ZTZ-100 convoy, small on Olympus Basin",
+   "map": "mars",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  }
+ ],
+ "files": [
+  {
+   "path": "media/site50-r14/films/reel.jpg",
+   "bytes": 587821,
+   "sha256": "3296df29869178ec4e3e3da60d0d41b0dd711fa72dc143765bf1cb75c0145946",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.jpg",
+   "film": "reel",
+   "takes": [
+    "s20-road-return-fire",
+    "s23-village-crossroads",
+    "s33-water-tower",
+    "s24-ice-duel",
+    "s06-farm-charge"
+   ],
+   "crossfadeS": 0.5
+  },
+  {
+   "path": "media/site50-r14/films/reel.mp4",
+   "bytes": 28871113,
+   "sha256": "a7b0e32bc83a5706a15c84c015ae587a8aec021e0a09dc4890db55cf74664b51",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 28.067,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.mp4",
+   "film": "reel",
+   "takes": [
+    "s20-road-return-fire",
+    "s23-village-crossroads",
+    "s33-water-tower",
+    "s24-ice-duel",
+    "s06-farm-charge"
+   ],
+   "crossfadeS": 0.5
+  },
+  {
+   "path": "media/site50-r14/films/trailer.jpg",
+   "bytes": 133889,
+   "sha256": "c2f1335b511cba6723ead8c7f4c35feda8bec48e3099c0953535b33d210096fe",
+   "source": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
+   "film": "trailer-24h"
+  },
+  {
+   "path": "media/site50-r14/films/trailer.mp4",
+   "bytes": 42570276,
+   "sha256": "eb5d651575157caa9e9aec47b7839106ce0012ed1a6e59c144ced4d7fb6a6903",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 80,
+   "audio": "aac",
+   "source": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
+   "film": "trailer-24h"
+  },
+  {
+   "path": "media/site50-r14/frames/b01-pan-runway-thumb.webp",
+   "bytes": 8346,
+   "sha256": "d346848077ec2062d12f35d4d359d514e109b0ebe590e0e5b8916fa131d9386a",
+   "source": "shots/media-r5/final/blur-r14/renders/b01-pan-runway/stills/airfield-landscape-2160p-still-1500ms-e66ms.png",
+   "frame": "b01-pan-runway",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b01-pan-runway.webp",
+   "bytes": 77660,
+   "sha256": "bbd4e7d45e3d1e49fa5583d7f0599b577f8184cc1d8c6a005792ead758cfe00b",
+   "source": "shots/media-r5/final/blur-r14/renders/b01-pan-runway/stills/airfield-landscape-2160p-still-1500ms-e66ms.png",
+   "frame": "b01-pan-runway",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b02-lead-runway-thumb.webp",
+   "bytes": 17200,
+   "sha256": "d24e8bc331c05da570d3b4bd48e440d120e89367c0b5d994fc11e40622ef027b",
+   "source": "shots/media-r5/final/blur-r14/renders/b02-lead-runway/stills/airfield-landscape-2160p-still-1600ms-e33ms.png",
+   "frame": "b02-lead-runway",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b02-lead-runway.webp",
+   "bytes": 141128,
+   "sha256": "e9c56908d8d2a9fa17654e657ea71e95cdea3a0f55033ca01116e07d64e30c36",
+   "source": "shots/media-r5/final/blur-r14/renders/b02-lead-runway/stills/airfield-landscape-2160p-still-1600ms-e33ms.png",
+   "frame": "b02-lead-runway",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b03-pan-wadi-thumb.webp",
+   "bytes": 17556,
+   "sha256": "c308e5e0b612d8c2bea4ae9f97c3bc240123ff31e7635bf269b62c67de632377",
+   "source": "shots/media-r5/final/blur-r14/renders/b03-pan-wadi/stills/desert-landscape-2160p-still-900ms-e50ms.png",
+   "frame": "b03-pan-wadi",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b03-pan-wadi.webp",
+   "bytes": 113662,
+   "sha256": "32779397f364c80a1217ba712f8d2c2ad29696ee8c4b4a522cfc1ec008d7a5c3",
+   "source": "shots/media-r5/final/blur-r14/renders/b03-pan-wadi/stills/desert-landscape-2160p-still-900ms-e50ms.png",
+   "frame": "b03-pan-wadi",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b04-pan-ice-thumb.webp",
+   "bytes": 21496,
+   "sha256": "3acb44753d1df9ee160cbe9eb03bc8c1ce4ab2deff5b56f51b9bdbdbd32c02ce",
+   "source": "shots/media-r5/final/blur-r14/renders/b04-pan-ice/stills/alpine-landscape-2160p-still-1750ms-e66ms.png",
+   "frame": "b04-pan-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b04-pan-ice.webp",
+   "bytes": 167896,
+   "sha256": "5e1113dd72166e37e6779c8c10fae1c1ac98c56a9830ab9a077bb70f9a98ef2c",
+   "source": "shots/media-r5/final/blur-r14/renders/b04-pan-ice/stills/alpine-landscape-2160p-still-1750ms-e66ms.png",
+   "frame": "b04-pan-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b05-track-ice-thumb.webp",
+   "bytes": 18594,
+   "sha256": "9ebd3e05562c47e251346d85f70681943d996bc6df4bbfea2a23c4e718cd1286",
+   "source": "shots/media-r5/final/blur-r14/renders/b05-track-ice/stills/alpine-landscape-2160p-still-1600ms-e33ms.png",
+   "frame": "b05-track-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b05-track-ice.webp",
+   "bytes": 114920,
+   "sha256": "6f117959e2858de8637f487fa779b61fbc3eca1ccba2e236d987d46e195dea82",
+   "source": "shots/media-r5/final/blur-r14/renders/b05-track-ice/stills/alpine-landscape-2160p-still-1600ms-e33ms.png",
+   "frame": "b05-track-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b06-track-strand-thumb.webp",
+   "bytes": 15424,
+   "sha256": "760443ab4dbecc0ef13aadfa537643e313c0a7095f15c7dd495f0d6f4f77b0bb",
+   "source": "shots/media-r5/final/blur-r14/renders/b06-track-strand/stills/coastal-landscape-2160p-still-1500ms-e40ms.png",
+   "frame": "b06-track-strand",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b06-track-strand.webp",
+   "bytes": 120198,
+   "sha256": "71e8a3119b56a8c08501ea1bf7a371b82c4ffb3040ac023b4b008a90ff0a5da8",
+   "source": "shots/media-r5/final/blur-r14/renders/b06-track-strand/stills/coastal-landscape-2160p-still-1500ms-e40ms.png",
+   "frame": "b06-track-strand",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b07-track-harbor-thumb.webp",
+   "bytes": 18966,
+   "sha256": "e712aaabfb21a5844cbd96c6a293c62446ca44fbffda60440d30ed03d8f1bbad",
+   "source": "shots/media-r5/final/blur-r14/renders/b07-track-harbor/stills/saltwind-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b07-track-harbor",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b07-track-harbor.webp",
+   "bytes": 122972,
+   "sha256": "d4b23752ddc3cae4d2e95127099d169b94be58b8934e530331b98b3e2aac7a9f",
+   "source": "shots/media-r5/final/blur-r14/renders/b07-track-harbor/stills/saltwind-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b07-track-harbor",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b08-track-night-thumb.webp",
+   "bytes": 24942,
+   "sha256": "ad7175969622b20b030d5efdd166936caa84a3c94192ba3688f3f626b9b24a0d",
+   "source": "shots/media-r5/final/blur-r14/renders/b08-track-night/stills/urban-landscape-2160p-still-1500ms-e66ms.png",
+   "frame": "b08-track-night",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b08-track-night.webp",
+   "bytes": 169346,
+   "sha256": "02f66b2069d376a9840f83181283d88ef1507e7140f71067d110a949a75fe544",
+   "source": "shots/media-r5/final/blur-r14/renders/b08-track-night/stills/urban-landscape-2160p-still-1500ms-e66ms.png",
+   "frame": "b08-track-night",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b09-passby-fjord-thumb.webp",
+   "bytes": 15040,
+   "sha256": "ef013ff4ba6cedd90dd5b5e01814c41566a3e7b3f6cb7eb262199d5772dbb3cb",
+   "source": "shots/media-r5/final/blur-r14/renders/b09-passby-fjord/stills/fjord-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b09-passby-fjord",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b09-passby-fjord.webp",
+   "bytes": 108866,
+   "sha256": "fee7c53f8b2dd45bf10efff48ef48c3bbdf0499b6eb180318c81f4480290fb41",
+   "source": "shots/media-r5/final/blur-r14/renders/b09-passby-fjord/stills/fjord-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b09-passby-fjord",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b10-passby-lighthouse-thumb.webp",
+   "bytes": 14584,
+   "sha256": "abf2cc139cf02ce5a6342de4d3504aa3090a40bed7464a0f9886d9ec8b515a70",
+   "source": "shots/media-r5/final/blur-r14/renders/b10-passby-lighthouse/stills/coastal-landscape-2160p-still-1300ms-e40ms.png",
+   "frame": "b10-passby-lighthouse",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b10-passby-lighthouse.webp",
+   "bytes": 84280,
+   "sha256": "87cf0b05435e3f9e8bb2af867235554291bb3bb0937db75073421826dffaed36",
+   "source": "shots/media-r5/final/blur-r14/renders/b10-passby-lighthouse/stills/coastal-landscape-2160p-still-1300ms-e40ms.png",
+   "frame": "b10-passby-lighthouse",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b11-static-speed-thumb.webp",
+   "bytes": 17250,
+   "sha256": "3042423668664480a30faac5595f6b3373fdf42e92d10f94fb53d584d5f681d1",
+   "source": "shots/media-r5/final/blur-r14/renders/b11-static-speed/stills/fjord-landscape-2160p-still-1200ms-e50ms.png",
+   "frame": "b11-static-speed",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b11-static-speed.webp",
+   "bytes": 188262,
+   "sha256": "2fb0a0b12119e3f355bfcfdda46aa4ae399eec72dc917713b0c730c5c95d7023",
+   "source": "shots/media-r5/final/blur-r14/renders/b11-static-speed/stills/fjord-landscape-2160p-still-1200ms-e50ms.png",
+   "frame": "b11-static-speed",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b12-chase-dust-thumb.webp",
+   "bytes": 19292,
+   "sha256": "7c7ef81481c4db5143669ab764da8d733650bfa4c0c2b28e90d03dc1d4702e60",
+   "source": "shots/media-r5/final/blur-r14/renders/b12-chase-dust/stills/badlands-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b12-chase-dust",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b12-chase-dust.webp",
+   "bytes": 120488,
+   "sha256": "3f8139c33c785add22e4dc7e3b1c8d731f69be496c8ff7ac5165db5a2693fff9",
+   "source": "shots/media-r5/final/blur-r14/renders/b12-chase-dust/stills/badlands-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b12-chase-dust",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b13-lead-canyon-thumb.webp",
+   "bytes": 20110,
+   "sha256": "a30cf4ee8beaadd3fefa51396809c922b944f3c97bb3c77bd96ac30834f3f41d",
+   "source": "shots/media-r5/final/blur-r14/renders/b13-lead-canyon/stills/badlands-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b13-lead-canyon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b13-lead-canyon.webp",
+   "bytes": 136800,
+   "sha256": "c686d947cd3b9d8ee32630f90d6ffb10cfa484f4a8dca63148666e91c2e76f9a",
+   "source": "shots/media-r5/final/blur-r14/renders/b13-lead-canyon/stills/badlands-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b13-lead-canyon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b14-orbit-canyon-thumb.webp",
+   "bytes": 16378,
+   "sha256": "e72996a6156fa7565983d1ec057bebe28e94bbd1785a54ad8bb05ac057f8f4a7",
+   "source": "shots/media-r5/final/blur-r14/renders/b14-orbit-canyon/stills/badlands-landscape-2160p-still-1750ms-e50ms.png",
+   "frame": "b14-orbit-canyon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b14-orbit-canyon.webp",
+   "bytes": 116900,
+   "sha256": "709fbef475a784f3d93fbd79369666d798c0646796260942800250b5f768604b",
+   "source": "shots/media-r5/final/blur-r14/renders/b14-orbit-canyon/stills/badlands-landscape-2160p-still-1750ms-e50ms.png",
+   "frame": "b14-orbit-canyon",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b15-drone-mars-thumb.webp",
+   "bytes": 40826,
+   "sha256": "4be5073c29be3681341a4bbff412440ab052d30261f3e4b2140c709fc7a2e400",
+   "source": "shots/media-r5/final/blur-r14/renders/b15-drone-mars/stills/mars-landscape-2160p-still-1800ms-e40ms.png",
+   "frame": "b15-drone-mars",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b15-drone-mars.webp",
+   "bytes": 303894,
+   "sha256": "5255b4bae453e3cc0482ba20a5b0cf10dba68d5abe03e98a92dcf39c44e5c6da",
+   "source": "shots/media-r5/final/blur-r14/renders/b15-drone-mars/stills/mars-landscape-2160p-still-1800ms-e40ms.png",
+   "frame": "b15-drone-mars",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b16-drone-strand-thumb.webp",
+   "bytes": 32186,
+   "sha256": "811d3323794a9392144d54fd794657a5c2f78fe72b3c361503bdc62a4a8258fe",
+   "source": "shots/media-r5/final/blur-r14/renders/b16-drone-strand/stills/coastal-landscape-2160p-still-1800ms-e40ms.png",
+   "frame": "b16-drone-strand",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b16-drone-strand.webp",
+   "bytes": 293202,
+   "sha256": "c3b9323680458e3d105b72fc964e7ee666d52faa48c3b7d9ac4c9963cc515462",
+   "source": "shots/media-r5/final/blur-r14/renders/b16-drone-strand/stills/coastal-landscape-2160p-still-1800ms-e40ms.png",
+   "frame": "b16-drone-strand",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b17-running-gear-thumb.webp",
+   "bytes": 19704,
+   "sha256": "1abb7050018b6fa120fac0610ee5a601034f30055be3e46a54d06662e70afa74",
+   "source": "shots/media-r5/final/blur-r14/renders/b17-running-gear/stills/monsoon-landscape-2160p-still-1300ms-e33ms.png",
+   "frame": "b17-running-gear",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b17-running-gear.webp",
+   "bytes": 126738,
+   "sha256": "c3181248b58a7f23d2ad341d4841e03908b722a5c8b57087741f6943dc3b3d83",
+   "source": "shots/media-r5/final/blur-r14/renders/b17-running-gear/stills/monsoon-landscape-2160p-still-1300ms-e33ms.png",
+   "frame": "b17-running-gear",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b18-crane-ice-thumb.webp",
+   "bytes": 21888,
+   "sha256": "225327c1623b5ed8ec05499e8085663c04b6e2515f4c9625ace000cb34ef0017",
+   "source": "shots/media-r5/final/blur-r14/renders/b18-crane-ice/stills/alpine-landscape-2160p-still-2200ms-e33ms.png",
+   "frame": "b18-crane-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b18-crane-ice.webp",
+   "bytes": 192228,
+   "sha256": "6b736f9965ca4234b49de0d4ae33e465eb5a069d83465b14543d613dfbd52a3e",
+   "source": "shots/media-r5/final/blur-r14/renders/b18-crane-ice/stills/alpine-landscape-2160p-still-2200ms-e33ms.png",
+   "frame": "b18-crane-ice",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b19-viaduct-pan-thumb.webp",
+   "bytes": 28180,
+   "sha256": "ca730caae09c7b3671ac2152562200ac505863e3e1f3c08a22b6d77f2d758be3",
+   "source": "shots/media-r5/final/blur-r14/renders/b19-viaduct-pan/stills/cliffbridge-landscape-2160p-still-1600ms-e40ms.png",
+   "frame": "b19-viaduct-pan",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b19-viaduct-pan.webp",
+   "bytes": 194088,
+   "sha256": "caf5005947b4d2cb111b9fd117194911a90a642f982b751014aadf0444faa717",
+   "source": "shots/media-r5/final/blur-r14/renders/b19-viaduct-pan/stills/cliffbridge-landscape-2160p-still-1600ms-e40ms.png",
+   "frame": "b19-viaduct-pan",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b20-fireball-silhouette-thumb.webp",
+   "bytes": 23620,
+   "sha256": "5491777d54c56a1936d32eddb7a299d44e9934b8388147c7e3fa5ee41b0064ce",
+   "source": "shots/media-r5/final/blur-r14/renders/b20-fireball-silhouette/stills/verdant-landscape-2160p-still-1250ms-e8ms.png",
+   "frame": "b20-fireball-silhouette",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b20-fireball-silhouette.webp",
+   "bytes": 225892,
+   "sha256": "1155bc941e3a33b773b22d6e4cc8f270ffc4d84b5817c30188a6cb4e3ecfd8b4",
+   "source": "shots/media-r5/final/blur-r14/renders/b20-fireball-silhouette/stills/verdant-landscape-2160p-still-1250ms-e8ms.png",
+   "frame": "b20-fireball-silhouette",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b21-zoom-burst-thumb.webp",
+   "bytes": 8066,
+   "sha256": "c38c63beda0ff3c8ba83c6450fedfea567a943394f4983588ace4acf0df651bc",
+   "source": "shots/media-r5/final/blur-r14/renders/b21-zoom-burst/stills/urban-landscape-2160p-still-1200ms-e120ms.png",
+   "frame": "b21-zoom-burst",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b21-zoom-burst.webp",
+   "bytes": 56944,
+   "sha256": "ea9df7436e11152d5cd310da23d1a4a1dbf2907551dcc906bbd40b94086cbd9f",
+   "source": "shots/media-r5/final/blur-r14/renders/b21-zoom-burst/stills/urban-landscape-2160p-still-1200ms-e120ms.png",
+   "frame": "b21-zoom-burst",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b22-spin-thumb.webp",
+   "bytes": 6238,
+   "sha256": "d0a3065decc5b8ef1ad7443de8269660e103636e1100c433593d002e39595aee",
+   "source": "shots/media-r5/final/blur-r14/renders/b22-spin/stills/blackglass-landscape-2160p-still-1200ms-e125ms.png",
+   "frame": "b22-spin",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b22-spin.webp",
+   "bytes": 43792,
+   "sha256": "aaa44a561bfd32cd459fc1c38f06ebf93d4559536969e4205f4844f68dd665a6",
+   "source": "shots/media-r5/final/blur-r14/renders/b22-spin/stills/blackglass-landscape-2160p-still-1200ms-e125ms.png",
+   "frame": "b22-spin",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b23-whip-pan-thumb.webp",
+   "bytes": 6986,
+   "sha256": "671a7f1b6d0ee6621a3a1561964e3767a7d39ac8e5924cafce32280a99e65ca4",
+   "source": "shots/media-r5/final/blur-r14/renders/b23-whip-pan/stills/verdant-landscape-2160p-still-1200ms-e50ms.png",
+   "frame": "b23-whip-pan",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b23-whip-pan.webp",
+   "bytes": 49364,
+   "sha256": "18bb46c15bab2fdebe4f785c9dd9c5e53cf56a9930aa689e39ced91d8ae33bd7",
+   "source": "shots/media-r5/final/blur-r14/renders/b23-whip-pan/stills/verdant-landscape-2160p-still-1200ms-e50ms.png",
+   "frame": "b23-whip-pan",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b24-dolly-zoom-thumb.webp",
+   "bytes": 8930,
+   "sha256": "7c1017e1c8307601709745233a45d353ecdb0675bce2c3c7325a8d4b7d405215",
+   "source": "shots/media-r5/final/blur-r14/renders/b24-dolly-zoom/stills/ruinspires-landscape-2160p-still-1200ms-e250ms.png",
+   "frame": "b24-dolly-zoom",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b24-dolly-zoom.webp",
+   "bytes": 69104,
+   "sha256": "939dec7c8585690405cc4f51428c306fcf25608a5fb61814cee903fede4b2af7",
+   "source": "shots/media-r5/final/blur-r14/renders/b24-dolly-zoom/stills/ruinspires-landscape-2160p-still-1200ms-e250ms.png",
+   "frame": "b24-dolly-zoom",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b25-shake-impact-thumb.webp",
+   "bytes": 12882,
+   "sha256": "7e1917791f13343f9a4247013c130b925bb9126f5751b7df931b430ce20eea66",
+   "source": "shots/media-r5/final/blur-r14/renders/b25-shake-impact/stills/urban-landscape-2160p-still-1220ms-e40ms.png",
+   "frame": "b25-shake-impact",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b25-shake-impact.webp",
+   "bytes": 82918,
+   "sha256": "235268b167e33db084db5c4fde370662554288757f3e35071bc1a5442392572f",
+   "source": "shots/media-r5/final/blur-r14/renders/b25-shake-impact/stills/urban-landscape-2160p-still-1220ms-e40ms.png",
+   "frame": "b25-shake-impact",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b26-turret-whip-thumb.webp",
+   "bytes": 19470,
+   "sha256": "701749050818794346baafa6ff90480f654df77780d2d5c6e2525fcfff76e48a",
+   "source": "shots/media-r5/final/blur-r14/renders/b26-turret-whip/stills/desert-landscape-2160p-still-1200ms-e66ms.png",
+   "frame": "b26-turret-whip",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b26-turret-whip.webp",
+   "bytes": 148298,
+   "sha256": "50315452999b279a3d356ed62aa83e6cc11fea93fb1748b2f572036d000b64b5",
+   "source": "shots/media-r5/final/blur-r14/renders/b26-turret-whip/stills/desert-landscape-2160p-still-1200ms-e66ms.png",
+   "frame": "b26-turret-whip",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b27-recoil-thumb.webp",
+   "bytes": 17680,
+   "sha256": "35b26cb3ff4a34961081980eafa4812ebe029b610fead99b873c8dd697a8942c",
+   "source": "shots/media-r5/final/blur-r14/renders/b27-recoil/stills/verdant-landscape-2160p-still-1215ms-e40ms.png",
+   "frame": "b27-recoil",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b27-recoil.webp",
+   "bytes": 142174,
+   "sha256": "54961e4e38ef3b21e78fd04398fc66ef16ce5109e7507a159200d5c0561859ef",
+   "source": "shots/media-r5/final/blur-r14/renders/b27-recoil/stills/verdant-landscape-2160p-still-1215ms-e40ms.png",
+   "frame": "b27-recoil",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b28-handheld-thumb.webp",
+   "bytes": 21474,
+   "sha256": "8ef0112cd32e640d036f45413b685b9b18f5752e1ed4525950c3192a2016d68c",
+   "source": "shots/media-r5/final/blur-r14/renders/b28-handheld/stills/winter-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b28-handheld",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b28-handheld.webp",
+   "bytes": 133486,
+   "sha256": "d7a9c46d48b5c376edaa271f88b889e62aed1670ace17afa54e7d24db2a93ca6",
+   "source": "shots/media-r5/final/blur-r14/renders/b28-handheld/stills/winter-landscape-2160p-still-1500ms-e33ms.png",
+   "frame": "b28-handheld",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b29-tracers-thumb.webp",
+   "bytes": 23934,
+   "sha256": "7a59f1ed1fe090527dfa421cedc9fa78363142633c0e34537244fc27617a2c80",
+   "source": "shots/media-r5/final/blur-r14/renders/b29-tracers/stills/winter-landscape-2160p-still-1250ms-e500ms.png",
+   "frame": "b29-tracers",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b29-tracers.webp",
+   "bytes": 215130,
+   "sha256": "4ac02f0cc1a45f89d70f57127afce606f953ce7630b7b44227c7ab18cd842a15",
+   "source": "shots/media-r5/final/blur-r14/renders/b29-tracers/stills/winter-landscape-2160p-still-1250ms-e500ms.png",
+   "frame": "b29-tracers",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b30-salvo-longexp-thumb.webp",
+   "bytes": 26270,
+   "sha256": "714a47b499a3f7a199277330d0acfef94b975afff59f8a90da02231629864583",
+   "source": "shots/media-r5/final/blur-r14/renders/b30-salvo-longexp/stills/foundry-landscape-2160p-still-1180ms-e450ms.png",
+   "frame": "b30-salvo-longexp",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b30-salvo-longexp.webp",
+   "bytes": 288026,
+   "sha256": "377335981be07ba367c95d3741a5cf80a470aefe95ac039f56520c6080274890",
+   "source": "shots/media-r5/final/blur-r14/renders/b30-salvo-longexp/stills/foundry-landscape-2160p-still-1180ms-e450ms.png",
+   "frame": "b30-salvo-longexp",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b31-barrage-longexp-thumb.webp",
+   "bytes": 17254,
+   "sha256": "f0098bed2e777d2a5d1c6836cc40bee76ff652bf769e12ba648247fe8c935912",
+   "source": "shots/media-r5/final/blur-r14/renders/b31-barrage-longexp/stills/foundry-landscape-2160p-still-1100ms-e400ms.png",
+   "frame": "b31-barrage-longexp",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b31-barrage-longexp.webp",
+   "bytes": 147984,
+   "sha256": "8a6a7a3714441addc94a3095f0a9fc96ddf5535128db27e190f4c56ad384a280",
+   "source": "shots/media-r5/final/blur-r14/renders/b31-barrage-longexp/stills/foundry-landscape-2160p-still-1100ms-e400ms.png",
+   "frame": "b31-barrage-longexp",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b32-embers-thumb.webp",
+   "bytes": 19028,
+   "sha256": "d32ddb5b19bfe4f5e46934493a3e10cf8a19c4a79e53e51a008ce88599c5297c",
+   "source": "shots/media-r5/final/blur-r14/renders/b32-embers/stills/foundry-landscape-2160p-still-2000ms-e250ms.png",
+   "frame": "b32-embers",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b32-embers.webp",
+   "bytes": 138350,
+   "sha256": "ea71932ca178987ad075831a0f88d71f2b69b98389ed6ff1a6a7f0a2a1d2b9e1",
+   "source": "shots/media-r5/final/blur-r14/renders/b32-embers/stills/foundry-landscape-2160p-still-2000ms-e250ms.png",
+   "frame": "b32-embers",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b33-flare-fall-thumb.webp",
+   "bytes": 18836,
+   "sha256": "a9a1a6c98cfd3c0e25bef4d11d1bcec4040878832909766d527d94683d5e9431",
+   "source": "shots/media-r5/final/blur-r14/renders/b33-flare-fall/stills/winter-landscape-2160p-still-2400ms-e500ms.png",
+   "frame": "b33-flare-fall",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b33-flare-fall.webp",
+   "bytes": 177414,
+   "sha256": "81e6fee5bb7aee2e196c9a3d7195e57672f1a2d481d8f1f059adac96980f2003",
+   "source": "shots/media-r5/final/blur-r14/renders/b33-flare-fall/stills/winter-landscape-2160p-still-2400ms-e500ms.png",
+   "frame": "b33-flare-fall",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b34-headlights-thumb.webp",
+   "bytes": 43320,
+   "sha256": "325d1315f96482426638aaebe3cdb67d81400c297e86a33a961940ddc5503929",
+   "source": "shots/media-r5/final/blur-r14/renders/b34-headlights/stills/urban-landscape-2160p-still-1500ms-e400ms.png",
+   "frame": "b34-headlights",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b34-headlights.webp",
+   "bytes": 411714,
+   "sha256": "6a3773321d785b36289cd3378268b24984a1ad80b38889b4c9aff3c99221fb6f",
+   "source": "shots/media-r5/final/blur-r14/renders/b34-headlights/stills/urban-landscape-2160p-still-1500ms-e400ms.png",
+   "frame": "b34-headlights",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b35-silhouette-sun-thumb.webp",
+   "bytes": 15496,
+   "sha256": "b3e4849c85dd7671644777c543a668ca0e87054dcb458adbcacadaca54bb50cf",
+   "source": "shots/media-r5/final/blur-r14/renders/b35-silhouette-sun/stills/coastal-landscape-2160p-still-900ms-e8ms.png",
+   "frame": "b35-silhouette-sun",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b35-silhouette-sun.webp",
+   "bytes": 129096,
+   "sha256": "589c183af696f8c94018e0a4a40c98d4ef3d7b33e6f844dd351f5231aeb5439c",
+   "source": "shots/media-r5/final/blur-r14/renders/b35-silhouette-sun/stills/coastal-landscape-2160p-still-900ms-e8ms.png",
+   "frame": "b35-silhouette-sun",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b36-backlit-dust-thumb.webp",
+   "bytes": 25194,
+   "sha256": "713e8daf55a17d41e4c35bc74016834984436eb9009c3eb271379c9346e3ba5f",
+   "source": "shots/media-r5/final/blur-r14/renders/b36-backlit-dust/stills/badlands-landscape-2160p-still-1600ms-e16ms.png",
+   "frame": "b36-backlit-dust",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b36-backlit-dust.webp",
+   "bytes": 181686,
+   "sha256": "ba0f1def11eaae0819c40b6ef408807a9807cea6242b15167dc47341652e1734",
+   "source": "shots/media-r5/final/blur-r14/renders/b36-backlit-dust/stills/badlands-landscape-2160p-still-1600ms-e16ms.png",
+   "frame": "b36-backlit-dust",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b37-rack-near-thumb.webp",
+   "bytes": 14700,
+   "sha256": "1c2d755140dceea6c36ae2a73b715cb5da209151833ea1eec0b749377e518ac5",
+   "source": "shots/media-r5/final/blur-r14/renders/b37-rack-near/stills/autumn-landscape-2160p-still-2000ms-e8ms.png",
+   "frame": "b37-rack-near",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b37-rack-near.webp",
+   "bytes": 81260,
+   "sha256": "c05739e24b4f90afe3c667ab4a92462d02eab30df7b68e0d5af54517c8bf0b59",
+   "source": "shots/media-r5/final/blur-r14/renders/b37-rack-near/stills/autumn-landscape-2160p-still-2000ms-e8ms.png",
+   "frame": "b37-rack-near",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b38-rack-far-thumb.webp",
+   "bytes": 25808,
+   "sha256": "5775767a73d9be706c222f213b8ae89f8841cc3f9911347d583cbf52e1018c3b",
+   "source": "shots/media-r5/final/blur-r14/renders/b38-rack-far/stills/autumn-landscape-2160p-still-2000ms-e8ms.png",
+   "frame": "b38-rack-far",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b38-rack-far.webp",
+   "bytes": 155354,
+   "sha256": "5a86c50e4865fec74f7f4f504ab4fc994b43a4552ba8a065c0227dfad660278b",
+   "source": "shots/media-r5/final/blur-r14/renders/b38-rack-far/stills/autumn-landscape-2160p-still-2000ms-e8ms.png",
+   "frame": "b38-rack-far",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b39-dutch-thumb.webp",
+   "bytes": 30926,
+   "sha256": "39e630e590aebe38e902fed39f820b606e3e6818e3ab9037a3fe19cabe724911",
+   "source": "shots/media-r5/final/blur-r14/renders/b39-dutch/stills/ruinspires-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b39-dutch",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b39-dutch.webp",
+   "bytes": 275376,
+   "sha256": "0a9517024b79044aca36bd38796407e372ee1a3e5af8df8849760ccb65f6fdf5",
+   "source": "shots/media-r5/final/blur-r14/renders/b39-dutch/stills/ruinspires-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b39-dutch",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b40-ultrawide-thumb.webp",
+   "bytes": 15158,
+   "sha256": "760ae64e0c9a1a1eeb562531dd0e626a94a90192421b45106a79a64f649eda66",
+   "source": "shots/media-r5/final/blur-r14/renders/b40-ultrawide/stills/blackglass-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b40-ultrawide",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b40-ultrawide.webp",
+   "bytes": 147588,
+   "sha256": "b32d8b730c53b290246394e4f4561122b15f8ed24d1f6e51197a180802fbc1ef",
+   "source": "shots/media-r5/final/blur-r14/renders/b40-ultrawide/stills/blackglass-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b40-ultrawide",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b41-tele-compress-thumb.webp",
+   "bytes": 31690,
+   "sha256": "aaee8e4fdbc9a068b395bdb0cd2d4c368eb293ac2cfe5cfa289f6e84709504b8",
+   "source": "shots/media-r5/final/blur-r14/renders/b41-tele-compress/stills/airfield-landscape-2160p-still-1200ms-e16ms.png",
+   "frame": "b41-tele-compress",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b41-tele-compress.webp",
+   "bytes": 320106,
+   "sha256": "43686119858b5526e5660f0c4ba89ca1a5a66ade496f0127a990c5a8fb50bfa6",
+   "source": "shots/media-r5/final/blur-r14/renders/b41-tele-compress/stills/airfield-landscape-2160p-still-1200ms-e16ms.png",
+   "frame": "b41-tele-compress",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b42-ots-thumb.webp",
+   "bytes": 35448,
+   "sha256": "8580c6ef2d9676a52714bcc02e3db0fa3f78b0b72b213d074402d8ef1acb148d",
+   "source": "shots/media-r5/final/blur-r14/renders/b42-ots/stills/verdant-landscape-2160p-still-2100ms-e8ms.png",
+   "frame": "b42-ots",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b42-ots.webp",
+   "bytes": 312842,
+   "sha256": "de5b38283c46d7174a2b0598954746637eeb71a42168c5167d8838aa7d381ffa",
+   "source": "shots/media-r5/final/blur-r14/renders/b42-ots/stills/verdant-landscape-2160p-still-2100ms-e8ms.png",
+   "frame": "b42-ots",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b43-cookoff-thumb.webp",
+   "bytes": 14468,
+   "sha256": "c74dbf89c0640b3dac43baef09fd621a21d417b8a646dcc961f90fc582e02d9c",
+   "source": "shots/media-r5/final/blur-r14/renders/b43-cookoff/stills/badlands-landscape-2160p-still-640ms-e16ms.png",
+   "frame": "b43-cookoff",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b43-cookoff.webp",
+   "bytes": 132452,
+   "sha256": "1b216d0dd98b1521078aecadfc2da38e6b7537593bb1de118a907fdaeb25d614",
+   "source": "shots/media-r5/final/blur-r14/renders/b43-cookoff/stills/badlands-landscape-2160p-still-640ms-e16ms.png",
+   "frame": "b43-cookoff",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b44-leading-lines-thumb.webp",
+   "bytes": 38734,
+   "sha256": "680817ab8989fb80ca899466d3f76fa1bac6ff291786097ac5801f2ecfbf468c",
+   "source": "shots/media-r5/final/blur-r14/renders/b44-leading-lines/stills/cliffbridge-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b44-leading-lines",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b44-leading-lines.webp",
+   "bytes": 358986,
+   "sha256": "8a13cab1f4983881f5762b643a7d698bd7e58e366349c558d5af37573e8c63b4",
+   "source": "shots/media-r5/final/blur-r14/renders/b44-leading-lines/stills/cliffbridge-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b44-leading-lines",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b45-symmetry-thumb.webp",
+   "bytes": 29880,
+   "sha256": "e9756e33cef46d9d153267e96bab21164c0f137a8052cfb88b38d529d8f02391",
+   "source": "shots/media-r5/final/blur-r14/renders/b45-symmetry/stills/airfield-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b45-symmetry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b45-symmetry.webp",
+   "bytes": 362946,
+   "sha256": "9358a35b661ab6a177de9ed152e312ad6943ef27bc27076b0fff24923b1f1c6e",
+   "source": "shots/media-r5/final/blur-r14/renders/b45-symmetry/stills/airfield-landscape-2160p-still-1000ms-e8ms.png",
+   "frame": "b45-symmetry",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b46-reflection-thumb.webp",
+   "bytes": 20194,
+   "sha256": "c646bd8bc02cc0572c4fdb4f68cc19efedbf08b7053c2658718d934d4f7cb3f3",
+   "source": "shots/media-r5/final/blur-r14/renders/b46-reflection/stills/alpine-landscape-2160p-still-1200ms-e16ms.png",
+   "frame": "b46-reflection",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b46-reflection.webp",
+   "bytes": 147828,
+   "sha256": "aef6043b790825ed8e6675fa237f0935de82e2779daddd0cc45edf5203c50526",
+   "source": "shots/media-r5/final/blur-r14/renders/b46-reflection/stills/alpine-landscape-2160p-still-1200ms-e16ms.png",
+   "frame": "b46-reflection",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b47-split-light-thumb.webp",
+   "bytes": 13398,
+   "sha256": "fddaa2225ab8ffd938acc6f34c039c97016c16768d3b42acdacf78d8abf0b2d6",
+   "source": "shots/media-r5/final/blur-r14/renders/b47-split-light/stills/foundry-landscape-2160p-still-1300ms-e8ms.png",
+   "frame": "b47-split-light",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b47-split-light.webp",
+   "bytes": 101406,
+   "sha256": "3ee70631111ca6291871c65ba12b22f5734fb1c1f0658f3f377a5776521ee520",
+   "source": "shots/media-r5/final/blur-r14/renders/b47-split-light/stills/foundry-landscape-2160p-still-1300ms-e8ms.png",
+   "frame": "b47-split-light",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b48-blue-hour-thumb.webp",
+   "bytes": 11206,
+   "sha256": "7d6fb44ab1276c348611940e4be555ce111f5d757ad4edf6bf7d0ce80e822c78",
+   "source": "shots/media-r5/final/blur-r14/renders/b48-blue-hour/stills/fjord-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b48-blue-hour",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b48-blue-hour.webp",
+   "bytes": 101204,
+   "sha256": "851ec2ce312f27e30a741bc82a35792a794db9c568aea043b8527a75a3dc58c9",
+   "source": "shots/media-r5/final/blur-r14/renders/b48-blue-hour/stills/fjord-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b48-blue-hour",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b49-earthrise-thumb.webp",
+   "bytes": 19000,
+   "sha256": "e01cb78eab5e3cb3b0bf5bddc8c1dd5336de1d6d831018eeee42a722bddbee3d",
+   "source": "shots/media-r5/final/blur-r14/renders/b49-earthrise/stills/moon-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b49-earthrise",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b49-earthrise.webp",
+   "bytes": 144024,
+   "sha256": "6827f2eb46b16e868bf6efdd8d4d21432e8a73dfdaed9a7464a5f0968d5380c4",
+   "source": "shots/media-r5/final/blur-r14/renders/b49-earthrise/stills/moon-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b49-earthrise",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b50-mars-scale-thumb.webp",
+   "bytes": 42130,
+   "sha256": "6047dec05e5bb5033c593f489f02095b52b7d8e3a8b5683a0390a2244b6cca61",
+   "source": "shots/media-r5/final/blur-r14/renders/b50-mars-scale/stills/mars-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b50-mars-scale",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/b50-mars-scale.webp",
+   "bytes": 334158,
+   "sha256": "429d8b8430b530daa662f4f67c06512ef594b4efaa3df89f47bc16d887dcb69c",
+   "source": "shots/media-r5/final/blur-r14/renders/b50-mars-scale/stills/mars-landscape-2160p-still-1400ms-e33ms.png",
+   "frame": "b50-mars-scale",
+   "round": "shots/media-r5/final/blur-r14/renders"
+  },
+  {
+   "path": "media/site50-r14/frames/sheet-1.webp",
+   "bytes": 141230,
+   "sha256": "43edfd09b7d9a567e70e36bb033f15cee259d9134f763af611f015574183a40b",
+   "source": "shots/media-r5/final/blur-r14/renders/b10-passby-lighthouse/stills/coastal-landscape-2160p-still-1300ms-e40ms.png",
+   "sheet": 1,
+   "frames": [
+    "b01-pan-runway",
+    "b02-lead-runway",
+    "b03-pan-wadi",
+    "b04-pan-ice",
+    "b05-track-ice",
+    "b06-track-strand",
+    "b07-track-harbor",
+    "b08-track-night",
+    "b09-passby-fjord",
+    "b10-passby-lighthouse"
+   ]
+  },
+  {
+   "path": "media/site50-r14/frames/sheet-2.webp",
+   "bytes": 191152,
+   "sha256": "499ed32fea60333175c330af49a0e81738ab90ff029586d875d349ed84363498",
+   "source": "shots/media-r5/final/blur-r14/renders/b20-fireball-silhouette/stills/verdant-landscape-2160p-still-1250ms-e8ms.png",
+   "sheet": 2,
+   "frames": [
+    "b11-static-speed",
+    "b12-chase-dust",
+    "b13-lead-canyon",
+    "b14-orbit-canyon",
+    "b15-drone-mars",
+    "b16-drone-strand",
+    "b17-running-gear",
+    "b18-crane-ice",
+    "b19-viaduct-pan",
+    "b20-fireball-silhouette"
+   ]
+  },
+  {
+   "path": "media/site50-r14/frames/sheet-3.webp",
+   "bytes": 120786,
+   "sha256": "edf891dd86ae48ae6a117ed3b75511da6f1921f798fa5919c9a48527d4d7ca2a",
+   "source": "shots/media-r5/final/blur-r14/renders/b30-salvo-longexp/stills/foundry-landscape-2160p-still-1180ms-e450ms.png",
+   "sheet": 3,
+   "frames": [
+    "b21-zoom-burst",
+    "b22-spin",
+    "b23-whip-pan",
+    "b24-dolly-zoom",
+    "b25-shake-impact",
+    "b26-turret-whip",
+    "b27-recoil",
+    "b28-handheld",
+    "b29-tracers",
+    "b30-salvo-longexp"
+   ]
+  },
+  {
+   "path": "media/site50-r14/frames/sheet-4.webp",
+   "bytes": 174308,
+   "sha256": "8ee0f7b820973aca7b1268a866c6f970b4ac59373466f118783675d5805d6d5f",
+   "source": "shots/media-r5/final/blur-r14/renders/b40-ultrawide/stills/blackglass-landscape-2160p-still-1000ms-e8ms.png",
+   "sheet": 4,
+   "frames": [
+    "b31-barrage-longexp",
+    "b32-embers",
+    "b33-flare-fall",
+    "b34-headlights",
+    "b35-silhouette-sun",
+    "b36-backlit-dust",
+    "b37-rack-near",
+    "b38-rack-far",
+    "b39-dutch",
+    "b40-ultrawide"
+   ]
+  },
+  {
+   "path": "media/site50-r14/frames/sheet-5.webp",
+   "bytes": 195178,
+   "sha256": "202c730948658c220ca4d7e5d7b0ad302eba08aeaa0a2ebc4a468f5db26b58c7",
+   "source": "shots/media-r5/final/blur-r14/renders/b50-mars-scale/stills/mars-landscape-2160p-still-1400ms-e33ms.png",
+   "sheet": 5,
+   "frames": [
+    "b41-tele-compress",
+    "b42-ots",
+    "b43-cookoff",
+    "b44-leading-lines",
+    "b45-symmetry",
+    "b46-reflection",
+    "b47-split-light",
+    "b48-blue-hour",
+    "b49-earthrise",
+    "b50-mars-scale"
+   ]
+  },
+  {
+   "path": "media/site50-r14/loops/s04-column-under-fire.jpg",
+   "bytes": 568956,
+   "sha256": "69b62b9d626c2e55a0224cb328d54802a4c4c97e41d8454f62ede056edffb667",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.jpg",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s04-column-under-fire.webm",
+   "bytes": 23763137,
+   "sha256": "fcebd8e4185221ed7dcbf6c5cb5bd7cd296b711b029db0911b7267f31f613b5b",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.webm",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s05-barn-advance-960.webm",
+   "bytes": 3081883,
+   "sha256": "bd836727db9d076bf32f7f8b7f64690d3658959808feca2ad8b62d6b03f41b52",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s05-barn-advance.jpg",
+   "bytes": 569672,
+   "sha256": "d6fad30f8a94c21e12965e4f16d7e4264210f9591fede27c9eeaaf4b9d2cacf4",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.jpg",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s05-barn-advance.webm",
+   "bytes": 17026515,
+   "sha256": "7087bb0ee601f98546b7ae5b6ff779a29231eae969d88195f1b9c86439dc78b6",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.webm",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s07-lake-shellfire-960.webm",
+   "bytes": 1673733,
+   "sha256": "625d3f1993ab70722b676a7de0667ddbd0ca02dd5c0ab525212e3f74c9964744",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.mp4",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s07-lake-shellfire.jpg",
+   "bytes": 398224,
+   "sha256": "cc967e00797c8eeac07a3acc25f2d99aa52fffb3509ee4f2e21acb92c785ce47",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.jpg",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s07-lake-shellfire.webm",
+   "bytes": 8672734,
+   "sha256": "911ff0d977f3691b6589edbdddfd45da3be49cd90c3f4c892f82e00098f6e4dd",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.webm",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s18-street-knockout-960.webm",
+   "bytes": 2782958,
+   "sha256": "78c46e5bb3967e5b2c9c45dc84302a65854fde4ddbad594dbb45ddb0542e8386",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.mp4",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s18-street-knockout.jpg",
+   "bytes": 651344,
+   "sha256": "4af95db1fc2d836a689be079560376a938c318ba035f77dd0a3a3c5b1703e076",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.jpg",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s18-street-knockout.webm",
+   "bytes": 16446720,
+   "sha256": "3a37ee425b280f20ada8895f6345cbd88d6db77bca24d1c82b7dc683d6210708",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.webm",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s20-road-return-fire.jpg",
+   "bytes": 454572,
+   "sha256": "da6d5f2b72fb78f7948e22ced9a11fc4d41bdf29f565e39f8aac76d5679453d5",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.jpg",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s20-road-return-fire.webm",
+   "bytes": 16725990,
+   "sha256": "9a2038d4ea72e1851ebd57ccf6ed5089bfe7ec1e63a007217657b349714369f8",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.webm",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s21-fields-assault.jpg",
+   "bytes": 647782,
+   "sha256": "478307cc0b44b9ae8825d1d2501128cba0d9a68ac26e12a0efb33a9ac1a193bf",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.jpg",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s21-fields-assault.webm",
+   "bytes": 19257900,
+   "sha256": "1bf3fae3dde7ee5c026dd9aac9c1317e473f2122b53d556a4eb7ecb4e9519b04",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.webm",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s23-village-crossroads.jpg",
+   "bytes": 568253,
+   "sha256": "19730f654c7ca0c6153b73d87ca837ad4288c088178a9561dd5d37080d53cfe6",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.jpg",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s23-village-crossroads.webm",
+   "bytes": 15365236,
+   "sha256": "2f9775608284483de65167a21e937ff0a1fa55fc4fd1c6b9121183b72ec4628a",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.webm",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s24-ice-duel.jpg",
+   "bytes": 383803,
+   "sha256": "ec3ddd06107907daf9a19a86e00f8768c8c1203d014ccd293aca818665beedaa",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.jpg",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s24-ice-duel.webm",
+   "bytes": 12997726,
+   "sha256": "771448017c77313b744de37ca9425bd2b7dc040e470c579d66454605840f7050",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.webm",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s26-minaret-fire-960.webm",
+   "bytes": 2448079,
+   "sha256": "75e371eae6d42bd0c16b6b7a0ceaf552541736a12486fa09d5b336939d9a2ff2",
+   "width": 960,
+   "height": 540,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.mp4",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s26-minaret-fire.jpg",
+   "bytes": 504815,
+   "sha256": "b3a54b11ae7b6dab3d05a85440cb97c0595f2a918df48b3a9312a1023f55107d",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.jpg",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s26-minaret-fire.webm",
+   "bytes": 12261047,
+   "sha256": "b598132dc667a3b3e67782124652641c841c41f3f8b50341868012fa0bad2cbc",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.webm",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s27-caravanserai-kill.jpg",
+   "bytes": 532484,
+   "sha256": "55fbcfc1a70c8099e72db88961b1f434f94c1ee15a2835ed00e50f7d228c5cc7",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.jpg",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s27-caravanserai-kill.webm",
+   "bytes": 16291532,
+   "sha256": "7ea0e630ba5d6ff8332e316a4bf3ea143dd6a635ef7571c6c2f0aa1be9e4eef5",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.webm",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s33-water-tower.jpg",
+   "bytes": 618604,
+   "sha256": "009d2f5230ec94981721cf5e3c7c25a5d60d6146f7d75be9c012341880bc24b8",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.jpg",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s33-water-tower.webm",
+   "bytes": 19980872,
+   "sha256": "cfa603214e0fe8d6611a9fd3a32bafee7136ef28023955575f73d4b94beda694",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.webm",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s34-furnace-salvo.jpg",
+   "bytes": 263306,
+   "sha256": "acc3f009dcc42b4378da00ce16be18673319be3ce25a67d55824af4406c3bcca",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.jpg",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s34-furnace-salvo.webm",
+   "bytes": 8982574,
+   "sha256": "c155cf30ac394530d47c7348659c1864695042efb2a2f271c1e294adc565b9b9",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.webm",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s39-lakeside-village.jpg",
+   "bytes": 662533,
+   "sha256": "864ef33fdef0e13a4ad74fa5e4b96611ff309f2181bb856637dc3a85e94a4630",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.jpg",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/loops/s39-lakeside-village.webm",
+   "bytes": 14433550,
+   "sha256": "d4b1b2d8366749e40ec50af648053be6f7ba33f311f2c6ff95df3586d60097d0",
+   "width": 1920,
+   "height": 1080,
+   "fps": 30,
+   "seconds": 6.008,
+   "audio": "opus",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.webm",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s01-main-street-push.mp4",
+   "bytes": 2624352,
+   "sha256": "9df829d001f5ceaa2be5d603631ea806c458dfea32777c6beac51354ce2e8c6b",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push-mobile.mp4",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s01-main-street-push.webp",
+   "bytes": 95130,
+   "sha256": "9100bd58d4642906f12e1ed2f368075fce239d1647412bcb017c231f2ed2a081",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push-4k.png",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s04-column-under-fire.mp4",
+   "bytes": 2646498,
+   "sha256": "9d84997beabdd0fb4d4ef6d16013a2b825ad1092765b19d83f9564f5a2a1d60e",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire-mobile.mp4",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s04-column-under-fire.webp",
+   "bytes": 194188,
+   "sha256": "60b27ce07721c6324e08598bdac1d228e805553dc17332fa64432319e17e81d4",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire-4k.png",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s05-barn-advance.mp4",
+   "bytes": 2481179,
+   "sha256": "05e609091f3d87483fab2847035871540637abd4c45dd23f5e5f9ca9dcb17ac1",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance-mobile.mp4",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s05-barn-advance.webp",
+   "bytes": 143984,
+   "sha256": "df7d3487380d109f0721ddfb771a71a96cdaeaa34bc395336df3c3bd1291ad88",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance-4k.png",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s06-farm-charge.mp4",
+   "bytes": 2662614,
+   "sha256": "ee40a317d07752358a51e20642b5adf0e5717bbf8a33afd3fafc42dbe59f149b",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge-mobile.mp4",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s06-farm-charge.webp",
+   "bytes": 155236,
+   "sha256": "0f47f8df599c615e948b995387a88a14ee1237981f6d70f27cf665aa54d1c4d2",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge-4k.png",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s07-lake-shellfire.mp4",
+   "bytes": 2640458,
+   "sha256": "d51f1f82bdf2f1f577217e90acd29c1ce67c4ef794777c8cb51e716ce9df859a",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-mobile.mp4",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s07-lake-shellfire.webp",
+   "bytes": 76882,
+   "sha256": "eee40aa3c406ed6d1170dc06bc6331498b5ad8751a24435e3c6dd9d9f5ebc878",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-4k.png",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s08-market-push.mp4",
+   "bytes": 2609565,
+   "sha256": "e0758c2f8d4b716de7c0c2a14aaa3c754207f15ba26279b7f56544bec0bd4f20",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push-mobile.mp4",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s08-market-push.webp",
+   "bytes": 116878,
+   "sha256": "ed001b4c52cbe1c9c78f587c2a78254d0cffaf55b91603f98431819417191245",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push-4k.png",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s11-container-rows.mp4",
+   "bytes": 2610177,
+   "sha256": "acab46eeb1d76b3dd97846ebfe75816623919d15f6844f2122d4a74c4002d994",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows-mobile.mp4",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s11-container-rows.webp",
+   "bytes": 116998,
+   "sha256": "373f9a26d7e268fbd5eac034921a50d2ec8f0f5bcdda8cad71c144f1bdfb98ea",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows-4k.png",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s18-street-knockout.mp4",
+   "bytes": 2639777,
+   "sha256": "05aaab08e338d802a1935e491cbd462e1def7106f1450122b3786a12c7ef3ff3",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout-mobile.mp4",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s18-street-knockout.webp",
+   "bytes": 172626,
+   "sha256": "2643b8774f03b980020df7fe6270d8e45ee972903a464f24d9d503471902d238",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout-4k.png",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s19-roof-tiles.mp4",
+   "bytes": 2595270,
+   "sha256": "8144f95192df13f67769f27c1dcc9f2b3014ec5fa645ea80e105a267b2b4f206",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles-mobile.mp4",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s19-roof-tiles.webp",
+   "bytes": 117936,
+   "sha256": "25f1460fa37936f99702440bf2bf60ef0b417a2a661115b9d13f097302f5ad01",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles-4k.png",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s20-road-return-fire.mp4",
+   "bytes": 2584145,
+   "sha256": "118b0b45f959e90a35c8a52b2ee3d39a8f7a7cb8d8863cd18528da58df35f8e3",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire-mobile.mp4",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s20-road-return-fire.webp",
+   "bytes": 153140,
+   "sha256": "fa0ed93987286aeb381eaae5bb9a4afd6a8ed612085110f930c92d3e20e9887f",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire-4k.png",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s21-fields-assault.mp4",
+   "bytes": 2637814,
+   "sha256": "e468fe13edb55f6eef25708e1c9ae9d271cd9bf1e6c456d837fb3919603e1ed2",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-mobile.mp4",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s21-fields-assault.webp",
+   "bytes": 110776,
+   "sha256": "8fcb495e307b4534862c720f26fcd784d8a41f0d46bedff881025f693c28234e",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-4k.png",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s23-village-crossroads.mp4",
+   "bytes": 2614696,
+   "sha256": "0c3a7e8ffe3828df870baec56429ed5ce4f564bb675a4e3425dfab2360355c8b",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads-mobile.mp4",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s23-village-crossroads.webp",
+   "bytes": 104182,
+   "sha256": "5f8394af776456cdbca462114bfc0bb601ccf04bc22de7e09238336e0afae8f5",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads-4k.png",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s24-ice-duel.mp4",
+   "bytes": 2602708,
+   "sha256": "6ced528a92de39015dd8019f3d289e260c4bdd500b87b7dcc7699ce4c411fc6e",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel-mobile.mp4",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s24-ice-duel.webp",
+   "bytes": 116558,
+   "sha256": "13bd11db75ab3e0c78f8e58398958c16001a406fb0c0b584658612c81de1fc75",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel-4k.png",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s26-minaret-fire.mp4",
+   "bytes": 2625145,
+   "sha256": "bf4685b71f464b77da8a59b9a6a167aeee6bc2fd1ec52584702c475384c2dff9",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire-mobile.mp4",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s26-minaret-fire.webp",
+   "bytes": 89178,
+   "sha256": "d82189340982a36d2f39b0841d1f97935f40c794661816e17ab7da833f442942",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire-4k.png",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s27-caravanserai-kill.mp4",
+   "bytes": 2620774,
+   "sha256": "567f650d1b014be8c37b4fca15a1629c8f78268709fb8c53cea35b8a9ed7f6f2",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill-mobile.mp4",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s27-caravanserai-kill.webp",
+   "bytes": 101126,
+   "sha256": "85746fff8c7b5b397b67ae4ea7213b89b4772eacc3f863655bad767a9f105c2f",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill-4k.png",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s29-fjord-road-kill.mp4",
+   "bytes": 2628354,
+   "sha256": "a5f785dff9c356c48768cec9b195882022f68645b9193c04d0d2379037ed25e4",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill-mobile.mp4",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s29-fjord-road-kill.webp",
+   "bytes": 65062,
+   "sha256": "80a235efddb83432412f819ac1dc3f3f97b96d0ca3f2c1366a7f4e09a741ca23",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill-4k.png",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s33-water-tower.mp4",
+   "bytes": 2651756,
+   "sha256": "232fb526b86b67e45542d088033da5e6f2436e0f75bd7e68ca741a5408d415e8",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower-mobile.mp4",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s33-water-tower.webp",
+   "bytes": 106274,
+   "sha256": "ccf8fbcccd185edcd7fb6cba0f8ddae99b507a322e235f4b8ab37899b0c4a0aa",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower-4k.png",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s34-furnace-salvo.mp4",
+   "bytes": 2622699,
+   "sha256": "14c4bc9f4c90250fd78b4d41674fd92b8c4bb1890edc76932861af9a83eb5bb2",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-mobile.mp4",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s34-furnace-salvo.webp",
+   "bytes": 76722,
+   "sha256": "019aa5b1dc5d5f72d1bf700d686becef6e6999e448570b88f12d045cf7f19acc",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-4k.png",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s38-church-knockout.mp4",
+   "bytes": 2462646,
+   "sha256": "c955073cb8fb752025488e587367e99b7aecc3abef487dc304281c15d5a1a86b",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout-mobile.mp4",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s38-church-knockout.webp",
+   "bytes": 66192,
+   "sha256": "cafb6167dedf5202d16cefc2142fa73826508825955126f7ecfca2ba6e91c327",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout-4k.png",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s39-lakeside-village.mp4",
+   "bytes": 2608658,
+   "sha256": "ee24e9c844b052d6eec76d395838eb9b2bc5ad054d7672dd836eeda272922c7c",
+   "width": 1280,
+   "height": 720,
+   "fps": 30,
+   "seconds": 6.016,
+   "audio": "aac",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village-mobile.mp4",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/reels/s39-lakeside-village.webp",
+   "bytes": 85328,
+   "sha256": "fe7d7a4fd4e017be183a8074bf37c8f1240c3d7566f95662b166324f5c1d4ec3",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village-4k.png",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/scenes/index.json",
+   "bytes": 24040,
+   "sha256": "cabe7769e6f4291cf301bb1897f3b781a86a0440d86f04ae298807084c8ba258",
+   "source": null,
+   "takes": 50
+  },
+  {
+   "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",
+   "bytes": 90156,
+   "sha256": "fa95bbdefe937a781626df7a2a0d0baa0f7c4fc1c3e933cece2a08d6e300fda7",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s01-main-street-push.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s02-factory-road.scene.json",
+   "bytes": 72359,
+   "sha256": "af751366acfe3cb382d1d53763ffdb5230c29f4e5a3a7b7e0a48cd5cd6611fd5",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s02-factory-road.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s03-square-pass.scene.json",
+   "bytes": 73382,
+   "sha256": "a123eb7856561924c0a11faed7e0fb162f846b61d2dda4fe820a8a59270c20cd",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s03-square-pass.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s04-column-under-fire.scene.json",
+   "bytes": 107488,
+   "sha256": "7d2c47bf6bc0f236995184a95448505e4ce1e644a476a27107642b0e11f75c9d",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s04-column-under-fire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s05-barn-advance.scene.json",
+   "bytes": 75948,
+   "sha256": "3e4f8fbc2ce517cc813e9514e6930ce40e997b6a4a31f3b600b68bb397a3afca",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s05-barn-advance.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s06-farm-charge.scene.json",
+   "bytes": 60875,
+   "sha256": "c1747164a099c4486af9475ee6c11f137c6ffb40f460c8cf8d63f709135d84f9",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s06-farm-charge.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s07-lake-shellfire.scene.json",
+   "bytes": 88814,
+   "sha256": "d65b440fcd2266a823479c009beca0c2deb54c0dfeb2b36dc067c5bd6c5c800e",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s07-lake-shellfire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s08-market-push.scene.json",
+   "bytes": 91851,
+   "sha256": "2edcf9123585d6d863a28f91d9c017e9a2600195095d9c4a08372c7c4e2c5ea9",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s08-market-push.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s09-harbor-run.scene.json",
+   "bytes": 90798,
+   "sha256": "b48f8543d3569e85639138a4b89d492d8b58da841dd218a6bd31e974b36e6a42",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s09-harbor-run.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s10-ford-shellfire.scene.json",
+   "bytes": 75815,
+   "sha256": "656994d7b574cf620c3fcbfe4ed8bfaaed2eab798c43d075c7ddb7d5847e9a8b",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s10-ford-shellfire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s11-container-rows.scene.json",
+   "bytes": 92002,
+   "sha256": "151d02a92801880640d3460eb0dbe0d7983f1ddffe4639e5bc8c30329f4590e7",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s11-container-rows.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s12-gantry-advance.scene.json",
+   "bytes": 90721,
+   "sha256": "aacf0ad875cb239de8abdb69e486bab886596946b30e31ff953b11e8abf13cd9",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s12-gantry-advance.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s13-farm-race.scene.json",
+   "bytes": 29870,
+   "sha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s13-farm-race.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s14-snow-push.scene.json",
+   "bytes": 71160,
+   "sha256": "dc5a38437d053fc47143e70845db13177c702dfbc369eda7335b76b1ef220666",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s14-snow-push.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s15-orchard-column.scene.json",
+   "bytes": 94668,
+   "sha256": "bd72dbe1ccaed7b19b50f9b5337a35c3fcf44d8013b4bd8848558da66081fa98",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s15-orchard-column.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s16-street-duel.scene.json",
+   "bytes": 74368,
+   "sha256": "f167a3ce44a819c3ea3c3f96d712d7b3bd09ac356d087a686fe9c1d3fe24ea0d",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s16-street-duel.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s17-crossroads-fire.scene.json",
+   "bytes": 72309,
+   "sha256": "fa5d735d27ce79860ba83e0bb7b5caf49e9b15425f8da2b48b5b0f7d77e85083",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s17-crossroads-fire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s18-street-knockout.scene.json",
+   "bytes": 74580,
+   "sha256": "2dea579d014986b62203f7c0ed04bf440462258b42044610c1b525c1745dddda",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s18-street-knockout.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s19-roof-tiles.scene.json",
+   "bytes": 88653,
+   "sha256": "0a8b68f3e26fa71ed7ba8de28489f2d7f952bc2ae685ed63c74432976bbfa948",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s19-roof-tiles.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s20-road-return-fire.scene.json",
+   "bytes": 107099,
+   "sha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s20-road-return-fire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s21-fields-assault.scene.json",
+   "bytes": 121844,
+   "sha256": "133fd10e757eb397994310383556992472ea0d8e6d5452294b4bbdf507ce2edc",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s21-fields-assault.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s22-walking-barrage.scene.json",
+   "bytes": 138004,
+   "sha256": "bb8789a44e462ad64a28cc2e113435adb9a5a855e535ef8cfea509fbec2fcf34",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s22-walking-barrage.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s23-village-crossroads.scene.json",
+   "bytes": 76682,
+   "sha256": "6192513c437c968f57933b25ceedb745da0253107d93f93e51d18392b89121fb",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s23-village-crossroads.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s24-ice-duel.scene.json",
+   "bytes": 88046,
+   "sha256": "4ad30670a207172fc1217fa75e76941f4c56a0dd40abd234f4637ca3c9a7ea0f",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s24-ice-duel.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s25-alpine-village.scene.json",
+   "bytes": 76338,
+   "sha256": "a61eab481cfc094ede4d35ee8bb34e3455cab553fc9c0e0be8a0525b047552a2",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s25-alpine-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s26-minaret-fire.scene.json",
+   "bytes": 75595,
+   "sha256": "080f72ab582a2cc84a81648b582c82cb647585439acde0a56fdc0f781ecae3fb",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s26-minaret-fire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s27-caravanserai-kill.scene.json",
+   "bytes": 76904,
+   "sha256": "30398e0a4f3590807f5aa5883421f74d7b54d21c246ac680993fee9394016618",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s27-caravanserai-kill.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s28-fjord-village.scene.json",
+   "bytes": 75849,
+   "sha256": "cb1306dee4dccda6e1ab66c2d62bf06b67e3ea1b1541e3b8d8a42fbf051e2058",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s28-fjord-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s29-fjord-road-kill.scene.json",
+   "bytes": 75910,
+   "sha256": "85dbe62f9c985070959f77d374bb76cc51f452507ffc24e7ea1f8e8d8174e1f7",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s29-fjord-road-kill.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s30-temple-village.scene.json",
+   "bytes": 61022,
+   "sha256": "bb506ab286ef05654df8965ddc79be485219e3afc8e19ff69ea9be3bfd9eaa18",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s30-temple-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s31-ford-fire.scene.json",
+   "bytes": 75581,
+   "sha256": "12f1af000536a64e51327ec094c5ce455ced6bb4ae6995bde1972bf9ff8bdc9c",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s31-ford-fire.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s32-yard-salvo.scene.json",
+   "bytes": 90677,
+   "sha256": "dcf10f602b90706a58fb14cecfd895cdf6e4d49a592f8df158232dddddfbc147",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s32-yard-salvo.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s33-water-tower.scene.json",
+   "bytes": 77118,
+   "sha256": "a37d48afea88c6de07abf9f528518651fd7605a72e25a3a2220910f49e7ad964",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s33-water-tower.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s34-furnace-salvo.scene.json",
+   "bytes": 119323,
+   "sha256": "b7d16dbd4d9c724989f736517e7b7081555fd5e5bed9edc5e81cab2c00112fff",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s34-furnace-salvo.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s35-farm-village.scene.json",
+   "bytes": 75912,
+   "sha256": "1123ccecf6df830e9009e7ebcc88074c2d2d05c40e4f9a797a79ba766a185ec3",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s35-farm-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s36-barn-knockout.scene.json",
+   "bytes": 76337,
+   "sha256": "c776eb0533318eb866b835c423ec0416780a9a2294bdb8c7907050a78439d6f1",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s36-barn-knockout.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s37-river-village.scene.json",
+   "bytes": 92310,
+   "sha256": "6b665e10fc4a63aa9c47f77b8b19765ff99bcab51001a0101739bbbcdd20a9d0",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s37-river-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s38-church-knockout.scene.json",
+   "bytes": 60734,
+   "sha256": "46244db3313c33bd53b5fc31ec78a6cce412eb65e75b6de576818ad31b7650d9",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s38-church-knockout.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s39-lakeside-village.scene.json",
+   "bytes": 78141,
+   "sha256": "d37c70dfbceb5903da79e1d36542f61fd3e65b22d8714cb7cf7f42bf4698c5c4",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s39-lakeside-village.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s40-rooftop-smoke.scene.json",
+   "bytes": 102249,
+   "sha256": "65394b204f2cb31ccbcaab97aa49de4799889051a64d2c2d8a3b2761b7b2b582",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s40-rooftop-smoke.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s41-church-tower.scene.json",
+   "bytes": 89268,
+   "sha256": "ccdfb512432db10c0b9b97602460223eb46dd3c4db29c39049209a34e3b68d2b",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s41-church-tower.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s42-assault-above.scene.json",
+   "bytes": 123076,
+   "sha256": "83232305a75ae00134d479688a4b5bcc9761c96b4a87b246459a1b4830da48ee",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s42-assault-above.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s43-lake-crane.scene.json",
+   "bytes": 89426,
+   "sha256": "187347b3572d66d05d4324cb70eec88ff07a5fd31c1386d4c517edd0d02d7a5c",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s43-lake-crane.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s44-oasis-sunset.scene.json",
+   "bytes": 77261,
+   "sha256": "99a0e920f97e7c43bde5f07667540040da4bbaa8fd148aca757b8c773fcd8562",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s44-oasis-sunset.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s45-harbor-wide.scene.json",
+   "bytes": 92180,
+   "sha256": "9acd40a210945e4d69e1f7a7eda5aa159fa20e0556d80a249ddca659e504d0e2",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s45-harbor-wide.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s46-river-drone.scene.json",
+   "bytes": 74927,
+   "sha256": "b1c647bf9c7ede59d2bb23c9b17e033b82f0c06b1e4d27f924ab394b1083ecd4",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s46-river-drone.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s47-ironworks-crane.scene.json",
+   "bytes": 120096,
+   "sha256": "62cabe9528b3948fdc25c7ad9c67d2a46f776a67ffb2e25ae695aea4290dc5d3",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s47-ironworks-crane.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s48-delta-crane.scene.json",
+   "bytes": 92751,
+   "sha256": "116e02da1253d96961957aca1eb1ac9b8b8a0bf185fb5e52f898d0a130485a90",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s48-delta-crane.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s49-orchard-sunset.scene.json",
+   "bytes": 93608,
+   "sha256": "f33dd63921c38c19de2f273ca6d5f20cd704521ff88814d4baf05fcf8478fe84",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s49-orchard-sunset.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s50-reservoir-crane.scene.json",
+   "bytes": 77493,
+   "sha256": "85fa053c0465da77fa19c271084b17ec2f302036c13bda4e432b5af9a6b61af1",
+   "source": "shots/media-r5/tmp/site-media-r14v/tools/media-r5/site50-shots/s50-reservoir-crane.json"
+  },
+  {
+   "path": "media/site50-r14/stills/s01-main-street-push-close-thumb.webp",
+   "bytes": 35022,
+   "sha256": "f2156163d7a9113493d375a21939c35dbecf94449fa35d976d1c7e331fda5d0d",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push-close-4k.png",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s01-main-street-push-close.webp",
+   "bytes": 391720,
+   "sha256": "50dfc9822a3139ee3c214eb5ef8b6abd4866055f37cd40f3463b2af9881e7299",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push-close.webp",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s01-main-street-push-thumb.webp",
+   "bytes": 29488,
+   "sha256": "daa3f605a2b6710a2dd9d23ec7a66cd1c71ddb12d69317b34975c0498377f0f8",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push-4k.png",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s01-main-street-push.webp",
+   "bytes": 332254,
+   "sha256": "57fe4323e00224e8fc5d349b91435a6fd327255fef99ab8704d31f7f215c73d2",
+   "source": "shots/media-r5/site50/deliver-r14/s01-main-street-push/s01-main-street-push.webp",
+   "take": "s01-main-street-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s02-factory-road-close-thumb.webp",
+   "bytes": 30372,
+   "sha256": "eae8b2cda225f69ec7f8284433f03287a2abd66e1c6471faf545934ff6818404",
+   "source": "shots/media-r5/site50/deliver-r14/s02-factory-road/s02-factory-road-close-4k.png",
+   "take": "s02-factory-road",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s02-factory-road-close.webp",
+   "bytes": 334176,
+   "sha256": "9327899a2f4f05e7e904bfeed2ddbd1ed8634be9b9db041758e4f7fe6b9a95b9",
+   "source": "shots/media-r5/site50/deliver-r14/s02-factory-road/s02-factory-road-close.webp",
+   "take": "s02-factory-road",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s02-factory-road-thumb.webp",
+   "bytes": 29352,
+   "sha256": "6ca52b1bc2cb791995d40741f8a97c86cf755af284f6ce0072d487bc8cd7c957",
+   "source": "shots/media-r5/site50/deliver-r14/s02-factory-road/s02-factory-road-4k.png",
+   "take": "s02-factory-road",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s02-factory-road.webp",
+   "bytes": 325496,
+   "sha256": "e245141244dc47c5a7ac98a0ed8aa6f7f574256a6120bf1315c3ccf3fb199681",
+   "source": "shots/media-r5/site50/deliver-r14/s02-factory-road/s02-factory-road.webp",
+   "take": "s02-factory-road",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s03-square-pass-close-thumb.webp",
+   "bytes": 25382,
+   "sha256": "647d96d0d795ef1792c88518363ac336c26e8ac4dd12d9e95ba061741beee58d",
+   "source": "shots/media-r5/site50/deliver-r14/s03-square-pass/s03-square-pass-close-4k.png",
+   "take": "s03-square-pass",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s03-square-pass-close.webp",
+   "bytes": 297116,
+   "sha256": "b54c0a35702beb988c190b4cd606c2f66292d68a4f9c6693a35cd0697e22a51b",
+   "source": "shots/media-r5/site50/deliver-r14/s03-square-pass/s03-square-pass-close.webp",
+   "take": "s03-square-pass",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s03-square-pass-thumb.webp",
+   "bytes": 20568,
+   "sha256": "69e63244d68b6255f1bfe20d2454d2fc54c9d05750509178e7336f969f75b21c",
+   "source": "shots/media-r5/site50/deliver-r14/s03-square-pass/s03-square-pass-4k.png",
+   "take": "s03-square-pass",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s03-square-pass.webp",
+   "bytes": 256778,
+   "sha256": "ed5854f2f2bdb181344f415887de9a1518eb1afbf2b077b3f6caf237c29eb3b9",
+   "source": "shots/media-r5/site50/deliver-r14/s03-square-pass/s03-square-pass.webp",
+   "take": "s03-square-pass",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s04-column-under-fire-close-thumb.webp",
+   "bytes": 43988,
+   "sha256": "1ade408bde91019edf92cc3fa07310e6cbfb5716a28534a221e5bac75abcc80b",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire-close-4k.png",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s04-column-under-fire-close.webp",
+   "bytes": 473084,
+   "sha256": "51d82a4a3406fdb04c854835749a00bb3fc46a09eae3888a9f519129d82e713f",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire-close.webp",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s04-column-under-fire-thumb.webp",
+   "bytes": 50928,
+   "sha256": "aad1e60bfc59c252ca5743f57a93b8e314a023632c7491dabf5b216e6682cb7b",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire-4k.png",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s04-column-under-fire.webp",
+   "bytes": 645602,
+   "sha256": "6e029dae7ff00350d8cf0bac116115c2bb988d8afae3c4fce510b234d587a4d7",
+   "source": "shots/media-r5/site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.webp",
+   "take": "s04-column-under-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s05-barn-advance-close-thumb.webp",
+   "bytes": 40206,
+   "sha256": "44ddf9579610d1a9a7193280134b7e995654e08f618b10fbcd6a07b6d8a09ce9",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance-close-4k.png",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s05-barn-advance-close.webp",
+   "bytes": 462862,
+   "sha256": "cec43aedbfcf77ac00089fb97c557b30953bcc40b8b93d4fcc19a1fb32b8b635",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance-close.webp",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s05-barn-advance-thumb.webp",
+   "bytes": 40702,
+   "sha256": "1c4a8ae733a355f6f178403345ad399e7b929fb066a1db487eb2f2020742d825",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance-4k.png",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s05-barn-advance.webp",
+   "bytes": 476966,
+   "sha256": "3086c9f4258073ad33093582a3bb36c35f656ae0bd9c2a012e74f383b3c31320",
+   "source": "shots/media-r5/site50/deliver-r14/s05-barn-advance/s05-barn-advance.webp",
+   "take": "s05-barn-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s06-farm-charge-close-thumb.webp",
+   "bytes": 34430,
+   "sha256": "a7d090052c90e0e9e5746a382efb6a6e7662d2c39364c0be7d7972a0dec148f3",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge-close-4k.png",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s06-farm-charge-close.webp",
+   "bytes": 428058,
+   "sha256": "a880fe40978130498c7973fe946ec2d0078aa1105858dfe11e832a0452102ea1",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge-close.webp",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s06-farm-charge-thumb.webp",
+   "bytes": 46848,
+   "sha256": "3184e9fdacebd5f955313382bfc51f214593eed518727304830b30270a0673dd",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge-4k.png",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s06-farm-charge.webp",
+   "bytes": 492720,
+   "sha256": "404a16f6996cab7ad8b95ba3f74f3b0bb55c9f282b654806e21f41100f9506f1",
+   "source": "shots/media-r5/site50/deliver-r14/s06-farm-charge/s06-farm-charge.webp",
+   "take": "s06-farm-charge",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s07-lake-shellfire-boot.webp",
+   "bytes": 69444,
+   "sha256": "f47eb6186e7368ab4f1f43539c6f7ca563ca47252c12c9a6130822d8a2f3dfea",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-4k.png",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s07-lake-shellfire-close-thumb.webp",
+   "bytes": 25396,
+   "sha256": "9aabb7b981b00836247fc4533d34050d60dba13965ec690385c5cfb607d7916d",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-close-4k.png",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s07-lake-shellfire-close.webp",
+   "bytes": 261322,
+   "sha256": "13f70fbc42e9f032a35d54d33205b4a47d8773f5a7bd87175d1b535c106fb027",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-close.webp",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s07-lake-shellfire-thumb.webp",
+   "bytes": 24528,
+   "sha256": "ec29df83857ba8bd15e6be85360f4568d303bf1a53ad36d3ae3cabe84c516bf4",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire-4k.png",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s07-lake-shellfire.webp",
+   "bytes": 247378,
+   "sha256": "646ef4b9ab1649d3cb1502878ffdd0728db8d7ec2fd348430e1c3de25d0f1271",
+   "source": "shots/media-r5/site50/deliver-r14/s07-lake-shellfire/s07-lake-shellfire.webp",
+   "take": "s07-lake-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s08-market-push-close-thumb.webp",
+   "bytes": 34770,
+   "sha256": "309d4e9f07917b58dbd566e8b6e93eb8d0f5b5e86cfc0edda7720c702006cdde",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push-close-4k.png",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s08-market-push-close.webp",
+   "bytes": 349006,
+   "sha256": "e306ef169a8699f3b6c8315a52350210c1fdc3703bd1d826dd40dcabc5bf7201",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push-close.webp",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s08-market-push-thumb.webp",
+   "bytes": 32766,
+   "sha256": "8f8e64347e2dd0887079fbee607fd8804a45de72325262de02e35a049835aaf4",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push-4k.png",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s08-market-push.webp",
+   "bytes": 368438,
+   "sha256": "060d33dfb57e54aa0d1ec10351db1245ed5b27eed73fdf03a24356b57a54ddb0",
+   "source": "shots/media-r5/site50/deliver-r14/s08-market-push/s08-market-push.webp",
+   "take": "s08-market-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s09-harbor-run-close-thumb.webp",
+   "bytes": 27548,
+   "sha256": "9fbf958c49884186f625a3ad6765a0c07297f0761dd099c2ed8d0c70ae0ed870",
+   "source": "shots/media-r5/site50/deliver-r14/s09-harbor-run/s09-harbor-run-close-4k.png",
+   "take": "s09-harbor-run",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s09-harbor-run-close.webp",
+   "bytes": 337084,
+   "sha256": "7712b6eecd03a2363de150afdde3fe9987a8917e7a4a3e0712326aa18b263da9",
+   "source": "shots/media-r5/site50/deliver-r14/s09-harbor-run/s09-harbor-run-close.webp",
+   "take": "s09-harbor-run",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s09-harbor-run-thumb.webp",
+   "bytes": 34514,
+   "sha256": "77ebe2ba0e91337abbd2a22105a44dd1a44989bf8c2921f011677ddb1dead6da",
+   "source": "shots/media-r5/site50/deliver-r14/s09-harbor-run/s09-harbor-run-4k.png",
+   "take": "s09-harbor-run",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s09-harbor-run.webp",
+   "bytes": 400344,
+   "sha256": "c5953e477fdb1ea997c32a5839a61d79446840d5b182357123467215883cbd8a",
+   "source": "shots/media-r5/site50/deliver-r14/s09-harbor-run/s09-harbor-run.webp",
+   "take": "s09-harbor-run",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s10-ford-shellfire-close-thumb.webp",
+   "bytes": 27610,
+   "sha256": "d7a2820a6f60edb01bb42d9159ea4302458ef5c130c71afa8ef35325df6e15ce",
+   "source": "shots/media-r5/site50/deliver-r14/s10-ford-shellfire/s10-ford-shellfire-close-4k.png",
+   "take": "s10-ford-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s10-ford-shellfire-close.webp",
+   "bytes": 261940,
+   "sha256": "f53a771aa1a08deaffb48dcd6198984550c2b447a9028997b9d576378771136a",
+   "source": "shots/media-r5/site50/deliver-r14/s10-ford-shellfire/s10-ford-shellfire-close.webp",
+   "take": "s10-ford-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s10-ford-shellfire-thumb.webp",
+   "bytes": 26632,
+   "sha256": "0d9aad4a2e0598686e5744b72fc3bad013325d46c1a885dadce70cb5979fa6e2",
+   "source": "shots/media-r5/site50/deliver-r14/s10-ford-shellfire/s10-ford-shellfire-4k.png",
+   "take": "s10-ford-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s10-ford-shellfire.webp",
+   "bytes": 317072,
+   "sha256": "d7a4f852feb7d31287ae6db9176fe6af20d591c2fbc07a30ec6c37929e220b25",
+   "source": "shots/media-r5/site50/deliver-r14/s10-ford-shellfire/s10-ford-shellfire.webp",
+   "take": "s10-ford-shellfire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s11-container-rows-close-thumb.webp",
+   "bytes": 35458,
+   "sha256": "bec93c8b0b241646ae671a5e961844781f3aaa5261d01570093551efb14e5d12",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows-close-4k.png",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s11-container-rows-close.webp",
+   "bytes": 414452,
+   "sha256": "0bfdd64a9bd9ce8630210f16470c0d90c08309cdad5db647f749e2c42f78399d",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows-close.webp",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s11-container-rows-thumb.webp",
+   "bytes": 36452,
+   "sha256": "f68d2832d86b955e53f420666858054222db2c254177126cc6b43ae8d62f5b14",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows-4k.png",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s11-container-rows.webp",
+   "bytes": 401282,
+   "sha256": "d47589eae164b0af5438efd31f5408e31bee11062ee5178741575ab7ecac7202",
+   "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows.webp",
+   "take": "s11-container-rows",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s12-gantry-advance-close-thumb.webp",
+   "bytes": 25270,
+   "sha256": "88313008c73b236ebf1b582621d3e2424a8106cfa0cbad2e3a289f62da0e0a80",
+   "source": "shots/media-r5/site50/deliver-r14/s12-gantry-advance/s12-gantry-advance-close-4k.png",
+   "take": "s12-gantry-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s12-gantry-advance-close.webp",
+   "bytes": 294270,
+   "sha256": "a1f26d759eb247f585aaf95cf780180b97fd164327508b168a61d59cbe7fd726",
+   "source": "shots/media-r5/site50/deliver-r14/s12-gantry-advance/s12-gantry-advance-close.webp",
+   "take": "s12-gantry-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s12-gantry-advance-thumb.webp",
+   "bytes": 18410,
+   "sha256": "58e34dddbb41e79940dd71c999a77e62d22718c44f90360a556b001a4596b5fc",
+   "source": "shots/media-r5/site50/deliver-r14/s12-gantry-advance/s12-gantry-advance-4k.png",
+   "take": "s12-gantry-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s12-gantry-advance.webp",
+   "bytes": 183004,
+   "sha256": "eb6565964cce9699b5633262ce5deeb762da8c0e06e047f3f1bbba24b9b7502e",
+   "source": "shots/media-r5/site50/deliver-r14/s12-gantry-advance/s12-gantry-advance.webp",
+   "take": "s12-gantry-advance",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s13-farm-race-close-thumb.webp",
+   "bytes": 46408,
+   "sha256": "88f50d26850967d0c21ce88fb1da7a68786dc197017e83cf1da64cabf9342af5",
+   "source": "shots/media-r5/site50/deliver-r14/s13-farm-race/s13-farm-race-close-4k.png",
+   "take": "s13-farm-race",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s13-farm-race-close.webp",
+   "bytes": 605188,
+   "sha256": "defacb68ed9ddfc54e323ccdb53130be14bcb4137ddaee48253f9cb3434d7409",
+   "source": "shots/media-r5/site50/deliver-r14/s13-farm-race/s13-farm-race-close.webp",
+   "take": "s13-farm-race",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s13-farm-race-thumb.webp",
+   "bytes": 44162,
+   "sha256": "e71e1ac06e66535b7793f22a08dbc25d55a4bff6bef989f64475d6891a546259",
+   "source": "shots/media-r5/site50/deliver-r14/s13-farm-race/s13-farm-race-4k.png",
+   "take": "s13-farm-race",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s13-farm-race.webp",
+   "bytes": 529110,
+   "sha256": "6df3f49849e8f8c74f372f29b40a3998a2bc88beb81d5a9350b7d1c7e2fafce6",
+   "source": "shots/media-r5/site50/deliver-r14/s13-farm-race/s13-farm-race.webp",
+   "take": "s13-farm-race",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s14-snow-push-close-thumb.webp",
+   "bytes": 36272,
+   "sha256": "76b8ed758bb15a60673840daca44e5a3101fb6a0f9253332045d0320cadab76d",
+   "source": "shots/media-r5/site50/deliver-r14/s14-snow-push/s14-snow-push-close-4k.png",
+   "take": "s14-snow-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s14-snow-push-close.webp",
+   "bytes": 367020,
+   "sha256": "f84a17bac42dd3f7eda436f8e5a4302365ac1019f247b98c812df090df477d27",
+   "source": "shots/media-r5/site50/deliver-r14/s14-snow-push/s14-snow-push-close.webp",
+   "take": "s14-snow-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s14-snow-push-thumb.webp",
+   "bytes": 29994,
+   "sha256": "e41c223b7ab78186ffca0a017ecd0120dfd7a5681cbe4a6423c7d0fedadd6a95",
+   "source": "shots/media-r5/site50/deliver-r14/s14-snow-push/s14-snow-push-4k.png",
+   "take": "s14-snow-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s14-snow-push.webp",
+   "bytes": 297434,
+   "sha256": "14db2c7daaa18666b1eec4fb9f16471d3a342dcac75e43fd9ead03a91bd29b49",
+   "source": "shots/media-r5/site50/deliver-r14/s14-snow-push/s14-snow-push.webp",
+   "take": "s14-snow-push",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s15-orchard-column-close-thumb.webp",
+   "bytes": 39594,
+   "sha256": "a7730cf221b71a46028bf2bef5c89656c22893bdb5ac2ca26bae8db67bbf61aa",
+   "source": "shots/media-r5/site50/deliver-r14/s15-orchard-column/s15-orchard-column-close-4k.png",
+   "take": "s15-orchard-column",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s15-orchard-column-close.webp",
+   "bytes": 484890,
+   "sha256": "fea65df607ff3520d801b95689eb1a58709de13a32ee784c64ef662525409d61",
+   "source": "shots/media-r5/site50/deliver-r14/s15-orchard-column/s15-orchard-column-close.webp",
+   "take": "s15-orchard-column",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s15-orchard-column-thumb.webp",
+   "bytes": 26540,
+   "sha256": "48c7c2ad6e5b812273c833d0c7b86f04356b98cadeda9b48c859b8bdb6c93356",
+   "source": "shots/media-r5/site50/deliver-r14/s15-orchard-column/s15-orchard-column-4k.png",
+   "take": "s15-orchard-column",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s15-orchard-column.webp",
+   "bytes": 315062,
+   "sha256": "7269d72893425078d3b0d27649180f28f27e4827af2942833ca0c6c3252faa33",
+   "source": "shots/media-r5/site50/deliver-r14/s15-orchard-column/s15-orchard-column.webp",
+   "take": "s15-orchard-column",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s16-street-duel-close-thumb.webp",
+   "bytes": 44132,
+   "sha256": "68676d480d0376d76a0671676b0d440ba490908936639eeb91d984b2ff520c0e",
+   "source": "shots/media-r5/site50/deliver-r14/s16-street-duel/s16-street-duel-close-4k.png",
+   "take": "s16-street-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s16-street-duel-close.webp",
+   "bytes": 494970,
+   "sha256": "fc08b9bc261044353a1b2d770250b11493ee476c58b1d1475a99000589143428",
+   "source": "shots/media-r5/site50/deliver-r14/s16-street-duel/s16-street-duel-close.webp",
+   "take": "s16-street-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s16-street-duel-thumb.webp",
+   "bytes": 46380,
+   "sha256": "632ec8110b54ecedd95dc1d11a1a4518938b809cfa90ba27366addf81dba5040",
+   "source": "shots/media-r5/site50/deliver-r14/s16-street-duel/s16-street-duel-4k.png",
+   "take": "s16-street-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s16-street-duel.webp",
+   "bytes": 543748,
+   "sha256": "833bbc6fa40a06b7695368061b2cfae5b1e5355fb177ba7ee2661f45bf1022a2",
+   "source": "shots/media-r5/site50/deliver-r14/s16-street-duel/s16-street-duel.webp",
+   "take": "s16-street-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s17-crossroads-fire-close-thumb.webp",
+   "bytes": 22780,
+   "sha256": "da4293af6792b38ed8979b68cf7c413b5654ef7f9eb6c6986962390f68e81a8a",
+   "source": "shots/media-r5/site50/deliver-r14/s17-crossroads-fire/s17-crossroads-fire-close-4k.png",
+   "take": "s17-crossroads-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s17-crossroads-fire-close.webp",
+   "bytes": 272908,
+   "sha256": "f8250a2c15635475c11aca8a66811574eff872b3cbdc01e3ffd8018d0f070e71",
+   "source": "shots/media-r5/site50/deliver-r14/s17-crossroads-fire/s17-crossroads-fire-close.webp",
+   "take": "s17-crossroads-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s17-crossroads-fire-thumb.webp",
+   "bytes": 40868,
+   "sha256": "2c851d2319eb7abcb376cbd876ce3819d51ae77d0bd65484f538ed5faf65cf8c",
+   "source": "shots/media-r5/site50/deliver-r14/s17-crossroads-fire/s17-crossroads-fire-4k.png",
+   "take": "s17-crossroads-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s17-crossroads-fire.webp",
+   "bytes": 487196,
+   "sha256": "cd7da35ea78b7a31a97dc736b88c7a5f95eab8ff7c08ca204d31755cb57b8171",
+   "source": "shots/media-r5/site50/deliver-r14/s17-crossroads-fire/s17-crossroads-fire.webp",
+   "take": "s17-crossroads-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s18-street-knockout-close-thumb.webp",
+   "bytes": 44946,
+   "sha256": "25981e61e578116ec40d4bcdcd3004eb83fbb1294b89e8231409fb97e9b37a71",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout-close-4k.png",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s18-street-knockout-close.webp",
+   "bytes": 534024,
+   "sha256": "db762f5545c1c1f53d68709c85edcbed80c2da6ab3443e1ef5beeaea337d07d9",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout-close.webp",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s18-street-knockout-thumb.webp",
+   "bytes": 44844,
+   "sha256": "db8e8f6ff75df3246d8ce244659edfd0e4de119073890ae15eae1781952e1249",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout-4k.png",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s18-street-knockout.webp",
+   "bytes": 581908,
+   "sha256": "e55630fadfee49535399ebe25197365da59bee8aa9ecd9035d9d5151cbb2fed8",
+   "source": "shots/media-r5/site50/deliver-r14/s18-street-knockout/s18-street-knockout.webp",
+   "take": "s18-street-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s19-roof-tiles-close-thumb.webp",
+   "bytes": 34618,
+   "sha256": "cfc0753655211203d572879fb114784be024752c8e0f1c0ce722bac24b3a3076",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles-close-4k.png",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s19-roof-tiles-close.webp",
+   "bytes": 339732,
+   "sha256": "6aeab0985e589dc8f7aa148321e03218e94e1b5b26d51e4de6613fa3c423037d",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles-close.webp",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s19-roof-tiles-thumb.webp",
+   "bytes": 35888,
+   "sha256": "915a0f75c11c32a4a7312c2da87b5c2f29f152e196dae75de50caaf1dfc6c3d0",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles-4k.png",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s19-roof-tiles.webp",
+   "bytes": 389980,
+   "sha256": "af4b880821d71af3f5933f0961f4d6e7dc7f6b56301c4dc27f046bbf4806607d",
+   "source": "shots/media-r5/site50/deliver-r14/s19-roof-tiles/s19-roof-tiles.webp",
+   "take": "s19-roof-tiles",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s20-road-return-fire-close-thumb.webp",
+   "bytes": 37514,
+   "sha256": "0499e295a794c73de8f54dc8ba84a8cb25f9565426fa5cd1d7d031593c4d2ada",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire-close-4k.png",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s20-road-return-fire-close.webp",
+   "bytes": 421236,
+   "sha256": "d858e587aab5d9411ca740e5b539eebc34e5f77e961c4b73d2f59d289c6d251d",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire-close.webp",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s20-road-return-fire-thumb.webp",
+   "bytes": 43014,
+   "sha256": "30d233712c42cfcabd5f809b514f7941c2734843742229904dd82864d2d895f2",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire-4k.png",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s20-road-return-fire.webp",
+   "bytes": 508820,
+   "sha256": "9607359d01b255fde8e93e090fb7b3a774eb6e8f54cac9d6090b9f4110f46651",
+   "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.webp",
+   "take": "s20-road-return-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s21-fields-assault-close-thumb.webp",
+   "bytes": 37348,
+   "sha256": "c50e2942071d2e75e697cf8941c4320d0563bff1925ab0bf80d1a81f2fe48385",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-close-4k.png",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s21-fields-assault-close.webp",
+   "bytes": 334204,
+   "sha256": "571cde6345aeed6d546a573d125c77042e59e8b82bf31d1e7cf44608d94f3129",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-close.webp",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s21-fields-assault-thumb.webp",
+   "bytes": 36192,
+   "sha256": "c99a0f97ae217ff4347a8d3bca09c363d65ce7b84fd4856b4cfdefde79b5c16a",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault-4k.png",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s21-fields-assault.webp",
+   "bytes": 348968,
+   "sha256": "97cbc029a353f0dee8f90ecc6f6284173f793748d63e8d3be78a867b6a206116",
+   "source": "shots/media-r5/site50/deliver-r14/s21-fields-assault/s21-fields-assault.webp",
+   "take": "s21-fields-assault",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s22-walking-barrage-close-thumb.webp",
+   "bytes": 41316,
+   "sha256": "e8519eab2df6bdc1d3a0d1d9d98b9e3dd312a089e27965e511edcc808a52b98e",
+   "source": "shots/media-r5/site50/deliver-r14/s22-walking-barrage/s22-walking-barrage-close-4k.png",
+   "take": "s22-walking-barrage",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s22-walking-barrage-close.webp",
+   "bytes": 432268,
+   "sha256": "722c5e35ad72bffc85c3099c11b78269e72f99b3e822ca6564dea9b483c10bd9",
+   "source": "shots/media-r5/site50/deliver-r14/s22-walking-barrage/s22-walking-barrage-close.webp",
+   "take": "s22-walking-barrage",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s22-walking-barrage-thumb.webp",
+   "bytes": 30546,
+   "sha256": "cd9585e5568e9a85255887be80b87f48e7e63ca07c7f16513ebc7153e5709db5",
+   "source": "shots/media-r5/site50/deliver-r14/s22-walking-barrage/s22-walking-barrage-4k.png",
+   "take": "s22-walking-barrage",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s22-walking-barrage.webp",
+   "bytes": 360566,
+   "sha256": "081b89b57c546fda922980b25fab3686fa6df8a41b9185082050e04418b5c722",
+   "source": "shots/media-r5/site50/deliver-r14/s22-walking-barrage/s22-walking-barrage.webp",
+   "take": "s22-walking-barrage",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s23-village-crossroads-close-thumb.webp",
+   "bytes": 25958,
+   "sha256": "16267b9ec1799613d42b4b8a1505c032235bd75609e18d5df11e5154265fcfb2",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads-close-4k.png",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s23-village-crossroads-close.webp",
+   "bytes": 300906,
+   "sha256": "ee533d654bce63fbe69a524c7656d9af2e1765a42f91897bffb1bd38d5f34e3a",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads-close.webp",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s23-village-crossroads-thumb.webp",
+   "bytes": 30758,
+   "sha256": "fbdde8ec6cd0f4a603bfdc58e929c346dc225cb5324a3f9a49e6c2088079d0f2",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads-4k.png",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s23-village-crossroads.webp",
+   "bytes": 345566,
+   "sha256": "9bc2817fb8126715e8e03a3fce1f922077964df7eb8a7794959a3759466846f6",
+   "source": "shots/media-r5/site50/deliver-r14/s23-village-crossroads/s23-village-crossroads.webp",
+   "take": "s23-village-crossroads",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s24-ice-duel-close-thumb.webp",
+   "bytes": 27704,
+   "sha256": "0f83e690a2d93bf9595d89e34f33c51d3ca33000c6f46bd35c52f0676ad0c43b",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel-close-4k.png",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s24-ice-duel-close.webp",
+   "bytes": 273628,
+   "sha256": "01df22efc658cd515c1fd4931aa088a7195dc2acedc02b898f8145d6e314623b",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel-close.webp",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s24-ice-duel-thumb.webp",
+   "bytes": 34854,
+   "sha256": "bbcc632333aceaf9728ea03a9e0adf7c5b76415f2f4476ce38da904305b20d83",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel-4k.png",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s24-ice-duel.webp",
+   "bytes": 371174,
+   "sha256": "3b664ff98e1bcec4ff95858326d7702a4f94cf1c90f30a27e218217d20639c98",
+   "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.webp",
+   "take": "s24-ice-duel",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s25-alpine-village-close-thumb.webp",
+   "bytes": 35166,
+   "sha256": "80f6cf287cb87a3f9320845653212483c5fdb5ba09c01db008f78d4bb99ca78f",
+   "source": "shots/media-r5/site50/deliver-r14/s25-alpine-village/s25-alpine-village-close-4k.png",
+   "take": "s25-alpine-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s25-alpine-village-close.webp",
+   "bytes": 387806,
+   "sha256": "951f845d05c5448bca4d763c6d944b53a576a562871776fb67a405e43b5d5409",
+   "source": "shots/media-r5/site50/deliver-r14/s25-alpine-village/s25-alpine-village-close.webp",
+   "take": "s25-alpine-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s25-alpine-village-thumb.webp",
+   "bytes": 30844,
+   "sha256": "d3f7c16ab0289fad900eb3c287fca7ccb9cad8779380db77c6c897ad657b3fa5",
+   "source": "shots/media-r5/site50/deliver-r14/s25-alpine-village/s25-alpine-village-4k.png",
+   "take": "s25-alpine-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s25-alpine-village.webp",
+   "bytes": 320604,
+   "sha256": "eb98a7fa85c342f553841f5b91ad5fc3f103a093b6f1cbd697324d33a14f5229",
+   "source": "shots/media-r5/site50/deliver-r14/s25-alpine-village/s25-alpine-village.webp",
+   "take": "s25-alpine-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s26-minaret-fire-close-thumb.webp",
+   "bytes": 28820,
+   "sha256": "2be0bc3bc163c7485a3a544e77f3d189b6ea9bbf4214afad009261c90e71aa5f",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire-close-4k.png",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s26-minaret-fire-close.webp",
+   "bytes": 281966,
+   "sha256": "ae91c7371fa103dab634d0aa7f8f5109d1772a5c7541f3ee3e325b7c95262889",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire-close.webp",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s26-minaret-fire-thumb.webp",
+   "bytes": 29832,
+   "sha256": "9a811e475491c88800cfd1abbddfd14817349b0ed5edbd968bd3172dc0d243cd",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire-4k.png",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s26-minaret-fire.webp",
+   "bytes": 277192,
+   "sha256": "bffc5deb33ec64e94a672f2cd1cd7c29b025dc8cb16c904f16843161a5f0a49c",
+   "source": "shots/media-r5/site50/deliver-r14/s26-minaret-fire/s26-minaret-fire.webp",
+   "take": "s26-minaret-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s27-caravanserai-kill-close-thumb.webp",
+   "bytes": 25036,
+   "sha256": "c75ecfecb935aed66f95b9f3bf41a53942fdfa85378e0bd3bd477d69f991eabe",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill-close-4k.png",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s27-caravanserai-kill-close.webp",
+   "bytes": 288130,
+   "sha256": "da7ad368ae5ddef930bf40a683513f7b6b4e945b07b9d7602c933e648a7a4c7b",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill-close.webp",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s27-caravanserai-kill-thumb.webp",
+   "bytes": 32478,
+   "sha256": "3fba9a9746b70a5ef926ae4b9355b0d1f0aef57a0c87549014b46f378c3c5470",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill-4k.png",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s27-caravanserai-kill.webp",
+   "bytes": 342638,
+   "sha256": "23973771bab929532c33c8d82bff63147acaf1a426186b3ba5ecfee601e72528",
+   "source": "shots/media-r5/site50/deliver-r14/s27-caravanserai-kill/s27-caravanserai-kill.webp",
+   "take": "s27-caravanserai-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s28-fjord-village-close-thumb.webp",
+   "bytes": 25102,
+   "sha256": "d56bdcc071c2d82c349ac1543a460e1a0685adcb9b70230c6dd9a24b8dbfa0ea",
+   "source": "shots/media-r5/site50/deliver-r14/s28-fjord-village/s28-fjord-village-close-4k.png",
+   "take": "s28-fjord-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s28-fjord-village-close.webp",
+   "bytes": 243426,
+   "sha256": "0d62c5ec4bc24343c15f72a84ccd20d8408f7d63229ef50bcf454b58f7e30b9c",
+   "source": "shots/media-r5/site50/deliver-r14/s28-fjord-village/s28-fjord-village-close.webp",
+   "take": "s28-fjord-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s28-fjord-village-thumb.webp",
+   "bytes": 26812,
+   "sha256": "210b7f83ca0eb8ce76bcae11a91f5764a7fba65783957d69d6b7e0307bf26ee9",
+   "source": "shots/media-r5/site50/deliver-r14/s28-fjord-village/s28-fjord-village-4k.png",
+   "take": "s28-fjord-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s28-fjord-village.webp",
+   "bytes": 250652,
+   "sha256": "54c3b9480fdd36255fadcc0b410c1926850eda7861c220d407c00fd0a98bcb80",
+   "source": "shots/media-r5/site50/deliver-r14/s28-fjord-village/s28-fjord-village.webp",
+   "take": "s28-fjord-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s29-fjord-road-kill-close-thumb.webp",
+   "bytes": 20772,
+   "sha256": "295300292eecabd8be93570e8a35dc7f6430d6cb94c8eb92db2a5ea64c608b20",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill-close-4k.png",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s29-fjord-road-kill-close.webp",
+   "bytes": 219962,
+   "sha256": "a1fe73f99e5a20afd4fd9c35d7727c6f9feeb5808247851ef6338fce70330aba",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill-close.webp",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s29-fjord-road-kill-thumb.webp",
+   "bytes": 21470,
+   "sha256": "3cde82a39bf1ffe9dab38d01981ac58dbaaeac567b6f99900e10b05273851de0",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill-4k.png",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s29-fjord-road-kill.webp",
+   "bytes": 216850,
+   "sha256": "863cd51442de74a3cebe140ad280e074377cb3f25ec92011105ba733232bb031",
+   "source": "shots/media-r5/site50/deliver-r14/s29-fjord-road-kill/s29-fjord-road-kill.webp",
+   "take": "s29-fjord-road-kill",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s30-temple-village-close-thumb.webp",
+   "bytes": 21510,
+   "sha256": "c86d719603d456ba702c9d963368b9c177227510ef9c63066d6062047fb09c12",
+   "source": "shots/media-r5/site50/deliver-r14/s30-temple-village/s30-temple-village-close-4k.png",
+   "take": "s30-temple-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s30-temple-village-close.webp",
+   "bytes": 250220,
+   "sha256": "ee2f6747367553e8f3c406921945814ff76efbd07455dd76fa632e5057bff9ec",
+   "source": "shots/media-r5/site50/deliver-r14/s30-temple-village/s30-temple-village-close.webp",
+   "take": "s30-temple-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s30-temple-village-thumb.webp",
+   "bytes": 31932,
+   "sha256": "95b60f8a0da18cc7ae0ee8c2dc8673ddae476a59ed338331f62a5ec1615e8831",
+   "source": "shots/media-r5/site50/deliver-r14/s30-temple-village/s30-temple-village-4k.png",
+   "take": "s30-temple-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s30-temple-village.webp",
+   "bytes": 363800,
+   "sha256": "8bae4e2695d25a84ead4997324546605d262ae1d2cf6e5de0977fa5b13ad245d",
+   "source": "shots/media-r5/site50/deliver-r14/s30-temple-village/s30-temple-village.webp",
+   "take": "s30-temple-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s31-ford-fire-close-thumb.webp",
+   "bytes": 28960,
+   "sha256": "72adb49301609a5b42f717bf6b469d520861b73238c3516447af546324d7d731",
+   "source": "shots/media-r5/site50/deliver-r14/s31-ford-fire/s31-ford-fire-close-4k.png",
+   "take": "s31-ford-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s31-ford-fire-close.webp",
+   "bytes": 308432,
+   "sha256": "2e2c5d78df31f1edf475628a5f01cef411d922e634a3f6d353625e5fe8667978",
+   "source": "shots/media-r5/site50/deliver-r14/s31-ford-fire/s31-ford-fire-close.webp",
+   "take": "s31-ford-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s31-ford-fire-thumb.webp",
+   "bytes": 29472,
+   "sha256": "aeb820d10a7e724fe81bad23e1033afd709ddf10ac26a7276d77adf232934e34",
+   "source": "shots/media-r5/site50/deliver-r14/s31-ford-fire/s31-ford-fire-4k.png",
+   "take": "s31-ford-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s31-ford-fire.webp",
+   "bytes": 355440,
+   "sha256": "56a84a226a8deada9ba488514d480b583144fd71db149d16b2575a079ce68339",
+   "source": "shots/media-r5/site50/deliver-r14/s31-ford-fire/s31-ford-fire.webp",
+   "take": "s31-ford-fire",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s32-yard-salvo-close-thumb.webp",
+   "bytes": 24106,
+   "sha256": "fd4014366021f09a177519d74ae3bfcf216134192546f7339bfdff40129574ac",
+   "source": "shots/media-r5/site50/deliver-r14/s32-yard-salvo/s32-yard-salvo-close-4k.png",
+   "take": "s32-yard-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s32-yard-salvo-close.webp",
+   "bytes": 263894,
+   "sha256": "5cb7f9291b11fba2b804e1d6b51cacbf1ca1937a6a957701b66dfa3a64d4db52",
+   "source": "shots/media-r5/site50/deliver-r14/s32-yard-salvo/s32-yard-salvo-close.webp",
+   "take": "s32-yard-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s32-yard-salvo-thumb.webp",
+   "bytes": 27198,
+   "sha256": "2cedfa28b9973667eb2fc1c7253b4d65609d83a9add1d070aff63d9793cd4d6a",
+   "source": "shots/media-r5/site50/deliver-r14/s32-yard-salvo/s32-yard-salvo-4k.png",
+   "take": "s32-yard-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s32-yard-salvo.webp",
+   "bytes": 279798,
+   "sha256": "c3a7d18fd980aa1cf0fd882f5d8409b8351ec97d394ab4c6df0661fb4b20981e",
+   "source": "shots/media-r5/site50/deliver-r14/s32-yard-salvo/s32-yard-salvo.webp",
+   "take": "s32-yard-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s33-water-tower-close-thumb.webp",
+   "bytes": 35722,
+   "sha256": "997259e9c2f9e4b657cb1cc6d4e5b64797a5e638d93f1c38ff0de416976c21e0",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower-close-4k.png",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s33-water-tower-close.webp",
+   "bytes": 407688,
+   "sha256": "b35474301dbc4b54be503b72b895443ac90798291a7bc3e6366150724cb667b5",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower-close.webp",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s33-water-tower-thumb.webp",
+   "bytes": 31882,
+   "sha256": "206eeba20ee805d3acb51cf8d5e89228fd0a34c83ee8fbd5ae522397c13f7162",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower-4k.png",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s33-water-tower.webp",
+   "bytes": 357604,
+   "sha256": "8a1a6c4b631d02e521136f23af01f85bcc5c56ae3697a6816029de6bac488915",
+   "source": "shots/media-r5/site50/deliver-r14/s33-water-tower/s33-water-tower.webp",
+   "take": "s33-water-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s34-furnace-salvo-4k.webp",
+   "bytes": 606580,
+   "sha256": "edc83f122667502c908616c92dae5df4566d51cf52c9e986ef2cd22a4cbb06cd",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-4k.png",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s34-furnace-salvo-close-thumb.webp",
+   "bytes": 24576,
+   "sha256": "287e1a0cd7cc068118f94573ddb64742e31eaabb27a1759438fa144bb61940a0",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-close-4k.png",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s34-furnace-salvo-close.webp",
+   "bytes": 224540,
+   "sha256": "d1861e6ef179e0fdacdceea2e2a899717573c7f305ce023e73469cc9cbd30257",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-close.webp",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s34-furnace-salvo-thumb.webp",
+   "bytes": 23026,
+   "sha256": "9cb30bf8d383a683bafeeec0ddfb3014c0defe180ffa7ebe0c4f61b0b1d72abd",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo-4k.png",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s34-furnace-salvo.webp",
+   "bytes": 276380,
+   "sha256": "c29160dcfe48f6ba1165445fa2400560ea3f83eb05a2c00758e3dbae76fd7bc0",
+   "source": "shots/media-r5/site50/deliver-r14/s34-furnace-salvo/s34-furnace-salvo.webp",
+   "take": "s34-furnace-salvo",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s35-farm-village-close-thumb.webp",
+   "bytes": 30302,
+   "sha256": "a0a9b85e236e0135c141c75edd0ad5cd73d2ff49e4ebb637509542f51cea32f8",
+   "source": "shots/media-r5/site50/deliver-r14/s35-farm-village/s35-farm-village-close-4k.png",
+   "take": "s35-farm-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s35-farm-village-close.webp",
+   "bytes": 331516,
+   "sha256": "b74f84a50a879a902b8fde60d1619598242f93217e65a19be4fb137bafd4ad1d",
+   "source": "shots/media-r5/site50/deliver-r14/s35-farm-village/s35-farm-village-close.webp",
+   "take": "s35-farm-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s35-farm-village-thumb.webp",
+   "bytes": 24314,
+   "sha256": "8fb038cee8f8d3354a8bc19c4e44bbe4fcea00ef038d45a2a27d631f4a22bda1",
+   "source": "shots/media-r5/site50/deliver-r14/s35-farm-village/s35-farm-village-4k.png",
+   "take": "s35-farm-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s35-farm-village.webp",
+   "bytes": 254380,
+   "sha256": "275d4e10b9e80dd1d3d9476a23f3c60965b287f2781e7285ad3c35b674446bfc",
+   "source": "shots/media-r5/site50/deliver-r14/s35-farm-village/s35-farm-village.webp",
+   "take": "s35-farm-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s36-barn-knockout-close-thumb.webp",
+   "bytes": 45998,
+   "sha256": "2bfad612397e06bf7c5561a7c1ca087b3970f00d9689166a42ba7836a9355133",
+   "source": "shots/media-r5/site50/deliver-r14/s36-barn-knockout/s36-barn-knockout-close-4k.png",
+   "take": "s36-barn-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s36-barn-knockout-close.webp",
+   "bytes": 557054,
+   "sha256": "586523391838557ccbf5a191f173095f181474b0390cfe98a42333cc7a09dbaa",
+   "source": "shots/media-r5/site50/deliver-r14/s36-barn-knockout/s36-barn-knockout-close.webp",
+   "take": "s36-barn-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s36-barn-knockout-thumb.webp",
+   "bytes": 35374,
+   "sha256": "0f2299a1953d08a60e0d362cb7a5b7881c596edc5c2cd53f7eeda94b89b09268",
+   "source": "shots/media-r5/site50/deliver-r14/s36-barn-knockout/s36-barn-knockout-4k.png",
+   "take": "s36-barn-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s36-barn-knockout.webp",
+   "bytes": 386658,
+   "sha256": "2d881f521085fa6ba0405dc34444c70c678db5aa3531b4ef3e9801ccac551789",
+   "source": "shots/media-r5/site50/deliver-r14/s36-barn-knockout/s36-barn-knockout.webp",
+   "take": "s36-barn-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s37-river-village-close-thumb.webp",
+   "bytes": 34596,
+   "sha256": "ba98d246d7e122effff18a957e208262a09e2f90b53b4434fcfe63f55425203b",
+   "source": "shots/media-r5/site50/deliver-r14/s37-river-village/s37-river-village-close-4k.png",
+   "take": "s37-river-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s37-river-village-close.webp",
+   "bytes": 412294,
+   "sha256": "959006a5914a885a10261ea4216dee8550e28bcfe709f2be5e00cae3bf29ac73",
+   "source": "shots/media-r5/site50/deliver-r14/s37-river-village/s37-river-village-close.webp",
+   "take": "s37-river-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s37-river-village-thumb.webp",
+   "bytes": 39226,
+   "sha256": "8fb93130d2f50babc43b2a30f5dbbd14d486ef4d5f1bef57a2740f6e605db9d1",
+   "source": "shots/media-r5/site50/deliver-r14/s37-river-village/s37-river-village-4k.png",
+   "take": "s37-river-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s37-river-village.webp",
+   "bytes": 434336,
+   "sha256": "71e96c394db4c9194e12f466b842a783f3135969a0ddb0425c61abbbe9afc657",
+   "source": "shots/media-r5/site50/deliver-r14/s37-river-village/s37-river-village.webp",
+   "take": "s37-river-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s38-church-knockout-close-thumb.webp",
+   "bytes": 23134,
+   "sha256": "bfe78f9ff7659737e548829401c158bfa914d001d1e5dcfcdff8779c17ca9cd7",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout-close-4k.png",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s38-church-knockout-close.webp",
+   "bytes": 257036,
+   "sha256": "d53fa5c8fa43ad84e7e294b0c12849ac63a0ef8715c67fb56d33f2caa35f982e",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout-close.webp",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s38-church-knockout-thumb.webp",
+   "bytes": 22036,
+   "sha256": "6fc88e5fafd4912ce22a9ae0e35abcf843b1c5fcdffa1aea07779a78f6afb028",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout-4k.png",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s38-church-knockout.webp",
+   "bytes": 231838,
+   "sha256": "42dd21c820722569e2704755424991a182c4410af7bad74f5136720c9304e56c",
+   "source": "shots/media-r5/site50/deliver-r14/s38-church-knockout/s38-church-knockout.webp",
+   "take": "s38-church-knockout",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s39-lakeside-village-close-thumb.webp",
+   "bytes": 23068,
+   "sha256": "a65724cc3b5798953d7966ba2bc65883936ac0c8de29a866c8a32bff360bb7f6",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village-close-4k.png",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s39-lakeside-village-close.webp",
+   "bytes": 262648,
+   "sha256": "616cfd1340ad6ec10d150de35876d11b054725a8c2cc9b5aae3072e05e4fa74a",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village-close.webp",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s39-lakeside-village-thumb.webp",
+   "bytes": 27014,
+   "sha256": "f48c8a4f119507dc4ae339d33a70b228af4000cf68d65cf312a2247f9e61bbc3",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village-4k.png",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s39-lakeside-village.webp",
+   "bytes": 296216,
+   "sha256": "796994c723d8fba14d0d777fead742a35c6b9061a6a99548db8c51a59152a27a",
+   "source": "shots/media-r5/site50/deliver-r14/s39-lakeside-village/s39-lakeside-village.webp",
+   "take": "s39-lakeside-village",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s40-rooftop-smoke-close-thumb.webp",
+   "bytes": 25298,
+   "sha256": "70ef5bb1138b43bd6b8fc1ef4fd0a6105786fcf3b80ff67d46582ec88b4aac08",
+   "source": "shots/media-r5/site50/deliver-r14/s40-rooftop-smoke/s40-rooftop-smoke-close-4k.png",
+   "take": "s40-rooftop-smoke",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s40-rooftop-smoke-close.webp",
+   "bytes": 292092,
+   "sha256": "364226894cca0e74f2657d7b3c8c66913000ce23af75131eab24b5da8aca403d",
+   "source": "shots/media-r5/site50/deliver-r14/s40-rooftop-smoke/s40-rooftop-smoke-close.webp",
+   "take": "s40-rooftop-smoke",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s40-rooftop-smoke-thumb.webp",
+   "bytes": 28678,
+   "sha256": "395926414ec52af88d2a68f1660a0859ef0a70acc6e4cfc4acbb231d73791b3c",
+   "source": "shots/media-r5/site50/deliver-r14/s40-rooftop-smoke/s40-rooftop-smoke-4k.png",
+   "take": "s40-rooftop-smoke",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s40-rooftop-smoke.webp",
+   "bytes": 395548,
+   "sha256": "e5b87a92d2942c7a0cf1ca4caf1e0dc1f5a243a8aab1ffcec71db2d1e852d6ba",
+   "source": "shots/media-r5/site50/deliver-r14/s40-rooftop-smoke/s40-rooftop-smoke.webp",
+   "take": "s40-rooftop-smoke",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s41-church-tower-close-thumb.webp",
+   "bytes": 46502,
+   "sha256": "c8ee4d13cb6be0ed04182cd7e512a8021fcefe3838763ee7081dc97979583e95",
+   "source": "shots/media-r5/site50/deliver-r14/s41-church-tower/s41-church-tower-close-4k.png",
+   "take": "s41-church-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s41-church-tower-close.webp",
+   "bytes": 491128,
+   "sha256": "10f388cd89f2863984b2854ef4434482404bb4c777a349c8bda43e784ee6ffce",
+   "source": "shots/media-r5/site50/deliver-r14/s41-church-tower/s41-church-tower-close.webp",
+   "take": "s41-church-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s41-church-tower-thumb.webp",
+   "bytes": 42592,
+   "sha256": "74653c5fcfb0b3c3c11850ac172d4e0d053bedea8d6f1a8d8c521e4bc22504c4",
+   "source": "shots/media-r5/site50/deliver-r14/s41-church-tower/s41-church-tower-4k.png",
+   "take": "s41-church-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s41-church-tower.webp",
+   "bytes": 528082,
+   "sha256": "5e47373bfa1fb7b681f1dd61c377253352e1f13b147458b08a191f05202a3393",
+   "source": "shots/media-r5/site50/deliver-r14/s41-church-tower/s41-church-tower.webp",
+   "take": "s41-church-tower",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s42-assault-above-close-thumb.webp",
+   "bytes": 41352,
+   "sha256": "d4dc188e36987104910d957837abdf78b718d8d7f42627a202b95ffdb284ae5e",
+   "source": "shots/media-r5/site50/deliver-r14/s42-assault-above/s42-assault-above-close-4k.png",
+   "take": "s42-assault-above",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s42-assault-above-close.webp",
+   "bytes": 443668,
+   "sha256": "61a055608c53723e5ec607f78e0039d81f28e99f5b71ba952328e4fb2e773a9f",
+   "source": "shots/media-r5/site50/deliver-r14/s42-assault-above/s42-assault-above-close.webp",
+   "take": "s42-assault-above",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s42-assault-above-thumb.webp",
+   "bytes": 28210,
+   "sha256": "a330fe9542fec00d8ce08710e109d584dbe35e653c851318d57766f57489dbea",
+   "source": "shots/media-r5/site50/deliver-r14/s42-assault-above/s42-assault-above-4k.png",
+   "take": "s42-assault-above",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s42-assault-above.webp",
+   "bytes": 306310,
+   "sha256": "474907fe8cf50e992a2a8cbd954f83a3b6069b4205847220c0ce5fe6ac8e5cf1",
+   "source": "shots/media-r5/site50/deliver-r14/s42-assault-above/s42-assault-above.webp",
+   "take": "s42-assault-above",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s43-lake-crane-close-thumb.webp",
+   "bytes": 29058,
+   "sha256": "30e97dcd3dcdb3761d26138ba6226f5cc63d09f01f84fc066f100dd2c58d083f",
+   "source": "shots/media-r5/site50/deliver-r14/s43-lake-crane/s43-lake-crane-close-4k.png",
+   "take": "s43-lake-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s43-lake-crane-close.webp",
+   "bytes": 299040,
+   "sha256": "1d04cc1955c99285258171505a58124c65c7d80de1f5274e0ce4074f323d639c",
+   "source": "shots/media-r5/site50/deliver-r14/s43-lake-crane/s43-lake-crane-close.webp",
+   "take": "s43-lake-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s43-lake-crane-thumb.webp",
+   "bytes": 31646,
+   "sha256": "2248bd68499b937af88d34077cca1a1fc3b1c514a919125660d0b8f3c0f976b5",
+   "source": "shots/media-r5/site50/deliver-r14/s43-lake-crane/s43-lake-crane-4k.png",
+   "take": "s43-lake-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s43-lake-crane.webp",
+   "bytes": 335574,
+   "sha256": "9bf3fad3ff88bad88abfe0e64c27a7c63e1ac5fbaad6006849973b3d597ced3d",
+   "source": "shots/media-r5/site50/deliver-r14/s43-lake-crane/s43-lake-crane.webp",
+   "take": "s43-lake-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s44-oasis-sunset-close-thumb.webp",
+   "bytes": 32810,
+   "sha256": "b446136ae99f82a49645a0327b8a295178eba83833bfdeb107d6ba34277de858",
+   "source": "shots/media-r5/site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset-close-4k.png",
+   "take": "s44-oasis-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s44-oasis-sunset-close.webp",
+   "bytes": 342252,
+   "sha256": "d8743e495e3ea35c528744c04d245e8e08cadb1b72ef46319fe0bb91ae156ee0",
+   "source": "shots/media-r5/site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset-close.webp",
+   "take": "s44-oasis-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s44-oasis-sunset-thumb.webp",
+   "bytes": 32988,
+   "sha256": "a95f1e93de4f4c5e9437c512f820622d15c50a8c1461755ea76f4d958a85006f",
+   "source": "shots/media-r5/site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset-4k.png",
+   "take": "s44-oasis-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s44-oasis-sunset.webp",
+   "bytes": 372924,
+   "sha256": "01e04bee7886dbc9fe6184734d904f8a34153701a1a56551c453b8bcfe6ded60",
+   "source": "shots/media-r5/site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset.webp",
+   "take": "s44-oasis-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s45-harbor-wide-close-thumb.webp",
+   "bytes": 21776,
+   "sha256": "6a3323554b23d1d5e7d1420bdda9a0633c8c82af8579288d321c276e3d7cac22",
+   "source": "shots/media-r5/site50/deliver-r14/s45-harbor-wide/s45-harbor-wide-close-4k.png",
+   "take": "s45-harbor-wide",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s45-harbor-wide-close.webp",
+   "bytes": 198144,
+   "sha256": "cc2ead16da22ab74c325ef29f3ffdcbcb42ec34566f60e8ad4dcbc384c994b39",
+   "source": "shots/media-r5/site50/deliver-r14/s45-harbor-wide/s45-harbor-wide-close.webp",
+   "take": "s45-harbor-wide",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s45-harbor-wide-thumb.webp",
+   "bytes": 19958,
+   "sha256": "6b9b0e6ea43fb6dd27a0257cdf5a74fd39cc288994042b2c3cc93156eb12dffb",
+   "source": "shots/media-r5/site50/deliver-r14/s45-harbor-wide/s45-harbor-wide-4k.png",
+   "take": "s45-harbor-wide",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s45-harbor-wide.webp",
+   "bytes": 215748,
+   "sha256": "0385fdf5dbbf8aafcdf5f52714107be170e1426a8bcdf2efb4b7561d79f0819e",
+   "source": "shots/media-r5/site50/deliver-r14/s45-harbor-wide/s45-harbor-wide.webp",
+   "take": "s45-harbor-wide",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s46-river-drone-close-thumb.webp",
+   "bytes": 35542,
+   "sha256": "4e490e42fb941c7a9a5c8f1d42af902b91b388218c72e66c0d8dccd56e250ffb",
+   "source": "shots/media-r5/site50/deliver-r14/s46-river-drone/s46-river-drone-close-4k.png",
+   "take": "s46-river-drone",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s46-river-drone-close.webp",
+   "bytes": 377038,
+   "sha256": "cc8eb30883447dab511c6ac5e150283a43b3ed1acc9fbbb4ae35d8ec5f551ced",
+   "source": "shots/media-r5/site50/deliver-r14/s46-river-drone/s46-river-drone-close.webp",
+   "take": "s46-river-drone",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s46-river-drone-thumb.webp",
+   "bytes": 45420,
+   "sha256": "eaa926077714c882cb390561909148d16ef8950057024a8ea76820fb73452439",
+   "source": "shots/media-r5/site50/deliver-r14/s46-river-drone/s46-river-drone-4k.png",
+   "take": "s46-river-drone",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s46-river-drone.webp",
+   "bytes": 456598,
+   "sha256": "ebf2e779e89d21d55258e67950c255f768e65edb0d984822d06945d578d68528",
+   "source": "shots/media-r5/site50/deliver-r14/s46-river-drone/s46-river-drone.webp",
+   "take": "s46-river-drone",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s47-ironworks-crane-close-thumb.webp",
+   "bytes": 25362,
+   "sha256": "2e0b9cd083af6ecf2b4dcbc1d27844cec153062d8005b114941527668e8bbcdb",
+   "source": "shots/media-r5/site50/deliver-r14/s47-ironworks-crane/s47-ironworks-crane-close-4k.png",
+   "take": "s47-ironworks-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s47-ironworks-crane-close.webp",
+   "bytes": 305130,
+   "sha256": "22cc775e9b2e71105d5773d40d0b0c94d90ff4bf8c3135486c2208c9c0c0a2bb",
+   "source": "shots/media-r5/site50/deliver-r14/s47-ironworks-crane/s47-ironworks-crane-close.webp",
+   "take": "s47-ironworks-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s47-ironworks-crane-thumb.webp",
+   "bytes": 24174,
+   "sha256": "800f4c4fc96846bb88b6876dc0d6fe04d053aaaa1576be383752c2c16fbc6305",
+   "source": "shots/media-r5/site50/deliver-r14/s47-ironworks-crane/s47-ironworks-crane-4k.png",
+   "take": "s47-ironworks-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s47-ironworks-crane.webp",
+   "bytes": 266930,
+   "sha256": "a2e9f9c721d2aafbb9be1a3b0f911d8805839a57f7505794d4dbc3d6e41b03fa",
+   "source": "shots/media-r5/site50/deliver-r14/s47-ironworks-crane/s47-ironworks-crane.webp",
+   "take": "s47-ironworks-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s48-delta-crane-close-thumb.webp",
+   "bytes": 26570,
+   "sha256": "f72c439d9afd8c40213052ee58d87d9466dd2fd7ae66fcdfa0c4d629999a50dc",
+   "source": "shots/media-r5/site50/deliver-r14/s48-delta-crane/s48-delta-crane-close-4k.png",
+   "take": "s48-delta-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s48-delta-crane-close.webp",
+   "bytes": 253736,
+   "sha256": "52cd17b0baea565bcf4e5dfe3ff5a2fbfdfbf5795ce51d60582cf7414936c6c2",
+   "source": "shots/media-r5/site50/deliver-r14/s48-delta-crane/s48-delta-crane-close.webp",
+   "take": "s48-delta-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s48-delta-crane-thumb.webp",
+   "bytes": 30300,
+   "sha256": "f76564a2d9c9a92798a269dd2e122a432dae12ce91f394c41f4d5f79417166ee",
+   "source": "shots/media-r5/site50/deliver-r14/s48-delta-crane/s48-delta-crane-4k.png",
+   "take": "s48-delta-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s48-delta-crane.webp",
+   "bytes": 317548,
+   "sha256": "824ecbe804412c1aeb405d98147bde3b0416f24a3c223dc4bc8867ecee3a50b8",
+   "source": "shots/media-r5/site50/deliver-r14/s48-delta-crane/s48-delta-crane.webp",
+   "take": "s48-delta-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s49-orchard-sunset-close-thumb.webp",
+   "bytes": 27328,
+   "sha256": "f2850340c953dc50a9bd6fd720ff5b0ed3ec9b35bd8f902279ff5d3920478a9d",
+   "source": "shots/media-r5/site50/deliver-r14/s49-orchard-sunset/s49-orchard-sunset-close-4k.png",
+   "take": "s49-orchard-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s49-orchard-sunset-close.webp",
+   "bytes": 264772,
+   "sha256": "aab3b04838209e18bae4b8d2d237f2521e83bcfed0aa95eb6264634d0193d086",
+   "source": "shots/media-r5/site50/deliver-r14/s49-orchard-sunset/s49-orchard-sunset-close.webp",
+   "take": "s49-orchard-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s49-orchard-sunset-thumb.webp",
+   "bytes": 27772,
+   "sha256": "3ce19e807c69023fa5f8780a564f5ea2c7124601bf53e981fbb86beeac10dc63",
+   "source": "shots/media-r5/site50/deliver-r14/s49-orchard-sunset/s49-orchard-sunset-4k.png",
+   "take": "s49-orchard-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s49-orchard-sunset.webp",
+   "bytes": 252668,
+   "sha256": "fee1955091d70e1e2876a852e0d0b4609a917573665cfe6d47acb2a70228d754",
+   "source": "shots/media-r5/site50/deliver-r14/s49-orchard-sunset/s49-orchard-sunset.webp",
+   "take": "s49-orchard-sunset",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s50-reservoir-crane-close-thumb.webp",
+   "bytes": 28750,
+   "sha256": "f32cce7c5059090fdfc313b659baf730cd01ed8a6c4f595332d8654d259d7c69",
+   "source": "shots/media-r5/site50/deliver-r14/s50-reservoir-crane/s50-reservoir-crane-close-4k.png",
+   "take": "s50-reservoir-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s50-reservoir-crane-close.webp",
+   "bytes": 402294,
+   "sha256": "49656bb28211160f667c4ee43fbaeb42fd5bfd7ac6fd1a8bc0deb28b28471349",
+   "source": "shots/media-r5/site50/deliver-r14/s50-reservoir-crane/s50-reservoir-crane-close.webp",
+   "take": "s50-reservoir-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s50-reservoir-crane-thumb.webp",
+   "bytes": 23542,
+   "sha256": "ff4092b2bcaa7caf2ea433c569446b4cbea2fbdc80f54c2271e475bf080dff85",
+   "source": "shots/media-r5/site50/deliver-r14/s50-reservoir-crane/s50-reservoir-crane-4k.png",
+   "take": "s50-reservoir-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s50-reservoir-crane.webp",
+   "bytes": 296412,
+   "sha256": "f296e91ebacfba4844a12635deb7bb4f8d41a0e1a366a9938f308ccf07cc0d81",
+   "source": "shots/media-r5/site50/deliver-r14/s50-reservoir-crane/s50-reservoir-crane.webp",
+   "take": "s50-reservoir-crane",
+   "round": "shots/media-r5/site50/deliver-r14"
+  }
+ ]
+}

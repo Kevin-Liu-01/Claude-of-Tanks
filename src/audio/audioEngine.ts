@@ -45,6 +45,7 @@ import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTie
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
+import { onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
@@ -224,6 +225,8 @@ interface ShellHitEvent {
 }
 
 interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3;
+  /** the building the round struck (2026-10-10), when it struck one */
+  structureId?: number;
   /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
   shellType?: string; munition?: MunitionClass; chargeKg?: number }
 interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
@@ -1019,13 +1022,19 @@ export function createAudio({
     const munition = event.munition ?? munitionFromType(event.shellType, caliber);
     const blastCal = munitionExplodes(munition)
       ? blastSoundCaliberMm(Number.isFinite(event.chargeKg) ? event.chargeKg as number : 1.8 * (caliber / 100) ** 3) : 0;
-    if (blastCal > 0 && event.hitKind !== 'prop') explosion(x, y, z, blastCal, undefined, focus);
+    // (2026-10-10, the owner: "proper audio like all things that can be destroyed") a burst on a wall or a prop detonates
+    // as one on the ground does — it played the prop's impact thud alone
+    if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
     if (small) {
       play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
     } else if (water) {
       play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     } else if (event.hitKind === 'prop') {
       play(propImpactAsset(String(event.surfaceKind || '')), { x, y, z, focus });
+      // a round into a building breaks its wall (structureStages punches the hole): the masonry crumbling out of it
+      if (typeof event.structureId === 'number' || event.surfaceKind === 'structure') {
+        play('rubble_crunch', { x, y, z, delayS: 0.06 + random() * 0.05, gainDb: blastCal > 0 ? -5 : -9 });
+      }
     } else {
       play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08),
         ...(blastCal > 0 ? { gainDb: -4 } : {}) });
@@ -1061,7 +1070,7 @@ export function createAudio({
       }
       if (!cinematic && blastM > 600) play('expl_far', { x, y, z, focus, gainDb: -3 });
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, focus, ...slow });
-      if (cause === 'ammorack') play('turret_land', { x: x + (random() - 0.5) * 8, y, z: z + (random() - 0.5) * 8, delayS: (1.5 + random() * 1.1) * stretch, focus, ...slow });
+      // (physics lane, 2026-10-10) the turret's landing plays where and when its body hits (bindBus: onTurretLanding)
     }
     if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
     if (!cinematic && ctx) {
@@ -1941,6 +1950,8 @@ export function createAudio({
     play(INTERFACE_ASSET[sound]);
   }
 
+  let detachTurretLanding: (() => void) | null = null;
+
   function uiClick(): void {
     if (!interfaceOnce()) return;
     play('ui_click');
@@ -1950,6 +1961,12 @@ export function createAudio({
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       bus.on(event, (payload) => { if (ready()) listener(payload as T); });
     };
+    // physics lane (2026-10-10): a popped turret lands where its rigid body hits, heard there (a hard landing, louder)
+    detachTurretLanding?.();
+    detachTurretLanding = onTurretLanding((x, y, z, speed) => {
+      if (!ready() || speed < 3) return;
+      play('turret_land', { x, y, z, gainDb: Math.max(-9, Math.min(0, (speed - 9) * 0.9)) });
+    });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
       if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
     });
@@ -2388,6 +2405,8 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
+      libraryIdle: () => library?.idle() ?? Promise.resolve(),
       limiterReduction: () => mixer?.limiterReduction() ?? 0,
       ambientState: () => ambience?.state() ?? { active: false },
       listenerState: () => ({ x: frame.x, y: frame.y, z: frame.z, fx: frame.fx, fz: frame.fz, kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped }),

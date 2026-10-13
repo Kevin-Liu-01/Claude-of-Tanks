@@ -1,0 +1,170 @@
+{
+ "heavy:arcology": {
+  "floating": 0,
+  "dangling": 2
+ },
+ "heavy:broadcasttower": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "heavy:megatower": {
+  "floating": 1,
+  "dangling": 1
+ },
+ "heavy:parkingdeck": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:chouf:farmhouse": {
+  "floating": 14,
+  "dangling": 0
+ },
+ "kit:chouf:marketRow": {
+  "floating": 8,
+  "dangling": 0
+ },
+ "kit:chouf:rangerlodge": {
+  "floating": 14,
+  "dangling": 0
+ },
+ "kit:chouf:ruin": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:chouf:tavern": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:hostomel:ruin": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "kit:hostomel:tower": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:kyushu:factory": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:kyushu:stack": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "kit:kyushu:watertower": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:navajo:caravanserai": {
+  "floating": 1,
+  "dangling": 2
+ },
+ "kit:navajo:compoundSouk": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:navajo:ramada": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "kit:navajo:watertower": {
+  "floating": 12,
+  "dangling": 0
+ },
+ "kit:sarajevo:broadcasttower": {
+  "floating": 12,
+  "dangling": 0
+ },
+ "kit:sarajevo:factory": {
+  "floating": 6,
+  "dangling": 0
+ },
+ "kit:sarajevo:megatower": {
+  "floating": 88,
+  "dangling": 0
+ },
+ "kit:sarajevo:parkingdeck": {
+  "floating": 24,
+  "dangling": 0
+ },
+ "kit:sarajevo:terracetower": {
+  "floating": 92,
+  "dangling": 0
+ },
+ "kit:savoyard:chapel": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:savoyard:tavern": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "kit:shanghai:firestation": {
+  "floating": 8,
+  "dangling": 0
+ },
+ "kit:shanghai:parkingdeck": {
+  "floating": 285,
+  "dangling": 0
+ },
+ "kit:shanghai:ruin": {
+  "floating": 2,
+  "dangling": 1
+ },
+ "kit:shanghai:warehouse": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "landmark:aircraftWreck": {
+  "floating": 0,
+  "dangling": 1
+ },
+ "light:deserttent/intact": {
+  "floating": 0,
+  "dangling": 4
+ },
+ "light:fieldhospital/intact": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "light:greenhouse/broken": {
+  "floating": 6,
+  "dangling": 0
+ },
+ "light:guardpost/intact": {
+  "floating": 4,
+  "dangling": 0
+ },
+ "light:huntingblind/intact": {
+  "floating": 6,
+  "dangling": 0
+ },
+ "light:quonsethut/intact": {
+  "floating": 2,
+  "dangling": 0
+ },
+ "light:solararray/intact": {
+  "floating": 3,
+  "dangling": 0
+ },
+ "light:stilthouse/intact": {
+  "floating": 6,
+  "dangling": 2
+ },
+ "light:transformershed/intact": {
+  "floating": 14,
+  "dangling": 0
+ },
+ "regional-light:kohima:longhouse/intact": {
+  "floating": 2,
+  "dangling": 2
+ },
+ "regional-light:mekong:fishershack/intact": {
+  "floating": 1,
+  "dangling": 0
+ },
+ "regional-light:mekong:stilthouse/intact": {
+  "floating": 4,
+  "dangling": 0
+ }
+}

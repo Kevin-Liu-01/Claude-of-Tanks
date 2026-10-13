@@ -15,6 +15,8 @@ import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { registerWorldNightLighting } from './worldNightLighting.ts';
 import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { createAuthorityObstacles } from '../mp/presentation/authorityObstacles.ts';
+import { createPropCrushPresentation } from './propCrushPresentation.ts';
+import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -105,6 +107,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     mooredHulls: [],
     // destruction (2026-10-07, §16): the runtime's tail reads every structure's placement back; no structures here
     structurePlacements: new Map(), structureDamage: new Map(), structureSpans: new Map(), structureMaterials: [],
+    // (destruction core, 2026-10-10) the hull's crush presses the map vehicles, huts, stalls and tents (propCrushPresentation)
+    createPropCrushPresentation, DESTRUCTIBLE_BUILDING_TYPES,
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));

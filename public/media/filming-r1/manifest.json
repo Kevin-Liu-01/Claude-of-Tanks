@@ -76,9 +76,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3420193,
-          "source": "site50/deliver-r13/s05-barn-advance/s05-barn-advance.mp4",
-          "sourceSha256": "db7d9e6626394fac"
+          "bytes": 3449474,
+          "source": "site50/deliver-r14/s05-barn-advance/s05-barn-advance.mp4",
+          "sourceSha256": "ba7deecbba3e69fa"
         }
       },
       "scene": {
@@ -170,9 +170,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3596238,
-          "source": "site50/deliver-r13/s22-walking-barrage/s22-walking-barrage.mp4",
-          "sourceSha256": "9bf14d2df5eb1f6f"
+          "bytes": 3626029,
+          "source": "site50/deliver-r14/s22-walking-barrage/s22-walking-barrage.mp4",
+          "sourceSha256": "b3546930ae5e20f5"
         }
       },
       "scene": {
@@ -264,9 +264,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3651857,
-          "source": "site50/deliver-r13/s21-fields-assault/s21-fields-assault.mp4",
-          "sourceSha256": "df860c0d5902297e"
+          "bytes": 3617126,
+          "source": "site50/deliver-r14/s21-fields-assault/s21-fields-assault.mp4",
+          "sourceSha256": "efb5986360202a29"
         }
       },
       "scene": {
@@ -350,30 +350,41 @@
           "bytes": 1697896,
           "source": "site50/review-r7/s47-ironworks-crane.mp4",
           "sourceSha256": "8e2e8e2afc39b754"
+        },
+        "final": {
+          "video": "/media/filming-r1/s47-ironworks-crane-final.mp4",
+          "poster": "/media/filming-r1/s47-ironworks-crane-final.webp",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "seconds": 6,
+          "bytes": 3687748,
+          "source": "site50/deliver-r14/s47-ironworks-crane/s47-ironworks-crane.mp4",
+          "sourceSha256": "80d7d7fe13aa9535"
         }
       },
       "scene": {
         "file": "/media/filming-r1/s47-ironworks-crane.scene.json",
         "source": "tools/media-r5/site50-shots/s47-ironworks-crane.json",
-        "version": "v14",
-        "sha256": "ccf1fd56944a4553a294b3d7ee82f69bdf5c52bc917e1ab36013ad65fe3f9449",
+        "version": "v15",
+        "sha256": "62cabe9528b3948fdc25c7ad9c67d2a46f776a67ffb2e25ae695aea4290dc5d3",
         "bytes": 120096
       },
       "frames": {
         "image": "/media/filming-r1/s47-ironworks-crane-frames.webp",
-        "from": "review3",
+        "from": "final",
         "times": [
           0,
           2.2,
           4.37,
-          6.53
+          5.97
         ],
         "width": 1920,
         "height": 270
       },
       "thumb": {
         "image": "/media/filming-r1/s47-ironworks-crane-thumb.webp",
-        "from": "review3"
+        "from": "final"
       }
     },
     {
@@ -441,9 +452,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3716717,
-          "source": "site50/deliver-r13/s04-column-under-fire/s04-column-under-fire.mp4",
-          "sourceSha256": "3dd537a88cd77cef"
+          "bytes": 3710534,
+          "source": "site50/deliver-r14/s04-column-under-fire/s04-column-under-fire.mp4",
+          "sourceSha256": "26d42e4ee2a02543"
         }
       },
       "scene": {
@@ -535,9 +546,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3554976,
-          "source": "site50/deliver-r13/s13-farm-race/s13-farm-race.mp4",
-          "sourceSha256": "0b906ac57da3eff8"
+          "bytes": 3530311,
+          "source": "site50/deliver-r14/s13-farm-race/s13-farm-race.mp4",
+          "sourceSha256": "07b7cca2e952ff91"
         }
       },
       "scene": {
@@ -629,17 +640,17 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3717204,
-          "source": "site50/deliver-r13/s44-oasis-sunset/s44-oasis-sunset.mp4",
-          "sourceSha256": "ab71679e0a7bef32"
+          "bytes": 3707280,
+          "source": "site50/deliver-r14/s44-oasis-sunset/s44-oasis-sunset.mp4",
+          "sourceSha256": "1171546c8fa4c245"
         }
       },
       "scene": {
         "file": "/media/filming-r1/s44-oasis-sunset.scene.json",
         "source": "tools/media-r5/site50-shots/s44-oasis-sunset.json",
-        "version": "v14",
-        "sha256": "efec3b31e1fa7ee2b1dfc0f0efc09b1b5138a3760733ee21b165b347e2174ecf",
-        "bytes": 77262
+        "version": "v15",
+        "sha256": "99a0e920f97e7c43bde5f07667540040da4bbaa8fd148aca757b8c773fcd8562",
+        "bytes": 77261
       },
       "frames": {
         "image": "/media/filming-r1/s44-oasis-sunset-frames.webp",
@@ -723,9 +734,9 @@
           "height": 1080,
           "fps": 30,
           "seconds": 6,
-          "bytes": 3617952,
-          "source": "site50/deliver-r13/s11-container-rows/s11-container-rows.mp4",
-          "sourceSha256": "f4f124315c924365"
+          "bytes": 3620876,
+          "source": "site50/deliver-r14/s11-container-rows/s11-container-rows.mp4",
+          "sourceSha256": "5b085841266a2632"
         }
       },
       "scene": {
@@ -769,26 +780,26 @@
       "width": 2000,
       "height": 594,
       "source": "plan-view-s21.png",
-      "sourceSha256": "e4b9d5eaab6f4e8b",
-      "bytes": 54296
+      "sourceSha256": "d9ad3929a86c6d94",
+      "bytes": 52342
     },
     {
       "name": "cover",
       "image": "/media/filming-r1/cover.webp",
-      "width": 1920,
-      "height": 1080,
-      "source": "site50/deliver/s13-farm-race/s13-farm-race.jpg",
-      "sourceSha256": "377215e9b9fe4e5b",
-      "bytes": 84592
+      "width": 1440,
+      "height": 810,
+      "source": "site50/deliver-r14/s13-farm-race/s13-farm-race-4k.jpg",
+      "sourceSha256": "18cdc6fc9cf867f6",
+      "bytes": 196918
     },
     {
       "name": "card",
       "image": "/media/filming-r1/card.webp",
       "width": 1928,
       "height": 360,
-      "source": "s13-farm-race: previz at 2.2 s | review3 at 1.4 s | site50/deliver/s13-farm-race/s13-farm-race.jpg",
-      "bytes": 68116
+      "source": "s13-farm-race: previz at 2.2 s | review3 at 1.4 s | site50/deliver-r14/s13-farm-race/s13-farm-race-4k.jpg",
+      "bytes": 101116
     }
   ],
-  "videoBytes": 79439757
+  "videoBytes": 83113998
 }

@@ -29,11 +29,21 @@ function sourceScalars(tank, all) {
   // Until 2026-09-22 the gunDark bore wall and stock met this ray at the measured recessed source
   // bore floor 6.24935 (gunBoreFloorZ; gunBoreRadiusM .0804 in chieftain5_x.supplied-build-scalars.json);
   // owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
-  // save on triangles"): the tube is closed at the source mouth because the fleet lining hid that
-  // recess entirely. The measurement stays recorded here.
+  // save on triangles"): the tube was closed at the source mouth. The measurement stays recorded here.
+  // 2026-10-10 (re-pinned to the owner's physical bores, a28e4d8e6 deployed 206, which carve a 12-sided inward wall and a
+  // recessed backstop into every solid cannon tip): the tube's metal face still stands at the source mouth around the
+  // aperture, and the axis now meets the carved backstop one bore depth behind it, not a closed tube.
   const barrel = all.filter(m => m.name === 'gun');
-  near(cast(barrel, [-.008067 + .0015, 1.859441, 7.1], [0, 0, -1])?.point.z,
-    6.8120532, .000003, 'metal tube closed at the source mouth (recorded bore floor 6.24935)');
+  const frame = tank.root.getObjectByName('muzzleBoreShadowFallback');
+  const seat = frame?.userData.muzzleSeatReceipt;
+  assert.equal(seat?.revision, 'carved-physical-recess-r1', 'the source mouth carries a carved physical bore');
+  const rimR = (seat.physicalInnerRadiusM + seat.supportOuterRadiusM) / 2;
+  for (const angle of [.17, 1.88, 3.35, 4.94]) {
+    near(cast(barrel, [-.008067 + Math.cos(angle) * rimR, 1.859441 + Math.sin(angle) * rimR, 7.1], [0, 0, -1])?.point.z,
+      6.8120532, .000003, `metal tube face at the source mouth around the bore (${angle})`);
+  }
+  near(cast(all, [-.008067 + .0015, 1.859441, 7.1], [0, 0, -1])?.point.z,
+    6.8120532 - seat.physicalBoreDepthM, .0005, 'the axis meets the carved backstop one bore depth inside the mouth');
   // 2026-09-22 nation wheel standard (owner: UK hulls draw the Challenger 2E hollow paired wheel): the held-out Mk5
   // source dish surfaces left with that wheel; the first stock an outboard ray meets at the wheel radii is now a
   // road-wheel part of the nation construction, seated inside the authored tire width with approach air before it.

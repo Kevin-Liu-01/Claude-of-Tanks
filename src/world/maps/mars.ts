@@ -21,6 +21,9 @@ import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
+/** The fractured blocks' basalt (sceneryRocks.ts 'breccia'): dark rust, the dust paler at the foot. */
+const MARS_BASALT: readonly [number, number, number] = [0.03, 0.36, 0.3];
+
 export default {
   id: 'mars',
   name: 'Olympus Basin',
@@ -90,26 +93,34 @@ export default {
 
   splat: {
     // regolith: rust-orange with a compressed luminance range under the dim cold key light
-    grassTone: (h: number, s: number, l: number) => [0.048, 0.50, clamp01(0.20 + l * 0.66)],
-    dirtTone: (h: number, s: number, l: number) => [0.040, 0.42, clamp01(0.24 + l * 0.36)],
+    // (2026-10-11, the map-revival lane; wave 380: "candy-orange dune sand with almost no dark basalt") the regolith's
+    // chroma down a quarter (s .50 -> .38) and the second layer the dark basalt sand (was a second ochre)
+    grassTone: (h: number, s: number, l: number) => [0.050, 0.38, clamp01(0.20 + l * 0.62)],
+    dirtTone: (h: number, s: number, l: number) => [0.060, 0.16, clamp01(0.12 + l * 0.30)],
     sandstone: true,
     // round 47 (2026-09-23, owner: "ground patterns are too black"): strata midpoint 0.40 → 0.48 (desert 0.53) — this
     // IS the rendered rock here (sourcedPalette 'badlands' keeps R procedural), so the mesa walls lift a step
-    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.55), clamp01(0.48 + (l - 0.5) * 0.62)],
+    // (2026-10-11; wave 380: "round hills with painted grey stripe decals") the rock rust-brown, not greyed (s x .55 read
+    // as grey bands on the mesas), its strata half as strong
+    rockTone: (h: number, s: number, l: number) => [0.035, clamp01(s * 0.75 + 0.08), clamp01(0.44 + (l - 0.5) * 0.62)],
     mudTone: (h: number, s: number, l: number) => [0.05, 0.36, clamp01(l * 1.2 + 0.06)],
     mudRough: 1.1,
     // round 47: tintB 0.82/0.66/0.56 → 0.86/0.74/0.66 (same 23° hue, luma ×0.70 → ×0.77) under the dim cold key
     tintA: [1.06, 0.90, 0.76], tintB: [0.86, 0.74, 0.66], tintC: [1.08, 0.94, 0.82],
     roadTint: [0.86, 0.74, 0.64],
-    strata: 0.12,
+    // (2026-10-11, the map-revival lane; the coordinator on gauntlet wave 417's frames: the tracks "dark enough to read as
+    // asphalt" once the dirt layer became the basalt sand) the station's tracks are the regolith packed under the wheels,
+    // and their verges keep most of it (the bare shoulder 0.4: a little of the dark sand pushed aside, not a gravel kerb)
+    roadLayer: 'ground', shoulderDirt: 0.4,
+    strata: 0.06,
     microAmp: 0.42,
     rippleDir: [0.7, 0.7],
-    rippleAmp: 0.48,
+    rippleAmp: 0.26, // (2026-10-11: the dune ripples half as loud; was 0.48)
     midRelief: 0.6,
     midReliefFar: 820,
     sandMacro: 1.0,
-    // the sourced ground sets: Redrock's rust sand palette (sourcedTextures.ts TERRAIN_PLAN) until Mars owns one
-    sourcedPalette: 'badlands',
+    // the sourced ground sets: Mars's own (sourcedTextures.ts TERRAIN_PLAN; was Redrock's 'badlands')
+    sourcedPalette: 'mars',
   },
 
   vegetation: {
@@ -174,12 +185,17 @@ export default {
     wallRuns: [],
     well: false, hayCrates: false, fences: false, telegraph: false, carts: false, logs: false,
     haystacks: 0, rocks: 380, outcrops: 72, craters: 128,
+    // (2026-10-11, the map-revival lane; wave 380: "broken, half-buried rocks") the surface stones sunk deeper (.22 -> .34)
+    rockSink: 0.34,
     rubblePiles: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): Olympus Basin: the next generation's hulls
     tankWrecks: { era: 'next-generation', count: 5, debris: true, ids: ['abramsx', 't14', 'challenger_3', 'm1a3', 'kf51'] },
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,
+    // (2026-10-11, the map-revival lane; wave 380: "what look like timber logs lying on Mars") the sandbags filled with the
+    // basin's regolith and dusted with it — an ochre hessian, not the dark brown that read as stacked logs
+    sandbagTint: [1.32, 0.86, 0.62],
     hedgehogs: 12,
     wallStyle: 'adobe',
     inhabit: {
@@ -191,6 +207,21 @@ export default {
     },
   },
 
+  // The hitbox lane (2026-10-08; round 2): the stones' own colliders let the fights round the station through where the
+  // boulders' old prisms had stood, and bravo, deploying north, fell from 53.8 to 41.2 % of the swap-balanced games
+  // (batch 5's fairness at 80): its tanks died more 40-100 m north of the station (f17's death census; round 2's kill trace). Fields of the
+  // basin's own shattered basalt there, size-graded, half sunk in the dust banked against them, give bravo's line the
+  // cover the prisms had faked.
+  scenery: {
+    rocks: [
+      { form: 'blocks', geology: 'breccia', x: -14, z: 106, radius: 6, height: 2.6, yawDeg: 30, tone: MARS_BASALT, name: 'the basalt blocks north of the station' },
+      { form: 'blocks', geology: 'breccia', x: -62, z: 104, radius: 6, height: 2.4, yawDeg: 110, tone: MARS_BASALT, name: 'the basalt blocks north-west of the station' },
+      { form: 'blocks', geology: 'breccia', x: 41, z: 58, radius: 6, height: 2.5, yawDeg: 160, tone: MARS_BASALT, name: 'the basalt blocks north-east of the station' },
+      // (2026-10-10, round 2 on main) 7 m further from zone 2's authored seat (-40, 36): a zone keeps 30 m clear of solids
+      // (matchPlacement), and the field's nearest blocks stood inside that disc, so the seat slid to (-36.9, 28.6)
+      { form: 'blocks', geology: 'breccia', x: -3, z: 60, radius: 5.5, height: 2.4, yawDeg: 70, tone: MARS_BASALT, name: 'the basalt blocks by the north road' },
+    ],
+  },
   horizon: {
     baseHex: 0x6a3a2b, amp: 1.2, style: 'mesa', banding: 0.22,
     rockHex: 0x8a4a34, haze: 0.38, grain: 0.85,

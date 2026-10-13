@@ -23,6 +23,7 @@ import {
   type DeferredCombatWarmRuntime,
 } from '../game/deferredCombatWarmRuntime.ts';
 import type { BattleVisualStreamer } from '../game/battleVisualStreamer.ts';
+import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
 import type {
   MainEntity,
   MainFxRuntime,
@@ -214,18 +215,29 @@ export function createCombatWarmComposition({
     devTrace,
   });
 
+  // A Studio take stages its kills as soon as this resolves: its turrets pop as bodies (wreckTurretDriverLoader.ts), and
+  // a physics that cannot load leaves the scripted pop rather than failing the take.
   const warmStudioPipeline = (
     onProgress?: ((fraction: number, label: string) => void) | null,
-  ): Promise<void> => battleWarm.warmStudioEffects({
-    fx: getFx(),
-    post,
-    renderer,
-    camera,
-    initializeForwardPrograms: forwardProgramWarm.initializeSteps,
-    isCombatPipelineWarmed: combatWarm.isRareReady,
-    onProgress: onProgress ?? undefined,
-    onTrace: publishStudioTrace,
-  });
+  ): Promise<void> => Promise.all([
+    battleWarm.warmStudioEffects({
+      fx: getFx(),
+      post,
+      renderer,
+      camera,
+      initializeForwardPrograms: forwardProgramWarm.initializeSteps,
+      isCombatPipelineWarmed: combatWarm.isRareReady,
+      onProgress: onProgress ?? undefined,
+      onTrace: publishStudioTrace,
+    }),
+    preloadWreckTurretDriver().catch(() => undefined),
+  ]).then(() => undefined);
+  // After battle entry: the wreck turret's physics, if the entry's load (battleWarmAccess.ts) did not land it. Never
+  // awaited; a kill before it resolves keeps the scripted pop for that turret.
+  const scheduleDeferred = (generation: number): Promise<void> => {
+    void preloadWreckTurretDriver().catch(() => undefined);
+    return deferred.schedule(generation);
+  };
 
   return {
     thermalVehicles,
@@ -233,7 +245,7 @@ export function createCombatWarmComposition({
     combatWarm,
     warmRender,
     deploymentShadowWarm,
-    scheduleDeferred: deferred.schedule,
+    scheduleDeferred,
     cancelDeferred: deferred.cancel,
     warmStudioPipeline,
     setDestructionWarmed: (warmed) => { destructionWarmed = warmed; },

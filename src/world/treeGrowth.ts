@@ -443,14 +443,19 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // sparse-crowned longleaf"; the coordinator: a 17-19 m clear bole, the crown from about 70 %, a small ragged tufted
   // crown): the tallest tree of the fleet, about 18 m at the placed trees' mean scale, its crown a few ragged whorls of
   // upturned limbs high on the bole, each limb's needles in tufts at its end
+  // (the map-revival lane, Longleaf round 4, 2026-10-11; the gauntlet's wave 376: "bare poles carrying a few flat
+  // lime-green puffball clumps on stick branches", "one small tree cloned in a uniform band"): the crown a little fuller
+  // and more ragged — two to four limbs a whorl a metre apart, each forking into tufted branchlets (a side shoot every
+  // metre), its sprays smaller and more of them along the limbs' outer half, four at a tip (were five large ones,
+  // the puffball), the crown from 68 % — and the stand's heights spread twice as wide (0.26, was 0.12)
   longleafPine: P({
-    family: 'conifer', height: 13.6, heightSpread: 0.12, trunkR: 0.24, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.7, crownR: 2.0,
-    envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 1.05, angleLow: 1.32, angleHigh: 0.8,
-    droop: 0.28, upturn: 0.7, sidePerM: 0.7, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
-    leafOrder: 1, leafPerM: 1.3, leafFrom: 0.65, spray: [1.05, 1.45], aspect: 0.95, habit: 'tuft', tipSprays: 5,
-    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.4, gnarl: 0.2, bark: 1, barkTint: [0.50, 0.33, 0.25],
-    barkTopTint: [0.60, 0.42, 0.30], foliageValue: 1.18,
+    family: 'conifer', height: 13.6, heightSpread: 0.26, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.68, crownR: 2.4,
+    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 1.0, angleLow: 1.32, angleHigh: 0.8,
+    droop: 0.28, upturn: 0.7, sidePerM: 1.0, sideAngle: 0.75, sideRatio: 0.45, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.95, 1.35], aspect: 0.95, habit: 'tuft', tipSprays: 4,
+    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.55, gnarl: 0.3, bark: 1, barkTint: [0.50, 0.33, 0.25],
+    barkTopTint: [0.60, 0.42, 0.30], foliageValue: 1.0,
   }),
   // the cedar of Lebanon (Cedrus libani, the Chouf): a massive bole under a broad, flat-topped crown of great horizontal
   // shelves — level limbs a tier apart carrying dense flat plates of needle rosettes, open sky between the tiers; dark

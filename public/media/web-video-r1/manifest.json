@@ -9,12 +9,40 @@
     "audio": false
   },
   "files": [
-    { "path": "feature-reel-mobile.mp4", "bytes": 3984639, "source": "/media/promo-v13/claude-of-tanks-promo-clean.mp4" },
-    { "path": "desert-ground-rush-mobile.mp4", "bytes": 932397, "source": "/media/hero-rails-r2/01_desert-ground-rush.webm" },
-    { "path": "winter-ice-orbit-mobile.mp4", "bytes": 596807, "source": "/media/hero-rails-r2/02_winter-ice-orbit.webm" },
-    { "path": "steppe-charge-mobile.mp4", "bytes": 735288, "source": "/media/hero-rails-r2/03_steppe-charge-thread.webm" },
-    { "path": "urban-overhead-mobile.mp4", "bytes": 1015300, "source": "/media/hero-rails-r2/04_urban-overhead-dive.webm" },
-    { "path": "coastal-shell-mobile.mp4", "bytes": 856954, "source": "/media/hero-rails-r2/05_coastal-shell-skim.webm" },
-    { "path": "studio-knockout-mobile.mp4", "bytes": 416505, "source": "/media/landing-r1/studio-leclerc-knockout.mp4" }
+    {
+      "path": "s27-caravanserai-kill-mobile.mp4",
+      "bytes": 1124975,
+      "source": "/media/site50-r14/loops/s27-caravanserai-kill.webm"
+    },
+    {
+      "path": "s05-barn-advance-mobile.mp4",
+      "bytes": 976709,
+      "source": "/media/site50-r14/loops/s05-barn-advance.webm"
+    },
+    {
+      "path": "s07-lake-shellfire-mobile.mp4",
+      "bytes": 588317,
+      "source": "/media/site50-r14/loops/s07-lake-shellfire.webm"
+    },
+    {
+      "path": "s18-street-knockout-mobile.mp4",
+      "bytes": 956166,
+      "source": "/media/site50-r14/loops/s18-street-knockout.webm"
+    },
+    {
+      "path": "s26-minaret-fire-mobile.mp4",
+      "bytes": 893366,
+      "source": "/media/site50-r14/loops/s26-minaret-fire.webm"
+    },
+    {
+      "path": "reel-mobile.mp4",
+      "bytes": 3936113,
+      "source": "/media/site50-r14/films/reel.mp4"
+    },
+    {
+      "path": "studio-knockout-mobile.mp4",
+      "bytes": 416505,
+      "source": "/media/landing-r1/studio-leclerc-knockout.mp4"
+    }
   ]
 }

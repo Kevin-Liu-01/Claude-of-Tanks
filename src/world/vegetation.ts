@@ -188,6 +188,13 @@ interface VegetationConfig {
   bushSpecies: Species;
   grassTexTone: ToneFunction | null;
   tuftTone: ToneFunction | null;
+  /**
+   * The map-revival lane (Longleaf round 4, 2026-10-11; the gauntlet's wave 376: "the wiregrass is a mown lawn or
+   * oversized card blades"): the tufts' card. Absent, the meadow's cards (makeGrassCardTexture); 'wiregrass', the
+   * flatwoods' bunchgrass (makeWiregrassCardTexture) — fine wiry blades in a fountain from a narrow crown, grey-green
+   * to straw. Only the cards change: every tuft keeps its seat, size and tint.
+   */
+  grassCard?: 'wiregrass' | null;
   parks: VegetationDisc[] | null;
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
@@ -255,7 +262,26 @@ interface VegetationConfig {
    * field end, the species drawn from `mix` (the map's own slots; treeBiomes grows them as the place's forms). Ordinary
    * field trees on their own stream, after every other placement: unset, a map is placed exactly as before.
    */
-  hedgeTrees?: { mix: SpeciesMix; spacingM: number; gateM?: number };
+  hedgeTrees?: {
+    mix: SpeciesMix; spacingM: number; gateM?: number;
+    /**
+     * Trees lane (2026-10-07, the gauntlet's wave 205 on Polders: willow rows along the ditches): the lines the trees
+     * follow — 'hedge' (the default) the land use's hedges; 'boundary' its fields' own boundaries (the ditches of a
+     * ditched region, landUse `boundary` 1), each boundary planted once, from the field on its far side, `offsetM` in from
+     * it (default [1.8, 3.4] m: on the bank, clear of the ditch), and only a boundary at least `minLineM` long (default 40:
+     * a long side, not a field end).
+     */
+    along?: 'hedge' | 'boundary';
+    offsetM?: readonly [number, number];
+    minLineM?: number;
+  };
+  /**
+   * Trees lane (2026-10-07, the gauntlet's wave 205 on Polders: "free-standing trees scattered at random through the
+   * ploughed field"): a map's woods keep off its arable land. A woodlot's centre, its trees and its saplings refuse a
+   * field's cropped ground (any crop but pasture, inside its grass margin); pasture, the margins and the ground off the
+   * field system stay open to them. Unset, the woods stand as before. Census: group.userData.woodsOffArable.
+   */
+  woodsOffArable?: boolean;
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
@@ -1126,6 +1152,67 @@ export function makeGrassCardTexture(
   // ImageData is a native TexImageSource: the same flip/filter/mip policy
   // uploads this existing pixel buffer without retaining a second canvas.
   const pixels = finishAlphaPixels(c, ctx, 74, 88, 42, false, tone);
+  const texture = new THREE.Texture(pixels);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * The map-revival lane (Longleaf round 4, 2026-10-11; wave 376: "a mown lawn or oversized card blades"): a wiregrass
+ * bunch (Aristida beyrichiana, the longleaf flatwoods' ground cover) — a fountain of fine, wiry, in-rolled leaves from a
+ * narrow crown at the card's foot, the inner ones steep, the outer arching out and over toward their tips, grey-green
+ * at the crown and curing to straw toward the tips, last year's dry leaves among them (variant 1 the drier bunch). The
+ * blades keep the meadow card's mip floor (1.8 px at the root on the 128 px card, tapering to a point), so the bunch's
+ * crown survives the mips as a dense foot under a spreading, ragged top. Straight alpha, flooded with the bunch's
+ * mean tone; deterministic from the stream.
+ */
+export function makeWiregrassCardTexture(
+  rng: RandomSource,
+  variant: number,
+  tone: ToneFunction | null = null,
+): THREE.Texture {
+  const s = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = context2d(c, { willReadFrequently: true });
+  ctx.clearRect(0, 0, s, s);
+  const dryChance = variant === 0 ? 0.22 : 0.45;
+  const nBlades = variant === 0 ? 46 : 40;
+  for (let b = 0; b < nBlades; b++) {
+    const dry = rng() < dryChance;
+    // the crown: the blades rise from the middle fifth of the card's foot
+    const u = rng() - 0.5;
+    const bx = s * 0.5 + u * 0.2 * s;
+    const bw = 1.8 + rng() * 0.9;
+    // inner blades steep and tall, the outer ones lower and arching out (a fountain, not a fan)
+    const out = Math.min(1, Math.abs(u) * 2 * 0.6 + rng() * 0.55);
+    const side = u === 0 ? (rng() < 0.5 ? -1 : 1) : Math.sign(u);
+    const tall = (0.55 + 0.45 * rng()) * (1 - 0.35 * out);
+    const reach = side * out * (0.30 + 0.20 * rng()) * s;
+    const tipX = Math.min(s - 2, Math.max(2, bx + reach));
+    const tipY = s - tall * s * (1 - 0.45 * out * out);
+    const cpX = bx + reach * (0.18 + 0.2 * rng());
+    const cpY = s - tall * s * (1.05 + 0.15 * out);
+    const grad = ctx.createLinearGradient(0, s, 0, Math.min(tipY, cpY));
+    if (dry) {
+      grad.addColorStop(0, css(0.11, 0.22, 0.20 + rng() * 0.04));
+      grad.addColorStop(1, css(0.105, 0.26, 0.36 + rng() * 0.06));
+    } else {
+      grad.addColorStop(0, css(0.21, 0.20, 0.15 + rng() * 0.03));
+      grad.addColorStop(0.55, css(0.20, 0.24, 0.25 + rng() * 0.04));
+      grad.addColorStop(1, css(0.14 + rng() * 0.03, 0.26, 0.34 + rng() * 0.07));
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(bx - bw / 2, s + 2);
+    ctx.quadraticCurveTo(cpX - bw * 0.35, cpY, tipX, tipY);
+    ctx.quadraticCurveTo(cpX + bw * 0.35, cpY, bx + bw / 2, s + 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const pixels = finishAlphaPixels(c, ctx, 86, 88, 56, false, tone);
   const texture = new THREE.Texture(pixels);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
@@ -4042,6 +4129,13 @@ function* vegetationBuildSteps(
   yield { stage: 'grassPrep', fine: true };
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
   yield { stage: 'grassPrep', fine: true };
+  // (Longleaf round 4) a wiregrass map's tufts wear the bunchgrass cards, painted from their own streams
+  if (veg.grassCard === 'wiregrass') {
+    for (let variant = 0; variant < 2; variant++) {
+      grassTex[variant].dispose();
+      grassTex[variant] = makeWiregrassCardTexture(mulberry32(seed + 43 + variant), variant, veg.grassTexTone);
+    }
+  }
   function makeGrassMaterial(
     tex: THREE.Texture,
     farDist: number,
@@ -4124,8 +4218,13 @@ function* vegetationBuildSteps(
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
+  // (the map-revival lane, 2026-10-07: Orchard's lanes keep their treads clear in a chain of discs) the discs' bounds, so a
+  // candidate away from them pays four comparisons
+  const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
+    Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
+    if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
     for (const av of veg.avoid) {
       if (Math.hypot(x - av.x, z - av.z) < av.r) return true;
     }
@@ -6049,6 +6148,16 @@ function* vegetationBuildSteps(
     }
     trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
   }
+  // (the trees lane: VegetationConfig `woodsOffArable` — a field's cropped ground, read through the land use's CPU twin)
+  const arableLandAt = veg.woodsOffArable ? heightField._landUseAt ?? null : null;
+  const _arableLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0,
+    hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
+  const arableCensus = { centres: 0, trees: 0, saplings: 0 };
+  function onArable(x: number, z: number): boolean {
+    if (arableLandAt === null) return false;
+    const at = arableLandAt(x, z, _arableLand);
+    return at.active > 0 && at.crop !== 0 && at.edgeM > at.marginM;
+  }
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
     const wrShared = mulberry32((seed ^ 0x30d1a7) >>> 0);
@@ -6081,6 +6190,7 @@ function* vegetationBuildSteps(
       }
       if (treeHalfAhead(x, z)) continue;
       if (!siteOk(x, z, 6)) continue;
+      if (onArable(x, z)) { arableCensus.centres++; continue; }
       // (the trees lane: a landscape map's woodlot stands on its wood-zone ground)
       if (landscape && woodZoneScore(x, z) < landscapeThreshold) continue;
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
@@ -6131,6 +6241,7 @@ function* vegetationBuildSteps(
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
         if (!uplandZoneOk(px, pz, sp)) continue;
+        if (onArable(px, pz)) { arableCensus.trees++; continue; }
         if (addTree(px, pz, sp, wr, woodSpread)) {
           placed++;
           trees[trees.length - 1].wood = true;
@@ -6670,6 +6781,7 @@ function* vegetationBuildSteps(
         const variantS = (sapRng() * 3) | 0, fvS = (sapRng() * 2) | 0;
         const jr = sapRng(), jg = sapRng(), jb = sapRng();
         if (!siteOk(sx, sz, 0)) continue;
+        if (onArable(sx, sz)) { arableCensus.saplings++; continue; }
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
@@ -6713,6 +6825,7 @@ function* vegetationBuildSteps(
     }
   }
   placeSaplings();
+  if (veg.woodsOffArable) group.userData.woodsOffArable = { refused: { ...arableCensus }, landUse: arableLandAt !== null };
   /**
    * The Redrock lane (veg.coverHalvesAbout): the halves' trees evened at the last. The border's blocks and a stand's
    * saplings grow in runs along one half, so where they leave a half short a lone tree is seated in it — each its own
@@ -6751,15 +6864,28 @@ function* vegetationBuildSteps(
     if (!profile) return;
     const hedgeRng = mulberry32((seed ^ 0x4ed9e) >>> 0);
     const ch = Math.cos(profile.heading), sh = Math.sin(profile.heading);
-    const lines = new Map<number, number[]>(); // key -> [along, x, z, |sU|]*
+    const lines = new Map<number, number[]>(); // key -> [along, x, z, the seat's miss]*
+    // (the trees lane, 2026-10-07: `along: 'boundary'` — a ditched region's willow rows: the field's own boundary across
+    // its nearer axis, planted from the field on its far side only, in a band `offsetM` in from it, off the ditch)
+    const boundaryMode = ht.along === 'boundary';
+    const [band0, band1] = ht.offsetM ?? [1.8, 3.4], bandMid = (band0 + band1) / 2;
     for (let z = -PLAYABLE_HALF_EXTENT_M + 15; z <= PLAYABLE_HALF_EXTENT_M - 15; z += HEDGE_SCAN_M) {
       for (let x = -PLAYABLE_HALF_EXTENT_M + 15; x <= PLAYABLE_HALF_EXTENT_M - 15; x += HEDGE_SCAN_M) {
         const at = hedgeLandAt(x, z, _hedgeLand);
-        if (!at.active || at.hedge < 0.98) continue;
-        const key = at.id * 2 + (at.sU >= 0 ? 0 : 1);
+        if (!at.active) continue;
+        let key: number, along: number, miss: number;
+        if (!boundaryMode) {
+          if (at.hedge < 0.98) continue;
+          key = at.id * 2 + (at.sU >= 0 ? 0 : 1); along = -sh * x + ch * z; miss = Math.abs(at.sU);
+        } else {
+          if (at.track > 0.3) continue;
+          const acrossU = Math.abs(at.sU) <= Math.abs(at.sV), off = acrossU ? at.sU : at.sV, d = Math.abs(off);
+          if (off < 0 || d < band0 || d > band1) continue;
+          key = at.id * 2 + (acrossU ? 0 : 1); along = acrossU ? -sh * x + ch * z : ch * x + sh * z; miss = Math.abs(d - bandMid);
+        }
         let line = lines.get(key);
         if (!line) { line = []; lines.set(key, line); }
-        line.push(-sh * x + ch * z, x, z, Math.abs(at.sU));
+        line.push(along, x, z, miss);
       }
     }
     // the trees already standing (the field law's 5 m), on a grid; the hedge trees join it as they stand
@@ -6775,14 +6901,14 @@ function* vegetationBuildSteps(
       }
       return true;
     };
-    const census = { lines: 0, km: 0, seats: 0, planted: 0, gates: 0, refused: { site: 0, spacing: 0 }, species: {} as Record<string, number> };
+    const census = { lines: 0, km: 0, seats: 0, planted: 0, gates: 0, refused: { site: 0, spacing: 0, authored: 0 }, species: {} as Record<string, number> };
     const gateHalf = (ht.gateM ?? 4) / 2;
     for (const key of [...lines.keys()].sort((a, b) => a - b)) {
       const raw = lines.get(key)!, n = raw.length / 4;
       if (n < 3) continue;
       const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => raw[a * 4] - raw[b * 4]);
       const a0 = raw[order[0] * 4], a1 = raw[order[n - 1] * 4];
-      if (a1 - a0 < ht.spacingM) continue;
+      if (a1 - a0 < (boundaryMode ? Math.max(ht.spacingM, ht.minLineM ?? 40) : ht.spacingM)) continue;
       census.lines++; census.km += (a1 - a0) / 1000;
       // the field gate: its centre a hash of the line, inside its middle three fifths
       const gate = a0 + (a1 - a0) * (0.2 + 0.6 * ((Math.imul(key, 2654435761) >>> 0) / 4294967296));
@@ -6807,7 +6933,8 @@ function* vegetationBuildSteps(
         census.species[species] = (census.species[species] ?? 0) + 1;
       }
     }
-    group.userData.hedgeTrees = { ...census, km: +census.km.toFixed(2), perKm: census.km > 0 ? +(census.planted / census.km).toFixed(1) : 0 };
+    group.userData.hedgeTrees = { ...census, along: boundaryMode ? 'boundary' : 'hedge', km: +census.km.toFixed(2),
+      perKm: census.km > 0 ? +(census.planted / census.km).toFixed(1) : 0 };
   }
   plantHedgeTrees();
 
@@ -6882,6 +7009,18 @@ function* vegetationBuildSteps(
     group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
       authoredTreeDonors, veg.authoredTrees, heightField, standSite, standClearances, cfg?.props?.wallRuns ?? []);
     for (const t of trees) { const key = seatKey(t); if (key !== seatOf.get(t)) t.wood = seatWood.get(key) ?? false; }
+    // (the trees lane, 2026-10-07: the redistribution reads the map without its hedge — authoredTreePlacement.ts
+    // stationOccupant — so a hedge tree keeps a field tree's spacing from every tree the rows moved, onto a station or
+    // onto a donor's old ground, as it kept it from the trees standing when it was planted; the hedge trees come last,
+    // so every tree before them stands where the map without a hedge puts it)
+    const hedgeCensus = group.userData.hedgeTrees as { refused: { authored: number } } | undefined;
+    if (hedgeCensus) {
+      const moved = trees.filter((t) => !t.hedgeRow && seatKey(t) !== seatOf.get(t));
+      if (moved.length) {
+        hedgeCensus.refused.authored = excludeVegetation(trees, treeObstacles, concealers, (t) => t.hedgeRow === true
+          && moved.some((m) => Math.hypot(m.x - t.x, m.z - t.z) < FIELD_TREE_SPACING_M));
+      }
+    }
   }
 
   // ground lane: where the trees stand before the tidal map moves its willows (the field bushes' knot sites)

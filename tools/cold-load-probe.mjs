@@ -82,7 +82,7 @@ async function metrics(page, startedAt) {
       }))
       .sort((a, b) => b.transferBytes - a.transferBytes),
     featuredImages: performance.getEntriesByType('resource')
-      .filter((row) => row.name.includes('/media/featured/'))
+      .filter((row) => row.name.includes('/media/site50-r14/stills/'))
       .map((row) => ({
         path: new URL(row.name).pathname,
         startMs: Math.round(row.startTime),

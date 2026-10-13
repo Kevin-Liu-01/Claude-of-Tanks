@@ -15,7 +15,7 @@ import { TRANSPORT_CLOSE } from '../transport/transport.ts';
 import type { Transport, TransportStateChange, TransportStats } from '../transport/transport.ts';
 import {
   CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ,
-  TICK_HZ, VIEWER_MODULES, decodeMessage, dequantizeReloadS, encodeMessage,
+  TICK_HZ, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
 } from '../wire/index.ts';
 import type {
   CloseReasonId, EntityRow, ErrorMessage, EventMessage, PhaseId, PongMessage, RosterEntry, SnapshotFrame,
@@ -195,7 +195,17 @@ export interface MatchClientStats {
   closeReason: CloseReasonId | null;
   /** Own-row hints sent after a resumed link (P3b: the migration seed for a hull the new host could not see). */
   resumeHintsSent: number;
+  /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
+  helloRetries: number;
 }
+
+/**
+ * Before its WELCOME, a seat whose link the host closes with HELLO_REQUIRED "hello timeout" (the host's window ran out
+ * before the HELLO landed: a busy host or a starved seat) or REPLACED "peer offered again" (a stale offer of the seat's
+ * own, relayed late, replaced the link it is entering on) asks for a fresh link and says hello again, this many times
+ * before it gives up (2026-10-11; before, the seat read either CLOSE as the end of its seat and was never welcomed).
+ */
+export const MAX_HELLO_RETRIES = 3;
 
 interface PendingPing {
   key: number;
@@ -213,6 +223,13 @@ const VIEWER_GUN_INDEX = VIEWER_MODULES.indexOf('gun');
 const VIEWER_GUN_MOUNT_INDEX = VIEWER_MODULES.indexOf('gunMount');
 
 function u32(value: number): number { return Math.round(value) >>> 0; }
+
+/** The words a player sees when the host runs another build: what happened and what to do (refresh). */
+export function matchBuildMismatchMessage(peerWire: number): string {
+  return peerWire < WIRE_VERSION
+    ? 'The host is running an older version of the game. Ask them to refresh their page, then join again.'
+    : 'A newer version of the game is out. Refresh this page to update, then join again.';
+}
 
 export class MatchClient {
   readonly transport: Transport;
@@ -284,6 +301,8 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private helloRetries = 0;
+  private helloRetriesLeft = MAX_HELLO_RETRIES;
   private snapshotsAccepted = 0;
   private rateWindowStartMs: number | null = null;
   private rateWindowBytesIn = 0;
@@ -545,6 +564,7 @@ export class MatchClient {
       outageMs: this.recovery.outageStartedAtMs === null ? 0 : Math.max(0, this.clock() - this.recovery.outageStartedAtMs),
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
+      helloRetries: this.helloRetries,
     };
   }
 
@@ -633,7 +653,8 @@ export class MatchClient {
       if (decoded.error.code === 'missing_baseline') {
         this.snapshots.noteMissingBaseline();
         this.requestKeyframe();
-      } else this.decodeErrors++;
+      } else if (decoded.error.code === 'bad_version' && !this.welcomeMessage) this.endForBuildMismatch(bytes[0] ?? 0);
+      else this.decodeErrors++;
       return;
     }
     const message = decoded.message;
@@ -648,6 +669,18 @@ export class MatchClient {
         if (this.errors.length > this.maxErrors) this.errors.shift();
         break;
       case MESSAGE_TYPE.CLOSE:
+        if (!this.welcomeMessage && this.helloRetriesLeft > 0 && this.recovery.current !== 'left' && (
+          // the host's window ran out before our HELLO landed
+          (message.reason === CLOSE_REASON.HELLO_REQUIRED && message.detail === 'hello timeout')
+          // or a stale offer of ours (an attempt we gave up, relayed late) replaced the link we are entering on; after the
+          // WELCOME the same CLOSE means another tab of this seat took over, and the seat ends as before
+          || (message.reason === CLOSE_REASON.REPLACED && message.detail === 'peer offered again'))) {
+          // a fresh link, a fresh HELLO (MAX_HELLO_RETRIES)
+          this.helloRetriesLeft--;
+          this.helloRetries++;
+          this.transport.reconnect(TRANSPORT_CLOSE.STALLED, 'hello timeout');
+          break;
+        }
         this.closeReason = message.reason;
         this.closeDetail = message.detail;
         if (this.recovery.current !== 'left') this.recovery.end('closed');
@@ -658,6 +691,21 @@ export class MatchClient {
         // Client-to-server types never arrive here; the decoder already validated the frame.
         break;
     }
+  }
+
+  /**
+   * A host on another build (2026-10-12, MASTER item 5). Every frame's first byte is its WIRE_VERSION, so a frame this
+   * build cannot decode still names the host's version: an old tab still hosting a room when someone joins from the new
+   * page (the common case in peer-to-peer play), or the reverse. Before the WELCOME that ends the join with a reason the
+   * player can act on, instead of a seat that is never welcomed while decode errors pile up silently.
+   */
+  private endForBuildMismatch(peerWire: number): void {
+    if (this.recovery.current === 'left' || this.closeReason === CLOSE_REASON.PROTOCOL_VERSION) return;
+    this.closeReason = CLOSE_REASON.PROTOCOL_VERSION;
+    this.closeDetail = matchBuildMismatchMessage(peerWire);
+    this.recovery.end('closed');
+    this.transport.close(TRANSPORT_CLOSE.PROTOCOL, this.closeDetail);
+    this.notifyPhase('closed', this.closeDetail);
   }
 
   // ------------------------------------------------------------ handshake + clock
@@ -687,6 +735,7 @@ export class MatchClient {
       this.snapshots.setTicksPerSnapshot(TICK_HZ / welcome.snapshotHz);
     }
     this.welcomeMessage = welcome;
+    this.helloRetriesLeft = MAX_HELLO_RETRIES;
     this.timeUnwrap.reset();
     const serverTimeMs = this.timeUnwrap.unwrap(welcome.serverTimeMs);
     this.tickClock.observe(welcome.serverTick, serverTimeMs);

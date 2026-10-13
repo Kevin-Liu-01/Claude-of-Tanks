@@ -60,7 +60,7 @@ export interface GarageEnvironmentRecipe {
   readonly treeSpecies: readonly string[];
   readonly treeCount: number;
   /** Distant relief grammar; flat facilities must not inherit alpine walls. */
-  readonly horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa';
+  readonly horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune';
   /** Upper bound for the farthest skyline crest above the Garage datum. */
   readonly horizonHeightM: number;
   readonly approach: GarageApproachRecipe;
@@ -154,7 +154,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainSurface: 'sand', terrainTint: 0xc7a06e, hardstandTint: 0xa99071, buildingTint: 0xcbb58c,
     structures: [
       at(makeCaravanserai, 'wadi caravanserai', -36, -6, 0.84),
-      at(makeMinaret, 'wadi minaret', -30, -30, 0.76),
+      // a water tower, not a minaret, behind the hero (2026-10-10, waves 338, 357, 377: the round white tower with
+      // its balcony and cap read as "a lighthouse standing among the dunes" in every frame)
+      at(makeWaterTower, 'wadi water tower', -30, -30, 0.7),
       at(makeShed, 'forward shade bay', -7, -36, 0.82),
       at(makeDepot, 'wadi supply depot', 18, -34, 0.68),
       at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
@@ -164,7 +166,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(MARKET_BUILDERS.compoundSouk, 'outer convoy compound', 30, 31, 0.48),
     ],
     treeSpecies: ['palm', 'acacia'], treeCount: 20,
-    horizonStyle: 'mesa', horizonHeightM: 9.8,
+    horizonStyle: 'dune', horizonHeightM: 9.8,
     approach: {
       style: 'desert-convoy', label: 'compacted convoy approach', surface: 'sand', width: 8.4,
       waypoints: [[1, 10], [3, 25], [-5, 46]], lanes: [-2.6, 2.6],
@@ -173,7 +175,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     serviceFrame: 'adobe forward depot and open service shade',
     sourceBeat: 'sirocco-wadi-logistics', sourceStructure: 'caravanserai + field shade', landmark: [-22, 7.4, -30],
     distinctiveElements: ['real sand PBR', 'fortified adobe court', 'connected shade bay', 'palm and acacia oasis',
-      'covered quartermaster souk', 'convoy compound wall', 'minaret navigation pair'],
+      'covered quartermaster souk', 'convoy compound wall', 'wadi water tower and route watchtower'],
   },
   repair_bunker: {
     terrainSurface: 'snow', terrainTint: 0xe1eaec, hardstandTint: 0xb8c1c3, buildingTint: 0xc2c8c6,
@@ -251,7 +253,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'twin approach lights', 'rigging yard', 'breakwater repair frontage'],
   },
   rail_roundhouse: {
-    terrainSurface: 'cobble', terrainTint: 0x817a6c, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
+    // cinder ballast ground, not a paved hillside (2026-10-10, wave 377: "a vast, empty cobbled slope")
+    terrainSurface: 'rock', terrainTint: 0x6e6860, hardstandTint: 0x6f6960, buildingTint: 0xa18f7b,
     structures: [
       at(makeWarehouse, 'freight warehouse', -36, -6, 0.78),
       at(makeGantry, 'rail gantry', -30, -30, 0.82),
@@ -357,7 +360,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'salvage fortification', 'canyon recovery bridge', 'mesa water-tower silhouette'],
   },
   factory_line: {
-    terrainSurface: 'cobble', terrainTint: 0x716a60, hardstandTint: 0x65615b, buildingTint: 0x91857b,
+    // slag and cinder ground round the works (wave 377: "a paved hillside rather than a workshop yard")
+    terrainSurface: 'rock', terrainTint: 0x5f5953, hardstandTint: 0x65615b, buildingTint: 0x91857b,
     structures: [
       at(makeFoundryOffice, 'foundry office', -36, -6, 0.8),
       at(makeFactory, 'heavy factory', -30, -30, 0.76),

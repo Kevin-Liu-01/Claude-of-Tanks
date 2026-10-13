@@ -16,7 +16,9 @@ interface GarageDressingOptimizationOptions {
   minimumShadowRadiusM?: number;
   /** Fixed decorative compositions whose internal articulation is never
    * changed after the quiet Garage builder finishes. Their exact opaque
-   * surfaces may share draw owners while the supplied roots remain movable. */
+   * surfaces may share draw owners while the supplied roots remain movable.
+   * An owner nested inside another merges alone, so it stays movable inside
+   * its parent owner. */
   staticDisplayOwners?: readonly THREE.Object3D[];
   /** Detached alternate layouts that still own shared geometry resources. */
   additionalResourceRoots?: readonly THREE.Object3D[];
@@ -134,16 +136,24 @@ function canMergeStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
   return geometryLayoutKey(mesh.geometry) !== null;
 }
 
+/**
+ * Visible inside its owner. The owner's own visibility is a per-Garage switch (a left-band task, a bay's alternate
+ * task, Verdant's interior), so a hidden owner still merges its contents: the merged batches live under the owner and
+ * follow its switch (2026-10-10: Frosthollow's band task, hidden while Verdant optimized, drew 28 unmerged parts).
+ */
 function isVisibleWithin(object: THREE.Object3D, owner: THREE.Object3D): boolean {
   for (let current: THREE.Object3D | null = object; current; current = current.parent) {
-    if (!current.visible) return false;
     if (current === owner) return true;
+    if (!current.visible) return false;
   }
   return false;
 }
 
 function canMergeStaticDisplayMesh(mesh: THREE.Mesh, owner: THREE.Object3D): boolean {
   if (isSpecializedMesh(mesh)) return false;
+  // An already-merged local composition (a workshop crew) keeps its own draw so the frustum culls it on its own;
+  // folded into a workshop-wide batch it would draw every bay's crew in every view.
+  if (mesh.userData.keepDisplayMesh === true) return false;
   if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
   if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
   if (!isVisibleWithin(mesh, owner) || mesh.material.transparent || mesh.material.visible === false) {
@@ -324,14 +334,28 @@ function mergeStaticWorkshopProps(root: THREE.Object3D): {
   };
 }
 
+/** Whether `object` sits inside another display owner nested below `owner`. */
+function insideNestedDisplayOwner(
+  object: THREE.Object3D,
+  owner: THREE.Object3D,
+  otherOwners: ReadonlySet<THREE.Object3D>,
+): boolean {
+  for (let current: THREE.Object3D | null = object; current && current !== owner; current = current.parent) {
+    if (otherOwners.has(current)) return true;
+  }
+  return false;
+}
+
 function collectStaticDisplayBatches(
   owner: THREE.Object3D,
+  otherOwners: ReadonlySet<THREE.Object3D>,
 ): Map<THREE.Material, Map<string, StaticMergeBatch>> {
   const byMaterial = new Map<THREE.Material, Map<string, StaticMergeBatch>>();
   owner.updateWorldMatrix(true, true);
   owner.traverse((object) => {
     const mesh = object as THREE.Mesh;
-    if (!mesh.isMesh || !canMergeStaticDisplayMesh(mesh, owner)) return;
+    if (!mesh.isMesh || insideNestedDisplayOwner(mesh, owner, otherOwners)
+        || !canMergeStaticDisplayMesh(mesh, owner)) return;
     const layout = geometryLayoutKey(mesh.geometry);
     if (!layout) return;
     const material = mesh.material as THREE.Material;
@@ -488,10 +512,11 @@ function mergeStaticDisplayBatch(
 
 function mergeStaticDisplayOwner(
   owner: THREE.Object3D,
+  otherOwners: ReadonlySet<THREE.Object3D>,
   firstMergeIndex: number,
   materialLifecycle?: BakedMaterialLifecycle,
 ): MergedDisplayOwner {
-  const byMaterial = collectStaticDisplayBatches(owner);
+  const byMaterial = collectStaticDisplayBatches(owner, otherOwners);
   const sourceGeometries = new Set<THREE.BufferGeometry>();
   const generatedGeometries: TrackedGeometry[] = [];
   let meshesMerged = 0;
@@ -551,8 +576,11 @@ function mergeStaticDisplayOwners(
   let elementsMerged = 0;
   const sourceGeometries = new Set<THREE.BufferGeometry>();
 
-  for (const owner of new Set(owners)) {
-    const merged = mergeStaticDisplayOwner(owner, mergeBatches + 1, materialLifecycle);
+  const ownerSet = new Set(owners);
+  for (const owner of ownerSet) {
+    const otherOwners = new Set(ownerSet);
+    otherOwners.delete(owner);
+    const merged = mergeStaticDisplayOwner(owner, otherOwners, mergeBatches + 1, materialLifecycle);
     for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
     generated.push(...merged.generatedGeometries);
     meshesMerged += merged.meshesMerged;
@@ -648,8 +676,12 @@ export function optimizeGarageDressing(
   const merging = mergeStaticWorkshopProps(root);
   const generated = root.userData.optimizationDisposables ||= [];
   const displayMerging = mergeStaticDisplayOwners(staticDisplayOwners, generated, bakedMaterialLifecycle);
+  const rangedInstances = new Set<THREE.InstancedMesh>();
   for (const owner of staticDisplayOwners) owner.traverse(object => {
-    if (object instanceof THREE.InstancedMesh) installStaticInstanceRange(object);
+    // A nested owner is reached from its parent owner too; install once.
+    if (!(object instanceof THREE.InstancedMesh) || rangedInstances.has(object)) return;
+    rangedInstances.add(object);
+    installStaticInstanceRange(object);
   });
   const releaseCandidates = new Set([
     ...merging.sourceGeometries,

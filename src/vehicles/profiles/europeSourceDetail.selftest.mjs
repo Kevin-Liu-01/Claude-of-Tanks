@@ -45,18 +45,31 @@ for (const quality of ['high','low']) for (const id of ids) {
       assert.equal(fitting?.parent,turret,'real roof weapon belongs to the turret yaw rig');
       assert.equal(fitting.userData.fitting,'pintleMG');
       assert.equal(fitting.userData.fittingRoot,true);
-      const weapon=fitting.getObjectByName('sabraCupolaReceiverAndBarrel');
-      assert.ok(weapon?.isMesh && weapon.visible,'fitting contains the existing visible weapon stock');
+      // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
+      // updating machine guns and stuff"): the cupola M2 is the fleet's Browning construction in place of the study's
+      // receiver box and tube. 2026-10-11 (round 3c): a crew M2 on its own pintle with its ammunition can, in a boss on
+      // the turret roof just ahead of the cupola, its top under the cupola crown so the side silhouette keeps the source
+      // height (the geometry gate). One weapon, always present (a fitting carries no cosmetic detail LOD).
+      const weapon=fitting.getObjectByName('browningDerivedMachineGunBody');
+      assert.ok(weapon?.isMesh && weapon.visible,'fitting contains the fleet M2 body');
       assert.equal(weapon.userData.combatHitboxRole,'equipment');
-      assert.equal(weapon.geometry.attributes.position.count/3,quality==='high'?172:140,
-        'one original receiver and tube, with no added proxy or duplicate weapon');
-      assert.equal(weapon.parent.isLOD,true);
-      assert.equal(weapon.parent.levels[1].distance,Infinity,
-        'working roof weapon stays present beyond cosmetic detail ranges');
-      const distantCamera = new THREE.PerspectiveCamera();
-      distantCamera.position.set(0, 0, 720); distantCamera.updateMatrixWorld(true);
-      weapon.parent.update(distantCamera);
-      assert.equal(weapon.visible, true, 'actual distant LOD update retains the working weapon');
+      assert.equal(fitting.userData.weaponClass,'m2','the cupola weapon is a 12.7 mm M2');
+      assert.equal(fitting.userData.mount,undefined,'the crew M2 stands on its own pintle, not an external cradle');
+      assert.equal(fitting.userData.hasConnectedFeed,true,'its ammunition can feeds it');
+      const toTurret=new THREE.Matrix4().copy(turret.matrixWorld).invert(), local=new THREE.Vector3();
+      const gunBox=new THREE.Box3();
+      fitting.traverse(mesh=>{
+        if(!mesh.isMesh)return;
+        const position=mesh.geometry.getAttribute('position');
+        const toLocal=new THREE.Matrix4().multiplyMatrices(toTurret,mesh.matrixWorld);
+        for(let i=0;i<position.count;i++)gunBox.expandByPoint(local.fromBufferAttribute(position,i).applyMatrix4(toLocal));
+      });
+      assert.ok(Math.abs(gunBox.min.y-(2.58-1.57))<.002,`the pintle foot stands on its roof boss (${gunBox.min.y})`);
+      assert.ok(gunBox.max.y<3.036-1.57,`the gun's top stays under the cupola crown (${gunBox.max.y})`);
+      assert.ok(gunBox.min.z>.5-.05,`the spade grips stand clear in front of the dome (${gunBox.min.z})`);
+      let lodAncestor=false;
+      for(let node=weapon.parent;node;node=node.parent)if(node.isLOD)lodAncestor=true;
+      assert.equal(lodAncestor,false,'working roof weapon stays present at every range (no cosmetic detail LOD)');
       roofGunDisposals={count:0};
       weapon.geometry.addEventListener('dispose',()=>roofGunDisposals.count++);
       for(const side of [-1,1]) for(const dx of [-.0657,.0657]) {
@@ -68,14 +81,12 @@ for (const quality of ['high','low']) for (const id of ids) {
         turret.rotation.y=yaw;tank.root.updateMatrixWorld(true);
         // Complete native first hits include cupola, main gun and loaded fills.
         // Yaw moves these real surfaces together; no detached fitting marker.
-        const muzzle=firstHit(tank,turret,-.5059,2.7738-1.57,2,[0,0,-1]);
-        assert.equal(muzzle.mesh,'sabraCupolaReceiverAndBarrel');
-        assert.ok(Math.abs(muzzle.point.z-(1.3011-.05))<.00001,
-          'existing 790mm cupola barrel retains its source-forward endpoint');
-        const receiver=firstHit(tank,turret,-.5059,2.815-1.57,2,[0,0,-1]);
-        assert.equal(receiver.mesh,'sabraCupolaReceiverAndBarrel');
-        assert.ok(Math.abs(receiver.point.z-(.54-.05))<.00001,
-          'existing receiver remains the exposed complete-scene front hit');
+        // the M2 stays on the study barrel's line (x -0.5059) with its axis 11 cm over the study's (y 2.8855 against
+        // 2.7738); the true-length barrel's muzzle stands at z 2.071
+        const muzzle=firstHit(tank,turret,-.5059,2.8855-1.57,2.5,[0,0,-1]);
+        assert.equal(muzzle.mesh,'browningDerivedMachineGunBody');
+        assert.ok(Math.abs(muzzle.point.z-(2.0710-.05))<.002,
+          `cupola M2 muzzle on the study barrel's line at its seat (${muzzle.point.z})`);
         const roof=firstHit(tank,turret,-.67,2,-1.41973,[0,-1,0]);
         assert.ok(Math.abs(roof.point.y-(2.58052-1.57))<.001,'rear circular fitting stays behind the cupola on −X');
         const cap=firstHit(tank,turret,-.53295,2,.20,[0,-1,0]);

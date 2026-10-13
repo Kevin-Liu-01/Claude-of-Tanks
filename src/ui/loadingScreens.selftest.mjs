@@ -57,17 +57,25 @@ for (const { mapId, asset } of minimapAssets) {
     `${mapId} must ship a non-placeholder supersampled tactical-map asset`);
 }
 
-assert.equal(FEATURED_SHOTS.length, 20, 'the handmade and owner-approved galleries stay available');
-assert.equal(TRANSITION_SHOTS.length, 10, 'only lightweight handmade and owner-approved captures rotate');
+// Since round 14 (2026-10-12) the featured stills are the site fifty's (owner: "replace the old media with all my new
+// ones"), picked in tools/media-r5/site-media/picks.json: the takes with battlefields rotate on the loading screens.
+const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
+const siteStills = `/media/${sitePicks.collection}/stills/`;
+// a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still
+const pickImg = (pick) => `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`;
+const pickedTransitions = sitePicks.featured.filter((pick) => pick.maps?.length);
+assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
+assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
+assert.equal(TRANSITION_SHOTS.length, pickedTransitions.length, 'only the picks with battlefields rotate');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.equal(
   TRANSITION_SHOTS[0].img,
-  '/media/featured/f7_studio_t90_column_fire.webp',
-  'the handmade T-90 frame must remain the first transition-screen option',
+  `${siteStills}${pickedTransitions[0].id}.webp`,
+  'the boot pick must remain the first transition-screen option',
 );
 assert.equal(
   TRANSITION_SHOTS[0].bootImg,
-  '/media/featured/f7_studio_t90_column_fire.boot.webp',
+  `${siteStills}${pickedTransitions[0].id}-boot.webp`,
   'the featured panel must retain its screen-sized preview derivative',
 );
 const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
@@ -75,13 +83,9 @@ const fullHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].img}
 assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
   'the featured preview must be materially smaller than its gallery source');
 assert.deepEqual(
-  TRANSITION_SHOTS.slice(0, 3).map((shot) => shot.img),
-  [
-    '/media/featured/f7_studio_t90_column_fire.webp',
-    '/media/featured/f6_studio_strv_steinburg_duel.webp',
-    '/media/featured/f9_studio_fjord_firefight.webp',
-  ],
-  'handmade Studio frames must lead the transition-screen rotation',
+  TRANSITION_SHOTS.map((shot) => shot.img),
+  pickedTransitions.map(pickImg),
+  'the transition-screen rotation is the picks, in their order',
 );
 const bootHtml = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
 const bootSource = await readFile(new URL('./bootScreen.ts', import.meta.url), 'utf8');
@@ -119,25 +123,14 @@ assert.match(bootHtml,
   /:where\(body\[data-cot-width='compact'\],body\[data-cot-width='phone'\]\) \.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space must follow the centralized width policy rather than an independent breakpoint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => /\/(?:featured\/f\d+_studio_|presentation-r1\/\d+_)/.test(img)),
-  'only handmade Studio or owner-approved presentation captures may enter the loading-screen rotation');
-assert.ok(FEATURED_SHOTS.slice(0, 5).every((shot) => shot.handmade),
-  'the complete handmade set must lead the featured gallery');
+assert.ok(FEATURED_IMAGES.every((img) => img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)),
+  'only the site fifty\'s stills may enter the loading-screen rotation');
+assert.deepEqual(FEATURED_SHOTS.map((shot) => shot.img), sitePicks.featured.map(pickImg),
+  'the Garage gallery shows the picks, in their order');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 0,
   'the image-backed garage gallery must not decode animated GIF assets');
-assert.ok(FEATURED_SHOTS.some((shot) => shot.img === '/media/feature-evidence-r2/studio-action.webp'),
-  'the garage gallery keeps the native 4K Studio evidence frame');
-const approved = [
-  '02_desert_rooftop_dive', '03_desert_muzzle_worm', '05_winter_ice_breaker',
-  '08_winter_village_hell', '10_urban_overpass_dive', '12_urban_crossfire_x',
-  '15_verdant_column_massacre', '16_verdant_meadow_duel', '23_autumn_gold_inferno',
-  '24_autumn_orchard_stand', '25_steppe_horizon_charge',
-  '32_desert_ram_abramsx_t90m', '33_desert_overwatch_line',
-];
-for (const id of approved) {
-  assert.ok(FEATURED_SHOTS.some((shot) => shot.img.endsWith(`/${id}.webp`)),
-    `owner-approved frame dropped from gallery: ${id}`);
-}
+assert.ok(FEATURED_SHOTS.some((shot) => shot.img.endsWith('-4k.webp')),
+  'the garage gallery keeps a native 4K frame');
 
 for (const shot of FEATURED_SHOTS) {
   assert.ok(shot.capKey && shot.focal, `missing loading-screen metadata for ${shot.img}`);

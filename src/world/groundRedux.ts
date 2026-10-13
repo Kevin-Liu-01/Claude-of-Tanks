@@ -252,7 +252,12 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
   whiteout: { ...SNOW, scree: 0.3, grass: null },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
-  longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },
+  // (the map-revival lane, Longleaf round 4, 2026-10-11; wave 376: "oversized card blades", "a saturated lawn or flat
+  // low-poly blades"): the flatwoods' wiregrass is fine and wiry — the savanna's blades at less than half its width,
+  // shorter and sparser, grey-green curing to straw — over the thatch and sand between its bunches (wave 274's law),
+  // thinner up a slope and drier on a slope turned to the sun
+  longleaf: { ...TEMPERATE, scree: 0.2, swardSlope: 1, thatch: 1,
+    grass: { ...savanna(0.5, 0.6), widthM: 0.022, base: [0.120, 0.118, 0.062], tip: [0.25, 0.24, 0.13], dry: [0.31, 0.27, 0.14] } },
   mangrove: { ...COAST, swashPeriodS: 6.5, swashReachM: 3, swashStrength: 0.9, rimTint: MOSS, grass: reed(0.7, 1.5, 0.85, 0.45) },
   // (wave 177 and 2026-10-08's wave 287, Saltwind: "thick, evenly spaced and plastic-looking" blades over a "lush
   // lawn-green carpet") the karst's sward is a garrigue's — the marram's backshore law (dense by the water, thin inland),

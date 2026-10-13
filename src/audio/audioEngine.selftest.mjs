@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
+import { emitTurretLanding } from '../fx/clock.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -57,9 +58,10 @@ bus.emit('phase:change', { phase: 'battle' });
 await audio.warmBattleEvents(['t72b3m', 'leo2a6', 'm1a2', 'bmp2']);
 audio.ambientOn(true);
 for (let i = 0; i < 10; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
-for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
-// The battle warm is bounded for the loader; here wait for every decode to land.
-for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+// The battle warm is bounded for the loader (3.5 s); here await every load it and the first frames started, to its real
+// completion (a fixed count of event-loop turns raced the reads on a loaded machine).
+await probe.libraryIdle();
+assert.equal(probe.library().pending, 0, 'every battle load has landed');
 
 // Vehicle rigs: the occupied hull, near tanks and a far tank with their real powertrains.
 const engines = probe.engineState();
@@ -147,7 +149,7 @@ assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum ref
 assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
 
 // Being hit: exterior impact + interior response + a crew call in Russian.
-for (let i = 0; i < 200 && !probe.voicesLoaded; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+await probe.libraryIdle();
 assert.ok(probe.voicesLoaded, 'the Russian pack decoded');
 since = mark();
 ctx.advance(3);
@@ -202,8 +204,13 @@ me.state.atGunLimit = false;
 since = mark();
 ctx.advance(10);
 bus.emit('tank:destroyed', { id: 'foe', killerId: 'me', pos: [-40, 0, 120], cause: 'ammorack' });
+// (physics lane, 2026-10-10) the turret lands where its body hits: the visual reports it through the fx clock's bridge
+assert.ok(!logSince(since).some((e) => e.n === 'turret_land'), 'no landing on a timer: the turret has not landed yet');
+emitTurretLanding(-37.5, 0, 122, 8.4);
+emitTurretLanding(-37.2, 0, 122.3, 1.2);
 names = logSince(since).map((e) => e.n);
 for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'blast_sub']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
+assert.equal(names.filter((n) => n === 'turret_land').length, 1, 'the hard landing is heard, the settling bump is not');
 assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
@@ -289,10 +296,10 @@ gunship.state.pos.y = 240;
 gunship.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 200 };
 const withGunship = [...tanks, gunship];
 for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, withGunship); }
-// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start). Wait for the library to
-// finish rather than a fixed number of ticks: on a loaded machine the reads outlast a few turns of the event loop.
-for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
-for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start). Await the loads it started
+// to their real completion: on a loaded machine the reads outlast any fixed number of event-loop turns.
+await probe.libraryIdle();
+assert.equal(probe.library().pending, 0, 'the aircraft set has landed');
 let air = probe.aerialState();
 assert.equal(air.gunships.length, 1, 'the gunship drones overhead');
 assert.ok(air.gunships[0].gain > 0.05, `and carries to the ground (${air.gunships[0].gain})`);
@@ -357,7 +364,7 @@ me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 0 };
 ctx.advance(0.2);
 audio.update(1 / 60, listener, tanks);
 // The aircraft set (the gunship's reports among it) decodes on first sight of one.
-for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
+await probe.libraryIdle();
 for (const [weaponSound, caliberMm, report] of [['gunship-autocannon', 30, 'gunship_30mm_own'], ['gunship-howitzer', 152, 'gunship_howitzer_own'], ['gunship-missile', 180, 'gunship_missile_own']]) {
   since = mark();
   bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'me', isPlayer: true, muzzlePos: [0, 238, 2], dir: [0, -0.7, 0.7], caliberMm, shellType: 'HE', weaponSound });
@@ -521,7 +528,7 @@ assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whol
 for (const language of Object.keys(CREW_VOICE_NATIONS)) {
   bus.emit('ui:volumes', { crewVoice: language });
   assert.equal(probe.crewLanguage, language);
-  for (let i = 0; i < 1000 && !probe.voicesLoaded; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  await probe.libraryIdle();
   assert.equal(probe.voicesLoaded, true, `${language} decodes`);
   assert.equal(probe.sayVoice('were_hit'), true, `${language} plays through the radio`);
   assert.equal(probe.voiceLog.at(-1).lang, language);

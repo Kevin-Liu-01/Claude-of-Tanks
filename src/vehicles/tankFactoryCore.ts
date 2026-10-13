@@ -37,8 +37,9 @@ import {
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
-  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
+  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
 } from './materials.ts';
+import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -100,7 +101,9 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 // the destruction beat is finally capturable frame-by-frame (the r4 critic
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
-import { fxNow, emitPopTrail } from '../fx/clock.ts';
+import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
+import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import type { WreckTurretDriver } from './wreckTurretDriver.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
@@ -119,7 +122,10 @@ import {
 export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 
+/** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
+const _identity4 = new THREE.Matrix4();
 
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
@@ -157,6 +163,10 @@ interface TankMaterials {
   trackTexL: THREE.Texture;
   trackTexR: THREE.Texture;
   trackLinkM: number;
+  /** Fleet-weapons lane 2026-10-09 (weaponFinish.ts): parkerized weapon steel and the national ammunition drab.
+   * Rendered builds only; geometry-only and receipt builds fall back to `dark` and `detail`. */
+  weaponSteel?: THREE.MeshStandardMaterial;
+  ammoDrab?: THREE.MeshStandardMaterial;
   prepareBurnt?: () => void;
   decal(kind: string, text: string | null): THREE.Material;
   dispose(): void;
@@ -1178,6 +1188,13 @@ interface TankVisual {
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /**
+   * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
+   * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
+   */
+  setWreckTurretPose(pose: ArrayLike<number> | null): void;
+  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here. */
+  awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   getWreckFallbackMaterial(): THREE.Material;
@@ -1264,7 +1281,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
+  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels' | 'weaponSteel';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -1475,8 +1492,12 @@ function collectMobileDetailObjects(
     if (combatObjects.has(object)) return;
     if (!(object instanceof THREE.Group)) return;
     const name = object.name || '';
+    // A carved muzzle (carvedMuzzleBore.ts) cut its aperture out of the barrel's own face: its wall and backstop
+    // close that hole, so hiding them with distance would let the player see through the gun (sealed lane).
+    const carvedMouth = name.startsWith('muzzleBoreShadowFallback')
+      && object.children.some((child) => child.userData?.carvedBoreStock);
     if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
-        || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
+        || (name.startsWith('muzzleBoreShadowFallback') && !carvedMouth)) managedGroups.add(object);
   });
   const underManagedGroup = (object: THREE.Object3D): boolean => {
     for (let parent = object.parent; parent; parent = parent.parent) {
@@ -3702,11 +3723,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     throw new Error('Running gear shoe reach drifted between the seat and the shoe build');
   }
   const shoeDetailMode = 'family-integrated';
+  // the geometry-receipt record of this unit (stage 2), completed once its suspension bosses are counted (stage 6)
+  let runningGearReceipt = null as Record<string, unknown> | null;
   const buildRunningGearReceiptStage2 = (): void => {
     if (P.geometryReceipt) {
       const runningGearReceipts = hullG.userData.runningGearReceipts
         || (hullG.userData.runningGearReceipts = []);
-      runningGearReceipts.push({
+      runningGearReceipts.push(runningGearReceipt = {
         wheelZs: [...wheelZs],
         wheelR,
         wheelY,
@@ -4222,6 +4245,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     return { anchor, axle: jointCount++ };
   });
+  // 2026-10-10 (the inherited joint reds, chieftain5 18 vs 24): the receipt counts the bosses this unit draws. A shared
+  // fixed bearing is one physical boss (a28e4d8e6 stopped drawing it twice), recorded apart so the wheel audit still
+  // reconciles two joints per arm.
+  if (runningGearReceipt) {
+    runningGearReceipt.suspensionJointCount = jointCount;
+    runningGearReceipt.suspensionSharedBearings = suspensionEntries.length * 2 - jointCount;
+  }
   const suspensionJointIM = new THREE.InstancedMesh(
     suspensionJointGeo,
     mats.dark || mats.spareTrack || mats.wheelsRecessed,
@@ -5537,6 +5567,27 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     z: w.z, x: w.x, y: w.y, r: w.r, off: w.off || 0, voff: w.voff || 0, layer: w.i,
     source: !!w.suspensionSource, rec: !!w.rec,
   }));
+  // 2026-10-08 (the contact-shadow lane): the ground run as it is drawn this frame, without allocating — the side's road
+  // wheels in z order as (z, travel) pairs, hull-local metres, the travel the band's bottom run follows (deformBand; on
+  // distant gear updated at 15 or 30 Hz it holds between updates, as the drawn band does). The aerial pass's ground
+  // occlusion (vehicleGroundOcclusion.ts) reads it each frame so the darkening under a track follows where the run
+  // actually meets the ground. Returns the pairs written (out holds at most out.length / 2). Every unit on the hull joins
+  // in (the t95 four-track builds two a side on one hullG: each unit appends to the one before and the pairs are put back
+  // in z order), and a thrown track's side gives none of this unit's (its band is hidden: no run meets the ground there).
+  const priorGroundRun = hullG.userData.runningGearGroundRun as ((side: Side, out: Float32Array) => number) | undefined;
+  hullG.userData.runningGearGroundRun = (side: Side, out: Float32Array): number => {
+    const before = typeof priorGroundRun === 'function' ? priorGroundRun(side, out) : 0;
+    if (side < 0 ? brokenL : brokenR) return before;
+    const ws = suspWheels[side];
+    const n = Math.min(before + ws.length, out.length >> 1);
+    for (let i = before; i < n; i++) {
+      const w = ws[i - before], z = w.z, off = w.voff || 0;
+      let j = i;
+      for (; j > 0 && out[(j - 1) * 2] > z; j--) { out[j * 2] = out[(j - 1) * 2]; out[j * 2 + 1] = out[(j - 1) * 2 + 1]; }
+      out[j * 2] = z; out[j * 2 + 1] = off;
+    }
+    return n;
+  };
   const gearUnit: RunningGearUnit = {
     unitId: runningGearUnitId,
     contactGeom: gearContactGeom,
@@ -5889,6 +5940,7 @@ function discardRunningGear(builder: object): void {
   for (const key of [
     'runningGearReceipts', 'wheelPatternReceipts', 'trackPatternReceipts', 'nativeWheelPatterns',
     'nativeTrackPatterns', 'nativeRoadWheelStations', 'runningGearEndRelays', 'runningGearRoadWheels',
+    'runningGearGroundRun',
   ]) delete P.hullG.userData[key];
 }
 
@@ -6385,6 +6437,9 @@ function jerryCan(
     can.body.userData.pairSize = 2;
     can.body.userData.pairIndex = pairIndex;
     for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) {
+      // 2026-10-10 (fleet-weapons lane, round 3: "ammo cans and jerrycans in olive drab or green-grey, not mint, cream
+      // or khaki"): issue stowage takes the army's drab on rendered builds (mergeBucket), never the scheme's tint
+      part.userData.issueDrab = true;
       addEquipmentLocal(P, bucket, part, x, y - 0.24, z, yaw, localX, 0, 0);
     }
     if (can.spout) addEquipmentLocal(P, dark, can.spout, x, y - 0.24, z, yaw, localX, 0, 0); // spout and cap
@@ -6433,9 +6488,12 @@ function ammoCan(
   body.userData.latches = 2;
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
+  body.userData.issueDrab = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
   // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
-  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
+  const lid = markEquipmentLid(box(0.155, 0.028, 0.315));
+  lid.userData.issueDrab = true;
+  P.addEquipment(bucket, lid, x, y + 0.11, z, 0, yaw, 0); // gasketed lid
   // 2026-10-07 (round 3: the critics read flush latches and hinges as molded-on texture): the over-centre levers stand
   // two centimetres off their base plates with keepers on the lid, and the hinge barrels ride on leaves; the low
   // geometry tier keeps its lighter latch blocks and barrels
@@ -6777,15 +6835,17 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   turretOpenLattice: ['turretG', 'hull'], turretOpenLatticeDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   turretCanvasPale: ['turretG', 'canvasPale'], turretFittingPaint: ['turretG', 'detail'], turretBark: ['turretG', 'bark'],
-  gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
-  gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // Fleet-weapons lane 2026-10-09: the gun's bare steel (muzzle devices, bore mouths, coax barrels, cradle hardware)
+  // is weapon steel (weaponFinish.ts), not the flat hardware gunmetal.
+  gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'weaponSteel'], gunMount: ['gunG', 'hull'],
+  gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
   gunMountCanvasSkin: ['gunG', 'canvasCloth'],
   gunMountGlass: ['gunG', 'glass'],
   // Opt-in independent twin-gun tubes. Only authored multi-muzzle profiles
   // use these buckets; the rest of the fleet retains the merged recoilG path.
-  gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'dark'],
-  gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'dark'],
+  gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'weaponSteel'],
+  gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'weaponSteel'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
   hullShadow: ['hullG', 'shadow'],
@@ -6838,6 +6898,9 @@ const CAMO_BUCKETS = new Set([
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
+  // The opt-in independent twin-gun tubes take the same camouflaged barrel paint as `gun`, so they need its projection
+  // and its vertex-colour bake (2026-10-10: without them the BMPT's twin 30 mm tubes rendered black).
+  'gunBarrel0', 'gunBarrel1',
 ]);
 /** Round 4 (2026-10-07): the matte fitting-paint bucket a smoke discharger tube in a paint-only camo bucket rides. */
 const SMOKE_TUBE_PAINT_BUCKET: Readonly<Record<string, string>> = Object.freeze({
@@ -7282,6 +7345,17 @@ function* createTankOwnedSteps(
   let activeVisualEraCluster: VisualEraCluster | null = null;
   const decals: VehicleDecal[] = [];
   const disposables: DisposableVehicleResource[] = [];
+  // Fleet-weapons lane 2026-10-09: the weapon finish (weaponFinish.ts) rides the rendered material set; its clones are
+  // owned (and released from the cascade setup) by this visual. Non-rendering builds keep dark/detail.
+  if (usesSharedMaterialTextures) {
+    const finish = createWeaponFinishMaterials(mats.dark, mats.detail, spec.nation, cloneVehicleMaterial);
+    mats.weaponSteel = finish.weaponSteel;
+    mats.ammoDrab = finish.ammoDrab;
+    // exact (source-measured) weapons re-seat their own gunmetal and fitting paint through this link (kit.ts)
+    linkWeaponFinish(mats.dark, finish.weaponSteel);
+    linkWeaponFinish(mats.detail, mats.hull);
+    disposables.push(finish.weaponSteel, finish.ammoDrab);
+  }
   const equipmentDamage = new EquipmentDamage();
   const weaponDamage = new WeaponDamageVisuals();
 
@@ -7949,6 +8023,8 @@ function* createTankOwnedSteps(
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
+  // The horizon every non-silhouette bucket culls at (mergeBucket).
+  const detailLodDistM = geometryQuality === 'low' ? 64 : LOD1_DIST;
   const DIRT_Y: Record<RigGroupKey, number> = {
     hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
     barrel0G: gunYOff, barrel1G: gunYOff,
@@ -8027,6 +8103,25 @@ function* createTankOwnedSteps(
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
   };
+  // 2026-10-11 (fleet-weapons lane, round 4; waves 386/392's critics on the Sabra Mk 2's cheek covers: "a translucent,
+  // glass-like sheet with bolt heads"): a plate laid on the armour projects the same world-scale camouflage as the face
+  // beneath it, so only its edges showed and the plate read as glass over the pattern. A part may shift its projection
+  // (userData.camoUvOffset, in camouflage-tile units) after the shared box projection; rendered builds only.
+  const shiftPartCamouflage = (list: THREE.BufferGeometry[], merged: THREE.BufferGeometry): void => {
+    const uv = merged.getAttribute('uv');
+    if (!uv) return;
+    let offset = 0, shifted = false;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const shift = part.userData.camoUvOffset as readonly [number, number] | undefined;
+      if (shift) {
+        for (let i = offset; i < offset + count && i < uv.count; i++) uv.setXY(i, uv.getX(i) + shift[0], uv.getY(i) + shift[1]);
+        shifted = true;
+      }
+      offset += count;
+    }
+    if (shifted) uv.needsUpdate = true;
+  };
   const mergeBucket = (bucket: string, list: THREE.BufferGeometry[]): void => {
     if (!list.length) return;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
@@ -8041,6 +8136,7 @@ function* createTankOwnedSteps(
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
       boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
@@ -8050,7 +8146,18 @@ function* createTankOwnedSteps(
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
       station ? 'equipment' : combatHitboxRoleForBucket(bucket));
     disposables.push(merged);
-    const mesh = new THREE.Mesh(merged, mats[matKey]);
+    // weapon steel exists on rendered builds only (geometry-only and receipt builds keep the hardware gunmetal)
+    // (the M242 family's main barrel is bare steel too: weaponFinish.ts mainBarrelIsWeaponSteel)
+    const weaponSteel = matKey === 'weaponSteel' || (station && matKey === 'dark')
+      || (bucket === 'gun' && mainBarrelIsWeaponSteel(specId)) ? mats.weaponSteel : undefined;
+    if (weaponSteel) prepareWeaponFinishGeometry(merged, boxUV);
+    // issue stowage (cans) grouped apart on rendered builds only (the grouping key below): the army's drab, not the tint
+    const issueDrab = mats.ammoDrab && list.every((part) => part.userData.issueDrab) ? mats.ammoDrab : undefined;
+    if (issueDrab) {
+      prepareWeaponFinishGeometry(merged, boxUV);
+      paintAmmoVertexColours(merged, issueDrab, false);
+    }
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
@@ -8080,12 +8187,14 @@ function* createTankOwnedSteps(
     }
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
-    else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
+    else lodWrap(parent, mesh, detailLodDistM);
   };
   const stationKey=(part:THREE.BufferGeometry):string=>{
     const station=part.userData.auxiliaryStation;
     return station?station.name+':'+station.stage:'';
   };
+  // rendered builds draw issue stowage in its own drab mesh per bucket; receipt builds keep their grouping exactly
+  const issueDrabKey=(part:THREE.BufferGeometry):string=>mats.ammoDrab&&part.userData.issueDrab?':issue-drab':'';
   // a sight's armoured frame merges into a painted mesh its owner already draws; frames that would open a mesh of their
   // own (a remote station without painted detail) stay glass in the pane's own mesh instead of costing a draw call, so
   // that pane keeps its whole authored face (fleet lane round 1)
@@ -8102,7 +8211,7 @@ function* createTankOwnedSteps(
   for (const [bucket, list] of Object.entries(buckets)) {
     const groups=new Map<string,THREE.BufferGeometry[]>();
     for(const part of list){
-      const key=stationKey(part);
+      const key=stationKey(part)+issueDrabKey(part);
       const group=groups.get(key)??[];group.push(part);groups.set(key,group);
     }
     for(const group of groups.values())mergeBucket(bucket,group);
@@ -8907,6 +9016,10 @@ function* createTankOwnedSteps(
   // across mesh seams, the front glows while it eats, and ~30% of panels
   // keep desaturated scorched paint.
   const burnU = makeBurnUniforms((Math.abs(Math.sin(emberPhase)) * 1e6) | 0);
+  // the wreck's crumple (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled not just turn
+  // rusty"): the hull's and the turret's dents ride the burn hook (materials.ts), the gun's bend is a bent copy of each of
+  // its meshes' geometry, swapped in at the kill and back at a rematch
+  const liveBentGun: [THREE.Mesh, THREE.BufferGeometry][] = [];
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -8920,6 +9033,8 @@ function* createTankOwnedSteps(
   // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
   const wreckSeat = new THREE.Vector3(
     armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+  // the turret group's own fitted scale at the kill (a body-driven turret is placed by matrix; the reset restores it)
+  const wreckSeatScale = new THREE.Vector3(1, 1, 1);
   // r5: V0 6.2 -> 12.2 tossed the turret ~5.5 m up — r6 critic: "reads as a
   // tiny bird-like speck for its whole flight ... never lands readable".
   // 8.4 m/s peaks ~2.6 m over the ring (inside/just above the fireball crown
@@ -8933,8 +9048,30 @@ function* createTankOwnedSteps(
   // full-toss / welded-in-place split ("destruction spectacle silently
   // depends on which kill you land").
   let popScale = 1;
+  // physics lane (2026-10-10; the owner: "it blows up nicely but then the turret snaps into a pre-ordained resting
+  // position"): the arc and the settle table below now serve only the static hulks' bake (geometry-only visuals,
+  // whose collision the shards hold). Every other wreck's turret follows its rigid body — the simulation's in a battle,
+  // a local one of the same engine in a composition — and lies where the physics put it (wreckTurretDriver.ts).
+  // The driver is made at the first kill once its physics has loaded (wreckTurretDriverLoader.ts: the battle's warm
+  // path and the Studio load it; the gallery and the garage never do). A kill before then keeps the scripted arc and
+  // the settle table below for that turret.
+  let turretDriver: WreckTurretDriver | null = null;
+  function ensureTurretDriver(): void {
+    if (turretDriver || geometryOnly) return;
+    turretDriver = createWreckTurretDriverIfLoaded({
+      spec,
+      root,
+      turret: turretG,
+      gun: gunG,
+      ground: () => groundSampler,
+      random: rng,
+      trail: (x, y, z, heat, birthOffset) => emitPopTrail(x, y, z, heat, birthOffset),
+      landing: (x, y, z, speed) => emitTurretLanding(x, y, z, speed),
+    });
+  }
+  let turretFlying = false;
 
-  /** Settled wreck pose: turret knocked askew, resting half-off the ring. */
+  /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
   function settleTurret() {
     // r6 (critic: "the signature end-state — turret lying next to/on the
     // hull — is absent"): a full toss now lands the turret clearly BESIDE
@@ -9020,6 +9157,90 @@ function* createTankOwnedSteps(
     }
   }
 
+  /** The largest identity-placed mesh of a rig group (its plates authored in the group's frame), for the dent plan. */
+  function partPlates(group: THREE.Object3D, name: string): THREE.Mesh | null {
+    let best: THREE.Mesh | null = null, most = 0;
+    for (const child of group.children) {
+      if (!(child instanceof THREE.Mesh) || child instanceof THREE.InstancedMesh || !child.geometry?.attributes?.position) continue;
+      if (!child.matrix.equals(_identity4)) continue;
+      const count = child.geometry.attributes.position.count + (child.name === name ? 1e9 : 0);
+      if (count > most) { most = count; best = child; }
+    }
+    return best;
+  }
+
+  function writeDents(dents: WreckDent[], centres: THREE.Vector4[], dirs: THREE.Vector4[]): void {
+    for (let i = 0; i < centres.length; i++) {
+      const d = dents[i];
+      if (d) { centres[i].set(d.cx, d.cy, d.cz, d.r2); dirs[i].set(d.dx, d.dy, d.dz, d.depth); }
+      else { centres[i].set(0, 0, 0, 0); dirs[i].set(0, 0, 0, 0); }
+    }
+  }
+
+  /**
+   * Plan the kill's crumple (wreckDents.ts) on the burn seed: the hull's and the turret's dents into the burn hook's
+   * uniforms, the gun's meshes swapped for bent copies. The bake's hulks take the same dents and bend on the CPU
+   * (world/wreckCrumple.ts).
+   */
+  function planLiveCrumple(pop: boolean): void {
+    if (geometryOnly) return;
+    const rng = wreckRandom(((burnU.uBurnSeed.value * 1000) | 0) ^ 0x7e3c11);
+    const box = new THREE.Box3();
+    const hullPlates = partPlates(hullG, 'hull'), turretPlates = partPlates(turretG, 'turret');
+    const hullDents: WreckDent[] = [], turretDents: WreckDent[] = [];
+    if (hullPlates) {
+      hullPlates.geometry.computeBoundingBox();
+      planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.6, 1.2, 0.13, 0.28, rng, hullDents,
+        box.copy(hullPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+    }
+    if (turretPlates) {
+      turretPlates.geometry.computeBoundingBox();
+      planDents(dentSamples(turretPlates.geometry, null), LIVE_TURRET_DENTS, 0.4, 0.9, 0.1, 0.22, rng, turretDents,
+        box.copy(turretPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+    }
+    writeDents(hullDents, burnU.uCrHull.value, burnU.uCrHullDir.value);
+    writeDents(turretDents, burnU.uCrTur.value, burnU.uCrTurDir.value);
+    // the frames by reference: the turret's moves with its pop
+    burnU.uCrHullW.value = hullG.matrixWorld;
+    burnU.uCrTurW.value = turretG.matrixWorld;
+    burnU.uCrOn.value = hullDents.length || turretDents.length ? 1 : 0;
+    // the gun: past a point along it the barrel bends (down, or any way on a turret the blast threw)
+    gunG.updateMatrixWorld(true);
+    const gunInv = gunG.matrixWorld.clone().invert();
+    let barrel: THREE.Mesh | null = null;
+    gunG.traverse((object) => { if (!barrel && object instanceof THREE.Mesh && object.name === 'gun') barrel = object; });
+    const bore = barrel as THREE.Mesh | null;
+    if (!bore?.geometry?.attributes?.position) return;
+    bore.geometry.computeBoundingBox();
+    const toGun = new THREE.Matrix4();
+    box.copy(bore.geometry.boundingBox!).applyMatrix4(toGun.multiplyMatrices(gunInv, bore.matrixWorld));
+    const bend = planBend(box.min.z, box.max.z, rng, pop);
+    if (!bend) return;
+    gunG.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;
+      // (f17, 218: articulatedShadowBatchIntegration) the authored shadow proxies are never mutated: the articulated
+      // shadow batch holds their packed copies, so the bend stays on the drawn gun
+      if (object.userData.authoredShadowProxy) return;
+      toGun.multiplyMatrices(gunInv, object.matrixWorld);
+      const bent = object.geometry.clone();
+      bendGeometry(bent, bend, toGun, toGun.clone().invert());
+      bent.computeBoundingBox();
+      bent.computeBoundingSphere();
+      liveBentGun.push([object, object.geometry]);
+      object.geometry = bent;
+    });
+  }
+
+  function resetLiveCrumple(): void {
+    burnU.uCrOn.value = 0;
+    for (const [mesh, original] of liveBentGun) {
+      const bent = mesh.geometry;
+      mesh.geometry = original;
+      if (bent !== original) bent.dispose();
+    }
+    liveBentGun.length = 0;
+  }
+
   function startWreckPresentation(ageS: number): void {
     burnU.uBurnLo.value = root.position.y + 0.15;
     burnU.uBurnHi.value = root.position.y + spec.dims.heightM + 0.35;
@@ -9029,12 +9250,19 @@ function* createTankOwnedSteps(
     burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
     burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
-    gunG.rotation.x = 0.12;
+    // a body-driven turret eases its gun from its last lay (wreckTurretDriver); the bake's table drops it at once
+    if (!turretDriver?.drives) gunG.rotation.x = 0.12;
     wreckSeat.copy(turretG.position);
+    wreckSeatScale.copy(turretG.scale);
     popYaw0 = turretG.rotation.y;
   }
 
-  function launchDestroyedTurret(pop: boolean, ageS: number): void {
+  function launchDestroyedTurret(pop: boolean, ageS: number, explicitAge: boolean): void {
+    if (turretDriver) {
+      turretFlying = false;
+      turretDriver.begin(pop, wreckSeat, explicitAge ? ageS : null);
+      if (turretDriver.active) return;
+    }
     popScale = pop ? 1 : 0.22;
     popActive = true;
     popT = ageS;
@@ -9297,6 +9525,7 @@ function* createTankOwnedSteps(
           // r5: pop/char/embers advance by the FX CLOCK (adv), so stepped
           // captures catch the arc mid-air and the char mid-spread.
           if (popActive) { popT += adv; applyPop(); }
+          else if (turretDriver?.active) turretFlying = turretDriver.update(Math.max(0, wreckAge + adv), adv);
           // r6 burn-front + ember drive: the whole wreck's char/glow rides the
           // shared burn uniforms (see burnU note) — the front sweeps for
           // ~2.1 s, its ignition edge glows hot while it eats (uBurnGlow, also
@@ -9309,7 +9538,7 @@ function* createTankOwnedSteps(
             // r7: glow tau 1.5 -> 0.9 s — the fire-lit wash must collapse with
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
-            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive ? 1.35 : 1.0);
+            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 1.35 : 1.0);
             burnU.uBurnEmber.value = 0.10 + 0.85 * decay *
               (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
@@ -9726,15 +9955,23 @@ function* createTankOwnedSteps(
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
+      planLiveCrumple(!!(opts && opts.pop));
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
+      // the turret's body driver, if its physics has loaded by this kill (wreckTurretDriverLoader.ts); before the
+      // wreck presentation, which reads whether a body drives the turret
+      ensureTurretDriver();
       startWreckPresentation(ageS0);
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
       // it askew. GLB and procedural tanks share the exact same sequence
       // (the GLB turret node is re-parented into turretG at swap time).
-      launchDestroyedTurret(!!(opts && opts.pop), ageS0);
+      launchDestroyedTurret(!!(opts && opts.pop), ageS0, !!opts && typeof opts.ageS === 'number');
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
+
+    setWreckTurretPose(pose) { if (destroyed) turretDriver?.setExternal(pose); },
+
+    awaitWreckTurretPose() { if (destroyed) turretDriver?.awaitExternal(); },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
@@ -9807,6 +10044,7 @@ function* createTankOwnedSteps(
     resetDestroyed() {
       equipmentDamage.reset();
       weaponDamage.reset();
+      resetLiveCrumple();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -9822,8 +10060,11 @@ function* createTankOwnedSteps(
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);
+        turretG.scale.copy(wreckSeatScale);
         gunG.rotation.x = 0;
       }
+      turretDriver?.reset();
+      turretFlying = false;
       burnU.uBurnT.value = -1; // disarm the burn mask (clones stay cached)
       burnU.uBurnGlow.value = 0;
       burnU.uBurnEmber.value = 0;

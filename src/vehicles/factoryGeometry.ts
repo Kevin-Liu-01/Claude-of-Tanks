@@ -443,6 +443,23 @@ function geometryFromTriangles(positions: readonly number[]): THREE.BufferGeomet
   return geometry;
 }
 
+/**
+ * Vertex colour for a painted mesh that bypasses the camouflage buckets: the hull paint reads vertex colour, and the
+ * buckets bake it (tankFactoryCore.ts bakeDirt); without one a mesh renders black. Bakes the buckets' face shading
+ * (down faces 0.72, up faces 0.84 of a vertical face) so the part sits in the same paint family as the hull around it.
+ */
+export function paintedSurfaceShade(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const normal = geometry.getAttribute('normal');
+  if (!normal) throw new Error('paintedSurfaceShade requires a normal attribute');
+  const shade = new Float32Array(normal.count * 3);
+  for (let index = 0; index < normal.count; index++) {
+    const ny = normal.getY(index), ao = (1 - Math.max(0, -ny) * 0.28) * (1 - Math.max(0, ny) * 0.16);
+    shade[index * 3] = shade[index * 3 + 1] = shade[index * 3 + 2] = ao;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(shade, 3));
+  return geometry;
+}
+
 export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.BufferGeometry {
   const position = geometry.getAttribute('position');
   const normal = geometry.getAttribute('normal');

@@ -57,6 +57,8 @@ const FORBIDDEN = Object.freeze({
   'src/game/state.ts': 'the solo battle authority loads behind game/soloBattleAccess.ts',
   'src/game/ai.ts': 'bot brains are battle-only',
   'src/sim/damage.ts': 'combat resolution is battle-only',
+  'src/sim/missionAttachment.ts': 'the drone seat search reads the auxiliary inventory and weapons (battle-only); the decor keep-out reads src/sim/missionDockVolumes.ts',
+  'src/sim/missionAttachmentSeats.generated.ts': 'the seat records with their audit hashes; the decor keep-out reads src/sim/missionDockSeats.generated.ts',
   'src/vehicles/auxiliaryInventory.generated.ts':
     '217 kB of mount geometry; the garage reads src/ui/garageAuxiliarySummary.generated.ts and combat anatomy src/vehicles/auxiliaryRoofGuns.generated.ts',
 });

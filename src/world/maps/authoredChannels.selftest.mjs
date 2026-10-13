@@ -89,11 +89,17 @@ function checkCircleChannels(config, expectedCells, expectedReaches, maximumArea
 }
 
 function checkDryAccess(hf, config, cells) {
-  for (const nodes of hf._layout.roads) {
+  // (2026-10-07, the map-revival lane: a route a bridge deck carries crosses its water on the deck — Polders' oxbow lane
+  // on the lift bridge — and its span is wet by design; its ground away from the span is checked as every road's)
+  const decks = hf.bridgeDecks ?? [];
+  const onSpan = (route, x, z) => decks.some((d) => d.route === route
+    && Math.abs((x - d.x) * d.ux + (z - d.z) * d.uz) <= d.halfLength && Math.abs(-(x - d.x) * d.uz + (z - d.z) * d.ux) <= d.halfWidth + 1);
+  for (const [route, nodes] of hf._layout.roads.entries()) {
     for (let index = 1; index < nodes.length; index++) {
       const a = nodes[index - 1], b = nodes[index];
       for (let step = 0; step <= 4; step++) {
         const t = step / 4, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+        if (onSpan(route, x, z)) continue;
         assert.equal(hf.getWaterMaskAt(x, z), 0, `${config.id}: every actual causeway remains dry`);
         assert.equal(hf.getGroundType(x, z), 'hard', `${config.id}: causeways keep hard-ground movement`);
         assert.ok(hf.getNormalAt(x, z).y >= 0.90, `${config.id}: crossings remain tank-traversable`);
@@ -131,14 +137,22 @@ function authoredContourArea(lake) {
 function checkAuthoredBasins(config, count) {
   const cells = config.terrain.lakes, hf = createHeightField(1337, config);
   assert.equal(cells.length, count, 'published authored basin count');
-  assert.equal(config.terrain.marshes.length, 0);
+  // (2026-10-07: a bridge's crossing marker — crossing: 'bridge', no dip, inside a lake on its road — is no marsh cell;
+  // nor is a canal's silted end, Polders step 6: a pool at a canal's level within a few metres of its end)
+  const canals = config.terrain.canals ?? [];
+  const siltedEnd = (marsh) => canals.some((canal) => canal.level === marsh.level && [canal.path[0], canal.path.at(-1)]
+    .some(([x, z]) => Math.hypot(x - marsh.x, z - marsh.z) < marsh.r + canal.widthM + 12));
+  assert.equal(config.terrain.marshes.filter((marsh) => !(marsh.crossing === 'bridge' && !marsh.dip) && !siltedEnd(marsh)).length, 0);
   assert.equal(config.terrain.softLakes, true);
   const areas = cells.map(authoredContourArea);
   assert.ok(areas.every(area => area > 3000), 'substantial basins, not tiny isolated water dots');
   // Existing Polders/Oasis shoreline owners use actual contour coverage,
-  // unlike the former sum(r²) of overlapping circle records.
-  if (config.id === 'polders') assert.ok(areas.reduce((a, b) => a + b, 0) > 29000
-    && areas.reduce((a, b) => a + b, 0) < 35000, 'existing authored Polders contour-area budget');
+  // unlike the former sum(r²) of overlapping circle records. (Polders step 6: the oxbow basin's water is the old creek's
+  // arm, a canal; its width times its length counts toward the budget it came out of)
+  const armArea = canals.filter((canal) => canal.name === 'the oxbow arm').reduce((area, canal) => area + canal.widthM
+    * canal.path.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - canal.path[i][0], p[1] - canal.path[i][1]), 0), 0);
+  const wetArea = areas.reduce((a, b) => a + b, 0) + armArea;
+  if (config.id === 'polders') assert.ok(wetArea > 29000 && wetArea < 35000, `existing authored Polders contour-area budget (${wetArea.toFixed(0)} m²)`);
   else {
     let before = 0, after = 0, shared = 0;
     for (let x = -250; x <= -70; x += 2) for (let z = -80; z <= 145; z += 2) {
@@ -164,7 +178,7 @@ function checkAuthoredBasins(config, count) {
   checkDryAccess(hf, config, cells);
   console.log(`authoredChannels.selftest: current ${config.id} ${count} authored basins / ${flatSamples} flat core samples; dry routes and pads`);
 }
-checkAuthoredBasins(polders, 5);
+checkAuthoredBasins(polders, 4); // (step 6: the oxbow basin is the creek's arm, a canal)
 checkAuthoredBasins(oasis, 1);
 assert.throws(() => checkAuthoredBasins(originalPolders, 5), /published authored basin count/);
 assert.throws(() => authoredContourArea({ ...oasis.terrain.lakes[0], radii: Array(16).fill(1) }), /disguised discs/);

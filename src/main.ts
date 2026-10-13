@@ -267,6 +267,7 @@ import { createRosterPresentation } from './game/rosterPresentation.ts';
 import { tankTier, tierNumeral } from './vehicles/tier.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
+import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
 import type { HudMatchModeState, HudMode } from './ui/hud.ts';
 
 type DamagePanelSpec = Parameters<DamagePanelController['setTank']>[0];
@@ -1218,7 +1219,7 @@ bus.on('ui:battleStart', () => {
 
 let garagePreviewMode = 'standard';
 const garageModePreview = createGarageModePreviewRuntime({
-  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview()),
+  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview(engineCtx)),
   prepare: async (root, current) => {
     // Match the real Garage forward targets and light layers. A generic
     // composer compile can leave the revealed frame to link a new variant.
@@ -1569,6 +1570,10 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+/** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
+function deferredPanelMasks(specId: string): void {
+  console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -1960,9 +1965,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
-      if (!await panel.prepareTankMasks(player.spec, player.visual)) {
-        throw new Error('Player top-down view could not be prepared');
-      }
+      // 2026-10-09 (the black-screen lane): a slow mask link never refuses the battle (damagePanelEntryMasks.ts)
+      await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
@@ -2398,8 +2402,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               });
             }
           },
-          // Entry resilience: a strict shader preparation that outran its budget once is a beacon, not a failed entry
-          // (the compile ran again with a fresh deadline) — the kind the reveal and paint budgets report.
+          // Entry resilience: a strict shader preparation that outran its window (compile_extended) or reached its last
+          // resort (compile_deferred: the covered reveal links the rest), and an entry wait extended for a round still
+          // progressing (entry_extended), are beacons, never a failed entry — the kind the reveal and paint budgets report.
           recordSlowEntry: ({ stage, code, ms, pending }) => entryTelemetry.send({
             kind: 'slow_reveal', stage, code: `${stage}_${code}`, ms, mode: 'network', ...(pending !== null ? { timings: { pending } } : {}),
           }),
@@ -2455,9 +2460,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!entity) return;
             const panel = currentDamagePanel();
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
-            if (!await panel.prepareTankMasks(entity.spec, entity.visual)) {
-              throw new Error('Player top-down view could not be prepared');
-            }
+            // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
+            await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
           openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming & {
@@ -3193,6 +3197,12 @@ window.__SHOTS = {
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
       'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
+  },
+  /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
+   *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
+  async battleTime(time: 'day' | 'sunset' | 'night') {
+    await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },
 };
 

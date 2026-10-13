@@ -199,6 +199,9 @@ function checkSourceContract(text) {
     // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch;
     // scalar, no sampler)
     'uThatch',
+    // the map-revival lane (2026-10-11, the Moon and Mars round 2): the detail normal's strength (splat.detailNormal) and
+    // the carriageway's layer (splat.roadLayer: 1 packs it from the base layer) — two scalars, no sampler
+    'uDetailGain', 'uRoadFromG',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

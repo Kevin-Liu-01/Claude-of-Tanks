@@ -44,7 +44,7 @@ interface DriveTestVisual {
   gunMuzzleWorld(out: THREE.Vector3): void;
   gunDirWorld(out: THREE.Vector3): void;
   syncFromState?(state: DriveTestState, dt?: number): void;
-  setDestroyed?(): void;
+  setDestroyed?(options?: { pop?: boolean }): void;
 }
 
 interface DriveTestTank {
@@ -77,6 +77,8 @@ interface DriveTestGame {
   tankById: Map<string, DriveTestTank>;
   shells: RuntimeValue[];
   nextShellId: number;
+  /** The step's turret bodies (physics lane): a slain hull's turret flies or comes off its ring as in a real death. */
+  _wreckTurrets?: { launch(tank: RuntimeValue, cause: string, tick: number): boolean } | null;
 }
 
 interface DriveTestWorld {
@@ -147,7 +149,8 @@ export interface DriveTestController {
   aimState(): Record<string, RuntimeValue> | null;
   fastForward(seconds: number): number;
   spawnKillShell(aimYFrac?: number): boolean;
-  slayEnemies(): void;
+  /** Destroy every live enemy; `cause` 'ammorack' cooks them off (their turrets thrown), else a plain kill. */
+  slayEnemies(cause?: 'ammorack' | 'shot'): void;
   resetAim(): void;
 }
 
@@ -517,7 +520,7 @@ export function createDriveTestController({
     return false;
   }
 
-  function slayEnemies(): void {
+  function slayEnemies(cause: 'ammorack' | 'shot' = 'shot'): void {
     const game = getGame();
     for (const entity of game.tanks) {
       if (entity.isPlayer || entity.team !== 'enemy' || !isLiveDriveTestTank(entity)
@@ -527,13 +530,14 @@ export function createDriveTestController({
       entity.combat.fire.burning = false;
       if (entity._destroyedAnnounced) continue;
       entity._destroyedAnnounced = true;
-      entity.visual?.setDestroyed?.();
+      entity.visual?.setDestroyed?.({ pop: cause === 'ammorack' });
+      game._wreckTurrets?.launch(entity, cause, Math.round(game.timeS * 60));
       bus.emit('tank:destroyed', {
         id: entity.id,
         specId: entity.specId,
         pos: [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z],
         killerId: game.player ? game.player.id : null,
-        cause: 'shot',
+        cause,
       });
     }
   }

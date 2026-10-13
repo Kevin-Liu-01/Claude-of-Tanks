@@ -25,6 +25,7 @@ import {
 } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { crumpleBurntVehicle } from '../wreckCrumple.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -48,7 +49,9 @@ interface RoleBox {
  * footprint (roleFootprint) is what collides. */
 const ROLE_BOXES: Readonly<Record<CivilianVehicleKind, RoleBox>> = {
   truck: { lane: 'heavy', halfWidth: 1.29, halfLength: 3.30, height: 2.30, rise: 1.05, triangleBudget: 9000 },
-  jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7000 },
+  // sealed lane 2026-10-10: 7000 -> 7100 for the tub's end caps and the wheels' back discs (the France 2020s jeep went
+  // 6,940 -> 7,036; the open ends and hollow wheels showed the sky through every jeep)
+  jeep: { lane: 'light', halfWidth: 0.94, halfLength: 1.88, height: 1.73, rise: 0.35, triangleBudget: 7100 },
   sedan: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.61, rise: 0.2, triangleBudget: 8500 },
   wagon: { lane: 'light', halfWidth: 1.01, halfLength: 2.13, height: 1.69, rise: 0.2, triangleBudget: 8500 },
   pickup: { lane: 'light', halfWidth: 1.11, halfLength: 2.47, height: 1.77, rise: 0.3, triangleBudget: 8500 },
@@ -82,6 +85,8 @@ function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox): void {
   geometry.computeBoundingSphere();
   const body = geometry.userData.bodyBox as THREE.Box3 | undefined;
   if (body) { body.min.set(body.min.x * s, (body.min.y + lift) * s, body.min.z * s); body.max.set(body.max.x * s, (body.max.y + lift) * s, body.max.z * s); }
+  // the fit (sealed lane 2026-10-10): a model height y stands at (y + lift) * scale in the fitted geometry
+  geometry.userData.fit = { scale: s, lift };
 }
 
 /** One role's geometry on a fleet: intact or burnt out. */
@@ -95,6 +100,10 @@ function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildConte
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
   }));
   fitToRole(geometry, ROLE_BOXES[role]);
+  // (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled not just turn rusty") the burnt body
+  // deformed: its roof pressed in, dented flanks, on some an end pushed in (wreckCrumple.ts; collision is the intact
+  // coarse build's, canonicalSolid)
+  if (burnt) crumpleBurntVehicle(geometry, seed);
   delete geometry.userData.outboard;
   return geometry;
 }

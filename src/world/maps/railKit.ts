@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { markWorldLantern } from '../worldNightEmissionGeometry.ts';
 import {
-  box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV,
+  box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV, slabBox,
 } from '../propGeometry.ts';
 import {
   INDUSTRIAL_CLADDING,
@@ -23,6 +23,8 @@ import {
 import {
   BOX_FACE, STEEL_ATLAS_STRIP_M, STEEL_BLANK_END_U, STEEL_DOOR_U, STEEL_STRIP_V, mapBoxFaceUv, type SteelStrip,
 } from '../propsSteelAtlas.ts'; // round 75
+import { drawsPeriodFreight, pushPeriodFreight } from './periodFreight.ts';
+import { terraceLayout, terraceUnits } from './terraceLayout.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
   createGablePrism(width, height, depth, 0.5)
@@ -371,7 +373,11 @@ export function makeContainerRow(
   buckets: GeometryBuckets,
 ): StructureDimensions {
   const target = buckets.steel || buckets.baked || buckets.dark;
-  const liveries = containerLiveries(structureBuildContext(buckets));
+  const context = structureBuildContext(buckets);
+  const liveries = containerLiveries(context);
+  // the map-revival lane (2026-10-09): before the ISO box (periodFreight.ts) the seats hold the period's freight, on a
+  // map with its own mix (a kit that rebuilds the row keeps the base row's bounds: drawsPeriodFreight)
+  const freightMap = context && drawsPeriodFreight(context.mapId) ? context.mapId : null;
   const n = 5 + ((rng() * 2) | 0);
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
@@ -382,6 +388,14 @@ export function makeContainerRow(
     const yaw = (rng() - 0.5) * 0.08;
     const zOff = (rng() - 0.5) * 1.4;
     const jitter = drawBodyJitter(rng);
+    if (freightMap !== null) {
+      // the same shared draws as the boxes: the stack roll, then the stacked box's livery, paint, yaw and offsets
+      const upper = rng() < 0.45;
+      if (upper) { rng(); drawBodyJitter(rng); rng(); rng(); rng(); }
+      pushPeriodFreight(buckets, local, freightMap, x, zOff, yaw, upper);
+      x += CW + 0.4 + rng() * 0.5;
+      continue;
+    }
     const strip: SteelStrip = local() < 0.5 ? 'sideA' : 'sideB';
     pushContainer(target, jitter, local, hex, strip, yaw, x, 0, zOff, local() < 0.5);
     if (rng() < 0.45) { // second tier
@@ -688,10 +702,75 @@ export function makeNetYard(
   return { w, d, h: 2.4 };
 }
 
+/**
+ * A colliery colony terrace (a 'terrace' plot, terraceLayout.ts; the buildings lane with map-revival, 2026-10-11, for
+ * Cinder Junction's colony streets): two-storey brick houses sharing party walls across the plot's width, their doors
+ * to +z with the steps on the plot's front edge (the pavement line), a slate gable roof whose ridge runs along the row
+ * on a socle 4 cm proud, a stack on the ridge at each party wall and inside each end gable, and one-storey wash-houses
+ * under mono-pitch roofs behind each pair where the plot is deep enough. The plain form, for a map without a kit that
+ * rebuilds it (ruhr.ts terraceRow does on Cinder Junction). Two draws, whatever the plot.
+ */
+export function makeTerrace(
+  rng: () => number,
+  buckets: GeometryBuckets,
+  wallBucket = 'stone',
+): StructureDimensions {
+  const layout = terraceLayout(structureBuildContext(buckets)?.plot);
+  const { partyWalls, houses } = terraceUnits(layout);
+  const walls = buckets[wallBucket] ?? buckets.stone;
+  rng(); rng();
+  const W = layout.w, zc = (layout.front + layout.back) / 2, half = layout.depth / 2;
+  const wallH = 5.8, over = 0.3, verge = 0.15, thick = 0.13;
+  const roofH = Math.tan(40 * Math.PI / 180) * half;
+  buckets.stone.push(box(W + 0.08, 0.9, layout.depth + 0.08).translate(0, -0.25, zc));
+  walls.push(box(W, wallH, layout.depth).translate(0, wallH / 2, zc));
+  for (const sx of [-1, 1]) {
+    walls.push(gablePrism(layout.depth, roofH, 0.32).rotateY(Math.PI / 2).translate(sx * (W / 2 - 0.16), wallH, zc));
+  }
+  const slope = Math.hypot(half + over, roofH + 0.1), ang = Math.atan2(roofH + 0.1, half + over);
+  for (const side of [-1, 1] as const) {
+    const slab = slabBox(W + 2 * verge, thick, slope + 0.15, 0.35);
+    pitchRoofPlane(slab, 'z', side, ang, 'gable');
+    buckets.roof.push(slab.translate(0, wallH + roofH / 2 + thick / 2, zc + side * (half / 2 + over / 2)));
+  }
+  buckets.roof.push(slabBox(W + 2 * verge, thick + 0.01, 0.34, 0.5).translate(0, wallH + roofH + 0.04, zc));
+  // the stacks: one on the ridge at each party wall, one inside each end gable
+  for (const x of [-W / 2 + 0.5, ...partyWalls, W / 2 - 0.5]) {
+    buckets.stone.push(box(0.55, 1.7, 0.75).translate(x, wallH + roofH + 0.25, zc));
+    buckets.dark.push(box(0.16, 0.3, 0.16).translate(x - 0.12, wallH + roofH + 1.25, zc));
+    buckets.dark.push(box(0.16, 0.3, 0.16).translate(x + 0.12, wallH + roofH + 1.25, zc));
+  }
+  for (const h of houses) {
+    const xc = (h.x0 + h.x1) / 2, uw = h.x1 - h.x0;
+    const xd = h.door > 0 ? h.x1 - 0.9 : h.x0 + 0.9, xw = xc - h.door * uw * 0.17;
+    // the door, its step on the pavement line, the windows of both floors front and back
+    buckets.dark.push(box(0.95, 2.15, 0.08).translate(xd, 1.2, layout.front + 0.02));
+    buckets.stone.push(box(1.25, 0.32, layout.stepDepth + 0.05).translate(xd, 0.06, layout.front + layout.stepDepth / 2 - 0.02));
+    buckets.dark.push(box(1.1, 1.3, 0.06).translate(xw, 1.75, layout.front + 0.02));
+    for (const x of [xc - uw * 0.2, xc + uw * 0.2]) buckets.dark.push(box(0.9, 1.3, 0.06).translate(x, 4.35, layout.front + 0.02));
+    buckets.dark.push(box(0.9, 1.1, 0.06).translate(xw, 1.85, layout.back - 0.02));
+    buckets.dark.push(box(0.9, 1.1, 0.06).translate(xc, 4.4, layout.back - 0.02));
+  }
+  if (layout.washhouses) {
+    // a flat-roofed wash-house behind each pair astride their party wall (an odd last house has its own)
+    const zw = layout.back - layout.washDepth / 2, top = 2.5;
+    for (let i = 0; i < houses.length; i += 2) {
+      const pair = i + 1 < houses.length;
+      const x = pair ? houses[i].x1 : houses[i].x0 + 1.25, ww = pair ? 4.2 : 2.3;
+      walls.push(box(ww, top + 0.3, layout.washDepth).translate(x, (top - 0.3) / 2, zw));
+      buckets.roof.push(slabBox(ww + 0.16, 0.12, layout.washDepth + 0.08, 0.35).translate(x, top + 0.06, zw - 0.04));
+      buckets.dark.push(box(0.85, 1.9, 0.06).translate(x, 1.0, layout.back - layout.washDepth - 0.02));
+    }
+  }
+  return { w: W, d: layout.d, h: wallH + roofH + 1.4 };
+}
+
 /** Builders keyed by plan name — spread into URBAN_BUILDERS (props.ts
  * BUILDER_BY_NAME contract, see maps/urbanKit.ts). */
 export const RAIL_BUILDERS: Record<string, StructureBuilder> = {
   warehouse: makeWarehouse,
+  // the colliery colony's terraced rows (terraceLayout.ts; Cinder Junction)
+  terrace: makeTerrace,
   containerRow: makeContainerRow,
   gantry: makeGantry,
   watertower: makeWaterTower,

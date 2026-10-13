@@ -102,6 +102,7 @@ import type {
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 import { createStudioCinematics } from '../fx/cinematicFx.ts';
 import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
+import type { SmokeScreenWalls } from '../fx/cinematicRecipes.ts';
 import type { FxCinematicPort } from '../fx/effects.ts';
 import {
   STUDIO_FX_QUALITIES, STUDIO_FX_PARAMS, normalizeStudioFx, studioFxState, fxParam, flareColor,
@@ -110,8 +111,8 @@ import type { StudioFxQuality, StudioFxSettings } from './studioFxSettings.ts';
 import { createTrackDustAdapters } from './studioTrackDust.ts';
 import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
-import { createSmokeCanister, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
-import { SMOKE_WIND_X, SMOKE_WIND_Z } from '../sim/smokeScreen.ts';
+import { createSmokeCanister, smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
+import { smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
@@ -1744,14 +1745,33 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * systems (real sockets + smoke ballistics). Vehicles without a kit fire a
    * generic turret-front fan of `count` canisters.
    */
+  /** (2026-10-09) The cinematic screen's walls from the simulation (handed over: the Studio chunk imports no sim module
+   * of its own): bounced paths, each canister's cloud held outside the walls it read at launch, a roof's surface. */
+  function smokeWalls(shots: readonly SmokeCanister[], clip: SmokeScreen['clip']): SmokeScreenWalls {
+    const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
+    const one = shots.map((shot, i): SmokeScreen => ({ x: 0, y: 0, z: 0, yaw: 0, born: 0, canisters: [shot], banks: [0], clip: clip?.[i] ? [clip[i]!] : undefined }));
+    const p = { x: 0, y: 0, z: 0 }, volume: SmokeVolume = { x: 0, y: 0, z: 0, radius: 0, height: 0, density: 0 };
+    return {
+      pathAt(c, t, out) { smokeCanisterPosition(c as SmokeCanister, t, p); out[0] = p.x; out[1] = p.y; out[2] = p.z; },
+      velAt(c, t, out) { smokeCanisterVelocity(c as SmokeCanister, t, p); out[0] = p.x; out[1] = p.y; out[2] = p.z; },
+      hold(i, cx, cz, radius, at) { volume.x = cx; volume.z = cz; volume.radius = radius; smokeHoldInside(one[i]!, -2, volume, at); },
+      base(i, x, z) { return smokeBankBase(one[i]!, -2, x, z, ground); },
+      room(i, x, z) { return smokeWallRoom(one[i]!, -2, x, z); },
+    };
+  }
+  let salvoWalls: SmokeScreenWalls | null = null;
   function smokeSalvo(a: StudioActor, count: number): number[][] {
     const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
     const entity = {
       id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
     } as unknown as AuxiliaryEntity;
-    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) {
+    // (2026-10-09) through the active world's collision, as the battle fires them: canisters bounce off walls
+    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground, getWorld())) {
       const screen = entity.combat.auxiliary?.smoke;
-      if (screen?.canisters?.length) return screen.canisters.map((shot) => [...shot]);
+      if (screen?.canisters?.length) {
+        salvoWalls = smokeWalls(screen.canisters, screen.clip);
+        return screen.canisters.map((shot) => [...shot]);
+      }
     }
     const st = a.state;
     const yaw = st.yaw + (st.turretYaw ?? 0);
@@ -1773,9 +1793,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function fireSmokeScreen({ id, actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
+    salvoWalls = null;
     const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
     ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
-      fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density));
+      fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density), salvoWalls);
     return true;
   }
 
@@ -2423,6 +2444,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     shells.push(shell);
     return true;
   }
+  /**
+   * A strike round met the ground (2026-10-09; it used to expire there as a plain impact): the sim's strike at the burst
+   * — the structures in its reach take its blast, the light props in its reach fall (studioDestruction.ts, the solo
+   * step's fellBlastProps) — then the crater the battle would dig and the blast naming it. The crater is the Studio's own
+   * (studioDig: one crater count with the explosion effects), so the sim digs none.
+   */
+  function strikeGround(sh: StudioShell): TerrainCraterEvent | null {
+    const spec = sh.spec as unknown as MunitionShellLike;
+    const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
+    const dx = sh.pos.x - _strikePrev.x, dz = sh.pos.z - _strikePrev.z, length = Math.hypot(dx, dz) || 1;
+    studioDestructionNow()?.strike(spec, null, sh.pos.x, sh.pos.y, sh.pos.z, dx / length, dz / length, false);
+    if (!(chargeKg > 0)) return null;
+    const crater = studioDig(munition, chargeKg, sh.pos.x, sh.pos.z);
+    fxBus.emit(DESTRUCTION_BUS_EVENTS.blast, {
+      munition, chargeKg, x: sh.pos.x, y: sh.pos.y, z: sh.pos.z, nx: 0, ny: 1, nz: 0, surface: 'ground',
+      ...(crater ? { craterId: crater.craterId } : {}),
+    });
+    return crater;
+  }
   /** A strike round met the world at `hit` (a record, not the ground): the sim's strike, then the burst where it stopped. */
   function strikeWorld(sh: StudioShell, hit: { point: THREE.Vector3; normal: THREE.Vector3; record?: { structureIdx?: number } | null },
     dir: THREE.Vector3): void {
@@ -2441,6 +2481,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       shellId: sh.id, hitTerrain: false, hitKind: 'prop', pos: [hit.point.x, hit.point.y, hit.point.z],
       normal: [hit.normal.x, hit.normal.y, hit.normal.z], shellType: spec.type, caliberMm: spec.caliberMm, munition, chargeKg,
       surfaceKind: structureId !== undefined ? 'structure' : 'prop',
+      ...(structureId !== undefined ? { structureId } : {}),
     });
   }
 
@@ -2682,12 +2723,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           if (exactShells) refineShellCrossing(sh, px, py, pz);
           sh.pos.y = hfProxy.getHeightAt(sh.pos.x, sh.pos.z) + 0.05;
           sh.dead = true;
+          // a strike round bursts on the ground as a battle round does (strikeGround): the blast, then the impact, then
+          // the crater, the solo step's order
+          const groundCrater = sh._studioWorld ? strikeGround(sh) : null;
           filmCue('dirt', sh.pos.x, sh.pos.y, sh.pos.z, sh.spec?.caliberMm ?? 120);
           fxBus.emit('shell:expired', {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
             // the round's type and calibre, as the solo step publishes them (fx keys its explosion on the class)
             shellType: sh.spec?.type, caliberMm: sh.spec?.caliberMm,
           });
+          if (groundCrater) fxBus.emit(DESTRUCTION_BUS_EVENTS.crater, groundCrater);
           if (exactShells) {
             _v1.set(sh.pos.x, sh.pos.y, sh.pos.z);
             ensureCinematics().groundHit(`shell${String(sh.id)}`, _v1, sh.spec?.caliberMm || 105, String(sh.spec?.type || 'AP'));
@@ -3066,6 +3111,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let crushStoryboard: Storyboard | null = null;
   let crushWorld: WorldRuntime | null = null;
   const crushSpecs: unknown[] = [];
+  /** (dcore 2026-10-10) the hulls on their tracks, pressing the props they meet on every frame of the timeline (the world's
+   *  pressHull: a map vehicle, a hut, a stall or a tent gives where a hull's box meets it), with their contact rects. */
+  const pressHulls: Array<{ hull: StudioCrushHull; centerX: number; centerZ: number }> = [];
+  const _pressPose = { x: 0, z: 0, yawRad: 0 };
+  /** The frame grid the presses run on (ms): fixed, so a re-film presses at the same instants. */
+  const PRESS_STEP_MS = 1000 / 60;
+  function pressAt(world: WorldRuntime, tMs: number): void {
+    for (const p of pressHulls) {
+      if (!p.hull.poseAt(tMs, _pressPose)) continue;
+      const c = Math.cos(_pressPose.yawRad), sn = Math.sin(_pressPose.yawRad);
+      world.pressHull?.(_pressPose.x + p.centerX * c + p.centerZ * sn, _pressPose.z + p.centerZ * c - p.centerX * sn,
+        _pressPose.yawRad, p.hull.halfLength, p.hull.halfWidth);
+    }
+  }
+  /** Every press on the grid in (fromMs, toMs]. */
+  function pressBetween(world: WorldRuntime, fromMs: number, toMs: number): void {
+    if (!pressHulls.length || !world.pressHull) return;
+    for (let k = Math.floor(fromMs / PRESS_STEP_MS) + 1; k * PRESS_STEP_MS <= toMs + 1e-6; k++) pressAt(world, k * PRESS_STEP_MS);
+  }
   const _crushSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
   function crushPlanCurrent(world: WorldRuntime | null): boolean {
     if (crushStoryboard !== storyboard || crushWorld !== world) return false;
@@ -3082,6 +3146,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     crushStoryboard = storyboard;
     crushWorld = world;
     crushSpecs.length = 0;
+    pressHulls.length = 0;
+    // the Studio presses with every hull on its tracks: a crush event never sweeps a hull of its own across a prop
+    world?.setCrushSweeps?.(false);
     const hulls: StudioCrushHull[] = [];
     for (const a of actors) {
       const keys = actorTrackFor(a)?.keys;
@@ -3100,9 +3167,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         },
       });
     }
+    for (let i = 0; i < hulls.length; i++) {
+      const rect = tankContactRect(crushSpecs[i] as Parameters<typeof tankContactRect>[0]);
+      pressHulls.push({ hull: hulls[i], centerX: rect.centerX, centerZ: rect.centerZ });
+    }
     crushes.setPlan(world, world && hulls.length
       ? planStudioCrushes(hulls, storyboard.durationMs, world.queryObstacles, world.crushables) : []);
-    if (world) crushes.settleTo(world, clockMs);
+    if (world) { crushes.settleTo(world, clockMs); pressBetween(world, -PRESS_STEP_MS, clockMs); world.advanceDestruction(0); }
   }
   const _crushPos = new THREE.Vector3(), _crushDir = new THREE.Vector3();
   /** A toppled pole's or dressing's burst, as the battle adds it after world.crushProp (crushNearbyProps). */
@@ -3121,6 +3192,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const world = getWorld();
     if (!world) return;
     syncCrushPlan(world);
+    // the hulls press what they meet on every frame first (a crush event then finds its prop already giving)
+    pressBetween(world, fromMs, toMs);
     let cursor = fromMs;
     for (let next = crushes.nextTime(); next <= toMs; next = crushes.nextTime()) {
       if (next > cursor) { world.advanceToppledVegetation?.((next - cursor) / 1000); cursor = next; }
@@ -3130,6 +3203,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   /** Studio exit: the battlefield's props stand again before it can host anything else, and the plan is forgotten. */
   function releaseCrushes(): void {
+    crushWorld?.setCrushSweeps?.(true);
+    pressHulls.length = 0;
     crushes.restore(crushWorld);
     crushStoryboard = null;
     crushWorld = null;
@@ -3141,6 +3216,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!world) return;
     syncCrushPlan(world);
     crushes.settleTo(world, timeMs);
+    // the presses up to the seek, replayed on the grid (a reset stood the props up again), and drawn at once
+    pressBetween(world, -PRESS_STEP_MS, timeMs);
+    world.advanceDestruction(0);
   }
 
   function applyStoryboardCamera(timeMs: number): boolean {

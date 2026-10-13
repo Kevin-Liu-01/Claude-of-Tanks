@@ -138,6 +138,17 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
     R: 'rock', M: null,
   },
+  // ground lane (2026-10-07, wave 251's Orchard bird: the lawn "mottled with dark blotches the size of houses"; "the Chouf
+  // in summer isn't uniformly green"): Orchard Valley borrowed Verdant's palette, and with it the black earth under every
+  // worn patch. Its own row: Verdant's grass; the dirt photo a third greyed and warmed to the Chouf's dry, stony soil
+  // (linear ~0.17 / 0.13 / 0.095 — a warm dusty brown, its pebbles the photo's own; the first cut's 0.19 / 0.15 / 0.11
+  // turned the village's yards to pale patches from the bird); the rock plain Rock058 (the map's
+  // sourcedTint R makes it the cream limestone, as on Verdant's row)
+  orchard: {
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
+    D: { set: 'dirt', desat: 0.40, tint: [0.86, 0.88, 0.88], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
   // ground lane (2026-10-07, wave 248, Tidegate Polders: the plough "jet-black, like cinder or asphalt", the banks "near-black,
   // textureless slabs at the water's edge", the lanes "a uniform near-black tar strip" — all three were Verdant's black
   // earth, which the polders borrowed with Verdant's palette): the Scheldt polders' marine clay. The dirt photo greyed by
@@ -243,6 +254,19 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', desat: 0.35, tint: [0.66, 0.68, 0.68], roughMul: 1.3 },
     R: { set: 'rock', tint: [1.02, 1.0, 0.92], roughMul: 1.15 }, M: null,
   },
+  // the map-revival lane (Longleaf round 4, 2026-10-11; the gauntlet's wave 376: "a saturated lawn", "a mown lawn"):
+  // the longleaf flatwoods' floor — the wiregrass sward cured toward straw and dulled (the photo grass at two thirds of its
+  // saturation under an olive-straw tint, ≈ 0.25/0.26/0.10 against Verdant's 0.27/0.32/0.12), the Gulf coastal plain's
+  // grey sand where the ground is worn, a track or a cut (the sand set greyed toward 0.52/0.48/0.40), and the creek
+  // banks' red-brown clay on the steep ground
+  longleaf: {
+    G: { set: 'grass', desat: 0.35, tint: [0.82, 0.80, 0.62], roughMul: 1.28 },
+    // (cap11's frames: the pale sand set turned the clearcut into white dunes and the lookout's track into a beach) the
+    // worn ground is the flatwoods' own floor — the dirt set's twigs and straw for the pine litter and the cutover's
+    // slash, greyed and darkened toward the grey sandy loam (≈ 0.24/0.20/0.15)
+    D: { set: 'dirt', desat: 0.45, tint: [0.62, 0.58, 0.52], roughMul: 1.3 },
+    R: { set: 'dirt', desat: 0.3, tint: [0.62, 0.50, 0.40], roughMul: 1.3 }, M: null,
+  },
   fjord: {
     G: { set: 'grass', tint: [0.76, 0.86, 0.80], roughMul: 1.28 },
     D: { set: 'dirt', tint: [0.68, 0.70, 0.68], roughMul: 1.35 },
@@ -258,6 +282,15 @@ const TERRAIN_PLAN = {
   badlands: {
     G: { set: 'sand', tint: [0.90, 0.68, 0.52], roughMul: 1.24 },
     D: { set: 'sand', tint: [0.70, 0.46, 0.36], roughMul: 1.28 },
+    R: null, M: null,
+  },
+  // (2026-10-11, the map-revival lane; gauntlet wave 380 on Olympus Basin: "candy-orange dune sand with almost no dark
+  // basalt") Mars's own sets, not Redrock's: the regolith a dusty butterscotch, a third of the sand photo's chroma out, and
+  // the second layer the basalt sand of the dark plains — near-neutral, a third of the regolith's value — so the macro
+  // noise lays dark drifts and patches through the ochre
+  mars: {
+    G: { set: 'sand', desat: 0.35, tint: [0.86, 0.64, 0.47], roughMul: 1.28 },
+    D: { set: 'sand', desat: 0.9, tint: [0.33, 0.29, 0.27], roughMul: 1.3 },
     R: null, M: null,
   },
   monsoon: {
@@ -285,7 +318,10 @@ const TERRAIN_PLAN = {
     // a step darker; the rock a desaturated basalt
     // (the map-revival lane, Caldera round 2: Aso's floor and slopes — the photo grass a muted summer green with a cured
     // gold in it, the dirt the black volcanic Andosol of the fields and tracks, the rock the basalt as before)
-    G: { set: 'grass', tint: [0.86, 0.88, 0.66], roughMul: 1.25 },
+    // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "an oversaturated lawn-green slab ... a golf
+    // course rather than Aso's tawny susuki pasture", "the cone ... a bald lime-green mound") the grass a tawny summer
+    // green — the susuki's straw through the green, a fifth of the photo's saturation out (was 0.86 / 0.88 / 0.66)
+    G: { set: 'grass', desat: 0.2, tint: [0.92, 0.87, 0.6], roughMul: 1.25 },
     D: { set: 'dirt', desat: 0.4, tint: [0.42, 0.40, 0.38], roughMul: 1.3 },
     // (Caldera round 2, item 5, wave 114: the Black Shelves "need a dark, rough, blocky material, not grey"): the rock
     // set's fractured blocks — the lava flows' whole surface and the steep rock — near-black basalt, a breath warm,

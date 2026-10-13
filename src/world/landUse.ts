@@ -22,7 +22,7 @@
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry' | 'terraceSummer' | 'bare';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -67,6 +67,13 @@ export interface LandUseProfile {
    * the profile's region.
    */
   zones?: readonly LandZone[];
+  /**
+   * 2026-10-12 (the owner: "we can see fake water. no more of that, we need real water"): the flooded paddies that may
+   * hold water — the ids of the fields whose floor is level (levelFloodFields). A paddy the rotation floods anywhere else
+   * grows as a green one: water cannot lie on a sloped or hummocky floor, and paint that pretends to was the fake water
+   * at Jade River Delta's spawn. Absent (a sandboxed receipt, a map without paddies): the rotation's crop unchanged.
+   */
+  floodIds?: ReadonlySet<number> | null;
 }
 
 /** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
@@ -189,6 +196,19 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
   terrace: [[9, 0.44], [8, 0.20], [10, 0.10], [7, 0.10], [0, 0.16], [4, 0.0], [5, 0.0]],
+  // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "flooded parcels ... hard-edged rectangles of
+  // glittering blue-white noise"; "out of season they should be dry stubble rather than open water") Aso's floor in the
+  // early summer of the map: most paddies planted and green, a few still flooded for the late transplanting, the odd one
+  // ripe or cut to stubble, the vegetable plots and the meadow between — a tenth of the fields under water, not a fifth
+  terraceSummer: [[9, 0.48], [8, 0.10], [10, 0.10], [7, 0.12], [0, 0.12], [5, 0.08]],
+  // (2026-10-10, the map-revival lane; gauntlet wave 359, Caldera chase: "three of the four tanks stand in a river") the
+  // caldera floor round a deployment: its paddies grown or ripe, never flooded — a flooded paddy under a tank company
+  // reads as a river it was set down in (the deployment's ground test reads the water mask, and a paddy's water is the
+  // land use's crop, not the mask's)
+  terraceDry: [[9, 0.52], [10, 0.12], [7, 0.14], [0, 0.14], [5, 0.08]],
+  // (Caldera round 4: a farmstead's yard and its buildings' ground — no field: the zone's texels carry LAND_CROP_NONE,
+  // so the village's own worn ground shows there; wave-359 recapture: the paddies ran under the kura and the naya)
+  bare: [[31 as LandCropId, 1]], // (LAND_CROP_NONE, declared below with the bake)
   // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain — the grain ripe in the
   // dry season (wave 39, Saltwind corner-ne: "a hard-edged, oversaturated bright-green rectangle in the mid-ground" was
   // a young green crop's plot between the walls, a tone no summer karst field carries)
@@ -239,7 +259,7 @@ const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
-  secano: 'margin',
+  secano: 'margin', terraceDry: 'bund', terraceSummer: 'bund', bare: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -258,6 +278,25 @@ function rotationKinds(region: LandRegion): [number, number] {
   const kind = (i: number): number => (table[i]?.[0] ?? table[table.length - 1][0]) & 31;
   return [kind(0) + 32 * kind(1) + 1024 * kind(2) + 32768 * kind(3), kind(4) + 32 * kind(5) + 1024 * kind(6)];
 }
+
+/** Caldera's farmsteads and village buildings (maps/caldera.ts CALDERA_VILLAGE, in order: x, z, yaw in degrees): each
+ * stands in a bare yard, a 26 m square about it turned with it, cut out of the fields (landUse.selftest holds the two
+ * lists equal). */
+const CALDERA_YARDS: readonly (readonly [number, number, number])[] = [
+  [-112.5, 172, 101.3], [-77.8, 165, -78.7], [-92.6, 181.8, 11.3], [-96.5, 162.7, 101.3], [-43.5, 107.5, 100.3],
+  [-8.8, 101.2, -79.7], [-28.7, 91.1, 10.3], [-25.2, 110.3, -79.7], [37.4, 165.7, 70.3], [70.7, 177.6, -109.7],
+  [49.4, 184.3, -19.7], [55.9, 166, 70.3], [115.7, 141.8, 72.2], [149.3, 152.6, -107.8], [130.5, 152.9, -107.8],
+  [-68.6, -109, 66.8], [-36.2, -95, -113.2], [-47.2, -114.5, -23.2], [-54.9, -96.5, -113.2], [23.1, -53.8, 98.1],
+  [58, -58.8, -81.9], [39.5, -62.2, 98.1], [126.9, -133.7, 124.8], [155.9, -153.9, -55.2], [133.6, -154.8, 34.8],
+  [144.7, -138.8, -55.2], [-120, 195, 180], [30, 105, 0], [98, -125, -30], [-365, 150, 90], [-385, 45, 90],
+  [-395, 150, 0], [-40, 175, 20], [100, -40, -20], [-378, 100, 0],
+];
+/** A Caldera yard's side (m). */
+export const CALDERA_YARD_M = 26;
+
+/** Caldera's dry deployments: the reach (m) of a side's anchor within which a field's middle keeps its paddy unflooded
+ * (each slot's 6 m disc of the 14-a-side block lies on fields whose middles are within it: .qa-dev/paddy-spawn.mjs). */
+const CALDERA_DRY_DEPLOYMENT_M = 80;
 
 const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // Amberford (Verdant): its establishing shot is set against WoT's Prokhorovka — long strip fields of the
@@ -282,8 +321,10 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // Polders (the Scheldt polders): long parcels at right angles to the dike roads (~76°), ditches on the long lines,
   // windbreak rows on some short ones; the land barely bends
   polders: {
-    strength: 1, heading: -0.25, blockU: 260, blockV: 64, maxSplit: 2, marginM: 1.5, trackShare: 0.85, hedgeShare: 0.3,
-    warpM: 8, region: 'polder', salt: 53,
+    // (the map-revival lane, step 3; gauntlet wave 205: "no raised dykes, straight ditches or long rectangular parcels")
+    // the parcels ruled straight (warp 8 m -> 0), up to three to a block, their grass margins wider (1.5 m)
+    strength: 1, heading: -0.25, blockU: 260, blockV: 64, maxSplit: 3, marginM: 2.0, trackShare: 0.85, hedgeShare: 0.3,
+    warpM: 0, region: 'polder', salt: 53,
   },
   // Reservoir (the Roer dams, the Eifel upland): hay meadows and pasture in small hedged fields (the Monschau hedges)
   reservoir: {
@@ -310,9 +351,26 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // rectangular paddies between earth bunds, green and flooded, vegetable plots and meadow, a field road along some of
   // the long boundaries, a few windbreak hedges; the fields keep to the level floor (the material keeps them off the
   // cones, the lava shelves, the roads and the village)
+  // (Caldera round 3, wave 131: "hard-edged flat-colour field rectangles that read as paint fills rather than paddies";
+  // "no paddies that read as flooded or bunded") Aso's paddies are small — the parcels a quarter smaller each way, so
+  // the bunds between them read; fewer field roads (was 96 x 58 m, tracks 0.32)
+  // (2026-10-10, wave 359: "three of the four tanks stand in a river" — the smaller parcels moved flooded paddies under 10
+  // of alpha's 14 slots and 13 of bravo's) each side's deployment on dry paddies: the fields whose middles lie within
+  // CALDERA_DRY_DEPLOYMENT_M of a side's anchor (alpha's pad, bravo's pads' centroid) grow their rice, none flooded;
+  // every other field is the terrace's rotation, as before
+  // (Caldera round 4, wave 359: "Aso's floor is a fine grid of narrow paddies and bunds aligned to roads and drains") the
+  // blocks narrower, 60 x 28 m cut at most in two, so the bunds' grid is finer (was 72 x 42 m in up to three), and the
+  // floor's crops its early summer (terraceSummer: a tenth of the fields flooded, not a fifth)
   caldera: {
-    strength: 1, heading: 0.18, blockU: 96, blockV: 58, maxSplit: 3, marginM: 0.8, trackShare: 0.32, hedgeShare: 0.14,
+    strength: 1, heading: 0.18, blockU: 60, blockV: 28, maxSplit: 2, marginM: 0.8, trackShare: 0.22, hedgeShare: 0.14,
     warpM: 10, region: 'terrace', salt: 103,
+    zones: [
+      // (round 4: the farmsteads' and the village's yards first, cut out of the fields round each building)
+      ...CALDERA_YARDS.map(([x, z, yawDeg]) => ({ region: 'bare' as const, box: { x, z, w: CALDERA_YARD_M, l: CALDERA_YARD_M, yawDeg }, cut: true })),
+      { region: 'terraceDry', disc: { x: -302, z: -380, r: CALDERA_DRY_DEPLOYMENT_M } },
+      { region: 'terraceDry', disc: { x: 22, z: 388, r: CALDERA_DRY_DEPLOYMENT_M } },
+      { region: 'terraceSummer', rect: { x0: -1e6, x1: 1e6, z0: -1e6, z1: 1e6 } },
+    ],
   },
   // Ironworks (foundry: the Völklingen ironworks on the Saar, the maps lane's rebuild): brownfield plots between the
   // works' streets (an axis grid), birch scrub seeded along some of the plot lines, works tracks along others
@@ -656,7 +714,11 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     if (!found) return out; // past the zones: no land use (the bake's LAND_CROP_NONE)
     cum = found.cum; kinds = found.kinds; trackShare = found.trackShare; hedgeShare = found.hedgeShare;
   }
-  const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  let crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  if ((crop as number) === LAND_CROP_NONE) return out; // (a bare zone: a yard — no field there, as past the zones)
+  const fieldId = U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003;
+  // a flooded paddy holds water only on a level floor (LandUseProfile.floodIds); elsewhere its rice grows green
+  if (crop === LAND_CROP.paddyWater && profile.floodIds && !profile.floodIds.has(fieldId)) crop = LAND_CROP.paddyGreen;
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
   const lineIdx = lv < blockV * 0.5 ? row : row + 1;
@@ -691,7 +753,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const albedo = LAND_CROP_ALBEDO[crop], growth = LAND_CROP_GROWTH[crop];
   out.tintR = albedo[0]; out.tintG = albedo[1]; out.tintB = albedo[2];
   out.sward = growth.sward ? 1 : 0; out.cropHeight = growth.height; out.cropKeep = growth.keep; out.weed = growth.weed ? 1 : 0;
-  out.id = (U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003);
+  out.id = fieldId;
   return out;
 }
 
@@ -799,6 +861,57 @@ export function* bakeLandUseSteps(
     if ((j + 1) % rowsPerSlice === 0 && j + 1 < n) yield;
   }
   return out;
+}
+
+/** A flooded paddy's floor counts as level when 80 % of it (p10..p90) lies within this many metres. */
+export const PADDY_LEVEL_M = 0.35;
+/**
+ * The flooded paddies whose floor is level enough to hold water (2026-10-12): every field the rotation floods, sampled
+ * on a `stepM` grid over the square past its bund footing, kept when its floor's p10..p90 spread is within levelM. The
+ * rotation's own crop is read (the profile's floodIds ignored), so the scan is the same whatever the profile carries.
+ */
+export function levelFloodFields(
+  profile: LandUseProfile, heightAt: (x: number, z: number) => number, halfExtentM: number, stepM = 5, levelM = PADDY_LEVEL_M,
+): Set<number> {
+  const raw: LandUseProfile = { ...profile, floodIds: null };
+  const sample = createLandFieldSample(), floors = new Map<number, number[]>();
+  for (let z = -halfExtentM + stepM / 2; z < halfExtentM; z += stepM) {
+    for (let x = -halfExtentM + stepM / 2; x < halfExtentM; x += stepM) {
+      landUseAt(raw, x, z, sample);
+      if (!sample.active || sample.crop !== LAND_CROP.paddyWater || sample.edgeM < sample.marginM + 0.5) continue;
+      let floor = floors.get(sample.id);
+      if (!floor) floors.set(sample.id, floor = []);
+      floor.push(heightAt(x, z));
+    }
+  }
+  const level = new Set<number>();
+  for (const [id, floor] of floors) {
+    if (floor.length < 8) continue;
+    floor.sort((a, b) => a - b);
+    if (floor[Math.floor(floor.length * 0.9)]! - floor[Math.floor(floor.length * 0.1)]! <= levelM) level.add(id);
+  }
+  return level;
+}
+/** Whether a profile's rotation can flood a paddy at all (its region's or a zone's). */
+function profileFloods(profile: LandUseProfile): boolean {
+  const regions = [profile.region, ...(profile.zones ?? []).map((zone) => zone.region)];
+  return regions.some((region) => (ROTATIONS[region] ?? []).some(([crop]) => crop === LAND_CROP.paddyWater));
+}
+/**
+ * The map's land use with its flooded paddies kept to level floors (levelFloodFields, scanned once, on first need): the
+ * profile the terrain material bakes and every CPU reader shares. A profile that floods nothing is returned as it is.
+ */
+export function withLevelPaddies(
+  profile: LandUseProfile | null, heightAt: (x: number, z: number) => number, halfExtentM: number,
+): LandUseProfile | null {
+  if (!profile || !(profile.strength > 0) || !profileFloods(profile)) return profile;
+  let level: Set<number> | null = null;
+  const derived: LandUseProfile = { ...profile };
+  Object.defineProperty(derived, 'floodIds', {
+    enumerable: true,
+    get: () => (level ??= levelFloodFields(profile, heightAt, halfExtentM)),
+  });
+  return derived;
 }
 
 // --------------------------------------------------------------------------------------------- the GLSL

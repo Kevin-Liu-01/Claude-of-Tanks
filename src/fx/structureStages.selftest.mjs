@@ -150,7 +150,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.equal(data[o], now, 'the fall starts now');
   // round 7 (wave 277): the mask has the fall's footprint (the roof drops from the eaves and rides the front), and the
   // walls' own pieces leave the crumble front band by band (the kit's own collapse pieces besides)
-  const F = o + 10 * 4;
+  const F = o + (STRUCT_STRIDE - 1) * 4; // the F texel is a structure's last (after its MAX_HOLES pairs)
   assert.ok(Math.abs(data[F] - (placement.y + anatomy.roof.eaveY - base.baseY)) < 1e-4 && data[F + 1] === anatomy.w / 2
     && data[F + 2] === anatomy.d / 2 && Math.abs(data[F + 3] - placement.yaw) < 1e-6, 'the fall\'s eaves and footprint');
   const thrown = debris.stats().pieces - piecesBefore;
@@ -248,7 +248,7 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // holes: the ring never grows past MAX_HOLES
   for (let i = 0; i < MAX_HOLES + 2; i++) stages.breach({ structureId: 7, section: 0, sectionKind: 'wall', y0: 2, y1: 5, hole: i,
     x: fx, y: 3.5, z: fz, nx: s, ny: 0, nz: c, radiusM: 0.6, munition: 'atgm', sectionDown: false }, seam);
-  assert.equal(data[o + 7], MAX_HOLES, 'four holes kept');
+  assert.equal(data[o + 7], MAX_HOLES, `${MAX_HOLES} holes kept`);
   stages.reset();
 }
 
@@ -348,8 +348,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   };
   const groundFront = holeRuns(0, 'front', 0), groundRight = holeRuns(0, 'right', 1), upperFront = holeRuns(1, 'front', 2);
   const slot = 9 * T;
-  const holeR = () => [0, 1, 2, 3].map((k) => data[slot + 8 + k * 8 + 3]);
-  const holeY = () => [0, 1, 2, 3].map((k) => data[slot + 8 + k * 8 + 1]);
+  // (2026-10-10: the mask keeps MAX_HOLES now, a dozen; the cuts so far are its count)
+  const holeCount = () => data[slot + 7];
+  const holeR = () => [...Array(holeCount()).keys()].map((k) => data[slot + 8 + k * 8 + 3]);
+  const holeY = () => [...Array(holeCount()).keys()].map((k) => data[slot + 8 + k * 8 + 1]);
   // 1. the ground storey's front panel: down to its stub, a metre over the base; nothing else of the walls moves
   stages.breach(fall(0, 'front'), seam);
   let w = sWall.mesh.geometry.getAttribute('position').array;
@@ -420,10 +422,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(upperFront.every((m) => !m.visible), 'the dropped storey takes its holes\' rims and room');
   assert.ok(groundRight.every((m) => m.visible), 'the ground storey\'s hole stands with its wall');
   assert.ok(heapRuns.length > 0 && heapRuns.every((m) => m.visible), 'the kit\'s heap on the floor line stands (laid after the drop)');
-  // (each rendered-wall hole is two cuts, the render's ring and the hole: the ring of four holds the ground right's
-  // and the upper front's)
+  // (each rendered-wall hole is two cuts, the render's ring and the hole: the ring holds the ground right's and the upper
+  // front's)
   const radii = holeR(), ys = holeY();
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < radii.length; k++) {
     if (ys[k] > placement.y + 3) assert.equal(radii[k], 0, `the dropped storey's cut ${k} goes with it`);
     else assert.ok(radii[k] > 0, `the ground storey's cut ${k} stays`);
   }

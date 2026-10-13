@@ -16,7 +16,7 @@ import { eraPlateIndices } from '../wire/era.ts';
 import { MAX_EVENT_JSON_BYTES } from '../wire/constants.ts';
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { SnapshotFrame, WireEvent } from '../wire/messages.ts';
-import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeVelocity } from '../wire/quantize.ts';
+import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, dequantizeVelocity } from '../wire/quantize.ts';
 import { bytesToBase64Url } from '../match/base64url.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import type { HostBootConfig, HostResumeState, MigrationEntityExtras } from './hostProtocol.ts';
@@ -215,6 +215,21 @@ export function resumeStateFromRetained(
 }
 
 /**
+ * The seats an elected host waits for before its world moves (the resume hold, matchHostCore.ts RESUME_HOLD_MS): the
+ * room's connected players with a battle seat in the boot plan, the elected seat itself among them, less the host that
+ * went (a silent host may still hold its room socket; it comes back, if ever, as a peer of the new host).
+ */
+export function resumeHoldSeats(
+  players: readonly { id: string; connected: boolean; team: string }[],
+  seats: readonly { playerId: string; team: string }[],
+  previousHostId: string | null,
+): string[] {
+  const seated = new Set(seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.playerId));
+  return players.filter((player) => player.connected && player.team !== 'spectator' && player.id !== previousHostId && seated.has(player.id))
+    .map((player) => player.id);
+}
+
+/**
  * Write a keyframe's rows and extras onto the actor's entities, and its persistent destroyed list onto the actor's world
  * (before the loop starts). Returns how many entities matched, and how many destroyed props this world restored or
  * does not have. Without the list (world state audit, 2026-10-01) the elected host stood every felled tree back up
@@ -260,6 +275,15 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       for (const [name, index] of table) byIndex.set(index, name);
       combat.eraSpent ??= new Set();
       for (const index of row.eraSpent) { const name = byIndex.get(index); if (name) combat.eraSpent.add(name); }
+    }
+    // physics lane (wire 5): a wreck's turret body where the newest row had it (asleep where it lay, or falling on)
+    const body = row.wreckBody;
+    if (body && combat.destroyed) {
+      actor.authority.restoreWreckTurret(entity.id, {
+        x: dequantizePosition(body.x), y: dequantizePosition(body.y), z: dequantizePosition(body.z),
+        qx: dequantizeUnitComponent(body.qx), qy: dequantizeUnitComponent(body.qy), qz: dequantizeUnitComponent(body.qz),
+        qw: dequantizeUnitComponent(body.qw), asleep: body.asleep,
+      });
     }
     // the migration seed (P3b): the actor remembers what each entity was restored from, so its own seat's hint can be bounded
     actor.noteRestoredRow(row.entityId, row.tick, tank.pos.x, tank.pos.z);

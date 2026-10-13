@@ -131,7 +131,9 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     };
     if (startElection?.reason !== 'start' || startElection.generation !== 1) failures.push(`the start election ${JSON.stringify(startElection)}`);
     if (report.steps.connected.migrationsSeen.some((count) => count !== 0)) failures.push('the start election counted as a migration');
-    if (report.steps.connected.offers !== 2) failures.push(`${report.steps.connected.offers} offers relayed`);
+    // one offer per peer at least; a peer whose first attempt timed out under load re-offers (the transport's own retry,
+    // RTC_OFFER_CONNECT_TIMEOUT_MS) and must still be welcomed (2026-10-11: the first-boot WELCOME legs)
+    if (report.steps.connected.offers < 2) failures.push(`${report.steps.connected.offers} offers relayed`);
     log(`connected: ${hostStats.peersConnected} peers on p1 (${hostStats.state}), ${report.steps.connected.signals} signals relayed, ${report.steps.connected.refused} refused, ${report.steps.connected.reports} reports`);
     if (hostStats.peersConnected !== 2) failures.push(`p1 serves ${hostStats.peersConnected} peers`);
     if (report.steps.connected.reports < 1) failures.push('no match_report reached the room');
@@ -207,10 +209,11 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
       electedAfterMs, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
       p2Role: p2.headless.session.role, p3Role: p3.headless.session.role, p3Target: p3.headless.session.stats().p2p?.hostId ?? null,
       peersOnP2: p2.headless.session.matchHost.peersConnected, comparedHulls: compared, worstJumpM, drivenAfterLiveS, discontinuityM, lastTickBefore3, firstTickAfter3, reportsFromP2: reportsBy.filter((from) => from === 'p2').length,
+      resumeHold: core2.stats()?.resumeHold ?? null,
       p2Events: p2.p2pEvents.map((event) => `${event.kind}${event.phase ? ':' + event.phase : ''}${event.role ? ':' + event.role : ''}`),
       p3Events: p3.p2pEvents.map((event) => `${event.kind}${event.phase ? ':' + event.phase : ''}${event.role ? ':' + event.role : ''}`),
     };
-    log(`migration: p2 ${report.steps.migration.p2Role} at tick ${resumedTick} (old host reached ${oldHostTick}), p3 ${report.steps.migration.p3Role} → ${report.steps.migration.p3Target}, p2's hull as p3 saw it: ${worstJumpM.toFixed(2)} m between its last old frame and its first new one, ${drivenAfterLiveS.toFixed(2)} s of driving after the new host went live → discontinuity ${discontinuityM.toFixed(2)} m; ${report.steps.migration.reportsFromP2} reports from p2`);
+    log(`migration: p2 ${report.steps.migration.p2Role} at tick ${resumedTick} (old host reached ${oldHostTick}), p3 ${report.steps.migration.p3Role} → ${report.steps.migration.p3Target}, p2's hull as p3 saw it: ${worstJumpM.toFixed(2)} m between its last old frame and its first new one, ${drivenAfterLiveS.toFixed(2)} s of driving after the new host went live → discontinuity ${discontinuityM.toFixed(2)} m; resume hold ${JSON.stringify(report.steps.migration.resumeHold)}; ${report.steps.migration.reportsFromP2} reports from p2`);
     if (resumedTick < oldHostTick) failures.push(`the resumed tick ${resumedTick} fell behind the old host's ${oldHostTick}`);
     if (p3.headless.session.stats().p2p?.hostId !== 'p2') failures.push('p3 does not target p2');
     if (report.steps.migration.peersOnP2 !== 1) failures.push(`p2 serves ${report.steps.migration.peersOnP2} peers`);
@@ -222,6 +225,8 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     if (worstJumpM > 5) failures.push(`p2's hull is ${worstJumpM.toFixed(2)} m from where p3 last saw it: a reset, not a resume`);
     if (firstTickAfter3 < lastTickBefore3) failures.push(`the tick timeline went backwards (${lastTickBefore3} → ${firstTickAfter3})`);
     if (report.steps.migration.reportsFromP2 < 1) failures.push('the room heard no report from the new host');
+    // the resume hold (matchHostCore.ts): p2 and p3 were in the match, so p2's world waited for both and moved once they were back
+    if (report.steps.migration.resumeHold?.released !== 'seats' || report.steps.migration.resumeHold?.awaited !== 2) failures.push(`the resume hold ${JSON.stringify(report.steps.migration.resumeHold)}`);
 
     // ---- 4. p1 returns: a resume with its capability, match_start names p2, p1 joins as a peer
     const p1b = spawn('p1', 'Creator', p1.storage, 0);
@@ -243,7 +248,10 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     report.steps.ice = { connections: connections.length, granted, requests: requests.length, bySeat: Object.fromEntries([...new Set(requests.map((event) => event.playerId))].map((id) => [id, requests.filter((event) => event.playerId === id).length])) };
     log(`ice: ${granted} of ${connections.length} peer connections built with the room's grant from ${requests.length} relay requests ${JSON.stringify(report.steps.ice.bySeat)}`);
     if (connections.length < 6) failures.push(`${connections.length} peer connections (start, migration and rejoin build at least six)`);
-    if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant`);
+    // (the failure names each connection built off the grant: its id, state, whether it linked, its server count)
+    const ungranted = connections.filter((pc) => !(JSON.stringify(pc.config.iceServers) === expectedServers && pc.config.relayOnly === false));
+    report.steps.ice.ungranted = ungranted.map((pc) => ({ id: pc.id, state: pc.connectionState, linked: !!pc.peer, servers: (pc.config.iceServers ?? []).length, source: pc.config.source ?? null, reason: pc.config.degradedReason ?? null }));
+    if (granted !== connections.length) failures.push(`${connections.length - granted} peer connections were built without the room's grant ${JSON.stringify(report.steps.ice.ungranted)}`);
     if (requests.length < 1 || requests.length >= connections.length) failures.push(`${requests.length} relay requests for ${connections.length} connections (one per burst, a grant reused)`);
   } catch (error) {
     failures.push(error instanceof Error ? error.stack ?? error.message : String(error));

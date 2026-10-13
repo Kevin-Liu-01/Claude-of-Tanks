@@ -75,6 +75,13 @@ async function fixtureModule(mode = 'current') {
       records: destructibles, looseRecords: [], obstacles: [], colliders: [], crushables: [],
       quaternion: new THREE.Quaternion(), euler: new THREE.Euler() };
     const addDestructible = (...args) => addDestructibleRecord(destructibleContext, ...args);
+    // (crush, 2026-10-10) breakRecord asks the hull's crush press first (propCrushPresentation.ts): the real press over
+    // this stage's pools, with the props build's own eligibility (bales and crates are not kinds it draws: it declines)
+    const crushPress = createPropCrushPresentation({ group, records: destructibles, poolOf: (kind) => dPools.get(kind),
+      near: (minX, minZ, maxX, maxZ, out) => { out.length = 0; return out; },
+      eligible: (kind) => { const meta = dPools.get(kind)?.meta;
+        return !!meta && meta.cls === 'break' && (meta.mat === 'vehicle' || !!DESTRUCTIBLE_BUILDING_TYPES[kind] || kind === 'stall' || kind === 'tent'); },
+      cloth: () => false, burns: () => false, onBurn: () => {} });
     const ${variable('autumnCropRows')};
     let ${variable('autumnFieldContext')}, ${variable('autumnFieldStart')}, ${variable('autumnFieldEnd')};
     const ${variable('placeFieldObjects')};

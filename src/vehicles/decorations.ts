@@ -52,6 +52,8 @@ import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 // safe).
 
 import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
+import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
@@ -3876,6 +3878,21 @@ function connectedPieceBoxes(mesh: THREE.Mesh, toFrame: THREE.Matrix4): THREE.Bo
  * an L-shaped station would also take the turret cheek under its ammunition box). Read off the built tank's own records
  * and geometry; running gear and decor never.
  */
+/** Clearance kept round the drone dock's certified volumes (m). */
+export const DOCK_KEEP_OUT_CLEAR = 0.03;
+/**
+ * The drone dock's keep-out boxes in one decor frame (that frame's own coordinates): the seat record's cradle volumes,
+ * its parked-airframe volumes and their launch column, each grown by DOCK_KEEP_OUT_CLEAR. Empty for a vehicle whose
+ * seat rides the other frame or that has no seat.
+ */
+export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
+  const seat = MISSION_DOCK_SEATS[specId];
+  if (!seat || seat.frame !== frame) return [];
+  const at = new THREE.Vector3(seat.x, seat.y, seat.z);
+  return [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>
+    new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_KEEP_OUT_CLEAR));
+}
+
 function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: boolean): THREE.Box3[] {
   const out: THREE.Box3[] = [];
   const rack = group.userData.rearFieldStowage as
@@ -4180,6 +4197,27 @@ function placedBox(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler): 
     out.expandByPoint(v.set(x, y, z).applyMatrix4(m));
   }
   return out;
+}
+
+// (2026-10-12, item 2c) whether any triangle of the placed parts enters one of `boxes`: the dock's volumes are certified
+// shapes and a raked 1.75 m whip's box is mostly air, so the box alone turned away whips that stand clear of the dock
+// (the Chieftain 5's tall whip among thirteen tanks'); exact, and only run where the boxes already meet
+const _enterTri = new THREE.Triangle(), _enterA = new THREE.Vector3(), _enterB = new THREE.Vector3(), _enterC = new THREE.Vector3();
+function placedPartsEnter(parts: DecorPartList, pos: THREE.Vector3, rot: THREE.Euler, boxes: readonly THREE.Box3[]): boolean {
+  const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
+  for (const p of parts) {
+    const at = p.geo.getAttribute('position'), idx = p.geo.getIndex();
+    if (!at) continue;
+    const n = idx ? idx.count : at.count;
+    for (let i = 0; i + 2 < n; i += 3) {
+      _enterA.fromBufferAttribute(at, idx ? idx.getX(i) : i).applyMatrix4(m);
+      _enterB.fromBufferAttribute(at, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m);
+      _enterC.fromBufferAttribute(at, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m);
+      _enterTri.set(_enterA, _enterB, _enterC);
+      for (const box of boxes) if (box.intersectsTriangle(_enterTri)) return true;
+    }
+  }
+  return false;
 }
 
 // per-part placed boxes (gun-guard granularity: no empty-corner false hits)
@@ -4712,6 +4750,10 @@ export function* attachTankDecorationsSteps(
     };
     // round 5: the roof guns' own bodies (collectGunBodies), out of every decor piece's placed box (GUN_BODY_EXEMPT aside)
     const gunBodies: Record<DecorFrame, THREE.Box3[]> = { hull: collectGunBodies(hullG), turret: collectGunBodies(turretG) };
+    // 2026-10-11 (the drones lane; landed 2026-10-12, the owner: "make sure the american drones have all 4 rotors"): the drone dock's certified volumes on this vehicle's own seat
+    // record (dockKeepOut) — the cradle, the parked airframe and its launch column, 3 cm clear — out of every decor
+    // piece's placed box, so stowage packs round the dock instead of through it (107 of 220 seats had loads inside).
+    const dockVolumes: Record<DecorFrame, THREE.Box3[]> = { hull: dockKeepOut(spec.id, 'hull'), turret: dockKeepOut(spec.id, 'turret') };
     // Round 4 (2026-10-07, wave 214 on the Challenger 1: "each stowage item ... sits alone on spotless roof paint,
     // spaced like display pieces with no piling"; the critic: "crews pack kit ... cluster and compress what is there"):
     // the loads seated so far on each frame (placed boxes), so the next deck load packs against one of them.
@@ -5057,6 +5099,8 @@ export function* attachTankDecorationsSteps(
       if (!guarded) return false;
       if (keepClearHit(bb, frame)) return rejectCommit(name, parts, 'keep-clear');
       if (fieldEquipment[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'field-equipment');
+      const dockMet = dockVolumes[frame].filter((box) => box.intersectsBox(bb));
+      if (dockMet.length && placedPartsEnter(parts, pos, rot, dockMet)) return rejectCommit(name, parts, 'drone-dock');
       const disc = isLoadPiece(name) ? keepOutDisc(bb, keepOut[frame]) : null;
       if (disc) { keepOutMiss = { frame, disc, bb }; return rejectCommit(name, parts, 'keep-out'); }
       if (!GUN_BODY_EXEMPT.has(name) && gunBodies[frame].some((box) => box.intersectsBox(bb))) return rejectCommit(name, parts, 'gun-body');
@@ -6188,7 +6232,7 @@ export function* attachTankDecorationsSteps(
       slotFn: SlotPlacer,
       parts: DecorPartList,
       jitterSeed: number,
-    ): void {
+    ): boolean {
       slotRng = mulberry32((jitterSeed ^ 0x51a7e) >>> 0);
       try {
         const before = summary.skipped.length;
@@ -6200,6 +6244,7 @@ export function* attachTankDecorationsSteps(
         if (!ok && summary.skipped.length === before) {
           summary.skipped.push([row.kit, 'probe']);
         }
+        return !!ok;
       } catch (error) {
         summary.skipped.push([row.kit, `slot:${errorMessage(error)}`]);
         try {
@@ -6207,6 +6252,7 @@ export function* attachTankDecorationsSteps(
         } catch (_) {
           // The slot may already have consumed the part list.
         }
+        return false;
       }
     }
 
@@ -6237,7 +6283,17 @@ export function* attachTankDecorationsSteps(
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
         const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+        const before = summary.skipped.length;
+        if (!parts || placeManifestParts(row, slotFn, parts, jitterSeed)) continue;
+        // (2026-10-12, item 2d) a whip the drone dock turned away (2c: its rod enters the dock's certified volumes) stands
+        // on the roof's other side instead of leaving the tank without it — the Stb-1 lost its only whip, the M2A2, the
+        // Leopard 2A5 and the BMP-3 one each. Same seed, no further draw: every other stream is unchanged.
+        const side = (row.slot[1] as { side?: number } | undefined)?.side;
+        if ((side !== 1 && side !== -1)
+          || !summary.skipped.slice(before).some(([kit, why]) => kit === 'antenna' && why === 'drone-dock')) continue;
+        const mirrored: DecorManifestRow = { ...row, slot: [row.slot[0], { ...row.slot[1], side: -side }] };
+        const again = createManifestParts(mirrored, DECOR_KITS.antenna!, jitterSeed);
+        if (again) placeManifestParts(mirrored, slotFn, again, jitterSeed);
       }
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.

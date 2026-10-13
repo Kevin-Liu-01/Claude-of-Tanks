@@ -94,9 +94,15 @@ function checkMapScope(resolve) {
   // (the Redrock lane, round 10: Redrock Divide authors 0.3 — the gauntlet's wave 270 read its worn sand patches as
   // "swirly red blotches like painted decals")
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'badlands', 'saltwind']);
-  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine'],
-    'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder');
+  // (item 31, the map revival, 2026-10-11: Olympus Basin's tracks are its regolith packed under the wheels, splat.roadLayer
+  // 'ground', and their verges keep most of it, a 0.4 bare shoulder; Earthrise Basin takes Mars's splat)
+  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine', 'mars', 'moon'],
+    'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder (and, since item 31, the two regolith maps)');
   assert.equal(resolve('alpine').splat.shoulderDirt, .3);
+  for (const id of ['mars', 'moon']) {
+    assert.equal(resolve(id).splat.shoulderDirt, .4, `${id}: the regolith tracks' verges keep most of the ground`);
+    assert.equal(resolve(id).splat.roadLayer, 'ground', `${id}: the shoulder belongs to tracks packed from the base layer`);
+  }
   for (const id of MAP_IDS) {
     // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
     // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
@@ -125,7 +131,9 @@ for (const statement of [
   'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);',
   'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);',
   'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), driftW * 0.85);',
-  'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', // road pass 2026-09-12: smoothed, not deep
+  // road pass 2026-09-12: smoothed, not deep; item 31 (the map revival, 2026-10-11): a map whose tracks are its base layer
+  // (splat.roadLayer 'ground', uRoadFromG) packs them from it at the same mip bias, every other map from the dirt layer
+  'vec3 packedRoad = uRoadFromG > 0.5 ? groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB + 4.0).rgb\n        : groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;',
 ]) assert.ok(compact(source).includes(compact(statement)), 'beach, shoal and road detail paths remain unchanged');
 assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);

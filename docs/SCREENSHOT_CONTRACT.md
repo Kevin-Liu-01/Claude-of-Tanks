@@ -62,12 +62,14 @@ npm run showcase:publish
 npm run showcase:check
 ```
 
-`public/media/showcase-r1/manifest.json` must report 13 owner picks, 30 action
-frames, 30 foreground frames, five Studio frames, ten interface frames, 88 total
-frames, six process sheets, and `firstPartyRuntimeOnly: true`. Landing, docs,
-Gallery, and Studio consume that manifest through the shared media archive
-component. Raw 4K PNGs remain local capture evidence; compressed WebP frames,
-review sheets, and the manifest are shipped artifacts.
+Since 2026-10-12 the published archive is the site fifty's:
+`public/media/site50-r14/archive.json` lists the fifty frames and each take's key
+moment and close portrait, and `manifest.json` records every file with its source
+delivery, bytes and sha256 (`showcase:check` runs `site50-media.selftest`).
+Landing, docs and Studio consume the archive through the shared media archive
+component. The 4K masters and PNGs remain local delivery evidence; WebP stills,
+previews, contact sheets and the manifests are the shipped artifacts. The
+showcase-r1 contract below `showcase:publish` describes the retired library.
 
 ### Open Graph branding
 
@@ -117,7 +119,10 @@ npm run studio:features:publish
 node tools/marketing-shots/feature-loops.selftest.mjs
 ```
 
-`public/media/feature-loops-r1/manifest.json` must report six passed loops and
+The six feature loops (`public/media/feature-loops-r1`) were retired on
+2026-10-12: the archive dialog now plays four of the site fifty's loops at
+960×540 (`public/media/site50-r14/loops/<id>-960.webm`). The retired contract:
+`public/media/feature-loops-r1/manifest.json` reported six passed loops and
 zero failures. Each loop must include two or more identified vehicles, one of the
 approved map families, a six-second duration, and matching file-size receipts.
 Public pages use WebM for playback and JPEG posters for static or no-script

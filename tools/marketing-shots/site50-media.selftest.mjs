@@ -1,0 +1,100 @@
+// The site fifty's media (public/media/site50-r14): the public site's gameplay media since round fourteen, built by
+// tools/media-r5/site-media.mjs from tools/media-r5/site-media/picks.json and wired into the pages by
+// tools/media-r5/site-media-wire.mjs. Every take and frame comes from the picks' round, every take with its sound, every
+// file matches its receipt, and the formats are the ones the pages were built for.
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const picks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
+const COLLECTION = join(ROOT, 'public/media', picks.collection);
+const manifest = JSON.parse(readFileSync(join(COLLECTION, 'manifest.json'), 'utf8'));
+const archive = JSON.parse(readFileSync(join(COLLECTION, 'archive.json'), 'utf8'));
+const proxies = JSON.parse(readFileSync(join(ROOT, 'public/media/web-video-r1/manifest.json'), 'utf8'));
+
+assert.equal(manifest.libraryId, `claude-of-tanks-${picks.collection}`);
+assert.equal(manifest.schemaVersion, 1);
+assert.equal(manifest.round, picks.round);
+assert.equal(manifest.draft, undefined, 'the published collection is not a draft: no older round stands in');
+
+const takes = Object.entries(manifest.takes);
+assert.equal(takes.length, 50, 'the site fifty');
+assert.deepEqual(takes.map(([id]) => id).sort(), Object.keys(picks.takes).sort());
+for (const [id, take] of takes) {
+  assert.ok(take.current, `${id} is delivered in ${picks.round}`);
+  assert.ok(take.sound, `${id} is delivered with its sound`);
+  assert.equal(take.map, picks.takes[id].map, `${id} battlefield`);
+}
+assert.equal(manifest.frames.length, 50, 'the fifty frames');
+assert.equal(new Set(manifest.frames.map((frame) => frame.id)).size, 50);
+
+const files = new Map(manifest.files.map((file) => [file.path, file]));
+for (const file of manifest.files) {
+  const path = join(ROOT, 'public', file.path);
+  assert.ok(existsSync(path), `${file.path} is published`);
+  assert.equal(statSync(path).size, file.bytes, `${file.path} byte receipt`);
+  assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'), file.sha256, `${file.path} sha256 receipt`);
+  assert.ok(file.bytes < 50 * 1048576, `${file.path} stays under 50 MiB`);
+}
+const media = (pattern) => manifest.files.filter((file) => pattern.test(file.path));
+const near = (value, target, tolerance) => Math.abs(value - target) <= tolerance;
+
+for (const id of Object.keys(picks.takes)) {
+  for (const name of [`stills/${id}.webp`, `stills/${id}-close.webp`, `stills/${id}-thumb.webp`, `stills/${id}-close-thumb.webp`]) {
+    const file = files.get(`media/${picks.collection}/${name}`);
+    assert.ok(file, `${id}: ${name}`);
+    assert.ok(file.bytes > (name.includes('thumb') ? 8_000 : 50_000), `${name} is a substantial image`);
+  }
+}
+const loops = media(/\/loops\/[^/]+\.webm$/).filter((file) => !file.path.endsWith('-960.webm'));
+assert.ok(loops.length >= 10, 'the loops the pages play');
+for (const loop of loops) {
+  assert.equal(`${loop.width}x${loop.height}`, '1920x1080', `${loop.path} size`);
+  assert.equal(loop.audio, 'opus', `${loop.path} keeps its sound`);
+  assert.ok(near(loop.seconds, 6, 0.1), `${loop.path} is the 6 s loop`);
+  assert.ok(files.has(loop.path.replace(/\.webm$/, '.jpg')), `${loop.path} poster`);
+}
+for (const small of media(/-960\.webm$/)) {
+  assert.equal(`${small.width}x${small.height}`, '960x540', `${small.path} size`);
+  assert.equal(small.audio, null, `${small.path} is silent (the archive dialog plays it muted)`);
+}
+const reels = media(/\/reels\/[^/]+\.mp4$/);
+assert.equal(reels.length, picks.docs.reels.length, 'every battle take ships');
+for (const reel of reels) {
+  assert.equal(`${reel.width}x${reel.height}`, '1280x720', `${reel.path} size`);
+  assert.equal(reel.audio, 'aac', `${reel.path} carries its sound`);
+  assert.ok(files.has(reel.path.replace(/\.mp4$/, '.webp')), `${reel.path} poster`);
+}
+const trailer = files.get(`media/${picks.collection}/films/trailer.mp4`);
+assert.equal(`${trailer?.width}x${trailer?.height}`, '1920x1080', 'the trailer at 1080p');
+assert.equal(trailer.audio, 'aac', 'the trailer keeps its score');
+const reel = files.get(`media/${picks.collection}/films/reel.mp4`);
+assert.equal(`${reel?.width}x${reel?.height}`, '1920x1080', 'the home reel at 1080p');
+assert.equal(reel.audio, null, 'the home reel is silent (it loops muted)');
+
+const sheets = media(/\/frames\/sheet-\d+\.webp$/);
+assert.equal(sheets.length, 5, 'the fifty frames, ten to a contact sheet');
+assert.deepEqual(sheets.flatMap((sheet) => sheet.frames).sort(), manifest.frames.map((frame) => frame.id).sort());
+for (const frame of manifest.frames) {
+  assert.ok(files.has(`media/${picks.collection}/frames/${frame.id}.webp`), `${frame.id} at 1920`);
+  assert.ok(files.has(`media/${picks.collection}/frames/${frame.id}-thumb.webp`), `${frame.id} preview`);
+}
+
+// the visual archive (the manual's wall and the Studio's Field Frames): the fifty frames, then each take's two stills
+assert.equal(archive.shots.length, manifest.frames.length + 2 * takes.length);
+assert.deepEqual(archive.shots.map((shot) => shot.sequence), archive.shots.map((_, i) => i + 1));
+for (const shot of archive.shots) {
+  for (const url of [shot.src, shot.previewSrc]) assert.ok(files.has(url.slice(1)), `archive ${url} is published`);
+  assert.ok(shot.title && shot.alt && shot.feature && shot.map, `archive ${shot.src} has its caption`);
+}
+
+// the landing page's mobile proxies stay inside its nine-megabyte transfer budget
+assert.ok(proxies.files.reduce((sum, file) => sum + file.bytes, 0) < 9_000_000);
+for (const proxy of proxies.files) {
+  assert.equal(statSync(join(ROOT, 'public/media/web-video-r1', proxy.path)).size, proxy.bytes, `${proxy.path} byte receipt`);
+}
+
+console.log(`site50-media.selftest: ${manifest.files.length} files, the fifty takes with sound, the fifty frames and the films pass`);

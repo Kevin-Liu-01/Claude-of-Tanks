@@ -1,3 +1,5 @@
+import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
+
 type RuntimeModule = typeof import('./battleWarmRuntime.ts');
 type RuntimeLoader = () => Promise<RuntimeModule>;
 
@@ -26,9 +28,20 @@ export interface BattleWarmAccess {
   invalidate(): void;
 }
 
+/**
+ * The battle warm runtime, with the wreck turret's physics beside it (wreckTurretDriverLoader.ts). Every battle path
+ * loads this under its cover (solo, network, the Studio, staged shots, the debug entry), so a turret popped in a battle,
+ * a late-joined room's wrecks or a Studio take is a body. The physics never fails the battle: a load that fails leaves
+ * the scripted pop for those turrets, and the deferred warm after entry asks again.
+ */
+const loadBattleWarmRuntime: RuntimeLoader = () => Promise.all([
+  import('./battleWarmRuntime.ts'),
+  preloadWreckTurretDriver().catch(() => undefined),
+]).then(([loaded]) => loaded);
+
 /** Retryable battle-only owner for terrain, wreck and common-FX warming. */
 export function createBattleWarmAccess(
-  load: RuntimeLoader = () => import('./battleWarmRuntime.ts'),
+  load: RuntimeLoader = loadBattleWarmRuntime,
 ): BattleWarmAccess {
   let runtime: RuntimeModule | null = null;
   let pending: Promise<RuntimeModule> | null = null;

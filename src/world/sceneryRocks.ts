@@ -76,11 +76,22 @@ interface RockFormationBuild {
   /** Pieces (blocks, beds, plates, slabs, stones) the formation laid. */
   pieces: number;
   triangles: number;
+  /** Whether the desktop lays any piece of it (the hitbox lane, 2026-10-11): a phone's lean build of a small pavement can
+   * lay none, and a placement that read this tier's geometry placed the field's next formation on the phone alone. */
+  laid: boolean;
 }
 
 interface RockBuildOptions {
   /** Phones: fewer segments and fewer loose stones. */
   mobile?: boolean;
+  /**
+   * The desktop's own `mobile` for this formation and a fresh copy of its stream (the hitbox lane, 2026-10-11: a phone
+   * built its masses from its own leaner pieces, so its collision world drifted from the authority's on every map with
+   * formations — `capture-world-collision-manifests --tier=mobile`). When this build's `mobile` differs from the
+   * desktop's, the masses come from the pieces the desktop lays from that stream: a phone's collision is the desktop's,
+   * part for part (docs/DESTRUCTION.md §8.4); it still draws its own pieces.
+   */
+  collision?: { mobile: boolean; stream: () => Rng };
 }
 
 // ---------------------------------------------------------------------------------------------- palette
@@ -91,6 +102,7 @@ const GEOLOGY_TONE: Readonly<Record<RockGeology, readonly [number, number, numbe
   sandstone: [0.035, 0.42, 0.42], // Buntsandstein / desert red
   limestone: [0.11, 0.08, 0.66], // pale grey-cream
   slate: [0.58, 0.07, 0.27],     // blue-grey
+  breccia: [0.08, 0.05, 0.36],   // shattered grey, a warm cast (a map tones it: the Moon's grey, Mars's rust)
 });
 
 const _c = new THREE.Color();
@@ -313,7 +325,7 @@ function finish(
   ground: RockGround, noise: SimplexNoise, salt: number,
 ): THREE.BufferGeometry {
   const [bh, bs, bl] = toneOverride ?? GEOLOGY_TONE[geology];
-  const cleavageCos = Math.cos(THREE.MathUtils.degToRad(geology === 'granite' ? 48 : 34));
+  const cleavageCos = Math.cos(THREE.MathUtils.degToRad(geology === 'granite' ? 48 : geology === 'breccia' ? 26 : 34));
   const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
   let corners = 0;
   for (const piece of pieces) corners += piece.geometry.index ? piece.geometry.index.count : piece.geometry.attributes.position.count;
@@ -375,6 +387,13 @@ function finish(
         const run = smooth(0.35, 0.8, noise.noise(x * 2.3 + z * 1.7 + salt, y * 0.22) * 0.5 + 0.5) * vertical;
         l *= 1 - run * 0.38;
         l *= 1 + up * 0.08;
+      } else if (geology === 'breccia') {
+        // the shattered rock's clasts, paler and darker chips at the hand scale; dust on the tops and banked at the foot
+        const clast = noise.noise3d(x * 5.3 + salt, y * 5.3 - 11, z * 5.3 - salt);
+        l *= 1 + (clast > 0.45 ? 0.16 : clast < -0.5 ? -0.12 : 0);
+        s *= 0.9;
+        const dust = Math.max(up * up * 0.55, 1 - smooth(0.06, 0.42, y - gy));
+        h = h + (bh + 0.012 - h) * dust * 0.6; s = s + (bs * 0.75 - s) * dust * 0.7; l = l + (bl * 1.32 - l) * dust * 0.75;
       } else if (geology === 'slate') {
         // iron in the joints: rust stains under the plate edges
         const rust = smooth(0.55, 0.85, noise.noise3d(x * 0.9 - salt, y * 1.4, z * 0.9 + salt) * 0.5 + 0.5) * (1 - up);
@@ -386,8 +405,8 @@ function finish(
         h = h + (0.17 - h) * lich * 0.7; s = s + (0.16 - s) * lich * 0.6; l *= 1 + lich * 0.16;
         h = h + (0.08 - h) * orange * 0.8; s = s + (0.55 - s) * orange * 0.7;
       }
-      // contact: the stone darkens where it meets the soil
-      l *= 0.82 + 0.18 * smooth(0, 0.6, y - gy);
+      // contact: the stone darkens where it meets the soil (breccia's foot is dust, above)
+      if (geology !== 'breccia') l *= 0.82 + 0.18 * smooth(0, 0.6, y - gy);
       const [r, g2, b2] = hsl(h, s, l);
       vColor[v * 3] = r; vColor[v * 3 + 1] = g2; vColor[v * 3 + 2] = b2;
     }
@@ -656,6 +675,56 @@ function slateCrag(spec: RockFormationSpec, ground: RockGround, noise: SimplexNo
   }
 }
 
+function blockField(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  // A field of fractured blocks (the hitbox lane, round 2, 2026-10-08; gauntlet wave 272: "Apollo 17 blocks are dark,
+  // angular, size-graded, half-buried"): the stone a crater threw out or a cliff shed, in sharp-edged blocks split by
+  // fracture planes — one or two big ones, a few middling, more small (the sizes falling as a power law) — each sunk a
+  // third to over half its height into the ground banked against its foot, and a skirt of chips and fines round them.
+  // Cover on open ground: a map places one where its fights need it (`height` the tallest block's rise over the ground).
+  const R = spec.radius, H = spec.height;
+  const yaw = THREE.MathUtils.degToRad(spec.yawDeg ?? rng() * 180);
+  const seg = mobile ? 3 : 4;
+  const sizes: number[] = [H];
+  if (R > 3.5) sizes.push(H * (0.72 + rng() * 0.16));
+  const middling = 2 + ((rng() * 2) | 0);
+  for (let i = 0; i < middling; i++) sizes.push(H * (0.45 + rng() * 0.2));
+  const small = (mobile ? 3 : 5) + ((rng() * 3) | 0);
+  for (let i = 0; i < small; i++) sizes.push(H * (0.2 + rng() * 0.16));
+  const placed: Array<[number, number, number]> = [];
+  sizes.forEach((rise, i) => {
+    // the block's half extents: its visible rise is what the burial leaves of its height
+    const burial = 0.34 + rng() * 0.22;
+    const hy = rise / (2 * (1 - burial));
+    const hx = hy * (0.95 + rng() * 0.65), hz = hy * (0.7 + rng() * 0.45);
+    const reach = Math.hypot(hx, hz);
+    // the big ones near the field's middle, the rest round them, none inside another
+    let x = spec.x, z = spec.z;
+    for (let tries = 0; tries < 16; tries++) {
+      const a = rng() * Math.PI * 2, rr = i === 0 ? rng() * R * 0.15 : (0.25 + rng() * 0.75) * R * (i < 2 ? 0.6 : 1);
+      x = spec.x + Math.cos(a) * rr; z = spec.z + Math.sin(a) * rr * 0.85;
+      if (placed.every(([px, pz, pr]) => Math.hypot(x - px, z - pz) > (pr + reach) * 0.72)) break;
+    }
+    placed.push([x, z, reach]);
+    const g = roundedBlock(hx, hy, hz, 0.04 + rng() * 0.06, rise < 0.6 ? seg - 1 : seg, noise, rng,
+      { weather: 0.05, cuts: 3 + ((rng() * 2) | 0), cutDepth: 0.52 + rng() * 0.22, seedOffset: 200 + i });
+    // seated on the lowest ground under it, so no corner hangs over a hollow
+    const { min: foot } = lowestGround(ground, x, z, Math.min(hx, hz) * 0.8);
+    const y = foot - 2 * hy * burial + hy;
+    pieces.push({ geometry: place(g, x, y, z, yaw + rng() * Math.PI, (rng() - 0.5) * 0.28, (rng() - 0.5) * 0.28), layer: -1, standing: true });
+  });
+  // the skirt: chips and fines round the bigger blocks, thinning outward, half sunk
+  const big = Math.min(placed.length, 4);
+  const chips = Math.round((mobile ? 18 : 48) * (spec.shed ?? 1) * Math.max(0.6, R / 5));
+  for (let i = 0; i < chips; i++) {
+    const [bx, bz, br] = placed[(rng() * big) | 0];
+    const a = rng() * Math.PI * 2, rr = br * (0.85 + Math.pow(rng(), 0.7) * 1.9);
+    const x = bx + Math.cos(a) * rr, z = bz + Math.sin(a) * rr;
+    const size = 0.05 + Math.pow(rng(), 2.2) * 0.3;
+    const g = looseStone(size, 0.45 + rng() * 0.3, noise, rng, 0, 0);
+    pieces.push({ geometry: place(g, x, ground.getHeightAt(x, z) - size * 0.32, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.6), layer: -1, standing: false });
+  }
+}
+
 function scree(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
   // a fan of angular stone: densest at its apex (spec.x, spec.z), spreading and fining downslope
   const R = spec.radius;
@@ -835,6 +904,7 @@ const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, num
   limestone: [2.5, 6, 0.45],
   granite: [4, 10, 0.8],
   slate: [1.5, 4, 0.3],
+  breccia: [2, 5, 0.5],
 });
 
 /**
@@ -962,13 +1032,13 @@ export function buildBedrock(
   const pieces: Piece[] = [];
   let lowest = Infinity;
   for (let j = 0; j < rays; j++) lowest = Math.min(lowest, climb[j]);
-  if (!Number.isFinite(lowest) || !(top > lowest)) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  if (!Number.isFinite(lowest) || !(top > lowest)) return { geometry: null, masses: [], pieces: 0, triangles: 0, laid: false };
   const sandstone = spec.geology === 'sandstone';
   const segLen = mobile ? 3.5 : 2.5;
   // the hill's reference radius (half way up its rock) sets the joint and dip arcs
   let rs = 0, rn = 0;
   for (let j = 0; j < rays; j += 4) { const r = edge(j, (lowest + top) * 0.5); if (Number.isFinite(r)) { rs += r; rn++; } }
-  if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
+  if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0, laid: false };
   const rRef = Math.max(3, rs / rn);
   const rayAngle = (j: number) => (j / rays) * Math.PI * 2;
   // ---- the hill's own bedding (the beehive read: every dome bedded alike, its beds level and even as courses): its
@@ -1205,13 +1275,14 @@ export function buildBedrock(
       col.setXYZ(v, col.getX(v) * (lr + (ur - lr) * u), col.getY(v) * (lg + (ug - lg) * u), col.getZ(v) * (lb + (ub - lb) * u));
     }
   }
-  return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0 };
+  // (a bedrock skin publishes no mass: what it lays is its own tier's business)
+  return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0, laid: count > 0 };
 }
 
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
   tor: graniteTor, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
-  menhir, cairn, calvary,
+  menhir, cairn, calvary, blocks: blockField,
 });
 
 /**
@@ -1219,22 +1290,30 @@ const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
  * read-only. Returns the welded vertex-coloured geometry, the standing masses' collision and the counts.
  */
 export function buildRockFormation(
-  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false }: RockBuildOptions = {},
+  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, collision }: RockBuildOptions = {},
 ): RockFormationBuild {
-  const pieces: Piece[] = [];
   const { min } = lowestGround(ground, spec.x, spec.z, spec.radius);
   const form = FORMS[spec.form];
   if (!form) throw new Error(`sceneryRocks: unknown form ${spec.form}`);
-  form(spec, ground, noise, rng, mobile, pieces);
-  // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
-  if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
-    const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
-    scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
-      ground, noise, rng, mobile, pieces);
-  }
-  const mass = massOf(pieces, ground, min);
+  const lay = (stream: Rng, lean: boolean): Piece[] => {
+    const laid: Piece[] = [];
+    form(spec, ground, noise, stream, lean, laid);
+    // a slate crag sheds scree below it; a sandstone or limestone outcrop sheds a little
+    if (spec.form === 'crag' && (spec.shed ?? 1) > 0) {
+      const [dx, dz] = downhill(ground, spec.x, spec.z, spec.radius);
+      scree({ ...spec, x: spec.x + dx * spec.radius * 0.8, z: spec.z + dz * spec.radius * 0.8, radius: spec.radius * 1.4, shed: (spec.shed ?? 1) * 0.6 },
+        ground, noise, stream, lean, laid);
+    }
+    return laid;
+  };
+  const pieces = lay(rng, mobile);
+  // (the collision: the desktop's pieces, laid from a fresh copy of the stream when this tier lays others)
+  const desk = collision && collision.mobile !== mobile ? lay(collision.stream(), collision.mobile) : pieces;
+  const mass = massOf(desk, ground, min);
+  const laid = desk.length > 0;
+  if (desk !== pieces) for (const piece of desk) piece.geometry.dispose();
   const count = pieces.length;
   const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
   const triangles = geometry ? geometry.attributes.position.count / 3 : 0;
-  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles };
+  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles, laid };
 }

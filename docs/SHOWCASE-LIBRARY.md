@@ -1,10 +1,42 @@
 # Showcase library
 
+## Current: the site fifty (round 14, since 2026-10-12)
+
+The site's gameplay media is the site fifty: fifty takes staged in Scene Studio on the game's own maps, tanks and
+effects, each rendered at 4K (3840×2160 at 30 fps, 8 to 48 renders a frame, motion blur) with its own sound, plus the
+fifty frames (R181, motion-blur stills) and the films. The owner chose it to replace every older gameplay collection
+("replace the old media with all my new ones", 2026-10-11).
+
+| Path | Contents |
+| --- | --- |
+| `public/media/site50-r14/manifest.json` | Every published file with its source delivery, bytes and sha256; each take's round and sound |
+| `public/media/site50-r14/archive.json` | The visual archive: the fifty frames, then each take's key moment and close portrait |
+| `public/media/site50-r14/stills/` | Each take's key moment and close portrait at 1920×1080, 640×360 previews, the boot frame and one 4K frame |
+| `public/media/site50-r14/loops/` | The 6 s loops the pages play (1920×1080 VP9 with sound, posters; 960×540 for the archive dialog) |
+| `public/media/site50-r14/reels/` | The manual's twenty battle takes, 1280×720 with their sound |
+| `public/media/site50-r14/frames/` | The fifty frames at 1920×1080 and 640×360, and five contact sheets of ten |
+| `public/media/site50-r14/films/` | The trailer (1080p with its score) and the landing page's reel (five takes crossfaded, 1080p, silent) |
+| `public/media/site50-r14/scenes/` | Each take's scene as the Studio loads it, and index.json, which the Studio's Director lists as presets |
+| `public/media/web-video-r1/` | The landing page's 960×540 mobile proxies, inside its nine-megabyte budget |
+
+`tools/media-r5/site-media/picks.json` names the take for every slot: the landing page's hero, screenshot rail, loops,
+mosaic, social cards and closing image; the manual's hero, trailer, chapter cards, battle takes, contact sheets and
+topic figures; the game's featured stills, boot frame, 404 page, HUD editor backdrop and social-card sources.
+`tools/media-r5/site-media.mjs` builds the collection from the round's deliveries,
+`tools/media-r5/site-media-wire.mjs` wires the pages, the code and both catalogs to it, and
+`tools/marketing-shots/site50-media.selftest.mjs` holds the collection to its receipt. Each take's scene is code in
+`tools/media-r5/site50-shots/`, and `/docs/filming` records how the takes were made.
+
+## Retired: showcase-r1 (until 2026-10-12)
+
+The rest of this page records the previous library, `public/media/showcase-r1`, which the site fifty replaced. Its
+files remain in the repository's history.
+
 `public/media/showcase-r1/manifest.json` is the published index of Claude of
 Tanks screenshots. It contains the owner-selected feature set and the complete
 approved campaign in a versioned, searchable library.
 
-## R1 contents
+### R1 contents
 
 | Collection | Frames | Role |
 | --- | ---: | --- |
@@ -19,7 +51,7 @@ The campaign masters are 3840×2160 PNGs under `shots/marketing-battles-r3/`.
 They remain gitignored because of their size. The checked-in site renditions
 are 1920×1080 WebP files under `public/media/showcase-r1/`.
 
-## Admission contract
+### Admission contract
 
 A campaign image enters this library only when all of these are true:
 
@@ -35,7 +67,7 @@ A campaign image enters this library only when all of these are true:
 The 13 owner selections appear first and provide the shorter loading-screen
 rotation. The full manifest contains all 88 published frames.
 
-## Review sheets
+### Review sheets
 
 The campaign is reviewed as a collection before individual 4K frames are
 admitted. Each sheet places ten deterministic captures side by side with their
@@ -77,7 +109,7 @@ The home page's “Choose from 113 tanks” panel uses the owner-selected
 full battlefield, camouflage, dossier, nation, and vehicle-catalog interface.
 The page serves an optimized WebP rendition of the supplied source frame.
 
-## Rebuild
+### Rebuild
 
 Generate and grade the campaign masters, render the Studio sequence, then
 publish and verify the public library:

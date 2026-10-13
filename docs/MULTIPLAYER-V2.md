@@ -891,6 +891,49 @@ limit continue (`MatchActorResume`). Entities hidden from the new host resume fr
 `ROOM_MATCH_KEYFRAME_INTERVAL_MS` old. The old host's own leave drops its peers' channels without a wire CLOSE so their
 clients read a lost link and wait for the election; a match that ended still closes with `MATCH_ENDED`.
 
+**The resume hold (2026-10-10).** The world stood still through the outage, but the new actor used to start its loop
+the moment it booted, before any seat was back. A hull restored with speed (its newest row, captured while it drove)
+rolled on under the empty input — a released throttle coasts at 3.5 m/s², 9–17 m from 8–11 m/s — while the peers were
+still re-offering, so a peer's first frame from the new host showed it that far from the last one it saw (the browser
+e2e's "B's hull as C saw it moved 10.8 / 12.5 / 17.8 m across the migration" at moderate load, 4–6 m on production).
+Now the elected seat names the seats it waits for (`resume.holdForSeats`: the room's connected players with a battle
+seat, itself among them, the host that went not — `resumeHoldSeats`), and the core holds the restored world at the
+resume tick until every one of them has sent a verified HELLO, or `RESUME_HOLD_MS` (3 s) has passed. The seats are
+then welcomed together against the still world — each seat's own-row hint lands before the first tick — and the loop
+starts. A seat that never comes back costs everyone at most 3 s more stillness; the hold shows in
+`HostCoreStats.resumeHold` → `MatchHost.resumeHold` → `SessionP2pStatus.resumeHold` (the e2e's `bResumeHold`, with
+`bSpeedAtCloseMps`). Receipt: `resumeHold.selftest` (bob lets go at 9.9 m/s, carl comes back 2 s later: carl's first
+row of bob 6.32 m off his last without the hold, 0.48 m with it; a seat that never returns releases the world at 3 s).
+
+**The first-boot WELCOME (2026-10-11).** The headless proofs' "every seat welcomed" timeouts at load ≥ 60 (on main as on
+every branch) were seats lost on three legs, each of which ended the seat for good where a retry was due:
+- *The HELLO window.* The browser host's gate closed any link not yet ATTACHED 5 s after it opened — a HELLO still under
+  verification included — with HELLO_REQUIRED "hello timeout", and the seat read the CLOSE as the end of its seat. A
+  HELLO is merely late when the host's main thread sits in a long task (the frame waits there on its way to the Worker),
+  when the seat sends it from a starved thread, or when a loaded machine slows the seat-token check. Now the window is
+  `HELLO_TIMEOUT_MS` = 15 s and closes only a link that has not said hello (a HELLO under verification is the host's own
+  work).
+- *A stale offer.* A seat whose first attempt timed out re-offers; when its abandoned offer reaches the host late, the
+  acceptor's second-tab rule retires the link the seat is entering on with REPLACED "peer offered again".
+- *The host's own seat.* The host's own client reconnects its loopback after a stall (5 s without authority: a long task
+  on the host's tab); the core kept the old link 0, the second HELLO met UNEXPECTED_MESSAGE and the host's seat hung in
+  `handshaking` while the match ran on without it. Now a resumed loopback is a fresh link (`link_open`), gated again.
+Before its WELCOME, a seat closed with "hello timeout" or "peer offered again" asks its transport for a fresh link and
+says hello again, `MAX_HELLO_RETRIES` = 3 times (`MatchClientStats.helloRetries`); after the WELCOME "peer offered
+again" still means another tab took over. The dedicated service's own 5 s window gets the same retry. Receipt:
+`helloGate.selftest` (virtual time, the real host runtime and core): a HELLO held 8 s is admitted; a silent link is closed
+after three fresh links; a seat closed by a 2 s window re-offers once and is welcomed; the host's own seat is welcomed
+again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed — on main each of
+the four ends the seat (HELLO_REQUIRED twice, `handshaking`, REPLACED).
+
+**A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
+loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
+waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",
+two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
+match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
+`browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
+it is still entering).
+
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
 content-addressed as `<map>.<sha256[0..12]>.json`, cacheable; dev serves the source directory), and
@@ -943,6 +986,28 @@ programs still pending — `src/main.ts` sends it) and a `compileRetry` stage in
 tab the compile takes 1–2 s; the second window covers a starved GPU process or a cold shader cache.
 `browserComposition.selftest` proves budget → complete proceeds (two compiles, one beacon, the loader's "still
 preparing"), budget twice fails with the message and no third attempt, invalidated never retries.
+
+**A slow compile never refuses entry (2026-10-10, the MP shader-prep lane).** Production 207–211 still refused the
+returning seat at load 54–84 (`compile` 5.0 s + `compileRetry` 5.0 s, "Battle shaders could not finish preparing"), and
+the refusal itself stranded it: the Garage restore's own strict program warm missed its 5 s budget inside the covered
+return, threw, and left the Garage unready (every scene frame suppressed), the loader on and no Rejoin battle. Now:
+- `warm.compile` opens window after window while programs keep linking (a submitted program stays cached, a reflected
+  one is not visited again), the loader showing how many are still linking. Four windows in a row with nothing linked,
+  or 120 s in all, is the last resort: a `slow_reveal` beacon `compile_deferred`, and the entry goes on, the covered
+  reveal linking the rest under the loader as the solo entry does. Only a preparation that cannot succeed refuses: a
+  lost or replaced context (`invalidated`: "Battle graphics were lost while the battle prepared its shaders"), a failed
+  native query or reflection ("Battle shaders failed to prepare on this device (reason)").
+- `entryTimeoutMs` refuses only a round that stopped progressing (no stage, world or roster progress and no program
+  linked for 120 s); a round still loading waits on in 30 s windows (one `slow_reveal` beacon `entry_extended`), up to
+  10 min.
+- The Garage restore (`src/engine/garageGpuWarmRuntime.ts`) treats a readiness proof that only ran out of time like a
+  legacy compile failure: the covered settle frame links the rest (receipt `programWarmDeferred`); an invalidated proof
+  still fails closed.
+- After any refused entry the loader clears even if the Garage restore throws, and the held room's lobby opens again
+  (`showActiveRoom`) naming why, with Rejoin battle while the match runs.
+Receipts: `browserComposition.selftest` (windows while linking, the last resort reveals, broken preparations refused
+with their reason, a throwing Garage restore still clears the loader and offers the room, Rejoin under load enters, the
+entry wait extends a progressing round and refuses a stalled one) and `garageGpuWarmRuntime.selftest`.
 
 **Open.** (1) ~~Two of P1's requests are honoured by design but wait for the merge to be proven against the real
 service: `host_only` step-down and the report cadence are exercised only against the double.~~ P3 (§13.8): the step-down
@@ -1187,7 +1252,10 @@ carrying a held row, or a delta whose row was refreshed before the packet (an ac
 was captured at the packet's tick; a row a delta leaves untouched keeps its baseline tick — including a fresh capture
 whose fields did not change (a hull at rest), whose older tick is then still an exact pose. The frame layout of
 protocol 1 is unchanged (`WIRE_VERSION` stays 1): a mismatch between builds is caught at the handshake as
-`PROTOCOL_VERSION`. A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
+`PROTOCOL_VERSION`. (2026-10-12: that held only while the layout stayed put. Every wire bump since 09-29 changed the
+first byte, and a host refuses a HELLO of another wire as `bad_version` with a CLOSE the other build cannot decode. So
+the client reads the first byte of any frame it cannot decode before its WELCOME, ends the join as `PROTOCOL_VERSION`
+and tells the player the host is older or newer and to refresh: `matchBuildGate.selftest`.) A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
 
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
@@ -1210,7 +1278,11 @@ by the measurements in 13.9.6.
 **13.9.3 Per-peer rate adaptation.** `SNAPSHOT_SKIP_BYTES` = 16 KB (≈ 0.7 s of snapshots at 14v14): a viewer whose
 channel holds more unsent than that has its snapshot *skipped* — never delayed, never queued behind, so the next one it
 receives is the freshest and the other peers are untouched (each link is sent to on its own); above the 64 KB soft bound
-for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. The count surfaces as
+for 2 s, or the 512 KB hard bound at once, the link closes as BACKPRESSURE as before. During a peer's covered entry, the
+first `ENTRY_BACKPRESSURE_GRACE_MS` = 120 s after its WELCOME, the soft bound closes the link only after
+`ENTRY_BACKPRESSURE_SUSTAINED_MS` = 60 s of continuous pressure (2026-10-10: under load ~110 the entry's synchronous steps,
+4.3 s and 2.9 s, kept two peers from draining for over 2 s and the new host's actor dropped both 26 s after their
+WELCOME); a loading peer drains between its steps, which restarts the clock, and a dead link still closes. The count surfaces as
 `HostCoreStats.snapshotSkips` → `MatchHost.snapshotSkips` → `SessionP2pStatus.snapshotSkips` →
 `NetworkStatusSnapshot.hostSnapshotSkips` and `window.__peer.status().host.core.snapshotSkips`, which the soak reports.
 `matchActor.selftest`: a peer over the bound is skipped and counted, the others keep their cadence, no close, deltas
@@ -1778,6 +1850,18 @@ offers asks once, which is what the seat window assumes; a refusal, a timeout or
 back to the newest grant with at least a minute left, else to host candidates; it never rejects. The transports still
 resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
 `VITE_ICE_CONFIG_URL` are gone.
+
+**A timed-out first request is asked again (2026-10-11).** Under load the first `room_relay` of a seat could run out its
+6 s budget (`internal`: the seat's own thread starved inside its battle entry, or a busy room) with no grant held yet, and
+the first connection was built on host candidates alone — no STUN, no TURN — which links on a LAN but cannot cross a
+NAT, so the attempt died and the seat re-offered seconds later (mp-p2p-headless: the first attempts linked with no
+servers, reason `internal`). Such a request is now asked once more (`RELAY_REQUEST_RETRIES` = 1) before the host
+candidates; the transport's next attempt shares the retry while it is in flight. A refusal (`rate_limit`, `relay_phase`,
+…) is not retried, and a held grant still answers a timeout at once. What this does not change: until the owner sets
+the TURN secrets on cot-rooms (`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TURN_API_TOKEN`), every grant is the
+Worker's `COT_STUN_URLS` alone, so a symmetric NAT still cannot connect. Receipt: `iceConfig.selftest` (a timed-out
+first request asked again and its grant used; a silent room costs one retry, then host candidates; a refusal answered
+once; a held grant answers a timeout; on main the timed-out first request goes straight to host candidates).
 
 **`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
 loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list

@@ -22,6 +22,7 @@
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
+import { lightTintFromRig } from './sceneLightTint.ts';
 import type { FxCinematicPort } from './effects.ts';
 import {
   cineRng, cineSeed, toneFromHex, muzzleBlast, fireball, shockwave, debrisBurst, emberBurst,
@@ -30,7 +31,7 @@ import {
 } from './cinematicRecipes.ts';
 import type {
   CineCtx, CineEmitter, CineEnv, CineGlow, CineLight, CineSink, CineSprite, CineWorld,
-  FlameSource, GroundTone, Puff, PuffPool, Rng, Streak, Chunk, Jet,
+  FlameSource, GroundTone, Puff, PuffPool, Rng, Streak, Chunk, Jet, SmokeScreenWalls,
 } from './cinematicRecipes.ts';
 
 export type CinematicQuality = 'battle' | 'cinematic';
@@ -266,7 +267,7 @@ export interface StudioCinematics {
   barrage(id: string, pos: THREE.Vector3, count: number, radiusM: number, size: string, seedDeg: number, durationS: number): void;
   dustBurst(id: string, pos: THREE.Vector3, dirDeg: number, intensity: number, count: number): void;
   mgBurst(id: string, muzzle: THREE.Vector3, dir: THREE.Vector3, rounds: number, gapM: number, speedMps: number): void;
-  smokeScreen(id: string, canisters: readonly (readonly number[])[], gravity: number, windX: number, windZ: number, durationS: number, density: number): void;
+  smokeScreen(id: string, canisters: readonly (readonly number[])[], gravity: number, windX: number, windZ: number, durationS: number, density: number, walls?: SmokeScreenWalls | null): void;
   flare(id: string, pos: THREE.Vector3, opts: FlareOptions): void;
   embers(id: string, pos: THREE.Vector3, radiusM: number, rate: number, durationS: number, rise: number): void;
   debris(id: string, pos: THREE.Vector3, count: number, speedMps: number, hot: number, sizeK: number): void;
@@ -279,31 +280,6 @@ export interface StudioCinematics {
 export interface FlareOptions {
   heightM: number; burnS: number; driftMps: number; fallMps: number;
   intensity: number; color: number; launch: boolean;
-}
-
-/**
- * Linear-RGB tint of normal-blended media from the live light rig: exactly
- * white in daylight (the battle look), falling through warm dusk tones to a
- * dim moonlit blue at night. Measured rigs (Verdant): day sun 4.5 / hemi
- * 0.45 -> 1.0; sunset 2.8 / 0.73 -> ~0.5 warm; night 0.6 / 0.75 -> ~0.2 blue.
- */
-function lightTintFromRig(scene: THREE.Scene, out: THREE.Color): THREE.Color {
-  const rig = scene.userData.lightRig as {
-    sunIntensity?: number; sunColor?: THREE.Color; hemiIntensity?: number; hemiSky?: THREE.Color;
-  } | undefined;
-  if (!rig || !rig.sunColor || !rig.hemiSky) return out.setRGB(1, 1, 1);
-  const sunI = rig.sunIntensity ?? 4.5, hemiI = rig.hemiIntensity ?? 0.45;
-  const sc = rig.sunColor, hc = rig.hemiSky;
-  const sunLum = 0.2126 * sc.r + 0.7152 * sc.g + 0.0722 * sc.b;
-  const level = cineClamp((sunI * sunLum * 0.75 + hemiI * 0.9) / 3.4, 0.06, 1);
-  // hue: sun and sky poles weighted by their share of the light
-  const ws = sunI * 0.75, wh = hemiI * 0.9;
-  let r = sc.r * ws + hc.r * wh, g = sc.g * ws + hc.g * wh, b = sc.b * ws + hc.b * wh;
-  const peak = Math.max(r, g, b, 1e-4);
-  r /= peak; g /= peak; b /= peak;
-  const white = cineClamp((level - 0.82) / 0.13, 0, 1);
-  const k = level * (1 - white);
-  return out.setRGB(r * k + white, g * k + white, b * k + white);
 }
 
 export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCinematics {
@@ -842,6 +818,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     get quality() { return quality; },
     setQuality(next) {
       quality = next;
+      // (fx 9) the battle pools are tinted by the scene in every quality (effects.ts); the cinematic quality takes the
+      // tint over with its own measure (refreshEnvironment), the battle quality hands it back
       const tintBattle = quality === 'cinematic';
       if (tintBattle !== battleTinted) {
         port.setLightTintShading(tintBattle);
@@ -1035,8 +1013,8 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         sparkShower(ctx, muzzle.x + dir.x * 0.3, muzzle.y + dir.y * 0.3, muzzle.z + dir.z * 0.3, dir.x, dir.y, dir.z, 3, 40, 0.15, off);
       }
     },
-    smokeScreen(id, cans, gravity, windX, windZ, durationS, density) {
-      addEmitter(smokeScreenEmitter(id, rngFor(id, 9), env.nowS, durationS, density, cans, windX, windZ, gravity, world.groundY));
+    smokeScreen(id, cans, gravity, windX, windZ, durationS, density, walls) {
+      addEmitter(smokeScreenEmitter(id, rngFor(id, 9), env.nowS, durationS, density, cans, windX, windZ, gravity, world.groundY, walls ?? null));
     },
     flare(id, pos, o) {
       addEmitter(flareEmitter(id, rngFor(id, 10), env.nowS, pos.x, pos.y, pos.z, o));

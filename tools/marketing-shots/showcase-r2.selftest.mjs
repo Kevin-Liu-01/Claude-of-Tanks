@@ -62,8 +62,9 @@ for (const sheet of manifest.process.contactSheets) {
 }
 
 const archiveSource = readFileSync(join(ROOT, 'src/presentation/mediaArchive.ts'), 'utf8');
-assert.match(archiveSource, /\/media\/showcase-r1\/manifest\.json/,
-  'live media archive must keep the original action library');
+// Since round 14 (2026-10-12) the archive is the site fifty's (owner: "replace the old media with all my new ones")
+assert.match(archiveSource, /\/media\/site50-r14\/archive\.json/,
+  'the live media archive is the site fifty\'s');
 
 const pageText = [
   'index.html', 'site/home.html', 'site/docs.html', 'README.md',
@@ -72,16 +73,23 @@ const pageText = [
   'docs/GALLERY.md', 'docs/HOW-IT-WORKS.md', 'docs/INDEX.md',
   'docs/FEATURES.md', 'docs/STUDIO.md',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
-for (const restoredFamily of [
-  '/media/presentation-r1/', '/media/showcase-r1/', '/media/featured/',
-  '/media/feature-evidence-r2/', '/media/multiplayer-r1/',
+for (const keptFamily of [
+  '/media/presentation-r1/ui_', '/media/feature-evidence-r2/', '/media/multiplayer-r1/', '/media/site50-r14/',
 ]) {
-  assert.ok(pageText.includes(restoredFamily), `original media family must remain in use: ${restoredFamily}`);
+  assert.ok(pageText.includes(keptFamily), `media family must remain in use: ${keptFamily}`);
 }
+// the gameplay families the site fifty replaced stay off the public surfaces (docs/ may record their history)
+const publicText = ['index.html', 'site/home.html', 'site/docs.html', 'README.md', 'src/docs/topics.ts', 'src/ui/featuredShots.ts']
+  .map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
+for (const retiredFamily of ['/media/showcase-r1/', '/media/featured/', '/media/hero-rails-r2/', '/media/promo-v13/',
+  '/media/battle-reels-v3/', '/media/feature-loops-r1/', '/media/director-r4/']) {
+  assert.ok(!publicText.includes(retiredFamily), `retired gameplay media must not return to the public surfaces: ${retiredFamily}`);
+}
+assert.doesNotMatch(publicText, /\/media\/presentation-r1\/(?!ui_)/, 'only the interface captures remain from presentation-r1');
 assert.ok(pageText.includes('/media/multiplayer-r1/dual-perspective.webp'),
   'the original dual-client multiplayer image must remain in use');
 assert.ok(!pageText.includes('/media/showcase-r2/18_live_spectator.webp'),
   'the replaced spectator frame must not remain on public pages');
 assert.ok(pageText.includes('/media/showcase-r2/'), 'current UI frames must remain in use');
 
-console.log('showcase-r2 selftest: ok (22 UI frames, restored action and multiplayer libraries)');
+console.log('showcase-r2 selftest: ok (22 UI frames, the site fifty archive, kept interface and multiplayer libraries)');

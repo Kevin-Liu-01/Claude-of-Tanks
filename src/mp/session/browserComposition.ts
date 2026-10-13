@@ -98,6 +98,8 @@ export interface BrowserLoadTrace {
   status: 'pending' | 'complete' | 'failed';
   totalMs?: number;
   blackCheck?: RuntimeValue;
+  /** The strict shader preparation: its windows, how it ended, and the programs left to link at the covered reveal. */
+  compile?: { attempts: number; outcome: 'complete' | 'deferred'; pending: number | null };
 }
 
 export interface BrowserEntryFailure {
@@ -107,13 +109,18 @@ export interface BrowserEntryFailure {
   reason: string;
 }
 
-/** A budget the entry extended once (the same beacon kind the reveal and paint budgets report). */
+/**
+ * A budget the entry outran without failing (the same beacon kind the reveal and paint budgets report): the strict
+ * shader preparation extended past its first window (`compile`/`extended`), or reached its last resort and left the rest
+ * to the covered reveal (`compile`/`deferred`); the entry's own wait extended because the round was still progressing
+ * (`entry`/`extended`).
+ */
 export interface BrowserSlowEntry {
-  stage: 'compile';
-  code: 'extended';
-  /** The first attempt's duration. */
+  stage: 'compile' | 'entry';
+  code: 'extended' | 'deferred';
+  /** The stage's elapsed time when it was beaconed. */
   ms: number;
-  /** Programs still unprepared when the first attempt ran out. */
+  /** Programs still unprepared (compile), or null. */
   pending: number | null;
 }
 
@@ -235,6 +242,8 @@ export interface BrowserRoomMenu {
   updateActiveRoom(state: SerializedLobby): boolean;
   detachActiveRoom(): void;
   showRoomFailure(reason: string, mode?: RoomMode): void;
+  /** Open the attached room's lobby (its Rejoin battle while the match runs), naming why the last entry failed. */
+  showActiveRoom?(notice?: string | null): boolean;
 }
 
 export interface BrowserGarageRoomStatus {
@@ -517,6 +526,8 @@ interface ActiveRound {
   shotsBy: Record<string, number>;
   trace: BrowserLoadTrace;
   stageAt: number;
+  /** The round's last sign of progress (a stage, world/roster progress, a shader window that linked programs). */
+  progressAt: number;
 }
 
 interface Deferred<T> {
@@ -541,6 +552,19 @@ function reasonOf(error: RuntimeValue): string {
   return 'entry_failed';
 }
 
+/**
+ * The match ended while this seat was still entering it (a verdict before the reveal; 2026-10-11, prod 215 run 2: a
+ * returning seat's world loaded for 150 s while the defenders fell, and the entry then waited the whole stall window for
+ * a WELCOME the ended match could not send). Not an entry error: the lobby names it.
+ */
+class MatchEndedDuringEntryError extends Error {
+  readonly code = 'match_ended';
+  constructor() {
+    super('The match ended while you were joining.');
+    this.name = 'MatchEndedDuringEntryError';
+  }
+}
+
 class RoundSupersededError extends Error {
   readonly superseded = true;
   constructor(detail: string) { super(`multiplayer v2 round superseded: ${detail}`); this.name = 'RoundSupersededError'; }
@@ -548,6 +572,44 @@ class RoundSupersededError extends Error {
 
 function isSuperseded(error: RuntimeValue): boolean {
   return error instanceof RoundSupersededError;
+}
+
+/**
+ * 2026-10-10 (the MP shader-prep lane; production 207-211: "Battle shaders could not finish preparing" refused the
+ * returning seat's entry at load 54-84, compile 5.0 s + retry 5.0 s): the strict preparation (src/engine/programWarm.ts) is
+ * a 5 s wall-clock window, and a busy GPU process links a cold cohort for longer. A window that runs out is not a failure:
+ * the next window resumes it (submitted programs are cached and reflected ones are not visited again), so the entry keeps
+ * opening windows while programs keep linking, showing how many are left. COMPILE_STALL_WINDOWS windows in a row with
+ * nothing linked, or COMPILE_CEILING_MS in all, is the last resort: a beacon, and the entry goes on, the covered reveal
+ * linking the rest under the loader as the solo entry does after its optional warm. Only a preparation that cannot
+ * succeed refuses the entry: a renderer whose context was lost or replaced (`invalidated`), a failed native query or
+ * program reflection.
+ */
+const COMPILE_STALL_WINDOWS = 4;
+const COMPILE_CEILING_MS = 120_000;
+/**
+ * The entry's own wait (entryTimeoutMs) refuses only a round that stopped progressing: past it, a round that showed
+ * progress within ENTRY_STALL_MS waits another ENTRY_EXTEND_MS (beaconed once), up to ENTRY_CEILING_MS in all.
+ */
+const ENTRY_STALL_MS = 120_000;
+const ENTRY_EXTEND_MS = 30_000;
+const ENTRY_CEILING_MS = 600_000;
+
+/** A preparation that ran out of windows made progress if it linked programs, or got its whole cohort submitted. */
+function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWarmPreparation): boolean {
+  if (previous === undefined) return true;
+  const before = previous?.pending ?? null;
+  const after = current?.pending ?? null;
+  if (after === null) return false;
+  return before === null || after < before;
+}
+
+/** The refusal for a preparation that cannot complete, with what broke. */
+function shaderPreparationFailure(preparation: BrowserWarmPreparation): Error {
+  const reason = preparation?.reason ?? 'unknown';
+  return new Error(reason === 'invalidated'
+    ? 'Battle graphics were lost while the battle prepared its shaders. Please retry from the Garage.'
+    : `Battle shaders failed to prepare on this device (${reason}). Please retry from the Garage.`);
 }
 
 const defaultFactories: BrowserCompositionFactories = {
@@ -885,10 +947,14 @@ export function createBrowserComposition({
     load.battleLoad.progress(1, 'Restoring Garage');
     lifecycle.coverRendering();
     load.audio.loadingOn(false);
-    await roomPorts.enterGarage();
-    lifecycle.uncoverRendering();
-    await load.nextFrame();
-    await load.battleLoad.hide();
+    try {
+      await roomPorts.enterGarage();
+    } finally {
+      // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
+      // that throws still releases the cover and the loader; the caller reports the error.
+      lifecycle.uncoverRendering();
+      try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+    }
   };
 
   const finishTrace = (active: ActiveRound, status: 'complete' | 'failed'): void => {
@@ -902,7 +968,10 @@ export function createBrowserComposition({
     const at = now();
     active.trace.stages[stage] = Math.round(at - active.stageAt);
     active.stageAt = at;
+    active.progressAt = at;
   };
+
+  const noteProgress = (active: ActiveRound): void => { active.progressAt = now(); };
 
   const failRound = async (active: ActiveRound, error: RuntimeValue, stage: string): Promise<void> => {
     if (active.failed) return;
@@ -913,7 +982,8 @@ export function createBrowserComposition({
     if (!superseded) {
       lastFailure = { message: messageOf(error), matchId: active.matchId, stage, reason: reasonOf(error) };
       load.recordEntryFailure?.(lastFailure);
-      reportError('multiplayer v2 entry', error);
+      if (error instanceof MatchEndedDuringEntryError) reportWarning('multiplayer v2 entry', messageOf(error));
+      else reportError('multiplayer v2 entry', error);
     }
     if (round !== active) { settleEntry(false); return; }
     round = null;
@@ -924,8 +994,27 @@ export function createBrowserComposition({
       reportError('multiplayer v2 entry', restoreError);
     } finally {
       settleEntry(false);
-      if (!superseded) syncMenu();
+      if (!superseded) {
+        syncMenu();
+        offerRoomAfterFailure(messageOf(error));
+      }
     }
+  };
+
+  /**
+   * 2026-10-10 (prod 211: the returning seat's failed entry left it in the Garage with no way back but a hidden room
+   * reminder): after any refused entry the held room's lobby opens again, naming why, with Rejoin battle while its
+   * match still runs. Joins syncMenu's attach on the same menu promise, so the room is attached first.
+   */
+  const offerRoomAfterFailure = (message: string): void => {
+    const current = roomSession;
+    const menuPromise = current ? roomPorts.getMenu() : null;
+    if (!current || !menuPromise) return;
+    const generation = roomGeneration;
+    menuPromise.then((menu) => {
+      if (disposed || roomSession !== current || generation !== roomGeneration || !menuAttached || round) return;
+      menu.showActiveRoom?.(message);
+    }).catch((error: RuntimeValue) => reportError('multiplayer v2 lobby', error));
   };
 
   /** The MatchSession's `createPresentation`: the round's map, the battle presentation, the controls. */
@@ -944,6 +1033,7 @@ export function createBrowserComposition({
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
+      progressAt: startedAt,
     };
     round = active;
     roundsEntered++;
@@ -970,7 +1060,9 @@ export function createBrowserComposition({
         load.loadModules(),
         load.ensureBattleVisuals(),
         load.loadWorld(active.mapId, (fraction, label) => {
-          if (round === active) load.battleLoad.progress(0.08 + fraction * 0.48, label);
+          if (round !== active) return;
+          noteProgress(active);
+          load.battleLoad.progress(0.08 + fraction * 0.48, label);
         }, terrainVariant),
       ]);
       check('world');
@@ -987,7 +1079,9 @@ export function createBrowserComposition({
         ...(scene.onVisualReady ? { onVisualReady: scene.onVisualReady } : {}),
         camoFor: (entry) => camoOf.get(entry.playerId) ?? 'factory',
         onRosterProgress: (fraction, specId) => {
-          if (round === active) load.battleLoad.progress(0.56 + fraction * 0.27, `Painting ${roster.vehicleName(specId)}`);
+          if (round !== active) return;
+          noteProgress(active);
+          load.battleLoad.progress(0.56 + fraction * 0.27, `Painting ${roster.vehicleName(specId)}`);
         },
       });
       active.presentation = battlePresentation;
@@ -1042,6 +1136,52 @@ export function createBrowserComposition({
     }
   }
 
+  /**
+   * The strict shader preparation, window after window while programs keep linking (COMPILE_STALL_WINDOWS,
+   * COMPILE_CEILING_MS above). The trace keeps the first window as `compile` and every later one as `compileRetry`.
+   */
+  const prepareCombatShaders = async (active: ActiveRound, signal: AbortSignal, check: (detail: string) => void): Promise<void> => {
+    const startedAt = now();
+    let previous: BrowserWarmPreparation = undefined;
+    let attempts = 0;
+    let stalled = 0;
+    let retried = false;
+    const finish = (outcome: 'complete' | 'deferred', pending: number | null): void => {
+      markStage(active, retried ? 'compileRetry' : 'compile');
+      active.trace.compile = { attempts, outcome, pending };
+    };
+    while (true) {
+      attempts++;
+      const compiled = await warm.compile?.(signal);
+      check(retried ? 'compileRetry' : 'compile');
+      const preparation = compiled?.preparation;
+      if (!preparationIncomplete(preparation)) { finish('complete', 0); return; }
+      if (!preparationOutOfBudget(preparation)) throw shaderPreparationFailure(preparation);
+      const pending = preparation?.pending ?? null;
+      const progressed = compileProgressed(previous, preparation);
+      previous = preparation;
+      stalled = progressed ? 0 : stalled + 1;
+      if (progressed) noteProgress(active);
+      if (!retried) {
+        // The first window's duration stays `compile`; the extension is a beacon, never a failed entry.
+        load.recordSlowEntry?.({ stage: 'compile', code: 'extended', ms: Math.round(now() - startedAt), pending });
+        markStage(active, 'compile');
+        retried = true;
+      }
+      if (stalled >= COMPILE_STALL_WINDOWS || now() - startedAt >= COMPILE_CEILING_MS) {
+        // The last resort reports and goes on: the covered reveal links the rest under the loader.
+        load.recordSlowEntry?.({ stage: 'compile', code: 'deferred', ms: Math.round(now() - startedAt), pending });
+        finish('deferred', pending);
+        return;
+      }
+      load.battleLoad.progress(0.87, pending === null
+        ? 'Compiling combat shaders (still preparing)'
+        : `Compiling combat shaders (${pending} still linking)`);
+      await load.nextFrame();
+      check('compileRetry');
+    }
+  };
+
   /** The first frame with the roster in place: warm under the cover, activate, prove the frame, reveal. */
   const activateRound = async (active: ActiveRound): Promise<void> => {
     const battlePresentation = active.presentation;
@@ -1075,29 +1215,7 @@ export function createBrowserComposition({
       load.battleLoad.progress(0.87, 'Compiling combat shaders');
       await load.nextFrame();
       check('compile');
-      let compiled = await warm.compile?.(signal);
-      check('compile');
-      let preparation = compiled?.preparation;
-      if (preparationOutOfBudget(preparation)) {
-        // Entry resilience (2026-09-28): the strict preparation is a bounded wall-clock operation (programWarm.ts) and a
-        // starved GPU process — other tabs rendering, a cold shader cache — can outrun it once. Like the reveal budget
-        // (extends once, then waits) the compile runs once more with a fresh deadline before the entry fails; the
-        // extension is a beacon, the second verdict is final.
-        const firstAttemptMs = Math.round(now() - active.stageAt);
-        markStage(active, 'compile');
-        load.recordSlowEntry?.({ stage: 'compile', code: 'extended', ms: firstAttemptMs, pending: preparation?.pending ?? null });
-        load.battleLoad.progress(0.87, 'Compiling combat shaders (still preparing)');
-        await load.nextFrame();
-        check('compileRetry');
-        compiled = await warm.compile?.(signal);
-        check('compileRetry');
-        preparation = compiled?.preparation;
-        markStage(active, 'compileRetry'); // the trace keeps the second attempt's duration whichever way it ends
-        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
-      } else {
-        if (preparationIncomplete(preparation)) throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
-        markStage(active, 'compile');
-      }
+      await prepareCombatShaders(active, signal, check);
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
       await warm.openingEffects?.(fx, view, signal);
@@ -1232,6 +1350,12 @@ export function createBrowserComposition({
   };
 
   const handleVerdict = (): void => {
+    // A round still entering when its match ends is refused at once (MatchEndedDuringEntryError): no WELCOME can come.
+    const active = round;
+    if (active && !active.revealed && !active.failed) {
+      void failRound(active, new MatchEndedDuringEntryError(), 'ended');
+      return;
+    }
     // The presentation already presented the verdict; the lobby follows on the room's next state.
     schedule(syncMenu);
   };
@@ -1265,11 +1389,24 @@ export function createBrowserComposition({
       if (round?.revealed) return true;
       const waiter = deferred<boolean>();
       entryWaiters.push(waiter);
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), entryTimeoutMs); });
-      const outcome = await Promise.race([waiter.promise, timeout]);
-      if (timer) clearTimeout(timer);
-      if (outcome !== 'timeout') return outcome;
+      const waitStartedAt = now();
+      let windowMs = entryTimeoutMs;
+      let extended = false;
+      while (true) {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), windowMs); });
+        const outcome = await Promise.race([waiter.promise, timeout]);
+        if (timer) clearTimeout(timer);
+        if (outcome !== 'timeout') return outcome;
+        // 2026-10-10 (the MP shader-prep lane): a round still loading, warming or linking shaders is slow, not stuck.
+        const progressing = round && !round.failed && now() - round.progressAt < ENTRY_STALL_MS;
+        if (!progressing || now() - waitStartedAt >= ENTRY_CEILING_MS) break;
+        if (!extended) {
+          extended = true;
+          load.recordSlowEntry?.({ stage: 'entry', code: 'extended', ms: Math.round(now() - waitStartedAt), pending: null });
+        }
+        windowMs = ENTRY_EXTEND_MS;
+      }
       const active = round;
       if (active) {
         await failRound(active, new Error('The match did not present in time. Please retry from the room.'), 'timeout');

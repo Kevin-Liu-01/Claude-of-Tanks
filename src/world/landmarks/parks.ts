@@ -257,13 +257,170 @@ const PATH_TINT: Readonly<Record<string, Rgb>> = Object.freeze({ gravel: [0.95, 
  * A path (gauntlet waves 154-158: "no approach path"): a strip draped over the ground from the piece's origin `length`
  * metres along its +z, `width` wide — flagstones or setts in the map's masonry (`surface: 'stone'`), gravel, or beaten
  * earth. Dressing only: a hull drives over it as over the ground.
+ * (the map-revival lane, 2026-10-11, Longleaf round 4; wave 376 read the draped earth strip as "a raised slab painted
+ * with a high-contrast black-and-tan zebra-noise pattern"): `surface: 'ground'` draws no strip — the track is the
+ * terrain's own (the map stamps its worn ground along the line) — and keeps only the piece's ground-cover hole, so no
+ * grass stands on it.
  */
 export const path: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = Math.max(1, Number(ctx.params.length)), w = Math.max(0.6, Number(ctx.params.width)), surface = String(ctx.params.surface);
+  if (surface === 'ground') return { parts: sink.finish() };
   const bucket: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
   drapedPath(sink, bucket, ctx.ground, [0, -L / 2], [0, L / 2], w, { lift: surface === 'earth' ? 0.03 : 0.045 });
   return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
+};
+
+// ---------------------------------------------------------------------------------------------------------- stairway
+
+/**
+ * A stepped lane (the map-revival lane, 2026-10-07, Orchard round 5 — the coordinator's condition for the terraced
+ * village: "paths, stairs and a ramped mule track from the cross road up to the church square … ground-material paths
+ * with stone steps on the risers", every one "a place a person would walk, with treads, risers and landings"): a lane
+ * from the piece's origin `length` m along its +z, `width` wide, read off the ground under its centre and both edges (the
+ * highest of the three, so no step is buried by a cross-fall). Its level stretches are landings paved over the ground
+ * (flags in the map's masonry, gravel or beaten earth); wherever the ground along it climbs steeper than `steep` (a
+ * terrace's riser, a road's cut bank, a graded ramp) a flight is set into the slope: risers near `rise` m, each step's
+ * back level with the ground and its nosing one rise over it, its block reaching under the ground, between two low stone
+ * kerbs. `steps: 'block'` lays solid stone steps (a village stair); `'cordonata'` a mule stair — a stone curb across the
+ * lane at every riser and a tread of the landing's surface behind it, long and low, the way a laden mule climbs. Dressing
+ * only: a hull drives over it as over the ground.
+ */
+export const stairway: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.8, Number(ctx.params.width));
+  const rise = Math.min(0.24, Math.max(0.1, Number(ctx.params.rise))), steep = Math.max(0.03, Number(ctx.params.steep));
+  const surface = String(ctx.params.surface), cordonata = String(ctx.params.steps) === 'cordonata', kerbs = ctx.params.kerbs !== false;
+  const paving: RegionalBucket = surface === 'stone' ? 'stone' : 'plaster3';
+  const ground = ctx.ground ?? (() => 0);
+  const hw = w / 2, N = Math.max(4, Math.round(L / 0.1)), DZ = L / N;
+  const zAt = (i: number): number => -L / 2 + i * DZ;
+  const ys: number[] = [];
+  for (let i = 0; i <= N; i++) { const z = zAt(i); ys.push(Math.max(ground(-hw, z), ground(0, z), ground(hw, z))); }
+  // the flights: the stretches whose grade over a 0.6 m window passes `steep`, joined across gaps under 0.6 m and
+  // widened by 0.2 m at either end (a riser's rounded foot and brow)
+  const steepAt = (i: number): boolean => {
+    const a = Math.max(0, i - 3), b = Math.min(N, i + 3);
+    return Math.abs(ys[b] - ys[a]) / ((b - a) * DZ) > steep;
+  };
+  const flights: Array<{ i0: number; i1: number }> = [];
+  for (let i = 0; i <= N; i++) {
+    if (!steepAt(i)) continue;
+    const last = flights[flights.length - 1];
+    if (last && i - last.i1 <= 6) last.i1 = i; else flights.push({ i0: i, i1: i });
+  }
+  for (const f of flights) { f.i0 = Math.max(0, f.i0 - 2); f.i1 = Math.min(N, f.i1 + 2); }
+  // the landings between the flights (and from the lane's ends), paved over the ground
+  const lift = surface === 'earth' ? 0.03 : 0.045;
+  let from = 0;
+  for (const f of [...flights, { i0: N, i1: N }]) {
+    if (zAt(f.i0) - zAt(from) >= 0.3) drapedPath(sink, paving, ground, [0, zAt(from)], [0, zAt(f.i0)], w, { lift });
+    from = f.i1;
+  }
+  const kerbW = 0.22, curbD = 0.26;
+  for (const f of flights) {
+    const up = ys[f.i1] >= ys[f.i0];
+    const foot = up ? f.i0 : f.i1, head = up ? f.i1 : f.i0, dir = up ? 1 : -1;
+    const y0 = ys[foot], y1 = ys[head];
+    const n = Math.max(1, Math.round((y1 - y0) / rise));
+    const r = (y1 - y0) / n;
+    if (!(r > 0.05)) continue;
+    // each step's front: the first sample from the foot where the ground reaches its base (y0 + k r)
+    const fronts: number[] = [foot];
+    let i = foot;
+    for (let k = 1; k < n; k++) {
+      while (i !== head && ys[i] < y0 + k * r) i += dir;
+      fronts.push(i);
+    }
+    fronts.push(head);
+    for (let k = 0; k < n; k++) {
+      const za = zAt(fronts[k]);
+      let zb = zAt(fronts[k + 1]);
+      if (Math.abs(zb - za) < 0.12) zb = za + dir * 0.12;
+      const lo = Math.min(za, zb), hi = Math.max(za, zb);
+      let under = Infinity;
+      for (let j = Math.min(fronts[k], fronts[k + 1]); j <= Math.max(fronts[k], fronts[k + 1]); j++) under = Math.min(under, ys[j]);
+      const top = y0 + (k + 1) * r, bottom = Math.min(under, top - r) - 0.35;
+      if (cordonata && hi - lo > curbD + 0.2) {
+        // the curb across the lane at the riser, and the tread behind it in the landing's surface
+        const curb0 = dir > 0 ? lo : hi - curbD, curb1 = dir > 0 ? lo + curbD : hi;
+        sink.span('stone', -hw, bottom, curb0, hw, top, curb1, { decor: true });
+        sink.span(paving, -hw, bottom, dir > 0 ? curb1 : lo, hw, top - 0.02, dir > 0 ? hi : curb0, { decor: true });
+      } else sink.span('stone', -hw, bottom, lo, hw, top, hi, { decor: true });
+      // the kerbs: a low stone edge either side, its top a hand over the step
+      if (kerbs) for (const s of [-1, 1]) sink.span('stone', s > 0 ? hw : -hw - kerbW, bottom, lo, s > 0 ? hw + kerbW : -hw, top + 0.16, hi, { decor: true });
+    }
+  }
+  return { parts: sink.finish(), tints: { plaster3: PATH_TINT[surface] ?? PATH_TINT.gravel } };
+};
+
+/**
+ * A mill's outfall (Polders round 2, the gauntlet: the mills "need a mound, a yard and a link to the water"): where the
+ * drain under a mill's terp comes out, a brick headwall at the top of the bank with the culvert's round mouth in its face,
+ * and the runnel below it pitched in stone down the bank to the water, its kerbs a course higher, the wet down its middle.
+ * The headwall stands at the piece's -z end, the runnel runs `length` metres along +z. Dressing: no solid.
+ */
+export const outfall: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const L = Math.max(2, Number(ctx.params.length)), w = Math.max(0.5, Number(ctx.params.width));
+  const z0 = -L / 2, z1 = L / 2, ground = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  // the headwall: brick across the runnel's head, its coping proud of it, its face (+z) toward the water
+  const half = w / 2 + 0.45, g0 = Math.min(ground(-half, z0), ground(half, z0), ground(0, z0)), top = g0 + 0.95;
+  sink.span('stone', -half, g0 - 0.35, z0 - 0.38, half, top, z0, { decor: true });
+  sink.span('stone', -half - 0.06, top, z0 - 0.44, half + 0.06, top + 0.1, z0 + 0.06, { decor: true, shade: 0.9 });
+  // the mouth: a dark disc a hair proud of the face, ringed by its voussoirs
+  const r = Math.min(0.34, w * 0.42), cy = g0 + 0.12 + r, n = 12, zf = z0 + 0.006;
+  const ringAt = (k: number, rr: number, dz: number): Vec3 => [Math.cos(k / n * Math.PI * 2) * rr, cy + Math.sin(k / n * Math.PI * 2) * rr, zf + dz];
+  const disc: Vec3[] = [];
+  for (let k = 0; k < n; k++) disc.push(ringAt(k, r, 0));
+  sink.polygon('dark', disc, { decor: true });
+  for (let k = 0; k < n; k++) {
+    sink.quad('stone', ringAt(k, r, 0.01), ringAt(k, r + 0.14, 0.03), ringAt(k + 1, r + 0.14, 0.03), ringAt(k + 1, r, 0.01), { decor: true, shade: 0.8 });
+  }
+  // the runnel: pitched stone from the headwall's foot down the bank, its kerbs, and the wet down its middle
+  drapedPath(sink, 'stone', ctx.ground, [0, z0 + 0.02], [0, z1], w, { lift: 0.04, emit: { shade: 0.86 } });
+  for (const sx of [-1, 1]) drapedPath(sink, 'stone', ctx.ground, [sx * (w / 2 + 0.09), z0], [sx * (w / 2 + 0.09), z1], 0.18, { lift: 0.085 });
+  drapedPath(sink, 'structureWood', ctx.ground, [0, z0 + 0.02], [0, z1], Math.max(0.16, w * 0.3), { lift: 0.05, emit: { colour: WET_RUNNEL } });
+  return { parts: sink.finish() };
+};
+const WET_RUNNEL: Rgb = rgb(0x2b3330);
+// ---------------------------------------------------------------------------------------------------------- piazza
+
+/**
+ * A town's paved square (the landmarks lane, 2026-10-07, Saltwind round 4: the campanile's piazza was "a thin raised
+ * sheet… ends in a straight hard edge on bare dirt"; it needs "a kerb, thickness and contact"): the map's masonry flags
+ * draped a step over the ground inside a kerb of dressed blocks round its edge — each block its own length and tone,
+ * a hand proud of the flags, its outer face carried down past the ground's lowest point under it, so the square is set
+ * into the field rather than laid on it. The frame: `width` across x, `depth` along z, the kerb's outside the outline.
+ * Dressing: a hull drives over it as over the ground.
+ */
+export const piazza: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const W = Math.max(4, Number(ctx.params.width)), D = Math.max(4, Number(ctx.params.depth)), K = Math.max(0.2, Number(ctx.params.kerb) || 0.38);
+  const ground = ctx.ground ?? ((): number => 0);
+  const FLAGS = 0.12, KERB_TOP = 0.17, FOOT = 0.35, JOINT = 0.012, look = ctx.variant;
+  // the flags, a step over the ground inside the kerb (their skirts behind it)
+  drapedRect(sink, 'stone', ctx.ground, { cx: 0, cz: 0, hw: W / 2 - K, hd: D / 2 - K }, { lift: FLAGS, cell: 1.5, skirt: 0.25 });
+  /** One kerb block over the rectangle [x0, x1] × [z0, z1]: from under its lowest ground to a hand over its highest. */
+  const block = (x0: number, x1: number, z0: number, z1: number) => {
+    const gs = [ground(x0, z0), ground(x1, z0), ground(x1, z1), ground(x0, z1)];
+    const tone = 0.9 + look() * 0.16;
+    sink.span('stone', x0, Math.min(...gs) - FOOT, z0, x1, Math.max(...gs) + KERB_TOP, z1, { decor: true, tint: [tone, tone * 0.99, tone * 0.96] });
+  };
+  /** A run of blocks from a to b along one axis (0.9 to 1.5 m each, a joint between). */
+  const run = (a: number, b: number, at: (t0: number, t1: number) => void) => {
+    for (let t = a; t < b - 0.05;) {
+      const t1 = Math.min(b, t + 0.9 + look() * 0.6);
+      at(t, b - t1 < 0.4 ? b : t1);
+      t = (b - t1 < 0.4 ? b : t1) + JOINT;
+    }
+  };
+  // the long runs on the front and back carry the corners; the sides run between them
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, D / 2 - K, D / 2));
+  run(-W / 2, W / 2, (t0, t1) => block(t0, t1, -D / 2, -D / 2 + K));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(W / 2 - K, W / 2, t0, t1));
+  run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(-W / 2, -W / 2 + K, t0, t1));
+  return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- churchyard

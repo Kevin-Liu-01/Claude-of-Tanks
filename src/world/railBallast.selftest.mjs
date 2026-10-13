@@ -49,7 +49,9 @@ function build(mapId, withBallast) {
 const isBed = (g) => g.parameters?.width === RAIL_SPUR_BALLAST_M && (g.parameters.height === 0.16 || g.parameters.height === 0.36);
 const isShoulder = (g) => g.parameters?.height === 0.05 && Math.abs(g.parameters.width - Math.hypot(0.62, 0.24)) < 1e-9;
 let beds = 0, shoulders = 0;
-for (const mapId of ['foundry', 'caldera', 'steppe']) {
+// (item 31, the map revival, 2026-10-11: Caldera r5 lifted Cinder Junction's rail yard off the paddies — the map lays no
+// rail kit now — so the kit's two maps are Foundry's yard and the Steppe's spur)
+for (const mapId of ['foundry', 'steppe']) {
   const a = build(mapId, true), b = build(mapId, false);
   try {
     assert.equal(a.calls, b.calls, `${mapId}: the ballast bucket draws nothing of the seeded stream`);
@@ -129,4 +131,4 @@ assert.ok(props.includes("const ballastHook: MaterialShaderHook = (shader) => { 
   'its hook over the grime hook (no weeds under the snow load)');
 assert.ok(props.includes(": materialKind === 'ballast' ? ballastHook"), 'installed through the cascade setup with every surface material');
 assert.ok(props.includes('...(mobileProps ? {} : { ballast: [] }),'), 'the phones keep the bed on the baked material');
-console.log(`railBallast: UV tags, ${beds} beds and ${shoulders} shoulders on Ironworks, Caldera and Steppe in the ballast bucket (the baked one without it, the same geometry and seeded stream), the hook's integer-hashed stones faded by the footprint, the four-foot's oil, its cheap variant and the props wiring PASS; no GPU/art claim`);
+console.log(`railBallast: UV tags, ${beds} beds and ${shoulders} shoulders on Ironworks and Steppe in the ballast bucket (the baked one without it, the same geometry and seeded stream), the hook's integer-hashed stones faded by the footprint, the four-foot's oil, its cheap variant and the props wiring PASS; no GPU/art claim`);

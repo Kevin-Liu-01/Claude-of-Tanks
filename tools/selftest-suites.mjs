@@ -11,17 +11,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'tools/wheel-axial-extents.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 2026-10-10: every Leopard 2A5-family spec at both qualities across camouflage seeds; markExact on a duplicate three
+    'src/vehicles/leopard2A5Family.selftest.mjs',
+    // 2026-10-10: no mesh that can reach a scene reads vertex colour without a colour attribute (fleet as rendered, drones,
+    // garage packs, world prop and map-vehicle kits; KNOWN ratchets hits in flight elsewhere)
+    'tools/vertex-color-coverage.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
     'src/sim/infectedLifecycle.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
+    'src/fx/sceneLightTint.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
+    'src/fx/droneRotorWinding.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
+    'src/sim/droneAvoidance.selftest.mjs',
+    'src/sim/droneLowFlight.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
+    'src/fx/droneReturn.selftest.mjs',
     'src/game/missionAttachmentMotion.selftest.mjs',
     'src/game/garageModePreview.selftest.mjs',
     'src/app/garageModePreviewRuntime.selftest.mjs',
@@ -51,6 +61,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
+    'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
     'src/fx/auxiliaryPresentation.selftest.mjs',
     'src/fx/projectileTracers.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
@@ -188,6 +199,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
+    'src/vehicles/runningGearGroundRun.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
@@ -277,6 +289,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shellBurstColumn.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
+    // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
+    'src/game/studioBlastFell.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
@@ -573,6 +587,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteGlslMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
+    'tools/battle-entry-sweep.selftest.mjs',
     'tools/multiplayer-frame-trace.selftest.mjs',
     'tools/terrain-stream-benchmark.selftest.mjs',
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
@@ -643,6 +658,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
+    'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
@@ -665,11 +682,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageSkyPresets.selftest.mjs',
     'src/game/garageGantry.selftest.mjs',
     'src/game/garageDressingOptimization.selftest.mjs',
+    'src/game/garageBayFloor.selftest.mjs',
     'src/game/garageDressingDrawRange.selftest.mjs',
     'tools/garage-draw-range-probe.selftest.mjs',
     'src/game/garageVariants.selftest.mjs',
     'src/game/garageWallLayout.selftest.mjs',
     'src/ui/garageArchitecture.selftest.mjs',
+    'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
@@ -700,6 +719,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
+    'src/ui/damagePanelEntryMasks.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
@@ -724,6 +744,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
+    'src/vehicles/decorDockKeepOut.selftest.mjs',
+    'src/sim/missionDockSeats.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
@@ -953,6 +975,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
+    // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
+    'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
     'src/mp/match/clock.selftest.mjs',
@@ -964,12 +988,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
+    'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
     'src/mp/host/hostPlan.selftest.mjs',
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
+    // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
+    'src/mp/host/resumeHold.selftest.mjs',
+    // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
+    'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
@@ -982,6 +1011,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
     // (the log held for an owed event), settled once for a late joiner, restored without an event on a migrated host
     'src/mp/presentation/craterSync.selftest.mjs',
+    // 2026-10-10 (physics lane): the host's turret body through the rows, the peer's interpolated pose, a migrated host.
+    'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
@@ -1066,6 +1097,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
+    // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
+    // the game's own rigid bodies, and a dead hull's turret as one.
+    'src/sim/rigidBody.selftest.mjs',
+    'src/sim/wreckTurrets.selftest.mjs',
+    'src/vehicles/wreckTurretDriver.selftest.mjs',
+    // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
+    'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
@@ -1199,7 +1237,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
+    'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
+    // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
+    'src/vehicles/weaponFinish.selftest.mjs',
     // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
     'src/vehicles/decorDrawBudget.selftest.mjs',
     // 2026-10-08 (tank-accessories round 5): every accessory piece touches the vehicle within 15 mm (a ratchet to zero)
@@ -1298,7 +1340,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
+    'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground
+    'src/world/canals.selftest.mjs', // 2026-10-07: canals (the shared linear water primitive; Polders' vaart and weteringen) at one level, and every map without one identical to the terrain before it
+    'src/world/roadCrownLift.selftest.mjs', // 2026-10-07: a styled road path's crown lift (Polders' lanes on the dyke crowns), and every map that lifts no path identical to the terrain before it
     'src/world/terrainSurfaceDetail.selftest.mjs',
+    'src/world/terraceBenches.selftest.mjs', // 2026-10-07: Orchard's terrace zones cut after the near-field relief, the benches at their levels
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
     'src/world/terrainSandCoverage.selftest.mjs',
@@ -1326,6 +1372,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/saltwindSoil.selftest.mjs', // ground lane (2026-10-08, waves 286b/287): Saltwind's terra rossa, footing and garrigue
     'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask
+    'src/world/paddyFloodLevel.selftest.mjs', // 2026-10-12: a flooded paddy holds water only on a level floor
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
@@ -1358,6 +1405,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
@@ -1374,11 +1422,15 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
+    // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
+    'src/world/maps/regional/polarWorks.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
+    // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
+    'src/world/maps/periodFreight.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',
@@ -1422,6 +1474,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
+    // the trees lane (2026-10-07, wave 205): Polders' woods off its cropped ground, its willow rows along the field boundaries
+    'src/world/polderTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
     'src/world/landscapeWoods.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
@@ -1500,12 +1554,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
     // the landmarks lane (2026-10-05): the set-piece library — budgets, collision, open gates, drivable bridges, the pass
     'src/world/landmarks/landmarks.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
+    // the buildings and landmarks lane (2026-10-10, the owner's relay mast): exact member contact in every assembled kit
+    'src/world/kitConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
@@ -1518,9 +1575,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
+    // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
+    'src/world/maps/propFracture.selftest.mjs',
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
+    // 2026-10-09 (destruction core lane): crumpled wrecks — the baked hulks, the burnt map vehicles, the live kill.
+    'src/world/wreckCrumple.selftest.mjs',
+    // (dcore 2026-10-10) a prop gives where a hull meets it: pressed from contact, pancaked, never rising, the same twice;
+    // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
+    'src/world/propCrush.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
@@ -1537,6 +1601,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
+    'src/world/mapVehicleGaps.selftest.mjs',
     'src/world/parkedVehicleSeparation.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
@@ -1580,7 +1645,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/trackPatterns.selftest.mjs',
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
-    'tools/marketing-shots/showcase-library.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
@@ -1606,9 +1670,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
-    'tools/marketing-shots/feature-loops.selftest.mjs',
-    'tools/marketing-shots/hero-rails.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
+    'tools/marketing-shots/site50-media.selftest.mjs',
+    'src/ui/studioSiteTakes.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

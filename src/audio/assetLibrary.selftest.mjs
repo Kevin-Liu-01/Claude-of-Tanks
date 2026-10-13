@@ -56,4 +56,25 @@ assert.ok(mobile.variant('gun_120_close', 0));
 assert.equal(mobile.variant('gun_120_close', 1), null);
 assert.ok(mobile.pick('gun_120_close', Math.random), 'and still picks it');
 
-console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap passed');
+// idle(): resolves only when every load in flight has settled (a pick's background load and a voice pack included), so
+// receipts await the real completion instead of counting event-loop turns.
+{
+  const gates = [];
+  const gatedFetch = (url) => new Promise((resolve) => gates.push(() => resolve({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(16) })));
+  const gated = createAssetLibrary({ ...options, fetchImpl: gatedFetch });
+  await gated.ready;
+  assert.equal(gated.pick('pen_heavy', () => 0), null, 'a pick before its decode starts the load');
+  void gated.loadVoice('ru');
+  let settled = false;
+  const idle = gated.idle().then(() => { settled = true; });
+  for (let turn = 0; turn < 20; turn++) await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(settled, false, 'idle() waits while reads are in flight, however many turns pass');
+  assert.ok(gated.stats().pending > 0);
+  while (!settled) { while (gates.length) gates.shift()(); await new Promise((resolve) => setTimeout(resolve, 0)); }
+  await idle;
+  assert.equal(gated.stats().pending, 0, 'and resolves once every load has settled');
+  assert.ok(gated.has('pen_heavy') && gated.voiceReady('ru'));
+  await gated.idle();
+}
+
+console.log('assetLibrary.selftest: pinned battle set survives eviction, idle extras evicted and reloaded, voice bytes apart, takes by index, mobile variant cap, idle() awaits every load in flight passed');

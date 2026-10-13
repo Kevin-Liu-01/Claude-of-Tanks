@@ -17,13 +17,14 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
-import { createDronePresentation } from './dronePresentation.ts';
+import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
+import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
 import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
-import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
+import { registerFxClock, noteFxClockShift, registerPopTrail, onTurretLanding } from './clock.ts';
 import { createImpactDecalsSteps } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -33,9 +34,10 @@ import type { EventBus } from '../game/stateCore.ts';
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
 // layer knowing about them (see src/world/destructibles.ts).
-import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.ts';
+import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } from '../world/destructibles.ts';
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
+import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
@@ -69,6 +71,9 @@ interface FxEngineContext {
   camera?: THREE.Camera;
   anisotropy?: number;
   scene?: THREE.Scene;
+  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes). */
+  setupShadowMaterial?(material: THREE.Material): unknown;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface FxHeightField {
@@ -89,6 +94,9 @@ interface FxHeightField {
 export interface FxWorldSeam {
   patchStructureMaterials?(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   structureDamage?(structureIdx: number): StructureDamageSeam | null;
+  /** the battle world's raycast (terrain and every live collider), the one the shells sweep; a drone flying home avoids it */
+  raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
+    { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
   groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
@@ -381,6 +389,8 @@ interface ShellExpiredEvent {
   shellType?: string;
   /** what it struck: 'water', a collision record kind ('structure', 'wallstone' ...) or 'terrain' */
   surfaceKind?: string;
+  /** the building it struck (2026-10-10: a round with no charge raises no blast to name it), when it struck one */
+  structureId?: number;
 }
 
 interface TankDestroyedEvent {
@@ -431,7 +441,8 @@ export interface FxCinematicPort {
   setLateFxActive(fn: (() => boolean) | null): void;
   /** Concurrent smoke-column cap; null restores the battle budget. */
   setColumnCap(cap: number | null): void;
-  /** Ambient-tinted shading of the battle pools' normal-blended media. */
+  /** (fx 9) the battle pools' normal-blended media are tinted by the scene's light in every quality (sceneLightTint.ts);
+   *  true hands the tint to the Studio's cinematic layer (it writes its own measure), false takes it back. */
   setLightTintShading(on: boolean): void;
   /**
    * Night exposure discipline for Studio cinematic shots: scales the pooled
@@ -644,6 +655,8 @@ const EXPLOSION_LIGHT_HEX = 0xff7f38;
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
 const SMOKE_COLUMN_S = 40;
+/** A burning map vehicle's fire and smoke (s): it chars over the first seconds, then smoulders out. */
+const VEHICLE_BURN_S = 18;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
@@ -950,6 +963,9 @@ const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0
  * fx seed and live presentation-entity resolver
  * @returns {object} Fx per ARCHITECTURE §3.8.2
  */
+/** The live fx runtime's turret-landing listener (one at a time: a new runtime replaces the last one's). */
+let detachTurretLandingDust: (() => void) | null = null;
+
 export function createFx(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
@@ -996,6 +1012,10 @@ function* createFxSteps(
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
   const particles = createParticleSystem(engineCtx, { seed });
+  // (fx 9, the owner 2026-10-11: the driving dust, exhaust and smoke "correct for the times of days") the pooled dust,
+  // smoke and debris take the scene's light (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), every
+  // frame in update() below; the emissive pools (fire's core, sparks, flashes) never do
+  particles.setLightTintShading(true);
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
   // (the clock advances by render dt); frozen/stepped captures now hold and
@@ -1028,9 +1048,56 @@ function* createFxSteps(
       particles.emit('sparks', _strkO);
     }
   });
+  // physics lane (2026-10-10): a popped turret is a rigid body now; where it hits the ground (or a hull, a wall) its own
+  // dust kicks out round the impact, sized by how fast it fell — not on a timer beside the hull
+  detachTurretLandingDust?.();
+  detachTurretLandingDust = onTurretLanding((x, y, z, speed) => {
+    const gy = groundY(x, z);
+    const ground = heightField?.getGroundType?.(x, z) ?? 'medium';
+    updateDryDustColors(ground);
+    const k = Math.min(1, Math.max(0.25, (speed - 2) / 8));
+    const count = 4 + Math.round(8 * k);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + rng() * 0.6;
+      const out = (1.2 + rng() * 1.6) * (0.5 + k);
+      _puffO.pos[0] = x + Math.cos(a) * 0.6; _puffO.pos[1] = Math.max(y, gy) + 0.15 + rng() * 0.3; _puffO.pos[2] = z + Math.sin(a) * 0.6;
+      _puffO.vel[0] = Math.cos(a) * out + COLUMN_WIND_X * 0.3;
+      _puffO.vel[1] = 0.35 + rng() * 0.9 * k;
+      _puffO.vel[2] = Math.sin(a) * out + COLUMN_WIND_Z * 0.3;
+      _puffO.life = 1.6 + rng() * 1.4;
+      _puffO.size0 = (0.6 + rng() * 0.4) * (0.7 + 0.6 * k); _puffO.size1 = (2.0 + rng() * 1.2) * (0.7 + 0.6 * k);
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+      col3(dustColor0, _puffO.col0); col3(dustColor1, _puffO.col1);
+      _puffO.alpha = 0.34 + 0.24 * k; _puffO.grav = 0.25;
+      _puffO.birthOffset = 0;
+      particles.emit('smoke', _puffO);
+    }
+  });
   const group = new THREE.Group();
   group.name = 'fx';
-  const drones = createDronePresentation(group);
+  // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
+  if (engineCtx?.setupShadowMaterial) {
+    configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+  }
+  // A drone whose flight ends in the air flies home over the battle world and lands on its carrier's dock.
+  let droneWorldSeam: FxWorldSeam | null = null;
+  const droneWorld = { raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number) =>
+    droneWorldSeam?.raycast?.(origin, direction, maxDist) ?? null };
+  const drones = createDronePresentation(group, {
+    world: () => { droneWorldSeam = world?.() ?? null; return droneWorldSeam?.raycast ? droneWorld : null; },
+    resolveCarrier: (ownerId) => {
+      const owner = decalEntityFor(ownerId as ShellId);
+      if (!owner) return null;
+      return { frame: owner.visual?.root ? missionAttachmentVisualFrame(owner.visual.root) : undefined,
+        destroyed: !!owner.combat?.destroyed, flying: owner.aerial?.active === true };
+    },
+    onReturnEvent: (id, event, reason) => {
+      const log = (group.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
+      log.push({ id, event, reason }); if (log.length > 32) log.shift();
+    },
+  });
+  // Diagnostics (films and probes): the flights home in progress, read off the FX group.
+  group.userData.droneFlightsHome = () => drones.returning();
   group.matrixAutoUpdate = false;
   group.add(particles.group);
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
@@ -1478,6 +1545,8 @@ function* createFxSteps(
   let extraLateFxActive: (() => boolean) | null = null;
   // Studio night exposure scale for the pooled muzzle light (always 1 in battle).
   let muzzleLightScale = 1;
+  // (fx 9) the Studio's cinematic quality writes the pools' scene tint itself (FxCinematicPort.setLightTintShading)
+  let cinematicTintOwner = false;
   group.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
@@ -4204,23 +4273,26 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
-    drones.begin(particles.getTime());
+    drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
     renderedAtgmTrailSegments = 0;
     for (const trail of guidedTrails.values()) trail.seen = false;
+    // Every live drone, outside the tracer cap: a drone missing from a frame reads as a flight that ended (it flies home).
+    for (let index = 0; index < shells.length; index++) {
+      const shell = shells[index];
+      if (shell.dead || shell.spec?.tracer !== 'DRONE') continue;
+      // The pilot's FPV lens sits inside its own airframe; every other view keeps the silhouette, however close.
+      const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+      const hidden=droneHiddenFromCamera(shell.pos, shell.shooterId, flyer?.active === true, camera);
+      drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,
+        owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined,shell.shooterId??undefined,hidden);
+    }
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
-      if (shell.spec?.tracer === 'DRONE') {
-        // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
-        if (shell.pos.distanceToSquared(camera.position) > 4) {
-          const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
-          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined);
-        }
-        continue;
-      }
+      if (shell.spec?.tracer === 'DRONE') continue;
       const guided = !!shell.spec?.guided || shell.rocket === true;
       const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
       // Snapshot shells carry type/guidance, not the complete local gun record.
@@ -4637,6 +4709,7 @@ function* createFxSteps(
   type PropBreakFamily =
     | 'drumblast'
     | 'woodbuilding'
+    | 'vehicleburn'
     | 'canvasbuilding'
     | 'metalbuilding'
     | 'masonry'
@@ -4652,6 +4725,7 @@ function* createFxSteps(
 
   function propBreakFamily(kind: string): PropBreakFamily {
     if (kind === 'drumblast') return 'drumblast';
+    if (kind === 'vehicleburn') return 'vehicleburn';
     if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
@@ -5265,6 +5339,7 @@ function* createFxSteps(
       attachWorld();
       resolvePendingHe();
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
+      if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
@@ -5327,6 +5402,8 @@ function* createFxSteps(
         } else lastBlast.structureId = -1;
         lastGroundBlast.x = b.x; lastGroundBlast.z = b.z;
         lastGroundBlast.craterId = typeof b.craterId === 'number' ? b.craterId : -1;
+        // (dcore 2026-10-10, wave 351) the vehicles round it take the near miss: dents, glass, a shove (props.ts)
+        if (Number.isFinite(b.chargeKg)) notifyBlast(b.x, b.y, b.z, b.chargeKg);
       });
       // a deforming crater (crater-render-spec §D): its own surface draped on the deformed ground (the terrain follows
       // the overlay in its LOD pass, before this update reads it), its edge ragged by the simulation's wobble; a live one
@@ -5369,6 +5446,7 @@ function* createFxSteps(
         fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
+        if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
         if (e.kind !== 'ricochet') tracers.strike(e.shellId, e.pos);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
@@ -5426,6 +5504,7 @@ function* createFxSteps(
         }
       });
       onFxEvent(bus, 'shell:expired', (e) => {
+        if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
         tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
@@ -5464,18 +5543,22 @@ function* createFxSteps(
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
             const m = info ?? munitionOfExpiry(e);
             const explosive = isExplosive(m.munition) && m.chargeKg > 0;
-            // the building the blast named (munition:blast, raised just before this event), else the struck kind
-            const struckId = lastBlast.structureId >= 0 && Math.abs(lastBlast.x - _v3.x) + Math.abs(lastBlast.z - _v3.z) < 2
-              ? lastBlast.structureId : -1;
+            // the building the event names (any round), else the one the blast named (munition:blast, raised just before
+            // this event), else the struck kind
+            const struckId = typeof e.structureId === 'number' && e.structureId >= 0 ? e.structureId
+              : lastBlast.structureId >= 0 && Math.abs(lastBlast.x - _v3.x) + Math.abs(lastBlast.z - _v3.z) < 2
+                ? lastBlast.structureId : -1;
             const named = struckId >= 0 ? lookOf(struckId) : null;
             lastBlast.structureId = -1;
             wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
               explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind));
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
-            // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole)
-            if (explosive && struckId >= 0 && stages) {
+            // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
+            // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
+            // its own smaller hole, spalled (machine-gun and autocannon rounds chip the wall: wallStrike above)
+            if ((explosive || m.munition === 'kinetic') && struckId >= 0 && stages) {
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
-              stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg);
+              stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
             if (e.shellId != null) burstDrawn.add(e.shellId);
             return;
@@ -6145,6 +6228,16 @@ function* createFxSteps(
       // a ramming hull scales it with its overrun speed (props.ts breakRecord)
       // so every throw velocity below inherits the tank's momentum.
       const family = propBreakFamily(kind);
+      // (dcore 2026-10-10, waves 350/351: a killed map vehicle flipped to the burnt wreck in a frame) a vehicle a round
+      // destroys burns: its fire and smoke column take hold over it while its paint chars (props.ts, the crush copy)
+      if (family === 'vehicleburn') {
+        const col: SmokeColumn = { key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: VEHICLE_BURN_S,
+          scale: Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true };
+        columns.push(col);
+        emitColumnPuff(col);
+        capColumns();
+        return;
+      }
       // destruction-fx lane: on the media tiers a prop breaks into its own material's pieces and dust (main threw the
       // charred-metal wreck chunks for a wooden hut and a fieldstone wall alike)
       if (blast && (family === 'woodbuilding' || family === 'canvasbuilding' || family === 'metalbuilding'
@@ -6309,7 +6402,7 @@ function* createFxSteps(
           columnCap = cap == null ? MAX_COLUMNS : Math.max(1, Math.floor(cap));
           capColumns();
         },
-        setLightTintShading: (on) => particles.setLightTintShading(on),
+        setLightTintShading: (on) => { cinematicTintOwner = on; },
         setMuzzleExposure: (light, cards) => {
           muzzleLightScale = light;
           for (const pool of ['flash', 'jet'] as const) {

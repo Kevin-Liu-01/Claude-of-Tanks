@@ -106,8 +106,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // the turbo-ball kickoff), the east lane's vehicle park.
   badlands: { kickoff: { x: 8, z: 0 }, zones: [{ x: -122, z: 21 }, { x: 8, z: 0 }, { x: 138, z: -21 }] },
   // Tidegate Polders (redesign 2026-10-02): the farm court's paved yard (also the turbo-ball kickoff) and a field on
-  // each side of it, the north field within 8 m of the south field's rotation about the farm court.
-  polders: { kickoff: { x: -40, z: 0 }, zones: [{ x: -135, z: -198 }, { x: -40, z: 0 }, { x: 7, z: 230 }] },
+  // each side of it, the north field within 8 m of the south field's rotation about the farm court. (2026-10-07, the
+  // map-revival lane, step 6: with the oxbow basin gone the north field's ground rose 0.2 m to its west and its disc's
+  // relief passed the 7 m bound; its seat is the bounded search's, 8 m south-west, on the same field)
+  polders: { kickoff: { x: -40, z: 0 }, zones: [{ x: -135, z: -198 }, { x: -40, z: 0 }, { x: 1.3, z: 224.3 }] },
   // Jade River Delta (redesign 2026-10-02): the market square on the char (also the turbo-ball kickoff) and a
   // rice-drying yard on each bank, rotationally symmetric about the char's centre.
   delta: { kickoff: { x: -4, z: 14 }, zones: [{ x: -151, z: 43 }, { x: -4, z: 14 }, { x: 143, z: -15 }] },

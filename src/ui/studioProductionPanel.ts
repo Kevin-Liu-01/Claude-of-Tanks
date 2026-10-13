@@ -1,7 +1,19 @@
 /** Director workspace: curated scenes and camera tools, backed by the same Studio API as captures. */
 import { PRODUCTION_PRESETS, type ProductionFormat } from '../game/studioProduction.ts';
+import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import { getLocale } from './i18n.ts';
+
+/**
+ * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the
+ * site, each the scene its 4K final was rendered from. tools/media-r5/site-media.mjs writes the index beside the
+ * collection and site-media-wire.mjs keeps this path on the current one.
+ */
+const SITE_TAKES_INDEX = '/media/site50-r14/scenes/index.json';
+interface SiteTake {
+  id: string; title: { en: string; zh: string }; short: { en: string; zh: string };
+  map: string; durationMs: number | null; scene: string; thumb: string;
+}
 
 const COPY = {
   director: ['Director', '导演台'], scene: ['Scene', '场景'], actors: ['Tanks', '坦克'],
@@ -27,6 +39,12 @@ const COPY = {
   nativeVideo: ['Video uses the current canvas aspect ratio.', '影片使用当前画布比例。'],
   saved: ['Saved to downloads.', '已保存至下载文件夹。'], unsupported: ['Video recording is unavailable in this browser.', '此浏览器不支持录制影片。'],
   workspace: ['Studio workspace', '工作区'], hide: ['Hide controls', '隐藏控制面板'], show: ['Show controls', '显示控制面板'],
+  takes: ['The site\'s takes', '本站实拍镜头'],
+  takesIntro: ['The fifty takes filmed for this site, each the scene its 4K final was rendered from. Load one, change anything, film it again.',
+    '本站拍摄的五十个镜头，每个都是其 4K 成片所用的场景。载入后可任意修改并重新拍摄。'],
+  takesLoading: ['Loading the takes…', '正在载入镜头…'], takesUnavailable: ['The takes could not be loaded.', '无法载入镜头。'],
+  takeLoading: ['Staging the take…', '正在布置镜头…'],
+  takeLoaded: ['Take staged as filmed. Play it, change it, or film it again.', '镜头已按原样布置。可播放、修改或重新拍摄。'],
 } as const;
 
 type CopyKey = keyof typeof COPY;
@@ -103,6 +121,7 @@ body[data-cot-height='short'] .cot-studio .badge{right:calc(var(--studio-dock) +
 body[data-cot-height='short'] .cot-studio .badge .t{font-size:8px}
 body[data-cot-height='short'] .cot-studio .studio-panel-toggle{left:8px;right:auto;top:86px}
 body[data-cot-height='short'] .cot-studio .foot{bottom:8px;left:8px;max-width:calc(50vw - 20px)}
+.cot-studio .production-takes .production-library{max-height:520px;overflow:auto;scrollbar-width:thin;scrollbar-color:#806139 transparent;padding-right:2px}
 @media(prefers-reduced-motion:reduce){.cot-studio .production-card img{transition:none}}
 `;
 
@@ -128,7 +147,7 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
     // only repairs boot-time zero-size layouts and is not a persistent observer.
     window.dispatchEvent(new Event('cot:layoutchange'));
   }
-  function setVisible(next: boolean): void { visible = next; syncPreviewViewport(); }
+  function setVisible(next: boolean): void { visible = next; syncPreviewViewport(); if (next) loadSiteTakes(); }
   const director = node('section', 'director');
   director.dataset.group = 'director';
   const head = node('header', 'director-head');
@@ -192,6 +211,71 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
   librarySection.append(library, description, fields, stage, status);
   selectPreset(selectedId);
   director.append(librarySection);
+
+  // The site's takes: fetched the first time the Director opens; a card stages its take exactly as filmed (S.load, as
+  // Load JSON does), ready to play, change and film again.
+  const takesSection = node('section', 'production-takes');
+  takesSection.append(node('h3', '', productionLabel('takes')), node('p', 'production-note', productionLabel('takesIntro')));
+  const takesLibrary = node('div', 'production-library');
+  const takesStatus = node('div', 'production-status');
+  takesStatus.setAttribute('role', 'status');
+  takesStatus.setAttribute('aria-live', 'polite');
+  takesSection.append(takesLibrary, takesStatus);
+  director.append(takesSection);
+  const takeCards = new Map<string, HTMLButtonElement>();
+  let takesRequested = false;
+  let loadingTake = false;
+  function takeStatus(text: string, error = false): void { takesStatus.textContent = text; takesStatus.dataset.error = String(error); }
+  function loadSiteTakes(): void {
+    if (takesRequested) return;
+    takesRequested = true;
+    takeStatus(productionLabel('takesLoading'));
+    fetch(SITE_TAKES_INDEX)
+      .then((response) => {
+        if (!response.ok) throw new Error(`${SITE_TAKES_INDEX}: HTTP ${response.status}`);
+        return response.json() as Promise<{ takes: SiteTake[] }>;
+      })
+      .then((index) => {
+        const zh = getLocale() === 'zh-CN';
+        for (const take of index.takes) {
+          const card = button('', () => loadSiteTake(take), 'production-card');
+          card.dataset.siteTake = take.id;
+          card.title = zh ? take.title.zh : take.title.en;
+          const photo = node('img');
+          photo.src = take.thumb;
+          photo.alt = '';
+          photo.loading = 'lazy';
+          photo.decoding = 'async';
+          card.append(photo, node('span', 'production-duration', `${((take.durationMs ?? 0) / 1000).toFixed(1)}s`),
+            node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', S.getMapInfo(take.map).name));
+          takeCards.set(take.id, card);
+          takesLibrary.append(card);
+        }
+        takeStatus('');
+        refresh();
+      })
+      .catch(() => { takesRequested = false; takeStatus(productionLabel('takesUnavailable'), true); });
+  }
+  function loadSiteTake(take: SiteTake): void {
+    const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
+    if (!path || loadingTake || staging || S.recordingStatus().active) return;
+    loadingTake = true;
+    refresh();
+    takeStatus(productionLabel('takeLoading'));
+    fetch(path)
+      .then((response) => {
+        if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((json) => S.load(json))
+      .then(() => {
+        for (const [id, card] of takeCards) card.setAttribute('aria-pressed', String(id === take.id));
+        takeStatus(productionLabel('takeLoaded'));
+        refreshAll();
+      })
+      .catch((error: unknown) => takeStatus(error instanceof Error ? error.message : String(error), true))
+      .finally(() => { loadingTake = false; refresh(); });
+  }
 
   const sequence = node('section');
   sequence.append(node('h3', '', productionLabel('shotlist')));
@@ -300,6 +384,7 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
     toggle.disabled = recording.active;
     for (const element of [stage, frame, tanks, play, restart, scrub, lens, photo]) element.disabled = locked;
     for (const element of cards.values()) element.disabled = locked;
+    for (const element of takeCards.values()) element.disabled = locked || loadingTake;
     for (const element of rigs.querySelectorAll('button')) element.disabled = locked || S._internal.actors.length === 0;
     play.textContent = productionLabel(S.playing ? 'pause' : 'play');
     video.textContent = productionLabel(recording.active ? 'stop' : 'video');

@@ -24,20 +24,20 @@ A World of Tanks-style armored combat simulator built directly with Three.js and
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/featured/f10_studio_urban_crossfire.webp" alt="Armored vehicles exchanging fire in an urban battle"></td>
-<td width="50%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Tanks fighting across the Fjord battlefield"></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s07-lake-shellfire.webp" alt="A Stridsvagn 122 crosses the frozen lake through shellfire"></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s23-village-crossroads.webp" alt="A T-80U Husarz and a PL-01 hold the village crossroads"></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 Abrams firing during a close-range tank battle"></td>
-<td width="50%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Strv 103 fighting through Steinburg"></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s39-lakeside-village.webp" alt="A Chieftain Mk 10 fires across the village at Highland Reservoir"></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s20-road-return-fire.webp" alt="A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset"></td>
 </tr>
 </table>
 
-These are handmade, deterministic scenes captured with the current game renderer—not concept art. The
-[88-frame showcase archive](public/media/showcase-r1/manifest.json) contains 13 owner-selected scenes, 30 action frames,
-30 close foreground compositions, five directed Studio frames, and ten interface states. The
-[landing selection](public/media/landing-r1/manifest.json) records the six hero frames, feature reel, five camera-rail
-films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now published on the site.
+These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The
+[visual archive](public/media/site50-r14/archive.json) holds the fifty frames and the key moment and close portrait of each of
+the site's fifty takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature
+reel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence
+published on the site.
 
 ## Fight, inspect, and direct
 
@@ -86,12 +86,12 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 
 <table>
 <tr>
-<td width="50%"><a href="public/media/hero-rails-r2/01_desert-ground-rush.webm"><img src="public/media/hero-rails-r2/01_desert-ground-rush.jpg" alt="Open the Desert Ground Rush gameplay film"></a><br><sub><b>Desert Ground Rush:</b> a low camera threads moving armor and incoming fire.</sub></td>
-<td width="50%"><a href="public/media/hero-rails-r2/04_urban-overhead-dive.webm"><img src="public/media/hero-rails-r2/04_urban-overhead-dive.jpg" alt="Open the Urban Overhead Dive gameplay film"></a><br><sub><b>Urban Overhead Dive:</b> a rail camera drops into a close street engagement.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s05-barn-advance.webm"><img src="public/media/site50-r14/loops/s05-barn-advance.jpg" alt="Open the T-14 Armata past the barns take"></a><br><sub><b>T-14 Armata past the barns:</b> A T-14 Armata advances past the barns of Verdant Fields.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s07-lake-shellfire.webm"><img src="public/media/site50-r14/loops/s07-lake-shellfire.jpg" alt="Open the Strv 122 on the frozen lake take"></a><br><sub><b>Strv 122 on the frozen lake:</b> A Stridsvagn 122 crosses the frozen lake through shellfire.</sub></td>
 </tr>
 <tr>
-<td width="50%"><a href="public/media/hero-rails-r2/02_winter-ice-orbit.webm"><img src="public/media/hero-rails-r2/02_winter-ice-orbit.jpg" alt="Open the Winter Ice Orbit gameplay film"></a><br><sub><b>Winter Ice Orbit:</b> tanks exchange fire while the camera circles the frozen contact line.</sub></td>
-<td width="50%"><a href="public/media/hero-rails-r2/05_coastal-shell-skim.webm"><img src="public/media/hero-rails-r2/05_coastal-shell-skim.jpg" alt="Open the Coastal Shell Skim gameplay film"></a><br><sub><b>Coastal Shell Skim:</b> a fast lateral pass follows the shell path through a beach assault.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s18-street-knockout.webm"><img src="public/media/site50-r14/loops/s18-street-knockout.jpg" alt="Open the T-90A knocked out at night take"></a><br><sub><b>T-90A knocked out at night:</b> A T-90A is knocked out at the end of a Steinburg street at night.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/loops/s26-minaret-fire.webm"><img src="public/media/site50-r14/loops/s26-minaret-fire.jpg" alt="Open the Merkava Mk 3D fires take"></a><br><sub><b>Merkava Mk 3D fires:</b> A Merkava Mk 3D fires at Sunscar Oasis.</sub></td>
 </tr>
 </table>
 
@@ -146,7 +146,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 </tr>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_explosion.webp" alt="Tank destruction with fire, sparks, fragments, and smoke"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s29-fjord-road-kill.webp" alt="A T-90 burns on the road above the fjord"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
 </tr>
 </table>
 
@@ -169,8 +169,8 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/07_winter_road_charge.webp" alt="Vehicles charging through Frosthollow"><br><sub><b>Thirty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s26-minaret-fire.webp" alt="A Merkava Mk 3D fires at Sunscar Oasis"><br><sub><b>Thirty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
+<td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 220 production vehicles, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
@@ -296,7 +296,7 @@ npm run landing:media:publish
 ```
 
 The capture harness serializes concurrent jobs, starts a clean local game, verifies the requested state, and records
-current rendering diagnostics. `public/media/showcase-r1/manifest.json` defines the source archive;
+current rendering diagnostics. `public/media/site50-r14/archive.json` is the source archive (the fifty frames and every take's two stills);
 `public/media/landing-r1/manifest.json` records the public hero, rail, mosaic, and Studio selections with their actor,
 effect, duration, dimensions, and byte receipts.
 
@@ -305,40 +305,40 @@ silhouettes, obstructed cameras, repeated compositions, and overpowered effects 
 
 <table>
 <tr>
-<td width="50%"><a href="public/media/showcase-r1/process/action-review-02.webp"><img src="public/media/showcase-r1/process/action-review-02.webp" alt="Action campaign contact sheet, frames 71 through 80"></a><br><sub><b>Action review:</b> ten multi-tank compositions inspected together.</sub></td>
-<td width="50%"><a href="public/media/showcase-r1/process/foreground-review-02.webp"><img src="public/media/showcase-r1/process/foreground-review-02.webp" alt="Foreground campaign contact sheet, frames 101 through 110"></a><br><sub><b>Foreground review:</b> anchor-tank readability checked against battle depth.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/frames/sheet-1.webp"><img src="public/media/site50-r14/frames/sheet-1.webp" alt="Contact sheet 1 of the fifty frames, frames 1 through 10"></a><br><sub><b>Review sheet 1:</b> ten of the fifty frames, each a 4K render of a moving scene with its motion blur.</sub></td>
+<td width="50%"><a href="public/media/site50-r14/frames/sheet-2.webp"><img src="public/media/site50-r14/frames/sheet-2.webp" alt="Contact sheet 2 of the fifty frames, frames 11 through 20"></a><br><sub><b>Review sheet 2:</b> the next ten, as the manual shows them beside the battle takes.</sub></td>
 </tr>
 </table>
 
-[Open all six review sheets](docs/SHOWCASE-LIBRARY.md#review-sheets) and the complete admission contract.
+The manual shows all five sheets; [docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the library and how it is built.
 
 ## Selected field frames
 
-The landing page publishes a larger responsive mosaic. This smaller wall samples the action and foreground collections
+The landing page publishes a larger responsive mosaic. This smaller wall samples the site fifty's key moments and close portraits
 without repeating the six hero frames.
 
 <table>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Leclerc duel in the desert"></td>
-<td width="25%"><img src="public/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Desert overwatch line under fire"></td>
-<td width="25%"><img src="public/media/showcase-r1/69_action_winter_village_brawl.webp" alt="Tank battle through a winter village"></td>
-<td width="25%"><img src="public/media/showcase-r1/71_action_urban_street_duel.webp" alt="Close urban street duel"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s05-barn-advance.webp" alt="A T-14 Armata advances past the barns of Verdant Fields"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s20-road-return-fire.webp" alt="A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s21-fields-assault.webp" alt="A T-90SM wedge assaults through the burning fields"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s27-caravanserai-kill.webp" alt="A T-62MV-1 is knocked out by the caravanserai"></td>
 </tr>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/76_action_verdant_field_duel.webp" alt="Tank duel across a green field"></td>
-<td width="25%"><img src="public/media/showcase-r1/84_action_steppe_horizon_charge.webp" alt="Armored charge across the steppe"></td>
-<td width="25%"><img src="public/media/showcase-r1/95_foreground_coastal_dune_ambush.webp" alt="Foreground tank entering a coastal dune ambush"></td>
-<td width="25%"><img src="public/media/showcase-r1/97_foreground_winter_lake_duel.webp" alt="Foreground tank fighting on a winter lake"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s34-furnace-salvo.webp" alt="TOS-1A launchers fire a rippling salvo in the Ironworks yard at night"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s06-farm-charge.webp" alt="A KF51 Panther charges past the farmhouse through artillery"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s23-village-crossroads.webp" alt="A T-80U Husarz and a PL-01 hold the village crossroads"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s24-ice-duel.webp" alt="A duel on the frozen lake: a T-80U takes the hit"></td>
 </tr>
 <tr>
-<td width="25%"><img src="public/media/showcase-r1/101_foreground_urban_street_duel.webp" alt="Tank filling the foreground of an urban duel"></td>
-<td width="25%"><img src="public/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp" alt="Challenger 1 leading a green battlefield attack"></td>
-<td width="25%"><img src="public/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing through a narrow urban alley"></td>
-<td width="25%"><img src="public/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp" alt="Foreground tank overlooking a ridge battle"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s33-water-tower-close.webp" alt="The line advances past the burning water tower at night"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s38-church-knockout-close.webp" alt="A Leopard 2A6 is knocked out beside the onion-domed church at night"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s18-street-knockout-close.webp" alt="A T-90A is knocked out at the end of a Steinburg street at night"></td>
+<td width="25%"><img src="public/media/site50-r14/stills/s19-roof-tiles-close.webp" alt="Roof tiles rain down as a PL-01 fires up the street"></td>
 </tr>
 </table>
 
-[Browse the full showcase manifest](public/media/showcase-r1/manifest.json),
+[Browse the full archive](public/media/site50-r14/archive.json),
 [open the public Tank Gallery](https://cot.kevinliu.studio/gallery), or
 [build a new shot in Scene Studio](https://cot.kevinliu.studio/studio).
 

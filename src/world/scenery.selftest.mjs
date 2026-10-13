@@ -61,6 +61,8 @@ const FORMS = [
   ['cairn', 'limestone', 4.2, 2.6, 6000, 1400, true],
   ['calvary', 'granite', 1.6, 5.6, 1200, 400, true],
   ['hoodoo', 'sandstone', 3.2, 6, 3000, 1500, true],
+  // (the hitbox lane, round 2: a field of fractured blocks, the cover a map places on open ground)
+  ['blocks', 'breccia', 6, 2.6, 4500, 2000, true],
 ];
 for (const [form, geology, radius, height, capDesktop, capMobile, standing] of FORMS) {
   for (const mobile of [false, true]) {
@@ -462,6 +464,10 @@ function compose(scenery, solids = [], mobile = false) {
   };
   const desk = compose(scenery), phone = compose(scenery, [], true);
   assert.equal(phone.receipt.colliders, desk.receipt.colliders, 'the same standing masses on both tiers');
+  // (the hitbox lane, 2026-10-11) and the same records, byte for byte: a phone built its masses from its own leaner
+  // pieces, so its collision world drifted from the authority's (capture-world-collision-manifests --tier=mobile)
+  const records = (built) => JSON.stringify([built.obstacles, built.colliders]);
+  assert.equal(records(phone), records(desk), 'a phone lays the desktop\'s scenery records, byte for byte');
   assert.deepEqual(phone.destructibles, desk.destructibles, 'the same landmarks on both tiers');
   assert.ok(phone.receipt.rockTriangles < desk.receipt.rockTriangles * 0.75, 'the phones draw fewer rock triangles');
 }
