@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
+import { PRESETS, getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -27,7 +27,7 @@ import {
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
-import type { ShadowStaticCache } from './shadowStaticCache.ts';
+import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
@@ -69,6 +69,9 @@ interface ShadowDebugOptions {
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
    *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
   legacyBias?: boolean;
+  /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
+   *  createCascadePoseHold). */
+  noPoseHold?: boolean;
 }
 
 declare global {
@@ -109,7 +112,6 @@ const _stableCenter = new THREE.Vector3();
 const _stableOrigin = new THREE.Vector3();
 const _stableUp = new THREE.Vector3(0, 1, 0);
 const _stableDesiredCenters: THREE.Vector3[] = [];
-
 /**
  * Allocation-free CSM refit with per-cascade texel snapping.
  * Three's stock CSM.update() divides every cascade extent by the single
@@ -118,11 +120,12 @@ const _stableDesiredCenters: THREE.Vector3[] = [];
  * in half-texel increments and makes its shadows shimmer as the camera moves.
  * @returns {number} bit mask of cascades whose desired snapped pose changed
  */
-function prepareStableCascades(csm: CSM): number {
+function prepareStableCascades(csm: CSM, hold: CascadePoseHold | null = null): number {
   const camera = csm.camera;
   _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
   _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
   _stableCameraToLight.multiplyMatrices(_stableLightOrientationInverse, camera.matrixWorld);
+  const holding = !!hold && hold.begin(csm);
 
   let changedMask = 0;
   for (let i = 0; i < csm.frustums.length; i++) {
@@ -143,6 +146,7 @@ function prepareStableCascades(csm: CSM): number {
     _stableCenter.z = _stableBounds.max.z + csm.lightMargin;
     _stableCenter.x = snapShadowCoordinate(_stableCenter.x, texelWidth);
     _stableCenter.y = snapShadowCoordinate(_stableCenter.y, texelHeight);
+    if (holding) hold!.apply(i, csm, shadowCam, texelWidth, texelHeight, _stableCenter, _stableCameraToLight);
     _stableCenter.applyMatrix4(_stableLightOrientation);
 
     let desired = _stableDesiredCenters[i];
@@ -890,6 +894,10 @@ export function createLighting(
   // first battle world (a frozen world root in the scene), outside the boot graph; until it arrives, and if it never
   // does, every cascade renders the ordinary way. Phones keep the plain render: the copies would cost them memory.
   let staticShadowCache: ShadowStaticCache | null = null;
+  // 2026-10-13 (the perf stream, block 17): held cascade poses on every tier but Ultra. GPU-bound at Ultra's 4096 maps the
+  // cache's full-map depth copies cost about 1 ms of presented frame over re-rendering the casters (the CPU-bound tiers
+  // gain 1.5-3 ms), so Ultra keeps re-centring every cascade until a dirty-rect reuse makes the copies small
+  let poseHoldTier = preset !== PRESETS.ultra;
   let staticShadowCacheRequested = mobileTier;
   const requestStaticShadowCache = (): void => {
     staticShadowCacheRequested = true;
@@ -911,7 +919,9 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    return prepareStableCascades(csm);
+    // held cascade poses while the static cache can use them (its chunk: shadowStaticCache.ts createCascadePoseHold), on
+    // every tier but Ultra (poseHoldTier)
+    return prepareStableCascades(csm, poseHoldTier ? staticShadowCache?.poseHold ?? null : null);
   };
 
   // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
@@ -995,6 +1005,7 @@ export function createLighting(
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
+    poseHoldTier = p !== PRESETS.ultra;
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
     lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
     applyGroundBounce();
