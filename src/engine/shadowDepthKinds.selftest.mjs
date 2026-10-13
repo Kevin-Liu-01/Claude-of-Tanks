@@ -12,17 +12,24 @@ const shared = new THREE.MeshDepthMaterial(); // stands for three's internal _de
 const mesh = new THREE.Mesh(geometry, plainMaterial);
 const inst = new THREE.InstancedMesh(geometry, plainMaterial, 4);
 const batch = new THREE.BatchedMesh(4, 64, 64, plainMaterial);
-assert.deepEqual([casterKind(mesh), casterKind(inst), casterKind(batch)], [0, 1, 2]);
+assert.deepEqual([casterKind(mesh), casterKind(inst), casterKind(batch)], [0, 10, 20]);
+// three's other per-object program switches count as kinds too: an instance colour, an instance morph, a batch colour
+const coloured = new THREE.InstancedMesh(geometry, plainMaterial, 4);
+coloured.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(12), 3);
+assert.equal(casterKind(coloured), 11);
+settleShadowDepthKind(coloured, shared, false);
+assert.equal(coloured.customDepthMaterial, kindDepthDefault(11));
+assert.notEqual(kindDepthDefault(11), kindDepthDefault(10), 'a coloured instanced caster never shares the plain instanced program');
 
 // three's shared material: a plain mesh keeps it, an instanced or batched caster takes its kind's default
 settleShadowDepthKind(mesh, shared, false);
 assert.equal(mesh.customDepthMaterial, undefined, 'a plain mesh stays on three\'s shared depth material');
 settleShadowDepthKind(inst, shared, false);
 settleShadowDepthKind(batch, shared, false);
-assert.equal(inst.customDepthMaterial, kindDepthDefault(1));
-assert.equal(batch.customDepthMaterial, kindDepthDefault(2));
-assert.notEqual(kindDepthDefault(1), kindDepthDefault(2));
-for (const kind of [1, 2, 3]) {
+assert.equal(inst.customDepthMaterial, kindDepthDefault(10));
+assert.equal(batch.customDepthMaterial, kindDepthDefault(20));
+assert.notEqual(kindDepthDefault(10), kindDepthDefault(20));
+for (const kind of [10, 11, 20, 30]) {
   const d = kindDepthDefault(kind);
   assert.ok(d instanceof THREE.MeshDepthMaterial && d.depthPacking === THREE.RGBADepthPacking,
     'a default is three\'s own depth material at the packing the shadow hook gives every depth material');
@@ -30,7 +37,7 @@ for (const kind of [1, 2, 3]) {
 }
 // once settled, the default is selected and kept
 settleShadowDepthKind(inst, inst.customDepthMaterial, false);
-assert.equal(inst.customDepthMaterial, kindDepthDefault(1));
+assert.equal(inst.customDepthMaterial, kindDepthDefault(10));
 
 // three's per-material clone rule is three's: an alpha-tested map, an alpha map, displacement, clipping, A2C
 const leaf = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
@@ -48,7 +55,7 @@ assert.equal(multi.customDepthMaterial, undefined, 'a group of materials with on
 // a default leaves the caster as soon as its material would take three's clone
 const fading = new THREE.InstancedMesh(geometry, new THREE.MeshStandardMaterial({ map: new THREE.Texture() }), 4);
 settleShadowDepthKind(fading, shared, false);
-assert.equal(fading.customDepthMaterial, kindDepthDefault(1));
+assert.equal(fading.customDepthMaterial, kindDepthDefault(10));
 fading.material.alphaTest = 0.4;
 settleShadowDepthKind(fading, fading.customDepthMaterial, false);
 assert.equal(fading.customDepthMaterial, undefined);
@@ -95,5 +102,7 @@ assert.equal(withDistance.customDepthMaterial, proxyDepth);
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /settleShadowDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);/);
 assert.match(lighting, /THREE\.Mesh\.prototype\.onBeforeShadow = hook;/);
+assert.match(lighting, /THREE\.BatchedMesh\.prototype\.onBeforeShadow = function[\s\S]{0,200}batchedBefore\.call\(this[\s\S]{0,120}settleShadowDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);/,
+  'the batched casters settle too (three\'s BatchedMesh keeps its own onBeforeShadow)');
 
 console.log('shadowDepthKinds.selftest: shared and custom depth materials settle per caster kind; three\'s clone rule and shader hooks kept');

@@ -548,6 +548,13 @@ function patchShadowDepthPacking(): void {
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
+  // the perf stream (2026-10-12): three's BatchedMesh has its own onBeforeShadow (its per-instance culling for the
+  // shadow camera), so the batched casters (the tanks' articulated shadow batch, the gear batches) settle here
+  const batchedBefore = THREE.BatchedMesh.prototype.onBeforeShadow;
+  THREE.BatchedMesh.prototype.onBeforeShadow = function (renderer, object, camera, shadowCamera, geometry, depthMaterial, group) {
+    batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
+    settleShadowDepthKind(object, depthMaterial, renderer.localClippingEnabled);
+  };
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
 }

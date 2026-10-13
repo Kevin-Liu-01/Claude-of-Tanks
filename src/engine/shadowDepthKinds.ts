@@ -21,19 +21,28 @@
  */
 import * as THREE from 'three';
 
-/** 0 a plain mesh, 1 instanced, 2 batched, 3 skinned. */
-export type CasterKind = 0 | 1 | 2 | 3;
+/**
+ * The program variant a caster's depth draw takes, in three's setProgram terms: 0 a plain mesh; 10 instanced (+1 with
+ * an instanceColor, +2 with a morphTexture: USE_INSTANCING_COLOR / USE_INSTANCING_MORPH); 20 batched (+1 with a
+ * colorTexture: USE_BATCHING_COLOR); 30 skinned. Each flips a shared material's program at every switch.
+ */
+export type CasterKind = number;
 
 interface CasterLike {
   isInstancedMesh?: boolean;
   isBatchedMesh?: boolean;
   isSkinnedMesh?: boolean;
+  instanceColor?: unknown;
+  morphTexture?: unknown;
+  colorTexture?: unknown;
   material?: THREE.Material | THREE.Material[];
   customDepthMaterial?: THREE.Material;
 }
 
 export function casterKind(object: CasterLike): CasterKind {
-  return object.isBatchedMesh ? 2 : object.isInstancedMesh ? 1 : object.isSkinnedMesh ? 3 : 0;
+  if (object.isBatchedMesh) return 20 + (object.colorTexture ? 1 : 0);
+  if (object.isInstancedMesh) return 10 + (object.instanceColor ? 1 : 0) + (object.morphTexture ? 2 : 0);
+  return object.isSkinnedMesh ? 30 : 0;
 }
 
 /** three's WebGLShadowMap getDepthMaterial rule: a caster whose material matches takes a per-material clone. */
@@ -55,22 +64,22 @@ function anyNeedsDepthVariant(material: CasterLike['material'], localClipping: b
   return needsDepthVariant(material, localClipping);
 }
 
-const kindDefaults: (THREE.MeshDepthMaterial | undefined)[] = [];
+const kindDefaults = new Map<CasterKind, THREE.MeshDepthMaterial>();
 const defaultSet = new WeakSet<THREE.Material>();
 /** The shared default depth material of a non-plain kind. */
 export function kindDepthDefault(kind: CasterKind): THREE.MeshDepthMaterial {
-  let material = kindDefaults[kind];
+  let material = kindDefaults.get(kind);
   if (!material) {
     material = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    material.name = `cot:shadow-depth-${['plain', 'instanced', 'batched', 'skinned'][kind]}`;
-    kindDefaults[kind] = material;
+    material.name = `cot:shadow-depth-${kind}`;
+    kindDefaults.set(kind, material);
     defaultSet.add(material);
   }
   return material;
 }
 
 const homeKind = new WeakMap<THREE.Material, CasterKind>();
-const kindClones = new WeakMap<THREE.Material, (THREE.Material | undefined)[]>();
+const kindClones = new WeakMap<THREE.Material, Map<CasterKind, THREE.Material>>();
 
 /** A plain depth/distance material three draws without app shader hooks: its clone renders exactly the same. */
 function cloneable(material: THREE.Material): boolean {
@@ -82,14 +91,15 @@ function cloneable(material: THREE.Material): boolean {
 function cloneForKind(material: THREE.Material, kind: CasterKind): THREE.Material | null {
   if (!cloneable(material)) return null;
   let clones = kindClones.get(material);
-  if (!clones) { clones = []; kindClones.set(material, clones); }
-  let clone = clones[kind];
+  if (!clones) { clones = new Map(); kindClones.set(material, clones); }
+  let clone = clones.get(kind);
   if (!clone) {
-    clone = material.clone();
-    clone.name = material.name;
-    clones[kind] = clone;
-    homeKind.set(clone, kind);
-    material.addEventListener('dispose', () => clone!.dispose());
+    const made = material.clone();
+    made.name = material.name;
+    clones.set(kind, made);
+    homeKind.set(made, kind);
+    material.addEventListener('dispose', () => made.dispose());
+    clone = made;
   }
   return clone;
 }
