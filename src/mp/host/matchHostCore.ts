@@ -54,6 +54,8 @@ export interface MatchHostCoreOptions {
   endedLingerTicks?: number;
   /** The longest a migrated host holds its world still for the awaited seats (RESUME_HOLD_MS; 0 = never hold). */
   resumeHoldMs?: number;
+  /** This host's build line for the same-wire check (the actor's default, MATCH_BUILD, otherwise). */
+  build?: string;
 }
 
 /**
@@ -119,6 +121,7 @@ export function createMatchHostCore({
   helloTimeoutMs = HELLO_TIMEOUT_MS,
   endedLingerTicks,
   resumeHoldMs = RESUME_HOLD_MS,
+  build,
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
@@ -397,6 +400,7 @@ export function createMatchHostCore({
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
+      ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
     });
     let restored = 0;

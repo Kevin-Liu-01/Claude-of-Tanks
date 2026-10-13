@@ -2283,7 +2283,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
     const runtime = createBrowserComposition({
-      clientBuild: import.meta.env.MODE,
+      // clientBuild: the composition's default, this build's match line (src/mp/wire/matchBuild.ts, the same-wire check)
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
