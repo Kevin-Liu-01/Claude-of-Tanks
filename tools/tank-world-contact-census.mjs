@@ -194,10 +194,12 @@ function restAfter(t, extra = {}) { return { afterS: t, settleS: 1, deadlineS: t
 
 /** Drive at the feature; with `backS`, then back out of wherever it ended for that long (it must make way: a hull that
  * cannot is wedged), then brake and rest. */
-function driveAcross({ x, z, yaw, speed = 0, throttle = 1, driveS = 6, backS = 0, total = 10 }) {
+function driveAcross({ x, z, yaw, speed = 0, throttle = 1, driveS = 6, backS = 0, total = 10, governMps = Infinity }) {
   return {
     seconds: total + backS, spawn: { x, z, yaw, speed: speed || undefined }, allowBlocked: true,
-    input: (t) => (t < driveS ? hold(throttle) : t < driveS + backS ? hold(-1) : hold(0, 0, true)),
+    // (a governor holds the approach near its pace: the throttle is a force, and a crawl at 0.35 reached 7.6 m/s)
+    input: (t, s) => (t < driveS ? hold(s && Math.abs(s.speed) > governMps ? 0 : throttle)
+      : t < driveS + backS ? hold(-1) : hold(0, 0, true)),
     mustMove: backS ? [[driveS + 0.6, driveS + backS]] : undefined, rest: restAfter(driveS + backS), grounded: true,
   };
 }
@@ -230,8 +232,12 @@ function driveOff({ x, z, yaw, throttle = 0.6, waitS = 1, driveS = 4, total = 11
 }
 
 // ---- site samplers by class -----------------------------------------------------------------------------------------
-/** Approach a point from `range` metres out along one of eight bearings whose start and path are clear (seeded). */
-function approachFrom(world, records, cx, cz, range, seed, { pathCheck = true } = {}) {
+/**
+ * Approach a point from `range` metres out along one of eight bearings whose start and path are clear (seeded): no
+ * solid before the feature, no deep water, and no drop or wall along the line through it and `beyond` metres past it
+ * (a hull sent over a feature is not sent off a cliff behind it).
+ */
+function approachFrom(world, records, cx, cz, range, seed, { pathCheck = true, beyond = 8 } = {}) {
   const random = mulberry32(seed);
   const first = Math.floor(random() * 8);
   for (let k = 0; k < 8; k++) {
@@ -239,18 +245,24 @@ function approachFrom(world, records, cx, cz, range, seed, { pathCheck = true } 
     const dx = Math.sin(a), dz = Math.cos(a);
     const sx = cx - dx * range, sz = cz - dz * range;
     if (!clearSpawn(world, sx, sz, records)) continue;
-    if (pathCheck) {
-      let blocked = false;
-      for (let d = 3.5; d < range - 3; d += 1.5) {
-        const px = sx + dx * d, pz = sz + dz * d;
-        if (world.water(px, pz) > 0.8 || solidAt(records, px, pz, world.contact(px, pz))) { blocked = true; break; }
-      }
-      if (blocked) continue;
+    let blocked = false;
+    let lastH = world.contact(sx, sz);
+    for (let d = 1.5; d < range + beyond && !blocked; d += 1.5) {
+      const px = sx + dx * d, pz = sz + dz * d;
+      const h = world.contact(px, pz);
+      if (Math.abs(h - lastH) > 0.9 || world.water(px, pz) > 0.8) blocked = true;
+      if (pathCheck && d > 3.5 && d < range - 3 && solidAt(records, px, pz, h)) blocked = true;
+      lastH = h;
     }
+    if (blocked) continue;
     return { x: sx, z: sz, yaw: yawToward(dx, dz), dx, dz };
   }
   return null;
 }
+/** The drive time that carries a hull from `start` metres out across a feature of radius r and a few metres past it. */
+const crossingS = (start, r, mps) => Math.min(4.5, Math.max(1.5, (start + 2 * r + 5) / mps));
+/** ... and at a 2.5 m/s crawl (its first second spent getting there). */
+const crawlS = (start, r) => Math.min(9, Math.max(3, 1 + (start + 2 * r + 4) / 2.5));
 
 function terrainSites(world, count, seed) {
   const obstacles = world.worldCollision.getObstacles();
@@ -293,10 +305,10 @@ function terrainManeuvers(world, site, seed) {
     const gx = grade(world, site.x, site.z, 1, 0), gz = grade(world, site.x, site.z, 0, 1), g = Math.hypot(gx, gz) || 1;
     const ux = gx / g, uz = gz / g;
     if (clearSpawn(world, site.x - ux * 9, site.z - uz * 9, records)) {
-      out.push(['climb', driveAcross({ x: site.x - ux * 9, z: site.z - uz * 9, yaw: yawToward(ux, uz), driveS: 6, backS: 2.5, total: 10 })]);
+      out.push(['climb', driveAcross({ x: site.x - ux * 9, z: site.z - uz * 9, yaw: yawToward(ux, uz), driveS: 5, backS: 2.5, total: 9, governMps: 6 })]);
     }
     if (clearSpawn(world, site.x + uz * 10, site.z - ux * 10, records)) {
-      out.push(['traverse', driveAcross({ x: site.x + uz * 10, z: site.z - ux * 10, yaw: yawToward(-uz, ux), speed: 7, driveS: 4, total: 8 })]);
+      out.push(['traverse', driveAcross({ x: site.x + uz * 10, z: site.z - ux * 10, yaw: yawToward(-uz, ux), speed: 7, driveS: 3, total: 7, governMps: 7 })]);
     }
     return out;
   }
@@ -309,9 +321,9 @@ function terrainManeuvers(world, site, seed) {
   }
   const r = site.record ? radiusOf(site.record) : 1.5;
   const fast = approachFrom(world, records, site.x, site.z, r + 10, seed);
-  if (fast) out.push(['cross', driveAcross({ x: fast.x, z: fast.z, yaw: fast.yaw, speed: 8, driveS: 4.5, backS: 2.5, total: 9 })]);
+  if (fast) out.push(['cross', driveAcross({ x: fast.x, z: fast.z, yaw: fast.yaw, speed: 8, driveS: crossingS(r + 10, r, 8), backS: 2.5, total: 7, governMps: 8 })]);
   const slow = approachFrom(world, records, site.x, site.z, r + 5, seed + 17, { pathCheck: false });
-  if (slow) out.push(['crawl', driveAcross({ x: slow.x, z: slow.z, yaw: slow.yaw, throttle: 0.35, driveS: 7, backS: 2.5, total: 11 })]);
+  if (slow) out.push(['crawl', driveAcross({ x: slow.x, z: slow.z, yaw: slow.yaw, throttle: 0.5, driveS: crawlS(r + 5, r), backS: 2.5, total: 11, governMps: 2.5 })]);
   if (site.record) {
     // a hull parked with a track edge over the stone's flank, turning in place, then reversing off it
     const side = approachFrom(world, records, site.x, site.z, r + 1.2, seed + 29, { pathCheck: false });
@@ -319,7 +331,7 @@ function terrainManeuvers(world, site, seed) {
       out.push(['pivot', pivotInPlace({ x: side.x, z: side.z, yaw: side.yaw + Math.PI / 2, steer: seed % 2 ? 1 : -1 })]);
       const back = { x: site.x + side.dx * (r + 4), z: site.z + side.dz * (r + 4) };
       if (clearSpawn(world, back.x, back.z, records)) {
-        out.push(['reverse', { ...driveAcross({ x: back.x, z: back.z, yaw: side.yaw, throttle: -0.8, driveS: 5, total: 9 }) }]);
+        out.push(['reverse', { ...driveAcross({ x: back.x, z: back.z, yaw: side.yaw, throttle: -0.8, driveS: crawlS(4, r), total: 9, governMps: 3 }) }]);
       }
     }
   }
@@ -364,7 +376,7 @@ function wallManeuvers(world, site, seed) {
       const ux = (e.bx - e.ax) / e.len, uz = (e.bz - e.az) / e.len, a = 35 * Math.PI / 180;
       const dx = -e.nx * Math.sin(a) + ux * Math.cos(a), dz = -e.nz * Math.sin(a) + uz * Math.cos(a);
       const px = e.mx - dx * 12, pz = e.mz - dz * 12;
-      if (clearSpawn(world, px, pz, records)) out.push(['scrape', driveAcross({ x: px, z: pz, yaw: yawToward(dx, dz), speed: 8, driveS: 5, total: 9 })]);
+      if (clearSpawn(world, px, pz, records)) out.push(['scrape', driveAcross({ x: px, z: pz, yaw: yawToward(dx, dz), speed: 8, driveS: 3, total: 7, governMps: 8 })]);
       continue;
     }
     if (!out.some(([m]) => m === 'pivot')) {
@@ -444,7 +456,7 @@ function roofSites(world, count, seed) {
 function roofManeuvers(world, site, seed) {
   const random = mulberry32(seed);
   const yaw = random() * Math.PI * 2;
-  if (site.sub === 'slope-onto') return [['drive-onto', driveAcross({ x: site.x, z: site.z, yaw: site.yaw, throttle: 0.7, driveS: 7, total: 11 })]];
+  if (site.sub === 'slope-onto') return [['drive-onto', driveAcross({ x: site.x, z: site.z, yaw: site.yaw, throttle: 0.7, driveS: 6, total: 11, governMps: 4 })]];
   if (site.sub === 'edge') {
     return [['edge-drop', dropOn({ x: site.x, z: site.z, yaw, dropTo: 1.5, total: 9 })],
       ['edge-stand', { ...standOn({ x: site.x, z: site.z, yaw: yaw + 1.3 }), mayTip: true, grounded: false }]];
@@ -532,20 +544,20 @@ function objectManeuvers(world, site, seed) {
     const dx = site.dirX, dz = site.dirZ;
     const sx = site.x - dx * 12, sz = site.z - dz * 12;
     if (clearSpawn(world, sx, sz, records)) {
-      out.push(['cross', driveAcross({ x: sx, z: sz, yaw: yawToward(dx, dz), speed: 8, driveS: 5, backS: 2.5, total: 9 })]);
-      out.push(['crawl', driveAcross({ x: site.x - dx * 7, z: site.z - dz * 7, yaw: yawToward(dx, dz), throttle: 0.4, driveS: 8, backS: 2.5, total: 12 })]);
+      out.push(['cross', driveAcross({ x: sx, z: sz, yaw: yawToward(dx, dz), speed: 8, driveS: crossingS(12, 2, 8), backS: 2.5, total: 7, governMps: 8 })]);
+      out.push(['crawl', driveAcross({ x: site.x - dx * 7, z: site.z - dz * 7, yaw: yawToward(dx, dz), throttle: 0.5, driveS: crawlS(7, 2), backS: 2.5, total: 12, governMps: 2.5 })]);
     }
     if (site.sub === 'shore') {
       const wx = site.x + dx * 9, wz = site.z + dz * 9;
-      out.push(['exit', driveAcross({ x: wx, z: wz, yaw: yawToward(-dx, -dz), throttle: 1, driveS: 7, total: 10 })]);
+      out.push(['exit', driveAcross({ x: wx, z: wz, yaw: yawToward(-dx, -dz), throttle: 1, driveS: 6, total: 10, governMps: 6 })]);
     }
     return out;
   }
   const r = radiusOf(site.record);
   const fast = approachFrom(world, records, site.x, site.z, r + 10, seed);
-  if (fast) out.push(['drive', driveAcross({ x: fast.x, z: fast.z, yaw: fast.yaw, speed: 8, driveS: 4.5, backS: 2.5, total: 9 })]);
+  if (fast) out.push(['drive', driveAcross({ x: fast.x, z: fast.z, yaw: fast.yaw, speed: 8, driveS: crossingS(r + 10, r, 8), backS: 2.5, total: 7, governMps: 8 })]);
   const slow = approachFrom(world, records, site.x, site.z, r + 5, seed + 13, { pathCheck: false });
-  if (slow) out.push(['crawl', driveAcross({ x: slow.x, z: slow.z, yaw: slow.yaw, throttle: 0.35, driveS: 7, backS: 2.5, total: 11 })]);
+  if (slow) out.push(['crawl', driveAcross({ x: slow.x, z: slow.z, yaw: slow.yaw, throttle: 0.5, driveS: crawlS(r + 5, r), backS: 2.5, total: 11, governMps: 2.5 })]);
   if (['wreck', 'vehicle', 'bunker', 'bridge', 'shed', 'stores'].includes(site.sub)) {
     out.push(['drop', dropOn({ x: site.x, z: site.z, yaw: seed % 6, dropTo: 2.5 })]);
   }
@@ -573,18 +585,18 @@ function tankManeuvers(world, site, seed) {
   const p0 = at(-12), p1 = at(12), pp = at(2), pw = at(0);
   const o = { allowBlocked: true };
   return [
-    ['headon', { ...driveAcross({ ...p0, yaw, speed: 'top', driveS: 4, total: 8 }), ...o,
-      extras: [{ id: 'oncoming', specId: 'same', ...p1, yaw: yaw + Math.PI, speed: 'top', input: (t) => (t < 4 ? hold(1) : hold(0, 0, true)) }] }],
-    ['push', { ...driveAcross({ ...at(-7), yaw, driveS: 6, total: 10 }), ...o, extras: [{ id: 'parked', specId: 't90m', ...pp, yaw }] }],
-    ['tbone', { ...driveAcross({ ...at(-14), yaw, speed: 'top', driveS: 3, total: 7 }), ...o,
+    ['headon', { ...driveAcross({ ...p0, yaw, speed: 10, driveS: 2.5, total: 7, governMps: 10 }), ...o,
+      extras: [{ id: 'oncoming', specId: 'same', ...p1, yaw: yaw + Math.PI, speed: 10, input: (t) => (t < 2.5 ? hold(1) : hold(0, 0, true)) }] }],
+    ['push', { ...driveAcross({ ...at(-7), yaw, driveS: 6, total: 10, governMps: 4 }), ...o, extras: [{ id: 'parked', specId: 't90m', ...pp, yaw }] }],
+    ['tbone', { ...driveAcross({ ...at(-14), yaw, speed: 10, driveS: 2, total: 6, governMps: 10 }), ...o,
       extras: [{ id: 'parked', specId: 'm1a2', ...pp, yaw: yaw + Math.PI / 2 }] }],
     ['stack', { ...dropOn({ ...at(0.3, 0.2), yaw: yaw + 0.3, dropTo: 3.5, total: 9 }), extras: [{ id: 'lower', specId: 'm1a2', ...pw, yaw }] }],
-    ['climb-onto', { ...driveAcross({ ...at(-6.5), yaw, throttle: 0.5, driveS: 6, total: 10 }), ...o,
+    ['climb-onto', { ...driveAcross({ ...at(-6.5), yaw, throttle: 0.5, driveS: 6, total: 10, governMps: 2.5 }), ...o,
       extras: [{ id: 'parked', specId: 'bmp2', ...pw, yaw }] }],
     ['wreck-drop', { ...dropOn({ ...at(-0.6, 0.4), yaw: yaw + 0.7, dropTo: 3, total: 9 }), extras: [{ id: 'wreck', specId: 't90m', ...pw, yaw, wreck: true }] }],
-    ['wreck-ram', { ...driveAcross({ ...at(-14), yaw, speed: 9, driveS: 4, total: 8 }), ...o,
+    ['wreck-ram', { ...driveAcross({ ...at(-14), yaw, speed: 9, driveS: 2.5, total: 7, governMps: 9 }), ...o,
       extras: [{ id: 'wreck', specId: 'm1a2', ...pp, yaw: yaw + 0.4, wreck: true }] }],
-    ['side-scrape', { ...driveAcross({ ...at(-10, -2.1), yaw, speed: 7, driveS: 4, total: 8 }), ...o,
+    ['side-scrape', { ...driveAcross({ ...at(-10, -2.1), yaw, speed: 7, driveS: 3, total: 7, governMps: 7 }), ...o,
       extras: [{ id: 'other', specId: 't90m', ...at(-10, 2.1), yaw, speed: 7, input: (t) => (t < 4 ? hold(1, -0.25) : hold(0, 0, true)) }] }],
   ];
 }
@@ -604,7 +616,7 @@ export const DEFECTS = Object.freeze([
   { id: 'outOfWorld', what: 'left the world', sev: 10, value: (m) => (m.outOfWorld ? 1 : 0), max: 0 },
   { id: 'fellThrough', what: 'root more than 0.5 m under the ground (fell through)', sev: 9, value: (m) => m.fellThroughM, max: 0.5 },
   { id: 'insideSolid', what: 'root inside a solid record, > 0.3 m under its top (sank in, fell through a roof)', sev: 8, value: (m) => m.insideSolidM, max: 0.3 },
-  { id: 'launch', what: 'thrown off its support by a contact (takeoff > 2.5 m/s, no jump)', sev: 7, value: (m) => m.takeoffMaxMps, max: 2.5, when: (r) => r.grounded },
+  { id: 'launch', what: 'thrown off its support by a contact (takeoff 2.5 m/s over its ground grade, no jump)', sev: 7, value: (m) => m.takeoffMaxMps, max: 2.5, when: (r) => r.grounded },
   { id: 'energy', what: 'energy gained in flight or a rebound over the law', sev: 7, value: (m) => Math.max(m.energyGainMaxJkg - 0.2, m.reboundExcessMps - 0.05, 0), max: 0 },
   { id: 'popXZ', what: 'unexplained horizontal step > 12 cm (pop)', sev: 6, value: (m) => m.popXZMaxM, max: 0.12 },
   { id: 'popY', what: 'unexplained vertical step > 12 cm (pop)', sev: 6, value: (m) => m.popYMaxM, max: 0.12 },
@@ -670,6 +682,8 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
         const caseDef = {
           id, mapId, seconds: plan.seconds, spawn: plan.spawn, input: plan.input, rest: plan.rest, mustMove: plan.mustMove,
           allowBlocked: plan.allowBlocked, extras: plan.extras, worldHalfM: WORLD_HALF_M - 2, floorY: world.hf.minY - 20,
+          // (steps and jolts are read from 0.3 s: the spawn's own seat on uneven ground is the harness's, not the sim's)
+          metricsFromS: 0.3,
           anchor: { x: site.x > 0 ? site.x - 200 : site.x + 200, z: site.z > 0 ? site.z - 200 : site.z + 200 },
           world: { fn: world.fn, contact: world.contact, heightField: world.hf, obstacles: near, worldCollision: world.worldCollision },
         };

@@ -784,7 +784,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   const actions = (caseDef.actions ?? []).map((action) => ({ ...action,
     tick: Math.round((typeof action.t === 'function' ? action.t(worldTimes) : action.t) / DT) }));
   const impulseTicks = new Set(actions.map((action) => action.tick));
-  const controlAt = (tick) => (caseDef.input ? caseDef.input(tick * DT) : NEUTRAL);
+  // (census: an input may read the subject's state, a speed governor)
+  const controlAt = (tick) => (caseDef.input ? caseDef.input(tick * DT, subject.state) : NEUTRAL);
   const inputs = new Map();
   const extraInputs = [...extrasById.values()].filter((extra) => extra.input);
   const gravity = G * (subject.modeGravityScale ?? 1);
@@ -914,6 +915,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       if (bad) { metrics.nan++; metrics.nanField ??= `${entity.id}:${bad}`; }
     }
     if (metrics.nan) break;
+    // (census: a case may leave its first steps unmeasured, the harness's own seat of a hull spawned on uneven ground)
+    if (t < (caseDef.metricsFromS ?? 0)) continue;
 
     // 2. unexplained horizontal and vertical steps (pops)
     const dxz = Math.hypot(state.pos.x - pre.x, state.pos.z - pre.z);
@@ -1176,7 +1179,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
     }
     if (state.grounded) airRun = 0;
-    if (!pre.grounded && !state.grounded && !impulseTicks.has(tick) && !landed) {
+    if (!pre.grounded && !state.grounded && !impulseTicks.has(tick) && !landed && prev) {
       const vx0 = pre.speed;
       const e0 = 0.5 * (vx0 * vx0 + (prev?.rideV ?? 0) ** 2) + gravity * pre.y;
       const e1 = 0.5 * (state.speed * state.speed + state._ride.v * state._ride.v) + gravity * state.pos.y;
@@ -1261,8 +1264,13 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         metrics.outOfWorld = true;
       }
       if (pre.grounded && !state.grounded && !impulseTicks.has(tick)) {
-        if (state._ride.v > metrics.takeoffMaxMps) metrics.takeoffMaxMps = state._ride.v;
-        if (state._ride.v > 2.5) metrics.launches++;
+        // the takeoff's rise over what the ground's grade under its travel explains (a hull leaving a crest at speed rises
+        // at speed x grade; only the excess is a throw)
+        const dir = state.speed >= 0 ? 1 : -1, fx = Math.sin(state.yaw) * dir, fz = Math.cos(state.yaw) * dir;
+        const rise = (world.contact(state.pos.x, state.pos.z) - world.contact(state.pos.x - fx * 1.5, state.pos.z - fz * 1.5)) / 1.5;
+        const excess = state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
+        if (excess > metrics.takeoffMaxMps) metrics.takeoffMaxMps = excess;
+        if (excess > 2.5) metrics.launches++;
       }
     }
 
