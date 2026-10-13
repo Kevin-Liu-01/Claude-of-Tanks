@@ -4,7 +4,9 @@
 // a hull through the battle's own emission law (battlePresentationRuntime emitDust/emitExhaust: the 60 Hz fx ticks, at
 // most two a frame, a dust call every 0.45-0.7 m) at several frame rates, and measures the trail as a side camera sees
 // it: the share of the trail's length that some body covers, and how even its opacity is. Deploy 208's coin toss per
-// call (07512bb07, ac8ae8065), transcribed below with its recipes, is measured the same way.
+// call (07512bb07, ac8ae8065), transcribed below with its recipes, is measured the same way. (In battle the media skirt
+// now runs on sand only: dry earth has the predecessor's sprite wake back, trackContact.selftest; the recipe is measured
+// on every ground so the receipt keeps deploy 208's grass breakage in view.)
 import assert from 'node:assert/strict';
 import { createTrailCadence, TRAIL_MAX_BIRTHS } from './trailCadence.ts';
 import { trackSkirt, trackSkirtSpacing, exhaustPuff, exhaustSpacing } from './blastRecipes.ts';

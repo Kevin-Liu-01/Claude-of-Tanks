@@ -6032,9 +6032,11 @@ function* createFxSteps(
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
       // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
-      // a moving hull trails a low skirt of its ground's own dust — heavy on sand, light on grass, none on wet ground or
-      // snow (their spray and powder stay the battle's); it replaces the dry wake's sprites
-      const skirt = !!blast && groundType !== 'soft' && surface !== 3;
+      // a hull on sand trails a skirt of its own dust over the contact powder.
+      // EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on
+      // earth and grass the dry wake's continuous rolling ribbons are back on every tier (deploy 207's sprites, to the
+      // last draw); deploy 208's media skirt there (07512bb07) had replaced them with separate clouds
+      const skirt = !!blast && surface === 2;
       if (skirt && !frozen) mediaTrackSkirt(pos, dir, intensity, groundType, surface, gy);
       if (surface !== 0) {
         if (!frozen) emitTrackPowder(pos, dir, intensity, gy, surface);
@@ -6044,7 +6046,6 @@ function* createFxSteps(
       const sizeVariation = 0.6 + rng() * 0.8;
       const alphaVariation = 0.55 + rng() * 0.65;
       emitTrackKick(pos, dir, intensity, groundType, gy);
-      if (skirt) return;
       emitDryTrackWake(
         pos, dir, intensity, groundType, gy, surfaceMultiplier, sizeVariation, alphaVariation,
       );
