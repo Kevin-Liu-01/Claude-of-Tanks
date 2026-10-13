@@ -568,6 +568,19 @@ class MatchEndedDuringEntryError extends Error {
   }
 }
 
+/**
+ * The host refused this seat's HELLO for its build (2026-10-13, the same-wire check, or the other-wire gate): the entry
+ * fails with the refusal's code so the lobby words it in the player's locale.
+ */
+class MatchRefusedError extends Error {
+  readonly code: MatchRefusalCode;
+  constructor(code: MatchRefusalCode) {
+    super(matchRefusalMessage(code));
+    this.name = 'MatchRefusedError';
+    this.code = code;
+  }
+}
+
 class RoundSupersededError extends Error {
   readonly superseded = true;
   constructor(detail: string) { super(`multiplayer v2 round superseded: ${detail}`); this.name = 'RoundSupersededError'; }
@@ -605,19 +618,6 @@ function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWar
   const after = current?.pending ?? null;
   if (after === null) return false;
   return before === null || after < before;
-}
-
-/**
- * The host refused this seat's HELLO for its build (2026-10-13, the same-wire check, or the other-wire gate): the entry
- * fails with the refusal's code so the lobby words it in the player's locale.
- */
-class MatchRefusedError extends Error {
-  readonly code: MatchRefusalCode;
-  constructor(code: MatchRefusalCode) {
-    super(matchRefusalMessage(code));
-    this.name = 'MatchRefusedError';
-    this.code = code;
-  }
 }
 
 /** The refusal for a preparation that cannot complete, with what broke. */
