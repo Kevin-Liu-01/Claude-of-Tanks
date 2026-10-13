@@ -765,6 +765,9 @@ const iglesia: RegionalBuilder = (ctx) => {
   for (const fc of faces) {
     archFill(sink, fc, 0, open / 2, y1 - 0.9 - open / 2 * 0.85, open / 2 * 0.85, y1 - 0.75, 0.45, 'stone', 'stone', true, 8, true);
     sink.cylinder('structureMetal', facePoint(fc, 0, y0 + 0.9, -p * 0.7), 'y', 1.0, 0.42, 10, { colour: BELL, decor: true }, 0.22);
+    // (the buildings stream, 2026-10-12, the integrity check: each bell hung in its arch on nothing) its iron yoke across
+    // the opening from pier to pier, the bell's crown under it
+    faceBox(sink, 'structureMetal', fc, 0, y0 + 1.94, -p * 0.7, open + 0.14, 0.08, 0.08, { colour: IRON, decor: true });
   }
   sink.band('stone', -half - 0.2, y1, tz - half - 0.2, half + 0.2, y1 + 0.32, tz + half + 0.2, { decor: true, shadow: true });
   // the corner pinnacles (a stork's nest on one corner's cornice instead, on most towers), the tiled spire and its cross
