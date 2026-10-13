@@ -1940,6 +1940,115 @@ function makeMotorPoolCraft(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('motorpool', out);
 }
 
+/**
+ * The hunter's high seat (Hochsitz, a forester's or a sentry's): four legs of round timber splayed out to the ground
+ * and braced crosswise, the ladder up its front, a cabin of horizontal boards on its joists with shooting slits under
+ * their hinged flaps, a felted skillion roof over its eaves.
+ */
+function makeHuntingBlindCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.timber, y = 3.0, s = 2.2, hs = s / 2;
+  // the legs, splayed: from 1.5 m out at the foot to the cabin's corners
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    colored(out, beam([x * 1.45, -0.2, z * 1.45], [x * (hs - 0.1), y + 0.2, z * (hs - 0.1)], 0.16, 0.16), p[2], rng, 0.05);
+  }
+  for (const side of [-1, 1]) for (const k of [0, 1]) {
+    const yb = 0.8 + k * 1.1, spread = 1.45 - (yb + 0.2) / (y + 0.4) * (1.45 - hs + 0.1);
+    colored(out, box(spread * 2 + 0.1, 0.09, 0.09).translate(0, yb, side * spread), p[2], rng, 0.05);
+    colored(out, box(0.09, 0.09, spread * 2 + 0.1).translate(side * spread, yb + 0.08, 0), p[2], rng, 0.05);
+  }
+  // the joists and the floor
+  for (const z of [-hs + 0.05, hs - 0.05]) colored(out, box(s + 0.3, 0.14, 0.12).translate(0, y + 0.1, z), p[2], rng, 0.05);
+  colored(out, box(s + 0.3, 0.07, s + 0.3).translate(0, y + 0.2, 0), p[1], rng, 0.06);
+  // the cabin: corner posts, horizontal boards with the slits under their flaps on three sides
+  const f0 = y + 0.24, top = f0 + 1.85;
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) colored(out, box(0.1, top - f0, 0.1).translate(x * (hs - 0.05), (f0 + top) / 2, z * (hs - 0.05)), p[2], rng, 0.04);
+  for (const side of [-1, 1] as const) for (const axis of ['x', 'z'] as const) {
+    const front = axis === 'z' && side > 0;
+    for (let k = 0; k < 9; k++) {
+      const yb = f0 + 0.1 + k * 0.2;
+      const slit = yb > f0 + 1.05 && yb < f0 + 1.45 && !front;
+      if (slit) continue;
+      if (front && yb < f0 + 1.6 && yb > f0 + 0.05 && k < 7) {
+        // the door's gap on the ladder's side: boards either side of it
+        for (const sgn of [-1, 1]) colored(out, box(0.55, 0.18, 0.04).translate(sgn * 0.8, yb, side * (hs - 0.02)), k % 2 ? p[0] : p[1], rng, 0.05);
+        continue;
+      }
+      colored(out, box(axis === 'x' ? s : 0.04, 0.18, axis === 'x' ? 0.04 : s).translate(axis === 'x' ? 0 : side * (hs - 0.02), yb, axis === 'x' ? side * (hs - 0.02) : 0), k % 2 ? p[0] : p[1], rng, 0.05);
+    }
+    if (!front) {
+      // the slit's flap hinged up on its stay
+      const flap = box(axis === 'x' ? s * 0.7 : 0.04, 0.34, axis === 'x' ? 0.04 : s * 0.7);
+      flap.rotateX(axis === 'x' ? side * 0.5 : 0); flap.rotateZ(axis === 'z' ? -side * 0.5 : 0);
+      colored(out, flap.translate(axis === 'x' ? 0 : side * (hs + 0.06), f0 + 1.55, axis === 'x' ? side * (hs + 0.06) : 0), p[0], rng, 0.05);
+    }
+  }
+  colored(out, pitchRoofPlane(slab(s + 0.7, 0.08, s + 0.8), 'x', -1, 0.18, 'skillion').translate(0, top + 0.12, 0), 0x2e2b28, rng, 0.04);
+  colored(out, box(s + 0.1, 0.12, s + 0.1).translate(0, top + 0.02, 0), p[2], rng, 0.04);
+  // the ladder up the front: two stringers and their rungs from the ground to the door
+  for (const x of [-0.3, 0.3]) colored(out, beam([x, -0.1, hs + 1.5], [x, y + 0.24, hs + 0.05], 0.07, 0.09), p[2], rng, 0.05);
+  for (let k = 1; k < 8; k++) {
+    const t = k / 8;
+    colored(out, box(0.66, 0.05, 0.06).translate(0, -0.1 + t * (y + 0.34), hs + 1.5 - t * 1.45), p[2], rng, 0.05);
+  }
+  return mergeConnectedStructure('huntingblind', out);
+}
+
+/**
+ * The command tent (a ridge tent of the field army): its canvas walls between the uprights, the two roof panels sagging
+ * between the rafters' lines, the ridge pole, the guy ropes to their pegs, the door's flaps rolled up under a fly, the
+ * map table and the bench within, the radio mast beside it on its guys, a low wall of sandbags before the door.
+ */
+function makeCommandTentCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.khaki, t = PAL.timber, w = 5.8, d = 7.6, wall = 1.25, rise = 2.1;
+  const bays = 4, bay = d / bays;
+  // the walls: a panel a bay, sagging a little inward at mid-bay
+  for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
+    const z = -d / 2 + (k + 0.5) * bay;
+    colored(out, box(0.05, wall, bay - 0.04).translate(side * (w / 2 - 0.02), wall / 2, z), k % 2 ? p[0] : p[1], rng, 0.05);
+    colored(out, box(0.08, wall + 0.1, 0.08).translate(side * (w / 2 + 0.02), (wall + 0.1) / 2, z - bay / 2), p[2], rng, 0.03);
+  }
+  // the end walls: the back's gable closed, the front's door
+  for (const zs of [-1, 1]) {
+    const g = gable(w, rise, 0.05);
+    colored(out, g.translate(0, wall, zs * (d / 2 - 0.02)), p[1], rng, 0.05);
+    if (zs < 0) colored(out, box(w, wall, 0.05).translate(0, wall / 2, -d / 2 + 0.02), p[0], rng, 0.05);
+    else for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.65, wall, 0.05).translate(sgn * (w / 4 + 0.33), wall / 2, d / 2 - 0.02), p[0], rng, 0.05);
+  }
+  // the roof: each side in bays, every panel a shade apart, the ridge pole and the uprights carrying it
+  const slope = Math.hypot(w / 2 + 0.25, rise), ang = Math.atan2(rise, w / 2 + 0.25);
+  for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
+    const z = -d / 2 + (k + 0.5) * bay;
+    const panel = slab(slope, 0.05, bay + 0.02);
+    pitchRoofPlane(panel, 'x', -side as -1 | 1, ang, 'gable');
+    colored(out, panel.translate(-side * (w / 4 + 0.12), wall + rise / 2 - 0.02, z), k % 2 ? p[1] : 0x707857, rng, 0.04);
+  }
+  colored(out, box(0.1, 0.1, d + 0.3).translate(0, wall + rise, 0), p[2], rng, 0.03);
+  for (const z of [-d / 2 + 0.05, 0, d / 2 - 0.05]) colored(out, box(0.09, wall + rise, 0.09).translate(0, (wall + rise) / 2, z), p[2], rng, 0.03);
+  // the guy ropes from the eaves to their pegs a metre out
+  for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
+    const z = -d / 2 + k * bay;
+    colored(out, beam([side * (w / 2 + 0.05), wall + 0.05, z], [side * (w / 2 + 0.95), 0.05, z], 0.025, 0.025), 0xb0a68a, rng, 0.03);
+    colored(out, box(0.06, 0.25, 0.06).translate(side * (w / 2 + 0.95), 0.12, z), t[2], rng, 0.03);
+  }
+  // the door's flaps rolled up, the fly over the door on two poles
+  for (const sgn of [-1, 1]) colored(out, cylinder(0.1, 0.1, 1.3, 8).rotateZ(Math.PI / 2).translate(sgn * 0.32, wall + 0.35, d / 2 + 0.05), p[0], rng, 0.04);
+  colored(out, pitchSkillionRoof(slab(1.9, 0.05, 1.5), 'z', 1, 0.2).translate(0, wall + 0.75, d / 2 + 0.75), p[1], rng, 0.04);
+  for (const x of [-0.85, 0.85]) colored(out, box(0.06, wall + 0.6, 0.06).translate(x, (wall + 0.6) / 2, d / 2 + 1.45), p[2], rng, 0.03);
+  // the map table and the bench inside, seen through the door
+  colored(out, box(1.6, 0.06, 0.9).translate(0, 0.78, 1.2), t[0], rng, 0.05);
+  for (const [x, z] of [[-0.7, 0.8], [0.7, 0.8], [-0.7, 1.6], [0.7, 1.6]] as const) colored(out, box(0.06, 0.76, 0.06).translate(x, 0.38, z), t[2], rng, 0.04);
+  colored(out, box(1.5, 0.05, 0.3).translate(0, 0.45, 2.2), t[0], rng, 0.05);
+  for (const x of [-0.6, 0.6]) colored(out, box(0.05, 0.43, 0.25).translate(x, 0.22, 2.2), t[2], rng, 0.04);
+  // the radio mast on its guys
+  colored(out, box(0.08, 5.2, 0.08).translate(w / 2 + 0.5, 2.6, -d / 2 + 0.3), p[2], rng, 0.03);
+  for (const [dx, dz] of [[0.9, 0], [-0.4, -0.8], [-0.4, 0.8]] as const) colored(out, beam([w / 2 + 0.5, 4.6, -d / 2 + 0.3], [w / 2 + 0.5 + dx, 0.05, -d / 2 + 0.3 + dz], 0.02, 0.02), 0x3a3a38, rng, 0.03);
+  // the sandbags before the door, a low wall either side of the way in
+  for (const sgn of [-1, 1]) for (let k = 0; k < 2; k++) for (let r = 0; r < 2; r++) {
+    colored(out, box(0.6, 0.2, 0.32).translate(sgn * (1.3 + k * 0.6 + r * 0.3), 0.1 + r * 0.2, d / 2 + 2.0), 0x8e7f5e, rng, 0.08);
+  }
+  return mergeConnectedStructure('commandtent', out);
+}
+
 function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
@@ -2342,14 +2451,14 @@ const orbital = createOrbitalStructures({ box, cylinder, colored, mergeConnected
 export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingType> = {
   fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
   leanto: lightMeta('leanto', 'rural', 2.9, 2.50, 3.1, PAL.paleWood, makeLeanTo),
-  huntingblind: lightMeta('huntingblind', 'woodland', 1.84, 1.68, 5.5, PAL.timber, makeHuntingBlind),
+  huntingblind: lightMeta('huntingblind', 'woodland', 1.84, 1.68, 5.5, PAL.timber, (rng) => { makeHuntingBlind(rng).dispose(); return makeHuntingBlindCraft(kindStream('huntingblind')); }),
   fishershack: lightMeta('fishershack', 'coastal', 2.7, 4.2, 4.7, PAL.nordic, makeFisherShack),
   saunahut: lightMeta('saunahut', 'nordic', 2.5, 3.2, 4.4, PAL.nordic, makeSaunaHut),
   alpinerefuge: lightMeta('alpinerefuge', 'alpine', 3.3, 4.29, 5.8, PAL.nordic, makeAlpineRefuge),
   stilthouse: lightMeta('stilthouse', 'wetland', 3.36, 4.46, 6.5, PAL.paleWood, makeStiltHouse),
   longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
   deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
-  commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, makeCommandTent, 'canvas'),
+  commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, (rng) => { makeCommandTent(rng).dispose(); return makeCommandTentCraft(kindStream('commandtent')); }, 'canvas'),
   fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
   // (the looks lane, 2026-10-13: the old builder's draws spent, the post built member by member on its own stream)
   guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, (rng) => { makeGuardPost(rng).dispose(); return makeGuardPostCraft(kindStream('guardpost')); }, 'metal'),
