@@ -552,7 +552,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41),
+      // the left drapes part over the national insignia and the hull number on the left hull side (2026-10-13, integ/222:
+      // with the drapes closed the marking solver found no seat with all nine footprint rays clear, sourceXMarkings, and
+      // fell back to a seat 0.68 m off the armour; the owner's rule is that markings stay readable, as on the Burlak)
+      side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
     },
   },
   // Leopard 2A5: the wedge roof netted round the PERI, the EMES head, the hatches and the roof gun, drapes down the walls
