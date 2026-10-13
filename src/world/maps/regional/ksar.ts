@@ -582,8 +582,11 @@ const ainSpring: RegionalBuilder = (ctx) => {
     sink.member('stone', [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 1.0, 0.5,
       [Math.cos(am), 0, Math.sin(am)], { exposed: true }, 0);
   }
-  sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r - 0.22, 24, { decor: true });
-  for (let k = 0; k < 3; k++) sink.span('stone', px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r - 0.2 - k * 0.35, { decor: true });
+  // (the buildings stream, 2026-10-12, the integrity check: the water stood 22 cm in from the ring wall, a slot of bare
+  // ground round it, and the steps hung over it short of the wall) the water meets the wall's inner face; the steps run
+  // from the wall down into it, each tread over the one below
+  sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r + 0.02, 24, { decor: true });
+  for (let k = 0; k < 3; k++) sink.span('stone', px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r + 0.05, { decor: true });
   // the rest of the plot: the café's low wall along the far edge and the palm-rib shelter by the pool
   const rest = along ? R.x1 - (px + r + 0.25) : R.z1 - (pz + r + 0.25);
   if (rest > 0.45) {

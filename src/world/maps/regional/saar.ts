@@ -36,7 +36,8 @@ function dialect(rng: () => number, style: WindowStyle = WINDOW): HouseDialect {
 
 /** A steel ring band round a cylinder at height y (decor). */
 function ring(sink: PartSink, x: number, y: number, z: number, r: number, h = 0.3, colour: Rgb = TRUSS): void {
-  sink.cylinder('structureMetal', [x, y, z], 'y', h, r + 0.06, 12, { colour, decor: true }, r + 0.06, false);
+  // (the integrity check, 2026-10-12: the band stood 6 cm off its stack on nothing, open top and bottom) closed against it
+  sink.cylinder('structureMetal', [x, y, z], 'y', h, r + 0.06, 12, { colour, decor: true }, r + 0.06);
 }
 
 /** A lattice member chain: two chords from a to b, braced in a zigzag (decor steel). */

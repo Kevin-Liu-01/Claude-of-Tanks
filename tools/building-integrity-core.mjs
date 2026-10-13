@@ -241,12 +241,19 @@ export function floatingParts(pos, flags, bucketOf, buckets, ground) {
       for (let ax = 0; ax < 3; ax++) { const v = pos[o + ax]; if (v < s.b[ax]) s.b[ax] = v; if (v > s.b[ax + 3]) s.b[ax + 3] = v; }
     }
   }
-  // each floating assembly's clearance: the nearest grounded triangle to its box corners and centre (to 3 m)
+  // each floating assembly's clearance: the nearest grounded triangle to its vertices (up to 96 of them; to 3 m)
+  const setVerts = new Map();
+  for (let t = 0; t < triCount; t++) {
+    const id = setOfTri[t]; if (id < 0) continue;
+    let l = setVerts.get(id); if (!l) { l = []; setVerts.set(id, l); }
+    if (l.length < 96 * 3) for (let k = 0; k < 9; k += 3) l.push(pos[t * 9 + k], pos[t * 9 + k + 1], pos[t * 9 + k + 2]);
+  }
   const clearance = (s) => {
     let best = Infinity;
+    const v = setVerts.get(s.id) ?? [];
     const probes = [];
-    for (const x of [s.b[0], s.b[3]]) for (const y of [s.b[1], s.b[4]]) for (const z of [s.b[2], s.b[5]]) probes.push([x, y, z]);
-    probes.push([(s.b[0] + s.b[3]) / 2, s.b[1], (s.b[2] + s.b[5]) / 2]);
+    const step = Math.max(1, Math.floor(v.length / 3 / 96));
+    for (let i = 0; i < v.length; i += 3 * step) probes.push([v[i], v[i + 1], v[i + 2]]);
     for (let t = 0; t < triCount; t++) {
       if (setOfTri[t] >= 0) continue;
       const o = t * 9;
@@ -424,6 +431,14 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
   // over the ground, which must not be inside the building (the ground clip cuts the walls there, and the inside of
   // the far wall shows through the cut to no real eye).
   const stepV = envelope ? Math.max(0.1, envelope.V * 0.5) : 0.1;
+  // a surface met at a grazing angle (within 20 degrees of edge-on) runs along a corner of the closed envelope, where the
+  // closing fills the angle between two surfaces: the inside test reads only surfaces that face the eye
+  const grazing = (pos, o) => {
+    const ax = pos[o + 3] - pos[o], ay = pos[o + 4] - pos[o + 1], az = pos[o + 5] - pos[o + 2];
+    const bx = pos[o + 6] - pos[o], by = pos[o + 7] - pos[o + 1], bz = pos[o + 8] - pos[o + 2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx, l = Math.hypot(nx, ny, nz) || 1;
+    return Math.abs(nx * d[0] + ny * d[1] + nz * d[2]) / l < 0.35;
+  };
   const eyeOutside = (px, py, depth) => {
     for (let s = depth - stepV; s >= -sphere.r * 1.3; s -= stepV) {
       const [wx, wy, wz] = world(px, py, s);
@@ -434,12 +449,12 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
     return true;
   };
   // what of each floating assembly shows (its triangles nearest an eye outside the building)
-  const floatingPx = new Map();
+  const floatingPx = new Map(); const floatMask = setOfTri ? new Uint8Array(N) : null;
   if (setOfTri) for (let p = 0; p < N; p++) {
     const t = tF[p]; if (t < 0 || zF[p] > zO[p] + SEAM_EPS || zF[p] > zB[p] + SEAM_EPS) continue;
     const id = setOfTri[t]; if (id < 0) continue;
     const px = p % RES, py = (p - px) / RES;
-    if (eyeOutside(px, py, zF[p])) floatingPx.set(id, (floatingPx.get(id) || 0) + 1);
+    if (eyeOutside(px, py, zF[p])) { floatingPx.set(id, (floatingPx.get(id) || 0) + 1); floatMask[p] = 1; }
   }
   for (let p = 0; p < N; p++) {
     const hasF = zF[p] !== Infinity, hasB = zB[p] !== Infinity, hasO = zO[p] !== Infinity;
@@ -450,7 +465,7 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
       if (eyeOutside(px, py, zB[p])) kind[p] = hasF && zF[p] - zB[p] < INVERTED_DEPTH ? 2 : 1;
       continue;
     }
-    if (hasF && zF[p] <= zO[p] + SEAM_EPS && envelope) {
+    if (hasF && zF[p] <= zO[p] + SEAM_EPS && envelope && !grazing(own.pos, tF[p] * 9)) {
       const [wx, wy, wz] = world(px, py, zF[p] - INSIDE_OFFSET_M);
       if (wy > ground.at(wx, wz) + 0.3 && envelope.inside(wx, wy, wz)) {
         const [hx, hy, hz] = world(px, py, zF[p] - INSIDE_OFFSET_M / 2);
@@ -474,24 +489,9 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
     if (q >= RES && !reached[q - RES] && free(q - RES)) { reached[q - RES] = 1; stack.push(q - RES); }
     if (q < N - RES && !reached[q + RES] && free(q + RES)) { reached[q + RES] = 1; stack.push(q + RES); }
   }
-  // near-level views: sky in a slot between the building's own surfaces, one over the other in the same column (a
-  // roof lifted off its walls shows its slot open at both ends, which the border reaches)
-  const sandwiched = new Uint8Array(N);
-  if (Math.abs(view.el) <= 15) {
-    for (let px = 0; px < RES; px++) {
-      let below = -1;
-      for (let py = 0; py < RES; py++) {
-        const p = py * RES + px;
-        if (!free(p)) {
-          if (below >= 0 && py - below > 1) for (let q = below + 1; q < py; q++) if (empty[q * RES + px]) sandwiched[q * RES + px] = 1;
-          below = py;
-        }
-      }
-    }
-  }
   const stepM = envelope ? envelope.V * 0.5 : 0.1;
   for (let p = 0; p < N; p++) {
-    if (!empty[p] || (reached[p] && !sandwiched[p])) continue;
+    if (!empty[p] || reached[p]) continue;
     const px = p % RES, py = (p - px) / RES;
     let met = false, inside = false, at = sphere.r * 1.2;
     for (let s = -sphere.r * 1.2; s <= sphere.r * 1.2; s += stepM) {
@@ -532,7 +532,7 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
       buckets: [...owners.entries()].sort((u, v) => v[1] - u[1]).slice(0, 3).map(([b]) => own.buckets[b] ?? '?') });
   }
   clusters.sort((u, v) => v.areaM2 - u.areaM2);
-  return { name: view.name, clusters, kind, zF, zB, RES, floatingPx, pxM2 };
+  return { name: view.name, clusters, kind, zF, zB, RES, floatingPx, pxM2, floatMask };
 }
 
 /** Degenerate (zero-area) and sliver (longer than 0.5 m, altitude under 1/1000 of it) triangles. */
@@ -575,7 +575,7 @@ export function analyseBuilding(own, { occluders = null, groundFn = () => 0, ele
     const v = rasterView(view, own, occluders, ground, envelope, { c, r }, res, floating.length ? setOfTri : null);
     for (const cl of v.clusters) kinds[cl.kind].push({ view: view.name, ...cl });
     for (const f of floating) { const px = v.floatingPx.get(f.id) || 0; if (px * v.pxM2 > (f.shownM2 ?? 0)) f.shownM2 = +(px * v.pxM2).toFixed(3); }
-    if (keepRasters && v.clusters.length) rasters.push(v);
+    if (keepRasters && (v.clusters.length || v.floatingPx.size)) rasters.push(v);
   }
   if (keepRasters) Object.defineProperty(result, 'rasters', { value: rasters, enumerable: false });
   result.ms.views = Math.round(performance.now() - t2);
@@ -598,5 +598,5 @@ export function analyseBuilding(own, { occluders = null, groundFn = () => 0, ele
 export function severity(r) {
   const fl = r.floating.reduce((s, f) => s + f.areaM2 * (f.clearanceM === null || f.clearanceM > 0.1 ? 1 : 0.25), 0);
   const k = r.kinds ?? {};
-  return +(fl * 4 + (k.hole?.maxViewM2 ?? 0) + (k.inside?.maxViewM2 ?? 0) + (k.gap?.maxViewM2 ?? 0) * 2 + (k.inverted?.maxViewM2 ?? 0) * 0.5).toFixed(3);
+  return +(fl * 4 + (k.hole?.maxViewM2 ?? 0) + (k.inside?.maxViewM2 ?? 0) * 0.5 + (k.gap?.maxViewM2 ?? 0) * 2 + (k.inverted?.maxViewM2 ?? 0) * 0.5).toFixed(3);
 }

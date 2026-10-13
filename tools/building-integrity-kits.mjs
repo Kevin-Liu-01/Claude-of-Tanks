@@ -46,7 +46,7 @@ function worstOf(rows) {
 }
 
 export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29], generic = true, landmarks = true, only = '',
-  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS }) {
+  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS, images = null }) {
   const wantKit = (id) => !kits.length || kits.includes(id);
   const wantBuilder = (id) => !builders.length || builders.includes(id);
   const mapOfStyle = new Map(); const mapConfigs = new Map();
@@ -57,7 +57,8 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
   const analyse = (key, kit, builder, parts, seed, extra = {}) => {
     const own = packParts(parts);
     if (!own.pos.length) return null;
-    const r = analyseBuilding(own, { groundFn: () => 0, ...viewOptions });
+    const r = analyseBuilding(own, { groundFn: () => 0, ...viewOptions, keepRasters: !!images });
+    if (images) images(`${key.replace(/[^\w.-]+/g, '_')}_s${seed}`, r.rasters);
     return { key, kit, builder, seed, tris: r.tris, severity: severity(r, builder), summary: summarise(r, builder), detail: r, ...extra };
   };
   if (!only || only === 'kits') {

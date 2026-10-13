@@ -129,8 +129,9 @@ const townHouse: RegionalBuilder = (ctx) => {
       sink.placed(Math.PI / 2, ex + 0.55, 0, dz, () => {
         emitRoof(sink, capRg, cap);
         // (the buildings stream, 2026-10-12, the integrity check: an empty triangle over the hoist door, the cap's
-        // underside showing through it) the dormer's gable, flush with its front and run back under the cap
-        if (capRg.gable) sink.prism(render, capRg.gable.map(([u, yy]): Vec3 => [u, yy, -0.6]), [0, 0, 1], 1.25);
+        // underside showing through it) the dormer's gable, flush with its front and run back under the cap (dressing:
+        // the dormer's body and cap keep the collision they had)
+        if (capRg.gable) sink.prism(render, capRg.gable.map(([u, yy]): Vec3 => [u, yy, -0.6]), [0, 0, 1], 1.25, { decor: true });
       });
       windowUnit(sink, { origin: [ex - 0.05, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, y + 0.2, 0.8, 1.05, { ...st.window, shutters: null }, rng, 0.2);
     } else if (rg.gable) {

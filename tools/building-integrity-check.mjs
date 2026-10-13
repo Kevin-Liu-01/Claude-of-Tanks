@@ -91,6 +91,7 @@ async function writeRasters(dir, stem, rasters = []) {
       else if (v.zB[p] !== Infinity) c = [90, 40, 40];
       const k = v.kind[p];
       if (k === 1) c = [235, 40, 40]; else if (k === 2) c = [240, 170, 40]; else if (k === 3) c = [60, 120, 255]; else if (k === 4) c = [230, 60, 230];
+      else if (v.floatMask?.[p]) c = [250, 230, 30];
       const q = ((R - 1 - Math.floor(p / R)) * R + (p % R)) * 4;
       img.data[q] = c[0]; img.data[q + 1] = c[1]; img.data[q + 2] = c[2]; img.data[q + 3] = 255;
     }
@@ -100,13 +101,20 @@ async function writeRasters(dir, stem, rasters = []) {
 }
 
 /**
- * Builders open by design: a ruin's broken walls and fallen roof show sky and their inside (only what floats, faces
- * inside out or is degenerate counts there).
+ * Builders open by design: a ruin's broken walls and fallen roof, the lattice and frame structures (water towers on
+ * legs, gantries, masts, headframes, bridges' trusses), the open belfries and arches show sky and their inside. Their
+ * sky gaps and inside views are measured and held by the ledger, but rank nothing: only what floats, faces inside out
+ * or is degenerate counts there.
  */
-const OPEN_BY_DESIGN = new Set(['ruin']);
+const OPEN_BY_DESIGN = new Set(['ruin', 'watertower', 'gantry', 'broadcasttower', 'mill', 'windmill', 'headframe', 'conveyor',
+  'guyedMast', 'fireLookout', 'radomeTower', 'troposcatter', 'trussBridge', 'baileyBridge', 'trestleBridge', 'liftBridge',
+  'viaduct', 'stoneArchBridge', 'belfry', 'campanile', 'bandstand', 'torii', 'parkGate', 'triumphalArch', 'kolkhozArch',
+  'snowFence', 'oreBin', 'valveTower', 'jamesway', 'airstrip', 'containerRow']);
+/** The maps source's views: four rings and the overhead view, 7 cm pixels up to 288 px. */
+const MAP_VIEW_OPTIONS = Object.freeze({ elevations: [-25, 0, 20, 45], pxM: 0.07, maxRes: 288 });
 function summarise(r, builder = '') {
   const k = r.kinds ?? {};
-  const open = OPEN_BY_DESIGN.has(builder);
+  const open = false; // the ledger holds every number; OPEN_BY_DESIGN only stops a design opening ranking (severity)
   return { floating: r.floating.length, floatingM2: +r.floating.reduce((s, f) => s + f.areaM2, 0).toFixed(3),
     holeM2: k.hole?.maxViewM2 ?? 0, insideM2: open ? 0 : k.inside?.maxViewM2 ?? 0, gapM2: open ? 0 : k.gap?.maxViewM2 ?? 0, invertedM2: k.inverted?.maxViewM2 ?? 0,
     degenerate: r.degenerate, sliver: r.sliver };
@@ -169,12 +177,22 @@ async function checkStructures(mapId, structures, groundOf) {
   for (const s of structures) {
     if (onlyBuilders.size && !onlyBuilders.has(s.builder)) continue;
     if (onlyIdx.size && !onlyIdx.has(s.idx)) continue;
-    // neighbours whose boxes come within half a metre occlude this one
-    const near = structures.filter((o) => o !== s && o.box[0] < s.box[3] + 0.5 && o.box[3] > s.box[0] - 0.5 && o.box[2] < s.box[5] + 0.5 && o.box[5] > s.box[2] - 0.5);
-    let occCount = 0; for (const o of near) occCount += o.own.pos.length;
-    const occ = new Float32Array(occCount); let w = 0;
-    for (const o of near) { occ.set(o.own.pos, w); w += o.own.pos.length; }
-    const r = analyseBuilding(s.own, { occluders: occ, groundFn: groundOf(s), keepRasters: !!opt('images', '') });
+    // neighbours whose boxes come within half a metre occlude this one: their triangles that reach its box
+    const m = 0.5, bx0 = s.box[0] - m, by0 = s.box[1] - m, bz0 = s.box[2] - m, bx1 = s.box[3] + m, by1 = s.box[4] + m, bz1 = s.box[5] + m;
+    const near = structures.filter((o) => o !== s && o.box[0] < bx1 && o.box[3] > bx0 && o.box[2] < bz1 && o.box[5] > bz0);
+    const occList = [];
+    for (const o of near) {
+      const p = o.own.pos;
+      for (let t = 0; t < p.length; t += 9) {
+        if (Math.max(p[t], p[t + 3], p[t + 6]) < bx0 || Math.min(p[t], p[t + 3], p[t + 6]) > bx1) continue;
+        if (Math.max(p[t + 2], p[t + 5], p[t + 8]) < bz0 || Math.min(p[t + 2], p[t + 5], p[t + 8]) > bz1) continue;
+        if (Math.max(p[t + 1], p[t + 4], p[t + 7]) < by0 || Math.min(p[t + 1], p[t + 4], p[t + 7]) > by1) continue;
+        occList.push(t, o);
+      }
+    }
+    const occ = new Float32Array(occList.length / 2 * 9);
+    for (let i = 0, w = 0; i < occList.length; i += 2, w += 9) occ.set(occList[i + 1].own.pos.subarray(occList[i], occList[i] + 9), w);
+    const r = analyseBuilding(s.own, { occluders: occ, groundFn: groundOf(s), keepRasters: !!opt('images', ''), ...MAP_VIEW_OPTIONS });
     if (opt('images', '')) await writeRasters(opt('images', ''), `${mapId}_${s.builder}_${s.idx}`, r.rasters);
     const row = { key: `${mapId}/${s.builder}#${s.idx}`, map: mapId, kit: s.style, builder: s.builder, idx: s.idx,
       centre: [(s.box[0] + s.box[3]) / 2, s.box[1], (s.box[2] + s.box[5]) / 2].map((v) => +v.toFixed(1)),
@@ -186,8 +204,10 @@ async function checkStructures(mapId, structures, groundOf) {
   return checked;
 }
 
+const fromJson = opt('from-json', '');
+if (fromJson) for (const f of fromJson.split(',')) rows.push(...JSON.parse(readFileSync(resolve(f), 'utf8')).rows);
 const fromDump = opt('from-dump', '');
-if (source === 'maps' && fromDump) {
+if (fromJson) { /* rows read */ } else if (source === 'maps' && fromDump) {
   for (const mapId of list('maps')) {
     const t0 = performance.now();
     const { structures, ground } = readDump(fromDump, mapId);
@@ -250,11 +270,12 @@ if (source === 'maps' && fromDump) {
 }
 
 // ------------------------------------------------------------------------------------------------ kits
-if (source === 'kits') {
+if (source === 'kits' && !fromJson) {
   const { runKitCensus } = await import('./building-integrity-kits.mjs');
   await runKitCensus({ kits: list('kits'), builders: list('builders'), seeds: (opt('seeds', '11,29') || '11,29').split(',').map(Number),
     generic: !flag('no-generic'), landmarks: !flag('no-landmarks'), only: opt('only', ''),
-    onRow: (row) => { rows.push(row); if (flag('verbose')) printRow(row); }, packParts, analyseBuilding, severity, summarise });
+    onRow: (row) => { rows.push(row); if (flag('verbose')) printRow(row); }, packParts, analyseBuilding, severity, summarise,
+    images: opt('images', '') ? (stem, rasters) => writeRasters(opt('images', ''), stem, rasters) : null });
 }
 
 // ------------------------------------------------------------------------------------------------ report
@@ -277,6 +298,25 @@ for (const r of defective.slice(0, top)) {
   const d = r.detail;
   for (const f of d.floating.slice(0, 3)) console.log(`    floating ${f.areaM2} m2 ${f.size.join('x')} m at (${f.at.join(',')}) clear ${f.clearanceM ?? '>3'} m [${f.buckets.join(',')}]${f.fineShare ? ` fine ${f.fineShare}` : ''}`);
   for (const k of ['hole', 'inside', 'gap', 'inverted']) { const w = d.kinds?.[k]?.worst; if (w) console.log(`    ${k} worst ${w.areaM2} m2 in ${d.kinds[k].views} views, ${w.view} at (${w.at.join(',')}) [${w.buckets.join(',')}]`); }
+}
+
+// --md=path: the same report as Markdown (per group, then the worst buildings with where and what)
+const mdPath = opt('md', '');
+if (mdPath) {
+  const lines = [`# Building integrity: ${source} source`, '', `${rows.length} buildings checked, ${defective.length} with a finding. Generated ${new Date().toISOString()} by \`node tools/building-integrity-check.mjs ${args.filter((a) => !a.startsWith('--md=')).join(' ')}\`.`, '',
+    '| Group | Buildings | With findings | Floating parts | Holes | Inside seen | Sky gaps | Inside-out | Slivers |', '|---|---|---|---|---|---|---|---|---|'];
+  for (const [g, e] of [...byGroup].sort((a, b) => b[1].bad - a[1].bad)) lines.push(`| ${g} | ${e.n} | ${e.bad} | ${e.floating} | ${e.hole} | ${e.inside} | ${e.gap} | ${e.inverted} | ${e.sliver} |`);
+  lines.push('', `## Worst ${Math.min(top, defective.length)}`, '', '| # | Building | Where (x, z) | Severity | Findings |', '|---|---|---|---|---|');
+  defective.slice(0, top).forEach((r, i) => {
+    const s = r.summary, d = r.detail, f = [];
+    for (const fl of d.floating.slice(0, 2)) f.push(`floating ${fl.areaM2} m2 (${fl.size.join('x')} m, ${fl.clearanceM ?? '>3'} m clear, ${fl.buckets.join('/')})`);
+    for (const k of ['hole', 'inside', 'gap', 'inverted']) if (s[k + 'M2']) { const w = d.kinds[k].worst; f.push(`${k} ${s[k + 'M2']} m2 in ${d.kinds[k].views} views (${w.view}, y ${w.at[1]}${w.buckets.length ? ', ' + w.buckets.join('/') : ''})`); }
+    if (s.sliver) f.push(`${s.sliver} slivers`);
+    lines.push(`| ${i + 1} | ${r.key} | ${r.centre ? `${r.centre[0]}, ${r.centre[2]}` : '-'} | ${r.severity} | ${f.join('; ')} |`);
+  });
+  mkdirSync(dirname(resolve(mdPath)), { recursive: true });
+  writeFileSync(resolve(mdPath), lines.join('\n') + '\n');
+  console.log(`md: ${mdPath}`);
 }
 
 if (jsonPath) {
