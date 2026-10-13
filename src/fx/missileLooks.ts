@@ -80,6 +80,11 @@ export interface MissileLook {
   /** steering corrections: lateral amplitude (m) and rate (Hz) */
   readonly wobbleM: number;
   readonly wobbleHz: number;
+  /** (EF.04) a roll-stabilised round's corkscrew: the motor's flare rides a helix of this radius (m) about the flight
+   *  line at the roll rate (Hz) — a tracer off the axis on a spinning airframe (Malyutka's wing-tip tracer, the rolling
+   *  Stinger, a spin-stabilised rocket); a fire-and-forget or rail round flies roll-controlled, without one */
+  readonly spinM?: number;
+  readonly spinHz?: number;
   /** metres flown before the flight motor lights (0: lit out of the launcher) */
   readonly igniteM: number;
   /** body: length and radius scale (1 = the 1.25 m x 0.17 m reference body), colour (sRGB hex) */
@@ -114,7 +119,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.4,
     smoke: { density: 0.45, c0: LIGHT, c1: LIGHT_AGED, size0: 0.7, size1: 3.2, life: 5, spacingM: 4, rise: 0.15, windK: 0.8,
       pulse: 0.35 },
-    wires: 2, wobbleM: 0.12, wobbleHz: 1.3, igniteM: 9, bodyLen: 0.94, bodyRad: 0.5, bodyHex: 0x4a4f43,
+    wires: 2, wobbleM: 0.12, wobbleHz: 1.3, spinM: 0.1, spinHz: 5, igniteM: 9, bodyLen: 0.94, bodyRad: 0.5, bodyHex: 0x4a4f43,
   }),
   konkurs: look({
     id: 'konkurs', family: 'saclos_wire', launch: 'tube', launchK: 0.8,
@@ -122,7 +127,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.0,
     smoke: { density: 0.36, c0: LIGHT, c1: LIGHT_AGED, size0: 0.6, size1: 2.7, life: 4.2, spacingM: 4.5, rise: 0.15, windK: 0.8,
       pulse: 0.22 },
-    wires: 1, wobbleM: 0.15, wobbleHz: 1.6, igniteM: 3, bodyLen: 0.93, bodyRad: 0.42, bodyHex: 0x59603f,
+    wires: 1, wobbleM: 0.15, wobbleHz: 1.6, spinM: 0.16, spinHz: 7, igniteM: 3, bodyLen: 0.93, bodyRad: 0.42, bodyHex: 0x59603f,
   }),
   milan: look({
     id: 'milan', family: 'saclos_wire', launch: 'tube', launchK: 0.7,
@@ -130,7 +135,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 1.8,
     smoke: { density: 0.3, c0: LIGHT, c1: LIGHT_AGED, size0: 0.5, size1: 2.4, life: 3.6, spacingM: 5, rise: 0.15, windK: 0.8,
       pulse: 0.2 },
-    wires: 1, wobbleM: 0.15, wobbleHz: 1.8, igniteM: 2, bodyLen: 0.74, bodyRad: 0.4, bodyHex: 0x4d5340,
+    wires: 1, wobbleM: 0.15, wobbleHz: 1.8, spinM: 0.14, spinHz: 9, igniteM: 2, bodyLen: 0.74, bodyRad: 0.4, bodyHex: 0x4d5340,
   }),
   mclos: look({
     id: 'mclos', family: 'mclos', launch: 'rail', launchK: 0.6,
@@ -138,7 +143,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.2,
     smoke: { density: 0.6, c0: GREY, c1: GREY_AGED, size0: 0.8, size1: 3.6, life: 6, spacingM: 3.5, rise: 0.12, windK: 0.85,
       pulse: 0.5 },
-    wires: 1, wobbleM: 0.6, wobbleHz: 0.8, igniteM: 0, bodyLen: 0.69, bodyRad: 0.42, bodyHex: 0x5c6045,
+    wires: 1, wobbleM: 0.6, wobbleHz: 0.8, spinM: 0.35, spinHz: 8.5, igniteM: 0, bodyLen: 0.69, bodyRad: 0.42, bodyHex: 0x5c6045,
   }),
   jyumat: look({
     id: 'jyumat', family: 'saclos_old', launch: 'tube', launchK: 0.8,
@@ -146,7 +151,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.0,
     smoke: { density: 0.5, c0: GREY, c1: GREY_AGED, size0: 0.7, size1: 3.2, life: 5, spacingM: 4, rise: 0.14, windK: 0.85,
       pulse: 0.4 },
-    wires: 1, wobbleM: 0.3, wobbleHz: 1.1, igniteM: 2, bodyLen: 0.85, bodyRad: 0.45, bodyHex: 0x56594a,
+    wires: 1, wobbleM: 0.3, wobbleHz: 1.1, spinM: 0.2, spinHz: 6, igniteM: 2, bodyLen: 0.85, bodyRad: 0.45, bodyHex: 0x56594a,
   }),
   spike: look({
     id: 'spike', family: 'soft_launch', launch: 'soft_eject', launchK: 1,
@@ -162,7 +167,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.2,
     smoke: { density: 0.1, c0: WHITE, c1: WHITE_AGED, size0: 0.4, size1: 1.6, life: 1.6, spacingM: 10, rise: 0.1, windK: 0.8,
       pulse: 0 },
-    wires: 0, wobbleM: 0.03, wobbleHz: 2.5, igniteM: 3, bodyLen: 0.97, bodyRad: 0.45, bodyHex: 0x606a4a,
+    wires: 0, wobbleM: 0.03, wobbleHz: 2.5, spinM: 0.06, spinHz: 3, igniteM: 3, bodyLen: 0.97, bodyRad: 0.45, bodyHex: 0x606a4a,
   }),
   arkan: look({
     id: 'arkan', family: 'beam_rider', launch: 'gun', launchK: 1,
@@ -186,7 +191,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 2.4,
     smoke: { density: 0.5, c0: GREY, c1: GREY_AGED, size0: 0.7, size1: 3.0, life: 4.6, spacingM: 4, rise: 0.14, windK: 0.85,
       pulse: 0.3 },
-    wires: 0, wobbleM: 0.25, wobbleHz: 1.0, igniteM: 6, bodyLen: 0.9, bodyRad: 0.5, bodyHex: 0x5b5f4b,
+    wires: 0, wobbleM: 0.25, wobbleHz: 1.0, spinM: 0.12, spinHz: 5, igniteM: 6, bodyLen: 0.9, bodyRad: 0.5, bodyHex: 0x5b5f4b,
   }),
   hellfire: look({
     id: 'hellfire', family: 'rail_dense', launch: 'rail', launchK: 1.2,
@@ -202,7 +207,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 4.5,
     smoke: { density: 0.6, c0: WHITE, c1: WHITE_AGED, size0: 0.5, size1: 2.6, life: 6, spacingM: 4.5, rise: 0.1, windK: 0.85,
       pulse: 0.05 },
-    wires: 0, wobbleM: 0.03, wobbleHz: 2, igniteM: 9, bodyLen: 1.2, bodyRad: 0.25, bodyHex: 0x55594f,
+    wires: 0, wobbleM: 0.03, wobbleHz: 2, spinM: 0.12, spinHz: 13, igniteM: 9, bodyLen: 1.2, bodyRad: 0.25, bodyHex: 0x55594f,
   }),
   mrm: look({
     id: 'mrm', family: 'hypersonic', launch: 'gun', launchK: 1,
@@ -225,7 +230,7 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
     plumeM: 6,
     smoke: { density: 0.8, c0: LIGHT, c1: WHITE_AGED, size0: 1.2, size1: 4.8, life: 6.5, spacingM: 5, rise: 0.12, windK: 0.85,
       pulse: 0.15 },
-    wires: 0, wobbleM: 0.05, wobbleHz: 1.4, igniteM: 0, bodyLen: 2.6, bodyRad: 0.75, bodyHex: 0x50553f,
+    wires: 0, wobbleM: 0.05, wobbleHz: 1.4, spinM: 0.08, spinHz: 10, igniteM: 0, bodyLen: 2.6, bodyRad: 0.75, bodyHex: 0x50553f,
   }),
 });
 
@@ -293,6 +298,20 @@ export function missileWobble(l: MissileLook, t: number, seed: number, out: numb
   const p = seed * 6.2831853;
   out[0] = l.wobbleM * ramp * (0.7 * Math.sin(w * t + p) + 0.3 * Math.sin(w * 2.37 * t + 1.7 * p));
   out[1] = l.wobbleM * ramp * 0.6 * (0.7 * Math.sin(w * 0.83 * t + 2.1 + p) + 0.3 * Math.sin(w * 1.91 * t + 0.4 * p));
+  return out;
+}
+
+/**
+ * (EF.04) A roll-stabilised round's tracer offset (m) at flight time t: the flare rides a helix of spinM about the body's
+ * axis at the roll rate, opening over the first half second as the round spins up (the body and its smoke stay on the
+ * axis). `out` gets [side, up]; zero for a roll-controlled round.
+ */
+export function missileSpin(l: MissileLook, t: number, seed: number, out: number[]): number[] {
+  const r = l.spinM ?? 0;
+  if (!(r > 0) || !(t > 0)) { out[0] = 0; out[1] = 0; return out; }
+  const a = Math.PI * 2 * (l.spinHz ?? 0) * t + seed * 6.2831853;
+  const k = r * Math.min(1, t / 0.5);
+  out[0] = k * Math.cos(a); out[1] = k * Math.sin(a);
   return out;
 }
 

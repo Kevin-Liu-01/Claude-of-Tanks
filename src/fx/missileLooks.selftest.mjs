@@ -7,7 +7,7 @@ import { Vector3, PerspectiveCamera } from 'three';
 import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { isUnguidedRocket } from '../sim/launcherPolicy.ts';
-import { MISSILE_LOOKS, missileLookFor, firedIsMissile, missileWobble, missileFlicker } from './missileLooks.ts';
+import { MISSILE_LOOKS, missileLookFor, firedIsMissile, missileWobble, missileFlicker, missileSpin } from './missileLooks.ts';
 import { missileLaunch, missileIgnition, missileTrailPuff } from './missileRecipes.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import { makeVolumePuff } from './volumeMedia.ts';
@@ -81,6 +81,19 @@ assert.deepEqual(w, [0, 0], 'no offset at launch');
 let maxW = 0;
 for (let t = 0; t < 8; t += 0.01) { missileWobble(L.mclos, t, 0.3, w); maxW = Math.max(maxW, Math.hypot(w[0], w[1])); }
 assert.ok(maxW > 0.25 && maxW <= L.mclos.wobbleM * 1.2, `MCLOS wobbles within its amplitude (${maxW.toFixed(2)} m)`);
+// (EF.04) a roll-stabilised round's flare corkscrews about its line (a full turn per 1/spinHz s); a fire-and-forget, rail
+// or hypersonic round flies roll-controlled, without one
+{
+  const still = L.mclos;
+  const turn = 1 / still.spinHz, q = [0, 0], r = [0, 0];
+  missileSpin(still, 2, 0.4, q); missileSpin(still, 2 + turn / 2, 0.4, r);
+  assert.ok(Math.abs(Math.hypot(q[0], q[1]) - still.spinM) < 1e-9, 'the helix keeps its radius');
+  assert.ok(Math.hypot(q[0] + r[0], q[1] + r[1]) < 1e-6, 'half a roll later the flare is across the line');
+  missileSpin(L.spike, 2, 0.4, q);
+  assert.deepEqual(q, [0, 0], 'no helix without a roll');
+  for (const id of ['mclos', 'konkurs', 'milan', 'stinger', 'rocket']) assert.ok(L[id].spinM > 0 && L[id].spinHz > 0, `${id} spins`);
+  for (const id of ['spike', 'hellfire', 'mrm', 'arkan', 'viper']) assert.ok(!(L[id].spinM > 0), `${id} flies roll-controlled`);
+}
 missileWobble(L.tow, 1.234, 0.7, w); const a = [...w]; missileWobble(L.tow, 1.234, 0.7, w);
 assert.deepEqual(w, a, 'the same time, the same offset');
 for (let t = 0; t < 3; t += 0.013) {

@@ -1,7 +1,7 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
-import { firedIsMissile, missileFlicker, missileLookFor, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
+import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
 import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
@@ -4328,8 +4328,12 @@ function* createFxSteps(
     const lit = d >= look.igniteM;
     const flick = missileFlicker(look, t, seedU);
     writeGuidedBody(_mPos, dir, look, lit, flick);
-    // the motor at the body's tail
+    // the motor at the body's tail; (EF.04) a roll-stabilised round's tracer rides its helix about the axis
     _mHead.copy(_mPos).addScaledVector(dir, -(0.65 + 0.625 * look.bodyLen));
+    if (look.spinM) {
+      missileSpin(look, timed ? t : 0, seedU, _wob);
+      _mHead.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    }
     // the motor lighting clear of the launcher (crossed since the last frame)
     const lastD = trail.lastD as number;
     if (blast && look.igniteM > 0.5 && lit && lastD >= 0 && lastD < look.igniteM) {
