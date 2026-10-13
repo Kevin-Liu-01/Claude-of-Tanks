@@ -40,11 +40,12 @@ import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMed
 import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
-  kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
-  waterBurst,
+  armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, exhaustSpacing, craterEjecta, dustSurge, fragmentStrike,
+  groundBurst, isExplosive, kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
+  smolderPuff as mediaSmolderPuff, trackSkirt, trackSkirtSpacing, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
+import { createTrailCadence } from './trailCadence.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
@@ -4479,25 +4480,40 @@ function* createFxSteps(
     particles.emit('sparks', _strkO);
   }
 
-  // destruction-fx: the media tier's track skirt — about one body per ~4 m of a track's travel (dust() runs every
-  // ~0.55 m of it), none past ~260 m, and at most SKIRT_BUDGET bodies alive at once (each lives ~4-6 s) so a column of
-  // moving hulls never crowds the media pool the bursts draw from
+  // destruction-fx: the media tier's track skirt, none past ~260 m, and at most SKIRT_BUDGET bodies alive at once (each
+  // lives ~3-5 s) so a column of moving hulls never crowds the media pool the bursts draw from.
+  // EF.01 (the owner, 2026-10-12: "separated into little clouds ... instead of being continuous"): deploy 208 raised a
+  // body on a coin toss per dust() call (one per ~2-6 m of a track, Poisson-spaced); each track now lays one every
+  // trackSkirtSpacing() metres of its own travel (trailCadence: even at any frame rate), sized so neighbours overlap.
+  // Past 60 % of the budget the bodies grow and space out together (fewer, wider, still touching) before the cap.
   const SKIRT_BUDGET = 240;
   const skirtBirths = new Float64Array(SKIRT_BUDGET);
   let skirtHead = 0, skirtCount = 0;
+  // the trail sources: each track's contact (skirt) and each engine's stack (exhaust), matched by place
+  const TRAIL_SKIRT = 0, TRAIL_EXHAUST = 1;
+  // an engine's billow bursts (exhaust): the rate while one lasts, a rise of the load that starts one, how long it lasts
+  // and the rest before the next can start
+  const EXHAUST_BURST_RATE = 9, EXHAUST_THROTTLE_UP = 0.3, EXHAUST_BURST_S = 0.7, EXHAUST_BURST_REST_S = 1.5;
+  const fxTrails = createTrailCadence(96);
   function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
     surface: number, gy: number): void {
     if (!blast) return;
     const k = surface === 2 ? 1.6 : groundType === 'hard' ? 0.7 : 0.55;
-    if (rng() > 0.15 * Math.min(1.3, k)) return;
     const cam = engineCtx && engineCtx.camera;
     if (cam && cam.position.distanceToSquared(_camV.set(pos.x, gy, pos.z)) > 260 * 260) return;
     const now = particles.getTime();
     while (skirtCount > 0 && now - skirtBirths[skirtHead] > 6) { skirtHead = (skirtHead + 1) % SKIRT_BUDGET; skirtCount--; }
-    if (skirtCount >= SKIRT_BUDGET) return;
-    skirtBirths[(skirtHead + skirtCount) % SKIRT_BUDGET] = now;
-    skirtCount++;
-    trackSkirt(blast, pos.x, gy, pos.z, dir.x, dir.z, intensity, surface === 2 ? 'sand' : groundType === 'hard' ? 'concrete' : 'soil', k, 0);
+    const spread = 1 + 1.5 * Math.max(0, skirtCount / SKIRT_BUDGET - 0.6) / 0.4;
+    const spacing = trackSkirtSpacing(intensity, k, distBoost(pos.x, gy, pos.z) * spread);
+    const n = fxTrails.step(TRAIL_SKIRT, pos.x, pos.z, now, spacing, 0, 3);
+    const births = fxTrails.births;
+    const kind = surface === 2 ? 'sand' : groundType === 'hard' ? 'concrete' : 'soil';
+    for (let i = 0; i < n && skirtCount < SKIRT_BUDGET; i++) {
+      const ageS = births[i * 3 + 2];
+      skirtBirths[(skirtHead + skirtCount) % SKIRT_BUDGET] = now - ageS;
+      skirtCount++;
+      trackSkirt(blast, births[i * 3], gy, births[i * 3 + 1], dir.x, dir.z, intensity, kind, k, -ageS, spread);
+    }
   }
 
   function drySurfaceMultiplier(groundType: string): number {
@@ -6019,9 +6035,11 @@ function* createFxSteps(
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
       // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
-      // a moving hull trails a low skirt of its ground's own dust — heavy on sand, light on grass, none on wet ground or
-      // snow (their spray and powder stay the battle's); it replaces the dry wake's sprites
-      const skirt = !!blast && groundType !== 'soft' && surface !== 3;
+      // a hull on sand trails a skirt of its own dust over the contact powder.
+      // EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on
+      // earth and grass the dry wake's continuous rolling ribbons are back on every tier (deploy 207's sprites, to the
+      // last draw); deploy 208's media skirt there (07512bb07) had replaced them with separate clouds
+      const skirt = !!blast && surface === 2;
       if (skirt && !frozen) mediaTrackSkirt(pos, dir, intensity, groundType, surface, gy);
       if (surface !== 0) {
         if (!frozen) emitTrackPowder(pos, dir, intensity, gy, surface);
@@ -6031,7 +6049,6 @@ function* createFxSteps(
       const sizeVariation = 0.6 + rng() * 0.8;
       const alphaVariation = 0.55 + rng() * 0.65;
       emitTrackKick(pos, dir, intensity, groundType, gy);
-      if (skirt) return;
       emitDryTrackWake(
         pos, dir, intensity, groundType, gy, surfaceMultiplier, sizeVariation, alphaVariation,
       );
@@ -6052,14 +6069,42 @@ function* createFxSteps(
      */
     exhaust(pos: THREE.Vector3, intensity: number, sooty = false, vel: THREE.Vector3 | null = null,
       fwd: THREE.Vector3 | null = null, birthOffset = 0): void {
-      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: a puff at an engine's own
-      // rate (a diesel's 3-7 a second with load, a turbine's 2-4) with the hull's motion, which the wind bends and the
-      // media's shear and eddies break up; the cold start coughs a short stream
-      if (blast) {
+      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: round 7b's billow, with
+      // the hull's motion, which the wind bends and the media's shear and eddies break up.
+      // EF.01 (the owner, 2026-10-12: the smoke from tanks "used to look more uniform ... continuous. like how it was
+      // before"; the coordinator's ruling, 2026-10-13): a running hull's exhaust is deploy 207's thin continuous sprite
+      // streak below, on every tier; the billow is only an engine's bursts — its start (the cold-start cough) and a
+      // throttle-up (the load jumping above what the engine ran at a moment ago), laid by the stack's travel
+      // (trailCadence) so a burst under way is one connected gulp, not beads
+      let coldBelch = true;
+      if (blast && vel) {
+        const coldStartM = battleFreshS < 2.2;
+        const now = particles.getTime() + birthOffset;
+        const n = fxTrails.step(TRAIL_EXHAUST, pos.x, pos.z, now,
+          exhaustSpacing(Math.hypot(vel.x, vel.z), distBoost(pos.x, pos.y, pos.z)), 1 / EXHAUST_BURST_RATE, 4);
+        const o = fxTrails.last * 2, aux = fxTrails.aux;
+        if (fxTrails.fresh) { aux[o] = intensity; aux[o + 1] = -1e9; }
+        // the load the engine has been running at: it follows a drop within a second or so and a rise slowly, so a
+        // throttle-up after a real lift (a bot's or a player's brief stab of the pedal is not one) stands above it
+        const base = aux[o], dt = fxTrails.lastDt;
+        if (intensity - base > EXHAUST_THROTTLE_UP && now > aux[o + 1] + EXHAUST_BURST_REST_S) aux[o + 1] = now + EXHAUST_BURST_S;
+        aux[o] = base + (intensity - base) * Math.min(1, dt * (intensity > base ? 1.5 : 2));
+        if (coldStartM || now < aux[o + 1]) {
+          const births = fxTrails.births;
+          const load = coldStartM ? Math.max(0.9, intensity) : intensity;
+          for (let i = 0; i < n; i++) {
+            exhaustPuff(blast, births[i * 3], pos.y, births[i * 3 + 1], vel.x, vel.z, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+              load, sooty, birthOffset - births[i * 3 + 2]);
+          }
+        }
+        // the cold start is the billow's here, not the sprites' belch
+        coldBelch = false;
+      } else if (blast) {
+        // a Studio one-shot (an engine-smoke or exhaust beat, no hull motion): round 7b's billow at the engine's rate
         const coldStartM = battleFreshS < 2.2;
         const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
         if (rng() > rate / 60) return;
-        exhaustPuff(blast, pos.x, pos.y, pos.z, vel ? vel.x : 0, vel ? vel.z : 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+        exhaustPuff(blast, pos.x, pos.y, pos.z, 0, 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
           coldStartM ? Math.max(0.9, intensity) : intensity, sooty, birthOffset);
         return;
       }
@@ -6073,7 +6118,7 @@ function* createFxSteps(
       // whoosh a tall pale heat plume. Rate floor raised so the beat cannot
       // miss the sweep.
       const coldStart = battleFreshS < 2.2;
-      if (coldStart && rng() < 0.35) {
+      if (coldStart && coldBelch && rng() < 0.35) {
         // r5 (critic: "cold-start belch is a single detached white cotton-
         // ball floating above the deck"): each belch event now emits a
         // 3-puff STREAM anchored at the louvres — small at the stack,
@@ -6343,6 +6388,7 @@ function* createFxSteps(
       structDebris?.reset();
       stages?.reset();
       skirtHead = 0; skirtCount = 0;
+      fxTrails.reset();
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;
       pendingHeCount = 0;
