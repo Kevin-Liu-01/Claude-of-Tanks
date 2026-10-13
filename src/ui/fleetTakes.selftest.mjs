@@ -251,7 +251,29 @@ if (existsSync(shipped)) {
   coverage = `the shipped index gives ${takes.size} of ${production.size} production vehicles their take`;
 }
 
+// At most two loops play at once on a page (the coordinator, 2026-10-13): a third pauses the one playing longest, which
+// resumes once a slot frees while still in view, and the viewer's own play always wins a slot.
+{
+  const capped = await freshModule();
+  const frames = [0, 1, 2].map(() => dom.document.createElement('div'));
+  const players = frames.map((f) => capped.createFleetTakePlayer(f));
+  const videos = frames.map((f) => f.children[0]);
+  for (const [i, p] of players.entries()) {
+    p.show(take);
+    dom.intersect(frames[i], 0, true);
+    dom.intersect(frames[i], 0.6);
+  }
+  assert.deepEqual(videos.map((v) => v.paused), [true, false, false], 'a third loop pauses the one playing longest');
+  dom.intersect(frames[1], 0, true);
+  assert.deepEqual(videos.map((v) => v.paused), [false, true, false], 'a freed slot resumes the crowded loop in view');
+  dom.intersect(frames[1], 0.6);
+  assert.deepEqual(videos.map((v) => v.paused), [false, false, true], 'the newest to start crowds out the longest playing');
+  players[2].toggle();
+  assert.deepEqual(videos.map((v) => v.paused), [true, false, false], "the viewer's play wins a slot");
+  for (const p of players) p.dispose();
+}
+
 uninstall();
 if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator);
 console.log('fleetTakes.selftest: one lazy index lookup, invalid entries refused, poster first, playback only on screen and '
-  + `with motion allowed, pause, release, take changes, failures and the Studio link passed; ${coverage}`);
+  + `with motion allowed, pause, release, take changes, failures, two playing at most and the Studio link passed; ${coverage}`);

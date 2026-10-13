@@ -112,6 +112,34 @@ const RELEASE_MS = 15000;
 const HIDDEN_RELEASE_MS = 5000;
 // Playback needs a quarter of the frame on screen; the poster loads once the frame is within a quarter screen of it.
 const VISIBLE_RATIO = 0.25;
+// At most two loops play at once on a page (the coordinator, 2026-10-13): a third that starts pauses the one that has
+// played longest, which resumes once a slot frees while it is still in view; the viewer's own play always wins a slot.
+const MAX_PLAYING = 2;
+interface PlayingSlot { crowded: boolean; sync(): void }
+const playingNow: PlayingSlot[] = [];
+const crowdedOut = new Set<PlayingSlot>();
+function claimSlot(slot: PlayingSlot): void {
+  if (playingNow.includes(slot)) return;
+  playingNow.push(slot);
+  while (playingNow.length > MAX_PLAYING) {
+    const oldest = playingNow.shift();
+    if (!oldest) break;
+    oldest.crowded = true;
+    crowdedOut.add(oldest);
+    oldest.sync();
+  }
+}
+function vacateSlot(slot: PlayingSlot): void {
+  const at = playingNow.indexOf(slot);
+  if (at < 0) return;
+  playingNow.splice(at, 1);
+  for (const waiting of [...crowdedOut]) {
+    if (playingNow.length >= MAX_PLAYING) break;
+    crowdedOut.delete(waiting);
+    waiting.crowded = false;
+    waiting.sync();
+  }
+}
 
 export interface FleetTakePlayer {
   /** Show this take's poster, and its loop once the frame is visible and motion is allowed; null empties the frame. */
@@ -172,17 +200,23 @@ export function createFleetTakePlayer(frame: HTMLElement, autoplay: () => boolea
     video.removeAttribute('src');
     video.load();
   };
-  const playing = (): boolean => !!take && take.loop !== failed && visible && !document.hidden
+  const slot: PlayingSlot = { crowded: false, sync: () => sync() };
+  const playing = (): boolean => !!take && take.loop !== failed && visible && !document.hidden && !slot.crowded
     && (wanted || (!held && !manualPlayback(motion) && autoplay()));
 
   const sync = (): void => {
     if (!take) {
+      vacateSlot(slot);
+      crowdedOut.delete(slot);
+      slot.crowded = false;
       release();
       control.hidden = true;
       return;
     }
     if (near && video.getAttribute('poster') !== take.poster) video.poster = take.poster;
     const play = playing();
+    if (play) claimSlot(slot);
+    else vacateSlot(slot);
     if (play) {
       if (releaseTimer) clearTimeout(releaseTimer);
       releaseTimer = 0;
@@ -215,6 +249,10 @@ export function createFleetTakePlayer(frame: HTMLElement, autoplay: () => boolea
     const play = !playing();
     wanted = play;
     held = !play;
+    if (play) {
+      crowdedOut.delete(slot);
+      slot.crowded = false;
+    }
     sync();
   };
   control.addEventListener('click', (event) => {
@@ -266,6 +304,8 @@ export function createFleetTakePlayer(frame: HTMLElement, autoplay: () => boolea
       document.removeEventListener('visibilitychange', sync);
       motion?.removeEventListener?.('change', sync);
       take = null;
+      vacateSlot(slot);
+      crowdedOut.delete(slot);
       release();
       video.remove();
       control.remove();
