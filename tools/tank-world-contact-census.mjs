@@ -68,9 +68,11 @@ function mulberry32(seed) {
 }
 /** Up to `count` candidates in a seeded order, each at least `spacing` metres from those already taken. */
 function spreadPick(candidates, count, spacing, seed) {
-  const random = mulberry32(seed);
-  const keyed = candidates.map((c) => ({ c, k: random() }));
-  keyed.sort((a, b) => a.k - b.k);
+  // (2026-10-13) each candidate's key is a hash of its place (its 2 m cell), not of its index in the list: a tree whose
+  // records differ (a stone's record redrawn, a formation's fallen mass added) picks the same stones where both have them,
+  // so a run id names the same stone on main and on a fix and the ledger's pairs compare like with like
+  const keyed = candidates.map((c) => ({ c, k: placeKey(seed, c.x, c.z) }));
+  keyed.sort((a, b) => a.k - b.k || a.c.x - b.c.x || a.c.z - b.c.z);
   const out = [];
   for (const { c } of keyed) {
     if (out.length >= count) break;
@@ -78,6 +80,14 @@ function spreadPick(candidates, count, spacing, seed) {
     out.push(c);
   }
   return out;
+}
+
+/** A deterministic key in [0, 1) for a place (its 2 m cell) under a seed. */
+function placeKey(seed, x, z) {
+  let h = (seed ^ Math.imul(Math.round(x / 2) | 0, 73856093) ^ Math.imul(Math.round(z / 2) | 0, 19349663)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
 // ---- record geometry ----------------------------------------------------------------------------------------------
@@ -908,6 +918,8 @@ export function ledger(rows, baseRows = null) {
     for (const row of rows) {
       const base = baseById.get(`${row.id}|${row.hull}`);
       if (!base) continue;
+      // (a run id names a place: one whose site moved more than 1.5 m between the trees is another feature, not a pair)
+      if (row.site && base.site && Math.hypot(row.site.x - base.site.x, row.site.z - base.site.z) > 1.5) { compare.unpaired = (compare.unpaired ?? 0) + 1; continue; }
       compare.matched++;
       for (const d of base.defects) if (!row.defects.includes(d)) compare.fixed[d] = (compare.fixed[d] ?? 0) + 1;
       for (const d of row.defects) {
@@ -984,7 +996,7 @@ export function ledgerMarkdown(report, { title = 'Tank-world contact census', no
     lines.push(`| ${map} | ${m.runs} | ${m.withDefect} | ${m.score} |`);
   }
   if (report.compare) {
-    lines.push('', '## Against the base census', '', `${report.compare.matched} runs matched by id and hull.`, '',
+    lines.push('', '## Against the base census', '', `${report.compare.matched} runs matched by id, hull and place${report.compare.unpaired ? ` (${report.compare.unpaired} ids at another place, left out)` : ''}.`, '',
       `Fixed: ${Object.entries(report.compare.fixed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`, '',
       `New: ${Object.entries(report.compare.regressed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`);
     for (const r of report.compare.regressedRuns.slice(0, 30)) lines.push(`- \`${r.id}\` ${r.hull}: ${r.defect} ${r.base} -> ${r.now}`);
