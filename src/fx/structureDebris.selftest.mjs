@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { PIECE_DRAG, createStructureDebris, pieceLanding } from './structureDebris.ts';
+import { createDebrisChunks, makeChunkPiece } from './debrisChunks.ts';
 
 const out = new Float64Array(4);
 
@@ -39,6 +40,12 @@ const out = new Float64Array(4);
   const ground = (x, z) => 0.4 * x + 0.1 * z;
   pieceLanding(0, 6, 0, 1.5, 0.5, -0.8, 0.05, ground, out);
   assert.ok(Math.abs(out[1] - ground(out[2], out[3])) < 1e-9, 'the slope under where it lands');
+}
+
+// ---- a clod thrown up off the ground it starts in (a crater's floor) flies, and lands where its flight comes down
+{
+  const t = pieceLanding(0, 0.02, 0, 2, 5, 0, 0.1, () => 0, out);
+  assert.ok(t > 0.8 && out[2] > 1, `it flies before it lands (${t.toFixed(2)} s, ${out[2].toFixed(2)} m)`);
 }
 
 // ---- a piece that starts in the ground (laid in a rising heap) lies on its surface at once; one that never comes down
@@ -87,6 +94,27 @@ const out = new Float64Array(4);
   now += 1;
   debris.update();
   debris.reset();
+}
+
+// ---- the blasts' chunks (debrisChunks: a wall's bricks, a field's clods, a prop's planks) land the same way: given the
+// ground as drawn, a chunk thrown off a 2 m bank lies on the street below, not at the bank's height
+{
+  let t = 0;
+  const ground = (x) => (x < 1 ? 2 : 0);
+  const chunks = createDebrisChunks({ seed: 3, now: () => t, groundAt: ground });
+  const k = makeChunkPiece();
+  Object.assign(k, { shape: 'brick', x: 0, y: 2.3, z: 0, vx: 4, vy: 1, vz: 0, life: 6, scale: 0.25, groundY: 2, drag: 0.3 });
+  chunks.emit(k);
+  chunks.update();
+  const pool = chunks.group.children.find((m) => m.name === 'fx-chunks-brick');
+  const g = pool.geometry;
+  assert.ok(g.getAttribute('aLT').getX(0) > 0, 'its landing age is carried');
+  assert.equal(g.getAttribute('aSG').getY(0), 0, 'and the ground where it lands: the street');
+  // without a ground sampler a chunk keeps its recipe's ground (the legacy law, a negative landing)
+  const legacy = createDebrisChunks({ seed: 3, now: () => t });
+  legacy.emit(k);
+  const lg = legacy.group.children.find((m) => m.name === 'fx-chunks-brick').geometry;
+  assert.ok(lg.getAttribute('aLT').getX(0) < 0);
 }
 
 console.log('structureDebris selftest: ok');
