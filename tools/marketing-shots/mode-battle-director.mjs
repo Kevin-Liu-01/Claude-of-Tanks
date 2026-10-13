@@ -436,7 +436,7 @@ export function installModeBattleDirector() {
     const shell = p.spec?.gun?.shells?.[slot];
     const vel = shell?.velocityMps || 1500;
     // MB.setAim({ aimAt: 'ammoRack' }) lays the gun on a module's own volume (spec.armor.modules) instead of the hull
-    const module = MB.aim?.aimAt && t.ent ? H.moduleWorld(t.ent, MB.aim.aimAt) : null;
+    const module = MB.aim?.aimAt && t.ent ? H.moduleWorld(t.ent, MB.aim.aimAt, { turret: !!MB.aim.aimTurret }) : null;
     const ox = module ? module.x - t.x : 0, oz = module ? module.z - t.z : 0;
     let ax = t.x + ox, az = t.z + oz;
     const ay = module ? module.y : t.y + t.h * (MB.aim?.heightFrac ?? 0.5);
@@ -447,8 +447,10 @@ export function installModeBattleDirector() {
     return { x: ax, y: ay, z: az, pivot };
   }
   /** World centre of a tank's largest module box of that name (src/vehicles/specHelpers.ts ModuleBox). */
-  H.moduleWorld = (t, name) => {
-    const boxes = (t?.spec?.armor?.modules || []).filter((b) => b.module === name && b.min && b.max);
+  // { turret: true } prefers the module's turret-borne volumes (a bustle rack) over the hull's
+  H.moduleWorld = (t, name, { turret = false } = {}) => {
+    let boxes = (t?.spec?.armor?.modules || []).filter((b) => b.module === name && b.min && b.max);
+    if (turret && boxes.some((b) => b.turretLocal)) boxes = boxes.filter((b) => b.turretLocal);
     if (!boxes.length) return null;
     const volume = (b) => Math.abs((b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]));
     const b = boxes.reduce((a, c) => (volume(c) > volume(a) ? c : a));

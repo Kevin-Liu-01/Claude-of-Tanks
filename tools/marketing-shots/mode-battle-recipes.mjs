@@ -449,29 +449,42 @@ export const RECIPES = {
       // three passes hit staged three-quarter targets on their frontal and spaced armour (nonpen, spaced_absorb,
       // screen_pierce) and never reached a rack. The staged targets now hold still showing a side and a rear
       // quarter, and the gun waits for a 2 mrad lay on the rack.
+      // r3 (mp3): a Merkava 3C held side-on took every round as nonpen, its rack low in the rear hull behind the road
+      // wheels and skirts. The first lane now goes to an enemy whose rack rides in the turret (a bustle: a thin side
+      // over the rounds), and the gun lays on that turret volume.
+      let mark = null;
       if (contact?.lanes?.length) {
         const turned = await ctx.eval((ids) => {
           const H = window.__MB.H, g = H.g(), p = H.player(), out = [];
-          ids.forEach((id, i) => {
-            const t = g.tankById.get(id);
-            if (!H.live(t)) return;
+          const bustle = (t) => (t?.spec?.armor?.modules || []).some((b) => b.module === 'ammoRack' && b.turretLocal);
+          const lanes = ids.map((id) => g.tankById.get(id)).filter(H.live);
+          const swap = H.enemies().filter((t) => bustle(t) && !lanes.includes(t))
+            .sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos))[0];
+          if (lanes[0] && !bustle(lanes[0]) && swap) {
+            const at = { x: lanes[0].state.pos.x, z: lanes[0].state.pos.z }, was = { x: swap.state.pos.x, z: swap.state.pos.z };
+            H.place(swap, at.x, at.z); H.place(lanes[0], was.x, was.z);
+            lanes[0] = swap;
+          }
+          lanes.forEach((t, i) => {
             const toP = Math.atan2(p.state.pos.x - t.state.pos.x, p.state.pos.z - t.state.pos.z);
             H.place(t, t.state.pos.x, t.state.pos.z, i % 2 ? toP + Math.PI - 0.65 : toP + Math.PI / 2);
             H.freezeBot(t);
-            out.push({ id, aspect: i % 2 ? 'rear quarter' : 'side' });
+            out.push({ id: t.id, specId: t.specId, aspect: i % 2 ? 'rear quarter' : 'side', bustleRack: bustle(t) });
           });
           return out;
         }, contact.lanes.map((l) => l.id));
         ctx.note(`staged targets held still, turned to show the shooter a side and a rear quarter: ${JSON.stringify(turned)}`);
+        mark = turned.find((t) => t.bustleRack)?.id || turned[0]?.id || null;
       }
       // lay the gun on the ammunition's own volume (Realistic damages modules only, every module hit counts)
-      await ctx.mb('setAim', { target: 'nearestEnemyClear', aimAt: 'ammoRack', heightFrac: 0.35 });
+      const target = mark ? `entity:${mark}` : 'nearestEnemyClear';
+      await ctx.mb('setAim', { target, aimAt: 'ammoRack', aimTurret: true, heightFrac: 0.35, fallback: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 2 });
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'scope', target: 'nearestEnemyClear', zoom: 8, hud: 'full' },
-          { kind: 'chase', target: 'nearestEnemyClear', step: 3, hud: 'full' },
+          { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },
+          { kind: 'chase', target, fallback: 'nearestEnemyClear', step: 3, hud: 'full' },
         ],
         cameraEvery: 6,
         triggers: [
