@@ -67,12 +67,12 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     }),
     capture_the_flag: Object.freeze({
       id: 'capture_the_flag', label: 'Capture the Flag', shortLabel: 'CTF', icon: 'modeFlag',
-      description: 'Steal the enemy flag and return it home. First to three captures wins.',
+      description: `Steal the enemy flag and return it home. First to ${RULESET_SCORE_TARGETS.capture_the_flag} captures wins.`,
       respawns: true,
     }),
     zone_control: Object.freeze({
-      id: 'zone_control', label: 'Zone Control', shortLabel: '750', icon: 'modeZones',
-      description: 'Capture and hold three sectors. First team to 750 points wins.',
+      id: 'zone_control', label: 'Zone Control', shortLabel: String(RULESET_SCORE_TARGETS.zone_control), icon: 'modeZones',
+      description: `Capture and hold three sectors. First team to ${RULESET_SCORE_TARGETS.zone_control} points wins.`,
       respawns: true,
     }),
     turbo_ball: Object.freeze({
@@ -97,7 +97,7 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     // settings"): Olympus Basin's zone objective under its own physics, with boost caches for the humans.
     mars: Object.freeze({
       id: 'mars', label: 'Gravity Mode', shortLabel: 'GRAV', icon: 'modeMars',
-      description: 'Olympus Basin under a galaxy sky: 0.38 g, long jumps, respawns and boost caches. Hold the station sectors — first team to 750 points wins.',
+      description: `Olympus Basin under a galaxy sky: low gravity, long jumps, respawns and boost caches. Hold the station sectors — first team to ${RULESET_SCORE_TARGETS.mars} points wins.`,
       respawns: true,
     }),
     juggernaut: Object.freeze({ id: 'juggernaut', label: 'Juggernaut', shortLabel: 'BOSS', icon: 'modeJuggernaut',
@@ -105,7 +105,8 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     infected: Object.freeze({ id: 'infected', label: 'Infected', shortLabel: 'INFECT', icon: 'modeInfected',
       description: 'Survive the outbreak. Destroyed survivors return on the infected side.', respawns: true }),
     realistic: Object.freeze({ id: 'realistic', label: 'Realistic', shortLabel: 'REAL', icon: 'modeRealistic',
-      description: 'Every tank stays visible. Disable modules, eliminate the crew or detonate ammunition; there is no hull-health victory.', respawns: false }),
+      // the ruleset plays normal spotting (alwaysVisible: false); 2026-10-13 the copy had said every tank stays visible
+      description: 'Normal spotting. Disable modules, eliminate the crew or detonate ammunition; there is no hull-health victory.', respawns: false }),
     gun_game: Object.freeze({ id: 'gun_game', label: 'Gun Game', shortLabel: 'GUNS', icon: 'modeGunGame',
       description: 'Earn confirmed kills to advance through five weapons. Complete the final weapon to win.', respawns: true }),
     drone: Object.freeze({ id: 'drone', label: 'Drone', shortLabel: 'FPV', icon: 'modeDrone',
