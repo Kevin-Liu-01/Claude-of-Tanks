@@ -863,6 +863,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
+    'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/ui/hitEventFormat.selftest.mjs',
     'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/shotSchematic.selftest.mjs',
