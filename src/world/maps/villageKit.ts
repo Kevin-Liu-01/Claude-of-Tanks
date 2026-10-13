@@ -566,6 +566,31 @@ export function makeMinaret(rng: () => number, buckets: GeometryBuckets): Struct
 
 /** Urban corner shop: 2-story block, chamfered corner entrance, display
  * glass on both street faces, signboard + string course. */
+/**
+ * The corner shop's cut corner (+x, +z): its legs along each face, and a point `out` metres in front of the cut face's
+ * middle (the face looks along (1, 0, 1) / sqrt 2).
+ */
+const CORNER_CUT = 0.86;
+function onCornerCut(w: number, d: number, out: number): [number, number] {
+  const k = out / Math.SQRT2;
+  return [w / 2 - CORNER_CUT / 2 + k, d / 2 - CORNER_CUT / 2 + k];
+}
+/** A plan polygon (x, z) extruded from y0 up to y1: the cap faces up and down, the sides out. */
+function planSolid(points: ReadonlyArray<readonly [number, number]>, y0: number, y1: number, uvScale = 0.5): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  points.forEach(([x, z], i) => (i ? shape.lineTo(x, -z) : shape.moveTo(x, -z)));
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: y1 - y0, bevelEnabled: false });
+  geometry.rotateX(-Math.PI / 2).translate(0, y0, 0);
+  return scaleUV(geometry, uvScale, uvScale);
+}
+/** The shop's plan inset by `inset` from its walls, its +x +z corner cut. */
+function cornerShopPlan(w: number, d: number, inset = 0): Array<[number, number]> {
+  // (the cut line moved in by `inset` meets the inset faces CORNER_CUT - inset (2 - sqrt 2) from their corner)
+  const x = w / 2 - inset, z = d / 2 - inset, c = CORNER_CUT - inset * (2 - Math.SQRT2);
+  return [[-x, -z], [x, -z], [x, z - c], [x - c, z], [-x, z]];
+}
+
 function addCornerShopEntrance(
   parts: BuildingParts,
   wallBucket: string,
@@ -573,18 +598,27 @@ function addCornerShopEntrance(
   d: number,
   wallH: number,
 ): void {
-  const chamfer = box(2.3, wallH, 0.9);
-  chamfer.rotateY(-Math.PI / 4);
-  parts[wallBucket].push(chamfer.translate(w / 2 - 0.75, wallH / 2, d / 2 - 0.75));
+  // (the buildings stream, 2026-10-13, the weird-buildings survey: the entrance's chamfer was a slab turned across the
+  // shop's full corner, so its ends stuck out of both faces as wedges and the door and sign, turned the other way, stood
+  // inside the wall) the body's corner is cut (makeCornerShop); on the cut face, a pier of the wall, the door with its
+  // leaf, the sign over it
+  const turn = Math.PI / 4, face = CORNER_CUT * Math.SQRT2;
+  const pier = box(face, wallH, 0.06);
+  pier.rotateY(turn);
+  const [px, pz] = onCornerCut(w, d, 0.03);
+  parts[wallBucket].push(pier.translate(px, wallH / 2, pz));
   const door = box(1.15, 2.35, 0.14);
-  door.rotateY(-Math.PI / 4);
-  parts.wood.push(door.translate(w / 2 - 0.42, 1.2, d / 2 - 0.42));
+  door.rotateY(turn);
+  const [dx, dz] = onCornerCut(w, d, 0.07);
+  parts.wood.push(door.translate(dx, 1.2, dz));
   const leaf = box(0.92, 2.15, 0.07);
-  leaf.rotateY(-Math.PI / 4);
-  parts.dark.push(leaf.translate(w / 2 - 0.38, 1.15, d / 2 - 0.38));
-  const sign = box(2.1, 0.55, 0.12);
-  sign.rotateY(-Math.PI / 4);
-  parts.wood.push(sign.translate(w / 2 - 0.50, 2.85, d / 2 - 0.50));
+  leaf.rotateY(turn);
+  const [lx, lz] = onCornerCut(w, d, 0.125);
+  parts.dark.push(leaf.translate(lx, 1.15, lz));
+  const sign = box(face - 0.02, 0.55, 0.12);
+  sign.rotateY(turn);
+  const [sx, sz] = onCornerCut(w, d, 0.06);
+  parts.wood.push(sign.translate(sx, 2.85, sz));
 }
 
 function addCornerShopDisplays(parts: BuildingParts, w: number, d: number): void {
@@ -620,8 +654,10 @@ function addCornerShopUpperWindows(
   for (const face of [0, 1]) {
     const along = face === 0 ? w : d;
     const count = Math.max(2, Math.round(along / 2.5));
+    // (spaced along the face's length short of the cut corner: the last sill stood past the cut)
+    const run = along - CORNER_CUT;
     for (let k = 0; k < count; k++) {
-      const position = -along / 2 + (k + 0.5) * (along / count);
+      const position = -along / 2 + (k + 0.5) * (run / count);
       if (rng() < 0.12) continue;
       const pane = box(0.05, 1.2, 0.8);
       const sill = box(0.2, 0.10, 1.05);
@@ -649,16 +685,26 @@ function addCornerShopParapet(
   wallH: number,
 ): void {
   const parapetHeight = 0.7;
-  const y = wallH + parapetHeight / 2;
-  parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, d / 2 - 0.11));
+  const y = wallH + parapetHeight / 2, c = CORNER_CUT;
+  // (the front and right parapets and the front coping stop at the cut corner, the cut carries its own run; the roof
+  // deck's corner is cut with the walls: they ran on over the cut face, a parapet and a slab's corner in the air)
+  parts[wallBucket].push(box(w - c, parapetHeight, 0.22).translate(-c / 2, y, d / 2 - 0.11));
   parts[wallBucket].push(box(w, parapetHeight, 0.22).translate(0, y, -d / 2 + 0.11));
-  parts[wallBucket].push(box(0.22, parapetHeight, d).translate(w / 2 - 0.11, y, 0));
+  parts[wallBucket].push(box(0.22, parapetHeight, d - c).translate(w / 2 - 0.11, y, -c / 2));
   parts[wallBucket].push(box(0.22, parapetHeight, d).translate(-w / 2 + 0.11, y, 0));
-  parts.stone.push(box(w + 0.14, 0.10, 0.32)
-    .translate(0, wallH + parapetHeight + 0.05, d / 2 - 0.11));
+  parts.stone.push(box(w + 0.07 - c, 0.10, 0.32)
+    .translate(-(0.07 + c) / 2, wallH + parapetHeight + 0.05, d / 2 - 0.11));
   parts.stone.push(box(w + 0.14, 0.10, 0.32)
     .translate(0, wallH + parapetHeight + 0.05, -d / 2 + 0.11));
-  parts.roof.push(slabBox(w - 0.3, 0.08, d - 0.3, 0.3).translate(0, wallH + 0.1, 0));
+  const deck = planSolid(cornerShopPlan(w, d, 0.15), wallH + 0.06, wallH + 0.14, 0.3);
+  parts.roof.push(deck);
+  // the cut corner's parapet and coping (new parts: no placement-stream draws)
+  const [ax, az] = onCornerCut(w, d, -0.11), run = c * Math.SQRT2;
+  const cutParapet = box(run, parapetHeight, 0.22).rotateY(Math.PI / 4).translate(ax, y, az);
+  const cutCoping = box(run + 0.06, 0.10, 0.32).rotateY(Math.PI / 4).translate(ax, wallH + parapetHeight + 0.05, az);
+  for (const g of [cutParapet, cutCoping]) g.userData.uvJitter = 'none';
+  parts[wallBucket].push(cutParapet);
+  parts.stone.push(cutCoping);
 }
 
 export function makeCornerShop(
@@ -670,12 +716,18 @@ export function makeCornerShop(
   const wallH = 6.6, roofH = 0.7;
   const parts = newParts();
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
-  parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  // the body with its +x +z corner cut for the entrance (the buildings stream, 2026-10-13: it was a full box)
+  parts[wallBucket].push(planSolid(cornerShopPlan(w, d), 0, wallH));
   addCornerShopEntrance(parts, wallBucket, w, d, wallH);
   addCornerShopDisplays(parts, w, d);
-  // string course + upper windows
-  parts.stone.push(box(w + 0.16, 0.14, 0.10).translate(0, 3.3, d / 2 + 0.04));
-  parts.stone.push(box(0.10, 0.14, d + 0.16).translate(w / 2 + 0.04, 3.3, 0));
+  // string course + upper windows (each run stops at the cut corner, which carries its own: they crossed it in the air)
+  const c = CORNER_CUT;
+  parts.stone.push(box(w + 0.08 - c, 0.14, 0.10).translate(-(0.08 + c) / 2, 3.3, d / 2 + 0.04));
+  parts.stone.push(box(0.10, 0.14, d + 0.08 - c).translate(w / 2 + 0.04, 3.3, -(0.08 + c) / 2));
+  const [cx, cz] = onCornerCut(w, d, 0.04);
+  const cutCourse = box(c * Math.SQRT2 + 0.1, 0.14, 0.10).rotateY(Math.PI / 4).translate(cx, 3.3, cz);
+  cutCourse.userData.uvJitter = 'none';
+  parts.stone.push(cutCourse);
   addCornerShopUpperWindows(rng, parts, w, d);
   addCornerShopParapet(parts, wallBucket, w, d, wallH);
   pushParts(buckets, parts);
