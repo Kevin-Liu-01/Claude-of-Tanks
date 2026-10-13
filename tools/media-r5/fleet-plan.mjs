@@ -43,7 +43,10 @@ const led = new Set(siteHeroes.map(([hero]) => hero));
 const only = arg('only')?.split(',');
 const heroes = PRODUCTION_TANK_IDS.filter((id) => !led.has(id) && (!only || only.includes(id)));
 const spec = (id) => TANK_SPECS[id];
-const nameOf = (id) => CAST_NAMES[id]?.[0] ?? spec(id).name;
+// a spec name a title cannot carry as it is: the Type 10's "(TK-X)" reads as the retired X tier (site50.selftest)
+const TITLE_NAMES = { type10: { en: 'Type 10 prototype', zh: 'Type 10 原型车' } };
+const nameOf = (id) => TITLE_NAMES[id]?.en ?? CAST_NAMES[id]?.[0] ?? spec(id).name;
+const zhNameOf = (id) => TITLE_NAMES[id]?.zh ?? nameOf(id);
 const EAST = new Set(['Russia', 'USSR/Russia', 'USSR', 'China']);
 const old = (id) => ['cold-war', 'ww2'].includes(spec(id).era);
 // the opposing force, by side and era (the source-backed models where the fleet has them)
@@ -104,7 +107,7 @@ const article = (name) => (/^[AEIOU]/i.test(name) || /^[FHLMNRSX](?=[A-Z0-9-]|$)
 const a = (name) => `${article(name)} ${name}`;
 const HOUR_EN = { golden: ' in the evening light', sunset: ' at sunset', morning: ' in the morning', night: ' at night', day: '' };
 const HOUR_ZH = { golden: '傍晚，', sunset: '日落时分，', morning: '清晨，', night: '夜间，', day: '' };
-function titles(action, name, foe, map, time) {
+function titles(action, name, foe, map, time, zhName = name, zhFoe = foe) {
   const m = mapName(map), h = action === 'night' ? '' : HOUR_EN[time];
   const en = {
     returnFire: `${a(name)} returns fire across ${m.en}${h}`, shellfire: `${a(name)} crosses ${m.en} through shellfire${h}`,
@@ -114,14 +117,15 @@ function titles(action, name, foe, map, time) {
     column: `${a(name)} leads the column through ${m.en}${h}`, night: `${a(name)} advances through ${m.en} at night`,
   }[action];
   // the fifty's Chinese style: 一辆 and a space on each side of a Latin name, the hour first
-  const p = action === 'night' ? '' : HOUR_ZH[time], n = `一辆 ${name} `, f = `一辆 ${foe}`;
+  // (a space only after a Latin name: 一辆 Leopard 2A5 在…, 一辆 Type 10 原型车在…)
+  const p = action === 'night' ? '' : HOUR_ZH[time], n = `一辆 ${zhName}${/[A-Za-z0-9)]$/.test(zhName) ? ' ' : ''}`, f = `一辆 ${zhFoe}`;
   const zh = {
     returnFire: `${p}${n}在${m.zh}还击`, shellfire: `${p}${n}冒着炮火穿越${m.zh}`, assault: `${p}${n}率队突击${m.zh}`,
     hold: `${p}${n}在${m.zh}坚守阵地`, kill: `${p}${n}在${m.zh}击毁${f}`, fires: `${p}${n}在${m.zh}开火`,
     onTheMove: `${p}${n}在${m.zh}行进间射击`, artillery: `${p}${n}冒着炮击冲过${m.zh}`, column: `${p}${n}率领纵队穿过${m.zh}`,
     night: `夜间，${n}穿过${m.zh}推进`,
   }[action];
-  return { title: { en, zh }, short: { en: `${name}, ${m.en}`, zh: `${name}，${m.zh}` } };
+  return { title: { en, zh }, short: { en: `${name}, ${m.en}`, zh: `${zhName}，${m.zh}` } };
 }
 
 // --- plan -----------------------------------------------------------------------------------------------------------
@@ -166,7 +170,7 @@ for (const [k, id] of order.entries()) {
   const name = nameOf(id), n = FIRST_N + roster.length;
   roster.push({ n, id: `${id.replace(/_/g, '-')}-${map.replace(/_/g, '-')}`, hero: id, nation: spec(id).nation, era: spec(id).era, map, time,
     anchor: [spot[0], spot[1]], heading: spot[2], template, action, lineup, foes, paint: [unit, enemy],
-    ...titles(action, name, nameOf(foes[0]), map, time) });
+    ...titles(action, name, nameOf(foes[0]), map, time, zhNameOf(id), zhNameOf(foes[0])) });
 }
 writeFileSync(OUT, `${JSON.stringify(roster, null, 1)}\n`);
 // every production vehicle's own take, for wherever the site shows that tank (site-media.mjs builds fleet/index.json from

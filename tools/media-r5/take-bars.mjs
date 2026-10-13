@@ -109,6 +109,7 @@ export function takeBars(shot, { cast = new Set(Object.values(CAST)), scene = si
 import { fileURLToPath as toPath } from 'node:url';
 if (process.argv[1] && toPath(import.meta.url) === process.argv[1]) {
   const { FLEET, OWNER_NINE, SHOTS } = await import('./site50.mjs');
+  await import('../../src/vehicles/tankFactory.ts');
   const { PRODUCTION_TANK_IDS } = await import('../../src/vehicles/specs.ts');
   const want = new Set((process.argv[2] ?? '').split(',').filter(Boolean).map(Number));
   const cast = new Set([...Object.values(CAST), ...PRODUCTION_TANK_IDS]);
