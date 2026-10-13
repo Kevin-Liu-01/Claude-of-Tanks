@@ -199,29 +199,77 @@ export const RECIPES = {
     windowS: 45,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
-      // drive at the ball and jump (F, the self-right / mode jump) when close
-      await ctx.mb('setDrive', { to: 'ball', arriveM: 3, throttle: 1 });
+      // r2 left the ball to the bots and filmed it 110 m out: a lone sphere in a field and the hoop seen from behind.
+      // Each round now sets the run up at the enemy goal mouth: no debug call places the ball, so the sim's own ball
+      // object (matchModeState.ball) is set down at rest 50 m out from bravo's hoop (alpha scores there:
+      // sim/matchModes ballScoringTeam), the player 22 m behind it facing the hoop and the nearest tanks behind the
+      // player; the player drives into the ball and jumps on the way (F, the mode jump), and the round ends with
+      // the goal (scoring revives every tank at its spawn).
       await ctx.mb('setOnFrame', `
         const p = H.player(), b = H.sel('ball'); if (!p || !b || !H.live(p)) return;
         const st = MB.onFrameState; const d = H.dist(p.state.pos, b);
-        if (d < 22 && p.state.grounded !== false && (!st.lastJump || performance.now() - st.lastJump > 2500)) { H.tap('selfRight'); st.lastJump = performance.now(); }`);
-      await ctx.until(() => {
-        const ms = window.__MB.H.ms();
-        const b = ms?.ball;
-        if (!b || !ms.goals?.length) return null;
-        const d = Math.min(...ms.goals.map((q) => Math.hypot(q.x - b.x, q.z - b.z)));
-        return d < 110 ? { goalDistM: Math.round(d) } : null;
-      }, { timeoutS: 50, label: 'the ball near a goal' });
-      await ctx.capture({
-        cameras: [
-          { kind: 'between', from: 'goalNearBall', to: 'ball', backM: 14, sideM: 7, heightM: 2.2, lookAtFrac: 0.55, fov: 48, smoothS: 0.3, hud: 'noreticle' },
-          { kind: 'follow', subject: 'ball', azimuthDeg: 35, distM: 20, heightM: 1.5, lookAtHeightM: 1.5, fov: 46, headingFrom: 'velocity', hud: 'noreticle' },
-          { kind: 'follow', subject: 'player', azimuthDeg: 30, distM: 14, heightM: 0.8, fov: 46, headingFrom: 'velocity', hud: 'noreticle' },
-        ],
-        cameraEvery: 3,
-        everyS: 1.0,
-        triggers: [T.anyFireOnScreen([30, 80], 300)],
-      });
+        if (d < 14 && d > 6 && Math.abs(p.state.speed || 0) > 7 && p.state.grounded !== false
+          && (!st.lastJump || performance.now() - st.lastJump > 2500)) { H.tap('selfRight'); st.lastJump = performance.now(); }`);
+      const stage = (round) => {
+        const H = window.__MB.H, ms = H.ms(), p = H.player();
+        if (!ms?.ball || !ms.goals?.length || !H.live(p)) return null;
+        const own = ms.perspectiveTeam || 'alpha';
+        const goal = ms.goals.find((x) => x.team !== own), home = ms.goals.find((x) => x.team === own);
+        if (!goal || !home) return null;
+        const len = Math.hypot(home.x - goal.x, home.z - goal.z) || 1;
+        const ux = (home.x - goal.x) / len, uz = (home.z - goal.z) / len, lx = uz, lz = -ux;
+        const at = (s, l, h = 0) => { const x = goal.x + ux * s + lx * l, z = goal.z + uz * s + lz * l; return [x, H.groundY(x, z) + h, z]; };
+        const discs = H.concealers();
+        for (const lat of [0, 12, -12, 24, -24, 36, -36]) {
+          for (const out of [50, 58, 44, 66]) {
+            const [bx, , bz] = at(out, lat), [px, , pz] = at(out + 22, lat * 1.08);
+            if (!H.openGround(bx, bz, 6, discs) || !H.openGround(px, pz, 6, discs)) continue;
+            const ball = ms.ball;
+            ball.x = bx; ball.z = bz; ball.y = H.groundY(bx, bz) + 2.2; ball.vx = 0; ball.vy = 0; ball.vz = 0; ball.lastTouchId = null;
+            H.place(p, px, pz, Math.atan2(bx - px, bz - pz));
+            const others = H.liveTanks().filter((t) => t !== p)
+              .sort((a, b) => H.dist(a.state.pos, { x: px, z: pz }) - H.dist(b.state.pos, { x: px, z: pz })).slice(0, 4);
+            const pursuers = [];
+            others.forEach((t, i) => {
+              const [x, , z] = at(out + 22 + 26 + 8 * i, lat + (i % 2 ? -1 : 1) * (9 + 5 * i));
+              if (!H.openGround(x, z, 4, discs)) return;
+              H.place(t, x, z, Math.atan2(bx - x, bz - z));
+              pursuers.push(t.id);
+            });
+            window.__MB.turboGoals = (ms.score?.alpha ?? 0) + (ms.score?.bravo ?? 0);
+            // fixed poses for the round: wide beside the mouth (the hoop and the run in one frame) or through the hoop,
+            // each from the first spot whose sight lines to the ball and the hoop nothing blocks
+            const ballAt = { x: bx, z: bz }, goalAt = { x: goal.x, z: goal.z };
+            // (laneClear skips foliage within 10 m of the eye, so the spot itself must stand clear of every disc)
+            const clear = (pos) => { const eye = { x: pos[0], y: pos[1], z: pos[2] };
+              return discs.every((c) => Math.hypot(c.x - pos[0], c.z - pos[2]) > c.r + 3)
+                && H.laneClear(eye, ballAt, 4.4, discs) && H.laneClear(eye, goalAt, 8, discs); };
+            const pick = (options) => options.find(clear) || options[0];
+            const wide = { kind: 'fixed', pos: pick([at(out * 0.5, lat + 52, 2.6), at(out * 0.5, lat - 52, 2.6), at(out * 0.62, lat + 44, 3.2), at(out * 0.62, lat - 44, 3.2)]),
+              look: at(out * 0.5, lat, 6), fov: 36, hud: 'noreticle' };
+            const hoop = { kind: 'fixed', pos: pick([at(-30, lat * 0.2 + 4, 6), at(-30, lat * 0.2 - 4, 6), at(-22, lat * 0.2, 7)]),
+              look: at(out - 5, lat, 3), fov: 30, hud: 'noreticle' };
+            return { round, ballOutM: out, lateralM: lat, pursuers, goal: goal.team, wide, hoop };
+          }
+        }
+        return null;
+      };
+      const follow = (azimuthDeg, distM, heightM) => ({ kind: 'follow', subject: 'player', azimuthDeg, distM, heightM, fov: 42, headingFrom: 'velocity', hud: 'noreticle' });
+      for (let round = 0; round < 4; round++) {
+        const staged = await ctx.eval(stage, round);
+        ctx.log(`round ${round + 1}`, JSON.stringify(staged && { ...staged, wide: undefined, hoop: undefined }));
+        if (!staged) { ctx.note('no open run at the enemy goal mouth was found'); break; }
+        if (round === 0) ctx.note('each round stages the run at the enemy goal: ball (matchModeState.ball) at rest 50 m out, player 22 m behind it, the nearest tanks behind the player');
+        const camera = [staged.wide, follow(28, 17, 0.9), staged.hoop, follow(-32, 15, 1.2)][round];
+        await ctx.mb('setDrive', { to: 'ball', arriveM: 1, throttle: 1 });
+        await ctx.capture({
+          label: `ram ${round + 1}`, windowS: 10, cameras: [camera], everyS: 0.7, minGapMs: 300,
+          triggers: [{ type: 'mode:ball_hit', who: 'any', onscreen: false, delays: [60, 220, 420, 700] }, T.anyFireOnScreen([30, 80], 300)],
+          stopWhen: () => { const s = window.__MB.H.ms()?.score; return !!s && s.alpha + s.bravo > (window.__MB.turboGoals ?? 0); },
+        });
+        await ctx.mb('setDrive', null);
+        await settle(ctx, 1.5);
+      }
     },
   },
 
@@ -239,14 +287,19 @@ export const RECIPES = {
       }, { ffStepS: 2, timeoutS: 240, label: 'horde wave 3' });
       ctx.log('wave', JSON.stringify(wave));
       ctx.note('waves 1-2 cleared with __DEBUG.slayEnemies to reach wave 3 quickly');
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 380, throttle: 0 })));
+      // r2 staged the wave 260 m out and filmed over the player's shoulder: specks on a horizon. The wave now stands
+      // 130-190 m out (four hostiles, their AI kept, so they charge), filmed from in front of the lead hostile and
+      // over the defenders on a longer lens
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 200, minRangeM: 90, throttle: 0, enemies: 4, dists: [130, 150, 170, 190] })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 4 });
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'between', from: 'player', to: 'nearestEnemy', backM: 11, sideM: 5, heightM: 2.2, lookAtFrac: 0.3, fov: 46, hud: 'noreticle' },
-          { kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' },
+          // low, ahead of the lead hostile looking back at it: the charge, the defenders' tracers coming past the lens
+          { kind: 'between', from: 'nearestEnemyClear', to: 'player', backM: -18, sideM: 8, heightM: 1.4, lookAtFrac: 0, lookAtHeightM: 1.8, fov: 36, smoothS: 0.3, hud: 'noreticle' },
+          // over the defenders toward the wave, longer lens so the hostiles read
+          { kind: 'between', from: 'player', to: 'nearestEnemy', backM: 12, sideM: 5, heightM: 3.0, lookAtFrac: 0.55, lookAtHeightM: 1.5, fov: 30, smoothS: 0.3, hud: 'noreticle' },
           { kind: 'follow', subject: 'player', azimuthDeg: 32, distM: 15, heightM: 1.1, fov: 44, hud: 'noreticle' },
         ],
         cameraEvery: 3,

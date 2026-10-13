@@ -648,10 +648,12 @@ export function installModeBattleDirector() {
   // ---------------------------------------------------------------- events and triggers
   const EVENT_TYPES = ['shell:fired', 'shell:hit', 'tank:destroyed', 'prop:crushed', 'tank:fire', 'module:state',
     'tank:spotted', 'player:spotted', 'battle:ended', 'ending:begin', 'ending:done', 'tank:ram', 'tank:impact',
-    'killcam:start', 'killcam:done', 'player:reload'];
+    'killcam:start', 'killcam:done', 'player:reload',
+    // the match modes' own events (game/state.ts drains matchModes emit('mode_x') onto the bus as 'mode:x')
+    'mode:ball_hit', 'mode:goal_scored', 'mode:flag_taken', 'mode:flag_captured', 'mode:flag_dropped'];
   const COPY = ['shooterId', 'id', 'targetId', 'attackerId', 'killerId', 'cause', 'kind', 'isPlayer', 'shellType',
     'shellName', 'caliberMm', 'rocket', 'destroyed', 'ammoRacked', 'fireStarted', 'damage', 'module', 'state',
-    'burning', 'team', 'speedMps', 'beat', 'specId', 'shellId', 'muzzleIndex'];
+    'burning', 'team', 'speedMps', 'beat', 'specId', 'shellId', 'muzzleIndex', 'by'];
   MB.attach = () => {
     const D = window.__DEBUG;
     if (!D?.bus?.on) return false;
@@ -673,6 +675,12 @@ export function installModeBattleDirector() {
         const t = g?.tankById?.get(p.id);
         if (t?.state) e.pos = [t.state.pos.x, t.state.pos.y + 1.5, t.state.pos.z];
       }
+      // a ram or shot on the Turbo Ball happens where the ball is; a flag event where its carrier is
+      if (!e.pos && type === 'mode:ball_hit') { const b = H.ms()?.ball; if (b) e.pos = [b.x, b.y, b.z]; }
+      if (!e.pos && type.startsWith('mode:flag') && p.by) {
+        const t = g?.tankById?.get(p.by);
+        if (t?.state) e.pos = [t.state.pos.x, t.state.pos.y + 1.5, t.state.pos.z];
+      }
     }
     MB.events.push(e);
     if (MB.events.length > 600) MB.events.splice(0, 200);
@@ -684,7 +692,7 @@ export function installModeBattleDirector() {
   }
   function whoMatches(rule, e) {
     const p = H.player();
-    const actor = e.shooterId ?? e.attackerId ?? e.killerId ?? e.id;
+    const actor = e.shooterId ?? e.attackerId ?? e.killerId ?? e.by ?? e.id;
     if (!rule.who || rule.who === 'any') return true;
     if (rule.who === 'player') return !!p && (actor === p.id || e.isPlayer === true);
     if (rule.who === 'notPlayer') return !!p && actor !== p.id;
@@ -718,11 +726,11 @@ export function installModeBattleDirector() {
         const base = nowMs() - MB.offsetMs;
         const screen = proj ? [Math.round(proj.x * 100) / 100, Math.round(proj.y * 100) / 100, Math.round(proj.distM)] : null;
         MB.burstQueue = delays.slice().sort((a, b) => a - b).map((d) => ({ at: base + d,
-          reason: { type: e.type, delayMs: d, seq: e.seq, burst: true, actor: e.shooterId ?? e.attackerId ?? e.killerId ?? e.id, kind: e.kind, cause: e.cause, screen } }));
+          reason: { type: e.type, delayMs: d, seq: e.seq, burst: true, actor: e.shooterId ?? e.attackerId ?? e.killerId ?? e.by ?? e.id, kind: e.kind, cause: e.cause, screen } }));
         return;
       }
       const delay = delays[(rule.n - 1) % delays.length];
-      MB.freezeIn(delay, { type: e.type, delayMs: delay, seq: e.seq, actor: e.shooterId ?? e.attackerId ?? e.killerId ?? e.id,
+      MB.freezeIn(delay, { type: e.type, delayMs: delay, seq: e.seq, actor: e.shooterId ?? e.attackerId ?? e.killerId ?? e.by ?? e.id,
         kind: e.kind, cause: e.cause, screen: proj ? [Math.round(proj.x * 100) / 100, Math.round(proj.y * 100) / 100, Math.round(proj.distM)] : null });
       return;
     }
