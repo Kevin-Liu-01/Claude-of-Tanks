@@ -71,9 +71,16 @@ const SEL = {
   survivorNearInfected: `const p = H.player(); if (!p) return null; const ours = H.liveTanks().filter((t) => t.team === p.team);
     let best = null, bd = Infinity; for (const e of H.enemies()) for (const s of ours) { const d = H.dist(e.state.pos, s.state.pos); if (d < bd) { bd = d; best = s; } }
     return H.info(best);`,
-  // the player's own flag base (a CTF carrier runs home to it)
-  carrierHome: `const f = ms && ms.flags && ms.flags.find((x) => x.status === 'carried' && x.carrierId); if (!f) return null;
-    const c = g.tankById.get(f.carrierId); if (!c) return null; const home = ms.flags.find((x) => x.team !== f.team);
+  // CTF: the carrier of the ENEMY flag (our side running it home, which the mustShow asks for; it wears the red
+  // flagEnemy highlight), else whoever carries a flag. ms.flags lists alpha's flag first, so the director's own
+  // flagCarrier follows an enemy that took OUR flag whenever both flags are out (r2 c036-c052).
+  ourCarrier: `const own = (ms && ms.perspectiveTeam) || 'alpha'; const fl = (ms && ms.flags) || [];
+    const f = fl.find((x) => x.status === 'carried' && x.carrierId && x.team !== own) || fl.find((x) => x.status === 'carried' && x.carrierId);
+    return f ? H.info(g.tankById.get(f.carrierId)) : null;`,
+  // the flag base that carrier scores at (its own side's), for the same carrier ourCarrier picks
+  carrierHome: `const own = (ms && ms.perspectiveTeam) || 'alpha'; const fl = (ms && ms.flags) || [];
+    const f = fl.find((x) => x.status === 'carried' && x.carrierId && x.team !== own) || fl.find((x) => x.status === 'carried' && x.carrierId);
+    if (!f || !g.tankById.get(f.carrierId)) return null; const home = fl.find((x) => x.team !== f.team);
     return home ? H.point(home.baseX, home.baseY, home.baseZ) : null;`,
   // the enemy nearest to the allied convoy (AC-130 escort)
   enemyNearConvoy: `const p = H.player(); if (!p) return null; const ours = H.liveTanks().filter((t) => t.team === p.team && t !== p);
@@ -110,25 +117,54 @@ export const RECIPES = {
     windowS: 45,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
-      const carried = await ctx.until(() => {
-        const ms = window.__MB.H.ms();
-        const f = ms?.flags?.find((x) => x.status === 'carried' && x.carrierId);
-        return f ? { carrier: f.carrierId, flag: f.team } : null;
-      }, { ffStepS: 3, timeoutS: 360, label: 'a flag carried' });
+      // the mustShow is our side running the ENEMY flag home: wait for that first, then settle for any carrier
+      const ours = await ctx.until(() => {
+        const ms = window.__MB.H.ms(); const own = ms?.perspectiveTeam || 'alpha';
+        const f = ms?.flags?.find((x) => x.status === 'carried' && x.carrierId && x.team !== own);
+        return f ? { carrier: f.carrierId, flag: f.team, ours: true } : null;
+      }, { ffStepS: 3, timeoutS: 300, label: 'the enemy flag carried by our side' });
+      const carried = ours || await ctx.until(() => {
+        const f = window.__MB.H.ms()?.flags?.find((x) => x.status === 'carried' && x.carrierId);
+        return f ? { carrier: f.carrierId, flag: f.team, ours: false } : null;
+      }, { ffStepS: 3, timeoutS: 120, label: 'a flag carried' });
       ctx.log('carried', JSON.stringify(carried));
       await settle(ctx, 2);
+      const triggers = [T.anyFireOnScreen(), T.hitOnScreen(), T.killOnScreen()];
+      // the carrier wears the mode's own flag-carrier highlight (game/juggernautVisual.ts TANK_ENERGY.flagOwn /
+      // flagEnemy: additive, strongest on surfaces seen edge-on). Front three-quarter views on a longer lens keep the
+      // hull, turret and gun reading as a tank through it (r2 c027); close low views turn it into a glowing shape.
+      const front = [
+        // ahead of the carrier on its run home, looking back at it: the flag, the carrier's front and its pursuers
+        { kind: 'between', from: 'ourCarrier', to: 'carrierHome', backM: -26, sideM: 9, heightM: 1.4, lookAtFrac: 0, lookAtHeightM: 2.0, fov: 32, smoothS: 0.3, hud: 'noreticle' },
+        { kind: 'follow', subject: 'ourCarrier', azimuthDeg: 26, distM: 22, heightM: 1.3, fov: 36, headingFrom: 'velocity', hud: 'noreticle' },
+        { kind: 'between', from: 'ourCarrier', to: 'carrierHome', backM: -30, sideM: -10, heightM: 1.8, lookAtFrac: 0, lookAtHeightM: 2.0, fov: 32, smoothS: 0.3, hud: 'noreticle' },
+      ];
       await ctx.capture({
-        cameras: [
-          // ahead of the carrier on its run home, looking back at it: the flag, the carrier's front and its pursuers
-          { kind: 'between', from: 'flagCarrier', to: 'carrierHome', backM: -18, sideM: 7, heightM: 1.2, lookAtFrac: 0, lookAtHeightM: 1.8, fov: 38, smoothS: 0.3, hud: 'noreticle' },
-          { kind: 'follow', subject: 'flagCarrier', azimuthDeg: 28, distM: 17, heightM: 1.0, fov: 40, headingFrom: 'velocity', hud: 'noreticle' },
-          { kind: 'between', from: 'flagCarrier', to: 'carrierHome', backM: -22, sideM: -8, heightM: 1.6, lookAtFrac: 0, lookAtHeightM: 1.8, fov: 40, smoothS: 0.3, hud: 'noreticle' },
-        ],
-        cameraEvery: 3,
-        triggers: [T.anyFireOnScreen(), T.hitOnScreen(), T.killOnScreen()],
-        everyS: 1.2,
-        stopWhen: () => !window.__MB.H.ms()?.flags?.some((x) => x.status === 'carried'),
+        label: 'run', windowS: 40, cameras: front, cameraEvery: 3, triggers, everyS: 1.2,
+        // hand over to the base camera for the last stretch
+        stopWhen: () => {
+          const H = window.__MB.H; const c = H.sel('ourCarrier'), h = H.sel('carrierHome');
+          return !c || !h || Math.hypot(c.x - h.x, c.z - h.z) < 85;
+        },
       });
+      const closing = await ctx.eval(() => {
+        const H = window.__MB.H; const c = H.sel('ourCarrier'), h = H.sel('carrierHome');
+        return c && h ? Math.round(Math.hypot(c.x - h.x, c.z - h.z)) : null;
+      });
+      ctx.log('closing', JSON.stringify({ distM: closing }));
+      if (closing != null && closing < 85) {
+        // the flag-base marker ahead of the carrier: from 60 m beyond its own base on a long lens, the base's halo
+        // and light column in the foreground and the carrier charging at them with the flag, pursuers behind it
+        await ctx.capture({
+          label: 'home', windowS: 22, cameraEvery: 3, triggers, everyS: 1.0,
+          cameras: [
+            { kind: 'between', from: 'carrierHome', to: 'ourCarrier', backM: 60, sideM: 6, heightM: 2.4, lookAtFrac: 1, lookAtHeightM: 1.8, fov: 13, smoothS: 0.35, hud: 'noreticle' },
+            front[1],
+            { kind: 'between', from: 'carrierHome', to: 'ourCarrier', backM: 45, sideM: -8, heightM: 2.0, lookAtFrac: 0.85, lookAtHeightM: 1.8, fov: 18, smoothS: 0.35, hud: 'noreticle' },
+          ],
+          stopWhen: () => !window.__MB.H.ms()?.flags?.some((x) => x.status === 'carried'),
+        });
+      }
     },
   },
 
