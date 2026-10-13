@@ -82,7 +82,8 @@ function delivery(id) {
   let found = null;
   for (const dir of ROUNDS) {
     const d = join(MEDIA, dir, id);
-    if (!existsSync(join(d, `${id}-4k.mp4`))) continue;
+    // a site take's round films it at 4K; a fleet take's (chain16) at 1080p only, its web cuts made from that
+    if (!existsSync(join(d, `${id}-4k.mp4`)) && !existsSync(join(d, `${id}.mp4`))) continue;
     const f = (name) => (existsSync(join(d, name)) ? join(d, name) : null);
     const take = { id, round: dir, current: CURRENT.includes(dir), dir: d,
       moment: f(`${id}.webp`), close: f(`${id}-close.webp`), momentPng: f(`${id}-4k.png`), closePng: f(`${id}-close-4k.png`),
