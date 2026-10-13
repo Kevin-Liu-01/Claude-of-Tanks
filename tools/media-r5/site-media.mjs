@@ -5,7 +5,7 @@
 // picks in tools/media-r5/site-media/picks.json, and the landing page's mobile proxies in public/media/web-video-r1.
 // manifest.json records every file's source, bytes and sha256; archive.json is the visual archive's library.
 //
-//   node tools/media-r5/site-media.mjs --root=<tree> [--only=stills,loops,proxies,reels,frames,films] [--force]
+//   node tools/media-r5/site-media.mjs --root=<tree> [--only=stills,loops,proxies,reels,frames,films,fleet,scenes] [--force]
 //   node tools/media-r5/site-media.mjs --root=<tree> --plan       what each slot ships, and what is missing
 // --fallback lets an older round stand in for a take the round has not delivered yet (drafts only: the manifest marks
 // it, and the shipped build has every take from the picks' round, each with its sound).
@@ -73,7 +73,8 @@ const webp = (src, out, q, size) => run('cwebp', ['-quiet', '-m', '6', '-sharp_y
 // --- sources ------------------------------------------------------------------------------------------------------
 // sources.deliverOver (r14b, 2026-10-12): a later round that re-filmed some takes (round 15: the rut-ring takes) is looked
 // up first, so its takes replace round 14's and the rest stay round 14's; both are current
-const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver].filter(Boolean);
+// sources.deliverFleet (2026-10-12): the fleet takes' own round (a take for every production vehicle, fleet-plan.mjs)
+const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver, PICKS.sources.deliverFleet].filter(Boolean);
 const ROUNDS = [...CURRENT, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
 const deliveries = new Map();
 function delivery(id) {
@@ -328,7 +329,44 @@ function buildFilms() {
 // whose git history is the take's version history), and scenes/index.json, which the Studio's Director workspace lists
 // (src/ui/studioProductionPanel.ts): the take's titles in both languages, its map, its length, its thumbnail and its
 // scene. Loading a card stages the take as it was filmed, ready to change and film again.
-function buildScenes() {
+// The fleet (owner 2026-10-12: "make a special video for all tanks ... and use that everywhere"): every production
+// vehicle's own take (tools/media-r5/vehicle-takes.json: its fleet take, else its take among the owner's nine, else the
+// first of the fifty it leads) as a 960×540 silent VP9 loop and a poster, and fleet/index.json, which the Tank Gallery's
+// dossiers, the Garage's battle gallery, the manual and the Studio's Director read. A vehicle whose take is not delivered
+// yet is left out of the index (the app shows nothing for it).
+const FLEET_TAKES = join(ROOT, 'tools/media-r5/vehicle-takes.json'), FLEET_ROSTER = join(ROOT, 'tools/media-r5/fleet-roster.json');
+const fleetRoster = existsSync(FLEET_ROSTER) ? JSON.parse(readFileSync(FLEET_ROSTER, 'utf8')) : [];
+const fleetEntry = (takeId) => fleetRoster.find((r) => `s${r.n}-${r.id}` === takeId) ?? null;
+/** A take's titles and map, from the fleet roster or the picks. */
+function takeTitles(takeId) {
+  const r = fleetEntry(takeId);
+  if (r) return { title: r.title, short: r.short, map: r.map };
+  const t = PICKS.takes[takeId];
+  return t ? { title: { en: t.en, zh: t.zh }, short: { en: t.shortEn, zh: t.shortZh }, map: t.map } : null;
+}
+function buildFleet() {
+  const map = existsSync(FLEET_TAKES) ? JSON.parse(readFileSync(FLEET_TAKES, 'utf8')) : {};
+  const vehicles = {};
+  for (const [vehicle, takeId] of Object.entries(map)) {
+    const d = delivery(takeId), meta = takeTitles(takeId);
+    if (!d?.hd || !d.poster || !meta) continue;
+    const take = { take: takeId, round: d.round, vehicle };
+    make(join(OUT, 'fleet', `${vehicle}.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
+      '-vf', 'scale=960:540:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '36', '-b:v', '0', '-row-mt', '1',
+      '-deadline', 'good', '-cpu-used', '2', tmp]), take);
+    make(join(OUT, 'fleet', `${vehicle}.jpg`), d.poster, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.poster,
+      '-vf', 'scale=960:540:flags=lanczos', '-q:v', '4', tmp]), take);
+    vehicles[vehicle] = { take: takeId, map: meta.map, title: meta.title, short: meta.short,
+      loop: `${BASE_URL}/fleet/${vehicle}.webm`, poster: `${BASE_URL}/fleet/${vehicle}.jpg`, scene: `${BASE_URL}/scenes/${takeId}.scene.json` };
+  }
+  const index = join(OUT, 'fleet', 'index.json');
+  mkdirSync(dirname(index), { recursive: true });
+  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection, vehicles }, null, 1)}\n`);
+  record(index, null, { vehicles: Object.keys(vehicles).length });
+  return vehicles;
+}
+
+function buildScenes(fleet = {}) {
   const library = join(ROOT, 'tools/media-r5/site50-shots');
   const takes = [];
   for (const id of takeIds) {
@@ -340,6 +378,16 @@ function buildScenes() {
     takes.push({ id, title: { en: t.en, zh: t.zh }, short: { en: t.shortEn, zh: t.shortZh }, map: scene.map ?? t.map,
       durationMs: scene.storyboard?.durationMs ?? null, scene: `${BASE_URL}/scenes/${id}.scene.json`,
       thumb: `${BASE_URL}/stills/${id}-thumb.webp` });
+  }
+  // the fleet's takes join the Director's list as their own group, each with its vehicle (the site's own takes stay first)
+  for (const [vehicle, entry] of Object.entries(fleet)) {
+    if (takes.some((t) => t.id === entry.take)) continue;
+    const source = join(library, `${entry.take}.json`);
+    if (!existsSync(source)) continue;
+    copy(join(OUT, 'scenes', `${entry.take}.scene.json`), source);
+    const scene = JSON.parse(readFileSync(source, 'utf8'));
+    takes.push({ id: entry.take, group: 'fleet', vehicle, title: entry.title, short: entry.short, map: scene.map ?? entry.map,
+      durationMs: scene.storyboard?.durationMs ?? null, scene: entry.scene, thumb: entry.poster });
   }
   const index = join(OUT, 'scenes', 'index.json');
   writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection,
@@ -404,7 +452,8 @@ function main() {
   if (want('reels')) buildReels();
   if (want('frames')) buildFrames(frames);
   if (want('films')) buildFilms();
-  if (want('scenes')) buildScenes();
+  const fleet = want('fleet') ? buildFleet() : {};
+  if (want('scenes')) buildScenes(fleet);
   const proxies = want('proxies') ? buildProxies() : null;
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
