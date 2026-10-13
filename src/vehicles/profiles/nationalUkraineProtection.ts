@@ -51,7 +51,7 @@ const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:nu
 /**
  * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
  * solver chose on the bare kit, tools/gen-vehicle-marking-seats.mjs): the roof net is opened 26 cm round each, so the
- * finished vehicle still shows them (tank-assets-check's visibility receipt).
+ * finished vehicle still shows them (the tank asset check's marking visibility receipt).
  */
 const markOpening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
 
