@@ -225,7 +225,6 @@ interface RendererWorldProgramWarmOptions {
 const publishOnWindow = (receipt: WorldProgramWarmReceipt): void => {
   (globalThis as { __WORLD_PROGRAM_WARM?: WorldProgramWarmReceipt }).__WORLD_PROGRAM_WARM = receipt;
 };
-const defaultMaterialBeforeRender = THREE.Material.prototype.onBeforeRender;
 
 /** The warm on the game's renderer: compile against the scene pass's target, one covered pipeline draw per material. */
 export function createRendererWorldProgramWarm(
@@ -243,7 +242,8 @@ export function createRendererWorldProgramWarm(
     }
   };
   // One proxy per distinct material: the chunk's own geometry and material (the same program and vertex layout), never
-  // the chunk itself, which may not stand in the scene yet. A material with its own per-draw hook is left to the warm.
+  // the chunk itself, which may not stand in the scene yet. A material's per-draw hook (the terrain's receiver-only shadow
+  // guard, lighting.ts) sees the proxy, which shares the chunk's userData and casts no shadow.
   const proxiesFor = (root: Object3D): THREE.Mesh[] => {
     const proxies: THREE.Mesh[] = [];
     const seen = new Set<Material>();
@@ -251,11 +251,11 @@ export function createRendererWorldProgramWarm(
       const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; isSkinnedMesh?: boolean };
       const material = mesh.material;
       if (!mesh.isMesh || mesh.isInstancedMesh || mesh.isBatchedMesh || mesh.isSkinnedMesh || !mesh.geometry
-        || !material || Array.isArray(material) || seen.has(material)
-        || material.onBeforeRender !== defaultMaterialBeforeRender) return;
+        || !material || Array.isArray(material) || seen.has(material)) return;
       seen.add(material);
       const proxy = new THREE.Mesh(mesh.geometry, material);
       proxy.name = 'world-program-warm-proxy';
+      proxy.userData = mesh.userData;
       proxy.frustumCulled = false;
       proxy.matrixAutoUpdate = false;
       proxy.receiveShadow = mesh.receiveShadow;

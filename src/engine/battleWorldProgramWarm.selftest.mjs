@@ -193,11 +193,13 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
     type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(64, 64), stencilBuffer: false, samples: 4,
   });
   // the terrain under construction: not in the scene; two chunks share a material, a skirt has its own, a dressing
-  // instanced mesh and a material with its own per-draw hook are left to the warm
+  // instanced mesh is left to the warm; the splat carries a per-draw hook (lighting.ts's receiver-only shadow guard)
   const terrain = new THREE.Group(); terrain.name = 'terrain';
   const splat = new THREE.MeshStandardMaterial(), skirt = new THREE.MeshStandardMaterial(), hooked = new THREE.MeshStandardMaterial();
-  hooked.onBeforeRender = () => {};
+  const hookSaw = [];
+  splat.onBeforeRender = function (_renderer, _scene, _camera, _geometry, object) { hookSaw.push([object.castShadow, object.userData.chunk]); };
   const chunkA = new THREE.Mesh(new THREE.PlaneGeometry(), splat), chunkB = new THREE.Mesh(new THREE.PlaneGeometry(), splat);
+  chunkA.userData.chunk = 'a'; chunkA.castShadow = true;
   chunkB.visible = false; // a coarse level not shown yet still keys the same program
   const skirtMesh = new THREE.Mesh(new THREE.PlaneGeometry(), skirt);
   const pebbles = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);
@@ -224,6 +226,7 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
     render(renderScene, cam) {
       const visible = [];
       renderScene.traverseVisible((object) => { if (object.isMesh) visible.push(object); });
+      for (const mesh of visible) mesh.material.onBeforeRender(renderer, renderScene, cam, mesh.geometry, mesh, null);
       log.push(['render', target, visible, renderer.shadowMap.render !== shadowRender, renderScene.background]);
     },
   };
@@ -238,7 +241,7 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   const receipt = await warm.settled();
   assert.equal(receipt.status, 'drawn', JSON.stringify(receipt));
   assert.equal(receipt.materials, 4, 'every terrain material is submitted (the link needs no draw)');
-  assert.equal(receipt.drawn, 2, 'one pipeline draw per distinct material, the instanced and hooked ones left to the warm');
+  assert.equal(receipt.drawn, 3, 'one pipeline draw per distinct material, the instanced dressing left to the warm');
   assert.deepEqual(receipt.programIds, [100, 101, 102, 103], 'the receipt names the programs the battle should draw with');
   const [compile, render] = log;
   assert.equal(compile[0], 'compile');
@@ -249,9 +252,10 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   assert.equal(render[1].width, 8); assert.equal(render[1].height, 8);
   assert.equal(render[1].samples, 4); assert.equal(render[1].texture.type, THREE.HalfFloatType);
   assert.equal(render[1].depthTexture.type, sceneTarget.depthTexture.type, 'the scene target\'s formats');
-  assert.equal(render[2].length, 2, 'only the proxies draw');
+  assert.equal(render[2].length, 3, 'only the proxies draw');
   assert.ok(render[2].every((mesh) => mesh.name === 'world-program-warm-proxy' && mesh.frustumCulled === false));
-  assert.deepEqual(render[2].map((mesh) => mesh.material), [splat, skirt]);
+  assert.deepEqual(render[2].map((mesh) => mesh.material), [splat, skirt, hooked]);
+  assert.deepEqual(hookSaw, [[false, 'a']], 'the per-draw hook sees a proxy that casts nothing and shares the chunk\'s userData');
   assert.ok(render[2][0].geometry === chunkA.geometry, 'the chunk\'s own vertex layout');
   assert.equal(render[3], true, 'the shadow pass does not run during the draw');
   assert.equal(render[4], null, 'no background pass');
