@@ -17,6 +17,9 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
+import { isImagePreloaded, preloadImage } from './imagePreload.ts';
+import { mapCardFor } from './mapBackdrop.ts';
+import { MAP_THUMBS } from './mapThumbs.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -80,7 +83,14 @@ const CSS = `
 .cot-bl .hero{position:absolute;inset:0;z-index:-1;overflow:hidden;}
 .cot-bl .hero .art{position:absolute;inset:-4%;background-size:cover;
   background-position:center;filter:saturate(.82) contrast(1.08) brightness(.7);
-  transform:scale(1.04);}
+  transform:scale(1.04);background-image:linear-gradient(160deg,#1e2a1c,#0b1017 70%);}
+/* 2026-10-12 (the perf stream; owner: "loading into some maps still shows a black screen at first"): the map's art
+   is decoded before it is shown, over the map's own gradient (.art above), so an uncached 1.5 MB hero never leaves the
+   screen near-black while it downloads; the 1280 px card stands in until the hero is ready. */
+.cot-bl .hero .art-img{position:absolute;inset:-4%;background-size:cover;background-position:center;
+  filter:saturate(.82) contrast(1.08) brightness(.7);transform:scale(1.04);opacity:0;
+  transition:opacity 160ms var(--cot-ease-out);}
+.cot-bl .hero .art-img.ready{opacity:1;}
 .cot-bl .hero .art.none{background:linear-gradient(160deg,#1e2a1c,#0b1017 70%);}
 .cot-bl .hero .art.desert{background-image:linear-gradient(160deg,#6d5330,#241a10 72%);}
 .cot-bl .hero .art.winter{background-image:linear-gradient(160deg,#5d6b78,#141a20 72%);}
@@ -250,7 +260,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.setAttribute('role', 'status');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
-    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
+    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div><div class="vig"></div></div>` +
     `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
@@ -267,6 +277,38 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   document.body.appendChild(root);
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
+  const artImgEl = requiredElement<HTMLDivElement>(root, '.art-img');
+  // the map art in flight: a later show() supersedes it; a sharper image replaces a softer one, never the reverse
+  let artToken = 0;
+  let artRank = 0;
+  const showArt = (url: string, rank: number): void => {
+    if (rank <= artRank) return;
+    artRank = rank;
+    artImgEl.style.backgroundImage = `url(${url})`;
+    artImgEl.classList.add('ready');
+  };
+  /** The map's gradient at once, then the sharpest of its picker thumb (cached by the Garage's battlefield list), its
+   * 1280 px card and its hero that has decoded, each replacing the softer one. */
+  const stageArt = (thumb: string | undefined, biome: string | undefined): void => {
+    const token = ++artToken;
+    artRank = 0;
+    artEl.className = `art ${biome || 'none'}`;
+    artImgEl.classList.remove('ready');
+    artImgEl.style.backgroundImage = '';
+    const final = thumb || '';
+    if (!final) return;
+    const card = biome ? mapCardFor(biome) : null;
+    const pick = biome ? MAP_THUMBS[biome as keyof typeof MAP_THUMBS] ?? '' : '';
+    const steps: [string, number][] = [[final, 3]];
+    if (card && card !== final) steps.push([card, 2]);
+    if (pick && pick !== final && pick !== card) steps.push([pick, 1]);
+    for (const [url, rank] of steps) {
+      if (isImagePreloaded(url)) { showArt(url, rank); continue; }
+      void preloadImage(url, { priority: rank === 3 ? 'high' : 'auto' }).then((loaded) => {
+        if (loaded && token === artToken) showArt(loaded, rank);
+      });
+    }
+  };
   const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
   const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
@@ -348,8 +390,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     show(info: BattleLoadInfo) {
       nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
       if (info.mode) kickEl.textContent = info.mode;
-      artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
-      artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';
+      stageArt(info.thumb, info.biome);
       fillTeam(allyRows, allyN, allyTeam, info.allies);
       fillTeam(foeRows, foeN, foeTeam, info.enemies);
       const [h, b] = localizedTip(

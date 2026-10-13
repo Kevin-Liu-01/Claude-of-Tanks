@@ -102,12 +102,59 @@ try {
   assert.equal(screen.covering, true, 'an old fade cannot uncover a newly restaged load');
   assert.equal(screen.root.classList.contains('on'), true);
   assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'), 'pending entry clears a prior mode label');
-  assert.equal(selectors.get('.art').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
+  assert.equal(selectors.get('.art-img').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
+  assert.equal(selectors.get('.art-img').classList.contains('ready'), false);
+  assert.equal(selectors.get('.art').className, 'art none', 'a pending entry keeps the neutral gradient under the art');
   assert.equal(fill.style.transform, 'scaleX(0.000)', 'a new load resets the previous completed fill');
   const hidden = screen.hide();
   timers.shift()();
   await hidden;
   assert.equal(screen.covering, false);
+
+  // 2026-10-12 (the perf stream; owner: "loading into some maps still shows a black screen at first"): the screen shows the
+  // map's gradient at once and its art only once decoded — the card first while the 1.5 MB hero is still on its way, the
+  // hero over it — never an undecoded background over a near-black surface; a later show supersedes a load in flight.
+  {
+    const loads = [];
+    globalThis.Image = class { constructor() { this.decoding = ''; this.fetchPriority = ''; }
+      set src(url) { loads.push({ url, image: this }); } decode() { return Promise.resolve(); } };
+    const land = async (url) => { const at = loads.findIndex((l) => l.url === url); assert.ok(at >= 0, `${url} requested`);
+      const [{ image }] = loads.splice(at, 1); await image.onload(); for (let i = 0; i < 6; i++) await Promise.resolve(); };
+    const art = selectors.get('.art'), img = selectors.get('.art-img');
+    screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
+    assert.equal(art.className, 'art verdant', 'the map\'s gradient is up with the screen');
+    assert.equal(img.classList.contains('ready'), false, 'no art before it is decoded');
+    assert.deepEqual(loads.map((l) => l.url).sort(), ['/maps/cards/verdant.webp', '/maps/thumbs/verdant.webp', '/maps/verdant.webp'],
+      'the hero, the card and the picker thumb are all asked for at once');
+    await land('/maps/thumbs/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/thumbs/verdant.webp)');
+    assert.equal(img.classList.contains('ready'), true, 'the picker thumb (cached by the Garage) covers the gradient first');
+    await land('/maps/cards/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/cards/verdant.webp)', 'the card replaces the thumb');
+    await land('/maps/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)', 'the hero replaces the card once decoded');
+    // a sharper image is never replaced by a softer one that arrives later
+    screen.show({ mapName: 'Monsoon', thumb: '/maps/monsoon.webp', biome: 'monsoon', allies: [], enemies: [] });
+    await land('/maps/monsoon.webp');
+    await land('/maps/thumbs/monsoon.webp');
+    await land('/maps/cards/monsoon.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/monsoon.webp)');
+    // a decoded hero shows at once on the next entry
+    screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
+    assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)');
+    assert.equal(loads.length, 0);
+    // a superseded load never paints over the next battlefield
+    screen.show({ mapName: 'Steinburg', thumb: '/maps/urban.webp', biome: 'urban', allies: [], enemies: [] });
+    screen.show({ mapName: 'Ironworks', thumb: '/maps/foundry.webp', biome: 'foundry', allies: [], enemies: [] });
+    await land('/maps/urban.webp');
+    await land('/maps/thumbs/urban.webp');
+    assert.equal(img.style.backgroundImage, '', 'Steinburg\'s late hero stays off Ironworks\' screen');
+    assert.equal(art.className, 'art foundry');
+    delete globalThis.Image;
+    const cssText = elements.find(item => item.id === 'cot-bl-style').textContent;
+    assert.match(cssText, /\.cot-bl \.hero \.art\{[^}]*background-image:linear-gradient/, 'every map has a gradient under its art');
+    assert.match(cssText, /\.cot-bl \.hero \.art-img\{[^}]*opacity:0;/);
+  }
 
   const css = elements.find(item => item.id === 'cot-bl-style').textContent;
   assert.match(css, /\.cot-bl \.ffill\{[^}]*width:100%;[^}]*transform:scaleX\(0\);[^}]*transform-origin:left center;[^}]*transition:transform/);

@@ -121,6 +121,7 @@ import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
+import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -1344,6 +1345,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onMapSelect: (mapId: string) => {
     battleIntent.invalidateMapPlan();
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
+    // 2026-10-12 (the perf stream): the loading screen's art for the chosen battlefield, fetched and decoded in idle time
+    if (mapId !== 'random') preloadImageWhenIdle(battleBackdrop(mapId));
     // Guests can browse locally without changing the host's room map. Keep
     // that build alive until canonical room state accepts another map.
     if (!multiplayerLobby?.prepareLobby()) {
@@ -3504,6 +3507,8 @@ if (pendingRoomInvitePromise) {
 }
 window.__GAME_READY = true;
 pedestal.queueNeighbors();
+// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
+if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
