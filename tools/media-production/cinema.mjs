@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync, readdir
 import { createHash } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
+import { createCaptureLock, stampBehindWaiting, ticketAt } from '../capture-lock.mjs';
 import { digest, sourceDigest, contactSheet, leaseClock } from './pipeline.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
@@ -51,7 +51,6 @@ if (args.jobs && (rawJobs.some(job => !job.out) || new Set(rawJobs.map(job => re
 }
 // 2026-10-07 (the coordinator's alternating finals): a long batch runs as several leases, one process each; every lease
 // joins the queue at the batch's first stamp, so it follows whichever lane held the GPU in between, not the line's tail.
-const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(Number(args['ticket-stamp']));
 const leaseMs = Number(args['lease-min'] ?? 0) * 60000;
 if (!(leaseMs >= 0)) throw Error(help);
 
@@ -174,6 +173,9 @@ const framePlugin = {
 
 const lock = createCaptureLock();
 let server, browser, interrupted = false;
+// a place-keeping lease lets a waiting perf cost hold in first (the coordinator, 2026-10-13): it rejoins one past the
+// last perf band ticket waiting, read as it joins
+const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(stampBehindWaiting(Number(args['ticket-stamp'])));
 await lock.acquire(6 * 60 * 60 * 1000, { ticket });
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
 let leaseOver = false;

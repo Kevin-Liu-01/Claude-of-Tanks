@@ -10,11 +10,11 @@
 //   node tools/media-r5/site50-sync.mjs <resolvedDir> [<resolvedDir> ...]
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LOOP_MS, SHOTS, XFADE_MS, siteScene, turretStyle } from './site50.mjs';
+import { LOOP_MS, OWNER_NINE, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 import { choreograph, poseAt } from './turret-choreo.mjs';
 import { STUDIO_MAX_ACTOR_KEYS } from './setups.mjs';
 
-const byNumber = new Map(SHOTS.map(shot => [shot[0], shot]));
+const byNumber = new Map([...SHOTS, ...OWNER_NINE].map(shot => [shot[0], shot]));
 const sameFx = (a, b) => a.type === b.type && a.tMs === b.tMs && JSON.stringify(a.at) === JSON.stringify(b.at);
 for (const dir of process.argv.slice(2)) {
   let synced = 0;
@@ -40,7 +40,7 @@ for (const dir of process.argv.slice(2)) {
     // turrets, planned again on the resolved geometry (flank rounds from an earlier sync come out first)
     const planFx = plan.effects.filter(e => e.choreo);
     scene.effects = scene.effects.filter(e => !e.choreo && !planFx.some(p => sameFx(p, e)));
-    const style = turretStyle(n);
+    const style = plan.meta.turrets.style;
     const choreo = choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
     const dur = scene.storyboard.durationMs, tracks = scene.storyboard.actorTracks ?? (scene.storyboard.actorTracks = []);
     // a track the Studio cut at its 64-key cap (a 100 ms grid ends at 6.3 s) runs on along its last leg — the shot

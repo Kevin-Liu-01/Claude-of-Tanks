@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=2160, height=3840" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:2160px;height:3840px;overflow:hidden;background:#07090c}
+#root{position:relative;width:100%;height:100%;overflow:hidden;background:#07090c}
+.clip{position:absolute;inset:0}
+video.shot{width:100%;height:100%;object-fit:cover;background:#07090c}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="15" data-width="2160" data-height="3840">
+<video id="v01" class="clip shot" src="assets/shots/s06-farm-charge-p.mp4" muted playsinline data-start="0" data-duration="2.5" data-media-start="0" data-track-index="1"></video>
+<video id="v02" class="clip shot" src="assets/shots/s01-main-street-push-p.mp4" muted playsinline data-start="2.5" data-duration="1.25" data-media-start="0" data-track-index="2"></video>
+<video id="v03" class="clip shot" src="assets/shots/s16-street-duel-p.mp4" muted playsinline data-start="3.75" data-duration="1.25" data-media-start="0" data-track-index="1"></video>
+<video id="v04" class="clip shot" src="assets/shots/s11-container-rows-p.mp4" muted playsinline data-start="5" data-duration="1.25" data-media-start="0" data-track-index="2"></video>
+<video id="v05" class="clip shot" src="assets/shots/s27-caravanserai-kill-p.mp4" muted playsinline data-start="6.25" data-duration="1.25" data-media-start="0" data-track-index="1"></video>
+<video id="v06" class="clip shot" src="assets/shots/s14-snow-push-p.mp4" muted playsinline data-start="7.5" data-duration="1.25" data-media-start="0" data-track-index="2"></video>
+<video id="v07" class="clip shot" src="assets/shots/s33-water-tower-p.mp4" muted playsinline data-start="8.75" data-duration="1.25" data-media-start="0" data-track-index="1"></video>
+<div id="flashes-host" data-composition-id="flashes" data-composition-src="compositions/flashes.html" data-start="0" data-duration="15" data-track-index="5" data-width="2160" data-height="3840"></div>
+<div id="titles-host" data-composition-id="titles" data-composition-src="compositions/titles.html" data-start="0" data-duration="15" data-track-index="7" data-width="2160" data-height="3840"></div>
+<div id="endcard-host" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="10" data-duration="5" data-track-index="8" data-width="2160" data-height="3840"></div>
+<div id="grain-host" data-composition-id="grain" data-composition-src="compositions/grain.html" data-start="0" data-duration="15" data-track-index="9" data-width="2160" data-height="3840"></div>
+<audio id="mix" src="assets/audio/mix.wav" data-start="0" data-duration="15" data-track-index="20" data-volume="1"></audio>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>

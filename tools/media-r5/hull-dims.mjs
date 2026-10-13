@@ -2,7 +2,8 @@
 // Each media tank's contact rectangle (src/sim/tankContactShape.ts tankContactRect, the one the Studio's crush plan and
 // the battle's collider read): its half length and half width, so the planner's route and lens checks hold every hull
 // to its own size — a Challenger 3 prototype runs 9.2 m, a Hetman II stands 4.6 m wide — instead of one long MBT's.
-// Writes tools/media-r5/hull-dims.json for every tank the site fifty stages (heroes, allies and foes).
+// Writes tools/media-r5/hull-dims.json for every tank the site takes stage (the fifty, the owner's nine and the fleet's;
+// heroes, allies and foes).
 // Since 2026-10-08 (composition wave c3: barrels cut by the frame's edge in a third of the frames) each entry also holds
 // the muzzle's reach from the hull's centre with the turret ahead (the spec's overall length less half the hull's, never
 // short of the hull's own nose) and the silhouette's height: [halfLength, halfWidth, muzzleReach, heightM].
@@ -14,10 +15,10 @@ import { fileURLToPath } from 'node:url';
 await import('../../src/vehicles/fleetRegistration.ts');
 const { getSpec } = await import('../../src/vehicles/specs.ts');
 const { tankContactRect } = await import('../../src/sim/tankContactShape.ts');
-const { SHOTS, siteScene } = await import('./site50.mjs');
+const { FLEET, SHOTS, OWNER_NINE, siteScene } = await import('./site50.mjs');
 
 const ids = new Set();
-for (const shot of SHOTS) for (const a of siteScene(shot).actors) ids.add(a.id);
+for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET]) for (const a of siteScene(shot).actors) ids.add(a.id);
 const dims = {};
 for (const id of [...ids].sort()) {
   const spec = getSpec(id), rect = tankContactRect(spec), d = spec.dims ?? {};

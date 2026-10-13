@@ -1,0 +1,379 @@
+{
+ "fps": 30,
+ "width": 3840,
+ "height": 2160,
+ "duration": 80,
+ "letterbox": 2.39,
+ "letterboxIn": 0.25,
+ "audio": "assets/audio/mix.wav",
+ "grain": 0.07,
+ "shots": [
+  {
+   "id": "s16-street-duel",
+   "src": "assets/shots/s16-street-duel.mp4",
+   "start": 0,
+   "dur": 3.125,
+   "in": 0
+  },
+  {
+   "id": "s18-street-knockout",
+   "src": "assets/shots/s18-street-knockout.mp4",
+   "start": 3.125,
+   "dur": 1.875,
+   "in": 0
+  },
+  {
+   "id": "s41-church-tower",
+   "src": "assets/shots/s41-church-tower.mp4",
+   "start": 5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s18-street-knockout",
+   "src": "assets/shots/s18-street-knockout.mp4",
+   "start": 7.5,
+   "dur": 2.5,
+   "in": 1.2
+  },
+  {
+   "id": "s10-ford-shellfire",
+   "src": "assets/shots/s10-ford-shellfire.mp4",
+   "start": 10,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s30-temple-village",
+   "src": "assets/shots/s30-temple-village.mp4",
+   "start": 12.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s35-farm-village",
+   "src": "assets/shots/s35-farm-village.mp4",
+   "start": 15,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s37-river-village",
+   "src": "assets/shots/s37-river-village.mp4",
+   "start": 17.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s01-main-street-push",
+   "src": "assets/shots/s01-main-street-push.mp4",
+   "start": 20,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s04-column-under-fire",
+   "src": "assets/shots/s04-column-under-fire.mp4",
+   "start": 22.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s02-factory-road",
+   "src": "assets/shots/s02-factory-road.mp4",
+   "start": 25,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s09-harbor-run",
+   "src": "assets/shots/s09-harbor-run.mp4",
+   "start": 27.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s17-crossroads-fire",
+   "src": "assets/shots/s17-crossroads-fire.mp4",
+   "start": 30,
+   "dur": 1.25,
+   "in": 2.6
+  },
+  {
+   "id": "s21-fields-assault",
+   "src": "assets/shots/s21-fields-assault.mp4",
+   "start": 31.25,
+   "dur": 1.25,
+   "in": 0.1
+  },
+  {
+   "id": "s26-minaret-fire",
+   "src": "assets/shots/s26-minaret-fire.mp4",
+   "start": 32.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s25-alpine-village",
+   "src": "assets/shots/s25-alpine-village.mp4",
+   "start": 33.75,
+   "dur": 1.25,
+   "in": 0.1
+  },
+  {
+   "id": "s28-fjord-village",
+   "src": "assets/shots/s28-fjord-village.mp4",
+   "start": 35,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s11-container-rows",
+   "src": "assets/shots/s11-container-rows.mp4",
+   "start": 36.25,
+   "dur": 1.25,
+   "in": 0.1
+  },
+  {
+   "id": "s23-village-crossroads",
+   "src": "assets/shots/s23-village-crossroads.mp4",
+   "start": 37.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s19-roof-tiles",
+   "src": "assets/shots/s19-roof-tiles.mp4",
+   "start": 38.75,
+   "dur": 1.25,
+   "in": 0.1
+  },
+  {
+   "id": "s32-yard-salvo",
+   "src": "assets/shots/s32-yard-salvo.mp4",
+   "start": 40,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s06-farm-charge",
+   "src": "assets/shots/s06-farm-charge.mp4",
+   "start": 42.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s07-lake-shellfire",
+   "src": "assets/shots/s07-lake-shellfire.mp4",
+   "start": 45,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s24-ice-duel",
+   "src": "assets/shots/s24-ice-duel.mp4",
+   "start": 46.25,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s27-caravanserai-kill",
+   "src": "assets/shots/s27-caravanserai-kill.mp4",
+   "start": 47.5,
+   "dur": 2.5,
+   "in": 0.6
+  },
+  {
+   "id": "s20-road-return-fire",
+   "src": "assets/shots/s20-road-return-fire.mp4",
+   "start": 50,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "t24-studio-ui",
+   "src": "assets/shots/t24-studio-ui.mp4",
+   "start": 52.5,
+   "dur": 3.75,
+   "in": 0
+  },
+  {
+   "id": "s44-oasis-sunset",
+   "src": "assets/shots/s44-oasis-sunset.mp4",
+   "start": 56.25,
+   "dur": 1.5625,
+   "in": 0
+  },
+  {
+   "id": "s45-harbor-wide",
+   "src": "assets/shots/s45-harbor-wide.mp4",
+   "start": 57.8125,
+   "dur": 2.1875,
+   "in": 0
+  },
+  {
+   "id": "s34-furnace-salvo",
+   "src": "assets/shots/s34-furnace-salvo.mp4",
+   "start": 60,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s33-water-tower",
+   "src": "assets/shots/s33-water-tower.mp4",
+   "start": 61.25,
+   "dur": 1.25,
+   "in": 0.2
+  },
+  {
+   "id": "s38-church-knockout",
+   "src": "assets/shots/s38-church-knockout.mp4",
+   "start": 62.5,
+   "dur": 1.25,
+   "in": 0.4
+  },
+  {
+   "id": "s22-walking-barrage",
+   "src": "assets/shots/s22-walking-barrage.mp4",
+   "start": 63.75,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s47-ironworks-crane",
+   "src": "assets/shots/s47-ironworks-crane.mp4",
+   "start": 65,
+   "dur": 1.25,
+   "in": 0.2
+  },
+  {
+   "id": "s16-street-duel",
+   "src": "assets/shots/s16-street-duel.mp4",
+   "start": 66.25,
+   "dur": 1.25,
+   "in": 1.9
+  },
+  {
+   "id": "s41-church-tower",
+   "src": "assets/shots/s41-church-tower.mp4",
+   "start": 67.5,
+   "dur": 1.25,
+   "in": 1.5
+  },
+  {
+   "id": "s18-street-knockout",
+   "src": "assets/shots/s18-street-knockout.mp4",
+   "start": 68.75,
+   "dur": 1.25,
+   "in": 1.7
+  },
+  {
+   "id": "t37-mars-drone",
+   "src": "assets/shots/t37-mars-drone.mp4",
+   "start": 70,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "t21-earthrise-chase",
+   "src": "assets/shots/t21-earthrise-chase.mp4",
+   "start": 71.25,
+   "dur": 1.25,
+   "in": 0
+  }
+ ],
+ "titles": [
+  {
+   "kind": "logo",
+   "start": 7.5,
+   "dur": 2.45
+  },
+  {
+   "kind": "section",
+   "text": "MORNING",
+   "start": 10.3125,
+   "dur": 2.5
+  },
+  {
+   "kind": "stat",
+   "num": 33,
+   "label": "Battlefields",
+   "start": 22.5,
+   "dur": 2.4
+  },
+  {
+   "kind": "stat",
+   "num": 220,
+   "label": "Tanks",
+   "start": 31.25,
+   "dur": 2.5
+  },
+  {
+   "kind": "line",
+   "text": "Physical ballistics. Real armor.",
+   "start": 40.3125,
+   "dur": 2.5
+  },
+  {
+   "kind": "section",
+   "text": "SUNSET",
+   "start": 50.3125,
+   "dur": 2.1875
+  },
+  {
+   "kind": "line",
+   "text": "Direct your own war film",
+   "start": 52.8125,
+   "dur": 3.125
+  },
+  {
+   "kind": "section",
+   "text": "NIGHT",
+   "start": 60.3125,
+   "dur": 2.1875
+  },
+  {
+   "kind": "line",
+   "text": "Mars. The Moon.",
+   "start": 70.3125,
+   "dur": 2.1875
+  }
+ ],
+ "flashes": [
+  {
+   "t": 7.5,
+   "frames": 3
+  },
+  {
+   "t": 10,
+   "frames": 2,
+   "peak": 0.6
+  },
+  {
+   "t": 30,
+   "frames": 2
+  },
+  {
+   "t": 40,
+   "frames": 2,
+   "color": "#ffd27a",
+   "peak": 0.5
+  },
+  {
+   "t": 47.5,
+   "frames": 4
+  },
+  {
+   "t": 60,
+   "frames": 2
+  },
+  {
+   "t": 72.5,
+   "frames": 3
+  }
+ ],
+ "endcard": {
+  "start": 72.5,
+  "url": "cot.kevinliu.studio"
+ }
+}
