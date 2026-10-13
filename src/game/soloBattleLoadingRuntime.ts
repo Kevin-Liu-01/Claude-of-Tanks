@@ -47,6 +47,8 @@ interface BattleLoadTrace {
   worldTextureUpload?: TextureUploadTrace;
   /** Round 77c: the far-tree impostor atlas baked behind the veil (ms; baked false without a library). */
   impostorBake?: { baked: boolean; ms: number };
+  /** Option E (2026-10-13): the battle's light signature made final under the painted cover (ms). */
+  lightSignatureMs?: number;
   totalMs?: number;
   loadingElapsedMs?: number;
   visiblePreBattleS?: number;
@@ -145,6 +147,10 @@ export interface SoloBattleLoadingRuntimeOptions {
   scheduleDeferredWarm(generation: number): void;
   nextFrame(): Promise<void>;
   createLoadingYielder(budgetMs: number, maxDelayMs: number): WorkYielder;
+  /** The perf stream (2026-10-13, option E): under the painted cover, before the world is acquired, the battle's light
+   * signature becomes final (the Garage presentation out, the night pool in) and the map's world program warm is armed,
+   * so its terrain programs link while the world builds (main.ts prepareBattleLightSignature). */
+  prepareLightSignature?(mapId: string): Promise<void>;
   now?: () => number;
   delay?: (milliseconds: number) => Promise<void>;
 }
@@ -339,6 +345,7 @@ export function createSoloBattleLoadingRuntime(
   scheduleDeferredWarm,
   nextFrame,
   createLoadingYielder,
+  prepareLightSignature,
   now = () => performance.now(),
   delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
   } = options;
@@ -378,6 +385,11 @@ export function createSoloBattleLoadingRuntime(
         enemies: [],
       });
       await audio.startLoadingAfterPaint();
+      if (prepareLightSignature) {
+        const signatureAt = now();
+        await prepareLightSignature(resolved);
+        trace.lightSignatureMs = Math.round(now() - signatureAt);
+      }
       await ensureBattleVisuals();
       const battleVisuals = getBattleVisuals();
 

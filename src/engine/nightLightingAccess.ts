@@ -70,6 +70,18 @@ export function createNightLightingAccess(
     // First night uniforms/light signature are warm while input is covered.
     runtime.update(options.getCameraPosition());
   }
+  /** (2026-10-13, the perf stream: option E) The battle's fixed light pool joins the scene, dark and without emitters,
+   * as soon as the loading cover is up, so the world's programs can link during the build under the light signature the
+   * battle draws with. prepare() later collects the emitters into the same pool; reset() detaches it (the Garage). */
+  async function attachPool(): Promise<void> {
+    if (disposed) throw new Error('Night lighting access is disposed');
+    const requested = ++generation;
+    nightPrepared = false;
+    const runtime = await owner.preload();
+    if (disposed) { runtime.dispose(); return; }
+    if (requested !== generation) return;
+    runtime.prepare([], true);
+  }
   function appendEntity(entity: NightLightingEntity): void {
     if (!nightPrepared || disposed) return;
     const source = sourceFor(entity);
@@ -86,5 +98,10 @@ export function createNightLightingAccess(
     if (disposed) return;
     disposed = true; reset(); owner.current?.dispose();
   }
-  return { get current(): NightLightingRuntime | null { return owner.current; }, prepare, appendEntity, update, reset, dispose };
+  return {
+    get current(): NightLightingRuntime | null { return owner.current; },
+    /** The pool is in the scene (attachPool or prepare ran, and no reset since). */
+    get poolAttached(): boolean { return !!owner.current?.group.parent; },
+    prepare, attachPool, appendEntity, update, reset, dispose,
+  };
 }

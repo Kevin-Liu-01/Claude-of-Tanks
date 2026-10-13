@@ -884,6 +884,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/nightLightingAccess.selftest.mjs',
+    'src/engine/battleWorldProgramWarm.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',

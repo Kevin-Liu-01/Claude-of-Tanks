@@ -95,5 +95,7 @@ declare global {
     __VISUAL_LOAD_TIMINGS?: RuntimeValue[];
     __WORLD_LOAD?: RuntimeValue;
     __WORLD_PREFETCH?: RuntimeValue;
+    /** Option E (2026-10-13): the battle entry's world program warm (engine/battleWorldProgramWarm.ts). */
+    __WORLD_PROGRAM_WARM?: RuntimeValue;
   }
 }

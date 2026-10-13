@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createNightLightingAccess } from './nightLightingAccess.ts';
+import { registerNightLightEmitters } from './nightLightingRuntime.ts';
 
 function fixture(loader) {
   const scene = new THREE.Scene(), world = new THREE.Group(), actor = new THREE.Group();
@@ -93,4 +94,53 @@ await assert.rejects(retry.access.prepare(), /missing chunk/);
 failure = false; await retry.access.prepare();
 assert.equal(retry.state.loads, 2, 'failed explicit load is retryable');
 retry.access.dispose();
-console.log('nightLightingAccess self-test: explicit daylight controls, covered night, no frame scans, strict actor admission and stale-load cleanup PASS');
+
+// Option E (2026-10-13, the perf stream): under a battle entry's cover the pool joins the scene at the battle's budget,
+// dark and without emitters, so the world's programs link under the battle's light signature while it builds; the
+// deployment warm's prepare() collects the emitters into the same pool; the Garage's reset detaches it.
+{
+  const scene = new THREE.Scene(), world = new THREE.Group(), actor = new THREE.Group();
+  scene.add(world, actor);
+  const lamp = { kind: 'building', position: [0, 3, 0] };
+  registerNightLightEmitters(world, [lamp]);
+  const access = createNightLightingAccess({
+    scene, getWorldRoot: () => world, getEntities: () => [], getCameraPosition: () => actor.position,
+    isNight: () => true, isBattlePresentation: () => true, isEntityVisible: () => true,
+    getBudget: () => ({ spotLights: 4, pointLights: 2 }),
+  });
+  const count = () => {
+    const n = { spot: 0, point: 0, lit: 0 };
+    scene.traverseVisible((object) => {
+      if (object.isSpotLight) n.spot++;
+      if (object.isPointLight) n.point++;
+      if (object.isLight && object.intensity > 0) n.lit++;
+    });
+    return n;
+  };
+  assert.equal(access.poolAttached, false);
+  await access.attachPool();
+  assert.equal(access.poolAttached, true);
+  assert.deepEqual(count(), { spot: 4, point: 2, lit: 0 }, 'the pool stands at the battle budget, dark');
+  assert.equal(access.current.emitterCount, 0, 'no emitter is collected before the world and the roster exist');
+  for (let i = 0; i < 3; i++) access.update();
+  assert.deepEqual(count(), { spot: 4, point: 2, lit: 0 }, 'frame updates leave the empty pool dark until the warm prepares it');
+  await access.prepare();
+  assert.deepEqual(count().spot + count().point, 6, 'the warm collects into the same pool: the light count never moves');
+  assert.equal(access.current.emitterCount, 1, 'the warm collects the world\'s lamps');
+  access.reset();
+  assert.equal(access.poolAttached, false);
+  assert.deepEqual(count(), { spot: 0, point: 0, lit: 0 }, 'the Garage keeps its own light signature');
+  await access.attachPool(); access.dispose();
+  assert.equal(access.poolAttached, false, 'disposal detaches the pool');
+  await assert.rejects(access.attachPool(), /disposed/);
+}
+{
+  let resolveLoad;
+  const overtaken = fixture(() => new Promise(resolve => { resolveLoad = resolve; }));
+  const attaching = overtaken.access.attachPool();
+  await Promise.resolve(); await Promise.resolve();
+  overtaken.access.reset(); resolveLoad(); await attaching;
+  assert.equal(overtaken.state.calls.some(call => call[0] === 'prepare'), false, 'a Garage return during the import never attaches the pool');
+  overtaken.access.dispose();
+}
+console.log('nightLightingAccess self-test: explicit daylight controls, covered night, no frame scans, strict actor admission, stale-load cleanup and the early battle pool PASS');

@@ -471,6 +471,9 @@ const lighting: MainLightingRuntime = await bootStage(
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
+// the perf stream (2026-10-13, option E): a battle entry's world program warm (engine/battleWorldProgramWarm.ts),
+// demand-loaded and armed by prepareBattleLightSignature below; a world build offers its terrain as soon as it stands
+let battleWorldPrograms: import('./engine/battleWorldProgramWarm.ts').BattleWorldProgramWarm | null = null;
 const engineCtx = {
   renderer,
   scene,
@@ -484,6 +487,7 @@ const engineCtx = {
   releaseShadowMaterial: (mat: THREE.Material) => lighting.releaseShadowMaterial(mat),
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
+  prepareTerrainPrograms: (terrain: THREE.Object3D, mapId: string): void => { battleWorldPrograms?.offer(terrain, mapId); },
 };
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
 // Worlds are lazy-built per map config and cached. One typed runtime owns the
@@ -861,8 +865,13 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
 let pendingCampaignOperationId: string | null = null;
+let garageLightsActive = true;
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); missionBrief.hide(); }
+  if (active) {
+    battleWorldPrograms?.disarm();
+    battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); missionBrief.hide();
+  }
+  garageLightsActive = active;
   garagePhasePresentation.setActive(active);
 };
 const setGarageSunTrim = (active: boolean): void => {
@@ -2158,6 +2167,38 @@ const soloBattleStart = createSoloBattleStartAccess({
     },
   }),
 });
+// the perf stream (2026-10-13, option E): under a battle entry's painted cover, before its world is acquired, the light
+// signature the battle draws with becomes final — the Garage presentation (its spots and stage) out, the night pool in,
+// dark and without emitters until the deployment warm collects them — and the map's world program warm is armed, so the
+// terrain's programs link and their GPU pipelines compile while the world builds (engine/battleWorldProgramWarm.ts;
+// the warm submits once the FX and kill-cam pools, which load beside the world, are in the scene too). A failed entry's
+// Garage return disarms it (setGarageSpots). Nothing here is required: a night chunk or warm chunk that does not load
+// leaves the entry exactly as before (the deployment warm attaches the pool and links the programs).
+async function prepareBattleLightSignature(mapId: string): Promise<void> {
+  setGarageSpots(false);
+  try { await nightLighting.attachPool(); } catch { return; }
+  let warm = battleWorldPrograms;
+  if (!warm) {
+    try {
+      const { createRendererWorldProgramWarm } = await import('./engine/battleWorldProgramWarm.ts');
+      warm = battleWorldPrograms ??= createRendererWorldProgramWarm({
+        renderer, scene, camera,
+        getSceneTarget: () => post.sceneAA.sceneTarget,
+        isSignatureFinal: () => !garageLightsActive && nightLighting.poolAttached
+          && fxRuntimeAccess.current?.group.parent === scene && killcamAccess.current !== null,
+        publish: (receipt) => { window.__WORLD_PROGRAM_WARM = receipt; },
+      });
+    } catch { return; }
+  }
+  // a Garage return that overtook the cover keeps the Garage's own light signature
+  if (garageLightsActive) return;
+  warm.arm(mapId);
+  offerWorldPrograms(worldCache.get(mapId), mapId);
+}
+function offerWorldPrograms(world: { group: THREE.Object3D } | null | undefined, mapId: string): void {
+  const terrain = world?.group.children.find((child) => child.name === 'terrain');
+  if (terrain) battleWorldPrograms?.offer(terrain, mapId);
+}
 const soloBattleLoading = createSoloBattleLoadingAccess({
   options: () => ({
     game,
@@ -2179,7 +2220,11 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
       if (!world) throw new Error('solo battle loading requires an active world');
       return world;
     },
-    ensureWorld,
+    // option E: a cached world (or the Frontline variant) is offered once it is the battle's
+    ensureWorld: (mapId: string, onProgress: (fraction: number, label: string) => void, options: WorldActivationOptions) => (
+      ensureWorld(mapId, onProgress, options).then((world) => { offerWorldPrograms(world, mapId); return world; })
+    ),
+    prepareLightSignature: prepareBattleLightSignature,
     ensureBattleVisuals: ensureBattleVisualStreamer,
     getBattleVisuals: () => {
       if (!battleVisuals) throw new Error('battle visual streamer was not loaded');

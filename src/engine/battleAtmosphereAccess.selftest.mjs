@@ -210,13 +210,18 @@ const garagePhasePresentation = {
 };
 // campaign slice 5 (2026-09-14): main also dismisses the mission brief when the Garage returns
 const missionBrief = { hide() { calls.push('brief-hide'); } };
-const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, frontline, garagePhasePresentation, missionBrief });
+// option E (2026-10-13, the perf stream): the Garage's return also disarms the battle world program warm, first
+const battleWorldPrograms = { disarm() { calls.push('warm-disarm'); } };
+const setGarageSpots = mainCallback('setGarageSpots', {
+  battleWorldPrograms, battleAtmosphere: weather, nightLighting, frontline, garagePhasePresentation, missionBrief,
+  garageLightsActive: true,
+});
 const setGarageSunTrim = mainCallback('setGarageSunTrim', { battleAtmosphere: weather, garagePhasePresentation });
 setGarageSpots(false); setGarageSunTrim(false);
 assert.deepEqual(calls, [['active', false]], 'network activation does not overwrite the prepared night preset');
 calls.length = 0;
 setGarageSpots(true); setGarageSunTrim(true);
-assert.deepEqual(calls, ['reset', 'night-reset', 'frontline-reset', 'brief-hide', ['active', true], ['trim', true]],
+assert.deepEqual(calls, ['warm-disarm', 'reset', 'night-reset', 'frontline-reset', 'brief-hide', ['active', true], ['trim', true]],
   'Garage clears battle atmosphere, lamp and frontline owners before reinstalling its own active lighting');
 calls.length = 0;
 setGarageSunTrim(false);
@@ -263,7 +268,8 @@ assert.deepEqual(frontlinePrepares, [[3, 'winter'], [3, 'winter']]);
     const lamps = { reset() { nightResets++; } };
     let frontlineResets = 0;
     const frontOwner = { reset() { frontlineResets++; } };
-    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase, missionBrief: { hide() {} } };
+    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase, missionBrief: { hide() {} },
+      battleWorldPrograms: null, garageLightsActive: true };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
     let skyInvalidations = 0;

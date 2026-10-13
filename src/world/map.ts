@@ -68,6 +68,9 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   scene: THREE.Scene;
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
+  /** The terrain stands: a battle entry's world program warm may link its programs while the rest builds (main.ts;
+   * engine/battleWorldProgramWarm.ts). Ignored unless that entry armed the warm for this map. */
+  prepareTerrainPrograms?(terrain: THREE.Object3D, mapId: string): void;
 };
 
 interface WorldOptions {
@@ -386,6 +389,8 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
+    // the perf stream (2026-10-13, option E): the terrain's programs link while the vegetation and the props build
+    engineCtx.prepareTerrainPrograms?.(terrain, mapId);
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);

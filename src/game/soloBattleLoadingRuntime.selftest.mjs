@@ -233,6 +233,38 @@ try {
   setLocale(originalLocale);
 }
 
+// Option E (2026-10-13, the perf stream): the battle's light signature becomes final under the painted cover, for the
+// resolved map, before any world, interface or visual acquisition starts; its time is recorded on the load trace.
+events.length = 0;
+game.player = null;
+try {
+  const signatures = [];
+  const signatureLoading = createSoloBattleLoadingRuntime({
+    ...loadingOptions,
+    prepareLightSignature: async (mapId) => { clock += 3; signatures.push(mapId); events.push('lights:final'); },
+  });
+  await signatureLoading.begin('m1a2', null, { randomRoster: false });
+  assert.deepEqual(signatures, ['verdant'], 'once, for the resolved map (never the random request)');
+  assert.ok(events.indexOf('frame') < events.indexOf('lights:final'), 'under the painted cover');
+  for (const acquired of ['visuals:ready', 'world:ready', 'hud:ready', 'builders:ready', 'killcam:ready']) {
+    assert.ok(events.indexOf('lights:final') < events.indexOf(acquired), `before ${acquired}`);
+  }
+  assert.equal(globalThis.__BATTLE_LOAD.lightSignatureMs, 3);
+  events.length = 0;
+  game.player = null;
+  const failing = createSoloBattleLoadingRuntime({
+    ...loadingOptions,
+    prepareLightSignature: async () => { throw new Error('night chunk unavailable'); },
+  });
+  await assert.rejects(failing.begin('m1a2', null, { randomRoster: false }), /night chunk unavailable/,
+    'a port that throws fails the entry into the covered recovery (main.ts never throws from it)');
+  assert.ok(!events.includes('world:ready'), 'nothing is acquired after a failed signature');
+} finally {
+  delete globalThis.__BATTLE_LOAD;
+  delete globalThis.__VISUAL_LOAD_TIMINGS;
+  delete globalThis.__WORLD_LOAD;
+}
+
 // Use the real audio facade and default paint scheduler: this guards the
 // actual Solo composition, not just a mock that promises to yield itself.
 events.length = 0;
