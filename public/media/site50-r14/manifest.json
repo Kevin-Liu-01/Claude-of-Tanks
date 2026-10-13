@@ -764,23 +764,23 @@
   "mechanics/armor": "stand-in s09-harbor-run-close",
   "mechanics/ricochet": "delivered",
   "mechanics/modules": "delivered",
-  "mechanics/ammunition": "stand-in s32-yard-salvo",
+  "mechanics/ammunition": "delivered",
   "mechanics/missiles": "stand-in s37-river-village-close",
-  "mechanics/autoloader": "stand-in s12-gantry-advance-close",
+  "mechanics/autoloader": "delivered",
   "mechanics/era": "delivered",
   "mechanics/spotting": "stand-in s17-crossroads-fire-close",
   "mechanics/thermal": "stand-in s22-walking-barrage-close",
   "mechanics/smoke": "delivered",
-  "mechanics/equipment": "stand-in s03-square-pass-close",
+  "mechanics/equipment": "delivered",
   "mechanics/consumables": "stand-in s13-farm-race-close",
   "mechanics/field-kit": "delivered",
   "mechanics/roof-guns": "stand-in s08-market-push-close",
-  "mechanics/buildings": "stand-in s30-temple-village",
+  "mechanics/buildings": "delivered",
   "mechanics/crushing": "stand-in s35-farm-village",
   "mechanics/map-vehicles": "stand-in s11-container-rows-close",
   "mechanics/time-of-day": "delivered",
   "mechanics/impact": "delivered",
-  "mechanics/suspension": "stand-in s28-fjord-village-close",
+  "mechanics/suspension": "delivered",
   "mechanics/radio": "stand-in s28-fjord-village",
   "mechanics/replays": "stand-in s16-street-duel-close",
   "mechanics/medals": "delivered",
@@ -799,8 +799,8 @@
   "modes/infected": "delivered",
   "modes/realistic": "stand-in s35-farm-village-close",
   "modes/gun_game": "delivered",
-  "modes/drone": "stand-in s46-river-drone-close",
-  "modes/ac130": "stand-in s48-delta-crane",
+  "modes/drone": "delivered",
+  "modes/ac130": "delivered",
   "features/studio": "stand-in landing-r1"
  },
  "files": [
@@ -1768,6 +1768,48 @@
    "home": "features/garage"
   },
   {
+   "path": "media/site50-r14/home/mechanics/ammunition-640.webp",
+   "bytes": 22688,
+   "sha256": "6c23b79dd7d01c8cee572fd8258e89a67a44598cb673b62fa0c74e579e17a90e",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/ammunition.png",
+   "home": "mechanics/ammunition"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/ammunition.webp",
+   "bytes": 87562,
+   "sha256": "1294dfcabdde9b5563be4fc20b1f63fc025996ac16f9dc19e40268dfc477d821",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/ammunition.png",
+   "home": "mechanics/ammunition"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/autoloader-640.webp",
+   "bytes": 46970,
+   "sha256": "3e88425e39fe7adb4078750ec065d6bb11804e280e2494bca87974ad6f6e09c3",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/autoloader.png",
+   "home": "mechanics/autoloader"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/autoloader.webp",
+   "bytes": 191300,
+   "sha256": "feabc16d86c9fe31f86a7b680b9e5b2fd4f9528b1d41983adb5e3c06edbe2794",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/autoloader.png",
+   "home": "mechanics/autoloader"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/buildings-640.webp",
+   "bytes": 20116,
+   "sha256": "f178c1806cbe477a8bfd15c956032a0b6e990c44fa91b9181cb16d83731d187d",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/buildings.png",
+   "home": "mechanics/buildings"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/buildings.webp",
+   "bytes": 66630,
+   "sha256": "e3936cf9f991fc9cf0504ec628b2810cdb33a8a8dffbc9539e36e57a745ad2d0",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/buildings.png",
+   "home": "mechanics/buildings"
+  },
+  {
    "path": "media/site50-r14/home/mechanics/dossiers-640.webp",
    "bytes": 17944,
    "sha256": "59876ecd0cb3f226ac575b0694bfb7e778d76b931d26182f7eb6c5acda98011b",
@@ -1780,6 +1822,20 @@
    "sha256": "42ec2307d61e9da6307262775b1b8be71934a0aa514952e4c5e71e10b801572a",
    "source": "shots/media-r5/home-r2/deliver/mechanics/dossiers.png",
    "home": "mechanics/dossiers"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/equipment-640.webp",
+   "bytes": 35746,
+   "sha256": "dc8c9abaead361969281fd6fb868db82fa9e98df9a7729ae0c2e789f0c38a9e4",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/equipment.png",
+   "home": "mechanics/equipment"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/equipment.webp",
+   "bytes": 118320,
+   "sha256": "379f563c6695acd3f730dbf02cde3a8618f51c2109e58f5a3165c5e0e31a810d",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/equipment.png",
+   "home": "mechanics/equipment"
   },
   {
    "path": "media/site50-r14/home/mechanics/era-640.webp",
@@ -1880,6 +1936,20 @@
    "home": "mechanics/smoke"
   },
   {
+   "path": "media/site50-r14/home/mechanics/suspension-640.webp",
+   "bytes": 23004,
+   "sha256": "68ea271a274fb8634c79dd174e4d44c2379dc948de0f4d4f87beb5cf3d432fd0",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/suspension.png",
+   "home": "mechanics/suspension"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/suspension.webp",
+   "bytes": 76182,
+   "sha256": "0de71b675ad60ceadc7aa48c9641721b207da70bc7947aa2d3eab6b1c64cb12d",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/suspension.png",
+   "home": "mechanics/suspension"
+  },
+  {
    "path": "media/site50-r14/home/mechanics/time-of-day-640.webp",
    "bytes": 40850,
    "sha256": "fe2342cda27cee75f7f34f155be6c460c9f0fd4eab22382815a75b44c0a67b52",
@@ -1894,6 +1964,20 @@
    "home": "mechanics/time-of-day"
   },
   {
+   "path": "media/site50-r14/home/modes/ac130-640.webp",
+   "bytes": 12790,
+   "sha256": "6e38ae91e65082b35cdae3d9f82f8b45b784cb5bf93b4558f69e0eb5d05286bb",
+   "source": "shots/media-r5/home-r2/deliver/modes/ac130.png",
+   "home": "modes/ac130"
+  },
+  {
+   "path": "media/site50-r14/home/modes/ac130.webp",
+   "bytes": 42838,
+   "sha256": "b5d572ed1bc68f0cdbcac0a0a40ba3d044d5907b3dcf5d373693312cceca98f4",
+   "source": "shots/media-r5/home-r2/deliver/modes/ac130.png",
+   "home": "modes/ac130"
+  },
+  {
    "path": "media/site50-r14/home/modes/capture_the_flag-640.webp",
    "bytes": 30326,
    "sha256": "4140668cc0c16857b09cbcd58528402bd0dc2200f85b6bdc2485aa866cdc0f71",
@@ -1906,6 +1990,20 @@
    "sha256": "f8203468dea4db9be87885624ff5903db8cf281a06a15cc4da52ef47e0e63647",
    "source": "shots/media-r5/home-r2/deliver/modes/capture_the_flag.png",
    "home": "modes/capture_the_flag"
+  },
+  {
+   "path": "media/site50-r14/home/modes/drone-640.webp",
+   "bytes": 16678,
+   "sha256": "d04299bf20fdcb0aaecbdfbd25e94593fa267da227eec4749bb502606ec9281b",
+   "source": "shots/media-r5/home-r2/deliver/modes/drone.png",
+   "home": "modes/drone"
+  },
+  {
+   "path": "media/site50-r14/home/modes/drone.webp",
+   "bytes": 71192,
+   "sha256": "d7312ff35bd3521bb26000538a62ac570b716117add1e0e60710eef3e733da09",
+   "source": "shots/media-r5/home-r2/deliver/modes/drone.png",
+   "home": "modes/drone"
   },
   {
    "path": "media/site50-r14/home/modes/endless_horde-640.webp",
@@ -1993,15 +2091,15 @@
   },
   {
    "path": "media/site50-r14/home/modes/standard-640.webp",
-   "bytes": 39580,
-   "sha256": "ae2a81683681a165b5aab1aa92f8c64e4de748a7183ebab2a30c849bf1277af7",
+   "bytes": 41896,
+   "sha256": "0cb5cc33ec5427751d2036476607c965b1ff515d5fbb11438fd4cd67f4be8eac",
    "source": "shots/media-r5/home-r2/deliver/modes/standard.png",
    "home": "modes/standard"
   },
   {
    "path": "media/site50-r14/home/modes/standard.webp",
-   "bytes": 159868,
-   "sha256": "fd98aafabc5a785464e2937057df12dbb45c6ccf23864eeb88e1a1d72a261bb3",
+   "bytes": 152990,
+   "sha256": "877e60776103f1f2bd558fcf8eb8abf94568fb126eced59c0dc60badd92edc28",
    "source": "shots/media-r5/home-r2/deliver/modes/standard.png",
    "home": "modes/standard"
   },
