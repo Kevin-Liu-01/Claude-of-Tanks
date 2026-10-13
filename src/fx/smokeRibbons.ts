@@ -43,8 +43,8 @@ export interface SmokeRibbons {
   begin(key: number, look: RibbonLook, seed: number): number;
   /** The slot `key` holds, or -1. */
   slotOf(key: number): number;
-  /** Drop a point at (x, y, z), passed by the motor at fx time `birth`. */
-  point(slot: number, x: number, y: number, z: number, birth: number): void;
+  /** Drop a point at (x, y, z), passed by the motor at fx time `birth`, `flightS` seconds after launch. */
+  point(slot: number, x: number, y: number, z: number, birth: number, flightS?: number): void;
   /** Per render frame (fx time `now`): hide when nothing is alive. */
   update(now: number): void;
   shiftTime(delta: number): void;
@@ -59,7 +59,7 @@ attribute vec4 aT;   // tangent (world), side (-1 | +1)
 attribute vec4 aW;   // width0, width1, life, density
 attribute vec4 aC0;  // albedo at birth, rise
 attribute vec4 aC1;  // albedo aged, wind coupling
-attribute vec4 aS;   // metres along the trail, seed, tear, 0
+attribute vec4 aS;   // metres along the trail, seed, tear, the round's flight time when it passed (s)
 uniform float uTime;
 uniform vec3 uWind;
 uniform vec3 uSunDir;
@@ -91,7 +91,11 @@ void main() {
   vec3 c = aP.xyz + uWind * ( aC1.w * carry ) + vec3( 0.0, aC0.w * age, 0.0 );
   // it swells fast behind the motor, then slowly
   float grow = 1.0 - pow( 1.0 - t, 2.6 );
-  float w = mix( aW.x, aW.y, grow );
+  // (the coordinator, filmed at 300-800 m: "the TOW line is very thin and pale against bright steppe grass") the first
+  // second and a half of a flight (the launch charge's and the motor's first burn, the part a player watches leave)
+  // lays a slightly denser, warmer-grey and wider line, which then thins to the motor's own
+  float early = 1.0 - smoothstep( 0.7, 1.6, aS.w );
+  float w = mix( aW.x, aW.y, grow ) * ( 1.0 + 0.3 * early );
   vec3 view = cameraPosition - c;
   vec3 side = cross( aT.xyz, view );
   float sl = length( side );
@@ -102,12 +106,14 @@ void main() {
   // opacity: in at once behind the motor (a fraction of a second), thinning through the second half of its life; a
   // ribbon seen end-on (its tangent toward the eye) is denser where it overlaps itself, so ease it
   float endOn = abs( dot( normalize( aT.xyz ), normalize( view ) ) );
-  vA = aW.w * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) ) * mix( 1.0, 0.55, endOn * endOn );
+  vA = min( 0.95, aW.w * ( 1.0 + 0.55 * early ) ) * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) )
+    * mix( 1.0, 0.55, endOn * endOn );
   // lit as the media are: the sun through thin smoke (forward scattering when it stands behind), the sky, the ground
   vec3 vd = normalize( view );
   float fwd = 0.55 + 0.45 * pow( max( 0.0, dot( -vd, uSunDir ) ), 3.0 );
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 albedo = mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) );
+  albedo = mix( albedo, albedo * vec3( 0.8, 0.76, 0.7 ), 0.65 * early );
   vCol = albedo * ( uSunCol * fwd * 0.62 + mix( vec3( skyLum ), uSkyCol, 0.5 ) * 0.9 + uGroundCol * 0.25 );
   vN = vec2( aS.x * 0.42 - age * 0.6, aS.y * 17.0 );
   vTear = aS.z * ( 0.35 + 0.65 * t );
@@ -221,7 +227,7 @@ export function createSmokeRibbons(shading: VolumeShading): SmokeRibbons {
     attr.needsUpdate = true;
   };
   function writeVertex(v: number, slot: number, x: number, y: number, z: number, birth: number, tx: number, ty: number,
-    tz: number, side: number, s: number): void {
+    tz: number, side: number, s: number, flightS: number): void {
     const l = looks[slot]!;
     const o = v * 4;
     aP.array[o] = x; aP.array[o + 1] = y; aP.array[o + 2] = z; aP.array[o + 3] = birth;
@@ -229,7 +235,7 @@ export function createSmokeRibbons(shading: VolumeShading): SmokeRibbons {
     aW.array[o] = l.width0; aW.array[o + 1] = l.width1; aW.array[o + 2] = l.life; aW.array[o + 3] = l.density;
     aC0.array[o] = l.c0[0]; aC0.array[o + 1] = l.c0[1]; aC0.array[o + 2] = l.c0[2]; aC0.array[o + 3] = l.rise;
     aC1.array[o] = l.c1[0]; aC1.array[o + 1] = l.c1[1]; aC1.array[o + 2] = l.c1[2]; aC1.array[o + 3] = l.windK;
-    aS.array[o] = s; aS.array[o + 1] = seeds[slot]; aS.array[o + 2] = l.tear; aS.array[o + 3] = 0;
+    aS.array[o] = s; aS.array[o + 1] = seeds[slot]; aS.array[o + 2] = l.tear; aS.array[o + 3] = flightS;
   }
   /** a point's tangent: toward its successor (the newest: along the flight from its predecessor) */
   function setTangent(slot: number, k: number, tx: number, ty: number, tz: number): void {
@@ -283,7 +289,7 @@ export function createSmokeRibbons(shading: VolumeShading): SmokeRibbons {
       for (let i = 0; i < RIBBON_SLOTS; i++) if (keys[i] === key) return i;
       return -1;
     },
-    point(slot, x, y, z, birth) {
+    point(slot, x, y, z, birth, flightS = 99) {
       if (slot < 0 || !looks[slot]) return;
       const k = count[slot] % RIBBON_POINTS;
       let tx = 0, ty = 0, tz = 1;
@@ -296,8 +302,8 @@ export function createSmokeRibbons(shading: VolumeShading): SmokeRibbons {
         setTangent(slot, (count[slot] - 1) % RIBBON_POINTS, tx, ty, tz);
       }
       const v = (slot * RIBBON_POINTS + k) * 2;
-      writeVertex(v, slot, x, y, z, birth, tx, ty, tz, -1, along[slot]);
-      writeVertex(v + 1, slot, x, y, z, birth, tx, ty, tz, 1, along[slot]);
+      writeVertex(v, slot, x, y, z, birth, tx, ty, tz, -1, along[slot], flightS);
+      writeVertex(v + 1, slot, x, y, z, birth, tx, ty, tz, 1, along[slot], flightS);
       for (let a = 0; a < ATTRS.length; a++) markRange(ATTRS[a]!, v, 2);
       lx[slot] = x; ly[slot] = y; lz[slot] = z;
       count[slot]++;

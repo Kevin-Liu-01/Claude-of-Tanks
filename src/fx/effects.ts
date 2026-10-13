@@ -4431,7 +4431,7 @@ function* createFxSteps(
       else _v6.copy(shell.pos).addScaledVector(dir, -back);
       missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
       _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
-      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed);
+      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed) : 99);
       next += RIBBON_STEP_M;
       n++;
     }

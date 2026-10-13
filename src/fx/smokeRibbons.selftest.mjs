@@ -89,4 +89,12 @@ assert.equal(geo.index.array, index, 'index kept');
 assert.match(mat.vertexShader, /float grow = 1\.0 - pow\( 1\.0 - t, 2\.6 \);/, 'it swells fast behind the motor');
 assert.match(mat.vertexShader, /uSunCol \* fwd/, 'the sun through thin smoke, brighter toward it');
 assert.match(mat.fragmentShader, /float edge = 1\.0 - smoothstep\(/, 'a soft torn edge');
+// the first ~1.5 s of a flight lays a denser, warmer-grey, wider line (read at play distance), then the motor's own
+assert.match(mat.vertexShader, /float early = 1\.0 - smoothstep\( 0\.7, 1\.6, aS\.w \);/, 'the launch stretch is marked by flight time');
+{
+  const r2 = createSmokeRibbons(shading), sl = r2.begin(1, look, 0.2);
+  r2.point(sl, 0, 2, 0, 1, 0.4); r2.point(sl, 0, 2, 2.5, 1.01, 2.2);
+  const s2 = r2.mesh.geometry.getAttribute('aS').array;
+  assert.deepEqual([s2[3], s2[7], s2[11]].map((v) => +v.toFixed(2)), [0.4, 0.4, 2.2], 'each point carries its flight time');
+}
 console.log('smokeRibbons.selftest: continuous ribbons, ring order, per-point uploads, slot reuse, time shift, reset, no allocation');
