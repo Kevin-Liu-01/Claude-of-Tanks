@@ -88,13 +88,12 @@ for (const avatar of ['threejs.jpg', 'vaibhav-sisinty.jpg', 'hakimi-eiqbal.jpg',
 assert.doesNotMatch(home, /pbs\.twimg\.com|i\.redd\.it/,
   'the landing page must not hotlink social account avatars');
 
-const battleBackgrounds = [
-  ['urban-crossfire', 'media/presentation-r1/12_urban_crossfire_x.webp'],
-  ['desert-duel', 'media/showcase-r1/61_action_desert_duel_leclerc_kill.webp'],
-  ['winter-breaker', 'media/presentation-r1/05_winter_ice_breaker.webp'],
-  ['verdant-column', 'media/presentation-r1/15_verdant_column_massacre.webp'],
-  ['coastal-harbor', 'media/showcase-r1/86_action_coastal_harbor_kill.webp'],
-];
+// the cards' battle photos are site fifty stills (tools/media-r5/site-media/picks.json, home.socialCards)
+const sitePicks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
+const battleBackgrounds = Object.entries(sitePicks.home.socialCards).map(([modifier, pick]) =>
+  [modifier, `media/${sitePicks.collection}/stills/${pick.id}${pick.still === 'close' ? '-close' : ''}.webp`]);
+assert.deepEqual(battleBackgrounds.map(([modifier]) => modifier),
+  ['urban-crossfire', 'desert-duel', 'winter-breaker', 'verdant-column', 'coastal-harbor']);
 for (const [modifier, relative] of battleBackgrounds) {
   assert.ok(home.includes(`v5-social-card--${modifier}`),
     `social proof must assign the ${modifier} battle background to a card`);

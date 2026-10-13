@@ -4,7 +4,7 @@ import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
-const MANIFEST_URL = '/media/showcase-r1/manifest.json';
+const MANIFEST_URL = '/media/site50-r14/archive.json';
 interface PresentationShot {
   src: string;
   previewSrc?: string;

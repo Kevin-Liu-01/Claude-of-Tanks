@@ -1,4 +1,6 @@
-const MEDIA_ROOT = '/media/battle-reels-v3';
+import { t } from '../ui/i18n.ts';
+
+const MEDIA_ROOT = '/media/site50-r14/reels';
 
 export interface BattleReel {
   id: string;
@@ -8,33 +10,35 @@ export interface BattleReel {
   poster: string;
 }
 
+// [take id, its title's catalog key, its battlefield's catalog key]: twenty of the site fifty's takes, 720p with their
+// sound (tools/media-r5/site-media/picks.json)
 const REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [
-  ['01_m1a2_sepv3_vs_t90m_verdant', 'M1A2 Abrams SEPv3 vs T-90M', 'Verdant Fields'],
-  ['02_strv122_vs_k2_desert', 'Strv 122 vs K2 Black Panther', 'Sirocco Wadi'],
-  ['03_challenger_3_vs_leo2a7v_winter', 'Challenger 3 vs Leopard 2A7V', 'Frosthollow'],
-  ['04_type10b_vs_ztz99a2_urban', 'Type 10B vs ZTZ-99A2', 'Steinburg'],
-  ['05_leclerc_xlr_vs_t14_coastal', 'Leclerc XLR vs T-14 Armata', 'Saltmere Bay'],
-  ['06_kf51b_vs_abramsx_autumn', 'KF51B Panther vs AbramsX', 'Amberford'],
-  ['07_m1a2_tusk_vs_t90sm_steppe', 'M1A2 TUSK vs T-90SM', 'Tarkhan Steppe'],
-  ['08_ua_t84_oplot_m_vs_pt91_twardy_railyard', 'T-84 Oplot-M vs PT-91 Twardy', 'Cinder Junction'],
-  ['09_pl01_105_vs_k2b_frontier', 'PL-01 105 vs K2B', 'Frontier Basin'],
-  ['10_merkava4b_vs_ariete_c2_fjord', 'Merkava Mk.4B vs Ariete C2', 'Nordhavn Fjord'],
-  ['11_m1a2_sepv2_vs_type99a_delta', 'M1A2 Abrams SEPv2 vs Type 99A', 'Jade River Delta'],
-  ['12_leo2_revolution_vs_t72b3m_badlands', 'Leopard 2 Revolution vs T-72B3M', 'Redrock Divide'],
-  ['13_challenger2_vs_leclerc_monsoon', 'Challenger 2 vs Leclerc', 'Monsoon Ridge'],
-  ['14_type10_vs_k1a1_alpine', 'Type 10 vs K1A1', 'Glacier Pass'],
-  ['15_m1a1ha_vs_t80u_caldera', 'M1A1HA Abrams vs T-80U', 'Obsidian Caldera'],
-  ['16_ua_m1a1_vs_ua_t64bv_foundry', 'Ukrainian M1A1 vs T-64BV', 'Ironworks'],
-  ['17_leo2a6m_vs_t90ms_desert', 'Leopard 2A6M vs T-90MS', 'Desert engagement'],
-  ['18_merkava3d_vs_amx40_winter', 'Merkava Mk.3D vs AMX-40', 'Winter engagement'],
-  ['19_type90a_vs_pt91m_verdant', 'Type 90A vs PT-91M', 'Verdant engagement'],
-  ['20_m1a2_vs_ua_t80u_kursk_coastal', 'M1A2 Abrams vs T-80U Kursk', 'Coastal engagement'],
+  ['s01-main-street-push', 'media.site50.short.s01MainStreetPush', 'map.urban'],
+  ['s04-column-under-fire', 'media.site50.short.s04ColumnUnderFire', 'map.verdant'],
+  ['s05-barn-advance', 'media.site50.short.s05BarnAdvance', 'map.verdant'],
+  ['s06-farm-charge', 'media.site50.short.s06FarmCharge', 'map.verdant'],
+  ['s07-lake-shellfire', 'media.site50.short.s07LakeShellfire', 'map.alpine'],
+  ['s08-market-push', 'media.site50.short.s08MarketPush', 'map.oasis'],
+  ['s11-container-rows', 'media.site50.short.s11ContainerRows', 'map.railyard'],
+  ['s18-street-knockout', 'media.site50.short.s18StreetKnockout', 'map.urban'],
+  ['s19-roof-tiles', 'media.site50.short.s19RoofTiles', 'map.urban'],
+  ['s20-road-return-fire', 'media.site50.short.s20RoadReturnFire', 'map.verdant'],
+  ['s21-fields-assault', 'media.site50.short.s21FieldsAssault', 'map.verdant'],
+  ['s23-village-crossroads', 'media.site50.short.s23VillageCrossroads', 'map.verdant'],
+  ['s24-ice-duel', 'media.site50.short.s24IceDuel', 'map.alpine'],
+  ['s26-minaret-fire', 'media.site50.short.s26MinaretFire', 'map.oasis'],
+  ['s27-caravanserai-kill', 'media.site50.short.s27CaravanseraiKill', 'map.oasis'],
+  ['s29-fjord-road-kill', 'media.site50.short.s29FjordRoadKill', 'map.fjord'],
+  ['s33-water-tower', 'media.site50.short.s33WaterTower', 'map.railyard'],
+  ['s34-furnace-salvo', 'media.site50.short.s34FurnaceSalvo', 'map.foundry'],
+  ['s38-church-knockout', 'media.site50.short.s38ChurchKnockout', 'map.winter'],
+  ['s39-lakeside-village', 'media.site50.short.s39LakesideVillage', 'map.reservoir'],
 ];
 
-export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, title, map]) => Object.freeze({
+export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, titleKey, mapKey]) => Object.freeze({
   id,
-  title,
-  map,
+  title: t(titleKey),
+  map: t(mapKey),
   video: `${MEDIA_ROOT}/${id}.mp4`,
   poster: `${MEDIA_ROOT}/${id}.webp`,
 })));
@@ -73,9 +77,9 @@ export function mountBattleReels(scope: Document = document): void {
       button.setAttribute('aria-pressed', String(buttonIndex === index));
     });
     title.textContent = reel.title;
-    map.textContent = `${reel.map} // 14.7 seconds // 720p`;
+    map.textContent = `${reel.map} // ${t('docs.studio.reelSpec')}`;
     count.textContent = `${reelNumber(index)} / ${BATTLE_REELS.length}`;
-    video.setAttribute('aria-label', `${reel.title} at ${reel.map}`);
+    video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));
 
     if (activeIndex !== index) {
       video.pause();

@@ -90,8 +90,8 @@ removes and disposes the previous model before constructing the replacement.
 
 The viewer header also opens the shared presentation archive. Gallery mounts
 `src/presentation/mediaArchive.ts` only when the dialog is requested; the
-component fetches `public/media/showcase-r1/manifest.json`, lazy-loads its
-WebP frames in a horizontally scrollable compact rail, and reuses the same
+component fetches `public/media/site50-r14/archive.json` (the site fifty's
+frames and stills), lazy-loads its WebP previews in a horizontally scrollable compact rail, and reuses the same
 lightbox/filter semantics as the landing page, field manual, and Studio. This
 keeps the public route focused on the selected vehicle until the user opens the
 larger archive.

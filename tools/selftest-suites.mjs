@@ -1644,7 +1644,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/trackPatterns.selftest.mjs',
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
-    'tools/marketing-shots/showcase-library.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
@@ -1670,9 +1669,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
-    'tools/marketing-shots/feature-loops.selftest.mjs',
-    'tools/marketing-shots/hero-rails.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
+    'tools/marketing-shots/site50-media.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

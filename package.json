@@ -99,7 +99,7 @@
     "reels:publish": "node tools/marketing-shots/publish-battle-reels.mjs",
     "showcase:publish": "node tools/marketing-shots/publish-showcase-library.mjs && node tools/marketing-shots/build-capture-recipes.mjs",
     "showcase:recipes": "node tools/marketing-shots/build-capture-recipes.mjs",
-    "showcase:check": "node tools/marketing-shots/showcase-library.selftest.mjs",
+    "showcase:check": "node tools/marketing-shots/site50-media.selftest.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:public": "node tools/public-page-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",

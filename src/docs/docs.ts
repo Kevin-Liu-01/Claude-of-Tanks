@@ -122,7 +122,7 @@ archiveOpen?.addEventListener('click', () => {
   archiveMountPromise ??= import('../presentation/mediaArchive.ts')
     .then(({ mountMediaArchive }) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
-      { mode: 'wall', limit: 88, filters: false },
+      { mode: 'wall', limit: 183, filters: false },
     ))
     .catch((error: RuntimeValue) => {
       archiveMountPromise = null;
