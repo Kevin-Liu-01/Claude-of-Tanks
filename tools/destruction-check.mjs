@@ -158,10 +158,14 @@ export async function runDestructionCheck({
     const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
     const record = shellRecord.get(id);
     const updMs = [];
+    // the presentation's whole tick (the round's strike, the stages its events raise, the pieces' landings, the bodies):
+    // the frame cost a collapse adds, on the CPU
+    const frameMs = [];
     let collapsedAt = -1, fired = 0;
     const lastS = rounds * roundGapS + settleS + 6;
     for (let tick = 0; tick * STEP <= lastS; tick++) {
       clock = tick * STEP;
+      const f0 = performance.now();
       if (collapsedAt < 0 && fired < rounds && clock >= 0.3 + fired * roundGapS) {
         const u = offs[fired % offs.length] * face.width * 0.8;
         const y = face.origin[1] + Math.max(0.6, Math.min(face.height - 0.6, ys[fired % ys.length] * face.height));
@@ -176,6 +180,7 @@ export async function runDestructionCheck({
       const t1 = performance.now();
       bodies?.update();
       updMs.push(performance.now() - t1);
+      frameMs.push(performance.now() - f0);
       if (collapsedAt < 0 && events.some((e) => e.stage === 'collapsed')) collapsedAt = clock;
       if (collapsedAt >= 0 && clock > collapsedAt + settleS) break;
     }
@@ -275,6 +280,7 @@ export async function runDestructionCheck({
     // a landmark or a set piece loses sections, never the whole (DESTRUCTION.md §3.4), and a heavy hall outlasts a short
     // volley: what it left standing is judged as it stands
     updMs.sort((p, q) => p - q);
+    frameMs.sort((p, q) => p - q);
     const row = {
       id, builder: seam.builder, kit: a.kit, style: seam.style, fired, collapsedAtS: +collapsedAt.toFixed(2), lastStageS: +lastStage.toFixed(2),
       holes: holes.length, runs: runs.length, untextured: untextured.length, hangingRim,
@@ -284,6 +290,8 @@ export async function runDestructionCheck({
           gap: +(b.low - ground(b.x, b.z)).toFixed(3) })) },
       caps: stageCaps, bodyUpdateMs: { p50: +updMs[Math.floor(updMs.length * 0.5)].toFixed(3), p95: +updMs[Math.floor(updMs.length * 0.95)].toFixed(3),
         max: +updMs[updMs.length - 1].toFixed(3) },
+      frameMs: { p50: +frameMs[Math.floor(frameMs.length * 0.5)].toFixed(3), p99: +frameMs[Math.floor(frameMs.length * 0.99)].toFixed(3),
+        max: +frameMs[frameMs.length - 1].toFixed(3) },
       standing: collapsedAt < 0, pass: failures.length === 0, failures,
     };
     rows.push(row);
@@ -315,7 +323,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     console.log(`${r.pass ? 'PASS' : 'FAIL'} ${r.id} ${r.builder} (${r.kit}): ${r.standing ? `standing after ${r.fired} rounds` : `collapsed ${r.collapsedAtS} s after ${r.fired} rounds`}; holes ${r.holes};`
       + ` pieces ${r.pieces.thrown} thrown / ${r.pieces.overGround} over ground / ${r.pieces.buried} buried; bodies ${r.bodies.inWorld}`
       + ` (${r.bodies.asleep} asleep, ${r.bodies.onGround} ground, ${r.bodies.onBody} body, ${r.bodies.onRecord} record, ${r.bodies.hanging} hanging);`
-      + ` body update p95 ${r.bodyUpdateMs.p95} ms${r.failures.length ? ` — ${r.failures.join('; ')}` : ''}`);
+      + ` body update p95 ${r.bodyUpdateMs.p95} ms; tick p99 ${r.frameMs.p99} ms, max ${r.frameMs.max} ms${r.failures.length ? ` — ${r.failures.join('; ')}` : ''}`);
   }
   console.log(`destruction-check ${report.mapId}: ${report.pass ? 'PASS' : 'FAIL'} (${report.buildings} buildings)`);
   process.exit(report.pass ? 0 : 1);
