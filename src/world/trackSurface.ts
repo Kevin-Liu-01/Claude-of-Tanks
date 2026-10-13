@@ -5,8 +5,9 @@ type TrackSurfacePolicy = 'earth' | 'sand' | 'snow' | 'shore';
 /** Pass the resolved SOURCED terrain palette, not the props/horizon palette. */
 export function trackSurfacePolicy(palette: string): TrackSurfacePolicy {
   // (Copper Mesa's own row, Queenstown's bare hills, is the sand set tinted pink and ochre: its loose gravel keeps the sand
-  // prints it had on the badlands row)
-  if (palette === 'desert' || palette === 'badlands' || palette === 'moon' || palette === 'copper_mesa') return 'sand';
+  // prints it had on the badlands row; item 31's Olympus Basin, 2026-10-11, has its own 'mars' row, the regolith's dusty
+  // butterscotch sand, and keeps the sand prints it had on the badlands row)
+  if (palette === 'desert' || palette === 'badlands' || palette === 'moon' || palette === 'copper_mesa' || palette === 'mars') return 'sand';
   if (palette === 'winter' || palette === 'alpine') return 'snow';
   return palette === 'coastal' ? 'shore' : 'earth';
 }

@@ -15,11 +15,15 @@ assert.match(terrainSource, /float openNear = dNear \* \(1\.0 - roadCore\);/,
   'the first near-detail octave is explicitly excluded from compacted roads');
 assert.match(terrainSource, /float openNear2 = dNear2 \* \(1\.0 - roadCore\);/,
   'the closest clod-scale octave is explicitly excluded from compacted roads');
-assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD,/,
-  'the continuous dirt-road core uses the smoothed packed-earth layer');
+// (item 31, the map revival, 2026-10-11: a map whose tracks are its base layer, splat.roadLayer 'ground' (Olympus Basin's
+// regolith), packs them from that layer; every other map keeps the packed-earth layer, uRoadFromG 0)
+assert.match(terrainSource, /vec3 packedRoad = uRoadFromG > 0\.5 \? groundSamp\(uAlbG,[^;]*: groundSamp\(uAlbD,/,
+  'the continuous dirt-road core uses the smoothed packed-earth layer (the base layer only where a map packs its tracks from it)');
+assert.match(terrainSource, /shader\.uniforms\.uRoadFromG = \{ value: S\.roadLayer === 'ground' \? 1 : 0 \};/,
+  'only an authored roadLayer moves a map\'s carriageway off the packed-earth layer');
 // terrain v2 (2026-10-01, the cost pass): the soil sample takes the layer's measured mean (its far variant's tile mean),
 // the packed-earth normal is skipped past the far band (nrmOn), and the block runs only on the carriageway (dW)
-assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
+assert.match(terrainSource, /vec3 packedRoad = uRoadFromG > 0\.5 \? groundSamp\(uAlbG, uMeanG, uv \* 0\.240, df, mipB \+ 4\.0\)\.rgb\s*: groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
   'the dirt-road palette keeps a smoothed mip: soil grain survives, no single source clod is stamped');
 assert.match(terrainSource,
   /vec2 packedRoadN = nrmOn \? groundNrm\(uNrmD,[\s\S]{0,240}n\.xy = mix\(n\.xy, packedRoadN, dW\);/,

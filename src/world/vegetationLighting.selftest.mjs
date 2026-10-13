@@ -268,8 +268,12 @@ const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8
 assert.equal((source.match(/texture2D\(/g) || []).length, 7,
   'foliage detail stays within the seven texture-fetch expressions (four near-card, one leaf-detail tile, two far-canopy mottle)');
 assert.equal((source.match(/texture2D\( normalMap, vNormalMapUv \)/g) || []).length, 1, 'the detail tile is sampled once');
-assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 6,
+// (item 31, Longleaf round 4, 2026-10-11: the wiregrass card, a second grass-card painter whose two textures replace the
+// meadow's two on a wiregrass map (VegetationConfig.grassCard) — a seventh constructor, the same number of live textures)
+assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 7,
   'no extra texture source is introduced by the lighting repair');
+assert.equal((source.match(/grassTex\[variant\]\.dispose\(\);\s*grassTex\[variant\] = makeWiregrassCardTexture\(/g) || []).length, 1,
+  'the wiregrass cards replace the meadow cards (disposed first), never add a texture beside them');
 assert.doesNotMatch(source, /diffuseColor\.rgb \+= diffuseColor\.rgb \* rim/,
   'camera-angle albedo glow cannot return alongside energy-normalized scattering');
 assert.match(source, /_cc\.setHSL\(h, s, l, THREE\.LinearSRGBColorSpace\)/,

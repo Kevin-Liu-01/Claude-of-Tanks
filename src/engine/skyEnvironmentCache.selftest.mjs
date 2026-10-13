@@ -186,6 +186,10 @@ function skyFixture() {
     const refreshAtmosphere = () => { input.refreshAtmosphere(); return false; };
     const DEFAULT_PRESET = preset, ENV_SKY_SCALE = 50, ENV_INTENSITY_FLOOR = 0.21, HDRI_ENV_URL = null;
     const loadHdriEnvironment = () => { throw new Error('unexpected HDRI'); };
+    // (item 31, 2026-10-11: the lunar Earth's land mask binds a one-texel placeholder until a preset draws the Earth;
+    // this fixture's preset draws none, so the real raster must never be built here)
+    const EARTH_LAND_PLACEHOLDER = new THREE.DataTexture(new Uint8Array([0]), 1, 1, THREE.RedFormat, THREE.UnsignedByteType);
+    const earthLandTexture = () => { throw new Error('unexpected Earth land raster'); };
     ${configuredSource}\n${keySource}\n${ownerSource}\nconst rig = { ${bakeMethod} };`;
   const make = new Function('THREE', 'Sky', 'SkyEnvironmentCache', 'enforceEnvValidity', 'input',
     stripTypeScriptTypes(code) + '\nreturn { rig, environmentKey: () => environmentKey(renderer, sunDir, preset) };');
