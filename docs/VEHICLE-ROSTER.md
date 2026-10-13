@@ -112,7 +112,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 102 | PROD | `kf51b` | KF51-U | Germany | X | Next Generation | Production |
 | 103 | PROD | `fv510` | FV510 Warrior | UK | VII | Cold War | Production |
 | 104 | PROD | `fv510_milan` | FV510 Warrior MILAN | UK | IX | Cold War | Production |
-| 105 | PROD | `warrior_tes_h` | Warrior TES(H) | UK | X | Cold War | Production |
+| 105 | PROD | `warrior_tes_h` | Warrior TES(H) | UK | X | Modern | Production |
 | 106 | PROD | `ajax_x` | Ajax | UK | X | Modern | Production |
 | 107 | PROD | `ares_apc_x` | Ares APC | UK | VII | Modern | Production |
 | 108 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |

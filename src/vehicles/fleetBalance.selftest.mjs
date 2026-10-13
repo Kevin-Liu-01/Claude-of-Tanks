@@ -115,7 +115,8 @@ for (const id of SAVED_TANK_IDS) {
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [],
   'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
 // 2026-09-23: 54 -> 50 when the m26_pershing / m45_patton / is7 / object279 notes retired with their hulls.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 50,
+// 2026-10-13: 50 -> 51 with the Tier X Warrior TES(H) envelope (coordinator ruling on VEH-11).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 51,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

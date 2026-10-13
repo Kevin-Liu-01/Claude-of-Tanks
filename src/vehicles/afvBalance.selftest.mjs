@@ -32,7 +32,8 @@ const EXPECTED = Object.freeze({
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 57.2, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
   kurganets25_x:      { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
-  warrior_tes_h:      { hp: 1750, speed: 68, reverse: 20, traverse: 45.6, damage: 88, pen: [120, 108, 96], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
+  // 2026-10-13: the Tier X Warrior TES(H) envelope (FLEET_BALANCE_REVISION.warrior_tes_h): TES(H) armour, hotter L14A2.
+  warrior_tes_h:      { hp: 2300, speed: 68, reverse: 20, traverse: 45.6, damage: 88, pen: [150, 135, 120], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
   griffin50_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: null },
   kf41_lynx_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: null },
   k21_x:             { hp: 2425, speed: 70, reverse: 40, traverse: 54.9, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },

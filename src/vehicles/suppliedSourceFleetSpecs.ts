@@ -119,6 +119,7 @@ function applySourceArmament(spec: FleetTankSpec): void {
     spec.gun.shells = spec.gun.shells.filter(round => !round.guided);
   }
   if (spec.id === 'bmp3m_dragun125_x') applyDragunAssaultBalance(spec);
+  if (spec.id === 'warrior_tes_h') applyWarriorTesBalance(spec);
   applyGuidedShellLabels(spec);
   // Balance donors own tuning, not physical launch exits. A cannon-only source
   // must not inherit its peer's rack when metadata is synchronized again.
@@ -217,6 +218,17 @@ function applyDragunAssaultBalance(spec: FleetTankSpec): void {
     if (key) [plate.physicalMm, plate.keMm, plate.ceMm] = ratings[key];
   }
   delete spec.balancePeerOf;
+}
+
+/**
+ * The Tier X Warrior TES(H) (FLEET_BALANCE_REVISION.warrior_tes_h; coordinator ruling 2026-10-13 on the owner's
+ * "new warrior type ... tier 10"): TES(H) add-on armour and a hotter L14A2 APDS load over the Tier IX FV510 Warrior
+ * MILAN it is tuned from, so it meets the modern Tier X IFV floor. The MILAN stays at 850 mm.
+ */
+function applyWarriorTesBalance(spec: FleetTankSpec): void {
+  spec.hp = 2300;
+  Object.assign(spec.gun.shells[0], { pen100Mm: 150, pen1000Mm: 135, pen2000Mm: 120 });
+  delete spec.balancePeerOf; // no longer combat-equivalent to its donor, so it votes in its own peer medians
 }
 
 /** Preserve source weapon labels after peer and caliber adaptation. */

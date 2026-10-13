@@ -19,6 +19,7 @@ import {
   TANK_IDS, TANK_ID_RENAMES, TANK_ID_SCHEMA, createTankIdResolver, resolveTankId, tankSeedId,
 } from './tankIdAliases.ts';
 import { PROTOCOL_VERSION } from '../mp/wire/constants.ts';
+import { decorEra } from './decorations.ts';
 
 const shownName = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.name;
 
@@ -153,6 +154,7 @@ const SEEDED = {
   'tankFactoryCore.ts': /for \(const ch of tankSeedId\(builderSpec\.id\)\) shadePhase/,
   '../ui/garage.ts': /\$\{spec\?\.id \? tankSeedId\(spec\.id\) : 'tank'\}:\$\{pid \|\| 'factory'\}/,
   '../ui/hud.ts': /hashStr\(String\(t\.id\) \+ \(t\.spec \? tankSeedId\(t\.spec\.id\) : ''\)\)/,
+  '../audio/vehicleAudioProfiles.ts': /return tankSeedId\(String\(spec\.id \?\? ''\)\)\.toLowerCase\(\)/,
 };
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);
@@ -166,6 +168,8 @@ assert.equal(TANK_IDS.resolveIncoming('fv510_milan_x'), 'warrior_tes_h', 'a room
 assert.equal(tankSeedId('warrior_tes_h'), 'fv510_milan_x', 'the Warrior TES(H) keeps the look it had as the Warrior MILAN X');
 assert.equal(resolveTankId('fv510_milan', 1), 'fv510_milan', 'the FV510 Warrior MILAN stays itself');
 assert.equal(shownName('warrior_tes_h'), 'Warrior TES(H)');
+assert.equal(TANK_SPECS.warrior_tes_h.era, 'modern', 'the Warrior TES(H) plays in the modern era (coordinator, 2026-10-13)');
+assert.equal(decorEra(TANK_SPECS.warrior_tes_h), 'cold-war', 'and keeps the Cold War stowage it shipped with');
 assert.equal(TANK_SPECS.fv510_milan_x, undefined, 'the retired id names no spec');
 
 // ---- the live registry names the vehicles the owner sees

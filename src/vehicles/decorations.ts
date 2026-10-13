@@ -62,7 +62,7 @@ import {
   type MaterialTankSpec,
 } from './materials.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
-import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
+import { VEHICLE_ERAS, decorEraOverrideForId, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
@@ -2406,8 +2406,10 @@ export const DECOR_KIT_INFO = {
 // ---------------------------------------------------------------------------
 
 export function decorEra(spec: FleetTankSpec): string {
-  if (spec.era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
-  return isContemporaryVehicleEra(spec.era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
+  // A pinned kit era (taxonomy.ts DECOR_ERA_OVERRIDES) outranks the gameplay era.
+  const era = decorEraOverrideForId(spec.id) ?? spec.era;
+  if (era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
+  return isContemporaryVehicleEra(era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
 }
 
 const SOVIET_RE = /USSR|Russia|China/i;
