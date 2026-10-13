@@ -1222,12 +1222,13 @@ Object.assign(RECIPES, {
 async function openClient(ctx, { tank, name }) {
   const context = await ctx.browser.createBrowserContext();
   const page = await context.newPage();
-  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
+  // DPR 1 and the High preset: two live battles share one headless Chrome (at 4K Ultra the room's host starved)
+  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument((seed) => {
     try { localStorage.clear(); for (const [k, v] of Object.entries(seed)) localStorage.setItem(k, v); } catch { /* defaults */ }
     // two battles render at once in one headless Chrome: each page counts as focused (the frame loop pauses unfocused pages)
     Document.prototype.hasFocus = function hasFocus() { return true; };
-  }, { 'cot.lastTank.v1': tank, 'cot.gfxPreset': 'ultra', 'cot.locale': 'en-US', 'cot.player.name.v1': name, 'cot.battle.times.v2': '["sunset"]' });
+  }, { 'cot.lastTank.v1': tank, 'cot.gfxPreset': 'high', 'cot.locale': 'en-US', 'cot.player.name.v1': name, 'cot.battle.times.v2': '["sunset"]' });
   await page.evaluateOnNewDocument(ctx.installDirector);
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error).slice(0, 300)));
@@ -1298,13 +1299,30 @@ Object.assign(RECIPES, {
           return { me: g.player?.specId, team: g.player?.team, tanks: g.tanks.map((t) => `${t.specId}:${t.team}`) };
         })));
         ctx.log('seated', JSON.stringify(sides));
-        // close the distance: both drive at each other until the other is within ~330 m (spotted, so drawn)
-        for (const c of [A, B]) await c.page.evaluate(() => window.__MB.setDrive({ to: 'nearestEnemy', arriveM: 330, throttle: 1 }));
-        for (let i = 0; i < 70; i++) {
-          const d = await A.page.evaluate(() => { const H = window.__MB.H, p = H.player(), e = H.sel('nearestEnemy'); return p && e ? Math.round(H.dist(p.state.pos, e)) : null; });
-          if (d != null && d < 340) break;
+        // close the distance. A client holds the other seat only once it is spotted (snapshots are filtered for
+        // spotting), so each drives at the other side's spawn marker until the other tank is in its own world
+        // (r14 run 1: neither ever saw the other from the deployment slots)
+        for (const c of [A, B]) {
+          await c.page.evaluate(() => {
+            window.__MB.defineSelector('enemySpawn', 'const mine = ms && ms.perspectiveTeam; const s = ms && ms.spawns && ms.spawns.find((x) => x.team !== mine); return s ? H.point(s.x, s.y, s.z) : null;');
+            window.__MB.setDrive({ to: 'enemySpawn', arriveM: 40, throttle: 1 });
+            window.__MB.setHud('full');
+          });
+          await c.page.addStyleTag({ content: '.cot-mp-banner{display:none!important}' });
+        }
+        let seen = [null, null];
+        for (let i = 0; i < 120; i++) {
+          seen = await Promise.all([A, B].map((c) => c.page.evaluate(() => {
+            const H = window.__MB.H, p = H.player(), e = H.sel('nearestEnemy');
+            if (p && e && H.dist(p.state.pos, e) < 420) { window.__MB.setDrive(null); return Math.round(H.dist(p.state.pos, e)); }
+            return null;
+          })));
+          if (seen[0] != null && seen[1] != null) break;
           await ctx.sleep(500);
         }
+        ctx.log('in sight', JSON.stringify(seen));
+        if (seen[0] == null || seen[1] == null) ctx.note(`the seats did not both see each other (A ${seen[0]}, B ${seen[1]})`);
+        ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two 4K battles in one headless Chrome');
         for (const c of [A, B]) {
           await c.page.evaluate(() => {
             window.__MB.setDrive(null);
@@ -1338,9 +1356,9 @@ Object.assign(RECIPES, {
           // the 24:7 band: full-height halves (all of each HUD) and a tighter centre pair around the targets
           const out = `c${String(k).padStart(3, '0')}.png`;
           spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', join(dir, files.a), '-i', join(dir, files.b), '-filter_complex',
-            '[0]crop=3703:2160:68:0[a];[1]crop=3703:2160:68:0[b];[a][b]hstack', join(dir, out)]);
+            '[0]crop=1851:1080:34:0[a];[1]crop=1851:1080:34:0[b];[a][b]hstack', join(dir, out)]);
           spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', join(dir, files.a), '-i', join(dir, files.b), '-filter_complex',
-            '[0]crop=2400:1400:720:380[a];[1]crop=2400:1400:720:380[b];[a][b]hstack', join(dir, out.replace('.png', '-tight.png'))]);
+            '[0]crop=1200:700:360:190[a];[1]crop=1200:700:360:190[b];[a][b]hstack', join(dir, out.replace('.png', '-tight.png'))]);
           appendFileSync(join(dir, 'meta.jsonl'), `${JSON.stringify({ n: k, file: out, label: `pair round ${round + 1}`, reason: { type: 'pair', shooter: shooter === A ? 'A' : 'B', delayMs: delay }, pair: files })}\n`);
           for (const c of [A, B]) await c.page.evaluate(() => { window.__MB.arm(null); window.__MB.resume(); window.__MB.setFire(null); });
           await ctx.sleep(1200);

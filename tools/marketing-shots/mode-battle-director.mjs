@@ -154,17 +154,20 @@ export function installModeBattleDirector() {
     const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
     for (const c of discs) {
       const wx = c.x - eye.x, wz = c.z - eye.z, along = wx * ux + wz * uz;
-      if (along < 12 || along > len - 6) continue;
-      if (Math.abs(wx * uz - wz * ux) < c.r + 1.2) return false;
+      if (along < 10 || along > len - 4) continue;
+      // a canopy anywhere hides the line; a bush only near either end (it fills the foreground or covers the
+      // target); small shrubs mid-field pass under a 2.5 m sight line (r14 run 1: the strict test found no lane)
+      if (c.r < 5 && along > 25 && along < len - 45) continue;
+      if (Math.abs(wx * uz - wz * ux) < c.r + 1.0) return false;
     }
     return true;
   };
-  /** Ground a tank can sit on: inside the map, flat enough, no solid record or foliage disc within `clearM`. */
+  /** Ground a tank can sit on: inside the map, flat enough, no solid record within `clearM` nor foliage on it. */
   H.openGround = (x, z, clearM = 7, discs = H.concealers()) => {
     if (Math.abs(x) > 440 || Math.abs(z) > 440) return false;
     const y = H.groundY(x, z), s = 4;
     if (Math.abs(H.groundY(x + s, z) - y) > 1.6 || Math.abs(H.groundY(x, z + s) - y) > 1.6) return false;
-    for (const c of discs) if (Math.hypot(c.x - x, c.z - z) < c.r + clearM * 0.6) return false;
+    for (const c of discs) if (Math.hypot(c.x - x, c.z - z) < c.r + 1.5) return false;
     const obstacles = H.D().world.getObstacles?.() || [];
     for (const o of obstacles) {
       if (o.crushed || o.dead || o.crushable) continue;
@@ -177,7 +180,7 @@ export function installModeBattleDirector() {
    * or an open spot near it, find lanes toward the enemy that nothing hides, and move the nearest live enemies (their
    * AI kept) onto them; two allies take open ground beside the player. Returns what moved.
    */
-  H.stageEngagement = ({ dists = [260, 220, 300, 180, 340], enemies: wantEnemies = 2, allies: wantAllies = 2, spotSearchM = [0, 40, 80, 130] } = {}) => {
+  H.stageEngagement = ({ dists = [260, 220, 300, 180, 340], enemies: wantEnemies = 2, allies: wantAllies = 2, spotSearchM = [0, 40, 80, 130, 180] } = {}) => {
     const p = H.player();
     if (!H.live(p)) return null;
     const discs = H.concealers();
@@ -198,7 +201,7 @@ export function installModeBattleDirector() {
       const toward = Math.atan2(cx - spot.x, cz - spot.z);
       const lanes = [];
       for (const d of dists) {
-        for (const lat of [0, 9, -9, 18, -18, 27, -27]) {
+        for (const lat of [0, 9, -9, 18, -18, 27, -27, 36, -36, 45, -45]) {
           const yaw = toward + lat * Math.PI / 180;
           const q = { x: spot.x + Math.sin(yaw) * d, z: spot.z + Math.cos(yaw) * d };
           if (!H.openGround(q.x, q.z, 6, discs) || !H.laneClear(eye, q, 2.4, discs)) continue;
