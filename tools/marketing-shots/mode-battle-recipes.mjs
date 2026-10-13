@@ -97,21 +97,39 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 45,
     async run(ctx) {
-      // two lines across open ground: r2-r3 staged one or two enemies 260-340 m out and the chase view showed specks
-      // on a tree line; four enemies now stand 160-220 m out with three allies beside the player
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 240, minRangeM: 120, enemies: 4, allies: 3, dists: [160, 180, 200, 220] })));
+      // the lead (r4 review of c079): the chase view read as a tank in grass with no action at home-page size. A
+      // fight beat instead, filmed in front of or beside the hero, never from behind: enemies 110-155 m out (three,
+      // AI kept), three allies beside the player, the gun laid by the aim hook (the external poses free it) and the
+      // second after the hero's kill held from beside the wreck looking back at the hero (hit card, burning wreck)
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 170, minRangeM: 80, enemies: 3, allies: 3, dists: [110, 125, 140, 155] })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 3 });
+      await ctx.mb('setOnFrame', `
+        const st = MB.onFrameState, p = H.player(); if (!p) return;
+        st.done = st.done || {};
+        for (let i = MB.events.length - 1; i >= Math.max(0, MB.events.length - 8); i--) {
+          const ev = MB.events[i];
+          if (ev.type !== 'tank:destroyed' || ev.killerId !== p.id || st.done[ev.id] || ev.seq <= (st.seq || 0)) continue;
+          st.seq = ev.seq; st.done[ev.id] = true;
+          st.wreckCam = { kind: 'between', from: 'entity:' + ev.id, to: 'player', backM: 13, sideM: 8, heightM: 1.7, lookAtFrac: 0.4, lookAtHeightM: 2, fov: 34, smoothS: 0, hud: 'noreticle' };
+          st.holdUntil = performance.now() + 2600;
+          MB.setCamera(st.wreckCam);
+          MB.burstIn([300, 650, 1000, 1500], { type: 'kill-after', victim: ev.id });
+          break;
+        }
+        // hold the wreck pose through the burst even if the window cycles its cameras
+        if (st.wreckCam && performance.now() < st.holdUntil && MB.camera !== st.wreckCam && MB.camera?.from !== st.wreckCam.from) MB.setCamera(st.wreckCam);`);
       await settle(ctx, 2);
       await ctx.capture({
-        // (the chase view stays on the gun line: the arcade camera's centre ray is the aim, so an orbit offset would
-        // lay the gun off the target)
         cameras: [
-          { kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' },
-          { kind: 'chase', target: 'nearestEnemyClear', step: 3, hud: 'full' },
+          // the receiving end: by the hero's target, looking back across the lane at the hero firing
+          { kind: 'between', from: 'aimTarget', to: 'player', backM: 16, sideM: 8, heightM: 1.6, lookAtFrac: 0.62, lookAtHeightM: 1.8, fov: 30, smoothS: 0.3, hud: 'noreticle' },
+          // the hero at low front three-quarter, both sides
+          { kind: 'follow', subject: 'player', azimuthDeg: 38, distM: 13, heightM: 1.0, lookAtHeightM: 1.9, fov: 42, hud: 'noreticle' },
+          { kind: 'follow', subject: 'player', azimuthDeg: -42, distM: 12, heightM: 1.1, lookAtHeightM: 1.9, fov: 42, hud: 'noreticle' },
         ],
-        cameraEvery: 4,
-        triggers: [T.playerFire(), T.enemyFireOnScreen(), T.hitOnScreen(), T.killOnScreen()],
+        cameraEvery: 3,
+        triggers: [T.playerFire([35, 70, 120]), T.enemyFireOnScreen([35, 90], 400), T.hitOnScreen([30, 80], 400)],
       });
     },
   },
