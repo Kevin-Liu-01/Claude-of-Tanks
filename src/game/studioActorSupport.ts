@@ -33,6 +33,10 @@ export function conformStudioActor(
   const aimLocked = input.aimLocked, priorRigid = actor.rigidGear;
   input.throttle = 0; input.steer = 0; input.brake = true; input.aimLocked = true;
   actor.rigidGear = rigidGear;
+  // (the movement's edge climb paces itself by the hull's travel: an actor posed along its track travels at its track's
+  // speed, though it is stepped at 0 here)
+  const priorPace = actor.climbPaceMps;
+  actor.climbPaceMps = Math.abs(speed);
   if (!(dt > 0)) resetTankVerticalState(state, terrain.getHeightAt(x, z));
   try {
     const steps = dt > 0 ? 1 : 48;
@@ -48,6 +52,7 @@ export function conformStudioActor(
     state.turretYaw = turret; state.gunPitch = gun;
     input.throttle = throttle; input.steer = steer; input.brake = brake;
     input.aimLocked = aimLocked; actor.rigidGear = priorRigid;
+    actor.climbPaceMps = priorPace;
   }
 }
 

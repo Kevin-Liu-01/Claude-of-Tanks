@@ -1110,6 +1110,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
+    'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
     'tools/physics-torture.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
