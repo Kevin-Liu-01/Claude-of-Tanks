@@ -12,6 +12,17 @@ import { ensureWorldNightEmissionMask, markWorldLantern } from '../worldNightEmi
 
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
+const CUT_CORNER = Symbol('exterior-cut-corner');
+
+/**
+ * A builder whose body has its +x +z corner cut on a 45-degree face, `leg` metres back along each face (the generic
+ * corner shop's entrance), marks its buckets so the exterior pass keeps that corner's courses, pier, downpipe and gutter
+ * on the walls that stand there (the buildings stream, 2026-10-13: they stood on the old corner, in the air off the cut).
+ * The pass adds the same parts either way (their placement-stream draws are unchanged), and a course across the cut.
+ */
+export function markCutCorner(parts: GeometryBuckets, leg: number): void {
+  Object.defineProperty(parts, CUT_CORNER, { value: leg, enumerable: false, configurable: true });
+}
 
 interface ExteriorSupportRecord {
   building: string;
@@ -106,6 +117,8 @@ interface ExteriorEnvelope {
   profile: string;
   bathhouseStyle?: 'timber';
   timberBathhouseEntry?: THREE.BufferGeometry;
+  /** the +x +z corner's cut (markCutCorner), 0 for a full corner */
+  cut?: number;
 }
 
 interface ExteriorOptions {
@@ -238,6 +251,7 @@ function addCourses(
   d: number,
   wallH: number,
   material: string,
+  cut = 0,
 ): void {
   const lowY = Math.min(0.72, wallH * 0.18);
   const highY = Math.max(lowY + 0.55, wallH - 0.32);
@@ -246,9 +260,16 @@ function addCourses(
     ['cornice', highY],
   ];
   for (const [name, y] of courses) {
+    const h = name === 'plinth' ? 0.24 : 0.18;
+    // (a cut corner: the front and right runs stop at the cut, and a run crosses the cut face)
     author.add(`${name}-front`, material,
-      box(w + 0.20, name === 'plinth' ? 0.24 : 0.18, 0.14)
-        .translate(0, y, d / 2 + 0.025));
+      box(w + 0.20 - (cut ? cut + 0.10 : 0), h, 0.14)
+        .translate(cut ? -(cut + 0.10) / 2 : 0, y, d / 2 + 0.025));
+    if (cut) {
+      const k = 0.025 / Math.SQRT2;
+      author.add(`${name}-cut`, material, box(cut * Math.SQRT2, h, 0.14).rotateY(Math.PI / 4)
+        .translate(w / 2 - cut / 2 + k, y, d / 2 - cut / 2 + k)).userData.uvJitter = 'none';
+    }
     author.add(`${name}-rear`, material,
       box(w + 0.20, name === 'plinth' ? 0.24 : 0.18, 0.14)
         .translate(0, y, -d / 2 - 0.025));
@@ -256,8 +277,8 @@ function addCourses(
       box(0.14, name === 'plinth' ? 0.24 : 0.18, d + 0.20)
         .translate(-w / 2 - 0.025, y, 0));
     author.add(`${name}-right`, material,
-      box(0.14, name === 'plinth' ? 0.24 : 0.18, d + 0.20)
-        .translate(w / 2 + 0.025, y, 0));
+      box(0.14, h, d + 0.20 - (cut ? cut + 0.10 : 0))
+        .translate(w / 2 + 0.025, y, cut ? -(cut + 0.10) / 2 : 0));
   }
 }
 
@@ -267,12 +288,15 @@ function addCornerPiers(
   d: number,
   wallH: number,
   material: string,
+  cut = 0,
 ): void {
   const pierH = Math.max(1.4, wallH - 0.22);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    // (a cut corner's pier stands where the front meets the cut face)
+    const x = sx > 0 && sz > 0 && cut ? w / 2 - cut : sx * (w / 2 + 0.015);
     author.add(`pier-${sx}-${sz}`, material,
       box(0.28, pierH, 0.28)
-        .translate(sx * (w / 2 + 0.015), pierH / 2, sz * (d / 2 + 0.015)));
+        .translate(x, pierH / 2, sz * (d / 2 + 0.015)));
   }
 }
 
@@ -405,19 +429,21 @@ function addRainwater(
   w: number,
   d: number,
   wallH: number,
+  cut = 0,
 ): void {
   const frontZ = d / 2 + 0.055;
   const pipeY = wallH * 0.48;
   for (const sx of [-1, 1]) {
-    const x = sx * (w / 2 - 0.20);
+    // (a cut corner: the downpipe on the front before the cut, the gutter stopping there)
+    const x = sx > 0 && cut ? w / 2 - cut - 0.20 : sx * (w / 2 - 0.20);
     author.add(`downpipe-${sx}`, 'dark',
       cylinder(0.075, wallH * 0.94, 8).translate(x, pipeY, frontZ));
     author.add(`downpipe-boot-${sx}`, 'dark',
       box(0.18, 0.16, 0.34).translate(x, 0.10, frontZ + 0.10), `downpipe-${sx}`);
   }
   author.add('front-gutter', 'dark',
-    cylinder(0.085, w - 0.25, 8).rotateZ(Math.PI / 2)
-      .translate(0, wallH - 0.10, frontZ), 'wall');
+    cylinder(0.085, w - 0.25 - cut, 8).rotateZ(Math.PI / 2)
+      .translate(-cut / 2, wallH - 0.10, frontZ), 'wall');
 }
 
 function addServiceCluster(
@@ -698,7 +724,9 @@ export function addConnectedExterior(
   parts: GeometryBuckets,
   options: ExteriorOptions = {},
 ): ExteriorReceipt {
-  const { variant, ...envelope } = validateExteriorEnvelope(options);
+  const { variant, ...checked } = validateExteriorEnvelope(options);
+  const cut = (parts as unknown as Record<symbol, unknown>)[CUT_CORNER];
+  const envelope: ExteriorEnvelope = typeof cut === 'number' && cut > 0 ? { ...checked, cut } : checked;
   if (envelope.timberBathhouseEntry && (!parts.wood || !parts.curtain)) {
     throw new TypeError('Timber bathhouse requires its existing wood and curtain material buckets');
   }
@@ -885,11 +913,11 @@ function validateExteriorEnvelope(
 
 function addPrimaryExterior(
   author: ExteriorAuthor,
-  { w, d, wallH, profile, bathhouseStyle, timberBathhouseEntry }: ExteriorEnvelope,
+  { w, d, wallH, profile, bathhouseStyle, timberBathhouseEntry, cut = 0 }: ExteriorEnvelope,
   variant: number,
 ): void {
   const masonry = profile !== 'timber' && profile !== 'canvas';
-  addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
+  addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood', cut);
   addFacadeBayRhythm(author, w, d, wallH, profile, variant,
     bathhouseStyle === 'timber' && profile === 'desert');
   if (profile !== 'canvas' && profile !== 'open') {
@@ -902,7 +930,7 @@ function addPrimaryExterior(
 
 function addSecondaryExterior(
   author: ExteriorAuthor,
-  { w, d, wallH, profile }: ExteriorEnvelope,
+  { w, d, wallH, profile, cut = 0 }: ExteriorEnvelope,
   variant: number,
 ): void {
   // Dense rowhouse strips already carry authored window reveals, dormers and
@@ -912,9 +940,9 @@ function addSecondaryExterior(
   const fullUrbanFixture = profile !== 'urban' || variant % 2 === 0;
   if (profile === 'civic' || profile === 'industrial'
       || (profile === 'urban' && fullUrbanFixture)) {
-    addCornerPiers(author, w, d, wallH, profile === 'industrial' ? 'dark' : 'stone');
+    addCornerPiers(author, w, d, wallH, profile === 'industrial' ? 'dark' : 'stone', cut);
   }
-  if (profile !== 'canvas' && profile !== 'open') addRainwater(author, w, d, wallH);
+  if (profile !== 'canvas' && profile !== 'open') addRainwater(author, w, d, wallH, cut);
   if ((profile === 'rural' || profile === 'civic') && variant % 2 === 1) addQuoins(author, w, d, wallH);
   if (profile === 'industrial' || (profile === 'urban' && fullUrbanFixture)
       || (profile === 'rural' && variant % 3 === 1)) {

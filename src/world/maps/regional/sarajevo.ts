@@ -41,9 +41,15 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 
 /**
  * A street-row building's footprint: the base geometry's bounds (the row's houses meet and the gaps between them stay
- * the base's), its street front no further out than the plot's (the base's steps and porches reach past it).
+ * the base's), its street front no further out than the plot's (the base's steps and porches reach past it), and its
+ * sides no further out than the plot's width (the buildings stream, 2026-10-13, the weird-buildings survey: the base's
+ * eaves, downpipes and side dressing reach 0.5-1.5 m past its walls, so a house filling them stood 1-2 m into each
+ * neighbour of a row laid wall to wall, its walls through theirs and the roofs crossed).
  */
-const rowFill = (ctx: RegionalBuildContext) => fillOf(ctx.bounds, 0.05, ctx.info.d / 2 - 0.1);
+const rowFill = (ctx: RegionalBuildContext) => {
+  const half = ctx.info.w / 2 - 0.15;
+  return fillOf({ ...ctx.bounds, minX: Math.max(ctx.bounds.minX, -half), maxX: Math.min(ctx.bounds.maxX, half) }, 0.05, ctx.info.d / 2 - 0.1);
+};
 
 /** 0 on the valley floor .. 1 up the mahala slopes (the distance from the valley axis), or null without a place. */
 export function slopeOf(ctx: RegionalBuildContext): number | null {
@@ -710,8 +716,10 @@ function frameShell(ctx: RegionalBuildContext): RegionalParts {
   sink.span('plaster3', -W / 2, -0.3, -D / 2, W / 2, 0.3, D / 2);
   const xs = [-W / 2 + c / 2, 0, W / 2 - c / 2], zs = [-D / 2 + c / 2, D / 2 - c / 2];
   const lost = Math.floor(rng() * 6);
+  const tops: number[] = [];
   xs.forEach((x, i) => zs.forEach((z, j) => {
     const k = i * 2 + j, top = k === lost ? fh * (0.6 + rng() * 0.6) : floors * fh;
+    tops[k] = top;
     sink.span('plaster3', x - c / 2, 0.3, z - c / 2, x + c / 2, top, z + c / 2);
   }));
   for (let f = 1; f <= floors; f++) {
@@ -727,8 +735,10 @@ function frameShell(ctx: RegionalBuildContext): RegionalParts {
   sink.span('stone', -W / 2 + 0.5, 0.2, -D / 2 + 0.5, W / 2 - 0.5, 0.9, D / 2 - 0.5, { decor: true });
   sink.dressing(mobile, () => {
     for (let k = 0; k < 6; k++) {
-      const x = xs[Math.floor(look() * 3)], z = zs[Math.floor(look() * 2)];
-      sink.member('structureWood', [x, floors * fh, z], [x + (look() - 0.5) * 0.5, floors * fh + 0.4 + look() * 0.7, z + (look() - 0.5) * 0.5], 0.03, 0.03, [0, 0, 1],
+      // (the buildings stream, 2026-10-13, the integrity check: the bars stood at the frame's full height over the column
+      // that broke off, up to 2.2 m in the air) each bar out of its own column's broken head
+      const i = Math.floor(look() * 3), j = Math.floor(look() * 2), x = xs[i], z = zs[j], head = tops[i * 2 + j];
+      sink.member('structureWood', [x, head, z], [x + (look() - 0.5) * 0.5, head + 0.4 + look() * 0.7, z + (look() - 0.5) * 0.5], 0.03, 0.03, [0, 0, 1],
         { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
     }
   });

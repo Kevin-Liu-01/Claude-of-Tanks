@@ -1065,7 +1065,9 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         const z = -rg.halfD + 0.15 + (2 * rg.halfD - 0.3) * k / n;
         const a: Vec3 = [side * (rg.s - 0.02), eaveY - 0.09, z];
         const b: Vec3 = [side * (rg.s + e - 0.06), eaveY - (e - 0.06) * rg.tanP - 0.09, z];
-        sink.member('structureWood', a, b, 0.08, 0.1, [0, 0, 1], { colour: c, decor: true, ends: true }, 0.05);
+        // (the buildings stream, 2026-10-13, the integrity check: a framing member leaves out its back, and a rafter foot
+        // is seen from both ends of the eave, so from one end every foot showed into its open side) a free member
+        sink.member('structureWood', a, b, 0.08, 0.1, [0, 0, 1], { colour: c, decor: true, exposed: true }, 0.05);
       }
     });
   }

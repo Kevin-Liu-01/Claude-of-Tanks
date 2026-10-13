@@ -172,7 +172,7 @@ import {
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
-  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry,
+  box, gableAttic, gablePrism, gableSlabSeat, jitterUV, makeTelephonePoleDistanceGeometry,
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
@@ -1851,15 +1851,15 @@ function makeCottage(
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
-  // roof slabs
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // roof slabs (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the attic closed
+  // under them; the slabs stood 20 cm over the wall tops along both eaves)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.12);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts[wallBucket].push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   // r2: ridge cap — the bare slab junction read as an extruded cardboard fold
   parts.roof.push(slabBox(0.34, 0.13, d + over * 2, 0.5).translate(0, wallH + roofH + 0.04, 0));
   // r2: chimney with cap slab + clay pot (was a bare stub most shots missed)
@@ -1911,14 +1911,14 @@ function makeBarn(rng: Rng, buckets: PropsBuckets): StructureDimensions {
   parts.wood.push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
   parts.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the loft closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.14);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.14, d + over * 2, 0.35); // r2: real tile rows
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.07, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length, 0.14, d + over * 2, 0.35); // r2: real tile rows
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   parts.dark.push(box(2.6, 2.9, 0.10).translate(0, 1.45, d / 2 + 0.08)); // big barn door
   parts.wood.push(box(2.9, 3.1, 0.06).translate(0, 1.55, d / 2 + 0.02));
   // r2 terrain_environment: the barn was a featureless dark box (critique).
@@ -2126,15 +2126,17 @@ function addRowhouseRoof(
     parts[wallBucket].push(gablePrism(w, roofH, 0.32)
       .translate(0, wallH, -d / 2 + 0.16));
   }
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const angle = Math.atan2(roofH + 0.1, w / 2 + over);
-  if (!flatRoof) for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, 0.13, d + over * 2, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, angle, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
-    parts.roof.push(slab);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the attic closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.13);
+  if (!flatRoof) {
+    for (const side of [-1, 1]) {
+      const slab = slabBox(seat.length, 0.13, d + over * 2, 0.35);
+      pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+      parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
+    }
+    parts[wallBucket].push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   }
-  return angle;
+  return seat.pitch;
 }
 
 function addRowhouseFacadeRelief(
@@ -4764,6 +4766,23 @@ ${snowCap ? `
     }
     return { w, d };
   }
+  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
+   * rectangles, each grown by half the gap. */
+  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
+    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
+    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
+    for (const angle of axes) {
+      const ux = Math.cos(angle), uz = -Math.sin(angle);
+      const reach = (f: typeof a) => {
+        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
+        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
+        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
+      };
+      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
+      if (separation > reach(a) + reach(b)) return false;
+    }
+    return true;
+  }
   function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
     rot: number): { w: number; d: number } | null {
     const { w, d } = footprintOf(tmp, info);
@@ -4788,6 +4807,30 @@ ${snowCap ? `
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
+    // (the buildings stream, 2026-10-13, the weird-buildings survey) a block-fill building, or a road building with no
+    // frontage site, stands clear of the buildings already standing. Its site was cleared by its centre alone
+    // (isRoadBuildingSiteClear), so a large plan building
+    // could stand into the row beside it (Steinburg's factory, 3 m into the shelled house at its north end, the house's
+    // gable through its roof). One whose footprint meets a standing building's moves by the least distance that clears
+    // it (rings of 0.5 m out to 8 m), on the block fill's own terms; with no such place it stays. No draws move.
+    if (fromRoad && !roadSite && !explicitStructure) {
+      const reach = footprintOf(tmp, info);
+      const meets = (x: number, z: number): boolean => buildingFeatures.some((other) =>
+        footprintsMeet({ x, z, w: reach.w, d: reach.d, rot }, other, 0.5));
+      if (meets(px, pz)) {
+        let clear: { x: number; z: number; fit: ReturnType<typeof groundFit> } | null = null;
+        for (let ring = 1; ring <= 16 && !clear; ring++) {
+          for (let k = 0; k < 24 && !clear; k++) {
+            const a = k * Math.PI / 12, x = px + Math.cos(a) * ring * 0.5, z = pz + Math.sin(a) * ring * 0.5;
+            if (meets(x, z) || noVeg(x, z) || heightField._roadDist(x, z) < 11 || conflictsTacticalReservation(x, z)) continue;
+            if (!buildingFootprintClearsRoads({ x, z, rot }, reach.w, reach.d, roads, CARRIAGEWAY_CLEARANCE)) continue;
+            const moved = groundFit(x, z, info.w, info.d, rot);
+            if (moved.spread <= P.maxSpread) clear = { x, z, fit: moved };
+          }
+        }
+        if (clear) { px = clear.x; pz = clear.z; fit = clear.fit; }
+      }
+    }
     jitterBuildingUvs(tmp, stream);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -5378,23 +5421,6 @@ ${snowCap ? `
   // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
   // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
   // collision bands, footprint record and chimney tops move with it.
-  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
-   * rectangles, each grown by half the gap. */
-  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
-    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
-    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
-    for (const angle of axes) {
-      const ux = Math.cos(angle), uz = -Math.sin(angle);
-      const reach = (f: typeof a) => {
-        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
-        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
-        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
-      };
-      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
-      if (separation > reach(a) + reach(b)) return false;
-    }
-    return true;
-  }
   function moveBuildingsOffCarriageways(): void {
     for (const packet of carriagewayPackets) {
       const { source, w, d } = packet;

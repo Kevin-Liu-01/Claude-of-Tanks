@@ -42,9 +42,15 @@ const SHADOWED = { decor: true, shadow: true } as const;
 
 /**
  * A street-row building's footprint: the base geometry's bounds (the row's houses meet and the gaps between them stay
- * the base's), its street front no further out than the plot's (the base's steps and porches reach past it).
+ * the base's), its street front no further out than the plot's (the base's steps and porches reach past it), and its
+ * sides no further out than the plot's width (the buildings stream, 2026-10-13, the weird-buildings survey: the base's
+ * eaves, downpipes and side dressing reach 0.5-1.5 m past its walls, so a house filling them stood 1-2 m into each
+ * neighbour of a row laid wall to wall, its walls through theirs and the roofs crossed).
  */
-const rowFill = (ctx: RegionalBuildContext) => fillOf(ctx.bounds, 0.05, ctx.info.d / 2 - 0.1);
+const rowFill = (ctx: RegionalBuildContext) => {
+  const half = ctx.info.w / 2 - 0.15;
+  return fillOf({ ...ctx.bounds, minX: Math.max(ctx.bounds.minX, -half), maxX: Math.min(ctx.bounds.maxX, half) }, 0.05, ctx.info.d / 2 - 0.1);
+};
 
 /** A segmental arch's outline on a face (convex, counter-clockwise seen from outside): base from u - r to u + r at y. */
 function archOutline(face: Face, u: number, y: number, r: number, rise: number, o = 0, n = 8): Vec3[] {
