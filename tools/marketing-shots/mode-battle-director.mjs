@@ -436,7 +436,8 @@ export function installModeBattleDirector() {
     if (!spec) return;
     const p = D.game.player;
     if (!H.live(p)) return;
-    const t = H.sel(spec.target);
+    // the gun stays on the nearest enemy while no target is clear (fire still waits for a clear one: fireHook)
+    const t = H.sel(spec.target) || (spec.fallback === false ? null : H.sel(spec.fallback || 'nearestEnemy'));
     MB.aimTargetId = t?.id ?? null;
     if (!t) return;
     const lp = leadPoint(p, t);
@@ -549,7 +550,9 @@ export function installModeBattleDirector() {
     const st = MB.cameraState || (MB.cameraState = {});
     if (spec.kind === 'chase' || spec.kind === 'scope') {
       if (!H.live(p)) return;
-      const t = H.sel(spec.target || MB.aim?.target || 'nearestEnemy');
+      // a camera never drops back to the bare rig while its named target is momentarily hidden: it follows the
+      // nearest enemy until that target is clear again (r14: scope frames fell back to the chase orbit)
+      const t = H.sel(spec.target || MB.aim?.target || 'nearestEnemy') || (spec.fallback === false ? null : H.sel(spec.fallback || 'nearestEnemy'));
       if (!t) return;
       MB.aimTargetId = t.id ?? MB.aimTargetId;
       if (spec.kind === 'scope') {
