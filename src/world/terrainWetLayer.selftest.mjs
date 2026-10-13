@@ -57,6 +57,8 @@ function fixture({ text = source, observe = null } = {}) {
   const create = new Function('THREE', 'SimplexNoise', 'texSize', 'torusNoise',
     'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
+    // (2026-10-13, item/perf-terrain-fold) a sandbox build compiles no shader: the uniform fold stays off and keys nothing
+    const splatFoldEnabled = () => false;
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
     const CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512, LOD_SEGS = [96,48,24];
