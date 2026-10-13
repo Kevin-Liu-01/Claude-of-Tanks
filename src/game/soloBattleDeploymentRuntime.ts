@@ -156,6 +156,8 @@ export interface SoloBattleDeploymentRuntimeOptions {
   preparePlayerPanel(): Promise<void>;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
+  /** Starts the terrain's program links in the parallel compiler (the reworked terrain fold: a map's program is its own). */
+  startTerrainProgramLinks?(terrain: Object3D): void;
   warmVisionSteps?(): Generator<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
   getGeneration(): number;
@@ -567,6 +569,12 @@ export function createSoloBattleDeploymentRuntime(
         await options.prepareNightLighting?.();
         requireCurrent(generation);
         mark('nightLighting');
+        // the perf stream (2026-10-13, the reworked terrain fold): with the fold every map has its own terrain program
+        // (terrainSplatFold.ts). The battle's lights are final from here (the night pool just attached), so its links start
+        // now in the parallel compiler and the allied builds and the shadow prime cover them; prepareWorldPrograms below
+        // finds them linked instead of linking them itself
+        const terrainRoot = options.getWorld()?.group?.children.find((child) => child.name === 'terrain' && child.visible);
+        if (terrainRoot) options.startTerrainProgramLinks?.(terrainRoot);
         battleLoad.progress(0.91, 'Finishing camouflage');
         // Keep the loader responsive through consecutive private vehicle builds.
         // Task yields alone do not request animation callbacks: the former

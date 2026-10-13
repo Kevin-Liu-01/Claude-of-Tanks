@@ -1973,6 +1973,18 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       await frontline.prepare(game.battleCount, game.mapId);
     },
     prepareNightLighting: () => nightLighting.prepare(),
+    startTerrainProgramLinks: (terrain: THREE.Object3D) => {
+      // the perf stream (2026-10-13): the terrain's programs, as the scene pass compiles them (its target, the scene's
+      // lights and fog), linked in the parallel compiler while the deployment warm goes on
+      const priorTarget = renderer.getRenderTarget();
+      const priorFace = renderer.getActiveCubeFace(), priorMip = renderer.getActiveMipmapLevel();
+      try {
+        renderer.setRenderTarget(post.sceneAA.sceneTarget);
+        void renderer.compileAsync(terrain, camera, scene).catch(() => { /* prepareWorldPrograms links what is left */ });
+      } catch { /* prepareWorldPrograms links it */ } finally {
+        renderer.setRenderTarget(priorTarget, priorFace, priorMip);
+      }
+    },
     runSceneWatchdog: async (assertCurrent: () => void) => {
       assertCurrent();
       const run = coveredBattleWatchdog;

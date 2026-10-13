@@ -738,3 +738,16 @@ for (const outcome of ['ready', 'cancelled', 'failed']) {
   }
   h.disposeWarmResources();
 }
+
+// the perf stream (2026-10-13, the reworked terrain fold): the terrain's links start once the battle's lights are final
+// (after the night pool attaches) and before the allied builds, so those builds and the shadow prime cover the link
+{
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('./soloBattleDeploymentRuntime.ts', import.meta.url), 'utf8');
+  const night = source.indexOf("mark('nightLighting');"), start = source.indexOf('options.startTerrainProgramLinks?.(terrainRoot);');
+  const allies = source.indexOf('await battleVisuals.stream(');
+  assert.ok(night > 0 && start > night && start < allies, 'terrain links start after the night pool, before the allied builds');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  assert.match(main, /startTerrainProgramLinks: \(terrain: THREE\.Object3D\) => \{[\s\S]{0,400}renderer\.setRenderTarget\(post\.sceneAA\.sceneTarget\);\s*void renderer\.compileAsync\(terrain, camera, scene\)/,
+    'main.ts links the terrain as the scene pass compiles it (its target, the scene\'s lights and fog)');
+}
