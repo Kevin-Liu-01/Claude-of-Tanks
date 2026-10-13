@@ -9,6 +9,8 @@ import { tankTier } from '../tier.ts';
 import { garageStatGroup } from '../../ui/garageDossier.ts';
 import { VEHICLE_ROLE_PROFILES } from '../roleProfiles.ts';
 import { tacticalRoleHandling } from '../tacticalRoleBalance.ts';
+import { AUXILIARY_INVENTORY } from '../auxiliaryInventory.generated.ts';
+import { AUXILIARY_ROOF_GUNS } from '../auxiliaryRoofGuns.generated.ts';
 
 const spec = getSpec('m551_sheridan');
 const ttsSpec = getSpec('m551a1_tts');
@@ -385,8 +387,11 @@ try {
   // somewhere else"; the coordinator's reading): the 2026-09-30 remote 30 mm station is back on the commander's rear ring
   // exactly as before a0b6b3a64 (its pins below are that commit's predecessor's), and the commander's shielded M2 that
   // a0b6b3a64 activated moved off the cupola. 2026-10-10 (owner hotfix: "move the sheridan mg onto the roof instead of
-  // floating up there"): it stands on the flat turret roof on a pedestal instead of the loader-ring arm. Both are working
-  // stations.
+  // floating up there"): it stands on the flat turret roof on a pedestal instead of the loader-ring arm. Both are
+  // registered remote stations, but the roof-gun system drives one working station per vehicle: guns[0] of the controls
+  // inventory. 2026-10-12 (owner order: "make the big roof autocannon on the m551 tts the autocannon, not the tiny machine
+  // gun in front of the cupola"): the inventory lists the heaviest station first, so the 30 mm is the working gun (it aims,
+  // fires, is the damageable roofGun module) and the M2 stays on its pedestal as the second registered station, at rest.
   // (2026-09-30, 884384729 controls integration, 4c34b3e8b remote roof weapons: the TTS 30 mm station is the shared
   // remote auxiliary station; its stock lives in yaw and pitch meshes under rig_turret/m551a1TtsRemoteAutocannon, and the
   // barrel is measured on the actual pitching geometry.)
@@ -423,7 +428,14 @@ try {
   assert.equal(ttsTank.root.getObjectByName('m551a1TtsLoaderM2'), undefined, 'no M2 rides an arm off the loader\'s ring');
   assert.ok(loaderStation?.userData.remoteControlled && loaderStation.userData.caliberMm === 12.7
     && loaderStation.userData.fittingExact && loaderStation.parent?.name === 'rig_turret',
-  'TTS roof M2 is one exact turret-mounted working station');
+  'TTS roof M2 is one exact turret-mounted station');
+  // 2026-10-12 owner order (above): the 30 mm is the working roof gun in every table that drives one, and the M2 is the
+  // second registered station
+  assert.deepEqual(AUXILIARY_INVENTORY.m551a1_tts.guns.map((gun) => [gun.name, gun.caliberMm]),
+    [['m551a1TtsRemoteAutocannon', 30], ['m551a1TtsRoofM2', 12.7]],
+    'the TTS 30 mm is its working roof gun (guns[0]); the roof M2 is its second station');
+  assert.equal(AUXILIARY_ROOF_GUNS.m551a1_tts?.name, 'm551a1TtsRemoteAutocannon',
+    'the TTS roofGun module is the 30 mm station');
   const loaderGun = loaderStation.getObjectByName('americanM2HBBody');
   let pitches = false;
   for (let node = loaderGun; node; node = node.parent) if (node.name === 'auxiliaryWeaponPitch') pitches = true;
