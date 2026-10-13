@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import {
   box, gableAttic, gablePrism, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from '../propGeometry.ts';
+import { markCutCorner } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 
@@ -698,10 +699,13 @@ function addCornerShopParapet(
     .translate(0, wallH + parapetHeight + 0.05, -d / 2 + 0.11));
   const deck = planSolid(cornerShopPlan(w, d, 0.15), wallH + 0.06, wallH + 0.14, 0.3);
   parts.roof.push(deck);
-  // the cut corner's parapet and coping (new parts: no placement-stream draws)
-  const [ax, az] = onCornerCut(w, d, -0.11), run = c * Math.SQRT2;
-  const cutParapet = box(run, parapetHeight, 0.22).rotateY(Math.PI / 4).translate(ax, y, az);
-  const cutCoping = box(run + 0.06, 0.10, 0.32).rotateY(Math.PI / 4).translate(ax, wallH + parapetHeight + 0.05, az);
+  // the cut corner's parapet and coping, each mitred to the ends of the front and side runs it joins (new parts: no
+  // placement-stream draws)
+  const X = w / 2, Z = d / 2;
+  const cutParapet = planSolid([[X - c, Z], [X, Z - c], [X - 0.22, Z - c], [X - c, Z - 0.22]], wallH, wallH + parapetHeight);
+  const o = 0.05 * Math.SQRT2;
+  const cutCoping = planSolid([[X - c, Z + o], [X + o, Z - c], [X - 0.27, Z - c], [X - c, Z - 0.27]],
+    wallH + parapetHeight, wallH + parapetHeight + 0.10);
   for (const g of [cutParapet, cutCoping]) g.userData.uvJitter = 'none';
   parts[wallBucket].push(cutParapet);
   parts.stone.push(cutCoping);
@@ -731,6 +735,8 @@ export function makeCornerShop(
   addCornerShopUpperWindows(rng, parts, w, d);
   addCornerShopParapet(parts, wallBucket, w, d, wallH);
   pushParts(buckets, parts);
+  // the exterior pass (props.ts addCatalogExterior) keeps the cut corner's courses, pier, downpipe and gutter on the walls
+  markCutCorner(buckets, CORNER_CUT);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
 
