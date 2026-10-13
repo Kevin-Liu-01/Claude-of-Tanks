@@ -154,7 +154,8 @@ export function installModeBattleDirector() {
     const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
     for (const c of discs) {
       const wx = c.x - eye.x, wz = c.z - eye.z, along = wx * ux + wz * uz;
-      if (along < 10 || along > len - 4) continue;
+      // (from 4 m out: r3's realistic spot stood behind birches 5-10 m off the gun, and the sights saw trunks)
+      if (along < 4 || along > len - 4) continue;
       // foliage matters near either end: it fills the foreground or covers the target. Mid-field, a 2.5 m sight
       // line passes under canopies and over the lane's shrubs at frame scale (r14: on Verdant every 200 m line
       // crossed some disc, so the stricter tests found no lane at all); terrain, buildings and props still block
