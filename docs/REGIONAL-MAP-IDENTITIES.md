@@ -27,7 +27,7 @@ the fictional map reproduces a particular real-world location.
 | urban | A town below one dominant distant escarpment; restrained ground slopes around streets. |
 | coastal | Open sea and unequal dune/bluff headlands; preserve its working eastern aperture. |
 | autumn | Norman / English river-ford market town (round 48): a SW→NE river in a sculpted valley crossed by a stone bridge and a ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake. |
-| steppe | Open skyline, isolated distant rises and long shallow folds through grassland. |
+| steppe | The Sary-Arka grain steppe of Akmola oblast, ploughed by the Virgin Lands campaign from 1954 (the map-revival lane, 2026-10-05): a sovkhoz grain station in the tselina kit — the slip-formed elevator by the siding, the MTS garages and implement sheds, whitewashed settlers' houses with glazed verandas and fenced kitchen gardens, the club's portico and star, the Rozhnovsky tower — Barayev's strip fields of wheat, stubble and black fallow between the shelterbelts, stone idols on the kurgans; an open skyline, isolated distant rises and long shallow folds. |
 | railyard | Graded brownfield with low distant uplands and broad drainage grades. |
 | frontier | Farming basin with branching ridges; carry the playable watershed language into the outland. |
 | fjord | Open eastern water axis between unequal glacial walls; retain cliff-road supports. |
