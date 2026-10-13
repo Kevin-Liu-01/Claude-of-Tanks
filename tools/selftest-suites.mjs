@@ -1443,10 +1443,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
     'src/world/vegetationResources.selftest.mjs',
-    'src/world/nearTierShadowReach.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/tidalMangrove.selftest.mjs',
     'src/world/vegetationClearance.selftest.mjs',
+    'src/world/nearTierShadowReach.selftest.mjs',
     'src/world/groundCoverClearance.selftest.mjs',
     'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
