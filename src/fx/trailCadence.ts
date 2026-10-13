@@ -30,6 +30,12 @@ export interface TrailCadence {
   step(kind: number, x: number, z: number, now: number, spacingM: number, restS: number, maxBirths: number): number;
   /** [x, z, ageS] per due body of the last step */
   readonly births: Float32Array;
+  /** the last step's slot, whether that source was first seen there, and the seconds since its previous call */
+  readonly last: number;
+  readonly fresh: boolean;
+  readonly lastDt: number;
+  /** two caller-owned values per slot (`last * 2`, `last * 2 + 1`), zeroed when a slot is claimed */
+  readonly aux: Float64Array;
   /** sources called within the idle window (diagnostics) */
   active(now: number): number;
   reset(): void;
@@ -43,6 +49,8 @@ export function createTrailCadence(slots = 64, matchM = 1.6, idleS = 0.4): Trail
   const dist = new Float32Array(slots), wait = new Float32Array(slots);
   const kinds = new Int16Array(slots).fill(-1);
   const births = new Float32Array(TRAIL_MAX_BIRTHS * 3);
+  const aux = new Float64Array(slots * 2);
+  let last = 0, fresh = false, lastDt = 0;
 
   function find(kind: number, x: number, z: number, now: number): number {
     let best = -1, bestD = Infinity;
@@ -71,7 +79,10 @@ export function createTrailCadence(slots = 64, matchM = 1.6, idleS = 0.4): Trail
   }
 
   return {
-    births,
+    births, aux,
+    get last() { return last; },
+    get fresh() { return fresh; },
+    get lastDt() { return lastDt; },
     step(kind, x, z, now, spacingM, restS, maxBirths) {
       const cap = Math.max(0, Math.min(TRAIL_MAX_BIRTHS, maxBirths | 0));
       const spacing = Math.max(0.05, spacingM);
@@ -80,11 +91,14 @@ export function createTrailCadence(slots = 64, matchM = 1.6, idleS = 0.4): Trail
         // a source first seen (or back after a pause): its trail starts with a body here
         i = claim(now);
         kinds[i] = kind; sx[i] = x; sz[i] = z; st[i] = now; svx[i] = 0; svz[i] = 0; dist[i] = 0; wait[i] = 0;
+        aux[i * 2] = 0; aux[i * 2 + 1] = 0;
+        last = i; fresh = true; lastDt = 0;
         if (cap === 0) return 0;
         births[0] = x; births[1] = z; births[2] = 0;
         return 1;
       }
       const dt = now - st[i];
+      last = i; fresh = false; lastDt = Math.max(0, dt);
       const ex = x - sx[i], ez = z - sz[i];
       const seg = Math.hypot(ex, ez);
       const speed = dt > 1e-6 ? seg / dt : 0;
@@ -124,7 +138,7 @@ export function createTrailCadence(slots = 64, matchM = 1.6, idleS = 0.4): Trail
       return n;
     },
     reset() {
-      kinds.fill(-1); dist.fill(0); wait.fill(0); svx.fill(0); svz.fill(0);
+      kinds.fill(-1); dist.fill(0); wait.fill(0); svx.fill(0); svz.fill(0); aux.fill(0);
     },
   };
 }

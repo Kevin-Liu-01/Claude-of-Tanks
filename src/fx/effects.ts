@@ -4491,6 +4491,9 @@ function* createFxSteps(
   let skirtHead = 0, skirtCount = 0;
   // the trail sources: each track's contact (skirt) and each engine's stack (exhaust), matched by place
   const TRAIL_SKIRT = 0, TRAIL_EXHAUST = 1;
+  // an engine's billow bursts (exhaust): the rate while one lasts, a rise of the load that starts one, how long it lasts
+  // and the rest before the next can start
+  const EXHAUST_BURST_RATE = 9, EXHAUST_THROTTLE_UP = 0.3, EXHAUST_BURST_S = 0.7, EXHAUST_BURST_REST_S = 1.5;
   const fxTrails = createTrailCadence(96);
   function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
     surface: number, gy: number): void {
@@ -6066,28 +6069,43 @@ function* createFxSteps(
      */
     exhaust(pos: THREE.Vector3, intensity: number, sooty = false, vel: THREE.Vector3 | null = null,
       fwd: THREE.Vector3 | null = null, birthOffset = 0): void {
-      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: a puff at an engine's own
-      // rate (a diesel's 3-7 a second with load, a turbine's 2-4) with the hull's motion, which the wind bends and the
-      // media's shear and eddies break up; the cold start coughs a short stream
-      if (blast) {
+      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: round 7b's billow, with
+      // the hull's motion, which the wind bends and the media's shear and eddies break up.
+      // EF.01 (the owner, 2026-10-12: the smoke from tanks "used to look more uniform ... continuous. like how it was
+      // before"; the coordinator's ruling, 2026-10-13): a running hull's exhaust is deploy 207's thin continuous sprite
+      // streak below, on every tier; the billow is only an engine's bursts — its start (the cold-start cough) and a
+      // throttle-up (the load jumping above what the engine ran at a moment ago), laid by the stack's travel
+      // (trailCadence) so a burst under way is one connected gulp, not beads
+      let coldBelch = true;
+      if (blast && vel) {
         const coldStartM = battleFreshS < 2.2;
-        const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
-        const load = coldStartM ? Math.max(0.9, intensity) : intensity;
-        if (vel) {
-          // EF.01: a running hull's plume is laid by its stack's own travel (even, overlapping puffs: one streak under
-          // way), at its engine's rate at rest — never a coin toss per frame (deploy 208's string of beads at speed)
-          const now = particles.getTime() + birthOffset;
-          const spacing = exhaustSpacing(Math.hypot(vel.x, vel.z), distBoost(pos.x, pos.y, pos.z));
-          const n = fxTrails.step(TRAIL_EXHAUST, pos.x, pos.z, now, spacing, 1 / rate, 4);
+        const now = particles.getTime() + birthOffset;
+        const n = fxTrails.step(TRAIL_EXHAUST, pos.x, pos.z, now,
+          exhaustSpacing(Math.hypot(vel.x, vel.z), distBoost(pos.x, pos.y, pos.z)), 1 / EXHAUST_BURST_RATE, 4);
+        const o = fxTrails.last * 2, aux = fxTrails.aux;
+        if (fxTrails.fresh) { aux[o] = intensity; aux[o + 1] = -1e9; }
+        // the load the engine has been running at: it follows a drop within a second or so and a rise slowly, so a
+        // throttle-up after a real lift (a bot's or a player's brief stab of the pedal is not one) stands above it
+        const base = aux[o], dt = fxTrails.lastDt;
+        if (intensity - base > EXHAUST_THROTTLE_UP && now > aux[o + 1] + EXHAUST_BURST_REST_S) aux[o + 1] = now + EXHAUST_BURST_S;
+        aux[o] = base + (intensity - base) * Math.min(1, dt * (intensity > base ? 1.5 : 2));
+        if (coldStartM || now < aux[o + 1]) {
           const births = fxTrails.births;
+          const load = coldStartM ? Math.max(0.9, intensity) : intensity;
           for (let i = 0; i < n; i++) {
             exhaustPuff(blast, births[i * 3], pos.y, births[i * 3 + 1], vel.x, vel.z, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
               load, sooty, birthOffset - births[i * 3 + 2]);
           }
-          return;
         }
+        // the cold start is the billow's here, not the sprites' belch
+        coldBelch = false;
+      } else if (blast) {
+        // a Studio one-shot (an engine-smoke or exhaust beat, no hull motion): round 7b's billow at the engine's rate
+        const coldStartM = battleFreshS < 2.2;
+        const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
         if (rng() > rate / 60) return;
-        exhaustPuff(blast, pos.x, pos.y, pos.z, 0, 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0, load, sooty, birthOffset);
+        exhaustPuff(blast, pos.x, pos.y, pos.z, 0, 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+          coldStartM ? Math.max(0.9, intensity) : intensity, sooty, birthOffset);
         return;
       }
       // r1 "not a single exhaust puff anywhere": the old profile (alpha
@@ -6100,7 +6118,7 @@ function* createFxSteps(
       // whoosh a tall pale heat plume. Rate floor raised so the beat cannot
       // miss the sweep.
       const coldStart = battleFreshS < 2.2;
-      if (coldStart && rng() < 0.35) {
+      if (coldStart && coldBelch && rng() < 0.35) {
         // r5 (critic: "cold-start belch is a single detached white cotton-
         // ball floating above the deck"): each belch event now emits a
         // 3-puff STREAM anchored at the louvres — small at the stack,
