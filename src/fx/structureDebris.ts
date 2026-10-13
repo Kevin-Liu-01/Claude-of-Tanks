@@ -287,7 +287,21 @@ interface PiecePool {
   liveUntil: number;
   dirtyLo: number;
   dirtyHi: number;
+  /** Each slot's write count: a landing solved later for a slot the ring has since reused is dropped. */
+  gen: Uint32Array;
 }
+
+/**
+ * The landing solves a stage leaves for the frames after it (destruction stream, 2026-10-13; the coordinator's bar for
+ * deploy 223: a collapse may cost its frame at most 3 ms over production, and its hundreds of pieces each solved their
+ * landing in it). A piece born later than this, or high enough over the ground to be this long in the air, is written
+ * with no landing yet (the program flies it) and solved in a coming update, the soonest to land first; nearer ones are
+ * solved at once.
+ */
+const LANDING_DEFER_S = 0.15;
+/** Deferred landings solved per update at least (all those due within LANDING_DUE_S as well). */
+const LANDINGS_PER_UPDATE = 64;
+const LANDING_DUE_S = 0.1;
 
 /** A structure stage's body-frame placement in the world. */
 export interface BodyPlacement { x: number; y: number; z: number; yaw: number }
@@ -421,7 +435,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     mesh.receiveShadow = false;
     mesh.visible = false;
     group.add(mesh);
-    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1 };
+    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1, gen: new Uint32Array(poolCapacity) };
     pools.set(key, p);
     return p;
   }
@@ -554,12 +568,23 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       A.aQ[j] = _q.x; A.aQ[j + 1] = _q.y; A.aQ[j + 2] = _q.z; A.aQ[j + 3] = _q.w;
       A.aSS[j] = sx; A.aSS[j + 1] = sy; A.aSS[j + 2] = sz; A.aSS[j + 3] = moving ? 3 + ((i * 7919) % 100) * 0.06 : 0;
       A.aCG[j] = r; A.aCG[j + 1] = g; A.aCG[j + 2] = b;
+      pool.gen[i]++;
       if (moving) {
-        // where its flight meets the ground as drawn (the program stops it there)
-        pieceLanding(A.aPB[j], A.aPB[j + 1], A.aPB[j + 2], A.aVL[j], A.aVL[j + 1], A.aVL[j + 2], 0.3 * Math.min(sx, sy, sz),
-          o.groundY, _land);
-        A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
-        A.aCG[j + 3] = _land[1];
+        // where its flight meets the ground as drawn (the program stops it there): at once for a piece that lands soon,
+        // in a coming update for one born later or thrown from higher (LANDING_DEFER_S)
+        const g0 = o.groundY(A.aPB[j], A.aPB[j + 2]);
+        const h = Math.max(0, A.aPB[j + 1] - g0), up = A.aVL[j + 1];
+        const due = stageDelay + (up + Math.sqrt(up * up + 19.6 * h)) / 9.8;
+        if (due > LANDING_DEFER_S) {
+          A.aLD[j] = 1e4;
+          A.aCG[j + 3] = g0;
+          deferLanding(pool, i, o.now() + due);
+        } else {
+          pieceLanding(A.aPB[j], A.aPB[j + 1], A.aPB[j + 2], A.aVL[j], A.aVL[j + 1], A.aVL[j + 2], 0.3 * Math.min(sx, sy, sz),
+            o.groundY, _land);
+          A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+          A.aCG[j + 3] = _land[1];
+        }
       } else {
         A.aLD[j] = 1e4;
         A.aCG[j + 3] = o.groundY(A.aPB[j], A.aPB[j + 2]);
@@ -612,6 +637,38 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   }
 
   let showAt: { mesh: THREE.Mesh; at: number }[] = [];
+
+  // ---- deferred landings (LANDING_DEFER_S): live entries in `pending`, spent ones kept for reuse
+  interface PendingLanding { pool: PiecePool; slot: number; gen: number; due: number }
+  const pending: PendingLanding[] = [];
+  const spent: PendingLanding[] = [];
+  function deferLanding(pool: PiecePool, slot: number, due: number): void {
+    const e = spent.pop() ?? { pool, slot, gen: 0, due };
+    e.pool = pool; e.slot = slot; e.gen = pool.gen[slot]!; e.due = due;
+    pending.push(e);
+  }
+  const byDue = (a: PendingLanding, b: PendingLanding): number => a.due - b.due;
+  function solveDeferred(now: number): void {
+    if (!pending.length) return;
+    // the soonest to land first; every one due within LANDING_DUE_S, and LANDINGS_PER_UPDATE at least
+    pending.sort(byDue);
+    let done = 0;
+    while (done < pending.length && (done < LANDINGS_PER_UPDATE || pending[done]!.due <= now + LANDING_DUE_S)) {
+      const e = pending[done++]!;
+      spent.push(e);
+      const p = e.pool, i = e.slot;
+      if (p.gen[i] !== e.gen) continue;
+      const A = p.arrays, j = i * 4;
+      pieceLanding(A.aPB[j]!, A.aPB[j + 1]!, A.aPB[j + 2]!, A.aVL[j]!, A.aVL[j + 1]!, A.aVL[j + 2]!,
+        0.3 * Math.min(A.aSS[j]!, A.aSS[j + 1]!, A.aSS[j + 2]!), o.groundY, _land);
+      A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+      A.aCG[j + 3] = _land[1]!;
+      p.attrs.aLD.addUpdateRange(j, 4); p.attrs.aLD.needsUpdate = true;
+      p.attrs.aCG.addUpdateRange(j, 4); p.attrs.aCG.needsUpdate = true;
+    }
+    pending.copyWithin(0, done);
+    pending.length -= done;
+  }
 
   return {
     group,
@@ -689,6 +746,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     update() {
       const now = o.now();
       uTime.value = now;
+      solveDeferred(now);
       if (showAt.length) {
         let k = 0;
         for (const s of showAt) { if (now >= s.at) s.mesh.visible = s.mesh.userData.dropped !== true; else showAt[k++] = s; }
@@ -726,8 +784,11 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         if (Number.isFinite(p.liveUntil)) p.liveUntil += delta;
       }
       for (const s of showAt) s.at += delta;
+      for (const e of pending) e.due += delta;
     },
     reset() {
+      for (const e of pending) spent.push(e);
+      pending.length = 0;
       for (const m of staticMeshes) { m.removeFromParent(); m.geometry.dispose(); }
       staticMeshes.length = 0;
       totalVertices = 0;
