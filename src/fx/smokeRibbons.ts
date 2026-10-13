@@ -95,7 +95,7 @@ void main() {
   // second and a half of a flight (the launch charge's and the motor's first burn, the part a player watches leave)
   // lays a slightly denser, warmer-grey and wider line, which then thins to the motor's own
   float early = 1.0 - smoothstep( 0.7, 1.6, aS.w );
-  float w = mix( aW.x, aW.y, grow ) * ( 1.0 + 0.3 * early );
+  float w = mix( aW.x, aW.y, grow ) * ( 1.0 + 0.6 * early );
   vec3 view = cameraPosition - c;
   vec3 side = cross( aT.xyz, view );
   float sl = length( side );
@@ -104,10 +104,11 @@ void main() {
   vSide = aT.w;
   vT = t;
   // opacity: in at once behind the motor (a fraction of a second), thinning through the second half of its life; a
-  // ribbon seen end-on (its tangent toward the eye) is denser where it overlaps itself, so ease it
+  // ribbon seen end-on (its tangent toward the eye: the player's own launch from the chase camera) overlaps itself, so
+  // ease it only a little (filmed: at 0.55 the player's own trail all but vanished behind the launcher)
   float endOn = abs( dot( normalize( aT.xyz ), normalize( view ) ) );
-  vA = min( 0.95, aW.w * ( 1.0 + 0.55 * early ) ) * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) )
-    * mix( 1.0, 0.55, endOn * endOn );
+  vA = min( 0.95, aW.w * ( 1.0 + 0.7 * early ) ) * smoothstep( 0.0, 0.05, age ) * ( 1.0 - smoothstep( 0.45, 1.0, t ) )
+    * mix( 1.0, 0.85, endOn * endOn );
   // lit as the media are: the sun through thin smoke (forward scattering when it stands behind), the sky, the ground
   vec3 vd = normalize( view );
   float fwd = 0.55 + 0.45 * pow( max( 0.0, dot( -vd, uSunDir ) ), 3.0 );
