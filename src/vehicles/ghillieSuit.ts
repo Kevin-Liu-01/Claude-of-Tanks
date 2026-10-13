@@ -2551,10 +2551,12 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     return null;
   };
   // the fallbacks: a roof bough as cut, then turned end for end (still along its line), shorter and closer to the net,
-  // then a little aside; a drape's lower off the net, shorter, then turned aside
+  // then turned aside (on a cluttered roof a bough still lies flat, across its line if it must); a drape's lower off the
+  // net, shorter, then turned aside
   const TOP_TRIES: ReadonlyArray<readonly [number, number, number]> = [[1, 1, 0], [1, 1, Math.PI], [0.72, 1, 0], [0.72, 1, Math.PI],
-    [0.72, 0.4, 0], [0.72, 0.4, Math.PI], [0.52, 1, 0], [0.52, 1, Math.PI], [0.52, 0.4, 0], [0.52, 0.4, Math.PI],
-    [0.52, 0.4, 0.6], [0.52, 0.4, -0.6], [0.52, 0.4, Math.PI + 0.6], [0.52, 0.4, Math.PI - 0.6], [0.38, 0.4, 0], [0.38, 0.4, Math.PI]];
+    [0.72, 0.4, 0], [0.72, 0.4, Math.PI], [0.72, 1, 0.6], [0.72, 1, -0.6], [0.52, 1, 0], [0.52, 1, Math.PI], [0.52, 0.4, 0],
+    [0.52, 0.4, Math.PI], [0.52, 0.4, 0.6], [0.52, 0.4, -0.6], [0.52, 0.4, Math.PI + 0.6], [0.52, 0.4, Math.PI - 0.6],
+    [0.52, 0.4, 1.2], [0.52, 0.4, -1.2], [0.38, 0.4, 0], [0.38, 0.4, Math.PI], [0.38, 0.4, 1.2], [0.38, 0.4, -1.2]];
   const DRAPE_TRIES: ReadonlyArray<readonly [number, number, number]> = [[1, 1, 0], [1, 0.5, 0], [1, 0, 0], [0.72, 1, 0],
     [0.72, 0.5, 0], [0.72, 0, 0], [0.52, 1, 0], [0.52, 0.5, 0], [0.52, 0, 0], [0.72, 0.5, 0.6], [0.72, 0.5, -0.6], [0.52, 0, 0.6],
     [0.52, 0, -0.6], [0.52, 0.5, 1.2], [0.52, 0.5, -1.2], [0.38, 0, 1.2], [0.38, 0, -1.2]];
