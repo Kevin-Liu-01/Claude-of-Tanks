@@ -81,6 +81,7 @@ import {
 import { paintStructureDetailBuffers, type StructureDetailBuffers } from './structureDetailTile.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
+import { GATE_KINDS, GATE_WIDTH, buildGate, gateKindForFence, gateStoneOf, gateStyleFor, type GateKind } from './maps/gateKit.ts'; // the looks lane: every fence family's own gate
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -4238,6 +4239,22 @@ ${snowCap ? `
   // stack's own slabs, refitDestructibleColliders)
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
   // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
+  /** The gate kinds this map can hang (gateKit.ts): the timber families everywhere, the stone and mud walls' on a kit. */
+  function gateTypes(): Record<string, PropsDestructibleMeta> {
+    const style = gateStyleFor(regionalArchitecture?.id, mapId);
+    const ctx = { style, stone: gateStoneOf(regionalArchitecture), render: { damp: regionalArchitecture?.weather?.damp ?? 0.3 } };
+    const out: Record<string, PropsDestructibleMeta> = {};
+    for (const kind of GATE_KINDS) {
+      const mat = kind === 'gatestone' ? 'regionalStone' : kind === 'gateadobe' ? 'regionalPlaster' : 'structureWood';
+      if (!mats[mat]) continue; // (the stone and mud gates ride a kit's vertex-coloured surfaces: kit maps only)
+      out[kind] = {
+        ...DESTRUCTIBLE_TYPES.gate, mat,
+        build: (rng: () => number) => { DESTRUCTIBLE_TYPES.gate.build(rng).dispose(); return buildGate(kind as GateKind, ctx, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.gate.broken!(rng).dispose(); return buildGate(kind as GateKind, ctx, true); },
+      };
+    }
+    return out;
+  }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
       cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
@@ -4271,6 +4288,11 @@ ${snowCap ? `
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
     ...periodClutterTypes(mapId),
+    // the looks lane (2026-10-13; the owner: "gate structures ... need brand new looks"): each fence family's own gate in
+    // its region's build (maps/gateKit.ts) — the field gate, the picket wicket, the woven fence's gate on the structure
+    // wood; the stone wall's gate on the kit's stone, the mud wall's on its render. The farm gate's numbers, class and
+    // contact; its legacy builder still runs first (it draws nothing from the stream), so every later pool keeps its shape
+    ...gateTypes(),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
@@ -4424,7 +4446,8 @@ ${snowCap ? `
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
-          if (!underBridgeDeck(ax, az)) addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
+          // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
+          if (!underBridgeDeck(ax, az)) addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
           gated = true;
         }
         openRun = false;
@@ -8573,7 +8596,13 @@ ${snowCap ? `
         const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
         addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
       }
-      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.gate && yard.gate) {
+        // (the looks lane) a family gate fills its slot from the slot's start (gateKit.ts: its hanging post or pier at
+        // z = 0, the gap to z = width); the farm gate stood at the slot's middle, half over the next module
+        const half = ((GATE_WIDTH as Record<string, number>)[yard.gate] ?? 0) / 2;
+        const gx = plan.gate.x - Math.sin(plan.gate.yaw) * half, gz = plan.gate.z - Math.cos(plan.gate.yaw) * half;
+        addDestructible(yard.gate, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, 1);
+      }
       if (plan.shed && yard.shed && style.builders[yard.shed]) {
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
         const fit = groundFit(x, z, sw, sd, yaw);

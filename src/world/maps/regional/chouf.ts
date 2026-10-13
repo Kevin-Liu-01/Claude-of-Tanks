@@ -627,5 +627,5 @@ export const CHOUF_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   },
   wear: 0.3,
   // the terraces' gardens: a dry stone wall round the vegetable plot, a gate, the vine arbor in a corner (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.4, 3.0], garden: true },
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.4, 3.0], garden: true },
 });

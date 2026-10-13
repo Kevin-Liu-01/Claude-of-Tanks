@@ -221,7 +221,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   builders: FRANCONIAN_BUILDERS,
   // the churchyard on the church's freest side but its front, walled in stone, its graves in place of the yards' beds
   // (yards.ts; a map opts in: props `churchyard: true`; the facades lane, 2026-10-06)
-  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
+  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: false, graves: true, keepFront: true },
   // render in cream, ochre and pale pink; roofs from a few fresher red ones through brown to the grey-brown and dark
   // patina of old tiles (the cooler multipliers take the red out as well as the light)
   weather: {
@@ -232,7 +232,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   },
   wear: 0.25,
   // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: null, garden: true },
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: true },
 });
 
 export type { RegionalParts, RegionalBuildContext };

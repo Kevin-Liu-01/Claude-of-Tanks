@@ -339,7 +339,7 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   },
   wear: 0.15,
   // the courtyards: mud-brick walls round each house's court (hosh), a gate (yards.ts)
-  yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gate', shed: null, garden: false },
+  yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gateadobe', shed: null, garden: false },
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

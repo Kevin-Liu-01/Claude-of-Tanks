@@ -4729,7 +4729,8 @@ function* createFxSteps(
     if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
-    if (/^wall|rubble|small-rock/.test(kind)) return 'masonry';
+    // (the looks lane: the stone and mud walls' gates break as their piers do)
+    if (/^wall|rubble|small-rock|^gatestone$|^gateadobe$/.test(kind)) return 'masonry';
     if (/^sandbag/.test(kind)) return 'sandbag';
     if (/truck|jeep/.test(kind)) return 'vehicle';
     if (kind === 'tent') return 'canvas';
