@@ -1385,6 +1385,9 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
 const battleLoad = createBattleLoadScreen();
+// 2026-10-13 (the perf stream): the Garage's decorative work (the camo picker's cold swatches) holds under the battle
+// loader, so a battle's entry keeps the main thread for its world build
+garage.setDecorativeWorkGate(() => battleLoad.covering);
 
 // STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired

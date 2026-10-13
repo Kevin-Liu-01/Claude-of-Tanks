@@ -214,6 +214,20 @@ export function paintAutoCamoSwatch(
 interface PendingSwatch { spec: FleetTankSpec; pid: string; auto: boolean }
 const pending = new Map<HTMLCanvasElement, PendingSwatch>();
 let drainScheduled = false;
+/**
+ * 2026-10-13 (the perf stream; owner: "going into games takes a long time"): the picker's cold swatches are decoration
+ * for an open Garage. Its queue (~165 tiles at 4.5 ms) used to keep draining under the battle loader, ~0.9 s of the
+ * entry's main thread on Verdant, while the world built. The Garage's gate holds the drain while it is closed or
+ * covered; the queue is kept, re-checked every SWATCH_PAUSED_RETRY_MS, and painted unchanged once the gate opens.
+ */
+let drainGate: (() => boolean) | null = null;
+const SWATCH_PAUSED_RETRY_MS = 500;
+let pausedRetry: ReturnType<typeof setTimeout> | null = null;
+/** The Garage's gate: swatches drain only while it returns true (null: always). */
+export function setCamoSwatchDrainGate(gate: (() => boolean) | null): void {
+  drainGate = gate;
+  if (pending.size) scheduleDrain();
+}
 
 const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -226,6 +240,13 @@ function scheduleDrain(): void {
 }
 
 function drainPending(): void {
+  if (drainGate && !drainGate()) {
+    // held: the queue stays as it is; look again shortly (no animation-frame spin while the battle runs)
+    if (pending.size && pausedRetry === null) {
+      pausedRetry = setTimeout(() => { pausedRetry = null; scheduleDrain(); }, SWATCH_PAUSED_RETRY_MS);
+    }
+    return;
+  }
   const started = nowMs();
   for (const [canvas, job] of pending) {
     pending.delete(canvas);
