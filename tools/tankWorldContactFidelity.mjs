@@ -77,6 +77,23 @@ export async function fidelityMap(mapId, { variant = 'base', perKind = 12, recor
     recordLimit: perKind, soup });
   const contact = kindTotals(audit.rows).map((k) => ({ kind: k.kind, n: k.n, phantomShare: k.phantomShare, leakShare: k.leakShare,
     colliderM2: k.colliderM2, meshM2: k.meshM2, topErrM: k.topErrM }));
+  // rock gaps (the coordinator's ask, 2026-10-13): every drawn stone a hull meets with no movement record, or with one far
+  // smaller than its stone in the tank-contact band (over half its section uncovered), and the scenery stone the
+  // formation records leave uncovered — each with its place, so a lane can go to it
+  const rockGaps = { noCollider: [], undersized: [], stones: 0, masses: 0, formationLeakShare: null };
+  for (const row of audit.rows) {
+    if (row.kind === 'scenery-union' || row.kind === 'formation-union') {
+      rockGaps.formationLeakShare = row.meshM2 ? +(row.leakM2 / row.meshM2).toFixed(3) : null;
+      continue;
+    }
+    const stone = row.kind === 'boulder' || row.kind === 'small-rock' || row.kind === 'boulder-no-collider';
+    if (!stone && row.kind !== 'scenery-mass') continue;
+    if (stone) rockGaps.stones++; else rockGaps.masses++;
+    const at = { x: row.x, z: row.z, kind: row.kind, riseM: +(row.meshRiseM ?? 0).toFixed(2), meshM2: +row.meshM2.toFixed(2),
+      leakShare: row.meshM2 ? +(row.leakM2 / row.meshM2).toFixed(2) : 0 };
+    if (row.kind === 'boulder-no-collider') rockGaps.noCollider.push(at);
+    else if (row.meshM2 > 0.5 && row.leakM2 / row.meshM2 > 0.5) rockGaps.undersized.push(at);
+  }
 
   // support: standable records, a sample per group
   const standable = dressing.obstacles.filter((r) => !r.crushable && r.treeIdx == null && r.max[1] - r.min[1] >= HULL_STANDABLE_HEIGHT_M);
@@ -140,5 +157,5 @@ export async function fidelityMap(mapId, { variant = 'base', perKind = 12, recor
   }
   worst.sort((a, b) => b.worstM - a.worstM);
   for (const mesh of [dressing.group, flora.group]) mesh.traverse((o) => o.geometry?.dispose?.());
-  return { mapId, variant, triangles: soup.count, contact, support, worst: worst.slice(0, 30) };
+  return { mapId, variant, triangles: soup.count, contact, support, worst: worst.slice(0, 30), rockGaps };
 }

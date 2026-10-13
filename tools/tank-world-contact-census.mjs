@@ -43,6 +43,8 @@ import { HULL_STANDABLE_HEIGHT_M, pointInsideCollisionRecord } from '../src/worl
 import { tankContactRect } from '../src/sim/tankContactShape.ts';
 
 export const CLASSES = Object.freeze(['terrain', 'walls', 'roofs', 'objects', 'tanks']);
+/** Studies run on request (--classes=stones): not in the census's default classes. */
+const STUDIES = Object.freeze(['stones']);
 export const VARIANTS = Object.freeze(['base', 'assault-trenches']);
 /** The hulls the sites rotate through (light, medium, main battle, heavy). */
 export const CENSUS_HULLS = Object.freeze(['t90m', 'jpz_e100_x', 'bmp2', 'm1a2']);
@@ -276,6 +278,17 @@ function terrainSites(world, count, seed) {
   const outcrops = rockLike.filter((r) => r.max[1] - r.min[1] > 3.5 || radiusOf(r) >= 9).map((r) => ({ ...centerOf(r), record: r }));
   const rubble = obstacles.filter((r) => r.kind === 'rubble').map((r) => ({ ...centerOf(r), record: r }));
   for (const site of spreadPick(stones, count + 2, 18, seed + 1)) sites.push({ sub: site.record.kind ?? 'mass', ...site });
+  // (census v3) the non-crushable stones by how far they stand over the ground round them: a hull climbs a low one and is
+  // stopped by a tall one (the coordinator's climb-or-block check), two a bin
+  const rim = (r) => {
+    let low = Infinity;
+    for (const [fx, fz] of [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]) {
+      const x = r.min[0] - 0.3 + fx * (r.max[0] - r.min[0] + 0.6), z = r.min[2] - 0.3 + fz * (r.max[2] - r.min[2] + 0.6);
+      low = Math.min(low, world.contact(x, z));
+    }
+    return r.max[1] - low;
+  };
+  sites.push(...stoneSites(world, rockLike, 2, seed));
   for (const site of spreadPick(outcrops, Math.ceil(count / 2), 30, seed + 2)) sites.push({ sub: 'outcrop', ...site });
   for (const site of spreadPick(rubble, Math.ceil(count / 2), 20, seed + 3)) sites.push({ sub: 'rubble', ...site });
   // terrain alone: steep cuts and ledges, rough ground (a 3 m ring that leaves its plane by > 0.35 m: crater rims, berms)
@@ -299,6 +312,35 @@ function terrainSites(world, count, seed) {
   for (const site of spreadPick(steep.filter((s) => !nearRecord(s)), Math.ceil(count / 2), 60, seed + 4)) sites.push({ sub: 'steep', ...site });
   for (const site of spreadPick(rough.filter((s) => !nearRecord(s)), Math.ceil(count / 2), 60, seed + 5)) sites.push({ sub: 'rough', ...site });
   return sites;
+}
+
+/** The non-crushable stones by their rise over the ground round them (STONE_BINS), `perBin` a bin, spread apart. */
+const STONE_BINS = Object.freeze([['stone-0.45-0.8', 0.45, 0.8], ['stone-0.8-1.2', 0.8, 1.2], ['stone-1.2-2', 1.2, 2], ['stone-2+', 2, 6]]);
+function stoneSites(world, rockLike, perBin, seed) {
+  const rim = (r) => {
+    let low = Infinity;
+    for (const [fx, fz] of [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]) {
+      const x = r.min[0] - 0.3 + fx * (r.max[0] - r.min[0] + 0.6), z = r.min[2] - 0.3 + fz * (r.max[2] - r.min[2] + 0.6);
+      low = Math.min(low, world.contact(x, z));
+    }
+    return r.max[1] - low;
+  };
+  const solid = rockLike.filter((r) => !r.crushable && radiusOf(r) < 6).map((r) => ({ ...centerOf(r), record: r, rise: rim(r) }));
+  const out = [];
+  STONE_BINS.forEach(([sub, lo, hi], i) => {
+    for (const site of spreadPick(solid.filter((s) => s.rise >= lo && s.rise < hi), perBin, 25, seed + 61 + i)) out.push({ sub, ...site });
+  });
+  return out;
+}
+
+/** (census v3) the climb-or-block study: many stones a bin, each met head-on at a crawl and at speed. */
+function stoneStudySites(world, count, seed) {
+  const rockLike = world.worldCollision.getObstacles().filter((r) => !isStructure(r) && !r.crushed
+    && (r.kind === 'small-rock' || (r.kind == null && !r.crushable)));
+  return stoneSites(world, rockLike, Math.max(2, count * 2), seed);
+}
+function stoneStudyManeuvers(world, site, seed) {
+  return terrainManeuvers(world, site, seed).filter(([maneuver]) => maneuver === 'cross' || maneuver === 'crawl');
 }
 
 function terrainManeuvers(world, site, seed) {
@@ -454,13 +496,56 @@ function roofSites(world, count, seed) {
     }
     if (sites.length >= count * 3) break;
   }
+  // the drawn roofs (census v3): a building's shells (the colliders shells and sight meet, its whole drawn form in 0.5 m
+  // bands) standing over its movement record — a storey, a gable — are a roof a hull lands on whatever the movement
+  // record holds; the site is the drawn top's highest point near its middle
+  const groups = new Map();
+  for (const record of world.worldCollision.getColliders?.() ?? []) {
+    if (record.structureIdx == null || record.crushable) continue;
+    (groups.get(record.structureIdx) ?? groups.set(record.structureIdx, []).get(record.structureIdx)).push(record);
+  }
+  const drawn = [];
+  for (const [group, shells] of groups) {
+    let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+    for (const r of shells) { minX = Math.min(minX, r.min[0]); minZ = Math.min(minZ, r.min[2]); maxX = Math.max(maxX, r.max[0]); maxZ = Math.max(maxZ, r.max[2]); }
+    if (maxX - minX < 5 || maxZ - minZ < 5) continue;
+    const x = (minX + maxX) / 2, z = (minZ + maxZ) / 2;
+    const shellTop = shellTopAt(shells, x, z);
+    if (!Number.isFinite(shellTop)) continue;
+    const records = world.query(x, z, 30);
+    const base = Math.max(world.contact(x, z), supportTopAt(records, x, z));
+    if (shellTop - base < 1) continue;
+    drawn.push({ x, z, group, shellTop, base });
+  }
+  for (const site of spreadPick(drawn, Math.max(2, count), 30, seed + 13)) {
+    sites.push({ sub: 'drawn', x: site.x, z: site.z, top: site.shellTop, base: site.base, group: site.group, destructible: true });
+  }
   return sites;
+}
+
+/** The highest drawn (shell) top over (x, z) among a building's shell records, or -Infinity. */
+function shellTopAt(shells, x, z) {
+  let best = -Infinity;
+  for (const record of shells) {
+    if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+    for (const part of partsOf(record)) {
+      const top = part?.y1 ?? record.max[1];
+      if (top > best && pointInsideCollisionRecord(record, part, x, z)) best = top;
+    }
+  }
+  return best;
 }
 
 function roofManeuvers(world, site, seed) {
   const random = mulberry32(seed);
   const yaw = random() * Math.PI * 2;
   if (site.sub === 'slope-onto') return [['drive-onto', driveAcross({ x: site.x, z: site.z, yaw: site.yaw, throttle: 0.7, driveS: 6, total: 11, governMps: 4 })]];
+  if (site.sub === 'drawn') {
+    // dropped onto the drawn roof (dropTo counts from the movement record's top under it, the harness's seat)
+    const over = site.top - site.base;
+    return [['drop-drawn', dropOn({ x: site.x, z: site.z, yaw, dropTo: over + 1.5, total: 8 })],
+      ['stand-drawn', { ...dropOn({ x: site.x, z: site.z, yaw: yaw + 0.8, dropTo: over + 0.1, total: 7 }), grounded: false }]];
+  }
   if (site.sub === 'edge') {
     return [['edge-drop', dropOn({ x: site.x, z: site.z, yaw, dropTo: 1.5, total: 9 })],
       ['edge-stand', { ...standOn({ x: site.x, z: site.z, yaw: yaw + 1.3 }), mayTip: true, grounded: false }]];
@@ -611,6 +696,7 @@ const SAMPLERS = {
   roofs: [roofSites, roofManeuvers],
   objects: [objectSites, objectManeuvers],
   tanks: [tankSites, tankManeuvers],
+  stones: [stoneStudySites, stoneStudyManeuvers],
 };
 
 // ---- the defects a run can show --------------------------------------------------------------------------------------
@@ -620,6 +706,9 @@ export const DEFECTS = Object.freeze([
   { id: 'outOfWorld', what: 'left the world', sev: 10, value: (m) => (m.outOfWorld ? 1 : 0), max: 0 },
   { id: 'fellThrough', what: 'root more than 0.5 m under the ground (fell through)', sev: 9, value: (m) => m.fellThroughM, max: 0.5 },
   { id: 'insideSolid', what: 'root inside a solid record, > 0.3 m under its top (sank in, fell through a roof)', sev: 8, value: (m) => m.insideSolidM, max: 0.3 },
+  // (census v3) the hull's middle inside a drawn building for over a quarter second: through its roof, into its walls
+  { id: 'insideDrawn', what: 'hull inside a drawn building > 0.25 s (fell through its roof, pushed into it)', sev: 8,
+    value: (m) => m.insideDrawnS ?? 0, max: 0.25 },
   { id: 'launch', what: 'thrown off its support by a contact (takeoff 2.5 m/s over its ground grade, no jump)', sev: 7, value: (m) => m.takeoffMaxMps, max: 2.5, when: (r) => r.grounded },
   { id: 'energy', what: 'energy gained in flight or a rebound over the law', sev: 7, value: (m) => Math.max(m.energyGainMaxJkg - 0.2, m.reboundExcessMps - 0.05, 0), max: 0 },
   { id: 'popXZ', what: 'unexplained horizontal step > 12 cm (pop)', sev: 6, value: (m) => m.popXZMaxM, max: 0.12 },
@@ -658,7 +747,7 @@ const KEEP = ['nan', 'popXZMaxM', 'popsXZ', 'popYMaxM', 'popsY', 'snapMaxRad', '
   'hullPenMaxM', 'roofSinkMaxM', 'gearCompMaxM', 'longestStuckS', 'stuckS', 'pushFlips', 'overturnedS', 'tumblingS', 'maxLandingMps',
   'energyGainMaxJkg', 'reboundExcessMps', 'closingExcessMps', 'liftM', 'longestAirS', 'perchedS', 'progressM', 'joltYMaxM', 'joltsY6',
   'joltsY12', 'joltXZMaxM', 'joltsXZ6', 'joltAt', 'tiltMaxDeg', 'fellThroughM', 'insideSolidM', 'insideSolidS', 'outOfWorld',
-  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp'];
+  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp', 'insideDrawnS', 'insideDrawnM', 'liftOverGroundM', 'onStoneShare', 'overStoneS'];
 function compact(metrics) {
   const out = {};
   for (const key of KEEP) {
@@ -676,11 +765,11 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
   let n = 0;
   for (const cls of classes) {
     const [sample, maneuvers] = SAMPLERS[cls];
-    const list = sample(world, sites, seed + CLASSES.indexOf(cls) * 1009);
+    const list = sample(world, sites, seed + (CLASSES.includes(cls) ? CLASSES.indexOf(cls) : CLASSES.length + STUDIES.indexOf(cls)) * 1009);
     list.forEach((site, siteIndex) => {
-      const plans = maneuvers(world, site, seed + siteIndex * 97 + CLASSES.indexOf(cls));
+      const plans = maneuvers(world, site, seed + siteIndex * 97 + Math.max(0, CLASSES.indexOf(cls)));
       plans.forEach(([maneuver, plan], planIndex) => {
-        const hullId = CENSUS_HULLS[(siteIndex + planIndex + CLASSES.indexOf(cls)) % CENSUS_HULLS.length];
+        const hullId = CENSUS_HULLS[(siteIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
         if (only && id !== only) return;
         resetWorld(world);
@@ -695,24 +784,61 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
           world: { fn: world.fn, contact: world.contact, heightField: world.hf, obstacles: near, worldCollision: world.worldCollision },
         };
         const poses = trace ? [] : null;
+        // (census v3) the hull's body inside a drawn building: its root a metre up (the hull's middle) inside a structure
+        // shell part's footprint and height (a roof it fell through, a wall it was pushed into), every sixth step
+        const shells = (world.worldCollision.getColliders?.() ?? []).filter((r) => r.structureIdx != null && !r.crushable
+          && r.max[0] > site.x - 45 && r.min[0] < site.x + 45 && r.max[2] > site.z - 45 && r.min[2] < site.z + 45);
+        let insideDrawnS = 0, insideDrawnM = 0, liftOverGroundM = 0, onStone = 0, overStoneS = 0;
+        const stone = site.sub.startsWith('stone-') ? site.record : null;
+        const stoneFoot = stone ? stone.max[1] - site.rise : null;
         const started = performance.now();
         let metrics;
         try {
           metrics = runCase(hullId, worldId, caseDef, {
             replay: false,
-            trace: poses ? (tick, match) => {
+            trace: (tick, match) => {
               const s = match.entityById.get('subject').state;
-              poses.push({ t: +(tick * DT).toFixed(4), x: +s.pos.x.toFixed(4), y: +s.pos.y.toFixed(4), z: +s.pos.z.toFixed(4),
-                yaw: +s.yaw.toFixed(4), pitch: +s.visualPitch.toFixed(4), roll: +s.visualRoll.toFixed(4), speed: +s.speed.toFixed(3),
-                grounded: s.grounded, sup: +s._sup.y.toFixed(4) });
-            } : null,
+              if (poses) {
+                poses.push({ t: +(tick * DT).toFixed(4), x: +s.pos.x.toFixed(4), y: +s.pos.y.toFixed(4), z: +s.pos.z.toFixed(4),
+                  yaw: +s.yaw.toFixed(4), pitch: +s.visualPitch.toFixed(4), roll: +s.visualRoll.toFixed(4), speed: +s.speed.toFixed(3),
+                  grounded: s.grounded, sup: +s._sup.y.toFixed(4) });
+              }
+              if (tick * DT >= 0.3) {
+                const lift = s.pos.y - world.contact(s.pos.x, s.pos.z);
+                if (lift > liftOverGroundM) liftOverGroundM = lift;
+                // (a stone site: the hull's root over the stone's footprint, and how high it stands there over the stone's
+                // foot — half the stone's rise or more is on it)
+                if (stone && stoneFoot !== null) {
+                  let over = false;
+                  for (const part of partsOf(stone)) if (pointInsideCollisionRecord(stone, part, s.pos.x, s.pos.z)) { over = true; break; }
+                  if (over) { onStone = Math.max(onStone, (s.pos.y - stoneFoot) / Math.max(0.1, site.rise)); overStoneS += DT; }
+                }
+              }
+              if (tick % 6 || tick * DT < 0.3) return;
+              const y = s.pos.y + 1;
+              let deepest = 0;
+              for (const record of shells) {
+                if (s.pos.x < record.min[0] || s.pos.x > record.max[0] || s.pos.z < record.min[2] || s.pos.z > record.max[2]) continue;
+                for (const part of partsOf(record)) {
+                  const y0 = part?.y0 ?? record.min[1], y1 = part?.y1 ?? record.max[1];
+                  if (y <= y0 || y >= y1) continue;
+                  if (pointInsideCollisionRecord(record, part, s.pos.x, s.pos.z)) deepest = Math.max(deepest, Math.min(y - y0, y1 - y));
+                }
+              }
+              if (deepest > 0.1) { insideDrawnS += 6 * DT; insideDrawnM = Math.max(insideDrawnM, deepest); }
+            },
           });
+          metrics.insideDrawnS = insideDrawnS;
+          metrics.liftOverGroundM = liftOverGroundM;
+          if (stone) { metrics.onStoneShare = onStone; metrics.overStoneS = overStoneS; }
+          metrics.insideDrawnM = insideDrawnM;
         } catch (error) {
           metrics = { nan: 1, error: String(error?.stack ?? error).slice(0, 400) };
         }
         const row = { id, map: mapId, variant, cls, sub: site.sub, kind: site.kind ?? site.record?.kind ?? null,
           site: { x: +site.x.toFixed(2), z: +site.z.toFixed(2), top: site.top != null ? +site.top.toFixed(2) : undefined,
-            destructible: site.destructible, spread: site.spread != null ? +site.spread.toFixed(2) : undefined },
+            destructible: site.destructible, spread: site.spread != null ? +site.spread.toFixed(2) : undefined,
+            rise: site.rise != null ? +site.rise.toFixed(2) : undefined },
           maneuver, hull: hullId, grounded: !!plan.grounded, mayTip: !!plan.mayTip, mustMove: !!plan.mustMove, allowBlocked: !!plan.allowBlocked,
           ms: Math.round(performance.now() - started), m: metrics.error ? { ...metrics } : compact(metrics) };
         row.defects = metrics.error ? ['nan'] : defectsOf(row);
