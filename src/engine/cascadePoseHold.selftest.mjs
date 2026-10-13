@@ -45,7 +45,7 @@ const csm = rig.csm;
 
 // holds run while the static cache is loaded: a frozen world root asks for it
 rig.update(true, 1 / 60);
-assert.equal(rig.getShadowTelemetry().poseHold, null, 'no held poses before the static cache (its chunk) loads');
+assert.equal(rig.getShadowTelemetry().staticCache, null, 'no held poses before the static cache (its chunk) loads');
 const root = new THREE.Group();
 root.userData.matrixTraversalFrozen = true;
 scene.add(root);
@@ -114,7 +114,7 @@ function check(label, { expectToday = false } = {}) {
     stats.checked++;
   }
 }
-const recentres = () => rig.getShadowTelemetry().poseHold.recentres.slice();
+const recentres = () => { const r = rig.getShadowTelemetry().staticCache.poseHold.recentres; return [0, 1, 2, 3].map((i) => r[i] ?? 0); };
 const pose = (x, z, yaw, pitch, y = 4) => { camera.position.set(x, y, z); camera.rotation.set(pitch, yaw, 0); camera.updateMatrixWorld(); };
 
 // driving straight at 10 m/s with a bob: the poses hold
@@ -127,7 +127,7 @@ for (let f = 0; f < 600; f++) {
   check(`drive ${f}`);
 }
 const driving = recentres().map((n, i) => n - before[i]);
-assert.ok(rig.getShadowTelemetry().poseHold.enabled, 'held poses are on with the static cache');
+assert.ok(rig.getShadowTelemetry().staticCache.poseHold.enabled, 'held poses are on with the static cache');
 assert.ok(driving.every((n) => n <= 8), `driving 100 m re-centres each cascade a few times (${driving})`);
 // turning in place at 0.6 rad/s: the near cascades hold for many frames
 const turnStart = recentres();
@@ -175,13 +175,13 @@ for (let f = 0; f < 120; f++) {
   rig.update(false, 1 / 60);
   check(`plain ${f}`, { expectToday: true });
 }
-assert.equal(rig.getShadowTelemetry().poseHold.enabled, false);
+assert.equal(rig.getShadowTelemetry().staticCache.poseHold.enabled, false);
 delete window.__SHADOW_DEBUG;
 
 // the hold lives in the cache's chunk, out of the game entry (2026-10-13, the bundle budget): lighting.ts only applies it
 const lightingSource = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(lightingSource, /POSE_HOLD_|_holdBounds/, 'lighting.ts carries no hold of its own');
-assert.match(lightingSource, /cascadePoseHold = module\.createCascadePoseHold\(csm\.lights\.length\);/);
+assert.match(lightingSource, /return prepareStableCascades\(csm, staticShadowCache\?\.poseHold \?\? null\);/);
 assert.match(lightingSource, /^import type \{ CascadePoseHold, ShadowStaticCache \} from '\.\/shadowStaticCache\.ts';$/m);
 
 console.log(`cascadePoseHold.selftest: ${stats.checked} cascade poses checked (${stats.held} held, ${stats.today} today's); `

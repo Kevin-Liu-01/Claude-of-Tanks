@@ -873,7 +873,6 @@ export function createLighting(
     import('./shadowStaticCache.ts').then((module) => {
       staticShadowCache = module.createShadowStaticCache();
       setShadowCascadeCache(staticShadowCache);
-      cascadePoseHold = module.createCascadePoseHold(csm.lights.length);
     }, () => { /* the ordinary render for the session */ });
   };
   const shadowFitCache = createShadowFitCache();
@@ -881,8 +880,6 @@ export function createLighting(
   /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
   const heldCascadeBoxSizes: number[] = [];
 
-  // held cascade poses while the static cache can use them (shadowStaticCache.ts createCascadePoseHold), from its chunk
-  let cascadePoseHold: CascadePoseHold | null = null;
   const prepareCurrentCascadeFits = (force = false): number => {
     csm.lightDirection.toArray(fitLightDirection);
     const fitChanged = shadowFitCache.changed({
@@ -891,8 +888,8 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    if (cascadePoseHold) cascadePoseHold.enabled = !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noPoseHold);
-    return prepareStableCascades(csm, cascadePoseHold);
+    // held cascade poses while the static cache can use them (its chunk: shadowStaticCache.ts createCascadePoseHold)
+    return prepareStableCascades(csm, staticShadowCache?.poseHold ?? null);
   };
 
   // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
@@ -1688,7 +1685,6 @@ export function createLighting(
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         staticCache: staticShadowCache?.telemetry() ?? null,
-        poseHold: cascadePoseHold ? { enabled: cascadePoseHold.enabled, recentres: [...cascadePoseHold.recentres] } : null,
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {

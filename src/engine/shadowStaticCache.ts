@@ -132,6 +132,7 @@ const _holdBounds = new THREE.Box3();
 const _holdVertex = new THREE.Vector3();
 
 export interface CascadePoseHold {
+  /** On unless __SHADOW_DEBUG.noPoseHold (read at each refit). */
   enabled: boolean;
   /** re-centred poses per cascade (telemetry) */
   readonly recentres: number[];
@@ -145,16 +146,17 @@ export interface CascadePoseHold {
     center: THREE.Vector3, cameraToLight: THREE.Matrix4): void;
 }
 
-export function createCascadePoseHold(count: number): CascadePoseHold {
+function createCascadePoseHold(): CascadePoseHold {
   const lightDirection = new THREE.Vector3(NaN, NaN, NaN);
-  const centers = Array.from({ length: count }, () => new THREE.Vector3());
-  // the texel width and height each centre was snapped on (NaN: nothing held)
-  const texels = new Array<number>(count * 2).fill(NaN);
+  const centers: THREE.Vector3[] = [];
+  // the texel width and height each centre was snapped on (NaN or absent: nothing held)
+  const texels: number[] = [];
   let frustumFar = 0, span = 0;
   const hold: CascadePoseHold = {
     enabled: false,
-    recentres: new Array<number>(count).fill(0),
+    recentres: [],
     begin(csm) {
+      hold.enabled = !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noPoseHold);
       frustumFar = -csm.mainFrustum.vertices.far[0].z;
       const view = csm.camera as THREE.PerspectiveCamera;
       span = Math.max(0, Math.min(view.far, csm.maxFar) - view.near);
@@ -184,13 +186,13 @@ export function createCascadePoseHold(count: number): CascadePoseHold {
       const depthRoom = Math.max(shadowCam.far - 1, z0 - _holdBounds.min.z) + _holdBounds.min.z;
       const fits = (x: number, y: number): boolean => _holdBounds.min.x >= x - halfW && _holdBounds.max.x <= x + halfW
         && _holdBounds.min.y >= y - halfH && _holdBounds.max.y <= y + halfH;
-      const held = centers[index];
+      const held = centers[index] ??= new THREE.Vector3();
       if (texels[index * 2] === texelWidth && texels[index * 2 + 1] === texelHeight && fits(held.x, held.y)
         && held.z >= z0 && held.z <= z0 + POSE_HOLD_Z_WINDOW_M && held.z <= depthRoom) {
         center.copy(held);
         return;
       }
-      hold.recentres[index]++;
+      hold.recentres[index] = (hold.recentres[index] ?? 0) + 1;
       if (!fits(center.x, center.y)) {
         // the slice outgrows the box even re-centred: the re-centred pose, nothing held
         texels[index * 2] = NaN;
@@ -309,6 +311,8 @@ interface ShadowStaticCacheTelemetry {
   lastRebuildReason: string;
   failed: string | null;
   targetBytes: number;
+  /** The held poses: on, and the re-centred poses per cascade. */
+  poseHold: { enabled: boolean; recentres: number[] };
 }
 
 export interface ShadowStaticCache {
@@ -324,6 +328,8 @@ export interface ShadowStaticCache {
   /** Release the copies' GPU targets (context restore, disposal); they are re-created on demand. */
   dispose(): void;
   telemetry(): ShadowStaticCacheTelemetry;
+  /** The held cascade poses lighting.ts applies while this cache is loaded (createCascadePoseHold). */
+  readonly poseHold: CascadePoseHold;
 }
 
 /** The renderer surface the cache uses (the router hands the live WebGLRenderer; receipts a recording stub). */
@@ -359,9 +365,11 @@ export function createShadowStaticCache(): ShadowStaticCache {
   const stack: THREE.Object3D[] = [];
   const hidden: THREE.Object3D[] = [];
   const muted: THREE.Object3D[] = [];
+  const poseHold = createCascadePoseHold();
   const stats: ShadowStaticCacheTelemetry = {
     enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, forcedFrames: 0, fullRenders: 0, contentChanges: 0,
     promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', failed: null, targetBytes: 0,
+    poseHold: { enabled: false, recentres: [] },
   };
   let rebuildReason = 'cold';
 
@@ -647,8 +655,9 @@ export function createShadowStaticCache(): ShadowStaticCache {
     let bytes = 0;
     for (const slot of slots) if (slot?.target) bytes += slot.target.width * slot.target.height * 5;
     stats.targetBytes = bytes;
-    return { ...stats, rebuilds: [...stats.rebuilds], reuses: [...stats.reuses] };
+    return { ...stats, rebuilds: [...stats.rebuilds], reuses: [...stats.reuses],
+      poseHold: { enabled: poseHold.enabled, recentres: [...poseHold.recentres] } };
   }
 
-  return { beginFrame, renderCascade, disarm, invalidate, dispose, telemetry };
+  return { beginFrame, renderCascade, disarm, invalidate, dispose, telemetry, poseHold };
 }
