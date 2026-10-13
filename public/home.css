@@ -4,7 +4,7 @@
 @font-face{font-family:'ABC Monument Grotesk';src:url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700 900;font-display:swap}
 :root{--bg:#05080b;--surface:#0a0f14;--surface2:#10171e;--ink:#edf3f7;--muted:#9aabb8;--dim:#738593;--line:rgba(153,174,190,.2);--line2:rgba(153,174,190,.1);--amber:#f0a030;--gold:#ffd27a;--red:#e86555;--max:1440px;--pad:clamp(20px,4vw,64px)}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;background:var(--bg)}
+html{scroll-behavior:smooth;scroll-padding-top:80px;background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'ABC Monument Grotesk','Segoe UI',sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;background-image:linear-gradient(rgba(255,255,255,.017) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.017) 1px,transparent 1px);background-size:72px 72px;mask-image:linear-gradient(to bottom,#000,transparent 74%)}
 ::selection{background:var(--amber);color:#080b0e}
