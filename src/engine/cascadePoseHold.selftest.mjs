@@ -178,10 +178,31 @@ for (let f = 0; f < 120; f++) {
 assert.equal(rig.getShadowTelemetry().staticCache.poseHold.enabled, false);
 delete window.__SHADOW_DEBUG;
 
+// Ultra keeps today's path (2026-10-13, block 17: GPU-bound there the cache's full-map copies cost about 1 ms of presented
+// frame): every cascade re-centred on every frame, and the hold returns with High
+quality.setPresetName('ultra');
+for (let f = 0; f < 60; f++) {
+  x += 0.2;
+  pose(x, z, yaw + f * 0.004, -0.12);
+  rig.update(false, 1 / 60);
+  check(`ultra ${f}`, { expectToday: true });
+}
+quality.setPresetName('high');
+const highAgain = recentres();
+for (let f = 0; f < 120; f++) {
+  x += 10 / 60;
+  pose(x, z, yaw, -0.12);
+  rig.update(false, 1 / 60);
+  check(`high again ${f}`);
+}
+assert.ok(recentres().every((n, i) => n - highAgain[i] <= 4), 'back on High the poses hold again');
+assert.match(source.length ? (await readFile(new URL('./lighting.ts', import.meta.url), 'utf8')) : '',
+  /return prepareStableCascades\(csm, poseHoldTier \? staticShadowCache\?\.poseHold \?\? null : null\);/);
+
 // the hold lives in the cache's chunk, out of the game entry (2026-10-13, the bundle budget): lighting.ts only applies it
 const lightingSource = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(lightingSource, /POSE_HOLD_|_holdBounds/, 'lighting.ts carries no hold of its own');
-assert.match(lightingSource, /return prepareStableCascades\(csm, staticShadowCache\?\.poseHold \?\? null\);/);
+
 assert.match(lightingSource, /^import type \{ CascadePoseHold, ShadowStaticCache \} from '\.\/shadowStaticCache\.ts';$/m);
 
 console.log(`cascadePoseHold.selftest: ${stats.checked} cascade poses checked (${stats.held} held, ${stats.today} today's); `

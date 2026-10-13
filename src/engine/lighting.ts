@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
+import { PRESETS, getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -867,6 +867,10 @@ export function createLighting(
   // first battle world (a frozen world root in the scene), outside the boot graph; until it arrives, and if it never
   // does, every cascade renders the ordinary way. Phones keep the plain render: the copies would cost them memory.
   let staticShadowCache: ShadowStaticCache | null = null;
+  // 2026-10-13 (the perf stream, block 17): held cascade poses on every tier but Ultra. GPU-bound at Ultra's 4096 maps the
+  // cache's full-map depth copies cost about 1 ms of presented frame over re-rendering the casters (the CPU-bound tiers
+  // gain 1.5-3 ms), so Ultra keeps re-centring every cascade until a dirty-rect reuse makes the copies small
+  let poseHoldTier = preset !== PRESETS.ultra;
   let staticShadowCacheRequested = mobileTier;
   const requestStaticShadowCache = (): void => {
     staticShadowCacheRequested = true;
@@ -888,8 +892,9 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    // held cascade poses while the static cache can use them (its chunk: shadowStaticCache.ts createCascadePoseHold)
-    return prepareStableCascades(csm, staticShadowCache?.poseHold ?? null);
+    // held cascade poses while the static cache can use them (its chunk: shadowStaticCache.ts createCascadePoseHold), on
+    // every tier but Ultra (poseHoldTier)
+    return prepareStableCascades(csm, poseHoldTier ? staticShadowCache?.poseHold ?? null : null);
   };
 
   // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
@@ -973,6 +978,7 @@ export function createLighting(
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
+    poseHoldTier = p !== PRESETS.ultra;
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
     lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
     applyGroundBounce();
