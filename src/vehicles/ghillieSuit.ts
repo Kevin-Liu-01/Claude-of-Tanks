@@ -181,6 +181,13 @@ export interface GhillieConfig {
    * their receipts.
    */
   fieldClearanceM?: number;
+  /**
+   * 2026-10-12 (cam-netting, the UA roofs and decks): the hull's suit also keeps under the main gun's continuous envelope
+   * as the protection receipt draws it (profiles/nationalUkraineProtection.selftest fullMainGunEnvelope: the gun's
+   * 10 cm slices at full depression to full elevation, recoil included, at every yaw), a stricter reach than the
+   * yaw-aware clearance over the decks behind and ahead of the turret. Needs fieldClearanceM.
+   */
+  conservativeGunEnvelope?: boolean;
 
   /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
@@ -197,7 +204,8 @@ interface GhillieBuilderPort {
    * The spec (its paint visual, checked by the material system, gives a fitted cover its scheme; its gun limits bound
    * the gun's swept volume a suit with fieldClearanceM keeps clear).
    */
-  spec: { id: string; visual?: object; gunDepressionDeg?: number; gunElevationDeg?: number; gunPitchByYawDeg?: GunPitchByYawCurve };
+  spec: { id: string; visual?: object; gunDepressionDeg?: number; gunElevationDeg?: number; gunPitchByYawDeg?: GunPitchByYawCurve;
+    gun?: { caliberMm?: number } };
   /** HIGH geometry (folded spray cards); LOW keeps the flat four-triangle cards. */
   readonly q?: boolean;
   hullG: THREE.Group;
@@ -3165,6 +3173,8 @@ class CageWing implements SurfaceProbe {
   readonly tubes: readonly CageMember[];
   /** The hinge barrels (in the dark bucket). */
   readonly hinges: readonly CageMember[];
+  /** Its plan footprint [x0, x1, z0, z1] (owner frame): the lattice and every leg, 6 cm round them. */
+  readonly plan: readonly [number, number, number, number];
 
   constructor(rec: RoofCageRecord) {
     const [c0, c1, c2] = rec.corners;
@@ -3191,6 +3201,8 @@ class CageWing implements SurfaceProbe {
     for (const z of new Set(rec.feet.map((f) => f[2]))) tubes.push({ a: [s * braceX, y - 0.12, z], b: [s * outer, y, z], r: 0.012 });
     this.tubes = tubes;
     this.hinges = [z0 + 0.22, z1 - 0.22].map((z): CageMember => ({ a: [s * inner, y, z - 0.045], b: [s * inner, y, z + 0.045], r: 0.026 }));
+    const xs = [s * inner, s * outer, ...rec.feet.map((f) => f[0])], zs = [z0, z1, ...rec.feet.map((f) => f[2])];
+    this.plan = [Math.min(...xs) - 0.06, Math.max(...xs) + 0.06, Math.min(...zs) - 0.06, Math.max(...zs) + 0.06];
   }
 
   /** True for a point within `margin` of a tube (and, with `hinges`, of a hinge barrel). */
@@ -3802,7 +3814,68 @@ export function suitDockBoxes(specId: string): { frame: 'turret' | 'hull'; boxes
   return { frame: seat.frame === 'turret' ? 'turret' : 'hull', boxes: [union(missionCradleVolumes(seat)), union(missionAirframeVolumes(seat, true))] };
 }
 
-function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearance {
+/**
+ * The main gun's continuous envelope as the UA protection receipt draws it (GhillieConfig.conservativeGunEnvelope): its
+ * lowest reach (turret frame) by 5 cm radius bin from the turret's axis, over every yaw, full depression to full
+ * elevation (and the recoil kick), each 10 cm slice of the gun's own geometry boxed in the gun's frame, the recoil parts
+ * run back by their stroke. Ported verbatim from fullMainGunEnvelope so the suit and its receipt agree.
+ */
+function gunEnvelopeFloor(P: GhillieBuilderPort): Map<number, number> {
+  const turret = P.turretG, gun = P.gunG;
+  turret.updateWorldMatrix(true, true);
+  const turretInverse = turret.matrixWorld.clone().invert(), gunInverse = gun.matrixWorld.clone().invert();
+  const cells: THREE.Box3[] = [], step = 0.1, caliber = P.spec.gun?.caliberMm ?? 120;
+  const v = new THREE.Vector3();
+  gun.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || mesh.userData.presentationInvisible || /_ghillie_/.test(mesh.name || '')) return;
+    const mat = mesh.material as THREE.Material;
+    if ((mat as THREE.MeshBasicMaterial)?.colorWrite === false) return;
+    let recoil = false;
+    for (let q: THREE.Object3D | null = mesh; q; q = q.parent) {
+      if (!q.visible) return;
+      if (q.name === 'rig_recoil' || q.name.startsWith('rig_barrel_')) recoil = true;
+      if (q === gun) break;
+    }
+    const matrix = gunInverse.clone().multiply(mesh.matrixWorld), pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
+    const index = mesh.geometry.index, bins = new Map<number, THREE.Box3>();
+    for (let i = 0; i + 2 < (index?.count ?? pos.count); i += 3) {
+      const box = new THREE.Box3();
+      for (let k = 0; k < 3; k++) box.expandByPoint(v.fromBufferAttribute(pos, index ? index.getX(i + k) : i + k).applyMatrix4(matrix));
+      for (let z = Math.floor(box.min.z / step); z <= Math.floor(box.max.z / step); z++) {
+        const slice = box.clone(); slice.min.z = Math.max(slice.min.z, z * step); slice.max.z = Math.min(slice.max.z, (z + 1) * step);
+        const had = bins.get(z);
+        if (had) had.union(slice); else bins.set(z, slice);
+      }
+    }
+    const stroke = Math.max(Math.min(0.24, Math.max(0.06, 0.13 * caliber / 120)), Math.min(0.085, Math.max(0.055, caliber * 0.0022)));
+    for (const box of bins.values()) {
+      if (recoil) box.min.z -= stroke;
+      cells.push(box.applyMatrix4(new THREE.Matrix4().makeScale(gun.scale.x, gun.scale.y, gun.scale.z)));
+    }
+  });
+  const deg = Math.PI / 180;
+  const low = -(P.spec.gunDepressionDeg ?? 8) * deg, high = (P.spec.gunElevationDeg ?? 18) * deg + 0.014;
+  const steps = Math.ceil((high - low) / (0.5 * deg)), delta = (high - low) / steps;
+  const parent = turretInverse.clone().multiply(gun.parent!.matrixWorld).multiply(new THREE.Matrix4().makeTranslation(gun.position.x, gun.position.y, gun.position.z));
+  const floor = new Map<number, number>();
+  const rot = new THREE.Matrix4(), euler = new THREE.Euler();
+  for (const box of cells) {
+    const radius = Math.hypot(...(['x', 'y', 'z'] as const).map((a) => Math.max(Math.abs(box.min[a]), Math.abs(box.max[a]))));
+    const pose = (a: number): THREE.Box3 => box.clone().applyMatrix4(rot.makeRotationFromEuler(euler.set(-a, gun.rotation.y, gun.rotation.z, gun.rotation.order)));
+    for (let i = 0; i < steps; i++) {
+      const b = pose(low + i * delta).union(pose(low + (i + 1) * delta));
+      b.expandByScalar(radius * (1 - Math.cos(delta / 2)) + 0.00001).applyMatrix4(parent);
+      const near = (a: 'x' | 'z'): number => (b.min[a] > 0 ? b.min[a] : b.max[a] < 0 ? -b.max[a] : 0);
+      const far = (a: 'x' | 'z'): number => Math.max(Math.abs(b.min[a]), Math.abs(b.max[a]));
+      const r0 = Math.hypot(near('x'), near('z')), r1 = Math.hypot(far('x'), far('z'));
+      for (let k = Math.floor(r0 / 0.05); k <= Math.floor(r1 / 0.05); k++) floor.set(k, Math.min(floor.get(k) ?? Infinity, b.min.y));
+    }
+  }
+  return floor;
+}
+
+function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGun = false): FieldClearance {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
@@ -4020,6 +4093,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
     }
     return false;
   };
+  const envelopeFloor = conservativeGun ? gunEnvelopeFloor(P) : null;
+  const hullToTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert().multiply(hull.matrixWorld), envelopePoint = new THREE.Vector3();
   const workingOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => {
     if (owner === 'hull') {
       const dx = p[0] - pivot.x, dz = p[2] - pivot.z, r = Math.hypot(dx, dz);
@@ -4028,6 +4103,15 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number): FieldClearanc
       if (nearGear(p)) return false;
       // clear of whatever the turret carries round over this radius and height through its traverse
       if (inTurretSweep(r, qy)) return false;
+      // under the receipt's continuous gun envelope (GhillieConfig.conservativeGunEnvelope), 5 cm clear of its lowest
+      // reach within 10 cm of the point's radius (the receipt boxes each triangle, whose corners reach farther out)
+      if (envelopeFloor) {
+        const tp = envelopePoint.set(p[0], p[1], p[2]).applyMatrix4(hullToTurret);
+        const rr = Math.hypot(tp.x, tp.z);
+        let lowest = Infinity;
+        for (let k = Math.floor(rr / 0.05) - 2; k <= Math.floor(rr / 0.05) + 2; k++) lowest = Math.min(lowest, envelopeFloor.get(k) ?? Infinity);
+        if (tp.y > lowest - 0.05) return false;
+      }
       if (qy < gunLowY || r > gunReachR) return true;
       // out of the gun's arc: every turret yaw that brings the gun's box across the point (sampled across the box's
       // widest half-width), the gun through its pitch range at that yaw; near the trunnion the mantlet's wide base
@@ -4339,7 +4423,10 @@ function garnishSpecies(cfg: GhillieConfig): SprayKind {
  */
 function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [SprayKind, SprayKind] {
   const own = cfg.foliageKind && cfg.foliageKind !== 'garnish-woodland' && cfg.foliageKind !== 'garnish-arid' ? cfg.foliageKind : null;
-  if (theatre === 'desert') return [own ?? 'pine', 'olive'];
+  // 2026-10-12 (cam-netting; the wave builder's read of the sand hulls: "the garnish reads as sparse olive patches at
+  // hero distance"): pine needles and olive sprigs are too fine to read as cover on sand paint; a crew in dry country
+  // cuts the dense evergreen scrub there, holm oak, with the olive
+  if (theatre === 'desert') return [own ?? 'holmOak', 'olive'];
   if (theatre === 'snow') return [own ?? 'spruce', 'birch-bare'];
   return [own ?? 'spruce', 'beech'];
 }
@@ -4427,6 +4514,9 @@ function addGhillieOwner(
     const opened = gunFloor ? weaponOpenings(panel, probe, gunFloor) : [];
     const margin = panel.autoOpeningsM;
     if (margin !== undefined) {
+      // 2026-10-12 (cam-netting, the UA roofs): a roof net laid on the turret stops at a field roof cage's wing (its
+      // legs and lattice: the wing carries its own net, cageWingCloths) instead of running through its tubes
+      for (const wing of cage) opened.push(rect(...wing.plan));
       for (const [bx0, bx1, bz0, bz1] of lids) {
         if (bx1 + margin < panel.x0 || bx0 - margin > panel.x1 || bz1 + margin < panel.z0 || bz0 - margin > panel.z1) continue;
         opened.push(rect(bx0 - margin, bx1 + margin, bz0 - margin, bz1 + margin));
@@ -4642,7 +4732,7 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   ];
   // the netting lane: the working vehicle's clearances, read once off the assembled build (the hull's top re-read
   // before the turret's suit, so that suit also clears the hull's)
-  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM) : null;
+  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];

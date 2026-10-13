@@ -37,9 +37,9 @@ const WOODLAND = { light: 0x6f7e4b, dark: 0x33462d, netColor: 'rgba(40,54,32,0.8
  * those openings half the hanging nets' (between two openings close together the rolls meet, and the cloth there must
  * still lie on the plate).
  */
-function laid(panel: Omit<TopPanel, 'yAt'> & { y?: number }): TopPanel {
-  const { y = 0.5, ...rest } = panel;
-  return { yAt: () => y, yFromArmour: true, clipToArmour: true, autoOpeningsM: 0.07, rimScale: 0.5, ...rest };
+function laid(panel: Omit<TopPanel, 'yAt'> & { y?: number; yAt?: TopPanel['yAt'] }): TopPanel {
+  const { y = 0.5, yAt, ...rest } = panel;
+  return { yAt: yAt ?? (() => y), yFromArmour: true, clipToArmour: true, autoOpeningsM: 0.07, rimScale: 0.5, ...rest };
 }
 
 /**
@@ -121,10 +121,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       top: [
         laid({ x0: -1.36, x1: 1.36, z0: -3.30, z1: -2.24, nx: 27, nz: 12, y: 1.62,
           holes: pair(0.56, 1.10, -2.90, -2.38), garnishRiseM: 0.14, seed: 31 }),
-        ...[-1, 1].map((side) => laid({
-          x0: side < 0 ? -1.62 : 0.98, x1: side < 0 ? -0.98 : 1.62, z0: 1.36, z1: 2.08, nx: 8, nz: 9, y: 1.66,
-          garnishRiseM: 0.06, garnishDensity: 0.8, seed: 37 + side,
-        })),
+        // 2026-10-12 (cam-netting): the whole front deck and glacis under one net (the fix round netted only the two
+        // shoulders and left the bow bare): the driver's hatch and periscopes, the lights and the gun's arc are the
+        // builder's (the cloth lies flat under the bore, no bough stands in its sweep)
+        laid({ x0: -1.62, x1: 1.62, z0: 0.86, z1: 2.95, nx: 32, nz: 26, yAt: (_x, z) => 1.56 - Math.max(0, z - 1.75) * 0.47,
+          garnishRiseM: 0.1, seed: 37 }),
       ],
       side: [
         ...flanks(-3.10, -1.78, 1.55, 0.44, 1.74, 41),
@@ -150,7 +151,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       face: [face({ z: -1.42, x0: -0.92, x1: 0.92, y0: 0.38, y1: 0.75, nx: 18, ny: 6, seed: 23 })],
     },
     hull: {
-      top: [laid({ x0: -1.58, x1: 1.58, z0: -3.30, z1: -0.76, nx: 32, nz: 26, y: 1.94, garnishRiseM: 0.10, seed: 31 })],
+      top: [
+        laid({ x0: -1.58, x1: 1.58, z0: -3.30, z1: -0.76, nx: 32, nz: 26, y: 1.94, garnishRiseM: 0.10, seed: 31 }),
+        // 2026-10-12 (cam-netting): the front deck and glacis netted to the bow round the driver's and the engine
+        // hatches (the builder opens them), the gun's arc flat under the bore
+        laid({ x0: -1.58, x1: 1.58, z0: 0.52, z1: 3.25, nx: 32, nz: 34, yAt: (_x, z) => 1.76 - Math.max(0, z - 1.25) * 0.26,
+          garnishRiseM: 0.1, seed: 37 }),
+      ],
       side: [
         ...flanks(-3.10, -1.34, 1.99, 0.62, 1.71, 41),
         ...flanks(-1.00, 0.80, 1.99, 0.60, 1.71, 47, {}, (side) => (side > 0 ? [cut(-0.62, 0.72, 1.32, 1.68)] : [])),
@@ -161,7 +168,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // Merkava Mk 4B: the roof behind the wedge mantlet and over the cheeks netted round the commander's cupola, the
   // loader's ring, the mortar and every sight head; the bustle basket's load under its own net; drapes down the flared
   // turret walls (behind the cheek smoke dischargers) and down the basket's sides, and over its rear. The hull's rear
-  // deck under the basket netted low, the skirts hung in three drapes a side; the front engine deck and its grille bare.
+  // deck under the basket netted low, the skirts hung in three drapes a side; the front engine deck netted to the bow.
   merkava4b: {
     id: 'merkava4b', seed: 4041, style: 'leafy', ...FULL, leafScale: 0.92, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.08, hemFloorM: 0.85,
@@ -182,7 +189,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       face: [face({ z: -3.42, x0: -1.24, x1: 1.24, y0: 0.24, y1: 0.58, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
-      top: [laid({ x0: -1.75, x1: 1.75, z0: -4.10, z1: -0.55, nx: 35, nz: 36, y: 1.76, garnishRiseM: 0.10, seed: 31 })],
+      top: [
+        laid({ x0: -1.75, x1: 1.75, z0: -4.10, z1: -0.55, nx: 35, nz: 36, y: 1.76, garnishRiseM: 0.10, seed: 31 }),
+        // 2026-10-12 (cam-netting): the front engine deck netted to the bow (the fix round left it bare): the driver's
+        // hatch and periscopes open (the builder), the cloth flat under the gun, no bough in its sweep
+        laid({ x0: -1.72, x1: 1.72, z0: 0.72, z1: 3.15, nx: 34, nz: 25, yAt: (_x, z) => 1.76 - Math.max(0, z - 1.0) * 0.17,
+          garnishRiseM: 0.1, seed: 37 }),
+      ],
       side: [
         ...flanks(-3.25, -1.90, 1.82, 0.56, 1.88, 41),
         ...flanks(-1.52, 0.56, 1.82, 0.52, 1.88, 47),
@@ -214,7 +227,12 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       face: [face({ z: -3.12, x0: -1.00, x1: 1.00, y0: 0.32, y1: 0.66, nx: 20, ny: 6, seed: 23 })],
     },
     hull: {
-      top: [laid({ x0: -1.72, x1: 1.72, z0: -4.45, z1: -1.10, nx: 34, nz: 34, y: 1.68, garnishRiseM: 0.10, seed: 31 })],
+      top: [
+        laid({ x0: -1.72, x1: 1.72, z0: -4.45, z1: -1.10, nx: 34, nz: 34, y: 1.68, garnishRiseM: 0.10, seed: 31 }),
+        // 2026-10-12 (cam-netting): the front engine deck netted to the bow, as the Mk 4B's
+        laid({ x0: -1.70, x1: 1.70, z0: 0.92, z1: 2.68, nx: 34, nz: 18, yAt: (_x, z) => 1.70 - Math.max(0, z - 1.2) * 0.2,
+          garnishRiseM: 0.1, seed: 37 }),
+      ],
       side: [
         ...flanks(-4.30, -2.26, 1.72, 0.56, 1.85, 41),
         ...flanks(-1.90, 0.16, 1.72, 0.52, 1.85, 47),
