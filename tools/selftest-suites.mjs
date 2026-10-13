@@ -956,6 +956,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/shadowGeometryClaims.selftest.mjs',
+    'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/audioMath.selftest.mjs',
     'src/audio/vehicleAudioProfiles.selftest.mjs',
