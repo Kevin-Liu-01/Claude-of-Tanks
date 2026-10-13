@@ -16,7 +16,7 @@ import {
   certifyStructureAttachments,
 } from '../structureConnectivity.ts';
 import {
-  auditRoofPlanePitch, pitchRoofPlane, pitchSkillionRoof,
+  auditRoofPlanePitch, gableAttic, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
 
 type Rng = () => number;
@@ -463,12 +463,15 @@ function addGableRoof(
   roofH: number,
   over = 0.4,
 ): void {
-  const slope = Math.hypot(w / 2 + over, roofH + 0.08);
-  const angle = Math.atan2(roofH + 0.08, w / 2 + over);
+  // (the buildings stream, 2026-10-13, the building integrity check: the slabs ran shallower than the gables and stood
+  // 15-25 cm over the wall tops along both eaves, a dark slot into the roof space) each slab's underside on the gable's
+  // own slope, the roof space closed under them
+  const seat = gableSlabSeat(w / 2, roofH, over, 0.13);
+  out.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const roof = slab(slope + 0.14, 0.13, d + over * 2);
-    pitchRoofPlane(roof, 'x', -side as -1 | 1, angle, 'gable');
-    roof.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
+    const roof = slab(seat.length + 0.14, 0.13, d + over * 2);
+    pitchRoofPlane(roof, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    roof.translate(-side * seat.out, wallH + seat.up, 0);
     out.roof.push(roof);
   }
   out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
@@ -547,7 +550,9 @@ export function makeSchoolhouse(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
   addGableRoof(out, w, d, wallH, roofH, 0.45);
   // Bell cupola and twin entrance porch make it unmistakable at range.
-  out.wood.push(box(2.6, 1.8, 2.6).translate(0, wallH + roofH + 0.5, 1.0));
+  // (the buildings stream, 2026-10-13) the cupola's walls run down to both slopes (they stood 0.5 m over them)
+  const cupBase = roofH - 1.3 * roofH / (w / 2) - 0.05, cupTop = roofH + 1.4;
+  out.wood.push(box(2.6, cupTop - cupBase, 2.6).translate(0, wallH + (cupBase + cupTop) / 2, 1.0));
   for (const side of [-1, 1]) out.dark.push(box(0.62, 0.85, 0.08).translate(side * 0.65, wallH + roofH + 0.6, 2.34));
   const cap = new THREE.ConeGeometry(2.0, 2.4, 4, 1);
   cap.rotateY(Math.PI / 4); cap.translate(0, wallH + roofH + 2.6, 1.0); out.roof.push(cap);
@@ -776,7 +781,10 @@ export function makeRangerLodge(_rng: Rng, buckets: GeometryBuckets, wallBucket 
   out.roof.push(pitchSkillionRoof(slab(w + 2.0, 0.13, 3.1), 'z', 1, 0.17)
     .translate(0, 3.25, d / 2 + 1.25));
   out.stone.push(box(1.35, 5.8, 1.35).translate(-3.4, wallH + 0.9, -2.2));
-  out.wood.push(box(3.0, 1.7, 3.0).translate(2.0, wallH + roofH + 0.35, -1.0));
+  // (the buildings stream, 2026-10-13) the cupola's walls run down to the slope (they stood 1.8 m over it on the downhill
+  // side, the roof seen under them)
+  const cupBase = roofH - 3.5 * roofH / (w / 2) - 0.05, cupTop = roofH + 1.2;
+  out.wood.push(box(3.0, cupTop - cupBase, 3.0).translate(2.0, wallH + (cupBase + cupTop) / 2, -1.0));
   const cap = new THREE.ConeGeometry(2.15, 1.9, 4, 1);
   cap.rotateY(Math.PI / 4); cap.translate(2.0, wallH + roofH + 2.15, -1.0); out.roof.push(cap);
   for (const x of [-3.2, 0, 3.2]) addWindow(out, x, 2.1, d / 2 + 0.04);

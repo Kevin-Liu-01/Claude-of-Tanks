@@ -188,6 +188,39 @@ export function gablePrism(
   return scaleUV(geometry, uvScale, uvScale);
 }
 
+/**
+ * Where a gable roof's slab sits so that its underside lies on the gable's own slope: through the wall top's line and the
+ * apex, and out over the eave. (The buildings stream, 2026-10-13, the building integrity check: the generic builders
+ * pitched their slabs from the eave's tip to 10 cm over the apex. That is shallower than the gables, so the slabs stood
+ * 15-20 cm over the wall tops along both eaves, a dark slot into the attic under every eave.) `pitch` is the slab's
+ * angle, `length` its run along the slope from the ridge line to the eave's tip, and `out` and `up` the slab's centre
+ * from the ridge line and the wall top.
+ */
+export function gableSlabSeat(
+  halfSpan: number,
+  roofH: number,
+  over: number,
+  thick: number,
+): { pitch: number; length: number; out: number; up: number } {
+  const pitch = Math.atan2(roofH, halfSpan), run = halfSpan + over, mid = run / 2;
+  return {
+    pitch,
+    length: run / Math.cos(pitch),
+    out: mid + Math.sin(pitch) * thick / 2,
+    up: roofH - mid * roofH / halfSpan + Math.cos(pitch) * thick / 2,
+  };
+}
+
+/**
+ * The attic closed under a gable roof's slabs from gable to gable (its floor is the eaves' boarded soffit). New to the
+ * plan builders' placement stream, so it takes none of its UV draws.
+ */
+export function gableAttic(span: number, roofH: number, depth: number): THREE.ExtrudeGeometry {
+  const attic = gablePrism(span, roofH, Math.max(0.2, depth - 0.6), 0.4);
+  attic.userData.uvJitter = 'none';
+  return attic;
+}
+
 export function jitterUV<T extends THREE.BufferGeometry>(geometry: T, rng: RandomSource): T {
   const uv = geometry.attributes.uv;
   if (!uv) return geometry;

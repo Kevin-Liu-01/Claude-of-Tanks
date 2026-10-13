@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.ts';
 import { RAIL_BUILDERS } from './railKit.ts'; // maps r1: railyard + coastal kits
-import { gablePrism as createGablePrism, pitchRoofPlane } from '../propGeometry.ts';
+import { gableAttic, gablePrism as createGablePrism, gableSlabSeat, pitchRoofPlane } from '../propGeometry.ts';
 import {
   addConnectedExterior,
   type GeometryBuckets,
@@ -102,12 +102,14 @@ export function makeChurch(_rng: () => number, buckets: GeometryBuckets): Struct
   parts.stone.push(box(w, wallH, d, 0.6).translate(0, wallH / 2, -1.2));
   parts.stone.push(gablePrism(w, roofH, 0.34).translate(0, wallH, d / 2 - 1.4));
   parts.stone.push(gablePrism(w, roofH, 0.34).translate(0, wallH, -d / 2 - 1.0));
-  const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the nave's roof space closed
+  // under them; the slabs stood 15 cm over the wall tops along both eaves)
+  const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13);
+  parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, -1.2));
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.13, d + 0.6, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, -1.2);
+    const slab = box(seat.length + 0.15, 0.13, d + 0.6, 0.35);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    slab.translate(-side * seat.out, wallH + seat.up, -1.2);
     parts.roof.push(slab);
   }
   // tall arched nave windows (glass inset strips with stone sills)
@@ -139,7 +141,13 @@ export function makeChurch(_rng: () => number, buckets: GeometryBuckets): Struct
   const ball = new THREE.SphereGeometry(0.28, 8, 6);
   ball.translate(0, towerH + 7.5, tz);
   parts.dark.push(ball);
+  // (the buildings stream, 2026-10-13, the integrity check: the nave stands 1.2 m back from the building's origin, so the
+  // exterior pass, which dresses a body centred on it, set the west door and its lamp 1.2 m inside the nave and the east
+  // end's inside the tower) the pass dresses the nave in its own frame
+  const toNave = (dz: number): void => { for (const list of Object.values(parts)) for (const g of list ?? []) g.translate(0, 0, dz); };
+  toNave(1.2);
   addConnectedExterior(parts, { id: 'church', w, d, wallH, profile: 'civic', variant: 1 });
+  toNave(-1.2);
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + tw + 0.6, h: towerH + 7.8 };
 }
@@ -163,12 +171,13 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   parts.stone.push(box(w, wallH, d, 0.55).translate(0, wallH / 2, 0));
   parts.stone.push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
   parts.stone.push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
-  const slope = Math.hypot(w / 2 + 0.4, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + 0.4);
+  // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the hall closed under them)
+  const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.14);
+  parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.14, d + 0.7, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.07, 0);
+    const slab = box(seat.length + 0.15, 0.14, d + 0.7, 0.35);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
   }
   // big industrial window grid on both long walls

@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import {
-  box, gablePrism, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
+  box, gableAttic, gablePrism, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from '../propGeometry.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
@@ -48,16 +48,16 @@ function gableRoof(
   over: number,
   thick = 0.12,
 ): number {
-  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
-  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  // (the buildings stream, 2026-10-13) each slab's underside on the gable's own slope, the attic closed under them
+  const seat = gableSlabSeat(w / 2, roofH, over, thick);
   for (const side of [-1, 1]) {
-    const slab = slabBox(slope + 0.15, thick, d + over * 2, 0.35);
-    pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
-    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + thick / 2, 0);
-    parts.roof.push(slab);
+    const slab = slabBox(seat.length + 0.15, thick, d + over * 2, 0.35);
+    pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
+    parts.roof.push(slab.translate(-side * seat.out, wallH + seat.up, 0));
   }
+  parts.wood.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   parts.roof.push(slabBox(0.34, thick + 0.01, d + over * 2, 0.5).translate(0, wallH + roofH + 0.04, 0));
-  return ang;
+  return seat.pitch;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +246,8 @@ export function makeChapel(rng: () => number, buckets: GeometryBuckets): Structu
     }
   }
   // small cross finial on the rear gable
-  parts.dark.push(box(0.07, 0.7, 0.07).translate(0, wallH + roofH + 0.55, -d / 2 + 0.2));
+  // (its stem down into the ridge: the slabs now meet the gable's apex, a few centimetres under their old line)
+  parts.dark.push(box(0.07, 0.9, 0.07).translate(0, wallH + roofH + 0.45, -d / 2 + 0.2));
   parts.dark.push(box(0.34, 0.07, 0.07).translate(0, wallH + roofH + 0.72, -d / 2 + 0.2));
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + 0.4, h: wallH + roofH + bgH };
@@ -450,14 +451,26 @@ export function makeWoodshed(rng: () => number, buckets: GeometryBuckets): Struc
   const hLo = 2.0, hHi = 2.8;
   const parts = newParts();
   parts.stone.push(box(w + 0.2, 0.6, d + 0.2).translate(0, -0.12, 0));
-  // slat back + side walls (open +x front); a rotated top board closes the
-  // mono-pitch triangle on each side wall (visual only)
-  parts.wood.push(box(0.10, hLo, d).translate(-w / 2, hLo / 2 + 0.1, 0));
+  // slat back + side walls (open +x front); a rotated top board on each side wall
+  // (the buildings stream, 2026-10-13, the integrity check: the back wall stopped 11 cm under the roof, and each side
+  // wall's triangle under the mono-pitch stood open, sky through the shed from either side) the back wall runs up to the
+  // roof's underside, and each side's triangle is boarded up to it (new parts, so no placement-stream draws)
+  const pitch = Math.atan2(hHi - hLo, w + 0.7);
+  const under = (x: number): number => (hLo + hHi) / 2 + 0.22 + (x - 0.1) * Math.tan(pitch) - 0.055 / Math.cos(pitch) + 0.02;
+  const backH = under(-w / 2 - 0.05) - 0.1;
+  parts.wood.push(box(0.10, backH, d).translate(-w / 2, backH / 2 + 0.1, 0));
   for (const s of [-1, 1]) {
     parts.wood.push(box(w, hLo, 0.10).translate(0, hLo / 2 + 0.1, s * d / 2));
     const wg = box(Math.hypot(w, hHi - hLo), 0.10, 0.10, 0.6);
     wg.rotateZ(Math.atan2(hHi - hLo, w));
     parts.wood.push(wg.translate(0, hLo + (hHi - hLo) / 2 + 0.1, s * d / 2));
+    const infill = new THREE.Shape();
+    infill.moveTo(-w / 2, hLo + 0.08); infill.lineTo(w / 2, hLo + 0.08);
+    infill.lineTo(w / 2, under(w / 2)); infill.lineTo(-w / 2, under(-w / 2)); infill.closePath();
+    const board = new THREE.ExtrudeGeometry(infill, { depth: 0.08, bevelEnabled: false });
+    scaleUV(board, 0.6, 0.6);
+    board.userData.uvJitter = 'none';
+    parts.wood.push(board.translate(0, 0, s * d / 2 - 0.04));
   }
   // corner posts + mono-pitch roof
   for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
