@@ -5,7 +5,7 @@
 // picks in tools/media-r5/site-media/picks.json, and the landing page's mobile proxies in public/media/web-video-r1.
 // manifest.json records every file's source, bytes and sha256; archive.json is the visual archive's library.
 //
-//   node tools/media-r5/site-media.mjs --root=<tree> [--only=stills,loops,proxies,reels,frames,films,fleet,scenes] [--force]
+//   node tools/media-r5/site-media.mjs --root=<tree> [--only=stills,loops,proxies,reels,frames,films,fleet,scenes,home] [--force]
 //   node tools/media-r5/site-media.mjs --root=<tree> --plan       what each slot ships, and what is missing
 // --fallback lets an older round stand in for a take the round has not delivered yet (drafts only: the manifest marks
 // it, and the shipped build has every take from the picks' round, each with its sound).
@@ -22,12 +22,17 @@
 //   frames/sheet-<n>.webp                          contact sheets, ten frames each (2400 × 540)
 //   films/trailer.mp4, films/trailer.jpg           the trailer at 1920×1080 with its score
 //   films/reel.mp4, films/reel.jpg                 the picked takes crossfaded at 1920×1080, silent (the home page's loop)
+//   home/<group>/<id>.webp, <id>-640.webp          the home page's feature, mechanic and mode shots (home r2,
+//                                                  2026-10-12), from the delivered PNG <sources.home>/<group>/<id>.png;
+//                                                  a slot not yet delivered keeps its stand-in still (site-media-wire)
+//   home/features/studio.mp4, studio.jpg           the Scene Studio card's loop, silent, and its poster, from the
+//                                                  delivered recording <sources.home>/features/studio.mp4 (+ studio.json)
 //   manifest.json, archive.json
 // public/media/web-video-r1/<id>-mobile.mp4, reel-mobile.mp4: 960×540, 24 fps, silent, under the landing page's
 // nine-megabyte budget with the Studio card's proxy (landing-media.selftest.mjs).
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +55,14 @@ const PROXY_BUDGET_BYTES = 9_000_000;
 const PROXY_KEPT = ['studio-knockout-mobile.mp4'];
 const THUMB = [640, 360];
 const SHEET = { cols: 5, rows: 2, tile: [480, 270], gap: 0, per: 10 };
+// The home page's own shots (home r2, 2026-10-12; owner: "update all of these images to use new shots ... add far more
+// mechanics ... a new section highlighting all game modes with custom shots"): one delivered PNG per slot, built at its
+// group's size (a slot may set its own, the multiplayer band's 24:7) with a 640-wide preview for the srcset. The Studio
+// card's loop replaces the landing-r1 recording and its mobile proxy once it is delivered.
+const HOME_DELIVER = join(MEDIA, PICKS.sources.home ?? 'shots/media-r5/home-r2/deliver');
+const HOME_GROUPS = Object.freeze({ features: [1920, 1080], mechanics: [1280, 720], modes: [1280, 720] });
+const HOME_PREVIEW_W = 640;
+const HOME_STUDIO_PROXY = 'home-studio-mobile.mp4';
 
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1 << 26 });
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -134,7 +147,36 @@ function slots() {
   for (const k of ['worlds', 'worldKit', 'destruction']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
   (PICKS.readme?.wall ?? []).forEach((p, i) => add(`readme.wall[${i}]`, p.id, p.still));
   for (const [k, v] of Object.entries(PICKS.docs.figures ?? {})) add(`docs.figures.${k}`, v.id, v.still);
+  // the home page's shots stand in on a site fifty still until their own are delivered
+  // (a slot with no honest stand-in has none: it hides until its shot lands)
+  for (const s of homeSlots()) if (s.standIn) add(`home.${s.group}.${s.id}`, s.standIn.id, s.standIn.still);
   return out;
+}
+
+// --- the home page's own shots (home r2) ----------------------------------------------------------------------------
+// Each slot of picks.home.features / mechanics / modes is { id, alt: { en, zh }, standIn: { id, still }, size? }; its
+// shot is delivered as <sources.home>/<group>/<id>.png (shots/media-r5/home-r2/shot-list.json says what each must show)
+function homeSlots() {
+  return Object.entries(HOME_GROUPS).flatMap(([group, size]) => (PICKS.home[group] ?? [])
+    .map((entry) => ({ ...entry, group, size: entry.size ?? size })));
+}
+function homeDelivery(slot) {
+  const png = join(HOME_DELIVER, slot.group, `${slot.id}.png`);
+  return existsSync(png) ? png : null;
+}
+// the Scene Studio card's loop (tools/marketing-shots/record-studio-action-loop.mjs: its WebM master, or an MP4) and the
+// recorder's manifest.json beside it as studio.json (durationMs, captureMode, actors, effects: the landing contract's
+// studio block)
+function homeStudioDelivery() {
+  const video = ['studio.webm', 'studio.mp4'].map((name) => join(HOME_DELIVER, 'features', name)).find((file) => existsSync(file));
+  const receipt = join(HOME_DELIVER, 'features', 'studio.json');
+  return video && existsSync(receipt) ? { video, receipt } : null;
+}
+function pngSize(file) {
+  const fd = openSync(file, 'r');
+  const head = Buffer.alloc(24);
+  try { readSync(fd, head, 0, 24, 0); } finally { closeSync(fd); }
+  return head.toString('ascii', 12, 16) === 'IHDR' ? [head.readUInt32BE(16), head.readUInt32BE(20)] : [0, 0];
 }
 
 function checkPicks() {
@@ -145,6 +187,14 @@ function checkPicks() {
     if (!d) { problems.push(`${s.slot}: ${s.id} has no delivery${fallback ? '' : ` in ${PICKS.sources.deliver} (--fallback for a draft)`}`); continue; }
     if (s.kind === 'close' && !d.close) problems.push(`${s.slot}: ${s.id} has no close still in ${d.round}`);
     if ((s.kind === 'reel' || s.kind === 'loop') && !d.sound) problems.push(`${s.slot}: ${s.id} is delivered without its sound (${d.round})`);
+  }
+  // a delivered home shot keeps its slot's frame (a 16:9 card, the 24:7 multiplayer band): the build never stretches one
+  for (const s of homeSlots()) {
+    const png = homeDelivery(s);
+    if (!png) continue;
+    const [w, h] = pngSize(png);
+    if (!w || Math.abs(w / h - s.size[0] / s.size[1]) > 0.01) problems.push(`home.${s.group}.${s.id}: ${png} is ${w}x${h}, not the slot's ${s.size[0]}:${s.size[1]}`);
+    else if (w < s.size[0]) problems.push(`home.${s.group}.${s.id}: ${png} is ${w} px wide, under the slot's ${s.size[0]}`);
   }
   return problems;
 }
@@ -204,9 +254,14 @@ function proxy(source, out, crf) {
 }
 function buildProxies() {
   mkdirSync(PROXIES, { recursive: true });
-  const jobs = proxyIds.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27 }))
-    .concat([{ path: 'reel-mobile.mp4', source: join(OUT, 'films', 'reel.mp4'), crf: 29 }])
+  // the home page's Studio loop, once delivered, takes the landing-r1 recording's place and its proxy's
+  const studioLoop = join(OUT, 'home', 'features', 'studio.mp4');
+  const studio = homeStudioDelivery() && existsSync(studioLoop);
+  const jobs = proxyIds.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27, url: `${BASE_URL}/loops/${id}.webm` }))
+    .concat([{ path: 'reel-mobile.mp4', source: join(OUT, 'films', 'reel.mp4'), crf: 29, url: `${BASE_URL}/films/reel.mp4` }])
+    .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioLoop, crf: 27, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
     .filter((job) => job.source && existsSync(job.source));
+  if (studio) for (const p of PROXY_KEPT) if (existsSync(join(PROXIES, p))) rmSync(join(PROXIES, p));
   const kept = PROXY_KEPT.filter((p) => existsSync(join(PROXIES, p)));
   const keptBytes = kept.reduce((sum, p) => sum + statSync(join(PROXIES, p)).size, 0);
   for (let pass = 0; pass < 6; pass++) {
@@ -228,8 +283,7 @@ function buildProxies() {
   const manifest = { schemaVersion: 1, purpose: 'Mobile landing-page video proxies',
     encoding: { codec: 'h264', width: 960, height: 540, framesPerSecond: 24, audio: false },
     files: [
-      ...jobs.map((job) => ({ path: job.path, bytes: statSync(join(PROXIES, job.path)).size,
-        source: job.path === 'reel-mobile.mp4' ? `${BASE_URL}/films/reel.mp4` : `${BASE_URL}/loops/${job.path.replace('-mobile.mp4', '.webm')}` })),
+      ...jobs.map((job) => ({ path: job.path, bytes: statSync(join(PROXIES, job.path)).size, source: job.url })),
       ...kept.map((p) => ({ path: p, bytes: statSync(join(PROXIES, p)).size, source: '/media/landing-r1/studio-leclerc-knockout.mp4' })),
     ] };
   writeFileSync(join(PROXIES, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -410,6 +464,31 @@ function buildScenes(fleet = {}) {
   record(index, null, { takes: takes.length });
 }
 
+// --- the home page's feature, mechanic and mode shots (home r2) ------------------------------------------------------
+// A delivered PNG becomes home/<group>/<id>.webp at its slot's size and a 640-wide preview; site-media-wire.mjs then
+// points the slot at them in place of its stand-in. The Studio card's loop encodes like the landing-r1 recording it
+// replaces (1080p H.264, silent, faststart) with its poster; buildProxies gives it the mobile proxy.
+function buildHome() {
+  for (const slot of homeSlots()) {
+    const png = homeDelivery(slot);
+    if (!png) continue;
+    const [w, h] = slot.size;
+    const extra = { home: `${slot.group}/${slot.id}` };
+    make(join(OUT, 'home', slot.group, `${slot.id}.webp`), png, (tmp) => webp(png, tmp, 84, [w, h]), extra);
+    make(join(OUT, 'home', slot.group, `${slot.id}-640.webp`), png,
+      (tmp) => webp(png, tmp, 80, [HOME_PREVIEW_W, Math.round((HOME_PREVIEW_W * h) / w)]), extra);
+  }
+  const studio = homeStudioDelivery();
+  if (!studio) return;
+  const extra = { home: 'features/studio' };
+  make(join(OUT, 'home', 'features', 'studio.mp4'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', studio.video, '-an',
+    '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-maxrate', '8M',
+    '-bufsize', '16M', '-profile:v', 'high', '-movflags', '+faststart', tmp]), extra);
+  make(join(OUT, 'home', 'features', 'studio.jpg'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y',
+    '-ss', String(PICKS.home.studio?.posterS ?? 2), '-i', studio.video, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), extra);
+  copy(join(OUT, 'home', 'features', 'studio.json'), studio.receipt, extra);
+}
+
 // --- the archive and the manifest ---------------------------------------------------------------------------------
 function mapNames() {
   const catalog = join(ROOT, 'src/ui/i18nCatalog.en-US.json');
@@ -447,6 +526,10 @@ function main() {
     console.log(`frames: ${frames.length} (${frames.filter((f) => f.current).length} from ${PICKS.sources.frames})`);
     console.log(`trailer: ${existsSync(join(MEDIA, PICKS.sources.trailer)) ? PICKS.sources.trailer : 'MISSING'}`);
     console.log(`reel: ${reelTakes().length} of ${PICKS.home.reel.takes.length} takes delivered (${PICKS.home.reel.takes.join(', ')})`);
+    const home = homeSlots();
+    const delivered = home.filter((s) => homeDelivery(s));
+    console.log(`home shots: ${delivered.length} of ${home.length} delivered in ${relative(MEDIA, HOME_DELIVER)}; the Studio loop ${homeStudioDelivery() ? 'delivered' : 'stands in as the landing-r1 recording'}`);
+    for (const s of home) if (!homeDelivery(s)) console.log(s.standIn ? `  stand-in ${`${s.group}/${s.id}`.padEnd(28)} ${s.standIn.id} (${s.standIn.still})` : `  hidden   ${`${s.group}/${s.id}`.padEnd(28)} until its shot lands`);
     console.log(problems.length ? `${problems.length} problems:\n  ${problems.join('\n  ')}` : 'every slot has its take');
     return;
   }
@@ -468,6 +551,7 @@ function main() {
   if (want('films')) buildFilms();
   const fleet = want('fleet') ? buildFleet() : {};
   if (want('scenes')) buildScenes(fleet);
+  if (want('home')) buildHome();
   const proxies = want('proxies') ? buildProxies() : null;
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
@@ -492,6 +576,10 @@ function main() {
     source: 'The site fifty, rendered at 4K in the game engine (tools/media-r5): fifty takes with their sound, the fifty frames and the films; picks in tools/media-r5/site-media/picks.json, built by tools/media-r5/site-media.mjs',
     draft: Object.values(takes).some((t) => !t.current) || frames.some((f) => !f.current) || undefined,
     takes, frames: frames.map((f) => ({ id: f.id, n: f.n, technique: f.technique, title: f.title, map: f.map, round: f.round })),
+    // the home page's shots: delivered, or the site fifty still standing in until they are (site-media-wire.mjs)
+    home: Object.fromEntries([...homeSlots().map((s) => [`${s.group}/${s.id}`, homeDelivery(s) ? 'delivered'
+      : s.standIn ? `stand-in ${s.standIn.id}${s.standIn.still === 'close' ? '-close' : ''}` : 'hidden until delivered']),
+    ['features/studio', homeStudioDelivery() ? 'delivered' : 'stand-in landing-r1']]),
     files: files.sort((a, b) => a.path.localeCompare(b.path)) };
   writeFileSync(join(OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 1)}\n`);
   writeFileSync(join(OUT, 'archive.json'), `${JSON.stringify(archive(frames), null, 1)}\n`);
