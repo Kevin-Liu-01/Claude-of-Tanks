@@ -85,6 +85,13 @@ export interface QualityPreset {
    * (renderScalePolicy.RETINA_PIXEL_RATIO). Absent keeps the native fence (never below 1 CSS pixel per axis).
    */
   readonly nativeDynMin?: number;
+  /**
+   * 2026-10-12 (the perf stream; the owner: "im averaging 11 fps"): the governor's floor on a retina display while the
+   * player leaves quality on Auto. Under a sustained overload the raster falls this far before the auto tier steps
+   * down (High → Medium drops the grass, the shadow reach and the light effects, and lands on the same 1.0 raster).
+   * An explicit preset keeps `dynMin`; absent means none (dynMin).
+   */
+  readonly autoDynMin?: number;
   readonly aoScale: number;
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
@@ -316,6 +323,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // two thirds per axis there — FSR1's quality ratio, reconstructed by EASU + RCAS to the native canvas — and
     // raise it again only when the measured GPU time predicts room (adaptiveQualityPolicy.ts). Retina keeps 0.9.
     nativeDynMin: 0.67,
+    // 2026-10-12 (the perf stream): on Auto the retina raster may fall to 1.0 (0.667 of 1.5) before the tier steps down
+    autoDynMin: 0.667,
     aoScale: 0,
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
@@ -633,9 +642,18 @@ export function setMobilePresetName(name: string): void {
   for (const fn of listeners) fn(preset);
 }
 
-/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */
+const autoVariants = new Map<PresetName, QualityPreset>();
+/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin floor) */
 export function getPreset(): QualityPreset {
-  return PRESETS[resolvePresetName()];
+  const name = resolvePresetName();
+  const preset = PRESETS[name];
+  if (preset.autoDynMin === undefined || getStoredChoice() !== 'auto') return preset;
+  let variant = autoVariants.get(name);
+  if (!variant) {
+    variant = Object.freeze({ ...preset, dynMin: Math.min(preset.dynMin, preset.autoDynMin) });
+    autoVariants.set(name, variant);
+  }
+  return variant;
 }
 
 /**
