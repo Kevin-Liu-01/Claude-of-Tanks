@@ -438,10 +438,31 @@ export const RECIPES = {
     async run(ctx) {
       // close lanes and a low aim (the hull's ammunition sits under the turret ring): a penetrating APFSDS round at
       // 170-230 m is what cooks a rack off; r14's first pass at 260 m with a 2.5 mrad gate fired once in 50 s
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 320, dists: [190, 170, 220, 240], enemies: 2 })));
+      const contact = await toContact(ctx, { rangeM: 320, dists: [160, 175, 190, 150], enemies: 2 });
+      ctx.log('contact', JSON.stringify(contact));
+      // In Realistic every module a penetrating round crosses is damaged (chance 1, 2.5x damage: sim/damage.ts
+      // rollModuleDamage), so one penetration through the ammunition turns the rack red and detonates it. r2-r3's
+      // three passes hit staged three-quarter targets on their frontal and spaced armour (nonpen, spaced_absorb,
+      // screen_pierce) and never reached a rack. The staged targets now hold still showing a side and a rear
+      // quarter, and the gun waits for a 2 mrad lay on the rack.
+      if (contact?.lanes?.length) {
+        const turned = await ctx.eval((ids) => {
+          const H = window.__MB.H, g = H.g(), p = H.player(), out = [];
+          ids.forEach((id, i) => {
+            const t = g.tankById.get(id);
+            if (!H.live(t)) return;
+            const toP = Math.atan2(p.state.pos.x - t.state.pos.x, p.state.pos.z - t.state.pos.z);
+            H.place(t, t.state.pos.x, t.state.pos.z, i % 2 ? toP + Math.PI - 0.65 : toP + Math.PI / 2);
+            H.freezeBot(t);
+            out.push({ id, aspect: i % 2 ? 'rear quarter' : 'side' });
+          });
+          return out;
+        }, contact.lanes.map((l) => l.id));
+        ctx.note(`staged targets held still, turned to show the shooter a side and a rear quarter: ${JSON.stringify(turned)}`);
+      }
       // lay the gun on the ammunition's own volume (Realistic damages modules only, every module hit counts)
       await ctx.mb('setAim', { target: 'nearestEnemyClear', aimAt: 'ammoRack', heightFrac: 0.35 });
-      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
+      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 2 });
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
