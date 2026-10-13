@@ -205,6 +205,13 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   const pebbles = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);
   terrain.add(chunkA, chunkB, skirtMesh, pebbles, new THREE.Mesh(new THREE.PlaneGeometry(), hooked));
   const gl = { lost: false, isContextLost() { return this.lost; } };
+  const resident = new Map(), programUniforms = new Map();
+  const texture = (name) => { const t = new THREE.Texture(); t.name = name; t.needsUpdate = true; return t; };
+  const grass = texture('grass'), rock = texture('rock'), uploaded = texture('uploaded'), empty = new THREE.Texture();
+  resident.set(uploaded, { __webglTexture: {}, __version: uploaded.version });
+  const depth = new THREE.DepthTexture(4, 4); depth.isRenderTargetTexture = true; depth.version = 3;
+  programUniforms.set(splat, { uGrass: { value: grass }, uLayers: { value: [rock, grass] }, uDone: { value: uploaded },
+    uEmpty: { value: empty }, uDepth: { value: depth }, uScalar: { value: 2 } });
   const programs = new Map();
   const log = [];
   const shadowRender = function routedShadowRender() {};
@@ -216,7 +223,9 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
     getActiveCubeFace: () => 0,
     getActiveMipmapLevel: () => 0,
     setRenderTarget: (next) => { target = next; },
-    properties: { get: (material) => ({ currentProgram: programs.get(material) }) },
+    // a program's uniforms (onBeforeCompile's included) as three keeps them; textures resident once uploaded
+    properties: { get: (item) => (item.isTexture ? (resident.get(item) ?? {}) : { currentProgram: programs.get(item), uniforms: programUniforms.get(item) }) },
+    initTexture(texture) { log.push(['upload', texture.name]); resident.set(texture, { __webglTexture: {}, __version: texture.version }); },
     compile(root, cam, targetScene) {
       log.push(['compile', target, targetScene]);
       const materials = new Set();
@@ -243,7 +252,11 @@ function harness({ final = true, linkAfter = 2, compileError = null } = {}) {
   assert.equal(receipt.materials, 4, 'every terrain material is submitted (the link needs no draw)');
   assert.equal(receipt.drawn, 3, 'one pipeline draw per distinct material, the instanced dressing left to the warm');
   assert.deepEqual(receipt.programIds, [100, 101, 102, 103], 'the receipt names the programs the battle should draw with');
-  const [compile, render] = log;
+  assert.deepEqual(log.filter((entry) => entry[0] === 'upload').map((entry) => entry[1]), ['grass', 'rock'],
+    'the textures the draw binds that are not resident upload first, each once (resident, empty and render targets aside)');
+  assert.equal(receipt.textures, 2);
+  assert.equal(log.findIndex((entry) => entry[0] === 'render'), 3, 'and only then the draw');
+  const [compile, , , render] = log;
   assert.equal(compile[0], 'compile');
   assert.strictEqual(compile[1], sceneTarget, 'the programs are keyed by the scene pass\'s target');
   assert.strictEqual(compile[2], scene, 'with the scene\'s lights, fog and environment');

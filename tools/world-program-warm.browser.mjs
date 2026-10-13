@@ -30,11 +30,13 @@ const out = path.resolve(args.out || '.qa-dev/world-program-warm');
 const tag = args.tag || (control ? 'control' : 'warm');
 mkdirSync(out, { recursive: true });
 
-// the light counts three.js keys a lit program by (the same counting as battleWorldProgramWarm.ts lightSignature)
-const PAGE_SIGNATURE = `(() => {
+// the light counts three.js keys a lit program by (the same counting as battleWorldProgramWarm.ts lightSignature);
+// the Garage comparison leaves out the kill-cam's pool, which stays in the scene for good once the first entry made it
+const signatureScript = (skipKillcam) => `(() => {
   const D = window.__DEBUG, n = { dir: 0, dirShadow: 0, spot: 0, spotShadow: 0, spotMap: 0, point: 0, pointShadow: 0, hemi: 0, rect: 0, probe: 0 };
   D.scene.traverseVisible((l) => {
     if (!l.isLight || !l.layers.test(D.camera.layers)) return;
+    if (${skipKillcam} && /^killcamLight/.test(l.name || '')) return;
     if (l.isDirectionalLight) { n.dir++; if (l.castShadow) n.dirShadow++; }
     else if (l.isSpotLight) { n.spot++; if (l.castShadow) n.spotShadow++; if (l.map) n.spotMap++; }
     else if (l.isPointLight) { n.point++; if (l.castShadow) n.pointShadow++; }
@@ -43,6 +45,8 @@ const PAGE_SIGNATURE = `(() => {
   return 'dir ' + n.dir + '/' + n.dirShadow + ' spot ' + n.spot + '/' + n.spotShadow + '/' + n.spotMap + ' point ' + n.point + '/' + n.pointShadow
     + ' hemi ' + n.hemi + ' rect ' + n.rect + ' probe ' + n.probe;
 })()`;
+const PAGE_SIGNATURE = signatureScript(false);
+const PAGE_GARAGE_SIGNATURE = signatureScript(true);
 // the terrain's programs at reveal: the splat material's (the program a fold makes per map) and every one (the horizon ring
 // finishes after the props and may take another material)
 const PAGE_TERRAIN_PROGRAMS = `(() => {
@@ -152,7 +156,7 @@ async function failedPath(browser, port) {
   const record = {};
   const { page, errors } = await openPage(browser, port, { failMinimap: true });
   try {
-    const garageSignature = await page.evaluate(PAGE_SIGNATURE);
+    const garageSignature = await page.evaluate(PAGE_GARAGE_SIGNATURE);
     const startedAt = Date.now();
     const failed = await enter(page, {
       timeoutMs: 180000,
@@ -170,7 +174,7 @@ async function failedPath(browser, port) {
         `the warm stopped with the entry (${record.warmAfterFailure.status})`);
     }
     record.garageSignature = garageSignature;
-    record.signatureAfter = await page.evaluate(PAGE_SIGNATURE);
+    record.signatureAfter = await page.evaluate(PAGE_GARAGE_SIGNATURE);
     const after = await state(page);
     record.poolAttached = after.poolAttached;
     record.gpu = after.gpu;

@@ -84,7 +84,13 @@ GTAO/post composition before changing quality or refresh policy.
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Garage and battle have different active worlds/lights. A lower draw count is
-not a win if it causes first-use shader or transition spikes. Passive Garage
+not a win if it causes first-use shader or transition spikes. A program links
+for the light signature the scene has at that moment (light counts by kind, and
+their shadows; `battleWorldProgramWarm.ts lightSignature`). A battle entry makes
+the signature final under its cover (main.ts `prepareBattleLightSignature`: the
+Garage presentation out, the night pool in, then the FX and kill-cam pools) and
+only then links the world's programs. Any new light that joins a battle scene
+belongs in that list, or every program linked before it is linked again. Passive Garage
 dwell must not construct a battlefield or retain resources without a ceiling.
 A material's `envMapIntensity` only reaches the screen through
 `setupShadowMaterial` (`materialEnvIntensity.ts`): three overwrites the uniform
