@@ -552,7 +552,15 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
         if (s === gateSide && yard - ga > gw + 1.2) {
           runs.push([x0, ga + t, x1, gz - gw / 2], [x0, gz + gw / 2, x1, gb]);
           const gf: Face = { origin: [s * W / 2, 0, gz], u: [0, 0, -s], out: [s, 0, 0], width: gw };
-          sink.placed(0, 0, 0, -zc, () => gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }));
+          // (the buildings stream, 2026-10-13, the integrity check: the gate's leaves were drawn on the lane side only,
+          // so from the yard the gap stood open, the leaves' backs culled) the leaves on the yard side as well, and the
+          // wall carried over the gate through its thickness (dressing: the runs keep their collision)
+          const gIn: Face = { origin: [s * (W / 2 - t), 0, gz], u: [0, 0, s], out: [-s, 0, 0], width: gw };
+          sink.placed(0, 0, 0, -zc, () => {
+            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            sink.span('plaster', x0, 2.13, gz - gw / 2, x1, Math.max(2.16, wallH), gz + gw / 2, { decor: true });
+          });
         } else runs.push([x0, ga + t, x1, gb]);
       }
       sink.placed(0, 0, 0, -zc, () => {
