@@ -553,13 +553,14 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
       // a compound record part by part, each at its own vertical extent (a viaduct span's slab, parapets and pier)
       for (const part of shape.parts) {
         const top = part.tp ? partTopAt(record, part, x, z) : part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
-        if (top - bottom < 0.9 || top > limit) continue;
+        // (a drawn top — a stone's surface — is solid wherever it stands: a shell point under it is in the stone)
+        if (!part.tp && (top - bottom < 0.9 || top > limit)) continue;
         if (pointInsideCollisionRecord(record, part, x, z) && top > best) best = top;
       }
       continue;
     }
     const flat = shape?.tp ? partTopAt(record, shape, x, z) : record.max[1];
-    if (record.max[1] - record.min[1] < 0.9 || flat > limit) continue;
+    if (!shape?.tp && (record.max[1] - record.min[1] < 0.9 || flat > limit)) continue;
     if (pointInsideCollisionRecord(record, shape, x, z) && flat > best) best = flat;
   }
   return best;
@@ -625,6 +626,7 @@ function newMetrics() {
     // the ground or inside a solid record's footprint over its floor (fell through, sank into); off the world; and the
     // hull thrown off its support by a contact (takeoffs over 2.5 m/s with no jump or impulse)
     joltYMaxM: 0, joltsY6: 0, joltsY12: 0, joltXZMaxM: 0, joltsXZ6: 0, joltAt: null,
+    obstaclePenS: 0, obstaclePenRunS: 0, bodyPenS: 0, bodyPenRunS: 0,
     tiltMaxDeg: 0, fellThroughM: 0, insideSolidS: 0, insideSolidM: 0, outOfWorld: false, takeoffMaxMps: 0, launches: 0,
   };
 }
@@ -846,6 +848,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   let nodTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
+  let overlapRun = 0, bodyPenRun = 0;
   // (census) the last three steps' root and whether the hull stood through them / a hard contact stopped it
   const joltHist = [];
   const worldHalfM = caseDef.worldHalfM ?? Infinity;
@@ -1033,6 +1036,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     const tc = Math.cos(state.turretYaw || 0), ts = Math.sin(state.turretYaw || 0);
     const bodyPen = Math.max(shellDepth(hullCloud, 1, 0, 0, 0, 0), shellDepth(turretCloud, tc, ts, pivot[0], pivot[1], pivot[2]));
     if (bodyPen > metrics.bodyPenMaxM) metrics.bodyPenMaxM = bodyPen;
+    // (census v3) how long a visible penetration lasts: time with the shell 5 cm or more into the ground or a top, and the
+    // longest such run
+    if (bodyPen > 0.05) { metrics.bodyPenS += DT; bodyPenRun += DT; if (bodyPenRun > metrics.bodyPenRunS) metrics.bodyPenRunS = bodyPenRun; }
+    else bodyPenRun = 0;
+    let stepOverlap = 0;
     // road-wheel stations within reach of the ground (round 3, gauntlet wave 23: "no wheels down in several frames"): six
     // stations along each outer track line at the pose the support seats the tracks at, a station reaching the ground
     // when the ground under it lies between the wheels' full droop and their full conform travel (the renderer's -0.22 /
@@ -1094,8 +1102,12 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         && !crushableLoadedFromAbove?.(record, floors[i], (state._ride.groundV ?? 0) - state._ride.v, collisionModule.obstacleContactTop?.(),
           collisionModule.obstacleContactBottom?.())) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
+        stepOverlap = Math.max(stepOverlap, Math.hypot(push.x, push.z));
       }
     }
+    // (census v3) how long a visible overlap with a collider lasts (5 cm or more), and the longest run of it
+    if (stepOverlap > 0.05) { metrics.obstaclePenS += DT; overlapRun += DT; if (overlapRun > metrics.obstaclePenRunS) metrics.obstaclePenRunS = overlapRun; }
+    else overlapRun = 0;
     for (const other of others) {
       if (other.modeActive === false) continue;
       const orc = tankContactRect(other.spec);
@@ -1286,7 +1298,10 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         const shape = record.shape2 ?? null;
         const parts = shape?.kind === 'compound' ? shape.parts : [shape];
         for (const part of parts) {
-          const top = part?.tp ? partTopAt(record, part, state.pos.x, state.pos.z) : part?.y1 ?? record.max[1];
+          // (a drawn top — a stone — is met by the hull's shell, not its root: a hull straddling a stone between its
+          // tracks has its root under the stone's top with its belly clear; bodyPen reads the shell)
+          if (part?.tp) continue;
+          const top = part?.y1 ?? record.max[1];
           const bottom = part?.y0 ?? record.min[1];
           if (state.pos.y <= bottom + 0.3) continue;
           if (!pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;

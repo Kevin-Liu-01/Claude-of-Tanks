@@ -14,7 +14,7 @@ import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.t
 import { driveGroundTypeAt } from './terrainMobility.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import {
-  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartTopAt, collisionRecordHasDrawnTop, createHullFootprint, hullFootprint,
+  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartTopAt, collisionRecordHasDrawnTop, createHullFootprint, hullFootprint,
   hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
 } from '../world/collision.ts';
 
@@ -78,9 +78,10 @@ export function structureTopAt(
   floors: Float64Array | null = null, plane: SupportPlane | null = null,
 ): number {
   let best = -Infinity;
-  // (physics stream, 2026-10-13) a drawn top (a stone's surface) is a floor where it lies within the step of the hull's
-  // track plane at that very point — a hull pitched up a stone's flank stands its front on it — not of the underside's
-  // lowest point over the whole record, which read the stone under a hull's raised nose as a wall
+  // (physics stream, 2026-10-13) a drawn top (a stone's surface) is a floor wherever it is not a wall: where its climb
+  // surface (collisionPartClimbAt: a face the tracks ride up, lowered by their climb past the step) lies within the step
+  // of the hull's track plane at that very point — the push's own rule, so a stone is wall or floor everywhere and never
+  // neither — not of the underside's lowest point over the whole record, which read the stone under a raised nose as a wall
   const planeCeiling = plane ? plane.y + plane.slopeX * (x - plane.cx) + plane.slopeZ * (z - plane.cz) + SUPPORT_STEP_UP_M : NaN;
   for (let i = 0; i < count; i++) {
     const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
@@ -93,15 +94,16 @@ export function structureTopAt(
     if (shape && shape.kind === 'compound') {
       for (const part of shape.parts) {
         const top = partTop(record, part, x, z);
-        const limit = part.kind === 'convex' && part.tp && plane ? Math.max(ceiling, planeCeiling) : ceiling;
-        if (top > limit || top <= best) continue;
+        if (top <= best) continue;
+        if (top > ceiling && !(part.kind === 'convex' && part.tp && plane && collisionPartClimbAt(record, part, x, z) < planeCeiling)) continue;
         if (pointInsideCollisionRecord(record, part, x, z)) best = top;
       }
     } else {
       // (a simple shape's top is its record's, as before; a drawn top where it carries one)
       const drawn = !!shape && shape.kind === 'convex' && !!shape.tp;
       const top = drawn ? partTop(record, shape, x, z) : record.max[1];
-      if (top > (drawn && plane ? Math.max(ceiling, planeCeiling) : ceiling) || top <= best) continue;
+      if (top <= best) continue;
+      if (top > ceiling && !(drawn && plane && collisionPartClimbAt(record, shape, x, z) < planeCeiling)) continue;
       if (pointInsideCollisionRecord(record, shape ?? null, x, z)) best = top;
     }
   }

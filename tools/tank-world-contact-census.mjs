@@ -747,7 +747,7 @@ const KEEP = ['nan', 'popXZMaxM', 'popsXZ', 'popYMaxM', 'popsY', 'snapMaxRad', '
   'hullPenMaxM', 'roofSinkMaxM', 'gearCompMaxM', 'longestStuckS', 'stuckS', 'pushFlips', 'overturnedS', 'tumblingS', 'maxLandingMps',
   'energyGainMaxJkg', 'reboundExcessMps', 'closingExcessMps', 'liftM', 'longestAirS', 'perchedS', 'progressM', 'joltYMaxM', 'joltsY6',
   'joltsY12', 'joltXZMaxM', 'joltsXZ6', 'joltAt', 'tiltMaxDeg', 'fellThroughM', 'insideSolidM', 'insideSolidS', 'outOfWorld',
-  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp', 'insideDrawnS', 'insideDrawnM', 'liftOverGroundM', 'onStoneShare', 'overStoneS'];
+  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp', 'insideDrawnS', 'insideDrawnM', 'liftOverGroundM', 'onStoneShare', 'overStoneS', 'obstaclePenS', 'obstaclePenRunS', 'bodyPenS', 'bodyPenRunS'];
 function compact(metrics) {
   const out = {};
   for (const key of KEEP) {
@@ -771,7 +771,7 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
       plans.forEach(([maneuver, plan], planIndex) => {
         const hullId = CENSUS_HULLS[(siteIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
-        if (only && id !== only) return;
+        if (only && !(only instanceof Set ? only.has(id) : id === only)) return;
         resetWorld(world);
         // (the records the metrics read: those round the site, without the trees, which every hull fells on contact)
         const near = world.query(site.x, site.z, 40).filter((r) => r.treeIdx == null && r.kind !== 'tree');
@@ -1042,7 +1042,10 @@ async function main() {
   for (const mapId of maps) {
     for (const variant of variants) {
       const started = performance.now();
-      const rows = await censusMap(mapId, { variant, classes, sites, world: args.world ?? 'earth', only: args.only ?? null,
+      // (--only takes one run id, or several comma-separated; --only-file a JSON list of ids)
+      const onlyList = args['only-file'] ? JSON.parse(readFileSync(args['only-file'], 'utf8')) : typeof args.only === 'string' ? args.only.split(',') : null;
+      const only = onlyList ? (onlyList.length === 1 ? onlyList[0] : new Set(onlyList)) : null;
+      const rows = await censusMap(mapId, { variant, classes, sites, world: args.world ?? 'earth', only,
         trace: args.trace ?? null,
         onRow: args.quiet ? null : (r) => console.log(`${r.id.padEnd(58)} ${r.hull.padEnd(11)} ${r.defects.length ? r.defects.join(',') : 'ok'}`
           + ` jolt${(r.m.joltYMaxM ?? 0).toFixed(3)} pop${(r.m.popXZMaxM ?? 0).toFixed(2)}/${(r.m.popYMaxM ?? 0).toFixed(2)}`

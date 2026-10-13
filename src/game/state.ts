@@ -106,7 +106,7 @@ import {
 } from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
-  hullPassesObstacleTop, hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
+  hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
   type HullFootprint, type HullFootprintRect,
 } from '../world/collision.ts';

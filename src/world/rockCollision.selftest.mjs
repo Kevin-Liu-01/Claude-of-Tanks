@@ -15,15 +15,16 @@
 //   4. a formation's blocks keep their own outlines (parted or touching blocks two parts, a block inside another one)
 //      and their own tiers, and the records pack to the shards' part forms ('v', 'w', 'm') the dedicated hosts read back
 //      unchanged;
-//   5. the tiers and a hull: on level ground a hull driven at a stone stops where the stone meets the ground; every column
-//      of a record a hull can stand on is one it can stand on (a column within the step-up is a floor to the support and
-//      no wall to the push, never one and not the other); on the stone a hull's floor steps as the tiers do.
+//   5. the drawn top and a hull: on level ground a hull driven at a stone stops where its climb surface rises a step
+//      (collisionPartClimbAt: faces the tracks ride up lowered by their climb past the step); every point of a stone is a
+//      wall to the push or a floor to the support, never both and never neither; a low dome and a rounded 0.8 m stone are
+//      climbed, a 1.0 m one and a 1.4 m ball stand a wall — the stone's face grade and height, not its size.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
-  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartSection, collisionPartTopAt, convexHull2, hullPassesObstacleTop,
+  HULL_CLIMB_M, HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartSection, collisionPartTopAt, convexHull2, hullPassesObstacleTop,
   pointInsideCollisionRecord, pushHullFromObstacle, rayCollisionRecord, setConvexShape,
 } from './collision.ts';
 import { createHeadlessCollisionWorld } from './headlessCollisionWorld.ts';
@@ -316,10 +317,12 @@ let stops = 0, climbable = 0;
   // (a ball is the convex form planes fit worst: its every bearing is a face; 12 of them hold it to a quarter metre, the
   // coordinator's bound for a hull's floor over the stone it sees)
   assert.ok(over < 0.25 && under > -0.015, `the top follows the ball (${(under * 100).toFixed(1)} to +${(over * 100).toFixed(1)} cm)`);
-  // level ground: a hull driven at it from eight sides stops where the ball rises a step over its tracks (its section
-  // HULL_STEP_UP_M up, collisionPartSection), never short of it or into it
+  // level ground: a hull driven at it from eight sides stops where the ball's climb surface rises a step over its tracks
+  // (collisionPartClimbAt: its faces the tracks ride up lowered by their climb past the step; its section HULL_STEP_UP_M
+  // up, collisionPartSection), never short of it or into it
+  const climb = HULL_CLIMB_M - HULL_STEP_UP_M;
   const halfL = 3.4, halfW = 1.75, wall = [];
-  assert.ok(collisionPartSection(part, HULL_STEP_UP_M, wall), 'the ball stands a step over level ground');
+  assert.ok(collisionPartSection(part, HULL_STEP_UP_M, wall, 0, 0, 0, 0, null, climb), 'the ball stands a step over level ground');
   for (let a = 0; a < 8; a++) {
     const th = (a / 8) * Math.PI * 2 + 0.1, fx = Math.cos(th), fz = Math.sin(th);
     let reach = -Infinity;
@@ -334,19 +337,20 @@ let stops = 0, climbable = 0;
   }
   // wall or floor, never both: over the ball at every underside height, a point the push holds a hull off (inside the
   // section a step over it) is no floor to the support, and every point it lets a hull stand over is its floor, at the
-  // drawn top there
+  // drawn top there (the support read with the hull's track plane, level at h)
   let checked = 0;
   const section = [];
   for (let k = 0; k <= 50; k++) {
     const h = -0.5 + k * 0.05;
-    const walled = collisionPartSection(part, h + HULL_STEP_UP_M, section);
+    const walled = collisionPartSection(part, h + HULL_STEP_UP_M, section, 0, 0, 0, 0, null, climb);
+    const plane = { y: h, cx: 0, cz: 0, slopeX: 0, slopeZ: 0 };
     const probe = { min: [0, 0, 0], max: [0, 0, 0] };
     for (let x = -0.9; x <= 0.9; x += 0.3) for (let z = -0.9; z <= 0.9; z += 0.3) {
       if (!pointInsideCollisionRecord(rec, part, x, z)) continue;
       const top = collisionPartTopAt(rec, part, x, z);
       if (h > top + 0.5) continue; // (a hull flying over it)
       const isWall = walled && pointInsideCollisionRecord(probe, { kind: 'convex', cx: 0, cz: 0, points: section }, x, z);
-      const floor = structureTopAt([rec], 1, x, z, h);
+      const floor = structureTopAt([rec], 1, x, z, h, null, plane);
       assert.ok(!(isWall && floor === top), `no point is a wall to the push and a floor to the support (top ${top.toFixed(2)}, underside ${h.toFixed(2)})`);
       if (!isWall) assert.ok(Math.abs(floor - top) < 1e-9, `a point a hull stands over is its floor (top ${top.toFixed(2)}, underside ${h.toFixed(2)}, floor ${floor})`);
       checked++;
@@ -369,6 +373,28 @@ let stops = 0, climbable = 0;
   }
   const pushLow = { x: 0, z: 0 };
   assert.ok(!pushHullFromObstacle({ x: -4.4, z: 0 }, 1, 0, 0, -1, halfL, halfW, low, pushLow, 0, 2.4, 0), 'a hull is not held off it');
+  // climbable is the stone's shape against the hull's step and climb (face grade plus total height), not its size: a
+  // rounded 0.8 m stone rises past the step but its faces over it are ridden up within the climb, so no wall stands over
+  // level ground and its crown is a floor; a 1.0 m one, and the 1.4 m ball, stand a wall
+  const placed = (sx, sy, lift) => {
+    const profile = rockCollisionProfile(sphere, new THREE.Matrix4().compose(new THREE.Vector3(0, lift, 0), new THREE.Quaternion(),
+      new THREE.Vector3(sx, sy, sx)).elements, flat);
+    const r = { min: [0, 0, 0], max: [0, 0, 0] };
+    applyRockCollisionProfile(r, { min: [0, 0, 0], max: [0, 0, 0] }, profile, -0.3);
+    return r;
+  };
+  const level = { y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0 };
+  const round8 = placed(1.2, 1.0, -0.2), round10 = placed(1.4, 1.2, -0.2);
+  assert.ok(round8.max[1] > 0.75 && collisionPartSection(round8.shape2, HULL_STEP_UP_M, section),
+    `the 0.8 m stone rises past the step (${round8.max[1].toFixed(2)} m)`);
+  assert.ok(!collisionPartSection(round8.shape2, HULL_STEP_UP_M, section, 0, 0, 0, 0, null, climb), 'but stands no wall: it is climbed');
+  const crown8 = collisionPartTopAt(round8, round8.shape2, 0, 0);
+  assert.ok(Math.abs(structureTopAt([round8], 1, 0, 0, 0, null, level) - crown8) < 1e-9 && collisionPartClimbAt(round8, round8.shape2, 0, 0) < crown8,
+    `its crown is a floor a hull climbs to (${crown8.toFixed(2)} m)`);
+  climbable++;
+  assert.ok(collisionPartSection(round10.shape2, HULL_STEP_UP_M, section, 0, 0, 0, 0, null, climb), 'a rounded 1.0 m stone stands a wall');
+  assert.equal(structureTopAt([round10], 1, 0, 0, 0, null, level), -Infinity, 'its crown is past the climb');
+  stops++;
   // the collider overlay draws the ball's foot and its drawn top's edge, rising and falling with the stone
   const segments = [];
   recordSegments(rec, () => 0, segments);
@@ -381,4 +407,4 @@ console.log(`rockCollision.selftest: ${stones} placed boulders (${driveOver} dri
   + `${(nowPhantom * 100).toFixed(1)} %, stone uncovered ${(nowLeak * 100).toFixed(1)} %; the tiers' air ${(tierAir * 100).toFixed(0)} % of one prism's `
   + `(${(highAir * 100).toFixed(0)} % over the first tier), ${(tierLeak * 100).toFixed(1)} % of the stone uncovered (the prism ${(prismLeak * 100).toFixed(1)} %), `
   + `${columns} parts (${drawnTops} drawn tops); shell rays 10+ cm clear ${(oldRays * 100).toFixed(1)} % -> ${(nowRays * 100).toFixed(1)} %, clipping stone unstopped `
-  + `${(nowRayLeak * 100).toFixed(1)} %; formations and packing; a hull meets the ball a step up from ${stops} sides, climbs a low dome's flank at ${climbable} points`);
+  + `${(nowRayLeak * 100).toFixed(1)} %; formations and packing; a hull meets the ball a step up from 8 sides and ${stops - 8} more stone stands a wall, climbs a low dome's flank at ${climbable} points`);

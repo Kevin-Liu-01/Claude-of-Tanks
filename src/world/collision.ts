@@ -62,23 +62,62 @@ export function collisionPartTopAt(
   return top;
 }
 
+/**
+ * The most a hull's tracks climb over their own plane (m) up a face no steeper than HULL_CLIMB_GRADE, as against the step
+ * they take up any face (HULL_STEP_UP_M): a tracked hull climbs a 0.8-1 m obstacle whose face its tracks ride up.
+ */
+export const HULL_CLIMB_M = 0.9;
+/** The steepest face (rise per metre, 45 degrees) a hull's tracks ride up past their step: steeper is a wall. */
+export const HULL_CLIMB_GRADE = 1;
+/** The climb allowance a gentle plane of a drawn top gives (collisionPartClimbAt). */
+const CLIMB_ALLOWANCE_M = HULL_CLIMB_M - 0.55; // (HULL_STEP_UP_M, declared below)
+
+/**
+ * A drawn top's climb surface under (x, z) (physics stream, 2026-10-13; the coordinator: "encode 'climbable' as a physical
+ * rule (face grade plus total height against the hull's step and climb ability), not a size cutoff"): the lowest of its
+ * planes, each face no steeper than HULL_CLIMB_GRADE lowered by the climb past the step (HULL_CLIMB_M − HULL_STEP_UP_M).
+ * Where it stands a step or more over a hull's track plane the stone is a wall (pushHullFromObstacle cuts the same
+ * surface, collisionPartSection's `climb`); everywhere else its top is a floor the hull climbs onto at its pace
+ * (structureSupport.ts) — a dome, a low stone's rounded top, a boulder's gentle flank are climbed up to 0.9 m, a face
+ * steeper than 45 degrees stops a hull a step up it. A part with no drawn top climbs at its flat top.
+ */
+export function collisionPartClimbAt(
+  record: Pick<CollisionRecord, 'max'>, part: SimpleCollisionShape | null | undefined, x: number, z: number,
+): number {
+  const y1 = part?.y1 ?? record.max[1];
+  const tp = part && part.kind === 'convex' ? part.tp : undefined;
+  if (!tp) return y1;
+  const dx = x - tp[0], dz = z - tp[1];
+  let climb = y1 - CLIMB_ALLOWANCE_M;
+  for (let i = 2; i + 2 < tp.length; i += 3) {
+    const a = tp[i], b = tp[i + 1];
+    const y = a * dx + b * dz + tp[i + 2] - (a * a + b * b <= HULL_CLIMB_GRADE * HULL_CLIMB_GRADE ? CLIMB_ALLOWANCE_M : 0);
+    if (y < climb) climb = y;
+  }
+  return climb;
+}
+
 const _sectionA: number[] = [];
 const _sectionB: number[] = [];
 /**
  * The outline of a top-planed part where its drawn top stands at `height` or over (a convex polygon: the part's outline
- * clipped by each plane's half-plane), into `out`; false when nothing of it stands that high. Allocation-free.
+ * clipped by each plane's half-plane), into `out`; false when nothing of it stands that high. With `climb`, each face no
+ * steeper than HULL_CLIMB_GRADE (and the flat top) is lowered by it first: the section of the climb surface
+ * (collisionPartClimbAt). Allocation-free.
  */
 export function collisionPartSection(
   part: Extract<SimpleCollisionShape, { kind: 'convex' }>, height: number, out: number[],
-  slopeX = 0, slopeZ = 0, originX = 0, originZ = 0,
+  slopeX = 0, slopeZ = 0, originX = 0, originZ = 0, from: readonly number[] | null = null, climb = 0,
 ): boolean {
-  // (the threshold may be a plane: height + slopeX·(x − originX) + slopeZ·(z − originZ), a tilted hull's underside)
+  // (the threshold may be a plane: height + slopeX·(x − originX) + slopeZ·(z − originZ), a tilted hull's underside; and
+  // the cut may start from an earlier section, `from`, to cut it again against another plane)
   const tp = part.tp;
-  out.length = 0;
-  if (slopeX === 0 && slopeZ === 0 && (part.y1 ?? Infinity) < height) return false;
+  if (slopeX === 0 && slopeZ === 0 && (part.y1 ?? Infinity) < height) { out.length = 0; return false; }
   let poly = _sectionA;
   poly.length = 0;
-  for (let i = 0; i < part.points.length; i++) poly.push(part.points[i]);
+  const start = from ?? part.points;
+  for (let i = 0; i < start.length; i++) poly.push(start[i]);
+  out.length = 0;
   if (tp) {
     const ox = tp[0], oz = tp[1];
     let next = _sectionB;
@@ -89,7 +128,9 @@ export function collisionPartSection(
       // (the last pass is the part's own flat top, y1)
       const flat = i + 2 >= tp.length;
       if (flat && y1 === undefined) break;
-      const a = (flat ? 0 : tp[i]) - slopeX, b = (flat ? 0 : tp[i + 1]) - slopeZ, c = (flat ? y1! : tp[i + 2]) - c0;
+      const pa = flat ? 0 : tp[i], pb = flat ? 0 : tp[i + 1];
+      const lower = climb && pa * pa + pb * pb <= HULL_CLIMB_GRADE * HULL_CLIMB_GRADE ? climb : 0;
+      const a = pa - slopeX, b = pb - slopeZ, c = (flat ? y1! : tp[i + 2]) - lower - c0;
       next.length = 0;
       const n = poly.length;
       for (let k = 0; k < n; k += 2) {
@@ -961,10 +1002,13 @@ export function pushHullFromObstacle(
     // a drawn top (collisionPartTopAt): a wall only where it stands more than the hull's step over its underside there
     // (against the track plane under each point when the caller read it, a tilted hull's front on the stone and its tail
     // off it; else the underside's lowest point over the record)
-    const cut = _underPlane.valid
-      ? collisionPartSection(convex, _underPlane.y + HULL_STEP_UP_M, _sectionPoints, _underPlane.slopeX, _underPlane.slopeZ,
-        _underPlane.cx, _underPlane.cz)
-      : collisionPartSection(convex, spanBottom + HULL_STEP_UP_M, _sectionPoints);
+    const u = _underPlane;
+    // — of its climb surface (collisionPartClimbAt): a face the tracks ride up is climbed to HULL_CLIMB_M, a steeper
+    // one stops the hull a step up it. (A nose or tail plate allowed 0.9 m up any face, tried and dropped 2026-10-13,
+    // pitched hulls up 2 m boulders nose first: each lift raised the plane the next was read against.)
+    const cut = u.valid
+      ? collisionPartSection(convex, u.y + HULL_STEP_UP_M, _sectionPoints, u.slopeX, u.slopeZ, u.cx, u.cz, null, CLIMB_ALLOWANCE_M)
+      : collisionPartSection(convex, spanBottom + HULL_STEP_UP_M, _sectionPoints, 0, 0, 0, 0, null, CLIMB_ALLOWANCE_M);
     if (!cut) { _contactTop = -Infinity; _contactBottom = -Infinity; return false; }
     let sx = 0, sz = 0;
     for (let i = 0; i < _sectionPoints.length; i += 2) { sx += _sectionPoints[i]; sz += _sectionPoints[i + 1]; }
