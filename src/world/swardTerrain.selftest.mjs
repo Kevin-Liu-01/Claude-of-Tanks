@@ -109,10 +109,13 @@ let marginRead = '';
 }
 
 // 2. Monsoon's sward follows its ground: the profile, the field's hook with the map's sun, the law on a stub slope.
+// (item 31, Longleaf round 4, 2026-10-11: the flatwoods' wiregrass takes the same laws — thinner up a slope, drier on one
+// turned to the sun, thatch and sand between its bunches)
+const SWARD_LAW_MAPS = new Set(['monsoon', 'longleaf']);
 for (const id of groundReduxProfileIds()) {
-  const p = resolveGroundReduxProfile(id);
-  assert.equal(p.swardSlope ?? 0, id === 'monsoon' ? 1 : 0, `${id}: ${id === 'monsoon' ? 'the sward follows its ground' : 'no slope law'}`);
-  assert.equal(p.thatch ?? 0, id === 'monsoon' ? 1 : 0, `${id}: ${id === 'monsoon' ? 'thatch under the sward' : 'no thatch'}`);
+  const p = resolveGroundReduxProfile(id), law = SWARD_LAW_MAPS.has(id);
+  assert.equal(p.swardSlope ?? 0, law ? 1 : 0, `${id}: ${law ? 'the sward follows its ground' : 'no slope law'}`);
+  assert.equal(p.thatch ?? 0, law ? 1 : 0, `${id}: ${law ? 'thatch under the sward' : 'no thatch'}`);
 }
 {
   const hook = createHeightField(1337, getMapConfig('monsoon'))._swardSlope;
