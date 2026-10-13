@@ -218,14 +218,18 @@ interface RendererWorldProgramWarmOptions {
   /** The scene pass's target (post.sceneAA.sceneTarget): the programs are keyed by its formats. */
   getSceneTarget(): THREE.WebGLRenderTarget;
   isSignatureFinal(): boolean;
+  /** Where each receipt goes (default: window.__WORLD_PROGRAM_WARM, for the entry probes). */
   publish?(receipt: WorldProgramWarmReceipt): void;
 }
 
+const publishOnWindow = (receipt: WorldProgramWarmReceipt): void => {
+  (globalThis as { __WORLD_PROGRAM_WARM?: WorldProgramWarmReceipt }).__WORLD_PROGRAM_WARM = receipt;
+};
 const defaultMaterialBeforeRender = THREE.Material.prototype.onBeforeRender;
 
 /** The warm on the game's renderer: compile against the scene pass's target, one covered pipeline draw per material. */
 export function createRendererWorldProgramWarm(
-  { renderer, scene, camera, getSceneTarget, isSignatureFinal, publish }: RendererWorldProgramWarmOptions,
+  { renderer, scene, camera, getSceneTarget, isSignatureFinal, publish = publishOnWindow }: RendererWorldProgramWarmOptions,
 ): BattleWorldProgramWarm {
   let pipelineTarget: THREE.WebGLRenderTarget | null = null;
   const withTarget = <T>(target: THREE.WebGLRenderTarget, work: () => T): T => {

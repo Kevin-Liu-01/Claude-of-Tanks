@@ -2186,7 +2186,6 @@ async function prepareBattleLightSignature(mapId: string): Promise<void> {
         getSceneTarget: () => post.sceneAA.sceneTarget,
         isSignatureFinal: () => !garageLightsActive && nightLighting.poolAttached
           && fxRuntimeAccess.current?.group.parent === scene && killcamAccess.current !== null,
-        publish: (receipt) => { window.__WORLD_PROGRAM_WARM = receipt; },
       });
     } catch { return; }
   }
