@@ -7214,6 +7214,10 @@ function* vegetationBuildSteps(
   // whose sampled range starts beyond their shadows' reach skips them (the last cascade at most sun elevations:
   // its map spans the field, and the near owners drew all their instances into it every other frame).
   const nearTierShadowProfile: ShadowCasterProfile = { heightM: 0, reachM: 0 };
+  /** The tallest near tree (m), valid while nearTierHeightAt === nearTierHeightVersion (updateNearTierShadowReach). */
+  let nearTierHeight = 0;
+  let nearTierHeightVersion = 0;
+  let nearTierHeightAt = -1;
   const speciesHeightM = {} as Record<Species, number>;
   function geometryTopM(geometry: THREE.BufferGeometry): number {
     if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -8096,6 +8100,7 @@ function* vegetationBuildSteps(
     key: 'slot' | 'fslot',
     fade: boolean,
   ): void {
+    if (key === 'slot') nearTierHeightVersion++;
     const i = t[key];
     const last = slots.pop();
     if (last && last !== t) {
@@ -8117,6 +8122,7 @@ function* vegetationBuildSteps(
     key: 'slot' | 'fslot',
     fade: boolean,
   ): void {
+    if (key === 'slot') nearTierHeightVersion++;
     const i = slots.length;
     slots.push(t);
     t[key] = i;
@@ -8202,6 +8208,7 @@ function* vegetationBuildSteps(
   /** One-time full partition build (map load / world rebuild): plain full
    * uploads, and seeds the slot bookkeeping the incremental path maintains. */
   function clearPartitionSlots(): void {
+    nearTierHeightVersion++;
     for (const species of speciesList) {
       for (const slots of nearSlots[species]) slots.length = 0;
       for (const slots of farSlots[species]) slots.length = 0;
@@ -8214,6 +8221,7 @@ function* vegetationBuildSteps(
     tree.near = distance < treeNearIn * reach || (tree.near && distance <= treeNearOut * reach)
       || scopePromoted(tree, camPos);
     if (tree.near) {
+      nearTierHeightVersion++;
       const slots = nearSlots[tree.species][tree.variant];
       tree.slot = slots.length;
       tree.fslot = -1;
@@ -8352,6 +8360,7 @@ function* vegetationBuildSteps(
     return true;
   }
   function resetToppled(): void {
+    nearTierHeightVersion++;
     treeCrushAnims.length = 0;
     for (const ob of treeObstacles) {
       ob.crushed = false;
@@ -8367,6 +8376,7 @@ function* vegetationBuildSteps(
     }
   }
   function updateTreeCrush(dt: number): void {
+    nearTierHeightVersion++; // a falling trunk's matrix is rewritten each tick
     for (let k = treeCrushAnims.length - 1; k >= 0; k--) {
       const a = treeCrushAnims[k];
       a.u = Math.min(a.u + dt / 1.15, 1.1);
@@ -8515,7 +8525,12 @@ function* vegetationBuildSteps(
   }
 
   /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */
+  // PERF (2026-10-13, the perf stream): the tallest near tree only changes with the near set or a near trunk's matrix
+  // (nearTierHeightVersion: every near-slot add or remove, a partition seed or clear, a falling or restored trunk), so
+  // its three-term hypot over every near tree runs on those frames only; the reach follows the camera every frame.
+  // ~0.7 % of the battle's main thread on Verdant was this loop (the perf stream's CDP profile, cpu1).
   function updateNearTierShadowReach(camPos: THREE.Vector3): void {
+    const heightStale = nearTierHeightAt !== nearTierHeightVersion;
     let reach2 = 0, height = 0;
     for (const sp of speciesList) {
       const speciesHeight = speciesHeightM[sp] ?? 0;
@@ -8524,14 +8539,19 @@ function* vegetationBuildSteps(
           const dx = t.x - camPos.x, dz = t.z - camPos.z;
           const d2 = dx * dx + dz * dz;
           if (d2 > reach2) reach2 = d2;
+          if (!heightStale) continue;
           const e = t.mat.elements;
           const h = speciesHeight * Math.hypot(e[4], e[5], e[6]);
           if (h > height) height = h;
         }
       }
     }
+    if (heightStale) {
+      nearTierHeight = height;
+      nearTierHeightAt = nearTierHeightVersion;
+    }
     nearTierShadowProfile.reachM = Math.sqrt(reach2);
-    nearTierShadowProfile.heightM = height;
+    nearTierShadowProfile.heightM = nearTierHeight;
   }
 
   function setWindTime(t: number): void { uWindTime.value = t; }
@@ -8666,6 +8686,7 @@ function* vegetationBuildSteps(
   // ---- ground lane (crater-render-spec §C): following the battle's craters ----
   let craterDressing: THREE.InstancedMesh[] | null = null;
   const writeCraterTree = (t: TreeRecord): void => {
+    nearTierHeightVersion++; // (a re-seat moves the trunk only; the version keeps the near tier's height honest anyway)
     if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
     if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
   };
