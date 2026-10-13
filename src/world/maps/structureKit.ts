@@ -2222,6 +2222,22 @@ function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
     colored(out, box(0.13, 3.05, 0.13).translate(x, 1.52, d / 2 + 1.18), p[2], rng);
   }
   colored(out, box(w + 0.10, 0.18, 0.18).translate(0, 1.72, d / 2 + 0.04), p[1], _detailRng);
+  // (the looks lane, 2026-10-13: the office's members, painted without a draw) the panel joints down the side walls,
+  // the windows' sills, the parapet's coping, the downpipes at the corners, the wall unit and its sleeve, the sign board
+  // over the porch, the lamp by the door and the plinth
+  const r = _detailRng;
+  for (const side of [-1, 1]) {
+    for (let z = -d / 2 + 1.2; z < d / 2 - 0.5; z += 1.2) colored(out, box(0.06, h - 0.35, 0.1).translate(side * (w / 2 + 0.02), h / 2 + 0.17, z), p[1], r, 0);
+    for (const x of [-2.25, 0, 2.25]) colored(out, box(1.42, 0.07, 0.16).translate(x, 2.4, side * (d / 2 + 0.07)), p[1], r, 0);
+    for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) colored(out, box(0.11, h, 0.11).translate(side * (w / 2 + 0.07), h / 2, z), p[2], r, 0);
+    colored(out, box(w + 0.55, 0.14, 0.2).translate(0, h + 0.27, side * (d / 2 + 0.18)), p[1], r, 0);
+    colored(out, box(0.2, 0.14, d + 0.55).translate(side * (w / 2 + 0.18), h + 0.27, 0), p[1], r, 0);
+  }
+  colored(out, box(0.28, 0.42, 0.62).translate(w / 2 + 0.14, 2.9, -1.6), 0x9a9d98, r, 0);
+  colored(out, box(0.04, 0.34, 0.5).translate(w / 2 + 0.29, 2.9, -1.6), 0x4a4f52, r, 0);
+  colored(out, box(2.4, 0.42, 0.08).translate(0, 3.48, d / 2 + 1.3), 0x2f4a5c, r, 0);
+  colored(out, box(0.14, 0.2, 0.18).translate(1.05, 2.35, d / 2 + 0.15), 0xd8cf9a, r, 0);
+  colored(out, box(w + 0.2, 0.32, d + 0.2).translate(0, 0.16, 0), 0x8a8780, r, 0);
   return mergeConnectedStructure('securityoffice', out);
 }
 
@@ -2462,6 +2478,30 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
     colored(out, box(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + 1.04), p[2], rng);
   }
   colored(out, box(2.5, 0.74, 2.2).translate(1.65, h + 0.49, -1.5), p[1], rng);
+  // (the looks lane, 2026-10-13: the block's members, painted without a draw) the back and blind side's windows, the
+  // floor bands round them, the corner pilasters, the parapet's coping, the rooftop unit's louvres and its flue, the
+  // downpipes, the shop sign over the street door and the plinth
+  const r = _detailRng;
+  for (const y of [2.25, 4.75]) {
+    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
+      colored(out, markWorldAperture(box(1.12, 1.18, 0.09), [0, 0, -1]).translate(x, y, -d / 2 - 0.04), 0x58737b, r, 0);
+      if (x > -2) colored(out, markWorldAperture(box(0.09, 1.18, 1.12), [-1, 0, 0]).translate(-w / 2 - 0.04, y, x), 0x58737b, r, 0);
+    }
+    colored(out, box(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, -d / 2 - 0.04), p[1], r, 0);
+    colored(out, box(0.18, 0.18, d + 0.10).translate(-w / 2 - 0.04, y - 0.76, 0), p[1], r, 0);
+    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
+      colored(out, box(1.24, 0.07, 0.16).translate(x, y - 0.62, d / 2 + 0.08), p[2], r, 0);
+      colored(out, box(0.16, 0.07, 1.24).translate(w / 2 + 0.08, y - 0.62, x), p[2], r, 0);
+    }
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) colored(out, box(0.36, h, 0.36).translate(sx * (w / 2 - 0.1), h / 2, sz * (d / 2 - 0.1)), p[1], r, 0);
+  for (const sz of [-1, 1]) colored(out, box(w + 0.5, 0.12, 0.3).translate(0, h + 0.28, sz * (d / 2 + 0.08)), p[1], r, 0);
+  for (const sx of [-1, 1]) colored(out, box(0.3, 0.12, d + 0.5).translate(sx * (w / 2 + 0.08), h + 0.28, 0), p[1], r, 0);
+  for (let k = 0; k < 6; k++) colored(out, box(0.04, 0.08, 2.0).translate(1.65 + 1.27, h + 0.26 + k * 0.1, -1.5), p[2], r, 0);
+  colored(out, cylinder(0.12, 0.12, 0.6, 8).translate(0.85, h + 0.55, -2.2), p[2], r, 0);
+  for (const [x, z] of [[w / 2 + 0.08, -d / 2 + 0.3], [-w / 2 - 0.08, -d / 2 + 0.3]] as const) colored(out, box(0.11, h, 0.11).translate(x, h / 2, z), p[2], r, 0);
+  colored(out, box(3.4, 0.5, 0.1).translate(-2.55, 3.55, d / 2 + 0.1), 0x6b2f28, r, 0);
+  colored(out, box(w + 0.2, 0.36, d + 0.2).translate(0, 0.18, 0), 0x8a8780, r, 0);
   return mergeConnectedStructure('corneroffice', out);
 }
 
