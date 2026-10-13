@@ -24,7 +24,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.429,
    "gapM2": 5.896,
    "invertedM2": 0
   },
@@ -3629,5 +3629,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-13T09:32:16.752Z"
+ "updatedAt": "2026-10-13T11:15:40.062Z"
 }

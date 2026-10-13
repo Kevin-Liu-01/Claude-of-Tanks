@@ -190,6 +190,8 @@ export interface RoofGeometry {
    * would pass the ridge's middle (the body wider across its ridge than along it) closes on a steeper hip
    */
   hipTan?: number;
+  /** the hip ends' overhang past the end walls when it differs from the authored verge (a steeper hip, level eaves) */
+  hipVerge?: number;
   /** roof top surface height above (x, z), or null outside the roof */
   topAt(x: number, z: number): number | null;
 }
@@ -558,10 +560,10 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
   const ridgeY = eaveY + s * tanP;
   const cosP = Math.cos(roof.pitchDeg * DEG);
   const tTop = roof.thickness / cosP;
-  const D = halfD + roof.verge;
+  let D = halfD + roof.verge;
   let gable: Array<[number, number]> | null = null;
   let hipCut = ridgeY, hipRun = 0;
-  let hipTanEff: number | undefined;
+  let hipTanEff: number | undefined, hipVerge: number | undefined;
   if (roof.kind === 'halfhip' || roof.kind === 'hip') {
     const hipTan = Math.tan((roof.hipPitchDeg ?? (roof.kind === 'hip' ? roof.pitchDeg : 62)) * DEG);
     if (roof.kind === 'hip') {
@@ -578,10 +580,16 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
     // authored pitch the clamped ridge left the hip's foot metres over the end walls.
     if (hipRun > D + 1e-6) {
       hipTanEff = roof.kind === 'hip' ? (ridgeY - eaveY) / Math.max(1e-6, halfD) : (ridgeY - hipCut) / D;
-      if (roof.kind === 'hip') hipCut = eaveY - roof.verge * hipTanEff;
+      if (roof.kind === 'hip') {
+        // its eave level with the side eaves all round: the steeper end face runs out from the wall only until it has
+        // fallen to their line (at the authored verge it hung a metre and more lower, over the gate towers' clocks)
+        hipVerge = roof.eave * tanP / hipTanEff;
+        D = halfD + hipVerge;
+        hipCut = eaveY - hipVerge * hipTanEff;
+      }
       hipRun = D;
     }
-    const wallTop = hipCut + roof.verge * (hipTanEff ?? hipTan); // the hip underside on the gable wall plane
+    const wallTop = hipCut + (hipVerge ?? roof.verge) * (hipTanEff ?? hipTan); // the hip underside on the gable wall plane
     if (wallTop > eaveY + 0.05) {
       const xc = Math.max(0, s - (wallTop - eaveY) / tanP);
       gable = [[-s, eaveY], [s, eaveY], [xc, wallTop], [-xc, wallTop]];
@@ -594,6 +602,7 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
   return {
     kind: roof.kind, s, halfD, tanP, eaveY, ridgeY, ridgeTopY: ridgeY + tTop, gable, ridgeHalf,
     ...(hipTanEff !== undefined ? { hipTan: hipTanEff } : {}),
+    ...(hipVerge !== undefined ? { hipVerge } : {}),
     topAt(x, z) {
       if (Math.abs(x) > s + roof.eave + 1e-6 || Math.abs(z) > D + 1e-6) return null;
       let y = ridgeY - Math.abs(x) * tanP;
@@ -662,7 +671,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     }
     return;
   }
-  const e = roof.eave, D = halfD + roof.verge;
+  const e = roof.eave, D = halfD + (rg.hipVerge ?? roof.verge);
   const lo = eaveY - e * tanP;
   if (roof.kind === 'shed') {
     // one plane rising from +x (low) to -x (high)
