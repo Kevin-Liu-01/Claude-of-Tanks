@@ -1579,6 +1579,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    // the buildings stream (2026-10-12; the owner: "make sure our roofs dont have empty spots in them"): every kit
+    // builder, catalog builder and set piece closed and seated — no floating part, open underside, hole, inside seen
+    // through a gap, sky through the building or inside-out face — held to its ledger row
+    'tools/building-integrity-check.selftest.mjs',
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
     'src/world/maps/regional/phoneIdentity.selftest.mjs', // 2026-10-08: a phone's kit builds draw the desktop's streams and solids (DESTRUCTION.md §8.4)
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound

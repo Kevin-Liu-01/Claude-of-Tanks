@@ -440,6 +440,10 @@ const stack: RegionalBuilder = (ctx) => {
   emitRoof(sink, roofGeometry(1.8, 1.8, H + 1.8, cap), cap, steel);
   sink.cylinder('structureMetal', [0, H + 1.0, 0], 'y', 0.6, 0.25, 10, { colour: rgb(0x5a4a32), decor: true }, 0.12);
   sink.cylinder('structureMetal', [0.6, H + 2.5, 0], 'x', 0.5, 0.2, 8, { colour: rgb(0xd8d4c8), decor: true }, 0.35);
+  // (the buildings stream, 2026-10-12, the integrity check: the bell hung under the cap and the siren stood over it, both
+  // on nothing) the bell on its hanger from the cap's apex, the siren on a post from the cap
+  sink.cylinder('structureMetal', [0, H + 1.55, 0], 'y', 0.84, 0.03, 6, { colour: IRON, decor: true });
+  sink.cylinder('structureMetal', [0.8, H + 1.9, 0], 'y', 0.45, 0.04, 6, { colour: IRON, decor: true });
   return sink.finish();
 };
 
@@ -483,9 +487,11 @@ const shrine: RegionalBuilder = (ctx) => {
   sink.span('structureMetal', -0.1, th - 0.86, tz - 0.06, 0.1, th - 0.45, tz + 0.06, { colour: tc, decor: true });
   // the shimaki, and over it the kasagi: a black beam whose ends rise in a shallow sweep
   sink.span('structureMetal', -tw / 2 - 0.5, th - 0.45, tz - 0.1, tw / 2 + 0.5, th - 0.27, tz + 0.1, { colour: tc });
-  sink.member('structureMetal', [-tw / 2 - 0.3, th - 0.15, tz], [tw / 2 + 0.3, th - 0.15, tz], 0.26, 0.24, [0, 1, 0], { colour: CEDAR_DARK, exposed: true }, 0);
-  for (const s of [-1, 1]) sink.member('structureMetal', [s * (tw / 2 + 0.3), th - 0.15, tz], [s * (tw / 2 + 0.85), th + 0.05, tz], 0.24, 0.24, [0, 1, 0], { colour: CEDAR_DARK, decor: true, exposed: true }, 0);
-  sink.member('structureWood', [-tw / 2 + 0.2, th - 1.25, tz + 0.12], [tw / 2 - 0.2, th - 1.25, tz + 0.12], 0.12, 0.12, [0, 0, 1], { colour: rgb(0xd8c9a0), decor: true, exposed: true }, 0);
+  // (the buildings stream, 2026-10-12, the integrity check: the kasagi stood 12 cm over the shimaki and the rope stopped
+  // short of the pillars, both in the air) the kasagi laid on the shimaki, the rope tied round the pillars
+  sink.member('structureMetal', [-tw / 2 - 0.3, th - 0.28, tz], [tw / 2 + 0.3, th - 0.28, tz], 0.26, 0.24, [0, 1, 0], { colour: CEDAR_DARK, exposed: true }, 0);
+  for (const s of [-1, 1]) sink.member('structureMetal', [s * (tw / 2 + 0.3), th - 0.28, tz], [s * (tw / 2 + 0.85), th - 0.08, tz], 0.24, 0.24, [0, 1, 0], { colour: CEDAR_DARK, decor: true, exposed: true }, 0);
+  sink.member('structureWood', [-tw / 2 - 0.02, th - 1.25, tz + 0.12], [tw / 2 + 0.02, th - 1.25, tz + 0.12], 0.12, 0.12, [0, 0, 1], { colour: rgb(0xd8c9a0), decor: true, exposed: true }, 0);
   // the approach: a gravel path from the torii to the steps
   sink.span('plaster3', -0.6, -0.2, hz + hd / 2 + 0.9, 0.6, 0.04, tz - 0.3, { decor: true, shade: 0.9 });
   // two stone lanterns beside the path
@@ -574,7 +580,8 @@ const ruin: RegionalBuilder = (ctx) => {
     // the roof's charred thatch and timbers heaped inside
     sink.cylinder('straw', [0, 0.3, 0], 'y', 0.6, Math.min(W, D) * 0.38, 8, { decor: true }, Math.min(W, D) * 0.2, true, rng());
     for (let k = 0; k < 5; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.5, (rng() - 0.5) * D * 0.8], b: Vec3 = [a[0] + (rng() - 0.5) * 3.5, 0.5 + rng() * 1.2, a[2] + (rng() - 0.5) * 3.5];
+      // (the integrity check, 2026-10-12: the timbers' low ends stood 10 cm over the floor) each from the floor
+      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.4, (rng() - 0.5) * D * 0.8], b: Vec3 = [a[0] + (rng() - 0.5) * 3.5, 0.5 + rng() * 1.2, a[2] + (rng() - 0.5) * 3.5];
       sink.member('structureWood', a, b, 0.2, 0.2, [0, 1, 0], { colour: char, decor: true, exposed: true }, 0);
     }
     return sink.finish();
