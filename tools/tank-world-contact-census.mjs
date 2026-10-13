@@ -167,6 +167,9 @@ function solidAt(records, x, z, y = -Infinity) {
 }
 
 // ---- the world one map's runs share -----------------------------------------------------------------------------
+/** The census's world, loader and drive plans, for scripts that replay one maneuver (the film's authority traces). */
+export const censusInternals = { loadWorld: (mapId, variant = 'base') => loadWorld(mapId, variant), resetWorld: (world) => resetWorld(world),
+  driveAcross: (opts) => driveAcross(opts), WORLD_HALF_M };
 async function loadWorld(mapId, variant) {
   const { createDedicatedWorldCollision } = await import('../server/dedicatedWorldCollision.ts');
   const worldCollision = createDedicatedWorldCollision(mapId, { variant: variant === 'base' ? null : variant });
@@ -779,7 +782,9 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
     list.forEach((site, siteIndex) => {
       const plans = maneuvers(world, site, seed + siteIndex * 97 + Math.max(0, CLASSES.indexOf(cls)));
       plans.forEach(([maneuver, plan], planIndex) => {
-        const hullId = CENSUS_HULLS[(siteIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
+        // (the hull by the site's place, as the site is picked, so main and a fix send the same hull at the same stone)
+        const placeIndex = Number.isFinite(site.x) && Number.isFinite(site.z) ? Math.floor(placeKey(4049, site.x, site.z) * 1024) : siteIndex;
+        const hullId = CENSUS_HULLS[(placeIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
         if (only && !(only instanceof Set ? only.has(id) : id === only)) return;
         resetWorld(world);
@@ -913,13 +918,16 @@ export function ledger(rows, baseRows = null) {
   ranked.sort((a, b) => b.score - a.score);
   let compare = null;
   if (baseRows) {
-    const baseById = new Map(baseRows.map((r) => [`${r.id}|${r.hull}`, r]));
+    // (runs pair by class, sub-class, maneuver, place and hull: a run id's site index shifts when one tree's records add a
+    // stone to a bin)
+    const pairKey = (r) => (r.site && Number.isFinite(r.site.x)
+      ? `${r.map}|${r.variant}|${r.cls}|${r.sub}|${r.maneuver}|${Math.round(r.site.x / 2)},${Math.round(r.site.z / 2)}|${r.hull}`
+      : `${r.id}|${r.hull}`);
+    const baseById = new Map(baseRows.map((r) => [pairKey(r), r]));
     compare = { matched: 0, fixed: {}, regressed: {}, regressedRuns: [] };
     for (const row of rows) {
-      const base = baseById.get(`${row.id}|${row.hull}`);
-      if (!base) continue;
-      // (a run id names a place: one whose site moved more than 1.5 m between the trees is another feature, not a pair)
-      if (row.site && base.site && Math.hypot(row.site.x - base.site.x, row.site.z - base.site.z) > 1.5) { compare.unpaired = (compare.unpaired ?? 0) + 1; continue; }
+      const base = baseById.get(pairKey(row));
+      if (!base) { compare.unpaired = (compare.unpaired ?? 0) + 1; continue; }
       compare.matched++;
       for (const d of base.defects) if (!row.defects.includes(d)) compare.fixed[d] = (compare.fixed[d] ?? 0) + 1;
       for (const d of row.defects) {
@@ -996,7 +1004,7 @@ export function ledgerMarkdown(report, { title = 'Tank-world contact census', no
     lines.push(`| ${map} | ${m.runs} | ${m.withDefect} | ${m.score} |`);
   }
   if (report.compare) {
-    lines.push('', '## Against the base census', '', `${report.compare.matched} runs matched by id, hull and place${report.compare.unpaired ? ` (${report.compare.unpaired} ids at another place, left out)` : ''}.`, '',
+    lines.push('', '## Against the base census', '', `${report.compare.matched} runs paired by class, maneuver, place and hull${report.compare.unpaired ? ` (${report.compare.unpaired} with no pair in the base, left out)` : ''}.`, '',
       `Fixed: ${Object.entries(report.compare.fixed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`, '',
       `New: ${Object.entries(report.compare.regressed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`);
     for (const r of report.compare.regressedRuns.slice(0, 30)) lines.push(`- \`${r.id}\` ${r.hull}: ${r.defect} ${r.base} -> ${r.now}`);
