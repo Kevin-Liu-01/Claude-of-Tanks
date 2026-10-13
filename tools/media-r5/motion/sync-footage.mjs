@@ -30,7 +30,7 @@ for (const kind of ['films', 'films-v2', 'films-portrait', 'films-portrait3']) {
 // under their own ids (s01-main-street-push ...); portrait takes render to site50/renders/films-portrait/<id>.
 for (const renders of RENDERS) for (const [kind, suffix] of [['films', ''], ['films-portrait', '-p']]) {
   const root = join(FINAL, '..', 'site50', renders, kind); if (!existsSync(root)) continue;
-  for (const id of readdirSync(root).filter(d => /^s\d\d-/.test(d))) {
+  for (const id of readdirSync(root).filter(d => /^s\d{2,3}-/.test(d))) {
     const fd = join(root, id, 'films'); if (!existsSync(fd)) continue;
     const proxy = readdirSync(fd).find(f => f.endsWith('-proxy.mp4')); if (!proxy) continue;
     for (const p of projects) {
