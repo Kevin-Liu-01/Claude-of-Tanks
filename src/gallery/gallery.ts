@@ -6,6 +6,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
+import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
+import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
   buildGalleryRecords,
@@ -59,6 +61,9 @@ declare global {
     __TANK_GALLERY?: Record<string, RuntimeValue>;
   }
 }
+
+// Saved camouflage keys follow the id renames before any tank is painted (SSOT 2.19).
+migrateStoredTankIds((() => { try { return globalThis.localStorage; } catch { return null; } })());
 
 const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -451,6 +456,7 @@ function updateUrl(): void {
   if (!selectedId) return;
   const url = new URL(location.href);
   url.searchParams.set('id', selectedId);
+  stampTankIdLink(url.searchParams);
   if (activeMode === 'appearance') url.searchParams.delete('layer');
   else url.searchParams.set('layer', activeMode);
   history.replaceState({ id: selectedId, layer: activeMode }, '', `${url.pathname}${url.search}`);
@@ -1104,7 +1110,7 @@ document.addEventListener('pointerdown', (event) => {
 
 window.addEventListener('popstate', () => {
   const params = new URLSearchParams(location.search);
-  loadTank(params.get('id'), { mode: params.get('layer') || 'appearance' });
+  loadTank(linkTankId(params), { mode: params.get('layer') || 'appearance' });
 });
 new ResizeObserver(resize).observe(viewport);
 
@@ -1123,7 +1129,8 @@ resize();
 animate();
 
 const initial = new URLSearchParams(location.search);
-const preferredId = initial.get('id');
+// A link names its vehicle under its own id schema (`&ids=`; none = 1, SSOT 2.19).
+const preferredId = linkTankId(initial);
 const initialId = preferredId && recordById.has(preferredId)
   ? preferredId
   : (recordById.has('m1a2') ? 'm1a2' : records[0]?.id);

@@ -22,6 +22,7 @@ import { stockCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
 import {
@@ -452,6 +453,16 @@ function pendingEntryRepaint(key: string): Promise<void> | null {
   return entry ? ENTRY_PAINT_STATE.get(entry)?.idle ?? null : null;
 }
 
+/**
+ * The bake seed of a texture cache key (`<specId>` or `<specId>::<pattern>`). The vehicle part hashes its schema-1
+ * spelling (tankIdAliases.ts), so an id rename never repaints a hull; the cache key itself stays the live id.
+ */
+function textureSeedFor(key: string): number {
+  const split = key.indexOf('::');
+  const seedKey = split < 0 ? tankSeedId(key) : `${tankSeedId(key.slice(0, split))}${key.slice(split)}`;
+  return 0x5eed ^ seedKey.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7);
+}
+
 function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
   if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
   const patternId = resolveMultiplayerCamoPattern(specId, selection);
@@ -561,7 +572,7 @@ function acquireSharedTextures(
   let entry = TEX_CACHE.get(key);
   if (!entry) {
     const { patternId } = identity;
-    const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
+    const seed = textureSeedFor(key);
     entry = {
       refs: 0,
       // CAMO PATTERN SECTION: kept so applyCamoPatterns() can repaint the
@@ -746,7 +757,7 @@ async function tryPrebakeSharedTexturesInWorker(
   if (initial && entryPaintState(initial).active) return false;
   if (initial && !isMaterialTextureQualityUpgrade(initial.quality, quality)) return true;
   const seed = initial?.seed
-    ?? (0x5eed ^ key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
+    ?? textureSeedFor(key);
   // Snapshot scalars rather than aliasing the live entry. Preserve the mutable
   // specId key/seed and its current pattern; the repaint owner uses a separate
   // pattern-keyed RNG stream and must not be folded into this base bake.
@@ -871,7 +882,7 @@ export function prebakeSharedTextures(
       return;
     }
     const { patternId } = identity.fixed ? identity : sharedTextureIdentity(spec.id);
-    const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
+    const seed = textureSeedFor(key);
     entry = {
       refs: 0,
       cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null,
@@ -1279,7 +1290,7 @@ function resolveCamoPattern(specId: string): MaterialPatternId {
   // AUTO tanks fans out across the pool.
   const pool = BIOME_PATTERN[activeBiome];
   let h = 0;
-  const key = `${specId}:${activeBiome}`;
+  const key = `${tankSeedId(specId)}:${activeBiome}`; // schema-1 spelling: a rename keeps the AUTO pick
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
   return pool[(h >>> 0) % pool.length];
 }
@@ -1296,7 +1307,7 @@ export function resolveMultiplayerCamoPattern<Value>(
   const biome = Object.prototype.hasOwnProperty.call(BIOME_PATTERN, mapId) ? mapId : 'verdant';
   const pool = BIOME_PATTERN[biome];
   let h = 0;
-  const key = `${specId}:${biome}`;
+  const key = `${tankSeedId(specId)}:${biome}`; // schema-1 spelling: a rename keeps the AUTO pick
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
   return pool[(h >>> 0) % pool.length];
 }

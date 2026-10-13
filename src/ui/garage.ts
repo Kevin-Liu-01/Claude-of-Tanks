@@ -1,4 +1,5 @@
 import { createCustomSelect } from './customSelect.ts';
+import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
@@ -432,7 +433,7 @@ function paintCamoSwatchPlaceholder(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   let hash = 2166136261;
-  for (const ch of `${spec?.id || 'tank'}:${pid || 'factory'}`) {
+  for (const ch of `${spec?.id ? tankSeedId(spec.id) : 'tank'}:${pid || 'factory'}`) { // schema-1 spelling (SSOT 2.19)
     hash ^= ch.charCodeAt(0);
     hash = Math.imul(hash, 16777619);
   }
