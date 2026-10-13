@@ -1698,6 +1698,248 @@ function makeTransformerShed(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('transformershed', out);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// (the looks lane, 2026-10-13; LOOKS-BRIEF section 7: "19 of 20 kinds are the old single-mesh boxes") the four commonest
+// light structures — the guard post (29 on 13 maps), the motor pool (25), the checkpoint hut (22) and the transformer
+// kiosk (20) — rebuilt member by member: legs, frames, boards and sheets, glazing in its frames, doors, roofs with their
+// eaves, the furniture of their use. Each keeps its old build's reach (the collision is its own geometry's) and spends
+// the old builder's draws first, then draws from a stream of its own, so every later pool keeps its geometry.
+
+/** A stream of a light kind's own (mulberry32 on its name's hash): never the destructible stream. */
+function kindStream(id: string): Rng {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
+  let a = h | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const _beamUp = new THREE.Vector3(0, 1, 0), _beamDir = new THREE.Vector3(), _beamQ = new THREE.Quaternion();
+/** A member from a to b: a box `w` by `d` in section, its length along a→b. */
+function beam(a: readonly [number, number, number], b: readonly [number, number, number], w: number, d: number): THREE.BoxGeometry {
+  _beamDir.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  const len = _beamDir.length();
+  const g = box(w, len, d);
+  _beamQ.setFromUnitVectors(_beamUp, _beamDir.normalize());
+  g.applyQuaternion(_beamQ);
+  g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+  return g;
+}
+
+/**
+ * The watch post: a timber cabin raised on four legs braced crosswise, its floor on joists, plank walls to the sill, a
+ * glazed band in frames all round, the door off its ladder's landing, a hipped roof of sheet over its eaves, sandbags
+ * round the legs' feet.
+ */
+function makeGuardPostCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, t = PAL.timber, y0 = 1.25, s = 3.0, hs = s / 2;
+  const glass = 0x73909a;
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    colored(out, box(0.42, 0.14, 0.42).translate(x * (hs - 0.12), 0.07, z * (hs - 0.12)), p[2], rng, 0.03);
+    colored(out, box(0.16, y0, 0.16).translate(x * (hs - 0.12), y0 / 2 + 0.14, z * (hs - 0.12)), t[2], rng, 0.05);
+  }
+  // the crosswise braces on each side, between the legs
+  for (const side of [-1, 1]) {
+    const e = side * (hs - 0.12), lo = 0.3, hi = y0 + 0.05;
+    colored(out, beam([-hs + 0.12, lo, e], [hs - 0.12, hi, e], 0.08, 0.08), t[2], rng, 0.05);
+    colored(out, beam([-hs + 0.12, hi, e], [hs - 0.12, lo, e], 0.08, 0.08), t[2], rng, 0.05);
+    colored(out, beam([e, lo, -hs + 0.12], [e, hi, hs - 0.12], 0.08, 0.08), t[2], rng, 0.05);
+    colored(out, beam([e, hi, -hs + 0.12], [e, lo, hs - 0.12], 0.08, 0.08), t[2], rng, 0.05);
+  }
+  // the floor: joists and the deck
+  for (const z of [-hs + 0.12, 0, hs - 0.12]) colored(out, box(s + 0.2, 0.14, 0.12).translate(0, y0 + 0.21, z), t[2], rng, 0.05);
+  colored(out, box(s + 0.3, 0.08, s + 0.3).translate(0, y0 + 0.32, 0), t[0], rng, 0.06);
+  // the walls: corner posts, plank boards to the sill, the glazed band, the head
+  const f0 = y0 + 0.36, sill = f0 + 0.95, head = sill + 0.95, top = head + 0.35;
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) colored(out, box(0.14, top - f0, 0.14).translate(x * (hs - 0.07), (f0 + top) / 2, z * (hs - 0.07)), t[2], rng, 0.04);
+  for (const side of [-1, 1] as const) {
+    for (const axis of ['x', 'z'] as const) {
+      const door = axis === 'z' && side > 0;
+      // the boards to the sill (vertical planks), the door's leaf in place of half of them on the ladder's side
+      for (let k = 0; k < 9; k++) {
+        const u = -hs + 0.2 + k * (s - 0.4) / 8;
+        if (door && u > -0.2) continue;
+        const g = box(axis === 'x' ? 0.3 : 0.05, sill - f0, axis === 'x' ? 0.05 : 0.3);
+        colored(out, g.translate(axis === 'x' ? u : side * (hs - 0.02), (f0 + sill) / 2, axis === 'x' ? side * (hs - 0.02) : u), k % 2 ? p[0] : p[1], rng, 0.05);
+      }
+      // the sill rail and the head rail, the glazing between them in three lights
+      const rail = (y: number) => colored(out, box(axis === 'x' ? s : 0.08, 0.1, axis === 'x' ? 0.08 : s).translate(axis === 'x' ? 0 : side * (hs - 0.02), y, axis === 'x' ? side * (hs - 0.02) : 0), t[2], rng, 0.04);
+      rail(sill); rail(head);
+      if (!door) {
+        const pane = markWorldAperture(box(axis === 'x' ? s - 0.3 : 0.04, head - sill - 0.1, axis === 'x' ? 0.04 : s - 0.3), axis === 'x' ? [0, 0, side] : [side, 0, 0]);
+        colored(out, pane.translate(axis === 'x' ? 0 : side * (hs - 0.04), (sill + head) / 2, axis === 'x' ? side * (hs - 0.04) : 0), glass, rng, 0.03);
+        for (const u of [-s / 6, s / 6]) colored(out, box(axis === 'x' ? 0.06 : 0.07, head - sill, axis === 'x' ? 0.07 : 0.06).translate(axis === 'x' ? u : side * (hs - 0.02), (sill + head) / 2, axis === 'x' ? side * (hs - 0.02) : u), t[2], rng, 0.04);
+      }
+      colored(out, box(axis === 'x' ? s : 0.06, top - head, axis === 'x' ? 0.06 : s).translate(axis === 'x' ? 0 : side * (hs - 0.02), (head + top) / 2, axis === 'x' ? side * (hs - 0.02) : 0), p[0], rng, 0.05);
+    }
+  }
+  // the door on +x and its frame
+  colored(out, box(0.06, head - f0 - 0.05, 0.85).translate(hs - 0.01, (f0 + head) / 2, 0.55), p[2], rng, 0.04);
+  // the pyramid roof of sheet over its eaves (a four-sided cone turned square to the walls), its finial
+  const eave = 0.4, rh = 0.9, half = hs + eave;
+  const cap = cylinder(0.02, half * Math.SQRT2, rh, 4);
+  cap.rotateY(Math.PI / 4);
+  colored(out, cap.translate(0, top + rh / 2, 0), p[2], rng, 0.04);
+  colored(out, box(s + 0.1, 0.06, s + 0.1).translate(0, top + 0.03, 0), t[2], rng, 0.04);
+  colored(out, cylinder(0.08, 0.12, 0.25, 6).translate(0, top + rh + 0.05, 0), p[1], rng, 0.03);
+  // the ladder to the door's landing: two stringers and their rungs
+  for (const z of [0.2, 0.9]) colored(out, beam([hs + 0.9, 0, z], [hs + 0.05, y0 + 0.32, z], 0.07, 0.09), t[2], rng, 0.05);
+  for (let k = 1; k < 5; k++) {
+    const f = k / 5, x = hs + 0.9 - f * 0.85, y = f * (y0 + 0.32);
+    colored(out, box(0.06, 0.05, 0.74).translate(x, y, 0.55), t[2], rng, 0.05);
+  }
+  // sandbags round the legs' feet
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1]] as const) {
+    for (let k = 0; k < 3; k++) colored(out, box(0.55, 0.2, 0.32).translate(x * (hs - 0.12) + (k - 1) * 0.15 * -x, 0.1 + (k === 2 ? 0.2 : 0), z * (hs + 0.15)), 0x8e7f5e, rng, 0.08);
+  }
+  return mergeConnectedStructure('guardpost', out);
+}
+
+/**
+ * The checkpoint booth: a concrete plinth, sheet-steel walls on a frame to the sill, a glazed band in frames on three
+ * sides, the door to the porch, a skillion roof with its fascia and the unit's board on it, the porch slab and canopy on
+ * two posts, and the boom barrier on its post with the counterweight, striped red and white.
+ */
+function makeCheckpointHutCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 3.8, d = 4.8, f0 = 0.3, sill = 1.25, head = 2.25, top = 2.95;
+  const glass = 0x718b90, red = 0xa8322a, white = 0xd8d6cf;
+  colored(out, box(w + 0.3, f0, d + 0.3).translate(0, f0 / 2, 0), 0x8a8780, rng, 0.04);
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) colored(out, box(0.12, top - f0, 0.12).translate(x * (w / 2 - 0.06), (f0 + top) / 2, z * (d / 2 - 0.06)), p[2], rng, 0.03);
+  for (const side of [-1, 1] as const) for (const axis of ['x', 'z'] as const) {
+    const len = axis === 'x' ? w : d, back = axis === 'x' && side < 0, door = axis === 'x' && side > 0;
+    const at = (u: number, y: number, t = 0) => (axis === 'x' ? [u, y, side * (d / 2 - 0.02 + t)] : [side * (w / 2 - 0.02 + t), y, u]) as [number, number, number];
+    const sz = (lu: number, h: number, thick = 0.05) => box(axis === 'x' ? lu : thick, h, axis === 'x' ? thick : lu);
+    // the sheet panels to the sill, ribbed; on the back the sheet runs to the head (no glazing)
+    const panelTop = back ? head : sill;
+    const n = Math.round(len / 0.6);
+    for (let k = 0; k < n; k++) {
+      const u = -len / 2 + (k + 0.5) * len / n;
+      if (door && u > len / 2 - 1.05) continue;
+      colored(out, sz(len / n - 0.02, panelTop - f0).translate(...at(u, (f0 + panelTop) / 2)), p[0], rng, 0.04);
+      colored(out, sz(0.05, panelTop - f0, 0.08).translate(...at(u - len / n / 2, (f0 + panelTop) / 2, 0.02)), p[1], rng, 0.03);
+    }
+    for (const y of [sill, head]) colored(out, sz(len, 0.09, 0.09).translate(...at(0, y)), p[2], rng, 0.03);
+    if (!back) {
+      const glazed = door ? len - 1.15 : len - 0.3, u0 = door ? -len / 2 + glazed / 2 + 0.1 : 0;
+      colored(out, markWorldAperture(sz(glazed, head - sill - 0.1, 0.04), axis === 'x' ? [0, 0, side] : [side, 0, 0]).translate(...at(u0, (sill + head) / 2, -0.02)), glass, rng, 0.03);
+      for (const u of [u0 - glazed / 4, u0 + glazed / 4]) colored(out, sz(0.06, head - sill, 0.07).translate(...at(u, (sill + head) / 2)), p[2], rng, 0.03);
+    }
+    colored(out, sz(len, top - head).translate(...at(0, (head + top) / 2)), p[0], rng, 0.04);
+  }
+  // the door (porch side, +z) in its frame
+  colored(out, box(0.9, head - f0 + 0.1, 0.06).translate(w / 2 - 0.6, (f0 + head) / 2 + 0.05, d / 2 + 0.01), p[2], rng, 0.03);
+  // the skillion roof with its fascia and the board
+  colored(out, pitchRoofPlane(slab(w + 0.7, 0.14, d + 0.9), 'x', -1, 0.08, 'skillion').translate(0, top + 0.08, 0), p[2], rng, 0.03);
+  colored(out, box(w + 0.7, 0.22, 0.06).translate(0, top + 0.08, d / 2 + 0.45), p[1], rng, 0.03);
+  colored(out, box(1.6, 0.36, 0.05).translate(0, top + 0.4, d / 2 + 0.47), 0x2f3b33, rng, 0.03);
+  colored(out, box(1.3, 0.16, 0.02).translate(0, top + 0.42, d / 2 + 0.5), 0xd9cfa8, rng, 0.03);
+  // the porch: its slab, two posts and the canopy
+  colored(out, box(2.5, 0.12, 1.8).translate(0, 0.06 + f0 - 0.12, d / 2 + 0.85), 0x8a8780, rng, 0.04);
+  for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, f0 + 1.1 - 0.12, d / 2 + 1.55), p[2], rng, 0.03);
+  colored(out, pitchSkillionRoof(slab(2.8, 0.10, 2.0), 'z', 1, 0.12).translate(0, f0 + 2.23 - 0.12, d / 2 + 0.9), p[1], rng, 0.03);
+  // the boom barrier: its post and counterweight box, the arm striped red and white across the lane before the porch
+  const bx = w / 2 + 0.35, bz = d / 2 + 2.05, by = 1.0;
+  colored(out, box(0.22, by + 0.15, 0.22).translate(bx, (by + 0.15) / 2, bz), p[2], rng, 0.03);
+  colored(out, box(0.5, 0.42, 0.3).translate(bx + 0.4, by, bz), p[2], rng, 0.03);
+  for (let k = 0; k < 6; k++) colored(out, box(0.6, 0.11, 0.11).translate(bx - 0.3 - k * 0.6, by + 0.08, bz), k % 2 ? white : red, rng, 0.03);
+  colored(out, box(0.12, by - 0.05, 0.12).translate(bx - 3.65, (by - 0.05) / 2, bz), p[2], rng, 0.03);
+  return mergeConnectedStructure('checkpointhut', out);
+}
+
+/**
+ * The transformer kiosk: a rendered brick kiosk on its plinth, pilasters at its corners, louvred vents in its walls,
+ * the steel double door in its frame with the warning plate, a skillion roof with its fascia, and the bushings: the
+ * insulators stacked on their posts, the cable risers up the back wall.
+ */
+function makeTransformerShedCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 5.2, d = 4.8, h = 3.3;
+  const render = 0x9c978a, brick = 0x7a4a38;
+  colored(out, box(w + 0.3, 0.35, d + 0.3).translate(0, 0.175, 0), 0x8a8780, rng, 0.04);
+  colored(out, box(w, h - 0.35, d).translate(0, 0.35 + (h - 0.35) / 2, 0), render, rng, 0.05);
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) colored(out, box(0.4, h - 0.35, 0.4).translate(x * (w / 2 - 0.15), 0.35 + (h - 0.35) / 2, z * (d / 2 - 0.15)), brick, rng, 0.06);
+  colored(out, box(w + 0.12, 0.18, d + 0.12).translate(0, h - 0.09, 0), brick, rng, 0.05);
+  // the louvred vents on the long walls: a frame and its slats
+  for (const side of [-1, 1]) for (const x of [-1.4, 1.4]) {
+    colored(out, box(1.1, 0.9, 0.06).translate(x, 2.2, side * (d / 2 + 0.02)), p[2], rng, 0.03);
+    for (let k = 0; k < 5; k++) colored(out, box(0.98, 0.06, 0.1).translate(x, 1.86 + k * 0.17, side * (d / 2 + 0.06)), p[1], rng, 0.03);
+  }
+  // the steel double door on the -x end, its frame and the warning plate
+  colored(out, box(0.08, 2.4, 2.1).translate(-w / 2 - 0.03, 0.35 + 1.2, 0), p[2], rng, 0.03);
+  for (const z of [-0.52, 0.52]) colored(out, box(0.06, 2.25, 0.98).translate(-w / 2 - 0.07, 0.35 + 1.15, z), 0x55605a, rng, 0.03);
+  colored(out, box(0.03, 0.34, 0.34).translate(-w / 2 - 0.1, 2.0, 0.52), 0xd8b02a, rng, 0.03);
+  colored(out, pitchRoofPlane(slab(w + 0.5, 0.16, d + 0.5), 'x', 1, 0.09, 'skillion').translate(0, h + 0.1, 0), p[2], rng, 0.03);
+  // the bushings on the roof: posts, stacked insulator discs and their caps; the cable risers up the back
+  for (const x of [-1.4, 0, 1.4]) {
+    colored(out, box(0.22, 0.6, 0.22).translate(x, h + 0.45, -1.1), 0x5f4f3a, rng, 0.03);
+    for (let k = 0; k < 4; k++) colored(out, cylinder(0.17, 0.17, 0.06, 10).translate(x, h + 0.8 + k * 0.12, -1.1), 0x7b735d, rng, 0.03);
+    colored(out, cylinder(0.06, 0.06, 0.25, 6).translate(x, h + 1.4, -1.1), 0x2a2c2e, rng, 0.03);
+  }
+  for (const x of [-1.2, 1.2]) colored(out, box(0.14, h + 0.2, 0.14).translate(x, (h + 0.2) / 2, -d / 2 - 0.09), 0x2a2c2e, rng, 0.03);
+  return mergeConnectedStructure('transformershed', out);
+}
+
+/**
+ * The motor pool: an open vehicle shed of three steel portal frames — columns on their footing pads, rafters falling to
+ * the low side, knee braces, purlins and the ribbed sheet roof over them — a sheeted back wall, the inspection pit with
+ * its kerbs under the middle bay, a chain hoist on its runway beam, the workbench and the oil drums, a stack of tyres,
+ * the jerrycans in their rack.
+ */
+function makeMotorPoolCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, t = PAL.timber, w = 9.0, d = 11.5;
+  const hiY = 4.35, loY = 3.4, slope = (hiY - loY) / w;
+  const yAt = (x: number) => loY + (x + w / 2) * slope;
+  // the frames: columns at the low (-x) and high (+x) sides and the middle, their rafters and knee braces
+  for (const z of [-d / 2 + 0.15, 0, d / 2 - 0.15]) {
+    for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) {
+      colored(out, box(0.5, 0.2, 0.5).translate(x, 0.1, z), 0x8a8780, rng, 0.03);
+      const top = yAt(x) - 0.12;
+      colored(out, box(0.2, top - 0.2, 0.24).translate(x, 0.2 + (top - 0.2) / 2, z), p[2], rng, 0.03);
+    }
+    colored(out, beam([-w / 2 - 0.2, yAt(-w / 2 - 0.2) - 0.06, z], [w / 2 + 0.2, yAt(w / 2 + 0.2) - 0.06, z], 0.24, 0.16), p[2], rng, 0.03);
+    for (const sgn of [-1, 1]) {
+      const x = sgn * (w / 2 - 0.12), xi = sgn * (w / 2 - 1.1);
+      colored(out, beam([x, yAt(x) - 1.0, z], [xi, yAt(xi) - 0.14, z], 0.1, 0.1), p[2], rng, 0.03);
+    }
+  }
+  // the purlins and the ribbed sheet roof
+  for (let k = 0; k <= 5; k++) {
+    const x = -w / 2 - 0.1 + k * (w + 0.2) / 5;
+    colored(out, box(0.1, 0.12, d + 0.4).translate(x, yAt(x) + 0.08, 0), p[2], rng, 0.03);
+  }
+  const roofAngle = Math.atan(slope);
+  const roof = pitchRoofPlane(slab(w + 0.8, 0.08, d + 0.8), 'x', -1, roofAngle, 'skillion');
+  colored(out, roof.translate(0, (loY + hiY) / 2 + 0.18, 0), p[0], rng, 0.04);
+  for (let k = 0; k < 22; k++) {
+    const z = -d / 2 - 0.3 + (k + 0.5) * (d + 0.6) / 22;
+    const rib = pitchRoofPlane(slab(w + 0.8, 0.05, 0.08), 'x', -1, roofAngle, 'skillion');
+    colored(out, rib.translate(0, (loY + hiY) / 2 + 0.24, z), p[1], rng, 0.03);
+  }
+  // the sheeted back wall on the low side, its sheets to the eaves
+  for (let k = 0; k < 10; k++) {
+    const z = -d / 2 + (k + 0.5) * d / 10;
+    colored(out, box(0.05, loY - 0.4, d / 10 - 0.02).translate(-w / 2 - 0.02, 0.2 + (loY - 0.4) / 2, z), k % 3 ? p[0] : p[1], rng, 0.05);
+  }
+  // the inspection pit under the middle: its kerbs and the dark void between them, the steps down at its end
+  colored(out, box(1.4, 0.04, 6.0).translate(0.4, 0.02, 0), 0x1c1e20, rng, 0.02);
+  for (const x of [-0.35, 1.15]) colored(out, box(0.25, 0.18, 6.4).translate(x, 0.09, 0), 0x8a8780, rng, 0.03);
+  // the chain hoist on its runway beam along the pit, between the frames
+  colored(out, box(0.18, 0.22, d - 0.6).translate(0.4, yAt(0.4) - 0.3, 0), p[2], rng, 0.03);
+  colored(out, box(0.3, 0.3, 0.3).translate(0.4, yAt(0.4) - 0.6, 1.4), 0xb8902a, rng, 0.03);
+  colored(out, box(0.03, 1.4, 0.03).translate(0.4, yAt(0.4) - 1.45, 1.4), 0x2a2c2e, rng, 0.03);
+  // the workbench against the back wall, its vice; the drums and the tyres; the jerrycan rack
+  colored(out, box(0.8, 0.08, 2.4).translate(-w / 2 + 0.5, 0.9, -2.8), t[0], rng, 0.05);
+  for (const z of [-3.85, -1.75]) colored(out, box(0.7, 0.86, 0.08).translate(-w / 2 + 0.5, 0.43, z), t[2], rng, 0.05);
+  colored(out, box(0.2, 0.18, 0.25).translate(-w / 2 + 0.75, 1.03, -2.0), 0x2a2c2e, rng, 0.03);
+  for (const [x, z] of [[3.1, -3.7], [3.1, -2.95], [3.75, -3.3], [3.1, 3.7]] as const) colored(out, cylinder(0.3, 0.3, 0.88, 10).translate(x, 0.44, z), rng() < 0.5 ? 0x3f5a3a : 0x6a2a24, rng, 0.04);
+  for (let k = 0; k < 4; k++) colored(out, cylinder(0.42, 0.42, 0.24, 12).translate(-w / 2 + 0.75, 0.12 + k * 0.24, 3.8), 0x1e1f20, rng, 0.03);
+  colored(out, box(0.5, 1.1, 1.6).translate(w / 2 - 0.6, 0.55, 4.6), p[2], rng, 0.03);
+  for (let k = 0; k < 4; k++) colored(out, box(0.3, 0.45, 0.16).translate(w / 2 - 0.88, 0.3 + (k >> 1) * 0.5, 4.2 + (k & 1) * 0.8), 0x4f5d3a, rng, 0.04);
+  return mergeConnectedStructure('motorpool', out);
+}
+
 function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
@@ -2109,11 +2351,12 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
   commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, makeCommandTent, 'canvas'),
   fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
-  guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, makeGuardPost, 'metal'),
-  motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, makeMotorPool, 'metal'),
+  // (the looks lane, 2026-10-13: the old builder's draws spent, the post built member by member on its own stream)
+  guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, (rng) => { makeGuardPost(rng).dispose(); return makeGuardPostCraft(kindStream('guardpost')); }, 'metal'),
+  motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, (rng) => { makeMotorPool(rng).dispose(); return makeMotorPoolCraft(kindStream('motorpool')); }, 'metal'),
   quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal', makeQuonsetHutBroken),
-  transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
-  checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
+  transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, (rng) => { makeTransformerShed(rng).dispose(); return makeTransformerShedCraft(kindStream('transformershed')); }, 'metal'),
+  checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, (rng) => { makeCheckpointHut(rng).dispose(); return makeCheckpointHutCraft(kindStream('checkpointhut')); }, 'metal'),
   securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
   servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
