@@ -1,0 +1,149 @@
+{
+ "chunks": [
+  {
+   "text": "[Intro]\n{restrained, building tension: low sustained drone, ticking clock}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 5000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "D minor",
+    "taiko war drums",
+    "low brass and staccato strings",
+    "modern military tension",
+    "low sustained drone",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Reveals A]\n{opens on a massive low brass braam and a sub boom impact}\n{intense: driving sixteenth-note string ostinato, bright and wide, pounding taiko ensemble, hybrid trailer percussion, low sustained drone}\n{a taiko hit on every half bar}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "pounding taiko ensemble",
+    "hybrid trailer percussion",
+    "low sustained drone"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Reveals B]\n{opens on a massive low brass braam}\n{full power climax: driving sixteenth-note string ostinato, bright and wide, pounding taiko ensemble, fast hi-hat sixteenths, tom fills, rimshot accents, warm string pad}\n{a taiko hit on every half bar}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "pounding taiko ensemble",
+    "fast hi-hat sixteenths",
+    "tom fills",
+    "rimshot accents"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Reveals C]\n{opens on a massive low brass braam}\n{full power climax: driving sixteenth-note string ostinato, bright and wide, pounding taiko ensemble, fast hi-hat sixteenths, tom fills, rimshot accents, warm string pad}\n{a taiko hit on every half bar}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "pounding taiko ensemble",
+    "fast hi-hat sixteenths",
+    "tom fills",
+    "rimshot accents"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[End]\n{opens on a massive low brass braam and a sub boom impact}\n{intense: low sustained drone, ticking clock}\n{ends on a hard stop into silence}",
+   "duration_ms": 4500,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "low sustained drone",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  }
+ ]
+}

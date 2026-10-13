@@ -69,7 +69,10 @@ const webp = (src, out, q, size) => run('cwebp', ['-quiet', '-m', '6', '-sharp_y
   ...(size ? ['-resize', String(size[0]), String(size[1])] : []), src, '-o', out]);
 
 // --- sources ------------------------------------------------------------------------------------------------------
-const ROUNDS = [PICKS.sources.deliver, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
+// sources.deliverOver (r14b, 2026-10-12): a later round that re-filmed some takes (round 15: the rut-ring takes) is looked
+// up first, so its takes replace round 14's and the rest stay round 14's; both are current
+const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver].filter(Boolean);
+const ROUNDS = [...CURRENT, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
 const deliveries = new Map();
 function delivery(id) {
   if (deliveries.has(id)) return deliveries.get(id);
@@ -78,7 +81,7 @@ function delivery(id) {
     const d = join(MEDIA, dir, id);
     if (!existsSync(join(d, `${id}-4k.mp4`))) continue;
     const f = (name) => (existsSync(join(d, name)) ? join(d, name) : null);
-    const take = { id, round: dir, current: dir === PICKS.sources.deliver, dir: d,
+    const take = { id, round: dir, current: CURRENT.includes(dir), dir: d,
       moment: f(`${id}.webp`), close: f(`${id}-close.webp`), momentPng: f(`${id}-4k.png`), closePng: f(`${id}-close-4k.png`),
       poster: f(`${id}.jpg`), webm: f(`${id}.webm`), mobile: f(`${id}-mobile.mp4`), hd: f(`${id}.mp4`),
       sound: existsSync(join(d, `${id}.audio.json`)) };
@@ -119,10 +122,11 @@ function slots() {
   for (const [k, v] of Object.entries(PICKS.topicMedia)) if (v.id) add(`topicMedia.${k}`, v.id, v.still);
   PICKS.featured.forEach((f, i) => add(`featured[${i}]`, f.id, f.still ?? 'moment'));
   for (const k of ['notFound', 'hudEditor', 'og']) add(k, PICKS[k].id, PICKS[k].still);
+  for (const [k, v] of Object.entries(PICKS.ogCards ?? {})) add(`ogCards.${k}`, v.id, v.still);
   PICKS.home.reel.takes.forEach((id, i) => add(`home.reel[${i}]`, id, 'moment'));
   for (const [k, v] of Object.entries(PICKS.home.socialCards ?? {})) add(`home.socialCards.${k}`, v.id, v.still);
   (PICKS.readme?.stills ?? []).forEach((id, i) => add(`readme.stills[${i}]`, id, 'moment'));
-  for (const k of ['worlds', 'worldKit']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
+  for (const k of ['worlds', 'worldKit', 'destruction']) if (PICKS.readme?.[k]) add(`readme.${k}`, PICKS.readme[k].id, PICKS.readme[k].still);
   (PICKS.readme?.wall ?? []).forEach((p, i) => add(`readme.wall[${i}]`, p.id, p.still));
   for (const [k, v] of Object.entries(PICKS.docs.figures ?? {})) add(`docs.figures.${k}`, v.id, v.still);
   return out;
@@ -314,6 +318,32 @@ function buildFilms() {
   }
 }
 
+// --- the takes as Studio presets (owner 2026-10-12: "keep our code for these videos and setup preserved so we can always
+// tweak them, and also just show them as presets u can access in /studio") ------------------------------------------
+// Each take's scene exactly as the Studio saves it (its code in the shot library, tools/media-r5/site50-shots/<id>.json,
+// whose git history is the take's version history), and scenes/index.json, which the Studio's Director workspace lists
+// (src/ui/studioProductionPanel.ts): the take's titles in both languages, its map, its length, its thumbnail and its
+// scene. Loading a card stages the take as it was filmed, ready to change and film again.
+function buildScenes() {
+  const library = join(ROOT, 'tools/media-r5/site50-shots');
+  const takes = [];
+  for (const id of takeIds) {
+    const source = join(library, `${id}.json`);
+    if (!existsSync(source)) continue;
+    copy(join(OUT, 'scenes', `${id}.scene.json`), source);
+    const scene = JSON.parse(readFileSync(source, 'utf8'));
+    const t = PICKS.takes[id];
+    takes.push({ id, title: { en: t.en, zh: t.zh }, short: { en: t.shortEn, zh: t.shortZh }, map: scene.map ?? t.map,
+      durationMs: scene.storyboard?.durationMs ?? null, scene: `${BASE_URL}/scenes/${id}.scene.json`,
+      thumb: `${BASE_URL}/stills/${id}-thumb.webp` });
+  }
+  const index = join(OUT, 'scenes', 'index.json');
+  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection,
+    source: 'The site fifty\'s takes as Studio scenes: each the scene its 4K final was filmed from (tools/media-r5/site50-shots)',
+    takes }, null, 1)}\n`);
+  record(index, null, { takes: takes.length });
+}
+
 // --- the archive and the manifest ---------------------------------------------------------------------------------
 function mapNames() {
   const catalog = join(ROOT, 'src/ui/i18nCatalog.en-US.json');
@@ -370,6 +400,7 @@ function main() {
   if (want('reels')) buildReels();
   if (want('frames')) buildFrames(frames);
   if (want('films')) buildFilms();
+  if (want('scenes')) buildScenes();
   const proxies = want('proxies') ? buildProxies() : null;
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of

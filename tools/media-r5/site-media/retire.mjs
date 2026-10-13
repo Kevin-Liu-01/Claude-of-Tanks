@@ -16,8 +16,11 @@ const MEDIA = join(ROOT, 'public/media');
 /** The collections the site fifty replaced, wholly or in part. */
 const RETIRED = ['hero-rails-r2', 'promo-v13', 'featured', 'showcase-r1', 'presentation-r1', 'battle-reels-v3',
   'feature-loops-r1', 'director-r4', 'web-video-r1', 'home', 'production-r1'];
-// Interface captures are not gameplay media: whatever references them, they stay (presentation-r1 and home keep theirs).
+// Interface captures are not gameplay media: whatever references them, they stay (presentation-r1 and home keep theirs),
+// except the ones the owner retired (2026-10-12: "no more ui_explosion anymore!"; the README's Destruction cell shows a
+// site-fifty still instead), which go once nothing live names them.
 const KEPT_NAME = /^ui_/;
+const OWNER_RETIRED = new Set(['presentation-r1/ui_explosion.webp']);
 /** Producers of the retired collections: they name their outputs, they do not use them. */
 const PRODUCERS = /^tools\/(marketing-shots\/(publish-[a-z0-9-]+|encode-featured|build-capture-recipes)\.mjs|media-production\/publishCampaign\.mjs|publish-gameplay-capture\.mjs)$/;
 const SCAN_DIRS = ['site', 'src', 'tools', 'server', 'api', 'public'];
@@ -62,7 +65,7 @@ for (const collection of RETIRED) {
   for (const file of walk(dir)) {
     const rel = relative(MEDIA, file).split('\\').join('/');
     if (rel === `${collection}/manifest.json`) continue;
-    (named.has(rel) || KEPT_NAME.test(rel.split('/').pop()) ? keep : retire).push({ rel, bytes: statSync(file).size });
+    (named.has(rel) || (KEPT_NAME.test(rel.split('/').pop()) && !OWNER_RETIRED.has(rel)) ? keep : retire).push({ rel, bytes: statSync(file).size });
   }
 }
 const mb = (list) => (list.reduce((s, f) => s + f.bytes, 0) / 1048576).toFixed(1);

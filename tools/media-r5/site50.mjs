@@ -161,6 +161,9 @@ const DUST_MS = 1500, DUST_R = 8;
 // Sonnet 19 of 19), and Opus marked one down where it stacked on the hero's own muzzle blast (S37), sat behind the turret
 // once the lens had moved (S13), crowded another tank (S09) or left its column cut by the frame's corner (S05)
 const SHOT_CLEAR_MS = [150, 500], FIREBALL_MS = 500, EDGE = { x: 0.78, y: 0.6 }, EDGE_LOOSE = { x: 0.8, y: 0.75 }, OTHER_DX = 0.12;
+// a large burst's fireball (wave s4): its crown about 6 m up, about 7 m across (its smoke column may leave the frame, as
+// a low lens crops one; the critics marked the fireball cut, not the column)
+const BURST_TOP_M = 6, BURST_HALF_M = 3.5, BURST_FRAME = 0.97;
 const BURST_TYPES = /^(explosion|barrage|tank_kill)$/;
 /** The lens at `t` as a projection to the frame's -1..1 (null behind the lens), or null with no rail there. */
 function lensAt(shots, t) {
@@ -250,9 +253,12 @@ function stageBeats(scene, world) {
       }
       return true;
     };
-    for (const side of [gunSide, -gunSide]) {
-      // a street's facades leave only its own line: nearer the hull's track and further down it, last
-      for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5]]) {
+    // strict, the whole fireball in the frame is preferred: every spot is tried with it first, then without (so no beat
+    // is lost to it: a beat that cannot show its fireball whole keeps the spot it had)
+    for (const whole of strict ? [true, false] : [false]) for (const side of [gunSide, -gunSide]) {
+      // a street's facades leave only its own line: nearer the hull's track and further down it, last; the farthest
+      // spots (28-40 m) last of all, where a nearer fireball would be cut by the frame
+      for (const [d, lat] of [[17, 10], [17, 7], [17, 13], [12, 10], [12, 7], [12, 13], [22, 10], [22, 7], [22, 13], [17, 5], [22, 5], [28, 5], [28, 3.5], [22, 3.5], [28, 10], [32, 7], [32, 10], [36, 7], [36, 5], [32, 5], [40, 7], [40, 10]]) {
         // screen x grows along `right`: pick the lateral sign that lands on this side of the frame
         const s = Math.sign(nx * right[0] + nz * right[2]) * side;
         const px = pose.x + ux * d + nx * lat * s, pz = pose.z + uz * d + nz * lat * s;
@@ -260,8 +266,16 @@ function stageBeats(scene, world) {
         world.query(px - 3, pz - 3, px + 3, pz + 3, near);
         if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) continue;
         // in the frame with room above for its column, off the hull's box, and not stacked on another tank
-        const q = screen([px, world.heightAt(px, pz) + 2.5, pz]);
+        const gz = world.heightAt(px, pz), q = screen([px, gz + 2.5, pz]);
         if (!q || Math.abs(q.x) > edge.x || q.y < -0.7 || q.y > edge.y || (q.x > x0 - 0.08 && q.x < x1 + 0.08)) continue;
+        // and the whole fireball too, first (wave s4, 2026-10-10: both critics marked fireballs cut by the frame's top or
+        // right edge; the centre alone was inside): its crown BURST_TOP_M up and its flanks BURST_HALF_M either side,
+        // across the lens, all inside BURST_FRAME
+        if (whole) {
+          const top = screen([px, gz + BURST_TOP_M, pz]);
+          const flanks = [-1, 1].map((k) => screen([px + right[0] * BURST_HALF_M * k, gz + 3, pz + right[2] * BURST_HALF_M * k]));
+          if (!top || top.y > BURST_FRAME || flanks.some((f) => !f || Math.abs(f.x) > BURST_FRAME)) continue;
+        }
         if (others.some((c) => Math.abs(c.x - q.x) < OTHER_DX)) continue;
         if (!clearAfter(px, pz)) continue;
         return [+px.toFixed(2), +pz.toFixed(2)];
@@ -632,6 +646,44 @@ const RECAST = {
   47: { lineup: [CAST.burlak, CAST.t90a, CAST.t14] },
   48: { lineup: [CAST.type96_72m, CAST.vt4a1, CAST.type96b] },
 };
+// The owner's nine (2026-10-12: "add videos for the leo 2a7, leopard 2 revokutuin, leopard 2a6m, leopard 2a5m, leopard
+// 2a5, kf41 lynx, puma s1, mbt 70, strv 103b"; the Leopard 2A7 in the fleet is the 2A7V): each leads a take of its own,
+// staged on the set, lens, effects and motion plan of one of the fifty's best-scored takes (wave m3, the lower critic
+// counting: eight of its top ten, and s18 for the Leopard 2 Revolution, the urban-fighting Leopard, on a Steinburg
+// street; on s23's crossroads its wider hull lost the hero behind a pole, and the lens nudged clear of the pole grazed
+// a hunting blind), among allies of its own kind and against an opposing force. Paint keeps the fifty's law
+// (a scheme no other take wears): the Leopards wear the NATO three-tone, the Bundeswehr's own coat, each in another of
+// the catalog's mixes; the ice duel a whitewash, the Puma in the desert a three-colour sand, the MBT-70 its own
+// Flecktarn and the Strv 103B the Swedish woodland. The enemy keeps the template's paint unless the sides swapped (s21's
+// Leopards were the enemy). The Stridsvagn 103B's gun is laid by the hull (the model holds its trunnion on the hull
+// line), so its rounds go where it points: no flank swing.
+// [n, template n, id, title, lineup, foes, hero paint or [hero, enemy], turret style]
+const OWNER_NINE_TABLE = [
+  [51, 20, 'leo2a7v-sunset-fire', 'A Leopard 2A7V leads the column returning fire across the fields at sunset',
+    [CAST.leo, CAST.leo2a6, CAST.puma], RU_FOES, 'service_leclerc_xlr'],
+  [52, 18, 'revolution-street-knockout', 'A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night',
+    [CAST.leo2rev, CAST.leo2a5, CAST.puma], [CAST.t90a, CAST.t72b3], 'sig_k2'],
+  [53, 21, 'leo2a6m-assault', 'A Leopard 2A6M wedge assaults through the burning fields',
+    [CAST.leo2a6m, CAST.leo2a5m, CAST.leo2a6, CAST.lynx], [CAST.t90a, CAST.t72b3, CAST.t80u], ['sig_borsuk', 'sig_t90sm']],
+  [54, 24, 'leo2a5m-ice-duel', 'A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U',
+    [CAST.leo2a5m, CAST.leo2a6], null, 'washworn'],
+  [55, 33, 'leo2a5-water-tower', 'A Leopard 2A5 advances past the burning water tower at night',
+    [CAST.leo2a5, CAST.leo2a6m], RU_FOES, 'sig_amx10p_25'],
+  [56, 39, 'lynx-lakeside', 'A KF41 Lynx fires across the village at Highland Reservoir',
+    [CAST.lynx, CAST.leo2a6, CAST.puma], RU_FOES, 'sig_dardo'],
+  [57, 26, 'puma-minaret', 'A Puma S1 fires at Sunscar Oasis',
+    [CAST.puma, CAST.lynx], null, 'sig_namer_ifv'],
+  [58, 49, 'mbt70-orchard', 'An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards',
+    [CAST.mbt70, CAST.amx30, CAST.amx30], null, 'sig_mbt70'],
+  [59, 6, 'strv103b-farm-charge', 'A Stridsvagn 103B charges past the farmhouse through artillery',
+    [CAST.strv103b], null, 'paint_strv81', 'sectors'],
+];
+export const OWNER_NINE = OWNER_NINE_TABLE.map(([n, from, id, title, lineup, foes, paint, style]) => {
+  const [, , kind, , setRef, film, still] = SHOTS.find(([m]) => m === from);
+  const [unit, enemy = PAINT[from]?.[1] ?? null] = [paint].flat();
+  return [n, id, kind, title, setRef, { ...film, from, lineup, ...(foes ? { foes } : {}), paint: [unit, enemy],
+    turretStyle: style ?? turretStyle(from) }, still];
+});
 // The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
 // MEDIA_R5_FEATURES points at another dump (a fresh one under review).
 const models = new Map();
@@ -669,7 +721,8 @@ function parkNudges(scene, model) {
   return moved ? nudge : null;
 }
 export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
-  const planned = !ownFilm.routes ? MOTION_PLAN[n] : null;
+  // a take staged on another's set (OWNER_NINE: `from`) flies that take's motion plan unless the plan holds its own
+  const planned = !ownFilm.routes ? MOTION_PLAN[n] ?? MOTION_PLAN[ownFilm.from] : null;
   const film = planned ? { ...Object.fromEntries(Object.entries(ownFilm).filter(([k]) => !OWN_MOTION.includes(k))), ...Object.fromEntries(Object.entries(planned).filter(([k]) => k !== 'note' && k !== 'checks')) } : ownFilm;
   const set = typeof setRef === 'string' ? setById(setRef) : setRef;
   const time = film.time ?? set.time;
@@ -682,7 +735,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     base.lineup = recast.lineup;
     if (recast.foes && base.enemies) base.enemies = { ...base.enemies, lineup: recast.foes };
   }
-  const [camo, foeCamo] = PAINT[n] ?? [];
+  if (film.foes && base.enemies) base.enemies = { ...base.enemies, lineup: film.foes };
+  const [camo, foeCamo] = film.paint ?? PAINT[n] ?? [];
   if (camo) base.camo = camo;
   if (foeCamo && base.enemies) base.enemies = { ...base.enemies, camo: foeCamo };
   // parked foes stand clear of the props (2026-10-06: with the lab's spiral nudge off for routed takes, two stood in
@@ -707,7 +761,7 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // before the loop wraps; the FLANK shots swing the hero's first round out across the frame
   // A moving shot that keys `aim` keeps its guns on their targets through the swerves (stabilised); the choreographer's
   // hull-relative sweeps would fight that, so it stands down and the shot's own rounds go where the guns point.
-  const style = turretStyle(n);
+  const style = film.turretStyle ?? turretStyle(n);
   const choreo = film.aim ? { turrets: undefined, guns: undefined, effects: [], notes: ['stabilised: ' + Object.entries(film.aim).map(([a, b]) => `${a} on ${b}`).join(', ')] }
     : choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
   scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
@@ -747,7 +801,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const only = process.argv[3]?.split(',');
   mkdirSync(out, { recursive: true });
   const manifest = [];
-  for (const shot of SHOTS) {
+  for (const shot of [...SHOTS, ...OWNER_NINE]) {
     const scene = siteScene(shot);
     if (only && !only.some(o => scene.meta.id.includes(o))) continue;
     writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));

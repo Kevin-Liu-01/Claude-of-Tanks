@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.flash{mix-blend-mode:screen}
+</style>
+<div id="root" data-composition-id="flashes" data-width="3840" data-height="2160" data-duration="39.5">
+<div id="fl0" class="clip flash" data-start="5" data-duration="0.3" style="background:#fff6e6"></div>
+<div id="fl1" class="clip flash" data-start="6.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl2" class="clip flash" data-start="7.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl3" class="clip flash" data-start="8.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl4" class="clip flash" data-start="10" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl5" class="clip flash" data-start="11.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl6" class="clip flash" data-start="12.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl7" class="clip flash" data-start="13.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl8" class="clip flash" data-start="15" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl9" class="clip flash" data-start="16.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl10" class="clip flash" data-start="17.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl11" class="clip flash" data-start="18.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl12" class="clip flash" data-start="20" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl13" class="clip flash" data-start="21.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl14" class="clip flash" data-start="22.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl15" class="clip flash" data-start="23.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl16" class="clip flash" data-start="25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl17" class="clip flash" data-start="26.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl18" class="clip flash" data-start="27.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl19" class="clip flash" data-start="28.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl20" class="clip flash" data-start="30" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl21" class="clip flash" data-start="31.25" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl22" class="clip flash" data-start="32.5" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl23" class="clip flash" data-start="33.75" data-duration="0.233" style="background:#fff6e6"></div>
+<div id="fl24" class="clip flash" data-start="35" data-duration="0.3" style="background:#fff6e6"></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#fl0', {opacity:0.9}, {opacity:0, duration:0.3, ease:'power2.in'}, 5);
+tl.fromTo('#fl1', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 6.25);
+tl.fromTo('#fl2', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 7.5);
+tl.fromTo('#fl3', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 8.75);
+tl.fromTo('#fl4', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 10);
+tl.fromTo('#fl5', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 11.25);
+tl.fromTo('#fl6', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 12.5);
+tl.fromTo('#fl7', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 13.75);
+tl.fromTo('#fl8', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 15);
+tl.fromTo('#fl9', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 16.25);
+tl.fromTo('#fl10', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 17.5);
+tl.fromTo('#fl11', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 18.75);
+tl.fromTo('#fl12', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 20);
+tl.fromTo('#fl13', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 21.25);
+tl.fromTo('#fl14', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 22.5);
+tl.fromTo('#fl15', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 23.75);
+tl.fromTo('#fl16', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 25);
+tl.fromTo('#fl17', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 26.25);
+tl.fromTo('#fl18', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 27.5);
+tl.fromTo('#fl19', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 28.75);
+tl.fromTo('#fl20', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 30);
+tl.fromTo('#fl21', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 31.25);
+tl.fromTo('#fl22', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 32.5);
+tl.fromTo('#fl23', {opacity:0.35}, {opacity:0, duration:0.233, ease:'power2.in'}, 33.75);
+tl.fromTo('#fl24', {opacity:0.9}, {opacity:0, duration:0.3, ease:'power2.in'}, 35);
+window.__timelines["flashes"] = tl;
+</script>
+</template>
+</body></html>
