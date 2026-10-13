@@ -1225,6 +1225,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/modeDockLayout.selftest.mjs',
     'src/gallery/surfaceMarkup.selftest.mjs',
     'src/vehicles/rosterPolicy.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.01): the tank id rename table's slug engine and the owner's Leopard example.
+    'tools/tank-id-rename-table.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
