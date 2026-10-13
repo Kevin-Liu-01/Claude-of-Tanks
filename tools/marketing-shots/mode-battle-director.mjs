@@ -536,6 +536,10 @@ export function installModeBattleDirector() {
     }
     MB.events.push(e);
     if (MB.events.length > 600) MB.events.splice(0, 200);
+    if (type === 'shell:fired' && MB.fire) {
+      const p = H.player();
+      if (p && (e.shooterId === p.id || e.isPlayer === true)) MB.fire.shots = (MB.fire.shots || 0) + 1;
+    }
     if (MB.armed) maybeTrigger(e);
   }
   function whoMatches(rule, e) {

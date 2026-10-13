@@ -238,6 +238,7 @@ async function takeLock(label) {
 async function dropLock(reason) {
   if (!heldSince) return;
   await closeBrowser();
+  await stopServer();
   clearInterval(lockRefresh);
   lock.release();
   const ms = Date.now() - heldSince;
@@ -285,7 +286,12 @@ if (opt('rooms-double') === 'true' && !base) {
   process.env.VITE_ROOMS_URL = rooms.url;
   log(`room double ${rooms.url}`);
 }
-if (!base) {
+// The dev server runs only while the lock is held (a queued run keeps no idle server): started on acquisition, closed
+// with the browser when the lock is released.
+const fixedBase = base;
+async function startServer() {
+  if (fixedBase) { base = fixedBase; return; }
+  if (server) return;
   const cacheDir = resolve(ROOT, opt('cache-dir', 'shots/.vite-mode-battle-shots'));
   server = await createServer({
     root: ROOT,
@@ -297,6 +303,12 @@ if (!base) {
   await server.listen();
   base = `http://127.0.0.1:${server.config.server.port}`;
   log(`vite dev server ${base} (node pid ${process.pid}, cache ${cacheDir})`);
+}
+async function stopServer() {
+  if (!server) return;
+  await server.close().catch(() => {});
+  server = null;
+  log('vite dev server closed');
 }
 
 const summary = [];
@@ -310,7 +322,7 @@ try {
       await dropLock('hold budget');
       await sleep(5000); // the next ticket in the queue takes its turn
     }
-    try { await takeLock(slot); }
+    try { await takeLock(slot); await startServer(); }
     catch (error) { stopReason = error.message; break; }
     // the queue file and the recipes may have changed while the run waited for the lock
     slot = await nextSlot();
@@ -335,7 +347,7 @@ try {
 } finally {
   await dropLock('run end');
   await closeBrowser();
-  if (server) await server.close().catch(() => {});
+  await stopServer();
   if (rooms) await rooms.close().catch(() => {});
   const totalMin = holds.reduce((a, h) => a + h.ms, 0) / 60000;
   log(`done: ${summary.map((s) => `${s.slot}=${s.error ? 'ERROR' : s.count}`).join(' ')}; lock ${totalMin.toFixed(1)} min in ${holds.length} holds${stopReason ? `; stopped: ${stopReason}` : ''}`);

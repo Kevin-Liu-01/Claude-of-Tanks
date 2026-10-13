@@ -311,10 +311,15 @@ export const RECIPES = {
     windowS: 80,
     async run(ctx) {
       for (const [name, body] of Object.entries(SEL)) await define(ctx, name, body);
+      // the outbreak opens with four infected far across the map: wait until the horde is on the survivors
       const inf = await ctx.until(() => {
-        const i = window.__MB.H.ms()?.infection;
-        return i && i.infected >= 3 && i.survivors >= 2 ? { ...i } : null;
-      }, { ffStepS: 2, timeoutS: 300, label: 'three infected' });
+        const H = window.__MB.H, i = H.ms()?.infection, p = H.player();
+        if (!i || !p) return null;
+        const ours = H.liveTanks().filter((t) => t.team === p.team);
+        let closest = Infinity;
+        for (const e of H.enemies()) for (const s of ours) closest = Math.min(closest, H.dist(e.state.pos, s.state.pos));
+        return i.infected >= 3 && i.survivors >= 2 && closest < 170 ? { ...i, closestM: Math.round(closest) } : null;
+      }, { ffStepS: 2, timeoutS: 300, label: 'the infected on the survivors' });
       ctx.log('infection', JSON.stringify(inf));
       await settle(ctx, 2);
       await ctx.capture({
@@ -509,6 +514,8 @@ export const RECIPES = {
     windowS: 60,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, minRangeM: 250 })));
+      // the armour flashlight is the player's setting (H toggles it; off by default)
+      await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await settle(ctx, 1.5);
       await ctx.capture({
@@ -1255,7 +1262,12 @@ Object.assign(RECIPES, {
           }, delay);
           let frozen = false;
           for (let w = 0; w < 120 && !frozen; w++) { frozen = (await shooter.page.evaluate(() => window.__MB.poll())).frozen; if (!frozen) await ctx.sleep(50); }
-          if (!frozen) { ctx.note(`round ${round + 1}: no shot within 6 s`); await shooter.page.evaluate(() => { window.__MB.arm(null); window.__MB.setFire(null); }); continue; }
+          if (!frozen) {
+            // no shot event reached this page within 6 s: take the pair as it stands
+            ctx.note(`round ${round + 1}: no shot within 6 s; paired frame without a shot`);
+            await shooter.page.evaluate(() => { window.__MB.arm(null); window.__MB.freezeIn(0, { type: 'pair-noshot' }); });
+            for (let w = 0; w < 40 && !(await shooter.page.evaluate(() => window.__MB.poll())).frozen; w++) await ctx.sleep(25);
+          }
           await other.page.evaluate(() => window.__MB.freezeIn(0, { type: 'pair' }));
           for (let w = 0; w < 40 && !(await other.page.evaluate(() => window.__MB.poll())).frozen; w++) await ctx.sleep(25);
           const k = ctx.bump();
