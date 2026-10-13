@@ -336,7 +336,13 @@ function buildFilms() {
 // 0.4-0.6 MB, where 960×540 crf 36 made ~2 MB; the panels show it a few hundred pixels wide) and a 640×360 poster (the
 // coordinator's budget, 2026-10-13: loops ≤ 0.6 MB, posters ≤ 120 KB, fleet-media.selftest), and fleet/index.json, which the Tank Gallery's
 // dossiers, the Garage's battle gallery, the manual and the Studio's Director read. A vehicle whose take is not delivered
-// yet is left out of the index (the app shows nothing for it).
+// yet is left out of the index (the app shows nothing for it). The poster is the take's close portrait (its 4K still,
+// scaled), not the loop's first frame: a take opens wide and swings in close, so its first frame leaves the vehicle
+// small (2026-10-13: the KV-2 a speck on the snow, the T-72B3 Sich behind a tree). The close portrait showed the
+// vehicle largest and clearest in 33 of the first 35 fleet takes; the key moment, the other 4K still, often puts it
+// behind dust or a bush. picks.fleetPosters.moment names the vehicles whose key moment reads better (the BMP-2's close
+// portrait leaves it small and dark in the grass), picks.fleetPosters.loop those that keep the loop's first frame (the
+// Type 10's close portrait puts it farther off in the village than its opening does).
 const FLEET_TAKES = join(ROOT, 'tools/media-r5/vehicle-takes.json'), FLEET_ROSTER = join(ROOT, 'tools/media-r5/fleet-roster.json');
 const fleetRoster = existsSync(FLEET_ROSTER) ? JSON.parse(readFileSync(FLEET_ROSTER, 'utf8')) : [];
 const fleetEntry = (takeId) => fleetRoster.find((r) => `s${r.n}-${r.id}` === takeId) ?? null;
@@ -352,12 +358,15 @@ function buildFleet() {
   const vehicles = {};
   for (const [vehicle, takeId] of Object.entries(map)) {
     const d = delivery(takeId), meta = takeTitles(takeId);
-    if (!d?.hd || !d.poster || !meta) continue;
+    if (!d?.hd || !d.momentPng || !meta) continue;
     const take = { take: takeId, round: d.round, vehicle };
     make(join(OUT, 'fleet', `${vehicle}.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
       '-vf', 'scale=640:360:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '48', '-b:v', '680k', '-row-mt', '1',
       '-deadline', 'good', '-cpu-used', '2', tmp]), take);
-    make(join(OUT, 'fleet', `${vehicle}.jpg`), d.poster, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.poster,
+    const posterPick = PICKS.fleetPosters ?? {};
+    const still = (posterPick.moment ?? []).includes(vehicle) ? d.momentPng
+      : (posterPick.loop ?? []).includes(vehicle) ? d.poster : (d.closePng ?? d.momentPng);
+    make(join(OUT, 'fleet', `${vehicle}.jpg`), still, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', still,
       '-vf', 'scale=640:360:flags=lanczos', '-q:v', '5', tmp]), take);
     vehicles[vehicle] = { take: takeId, map: meta.map, title: meta.title, short: meta.short,
       loop: `${BASE_URL}/fleet/${vehicle}.webm`, poster: `${BASE_URL}/fleet/${vehicle}.jpg`, scene: `${BASE_URL}/scenes/${takeId}.scene.json` };
