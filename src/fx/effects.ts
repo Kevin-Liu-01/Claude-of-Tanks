@@ -1112,7 +1112,7 @@ function* createFxSteps(
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
   const chunks: DebrisChunks | null = mediaTier
-    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
+    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: (x, z) => deformedGroundY(x, z) })
     : null;
   // World state, every tier: the marks a crater leaves, a building coming down in the world's own geometry (the world
   // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
