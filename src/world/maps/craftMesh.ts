@@ -149,7 +149,7 @@ export class Mesh {
  */
 export function member(m: Mesh, a: V3, b: V3, w: number, h: number, side: V3, col: Rgb, uvMode: UvMode,
   opts: { chamfer?: number; skipEnds?: boolean; shade?: (q: V3, n: V3) => Rgb } = {}): void {
-  const axis = norm(sub(b, a)), len = Math.hypot(...sub(b, a));
+  const axis = norm(sub(b, a));
   let s = norm(sub(side, scl(axis, dot(side, axis))));
   if (!Number.isFinite(s[0]) || Math.hypot(...s) < 0.5) s = norm(cross(axis, Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
   const t = norm(cross(axis, s));
