@@ -14,6 +14,7 @@
 //        before every slot, so slots can be added, reordered or removed while the run waits for the lock)
 //     options: [--list=shots/media-r5/home-r2/shot-list.json] [--out=<dir>] [--port=7613] [--cache-dir=<dir>]
 //        [--base=http://127.0.0.1:<port>] [--hold-max-min=9] [--headroom-gb=8] [--dpr=2] [--lock-timeout-min=600]
+//        [--ticket-stamp=<ms of one of this lane's own waiting normal tickets>] [--rooms-double]
 //   node tools/marketing-shots/mode-battle-shots.mjs --pick=modes/standard:12[,<slot>:<n>...]
 //   node tools/marketing-shots/mode-battle-shots.mjs --sheet=modes/standard   (rebuild a slot's contact sheets)
 //
@@ -35,7 +36,7 @@ import {
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCaptureLock } from '../capture-lock.mjs';
+import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -195,6 +196,14 @@ async function machineGate(label, gb) {
 
 // ------------------------------------------------------------------------------------------------ lock and browser
 const lock = createCaptureLock();
+// --ticket-stamp=<ms>: the first acquisition rejoins the queue at that place (capture-lock ticketAt), for a run that
+// replaces one of this lane's own queued runs (its stamp, from the waiting ticket's name). Normal band only: the
+// priority bands (the cinema's 1791397979999, perf's 1791397983200x) are refused.
+let firstTicketStamp = opt('ticket-stamp') ? Number(opt('ticket-stamp')) : null;
+if (firstTicketStamp != null && !(Number.isSafeInteger(firstTicketStamp) && firstTicketStamp > 1791400000000)) {
+  console.error('--ticket-stamp takes a normal-band stamp from one of this lane\'s own waiting tickets, never a priority band');
+  process.exit(2);
+}
 let heldSince = 0;
 let lockRefresh = null;
 let browser = null;
@@ -224,7 +233,9 @@ async function takeLock(label) {
     await machineGate(label, Number(opt('headroom-gb', '8')));
     log(`queueing for the capture lock (normal ticket) for ${label}`);
     const asked = Date.now();
-    await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000);
+    const place = firstTicketStamp ? { ticket: ticketAt(firstTicketStamp) } : {};
+    firstTicketStamp = null;
+    await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000, place);
     heldSince = Date.now();
     lockRefresh = setInterval(() => lock.refresh(), 30000);
     log(`lock held after ${Math.round((heldSince - asked) / 1000)} s in the queue`);

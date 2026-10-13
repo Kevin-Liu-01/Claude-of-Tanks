@@ -667,18 +667,35 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 40,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 400 })));
+      // the lead (r2 review of c001): the chase view read as a hull seen from the rear and the magazine pips vanish at
+      // card size. The clip is filmed from external poses at low front three-quarter, 12-20 m, with the HUD up, and
+      // the frames come from the clip's follow-up rounds: a player shot within 4 s of the one before (the Abrams X
+      // fires its four-round clip 2.3 s apart) bursts on the second shot's muzzle flash with the first round's strike
+      // still smoking downrange. The gun lays through the aim hook, free of the camera.
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 260, minRangeM: 120, dists: [180, 200, 220, 160], enemies: 2 })));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 4 });
+      await ctx.mb('setOnFrame', `
+        const st = MB.onFrameState, p = H.player(); if (!p) return;
+        for (const ev of MB.events) {
+          if (ev.seq <= (st.lastSeq || 0)) continue;
+          st.lastSeq = ev.seq;
+          if (ev.type !== 'shell:fired' || ((ev.shooterId ?? ev.attackerId) !== p.id && ev.isPlayer !== true)) continue;
+          const t = ev.t ?? 0;
+          if (st.lastShotT != null && t - st.lastShotT < 4) MB.burstIn([30, 70, 130, 220], { type: 'clip-follow-up', gapS: Math.round((t - st.lastShotT) * 10) / 10 });
+          st.lastShotT = t;
+        }`);
       await settle(ctx, 1.5);
       await ctx.capture({
         cameras: [
-          { kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' },
-          { kind: 'chase', target: 'nearestEnemyClear', step: 3, hud: 'full' },
+          { kind: 'follow', subject: 'player', azimuthDeg: 32, distM: 15, heightM: 1.0, lookAtHeightM: 2.0, fov: 40, hud: 'noreticle' },
+          { kind: 'follow', subject: 'player', azimuthDeg: -36, distM: 17, heightM: 1.2, lookAtHeightM: 2.0, fov: 40, hud: 'noreticle' },
+          // ahead of the hero toward its target, off to one side: the rounds leave toward the lens's flank
+          { kind: 'between', from: 'player', to: 'aimTarget', backM: -14, sideM: 10, heightM: 1.3, lookAtFrac: 0, lookAtHeightM: 2.0, fov: 42, smoothS: 0.3, hud: 'noreticle' },
         ],
-        cameraEvery: 5,
+        cameraEvery: 4,
         everyS: 0,
-        triggers: [T.playerFire([30, 55, 90]), T.playerHit([40, 100])],
+        triggers: [T.playerHit([40, 100])],
       });
     },
   },
