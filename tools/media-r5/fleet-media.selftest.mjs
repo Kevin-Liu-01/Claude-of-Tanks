@@ -28,6 +28,8 @@ for (const [vehicle, entry] of vehicles) {
     named.add(file);
   }
   assert.ok(entry.take && entry.title?.en && entry.title?.zh && entry.scene, `${vehicle}: its take, titles and scene`);
+  // the Gallery and the Garage open a take in the Studio from its scene, so the scene ships with the take
+  assert.ok(existsSync(join(ROOT, 'public', entry.scene)), `${vehicle}: its scene ships (${entry.scene})`);
 }
 const files = readdirSync(DIR);
 assert.deepEqual(files.filter((f) => !named.has(f)), [], 'every file in the fleet folder belongs to an entry');
