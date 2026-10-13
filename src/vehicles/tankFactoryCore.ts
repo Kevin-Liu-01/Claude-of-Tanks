@@ -1880,9 +1880,18 @@ function authoredShadowHull(
  */
 function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
   const picked: { mesh: THREE.Object3D; triangles: number }[] = [];
+  // 2026-10-11 (the netting lane's fix round, the coordinator: "solid clumps of cut branches ... casting shadow"): a
+  // field camouflage suit's net and garnish (ghillieSuit.ts, userData.fieldSuit) cast with the near hull's armour,
+  // cut by their own alpha maps (the shadow pass copies map and alphaTest), past the cap: no armour piece gives up its
+  // shadow to them, and far hulls keep the proxies alone
+  const camouflage = new Set<THREE.Object3D>();
   for (const group of groups) {
     group.traverse((object) => {
       if (!(isVehicleMesh(object) || isVehicleInstancedMesh(object))) return;
+      if (object.userData.fieldSuit === true && /_ghillie_/.test(object.name || '')) {
+        camouflage.add(object);
+        return;
+      }
       if (!NEAR_SHADOW_DETAIL_NAMES.has(object.name)) return;
       if (object.userData.authoredShadowProxy) return;
       const geometry = object.geometry;
@@ -1891,7 +1900,7 @@ function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Objec
     });
   }
   picked.sort((a, b) => b.triangles - a.triangles);
-  return picked.slice(0, NEAR_SHADOW_DETAIL_MAX_MESHES).map((entry) => entry.mesh);
+  return [...picked.slice(0, NEAR_SHADOW_DETAIL_MAX_MESHES).map((entry) => entry.mesh), ...camouflage];
 }
 
 function installProceduralShadowProxies(

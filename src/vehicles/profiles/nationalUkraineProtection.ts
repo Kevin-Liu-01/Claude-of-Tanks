@@ -36,15 +36,59 @@ function hullCageTop(id:ProtectionId,z:number):number{
   return 1.46-.055*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
 }
 
+/**
+ * 2026-10-12 (cam-netting; the owner, 10-09: "add a ton more netting and camo leaves all over the zoria and hetman and
+ * sich", again on 10-12): the plates the screens left bare: the glacis [z0, z1], its top and its fall per metre in
+ * the hull frame, and the turret roof's height in the turret frame (measured on the built hulls; every net is laid on
+ * the armour, so these are only where it starts its search).
+ */
+const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:number;glacisTop:number;roof:number;marks:readonly(readonly[number,number])[]}>>={
+  ua_t80u_modern:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
+  ua_t72b3m_modern:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
+  ua_t72b3_modern:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
+  ua_t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
+};
+/**
+ * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
+ * solver chose on the bare kit, tools/gen-vehicle-marking-seats.mjs): the roof net is opened 26 cm round each, so the
+ * finished vehicle still shows them (tank-assets-check's visibility receipt).
+ */
+const markOpening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
+
+/** A roof or deck net laid over the armour (ghillieFleetSuits.ts laid: clipped to the armour, opened round every lid). */
+function laidNet(panel:Omit<NonNullable<NonNullable<GhillieConfig['hull']>['top']>[number],'yFromArmour'|'clipToArmour'|'autoOpeningsM'|'rimScale'>){
+  return {yFromArmour:true,clipToArmour:true,autoOpeningsM:.07,rimScale:.5,...panel};
+}
+
+/** The lower bow plate under the nose: [z of the nose, top of the plate] (the netting lane's bow drape). */
+const BOW:Readonly<Record<ProtectionId,readonly[number,number]>>={
+  ua_t80u_modern:[3.30,.98],ua_t72b3m_modern:[3.78,.96],ua_t72b3_modern:[3.46,.94],ua_t72b3m_hetman_ii:[3.78,.96],
+};
+
 /** Bounded panels follow the actual open screens, not a generic roof blanket.
  * The central roof, forward sights, gun throat, hatch circles and vertical
- * mission-attachment launch column have no camouflage panels over them. */
+ * mission-attachment launch column have no camouflage panels over them.
+ * 2026-10-09 (owner: "add a ton more netting and camo leaves all over the zoria and hetman and sich"): every screen
+ * bay on each flank is netted (the second bay's ERA no longer left bare), the garnish is denser with more cut boughs
+ * and a drape hangs over the lower bow plate; the roof, the hatches, the engine deck and the drone column stay open,
+ * and the suit keeps the working clearances (fieldClearanceM). */
 function camouflage(id:ProtectionId,index:number):GhillieConfig{
-  const d=NATIONAL_UKRAINE_PROTECTION[id];
+  const d=NATIONAL_UKRAINE_PROTECTION[id],[bowZ,bowTop]=BOW[id],k=DECKS[id];
   return {
-    id,seed:8460+index*113,style:'leafy',density:1,leafScale:.77,
+    id,seed:8460+index*113,style:'leafy',density:1.8,leafScale:.8,boughShare:.42,fieldClearanceM:.03,hemFloorM:.6,
+    // the hull's suit keeps under the protection receipt's continuous main-gun envelope (its glacis boughs lie low)
+    conservativeGunEnvelope:true,
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
-    hull:{side:[-1,1].flatMap(side=>d.hullPanels.filter((_,i)=>i!==1).map(([z0,z1],i)=>({
+    hull:{
+     // 2026-10-12 (cam-netting): the glacis netted to the bow plate, the driver's hatch and periscopes open (the
+     // builder). The engine deck stays bare: the protection receipt's continuous main-gun envelope (full depression at
+     // every yaw) comes down to within 3-7 cm of it from 1.5 m out and below it past 2.7 m, so no net or bough fits
+     top:[
+      laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
+       yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137}),
+     ],
+     face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],
+     side:[-1,1].flatMap(side=>d.hullPanels.map(([z0,z1],i)=>({
       side,z0:z0+.055,z1:z1-.055,nz:15,ny:7,seed:37+side+i*17,
       // Tied under the header (tiedTop): the drape starts 4 mm under the header's centre line, 1.4 cm outside the
       // tube, within the lashings, instead of rolling over the header's top into the gun's sweep.
@@ -52,6 +96,10 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
       outAt:(_z:number,t:number)=>d.hullX+.024+(1-t)*.018,tiedTop:true,
     })))},
     turret:{
+      // 2026-10-12 (cam-netting): the whole turret roof netted round the hatches, sights, the roof gun and the drone
+      // dock (the builder opens each), from the bustle screen to the brow
+      top:[laidNet({x0:-d.turretX+.04,x1:d.turretX-.04,z0:d.rearZ+.02,z1:1.75,nx:38,nz:Math.round((1.73-d.rearZ)/.1),
+        yAt:()=>k.roof,garnishRiseM:.16,seed:151,holes:k.marks.map(markOpening)})],
       side:[-1,1].map(side=>({side,z0:d.sideBack+.04,z1:d.sideFront-.055,nz:index===3?23:17,ny:7,seed:71+side,
         topAt:()=>d.top-.026,bottomAt:(z:number)=>d.bottom+.068+.017*Math.sin(z*5.2),
         outAt:(_z:number,t:number)=>d.turretX+.028+(1-t)*.015})),
@@ -114,9 +162,10 @@ export function ukrainianSkirtEra(P:TankBuilderPort,side:number,z:number,step:nu
 export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):void{
   const d=NATIONAL_UKRAINE_PROTECTION[id],hull=permanentStock(P,'hull'),turret=permanentStock(P,'turret');
   for(const side of [-1,1]){
-    // Four independently framed side screens retain real service gaps and
-    // expose the un-netted second bay's ERA. All feet are above the ERA lids.
-    for(const [panelIndex,[z0,z1]]of d.hullPanels.entries()){
+    // Four independently framed side screens retain real service gaps. All
+    // feet are above the ERA lids. 2026-10-09 (owner): every bay carries a net,
+    // so every bay's header carries its lashings.
+    for(const [z0,z1] of d.hullPanels){
       for(const z of [z0+.09,z1-.09]){
         const header=hullCageTop(id,z),supportY=Math.min(1.37,header+.028);
         foot(P,'hull',hull,[side*3,supportY,z],[-side,0,0],[side*d.hullX,header-.030,z]);
@@ -131,7 +180,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):
       const count=Math.ceil((z1-z0)/.105);
       for(let i=0;i<=count;i++){const z=z0+(z1-z0)*i/count;rod(P,'hull',[side*d.hullX,.977,z],[side*d.hullX,hullCageTop(id,z)-.012,z],.008);}
       rod(P,'hull',[side*d.hullX,1.20,z0],[side*d.hullX,1.20,z1],.010);
-      if(panelIndex!==1)for(const t of [.18,.50,.82]){
+      for(const t of [.18,.50,.82]){
         const z=z0+(z1-z0)*t;
         netTie(P,'hull',[side*(d.hullX+.010),hullCageTop(id,z)-.031,z],[.046,.098,.022]);
       }

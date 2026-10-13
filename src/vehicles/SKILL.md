@@ -267,6 +267,22 @@ Vehicle foliage atlases are 512 px with their own coverage-preserving mip chain 
 canvas images). Decor branch bundles and the decor whip stay inside their old near-level triangle counts (the decor's
 first rows; the 6,000-triangle budget is full on several hulls); whips, fitting and decor, are one bowed construction
 (`whipAntennaParts`) whose foot and tip height are the straight rod's.
+The owner's fleet field nets (2026-10-09) are registry rows in `ghillieFleetSuits.ts`, one fitted entry per vehicle,
+called from each family builder (`addVehicleGhillieSuit` is idempotent per build). They use the builder's opt-in
+keep-outs: `yFromArmour`/`clipToArmour` lay a roof or deck net on the armour and end it at the armour's edges (it passes
+under a raised frame, is cut round anything standing taller than `riseLimitM`, and never falls onto the running gear),
+`autoOpeningsM` opens every lens, hatch lid and cupola and slots the net ahead of each lens, `SidePanel.cuts` keep
+drapes off dischargers, lights and exhausts (from the cut's top down to the hem), and `fieldClearanceM` keeps the whole
+suit clear of the turret's traverse both ways (the turret's swept body by radius, lowest to highest, its hollow
+included), of the main gun's swept volume (a lopsided box by station at every yaw that brings it across a point, with the
+per-yaw depression curves; flat cloth only where the bare gun already comes to within 4 cm of its own deck), of lens
+views (garnish always, cloth where it stands off the armour) and of smoke lines (each bank as `alignSmokeBanks` will
+turn it). A hull drape whose roll over the deck's edge would lie in a clearance is tied lower on its wall; a drape
+station with no roof net above it and no armour beside it hangs nothing. The decor holds such a suit to its clearances
+too: loads stay out of its drapes and from under a turret load's swing (`suit-drape`, `hull-suit`), what it draws up
+over its loads is re-tested (`GHILLIE_FIELD_OK`, ghillieDrape.ts; the cards ride the net's lift vertex by vertex), and
+its own smoke banks cut their lines of fire through the suit (`clearGhillieForSmoke`). New entries still need explicit
+openings for sight heads without glass and exhaust keep-outs.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

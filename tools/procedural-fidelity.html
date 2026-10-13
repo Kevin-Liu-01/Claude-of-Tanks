@@ -759,9 +759,22 @@ for (const root of [reference.root, procedural.root]) {
     o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
   });
 }
+// The netting lane (2026-10-10, the coordinator's ruling): a camouflage suit (the <id>_ghillie_<owner>_net and _leaves
+// meshes) is left out of every silhouette mask. The masks draw scene.overrideMaterial, which drops alphaTest, so an
+// alpha-cut net and every garnish card would count as solid silhouette; the voxel body (tools/tank-voxel-body.mjs), the
+// sealed check and the surface collector leave the suit out for the same reason. Only alpha-tested decor materials may
+// leave by that name: anything else named so stops the page, so no structural geometry can hide behind the filter.
+function isCamouflageSuit(o) {
+  if (!/_ghillie_/.test(o.name || '')) return false;
+  const materials = Array.isArray(o.material) ? o.material : [o.material];
+  if (!materials.every((m) => m && m.map && m.alphaTest > 0)) {
+    failFidelity(`${o.name}: a _ghillie_ mesh without an alpha-tested decor material cannot leave the silhouette masks`);
+  }
+  return true;
+}
 const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
-  root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o)); });
+  root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o) && !isCamouflageSuit(o)); });
 }
 
 function forEachBoxCorner(box, fn) {
