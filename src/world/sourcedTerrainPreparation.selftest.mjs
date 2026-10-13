@@ -356,7 +356,9 @@ await withFixture(async f => {
   assert.match(String(terrain.buildTerrainMeshesAsync), /terrainBuildSteps\(heightField, engineCtx, cfg, streamOpts, sourcePreparation\)/);
   // round 40 (2026-09-22): the material call also hands over the sea openings (edgeWater.ts) after the source preparation;
   // round 42 (2026-09-23): and the map's sky preset, from which the material derives the sun for the sky light on steep faces
-  assert.match(String(terrain._terrainBuildSteps), /createSplatMaterialSteps\([\s\S]*?sourcePreparation,\s*seaOpenings,\s*cfg\?\.sky \?\? null,\s*heightField\.getOutlandWaterAt \?\? null,\s*heightField\._sorWetnessAt \?\? null,?\s*\)/);
+  // item 3 (2026-10-12, no painted water): and last the map's land-use profile, whose flooded paddies the material holds
+  // to a level floor
+  assert.match(String(terrain._terrainBuildSteps), /createSplatMaterialSteps\([\s\S]*?sourcePreparation,\s*seaOpenings,\s*cfg\?\.sky \?\? null,\s*heightField\.getOutlandWaterAt \?\? null,\s*heightField\._sorWetnessAt \?\? null,\s*heightField\._landUseProfile \?\? null,?\s*\)/);
 
   const requested = [];
   const asyncPreparation = f.prepareSourcedTerrain('winter', {}, { worker: true });
