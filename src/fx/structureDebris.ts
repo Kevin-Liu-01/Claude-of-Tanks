@@ -23,6 +23,7 @@ import type {
   DamageMeshWriter, DamagePieceWriter, DamageRole, DamageWriters, DebrisShape,
 } from '../world/destructionKit.ts';
 import { mulberry32 } from './particles.ts';
+import { ballisticLanding } from './ballisticLanding.ts';
 
 export const DEBRIS_SHAPES: readonly DebrisShape[] = Object.freeze([
   'chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard', 'clod', 'straw',
@@ -261,43 +262,16 @@ void main() {
 
 /** The piece program's drag (1/s): its flight is p + v (1 - e^(-k t)) / k + ½ g t². */
 export const PIECE_DRAG = 0.35;
-/** The landing search's step (s) and horizon (s): a piece that has not met the ground by then lies where it is. */
-const LANDING_STEP_S = 1 / 24;
-const LANDING_HORIZON_S = 8;
 /**
  * Where a thrown piece meets the ground (2026-10-12, the owner's Steinburg strips): its centre's flight from (ox, oy, oz)
- * at (vx, vy, vz) under the piece program's drag and gravity, stepped until it comes within `halfH` of `groundY` under
- * it, then refined. Writes [landing age (s; Infinity when it never lands within the horizon), the ground there, x, z] to
- * `out` and returns the landing age. The program stops the piece there, so it lies on the ground it met — a heap's
+ * at (vx, vy, vz) under the piece program's drag and gravity, until it comes within `halfH` of `groundY` under it
+ * (fx/ballisticLanding.ts). Writes [landing age (s; Infinity when it never lands within the horizon), the ground there, x,
+ * z] to `out` and returns the landing age. The program stops the piece there, so it lies on the ground it met — a heap's
  * slope, a crater, the street below a bank — never at the height of the ground it was thrown from.
  */
 export function pieceLanding(ox: number, oy: number, oz: number, vx: number, vy: number, vz: number, halfH: number,
-  groundY: (x: number, z: number) => number, out: Float64Array | number[], horizonS = LANDING_HORIZON_S): number {
-  const k = PIECE_DRAG;
-  const at = (t: number, axis: number): number => {
-    const sd = (1 - Math.exp(-k * t)) / k;
-    return axis === 0 ? ox + vx * sd : axis === 1 ? oy + vy * sd - 4.9 * t * t : oz + vz * sd;
-  };
-  const above = (t: number): number => at(t, 1) - (groundY(at(t, 0), at(t, 2)) + halfH);
-  // already on or under the ground where it starts (a piece laid in a heap): it lies there at once
-  if (above(0) <= 0) {
-    out[0] = 0; out[1] = groundY(ox, oz); out[2] = ox; out[3] = oz;
-    return 0;
-  }
-  let t0 = 0;
-  for (let t = LANDING_STEP_S; t <= horizonS + 1e-9; t += LANDING_STEP_S) {
-    if (above(t) <= 0) {
-      let lo = t0, hi = t;
-      for (let i = 0; i < 6; i++) { const mid = (lo + hi) * 0.5; if (above(mid) <= 0) hi = mid; else lo = mid; }
-      const x = at(hi, 0), z = at(hi, 2);
-      out[0] = hi; out[1] = groundY(x, z); out[2] = x; out[3] = z;
-      return hi;
-    }
-    t0 = t;
-  }
-  const x = at(horizonS, 0), z = at(horizonS, 2);
-  out[0] = Infinity; out[1] = groundY(x, z); out[2] = x; out[3] = z;
-  return Infinity;
+  groundY: (x: number, z: number) => number, out: Float64Array | number[], horizonS?: number): number {
+  return ballisticLanding(ox, oy, oz, vx, vy, vz, PIECE_DRAG, halfH, groundY, out, horizonS);
 }
 
 const PIECE_ATTRS = ['aPB', 'aVL', 'aQ', 'aSS', 'aCG', 'aLD'] as const;
