@@ -884,6 +884,29 @@ for (const pending of [7, null]) {
   starved.composition.dispose();
 }
 
+{
+  // 2026-10-13 (MP stream, plan step 4): a deferral names the programs left pending — the trace keeps them whole (cache
+  // keys included), one warning summarizes them by material and link state; a complete preparation names nothing
+  const programs = [
+    ...Array.from({ length: 30 }, (_, index) => ({ name: 'LateFxSmoke', cacheKey: `late-fx-${index}`, linked: null })),
+    ...Array.from({ length: 6 }, (_, index) => ({ name: 'MeshStandardMaterial', cacheKey: `mask-${index}`, linked: false })),
+  ];
+  const named = createHarness({ compile: async () => ({ pendingPrograms: programs, preparation: { status: 'incomplete', pending: 36, reason: 'budget' } }) });
+  const { entry } = await enterRound(named);
+  assert.equal(await entry, true);
+  assert.deepEqual(named.ports.trace.compile, { attempts: 2, outcome: 'deferred', pending: 36, programs });
+  const warning = named.calls.find((call) => typeof call === 'string' && call.startsWith('warn:multiplayer v2 entry:shader preparation deferred'));
+  assert.equal(warning, 'warn:multiplayer v2 entry:shader preparation deferred with 36 pending: LateFxSmoke ×30 (linked 0/unlinked 0/unqueried 30), MeshStandardMaterial ×6 (linked 0/unlinked 6/unqueried 0)',
+    `the deferral names the pending programs (${warning})`);
+  named.composition.dispose();
+  const clean = createHarness({ compile: async () => ({ pendingPrograms: undefined, preparation: { status: 'complete', pending: 0 } }) });
+  const cleanEntry = await enterRound(clean);
+  assert.equal(await cleanEntry.entry, true);
+  assert.deepEqual(clean.ports.trace.compile, { attempts: 1, outcome: 'complete', pending: 0 });
+  assert.ok(!clean.calls.some((call) => typeof call === 'string' && call.includes('shader preparation deferred')));
+  clean.composition.dispose();
+}
+
 // ------------------------------------------------------------ (b) a preparation that cannot succeed is refused at once, with what broke
 for (const [reason, message] of [
   ['reflection', /^Battle shaders failed to prepare on this device \(reflection\)\. Please retry from the Garage\.$/],
