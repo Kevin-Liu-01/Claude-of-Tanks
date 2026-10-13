@@ -18,8 +18,8 @@ const byNumber = new Map([...SHOTS, ...OWNER_NINE].map(shot => [shot[0], shot]))
 const sameFx = (a, b) => a.type === b.type && a.tMs === b.tMs && JSON.stringify(a.at) === JSON.stringify(b.at);
 for (const dir of process.argv.slice(2)) {
   let synced = 0;
-  for (const f of readdirSync(dir).filter(f => /^s\d\d-.*\.resolved\.json$/.test(f)).sort()) {
-    const n = Number(f.slice(1, 3)), shot = byNumber.get(n);
+  for (const f of readdirSync(dir).filter(f => /^s\d{2,3}-.*\.resolved\.json$/.test(f)).sort()) {
+    const n = Number(/^s(\d+)-/.exec(f)[1]), shot = byNumber.get(n);
     if (!shot) continue;
     const plan = siteScene(shot), file = join(dir, f), scene = JSON.parse(readFileSync(file, 'utf8'));
     const planned = new Map(plan.actors.map(a => [a.name, a]));

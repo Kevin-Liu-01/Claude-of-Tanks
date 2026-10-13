@@ -43,7 +43,7 @@ const run = (label, cmd, cmdArgs) => {
 };
 // cinema-jobs reads each still moment from <resolved>/<id>.scene.json: the site scenes are their own sources
 let staged = 0;
-for (const f of readdirSync(scenes).filter(f => /^s\d\d-.*\.json$/.test(f))) {
+for (const f of readdirSync(scenes).filter(f => /^s\d{2,3}-.*\.json$/.test(f))) {
   const id = f.replace(/\.json$/, '');
   if (!existsSync(join(resolved, `${id}.resolved.json`))) continue;
   copyFileSync(join(scenes, f), join(resolved, `${id}.scene.json`)); staged++;
