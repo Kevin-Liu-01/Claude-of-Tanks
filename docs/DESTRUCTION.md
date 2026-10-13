@@ -262,8 +262,11 @@ at 12 m/s → 101 (brings it down; so does a second 9 m/s ram); a 37.5 t medium 
 medium at 6 m/s on a timber shed → 17 (it comes down).
 
 **Bots don't drive into buildings (2026-10-08, the coordinator's ruling: the same law for bots and players, and a bot
-cornering into a wall is a behaviour defect).** All-bot Steinburg (10 matches, 7 v 7, seeds 32000–32009) put 373 of
-428 stage changes on rams. A trace of every ram blow (the drive goal, the steer point, the route plan, the hull's pose
+cornering into a wall is a behaviour defect).** History: the first fix (692a9a9d7, 10-08) was reverted on 10-09
+(5c133417e) after it caused a Turbo Ball fall and a Blackglass search loop. It was rebuilt as `fix/bots-rams-sweep`
+(fe2509956), which lands in the 222 stack (2026-10-13). The rebuild keeps the three fixes below and adds two guards,
+described after the census paragraph. All-bot Steinburg (10 matches, 7 v 7, seeds 32000–32009) put 373 of 428 stage
+changes on rams. A trace of every ram blow (the drive goal, the steer point, the route plan, the hull's pose
 and input over the last seconds) named three causes, all in `game/ai.ts`'s local steering, not the planner:
 
 - **Corner hops checked against one box.** The router chose its corner, and checked the lane to it, against the one
@@ -283,9 +286,30 @@ The fixes:
   stopping distance (planned at 3.5 m/s², under every hull's brake cap). It acts only above 1.5 m/s: a 50 t hull at
   1.5 m/s does under a point to a shed. The gun nudge keeps its own dead-leg law.
 
-The same census after: 107 stage changes, 85 from shells and blasts (kinetic 57, blast 28) and 22 from rams. Matches
-run 322 s on average against 294 s. battlePacing's core gate passes: 132 matches, median 199 s, p10 155 s, none inside
+The same census after (692a9a9d7, 10-08): 107 stage changes, 85 from shells and blasts (kinetic 57, blast 28) and 22
+from rams. Matches run 322 s on average against 294 s. battlePacing's core gate passes: 132 matches, median 199 s, p10 155 s, none inside
 120 s, 1 at the cap.
+
+The rebuild's two guards:
+
+- **A pivot never drives past 4 m/s** (`PIVOT_ROLL_MAX_MPS`): above it the pivot's drive is cut and the hull coasts into
+  the turn, with no brake. This fixes the Aegis Crossing Turbo Ball fall (worst bot fall 896 → 185 HP).
+- **The careful rules stand aside in a wedge:** a hull whose stuck recovery has escalated drives on the old rules for
+  10 s (`WEDGE_RELEASE_S`). This fixes the Blackglass seed 38001 loop (a 900 s draw → a 263 s result).
+
+The authority's bots also stop counting a teammate's wreck as support: its `getAllies` filters destroyed hulls, as the
+solo step does (222).
+
+Measured at landing on 2026-10-13. The soak is Steinburg, 7 v 7, 300 s, seeds 7201-7206, using the gameplay lane's
+bot soak:
+
+| Tree | Ram collapses | Ram damage stages |
+|---|---|---|
+| Main before the fix (0fb61e56d) | 11 | 31 |
+| With the fix (d38df4bc5) | 4 | 9 |
+
+On 10-10 the lane had measured 29 → 3 on that night's base. The pacing tail passes with the fix: 264 matches, median
+202.5 s, p10 159.2 s, none inside 120 s, none at the cap.
 
 **A structure that the ram brings down yields** (as a crushed prop does): when the points of the hull's closing speed
 along the contact reach the structure's remaining hit points (or it is already coming down), the obstacle solver lets

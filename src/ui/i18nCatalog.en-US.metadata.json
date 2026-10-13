@@ -112,5 +112,23 @@
   },
   "metadata.docsFilming.description": {
     "context": "SEO copy for a game-media production manual. Keep Scene Studio as a product name; previz means a schematic preview of camera moves; supersampled means many renders averaged per frame."
+  },
+  "playMenu.matchMode.capture_the_flag.desc": {
+    "context": "Game-mode card copy. Preserve {target}: the captures needed to win, filled in from the match ruleset."
+  },
+  "playMenu.matchMode.zone_control.short": {
+    "context": "Short tag under the mode name. Preserve {target}: the score target, filled in from the match ruleset."
+  },
+  "playMenu.matchMode.zone_control.desc": {
+    "context": "Game-mode card copy. Preserve {target}: the score target, filled in from the match ruleset."
+  },
+  "playMenu.matchMode.mars.desc": {
+    "context": "Game-mode card copy. Preserve {gravity} (a fraction of Earth gravity, written before \"g\") and {target} (the score target); both are filled in from the match ruleset."
+  },
+  "playMenu.matchMode.infected.desc": {
+    "context": "Game-mode card copy. Preserve {survivorHp} (a percentage) and {minutes} (the match clock); both are filled in from the match ruleset."
+  },
+  "playMenu.matchMode.gun_game.desc": {
+    "context": "Game-mode card copy. Preserve {killsPerWeapon} (kills per weapon step) and {weapons} (the number of weapon stages); both are filled in from the match ruleset."
   }
 }

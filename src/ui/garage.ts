@@ -62,7 +62,7 @@ import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import {
-  isWaveMode, matchRulesetFor, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -187,6 +187,7 @@ export interface GarageRuntime {
   show(selected?: string): void;
   hide(): void;
   drainThumbs(): void;
+  setDecorativeWorkGate(covered: () => boolean): void;
   getStageRect(): { x: number; y: number; w: number; h: number };
   setSelected(specId: string): void;
   getSelected(): string;
@@ -451,6 +452,13 @@ function paintCamoSwatchPlaceholder(
   ctx.fillRect(0, 0, W, H);
 }
 
+// 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
+// (camoSwatchPainter.ts setCamoSwatchDrainGate); main.ts adds the battle loader's cover through setDecorativeWorkGate.
+let garageSwatchOpen = false;
+let garageSwatchCover: () => boolean = () => false;
+let swatchGateInstalled = false;
+const swatchDrainOpen = (): boolean => garageSwatchOpen && !garageSwatchCover();
+
 function queueExactCamoSwatch(
   canvas: HTMLCanvasElement,
   spec: GarageTankSpec,
@@ -462,6 +470,10 @@ function queueExactCamoSwatch(
   paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
+    if (!swatchGateInstalled) {
+      swatchGateInstalled = true;
+      loaded.setCamoSwatchDrainGate(swatchDrainOpen);
+    }
     // Round 35: the exact swatch is a crop of the REAL pattern tile (4.5 ms a cold tile); resident recipes paint
     // at once, cold ones drain under the painter's per-frame budget so opening the picker never stalls.
     loaded.queueCamoSwatch(canvas, spec, pid, auto);
@@ -3018,9 +3030,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
     setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
     setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
       : solo ? `playMenu.matchMode.${battleGameMode}.desc`
-      : `garage.battle.${battleMode}SetupDescription`);
+      : `garage.battle.${battleMode}SetupDescription`, solo ? modeCopyValues(battleGameMode) : undefined);
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
     timeOptions.hidden = shown;
     galaxySky.hidden = !shown;
@@ -3301,6 +3314,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
+      garageSwatchOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);
       statsEl.scrollTop = 0;
       // The hidden garage reports a zero-width rail during initial creation.
@@ -3321,10 +3335,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
+      garageSwatchOpen = false;
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); },
+
+    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
+    setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
     /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
     getStageRect() {

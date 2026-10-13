@@ -112,10 +112,12 @@ export function smokeWallRoom(screen: SmokeScreen, bank: number, x: number, z: n
 }
 
 /** The height a bank's cloud stands on at (x, z): the ground, or the surface its canister rests on when that stands over
- * the ground (a roof: the cloud stays on it, not in the rooms under it). */
+ * the ground (a roof: the cloud stays on it, not in the rooms under it), whether it bounced there or landed straight on
+ * it (2026-10-11: a canister lobbed onto a roof without a bounce carries only its launch's seven numbers, and its cloud
+ * and sight block stood in the rooms under the roof). */
 export function smokeBankBase(screen: SmokeScreen, bank: number, x: number, z: number, ground: SmokeGround): number {
   const shot = screen.canisters?.[screen.banks?.[bank + 2] ?? -1];
-  if (shot && shot.length > 7) {
+  if (shot && shot.length >= 7) {
     smokeCanisterPosition(shot, shot[6], _rest);
     const surface = _rest.y - SMOKE_CANISTER_RADIUS_M;
     if (surface - ground(_rest.x, _rest.z) > .5) return surface;

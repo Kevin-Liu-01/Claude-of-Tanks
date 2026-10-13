@@ -578,6 +578,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
+    'tools/media-r5/films/restore.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -828,6 +829,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/fx/trackContact.selftest.mjs',
+    'src/fx/trailCadence.selftest.mjs',
+    'src/fx/exhaustTrail.selftest.mjs',
     'src/world/trackSurface.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
@@ -956,6 +959,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/shadowGeometryClaims.selftest.mjs',
+    'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
     'src/audio/audioMath.selftest.mjs',
     'src/audio/vehicleAudioProfiles.selftest.mjs',
@@ -1115,6 +1119,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
@@ -1177,6 +1182,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.colliderStop.selftest.mjs',
     // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
     'src/game/ai.lastRun.selftest.mjs',
+    // 2026-10-09 (gameplay lane): a pivot never drives past 4 m/s (botModes Aegis Crossing Turbo Ball, the 896-point fall).
+    'src/game/ai.pivotRoll.selftest.mjs',
+    // 2026-10-09 (gameplay lane): an escalated stuck recovery releases the careful rules for 10 s (Blackglass 38001).
+    'src/game/ai.wedgeRelease.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1241,6 +1250,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
+    // 2026-10-11 (netting lane): the runtime keeps camouflage out of hits, scars, contact and LOD, as the receipts do
+    'src/vehicles/camouflageRuntime.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
     // 2026-10-09 (fleet-weapons lane): no weapon mesh is a flat single colour; unknown fitting slots throw
     'src/vehicles/weaponFinish.selftest.mjs',
@@ -1447,9 +1458,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
     'src/world/vegetationResources.selftest.mjs',
+    'src/world/foliageOcclusionSweep.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/tidalMangrove.selftest.mjs',
     'src/world/vegetationClearance.selftest.mjs',
+    'src/world/nearTierShadowReach.selftest.mjs',
     'src/world/groundCoverClearance.selftest.mjs',
     'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
@@ -1530,6 +1543,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/beachedBoat.selftest.mjs',
     'src/world/maps/boatHulls.selftest.mjs',
     'src/world/maps/cartKit.selftest.mjs',
+    // b45 (visual/scenery-b45): the ammunition crates as painted wooden crates, stacked with contact; a phone keeps the
+    // legacy boxes
+    'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
@@ -1602,6 +1618,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/collision.selftest.mjs',
+    'src/world/colliderRayMarch.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',
@@ -1629,6 +1646,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/fonts.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
+    'src/ui/mapLqip.selftest.mjs',
     'src/ui/chunkRecovery.selftest.mjs',
     'src/entry/telemetry.selftest.mjs',
     'src/entry/inlineWatchdogSink.selftest.mjs',

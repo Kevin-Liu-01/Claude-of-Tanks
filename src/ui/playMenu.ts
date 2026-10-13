@@ -9,8 +9,8 @@ import {
   ENEMY_NATION_OPTIONS, readBrainSettings, readTeamArrangement, writeBrainSettings, writeTeamArrangement,
 } from '../game/teamArrangement.ts';
 import {
-  BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement,
-  rulesetSides, sidesPresetOf, type TeamArrangement,
+  BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, modeCopyValues,
+  normalizeTeamArrangement, rulesetSides, sidesPresetOf, type TeamArrangement,
 } from '../sim/matchRuleset.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
@@ -753,8 +753,8 @@ export function createPlayMenu({
   const modeRank = (id: GameModeId): number => { const rank = leadingModes.indexOf(id); return rank < 0 ? leadingModes.length : rank; };
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS)
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
-      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
+    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
+      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`, modeCopyValues(rule.id))}</small>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>

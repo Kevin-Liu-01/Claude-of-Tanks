@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCaptureLock, ticketAt } from './capture-lock.mjs';
+import { createCaptureLock, stampBehindWaiting, ticketAt } from './capture-lock.mjs';
 // acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -234,6 +234,22 @@ try {
   writeFileSync(join(root, 'queue-file'), 'not a directory');
   assert.equal(createCaptureLock({ lockDir: join(root, 'other.lock'), queueDir: join(root, 'queue-file') }).waiting(), 1,
     'an unreadable queue reports a waiter, so callers keep draining');
+  // a place-keeping lease rejoins behind a waiting perf band ticket (2026-10-13), never behind normal tickets or
+  // another band's, and keeps its place with none waiting
+  const band = join(root, 'band-queue');
+  mkdirSync(band);
+  const NOW = 1791870000000, MEDIA = 1791397979999;
+  writeFileSync(join(band, `001791397983201-000000000000-52362.t`), '52362');
+  writeFileSync(join(band, `001791397983202-000000000000-31662.t`), '31662');
+  writeFileSync(join(band, `${String(NOW - 5000).padStart(15, '0')}-000000000000-45128.t`), '45128');
+  const commands = { 52362: 'node tools/zz-perf-block.mjs --plan=x', 31662: 'node .qa-dev/cn/lock-run-stamp.mjs', 45128: 'node tools/zz-perf-probe.mjs' };
+  const commandOf = (pid) => commands[pid] ?? '';
+  assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf }), 1791397983202,
+    'one past the waiting perf band ticket; another band ticket and a normal perf ticket do not move it');
+  assert.equal(stampBehindWaiting(1791397983300, { queueDir: band, now: NOW, commandOf }), 1791397983300, 'tickets ahead of the stamp do not move it');
+  assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf: () => 'node tools/media-production/cinema.mjs' }), MEDIA,
+    'no perf ticket waiting: the lease keeps its place');
+  assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
   console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });

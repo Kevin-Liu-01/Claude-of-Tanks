@@ -312,13 +312,19 @@ interface RayInterval {
   sign: number;
 }
 
-export type ObstacleQuery = (
-  minX: number,
-  minZ: number,
-  maxX: number,
-  maxZ: number,
-  out: CollisionRecord[],
-) => CollisionRecord[];
+export interface ObstacleQuery {
+  (minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]): CollisionRecord[];
+  /** The grid's own visitation order (createObstacleGrid), for a ray marched along its own corridor
+   * (nearestColliderHitAlongRay): absent on another broad phase, which then answers from one box query. */
+  readonly rayOrder?: ObstacleRayOrder;
+}
+
+interface ObstacleRayOrder {
+  readonly inv: number;
+  /** Each record's slot in the grid's canonical record list (its order within a cell). */
+  readonly slotOf: ReadonlyMap<CollisionRecord, number>;
+  readonly count: number;
+}
 
 /** Attach a tight oriented-box footprint while retaining a world AABB. */
 export function setObbShape(
@@ -1586,7 +1592,10 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
     }
   }
   let stamp = 0;
-  return function query(
+  const slotOf = new Map<CollisionRecord, number>();
+  for (let i = 0; i < indexedRecords.length; i++) slotOf.set(indexedRecords[i], i);
+  const rayOrder: ObstacleRayOrder = { inv, slotOf, count: indexedRecords.length };
+  return Object.assign(function query(
     minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[],
   ) {
     out.length = 0;
@@ -1607,5 +1616,95 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
       }
     }
     return out;
-  };
+  }, { rayOrder });
+}
+
+/**
+ * The corridor step of nearestColliderHitAlongRay (metres of ray per broad-phase box). Two grid cells: short enough that
+ * an oblique long ray's boxes stay a thin corridor, long enough that a short ray answers from one or two boxes.
+ */
+export const COLLIDER_RAY_STEP_M = 48;
+const MARCH_PAD_M = 1e-3;
+const _marchUnion: CollisionRecord[] = [];
+const _marchFresh: CollisionRecord[] = [];
+const _marchSegment: CollisionRecord[] = [];
+const _marchSeen = new Set<CollisionRecord>();
+const _marchKey = new Map<CollisionRecord, number>();
+const _marchHit: ColliderRayHit = { distance: Infinity, record: null };
+const _marchNormal: MutableVector3Like = {
+  x: 0, y: 0, z: 0,
+  set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+};
+const byMarchKey = (a: CollisionRecord, b: CollisionRecord): number => _marchKey.get(a)! - _marchKey.get(b)!;
+
+/**
+ * nearestColliderHit over everything one broad-phase box around the whole ray finds — the world raycasts' prop phase
+ * (map.ts, headlessCollisionWorld.ts) — answered from boxes marched along the ray instead (2026-10-12, the perf stream:
+ * the per-frame aim rays reach 800 m, and an oblique one's box held most of the map's colliders; the two aim rays cost
+ * ~2.4 ms of main thread a frame on Verdant Fields).
+ *
+ * Exact: a record whose footprint the ray meets at a distance t has the point at t inside its box, so it is a candidate
+ * of the step box holding t; once the nearest hit found so far lies within the steps queried, no record outside them can
+ * meet the ray nearer. The records found are then put in the whole box's own visitation order (the grid's z-major cell
+ * walk, then the cell's record order) and judged once by nearestColliderHit: the same records, in the same order, as the
+ * whole box presents them up to the winner — the same hit, normal and record, ties included. A broad phase without the
+ * grid's order, an unbounded ray or a ray short enough for one step answers from the one box, as before.
+ */
+export function nearestColliderHitAlongRay(
+  query: ObstacleQuery,
+  origin: Vector3Like,
+  dir: Vector3Like,
+  maxDist: number,
+  outNormal: MutableVector3Like,
+  out: ColliderRayHit,
+  scratch: CollisionRecord[],
+): ColliderRayHit {
+  const endX = origin.x + dir.x * maxDist;
+  const endZ = origin.z + dir.z * maxDist;
+  const minX = Math.min(origin.x, endX), minZ = Math.min(origin.z, endZ);
+  const maxX = Math.max(origin.x, endX), maxZ = Math.max(origin.z, endZ);
+  const order = query.rayOrder;
+  const reach = Math.abs(dir.x) + Math.abs(dir.z);
+  if (!order || !(maxDist > 0) || !Number.isFinite(maxDist) || maxDist * reach <= COLLIDER_RAY_STEP_M * 1.5) {
+    query(minX, minZ, maxX, maxZ, scratch);
+    return nearestColliderHit(scratch, origin, dir, maxDist, outNormal, out);
+  }
+  _marchUnion.length = 0;
+  _marchSeen.clear();
+  let running = Infinity;
+  for (let t0 = 0; ; ) {
+    const t1 = Math.min(maxDist, t0 + COLLIDER_RAY_STEP_M);
+    const x0 = origin.x + dir.x * t0, z0 = origin.z + dir.z * t0;
+    const x1 = t1 === maxDist ? endX : origin.x + dir.x * t1, z1 = t1 === maxDist ? endZ : origin.z + dir.z * t1;
+    query(Math.min(x0, x1) - MARCH_PAD_M, Math.min(z0, z1) - MARCH_PAD_M,
+      Math.max(x0, x1) + MARCH_PAD_M, Math.max(z0, z1) + MARCH_PAD_M, _marchSegment);
+    _marchFresh.length = 0;
+    for (let i = 0; i < _marchSegment.length; i++) {
+      const r = _marchSegment[i];
+      if (_marchSeen.has(r)) continue;
+      _marchSeen.add(r);
+      // the whole box's own rejection (the pad may reach a hair past it)
+      if (r.max[0] < minX || r.min[0] > maxX || r.max[2] < minZ || r.min[2] > maxZ) continue;
+      _marchUnion.push(r);
+      _marchFresh.push(r);
+    }
+    if (_marchFresh.length) {
+      nearestColliderHit(_marchFresh, origin, dir, Math.min(maxDist, running), _marchNormal, _marchHit);
+      if (_marchHit.distance < running) running = _marchHit.distance;
+    }
+    if (t1 >= maxDist || running <= t1) break;
+    t0 = t1;
+  }
+  // the whole box's visitation order: the first cell of the record inside the box (z-major), then its cell slot
+  const inv = order.inv;
+  const cx0 = Math.floor(minX * inv), cz0 = Math.floor(minZ * inv);
+  const cols = Math.floor(maxX * inv) - cx0 + 1;
+  _marchKey.clear();
+  for (let i = 0; i < _marchUnion.length; i++) {
+    const r = _marchUnion[i];
+    const cx = Math.max(Math.floor(r.min[0] * inv), cx0), cz = Math.max(Math.floor(r.min[2] * inv), cz0);
+    _marchKey.set(r, ((cz - cz0) * cols + (cx - cx0)) * order.count + order.slotOf.get(r)!);
+  }
+  _marchUnion.sort(byMarchKey);
+  return nearestColliderHit(_marchUnion, origin, dir, maxDist, outNormal, out);
 }
