@@ -1230,7 +1230,9 @@ async function openClient(ctx, { tank, name }) {
     try { localStorage.clear(); for (const [k, v] of Object.entries(seed)) localStorage.setItem(k, v); } catch { /* defaults */ }
     // two battles render at once in one headless Chrome: each page counts as focused (the frame loop pauses unfocused pages)
     Document.prototype.hasFocus = function hasFocus() { return true; };
-  }, { 'cot.lastTank.v1': tank, 'cot.gfxPreset': 'high', 'cot.locale': 'en-US', 'cot.player.name.v1': name, 'cot.battle.times.v2': '["sunset"]' });
+  }, { 'cot.lastTank.v1': tank, 'cot.gfxPreset': 'high', 'cot.locale': 'en-US', 'cot.player.name.v1': name, 'cot.battle.times.v2': '["sunset"]',
+    // Standard: a co-op mode seats every player on alpha (src/mp/room/roomPolicy.ts set_game_mode)
+    'cot.game.mode.v1': 'standard' });
   await page.evaluateOnNewDocument(ctx.installDirector);
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error).slice(0, 300)));
@@ -1322,7 +1324,8 @@ Object.assign(RECIPES, {
         // (r14 run 1: neither ever saw the other from the deployment slots)
         for (const c of [A, B]) {
           await c.page.evaluate(() => {
-            window.__MB.defineSelector('enemySpawn', 'const mine = ms && ms.perspectiveTeam; const s = ms && ms.spawns && ms.spawns.find((x) => x.team !== mine); return s ? H.point(s.x, s.y, s.z) : null;');
+            // the other side's spawn marker, else the map's centre (both sides deploy symmetric about the middle)
+            window.__MB.defineSelector('enemySpawn', 'const mine = ms && ms.perspectiveTeam; const s = ms && ms.spawns && ms.spawns.find((x) => x.team !== mine); return s ? H.point(s.x, s.y, s.z) : H.point(0, null, 0);');
             window.__MB.setDrive({ to: 'enemySpawn', arriveM: 40, throttle: 1 });
             window.__MB.setHud('full');
           });
