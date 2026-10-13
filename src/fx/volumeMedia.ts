@@ -92,6 +92,9 @@ export interface VolumePuff {
   aspect: number;
   /** heat at birth (emission gain), cooling rate (1/s), fade-out start (life fraction), slow spin (rad/s) */
   heat: number; cool: number; fadeOut: number; spin: number;
+  /** a billow body born low over the ground (centre under ~1.5 m): its silhouette softened further (the emitter's
+   *  context decides it per emit; packed into the fade-out start, which stays below 1) */
+  low?: boolean;
 }
 
 export function makeVolumePuff(): VolumePuff {
@@ -243,7 +246,7 @@ void main() {
   float f1 = min( f0 + 1.0, frames - 1.0 );
   vBlend = fpos - f0;
   vec2 local = vec2( mirror < 0.0 ? 1.0 - uv.x : uv.x, uv.y );
-  vSoft = vec3( local, band < ${VOLUME_ATLAS.media.billow.firstBand + VOLUME_ATLAS.media.billow.variants}.0 - 0.5 ? 1.0 : 0.0 );
+  vSoft = vec3( local, band < ${VOLUME_ATLAS.media.billow.firstBand + VOLUME_ATLAS.media.billow.variants}.0 - 0.5 ? 1.0 + step( 1.5, aHT.z ) : 0.0 );
   float cols = uAtlas.x, rows = uAtlas.y;
   vec2 tileA = vec2( mod( f0, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f0 / cols ) ) );
   vec2 tileB = vec2( mod( f1, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f1 / cols ) ) );
@@ -263,7 +266,9 @@ void main() {
   float fadeIn = aCB.w > 0.0 ? smoothstep( 0.0, aCB.w, age ) : 1.0;
   // the fade-out dissolves the medium from its thin edges inward (the fragment shader's erosion), so a dying puff never
   // lingers as a uniformly faded ghost of its own silhouette
-  vFade = smoothstep( aHT.z, 1.0, t );
+  // the fade-out start carries the low-body flag (+2)
+  float lowB = step( 1.5, aHT.z );
+  vFade = smoothstep( aHT.z - 2.0 * lowB, 1.0, t );
   // (2026-10-08, the owner's "black screens") the medium thins as the camera enters it, judged from the puff's centre
   // against its own size: a corner's distance let a big dark puff round the camera (the 7c smoke reaches ~11 m on a
   // 125 mm burst, ~19 m on a 152 mm) draw one flat dark card over the whole frame for seconds
@@ -370,10 +375,14 @@ void main() {
   // noisy radius (the warp's own low-frequency noise: no extra fetch), so its silhouette dissolves into the air rather
   // than ending on a drawn lobe line; the burst medium (dust, soil) keeps its torn rim, and a fireball keeps its lobes
   // while it burns (the softening comes in as its heat dies into smoke)
-  float sb = vSoft.z * ( 1.0 - smoothstep( 0.05, 0.4, vHeat ) );
+  // (the coordinator, chase range: the low ground puffs "still show a cut-out silhouette") a body born low over the
+  // ground (vSoft.z 2) takes a stronger rim falloff and a noisier, wider-swinging edge
+  float sb = min( vSoft.z, 1.0 ) * ( 1.0 - smoothstep( 0.05, 0.4, vHeat ) );
+  float lowS = max( vSoft.z - 1.0, 0.0 ) * sb;
   float rr = length( vSoft.xy - 0.5 ) * 2.0;
-  float fall = 1.0 - smoothstep( 0.4 + 0.36 * ( wn.x + 0.5 ), 1.02, rr );
-  float covS = mix( covE, pow( covE, 1.45 ) * fall, sb );
+  float edgeN = wn.x + 0.5 + lowS * ( dn - 0.5 ) * 0.9;
+  float fall = 1.0 - smoothstep( 0.4 - 0.14 * lowS + ( 0.36 + 0.14 * lowS ) * edgeN, 1.02, rr );
+  float covS = mix( covE, pow( covE, 1.6 + 0.6 * lowS ) * fall, sb );
   float a = covS * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
@@ -386,7 +395,7 @@ void main() {
   // the billow's lobes blend into one another: their six-way shading pulled a third of the way to its mean (each lobe's
   // light kept, the hard step between neighbouring lobes softened)
   float m4 = 0.25 * ( R + L + U + D );
-  float lb = 0.33 * sb;
+  float lb = 0.42 * sb;
   R = mix( R, m4, lb ); L = mix( L, m4, lb ); U = mix( U, m4, lb ); D = mix( D, m4, lb );
   float tau = -log( max( 1.0 - cov * 0.995, 1e-3 ) );
   float front = 1.0 - 0.5 * cov;
@@ -720,7 +729,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     rec[o + 16] = p.r0; rec[o + 17] = p.g0; rec[o + 18] = p.b0; rec[o + 19] = p.density;
     rec[o + 20] = p.r1; rec[o + 21] = p.g1; rec[o + 22] = p.b1; rec[o + 23] = p.fadeIn;
     rec[o + 24] = bandOf(p); rec[o + 25] = (p.mirror ? -1 : 1) * Math.min(4, Math.max(0.25, p.aspect > 0 ? p.aspect : 1)); rec[o + 26] = p.playSeconds; rec[o + 27] = p.startFrame;
-    rec[o + 28] = p.heat; rec[o + 29] = p.cool; rec[o + 30] = p.fadeOut; rec[o + 31] = p.spin;
+    rec[o + 28] = p.heat; rec[o + 29] = p.cool; rec[o + 30] = Math.min(0.999, p.fadeOut) + (p.low ? 2 : 0); rec[o + 31] = p.spin;
     if (birth + p.life > liveUntil) liveUntil = birth + p.life;
   }
 

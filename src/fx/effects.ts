@@ -2024,7 +2024,8 @@ function* createFxSteps(
   const blast: BlastContext | null = vol && chunks ? {
     rand: () => rng(),
     groundY: (x: number, z: number) => groundY(x, z),
-    media: (p) => vol.emit(p),
+    // a billow body born low over the ground softens its silhouette further (volumeMedia's `low`)
+    media: (p) => { p.low = p.medium === 'billow' && p.y - groundY(p.x, p.z) < 1.5; vol.emit(p); },
     chunk: (p) => chunks.emit(p),
     flash: (o) => particles.emit('flash', o),
     fire: (o) => particles.emit('fire', o),

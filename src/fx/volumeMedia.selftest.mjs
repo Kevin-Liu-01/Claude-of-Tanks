@@ -400,12 +400,20 @@ function captureContext(seed) {
     assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
     // (the coordinator: the billow "reads as a cut-out cloud with a defined lobed silhouette") the billow's rim thins and
     // its outer lobes fall away on a noisy radius; its lobes' shading is pulled toward their mean; the burst keeps its rim
-    assert.match(mat.vertexShader, /vSoft = vec3\( local, band < 1\.0 - 0\.5 \? 1\.0 : 0\.0 \);/, 'the billow (band 0) is marked');
-    assert.match(mat.fragmentShader, /float covS = mix\( covE, pow\( covE, 1\.45 \) \* fall, sb \);/, 'its density thins toward the rim');
-    assert.match(mat.fragmentShader, /float fall = 1\.0 - smoothstep\( 0\.4 \+ 0\.36 \* \( wn\.x \+ 0\.5 \), 1\.02, rr \);/,
-      'its outer lobes fall away on a noisy radius (no extra fetch)');
-    assert.match(mat.fragmentShader, /float lb = 0\.33 \* sb;/, 'its lobes blend into one another');
-    assert.match(mat.fragmentShader, /float sb = vSoft\.z \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
+    assert.match(mat.vertexShader, /vSoft = vec3\( local, band < 1\.0 - 0\.5 \? 1\.0 \+ step\( 1\.5, aHT\.z \) : 0\.0 \);/,
+      'the billow (band 0) is marked, its low bodies apart');
+    assert.match(mat.fragmentShader, /float covS = mix\( covE, pow\( covE, 1\.6 \+ 0\.6 \* lowS \) \* fall, sb \);/,
+      'its density thins toward the rim, more on a low body');
+    assert.match(mat.fragmentShader, /float fall = 1\.0 - smoothstep\( 0\.4 - 0\.14 \* lowS \+ \( 0\.36 \+ 0\.14 \* lowS \) \* edgeN, 1\.02, rr \);/,
+      'its outer lobes fall away on a noisy radius (no extra fetch), wider and noisier on a low body');
+    assert.match(mat.fragmentShader, /float lb = 0\.42 \* sb;/, 'its lobes blend into one another');
+    // the battle's media port flags a billow body born under ~1.5 m over the ground; the record packs it into the
+    // fade-out start (+2), which the vertex shader unpacks
+    const fxSrc = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+    assert.match(fxSrc, /media: \(p\) => \{ p\.low = p\.medium === 'billow' && p\.y - groundY\(p\.x, p\.z\) < 1\.5; vol\.emit\(p\); \},/,
+      'low billow bodies are flagged at emit');
+    assert.match(mat.vertexShader, /vFade = smoothstep\( aHT\.z - 2\.0 \* lowB, 1\.0, t \);/, 'the flag leaves the fade-out start intact');
+    assert.match(mat.fragmentShader, /float sb = min\( vSoft\.z, 1\.0 \) \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
       'a burning fireball keeps its lobes; it softens as it cools into smoke');
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
