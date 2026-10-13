@@ -500,6 +500,10 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       }
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls
       if (stageSettled || !stagePiecesOn || stagePieces >= pieceCap) return false;
+      // (the destruction check, Steppe's gantry: one of a collapse's 1036 pieces thrown with next to no speed hung where it
+      // was born, 4 m up) a piece of a fall that is not still on the ground drops to it
+      if (vx * vx + vy * vy + vz * vz <= 1e-4 && stageTag === 0
+        && place.y + py > o.groundY(place.x + px * cosY + pz * sinY, place.z - px * sinY + pz * cosY) + 0.3) vy = -0.2;
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
       const map = mat && 'map' in mat ? (mat.map ?? null) : null;
       const pool = poolFor(map, shape, variant);
