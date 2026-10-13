@@ -43,6 +43,12 @@ interface WorldProgramWarmReceipt {
   drawSignature: string | null;
   /** the linked programs' ids (a probe checks the battle's first frames draw the terrain with these) */
   programIds: number[];
+  /** textures the draw binds that were not resident: uploaded one per poll, their time (sum, worst) */
+  textures: number;
+  uploadMs: number;
+  maxUploadMs: number;
+  /** the covered draw's own time */
+  renderMs: number;
   error?: string;
 }
 
@@ -57,6 +63,10 @@ interface BattleWorldProgramWarmPorts {
   isLinked(material: Material): boolean;
   /** The id of the program the material was given (receipts only). */
   programOf?(material: Material): number | null;
+  /** The textures the linked programs bind that are not resident yet (the draw would upload them in one task). */
+  pendingTextures?(materials: readonly Material[]): unknown[];
+  /** Uploads one texture. */
+  upload?(texture: unknown): void;
   /** Captures the renderer context current now; the check is false once that context is lost or replaced. */
   lifetime(): () => boolean;
   /** One covered draw of each distinct material under the root; returns how many were drawn. */
@@ -125,6 +135,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     const own: WorldProgramWarmReceipt = receipt = {
       mapId, status: 'waiting-for-lights', startedMs: null, linkedMs: null, drawnMs: null,
       materials: 0, pending: 0, drawn: 0, signature: null, drawSignature: null, programIds: [],
+      textures: 0, uploadMs: 0, maxUploadMs: 0, renderMs: 0,
     };
     const current = (): boolean => stamp === generation;
     const stop = (status: WorldProgramWarmStatus, error?: unknown): WorldProgramWarmReceipt => {
@@ -155,6 +166,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
       return stop('compile-error', error);
     }
     own.materials = materials.length;
+    const submitted = materials;
     own.startedMs = since();
     own.status = 'linking';
     publish();
@@ -174,14 +186,33 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     }
     own.linkedMs = since();
     if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+    // the draw binds every texture the programs sample: any that is not resident yet is uploaded here one per poll, so
+    // no single task under the loader carries the whole set (the budgeted world texture stage finds them resident)
+    if (ports.pendingTextures && ports.upload) {
+      let textures: unknown[];
+      try { textures = ports.pendingTextures(submitted); } catch (error) { return stop('abandoned', error); }
+      own.textures = textures.length;
+      for (const texture of textures) {
+        if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+        const uploadAt = ports.now();
+        try { ports.upload(texture); } catch (error) { return stop('abandoned', error); }
+        const ms = ports.now() - uploadAt;
+        own.uploadMs = Math.round(own.uploadMs + ms);
+        own.maxUploadMs = Math.max(own.maxUploadMs, Math.round(ms));
+        await ports.wait(LINK_POLL_MS);
+      }
+      if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+    }
     own.drawSignature = ports.signature();
     // a draw under another signature would link a program synchronously on the main thread; leave it to the warm
     if (own.drawSignature !== own.signature || !ports.isSignatureFinal()) return stop('signature-moved');
+    const drawAt = ports.now();
     try {
       own.drawn = ports.drawPipelines(root);
     } catch (error) {
       return stop('abandoned', error);
     }
+    own.renderMs = Math.round(ports.now() - drawAt);
     own.drawnMs = since();
     return stop('drawn');
   }
@@ -319,6 +350,23 @@ export function createRendererWorldProgramWarm(
       return !program?.isReady || program.isReady() === true;
     },
     programOf: (material) => (renderer.properties.get(material) as { currentProgram?: { id?: number } }).currentProgram?.id ?? null,
+    // the linked programs' own uniforms (onBeforeCompile's included): data textures not yet resident, render targets aside
+    pendingTextures: (materials) => {
+      const pending = new Set<THREE.Texture>();
+      for (const material of materials) {
+        const uniforms = (renderer.properties.get(material) as { uniforms?: Record<string, { value?: unknown } | undefined> }).uniforms;
+        for (const uniform of Object.values(uniforms ?? {})) {
+          for (const value of Array.isArray(uniform?.value) ? uniform.value : [uniform?.value]) {
+            const texture = value as (THREE.Texture & { isRenderTargetTexture?: boolean }) | null | undefined;
+            if (!texture?.isTexture || texture.isRenderTargetTexture || texture.version === 0) continue;
+            const resident = renderer.properties.get(texture) as { __webglTexture?: unknown; __version?: number };
+            if (resident.__webglTexture === undefined || resident.__version !== texture.version) pending.add(texture);
+          }
+        }
+      }
+      return [...pending];
+    },
+    upload: (texture) => renderer.initTexture(texture as THREE.Texture),
     lifetime: () => {
       const gl = renderer.getContext(), info = renderer.info;
       return () => renderer.getContext() === gl && renderer.info === info && !gl.isContextLost();
