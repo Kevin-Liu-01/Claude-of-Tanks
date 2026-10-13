@@ -340,7 +340,7 @@ if (ledgerPath) {
   let ledger = { about: '', rows: {} };
   try { ledger = JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')); } catch { /* first write */ }
   if (flag('update-ledger')) {
-    ledger.about = 'Building integrity census (tools/building-integrity-check.mjs --source=kits): per kit/builder the worst over its seeds. The selftest holds every row: no row may add floating parts, more than max(0.05 m2, 10 %) on an open kind, or slivers. Rewrite rows with --update-ledger after a deliberate change, with its cause in the commit.';
+    ledger.about = 'Building integrity census (node tools/building-integrity-check.mjs --source=kits --profile=gate): one row per kit builder, generic catalog builder and authored set piece, its numbers from one seed on flat ground. tools/building-integrity-check.selftest.mjs holds every row: no row may add a floating part or a sliver, or more than max(0.05 m2, 10 %) on any open kind\'s worst view, and every builder needs a row. After a deliberate change rewrite the rows with --update-ledger and give the cause in the commit.';
     ledger.updatedAt = new Date().toISOString();
     ledger.rows = { ...(ledger.rows ?? {}), ...current };
     writeFileSync(resolve(ledgerPath), JSON.stringify(ledger, null, 1) + '\n');
