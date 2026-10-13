@@ -25,8 +25,8 @@
  * on the move used to re-snap every cascade every frame (the 2026-10-02 flicker runs, driving and turning: 315 of
  * 315 cascade renders were re-renders, none a reuse), and a re-render costs the ordinary render plus the copy and a
  * second pass, so a moving cascade renders the ordinary way and the cache takes over once it holds still. Since
- * 2026-10-13 (lighting.ts CascadePoseHold) a cascade keeps its pose while its view slice fits the box, so driving
- * re-centres each cascade every few seconds and the frames between reuse the copy.
+ * 2026-10-13 a cascade keeps its pose while its view slice fits the box, so driving
+ * re-centres each cascade every few seconds and the frames between reuse the copy (createCascadePoseHold below).
  *
  * The cache is armed per frame by `lighting.update()` (`beginFrame`) and each cascade is consumed once: a second
  * render in the same frame, the deployment warm, the covered shadow prime, a forced lighting update (every cascade
@@ -35,6 +35,7 @@
  * frozen world root in the scene, a failed blit (fails open for the session).
  */
 import * as THREE from 'three';
+import type { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { shadowCasterCascadesOf, shadowCasterDynamicMaskOf } from './renderLayers.ts';
 
 type ShadowRender = (lights: THREE.Object3D[], scene: THREE.Scene, camera: THREE.Camera) => void;
@@ -101,6 +102,107 @@ export function stepCasterMotion(record: CasterMotionRecord, sig: number): 'none
   record.stillRun++;
   if (record.dynamic && record.stillRun >= STATIC_SHADOW_DEMOTE_FRAMES) { record.dynamic = false; return 'demote'; }
   return 'none';
+}
+
+// ------------------------------------------------------------------------------------------------- held poses
+
+/**
+ * Held cascade poses (2026-10-13, the perf stream; the owner's 11 fps report). A cascade's light used to re-centre on
+ * its view slice every frame (lighting.ts prepareStableCascades): the slice's light-space centre snapped to the
+ * cascade's texel grid, the light's depth not snapped at all. So a camera on the move gave every cascade a new pose
+ * every frame, and this cache only reuses a pose that holds: driving, it re-rendered the whole world into all four
+ * maps every frame (315 of 315 cascade renders in its 2026-10-02 runs; 7.9 ms of CPU on Verdant).
+ *
+ * The box is the slice's diagonal plus three's fade margin, so in most views it has a hundred texels of room around
+ * the slice. A cascade now keeps its light-space centre while the slice as the shader samples it — extended by
+ * three's CSM_FADE overlap at both ends, which the box never strictly covered — stays POSE_HOLD_MARGIN_TEXELS inside
+ * the box, and keeps its depth while the light stays at least lightMargin above the slice (as before) and at most
+ * POSE_HOLD_Z_WINDOW_M above that, with the slice's deepest point inside the light's far plane. A held centre was
+ * snapped on the same texel lattice as the re-centred one, and a light moved along its own ray shifts the stored and
+ * the receivers' depths alike, so the map holds the same texels at the same world places: only which part of the
+ * lattice the map spans differs, and every sampled point stays inside it. A slice that does not fit even re-centred
+ * (a steep look down the far cascade) takes the re-centred pose. The sun moving, a texel change (a box regrid, a map
+ * resize) or a desired pose outside the hold re-centres. It lives in this chunk (out of the game entry) and runs while
+ * the cache is loaded: desktop battle worlds, where a held pose lets the cache copy its static depth and draw the
+ * moving casters alone; __SHADOW_DEBUG.noPoseHold switches it off.
+ */
+const POSE_HOLD_MARGIN_TEXELS = 4;
+const POSE_HOLD_Z_WINDOW_M = 100;
+const _holdBounds = new THREE.Box3();
+const _holdVertex = new THREE.Vector3();
+
+export interface CascadePoseHold {
+  enabled: boolean;
+  /** re-centred poses per cascade (telemetry) */
+  readonly recentres: number[];
+  /** A refit starts: false when nothing holds this time (off, or no frustum); a sun move drops every hold. */
+  begin(csm: CSM): boolean;
+  /**
+   * Cascade `index`'s pose: `center` holds the re-centred light-space centre (x, y snapped, z the light's depth) and is
+   * replaced by the held one while the slice still fits it.
+   */
+  apply(index: number, csm: CSM, shadowCam: THREE.OrthographicCamera, texelWidth: number, texelHeight: number,
+    center: THREE.Vector3, cameraToLight: THREE.Matrix4): void;
+}
+
+export function createCascadePoseHold(count: number): CascadePoseHold {
+  const lightDirection = new THREE.Vector3(NaN, NaN, NaN);
+  const centers = Array.from({ length: count }, () => new THREE.Vector3());
+  // the texel width and height each centre was snapped on (NaN: nothing held)
+  const texels = new Array<number>(count * 2).fill(NaN);
+  let frustumFar = 0, span = 0;
+  const hold: CascadePoseHold = {
+    enabled: false,
+    recentres: new Array<number>(count).fill(0),
+    begin(csm) {
+      frustumFar = -csm.mainFrustum.vertices.far[0].z;
+      const view = csm.camera as THREE.PerspectiveCamera;
+      span = Math.max(0, Math.min(view.far, csm.maxFar) - view.near);
+      const holding = hold.enabled && frustumFar > 0;
+      if (!holding || !lightDirection.equals(csm.lightDirection)) {
+        lightDirection.copy(csm.lightDirection);
+        texels.fill(NaN);
+      }
+      return holding;
+    },
+    apply(index, csm, shadowCam, texelWidth, texelHeight, center, cameraToLight) {
+      // the slice as the shader samples it: three's CSM_FADE overlap at both ends (linear depth x - x²/8 to y + y²/8)
+      const farVertices = csm.mainFrustum.vertices.far;
+      const from = index === 0 ? 0 : csm.breaks[index - 1];
+      const to = csm.breaks[index];
+      const nearM = Math.max((csm.camera as THREE.PerspectiveCamera).near, (csm.fade ? from - 0.125 * from * from : from) * span);
+      const farM = (csm.fade ? to + 0.125 * to * to : to) * span;
+      _holdBounds.makeEmpty();
+      for (let j = 0; j < 4; j++) {
+        _holdBounds.expandByPoint(_holdVertex.copy(farVertices[j]).multiplyScalar(nearM / frustumFar).applyMatrix4(cameraToLight));
+        _holdBounds.expandByPoint(_holdVertex.copy(farVertices[j]).multiplyScalar(farM / frustumFar).applyMatrix4(cameraToLight));
+      }
+      const halfW = (shadowCam.right - shadowCam.left) / 2 - POSE_HOLD_MARGIN_TEXELS * texelWidth;
+      const halfH = (shadowCam.top - shadowCam.bottom) / 2 - POSE_HOLD_MARGIN_TEXELS * texelHeight;
+      const z0 = center.z;
+      // the deepest sampled point stays inside the light's far plane (or no deeper than the re-centred pose puts it)
+      const depthRoom = Math.max(shadowCam.far - 1, z0 - _holdBounds.min.z) + _holdBounds.min.z;
+      const fits = (x: number, y: number): boolean => _holdBounds.min.x >= x - halfW && _holdBounds.max.x <= x + halfW
+        && _holdBounds.min.y >= y - halfH && _holdBounds.max.y <= y + halfH;
+      const held = centers[index];
+      if (texels[index * 2] === texelWidth && texels[index * 2 + 1] === texelHeight && fits(held.x, held.y)
+        && held.z >= z0 && held.z <= z0 + POSE_HOLD_Z_WINDOW_M && held.z <= depthRoom) {
+        center.copy(held);
+        return;
+      }
+      hold.recentres[index]++;
+      if (!fits(center.x, center.y)) {
+        // the slice outgrows the box even re-centred: the re-centred pose, nothing held
+        texels[index * 2] = NaN;
+        return;
+      }
+      center.z = Math.min(z0 + POSE_HOLD_Z_WINDOW_M / 2, Math.max(z0, depthRoom));
+      held.copy(center);
+      texels[index * 2] = texelWidth;
+      texels[index * 2 + 1] = texelHeight;
+    },
+  };
+  return hold;
 }
 
 // ------------------------------------------------------------------------------------------------- hashing

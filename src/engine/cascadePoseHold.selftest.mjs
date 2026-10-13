@@ -1,4 +1,5 @@
-// cascadePoseHold.selftest.mjs — held cascade poses (lighting.ts CascadePoseHold, 2026-10-13, the perf stream): the live
+// cascadePoseHold.selftest.mjs — held cascade poses (shadowStaticCache.ts createCascadePoseHold, applied by lighting.ts
+// prepareStableCascades; 2026-10-13, the perf stream): the live
 // rig in node with main.ts's camera drives, turns and looks down; every frame each rendered cascade's light is checked
 // against a reference this receipt computes on its own from the camera (its fov, aspect, near and the preset's range):
 // the held light sits on the re-centred pose's texel lattice (the map holds the same texels at the same world places),
@@ -22,7 +23,7 @@ const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8'
 const cameraMatch = /const camera = new THREE\.PerspectiveCamera\(\s*([\d.]+),[^,]+,\s*([\d.]+),\s*([\d.]+),?\s*\)/.exec(mainSource);
 assert.ok(cameraMatch, 'main.ts builds the game camera as a PerspectiveCamera(fov, aspect, near, far)');
 const [cameraFov, cameraNear, cameraFar] = cameraMatch.slice(1, 4).map(Number);
-const source = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('./shadowStaticCache.ts', import.meta.url), 'utf8');
 const MARGIN_TEXELS = Number(/const POSE_HOLD_MARGIN_TEXELS = (\d+);/.exec(source)[1]);
 const Z_WINDOW = Number(/const POSE_HOLD_Z_WINDOW_M = (\d+);/.exec(source)[1]);
 assert.equal(MARGIN_TEXELS, 4);
@@ -44,7 +45,7 @@ const csm = rig.csm;
 
 // holds run while the static cache is loaded: a frozen world root asks for it
 rig.update(true, 1 / 60);
-assert.equal(rig.getShadowTelemetry().poseHold.enabled, false, 'no held poses before the static cache loads');
+assert.equal(rig.getShadowTelemetry().poseHold, null, 'no held poses before the static cache (its chunk) loads');
 const root = new THREE.Group();
 root.userData.matrixTraversalFrozen = true;
 scene.add(root);
@@ -176,6 +177,12 @@ for (let f = 0; f < 120; f++) {
 }
 assert.equal(rig.getShadowTelemetry().poseHold.enabled, false);
 delete window.__SHADOW_DEBUG;
+
+// the hold lives in the cache's chunk, out of the game entry (2026-10-13, the bundle budget): lighting.ts only applies it
+const lightingSource = await readFile(new URL('./lighting.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(lightingSource, /POSE_HOLD_|_holdBounds/, 'lighting.ts carries no hold of its own');
+assert.match(lightingSource, /cascadePoseHold = module\.createCascadePoseHold\(csm\.lights\.length\);/);
+assert.match(lightingSource, /^import type \{ CascadePoseHold, ShadowStaticCache \} from '\.\/shadowStaticCache\.ts';$/m);
 
 console.log(`cascadePoseHold.selftest: ${stats.checked} cascade poses checked (${stats.held} held, ${stats.today} today's); `
   + `driving 100 m re-centres ${driving}, a full turn ${turning}`);
