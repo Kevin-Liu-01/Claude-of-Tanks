@@ -8,6 +8,7 @@
  * before any lit material compiles.
  */
 import * as THREE from 'three';
+import { settleShadowDepthKind } from './shadowDepthKinds.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
@@ -524,7 +525,7 @@ const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.m
 // depth-material variant.
 function patchShadowDepthPacking(): void {
   const hook: THREE.Mesh['onBeforeShadow'] = function (
-    _renderer,
+    renderer,
     object,
     _camera,
     shadowCamera,
@@ -536,6 +537,9 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
+    // three stops re-deriving the shared depth program at every instanced / batched / plain switch
+    settleShadowDepthKind(object, depthMaterial, renderer.localClippingEnabled);
     // r8 cascade caster proxies (shadowCasterProxies.ts)
     casterProxies?.casterProxyBeforeShadow(object, shadowCamera);
   };
