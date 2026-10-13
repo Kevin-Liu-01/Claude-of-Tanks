@@ -415,6 +415,27 @@ function captureContext(seed) {
     assert.match(mat.vertexShader, /vFade = smoothstep\( aHT\.z - 2\.0 \* lowB, 1\.0, t \);/, 'the flag leaves the fade-out start intact');
     assert.match(mat.fragmentShader, /float sb = min\( vSoft\.z, 1\.0 \) \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
       'a burning fireball keeps its lobes; it softens as it cools into smoke');
+    // (the coordinator, the sunset chase: low bodies near the camera "read as flat tan cut-outs") a low body melts into
+    // the ground over a deeper soft-depth band, thins hard when it fills the screen within ~15 m, and its lit brightness is
+    // capped against the ground's at a low sun (a veil, not a sheet)
+    assert.match(mat.vertexShader, /vFeather = clamp\( size \* \( 0\.22 \+ 0\.33 \* lowB \), 0\.5 \+ 0\.7 \* lowB, 6\.0 \);/,
+      'a low body feathers into the scene depth over a deeper band');
+    assert.match(mat.vertexShader, /float big = lowB \* smoothstep\( 0\.15, 0\.45, scr \) \* \( 1\.0 - smoothstep\( 12\.0, 18\.0, distance\( center, cameraPosition \) \) \);/,
+      'a low body filling the screen near the camera is marked');
+    assert.match(mat.vertexShader, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \);/, 'and thins hard');
+    assert.match(mat.fragmentShader, /col \*= mix\( 1\.0, min\( 1\.0, 2\.0 \* bgL \/ max\( cL, 1e-4 \) \), lowS \);/,
+      'a low body is never lit brighter than twice the ground');
+    assert.match(mat.fragmentShader, /a \*= 1\.0 - 0\.3 \* lowS \* \( 1\.0 - smoothstep\( 0\.12, 0\.4, uSunDir\.y \) \);/,
+      'and thins as the sun drops');
+    // a 4 m low body 10 m off at the chase camera's 55 degree view thins to ~0.4 of its opacity; at 20 m it is untouched
+    {
+      const sst = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+      const p11 = 1 / Math.tan((55 / 2) * Math.PI / 180);
+      const thin = (size, d) => 1 - 0.75 * sst(0.15, 0.45, 0.5 * size * p11 / d) * (1 - sst(12, 18, d));
+      assert.ok(thin(4, 10) < 0.45 && thin(4, 10) > 0.3, `near low body thins (${thin(4, 10).toFixed(2)})`);
+      assert.equal(thin(4, 20), 1, 'a far one does not');
+      assert.ok(thin(1, 10) > 0.95, `a small one barely does (${thin(1, 10).toFixed(2)})`);
+    }
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
     rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;

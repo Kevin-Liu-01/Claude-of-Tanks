@@ -273,7 +273,12 @@ void main() {
   // against its own size: a corner's distance let a big dark puff round the camera (the 7c smoke reaches ~11 m on a
   // 125 mm burst, ~19 m on a 152 mm) draw one flat dark card over the whole frame for seconds
   float near = smoothstep( uNearFade.x + 0.25 * size, uNearFade.y + 0.6 * size, distance( center, cameraPosition ) );
-  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
+  // (the coordinator, chase range at sunset: low ground bodies near the camera "read as flat tan cut-outs") a low body
+  // that covers a large part of the screen within ~15 m thins hard: its radius against the half-height of the view
+  vec4 mvC = viewMatrix * vec4( center, 1.0 );
+  float scr = 0.5 * size * projectionMatrix[1][1] / max( -mvC.z, 0.5 );
+  float big = lowB * smoothstep( 0.15, 0.45, scr ) * ( 1.0 - smoothstep( 12.0, 18.0, distance( center, cameraPosition ) ) );
+  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) );
   vHeat = aHT.x * exp( -aHT.y * age );
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
   // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
@@ -288,7 +293,8 @@ void main() {
     gl += gk.y * q * q * exp( -dot( gd, gd ) / max( gk.x * gk.x, 1e-3 ) );
   }
   vGlow = gl;
-  vFeather = clamp( size * 0.22, 0.5, 6.0 );
+  // a low body melts into the grass and the ground over a deeper band (its lower half thins where the ground nears it)
+  vFeather = clamp( size * ( 0.22 + 0.33 * lowB ), 0.5 + 0.7 * lowB, 6.0 );
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   vParticleDepth = -mvPosition.z;
   #ifdef USE_FOG
@@ -307,6 +313,7 @@ uniform vec3 uSunCol;     // sun irradiance / pi (gained)
 uniform vec3 uSkyCol;     // sky irradiance / pi, desaturated (gained)
 uniform vec3 uGroundCol;  // ground pole / pi
 uniform vec4 uGrade;      // alpha gain, emission gain, back-scatter gain, multiple-scatter lift
+uniform vec3 uSunDir;
 uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
 uniform float uCameraNear;
@@ -413,6 +420,16 @@ void main() {
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
   vec3 col = vColor.rgb * ( uSunCol * sunL + skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 ) );
+  // (the coordinator: at sunset the low sun front-lights the low dust "too bright and opaque") a low body's lit
+  // brightness is capped against the ground's own (the sun's share at its elevation, the sky's, the bounce), and it thins
+  // as the sun drops: dust over the grass stays a veil, not a sheet
+  if ( lowS > 0.0 ) {
+    const vec3 LUMA = vec3( 0.2126, 0.7152, 0.0722 );
+    float bgL = 0.3 * ( dot( uSunCol, LUMA ) * max( uSunDir.y, 0.0 ) + dot( uSkyCol, LUMA ) ) + dot( uGroundCol, LUMA );
+    float cL = dot( col, LUMA );
+    col *= mix( 1.0, min( 1.0, 2.0 * bgL / max( cL, 1e-4 ) ), lowS );
+    a *= 1.0 - 0.3 * lowS * ( 1.0 - smoothstep( 0.12, 0.4, uSunDir.y ) );
+  }
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float tb = B.g * B.g;
   float h = clamp( tb * vHeat, 0.0, 1.6 );
