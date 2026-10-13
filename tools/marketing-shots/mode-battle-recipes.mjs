@@ -626,7 +626,7 @@ export const RECIPES = {
 
   'mechanics/replays': {
     hour: 'sunset',
-    windowS: 40,
+    windowS: 60,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 380 })));
       const last = await ctx.eval(() => {
@@ -647,13 +647,13 @@ export const RECIPES = {
       }, { timeoutS: 60, label: 'the last kill' });
       await ctx.mb('setFire', null);
       await ctx.mb('setCamera', { kind: 'game' });
-      if (ended) await ctx.capture({ windowS: 14, everyS: 0.35, max: 40, label: 'ending replay' });
+      if (ended) await ctx.capture({ windowS: 35, everyS: 0.3, max: 45, label: 'ending replay' });
     },
   },
 
   'features/killcam': {
     hour: 'day',
-    windowS: 30,
+    windowS: 55,
     battle: { specId: 't90m_x', mapId: 'verdant', gameMode: 'standard' },
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 450 })));
@@ -662,7 +662,7 @@ export const RECIPES = {
       ctx.log('kill shell', shot);
       ctx.note('the player was set to 1 HP and a real enemy shell fired into it (__DEBUG.spawnKillShell)');
       await ctx.mb('setCamera', { kind: 'game' });
-      await ctx.capture({ windowS: 16, everyS: 0.3, max: 50, label: 'kill cam' });
+      await ctx.capture({ windowS: 40, everyS: 0.25, max: 50, label: 'kill cam' });
     },
   },
 
@@ -798,24 +798,24 @@ async function openCrewRadio(ctx) {
   const page = ctx.page;
   await page.keyboard.press('Escape');
   await page.waitForSelector('.cot-set.open', { timeout: 8000 }).catch(() => null);
+  // src/ui/settings.ts: tabs .cot-set-tab[data-tab], the Sound tab's crew row .cot-set-crew-row whose flag dropdown
+  // (customSelect.ts, created lazily with its flag art) opens .cot-custom-select-list in the page
   const result = await page.evaluate(() => {
     const out = { open: !!document.querySelector('.cot-set.open') };
-    const tabs = [...document.querySelectorAll('.cot-set [role=tab], .cot-set .tabs button, .cot-set nav button')];
-    const sound = tabs.find((b) => /sound|audio/i.test(b.textContent || '') || /sound|audio/i.test(b.dataset?.tab || ''));
-    if (sound) { sound.click(); out.tab = sound.textContent.trim(); }
-    out.tabs = tabs.map((b) => (b.textContent || '').trim()).slice(0, 12);
+    const sound = document.querySelector('.cot-set-tab[data-tab="sound"]');
+    if (sound) { sound.click(); out.tab = (sound.textContent || '').trim(); }
     return out;
   });
-  await ctx.sleep(400);
+  await page.waitForSelector('.cot-set-crew-row .cot-custom-select-trigger', { timeout: 8000 }).catch(() => null);
   const select = await page.evaluate(() => {
-    const labels = [...document.querySelectorAll('.cot-set label, .cot-set .row, .cot-set .setting')];
-    const row = labels.find((l) => /crew/i.test(l.textContent || ''));
+    const row = document.querySelector('.cot-set-crew-row');
     if (!row) return { found: false };
     row.scrollIntoView({ block: 'center' });
-    const trigger = row.querySelector('.menu-select-trigger, button[aria-haspopup], select');
-    if (trigger && trigger.tagName !== 'SELECT') { trigger.click(); return { found: true, kind: 'menu', text: row.textContent.trim().slice(0, 80) }; }
-    return { found: true, kind: trigger ? 'select' : 'none', text: row.textContent.trim().slice(0, 80) };
+    const trigger = row.querySelector('.cot-custom-select-trigger');
+    if (trigger) trigger.click();
+    return { found: true, trigger: !!trigger, text: (row.textContent || '').trim().slice(0, 80) };
   });
+  await page.waitForSelector('.cot-custom-select-list', { visible: true, timeout: 5000 }).catch(() => null);
   return { ...result, select };
 }
 

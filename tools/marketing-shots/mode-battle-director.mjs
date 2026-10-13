@@ -274,11 +274,15 @@ export function installModeBattleDirector() {
   function runHooks() {
     const D = window.__DEBUG;
     const g = D?.game;
-    if (!D || !g || g.phase !== 'battle') return;
+    if (!D || !g) return;
     const wall = nowMs();
     const dt = clamp((wall - (MB.lastHookWall || wall)) / 1000, 0, 0.1);
     MB.lastHookWall = wall;
-    for (const [name, fn] of [['drive', driveHook], ['camera', cameraHook], ['aim', aimHook], ['fire', fireHook], ['custom', customHook], ['periodic', periodicHook]]) {
+    // the battle hooks need a live battle; the clock's own triggers also run through the ending replay
+    const hooks = g.phase === 'battle'
+      ? [['drive', driveHook], ['camera', cameraHook], ['aim', aimHook], ['fire', fireHook], ['custom', customHook], ['periodic', periodicHook]]
+      : [['periodic', periodicHook]];
+    for (const [name, fn] of hooks) {
       try { fn(D, g, dt); } catch (error) {
         MB.hookErrors.push(`${name}: ${error && error.stack ? error.stack.split('\n').slice(0, 2).join(' | ') : error}`);
         if (MB.hookErrors.length > 20) MB.hookErrors.shift();
