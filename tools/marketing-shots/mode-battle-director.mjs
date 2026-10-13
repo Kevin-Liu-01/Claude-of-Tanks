@@ -453,6 +453,8 @@ export function installModeBattleDirector() {
     if (!H.live(p) || spec.mode === 'off') { D.flags.forceFire = false; return; }
     const err = typeof D.gunAimError === 'function' ? D.gunAimError() : 0;
     const t = MB.aim ? H.sel(MB.aim.target) : null;
+    // with a gun-laying target named, fire only while that target exists (r14 run 1 fired into its own allies' backs)
+    if (MB.aim && !t && !spec.anyTarget) { D.flags.forceFire = false; return; }
     const clear = !spec.requireClear || !t?.ent || H.clearShot(p, t.ent);
     D.flags.forceFire = (spec.mode === 'auto' || (spec.mode === 'once' && spec.shots < 1)) && err * 1000 <= spec.maxErrMrad && clear;
   }
