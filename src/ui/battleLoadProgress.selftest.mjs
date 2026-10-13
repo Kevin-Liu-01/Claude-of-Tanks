@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { createBattleLoadScreen } from './battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqip } from './battleLoad.ts';
+import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
+import { MAP_LQIP } from './mapLqip.ts';
 import { t } from './i18n.ts';
 
 // Exercise the real screen adapter; geometry reads and layout-style writes
@@ -105,6 +107,9 @@ try {
   assert.equal(selectors.get('.art-img').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
   assert.equal(selectors.get('.art-img').classList.contains('ready'), false);
   assert.equal(selectors.get('.art').className, 'art none', 'a pending entry keeps the neutral gradient under the art');
+  const gradientOf = (tones) => `linear-gradient(180deg,${tones[0]},${tones[1]} 48%,${tones[2]})`;
+  assert.equal(selectors.get('.art').style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT),
+    'an unknown battlefield opens on every map\'s mean tones, not near-black');
   assert.equal(fill.style.transform, 'scaleX(0.000)', 'a new load resets the previous completed fill');
   const hidden = screen.hide();
   timers.shift()();
@@ -123,6 +128,7 @@ try {
     const art = selectors.get('.art'), img = selectors.get('.art-img');
     screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
     assert.equal(art.className, 'art verdant', 'the map\'s gradient is up with the screen');
+    assert.ok(art.style.backgroundImage.endsWith(gradientOf(MAP_ART_TONES.verdant)), 'from Verdant\'s own art tones');
     assert.equal(img.classList.contains('ready'), false, 'no art before it is decoded');
     assert.deepEqual(loads.map((l) => l.url).sort(), ['/maps/cards/verdant.webp', '/maps/thumbs/verdant.webp', '/maps/verdant.webp'],
       'the hero, the card and the picker thumb are all asked for at once');
@@ -150,6 +156,20 @@ try {
     await land('/maps/thumbs/urban.webp');
     assert.equal(img.style.backgroundImage, '', 'Steinburg\'s late hero stays off Ironworks\' screen');
     assert.equal(art.className, 'art foundry');
+    // 2026-10-13: with the lazy placeholder chunk resident (the Garage loads it in idle time), the first frame carries the
+    // map's own blurred picture over its tones, the pending cover included; a random or unknown map keeps the mean tones
+    await primeMapLqip();
+    screen.show({ mapName: 'Monsoon', thumb: '/maps/monsoon.webp', biome: 'monsoon', allies: [], enemies: [] });
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.monsoon}),${gradientOf(MAP_ART_TONES.monsoon)}`);
+    screen.showPending('railyard');
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.railyard}),${gradientOf(MAP_ART_TONES.railyard)}`,
+      'the pending cover of a chosen battlefield is already that battlefield');
+    assert.equal(img.classList.contains('ready'), false);
+    screen.showPending('random');
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    screen.showPending(null);
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    loads.length = 0;
     delete globalThis.Image;
     const cssText = elements.find(item => item.id === 'cot-bl-style').textContent;
     assert.match(cssText, /\.cot-bl \.hero \.art\{[^}]*background-image:linear-gradient/, 'every map has a gradient under its art');

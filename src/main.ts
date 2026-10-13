@@ -257,7 +257,7 @@ import { describeError, getEntryTelemetry, installEntryErrorTelemetry } from './
 import {
   bootCapabilityScreen, browserCapabilityHost, capabilitySummary, haltRefusedRenderer, runBootCapabilityGate,
 } from './engine/capabilityGate.ts';
-import { createBattleLoadScreen } from './ui/battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
@@ -3509,6 +3509,8 @@ window.__GAME_READY = true;
 pedestal.queueNeighbors();
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
+// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
+primeMapLqipWhenIdle();
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
