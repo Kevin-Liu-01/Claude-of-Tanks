@@ -96,6 +96,22 @@ lightbox/filter semantics as the landing page, field manual, and Studio. This
 keeps the public route focused on the selected vehicle until the user opens the
 larger archive.
 
+### In action
+
+The dossier's "In action" block shows the selected vehicle's own take: one
+silent 6.6 s loop per production vehicle, indexed by spec id in
+`public/media/site50-r14/fleet/index.json` (the media lane's data contract,
+read by `src/ui/fleetTakes.ts`). `src/gallery/inAction.ts` and the index load
+through `import()` once the first tank is on screen, so the Gallery's first
+load and boot catalog are unchanged. The block stays hidden for a vehicle the
+index lacks (or while the index is missing), shows the poster first, plays the
+muted loop only while the block is visible (reduced motion and data saving
+wait for the play control), and stops the moment the vehicle changes. Its link
+opens the take's scene in the Studio as a preset (`/studio?scene=`). The Garage's
+battle gallery, the manual's fleet reference and the Studio Director reach the
+same takes; `src/gallery/inAction.selftest.mjs` and `src/ui/fleetTakes.selftest.mjs`
+hold the contract.
+
 ### Diagnostic overlays
 
 `overlays.js` builds transient Three.js geometry from the specification:

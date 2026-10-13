@@ -1,3 +1,6 @@
+/** Where the Garage remembers the tank last selected (the Studio Director also offers that tank's own take). */
+export const LAST_TANK_STORAGE_KEY = 'cot.lastTank.v1';
+
 interface SelectionStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -20,7 +23,7 @@ interface SelectedVehicleSelectionOptions {
 export function createSelectedVehicleSelection({
   visibleIds,
   defaultId,
-  storageKey = 'cot.lastTank.v1',
+  storageKey = LAST_TANK_STORAGE_KEY,
   getStorage = () => globalThis.localStorage,
 }: SelectedVehicleSelectionOptions): SelectedVehicleSelection {
   const visible = new Set(visibleIds);
