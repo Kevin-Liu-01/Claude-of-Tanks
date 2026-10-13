@@ -160,14 +160,15 @@ function titles(action, name, foe, map, time) {
     onTheMove: `${a(name)} fires on the move at ${m.en}${h}`, artillery: `${a(name)} charges through artillery at ${m.en}${h}`,
     column: `${a(name)} leads the column through ${m.en}${h}`, night: `${a(name)} advances through ${m.en} at night`,
   }[action];
-  const p = action === 'night' ? '' : HOUR_ZH[time];
+  // the fifty's Chinese style: 一辆 and a space on each side of a Latin name, the hour first
+  const p = action === 'night' ? '' : HOUR_ZH[time], n = `一辆 ${name} `, f = `一辆 ${foe}`;
   const zh = {
-    returnFire: `${p}${name}在${m.zh}还击`, shellfire: `${p}${name}冒着炮火穿越${m.zh}`, assault: `${p}${name}率队突击${m.zh}`,
-    hold: `${p}${name}在${m.zh}坚守阵地`, kill: `${p}${name}在${m.zh}击毁一辆${foe}`, fires: `${p}${name}在${m.zh}开火`,
-    onTheMove: `${p}${name}在${m.zh}行进间射击`, artillery: `${p}${name}冒着炮击冲过${m.zh}`, column: `${p}${name}率领车队穿过${m.zh}`,
-    night: `${name}夜间推进${m.zh}`,
+    returnFire: `${p}${n}在${m.zh}还击`, shellfire: `${p}${n}冒着炮火穿越${m.zh}`, assault: `${p}${n}率队突击${m.zh}`,
+    hold: `${p}${n}在${m.zh}坚守阵地`, kill: `${p}${n}在${m.zh}击毁${f}`, fires: `${p}${n}在${m.zh}开火`,
+    onTheMove: `${p}${n}在${m.zh}行进间射击`, artillery: `${p}${n}冒着炮击冲过${m.zh}`, column: `${p}${n}率领纵队穿过${m.zh}`,
+    night: `夜间，${n}穿过${m.zh}推进`,
   }[action];
-  return { title: { en, zh }, short: { en: `${name} · ${m.en}`, zh: `${name} · ${m.zh}` } };
+  return { title: { en, zh }, short: { en: `${name}, ${m.en}`, zh: `${name}，${m.zh}` } };
 }
 
 // --- plan -----------------------------------------------------------------------------------------------------------

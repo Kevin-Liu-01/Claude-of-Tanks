@@ -358,6 +358,69 @@
       "zh": "日落时分的高地水库：燃烧村庄之外的湖面",
       "shortEn": "Highland Reservoir at sunset",
       "shortZh": "日落时分的高地水库"
+    },
+    "s51-leo2a7v-sunset-fire": {
+      "map": "verdant",
+      "en": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+      "zh": "日落时分，一辆 Leopard 2A7V 率领纵队隔着田野还击",
+      "shortEn": "Leopard 2A7V returns fire at sunset",
+      "shortZh": "日落时分 Leopard 2A7V 还击"
+    },
+    "s52-revolution-street-knockout": {
+      "map": "urban",
+      "en": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+      "zh": "夜间，一辆 Leopard 2 Revolution 在斯泰因堡街道尽头击毁一辆 T-90A",
+      "shortEn": "Leopard 2 Revolution, street knockout",
+      "shortZh": "Leopard 2 Revolution，街头击毁"
+    },
+    "s53-leo2a6m-assault": {
+      "map": "verdant",
+      "en": "A Leopard 2A6M wedge assaults through the burning fields",
+      "zh": "Leopard 2A6M 楔形编队穿过燃烧的田野发起突击",
+      "shortEn": "Leopard 2A6M wedge assault",
+      "shortZh": "Leopard 2A6M 楔形突击"
+    },
+    "s54-leo2a5m-ice-duel": {
+      "map": "alpine",
+      "en": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+      "zh": "冰湖上的对决：一辆 Leopard 2A5M 击毁一辆 T-80U",
+      "shortEn": "Leopard 2A5M, ice duel",
+      "shortZh": "Leopard 2A5M，冰湖对决"
+    },
+    "s55-leo2a5-water-tower": {
+      "map": "railyard",
+      "en": "A Leopard 2A5 advances past the burning water tower at night",
+      "zh": "夜间，一辆 Leopard 2A5 驶过燃烧的水塔向前推进",
+      "shortEn": "Leopard 2A5 at the water tower",
+      "shortZh": "水塔旁的 Leopard 2A5"
+    },
+    "s56-lynx-lakeside": {
+      "map": "reservoir",
+      "en": "A KF41 Lynx fires across the village at Highland Reservoir",
+      "zh": "一辆 KF41 Lynx 在高地水库隔着村庄开火",
+      "shortEn": "KF41 Lynx at the reservoir",
+      "shortZh": "高地水库的 KF41 Lynx"
+    },
+    "s57-puma-minaret": {
+      "map": "oasis",
+      "en": "A Puma S1 fires at Sunscar Oasis",
+      "zh": "一辆 Puma S1 在日痕绿洲开火",
+      "shortEn": "Puma S1 fires",
+      "shortZh": "Puma S1 开火"
+    },
+    "s58-mbt70-orchard": {
+      "map": "orchard",
+      "en": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+      "zh": "一辆 MBT-70 率领纵队穿过果园谷，硝烟飘过果园",
+      "shortEn": "MBT-70 in Orchard Valley",
+      "shortZh": "果园谷中的 MBT-70"
+    },
+    "s59-strv103b-farm-charge": {
+      "map": "verdant",
+      "en": "A Stridsvagn 103B charges past the farmhouse through artillery",
+      "zh": "一辆 Stridsvagn 103B 冒着炮击冲过农舍",
+      "shortEn": "Strv 103B charge",
+      "shortZh": "Strv 103B 冲锋"
     }
   },
   "home": {
