@@ -1600,6 +1600,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
+    'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
