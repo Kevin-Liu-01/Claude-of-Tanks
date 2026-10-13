@@ -311,6 +311,69 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * (the looks lane, 2026-10-13; LOOKS-BRIEF section 6: Cinder Junction's two works drawn by the generic factory) the
+ * junction's works (a Zeche's Maschinenhalle or a Ruhr wire works of about 1900): a two-storey hall of soot-dark brick
+ * on a stone plinth, yellow-brick bands at its floors, brick piers between the bays of tall segment-arched windows, a
+ * dentil cornice; its gable to the yard with a great round-arched window and the gable's vent; the slate roof's ridge
+ * lantern; the boiler house against its back under a shed roof; the works' chimney on its plinth at the plot's corner.
+ */
+const works: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const bb = ctx.bounds, plotW = bb.maxX - bb.minX, plotD = bb.maxZ - bb.minZ;
+  const W = Math.max(9, Math.min(12.5, plotW - 4.2)), D = Math.max(13, Math.min(20, plotD - 1.2));
+  const cx = bb.minX + 0.6 + W / 2, cz = (bb.minZ + bb.maxZ) / 2;
+  const storeys = [{ h: 4.6, wall: 'stone' as const }, { h: 4.2, wall: 'stone' as const }];
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 3.2, y0: 0, h: 3.8 }];
+  openings.push({ face: 'front', storey: 1, kind: 'window', u: 0, w: 2.2, y0: 0.5, h: 3.0 });
+  for (const u of [-W * 0.32, W * 0.32]) openings.push({ face: 'front', storey: 0, kind: 'window', u, w: 1.3, y0: 1.2, h: 2.5 }, { face: 'front', storey: 1, kind: 'window', u, w: 1.3, y0: 0.8, h: 2.4 });
+  const bays = Math.max(4, Math.round(D / 3.4));
+  for (const face of ['left', 'right'] as const) {
+    for (let k = 0; k < bays; k++) {
+      const u = -D / 2 + (k + 0.5) * (D / bays);
+      openings.push({ face, storey: 0, kind: 'window', u, w: 1.5, y0: 1.2, h: 2.6 }, { face, storey: 1, kind: 'window', u, w: 1.5, y0: 0.8, h: 2.5 });
+    }
+  }
+  sink.placed(0, cx, 0, cz, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.6, out: 0.08, bucket: 'stone' }, storeys, roof: slate(32), gableBucket: 'stone', openings,
+      chimneys: [], gutters: { colour: rgb(0x5e6264) }, verge: null, reveal: 0.36,
+    }, dialect(rng, DOOR[2]));
+    band(sink, frame.bodies[0], 0.6 + storeys[0].h - 0.12);
+    band(sink, frame.bodies[0], 0.6 + 1.0);
+    if (facadeOn()) brickMasonry(frame, sink, ['left', 'right'], ['left', 'right', 'front'], true);
+    // the ridge lantern: a raised louvred stage along the ridge under its own slate roof
+    const rg = frame.roof, ly = rg.ridgeTopY - 0.08, len = D * 0.55;
+    sink.span('stone', -0.8, ly - 0.3, -len / 2, 0.8, ly + 0.7, len / 2);
+    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
+      sink.span('structureWood', sx * 0.81 - 0.02, ly + 0.05 + k * 0.2, -len / 2 + 0.2, sx * 0.81 + 0.02, ly + 0.12 + k * 0.2, len / 2 - 0.2, { colour: rgb(0x2e3032), decor: true });
+    }
+    const cap = slate(26);
+    emitRoof(sink, roofGeometry(1.7, len + 0.2, ly + 0.7, cap), cap);
+  });
+  // the boiler house against the hall's back, its shed roof leaning on the hall
+  const BW = Math.min(5.4, W - 2), BD = Math.max(3.2, Math.min(4.6, (cz - D / 2) - bb.minZ - 0.4));
+  if (BD >= 3.2) {
+    sink.placed(0, cx - W / 2 + BW / 2 + 0.5, 0, cz - D / 2 - BD / 2 + 0.05, () => {
+      const f2 = buildHouse(sink, {
+        w: BW, d: BD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 4.8, wall: 'stone' }],
+        roof: { kind: 'shed', pitchDeg: 14, eave: 0.3, verge: 0.25, thickness: 0.12, bucket: 'roof' }, gableBucket: 'stone',
+        openings: [{ face: 'left', storey: 0, kind: 'window', u: 0, w: 1.4, y0: 1.2, h: 2.8 }, { face: 'back', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.5 }],
+        chimneys: [], gutters: { colour: rgb(0x5e6264) }, verge: null, reveal: 0.34,
+      }, dialect(rng, DOOR[0]));
+      band(sink, f2.bodies[0], 0.5 + 3.2);
+    });
+  }
+  // the chimney at the plot's free corner beside the hall (the kit's own stack, moved to its seat)
+  const parts = sink.finish();
+  const stack = factoryStack({ ...ctx, info: { w: 3.2, d: 3.2, h: 26 }, bounds: { minX: -1.6, maxX: 1.6, minZ: -1.6, maxZ: 1.6, maxY: 26 } });
+  for (const [bucket, list] of Object.entries(stack) as Array<[keyof RegionalParts, RegionalParts[keyof RegionalParts]]>) {
+    for (const g of list) parts[bucket].push(g.translate(bb.maxX - 1.9, 0, bb.minZ + 2.0));
+  }
+  return parts;
+};
+
 export const RUHR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse: cottagePair,
   terrace: terraceRow,
@@ -320,6 +383,8 @@ export const RUHR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.f
   ruin,
   shed: goodsShed,
   stack: factoryStack,
+  // (the looks lane, 2026-10-13) the junction's works in the coalfield's brick
+  factory: works,
 });
 
 export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
