@@ -55,6 +55,9 @@ interface WorldProgramWarmReceipt {
   renderMs: number;
   /** the meshes the stand-ins were shaped after */
   drawnFrom: string[];
+  /** what the draw saw: the light signature with everything else hidden, the objects kept drawable because lights hang
+   * under them, and any program the draw had to switch to (a variant the submission did not link) */
+  drawDetail?: { hiddenSignature: string; keptForLights: number; variantSwitches: number; keyDiff: string[] };
   error?: string;
 }
 
@@ -79,6 +82,8 @@ interface BattleWorldProgramWarmPorts {
   programInfo?(materials: readonly Material[]): void;
   /** The meshes the last draw's stand-ins were shaped after (receipts). */
   drawnFrom?(): string[];
+  /** What the last draw saw (receipts). */
+  drawDetail?(): WorldProgramWarmReceipt['drawDetail'];
   /** Captures the renderer context current now; the check is false once that context is lost or replaced. */
   lifetime(): () => boolean;
   /** One covered draw of each distinct material under the root; returns how many were drawn. */
@@ -249,6 +254,8 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     }
     own.renderMs = Math.round(ports.now() - drawAt);
     own.drawnFrom = ports.drawnFrom?.() ?? [];
+    const detail = ports.drawDetail?.();
+    if (detail) own.drawDetail = detail;
     own.drawnMs = since();
     return stop('drawn');
   }
@@ -367,6 +374,10 @@ export function createRendererWorldProgramWarm(
     return { proxies, stubs, from };
   };
   let lastFrom: string[] = [];
+  let lastDetail: WorldProgramWarmReceipt['drawDetail'];
+  const invisibleMaterial = new THREE.MeshBasicMaterial({ visible: false });
+  const programOf = (material: Material): { id?: number; cacheKey?: string } | undefined => (
+    renderer.properties.get(material) as { currentProgram?: { id?: number; cacheKey?: string } }).currentProgram;
   const drawPipelines = (root: Object3D): number => {
     const { proxies, stubs, from } = proxiesFor(root);
     lastFrom = from;
@@ -386,11 +397,23 @@ export function createRendererWorldProgramWarm(
     }
     // only the proxies draw: every other renderable is hidden for this one render, the shadow pass does not run (its
     // router, caches and maps untouched), nothing is presented, and every flag is restored in this task
+    // Everything else stays out of the draw, but no light may leave its light state: a renderable with a light under it
+    // keeps its visibility and draws nothing for this render (an invisible material in its place), since a hidden
+    // parent would take its lights out of the count and the draw would link another program variant on the spot.
+    const lightAncestors = new Set<Object3D>();
+    scene.traverseVisible((object) => {
+      if (!(object as THREE.Light).isLight) return;
+      for (let parent = object.parent; parent; parent = parent.parent) lightAncestors.add(parent);
+    });
     const hidden: Object3D[] = [];
+    const swapped: Array<[THREE.Mesh, THREE.Material | THREE.Material[]]> = [];
     scene.traverseVisible((object) => {
       const r = object as THREE.Mesh & { isLine?: boolean; isPoints?: boolean; isSprite?: boolean };
-      if (r.isMesh || r.isLine || r.isPoints || r.isSprite) hidden.push(object);
+      if (!(r.isMesh || r.isLine || r.isPoints || r.isSprite)) return;
+      if (lightAncestors.has(object)) swapped.push([r, r.material]);
+      else hidden.push(object);
     });
+    const before = proxies.map((proxy) => programOf(proxy.material as Material));
     const holder = new THREE.Group();
     holder.name = 'world-program-warm';
     holder.matrixAutoUpdate = false;
@@ -400,15 +423,29 @@ export function createRendererWorldProgramWarm(
     const background = scene.background;
     try {
       for (const object of hidden) object.visible = false;
+      for (const [mesh] of swapped) mesh.material = invisibleMaterial;
       shadowMap.render = () => {};
       scene.background = null;
       scene.add(holder);
+      const hiddenSignature = lightSignature(scene, camera);
       withTarget(pipelineTarget, () => renderer.render(scene, camera));
+      const after = proxies.map((proxy) => programOf(proxy.material as Material));
+      const keyDiff: string[] = [];
+      let variantSwitches = 0;
+      after.forEach((program, index) => {
+        if (program?.id === before[index]?.id) return;
+        variantSwitches++;
+        if (keyDiff.length) return;
+        const a = String(before[index]?.cacheKey ?? '').split(','), b = String(program?.cacheKey ?? '').split(',');
+        for (let i = 0; i < Math.max(a.length, b.length) && keyDiff.length < 8; i++) if (a[i] !== b[i]) keyDiff.push(`${i}:${a[i]}->${b[i]}`);
+      });
+      lastDetail = { hiddenSignature, keptForLights: swapped.length, variantSwitches, keyDiff };
     } finally {
       scene.remove(holder);
       scene.background = background;
       shadowMap.render = shadowRender;
       for (const object of hidden) object.visible = true;
+      for (const [mesh, material] of swapped) mesh.material = material;
       holder.clear();
       // the stand-ins' few bytes leave the GPU with them; the sources' buffers upload when they first draw, as before
       for (const stub of stubs) stub.dispose();
@@ -432,6 +469,7 @@ export function createRendererWorldProgramWarm(
       }
     },
     drawnFrom: () => lastFrom,
+    drawDetail: () => lastDetail,
     // the linked programs' own uniforms (onBeforeCompile's included): data textures not yet resident, render targets aside
     pendingTextures: (materials) => {
       const pending = new Set<THREE.Texture>();

@@ -212,7 +212,10 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   const sky = new THREE.Mesh(new THREE.SphereGeometry(), new THREE.MeshBasicMaterial());
   const hiddenAlready = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()); hiddenAlready.visible = false;
   const sun = new THREE.DirectionalLight(); sun.castShadow = true;
-  scene.add(sky, hiddenAlready, sun);
+  // a lamp post whose light hangs under its mesh: hiding the mesh would take the light out of the draw's count
+  const lampMaterial = new THREE.MeshStandardMaterial();
+  const lampPost = new THREE.Mesh(new THREE.BoxGeometry(), lampMaterial); lampPost.add(new THREE.PointLight());
+  scene.add(sky, hiddenAlready, sun, lampPost);
   const sceneTarget = new THREE.WebGLRenderTarget(64, 64, {
     type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(64, 64), stencilBuffer: false, samples: 4,
   });
@@ -272,9 +275,12 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
       return materials;
     },
     render(renderScene, cam) {
+      assert.equal(lightSignature(renderScene, cam), 'dir 1/1 spot 0/0/0 point 1/0 hemi 0 rect 0 probe 0', 'every light stays in the draw\'s count');
+      assert.equal(lampPost.visible, true); assert.equal(lampPost.material.visible, false, 'the lamp post draws nothing');
       const visible = [];
       renderScene.traverseVisible((object) => { if (object.isMesh) object.geometry.addEventListener('dispose', () => disposedStubs.push(object.geometry)); });
-      renderScene.traverseVisible((object) => { if (object.isMesh) visible.push(object); });
+      // three draws a visible object only when its material is visible too
+      renderScene.traverseVisible((object) => { if (object.isMesh && object.material.visible) visible.push(object); });
       for (const mesh of visible) mesh.material.onBeforeRender(renderer, renderScene, cam, mesh.geometry, mesh, null);
       log.push(['render', target, visible, renderer.shadowMap.render !== shadowRender, renderScene.background]);
     },
@@ -307,11 +313,14 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   assert.equal(render[1].samples, 4); assert.equal(render[1].texture.type, THREE.HalfFloatType);
   assert.equal(render[1].depthTexture.type, sceneTarget.depthTexture.type, 'the scene target\'s formats');
   assert.equal(render[2].length, 4, 'only the proxies draw');
-  assert.ok(render[2].every((mesh) => mesh.name === 'world-program-warm-proxy' && mesh.frustumCulled === false));
-  assert.deepEqual(render[2].map((mesh) => mesh.material), [splat, splat, skirt, hooked]);
+  assert.strictEqual(lampPost.material, lampMaterial, 'the lamp post\'s own material is back');
+  assert.deepEqual(receipt.drawDetail, { hiddenSignature: 'dir 1/1 spot 0/0/0 point 1/0 hemi 0 rect 0 probe 0', keptForLights: 1, variantSwitches: 0, keyDiff: [] });
+  const drawnProxies = render[2];
+  assert.ok(drawnProxies.every((mesh) => mesh.name === 'world-program-warm-proxy' && mesh.frustumCulled === false));
+  assert.deepEqual(drawnProxies.map((mesh) => mesh.material), [splat, splat, skirt, hooked]);
   assert.deepEqual(hookSaw, [[false, undefined], [false, 'a']], 'the per-draw hook sees proxies that cast nothing and share their source\'s userData');
   // the stand-ins: three vertices in the source's own layout (names, formats, normalization, interleaved stride and offset)
-  const [ringStub, chunkStub] = render[2].map((mesh) => mesh.geometry);
+  const [ringStub, chunkStub] = drawnProxies.map((mesh) => mesh.geometry);
   assert.notStrictEqual(chunkStub, chunkA.geometry, 'never the source geometry (its upload stays where it was)');
   for (const [stub, source] of [[ringStub, ringGeometry], [chunkStub, chunkA.geometry]]) {
     assert.deepEqual(Object.keys(stub.attributes).sort(), Object.keys(source.attributes).sort());
