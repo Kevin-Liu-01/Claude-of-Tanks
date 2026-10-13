@@ -52,8 +52,8 @@ import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
 // safe).
 
 import {NATIONAL_MODERNIZATION_IDS} from './nationalModernizationConfig.ts';
-import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
-import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
+import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
@@ -3886,7 +3886,7 @@ export const DOCK_KEEP_OUT_CLEAR = 0.03;
  * seat rides the other frame or that has no seat.
  */
 export function dockKeepOut(specId: string, frame: DecorFrame): THREE.Box3[] {
-  const seat = MISSION_ATTACHMENT_SEATS[specId];
+  const seat = MISSION_DOCK_SEATS[specId];
   if (!seat || seat.frame !== frame) return [];
   const at = new THREE.Vector3(seat.x, seat.y, seat.z);
   return [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>

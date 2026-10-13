@@ -23,7 +23,7 @@
       "brotli": 40339
     },
     "gallery": {
-      "requests": 77,
+      "requests": 78,
       "raw": 2343635,
       "gzip": 688561,
       "brotli": 580479
