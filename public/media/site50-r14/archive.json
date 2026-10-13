@@ -1602,6 +1602,204 @@
    "kind": "take",
    "take": "s50-reservoir-crane",
    "sequence": 150
+  },
+  {
+   "src": "/media/site50-r14/stills/s51-leo2a7v-sunset-fire.webp",
+   "previewSrc": "/media/site50-r14/stills/s51-leo2a7v-sunset-fire-thumb.webp",
+   "alt": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+   "feature": "Key moment",
+   "map": "Verdant Fields",
+   "title": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+   "kind": "take",
+   "take": "s51-leo2a7v-sunset-fire",
+   "sequence": 151
+  },
+  {
+   "src": "/media/site50-r14/stills/s51-leo2a7v-sunset-fire-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s51-leo2a7v-sunset-fire-close-thumb.webp",
+   "alt": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+   "feature": "Close portrait",
+   "map": "Verdant Fields",
+   "title": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+   "kind": "take",
+   "take": "s51-leo2a7v-sunset-fire",
+   "sequence": 152
+  },
+  {
+   "src": "/media/site50-r14/stills/s52-revolution-street-knockout.webp",
+   "previewSrc": "/media/site50-r14/stills/s52-revolution-street-knockout-thumb.webp",
+   "alt": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+   "feature": "Key moment",
+   "map": "Steinburg",
+   "title": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+   "kind": "take",
+   "take": "s52-revolution-street-knockout",
+   "sequence": 153
+  },
+  {
+   "src": "/media/site50-r14/stills/s52-revolution-street-knockout-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s52-revolution-street-knockout-close-thumb.webp",
+   "alt": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+   "feature": "Close portrait",
+   "map": "Steinburg",
+   "title": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+   "kind": "take",
+   "take": "s52-revolution-street-knockout",
+   "sequence": 154
+  },
+  {
+   "src": "/media/site50-r14/stills/s53-leo2a6m-assault.webp",
+   "previewSrc": "/media/site50-r14/stills/s53-leo2a6m-assault-thumb.webp",
+   "alt": "A Leopard 2A6M wedge assaults through the burning fields",
+   "feature": "Key moment",
+   "map": "Verdant Fields",
+   "title": "A Leopard 2A6M wedge assaults through the burning fields",
+   "kind": "take",
+   "take": "s53-leo2a6m-assault",
+   "sequence": 155
+  },
+  {
+   "src": "/media/site50-r14/stills/s53-leo2a6m-assault-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s53-leo2a6m-assault-close-thumb.webp",
+   "alt": "A Leopard 2A6M wedge assaults through the burning fields",
+   "feature": "Close portrait",
+   "map": "Verdant Fields",
+   "title": "A Leopard 2A6M wedge assaults through the burning fields",
+   "kind": "take",
+   "take": "s53-leo2a6m-assault",
+   "sequence": 156
+  },
+  {
+   "src": "/media/site50-r14/stills/s54-leo2a5m-ice-duel.webp",
+   "previewSrc": "/media/site50-r14/stills/s54-leo2a5m-ice-duel-thumb.webp",
+   "alt": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+   "feature": "Key moment",
+   "map": "Glacier Pass",
+   "title": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+   "kind": "take",
+   "take": "s54-leo2a5m-ice-duel",
+   "sequence": 157
+  },
+  {
+   "src": "/media/site50-r14/stills/s54-leo2a5m-ice-duel-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s54-leo2a5m-ice-duel-close-thumb.webp",
+   "alt": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+   "feature": "Close portrait",
+   "map": "Glacier Pass",
+   "title": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+   "kind": "take",
+   "take": "s54-leo2a5m-ice-duel",
+   "sequence": 158
+  },
+  {
+   "src": "/media/site50-r14/stills/s55-leo2a5-water-tower.webp",
+   "previewSrc": "/media/site50-r14/stills/s55-leo2a5-water-tower-thumb.webp",
+   "alt": "A Leopard 2A5 advances past the burning water tower at night",
+   "feature": "Key moment",
+   "map": "Cinder Junction",
+   "title": "A Leopard 2A5 advances past the burning water tower at night",
+   "kind": "take",
+   "take": "s55-leo2a5-water-tower",
+   "sequence": 159
+  },
+  {
+   "src": "/media/site50-r14/stills/s55-leo2a5-water-tower-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s55-leo2a5-water-tower-close-thumb.webp",
+   "alt": "A Leopard 2A5 advances past the burning water tower at night",
+   "feature": "Close portrait",
+   "map": "Cinder Junction",
+   "title": "A Leopard 2A5 advances past the burning water tower at night",
+   "kind": "take",
+   "take": "s55-leo2a5-water-tower",
+   "sequence": 160
+  },
+  {
+   "src": "/media/site50-r14/stills/s56-lynx-lakeside.webp",
+   "previewSrc": "/media/site50-r14/stills/s56-lynx-lakeside-thumb.webp",
+   "alt": "A KF41 Lynx fires across the village at Highland Reservoir",
+   "feature": "Key moment",
+   "map": "Highland Reservoir",
+   "title": "A KF41 Lynx fires across the village at Highland Reservoir",
+   "kind": "take",
+   "take": "s56-lynx-lakeside",
+   "sequence": 161
+  },
+  {
+   "src": "/media/site50-r14/stills/s56-lynx-lakeside-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s56-lynx-lakeside-close-thumb.webp",
+   "alt": "A KF41 Lynx fires across the village at Highland Reservoir",
+   "feature": "Close portrait",
+   "map": "Highland Reservoir",
+   "title": "A KF41 Lynx fires across the village at Highland Reservoir",
+   "kind": "take",
+   "take": "s56-lynx-lakeside",
+   "sequence": 162
+  },
+  {
+   "src": "/media/site50-r14/stills/s57-puma-minaret.webp",
+   "previewSrc": "/media/site50-r14/stills/s57-puma-minaret-thumb.webp",
+   "alt": "A Puma S1 fires at Sunscar Oasis",
+   "feature": "Key moment",
+   "map": "Sunscar Oasis",
+   "title": "A Puma S1 fires at Sunscar Oasis",
+   "kind": "take",
+   "take": "s57-puma-minaret",
+   "sequence": 163
+  },
+  {
+   "src": "/media/site50-r14/stills/s57-puma-minaret-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s57-puma-minaret-close-thumb.webp",
+   "alt": "A Puma S1 fires at Sunscar Oasis",
+   "feature": "Close portrait",
+   "map": "Sunscar Oasis",
+   "title": "A Puma S1 fires at Sunscar Oasis",
+   "kind": "take",
+   "take": "s57-puma-minaret",
+   "sequence": 164
+  },
+  {
+   "src": "/media/site50-r14/stills/s58-mbt70-orchard.webp",
+   "previewSrc": "/media/site50-r14/stills/s58-mbt70-orchard-thumb.webp",
+   "alt": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+   "feature": "Key moment",
+   "map": "Orchard Valley",
+   "title": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+   "kind": "take",
+   "take": "s58-mbt70-orchard",
+   "sequence": 165
+  },
+  {
+   "src": "/media/site50-r14/stills/s58-mbt70-orchard-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s58-mbt70-orchard-close-thumb.webp",
+   "alt": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+   "feature": "Close portrait",
+   "map": "Orchard Valley",
+   "title": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+   "kind": "take",
+   "take": "s58-mbt70-orchard",
+   "sequence": 166
+  },
+  {
+   "src": "/media/site50-r14/stills/s59-strv103b-farm-charge.webp",
+   "previewSrc": "/media/site50-r14/stills/s59-strv103b-farm-charge-thumb.webp",
+   "alt": "A Stridsvagn 103B charges past the farmhouse through artillery",
+   "feature": "Key moment",
+   "map": "Verdant Fields",
+   "title": "A Stridsvagn 103B charges past the farmhouse through artillery",
+   "kind": "take",
+   "take": "s59-strv103b-farm-charge",
+   "sequence": 167
+  },
+  {
+   "src": "/media/site50-r14/stills/s59-strv103b-farm-charge-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s59-strv103b-farm-charge-close-thumb.webp",
+   "alt": "A Stridsvagn 103B charges past the farmhouse through artillery",
+   "feature": "Close portrait",
+   "map": "Verdant Fields",
+   "title": "A Stridsvagn 103B charges past the farmhouse through artillery",
+   "kind": "take",
+   "take": "s59-strv103b-farm-charge",
+   "sequence": 168
   }
  ]
 }
