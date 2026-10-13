@@ -51,6 +51,7 @@ import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
+import { createLatticeGround } from './latticeGround.ts';
 import { bucketAliases, createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
@@ -101,7 +102,7 @@ export interface FxWorldSeam {
   raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
     { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number; readonly revision?: number } | null;
   /** the static records the presentation's rigid bodies meet (world/map.ts bodyRecordQuery: shell bands and solid records) */
   bodyRecordQuery?(): (minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]) => CollisionRecord[];
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
@@ -1108,11 +1109,23 @@ function* createFxSteps(
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
   // keeps the pooled puffs below (no atlas download, no sort, no extra draws).
   const mediaTier = getDeviceTier() !== 'mobile';
+  // (destruction stream 2026-10-13) the landing solves read the ground as drawn from its lattice's vertices, each once
+  // until the ground changes (fx/latticeGround.ts): a collapse's hundreds of pieces cost the frame 20 ms reading every
+  // crater and heap of their bucket at three vertices, a dozen times a piece
+  let groundEpoch = 0;
+  let groundOverlayRef: unknown = null;
+  let groundFieldRef: unknown = null;
+  const groundRevision = (): number => {
+    const overlay = world?.()?.groundOverlay?.() ?? null;
+    if (overlay !== groundOverlayRef || heightField !== groundFieldRef) { groundOverlayRef = overlay; groundFieldRef = heightField; groundEpoch++; }
+    return groundEpoch * 1e6 + (overlay?.revision ?? 0);
+  };
+  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision);
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
   const chunks: DebrisChunks | null = mediaTier
-    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: (x, z) => deformedGroundY(x, z) })
+    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
     : null;
   // World state, every tier: the marks a crater leaves, a building coming down in the world's own geometry (the world
   // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
@@ -1137,7 +1150,8 @@ function* createFxSteps(
     if (w !== bodyWorld || !bodyEnv) {
       bodyWorld = w;
       const query = w.bodyRecordQuery?.() ?? null;
-      bodyEnv = { groundAt: (x, z) => deformedGroundY(x, z), ...(query ? { queryStatic: query } : {}),
+      // (the same lattice-read ground as the landing solves: a heap's bodies read it at every sphere every step)
+      bodyEnv = { groundAt: landingGround, ...(query ? { queryStatic: query } : {}),
         isSolid: (record) => !record.crushed && !record.dead };
     }
     return bodyEnv;
@@ -1154,7 +1168,7 @@ function* createFxSteps(
     now: () => particles.getTime(), scene: engineCtx.scene ?? null,
     // (round 7) pieces lie on the ground as drawn (a rubble mound, a crater's rim); a pile is seated on the ground under
     // it, per vertex (its heights stand over the sim's mound already)
-    groundY: (x, z) => deformedGroundY(x, z),
+    groundY: landingGround,
     baseGroundY: (x, z) => (heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z)),
     poolCapacity: mediaTier ? 256 : 24, pieceCap: mediaTier ? 1024 : 160,
   });
@@ -6380,6 +6394,7 @@ function* createFxSteps(
       structDebris?.reset();
       rubble?.reset();
       stages?.reset();
+      landingGround.clear();
       skirtHead = 0; skirtCount = 0;
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;

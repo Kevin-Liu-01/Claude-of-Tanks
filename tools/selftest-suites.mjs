@@ -865,6 +865,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
+    'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
     'src/ui/hitEventFormat.selftest.mjs',
     'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/shotSchematic.selftest.mjs',
