@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **219 saved vehicle records**: **219 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **220 saved vehicle records**: **220 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -58,7 +58,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 48 | PROD | `k1a1` | K1E1 | South Korea | VIII | Modern | Production |
 | 49 | PROD | `stb1` | STB-1 | Japan | VII | Cold War | Production |
 | 50 | PROD | `type74` | Type 74 | Japan | VIII | Cold War | Production |
-| 51 | PROD | `type90` | Type 90 (Kyū-maru) | Japan | IX | Cold War | Production |
+| 51 | PROD | `type90` | Type 90 Kyū-maru | Japan | IX | Cold War | Production |
 | 52 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
 | 53 | PROD | `type10` | Type 10 (TK-X) | Japan | X | Modern | Production |
 | 54 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |
@@ -95,11 +95,11 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 85 | PROD | `type59` | Type 59 | China | VII | Cold War | Production |
 | 86 | PROD | `ztz85_iii` | ZTZ-85-III | China | VIII | Cold War | Production |
 | 87 | PROD | `type99a` | ZTZ-99 Longwei | China | IX | Modern | Production |
-| 88 | PROD | `type96b_x` | Type 96B X | China | X | Modern | Production |
+| 88 | PROD | `type96b_x` | Type 96B | China | X | Modern | Production |
 | 89 | PROD | `type96_72_long` | Type 96-72 Lóng (Concept) | China | IX | Modern | Production |
 | 90 | PROD | `type96_80_feng` | Type 96-80 Fēng (Concept) | China | X | Modern | Production |
 | 91 | PROD | `type96_72m_lei` | Type 96-72M Léi (Concept) | China | X | Modern | Production |
-| 92 | PROD | `aft10_x` | AFT-10 X | China | X | Modern | Production |
+| 92 | PROD | `aft10_x` | AFT-10 | China | X | Modern | Production |
 | 93 | PROD | `ztz99a2_prototype` | ZTZ-99A | China | X | Modern | Production |
 | 94 | PROD | `ztz99a2` | ZTZ-99A2 | China | X | Modern | Production |
 | 95 | PROD | `vt4a1` | VT-4A1 | China | X | Modern | Production |
@@ -112,7 +112,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 102 | PROD | `kf51b` | KF51-U | Germany | X | Next Generation | Production |
 | 103 | PROD | `fv510` | FV510 Warrior | UK | VII | Cold War | Production |
 | 104 | PROD | `fv510_milan` | FV510 Warrior MILAN | UK | IX | Cold War | Production |
-| 105 | PROD | `fv510_milan_x` | Warrior MILAN X | UK | IX | Cold War | Production |
+| 105 | PROD | `warrior_tes_h` | Warrior TES(H) | UK | X | Cold War | Production |
 | 106 | PROD | `ajax_x` | Ajax | UK | X | Modern | Production |
 | 107 | PROD | `ares_apc_x` | Ares APC | UK | VII | Modern | Production |
 | 108 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |
@@ -159,7 +159,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 149 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VIII | Cold War | Production |
 | 150 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | X | Modern | Production |
 | 151 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
-| 152 | PROD | `bmp3m_dragun125_x` | BMP-3M Dragun 125 X | Russia | X | Next Generation | Production |
+| 152 | PROD | `bmp3m_dragun125_x` | BMP-3M Dragun 125 | Russia | X | Next Generation | Production |
 | 153 | PROD | `kurganets25_x` | Kurganets-25 | Russia | X | Next Generation | Production |
 | 154 | PROD | `tos1a_tagil` | TOS-1A Tagil | Russia | X | Modern | Production |
 | 155 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
@@ -213,20 +213,21 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 203 | PROD | `amx10p` | AMX-10P | France | IX | Cold War | Production |
 | 204 | PROD | `amx10p_25` | AMX-10P 25 | France | X | Cold War | Production |
 | 205 | PROD | `marder2` | Marder 2 | Germany | X | Modern | Production |
-| 206 | PROD | `ua_t80u_modern` | T-80U Zoria (Concept) | Ukraine | X | Next Generation | Production |
-| 207 | PROD | `ua_t72b3m_modern` | T-72B3M Hetman (Concept) | Ukraine | X | Next Generation | Production |
-| 208 | PROD | `ua_t72b3m_hetman_ii` | T-72B3M Hetman II (Concept) | Ukraine | X | Next Generation | Production |
-| 209 | PROD | `ua_t72b3_modern` | T-72B3 Sich (Concept) | Ukraine | X | Next Generation | Production |
-| 210 | PROD | `pl_t80u_modern` | T-80U Husarz (Concept) | Poland | X | Next Generation | Production |
-| 211 | PROD | `pl_t72b3m_modern` | T-72B3M Wilk (Concept) | Poland | X | Next Generation | Production |
-| 212 | PROD | `pl_t72b3_modern` | T-72B3 Zubr (Concept) | Poland | X | Next Generation | Production |
-| 213 | PROD | `pl_t72b3_zubr_ii` | T-72B3 Zubr II (Concept) | Poland | X | Next Generation | Production |
-| 214 | PROD | `cn_t80u_modern` | T-80U Yun (Concept) | China | X | Next Generation | Production |
-| 215 | PROD | `cn_t72b3m_modern` | T-72B3M Kunlun (Concept) | China | X | Next Generation | Production |
-| 216 | PROD | `cn_t72b3_modern` | T-72B3 Qilin (Concept) | China | X | Next Generation | Production |
-| 217 | PROD | `ru_t80u_modern` | T-80U Bars-M (Concept) | Russia | X | Next Generation | Production |
-| 218 | PROD | `ru_t72b3m_modern` | T-72B3M Bulat-M (Concept) | Russia | X | Next Generation | Production |
-| 219 | PROD | `ru_t72b3_modern` | T-72B3 Bastion-M (Concept) | Russia | X | Next Generation | Production |
+| 206 | PROD | `m6_linebacker` | M6 Linebacker | USA | X | Modern | Production |
+| 207 | PROD | `ua_t80u_modern` | T-80U Zoria (Concept) | Ukraine | X | Next Generation | Production |
+| 208 | PROD | `ua_t72b3m_modern` | T-72B3M Hetman (Concept) | Ukraine | X | Next Generation | Production |
+| 209 | PROD | `ua_t72b3m_hetman_ii` | T-72B3M Hetman II (Concept) | Ukraine | X | Next Generation | Production |
+| 210 | PROD | `ua_t72b3_modern` | T-72B3 Sich (Concept) | Ukraine | X | Next Generation | Production |
+| 211 | PROD | `pl_t80u_modern` | T-80U Husarz (Concept) | Poland | X | Next Generation | Production |
+| 212 | PROD | `pl_t72b3m_modern` | T-72B3M Wilk (Concept) | Poland | X | Next Generation | Production |
+| 213 | PROD | `pl_t72b3_modern` | T-72B3 Zubr (Concept) | Poland | X | Next Generation | Production |
+| 214 | PROD | `pl_t72b3_zubr_ii` | T-72B3 Zubr II (Concept) | Poland | X | Next Generation | Production |
+| 215 | PROD | `cn_t80u_modern` | T-80U Yun (Concept) | China | X | Next Generation | Production |
+| 216 | PROD | `cn_t72b3m_modern` | T-72B3M Kunlun (Concept) | China | X | Next Generation | Production |
+| 217 | PROD | `cn_t72b3_modern` | T-72B3 Qilin (Concept) | China | X | Next Generation | Production |
+| 218 | PROD | `ru_t80u_modern` | T-80U Bars-M (Concept) | Russia | X | Next Generation | Production |
+| 219 | PROD | `ru_t72b3m_modern` | T-72B3M Bulat-M (Concept) | Russia | X | Next Generation | Production |
+| 220 | PROD | `ru_t72b3_modern` | T-72B3 Bastion-M (Concept) | Russia | X | Next Generation | Production |
 
 ## Policy ownership
 

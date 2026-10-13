@@ -1052,7 +1052,7 @@
     },
     {
       "id": "type90",
-      "name": "Type 90 (Kyū-maru)",
+      "name": "Type 90 Kyū-maru",
       "nation": "Japan",
       "role": "mbt",
       "tier": 9,
@@ -1829,7 +1829,7 @@
     },
     {
       "id": "type96b_x",
-      "name": "Type 96B X",
+      "name": "Type 96B",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -1913,7 +1913,7 @@
     },
     {
       "id": "aft10_x",
-      "name": "AFT-10 X",
+      "name": "AFT-10",
       "nation": "China",
       "role": "td",
       "tier": 10,
@@ -2185,11 +2185,11 @@
       "suspension": false
     },
     {
-      "id": "fv510_milan_x",
-      "name": "Warrior MILAN X",
+      "id": "warrior_tes_h",
+      "name": "Warrior TES(H)",
       "nation": "UK",
       "role": "ifv",
-      "tier": 9,
+      "tier": 10,
       "hp": 1750,
       "speed": 68,
       "reverse": 20,
@@ -3173,7 +3173,7 @@
     },
     {
       "id": "bmp3m_dragun125_x",
-      "name": "BMP-3M Dragun 125 X",
+      "name": "BMP-3M Dragun 125",
       "nation": "Russia",
       "role": "light",
       "tier": 10,
