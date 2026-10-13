@@ -497,6 +497,11 @@ function assembleWorld(
     if (!horizonPanorama || panoramaFailed || horizonPanorama.baked || !panoramaRenderer) return;
     try { horizonPanorama.ensureBaked(panoramaRenderer); } catch { panoramaFailed = true; }
   };
+  // the perf stream (2026-10-13): the bake's programs go to the driver's parallel compile now, while the rest of the
+  // world builds, so the covered bake no longer links them at its first draw (horizonPanorama.ts prepareBake)
+  if (horizonPanorama && panoramaRenderer && !horizonPanorama.baked) {
+    try { horizonPanorama.prepareBake(panoramaRenderer); } catch { /* the bake compiles them itself */ }
+  }
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
