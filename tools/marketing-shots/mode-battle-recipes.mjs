@@ -119,9 +119,10 @@ export const RECIPES = {
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'follow', subject: 'flagCarrier', azimuthDeg: 28, distM: 15, heightM: 1.3, fov: 40, headingFrom: 'velocity', hud: 'noreticle' },
-          { kind: 'follow', subject: 'flagCarrier', azimuthDeg: -32, distM: 13, heightM: 1.0, fov: 42, headingFrom: 'velocity', hud: 'noreticle' },
-          { kind: 'between', from: 'flagCarrier', to: 'carrierHome', backM: 12, sideM: 5, heightM: 2.0, lookAtFrac: 0.12, fov: 44, hud: 'noreticle' },
+          // ahead of the carrier on its run home, looking back at it: the flag, the carrier's front and its pursuers
+          { kind: 'between', from: 'flagCarrier', to: 'carrierHome', backM: -18, sideM: 7, heightM: 1.2, lookAtFrac: 0, lookAtHeightM: 1.8, fov: 38, smoothS: 0.3, hud: 'noreticle' },
+          { kind: 'follow', subject: 'flagCarrier', azimuthDeg: 28, distM: 17, heightM: 1.0, fov: 40, headingFrom: 'velocity', hud: 'noreticle' },
+          { kind: 'between', from: 'flagCarrier', to: 'carrierHome', backM: -22, sideM: -8, heightM: 1.6, lookAtFrac: 0, lookAtHeightM: 1.8, fov: 40, smoothS: 0.3, hud: 'noreticle' },
         ],
         cameraEvery: 3,
         triggers: [T.anyFireOnScreen(), T.hitOnScreen(), T.killOnScreen()],
