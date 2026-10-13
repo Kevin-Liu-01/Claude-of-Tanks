@@ -1859,6 +1859,18 @@ fails on main), `mp-world-events-audit` (36 of 155 world-event deliveries withhe
 missing or late), `sim-determinism-audit`, the destruction receipts (`destructionShard` and `destructionCraters` now
 read the hidden viewer's events as withheld).
 
+**Wire 6: the destroyed set never caps a match (2026-10-13, the MP stream; MP-SINCE-0930 §5b D).** Every keyframe — the
+interval keyframe, a late joiner's, a rejoin's, a reconnect's and the sealed migration keyframe — carries the whole
+destroyed-prop list, and wire 5 capped it at 4,096 indices with an encoder that threw past it: the actor's loop logged
+`tick failed`, the viewers behind the throwing one got nothing that tick, and every keyframe failed from then on. The
+densest battlefields hold more crushable props than that (Monsoon 9,119, Verdant 6,645; `tools/mp-wire-capacity.mjs`
+bounds every battlefield; a 28-bot Monsoon match with its score target lifted felled 1,260 by minute 5). The set now
+travels as the smaller of a gap list and a bitset over the obstacle index (`src/mp/wire/destroyedSet.ts`; README
+"destroyed set"): Monsoon with every crushable prop down is a 2.6 KB keyframe with 28 hulls. A layout change, so
+`WIRE_VERSION` 6 (the build gate names an other-wire host with "refresh"). Receipt: `destroyedSet.selftest` (round
+trips and form choice, every legal set up to 65,536 indices in 8,195 B, typed refusals of malformed frames, the worst
+battlefield's every crushable prop through a real 14v14 keyframe and the migration keyframe; fails on wire 5).
+
 ### 13.14 Relay credentials from the room (lane `mp/room-relay-credentials`, 2026-10-02)
 
 **Why.** `/api/ice` (a Vercel function) minted one-hour Cloudflare TURN credentials for any request that passed its origin
