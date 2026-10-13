@@ -124,12 +124,21 @@ try {
     screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
     assert.equal(art.className, 'art verdant', 'the map\'s gradient is up with the screen');
     assert.equal(img.classList.contains('ready'), false, 'no art before it is decoded');
-    assert.deepEqual(loads.map((l) => l.url), ['/maps/cards/verdant.webp', '/maps/verdant.webp'], 'the card, then the hero, at high priority');
+    assert.deepEqual(loads.map((l) => l.url).sort(), ['/maps/cards/verdant.webp', '/maps/thumbs/verdant.webp', '/maps/verdant.webp'],
+      'the hero, the card and the picker thumb are all asked for at once');
+    await land('/maps/thumbs/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/thumbs/verdant.webp)');
+    assert.equal(img.classList.contains('ready'), true, 'the picker thumb (cached by the Garage) covers the gradient first');
     await land('/maps/cards/verdant.webp');
-    assert.equal(img.style.backgroundImage, 'url(/maps/cards/verdant.webp)');
-    assert.equal(img.classList.contains('ready'), true, 'the decoded card covers the gradient');
+    assert.equal(img.style.backgroundImage, 'url(/maps/cards/verdant.webp)', 'the card replaces the thumb');
     await land('/maps/verdant.webp');
     assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)', 'the hero replaces the card once decoded');
+    // a sharper image is never replaced by a softer one that arrives later
+    screen.show({ mapName: 'Monsoon', thumb: '/maps/monsoon.webp', biome: 'monsoon', allies: [], enemies: [] });
+    await land('/maps/monsoon.webp');
+    await land('/maps/thumbs/monsoon.webp');
+    await land('/maps/cards/monsoon.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/monsoon.webp)');
     // a decoded hero shows at once on the next entry
     screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
     assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)');
@@ -138,6 +147,7 @@ try {
     screen.show({ mapName: 'Steinburg', thumb: '/maps/urban.webp', biome: 'urban', allies: [], enemies: [] });
     screen.show({ mapName: 'Ironworks', thumb: '/maps/foundry.webp', biome: 'foundry', allies: [], enemies: [] });
     await land('/maps/urban.webp');
+    await land('/maps/thumbs/urban.webp');
     assert.equal(img.style.backgroundImage, '', 'Steinburg\'s late hero stays off Ironworks\' screen');
     assert.equal(art.className, 'art foundry');
     delete globalThis.Image;

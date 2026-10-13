@@ -19,6 +19,7 @@ import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
+import { MAP_THUMBS } from './mapThumbs.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -277,30 +278,36 @@ export function createBattleLoadScreen(): BattleLoadScreen {
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
   const artImgEl = requiredElement<HTMLDivElement>(root, '.art-img');
-  // the map art in flight: a later show() supersedes it
+  // the map art in flight: a later show() supersedes it; a sharper image replaces a softer one, never the reverse
   let artToken = 0;
-  let artFinal = '';
-  const showArt = (url: string): void => {
+  let artRank = 0;
+  const showArt = (url: string, rank: number): void => {
+    if (rank <= artRank) return;
+    artRank = rank;
     artImgEl.style.backgroundImage = `url(${url})`;
     artImgEl.classList.add('ready');
   };
-  /** The map's gradient at once; its card (when the hero is not decoded yet) and then its hero, each once decoded. */
+  /** The map's gradient at once, then the sharpest of its picker thumb (cached by the Garage's battlefield list), its
+   * 1280 px card and its hero that has decoded, each replacing the softer one. */
   const stageArt = (thumb: string | undefined, biome: string | undefined): void => {
     const token = ++artToken;
+    artRank = 0;
     artEl.className = `art ${biome || 'none'}`;
     artImgEl.classList.remove('ready');
     artImgEl.style.backgroundImage = '';
-    artFinal = thumb || '';
-    if (!artFinal) return;
-    if (isImagePreloaded(artFinal)) { showArt(artFinal); return; }
+    const final = thumb || '';
+    if (!final) return;
     const card = biome ? mapCardFor(biome) : null;
-    if (card && card !== artFinal) {
-      if (isImagePreloaded(card)) showArt(card);
-      else void preloadImage(card, { priority: 'high' }).then((url) => {
-        if (url && token === artToken && artImgEl.style.backgroundImage.indexOf(artFinal) < 0) showArt(url);
+    const pick = biome ? MAP_THUMBS[biome as keyof typeof MAP_THUMBS] ?? '' : '';
+    const steps: [string, number][] = [[final, 3]];
+    if (card && card !== final) steps.push([card, 2]);
+    if (pick && pick !== final && pick !== card) steps.push([pick, 1]);
+    for (const [url, rank] of steps) {
+      if (isImagePreloaded(url)) { showArt(url, rank); continue; }
+      void preloadImage(url, { priority: rank === 3 ? 'high' : 'auto' }).then((loaded) => {
+        if (loaded && token === artToken) showArt(loaded, rank);
       });
     }
-    void preloadImage(artFinal, { priority: 'high' }).then((url) => { if (url && token === artToken) showArt(url); });
   };
   const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
