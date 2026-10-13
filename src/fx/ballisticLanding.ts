@@ -10,9 +10,18 @@
  * stop the piece there, on the ground under its landing point. Pure, allocation-free, Node-runnable.
  */
 
-/** The landing search's step (s) and default horizon (s). */
+/** The landing search's step near the ground (s), its longest step (s) and default horizon (s). */
 const STEP_S = 1 / 24;
+const MAX_STEP_S = 0.5;
 const HORIZON_S = 8;
+/**
+ * The steepest the ground is taken to rise under a piece's travel (rise per metre) when a step is sized: a piece this
+ * far above the ground cannot meet it within a step that falls short of the gap (its fall plus the ground's rise under
+ * its travel), so a high piece takes a few long steps and only the last metres are walked at STEP_S. A collapse throws
+ * hundreds of pieces in one frame; walked at STEP_S throughout, their landings cost 21 µs each (a 1,000-piece burst
+ * 21 ms).
+ */
+const GROUND_RISE_BOUND = 2;
 
 /**
  * The flight from (ox, oy, oz) at (vx, vy, vz) under drag `k` (1/s) and gravity, until its centre comes within `lift` of
@@ -40,14 +49,25 @@ export function ballisticLanding(ox: number, oy: number, oz: number, vx: number,
     if (clear < 0) { at(0); return 0; }
     t0 = clear;
   }
-  for (let t = t0 + STEP_S; t <= horizonS + 1e-9; t += STEP_S) {
-    if (above(t) <= 0) {
+  const speedXZ = Math.hypot(vx, vz);
+  let gap = above(t0);
+  while (t0 < horizonS - 1e-9) {
+    // the longest step that cannot reach the ground (its fall from the speed it has now under gravity and the drag on
+    // a rise, the ground rising GROUND_RISE_BOUND under its travel), never shorter than STEP_S
+    const e = Math.exp(-kk * t0);
+    const b = Math.max(0, 9.8 * t0 - vy * e) + GROUND_RISE_BOUND * speedXZ * e;
+    const accel = 9.8 + kk * Math.max(0, vy) * e;
+    const reach = gap > 0 ? (-b + Math.sqrt(b * b + 2 * accel * gap)) / accel : 0;
+    const t = Math.min(horizonS, t0 + Math.min(MAX_STEP_S, Math.max(STEP_S, reach)));
+    const a = above(t);
+    if (a <= 0) {
       let lo = t0, hi = t;
       for (let i = 0; i < 6; i++) { const mid = (lo + hi) * 0.5; if (above(mid) <= 0) hi = mid; else lo = mid; }
       at(hi);
       return hi;
     }
     t0 = t;
+    gap = a;
   }
   at(horizonS);
   out[0] = Infinity;
