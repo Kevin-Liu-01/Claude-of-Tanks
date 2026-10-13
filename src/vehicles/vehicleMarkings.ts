@@ -167,7 +167,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   namer_ifv: anchor('hull', 'left', .52, .60, .24, 1),
   merkava3d_x: anchor('hull', 'left', .56041, .49104, .24, 1),
   k2_x: anchor('hull', 'left', .67977, .51807, .24, 1),
-  fv510_milan_x: anchor('hull', 'left', .52, .58, .20, 1),
+  warrior_tes_h: anchor('hull', 'left', .52, .58, .20, 1),
   griffin50_x: anchor('hull', 'left', .52, .58, .20, 1),
   ajax_x: anchor('hull', 'left', .52, .58, .20, 1),
   aft10_x: anchor('hull', 'left', .52, .58, .20, 1),

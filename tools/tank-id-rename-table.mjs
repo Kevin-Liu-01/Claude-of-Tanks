@@ -332,7 +332,7 @@ function classifyMismatch(id, acceptable, displayName) {
 export const COORDINATOR_RULINGS = Object.freeze({
   date: '2026-10-13',
   names: Object.freeze({
-    fv510_milan_x: {
+    warrior_tes_h: {
       displayName: 'Warrior TES(H)', shortName: 'Warrior TES(H)', tier: 10,
       note: 'VEH-11: the Warrior MILAN X becomes its own Warrior type at tier 10; its description says it carries the MILAN firing post',
     },

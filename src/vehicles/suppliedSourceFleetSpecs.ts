@@ -221,8 +221,8 @@ function applyDragunAssaultBalance(spec: FleetTankSpec): void {
 
 /** Preserve source weapon labels after peer and caliber adaptation. */
 function applyGuidedShellLabels(spec: FleetTankSpec): void {
-  if (spec.id !== 'fv510_milan_x' && spec.id !== 'cv90_mkiv_x') return;
-  const isMilan = spec.id === 'fv510_milan_x';
+  if (spec.id !== 'warrior_tes_h' && spec.id !== 'cv90_mkiv_x') return;
+  const isMilan = spec.id === 'warrior_tes_h';
   for (const round of spec.gun.shells) {
     if (!round.guided) continue;
     round.name = isMilan ? 'MILAN guided missile' : 'Guided missile';

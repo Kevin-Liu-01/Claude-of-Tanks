@@ -20,12 +20,16 @@ import {
 } from './tankIdAliases.ts';
 import { PROTOCOL_VERSION } from '../mp/wire/constants.ts';
 
+const shownName = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.name;
+
 // ---- append-only maps and the build gate
 // sha256 of JSON.stringify(map) for every landed map, in order. Append a row with each rename; never edit one.
-const LANDED_MAP_SHA256 = [];
+const LANDED_MAP_SHA256 = [
+  '9c6b9d486a0f2b82d519a5cbdffb5f3f775e3fb8f371b5d2a5cd4979ef129dec', // schema 2 (2026-10-13): fv510_milan_x -> warrior_tes_h
+];
 // The PROTOCOL_VERSION that first carried each tank id schema. A new schema needs a higher protocol, so builds of
 // two schemas never share a match.
-const PROTOCOL_FOR_SCHEMA = { 1: 6 };
+const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7 };
 assert.equal(TANK_ID_SCHEMA, TANK_ID_RENAMES.length + 1, 'one rename map per schema step');
 assert.deepEqual(
   TANK_ID_RENAMES.map((map) => createHash('sha256').update(JSON.stringify(map)).digest('hex')),
@@ -92,6 +96,9 @@ assert.equal(TANK_IDS.schemaOf(TANK_ID_SCHEMA + 5), TANK_ID_SCHEMA, 'a newer sch
 if (TANK_ID_SCHEMA === 1) {
   assert.deepEqual(TANK_IDS.stamp(), {}, 'schema 1 writes no stamp: missing already means 1');
   assert.equal(TANK_IDS.linkParam(), '');
+} else {
+  assert.deepEqual(TANK_IDS.stamp(), { tankIdSchema: TANK_ID_SCHEMA }, 'every record this build writes names its schema');
+  assert.equal(TANK_IDS.linkParam(), `ids=${TANK_ID_SCHEMA}`);
 }
 
 // ---- a swap resolves by schema (fixture schema 2 from the rename table)
@@ -153,8 +160,16 @@ for (const [file, pattern] of Object.entries(SEEDED)) {
 assert.ok(!/key\.split\(''\)\.reduce/.test(readFileSync(new URL('./materials.ts', import.meta.url), 'utf8').replace(/function textureSeedFor[\s\S]*?\n\}/, '')),
   'every texture bake seed goes through textureSeedFor');
 
+// ---- schema 2 (VEH-11): the Warrior MILAN X is the Warrior TES(H)
+assert.equal(resolveTankId('fv510_milan_x'), 'warrior_tes_h', 'a schema-1 save, link or scene naming the Warrior MILAN X');
+assert.equal(TANK_IDS.resolveIncoming('fv510_milan_x'), 'warrior_tes_h', 'a room seat from a schema-1 build');
+assert.equal(tankSeedId('warrior_tes_h'), 'fv510_milan_x', 'the Warrior TES(H) keeps the look it had as the Warrior MILAN X');
+assert.equal(resolveTankId('fv510_milan', 1), 'fv510_milan', 'the FV510 Warrior MILAN stays itself');
+assert.equal(shownName('warrior_tes_h'), 'Warrior TES(H)');
+assert.equal(TANK_SPECS.fv510_milan_x, undefined, 'the retired id names no spec');
+
 // ---- the live registry names the vehicles the owner sees
-const shown = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.name;
+const shown = shownName;
 assert.equal(shown(resolveTankId('leo2a6m', 1)), 'Leopard 2A4 OTCO', 'schema-1 leo2a6m is the vehicle shown as Leopard 2A4 OTCO');
 assert.equal(shown(resolveTankId('leo2a6m_x', 1)), 'Leopard 2A6M');
 assert.equal(shown(resolveTankId('t90m', 1)), 'T-90AM', 'schema-1 t90m is the vehicle shown as T-90AM');

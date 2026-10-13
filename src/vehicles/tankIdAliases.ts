@@ -12,14 +12,17 @@
 // functions are pure. Simulation, network and Node tools may import it.
 
 /** The tank id schema this build writes. Bump it only by appending a rename map. */
-export const TANK_ID_SCHEMA = 1;
+export const TANK_ID_SCHEMA = 2;
 
 /**
  * Append-only rename maps. `TANK_ID_RENAMES[k]` turns schema k+1 ids into
  * schema k+2 ids; an id it does not name keeps its spelling. A landed map is
  * never edited: a later rename appends another map and bumps the schema.
  */
-export const TANK_ID_RENAMES: readonly Readonly<Record<string, string>>[] = Object.freeze([]);
+export const TANK_ID_RENAMES: readonly Readonly<Record<string, string>>[] = Object.freeze([
+  // Schema 2 (2026-10-13, VEH-11): the Warrior MILAN X becomes its own Warrior type, the Warrior TES(H).
+  Object.freeze({ fv510_milan_x: 'warrior_tes_h' }),
+]);
 
 /** The URL parameter that stamps a link's id schema (`/gallery?id=…&ids=2`). */
 export const TANK_ID_SCHEMA_PARAM = 'ids';

@@ -45,7 +45,7 @@ export const TANK_TIER = Object.freeze({
   // 2026-09-15 owner: the four T-90 X studies are tier X and lead the Russian garage
   t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10, t14_x: 10,
   kurganets25_x: 10,
-  fv510_milan_x: 9, griffin50_x: 10, ajax_x: 10, aft10_x: 10,
+  warrior_tes_h: 10, griffin50_x: 10, // owner 2026-10-13 (VEH-11): the Warrior TES(H) is a tier-X Warrior type ajax_x: 10, aft10_x: 10,
   bmp3m_dragun125_x: 10, k21_x: 9, type96b_x: 10,
   kf41_lynx_x: 10, cv90_mkiv_x: 10, cv90105_tml_x: 9, sabra_mk2_x: 9,
   m1a2: 10, t90m: 9, t90m_proryv: 10,

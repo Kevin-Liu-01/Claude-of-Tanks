@@ -2073,6 +2073,7 @@
   "gallery.brief.firstParagraph": "In Claude of Tanks, {name} is a Tier {tier} {nation} vehicle representing the {era} era. {armament} Its drivetrain provides {power} horsepower per tonne and a maximum forward speed of {top} km/h.",
   "gallery.brief.featureSentence": " The authored plate set also includes {features}.",
   "gallery.brief.secondParagraph": "The current balance model gives this vehicle {mobility}. Its armor model provides {protection}. Post-penetration damage can affect {modules} modeled module volumes and {crew} crew stations.",
+  "gallery.brief.note.warriorTesH": "The Warrior TES(H) is the Warrior MILAN in its Theatre Entry Standard (Herrick) fit: slat armour cages around the hull and the MILAN firing post on the turret.",
   "gallery.brief.mobility.veryHigh": "a high power-to-weight ratio and high maximum road speed",
   "gallery.brief.mobility.high": "mobility appropriate to its weight class",
   "gallery.brief.mobility.moderate": "moderate mobility that favors deliberate positioning",

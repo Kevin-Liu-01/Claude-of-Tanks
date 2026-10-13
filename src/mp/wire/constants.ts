@@ -20,7 +20,9 @@ export const WIRE_VERSION = 5;
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
 // 4: complete module health uses a 32-bit word (wire layout 3).
-export const PROTOCOL_VERSION = 6; // aerial supply actions and expanded mode checkpoints
+// 7 (2026-10-13, SSOT 2.19): tank id schema 2 (src/vehicles/tankIdAliases.ts). Builds of two id schemas never share a
+// match: a swapped id would name another vehicle on the other side.
+export const PROTOCOL_VERSION = 7; // aerial supply actions and expanded mode checkpoints; tank id schema 2
 
 export const TICK_HZ = 60;
 /**
