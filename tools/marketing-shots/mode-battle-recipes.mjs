@@ -347,16 +347,18 @@ export const RECIPES = {
     hour: 'day',
     windowS: 50,
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 450 })));
-      await ctx.mb('setAim', { target: 'nearestEnemyClear' });
-      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 2.5 });
+      // close lanes and a low aim (the hull's ammunition sits under the turret ring): a penetrating APFSDS round at
+      // 170-230 m is what cooks a rack off; r14's first pass at 260 m with a 2.5 mrad gate fired once in 50 s
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 320, dists: [190, 170, 220, 240], enemies: 2 })));
+      await ctx.mb('setAim', { target: 'nearestEnemyClear', heightFrac: 0.35 });
+      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' },
           { kind: 'scope', target: 'nearestEnemyClear', zoom: 8, hud: 'full' },
+          { kind: 'chase', target: 'nearestEnemyClear', step: 3, hud: 'full' },
         ],
-        cameraEvery: 5,
+        cameraEvery: 6,
         triggers: [
           { type: 'tank:destroyed', who: 'player', onscreen: false, delays: [60, 160, 320, 600], burst: true },
           T.playerHit([40, 120]), T.playerFire([35, 80]), T.killOnScreen(),
