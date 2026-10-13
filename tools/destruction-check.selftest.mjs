@@ -6,7 +6,8 @@
 // earlier hole hanging in a later one, no still piece in the air, every thrown piece on the ground where it lands, every
 // rigid body at rest on the ground, a body or a record, within the budgets. On main before the fix the same check fails
 // every one of them (untextured rooms, 48-73 hanging rim triangles, 4-7 tiles in the air, 77-86 % of the thrown pieces
-// over the ground).
+// over the ground, and 24-76 of the building's own triangles hanging over the heap late in the fall: the owner's "big
+// rectangles", a roof slope or a tower's glazing hung from a vertex under the eave band until the fold).
 import assert from 'node:assert/strict';
 import { runDestructionCheck } from './destruction-check.mjs';
 
@@ -16,6 +17,7 @@ for (const r of report.rows) {
   assert.ok(!r.standing, `${r.builder} ${r.id} comes down under the volley`);
   assert.equal(r.untextured, 0, `${r.builder}: every run in the building's own texture`);
   assert.equal(r.hangingRim, 0, `${r.builder}: no rim unit hangs in a later hole`);
+  assert.equal(r.hangingPanel, 0, `${r.builder}: nothing hangs from its fall (${r.hangingPanel} triangles up to ${r.hangingPanelM} m)`);
   assert.equal(r.pieces.stillHanging, 0, `${r.builder}: no still piece in the air`);
   assert.equal(r.pieces.overGround, 0, `${r.builder}: every thrown piece lies on the ground where it lands`);
   assert.ok(r.bodies.inWorld > 0 && r.bodies.moving === 0, `${r.builder}: its rigid rubble came to rest (${r.bodies.asleep}/${r.bodies.inWorld} asleep, ${r.bodies.moving} moving)`);
@@ -23,4 +25,4 @@ for (const r of report.rows) {
   assert.ok(r.bodies.onGround >= r.bodies.inWorld * 0.6, `${r.builder}: most of its bodies lie on the ground (${r.bodies.onGround}/${r.bodies.inWorld})`);
   assert.ok(r.pass, `${r.builder}: ${r.failures.join('; ')}`);
 }
-console.log(`destruction-check selftest: ${report.rows.map((r) => `${r.builder} (${r.bodies.inWorld} bodies, ${r.pieces.thrown} pieces)`).join(', ')} — textured, no hanging rims or pieces, rubble at rest on the ground — ok`);
+console.log(`destruction-check selftest: ${report.rows.map((r) => `${r.builder} (${r.bodies.inWorld} bodies, ${r.pieces.thrown} pieces)`).join(', ')} — textured, nothing hanging from the fall, no hanging rims or pieces, rubble at rest on the ground — ok`);
