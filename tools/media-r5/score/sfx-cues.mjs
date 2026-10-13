@@ -289,11 +289,13 @@ const KEY_LEAD_S = 0.1, KEY_TAIL_S = 0.32;
 // language has, in its least-used take; ties go by a hash of the cut, so a lone run still varies.
 const LEDGER_FILE = process.env.VOICE_LEDGER;
 const ledger = LEDGER_FILE && existsSync(LEDGER_FILE) ? JSON.parse(readFileSync(LEDGER_FILE, 'utf8')) : { lines: {}, takes: {} };
-// A fair share: once the round has a dozen calls, a line already above 22 % of them stays off the air, so the commonest
+// A fair share: a line already above 22 % of the round's calls (counted as at least a dozen) stays off the air, so the commonest
 // moment (a shell bursting near the hull: "near miss") cannot fill every take's radio and the other calls get through.
+// (a dozen calls' worth of prior, so the share holds from the round's first take: without it the first takes said
+// "near miss" eight times in sixteen calls before the cap began)
 const overShare = (l) => {
   const total = Object.values(ledger.lines).reduce((a, b) => a + b, 0);
-  return total >= 12 && (ledger.lines[l] ?? 0) / total > 0.22;
+  return (ledger.lines[l] ?? 0) / Math.max(total, 12) > 0.22;
 };
 const choose = (c) => {
   const lines = c.lines.filter((l) => VOICE_LINES[l] && VOICE_PACKS[c.lang]?.[l]?.length && !overShare(l));
