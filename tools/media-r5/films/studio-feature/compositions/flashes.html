@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.flash{mix-blend-mode:screen}
+</style>
+<div id="root" data-composition-id="flashes" data-width="1920" data-height="1080" data-duration="30">
+<div id="fl0" class="clip flash" data-start="5" data-duration="0.267" style="background:#fff6e6"></div>
+<div id="fl1" class="clip flash" data-start="12.5" data-duration="0.267" style="background:#fff6e6"></div>
+<div id="fl2" class="clip flash" data-start="22.5" data-duration="0.3" style="background:#fff6e6"></div>
+<div id="fl3" class="clip flash" data-start="27.5" data-duration="0.3" style="background:#fff6e6"></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#fl0', {opacity:0.5}, {opacity:0, duration:0.267, ease:'power2.in'}, 5);
+tl.fromTo('#fl1', {opacity:0.5}, {opacity:0, duration:0.267, ease:'power2.in'}, 12.5);
+tl.fromTo('#fl2', {opacity:0.9}, {opacity:0, duration:0.3, ease:'power2.in'}, 22.5);
+tl.fromTo('#fl3', {opacity:0.9}, {opacity:0, duration:0.3, ease:'power2.in'}, 27.5);
+window.__timelines["flashes"] = tl;
+</script>
+</template>
+</body></html>

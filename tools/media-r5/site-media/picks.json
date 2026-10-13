@@ -363,11 +363,6 @@
   "home": {
     "hero": [
       {
-        "id": "s07-lake-shellfire",
-        "still": "moment",
-        "focus": "55% 60%"
-      },
-      {
         "id": "s21-fields-assault",
         "still": "close",
         "focus": "52% 62%"
@@ -391,6 +386,11 @@
         "id": "s18-street-knockout",
         "still": "moment",
         "focus": "57% 66%"
+      },
+      {
+        "id": "s07-lake-shellfire",
+        "still": "moment",
+        "focus": "55% 60%"
       }
     ],
     "rail": [
@@ -666,12 +666,20 @@
   },
   "featured": [
     {
+      "id": "s21-fields-assault",
+      "still": "close",
+      "maps": [
+        "verdant"
+      ],
+      "boot": true,
+      "focal": "52% 62%"
+    },
+    {
       "id": "s07-lake-shellfire",
       "maps": [
         "alpine",
         "whiteout"
       ],
-      "boot": true,
       "focal": "55% 60%"
     },
     {
@@ -714,7 +722,6 @@
       "id": "s05-barn-advance",
       "still": "close",
       "maps": [
-        "verdant",
         "polders"
       ]
     },
@@ -794,10 +801,6 @@
       "still": "close"
     },
     {
-      "id": "s21-fields-assault",
-      "still": "close"
-    },
-    {
       "id": "s18-street-knockout"
     }
   ],
@@ -810,8 +813,8 @@
     "still": "moment"
   },
   "og": {
-    "id": "s07-lake-shellfire",
-    "still": "moment"
+    "id": "s21-fields-assault",
+    "still": "close"
   },
   "ogCards": {
     "private-room": {
@@ -829,6 +832,10 @@
     "404": {
       "id": "s38-church-knockout",
       "still": "close"
+    },
+    "home": {
+      "id": "s49-orchard-sunset",
+      "still": "moment"
     }
   },
   "readme": {

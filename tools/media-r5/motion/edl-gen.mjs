@@ -26,7 +26,8 @@ cut('s02-factory-road', 10, 0, 4);
 cut('s09-harbor-run', 11, 0, 4);
 // NOON — eight fast cuts (bars 12–15)
 ['s17-crossroads-fire', 's21-fields-assault', 's26-minaret-fire', 's25-alpine-village', 's28-fjord-village', 's11-container-rows', 's23-village-crossroads', 's19-roof-tiles']
-  .forEach((id, i) => cut(id, 12 + Math.floor(i / 2), (i % 2) * 2, 2, (i % 2) * 0.1));
+  // (launch day, 2026-10-09: S17's re-planned push-zoom opens wide behind trees; from 2.6 s the tank is close)
+  .forEach((id, i) => cut(id, 12 + Math.floor(i / 2), (i % 2) * 2, 2, id === 's17-crossroads-fire' ? 2.6 : (i % 2) * 0.1));
 // GOLDEN (bars 16–18) + the knockout (bar 19)
 cut('s32-yard-salvo', 16, 0, 4);
 cut('s06-farm-charge', 17, 0, 4);

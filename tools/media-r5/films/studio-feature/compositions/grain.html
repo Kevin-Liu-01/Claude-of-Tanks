@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+#grain-g{position:absolute;inset:0;background:url('assets/grain.png');opacity:0.04;mix-blend-mode:overlay}
+</style>
+<div id="root" data-composition-id="grain" data-width="1920" data-height="1080" data-duration="30">
+<div id="grain-g" data-layout-allow-occlusion></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+const g = document.querySelector('#grain-g');
+tl.to({ k: 0 }, { k: 900, duration: 30, ease: 'none', onUpdate() { const k = Math.floor(this.targets()[0].k); const h = Math.imul(k + 1, 2654435761) >>> 0; g.style.backgroundPosition = (h % 256) + 'px ' + ((h >>> 8) % 256) + 'px'; } }, 0);
+window.__timelines["grain"] = tl;
+</script>
+</template>
+</body></html>
