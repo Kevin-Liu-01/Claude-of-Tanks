@@ -223,7 +223,7 @@ function buildProxies() {
   }
   // a re-pick leaves proxies of takes no path names any more (retire.mjs would also drop them as unreferenced)
   const current = new Set(jobs.map((job) => job.path));
-  for (const name of readdirSync(PROXIES)) if (/^s\d\d-[a-z0-9-]+-mobile\.mp4$/.test(name) && !current.has(name)) rmSync(join(PROXIES, name));
+  for (const name of readdirSync(PROXIES)) if (/^s\d{2,3}-[a-z0-9-]+-mobile\.mp4$/.test(name) && !current.has(name)) rmSync(join(PROXIES, name));
   const manifest = { schemaVersion: 1, purpose: 'Mobile landing-page video proxies',
     encoding: { codec: 'h264', width: 960, height: 540, framesPerSecond: 24, audio: false },
     files: [
@@ -257,7 +257,7 @@ function frameList() {
     const png = join(dir, id, 'stills', readdirSync(join(dir, id, 'stills')).find((f) => f.endsWith('.png')));
     const scene = join(dirname(dir), 'scenes', `${id}.json`);
     const meta = existsSync(scene) ? JSON.parse(readFileSync(scene, 'utf8')).meta ?? {} : {};
-    out.push({ id, png, round: rel(dir), current: dir === dirs[0], n: meta.frame ?? Number(id.slice(1, 3)),
+    out.push({ id, png, round: rel(dir), current: dir === dirs[0], n: meta.frame ?? Number(/^s(\d+)-/.exec(id)?.[1]),
       title: meta.title ?? id, technique: meta.technique ?? '', map: meta.map ?? '', hero: meta.heroName ?? '' });
   }
   return out;
