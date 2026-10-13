@@ -105,4 +105,31 @@ assert.match(lighting, /THREE\.Mesh\.prototype\.onBeforeShadow = hook;/);
 assert.match(lighting, /THREE\.BatchedMesh\.prototype\.onBeforeShadow = function[\s\S]{0,200}batchedBefore\.call\(this[\s\S]{0,120}settleShadowDepthKind\(object, depthMaterial, renderer\.localClippingEnabled\);/,
   'the batched casters settle too (three\'s BatchedMesh keeps its own onBeforeShadow)');
 
+// 2026-10-13: a batch's colour kind is three's `_colorsTexture` (what getParameters reads for USE_BATCHING_COLOR), and
+// setProgram's colour check reads `colorTexture`, which r185's BatchedMesh lacks: undefined !== null asked every draw of
+// a colourless batch for a program change. The alias makes that check read the real texture.
+{
+  const { installBatchedColorTextureAlias } = await import('./shadowDepthKinds.ts');
+  const plainBatch = new THREE.BatchedMesh(2, 64, 64, plainMaterial);
+  assert.equal(casterKind(plainBatch), 20);
+  const colouredBatch = new THREE.BatchedMesh(2, 64, 64, plainMaterial);
+  const g = colouredBatch.addGeometry(new THREE.BoxGeometry());
+  colouredBatch.setColorAt(colouredBatch.addInstance(g), new THREE.Color(1, 0, 0));
+  assert.ok(colouredBatch._colorsTexture, 'setColorAt makes the batch\'s colour texture');
+  assert.equal(casterKind(colouredBatch), 21, 'a coloured batch is its own kind');
+  const fresh = !('colorTexture' in THREE.BatchedMesh.prototype);
+  assert.equal(installBatchedColorTextureAlias(), fresh, 'installed once');
+  assert.equal(installBatchedColorTextureAlias(), false, 'a second call keeps the first');
+  assert.equal(plainBatch.colorTexture, null, 'a colourless batch reads null: the check sees no change');
+  assert.equal(colouredBatch.colorTexture, colouredBatch._colorsTexture);
+  // three's setProgram condition, as r185 writes it, against a program compiled without batch colours
+  const renderer = readFileSync(new URL('../../node_modules/three/src/renderers/WebGLRenderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /materialProperties\.batchingColor === false && object\.colorTexture !== null/,
+    'three still reads object.colorTexture here (drop the alias once three reads _colorsTexture itself)');
+  assert.equal(plainBatch.colorTexture !== null, false, 'no program change for a colourless batch');
+  assert.equal(colouredBatch.colorTexture !== null, true, 'a batch that gains colours still recompiles');
+  const lightingSource = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(lightingSource, /installBatchedColorTextureAlias\(\);/, 'the shadow patch installs the alias');
+}
+
 console.log('shadowDepthKinds.selftest: shared and custom depth materials settle per caster kind; three\'s clone rule and shader hooks kept');

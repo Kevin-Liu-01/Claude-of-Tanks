@@ -24,7 +24,8 @@ import * as THREE from 'three';
 /**
  * The program variant a caster's depth draw takes, in three's setProgram terms: 0 a plain mesh; 10 instanced (+1 with
  * an instanceColor, +2 with a morphTexture: USE_INSTANCING_COLOR / USE_INSTANCING_MORPH); 20 batched (+1 with a
- * colorTexture: USE_BATCHING_COLOR); 30 skinned. Each flips a shared material's program at every switch.
+ * colour texture, three's `_colorsTexture`: USE_BATCHING_COLOR); 30 skinned. Each flips a shared material's program at
+ * every switch.
  */
 export type CasterKind = number;
 
@@ -34,13 +35,13 @@ interface CasterLike {
   isSkinnedMesh?: boolean;
   instanceColor?: unknown;
   morphTexture?: unknown;
-  colorTexture?: unknown;
+  _colorsTexture?: unknown;
   material?: THREE.Material | THREE.Material[];
   customDepthMaterial?: THREE.Material;
 }
 
 export function casterKind(object: CasterLike): CasterKind {
-  if (object.isBatchedMesh) return 20 + (object.colorTexture ? 1 : 0);
+  if (object.isBatchedMesh) return 20 + (object._colorsTexture ? 1 : 0);
   if (object.isInstancedMesh) return 10 + (object.instanceColor ? 1 : 0) + (object.morphTexture ? 2 : 0);
   return object.isSkinnedMesh ? 30 : 0;
 }
@@ -128,4 +129,23 @@ export function settleShadowDepthKind(object: CasterLike, depthMaterial: THREE.M
   if (kind === 0) return; // plain meshes keep three's shared material
   if (anyNeedsDepthVariant(object.material, localClipping)) return; // three's per-material clone: its own rule
   object.customDepthMaterial = kindDepthDefault(kind);
+}
+
+/**
+ * 2026-10-13 (the perf stream): three r185's setProgram asks whether a BatchedMesh's colour texture matches its
+ * program's USE_BATCHING_COLOR by `object.colorTexture`, a property BatchedMesh does not have (it keeps the texture in
+ * `_colorsTexture`, which getParameters reads): for a batch without colours, `undefined !== null` held, so EVERY draw of
+ * every batched mesh (the props buckets' batches, the tanks' gear and articulated shadow batches, in every pass) asked
+ * for a program change and re-ran getProgram (its parameters and its cache-key string) to land on the same program.
+ * The getter gives the check the property it reads; the program a draw takes is unchanged (getParameters still reads
+ * `_colorsTexture`). A three that grows its own `colorTexture` keeps it.
+ */
+export function installBatchedColorTextureAlias(): boolean {
+  const proto = THREE.BatchedMesh.prototype as unknown as Record<string, unknown>;
+  if ('colorTexture' in proto) return false;
+  Object.defineProperty(proto, 'colorTexture', {
+    configurable: true,
+    get(this: { _colorsTexture?: THREE.DataTexture | null }) { return this._colorsTexture ?? null; },
+  });
+  return true;
 }
