@@ -1431,24 +1431,52 @@ Object.assign(RECIPES, {
         })));
         ctx.log('seated', JSON.stringify(sides));
         // close the distance. A client holds the other seat only once it is spotted (snapshots are filtered for
-        // spotting), so each drives at the other side's spawn marker until the other tank is in its own world
-        // (r14 run 1: neither ever saw the other from the deployment slots)
-        for (const c of [A, B]) {
-          await c.page.evaluate(() => {
-            // the other side's spawn marker, else the map's centre (both sides deploy symmetric about the middle)
-            window.__MB.defineSelector('enemySpawn', 'const mine = ms && ms.perspectiveTeam; const s = ms && ms.spawns && ms.spawns.find((x) => x.team !== mine); return s ? H.point(s.x, s.y, s.z) : H.point(0, null, 0);');
-            window.__MB.setDrive({ to: 'enemySpawn', arriveM: 40, throttle: 1 });
+        // spotting), so both drive to a pair of open spots that see each other across clear ground, 150-190 m apart
+        // near the map's centre (r14 attempt 3 drove both to the centre itself and met 40 m apart with Verdant's
+        // town between them: two scopes full of walls); without such a pair, at the centre as before
+        const meet = await A.page.evaluate(() => {
+          const H = window.__MB.H, discs = H.concealers();
+          for (const r of [0, 70, 140, 210, 280]) {
+            for (let k = 0; k < (r ? 12 : 1); k++) {
+              const a = (k / 12) * Math.PI * 2, cx = Math.sin(a) * r, cz = Math.cos(a) * r;
+              for (let j = 0; j < 8; j++) {
+                const bearing = (j / 8) * Math.PI;
+                for (const half of [85, 75, 95]) {
+                  const ax = cx - Math.sin(bearing) * half, az = cz - Math.cos(bearing) * half;
+                  const bx = cx + Math.sin(bearing) * half, bz = cz + Math.cos(bearing) * half;
+                  if (!H.openGround(ax, az, 10, discs) || !H.openGround(bx, bz, 10, discs)) continue;
+                  const eyeA = { x: ax, y: H.groundY(ax, az) + 2.3, z: az }, eyeB = { x: bx, y: H.groundY(bx, bz) + 2.3, z: bz };
+                  if (!H.laneClear(eyeA, { x: bx, z: bz }, 2.4, discs) || !H.laneClear(eyeB, { x: ax, z: az }, 2.4, discs)) continue;
+                  return { a: [Math.round(ax), Math.round(az)], b: [Math.round(bx), Math.round(bz)], d: half * 2, centre: [Math.round(cx), Math.round(cz)] };
+                }
+              }
+            }
+          }
+          return null;
+        });
+        // each seat takes the spot on its own side
+        if (meet && sides[0]?.pos && sides[1]?.pos) {
+          const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+          if (d(sides[0].pos, meet.a) + d(sides[1].pos, meet.b) > d(sides[0].pos, meet.b) + d(sides[1].pos, meet.a)) [meet.a, meet.b] = [meet.b, meet.a];
+        }
+        ctx.log('meeting spots', JSON.stringify(meet));
+        if (!meet) ctx.note('no pair of open spots in sight of each other near the centre: both drove to the centre');
+        for (const [c, spot] of [[A, meet?.a], [B, meet?.b]]) {
+          await c.page.evaluate((to) => {
+            window.__MB.setDrive(to ? { to, arriveM: 5, throttle: 1 } : { to: 'point:0,0', arriveM: 40, throttle: 1 });
             window.__MB.setHud('full');
-          });
+          }, spot || null);
           await c.page.addStyleTag({ content: '.cot-mp-banner{display:none!important}' });
         }
         let seen = [null, null];
-        for (let i = 0; i < 120; i++) {
-          seen = await Promise.all([A, B].map((c) => c.page.evaluate(() => {
-            const H = window.__MB.H, p = H.player(), e = H.sel('nearestEnemy');
+        for (let i = 0; i < 150; i++) {
+          // hold for the spot (up to about 45 s of driving), then take the other seat wherever it is in sight
+          seen = await Promise.all([A, B].map((c) => c.page.evaluate((patient) => {
+            const H = window.__MB.H, p = H.player(), e = H.sel('nearestEnemy'), drive = window.__MB.drive;
+            if (patient && drive && !drive.arrived) return null;
             if (p && e && H.dist(p.state.pos, e) < 420) { window.__MB.setDrive(null); return Math.round(H.dist(p.state.pos, e)); }
             return null;
-          })));
+          }, i < 90)));
           if (seen[0] != null && seen[1] != null) break;
           await ctx.sleep(500);
         }
