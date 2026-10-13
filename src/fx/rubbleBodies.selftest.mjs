@@ -138,13 +138,31 @@ function pile() {
   for (let k = 0; k < 4; k++) if (w.pieces.push('glass', 'shard', 0, k * 0.5, 3, 0, 0, 0, 0, 1, 0.1, 0.1, 0.1, 1, 1, 1, 1, 1, 0)) thrown++;
   debris.commit();
   assert.equal(thrown, 10, 'every piece was taken');
+  // (2026-10-13, the collapse frame's bar) the bodies go to the engine in the updates after the stage, a few an update
+  assert.equal(bodies.stats().live, 0, 'none thrown in the stage\'s own frame');
+  debris.update();
   assert.equal(bodies.stats().live, 3, 'three larger pieces fell as bodies (the stage\'s budget)');
   assert.equal(debris.stats().pieces, 7, 'the rest — three blocks past the budget, four shards — stayed pieces');
   // a settled stage throws nothing at all
   const z = debris.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => null, 0, true, { tag: 32768 + 2, bodies: 3 });
   assert.equal(z.pieces.push('stone', 'block', 0, 0, 3, 0, 0, 0, 0, 1, 0.5, 0.5, 0.5, 1, 1, 1, 1, 1, 0), false);
   debris.commit();
+  debris.update();
   assert.equal(bodies.stats().live, 3);
+  // a collapse's fourteen: four an update, the lowest of the soonest released first; one the engine refuses is a piece
+  {
+    now = 0;
+    const small = createRubbleBodies({ now: () => now, environment: () => ({ groundAt: () => 0 }), materialFor: () => null, capacity: 6 });
+    const d = createStructureDebris({ now: () => now, groundY: () => 0, poolCapacity: 64, pieceCap: 128, bodies: small });
+    const c = d.begin({ x: 0, y: 0, z: 0, yaw: 0 }, () => new THREE.MeshStandardMaterial(), 0, false, { bodies: 14, structure: 3 });
+    for (let k = 0; k < 14; k++) c.pieces.push('stone', 'block', 0, k * 0.6, 2 + (13 - k) * 0.4, 0, 0, 0, 0, 1, 0.5, 0.5, 0.5, 1, 1, 1, 1, 1, 0);
+    d.commit();
+    const piecesBefore = d.stats().pieces;
+    const live = [];
+    for (let u = 0; u < 5; u++) { d.update(); live.push(small.stats().live); now += 1 / 60; }
+    assert.deepEqual(live.slice(0, 2), [4, 6], `four an update until the engine is full (${live})`);
+    assert.ok(d.stats().pieces - piecesBefore === 8, `the eight it refused are pieces (${d.stats().pieces - piecesBefore})`);
+  }
 }
 
 console.log('rubbleBodies selftest: rest on slopes and below a plateau, deterministic, own walls let go and neighbours solid, budget, delayed release, settled instances, stage budgets — ok');

@@ -287,7 +287,29 @@ interface PiecePool {
   liveUntil: number;
   dirtyLo: number;
   dirtyHi: number;
+  /** Each slot's write count: a landing solved later for a slot the ring has since reused is dropped. */
+  gen: Uint32Array;
 }
+
+/**
+ * The landing solves a stage leaves for the frames after it (destruction stream, 2026-10-13; the coordinator's bar for
+ * deploy 223: a collapse may cost its frame at most 3 ms over production, and its hundreds of pieces each solved their
+ * landing in it). A piece born later than this, or high enough over the ground to be this long in the air, is written
+ * with no landing yet (the program flies it) and solved in a coming update, the soonest to land first; nearer ones are
+ * solved at once.
+ */
+const LANDING_DEFER_S = 0.15;
+/** Deferred landings solved per update at least (all those due within LANDING_DUE_S as well). */
+const LANDINGS_PER_UPDATE = 64;
+/**
+ * Rigid bodies a stage throws are handed to the engine over the updates after it, this many an update (and every one
+ * BODY_OVERDUE_S past its release), the soonest released and the lowest first: a collapse's fourteen bodies spawned in its frame (the same
+ * bar). Invisible: the crumble releases them over seconds, and a body is hidden until its release.
+ */
+const BODY_THROWS_PER_UPDATE = 4;
+/** A body this long past its release is thrown in the update whatever the count (a few frames late at most). */
+const BODY_OVERDUE_S = 0.1;
+const LANDING_DUE_S = 0.1;
 
 /** A structure stage's body-frame placement in the world. */
 export interface BodyPlacement { x: number; y: number; z: number; yaw: number }
@@ -421,7 +443,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     mesh.receiveShadow = false;
     mesh.visible = false;
     group.add(mesh);
-    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1 };
+    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1, gen: new Uint32Array(poolCapacity) };
     pools.set(key, p);
     return p;
   }
@@ -525,49 +547,21 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         const ax = _q.y + 0.31, ay = _q.z - 0.17, az = _q.x + 0.23, al = Math.hypot(ax, ay, az) || 1;
         const speed = Math.hypot(wvx, vy, wvz);
         const rate = (3 + ((stagePieces * 7919) % 100) * 0.06) * Math.min(1, speed / 3);
-        if (o.bodies.throw(bucket, shape, wx, wy, wz, _q.x, _q.y, _q.z, _q.w, sx, sy, sz, wvx, vy, wvz,
-          ax / al * rate, ay / al * rate, az / al * rate, r, g, b, stageDelay, stageStructure)) {
-          stageBodies--;
-          stagePieces++;
-          return true;
-        }
+        // thrown in a coming update (BODY_THROWS_PER_UPDATE), the lowest of the soonest released first; one the engine
+        // refuses then is written to the program as a piece
+        const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
+        deferThrow(bucket, mat && 'map' in mat ? (mat.map ?? null) : null, shape, variant, wx, wy, wz, _q, sx, sy, sz, wvx, vy, wvz,
+          ax / al * rate, ay / al * rate, az / al * rate, r, g, b, stageBirth, stageStructure);
+        stageBodies--;
+        stagePieces++;
+        return true;
       }
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
-      const map = mat && 'map' in mat ? (mat.map ?? null) : null;
-      const pool = poolFor(map, shape, variant);
-      const i = pool.cursor;
-      pool.cursor = (pool.cursor + 1) % poolCapacity;
-      pool.high = Math.max(pool.high, i + 1);
-      pool.mesh.geometry.instanceCount = pool.high;
-      const j = i * 4;
-      const A = pool.arrays;
-      toWorld(px, py, pz, A.aPB, j);
-      A.aPB[j + 3] = stageBirth;
-      // velocity rotates with the body
-      A.aVL[j] = vx * cosY + vz * sinY; A.aVL[j + 1] = vy; A.aVL[j + 2] = -vx * sinY + vz * cosY;
-      const moving = vx * vx + vy * vy + vz * vz > 1e-4;
-      // a thrown piece lies where it lands (round 7: they vanished at ~10 s): ~24 s, then settles in
-      A.aVL[j + 3] = moving ? 22 + (i % 7) * 0.6 : 60;
-      // orientation: body yaw, then the piece's own
       _qy.setFromAxisAngle(_up, place.yaw);
       _q.set(qx, qy, qz, qw).normalize().premultiply(_qy);
-      A.aQ[j] = _q.x; A.aQ[j + 1] = _q.y; A.aQ[j + 2] = _q.z; A.aQ[j + 3] = _q.w;
-      A.aSS[j] = sx; A.aSS[j + 1] = sy; A.aSS[j + 2] = sz; A.aSS[j + 3] = moving ? 3 + ((i * 7919) % 100) * 0.06 : 0;
-      A.aCG[j] = r; A.aCG[j + 1] = g; A.aCG[j + 2] = b;
-      if (moving) {
-        // where its flight meets the ground as drawn (the program stops it there)
-        pieceLanding(A.aPB[j], A.aPB[j + 1], A.aPB[j + 2], A.aVL[j], A.aVL[j + 1], A.aVL[j + 2], 0.3 * Math.min(sx, sy, sz),
-          o.groundY, _land);
-        A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
-        A.aCG[j + 3] = _land[1];
-      } else {
-        A.aLD[j] = 1e4;
-        A.aCG[j + 3] = o.groundY(A.aPB[j], A.aPB[j + 2]);
-      }
-      A.aLD[j + 1] = 0; A.aLD[j + 2] = 0; A.aLD[j + 3] = 0;
-      if (stageBirth + A.aVL[j + 3] > pool.liveUntil) pool.liveUntil = stageBirth + A.aVL[j + 3];
-      pool.dirtyLo = pool.dirtyLo < 0 ? i : Math.min(pool.dirtyLo, i);
-      pool.dirtyHi = Math.max(pool.dirtyHi, i + 1);
+      writePiece(mat && 'map' in mat ? (mat.map ?? null) : null, shape, variant,
+        place.x + px * cosY + pz * sinY, place.y + py, place.z - px * sinY + pz * cosY, stageBirth,
+        vx * cosY + vz * sinY, vy, -vx * sinY + vz * cosY, _q, sx, sy, sz, r, g, b);
       stagePieces++;
       return true;
     },
@@ -575,6 +569,104 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     get capacity() { return stagePiecesOn ? pieceCap : 0; },
   };
   const writers: DamageWriters = { mesh: meshWriter, pieces: pieceWriter };
+
+  /** One piece into its pool (world frame): its flight, its landing (now or deferred, LANDING_DEFER_S), its life. */
+  function writePiece(map: THREE.Texture | null, shape: DebrisShape, variant: number, wx: number, wy: number, wz: number,
+    birth: number, wvx: number, wvy: number, wvz: number, q: THREE.Quaternion, sx: number, sy: number, sz: number,
+    r: number, g: number, b: number): void {
+    const pool = poolFor(map, shape, variant);
+    const i = pool.cursor;
+    pool.cursor = (pool.cursor + 1) % poolCapacity;
+    pool.high = Math.max(pool.high, i + 1);
+    pool.mesh.geometry.instanceCount = pool.high;
+    const j = i * 4;
+    const A = pool.arrays;
+    A.aPB[j] = wx; A.aPB[j + 1] = wy; A.aPB[j + 2] = wz;
+    A.aPB[j + 3] = birth;
+    A.aVL[j] = wvx; A.aVL[j + 1] = wvy; A.aVL[j + 2] = wvz;
+    const moving = wvx * wvx + wvy * wvy + wvz * wvz > 1e-4;
+    // a thrown piece lies where it lands (round 7: they vanished at ~10 s): ~24 s, then settles in
+    A.aVL[j + 3] = moving ? 22 + (i % 7) * 0.6 : 60;
+    A.aQ[j] = q.x; A.aQ[j + 1] = q.y; A.aQ[j + 2] = q.z; A.aQ[j + 3] = q.w;
+    A.aSS[j] = sx; A.aSS[j + 1] = sy; A.aSS[j + 2] = sz; A.aSS[j + 3] = moving ? 3 + ((i * 7919) % 100) * 0.06 : 0;
+    A.aCG[j] = r; A.aCG[j + 1] = g; A.aCG[j + 2] = b;
+    pool.gen[i]++;
+    if (moving) {
+      // where its flight meets the ground as drawn (the program stops it there): at once for a piece that lands soon,
+      // in a coming update for one born later or thrown from higher (LANDING_DEFER_S)
+      const g0 = o.groundY(wx, wz);
+      const h = Math.max(0, wy - g0);
+      const due = Math.max(0, birth - o.now()) + (wvy + Math.sqrt(wvy * wvy + 19.6 * h)) / 9.8;
+      if (due > LANDING_DEFER_S) {
+        A.aLD[j] = 1e4;
+        A.aCG[j + 3] = g0;
+        deferLanding(pool, i, o.now() + due);
+      } else {
+        pieceLanding(wx, wy, wz, wvx, wvy, wvz, 0.3 * Math.min(sx, sy, sz), o.groundY, _land);
+        A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+        A.aCG[j + 3] = _land[1];
+      }
+    } else {
+      A.aLD[j] = 1e4;
+      A.aCG[j + 3] = o.groundY(wx, wz);
+    }
+    A.aLD[j + 1] = 0; A.aLD[j + 2] = 0; A.aLD[j + 3] = 0;
+    if (birth + A.aVL[j + 3] > pool.liveUntil) pool.liveUntil = birth + A.aVL[j + 3];
+    pool.dirtyLo = pool.dirtyLo < 0 ? i : Math.min(pool.dirtyLo, i);
+    pool.dirtyHi = Math.max(pool.dirtyHi, i + 1);
+  }
+
+  /** Every pool's written range to the GPU (a stage's commit, an update that wrote late pieces). */
+  function flushPools(): void {
+    for (const p of pools.values()) {
+      if (p.dirtyLo < 0) continue;
+      for (const name of PIECE_ATTRS) {
+        const attr = p.attrs[name];
+        attr.addUpdateRange(p.dirtyLo * 4, (p.dirtyHi - p.dirtyLo) * 4);
+        attr.needsUpdate = true;
+      }
+      p.dirtyLo = p.dirtyHi = -1;
+    }
+  }
+
+  // ---- deferred body throws (BODY_THROWS_PER_UPDATE): live entries in `throws`, spent ones reused
+  interface PendingThrow {
+    bucket: string; map: THREE.Texture | null; shape: DebrisShape; variant: number;
+    x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; sx: number; sy: number; sz: number;
+    vx: number; vy: number; vz: number; wx: number; wy: number; wz: number; r: number; g: number; b: number;
+    birth: number; structure: number;
+  }
+  const throws: PendingThrow[] = [];
+  const spentThrows: PendingThrow[] = [];
+  function deferThrow(bucket: string, map: THREE.Texture | null, shape: DebrisShape, variant: number, x: number, y: number,
+    z: number, q: THREE.Quaternion, sx: number, sy: number, sz: number, vx: number, vy: number, vz: number, wx: number,
+    wy: number, wz: number, r: number, g: number, b: number, birth: number, structure: number): void {
+    const e = spentThrows.pop() ?? {} as PendingThrow;
+    e.bucket = bucket; e.map = map; e.shape = shape; e.variant = variant; e.x = x; e.y = y; e.z = z;
+    e.qx = q.x; e.qy = q.y; e.qz = q.z; e.qw = q.w; e.sx = sx; e.sy = sy; e.sz = sz; e.vx = vx; e.vy = vy; e.vz = vz;
+    e.wx = wx; e.wy = wy; e.wz = wz; e.r = r; e.g = g; e.b = b; e.birth = birth; e.structure = structure;
+    throws.push(e);
+  }
+  // the soonest released first, the lowest of them first (a collapse's crumble releases its pieces top down over seconds)
+  const byRelease = (a: PendingThrow, b: PendingThrow): number => a.birth - b.birth || a.y - b.y;
+  const _tq = new THREE.Quaternion();
+  function throwDeferred(now: number): void {
+    if (!throws.length || !o.bodies) return;
+    throws.sort(byRelease);
+    let done = 0;
+    while (done < throws.length && (done < BODY_THROWS_PER_UPDATE || throws[done]!.birth + BODY_OVERDUE_S <= now)) {
+      const e = throws[done++]!;
+      spentThrows.push(e);
+      if (!o.bodies.throw(e.bucket, e.shape, e.x, e.y, e.z, e.qx, e.qy, e.qz, e.qw, e.sx, e.sy, e.sz, e.vx, e.vy, e.vz,
+        e.wx, e.wy, e.wz, e.r, e.g, e.b, Math.max(0, e.birth - now), e.structure)) {
+        // the engine refused it (a full pool of moving bodies): the program throws it as a piece
+        writePiece(e.map, e.shape, e.variant, e.x, e.y, e.z, e.birth, e.vx, e.vy, e.vz, _tq.set(e.qx, e.qy, e.qz, e.qw),
+          e.sx, e.sy, e.sz, e.r, e.g, e.b);
+      }
+    }
+    throws.copyWithin(0, done);
+    throws.length -= done;
+  }
 
   /** A still piece as a box in its bucket's standing run (body frame, oriented by its quaternion; the wall's tile by its
    *  local extents, so a broken brick shows brick). */
@@ -612,6 +704,38 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   }
 
   let showAt: { mesh: THREE.Mesh; at: number }[] = [];
+
+  // ---- deferred landings (LANDING_DEFER_S): live entries in `pending`, spent ones kept for reuse
+  interface PendingLanding { pool: PiecePool; slot: number; gen: number; due: number }
+  const pending: PendingLanding[] = [];
+  const spent: PendingLanding[] = [];
+  function deferLanding(pool: PiecePool, slot: number, due: number): void {
+    const e = spent.pop() ?? { pool, slot, gen: 0, due };
+    e.pool = pool; e.slot = slot; e.gen = pool.gen[slot]!; e.due = due;
+    pending.push(e);
+  }
+  const byDue = (a: PendingLanding, b: PendingLanding): number => a.due - b.due;
+  function solveDeferred(now: number): void {
+    if (!pending.length) return;
+    // the soonest to land first; every one due within LANDING_DUE_S, and LANDINGS_PER_UPDATE at least
+    pending.sort(byDue);
+    let done = 0;
+    while (done < pending.length && (done < LANDINGS_PER_UPDATE || pending[done]!.due <= now + LANDING_DUE_S)) {
+      const e = pending[done++]!;
+      spent.push(e);
+      const p = e.pool, i = e.slot;
+      if (p.gen[i] !== e.gen) continue;
+      const A = p.arrays, j = i * 4;
+      pieceLanding(A.aPB[j]!, A.aPB[j + 1]!, A.aPB[j + 2]!, A.aVL[j]!, A.aVL[j + 1]!, A.aVL[j + 2]!,
+        0.3 * Math.min(A.aSS[j]!, A.aSS[j + 1]!, A.aSS[j + 2]!), o.groundY, _land);
+      A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+      A.aCG[j + 3] = _land[1]!;
+      p.attrs.aLD.addUpdateRange(j, 4); p.attrs.aLD.needsUpdate = true;
+      p.attrs.aCG.addUpdateRange(j, 4); p.attrs.aCG.needsUpdate = true;
+    }
+    pending.copyWithin(0, done);
+    pending.length -= done;
+  }
 
   return {
     group,
@@ -675,20 +799,15 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         if (stageDelay > 0) showAt.push({ mesh, at: stageBirth });
       }
       runs.length = 0;
-      for (const p of pools.values()) {
-        if (p.dirtyLo < 0) continue;
-        for (const name of PIECE_ATTRS) {
-          const attr = p.attrs[name];
-          attr.addUpdateRange(p.dirtyLo * 4, (p.dirtyHi - p.dirtyLo) * 4);
-          attr.needsUpdate = true;
-        }
-        p.dirtyLo = p.dirtyHi = -1;
-      }
+      flushPools();
       return made;
     },
     update() {
       const now = o.now();
       uTime.value = now;
+      throwDeferred(now);
+      flushPools();
+      solveDeferred(now);
       if (showAt.length) {
         let k = 0;
         for (const s of showAt) { if (now >= s.at) s.mesh.visible = s.mesh.userData.dropped !== true; else showAt[k++] = s; }
@@ -726,8 +845,14 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         if (Number.isFinite(p.liveUntil)) p.liveUntil += delta;
       }
       for (const s of showAt) s.at += delta;
+      for (const e of pending) e.due += delta;
+      for (const e of throws) e.birth += delta;
     },
     reset() {
+      for (const e of pending) spent.push(e);
+      pending.length = 0;
+      for (const e of throws) spentThrows.push(e);
+      throws.length = 0;
       for (const m of staticMeshes) { m.removeFromParent(); m.geometry.dispose(); }
       staticMeshes.length = 0;
       totalVertices = 0;

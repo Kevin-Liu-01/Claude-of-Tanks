@@ -6218,6 +6218,8 @@ function* createFxSteps(
       attachWorld();
       const laid = stages ? stages.warm(pos, bucketMaterials.keys()) : 0;
       // (2026-10-12) the rigid rubble's one program compiles with the warm too, not at the first collapse
+      // every body mesh the world's buckets can take, made here rather than at a first throw mid-battle
+      rubble?.prewarm(bucketMaterials.keys());
       const first = bucketMaterials.keys().next();
       const bodies = rubble && !first.done
         ? rubble.throw(first.value, 'block', pos.x, pos.y + 0.6, pos.z, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0) ? 1 : 0
