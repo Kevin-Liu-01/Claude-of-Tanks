@@ -1847,7 +1847,7 @@ admitted request) and the LAN helper (`server/rooms/main.ts`, the same names fro
 room client the seat holds; `src/main.ts` wires it). A LAN room asks nothing; a private room's resolutions in flight share
 one request and a grant younger than `RELAY_GRANT_REUSE_MS` (30 s) is reused — a host answering a 14v14 election's 27
 offers asks once, which is what the seat window assumes; a refusal, a timeout or a room that predates the request falls
-back to the newest grant with at least a minute left, else to host candidates; it never rejects. The transports still
+back to the newest grant with at least a minute left, else (since 2026-10-13) to the official STUN servers; it never rejects. The transports still
 resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
 `VITE_ICE_CONFIG_URL` are gone.
 
@@ -1862,6 +1862,16 @@ the TURN secrets on cot-rooms (`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TUR
 Worker's `COT_STUN_URLS` alone, so a symmetric NAT still cannot connect. Receipt: `iceConfig.selftest` (a timed-out
 first request asked again and its grant used; a silent room costs one retry, then host candidates; a refusal answered
 once; a held grant answers a timeout; on main the timed-out first request goes straight to host candidates).
+
+**No grant falls back to STUN, and every degradation is counted (2026-10-13, MP stream step 6).** A seat with no grant
+to use (a refusal, a timeout after its retry, a room that predates the request) used to link on host candidates alone,
+which never crosses a NAT; it now links with `OFFICIAL_STUN_URLS` (`source: 'stun-fallback'`), the servers every room
+grant names anyway, so a strict-NAT seat keeps its server-reflexive paths. TURN still comes only from the room. The
+resolver reports each degradation once per reason through `onDegraded` (`src/main.ts` sends it as the `ice_degraded`
+telemetry note, folded into the session record): the fallback's reason, or `no_relay` when the room's grant carries no
+TURN server — every private-room seat while the rooms Worker's TURN secrets are unset — so real-world relay loss is
+countable in cot-telemetry. Receipts: `iceConfig.selftest` (the STUN fallback, never an empty list; once per reason;
+LAN and relayed grants silent; a throwing reporter never breaks a connection), `telemetry.selftest` (the note).
 
 **`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
 loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list
