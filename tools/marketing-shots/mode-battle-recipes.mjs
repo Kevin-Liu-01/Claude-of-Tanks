@@ -1322,7 +1322,7 @@ Object.assign(RECIPES, {
         }
         ctx.log('in sight', JSON.stringify(seen));
         if (seen[0] == null || seen[1] == null) ctx.note(`the seats did not both see each other (A ${seen[0]}, B ${seen[1]})`);
-        ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two 4K battles in one headless Chrome');
+        ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two live battles in one headless Chrome');
         for (const c of [A, B]) {
           await c.page.evaluate(() => {
             window.__MB.setDrive(null);
