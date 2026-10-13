@@ -664,25 +664,55 @@ export const RECIPES = {
     hour: 'sunset',
     windowS: 45,
     async run(ctx) {
-      // r2 filmed from behind the target looking 677 m back at the launcher: the Shillelagh (about 800 m/s) arrives in
-      // under a second and its trail never read, only the impact dust. The target now stands 340-460 m out (AI kept,
-      // so it moves and the round's path bends), and the cameras ride beside and behind the launcher looking downrange
-      // so the trail's world-space history ribbon runs from the launch flash toward the target; the burst covers the
-      // half second of flight.
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 480, minRangeM: 300, dists: [380, 420, 340, 460], enemies: 2 })));
+      // r4 (the lead's review of r3's c019: honest but weak at card size, a small distant streak, the launcher cut by the
+      // frame edge). The Shillelagh flies its sight line at 208 m/s (velocityMps), so 0.4-0.8 s after launch it is 83-166
+      // m downrange. At each launch a fixed lens is set on the missile's own path, about 0.7 s of flight downrange and a
+      // few metres off it, looking back up the path: the motor glow and smoke trail come at the lens and cross the frame
+      // large through the burst, with the MBT-70 behind them in its launch smoke. The hull is angled 35 degrees off the
+      // line of fire (the turret laid down it), so from the path the MBT-70 reads at front three-quarter. The target
+      // stands 280-380 m out, so the round is still in flight at 0.8 s.
+      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 420, minRangeM: 240, dists: [300, 340, 280, 380], enemies: 2 })));
+      const angled = await ctx.eval(() => {
+        const H = window.__MB.H, p = H.player(), t = H.sel('nearestEnemyClear') || H.sel('nearestEnemy');
+        if (!p || !t) return null;
+        const bearing = Math.atan2(t.x - p.state.pos.x, t.z - p.state.pos.z);
+        H.place(p, p.state.pos.x, p.state.pos.z, bearing + 0.61);
+        return { target: t.id, distM: Math.round(H.dist(p.state.pos, t)) };
+      });
+      ctx.log('hull angled', JSON.stringify(angled));
+      const launcherCam = { kind: 'follow', subject: 'player', azimuthDeg: 34, distM: 18, heightM: 1.2, lookAtHeightM: 2, fov: 38, hud: 'hidden' };
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 5 });
+      await ctx.mb('setOnFrame', `
+        const st = MB.onFrameState, p = H.player(); if (!p) return;
+        let m = null;
+        for (const s of g.shells) {
+          if (!s || s.dead || s.shooterId !== p.id || !s.spec || !s.spec.guided || !s.pos || !s.vel) continue;
+          if (!m || (s.ageS || 0) < (m.ageS || 0)) m = s;
+        }
+        if (m && st.missileId !== m.id) {
+          st.missileId = m.id; st.on = true; st.n = (st.n || 0) + 1;
+          const sp = Math.hypot(m.vel.x, m.vel.y, m.vel.z) || 1;
+          const ux = m.vel.x / sp, uy = m.vel.y / sp, uz = m.vel.z / sp, hx = Math.hypot(ux, uz) || 1, px = uz / hx, pz = -ux / hx;
+          // the launch point: the missile's position less its flight so far
+          const age = m.ageS || 0, ox = m.pos.x - m.vel.x * age, oy = m.pos.y - m.vel.y * age, oz = m.pos.z - m.vel.z * age;
+          const v = [{ d: sp * 0.75 + 12, l: 7, h: 1.2, fov: 30 }, { d: sp * 0.68 + 10, l: -10, h: 3, fov: 34 }][(st.n - 1) % 2];
+          const cx = ox + ux * v.d + px * v.l, cz = oz + uz * v.d + pz * v.l;
+          const cy = Math.max(H.groundY(cx, cz) + 1.0, oy + uy * v.d + v.h);
+          const k = v.d * 0.22;
+          MB.setCamera({ kind: 'fixed', pos: [cx, cy, cz], look: [ox + ux * k, oy + uy * k + 0.4, oz + uz * k], fov: v.fov, smoothS: 0, hud: 'hidden' });
+          MB.lens = { n: st.n, downrangeM: Math.round(v.d), offM: v.l, speed: Math.round(sp) };
+        } else if (!m && st.on) {
+          st.on = false;
+          MB.setCamera(${JSON.stringify(launcherCam)});
+        }`);
       await settle(ctx, 1);
       await ctx.capture({
-        cameras: [
-          { kind: 'between', from: 'player', to: 'aimTarget', backM: 10, sideM: 12, heightM: 3.2, lookAtFrac: 0.3, lookAtHeightM: 2, fov: 42, smoothS: 0.2, hud: 'hidden' },
-          { kind: 'between', from: 'player', to: 'aimTarget', backM: 8, sideM: -14, heightM: 2.6, lookAtFrac: 0.35, lookAtHeightM: 2, fov: 38, smoothS: 0.2, hud: 'hidden' },
-          { kind: 'between', from: 'player', to: 'aimTarget', backM: 16, sideM: 6, heightM: 5, lookAtFrac: 0.45, lookAtHeightM: 1.5, fov: 34, smoothS: 0.2, hud: 'hidden' },
-        ],
-        cameraEvery: 5,
-        everyS: 5,
-        triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [70, 160, 260, 380, 520, 700], burst: true }],
+        cameras: [launcherCam],
+        everyS: 0,
+        triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [400, 500, 600, 700, 800], burst: true }],
       });
+      ctx.log('lens', JSON.stringify(await ctx.eval(() => window.__MB.lens || null)));
     },
   },
 
