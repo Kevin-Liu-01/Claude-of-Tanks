@@ -1598,6 +1598,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/collision.selftest.mjs',
+    'src/world/colliderRayMarch.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
     'src/world/wallSpanPlacement.selftest.mjs',
     'src/world/civilianVehicles.selftest.mjs',

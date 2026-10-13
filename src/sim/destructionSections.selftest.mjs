@@ -130,8 +130,10 @@ const mapSource = readFileSync(new URL('../world/map.ts', import.meta.url), 'utf
 const headlessSource = readFileSync(new URL('../world/headlessCollisionWorld.ts', import.meta.url), 'utf8');
 const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
-assert.match(mapSource, /nearestColliderHit\(rayCandidates, origin, dir, maxDist, _bestNrm, _nearestHit\)/, 'the solo world\'s raycast');
-assert.match(headlessSource, /nearestRecordHit\(candidates, origin, direction, maxDistance, bestNormal, nearestHit\)/,
+// (2026-10-12, the perf stream: both broad phases march along the ray into the same narrow phase — collision.ts
+// nearestColliderHitAlongRay, exact against the one box by colliderRayMarch.selftest)
+assert.match(mapSource, /nearestColliderHitAlongRay\(queryColliders, origin, dir, maxDist, _bestNrm, _nearestHit, rayCandidates\)/, 'the solo world\'s raycast');
+assert.match(headlessSource, /nearestRecordHitAlongRay\(queryColliders, origin, direction, maxDistance, bestNormal, nearestHit, candidates\)/,
   'the headless world\'s');
 for (const source of [mapSource, headlessSource]) assert.doesNotMatch(source, /rayCollisionRecord\(/, 'no narrow phase of its own');
 assert.match(solo, /destruction\.drainBreaches\(breaches\);\s*for \(const breach of breaches\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.breach, breach\);/,
