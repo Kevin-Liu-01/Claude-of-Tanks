@@ -314,7 +314,9 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   assert.equal(render[1].depthTexture.type, sceneTarget.depthTexture.type, 'the scene target\'s formats');
   assert.equal(render[2].length, 4, 'only the proxies draw');
   assert.strictEqual(lampPost.material, lampMaterial, 'the lamp post\'s own material is back');
-  assert.deepEqual(receipt.drawDetail, { hiddenSignature: 'dir 1/1 spot 0/0/0 point 1/0 hemi 0 rect 0 probe 0', keptForLights: 1, variantSwitches: 0, keyDiff: [] });
+  const { steps, ...drawSaw } = receipt.drawDetail;
+  assert.deepEqual(drawSaw, { hiddenSignature: 'dir 1/1 spot 0/0/0 point 1/0 hemi 0 rect 0 probe 0', keptForLights: 1, variantSwitches: 0, keyDiff: [] });
+  assert.deepEqual(Object.keys(steps), ['scan', 'bind', 'render', 'restore'], 'the draw\'s own steps are timed');
   const drawnProxies = render[2];
   assert.ok(drawnProxies.every((mesh) => mesh.name === 'world-program-warm-proxy' && mesh.frustumCulled === false));
   assert.deepEqual(drawnProxies.map((mesh) => mesh.material), [splat, splat, skirt, hooked]);

@@ -57,7 +57,11 @@ interface WorldProgramWarmReceipt {
   drawnFrom: string[];
   /** what the draw saw: the light signature with everything else hidden, the objects kept drawable because lights hang
    * under them, and any program the draw had to switch to (a variant the submission did not link) */
-  drawDetail?: { hiddenSignature: string; keptForLights: number; variantSwitches: number; keyDiff: string[] };
+  drawDetail?: {
+    hiddenSignature: string; keptForLights: number; variantSwitches: number; keyDiff: string[];
+    /** the draw's own steps, ms: scene scan and hide, the target bind, three's render, the restore */
+    steps: { scan: number; bind: number; render: number; restore: number };
+  };
   error?: string;
 }
 
@@ -400,6 +404,7 @@ export function createRendererWorldProgramWarm(
     // Everything else stays out of the draw, but no light may leave its light state: a renderable with a light under it
     // keeps its visibility and draws nothing for this render (an invisible material in its place), since a hidden
     // parent would take its lights out of the count and the draw would link another program variant on the spot.
+    const stepAt = performance.now();
     const lightAncestors = new Set<Object3D>();
     scene.traverseVisible((object) => {
       if (!(object as THREE.Light).isLight) return;
@@ -414,6 +419,7 @@ export function createRendererWorldProgramWarm(
       else hidden.push(object);
     });
     const before = proxies.map((proxy) => programOf(proxy.material as Material));
+    let restoreAt = 0;
     const holder = new THREE.Group();
     holder.name = 'world-program-warm';
     holder.matrixAutoUpdate = false;
@@ -428,7 +434,9 @@ export function createRendererWorldProgramWarm(
       scene.background = null;
       scene.add(holder);
       const hiddenSignature = lightSignature(scene, camera);
-      withTarget(pipelineTarget, () => renderer.render(scene, camera));
+      const scanned = performance.now();
+      let bound = scanned, rendered = scanned;
+      withTarget(pipelineTarget, () => { bound = performance.now(); renderer.render(scene, camera); rendered = performance.now(); });
       const after = proxies.map((proxy) => programOf(proxy.material as Material));
       const keyDiff: string[] = [];
       let variantSwitches = 0;
@@ -439,7 +447,9 @@ export function createRendererWorldProgramWarm(
         const a = String(before[index]?.cacheKey ?? '').split(','), b = String(program?.cacheKey ?? '').split(',');
         for (let i = 0; i < Math.max(a.length, b.length) && keyDiff.length < 8; i++) if (a[i] !== b[i]) keyDiff.push(`${i}:${a[i]}->${b[i]}`);
       });
-      lastDetail = { hiddenSignature, keptForLights: swapped.length, variantSwitches, keyDiff };
+      lastDetail = { hiddenSignature, keptForLights: swapped.length, variantSwitches, keyDiff,
+        steps: { scan: Math.round(scanned - stepAt), bind: Math.round(bound - scanned), render: Math.round(rendered - bound), restore: 0 } };
+      restoreAt = performance.now();
     } finally {
       scene.remove(holder);
       scene.background = background;
@@ -449,6 +459,7 @@ export function createRendererWorldProgramWarm(
       holder.clear();
       // the stand-ins' few bytes leave the GPU with them; the sources' buffers upload when they first draw, as before
       for (const stub of stubs) stub.dispose();
+      if (lastDetail && restoreAt) lastDetail.steps.restore = Math.round(performance.now() - restoreAt);
     }
     return proxies.length;
   };
