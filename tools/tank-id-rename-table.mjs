@@ -243,7 +243,7 @@ export function levenshtein(a, b) {
  * Decide matches and proposals for a fleet of { id, displayName } records.
  * Returns one row per vehicle in input order.
  */
-export function planRenames(vehicles) {
+export function planRenames(vehicles, { forcedIds = {} } = {}) {
   const candidates = vehicles.map((v) => slugCandidates(v.displayName));
   // Claimants: slug -> lowest drop cost per vehicle.
   const claims = new Map();
@@ -266,11 +266,18 @@ export function planRenames(vehicles) {
     id: v.id,
     displayName: v.displayName,
     canonical: canonicalSlug(v.displayName),
-    matches: acceptable[i].has(v.id),
+    matches: forcedIds[v.id] ? forcedIds[v.id] === v.id : acceptable[i].has(v.id),
+    ...(forcedIds[v.id] ? { ruledId: forcedIds[v.id] } : {}),
   }));
-  // Ids that stay are reserved first; proposals never take a kept id.
+  // Ids that stay and ruled ids are reserved first; proposals never take them.
   const taken = new Set(rows.filter((r) => r.matches).map((r) => r.id));
-  const order = rows.map((r, i) => i).filter((i) => !rows[i].matches);
+  for (const forced of Object.values(forcedIds)) {
+    if (taken.has(forced) && !rows.some((r) => r.id === forced && forcedIds[r.id] === forced)) {
+      throw new Error(`ruled id ${forced} is an id that stays`);
+    }
+    taken.add(forced);
+  }
+  const order = rows.map((r, i) => i).filter((i) => !rows[i].matches && !rows[i].ruledId);
   const ranked = new Map();
   for (const i of order) {
     const id = rows[i].id;
@@ -296,6 +303,7 @@ export function planRenames(vehicles) {
     if (pick) taken.add(pick.slug);
   }
   for (const [i, row] of rows.entries()) {
+    if (row.ruledId) { row.proposed = row.ruledId; row.alternatives = []; }
     if (row.matches) { row.proposed = row.id; row.alternatives = []; }
     row.changes = row.proposed !== row.id;
     const previousOwner = row.changes ? oldIds.get(row.proposed) : undefined;
@@ -319,15 +327,43 @@ function classifyMismatch(id, acceptable, displayName) {
   return 'words';
 }
 
-// Names already asked for but not yet ruled (the table proposes; the coordinator rules).
-const PENDING_NAME_RULINGS = Object.freeze({
-  fv510_milan_x: {
-    text: 'VEH-11, the owner: "make our warrior milan x into a new warrior type and make it tier 10". '
-      + 'The model is the slat-caged British field fit (rear door and corner cages, side bar armour) with the '
-      + 'RARDEN turret and MILAN post, which is the Warrior TES (Theatre Entry Standard) configuration',
-    suggestedName: 'Warrior TES',
-  },
+// The coordinator's rulings of 2026-10-13 (the owner gave a free hand). Names
+// apply to the table until tankLabels.ts carries them; ids override the slug.
+export const COORDINATOR_RULINGS = Object.freeze({
+  date: '2026-10-13',
+  names: Object.freeze({
+    fv510_milan_x: {
+      displayName: 'Warrior TES(H)', shortName: 'Warrior TES(H)', tier: 10,
+      note: 'VEH-11: the Warrior MILAN X becomes its own Warrior type at tier 10; its description says it carries the MILAN firing post',
+    },
+    type96b_x: { displayName: 'Type 96B', note: 'drop the X (09-15 ruling: no vehicle keeps one)' },
+    aft10_x: { displayName: 'AFT-10', note: 'drop the X (09-15 ruling: no vehicle keeps one)' },
+    bmp3m_dragun125_x: { displayName: 'BMP-3M Dragun 125', note: 'drop the X (09-15 ruling: no vehicle keeps one)' },
+    type90: {
+      displayName: 'Type 90 Kyū-maru', shortName: 'Type 90 Kyū-maru',
+      note: 'no two cards read "Type 90": type90_x keeps the name and takes type90',
+    },
+  }),
+  ids: Object.freeze({ type90: 'type90_kyumaru' }),
 });
+
+/** Apply the ruled display and short names to a fleet listing. */
+export function applyRuledNames(vehicles, rulings = COORDINATOR_RULINGS) {
+  return vehicles.map((v) => {
+    const ruled = rulings.names[v.id];
+    if (!ruled || (ruled.displayName === v.displayName && (ruled.shortName ?? v.shortName) === v.shortName
+      && (ruled.tier ?? v.tier) === v.tier)) return v;
+    return {
+      ...v,
+      tier: ruled.tier ?? v.tier,
+      liveDisplayName: v.displayName,
+      liveShortName: v.shortName,
+      displayName: ruled.displayName,
+      shortName: ruled.shortName ?? (v.shortName === v.displayName ? ruled.displayName : v.shortName),
+      ruling: ruled.note,
+    };
+  });
+}
 
 /** Display-name problems the coordinator rules on (the table never renames a display name). */
 export function nameProblems(vehicles) {
@@ -338,9 +374,7 @@ export function nameProblems(vehicles) {
   };
   const byName = new Map();
   for (const v of vehicles) {
-    const pending = PENDING_NAME_RULINGS[v.id];
-    if (pending && pending.suggestedName !== v.displayName) note(v.id, pending.text, pending.suggestedName);
-    if (/\sX$/.test(v.displayName) && !pending) {
+    if (/\sX$/.test(v.displayName)) {
       note(v.id, 'display name keeps an "X" suffix; the 2026-09-15 naming ruling says no vehicle keeps one', v.displayName.replace(/\sX$/, ''));
     }
     for (const label of new Set([v.displayName, v.shortName])) {
@@ -349,6 +383,8 @@ export function nameProblems(vehicles) {
     }
   }
   for (const v of vehicles) {
+    const sameName = [...(byName.get(v.displayName) || [])].filter((id) => id !== v.id);
+    if (sameName.length) note(v.id, `display name "${v.displayName}" is also a name of ${sameName.join(', ')}`);
     if (v.shortName === v.displayName) continue;
     const others = [...(byName.get(v.shortName) || [])].filter((id) => id !== v.id);
     if (others.length) note(v.id, `garage card short name "${v.shortName}" is also the name of ${others.join(', ')}`);
@@ -491,8 +527,15 @@ function renderMarkdown(table) {
   lines.push('| ---: | --- | --- | :---: | --- | --- | --- | ---: | --- |');
   rows.filter((r) => r.changes).forEach((r, k) => {
     const where = Object.entries(r.usage?.categories || {}).map(([c, v]) => `${c} ${v.files}`).join(', ');
-    lines.push(`| ${k + 1} | \`${r.id}\` | ${cell(r.displayName)} | ${r.tier} | \`${r.proposed}\`${r.alternatives.length ? ` (or ${r.alternatives.map((a) => `\`${a}\``).join(', ')})` : ''} | ${r.mismatchClass} | ${r.reusesRetiredId ? `\`${r.reusesRetiredId}\`` : ''} | ${r.usage?.files ?? ''} | ${cell(where)} |`);
+    const shown = r.liveDisplayName ? `${r.displayName} (ruled ${COORDINATOR_RULINGS.date}; today "${r.liveDisplayName}")` : r.displayName;
+    lines.push(`| ${k + 1} | \`${r.id}\` | ${cell(shown)} | ${r.tier} | \`${r.proposed}\`${r.alternatives.length ? ` (or ${r.alternatives.map((a) => `\`${a}\``).join(', ')})` : ''} | ${r.mismatchClass} | ${r.reusesRetiredId ? `\`${r.reusesRetiredId}\`` : ''} | ${r.usage?.files ?? ''} | ${cell(where)} |`);
   });
+  lines.push('', `## Coordinator rulings (${COORDINATOR_RULINGS.date})`, '');
+  lines.push('Swaps stand and the alias layer is versioned (every stored or sent id carries the tank id schema; a missing schema is schema 1). docs/history stays unedited.', '');
+  for (const r of rows.filter((x) => x.liveDisplayName || x.ruledId)) {
+    const name = r.liveDisplayName ? `"${r.liveDisplayName}" -> "${r.displayName}"${r.liveShortName !== r.shortName ? ` (card "${r.shortName}")` : ''}` : `"${r.displayName}"`;
+    lines.push(`- \`${r.id}\` -> \`${r.proposed}\`: ${name}${r.nameRuling ? `; ${r.nameRuling}` : ''}${r.ruledId ? '; id ruled' : ''}.`);
+  }
   lines.push('', '## Display-name problems (the coordinator rules)', '');
   const flagged = rows.filter((r) => r.nameProblems.length);
   if (!flagged.length) lines.push('None.');
@@ -510,18 +553,22 @@ function renderMarkdown(table) {
 }
 
 async function main() {
-  const fleet = await loadFleet();
-  const plan = planRenames(fleet);
+  const fleet = applyRuledNames(await loadFleet());
+  const plan = planRenames(fleet, { forcedIds: COORDINATOR_RULINGS.ids });
   const problems = nameProblems(fleet);
   const byId = new Map(fleet.map((v) => [v.id, v]));
   const rows = plan.map((row) => {
     const v = byId.get(row.id);
     const nameIssues = (problems.get(row.id) || []).map((p) => {
       if (!p.suggestedName) return p;
-      const alt = planRenames(fleet.map((f) => (f.id === row.id ? { ...f, displayName: p.suggestedName } : f)));
+      const alt = planRenames(fleet.map((f) => (f.id === row.id ? { ...f, displayName: p.suggestedName } : f)), { forcedIds: COORDINATOR_RULINGS.ids });
       return { ...p, suggestedId: alt.find((a) => a.id === row.id)?.proposed ?? null };
     });
-    return { ...row, shortName: v.shortName, nation: v.nation, tier: v.tier, status: v.status, nameProblems: nameIssues };
+    return {
+      ...row, shortName: v.shortName, nation: v.nation, tier: v.tier, status: v.status,
+      ...(v.liveDisplayName ? { liveDisplayName: v.liveDisplayName, liveShortName: v.liveShortName, nameRuling: v.ruling } : {}),
+      nameProblems: nameIssues,
+    };
   });
   const extraRoots = option('scan-root').map((p) => resolve(p));
   let filesScanned = 0;
