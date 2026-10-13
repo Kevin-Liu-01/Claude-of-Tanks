@@ -759,17 +759,17 @@
  ],
  "home": {
   "features/garage": "delivered",
-  "features/multiplayer": "hidden until delivered",
+  "features/multiplayer": "delivered",
   "features/killcam": "hidden until delivered",
   "mechanics/armor": "hidden until delivered",
   "mechanics/ricochet": "delivered",
   "mechanics/modules": "delivered",
   "mechanics/ammunition": "delivered",
-  "mechanics/missiles": "hidden until delivered",
+  "mechanics/missiles": "delivered",
   "mechanics/autoloader": "delivered",
   "mechanics/era": "delivered",
   "mechanics/spotting": "hidden until delivered",
-  "mechanics/thermal": "hidden until delivered",
+  "mechanics/thermal": "delivered",
   "mechanics/smoke": "delivered",
   "mechanics/equipment": "delivered",
   "mechanics/consumables": "hidden until delivered",
@@ -785,7 +785,7 @@
   "mechanics/replays": "hidden until delivered",
   "mechanics/medals": "delivered",
   "mechanics/dossiers": "delivered",
-  "mechanics/presets": "stand-in s50-reservoir-crane",
+  "mechanics/presets": "delivered",
   "mechanics/bots": "hidden until delivered",
   "mechanics/mobile": "hidden until delivered",
   "modes/standard": "delivered",
@@ -797,7 +797,7 @@
   "modes/mars": "delivered",
   "modes/juggernaut": "delivered",
   "modes/infected": "delivered",
-  "modes/realistic": "hidden until delivered",
+  "modes/realistic": "delivered",
   "modes/gun_game": "delivered",
   "modes/drone": "delivered",
   "modes/ac130": "delivered",
@@ -1768,6 +1768,20 @@
    "home": "features/garage"
   },
   {
+   "path": "media/site50-r14/home/features/multiplayer-640.webp",
+   "bytes": 23382,
+   "sha256": "d985851d84b8e27d8a9c92780add31e54c7aa9b1128e0704d9e7a207dfcac076",
+   "source": "shots/media-r5/home-r2/deliver/features/multiplayer.png",
+   "home": "features/multiplayer"
+  },
+  {
+   "path": "media/site50-r14/home/features/multiplayer.webp",
+   "bytes": 295156,
+   "sha256": "62e6816ab30285a54ea54ae50d578071ed331b1108a7bd8c79023bb91951ca6c",
+   "source": "shots/media-r5/home-r2/deliver/features/multiplayer.png",
+   "home": "features/multiplayer"
+  },
+  {
    "path": "media/site50-r14/home/mechanics/ammunition-640.webp",
    "bytes": 22688,
    "sha256": "6c23b79dd7d01c8cee572fd8258e89a67a44598cb673b62fa0c74e579e17a90e",
@@ -1894,6 +1908,20 @@
    "home": "mechanics/medals"
   },
   {
+   "path": "media/site50-r14/home/mechanics/missiles-640.webp",
+   "bytes": 44220,
+   "sha256": "f5760d399fa8d8f76735356039acd112721c3f027e0d47c9fd2389e48dc9ef10",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/missiles.png",
+   "home": "mechanics/missiles"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/missiles.webp",
+   "bytes": 196326,
+   "sha256": "a31505d2635084f995617ce48831a5f322bd9dbb3a232b81e35df09d0ac7fdc2",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/missiles.png",
+   "home": "mechanics/missiles"
+  },
+  {
    "path": "media/site50-r14/home/mechanics/modules-640.webp",
    "bytes": 18578,
    "sha256": "554c4d8d80cbf9534c850b816ca0b336cde94cf47708f3d6f76caa241814e650",
@@ -1906,6 +1934,20 @@
    "sha256": "3440dcc8501b712230ece9f4b05efc9947a0ded487a587906543590af3a64af4",
    "source": "shots/media-r5/home-r2/deliver/mechanics/modules.png",
    "home": "mechanics/modules"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/presets-640.webp",
+   "bytes": 38848,
+   "sha256": "4ff78dabd601886e96e75d94c9baf62f82e8006ab77e29e5588c6d367db60197",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/presets.png",
+   "home": "mechanics/presets"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/presets.webp",
+   "bytes": 139000,
+   "sha256": "d67a02f11f522f823781f1eb18daf266031a8ee10d7545d6dfa58902fdf6c36a",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/presets.png",
+   "home": "mechanics/presets"
   },
   {
    "path": "media/site50-r14/home/mechanics/ricochet-640.webp",
@@ -1948,6 +1990,20 @@
    "sha256": "0de71b675ad60ceadc7aa48c9641721b207da70bc7947aa2d3eab6b1c64cb12d",
    "source": "shots/media-r5/home-r2/deliver/mechanics/suspension.png",
    "home": "mechanics/suspension"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/thermal-640.webp",
+   "bytes": 17944,
+   "sha256": "b8ae49ce2ad1497e844d9322320e533302769cab9a6fb3364857e6bf5b1b984f",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/thermal.png",
+   "home": "mechanics/thermal"
+  },
+  {
+   "path": "media/site50-r14/home/mechanics/thermal.webp",
+   "bytes": 64424,
+   "sha256": "c934be8146bce600b08218ac7a75d358ab28b89285702e0c643144b65a872b88",
+   "source": "shots/media-r5/home-r2/deliver/mechanics/thermal.png",
+   "home": "mechanics/thermal"
   },
   {
    "path": "media/site50-r14/home/mechanics/time-of-day-640.webp",
@@ -2088,6 +2144,20 @@
    "sha256": "444b165cf0791ba44a602f36a1d11e2f5f808d1bfb6031cb4de62229c4c9371c",
    "source": "shots/media-r5/home-r2/deliver/modes/mars.png",
    "home": "modes/mars"
+  },
+  {
+   "path": "media/site50-r14/home/modes/realistic-640.webp",
+   "bytes": 29340,
+   "sha256": "ecd5f4bee4ddfdca92c8ab818fad9740e0b459be17e40fd608c2a1bd2ccf9917",
+   "source": "shots/media-r5/home-r2/deliver/modes/realistic.png",
+   "home": "modes/realistic"
+  },
+  {
+   "path": "media/site50-r14/home/modes/realistic.webp",
+   "bytes": 109622,
+   "sha256": "922dc7500f43e49bfc635f544c269c8913e974146da0dc536cfe0cc13d1c7108",
+   "source": "shots/media-r5/home-r2/deliver/modes/realistic.png",
+   "home": "modes/realistic"
   },
   {
    "path": "media/site50-r14/home/modes/standard-640.webp",
