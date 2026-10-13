@@ -494,6 +494,29 @@ export const RECIPES = {
         ctx.note(`staged targets held still, turned to show the shooter a side and a rear quarter: ${JSON.stringify(turned)}`);
         mark = turned.find((t) => t.bustleRack)?.id || turned[0]?.id || null;
       }
+      // the sights must see the cook-off: pass 5's scope looked through a birch grove the lane test did not count. The
+      // marked target moves, side-on and held, to the nearest spot the sights see clear (H.sightClear)
+      if (mark) {
+        const sight = await ctx.eval((id) => {
+          const H = window.__MB.H, p = H.player(), t = H.g().tankById.get(id);
+          if (!p || !H.live(t)) return null;
+          const eye = H.turretPoint(p), discs = H.concealers();
+          if (H.sightClear(eye, t.state.pos, discs)) return { clear: true, moved: false };
+          const d0 = H.dist(p.state.pos, t.state.pos), base = Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
+          for (const d of [d0, 160, 140, 185, 120]) {
+            for (const da of [0, 10, -10, 20, -20, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120, 150, -150, 180]) {
+              const a = base + (da * Math.PI) / 180, x = p.state.pos.x + Math.sin(a) * d, z = p.state.pos.z + Math.cos(a) * d;
+              if (!H.openGround(x, z, 6, discs) || !H.sightClear(eye, { x, z }, discs)) continue;
+              H.place(t, x, z, Math.atan2(p.state.pos.x - x, p.state.pos.z - z) + Math.PI / 2);
+              H.freezeBot(t);
+              return { clear: true, moved: true, d: Math.round(d), bearingDeg: da };
+            }
+          }
+          return { clear: false };
+        }, mark);
+        ctx.log('sight', JSON.stringify(sight));
+        if (sight && !sight.clear) ctx.note('no spot within 185 m gave the sights a clear line to the marked target');
+      }
       // lay the gun on the ammunition's own volume (Realistic damages modules only, every module hit counts)
       const target = mark ? `entity:${mark}` : 'nearestEnemyClear';
       await ctx.mb('setAim', { target, aimAt: 'ammoRack', aimTurret: true, heightFrac: 0.35, fallback: 'nearestEnemyClear' });

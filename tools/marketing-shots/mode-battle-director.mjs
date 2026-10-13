@@ -165,6 +165,29 @@ export function installModeBattleDirector() {
     }
     return true;
   };
+  /**
+   * A sight line nothing on the map stands in, for the sights' close framings (H.laneClear skips mid-field foliage
+   * and every crushable record, so r14's realistic scope looked through a birch grove at its target): every
+   * concealment disc and every tree record (taken at a 2.5 m canopy) along the whole line, any other record that
+   * stands above 1.5 m, then the world raycast for terrain and buildings.
+   */
+  H.sightClear = (eye, to, discs = H.concealers()) => {
+    const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
+    const across = (cx, cz, r) => {
+      const wx = cx - eye.x, wz = cz - eye.z, along = wx * ux + wz * uz;
+      return along > 2 && along < len - 6 && Math.abs(wx * uz - wz * ux) < r;
+    };
+    for (const c of discs) if (across(c.x, c.z, c.r + 0.5)) return false;
+    for (const o of H.D().world.getObstacles?.() || []) {
+      if (o.crushed || o.dead || !o.min || !o.max) continue;
+      const cx = (o.min[0] + o.max[0]) / 2, cz = (o.min[2] + o.max[2]) / 2;
+      const half = Math.hypot(o.max[0] - o.min[0], o.max[2] - o.min[2]) / 2;
+      const tree = o.treeIdx != null || /tree/i.test(o.kind || '');
+      if (!tree && o.max[1] < H.groundY(cx, cz) + 1.5) continue;
+      if (across(cx, cz, tree ? Math.max(half, 2.5) : half + 0.4)) return false;
+    }
+    return H.raycastBlock(eye, { x: to.x, y: H.groundY(to.x, to.z) + 1.6, z: to.z }, 2) == null;
+  };
   /** Ground a tank can sit on: inside the map, flat enough, no solid record within `clearM` nor foliage on it. */
   H.openGround = (x, z, clearM = 7, discs = H.concealers()) => {
     if (Math.abs(x) > 440 || Math.abs(z) > 440) return false;
