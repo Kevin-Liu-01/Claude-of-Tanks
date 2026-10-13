@@ -141,7 +141,11 @@ const waterTower: RegionalBuilder = (ctx) => {
   // the door and its stair slits
   const door: Face = { origin: [0, 0, R * Math.cos(ph) + 0.01], u: [1, 0, 0], out: [0, 0, 1], width: 1.4 };
   doorUnit(sink, door, 0, 0.8, 1.05, 2.2, { leaf: rgb(0x3e4a42), frame: { bucket: DRESSING, width: 0.22, out: 0.07, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.8);
-  for (const y of [4.0, 6.6]) faceBox(sink, 'dark', door, 0.2, y, 0.02, 0.14, 0.7, 0.02, { decor: true });
+  // (on the tapering shaft's face at their height)
+  for (const y of [4.0, 6.6]) {
+    const at = R * (1 - 0.08 * (y - 0.8) / (H - 0.8)) * Math.cos(ph);
+    faceBox(sink, 'dark', { ...door, origin: [0, 0, at] }, 0.2, y, 0.005, 0.14, 0.7, 0.02, { decor: true });
+  }
   return sink.finish();
 };
 

@@ -322,8 +322,10 @@ const works: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const bb = ctx.bounds, plotW = bb.maxX - bb.minX, plotD = bb.maxZ - bb.minZ;
-  const W = Math.max(9, Math.min(12.5, plotW - 4.2)), D = Math.max(13, Math.min(20, plotD - 1.2));
-  const cx = bb.minX + 0.6 + W / 2, cz = (bb.minZ + bb.maxZ) / 2;
+  // the boiler house wants 3.6 m behind the hall: a deep plot keeps it (the hall drawn forward), a short one goes without
+  const boiler = plotD >= 13 + 1.2 + 3.6;
+  const W = Math.max(9, Math.min(12.5, plotW - 4.2)), D = Math.max(13, Math.min(20, plotD - 1.2 - (boiler ? 3.6 : 0)));
+  const cx = bb.minX + 0.6 + W / 2, cz = boiler ? bb.maxZ - 0.6 - D / 2 : (bb.minZ + bb.maxZ) / 2;
   const storeys = [{ h: 4.6, wall: 'stone' as const }, { h: 4.2, wall: 'stone' as const }];
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 3.2, y0: 0, h: 3.8 }];
   openings.push({ face: 'front', storey: 1, kind: 'window', u: 0, w: 2.2, y0: 0.5, h: 3.0 });
@@ -353,8 +355,8 @@ const works: RegionalBuilder = (ctx) => {
     emitRoof(sink, roofGeometry(1.7, len + 0.2, ly + 0.7, cap), cap);
   });
   // the boiler house against the hall's back, its shed roof leaning on the hall
-  const BW = Math.min(5.4, W - 2), BD = Math.max(3.2, Math.min(4.6, (cz - D / 2) - bb.minZ - 0.4));
-  if (BD >= 3.2) {
+  const BW = Math.min(5.4, W - 2), BD = Math.min(4.6, (cz - D / 2) - bb.minZ - 0.4);
+  if (boiler && BD >= 3.2) {
     sink.placed(0, cx - W / 2 + BW / 2 + 0.5, 0, cz - D / 2 - BD / 2 + 0.05, () => {
       const f2 = buildHouse(sink, {
         w: BW, d: BD, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 4.8, wall: 'stone' }],

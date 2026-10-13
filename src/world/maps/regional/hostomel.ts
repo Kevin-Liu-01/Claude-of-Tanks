@@ -569,11 +569,12 @@ const freightBoxes: RegionalBuilder = (ctx) => {
           for (const sx of [-1, 1]) sink.span('structureMetal', sx * Wb / 2 - (sx > 0 ? 0 : 0.03), 0.12, zz - 0.06, sx * Wb / 2 + (sx > 0 ? 0.03 : 0), H - 0.1, zz + 0.06, { colour: shade(col, 0.82), decor: true });
         }
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-          sink.span('structureMetal', sx * Wb / 2 - 0.09, 0, sz * L / 2 - 0.09, sx * Wb / 2 + 0.03 * sx + (sx > 0 ? 0.0 : 0.0), H, sz * L / 2 + 0.03 * sz, { colour: shade(col, 0.7), decor: true });
+          const x0 = sx * (Wb / 2 - 0.09), x1 = sx * (Wb / 2 + 0.03), z0 = sz * (L / 2 - 0.09), z1 = sz * (L / 2 + 0.03);
+          sink.span('structureMetal', Math.min(x0, x1), 0, Math.min(z0, z1), Math.max(x0, x1), H, Math.max(z0, z1), { colour: shade(col, 0.7), decor: true });
           // rust from the corner castings
           if (!burnt) sink.span('structureMetal', sx * Wb / 2 - 0.02, H * 0.4, sz * (L / 2 - 0.35), sx * Wb / 2 + 0.035 * sx, H - 0.08, sz * (L / 2 - 0.25), { colour: RUST, decor: true });
         }
-        const door: Face = { origin: [0, 0, L / 2 + 0.02], u: [1, 0, 0], out: [0, 0, 1], width: Wb };
+        const door: Face = { origin: [0, 0, L / 2 - 0.005], u: [1, 0, 0], out: [0, 0, 1], width: Wb };
         for (const u of [-0.75, -0.35, 0.35, 0.75]) faceBox(sink, 'structureMetal', door, u, H / 2, 0.03, 0.05, H - 0.4, 0.05, { colour: shade(col, 0.6), decor: true });
         faceBox(sink, 'structureMetal', door, 0, H / 2, 0.02, 0.03, H - 0.25, 0.03, { colour: shade(col, 0.5), decor: true });
       }
@@ -591,7 +592,7 @@ const freightBoxes: RegionalBuilder = (ctx) => {
     const burnt = burntLeft > 0 && rng() < 0.35;
     if (burnt) burntLeft--;
     box(x, 0, zc + zOff, yaw, pick(rng, BOX_LIVERY), burnt);
-    if (rng() < 0.4) box(x + (rng() - 0.5) * 0.15, H + 0.02, zc + zOff + (rng() - 0.5) * 0.3, yaw + (rng() - 0.5) * 0.04, pick(rng, BOX_LIVERY), false);
+    if (rng() < 0.4) box(x + (rng() - 0.5) * 0.15, H + 0.005, zc + zOff + (rng() - 0.5) * 0.3, yaw + (rng() - 0.5) * 0.04, pick(rng, BOX_LIVERY), false);
   }
   // the sandbag line along the row's front where it stood as a wall
   const zf = zc + L / 2 + 0.75;

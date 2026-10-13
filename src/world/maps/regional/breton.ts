@@ -612,8 +612,16 @@ const netYard: RegionalBuilder = (ctx) => {
         const a: Vec3 = [xa, 2.55, z + side * 0.05], b: Vec3 = [xb, 2.55, z + side * 0.05];
         const c: Vec3 = [xb, foot, z + out * 3.5], d: Vec3 = [xa, foot + 0.1, z + out * 3.5];
         const m1: Vec3 = [(xa + xb) / 2, 2.55 - sag, z + side * 0.08];
-        sink.quad('structureWood', a, m1, [(xa + xb) / 2, foot - 0.05, z + out * 3.8], d, { colour: shade(net, 0.92 + rng() * 0.12), decor: true });
-        sink.quad('structureWood', m1, b, c, [(xa + xb) / 2, foot - 0.05, z + out * 3.8], { colour: shade(net, 0.92 + rng() * 0.12), decor: true });
+        const mf: Vec3 = [(xa + xb) / 2, foot - 0.05, z + out * 3.8];
+        // (each fall's face turned out from the rail: the far side's quads wound the other way)
+        const q1: Vec3[] = side < 0 ? [a, m1, mf, d] : [d, mf, m1, a], q2: Vec3[] = side < 0 ? [m1, b, c, mf] : [mf, c, b, m1];
+        const tone1 = shade(net, 0.92 + rng() * 0.12), tone2 = shade(net, 0.92 + rng() * 0.12);
+        sink.quad('structureWood', q1[0], q1[1], q1[2], q1[3], { colour: tone1, decor: true });
+        sink.quad('structureWood', q2[0], q2[1], q2[2], q2[3], { colour: tone2, decor: true });
+        // the mesh's inner face, a centimetre in toward the rail (seen between the falls), wound back
+        const inward = (v: Vec3): Vec3 => [v[0], v[1], v[2] - side * 0.012];
+        sink.quad('structureWood', inward(q1[3]), inward(q1[2]), inward(q1[1]), inward(q1[0]), { colour: shade(tone1, 0.8), decor: true });
+        sink.quad('structureWood', inward(q2[3]), inward(q2[2]), inward(q2[1]), inward(q2[0]), { colour: shade(tone2, 0.8), decor: true });
       }
     }
     // the cork floats along the head rope
