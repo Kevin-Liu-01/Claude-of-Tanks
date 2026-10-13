@@ -1438,31 +1438,46 @@ Object.assign(RECIPES, {
         // spotting), so both drive to a pair of open spots that see each other across clear ground, 150-190 m apart
         // near the map's centre (r14 attempt 3 drove both to the centre itself and met 40 m apart with Verdant's
         // town between them: two scopes full of walls); without such a pair, at the centre as before
-        const meet = await A.page.evaluate(() => {
+        // Each seat takes the spot on its own side, and a pair whose straight drives from both seats meet nothing
+        // solid wins (r14 attempt 4: the Challenger's drive ran into a farmhouse 90 m short, its gun at the travel
+        // limit against the wall; the T-90M made its spot)
+        const meet = await A.page.evaluate((seats) => {
           const H = window.__MB.H, discs = H.concealers();
+          const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+          const eye = (p) => ({ x: p[0], y: H.groundY(p[0], p[1]) + 2.0, z: p[1] });
+          const pathClear = (from, to) => {
+            if (!from) return false;
+            if (H.raycastBlock(eye(from), eye(to), 2) != null) return false;
+            const len = d(from, to);
+            for (let s = 20; s < len - 10; s += 20) {
+              const f = s / len;
+              if (!H.openGround(from[0] + (to[0] - from[0]) * f, from[1] + (to[1] - from[1]) * f, 3, [])) return false;
+            }
+            return true;
+          };
+          let partial = null;
           for (const r of [0, 70, 140, 210, 280]) {
             for (let k = 0; k < (r ? 12 : 1); k++) {
               const a = (k / 12) * Math.PI * 2, cx = Math.sin(a) * r, cz = Math.cos(a) * r;
               for (let j = 0; j < 8; j++) {
                 const bearing = (j / 8) * Math.PI;
                 for (const half of [85, 75, 95]) {
-                  const ax = cx - Math.sin(bearing) * half, az = cz - Math.cos(bearing) * half;
-                  const bx = cx + Math.sin(bearing) * half, bz = cz + Math.cos(bearing) * half;
-                  if (!H.openGround(ax, az, 10, discs) || !H.openGround(bx, bz, 10, discs)) continue;
-                  const eyeA = { x: ax, y: H.groundY(ax, az) + 2.3, z: az }, eyeB = { x: bx, y: H.groundY(bx, bz) + 2.3, z: bz };
-                  if (!H.laneClear(eyeA, { x: bx, z: bz }, 2.4, discs) || !H.laneClear(eyeB, { x: ax, z: az }, 2.4, discs)) continue;
-                  return { a: [Math.round(ax), Math.round(az)], b: [Math.round(bx), Math.round(bz)], d: half * 2, centre: [Math.round(cx), Math.round(cz)] };
+                  let pa = [cx - Math.sin(bearing) * half, cz - Math.cos(bearing) * half];
+                  let pb = [cx + Math.sin(bearing) * half, cz + Math.cos(bearing) * half];
+                  if (!H.openGround(pa[0], pa[1], 10, discs) || !H.openGround(pb[0], pb[1], 10, discs)) continue;
+                  if (!H.laneClear(eye(pa), { x: pb[0], z: pb[1] }, 2.4, discs) || !H.laneClear(eye(pb), { x: pa[0], z: pa[1] }, 2.4, discs)) continue;
+                  if (seats[0] && seats[1] && d(seats[0], pa) + d(seats[1], pb) > d(seats[0], pb) + d(seats[1], pa)) [pa, pb] = [pb, pa];
+                  const clear = [pathClear(seats[0], pa), pathClear(seats[1], pb)];
+                  const score = Number(clear[0]) + Number(clear[1]);
+                  const found = { a: pa.map(Math.round), b: pb.map(Math.round), d: half * 2, centre: [Math.round(cx), Math.round(cz)], paths: clear };
+                  if (score === 2) return found;
+                  if (!partial || score > partial.score) partial = { ...found, score };
                 }
               }
             }
           }
-          return null;
-        });
-        // each seat takes the spot on its own side
-        if (meet && sides[0]?.pos && sides[1]?.pos) {
-          const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
-          if (d(sides[0].pos, meet.a) + d(sides[1].pos, meet.b) > d(sides[0].pos, meet.b) + d(sides[1].pos, meet.a)) [meet.a, meet.b] = [meet.b, meet.a];
-        }
+          return partial;
+        }, [sides[0]?.pos ?? null, sides[1]?.pos ?? null]);
         ctx.log('meeting spots', JSON.stringify(meet));
         if (!meet) ctx.note('no pair of open spots in sight of each other near the centre: both drove to the centre');
         for (const [c, spot] of [[A, meet?.a], [B, meet?.b]]) {
@@ -1498,21 +1513,41 @@ Object.assign(RECIPES, {
         }, kind)));
         await view('chase');
         await ctx.sleep(2500);
+        // what each seat's gun and hooks are doing (r14 attempts 2-4 fired no round in 32 tries)
+        const aimState = () => Promise.all([A, B].map((c) => c.page.evaluate(() => {
+          const MB = window.__MB, H = MB.H, D = H.D(), p = H.player(), e = H.sel('nearestEnemy');
+          let errMrad = null;
+          try { errMrad = Math.round(D.gunAimError() * 1000); } catch (error) { errMrad = String(error).slice(0, 60); }
+          const deg = (r) => (r == null ? null : Math.round(r * 57.3));
+          return {
+            errMrad, enemyM: p && e ? Math.round(H.dist(p.state.pos, e)) : null, gunLimit: !!p?.state?.gunLimitSpec,
+            hullDeg: deg(p?.state?.yaw), turretDeg: deg(p?.state?.turretYaw),
+            bearingDeg: p && e ? deg(Math.atan2(e.x - p.state.pos.x, e.z - p.state.pos.z)) : null,
+            fireFlag: !!D.flags?.forceFire, shots: MB.fire?.shots ?? null, hookErrors: (MB.hookErrors || []).slice(-3),
+          };
+        })));
+        ctx.log('aim state', JSON.stringify(await aimState()));
         // rounds: one side fires; both pages freeze together a beat after the shot and are captured as a pair
         const dir = ctx.dir;
         for (let round = 0; round < 8; round++) {
           if (round === 6) { await view('scope'); await ctx.sleep(1500); }
           const shooter = round % 2 === 0 ? A : B, other = shooter === A ? B : A;
           const delay = [70, 140, 220][round % 3];
+          // a laid gun first (15 mrad, a tank's width at 200 m); after 3 s the round goes whatever the lay
           await shooter.page.evaluate((d) => {
-            window.__MB.setFire({ mode: 'once', maxErrMrad: 4 });
+            window.__MB.setFire({ mode: 'once', maxErrMrad: 15 });
             window.__MB.arm({ triggers: [{ type: 'shell:fired', who: 'player', onscreen: false, delays: [d] }], periodicMs: 0 });
           }, delay);
           let frozen = false;
-          for (let w = 0; w < 120 && !frozen; w++) { frozen = (await shooter.page.evaluate(() => window.__MB.poll())).frozen; if (!frozen) await ctx.sleep(50); }
+          for (let w = 0; w < 120 && !frozen; w++) {
+            if (w === 60) await shooter.page.evaluate(() => { if (window.__MB.fire) { window.__MB.fire.maxErrMrad = 1e6; window.__MB.fire.anyTarget = true; } });
+            frozen = (await shooter.page.evaluate(() => window.__MB.poll())).frozen;
+            if (!frozen) await ctx.sleep(50);
+          }
           if (!frozen) {
             // no shot event reached this page within 6 s: take the pair as it stands
             ctx.note(`round ${round + 1}: no shot within 6 s; paired frame without a shot`);
+            if (round === 0) ctx.log('aim state after round 1', JSON.stringify(await aimState()));
             await shooter.page.evaluate(() => { window.__MB.arm(null); window.__MB.freezeIn(0, { type: 'pair-noshot' }); });
             for (let w = 0; w < 40 && !(await shooter.page.evaluate(() => window.__MB.poll())).frozen; w++) await ctx.sleep(25);
           }

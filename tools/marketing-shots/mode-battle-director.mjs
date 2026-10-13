@@ -483,12 +483,15 @@ export function installModeBattleDirector() {
     if (!spec) return;
     const p = D.game.player;
     if (!H.live(p) || spec.mode === 'off') { D.flags.forceFire = false; return; }
-    const err = typeof D.gunAimError === 'function' ? D.gunAimError() : 0;
+    let err = 0;
+    try { err = typeof D.gunAimError === 'function' ? D.gunAimError() : 0; } catch { err = Infinity; }
     const t = MB.aim ? H.sel(MB.aim.target) : null;
     // with a gun-laying target named, fire only while that target exists (r14 run 1 fired into its own allies' backs)
     if (MB.aim && !t && !spec.anyTarget) { D.flags.forceFire = false; return; }
     const clear = !spec.requireClear || !t?.ent || H.clearShot(p, t.ent);
-    D.flags.forceFire = (spec.mode === 'auto' || (spec.mode === 'once' && spec.shots < 1)) && err * 1000 <= spec.maxErrMrad && clear;
+    // a gate of 1e5 mrad or more fires whatever the lay (and whatever gunAimError can measure on this page)
+    const laid = spec.maxErrMrad >= 1e5 || err * 1000 <= spec.maxErrMrad;
+    D.flags.forceFire = (spec.mode === 'auto' || (spec.mode === 'once' && spec.shots < 1)) && laid && clear;
   }
 
   MB.setOnFrame = (source) => { MB.onFrame = source ? new Function('H', 'D', 'g', 'MB', 'dt', source) : null; MB.onFrameState = {}; return true; };
