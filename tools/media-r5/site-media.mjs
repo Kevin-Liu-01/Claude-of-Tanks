@@ -146,7 +146,8 @@ function slots() {
   (PICKS.readme?.wall ?? []).forEach((p, i) => add(`readme.wall[${i}]`, p.id, p.still));
   for (const [k, v] of Object.entries(PICKS.docs.figures ?? {})) add(`docs.figures.${k}`, v.id, v.still);
   // the home page's shots stand in on a site fifty still until their own are delivered
-  for (const s of homeSlots()) add(`home.${s.group}.${s.id}`, s.standIn?.id, s.standIn?.still);
+  // (a slot with no honest stand-in has none: it hides until its shot lands)
+  for (const s of homeSlots()) if (s.standIn) add(`home.${s.group}.${s.id}`, s.standIn.id, s.standIn.still);
   return out;
 }
 
@@ -466,7 +467,7 @@ function main() {
     const home = homeSlots();
     const delivered = home.filter((s) => homeDelivery(s));
     console.log(`home shots: ${delivered.length} of ${home.length} delivered in ${relative(MEDIA, HOME_DELIVER)}; the Studio loop ${homeStudioDelivery() ? 'delivered' : 'stands in as the landing-r1 recording'}`);
-    for (const s of home) if (!homeDelivery(s)) console.log(`  stand-in ${`${s.group}/${s.id}`.padEnd(28)} ${s.standIn.id} (${s.standIn.still})`);
+    for (const s of home) if (!homeDelivery(s)) console.log(s.standIn ? `  stand-in ${`${s.group}/${s.id}`.padEnd(28)} ${s.standIn.id} (${s.standIn.still})` : `  hidden   ${`${s.group}/${s.id}`.padEnd(28)} until its shot lands`);
     console.log(problems.length ? `${problems.length} problems:\n  ${problems.join('\n  ')}` : 'every slot has its take');
     return;
   }
@@ -514,7 +515,7 @@ function main() {
     takes, frames: frames.map((f) => ({ id: f.id, n: f.n, technique: f.technique, title: f.title, map: f.map, round: f.round })),
     // the home page's shots: delivered, or the site fifty still standing in until they are (site-media-wire.mjs)
     home: Object.fromEntries([...homeSlots().map((s) => [`${s.group}/${s.id}`, homeDelivery(s) ? 'delivered'
-      : `stand-in ${s.standIn.id}${s.standIn.still === 'close' ? '-close' : ''}`]),
+      : s.standIn ? `stand-in ${s.standIn.id}${s.standIn.still === 'close' ? '-close' : ''}` : 'hidden until delivered']),
     ['features/studio', homeStudioDelivery() ? 'delivered' : 'stand-in landing-r1']]),
     files: files.sort((a, b) => a.path.localeCompare(b.path)) };
   writeFileSync(join(OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 1)}\n`);

@@ -93,12 +93,17 @@ function homeImage(group, entry) {
     const preview = built(`${C}/home/${group}/${entry.id}-640.webp`);
     return { src: own, srcset: `${preview} 640w, ${own} ${w}w`, sizes, width: w, height: h, alt: entry.alt.en, altKey: homeAltKey(group, entry.id) };
   }
+  // no stand-in may show the wrong subject (the coordinator, 2026-10-13): a slot whose stand-in is null hides until its
+  // shot lands (wireHomeShots marks its card hidden)
+  if (!entry.standIn) return null;
   const { id, still: kind } = entry.standIn;
   const full = still(id, kind);
   const preview = built(`${C}/stills/${id}${kind === 'close' ? '-close' : ''}-thumb.webp`);
   return { src: full, srcset: `${preview} 640w, ${full} 1920w`, sizes, width: 1920, height: 1080, alt: take(id).en, altKey: titleKey(id) };
 }
 const homeImageTag = (slot, im) => `<img data-home-slot="${slot}" src="${im.src}" srcset="${im.srcset}" sizes="${im.sizes}" width="${im.width}" height="${im.height}" alt="${esc(im.alt)}" data-i18n-alt="${im.altKey}" loading="lazy" decoding="async">`;
+/** A slot waiting for its shot: the plain panel in the page's own tones (home.css .v5-slot-pending), no image fetched. */
+const homePendingTag = (slot) => `<div data-home-slot="${slot}" class="v5-slot-pending" data-home-pending aria-hidden="true"></div>`;
 // the Scene Studio card's loop: the delivered recording (home/features/studio.mp4, its poster and receipt) or, until
 // then, picks.home.studio.standIn (the landing-r1 recording)
 function homeStudio() {
@@ -113,7 +118,19 @@ function wireHomeShots(H) {
     for (const entry of PICKS.home[group] ?? []) {
       const slot = `${group}/${entry.id}`;
       slots.add(slot);
-      swap(H, new RegExp(`<img data-home-slot="${slot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`), () => homeImageTag(slot, homeImage(group, entry)), `home slot ${slot}`);
+      // with its shot or a stand-in the slot shows its image (and a standalone section that waited hidden shows again);
+      // with neither, a mechanic or mode card keeps its title and copy over the plain panel, and a feature's own
+      // section (an <article> or <figure>) hides until its shot lands
+      const im = homeImage(group, entry), quoted = slot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const element = `(?:<img data-home-slot="${quoted}"[^>]*>|<div data-home-slot="${quoted}"[^>]*></div>)`;
+      const waited = new RegExp(`(<(?:article|figure)\\b[^>]*?) hidden>(?=<(?:img|div) data-home-slot="${quoted}")`);
+      if (im || group !== 'features') {
+        swap(H, new RegExp(element), () => (im ? homeImageTag(slot, im) : homePendingTag(slot)), `home slot ${slot}${im ? '' : ' (the plain panel)'}`);
+        if (waited.test(get(H))) swap(H, waited, (_, open) => `${open}>`, `home slot ${slot} shown`);
+      } else {
+        swap(H, new RegExp(`(<(?:article|figure)\\b[^>]*?)(?: hidden)?>${element}`), (_, open) => `${open} hidden>${homePendingTag(slot)}`,
+          `home slot ${slot} (no shot and no stand-in: its section must be an article or a figure to hide)`);
+      }
     }
   }
   const v = homeStudio();

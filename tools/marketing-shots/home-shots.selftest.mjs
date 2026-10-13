@@ -25,7 +25,7 @@ const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 
 // --- every slot is a pick, every pick a slot -------------------------------------------------------------------
 const GROUPS = ['features', 'mechanics', 'modes'];
-const slots = [...home.matchAll(/<(img|video) data-home-slot="([^"]+)"[^>]*>/g)].map((m) => ({ tag: m[0], kind: m[1], slot: m[2] }));
+const slots = [...home.matchAll(/<(img|video|div) data-home-slot="([^"]+)"[^>]*>/g)].map((m) => ({ tag: m[0], kind: m[1], slot: m[2] }));
 const picked = GROUPS.flatMap((group) => picks.home[group].map((entry) => ({ group, entry, slot: `${group}/${entry.id}` })));
 assert.deepEqual(slots.map((s) => s.slot).sort(), [...picked.map((p) => p.slot), 'features/studio'].sort(),
   'home.html carries exactly the picked slots');
@@ -36,6 +36,21 @@ for (const { group, entry, slot } of picked) {
   assert.ok(entry.alt?.en && entry.alt?.zh, `${slot} has its shot's alt text in both languages`);
   assert.equal(en[`media.home.${group}.${camel(entry.id)}`], entry.alt.en, `${slot} alt text is in the en-US catalog`);
   assert.equal(zh[`media.home.${group}.${camel(entry.id)}`], entry.alt.zh, `${slot} alt text is in the zh-CN catalog`);
+  if (!built.has(own) && !entry.standIn) {
+    // no stand-in may show the wrong subject (the coordinator, 2026-10-13): a mechanic or mode card waiting for its shot
+    // keeps its title and copy over the plain panel and shows no image; a feature's own section hides
+    assert.equal(tag, `<div data-home-slot="${slot}" class="v5-slot-pending" data-home-pending aria-hidden="true">`, `${slot} waits on the plain panel`);
+    if (group === 'features') {
+      assert.ok(new RegExp(`<(?:article|figure)\\b[^>]* hidden><div data-home-slot="${slot}"`).test(home), `${slot}: its section is hidden until its shot lands`);
+    } else {
+      const card = home.match(new RegExp(`<article[^>]*><div data-home-slot="${slot}"[\\s\\S]*?<\\/article>`))?.[0] ?? '';
+      assert.ok(card && !/ hidden>/.test(card.slice(0, card.indexOf('<div'))), `${slot}: its card shows, title and copy`);
+      assert.doesNotMatch(card, /src="\/media\//, `${slot}: no stand-in image`);
+    }
+    continue;
+  }
+  assert.equal(attr(tag, 'loading'), 'lazy', `${slot} loads lazily`);
+  assert.ok(!new RegExp(`<(?:article|figure)\\b[^>]* hidden><img data-home-slot="${slot}"`).test(home), `${slot}: its section shows`);
   if (built.has(own)) {
     assert.equal(attr(tag, 'src'), own, `${slot} shows its delivered shot`);
     assert.equal(attr(tag, 'data-i18n-alt'), `media.home.${group}.${camel(entry.id)}`, `${slot} describes its own shot`);
@@ -49,9 +64,11 @@ for (const { group, entry, slot } of picked) {
     assert.ok(built.has(url) && existsSync(join(ROOT, 'public', url)), `${slot}: ${url} is published`);
   }
   assert.ok(en[attr(tag, 'data-i18n-alt')] && zh[attr(tag, 'data-i18n-alt')], `${slot} alt key is in both catalogs`);
-  assert.equal(attr(tag, 'loading'), 'lazy', `${slot} loads lazily`);
 }
-const standIns = picked.map((p) => `${p.entry.standIn.id}:${p.entry.standIn.still}`);
+// a stand-in only where it shows the slot's own subject: the Scene Studio presets are the site's takes
+const HONEST_STAND_INS = new Set(['mechanics/presets']);
+for (const { entry, slot } of picked) if (entry.standIn) assert.ok(HONEST_STAND_INS.has(slot), `${slot}: a stand-in only where it shows the slot's own subject`);
+const standIns = picked.filter((p) => p.entry.standIn).map((p) => `${p.entry.standIn.id}:${p.entry.standIn.still}`);
 assert.equal(new Set(standIns).size, standIns.length, 'no stand-in still repeats');
 const studio = slots.find((s) => s.slot === 'features/studio');
 assert.equal(studio.kind, 'video', 'the Scene Studio card keeps its loop');
@@ -69,7 +86,8 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 
 // --- the modes: every mode, in the battle setup's order, with its own name and icon ----------------------------------
 const modesSection = home.match(/<section class="v5-modes"[\s\S]*?\n {4}<\/section>/)?.[0] ?? '';
-const cards = [...modesSection.matchAll(/<article class="v5-mode[^"]*" data-mode="([a-z0-9_]+)">([\s\S]*?)<\/article>/g)];
+// (a mode whose shot has not landed keeps its card in the markup, hidden: the order holds)
+const cards = [...modesSection.matchAll(/<article class="v5-mode[^"]*" data-mode="([a-z0-9_]+)"(?: hidden)?>([\s\S]*?)<\/article>/g)];
 assert.deepEqual(cards.map((c) => c[1]), [...GAME_MODE_IDS], 'one card per game mode, in GAME_MODE_IDS order');
 assert.deepEqual(picks.home.modes.map((m) => m.id), [...GAME_MODE_IDS], 'one mode shot per game mode');
 for (const [, id, body] of cards) {
@@ -91,7 +109,8 @@ assert.equal((modesSection.match(/v5-mode--hero/g) || []).length, 1, 'one lead m
 const mechanicsSection = home.match(/<section class="v5-mechanics"[\s\S]*?\n {4}<\/section>/)?.[0] ?? '';
 const groups = [...mechanicsSection.matchAll(/<section class="v5-mechanics-group" aria-labelledby="([^"]+)">[\s\S]*?<\/section>/g)];
 assert.equal(groups.length, 4, 'four groups of mechanics');
-const mechanicCards = [...mechanicsSection.matchAll(/<article(?: class="is-wide")?><img data-home-slot="mechanics\/([a-z0-9-]+)"[^>]*><div><h4 data-i18n="([^"]+)">[^<]+<\/h4><p data-i18n="([^"]+)">[^<]+<\/p><\/div><\/article>/g)];
+// (a card waiting for its shot carries the plain panel where its image goes: the rows hold)
+const mechanicCards = [...mechanicsSection.matchAll(/<article(?: class="is-wide")?><(?:img|div) data-home-slot="mechanics\/([a-z0-9-]+)"[^>]*>(?:<\/div>)?<div><h4 data-i18n="([^"]+)">[^<]+<\/h4><p data-i18n="([^"]+)">[^<]+<\/p><\/div><\/article>/g)];
 assert.ok(mechanicCards.length >= 20 && mechanicCards.length <= 28, `${mechanicCards.length} mechanics`);
 assert.deepEqual(mechanicCards.map((m) => m[1]), picks.home.mechanics.map((m) => m.id), 'the cards follow the picks');
 for (const [, id, titleKeyName, bodyKey] of mechanicCards) {
@@ -101,7 +120,7 @@ for (const [, id, titleKeyName, bodyKey] of mechanicCards) {
 }
 // a group's row stays full: its wide cards make up what its narrow ones leave of the last four-card row
 for (const [section] of groups) {
-  const narrow = (section.match(/<article><img/g) || []).length, wide = (section.match(/<article class="is-wide">/g) || []).length;
+  const narrow = (section.match(/<article><(?:img|div) data-home-slot/g) || []).length, wide = (section.match(/<article class="is-wide">/g) || []).length;
   assert.equal((narrow + 2 * wide) % 4, 0, `${section.slice(0, 80)}: rows of four`);
 }
 
