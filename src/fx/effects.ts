@@ -4398,6 +4398,10 @@ function* createFxSteps(
     }
     return r;
   }
+  /** the covered warm's ribbon (warmProjectilePresentation) */
+  const WARM_RIBBON_KEY = -7;
+  const WARM_RIBBON: RibbonLook = Object.freeze({ width0: 0.3, width1: 1.5, life: 1, density: 0.4,
+    c0: [0.5, 0.5, 0.5] as const, c1: [0.55, 0.55, 0.55] as const, rise: 0, windK: 0, tear: 0.5 });
   /** a ribbon point every RIBBON_STEP_M of flight */
   const RIBBON_STEP_M = 2.5;
   /** a dense motor's trail (rail, rocket, MANPADS, MCLOS, gun IR, old SACLOS): a wider, thicker ribbon */
@@ -5630,6 +5634,16 @@ function* createFxSteps(
       liveAtgmCount = 0;
       writeGuidedBody(pos, dir);
       commitAtgmInstances();
+      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
+      // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
+      if (ribbons && vol) {
+        vol.refreshShading();
+        const now = particles.getTime();
+        const slot = ribbons.begin(WARM_RIBBON_KEY, WARM_RIBBON, 0.5);
+        ribbons.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
+        ribbons.point(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now - 0.05, 0.15);
+        ribbons.update(now);
+      }
     },
 
     /**
