@@ -2,6 +2,7 @@ import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxil
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
+import { createSmokeRibbons, type RibbonLook } from './smokeRibbons.ts';
 import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
@@ -254,7 +255,10 @@ interface GuidedTrail {
   count: number;
   age: number;
   seen: boolean;
-  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff */
+  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff; (EF.04)
+   *  its smoke ribbon's slot and the distance of the ribbon's next point */
+  ribbon?: number;
+  nextRibbonD?: number;
   look?: MissileLook;
   seed?: number;
   launch?: [number, number, number] | null;
@@ -1195,6 +1199,9 @@ function* createFxSteps(
     });
   }
   if (vol) group.add(vol.group);
+  // (EF.04) a missile's smoke trail as one continuous ribbon, lit by the media's own light (desktop tiers, with the media)
+  const ribbons = vol ? createSmokeRibbons(vol.shading) : null;
+  if (ribbons) group.add(ribbons.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
 
@@ -4373,13 +4380,69 @@ function* createFxSteps(
   }
 
   /** The trail's puffs since the last frame, one per spacing of flight (wider when many missiles fly at once). */
+  /** (EF.04) the ribbon each look draws (once per look): thin at the motor, swelling to the trail's width, its edges
+   *  torn as much as the motor puffs (a pulsing sustainer tears more than a steady one) */
+  const ribbonLooks = new Map<string, RibbonLook>();
+  function ribbonLookOf(look: MissileLook): RibbonLook | null {
+    const sm = look.smoke;
+    if (!sm) return null;
+    let r = ribbonLooks.get(look.id);
+    if (!r) {
+      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * 0.7, life: sm.life,
+        density: Math.min(0.85, sm.density * 1.05), c0: sm.c0, c1: sm.c1, rise: sm.rise, windK: sm.windK,
+        tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
+      ribbonLooks.set(look.id, r);
+    }
+    return r;
+  }
+  /** a ribbon point every RIBBON_STEP_M of flight; the media puffs then only give the trail body, one per
+   *  spacing x RIBBON_PUFF_K (a dense motor's trail keeps more of them than a thin sustainer's) */
+  const RIBBON_STEP_M = 2.5;
+  function ribbonPuffK(look: MissileLook): number {
+    const f = look.family;
+    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old' ? 2 : 4;
+  }
+
+  /** (EF.04) the ribbon's points since the last frame, where the motor passed and when */
+  function layRibbon(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seedU: number): void {
+    const rl = ribbonLookOf(look);
+    if (!ribbons || !rl) return;
+    const key = trail.seed as number;
+    let slot = trail.ribbon ?? -1;
+    if (slot < 0 || ribbons.slotOf(key) !== slot) {
+      slot = ribbons.begin(key, rl, seedU);
+      trail.ribbon = slot;
+      trail.nextRibbonD = Math.max(look.igniteM, d - 60);
+    }
+    const dir = _v1;
+    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
+    const motorBack = 0.65 + 0.625 * look.bodyLen;
+    const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
+    const now = particles.getTime();
+    let next = Math.max(trail.nextRibbonD as number, look.igniteM, d - 60);
+    let n = 0;
+    while (next <= d && n < 48) {
+      const back = d - next;
+      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
+      else _v6.copy(shell.pos).addScaledVector(dir, -back);
+      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
+      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed);
+      next += RIBBON_STEP_M;
+      n++;
+    }
+    trail.nextRibbonD = next;
+  }
+
   function emitMissileTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
     seed: number, seedU: number): void {
     const sm = look.smoke;
     if (!sm || !blast) return;
     // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
     const coarse = Math.max(1, liveMissiles / 4);
-    const spacing = sm.spacingM * coarse;
+    const spacing = sm.spacingM * coarse * (ribbons ? ribbonPuffK(look) : 1);
+    if (ribbons) layRibbon(trail, look, shell, d, t, speed, seedU);
     let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
     const dir = _v1;
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
@@ -4927,6 +4990,7 @@ function* createFxSteps(
     if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
+    ribbons?.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
     structMask?.shiftTime(delta);
@@ -5587,6 +5651,11 @@ function* createFxSteps(
       if (scars && scars.count > 0) scars.light(engineCtx.scene ?? null);
       structDebris?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
+      if (ribbons && vol) {
+        ribbons.update(particles.getTime());
+        // the ribbons share the media's light: keep it current while ribbons fly with no media alive
+        if (ribbons.mesh.visible && !vol.isActive()) vol.refreshShading();
+      }
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
@@ -6584,6 +6653,7 @@ function* createFxSteps(
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
+      ribbons?.reset();
       chunks?.reset();
       craters?.reset();
       structMask?.reset();

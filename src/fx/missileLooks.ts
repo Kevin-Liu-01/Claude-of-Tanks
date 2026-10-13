@@ -237,7 +237,9 @@ export const MISSILE_LOOKS: Readonly<Record<string, MissileLook>> = Object.freez
 /** The round's own name → its look (first match). */
 const BY_NAME: readonly (readonly [RegExp, string])[] = Object.freeze([
   [/\bTOW\b|BGM-71/i, 'tow'],
-  [/Konkurs|9M113|Fagot|9M111|Metis|9M115|9M131|9M-695|HJ-P9|HJ-8|Red Arrow 8/i, 'konkurs'],
+  // (EF.04) the 9M-695 and HJ-P9 volleys fly at 320-380 m/s from 8-12 tubes: radio command (Ataka's look), not a wire
+  [/9M-695|HJ-P9/i, 'ataka'],
+  [/Konkurs|9M113|Fagot|9M111|Metis|9M115|9M131|HJ-8|Red Arrow 8/i, 'konkurs'],
   [/MILAN|\bHOT\b|Euromissile/i, 'milan'],
   [/Malyutka|9M14|Sagger|SS-11|ENTAC|KAM-3|Type 64/i, 'mclos'],
   [/Jyu-MAT Kai|Type 01|LMAT|Javelin|FGM-148|Spike|MELLS|NLAW|\bMMP\b|Akeron|HJ-12|Red Arrow 12/i, 'spike'],
