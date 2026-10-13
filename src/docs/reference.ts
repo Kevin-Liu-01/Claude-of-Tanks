@@ -1,5 +1,6 @@
 import data from './reference.generated.json';
 import {getLocale, t} from '../ui/i18n.ts';
+import {watchVehicleTakes} from './referenceTakes.ts';
 
 const escape = (value: unknown): string => String(value).replace(/[&<>"']/g, character =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]!));
@@ -19,7 +20,7 @@ export function mountReference(article: HTMLElement, slug: string): void {
     records.innerHTML = data.vehicles.map(v => {
       const systems = [v.smoke ? `${text('smoke')} (${v.smoke})` : '', v.lights ? text('lights') : '',
         v.roofGun ? text('roofGun') : '', v.missile ? text('missile') : '', v.suspension ? text('suspension') : ''].filter(Boolean);
-      return `<details class="manual-record" data-search="${escape(`${v.name} ${v.nation} ${v.role}`)}">
+      return `<details class="manual-record" data-vehicle="${escape(v.id)}" data-search="${escape(`${v.name} ${v.nation} ${v.role}`)}">
         <summary><strong>${escape(v.name)}</strong><span>${escape(v.nation.toUpperCase())} · ${escape(v.role)} · ${v.tier}</span></summary>
         <dl>${pair('hp',number(v.hp))}${pair('speed',`${number(v.speed)} / ${number(v.reverse)} km/h`)}
         ${pair('hull',`${number(v.hull)} °/s`)}${pair('turret',`${number(v.turret)} °/s`)}
@@ -27,6 +28,7 @@ export function mountReference(article: HTMLElement, slug: string): void {
         ${pair('reload',`${number(v.reload)} s`)}${pair('view',`${number(v.view)} m`)}</dl>
         <p>${escape(systems.join(' · '))}</p></details>`;
     }).join('');
+    watchVehicleTakes(records); // an opened record shows the vehicle's own take (referenceTakes.ts)
   } else if (slug === 'worlds') {
     records.classList.add('manual-atlas');
     records.innerHTML = data.maps.map(m => `<details class="manual-record" data-search="${escape(m.name)}">

@@ -2,7 +2,8 @@
 import { PRODUCTION_PRESETS, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
-import { getLocale } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
+import { LAST_TANK_STORAGE_KEY } from '../game/selectedVehicleSelection.ts';
 
 /**
  * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the
@@ -12,8 +13,12 @@ import { getLocale } from './i18n.ts';
 const SITE_TAKES_INDEX = '/media/site50-r14/scenes/index.json';
 interface SiteTake {
   id: string; title: { en: string; zh: string }; short: { en: string; zh: string };
-  map: string; durationMs: number | null; scene: string; thumb: string;
+  map: string; durationMs: number | null; scene: string; thumb?: string;
+  /** 'fleet': one production vehicle's own take (src/ui/fleetTakes.ts); the default list is every other take. */
+  group?: string; vehicle?: string;
 }
+// Every tank's own take is reached by a search, at most this many cards at a time, never as a 220-card list.
+const FLEET_RESULTS = 6;
 
 const COPY = {
   director: ['Director', '导演台'], scene: ['Scene', '场景'], actors: ['Tanks', '坦克'],
@@ -122,6 +127,9 @@ body[data-cot-height='short'] .cot-studio .badge .t{font-size:8px}
 body[data-cot-height='short'] .cot-studio .studio-panel-toggle{left:8px;right:auto;top:86px}
 body[data-cot-height='short'] .cot-studio .foot{bottom:8px;left:8px;max-width:calc(50vw - 20px)}
 .cot-studio .production-takes .production-library{max-height:520px;overflow:auto;scrollbar-width:thin;scrollbar-color:#806139 transparent;padding-right:2px}
+.cot-studio .production-fleet-search{display:grid;gap:6px;margin:10px 0;font-size:9px;color:#9cafbd}
+.cot-studio .production-fleet-search input{width:100%;min-height:38px;padding:6px 9px;background:rgba(4,7,10,.9);border:1px solid rgba(190,204,216,.25);color:#e6edf3;font:inherit;font-size:11px}
+.cot-studio .production-fleet-search input:focus{border-color:#e6a841}
 @media(prefers-reduced-motion:reduce){.cot-studio .production-card img{transition:none}}
 `;
 
@@ -225,7 +233,27 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
   const takeCards = new Map<string, HTMLButtonElement>();
   let takesRequested = false;
   let loadingTake = false;
+  let stagedTake = '';
   function takeStatus(text: string, error = false): void { takesStatus.textContent = text; takesStatus.dataset.error = String(error); }
+  function mapName(id: string): string {
+    try { return S.getMapInfo(id).name; } catch (_) { return id; }
+  }
+  function takeCard(take: SiteTake): HTMLButtonElement {
+    const zh = getLocale() === 'zh-CN';
+    const card = button('', () => loadSiteTake(take), 'production-card');
+    card.dataset.siteTake = take.id;
+    card.title = zh ? take.title.zh : take.title.en;
+    card.setAttribute('aria-pressed', String(take.id === stagedTake));
+    const photo = node('img');
+    photo.src = take.thumb || `/maps/cards/${take.map}.webp`;
+    photo.alt = '';
+    photo.loading = 'lazy';
+    photo.decoding = 'async';
+    card.append(photo, node('span', 'production-duration', `${((take.durationMs ?? 0) / 1000).toFixed(1)}s`),
+      node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
+    takeCards.set(take.id, card);
+    return card;
+  }
   function loadSiteTakes(): void {
     if (takesRequested) return;
     takesRequested = true;
@@ -236,26 +264,69 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
         return response.json() as Promise<{ takes: SiteTake[] }>;
       })
       .then((index) => {
-        const zh = getLocale() === 'zh-CN';
-        for (const take of index.takes) {
-          const card = button('', () => loadSiteTake(take), 'production-card');
-          card.dataset.siteTake = take.id;
-          card.title = zh ? take.title.zh : take.title.en;
-          const photo = node('img');
-          photo.src = take.thumb;
-          photo.alt = '';
-          photo.loading = 'lazy';
-          photo.decoding = 'async';
-          card.append(photo, node('span', 'production-duration', `${((take.durationMs ?? 0) / 1000).toFixed(1)}s`),
-            node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', S.getMapInfo(take.map).name));
-          takeCards.set(take.id, card);
-          takesLibrary.append(card);
-        }
+        for (const take of index.takes) if (take.group !== 'fleet') takesLibrary.append(takeCard(take));
+        listFleetTakes(index.takes.filter((take) => take.group === 'fleet' && typeof take.vehicle === 'string'));
         takeStatus('');
         refresh();
       })
       .catch(() => { takesRequested = false; takeStatus(productionLabel('takesUnavailable'), true); });
   }
+
+  // Every tank's own take (owner 2026-10-12): the index's fleet entries stay out of the list above and are reached by
+  // a search instead. With no query the finder offers the take of the Director's featured tank, else of the tank last
+  // selected in the Garage.
+  const fleetSection = node('section', 'production-takes production-fleet');
+  fleetSection.hidden = true;
+  const fleetIntro = node('p', 'production-note');
+  const fleetSearchLabel = node('label', 'production-fleet-search', t('studio.director.fleet.search'));
+  const fleetSearch = node('input');
+  fleetSearch.type = 'search';
+  fleetSearch.autocomplete = 'off';
+  fleetSearch.spellcheck = false;
+  fleetSearch.placeholder = t('studio.director.fleet.placeholder');
+  fleetSearch.dataset.fleetSearch = '';
+  fleetSearchLabel.append(fleetSearch);
+  const fleetLibrary = node('div', 'production-library');
+  const fleetStatus = node('div', 'production-status');
+  fleetStatus.setAttribute('role', 'status');
+  fleetStatus.setAttribute('aria-live', 'polite');
+  fleetSection.append(node('h3', '', t('studio.director.fleet.heading')), fleetIntro, fleetSearchLabel, fleetLibrary, fleetStatus);
+  director.append(fleetSection);
+  let fleetTakes: SiteTake[] = [];
+  const fleetText = new Map<string, string>();
+  function garageTank(): string {
+    try { return localStorage.getItem(LAST_TANK_STORAGE_KEY) || ''; } catch (_) { return ''; }
+  }
+  function listFleetTakes(takes: SiteTake[]): void {
+    fleetTakes = takes;
+    for (const take of takes) {
+      const vehicle = take.vehicle ?? '';
+      let name = vehicle;
+      try { name = S.getSpecInfo(vehicle).name; } catch (_) { /* a vehicle this build lacks keeps its id */ }
+      fleetText.set(take.id, [vehicle, name, take.title.en, take.title.zh, take.short.en, take.short.zh, take.map,
+        mapName(take.map)].join(' ').toLocaleLowerCase());
+    }
+    fleetIntro.textContent = t('studio.director.fleet.intro', { count: takes.length });
+    fleetSection.hidden = !takes.length;
+    if (takes.length) renderFleetTakes();
+  }
+  function renderFleetTakes(): void {
+    const typed = fleetSearch.value.trim();
+    const query = typed.toLocaleLowerCase();
+    const tank = tanks.value || garageTank();
+    const matches = query
+      ? fleetTakes.filter((take) => fleetText.get(take.id)?.includes(query))
+      : fleetTakes.filter((take) => take.vehicle === tank);
+    for (const take of fleetTakes) takeCards.delete(take.id);
+    fleetLibrary.replaceChildren(...matches.slice(0, FLEET_RESULTS).map(takeCard));
+    fleetStatus.textContent = !query
+      ? (matches.length ? t('studio.director.fleet.yourTank') : t('studio.director.fleet.hint'))
+      : !matches.length ? t('studio.director.fleet.none', { query: typed })
+      : matches.length > FLEET_RESULTS ? t('studio.director.fleet.more', { shown: FLEET_RESULTS, count: matches.length }) : '';
+    refresh();
+  }
+  fleetSearch.addEventListener('input', renderFleetTakes);
+  tanks.addEventListener('change', () => { if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes(); });
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
     if (!path || loadingTake || staging || S.recordingStatus().active) return;
@@ -269,6 +340,7 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
       })
       .then((json) => S.load(json))
       .then(() => {
+        stagedTake = take.id;
         for (const [id, card] of takeCards) card.setAttribute('aria-pressed', String(id === take.id));
         takeStatus(productionLabel('takeLoaded'));
         refreshAll();

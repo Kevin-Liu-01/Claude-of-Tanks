@@ -27,8 +27,13 @@ interface FeaturedShot {
 
 export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
+    img: '/media/site50-r14/stills/s21-fields-assault-close.webp',
+    bootImg: '/media/site50-r14/stills/s21-fields-assault-boot.webp',
+    capKey: 'media.site50.title.s21FieldsAssault',
+    maps: ['verdant'], focal: '52% 62%',
+  },
+  {
     img: '/media/site50-r14/stills/s07-lake-shellfire.webp',
-    bootImg: '/media/site50-r14/stills/s07-lake-shellfire-boot.webp',
     capKey: 'media.site50.title.s07LakeShellfire',
     maps: ['alpine', 'whiteout'], focal: '55% 60%',
   },
@@ -55,7 +60,7 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/site50-r14/stills/s05-barn-advance-close.webp',
     capKey: 'media.site50.title.s05BarnAdvance',
-    maps: ['verdant', 'polders'], focal: '50% 50%',
+    maps: ['polders'], focal: '50% 50%',
   },
   {
     img: '/media/site50-r14/stills/s30-temple-village-close.webp',
@@ -115,11 +120,6 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/site50-r14/stills/s20-road-return-fire-close.webp',
     capKey: 'media.site50.title.s20RoadReturnFire',
-    focal: '50% 50%',
-  },
-  {
-    img: '/media/site50-r14/stills/s21-fields-assault-close.webp',
-    capKey: 'media.site50.title.s21FieldsAssault',
     focal: '50% 50%',
   },
   {

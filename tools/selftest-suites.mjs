@@ -1674,6 +1674,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
+    // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
+    'src/ui/fleetTakes.selftest.mjs',
+    'src/gallery/inAction.selftest.mjs',
+    'src/docs/referenceTakes.selftest.mjs',
+    'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

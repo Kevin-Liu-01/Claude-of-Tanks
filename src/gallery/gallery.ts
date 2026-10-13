@@ -1,4 +1,5 @@
 import type { DamageLab, DamageLabVisual } from './damageLab.ts';
+import type { InActionBlock } from './inAction.ts';
 import { createDamageWorkbench } from './damageWorkbench.ts';
 import { createDamageBurst } from './damageBurst.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
@@ -304,6 +305,22 @@ function loadDamageLab(): Promise<DamageLabModule> {
     (error: unknown) => { clearTimeout(slow); pending.remove(); damageLabModule = null; throw error; },
   );
   return damageLabModule;
+}
+// In action (owner 2026-10-12): the selected vehicle's own take, between the technical summary and the articulation
+// controls. Its module and the fleet index load once the first tank is on screen; a vehicle the index lacks shows no
+// block, and a failed load leaves the dossier as it was (the next tank tries again).
+const inActionHost = document.createElement('div');
+inActionHost.className = 'fleet-take-host';
+$('#summaryHeading').closest('section')!.after(inActionHost);
+let inAction: InActionBlock | null = null;
+let inActionLoad: Promise<void> | null = null;
+function showInAction(id: string): void {
+  if (inAction) { inAction.show(id); return; }
+  inActionLoad ??= import('./inAction.ts').then(
+    ({ mountInAction }) => { inAction = mountInAction(inActionHost); },
+    () => { inActionLoad = null; },
+  );
+  void inActionLoad.then(() => { if (selectedId === id) inAction?.show(id); });
 }
 function inspectionTarget(object: THREE.Object3D): string {
   const data = object.userData.inspection;
@@ -691,6 +708,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
 }
 
 function disposeTank(): void {
+  inAction?.show(null); // the outgoing vehicle's take stops with it
   damageWorkbench.attach(null);
   damageLab?.dispose(); damageLab = null; damageBurst.clear();
   surfaceMarkup.detachTank();
@@ -752,6 +770,7 @@ async function loadTank(
   updateUrl();
   await nextFrame();
   loadingState.classList.add('hidden');
+  if (version === loadVersion) showInAction(id);
   const { createDamageLab } = await loadDamageLab();
   if (version !== loadVersion || !visual) return;
   damageLab = createDamageLab(getSpec(id), visual, GALLERY_FLOOR_Y_M);
