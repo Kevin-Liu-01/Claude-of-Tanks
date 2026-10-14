@@ -735,6 +735,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
+    'src/ui/topMaskCoverage.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
     'src/ui/camoSwatchAccess.selftest.mjs',
     'src/ui/customCamoStudioAccess.selftest.mjs',
