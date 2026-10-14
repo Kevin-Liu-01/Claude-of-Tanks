@@ -1414,6 +1414,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
     'src/world/groundRedux.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "concentric contour rings on snow"): the snow maps' drift and sastrugi
+    // phases monotone along the wind over the whole square (no rings), the sunset terminator kept, the GLSL's law
+    'src/world/snowDrifts.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',

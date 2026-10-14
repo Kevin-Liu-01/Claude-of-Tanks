@@ -6172,8 +6172,9 @@ void splatCompute() {
   }
   // Round 73 (2026-09-25, the ground redux): snow. A snowfield is not one white sheet — the wind scours it to a
   // harder, cooler crust on the exposed patches and leaves powder in the lees (the macro), and combs it into sastrugi
-  // and drift waves (the normal), both on the snow maps' own wind (a per-cell swing so no two trains share a heading,
-  // the round-43 rule). Off the arid ripple path: the sand branch keeps its own gates and receipts.
+  // and drift waves (the normal), both on the snow maps' own wind (2026-10-14: one heading meandering within bounded
+  // warps; the per-cell swing multiplied the world position and ringed the snow — below). Off the arid ripple path: the
+  // sand branch keeps its own gates and receipts.
   if (uReduxSnow.x > 0.001) {
     float scour = smoothstep(0.55, 0.85, n2w + (n1w - 0.5) * 0.30) * meadowG * (1.0 - fR);
     float powder = smoothstep(0.60, 0.92, meadowC) * meadowG * (1.0 - fR);
@@ -6182,18 +6183,43 @@ void splatCompute() {
     gScour = scour * uReduxSnow.x; // round 73b: the crust is hard and takes a satin sheen
   }
   if (uReduxSnow.y > 0.001) {
-    vec2 swind = normalize(vec2(0.62, 0.78) + (nz(uv, 0.0025, vec2(0.37, 0.91)).rg - 0.5) * 0.9);
+    // 2026-10-14 (the engine-cs lane; media wave f1, 14 notes on Frosthollow at sunset: "concentric orange contour rings, a
+    // banding or marbling artefact that reads like wood grain", Alpine by day: "a repeating swirl and ring texture"): the
+    // trains' phases were the noise's contours, not the wind's. n1's 9.5 m and 21 m octaves at 0.9 cycle moved the drift
+    // phase four times faster than the 15 m train itself (|grad| p50 0.29 against 0.067 cycles/m; n1h at 5 rad did the same
+    // to the sastrugi), and the wind's heading and wavelength fields multiplied the world position (a chirp growing with
+    // the distance from the map's centre): every crest and lee line closed into rings round the noise's extrema, repeated
+    // at the texture's periods, and a sunset sun (3.5°) flipped each ring between full sun and none under the 4–17° tilt.
+    // The trains run on the snow maps' wind now: a fixed heading's ramp plus warps bounded under the train's own wave
+    // number (the drifts n2 and the 0.0009 field at 0.2 and 0.3 cycle, the sastrugi n2 and n1 at 0.25 and 0.2 cycle) —
+    // the phase strictly monotone along the wind, so no contour closes (heading p99 ±20°, wavelength 11–21 m); the drifts
+    // lie in fields (an amplitude on n2w, never a phase); and the tilt's share along the sun's heading, as the detail gain
+    // will draw it (SPLAT_NORMAL_FRAG: twice the encoded delta times dk), stays within the larger of 0.35 of the sun's own
+    // slope and that slope less 0.12 — every facet keeps the sun (a low sun lights the drift faces unevenly, never past the
+    // terminator) and a high sun keeps the whole relief. CPU twin and receipt: snowDrifts.selftest.mjs.
+    vec2 swind = vec2(0.6221, 0.7829); // normalize(0.62, 0.78): the snow maps' wind
     float sph = dot(uv, swind);
-    float sast = sin(sph * 3.4 + n1h * 5.0) * (1.0 - smoothstep(30.0, 120.0, camDist));
+    float sast = sin(sph * 3.4 + ((n2 - 0.5) * 0.25 + (n1 - 0.5) * 0.2) * 6.2832) * (1.0 - smoothstep(30.0, 120.0, camDist));
     sast *= tileVis(1.85); // ground lane: the 1.85 m sastrugi wave
     // round 73b: the drift is a sawtooth — a long stoss slope climbing to a sharp lee crest that drops in a fifth of
     // the wavelength — so the drifts carry an EDGE (a shaded lee face under the lit crest line) that reads at range in
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
-    float dwave = fract(sph * 0.0669 * (0.78 + 0.44 * n2) + n1 * 0.9 + n2w * 0.5); // the wavelength swings ±22 % per ~320 m cell, the phase on two fields
+    float dwave = fract(sph * 0.0669 + (n2 - 0.5) * 0.2 + wOff.y * (0.3 / 48.0)); // wOff.y / 48: the 0.0009 field's G, centred
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
+    drift *= 0.2 + 0.8 * smoothstep(0.35, 0.70, n2w);
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
-    n.xy += swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;
+    vec2 sTilt = swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;
+    {
+      float sHl = length(uSunDirW.xz);
+      vec2 sH = uSunDirW.xz / max(sHl, 1e-4);
+      float dkE = 2.0 * max(uDetailGain, 1e-3) * (1.0 + smoothstep(18.0, 45.0, camDist) * (1.0 - smoothstep(300.0, 600.0, camDist)));
+      float fullA = 0.3 * sw * abs(dot(swind, sH)) + 1e-5;
+      float tS = max(uSunDirW.y, 0.0) / max(sHl, 0.05); // the sun's own slope (tan of its elevation)
+      float keepA = min(1.0, max(0.35 * tS, tS - 0.12) / (dkE * fullA));
+      sTilt -= sH * dot(sTilt, sH) * (1.0 - keepA);
+    }
+    n.xy += sTilt;
     float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
     a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
