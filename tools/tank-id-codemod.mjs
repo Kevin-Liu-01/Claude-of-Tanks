@@ -106,6 +106,7 @@ const SKIP_EXACT = new Set([
   'docs/VEHICLE-ROSTER.md', 'docs/FLEET-FREEZE-CURRENT.json', 'src/vehicles/camoProductionBaseline.json',
   // Schema-1 id vocabulary, matched against tankSeedId(id).
   'src/audio/vehicleAudioProfiles.ts', 'src/vehicles/smokeFan.ts', 'src/vehicles/suspensionPatterns.ts',
+  'src/vehicles/trackPatterns.ts', 'src/vehicles/wheelPatterns.ts', 'src/fx/projectileTracers.ts',
 ]);
 const GENERATED = /\.generated\.|tank-assets\.json$|fleet-geometry-ledger\.json$/;
 const BINARY_EXT = ['svg', 'png', 'webp', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'mov', 'glb', 'gltf', 'bin', 'wav', 'mp3',

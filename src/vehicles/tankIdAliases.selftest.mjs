@@ -159,6 +159,9 @@ const SEEDED = {
   // Schema-1 id vocabulary tables (ID.04/05 prep): a rename keeps launcher arcs and suspension families.
   'smokeFan.ts': /const seedId = tankSeedId\(String\(id\)\);\s+for \(const arc of FAMILY_ARCS\) if \(arc\.pattern\.test\(seedId\)\)/,
   'suspensionPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);/,
+  'trackPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);\s+for \(const \[matcher, patternId\] of FAMILY_RULES\)/,
+  'wheelPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);\s+for \(const \[matcher, patternId\] of PERIOD_RULES\)/,
+  '../fx/projectileTracers.ts': /SOVIET_DESIGN\.test\(tankSeedId\(String\(shooter\?\.id \?\? ''\)\)\)/,
 };
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);
