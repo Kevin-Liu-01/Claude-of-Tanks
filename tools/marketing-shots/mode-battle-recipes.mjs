@@ -939,16 +939,22 @@ export const RECIPES = {
       const runs = await findCrushRuns(ctx, { kinds: ['fenceplank', 'fencepicket', 'fencewattle', 'fencerail'], treeNearM: 14, maxRuns: 4 });
       ctx.log('crush runs', JSON.stringify(runs.map((r) => ({ kind: r.kind, x: Math.round(r.x), z: Math.round(r.z), tree: r.tree }))));
       if (!runs.length) { ctx.note('no fence run with a tree beside it was found'); return; }
+      // r4 (first pass: the windows closed before the hull reached the fences, and the 0.9 m lens sat in Verdant's
+      // tall grass): the approach is fast-forwarded to 14 m short at speed, and the lens stands above the grass:
+      // beyond the fence looking back down the run (the hull comes at it through the boards), or a front three-quarter
+      // follow
       for (const [i, run] of runs.entries()) {
-        await stageRun(ctx, run, 45);
+        const at = await approachRun(ctx, run, { backM: 60, arriveM: 14 });
+        ctx.log(`crush run ${i + 1}`, JSON.stringify(at));
         await ctx.capture({
-          windowS: 9, everyS: 0.6, max: 12, label: `crush run ${i + 1} (${run.kind})`,
-          cameras: [{ kind: 'follow', subject: 'player', azimuthDeg: i % 2 ? -30 : 30, distM: 13, heightM: 0.9, lookAtHeightM: 1.4, fov: 46, headingFrom: 'velocity', smoothS: 0.25, hud: 'hidden' }],
-          triggers: [T.crushOnScreen([30, 90, 180]), { type: 'tank:ram', who: 'player', onscreen: false, delays: [40, 140] }],
-          minGapMs: 250,
+          windowS: 7, everyS: 0.35, max: 12, label: `crush run ${i + 1} (${run.kind})`,
+          cameras: [i % 2 ? { kind: 'follow', subject: 'player', azimuthDeg: -32, distM: 13, heightM: 2.0, lookAtHeightM: 1.3, fov: 44, headingFrom: 'velocity', smoothS: 0.2, hud: 'hidden' }
+            : runLens(run, { aheadM: 16, sideM: 7, heightM: 1.9 })],
+          triggers: [T.crushOnScreen([30, 90, 180, 300]), { type: 'tank:ram', who: 'player', onscreen: false, delays: [40, 140] }],
+          minGapMs: 200,
         });
       }
-      ctx.note('player placed 45 m short of each fence run and driven through it at full throttle');
+      ctx.note('player placed 60 m short of each fence run, the approach fast-forwarded at full throttle to 14 m short, then filmed through the crush');
     },
   },
 
@@ -959,19 +965,22 @@ export const RECIPES = {
     hud: 'hidden',
     async run(ctx) {
       const runs = await findCrushRuns(ctx, { kinds: ['sedan', 'pickup', 'van', 'jeep', 'truck', 'truckbox', 'truckflatbed'], treeNearM: 0, maxRuns: 4, vehicles: true });
-      ctx.log('vehicle runs', JSON.stringify(runs.map((r) => ({ kind: r.kind, x: Math.round(r.x), z: Math.round(r.z) }))));
+      ctx.log('vehicle runs', JSON.stringify(runs.map((r) => ({ kind: r.kind, x: Math.round(r.x), z: Math.round(r.z), urban: r.urban }))));
       if (!runs.length) { ctx.note('no parked map vehicle was found'); return; }
+      // r4: as crushing: the approach fast-forwarded to 13 m short at speed, then a lens beyond the vehicle looking back
+      // down the run, or a front three-quarter follow, through the crush
       for (const [i, run] of runs.entries()) {
-        // a round into a parked truck first when one stands near the car (it breaks and burns), then drive over the car
-        await stageRun(ctx, run, 40);
+        const at = await approachRun(ctx, run, { backM: 55, arriveM: 13 });
+        ctx.log(`vehicle run ${i + 1}`, JSON.stringify(at));
         await ctx.capture({
-          windowS: 9, everyS: 0.6, max: 12, label: `vehicle run ${i + 1} (${run.kind})`,
-          cameras: [{ kind: 'follow', subject: 'player', azimuthDeg: i % 2 ? -28 : 28, distM: 12, heightM: 1.0, lookAtHeightM: 1.3, fov: 46, headingFrom: 'velocity', smoothS: 0.25, hud: 'hidden' }],
+          windowS: 7, everyS: 0.35, max: 12, label: `vehicle run ${i + 1} (${run.kind})`,
+          cameras: [i % 2 ? { kind: 'follow', subject: 'player', azimuthDeg: -30, distM: 12, heightM: 1.6, lookAtHeightM: 1.3, fov: 46, headingFrom: 'velocity', smoothS: 0.2, hud: 'hidden' }
+            : runLens(run, { aheadM: 14, sideM: 6, heightM: 1.6 })],
           triggers: [T.crushOnScreen([30, 90, 180, 320]), { type: 'tank:ram', who: 'player', onscreen: false, delays: [40, 140, 260] }],
-          minGapMs: 250,
+          minGapMs: 200,
         });
       }
-      ctx.note('player placed 40 m short of each parked vehicle and driven over it');
+      ctx.note('player placed 55 m short of each parked vehicle, the approach fast-forwarded at full throttle to 13 m short, then filmed driving over it');
     },
   },
 };
@@ -1032,10 +1041,20 @@ async function findCrushRuns(ctx, { kinds, treeNearM = 14, maxRuns = 4, vehicles
         if (along > 0 && along < 70 && across < 4.5) { blocked = true; break; }
       }
       if (blocked) continue;
-      found.push({ kind: o.kind, x, z, heading, tree: tree ? { d: Math.round(tree.d), h: Math.round(tree.h) } : null,
+      // a street: solid records (buildings, walls) within 35 m; the map-vehicle shot wants the tank pushing up a street
+      let urban = 0;
+      if (cfg.vehicles) {
+        for (const q of obstacles) {
+          if (q.crushable || q.crushed || q.dead || q.kind === 'tree' || !q.min || !q.max) continue;
+          if ((q.max[1] - q.min[1]) < 2.5) continue;
+          const qx = (q.min[0] + q.max[0]) / 2, qz = (q.min[2] + q.max[2]) / 2;
+          if (Math.hypot(qx - x, qz - z) < 35) urban++;
+        }
+      }
+      found.push({ kind: o.kind, x, z, heading, urban, tree: tree ? { d: Math.round(tree.d), h: Math.round(tree.h) } : null,
         distFromPlayer: Math.round(Math.hypot(x - p.state.pos.x, z - p.state.pos.z)) });
     }
-    found.sort((a, b) => a.distFromPlayer - b.distFromPlayer);
+    found.sort((a, b) => (cfg.vehicles ? b.urban - a.urban : 0) || a.distFromPlayer - b.distFromPlayer);
     const picked = [];
     for (const f of found) {
       if (picked.every((q) => Math.hypot(q.x - f.x, q.z - f.z) > 60)) picked.push(f);
@@ -1055,6 +1074,32 @@ async function stageRun(ctx, run, backM) {
   await ctx.ff(0.6);
   await ctx.eval(() => window.__MB.setDrive({ to: window.__MB.runTarget, arriveM: 5, throttle: 1 }));
   await ctx.sleep(400);
+}
+
+/**
+ * Bring the player to a run at speed. r4's first runs started 40-45 m short from a standstill and the windows (wall
+ * time, most of it spent in 4K screenshot freezes) ended before the hull reached the fence or the car. The approach is
+ * fast-forwarded now (nothing drawn; the latched full throttle drives straight down the run) until the hull is
+ * `arriveM` short, so the rendered window opens on the crush itself.
+ */
+async function approachRun(ctx, run, { backM = 60, arriveM = 14, maxS = 8 } = {}) {
+  await stageRun(ctx, run, backM);
+  return ctx.until((r, arrive) => {
+    const H = window.__MB.H, p = H.player();
+    if (!p) return null;
+    const d = Math.hypot(p.state.pos.x - r.x, p.state.pos.z - r.z);
+    return d < arrive ? { distM: Math.round(d), speedMps: Math.round(Math.abs(p.state.speed) * 10) / 10 } : null;
+  }, { ffStepS: 0.2, timeoutS: maxS, label: `the ${run.kind} run`, args: [run, arriveM] });
+}
+
+/** A fixed lens beyond a run, low and off to one side, looking back down it at the hull coming through. */
+function runLens(run, { aheadM = 15, sideM = 7, heightM = 1.7, fov = 42 } = {}) {
+  const ux = Math.sin(run.heading), uz = Math.cos(run.heading), px = uz, pz = -ux;
+  return {
+    kind: 'fixed', fov, smoothS: 0, hud: 'hidden',
+    pos: [run.x + ux * aheadM + px * sideM, null, run.z + uz * aheadM + pz * sideM], heightM,
+    look: [run.x - ux * 6, null, run.z - uz * 6], lookHeightM: 1.4,
+  };
 }
 
 /** Pause the battle through Settings (Esc), open the Sound tab and expand the crew-voice select. */

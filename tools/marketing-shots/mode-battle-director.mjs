@@ -648,7 +648,12 @@ export function installModeBattleDirector() {
       return;
     }
     let pose = null;
-    if (spec.kind === 'fixed') pose = { cam: { x: spec.pos[0], y: spec.pos[1], z: spec.pos[2] }, look: { x: spec.look[0], y: spec.look[1], z: spec.look[2] } };
+    if (spec.kind === 'fixed') {
+      // a null height is taken from the ground: heightM above it for the lens, lookHeightM for the look point
+      const cy = spec.pos[1] ?? H.groundY(spec.pos[0], spec.pos[2]) + (spec.heightM ?? 1.6);
+      const ly = spec.look[1] ?? H.groundY(spec.look[0], spec.look[2]) + (spec.lookHeightM ?? 1.2);
+      pose = { cam: { x: spec.pos[0], y: cy, z: spec.pos[2] }, look: { x: spec.look[0], y: ly, z: spec.look[2] } };
+    }
     else if (spec.kind === 'follow') { const s = H.sel(spec.subject || 'player'); if (s) pose = followPose(spec, s); }
     else if (spec.kind === 'between') {
       const a = H.sel(spec.from || 'player'), b = H.sel(spec.to || 'nearestEnemy');
