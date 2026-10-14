@@ -2929,7 +2929,9 @@ const groundSources: GroundDisturbance[] = [];
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
-    if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) {
+    if (inBattle && !worldRuntime.dormant) {
+      // contact round 4 (2026-10-10): the wakes and the front run with live play; the sward's press runs paused too
+      const live = !pauseInfo.paused;
       // Water pass 6 (2026-09-14): vehicles standing or driving in water push
       // wake rings and churn into the surface — the water reacts to the battle.
       const wakeWorld = currentWorld();
@@ -2951,7 +2953,7 @@ const worldFramePresentation = {
               halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
             });
           }
-          if (!field.getWaterMaskAt || wakeSources.length >= 8) continue;
+          if (!live || !field.getWaterMaskAt || wakeSources.length >= 8) continue;
           const mask = waterContactMaskAt(field, p.x, p.y + (ent.contactGeom?.bottomYM ?? 0), p.z);
           if (!(mask > 0.05)) continue;
           // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
@@ -2963,15 +2965,20 @@ const worldFramePresentation = {
             halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
           });
         }
-        wakeWorld.setWaterDisturbances(wakeSources);
+        if (live) wakeWorld.setWaterDisturbances(wakeSources);
+        // contact round 4 (2026-10-10; the critics on wave 340: "no crushed blades or sinkage under the tracks"): the
+        // sward's press is presentation only — the tall grass reads it, the simulation and the wire never do — so a paused
+        // battle, and the Studio's and the shots' staged frames, keep the hulls' footprints pressed into the grass as play does
         wakeWorld.setGroundDisturbances?.(groundSources);
       }
-      // Frontline Assault brings the front closer with every sector taken.
-      const line = game.matchModeState?.line;
-      // 2026-09-14 campaign flavour: the front runs hotter — every battle at 1.15, Frontline
-      // Assault from 1.25 and climbing with every sector taken (setScale clamps at 2).
-      frontline.current?.setScale(line ? 1.25 + 0.35 * (line.index ?? 0) : 1.15);
-      frontline.update(dtSeconds);
+      if (live) {
+        // Frontline Assault brings the front closer with every sector taken.
+        const line = game.matchModeState?.line;
+        // 2026-09-14 campaign flavour: the front runs hotter — every battle at 1.15, Frontline
+        // Assault from 1.25 and climbing with every sector taken (setScale clamps at 2).
+        frontline.current?.setScale(line ? 1.25 + 0.35 * (line.index ?? 0) : 1.15);
+        frontline.update(dtSeconds);
+      }
     }
   },
 };

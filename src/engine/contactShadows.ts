@@ -55,6 +55,23 @@ export const CONTACT_SHADOW_ALPHA_OPAQUE = SCENE_ALPHA_OPAQUE;
 export const CONTACT_SHADOW_WIDTH_PX = 5;
 export const CONTACT_SHADOW_WIDTH_M = 0.12;
 export const CONTACT_SHADOW_WIDTH_PER_M = 0.012;
+/**
+ * 2026-10-10 (contact round 4, the costland lane; both critics on wave 340: "the gaps between the road wheels drop to
+ * near-black"): `cotNormalAtGuarded`'s break. An axis whose nearer neighbour still lies farther than this many pixels'
+ * footprint (stretched by the view's grazing over a surface facing the given up) has left the surface on both sides — a
+ * ground pixel seen through a narrow gap between road wheels, both neighbours a wheel a metre nearer — and the up stands
+ * in for the broken normal, which read the sunlit ground in a gap as all ambient (its sun term from a sideways normal).
+ */
+export const CONTACT_NORMAL_BREAK_PX = 6;
+
+/**
+ * The CPU twin of `cotNormalAtGuarded`'s test: whether the nearer neighbour on an axis (`nearestM`, metres) lies past
+ * the break for a pixel `distanceM` deep (view depth) whose view ray meets the up at `grazingCos` (|dot(ray, up)|),
+ * one pixel spanning `pixelM1` metres at 1 m (2 · tan(fovY / 2) / height).
+ */
+export function contactNormalBroken(nearestM: number, distanceM: number, grazingCos: number, pixelM1: number): boolean {
+  return nearestM > CONTACT_NORMAL_BREAK_PX * pixelM1 * distanceM / Math.max(grazingCos, 0.05);
+}
 
 /** Ray parameter of step `i` (0-based) with a per-pixel jitter in [0, 1): quadratic, denser at the contact. */
 export function contactShadowStepParameter(step: number, jitter = 0.5, steps = CONTACT_SHADOW_STEPS): number {
@@ -247,6 +264,22 @@ ${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the s
       vec3 py0 = cotWorldAt( uv - vec2( 0.0, uInvSize.y ) );
       vec3 dx = ( distance( px1, P ) < distance( px0, P ) ) ? px1 - P : P - px0;
       vec3 dy = ( distance( py1, P ) < distance( py0, P ) ) ? py1 - P : P - py0;
+      return normalize( cross( dx, dy ) );
+    }
+    // contact round 4 (2026-10-10, contactShadows.ts CONTACT_NORMAL_BREAK_PX): the best-pair normal, but where both
+    // neighbours on an axis leave the surface the given up (a hull's) stands in — the ground seen through a narrow gap
+    // between road wheels kept a sideways normal and lost its sun term
+    vec3 cotNormalAtGuarded( vec2 uv, vec3 P, vec3 up, float dist ) {
+      vec3 px1 = cotWorldAt( uv + vec2( uInvSize.x, 0.0 ) );
+      vec3 px0 = cotWorldAt( uv - vec2( uInvSize.x, 0.0 ) );
+      vec3 py1 = cotWorldAt( uv + vec2( 0.0, uInvSize.y ) );
+      vec3 py0 = cotWorldAt( uv - vec2( 0.0, uInvSize.y ) );
+      float lx1 = distance( px1, P ), lx0 = distance( px0, P ), ly1 = distance( py1, P ), ly0 = distance( py0, P );
+      float brk = ${f(CONTACT_NORMAL_BREAK_PX)} * 2.0 * uTan.y * uInvSize.y * dist
+        / max( abs( dot( normalize( P - uCamPos ), up ) ), 0.05 );
+      if ( min( lx1, lx0 ) > brk || min( ly1, ly0 ) > brk ) return up;
+      vec3 dx = lx1 < lx0 ? px1 - P : P - px0;
+      vec3 dy = ly1 < ly0 ? py1 - P : P - py0;
       return normalize( cross( dx, dy ) );
     }
     float cotContactOcclusion( vec3 P, vec3 N, float dist ) {
