@@ -17,12 +17,15 @@ interface TankLabelRecord {
   readonly displayName: string;
   readonly shortName: string;
   readonly searchAliases: readonly string[];
+  /** i18n key of a one-sentence note the Gallery adds to the vehicle's brief, or null. */
+  readonly noteKey: string | null;
 }
 
 interface TankLabelOverride {
   displayName: string;
   shortName?: string;
   searchAliases?: readonly string[];
+  noteKey?: string;
 }
 
 const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.freeze({
@@ -128,7 +131,19 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'FV510 Warrior MILAN', shortName: 'Warrior MILAN',
     searchAliases: ['FV510 MILAN', 'Warrior ATGM'],
   },
-  type90: { displayName: 'Type 90 (Kyū-maru)', shortName: 'Type 90' },
+  // VEH-11 (2026-10-13): the Warrior MILAN X is its own Warrior type, the slat-caged Theatre Entry Standard (Herrick)
+  // fit, and keeps the MILAN firing post the owner knows it by.
+  warrior_tes_h: {
+    displayName: 'Warrior TES(H)', shortName: 'Warrior TES(H)',
+    searchAliases: ['Warrior MILAN X', 'Warrior MILAN', 'Warrior TES', 'Warrior Theatre Entry Standard', 'FV510 Warrior TES(H)'],
+    noteKey: 'gallery.brief.note.warriorTesH',
+  },
+  // 2026-10-13: no two garage cards read "Type 90"; type90_x keeps the plain name.
+  type90: { displayName: 'Type 90 Kyū-maru', shortName: 'Type 90 Kyū-maru', searchAliases: ['Type 90 (Kyū-maru)', 'Kyu-maru'] },
+  // 2026-10-13: no vehicle keeps an "X" suffix (the 2026-09-15 naming ruling).
+  type96b_x: { displayName: 'Type 96B', searchAliases: ['Type 96B X', 'ZTZ-96B'] },
+  aft10_x: { displayName: 'AFT-10', searchAliases: ['AFT-10 X'] },
+  bmp3m_dragun125_x: { displayName: 'BMP-3M Dragun 125', searchAliases: ['BMP-3M Dragun 125 X', 'Dragun 125'] },
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
   type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
@@ -318,6 +333,7 @@ export function tankLabelRecord(spec: TankLabelSpec | null | undefined): TankLab
     displayName,
     shortName,
     searchAliases: Object.freeze(searchAliases),
+    noteKey: override.noteKey ?? null,
   });
 }
 

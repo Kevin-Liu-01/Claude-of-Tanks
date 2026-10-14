@@ -486,30 +486,37 @@ export function bushBonusBetween(
   targetFired: boolean,
 ): number {
   if (!concealers || concealers.length === 0) return 0;
-  const dx = tx - sx, dz = tz - sz;
-  const len2 = dx * dx + dz * dz;
   let bonus = 0;
   for (let i = 0; i < concealers.length; i++) {
     const c = concealers[i];
-    if (c.dead) continue;
-    // cheap reject: outside the segment's bounding box grown by r
-    const r = c.r;
-    if (c.x < Math.min(sx, tx) - r || c.x > Math.max(sx, tx) + r) continue;
-    if (c.z < Math.min(sz, tz) - r || c.z > Math.max(sz, tz) + r) continue;
-    // point-segment distance in 2D
-    let t = len2 > 1e-9 ? ((c.x - sx) * dx + (c.z - sz) * dz) / len2 : 0;
-    t = clamp(t, 0, 1);
-    const px = sx + dx * t, pz = sz + dz * t;
-    const ddx = c.x - px, ddz = c.z - pz;
-    if (ddx * ddx + ddz * ddz > r * r) continue;
-    if (targetFired) {
-      const fx = c.x - tx, fz = c.z - tz;
-      if (Math.hypot(fx, fz) - r < BUSH_FIRE_TRANSPARENT_M) continue; // lit up
-    }
+    if (!discOnSightline(c, sx, sz, tx, tz, targetFired)) continue;
     bonus += c.add;
     if (bonus >= MAX_BUSH_BONUS) return MAX_BUSH_BONUS;
   }
   return bonus;
+}
+
+/** One disc's test for the sightline (sx, sz) → (tx, tz): live, within its radius of the segment, and not lit up by
+ * the target's own muzzle flash. bushBonusBetween and the spotting system's indexed walk share it. */
+function discOnSightline(c: ConcealerDisc, sx: number, sz: number, tx: number, tz: number, targetFired: boolean): boolean {
+  if (c.dead) return false;
+  // cheap reject: outside the segment's bounding box grown by r
+  const r = c.r;
+  if (c.x < Math.min(sx, tx) - r || c.x > Math.max(sx, tx) + r) return false;
+  if (c.z < Math.min(sz, tz) - r || c.z > Math.max(sz, tz) + r) return false;
+  // point-segment distance in 2D
+  const dx = tx - sx, dz = tz - sz;
+  const len2 = dx * dx + dz * dz;
+  let t = len2 > 1e-9 ? ((c.x - sx) * dx + (c.z - sz) * dz) / len2 : 0;
+  t = clamp(t, 0, 1);
+  const px = sx + dx * t, pz = sz + dz * t;
+  const ddx = c.x - px, ddz = c.z - pz;
+  if (ddx * ddx + ddz * ddz > r * r) return false;
+  if (targetFired) {
+    const fx = c.x - tx, fz = c.z - tz;
+    if (Math.hypot(fx, fz) - r < BUSH_FIRE_TRANSPARENT_M) return false; // lit up
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -657,7 +664,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     const rec = recOf(target);
     const bloom = fireBloomAt(rec.firedAtS, timeS);
     const moving = Math.abs(target.state.speed || 0) > MOVING_SPEED_MPS;
-    const bush = bushBonusBetween(concealers, sp.x, sp.z, tp.x, tp.z, bloom > 0);
+    const bush = sightlineBushBonus(sp.x, sp.z, tp.x, tp.z, bloom > 0);
     _camoArgs.base = baseCamoOf(target.spec, moving);
     _camoArgs.paint = getCamoBonus(target);
     _camoArgs.equip = equipCamoBonus(getEquipment(target), moving);
@@ -829,6 +836,94 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     return bush;
   }
 
+  // (2026-10-13, the MP stream: the authority's tick) every spot check's sightline walked every disc of the map too
+  // (+0.2 ms of a 28-bot tick on Monsoon). A second grid lists each disc in every 16 m cell its own box (centre ± r)
+  // overlaps, so a disc that can count lies in a cell the segment crosses: the line reads those cells (row by row, the
+  // segment's x-span over the row's z-band, a metre of slack), marks the discs in a bitset over their indices — no
+  // duplicates, ascending index order without a sort — and runs bushBonusBetween's own test on them, so the sum, its
+  // order and the cap's early return are the walk's. A disc with a non-finite place or an outsize radius is marked for
+  // every line.
+  const LINE_SLACK_M = 1;
+  const LINE_DISC_MAX_R_M = 128;
+  const lineCells = new Map<number, number[]>();
+  const lineEveryDisc: number[] = [];
+  let lineCellsN = -1;
+  let lineMarks = new Uint32Array(0);
+  let lineLowWord = 0, lineHighWord = -1;
+  function markLineDisc(index: number): void {
+    const word = index >>> 5;
+    lineMarks[word] |= 1 << (index & 31);
+    if (word < lineLowWord) lineLowWord = word;
+    if (word > lineHighWord) lineHighWord = word;
+  }
+  function indexSightlineCells(): void {
+    lineCells.clear();
+    lineEveryDisc.length = 0;
+    for (let i = 0; i < concealers.length; i++) {
+      const c = concealers[i];
+      if (!Number.isFinite(c.x) || !Number.isFinite(c.z) || !(c.r >= 0 && c.r <= LINE_DISC_MAX_R_M)) { lineEveryDisc.push(i); continue; }
+      const reach = c.r + LINE_SLACK_M;
+      const x0 = Math.floor((c.x - reach) / CONCEALER_CELL_M), x1 = Math.floor((c.x + reach) / CONCEALER_CELL_M);
+      const z0 = Math.floor((c.z - reach) / CONCEALER_CELL_M), z1 = Math.floor((c.z + reach) / CONCEALER_CELL_M);
+      for (let ix = x0; ix <= x1; ix++) {
+        for (let iz = z0; iz <= z1; iz++) {
+          const key = concealerCellKey(ix, iz);
+          let list = lineCells.get(key);
+          if (!list) lineCells.set(key, list = []);
+          list.push(i);
+        }
+      }
+    }
+    lineMarks = new Uint32Array((concealers.length >>> 5) + 1);
+    lineCellsN = concealers.length;
+  }
+  function sightlineBushBonus(sx: number, sz: number, tx: number, tz: number, targetFired: boolean): number {
+    if (concealers.length === 0) return 0;
+    if (!Number.isFinite(sx) || !Number.isFinite(sz) || !Number.isFinite(tx) || !Number.isFinite(tz)) {
+      return bushBonusBetween(concealers, sx, sz, tx, tz, targetFired); // (a non-finite line: the walk's own verdict)
+    }
+    if (lineCellsN !== concealers.length) indexSightlineCells();
+    lineLowWord = lineMarks.length; lineHighWord = -1;
+    for (let k = 0; k < lineEveryDisc.length; k++) markLineDisc(lineEveryDisc[k]);
+    const dx = tx - sx, dz = tz - sz;
+    const z0 = Math.floor((Math.min(sz, tz) - LINE_SLACK_M) / CONCEALER_CELL_M);
+    const z1 = Math.floor((Math.max(sz, tz) + LINE_SLACK_M) / CONCEALER_CELL_M);
+    for (let iz = z0; iz <= z1; iz++) {
+      let lo = 0, hi = 1;
+      if (dz !== 0) {
+        const ta = (iz * CONCEALER_CELL_M - LINE_SLACK_M - sz) / dz, tb = ((iz + 1) * CONCEALER_CELL_M + LINE_SLACK_M - sz) / dz;
+        lo = Math.max(0, Math.min(ta, tb)); hi = Math.min(1, Math.max(ta, tb));
+        if (lo > hi) continue;
+      }
+      const xa = sx + dx * lo, xb = sx + dx * hi;
+      const x0 = Math.floor((Math.min(xa, xb) - LINE_SLACK_M) / CONCEALER_CELL_M);
+      const x1 = Math.floor((Math.max(xa, xb) + LINE_SLACK_M) / CONCEALER_CELL_M);
+      for (let ix = x0; ix <= x1; ix++) {
+        const list = lineCells.get(concealerCellKey(ix, iz));
+        if (list) for (let k = 0; k < list.length; k++) markLineDisc(list[k]);
+      }
+    }
+    let bonus = 0;
+    const highWord = lineHighWord;
+    for (let word = lineLowWord; word <= highWord; word++) {
+      let bits = lineMarks[word];
+      if (bits === 0) continue;
+      lineMarks[word] = 0;
+      while (bits !== 0) {
+        const low = bits & -bits;
+        const c = concealers[word * 32 + 31 - Math.clz32(low)];
+        bits ^= low;
+        if (!discOnSightline(c, sx, sz, tx, tz, targetFired)) continue;
+        bonus += c.add;
+        if (bonus >= MAX_BUSH_BONUS) {
+          for (let rest = word + 1; rest <= highWord; rest++) lineMarks[rest] = 0;
+          return MAX_BUSH_BONUS;
+        }
+      }
+    }
+    return bonus;
+  }
+
   function spottedSightlineBushBonus(
     tank: SpottingTank,
     position: SpottingVector3,
@@ -850,7 +945,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       nearestZ = enemy.state.pos.z;
     }
     return nearestDistanceSq < Infinity
-      ? bushBonusBetween(concealers, nearestX, nearestZ, position.x, position.z, true)
+      ? sightlineBushBonus(nearestX, nearestZ, position.x, position.z, true)
       : 0;
   }
 
@@ -1037,7 +1132,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       timeS: number,
     ): number {
       const rec = recOf(target);
-      return bushBonusBetween(concealers,
+      return sightlineBushBonus(
         spotter.state.pos.x, spotter.state.pos.z,
         target.state.pos.x, target.state.pos.z,
         fireBloomAt(rec.firedAtS, timeS) > 0);

@@ -1,5 +1,5 @@
 {
- "id": "fv510_milan_x",
+ "id": "warrior_tes_h",
  "geoMin": 92.3,
  "requiredMinimum": 92,
  "registration": {
@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.30926251148661,
+ "rawGeoMin": 92.31781528121162,
  "rawComponents": {
-  "wholeCurves": 92.30926251148661,
+  "wholeCurves": 92.31781528121162,
   "dims": 98.51724137931039,
   "floaters": 100
  },

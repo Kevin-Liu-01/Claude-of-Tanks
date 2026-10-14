@@ -62,8 +62,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
     'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
+    'src/sim/smokeBlocksExact.selftest.mjs', // 2026-10-13 the MP stream: the footprint early-out answers exactly as before
+    'src/sim/roofTargetOrder.selftest.mjs', // 2026-10-13 the MP stream: nearest-first roof-gun scan picks the same target
+    'src/sim/sightlineBush.selftest.mjs', // 2026-10-13 the MP stream: the sightline bush bonus read from a grid, to the bit
     'src/fx/auxiliaryPresentation.selftest.mjs',
     'src/fx/projectileTracers.selftest.mjs',
+    'src/fx/missileLooks.selftest.mjs',
+    'src/fx/smokeRibbons.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
     'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
@@ -579,6 +584,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
+    'tools/media-r5/fleet-media.selftest.mjs',
+    'tools/media-r5/fleet.selftest.mjs',
+    'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -721,6 +729,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
     'src/ui/damagePanelEntryMasks.selftest.mjs',
+    // 2026-10-13 (owner: "even if im destroyed, the tank in bottom left corner can have its turret rotating"): a
+    // wreck's panel holds its last live pose and the frame input locks a dead player's gun
+    'src/ui/damagePanelWreckPose.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',
@@ -865,6 +876,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
+    'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
+    'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
+    'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
     'src/ui/hitEventFormat.selftest.mjs',
     'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/shotSchematic.selftest.mjs',
@@ -921,6 +937,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
+    // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
+    'src/engine/cloudsBan.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',
@@ -954,10 +973,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
+    'src/engine/shadowDepthKinds.selftest.mjs', // 2026-10-12: one shadow depth material per caster kind (the perf stream)
+    'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
+    'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
     'src/engine/shadowGeometryClaims.selftest.mjs',
     'src/engine/shadowCasterCells.selftest.mjs',
     'src/engine/temporalAoPolicy.selftest.mjs',
@@ -993,12 +1015,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/matchBuildGate.selftest.mjs',
+    'src/mp/wire/matchBuild.selftest.mjs',
+    'src/mp/wire/destroyedSet.selftest.mjs',
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
     'src/mp/host/hostPlan.selftest.mjs',
     'src/mp/host/migrationState.selftest.mjs',
     'src/mp/host/matchHost.selftest.mjs',
+    'src/mp/host/hostStopRace.selftest.mjs', // 2026-10-13 the MP stream: a core stopped during its world load starts no actor
     // 2026-10-10 (MP lane): a migrated host holds its world still until the seats that were playing are back
     'src/mp/host/resumeHold.selftest.mjs',
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
@@ -1114,6 +1139,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
+    'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
     'tools/physics-torture.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
@@ -1124,6 +1150,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
     'src/sim/structureDamage.selftest.mjs',
+    'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
@@ -1134,6 +1161,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
+    'src/sim/hiddenWorldEvents.selftest.mjs',
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',
@@ -1237,6 +1265,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/modeDockLayout.selftest.mjs',
     'src/gallery/surfaceMarkup.selftest.mjs',
     'src/vehicles/rosterPolicy.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.01): the tank id rename table's slug engine and the owner's Leopard example.
+    'tools/tank-id-rename-table.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.03): the versioned tank id alias layer and its boundaries (save, replay, scene link,
+    // gallery URL, room seat, telemetry) resolve swapped ids by schema.
+    'src/vehicles/tankIdAliases.selftest.mjs',
+    'src/game/tankIdBoundaries.selftest.mjs',
+    // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
+    'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
@@ -1411,6 +1447,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsScheduling.selftest.mjs',
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
+    'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
@@ -1433,6 +1470,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     'src/world/maps/periodClutter.selftest.mjs',
+    'src/world/maps/recordClearance.selftest.mjs', // 2026-10-13 (the perf stream): the street kits' clearance from a grid, as the walk
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
@@ -1570,6 +1608,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    // the buildings stream (2026-10-12; the owner: "make sure our roofs dont have empty spots in them"): every kit
+    // builder, catalog builder and set piece closed and seated — no floating part, open underside, hole, inside seen
+    // through a gap, sky through the building or inside-out face — held to its ledger row
+    'tools/building-integrity-check.selftest.mjs',
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
     'src/world/maps/regional/phoneIdentity.selftest.mjs', // 2026-10-08: a phone's kit builds draw the desktop's streams and solids (DESTRUCTION.md §8.4)
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
@@ -1618,6 +1660,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
+    'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
     'src/world/colliderRayMarch.selftest.mjs',
     'src/world/propPlacement.selftest.mjs',
@@ -1696,6 +1739,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
+    // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
+    'src/ui/fleetTakes.selftest.mjs',
+    'src/gallery/inAction.selftest.mjs',
+    'src/docs/referenceTakes.selftest.mjs',
+    'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',

@@ -5,6 +5,7 @@ import * as specs from './specs.ts';
 import * as policy from './camoPolicy.ts';
 import * as materials from './materials.ts';
 import { camoBaselineRows } from './camoProductionBaseline.test-support.mjs';
+import { resolveTankId } from './tankIdAliases.ts';
 
 // fix/camo-defaults (2026-10-09). PR #9 moved 69 tanks' Factory coat, AUTO to national theatre coats, bots off their
 // own paint, and the field schemes onto a shared patch-field painter. The owner on launch day: "why did you break camos?
@@ -28,8 +29,11 @@ const movedSelections = baseline.ids.filter((id) => now.selections[id] !== basel
 assert.deepEqual(movedSelections, [], 'production selections resolve to production\'s schemes');
 
 // Every tank: the default selection, the Factory/stock scheme, the Factory visual and AUTO on twelve maps.
+// The baseline names tanks by their tank id schema 1 spelling (2026-10-13, SSOT 2.19): each row is read through the
+// alias layer, so a renamed tank is held to its own production row.
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length, 'the same fleet');
-const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(now.tanks[id]) !== JSON.stringify(baseline.tanks[id]));
+const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
+const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');
 
 console.log(`camoCatalogProductionIndices.selftest: ${baseline.ids.length}/${baseline.ids.length} production ids at their `

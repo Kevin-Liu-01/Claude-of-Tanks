@@ -49,6 +49,7 @@ import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
   createObstacleGrid,
+  shellPassesThroughCollisionRecord,
   nearestColliderHitAlongRay,
   type ColliderRayHit,
   type CollisionRecord,
@@ -235,6 +236,12 @@ export interface WorldRuntime {
   patchStructureMaterials(patch: (material: THREE.Material, info: StructureMaterialInfo) => void): number;
   /** The structure's seam `touchShadows()` by id (a no-op for an id the world does not know). */
   touchStructureShadows(structureIdx: number): void;
+  /**
+   * The static records the presentation's rigid bodies meet (fx/rubbleBodies.ts: a building's falling pieces strike its
+   * own and its neighbours' walls, the rocks and the solid props; light cover a body would knock aside is not here), as
+   * a broad-phase query built on first ask. A record crushed or dead since is skipped by the bodies' isSolid.
+   */
+  bodyRecordQuery(): ObstacleQuery;
   /**
    * The battle's ground overlay (sim/terrainDeformation.ts: craters, rubble heaps) this world draws and drapes on —
    * the solo battle's own ground, or a network round's mirror (crater-render-spec §B). Bound per battle, null between;
@@ -497,6 +504,11 @@ function assembleWorld(
     if (!horizonPanorama || panoramaFailed || horizonPanorama.baked || !panoramaRenderer) return;
     try { horizonPanorama.ensureBaked(panoramaRenderer); } catch { panoramaFailed = true; }
   };
+  // the perf stream (2026-10-13): the bake's programs go to the driver's parallel compile now, while the rest of the
+  // world builds, so the covered bake no longer links them at its first draw (horizonPanorama.ts prepareBake)
+  if (horizonPanorama && panoramaRenderer && !horizonPanorama.baked) {
+    try { horizonPanorama.prepareBake(panoramaRenderer); } catch { /* the bake compiles them itself */ }
+  }
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
@@ -729,6 +741,20 @@ function assembleWorld(
     structureSeams.set(structureIdx, seam);
     return seam;
   };
+  // the rigid bodies' records (sim/wreckTurrets createWreckEnvironment's set, built here so the world chunk takes no sim
+  // body module): the structures' shell bands and every solid record a round does not pass through
+  let bodyQuery: ObstacleQuery | null = null;
+  const getBodyRecordQuery = (): ObstacleQuery => {
+    if (bodyQuery) return bodyQuery;
+    const solids: CollisionRecord[] = [];
+    for (const record of colliders) if (record.structureIdx !== undefined) solids.push(record);
+    for (const record of obstacles) {
+      if (record.structureIdx !== undefined || shellPassesThroughCollisionRecord(record)) continue;
+      solids.push(record);
+    }
+    bodyQuery = createObstacleGrid(solids, 16);
+    return bodyQuery;
+  };
   const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
@@ -769,6 +795,7 @@ function assembleWorld(
     structureDamage: getStructureDamage,
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
+    bodyRecordQuery: getBodyRecordQuery,
     bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
     groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],

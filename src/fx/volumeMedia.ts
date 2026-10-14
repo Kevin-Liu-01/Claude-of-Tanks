@@ -523,6 +523,19 @@ export interface VolumeMedia {
   readonly wind: THREE.Vector3;
   /** A burst's light inside the medium for `durS` from now + `birthOffset` (centre, radius m, peak 0..~1.5). */
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset?: number): void;
+  /** (EF.04) the media's own light and wind uniforms, shared with other normal-blended smoke (the missile ribbons) so
+   *  it is lit as the media are, by the time of day; refreshShading() brings them up to the scene's light now */
+  readonly shading: VolumeShading;
+  refreshShading(): void;
+}
+
+export interface VolumeShading {
+  readonly uTime: { value: number };
+  readonly uWind: { value: THREE.Vector3 };
+  readonly uSunDir: { value: THREE.Vector3 };
+  readonly uSunCol: { value: THREE.Vector3 };
+  readonly uSkyCol: { value: THREE.Vector3 };
+  readonly uGroundCol: { value: THREE.Vector3 };
 }
 
 export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
@@ -853,5 +866,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     isActive: () => o_now() <= liveUntil,
     stats: () => ({ live: liveCount, capacity, drawn, wind: [uWind.value.x, uWind.value.z], ready }),
     wind: uWind.value,
+    shading: { uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol },
+    refreshShading: () => { uTime.value = o_now(); refreshLight(); },
   };
 }

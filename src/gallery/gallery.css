@@ -390,3 +390,20 @@ body[data-cot-input='coarse'] .view-controls>button{min-height:44px}
 .damage-ray{padding-left:18px;color:var(--muted);font-size:11px;max-height:220px;overflow:auto;overflow-wrap:anywhere;line-height:1.6;scrollbar-width:thin}
 .damage-ray:empty{display:none}.damage-ray li+li{margin-top:6px}
 body[data-cot-width='phone'] .damage-workbench{padding:16px}
+
+/* In action: the selected vehicle's own take (src/gallery/inAction.ts over src/ui/fleetTakes.ts). The loop is decorative
+   and muted; the caption names the take and the link opens its scene in the Studio. */
+.fleet-take-host{display:contents}
+.fleet-take{margin:0}
+.fleet-take-frame{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(174,190,197,.18);background:radial-gradient(ellipse at 50% 62%,#1b2328,#05080a 78%)}
+.fleet-take-video{display:block;width:100%;height:100%;object-fit:cover}
+.fleet-take-toggle{position:absolute;right:6px;bottom:6px;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid rgba(174,190,197,.28);background:rgba(5,9,11,.8);color:#d9e1e3;backdrop-filter:blur(8px);opacity:.78;transition:opacity var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,color var(--cot-motion-fast) ease}
+.fleet-take-toggle svg{display:block;width:11px;height:11px}
+.fleet-take-frame:hover .fleet-take-toggle,.fleet-take-toggle:focus-visible{opacity:1}
+.fleet-take-toggle:hover{border-color:rgba(233,163,70,.6);color:var(--amber-pale)}
+.fleet-take figcaption{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:9px}
+.fleet-take-title{color:#c4ccce;font-size:9px;line-height:1.5}
+.fleet-take-studio{padding:7px 8px;border:1px solid rgba(174,190,197,.2);background:linear-gradient(#12191d,#080c0f);color:#9aa4a7;font-size:7px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;white-space:nowrap;transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease}
+.fleet-take-studio:hover{border-color:rgba(233,163,70,.58);color:var(--amber-pale)}
+body[data-cot-input='coarse'] .fleet-take-toggle{width:44px;height:44px}
+body[data-cot-input='coarse'] .fleet-take-studio{display:grid;place-items:center;min-height:44px}

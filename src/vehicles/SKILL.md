@@ -138,6 +138,15 @@ one oversized builder contract or an eager fleet dependency.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
+Tank ids are versioned (SSOT 2.19). `tankIdAliases.ts` holds `TANK_ID_SCHEMA` and the append-only
+`TANK_ID_RENAMES`: an id stored or sent without `tankIdSchema` (or a link without `&ids=`) is schema 1 and resolves
+through every later map, so a rename may reuse an id another vehicle gave up (a swap) without misreading old data.
+Readers resolve at the boundary (`game/tankIdStorageMigration.ts` at boot, `game/tankIdBoundaries.ts` for Studio
+scenes, kill-cam payloads, gallery links and telemetry, `resolveIncoming` for room seats); writers spread
+`TANK_IDS.stamp()`. Anything that hashes an id into a vehicle's look or name hashes `tankSeedId(id)` (its schema-1
+spelling), so a rename never moves a load, a texture, an AUTO camo pick or a hull number. A rename appends a map,
+bumps the schema and `PROTOCOL_VERSION` together (`tankIdAliases.selftest.mjs` pins both); `npm run tank:ids:table`
+prints the rename table.
 A new whole-fleet check is a fleet audit (`{ check(id, tank), finish() }`) added to the fleet pass whose build it
 reads (`fleetPassDefault`, `fleetPassHigh`, `fleetPassLow`; rules in `fleetPass.test-support.mjs`), not another
 receipt that rebuilds all 217 tanks: the build is nearly all of a sweep's cost.

@@ -50,6 +50,11 @@ const deltas = [
     "    getContactNormalAt: getContactHeightAt.normalAt,\n",
     ""
   ],
+  // the perf stream (2026-10-13, the fine grids seed the contact vertices): the historical side has no contact sampler
+  [
+    "    seedContactGrid: getContactHeightAt.seedGrid,\n",
+    ""
+  ],
   [
     "function* heightFieldBuildSteps(\n  seed = 1337,\n  cfg: TerrainMapConfig | null = null,\n  placementOnly = false,\n): Generator<number, HeightField | TerrainPlacementSampler, void> {\n  const layout = createLayout(cfg, !placementOnly && !usesInheritedRoadGrades(cfg?.id));\n  let inheritedRoads = placementOnly ? null : completeInheritedRoadLayout(layout, cfg?.id);\n  const T = layout.terrain;\n  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n  const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);\n",
     "function* heightFieldBuildSteps(\n  seed = 1337,\n  cfg: TerrainMapConfig | null = null,\n): Generator<number, HeightField, void> {\n  const layout = createLayout(cfg);\n  const T = layout.terrain;\n  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n  const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);\n"

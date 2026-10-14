@@ -7,6 +7,10 @@ import { createProductionScene, productionPreset, productionAspect, reframeProdu
 import { normalizeFilm } from './studioFilmPlan.ts';
 import { NEUTRAL_PICTURE, pictureStateJson, resolvePicture } from './studioPicture.ts';
 import { isStudioTime, normalizeStudioLight, studioTimeFor } from './studioLight.ts';
+// 2026-10-13 (SSOT 2.19 ID.03): load() reads a scene's tank id schema and stateJson()/directProduction() stamp
+// theirs; the sandbox gets the same two names the module imports.
+import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
+import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
 
 // Execute the real serialization, loading and reframing callers, retaining
 // authored camera positions. A recipe-only round trip misses private format state.
@@ -21,7 +25,7 @@ visit(source);
 assert.equal(functions.length, names.size);
 const create = new Function('ports', `
   const {createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
-    NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm} = ports;
+    NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, sceneInCurrentTankIds, TANK_IDS} = ports;
   let picture=NEUTRAL_PICTURE, pictureApplied=0;
   const applyPictureRuntime=()=>{pictureApplied++;};
   let sceneFilm=null; const filmRenderer={active:false}, getFilm=()=>sceneFilm;
@@ -55,7 +59,7 @@ const create = new Function('ports', `
 `);
 const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
   NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, isStudioTime, normalizeStudioLight, studioTimeFor,
-  normalizeStudioFx, studioFxState });
+  normalizeStudioFx, studioFxState, sceneInCurrentTankIds, TANK_IDS });
 for (const format of ['portrait', 'square', 'landscape']) {
   const recipe = createProductionScene({ presetId:'steel-pursuit', format }, () => 0);
   assert.equal(recipe.productionFormat, format, 'CLI recipes carry their actual framing');

@@ -1,4 +1,5 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
 export interface VehicleMarkingAnchor {
@@ -166,7 +167,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   namer_ifv: anchor('hull', 'left', .52, .60, .24, 1),
   merkava3d_x: anchor('hull', 'left', .56041, .49104, .24, 1),
   k2_x: anchor('hull', 'left', .67977, .51807, .24, 1),
-  fv510_milan_x: anchor('hull', 'left', .52, .58, .20, 1),
+  warrior_tes_h: anchor('hull', 'left', .52, .58, .20, 1),
   griffin50_x: anchor('hull', 'left', .52, .58, .20, 1),
   ajax_x: anchor('hull', 'left', .52, .58, .20, 1),
   aft10_x: anchor('hull', 'left', .52, .58, .20, 1),
@@ -407,7 +408,8 @@ export function vehicleMarkingIncludesPermanentHullArmor(
  */
 function stableNumber(id: string | null | undefined): string {
   let hash = 0x811c9dc5;
-  for (const ch of String(id || 'tank')) {
+  // The schema-1 spelling (tankIdAliases.ts): an id rename keeps the hull number.
+  for (const ch of String(id ? tankSeedId(id) : 'tank')) {
     hash ^= ch.charCodeAt(0);
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }

@@ -1777,6 +1777,98 @@ function bBarrierBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+// --- the village well and the square's monument (destruction stream, 2026-10-13; the owner: "make sure all props below
+// a certain size are destructible whether from ramming or shooting"). Both were static geometry in the world's buckets
+// with a wall record: a hull stopped dead at a 2 m well and rounds burst on it, and neither ever broke.
+
+/** A stone curb ring (open, its inner face and a dark water disc), two posts, the windlass and its bucket, a gabled roof. */
+function bWell(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const CURB: Palette = [0.085, 0.10, 0.44];
+  const outer = new THREE.CylinderGeometry(1.0, 1.1, 0.9, 14, 1, true);
+  parts.push(P(outer.translate(0, 0.45, 0), CURB, 0.16, rng));
+  const inner = new THREE.CylinderGeometry(0.8, 0.82, 0.86, 14, 1, true);
+  inner.scale(-1, 1, 1);
+  inner.computeVertexNormals();
+  parts.push(P(inner.translate(0, 0.47, 0), [0.085, 0.10, 0.30], 0.10, rng));
+  const rim = new THREE.RingGeometry(0.8, 1.02, 14, 1);
+  rim.rotateX(-Math.PI / 2);
+  parts.push(P(rim.translate(0, 0.9, 0), CURB, 0.12, rng));
+  const water = new THREE.CircleGeometry(0.8, 14);
+  water.rotateX(-Math.PI / 2);
+  parts.push(P(water.translate(0, 0.32, 0), [0.55, 0.30, 0.10], 0.02, rng));
+  for (const sx of [-1, 1]) parts.push(P(box(0.14, 1.9, 0.14).translate(sx * 0.85, 0.95 + 0.45, 0), WOOD, 0.12, rng));
+  const windlass = cyl(0.06, 0.06, 1.62, 7);
+  windlass.rotateZ(Math.PI / 2);
+  parts.push(P(windlass.translate(0, 1.55, 0), WOOD_PALE, 0.10, rng));
+  parts.push(P(cyl(0.13, 0.11, 0.24, 8).translate(0.2, 1.05, 0), STEEL, 0.08, rng));
+  for (const sz of [-1, 1]) {
+    const leaf = box(2.4, 0.06, 0.82);
+    leaf.rotateX(sz * 0.55);
+    parts.push(P(leaf.translate(0, 2.25, sz * 0.34), TERRA, 0.14, rng));
+  }
+  return merge(parts);
+}
+function bWellBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const CURB: Palette = [0.085, 0.10, 0.42];
+  const stub = new THREE.CylinderGeometry(1.0, 1.1, 0.38, 14, 1, true);
+  parts.push(P(stub.translate(0, 0.19, 0), CURB, 0.16, rng));
+  const water = new THREE.CircleGeometry(0.85, 14);
+  water.rotateX(-Math.PI / 2);
+  parts.push(P(water.translate(0, 0.3, 0), [0.07, 0.12, 0.22], 0.04, rng));
+  // the curb's top courses thrown off, the posts and the roof down beside it
+  for (let i = 0; i < 9; i++) {
+    const a = rng() * Math.PI * 2, rr = 1.2 + rng() * 1.1, s = 0.22 + rng() * 0.18;
+    const stone = box(s * 1.4, s * 0.8, s);
+    stone.rotateY(rng() * Math.PI); stone.rotateX((rng() - 0.5) * 0.6);
+    parts.push(P(stone.translate(Math.cos(a) * rr, s * 0.35, Math.sin(a) * rr), CURB, 0.18, rng));
+  }
+  for (const sx of [-1, 1]) {
+    const post = box(0.14, 1.9, 0.14);
+    post.rotateZ(Math.PI / 2); post.rotateY(sx * 0.4 + (rng() - 0.5) * 0.4);
+    parts.push(P(post.translate(sx * 1.6, 0.08, (rng() - 0.5) * 1.2), WOOD, 0.12, rng));
+  }
+  for (const sz of [-1, 1]) {
+    const leaf = box(2.3, 0.06, 0.8);
+    leaf.rotateX(sz * 0.12); leaf.rotateY((rng() - 0.5) * 0.5);
+    parts.push(P(leaf.translate((rng() - 0.5) * 0.8, 0.12 + sz * 0.04, sz * 1.5 + (rng() - 0.5) * 0.4), TERRA, 0.14, rng));
+  }
+  return merge(parts);
+}
+
+/** The square's stepped obelisk in the map's masonry: a base, a step, the shaft and its pyramidion (the stone pool's
+ *  material reads vertex colour: a pale wash over the masonry print). */
+const MASONRY_WASH: Palette = [0.08, 0.05, 0.86];
+function bMonument(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  parts.push(P(box(2.4, 0.5, 2.4, 0.8).translate(0, 0.2, 0), MASONRY_WASH, 0.05, rng));
+  parts.push(P(box(1.5, 0.6, 1.5, 0.8).translate(0, 0.72, 0), MASONRY_WASH, 0.05, rng));
+  parts.push(P(box(0.72, 3.4, 0.72, 1.2).translate(0, 2.7, 0), MASONRY_WASH, 0.05, rng));
+  const tip = new THREE.ConeGeometry(0.5, 0.7, 4, 1);
+  tip.rotateY(Math.PI / 4);
+  parts.push(P(scaleUV(tip, 1, 1).translate(0, 4.75, 0), MASONRY_WASH, 0.05, rng));
+  return merge(parts);
+}
+function bMonumentBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  parts.push(P(box(2.4, 0.5, 2.4, 0.8).translate(0, 0.2, 0), MASONRY_WASH, 0.05, rng));
+  parts.push(P(box(1.5, 0.6, 1.5, 0.8).translate(0, 0.72, 0), MASONRY_WASH, 0.05, rng));
+  // the shaft snapped above the step: its stump, and two drums of it and the pyramidion lying off the base
+  parts.push(P(box(0.72, 0.8, 0.72, 1.2).translate(0, 1.4, 0), MASONRY_WASH, 0.05, rng));
+  const fall = rng() * Math.PI * 2;
+  for (const [len, at] of [[1.4, 2.1], [1.1, 3.5]] as const) {
+    const drum = box(0.72, len, 0.72, 1.2);
+    drum.rotateX(Math.PI / 2 + (rng() - 0.5) * 0.2);
+    drum.rotateY(fall + (rng() - 0.5) * 0.5);
+    parts.push(P(drum.translate(Math.cos(fall) * at, 0.36, Math.sin(fall) * at), MASONRY_WASH, 0.07, rng));
+  }
+  const tip = new THREE.ConeGeometry(0.5, 0.7, 4, 1);
+  tip.rotateZ(Math.PI / 2 + 0.3);
+  parts.push(P(scaleUV(tip, 1, 1).translate(Math.cos(fall) * 4.5, 0.4, Math.sin(fall) * 4.5), MASONRY_WASH, 0.05, rng));
+  return merge(parts);
+}
+
 // --- fortifications (owner 2026-09-17: "more trenches/barbed wire/AA guns/bunkers on ALL maps") ---------
 
 /**
@@ -2146,6 +2238,9 @@ export const DESTRUCTIBLE_TYPES = {
   cone:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null, bodyR: 0.27, mass: 0.34, bounce: 0.20, friction: 3.8, angularDrag: 2.4, groundConstrained: true },
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  hw: 0.66, hl: 0.76, build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
+  // (destruction stream, 2026-10-13) the village well and the square's monument break under a hull at speed or a round
+  well:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.1,  h: 2.6,  shape: 'circle', collisionR: 1.1, build: bWell, broken: bWellBroken, collider: true, keep: 0.75, crushMin: 2.0 },
+  monument:    { cls: 'break',  mat: 'stone', contact: 'ob',   r: 1.3,  h: 5.1,  hw: 1.3, hl: 1.3, build: bMonument, broken: bMonumentBroken, collider: true, keep: 0.55, crushMin: 3.0 },
 } satisfies Record<string, DestructiblePropType>;
 
 /**
