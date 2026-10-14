@@ -95,7 +95,7 @@ expect('leclerc', 'leclerc_xlr'); expect('leclerc_xlr', 'leclerc_xlr'); expect('
 expect('amx30', 'amx40'); expect('amx40', 'amx40'); expect('amx40_x', 'amx40', 'donor');
 expect('chieftain5', 'challenger2e'); expect('challenger1_x', 'challenger2e'); expect('centurion3', 'challenger2e');
 expect('challenger_3x', 'challenger_3', 'donor'); expect('ua_challenger2', 'challenger2e', 'donor');
-expect('fv510', 'fv510_milan_x'); expect('ajax_x', 'fv510_milan_x'); expect('ares_apc_x', 'fv510_milan_x');
+expect('fv510', 'warrior_tes_h'); expect('ajax_x', 'warrior_tes_h'); expect('ares_apc_x', 'warrior_tes_h');
 expect('t62mv1', 't90'); expect('t80u_x', 't90m'); expect('t72b3m', 't90m'); expect('t90', 't90m'); expect('t90_x', 't90m');
 expect('t90m_x', 't90m', 'donor'); expect('t14_x', 't14', 'donor'); expect('t14', 't14', 'donor');
 expect('bmpt_terminator2', 't90m'); expect('bmpt_t90', 't90m'); expect('tos1a_tagil', 't90m');

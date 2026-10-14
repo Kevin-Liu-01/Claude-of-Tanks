@@ -79,6 +79,8 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   drumred: recipe(layer('fuel_drum_blast'), layer('container_crush', 0, -8)),
   // masonry and concrete
   walladobe: MASONRY, wallstone: STONE, barrier: STONE, tomb: STONE, bildstock: STONE, bunker: HUT,
+  // (destruction stream, 2026-10-13) the village well's curb and roof, the square's obelisk; the rail yard's coal pile
+  well: MASONRY, monument: STONE, 'coal-heap': recipe(layer('sandbag_thump')),
   // vehicles of every era (the map-vehicles lane's fleets keep these eight roles)
   truck: CAR, jeep: CAR, sedan: CAR, wagon: CAR, pickup: CAR, van: CAR, truckbox: CAR, truckflatbed: CAR,
   // wire and bags

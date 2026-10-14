@@ -45,11 +45,14 @@ function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eave
   const o = 0.35;
   sink.polygon('structureMetal', [[x0, eave, z1], [x1, eave, z1], [cx, ridge, z1]], { colour: paint });
   sink.polygon('structureMetal', [[x1, eave, z0], [x0, eave, z0], [cx, ridge, z0]], { colour: paint });
-  sink.quad('roof', [x0 - o, eave - 0.15, z1 + o], [x0 - o, eave - 0.15, z0 - o], [cx, ridge + 0.05, z0 - o], [cx, ridge + 0.05, z1 + o]);
-  sink.quad('roof', [x1 + o, eave - 0.15, z0 - o], [x1 + o, eave - 0.15, z1 + o], [cx, ridge + 0.05, z1 + o], [cx, ridge + 0.05, z0 - o]);
+  // (the buildings stream, 2026-10-12, the integrity check: each slope and its underside were wound toward each other,
+  // so a view from above saw the dark underside through the culled slope and a view from below the sheet's top) the
+  // slopes face up and out, their undersides down
+  sink.quad('roof', [cx, ridge + 0.05, z1 + o], [cx, ridge + 0.05, z0 - o], [x0 - o, eave - 0.15, z0 - o], [x0 - o, eave - 0.15, z1 + o]);
+  sink.quad('roof', [cx, ridge + 0.05, z0 - o], [cx, ridge + 0.05, z1 + o], [x1 + o, eave - 0.15, z1 + o], [x1 + o, eave - 0.15, z0 - o]);
   // the roof's undersides (seen from below at the eaves)
-  sink.quad('structureMetal', [x0 - o, eave - 0.17, z0 - o], [x0 - o, eave - 0.17, z1 + o], [cx, ridge - 0.02, z1 + o], [cx, ridge - 0.02, z0 - o], { colour: shade(paint, 0.5), decor: true });
-  sink.quad('structureMetal', [x1 + o, eave - 0.17, z1 + o], [x1 + o, eave - 0.17, z0 - o], [cx, ridge - 0.02, z0 - o], [cx, ridge - 0.02, z1 + o], { colour: shade(paint, 0.5), decor: true });
+  sink.quad('structureMetal', [cx, ridge - 0.02, z0 - o], [cx, ridge - 0.02, z1 + o], [x0 - o, eave - 0.17, z1 + o], [x0 - o, eave - 0.17, z0 - o], { colour: shade(paint, 0.5), decor: true });
+  sink.quad('structureMetal', [cx, ridge - 0.02, z1 + o], [cx, ridge - 0.02, z0 - o], [x1 + o, eave - 0.17, z0 - o], [x1 + o, eave - 0.17, z1 + o], { colour: shade(paint, 0.5), decor: true });
   // the door and a window on each long side
   sink.quad('structureMetal', [cx - 1.2, y + 0.32, z1 + 0.03], [cx + 1.2, y + 0.32, z1 + 0.03], [cx + 1.2, y + Math.min(eaveH - 0.4, 3.6), z1 + 0.03], [cx - 1.2, y + Math.min(eaveH - 0.4, 3.6), z1 + 0.03], { colour: shade(paint, 0.55), decor: true });
   const wy = y + eaveH * 0.55;
@@ -187,8 +190,9 @@ export const oreBin: LandmarkBuilder = (ctx) => {
   sink.span('structureMetal', -g - 0.1, gy - 0.6, -g - 0.1, g + 0.1, gy, g + 0.1, { colour: IRON, decor: true });
   // the head house on top (the conveyor's delivery), its gable roof
   sink.span('structureMetal', -hw * 0.7, top, -hd * 0.8, hw * 0.7, Ht, hd * 0.8, { colourAt: rusting(IRON_SHEET, top, Ht, 0.3) });
-  sink.quad('roof', [-hw * 0.7 - 0.3, Ht, hd * 0.8 + 0.3], [-hw * 0.7 - 0.3, Ht, -hd * 0.8 - 0.3], [0, Ht + 1.1, -hd * 0.8 - 0.3], [0, Ht + 1.1, hd * 0.8 + 0.3]);
-  sink.quad('roof', [hw * 0.7 + 0.3, Ht, -hd * 0.8 - 0.3], [hw * 0.7 + 0.3, Ht, hd * 0.8 + 0.3], [0, Ht + 1.1, hd * 0.8 + 0.3], [0, Ht + 1.1, -hd * 0.8 - 0.3]);
+  // (the integrity check, 2026-10-12: the slopes faced down into the house, open from above) wound to face up and out
+  sink.quad('roof', [0, Ht + 1.1, hd * 0.8 + 0.3], [0, Ht + 1.1, -hd * 0.8 - 0.3], [-hw * 0.7 - 0.3, Ht, -hd * 0.8 - 0.3], [-hw * 0.7 - 0.3, Ht, hd * 0.8 + 0.3]);
+  sink.quad('roof', [0, Ht + 1.1, -hd * 0.8 - 0.3], [0, Ht + 1.1, hd * 0.8 + 0.3], [hw * 0.7 + 0.3, Ht, hd * 0.8 + 0.3], [hw * 0.7 + 0.3, Ht, -hd * 0.8 - 0.3]);
   sink.polygon('structureMetal', [[-hw * 0.7, Ht, hd * 0.8], [hw * 0.7, Ht, hd * 0.8], [0, Ht + 1.1, hd * 0.8]], { colour: IRON_SHEET });
   sink.polygon('structureMetal', [[hw * 0.7, Ht, -hd * 0.8], [-hw * 0.7, Ht, -hd * 0.8], [0, Ht + 1.1, -hd * 0.8]], { colour: IRON_SHEET });
   // the ladder up the back-left leg's outer side to the walkway (its stiles from the ground to the walkway's floor, a
@@ -264,8 +268,10 @@ export const conveyor: LandmarkBuilder = (ctx) => {
       sink.polygon('structureMetal', sx > 0 ? [q[1], q[0], q[3], q[2]] : q, { colour: IRON, decor: true });
     };
     side(1); side(-1);
-    sink.quad('structureMetal', corner(a, -1, gh), corner(a, 1, gh), corner(b, 1, gh), corner(b, -1, gh), { colour: shade(GALV, 0.85) });
-    sink.quad('structureMetal', corner(b, -1, 0), corner(b, 1, 0), corner(a, 1, 0), corner(a, -1, 0), { colour: shade(GALV, 0.5) });
+    // (the integrity check, 2026-10-12: the roof faced down and the floor up, both open from outside) the roof wound to
+    // face up, the floor down
+    sink.quad('structureMetal', corner(b, -1, gh), corner(b, 1, gh), corner(a, 1, gh), corner(a, -1, gh), { colour: shade(GALV, 0.85) });
+    sink.quad('structureMetal', corner(a, -1, 0), corner(a, 1, 0), corner(b, 1, 0), corner(b, -1, 0), { colour: shade(GALV, 0.5) });
     // the chords along the bottom (the truss under the cladding)
     for (const sx of [-1, 1]) bar(sink, 'structureMetal', [sx * (hw + 0.08), yAt(a) - 0.1, a], [sx * (hw + 0.08), yAt(b) - 0.1, b], 0.16, { colour: OXIDE, decor: true });
   }

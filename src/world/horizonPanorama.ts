@@ -1731,10 +1731,22 @@ export interface HorizonPanoramaRenderer {
   xr?: { enabled: boolean };
 }
 
+/** A renderer that can hand programs to the driver's parallel compile (three's WebGLRenderer.compileAsync). */
+export interface HorizonPanoramaPrepareRenderer extends HorizonPanoramaRenderer {
+  compileAsync(scene: THREE.Object3D, camera: THREE.Camera): Promise<unknown>;
+}
+
 export interface HorizonPanoramaHandle {
   /** the mesh drawn once the atlas is baked */
   readonly mesh: THREE.Mesh;
   readonly baked: boolean;
+  /**
+   * 2026-10-13 (the perf stream; the owner: "going into games takes a long time"): hand the bake's programs to the
+   * renderer's parallel compile now (early in the world build), so the bake under the covered warm finds them linked
+   * instead of linking them at their first draw. True when they were handed over; a baked, unsupported or prepared
+   * panorama, or a renderer without compileAsync, prepares nothing.
+   */
+  prepareBake(renderer: HorizonPanoramaPrepareRenderer | null | undefined): boolean;
   /** bake when a capable renderer is present and the atlas is not baked; true when baked after the call */
   ensureBaked(renderer: HorizonPanoramaRenderer | null | undefined): boolean;
   /**
@@ -1762,7 +1774,9 @@ export interface HorizonPanoramaHandle {
     hazeTerms: { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null;
     /** the light the atlas carries (null: the authored day), the relights run, the last relight's bake (ms) and whether
      * the first bake took this map's day sky for its reference */
-    light: HorizonPanoramaLight | null; relights: number; relightMs: number; dayReference: boolean };
+    light: HorizonPanoramaLight | null; relights: number; relightMs: number; dayReference: boolean;
+    /** the perf stream (2026-10-13): whether prepareBake handed the bake's programs to the parallel compile */
+    prepared: boolean };
   /**
    * The battlefield's own ground and rock albedo means (linear), so the far country continues the ring's terrain
    * material instead of the authored hill palette (Sirocco Wadi's far tables were saturated orange behind a pale
@@ -1888,7 +1902,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const stats = { bakes: 0, ms: 0, auxMs: 0, aux: false, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
     groundTone: null as number[] | null, rockTone: null as number[] | null,
     hazeTerms: null as { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null,
-    light: null as HorizonPanoramaLight | null, relights: 0, relightMs: 0, dayReference: false };
+    light: null as HorizonPanoramaLight | null, relights: 0, relightMs: 0, dayReference: false, prepared: false };
   let skyWaits = 0;
   const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number; model?: LightModel } => {
     let root: THREE.Object3D = mesh;
@@ -1977,6 +1991,52 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     return null;
   };
 
+  // the perf stream (2026-10-13): the bake's six full-screen programs linked synchronously at their first draw under the
+  // covered warm (~0.29 s of Verdant's entry, in three's first-use uniform reflection). prepareBake compiles materials of
+  // the bake's own shaders with a render target bound (the bake draws into targets: no tone mapping, linear output, the
+  // same program keys) through the renderer's parallel compile, and holds them until the bake has drawn, so the bake's
+  // materials take the linked programs from three's cache; the images are the same programs' images.
+  const bakeAux = (): boolean => !!(options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0);
+  const bakeFragments = (): string[] => [HEIGHT_FRAGMENT, LIGHT_FRAGMENT, STRIP_FRAGMENT, SKYLINE_FRAGMENT, SKYLINE_BLUR_FRAGMENT,
+    ...(bakeAux() ? [STRIP_AUX_FRAGMENT!] : [])];
+  let preparedBake: { materials: THREE.ShaderMaterial[]; geometry: THREE.BufferGeometry } | null = null;
+  const releasePreparedBake = (): void => {
+    if (!preparedBake) return;
+    for (const m of preparedBake.materials) m.dispose();
+    preparedBake.geometry.dispose();
+    preparedBake = null;
+  };
+  function prepareBake(renderer: HorizonPanoramaPrepareRenderer | null | undefined): boolean {
+    if (baked || preparedBake || !renderer || typeof renderer.compileAsync !== 'function' || unsupported(renderer)) return false;
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const scene = new THREE.Scene();
+    const materials = bakeFragments().map((fragmentShader) => {
+      const m = new THREE.ShaderMaterial({ vertexShader: QUAD_VERTEX, fragmentShader, uniforms: {}, depthTest: false, depthWrite: false });
+      const quad = new THREE.Mesh(geometry, m);
+      quad.frustumCulled = false;
+      scene.add(quad);
+      return m;
+    });
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const bound = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false });
+    const previousTarget = renderer.getRenderTarget();
+    preparedBake = { materials, geometry };
+    try {
+      renderer.setRenderTarget(bound);
+      // compileAsync builds every program now (the driver links them in parallel) and polls their readiness; nothing
+      // waits on it here: the bake later takes the programs from the cache, linked or not
+      renderer.compileAsync(scene, camera).catch(() => { /* the bake compiles them itself */ });
+    } catch {
+      releasePreparedBake();
+      return false;
+    } finally {
+      renderer.setRenderTarget(previousTarget);
+      bound.dispose();
+    }
+    stats.prepared = true;
+    return true;
+  }
+
   function bake(renderer: HorizonPanoramaRenderer): void {
     const started = performance.now();
     // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
@@ -2063,7 +2123,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.name = 'horizon-panorama-atlas';
     // (Part 1: the cloud shade's aux at a quarter of the strip — 2048 x 128 half floats, 2 MB — where the tier has a
     // shade map and the knob is on; QA: PANO_CLOUD_SHADE 0 bakes none)
-    const auxRT = options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0
+    const auxRT = bakeAux()
       ? target(Math.max(64, res.width >> 2), Math.max(16, res.height >> 2), THREE.HalfFloatType, false) : null;
     const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
     skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
@@ -2113,6 +2173,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat, auxMat]) m?.dispose();
       quad.geometry.dispose();
       heightRT.dispose(); lightRT.dispose(); skylineRawRT.dispose(); edgeTex.dispose();
+      releasePreparedBake(); // (the bake has drawn with the programs: the prepared hold ends)
     }
     if (atlas) atlas.dispose();
     if (skyline) skyline.dispose();
@@ -2222,7 +2283,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       takeDayReference(publishedSky().atmosphere);
       return !!dayReference;
     },
+    prepareBake,
     dispose() {
+      releasePreparedBake();
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }
       if (skyline) { const k = skyline; skyline = null; air.uPanoSkyline.value = null; k.dispose(); }
       if (aux) { const x = aux; aux = null; air.uPanoAux.value = null; x.dispose(); }

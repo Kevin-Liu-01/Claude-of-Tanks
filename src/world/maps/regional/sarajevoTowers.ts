@@ -430,7 +430,9 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       // the slab stubs on the inner face at every floor, rebar at the head
       for (let y = 3.4; y < h - 1; y += 3.4) {
         const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
-        if (look() < 0.55) faceBox(sink, concrete, inner, 0, y, 0.6 + look() * 1.2, cs * 0.9, 0.26, 1.2 + look() * 2.4, { decor: true });
+        // (the buildings stream, 2026-10-12, the integrity check: a stub drawn deeper than long stood up to 1.2 m off its
+        // core on nothing) each stub from the core's face, its drawn length out
+        if (look() < 0.55) { look(); const so = 1.2 + look() * 2.4; faceBox(sink, concrete, inner, 0, y, so / 2 - 0.02, cs * 0.9, 0.26, so, { decor: true }); }
       }
       sink.dressing(mobile, () => {
         for (let k = 0; k < 6; k++) {
@@ -447,7 +449,9 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
     const span = W - 2 * cs - 1.2;
     for (let k = 0; k < 3; k++) {
       const y = 8 + k * (ch * 0.22) + look() * 3;
-      const a: Vec3 = [-span / 2 + 0.2, y, cz], b: Vec3 = [span / 2 - 0.2, y - 2 - look() * 6, cz + (look() - 0.5) * 2];
+      // (the integrity check, 2026-10-12: the slabs stopped 20 cm short of both cores, hanging in the air between them)
+      // each slab's ends held in the cores' faces
+      const a: Vec3 = [-span / 2 - 0.1, y, cz], b: Vec3 = [span / 2 + 0.1, y - 2 - look() * 6, cz + (look() - 0.5) * 2];
       sink.member(concrete, a, b, cs * 0.9, 0.26, normalize3([0.2, 1, 0]), { decor: true, exposed: true });
     }
     sink.span('stone', -span / 2 - 0.5, -0.3, cz - cs, span / 2 + 0.5, 2.2, Math.min(D / 2, cz + cs * 1.4), { decor: true });

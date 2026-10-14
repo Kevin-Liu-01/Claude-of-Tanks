@@ -36,7 +36,8 @@ function dialect(rng: () => number, style: WindowStyle = WINDOW): HouseDialect {
 
 /** A steel ring band round a cylinder at height y (decor). */
 function ring(sink: PartSink, x: number, y: number, z: number, r: number, h = 0.3, colour: Rgb = TRUSS): void {
-  sink.cylinder('structureMetal', [x, y, z], 'y', h, r + 0.06, 12, { colour, decor: true }, r + 0.06, false);
+  // (the integrity check, 2026-10-12: the band stood 6 cm off its stack on nothing, open top and bottom) closed against it
+  sink.cylinder('structureMetal', [x, y, z], 'y', h, r + 0.06, 12, { colour, decor: true }, r + 0.06);
 }
 
 /** A lattice member chain: two chords from a to b, braced in a zigzag (decor steel). */
@@ -230,7 +231,17 @@ function gasHolder(ctx: RegionalBuildContext): RegionalParts {
       const a0 = (k / n) * Math.PI * 2, a1 = ((k + 1) / n) * Math.PI * 2;
       sink.member('structureWood', [Math.cos(a0) * rr, 0.5, Math.sin(a0) * rr], [Math.cos(a1) * rr, H * 0.5 - 0.2, Math.sin(a1) * rr], 0.1, 0.1, [0, 1, 0], { colour: TRUSS, decor: true, exposed: true, fine: true }, 0);
     }
-    if (look() < 0.6) facePanel(sink, 'dark', { origin: [0, 0, R], u: [1, 0, 0], out: [0, 0, 1], width: 2 * R }, (look() - 0.5) * R, H * (0.3 + look() * 0.4), 0.05, 1.2 + look(), 0.9 + look() * 0.6, { decor: true });
+    // (the integrity check, 2026-10-12: the flat patch stood on a plane tangent to the lift's front, up to half a metre off
+    // the curved sheet at its side) laid on the plane tangent to the lift where it falls, its middle on the sheet
+    if (look() < 0.6) {
+      const u = (look() - 0.5) * R, py = H * (0.3 + look() * 0.4), pw = 1.2 + look(), ph = 0.9 + look() * 0.6;
+      // (on the lift it falls on: each lift 0.35 m inside the one below)
+      const rr = R - Math.min(lifts - 1, Math.max(0, Math.floor((py + 0.4) / ((H + 0.4) / lifts)))) * 0.35;
+      // (the lift is a 16-sided drum: the patch lies on the flat side nearest where it falls, at that side's distance)
+      const seg = Math.PI / 8, th = Math.PI / 2 - Math.asin(Math.max(-0.95, Math.min(0.95, u / rr)));
+      const a = Math.PI / 2 - (Math.floor(th / seg) + 0.5) * seg, ap = rr * Math.cos(seg / 2);
+      facePanel(sink, 'dark', { origin: [Math.sin(a) * ap, 0, Math.cos(a) * ap], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: pw }, 0, py, 0.004, Math.min(pw, 2 * ap * Math.sin(seg / 2) - 0.05), ph, { decor: true });
+    }
     // the station's wall round the lot under a brick coping, the gate's leaves shut in its front run
     const wy = 2.0;
     const runs: Array<[number, number, number, number]> = [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, W / 2, D / 2],

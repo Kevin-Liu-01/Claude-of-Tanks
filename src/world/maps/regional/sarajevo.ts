@@ -552,7 +552,15 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
         if (s === gateSide && yard - ga > gw + 1.2) {
           runs.push([x0, ga + t, x1, gz - gw / 2], [x0, gz + gw / 2, x1, gb]);
           const gf: Face = { origin: [s * W / 2, 0, gz], u: [0, 0, -s], out: [s, 0, 0], width: gw };
-          sink.placed(0, 0, 0, -zc, () => gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }));
+          // (the buildings stream, 2026-10-13, the integrity check: the gate's leaves were drawn on the lane side only,
+          // so from the yard the gap stood open, the leaves' backs culled) the leaves on the yard side as well, and the
+          // wall carried over the gate through its thickness (dressing: the runs keep their collision)
+          const gIn: Face = { origin: [s * (W / 2 - t), 0, gz], u: [0, 0, s], out: [-s, 0, 0], width: gw };
+          sink.placed(0, 0, 0, -zc, () => {
+            gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            gateUnit(sink, gIn, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 });
+            sink.span('plaster', x0, 2.13, gz - gw / 2, x1, Math.max(2.16, wallH), gz + gw / 2, { decor: true });
+          });
         } else runs.push([x0, ga + t, x1, gb]);
       }
       sink.placed(0, 0, 0, -zc, () => {
@@ -639,7 +647,9 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
   sink.dressing(mobile, () => {
     for (let k = 0; k < 4; k++) {
       const x = (look() - 0.5) * (W - 1.2);
-      sink.member('structureWood', [x, 1.4, zf - 0.2 - look() * 2], [x + (look() - 0.5) * 1.5, 2.6 + look() * 2.4, zf - 0.1], 0.16, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
+      // (the buildings stream, 2026-10-12, the integrity check: a joist's foot past the heap's edge hung in the air) each
+      // joist's foot in the heap, leaning up to the front
+      sink.member('structureWood', [x, 1.3, zf - 0.7 - look() * 2], [x + (look() - 0.5) * 1.5, 2.6 + look() * 2.4, zf - 0.1], 0.16, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
     }
   });
   const pocks = 10 + look() * 14;
@@ -682,7 +692,9 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
   sink.dressing(mobile, () => {
     for (let k = 0; k < 5; k++) {
       const x = (look() < 0.5 ? -1 : 1) * (W / 2 - 0.3), z = (look() - 0.5) * (D - 1);
-      sink.member('structureWood', [x, gH * 0.7, z], [x + (look() - 0.5) * 0.4, gH + 0.8 + look() * 1.8, z + (look() - 0.5) * 0.4], 0.16, 0.16, [1, 0, 0], { colour: CHAR, decor: true, exposed: true }, 0);
+      // (the integrity check, 2026-10-12: the charred posts began 2 m up the broken walls, in the air) each post from
+      // the fallen tiles' heap at the wall's foot
+      sink.member('structureWood', [x, 0.2, z], [x + (look() - 0.5) * 0.4, gH + 0.8 + look() * 1.8, z + (look() - 0.5) * 0.4], 0.16, 0.16, [1, 0, 0], { colour: CHAR, decor: true, exposed: true }, 0);
     }
     sink.member('structureWood', [-W / 2 + 0.3, gH + 0.3, D / 2 - 0.3], [W / 2 - 0.3, gH * 0.6, D / 2 - 0.5], 0.18, 0.2, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
   });

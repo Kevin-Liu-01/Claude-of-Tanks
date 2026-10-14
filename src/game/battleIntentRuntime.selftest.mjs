@@ -174,4 +174,17 @@ function createHarness(overrides = {}) {
     'disposed intent cannot start new speculative work');
 }
 
-console.log('battleIntentRuntime.selftest: explicit map intent, coalescing, and handoff passed');
+// 2026-10-13: the entry's pending cover asks which map it will load before the loading owner consumes it: a Random
+// request is planned once and that plan is what consumeMap returns; a named map is itself; nothing is consumed
+{
+  const { runtime, log } = createHarness();
+  assert.equal(runtime.peekMap('hero', 'random'), 'alpine');
+  assert.equal(runtime.peekMap('hero', 'random'), 'alpine', 'a repeated peek keeps the one plan');
+  assert.equal(log.filter((entry) => entry.startsWith('resolve:random')).length, 1);
+  assert.equal(runtime.consumeMap('hero', 'random'), 'alpine', 'the consumed map is the one the cover named');
+  assert.equal(runtime.peekMap('hero', 'winter'), 'winter');
+  assert.equal(runtime.consumeMap('hero', 'winter'), 'winter');
+  assert.equal(runtime.peekMap('hero', 'random'), 'desert', 'the next entry plans afresh');
+}
+
+console.log('battleIntentRuntime.selftest: explicit map intent, coalescing, handoff and the pending cover\'s peek passed');

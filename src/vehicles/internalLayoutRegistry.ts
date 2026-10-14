@@ -550,7 +550,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmptThree: ['bmpt_terminator2'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
-  suppliedWarriorMilan: ['fv510_milan_x'],
+  suppliedWarriorMilan: ['warrior_tes_h'],
   suppliedK21: ['k21_x'],
   suppliedCv90Mkiv: ['cv90_mkiv_x'],
   suppliedCv90105Tml: ['cv90105_tml_x'],

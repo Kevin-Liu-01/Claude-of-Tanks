@@ -20,3 +20,13 @@ console.log('interior fill selection: exact scoped updates, preserved siblings/a
 
 assert.deepEqual(mergeInteriorFillGroup(old, {}, {...registry, first:'newFamily'}, 'shared'),
   {sibling:old.sibling}, 'moved tank cannot retain a competing old-family fill');
+
+// 2026-10-13 (SSOT 2.19): a record under an id the tank id alias layer renamed moves to the new id unchanged; an
+// update for the new id still wins, and an id nothing renames is dropped as before.
+const renamed = { retired: { hull: 'shipped' }, sibling: { hull: 'preserved' }, gone: { hull: 'x' } };
+const rename = (id) => (id === 'retired' ? 'first' : id);
+const carried = mergeInteriorFillGroup(renamed, {}, registry, 'shared', rename);
+assert.deepEqual(carried, { first: { hull: 'shipped' }, sibling: { hull: 'preserved' } });
+assert.equal(carried.first, renamed.retired, 'the shipped record moves, byte for byte');
+assert.deepEqual(mergeInteriorFillGroup(renamed, { first: { hull: 'measured' } }, registry, 'shared', rename).first, { hull: 'measured' });
+console.log('interior fill selection: a renamed id carries its record unchanged PASS');

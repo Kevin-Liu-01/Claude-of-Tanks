@@ -141,6 +141,11 @@ export interface StructureBlow {
   dirZ: number;
   /** A penetrator's hole radius at the strike (P2: kinetic and shaped-charge rounds; 0 or absent: none). */
   holeRadiusM?: number;
+  /**
+   * The entity that dealt it (the rammer, the shooter, the dead hull), or null: rides the blow's events as `sourceId`
+   * so the authority can withhold how a hidden enemy dealt it (2026-10-13; never on the wire, never in the log).
+   */
+  sourceId?: string | null;
 }
 
 export interface StructureDamageOptions {
@@ -429,6 +434,7 @@ export function createStructureDamage(
     at: number;
     event: StructureStageEvent;
     munition: MunitionClass | null;
+    sourceId: string | null;
     settling: boolean;
   }
   const cascades: CollapseCascade[] = [];
@@ -452,7 +458,8 @@ export function createStructureDamage(
   }
 
   function breachEvent(structure: StructureState, sections: StructureSections, section: number, hole: number,
-    x: number, y: number, z: number, radiusM: number, sectionDown: boolean, munition: MunitionClass | null): StructureBreachEvent {
+    x: number, y: number, z: number, radiusM: number, sectionDown: boolean, munition: MunitionClass | null,
+    sourceId: string | null = null): StructureBreachEvent {
     sectionSpan(sections, section, span);
     sectionNormal(sections, section, normal);
     return {
@@ -462,18 +469,20 @@ export function createStructureDamage(
       section, sectionKind: sectionKind(sections, section), y0: span.y0, y1: span.y1, hole,
       x, y, z, nx: normal.x, ny: normal.y, nz: normal.z, radiusM, munition, sectionDown,
       ...(sectionDown && storeyDownAt(sections, section) ? { storeyDown: true } : {}),
+      ...(sourceId ? { sourceId } : {}),
     };
   }
 
   /** A section falls, then what its fall brings (§3.4): one event each, standing at the section's centre on its face. */
-  function fall(structure: StructureState, sections: StructureSections, section: number, munition: MunitionClass | null): void {
+  function fall(structure: StructureState, sections: StructureSections, section: number, munition: MunitionClass | null,
+    sourceId: string | null = null): void {
     fellSection(sections, section);
     sectionCentre(sections, section, centre);
-    pendingBreaches.push(breachEvent(structure, sections, section, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition));
+    pendingBreaches.push(breachEvent(structure, sections, section, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition, sourceId));
     cascadeFalls(sections, falls);
     for (const next of falls) {
       sectionCentre(sections, next, centre);
-      pendingBreaches.push(breachEvent(structure, sections, next, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition));
+      pendingBreaches.push(breachEvent(structure, sections, next, NO_HOLE, mm(centre.x), mm(centre.y), mm(centre.z), 0, true, munition, sourceId));
     }
   }
 
@@ -495,13 +504,13 @@ export function createStructureDamage(
       && !structureOpeningAt(sections, x, y, z)) {
       const slot = sections.holeCount[section];
       openHole(sections, section, slot, x, y, z, radius);
-      pendingBreaches.push(breachEvent(structure, sections, section, slot, x, y, z, radius, false, blow.munition));
+      pendingBreaches.push(breachEvent(structure, sections, section, slot, x, y, z, radius, false, blow.munition, blow.sourceId ?? null));
       opened = true;
     }
     if (points > 0) {
       sections.hp[section] -= points * damageScale;
       if (sections.hp[section] <= 0) {
-        fall(structure, sections, section, blow.munition);
+        fall(structure, sections, section, blow.munition, blow.sourceId ?? null);
         opened = true;
       }
     }
@@ -520,14 +529,14 @@ export function createStructureDamage(
     const s = cascade.sections;
     const roof = roofSection(s);
     if (!s.down[roof]) {
-      fall(cascade.structure, s, roof, cascade.munition);
+      fall(cascade.structure, s, roof, cascade.munition, cascade.sourceId);
       return true;
     }
     for (let k = s.storeys - 1; k >= 0; k--) {
       let fell = false;
       for (let f = 0; f < 4; f++) {
         if (s.down[k * 4 + f]) continue; // a face the fall before this one already brought down
-        fall(cascade.structure, s, k * 4 + f, cascade.munition);
+        fall(cascade.structure, s, k * 4 + f, cascade.munition, cascade.sourceId);
         fell = true;
       }
       if (fell) return true;
@@ -545,6 +554,7 @@ export function createStructureDamage(
       cause: blow.cause, munition: blow.munition, x: blow.x, y: blow.y, z: blow.z, dirX: blow.dirX, dirZ: blow.dirZ,
       points, integrity: structure.maxHp > 0 ? Math.max(0, structure.hp / structure.maxHp) : 0,
       ...(sectionsOn ? { sections: true } : {}),
+      ...(blow.sourceId ? { sourceId: blow.sourceId } : {}),
     };
   }
 
@@ -568,7 +578,7 @@ export function createStructureDamage(
         structure.collapsePending = true;
         const event = eventFor(structure, 3, stage - 1, points * damageScale, blow);
         const sections = sectionsFor(structure);
-        if (sections) cascades.push({ structure, sections, at: tick, event, munition: blow.munition, settling: false });
+        if (sections) cascades.push({ structure, sections, at: tick, event, munition: blow.munition, sourceId: blow.sourceId ?? null, settling: false });
         else {
           collapseQueue.push(structure);
           pendingEvents.push(event);

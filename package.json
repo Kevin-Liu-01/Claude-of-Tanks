@@ -69,6 +69,7 @@
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
     "tank:roster": "node tools/vehicle-roster-report.mjs",
     "tank:roster:check": "node tools/vehicle-roster-report.mjs --check",
+    "tank:ids:table": "node tools/tank-id-rename-table.mjs",
     "tank:track:duplicates": "node tools/track-duplicate-audit.mjs",
     "tank:surface-overlap:check": "node tools/coplanar-surface-overlap.selftest.mjs && node tools/fleet-surface-overlap-audit.mjs --check",
     "tank:track:check": "node tools/track-system-audit.mjs",

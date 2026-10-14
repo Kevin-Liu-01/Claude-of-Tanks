@@ -41,7 +41,7 @@ function checkSourceConfigurations() {
   assert.equal(TANK_SPECS.ajax_x.balanceCohort, 'cannon-only',
     'Ajax is compared as an IFV without a guided anti-armor channel');
   const configurations = {
-    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
+    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], warrior_tes_h: [30, [1]],
     griffin50_x: [50, []], ajax_x: [40, []], aft10_x: [170, [8]],
     bmp3m_dragun125_x: [125, []], k21_x: [40, [2]], type96b_x: [125, []],
     kf41_lynx_x: [35, []], cv90_mkiv_x: [50, [2]], cv90105_tml_x: [105, []], sabra_mk2_x: [120, []],

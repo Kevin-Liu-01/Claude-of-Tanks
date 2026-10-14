@@ -1134,6 +1134,20 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
   font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#d9e3ec;
   background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
+/* The selected tank's own take (garage.ts over fleetTakes.ts): its poster and
+   muted loop cover the stills, which keep their rotation for a tank without one. */
+.cot-featured.vehicle .fdots,.cot-featured.vehicle .fnav{display:none;}
+.cot-featured .fcap{z-index:2;}
+.cot-featured .fleet-take-video{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;
+  object-fit:cover;background:transparent;}
+.cot-featured .fleet-take-toggle{position:absolute;right:4px;top:4px;z-index:3;display:grid;place-items:center;
+  width:24px;height:24px;padding:0;background:rgba(5,8,11,.6);border:1px solid rgba(146,164,180,.35);
+  color:#d9e3ec;cursor:pointer;opacity:.72;transition:opacity var(--cot-motion-fast) ease,
+    border-color var(--cot-motion-fast) ease,color var(--cot-motion-fast) ease;}
+.cot-featured .fleet-take-toggle svg{display:block;width:10px;height:10px;}
+.cot-featured .fshot:hover .fleet-take-toggle,.cot-featured .fleet-take-toggle:focus-visible{opacity:1;}
+.cot-featured .fleet-take-toggle:hover{border-color:rgba(240,176,74,.7);color:#ffd27a;}
+.cot-featured .fleet-take-video[hidden],.cot-featured .fleet-take-toggle[hidden]{display:none;}
 @keyframes cot-g-fade{from{opacity:0;}}
 @keyframes cot-g-rise{from{opacity:0;transform:translateY(12px);}}
 @keyframes cot-g-rise-c{from{opacity:0;transform:translateX(-50%) translateY(12px);}
