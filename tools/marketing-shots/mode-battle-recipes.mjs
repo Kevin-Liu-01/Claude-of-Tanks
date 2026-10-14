@@ -781,29 +781,18 @@ export const RECIPES = {
     async run(ctx) {
       const contact = await toContact(ctx, { rangeM: 420, minRangeM: 260, dists: [320, 300, 350, 380], enemies: 1 });
       ctx.log('contact', JSON.stringify(contact));
-      // the staged target held at its angled three-quarter (about 30 degrees off the line: the staging's own yaw) on a
-      // spot the sights see clear of trees (H.sightClear), so the flashlight paints the whole hull
+      // r3: r2's target stayed where staged (no spot passed the old sight test), below the gun (GUN TRAVEL LIMIT) and
+      // framed by the bush round the player's own sight. H.cleanScope moves both: the player to open ground with no
+      // foliage within 12 m, the target 280-340 m out, level with the gun, on a line the sights see clear, turned 30
+      // degrees off it and held
       const mark = contact?.lanes?.[0]?.id || null;
       if (mark) {
-        const sight = await ctx.eval((id) => {
-          const H = window.__MB.H, p = H.player(), t = H.g().tankById.get(id);
-          if (!p || !H.live(t)) return null;
-          const eye = H.turretPoint(p), discs = H.concealers();
-          H.freezeBot(t);
-          if (H.sightClear(eye, t.state.pos, discs)) return { clear: true, moved: false };
-          const d0 = H.dist(p.state.pos, t.state.pos), base = Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
-          for (const d of [d0, 320, 300, 350]) {
-            for (const da of [0, 8, -8, 16, -16, 24, -24, 35, -35, 50, -50]) {
-              const a = base + (da * Math.PI) / 180, x = p.state.pos.x + Math.sin(a) * d, z = p.state.pos.z + Math.cos(a) * d;
-              if (!H.openGround(x, z, 6, discs) || !H.sightClear(eye, { x, z }, discs)) continue;
-              H.place(t, x, z, Math.atan2(p.state.pos.x - x, p.state.pos.z - z) + 0.52);
-              H.freezeBot(t);
-              return { clear: true, moved: true, d: Math.round(d), bearingDeg: da };
-            }
-          }
-          return { clear: false };
+        const scope = await ctx.eval((id) => {
+          const H = window.__MB.H;
+          return H.cleanScope(H.player(), H.g().tankById.get(id), { dists: [300, 280, 320, 340], angle: 0.52 });
         }, mark);
-        ctx.log('sight', JSON.stringify(sight));
+        ctx.log('clean scope', JSON.stringify(scope));
+        if (!scope) ctx.note('no clean scope (open player spot, level target, clear sight line) was found; the target stays as staged');
       }
       // the armour flashlight is the player's setting (H toggles it; off by default)
       await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
@@ -1647,10 +1636,13 @@ Object.assign(RECIPES, {
         let best = null;
         // r2: shrubs, not tree groves (r1's 4 m disc was a grove and every lens sat among its trunks), and the column
         // within spotting range (r1's 360 m column was never spotted: spotRange = viewRange - (viewRange - 50) x camo)
+        // r3: r2's filter (discs to 4 m, no tree within 6 m, 240 m) left no seat on Verdant at all; shrubs to 5 m with no
+        // tree within 3 m, 320 m out, and the line to the column tested as the sights see it (H.sightClear: trunks
+        // anywhere, foliage near either end) instead of every disc along it
+        const treeRecs = (D.world.getObstacles?.() || []).filter((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead);
         for (const c of discs) {
-          if (H.dist(c, p.state.pos) > 240 || c.r > 4) continue;
-          const treesNear = (D.world.getObstacles?.() || []).some((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead
-            && Math.hypot((o.min[0] + o.max[0]) / 2 - c.x, (o.min[2] + o.max[2]) / 2 - c.z) < c.r + 6);
+          if (H.dist(c, p.state.pos) > 320 || c.r > 5) continue;
+          const treesNear = treeRecs.some((o) => Math.hypot((o.min[0] + o.max[0]) / 2 - c.x, (o.min[2] + o.max[2]) / 2 - c.z) < c.r + 3);
           if (treesNear) continue;
           const sx = c.x + Math.sin(toEnemy) * c.r * 0.3, sz = c.z + Math.cos(toEnemy) * c.r * 0.3;
           if (Math.abs(sx) > 430 || Math.abs(sz) > 430) continue;
@@ -1662,7 +1654,7 @@ Object.assign(RECIPES, {
               if (Math.abs(px) > 430 || Math.abs(pz) > 430) continue;
               const py = H.groundY(px, pz);
               if (H.raycastBlock({ x: sx, y: sy + 2.6, z: sz }, { x: px, y: py + 1.6, z: pz }, 3) != null) continue;
-              if (canopyOnLine(sx, sz, px, pz, c)) continue;
+              if (!H.sightClear({ x: sx, y: sy + 2.6, z: sz }, { x: px, z: pz }, discs.filter((q) => q !== c))) continue;
               const score = (sy - py) * 0.6 - Math.abs(dist - 240) / 40 - Math.abs(lateral) / 60;
               if (!best || score > best.score) best = { seat: { x: sx, z: sz, r: c.r }, column: { x: px, z: pz }, score, riseM: Math.round(sy - py), dist, lateral };
             }

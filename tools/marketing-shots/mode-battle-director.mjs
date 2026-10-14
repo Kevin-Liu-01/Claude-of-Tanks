@@ -171,22 +171,60 @@ export function installModeBattleDirector() {
    * concealment disc and every tree record (taken at a 2.5 m canopy) along the whole line, any other record that
    * stands above 1.5 m, then the world raycast for terrain and buildings.
    */
-  H.sightClear = (eye, to, discs = H.concealers()) => {
+  // r2 (2026-10-14): r1 counted every tree as a 2.5 m canopy along the whole line, and on Verdant and Frosthollow no
+  // 150-350 m line passed (realistic pass 6, armor r2). A sight line at gun height runs under the canopies mid-field:
+  // trunks block anywhere, canopies and foliage discs only near either end (where they fill the lens or hide the target)
+  H.sightClear = (eye, to, discs = H.concealers(), endM = 30) => {
     const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
-    const across = (cx, cz, r) => {
+    const across = (cx, cz, r, anywhere) => {
       const wx = cx - eye.x, wz = cz - eye.z, along = wx * ux + wz * uz;
-      return along > 2 && along < len - 6 && Math.abs(wx * uz - wz * ux) < r;
+      if (along < 1.5 || along > len - 5) return false;
+      if (!anywhere && along > endM && along < len - endM) return false;
+      return Math.abs(wx * uz - wz * ux) < r;
     };
-    for (const c of discs) if (across(c.x, c.z, c.r + 0.5)) return false;
+    for (const c of discs) if (across(c.x, c.z, c.r + 0.5, false)) return false;
     for (const o of H.D().world.getObstacles?.() || []) {
       if (o.crushed || o.dead || !o.min || !o.max) continue;
       const cx = (o.min[0] + o.max[0]) / 2, cz = (o.min[2] + o.max[2]) / 2;
       const half = Math.hypot(o.max[0] - o.min[0], o.max[2] - o.min[2]) / 2;
       const tree = o.treeIdx != null || /tree/i.test(o.kind || '');
-      if (!tree && o.max[1] < H.groundY(cx, cz) + 1.5) continue;
-      if (across(cx, cz, tree ? Math.max(half, 2.5) : half + 0.4)) return false;
+      if (tree) { if (across(cx, cz, half + 0.3, true) || across(cx, cz, 3, false)) return false; continue; }
+      if (o.max[1] < H.groundY(cx, cz) + 1.5) continue;
+      if (across(cx, cz, half + 0.4, true)) return false;
     }
     return H.raycastBlock(eye, { x: to.x, y: H.groundY(to.x, to.z) + 1.6, z: to.z }, 2) == null;
+  };
+  /**
+   * A clean scope (2026-10-14, armor r3): a player spot with no foliage within 12 m (the sight's own surround) and a
+   * target spot `dists` out, level with the gun (within 2 degrees: no GUN TRAVEL LIMIT), that the sights see clear.
+   * Moves both; the target turned `angle` rad off the line and held. Returns what moved, or null.
+   */
+  H.cleanScope = (p, t, { dists = [300, 280, 320, 340], angle = 0.52, toward = null } = {}) => {
+    if (!H.live(p) || !H.live(t)) return null;
+    const discs = H.concealers();
+    const quiet = (x, z) => discs.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 12);
+    const base = toward ?? Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
+    const eyeH = (p.spec?.dims?.heightM ?? 2.4) * 0.92;
+    for (const r of [0, 25, 50, 80, 120]) {
+      for (let k = 0; k < (r ? 12 : 1); k++) {
+        const a0 = (k / 12) * Math.PI * 2, px = p.state.pos.x + Math.sin(a0) * r, pz = p.state.pos.z + Math.cos(a0) * r;
+        if (!H.openGround(px, pz, 8, discs) || !quiet(px, pz)) continue;
+        const eye = { x: px, y: H.groundY(px, pz) + eyeH, z: pz };
+        for (const d of dists) {
+          for (const da of [0, 10, -10, 20, -20, 30, -30, 40, -40]) {
+            const b = base + (da * Math.PI) / 180, tx = px + Math.sin(b) * d, tz = pz + Math.cos(b) * d;
+            if (!H.openGround(tx, tz, 6, discs)) continue;
+            if (Math.abs(Math.atan2(H.groundY(tx, tz) + 1.4 - eye.y, d)) > (2 * Math.PI) / 180) continue;
+            if (!H.sightClear(eye, { x: tx, z: tz }, discs)) continue;
+            H.place(p, px, pz, b);
+            H.place(t, tx, tz, Math.atan2(px - tx, pz - tz) + angle);
+            H.freezeBot(t);
+            return { playerMovedM: r, d, bearingDeg: da };
+          }
+        }
+      }
+    }
+    return null;
   };
   /** Ground a tank can sit on: inside the map, flat enough, no solid record within `clearM` nor foliage on it. */
   H.openGround = (x, z, clearM = 7, discs = H.concealers()) => {
