@@ -288,8 +288,10 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     id: 'zeelandPolder', place: 'The Scheldt polders, autumn 1944: clay fields boxed by dykes, poplar rows on the dyke crowns, tower mills, church towers every few km, dyke villages',
     land: 'polder', fields: 0.8, settlement: 'dykeVillage',
     density: { villages: r([2, 2]), hamlets: r([3, 6]), farms: r([10, 15]), works: r([0, 1]), perVillage: r([20, 40]) },
-    kit: 'polder', verticals: ['churchTower', 'windmill', 'waterTower', 'lighthouse', 'pylonLine'],
-    vegetation: { habit: 'dikeRows', woods: 0.08, hedges: 0.6, species: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.1]], canopyM: 17 },
+    kit: 'polder', verticals: ['churchTower', 'windmill', 'lighthouse', 'pylonLine'],
+    // (HL-2c: November Zeeland — the rows mostly broad-crowned Canadian poplars, ash and oak, pollard willows along the
+    // water, a Lombardy poplar only as an accent)
+    vegetation: { habit: 'dikeRows', woods: 0.08, hedges: 0.6, species: [['poplar', 0.5], ['oak', 0.28], ['willow', 0.22]], canopyM: 17 },
     outland: { riseM: r([0.5, 1.6]), wavelengthM: 1400, flat: true },
     geology: { rock: 'clay', rockHex: 0x7d7564, strata: { bedM: 0, dipDeg: 0, contrast: 0 }, scree: 0, snow: NO_SNOW, gullies: 0, erosion: 0, rockSlopeDeg: 70, forestBandM: r([-10, 40]), sand: 0.15, varnish: 0 },
     far: { form: 'plain', reliefM: 4, distKm: r([4, 15]), layers: 0, treesM: 20 },

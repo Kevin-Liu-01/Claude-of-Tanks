@@ -24,6 +24,8 @@ const DRAFT: HinterlandConfig = {
     + 'poplar windbreaks, farms round paved yards, church towers every few km; Walcheren flooded through its breached sea dykes',
   region: 'zeelandPolder',
   lab: true,
+  // (the Battle of the Scheldt, October–November 1944: the crowns mostly bare, the last leaves brown-olive)
+  season: 'lateAutumn',
   outland: {
     woods: 0.08, hedges: 0.6, fields: 0.85, links: 3,
     settle: { villages: 3, hamlets: 4, farms: 14, works: 0, town: null },

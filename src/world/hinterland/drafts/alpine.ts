@@ -38,12 +38,18 @@ const DRAFT: HinterlandConfig = {
       geology: { snow: { lineM: 0 } }, cover: { bare: true } },
     { kind: 'massif', at: { azDeg: 92, distM: 3200 }, heightM: 640, lengthM: 4800, widthM: 3800, strikeDeg: 170, name: 'the Lamet slopes',
       geology: { snow: { lineM: 0 } }, cover: { bare: true } },
-    // south: the col falls away toward the Val di Susa
-    { kind: 'valley', at: { azDeg: 182, distM: 3800 }, heightM: 520, lengthM: 6400, widthM: 2800, strikeDeg: 2, name: 'the Susa side' },
+    // south: the col falls away toward the Val di Susa — the valley drops some 1,500 m in 10 km between its walls (the
+    // Rocciamelone's shoulder east, the Ambin's west), so from the col the eye runs down into it and over it to the
+    // Italian ranges layered beyond
+    { kind: 'valley', at: { azDeg: 180, distM: 6800 }, heightM: 1100, lengthM: 12800, widthM: 5200, strikeDeg: 4, name: 'the Val di Susa' },
+    { kind: 'massif', at: { azDeg: 150, distM: 7600 }, heightM: 1150, lengthM: 8200, widthM: 4600, strikeDeg: 10, name: 'the Rocciamelone shoulder',
+      geology: { snow: { lineM: 250 } } },
+    { kind: 'massif', at: { azDeg: 212, distM: 7400 }, heightM: 1050, lengthM: 8000, widthM: 4400, strikeDeg: 170, name: 'the Ambin side',
+      geology: { snow: { lineM: 250 } } },
   ],
   far: [
     { azDeg: [290, 70], distKm: [8, 20], reliefM: 1700, form: 'alpine', layers: 2, name: 'the Vanoise and the Ronce massif behind' },
-    { azDeg: [120, 240], distKm: [14, 32], reliefM: 1500, form: 'alpine', layers: 2, name: 'the Italian peaks over the Val di Susa' },
+    { azDeg: [120, 240], distKm: [14, 40], reliefM: 1600, form: 'alpine', layers: 3, name: 'the Italian ranges stepping back over the Val di Susa' },
     { azDeg: [60, 125], distKm: [6, 18], reliefM: 1300, form: 'alpine', layers: 1 },
     { azDeg: [235, 295], distKm: [6, 18], reliefM: 1200, form: 'alpine', layers: 1 },
   ],

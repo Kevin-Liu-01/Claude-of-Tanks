@@ -249,6 +249,27 @@ function clearEyeSpots(ground) {
   });
 }
 
+const SEASON_LEAF = { spring: 0.7, summer: 1, autumn: 0.75, lateAutumn: 0.3, winter: 0.04 };
+/** The preview's building palettes by kit (walls, roofs; the walls' and roofs' heights): the place's own materials. */
+const BUILDING_PALETTES = {
+  // Zeeland: red-brown brick farmhouses under dark glazed tiles, the long schuur barns black-tarred under thatch or dark
+  // tile, white-rendered cottages here and there
+  polder: {
+    farmhouse: { wall: [142, 78, 58], roof: [58, 52, 50], wallH: 6, roofH: 6 },
+    barn: { wall: [48, 44, 40], roof: [92, 78, 58], wallH: 4.5, roofH: 9 },
+    granary: { wall: [52, 46, 42], roof: [88, 74, 56], wallH: 4.5, roofH: 7 },
+    cottage: { wall: [150, 86, 64], roof: [154, 74, 46], wallH: 5, roofH: 5 },
+    tavern: { wall: [214, 206, 192], roof: [62, 56, 54], wallH: 6.5, roofH: 5.5 },
+    woodshed: { wall: [60, 54, 48], roof: [70, 64, 58], wallH: 3.5, roofH: 3 },
+    default: { wall: [150, 88, 66], roof: [66, 58, 54], wallH: 5.5, roofH: 5.5 },
+  },
+  kolkhoz: {
+    default: { wall: [222, 218, 206], roof: [168, 150, 104], wallH: 3.2, roofH: 4 },
+    barn: { wall: [120, 104, 84], roof: [150, 136, 96], wallH: 4, roofH: 5 },
+  },
+  savoyard: { default: { wall: [130, 124, 116], roof: [86, 84, 82], wallH: 6, roofH: 4 } },
+};
+
 /** Reference photographs of each place (the gauntlet's real set, ~/cot-launch-state/gauntlet-refs-20261012/real). */
 const REFERENCES = {
   polders: [['real_scheldt_polders_2.jpg', 'Zeeland: a tower mill on the dyke over the creek, bare trees, low far horizon'],
@@ -304,7 +325,7 @@ export async function renderEyes(id, build, ground, outDir, { fog, names = ['edg
     const rgb = c.cls === 0 || (c.cls === 1 && c.crop !== 31) ? CR[c.crop] ?? CL[0] : CL[c.cls] ?? [255, 0, 255];
     return [rgb[0] * tone, rgb[1] * tone, rgb[2] * tone];
   };
-  const autumn = /autumn|october|november/i.test(spec.place);
+  const autumn = spec.season === 'autumn' || spec.season === 'lateAutumn' || /autumn|october|november/i.test(spec.place);
   // the woods on a lazy lattice (8 m to 3 km, 32 m to 16 km), bilinear so a wood's edge thins
   const lat = (cell, half) => ({ cell, half, n: Math.ceil((2 * half) / cell) + 1, v: null });
   const L1 = lat(8, 3072), L2 = lat(32, 16384);
@@ -327,7 +348,8 @@ export async function renderEyes(id, build, ground, outDir, { fog, names = ['edg
   for (const name of names) {
     const eye = eyes.find((e) => e.name === name);
     const buf = renderEyeBuffer({ w: W - 20, h: EH, eye, elev, fog, surfaceAt, coverAt, colourOf, woodsAt, conifer, canopyM: spec.region.vegetation.canopyM || 18,
-      trees: plan.trees ?? [], verticals: plan.verticals, buildings: plan.buildings, autumn });
+      trees: plan.trees ?? [], verticals: plan.verticals, buildings: plan.buildings, autumn, seasonLeaf: SEASON_LEAF[spec.season] ?? 1,
+      palette: BUILDING_PALETTES[spec.kit ?? ''] ?? null });
     const img = ctx.createImageData(buf.w, buf.h); img.data.set(buf.data);
     ctx.putImageData(img, 10, y0);
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(16, y0 + 6, 300, 20);

@@ -15,7 +15,7 @@
 import type { HinterlandField, HinterlandFlatPad, HinterlandGradeLine, HinterlandPlanFeatures } from './field.ts';
 import { HINTERLAND_EDGE_M } from './field.ts';
 import { hashString, mulberry32, noise2, smoothstep } from './noise.ts';
-import { hinterlandPoint, type HinterlandSpec, type HinterlandVerticalKind } from './spec.ts';
+import { HINTERLAND_SEASON_LEAF, hinterlandPoint, type HinterlandSpec, type HinterlandVerticalKind } from './spec.ts';
 import { dikeCrowns } from './landforms.ts';
 
 export type HinterlandSettlementKind = 'town' | 'village' | 'hamlet' | 'farm' | 'works' | 'station';
@@ -81,6 +81,10 @@ export interface HinterlandTree {
   heightM: number; crownM: number;
   /** 0..1 its foliage's turn (an older or more exposed tree turns first in autumn; a tone within its species). */
   tone: number;
+  /** Its crown's form: a Lombardy column, a broad crown (a Canadian poplar, an ash, an oak), a pollard willow's knob. */
+  form: 'columnar' | 'broad' | 'pollard' | 'conifer';
+  /** 0..1 the foliage it still carries (the season's, varied tree by tree; a conifer keeps its needles). */
+  leaf: number;
 }
 
 export interface HinterlandPlan {
@@ -431,16 +435,26 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     for (const [name, w] of species) { acc += w / total; if (u < acc) return name; }
     return species[species.length - 1][0];
   };
-  const sizeOf = (name: string, age: number): [number, number] => {
+  const CONIFERS = new Set(['pine', 'spruce', 'fir', 'cedar', 'cypress', 'larch']);
+  const seasonLeaf = HINTERLAND_SEASON_LEAF[spec.season];
+  /** A tree of a species, a form and an age (0 young … 1 old): its height and crown, its foliage left. */
+  const makeTree = (x: number, z: number, name: string, form: HinterlandTree['form'], age: number, tone: number): HinterlandTree => {
     const canopy = spec.region.vegetation.canopyM || 18;
-    if (name === 'poplar') return [12 + 18 * age, 2.4 + 1.4 * age];
-    if (name === 'willow') return [6 + 4 * age, 3 + 1.8 * age];
-    if (name === 'pine' || name === 'spruce' || name === 'fir' || name === 'larch' || name === 'cedar') return [canopy * (0.55 + 0.6 * age), 2.4 + 1.6 * age];
-    if (name === 'palm') return [8 + 10 * age, 3 + 1 * age];
-    return [canopy * (0.5 + 0.55 * age), 3.5 + 3 * age];
+    let h: number, c: number;
+    if (form === 'columnar') { h = 16 + 14 * age; c = 2.3 + 1.2 * age; }
+    else if (form === 'pollard') { h = 5 + 3 * age; c = 2.4 + 1.2 * age; }
+    else if (form === 'conifer') { h = canopy * (0.55 + 0.6 * age); c = 2.4 + 1.6 * age; }
+    else if (name === 'poplar') { h = 18 + 14 * age; c = 4.5 + 3.5 * age; } // a Canadian poplar: tall, broad
+    else if (name === 'palm') { h = 8 + 10 * age; c = 3 + 1 * age; }
+    else { h = canopy * (0.55 + 0.55 * age); c = 3.5 + 3.5 * age; }
+    const leaf = form === 'conifer' ? 1 : Math.max(0, Math.min(1, seasonLeaf + (rng() - 0.5) * 0.5 * (1 - Math.abs(seasonLeaf - 0.5))));
+    return { x, z, species: name, heightM: h, crownM: c, tone, form, leaf };
   };
+  /** A row species' forms: poplar rows mostly broad (a Lombardy reach as an accent), willows pollarded. */
+  const rowForm = (name: string, accent: number): HinterlandTree['form'] =>
+    CONIFERS.has(name) ? 'conifer' : name === 'willow' ? 'pollard' : name === 'poplar' && accent < 0.14 ? 'columnar' : 'broad';
   for (const row of rows) {
-    let segLeft = 0, present = true, age = 0.5, segSpecies = row.species;
+    let segLeft = 0, present = true, age = 0.5, segSpecies = row.species, segForm: HinterlandTree['form'] = 'broad';
     let carry = 0;
     for (let i = 0; i + 1 < row.xs.length; i++) {
       const ax = row.xs[i], az = row.zs[i], bx = row.xs[i + 1], bz = row.zs[i + 1], len = Math.hypot(bx - ax, bz - az);
@@ -449,15 +463,17 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
           segLeft = 80 + 320 * rng();
           present = rng() < 0.7;
           age = rng();
-          segSpecies = rng() < 0.12 ? (row.species === 'poplar' ? 'willow' : 'poplar') : row.species;
+          // (a reach of ash or oak, or of pollard willows where the row runs by water)
+          const mix = rng();
+          segSpecies = mix < 0.18 ? 'oak' : mix < 0.3 && row.species === 'poplar' ? 'willow' : row.species;
+          segForm = rowForm(segSpecies, rng());
         }
         segLeft -= row.spacingM;
         carry = t + row.spacingM - len;
         if (!present || rng() < 0.08) continue;
         const x = bx === ax && bz === az ? ax : ax + (bx - ax) * (t / len) + (rng() - 0.5) * 1.2;
         const z = bx === ax && bz === az ? az : az + (bz - az) * (t / len) + (rng() - 0.5) * 1.2;
-        const [h, c] = sizeOf(segSpecies, Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.25)));
-        trees.push({ x, z, species: segSpecies, heightM: h, crownM: c, tone: Math.max(0, Math.min(1, age * 0.7 + rng() * 0.3)) });
+        trees.push(makeTree(x, z, segSpecies, segForm, Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.25)), Math.max(0, Math.min(1, age * 0.7 + rng() * 0.3))));
       }
     }
   }
@@ -469,8 +485,8 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
       const a = rng() * Math.PI * 2, r = st.radiusM * (0.7 + rng() * 0.6) + 10;
       const x = st.x + Math.sin(a) * r, z = st.z + Math.cos(a) * r;
       if (inputs.wetAt(x, z) > 0.05 || !clearOfRoads(x, z, 3) || !footprintClear(x, z, 2)) continue;
-      const name = pickSpecies(rng()), [h, c] = sizeOf(name, 0.3 + rng() * 0.7);
-      trees.push({ x, z, species: name, heightM: h, crownM: c, tone: rng() });
+      const name = pickSpecies(rng());
+      trees.push(makeTree(x, z, name, rowForm(name, rng() + 0.1), 0.3 + rng() * 0.7, rng()));
     }
   }
   // avenues: some stretches of the roads that run on (not the dyke crowns: their rows are the dykes')
@@ -492,8 +508,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
           for (const side of [-1, 1]) {
             const x = px + nx * side * (road.widthM / 2 + 4), z = pz + nz * side * (road.widthM / 2 + 4);
             if (inputs.wetAt(x, z) > 0.05 || rng() < 0.07) continue;
-            const [h, c] = sizeOf(name, Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.2)));
-            trees.push({ x, z, species: name, heightM: h, crownM: c, tone: age });
+            trees.push(makeTree(x, z, name, rowForm(name, 0.5), Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.2)), age));
           }
         }
       }

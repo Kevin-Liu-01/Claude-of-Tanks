@@ -53,6 +53,12 @@ export interface HinterlandLandformConfig {
 
 export type HinterlandWaterKind = 'river' | 'sea' | 'lake' | 'flood' | 'canal';
 
+export type HinterlandSeason = 'spring' | 'summer' | 'autumn' | 'lateAutumn' | 'winter';
+/** The broadleaves' foliage left in a season (0 bare … 1 full). */
+export const HINTERLAND_SEASON_LEAF: Readonly<Record<HinterlandSeason, number>> = Object.freeze({
+  spring: 0.7, summer: 1, autumn: 0.75, lateAutumn: 0.3, winter: 0.04,
+});
+
 export interface HinterlandWaterConfig {
   kind: HinterlandWaterKind;
   /** A river or canal leaving the square by an exit ('exit:n' … or 'edge'), running toward a bearing. */
@@ -105,6 +111,8 @@ export interface HinterlandConfig {
   region: HinterlandRegionId;
   /** Lab only: the block draws only under `?hinterland=1` (the parity lab and drafts); production keeps the old ring. */
   lab?: boolean;
+  /** The season the place is shown in (the trees' foliage: a November polder's crowns mostly bare). Default summer. */
+  season?: HinterlandSeason;
   outland?: {
     relief?: { riseM?: readonly [number, number]; wavelengthM?: number };
     settle?: { villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null };
@@ -125,11 +133,12 @@ export interface HinterlandConfig {
 export interface HinterlandMapConfig {
   id?: string;
   hinterland?: HinterlandConfig;
-  terrain?: { rimH?: number } | null;
-  sky?: { fogDensity?: number; cloudAltM?: number } | null;
-  clouds?: { baseM?: number } | null;
-  props?: { architecture?: string } | null;
+  /** (read loosely: a map config's blocks carry far more than the spec reads) */
+  terrain?: unknown;
+  sky?: unknown;
+  props?: unknown;
 }
+const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
 export interface HinterlandSettleSpec {
   villages: number; hamlets: number; farms: number; works: number; perVillage: readonly [number, number];
@@ -142,6 +151,7 @@ export interface HinterlandSpec {
   place: string;
   region: HinterlandRegion;
   lab: boolean;
+  season: HinterlandSeason;
   /** The building kit the settlements use (the map's own `props.architecture` first, then the region's). */
   kit: string | null;
   outland: {
@@ -197,7 +207,9 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
     place: block.place,
     region,
     lab: block.lab === true,
-    kit: cfg?.props?.architecture ?? region.kit,
+    season: block.season ?? 'summer',
+    kit: (typeof (cfg?.props as { architecture?: unknown } | undefined)?.architecture === 'string'
+      ? (cfg!.props as { architecture: string }).architecture : null) ?? region.kit,
     outland: {
       riseM: o.relief?.riseM ?? region.outland.riseM,
       wavelengthM: o.relief?.wavelengthM ?? region.outland.wavelengthM,
@@ -221,8 +233,8 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
     far: block.far ?? [{ azDeg: [0, 360], distKm: region.far.distKm, reliefM: region.far.reliefM, form: region.far.form, layers: region.far.layers }],
     landmarks: block.landmarks ?? [],
     exceptions: { ...(block.exceptions ?? {}) },
-    rimH: cfg?.terrain?.rimH ?? 24,
-    fogDensity: cfg?.sky?.fogDensity ?? 0.00062,
+    rimH: num((cfg?.terrain as { rimH?: unknown } | undefined)?.rimH) ?? 24,
+    fogDensity: num((cfg?.sky as { fogDensity?: unknown } | undefined)?.fogDensity) ?? 0.00062,
     extentM: tier === 'mobile' ? 48_000 : 80_000,
   };
 }

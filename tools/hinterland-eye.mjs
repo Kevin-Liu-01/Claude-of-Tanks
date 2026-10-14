@@ -49,6 +49,13 @@ const CLASS_RGB = {
   6: [212, 186, 138], 7: [70, 104, 124], 8: [160, 146, 130], 9: [200, 192, 170], 10: [84, 80, 76], 11: [92, 118, 96], 12: [140, 134, 104],
 };
 
+/** A broadleaf's crown in the season: its foliage (by `leaf`) over its bare twigs' grey-brown. */
+function crownRgb(species, tone, autumn, leaf) {
+  const bare = [124 + 18 * tone, 110 + 12 * tone, 98 + 6 * tone];
+  const foliage = autumn ? [104 + 40 * tone, 100 + 22 * tone, 52 + 10 * tone] : treeRgb(species, tone, false);
+  return [bare[0] + (foliage[0] - bare[0]) * leaf, bare[1] + (foliage[1] - bare[1]) * leaf, bare[2] + (foliage[2] - bare[2]) * leaf];
+}
+
 /** A tree's colour by species, its tone and the season (autumn turns the broadleaves and the poplars). */
 function treeRgb(species, tone, autumn) {
   const conifer = species === 'pine' || species === 'spruce' || species === 'fir' || species === 'cedar' || species === 'cypress';
@@ -69,7 +76,7 @@ function treeRgb(species, tone, autumn) {
  * square, the pyramid past it); `coverAt(x, z, slope, h)` returns a cover sample with its class, crop, woods, snow, rock.
  */
 export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog = 0.00062, surfaceAt, coverAt, colourOf, woodsAt,
-  canopyM = 18, conifer = false, trees = [], verticals = [], buildings = [], autumn = false, skyTop = [92, 140, 196], skyHorizon = [196, 210, 222] }) {
+  canopyM = 18, conifer = false, trees = [], verticals = [], buildings = [], autumn = false, seasonLeaf = 1, palette = null, skyTop = [92, 140, 196], skyHorizon = [196, 210, 222] }) {
   const data = new Uint8ClampedArray(w * h * 4);
   const depth = new Float32Array(w * h).fill(Infinity);
   const sigma = fog * 0.42;
@@ -108,10 +115,17 @@ export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog
       let top = g, canopy = 0, cgx = 0, cgz = 0;
       if (wd > 0.05) {
         // rounded, broken crowns over the slope; lower toward the wood's edge (its thinner, younger fringe)
+        // (HL-2c: a wood's top is a canopy at its trees' height, not a dome: level within a few metres, the crowns
+        // rounding it, the edge trees standing a little lower and rounder)
         const cr = crownAt(x, z);
-        const edge = smoothstep(0.05, 0.9, wd);
-        canopy = canopyM * (0.55 + 0.45 * cr[0]) * edge * (cr[0] > 0 ? 1 : 0.6);
-        cgx = cr[1] * canopyM * 0.45 * edge; cgz = cr[2] * canopyM * 0.45 * edge;
+        const inner = smoothstep(0.45, 0.9, wd);
+        // inside, the crowns close into a level top; at the edge they stand as single rounded trees, gaps between them
+        const crownH = canopyM * (0.6 + 0.4 * cr[0]) * (cr[0] > 0 ? 1 : 0);
+        canopy = wd < 0.2 ? 0 : crownH + (canopyM * (0.86 + 0.14 * cr[0]) - crownH) * inner;
+        // a bare wood is a screen of twigs: its edge lets the land and the sky through
+        const screen = 0.35 + 0.6 * seasonLeaf + 0.4 * inner;
+        if (!conifer && canopy > 0 && hash(Math.floor(x * 0.9) + col * 0.13, Math.floor(z * 0.9)) > screen) canopy = 0;
+        cgx = cr[1] * canopyM * 0.35; cgz = cr[2] * canopyM * 0.35;
         top = g + canopy;
       }
       const drop = d * d / (2 * EARTH_R);
@@ -129,7 +143,8 @@ export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog
         // lit on its sunward side: the crowns' own slope over the ground's
         const ax = nx - cgx, az2 = nz - cgz;
         const lit = Math.max(0, (ax * SUN[0] + SUN[1] + az2 * SUN[2]) / Math.hypot(ax, 1, az2));
-        const base = treeRgb(conifer ? 'pine' : 'oak', 0.3 + 0.5 * hash(Math.floor(x / 9), Math.floor(z / 9)), autumn);
+        const tone = 0.3 + 0.5 * hash(Math.floor(x / 9), Math.floor(z / 9));
+        const base = conifer ? treeRgb('pine', tone, autumn) : crownRgb('oak', tone, autumn, Math.max(0, Math.min(1, seasonLeaf + 0.3 * (hash(Math.floor(z / 11), Math.floor(x / 11)) - 0.5))));
         rgb = lightRgb(base, lit, vis, [0, 0, 0]);
       } else if (cover.inside) {
         rgb = lightRgb([118, 122, 108], Math.max(0, (nx * SUN[0] + SUN[1] + nz * SUN[2]) / len), vis, [0, 0, 0]);
@@ -189,7 +204,7 @@ export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog
       for (let c = Math.floor(col - hp); c <= Math.ceil(col + hp); c++) {
         const u = (c - col) / hp; // -1..1 across
         if (Math.abs(u) > 1) continue;
-        const rgb = rgbAt(y, u);
+        const rgb = rgbAt(y, u, c, r);
         if (rgb) plot(c, r, d, rgb, baseY + y);
       }
     }
@@ -198,19 +213,25 @@ export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog
     const t = item.t;
     const baseY = surfaceAt(t.x, t.z);
     if (item.kind === 'tree') {
-      const H = t.heightM, R = t.crownM, poplar = t.species === 'poplar';
-      const conifer = t.species === 'pine' || t.species === 'spruce' || t.species === 'fir' || t.species === 'cedar' || t.species === 'cypress';
-      const base = treeRgb(t.species, t.tone, autumn);
-      const trunk = poplar ? 0.12 : conifer ? 0.08 : 0.3;
+      const H = t.heightM, R = t.crownM, form = t.form ?? (t.species === 'poplar' ? 'columnar' : 'broad');
+      const leaf = t.leaf ?? 1;
+      const base = form === 'conifer' ? treeRgb(t.species, t.tone, autumn) : crownRgb(t.species, t.tone, autumn, leaf);
+      // a bare crown is twigs against the sky: drawn as a screen of them, denser where it still carries leaves
+      const cover = form === 'conifer' ? 1 : 0.42 + 0.58 * leaf;
+      const trunk = form === 'columnar' ? 0.1 : form === 'conifer' ? 0.08 : form === 'pollard' ? 0.55 : 0.32;
+      const seed = t.x * 0.37 + t.z * 0.11;
       fillShape(item, baseY, H, (y) => {
-        if (y < H * trunk) return Math.max(0.25, R * 0.12);
+        if (y < H * trunk) return Math.max(0.25, form === 'pollard' ? R * 0.22 : R * 0.1);
         const f = (y - H * trunk) / (H * (1 - trunk));
-        if (conifer) return R * (1 - f) * 1.1;
-        if (poplar) return R * Math.sqrt(Math.max(0, 1 - (2 * f - 0.85) ** 2)) * (0.9 + 0.1 * Math.sin(f * 9 + t.x));
-        return R * Math.sqrt(Math.max(0, 1 - (2 * f - 1) ** 2)) * (0.92 + 0.12 * Math.sin(f * 7 + t.z));
-      }, (y, u) => {
-        if (y < H * trunk) return [70, 60, 50];
-        const k = 0.62 + 0.38 * (0.5 - 0.5 * u) + 0.12 * (y / H); // lit from the sun's side (the left of a southward look)
+        if (form === 'conifer') return R * (1 - f) * 1.1;
+        if (form === 'columnar') return R * Math.sqrt(Math.max(0, 1 - (2 * f - 0.85) ** 2)) * (0.9 + 0.1 * Math.sin(f * 9 + seed));
+        if (form === 'pollard') return R * Math.sqrt(Math.max(0, 1 - (2 * f - 1) ** 2)) * (0.85 + 0.25 * Math.sin(f * 11 + seed));
+        // a broad crown: wide, flattened, its rim broken into a few rounded masses
+        return R * Math.pow(Math.max(0, 1 - (2 * f - 0.9) ** 2), 0.42) * (0.86 + 0.16 * Math.sin(f * 6 + seed) + 0.08 * Math.sin(f * 17 + seed * 2));
+      }, (y, u, c, r) => {
+        if (y < H * trunk) return [64, 56, 48];
+        if (cover < 1 && hash(c * 1.37 + seed, r * 0.71) > cover) return null;
+        const k = 0.62 + 0.38 * (0.5 - 0.5 * u) + 0.12 * (y / H);
         return [base[0] * k, base[1] * k, base[2] * k];
       });
     } else if (item.kind === 'churchTower' || item.kind === 'spire' || item.kind === 'campanile' || item.kind === 'minaret' || item.kind === 'onionDome' || item.kind === 'lighthouse') {
@@ -241,19 +262,26 @@ export function renderEyeBuffer({ w, h, eye, fovDeg = 100, elev = [-1.5, 6], fog
       const H = t.heightM;
       const lattice = item.kind === 'pylonLine' || item.kind === 'mast' || item.kind === 'headframe';
       fillShape(item, baseY, H, (y) => {
-        if (item.kind === 'waterTower') return y > H * 0.7 ? 5.5 : 1.6;
+        if (item.kind === 'waterTower') return y > H * 0.86 ? 4.6 * (1 - (y - H * 0.86) / (H * 0.14)) : y > H * 0.68 ? 5.2 : 2.8 + 0.6 * (1 - y / H);
         if (item.kind === 'elevator') return 7;
         if (item.kind === 'chimney') return 2.4 - 0.8 * y / H;
         if (item.kind === 'pylonLine' && Math.abs(y - H * 0.82) < 0.9) return 7;
         return lattice ? 3.2 * (1 - 0.8 * y / H) : 2;
-      }, (y, u) => (lattice ? (Math.abs(u) > 0.7 || (Math.floor(y * 0.7) % 3 === 0) ? [70, 72, 74] : null) : [128, 120, 112]));
+      }, (y, u) => (lattice ? (Math.abs(u) > 0.7 || (Math.floor(y * 0.7) % 3 === 0) ? [70, 72, 74] : null)
+        : item.kind === 'waterTower' ? (y > H * 0.86 ? [70, 60, 56] : [142, 82, 62]) : [128, 120, 112]));
     } else if (item.kind === 'building') {
-      const Wb = Math.max(t.width, t.depth) * 0.5, Hb = t.kind === 'barn' ? 8 : 6.5, roof = t.kind === 'barn' ? 6 : 4.5;
-      fillShape(item, baseY, Hb + roof, (y) => (y < Hb ? Wb : Wb * (1 - (y - Hb) / roof)), (y, u) => {
-        // two faces: the sunlit gable and the side in shade
-        const k = u < 0.25 ? 1 : 0.68;
-        const c = y > Hb ? [128, 66, 52] : [196, 184, 166];
-        return [c[0] * k, c[1] * k, c[2] * k];
+      // its walls and roof by its kind in the region's palette; its width as seen (its yaw against the view), a gable
+      // end seen as a triangle, an eaves side as a ridge
+      const pal = (palette && (palette[t.kind] ?? palette.default)) ?? { wall: [196, 184, 166], roof: [128, 66, 52], wallH: 6.5, roofH: 4.5 };
+      const viewYaw = Math.atan2(t.x - eye.x, t.z - eye.z);
+      const rel = t.yaw - viewYaw;
+      const wAcross = Math.abs(t.width * Math.cos(rel)) + Math.abs(t.depth * Math.sin(rel));
+      const gable = Math.abs(Math.sin(rel)) < 0.5; // looking along its ridge: the gable end faces us
+      const Wb = wAcross * 0.5, Hb = pal.wallH * (t.depth > 16 ? 1.2 : 1), roof = pal.roofH * (t.depth > 16 ? 1.5 : 1);
+      fillShape(item, baseY, Hb + roof, (y) => (y < Hb ? Wb : gable ? Wb * (1 - (y - Hb) / roof) : Wb * (1 - 0.35 * (y - Hb) / roof)), (y, u) => {
+        const lit = u < (gable ? 0.0 : 0.3) ? 1 : 0.66;
+        const c = y > Hb ? pal.roof : pal.wall;
+        return [c[0] * lit, c[1] * lit, c[2] * lit];
       });
     } else if (item.kind === 'castle') {
       fillShape(item, baseY, t.heightM, () => 18, (y, u) => { const k = 0.7 + 0.3 * (0.5 - 0.5 * u); return [150 * k, 146 * k, 136 * k]; });

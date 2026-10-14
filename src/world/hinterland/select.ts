@@ -5,17 +5,18 @@
 import { HINTERLAND_LAB_DRAFTS } from './drafts/index.ts';
 import { hinterlandOverride, type HinterlandConfig, type HinterlandMapConfig } from './spec.ts';
 
-export function selectHinterland(cfg: HinterlandMapConfig | null | undefined, search?: string | null): HinterlandConfig | null {
+export function selectHinterland(cfg: object | null | undefined, search?: string | null): HinterlandConfig | null {
   const override = hinterlandOverride(search);
   if (override === false || !cfg) return null;
-  const block = cfg.hinterland ?? (override === true && cfg.id ? HINTERLAND_LAB_DRAFTS[cfg.id] : undefined);
+  const c = cfg as HinterlandMapConfig;
+  const block = c.hinterland ?? (override === true && c.id ? HINTERLAND_LAB_DRAFTS[c.id] : undefined);
   if (!block) return null;
   if (block.lab && override !== true) return null;
   return block;
 }
 
 /** The map config with the selected block in place (or without one): what resolveHinterlandSpec reads. */
-export function withSelectedHinterland<T extends HinterlandMapConfig>(cfg: T, search?: string | null): T & { hinterland?: HinterlandConfig } {
+export function withSelectedHinterland<T extends object>(cfg: T, search?: string | null): T & { hinterland?: HinterlandConfig } {
   const block = selectHinterland(cfg, search);
   return block ? { ...cfg, hinterland: block } : { ...cfg, hinterland: undefined };
 }

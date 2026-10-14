@@ -80,13 +80,16 @@ const m = both([massif]), mn = both([massif, notch]);
 const inNotch = hinterlandPoint({ azDeg: 0, distM: 2500 });
 assert.ok(mn.heightAt(inNotch.x, inNotch.z, 0) < 0.5 * m.heightAt(inNotch.x, inNotch.z, 0) + 1, 'a notch opens the wall');
 
-// a massif carries summits and gullies along its crest (not a dome)
+// a massif carries a dominant summit over a crest line that rises and falls, its cols real dips (HL-2c: not an even
+// plateau crest with small pyramids sprinkled on top)
 const crest = [];
 for (let u = -1600; u <= 1600; u += 10) crest.push(P(massif, u, 0));
+const sorted = crest.slice().sort((p, q) => p - q), median = sorted[sorted.length >> 1], top = sorted[sorted.length - 1];
 let summits = 0;
 for (let i = 1; i + 1 < crest.length; i++) if (crest[i] > crest[i - 1] && crest[i] > crest[i + 1] && crest[i] > 0.2 * 900) summits++;
-assert.ok(summits >= 4, `a massif's crest has summits and cols (${summits})`);
-assert.ok(Math.max(...crest) > 450 && Math.max(...crest) < 1600, `its height (${Math.max(...crest).toFixed(0)} m for 900)`);
+assert.ok(top - median > 0.12 * 900, `a dominant summit stands clear of the crest (${(top - median).toFixed(0)} m over its median)`);
+assert.ok(summits >= 2, `the crest has summits and cols (${summits})`);
+assert.ok(top > 450 && top < 1600, `its height (${top.toFixed(0)} m for 900)`);
 
 // geology on a mountain: snow over its line, the forest belt only in its band, bare rock on its walls
 const mountainSpec = resolveHinterlandSpec({ id: 'probe-alpine', terrain: { rimH: 30 }, hinterland: { place: 'probe', region: 'alpineCol',
@@ -134,7 +137,7 @@ for (let i = 0; i < 400; i++) {
   hash.update(`${pinRelief.heightAt(p.x, p.z, 0).toFixed(3)};${alp.heightAt(p.x * 3, p.z * 3, 0, 0).toFixed(3)};`);
 }
 const pin = hash.digest('hex').slice(0, 16);
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : 'd3efca3203d2b7ed';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '45d5529957c77fb9';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandLandforms pin: ${pin}`);
 else assert.equal(pin, PIN, 'the landform or far law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 console.log(`hinterlandLandforms.selftest: ok — massif crest ${summits} summits, ${ledges} ledges, jebel wall ${(Math.atan(jWall) * 180 / Math.PI).toFixed(0)}°, alpine far ${maxAlp.toFixed(0)} m`);

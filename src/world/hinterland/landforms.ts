@@ -40,8 +40,8 @@ interface PlacedLandform {
   h: number; salt: number;
   /** 'pos' adds by maximum, 'neg' cuts by minimum, 'notch' scales the positive forms down. */
   mode: 'pos' | 'neg' | 'notch';
-  /** Profile at world (x, z) and local (u, v): 0..1 (times h). */
-  profile(u: number, v: number, x: number, z: number): number;
+  /** Profile at world (x, z) and local (u, v): 0..1 (times h); `texelM` the bake's sample (finer detail left out). */
+  profile(u: number, v: number, x: number, z: number, texelM?: number): number;
   /** 0..1 in a gully at local (u, v) (a massif's couloirs; absent: none). */
   gully?(u: number, v: number): number;
   /** The landform's own geology, merged where it stands (null: the region's). */
@@ -146,6 +146,14 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   const gullyCell = (160 + 80 * (1 - gullies)) * (1 + Math.abs(cfg.heightM) / 2000);
   const gullyDepth = Math.min(0.14 * gullyCell, 0.045 * Math.abs(cfg.heightM)) * (0.4 + 0.6 * gullies);
   const sharp = 1.05 + 0.3 * erosion;
+  // the dominant summits: one, or two on a long mass, on the crest at seeded places along the strike
+  const summitCount = f.halfL > 1.6 * f.halfW ? 2 : 1;
+  const summits: { u: number; v: number; r: number; h: number }[] = [];
+  for (let k = 0; k < summitCount; k++) {
+    const a = ((salt * (0.618 + k * 0.17)) % 1);
+    summits.push({ u: (summitCount === 1 ? -0.25 + 0.5 * a : (k === 0 ? -0.55 : 0.15) + 0.4 * a) * f.halfL, v: 0,
+      r: Math.max(400, Math.min(f.halfL, f.halfW) * 0.55), h: k === 0 ? 0.36 : 0.26 });
+  }
   // (a mass is a ridge with its summits along it, not one cone: its section is measured across the strike, the crest
   // running level along the middle half of its length before it falls to its ends)
   const massQ = (u: number, v: number): number => {
@@ -154,7 +162,7 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     const wander = 1 + 0.18 * lobe(theta, f.salt * 0.013);
     return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.45) / 0.55) / wander);
   };
-  const placed = place(f, 'pos', (u, v, x, z) => {
+  const placed = place(f, 'pos', (u, v, x, z, texelM = 0) => {
     const q = massQ(u, v);
     if (q >= 1) return 0;
     // the section: a talus apron (concave) from the toe, the steep mid-slopes, a rounded shoulder; its mean slope is the
@@ -171,20 +179,34 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
       const nx = 1.6 * qx - 1.2 * qy, ny = 1.2 * qx + 1.6 * qy; qx = nx; qy = ny;
     }
     const ridged = sum / norm;
-    let h = section * (0.74 + 0.42 * (ridged - 0.5) * (0.3 + 0.7 * section * section));
+    // (HL-2c, the coordinator: "an even plateau crest with small pyramids sprinkled on top") the skyline's hierarchy: the
+    // crest line rises and falls ±30 % along the strike, its cols real dips, and one or two dominant summits stand
+    // 400–800 m-class over it (a third of the mass's height), each a pyramid on the crest with its shoulders below
+    const crestLine = 0.64 * (1 + 0.3 * fbm2(u / (0.42 * f.halfL) + oz, ox * 0.37, 3));
+    let peak = 0;
+    for (let k = 0; k < summits.length; k++) {
+      const s = summits[k];
+      const du = (u - s.u) / s.r, dv = (v - s.v) / (s.r * 0.8);
+      const dq = Math.hypot(du, dv);
+      if (dq < 1) peak = Math.max(peak, s.h * Math.pow(1 - dq, 1.5) * (0.92 + 0.08 * Math.cos(Math.atan2(dv, du) * 3 + s.u)));
+    }
+    let h = section * (crestLine + 0.36 * (ridged - 0.5) * (0.3 + 0.7 * section * section)) + peak * section;
     // the gullies: two erosion octaves across the slope (the mass's radial fall), carving the mid-slopes
-    if (gullyDepth > 0 && q > 0.12 && q < 0.95) h -= (gullyDepth / Math.abs(cfg.heightM || 1)) * gullyCut(u, v, q);
+    // (a bake's coarse levels leave out couloirs finer than a third of their spacing: three samples a couloir or none)
+    if (gullyDepth > 0 && q > 0.12 && q < 0.95 && !(texelM > gullyCell * 0.34)) h -= (gullyDepth / Math.abs(cfg.heightM || 1)) * gullyCut(u, v, q, texelM);
     return Math.max(0, h);
   });
   /** 0..1: how deep in a couloir (local u, v) at its radius q (0 on the spurs between them). */
-  function gullyCut(u: number, v: number, q: number): number {
+  function gullyCut(u: number, v: number, q: number, texelM = 0): number {
     const lu = u / f.halfL, lv = v / f.halfW, rl = Math.hypot(lu, lv) || 1;
     // (the fall line is radial: the waves run across it, so their crests run down the face)
     const dx = (lu / rl) * 2.4, dz = (lv / rl) * 2.4;
     erosionOctave(u / gullyCell + ox, v / gullyCell + oz, -dz, dx, (salt * 7919) >>> 0, e);
     let g = e[0];
-    erosionOctave(u / (gullyCell * 0.5) + oz, v / (gullyCell * 0.5) + ox, -dz * 2, dx * 2, (salt * 104729) >>> 0, e);
-    g += 0.5 * e[0];
+    if (!(texelM > gullyCell * 0.17)) {
+      erosionOctave(u / (gullyCell * 0.5) + oz, v / (gullyCell * 0.5) + ox, -dz * 2, dx * 2, (salt * 104729) >>> 0, e);
+      g += 0.5 * e[0];
+    }
     const face = smoothstep(0.12, 0.35, q) * (1 - smoothstep(0.8, 0.95, q));
     return face * Math.max(0, Math.min(1, 0.5 - 0.5 * g));
   }
@@ -330,21 +352,25 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
     }
   });
   if (!placed.length) return null;
+  // (one scratch pair, no allocation per query)
+  const UV: [number, number] = [0, 0];
   const local = (L: PlacedLandform, x: number, z: number): [number, number] | null => {
     if (x < L.minX || x > L.maxX || z < L.minZ || z > L.maxZ) return null;
     const dx = x - L.cx, dz = z - L.cz;
     const u = dx * L.ax + dz * L.az, v = dx * L.az - dz * L.ax;
-    return Math.abs(u) > L.halfL || Math.abs(v) > L.halfW ? null : [u, v];
+    if (Math.abs(u) > L.halfL || Math.abs(v) > L.halfW) return null;
+    UV[0] = u; UV[1] = v;
+    return UV;
   };
   // (the last point's dominant landform and its profile, for the geology hook that follows a height query)
   return {
-    heightAt(x: number, z: number): number {
+    heightAt(x: number, z: number, _base: number, texelM = 0): number {
       let pos = 0, neg = 0, keep = 1;
       for (let i = 0; i < placed.length; i++) {
         const L = placed[i];
         const uv = local(L, x, z);
         if (!uv) continue;
-        const p = L.profile(uv[0], uv[1], x, z);
+        const p = L.profile(uv[0], uv[1], x, z, texelM);
         if (p <= 0) continue;
         if (L.mode === 'notch') keep = Math.min(keep, 1 - L.h * p);
         else {
