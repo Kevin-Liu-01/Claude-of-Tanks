@@ -743,11 +743,15 @@ try {
       path: v2?.active === true && v2?.session?.phase === 'match' ? 'auto' : rejoin ? 'rejoin' : null,
       v2: !!v2, active: v2?.active ?? null, sessionPhase: v2?.session?.phase ?? null, roomPhase: v2?.room?.phase ?? null,
       lobby: document.querySelector('.cot-play .lobby')?.classList.contains('show') ?? false, rejoin,
+      inRoom: /\b[A-Z0-9]{6}\b/.test(document.querySelector('.cot-play .lobby.show')?.textContent ?? '') && (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) > 0,
       loader: document.querySelector('.cot-bl')?.classList.contains('on') ?? false, failure: window.__NETWORK_ENTRY_FAILURE?.message ?? null,
     };
   };
   // Sampled rather than a blind wait: the resumed seat's timeline (the runtime appearing, the session entering, the lobby and
   // its Rejoin) goes into the report whichever way the return goes and however slow the page is under the host's load.
+  // (2026-10-13) both band-hold runs ended by elimination before or while A2 returned (bots against idle seats): a match
+  // the room ended is the product's answer, not a failed return
+  const matchEnded = () => (!live ? report.roomEvents.find((event) => event.kind === 'match_ended') ?? null : null);
   const returnTimeline = [];
   const returnStartedAt = performance.now();
   let returned = null;
@@ -759,9 +763,10 @@ try {
       const key = JSON.stringify(state);
       if (key !== lastState) { returnTimeline.push({ atMs: Math.round(performance.now() - returnStartedAt), ...state }); lastState = key; }
       if (state.path) { returned = state.path; break; }
+      if (matchEnded() && (state.inRoom || state.lobby)) { returned = 'match-ended'; break; }
       // (2026-10-13) the private run's A2 sat in the lobby, never in the room, for 180 s: past 60 s the harness joins by
       // code as a player would, and records that the invite did not bring the seat back by itself
-      if (!state.roomPhase && !state.sessionPhase && !manualJoin && performance.now() - returnStartedAt > 60_000) {
+      if (!state.roomPhase && !state.sessionPhase && !state.inRoom && !manualJoin && performance.now() - returnStartedAt > 60_000) {
         manualJoin = true;
         report.findings.push(`A2 (${roomKind}) was not back in the room 60 s after reopening the invite; joined by code`);
         await pages.a2.evaluate((code) => {
@@ -778,18 +783,21 @@ try {
   }
   report.rejoin = { path: returned, timeline: returnTimeline };
   if (!returned) throw new Error(`A2 never returned within 180 s: ${JSON.stringify(returnTimeline.slice(-3))}`);
+  if (returned === 'match-ended') {
+    const ended = matchEnded();
+    report.findings.push(`the match ended (${ended.reason}) at ${Math.round(ended.atMs / 1000)} s before A2 was back; A2 is in the room's lobby`);
+  }
   if (returned === 'rejoin') await activate(pages.a2,'.cot-play [data-action="rejoin"]');
   step('a2-returned', { path: returned, timeline: returnTimeline });
   let a2Attempts = 1;
   // (2026-10-13) a long run under load lets the bots finish the match while A2 enters: the room ends it, and A2 must show
   // "The match ended while you were joining" — the product's answer, not a failed return
-  const matchEnded = () => report.roomEvents.find((event) => event.kind === 'match_ended') ?? null;
   const endedNotice = () => pages.a2.evaluate(() => document.querySelector('.cot-play .status')?.textContent ?? window.__NETWORK_ENTRY_FAILURE?.message ?? '').catch(() => '');
-  let endedDuringReturn = null;
-  try {
+  let endedDuringReturn = returned === 'match-ended' ? { atMs: matchEnded().atMs, result: matchEnded().result, reason: matchEnded().reason, notice: null } : null;
+  if (!endedDuringReturn) try {
     await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
   } catch (error) {
-    const ended = !live ? matchEnded() : null;
+    const ended = matchEnded();
     const notice = ended ? await endedNotice() : '';
     if (ended && /ended/i.test(notice)) {
       endedDuringReturn = { atMs: ended.atMs, result: ended.result, reason: ended.reason, notice };
@@ -808,6 +816,7 @@ try {
   }
   if (endedDuringReturn) {
     report.rejoin = { ...report.rejoin, endedDuringReturn };
+    report.inconclusive = [...(report.inconclusive ?? []), 'rejoin: the room ended the match before A2 was back in it'];
   } else {
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
@@ -848,6 +857,7 @@ else {
     `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, ${report.rejoin?.attempts ?? '-'} attempt(s), compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
   for (const finding of report.findings) console.log(`  FINDING: ${finding}`);
+  for (const item of report.inconclusive ?? []) console.log(`  INCONCLUSIVE: ${item}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
   console.log(report.pass ? 'mp p2p e2e: PASS' : 'mp p2p e2e: FAIL');
 }
