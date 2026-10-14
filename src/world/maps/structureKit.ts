@@ -2428,7 +2428,7 @@ function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
   for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
     const z0 = -d / 2 + k * bay, z1 = z0 + bay, ex = side * (w / 2), wx = side * (w / 2 + 0.05);
     // the roof cloth from the eave to the ridge, sagging between the bay lines
-    colored(out, clothPanel([ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1], 4, 6, 0.09, [0, -1, 0]), k % 2 ? p[1] : p[0], r, 0.012);
+    colored(out, clothPanel([ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1], 4, 6, 0.12, [0, -1, 0]), k % 2 ? p[1] : p[0], r, 0.012);
     // the wall cloth pegged out, leaning a little from the eave to its foot (a panel a bay)
     const wallPanel = box(0.04, wall, bay - 0.03);
     wallPanel.rotateZ(side * 0.1);
@@ -2440,6 +2440,12 @@ function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
   // the door: the dark inside, its two flaps rolled up and tied at the sides of the opening
   colored(out, box(1.1, wall + rise * 0.55, 0.02).translate(0, (wall + rise * 0.55) / 2, d / 2 - 0.05), dark, r, 0.02);
   for (const s of [-1, 1]) colored(out, box(0.15, wall + rise * 0.45, 0.13).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.03), p[1], r, 0.05);
+  // the fly over the door: canvas out from the gable on two poles
+  const fz = d / 2, flyIn = wall + rise * 0.62, flyOut = wall + rise * 0.48, fo = 1.35, fw = 1.0;
+  colored(out, clothPanel([-fw, flyIn, fz + 0.02], [-fw, flyOut, fz + fo], [fw, flyOut, fz + fo], [fw, flyIn, fz + 0.02], 4, 4, 0.08, [0, -1, 0]), p[1], r, 0.012);
+  for (const s of [-1, 1]) {
+    colored(out, box(0.06, flyOut + 0.06, 0.06).translate(s * fw, (flyOut + 0.06) / 2, fz + fo), p[2], r, 0.03);
+  }
   // the ridge pole on its uprights (the walls' poles inside the cloth)
   colored(out, box(0.08, 0.08, d + 0.4).translate(0, ridgeY, 0), p[2], r, 0.03);
   for (const zs of [-1, 1]) colored(out, box(0.1, ridgeY + 0.35, 0.1).translate(0, (ridgeY + 0.35) / 2, zs * (d / 2 + 0.1)), p[2], r, 0.03);
@@ -2576,7 +2582,7 @@ function cellHash(a: number, b: number): number {
 // The old relay build painted 260 vertices from the kit's stream (walls 24, roof 24, door 24, roof block 24, two legs 48,
 // the pole 52, the beacon 64): the new build draws the same count, so every pool after it keeps its paint and debris.
 const RELAY_STREAM_DRAWS = 260;
-const RELAY_W = 6.2, RELAY_D = 6.8, RELAY_H = 4.2, RELAY_PLINTH_TOP = 0.15;
+const RELAY_W = 6.2, RELAY_D = 6.8, RELAY_H = 4.2, RELAY_PLINTH_TOP = 0.42;
 const RELAY_CONCRETE = 0x83847f, RELAY_ROOF = 0x70777b, RELAY_ROOF_RIB = 0x7d8488;
 
 /**
@@ -2674,7 +2680,7 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     const x = -(w + 0.6) / 2 + 0.15 + r * ((w + 0.3) / (ribs - 1));
     put(box(0.06, 0.035, d + 0.6).translate(x, roofTop + 0.0175, 0), RELAY_ROOF_RIB, 'hut-roof', 0.03);
   }
-  for (const sz of [-1, 1]) put(box(w + 0.65, 0.17, 0.025).translate(0, h + 0.04, sz * (d / 2 + 0.3125)), p[1], 'hut-roof', 0.02);
+  for (const sz of [-1, 1]) put(box(w + 0.65, 0.3, 0.05).translate(0, h + 0.0, sz * (d / 2 + 0.325)), p[2], 'hut-roof', 0.02);
   for (const sx of [-1, 1]) put(box(0.025, 0.17, d + 0.65).translate(sx * (w / 2 + 0.3125), h + 0.04, 0), p[1], 'hut-roof', 0.02);
   // the cable tray from the mast's pad to the front eave, the conduit down the front to the entry box
   put(box(2.0, 0.05, 0.14).translate(1.75, roofTop + 0.06, 0.55), 0x5b6165, 'hut-cable', 0.02);
@@ -2704,8 +2710,13 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     put(f(1.3, 0.07, 0.24, -1.2, 1.97, 0.12), RELAY_CONCRETE, 'hut-windows', 0.02);
     for (let k = 0; k < 4; k++) put(f(0.025, 0.8, 0.025, -1.575 + k * 0.25, 2.5, 0.12), 0x2a2d30, 'hut-windows', 0.02);
   }
-  put(pitchSkillionRoof(slab(5.4, 0.06, 0.55), 'z', 1, 0.15).translate(0, 3.05, d / 2 + 0.275), p[1], 'hut-hood', 0.03);
-  for (const x of [-2.6, 2.55]) put(bar([x, 2.7, d / 2 + 0.01], [x, 2.99, d / 2 + 0.48], 0.05, 0.05), p[2], 'hut-hood', 0.02);
+  put(pitchSkillionRoof(slab(5.6, 0.1, 0.85), 'z', 1, 0.16).translate(0, 3.1, d / 2 + 0.425), p[1], 'hut-hood', 0.03);
+  put(box(5.64, 0.18, 0.05).translate(0, 2.98, d / 2 + 0.86), p[2], 'hut-hood', 0.02);
+  for (const x of [-2.6, -0.92, 0.92, 2.55]) put(bar([x, 2.6, d / 2 + 0.01], [x, 3.02, d / 2 + 0.78], 0.06, 0.06), p[2], 'hut-hood', 0.02);
+  // the warning plate and the meter cabinet on the front by the entry box
+  put(box(0.5, 0.36, 0.02).translate(-2.75, 2.2, d / 2 + 0.01), 0xd8b02a, 'hut-hood', 0.02);
+  put(box(0.6, 0.9, 0.3).translate(-2.7, y0 + 0.45, d / 2 + 0.19), 0x4f5559, 'hut-hood', 0.02);
+  put(scaleUV(box(0.72, y0, 0.42), 0.08, 0.08).translate(-2.7, y0 / 2, d / 2 + 0.2), RELAY_CONCRETE, 'hut-hood', 0.04);
   const geometry = mergeConnectedStructure('relaystation', out);
   geometry.userData.fracture = relayFractureHooks(out, pieces);
   return geometry;
