@@ -2165,6 +2165,10 @@ const REGIONAL_PAL = {
   concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
   // the Maurienne's larch, weathered silver-brown (the Savoyard kit's mazot)
   larch: [0x6b5a48, 0x857055, 0x3d3329],
+  // the Virgin Lands: the settlers' vagonchik (painted boards, its sheet roof, the chassis' black) and the saman (sun-dried
+  // clay brick, its paler clay plaster, the poles' grey)
+  vagon: [0x6c7a64, 0x8e928c, 0x2e302e],
+  saman: [0x9c8464, 0xb59e7a, 0x5e5446],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2531,6 +2535,152 @@ function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('checkpointhut', out);
 }
 
+/** A straight member from a to b (the steppe crafts' struts and poles), `w` x `h` in section, its long axis a to b. */
+function steppeStrut(a: readonly [number, number, number], b: readonly [number, number, number], w: number, h: number): THREE.BufferGeometry {
+  const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], len = Math.hypot(dx, dy, dz);
+  const geo = box(w, h, len);
+  const dir = new THREE.Vector3(dx, dy, dz).normalize();
+  geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir));
+  return geo.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+}
+
+/**
+ * The tselinniki's vagonchik (the props census, 2026-10-14: the steppe's field hut, which landed on Tarkhan Steppe in
+ * its generic form): the settlers' living wagon of the Virgin Lands brigades — a board body painted green-grey on a
+ * steel chassis with two axles, its roof of sheet arched over the body in planks, the door at the front end up its
+ * steps, two windows a side in their frames, the stove's pipe through the roof, the drawbar on its jack stand; a plank
+ * awning on two poles over a bench along one side, a water barrel on its cradle along the other. Inside the field hut's
+ * footprint and height (4.6 x 7.0 x 4.1).
+ */
+function makeTselinaVagonchik(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.vagon, wood = PAL.timber;
+  const W = 2.5, L = 6.0, floor = 0.75, wallH = 2.1, top = floor + wallH;
+  // the running gear: two axles on their wheels, the chassis beams on them, the drawbar and its jack
+  for (const z of [-1.7, 1.7]) {
+    colored(out, box(2.3, 0.1, 0.1).translate(0, 0.42, z), p[2], rng, 0.03);
+    for (const x of [-1.05, 1.05]) {
+      colored(out, cylinder(0.42, 0.42, 0.2, 14).rotateZ(Math.PI / 2).translate(x, 0.42, z), 0x262624, rng, 0.03);
+      colored(out, cylinder(0.2, 0.2, 0.22, 10).rotateZ(Math.PI / 2).translate(x, 0.42, z), 0x4a4c48, rng, 0.03);
+    }
+  }
+  for (const x of [-0.8, 0.8]) colored(out, box(0.12, 0.2, L + 0.2).translate(x, 0.57, 0), p[2], rng, 0.03);
+  for (const x of [-0.8, 0.8]) colored(out, steppeStrut([x, 0.57, -L / 2 - 0.05], [0, 0.55, -L / 2 - 0.42], 0.1, 0.12), p[2], rng, 0.03);
+  colored(out, cylinder(0.05, 0.05, 0.52, 8).translate(0, 0.27, -L / 2 - 0.38), p[2], rng, 0.03);
+  colored(out, box(0.2, 0.04, 0.2).translate(0, 0.02, -L / 2 - 0.38), p[2], rng, 0.03);
+  // the body: its floor on the chassis, the board walls, the corner boards and the belt rail
+  colored(out, box(W + 0.1, 0.1, L + 0.1).translate(0, floor - 0.05 - 0.03, 0), wood[2], rng, 0.05);
+  colored(out, box(W, wallH, L).translate(0, floor + wallH / 2, 0), p[0], rng, 0.06);
+  for (const x of [-1, 1]) for (const z of [-1, 1]) colored(out, box(0.1, wallH, 0.1).translate(x * (W / 2 + 0.01), floor + wallH / 2, z * (L / 2 + 0.01)), p[1], rng, 0.04);
+  for (const x of [-1, 1]) colored(out, box(0.04, 0.1, L).translate(x * (W / 2 + 0.02), floor + 0.95, 0), p[1], rng, 0.04);
+  // the boards' battens down the long sides
+  for (const x of [-1, 1]) for (let z = -L / 2 + 0.45; z < L / 2 - 0.3; z += 0.5) colored(out, box(0.03, wallH - 0.06, 0.06).translate(x * (W / 2 + 0.015), floor + wallH / 2, z), shadeHex(p[0], 0.88), rng, 0.04);
+  // the windows: two a side, framed, their glass set back in the frame
+  for (const x of [-1, 1]) for (const z of [-1.4, 1.2]) {
+    colored(out, box(0.06, 0.78, 0.92).translate(x * (W / 2 + 0.035), floor + 1.45, z), 0xd8d4c8, rng, 0.03);
+    colored(out, markWorldAperture(box(0.04, 0.62, 0.76), [x, 0, 0]).translate(x * (W / 2 + 0.05), floor + 1.45, z), 0x52656a, rng, 0.03);
+    colored(out, box(0.07, 0.05, 0.76).translate(x * (W / 2 + 0.06), floor + 1.5, z), 0xd8d4c8, rng, 0.03);
+  }
+  // the door at the front end in its frame, a small window in the back end
+  colored(out, box(0.96, 1.98, 0.06).translate(-0.5, floor + 0.99, L / 2 + 0.03), 0xd8d4c8, rng, 0.03);
+  colored(out, box(0.8, 1.9, 0.05).translate(-0.5, floor + 0.95, L / 2 + 0.06), shadeHex(p[0], 0.8), rng, 0.04);
+  colored(out, box(0.07, 0.07, 0.1).translate(-0.22, floor + 0.95, L / 2 + 0.1), p[2], rng, 0.02);
+  colored(out, box(0.7, 0.6, 0.06).translate(0.3, floor + 1.45, -L / 2 - 0.03), 0xd8d4c8, rng, 0.03);
+  colored(out, markWorldAperture(box(0.56, 0.46, 0.04), [0, 0, -1]).translate(0.3, floor + 1.45, -L / 2 - 0.05), 0x52656a, rng, 0.03);
+  // the steps to the door: the landing on its two legs and two treads down to the ground
+  colored(out, box(1.1, 0.08, 0.5).translate(-0.5, floor - 0.04, L / 2 + 0.27), wood[1], rng, 0.05);
+  for (const x of [-0.98, -0.02]) colored(out, box(0.08, floor - 0.08, 0.08).translate(x, (floor - 0.08) / 2, L / 2 + 0.47), wood[2], rng, 0.05);
+  for (const [y, z] of [[0.24, L / 2 + 0.66], [0.49, L / 2 + 0.58]] as const) colored(out, box(1.0, 0.06, 0.26).translate(-0.5, y, z), wood[1], rng, 0.05);
+  for (const x of [-1.02, 0.02]) colored(out, steppeStrut([x, 0, L / 2 + 0.8], [x, floor - 0.08, L / 2 + 0.5], 0.06, 0.12), wood[2], rng, 0.05);
+  // the roof: sheet arched over the body in five planks, oversailing it a little at the eaves and the ends
+  const R = 2.0, half = W / 2 + 0.1, rise = R - Math.sqrt(R * R - half * half), cy = top + rise - R;
+  const a0 = Math.asin(half / R);
+  for (let k = 0; k < 5; k++) {
+    const t0 = -a0 + (2 * a0) * k / 5, t1 = -a0 + (2 * a0) * (k + 1) / 5, tm = (t0 + t1) / 2;
+    const chord = 2 * R * Math.sin((t1 - t0) / 2) + 0.02;
+    const plank = slab(chord, 0.06, L + 0.3);
+    plank.rotateZ(-tm);
+    colored(out, plank.translate(Math.sin(tm) * (R * Math.cos((t1 - t0) / 2) + 0.03), cy + Math.cos(tm) * (R * Math.cos((t1 - t0) / 2) + 0.03), 0), p[1], rng, 0.05);
+  }
+  // the end walls carried up into the arch (two boards each end under the roof)
+  for (const z of [-1, 1]) colored(out, box(W - 0.3, rise * 0.8, 0.06).translate(0, top + rise * 0.4 - 0.02, z * (L / 2 - 0.04)), p[0], rng, 0.05);
+  // the stove's pipe through the roof, its cap
+  colored(out, cylinder(0.07, 0.07, 1.25, 8).translate(0.55, top + 0.45, -1.9), 0x3a3a38, rng, 0.03);
+  colored(out, cylinder(0.14, 0.1, 0.12, 8).translate(0.55, top + 1.12, -1.9), 0x3a3a38, rng, 0.03);
+  // the awning along +x on two poles over the bench
+  const ax = W / 2 + 0.95;
+  for (const z of [-1.35, 1.35]) colored(out, cylinder(0.05, 0.05, 2.3, 8).translate(ax, 1.15, z), wood[2], rng, 0.04);
+  colored(out, steppeStrut([W / 2 + 0.02, top - 0.12, 0], [ax + 0.05, 2.3, 0], 2.9, 0.05), wood[1], rng, 0.05);
+  colored(out, box(0.32, 0.05, 2.2).translate(W / 2 + 0.6, 0.45, 0), wood[1], rng, 0.05);
+  for (const z of [-0.95, 0.95]) colored(out, box(0.06, 0.43, 0.06).translate(W / 2 + 0.6, 0.215, z), wood[2], rng, 0.05);
+  // the water barrel on its cradle along -x
+  colored(out, cylinder(0.42, 0.42, 1.15, 12).rotateX(Math.PI / 2).translate(-W / 2 - 0.58, 0.82, 1.2), 0x5a6a5e, rng, 0.04);
+  for (const z of [0.8, 1.6]) colored(out, box(0.9, 0.4, 0.1).translate(-W / 2 - 0.58, 0.2, z), wood[2], rng, 0.05);
+  return mergeConnectedStructure('fieldhut', out);
+}
+
+/**
+ * The steppe's lean-to (the props census, 2026-10-14: the lean-to landed on Tarkhan Steppe in its generic form): a
+ * shelter of saman — sun-dried clay brick laid in courses and plastered in clay — a back wall with its two returns
+ * stepping down, poles laid from the back wall to a log beam on three round posts under a roof of reed and clay; the
+ * winter's kizyak (dung bricks) stacked under it, a cart wheel against the return. Inside the lean-to's footprint and
+ * height (5.8 x 5.0 x 3.1).
+ */
+function makeTselinaSamanLeanto(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.saman;
+  const backZ = -2.05, t = 0.42, wallH = 2.45, half = 2.75;
+  // the back wall in four courses of saman (each a little proud of the one over it), its clay coping
+  for (let k = 0; k < 4; k++) {
+    const y0 = k * wallH / 4, h = wallH / 4;
+    colored(out, box(2 * half, h, t - k * 0.02).translate(0, y0 + h / 2, backZ), k % 2 ? p[0] : shadeHex(p[0], 0.94), rng, 0.05);
+  }
+  colored(out, box(2 * half + 0.1, 0.1, t + 0.06).translate(0, wallH + 0.05, backZ), p[1], rng, 0.04);
+  // the returns: from the back wall forward, stepping down in two lengths
+  for (const side of [-1, 1]) {
+    const x = side * (half - t / 2);
+    colored(out, box(t, wallH, 1.2).translate(x, wallH / 2, backZ + t / 2 + 0.6), p[0], rng, 0.05);
+    colored(out, box(t, wallH * 0.62, 0.9).translate(x, wallH * 0.31, backZ + t / 2 + 1.65), p[0], rng, 0.05);
+    colored(out, box(t + 0.06, 0.08, 0.9).translate(x, wallH * 0.62 + 0.04, backZ + t / 2 + 1.65), p[1], rng, 0.04);
+  }
+  // the front: three round posts on stone pads carrying the log beam
+  const frontZ = 1.85, beamY = 2.0;
+  for (const x of [-2.4, 0, 2.4]) {
+    colored(out, box(0.36, 0.1, 0.36).translate(x, 0.05, frontZ), 0x7a756a, rng, 0.04);
+    colored(out, cylinder(0.09, 0.1, beamY - 0.1, 8).translate(x, 0.1 + (beamY - 0.1) / 2, frontZ), p[2], rng, 0.05);
+  }
+  colored(out, cylinder(0.12, 0.12, 5.3, 8).rotateZ(Math.PI / 2).translate(0, beamY + 0.12, frontZ), p[2], rng, 0.05);
+  // the poles from the coping to the beam, and the reed-and-clay roof over them, falling to the front
+  const rise = wallH + 0.1 - (beamY + 0.24), run = frontZ - backZ, angle = Math.atan2(rise, run);
+  for (let x = -2.5; x <= 2.51; x += 0.62) colored(out, steppeStrut([x, wallH + 0.14, backZ], [x, beamY + 0.25, frontZ + 0.12], 0.1, 0.1), p[2], rng, 0.05);
+  const roof = pitchSkillionRoof(slab(5.8, 0.16, Math.hypot(rise, run) + 1.0), 'z', 1, angle);
+  colored(out, roof.translate(0, (wallH + 0.14 + beamY + 0.25) / 2 + 0.12 - 0.15 * Math.tan(angle), (backZ + frontZ) / 2 + 0.32), 0x8c7a56, rng, 0.08);
+  // the kizyak stacked against the back wall, a cart wheel against the left return
+  for (let k = 0; k < 3; k++) colored(out, box(1.4 - k * 0.3, 0.32, 0.9 - k * 0.15).translate(-1.2 + k * 0.05, 0.16 + k * 0.32, backZ + t / 2 + 0.47), 0x6a5a44, rng, 0.08);
+  colored(out, box(1.3, 0.64, 0.8).translate(1.0, 0.32, backZ + t / 2 + 0.42), 0x6a5a44, rng, 0.08);
+  const wheel = cylinder(0.62, 0.62, 0.1, 14).rotateZ(Math.PI / 2);
+  wheel.rotateY(0.25);
+  colored(out, wheel.translate(-half + t + 0.08, 0.62, 0.15), p[2], rng, 0.05);
+  return mergeConnectedStructure('leanto', out);
+}
+
+/** A hex colour shaded by k (the steppe crafts' battens and courses). */
+function shadeHex(hex: number, k: number): number {
+  const r = Math.min(255, Math.round(((hex >> 16) & 255) * k)), g = Math.min(255, Math.round(((hex >> 8) & 255) * k)), b = Math.min(255, Math.round((hex & 255) * k));
+  return (r << 16) | (g << 8) | b;
+}
+
+/**
+ * A kit's variant that spends its family's own build first (props.ts's stream keeps every draw the generic form takes,
+ * so nothing placed after it moves) and paints from a stream forked off that build's first colour.
+ */
+function spentVariant(key: string, craft: LightStructureBuilder): LightStructureBuilder {
+  return (rng) => {
+    const generic = DESTRUCTIBLE_BUILDING_TYPES[key].build(rng);
+    const fork = forkedRng(generic.getAttribute('color')?.getX(0) ?? 0.5);
+    generic.dispose();
+    return craft(fork);
+  };
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2572,6 +2722,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     // (Wadi Rum's barrack and post are the map's own structure variants on its plaster since the Redrock lane's round 10:
     // maps/regional/wadiRumPosts.ts, named in badlands.ts props.structureVariants)
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
+    // (the props census, 2026-10-14) the Virgin Lands: the field hut is the brigade's vagonchik, the lean-to of saman
+    tselina: Object.freeze({
+      fieldhut: variant('fieldhut', REGIONAL_PAL.vagon, spentVariant('fieldhut', makeTselinaVagonchik)),
+      leanto: variant('leanto', REGIONAL_PAL.saman, spentVariant('leanto', makeTselinaSamanLeanto)),
+    }),
     savoyard: Object.freeze({
       alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
       // (round 4) the blind on its stilts is the hamlet's mazot on its staddle stones

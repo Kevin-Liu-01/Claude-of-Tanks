@@ -10,7 +10,7 @@
 // steel; the boiler house's banded steel stack; the fuel store's tanks on their saddles and the brigades' living wagons
 // on sledge runners; the reed-thatched or sheet-roofed sheep barns (koshary) of the steppe herds; a shelled house.
 import {
-  PartSink, faceBox, facePanel, pick, rgb, shade,
+  PartSink, faceBox, facePanel, facePoint, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
@@ -67,8 +67,16 @@ function steelGate(sink: PartSink, face: Face, u: number, y: number, w: number, 
   faceBox(sink, 'structureMetal', face, u, y + h / 2, go + 0.045, 0.06, h - 0.1, 0.03, { colour: rib, decor: true });
   for (const t of [0.22, 0.78]) faceBox(sink, 'structureMetal', face, u, y + h * t, go + 0.045, w - 0.16, 0.07, 0.03, { colour: rib, decor: true, fine: true });
   for (const t of [0.25, 0.75]) faceBox(sink, 'structureMetal', face, u - w / 2 + w * t, y + h / 2, go + 0.045, 0.06, h - 0.16, 0.03, { colour: rib, decor: true, fine: true });
-  // the wicket door in one leaf
-  faceBox(sink, 'dark', face, u - w / 4, y + 0.95, go + 0.034, 0.78, 1.8, 0.01, { decor: true });
+  // (the props census, 2026-10-14: no painted wickets) the wicket door in one leaf: its angle-iron frame standing out of
+  // the leaf, its own sheet set back inside it, two hinge knuckles and a handle
+  const wu = u - w / 4, ww = Math.min(0.8, w / 2 - 0.3), wh = Math.min(1.85, h - 0.4), wy = y + 0.12, f = 0.05;
+  const fc = { colour: shade(colour, 0.7), decor: true, fineSides: true } as const;
+  for (const side of [-1, 1]) faceBox(sink, 'structureMetal', face, wu + side * (ww / 2 + f / 2), wy + wh / 2, go + 0.05, f, wh + 2 * f, 0.03, fc);
+  faceBox(sink, 'structureMetal', face, wu, wy + wh + f / 2, go + 0.05, ww, f, 0.03, fc);
+  faceBox(sink, 'structureMetal', face, wu, wy - f / 2, go + 0.05, ww, f, 0.03, fc);
+  faceBox(sink, 'structureMetal', face, wu, wy + wh / 2, go + 0.036, ww - 0.01, wh - 0.01, 0.008, { colour: shade(colour, 1.05), decor: true });
+  for (const t of [0.15, 0.85]) sink.cylinder('structureMetal', facePoint(face, wu - ww / 2 - f, wy + wh * t - 0.06, go + 0.07), 'y', 0.12, 0.02, 6, { colour: STEEL_DARK, decor: true, fine: true });
+  faceBox(sink, 'structureMetal', face, wu + ww / 2 - 0.1, wy + wh * 0.5, go + 0.06, 0.04, 0.16, 0.04, { colour: STEEL_DARK, decor: true, fine: true });
 }
 
 function dialect(st: TselinaState, gate?: Rgb): HouseDialect {
@@ -485,7 +493,11 @@ const workshop = (ctx: RegionalBuildContext): RegionalParts => {
 
 /**
  * The grain store (zernosklad): a long low building of whitewashed saman or silicate brick filling the lot under a gable
- * of asbestos sheet, plank double doors down both long sides each with its loading step, louvred vents in the gables.
+ * of asbestos sheet, plank double doors down both long sides, louvred vents in the gables. (The props census,
+ * 2026-10-14: "the grain store with eaves, buttresses and ramps") The long walls stand against the grain's thrust on
+ * brick buttresses between the doors, stepped back once and weathered at the top; the sheet roof oversails the walls
+ * on its rafter feet with a fascia board and a gutter; each door is reached by a concrete ramp the lorries back up, its
+ * kerbs either side.
  */
 const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
   const sink = new PartSink(uvOffset(ctx));
@@ -493,32 +505,72 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
   const fp = footprint(ctx);
   const wall: RegionalBucket = rng() < 0.3 ? 'plaster3' : 'plaster';
   onLot(sink, fp, (Wl, Ll) => {
+    // (the body fills the lot, the coordinator's rule; the buttresses stand half a metre out of it)
     const W = Wl - 0.1, D = Ll - 0.1;
     const doors: Opening[] = [];
     for (const face of ['left', 'right'] as const) {
       const n = Math.max(2, Math.floor(D / 7));
       for (let k = 0; k < n; k++) doors.push({ face, storey: 0, kind: 'door', u: -D / 2 + D * (k + 0.5) / n, w: 2.0, y0: 0, h: 2.4 });
     }
+    const plinth = 0.6, wallH = 3.4;
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.6, out: 0.05, bucket: 'plaster2' }, storeys: [{ h: 3.4, wall }],
-      roof: sheetRoof('gable', 20, false, 0.6, 0.4), gableBucket: wall, openings: doors, chimneys: [], gutters: null, verge: null,
+      w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'plaster2' }, storeys: [{ h: wallH, wall }],
+      roof: sheetRoof('gable', 20, false, 0.6, 0.4), gableBucket: wall, openings: doors, chimneys: [],
+      gutters: { colour: rgb(0x8a8e8c) }, verge: null, rafters: shade(PLANK, 0.8),
       spall: wall === 'plaster' ? null : undefined,
     }, {
       window: () => {},
       door: (s, face, o, y0) => {
         const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
         for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * o.w / 4, y0 + o.y0 + o.h / 2, go, o.w / 2 - 0.03, o.h, 0.05, { colour: PLANK, decor: true });
-        faceBox(s, 'plaster2', face, o.u, 0.3, 0.45, o.w + 0.8, 0.6, 0.9, { decor: true });
+        // the ramp from the yard to the threshold (the plinth's height), its kerbs either side
+        ramp(s, face, o.u, o.w + 0.6, plinth, 0.5, 'plaster2');
       },
     });
+    // the buttresses: on the long walls, between the doors and at the ends, stepped back once and weathered
+    for (const name of ['left', 'right'] as const) {
+      const f = frame.faces[name], us: number[] = [];
+      const ds = doors.filter((o) => o.face === name).map((o) => o.u);
+      const edges = [-D / 2 + 0.35, ...ds.slice(1).map((u, k) => (u + ds[k]) / 2), D / 2 - 0.35];
+      for (const u of edges) us.push(u);
+      for (const u of us) {
+        const h = plinth + wallH;
+        faceBox(sink, 'stone', f, u, h * 0.3 - 0.15, 0.25, 0.64, h * 0.6 + 0.3, 0.5, {});
+        faceBox(sink, 'stone', f, u, h * 0.72, 0.16, 0.56, h * 0.24, 0.32, {});
+        // the weathering: a sloped cap shedding off the upper step
+        const a = facePoint(f, u - 0.28, h * 0.84, 0.32), b = facePoint(f, u + 0.28, h * 0.84, 0.32);
+        const c = facePoint(f, u + 0.28, h * 0.84 + 0.22, 0), d = facePoint(f, u - 0.28, h * 0.84 + 0.22, 0);
+        sink.quad('stone', a, b, c, d, { decor: true });
+        sink.polygon('stone', [facePoint(f, u - 0.28, h * 0.84, 0), a, d], { decor: true });
+        sink.polygon('stone', [facePoint(f, u + 0.28, h * 0.84, 0), c, b], { decor: true });
+      }
+    }
     for (const f of [frame.faces.front, frame.faces.back]) {
       const vy = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.4;
       faceBox(sink, 'dark', f, 0, vy, 0.01, 1.2, 0.7, 0.02, { decor: true });
-      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, vy - 0.27 + k * 0.18, 0.04, 1.2, 0.07, 0.06, { colour: PLANK, decor: true, fine: true });
+      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, vy - 0.27 + k * 0.18, 0.06, 1.2, 0.07, 0.06, { colour: PLANK, decor: true, fine: true });
     }
   });
   return sink.finish();
 };
+
+/**
+ * A loading ramp before a door on `face`: a concrete wedge `w` wide from the threshold at `h` down to the yard over
+ * `h / slope` metres, its top sloping out, its sides and nose, and a low kerb along each side (dressing, as the step it
+ * replaces).
+ */
+function ramp(sink: PartSink, face: Face, u: number, w: number, h: number, slope: number, bucket: RegionalBucket): void {
+  const run = h / slope, P = (uu: number, y: number, o: number): Vec3 => facePoint(face, uu, y, o);
+  const u0 = u - w / 2, u1 = u + w / 2, dec = { decor: true } as const;
+  // the top, sloping down and out; the sides (triangles); the nose a few centimetres into the ground
+  sink.quad(bucket, P(u0, h, 0), P(u0, -0.05, run), P(u1, -0.05, run), P(u1, h, 0), dec);
+  sink.polygon(bucket, [P(u0, -0.05, 0), P(u0, -0.05, run), P(u0, h, 0)], dec);
+  sink.polygon(bucket, [P(u1, -0.05, 0), P(u1, h, 0), P(u1, -0.05, run)], dec);
+  for (const side of [-1, 1]) {
+    const uk = side < 0 ? u0 + 0.08 : u1 - 0.08;
+    sink.member(bucket, P(uk, h + 0.08, 0.02), P(uk, 0.06, run - 0.05), 0.16, 0.14, [0, 1, 0], dec, 0.04);
+  }
+}
 
 /**
  * The warehouse lots: the widest (16 m and more) is the station's long grain store, laid along the lot's long side
@@ -664,12 +716,20 @@ const rozhnovsky: RegionalBuilder = (ctx) => {
   const R = clamp(half * 0.22, 0.55, 0.85), Rt = clamp(half - 0.4, 1.6, 2.6);
   const H = clamp(ctx.info.h + 3, 14, 20), Ht = 3.2 + rng() * 0.6, hp = 2.6;
   const paint = rng() < 0.5 ? SILVER : pick(rng, [rgb(0x8aa4b0), rgb(0x9a9a8e)]);
+  // (the props census, 2026-10-14: "the pump house rebuilt as a buildHouse body") the pump house: a house body of its
+  // own on its brick plinth, whitewashed, its plank door cut into a reveal with its frame and step, a small barred window
+  // in each side, the flat slab roof over a little eave; the column rises from the slab
+  const door = pick(rng, PAINTS);
+  const st = { ...stateFor(ctx), paint: door };
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    // the pump house: whitewashed over a brick plinth, a flat slab roof with a parapet, its door
-    sink.span('stone', -fp.w / 2 + 0.05, -0.4, -fp.d / 2 + 0.05, fp.w / 2 - 0.05, 0.5, fp.d / 2 - 0.05);
-    sink.span('plaster', -fp.w / 2 + 0.1, 0.5, -fp.d / 2 + 0.1, fp.w / 2 - 0.1, hp, fp.d / 2 - 0.1);
-    sink.span('plaster2', -fp.w / 2, hp, -fp.d / 2, fp.w / 2, hp + 0.25, fp.d / 2);
-    faceBox(sink, 'structureWood', { origin: [0, 0, fp.d / 2 - 0.05], u: [1, 0, 0], out: [0, 0, 1], width: fp.w }, fp.w * 0.2, 1.0, 0.02, 0.85, 1.95, 0.04, { colour: pick(rng, PAINTS), decor: true });
+    const W = fp.w - 0.2, D = fp.d - 0.2;
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: W * 0.2, w: 0.85, y0: 0, h: 1.95 }];
+    for (const face of ['right', 'left'] as const) openings.push({ face, storey: 0, kind: 'loft', u: 0, w: 0.6, y0: 1.05, h: 0.5 });
+    buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.5, out: 0.05, bucket: 'stone' }, storeys: [{ h: hp - 0.5, wall: 'plaster' }],
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.1, verge: 0.1, thickness: 0.25, bucket: 'plaster2' },
+      gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.25, spall: null,
+    }, dialect(st));
     sink.cylinder('structureMetal', [0, hp + 0.25, 0], 'y', H - hp - 0.25, R, 12, { colour: shade(paint, 0.94) });
     sink.cylinder('structureMetal', [0, H, 0], 'y', 1.0, R, 14, { colour: shade(paint, 0.86) }, Rt, false);
     sink.cylinder('structureMetal', [0, H + 1.0, 0], 'y', Ht, Rt, 14, { colour: paint });
