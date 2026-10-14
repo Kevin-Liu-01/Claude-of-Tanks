@@ -56,6 +56,15 @@ export function isSimpleShape(value: RuntimeValue): value is PackedSimpleShape {
     return value.length >= 9 && value.length <= 131 && value.length % 2 === 1 &&
       value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
   }
+  // 2026-10-13: a convex part with a drawn top ('p': y0, y1, the planes' origin, their count k <= 64, k planes of three
+  // numbers, then 3-64 corners)
+  if (value[0] === 'p') {
+    const k = value[5];
+    if (typeof k !== 'number' || !Number.isInteger(k) || k < 1 || k > 64) return false;
+    const corners = value.length - 6 - 3 * k;
+    return corners >= 6 && corners <= 128 && corners % 2 === 0 &&
+      value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
+  }
   return value[0] === 'v' && value.length >= 7 && value.length <= 129 &&
     value.length % 2 === 1 &&
     value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));

@@ -83,9 +83,13 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
     assert.ok(c.every((v) => v >= 0 && v <= 1), `${label}: colour in gamut`);
     assert.ok(a.triangles <= (mobile ? capMobile : capDesktop), `${label}: ${a.triangles} triangles within ${mobile ? capMobile : capDesktop}`);
     assert.deepEqual(Array.from(b.geometry.attributes.position.array), Array.from(p), `${label}: deterministic on its stream`);
-    if (standing) {
-      assert.equal(a.masses.length, 1, `${label}: one standing mass`);
-      const mass = a.masses[0];
+    // one standing mass where the form stands, and (physics stream, 2026-10-13) one fallen mass where its loose blocks
+    // and talus rise past a hull's drive-over line — a flat form has only that
+    const upright = a.masses.filter((mass) => !mass.fallen), fallen = a.masses.filter((mass) => mass.fallen);
+    assert.ok(fallen.length <= 1 && (a.masses[0] === upright[0] || !upright.length), `${label}: the standing mass first, at most one fallen`);
+    if (standing) assert.equal(upright.length, 1, `${label}: one standing mass`);
+    else assert.equal(upright.length, 0, `${label}: lies flat under a hull's step (no standing mass)`);
+    for (const mass of a.masses) {
       assert.ok(mass.points.length >= 6 && mass.y1 > mass.y0, `${label}: a convex hull with height`);
       // the hull is counter-clockwise and convex
       let sign = 0;
@@ -97,8 +101,6 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
         assert.equal(Math.sign(cross), sign, `${label}: convex hull`);
       }
       assert.ok(sign > 0, `${label}: counter-clockwise hull`);
-    } else {
-      assert.equal(a.masses.length, 0, `${label}: lies flat under a hull's step (no mass)`);
     }
     a.geometry.dispose(); b.geometry.dispose();
   }
@@ -108,7 +110,7 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
   const tor = buildRockFormation({ form: 'tor', geology: 'granite', x: 0, z: 0, radius: 6, height: 5 }, { getHeightAt: () => 0 }, noise, mulberry32(3));
   assert.ok(Math.abs(tor.masses[0].y1 - 5) < 1.0, `the tor stands its 5 m (${tor.masses[0].y1.toFixed(2)})`);
   const pave = buildRockFormation({ form: 'pavement', geology: 'limestone', x: 0, z: 0, radius: 12, height: 0 }, { getHeightAt: () => 0 }, noise, mulberry32(3));
-  assert.equal(pave.masses.length, 0, 'a pavement without a scar publishes no mass');
+  assert.equal(pave.masses.filter((mass) => !mass.fallen).length, 0, 'a pavement without a scar publishes no standing mass');
   const top = Math.max(...pave.geometry.attributes.position.array.filter((_, i) => i % 3 === 1));
   assert.ok(top < 0.55, `the clints stay under a hull's 0.55 m step (${top.toFixed(2)})`);
 }
@@ -441,9 +443,9 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(holed(-200, 0, 100, 0.5, 0.2), true, 'a blade on the pavement is refused');
   assert.equal(holed(-180, 0, 100, 0.5, 0.2), false, 'a blade beyond it grows');
   assert.equal(withGroundCoverHoles(sealed, []), sealed, 'a world without holes keeps its admission');
-  // two masses (tor, calvary) + eight pylon legs; the pavement publishes none
-  assert.equal(built.receipt.colliders, 2 + 8);
-  assert.equal(built.obstacles.length, 1 + 10); assert.equal(built.colliders.length, 10);
+  // three masses (the tor's standing stone and its fallen blocks, the calvary) + eight pylon legs; the pavement publishes none
+  assert.equal(built.receipt.colliders, 3 + 8);
+  assert.equal(built.obstacles.length, 1 + 11); assert.equal(built.colliders.length, 11);
   assert.ok(built.obstacles.slice(1).every((r) => !r.crushable && r.shape2), 'static shaped masses');
   assert.ok(built.baked.length >= 3, 'the towers fold into the baked bucket');
   assert.ok(built.baked.slice(1).every((g) => !g.attributes.uv && g.attributes.color), 'baked pieces conformed to the bucket');

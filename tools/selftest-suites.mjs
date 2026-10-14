@@ -1151,6 +1151,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
     'tools/physics-torture.selftest.mjs',
+    // 2026-10-13 (physics stream): a stone under its drawn top is climbed or stops a hull by its face grade and height
+    'tools/rock-drawn-top.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',

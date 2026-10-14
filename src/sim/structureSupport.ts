@@ -14,8 +14,8 @@ import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.t
 import { driveGroundTypeAt } from './terrainMobility.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import {
-  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, createHullFootprint, hullFootprint, hullUndersideOver, pointInsideCollisionRecord,
-  type HullFootprint,
+  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartTopAt, collisionRecordHasDrawnTop, createHullFootprint, hullFootprint,
+  hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
 } from '../world/collision.ts';
 
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
@@ -65,38 +65,53 @@ export interface StructureSupportField extends SupportHeightField {
   readonly recordReads: number;
 }
 
-function partTop(record: CollisionRecord, part: SimpleCollisionShape | null): number {
-  return part?.y1 ?? record.max[1];
+/** A part's top under (x, z): its drawn top where it carries one (a stone's surface: world/collision.ts
+ * collisionPartTopAt), else its flat top. */
+function partTop(record: CollisionRecord, part: SimpleCollisionShape | null, x: number, z: number): number {
+  return collisionPartTopAt(record, part, x, z);
 }
 
 /** Highest standable top under (x, z) among the candidates, or -Infinity. `floors` (beginHull's pose rule) holds each
  * candidate's own belly line; without it every candidate uses `bellyY`. */
 export function structureTopAt(
   candidates: readonly CollisionRecord[], count: number, x: number, z: number, bellyY: number,
-  floors: Float64Array | null = null,
+  floors: Float64Array | null = null, plane: SupportPlane | null = null,
 ): number {
   let best = -Infinity;
+  // (physics stream, 2026-10-13) a drawn top (a stone's surface) is a floor wherever it is not a wall: where its climb
+  // surface (collisionPartClimbAt: a face the tracks ride up, lowered by their climb past the step) lies within the step
+  // of the hull's track plane at that very point — the push's own rule, so a stone is wall or floor everywhere and never
+  // neither — not of the underside's lowest point over the whole record, which read the stone under a raised nose as a wall
+  const planeCeiling = plane ? plane.y + plane.slopeX * (x - plane.cx) + plane.slopeZ * (z - plane.cz) + SUPPORT_STEP_UP_M : NaN;
   for (let i = 0; i < count; i++) {
     const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
     const record = candidates[i];
     if (record.crushed || record.dead || record.crushable) continue; // crushable cover is crushed, not stood on
-    if (record.max[1] - record.min[1] < SUPPORT_MIN_HEIGHT_M) continue;
+    // (a drawn top is the stone's own surface, a floor however low: the push holds a hull off only its section a step up)
+    if (record.max[1] - record.min[1] < SUPPORT_MIN_HEIGHT_M && !collisionRecordHasDrawnTop(record)) continue;
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
     const shape = record.shape2;
     if (shape && shape.kind === 'compound') {
       for (const part of shape.parts) {
-        const top = partTop(record, part);
-        if (top > ceiling || top <= best) continue;
+        const top = partTop(record, part, x, z);
+        if (top <= best) continue;
+        if (top > ceiling && !(part.kind === 'convex' && part.tp && plane && collisionPartClimbAt(record, part, x, z) < planeCeiling)) continue;
         if (pointInsideCollisionRecord(record, part, x, z)) best = top;
       }
     } else {
-      const top = record.max[1];
-      if (top > ceiling || top <= best) continue;
+      // (a simple shape's top is its record's, as before; a drawn top where it carries one)
+      const drawn = !!shape && shape.kind === 'convex' && !!shape.tp;
+      const top = drawn ? partTop(record, shape, x, z) : record.max[1];
+      if (top <= best) continue;
+      if (top > ceiling && !(drawn && plane && collisionPartClimbAt(record, shape, x, z) < planeCeiling)) continue;
       if (pointInsideCollisionRecord(record, shape ?? null, x, z)) best = top;
     }
   }
   return best;
 }
+
+/** A hull's track plane for the drawn-top rule (structureTopAt): its height at (cx, cz) and its rise per metre in x, z. */
+export interface SupportPlane { y: number; cx: number; cz: number; slopeX: number; slopeZ: number }
 
 type PoseSpec = Parameters<typeof tankContactRect>[0];
 interface PoseState { pos: { x: number; z: number }; yaw: number; visualPitch?: number; visualRoll?: number }
@@ -122,13 +137,14 @@ export function createStructureSupportField(
   let belly = -Infinity;
   let floors = new Float64Array(16);
   let posed = false;
+  const plane: SupportPlane = { y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0 };
   const terrainAt = terrain.getHeightAt.bind(terrain);
   const terrainFast = terrain.getHeightAtFast ? terrain.getHeightAtFast.bind(terrain) : terrainAt;
   let recordReads = 0;
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
-    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null);
+    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null, posed ? plane : null);
     if (top > ground + 0.02) { recordReads++; return top; }
     return top > ground ? top : ground;
   };
@@ -159,6 +175,9 @@ export function createStructureSupportField(
       count = candidates.length;
       posed = !!pose;
       if (!pose) return;
+      plane.y = bellyY + pose.centerRise; plane.cx = pose.centerX; plane.cz = pose.centerZ;
+      plane.slopeX = pose.riseAlong * pose.forwardX + pose.riseAcross * pose.rightX;
+      plane.slopeZ = pose.riseAlong * pose.forwardZ + pose.riseAcross * pose.rightZ;
       if (floors.length < count) floors = new Float64Array(Math.max(count, floors.length * 2));
       for (let i = 0; i < count; i++) {
         floors[i] = hullUndersideOver(candidates[i], pose, bellyY);

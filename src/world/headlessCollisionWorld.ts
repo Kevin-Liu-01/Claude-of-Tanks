@@ -14,7 +14,10 @@ export type PackedSimpleShape =
   | readonly ['c', number, number, number]
   | readonly ['c', number, number, number, number, number]
   | readonly ['v', ...number[]]
-  | readonly ['w', number, number, ...number[]];
+  | readonly ['w', number, number, ...number[]]
+  /** 'p' (2026-10-13): a convex part with a drawn top — y0, y1, the planes' origin ox, oz, their count k, k (a, b, c)
+   * triples, then its corners (world/collision.ts collisionPartTopAt). */
+  | readonly ['p', number, number, number, number, number, ...number[]];
 
 type PackedShape = PackedSimpleShape | readonly ['m', ...PackedSimpleShape[]];
 
@@ -88,6 +91,15 @@ function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
       kind: 'circle' as const, cx: value[1], cz: value[2], r: value[3],
       ...(value.length >= 6 ? { y0: value[4] as number, y1: value[5] as number } : {}),
     };
+    if (value[0] === 'p') {
+      const k = value[5] as number;
+      const tp = [value[3] as number, value[4] as number, ...(value.slice(6, 6 + 3 * k) as number[])];
+      const points = convexOutlineInPlace(value.slice(6 + 3 * k) as number[]);
+      let px = 0, pz = 0;
+      for (let index = 0; index < points.length; index += 2) { px += points[index]; pz += points[index + 1]; }
+      const pn = Math.max(1, points.length / 2);
+      return { kind: 'convex' as const, cx: px / pn, cz: pz / pn, points, y0: value[1] as number, y1: value[2] as number, tp };
+    }
     const ranged = value[0] === 'w';
     const extent = ranged ? { y0: value[1] as number, y1: value[2] as number } : {};
     // (the hitbox lane, 2026-10-08) a part's quantised corners convex in fact, as every builder's are (collision.ts)
