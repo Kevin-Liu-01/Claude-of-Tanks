@@ -23,7 +23,8 @@ const hooks=registerHooks({load(url,context,next){return url===observedURL?{form
 let observed;
 try{observed=await import(observedURL);}finally{hooks.deregister();}
 const seeds=[1337,7719],receipts=[];
-const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
+// (the perf stream, 2026-10-13: a relief form has no support box, landformSupportBounds; its authored profile is sampled everywhere)
+const stripRelief=form=>{const {relief,_relief,_bounds,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 const pilots=MAP_IDS.filter(id=>(getMapConfig(id).terrain.landforms??[]).some(form=>form.relief));
 // 2026-10-03 (the Glacier Pass redesign, docs/MAP-LAYOUT-BRIEF.md): Glacier Pass, the last battlefield with playable
@@ -96,6 +97,7 @@ for(const [id,cfg] of pilotConfigs){
   const flat={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
   const layout=observed.createLayout(cfg),flatLayout=observed.createLayout(flat);
   assert.ok(layout.terrain.landforms.every(f=>f._relief),`${id}: every landform of a relief map carries a prepared profile`);
+  assert.ok(layout.terrain.landforms.every(f=>f._bounds===null),`${id}: a relief landform is never culled by a support box`);
   assert.ok(flatLayout.terrain.landforms.every(f=>!f._relief),`${id}: the stripped control has no relief`);
   assert.deepEqual(layout.terrain.landforms.map(stripRelief),flatLayout.terrain.landforms.map(stripRelief),'Old axes/trigonometry never mutated');
   for(const seed of seeds){
