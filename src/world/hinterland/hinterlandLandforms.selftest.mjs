@@ -112,6 +112,32 @@ assert.ok(snowLow / Math.max(1, nLow) < 0.2, `none on the low slopes (${snowLow}
 assert.equal(woodsHigh, 0, 'no wood over its forest belt');
 assert.ok(nSteep > 0 && rockSteep / nSteep > 0.8, 'bare rock (or snow) on the walls');
 
+// the dominant summit is a pyramid, not a dome (the coordinator on the Glacier rim-30 sheet): around its apex the top
+// 150 m stands steep (the old (1 - q)^1.5 cap was flat-topped), and bare rock holds where the top is steeper than ~40°
+{
+  let apex = { x: 0, z: 0, h: -1 };
+  for (let i = 0; i < 2500; i++) {
+    const p = hinterlandPoint({ azDeg: -30 + (i % 50) * 1.2, distM: 1600 + Math.floor(i / 50) * 60 });
+    const h = field.heightAt(p.x, p.z);
+    if (h > apex.h) apex = { x: p.x, z: p.z, h };
+  }
+  const slopes = [];
+  let topRock = 0, topSteep = 0;
+  for (let i = 0; i < 400; i++) {
+    const a = (i / 400) * 2 * Math.PI, r = 15 + (i % 10) * 12;
+    const x = apex.x + Math.cos(a) * r, z = apex.z + Math.sin(a) * r, h = field.heightAt(x, z);
+    if (apex.h - h > 150) continue;
+    const e = 4, gx = (field.heightAt(x + e, z) - field.heightAt(x - e, z)) / (2 * e), gz = (field.heightAt(x, z + e) - field.heightAt(x, z - e)) / (2 * e);
+    const s = Math.atan(Math.hypot(gx, gz)) * 180 / Math.PI;
+    slopes.push(s);
+    if (s > 44) { topSteep++; field.geologyAt(x, z, geo, s, h); if (geo.rock > 0.5) topRock++; }
+  }
+  slopes.sort((p, q) => p - q);
+  const med = slopes[slopes.length >> 1];
+  assert.ok(med > 30, `the summit's top 150 m is a pyramid's, not a dome's (median ${med.toFixed(0)}°)`);
+  assert.ok(topSteep > 10 && topRock / topSteep > 0.7, `bare rock on its steep top (${topRock}/${topSteep})`);
+}
+
 // the far sectors: an alpine sector stands at its relief, a plain stays low, a coarse bake keeps the low octaves
 const farSpec = (form, reliefM) => resolveHinterlandSpec({ id: `far-${form}`, hinterland: { place: 'probe', region: 'alpineCol',
   far: [{ azDeg: [0, 360], distKm: [6, 20], reliefM, form, layers: 2 }] } });
@@ -137,7 +163,7 @@ for (let i = 0; i < 400; i++) {
   hash.update(`${pinRelief.heightAt(p.x, p.z, 0).toFixed(3)};${alp.heightAt(p.x * 3, p.z * 3, 0, 0).toFixed(3)};`);
 }
 const pin = hash.digest('hex').slice(0, 16);
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '45d5529957c77fb9';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '1b02fb380cac2019';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandLandforms pin: ${pin}`);
 else assert.equal(pin, PIN, 'the landform or far law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 console.log(`hinterlandLandforms.selftest: ok — massif crest ${summits} summits, ${ledges} ledges, jebel wall ${(Math.atan(jWall) * 180 / Math.PI).toFixed(0)}°, alpine far ${maxAlp.toFixed(0)} m`);
