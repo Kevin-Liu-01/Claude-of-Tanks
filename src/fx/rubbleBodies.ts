@@ -27,6 +27,7 @@
 import * as THREE from 'three';
 import { createRigidBox, type RigidEnvironment, type RigidShape } from '../sim/rigidBody.ts';
 import type { DebrisShape } from '../world/destructionKit.ts';
+import { emitDebrisLanding } from './clock.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
 import { paletteGeometry } from './structureDebris.ts';
 
@@ -120,6 +121,8 @@ const BODY_VERT_UV = /* glsl */ `
 export function createRubbleBodies(o: RubbleBodiesOptions): RubbleBodies {
   const capacity = Math.max(0, o.capacity ?? RUBBLE_BODY_CAPACITY) | 0;
   const pool = createDebrisPhysics({ capacity: Math.max(1, capacity), handles: Math.max(4, capacity * 3) });
+  // (the audio stream, 2026-10-13: B7) each hard landing is heard where it happens (fx/clock.ts → the audio engine)
+  pool.onImpact((x, y, z, speed, mass) => emitDebrisLanding(x, y, z, speed, mass));
   const group = new THREE.Group();
   group.name = 'fx-rubble-bodies';
   group.matrixAutoUpdate = false;
