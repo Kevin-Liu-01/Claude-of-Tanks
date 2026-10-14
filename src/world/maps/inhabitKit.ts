@@ -891,6 +891,53 @@ function bFenceRailBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/**
+ * A wrought-iron railing panel (props lane A, E12, 2026-10-14: a set piece's ground railing — a monument's, a square's,
+ * a park's — as a fence module a hull breaks; landmarks/kit.ts railing): its square post with a cast cap at the module's
+ * near end, the top and bottom rails, and the bars between them, each with its spear point. Baked iron, every member
+ * its own shade of the paint.
+ */
+const RAILING_BAR = 0.13;
+function ironBar(z: number, y0: number, y1: number, rng: Rng): THREE.BufferGeometry[] {
+  const bar = P(box(0.018, y1 - y0, 0.018).translate(0, (y0 + y1) / 2, z), IRON, 0.05, rng);
+  const tip = P(cyl(0, 0.024, 0.08, 4).rotateY(Math.PI / 4).translate(0, y1 + 0.04, z), IRON, 0.05, rng);
+  return [bar, tip];
+}
+function bFenceIron(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  parts.push(P(box(0.07, 1.2, 0.07).translate(0, 0.55, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.025, 0.06, 0.1, 4).rotateY(Math.PI / 4).translate(0, 1.2, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.035, 0.012, 0.09, 4).rotateY(Math.PI / 4).translate(0, 1.29, z0), IRON, 0.04, rng));
+  for (const y of [0.14, 0.95]) parts.push(P(box(0.024, 0.045, FENCE_SEG).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG / RAILING_BAR);
+  for (let k = 1; k < n; k++) parts.push(...ironBar(z0 + (k * FENCE_SEG) / n, 0.11, 1.06, rng));
+  return merge(parts);
+}
+function bFenceIronBroken(rng: Rng): THREE.BufferGeometry {
+  // the panel torn off its post and laid over, its bars bent where the hull went over them; the post leaning
+  const parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  const post = P(box(0.07, 1.2, 0.07).translate(0, 0.6, 0), IRON, 0.04, rng);
+  post.rotateX(0.35 + rng() * 0.3);
+  parts.push(post.translate(0, -0.02, z0 + 0.1));
+  const panel: THREE.BufferGeometry[] = [];
+  for (const y of [0.14, 0.95]) panel.push(P(box(0.024, 0.045, FENCE_SEG * 0.92).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG * 0.92 / RAILING_BAR);
+  for (let k = 1; k < n; k++) {
+    const z = -FENCE_SEG * 0.46 + (k * FENCE_SEG * 0.92) / n;
+    for (const g of ironBar(z, 0.11, 1.06, rng)) {
+      // a few bars bent back near their foot
+      if (k % 4 === 1) g.rotateZ((rng() - 0.5) * 0.5);
+      panel.push(g);
+    }
+  }
+  const lying = merge(panel);
+  lying.rotateZ(Math.PI / 2 - 0.12).translate(0.55, 0.04, (rng() - 0.5) * 0.3);
+  parts.push(lying);
+  return merge(parts);
+}
+
 function bGate(_rng: Rng): THREE.BufferGeometry { // wood-textured farm gate (hangs open ~30°)
   const parts = [];
   const frame = [];
@@ -2211,6 +2258,8 @@ export const DESTRUCTIBLE_TYPES = {
   fencepicket: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFencePicket, broken: bFencePicketBroken, fence: true },
   fencewattle: { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFenceWattle, broken: bFenceWattleBroken, fence: true },
   fencerail:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.05, hw: 0.11, hl: 1.25, build: bFenceRail,   broken: bFenceRailBroken, fence: true },
+  // (props lane A, E12) a set piece's wrought-iron ground railing, a module a hull breaks
+  fenceiron:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.3,  hw: 0.08, hl: 1.25, build: bFenceIron,   broken: bFenceIronBroken, fence: true },
   gate:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.0,  h: 1.3,  hw: 0.46, hl: 0.97, build: bGate,        broken: bGateBroken },
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, hw: 0.30, hl: 1.54, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },

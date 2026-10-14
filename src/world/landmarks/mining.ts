@@ -15,6 +15,7 @@ import type { SimpleCollisionShape } from '../collision.ts';
 import { PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const OXIDE = rgb(0x6e3328), GALV = rgb(0xa4a8a5), IRON_SHEET = rgb(0x8f7a68), RUST = rgb(0x6e3a24);
 const STEEL = rgb(0x5f6466), IRON = rgb(0x2c2d2e), ORE = rgb(0x7a4a32), TIMBER = rgb(0x6a5644), CREAM = rgb(0xd6cfbd), YELLOW = rgb(0xc8a83a);
@@ -117,13 +118,15 @@ export const headframe: LandmarkBuilder = (ctx) => {
   }
   // the sheave deck and its railing, the two sheaves on their bearers
   sink.span('structureMetal', -half - 0.6, H, zs - half - 0.6, half + 0.6, H + 0.3, zs + half + 0.6, { colour: shade(paint, 0.8) });
-  const rail = (x0: number, z0: number, x1: number, z1: number) => {
+  const rail = (s: PartSink, x0: number, z0: number, x1: number, z1: number) => {
     for (const [a, b] of [[[x0, z0], [x1, z0]], [[x1, z0], [x1, z1]], [[x1, z1], [x0, z1]], [[x0, z1], [x0, z0]]] as const) {
-      bar(sink, 'structureMetal', [a[0], H + 1.3, a[1]], [b[0], H + 1.3, b[1]], 0.05, { colour: IRON, decor: true });
-      for (const t of [0, 0.5]) bar(sink, 'structureMetal', [a[0] + (b[0] - a[0]) * t, H + 0.3, a[1] + (b[1] - a[1]) * t], [a[0] + (b[0] - a[0]) * t, H + 1.3, a[1] + (b[1] - a[1]) * t], 0.05, { colour: IRON, decor: true });
+      bar(s, 'structureMetal', [a[0], H + 1.3, a[1]], [b[0], H + 1.3, b[1]], 0.05, { colour: IRON, decor: true });
+      for (const t of [0, 0.5]) bar(s, 'structureMetal', [a[0] + (b[0] - a[0]) * t, H + 0.3, a[1] + (b[1] - a[1]) * t], [a[0] + (b[0] - a[0]) * t, H + 1.3, a[1] + (b[1] - a[1]) * t], 0.05, { colour: IRON, decor: true });
     }
   };
-  rail(-half - 0.55, zs - half - 0.55, half + 0.55, zs + half + 0.55);
+  // (props lane A, E12: an open frame, read as members — landmarks/damage.ts; the deck's rail comes off at the first
+  // damage, the sheaves when the headframe is breached; landmarks/pieces.ts)
+  piece(sink, { name: 'deck-rail', kind: 'lattice', at: 'damaged', fall: 'drop' }, (s) => rail(s, -half - 0.55, zs - half - 0.55, half + 0.55, zs + half + 0.55));
   // the winding house behind the struts (its own footing) and the ropes down to its drums
   const hz1 = az - 3, hd = 10;
   const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx);
@@ -131,7 +134,7 @@ export const headframe: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) {
     const c: Vec3 = [sx * 0.9, hubY, zs - 0.2];
     for (const dz of [-1.1, 1.1]) bar(sink, 'structureMetal', [sx * 0.9, H + 0.3, zs - 0.2 + dz], [sx * 0.9, hubY, zs - 0.2], 0.16, legOpts);
-    sheave(sink, c, R, 6, IRON, 0.12);
+    piece(sink, { name: `sheave-${sx < 0 ? 'l' : 'r'}`, kind: 'lattice', at: 'breached', fall: 'flat' }, (s) => sheave(s, c, R, 6, IRON, 0.12));
     bar(sink, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
     bar(sink, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
   }
@@ -150,7 +153,7 @@ export const headframe: LandmarkBuilder = (ctx) => {
     sink.span('stone', sx * 1.6 - 0.35, Math.min(gb - 0.8, -0.6), zs + half + 2.05, sx * 1.6 + 0.35, gb + 0.4, zs + half + 2.75);
     bar(sink, 'structureMetal', [sx * 1.6, gb + 0.4, zs + half + 2.4], [sx * 1.6, g0 + 5.5, zs + half + 2.4], 0.22, legOpts);
   }
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink) };
 };
 
 // ------------------------------------------------------------------------------------------------------------- ore bin

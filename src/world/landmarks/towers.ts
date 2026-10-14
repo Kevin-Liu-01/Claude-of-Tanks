@@ -11,6 +11,7 @@ import {
   type ArchHole, LIMEWASH_UV } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const IRON_RED = rgb(0x7a3b2e), IRON_GREEN = rgb(0x4f7d5a), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
 const BOARD_OCHRE = rgb(0xb59a62), BOARD_GREY = rgb(0x7d7466), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
@@ -166,7 +167,9 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   revolve(sink, 'roof', 0, zT, [[rr, roofY], [rr * 0.9, roofY + 0.55], [rr * 0.62, roofY + R * 0.55], [rr * 0.3, roofY + R * 1.05], [0.22, roofY + R * 1.38],
     [0, roofY + R * 1.42]], N, {}, phase);
   const fy = roofY + R * 1.38;
-  revolve(sink, 'structureMetal', 0, zT, [[0.12, fy], [0.3, fy + 0.35], [0.12, fy + 0.7], [0.05, fy + 1.6], [0.0, fy + 1.8]], 8, { colour: IRON, decor: true });
+  // (the finial comes off at the first damage: props lane A, E12)
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, zT, [[0.12, fy], [0.3, fy + 0.35], [0.12, fy + 0.7], [0.05, fy + 1.6], [0.0, fy + 1.8]], 8, { colour: IRON, decor: true }));
   // ---- the footbridge: an arched masonry slab from the bank to the tower's door, its parapets, the string course
   const zFace = zT - R + 0.3, Lb = zFace - zS, zMid = (zS + zFace) / 2;
   const n = Math.max(2, Math.round(Lb / 8.5)), pier = 1.8, A = (Lb - (n + 1) * pier) / n;
@@ -190,15 +193,24 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) {
     sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.75, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
   }
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink) };
 };
 
 // ---------------------------------------------------------------------------------------------------------- windmills
 
-/** Four lattice sails on a hub at (0, y, z) in the x-y plane (the sails face +z), turned `turn` radians. */
+/**
+ * Four lattice sails on a hub at (0, y, z) in the x-y plane (the sails face +z), turned `turn` radians. Each sail is a
+ * named piece (props lane A, E12, landmarks/pieces.ts): one comes off at the first damage, the rest when the mill is
+ * breached, each laid flat where it lands.
+ */
 function sails(sink: PartSink, y: number, z: number, length: number, width: number, turn: number, colour: Rgb, cloth: number): void {
-  const opts = { colour, decor: true, exposed: true };
   for (let k = 0; k < 4; k++) {
+    piece(sink, { name: `sail-${k}`, kind: 'detach', at: k === 0 ? 'damaged' : 'breached', fall: 'flat' }, (s) => sail(s, k, y, z, length, width, turn, colour, cloth));
+  }
+}
+function sail(sink: PartSink, k: number, y: number, z: number, length: number, width: number, turn: number, colour: Rgb, cloth: number): void {
+  const opts = { colour, decor: true, exposed: true };
+  {
     const a = turn + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
     const tip: Vec3 = [ca * length, y + sa * length, z];
     sink.member('structureWood', [0, y, z], tip, 0.26, 0.2, [0, 0, 1], opts, 0.1);
@@ -266,7 +278,7 @@ export const windmill: LandmarkBuilder = (ctx) => {
       const t = k / 9, y = lift * (1 - t) + 0.1 * t, z = -bd / 2 - 0.1 - 2.9 * t;
       sink.span('structureWood', -0.5, y - 0.03, z - 0.08, 0.5, y + 0.03, z + 0.08, { colour: TIMBER, decor: true, fine: true });
     }
-    return { parts: sink.finish() };
+    return { parts: finishLandmark(sink) };
   }
   const tower = style === 'tower';
   // the base: brick (an octagonal plinth storey for the smock mill, the round tower itself for a tower mill)
@@ -308,17 +320,20 @@ export const windmill: LandmarkBuilder = (ctx) => {
   }
   // the cap: a boat-shaped gable turning on the curb, the windshaft out of its breast, the sails, the tail
   const capW = tower ? 4.8 : 4.4, capD = tower ? 6.0 : 5.4;
-  sink.span('structureWood', -capW / 2 + 0.2, capY - 0.1, -capD / 2 + 0.3, capW / 2 - 0.2, capY + 0.2, capD / 2 - 0.3, { colour: TIMBER_DARK });
   const capRoof: RoofSpec = { kind: tower ? 'hip' : 'gable', pitchDeg: tower ? 55 : 48, eave: 0.25, verge: 0.3, thickness: 0.12,
     bucket: tower ? 'straw' : 'roof', ridge: tower ? 'round' : 'saddle' };
   const rg = roofGeometry(capW, capD, capY + 0.2, capRoof);
-  emitRoof(sink, rg, capRoof);
-  if (!tower && rg.gable) {
-    for (const end of [1, -1]) {
-      const f: Face = { origin: [0, 0, end * capD / 2], u: [end, 0, 0], out: [0, 0, end], width: capW };
-      sink.prism('structureWood', rg.gable.map(([u, y]) => facePoint(f, u, y, 0)).reverse() as Vec3[], [-f.out[0], 0, -f.out[2]], 0.2, { colour: BOARD_GREY });
+  // (the cap comes off its curb when the mill is breached: props lane A, E12)
+  piece(sink, { name: 'cap', kind: 'detach', at: 'breached', fall: 'drop' }, (s) => {
+    s.span('structureWood', -capW / 2 + 0.2, capY - 0.1, -capD / 2 + 0.3, capW / 2 - 0.2, capY + 0.2, capD / 2 - 0.3, { colour: TIMBER_DARK });
+    emitRoof(s, rg, capRoof);
+    if (!tower && rg.gable) {
+      for (const end of [1, -1]) {
+        const f: Face = { origin: [0, 0, end * capD / 2], u: [end, 0, 0], out: [0, 0, end], width: capW };
+        s.prism('structureWood', rg.gable.map(([u, y]) => facePoint(f, u, y, 0)).reverse() as Vec3[], [-f.out[0], 0, -f.out[2]], 0.2, { colour: BOARD_GREY });
+      }
     }
-  }
+  });
   const hubY = capY + 1.3, hubZ = capD / 2 + 0.8;
   sink.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
   sails(sink, hubY, hubZ, tower ? sailLen : Math.min(10, hubY - 1.2), tower ? 1.45 : 1.2, turn, TIMBER, cloth);
@@ -328,7 +343,7 @@ export const windmill: LandmarkBuilder = (ctx) => {
   bar(sink, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
   for (const sx of [-1, 1]) bar(sink, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
   revolve(sink, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });
-  return { parts: sink.finish() };
+  return { parts: finishLandmark(sink) };
 };
 
 // ---------------------------------------------------------------------------------------------------------- bell towers
@@ -490,9 +505,11 @@ export const campanile: LandmarkBuilder = (ctx) => {
   moulding(sink, 'stone', S, S, bellTop, 0.3, 0.18);
   // the balustrade round the pyramid's foot: corner piers, a rail, the balusters between (fine), a pinnacle on each pier
   const by = bellTop + 0.3, bh = 0.75, e = S / 2 + 0.1;
-  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+  for (const [i, [sx, sz]] of ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).entries()) {
     sink.span('stone', sx * e - 0.22, by, sz * e - 0.22, sx * e + 0.22, by + bh + 0.1, sz * e + 0.22);
-    revolve(sink, 'stone', sx * e, sz * e, [[0.24, by + bh + 0.1], [0, by + bh + 1.05]], 4, { decor: true }, Math.PI / 4);
+    // (each pinnacle comes off when the tower is breached: props lane A, E12, landmarks/pieces.ts)
+    piece(sink, { name: `pinnacle-${i}`, kind: 'detach', at: 'breached', fall: 'drop' }, (s) =>
+      revolve(s, 'stone', sx * e, sz * e, [[0.24, by + bh + 0.1], [0, by + bh + 1.05]], 4, { decor: true }, Math.PI / 4));
   }
   for (const [x0, z0, x1, z1] of [[-e, -e, e, -e], [e, -e, e, e], [e, e, -e, e], [-e, e, -e, -e]] as const) {
     const ax = x0 === x1, lo = (v0: number, v1: number) => Math.min(v0, v1), hi = (v0: number, v1: number) => Math.max(v0, v1);
@@ -506,9 +523,12 @@ export const campanile: LandmarkBuilder = (ctx) => {
   }
   // the stone pyramid, a ball and the cross
   revolve(sink, 'stone', 0, 0, [[(S / 2 + 0.1) * Math.SQRT2, bellTop + 0.3], [0, H - 1.3]], 4, {}, Math.PI / 4);
-  revolve(sink, 'structureMetal', 0, 0, [[0.05, H - 1.35], [0.2, H - 1.25], [0.22, H - 1.1], [0.05, H - 0.95]], 8, { colour: rgb(0x8a7a5a), decor: true });
-  cross(sink, 'structureMetal', 0, H - 1.0, 0, 1.0, 'latin', rgb(0x3a3a38));
-  return { parts: sink.finish() };
+  // (the ball and the cross come off at the first damage: props lane A, E12)
+  piece(sink, { name: 'cross', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) => {
+    revolve(s, 'structureMetal', 0, 0, [[0.05, H - 1.35], [0.2, H - 1.25], [0.22, H - 1.1], [0.05, H - 0.95]], 8, { colour: rgb(0x8a7a5a), decor: true });
+    cross(s, 'structureMetal', 0, H - 1.0, 0, 1.0, 'latin', rgb(0x3a3a38));
+  });
+  return { parts: finishLandmark(sink) };
 };
 
 /**
@@ -521,10 +541,11 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
   const base = -0.6 - ctx.groundFall, cabY = H - 3.4, half0 = 2.4 + H * 0.05, half1 = 1.6;
   const at = (y: number) => half0 + (half1 - half0) * (y / cabY);
   const steel = { colour: STEEL_GREY };
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    sink.span('stone', sx * half0 - 0.45, base, sz * half0 - 0.45, sx * half0 + 0.45, 0.4, sz * half0 + 0.45);
-    bar(sink, 'structureMetal', [sx * half0, 0.4, sz * half0], [sx * half1, cabY, sz * half1], 0.16, steel);
-  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('stone', sx * half0 - 0.45, base, sz * half0 - 0.45, sx * half0 + 0.45, 0.4, sz * half0 + 0.45);
+  // (props lane A, E12: an open frame — landmarks/damage.ts reads it as members, not walls; the frame and the cab go over
+  // whole when it falls, the cab's roof comes off when it is breached; landmarks/pieces.ts)
+  piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) bar(sink, 'structureMetal', [sx * half0, 0.4, sz * half0], [sx * half1, cabY, sz * half1], 0.16, steel);
   const panels = Math.max(3, Math.round(cabY / 4));
   for (let k = 0; k < panels; k++) {
     const y0 = 0.4 + (cabY - 0.4) * k / panels, y1 = 0.4 + (cabY - 0.4) * (k + 1) / panels, h0 = at(y0), h1 = at(y1);
@@ -556,8 +577,10 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     const ring = at(y1), lz0 = dir > 0 ? ze : -ring, lz1 = dir > 0 ? ring : ze;
     sink.span('structureWood', -ring, y1 - 0.06, lz0, ring, y1, lz1, { colour: TIMBER_DARK, decor: true });
   }
+  });
   // the cab: a floor, posts, the glazing, a balcony rail, the pyramid roof
   const cw = half1 * 2 + 0.6;
+  piece(sink, { name: 'cab', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
   sink.span('structureWood', -cw / 2 - 0.5, cabY, -cw / 2 - 0.5, cw / 2 + 0.5, cabY + 0.2, cw / 2 + 0.5, { colour: TIMBER_DARK });
   const cab = archedBody(sink, 'structureWood', 0, 0, cw, cw, cabY + 0.2, cabY + 1.2, {}, 0, { colour: BOARD_GREY });
   for (const name of ['front', 'right', 'back', 'left'] as const) {
@@ -570,6 +593,8 @@ export const fireLookout: LandmarkBuilder = (ctx) => {
     railing(sink, [a[0] * (cw / 2 + 0.45), a[1] * (cw / 2 + 0.45)], [b[0] * (cw / 2 + 0.45), b[1] * (cw / 2 + 0.45)], 1.0, IRON, { base: cabY + 0.2, pitch: 1.6 });
   }
   sink.span('structureWood', -cw / 2, cabY + 2.4, -cw / 2, cw / 2, cabY + 2.55, cw / 2, { colour: TIMBER_DARK });
-  revolve(sink, 'structureMetal', 0, 0, [[(cw / 2 + 0.5) * Math.SQRT2, cabY + 2.55], [0, H]], 4, { colour: IRON_RED }, Math.PI / 4);
-  return { parts: sink.finish() };
+  });
+  piece(sink, { name: 'cab-roof', kind: 'detach', at: 'breached', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, 0, [[(cw / 2 + 0.5) * Math.SQRT2, cabY + 2.55], [0, H]], 4, { colour: IRON_RED }, Math.PI / 4));
+  return { parts: finishLandmark(sink) };
 };

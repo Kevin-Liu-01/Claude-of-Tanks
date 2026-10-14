@@ -31,7 +31,7 @@ import { LANDMARK_KINDS } from './plan.ts';
 import { isLandmarkParts, landmarkPiecesOf, pieceGroundAt, type LandmarkPiece } from './pieces.ts';
 
 /** The set pieces that are open frames (members, not walls). */
-export const LATTICE_LANDMARKS: ReadonlySet<string> = new Set(['guyedMast', 'fireLookout', 'headframe', 'troposcatter', 'conveyor', 'radomeTower']);
+export const LATTICE_LANDMARKS: ReadonlySet<string> = new Set(['guyedMast', 'fireLookout', 'headframe', 'troposcatter', 'conveyor']);
 /** The shaft topple's hinge and lie (fx/structureStages TOPPLE_HINGE_M, fx/structureMask TOPPLE_LIE): the lying frame
  *  matches where the mask laid the standing one down. */
 const TOPPLE_HINGE_M = 1.5;
@@ -131,6 +131,11 @@ function rotation(ax: number, ay: number, az: number, angle: number): number[] {
   const l = Math.hypot(ax, ay, az) || 1, x = ax / l, y = ay / l, z = az / l, c = Math.cos(angle), s = Math.sin(angle), k = 1 - c;
   return [c + x * x * k, x * y * k - z * s, x * z * k + y * s, y * x * k + z * s, c + y * y * k, y * z * k - x * s, z * x * k - y * s, z * y * k + x * s, c + z * z * k];
 }
+function multiply(a: number[], b: number[]): number[] {
+  const o: number[] = [];
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) o.push(a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]);
+  return o;
+}
 const apply = (r: number[], x: number, y: number, z: number, out: number[]): void => {
   out[0] = r[0] * x + r[1] * y + r[2] * z; out[1] = r[3] * x + r[4] * y + r[5] * z; out[2] = r[6] * x + r[7] * y + r[8] * z;
 };
@@ -147,7 +152,8 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
   const cx = (p.min[0] + p.max[0]) / 2, cz = (p.min[2] + p.max[2]) / 2;
   // away from the set piece's middle (a merlon off the wall head, a figure off its plinth), jittered; or any way
   let ang = rng() * Math.PI * 2;
-  if (p.outward !== false && Math.hypot(cx, cz) > 0.15) ang = Math.atan2(cz, cx) + (rng() - 0.5) * 0.9;
+  if (p.toward) ang = Math.atan2(p.toward[1], p.toward[0]) + (rng() - 0.5) * 0.7;
+  else if (p.outward !== false && Math.hypot(cx, cz) > 0.15) ang = Math.atan2(cz, cx) + (rng() - 0.5) * 0.9;
   const dx = Math.cos(ang), dz = Math.sin(ang);
   const fall = p.fall ?? 'topple';
   const hx = (p.max[0] - p.min[0]) / 2, hz = (p.max[2] - p.min[2]) / 2;
@@ -157,6 +163,14 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
     // over about its foot's edge on the fall side, top toward the fall
     const edge = Math.abs(dx) * hx + Math.abs(dz) * hz;
     pose = { r: rotation(dz, 0, -dx, 1.36 + rng() * 0.3), px: cx + dx * edge, py: p.min[1], pz: cz + dz * edge, tx: 0, ty: 0, tz: 0 };
+  } else if (fall === 'flat') {
+    // laid on its thinnest side (a sail, a dish, a panel), turned a little, out from where it hung
+    const ex = p.max[0] - p.min[0], ey = p.max[1] - p.min[1], ez = p.max[2] - p.min[2];
+    const sign = rng() < 0.5 ? -1 : 1;
+    const flat = ey <= ex && ey <= ez ? rotation(0, 1, 0, 0) : ez <= ex ? rotation(1, 0, 0, sign * Math.PI / 2) : rotation(0, 0, 1, sign * Math.PI / 2);
+    const r = multiply(rotation(0, 1, 0, (rng() - 0.5) * 1.2), flat);
+    const out = 0.2 + rng() * 0.8;
+    pose = { r, px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: dx * out, ty: 0, tz: dz * out };
   } else {
     // tumbled off its seat (a drop) or tipped where it stood (a slump)
     const tilt = fall === 'drop' ? 0.5 + rng() * 1.4 : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
@@ -167,7 +181,7 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
   if (high && fall !== 'slump') {
     let near = Infinity;
     forEachVertex(p, pose, (x, _y, z) => { near = Math.min(near, x * dx + z * dz); });
-    const edge = reachAlong(plan.body, dx, dz) + 0.15;
+    const edge = p.clear !== undefined ? cx * dx + cz * dz + p.clear : reachAlong(plan.body, dx, dz) + 0.15;
     if (near < edge) { pose.tx += dx * (edge - near); pose.tz += dz * (edge - near); }
   }
   return pose;
@@ -291,7 +305,8 @@ function rupture(a: StructureDamageAnatomy, p: KeptPiece, dirX: number, dirZ: nu
     for (let k = 0; k < n; k++) out.mesh.triangle(centre, ids[k + 1], ids[k]);
     out.mesh.end();
   }
-  // what it held, on the ground under the hole: a wet stain (water), a burn (fuel), a heap (grain)
+  // what it held, on the ground under the hole: a wet stain (water), a burn (fuel), a heap (grain); a radome held air
+  if (v.contents === 'none') return;
   const spillBucket = v.contents === 'grain' ? 'straw' : 'dark';
   if (out.mesh.begin(spillBucket, 'rubble')) {
     const reach = v.contents === 'grain' ? 1.2 + rng() * 0.8 : 1.8 + rng() * 1.6;
@@ -356,7 +371,8 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   // a frame that toppled lies along its line, bent at its hinge as the mask laid it down; every other piece where it rests
   const H = Math.max(1, a.h), hinge = Math.min(TOPPLE_HINGE_M, H * 0.2);
   for (const p of plan.pieces) {
-    if (plan.lattice && gl > 1e-3 && p.max[1] > hinge) {
+    // (a piece an earlier stage took lies where that stage laid it: laid again there, the two copies agree)
+    if (plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge) {
       const dx = given![0] / gl, dz = given![1] / gl, e = Math.max(a.w, a.d) / 2;
       const c = Math.cos(TOPPLE_LIE), s = Math.sin(TOPPLE_LIE);
       // (the mask's topple: over the leading edge of its foot at the hinge, sunk by the hinge as it lands)
@@ -381,7 +397,8 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
       }
       continue;
     }
-    if (p.kind === 'tank') { rupture(a, p, 0, 0, out, res); continue; }
+    // (a tank an earlier stage ruptured keeps that hole; one left to the fall ruptures now)
+    if (p.kind === 'tank') { if (p.at === 'collapse') rupture(a, p, 0, 0, out, res); continue; }
     detach(a, plan, p, out, res);
   }
   return res;

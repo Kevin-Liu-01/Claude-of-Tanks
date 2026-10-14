@@ -6,8 +6,8 @@
 // A builder draws a piece it names into a sink of its own, beside the set piece's sink (`piece(sink, spec, body)`), and
 // finishes the set piece with `finishLandmark(sink)`: each named piece comes out as its own geometries in the piece's
 // buckets, tagged `userData.damagePiece` (the world's spans carry the name: structureDamageSeam.ts, and a stage's hide
-// names it: destructionKit.ts DamageHide.piece), dressing a round passes unless the spec makes it `solid` (a tank, an
-// attic). The composer samples the ground each piece may fall on (`samplePieceGround`: numbers, never geometry) and the
+// names it: destructionKit.ts DamageHide.piece), its collision as the builder emitted it (a structural member keeps
+// its bands, dressing stays dressing; `dressing: true` makes the whole piece dressing). The composer samples the ground each piece may fall on (`samplePieceGround`: numbers, never geometry) and the
 // landmark damage kit (landmarks/damage.ts) lays the piece's own triangles where it settles when its stage comes.
 //
 // Ground railings (kit.ts `railing` on the ground or on a dwarf wall) come out the same way as the props' destructible
@@ -19,8 +19,9 @@ import { PartSink, type RegionalParts, type Vec3 } from '../maps/regional/geomet
 export type LandmarkPieceKind = 'detach' | 'lattice' | 'tank';
 /** The damage stage that takes it ('collapse': only a light set piece's fall, which takes every piece). */
 export type LandmarkPieceStage = 'damaged' | 'breached' | 'collapse';
-/** How it comes off: over about its foot, off its seat (a merlon, a finial), down where it stands (a roof). */
-export type LandmarkPieceFall = 'topple' | 'drop' | 'slump';
+/** How it comes off: over about its foot, off its seat (a merlon, a finial), down where it stands (a roof), or laid
+ *  flat (a sail, a dish, a panel: its thinnest side down). */
+export type LandmarkPieceFall = 'topple' | 'drop' | 'slump' | 'flat';
 
 export interface LandmarkPieceSpec {
   /** Unique within the set piece ('figure', 'merlon-3', 'sail-2', 'mast-top', 'tank-1'). */
@@ -29,12 +30,17 @@ export interface LandmarkPieceSpec {
   at: LandmarkPieceStage;
   /** default: 'topple' (a tank ruptures where it stands) */
   fall?: LandmarkPieceFall;
-  /** Keeps its collision (an attic, a tank, a dish on its mount): absent, it is dressing a round passes. */
-  solid?: boolean;
-  /** Falls away from the set piece's middle (a merlon off the wall head, a sail off the cap): default true. */
+  /** The whole piece is dressing (no collision) whatever its parts were emitted as. */
+  dressing?: boolean;
+  /** Falls away from the set piece's middle (a sail off the cap, a figure off its plinth): default true. */
   outward?: boolean;
+  /** The level direction it falls toward in the set piece's frame (a merlon off the wall's face: [0, 1]), jittered. */
+  toward?: readonly [number, number];
+  /** How far past its own middle along its fall it lands clear of what it stood on (m); absent: past the set piece's
+   *  plan (a figure off its plinth). */
+  clear?: number;
   /** A tank's vessel (kind 'tank'): a vertical cylinder in the set piece's frame, and what spills from it. */
-  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' };
+  vessel?: { x: number; z: number; y0: number; y1: number; r: number; contents: 'water' | 'fuel' | 'grain' | 'none' };
 }
 
 /** The ground round a piece, over the set piece's base (m), on an n × n grid from (x0, z0) at `step` metres. */
@@ -81,7 +87,7 @@ export function addLandmarkModule(sink: PartSink, module: LandmarkModule): void 
 
 /**
  * Finish the set piece: the sink's parts, with every named piece's geometries appended in their buckets (tagged
- * `userData.damagePiece`; dressing unless solid) and the pieces and modules recorded against the parts.
+ * `userData.damagePiece`; their collision as emitted) and the pieces and modules recorded against the parts.
  */
 export function finishLandmark(sink: PartSink): RegionalParts {
   const parts = sink.finish();
@@ -99,7 +105,7 @@ export function finishLandmark(sink: PartSink): RegionalParts {
         }
         triangles += pos.count / 3;
         geometry.userData.damagePiece = spec.name;
-        if (!spec.solid) geometry.userData.noCollision = true;
+        if (spec.dressing) geometry.userData.noCollision = true;
         parts[bucket].push(geometry);
       }
     }
