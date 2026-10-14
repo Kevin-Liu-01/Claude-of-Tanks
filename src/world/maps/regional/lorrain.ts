@@ -8,10 +8,10 @@
 // mairie-école with its clock and bell-cote; the covered market hall on stone piers; the arcaded houses of the square; a
 // round tower of the town wall; the bakehouse and the woodshed; shelled houses with their roofs gone.
 import {
-  PartSink, faceBox, facePanel, pick, rgb, shade, UV_MEMBER,
+  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedFace, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, wallLantern, woodpile } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -21,6 +21,7 @@ const SHUTTERS: readonly Rgb[] = [0x7a8a78, 0xa4a69e, 0x6a5040, 0x6a7e8e, 0x7a3a
 /** House doors and cart doors: oak, a green, a grey-blue, the barn's ochre and red. */
 const DOORS: readonly Rgb[] = [0x5e4632, 0x3f5a46, 0x55687a, 0x8a6a3a, 0x7a3a2c].map(rgb);
 const FRAME = rgb(0xd6d2c6), IRON = rgb(0x1e1e1e), SLATE = rgb(0x4a5058), PLANK = rgb(0x6e5440), CHAR = rgb(0x2a2622);
+const BRONZE = rgb(0x6a5a3a);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -76,16 +77,43 @@ function stateFor(ctx: RegionalBuildContext): LorrainState {
 
 /**
  * The porte charretière: two plank leaves at the back of the reveal (structural: the barn is closed to a hull), their
- * battens and a wicket, the dressed stone surround with its segmental arch read by springers and a keystone.
+ * battens, the iron strap hinges, and in one leaf the wicket (the props census, 2026-10-14: "cartDoor without the
+ * painted wicket"): a door of its own framed in the leaf's boards, its stiles and rails standing out of the leaf, its
+ * leaf set back inside them, its own hinges and ring; the battens stop at its frame. The dressed stone surround with its
+ * segmental arch read by springers and a keystone.
  */
 function cartDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, colour: Rgb): void {
   const r = sink.recess, go = r > 0 ? -r + 0.04 : 0.02;
+  const fine = { decor: true, fine: true } as const;
+  // the wicket: in the left leaf, off its meeting stile, its sill rail a hand above the threshold
+  const ww = Math.min(0.78, w / 2 - 0.34), wh = Math.min(1.85, h - 0.6), wu = u - w / 4 + 0.06, wy = y + 0.22;
+  const frameT = 0.07, front = go + 0.03;
   for (const side of [-1, 1]) {
-    const cu = u + side * w / 4;
-    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, w / 2 - 0.02, h, 0.06, { colour, uv: UV_MEMBER });
-    for (const t of [0.15, 0.5, 0.85]) faceBox(sink, 'structureWood', face, cu, y + h * t, go + 0.045, w / 2 - 0.12, 0.1, 0.03, { colour: shade(colour, 0.82), decor: true, fine: true });
+    const cu = u + side * w / 4, leafW = w / 2 - 0.02;
+    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, leafW, h, 0.06, { colour, uv: UV_MEMBER });
+    for (const t of [0.15, 0.5, 0.85]) {
+      const by = y + h * t;
+      // the battens run across the leaf, and in the wicket's leaf they stop at its frame
+      const spans: Array<[number, number]> = side < 0 && by > wy - 0.05 && by < wy + wh + 0.05
+        ? [[cu - leafW / 2 + 0.06, wu - ww / 2 - frameT], [wu + ww / 2 + frameT, cu + leafW / 2 - 0.06]] : [[cu - leafW / 2 + 0.06, cu + leafW / 2 - 0.06]];
+      for (const [a, b] of spans) {
+        if (b - a > 0.08) faceBox(sink, 'structureWood', face, (a + b) / 2, by, go + 0.045, b - a, 0.1, 0.03, { colour: shade(colour, 0.82), ...fine });
+      }
+      // the strap hinge from the leaf's outer edge, its knuckle at the jamb
+      const edge = cu + side * leafW / 2;
+      faceBox(sink, 'structureMetal', face, edge - side * 0.36, by + 0.075, go + 0.034, 0.7, 0.05, 0.012, { colour: IRON, ...fine });
+      sink.cylinder('structureMetal', facePoint(face, edge - side * 0.02, by + 0.02, go + 0.035), 'y', 0.12, 0.022, 6, { colour: IRON, ...fine });
+    }
   }
-  faceBox(sink, 'dark', face, u - w / 4, y + 0.95, go + 0.034, 0.75, 1.8, 0.01, { decor: true });
+  // the wicket's frame (stiles, head rail, sill rail) out of the leaf, its own leaf set back inside it
+  const wc = { colour: shade(colour, 0.9), decor: true, fineSides: true, uv: UV_MEMBER } as const;
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, wu + side * (ww / 2 + frameT / 2), wy + wh / 2, front, frameT, wh + 2 * frameT, 0.03, wc);
+  faceBox(sink, 'structureWood', face, wu, wy + wh + frameT / 2, front, ww, frameT, 0.03, wc);
+  faceBox(sink, 'structureWood', face, wu, wy - frameT / 2, front + 0.005, ww, frameT, 0.04, wc);
+  faceBox(sink, 'structureWood', face, wu, wy + wh / 2, go + 0.036, ww - 0.01, wh - 0.01, 0.012, { colour: shade(colour, 1.06), decor: true, uv: UV_MEMBER });
+  // its two hinges and its ring
+  for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', face, wu - ww / 2 + 0.17, wy + wh * t, go + 0.046, 0.3, 0.04, 0.01, { colour: IRON, ...fine });
+  sink.cylinder('structureMetal', facePoint(face, wu + ww / 2 - 0.12, wy + wh * 0.52, go + 0.046), face.out[0] !== 0 ? 'x' : 'z', 0.012, 0.055, 8, { colour: IRON, ...fine });
   const fo = { decor: true, fineSides: true } as const;
   for (const side of [-1, 1]) faceBox(sink, 'stone', face, u + side * (w / 2 + 0.16), y + h / 2, 0.04, 0.32, h, 0.08, fo);
   // the arch: three voussoir blocks either side rising to the keystone, the spandrel stone above
@@ -96,6 +124,63 @@ function cartDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h
     }
   }
   faceBox(sink, 'stone', face, u, y + h + 0.48, 0.05, 0.36, 0.42, 0.1, fo);
+}
+
+/**
+ * A bell-cote (the props census, 2026-10-14): a wall of dressed stone `2 halfW` wide and `depth` deep from `foot` to
+ * `crest`, centred on x = cx in the plane z, pierced by a round-headed opening of half-width `r` from `sill` up — its
+ * piers and its arch, open through — and the bell hung in the opening on its oak headstock, the clapper in its mouth.
+ * Every face of the stone is structural (the piers and the arch are what a shell brings down); the bell is dressing.
+ */
+function bellCote(sink: PartSink, cx: number, foot: number, sill: number, z: number, halfW: number, r: number, crest: number, depth: number): void {
+  const zf = z + depth / 2, zb = z - depth / 2, spring = Math.max(sill + 0.5, crest - r - 0.3);
+  // the base under the opening and the two piers up to the springing
+  sink.span('stone', cx - halfW, foot, zb, cx + halfW, sill, zf);
+  sink.span('stone', cx - halfW, sill, zb, cx - r, spring, zf);
+  sink.span('stone', cx + r, sill, zb, cx + halfW, spring, zf);
+  // the arch: the wall over the springing, its front and back faces fanned from their top corners round the intrados,
+  // the soffit under it, the outer sides and the top
+  const n = 8, arc: Array<[number, number]> = [];
+  for (let k = 0; k <= n; k++) { const t = Math.PI * (1 - k / n); arc.push([cx + r * Math.cos(t), spring + r * Math.sin(t)]); }
+  const half = (from: number, to: number, corner: [number, number], side: [number, number], lead: Array<[number, number]>): void => {
+    const ring: Array<[number, number]> = [side, ...lead, ...arc.slice(from, to + 1), [cx, crest]];
+    for (let k = 0; k + 1 < ring.length; k++) {
+      const a = ring[k], b = ring[k + 1];
+      const left = corner[0] < cx;
+      const tri = (zz: number, front: boolean): Vec3[] => {
+        const pts: Vec3[] = [[corner[0], corner[1], zz], [a[0], a[1], zz], [b[0], b[1], zz]];
+        // the left half's ring runs counter-clockwise seen from the front; the right half's the other way round
+        return front === left ? pts : pts.reverse();
+      };
+      sink.polygon('stone', tri(zf, true));
+      sink.polygon('stone', tri(zb, false));
+    }
+  };
+  half(0, n / 2, [cx - halfW, crest], [cx - halfW, spring], []);
+  const right = arc.slice(n / 2).reverse();
+  {
+    // the right half mirrors the left: its ring from the outer side round the arch back to the crown
+    const ring: Array<[number, number]> = [[cx + halfW, spring], [cx + r, spring], ...right.slice(1), [cx, crest]];
+    for (let k = 0; k + 1 < ring.length; k++) {
+      const a = ring[k], b = ring[k + 1], c: [number, number] = [cx + halfW, crest];
+      sink.polygon('stone', [[c[0], c[1], zf], [b[0], b[1], zf], [a[0], a[1], zf]]);
+      sink.polygon('stone', [[c[0], c[1], zb], [a[0], a[1], zb], [b[0], b[1], zb]]);
+    }
+  }
+  for (let k = 0; k < n; k++) {
+    const [ax, ay] = arc[k], [bx, by] = arc[k + 1];
+    sink.quad('stone', [ax, ay, zb], [bx, by, zb], [bx, by, zf], [ax, ay, zf], { shade: 0.72 });
+  }
+  sink.quad('stone', [cx - halfW, spring, zb], [cx - halfW, spring, zf], [cx - halfW, crest, zf], [cx - halfW, crest, zb]);
+  sink.quad('stone', [cx + halfW, spring, zf], [cx + halfW, spring, zb], [cx + halfW, crest, zb], [cx + halfW, crest, zf]);
+  sink.quad('stone', [cx - halfW, crest, zf], [cx + halfW, crest, zf], [cx + halfW, crest, zb], [cx - halfW, crest, zb]);
+  // the headstock across the opening, seated in the piers, the bell hung from it, its lip and its clapper
+  const hy = spring + r * 0.35, bellH = Math.min(0.46, hy - sill - 0.12), mouth = Math.min(r - 0.06, bellH * 0.62);
+  sink.span('structureWood', cx - r - 0.06, hy, z - 0.07, cx + r + 0.06, hy + 0.13, z + 0.07, { colour: rgb(0x4a3a2c), decor: true });
+  sink.cylinder('structureMetal', [cx, hy - 0.06, z], 'y', 0.06, 0.035, 6, { colour: IRON, decor: true });
+  sink.cylinder('structureMetal', [cx, hy - 0.06 - bellH, z], 'y', bellH, mouth, 10, { colour: BRONZE, decor: true }, mouth * 0.52);
+  sink.cylinder('structureMetal', [cx, hy - 0.06 - bellH - 0.04, z], 'y', 0.05, mouth + 0.025, 10, { colour: shade(BRONZE, 0.85), decor: true }, mouth + 0.01, false);
+  sink.cylinder('structureMetal', [cx, hy - 0.06 - bellH - 0.1, z], 'y', 0.09, 0.045, 6, { colour: IRON, decor: true });
 }
 
 function dialect(st: LorrainState): HouseDialect {
@@ -287,35 +372,118 @@ const church: RegionalBuilder = (ctx) => {
         gableBucket: 'stone', openings: [{ face: 'back', storey: 0, kind: 'window', u: 0, w: 1.1, y0: 2.2, h: 2.6 }], chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
       }, { window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, arched, rng, 0.2), door: () => {} });
     });
-    // the west tower: the porch door, the clock, the belfry, the slate spire and its cross
-    const tz = zn1 + T / 2, towerH = wallH + 8 + rng() * 3;
-    sink.span('stone', -T / 2, -0.4, zn1 - 0.05, T / 2, towerH, zn1 + T);
-    sink.band('stone', -T / 2 - 0.12, towerH - 4.6, zn1 - 0.17, T / 2 + 0.12, towerH - 4.35, zn1 + T + 0.12, { decor: true });
-    const tf: Face = { origin: [0, 0, zn1 + T], u: [1, 0, 0], out: [0, 0, 1], width: T };
-    doorUnit(sink, tf, 0, 0, 1.5, 2.9, { leaf: st.door, frame: { bucket: 'stone', width: 0.28, out: 0.1, arch: true }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.2);
-    const faces: Face[] = [tf, { origin: [T / 2, 0, tz], u: [0, 0, -1], out: [1, 0, 0], width: T }, { origin: [0, 0, zn1 - 0.05], u: [-1, 0, 0], out: [0, 0, -1], width: T },
-      { origin: [-T / 2, 0, tz], u: [0, 0, 1], out: [-1, 0, 0], width: T }];
-    for (const f of faces) {
-      // the belfry's twin louvred openings
-      for (const du of [-T * 0.2, T * 0.2]) {
-        faceBox(sink, 'dark', f, du, towerH - 2.2, 0.01, 0.62, 1.7, 0.02, { decor: true });
-        for (let k = 0; k < 5; k++) faceBox(sink, 'structureWood', f, du, towerH - 2.9 + k * 0.33, 0.04, 0.62, 0.06, 0.08, { colour: rgb(0x4a3e34), decor: true, fine: true });
-      }
+    // the west tower (the props census, 2026-10-14: "the church tower in courses with a spire crown"): a house body of
+    // its own (its own plan, so the damage can read it apart from the nave) in three stages of dressed limestone parted
+    // by string courses — the porch stage with its arched door cut into a deep reveal, the clock stage, the belfry with
+    // its twin openings cut through every face, louvre boards in them and the bell behind — its cornice, and over it
+    // the octagonal slate spire broached to the square, its cross and cockerel
+    const tz = zn1 + T / 2 - 0.025, towerH = wallH + 8 + rng() * 3;
+    const plinth = 0.5, belfryH = 3.4, porchH = clamp(wallH * 0.62, 3.6, 4.6);
+    const clockH = Math.max(2.4, towerH - plinth - porchH - belfryH);
+    const towerOpenings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.9 }];
+    for (const face of ['front', 'right', 'back', 'left'] as const) {
+      for (const du of [-T * 0.2, T * 0.2]) towerOpenings.push({ face, storey: 2, kind: 'loft', u: du, w: 0.62, y0: 0.7, h: 1.9 });
+      if (face !== 'front' && face !== 'back') towerOpenings.push({ face, storey: 1, kind: 'window', u: 0, w: 0.22, y0: clockH * 0.4, h: 0.9 });
     }
-    // the clock on the west face, under the belfry
-    sink.cylinder('structureMetal', [0, towerH - 6.0, zn1 + T + 0.02], 'z', 0.06, 0.62, 16, { colour: rgb(0xe0dccf), decor: true });
-    sink.cylinder('structureMetal', [0, towerH - 6.0, zn1 + T + 0.08], 'z', 0.03, 0.08, 6, { colour: IRON, decor: true });
-    // the spire: a slate pyramid, broaches at its foot, the cross
-    const spireH = T * 2.3, s = T / 2 + 0.2;
-    const base: Vec3[] = [[-s, towerH, zn1 - 0.25], [s, towerH, zn1 - 0.25], [s, towerH, zn1 + T + 0.2], [-s, towerH, zn1 + T + 0.2]];
-    const apex: Vec3 = [0, towerH + spireH, tz];
-    for (let k = 0; k < 4; k++) sink.polygon('structureMetal', [base[(k + 1) % 4], base[k], apex], { colour: SLATE });
-    sink.polygon('structureMetal', [base[0], base[1], base[2], base[3]], { colour: shade(SLATE, 0.7) });
-    sink.span('structureMetal', -0.04, towerH + spireH - 0.1, tz - 0.04, 0.04, towerH + spireH + 1.3, tz + 0.04, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.32, towerH + spireH + 0.75, tz - 0.035, 0.32, towerH + spireH + 0.83, tz + 0.035, { colour: IRON, decor: true });
+    sink.placed(0, 0, 0, tz, () => {
+      const tower = buildHouse(sink, {
+        w: T, d: T + 0.05, plinth: { h: plinth, out: 0.1, bucket: 'stone' },
+        storeys: [{ h: porchH, wall: 'stone' }, { h: clockH, wall: 'stone' }, { h: belfryH, wall: 'stone' }],
+        roof: { kind: 'flat', pitchDeg: 0, eave: 0.16, verge: 0.16, thickness: 0.28, bucket: 'stone' },
+        openings: towerOpenings, chimneys: [], gutters: null, verge: null, reveal: 0.45, spall: null, skirt: null,
+      }, {
+        // the belfry's openings: louvre boards across the reveal, sloped to shed the rain, the bell hung behind them;
+        // the clock stage's slits
+        window: (s2, face, o, y0) => {
+          if (o.kind === 'loft') {
+            louvres(s2, face, o.u, y0 + o.y0, o.w, o.h);
+            return;
+          }
+          windowUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { ...arched, bars: 'none', surround: { bucket: 'stone', width: 0.12, out: 0.04 } }, rng, 0);
+        },
+        door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: st.door, frame: { bucket: 'stone', width: 0.28, out: 0.1, arch: true }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+        }, y0),
+      });
+      // the string courses between the stages and under the cornice
+      const b = tower.bodies[0];
+      for (const y of [tower.floors[1], tower.floors[2]]) sink.band('stone', b.x0 - 0.1, y - 0.12, b.z0 - 0.1, b.x1 + 0.1, y + 0.1, b.z1 + 0.1, { decor: true });
+      // the round-headed hood over each belfry opening
+      for (const o of towerOpenings) {
+        if (o.kind !== 'loft') continue;
+        const f = storeyFaces(tower, 2)[o.face], top = tower.floors[2] + o.y0 + o.h;
+        for (let k = 0; k < 5; k++) {
+          const t = Math.PI * (k + 0.5) / 5;
+          faceBox(sink, 'stone', f, o.u + Math.cos(t) * (o.w / 2 + 0.1), top + Math.sin(t) * (o.w / 2 + 0.1) - 0.05, 0.05, 0.2, 0.2, 0.1, { decor: true, fineSides: true });
+        }
+      }
+      // the bell in the belfry, behind the louvres
+      const by = tower.floors[2] + 1.1;
+      sink.span('structureWood', -T / 2 + 0.3, by + 1.25, -0.1, T / 2 - 0.3, by + 1.42, 0.1, { colour: rgb(0x4a3a2c), decor: true });
+      sink.cylinder('structureMetal', [0, by + 0.45, 0], 'y', 0.78, 0.5, 10, { colour: BRONZE, decor: true }, 0.26);
+      // the clock on the west face, under the belfry
+      const cy = tower.floors[1] + clockH * 0.55, cz = T / 2 + 0.025;
+      sink.cylinder('structureMetal', [0, cy, cz], 'z', 0.06, 0.62, 16, { colour: rgb(0xe0dccf), decor: true });
+      sink.cylinder('structureMetal', [0, cy, cz + 0.06], 'z', 0.03, 0.08, 6, { colour: IRON, decor: true });
+      // the spire: an octagon broached to the square of the cornice, its cross and the cockerel
+      spire(sink, T / 2 + 0.08, tower.eaveY + 0.28, T * 2.4);
+    });
   });
   return sink.finish();
 };
+
+/**
+ * The louvred opening of a belfry (cut into its reveal by the house): four or five boards across it, each sloped down
+ * outward to shed the rain, seated in the jambs; the dark of the belfry shows between them.
+ */
+function louvres(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+  const r = sink.recess, back = r > 0 ? -r * 0.55 : 0.02, n = Math.max(4, Math.round(h / 0.36));
+  for (let k = 0; k < n; k++) {
+    const yy = y + (k + 0.6) * h / (n + 0.2);
+    const a = facePoint(face, u - w / 2 - 0.02, yy + 0.08, back - 0.08), b = facePoint(face, u + w / 2 + 0.02, yy + 0.08, back - 0.08);
+    const c = facePoint(face, u + w / 2 + 0.02, yy - 0.08, back + 0.08), d = facePoint(face, u - w / 2 - 0.02, yy - 0.08, back + 0.08);
+    // the board's outer face (down and out) and its top (up and in)
+    sink.quad('structureWood', d, c, b, a, { colour: rgb(0x4a3e34), decor: true });
+    const lift = (p: Vec3): Vec3 => [p[0], p[1] + 0.03, p[2]];
+    sink.quad('structureWood', a, b, lift(b), lift(a), { colour: rgb(0x3a3028), decor: true, fine: true });
+  }
+}
+
+/**
+ * A slate spire on a square of half-side `s` at `y0`, `h` tall: eight faces of an octagon rising to the apex, and at the
+ * four corners the broaches, the sloped triangles carrying the square up into the octagon's diagonal faces; the iron
+ * cross on the apex and the cockerel over it. Structural (the spire is the tower's crown).
+ */
+function spire(sink: PartSink, s: number, y0: number, h: number): void {
+  const a = s * Math.tan(Math.PI / 8);
+  const oct: Vec3[] = [[a, y0, s], [s, y0, a], [s, y0, -a], [a, y0, -s], [-a, y0, -s], [-s, y0, -a], [-s, y0, a], [-a, y0, s]];
+  const apex: Vec3 = [0, y0 + h, 0];
+  const c = { colour: SLATE };
+  // the octagon's faces, counter-clockwise seen from outside
+  for (let k = 0; k < 8; k++) sink.polygon('structureMetal', [oct[k], oct[(k + 1) % 8], apex], c);
+  // the broaches, at the square's corners under the octagon's diagonal faces
+  const f = 0.3;
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, -1], [-1, 1]] as const) {
+    const corner: Vec3 = [sx * s, y0, sz * s], p: Vec3 = [sx * a, y0, sz * s], q: Vec3 = [sx * s, y0, sz * a];
+    const mid: Vec3 = [(p[0] + q[0]) / 2, y0, (p[2] + q[2]) / 2];
+    const top: Vec3 = [mid[0] * (1 - f), y0 + h * f, mid[2] * (1 - f)];
+    const tri = (x: Vec3, y: Vec3): Vec3[] => {
+      // wind each broach face outward (its normal away from the spire's axis)
+      const n = [(y[1] - x[1]) * (top[2] - x[2]) - (y[2] - x[2]) * (top[1] - x[1]), 0, (y[0] - x[0]) * (top[1] - x[1]) - (y[1] - x[1]) * (top[0] - x[0])];
+      const cxz = (x[0] + y[0] + top[0]) / 3 * n[0] + (x[2] + y[2] + top[2]) / 3 * n[2];
+      return cxz >= 0 ? [x, y, top] : [y, x, top];
+    };
+    sink.polygon('structureMetal', tri(p, corner), { colour: shade(SLATE, 0.92) });
+    sink.polygon('structureMetal', tri(corner, q), { colour: shade(SLATE, 0.92) });
+  }
+  sink.polygon('structureMetal', [[-s, y0, -s], [s, y0, -s], [s, y0, s], [-s, y0, s]], { colour: shade(SLATE, 0.7) });
+  // the cross and the cockerel over it
+  const yt = y0 + h;
+  sink.span('structureMetal', -0.04, yt - 0.1, -0.04, 0.04, yt + 1.4, 0.04, { colour: IRON, decor: true });
+  sink.span('structureMetal', -0.34, yt + 0.8, -0.035, 0.34, yt + 0.88, 0.035, { colour: IRON, decor: true });
+  sink.span('structureMetal', -0.16, yt + 1.4, -0.015, 0.2, yt + 1.62, 0.015, { colour: rgb(0x6a5a3a), decor: true });
+  sink.span('structureMetal', 0.12, yt + 1.55, -0.015, 0.22, yt + 1.78, 0.015, { colour: rgb(0x6a5a3a), decor: true });
+}
 
 /** The wayside chapel: a small nave of limestone under a tile roof, its arched door, the bell-cote over the front gable. */
 const chapel: RegionalBuilder = (ctx) => {
@@ -334,11 +502,10 @@ const chapel: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: 4.0, wall: rng() < 0.5 ? 'stone' : st.wall }], roof: canal(38, 0.3, 0.15),
       gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.32,
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, arched, rng, 0.2) });
-    // the bell-cote: a stone pier on the front gable's apex with its open arch, the bell and the cross
+    // the bell-cote (the props census, 2026-10-14: "the bell-cote as piers and an arch with the bell hung"): on the front
+    // gable's apex two piers and the round arch between them, open through, the bell hung in it from its headstock
     const top = frame.roof.ridgeY, z = D / 2 - 0.25;
-    sink.span('stone', -0.7, top - 0.9, z - 0.25, 0.7, top + 1.6, z + 0.25);
-    faceBox(sink, 'dark', { origin: [0, 0, z + 0.25], u: [1, 0, 0], out: [0, 0, 1], width: 1.4 }, 0, top + 0.7, 0.01, 0.6, 0.9, 0.02, { decor: true });
-    sink.cylinder('structureMetal', [0, top + 0.45, z], 'y', 0.42, 0.24, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.12);
+    bellCote(sink, 0, top - 0.9, top + 0.1, z, 0.7, 0.32, top + 1.6, 0.5);
     sink.span('stone', -0.82, top + 1.6, z - 0.32, 0.82, top + 1.82, z + 0.32);
     sink.span('structureMetal', -0.03, top + 1.82, z - 0.03, 0.03, top + 2.7, z + 0.03, { colour: IRON, decor: true });
     sink.span('structureMetal', -0.22, top + 2.35, z - 0.025, 0.22, top + 2.42, z + 0.025, { colour: IRON, decor: true });
@@ -454,30 +621,78 @@ const arcades: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A round tower of the town wall: rubble with arrow slits and a string course, a conical tile roof, its finial. */
+/**
+ * A round tower of the town wall (the props census, 2026-10-14: "the tour rebuilt (loops, a conical roof, its own shaft
+ * fracture)"): a battered foot, the drum in sixteen faces of limestone rubble to its wall-head course, arrow loops cut
+ * through it on three levels (each a narrow slit whose reveals splay inward to the dark embrasure), the low door in its
+ * dressed block cut into a reveal with its plank leaf, the conical tile roof bell-cast over the wall-head, its finial and
+ * vane. It stands at least 2.25 times as tall as its foot is wide, so the damage reads it as a shaft (shell.ts
+ * readShaft): it topples in its own bands, the cone its crown.
+ */
 const tour: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const fp = footprint(ctx);
   const rng = ctx.rng;
-  const R = Math.max(1.2, Math.min(fp.w, fp.d) / 2 - 0.05), H = 9 + rng() * 3;
+  const R = clamp(Math.min(fp.w, fp.d) / 2 - 0.05, 1.2, 2.6);
+  const H = Math.max(9 + rng() * 3, 2.25 * (2 * R + 0.6) - 0.2);
+  const N = 16, apo = R * Math.cos(Math.PI / N), chord = 2 * R * Math.sin(Math.PI / N), phase = Math.PI / N, foot = 1.4;
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    sink.cylinder('stone', [0, -0.4, 0], 'y', 1.4, R + 0.25, 16, {}, R);
-    sink.cylinder('stone', [0, 1.0, 0], 'y', H - 1.0, R, 16, {}, R * 0.96);
-    sink.cylinder('stone', [0, H - 0.3, 0], 'y', 0.3, R * 0.96 + 0.12, 16, { decor: true }, R * 0.96 + 0.12);
-    sink.cylinder('roof', [0, H, 0], 'y', R * 2.2, R * 0.96 + 0.35, 16, {}, 0.05);
-    sink.cylinder('structureMetal', [0, H + R * 2.2 - 0.1, 0], 'y', 0.9, 0.05, 6, { colour: IRON, decor: true }, 0.02);
-    for (let k = 0; k < 4; k++) {
-      const a = k * Math.PI / 2 + 0.4, y = 2.4 + (k % 2) * 3.2;
-      const f: Face = { origin: [Math.cos(a) * R * 0.98, 0, Math.sin(a) * R * 0.98], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
-      faceBox(sink, 'dark', f, 0, y, 0.01, 0.16, 1.1, 0.02, { decor: true });
+    // the battered foot, its faces under the drum's
+    sink.cylinder('stone', [0, -0.4, 0], 'y', foot + 0.4, R + 0.3, N, {}, R, true, phase);
+    // the loops: three levels, three to a level, turned a little from level to level; none over the door
+    const loops = new Map<number, Array<{ u0: number; u1: number; y0: number; y1: number }>>();
+    for (let level = 0, y = 2.8; y + 1.05 < H - 1.0 && level < 3; level++, y += 2.8) {
+      for (let j = 0; j < 3; j++) {
+        const k = (1 + level * 3 + j * 5) % N;
+        if (level === 0 && Math.abs(k - N / 4) <= 1) continue;
+        const list = loops.get(k) ?? [];
+        list.push({ u0: -0.06, u1: 0.06, y0: y, y1: y + 1.05 });
+        loops.set(k, list);
+      }
     }
-    // the low door in its dressed block, standing out of the curve: the block closed all round, the plank leaf on its face
-    sink.span('stone', -0.66, -0.3, R - 0.4, 0.66, 2.5, R + 0.14);
-    const door: Face = { origin: [0, 0, R + 0.14], u: [1, 0, 0], out: [0, 0, 1], width: 1.32 };
-    facePanel(sink, 'structureWood', door, 0, 1.0, 0.01, 0.86, 1.95, { colour: PLANK, decor: true });
+    for (let k = 0; k < N; k++) {
+      const a = k * 2 * Math.PI / N;
+      const face: Face = { origin: [Math.cos(a) * apo, 0, Math.sin(a) * apo], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: chord };
+      const holes = loops.get(k) ?? [];
+      holedFace(sink, 'stone', face, { u0: -chord / 2, u1: chord / 2, y0: foot, y1: H }, holes, 0);
+      for (const h of holes) splayedLoop(sink, face, h, 0.22, 0.12, 0.6);
+    }
+    // the wall-head course
+    sink.cylinder('stone', [0, H - 0.26, 0], 'y', 0.26, (R + 0.1) / Math.cos(Math.PI / N), N, { decor: true }, (R + 0.1) / Math.cos(Math.PI / N), true, phase);
+    // the roof: bell-cast over the wall-head, then the cone to its apex; the finial, its ball and the vane
+    const eave = (R + 0.45) / Math.cos(Math.PI / N), kick = (R + 0.08) / Math.cos(Math.PI / N), coneH = R * 2.3;
+    sink.cylinder('roof', [0, H, 0], 'y', 0.36, eave, N, {}, kick, true, phase);
+    sink.cylinder('roof', [0, H + 0.36, 0], 'y', coneH, kick, N, {}, 0.04, true, phase);
+    const apex = H + 0.36 + coneH;
+    sink.cylinder('structureMetal', [0, apex - 0.1, 0], 'y', 0.9, 0.03, 5, { colour: IRON, decor: true }, 0.02);
+    sink.cylinder('structureMetal', [0, apex + 0.22, 0], 'y', 0.13, 0.065, 6, { colour: IRON, decor: true });
+    sink.span('structureMetal', -0.012, apex + 0.5, 0, 0.012, apex + 0.7, 0.34, { colour: IRON, decor: true });
+    // the low door in its dressed block standing out of the curve, cut into a reveal, its plank leaf at the back of it
+    // (its face clear of the battered foot's toe, R + 0.3 at the ground)
+    sink.box('stone', [0, 1.15, R - 0.06], [0.7, 1.45, 0.44], {}, undefined, { pz: true });
+    const door: Face = { origin: [0, 0, R + 0.38], u: [1, 0, 0], out: [0, 0, 1], width: 1.4 };
+    holedFace(sink, 'stone', door, { u0: -0.7, u1: 0.7, y0: -0.3, y1: 2.6 }, [{ u0: -0.42, u1: 0.42, y0: 0, y1: 1.9 }], 0.3);
+    sink.recess = 0.3;
+    try {
+      doorUnit(sink, door, 0, 0, 0.84, 1.9, { leaf: PLANK, frame: { bucket: 'stone', width: 0.12, out: 0.04, arch: true }, steps: null, leafKind: 'plank' });
+    } finally { sink.recess = 0; }
   });
   return sink.finish();
 };
+
+/**
+ * An arrow loop cut in a face: its slit (`h`, an opening already cut in the face) and the reveals splaying inward from
+ * it, `spread` wider each side and `rise` taller at the `depth` of the embrasure, the dark embrasure behind them.
+ */
+function splayedLoop(sink: PartSink, face: Face, h: { u0: number; u1: number; y0: number; y1: number }, spread: number, rise: number, depth: number): void {
+  const P = (u: number, y: number, o = 0): Vec3 => facePoint(face, u, y, o), r = -depth;
+  const a0 = h.u0 - spread, a1 = h.u1 + spread, b0 = h.y0 - rise, b1 = h.y1 + rise;
+  sink.quad('stone', P(h.u0, h.y0), P(a0, b0, r), P(a0, b1, r), P(h.u0, h.y1), { shade: 0.62 });
+  sink.quad('stone', P(h.u1, h.y0), P(h.u1, h.y1), P(a1, b1, r), P(a1, b0, r), { shade: 0.62 });
+  sink.quad('stone', P(h.u0, h.y1), P(a0, b1, r), P(a1, b1, r), P(h.u1, h.y1), { shade: 0.55 });
+  sink.quad('stone', P(h.u0, h.y0), P(h.u1, h.y0), P(a1, b0, r), P(a0, b0, r), { shade: 0.8 });
+  sink.quad('dark', P(a0, b0, r - 0.004), P(a1, b0, r - 0.004), P(a1, b1, r - 0.004), P(a0, b1, r - 0.004), { decor: true });
+}
 
 /**
  * The village's small outbuilding: the bakehouse (fournil) with its oven's hump and stack, or the cart shed open under
