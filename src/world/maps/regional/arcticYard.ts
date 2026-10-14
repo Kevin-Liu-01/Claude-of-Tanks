@@ -3,7 +3,9 @@
 // the Jamesway hut on the container row's plot. The kit's shared parts (the modules, their doors, stairs and windows,
 // the radome, the banks) stay in arctic.ts.
 import { PartSink, faceBox, shade, type Face, type Vec3 } from './geometry.ts';
-import { windowUnit } from './openings.ts';
+import { buildHouse } from './house.ts';
+import { latticeFrame } from './lattice.ts';
+import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuilder } from './types.ts';
 import { GALV, OLIVE, PLY, STEEL_DARK, WINDOW, bank, boxFace, clamp, radome, uvOffset, wallsIn, wave } from './arctic.ts';
 
@@ -17,23 +19,20 @@ export const radarTower: RegionalBuilder = (ctx) => {
   const fit = wallsIn(ctx, 0.1, 0.1);
   const B = Math.min(fit.w, fit.d) / 2 - 0.15, T = Math.max(1.0, B * 0.42), H = clamp(ctx.bounds.maxY - 1.8, 9, 13);
   sink.placed(0, fit.cx, 0, fit.cz, () => {
-    const leg = (sx: number, sz: number, y: number): Vec3 => { const k = y / H, r = B + (T - B) * k; return [sx * r, y, sz * r]; };
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      sink.member('structureMetal', leg(sx, sz, -0.3), leg(sx, sz, H), 0.2, 0.2, [sx, 0, 0], { colour: GALV, exposed: true });
-      sink.span('stone', sx * B - 0.45, -0.4, sz * B - 0.45, sx * B + 0.45, 0.25, sz * B + 0.45);
-    }
-    // the braces: an X in each face, panel by panel
-    const panels = 4;
-    for (let k = 0; k < panels; k++) {
-      const ya = H * k / panels, yb = H * (k + 1) / panels;
-      for (const [s1, s2, t1, t2] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
-        // the face's outward normal: a face along x keeps its z sign, a face along z its x sign
-        const out: Vec3 = s2 === t2 ? [0, 0, s2] : [s1, 0, 0];
-        const opts = { colour: shade(GALV, 0.85), exposed: true } as const;
-        sink.member('structureMetal', leg(s1, s2, ya), leg(t1, t2, yb), 0.09, 0.09, out, opts);
-        sink.member('structureMetal', leg(t1, t2, ya), leg(s1, s2, yb), 0.09, 0.09, out, opts);
-      }
-    }
+    // (props census #3, lane B 2026-10-14; the judges: "the equipment hut a plain plaster2 span with no door, window or
+    // vent; the cable ladder not built; the open lattice falls as solid metal-clad drums") the lattice on its footings
+    // (lattice.ts: legs, girts and X braces in every panel), recorded so it folds over as its members with the radome
+    // as its crown; the cable ladder up the +x face; the hut a building with its door and window cut
+    latticeFrame(sink, { foot: B, head: T, y0: 0.25, y1: H, size: 0.2, girt: 0.09, brace: 0.09, panels: 4, bucket: 'structureMetal', colour: GALV,
+      pad: { bucket: 'stone', size: 0.9, top: 0.25 }, mobile },
+      { x0: -T - 1.6, x1: T + 1.6, y0: H, y1: H + 0.6 + 2 * clamp(T + 0.4, 1.4, 2.4), z0: -T - 1.6, z1: T + 1.6, bucket: 'structureMetal', tint: GALV });
+    sink.dressing(mobile, () => {
+      const at = (y: number) => B + (T - B) * ((y - 0.25) / (H - 0.25));
+      for (const dz of [-0.2, 0.2]) sink.member('structureMetal', [at(0.4) + 0.14, 0.4, dz], [at(H) + 0.14, H, dz], 0.035, 0.03, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true }, 0);
+      for (let y = 0.7; y < H - 0.1; y += 0.32) sink.span('structureMetal', at(y) + 0.13, y - 0.012, -0.2, at(y) + 0.155, y + 0.012, 0.2, { colour: STEEL_DARK, decor: true, fine: true });
+      // the cable tray up the -x face beside it
+      sink.member('structureMetal', [-(at(0.4) + 0.1), 0.4, 0], [-(at(H) + 0.1), H, 0], 0.14, 0.04, [-1, 0, 0], { colour: shade(STEEL_DARK, 1.2), decor: true, exposed: true }, 0);
+    });
     // the platform, its rail, and the radome on it
     sink.span('structureMetal', -T - 0.5, H, -T - 0.5, T + 0.5, H + 0.18, T + 0.5, { colour: GALV });
     if (!mobile) for (const [a, b] of [[[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[1, 1], [-1, 1]], [[-1, 1], [-1, -1]]] as const) {
@@ -46,9 +45,25 @@ export const radarTower: RegionalBuilder = (ctx) => {
       }
     }
     radome(sink, 0, H + 0.6, 0, clamp(T + 0.4, 1.4, 2.4), 14);
-    // the equipment hut at the foot between two legs
-    sink.span('plaster2', -1.1, 0, -B + 0.1, 1.1, 2.4, -B + 1.7);
-    sink.span('roof', -1.2, 2.4, -B, 1.2, 2.55, -B + 1.8);
+    // the equipment hut at the foot between two legs: a framed insulated hut on its pad, its steel door and a window cut,
+    // a louvred vent and the cable entry, a flat roof with its fascia
+    sink.placed(0, 0, 0, -B + 0.9, () => {
+      sink.span('stone', -1.25, -0.4, -0.95, 1.25, 0.15, 0.95, { shade: 0.85 });
+      sink.paint = null;
+      const hut = buildHouse(sink, {
+        w: 2.2, d: 1.6, plinth: null, storeys: [{ h: 2.3, wall: 'plaster2' }],
+        roof: { kind: 'flat', pitchDeg: 0, eave: 0.1, verge: 0.1, thickness: 0.15, bucket: 'roof' }, gableBucket: 'plaster2',
+        openings: [{ face: 'front', storey: 0, kind: 'door', u: -0.35, w: 0.85, y0: 0.15, h: 1.95 }, { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.6, y0: 1.1, h: 0.5 }],
+        chimneys: [], gutters: null, verge: null, reveal: 0.1,
+      }, {
+        window: (s2, face, o, y0) => windowUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, WINDOW, ctx.rng, 0.3),
+        door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: STEEL_DARK, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: STEEL_DARK }, steps: { bucket: 'stone' }, leafKind: 'panel' }),
+      });
+      const f = hut.faces.front;
+      faceBox(sink, 'structureMetal', f, 0.6, 1.7, 0.03, 0.45, 0.35, 0.06, { colour: STEEL_DARK, decor: true });
+      for (let y = 1.58; y < 1.85; y += 0.07) faceBox(sink, 'structureMetal', f, 0.6, y, 0.065, 0.4, 0.025, 0.02, { colour: GALV, decor: true, fine: true });
+      sink.cylinder('structureMetal', [0.9, 2.3, -0.5], 'y', 0.6, 0.06, 6, { colour: STEEL_DARK, decor: true });
+    });
   });
   return sink.finish();
 };
