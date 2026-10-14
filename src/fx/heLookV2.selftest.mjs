@@ -80,4 +80,21 @@ assert.match(parts, /vEmit = selfLit \* aC0\.rgb \* exp\( -3\.2 \* age \);/, 'a 
 assert.match(parts, /float h2 = heat \* \( 1\.0 - vT \* 0\.95 \) \* exp\( -7\.0 \* vAge \);/, 'a fireball lobe\'s orange heart is gone by ~0.3 s, whatever its life');
 assert.match(parts, /vAge = age;/);
 { const h = (age) => Math.exp(-7 * age); assert.ok(h(0.2) < 0.25 && h(0.35) < 0.09, 'the heat at 0.2 s and 0.35 s'); }
+// the battle's kill dust on snow: low, short, small, faint, settling
+{
+  const { killDust } = await import('./blastRecipes.ts');
+  const dust = (surface) => {
+    const media = [];
+    const ctx = { rand: mulberry32(5), groundY: () => 0, media: (p) => media.push({ ...p }), chunk: () => {}, flash: () => {}, fire: () => {},
+      sparks: () => {}, jet: () => {}, shockRing: () => {}, lightPulse: () => {}, glow: () => {}, distBoost: () => 1, tier: 1,
+      m: makeVolumePuff(), k: makeChunkPiece(), lp: {}, ls: {}, lj: {} };
+    killDust(ctx, 0, 0, 0, 1.6, surface, 0);
+    return media;
+  };
+  const soil = dust('soil'), snowy = dust('snow');
+  const avg = (xs, f) => xs.reduce((s, p) => s + f(p), 0) / xs.length;
+  assert.ok(avg(snowy, (p) => p.life) < 0.6 * avg(soil, (p) => p.life), 'snow powder short-lived');
+  assert.ok(avg(snowy, (p) => p.vy) < 0.5 * avg(soil, (p) => p.vy) && snowy.every((p) => p.grav < 0), 'low and settling');
+  assert.ok(avg(snowy, (p) => p.size1) < 0.75 * avg(soil, (p) => p.size1), 'smaller');
+}
 console.log('heLookV2: fire gone by ~0.3 s, spikes and a sooty heart, short cook-off pops, snow powder settling, pooled clouds earthen, rims torn — ok');

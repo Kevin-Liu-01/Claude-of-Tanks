@@ -1165,6 +1165,9 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
   const sq = Math.sqrt(s);
   const dk = C.distBoost(x, y, z);
   const n = Math.round((6 + 4 * s) * Math.sqrt(L.dustK));
+  // (HE look v2, the coordinator: "the snow-dust puffs read as flat white cotton ... eroded, low, fast-settling") powder
+  // thrown off snow stays low, small, faint and short, and settles instead of billowing up
+  const snow = surface === 'snow';
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + (R() - 0.5) * 0.7;
     // (fx 9, wave 405: "flat tan cutouts with jagged, star-shaped edges, pressed onto the hull side at hull height; it
@@ -1172,10 +1175,11 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
     // swells, in the smooth medium (a ball that develops lobes), fading in: billows climbing off the ground round the hull
     const r0 = (2.0 + R() * 0.6) * sq, v = (2.0 + R() * 3.0) * sq;
     place(m, x + Math.cos(a) * r0, y + 0.12 + R() * 0.15, z + Math.sin(a) * r0, bo + R() * 0.1);
-    move(m, Math.cos(a) * v, 1.4 + R() * 1.0, Math.sin(a) * v, 2.0, 0.6 + R() * 0.3, 0.9, 0);
-    const life = (2.8 + R() * 1.2) * Math.min(1.3, sq);
-    shape(m, life, 0.5 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk, 2.0, R);
-    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.55, 0.38 * L.dustK + 0.14), 0.12, 0.45);
+    move(m, Math.cos(a) * v, snow ? 0.5 + R() * 0.4 : 1.4 + R() * 1.0, Math.sin(a) * v, snow ? 2.6 : 2.0,
+      snow ? 0.05 : 0.6 + R() * 0.3, 0.9, snow ? -0.6 : 0);
+    const life = (2.8 + R() * 1.2) * Math.min(1.3, sq) * (snow ? 0.5 : 1);
+    shape(m, life, 0.5 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk * (snow ? 0.65 : 1), 2.0, R);
+    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.55, 0.38 * L.dustK + 0.14) * (snow ? 0.7 : 1), 0.12, 0.45);
     book(m, 'burst', R, life * 1.2);
     card(m, 1.0 + R() * 0.2, R, 0.06);
     heat(m, 0, 1);
