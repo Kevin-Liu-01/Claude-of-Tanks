@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
@@ -253,6 +254,21 @@ assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confi
   assert.ok(near.includes('glass_shatter') && near.includes('hit_metal'), `a near miss: glass and dent (${near})`);
   assert.ok(!near.includes('car_crush'), 'a near miss does not crush the car');
   assert.equal(near.filter((n) => n === 'glass_shatter').length, 1, 'one shell\'s near miss on two cars is one sound');
+  // Multiplayer: the near miss is client-derived from a detonation this viewer already presents, never a server event.
+  // nearMiss is raised only in props.ts blastNear, which runs only from destructibles.notifyBlast, which fx/effects.ts
+  // calls only on munition:blast; in a network battle battlePresentation raises that only from shell_impact, shell_hit
+  // and tank_destroyed, which the authority's canObserveEvent hands a viewer only when it may see the shooter, target or
+  // hull. Nothing of it is on the wire, so a parked car's glass cannot place a hidden enemy's round.
+  const src = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const tree = (dir) => readdirSync(new URL(dir, import.meta.url), { recursive: true }).filter((f) => /\.(ts|mjs)$/.test(f) && !/selftest/.test(f))
+    .map((f) => src(`${dir}${f}`)).join('\n');
+  const props = src('../world/props.ts');
+  const blastNearBody = props.slice(props.indexOf('function blastNear('), props.indexOf('const registerDestructibles'));
+  assert.ok(
+    (props.match(/nearMiss:/g) || []).length === 1 && blastNearBody.includes('nearMiss:')
+      && (src('../fx/effects.ts').match(/notifyBlast\(/g) || []).length === 1 && /DESTRUCTION_BUS_EVENTS\.blast[\s\S]{0,1200}notifyBlast\(/.test(src('../fx/effects.ts'))
+      && !/nearMiss/.test(tree('../mp/') + tree('../sim/') + tree('../../server/')),
+    'a near miss is raised only by blastNear from a presented munition:blast, and nothing named nearMiss rides the wire or the authority');
 }
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
