@@ -12,7 +12,8 @@
 //     a sheet of water with roofs and trees standing in it, and Middelburg's Lange Jan (about 90 m) stands over the flood;
 //   - the Oosterschelde far to the north;
 //   - dyke villages along the roads with their church towers, farms round paved yards, tower mills on the dykes.
-// Lab until the pilot (HZ.16) moves it into polders.ts.
+// The pilot (HZ.16, 2026-10-13): Tidegate Polders ships it through its map file's switch (maps/polders.ts
+// `hinterland: true`); `?hinterland=0` draws the old ring.
 import type { HinterlandConfig } from '../spec.ts';
 
 /** The polder grid's heading (landUse.ts polders: -0.25 rad), as a compass strike for the dykes. */

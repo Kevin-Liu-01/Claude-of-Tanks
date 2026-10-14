@@ -132,7 +132,9 @@ export interface HinterlandConfig {
 /** What resolveHinterlandSpec reads from a map config (a structural subset of the map's config). */
 export interface HinterlandMapConfig {
   id?: string;
-  hinterland?: HinterlandConfig;
+  /** The map's block, or `true`: the block authored with the Hinterland (its draft, hinterland/drafts — the map file
+   * holds only the switch, so the host Worker never imports a draft); select.ts resolves it. */
+  hinterland?: HinterlandConfig | true;
   /** (read loosely: a map config's blocks carry far more than the spec reads) */
   terrain?: unknown;
   sky?: unknown;
@@ -179,7 +181,7 @@ export function hinterlandActive(cfg: HinterlandMapConfig | null | undefined, se
   const override = hinterlandOverride(search);
   if (!cfg?.hinterland) return false;
   if (override === false) return false;
-  if (cfg.hinterland.lab) return override === true;
+  if (cfg.hinterland !== true && cfg.hinterland.lab) return override === true;
   return true;
 }
 
@@ -196,7 +198,8 @@ export function hinterlandOverride(search?: string | null): boolean | null {
  */
 export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefined, tier: 'desktop' | 'mobile' = 'desktop'): HinterlandSpec | null {
   const block = cfg?.hinterland;
-  if (!block) return null;
+  // (`true` is the switch: withSelectedHinterland puts the block itself in place before this reads it)
+  if (!block || block === true) return null;
   const region = HINTERLAND_REGIONS[block.region];
   if (!region) throw new Error(`hinterland: unknown region '${String(block.region)}' on map '${cfg?.id ?? '?'}'`);
   const o = block.outland ?? {};
@@ -241,7 +244,7 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
 
 /** The region a map would start from (its block's, else B-architecture's first-pass table). */
 export function hinterlandRegionFor(cfg: HinterlandMapConfig | null | undefined): HinterlandRegion | null {
-  const id = cfg?.hinterland?.region ?? (cfg?.id ? HINTERLAND_MAP_REGIONS[cfg.id] : undefined);
+  const id = (cfg?.hinterland === true ? undefined : cfg?.hinterland?.region) ?? (cfg?.id ? HINTERLAND_MAP_REGIONS[cfg.id] : undefined);
   return id ? HINTERLAND_REGIONS[id] ?? null : null;
 }
 

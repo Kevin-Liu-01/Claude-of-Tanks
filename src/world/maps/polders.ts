@@ -369,6 +369,9 @@ export default {
   // tone grain (0.5 -> 0.60); the authored 0.18 amplitude is unchanged
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): below-sea-level Zeeland — dykes and
   // poplar rows, no range: the far country plain
+  // the horizons stream's pilot (HZ.16, 2026-10-13): the Hinterland past the red line (hinterland/drafts/polders.ts);
+  // delete this line for the old ring
+  hinterland: true,
   horizon: { baseHex: 0x697a59, amp: 0.18, style: 'rolling', treeline: 0.30, treelineLayers: 2, panorama: { regional: 'plain', trees: 14 }, outlandRocks: 0.40, forestHex: 0x3c5840, rockHex: 0x818577, haze: 0.94, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the broken deck (1.1 / 0.72) missed the low-stratus
   // auto branch (0.95 / 0.90 and turbidity 7), so over the flattest ring in the game the 620 m deck was fully hazed
