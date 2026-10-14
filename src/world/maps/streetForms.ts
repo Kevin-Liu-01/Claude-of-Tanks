@@ -149,10 +149,20 @@ export function benchBroken(f: BenchForm, rng: Rng): THREE.BufferGeometry {
     place(m, end, 0.3, -L / 2 + 0.2, 0, 0.1);
     for (const sx of [1]) for (const z of [0.17, -0.17]) pole(m, [sx * (L / 2 - 0.12), 0, z], [sx * (L / 2 - 0.12), SEAT_Y, z], 0.03, 4, fr, true);
   }
+  if (f.kind === 'mastaba' || f.kind === 'stone' || f.kind === 'concrete') {
+    // (a masonry bench's spill: its broken stones, not its boards)
+    if (f.kind !== 'concrete') return finish(m);
+  }
+  // the seat's half on the standing end, broken at its middle and sloping down to the ground
+  const half = m.mark;
+  slats(m, 4, 0, -0.2, 0.2, L * 0.55, f.wood, rng);
+  tip(m, half, [-L * 0.275, 0, 0], Z, 0.5);
+  place(m, half, 0, L * 0.2, 0.02, 0);
+  // the rest of its slats snapped and thrown along it and off its front
   for (let k = 0; k < 4; k++) {
     const len = 0.5 + rng() * 0.6, c = tone(f.wood, rng, 0.16), from = m.mark;
     extrude(m, [-len / 2, 0, 0], [len / 2, 0, 0], easedBoard(0.08, 0.03, 0.006), Z, Y, c, mul(c, 1.12), 0);
-    place(m, from, rng() * Math.PI, (rng() - 0.5) * 1.4, 0.004 + k * 0.006, (rng() - 0.5) * 0.9);
+    place(m, from, (rng() - 0.5) * 0.8, (k - 1.5) * 0.55 + (rng() - 0.5) * 0.2, 0.004 + k * 0.006, 0.15 + (rng() - 0.5) * 0.7);
   }
   return finish(m);
 }

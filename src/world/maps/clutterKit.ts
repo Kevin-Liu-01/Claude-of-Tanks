@@ -26,6 +26,7 @@ import {
   type PotForm, type SpoolForm, type WheelForm,
 } from './clutterLooseForms.ts';
 import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
+import { streetFormOf, streetTypes } from './streetKit.ts';
 
 /** The vertex attribute that tags a clutter pool's near (1) and far (2) form, and a lean form drawn at every distance (3);
  *  untagged geometry reads 0. */
@@ -461,7 +462,7 @@ export function clutterFormOf(kind: string, mapId: string): string | null {
   const year = MAP_SETTING_YEAR[mapId];
   if (kind === 'drumred') return year === undefined ? null : year < 1950 ? 'red-drum-1940s' : 'red-drum-hazard';
   if (kind === 'cablespool') return year === undefined ? null : spoolOf(mapId).form;
-  return null;
+  return streetFormOf(kind, mapId);
 }
 
 /** The clutter kinds' forms on a map, over the inhabit kit's records (props.ts LOCAL_TYPES). */
@@ -541,5 +542,7 @@ export function clutterTypes(mapId: string, _mobile: boolean): Record<string, De
     const f = spoolFormOf(mapId);
     out.cablespool = entry('cablespool', mapId, 'baked', (rng) => spoolNear(f, rng), null, (rng) => spoolBroken(f, rng));
   }
+  // (family #14: the street furniture, streetKit.ts, through the same entry)
+  Object.assign(out, streetTypes(mapId, (kind, map, near, far, broken) => entry(kind as keyof typeof DESTRUCTIBLE_TYPES, map, 'baked', near, far, broken)));
   return out;
 }
