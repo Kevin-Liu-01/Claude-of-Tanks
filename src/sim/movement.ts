@@ -1361,6 +1361,10 @@ const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const LAUNCH_SPEED_CAP_MPS = 45; // ruleset launches never push the run speed past this
 const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation impulse (≈ knock × 0.29 m of displacement)
+/** The tracks' grip against a shove, as a friction coefficient (applyShellKnock): a step's worth of it is absorbed. */
+const KNOCK_GRIP_MU = 0.5;
+/** The smallest calibre share a shove is reckoned at (shellKnockMps): a 5 mm round's; a 12.7 mm round knocks with its own. */
+const KNOCK_CALIBRE_FLOOR = 0.05;
 const JUMP_AIRTIME_GRACE_S = 0.05;
 // round 30 (owner 2026-09-20: the jump should "be a lot more powerful, and work even when you're not on ground"):
 // an airborne hull may fire its jump again once this much flight has passed since the last lift — a rocket boost
@@ -5353,24 +5357,38 @@ export function requestTankJump(
  * knock you"): metres per second from calibre squared, shell speed and the victim's mass, times the ruleset scale.
  */
 export function shellKnockMps(caliberMm: number, shellSpeedMps: number, massTons: number, scale = 1): number {
-  const cal = clamp((caliberMm || 105) / 105, 0.3, 2.2);
+  // (physics stream F4, 2026-10-13; the coordinator: "a 12.7 mm round should knock with its own momentum") under the
+  // reference calibre a round's shove goes with its momentum, its mass the cube of its calibre; from 105 mm up the square
+  // stands as tuned. The 0.3 floor gave a 12.7 mm round the shove of a 31 mm shell, and an enemy's roof gun walked a
+  // hull parked on it along at 6-44 mm/s.
+  const cal = clamp((caliberMm || 105) / 105, KNOCK_CALIBRE_FLOOR, 2.2);
+  const calibre = cal < 1 ? cal * cal * cal : cal * cal;
   const speed = clamp((shellSpeedMps || 800) / 900, 0.3, 2.0);
   const mass = massTons > 0 ? clamp(45 / massTons, 0.4, 2.5) : 1;
-  return Math.min(9, 1.3 * cal * cal * speed * mass * Math.max(0, scale));
+  return Math.min(9, 1.3 * calibre * speed * mass * Math.max(0, scale));
 }
 
 /** Apply an impact shove along the shell's world direction: a decaying translation impulse (the hull is shoved,
  * the drivetrain speed is untouched so a hit never becomes a lasting drive input — balance duels stay stable),
  * an attitude rock, and for heavy shoves a lift of the ride. */
-export function applyShellKnock(state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number): void {
+export function applyShellKnock(
+  state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number, gravityScale = 1,
+): void {
   if (!(knockMps > 0)) return;
   const h = Math.hypot(dirX, dirZ) || 1;
   const kx = dirX / h, kz = dirZ / h;
   const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
   const along = kx * fx + kz * fz;
   const spr = state._spring;
-  spr.recoilVX += kx * knockMps * KNOCK_TRANSLATION_GAIN;
-  spr.recoilVZ += kz * knockMps * KNOCK_TRANSLATION_GAIN;
+  // (physics stream F4, 2026-10-13; the coordinator: "static friction") a grounded hull's tracks hold it against a shove
+  // up to their grip over a step (KNOCK_GRIP_MU g dt, 8 cm/s at 1 g): only the excess moves it; a hull in flight takes the
+  // whole shove. A hull hit by machine-gun rounds stays where it stands (a hull stacked on an enemy whose roof gun fired
+  // into it crept off it at 6-44 mm/s); a cannon's 1.2-9 m/s shove keeps all but those 8 cm/s.
+  const grip = state.grounded === false ? 0
+    : KNOCK_GRIP_MU * GRAVITY * clamp(Number.isFinite(gravityScale) ? gravityScale : 1, 0.1, 3) * SIM_DT;
+  const shove = Math.max(0, knockMps - grip);
+  spr.recoilVX += kx * shove * KNOCK_TRANSLATION_GAIN;
+  spr.recoilVZ += kz * shove * KNOCK_TRANSLATION_GAIN;
   // in flight a hit turns the hull by its rigid-body share, as a shot fired in flight does (fireRecoil): the rock is the
   // suspension's, and at Mars and Moon gravity a hit at the top of a boost spun the hull onto its back before it came
   // down, the air barely damping the spin (physics lane, 2026-10-03; Moon field audit)

@@ -2145,7 +2145,7 @@ function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
   const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
   const knock = shellKnockMps(shell.spec.caliberMm, speed, entity.spec.weightTons, entity.modeShellKnockScale ?? 1);
   if (!(knock > 0)) return;
-  applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+  applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, entity.modeGravityScale ?? 1);
 }
 
 function resolveTankShellImpact(
