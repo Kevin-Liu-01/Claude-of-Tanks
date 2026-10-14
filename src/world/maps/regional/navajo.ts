@@ -13,6 +13,7 @@ import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type Regiona
 import { buildHouse, emitRoof, leanTo, placeShed, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { latticeFrame } from './lattice.ts';
 
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
@@ -775,19 +776,20 @@ const windmill: RegionalBuilder = (ctx) => {
   const P = Math.max(3.6, Math.min(5.6, Math.min(PX, PZ) - 0.3));
   const base = Math.min(1.15, P * 0.24), H = 9.0 + ctx.rng() * 2.0, top = 0.32;
   const tx = cx - PX / 2 + base + 0.15, tz = cz - PZ / 2 + base + 0.15;
-  const steel = GALV;
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    sink.member('structureMetal', [tx + sx * base, -0.4, tz + sz * base], [tx + sx * top, H, tz + sz * top], 0.09, 0.09, [sx, 0, 0], { colour: steel, exposed: true }, 0);
-    // its concrete pad (dressing)
-    sink.span('stone', tx + sx * base - 0.3, -0.3, tz + sz * base - 0.3, tx + sx * base + 0.3, 0.18, tz + sz * base + 0.3, { decor: true, shade: 0.8 });
-  }
-  // girts and braces (dressing)
-  for (let y = 1.6; y < H - 0.5; y += 2.0) {
-    const f = 1 - y / H, r = top + (base - top) * f;
-    for (const [a, b] of [[[-r, -r], [r, -r]], [[r, -r], [r, r]], [[r, r], [-r, r]], [[-r, r], [-r, -r]]] as const) {
-      sink.member('structureMetal', [tx + a[0], y, tz + a[1]], [tx + b[0], y, tz + b[1]], 0.04, 0.04, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
+  const steel = GALV, mobile = ctx.tier === 'mobile';
+  // (props census #3, lane B 2026-10-14; the judges: "no diagonal braces ... only girts are built; no ladder") the tower
+  // a lattice of four galvanised legs on concrete pads, girts and X rods in every panel (lattice.ts), a ladder up its
+  // -x face to the platform; it falls as its frame with the head and wheel as its crown
+  latticeFrame(sink, { foot: base, head: top, cx: tx, cz: tz, y0: 0.18, y1: H, size: 0.09, girt: 0.045, brace: 0.025,
+    panels: Math.max(3, Math.round(H / 2)), bucket: 'structureMetal', colour: steel, pad: { bucket: 'stone', size: 0.6, top: 0.18 }, mobile },
+    { x0: tx - 1.6, x1: tx + 1.6, y0: H - 0.05, y1: H + 2.1, z0: tz - 2.6, z1: tz + 0.8, bucket: 'structureMetal', tint: steel });
+  sink.dressing(mobile, () => {
+    for (const dz of [-0.2, 0.2]) sink.member('structureMetal', [tx - base - 0.12, 0.2, tz + dz], [tx - top - 0.12, H, tz + dz * 0.6], 0.035, 0.03, [-1, 0, 0], { colour: steel, decor: true, exposed: true }, 0);
+    for (let y = 0.5; y < H - 0.1; y += 0.36) {
+      const x = tx - (base + (top - base) * (y / H)) - 0.12, w = 0.2 - 0.08 * (y / H);
+      sink.span('structureMetal', x - 0.012, y - 0.012, tz - w, x + 0.012, y + 0.012, tz + w, { colour: steel, decor: true, fine: true });
     }
-  }
+  });
   // the platform, the head, the wheel and the vane
   sink.span('structureWood', tx - 0.55, H - 0.05, tz - 0.55, tx + 0.55, H + 0.03, tz + 0.55, { colour: PLANK_GREY, decor: true });
   sink.span('structureMetal', tx - 0.22, H + 0.03, tz - 0.3, tx + 0.22, H + 0.5, tz + 0.3, { colour: shade(steel, 0.8), decor: true });
@@ -812,10 +814,18 @@ const windmill: RegionalBuilder = (ctx) => {
   const sr = Math.min(1.35, P * 0.26), sxp = cx + PX / 2 - sr - 0.15, szp = cz + PZ / 2 - sr - 0.15;
   sink.cylinder('structureMetal', [sxp, -0.2, szp], 'y', 0.9, sr, 16, { colour: shade(steel, 0.92) });
   sink.cylinder('glass', [sxp, 0.62, szp], 'y', 0.02, sr - 0.05, 16, { decor: true });
+  // its rolled rim, the float valve on the inlet
+  sink.cylinder('structureMetal', [sxp, 0.66, szp], 'y', 0.06, sr + 0.04, 16, { colour: shade(steel, 0.8), decor: true }, sr + 0.04, false);
+  sink.cylinder('structureMetal', [sxp - sr * 0.6, 0.66, szp], 'y', 0.06, 0.12, 8, { colour: rgb(0x8a8a82), decor: true }, 0.12, true);
   const tr = Math.min(0.85, P * 0.16);
   const stx = cx - PX / 2 + tr + 0.15, stz = cz + PZ / 2 - tr - 0.15;
   sink.cylinder('structureMetal', [stx, -0.2, stz], 'y', 2.2, tr, 12, { colour: pick(look, [GALV, RUSTY, rgb(0x6e7f74)]) });
   sink.cylinder('structureMetal', [stx, 2.0, stz], 'y', 0.25, tr, 12, { colour: shade(GALV, 0.85), decor: true }, 0.1);
+  // its rim and the corrugation's ribs (near the camera only)
+  sink.cylinder('structureMetal', [stx, 1.94, stz], 'y', 0.06, tr + 0.03, 12, { colour: shade(GALV, 0.75), decor: true }, tr + 0.03, false);
+  sink.dressing(mobile, () => {
+    for (let y = 0.2; y < 1.9; y += 0.35) sink.cylinder('structureMetal', [stx, y, stz], 'y', 0.04, tr + 0.015, 12, { colour: shade(GALV, 0.9), decor: true, fine: true }, tr + 0.015, false);
+  });
   // the pipe from the pump to the tanks
   sink.member('structureMetal', [tx, 0.5, tz], [sxp, 0.75, szp], 0.06, 0.06, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
   return sink.finish();
