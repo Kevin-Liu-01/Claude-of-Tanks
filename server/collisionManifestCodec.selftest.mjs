@@ -76,6 +76,22 @@ for (const args of [['--variant=moon-craters'], ['--variant=assault-trenches', '
 for (const args of [['--node', '--headless'], ['--node', 'owned-session'], ['--check', '--check'], ['--node', '--node']]) {
   assert.throws(() => collisionCaptureOptions(args), /node|check|session|headless/);
 }
+// 2026-10-13 (speed): a Node build splits its maps over --jobs=N children of the tool (1 is the serial build); the
+// option is absent unless given, so every result above is unchanged, and it never applies to a browser capture
+assert.deepEqual(collisionCaptureOptions(['--check', '--jobs=4']), {
+  session: 'cot-manifest', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null, node: true, check: true, jobs: 4,
+}, 'a drift check splits over four jobs');
+assert.deepEqual(collisionCaptureOptions(['--node', '--jobs=1', '--maps', 'desert,whiteout']), {
+  session: 'cot-manifest', mapIds: ['desert', 'whiteout'], partial: true, headless: false, cacheDir: null, node: true, check: false,
+  jobs: 1,
+}, 'one job is the serial build');
+assert.equal(collisionCaptureOptions(['--variant=assault-trenches', '--jobs=8']).jobs, 8);
+assert.equal(collisionCaptureOptions(['--tier=mobile', '--jobs=2']).jobs, 2);
+for (const args of [['--check', '--jobs=0'], ['--check', '--jobs=x'], ['--check', '--jobs=9'], ['--check', '--jobs=2.5'],
+  ['--check', '--jobs='], ['--check', '--jobs=2', '--jobs=2'], ['--headless', '--jobs=2'], ['owned-session', '--jobs=2'],
+  ['--jobs=2'], ['--check', '--jobs', '2']]) {
+  assert.throws(() => collisionCaptureOptions(args), /jobs|argument/, `${args.join(' ')} is refused`);
+}
 for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'], ['--cache-dir=/tmp/warm'],
   ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);

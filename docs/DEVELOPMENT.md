@@ -43,12 +43,24 @@ Before publishing:
    group (`g`, and `gr` for a landmark set piece): a shard captured by a tree without that packer carries no groups,
    and the host then plays every building on that map as indestructible. After merging lanes that touched maps,
    regenerate every shard on the merged tree in Node — `nice -n 15 node tools/capture-world-collision-manifests.mjs
-   --node` (all maps, about an hour on a loaded machine; `--maps a,b` for some) — and confirm with `--check`; record
-   order and counts do not change, only bytes and the index digests.
+   --node` (all maps, about an hour serially on a loaded machine; `--maps a,b` for some) — and confirm with `--check`;
+   record order and counts do not change, only bytes and the index digests.
    Since 2026-10-08 Frontline Assault's authority plays the map's trench variant from its own shard
    (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
    that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
    (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
+   Since 2026-10-13 a Node build of more than one map splits its maps over `--jobs=N` child processes of the tool
+   (1-8; default max(1, min(4, floor(cores / 4))), 4 on an 18-core machine; `--jobs=1` is the serial build). The output,
+   shard bytes, index and exit code are the serial run's; the wall time is about a quarter. The shard steps of a
+   landing that moved a map:
+   ```sh
+   nice -n 15 node tools/capture-world-collision-manifests.mjs --node --jobs=4                      # regenerate (or --maps a,b)
+   nice -n 15 node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --jobs=4                       # exit 1 on drift
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --tier=mobile --jobs=4
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --variant=assault-trenches --jobs=4
+   ```
+   A check exits 2 when a child fails (its stderr's tail is printed); a failed regeneration writes no index.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their

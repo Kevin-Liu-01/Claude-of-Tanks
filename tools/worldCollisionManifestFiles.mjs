@@ -20,6 +20,7 @@ function assertCollisionCaptureArgs(args) {
 export function collisionCaptureOptions(args) {
   assertCollisionCaptureArgs(args);
   let session = null, selected = null, headless = false, cacheDir = null, node = false, check = false, variant = null, tier = null;
+  let jobs = null;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--maps' || arg.startsWith('--maps=')) {
@@ -53,6 +54,13 @@ export function collisionCaptureOptions(args) {
       if (tier !== null) throw new Error('--tier may be supplied only once');
       tier = arg.slice('--tier='.length);
       if (tier !== 'mobile') throw new Error(`--tier names an unknown device tier to check: ${tier}`);
+    } else if (arg.startsWith('--jobs=')) {
+      // 2026-10-13 (speed): split a Node build's maps over N child processes of the capture tool; 1 is the serial build
+      // (default: the drift receipt's max(1, min(4, floor(cores / 4))), computed by the tool)
+      if (jobs !== null) throw new Error('--jobs may be supplied only once');
+      const value = arg.slice('--jobs='.length);
+      if (!/^[1-8]$/.test(value)) throw new Error(`--jobs requires an integer from 1 to 8: ${value}`);
+      jobs = Number(value);
     } else if (arg.startsWith('--cache-dir=')) {
       // a warm vite optimizer cache of the caller's own (headless mode; default: a fresh temporary directory)
       if (cacheDir !== null) throw new Error('--cache-dir may be supplied only once');
@@ -69,7 +77,9 @@ export function collisionCaptureOptions(args) {
   // a phone's build is only ever checked against the desktop's shards, never written
   if (tier !== null) { if (variant !== null) throw new Error('--tier checks the base maps only'); node = true; check = true; }
   if (node && (headless || session !== null)) throw new Error('--node builds without a browser session');
+  if (jobs !== null && !node) throw new Error('--jobs splits a Node build (--node, --check, --variant, --tier), never a browser capture');
   return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir, node, check,
+    ...(jobs !== null ? { jobs } : {}),
     ...(variant !== null ? { variant } : {}),
     ...(tier !== null ? { tier } : {}),
     mapIds: selected === null ? MAP_IDS : MAP_IDS.filter((id) => selected.includes(id)) };

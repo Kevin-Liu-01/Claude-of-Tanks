@@ -26,9 +26,19 @@
  *   node tools/capture-world-collision-manifests.mjs --node --maps desert
  *   node tools/capture-world-collision-manifests.mjs --check
  *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
+ *
+ * 2026-10-13 (speed): a Node build of more than one map (a regeneration, a check, the phone tier, a variant) splits its
+ * maps round-robin over `--jobs=N` child processes of this tool (1-8; default max(1, min(4, floor(cores / 4))), the
+ * drift receipt's split; `--jobs=1` is the serial build). Each child builds its share and writes its shards; the parent
+ * prints the per-map lines in map order, so its output equals a serial run's, publishes the index itself, and exits as
+ * the serial run would (a check: 1 on drift; 2 when a child fails):
+ *   node tools/capture-world-collision-manifests.mjs --check --jobs=4
+ *   node tools/capture-world-collision-manifests.mjs --check --tier=mobile --jobs=4
+ *   node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -40,6 +50,10 @@ import {
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
+/** A child of a split Node build (--jobs): it builds and writes its share of the maps; its parent publishes the index. */
+const jobChild = options.node && process.env.COT_COLLISION_JOB === '1';
+const jobs = options.jobs ?? Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
+const splitBuild = options.node && jobs > 1 && options.mapIds.length > 1 && !jobChild;
 /** Two packed decimals of 4 places that round apart differ by one unit in the last place; anything more is drift. */
 const CHECK_ROUNDING_M = 2e-4;
 /** The first difference beyond rounding between two decoded manifests (null when none), and the records within it. */
@@ -70,7 +84,8 @@ function compareDecoded(committed, tree) {
   return { difference: null, rounded };
 }
 const { session } = options;
-const maps = options.partial ? readCollisionCaptureEntries(options.mapIds) : {};
+// a split build's parent holds the complete index (and checks the unchanged shards) for its children
+const maps = options.partial && !jobChild ? readCollisionCaptureEntries(options.mapIds) : {};
 const CAPTURE_TIMEOUT_MS = 60_000;
 /** The headless page boots the whole fleet index before __GAME_READY; a cold optimizer cache adds a minute. */
 const HEADLESS_READY_TIMEOUT_MS = 300_000;
@@ -112,9 +127,141 @@ function publish(mapId, data) {
   maps[mapId] = writeCollisionManifestShard(mapId, data);
   console.log(`${mapId}: ${data.obstacles.length} obstacles, ` +
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+  if (jobChild) console.log(`job-entry ${mapId} ${JSON.stringify(maps[mapId])}`);
 }
 
-if (options.node && options.variant) {
+/** A check's closing line, the serial build's and a split build's alike. */
+function checkSummary(drifted) {
+  const total = options.mapIds.length;
+  return options.variant ? `${total - drifted}/${total} ${options.variant} shards match the tree`
+    : `${total - drifted}/${total} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`;
+}
+
+/** Publish a variant's index entries beside the committed index's maps and other variants. */
+function publishVariantIndex(index, variants, entries) {
+  writeCollisionManifestIndex(index.maps, collisionManifestDirectory, { ...variants, [options.variant]: entries });
+  console.log(`captured ${options.mapIds.length} ${options.variant} shards; published the index with ${Object.keys(entries).length} of them`);
+}
+
+/** Publish the base index last, after every selected map has been captured (a partial capture keeps the rest). */
+function publishBaseIndex() {
+  if (options.partial) assertUnchangedCollisionShards(maps, options.mapIds);
+  writeCollisionManifestIndex(maps);
+  console.log(`captured ${options.mapIds.length} map shards; published ${Object.keys(maps).length}-map index at ` +
+    fileURLToPath(new URL('index.json', collisionManifestDirectory)));
+}
+
+/**
+ * 2026-10-13 (speed): the split Node build. The maps are dealt round-robin into `jobs` shares (the drift receipt's
+ * split), and each share is built by a child of this tool with the same arguments and `--maps <share>`. A child marks
+ * each map it starts (`job-map <id>`) and, when it regenerates, reports each shard's index entry (`job-entry <label>
+ * <json>`) instead of publishing the index. The parent prints every map's lines in map order (the first share's
+ * preamble once, before them), so the output is the serial run's; then it publishes the index or prints the check's
+ * summary and exits as the serial run would. A child that fails (a check's exit other than 0 or 1, a regeneration's
+ * other than 0, or a map it never reported) fails the run with exit 2 and its stderr's tail; the index is not written.
+ */
+async function runSplitBuild() {
+  const workers = Math.min(jobs, options.mapIds.length);
+  const shares = Array.from({ length: workers }, (_, w) => options.mapIds.filter((_, index) => index % workers === w));
+  const argv = process.argv.slice(2), args = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--maps') i++;
+    else if (!argv[i].startsWith('--maps=') && !argv[i].startsWith('--jobs=')) args.push(argv[i]);
+  }
+  // a variant's regeneration extends the index it read before the build, as the serial run does
+  const variantIndex = options.variant && !options.check
+    ? { index: JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8')), variants: readCollisionManifestVariants() }
+    : null;
+  const label = (mapId) => (options.variant ? `${mapId}@${options.variant}` : mapId);
+  const blocks = new Map(), entries = new Map(), preambles = shares.map(() => []), children = new Set();
+  let printed = 0;
+  const flush = () => {
+    while (printed < options.mapIds.length && blocks.get(options.mapIds[printed])?.done) {
+      if (printed === 0) for (const line of preambles[0]) console.log(line);
+      for (const line of blocks.get(options.mapIds[printed]).lines) console.log(line);
+      printed++;
+    }
+  };
+  const failedExit = (code) => (options.check ? code !== 0 && code !== 1 : code !== 0);
+  const stopAll = () => { for (const child of children) { child.stopped = true; child.kill('SIGTERM'); } };
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, () => { stopAll(); process.exit(signal === 'SIGINT' ? 130 : 143); });
+  const tool = fileURLToPath(import.meta.url);
+  const run = (share, w) => new Promise((resolve) => {
+    const child = spawn(process.execPath, [...process.execArgv, tool, ...args, '--maps', share.join(',')], {
+      stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, COT_COLLISION_JOB: '1' },
+    });
+    children.add(child);
+    let rest = '', err = '', current = null, settled = false;
+    const take = (line) => {
+      const marker = /^job-map ([a-z_]+)$/.exec(line);
+      if (marker) {
+        if (current) current.done = true;
+        current = { lines: [], done: false };
+        blocks.set(marker[1], current);
+        return;
+      }
+      const entry = /^job-entry ([a-z_]+)(?:@[a-z-]+)? (\{.*\})$/.exec(line);
+      if (entry) { entries.set(entry[1], JSON.parse(entry[2])); return; }
+      if (/^\d+\/\d+ \S+ shards match the tree/.test(line)) return; // the parent closes with the whole run's summary
+      (current ? current.lines : preambles[w]).push(line);
+    };
+    const settle = (code, signal) => {
+      if (settled) return;
+      settled = true;
+      children.delete(child);
+      if (rest) take(rest);
+      rest = '';
+      if (current) current.done = true;
+      flush();
+      if (failedExit(code)) stopAll();
+      resolve({ share, code, signal, err, stopped: Boolean(child.stopped) });
+    };
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      const lines = (rest + chunk).split('\n');
+      rest = lines.pop();
+      for (const line of lines) take(line);
+      flush();
+    });
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk) => { err += chunk; });
+    child.on('error', (error) => { err += `\n${error.stack ?? error}`; settle(null, null); });
+    child.on('close', settle);
+  });
+  const results = await Promise.all(shares.map(run));
+  const unreported = options.mapIds.filter((mapId) => !blocks.get(mapId)?.lines.some((line) => line.startsWith(`${label(mapId)}: `))
+    || (!options.check && !entries.has(mapId)));
+  const failed = results.filter(({ share, code }) => failedExit(code) || share.some((mapId) => unreported.includes(mapId)));
+  if (failed.length) {
+    for (const { share, code, signal, err, stopped } of failed) {
+      const missing = share.filter((mapId) => unreported.includes(mapId));
+      const tail = err.split('\n').filter((line) => line.trim()).slice(-20).join('\n');
+      console.error(`collision job ${share.join(',')} ${stopped ? 'stopped after another job failed' : `exited ${code ?? signal}`}`
+        + (missing.length ? `; no result for ${missing.join(', ')}` : '') + (tail ? `:\n${tail}` : ''));
+    }
+    process.exit(2);
+  }
+  for (const { err } of results) if (err) process.stderr.write(err);
+  if (options.check) {
+    const drifted = options.mapIds.filter((mapId) => blocks.get(mapId).lines
+      .some((line) => line.startsWith(`${label(mapId)}: DRIFTED`) || line.startsWith(`${label(mapId)}: MISSING`))).length;
+    console.log(checkSummary(drifted));
+    process.exit(drifted ? 1 : 0);
+  }
+  if (variantIndex) {
+    const merged = { ...(variantIndex.variants[options.variant] ?? {}) };
+    for (const mapId of options.mapIds) merged[mapId] = entries.get(mapId);
+    publishVariantIndex(variantIndex.index, variantIndex.variants, merged);
+  } else {
+    for (const mapId of options.mapIds) maps[mapId] = entries.get(mapId);
+    publishBaseIndex();
+  }
+  process.exit(0);
+}
+
+if (splitBuild) {
+  await runSplitBuild();
+} else if (options.node && options.variant) {
   // 2026-10-08 (destruction core lane): a mode's battlefield variant, built from the variant's config into
   // `<map>@<variant>.json`; the base shards and the index's maps stay as they are
   const { buildWorldCollisionData } = await import('./headlessWorldCollision.mjs');
@@ -125,11 +272,13 @@ if (options.node && options.variant) {
   const entries = { ...(variants[options.variant] ?? {}) };
   let drifted = 0;
   for (const mapId of options.mapIds) {
+    if (jobChild) console.log(`job-map ${mapId}`);
     const data = await buildWorldCollisionData(mapId, { variant: options.variant });
     const label = `${mapId}@${options.variant}`;
     if (!options.check) {
       entries[mapId] = writeCollisionManifestShard(mapId, data, collisionManifestDirectory, options.variant);
       console.log(`${label}: ${data.obstacles.length} obstacles, ${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+      if (jobChild) console.log(`job-entry ${label} ${JSON.stringify(entries[mapId])}`);
       continue;
     }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
@@ -144,11 +293,10 @@ if (options.node && options.variant) {
     else console.log(`${label}: current (${rounded} packed numbers differ in the last digit)`);
   }
   if (options.check) {
-    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} ${options.variant} shards match the tree`);
+    console.log(checkSummary(drifted));
     process.exit(drifted ? 1 : 0);
   }
-  writeCollisionManifestIndex(index.maps, collisionManifestDirectory, { ...variants, [options.variant]: entries });
-  console.log(`captured ${options.mapIds.length} ${options.variant} shards; published the index with ${Object.keys(entries).length} of them`);
+  if (!jobChild) publishVariantIndex(index, variants, entries);
   process.exit(0);
 } else if (options.node) {
   if (options.tier) {
@@ -181,6 +329,7 @@ if (options.node && options.variant) {
       + (offenders.length ? ` (${offenders.slice(0, 6).join('; ')})` : ''));
   } : undefined;
   for (const mapId of options.mapIds) {
+    if (jobChild) console.log(`job-map ${mapId}`);
     const data = await buildWorldCollisionData(mapId, { inspect });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
@@ -201,7 +350,7 @@ if (options.node && options.variant) {
     }
   }
   if (options.check) {
-    console.log(`${options.mapIds.length - drifted}/${options.mapIds.length} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`);
+    console.log(checkSummary(drifted));
     if (drifted) process.exit(1);
     process.exit(0);
   }
@@ -232,7 +381,5 @@ if (options.node && options.variant) {
   }
 }
 
-if (options.partial) assertUnchangedCollisionShards(maps, options.mapIds);
-writeCollisionManifestIndex(maps);
-console.log(`captured ${options.mapIds.length} map shards; published ${Object.keys(maps).length}-map index at ` +
-  fileURLToPath(new URL('index.json', collisionManifestDirectory)));
+// a split build's child leaves the index to its parent
+if (!jobChild) publishBaseIndex();
