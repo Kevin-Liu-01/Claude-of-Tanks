@@ -58,7 +58,7 @@ export function dropSliverTriangles(parts: RegionalParts): RegionalParts {
       }
       if (keep.length * 3 === pos.count) continue;
       for (const [name, attr] of Object.entries(g.attributes)) {
-        const a = attr as THREE.BufferAttribute, size = a.itemSize, src = a.array as ArrayLike<number> & { constructor: new (n: number) => ArrayLike<number> };
+        const a = attr as THREE.BufferAttribute, size = a.itemSize, src = a.array as unknown as ArrayLike<number> & { constructor: new (n: number) => ArrayLike<number> };
         const out = new (src.constructor as new (n: number) => Float32Array)(keep.length * 3 * size);
         let o = 0;
         for (const t of keep) for (let v = 0; v < 3; v++) for (let c = 0; c < size; c++) out[o++] = src[(t + v) * size + c];
