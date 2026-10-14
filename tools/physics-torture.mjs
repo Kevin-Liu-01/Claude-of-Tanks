@@ -61,6 +61,9 @@ const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pus
 const footprintAt = collisionModule.hullFootprint ?? null;
 const footprintScratch = footprintAt ? collisionModule.createHullFootprint() : null;
 const hullUndersideOver = collisionModule.hullUndersideOver ?? null;
+// (census) a crushable the tree crushes under a hull that comes onto it from above (world/collision.ts
+// crushableLoadedFromAbove, where the tree has it): the step that meets its top crushes it, so no overlap is charged
+const crushableLoadedFromAbove = collisionModule.crushableLoadedFromAbove ?? null;
 /** Fill `out` ({ centerX, centerZ, forwardX, ..., halfLength, halfWidth }) with the footprint the tree pushes. */
 function obstacleFootprint(rect, state, out) {
   if (footprintAt) return footprintAt(rect, state.pos.x, state.pos.z, state.yaw, state.visualPitch || 0, state.visualRoll || 0, out);
@@ -522,6 +525,14 @@ function makeWorld(caseDef) {
   return { fn, contact, heightField, obstacles, worldCollision };
 }
 
+/** Whether (x, z) lies inside a record's footprint, a compound record's part by part (measurement only). */
+function insideRecord(record, x, z) {
+  const shape = record.shape2 ?? null;
+  if (shape?.kind !== 'compound') return pointInsideCollisionRecord(record, shape, x, z);
+  for (const part of shape.parts) if (pointInsideCollisionRecord(record, part, x, z)) return true;
+  return false;
+}
+
 /** The highest standable primitive top under (x, z) at or below `ceiling`, else -Infinity (measurement only). */
 // `floors` (optional): each record's own belly line, the sim's floor rule (structureSupport.ts beginHull with a pose)
 function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
@@ -529,7 +540,8 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
   for (let i = 0; i < obstacles.length; i++) {
     const record = obstacles[i];
     const limit = floors ? floors[i] + 0.55 : ceiling;
-    if (record.crushed) continue;
+    // (the sim's rule, sim/structureSupport.ts structureTopAt: crushable cover is crushed, not stood on)
+    if (record.crushed || record.dead || record.crushable) continue;
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
     const shape = record.shape2 ?? null;
     if (shape?.kind === 'compound') {
@@ -601,6 +613,13 @@ function newMetrics() {
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
     impacts: [], falls: [], fallDamageHp: 0, impactDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
+    // (the tank-world contact census, 2026-10-13) jolts: the second difference of the root's height over three steps the
+    // hull stood through (the destruction stream's field measure: > 6 cm is felt, > 12 cm is a hit), and of its ground
+    // position on steps no hard contact stopped it; the most the hull tilted (degrees); the root deeper than 0.5 m under
+    // the ground or inside a solid record's footprint over its floor (fell through, sank into); off the world; and the
+    // hull thrown off its support by a contact (takeoffs over 2.5 m/s with no jump or impulse)
+    joltYMaxM: 0, joltsY6: 0, joltsY12: 0, joltXZMaxM: 0, joltsXZ6: 0, joltAt: null,
+    tiltMaxDeg: 0, fellThroughM: 0, insideSolidS: 0, insideSolidM: 0, outOfWorld: false, takeoffMaxMps: 0, launches: 0,
   };
 }
 
@@ -707,7 +726,9 @@ export function runCase(hullId, worldId, caseDef, options = {}) {
 }
 
 function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
-  const world = makeWorld(caseDef);
+  // (the tank-world contact census, 2026-10-13: a case may bring a real battlefield's world — its height field, its
+  // collision records and the records near the site the metrics read — built by tools/tank-world-contact-census.mjs)
+  const world = caseDef.world ?? makeWorld(caseDef);
   const worldDef = WORLDS[worldId];
   const ruleset = worldDef.ruleset();
   const spawn = caseDef.spawn ?? {};
@@ -716,8 +737,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     players.push({ id: extra.id, specId: extra.specId === 'same' ? hullId : extra.specId, team: extra.team ?? 'bravo',
       spawn: { x: extra.x ?? 0, z: extra.z ?? 0, yaw: extra.yaw ?? 0 } });
   }
-  players.push({ id: 'anchor', specId: 't90m', team: 'bravo', spawn: { x: -300, z: -300, yaw: 0 } });
-  const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 4242, countdownS: 0, worldCollision: world.worldCollision,
+  const anchor = caseDef.anchor ?? { x: -300, z: -300 };
+  players.push({ id: 'anchor', specId: 't90m', team: 'bravo', spawn: { x: anchor.x, z: anchor.z, yaw: 0 } });
+  const match = createAuthoritativeMatch({ mapId: caseDef.mapId ?? 'verdant', seed: 4242, countdownS: 0, worldCollision: world.worldCollision,
     ruleset, players });
   match.onMatchReady();
   const subject = match.entityById.get('subject');
@@ -765,7 +787,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   const actions = (caseDef.actions ?? []).map((action) => ({ ...action,
     tick: Math.round((typeof action.t === 'function' ? action.t(worldTimes) : action.t) / DT) }));
   const impulseTicks = new Set(actions.map((action) => action.tick));
-  const controlAt = (tick) => (caseDef.input ? caseDef.input(tick * DT) : NEUTRAL);
+  // (census: an input may read the subject's state, a speed governor)
+  const controlAt = (tick) => (caseDef.input ? caseDef.input(tick * DT, subject.state) : NEUTRAL);
   const inputs = new Map();
   const extraInputs = [...extrasById.values()].filter((extra) => extra.input);
   const gravity = G * (subject.modeGravityScale ?? 1);
@@ -816,6 +839,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   let nodTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
+  // (census) the last three steps' root and whether the hull stood through them / a hard contact stopped it
+  const joltHist = [];
+  const worldHalfM = caseDef.worldHalfM ?? Infinity;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
   const others = match.entities.filter((entity) => entity !== subject);
   let replayState = null;
@@ -892,6 +918,8 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       if (bad) { metrics.nan++; metrics.nanField ??= `${entity.id}:${bad}`; }
     }
     if (metrics.nan) break;
+    // (census: a case may leave its first steps unmeasured, the harness's own seat of a hull spawned on uneven ground)
+    if (t < (caseDef.metricsFromS ?? 0)) continue;
 
     // 2. unexplained horizontal and vertical steps (pops)
     const dxz = Math.hypot(state.pos.x - pre.x, state.pos.z - pre.z);
@@ -1027,14 +1055,16 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
         // standing on it: the hull's underside over it must not sink below its top
         if (record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
-          || pointInsideCollisionRecord(record, record.shape2 ?? null, state.pos.x, state.pos.z))) {
+          || insideRecord(record, state.pos.x, state.pos.z))) {
           metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, record.max[1] - floors[i]);
         }
         continue;
       }
       push.x = 0; push.z = 0;
       if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        record, push, floors[i], state.pos.y + bodyTop, clears[i])) {
+        record, push, floors[i], state.pos.y + bodyTop, clears[i])
+        && !crushableLoadedFromAbove?.(record, floors[i], (state._ride.groundV ?? 0) - state._ride.v, collisionModule.obstacleContactTop?.(),
+          collisionModule.obstacleContactBottom?.())) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
       }
     }
@@ -1154,7 +1184,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
     }
     if (state.grounded) airRun = 0;
-    if (!pre.grounded && !state.grounded && !impulseTicks.has(tick) && !landed) {
+    if (!pre.grounded && !state.grounded && !impulseTicks.has(tick) && !landed && prev) {
       const vx0 = pre.speed;
       const e0 = 0.5 * (vx0 * vx0 + (prev?.rideV ?? 0) ** 2) + gravity * pre.y;
       const e1 = 0.5 * (state.speed * state.speed + state._ride.v * state._ride.v) + gravity * state.pos.y;
@@ -1180,7 +1210,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         rp: att.pitch, rr: att.roll, rideV: state._ride.v, pitchV: state._spring.pitchV, rollV: state._spring.rollV });
     }
     const driving = Math.abs(control.throttle ?? 0) > 0.5 &&
-      (!caseDef.drive || (t >= caseDef.drive[0] && t < caseDef.drive[1]));
+      (!caseDef.drive || (t >= caseDef.drive[0] && t < caseDef.drive[1])) &&
+      // (census: the windows where the hull must make way — a reverse out of a ram — when the case names them)
+      (!caseDef.mustMove || caseDef.mustMove.some(([a, b]) => t >= a && t < b));
     if (!prev) prev = { xs: [], zs: [] };
     prev.xs.push(state.pos.x); prev.zs.push(state.pos.z);
     if (prev.xs.length > 61) { prev.xs.shift(); prev.zs.shift(); }
@@ -1191,6 +1223,61 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       else stuckRun = 0;
       metrics.longestStuckS = Math.max(metrics.longestStuckS, stuckRun);
     } else stuckRun = 0;
+
+    // 9. (census) jolts, tilt, fall-through, a solid's inside, the world's edge, contact launches
+    {
+      const hard = (state.impactSource ?? 0) !== 0 || landed || contactLanded || impulseTicks.has(tick);
+      joltHist.push(state.pos.x, state.pos.y, state.pos.z, state.grounded ? 1 : 0, hard ? 1 : 0);
+      if (joltHist.length > 15) joltHist.splice(0, 5);
+      if (joltHist.length === 15 && t >= (caseDef.popFromS ?? 0)) {
+        const h = joltHist;
+        if (h[3] && h[8] && h[13]) {
+          const d2y = Math.abs(h[11] - 2 * h[6] + h[1]);
+          if (d2y > 0.06) metrics.joltsY6++;
+          if (d2y > 0.12) metrics.joltsY12++;
+          if (d2y > metrics.joltYMaxM) {
+            metrics.joltYMaxM = d2y;
+            metrics.joltAt = { t: +t.toFixed(2), x: +state.pos.x.toFixed(2), y: +state.pos.y.toFixed(3), z: +state.pos.z.toFixed(2),
+              speed: +state.speed.toFixed(2), sup: +state._sup.y.toFixed(3) };
+          }
+        }
+        if (!h[4] && !h[9] && !h[14]) {
+          const d2 = Math.hypot(h[10] - 2 * h[5] + h[0], h[12] - 2 * h[7] + h[2]);
+          if (d2 > metrics.joltXZMaxM) metrics.joltXZMaxM = d2;
+          if (d2 > 0.06) metrics.joltsXZ6++;
+        }
+      }
+      const tilt = Math.acos(Math.max(-1, Math.min(1, Math.cos(state.visualPitch) * Math.cos(state.visualRoll)))) * 57.29578;
+      if (tilt > metrics.tiltMaxDeg) metrics.tiltMaxDeg = tilt;
+      const under = world.contact(state.pos.x, state.pos.z) - state.pos.y;
+      if (under > metrics.fellThroughM) metrics.fellThroughM = under;
+      let inside = 0;
+      for (const record of world.obstacles) {
+        if (record.crushed || record.crushable) continue;
+        if (state.pos.x < record.min[0] || state.pos.x > record.max[0] || state.pos.z < record.min[2] || state.pos.z > record.max[2]) continue;
+        const shape = record.shape2 ?? null;
+        const parts = shape?.kind === 'compound' ? shape.parts : [shape];
+        for (const part of parts) {
+          const top = part?.y1 ?? record.max[1], bottom = part?.y0 ?? record.min[1];
+          if (state.pos.y <= bottom + 0.3) continue;
+          if (!pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;
+          inside = Math.max(inside, top - state.pos.y);
+        }
+      }
+      if (inside > 0.3) { metrics.insideSolidS += DT; metrics.insideSolidM = Math.max(metrics.insideSolidM, inside); }
+      if (Math.abs(state.pos.x) > worldHalfM || Math.abs(state.pos.z) > worldHalfM || state.pos.y < (caseDef.floorY ?? -Infinity)) {
+        metrics.outOfWorld = true;
+      }
+      if (pre.grounded && !state.grounded && !impulseTicks.has(tick)) {
+        // the takeoff's rise over what the ground's grade under its travel explains (a hull leaving a crest at speed rises
+        // at speed x grade; only the excess is a throw)
+        const dir = state.speed >= 0 ? 1 : -1, fx = Math.sin(state.yaw) * dir, fz = Math.cos(state.yaw) * dir;
+        const rise = (world.contact(state.pos.x, state.pos.z) - world.contact(state.pos.x - fx * 1.5, state.pos.z - fz * 1.5)) / 1.5;
+        const excess = state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
+        if (excess > metrics.takeoffMaxMps) metrics.takeoffMaxMps = excess;
+        if (excess > 2.5) metrics.launches++;
+      }
+    }
 
     const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
     if (state.overturned) metrics.overturnedS += DT;

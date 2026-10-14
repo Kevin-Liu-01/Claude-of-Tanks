@@ -25,7 +25,8 @@ import type { MovementCollisionResolver, MovementHeightField, TankState } from '
 import { tankBodyTopM, tankContactRect } from '../../sim/tankContactShape.ts';
 import { pushHullInsidePlayableBounds } from '../../world/battlefieldBounds.ts';
 import {
-  createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle,
+  createHullFootprint, crushableLoadedFromAbove, hullFootprint, hullPassesObstacleTop, hullUndersideOver, obstacleContactBottom, obstacleContactTop,
+  pushHullFromHull, pushHullFromObstacle,
 } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
 import { matchRulesetFor, rulesetPhysicsAt, type RulesetPhysics } from '../../sim/matchRuleset.ts';
@@ -212,10 +213,17 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       const dx = foot.centerX - closestX;
       const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= footRadius * footRadius) continue;
+      const beforeX = outPush.x, beforeZ = outPush.z;
       if (pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
         spanBottom, spanTop, clearBottom,
-      )) hardObstacles[hardCount++] = obstacle;
+      )) {
+        // (the authority crushes a crushable a hull comes onto from above: world/collision.ts crushableLoadedFromAbove)
+        if (crushableLoadedFromAbove(obstacle, spanBottom, state ? (state._ride.groundV ?? 0) - state._ride.v : 0, obstacleContactTop(),
+          obstacleContactBottom())) {
+          outPush.x = beforeX; outPush.z = beforeZ;
+        } else hardObstacles[hardCount++] = obstacle;
+      }
     }
     // the authority's second sweep over the contacts that pushed
     for (let index = 0; index < hardCount; index++) {

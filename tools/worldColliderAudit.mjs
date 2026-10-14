@@ -808,14 +808,22 @@ function auditRecords({ soup, field, dressing, rays, obstacleGrid, colliderGrid,
   return rows;
 }
 
-/** Build the soup and audit one map's world; returns { rows } with one row per measured object. */
-export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity, recordKinds = null }) {
+/** The props' solid triangles in a soup (every mesh a hull or a shell meets: classifyPropsMesh). */
+export function buildPropsSoup(dressing) {
   const soup = new TriangleSoup(4);
   dressing.group.updateMatrixWorld(true);
   dressing.group.traverse((mesh) => {
     const family = classifyPropsMesh(mesh);
     if (family) addMeshTriangles(soup, mesh, family);
   });
+  return soup;
+}
+
+/** Build the soup (or take one built by buildPropsSoup) and audit one map's world; returns { rows } with one row per
+ * measured object. */
+export function auditMapWorld({ mapId, field, flora, dressing, families = ['rocks'], rays = true, createObstacleGrid, recordLimit = Infinity, recordKinds = null,
+  soup: builtSoup = null }) {
+  const soup = builtSoup ?? buildPropsSoup(dressing);
   const solidFamilies = new Set(soup.families.map((_, i) => i));
   const solidAccept = (t) => solidFamilies.has(soup.family[t]);
   const obstacleGrid = createObstacleGrid([...dressing.obstacles, ...flora.treeObstacles]);
