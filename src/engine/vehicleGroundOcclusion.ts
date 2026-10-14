@@ -705,14 +705,31 @@ export function hullSunShadow(q: Vec3Like, h: VehicleGroundHull, s: Vec3Like): n
  * (the gap under the belly between the runs lets a low lamp through) loses that lamp's share of its light, E / (T + A + ΣE)
  * with E the lamp's irradiance as three draws it (intensity × colour luminance × N·l × the distance falloff and its
  * cutoff); the ambient's occlusion takes its share over the same total, so a pixel the lamp dominates keeps its lamp light
- * where the hull does not stand between them. A lamp inside a solid (a muzzle against the mantlet) is never shadowed by it,
- * and the cut fades out over the reach's last third (a low lamp's long shadow ends softly, not at the reach's edge).
+ * where the hull does not stand between them. A lamp inside a solid (a muzzle against the mantlet) is never shadowed by it.
+ *
+ * 2026-10-14 (the r2 final capture, s170 at t1000 and t2060): cast over the whole reach the cut drew the proxy boxes'
+ * projection — a near-black parallelogram with ruled edges reaching metres past the hull (a small, high lamp casts a sharp
+ * shadow, and the boxes are boxes): the owner's "super super dark rectangular shadows" again. The cut is a contact
+ * occlusion of the lamp, not a cast shadow: whole under the footprint, gone GROUND_AO_KEY_REACH_M beyond its edge
+ * (smoothstep), and at most GROUND_AO_KEY_MAX of the lamp's share (the ground under a hull keeps a part of the lamp's light,
+ * as it keeps GROUND_AO_OCC_MAX's of its sky): the ground under and round the hull no longer lit like the open ground (s170's
+ * hover), and no projected slab.
  */
 export const GROUND_AO_KEY_LIGHTS = 2;
 /** A lamp within this far (m) of a solid's faces counts as inside it. */
 export const GROUND_AO_KEY_INSIDE_M = 0.15;
-/** The cut fades out between these multiples of the hull's height from its footprint (its reach ends at REACH[1]). */
-export const GROUND_AO_KEY_FADE = Object.freeze([2, 3] as const);
+/** The cut is whole under the footprint and gone this far (m) beyond its edge. */
+export const GROUND_AO_KEY_REACH_M = 0.8;
+/**
+ * Outside the footprint the hull's solid is one plane: the segment toward the lamp crosses it halfway up the heights the
+ * segment and the solid share, and the crossing's signed distance to the footprint, soft over ±GROUND_AO_KEY_PLANE_SOFT_M,
+ * is the block (the boxes' chord, under the footprint, drew ruled edges on the open ground). The two meet over
+ * ±GROUND_AO_KEY_EDGE_M across the footprint's edge.
+ */
+export const GROUND_AO_KEY_PLANE_SOFT_M = 0.25;
+export const GROUND_AO_KEY_EDGE_M = 0.15;
+/** The most of a lamp's share the cut takes from a receiver. */
+export const GROUND_AO_KEY_MAX = 0.75;
 /**
  * The boxes stand in for a hull whose edges are rounded, chamfered and hung with stowage: a lamp's shadow takes the chord
  * its ray cuts through a box grown GROUND_AO_KEY_GROW_M across (x and z), whole from GROUND_AO_KEY_SOFT_M (smoothstep), so
@@ -740,15 +757,41 @@ const insideBox = (p: Vec3Like, lo: readonly number[], hi: readonly number[]): b
   p.x > lo[0] - GROUND_AO_KEY_INSIDE_M && p.y > lo[1] - GROUND_AO_KEY_INSIDE_M && p.z > lo[2] - GROUND_AO_KEY_INSIDE_M
   && p.x < hi[0] + GROUND_AO_KEY_INSIDE_M && p.y < hi[1] + GROUND_AO_KEY_INSIDE_M && p.z < hi[2] + GROUND_AO_KEY_INSIDE_M;
 
-/** How much the hull's solid over its belly or either run stands between a receiver at q and a lamp at k (both the hull
- * frame): 1 through its body, a soft fringe where the ray grazes it, 0 off it or when the lamp sits inside a box. */
+/** A receiver's signed distance (m) to the hull's footprint (the hull frame; negative inside). */
+function footprintDistance(q: Vec3Like, h: VehicleGroundHull): number {
+  const dx = Math.abs(q.x) - h.hx, dz = Math.abs(q.z - 0.5 * (h.fz0 + h.fz1)) - 0.5 * (h.fz1 - h.fz0);
+  return Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0);
+}
+
+/** Outside the footprint: the segment q → k crosses the solid's plane (halfway up the heights the segment and the solid
+ * share) over the footprint, soft over ±GROUND_AO_KEY_PLANE_SOFT_M (0 when they share none). */
+function footprintPlaneShadow(q: Vec3Like, k: Vec3Like, h: VehicleGroundHull): number {
+  const lo = Math.max(Math.min(q.y, k.y), h.y0), hi = Math.min(Math.max(q.y, k.y), h.yt);
+  if (hi - lo < 0.02) return 0;
+  const t = (0.5 * (lo + hi) - q.y) / (k.y - q.y);
+  const p = { x: q.x + t * (k.x - q.x), y: 0, z: q.z + t * (k.z - q.z) };
+  return 1 - smoothstep(-GROUND_AO_KEY_PLANE_SOFT_M, GROUND_AO_KEY_PLANE_SOFT_M, footprintDistance(p, h));
+}
+
+/** How much the hull's solid stands between a receiver at q and a lamp at k (both the hull frame): under the footprint the
+ * chord through its boxes (over the belly, either run), outside it the soft plane crossing, blended across the footprint's
+ * edge; 0 when the lamp sits inside a box. */
 export function hullBlocksKeyLight(q: Vec3Like, k: Vec3Like, h: VehicleGroundHull): number {
   const boxes: readonly (readonly [readonly number[], readonly number[]])[] = [
     [[-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1]], [[h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1]], [[-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]],
   ];
   if (boxes.some(([lo, hi]) => insideBox(k, lo, hi))) return 0;
   const g = GROUND_AO_KEY_GROW_M;
-  return Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, [lo[0] - g, lo[1], lo[2] - g], [hi[0] + g, hi[1], hi[2] + g])));
+  const wIn = 1 - smoothstep(-GROUND_AO_KEY_EDGE_M, GROUND_AO_KEY_EDGE_M, footprintDistance(q, h));
+  const chord = wIn > 0 ? Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, [lo[0] - g, lo[1], lo[2] - g], [hi[0] + g, hi[1], hi[2] + g]))) : 0;
+  const plane = wIn < 1 ? footprintPlaneShadow(q, k, h) : 0;
+  return plane + (chord - plane) * wIn;
+}
+
+/** The lamp cut's weight at a receiver at q (the hull frame): GROUND_AO_KEY_MAX under the footprint, gone
+ * GROUND_AO_KEY_REACH_M beyond its edge (the GLSL's kw, by the block's signed distance to the footprint). */
+export function keyLightReach(q: Vec3Like, h: VehicleGroundHull): number {
+  return GROUND_AO_KEY_MAX * (1 - smoothstep(0, GROUND_AO_KEY_REACH_M, footprintDistance(q, h)));
 }
 
 /** A lamp's irradiance (luminance) at a receiver as three's punctual light draws it: lum × N·l × 1 / max(d^decay, 0.01),
@@ -1231,13 +1274,29 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     float cotVgInBox( vec3 p, vec3 lo, vec3 hi ) {
       return all( greaterThan( p, lo - ${f(GROUND_AO_KEY_INSIDE_M)} ) ) && all( lessThan( p, hi + ${f(GROUND_AO_KEY_INSIDE_M)} ) ) ? 1.0 : 0.0;
     }
-    float cotVgKeyBlock( vec3 q, vec3 k, vec4 b0, vec4 b1, vec4 b2 ) {
+    // (the r2 final capture) outside the footprint the solid is one plane: the segment's crossing halfway up the heights it
+    // shares with the solid, by its soft signed distance to the footprint (hullBlocksKeyLight)
+    float cotVgKeyPlane( vec3 q, vec3 k, vec4 b0, vec4 b1 ) {
+      float lo = max( min( q.y, k.y ), b0.w ), hi = min( max( q.y, k.y ), b0.z );
+      if ( hi - lo < 0.02 ) return 0.0;
+      vec2 p = mix( q.xz, k.xz, ( 0.5 * ( lo + hi ) - q.y ) / ( k.y - q.y ) );
+      vec2 d = vec2( abs( p.x ) - b0.x, abs( p.y - 0.5 * ( b1.x + b1.y ) ) - 0.5 * ( b1.y - b1.x ) );
+      float sd = length( max( d, vec2( 0.0 ) ) ) + min( max( d.x, d.y ), 0.0 );
+      return 1.0 - smoothstep( ${f(-GROUND_AO_KEY_PLANE_SOFT_M)}, ${f(GROUND_AO_KEY_PLANE_SOFT_M)}, sd );
+    }
+    float cotVgKeyBlock( vec3 q, vec3 k, vec4 b0, vec4 b1, vec4 b2, float sd ) {
       vec3 lo0 = vec3( -b0.x, b0.y, b1.x ), hi0 = vec3( b0.x, b0.z, b1.y );
       vec3 lo1 = vec3( b2.z, b0.w, b1.x ), hi1 = vec3( b2.w, b0.y, b1.y );
       vec3 lo2 = vec3( -b2.w, b0.w, b1.x ), hi2 = vec3( -b2.z, b0.y, b1.y );
       if ( cotVgInBox( k, lo0, hi0 ) + cotVgInBox( k, lo1, hi1 ) + cotVgInBox( k, lo2, hi2 ) > 0.0 ) return 0.0;
-      vec3 d = k - q, g = vec3( ${f(GROUND_AO_KEY_GROW_M)}, 0.0, ${f(GROUND_AO_KEY_GROW_M)} );
-      return max( cotVgSegBox( q, d, lo0 - g, hi0 + g ), max( cotVgSegBox( q, d, lo1 - g, hi1 + g ), cotVgSegBox( q, d, lo2 - g, hi2 + g ) ) );
+      float wIn = 1.0 - smoothstep( ${f(-GROUND_AO_KEY_EDGE_M)}, ${f(GROUND_AO_KEY_EDGE_M)}, sd );
+      float chord = 0.0, plane = 0.0;
+      if ( wIn > 0.0 ) {
+        vec3 d = k - q, g = vec3( ${f(GROUND_AO_KEY_GROW_M)}, 0.0, ${f(GROUND_AO_KEY_GROW_M)} );
+        chord = max( cotVgSegBox( q, d, lo0 - g, hi0 + g ), max( cotVgSegBox( q, d, lo1 - g, hi1 + g ), cotVgSegBox( q, d, lo2 - g, hi2 + g ) ) );
+      }
+      if ( wIn < 1.0 ) plane = cotVgKeyPlane( q, k, b0, b1 );
+      return mix( plane, chord, wIn );
     }
     // a lamp's irradiance (luminance) at P with normal N as three's punctual light draws it (keyLightIrradiance)
     float cotVgKeyE( vec4 p, vec4 e, vec3 P, vec3 N ) {
@@ -1402,12 +1461,13 @@ ${GLSL_HULL_EDGES}
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
         // (contact r2) the FX lamps this hull shadows on a lit receiver (the lamp in the hull frame)
         if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {
-          float kw = 1.0 - smoothstep( H * ${f(GROUND_AO_KEY_FADE[0])}, H * ${f(GROUND_AO_KEY_FADE[1])}, dOut );
+          // (the r2 final capture) a contact occlusion of the lamp, not its cast shadow: under and round the footprint, capped
+          float kw = ${f(GROUND_AO_KEY_MAX)} * ( 1.0 - smoothstep( 0.0, ${f(GROUND_AO_KEY_REACH_M)}, sd ) );
           vec3 L0 = uVehKeyLightP[ 0 ].xyz;
-          keyB0 = max( keyB0, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L0 ) + m0.w, dot( m1.xyz, L0 ) + m1.w, dot( m2.xyz, L0 ) + m2.w ), b0, b1, b2 ) );
+          keyB0 = max( keyB0, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L0 ) + m0.w, dot( m1.xyz, L0 ) + m1.w, dot( m2.xyz, L0 ) + m2.w ), b0, b1, b2, sd ) );
           if ( uVehKeyLight > 1.5 ) {
             vec3 L1 = uVehKeyLightP[ 1 ].xyz;
-            keyB1 = max( keyB1, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L1 ) + m0.w, dot( m1.xyz, L1 ) + m1.w, dot( m2.xyz, L1 ) + m2.w ), b0, b1, b2 ) );
+            keyB1 = max( keyB1, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L1 ) + m0.w, dot( m1.xyz, L1 ) + m1.w, dot( m2.xyz, L1 ) + m2.w ), b0, b1, b2, sd ) );
           }
         }
         // (round 4) beyond a run's outer face: the shoe band's sun shadow (the crease the cascades' bias leaves lit) and, on

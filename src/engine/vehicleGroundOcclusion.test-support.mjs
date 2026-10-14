@@ -119,9 +119,8 @@ export async function vehicleGroundGlslCases() {
       band = Math.max(band, M.shoeBandSunShadow(q, T90M, sun, runs));
       berm *= M.snowBermGain(q, n, T90M, sun, snowW, runs);
       if (keys && !card) {
-        const H = T90M.yt - T90M.y0;
-        const dx = Math.abs(q.x) - T90M.hx, dz = Math.abs(q.z - 0.5 * (T90M.fz0 + T90M.fz1)) - 0.5 * (T90M.fz1 - T90M.fz0);
-        const kw = 1 - smooth(H * M.GROUND_AO_KEY_FADE[0], H * M.GROUND_AO_KEY_FADE[1], Math.hypot(Math.max(dx, 0), Math.max(dz, 0)));
+        // (the r2 final capture) a contact occlusion of the lamp: under and round the footprint, capped
+        const kw = M.keyLightReach(q, T90M);
         keys.lamps.forEach((L, i) => { blocked[i] = Math.max(blocked[i], kw * M.hullBlocksKeyLight(q, L, T90M)); });
       }
     }
