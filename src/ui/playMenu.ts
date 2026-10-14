@@ -413,7 +413,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .room-failure-actions{display:flex;flex-wrap:wrap;gap:10px}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
 .cot-play .room-failure:focus-visible{outline:2px solid #ffcc89}
-.cot-play .version-refusal{position:sticky;top:-28px;z-index:4;margin:-4px 0 18px;padding:16px 18px;
+.cot-play .version-refusal{margin:14px 0 2px;padding:16px 18px;
   border:1px solid #e0a35a;border-left:5px solid #ffc06b;background:#2a2014;color:#fff2de;
   box-shadow:0 12px 30px rgba(0,0,0,.55);display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center}
 .cot-play .version-refusal[hidden]{display:none!important}
@@ -787,11 +787,11 @@ export function createPlayMenu({
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
-    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2></header>
+    <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
     <section class="version-refusal" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
       <h3 id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</h3><p data-version-text></p>
       <button class="action" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button>
-    </section>
+    </section></header>
     <p class="lead">${t('playMenu.lead')}</p>
     <div class="modes">
       <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>${t('playMenu.private.kicker')}</i><b>${t('playMenu.private.title')}</b><span class="mode-desc">${t('playMenu.private.desc')}</span></button>

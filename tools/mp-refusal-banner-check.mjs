@@ -102,9 +102,9 @@ try {
     const button = window.__menu.root.querySelector('[data-action="refresh-page"]');
     const rect = button.getBoundingClientRect();
     const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    return { ownMenu: !!top && window.__menu.root.contains(top), top: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null };
+    return { onButton: !!top && button.contains(top), top: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null };
   });
-  console.log(`  ..  a pointer at Refresh hits ${hit.top} (${hit.ownMenu ? 'this menu' : 'another layer of this test page'})`);
+  check(hit.onButton, `scrolled, a pointer at Refresh hits the button, nothing covers it (${hit.top})`);
   await page.evaluate(() => window.__menu.root.querySelector('[data-action="refresh-page"]').click());
   check(await page.evaluate(() => window.__reloads) === 1, 'Refresh reloads the page');
 
