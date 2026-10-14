@@ -761,6 +761,8 @@ let _standsOnDeck = false;
  * speed and was thrown 7-19 m/s off the neighbouring roofs.
  */
 let _rideOnShell = false;
+/** How far the ground lifted the shell out of it this step (constrainShellRide). */
+let _shellLiftM = 0;
 let _shellRestitution = 0;
 let _shellBounceMin = 0;
 let _shellBounceMaxHeight = Infinity;
@@ -771,6 +773,8 @@ const SHELL_UP_Y = Math.cos(70 * Math.PI / 180);
 const SHELL_LIFT_MAX_M_PER_STEP = 0.1;
 /** Half the run over which a hull on its shell reads the ground's grade along its heading (m). */
 const SHELL_GRADE_PROBE_M = 1;
+/** The time over which the ground holds a shell's turn that drives it into the ground (s). */
+const SHELL_TURN_HOLD_S = 0.05;
 /**
  * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
@@ -2246,7 +2250,10 @@ function constrainShellRide(ride: RideState, top: number, dt: number, gravity: n
   ride.y += ride.v * dt;
   if (ride.y >= top) return ride.y - top <= RIDE_DETACH_CLEARANCE_M;
   const lifted = Math.min(top, yStart + SHELL_LIFT_MAX_M_PER_STEP);
-  if (lifted > ride.y) ride.y = lifted;
+  if (lifted > ride.y) {
+    _shellLiftM = lifted - Math.max(yStart, ride.y);
+    ride.y = lifted;
+  }
   if (ride.v < 0) {
     const rebound = Math.min(-ride.v * _shellRestitution, Math.sqrt(2 * gravity * _shellBounceMaxHeight));
     if (rebound > _shellBounceMin) {
@@ -2587,6 +2594,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
   _edgeEase = _supportOnRecord;
   _rideOnShell = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < SHELL_UP_Y;
+  _shellLiftM = 0;
   _shellRestitution = drive.restitution;
   _shellBounceMin = drive.bounceMin;
   _shellBounceMaxHeight = drive.bounceMaxHeight;
@@ -2596,6 +2604,14 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0, state._spring.pitchV)
     : advanceAirborneRide(state, ride, dt, contactY, seatY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin,
       drive.bounceMaxHeight);
+  if (_shellLiftM > 0) {
+    // (physics stream F5, 2026-10-14) a shell the ground lifts out of it is turning into the ground: the ground holds the
+    // turn. An Abrams turning over nose-first on Airfield's 57-degree hangar vault drove its body into the vault every
+    // step, was lifted out of it 0.1 m a step, and climbed 7 m up the hangar on its own turn
+    const hold = Math.exp(-dt / SHELL_TURN_HOLD_S);
+    state._spring.pitchV *= hold;
+    state._spring.rollV *= hold;
+  }
   if (_stationTurn.travel !== 0) {
     // a body strike's impulse along the travel (constrainLoadedRide: the face's push and its grip), taken as the face's
     // grade rule below would take the push alone
@@ -4196,11 +4212,55 @@ const _contactFit = { pitch: 0, roll: 0, tipPitch: 0, tipRoll: 0, edge: false };
  * and the hull lay flatter than its ground: 0.2 degree on a 15-degree face, 1 on 25, 5 on 45, its downhill end hanging
  * up to 12 cm over a 25-degree face.
  */
-function planePitch(risePerZ: number): number {
-  return Math.asin(clamp(risePerZ, -1, 1));
+/**
+ * (physics stream F5, 2026-10-14) The rise the samples read is the sine of the plane's pitch only for a hull already lying
+ * on it: a sample a hull-local metre ahead sits cos(pitch) of a metre ahead, so a hull flatter than steep ground reads more
+ * rise than any plane has (a hull set level on Airfield's 57-degree hangar vault read 1.54 a metre as a 90-degree plane,
+ * its springs snapped it 70 degrees nose-down at 12 rad/s, past the vault, and it turned over onto its back). Up to
+ * FIT_EXACT_FROM of rise a metre (a hull lying on 44 degrees) the fit is the sine's, bit for bit; from FIT_EXACT_FULL it is
+ * the plane's own grade, the rise over that cosine (and across, the cross grade over the roll's cosine less the grade
+ * along that a rolled and pitched station picks up), blended between. Past FIT_STACKED_COS the stations stack over the
+ * root (a hull near vertical, or turned over: the rise reads backwards), and world probes either side of the root read the
+ * ground instead (stackedGrade).
+ */
+function planePitch(risePerZ: number, samples: SupportSamples): number {
+  const c = samples.cosNegPitch;
+  if (!(c >= FIT_STACKED_COS)) return Math.atan(stackedGrade(samples, samples.sinYaw, samples.cosYaw));
+  const sine = Math.asin(clamp(risePerZ, -1, 1));
+  const w = exactShare(risePerZ);
+  return w === 0 ? sine : sine + w * (Math.atan(risePerZ / c) - sine);
 }
-function planeRoll(risePerX: number, pitch: number): number {
-  return Math.asin(clamp(risePerX / Math.max(Math.cos(pitch), 0.1), -1, 1));
+function planeRoll(risePerX: number, pitch: number, samples: SupportSamples): number {
+  const cosPitch = Math.cos(pitch);
+  if (!(samples.cosRoll >= FIT_STACKED_COS) || !(samples.cosNegPitch >= FIT_STACKED_COS)) {
+    return Math.atan(stackedGrade(samples, samples.cosYaw, -samples.sinYaw) * cosPitch);
+  }
+  const read = risePerX / Math.max(cosPitch, 0.1);
+  const sine = Math.asin(clamp(read, -1, 1));
+  const w = exactShare(read);
+  if (w === 0) return sine;
+  // the cross grade: the rise per local metre across less the grade along the heading its station's forward lean picks up
+  const across = (risePerX - Math.tan(pitch) * samples.sinRoll * samples.sinNegPitch) / samples.cosRoll;
+  return sine + w * (Math.atan(across * cosPitch) - sine);
+}
+/** The exact plane's share of the fit for a read of `rise` (0 up to FIT_EXACT_FROM, 1 from FIT_EXACT_FULL). */
+function exactShare(rise: number): number {
+  const a = Math.abs(rise);
+  return a <= FIT_EXACT_FROM ? 0 : a >= FIT_EXACT_FULL ? 1 : (a - FIT_EXACT_FROM) / (FIT_EXACT_FULL - FIT_EXACT_FROM);
+}
+const FIT_EXACT_FROM = 0.7;
+const FIT_EXACT_FULL = 0.95;
+/** Below this cosine of the sampling pitch or roll the plane is read by world probes (planePitch). */
+const FIT_STACKED_COS = 0.25;
+/** Half the run of those probes (m). */
+const FIT_STACKED_PROBE_M = 1.5;
+/** The ground's grade along the world direction (dx, dz) through the root, by the reachable ground either side. */
+function stackedGrade(samples: SupportSamples, dx: number, dz: number): number {
+  const hAt = _reachBaseH;
+  if (!hAt) return 0;
+  const d = FIT_STACKED_PROBE_M;
+  const grade = (hAt(samples.worldX + dx * d, samples.worldZ + dz * d) - hAt(samples.worldX - dx * d, samples.worldZ - dz * d)) / (2 * d);
+  return Number.isFinite(grade) ? grade : 0;
 }
 /**
  * The grade the drivetrain feels on ground the hull lies on at `pitch`. Its climb, grip and slide were calibrated while
@@ -4318,12 +4378,12 @@ function contactAwareFit(
   // the grade rule stopped it dead in the trench, and it see-sawed there at 40 degrees for three seconds.
   const spansPitch = czz > FIT_MIN_SPAN_ZZ;
   if (left > 0 && right > 0 && det > 1e-6) {
-    pitch = planePitch(spansPitch ? (czh * cxx - cxh * czx) / det : samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
-    roll = planeRoll((cxh * czz - czh * czx) / det, pitch);
+    pitch = planePitch(spansPitch ? (czh * cxx - cxh * czx) / det : samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9), samples);
+    roll = planeRoll((cxh * czz - czh * czx) / det, pitch, samples);
   } else if (spansPitch) {
-    pitch = planePitch(czh / czz);
+    pitch = planePitch(czh / czz, samples);
   } else if (czz > 1e-4) {
-    pitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
+    pitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9), samples);
   }
   _contactFit.pitch = pitch;
   _contactFit.roll = roll;
@@ -4416,10 +4476,10 @@ function updateTerrainFitAndPerch(
       return;
     }
   }
-  const fitPitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
+  const fitPitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9), samples);
   terr.fitPitch = fitPitch;
   terr.pitch = fitPitch;
-  terr.roll = planeRoll((samples.sumRight - samples.sumLeft) / (samples.sideCount / 2) / (2 * halfWidth), fitPitch);
+  terr.roll = planeRoll((samples.sumRight - samples.sumLeft) / (samples.sideCount / 2) / (2 * halfWidth), fitPitch, samples);
   let tip = 0;
   if (samples.deepestZ > samples.zHalf && samples.rearMax > -Infinity) {
     tip = (samples.settleOuterMax - samples.rearMax) /
