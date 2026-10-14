@@ -543,6 +543,8 @@ const fiskebruk: RegionalBuilder = (ctx) => {
       const mx = x0 + 1.2, mz = fz + deck - 0.6;
       sink.member('structureWood', [mx, 0.5, mz], [mx, 5.4, mz], 0.2, 0.2, [0, 0, 1], { colour: shade(BOARD, 0.75), decor: true, shadow: true, exposed: true });
       sink.member('structureWood', [mx, 1.2, mz], [mx + 3.2, 4.6, mz - 0.2], 0.16, 0.16, [0, 0, 1], { colour: shade(BOARD, 0.75), decor: true, shadow: true, exposed: true });
+      // the derrick's topping lift from the mast head to the boom's end (kitConnectivity: the boom's end hung on nothing)
+      sink.member('structureMetal', [mx + 0.06, 5.32, mz + 0.04], [mx + 3.16, 4.66, mz - 0.14], 0.03, 0.03, [0, 0, 1], { colour: IRON, decor: true, exposed: true, fine: true }, 0.04);
     }
   });
   return sink.finish();
@@ -617,17 +619,19 @@ const hjell: RegionalBuilder = (ctx) => {
     // the trestle: two legs from the plot's edges crossing just under the rail
     for (const s of [-1, 1]) sink.member('wood', [x, -0.2, s > 0 ? z1 : z0], [x, h + 0.15, zc - s * 0.25], 0.14, 0.14, [1, 0, 0], { exposed: true });
   }
-  sink.member('wood', [x0, h - 0.05, zc], [x1, h - 0.05, zc], 0.14, 0.14, [0, 0, 1], { exposed: true });
+  // the rails, square across their middle so the fish hung either side lie against them (kitConnectivity: a rail's
+  // section stood off to one side, and the fish on its far side hung 3.5 cm off it)
+  sink.span('wood', x0, h - 0.12, zc - 0.07, x1, h + 0.02, zc + 0.07);
   for (const zr of [z0 + (z1 - z0) * 0.22, z1 - (z1 - z0) * 0.22]) {
-    sink.member('structureWood', [x0, 1.9, zr], [x1, 1.9, zr], 0.1, 0.1, [0, 0, 1], { colour: pole, decor: true, exposed: true });
+    sink.span('structureWood', x0, 1.85, zr - 0.05, x1, 1.95, zr + 0.05, { colour: pole, decor: true });
   }
   if (!mobile) {
     // the fish: pairs hung over the rails, every 22 cm, a few gaps where a bundle was taken down
-    for (const [zr, yr] of [[zc, h - 0.05], [z0 + (z1 - z0) * 0.22, 1.9], [z1 - (z1 - z0) * 0.22, 1.9]] as const) {
+    for (const [zr, yr, half] of [[zc, h - 0.05, 0.07], [z0 + (z1 - z0) * 0.22, 1.9, 0.05], [z1 - (z1 - z0) * 0.22, 1.9, 0.05]] as const) {
       for (let x = x0 + 0.3; x < x1 - 0.25; x += 0.22) {
         if (look() < 0.12) continue;
         const len = 0.75 + look() * 0.25, tone = shade(FISH, 0.82 + look() * 0.3);
-        for (const s of [-1, 1]) sink.span('structureWood', x - 0.06, yr - len, zr + s * 0.07 - 0.015, x + 0.06, yr - 0.02, zr + s * 0.07 + 0.015, { colour: tone, decor: true, fine: true });
+        for (const s of [-1, 1]) sink.span('structureWood', x - 0.06, yr - len, zr + s * (half + 0.015) - 0.015, x + 0.06, yr - 0.02, zr + s * (half + 0.015) + 0.015, { colour: tone, decor: true, fine: true });
       }
     }
     for (let k = 0; k < 4; k++) sink.span('structureWood', x1 - 0.9, k * 0.32, z1 - 1.1 + (k % 2) * 0.05, x1 - 0.2, k * 0.32 + 0.3, z1 - 0.55 + (k % 2) * 0.05, { colour: shade(BOARD, 0.95 + look() * 0.15), decor: true, shadow: true });
