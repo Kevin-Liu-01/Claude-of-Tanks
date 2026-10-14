@@ -47,7 +47,11 @@ export const WEAPON_CLASSES: Readonly<Record<WeaponClassId, WeaponClassProfile>>
   gun_90: P({ id: 'gun_90', family: 'cannon', loudDb: 141, closeFadeM: [140, 330], farFadeM: [90, 360], tailRate: 0.96, tailGain: 0.62, actionDelayS: 0.14 }),
   gun_105: P({ id: 'gun_105', family: 'cannon', loudDb: 144, closeFadeM: [145, 360], farFadeM: [95, 400], tailRate: 0.93, tailGain: 0.72, actionDelayS: 0.15 }),
   gun_120: P({ id: 'gun_120', family: 'cannon', loudDb: 147, closeFadeM: [150, 390], farFadeM: [100, 440], tailRate: 0.9, tailGain: 0.82, actionDelayS: 0.16 }),
-  gun_125: P({ id: 'gun_125', family: 'cannon', loudDb: 148, closeFadeM: [150, 400], farFadeM: [100, 450], tailRate: 0.88, tailGain: 0.86, actionDelayS: 0.16 }),
+  // A6 (2026-10-13): the 125 mm's distant thunder joins from 20 m (it began at 100 m), so at 150 m the boom stands under
+  // the crack (far 0.30 of its level, was 0.14) and a cannon there sits 11 dB over the battle bed again (the 10-03 level;
+  // the mix-balance gate is 10); its close report also carries further (soundCues gun_125_close). 15 m, 400 m and our own
+  // gun keep their levels (tools: ab-bed-cannon / ab-burst on the CPU, then the mix-balance probe).
+  gun_125: P({ id: 'gun_125', family: 'cannon', loudDb: 148, closeFadeM: [150, 400], farFadeM: [20, 450], tailRate: 0.88, tailGain: 0.86, actionDelayS: 0.16 }),
   gun_130: P({ id: 'gun_130', family: 'cannon', loudDb: 150, closeFadeM: [155, 420], farFadeM: [110, 480], tailRate: 0.85, tailGain: 0.92, actionDelayS: 0.18 }),
   gun_152: P({ id: 'gun_152', family: 'cannon', loudDb: 152, closeFadeM: [160, 450], farFadeM: [120, 520], tailRate: 0.8, tailGain: 1, actionDelayS: 0.2 }),
   atgm: P({ id: 'atgm', family: 'launcher', loudDb: 132, closeFadeM: [50, 220], farFadeM: [60, 280], tailRate: 1.1, tailGain: 0.3, actionDelayS: 0.05 }),

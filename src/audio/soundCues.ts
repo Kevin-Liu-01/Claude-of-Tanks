@@ -75,6 +75,9 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   blast_punch_light: o({ priority: 84, maxInstances: 16, refM: 15, rolloff: 0.69, maxM: 700, absorb: 1.1, loudDb: 124, pitch: [0.97, 1.03] }),
   blast_punch_medium: o({ priority: 85, maxInstances: 12, absorb: 1.1, pitch: [0.97, 1.03] }),
   blast_punch_heavy: o({ priority: 86, maxInstances: 10, maxM: 2400, absorb: 1.1, pitch: [0.98, 1.02] }),
+  // A6 (2026-10-13): the 125 mm crack carries a little further (refM 35 → 56: +2.2 dB at 150 m, the same inside 56 m,
+  // faded out by 400 m by the class's close fade), with its distant thunder joining earlier (weaponAudio gun_125).
+  gun_125_close: o({ refM: 56 }),
   // Main guns carry across the whole battlefield as distant thunder.
   gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
   gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
