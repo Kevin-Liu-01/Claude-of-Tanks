@@ -12,6 +12,8 @@ interface RenderScalePreset {
   dynMin?: number;
   /** The floor below the retina threshold (native-density displays); absent keeps the native fence. */
   nativeDynMin?: number;
+  /** The rung a retina raster holds at under load before it goes toward dynMin (dynamicScaleHold). */
+  dynHold?: number;
 }
 
 /**
@@ -71,6 +73,23 @@ export function dynamicScaleFloor(
   ));
 }
 
+/**
+ * 2026-10-13 (the perf stream; the coordinator's DPR ruling): the rung the governor holds a retina raster at under
+ * load. Auto High declares 0.8334 of its 1.5 cap (a 1.25 raster): a cut from the full raster lands there in one step
+ * and stays while it can; the raster goes on toward the floor (1.0 on Auto) only under a sustained overload
+ * (adaptiveQualityPolicy HOLD_DOWN_STRIKES), and climbs back to the hold before the full raster. Without a declared
+ * hold, or on a display below the retina threshold, the hold is the floor itself (the policy's plain ladder).
+ */
+export function dynamicScaleHold(
+  rendererPixelRatio: number,
+  preset: RenderScalePreset | null | undefined,
+): number {
+  const floor = dynamicScaleFloor(rendererPixelRatio, preset);
+  const hold = preset?.dynHold;
+  if (rendererPixelRatio < RETINA_PIXEL_RATIO || typeof hold !== 'number' || !Number.isFinite(hold)) return floor;
+  return Math.min(1, Math.max(floor, hold));
+}
+
 export function internalPixelRatio(
   rendererPixelRatio: number,
   preset: RenderScalePreset | null | undefined,
@@ -114,14 +133,22 @@ export function reconstructionSharpness(
   return temporalAccumulation ? Math.max(TEMPORAL_RECONSTRUCTION_SHARPNESS, spatial) : spatial;
 }
 
+/** The input scale from which RCAS follows EASU unless a preset declares its own (`rcasMinScale`). */
+export const RCAS_MIN_SCALE = 0.6;
+
 /**
  * Reconstruction ladder: large reductions use one hardware-linear sample to
  * preserve native output cheaply and without ringing; EASU owns moderate
  * enlargement; RCAS is worthwhile only when enough source detail survives.
+ * 2026-10-13 (the perf stream): the RCAS threshold is a preset's call. The 0.6
+ * default keeps phones (a 1.25-1.4 raster on a DPR-3 panel, 0.42-0.47) on EASU
+ * alone; High declares 0.5, so Auto's retina 1.0 raster on a DPR-2 panel keeps
+ * its contrast recovery (EASU alone read visibly soft on grass and foliage).
  */
-export function reconstructionMode(inputToOutputScale: number): ReconstructionMode {
+export function reconstructionMode(inputToOutputScale: number, rcasMinScale = RCAS_MIN_SCALE): ReconstructionMode {
   const scale = Math.min(1, Math.max(0, Number(inputToOutputScale) || 0));
+  const rcasFrom = Math.min(1, Math.max(0.4, Number.isFinite(rcasMinScale) ? rcasMinScale : RCAS_MIN_SCALE));
   if (scale < 0.4) return 'linear';
-  if (scale < 0.6) return 'easu';
+  if (scale < rcasFrom) return 'easu';
   return scale < 1 ? 'easu+rcas' : 'native-rcas';
 }

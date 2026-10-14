@@ -484,6 +484,8 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
     sink.span('stone', -1.2, top + 2.0, z - 0.34, 1.2, top + 2.5, z + 0.34);
     archHaunches(sink, { origin: [0, 0, z + 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, 0, top + 1.4, 0.55, 0.55, top + 2.0, 0.6);
     sink.cylinder('structureMetal', [0, top + 0.75, z], 'y', 0.6, 0.3, 10, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
+    // (the buildings stream, 2026-10-12, the integrity check: the bell hung between the piers on nothing) its yoke
+    sink.span('structureMetal', -0.6, top + 1.35, z - 0.04, 0.6, top + 1.43, z + 0.04, { colour: IRON, decor: true });
     sink.span('structureMetal', -0.035, top + 2.5, z - 0.035, 0.035, top + 3.5, z + 0.035, { colour: IRON, decor: true });
     sink.span('structureMetal', -0.25, top + 3.05, z - 0.03, 0.25, top + 3.13, z + 0.03, { colour: IRON, decor: true });
   }, -1);

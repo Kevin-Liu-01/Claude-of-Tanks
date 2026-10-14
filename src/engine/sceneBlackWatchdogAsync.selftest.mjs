@@ -52,6 +52,7 @@ async function test(name, run) {
 function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, environment = true,
   fog = true, failAt = null, restoreThrows = false, preRestoreFailures = 0, parallel = null } = {}) {
   const events = [];
+  const layerMasks = [];
   const targets = [];
   const buffers = [];
   const syncs = [];
@@ -218,6 +219,7 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
       assertCurrent('render');
       assert.equal(renderScene, scene);
       assert.equal(renderCamera, camera);
+      layerMasks.push(['render', renderCamera.layers.mask]);
       event('render', { ...compatibility });
       const sample = asyncSamples[buffers.length];
       renderedAsyncSample = typeof sample === 'function' ? sample(scene) : sample;
@@ -246,6 +248,7 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
       assertCurrent('compile');
       assert.equal(compileScene, scene);
       assert.equal(compileCamera, camera);
+      layerMasks.push(['compile', compileCamera.layers.mask]);
       assert.ok(targets.some((owned) => owned.target === target), 'stage programs are submitted into the probe target');
       event('compile', { ...compatibility });
       renderer.info.programs.push({ program: { native: true } }, { program: { native: true } });
@@ -254,7 +257,7 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
   }
   window.__GL_DIAG = { errors: [] };
   return {
-    gl, renderer, scene, camera, targets, buffers, syncs, events, initial, compatibility, externalPack,
+    gl, renderer, scene, camera, targets, buffers, syncs, events, layerMasks, initial, compatibility, externalPack,
     run(options) { return runSceneBlackWatchdogAsync(renderer, scene, camera, options); },
     names: () => events.map(([name]) => name),
     pack: () => pack,
@@ -313,6 +316,46 @@ for (const outcome of ['healthy', 'cancelled', 'throw', 'skipped']) {
     f.assertReleased(outcome === 'healthy' || outcome === 'cancelled' ? 1 : 0);
   });
 }
+
+// 2026-10-12 (the perf stream; railyard at load 326: one 3,953 ms probe draw, the cover frozen): programs a covered warm
+// left linking are awaited between tasks before the probe draw, which then never links them on the main thread; with
+// none pending the submission stays synchronous (the test above), and an owner change during the wait rejects with no draw.
+await test('pending program links are awaited between tasks before the probe draw', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  let polls = 0;
+  const slow = { isReady: () => ++polls > 3 };
+  f.renderer.info.programs = [{ isReady: () => true }, slow, {}];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ measureTimings: true });
+  assert.ok(!f.names().includes('render'), 'no probe draw while a program is still linking');
+  assert.equal(clock.waits.length, 1);
+  assert.equal(clock.waits[0].ms, 16, 'the wait polls between tasks');
+  await clock.resume();
+  await clock.resume();
+  assert.ok(!f.names().includes('render'));
+  await clock.resume();
+  assert.ok(f.names().includes('render'), 'the draw follows once the links completed');
+  await clock.resume(); // the PBO fence
+  const result = await pending;
+  assert.equal(result.before, 12);
+  const timing = result.measurements[0];
+  assert.deepEqual([timing.linkPending, timing.linkLeft], [1, 0], 'the receipt names the links waited for');
+  assert.ok(timing.linkWaitMs >= 48);
+  f.assertReleased(1);
+});
+
+await test('an owner change while links are awaited rejects before any probe draw', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  let current = true;
+  f.renderer.info.programs = [{ isReady: () => false }];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ isCurrent: () => current }).then(() => null, (error) => error);
+  current = false;
+  await clock.resume();
+  assert.match(String(await pending), /owner changed/);
+  assert.ok(!f.names().includes('render'), 'a superseded entry never draws its probe');
+  f.assertReleased(0);
+});
 
 await test('healthy submission is synchronous and restores all bindings before the poll task', async (clock) => {
   const f = fixture({ asyncSamples: [[0, 0, 18, 0]] });
@@ -726,6 +769,30 @@ await test('a genuinely broken pipeline (forced black output) is still refused, 
     assert.ok(names.slice(index, judging).includes('linkPoll'), 'the judging draw follows the completion polls');
   }
   assert.ok(window.__GL_DIAG.errors.some((message) => message.includes('no ladder stage cured it')));
+  f.assertReleased(2, 5);
+});
+
+// 2026-10-12 (the perf stream, black screen on entry): every probe draw and stage compile sees the scene pass's layers —
+// the late-FX layer (30) off, as sceneSourcePass.ts draws and the forward warm compiles — and the camera's own mask comes
+// back after each. With the full mask the late-FX effects and lights joined the ordinary scene and linked a program
+// variant per material that no battle frame uses (36 programs on the MP lane's traced entry, one 21.7 s frame).
+await test('probe draws and stage compiles exclude the late-FX layer and restore the camera mask', async (clock) => {
+  const f = fixture({ asyncSamples: [0], syncSamples: [0, 0, 0, 18, 9], parallel: { polls: 1 } });
+  f.camera.layers.enableAll();
+  const mask = f.camera.layers.mask;
+  assert.ok(mask & (1 << 30), 'the fixture camera starts with the late-FX layer on');
+  const pending = f.run();
+  assert.equal(f.camera.layers.mask, mask, 'the async probe draw restored the camera mask before yielding');
+  await clock.resume();
+  for (let stage = 0; stage < 2; stage++) await clock.resume();
+  assert.equal((await pending).rescued, true);
+  assert.equal(f.camera.layers.mask, mask, 'the camera mask is the caller\'s after the ladder');
+  const kinds = f.layerMasks.map(([kind]) => kind);
+  assert.ok(kinds.includes('render') && kinds.includes('compile'), 'both the draws and the stage compiles were seen');
+  for (const [kind, seen] of f.layerMasks) {
+    assert.equal(seen & (1 << 30), 0, `the ${kind} ran without the late-FX layer`);
+    assert.equal(seen, mask & ~(1 << 30), `the ${kind} kept every other layer of the camera`);
+  }
   f.assertReleased(2, 5);
 });
 

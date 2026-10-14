@@ -499,9 +499,13 @@ const loggia: RegionalBuilder = (ctx) => {
     for (let k = 0; k < nz; k++) {
       const za = -D / 2 + p + (D - 2 * p) * k / nz, zb = -D / 2 + p + (D - 2 * p) * (k + 1) / nz;
       const uc = -(za + zb) / 2, half = (zb - za) / 2 - p, spring = H - beam - 0.2 - half * 0.75;
-      for (let a = 0; a <= 6; a++) {
-        const t = Math.PI * a / 6;
-        faceBox(sink, 'stone', open, uc + Math.cos(t) * half, spring + Math.sin(t) * half * 0.75, 0.04, 0.26, 0.22, 0.12, { decor: true });
+      // (the buildings stream, 2026-10-12, the integrity check: seven blocks spaced round the curve, each in the air)
+      // the voussoirs laid course to course from one pier's face to the other's, each joint closed
+      for (let a = 0; a < 6; a++) {
+        const t0 = Math.PI * a / 6 - 0.04, t1 = Math.PI * (a + 1) / 6 + 0.04;
+        const p0 = facePoint(open, uc + Math.cos(t0) * half, spring + Math.sin(t0) * half * 0.75, 0);
+        const p1 = facePoint(open, uc + Math.cos(t1) * half, spring + Math.sin(t1) * half * 0.75, 0);
+        sink.member('stone', p0, p1, 0.24, 0.12, open.out, { decor: true, exposed: true }, 0.02);
       }
     }
     const roof = canalHip(22, 0.36);

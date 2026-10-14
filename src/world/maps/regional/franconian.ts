@@ -4,7 +4,7 @@
 // rendered front in ochre, cream, rose or pale green with sandstone dressings; steep plain-tile roofs, gable-fronted to
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
-import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { flowerBox } from './dressing.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
@@ -125,7 +125,14 @@ const townHouse: RegionalBuilder = (ctx) => {
       const dw = 1.6, dz = (rng() - 0.5) * bd * 0.3;
       sink.span(render, ex - 0.05, y - 0.4, dz - dw / 2, ex + 1.2, y + 1.6, dz + dw / 2);
       const cap: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: 'round' };
-      sink.placed(Math.PI / 2, ex + 0.55, 0, dz, () => emitRoof(sink, roofGeometry(dw + 0.1, 1.4, y + 1.6, cap), cap));
+      const capRg = roofGeometry(dw + 0.1, 1.4, y + 1.6, cap);
+      sink.placed(Math.PI / 2, ex + 0.55, 0, dz, () => {
+        emitRoof(sink, capRg, cap);
+        // (the buildings stream, 2026-10-12, the integrity check: an empty triangle over the hoist door, the cap's
+        // underside showing through it) the dormer's gable, flush with its front and run back under the cap (dressing:
+        // the dormer's body and cap keep the collision they had)
+        if (capRg.gable) sink.prism(render, capRg.gable.map(([u, yy]): Vec3 => [u, yy, -0.6]), [0, 0, 1], 1.25, { decor: true });
+      });
       windowUnit(sink, { origin: [ex - 0.05, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, y + 0.2, 0.8, 1.05, { ...st.window, shutters: null }, rng, 0.2);
     } else if (rg.gable) {
       const f = frame.faces.front;

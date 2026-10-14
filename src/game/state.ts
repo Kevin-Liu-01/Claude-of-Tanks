@@ -2,6 +2,7 @@ import { initializeAerial, stepAerial, isGunship, droneTankAlong, type AerialVie
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
+import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 /**
  * state.ts — legacy solo battle setup and fixed-step combat integration
@@ -1441,6 +1442,9 @@ export function setupBattle(
       ent.input.brake = false;
       ent.input.fire = false;
       ent.input.shellSlot = 0;
+      // the frame input locks a dead player's gun (playerFrameInput); the revived hull settles with a free gun, as
+      // the authority's fresh input does
+      ent.input.aimLocked = false;
       ent.input.aimPoint.copy(ent.state.aimPoint);
       ent._destroyedAnnounced = false;
       ent.visual?.resetDestroyed?.();
@@ -2202,6 +2206,21 @@ function crushWorldPropFromShell(
 const MAX_SHELL_PASS_THROUGH_HITS_PER_STEP = 32;
 const SHELL_PASS_THROUGH_EPSILON_M = 0.01;
 
+const _lightCoverScratch: SoloObstacle[] = [];
+const _lightCoverHit: SoloWorldHit = { dist: 0, point: new THREE.Vector3(), record: null };
+/** The light cover the round's segment crosses before `stop` m (fences, crates, carts, cars: movement records only),
+ *  nearest first, each broken by the round as a felled tree is (crushWorldPropFromShell); the round flies on. */
+function crushLightCoverAlong(world: SoloWorld, bus: EventBus, shell: DamageShell, stop: number): void {
+  if (!world.queryObstacles || !world.crushObstacle) return;
+  sweepLightCover(world.queryObstacles, shell.prevPos, _seg, stop, _lightCoverScratch, (record, distance) => {
+    _lightCoverHit.dist = distance;
+    _lightCoverHit.point.copy(shell.prevPos).addScaledVector(_seg, distance);
+    _lightCoverHit.record = record as SoloObstacle;
+    crushWorldPropFromShell(world, bus, shell, _lightCoverHit);
+  });
+  _lightCoverHit.record = null;
+}
+
 interface BlockingWorldShellHit {
   hit: SoloWorldHit;
   distance: number;
@@ -2310,6 +2329,13 @@ function stepLiveShell(
     segmentLength,
     nearest.distance,
   );
+  // (2026-10-12) the light cover the round flies through before what stops it breaks: fences, crates, carts, the parked
+  // cars (sim/shellLightCover.ts; the authority sweeps the same)
+  if (shell.spec.tracer !== 'DRONE') {
+    const stop = Math.min(segmentLength, worldTrace?.distance ?? Infinity,
+      nearest.entity && nearest.intersections ? nearest.distance : Infinity);
+    crushLightCoverAlong(world, bus, shell, stop);
+  }
   if (nearest.entity && nearest.intersections &&
       nearest.distance <= (worldTrace?.distance ?? Infinity)) {
     resolveTankShellImpact(game, bus, shell, nearest);

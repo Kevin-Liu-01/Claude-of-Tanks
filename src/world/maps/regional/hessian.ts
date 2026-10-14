@@ -788,11 +788,15 @@ const ruin: RegionalBuilder = (ctx) => {
     }
   }
   // the charred frame: corner posts and a few studs of the upper storey, a broken plate, fallen rafters
+  const postTops: number[] = [];
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     const h = 2.6 + rng() * 2.2;
     sink.span(SW, sx * (W / 2 - 0.12) - 0.1, 0.55, sz * (D / 2 - 0.12) - 0.1, sx * (W / 2 - 0.12) + 0.1, 0.55 + h, sz * (D / 2 - 0.12) + 0.1, { colour: charred });
+    postTops.push(0.55 + h);
   }
-  const plateY = 3.3 + rng() * 0.6;
+  // (the buildings stream, 2026-10-12, the integrity check: the plate floated over a corner post that burnt down short
+  // of it) the broken plate rests on its front-left post, no higher than that post's charred head
+  const plateY = Math.min(3.3 + rng() * 0.6, postTops[2] - 0.18);
   sink.span(SW, -W / 2 + 0.02, plateY, D / 2 - 0.24, W * 0.1, plateY + 0.18, D / 2 - 0.04, { colour: charred, decor: true });
   for (let k = 0; k < 5; k++) {
     const x = (rng() - 0.5) * W * 0.8, z = (rng() - 0.5) * D * 0.7;

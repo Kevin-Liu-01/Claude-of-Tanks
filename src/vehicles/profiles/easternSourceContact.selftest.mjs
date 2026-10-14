@@ -4,10 +4,14 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { notCamouflage } from '../camouflageBounds.test-support.mjs';
 
 function hullFrameRays(tank) {
   const hull=tank.root.getObjectByName('rig_hull'), surfaces=[];
-  tank.root.traverseVisible(mesh=>{if(mesh.isMesh)surfaces.push(mesh)});
+  // NOTE (the netting lane, 2026-10-11, the coordinator's ruling B): these witnesses measure the vehicle's own stock and
+  // air (hatch lids and corners, louver lips, slots); a camouflage suit's net and garnish are not part of it and leave
+  // the rays (camouflageBounds.test-support.mjs, guarded). Do not re-add the suit to these surfaces.
+  tank.root.traverseVisible(mesh=>{if(mesh.isMesh&&notCamouflage(mesh))surfaces.push(mesh)});
   const scale=hull.getWorldScale(new THREE.Vector3()).x;
   return (position,direction,far)=>new THREE.Raycaster(
     hull.localToWorld(new THREE.Vector3(...position)),
@@ -141,7 +145,8 @@ for(const quality of['high','low'])for(const id of['bmp3m_dragun125_x','k21_x','
     tank.root.updateMatrixWorld(true);
     checkType96Hatch(tank);
     const hull=tank.root.getObjectByName('rig_hull');
-    const surfaces=[];hull.traverseVisible(m=>{if(m.isMesh)surfaces.push(m)});
+    // NOTE (ruling B, as hullFrameRays above): the rear datum and louver lips are the hull's own; do not re-add the suit
+    const surfaces=[];hull.traverseVisible(m=>{if(m.isMesh&&notCamouflage(m))surfaces.push(m)});
     const direction=new THREE.Vector3(0,0,1).transformDirection(hull.matrixWorld);
     const firstRearZ=(x,y)=>{
       const ray=new THREE.Raycaster(hull.localToWorld(new THREE.Vector3(x,y,-5)),direction);

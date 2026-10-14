@@ -64,6 +64,9 @@ export interface BattleIntentRuntime {
   preload(options?: BattleIntentOptions): void;
   invalidateMapPlan(): void;
   consumeMap(specId: string, requestedMapId: string): string;
+  /** The map consumeMap will return for this request, without consuming it: a Random pick is planned (and kept for
+   * consumeMap) now; a named map is itself. */
+  peekMap(specId: string, requestedMapId: string): string;
   prepareRoster(options: BattleRosterPreparation): Promise<void>;
   dispose(): void;
 }
@@ -237,6 +240,10 @@ export function createBattleIntentRuntime({
     return resolved;
   };
 
+  const peekMap = (specId: string, requestedMapId: string) => (
+    requestedMapId === 'random' ? planMap(specId, requestedMapId) : requestedMapId
+  );
+
   const prepareRoster = async ({
     specId,
     mapId,
@@ -266,6 +273,7 @@ export function createBattleIntentRuntime({
     preload,
     invalidateMapPlan,
     consumeMap,
+    peekMap,
     prepareRoster,
     dispose,
   };

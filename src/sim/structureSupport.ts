@@ -57,6 +57,12 @@ export interface StructureSupportField extends SupportHeightField {
   beginHull(x: number, z: number, bellyY: number, pose?: HullSupportPose | null): void;
   /** Number of primitives considered for the current hull (probes / receipts). */
   readonly candidateCount: number;
+  /**
+   * Reads so far that a primitive's top answered over the ground (destruction stream, 2026-10-13): the movement takes a
+   * step whose support solve raised it for a step on a record (a rock's tier, a roof), where an edge is climbed at the
+   * hull's pace (movement.ts EDGE_CLIMB_*), rather than a terrain face (a trench's wall), which lifts as before.
+   */
+  readonly recordReads: number;
 }
 
 function partTop(record: CollisionRecord, part: SimpleCollisionShape | null): number {
@@ -118,10 +124,12 @@ export function createStructureSupportField(
   let posed = false;
   const terrainAt = terrain.getHeightAt.bind(terrain);
   const terrainFast = terrain.getHeightAtFast ? terrain.getHeightAtFast.bind(terrain) : terrainAt;
+  let recordReads = 0;
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
     const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null);
+    if (top > ground + 0.02) { recordReads++; return top; }
     return top > ground ? top : ground;
   };
   const getHeightAt = sample(terrainAt);
@@ -157,5 +165,6 @@ export function createStructureSupportField(
       }
     },
     get candidateCount() { return count; },
+    get recordReads() { return recordReads; },
   };
 }

@@ -17,6 +17,7 @@ import type * as THREE from 'three';
 import { PartSink, hashSeed, normalize3, rgb, shade, streamFrom, type Rgb, type Vec3 } from './regional/geometry.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneCollisionRecord, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { createRecordClearance } from './recordClearance.ts';
 import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
 
 interface BridgeDeck { x: number; z: number; ux: number; uz: number; halfLength: number; halfWidth: number; approachM?: number; waterY?: number }
@@ -66,12 +67,6 @@ function resample(points: ReadonlyArray<readonly [number, number]>, step: number
     s += len;
   }
   return out;
-}
-
-/** Does a footprint (x, z centre, half extents along / across a heading) clear every record placed so far? */
-function clears(records: readonly CollisionRecord[], cx: number, cz: number, hl: number, hw: number, tx: number, tz: number, pad: number): boolean {
-  const ex = Math.abs(tx) * hl + Math.abs(tz) * hw + pad, ez = Math.abs(tz) * hl + Math.abs(tx) * hw + pad;
-  return !records.some((r) => !r.dead && r.max[0] > cx - ex && r.min[0] < cx + ex && r.max[2] > cz - ez && r.min[2] < cz + ez);
 }
 
 /** The layout brief's road core (tools/map-layout-metrics.mjs ROAD_CORE_M, 3.5 m) and a margin for its metre grid. */
@@ -182,7 +177,7 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
   }
   push(ctx, bed);
   const wires = new PartSink([0, 0]);
-  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  const records = createRecordClearance([...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])]);
   let prev: { y: number; s: Station } | null = null;
   for (let i = 0; i < st.length; i += Math.round(SPAN / 2)) {
     const s = st[i];
@@ -191,7 +186,7 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
     const tops: Vec3[] = [];
     for (const side of [1, -1]) {
       const [px, , pz] = at(s, side * POLE_OFFSET);
-      if (!clears(records, px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
+      if (!records.clears(px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
       const py = hf.getHeightAt(px, pz);
       const bent = look() < 0.1;
       const h = bent ? POLE_H * (0.55 + look() * 0.3) : POLE_H;
@@ -228,14 +223,14 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
     for (const target of bays.slice(0, 6)) {
       const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
       const [cx, , cz] = at(s, side * TRAM_OFF);
-      if (!clears(records, cx, cz, TRAM_HL, TRAM_HW + 0.05, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz)
+      if (!records.clears(cx, cz, TRAM_HL, TRAM_HW + 0.05, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz)
         || !clearOfKeepOut(keep, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz) || onDeck(cx, cz)) continue;
       const y = hf.getHeightAt(cx, cz);
       const sink = new PartSink([look() * 5, look() * 5]);
       sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
       push(ctx, sink);
       block(ctx, cx, cz, TRAM_HL, TRAM_HW, s.tx, s.tz, y, y + 3.2, 'tram-wreck');
-      records.push(...(ctx.obstacles ?? []).slice(-1));
+      for (const record of (ctx.obstacles ?? []).slice(-1)) records.add(record);
       return;
     }
   };
@@ -251,7 +246,7 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
 function dressBridgeheads(ctx: StreetContext): void {
   const hf = ctx.heightField;
   const mobile = getDeviceTier() === 'mobile';
-  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  const records = createRecordClearance([...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])]);
   for (const [k, d] of (hf.bridgeDecks ?? []).entries()) {
     const look = streamFrom(hashSeed('shanghai-bridgehead', k, d.x, d.z));
     const sink = new PartSink([look() * 5, look() * 5]);
@@ -260,7 +255,7 @@ function dressBridgeheads(ctx: StreetContext): void {
       for (const side of [-1, 1]) {
         const across = side * (d.halfWidth + 3.6);
         const cx = d.x + d.ux * along - d.uz * across, cz = d.z + d.uz * along + d.ux * across;
-        if (!clears(records, cx, cz, 2.0, 2.0, d.ux, d.uz, 0.2)) continue;
+        if (!records.clears(cx, cz, 2.0, 2.0, d.ux, d.uz, 0.2)) continue;
         const y = hf.getHeightAt(cx, cz);
         // the horseshoe in the road's frame: x along the road (the mouth toward the bridge), z across
         sink.placed(Math.atan2(-d.uz, d.ux) + (end < 0 ? 0 : Math.PI), cx, y, cz, () => {

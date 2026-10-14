@@ -44,6 +44,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   m1a1: 'make the base M1A1 the mobile alternative to the protected HA package',
   amx30: 'restore the AMX-30 mobility and fire-control sidegrade',
   fv510_milan: 'restore Tier IX cannon output without erasing its missile identity',
+  warrior_tes_h: 'establish the Tier X Warrior TES(H) survivability and cannon envelope (TES(H) add-on armour; owner ruling 2026-10-12: new Warrior type at tier 10)',
   ua_m2a3_bradley: 'restore the Ukrainian Bradley cannon, mobility and survivability envelope',
   type89_light_tiger: 'close the next-generation IFV anti-armor and protection gap',
   type10b: 'bring exceptional sustained output back inside the next-generation ceiling',

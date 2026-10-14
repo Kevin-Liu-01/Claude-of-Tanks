@@ -161,14 +161,14 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.8391329,
-          1.1283463,
-          -0.2934999
+          1.8358741,
+          1.1281303,
+          0.0790001
         ],
         "quaternion": [
-          -0.0063639,
-          0.7070781,
           0.0063639,
+          0.7070781,
+          -0.0063639,
           0.7070781
         ],
         "surfaceMesh": "hull",
@@ -183,22 +183,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.8358741,
-          1.1281303,
-          -1.1129999
+          1.8147467,
+          1.127896,
+          -1.9324999
         ],
         "quaternion": [
-          0.0063639,
-          0.7070781,
-          -0.0063639,
-          0.7070781
+          0.0201783,
+          0.7068188,
+          -0.0201783,
+          0.7068188
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "merkava3c",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.001684
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -272,9 +272,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "surfaceMesh": "turret",
         "anchorProfile": "merkava4b",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.1868234
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.2167427
       },
       {
         "kind": "designation",

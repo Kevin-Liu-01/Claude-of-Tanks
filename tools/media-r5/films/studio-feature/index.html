@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#07090c}
+#root{position:relative;width:100%;height:100%;overflow:hidden;background:#07090c}
+.clip{position:absolute;inset:0}
+video.shot{width:100%;height:100%;object-fit:cover;background:#07090c}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080">
+<video id="v01" class="clip shot" src="assets/shots/ui-feature-stage.mp4" muted playsinline data-start="0" data-duration="5" data-media-start="0" data-track-index="1"></video>
+<video id="v02" class="clip shot" src="assets/shots/x05-leo2a7v.mp4" muted playsinline data-start="5" data-duration="2.5" data-media-start="0.2" data-track-index="2"></video>
+<video id="v03" class="clip shot" src="assets/shots/ui-feature-time.mp4" muted playsinline data-start="7.5" data-duration="5" data-media-start="0" data-track-index="1"></video>
+<video id="v04" class="clip shot" src="assets/shots/ui-trailer.mp4" muted playsinline data-start="12.5" data-duration="5" data-media-start="0" data-track-index="2"></video>
+<video id="v05" class="clip shot" src="assets/shots/t05-lake-track.mp4" muted playsinline data-start="17.5" data-duration="2.5" data-media-start="0.3" data-track-index="1"></video>
+<video id="v06" class="clip shot" src="assets/shots/t36-canyon-orbit.mp4" muted playsinline data-start="20" data-duration="2.5" data-media-start="0.2" data-track-index="2"></video>
+<video id="v07" class="clip shot" src="assets/shots/b01-pan-runway.mp4" muted playsinline data-start="22.5" data-duration="2.5" data-media-start="0" data-track-index="1"></video>
+<video id="v08" class="clip shot" src="assets/shots/t34-runway-pan.mp4" muted playsinline data-start="25" data-duration="2.5" data-media-start="0.4" data-track-index="2"></video>
+<div id="flashes-host" data-composition-id="flashes" data-composition-src="compositions/flashes.html" data-start="0" data-duration="30" data-track-index="5" data-width="1920" data-height="1080"></div>
+<div id="titles-host" data-composition-id="titles" data-composition-src="compositions/titles.html" data-start="0" data-duration="30" data-track-index="7" data-width="1920" data-height="1080"></div>
+<div id="endcard-host" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="27.5" data-duration="2.5" data-track-index="8" data-width="1920" data-height="1080"></div>
+<div id="grain-host" data-composition-id="grain" data-composition-src="compositions/grain.html" data-start="0" data-duration="30" data-track-index="9" data-width="1920" data-height="1080"></div>
+<audio id="mix" src="assets/audio/mix.wav" data-start="0" data-duration="30" data-track-index="20" data-volume="1"></audio>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>

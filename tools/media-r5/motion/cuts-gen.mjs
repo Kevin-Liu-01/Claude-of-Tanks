@@ -16,7 +16,10 @@ if (which === 'c30') {
   cut('s41-church-tower', 1, 0, 4, 0.6);
   cut('s10-ford-shellfire', 2, 0, 4, 0.4);
   cut('s01-main-street-push', 3, 0, 4, 0.3);
-  ['s04-column-under-fire', 's17-crossroads-fire', 's26-minaret-fire', 's21-fields-assault'].forEach((id, i) => cut(id, 4 + Math.floor(i / 2), (i % 2) * 2, 2));
+  // (launch day, 2026-10-09: S17's re-planned push-zoom opens wide behind trees; from 2.6 s the tank is close with a burst
+  // behind it)
+  const IN_AT = { 's17-crossroads-fire': 2.6 };
+  ['s04-column-under-fire', 's17-crossroads-fire', 's26-minaret-fire', 's21-fields-assault'].forEach((id, i) => cut(id, 4 + Math.floor(i / 2), (i % 2) * 2, 2, IN_AT[id] ?? 0));
   cut('s06-farm-charge', 6, 0, 4);
   cut('s27-caravanserai-kill', 7, 0, 4, 0.6);
   ['s45-harbor-wide', 's34-furnace-salvo', 's38-church-knockout', 's47-ironworks-crane'].forEach((id, i) => cut(id, 8 + Math.floor(i / 2), (i % 2) * 2, 2));

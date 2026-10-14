@@ -1,6 +1,10 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
+import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
+import { createSmokeRibbons, type RibbonLook } from './smokeRibbons.ts';
+import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
+import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
 /**
@@ -40,20 +44,25 @@ import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMed
 import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
-  armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
-  kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst, smolderPuff as mediaSmolderPuff, trackSkirt,
-  waterBurst,
+  armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, exhaustSpacing, craterEjecta, dustSurge, fragmentStrike,
+  groundBurst, isExplosive, kineticStrike, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
+  smolderPuff as mediaSmolderPuff, trackSkirt, trackSkirtSpacing, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
+import { createTrailCadence } from './trailCadence.ts';
 import { craterWobblePhases } from '../sim/terrainDeformation.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
 import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
-import { createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
+import { createLatticeGround } from './latticeGround.ts';
+import { bucketAliases, createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
+import { createRubbleBodies, RUBBLE_BODY_CAPACITY, type RubbleBodies } from './rubbleBodies.ts';
+import type { RigidEnvironment } from '../sim/rigidBody.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
@@ -98,7 +107,9 @@ export interface FxWorldSeam {
   raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
     { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number; readonly revision?: number } | null;
+  /** the static records the presentation's rigid bodies meet (world/map.ts bodyRecordQuery: shell bands and solid records) */
+  bodyRecordQuery?(): (minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]) => CollisionRecord[];
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
    *  match; presentation only (the sim's overlay never carries marks), called once per mark at event time */
   clearCoverAt?(x: number, z: number, radiusM: number): void;
@@ -251,6 +262,17 @@ interface GuidedTrail {
   count: number;
   age: number;
   seen: boolean;
+  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff; (EF.04)
+   *  its smoke ribbon's slot and the distance of the ribbon's next point */
+  ribbon?: number;
+  nextRibbonD?: number;
+  look?: MissileLook;
+  seed?: number;
+  launch?: [number, number, number] | null;
+  lastD?: number;
+  nextSmokeD?: number;
+  puffIndex?: number;
+  fallbackD?: number;
 }
 
 interface TracerTrail {
@@ -304,6 +326,10 @@ interface LiveShell {
     guided?: boolean;
     tracer?: TracerType;
     reloadGroup?: string;
+    /** the round's name and launch sound (local rounds carry their full spec; a networked one only type/guidance) */
+    name?: string;
+    soundProfile?: string;
+    type?: string;
   };
 }
 
@@ -332,6 +358,9 @@ interface PredictedWeaponEvent {
   dir: WireVec3;
   caliberMm: number;
   isPlayer?: boolean;
+  /** the round's launch sound profile ('*-launch' for every guided round) and name, when the shot carries them */
+  weaponSound?: string | null;
+  shellName?: string;
 }
 
 interface ShellFiredEvent extends PredictedWeaponEvent {
@@ -1103,11 +1132,23 @@ function* createFxSteps(
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
   // keeps the pooled puffs below (no atlas download, no sort, no extra draws).
   const mediaTier = getDeviceTier() !== 'mobile';
+  // (destruction stream 2026-10-13) the landing solves read the ground as drawn from its lattice's vertices, each once
+  // until the ground changes (fx/latticeGround.ts): a collapse's hundreds of pieces cost the frame 20 ms reading every
+  // crater and heap of their bucket at three vertices, a dozen times a piece
+  let groundEpoch = 0;
+  let groundOverlayRef: unknown = null;
+  let groundFieldRef: unknown = null;
+  const groundRevision = (): number => {
+    const overlay = world?.()?.groundOverlay?.() ?? null;
+    if (overlay !== groundOverlayRef || heightField !== groundFieldRef) { groundOverlayRef = overlay; groundFieldRef = heightField; groundEpoch++; }
+    return groundEpoch * 1e6 + (overlay?.revision ?? 0);
+  };
+  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision);
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
   const chunks: DebrisChunks | null = mediaTier
-    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
+    ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
     : null;
   // World state, every tier: the marks a crater leaves, a building coming down in the world's own geometry (the world
   // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
@@ -1121,11 +1162,36 @@ function* createFxSteps(
     w?.clearCoverAt?.(x, z, radiusM);
   };
   const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
+  // (2026-10-12, the owner: one physics engine for everything that falls) a building's larger falling pieces are bodies
+  // of the engine the turret pops run on (sim/rigidBody.ts): the ground as drawn, the world's walls and records, each
+  // other. The phone keeps every piece in the program (its pools are small and its frame tight)
+  let bodyWorld: FxWorldSeam | null = null;
+  let bodyEnv: RigidEnvironment | null = null;
+  const bodyEnvironment = (): RigidEnvironment | null => {
+    const w = world ? world() : null;
+    if (!w) return null;
+    if (w !== bodyWorld || !bodyEnv) {
+      bodyWorld = w;
+      const query = w.bodyRecordQuery?.() ?? null;
+      // (the same lattice-read ground as the landing solves: a heap's bodies read it at every sphere every step)
+      bodyEnv = { groundAt: landingGround, ...(query ? { queryStatic: query } : {}),
+        isSolid: (record) => !record.crushed && !record.dead };
+    }
+    return bodyEnv;
+  };
+  const rubble: RubbleBodies | null = mediaTier
+    ? createRubbleBodies({ now: () => particles.getTime(), environment: bodyEnvironment, capacity: RUBBLE_BODY_CAPACITY,
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material
+        ?? bucketAliases(bucket).map((alias) => bucketMaterials.get(alias)?.material).find(Boolean) ?? null,
+      setupMaterial: (material) => engineCtx?.setupShadowMaterial?.(material) })
+    : null;
+  if (rubble) group.add(rubble.group);
   const structDebris: StructureDebris | null = createStructureDebris({
+    bodies: rubble,
     now: () => particles.getTime(), scene: engineCtx.scene ?? null,
     // (round 7) pieces lie on the ground as drawn (a rubble mound, a crater's rim); a pile is seated on the ground under
     // it, per vertex (its heights stand over the sim's mound already)
-    groundY: (x, z) => deformedGroundY(x, z),
+    groundY: landingGround,
     baseGroundY: (x, z) => (heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z)),
     poolCapacity: mediaTier ? 256 : 24, pieceCap: mediaTier ? 1024 : 160,
   });
@@ -1177,6 +1243,9 @@ function* createFxSteps(
     });
   }
   if (vol) group.add(vol.group);
+  // (EF.04) a missile's smoke trail as one continuous ribbon, lit by the media's own light (desktop tiers, with the media)
+  const ribbons = vol ? createSmokeRibbons(vol.shading) : null;
+  if (ribbons) group.add(ribbons.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
 
@@ -1324,7 +1393,9 @@ function* createFxSteps(
   // during flight. Geometry faces local +Z, matching projectile velocity.
   const atgmBodyGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.25, 8, 1, false);
   atgmBodyGeo.rotateX(Math.PI / 2);
-  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffe15a });
+  // (fx 9a) the body in its own paint (instance colours per look: a missile is a dark olive or grey airframe, its motor
+  // the bright part), the flare its motor's hot core in the look's colour
+  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const atgmBodies = new THREE.InstancedMesh(atgmBodyGeo, atgmBodyMat, MAX_ATGM_BODIES);
   atgmBodies.count = 0;
   atgmBodies.frustumCulled = false;
@@ -1333,7 +1404,7 @@ function* createFxSteps(
   atgmBodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   const atgmFlareGeo = new THREE.SphereGeometry(0.25, 8, 6);
   const atgmFlareMat = new THREE.MeshBasicMaterial({
-    color: 0xffd21f,
+    color: 0xffffff,
     transparent: true,
     opacity: 0.92,
     depthWrite: false,
@@ -1345,6 +1416,11 @@ function* createFxSteps(
   atgmFlares.renderOrder = 26;
   atgmFlares.layers.set(LATE_FX_LAYER);
   atgmFlares.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // (fx 9a) instance colours from the start: one program variant for every missile, warmed with the pools
+  {
+    const white = new THREE.Color(1, 1, 1);
+    for (let i = 0; i < MAX_ATGM_BODIES; i++) { atgmBodies.setColorAt(i, white); atgmFlares.setColorAt(i, white); }
+  }
   group.add(atgmBodies, atgmFlares);
 
   // Static tracers (screenshot composers) survive per-frame rebuilds:
@@ -4161,19 +4237,29 @@ function* createFxSteps(
   }
 
   let liveAtgmCount = 0;
+  const _bodyColor = new THREE.Color();
+  const _flareColor = new THREE.Color();
 
-  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3): void {
+  /** One missile's body and its motor's hot core: the body centred 0.65 m behind the nose (scaled about its centre by
+   *  the look), the core 1.35 m back; an unlit motor (a soft launch's coast) shows no core. */
+  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3, look: MissileLook = MISSILE_LOOKS.konkurs,
+    lit = true, flareK = 1): void {
     if (liveAtgmCount < MAX_ATGM_BODIES) {
       _atgmObject.position.copy(shellPos).addScaledVector(direction, -0.65);
       _atgmObject.quaternion.setFromUnitVectors(_Z, direction);
-      _atgmObject.scale.set(1, 1, 1);
+      _atgmObject.scale.set(look.bodyRad * 2, look.bodyRad * 2, look.bodyLen);
       _atgmObject.updateMatrix();
       atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
+      // unlit paint a shade over its sRGB (the late pass's unlit body would read near-black in sun)
+      _bodyColor.setHex(look.bodyHex).multiplyScalar(1.6);
+      atgmBodies.setColorAt(liveAtgmCount, _bodyColor);
       _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -1.35);
       _atgmFlareObject.quaternion.identity();
-      _atgmFlareObject.scale.setScalar(1.15);
+      _atgmFlareObject.scale.setScalar(lit ? 0.32 + 0.12 * look.flarePx : 1e-4);
       _atgmFlareObject.updateMatrix();
       atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
+      _flareColor.setRGB(look.flareCore[0], look.flareCore[1], look.flareCore[2]).multiplyScalar(1.4 * flareK);
+      atgmFlares.setColorAt(liveAtgmCount, _flareColor);
       liveAtgmCount++;
     }
   }
@@ -4199,6 +4285,266 @@ function* createFxSteps(
     trail.aerialWidth = aerialWidth;
     appendGuidedTrailPoint(trail, shellPos.x, shellPos.y, shellPos.z);
     return writeGuidedTrail(trail, tracerIndex);
+  }
+
+  // ---- (fx 9a) missiles: each round its own look (missileLooks.ts) ----------------------------------------------------
+  /** launch points by shell id (shell:fired), for the command wires */
+  const missileLaunchAt = new Map<ShellId, [number, number, number]>();
+  /** the shooter's gun resolves a networked round that carries only its type and guidance */
+  const missileByShooter = new Map<string, MissileLook>();
+  const _wob = [0, 0];
+  const _mSide = new THREE.Vector3();
+  const _mUp = new THREE.Vector3();
+  const _mPos = new THREE.Vector3();
+  const _mHead = new THREE.Vector3();
+  const WIRE_RGB: readonly number[] = [0.82, 0.82, 0.78];
+  let liveMissiles = 0;
+
+  function idSeed(id: ShellId): number {
+    let h = 2166136261;
+    const str = String(id);
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h | 0;
+  }
+
+  function lookForShell(shell: LiveShell): MissileLook {
+    const spec = shell.spec;
+    if (spec?.name || spec?.soundProfile || shell.rocket) {
+      return missileLookFor(spec?.name, spec?.soundProfile, shell.rocket === true && spec?.guided !== true);
+    }
+    const key = `${String(shell.shooterId)}|${spec?.type ?? ''}`;
+    const known = missileByShooter.get(key);
+    if (known) return known;
+    const owner = decalEntityFor(shell.shooterId) as (FxEntity & {
+      spec?: { gun?: { shells?: readonly ({ name?: string; type?: string; guided?: boolean; soundProfile?: string } | null)[] } };
+    }) | null;
+    const shells = owner?.spec?.gun?.shells ?? [];
+    const round = shells.find((r) => r?.guided === true && (!spec?.type || r.type === spec.type)) ?? shells.find((r) => r?.guided === true);
+    const look = missileLookFor(round?.name, round?.soundProfile, false);
+    if (missileByShooter.size > 64) missileByShooter.clear();
+    missileByShooter.set(key, look);
+    return look;
+  }
+
+  function missileRecord(shell: LiveShell): GuidedTrail {
+    let trail = guidedTrails.get(shell.id);
+    if (!trail) {
+      trail = { points: new Float32Array(ATGM_TRAIL_POINTS * 3), count: 0, age: 0, seen: true };
+      guidedTrails.set(shell.id, trail);
+    }
+    if (!trail.look) {
+      trail.look = lookForShell(shell);
+      trail.seed = idSeed(shell.id);
+      const at = missileLaunchAt.get(shell.id);
+      trail.launch = at ? [at[0], at[1], at[2]]
+        : shell.prevPos ? [shell.prevPos.x, shell.prevPos.y, shell.prevPos.z] : [shell.pos.x, shell.pos.y, shell.pos.z];
+      trail.lastD = -1;
+      trail.nextSmokeD = trail.look.igniteM;
+      trail.puffIndex = 0;
+      // a round first seen mid-flight with no distance record counts as lit
+      trail.fallbackD = trail.look.igniteM;
+    }
+    return trail;
+  }
+
+  /**
+   * A missile or rocket in flight (not the gunship's): its body (wobbling with its steering), its motor's flare and hot
+   * plume once lit, the pop where a coasting motor lights, its smoke trail on the media layer (puffs born where it
+   * passed, when it passed) and the command wires paying out behind a wire-guided round.
+   */
+  function writeMissile(shell: LiveShell, tracerIndex: number): number {
+    const trail = missileRecord(shell);
+    trail.age = 0;
+    trail.seen = true;
+    const look = trail.look as MissileLook;
+    const seed = trail.seed as number;
+    const seedU = ((seed >>> 0) % 10007) / 10007;
+    const speed = Math.max(1, shell.vel.length());
+    const dir = _v1; // the caller normalized the velocity into _v1
+    let d: number;
+    if (Number.isFinite(shell.distM)) d = shell.distM as number;
+    else {
+      if (shell.prevPos && (trail.lastD as number) >= 0) trail.fallbackD = (trail.fallbackD as number) + shell.pos.distanceTo(shell.prevPos);
+      d = trail.fallbackD as number;
+    }
+    const t = Number.isFinite(shell.ageS) ? (shell.ageS as number) : d / speed;
+    // the steering corrections: a small lateral offset off the authoritative line, the same at every frame rate (a round
+    // that carries neither its flight time nor its distance flies its line: its time is not known)
+    const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
+    _mSide.crossVectors(dir, _UP);
+    if (_mSide.lengthSq() < 1e-6) _mSide.set(1, 0, 0); else _mSide.normalize();
+    _mUp.crossVectors(_mSide, dir).normalize();
+    missileWobble(look, timed ? t : 0, seedU, _wob);
+    _mPos.copy(shell.pos).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    const lit = d >= look.igniteM;
+    const flick = missileFlicker(look, t, seedU);
+    writeGuidedBody(_mPos, dir, look, lit, flick);
+    // the motor at the body's tail; (EF.04) a roll-stabilised round's tracer rides its helix about the axis
+    _mHead.copy(_mPos).addScaledVector(dir, -(0.65 + 0.625 * look.bodyLen));
+    if (look.spinM) {
+      missileSpin(look, timed ? t : 0, seedU, _wob);
+      _mHead.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    }
+    // the motor lighting clear of the launcher (crossed since the last frame)
+    const lastD = trail.lastD as number;
+    if (blast && look.igniteM > 0.5 && lit && lastD >= 0 && lastD < look.igniteM) {
+      const back = d - look.igniteM;
+      missileIgnition(blast, puffRandom(seed ^ 0x2c1b3c6d), look,
+        _mPos.x - dir.x * back, _mPos.y - dir.y * back, _mPos.z - dir.z * back, dir.x, dir.y, dir.z, -back / speed);
+    }
+    if (lit) {
+      // its plume streaming back from the motor (no longer than it has burned)
+      const plume = Math.max(0.15, Math.min(look.plumeM, d - look.igniteM + 0.3));
+      const dark = tracers.darkLevel();
+      const fk = look.flareK * flick;
+      tracers.glow(_mHead.x, _mHead.y, _mHead.z,
+        _mHead.x - dir.x * plume, _mHead.y - dir.y * plume, _mHead.z - dir.z * plume,
+        look.flarePx * (1 + 0.25 * (1 - dark)), look.haloPx * (0.55 + 0.45 * dark), look.flareCore, fk,
+        look.flareHalo, fk * (0.05 + 0.12 * dark), 1.4);
+      renderedAtgmTrailSegments++;
+      if (blast && look.smoke) emitMissileTrail(trail, look, shell, d, t, speed, seed, seedU);
+    }
+    if (look.wires > 0 && trail.launch) tracerIndex = drawMissileWires(trail, look, t, seedU, tracerIndex);
+    trail.lastD = d;
+    return tracerIndex;
+  }
+
+  /** A missile's or rocket's launch: a gun-launched round keeps the gun's own muzzle blast, a rack's rockets their
+   *  ignition flash; every one adds its look's launch on the media layer and a short light. */
+  function missileLaunchFx(e: PredictedWeaponEvent & { shellName?: string }, seed: number): void {
+    const look = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
+    _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
+    _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+    if (look.launch === 'gun') fx.muzzleFlash(_v3, _v4, e.caliberMm, false);
+    else if (e.rocket) fx.muzzleFlash(_v3, _v4, e.caliberMm, true);
+    else flashLight(lightStates[0], _v3, MUZZLE_LIGHT_PEAK * 0.35 * look.launchK, 0);
+    if (blast) {
+      missileLaunch(blast, puffRandom(seed), look, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, groundY(_v3.x, _v3.z), 0);
+    }
+  }
+
+  /** The trail's puffs since the last frame, one per spacing of flight (wider when many missiles fly at once). */
+  /** (EF.04) the ribbon each look draws (once per look): thin at the motor, swelling to the trail's width, its edges
+   *  torn as much as the motor puffs (a pulsing sustainer tears more than a steady one) */
+  const ribbonLooks = new Map<string, RibbonLook>();
+  function ribbonLookOf(look: MissileLook): RibbonLook | null {
+    const sm = look.smoke;
+    if (!sm) return null;
+    let r = ribbonLooks.get(look.id);
+    if (!r) {
+      // (filmed: the ribbon alone carries the trail; it lasts as long as the media puffs it replaced lingered, a dense
+      // motor's wider and thicker)
+      const dense = ribbonDense(look);
+      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * (dense ? 0.9 : 0.7),
+        life: sm.life * 1.3, density: Math.min(0.9, sm.density * (dense ? 1.2 : 1.05)), c0: sm.c0, c1: sm.c1,
+        rise: sm.rise, windK: sm.windK, tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
+      ribbonLooks.set(look.id, r);
+    }
+    return r;
+  }
+  /** the covered warm's ribbon (warmProjectilePresentation) */
+  const WARM_RIBBON_KEY = -7;
+  const WARM_RIBBON: RibbonLook = Object.freeze({ width0: 0.3, width1: 1.5, life: 1, density: 0.4,
+    c0: [0.5, 0.5, 0.5] as const, c1: [0.55, 0.55, 0.55] as const, rise: 0, windK: 0, tear: 0.5 });
+  /** a ribbon point every RIBBON_STEP_M of flight */
+  const RIBBON_STEP_M = 2.5;
+  /** a dense motor's trail (rail, rocket, MANPADS, MCLOS, gun IR, old SACLOS): a wider, thicker ribbon */
+  function ribbonDense(look: MissileLook): boolean {
+    const f = look.family;
+    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old';
+  }
+
+  /** (EF.04) the ribbon's points since the last frame, where the motor passed and when */
+  function layRibbon(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seedU: number): void {
+    const rl = ribbonLookOf(look);
+    if (!ribbons || !rl) return;
+    const key = trail.seed as number;
+    let slot = trail.ribbon ?? -1;
+    if (slot < 0 || ribbons.slotOf(key) !== slot) {
+      slot = ribbons.begin(key, rl, seedU);
+      trail.ribbon = slot;
+      trail.nextRibbonD = Math.max(look.igniteM, d - 60);
+    }
+    const dir = _v1;
+    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
+    const motorBack = 0.65 + 0.625 * look.bodyLen;
+    const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
+    const now = particles.getTime();
+    let next = Math.max(trail.nextRibbonD as number, look.igniteM, d - 60);
+    let n = 0;
+    while (next <= d && n < 48) {
+      const back = d - next;
+      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
+      else _v6.copy(shell.pos).addScaledVector(dir, -back);
+      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
+      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed) : 99);
+      next += RIBBON_STEP_M;
+      n++;
+    }
+    trail.nextRibbonD = next;
+  }
+
+  function emitMissileTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seed: number, seedU: number): void {
+    const sm = look.smoke;
+    if (!sm || !blast) return;
+    // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
+    // (EF.04, filmed in battle: puffs left along the ribbon outlived it as a string of beads) where the ribbons draw,
+    // the ribbon alone is the trail; the media keep the launch, the motor's ignition and the strike
+    if (ribbons) { layRibbon(trail, look, shell, d, t, speed, seedU); return; }
+    const coarse = Math.max(1, liveMissiles / 4);
+    const spacing = sm.spacingM * coarse;
+    let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
+    const dir = _v1;
+    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
+    let n = 0;
+    while (next <= d && n < 24) {
+      const back = d - next;
+      // along this frame's path (its curve) where it reaches, straight back along the line beyond
+      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
+      else _v6.copy(shell.pos).addScaledVector(dir, -back);
+      missileWobble(look, Number.isFinite(shell.ageS) || Number.isFinite(shell.distM) ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+      const motorBack = 0.65 + 0.625 * look.bodyLen;
+      _v6.addScaledVector(dir, -motorBack);
+      const i = trail.puffIndex as number;
+      const beat = Math.sin(i * 1.7 + seedU * 6.2832);
+      missileTrailPuff(blast, puffRandom(seed + Math.imul(i + 1, 0x9e3779b1)), look, _v6.x, _v6.y, _v6.z,
+        dir.x, dir.y, dir.z, beat, -back / speed, coarse);
+      trail.puffIndex = i + 1;
+      next += spacing;
+      n++;
+    }
+    trail.nextSmokeD = next;
+  }
+
+  /** A wire-guided round's command wires: faint lines from the launcher to its tail, sagging a little between, glinting
+   *  where the light catches a stretch of them (untapered capsules). */
+  function drawMissileWires(trail: GuidedTrail, look: MissileLook, t: number, seedU: number, tracerIndex: number): number {
+    const L0 = trail.launch as [number, number, number];
+    const dark = tracers.darkLevel();
+    const len = Math.hypot(_mHead.x - L0[0], _mHead.y - L0[1], _mHead.z - L0[2]);
+    if (len < 1) return tracerIndex;
+    const SEGS = 6;
+    const sag = Math.min(2.5, 0.0025 * len);
+    for (let w = 0; w < look.wires; w++) {
+      const off = look.wires > 1 ? (w === 0 ? -0.06 : 0.06) : 0;
+      let px = L0[0] + _mSide.x * off, py = L0[1], pz = L0[2] + _mSide.z * off;
+      for (let k = 1; k <= SEGS; k++) {
+        const f = k / SEGS;
+        const x = L0[0] + (_mHead.x - L0[0]) * f + _mSide.x * off;
+        const y = L0[1] + (_mHead.y - L0[1]) * f - sag * 4 * f * (1 - f);
+        const z = L0[2] + (_mHead.z - L0[2]) * f + _mSide.z * off;
+        const g = Math.sin((k * 12.9898 + w * 4.1 + seedU * 78.233) * 43758.5453 + t * 2.3);
+        const glint = Math.max(0, g) ** 6;
+        const k0 = (0.1 + 0.55 * glint) * (1 - 0.7 * dark);
+        tracers.glow(x, y, z, px, py, pz, 0.32, 0, WIRE_RGB, k0, WIRE_RGB, 0, -1);
+        px = x; py = y; pz = z;
+      }
+    }
+    return tracerIndex;
   }
 
   function writeShellBolt(
@@ -4289,6 +4635,11 @@ function* createFxSteps(
       drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation,
         owner?.visual?.root?missionAttachmentVisualFrame(owner.visual.root):undefined,shell.shooterId??undefined,hidden);
     }
+    liveMissiles = 0;
+    for (let i = 0; i < shells.length; i++) {
+      const sh = shells[i];
+      if (!sh.dead && (sh.spec?.guided || sh.rocket === true)) liveMissiles++;
+    }
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
@@ -4309,6 +4660,8 @@ function* createFxSteps(
       );
       _v1.copy(shell.vel).normalize();
       _v2.copy(shell.pos).addScaledVector(_v1, -length);
+      // (fx 9a) a missile or rocket draws its own look; the gunship's keep their gimbal-readable ribbon
+      if (guided && !aerial) { tracerCount = writeMissile(shell, tracerCount); continue; }
       if (guided) {
         tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5]) : 0);
         if (tracerCount >= MAX_TRACERS) continue;
@@ -4327,6 +4680,8 @@ function* createFxSteps(
     if (liveAtgmCount > 0 || atgmBodies.userData.lastCount > 0) {
       atgmBodies.instanceMatrix.needsUpdate = true;
       atgmFlares.instanceMatrix.needsUpdate = true;
+      if (atgmBodies.instanceColor) atgmBodies.instanceColor.needsUpdate = true;
+      if (atgmFlares.instanceColor) atgmFlares.instanceColor.needsUpdate = true;
     }
     atgmBodies.userData.lastCount = liveAtgmCount;
   }
@@ -4340,6 +4695,8 @@ function* createFxSteps(
         continue;
       }
       const fade = 1 - trail.age / ATGM_TRAIL_S;
+      // (fx 9a) a missile's own look leaves its smoke on the media layer, not a ribbon
+      if (trail.look) continue;
       tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
     }
     return tracerCount;
@@ -4479,25 +4836,40 @@ function* createFxSteps(
     particles.emit('sparks', _strkO);
   }
 
-  // destruction-fx: the media tier's track skirt — about one body per ~4 m of a track's travel (dust() runs every
-  // ~0.55 m of it), none past ~260 m, and at most SKIRT_BUDGET bodies alive at once (each lives ~4-6 s) so a column of
-  // moving hulls never crowds the media pool the bursts draw from
+  // destruction-fx: the media tier's track skirt, none past ~260 m, and at most SKIRT_BUDGET bodies alive at once (each
+  // lives ~3-5 s) so a column of moving hulls never crowds the media pool the bursts draw from.
+  // EF.01 (the owner, 2026-10-12: "separated into little clouds ... instead of being continuous"): deploy 208 raised a
+  // body on a coin toss per dust() call (one per ~2-6 m of a track, Poisson-spaced); each track now lays one every
+  // trackSkirtSpacing() metres of its own travel (trailCadence: even at any frame rate), sized so neighbours overlap.
+  // Past 60 % of the budget the bodies grow and space out together (fewer, wider, still touching) before the cap.
   const SKIRT_BUDGET = 240;
   const skirtBirths = new Float64Array(SKIRT_BUDGET);
   let skirtHead = 0, skirtCount = 0;
+  // the trail sources: each track's contact (skirt) and each engine's stack (exhaust), matched by place
+  const TRAIL_SKIRT = 0, TRAIL_EXHAUST = 1;
+  // an engine's billow bursts (exhaust): the rate while one lasts, a rise of the load that starts one, how long it lasts
+  // and the rest before the next can start
+  const EXHAUST_BURST_RATE = 9, EXHAUST_THROTTLE_UP = 0.3, EXHAUST_BURST_S = 0.7, EXHAUST_BURST_REST_S = 1.5;
+  const fxTrails = createTrailCadence(96);
   function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
     surface: number, gy: number): void {
     if (!blast) return;
     const k = surface === 2 ? 1.6 : groundType === 'hard' ? 0.7 : 0.55;
-    if (rng() > 0.15 * Math.min(1.3, k)) return;
     const cam = engineCtx && engineCtx.camera;
     if (cam && cam.position.distanceToSquared(_camV.set(pos.x, gy, pos.z)) > 260 * 260) return;
     const now = particles.getTime();
     while (skirtCount > 0 && now - skirtBirths[skirtHead] > 6) { skirtHead = (skirtHead + 1) % SKIRT_BUDGET; skirtCount--; }
-    if (skirtCount >= SKIRT_BUDGET) return;
-    skirtBirths[(skirtHead + skirtCount) % SKIRT_BUDGET] = now;
-    skirtCount++;
-    trackSkirt(blast, pos.x, gy, pos.z, dir.x, dir.z, intensity, surface === 2 ? 'sand' : groundType === 'hard' ? 'concrete' : 'soil', k, 0);
+    const spread = 1 + 1.5 * Math.max(0, skirtCount / SKIRT_BUDGET - 0.6) / 0.4;
+    const spacing = trackSkirtSpacing(intensity, k, distBoost(pos.x, gy, pos.z) * spread);
+    const n = fxTrails.step(TRAIL_SKIRT, pos.x, pos.z, now, spacing, 0, 3);
+    const births = fxTrails.births;
+    const kind = surface === 2 ? 'sand' : groundType === 'hard' ? 'concrete' : 'soil';
+    for (let i = 0; i < n && skirtCount < SKIRT_BUDGET; i++) {
+      const ageS = births[i * 3 + 2];
+      skirtBirths[(skirtHead + skirtCount) % SKIRT_BUDGET] = now - ageS;
+      skirtCount++;
+      trackSkirt(blast, births[i * 3], gy, births[i * 3 + 1], dir.x, dir.z, intensity, kind, k, -ageS, spread);
+    }
   }
 
   function drySurfaceMultiplier(groundType: string): number {
@@ -4686,10 +5058,12 @@ function* createFxSteps(
     if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
+    ribbons?.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
     structMask?.shiftTime(delta);
     structDebris?.shiftTime(delta);
+    rubble?.shiftTime(delta);
     stages?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
@@ -5321,6 +5695,16 @@ function* createFxSteps(
       liveAtgmCount = 0;
       writeGuidedBody(pos, dir);
       commitAtgmInstances();
+      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
+      // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
+      if (ribbons && vol) {
+        vol.refreshShading();
+        const now = particles.getTime();
+        const slot = ribbons.begin(WARM_RIBBON_KEY, WARM_RIBBON, 0.5);
+        ribbons.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
+        ribbons.point(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now - 0.05, 0.15);
+        ribbons.update(now);
+      }
     },
 
     /**
@@ -5346,7 +5730,13 @@ function* createFxSteps(
       stages?.update();
       if (scars && scars.count > 0) scars.light(engineCtx.scene ?? null);
       structDebris?.update();
+      rubble?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
+      if (ribbons && vol) {
+        ribbons.update(particles.getTime());
+        // the ribbons share the media's light: keep it current while ribbons fly with no media alive
+        if (ribbons.mesh.visible && !vol.isActive()) vol.refreshShading();
+      }
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
@@ -5427,7 +5817,12 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        // (fx 9a) a missile's or rocket's launch is its own (missileRecipes.ts); its launch point anchors the wires
+        if (firedIsMissile(e.weaponSound, e.rocket)) {
+          if (missileLaunchAt.size > 96) missileLaunchAt.clear();
+          missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+          if (!e.feedbackPredicted) missileLaunchFx(e, idSeed(e.shellId));
+        } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -5444,7 +5839,8 @@ function* createFxSteps(
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         // Presentation only; sabot petals and sweep/prop ownership await authority.
-        fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
+        if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
+        else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
@@ -6020,9 +6416,11 @@ function* createFxSteps(
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
       // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
-      // a moving hull trails a low skirt of its ground's own dust — heavy on sand, light on grass, none on wet ground or
-      // snow (their spray and powder stay the battle's); it replaces the dry wake's sprites
-      const skirt = !!blast && groundType !== 'soft' && surface !== 3;
+      // a hull on sand trails a skirt of its own dust over the contact powder.
+      // EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on
+      // earth and grass the dry wake's continuous rolling ribbons are back on every tier (deploy 207's sprites, to the
+      // last draw); deploy 208's media skirt there (07512bb07) had replaced them with separate clouds
+      const skirt = !!blast && surface === 2;
       if (skirt && !frozen) mediaTrackSkirt(pos, dir, intensity, groundType, surface, gy);
       if (surface !== 0) {
         if (!frozen) emitTrackPowder(pos, dir, intensity, gy, surface);
@@ -6032,7 +6430,6 @@ function* createFxSteps(
       const sizeVariation = 0.6 + rng() * 0.8;
       const alphaVariation = 0.55 + rng() * 0.65;
       emitTrackKick(pos, dir, intensity, groundType, gy);
-      if (skirt) return;
       emitDryTrackWake(
         pos, dir, intensity, groundType, gy, surfaceMultiplier, sizeVariation, alphaVariation,
       );
@@ -6053,14 +6450,42 @@ function* createFxSteps(
      */
     exhaust(pos: THREE.Vector3, intensity: number, sooty = false, vel: THREE.Vector3 | null = null,
       fwd: THREE.Vector3 | null = null, birthOffset = 0): void {
-      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: a puff at an engine's own
-      // rate (a diesel's 3-7 a second with load, a turbine's 2-4) with the hull's motion, which the wind bends and the
-      // media's shear and eddies break up; the cold start coughs a short stream
-      if (blast) {
+      // (round 7b, wave m2: "engine smoke rising as straight chimney columns") the media tier: round 7b's billow, with
+      // the hull's motion, which the wind bends and the media's shear and eddies break up.
+      // EF.01 (the owner, 2026-10-12: the smoke from tanks "used to look more uniform ... continuous. like how it was
+      // before"; the coordinator's ruling, 2026-10-13): a running hull's exhaust is deploy 207's thin continuous sprite
+      // streak below, on every tier; the billow is only an engine's bursts — its start (the cold-start cough) and a
+      // throttle-up (the load jumping above what the engine ran at a moment ago), laid by the stack's travel
+      // (trailCadence) so a burst under way is one connected gulp, not beads
+      let coldBelch = true;
+      if (blast && vel) {
+        const coldStartM = battleFreshS < 2.2;
+        const now = particles.getTime() + birthOffset;
+        const n = fxTrails.step(TRAIL_EXHAUST, pos.x, pos.z, now,
+          exhaustSpacing(Math.hypot(vel.x, vel.z), distBoost(pos.x, pos.y, pos.z)), 1 / EXHAUST_BURST_RATE, 4);
+        const o = fxTrails.last * 2, aux = fxTrails.aux;
+        if (fxTrails.fresh) { aux[o] = intensity; aux[o + 1] = -1e9; }
+        // the load the engine has been running at: it follows a drop within a second or so and a rise slowly, so a
+        // throttle-up after a real lift (a bot's or a player's brief stab of the pedal is not one) stands above it
+        const base = aux[o], dt = fxTrails.lastDt;
+        if (intensity - base > EXHAUST_THROTTLE_UP && now > aux[o + 1] + EXHAUST_BURST_REST_S) aux[o + 1] = now + EXHAUST_BURST_S;
+        aux[o] = base + (intensity - base) * Math.min(1, dt * (intensity > base ? 1.5 : 2));
+        if (coldStartM || now < aux[o + 1]) {
+          const births = fxTrails.births;
+          const load = coldStartM ? Math.max(0.9, intensity) : intensity;
+          for (let i = 0; i < n; i++) {
+            exhaustPuff(blast, births[i * 3], pos.y, births[i * 3 + 1], vel.x, vel.z, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+              load, sooty, birthOffset - births[i * 3 + 2]);
+          }
+        }
+        // the cold start is the billow's here, not the sprites' belch
+        coldBelch = false;
+      } else if (blast) {
+        // a Studio one-shot (an engine-smoke or exhaust beat, no hull motion): round 7b's billow at the engine's rate
         const coldStartM = battleFreshS < 2.2;
         const rate = coldStartM ? 9 : sooty ? 3 + 4 * intensity : 2 + 2 * intensity;
         if (rng() > rate / 60) return;
-        exhaustPuff(blast, pos.x, pos.y, pos.z, vel ? vel.x : 0, vel ? vel.z : 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
+        exhaustPuff(blast, pos.x, pos.y, pos.z, 0, 0, fwd ? fwd.x : 0, fwd ? fwd.z : 0,
           coldStartM ? Math.max(0.9, intensity) : intensity, sooty, birthOffset);
         return;
       }
@@ -6074,7 +6499,7 @@ function* createFxSteps(
       // whoosh a tall pale heat plume. Rate floor raised so the beat cannot
       // miss the sweep.
       const coldStart = battleFreshS < 2.2;
-      if (coldStart && rng() < 0.35) {
+      if (coldStart && coldBelch && rng() < 0.35) {
         // r5 (critic: "cold-start belch is a single detached white cotton-
         // ball floating above the deck"): each belch event now emits a
         // 3-puff STREAM anchored at the louvres — small at the stack,
@@ -6172,7 +6597,15 @@ function* createFxSteps(
      */
     warmStructures(pos: THREE.Vector3): number {
       attachWorld();
-      return stages ? stages.warm(pos, bucketMaterials.keys()) : 0;
+      const laid = stages ? stages.warm(pos, bucketMaterials.keys()) : 0;
+      // (2026-10-12) the rigid rubble's one program compiles with the warm too, not at the first collapse
+      // every body mesh the world's buckets can take, made here rather than at a first throw mid-battle
+      rubble?.prewarm(bucketMaterials.keys());
+      const first = bucketMaterials.keys().next();
+      const bodies = rubble && !first.done
+        ? rubble.throw(first.value, 'block', pos.x, pos.y + 0.6, pos.z, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0) ? 1 : 0
+        : 0;
+      return laid + bodies;
     },
     propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {
       const gy = groundY(pos.x, pos.z);
@@ -6338,12 +6771,16 @@ function* createFxSteps(
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
+      ribbons?.reset();
       chunks?.reset();
       craters?.reset();
       structMask?.reset();
       structDebris?.reset();
+      rubble?.reset();
       stages?.reset();
+      landingGround.clear();
       skirtHead = 0; skirtCount = 0;
+      fxTrails.reset();
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;
       pendingHeCount = 0;
@@ -6357,6 +6794,8 @@ function* createFxSteps(
       staticTracers.length = 0;
       trails.clear();
       guidedTrails.clear();
+      missileLaunchAt.clear();
+      missileByShooter.clear();
       tracerGeo.instanceCount = 0;
       tracers.reset(); // atmospherics lane
       liveAtgmCount = 0;

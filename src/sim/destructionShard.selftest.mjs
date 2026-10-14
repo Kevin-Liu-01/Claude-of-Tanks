@@ -79,14 +79,18 @@ function run(seed) {
   match.onMatchReady();
   const drive = new Map([['ram', { throttle: 1, steer: 0, brake: false, fire: false, aimYaw: pick.yaw, aimPitch: 0, shellSlot: 0 }]]);
   const stages = [];
+  const farStages = [];
   const seen = new Set();
   let passedAt = -1;
   const hull = match.entityById.get('ram');
   for (let tick = 0; tick < 900; tick++) {
     match.step({ dt: SIM_DT, inputs: drive });
-    for (const event of match.eventsForViewer('far')) {
+    // the rammer's own view reads how it came down; bravo, far off and blind to the rammer, reads the same stages as world
+    // state without the cause, the contact point or the heading (2026-10-13, hiddenWorldEvents.selftest)
+    for (const event of match.eventsForViewer('ram')) {
       if (event.type === 'structure_stage' && !seen.has(event)) { seen.add(event); stages.push(event); }
     }
+    for (const event of match.eventsForViewer('far')) if (event.type === 'structure_stage') farStages.push(event);
     match.afterEventBroadcast();
     const along = (hull.state.pos.x - pick.s.cx) * Math.cos(pick.s.yaw) - (hull.state.pos.z - pick.s.cz) * Math.sin(pick.s.yaw);
     if (passedAt < 0 && Math.sign(along) !== Math.sign((pick.sx - pick.s.cx) * Math.cos(pick.s.yaw) - (pick.sz - pick.s.cz) * Math.sin(pick.s.yaw))) passedAt = tick;
@@ -96,6 +100,7 @@ function run(seed) {
   const ground = (x, z) => match.heightField.getHeightAt(x, z);
   const result = {
     stages: stages.map((e) => `${e.structureId}:${e.stage}:${e.cause}`),
+    farStages: farStages.map((e) => `${e.structureId}:${e.stage}:${'cause' in e || 'x' in e || 'dirX' in e ? 'leaked' : 'withheld'}`),
     log: JSON.stringify(meta.destructionLog),
     pose: [hull.state.pos.x, hull.state.pos.y, hull.state.pos.z, hull.state.speed, hull.combat.hp].map((v) => v.toFixed(6)).join(','),
     crushed: !!record.crushed, passedAt, baseGround: ground(pick.s.cx, pick.s.cz),
@@ -107,6 +112,8 @@ function run(seed) {
 const a = run(5);
 assert.ok(a.stages.some((stage) => stage === `${pick.s.id}:collapsed:ram`),
   `a hull at speed brings Steinburg's house ${pick.s.id} down (${a.stages.join(', ')})`);
+assert.deepEqual(a.farStages, a.stages.map((stage) => stage.replace(/:[a-z]+$/, ':withheld')),
+  'the far enemy receives every stage, never how the hidden rammer dealt it');
 assert.equal(a.crushed, true, 'its contact record no longer pushes');
 assert.ok(a.passedAt > 0, 'the hull drove through where it stood');
 const b = run(5);

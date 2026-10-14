@@ -1,0 +1,240 @@
+{
+ "chunks": [
+  {
+   "text": "[Cold Open]\n{very quiet and sparse: low sustained drone, ticking clock}\n{ends with a reverse swell into the next downbeat}",
+   "duration_ms": 7500,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "D minor",
+    "taiko war drums",
+    "low brass and staccato strings",
+    "modern military tension",
+    "low sustained drone",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Title / Dawn]\n{opens on a massive low brass braam and a sub boom impact}\n{restrained, building tension: low sustained drone}\n{after 2.5 s: opens on a massive low brass braam}\n{restrained, building tension: low sustained drone, ticking clock, pulsing staccato strings, warm string pad, sparse taiko hits}",
+   "duration_ms": 12500,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "low sustained drone",
+    "ticking clock",
+    "pulsing staccato strings",
+    "warm string pad",
+    "sparse taiko hits"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Morning]\n{restrained, building tension: pulsing staccato strings, bright and wide, warm string pad, sparse taiko hits, hybrid trailer percussion, tom fills, fast ticking clock}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "pulsing staccato strings",
+    "bright and wide",
+    "warm string pad",
+    "sparse taiko hits",
+    "hybrid trailer percussion",
+    "tom fills"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Noon]\n{opens on a massive low brass braam and a sub boom impact}\n{intense: driving sixteenth-note string ostinato, bright and wide, pounding taiko ensemble, tom fills, hybrid trailer percussion, rimshot accents, low sustained drone}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "pounding taiko ensemble",
+    "tom fills",
+    "hybrid trailer percussion",
+    "rimshot accents"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Golden]\n{opens on a massive low brass braam and a sub boom impact}\n{full power climax: driving sixteenth-note string ostinato, bright and wide, pounding taiko ensemble, fast hi-hat sixteenths, tom fills, rimshot accents, warm string pad}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 7500,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "pounding taiko ensemble",
+    "fast hi-hat sixteenths",
+    "tom fills",
+    "rimshot accents"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Slow Motion / Dusk Studio]\n{opens on a sub boom impact}\n{restrained, building tension: heartbeat pulse, low sustained drone}\n{ends with a reverse swell into the next downbeat}\n{after 2.5 s: restrained, building tension: warm string pad, solo bell motif, pulsing staccato strings, ticking clock, sparse taiko hits}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 12500,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "heartbeat pulse",
+    "low sustained drone",
+    "warm string pad",
+    "solo bell motif",
+    "pulsing staccato strings",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Night]\n{opens on a massive low brass braam and a sub boom impact}\n{full power climax: pounding taiko ensemble, tom fills, fast hi-hat sixteenths, rimshot accents, driving sixteenth-note string ostinato, bright and wide, low sustained drone}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "pounding taiko ensemble",
+    "tom fills",
+    "fast hi-hat sixteenths",
+    "rimshot accents",
+    "driving sixteenth-note string ostinato",
+    "bright and wide"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[Beyond / End]\n{very quiet and sparse: ethereal high shimmering strings}\n{ends with a reverse swell into the next downbeat}\n{after 2.5 s: opens on a massive low brass braam and a sub boom impact}\n{intense: low sustained drone, ticking clock}\n{ends on a hard stop into silence}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "ethereal high shimmering strings",
+    "low sustained drone",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  }
+ ]
+}

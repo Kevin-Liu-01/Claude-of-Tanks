@@ -182,4 +182,18 @@ for (const requested of [undefined, 'private', 'lan']) {
 assert.match(source, /containModalTab\(event, panel, closeBtn\)/);
 const failureBody = source.slice(source.indexOf('  function showFailure('), source.indexOf('  function showRoomFailure('));
 assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the progress line instead of announcing the same error twice');
-console.log('playMenu.selftest: separate multiplayer intent, keyboard containment and single failure presentation');
+// 2026-10-13 (MP plan step 13): a refused entry's lobby notice is worded in the player's locale by its code — the match
+// ending during the entry and a host on another build — with the composition's English words as the fallback
+{
+  const { readFile: read } = await import('node:fs/promises');
+  for (const [code, key] of [['match_ended', 'matchEnded'], ['build_mismatch', 'buildMismatch'], ['build_host_older', 'buildHostOlder'], ['build_host_newer', 'buildHostNewer']]) {
+    assert.match(source, new RegExp(`${code}: 'playMenu\\.entryRefusal\\.${key}'`), `${code} maps to its catalog key`);
+    for (const catalog of ['i18nCatalog.en-US.json', 'i18nCatalog.zh-CN.json']) {
+      const strings = JSON.parse(await read(new URL(`./${catalog}`, import.meta.url), 'utf8'));
+      assert.ok(strings[`playMenu.entryRefusal.${key}`], `${catalog}: playMenu.entryRefusal.${key}`);
+    }
+  }
+  const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));
+  assert.match(notice, /const key = code \? ENTRY_REFUSAL_KEYS\[code\] : undefined;\s*const text = key \? t\(key\) : notice;/, 'a known code is localized, anything else keeps its words');
+}
+console.log('playMenu.selftest: separate multiplayer intent, keyboard containment, single failure presentation and localized entry refusals');

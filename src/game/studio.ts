@@ -1,5 +1,7 @@
 import { t } from '../ui/i18n.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
+import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
+import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { createStudioCrushes, planStudioCrushes, type StudioCrushEvent, type StudioCrushHull } from './studioCrush.ts';
 import { sceneLinkPath } from './studioSceneLink.ts';
 import type { WaterDisturbance } from '../world/shallowWater.ts';
@@ -527,6 +529,8 @@ interface RecordingSession {
 }
 
 interface StudioSceneInput {
+  /** The tank id schema the scene was written under (missing = 1; tankIdAliases.ts). */
+  tankIdSchema?: number;
   map?: string;
   fx?: { quality?: string; trackDust?: boolean };
   productionFormat?: ProductionFormat;
@@ -3492,7 +3496,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     try {
       await setMap(preset.map);
       const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z));
-      const result = await load(recipe);
+      // Built from this build's presets: current ids, stamped so load() never renames them (SSOT 2.19).
+      const result = await load({ ...recipe, ...TANK_IDS.stamp() });
       selectActor('lead');
       setRailVisible(false);
       return result;
@@ -4526,6 +4531,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function stateJson() {
     const w = getWorld();
     return {
+      ...TANK_IDS.stamp(),
       map: w ? w.mapId : 'verdant',
       // the time as rendered (a space map keeps its authored day)
       timeOfDay: studioTimeFor(w ? w.mapId : 'verdant', timeOfDay),
@@ -4657,6 +4663,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     json: StudioSceneInput = {},
     _opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
+    // A scene names its vehicles under the id schema it was written in (SSOT 2.19).
+    json = sceneInCurrentTankIds(json);
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);

@@ -56,6 +56,21 @@ interface CasterProxyRecord {
   /** Per-instance world bounding spheres of the owner's current instances. */
   readonly centers: Float32Array;
   readonly radii: Float32Array;
+  /**
+   * 2026-10-13 (the perf stream): the instances bucketed by CASTER_CELL_M cells of their world XZ (rebuilt with the
+   * spheres): cellItems holds the instance indices cell by cell, cellStart[c]..cellStart[c + 1] the cell's run, and
+   * cellSpheres (x, y, z, r) a sphere holding every member's sphere; included is the compaction's per-instance mark.
+   */
+  cellItems: Int32Array;
+  cellStart: Int32Array;
+  cellSpheres: Float64Array;
+  /** The cells' count, or -1 while the instances have not held still for CASTER_CELL_SETTLE compactions. */
+  cellCount: number;
+  /** Proxy updates since the spheres last changed (an owner rewritten every frame never builds cells). */
+  cellWait: number;
+  readonly included: Uint8Array;
+  /** Per near cascade: the owner indices its proxy holds, in order (its first counts[cascade] entries). */
+  readonly compactedSets: Int32Array[];
   n: number;
   matrixVersion: number;
   /** Set once the proxies hold a compaction; until then the owner casts everywhere. */
@@ -170,6 +185,10 @@ function buildCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null
     counts: new Int32Array(_casterProxyCascades),
     centers: new Float32Array(capacity * 3),
     radii: new Float32Array(capacity),
+    cellItems: new Int32Array(capacity), cellStart: new Int32Array(1), cellSpheres: new Float64Array(0), cellCount: -1,
+    cellWait: 0,
+    included: new Uint8Array(capacity),
+    compactedSets: Array.from({ length: _casterProxyCascades }, () => new Int32Array(capacity)),
     n: 0, matrixVersion: -1, ready: false, savedCount: owner.count,
     compactedEpoch: new Float64Array(_casterProxyCascades).fill(-1),
     compactedMatrix: new Float64Array(_casterProxyCascades).fill(-1),
@@ -252,20 +271,135 @@ function refreshCasterSpheres(rec: CasterProxyRecord): void {
   }
   rec.n = n;
   rec.matrixVersion = owner.instanceMatrix.version;
+  rec.cellCount = -1;
+  rec.cellWait = 0;
 }
 
-/** Copy the owner instances inside `frustum` into proxy `cascade`'s prefix and mark it for upload. */
-function compactCasterProxy(rec: CasterProxyRecord, cascade: number, frustum: THREE.Frustum): void {
+// 2026-10-13 (the perf stream; owner: "im averaging 11 fps"): a moving camera moves the near cascades' frusta every
+// frame, and each recompaction tested every instance's sphere against the frustum (compactCasterProxy: 2.2 % of the
+// battle's main thread on Verdant). The instances are bucketed into world cells once (their places only change with
+// the owner's matrices); a cell whose bounding sphere lies wholly inside the frustum takes all its members, one wholly
+// outside a plane none, and only the cells the frustum's planes cut test their members, with intersectsSphere's own
+// arithmetic. The marks are copied in owner order, so every proxy holds exactly the bytes it held before.
+const CASTER_CELL_M = 48;
+/** Updates an owner's instances must hold still for before they are bucketed (moving owners keep the plain test). */
+const CASTER_CELL_SETTLE = 3;
+/** A cell is classified only beyond this margin (m): float rounding can never move an instance across a plane. */
+const CASTER_CELL_EPS = 1e-3;
+const _cellOf = new Map<number, number>();
+/** The frustum's six planes for the cell pass: (nx, ny, nz, constant, max(1, |n|)) each. */
+const _cellPlanes = new Float64Array(30);
+function buildCasterCells(rec: CasterProxyRecord): void {
+  const n = rec.n, centers = rec.centers, radii = rec.radii;
+  _cellOf.clear();
+  const cellOfInstance = new Int32Array(n);
+  let cells = 0;
+  for (let i = 0; i < n; i++) {
+    const key = (Math.floor(centers[i * 3] / CASTER_CELL_M) + 32768) * 65536 + (Math.floor(centers[i * 3 + 2] / CASTER_CELL_M) + 32768);
+    let c = _cellOf.get(key);
+    if (c === undefined) { c = cells++; _cellOf.set(key, c); }
+    cellOfInstance[i] = c;
+  }
+  const start = new Int32Array(cells + 1);
+  for (let i = 0; i < n; i++) start[cellOfInstance[i] + 1]++;
+  for (let c = 0; c < cells; c++) start[c + 1] += start[c];
+  const fill = start.slice(0, cells);
+  const items = rec.cellItems;
+  for (let i = 0; i < n; i++) items[fill[cellOfInstance[i]]++] = i; // owner order within each cell
+  // each cell's sphere: the centre of its members' centres' box, the radius reaching every member sphere's far side
+  const spheres = new Float64Array(cells * 4);
+  for (let c = 0; c < cells; c++) {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (let k = start[c]; k < start[c + 1]; k++) {
+      const j = items[k] * 3;
+      x0 = Math.min(x0, centers[j]); x1 = Math.max(x1, centers[j]);
+      y0 = Math.min(y0, centers[j + 1]); y1 = Math.max(y1, centers[j + 1]);
+      z0 = Math.min(z0, centers[j + 2]); z1 = Math.max(z1, centers[j + 2]);
+    }
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+    let r = 0;
+    for (let k = start[c]; k < start[c + 1]; k++) {
+      const i = items[k];
+      r = Math.max(r, Math.hypot(centers[i * 3] - cx, centers[i * 3 + 1] - cy, centers[i * 3 + 2] - cz) + radii[i]);
+    }
+    spheres[c * 4] = cx; spheres[c * 4 + 1] = cy; spheres[c * 4 + 2] = cz; spheres[c * 4 + 3] = r + CASTER_CELL_EPS;
+  }
+  rec.cellStart = start;
+  rec.cellSpheres = spheres;
+  rec.cellCount = cells;
+}
+
+/** Mark the instances whose spheres intersect `frustum` (exactly THREE.Frustum.intersectsSphere's verdict). */
+function markCasterInstances(rec: CasterProxyRecord, frustum: THREE.Frustum): void {
+  const included = rec.included, centers = rec.centers, radii = rec.radii;
+  const planes = frustum.planes;
+  included.fill(0, 0, rec.n);
+  if (rec.cellCount < 0) {
+    for (let j = 0; j < rec.n; j++) {
+      _cullSphere.center.set(centers[j * 3], centers[j * 3 + 1], centers[j * 3 + 2]);
+      _cullSphere.radius = radii[j];
+      if (frustum.intersectsSphere(_cullSphere)) included[j] = 1;
+    }
+    return;
+  }
+  const items = rec.cellItems, start = rec.cellStart, spheres = rec.cellSpheres;
+  const P = _cellPlanes;
+  for (let p = 0; p < 6; p++) {
+    const nrm = planes[p].normal;
+    P[p * 5] = nrm.x; P[p * 5 + 1] = nrm.y; P[p * 5 + 2] = nrm.z; P[p * 5 + 3] = planes[p].constant;
+    // max(1, |n|): the cell's verdict bounds every member's either way, whatever the plane's normalisation
+    P[p * 5 + 4] = Math.max(1, Math.sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z));
+  }
+  for (let c = 0; c < rec.cellCount; c++) {
+    const cx = spheres[c * 4], cy = spheres[c * 4 + 1], cz = spheres[c * 4 + 2], cr = spheres[c * 4 + 3];
+    let inside = true, outside = false;
+    for (let p = 0; p < 30; p += 5) {
+      const reach = cr * P[p + 4] + CASTER_CELL_EPS;
+      const d = P[p] * cx + P[p + 1] * cy + P[p + 2] * cz + P[p + 3];
+      if (d < -reach) { outside = true; break; }
+      if (d < reach) inside = false;
+    }
+    if (outside) continue;
+    const k0 = start[c], k1 = start[c + 1];
+    if (inside) {
+      for (let k = k0; k < k1; k++) included[items[k]] = 1;
+      continue;
+    }
+    for (let k = k0; k < k1; k++) {
+      const j = items[k];
+      _cullSphere.center.set(centers[j * 3], centers[j * 3 + 1], centers[j * 3 + 2]);
+      _cullSphere.radius = radii[j];
+      if (frustum.intersectsSphere(_cullSphere)) included[j] = 1;
+    }
+  }
+}
+
+/**
+ * Copy the owner instances inside `frustum` into proxy `cascade`'s prefix and mark it for upload. When the owner is
+ * unchanged since the proxy's last compaction (`ownerSame`) and the frustum's move left the same instances inside it,
+ * the proxy already holds exactly these bytes, uploaded or pending: nothing is copied or uploaded (2026-10-13).
+ */
+function compactCasterProxy(rec: CasterProxyRecord, cascade: number, frustum: THREE.Frustum, ownerSame: boolean): void {
   const n = rec.n;
-  const centers = rec.centers;
-  const radii = rec.radii;
   const sources = rec.ownerAttrs;
   const targets = rec.proxyAttrs[cascade];
+  const included = rec.included;
+  const held = rec.compactedSets[cascade];
+  markCasterInstances(rec, frustum);
+  if (ownerSame) {
+    const heldCount = rec.counts[cascade];
+    let k = 0, same = true;
+    for (let j = 0; j < n && same; j++) {
+      if (included[j] === 0) continue;
+      if (k >= heldCount || held[k] !== j) same = false;
+      k++;
+    }
+    if (same && k === heldCount) return;
+  }
   let k = 0;
   for (let j = 0; j < n; j++) {
-    _cullSphere.center.set(centers[j * 3], centers[j * 3 + 1], centers[j * 3 + 2]);
-    _cullSphere.radius = radii[j];
-    if (!frustum.intersectsSphere(_cullSphere)) continue;
+    if (included[j] === 0) continue;
+    held[k] = j;
     for (let a = 0; a < sources.length; a++) {
       const size = sources[a].itemSize;
       const src = sources[a].array;
@@ -325,6 +459,8 @@ function updateCasterProxies(
       continue;
     }
     refreshCasterSpheres(rec);
+    // instances that held still for CASTER_CELL_SETTLE updates are bucketed (an owner rewritten every frame never is)
+    if (rec.cellCount < 0 && ++rec.cellWait > CASTER_CELL_SETTLE) buildCasterCells(rec);
     let streams = 0;
     for (let a = 1; a < rec.ownerAttrs.length; a++) streams += rec.ownerAttrs[a].version;
     for (let i = 0; i < rec.proxies.length; i++) {
@@ -336,9 +472,10 @@ function updateCasterProxies(
       const frustum = _cullFrusta[i];
       if (!frustum) continue;
       // a still cascade over an unchanged owner already holds this compaction (priming always recompacts)
-      if (!all && rec.compactedEpoch[i] === _cullEpochs[i] && rec.compactedMatrix[i] === owner.instanceMatrix.version
-        && rec.compactedStreams[i] === streams && rec.compactedN[i] === rec.n) continue;
-      compactCasterProxy(rec, i, frustum);
+      const ownerSame = !all && rec.compactedMatrix[i] === owner.instanceMatrix.version
+        && rec.compactedStreams[i] === streams && rec.compactedN[i] === rec.n;
+      if (ownerSame && rec.compactedEpoch[i] === _cullEpochs[i]) continue;
+      compactCasterProxy(rec, i, frustum, ownerSame);
       rec.compactedEpoch[i] = _cullEpochs[i];
       rec.compactedMatrix[i] = owner.instanceMatrix.version;
       rec.compactedStreams[i] = streams;
