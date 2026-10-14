@@ -7,10 +7,11 @@
 // sheds stained yellow with their retorts and brick stacks; the village fire brigade's post and its fire lookout
 // (hinomi-yagura) with the alarm bell; the small Shinto shrine behind its torii; the works office of painted
 // clapboard; and the burnt-out farmsteads.
-import { PartSink, bodyFaces, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
+import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, emitRoof, holedPolygon, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofGeometry, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { factoryStack } from './shared.ts';
 
 /** White lime plaster (shikkui), earth plaster (tsuchikabe), grey cement render; Aso's grey andesite; ibushi tile. */
 const SHIKKUI: RegionalBucket = 'plaster', EARTH: RegionalBucket = 'plaster2', CEMENT: RegionalBucket = 'plaster3', STONE: RegionalBucket = 'stone';
@@ -281,26 +282,87 @@ const naya: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A vinyl greenhouse (a gantry plot): steel hoops under milky film along the plot, the end walls and doors. */
+/**
+ * A vinyl greenhouse (a gantry plot): galvanised hoops on ground anchors along a base board, the milky film sagging
+ * between them in its bays, a ridge purlin and two side purlins, the side curtains rolled up on their bars over the
+ * crop rows, framed end walls of posts and braces with a framed door in film. (Props census #3, lane B 2026-10-14; the
+ * judges: "one milky film half-cylinder of 12 segments on a cement span, with hoops proud every 1 m; a 4 cm door slab
+ * with no frame or opening".) The film's bays and the end walls are the structure; the frame and crops are dressing.
+ */
 const greenhouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   // the house stands between the old gantry's legs: the symmetric part of its reach about the plot's origin. The reach's
   // longer side is the crane beam's overhang, high over open ground (Caldera's south gantry overhangs the coast road's
   // edge there: a house filling the whole reach stood half a metre into the carriageway's core)
   const R = reach(ctx), halfX = Math.min(-R.x0, R.x1), halfZ = Math.min(-R.z0, R.z1);
-  const L = Math.max(10, 2 * halfX - 0.6), r = Math.max(1.6, Math.min(2.6, halfZ - 0.3)), base = 0.5;
+  const L = Math.max(10, 2 * halfX - 0.6), r = Math.max(1.6, Math.min(2.6, halfZ - 0.3)), base = 0.22;
+  const mobile = ctx.tier === 'mobile', look = ctx.variant;
   sink.placed(0, 0, 0, 0, () => {
-  sink.span(CEMENT, -L / 2 - 0.05, -0.3, -r - 0.05, L / 2 + 0.05, base, r + 0.05);
-  sink.cylinder('structureMetal', [-L / 2, base, 0], 'x', L, r, 12, { colour: VINYL }, r, true, -Math.PI / 2, Math.PI);
-  for (let x = -L / 2 + 0.5; x < L / 2; x += 1.0) {
-    sink.cylinder('structureMetal', [x, base, 0], 'x', 0.05, r + 0.03, 12, { colour: HOOP, decor: true, fine: true }, r + 0.03, false, -Math.PI / 2, Math.PI);
+  // the base board along each side on its sunk footing, the end sills
+  for (const sz of [-1, 1]) sink.span(CEMENT, -L / 2 - 0.05, -0.3, sz * r - 0.07, L / 2 + 0.05, base, sz * r + 0.07);
+  for (const sx of [-1, 1]) sink.span(CEMENT, sx * L / 2 - 0.07, -0.3, -r + 0.07, sx * L / 2 + 0.07, base, r - 0.07);
+  // the film in its bays: each bay a shade slacker than the hoops at its ends; the side curtains rolled up to `roll`
+  const nb = Math.max(4, Math.round(L / 1.0)), bay = L / nb, roll = 1.15, rollA = Math.asin(Math.min(0.95, roll / r));
+  const arc0 = -Math.PI / 2 + rollA, arc = Math.PI - 2 * rollA;
+  for (let k = 0; k < nb; k++) {
+    sink.cylinder('structureMetal', [-L / 2 + k * bay, base, 0], 'x', bay, r - 0.035, 10, { colour: shade(VINYL, 0.97 + 0.04 * (k % 2)) }, r - 0.035, false, arc0, arc);
   }
+  // the rolled curtains on their bars along each side, the cranks at the ends
+  for (const sz of [-1, 1]) {
+    const zc = sz * r * Math.cos(rollA);
+    sink.cylinder('structureMetal', [-L / 2, base + roll - 0.02, zc], 'x', L, 0.07, 6, { colour: shade(VINYL, 0.86), decor: true });
+    sink.span('structureMetal', L / 2 - 0.05, base + 0.5, zc - 0.03, L / 2 + 0.25, base + 0.56, zc + 0.03, { colour: IRON, decor: true, fine: true });
+  }
+  // the end walls: film framed by posts, a header and braces, a framed door in it
+  const disc = (n: number): Array<[number, number]> => Array.from({ length: n + 1 }, (_, j) => {
+    const t = Math.PI * j / n;
+    return [Math.cos(t) * r, base + Math.sin(t) * r] as [number, number];
+  }).reverse();
+  const doorW = 1.2, doorH = 1.95;
   for (const end of [-1, 1]) {
-    const f: Face = { origin: [end * (L / 2 + 0.02), 0, 0], u: [0, 0, -end], out: [end, 0, 0], width: r * 2 };
-    faceBox(sink, 'structureMetal', f, 0, base + 0.95, 0.02, 1.2, 1.9, 0.04, { colour: shade(HOOP, 0.8), decor: true });
+    const f: Face = { origin: [end * L / 2, 0, 0], u: [0, 0, -end], out: [end, 0, 0], width: r * 2 };
+    const poly = disc(10).map(([u, y]): [number, number] => [-u, y]);
+    holedPolygon(sink, 'structureMetal', f, poly, [{ u0: -doorW / 2, u1: doorW / 2, y0: base + 0.001, y1: base + doorH }], 0.02, 0, { colour: shade(VINYL, 0.95) });
+    sink.dressing(mobile, () => {
+      const post = { colour: HOOP, decor: true };
+      for (const u of [-doorW / 2 - 0.04, doorW / 2 + 0.04, -r * 0.72, r * 0.72]) {
+        const top = base + Math.sqrt(Math.max(0, r * r - u * u)) - 0.05;
+        faceBox(sink, 'structureMetal', f, u, (base + top) / 2, 0.035, 0.06, top - base, 0.05, post);
+      }
+      faceBox(sink, 'structureMetal', f, 0, base + doorH + 0.03, 0.035, doorW + 0.14, 0.06, 0.05, post);
+      for (const side of [-1, 1]) {
+        sink.member('structureMetal', facePoint(f, side * (doorW / 2 + 0.08), base + 0.15, 0.01), facePoint(f, side * r * 0.68, base + r * 0.62, 0.01), 0.04, 0.04, f.out,
+          { ...post, exposed: true }, 0);
+      }
+      // the door: an aluminium frame round its film panel, slid half open
+      const du = -doorW * 0.28;
+      faceBox(sink, 'structureMetal', f, du, base + doorH / 2, 0.07, doorW, doorH - 0.04, 0.012, { colour: shade(VINYL, 0.9), decor: true });
+      for (const [uu, yy, w, h] of [[du - doorW / 2 + 0.025, base + doorH / 2, 0.05, doorH], [du + doorW / 2 - 0.025, base + doorH / 2, 0.05, doorH],
+        [du, base + 0.04, doorW, 0.06], [du, base + doorH - 0.06, doorW, 0.06], [du, base + doorH * 0.5, doorW, 0.04]] as const) {
+        faceBox(sink, 'structureMetal', f, uu, yy, 0.08, w, h, 0.03, { colour: rgb(0xb4b8b8), decor: true, fine: true });
+      }
+    });
   }
-  // the ridge vent rolled up along one side
-  sink.cylinder('structureMetal', [-L / 2 + 0.3, base + r * 0.62, r * 0.78], 'x', L - 0.6, 0.08, 6, { colour: rgb(0xc8ccc8), decor: true });
+  sink.dressing(mobile, () => {
+    // the galvanised hoops on their ground anchors, the ridge and side purlins along them
+    for (let k = 0; k <= nb; k++) {
+      const x = -L / 2 + k * bay;
+      sink.cylinder('structureMetal', [x - 0.025, base, 0], 'x', 0.05, r + 0.005, 12, { colour: HOOP, decor: true, fine: true }, r + 0.005, false, -Math.PI / 2, Math.PI);
+      for (const sz of [-1, 1]) sink.span('structureMetal', x - 0.025, -0.4, sz * r - 0.025, x + 0.025, base, sz * r + 0.025, { colour: HOOP, decor: true, fine: true });
+    }
+    for (const t of [Math.PI / 2, Math.PI / 2 - 0.62, Math.PI / 2 + 0.62]) {
+      const y = base + Math.sin(t) * (r + 0.03), z = Math.cos(t) * (r + 0.03);
+      sink.cylinder('structureMetal', [-L / 2, y, z], 'x', L, 0.024, 6, { colour: HOOP, decor: true, fine: true });
+    }
+    // the crop rows under the film: raised beds, the plants a darker or lighter green bed by bed
+    const beds = Math.max(2, Math.floor((2 * r - 0.8) / 1.1));
+    for (let b = 0; b < beds; b++) {
+      const z = -r + 0.6 + (2 * r - 1.2) * (beds === 1 ? 0.5 : b / (beds - 1));
+      sink.span(CEMENT, -L / 2 + 0.5, -0.1, z - 0.3, L / 2 - 0.5, 0.12, z + 0.3, { decor: true, shade: 0.7, tint: [0.62, 0.5, 0.38] });
+      const green = shade(rgb(0x4f7a3a), 0.85 + look() * 0.3);
+      sink.span('structureWood', -L / 2 + 0.6, 0.12, z - 0.22, L / 2 - 0.6, 0.12 + 0.35 + look() * 0.25, z + 0.22, { colour: green, decor: true });
+    }
+  });
   });
   return sink.finish();
 };
@@ -424,11 +486,10 @@ const stack: RegionalBuilder = (ctx) => {
   // the Sulphur Works' stack west of its yard (the map's planned site) is always a chimney
   const nearWorks = ctx.x !== undefined && ctx.z !== undefined && Math.hypot(ctx.x + 332, ctx.z - 96) < 60;
   if (nearWorks || rng() < 0.35) {
-    const base = Math.max(2.2, Math.min(3.2, Math.min(ctx.info.w, ctx.info.d) - 0.4)), H = 18 + rng() * 6;
-    sink.span(STONE, -base / 2, -0.4, -base / 2, base / 2, 3.0, base / 2);
-    sink.cylinder('stone', [0, 3.0, 0], 'y', H - 3.0, base * 0.42, 10, {}, base * 0.28, true, Math.PI / 10);
-    sink.cylinder('stone', [0, H, 0], 'y', 0.6, base * 0.32, 10, { shade: 0.5 }, base * 0.3, true, Math.PI / 10);
-    return sink.finish();
+    // (props census #3, lane B 2026-10-14) the works' brick chimney is the shared stack (shared.ts factoryStack): its
+    // plinth with the flue inlet cut, the banded and sooted shaft, the corbelled crown, the ladder and the conductor
+    const H = 18 + rng() * 6;
+    return factoryStack({ ...ctx, info: { ...ctx.info, h: H } });
   }
   const H = 11 + rng() * 3, b0 = Math.min(1.5, Math.min(ctx.info.w, ctx.info.d) / 2 - 0.2), b1 = 0.7;
   const steel = pick(rng, [rgb(0x9a9e9c), VERMILION, rgb(0x7a8a8e)]);

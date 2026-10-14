@@ -1422,7 +1422,8 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
     sink.quad(bucket, P(h.u1, h.y0, 0), P(h.u1, h.y1, 0), P(h.u1, h.y1, -depth), P(h.u1, h.y0, -depth), { ...opts, shade: 0.74 });
     sink.quad(bucket, P(h.u0, h.y1, 0), P(h.u0, h.y1, -depth), P(h.u1, h.y1, -depth), P(h.u1, h.y1, 0), { ...opts, shade: 0.66 });
     sink.quad(bucket, P(h.u0, h.y0, 0), P(h.u1, h.y0, 0), P(h.u1, h.y0, -depth), P(h.u0, h.y0, -depth), { ...opts, shade: 0.9 });
-    sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
+    // (no reveal: the opening looks into a lit body, a greenhouse's: no room behind it)
+    if (reveal > 0) sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
   }
 }
 
