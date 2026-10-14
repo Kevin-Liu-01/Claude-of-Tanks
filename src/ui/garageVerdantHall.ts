@@ -292,6 +292,8 @@ function addRollerShutter(mesh: HallMesh, opening: HallOpening, openY: number): 
   }
   mesh.setColor(TONE.shutterRib);
   mesh.box([cu, openY + 0.05, 0.11], [width + 0.04, 0.1, 0.07]);
+  // the steel threshold angle across the opening, on the floor through the wall's depth
+  mesh.box([cu, 0.012, -0.07], [width, 0.024, 0.28], { skip: ['ny'] });
   for (const u of [cu - width * 0.3, cu + width * 0.3]) mesh.box([u, openY - 0.06, 0.15], [0.12, 0.08, 0.04]);
   // the control box on the right jamb, its conduit up to the hood
   mesh.setColor(TONE.safety);
@@ -307,7 +309,8 @@ function addRollerShutter(mesh: HallMesh, opening: HallOpening, openY: number): 
 function buildExterior(mesh: HallMesh, HW: number): void {
   const identity = new THREE.Matrix4();
   mesh.setFrame(identity);
-  const offsets = [0.2, 3, 9, 16, 30, 60, 120, 240, 520];
+  // from the wall line itself, so the apron meets the hall's floor under the shutter (no gap at the threshold)
+  const offsets = [0, 3, 9, 16, 30, 60, 120, 240, 520];
   const segments = 24;
   const tone = (d: number, x: number, z: number): THREE.Color => {
     const n = Math.sin(x * 0.071 + Math.cos(z * 0.053) * 2.1) * 0.5 + Math.sin(z * 0.047 - x * 0.029) * 0.5;

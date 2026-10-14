@@ -2268,19 +2268,26 @@ export function createGarageDressing(
       factoryPut(mat.steelDark, x, 6.62, 0, 0.34, 0.12, 40.2, 0, 0, false);
       factoryPut(mat.safety, x, 6.72, 0, 0.20, 0.05, 40.0, 0, 0, false);
     }
+    // The junction boxes hang on the wall girts (GA.05, 2026-10-14: they stood 1.5 m out from the walls in the air; the
+    // hall's girts lie 0.05-0.12 m in from the sheeting, garageVerdantHall.ts), clear of the wind posts and columns; each
+    // drop leaves the perimeter tray (1.25 m out) and runs back to its box.
     const junctions = [
-      [-15.8, 4.55, -21.52], [0, 4.55, -21.52], [15.8, 4.55, -21.52],
-      [-15.8, 4.55, 21.52], [0, 4.55, 21.52], [15.8, 4.55, 21.52],
-      [-21.52, 4.55, -7.2], [21.52, 4.55, 7.2],
+      [-15.8, 4.55, -22.74], [1.2, 4.55, -22.74], [15.8, 4.55, -22.74],
+      [-15.8, 4.55, 22.74], [1.2, 4.55, 22.74], [15.8, 4.55, 22.74],
+      [-22.74, 4.55, -7.2], [22.74, 4.55, 7.2],
     ] as const;
     for (const [x, y, z] of junctions) {
-      factoryPut(mat.blueSteel, x, y, z, 0.72, 0.92, 0.28, 0, 0, false);
-      factoryPut(mat.steelBright, x, y + 0.08, z * 0.998,
-        0.44, 0.06, 0.03, 0, 0, false);
+      const onNorthSouth = Math.abs(z) > 22;
+      const trayX = onNorthSouth ? x : Math.sign(x) * 21.75, trayZ = onNorthSouth ? Math.sign(z) * 21.75 : z;
+      factoryPut(mat.blueSteel, x, y, z, onNorthSouth ? 0.72 : 0.28, 0.92, onNorthSouth ? 0.28 : 0.72, 0, 0, false);
+      factoryPut(mat.steelBright, onNorthSouth ? x : x - Math.sign(x) * 0.15, y + 0.08, onNorthSouth ? z - Math.sign(z) * 0.15 : z,
+        onNorthSouth ? 0.44 : 0.03, 0.06, onNorthSouth ? 0.03 : 0.44, 0, 0, false);
+      const outX = onNorthSouth ? x : x - Math.sign(x) * 0.14, outZ = onNorthSouth ? z - Math.sign(z) * 0.14 : z;
       addFactoryCable(`verdant_junction_drop_${x}_${z}`, [
-        new THREE.Vector3(x, 6.62, z),
-        new THREE.Vector3(x, y + 0.65, z),
-        new THREE.Vector3(x, y + 0.30, z),
+        new THREE.Vector3(trayX, 6.56, trayZ),
+        new THREE.Vector3((trayX + outX) / 2, 5.9, (trayZ + outZ) / 2),
+        new THREE.Vector3(outX, y + 0.65, outZ),
+        new THREE.Vector3(outX, y + 0.46, outZ),
       ]);
     }
     addFactoryCable('verdant_power_run_south', [
@@ -2292,31 +2299,31 @@ export function createGarageDressing(
       new THREE.Vector3(7.5, 6.48, -21.42), new THREE.Vector3(19.6, 6.48, -21.42),
     ], mat.blueSteel, 0.038);
     addFactoryCable('verdant_welder_power_drop', [
-      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 1.10, 21.45),
-      new THREE.Vector3(13.7, 0.18, 20.7), new THREE.Vector3(11.6, 0.16, 19.9),
+      new THREE.Vector3(15.8, 4.1, 22.6), new THREE.Vector3(15.8, 1.10, 22.55),
+      new THREE.Vector3(13.7, 0.18, 20.9), new THREE.Vector3(11.6, 0.16, 19.9),
     ], mat.rubber, 0.042);
     addFactoryCable('verdant_teardown_air_drop', [
-      new THREE.Vector3(-15.8, 4.82, -21.45), new THREE.Vector3(-15.8, 1.25, -21.45),
-      new THREE.Vector3(-16.4, 0.18, -19.8), new THREE.Vector3(-16.2, 0.18, -17.8),
+      new THREE.Vector3(-15.8, 4.1, -22.6), new THREE.Vector3(-15.8, 1.25, -22.55),
+      new THREE.Vector3(-16.4, 0.18, -20.4), new THREE.Vector3(-16.2, 0.18, -17.8),
     ], mat.blueSteel, 0.038);
     addFactoryCable('verdant_center_lamp_feed', [
       new THREE.Vector3(0, 6.78, 21.45), new THREE.Vector3(0, 8.72, 16.0),
       new THREE.Vector3(0, 8.72, 5.0), new THREE.Vector3(0, 8.25, 0),
     ], mat.rubber, 0.038);
     addFactoryCable('verdant_lamp_feed_east', [
-      new THREE.Vector3(21.45, 4.82, 7.2), new THREE.Vector3(21.45, 8.55, 7.2),
+      new THREE.Vector3(22.6, 5.0, 7.2), new THREE.Vector3(22.55, 8.3, 7.2), new THREE.Vector3(21.6, 8.55, 7.2),
       new THREE.Vector3(21.60, 8.55, -7.0), new THREE.Vector3(21.60, 7.72, -7.0),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_north', [
-      new THREE.Vector3(0, 4.82, -21.45), new THREE.Vector3(0, 8.48, -21.45),
+      new THREE.Vector3(1.2, 5.0, -22.6), new THREE.Vector3(1.2, 8.3, -22.55),
       new THREE.Vector3(3.20, 8.48, -21.20), new THREE.Vector3(3.20, 7.72, -21.20),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_south', [
-      new THREE.Vector3(0, 4.82, 21.45), new THREE.Vector3(0, 8.48, 21.45),
+      new THREE.Vector3(1.2, 5.0, 22.6), new THREE.Vector3(1.2, 8.3, 22.55),
       new THREE.Vector3(5.90, 8.48, 20.70), new THREE.Vector3(5.90, 7.72, 20.70),
     ], mat.rubber, 0.036);
     addFactoryCable('verdant_lamp_feed_welding_bay', [
-      new THREE.Vector3(15.8, 4.82, 21.45), new THREE.Vector3(15.8, 8.42, 21.45),
+      new THREE.Vector3(15.8, 5.0, 22.6), new THREE.Vector3(15.8, 8.3, 22.55),
       new THREE.Vector3(15.9, 8.42, 16.6), new THREE.Vector3(15.9, 7.72, 16.6),
     ], mat.rubber, 0.036);
     for (const [x, z, length] of [
