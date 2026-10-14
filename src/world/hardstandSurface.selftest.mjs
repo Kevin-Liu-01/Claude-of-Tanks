@@ -206,7 +206,9 @@ assert.equal(lakeField._noVeg(300, 340), false);
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
   assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.24;') && terrain.includes('n.xy -= padRutN * 0.22;'), 'they darken its ground and groove it (a worn yard: R1b)');
-  assert.ok(terrain.includes('lane * rutAmp * 1.25 + padRut * 1.10'), 'and on snow they are slush');
+  // (roads lane, 2026-10-10, wave 341's packing note) on snow they are pressed, glazed snow, slush churned to the ground in stretches
+  assert.ok(terrain.includes('lane * rutAmp * 1.25 + padSlush * 1.10') && terrain.includes('roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);'),
+    'and on snow they are pressed snow with slush in stretches');
   // (2026-10-12, live on 217: Frontier's square drew topographic contour rings) a rut family's direction is fixed: the
   // lines project the world position on it, so a direction that varied with position made the ruts trace the direction
   // field's own isolines — rings, densest far from the origin. Only the warp noise bends them.
