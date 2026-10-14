@@ -187,5 +187,28 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.ok(maxY(lying) < 4, `low on the ground (${maxY(lying).toFixed(2)} m)`);
 }
 
+{
+  // the settled fall of every light frame (the coordinator's E12 review: "nothing floating"): its laid frame, its foot left
+  // at the hinge and its body's heap all on the ground or on one another (the bunker standard's member contact, to 7 cm:
+  // a stair's stub stands in the heap where its concrete foot was), and every chip it throws thrown (none left still in
+  // the air: fx/structureDebris drops a still one to the ground)
+  const THREE = await import('three');
+  const r2 = await import('../../../tools/r2-standard.mjs');
+  for (const [kind, params] of [['guyedMast', { height: 24 }], ['fireLookout', {}], ['troposcatter', {}], ['headframe', {}]]) {
+    const a = describe(kind, params, null, 'shed');
+    const out = writers(60000, 1024);
+    out.fallAxis = [0.8, 0.6];
+    seam(a).collapse(a, damageSeed(a.seed, 3), out);
+    const pos = [];
+    for (const r of out.runs) for (const i of r.t) pos.push(r.v[i * 11], r.v[i * 11 + 1], r.v[i * 11 + 2]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    const floating = r2.floatingMembers(r2.toParts(g), { groundM: 0.05, contactM: 0.07 });
+    assert.deepEqual(floating.map((f) => f.min), [], `${kind}: nothing of its fall left in the air`);
+    assert.ok(out.pushed.every((p) => p[4] < 0.3 || Math.hypot(p[16], p[17], p[18]) > 1e-3), `${kind}: every chip above the ground is thrown`);
+  }
+}
+
 console.log('landmarkDamage selftest: PASS');
 process.exit(0);

@@ -202,20 +202,110 @@ function seat(p: KeptPiece, pose: Pose): void {
   if (Number.isFinite(low)) pose.ty -= low + EMBED_M;
 }
 
+/**
+ * A run's triangles cut at the level `h`, every attribute carried to the cut: a member that crosses a lattice's hinge
+ * breaks there, its foot left standing with what rests on it (a stair's lowest treads on their stringers) and its upper
+ * part gone over with the frame (2026-10-14, the coordinator's E12 review: treads the stump kept floated off stringers
+ * whose upper ends had gone over whole).
+ */
+function splitRunAt(run: PieceRun, h: number): PieceRun {
+  const pos: number[] = [], nrm: number[] = [], uv: number[] = [], col: number[] = [];
+  // (a cut vertex sits a fifth of a millimetre to its triangle's side: the bend turns an upper triangle whole, its foot
+  // at the cut with it, and leaves a lower one whole)
+  let side = 0;
+  const emit = (a: number, b: number, t: number) => {
+    let nl = 0;
+    const nn = [0, 0, 0];
+    for (let k = 0; k < 3; k++) {
+      pos.push(run.pos[a * 3 + k] + (run.pos[b * 3 + k] - run.pos[a * 3 + k]) * t + (k === 1 && t > 0 && t < 1 ? side * 2e-4 : 0));
+      nn[k] = run.nrm[a * 3 + k] + (run.nrm[b * 3 + k] - run.nrm[a * 3 + k]) * t; nl += nn[k] * nn[k];
+      if (run.col) col.push(run.col[a * 3 + k] + (run.col[b * 3 + k] - run.col[a * 3 + k]) * t);
+    }
+    nl = Math.sqrt(nl) || 1;
+    nrm.push(nn[0] / nl, nn[1] / nl, nn[2] / nl);
+    for (let k = 0; k < 2; k++) uv.push(run.uv[a * 2 + k] + (run.uv[b * 2 + k] - run.uv[a * 2 + k]) * t);
+  };
+  for (let tri = 0; tri * 9 < run.pos.length; tri++) {
+    const ids = [tri * 3, tri * 3 + 1, tri * 3 + 2];
+    const up = ids.map((i) => run.pos[i * 3 + 1] > h);
+    const n = up.filter(Boolean).length;
+    if (n === 0 || n === 3) { for (const i of ids) emit(i, i, 0); continue; }
+    // the vertex alone on its side of the cut, then the other two in the triangle's own order
+    const lone = n === 1 ? up.indexOf(true) : up.indexOf(false);
+    const a = ids[lone], b = ids[(lone + 1) % 3], c = ids[(lone + 2) % 3];
+    const ya = run.pos[a * 3 + 1], tb = (h - ya) / (run.pos[b * 3 + 1] - ya), tc = (h - ya) / (run.pos[c * 3 + 1] - ya);
+    side = up[lone] ? 1 : -1;
+    emit(a, a, 0); emit(a, b, tb); emit(a, c, tc);
+    side = -side;
+    emit(a, b, tb); emit(b, b, 0); emit(c, c, 0);
+    emit(a, b, tb); emit(c, c, 0); emit(a, c, tc);
+  }
+  return { bucket: run.bucket, pos: new Float32Array(pos), nrm: new Float32Array(nrm), uv: new Float32Array(uv), col: run.col ? new Float32Array(col) : null };
+}
+
+/**
+ * Per vertex of a piece's runs, how far its member (its welded island, positions to a millimetre) sinks when the frame
+ * goes over: a member on the ground under it, and a member resting on a standing one (its box within a few centimetres
+ * of that one's, its foot above that one's: a stair's lowest treads on their stringers), stay at the hinge (0); a member
+ * that stood on what the fall takes away (a guy's lower length on its anchor, a stair's foot on its concrete) comes down
+ * where it stood, its lowest point to the ground (the coordinator's E12 review: nothing left in the air).
+ */
+function standingVertices(runs: readonly PieceRun[], ground: (x: number, z: number) => number, hinge: number): Float32Array[] {
+  interface Island { lo: number; box: number[]; stands: boolean }
+  const islands: Island[] = [];
+  const perRun = runs.map((run) => {
+    const n = run.pos.length / 3, parent = new Int32Array(n), seen = new Map<string, number>();
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const join = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[rb] = ra; };
+    for (let i = 0; i < n; i++) {
+      const key = `${Math.round(run.pos[i * 3] * 1000)},${Math.round(run.pos[i * 3 + 1] * 1000)},${Math.round(run.pos[i * 3 + 2] * 1000)}`;
+      const at = seen.get(key);
+      if (at === undefined) seen.set(key, i); else join(at, i);
+      if (i % 3) join(i - (i % 3), i);
+    }
+    const index = new Map<number, number>(), of = new Int32Array(n);
+    for (let i = 0; i < n; i++) {
+      const r = find(i);
+      let k = index.get(r);
+      if (k === undefined) { k = islands.length; index.set(r, k); islands.push({ lo: Infinity, box: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], stands: false }); }
+      of[i] = k;
+      const x = run.pos[i * 3], y = run.pos[i * 3 + 1], z = run.pos[i * 3 + 2], b = islands[k].box;
+      islands[k].lo = Math.min(islands[k].lo, y - ground(x, z));
+      b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.min(b[2], z); b[3] = Math.max(b[3], x); b[4] = Math.max(b[4], y); b[5] = Math.max(b[5], z);
+    }
+    return of;
+  });
+  for (const isl of islands) isl.stands = isl.lo <= STANDING_M;
+  const near = (a: number[], b: number[]) => a[0] <= b[3] + 0.03 && b[0] <= a[3] + 0.03 && a[1] <= b[4] + 0.03 && b[1] <= a[4] + 0.03 && a[2] <= b[5] + 0.03 && b[2] <= a[5] + 0.03;
+  for (let changed = true, pass = 0; changed && pass < 8; pass++) {
+    changed = false;
+    for (const isl of islands) {
+      if (isl.stands || isl.box[1] > hinge) continue;
+      // (resting on it: its foot within the standing member's height, not hung below it)
+      if (islands.some((o) => o.stands && o !== isl && near(isl.box, o.box) && isl.box[1] >= o.box[1] + 0.02)) { isl.stands = true; changed = true; }
+    }
+  }
+  return perRun.map((of) => Float32Array.from(of, (k) => (islands[k].stands ? 0 : Math.max(0, islands[k].lo - EMBED_M))));
+}
+/** How near the ground a member's foot must be to stand when its frame goes over. */
+const STANDING_M = 0.12;
+
 /** Lay a piece's own triangles at a pose (role rubble); false when the stage's writer has no room for it. */
-function layPiece(p: KeptPiece, pose: Pose, out: DamageWriters, bend?: (x: number, y: number, z: number, o: number[]) => boolean): boolean {
+function layPiece(p: KeptPiece, pose: Pose, out: DamageWriters,
+  bend?: (x: number, y: number, z: number, o: number[], run: number, vertex: number) => boolean): boolean {
   let need = 0;
   for (const run of p.runs) need += run.pos.length / 3;
   if (out.mesh.capacity - out.mesh.vertices < need) return false;
   const n = [0, 0, 0], q = [0, 0, 0];
-  for (const run of p.runs) {
+  for (const [ri, run] of p.runs.entries()) {
     if (!out.mesh.begin(run.bucket, 'rubble')) return false;
     for (let i = 0, v = 0; i < run.pos.length; i += 9) {
       const ids = [0, 0, 0];
       for (let k = 0; k < 3; k++, v++) {
         const j = i + k * 3;
         let turned = true;
-        if (bend) turned = bend(run.pos[j], run.pos[j + 1], run.pos[j + 2], q);
+        if (bend) turned = bend(run.pos[j], run.pos[j + 1], run.pos[j + 2], q, ri, v);
         else {
           apply(pose.r, run.pos[j] - pose.px, run.pos[j + 1] - pose.py, run.pos[j + 2] - pose.pz, q);
           q[0] += pose.px + pose.tx; q[1] += pose.py + pose.ty; q[2] += pose.pz + pose.tz;
@@ -374,12 +464,23 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   for (const p of plan.pieces) {
     // (a piece an earlier stage took lies where that stage laid it: laid again there, the two copies agree)
     if (plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge) {
+      // (a frame's members break at the hinge; a piece anchored out past the frame's plan — a mast's guys — bends whole,
+      // its feet on their anchors, as it did before the cut)
+      let reach = false;
+      const far = 1.25 * Math.max(a.w, a.d) / 2 + 0.5;
+      for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
+        const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];
+        if (y - pieceGroundAt(p.ground, x, z) <= 0.4 && Math.hypot(x, z) > far) reach = true;
+      }
+      const cut: KeptPiece = reach ? p : { ...p, runs: p.runs.map((r) => splitRunAt(r, hinge)) };
+      const standing = reach ? cut.runs.map((r) => new Float32Array(r.pos.length / 3))
+        : standingVertices(cut.runs, (x, z) => pieceGroundAt(p.ground, x, z), hinge);
       const dx = given![0] / gl, dz = given![1] / gl, e = Math.max(a.w, a.d) / 2;
       const c = Math.cos(TOPPLE_LIE), s = Math.sin(TOPPLE_LIE);
       // (the mask's topple: over the leading edge of its foot at the hinge, sunk by the hinge as it lands)
-      const bend = (x: number, y: number, z: number, o: number[]): boolean => {
+      const bend = (x: number, y: number, z: number, o: number[], run = -1, vertex = -1): boolean => {
         const q = y - hinge;
-        if (q <= 0) { o[0] = x; o[1] = y; o[2] = z; return false; }
+        if (q <= 0) { o[0] = x; o[1] = y - (run < 0 ? 0 : standing[run][vertex]); o[2] = z; return false; }
         const along = x * dx + z * dz, s0 = along - e, lx = x - dx * along, lz = z - dz * along;
         const s1 = s0 * c + q * s, q1 = q * c - s0 * s;
         o[0] = lx + dx * (s1 + e); o[1] = q1; o[2] = lz + dz * (s1 + e);
@@ -388,12 +489,12 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
       // what went over: its lowest point on the ground where it lies
       let low = Infinity;
       const o = [0, 0, 0];
-      for (const run of p.runs) for (let i = 0; i < run.pos.length; i += 3) {
-        if (bend(run.pos[i], run.pos[i + 1], run.pos[i + 2], o)) low = Math.min(low, o[1] - pieceGroundAt(p.ground, o[0], o[2]));
+      for (const [ri, run] of cut.runs.entries()) for (let i = 0; i < run.pos.length; i += 3) {
+        if (bend(run.pos[i], run.pos[i + 1], run.pos[i + 2], o, ri, i / 3)) low = Math.min(low, o[1] - pieceGroundAt(p.ground, o[0], o[2]));
       }
       const drop = Number.isFinite(low) ? low + EMBED_M : 0;
       const pose: Pose = { r: rotation(dz, 0, -dx, TOPPLE_LIE), px: 0, py: 0, pz: 0, tx: 0, ty: 0, tz: 0 };
-      if (layPiece(p, pose, out, (x, y, z, q) => { const t = bend(x, y, z, q); if (t) q[1] -= drop; return t; })) {
+      if (layPiece(cut, pose, out, (x, y, z, q, ri, v) => { const t = bend(x, y, z, q, ri, v); if (t) q[1] -= drop; return t; })) {
         res.hides.push({ section: null, partClass: null, piece: p.name });
       }
       continue;
