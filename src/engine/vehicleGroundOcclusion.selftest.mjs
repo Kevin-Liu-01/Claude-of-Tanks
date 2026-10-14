@@ -741,10 +741,18 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
 // ---- 10. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
 const post = here('./post.ts'), lighting = here('./lighting.ts');
 assert.match(lighting, /scene\.userData\.nearVehicles = nearVehiclePolicy\.selected;/, 'the shadow router\'s near selection, updated in place');
-assert.match(post, /if \( uVehGround > 0\.5 && texel\.a < \$\{VEHICLE_ALPHA_MIN\.toFixed\(1\)\} && -viewZ < \$\{GROUND_AO_RANGE_M\.toFixed\(1\)\} \) \{\s*texel\.rgb \*= cotVehicleGroundShadeRgb\( vUv, uCamPos \+ ray \* rayT, texel\.a, -viewZ \);/,
-  'the ground (never a vehicle pixel) within the range');
+// (2026-10-14, the r5 port's cost cut) one branch for the near hulls' reach: a ground pixel shaded at its own point, a
+// vehicle pixel's grime and its foot's borrowed ground — shaded by the same one call, so the shade is compiled in once
+const vgBranch = post.slice(post.indexOf('if ( uVehGround > 0.5 && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {'));
+assert.ok(vgBranch.length > 0 && vgBranch.includes('bool vgVehicle = texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)};')
+  && vgBranch.includes('vec4 vgAt = vec4( vUv, -viewZ, texel.a );')
+  && vgBranch.includes('vec3 vgShade = cotVehicleGroundShadeRgb( vgAt.xy, vgQ, vgAt.w, vgAt.z );')
+  && vgBranch.includes('texel.rgb = vgVehicle ? mix( texel.rgb, vgRgb * vgShade, vgW ) : texel.rgb * vgShade;'),
+  'the ground (at its own point) and a vehicle foot (the ground it borrows) within the range, one shade call');
+assert.equal(post.split('cotVehicleGroundShadeRgb(').length - 1, 1, 'one call site in the pass');
+assert.equal(VEHICLE_GROUND_OCCLUSION_GLSL.split('cotVehicleGroundShadeRgb(').length - 1, 1, 'and none inside the block but its definition');
 const vehAt = post.indexOf('texel.rgb *= cotVehicleOcclusionShade(');
-const groundAt = post.indexOf('texel.rgb *= cotVehicleGroundShadeRgb(');
+const groundAt = post.indexOf('vec3 vgShade = cotVehicleGroundShadeRgb(');
 const hazeAt = post.indexOf('float wy = uCamPos.y + ray.y * rayT;');
 assert.ok(vehAt > 0 && groundAt > vehAt && hazeAt > groundAt, 'after the vehicle cavities, before the haze');
 assert.ok(post.indexOf('${VEHICLE_GROUND_OCCLUSION_GLSL}') > post.indexOf('${CONTACT_SHADOW_GLSL}'), 'after the contact block it calls');
@@ -852,7 +860,7 @@ assert.ok(CONTACT_SHADOW_GLSL.includes('vec3 cotNormalAtGuarded( vec2 uv, vec3 P
 // (g) the GLSL: the levers, the guard, the softening, the core past the cap, the band, the berm, the cut, the grime
 for (const piece of [
   'uniform vec4 uVehGroundR4;', 'uniform vec4 uVehGroundR5;',
-  'N = uVehGroundR5.y > 0.5 ? cotNormalAtGuarded( uv, P, normalize( m1.xyz ), dist ) : cotNormalAt( uv, P );',
+  'N = cotNormalAtGuarded( uv, P, normalize( m1.xyz ), uVehGroundR5.y > 0.5 ? dist : 1e6 );',
   `ho *= mix( 1.0, mix( uVehGroundR5.x, 1.0, snowW ), smoothstep( 0.0, ${f4(2 * GROUND_AO_EDGE_M)}, sd ) );`,
   `float cw = 1.0 - smoothstep( mix( ${f4(GROUND_AO_CORE_FLAT * GROUND_AO_CORE_W_M)}, ${f4(GROUND_AO_CORE_FULL_SNOW_M)}, snowW ),`,
   `mix( ${f4(GROUND_AO_CORE_W_M)}, ${f4(GROUND_AO_CORE_W_SNOW_M)}, snowW ), -laneD );`,
@@ -886,9 +894,9 @@ near(groundWallSoft(0), GROUND_AO_WALL_SOFT, 1e-12, 'the softening off snow'); n
 assert.ok(GROUND_AO_OCC_MAX_SNOW > GROUND_AO_OCC_MAX && GROUND_AO_OCC_MAX_SNOW <= 0.85, 'snow keeps more of its under-hull shade (round 5: 0.8), never black');
 near(combineVehicleGroundOcclusion([0.99], 10, 0, groundOcclusionCap(1)), GROUND_AO_OCC_MAX_SNOW, 1e-12, 'a belly on snow: the snow cap');
 // the wiring: the grime on the hulls' own pixels after their cavities, before the ground's
-const grimeAt = post.indexOf('texel.rgb *= cotVehicleGrime( uCamPos + ray * rayT );');
+const grimeAt = post.indexOf('texel.rgb *= cotVehicleGrime( vgP );');
 assert.ok(grimeAt > vehAt && grimeAt < groundAt, 'the grime after the cavities, before the ground');
-assert.match(post, /if \( uVehGround > 0\.5 && texel\.a >= \$\{VEHICLE_ALPHA_MIN\.toFixed\(1\)\} && -viewZ < \$\{GROUND_AO_RANGE_M\.toFixed\(1\)\} \) \{\s*texel\.rgb \*= cotVehicleGrime\(/,
+assert.match(post, /if \( vgVehicle \) \{\s*texel\.rgb \*= cotVehicleGrime\( vgP \);/,
   'only a vehicle pixel, only near hulls');
 
 // ---- 12. contact round 5 (2026-10-11; wave 372b, both critics: "a lime grass blade glows unshadowed under the hull between the
@@ -946,21 +954,21 @@ for (const piece of [
   'vec3 cotVehicleGroundShadeRgb( vec2 uv, vec3 P, float alpha, float dist ) {',
   `return s * mix( vec3( 1.0 ), vec3( ${GROUND_AO_SNOW_COOL.map(f4).join(', ')} ),`,
   '( 1.0 - s ) * uVehGroundR6.x * uVehGroundSnow * cotSnowOf( alpha ) );',
-  'vec3 cotVehicleContactBlend( vec3 rgb, vec3 P ) {', 'vec4 c = uContactViewProj * vec4( Pg, 1.0 );',
-  'if ( g.a >= 3.5000 ) continue;', 'vec3 gc = g.rgb * cotVehicleGroundShadeRgb( guv, cotWorldAtDepth( guv, gd ), g.a, gd );',
+  'float cotVehicleContactSample( vec3 P, out vec4 gs, out vec3 gP, out vec3 gRgb ) {', 'vec4 c = uContactViewProj * vec4( Pg, 1.0 );',
+  'if ( g.a >= 3.5000 ) continue;', 'gs = vec4( guv, gd, g.a ); gP = cotWorldAtDepth( guv, gd ); gRgb = g.rgb;',
   'float sn = clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )',
   'if ( dv > reach || dv < -0.05 ) continue;', 'float snow = uVehGroundSnow * cotSnowOf( g.a );', 'if ( dv > height ) continue;',
   `float w = ( 1.0 - smoothstep( ${f4(GROUND_AO_BLEND_SNOW_SOLID)} * snow * height, height, dv ) )`,
-  'return mix( rgb, gc, w );',
+  'return w;',
 ]) assert.ok(g.includes(piece), piece);
-assert.ok(g.indexOf('vec3 cotVehicleContactBlend(') > g.indexOf('float cotVehicleGrime('), 'the new functions after the shade and the grime');
+assert.ok(g.indexOf('float cotVehicleContactSample(') > g.indexOf('float cotVehicleGrime('), 'the new functions after the shade and the grime');
 // (contact r2) the blend's snow is the borrowed ground's own cover: read off the sample (never a vehicle pixel), before the
 // height test and the ground's shade (the shade evaluated only for a pixel the blend takes)
 {
-  const blend = g.slice(g.indexOf('vec3 cotVehicleContactBlend('));
+  const blend = g.slice(g.indexOf('float cotVehicleContactSample('));
   assert.ok(blend.indexOf('if ( g.a >= 3.5000 ) continue;') < blend.indexOf('float snow = uVehGroundSnow * cotSnowOf( g.a );')
     && blend.indexOf('float snow = uVehGroundSnow') < blend.indexOf('if ( dv > height ) continue;')
-    && blend.indexOf('if ( w <= 0.003 ) continue;') < blend.indexOf('cotVehicleGroundShadeRgb( guv'), 'the sample\'s snow, then the shade');
+    && blend.indexOf('if ( w <= 0.003 ) continue;') < blend.indexOf('float gd = cotDepthToDist('), 'the sample\'s snow, then its depth');
   assert.ok(!blend.includes('uVehGroundR6.x'), 'no map-wide snow in the blend');
 }
 // the levers: shipped (no cast off snow, no shoe skip, the gear's cap, the blend on); snow's cast
@@ -971,9 +979,9 @@ assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 1],
 updateVehicleGroundOcclusionUniforms(u5, [], true, 0.8);
 assert.deepEqual(u5.uVehGroundR6.value.toArray(), [1, 0, GROUND_AO_GEAR_CAP, 1], 'the same on a snow map');
 // the wiring: the blend on the hulls' own pixels after their grime, before the ground; the ground's shade as a colour
-assert.ok(post.includes('texel.rgb = cotVehicleContactBlend( texel.rgb, uCamPos + ray * rayT );')
-  && post.indexOf('texel.rgb = cotVehicleContactBlend(') > post.indexOf('texel.rgb *= cotVehicleGrime(')
-  && post.indexOf('texel.rgb = cotVehicleContactBlend(') < groundAt, 'the blend after the grime, before the ground');
+assert.ok(post.includes('vgW = cotVehicleContactSample( vgP, vgAt, vgQ, vgRgb );')
+  && post.indexOf('vgW = cotVehicleContactSample(') > post.indexOf('texel.rgb *= cotVehicleGrime(')
+  && post.indexOf('vgW = cotVehicleContactSample(') < groundAt, 'the blend\'s sample after the grime, before the one shade');
 assert.ok(post.includes("if (groundModel?.mode !== 'physical') (aerial.uniforms as unknown as VehicleGroundOcclusionUniforms).uVehGroundR6.value.w = 0;"),
   'the blend only on the grounded rig (the battle maps): the Garage\'s turntable is a hard floor');
 
