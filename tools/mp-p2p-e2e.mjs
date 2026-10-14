@@ -130,7 +130,8 @@ async function activate(page,selector){
 function installPageRecorder(forceRelay = false) {
   if (window.__MP_E2E_LOG) return;
   const log = window.__MP_E2E_LOG = [];
-  const push = (entry) => { if (log.length < 600) log.push({ atMs: Math.round(performance.now()), ...entry }); };
+  // wallMs (2026-10-14): one clock across the pages (timeOrigin + now), so a migration reads as one timeline
+  const push = (entry) => { if (log.length < 600) log.push({ atMs: Math.round(performance.now()), wallMs: Math.round(performance.timeOrigin + performance.now()), ...entry }); };
   const schemes = (servers) => {
     const urls = (Array.isArray(servers) ? servers : []).flatMap((server) => [].concat(server?.urls ?? []));
     return { servers: Array.isArray(servers) ? servers.length : 0, stun: urls.filter((url) => /^stun:/i.test(url)).length, turn: urls.filter((url) => /^turns?:/i.test(url)).length };
@@ -871,6 +872,7 @@ try {
   await collectRoomLog('A', pages.a);
   const hostTickBefore = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report').at(-1)?.tick ?? 0;
   const closedAt = performance.now();
+  report.closedAtWallMs = Date.now();
   await pages.a.close();
   pages.a = null;
   step('a-closed');
