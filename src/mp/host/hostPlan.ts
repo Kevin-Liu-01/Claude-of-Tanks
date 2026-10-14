@@ -10,6 +10,7 @@ import { arrangeModeRoster } from './modeRoster.ts';
 import { isCoopGameMode } from '../room/roomPolicy.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import type { HostBootBot, HostBootSeat } from './hostProtocol.ts';
+import { TANK_IDS, type TankIdResolver } from '../../vehicles/tankIdAliases.ts';
 
 export interface HostBootPlan {
   seats: HostBootSeat[];
@@ -41,21 +42,30 @@ function isBot(value: unknown): value is HostBootBot {
 }
 
 /** A plan the room attached to the host's match_start, when it did and it is well-formed. */
-export function planFromMatchStart(matchStart: RoomMatchStartPayload): HostBootPlan | null {
+export function planFromMatchStart(matchStart: RoomMatchStartPayload, tankIds: TankIdResolver = TANK_IDS): HostBootPlan | null {
   const plan = (matchStart as { plan?: unknown }).plan;
   if (!plan || typeof plan !== 'object') return null;
   const { seats, bots } = plan as { seats?: unknown; bots?: unknown };
   if (!Array.isArray(seats) || !seats.every(isSeat) || (bots !== undefined && (!Array.isArray(bots) || !bots.every(isBot)))) return null;
-  return { seats: seats.map((seat) => ({ ...seat, equipment: seat.equipment ? [...seat.equipment] : [] })), bots: Array.isArray(bots) ? bots.map((bot) => ({ ...bot })) : [] };
+  return {
+    seats: seats.map((seat) => ({ ...seat, specId: tankIds.resolveIncoming(seat.specId), equipment: seat.equipment ? [...seat.equipment] : [] })),
+    bots: Array.isArray(bots) ? bots.map((bot) => ({ ...bot, specId: tankIds.resolveIncoming(bot.specId) })) : [],
+  };
 }
 
 /** The roster as the room froze it at the start, read from the snapshot the room broadcast before `match_start`. */
-export function planFromRoom(room: RoomSnapshot, { botSpecFallback = DEFAULT_BOT_SPEC }: { botSpecFallback?: string } = {}): HostBootPlan {
+export function planFromRoom(
+  room: RoomSnapshot,
+  { botSpecFallback = DEFAULT_BOT_SPEC, tankIds = TANK_IDS }: { botSpecFallback?: string; tankIds?: TankIdResolver } = {},
+): HostBootPlan {
   const seats: HostBootSeat[] = [];
   for (const player of room.players) {
     if (!player.connected) continue;
     if (player.team !== 'spectator' && !player.specId) continue;
-    seats.push({ seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId: player.specId ?? botSpecFallback, equipment: player.equipment.slice() });
+    // A room seat's vehicle is this build's id (the MP build gate keeps rooms on one build); an id a rename retired
+    // still names its vehicle (SSOT 2.19).
+    const specId = player.specId ? tankIds.resolveIncoming(player.specId) : botSpecFallback;
+    seats.push({ seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice() });
   }
   const bots: HostBootBot[] = [];
   if (room.settings.botsFill && !isCoopGameMode(room.settings.gameMode)) {

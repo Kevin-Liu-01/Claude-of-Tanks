@@ -122,7 +122,7 @@ const GROUP_LOADERS = Object.freeze({
   t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
   kurganetsX: () => import('./profiles/kurganetsX.ts')
     .then((mod) => registerProfiles(mod.KURGANETS_X_PROFILES)),
-  fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ fv510_milan_x: { build: mod.buildFv510MilanX } })),
+  fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ warrior_tes_h: { build: mod.buildFv510MilanX } })),
   griffin50X: () => import('./profiles/griffin50X.ts').then(mod => registerProfiles({ griffin50_x: { build: mod.buildGriffin50X } })),
   ajaxX: () => import('./profiles/ajaxX.ts').then(mod => registerProfiles({ ajax_x: { build: mod.buildAjaxX } })),
   aft10X: () => import('./profiles/aft10X.ts').then(mod => registerProfiles({ aft10_x: { build: mod.buildAft10X } })),

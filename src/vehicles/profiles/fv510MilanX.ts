@@ -591,5 +591,5 @@ export function buildFv510MilanX(P: TankBuilderPort): void {
   hull(P); gear(P); turret(P);
   P.topY=2.525-1.965;
   preserveSourceStudyGunMountAppearance(P);
-  P.hullG.userData.xRebuild={candidate:'fv510_milan_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'warrior_tes_h',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
