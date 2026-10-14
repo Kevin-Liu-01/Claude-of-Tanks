@@ -8,8 +8,8 @@ import { requireNative4kPng } from '../map-art-guards.mjs';
 import { mergePublication } from './mergePublication.mjs';
 
 const args=Object.fromEntries(process.argv.slice(2).map(value=>{
-  const match=/^--(receipt|review)=(.+)$/.exec(value);
-  if(!match)throw Error('npm run media:publish -- --receipt=shots/production-current/all-receipt.json --review=shots/production-current/review.json');
+  const match=/^--(receipt|review|min-quality)=(.+)$/.exec(value);
+  if(!match)throw Error('npm run media:publish -- --receipt=shots/production-current/all-receipt.json --review=shots/production-current/review.json [--min-quality=76]');
   return [match[1],match[2]];
 }));
 const receipt=JSON.parse(readFileSync(resolve(args.receipt??'shots/production-current/all-receipt.json'),'utf8'));
@@ -25,8 +25,12 @@ const paths=[];
 const target=path=>{const file=join(stage,path);mkdirSync(dirname(file),{recursive:true});paths.push(path);return file;};
 // (the owner's light-media rule, 2026-10-14; the coordinator: a published picture no larger than the file it replaces) a
 // derivative that would outweigh the public file at its path steps its quality down from 88 until it does not; under
-// 76 the batch stops for a person to decide, and nothing is published
-const QUALITIES=[88,85,82,79,76];
+// 76 the batch stops for a person to decide, and nothing is published. --min-quality is that decision for a reviewed
+// batch (2026-10-14: Copper Mesa's new master, busier with its mine works, fits its old bytes at 73 for the hero, 67
+// for the card and 70 for the thumb, and 67 matched 76 at 1:1)
+const minQuality=Number(args['min-quality']??76);
+if(!(minQuality>=50&&minQuality<=88))throw Error(`--min-quality=${args['min-quality']}: 50-88`);
+const QUALITIES=[88,85,82,79,76,73,70,67,64,61,58,55,52].filter(q=>q>=minQuality);
 const webp=(file,path,w,h)=>{
   const out=target(path),old=join(process.cwd(),'public',path),limit=existsSync(old)?statSync(old).size:Infinity;
   for(const q of QUALITIES){
