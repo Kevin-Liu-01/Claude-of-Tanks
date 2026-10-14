@@ -105,7 +105,8 @@ export function applyHinterlandTreeImpostors(object: THREE.Object3D, options: Hi
       const row = library.rows[library.rowBase(sp) + variant];
       quaternion.setFromAxisAngle(up, horizonForestImpostorPick(x * 1.7, z * 0.3) * Math.PI * 2);
       scale.setScalar(heightM / Math.max(1e-3, row.heightM));
-      position.set(x, samplePyramid(near.pyramid, x, z) - 0.3, z);
+      const y = near.trees[o + 8];
+      position.set(x, (Number.isFinite(y) ? y : samplePyramid(near.pyramid, x, z)) - 0.3, z);
       matrix.compose(position, quaternion, scale);
       mesh.setMatrixAt(j, matrix);
       const l = Math.max(0, Math.min(1, leaf));

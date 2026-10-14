@@ -10,7 +10,7 @@
 // farms' shelter groups: a Lombardy column, a broad crown, a pollard's knob, a cone, their foliage the season's).
 // World-space triangles; each building stands on the drawn land: its base the lowest corner of its footprint on the
 // pyramid, its walls carried a metre and a half down.
-import type { HinterlandPlan } from './outland.ts';
+import type { HinterlandPlan, HinterlandTree } from './outland.ts';
 import { samplePyramid, type HinterlandPyramid } from './pyramid.ts';
 
 /** One draw's triangles (non-indexed): positions, normals (snorm8) and linear colours (unorm8, square-root encoded). */
@@ -22,7 +22,7 @@ export interface HinterlandOutlandGeometry {
   farTrees: HinterlandShapeArrays | null;
   /** The near trees' indices into the plan's trees (the impostors' set, trees.ts). */
   nearIndex: Uint32Array;
-  stats: { buildingTris: number; roadTris: number; nearTreeTris: number; farTreeTris: number; nearTrees: number; farTrees: number; ms: number };
+  stats: { buildingTris: number; roadTris: number; nearTreeTris: number; farTreeTris: number; nearTrees: number; farTrees: number; woodsTrees: number; ms: number };
 }
 
 type V3 = [number, number, number];
@@ -401,6 +401,8 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
 export function buildHinterlandOutlandGeometry(
   plan: Pick<HinterlandPlan, 'buildings' | 'settlements' | 'verticals' | 'trees'> & Partial<Pick<HinterlandPlan, 'roads'>>,
   pyramid: HinterlandPyramid, kit: string | null,
+  /** The trees with their ground (the worker's list: the plan's, then the woods' own); absent, the plan's on the land. */
+  trees: readonly (HinterlandTree & { y?: number; woods?: boolean })[] = plan.trees,
 ): HinterlandOutlandGeometry {
   const t0 = performance.now();
   const ground = (x: number, z: number): number => samplePyramid(pyramid, x, z);
@@ -446,14 +448,19 @@ export function buildHinterlandOutlandGeometry(
   // ---- the trees: near (the impostors may draw them instead) and far
   const near = new Shapes(), far = new Shapes();
   const nearIndex: number[] = [];
-  plan.trees.forEach((t, i) => {
+  let woodsTrees = 0;
+  trees.forEach((t, i) => {
     const isNear = Math.hypot(t.x, t.z) < HINTERLAND_NEAR_TREE_M;
-    // (a tree stands a little into the drawn land: the earth's drop from an eye in the square reaches 0.4 m)
-    addTree(isNear ? near : far, t.x, ground(t.x, t.z) - 0.3, t.z, t.heightM, t.crownM, t.form, treeColor(t.species, t.form, t.tone, t.leaf), isNear ? 6 : 5);
     if (isNear) nearIndex.push(i);
+    // (the woods' own trees are the impostors' alone: as geometry they would cost a quarter of a million triangles,
+    // and without an atlas the canopy stands for them)
+    if (t.woods) { woodsTrees++; return; }
+    // (a tree stands a little into the drawn land: the earth's drop from an eye in the square reaches 0.4 m)
+    const y = (t.y !== undefined && Number.isFinite(t.y) ? t.y : ground(t.x, t.z)) - 0.3;
+    addTree(isNear ? near : far, t.x, y, t.z, t.heightM, t.crownM, t.form, treeColor(t.species, t.form, t.tone, t.leaf), isNear ? 6 : 5);
   });
   return {
     buildings: S.arrays(), nearTrees: near.arrays(), farTrees: far.arrays(), nearIndex: new Uint32Array(nearIndex),
-    stats: { buildingTris: S.triangles, roadTris, nearTreeTris: near.triangles, farTreeTris: far.triangles, nearTrees: nearIndex.length, farTrees: plan.trees.length - nearIndex.length, ms: performance.now() - t0 },
+    stats: { buildingTris: S.triangles, roadTris, nearTreeTris: near.triangles, farTreeTris: far.triangles, nearTrees: nearIndex.length, farTrees: trees.length - nearIndex.length, woodsTrees, ms: performance.now() - t0 },
   };
 }

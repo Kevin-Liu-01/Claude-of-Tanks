@@ -42,6 +42,7 @@ const CLASS_ALBEDO: Readonly<Record<number, readonly [number, number, number]>> 
 });
 
 const CONIFERS = new Set(['pine', 'spruce', 'fir', 'cedar', 'cypress', 'larch']);
+const smooth01 = (t: number): number => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 /** A wood's crowns with their leaves gone (linear): grey-brown twigs over the litter. */
 const BARE_WOODS: readonly [number, number, number] = [0.07, 0.056, 0.046];
 
@@ -139,7 +140,10 @@ export function bakeHinterlandSurface(
  * surface bake's, bilinear on its grid), the canopy's top broken by a stand-scale noise. The battlefield's trees hold
  * the first metres past the line, so the canopy rises from 40 m to 150 m out. In place on the levels' heights.
  */
-export function raiseHinterlandCanopy(levels: readonly HinterlandLevel[], woods: readonly Uint8Array[], canopyM: number, seed: number): void {
+export function raiseHinterlandCanopy(
+  levels: readonly HinterlandLevel[], woods: readonly Uint8Array[], canopyM: number, seed: number,
+  { treesWithinM = 0 } = {},
+): void {
   if (!(canopyM > 0)) return;
   const specs = surfaceLevelsFor(levels);
   const ox = hash12(seed * 0.013 + 0.7, 3.1) * 400, oz = hash12(seed * 0.029 + 1.9, 5.3) * 400;
@@ -156,12 +160,72 @@ export function raiseHinterlandCanopy(levels: readonly HinterlandLevel[], woods:
         const fx = (x + S.halfM) / S.texelM, si = Math.min(S.n - 2, Math.max(0, Math.floor(fx))), tx = fx - si;
         const k = sj * S.n + si;
         const w = ((W[k] * (1 - tx) + W[k + 1] * tx) * (1 - tz) + (W[k + S.n] * (1 - tx) + W[k + S.n + 1] * tx) * tz) / 255;
-        if (w <= 0.02) continue;
+        if (w <= 0.3) continue;
         const ramp = edgeOut >= 150 ? 1 : (edgeOut - 40) / 110;
-        // (a stand's own height: ±15 % over a few hundred metres, and the crowns' roughness in its top)
-        const stand = 1 + 0.15 * noise2(x / 260 + ox, z / 260 - oz) + 0.05 * noise2(x / 31 - oz, z / 31 + ox);
-        L.heights[j * L.n + i] += canopyM * stand * ramp * Math.min(1, w * 1.25);
+        // (a stand's own height: ±15 % over a few hundred metres, and the crowns' roughness in its top, at the finest
+        // scale the level holds)
+        const crown = Math.max(28, 2.5 * L.texelM);
+        const stand = 1 + 0.15 * noise2(x / 260 + ox, z / 260 - oz) + 0.12 * noise2(x / crown - oz, z / crown + ox);
+        // the share sharpened about its half (a coarse level's bilinear would spread a wood over its neighbours as a
+        // hill); where the woods' own trees stand (trees.ts) the canopy is their under-storey, so their crowns break it
+        const share = smooth01((w - 0.3) / 0.4);
+        const r = Math.hypot(x, z);
+        const under = r < treesWithinM ? 0.62 : r < treesWithinM + 300 ? 0.62 + 0.38 * (r - treesWithinM) / 300 : 1;
+        L.heights[j * L.n + i] += canopyM * stand * ramp * share * under;
       }
     }
   }
+}
+
+/**
+ * The woods' own trees where the battlefield's impostors can draw them (nearer than `withinM` to the centre): a jittered
+ * lattice over the woods' share (surface.ts's, at the finest surface level holding the point), dense along a wood's
+ * edge (its outline is trees, not a wall) and sparser inside (their crowns break the canopy's top), each its region's
+ * species, its height about the region's canopy, its foliage the season's. Their ground is the drawn land's before the
+ * canopy rose (`groundAt`).
+ */
+export function plantHinterlandWoods(
+  field: HinterlandField, levels: readonly HinterlandLevel[], woods: readonly Uint8Array[],
+  groundAt: (x: number, z: number) => number, { withinM = 1750, spacingM = 9, seed = 1337 } = {},
+): import('./wire.ts').HinterlandGroundedTree[] {
+  const specs = surfaceLevelsFor(levels);
+  const veg = field.spec.region.vegetation;
+  const canopy = veg.canopyM || 18;
+  let total = 0;
+  for (const [, w] of veg.species) total += w;
+  const leafBase = HINTERLAND_SEASON_LEAF[field.spec.season] ?? 1;
+  const shareAt = (x: number, z: number): number => {
+    const a = Math.max(Math.abs(x), Math.abs(z));
+    for (let li = 0; li < specs.length; li++) {
+      const S = specs[li], W = woods[li];
+      if (!W || a >= S.halfM - 2 * S.texelM) continue;
+      const fx = (x + S.halfM) / S.texelM, fz = (z + S.halfM) / S.texelM;
+      const i = Math.floor(fx), j = Math.floor(fz), tx = fx - i, tz = fz - j, k = j * S.n + i;
+      return ((W[k] * (1 - tx) + W[k + 1] * tx) * (1 - tz) + (W[k + S.n] * (1 - tx) + W[k + S.n + 1] * tx) * tz) / 255;
+    }
+    return 0;
+  };
+  const out: import('./wire.ts').HinterlandGroundedTree[] = [];
+  const n = Math.ceil(withinM / spacingM);
+  for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) {
+    const h1 = hash12(i * 0.731 + seed * 0.001, j * 1.173), h2 = hash12(i * 1.917 - 3.1, j * 0.613 + seed * 0.002), h3 = hash12(i * 0.377 + 7.7, j * 2.131 - 1.3);
+    const x = (i + (h1 - 0.5) * 0.9) * spacingM, z = (j + (h2 - 0.5) * 0.9) * spacingM;
+    if (Math.max(Math.abs(x), Math.abs(z)) < 560 || Math.hypot(x, z) > withinM) continue;
+    const w = shareAt(x, z);
+    if (w < 0.3) continue;
+    // the edge (a share between 0.3 and 0.8 — the wood's last 10–20 m) nearly every cell; inside, one in three
+    const keep = w < 0.8 ? 0.85 : 0.34;
+    if (h3 > keep) continue;
+    let u = hash12(x * 0.013 + 2.2, z * 0.017 - 4.1) * total, name = veg.species[0]?.[0] ?? 'oak';
+    for (const [sp, wt] of veg.species) { u -= wt; if (u <= 0) { name = sp; break; } }
+    const conifer = CONIFERS.has(name);
+    const age = hash12(x * 0.021 - 1.7, z * 0.019 + 3.3);
+    const heightM = canopy * (0.82 + 0.36 * age) * (w < 0.8 ? 0.92 : 1);
+    const leaf = conifer ? 1 : Math.max(0, Math.min(1, leafBase + (hash12(x * 0.07, z * 0.05) - 0.5) * 0.5 * (1 - Math.abs(leafBase - 0.5))));
+    out.push({
+      x, z, species: name, heightM, crownM: conifer ? 2.4 + 1.4 * age : 3.2 + 2.6 * age, tone: hash12(z * 0.031, x * 0.029),
+      form: conifer ? 'conifer' : 'broad', leaf, y: groundAt(x, z), woods: true,
+    });
+  }
+  return out;
 }

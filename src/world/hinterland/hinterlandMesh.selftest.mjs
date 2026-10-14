@@ -93,7 +93,7 @@ assert.ok(transfer.length >= wire.levels.length + 2, 'the heights, trees and bui
 assert.ok(wire.trees.length > 0 && wire.buildings.length > 0 && wire.settlements.length > 0, 'the plan travels');
 const copy = copyHinterlandWire(wire);
 assert.notEqual(copy.levels[0].heights.buffer, wire.levels[0].heights.buffer, 'a kept copy owns its buffers');
-assert.equal(wireTrees(wire).length * 8, wire.trees.length);
+assert.equal(wireTrees(wire).length * 9, wire.trees.length);
 const pyramid = wirePyramid(wire);
 const atlas = packHinterlandHeights(pyramid.levels);
 for (let li = 0; li < pyramid.levels.length; li++) {
@@ -118,6 +118,18 @@ const built = outland?.getObjectByName('hinterland-buildings');
 assert.ok(built && outland.getObjectByName('hinterland-trees-near') && outland.getObjectByName('hinterland-trees-far'), 'buildings, near and far trees');
 const ostats = outland.userData.hinterlandOutland;
 assert.ok(ostats.buildingTris > 4000 && ostats.nearTrees > 500 && ostats.farTrees > 200, `the outland draws (${JSON.stringify(ostats)})`);
+// the woods' own trees (the impostors' set): along the edges and through the woods inside 1.75 km, on the ground under the canopy
+assert.ok(ostats.woodsTrees > 500, `the polders' woods stand as trees near the line (${ostats.woodsTrees})`);
+{
+  let off = 0, n = 0;
+  for (let i = 0; i < wire.trees.length; i += 9) {
+    const y = wire.trees[i + 8];
+    if (!Number.isFinite(y)) continue;
+    n++;
+    if (y > samplePyramid(pyramid, wire.trees[i], wire.trees[i + 1]) + 0.5) off++;
+  }
+  assert.ok(n === wire.trees.length / 9 && off === 0, `every tree stands on the land under the canopy (${off} of ${n} above it)`);
+}
 assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 260000, 'the outland stays inside its triangle budget');
 {
   const pos = built.geometry.getAttribute('position');
@@ -138,7 +150,7 @@ assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 26000
     const x = -S.halfM + i * S.texelM, z = -S.halfM + j * S.texelM;
     if (Math.max(Math.abs(x), Math.abs(z)) < 700) continue;
     woodsTexels++;
-    if (samplePyramid(pyramid, x, z) > 10) raised++;
+    if (samplePyramid(pyramid, x, z) > 6) raised++;
   }
   assert.ok(woodsTexels > 20 && raised / woodsTexels > 0.8, `the polders' woods stand as a canopy (${raised}/${woodsTexels})`);
 }

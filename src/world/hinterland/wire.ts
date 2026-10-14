@@ -7,9 +7,11 @@ import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
 import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
 
-export const HINTERLAND_TREE_STRIDE = 8; // x, z, height, crown, tone, leaf, species index, form index
+export const HINTERLAND_TREE_STRIDE = 9; // x, z, height, crown, tone, leaf, species index, form index, ground height
 export const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
 export const HINTERLAND_FORMS: readonly HinterlandTree['form'][] = Object.freeze(['columnar', 'broad', 'pollard', 'conifer']);
+/** A tree with the drawn land's height under it before the woods' canopy rose (the worker's list). */
+export type HinterlandGroundedTree = HinterlandTree & { y: number; woods?: boolean };
 
 export interface HinterlandWire {
   mapId: string;
@@ -37,14 +39,17 @@ export interface HinterlandWire {
 /** Pack a build (the worker's side). */
 export function packHinterlandPlan(
   build: HinterlandBuild, surface: HinterlandWire['surface'] = null, outland: HinterlandOutlandGeometry | null = null,
+  allTrees: readonly HinterlandGroundedTree[] | null = null,
 ): { wire: HinterlandWire; transfer: ArrayBuffer[] } {
   const { plan, pyramid, spec } = build;
   const species: string[] = [];
-  const trees = new Float32Array(plan.trees.length * HINTERLAND_TREE_STRIDE);
-  plan.trees.forEach((t, i) => {
+  // (the plan's trees, or the worker's list: the plan's and the woods' with the ground each stands on)
+  const list: readonly (HinterlandTree & { y?: number })[] = allTrees ?? plan.trees;
+  const trees = new Float32Array(list.length * HINTERLAND_TREE_STRIDE);
+  list.forEach((t, i) => {
     let s = species.indexOf(t.species);
     if (s < 0) { s = species.length; species.push(t.species); }
-    trees.set([t.x, t.z, t.heightM, t.crownM, t.tone, t.leaf, s, HINTERLAND_FORMS.indexOf(t.form)], i * HINTERLAND_TREE_STRIDE);
+    trees.set([t.x, t.z, t.heightM, t.crownM, t.tone, t.leaf, s, HINTERLAND_FORMS.indexOf(t.form), t.y ?? NaN], i * HINTERLAND_TREE_STRIDE);
   });
   const buildingKinds: string[] = [];
   const buildings = new Float32Array(plan.buildings.length * HINTERLAND_BUILDING_STRIDE);

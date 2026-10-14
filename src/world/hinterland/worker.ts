@@ -8,9 +8,10 @@ import { worldBuildConfig } from '../worldBuildConfig.ts';
 import { buildHinterland } from './pipeline.ts';
 import { withSelectedHinterland } from './select.ts';
 import { resolveHinterlandSpec } from './spec.ts';
-import { packHinterlandPlan, type HinterlandWire } from './wire.ts';
-import { bakeHinterlandSurface, raiseHinterlandCanopy } from './surface.ts';
-import { buildHinterlandOutlandGeometry } from './outlandGeometry.ts';
+import { packHinterlandPlan, type HinterlandGroundedTree, type HinterlandWire } from './wire.ts';
+import { bakeHinterlandSurface, plantHinterlandWoods, raiseHinterlandCanopy } from './surface.ts';
+import { buildHinterlandOutlandGeometry, HINTERLAND_NEAR_TREE_M } from './outlandGeometry.ts';
+import { samplePyramid } from './pyramid.ts';
 
 export interface HinterlandRequest {
   mapId: string;
@@ -36,14 +37,19 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   const t0 = performance.now();
   const woods: Uint8Array[] = [];
   const surface = bakeHinterlandSurface(build.field, build.pyramid.levels, { woodsOut: woods, bases: build.bases });
-  // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes)
-  raiseHinterlandCanopy(build.pyramid.levels, woods, spec.region.vegetation.canopyM, 1337);
+  // the trees on the land before the woods' canopy rises: the plan's, and the woods' own where impostors can draw them
+  const groundAt = (x: number, z: number): number => samplePyramid(build.pyramid, x, z);
+  const trees: HinterlandGroundedTree[] = build.plan.trees.map((t) => ({ ...t, y: groundAt(t.x, t.z) }));
+  if (request.tier !== 'mobile') trees.push(...plantHinterlandWoods(build.field, build.pyramid.levels, woods, groundAt, { withinM: HINTERLAND_NEAR_TREE_M }));
+  // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes; under
+  // the woods' own trees it is their under-storey)
+  raiseHinterlandCanopy(build.pyramid.levels, woods, spec.region.vegetation.canopyM, 1337, { treesWithinM: request.tier !== 'mobile' ? HINTERLAND_NEAR_TREE_M : 0 });
   build.ms.surface = performance.now() - t0;
   // the outland's buildings, verticals and trees on the drawn land (the page only wraps the arrays)
-  const outland = buildHinterlandOutlandGeometry(build.plan, build.pyramid, spec.kit);
+  const outland = buildHinterlandOutlandGeometry(build.plan, build.pyramid, spec.kit, trees);
   build.ms.outland = outland.stats.ms;
   build.ms.total += build.ms.surface + build.ms.outland;
-  return packHinterlandPlan(build, surface, outland);
+  return packHinterlandPlan(build, surface, outland, trees);
 }
 
 declare const self: {
