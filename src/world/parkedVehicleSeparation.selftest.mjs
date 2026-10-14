@@ -133,6 +133,13 @@ function hull(points) {
   for (const q of p.reverse()) { while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), q) <= 0) upper.pop(); upper.push(q); }
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
+/** A packed primitive's plan corners: after a 'w''s vertical extent, after a 'p''s extent, origin and planes (the drawn
+ * tops of physics stream F3/F2, 2026-10-13: y0, y1, ox, oz, k, k plane triples, then the corners). */
+function plan(shape) {
+  if (shape[0] === 'w') return shape.slice(3);
+  if (shape[0] === 'p') return shape.slice(6 + 3 * shape[5]);
+  return shape.slice(1);
+}
 function shapePoints(shape) {
   if (!shape) return [];
   if (shape[0] === 'm') return shape.slice(1).flatMap(shapePoints);
@@ -140,7 +147,7 @@ function shapePoints(shape) {
     const [, cx, cz, hw, hl, yaw] = shape, s = Math.sin(yaw), c = Math.cos(yaw);
     return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [cx + u * hw * c + v * hl * s, cz - u * hw * s + v * hl * c]);
   }
-  const numbers = shape[0] === 'w' ? shape.slice(3) : shape.slice(1);
+  const numbers = plan(shape);
   const out = [];
   for (let i = 0; i + 1 < numbers.length; i += 2) out.push([numbers[i], numbers[i + 1]]);
   return out;
@@ -182,7 +189,7 @@ function decodeShape(s) {
   if (s[0] === 'm') return { kind: 'compound', cx: 0, cz: 0, parts: s.slice(1).map(decodeShape) };
   if (s[0] === 'o') return { kind: 'obb', cx: s[1], cz: s[2], hw: s[3], hl: s[4], yaw: s[5] };
   if (s[0] === 'c') return { kind: 'circle', cx: s[1], cz: s[2], r: s[3] };
-  return { kind: 'convex', cx: 0, cz: 0, points: s[0] === 'w' ? s.slice(3) : s.slice(1) };
+  return { kind: 'convex', cx: 0, cz: 0, points: plan(s) };
 }
 // 2026-10-08 (the map-vehicles lane's placement audit over the merge): the parked vehicles too stand clear of every
 // other obstacle — the seating pass takes them after the lampposts, the sandbags, the hulks, the rubble and the kerbs
