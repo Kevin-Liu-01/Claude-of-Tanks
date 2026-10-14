@@ -159,7 +159,7 @@ const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 /** Pooled kinds whose shell records are the slabs of their own geometry (the hitbox lane, 2026-10-07). */
 export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall']);
 import {
-  appendStructureCollisionBand, applyStructureCollisionBand,
+  appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
   deriveRuntimeStructureContactBand,
 } from './structureCollision.ts';
@@ -5442,7 +5442,7 @@ ${snowCap ? `
       for (const geometries of Object.values(packet.buckets)) for (const geometry of geometries) geometry.applyMatrix4(transform);
       [packet.profile.contact, ...packet.profile.shell].forEach((band, i) => {
         const record = packet.records[i];
-        record.min[1] = y + band.minY; record.max[1] = y + band.maxY;
+        record.min[1] = y + band.minY; record.max[1] = y + (band.groundMaxY ?? band.maxY);
         applyStructureCollisionBand(record, band, target.x, target.z, source.rot, y);
       });
       Object.assign(packet.feature, { x: target.x, z: target.z });
@@ -11462,6 +11462,9 @@ ${snowCap ? `
     if (entry.feature) { placement.x = entry.feature.x; placement.z = entry.feature.z; placement.yaw = entry.feature.rot; }
     placement.y = entry.contact.min[1] - entry.contactMinY;
   }
+  // (physics stream F2) the buildings' decks join their movement records now the world is laid out: every placement above
+  // read the ground band alone, as before decks existed (structureCollision.ts mergeStructureDecks)
+  mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,

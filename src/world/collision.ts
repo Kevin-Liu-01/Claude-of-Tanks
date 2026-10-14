@@ -422,6 +422,9 @@ export interface CollisionRecord {
   min: Bounds3;
   max: Bounds3;
   shape2?: CollisionShape;
+  /** A building's decks held apart while the world is laid out (world/structureCollision.ts applyStructureCollisionBand),
+   * joined to its shape by mergeStructureDecks when the props are built: placement reads the ground band alone. */
+  deckParts?: SimpleCollisionShape[];
   crushable?: boolean;
   crushMin?: number;
   crushKeep?: number;

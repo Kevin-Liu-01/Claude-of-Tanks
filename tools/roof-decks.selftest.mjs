@@ -10,7 +10,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import {
-  appendStructureCollisionBand, certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile,
+  appendStructureCollisionBand, certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile, mergeStructureDecks,
 } from '../src/world/structureCollision.ts';
 import { collisionPartIsDeck, collisionPartTopAt } from '../src/world/collision.ts';
 
@@ -44,6 +44,11 @@ const contact = profile.contact;
 assert.ok(contact.decks >= 1, `the roof rides the contact band as a deck (${contact.decks})`);
 const record = appendStructureCollisionBand([], contact, 0, 0, 30, 0);
 record.kind = 'structure';
+// laid out on its ground band alone (placement reads that), its decks held apart until the props are built
+assert.ok(record.shape2.parts.every((part) => !part.tp) && record.deckParts?.length === contact.decks, 'the decks wait apart while the world is laid out');
+assert.ok(record.max[1] < 4.5, `the record stands to its walls while laid out (${record.max[1].toFixed(2)} m)`);
+assert.equal(mergeStructureDecks([record]), 1, 'and join it when the props are built');
+assert.ok(!record.deckParts && record.max[1] > 6.4, `its top raised to the ridge (${record.max[1].toFixed(2)} m)`);
 const parts = record.shape2.parts;
 const decks = parts.filter((part) => collisionPartIsDeck(record, part));
 assert.equal(decks.length, contact.decks, 'every deck part is a deck to the push and the routes');

@@ -94,6 +94,8 @@ export interface StructureCollisionRuntimeBand {
   parts: SimpleCollisionShape[];
   /** The ground-contact band's trailing deck parts (structureDecks): roofs and upper tops a hull stands on. */
   decks?: number;
+  /** The band's top without its decks (what a record laid out before the decks join it stands to). */
+  groundMaxY?: number;
 }
 
 interface StructureCollisionBand
@@ -1318,6 +1320,7 @@ function addDecks(contact: StructureCollisionRuntimeBand, solids: LocalSolid[]):
   const room = PART_LIMIT - contact.parts.length;
   if (room <= 0) return contact;
   const decks = structureDecks(solids, new Set(contactBandSolids(solids))).slice(0, room);
+  if (decks.length) contact.groundMaxY = contact.maxY;
   for (const deck of decks) {
     contact.parts.push(rangedShape(deck));
     contact.maxY = Math.max(contact.maxY, deck.y1);
@@ -1450,18 +1453,24 @@ function transformParts(
   });
 }
 
-/** `baseY` (the structure's ground height) lets every part keep its own world-space vertical extent. */
+/** `baseY` (the structure's ground height) lets every part keep its own world-space vertical extent. A band's decks
+ * (structureDecks) are held apart on the record (`deckParts`) until mergeStructureDecks joins them: while the props are
+ * laid out, every placement reads the ground band as it did before decks existed. */
 export function applyStructureCollisionBand(
   record: CollisionRecord, band: StructureCollisionRuntimeBand,
   x: number, z: number, yaw: number, baseY?: number,
 ) {
-  setCompoundShape(record, transformParts(band.parts, x, z, yaw, baseY));
+  const decks = band.decks ?? 0;
+  setCompoundShape(record, transformParts(decks ? band.parts.slice(0, band.parts.length - decks) : band.parts, x, z, yaw, baseY));
+  if (decks && baseY !== undefined) record.deckParts = transformParts(band.parts.slice(band.parts.length - decks), x, z, yaw, baseY);
+  else delete record.deckParts;
   return record;
 }
 
 /**
  * Add a band's parts to a record that already carries a compound (a consumer with a fixed record allocation packs
- * surplus bands into its last record; per-part vertical extents keep every strip at its own height).
+ * surplus bands into its last record; per-part vertical extents keep every strip at its own height). Its decks are held
+ * apart, as applyStructureCollisionBand holds them.
  */
 export function mergeStructureCollisionBand(
   record: CollisionRecord, band: StructureCollisionRuntimeBand,
@@ -1470,12 +1479,42 @@ export function mergeStructureCollisionBand(
   const existing = record.shape2
     ? record.shape2.kind === 'compound' ? record.shape2.parts : [record.shape2]
     : [];
-  const merged = [...existing, ...transformParts(band.parts, x, z, yaw, baseY)];
+  const decks = band.decks ?? 0;
+  const merged = [...existing, ...transformParts(decks ? band.parts.slice(0, band.parts.length - decks) : band.parts, x, z, yaw, baseY)];
+  if (decks) record.deckParts = [...(record.deckParts ?? []), ...transformParts(band.parts.slice(band.parts.length - decks), x, z, yaw, baseY)];
   const priorMin = record.min[1], priorMax = record.max[1];
   setCompoundShape(record, merged);
   record.min[1] = Math.min(priorMin, baseY + band.minY);
-  record.max[1] = Math.max(priorMax, baseY + band.maxY);
+  record.max[1] = Math.max(priorMax, baseY + (band.groundMaxY ?? band.maxY));
   return record;
+}
+
+/**
+ * Join every record's held decks to its shape (physics stream F2): the props' last step, once the world is laid out —
+ * a building's movement record then carries its roofs as floor-only parts (world/collision.ts collisionPartIsDeck), its
+ * top raised to theirs. Records with none are left as they are. Colliders never keep decks (their shells are the bands').
+ */
+export function mergeStructureDecks(obstacles: readonly CollisionRecord[], colliders: readonly CollisionRecord[] = []): number {
+  let merged = 0;
+  for (const record of obstacles) {
+    const decks = record.deckParts;
+    if (!decks) continue;
+    delete record.deckParts;
+    if (!decks.length) continue;
+    const shape = record.shape2;
+    const parts = shape ? (shape.kind === 'compound' ? shape.parts : [shape]) : [];
+    const minY = record.min[1];
+    let maxY = record.max[1];
+    for (const deck of decks) if (deck.y1 !== undefined && deck.y1 > maxY) maxY = deck.y1;
+    // (a ground band of one part carries no extent of its own: it takes the record's, as it did on its own)
+    const ground = parts.map((part) => (part.y0 === undefined && part.y1 === undefined ? { ...part, y0: minY, y1: record.max[1] } : part));
+    setCompoundShape(record, [...ground, ...decks]);
+    record.min[1] = minY;
+    record.max[1] = maxY;
+    merged++;
+  }
+  for (const record of colliders) delete record.deckParts;
+  return merged;
 }
 
 export function appendStructureCollisionBand(
@@ -1484,7 +1523,7 @@ export function appendStructureCollisionBand(
 ) {
   const record: CollisionRecord = {
     min: [x, baseY + band.minY, z],
-    max: [x, baseY + band.maxY, z],
+    max: [x, baseY + (band.groundMaxY ?? band.maxY), z],
   };
   applyStructureCollisionBand(record, band, x, z, yaw, baseY);
   list.push(record);
