@@ -33,6 +33,7 @@
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
 import { LOCAL_LIGHT_GLSL, localLightUniforms } from './localLights.ts';
+import { refreshWorldWind, worldWind } from './worldWind.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Atlas layout (the bake's ledger; volumeMedia.selftest.mjs holds the two in step)
@@ -488,11 +489,6 @@ interface SceneLightData {
   volumetricClouds?: { currentPreset?: { windDirRad?: number; windSpeed?: number } | null } | null;
 }
 
-/** Ground wind from the cloud layer's wind aloft (m/s); the fixed fallback leans like main's columns did. */
-const FALLBACK_WIND: readonly [number, number] = [1.6, 0.55];
-function groundWindFromAloft(speedAloft: number): number {
-  return Math.min(4.5, Math.max(1.2, speedAloft * 0.4));
-}
 
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
 // skySat 0.22 -> 0.12 (wave 273: thinning dust turned bluish)
@@ -629,7 +625,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const mapA = { value: placeholder() as THREE.Texture };
   const mapB = { value: placeholder() as THREE.Texture };
   const uTime = { value: 0 };
-  const uWind = { value: new THREE.Vector3(FALLBACK_WIND[0], 0, FALLBACK_WIND[1]) };
+  // (EF.12) the presentation's one surface wind (worldWind.ts): the scene's, else the clouds' brought down, else a lean
+  const uWind = { value: new THREE.Vector3(worldWind.x, 0, worldWind.z) };
   const uSunDir = { value: new THREE.Vector3(0.527, 0.574, -0.627).normalize() };
   const uSunCol = { value: new THREE.Vector3(1.4, 1.35, 1.25) };
   const uSkyCol = { value: new THREE.Vector3(0.3, 0.32, 0.35) };
@@ -818,14 +815,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uGrade2.value.y = 1 - k * k * (3 - 2 * k); }
     uDetailK.value = tune.detail;
     uWarpK.value = tune.warp;
-    const surfaceWind = ud?.surfaceWind;
-    const preset = ud?.volumetricClouds?.currentPreset;
-    if (surfaceWind && Number.isFinite(surfaceWind.x) && Number.isFinite(surfaceWind.z)) {
-      uWind.value.set(surfaceWind.x, 0, surfaceWind.z);
-    } else if (preset && Number.isFinite(preset.windDirRad) && Number.isFinite(preset.windSpeed)) {
-      const speed = groundWindFromAloft(preset.windSpeed as number);
-      uWind.value.set(Math.cos(preset.windDirRad as number) * speed, 0, Math.sin(preset.windDirRad as number) * speed);
-    }
+    refreshWorldWind(ud);
+    uWind.value.set(worldWind.x, 0, worldWind.z);
   }
 
   function update(camera: THREE.Camera | null | undefined): void {

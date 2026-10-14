@@ -43,6 +43,8 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } 
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { battleLightTintFromRig } from './sceneLightTint.ts';
 import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights } from './localLights.ts';
+import { refreshWorldWind, worldWind } from './worldWind.ts';
+import { mapTintHex, setMapGroundAlbedo } from './mapPalette.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
@@ -711,7 +713,11 @@ const COLUMN_TICK_S = 0.05;
 // Wind shear on the column (unit XZ dir * strength): higher puffs get more
 // lateral velocity so the column visibly bends downwind instead of rising as
 // a laser-straight stack. Matches the world wind's general drift direction.
-const COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
+// (EF.12, MASTER 94: one world wind) the pooled smoke's lean and drift: the presentation's surface wind (worldWind.ts) at
+// the columns' own share of its speed (0.515: the fixed 1.6/0.55 lean gives the 0.82/0.28 the columns always had), set
+// every frame in update()
+const COLUMN_WIND_SHARE = 0.515;
+let COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
 // PERF: cap concurrent smoke-column emitters. Late battle every wreck runs a
 // 30 s column at dozens of puffs/s; 5+ simultaneous columns is pure
 // fill-rate pile-up at retina resolutions (measured 25-28 ms frames in
@@ -4953,18 +4959,19 @@ function* createFxSteps(
   }
 
   function updateDryDustColors(groundType: string): void {
+    // (EF.12) the dry table in the map's own ground colour (mapPalette.ts; the table's own with no light model)
     if (groundType === 'hard') {
-      dustColor0 = 0xa79d8c;
-      dustColor1 = 0x8f887b;
+      dustColor0 = mapTintHex(0xa79d8c);
+      dustColor1 = mapTintHex(0x8f887b);
       return;
     }
     if (groundType === 'soft') {
-      dustColor0 = 0x6d675a;
-      dustColor1 = 0x5c574c;
+      dustColor0 = mapTintHex(0x6d675a);
+      dustColor1 = mapTintHex(0x5c574c);
       return;
     }
-    dustColor0 = 0xa8a189;
-    dustColor1 = 0x8e8a6c;
+    dustColor0 = mapTintHex(0xa8a189);
+    dustColor1 = mapTintHex(0x8e8a6c);
   }
 
   function emitTrackKick(
@@ -5784,6 +5791,11 @@ function* createFxSteps(
       resolvePendingHe();
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
       if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
+      // (EF.12) one world wind: the columns lean and drift with the media and the clouds over them
+      refreshWorldWind((engineCtx.scene?.userData ?? null) as Parameters<typeof refreshWorldWind>[0]);
+      COLUMN_WIND_X = worldWind.x * COLUMN_WIND_SHARE; COLUMN_WIND_Z = worldWind.z * COLUMN_WIND_SHARE;
+      // (EF.12) the map's ground colour for the earth dust (the grounded light model's ground albedo)
+      setMapGroundAlbedo((engineCtx.scene?.userData?.lightModel as { groundAlbedo?: ArrayLike<number> } | undefined)?.groundAlbedo);
       // (EF.09, MASTER 18) the unlit marks and bodies take the same light: the hull scars, the track prints and the wake's
       // foam, and a missile's painted body (its motor's flare stays emissive)
       {

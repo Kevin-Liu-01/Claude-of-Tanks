@@ -89,7 +89,7 @@ assert.equal(battleLightTintFromRig(lit, new THREE.Color()).getHex(), battleLigh
 const { readFileSync } = await import('node:fs');
 const effects = readFileSync(new URL('./effects.ts', import.meta.url), 'utf8');
 assert.match(effects, /particles\.setLightTintShading\(true\);/, 'the battle pools take the scene tint');
-assert.match(effects, /if \(!cinematicTintOwner\) battleLightTintFromRig\(engineCtx\.scene \?\? null, particles\.sharing\.uLightTint\.value\);(?:\s*\/\/[^\n]*)*\s*\{[^{}]*\}\s*particles\.update\(dt\);/,
+assert.match(effects, /if \(!cinematicTintOwner\) battleLightTintFromRig\(engineCtx\.scene \?\? null, particles\.sharing\.uLightTint\.value\);[\s\S]{0,1600}?particles\.update\(dt\);/,
   "written every frame before the pools draw, unless the Studio's cinematic quality has taken it");
 assert.match(effects, /setLightTintShading: \(on\) => \{ cinematicTintOwner = on; \}/, 'the cinematic port hands the tint over, never the shading off');
 const cine = readFileSync(new URL('./cinematicFx.ts', import.meta.url), 'utf8');

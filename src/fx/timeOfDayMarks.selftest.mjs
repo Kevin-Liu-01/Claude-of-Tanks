@@ -12,7 +12,7 @@ assert.match(src, /const printUniforms = \{ uTime: \{ value: 0 \}, uMap: \{ valu
 assert.match(src, /gl_FragColor = vec4\(color \* uTint, a\);/, 'the print and wake colour is tinted');
 const frame = src.slice(src.indexOf('battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);'));
 assert.ok(frame.length > 0, 'the battle tint is measured every frame');
-const head = frame.slice(0, 900);
+const head = frame.slice(0, 1600);
 assert.match(head, /printUniforms\.uTint\.value\.copy\(tint\);/, 'every frame the prints take it');
 assert.match(head, /impactDecals\.material\.color\.copy\(tint\);/, 'the hull scars take it');
 assert.match(head, /atgmBodyMat\.color\.copy\(tint\);/, "a missile's body takes it");

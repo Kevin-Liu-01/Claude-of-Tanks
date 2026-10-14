@@ -27,8 +27,10 @@ import type { MunitionClass } from '../sim/destructionEvents.ts';
 import type { VolumePuff } from './volumeMedia.ts';
 import type { ChunkPiece, ChunkShape } from './debrisChunks.ts';
 import {
-  BLAST_RESIDUE, PROPELLANT, SMOKE_AGED, SOOT, SURFACE_LOOKS, UNDER_SNOW_SOIL, type SurfaceKind,
+  BLAST_RESIDUE, PROPELLANT, SMOKE_AGED, SOOT, UNDER_SNOW_SOIL, type SurfaceKind,
 } from './surfaceLooks.ts';
+// (EF.12) the earth looks in the map's own ground colour
+import { surfaceLook } from './mapPalette.ts';
 
 type Rgb = readonly [number, number, number];
 const TAU = Math.PI * 2;
@@ -220,7 +222,7 @@ interface GroundBurstInput {
  */
 export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   if (I.surface === 'water') { waterBurst(C, I); return; }
-  const L = SURFACE_LOOKS[I.surface];
+  const L = surfaceLook(I.surface);
   const R = C.rand;
   const m = C.m;
   const bo = I.birthOffset ?? 0;
@@ -623,7 +625,7 @@ interface StrikeInput {
 }
 
 export function kineticStrike(C: BlastContext, I: StrikeInput): void {
-  const L = SURFACE_LOOKS[I.surface];
+  const L = surfaceLook(I.surface);
   const R = C.rand;
   const m = C.m;
   const bo = I.birthOffset ?? 0;
@@ -676,7 +678,7 @@ export function kineticStrike(C: BlastContext, I: StrikeInput): void {
 }
 
 function splash(C: BlastContext, x: number, y: number, z: number, s: number, bo: number): void {
-  const L = SURFACE_LOOKS.water;
+  const L = surfaceLook('water');
   const R = C.rand;
   const m = C.m;
   const dk = C.distBoost(x, y, z);
@@ -880,7 +882,7 @@ export function fragmentStrike(C: BlastContext, x: number, y: number, z: number,
 // ---------------------------------------------------------------------------------------------------------------
 
 export function waterBurst(C: BlastContext, I: GroundBurstInput): void {
-  const L = SURFACE_LOOKS.water;
+  const L = surfaceLook('water');
   const R = C.rand;
   const m = C.m;
   const bo = I.birthOffset ?? 0;
@@ -997,7 +999,7 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
   }
   // ground dust: the blast wave lifts the surface under and ahead of the muzzle
   if (I.surface) {
-    const L = SURFACE_LOOKS[I.surface];
+    const L = surfaceLook(I.surface);
     const gy = C.groundY(I.x, I.z);
     const hAbove = I.y - gy;
     const k = L.blastDust * Math.max(0, 1 - Math.max(0, hAbove - 1.6) / 2.4) * s;
@@ -1059,7 +1061,7 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
  */
 export function trackSkirt(C: BlastContext, x: number, gy: number, z: number, dx: number, dz: number, intensity: number,
   surface: SurfaceKind, k: number, bo: number): void {
-  const L = SURFACE_LOOKS[surface];
+  const L = surfaceLook(surface);
   const R = C.rand;
   const m = C.m;
   const dk = C.distBoost(x, gy, z);
@@ -1083,7 +1085,7 @@ export function trackSkirt(C: BlastContext, x: number, gy: number, z: number, dx
 /** A low dust surge driven out along the ground from under a blast (a hull cooking off, a wall coming down). */
 export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: number, surface: SurfaceKind,
   bo: number): void {
-  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const L = surfaceLook(surface === 'water' ? 'soil' : surface);
   const R = C.rand;
   const m = C.m;
   const sq = Math.sqrt(s);
@@ -1114,7 +1116,7 @@ export function dustSurge(C: BlastContext, x: number, y: number, z: number, s: n
  */
 export function killDust(C: BlastContext, x: number, y: number, z: number, s: number, surface: SurfaceKind,
   bo: number): void {
-  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const L = surfaceLook(surface === 'water' ? 'soil' : surface);
   const R = C.rand;
   const m = C.m;
   const sq = Math.sqrt(s);
@@ -1336,7 +1338,7 @@ export function smolderPuff(C: BlastContext, x: number, y: number, z: number, k:
  */
 export function craterEjecta(C: BlastContext, x: number, z: number, radiusM: number, surface: SurfaceKind,
   heightAt: (x: number, z: number) => number, bo: number): void {
-  const L = SURFACE_LOOKS[surface === 'water' ? 'soil' : surface];
+  const L = surfaceLook(surface === 'water' ? 'soil' : surface);
   const R = C.rand;
   const k = C.k;
   const y0 = heightAt(x, z) + 0.2;
