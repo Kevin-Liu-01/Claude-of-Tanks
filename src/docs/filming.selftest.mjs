@@ -87,9 +87,14 @@ assert.match(topicsSource, /slug === 'filming'\) \{\n\s+void import\('\.\/filmin
 
 // The copy's numbers, held to the code that makes them true.
 const text = [filming.lede, ...filming.sections.flat()].join(' ');
+// (the plan holds the site's fifty, 1-50, and the fleet's takes, 60 on, one for each vehicle that leads none of the
+// fifty: the copy's two counts come from it)
 const motionPlan = JSON.parse(read('tools/media-r5/site50-motion.json'));
-assert.equal(Object.keys(motionPlan).length, 50, 'the motion search staged every take (s40 too since the 2.0 maps, 2c831bd28)');
-assert.match(text, /The motion search staged all 50 takes\./);
+const planned = Object.keys(motionPlan).map(Number);
+const siteTakes = planned.filter((n) => n <= 50).length, fleetTakes = planned.filter((n) => n >= 60).length;
+assert.equal(siteTakes, 50, 'the motion search staged every site take (s40 too since the 2.0 maps, 2c831bd28)');
+assert.equal(siteTakes + fleetTakes, planned.length, 'the plan holds the site takes and the fleet takes (60 on), nothing else');
+assert.match(text, new RegExp(`The motion search staged all ${siteTakes} site takes and all ${fleetTakes} fleet takes\\.`));
 const setups = read('tools/media-r5/setups.mjs');
 const film = /scene\.film = m\.film \?\? s\.film \?\? \{ fps: (\d+), shutterDeg: (\d+), samples: (\d+), maxSamples: (\d+) \}/.exec(setups);
 assert.ok(film, 'the site fifty\'s film block in setups.mjs');

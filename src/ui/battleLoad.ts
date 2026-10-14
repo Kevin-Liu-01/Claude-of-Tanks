@@ -17,6 +17,10 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
+import { isImagePreloaded, preloadImage } from './imagePreload.ts';
+import { mapCardFor } from './mapBackdrop.ts';
+import { MAP_THUMBS } from './mapThumbs.ts';
+import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -63,6 +67,30 @@ function translateStageLabel(label: string): string {
   return key ? t(key) : label;
 }
 
+/** A battlefield's gradient from its art's own band colours (tools/map-lqip.mjs), the mean of all maps without one. */
+function mapArtGradient(mapId: string | undefined): string {
+  const tones = (mapId && Object.hasOwn(MAP_ART_TONES, mapId) ? MAP_ART_TONES[mapId] : null) ?? MAP_ART_TONE_DEFAULT;
+  return `linear-gradient(180deg,${tones[0]},${tones[1]} 48%,${tones[2]})`;
+}
+
+// 2026-10-13 (the perf stream): the battlefields' blurred 48x27 placeholders (tools/map-lqip.mjs, ~15 kB of data URLs)
+// live in a lazy chunk the Garage loads in idle time, so the loading screen's first frame shows the map's own picture
+// without a request while the boot bundle stays as it was.
+let mapLqip: Readonly<Record<string, string>> | null = null;
+let mapLqipLoad: Promise<void> | null = null;
+/** Load the placeholder chunk (once; a failed fetch may be retried by a later call). */
+export function primeMapLqip(): Promise<void> {
+  mapLqipLoad ??= import('./mapLqip.ts').then((module) => { mapLqip = module.MAP_LQIP; }, () => { mapLqipLoad = null; });
+  return mapLqipLoad;
+}
+/** The placeholder chunk in the browser's idle time (a short timeout where requestIdleCallback is missing). */
+export function primeMapLqipWhenIdle(): void {
+  if (mapLqip || mapLqipLoad) return;
+  const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+  if (typeof idle === 'function') idle(() => { void primeMapLqip(); }, { timeout: 4000 });
+  else setTimeout(() => { void primeMapLqip(); }, 1500);
+}
+
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
   --bl-edge:clamp(18px,4vw,64px);
@@ -80,18 +108,15 @@ const CSS = `
 .cot-bl .hero{position:absolute;inset:0;z-index:-1;overflow:hidden;}
 .cot-bl .hero .art{position:absolute;inset:-4%;background-size:cover;
   background-position:center;filter:saturate(.82) contrast(1.08) brightness(.7);
-  transform:scale(1.04);}
-.cot-bl .hero .art.none{background:linear-gradient(160deg,#1e2a1c,#0b1017 70%);}
-.cot-bl .hero .art.desert{background-image:linear-gradient(160deg,#6d5330,#241a10 72%);}
-.cot-bl .hero .art.winter{background-image:linear-gradient(160deg,#5d6b78,#141a20 72%);}
-.cot-bl .hero .art.urban{background-image:linear-gradient(160deg,#4b4a45,#14161a 72%);}
-.cot-bl .hero .art.coastal,.cot-bl .hero .art.fjord{background-image:linear-gradient(160deg,#426b78,#101b22 72%);}
-.cot-bl .hero .art.autumn,.cot-bl .hero .art.badlands{background-image:linear-gradient(160deg,#80502f,#211510 72%);}
-.cot-bl .hero .art.steppe,.cot-bl .hero .art.frontier{background-image:linear-gradient(160deg,#667247,#172015 72%);}
-.cot-bl .hero .art.railyard,.cot-bl .hero .art.foundry{background-image:linear-gradient(160deg,#55514b,#151619 72%);}
-.cot-bl .hero .art.delta,.cot-bl .hero .art.monsoon{background-image:linear-gradient(160deg,#315f4d,#0e1d1a 72%);}
-.cot-bl .hero .art.alpine{background-image:linear-gradient(160deg,#7e96a6,#121a23 72%);}
-.cot-bl .hero .art.caldera{background-image:linear-gradient(160deg,#59473f,#171316 72%);}
+  transform:scale(1.04);background-image:${mapArtGradient(undefined)};}
+/* 2026-10-12/13 (the perf stream; owner: "loading into some maps still shows a black screen at first"): .art carries
+   the map's own mid-tones (its art's band colours) and, once the lazy placeholder chunk is resident, the map's blurred
+   48x27 picture from the first frame; the art is decoded before it is shown over it, so an uncached 1.5 MB hero never
+   leaves the screen near-black while it downloads; the picker thumb and the 1280 px card stand in until it is ready. */
+.cot-bl .hero .art-img{position:absolute;inset:-4%;background-size:cover;background-position:center;
+  filter:saturate(.82) contrast(1.08) brightness(.7);transform:scale(1.04);opacity:0;
+  transition:opacity 160ms var(--cot-ease-out);}
+.cot-bl .hero .art-img.ready{opacity:1;}
 .cot-bl .hero .scrim{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(3,6,9,.2),rgba(3,6,9,.62) 38%,rgba(3,6,9,.94) 100%);}
 .cot-bl .hero .vig{position:absolute;inset:0;
@@ -209,11 +234,18 @@ interface BattleLoadInfo {
   readonly enemies: readonly BattleLoadRosterRow[];
 }
 
+/** The battlefield a pending entry is about to load, known before its loading owner is imported. */
+export interface PendingBattlefield {
+  readonly mapId: string;
+  readonly mapName?: string;
+  readonly thumb?: string;
+}
+
 export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
   readonly covering: boolean;
-  showPending(): void;
+  showPending(map?: string | PendingBattlefield | null): void;
   show(info: BattleLoadInfo): void;
   rosters(
     allies: readonly BattleLoadRosterRow[],
@@ -250,7 +282,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.setAttribute('role', 'status');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
-    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="scrim"></div><div class="vig"></div></div>` +
+    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div><div class="vig"></div></div>` +
     `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
@@ -267,6 +299,42 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   document.body.appendChild(root);
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
+  const artImgEl = requiredElement<HTMLDivElement>(root, '.art-img');
+  // the map art in flight: a later show() supersedes it; a sharper image replaces a softer one, never the reverse
+  let artToken = 0;
+  let artRank = 0;
+  const showArt = (url: string, rank: number): void => {
+    if (rank <= artRank) return;
+    artRank = rank;
+    artImgEl.style.backgroundImage = `url(${url})`;
+    artImgEl.classList.add('ready');
+  };
+  /** The map's gradient and blurred placeholder at once, then the sharpest of its picker thumb (cached by the Garage's
+   * battlefield list), its 1280 px card and its hero that has decoded, each replacing the softer one. */
+  const stageArt = (thumb: string | undefined, biome: string | undefined): void => {
+    const token = ++artToken;
+    artRank = 0;
+    artEl.className = `art ${biome || 'none'}`;
+    const placeholder = biome && mapLqip && Object.hasOwn(mapLqip, biome) ? mapLqip[biome] : '';
+    const gradient = mapArtGradient(biome);
+    artEl.style.backgroundImage = placeholder ? `url(${placeholder}),${gradient}` : gradient;
+    if (!mapLqip) void primeMapLqip();
+    artImgEl.classList.remove('ready');
+    artImgEl.style.backgroundImage = '';
+    const final = thumb || '';
+    if (!final) return;
+    const card = biome ? mapCardFor(biome) : null;
+    const pick = biome ? MAP_THUMBS[biome as keyof typeof MAP_THUMBS] ?? '' : '';
+    const steps: [string, number][] = [[final, 3]];
+    if (card && card !== final) steps.push([card, 2]);
+    if (pick && pick !== final && pick !== card) steps.push([pick, 1]);
+    for (const [url, rank] of steps) {
+      if (isImagePreloaded(url)) { showArt(url, rank); continue; }
+      void preloadImage(url, { priority: rank === 3 ? 'high' : 'auto' }).then((loaded) => {
+        if (loaded && token === artToken) showArt(loaded, rank);
+      });
+    }
+  };
   const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
   const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
@@ -330,11 +398,17 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     get visible() { return visible; },
     get covering() { return covering; },
 
-    /** Own the existing opaque surface before a cold loading-owner import. */
-    showPending() {
+    /** Own the existing opaque surface before a cold loading-owner import; a chosen battlefield's name, tones,
+     * placeholder and art are up from this first frame (2026-10-13: a slow first entry read "BATTLEFIELD" for ~1.8 s
+     * while the loading owner downloaded). */
+    showPending(map?: string | PendingBattlefield | null) {
+      const pending = typeof map === 'string' ? { mapId: map } : map ?? null;
+      const chosen: PendingBattlefield | null = pending?.mapId && pending.mapId !== 'random' ? pending : null;
       api.show({
-        mapName: '',
+        mapName: chosen?.mapName ?? '',
         mode: t('battleLoad.kicker'),
+        ...(chosen ? { biome: chosen.mapId } : {}),
+        ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         allies: [],
         enemies: [],
       });
@@ -348,8 +422,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     show(info: BattleLoadInfo) {
       nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
       if (info.mode) kickEl.textContent = info.mode;
-      artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
-      artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';
+      stageArt(info.thumb, info.biome);
       fillTeam(allyRows, allyN, allyTeam, info.allies);
       fillTeam(foeRows, foeN, foeTeam, info.enemies);
       const [h, b] = localizedTip(

@@ -253,7 +253,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
   const ids = (requestedIds ?? allIds ?? (physicalRun ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
   const restoredCounts = {cv90_x:4,cv90105_tml_x:2,cv90_mkiv_x:2,dardo:2,lrmv_lynx:2,
-    leo2_revolution_proto:2,type96b_x:2,aft10_x:2,fv510_milan_x:2,ajax_x:2,sabra_mk2_x:4,
+    leo2_revolution_proto:2,type96b_x:2,aft10_x:2,warrior_tes_h:2,ajax_x:2,sabra_mk2_x:4,
     namer_ifv:2,borsuk:4,bmp3m_dragun125_x:2,griffin50_x:4,kf41_lynx_x:2,k21_x:2,
     m1a2_x:2,m1a2_tusk_x:2,m1a2_sepv2_x:2,m1a2_sepv3_x:2,ua_m1a1_x:2,
     griffin_viper:4,spz_puma_s1_x:4,type89_x:2,amx10p:2,amx10p_25:2,marder2:2};

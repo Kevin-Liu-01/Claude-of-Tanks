@@ -13,7 +13,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Source-only Object_21 calipers, canonical SHA e568badc436980b9f2b718db9786120f
 // cc7527b7fe6465c3efa66889fa208c04. The supplied model is never loaded by this
 // native test. The roof is a thin channel, not a filled supporting wedge.
-const id = 'fv510_milan_x';
+const id = 'warrior_tes_h';
 const roofStations = [
   [-3.075,.964176], [-3.04,.983376], [-3,1.005318], [-2.95,1.032746],
   [-2.85,1.090433], [-2.77,1.135270], [-2.65,1.147665], [-2.57,1.148092],

@@ -50,11 +50,22 @@ const flight = (shot) => Array.from({ length: Math.ceil(shot[6] / 0.005) + 1 }, 
   const rest = at(shot, shot[6]);
   assert.ok(rest.x > HOUSE.x0 && rest.x < HOUSE.x1 && Math.abs(rest.y - (HOUSE.top + SMOKE_CANISTER_RADIUS_M)) < 0.02,
     `a lobbed canister rests on the roof (${rest.x.toFixed(2)}, ${rest.y.toFixed(3)})`);
-  // its cloud stands on the roof: give it a bounce group so the screen reads its rest as a surface over the ground
-  const roofShot = [...shot, shot[6], rest.x, rest.y, rest.z, 0, 0, 0];
-  const screen = { x: rest.x, y: rest.y, z: rest.z, yaw: 0, born: 0, canisters: [roofShot], banks: [0] };
-  const v = smokeVolume(screen, roofShot[6] + 4, -2, {}, ground);
+  // (2026-10-11, the fxs lane's wave 404 staging on Verdant: a canister that lands straight on a roof carries only its
+  // launch's seven numbers, and its cloud and sight block stood in the rooms under the roof) the real receipt, unbounced:
+  // its cloud stands on the roof, and its sight block with it
+  assert.equal(shot.length, 7, `it lands on the roof without a bounce (${shot.length} numbers)`);
+  const screen = { x: rest.x, y: rest.y, z: rest.z, yaw: 0, born: 0, canisters: [shot], banks: [0] };
+  const full = shot[6] + 4;
+  const v = smokeVolume(screen, full, -2, {}, ground);
   assert.ok(v.y > HOUSE.top, `the roof's cloud stands on the roof (${v.y.toFixed(2)} m), not in the rooms under it`);
+  assert.equal(smokeBlocks([screen], { x: HOUSE.x0 + 0.5, y: 2, z: rest.z }, { x: HOUSE.x1 - 0.5, y: 2, z: rest.z }, full, ground), false,
+    'a sight line through the rooms under it is clear (before: blocked, the volume stood at the ground)');
+  assert.equal(smokeBlocks([screen], { x: rest.x - 12, y: v.y, z: rest.z }, { x: rest.x + 12, y: v.y, z: rest.z }, full, ground), true,
+    'one through the cloud over the roof is blocked');
+  // a canister resting on the ground keeps its cloud on the ground (the surface reads only over half a metre up)
+  const groundShot = createSmokeCanister({ x: -6, y: 2, z: 0 }, { x: -1, y: 0.25, z: 0 }, ground, world);
+  const g = smokeVolume({ x: 0, y: 0, z: 0, yaw: 0, born: 0, canisters: [groundShot], banks: [0] }, groundShot[6] + 4, -2, {}, ground);
+  assert.ok(Math.abs(g.y - (1.4 + 4 * 0.055)) < 1e-6, `a ground bank's cloud stands on the ground (${g.y.toFixed(3)} m)`);
 }
 
 // ---- 3. a salvo fired at a house from close in ------------------------------------------------------------------------

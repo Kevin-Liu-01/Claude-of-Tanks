@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import { mulberry32 } from './particles.ts';
+import { ballisticLanding } from './ballisticLanding.ts';
 
 export type ChunkShape = 'clod' | 'stone' | 'brick' | 'splinter' | 'shard' | 'sheet';
 export const CHUNK_SHAPES: readonly ChunkShape[] = Object.freeze(['clod', 'stone', 'brick', 'splinter', 'shard', 'sheet']);
@@ -43,6 +44,7 @@ attribute vec4 aVL;   // vel.xyz, life
 attribute vec4 aAR;   // spin axis.xyz, spin rate
 attribute vec4 aSG;   // scale, groundY, drag, seed
 attribute vec4 aCH;   // albedo.rgb, heat
+attribute vec4 aLT;   // landing age (s; negative: rest at the spawn's ground, the legacy law), 0, 0, 0
 uniform float uTime;
 varying vec3 vNormalW;
 varying vec3 vAlbedo;
@@ -70,11 +72,16 @@ void main() {
     return;
   }
   float k = max( aSG.z, 1e-3 );
-  float s = ( 1.0 - exp( -k * age ) ) / k;
-  vec3 center = aPB.xyz + aVL.xyz * s + vec3( 0.0, -4.9 * age * age, 0.0 );
+  // (2026-10-12, the owner's Steinburg strips) a piece whose landing was found flies until then and lies where it met the
+  // ground (aSG.y is the ground there); without one, the legacy law: it rests at its spawn's ground height
+  float tLand = aLT.x;
+  float landing = step( 0.0, tLand );
+  float ta = landing > 0.5 ? min( age, tLand ) : age;
+  float s = ( 1.0 - exp( -k * ta ) ) / k;
+  vec3 center = aPB.xyz + aVL.xyz * s + vec3( 0.0, -4.9 * ta * ta, 0.0 );
   float rest = aSG.y + aSG.x * 0.32;
-  float grounded = step( center.y, rest );
-  center.y = max( center.y, rest );
+  float grounded = landing > 0.5 ? step( tLand, age ) : step( center.y, rest );
+  center.y = landing > 0.5 ? ( grounded > 0.5 ? rest : center.y ) : max( center.y, rest );
   // (wave 276: pieces "lie on the grass at 3 s and then simply vanish") a piece that has landed lies where it fell for
   // most of its life, then settles into the ground over the last third of it; only the last few percent shrink
   float tl = age / life;
@@ -222,7 +229,7 @@ function shapeGeometry(shape: ChunkShape, rand: () => number): THREE.BufferGeome
   }
 }
 
-const LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4, aCH: 4 } as const;
+const LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4, aCH: 4, aLT: 4 } as const;
 type AttrName = keyof typeof LAYOUT;
 const NAMES = Object.keys(LAYOUT) as AttrName[];
 
@@ -265,7 +272,7 @@ class ShapePool {
     this.mesh.visible = false;
   }
 
-  emit(p: ChunkPiece, birth: number): void {
+  emit(p: ChunkPiece, birth: number, landing = -1): void {
     const i = this.cursor;
     this.cursor = (this.cursor + 1) % this.capacity;
     if (i + 1 > this.highWater) { this.highWater = i + 1; this.mesh.geometry.instanceCount = this.highWater; }
@@ -276,6 +283,7 @@ class ShapePool {
     A.aAR[j] = p.ax; A.aAR[j + 1] = p.ay; A.aAR[j + 2] = p.az; A.aAR[j + 3] = p.spin;
     A.aSG[j] = p.scale; A.aSG[j + 1] = p.groundY; A.aSG[j + 2] = p.drag; A.aSG[j + 3] = p.seed;
     A.aCH[j] = p.r; A.aCH[j + 1] = p.g; A.aCH[j + 2] = p.b; A.aCH[j + 3] = p.heat;
+    A.aLT[j] = landing; A.aLT[j + 1] = 0; A.aLT[j + 2] = 0; A.aLT[j + 3] = 0;
     if (birth + p.life > this.liveUntil) this.liveUntil = birth + p.life;
     if (this.dirtyStart < 0) { this.dirtyStart = i; this.dirtyEnd = i + 1; }
     else if (i === this.dirtyEnd) this.dirtyEnd = i + 1;
@@ -337,7 +345,10 @@ const CAPACITY: Readonly<Record<ChunkShape, number>> = Object.freeze({
   clod: 1536, stone: 768, brick: 512, splinter: 256, shard: 256, sheet: 128,
 });
 
-export function createDebrisChunks(o: { seed: number; now: () => number; scene?: THREE.Scene | null; tier?: 'mobile' | 'desktop' }): DebrisChunks {
+export function createDebrisChunks(o: { seed: number; now: () => number; scene?: THREE.Scene | null; tier?: 'mobile' | 'desktop';
+  /** The ground as drawn (craters and heaps in it): a piece flies until it meets it and lies there (ballisticLanding);
+   *  absent, a piece rests at the ground its recipe read under its spawn. */
+  groundAt?(x: number, z: number): number }): DebrisChunks {
   const group = new THREE.Group();
   group.name = 'fx-debris-chunks';
   group.matrixAutoUpdate = false;
@@ -378,10 +389,17 @@ export function createDebrisChunks(o: { seed: number; now: () => number; scene?:
     }
   }
   let anyLive = false;
+  const _land = new Float64Array(4);
   return {
     group,
     emit(p: ChunkPiece): void {
-      pools[p.shape].emit(p, o.now() + p.birthOffset);
+      let landing = -1;
+      if (o.groundAt) {
+        // where its flight meets the ground (the rest height then the ground there, not under its spawn)
+        const tl = ballisticLanding(p.x, p.y, p.z, p.vx, p.vy, p.vz, p.drag, p.scale * 0.32, o.groundAt, _land);
+        if (Number.isFinite(tl)) { landing = tl; p.groundY = _land[1]; }
+      }
+      pools[p.shape].emit(p, o.now() + p.birthOffset, landing);
       anyLive = true;
     },
     update(): void {

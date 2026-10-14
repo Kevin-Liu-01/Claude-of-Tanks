@@ -75,13 +75,19 @@ assert.equal(smokeBlocks([screen],{x:later.x,y:later.y+9,z:later.z-10},{x:later.
 
 // Authority and visible lobes use the same destination terrain, including a
 // hillside higher or lower than the tank which fired the smoke canisters.
+// (2026-10-11: a canister's rest over half a metre above the ground is a roof
+// its cloud stands on, bounced there or not: smokeScreen.ts smokeBankBase. The
+// canisters are solved on the hillside they land on, as the match solves them.)
 for (const elevation of [-8, 8]) {
   const ground = (x,z) => elevation + z*.04;
-  const v = smokeVolume(screen,screen.born+4,-2,{},ground);
+  const hill = entity(`hill${elevation}`);
+  assert.equal(requestAuxiliary(hill,'smoke',0,ground),true);
+  const hs = hill.combat.auxiliary.smoke;
+  const v = smokeVolume(hs,hs.born+4,-2,{},ground);
   const a={x:v.x,y:v.y,z:v.z-10},b={x:v.x,y:v.y,z:v.z+10};
-  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+(4-screen.canisters[screen.banks[0]][6])*.055))<1e-9);
-  assert.equal(smokeBlocks([screen],a,b,screen.born+4,ground),true,'terrain-seated visible smoke blocks sight');
-  assert.equal(smokeBlocks([screen],{...a,y:v.y+9},{...b,y:v.y+9},screen.born+4,ground),false,'clear air above the bank stays visible');
+  assert.ok(Math.abs(v.y-(ground(v.x,v.z)+1.4+(4-hs.canisters[hs.banks[0]][6])*.055))<1e-9);
+  assert.equal(smokeBlocks([hs],a,b,hs.born+4,ground),true,'terrain-seated visible smoke blocks sight');
+  assert.equal(smokeBlocks([hs],{...a,y:v.y+9},{...b,y:v.y+9},hs.born+4,ground),false,'clear air above the bank stays visible');
 }
 
 // The mount can see past an edge while its articulated muzzle is obstructed.
@@ -110,9 +116,11 @@ for (const [id, name] of [
   ['challenger2e', '7.62×51 mm M61 AP'],
   ['t14', '30×165 mm 3UBR6 AP-T'],
   ['abramsx', '30×113 mm M789 HEDP'],
-  // 2026-10-09 (owner order): the TTS carries its 30 mm station again and its M2 on the loader's ring; the M2 (its first
-  // gun) fires first here
-  ['m551a1_tts', '12.7×99 mm M2 AP'],
+  // 2026-10-12 (owner order: "make the big roof autocannon on the m551 tts the autocannon, not the tiny machine gun in
+  // front of the cupola"): the controls inventory lists a vehicle's heaviest station first, so the TTS's 30 mm station
+  // is its working roof gun and fires the lightweight 30x113 mm round (its 2026-09-30 loadout). Before, the roof M2 was
+  // built first and fired '12.7×99 mm M2 AP' while the 30 mm never aimed or fired.
+  ['m551a1_tts', '30×113 mm M789 HEDP'],
   ['m1a2', '12.7×99 mm M2 AP'],
 ]) {
   const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');

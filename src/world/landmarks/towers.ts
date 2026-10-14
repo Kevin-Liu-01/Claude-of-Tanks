@@ -484,6 +484,9 @@ export const campanile: LandmarkBuilder = (ctx) => {
   sink.span('stone', -S / 2 + t, shaftTop, -S / 2 + t, S / 2 - t, shaftTop + 0.25, S / 2 - t);
   revolve(sink, 'structureMetal', 0, 0, [[0.55, bellTop - 2.6], [0.5, bellTop - 2.45], [0.32, bellTop - 2.05], [0.22, bellTop - 1.75], [0, bellTop - 1.7]], 10,
     { colour: BELL, decor: true });
+  // (the buildings stream, 2026-10-12, the integrity check: the bell hung 1.7 m under the cornice on nothing) its
+  // headstock: a timber beam across the stage, its ends in the side walls' colonnettes, the bell's crown on it
+  sink.span('structureWood', -S / 2 + t - 0.06, bellTop - 1.72, -0.13, S / 2 - t + 0.06, bellTop - 1.46, 0.13, { colour: TIMBER_DARK, decor: true });
   moulding(sink, 'stone', S, S, bellTop, 0.3, 0.18);
   // the balustrade round the pyramid's foot: corner piers, a rail, the balusters between (fine), a pinnacle on each pier
   const by = bellTop + 0.3, bh = 0.75, e = S / 2 + 0.1;

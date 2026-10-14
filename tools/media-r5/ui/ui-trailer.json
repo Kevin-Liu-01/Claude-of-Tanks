@@ -1,6 +1,6 @@
 {
   "map": "coastal",
-  "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t15-strand-follow.resolved.json",
+  "scene": "shots/media-r5/final/resolved/t15-strand-follow.resolved.json",
   "fps": 30,
   "frames": 120,
   "viewport": [1920, 1080],

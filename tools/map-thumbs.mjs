@@ -7,7 +7,8 @@
 // Usage: node tools/screenshot.mjs --width 3840 --height 2160 --dyn-scale 1 &&
 //   node tools/map-thumbs.mjs [--only id1,id2]
 //   [--shots-dir shots]
-// (expects shots/battlefield*.png to be fresh)
+// (expects shots/battlefield*.png to be fresh); then node tools/map-lqip.mjs refreshes the loading screen's
+// per-map placeholders and tones from the new art.
 // --only regenerates just those ids and requires every other public asset to
 // exist, keeping the generated map registry complete.
 

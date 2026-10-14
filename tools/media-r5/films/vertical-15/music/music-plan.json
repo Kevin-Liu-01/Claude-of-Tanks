@@ -1,0 +1,66 @@
+{
+ "chunks": [
+  {
+   "text": "[Title / Fast]\n{opens on a massive low brass braam and a sub boom impact}\n{intense: low sustained drone, fast ticking clock}\n{after 2.5 s: opens on a massive low brass braam}\n{full power climax: pounding taiko ensemble, driving sixteenth-note string ostinato, bright and wide, fast hi-hat sixteenths, tom fills, rimshot accents}\n{ends with a rising riser into the next downbeat}",
+   "duration_ms": 10000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "D minor",
+    "taiko war drums",
+    "low brass and staccato strings",
+    "modern military tension",
+    "low sustained drone",
+    "fast ticking clock",
+    "pounding taiko ensemble",
+    "driving sixteenth-note string ostinato",
+    "bright and wide",
+    "fast hi-hat sixteenths",
+    "tom fills",
+    "rimshot accents"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  },
+  {
+   "text": "[End]\n{opens on a massive low brass braam and a sub boom impact}\n{intense: low sustained drone, ticking clock}\n{ends on a hard stop into silence}",
+   "duration_ms": 5000,
+   "positive_styles": [
+    "epic cinematic trailer score",
+    "hybrid orchestral",
+    "instrumental",
+    "96 BPM",
+    "low sustained drone",
+    "ticking clock"
+   ],
+   "negative_styles": [
+    "vocals",
+    "choir singing words",
+    "lyrics",
+    "EDM",
+    "dubstep",
+    "rock guitar",
+    "piano ballad",
+    "lo-fi",
+    "jazz",
+    "comedy",
+    "chiptune"
+   ],
+   "context_adherence": "high"
+  }
+ ]
+}

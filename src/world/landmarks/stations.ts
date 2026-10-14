@@ -439,6 +439,11 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
   wall(ex - t / 2, -ez, ex - t / 2, ez);
   wall(-ex, ez - t / 2, -1.4, ez - t / 2);
   wall(1.4, ez - t / 2, ex, ez - t / 2);
+  // the manifold's line: straight from 0.5 m over the ground at one end to 0.5 m over it at the other
+  const manifoldY = (mx: number): number => {
+    const z = ez - t - 0.75, a = gl(-ex + 1.0, z) + 0.5, b = gl(ex - 1.0, z) + 0.5;
+    return a + (b - a) * Math.min(1, Math.max(0, (mx + ex - 1.0) / Math.max(1e-6, 2 * ex - 2.0)));
+  };
   // the tanks
   for (let i = 0; i < count; i++) {
     const c = i % cols, r = Math.floor(i / cols);
@@ -480,12 +485,18 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
       const a = -(k / 8) * Math.PI * 2, px = x + Math.cos(a) * R * 0.9, pz = z + Math.sin(a) * R * 0.9;
       bar(sink, 'structureMetal', [px, top + R * 0.024 - 0.04, pz], [px, top + R * 0.03 + 0.975, pz], 0.05, { ...dark, fine: true });
     }
-    // the pipe from the tank's foot to the manifold
-    bar(sink, 'structureMetal', [x, y0 + 0.2, z + R], [x, gl(x, ez - t - 0.75) + 0.5, ez - t - 0.75], 0.24, { colour: IRON, decor: true });
+    // the pipe from the tank's foot to the manifold (the buildings stream, 2026-10-12, the integrity check: on falling
+    // ground each pipe ended at its own ground's height, short of or past the straight manifold, which hung over the
+    // slope on nothing) to the manifold's line
+    bar(sink, 'structureMetal', [x, y0 + 0.2, z + R], [x, manifoldY(x), ez - t - 0.75], 0.24, { colour: IRON, decor: true });
   }
-  // the manifold along the bund's front and its valve stand, the steps over the gap
+  // the manifold along the bund's front on its stands, its valve stand, the steps over the gap
   const gm = gl(0, ez - t - 0.75);
-  bar(sink, 'structureMetal', [-ex + 1.0, gl(-ex + 1.0, ez - t - 0.75) + 0.5, ez - t - 0.75], [ex - 1.0, gl(ex - 1.0, ez - t - 0.75) + 0.5, ez - t - 0.75], 0.3, { colour: IRON, decor: true });
+  bar(sink, 'structureMetal', [-ex + 1.0, manifoldY(-ex + 1.0), ez - t - 0.75], [ex - 1.0, manifoldY(ex - 1.0), ez - t - 0.75], 0.3, { colour: IRON, decor: true });
+  for (let k = 0, n = Math.max(2, Math.round((2 * ex - 2) / 4)); k <= n; k++) {
+    const xs = -ex + 1.0 + (2 * ex - 2) * k / n;
+    bar(sink, 'structureMetal', [xs, gl(xs, ez - t - 0.75) - 0.2, ez - t - 0.75], [xs, manifoldY(xs), ez - t - 0.75], 0.1, { colour: STEEL_DARK, decor: true });
+  }
   sink.span('structureMetal', -1.2, gm - 0.3, ez - t - 1.5, 1.2, gm + 1.3, ez - t - 0.7, { colour: SIGN_YELLOW });
   const gs = gl(0, ez + 0.1);
   sink.span('structureWood', -1.3, gs - 0.3, ez - 0.4, 1.3, gs + 0.25, ez + 0.6, { colour: TIMBER, decor: true });

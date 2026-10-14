@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { convexOutlineInPlace, createObstacleGrid, nearestColliderHit as nearestRecordHit } from './collision.ts';
+import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay } from './collision.ts';
 import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 
@@ -176,15 +176,9 @@ export function createHeadlessCollisionWorld(
     direction: Vector3,
     maxDistance: number,
   ): { distance: number; record: CollisionRecord | null } {
-    const endX = origin.x + direction.x * maxDistance;
-    const endZ = origin.z + direction.z * maxDistance;
-    queryColliders(
-      Math.min(origin.x, endX), Math.min(origin.z, endZ),
-      Math.max(origin.x, endX), Math.max(origin.z, endZ),
-      candidates,
-    );
-    // the rendered world's narrow phase (world/collision.ts): dead records skipped, a structure with openings as a whole
-    nearestRecordHit(candidates, origin, direction, maxDistance, bestNormal, nearestHit);
+    // the rendered world's narrow phase (world/collision.ts): dead records skipped, a structure with openings as a whole;
+    // the broad phase marches along the ray as the rendered world's does (nearestColliderHitAlongRay: the same hit)
+    nearestRecordHitAlongRay(queryColliders, origin, direction, maxDistance, bestNormal, nearestHit, candidates);
     return { distance: nearestHit.distance, record: nearestHit.record };
   }
 

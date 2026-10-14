@@ -37,8 +37,18 @@ import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { tankSeedId } from '../src/vehicles/tankIdAliases.ts';
 
-const { configurations } = JSON.parse(readFileSync(new URL('../docs/references/batches/supplied-afv-configurations.json', import.meta.url), 'utf8'));
+const { configurations: studyConfigurations } = JSON.parse(readFileSync(new URL('../docs/references/batches/supplied-afv-configurations.json', import.meta.url), 'utf8'));
+// The source-study records keep the spelling the study was registered under; a vehicle renamed through the tank id
+// alias layer reads its study's record by its schema-1 id (SSOT 2.19).
+const configurations = new Proxy(studyConfigurations, {
+  get(target, key) {
+    if (typeof key !== 'string' || Object.hasOwn(target, key)) return target[key];
+    const study = target[tankSeedId(key)];
+    return study ? { ...study, id: key } : undefined;
+  },
+});
 const sourceReceipts = new Map();
 const openingReports = new Map();
 const conceptReports = new Map();
