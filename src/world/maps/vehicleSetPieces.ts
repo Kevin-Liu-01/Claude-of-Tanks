@@ -527,8 +527,8 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
   else if (kind === 'bv206') bv206(mesh, coarse, 'orange');
   else if (kind === 'snocat') snocat(mesh, coarse);
-  else if (kind === 'd8h') dozer(mesh, coarse);
-  else if (kind === 'haulpak') haulpak(mesh, coarse, !opts.wrecked);
+  else if (kind === 'd8h') dozer(mesh, coarse, !!opts.wrecked);
+  else if (kind === 'haulpak') haulpak(mesh, coarse, true, !!opts.wrecked);
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
   const lunar = kind === 'lrv';
   const g = mesh.build(vehicleWeathering({
