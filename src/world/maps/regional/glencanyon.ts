@@ -11,6 +11,7 @@ import { PartSink, faceBox, facePanel, normalize3, pick, rgb, shade, type EmitOp
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { latticeFrame } from './lattice.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -735,14 +736,14 @@ const waterTower: RegionalBuilder = (ctx) => {
   const P = Math.max(3.6, Math.min(5.4, Math.min(ctx.info.w, ctx.info.d) - 0.2));
   const legH = Math.max(8, Math.min(11, ctx.info.h - 3.2)), tankR = P / 2 - 0.05, tankH = 3.0;
   const paint = pick(look, [rgb(0xe0dcd2), rgb(0xa9b8b0), rgb(0x9fb4c2)]);
-  const lb = P / 2 - 0.2, lt = tankR * 0.7;
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.member('structureMetal', [sx * lb, -0.4, sz * lb], [sx * lt, legH, sz * lt], 0.2, 0.2, [sx, 0, 0], { colour: shade(paint, 0.85), exposed: true }, 0);
-  for (const y of [legH * 0.35, legH * 0.7]) {
-    const r = lb + (lt - lb) * y / legH;
-    for (const [a, b] of [[[-r, -r], [r, -r]], [[r, -r], [r, r]], [[r, r], [-r, r]], [[-r, r], [-r, -r]]] as const) {
-      sink.member('structureMetal', [a[0], y, a[1]], [b[0], y, b[1]], 0.09, 0.09, [0, 1, 0], { colour: shade(paint, 0.85), decor: true, exposed: true }, 0);
-    }
-  }
+  const lb = P / 2 - 0.2, lt = tankR * 0.7, mobile = ctx.tier === 'mobile';
+  // (props census #3, lane B 2026-10-14; the judges: "no diagonal tension rods, so the frame reads rickety; the legs
+  // plunge to -0.4 m with no anchor piers; the tank shell has no seams, roof hatch or vent") the legs on concrete anchor
+  // piers, girts and X tension rods in every panel (lattice.ts); the tank's seams, its roof hatch and vent finial; it
+  // falls as its frame with the tank as its crown
+  latticeFrame(sink, { foot: lb, head: lt, y0: 0.4, y1: legH, size: 0.2, girt: 0.09, brace: 0.035, panels: 3, bucket: 'structureMetal',
+    colour: shade(paint, 0.85), pad: { bucket: 'stone', size: 0.75, top: 0.4 }, mobile },
+    { x0: -tankR - 0.5, x1: tankR + 0.5, y0: legH, y1: legH + 0.4 + tankH + 1.0, z0: -tankR - 0.5, z1: tankR + 0.5, bucket: 'structureMetal', tint: paint });
   sink.cylinder('structureMetal', [0, legH, 0], 'y', 0.4, tankR * 0.7, 16, { colour: shade(paint, 0.9) }, tankR);
   sink.cylinder('structureMetal', [0, legH + 0.4, 0], 'y', tankH, tankR, 20, { colour: paint });
   sink.cylinder('structureMetal', [0, legH + 0.4 + tankH, 0], 'y', 1.0, tankR + 0.1, 20, { colour: shade(paint, 0.92) }, 0.15);
@@ -751,11 +752,23 @@ const waterTower: RegionalBuilder = (ctx) => {
   sink.cylinder('structureMetal', [0, legH + 2.2, 0], 'y', 0.55, tankR + 0.012, 20, { colour: rgb(0x2f4f6a), decor: true }, tankR + 0.012, false);
   // (the connectivity sweep: the tank stood a third of a metre over its legs' heads) each leg runs on up its own line
   // onto the tank's shell, a metre past the bowl, as the columns of an elevated tank are welded to it
-  const legRise = (legH + 1.4) / (legH + 0.4);
+  const legRise = (legH + 1.4 - 0.4) / (legH - 0.4);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const at = (t: number): Vec3 => [sx * (lb + (lt - lb) * t), -0.4 + (legH + 0.4) * t, sz * (lb + (lt - lb) * t)];
+    const at = (t: number): Vec3 => [sx * (lb + (lt - lb) * t), 0.4 + (legH - 0.4) * t, sz * (lb + (lt - lb) * t)];
     sink.member('structureMetal', at(0.97), at(legRise), 0.2, 0.2, [sx, 0, 0], { colour: shade(paint, 0.85), decor: true, exposed: true }, 0);
   }
+  // the tank's seams, its roof hatch and the vent finial at the apex
+  sink.dressing(mobile, () => {
+    for (const y of [legH + 0.4 + tankH / 3, legH + 0.4 + 2 * tankH / 3]) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.035, tankR + 0.01, 20, { colour: shade(paint, 0.82), decor: true, fine: true }, tankR + 0.01, false);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      sink.span('structureMetal', Math.cos(a) * (tankR + 0.005) - 0.015, legH + 0.4, Math.sin(a) * (tankR + 0.005) - 0.015, Math.cos(a) * (tankR + 0.005) + 0.015, legH + 0.4 + tankH, Math.sin(a) * (tankR + 0.005) + 0.015,
+        { colour: shade(paint, 0.85), decor: true, fine: true });
+    }
+  });
+  sink.span('structureMetal', tankR * 0.45 - 0.3, legH + 0.4 + tankH + 0.5, -0.3, tankR * 0.45 + 0.3, legH + 0.4 + tankH + 0.68, 0.3, { colour: shade(paint, 0.75), decor: true });
+  sink.cylinder('structureMetal', [0, legH + 0.4 + tankH + 0.95, 0], 'y', 0.45, 0.12, 8, { colour: IRON, decor: true }, 0.12, true);
+  sink.cylinder('structureMetal', [0, legH + 0.4 + tankH + 1.4, 0], 'y', 0.25, 0.28, 8, { colour: IRON, decor: true }, 0.04, true);
   // the riser up the middle into the bowl, the balcony's rail on its posts, and the ladder up the east side from the
   // ground to the balcony, braced to the legs' girts
   sink.cylinder('structureMetal', [0, -0.2, 0], 'y', legH + 0.3, 0.32, 10, { colour: shade(paint, 0.8), decor: true });
@@ -768,8 +781,8 @@ const waterTower: RegionalBuilder = (ctx) => {
   const lx = tankR + 0.2;
   for (const dz of [-0.22, 0.22]) {
     sink.member('structureMetal', [lx, 0, dz], [lx, legH + 0.38, dz], 0.05, 0.06, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
-    for (const y of [legH * 0.35, legH * 0.7]) {
-      const r = lb + (lt - lb) * y / legH;
+    for (const y of [0.4 + (legH - 0.4) / 3, 0.4 + 2 * (legH - 0.4) / 3]) {
+      const r = lb + (lt - lb) * (y - 0.4) / (legH - 0.4);
       sink.member('structureMetal', [r - 0.04, y, dz], [lx + 0.03, y, dz], 0.05, 0.05, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
     }
   }
