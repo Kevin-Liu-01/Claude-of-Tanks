@@ -2059,7 +2059,7 @@ export function createAuthoritativeMatch({
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
     const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
     const knock = shellKnockMps(shell.spec.caliberMm, speed, target.spec.weightTons, target.modeShellKnockScale ?? 1);
-    if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+    if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, target.modeGravityScale ?? 1);
   }
 
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {

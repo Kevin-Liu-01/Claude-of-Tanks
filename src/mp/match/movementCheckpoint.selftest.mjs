@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
-import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
+import { SIM_DT, applyShellKnock, createTankState, shellKnockMps, updateTank } from '../../sim/movement.ts';
 // The v1 checkpoint is the layout's origin; it is imported here only to prove byte-for-byte parity.
 import { applyMovementPredictionState, captureMovementPredictionState } from '../../sim/movementPredictionState.ts';
 import {
@@ -126,6 +126,30 @@ Object.assign(viaPrediction._susp, { c: 0.5, cv: 1 });
 assert.equal(applyMovementPredictionState(viaPrediction, { version: 7, values: v8.values.slice(0, 61), flags: v8.flags }), true);
 assert.deepEqual([viaPrediction._susp.c, viaPrediction._susp.cv], [0, 0], 'the prediction decoder reads a version-7 checkpoint alike');
 
+// Impact shoves (physics stream F4, 2026-10-13): the client's predictor never applies a hit. The shove the authority
+// applies, less what its tracks' grip absorbs (movement.ts applyShellKnock), lives in checkpointed fields only (the
+// recoil translation and the rock), so a replay restored from the checkpoint after a hit steps exactly as the authority.
+{
+  const step = (state, ticks) => {
+    const entity = { spec: SPEC, state, combat: null, input: { throttle: 0.6, steer: -0.3, brake: false, aimLocked: false, aimPoint: new Vector3(80, 2, 60) } };
+    for (let n = 0; n < ticks; n++) updateTank(entity, FIELD, SIM_DT, null);
+  };
+  for (const [calibre, label] of [[12.7, 'a 12.7 mm round'], [120, 'a 120 mm shell']]) {
+    const authority = drive(150), client = drive(150);
+    const recoil = [authority._spring.recoilVX, authority._spring.recoilVZ];
+    const knock = shellKnockMps(calibre, 900, SPEC.weightTons);
+    assert.ok(authority.grounded !== false && knock < 2.5, `${label}: a grounded hull, a shove under the ride's lift`);
+    applyShellKnock(authority, 0.6, 0, 0.8, knock, 1);
+    const moved = authority._spring.recoilVX !== recoil[0] || authority._spring.recoilVZ !== recoil[1];
+    assert.equal(moved, calibre > 20, `${label}: ${calibre > 20 ? 'shoves the hull past its grip' : 'is held by the tracks\' grip'}`);
+    assert.equal(applyMovementCheckpoint(client, captureMovementCheckpoint(authority)), true);
+    step(authority, 120); step(client, 120);
+    for (const key of ['x', 'y', 'z']) assert.equal(client.pos[key], authority.pos[key], `${label}: the replay's ${key} is the authority's`);
+    assert.equal(client.yaw, authority.yaw, `${label}: and its heading`);
+    assert.deepEqual(captureMovementCheckpoint(client), captureMovementCheckpoint(authority), `${label}: and its integrator`);
+  }
+}
+
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
@@ -153,4 +177,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 63-value version-8 layout identical to the authority encoder, versions 7, 6, 5 and 4 still decode, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 63-value version-8 layout identical to the authority encoder, versions 7, 6, 5 and 4 still decode, the roof a hull rests on carried and cleared, a hit\'s shove replayed exactly from the checkpoint, identity after apply, f32 tolerant, typed rejections pass');

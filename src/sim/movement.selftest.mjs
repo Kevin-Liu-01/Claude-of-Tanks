@@ -680,6 +680,34 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   run(big, field, 30);
   applyShellKnock(big.state, 0, 0.2, 1, 4);
   assert(big.state.verticalSpeed > 0.3, 'a heavy shove lifts the ride');
+  // (physics stream F4, 2026-10-13) a round under the reference calibre shoves with its own momentum, and a grounded
+  // hull's tracks take a step's worth of grip (0.5 g dt) off every shove: a 12.7 mm round leaves a parked hull where it
+  // stands, the same round on a hull in flight shoves it whole, and a cannon's shove keeps all but the grip
+  const mg = shellKnockMps(12.7, 900, 45, 1);
+  assert(mg > 0 && mg < 0.005, `a 12.7 mm round knocks with its own momentum (${mg})`);
+  assert(Math.abs(shellKnockMps(120, 900, 45, 1) - 1.3 * (120 / 105) ** 2) < 1e-9, 'over the reference calibre the square stands');
+  const parked = makeEntity(field, 0, 0, 0);
+  run(parked, field, 30);
+  const parkedX = parked.state._spring.recoilVX, parkedZ = parked.state._spring.recoilVZ;
+  applyShellKnock(parked.state, 1, 0, 0.3, mg);
+  assert(parked.state._spring.recoilVX === parkedX && parked.state._spring.recoilVZ === parkedZ, 'a grounded hull holds against a 12.7 mm round');
+  const flying = makeEntity(field, 0, 0, 0);
+  run(flying, field, 30);
+  flying.state.grounded = false;
+  const flyingX = flying.state._spring.recoilVX;
+  applyShellKnock(flying.state, 1, 0, 0, mg);
+  assert(Math.abs(flying.state._spring.recoilVX - flyingX - mg * 2.2) < 1e-12, 'a hull in flight takes the whole shove');
+  const shoved = makeEntity(field, 0, 0, 0);
+  run(shoved, field, 30);
+  const shovedZ = shoved.state._spring.recoilVZ;
+  applyShellKnock(shoved.state, 0, 0, 1, 1.3);
+  const kept = (shoved.state._spring.recoilVZ - shovedZ) / 2.2;
+  assert(kept > 1.3 - 0.09 && kept < 1.3 - 0.07, `a cannon's shove keeps all but the grip (${kept.toFixed(4)} of 1.3 m/s)`);
+  const moon = makeEntity(field, 0, 0, 0);
+  run(moon, field, 30);
+  const moonZ = moon.state._spring.recoilVZ;
+  applyShellKnock(moon.state, 0, 0, 1, 1.3, 0.165);
+  assert((moon.state._spring.recoilVZ - moonZ) / 2.2 > kept, 'under low gravity the tracks grip less');
 }
 
 // Airborne ticks skip loaded-track material and four-corner suspension-rock
