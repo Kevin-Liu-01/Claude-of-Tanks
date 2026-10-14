@@ -147,6 +147,12 @@ assert.ok(ricochets >= 10 && ricochets <= 36, `machine-gun rounds often skip off
 assert.equal(strikeRun(3200, 'a', 12.7, true).drawn, 1, 'a strike in water throws no sparks, its last dash only');
 const tankStrike = strikeRun(3300, 'a', 120);
 assert.ok(tankStrike.drawn >= 6, 'a tank round throws a spray of sparks');
+// (fx 9a) a negative bead gain draws an untapered line (a missile's command wire): no soft tail end, no head bead
+{
+  const fragSrc = tr.mesh.material.fragmentShader;
+  assert.match(fragSrc, /float smear = vCore\.a < 0\.0 \? 1\.0 : smoothstep\( 0\.0, 0\.22, t \);/, 'a wire is even to its end');
+  assert.match(fragSrc, /bead \* max\( vCore\.a, 0\.0 \)/, 'a wire has no head bead');
+}
 tr.reset();
 // capacity: a storm of rounds never overruns the pool
 flush();

@@ -83,6 +83,7 @@ import type {
 } from './spotting.ts';
 import { captureWorldSnapshot } from './worldSnapshot.ts';
 import { createWreckEnvironment, createWreckTurrets, wreckGroundSampler } from './wreckTurrets.ts';
+import { sweepLightCover, type LightCoverQuery } from './shellLightCover.ts';
 import { capturePredictionAuthorityState } from './predictionAuthorityState.ts';
 import type {
   SnapshotEntitySource,
@@ -834,7 +835,7 @@ export function createAuthoritativeMatch({
       const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
       botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
-    onBlast: (x, y, z, chargeKg) => { pendingBlasts.push(x, y, z, chargeKg); },
+    onBlast: (x, y, z, chargeKg, sourceId) => { pendingBlasts.push(x, y, z, chargeKg); pendingBlastSources.push(sourceId ?? null); },
     // P3: no crater on hard ground (roads, bridge decks, ice), as the solo step reads it
     groundTypeAt: (x, z) => (heightField as { getGroundType?(x: number, z: number): string }).getGroundType?.(x, z) ?? 'medium',
     // the map's walls price a ram (§4.4: timber and mudbrick give sooner than masonry and concrete)
@@ -848,6 +849,8 @@ export function createAuthoritativeMatch({
     worldCollision && typeof worldCollision.getColliders === 'function' ? worldCollision.getColliders() : []));
   /** The tick's blasts (x, y, z, kg), felling their light props at the end of the step (advanceDestruction). */
   const pendingBlasts: number[] = [];
+  /** Who set off each pending blast (its shooter, the dead hull), one per four numbers above (2026-10-13). */
+  const pendingBlastSources: (string | null)[] = [];
   const destructionEvents: StructureStageEvent[] = [];
   const breachEvents: StructureBreachEvent[] = [];
   const craterEvents: TerrainCraterEvent[] = [];
@@ -998,9 +1001,14 @@ export function createAuthoritativeMatch({
           for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
           return opponents;
         },
+        // A wreck is no teammate: a falling-back or retiring bot looks for support among its allies (ai.ts
+        // nearestSupport), and the authority handed it destroyed hulls too, so it could drive to a teammate's wreck.
+        // The solo step filters wrecks (game/state.ts getAllies); the authority now does the same.
         getAllies: () => {
           allies.length = 0;
-          for (const candidate of entities) if (candidate !== entity && candidate.team === entity.team) allies.push(candidate);
+          for (const candidate of entities) {
+            if (candidate !== entity && candidate.team === entity.team && !candidate.combat.destroyed) allies.push(candidate);
+          }
           return allies;
         },
         getObstacles: () => staticObstacles,
@@ -1044,7 +1052,7 @@ export function createAuthoritativeMatch({
 
   initializeBots();
 
-  function emit(type: string, payload: Record<string, RuntimeValue>): void {
+  function emit(type: string, payload: Record<string, RuntimeValue>): AuthoritativeEvent {
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
     if (type === 'tank_destroyed') {
@@ -1055,7 +1063,7 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed' && destruction.enabled) {
       // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
       const dead = entityById.get(String(payload.id));
-      if (dead) destruction.tankDeath(String(payload.cause), dead.spec.weightTons, dead.state.pos.x, dead.state.pos.y, dead.state.pos.z);
+      if (dead) destruction.tankDeath(String(payload.cause), dead.spec.weightTons, dead.state.pos.x, dead.state.pos.y, dead.state.pos.z, dead.id);
     }
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
     const event: AuthoritativeEvent = { type, timeS, ...payload };
@@ -1067,6 +1075,21 @@ export function createAuthoritativeMatch({
       if (dead) { event.x = dead.state.pos.x; event.y = dead.state.pos.y; event.z = dead.state.pos.z; }
     }
     pendingEvents.push(event);
+    return event;
+  }
+
+  /**
+   * World events and who caused them (2026-10-13, MP-SINCE-0930 §5b C; the repo rule: never send a hidden enemy's
+   * coordinates and rely on rendering). A prop's fall, a structure's stage, a hole, a crater are world state every
+   * viewer receives (the destroyed list and the destruction log carry them anyway, so rejoins and migrations stay
+   * whole); how they were dealt — the rammer's heading and speed, the blow's point, the shot's bearing, the munition —
+   * told every seat where a hidden tank was and which way it went. The source stays here, keyed by the event, and
+   * `viewerWorldEvent` withholds those fields from a viewer whose team does not see it.
+   */
+  const eventSources = new WeakMap<AuthoritativeEvent, string>();
+  function emitFrom(sourceId: string | null, type: string, payload: Record<string, RuntimeValue>): void {
+    const event = emit(type, payload);
+    if (sourceId) eventSources.set(event, sourceId);
   }
 
   function reviveForMode(
@@ -1204,7 +1227,7 @@ export function createAuthoritativeMatch({
     const state = entity.state;
     const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
     return destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
-      state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length);
+      state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length, entity.id);
   }
 
   function collideWithObstacles(
@@ -1386,6 +1409,7 @@ export function createAuthoritativeMatch({
     impactDirectionX?: number,
     impactDirectionZ?: number,
     impactSpeedMps?: number,
+    sourceId: string | null = entity?.id ?? null,
   ): boolean {
     if (!obstacle || obstacle.crushed) return false;
     const directionSign = entity?.state ? Math.sign(entity.state.speed || 1) : 1;
@@ -1409,7 +1433,7 @@ export function createAuthoritativeMatch({
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
     // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
     if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
-    emit('world_prop_destroyed', {
+    emitFrom(sourceId, 'world_prop_destroyed', {
       obstacleIndex: destroyedIndex,
       propIdx: obstacle.propIdx,
       treeIdx: obstacle.treeIdx,
@@ -1431,7 +1455,7 @@ export function createAuthoritativeMatch({
   /** Destruction: a blast fells the light props within its reach (trees, fences, crates, huts), nearest first. */
   const blastCandidates: AuthoritativeObstacle[] = [];
   const blastFelled: AuthoritativeObstacle[] = [];
-  function fellPropsByBlast(x: number, y: number, z: number, chargeKg: number, budget: number): number {
+  function fellPropsByBlast(x: number, y: number, z: number, chargeKg: number, budget: number, sourceId: string | null = null): number {
     const radius = propFellRadiusM(chargeKg);
     if (!(radius > 0) || budget <= 0 || !worldCollision || typeof worldCollision.queryObstacles !== 'function') return 0;
     worldCollision.queryObstacles(x - radius, z - radius, x + radius, z + radius, blastCandidates);
@@ -1452,7 +1476,7 @@ export function createAuthoritativeMatch({
       const obstacle = blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
       const length = Math.hypot(dx, dz) || 1;
-      destroyObstacle(obstacle, null, 'blast', dx / length, dz / length, 6);
+      destroyObstacle(obstacle, null, 'blast', dx / length, dz / length, 6, sourceId);
     }
     blastCandidates.length = 0;
     blastFelled.length = 0;
@@ -1933,6 +1957,7 @@ export function createAuthoritativeMatch({
       shotX / shotLength,
       shotZ / shotLength,
       shell.spec.velocityMps,
+      shell.shooterId,
     );
   }
 
@@ -2005,7 +2030,7 @@ export function createAuthoritativeMatch({
     const groundBurst = worldHit.kind === 'terrain' && !worldHit.record
       && !shellHitsWater({ heightField }, { kind: 'terrain', point: shell.pos });
     const craterId = destruction.shellWorldHit(shell.spec, worldHit.record, shell.pos.x, shell.pos.y, shell.pos.z,
-      shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z, groundBurst);
+      shell.pos.x - shell.prevPos.x, shell.pos.z - shell.prevPos.z, groundBurst, shell.shooterId);
     emitWorldShellImpact(shell, worldHit, craterId);
   }
 
@@ -2018,7 +2043,7 @@ export function createAuthoritativeMatch({
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
     knockTargetFromShell(tankHit.target, shell);
     const strike = tankHit.hits[0]?.point;
-    if (strike) destruction.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
+    if (strike) destruction.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z, shell.shooterId);
     if (strike) {
       const normal = (tankHit.hits[0] as { normal?: { x: number; y: number; z: number } }).normal;
       pendingTankBlast = { shellId: shell.id, blast: [strike.x, strike.y, strike.z, normal?.x ?? 0, normal?.y ?? 1, normal?.z ?? 0] };
@@ -2064,10 +2089,28 @@ export function createAuthoritativeMatch({
     compactLiveShells();
   }
 
+  /** (2026-10-12) the light cover a round flies through before what stops it breaks (sim/shellLightCover.ts; the solo
+   *  step sweeps the same): fences, crates, carts, the parked cars, nearest first, through destroyObstacle's one law. */
+  const _lightCoverDir = new Vector3();
+  const _lightCoverScratch: AuthoritativeObstacle[] = [];
+  function breakLightCoverAlong(shell: DamageShell, stop: number): void {
+    if (!worldCollision || typeof worldCollision.queryObstacles !== 'function' || shell.spec.tracer === 'DRONE') return;
+    _lightCoverDir.subVectors(shell.pos, shell.prevPos);
+    const length = _lightCoverDir.length();
+    if (length <= 1e-9) return;
+    _lightCoverDir.multiplyScalar(1 / length);
+    sweepLightCover(worldCollision.queryObstacles.bind(worldCollision) as LightCoverQuery, shell.prevPos, _lightCoverDir,
+      Math.min(stop, length), _lightCoverScratch as CollisionRecord[], (record) => {
+        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps);
+      });
+  }
+
   function resolveShellSweep(shell: DamageShell): void {
     const tankHit = firstTankTrace(shell, entities);
     const segmentLength = shell.prevPos.distanceTo(shell.pos);
     const worldHit = traceBlockingWorldShellHit(shell, tankHit, segmentLength);
+    breakLightCoverAlong(shell, Math.min(segmentLength, worldHit ? worldHit.t * segmentLength : Infinity,
+      tankHit ? tankHit.distance : Infinity));
     if (worldHit) {
       resolveWorldShellHit(shell, worldHit);
       return;
@@ -2275,7 +2318,7 @@ export function createAuthoritativeMatch({
       // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
       if (entity._ramRecord && state.impactSource === IMPACT_SOURCE_COLLIDER) {
         destruction.ram(entity._ramRecord, entity.spec.weightTons, closing, prior,
-          state.pos.x, state.pos.y, state.pos.z, -state.impactNx, -state.impactNz);
+          state.pos.x, state.pos.y, state.pos.z, -state.impactNx, -state.impactNz, entity.id);
       }
     }
     // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
@@ -2445,21 +2488,24 @@ export function createAuthoritativeMatch({
       // the tick's blasts fell their light props, in report order (the solo step's stepDestruction alike)
       let budget = PROP_FELL_PER_TICK;
       for (let b = 0; b < pendingBlasts.length && budget > 0; b += 4) {
-        budget -= fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3], budget);
+        budget -= fellPropsByBlast(pendingBlasts[b], pendingBlasts[b + 1], pendingBlasts[b + 2], pendingBlasts[b + 3], budget,
+          pendingBlastSources[b / 4] ?? null);
       }
       pendingBlasts.length = 0;
+      pendingBlastSources.length = 0;
     }
     destruction.step();
     destructionEvents.length = 0;
     destruction.drainEvents(destructionEvents);
-    for (const event of destructionEvents) emit('structure_stage', { ...event });
+    // (2026-10-13) the blow's source stays on the authority: it decides what a viewer that does not see it may read
+    for (const { sourceId, ...event } of destructionEvents) emitFrom(sourceId ?? null, 'structure_stage', event);
     // P2: holes and section falls, after the stages of the same tick (the log's order)
     breachEvents.length = 0;
     destruction.drainBreaches(breachEvents);
-    for (const event of breachEvents) emit('structure_breach', { ...event });
+    for (const { sourceId, ...event } of breachEvents) emitFrom(sourceId ?? null, 'structure_breach', event);
     craterEvents.length = 0;
     destruction.drainCraters(craterEvents);
-    for (const event of craterEvents) emit('terrain_crater', { ...event });
+    for (const { sourceId, ...event } of craterEvents) emitFrom(sourceId ?? null, 'terrain_crater', event);
   }
 
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
@@ -2469,13 +2515,43 @@ export function createAuthoritativeMatch({
         spotting.isSpotted(entity.id, viewer.team, viewer)));
   }
 
+  /** The fields of a world event that say how it was dealt (withheld from a viewer that does not see the source). */
+  const WITHHELD_WORLD_FIELDS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    world_prop_destroyed: Object.freeze(['cause', 'directionX', 'directionZ', 'speedMps']),
+    structure_stage: Object.freeze(['cause', 'munition', 'x', 'y', 'z', 'dirX', 'dirZ']),
+    structure_breach: Object.freeze(['munition']),
+    terrain_crater: Object.freeze(['munition']),
+  });
+  const withheldCopies = new WeakMap<AuthoritativeEvent, AuthoritativeEvent>();
+  /**
+   * The event as `viewer` may read it: whole when its source is this viewer's team, spotted by it, destroyed, or not a
+   * hull of this match (a scripted or mode source); else one shared copy without WITHHELD_WORLD_FIELDS — the world
+   * state it carries (which prop, which structure and stage, the hole, the crater) is unchanged, and the presentation
+   * lays it with neutral values (the prop's own fall axis, the structure's centre).
+   */
+  function viewerWorldEvent(viewer: AuthoritativeEntity | undefined, event: AuthoritativeEvent): AuthoritativeEvent {
+    if (!viewer) return event;
+    const fields = WITHHELD_WORLD_FIELDS[String(event.type)];
+    if (!fields) return event;
+    const sourceId = eventSources.get(event);
+    if (!sourceId || !entityById.has(sourceId) || canObserveEntity(viewer, sourceId)) return event;
+    let copy = withheldCopies.get(event);
+    if (!copy) {
+      copy = { ...event };
+      for (const field of fields) delete (copy as Record<string, RuntimeValue>)[field];
+      withheldCopies.set(event, copy);
+    }
+    return copy;
+  }
+
   function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
     if (!viewer) return true;
     if (!value || typeof value !== 'object') return false;
     const event = value as Record<string, RuntimeValue>;
     const eventType = typeof event.type === 'string' ? event.type : '';
     if (eventType === 'world_prop_destroyed' || eventType.startsWith('mode_')) return true;
-    // destruction: a building breaking or the ground cratering is world state; the events name no shooter
+    // destruction: a building breaking or the ground cratering is world state every viewer receives; how it was dealt is
+    // withheld from a viewer that does not see its source (viewerWorldEvent, 2026-10-13)
     if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
       if (id && canObserveEntity(viewer, String(id))) return true;
@@ -2543,7 +2619,9 @@ export function createAuthoritativeMatch({
 
     eventsForViewer(viewerId: string): AuthoritativeEvent[] {
       const viewer = entityById.get(viewerId);
-      return pendingEvents.filter((event) => canObserveEvent(viewer, event));
+      const out: AuthoritativeEvent[] = [];
+      for (const event of pendingEvents) if (canObserveEvent(viewer, event)) out.push(viewerWorldEvent(viewer, event));
+      return out;
     },
 
     afterEventBroadcast(): void { pendingEvents.length = 0; },
@@ -2567,7 +2645,7 @@ export function createAuthoritativeMatch({
         serverTimeMs,
         entities,
         shells,
-        events: pendingEvents,
+        events: pendingEvents.length ? pendingEvents.map((event) => viewerWorldEvent(viewer, event)) : pendingEvents,
         viewerId,
         ackInputSeq,
         canObserve,

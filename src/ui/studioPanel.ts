@@ -1,5 +1,6 @@
 import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/studioLight.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
 import { mountStudioProductionPanel, STUDIO_PRODUCTION_CSS } from './studioProductionPanel.ts';
 import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
@@ -649,7 +650,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   galleryBtn.innerHTML = `<img src="/brand/nav/tank-gallery.svg" alt="">${t('studioPanel.tankGallery')}`;
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
-    window.location.href = hrefForLocale(id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery', getLocale());
+    window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
   });
   const exitBtn = el('button', null, t('studio.exitF8'));
   exitBtn.addEventListener('click', () => S.exit());

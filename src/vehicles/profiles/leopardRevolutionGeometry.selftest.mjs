@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { notCamouflage } from '../camouflageBounds.test-support.mjs';
 
 // Independent source probes are documented in the owner-source packet. These
 // assertions inspect generated vertices, triangles and instance transforms;
@@ -75,8 +76,10 @@ try {
   // These openings must not become filler plates merely to satisfy a
   // body-continuity raster whose silhouette used to include the cage.
   const visibleMeshes = [];
+  // camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets
+  // and garnish; do not re-add it (camouflageBounds.test-support.mjs)
   tank.root.traverse((object) => {
-    if (!object.isMesh || /shadow/i.test(object.name)) return;
+    if (!object.isMesh || /shadow/i.test(object.name) || !notCamouflage(object)) return;
     const material = Array.isArray(object.material) ? object.material[0] : object.material;
     if (material?.colorWrite === false) return;
     for (let parent = object; parent; parent = parent.parent) if (!parent.visible) return;

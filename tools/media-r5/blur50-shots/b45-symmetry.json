@@ -1,0 +1,269 @@
+{
+ "map": "airfield",
+ "timeOfDay": "dawn",
+ "light": {
+  "sunAzimuthDeg": 212
+ },
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 405,
+ "actors": [
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "hero",
+   "pos": [
+    6,
+    -160
+   ],
+   "facingDeg": 0,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2835,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a7v_x",
+   "name": "ally1",
+   "pos": [
+    -6,
+    -160
+   ],
+   "facingDeg": 0,
+   "turretDeg": 4,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2836,
+   "state": "intact"
+  }
+ ],
+ "effects": [],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1600,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     0,
+     6.924447573031116,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     0,
+     6.924447573031116,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     0,
+     6.924447573031115,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     0,
+     6.924447573031115,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     0,
+     6.924447573031115,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     0,
+     6.924447573031115,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     0,
+     6.924447573031116,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.14109466779835,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1600",
+    "tMs": 1600,
+    "pos": [
+     0,
+     6.924447573031116,
+     -130
+    ],
+    "lookAt": [
+     0,
+     7.141094667798349,
+     -160
+    ],
+    "fov": 22,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   0,
+   6.92,
+   -130
+  ],
+  "yawDeg": 0,
+  "pitchDeg": 0.41,
+  "rollDeg": 0,
+  "fov": 22,
+  "lookAt": [
+   0,
+   7.07,
+   -150
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "vintage-print",
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15,
+   "response": 0.7
+  }
+ },
+ "meta": {
+  "frame": 45,
+  "id": "b45-symmetry",
+  "technique": "Symmetry",
+  "title": "Head-on down the Kestrel runway: SEPv3 and Leopard 2A7V in perfect symmetry",
+  "set": "kestrel-dawn-runway",
+  "map": "airfield",
+  "time": "dawn",
+  "film": null,
+  "hero": "m1a2_sepv3_x",
+  "heroName": "M1A2 Abrams SEPv3",
+  "exposureMs": 8,
+  "tMs": 1000
+ },
+ "crushes": []
+}

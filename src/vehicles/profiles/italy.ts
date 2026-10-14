@@ -36,6 +36,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mount as addFitting } from './fittingMount.ts';
 import { sampleArmorFace } from './armorFaceSampling.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -933,7 +934,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
 }
 
 function buildArieteC1(P: ItalyBuilderPort): void { buildArieteMk(P, 'c1'); }
-function buildArieteC2(P: ItalyBuilderPort): void { buildArieteMk(P, 'c2'); }
+function buildArieteC2(P: ItalyBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
+  buildArieteMk(P, 'c2');
+}
 
 // ---------------------------------------------------------------------------
 // Carro 45t — OTO 45-tonne paper project, print-true ground-up build.

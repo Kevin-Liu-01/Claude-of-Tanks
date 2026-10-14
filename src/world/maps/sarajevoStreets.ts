@@ -17,6 +17,7 @@ import type * as THREE from 'three';
 import { PartSink, hashSeed, normalize3, rgb, shade, streamFrom, type Rgb, type Vec3 } from './regional/geometry.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneCollisionRecord, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { createRecordClearance } from './recordClearance.ts';
 import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
 
 interface TramContext {
@@ -60,12 +61,6 @@ function resample(points: ReadonlyArray<readonly [number, number]>, step: number
     s += len;
   }
   return out;
-}
-
-/** Does a footprint (x, z centre, half extents along / across a heading) clear every record placed so far? */
-function clears(records: readonly CollisionRecord[], cx: number, cz: number, hl: number, hw: number, tx: number, tz: number, pad: number): boolean {
-  const ex = Math.abs(tx) * hl + Math.abs(tz) * hw + pad, ez = Math.abs(tz) * hl + Math.abs(tx) * hw + pad;
-  return !records.some((r) => !r.dead && r.max[0] > cx - ex && r.min[0] < cx + ex && r.max[2] > cz - ez && r.min[2] < cz + ez);
 }
 
 /**
@@ -209,7 +204,7 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
   push(ctx, bed);
   // ---- the catenary: poles in pairs at the kerbs, cross-spans, the contact wire over each track between the spans
   const wires = new PartSink([0, 0]);
-  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  const records = createRecordClearance([...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])]);
   let prev: { y: number; s: Station } | null = null;
   for (let i = 0; i < st.length; i += Math.round(SPAN / 2)) {
     const s = st[i];
@@ -217,7 +212,7 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
     const tops: Vec3[] = [];
     for (const side of [1, -1]) {
       const [px, , pz] = at(s, side * POLE_OFFSET);
-      if (!clears(records, px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
+      if (!records.clears(px, pz, 0.3, 0.3, s.tx, s.tz, 0.2)) continue;
       const py = hf.getHeightAt(px, pz);
       const bent = look() < 0.12;
       const h = bent ? POLE_H * (0.55 + look() * 0.3) : POLE_H;
@@ -257,14 +252,14 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
     for (const target of bays.slice(0, 6)) {
       const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
       const [cx, , cz] = at(s, side * TRAM_OFF);
-      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
+      if (!records.clears(cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
         || !clearOfKeepOut(keep, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
       const y = hf.getHeightAt(cx, cz);
       const sink = new PartSink([look() * 5, look() * 5]);
       sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
       push(ctx, sink);
       block(ctx, cx, cz, 10.9, 1.25, s.tx, s.tz, y, y + 3.1, 'tram-wreck');
-      records.push(...(ctx.obstacles ?? []).slice(-1));
+      for (const record of (ctx.obstacles ?? []).slice(-1)) records.add(record);
       return;
     }
   };
@@ -297,14 +292,14 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
         for (const at0 of [7.4, 8.6, 9.8]) {
           const along = dir * at0;
           const cx = end[0] + hit.tx * along + hit.nx * off, cz = end[1] + hit.tz * along + hit.nz * off;
-          if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)
+          if (!records.clears(cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)
             || !clearOfKeepOut(keep, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)) continue;
           const y = Math.min(hf.getHeightAt(cx - hit.tx * BOX_HL, cz - hit.tz * BOX_HL), hf.getHeightAt(cx + hit.tx * BOX_HL, cz + hit.tz * BOX_HL));
           const sink = new PartSink([look() * 5, look() * 5]);
           sink.placed(Math.atan2(-hit.tz, hit.tx), cx, y - 0.05, cz, () => container(sink, CONTAINERS[Math.floor(look() * CONTAINERS.length) % CONTAINERS.length], look, mobile));
           push(ctx, sink);
           block(ctx, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, y, y + 2.6, 'container-screen');
-          records.push(...(ctx.obstacles ?? []).slice(-1));
+          for (const record of (ctx.obstacles ?? []).slice(-1)) records.add(record);
           break;
         }
       }
@@ -334,7 +329,7 @@ function cross(sink: PartSink, x: number, y: number, z: number, h: number, yaw: 
 function dressCemeteries(ctx: TramContext): void {
   const hf = ctx.heightField;
   const mobile = getDeviceTier() === 'mobile';
-  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  const records = createRecordClearance([...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])]);
   for (const [k, c] of CEMETERIES.entries()) {
     const look = streamFrom(hashSeed('sarajevo-cemetery', k, c.x, c.z));
     const sink = new PartSink([look() * 5, look() * 5]);
@@ -346,7 +341,7 @@ function dressCemeteries(ctx: TramContext): void {
         if (gap < 0.22) { x += step * (1 + look() * 3); continue; }
         const px = x + (look() - 0.5) * 0.25, pz = z + (look() - 0.5) * 0.3;
         x += step * (0.85 + look() * 0.3);
-        if (!clears(records, px, pz, 0.3, 0.3, 1, 0, 0.25)) continue;
+        if (!records.clears(px, pz, 0.3, 0.3, 1, 0, 0.25)) continue;
         const y = hf.getHeightAt(px, pz), roll = look(), h = 0.7 + look() * 0.6, yaw = (look() - 0.5) * 0.25;
         if (roll < 0.14) cross(sink, px, y, pz, h + 0.2, yaw);
         else sink.placed(yaw, px, y, pz, () => {

@@ -67,6 +67,8 @@ export interface DebrisPhysics {
   /** Whether a piece's body sleeps: come to rest, or a resting piece still waiting for its release (a waiting piece
    *  outside the world does not). */
   asleep(handle: number): boolean;
+  /** Whether a piece has a body in the world (false while it waits outside it: its release not due, or the pool full). */
+  inWorld(handle: number): boolean;
   onImpact(listener: DebrisImpactListener): () => void;
   onEvict(listener: DebrisEvictListener): () => void;
   /** Drop a piece (its body and handle). */
@@ -296,6 +298,9 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       }
       world.framePoseAt(slot, alpha, out);
       return true;
+    },
+    inWorld(handle) {
+      return handle >= 0 && handle < handleCapacity && handleLive[handle] === 1 && handleSlot[handle] !== HANDLE_NONE;
     },
     asleep(handle) {
       if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return false;

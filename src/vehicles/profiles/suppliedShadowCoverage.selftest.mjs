@@ -13,7 +13,7 @@ const cases = {
   // Restored Object_27 LEFT flange: source X=-2.1026399136 at Y1.76282.
   // Right authored armor stays +2.10; the 50 mm inset is asymmetric here.
   // Independent source/native proof: docs/history/research/stale-qa-witness-repair-20260918.md.
-  fv510_milan_x: [['hull', 'min', 'x', -2.05264], ['hull', 'max', 'x', 2.05]],
+  warrior_tes_h: [['hull', 'min', 'x', -2.05264], ['hull', 'max', 'x', 2.05]],
   griffin50_x: [['hull', 'max', 'x', 1.75]],
   ajax_x: [], // Its lower side armor extends a diagonal, not an AABB extreme.
   kf41_lynx_x: [['hull', 'max', 'x', 1.75], ['hull', 'max', 'y', 2.26], ['turret', 'max', 'y', .823]],
@@ -78,7 +78,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       const factor=resized[id]??1, target=expected*factor+(end==='max'?1:-1)*.05*(factor-1);
       assert.ok(Math.abs(actual - target) < .0005, `${id}/${quality}: ${part} ${end}.${axis} ${actual} covers measured stock with 50 mm inset (${expected})`);
     }
-    if (id === 'fv510_milan_x') {
+    if (id === 'warrior_tes_h') {
       const armor = root.getObjectByName('hullExternalArmor').geometry;
       armor.computeBoundingBox();
       assert.ok(Math.abs(armor.boundingBox.min.x + 2.10264) < .000002, 'Warrior: restored source left flange remains real armor stock');

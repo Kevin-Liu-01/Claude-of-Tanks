@@ -271,6 +271,7 @@ function galleryBrief(
   powerToWeight: number,
   gun: GalleryGunSummary,
   protection: GalleryProtectionSummary,
+  noteKey: string | null = null,
 ): string[] {
   const armamentSentence = galleryArmamentSentence(spec, gun);
   const firstParagraph = t('gallery.brief.firstParagraph', {
@@ -291,7 +292,10 @@ function galleryBrief(
     modules: protection.modules.length,
     crew: protection.crew.length,
   });
-  return [firstParagraph, secondParagraph + featureSentence];
+  // A vehicle's own note (tankLabels.ts noteKey), e.g. the Warrior TES(H)'s MILAN firing post, closes the second
+  // paragraph: the brief stays two paragraphs.
+  const note = noteKey ? t(noteKey) : '';
+  return [firstParagraph, secondParagraph + featureSentence + (note && note !== noteKey ? ` ${note}` : '')];
 }
 
 function galleryHighlights(
@@ -408,7 +412,7 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     ratings: Object.freeze(galleryRatings(spec, powerToWeight, gun, protection)),
     metrics: galleryMetrics(spec, powerToWeight, gun, protection),
     dimensions: galleryDimensions(spec),
-    brief: Object.freeze(galleryBrief(spec, label.displayName, tier, nation, era, powerToWeight, gun, protection)),
+    brief: Object.freeze(galleryBrief(spec, label.displayName, tier, nation, era, powerToWeight, gun, protection, label.noteKey)),
     highlights: Object.freeze(galleryHighlights(spec, powerToWeight, gun, protection)),
     shells: galleryShellRecords(spec),
   });

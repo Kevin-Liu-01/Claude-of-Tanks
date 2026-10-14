@@ -35,7 +35,7 @@ type WheelDonorId =
   | 'type10' | 'type90'
   | 'ariete_c1'
   | 'leclerc_xlr' | 'amx40'
-  | 'challenger_3' | 'challenger2e' | 'fv510_milan_x'
+  | 'challenger_3' | 'challenger2e' | 'warrior_tes_h'
   | 't90' | 't90m' | 't14' | 'bmp3m_dragun125_x'
   | 'kf51' | 'leo2a6' | 'kf41_lynx_x'
   | 'm1a2' | 'm551a1_tts' | 'm60a3';
@@ -99,7 +99,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Hollow paired rubber-tyred halves with eight hub fasteners as insets (hollowRoadWheelStock.ts); the Challenger 2 and 3 share this construction and differ only in size.' }),
   challenger2e: Object.freeze({ donor: 'challenger2e', self: ['challenger2', 'challenger2e', 'fv4034', 'ua_challenger2'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Same hollow paired construction as the Challenger 3; every other UK MBT hull draws it.' }),
-  fv510_milan_x: Object.freeze({ donor: 'fv510_milan_x', self: ['fv510_milan_x'], pattern: 'armored-hub-six', construction: 'warrior-plain-web',
+  warrior_tes_h: Object.freeze({ donor: 'warrior_tes_h', self: ['warrior_tes_h'], pattern: 'armored-hub-six', construction: 'warrior-plain-web',
     note: 'Object_33 deep plain steel web over paired tire bands (fv510MilanX.ts).' }),
   t90: Object.freeze({ donor: 't90', self: [], pattern: 'pressed-six', construction: 't90-pressed-source-face',
     note: 'In this fleet the T-90 and T-90M wheels are one construction (the T-90M X source-pressed face); the older T-series hulls draw it through the standard.' }),
@@ -178,7 +178,7 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
   uk: [
     { donor: 'challenger_3', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'UK next-generation MBT hull → Challenger 3 wheel' },
     { donor: 'challenger2e', roles: MBT_HULL_ROLES, reason: 'UK MBT hull → Challenger 2E wheel' },
-    { donor: 'fv510_milan_x', reason: 'UK IFV/APC hull → Warrior Milan X wheel' },
+    { donor: 'warrior_tes_h', reason: 'UK IFV/APC hull → Warrior Milan X wheel' },
   ],
   russia: [
     { donor: 't14', roles: MBT_HULL_ROLES, eras: ['next-generation'], reason: 'Russia next-generation MBT hull → T-14 Armata wheel' },

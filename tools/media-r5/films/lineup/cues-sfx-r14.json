@@ -1,0 +1,1528 @@
+{
+ "title": "The Lineup — 24 tanks",
+ "bpm": 96,
+ "durationSec": 39.5,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C",
+  "Gm",
+  "Gm",
+  "A",
+  "A",
+  "Bb",
+  "C",
+  "Dm",
+  "Dm"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "intro",
+   "fromBar": 0,
+   "toBar": 1,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -8
+  },
+  {
+   "name": "reveals-a",
+   "fromBar": 2,
+   "toBar": 5,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats",
+    "drone"
+   ],
+   "gainDb": -3
+  },
+  {
+   "name": "reveals-b",
+   "fromBar": 6,
+   "toBar": 9,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "reveals-c",
+   "fromBar": 10,
+   "toBar": 13,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": 0
+  },
+  {
+   "name": "end",
+   "fromBar": 14,
+   "toBar": 15,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 0.625,
+   "sec": 1.6
+  },
+  {
+   "kind": "riser",
+   "t": 5,
+   "sec": 3.5
+  },
+  {
+   "kind": "braam",
+   "t": 5,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 5,
+   "sec": 3
+  },
+  {
+   "kind": "taiko",
+   "t": 6.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 7.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 7.5,
+   "chord": "Bb",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 8.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 10,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "F",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 11.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 12.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 12.5,
+   "chord": "F",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 13.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 15,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 15,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 16.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 17.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 17.5,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 18.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 20,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 20,
+   "chord": "Gm",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 21.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 22.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 22.5,
+   "chord": "Gm",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 23.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 25,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 25,
+   "chord": "A",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 26.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 27.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 27.5,
+   "chord": "A",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 28.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 30,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 30,
+   "chord": "Bb",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 31.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 32.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 32.5,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 33.75,
+   "f": 64
+  },
+  {
+   "kind": "riser",
+   "t": 35,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 35,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 35,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "stop",
+   "t": 39.1
+  }
+ ],
+ "ducks": [],
+ "sfx": [
+  {
+   "kind": "drive",
+   "t": 0,
+   "dur": 5,
+   "speed": 14.6,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.5
+  },
+  {
+   "kind": "bed",
+   "t": 0,
+   "dur": 5,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "he",
+   "t": 0.9,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 1.12,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 1.34,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 1.56,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 1.78,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 2,
+   "distM": 61,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "cannon",
+   "t": 2.74,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 109.8,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 2.85,
+   "distM": 26.6,
+   "size": "large"
+  },
+  {
+   "kind": "he",
+   "t": 3.2,
+   "distM": 59.5,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 3.42,
+   "distM": 59.5,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 3.64,
+   "distM": 59.5,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "radio",
+   "t": 3.78,
+   "lang": "de",
+   "line": "firing",
+   "take": 2,
+   "voiceDur": 0.566,
+   "span": 0.986
+  },
+  {
+   "kind": "he",
+   "t": 3.86,
+   "distM": 59.5,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "he",
+   "t": 4.08,
+   "distM": 59.5,
+   "size": "medium",
+   "gain": 0.8
+  },
+  {
+   "kind": "cannon",
+   "t": 4.3,
+   "cls": "gun_130",
+   "caliberMm": 130,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 12.8,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 4.54,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 99.2,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 4.65,
+   "distM": 27.4,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 5,
+   "dur": 1.25,
+   "speed": 14.8,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.51
+  },
+  {
+   "kind": "bed",
+   "t": 5,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 5.42,
+   "cls": "gun_130",
+   "caliberMm": 130,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 12.8,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 5.66,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 99.2,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 5.77,
+   "distM": 27.4,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 6.25,
+   "dur": 1.25,
+   "speed": 9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.42
+  },
+  {
+   "kind": "bed",
+   "t": 6.25,
+   "dur": 1.25,
+   "asset": "amb_urban",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 6.4,
+   "lang": "de",
+   "line": "firing",
+   "take": 1,
+   "voiceDur": 0.688,
+   "span": 1.108
+  },
+  {
+   "kind": "cannon",
+   "t": 6.67,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 15.3,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 7.5,
+   "dur": 1.25,
+   "speed": 9,
+   "engine": "turbine_agt",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.32
+  },
+  {
+   "kind": "bed",
+   "t": 7.5,
+   "dur": 1.25,
+   "asset": "amb_urban",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 7.92,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 20.2,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 8.75,
+   "dur": 1.25,
+   "speed": 9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.34
+  },
+  {
+   "kind": "bed",
+   "t": 8.75,
+   "dur": 1.25,
+   "asset": "amb_urban",
+   "db": 0
+  },
+  {
+   "kind": "drive",
+   "t": 10,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_soviet",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.39
+  },
+  {
+   "kind": "bed",
+   "t": 10,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 10.4,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 16.7,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 10.54,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 95.3,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 10.65,
+   "distM": 29.3,
+   "size": "large"
+  },
+  {
+   "kind": "he",
+   "t": 11.1,
+   "distM": 48.7,
+   "size": "huge"
+  },
+  {
+   "kind": "drive",
+   "t": 11.25,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_soviet",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.43
+  },
+  {
+   "kind": "bed",
+   "t": 11.25,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 11.4,
+   "lang": "ru",
+   "line": "firing",
+   "take": 1,
+   "voiceDur": 0.568,
+   "span": 0.988
+  },
+  {
+   "kind": "cannon",
+   "t": 11.67,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.5,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 11.92,
+   "asset": "crate_break",
+   "distM": 26.7
+  },
+  {
+   "kind": "drive",
+   "t": 12.5,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "snow",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 12.5,
+   "dur": 1.25,
+   "asset": "amb_alpine",
+   "db": 0
+  },
+  {
+   "kind": "he",
+   "t": 12.94,
+   "distM": 25.8,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 13.75,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_ifv",
+   "tracks": "heavy",
+   "surface": "sand",
+   "gain": 0.44
+  },
+  {
+   "kind": "bed",
+   "t": 13.75,
+   "dur": 1.25,
+   "asset": "amb_oasis",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 13.9,
+   "lang": "en-US",
+   "line": "firing",
+   "take": 0,
+   "voiceDur": 0.666,
+   "span": 1.086
+  },
+  {
+   "kind": "cannon",
+   "t": 14.17,
+   "cls": "ac_25",
+   "caliberMm": 25,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 16.1,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 15,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.41
+  },
+  {
+   "kind": "bed",
+   "t": 15,
+   "dur": 1.25,
+   "asset": "amb_fjord",
+   "db": 0,
+   "layer": "layer_waterfall",
+   "layerDb": -12
+  },
+  {
+   "kind": "prop",
+   "t": 15.253,
+   "asset": "crate_break",
+   "distM": 13.7
+  },
+  {
+   "kind": "prop",
+   "t": 15.42,
+   "asset": "crate_break",
+   "distM": 16.9
+  },
+  {
+   "kind": "cannon",
+   "t": 15.42,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 15,
+   "tail": "mountain",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 15.86,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 113.5,
+   "tail": "mountain",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 15.97,
+   "distM": 33.5,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 16.25,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "mud",
+   "gain": 0.43
+  },
+  {
+   "kind": "bed",
+   "t": 16.25,
+   "dur": 1.25,
+   "asset": "amb_jungle",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 16.4,
+   "lang": "zh",
+   "line": "firing",
+   "take": 0,
+   "voiceDur": 0.4,
+   "span": 0.82
+  },
+  {
+   "kind": "cannon",
+   "t": 16.67,
+   "cls": "gun_105",
+   "caliberMm": 105,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 16.5,
+   "tail": "forest",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 16.81,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 53.9,
+   "tail": "forest",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 16.92,
+   "distM": 27.2,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 17.5,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.42
+  },
+  {
+   "kind": "bed",
+   "t": 17.5,
+   "dur": 1.25,
+   "asset": "amb_railyard",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 17.92,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.8,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 18.56,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 62.8,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 18.67,
+   "distM": 30.3,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 18.75,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_soviet",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 18.75,
+   "dur": 1.25,
+   "asset": "amb_foundry",
+   "db": 0,
+   "layer": "layer_machinery",
+   "layerDb": -12
+  },
+  {
+   "kind": "radio",
+   "t": 18.9,
+   "lang": "ru",
+   "line": "firing",
+   "take": 2,
+   "voiceDur": 0.798,
+   "span": 1.218
+  },
+  {
+   "kind": "cannon",
+   "t": 19.17,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 10,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 20,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.46
+  },
+  {
+   "kind": "bed",
+   "t": 20,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 20.42,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 20.737,
+   "asset": "rubble_crunch",
+   "distM": 9.9
+  },
+  {
+   "kind": "drive",
+   "t": 21.25,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "turbine_gtd",
+   "tracks": "heavy",
+   "surface": "snow",
+   "gain": 0.43
+  },
+  {
+   "kind": "bed",
+   "t": 21.25,
+   "dur": 1.25,
+   "asset": "amb_alpine",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 21.67,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.4,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 22.5,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.42
+  },
+  {
+   "kind": "bed",
+   "t": 22.5,
+   "dur": 1.25,
+   "asset": "amb_orchard",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 22.65,
+   "lang": "it",
+   "line": "firing",
+   "take": 2,
+   "voiceDur": 0.558,
+   "span": 0.978
+  },
+  {
+   "kind": "prop",
+   "t": 22.87,
+   "asset": "crate_break",
+   "distM": 12.4
+  },
+  {
+   "kind": "cannon",
+   "t": 22.92,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.7,
+   "tail": "forest",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 23.02,
+   "asset": "container_crush",
+   "distM": 15
+  },
+  {
+   "kind": "prop",
+   "t": 23.203,
+   "asset": "crate_break",
+   "distM": 10.5
+  },
+  {
+   "kind": "drive",
+   "t": 23.75,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_aircooled",
+   "tracks": "heavy",
+   "surface": "sand",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 23.75,
+   "dur": 1.25,
+   "asset": "amb_oasis",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 24.17,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 11.3,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 25,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "sand",
+   "gain": 0.44
+  },
+  {
+   "kind": "bed",
+   "t": 25,
+   "dur": 1.25,
+   "asset": "amb_oasis",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 25.15,
+   "lang": "he",
+   "line": "firing",
+   "take": 2,
+   "voiceDur": 0.846,
+   "span": 1.266
+  },
+  {
+   "kind": "cannon",
+   "t": 25.34,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.8,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "pen",
+   "t": 25.43,
+   "distM": 54.3,
+   "heavy": true
+  },
+  {
+   "kind": "kill",
+   "t": 25.55,
+   "distM": 53.4,
+   "pop": true
+  },
+  {
+   "kind": "he",
+   "t": 26.19,
+   "distM": 29.3,
+   "size": "large"
+  },
+  {
+   "kind": "drive",
+   "t": 26.25,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "mud",
+   "gain": 0.43
+  },
+  {
+   "kind": "bed",
+   "t": 26.25,
+   "dur": 1.25,
+   "asset": "amb_jungle",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 26.67,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 14.4,
+   "tail": "forest",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 27.37,
+   "asset": "crate_break",
+   "distM": 14.1
+  },
+  {
+   "kind": "drive",
+   "t": 27.5,
+   "dur": 1.25,
+   "speed": 14.8,
+   "engine": "diesel_two_stroke",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.34
+  },
+  {
+   "kind": "bed",
+   "t": 27.5,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "radio",
+   "t": 27.65,
+   "lang": "ja",
+   "line": "firing",
+   "take": 1,
+   "voiceDur": 0.638,
+   "span": 1.058
+  },
+  {
+   "kind": "cannon",
+   "t": 27.92,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 19,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 28.52,
+   "cls": "ac_40",
+   "caliberMm": 35,
+   "rate": 1.05,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 41.5,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 28.75,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.5
+  },
+  {
+   "kind": "bed",
+   "t": 28.75,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 29.09,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 12.3,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "pen",
+   "t": 29.18,
+   "distM": 44.2,
+   "heavy": true
+  },
+  {
+   "kind": "kill",
+   "t": 29.3,
+   "distM": 42.4,
+   "pop": true
+  },
+  {
+   "kind": "drive",
+   "t": 30,
+   "dur": 1.25,
+   "speed": 14.9,
+   "engine": "diesel_two_stroke",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 30,
+   "dur": 1.25,
+   "asset": "amb_forest",
+   "db": 0,
+   "layer": "layer_spillway",
+   "layerDb": -13
+  },
+  {
+   "kind": "radio",
+   "t": 30.15,
+   "lang": "en-GB",
+   "line": "firing",
+   "take": 0,
+   "voiceDur": 0.828,
+   "span": 1.248
+  },
+  {
+   "kind": "cannon",
+   "t": 30.42,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 11,
+   "tail": "mountain",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 30.87,
+   "asset": "crate_break",
+   "distM": 12.6
+  },
+  {
+   "kind": "cannon",
+   "t": 30.92,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 26.2,
+   "tail": "mountain",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 30.987,
+   "asset": "crate_break",
+   "distM": 11.4
+  },
+  {
+   "kind": "prop",
+   "t": 31.087,
+   "asset": "crate_break",
+   "distM": 11.9
+  },
+  {
+   "kind": "prop",
+   "t": 31.153,
+   "asset": "crate_break",
+   "distM": 10.5
+  },
+  {
+   "kind": "drive",
+   "t": 31.25,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "turbine_agt",
+   "tracks": "heavy",
+   "surface": "hard",
+   "gain": 0.51
+  },
+  {
+   "kind": "bed",
+   "t": 31.25,
+   "dur": 1.25,
+   "asset": "amb_railyard",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 31.67,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 12.8,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 32.27,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 31.8,
+   "tail": "urban",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 32.5,
+   "dur": 1.25,
+   "speed": 14.8,
+   "engine": "diesel_v12_soviet",
+   "tracks": "heavy",
+   "surface": "earth",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 32.5,
+   "dur": 1.25,
+   "asset": "amb_field",
+   "db": 0
+  },
+  {
+   "kind": "prop",
+   "t": 32.513,
+   "asset": "sandbag_thump",
+   "distM": 33.6
+  },
+  {
+   "kind": "prop",
+   "t": 32.647,
+   "asset": "tree_snap",
+   "distM": 56.2
+  },
+  {
+   "kind": "radio",
+   "t": 32.65,
+   "lang": "ru",
+   "line": "firing",
+   "take": 2,
+   "voiceDur": 0.798,
+   "span": 1.218
+  },
+  {
+   "kind": "cannon",
+   "t": 32.88,
+   "cls": "gun_125",
+   "caliberMm": 125,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 10.1,
+   "tail": "open",
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 33.75,
+   "dur": 1.25,
+   "speed": 15,
+   "engine": "diesel_v12_modern",
+   "tracks": "heavy",
+   "surface": "snow",
+   "gain": 0.55
+  },
+  {
+   "kind": "bed",
+   "t": 33.75,
+   "dur": 1.25,
+   "asset": "amb_alpine",
+   "db": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 34.17,
+   "cls": "gun_120",
+   "caliberMm": 120,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 11,
+   "tail": "mountain",
+   "pan": 0
+  },
+  {
+   "kind": "prop",
+   "t": 34.187,
+   "asset": "hedgehog_clang",
+   "distM": 9.5
+  },
+  {
+   "kind": "cannon",
+   "t": 34.77,
+   "cls": "gun_105",
+   "caliberMm": 105,
+   "rate": 1,
+   "gainDb": 0,
+   "twin": false,
+   "distM": 20.3,
+   "tail": "mountain",
+   "pan": 0
+  }
+ ]
+}

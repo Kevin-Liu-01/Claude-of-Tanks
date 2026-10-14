@@ -7,7 +7,7 @@ import {
 // Physics lane (2026-10-10): wire 5's WRECK_BODY row group — a wreck's turret body where the authority's physics put it,
 // 21 bytes (and a mask byte) while it changes, nothing on a delta once it sleeps, one byte when it goes; malformed groups are refused.
 
-assert.equal(WIRE_VERSION, 5, 'the turret body is a layout change');
+assert.ok(WIRE_VERSION >= 5, 'the turret body is a layout change (wire 5; wire 6 kept it)');
 assert.equal(ROW_GROUP.WRECK_BODY, 1 << 18);
 assert.equal(ROW_GROUP_MASK_MAX, (1 << 19) - 1);
 

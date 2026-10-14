@@ -1,0 +1,403 @@
+{
+ "map": "verdant",
+ "timeOfDay": "day",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 419,
+ "actors": [
+  {
+   "id": "t90m_x",
+   "name": "hero",
+   "pos": [
+    -80.1,
+    59.8
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -2.79,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2933,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally1",
+   "pos": [
+    -66.35,
+    71.13
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -1.94,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2934,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "ally2",
+   "pos": [
+    -64.11,
+    51.48
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -2.22,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2935,
+   "state": "intact"
+  },
+  {
+   "id": "t14_x",
+   "name": "ally3",
+   "pos": [
+    -55.31,
+    81.6
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": -11.92,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2936,
+   "state": "intact"
+  },
+  {
+   "id": "kurganets25_x",
+   "name": "ally4",
+   "pos": [
+    -47.01,
+    42.27
+   ],
+   "facingDeg": 263.8,
+   "turretDeg": 13.26,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2937,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a6_x",
+   "name": "foe0",
+   "pos": [
+    -156.76,
+    51.01
+   ],
+   "facingDeg": 81.01,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5447,
+   "state": "burning",
+   "stateAgeS": 30,
+   "authoredBurning": false
+  },
+  {
+   "id": "m1a2_x",
+   "name": "foe1",
+   "pos": [
+    -165.94,
+    56.7
+   ],
+   "facingDeg": 87.81,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5448,
+   "state": "wrecked-burnt",
+   "stateAgeS": 30
+  },
+  {
+   "id": "leo2a5_x",
+   "name": "foe2",
+   "pos": [
+    -161.24,
+    34.11
+   ],
+   "facingDeg": 74.37,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5449,
+   "state": "intact"
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "burning",
+   "actor": "foe0",
+   "params": {},
+   "tMs": 0
+  },
+  {
+   "id": "fx2",
+   "type": "fire",
+   "actor": "hero",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1190
+  },
+  {
+   "id": "fx3",
+   "type": "shockwave",
+   "at": [
+    -87.06,
+    59.04
+   ],
+   "params": {
+    "radiusM": 14,
+    "strength": 1.2
+   },
+   "tMs": 1195
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1800,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -89.05843705705989,
+     3.503262627956417,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -89.05843705705989,
+     3.503262627956417,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -89.05843705705989,
+     3.5032626279564174,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -89.05843705705989,
+     3.5032626279564174,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -89.05843705705989,
+     3.5032626279564174,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -89.05843705705989,
+     3.5032626279564174,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     -89.05843705705989,
+     3.5032626279564174,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1750",
+    "tMs": 1750,
+    "pos": [
+     -89.05843705705989,
+     3.503262627956417,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-8",
+    "label": "t1800",
+    "tMs": 1800,
+    "pos": [
+     -89.05843705705989,
+     3.503262627956417,
+     54.30032678291737
+    ],
+    "lookAt": [
+     -82.08830192794463,
+     4.698935535745145,
+     59.58400128858795
+    ],
+    "fov": 38,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -89.06,
+   3.5,
+   54.3
+  ],
+  "yawDeg": -127.16,
+  "pitchDeg": 7.78,
+  "rollDeg": 0,
+  "fov": 38,
+  "lookAt": [
+   -73.27,
+   6.21,
+   66.27
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "cinematic",
+  "exposure": 0.05,
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 27,
+  "id": "b27-recoil",
+  "technique": "Recoil and blast",
+  "title": "T-90M fires: recoil, muzzle blast and the dust ring at 1/25 s",
+  "set": "verdant-day-assault",
+  "map": "verdant",
+  "time": "day",
+  "film": null,
+  "hero": "t90m_x",
+  "heroName": "T-90M",
+  "exposureMs": 40,
+  "tMs": 1215
+ },
+ "crushes": []
+}

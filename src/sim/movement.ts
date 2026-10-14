@@ -420,6 +420,12 @@ export interface MovementEntity {
   /** Ruleset impact physics (sim/matchRuleset.ts): the landing rebound; absent = the whole-game block. */
   modePhysics?: RulesetPhysics | null;
   rigidGear?: boolean;
+  /**
+   * The pace (m/s) a hull that is moved for it rather than driven travels at, for its climb onto an edge (EDGE_CLIMB_*):
+   * the Studio poses its actors along their tracks and steps the movement at speed 0 for their ground; without it they
+   * would climb at a parked hull's pace. Absent: the hull's own speed.
+   */
+  climbPaceMps?: number;
 }
 
 export interface MovementHeightField {
@@ -431,6 +437,8 @@ export interface MovementHeightField {
   getTerrainContactHeightAt?: HeightSampler;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
+  /** A support field's count of reads a record's top answered (structureSupport.ts recordReads; EDGE_CLIMB_*). */
+  readonly recordReads?: number;
 }
 
 export type MovementCollisionResolver = (
@@ -731,6 +739,14 @@ let _rotationDrop = 0;
 let _wholeTrackOnGround = true;
 /** The support's own rise rate this step, unsmoothed (updateRideSupportVelocity; the floor clamp carries the ride at it). */
 let _supportRate = 0;
+/** This step's climb cap for the whole-hull floor lift (EDGE_CLIMB_*; set by updateVerticalContact from the travel). */
+let _climbCapM = 0.25;
+/** Whether this step's hull is slow enough for an edge to be climbed at its pace (EDGE_EASE_MAX_MPS). */
+let _edgeEase = false;
+/** The entity's climb pace hint this step (MovementEntity.climbPaceMps), set by updateTank. */
+let _climbPaceMps = 0;
+/** Whether this step's support solve stood the hull on a record's top somewhere (MovementHeightField.recordReads). */
+let _supportOnRecord = false;
 /**
  * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
@@ -898,6 +914,15 @@ const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
 const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
 /** Round 30: the longest obstacle push one fixed step applies (60 steps/s → a 7 m intrusion resolves in ~120 ms). */
 const OBSTACLE_PUSH_MAX_M_PER_STEP = 1.0;
+/**
+ * (destruction stream, 2026-10-12; the owner: "tanks driving on odd surfaces like rocks and other irregularities will stop
+ * being glitchy and weird") the part of an obstacle push that is not this step's own travel being stopped — an overlap a
+ * changed attitude, a support change on a rock or a refused crush left — leaves over a few steps: at most this share of
+ * itself a step, never less than DEPENETRATION_MIN_M (the field audit's pops: a parked hull thrown 0.4 m off a bunker in
+ * one tick, a hull stepping off a rock 0.9 m sideways). The travel into the obstacle is still stopped at once.
+ */
+const DEPENETRATION_SHARE = 0.25;
+const DEPENETRATION_MIN_M = 0.06;
 /** state.impactSource values: what absorbed this tick's blocked closing speed. */
 export const IMPACT_SOURCE_NONE = 0;
 export const IMPACT_SOURCE_CLIFF = 1;
@@ -964,6 +989,26 @@ const WALL_PUSH_MAX_M_PER_STEP = 0.1;
 /** The ground lifts a ride at most this far in one step: a solver's correction (a support that jumped under the hull,
  * a top found under it) is spread over steps, never a teleport. */
 const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
+/**
+ * The whole-hull floor lift climbs at the hull's own pace (destruction stream, 2026-10-13; the owner: "tanks driving on
+ * odd surfaces like rocks and other irregularities will stop being glitchy and weird"). A rock's movement tier entered
+ * from the side (a turning hull's track edge crossing onto it) raised the highest track contact 0.44 m in one step; the
+ * floor lifted the hull 0.25 m at once and the support's rate carried it on (the field audit's worst vertical jolt,
+ * Titan Gorge, an M1A1 at 4.4 m/s). A floor that rises under the whole hull further than EDGE_CLIMB_BASE_M plus
+ * EDGE_CLIMB_GRADE times the step's travel (a track rolling up a 45-degree edge) is an edge: the hull climbs onto it at
+ * that pace at most, its vertical speed eased in and out (EDGE_CLIMB_ACCEL_MPS2), over a few steps instead of jumping
+ * onto it. Ground that rises less a step (a grade, at any speed) is followed as before.
+ */
+const EDGE_CLIMB_BASE_M = 0.04;
+const EDGE_CLIMB_GRADE = 1;
+/** The climb's ease in and out (m/s^2): its vertical speed changes by at most this much a second. */
+const EDGE_CLIMB_ACCEL_MPS2 = 60;
+/**
+ * Over this speed a floor that outruns the climb is lifted as before (FLOOR_LIFT_MAX_M_PER_STEP a step): a hull at speed
+ * meets faces, ramps and trench walls, not rock tiers, and easing its climb sank it into them (the stress matrix: body
+ * penetration on Turbo's quarter-pipe and kicker, the Moon's bank hop). The field audit's rock jolts were all under it.
+ */
+const EDGE_EASE_MAX_MPS = 7;
 /** The most a floor's lift at a partial contact's leading station adds to the hull's pitch rate in one step (rad/s):
  * the turn is eased in, its angular acceleration bounded (15 rad/s^2), not thrown at once. */
 const STATION_TURN_STEP = 0.25;
@@ -2270,6 +2315,7 @@ function constrainLoadedRide(
     }
   }
   const yStart = ride.y;
+  const vStart = ride.v;
   ride.v += accel * dt;
   ride.y += ride.v * dt;
   if (ride.y < floorY) {
@@ -2278,6 +2324,14 @@ function constrainLoadedRide(
     // still read the fall); a rising floor carries it at the smoothed rate, as before (a face struck by the nose pushes
     // the nose, not the whole hull, at its own rate)
     const floorV = Math.max(ride.groundV, Math.min(_supportRate, Math.max(ride.groundV, 0)));
+    // an edge (EDGE_CLIMB_*): a floor further over the ride than the hull climbs in a step is climbed onto, eased in and
+    // out at EDGE_CLIMB_ACCEL_MPS2 and never faster than the climb cap, by whichever of the laws below takes the lift
+    const gap = floorY - yStart;
+    const edge = _edgeEase && gap > _climbCapM;
+    const liftTop = edge
+      ? yStart + dt * Math.min(_climbCapM / dt, Math.sqrt(2 * EDGE_CLIMB_ACCEL_MPS2 * gap),
+        Math.max(vStart, floorV, 0) + EDGE_CLIMB_ACCEL_MPS2 * dt)
+      : yStart + FLOOR_LIFT_MAX_M_PER_STEP;
     if (_stationTurn.guard && _stationTurn.rootShare < 1) {
       // A body strike (round 8): the hull's own nose or tail past its tracks meets the ground, with no spring or bump
       // stop between. The strike stops the end's closing on the ground, as an impulse at the end splits across a rigid
@@ -2287,7 +2341,7 @@ function constrainLoadedRide(
       // end's closing rate as well, so the end rose past the ground, the spring brought it back down and it struck again,
       // step after step: a trench crossing's rendered jerk p99 rose by more than half. The closing is the end's own speed
       // into the ground, and the depth it is left with the root takes back as position, STRIKE_PROJECT_MAX_M a step.)
-      const depth = Math.min(floorY - ride.y, FLOOR_LIFT_MAX_M_PER_STEP);
+      const depth = Math.min(floorY - ride.y, edge ? Math.max(0, liftTop - ride.y) : FLOOR_LIFT_MAX_M_PER_STEP);
       const stationZ = _stationTurn.stationZ;
       // The impulse that stops the end's closing on the face, on the rigid body (round 8, item 3). The ground pushes along
       // its normal (on a face of grade g under the end's travel; taken vertically whole, a UDES 03 nosing into a box
@@ -2317,6 +2371,9 @@ function constrainLoadedRide(
         rise += (turn - kept) * stationZ;
         turn = kept;
       }
+      // (an edge: the root rises no faster than the climb's pace, its impulse included — a struck end that took the whole
+      // closing as the root's rise threw a low hull out of a Moon trench at 13.6 m/s)
+      if (edge) rise = Math.min(rise, Math.max(0, (liftTop - yStart) / dt - ride.v));
       // (the impulse at the step's start: the step moves at the speed it leaves with; the depth the end is left in the
       // ground with the root takes back as position)
       ride.v += rise;
@@ -2333,7 +2390,7 @@ function constrainLoadedRide(
       // in no faster than STATION_TURN_STEP a step. The whole lift on the root threw a heavy hull's centre up an assault
       // trench's far wall at 5 m/s, then turned it nose-up as well: off the wall, 38 degrees nose-up.
       const share = _stationTurn.rootShare;
-      const station = Math.min(floorY - ride.y, (yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y) / Math.max(share, 0.25));
+      const station = Math.min(floorY - ride.y, (liftTop - ride.y) / Math.max(share, 0.25));
       const deficit = floorV - (ride.v + _stationTurn.stationZ * pitchV);
       if (station > 0) ride.y += Math.min(station, STATION_TURN_FROM_M) + share * Math.max(0, station - STATION_TURN_FROM_M);
       if (deficit > 0) ride.v += share * deficit;
@@ -2343,6 +2400,12 @@ function constrainLoadedRide(
     }
     // the floor moves the ride at most FLOOR_LIFT_MAX_M_PER_STEP above where it began the step: a solver's correction is
     // spread over steps
+    // (an edge: the ride leaves the step at the pace it rose)
+    if (edge) {
+      ride.y = Math.max(ride.y, Math.min(floorY, liftTop));
+      ride.v = (ride.y - yStart) / dt;
+      return true;
+    }
     ride.y += Math.max(0, Math.min(floorY - ride.y, yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y));
     if (ride.v < floorV) ride.v = floorV;
     return true;
@@ -2449,6 +2512,11 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
     }
   }
   const contactY = supportY + RIDE_DROOP_M;
+  const pace = Math.max(Math.abs(state.speed), _climbPaceMps);
+  _climbCapM = Math.min(FLOOR_LIFT_MAX_M_PER_STEP, EDGE_CLIMB_BASE_M + EDGE_CLIMB_GRADE * pace * dt);
+  // (a record's top under the hull: a rock's tier, a roof; a terrain face — a trench's far wall — lifts as before: easing
+  // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
+  _edgeEase = pace <= EDGE_EASE_MAX_MPS && _supportOnRecord;
   const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
@@ -2832,6 +2900,23 @@ function integrateHorizontalMotion(
   const radiusM = spec.armor?.boundingRadiusM ?? spec.dims.hullLengthM * 0.5;
   _push.set(0, 0, 0);
   if (!collide(state.pos, radiusM, _push)) return;
+  // the push splits into the part that undoes this step's own travel into the obstacle (applied at once: a wall stops a
+  // hull) and the rest, an overlap the hull already stood in, which leaves gradually (DEPENETRATION_SHARE)
+  const travelX = (forwardX * state.speed + spring.recoilVX) * dt, travelZ = (forwardZ * state.speed + spring.recoilVZ) * dt;
+  const travelLen = Math.hypot(travelX, travelZ);
+  let cancelX = 0, cancelZ = 0;
+  if (travelLen > 1e-9) {
+    const along = (_push.x * travelX + _push.z * travelZ) / travelLen;
+    if (along < 0) {
+      const undo = Math.min(-along, travelLen);
+      cancelX = -travelX / travelLen * undo; cancelZ = -travelZ / travelLen * undo;
+    }
+  }
+  const restX = _push.x - cancelX, restZ = _push.z - cancelZ;
+  const restLen = Math.hypot(restX, restZ);
+  const restMax = Math.max(DEPENETRATION_MIN_M, restLen * DEPENETRATION_SHARE);
+  const restK = restLen > restMax ? restMax / restLen : 1;
+  _push.set(cancelX + restX * restK, 0, cancelZ + restZ * restK);
   // Round 30: a hull found deep inside a primitive (a clip through a wall, a roof it fell through, a spawn inside a
   // footprint) leaves it over a few steps instead of one 7 m teleport — the visible "goes crazy" pop.
   const pushLen = Math.hypot(_push.x, _push.z);
@@ -5095,6 +5180,7 @@ export function updateTank(
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
+  const recordReadsBefore = heightField.recordReads ?? 0;
   solveSupportHeight(
     entity,
     hAt,
@@ -5106,6 +5192,7 @@ export function updateTank(
     suspensionAimPitch,
     dt,
   );
+  _supportOnRecord = (heightField.recordReads ?? 0) > recordReadsBefore;
 
   // The ground's grade along the travel under a hull in flight, per horizontal metre (physics lane, 2026-10-03). The
   // track samples just taken lie at z·cos(pitch) along the travel, so their fit's rise per hull-local metre (the sine of
@@ -5122,6 +5209,7 @@ export function updateTank(
   }
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
+  _climbPaceMps = Number.isFinite(entity.climbPaceMps) ? Math.abs(entity.climbPaceMps!) : 0;
   updateVerticalContact(state, groundedAtStart, dt, drive);
   // a landing in flight is charged its closing along the normal of the face it meets (bounded rules keep their own)
   if (!groundedAtStart && state.fallImpactMps > 0 && !Number.isFinite(drive.bounceMaxHeight)) {

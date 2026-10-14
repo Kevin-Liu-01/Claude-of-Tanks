@@ -70,7 +70,7 @@ assert.equal(TRANSITION_SHOTS.length, pickedTransitions.length, 'only the picks 
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.equal(
   TRANSITION_SHOTS[0].img,
-  `${siteStills}${pickedTransitions[0].id}.webp`,
+  pickImg(pickedTransitions[0]),
   'the boot pick must remain the first transition-screen option',
 );
 assert.equal(

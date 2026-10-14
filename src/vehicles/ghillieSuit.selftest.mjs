@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { addVehicleGhillieSuit, GHILLIE_SUIT_CONFIGS } from './ghillieSuit.ts';
+import { addVehicleGhillieSuit, blowOffPanel, ghillieBlowOffPanels, GHILLIE_SUIT_CONFIGS, suitDockBoxes } from './ghillieSuit.ts';
+import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
+import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAttachment.ts';
 
 const ids = [
   'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
   'strv103a', 'strv103', 't84', 'ua_m1a1', 'leo2a6_ua',
 ];
 
-for (const id of ['t90a', 't90m', 'strv122', 'ua_t84_oplot_m']) {
+// 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
+// net (ghillieFleetSuits.ts) and left this control list; the others stay net-free
+for (const id of ['t90a', 'strv122', 'ua_t84_oplot_m']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -416,6 +421,118 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
     console.warn = warn;
     restoreCanvas();
   }
+}
+
+// 2026-10-09 (the netting lane; the owner's order of that night): the fleet field nets on twenty-one hulls. Each is a
+// real suit per configured owner (net and garnish, detailed geometry), rests on its armour or hangs from its own net
+// (garnish on its net or the armour) within 15 mm, keeps its hull hems above the hull's hem floor and the track
+// corridor, fires no smoke discharger into itself, lays nothing of an owner over that owner's hatch lids and cupolas,
+// and leaves the mantlet and gun corridor open.
+for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
+  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+  tank.root.updateMatrixWorld(true);
+  const rigs = { hull: tank.root.getObjectByName('rig_hull'), turret: tank.root.getObjectByName('rig_turret'), gun: tank.root.getObjectByName('rig_gun') };
+  const suit = { hull: [], turret: [], gun: [] };
+  for (const owner of ['hull', 'turret', 'gun']) {
+    if (!cfg[owner]) continue;
+    for (const layer of cfg.foliage === false ? ['net'] : ['net', 'leaves']) {
+      const mesh = tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`);
+      assert.ok(mesh?.isMesh && belongsTo(mesh, rigs[owner]), `${id}: ${owner} ${layer} is a merged mesh on its owner rig`);
+      assert.ok(mesh.geometry.getAttribute('position').count > 120, `${id}: ${owner} ${layer} is detailed geometry`);
+      assert.equal(mesh.userData.fieldSuit, true, `${id}: ${owner} ${layer} is marked for the decor's turret-load guard`);
+      suit[owner].push(mesh);
+    }
+  }
+  const floating = suitContact(tank, id);
+  assert.deepEqual(floating, [], `${id} fleet suit pieces touch nothing within ${TOUCH_M * 1000} mm:\n  ${floating.join('\n  ')}`);
+  const toHull = new THREE.Matrix4().copy(rigs.hull.matrixWorld).invert();
+  const hullBox = new THREE.Box3();
+  for (const mesh of suit.hull) {
+    const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) hullBox.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(toHull));
+  }
+  if (suit.hull.length) {
+    assert.ok(hullBox.min.y > Math.max(0.52, Math.min(cfg.hemFloorM ?? 0.545, 0.545) - 0.06),
+      `${id}: the hull suit stays above the track corridor (${hullBox.min.y.toFixed(3)})`);
+  }
+  const all = [...suit.hull, ...suit.turret, ...suit.gun];
+  const ray = new THREE.Raycaster();
+  tank.root.traverse((o) => {
+    for (const socket of o.userData?.smokeSockets ?? []) {
+      ray.set(new THREE.Vector3().fromArray(socket.position).applyMatrix4(o.matrixWorld),
+        new THREE.Vector3().fromArray(socket.direction).transformDirection(o.matrixWorld));
+      ray.far = 1.5;
+      assert.equal(ray.intersectObjects(all, false).length, 0, `${id}: the smoke discharger on ${o.name} fires clear of the suit`);
+    }
+  });
+  // 2026-10-12 (cam-netting): an ammunition bay's blow-off panels (the Abrams' blast panels, drawn in the hatch bucket)
+  // are no crew lid and carry the net (ghillieSuit.ts blowOffPanel); every crew lid and cupola stays clear
+  const blowOff = { hull: ghillieBlowOffPanels(rigs.hull), turret: ghillieBlowOffPanels(rigs.turret) };
+  for (const owner of ['hull', 'turret']) for (const b of blowOff[owner]) {
+    const size = b.getSize(new THREE.Vector3());
+    assert.ok(blowOffPanel(size.x, size.z, size.y), `${id}: a blow-off panel is broad and flat`);
+  }
+  tank.root.traverse((o) => {
+    const lid = /^(hull|turret)(Hatch|Cupola)$/.exec(o.name);
+    if (!o.isMesh || !lid) return;
+    const own = suit[lid[1]];
+    const box = new THREE.Box3().setFromObject(o);
+    const toOwner = new THREE.Matrix4().copy(rigs[lid[1]].matrixWorld).invert();
+    for (const mesh of own) {
+      const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+        // lids are merged per bucket: a ray down onto the bucket's own pieces, within 0.6 m (a net lying on or near the
+        // lid; a net thrown over a cage a metre above the hatches leaves them free to open)
+        if (v.y < box.max.y - 0.03 || v.y > box.max.y + 0.6) continue;
+        ray.set(v, new THREE.Vector3(0, -1, 0)); ray.far = 0.62;
+        const hits = ray.intersectObject(o, false).filter((hit) => {
+          const q = hit.point.clone().applyMatrix4(toOwner);
+          return !blowOff[lid[1]].some((b) => b.clone().expandByScalar(0.01).containsPoint(q));
+        });
+        assert.equal(hits.length, 0, `${id}: ${mesh.name} lies over ${o.name} at ${v.toArray().map((q) => q.toFixed(2))}`);
+      }
+    }
+  });
+  if (suit.turret.length) {
+    // the bore's line ahead of the trunnion (world frame: the rigs ride the hull's suspension)
+    const net = suit.turret.find((m) => /_net$/.test(m.name));
+    const trunnion = new THREE.Vector3().setFromMatrixPosition(rigs.gun.matrixWorld);
+    const hits = new THREE.Raycaster(new THREE.Vector3(trunnion.x, trunnion.y, trunnion.z + 8), new THREE.Vector3(0, 0, -1), 0, 8)
+      .intersectObject(net, false);
+    assert.deepEqual(hits.map((hit) => hit.point.toArray().map((v) => +v.toFixed(2))), [], `${id} leaves the gun's bore line open`);
+  }
+  // 2026-10-12 (cam-netting; the netting lane's rule of 2026-10-10, now off the seat record itself): every fleet suit holds
+  // its vehicle's drone dock where the seat record puts it. Each cradle, airframe and launch-column volume lies inside
+  // suitDockBoxes with 3 cm to spare (the decor's DOCK_KEEP_OUT_CLEAR), and no vertex of that owner's suit lies within
+  // 3 cm of a volume, measured in the seat's own frame as the seat generator measures it (the owner rig, or the vehicle
+  // root, without its own scale: the T-90M's and the Merkavas' turret rigs are scaled). gen-mission-attachment-seats
+  // --check is the dock's own gate.
+  const seat = MISSION_ATTACHMENT_SEATS[id];
+  assert.ok(seat, `${id}: a suited hull keeps its native drone dock seat record`);
+  const dock = suitDockBoxes(id);
+  assert.equal(dock?.frame, seat.frame, `${id}: the suit's dock keep-out is in its seat's frame`);
+  const volumes = [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((volume) =>
+    new THREE.Box3(new THREE.Vector3(...volume.min), new THREE.Vector3(...volume.max)).translate(new THREE.Vector3(seat.x, seat.y, seat.z)));
+  for (const box of volumes) {
+    assert.ok(dock.boxes.some((k) => k.clone().expandByScalar(-0.03).containsBox(box)),
+      `${id}: the dock volume ${box.min.toArray().map((v) => v.toFixed(3))}..${box.max.toArray().map((v) => v.toFixed(3))} lies inside a keep-out box with 3 cm to spare`);
+  }
+  {
+    const owner = seat.frame === 'turret' ? 'turret' : 'hull';
+    const frame = seat.frame === 'turret' ? rigs.turret : tank.root;
+    const toSeat = new THREE.Matrix4().copy(frame.matrixWorld)
+      .multiply(new THREE.Matrix4().makeScale(1 / frame.scale.x, 1 / frame.scale.y, 1 / frame.scale.z)).invert();
+    const near = volumes.map((box) => box.clone().expandByScalar(0.03));
+    for (const mesh of suit[owner]) {
+      const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(toSeat);
+        assert.ok(!near.some((k) => k.containsPoint(v)), `${id}: ${mesh.name} stands within 3 cm of the drone dock at ${v.toArray().map((q) => q.toFixed(2))}`);
+      }
+    }
+  }
+  tank.dispose();
 }
 
 const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;

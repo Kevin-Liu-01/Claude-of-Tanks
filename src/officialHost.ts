@@ -8,4 +8,4 @@
  * The values live in the deployment policy module (`api/_lib/policy.ts`, INFRA-P19), which the API functions read too;
  * this module is the browser's name for them.
  */
-export { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST, OFFICIAL_TELEMETRY_URL, isOfficialSiteHost } from '../api/_lib/policy.ts';
+export { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST, OFFICIAL_STUN_URLS, OFFICIAL_TELEMETRY_URL, isOfficialSiteHost } from '../api/_lib/policy.ts';

@@ -1052,7 +1052,7 @@
     },
     {
       "id": "type90",
-      "name": "Type 90 (Kyū-maru)",
+      "name": "Type 90 Kyū-maru",
       "nation": "Japan",
       "role": "mbt",
       "tier": 9,
@@ -1829,7 +1829,7 @@
     },
     {
       "id": "type96b_x",
-      "name": "Type 96B X",
+      "name": "Type 96B",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -1913,7 +1913,7 @@
     },
     {
       "id": "aft10_x",
-      "name": "AFT-10 X",
+      "name": "AFT-10",
       "nation": "China",
       "role": "td",
       "tier": 10,
@@ -2185,12 +2185,12 @@
       "suspension": false
     },
     {
-      "id": "fv510_milan_x",
-      "name": "Warrior MILAN X",
+      "id": "warrior_tes_h",
+      "name": "Warrior TES(H)",
       "nation": "UK",
       "role": "ifv",
-      "tier": 9,
-      "hp": 1750,
+      "tier": 10,
+      "hp": 2300,
       "speed": 68,
       "reverse": 20,
       "hull": 45.6,
@@ -3173,7 +3173,7 @@
     },
     {
       "id": "bmp3m_dragun125_x",
-      "name": "BMP-3M Dragun 125 X",
+      "name": "BMP-3M Dragun 125",
       "nation": "Russia",
       "role": "light",
       "tier": 10,
@@ -4800,7 +4800,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 15,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "capture_the_flag",
@@ -4813,7 +4821,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 3,
+        "gravity": 1,
+        "minutes": 15,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "zone_control",
@@ -4826,7 +4842,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 750,
+        "gravity": 1,
+        "minutes": 15,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "turbo_ball",
@@ -4839,7 +4863,15 @@
       "ammo": "unlimited",
       "equipment": 0,
       "consumables": false,
-      "jump": 13
+      "jump": 13,
+      "copy": {
+        "target": 5,
+        "gravity": 0.6,
+        "minutes": 10,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "endless_horde",
@@ -4852,7 +4884,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 0,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "frontline_assault",
@@ -4865,7 +4905,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 12,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "mars",
@@ -4878,7 +4926,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": 9.5
+      "jump": 9.5,
+      "copy": {
+        "target": 750,
+        "gravity": 0.38,
+        "minutes": 12,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "juggernaut",
@@ -4891,7 +4947,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 10,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "infected",
@@ -4904,7 +4968,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 7,
+        "survivorHp": 30,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "realistic",
@@ -4917,7 +4989,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": false,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 15,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "gun_game",
@@ -4930,7 +5010,15 @@
       "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 15,
+        "survivorHp": 100,
+        "killsPerWeapon": 2,
+        "weapons": 5
+      }
     },
     {
       "id": "drone",
@@ -4943,7 +5031,15 @@
       "ammo": "spec",
       "equipment": 3,
       "consumables": true,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 20,
+        "gravity": 1,
+        "minutes": 10,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     },
     {
       "id": "ac130",
@@ -4956,7 +5052,15 @@
       "ammo": "unlimited",
       "equipment": 3,
       "consumables": false,
-      "jump": null
+      "jump": null,
+      "copy": {
+        "target": 0,
+        "gravity": 1,
+        "minutes": 8,
+        "survivorHp": 100,
+        "killsPerWeapon": 0,
+        "weapons": 5
+      }
     }
   ]
 }

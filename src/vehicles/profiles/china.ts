@@ -29,6 +29,7 @@ import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -1228,6 +1229,8 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
 }
 
 function buildZTZ99A2(P: ChinaBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildZTZ99A2Hull(P);
   buildZTZ99A2ProductionTurret(P);
 }
