@@ -18,7 +18,7 @@ import {
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_SNOW_CREASE, GROUND_AO_SNOW_CREASE_FULL_M,
   GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion, GROUND_AO_KEY_FADE, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
-  groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance,
+  groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance, GROUND_AO_KEY_SOFT_M,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
 import {
@@ -662,6 +662,19 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, low, T), 1, 'the right run stands between a low lamp and the belly\'s ground');
   assert.equal(hullBlocksKeyLight({ x: -T.hx - 1, y: 0, z: 0 }, { x: 6, y: 0.05, z: 0.1 }, T), 1, 'and the whole hull beyond');
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: T.fz1 + 2 }, low, T), 0, 'a receiver off the front sees it');
+  // the shadow's edge is a soft fringe (the chord through a box, whole from GROUND_AO_KEY_SOFT_M), never a ruled line: walk
+  // a receiver out from under the hull across the flare's shadow edge in 1 cm steps
+  {
+    let worst = 0, prev = null, partial = 0;
+    for (let x = 0; x <= T.hx + 3; x += 0.01) {
+      const v = hullBlocksKeyLight({ x, y: 0, z: 0 }, { x: -3, y: 6, z: 0 }, T);
+      if (prev !== null) worst = Math.max(worst, Math.abs(v - prev));
+      if (v > 0.02 && v < 0.98) partial++;
+      prev = v;
+    }
+    assert.ok(worst < 0.1 && partial >= 8, `a soft fringe, no step (worst 1 cm change ${worst.toFixed(3)}, ${partial} cm partial)`);
+    assert.ok(GROUND_AO_KEY_SOFT_M >= 0.2 && GROUND_AO_KEY_SOFT_M <= 0.5);
+  }
   // a muzzle against the mantlet (inside the solid's slack) shadows nothing
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, { x: 0, y: T.yt + GROUND_AO_KEY_INSIDE_M * 0.5, z: T.fz1 - 0.2 }, T), 0, 'a lamp inside: none');
   // three's punctual falloff: 1/d², the cutoff window, N·l

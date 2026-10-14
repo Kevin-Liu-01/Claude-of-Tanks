@@ -513,9 +513,16 @@ export const GROUND_AO_KEY_LIGHTS = 2;
 export const GROUND_AO_KEY_INSIDE_M = 0.15;
 /** The cut fades out between these multiples of the hull's height from its footprint (its reach ends at REACH[1]). */
 export const GROUND_AO_KEY_FADE = Object.freeze([2, 3] as const);
+/**
+ * The boxes stand in for a hull whose edges are rounded, chamfered and hung with stowage: a lamp's shadow takes the chord
+ * its ray cuts through a box, whole from GROUND_AO_KEY_SOFT_M (smoothstep), so the shadow's edge — where the rays graze
+ * a box — is a soft fringe, never a ruled rectangle (the owner's "super super dark rectangular shadows under tracks").
+ */
+export const GROUND_AO_KEY_SOFT_M = 0.35;
 
-/** The segment q → k (the hull frame) meets the box [lo, hi] (the GLSL's cotVgSegBox). */
-function segmentMeetsBox(q: Vec3Like, k: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean {
+/** How much the segment q → k (the hull frame) is shadowed by the box [lo, hi]: the chord it cuts through the box,
+ * whole from GROUND_AO_KEY_SOFT_M (the GLSL's cotVgSegBox). */
+function segmentBoxShadow(q: Vec3Like, k: Vec3Like, lo: readonly number[], hi: readonly number[]): number {
   const o = [q.x, q.y, q.z], d = [k.x - q.x, k.y - q.y, k.z - q.z];
   let tn = -Infinity, tf = Infinity;
   for (let a = 0; a < 3; a++) {
@@ -523,20 +530,21 @@ function segmentMeetsBox(q: Vec3Like, k: Vec3Like, lo: readonly number[], hi: re
     const t0 = (lo[a] - o[a]) * inv, t1 = (hi[a] - o[a]) * inv;
     tn = Math.max(tn, Math.min(t0, t1)); tf = Math.min(tf, Math.max(t0, t1));
   }
-  return tf >= Math.max(tn, 0) && tn <= 1;
+  const chord = (Math.min(tf, 1) - Math.max(tn, 0)) * Math.hypot(d[0], d[1], d[2]);
+  return smoothstep(0, GROUND_AO_KEY_SOFT_M, chord);
 }
 const insideBox = (p: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean =>
   p.x > lo[0] - GROUND_AO_KEY_INSIDE_M && p.y > lo[1] - GROUND_AO_KEY_INSIDE_M && p.z > lo[2] - GROUND_AO_KEY_INSIDE_M
   && p.x < hi[0] + GROUND_AO_KEY_INSIDE_M && p.y < hi[1] + GROUND_AO_KEY_INSIDE_M && p.z < hi[2] + GROUND_AO_KEY_INSIDE_M;
 
-/** 1 when the hull's solid over its belly or either run stands between a receiver at q and a lamp at k (both the hull
- * frame), 0 otherwise or when the lamp sits inside one of them. */
+/** How much the hull's solid over its belly or either run stands between a receiver at q and a lamp at k (both the hull
+ * frame): 1 through its body, a soft fringe where the ray grazes it, 0 off it or when the lamp sits inside a box. */
 export function hullBlocksKeyLight(q: Vec3Like, k: Vec3Like, h: VehicleGroundHull): number {
   const boxes: readonly (readonly [readonly number[], readonly number[]])[] = [
     [[-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1]], [[h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1]], [[-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]],
   ];
   if (boxes.some(([lo, hi]) => insideBox(k, lo, hi))) return 0;
-  return boxes.some(([lo, hi]) => segmentMeetsBox(q, k, lo, hi)) ? 1 : 0;
+  return Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, lo, hi)));
 }
 
 /** A lamp's irradiance (luminance) at a receiver as three's punctual light draws it: lum × N·l × 1 / max(d^decay, 0.01),
@@ -979,14 +987,15 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
       return tf >= max( tn, 0.0 ) ? 1.0 : 0.0;
     }
-    // (contact r2) the segment q → q + d meets the box; a lamp k inside a solid (within GROUND_AO_KEY_INSIDE_M) is never
-    // shadowed by it; the hull blocks a lamp when its solid over the belly or either run stands between (hullBlocksKeyLight)
+    // (contact r2) how much the box shadows the segment q → q + d (its chord); a lamp k inside a solid (within
+    // GROUND_AO_KEY_INSIDE_M) is never shadowed by it; the hull's solid over the belly and its runs (hullBlocksKeyLight)
     float cotVgSegBox( vec3 q, vec3 d, vec3 lo, vec3 hi ) {
       vec3 inv = 1.0 / ( d + vec3( 1e-7 ) );
       vec3 t0 = ( lo - q ) * inv, t1 = ( hi - q ) * inv;
       vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
       float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
-      return tf >= max( tn, 0.0 ) && tn <= 1.0 ? 1.0 : 0.0;
+      // the chord the segment cuts through the box, whole from GROUND_AO_KEY_SOFT_M: a soft fringe where it grazes
+      return smoothstep( 0.0, ${f(GROUND_AO_KEY_SOFT_M)}, ( min( tf, 1.0 ) - max( tn, 0.0 ) ) * length( d ) );
     }
     float cotVgInBox( vec3 p, vec3 lo, vec3 hi ) {
       return all( greaterThan( p, lo - ${f(GROUND_AO_KEY_INSIDE_M)} ) ) && all( lessThan( p, hi + ${f(GROUND_AO_KEY_INSIDE_M)} ) ) ? 1.0 : 0.0;
