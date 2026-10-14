@@ -75,10 +75,14 @@ export interface HinterlandGeologySample {
   snow: number;
   /** 0..1 sand on the low ground (deserts). */
   sand: number;
+  /** The rock's colour here (the region's, or the landform's own). */
+  rockHex: number;
+  /** 0..1 where a landform's forest belt allows woods (-1: the region's altitude band governs). */
+  forest: number;
 }
 
 export function createHinterlandGeology(): HinterlandGeologySample {
-  return { strata: 0, rock: 0, snow: 0, sand: 0 };
+  return { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1 };
 }
 
 export interface HinterlandWaterSample {
@@ -118,8 +122,9 @@ export interface HinterlandPlanFeatures {
 
 /** Terms 4 and 5 (HL-2): an added height and its cover, from the landforms and the far sectors. */
 export interface HinterlandReliefTerm {
-  /** Metres added to the base at (x, z) (negative for valleys and notches). */
-  heightAt(x: number, z: number, base: number): number;
+  /** Metres added to the base at (x, z) (negative for valleys and notches). `texelM` (0: full detail): the size of
+   * the sample the caller bakes, so a term can leave out octaves too fine to show there. */
+  heightAt(x: number, z: number, base: number, texelM?: number): number;
   /** 0..1 how much of this term's own geology governs (x, z), and its cover hints, written into `out`. */
   geologyAt?(x: number, z: number, out: HinterlandGeologySample): number;
 }
@@ -131,8 +136,9 @@ export interface HinterlandField {
   datumAt(azDeg: number): number;
   /** Terms 1, 2, 4 and 5: the land before it is levelled and flooded. */
   baseHeightAt(x: number, z: number): number;
-  /** Every term: the height the mesh draws (m, planar; curvature in the shader). */
-  heightAt(x: number, z: number): number;
+  /** Every term: the height the mesh draws (m, planar; curvature in the shader). `texelM`: the bake's sample size
+   * (far terms leave out octaves finer than it; 0 or absent: full detail). */
+  heightAt(x: number, z: number, texelM?: number): number;
   waterAt(x: number, z: number, out: HinterlandWaterSample): HinterlandWaterSample;
   coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number): HinterlandCover;
   geologyAt(x: number, z: number, out: HinterlandGeologySample, slopeDeg?: number, height?: number): HinterlandGeologySample;
@@ -340,7 +346,7 @@ export function createHinterlandField(
   const hit = { i: 0, t: 0 };
 
   /** Terms 1, 2, 4 and 5 (no water carving, no levelling). */
-  function baseNoWater(x: number, z: number): number {
+  function baseNoWater(x: number, z: number, texelM = 0): number {
     const edgeOut = edgeOutOf(x, z);
     if (edgeOut <= 0) return ground.getHeightAt(x, z);
     let h: number;
@@ -354,7 +360,7 @@ export function createHinterlandField(
         h += edgeResidual(x, z, edgeOut, (ex, ez) => datumAt(hinterlandBearing(ex, ez)) + flatRelief(ex, ez))
           * (1 - smoothstep(0, HINTERLAND_RESIDUAL_FADE_M, edgeOut));
       }
-      return addRelief(x, z, h, edgeOut);
+      return addRelief(x, z, h, edgeOut, texelM);
     }
     // term 2's ease: the battlefield's outland near, the region's relief round the datum far
     const ease = smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M, edgeOut);
@@ -367,7 +373,7 @@ export function createHinterlandField(
       }
       h = ease > 0 ? near + (datumAt(hinterlandBearing(x, z)) + regionalRelief(x, z, edgeOut) - near) * ease : near;
     }
-    return addRelief(x, z, h, edgeOut);
+    return addRelief(x, z, h, edgeOut, texelM);
   }
   /**
    * Term 1's residual: the battlefield's edge height over the land the field continues there, at the edge point (x, z)
@@ -391,11 +397,11 @@ export function createHinterlandField(
     return 0.5 * r0 + 0.25 * (a + b);
   }
   /** Terms 4 and 5: the landforms and the far forms, each fading in from 20–120 m past the edge. */
-  function addRelief(x: number, z: number, h: number, edgeOut: number): number {
+  function addRelief(x: number, z: number, h: number, edgeOut: number, texelM: number): number {
     if (!relief.length) return h;
     const inW = smoothstep(20, 120, edgeOut);
     let add = 0;
-    for (let i = 0; i < relief.length; i++) add += relief[i].heightAt(x, z, h);
+    for (let i = 0; i < relief.length; i++) add += relief[i].heightAt(x, z, h, texelM);
     return h + add * inW;
   }
 
@@ -529,9 +535,9 @@ export function createHinterlandField(
   }
 
   function baseHeightAt(x: number, z: number): number { return baseNoWater(x, z); }
-  function heightAt(x: number, z: number): number {
+  function heightAt(x: number, z: number, texelM = 0): number {
     if (edgeOutOf(x, z) <= 0) return ground.getHeightAt(x, z);
-    const h = waterInto(x, z, baseNoWater(x, z), null);
+    const h = waterInto(x, z, baseNoWater(x, z, texelM), null);
     return features === EMPTY_FEATURES ? h : levelInto(x, z, h);
   }
   function waterAt(x: number, z: number, out: HinterlandWaterSample): HinterlandWaterSample {
@@ -562,6 +568,8 @@ export function createHinterlandField(
       out.snow = smoothstep(lineHere - 30, lineHere + 50, rel) * hold * (1 - 0.6 * geo.snow.scour * smoothstep(0.2, 0.9, crag));
     } else out.snow = 0;
     out.sand = geo.sand * (1 - out.rock) * (1 - smoothstep(4, 18, s));
+    out.rockHex = geo.rockHex;
+    out.forest = -1;
     for (let i = 0; i < relief.length; i++) relief[i].geologyAt?.(x, z, out);
     return out;
   }
@@ -618,7 +626,9 @@ export function createHinterlandField(
     const rel = hh - datumAt(hinterlandBearing(x, z));
     const band = spec.geology.forestBandM;
     const inBand = band[1] > band[0] ? smoothstep(band[0] - 20, band[0] + 10, rel) * (1 - smoothstep(band[1] - 40, band[1] + 30, rel)) : 0;
-    out.woods = woodsAt(x, z, edgeOut) * (inBand > 0 ? inBand : (band[1] > band[0] ? 0 : 1));
+    // (a landform's own forest belt governs on it: the belt between its heights, bare above)
+    const allow = geoSample.forest >= 0 ? geoSample.forest : (inBand > 0 ? inBand : (band[1] > band[0] ? 0 : 1));
+    out.woods = woodsAt(x, z, edgeOut) * allow;
     if (out.scree > 0.5) { out.cls = HL_COVER.scree; return out; }
     if (out.woods > 0.5) { out.cls = HL_COVER.woods; return out; }
     if (geoSample.sand > 0.5) { out.cls = HL_COVER.sand; return out; }

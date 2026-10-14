@@ -4,6 +4,7 @@
 // the envelope, the plan view and the receipts all run this one function, so they agree.
 import { createHinterlandField, type HinterlandField, type HinterlandGround, type HinterlandReliefTerm } from './field.ts';
 import { createLandformRelief } from './landforms.ts';
+import { createFarRelief } from './far.ts';
 import { planHinterlandOutland, planInputsFrom, type HinterlandPlan } from './outland.ts';
 import {
   bakeHinterlandPyramid, createCachedGround, HINTERLAND_LEVELS_DESKTOP, HINTERLAND_LEVELS_MOBILE, samplePyramid,
@@ -25,9 +26,9 @@ export interface HinterlandBuild {
   ms: { field: number; planning: number; plan: number; bake: number; total: number };
 }
 
-/** The relief terms the field adds (term 4 landforms; term 5, the far forms, joins in HL-2). */
+/** The relief terms the field adds (term 4, the landforms; term 5, the far forms). */
 export type HinterlandTermFactory = (spec: HinterlandSpec, seed: number) => HinterlandReliefTerm | null;
-const TERM_FACTORIES: HinterlandTermFactory[] = [createLandformRelief];
+const TERM_FACTORIES: HinterlandTermFactory[] = [createLandformRelief, createFarRelief];
 /** Register a relief term's factory (far.ts registers the far forms). */
 export function registerHinterlandTerm(factory: HinterlandTermFactory): void {
   if (!TERM_FACTORIES.includes(factory)) TERM_FACTORIES.push(factory);

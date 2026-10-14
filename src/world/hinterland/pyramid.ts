@@ -97,7 +97,7 @@ export function bakeHinterlandPyramid(
           heights[k] = ground ? ground.getHeightAt(x, z) : 0;
           continue;
         }
-        heights[k] = field.heightAt(x, z);
+        heights[k] = field.heightAt(x, z, texelM);
         evaluated++;
       }
     }

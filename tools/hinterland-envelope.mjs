@@ -28,14 +28,17 @@ export function skylineObjects(build) {
   }
   // the woods' canopy (and the far country's tree lines): from the field's cover on a lazy 32 m lattice to 16 km
   const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
-  const WOODS_M = 32, WOODS_HALF = 16384, WN = Math.ceil((2 * WOODS_HALF) / WOODS_M) + 1;
-  const woods = new Int8Array(WN * WN).fill(-1);
+  // (16 m to 4 km, 64 m to 16 km: a wood's edge reads at eye level)
+  const lattice = (cell, half) => ({ cell, half, n: Math.ceil((2 * half) / cell) + 1, v: null });
+  const L1 = lattice(16, 4096), L2 = lattice(64, 16384);
   const woodsAt = (x, z) => {
-    const i = Math.round((x + WOODS_HALF) / WOODS_M), j = Math.round((z + WOODS_HALF) / WOODS_M);
-    if (i < 0 || j < 0 || i >= WN || j >= WN) return 0;
-    const k = j * WN + i;
-    if (woods[k] < 0) { field.coverAt(-WOODS_HALF + i * WOODS_M, -WOODS_HALF + j * WOODS_M, cover, 2); woods[k] = cover.woods > 0.5 ? 1 : 0; }
-    return woods[k];
+    const L = Math.abs(x) < L1.half - 16 && Math.abs(z) < L1.half - 16 ? L1 : L2;
+    L.v ??= new Int8Array(L.n * L.n).fill(-1);
+    const i = Math.round((x + L.half) / L.cell), j = Math.round((z + L.half) / L.cell);
+    if (i < 0 || j < 0 || i >= L.n || j >= L.n) return 0;
+    const k = j * L.n + i;
+    if (L.v[k] < 0) { field.coverAt(-L.half + i * L.cell, -L.half + j * L.cell, cover, 2); L.v[k] = cover.woods > 0.5 ? 1 : 0; }
+    return L.v[k];
   };
   const farTrees = spec.far.length ? (spec.region.far.treesM || 0) : 0;
   return (x, z, d) => {

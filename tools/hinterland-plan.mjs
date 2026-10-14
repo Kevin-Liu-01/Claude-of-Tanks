@@ -171,14 +171,15 @@ function drawSkyline(ctx, rect, { near, far, old, eyes, verticals, centre }) {
   ctx.fillStyle = '#f6f4ef'; ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   ctx.strokeStyle = '#222'; ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
   const all = [...near.elev, ...far.elev, ...(old ?? [])];
-  const yMax = Math.max(3, Math.min(14, Math.ceil(Math.max(...all) + 0.6))), yMin = Math.min(-0.6, Math.floor(Math.min(...near.elev) - 0.2));
+  const yMax = Math.max(3, Math.min(32, Math.ceil(Math.max(...all) + 0.6))), yMin = Math.min(-0.6, Math.floor(Math.min(...near.elev) - 0.2));
+  ctx.save(); ctx.beginPath(); ctx.rect(top.x, top.y, top.w, top.h); ctx.clip();
   const px = (b) => top.x + 40 + (b / 360) * (top.w - 56), py = (e) => top.y + 30 + (1 - (e - yMin) / (yMax - yMin)) * (top.h - 60);
   // the C1 band
   ctx.fillStyle = 'rgba(80,160,80,0.12)';
   const b0 = py(Math.min(yMax, ENVELOPE.C1[1])), b1 = py(ENVELOPE.C1[0]);
   ctx.fillRect(px(0), b0, px(360) - px(0), b1 - b0);
   ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1; ctx.font = '11px sans-serif'; ctx.fillStyle = '#555';
-  for (let e = Math.ceil(yMin); e <= yMax; e++) { ctx.beginPath(); ctx.moveTo(px(0), py(e)); ctx.lineTo(px(360), py(e)); ctx.stroke(); ctx.fillText(`${e}°`, top.x + 8, py(e) + 4); }
+  for (let e = Math.ceil(yMin); e <= yMax; e += yMax > 16 ? 4 : yMax > 8 ? 2 : 1) { ctx.beginPath(); ctx.moveTo(px(0), py(e)); ctx.lineTo(px(360), py(e)); ctx.stroke(); ctx.fillText(`${e}°`, top.x + 8, py(e) + 4); }
   for (const [b, l] of [[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W'], [360, 'N']]) { ctx.fillText(l, px(b) - 4, top.y + top.h - 12); }
   const line = (elev, colour, width, dash) => {
     ctx.beginPath(); ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.setLineDash(dash ?? []);
@@ -196,6 +197,7 @@ function drawSkyline(ctx, rect, { near, far, old, eyes, verticals, centre }) {
     ctx.fillStyle = '#7a1f1f'; ctx.beginPath(); ctx.arc(px(az), py(e), 3, 0, Math.PI * 2); ctx.fill();
     ctx.font = '10px sans-serif'; ctx.fillText(v.name.split(',')[0], px(az) + 4, py(e) - 4);
   }
+  ctx.restore();
   ctx.fillStyle = '#111'; ctx.font = 'bold 13px sans-serif';
   ctx.fillText('Skyline from the centre eye: near ≤ 4 km (black), far 4–80 km (blue), the old ring (dashed); C1 band green', top.x + 10, top.y + 18);
   // the eight EYE8 views, each over its own 100° of compass
@@ -221,7 +223,98 @@ function drawSkyline(ctx, rect, { near, far, old, eyes, verticals, centre }) {
   });
 }
 
-export async function renderPlan(id, { outDir, draft = true } = {}) {
+/** A colour for a cover sample (display sRGB). */
+function coverRgb(cover, water, field, x, z, geo) {
+  if (cover.cls === 7) { field.waterAt(x, z, water); return water.kind === 1 ? [52, 88, 112] : water.kind === 5 ? [100, 128, 138] : [70, 104, 124]; }
+  if (cover.cls === 5 || cover.snow > 0.55) return [232, 236, 240];
+  if (cover.cls === 3) { const r = (geo.rockHex >> 16) & 255, g = (geo.rockHex >> 8) & 255, b = geo.rockHex & 255; const band = 0.9 + 0.12 * Math.sin(geo.strata * 6.283); return [r * band, g * band, b * band]; }
+  return cover.cls === 0 || (cover.cls === 1 && cover.crop !== 31) ? CROP_RGB[cover.crop] ?? CLASS_RGB[0] : CLASS_RGB[cover.cls] ?? [255, 0, 255];
+}
+
+/**
+ * An eye-level view on the CPU (a voxel-space march: each column's ray steps out to 80 km, filling the rows its rising
+ * angle uncovers, front to back): the field's height and cover, the planner's objects (trees, buildings, towers), lit by a
+ * key from the south-west, hazed by the map's fog under the haze law, the earth's curvature applied. Not the game's
+ * renderer: a look at the land's form and layering before any GPU time.
+ */
+function renderEye(ctx, rect, build, ground, eye, { fovDeg = 100, fog = 0.00062, elev = [-2.5, 9] } = {}) {
+  const { field } = build;
+  const W = rect.w, Hh = rect.h;
+  const img = ctx.createImageData(W, Hh);
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
+  const water = { wet: 0, level: 0, kind: 0 };
+  const geo = { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1 };
+  const objects = skylineObjects(build);
+  const hAt = (x, z) => (Math.max(Math.abs(x), Math.abs(z)) <= 512 ? ground.getHeightAt(x, z) : build.sample(x, z));
+  const sigma = fog * 0.42;
+  const sun = [-0.55, 0.62, -0.56]; // from the south-west, 38° up (x east, y up, z north)
+  const sky = (e) => { const t = Math.max(0, Math.min(1, (e + 2) / 14)); return [168 - 70 * t, 192 - 52 * t, 214 - 22 * t]; };
+  const rowOf = (e) => (1 - (e - elev[0]) / (elev[1] - elev[0])) * Hh;
+  for (let col = 0; col < W; col++) {
+    const az = (eye.faceDeg + ((col + 0.5) / W - 0.5) * fovDeg) * Math.PI / 180;
+    const sx = Math.sin(az), sz = Math.cos(az);
+    let low = Hh; // the lowest row not yet filled (rows fill upward)
+    for (let d = 12; d < 80000 && low > 0; d += Math.max(2, d * 0.006)) {
+      const x = eye.x + sx * d, z = eye.z + sz * d;
+      const ground0 = hAt(x, z);
+      const obj = objects(x, z, d);
+      const top = Math.max(ground0, obj);
+      const drop = d * d / (2 * 7_300_000);
+      const e = Math.atan2(top - drop - eye.y, d) * 180 / Math.PI;
+      const row = Math.max(0, Math.floor(rowOf(e)));
+      if (row >= low) continue;
+      let rgb;
+      if (obj > ground0 + 0.5) rgb = obj - ground0 > 26 ? [120, 92, 80] : [46, 70, 40];
+      else {
+        const ee = Math.max(2, d * 0.004);
+        const nx = -(hAt(x + ee, z) - hAt(x - ee, z)) / (2 * ee), nz = -(hAt(x, z + ee) - hAt(x, z - ee)) / (2 * ee);
+        const len = Math.hypot(nx, 1, nz), slope = Math.atan(Math.hypot(nx, nz)) * 180 / Math.PI;
+        field.coverAt(x, z, cover, slope, ground0);
+        field.geologyAt(x, z, geo, slope, ground0);
+        rgb = coverRgb(cover, water, field, x, z, geo);
+        const lit = Math.max(0, (nx * sun[0] + sun[1] + nz * sun[2]) / len);
+        const k = cover.cls === 7 ? 0.95 : 0.42 + 0.78 * lit;
+        rgb = [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+      }
+      // the haze law: Beer–Lambert by the true distance through the layer (a crest in thinner air than its foot)
+      const a1 = Math.max(0, top - drop) / 400, a0 = eye.y / 400;
+      const mean = Math.abs(a0 - a1) < 1e-3 ? Math.exp(-0.5 * (a0 + a1)) : (Math.exp(-a1) - Math.exp(-a0)) / (a0 - a1);
+      const T = Math.exp(-sigma * d * Math.max(0.05, mean));
+      const hz = sky(0.5);
+      for (let r = row; r < low; r++) {
+        const k4 = (r * W + col) * 4;
+        img.data[k4] = rgb[0] * T + hz[0] * (1 - T); img.data[k4 + 1] = rgb[1] * T + hz[1] * (1 - T); img.data[k4 + 2] = rgb[2] * T + hz[2] * (1 - T); img.data[k4 + 3] = 255;
+      }
+      low = row;
+    }
+    for (let r = 0; r < low; r++) {
+      const e = elev[1] - (r / Hh) * (elev[1] - elev[0]), c = sky(e), k4 = (r * W + col) * 4;
+      img.data[k4] = c[0]; img.data[k4 + 1] = c[1]; img.data[k4 + 2] = c[2]; img.data[k4 + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, rect.x, rect.y);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(rect.x + 6, rect.y + 6, 270, 20);
+  ctx.fillStyle = '#111'; ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(`${eye.name}, 2.5 m, looking ${Math.round(eye.faceDeg)}° (CPU preview)`, rect.x + 12, rect.y + 21);
+}
+
+/** The eye-level sheet: four EYE8 views at tank eye height over the border, rendered on the CPU. */
+export async function renderEyes(id, build, ground, outDir, { fog, names = ['edge-n', 'edge-s', 'corner-ne', 'edge-w'], elev } = {}) {
+  const W = 1800, EH = 300;
+  const canvas = createCanvas(W, EH * names.length + 10 * (names.length + 1));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ece9e1'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const eyes = eye8Spots((x, z) => ground.getHeightAt(x, z));
+  names.forEach((name, i) => {
+    const eye = eyes.find((e) => e.name === name);
+    renderEye(ctx, { x: 10, y: 10 + i * (EH + 10), w: W - 20, h: EH }, build, ground, eye, { fog, elev });
+  });
+  const file = path.join(outDir, `${id}-eyes.png`);
+  writeFileSync(file, canvas.toBuffer('image/png'));
+  return file;
+}
+
+export async function renderPlan(id, { outDir, draft = true, eyeViews = true } = {}) {
   const world = await loadWorld();
   const [{ resolveHinterlandSpec }, { withSelectedHinterland }, { buildHinterland }, { samplePyramid }] = await Promise.all([
     import('../src/world/hinterland/spec.ts'), import('../src/world/hinterland/select.ts'),
@@ -273,6 +366,10 @@ export async function renderPlan(id, { outDir, draft = true } = {}) {
   ctx.fillStyle = '#111'; ctx.fillText(stats, PLAN.x + 16, PLAN.y + 50);
   const file = path.join(outDir, `${id}-plan.png`);
   writeFileSync(file, canvas.toBuffer('image/png'));
+  if (eyeViews) {
+    const tall = build.plan && spec.landforms.some((l) => l.heightM > 200);
+    await renderEyes(id, build, ground, outDir, { fog: spec.fogDensity, elev: tall ? [-3, 22] : [-1.5, 6] });
+  }
   return { file, row, ring, build: { ms: build.ms, settlements: build.plan.settlements.length, buildings: build.plan.buildings.length, verticals: build.plan.verticals.length } };
 }
 

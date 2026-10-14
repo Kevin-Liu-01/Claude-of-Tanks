@@ -1563,6 +1563,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hinterland/hinterlandField.selftest.mjs',
     // ... (HL-1) its pipeline: the outland plan on the Polders draft, roads run on, yards level, waters as coasts, the bake
     'src/world/hinterland/hinterlandPlan.selftest.mjs',
+    // ... (HL-2) its landform primitives and far sectors: the stair, the tables, the sheer jebel, the massif's summits, snow and belts
+    'src/world/hinterland/hinterlandLandforms.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
