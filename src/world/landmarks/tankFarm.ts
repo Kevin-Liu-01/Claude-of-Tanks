@@ -113,15 +113,33 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     for (let a = 0; a < 8; a++) { const g = gl(x + Math.cos(a * Math.PI / 4) * R, z + Math.sin(a * Math.PI / 4) * R); lo = Math.min(lo, g); hi = Math.max(hi, g); }
     lo = Math.min(lo, gl(x, z)); hi = Math.max(hi, gl(x, z));
     const y0 = hi + 0.3;
-    const tone = lerp(PANEL, SNOW, ctx.variant() * 0.4);
+    // (props census #3, lane B 2026-10-14) the place's tanks: the DEW Line's POL tanks white and lagged, a cap of snow on
+    // their roofs; the mine's diesel tanks in a sun-faded green paint, rust at their feet
+    const arctic = ctx.mapId === 'whiteout';
+    const tone = arctic ? lerp(PANEL, SNOW, ctx.variant() * 0.4) : lerp(rgb(0x5f6d5c), rgb(0x8c937f), ctx.variant() * 0.6);
     revolve(sink, 'stone', x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
     // (props lane A, E12: each tank ruptures on the side a round came from — the first at the first damage, the rest when
     // the farm is breached — and its fuel's burn spreads under the hole; landmarks/pieces.ts)
     piece(sink, { name: `tank-${i}`, kind: 'tank', at: i === 0 ? 'damaged' : 'breached', vessel: { x, z, y0, y1: y0 + Ht, r: R, contents: 'fuel' } }, (sink) => {
-      revolve(sink, 'structureMetal', x, z, [[R, y0], [R, y0 + Ht], [R * 0.25, y0 + Ht + R * 0.18], [0, y0 + Ht + R * 0.2]], 20,
-        { colourAt: (p) => (p[1] > y0 + Ht + 0.01 ? shade(tone, 0.88) : weathered(tone, y0, y0 + Ht, 0.3)(p)) });
-      // the shell's courses (fine rings)
-      for (let y = y0 + 1.8; y < y0 + Ht - 0.3; y += 1.8) revolve(sink, 'structureMetal', x, z, [[R + 0.02, y - 0.03], [R + 0.02, y + 0.03]], 20, { colour: shade(tone, 0.8), decor: true, fine: true });
+      // the shell in its courses, each plate ring a hair thinner than the one under it (their laps step in), the roof cone
+      const courses = Math.max(2, Math.round(Ht / 1.8)), ch = Ht / courses;
+      for (let k = 0; k < courses; k++) {
+        const rk = R + 0.012 * (courses - 1 - k), ya = y0 + k * ch, yb = ya + ch;
+        revolve(sink, 'structureMetal', x, z, [[rk, ya], [rk, yb], [R, yb]], 20, { colourAt: weathered(shade(tone, 0.97 + 0.03 * (k % 2)), y0, y0 + Ht, arctic ? 0.15 : 0.3) });
+      }
+      revolve(sink, 'structureMetal', x, z, [[R, y0 + Ht], [R * 0.25, y0 + Ht + R * 0.18], [0, y0 + Ht + R * 0.2]], 20, { colour: shade(tone, 0.88) });
+      if (arctic) revolve(sink, 'plaster', x, z, [[R + 0.03, y0 + Ht + 0.02], [R * 0.3, y0 + Ht + R * 0.18 + 0.1], [0, y0 + Ht + R * 0.2 + 0.1]], 20, { decor: true });
+      // the wind girder under the top course, the manway at the foot facing out, the roof's vents and gauge hatch
+      revolve(sink, 'structureMetal', x, z, [[R + 0.18, y0 + Ht - 0.45], [R + 0.18, y0 + Ht - 0.38], [R, y0 + Ht - 0.38]], 20, { colour: shade(tone, 0.8), decor: true });
+      const mz = z + R, my = y0 + 0.75;
+      sink.cylinder('structureMetal', [x - 0.6, my, mz - 0.05], 'z', 0.18, 0.32, 12, { colour: shade(tone, 0.85), decor: true }, 0.32, true);
+      sink.cylinder('structureMetal', [x - 0.6, my, mz + 0.13], 'z', 0.05, 0.38, 12, { colour: shade(tone, 0.7), decor: true }, 0.38, true);
+      for (const [vx, vz] of [[R * 0.45, 0.2], [-R * 0.3, -R * 0.35]] as const) {
+        const vy = y0 + Ht + R * 0.18 * (1 - Math.hypot(vx, vz) / R) + 0.02;
+        sink.cylinder('structureMetal', [x + vx, vy, z + vz], 'y', 0.35, 0.09, 8, { colour: STEEL_DARK, decor: true }, 0.09, true);
+        sink.cylinder('structureMetal', [x + vx, vy + 0.35, z + vz], 'y', 0.12, 0.18, 8, { colour: STEEL_DARK, decor: true }, 0.05, true);
+      }
+      sink.span('structureMetal', x + R * 0.55 - 0.25, y0 + Ht + R * 0.06, z - 0.25, x + R * 0.55 + 0.25, y0 + Ht + R * 0.06 + 0.12, z + 0.25, { colour: shade(tone, 0.75), decor: true });
     });
     // the stair up its side: a straight flight on the tangent, its head on a landing at the shell where the roof begins,
     // its foot out toward the front — two stringers, the treads, the outer handrail on posts — and the rail round the
@@ -154,6 +172,13 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     // ground each pipe ended at its own ground's height, short of or past the straight manifold, which hung over the
     // slope on nothing) to the manifold's line
     bar(sink, 'structureMetal', [x, y0 + 0.2, z + R], [x, manifoldY(x), ez - t - 0.75], 0.24, { colour: IRON, decor: true });
+    // its outlet valve on the nozzle (the body and the hand wheel), the earthing straps from the shell to the ground
+    sink.span('structureMetal', x - 0.18, y0 + 0.02, z + R + 0.05, x + 0.18, y0 + 0.38, z + R + 0.4, { colour: shade(IRON, 1.4), decor: true });
+    sink.cylinder('structureMetal', [x, y0 + 0.62, z + R + 0.22], 'y', 0.04, 0.22, 10, { colour: rgb(0xa8302a), decor: true }, 0.22, false);
+    for (const a of [0.8, 3.9]) {
+      const sx = x + Math.cos(a) * (R + 0.01), sz = z + Math.sin(a) * (R + 0.01);
+      bar(sink, 'structureMetal', [sx, y0 + 0.5, sz], [sx + Math.cos(a) * 0.5, gl(sx, sz) - 0.1, sz + Math.sin(a) * 0.5], 0.03, { colour: rgb(0x9a6a3a), decor: true, fine: true });
+    }
   }
   // the manifold along the bund's front on its stands, its valve stand, the steps over the gap
   const gm = gl(0, ez - t - 0.75);
@@ -162,11 +187,29 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     const xs = -ex + 1.0 + (2 * ex - 2) * k / n;
     bar(sink, 'structureMetal', [xs, gl(xs, ez - t - 0.75) - 0.2, ez - t - 0.75], [xs, manifoldY(xs), ez - t - 0.75], 0.1, { colour: STEEL_DARK, decor: true });
   }
-  sink.span('structureMetal', -1.2, gm - 0.3, ez - t - 1.5, 1.2, gm + 1.3, ez - t - 0.7, { colour: SIGN_YELLOW });
+  // the valve stand: a grated platform on four posts over the manifold, three risers from it with their valves and hand
+  // wheels, the stand's yellow sign board (props census #3: was one yellow box)
+  const vz0 = ez - t - 1.5, vz1 = ez - t - 0.7;
+  sink.span('structureMetal', -1.2, gm + 0.9, vz0, 1.2, gm + 0.98, vz1, { colour: STEEL_DARK });
+  for (const [px, pz] of [[-1.1, vz0 + 0.1], [1.1, vz0 + 0.1], [-1.1, vz1 - 0.1], [1.1, vz1 - 0.1]] as const) bar(sink, 'structureMetal', [px, gm - 0.3, pz], [px, gm + 0.9, pz], 0.08, { colour: STEEL_DARK });
+  for (const px of [-0.6, 0, 0.6]) {
+    bar(sink, 'structureMetal', [px, manifoldY(px), ez - t - 0.75], [px, gm + 1.7, ez - t - 0.75], 0.14, { colour: IRON, decor: true });
+    sink.span('structureMetal', px - 0.14, gm + 1.25, ez - t - 0.9, px + 0.14, gm + 1.5, ez - t - 0.6, { colour: shade(IRON, 1.5), decor: true });
+    sink.cylinder('structureMetal', [px, gm + 1.62, ez - t - 0.75], 'y', 0.04, 0.2, 10, { colour: rgb(0xa8302a), decor: true }, 0.2, false);
+  }
+  for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
+  bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
+  sink.span('structureMetal', -0.45, gm + 1.3, vz0 - 0.04, 0.45, gm + 1.75, vz0 - 0.01, { colour: SIGN_YELLOW, decor: true });
+  // the bund's expansion joints, its drain sump in the inside corner with its grate and valve
+  for (let xj = -ex + 6; xj < ex; xj += 6) {
+    for (const zj of [-ez + t, ez - t]) sink.span('structureMetal', xj - 0.015, gl(xj, zj) - 0.2, zj - 0.02, xj + 0.015, gl(xj, zj) + wallH + 0.02, zj + 0.02, { colour: rgb(0x2a2a2a), decor: true, fine: true });
+  }
+  const sx0 = -ex + t + 0.15, sz0 = -ez + t + 0.15, gsm = gl(sx0 + 0.4, sz0 + 0.4);
+  sink.span('stone', sx0, gsm - 0.6, sz0, sx0 + 0.8, gsm + 0.08, sz0 + 0.8, { decor: true, shade: 0.8 });
+  for (let k = 0; k < 5; k++) sink.span('structureMetal', sx0 + 0.1 + k * 0.15, gsm + 0.08, sz0 + 0.1, sx0 + 0.13 + k * 0.15, gsm + 0.11, sz0 + 0.7, { colour: IRON, decor: true, fine: true });
   const gs = gl(0, ez + 0.1);
   sink.span('structureWood', -1.3, gs - 0.3, ez - 0.4, 1.3, gs + 0.25, ez + 0.6, { colour: TIMBER, decor: true });
   return { parts: finishLandmark(sink) };
 };
 
-// ------------------------------------------------------------------------------------------------------------ jamesway
 
