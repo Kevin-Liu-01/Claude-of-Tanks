@@ -4,8 +4,9 @@
 // on the ground and everything over the passage (the lintel, the arch ring, the tower above it) is a separate solid
 // lifted clear of them (kit.ts ARCH_GAP_M), so the movement record leaves the passage open while shells and sight
 // still meet the arch.
-import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
+import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
   ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, moulding, revolve, smoothRender, star,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
@@ -125,6 +126,81 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
 
 // ---------------------------------------------------------------------------------------------------------- town gate
 
+/** The dressings' bucket: the voussoirs, quoins, string courses, coping, merlon caps and the oriel in a smooth dressed
+ * sandstone (the render surface retinted, townGate's tints) over the walls' rough ashlar, so they read from the street. */
+const DRESS_BUCKET: RegionalBucket = 'plaster3';
+/**
+ * The dressed sandstone's tint over the kit's render: Steinburg's plaster3 is a weathered grey-green distemper, lifted to
+ * a pale warm grey-cream (the coordinator, 2026-10-14: the first tint read olive on the arch ring).
+ */
+const DRESS_TINT: [number, number, number] = [1.34, 1.24, 1.16];
+
+/**
+ * (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: the gate's "one flat, uniform sandstone tint with no coursing, quoins
+ * or string courses") the passage arch's voussoirs: wedge stones round the arch line on a face, long and short by turns,
+ * each a stone of its own standing a little proud with a joint round it, the keystone larger. Dressing (the arch block
+ * is the solid).
+ */
+function voussoirs(sink: PartSink, bucket: RegionalBucket, face: Face, h: ArchHole, depth: number): void {
+  const line = archLine(h, 24);
+  const n = line.length - 1, joint = 0.025;
+  for (let i = 0; i < n; i += 2) {
+    const j = Math.min(n, i + 2), mid = (i + j) / 2;
+    const key = Math.abs(mid - n / 2) < 1.01;
+    const width = key ? 0.95 : (i / 2) % 2 ? 0.62 : 0.82, out = key ? depth + 0.06 : depth + ((i / 2) % 2 ? 0 : 0.03);
+    const pts = [line[i], line[j]].map(([u, y], k) => {
+      const ii = k === 0 ? i : j;
+      const [pu, py] = line[Math.max(0, ii - 1)], [nu, ny] = line[Math.min(n, ii + 1)];
+      const tu = nu - pu, ty = ny - py, l = Math.hypot(tu, ty) || 1;
+      const ou = ii === 0 ? -1 : ii === n ? 1 : -ty / l, oy = ii === 0 || ii === n ? 0 : tu / l;
+      // the joint: each stone a little shorter than its share of the arch
+      const su = (k === 0 ? 1 : -1) * joint * tu / l, sy = (k === 0 ? 1 : -1) * joint * ty / l;
+      return { a: [u + su, y + sy] as [number, number], b: [u + su + ou * width, y + sy + oy * width] as [number, number] };
+    });
+    const [p, q] = pts;
+    const dec = { decor: true } as const;
+    sink.quad(bucket, facePoint(face, p.a[0], p.a[1], out), facePoint(face, q.a[0], q.a[1], out), facePoint(face, q.b[0], q.b[1], out), facePoint(face, p.b[0], p.b[1], out), dec);
+    // its outer edge and its two joints back to the wall
+    sink.quad(bucket, facePoint(face, q.b[0], q.b[1], 0), facePoint(face, p.b[0], p.b[1], 0), facePoint(face, p.b[0], p.b[1], out), facePoint(face, q.b[0], q.b[1], out), dec);
+    sink.quad(bucket, facePoint(face, p.a[0], p.a[1], 0), facePoint(face, p.b[0], p.b[1], 0), facePoint(face, p.b[0], p.b[1], out), facePoint(face, p.a[0], p.a[1], out), dec);
+    sink.quad(bucket, facePoint(face, q.b[0], q.b[1], 0), facePoint(face, q.a[0], q.a[1], 0), facePoint(face, q.a[0], q.a[1], out), facePoint(face, q.b[0], q.b[1], out), dec);
+  }
+}
+
+/** Rusticated quoins up a block's four corners from y0 to y1 (dressed stones long and short by turns, 45 cm courses). */
+function towerQuoins(sink: PartSink, bucket: RegionalBucket, w: number, d: number, y0: number, y1: number): void {
+  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
+    const x = sx * w / 2, z = sz * d / 2;
+    for (let y = y0, k = 0; y + 0.42 <= y1 + 0.01; y += 0.45, k++) {
+      const lx = k % 2 ? 0.45 : 0.78, lz = k % 2 ? 0.78 : 0.45;
+      dressedQuoin(sink, bucket, sx > 0 ? x - lx : x - 0.05, y, sz > 0 ? z - lz : z - 0.05, sx > 0 ? x + 0.05 : x + lx, y + 0.42,
+        sz > 0 ? z + 0.05 : z + lz, sx, sz, { decor: true });
+    }
+  }
+}
+
+/**
+ * The gatekeeper's oriel on the town side: a three-sided bay of dressed stone on stepped corbels, its windows, a little
+ * hipped roof of the tower's tiles. In the tower's frame (+z the field face): `z` its wall plane, facing -z.
+ */
+function oriel(sink: PartSink, bucket: RegionalBucket, z: number, y0: number, frame: Rgb): void {
+  const w = 2.0, dep = 0.75, h = 2.3;
+  for (let k = 0; k < 3; k++) {
+    const t = 0.32 - k * 0.1;
+    sink.span(bucket, -w / 2 + k * 0.22, y0 - 0.3 * (k + 1), z - dep + k * 0.22 - t, w / 2 - k * 0.22, y0 - 0.3 * k, z, { decor: true });
+  }
+  sink.span(bucket, -w / 2, y0, z - dep, w / 2, y0 + h, z, { decor: true });
+  const face: Face = { origin: [0, 0, z - dep], u: [-1, 0, 0], out: [0, 0, -1], width: w };
+  for (const u of [-0.5, 0.5]) {
+    sink.quad('glass', facePoint(face, u - 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 1.85, 0.01),
+      facePoint(face, u - 0.3, y0 + 1.85, 0.01), { decor: true });
+    sink.member('structureMetal', facePoint(face, u, y0 + 0.75, 0.02), facePoint(face, u, y0 + 1.85, 0.02), 0.05, 0.03, face.out, { colour: frame, decor: true }, 0);
+  }
+  sink.span(bucket, -w / 2 - 0.08, y0 + h, z - dep - 0.08, w / 2 + 0.08, y0 + h + 0.14, z, { decor: true });
+  const cap: RoofSpec = { kind: 'shed', pitchDeg: 38, eave: 0.12, verge: 0.1, thickness: 0.07, bucket: 'roof', decor: true };
+  sink.placed(Math.PI, 0, 0, z - dep / 2, () => emitRoof(sink, roofGeometry(w + 0.1, dep + 0.05, y0 + h + 0.14, cap), cap));
+}
+
 /**
  * The town gate (a walled Franconian town's Tor): a square tower over a vaulted passage — the piers with their
  * chamfered plinths, the arched block over the passage, the tower's upper storeys with small windows and a clock, a
@@ -149,6 +225,9 @@ export const townGate: LandmarkBuilder = (ctx) => {
   sink.placed(0, 0, ARCH_GAP_M, 0, () => {
     archSurround(sink, wall, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.4, 0.12, { sill: false });
     archSurround(sink, wall, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.4, 0.12, { sill: false });
+    // (the looks lane) the voussoirs over the surround, each its own stone, the keystone proud
+    voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.2);
+    voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.2);
   });
   // the upper storeys of the tower
   const top = H - Math.max(4, W * 0.55);
@@ -162,6 +241,12 @@ export const townGate: LandmarkBuilder = (ctx) => {
     for (const h of holes[name]) archWindow(sink, f[name], h, 0.3, FRAME_WHITE, ctx.variant() < 0.2);
   }
   moulding(sink, wall, W, D, blockTop - 0.2, 0.25, 0.1);
+  // (the looks lane) the tower's rusticated quoins from its plinth to the eaves, a string course at each storey, the
+  // gatekeeper's oriel over the passage on the town side
+  towerQuoins(sink, DRESS_BUCKET, W, D, 0.62, top - 0.15);
+  for (const y of [blockTop + 3.3, top - 3.2]) if (y > blockTop + 1.5 && y < top - 1.2) moulding(sink, DRESS_BUCKET, W, D, y, 0.18, 0.08, { decor: true });
+  moulding(sink, DRESS_BUCKET, W, D, top - 0.32, 0.3, 0.16, { decor: true });
+  oriel(sink, DRESS_BUCKET, -D / 2, blockTop + 1.35, FRAME_WHITE);
   // the clock under the roof on the field side
   const cf = f.front, cy = top - 0.9;
   const disc: Vec3[] = [], ring: Vec3[] = [];
@@ -193,11 +278,17 @@ export const townGate: LandmarkBuilder = (ctx) => {
     if (walls <= 0) continue;
     const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
     sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
-    for (let x = lo + 0.3; x + 0.9 < hi; x += 1.8) sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
+    // (the looks lane) the parapet's coping, the merlons each under its own capstone, a loop through every other one
+    sink.span(DRESS_BUCKET, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
+    for (let x = lo + 0.3, k = 0; x + 0.9 < hi; x += 1.8, k++) {
+      sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
+      sink.span(DRESS_BUCKET, x - 0.05, wh + 0.9, 0.0, x + 0.95, wh + 1.02, 0.65, { decor: true });
+      if (k % 2 === 0) sink.span('dark', x + 0.4, wh + 0.25, 0.6, x + 0.5, wh + 0.75, 0.62, { decor: true });
+    }
     sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
     for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), tints: { plaster3: DRESS_TINT } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- triumphal arch
