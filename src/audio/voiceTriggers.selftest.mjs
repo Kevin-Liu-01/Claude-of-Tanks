@@ -292,6 +292,51 @@ me.state.pos.x = 0;
 settle(2);
 moment('stuck', () => { me.input.throttle = 1; me.state.speed = 0; settle(3.5); me.input.throttle = 0; });
 
+// The world around us (AU.04, 2026-10-13): a building coming down near us, the front's aircraft passing near, the far
+// guns (the last two flavour, now and then: asked, not always heard).
+moment('building_down', () => {
+  for (let i = 0; i < 6 && !asked('building_down', +ctx.currentTime.toFixed(3) - 40); i++) {
+    bus.emit('structure:stage', { structureId: -1, massClass: 'house', cx: 40, cz: 60, hw: 5, hd: 6, yaw: 0, baseY: 0, topY: 8,
+      stage: 'collapsed', previous: 'breached', cause: 'blast', munition: 'he', x: 40, y: 2, z: 60, dirX: 1, dirZ: 0, points: 400, integrity: 0 });
+    settle(30);
+  }
+}, { heard: false });
+moment('aircraft_overhead', () => {
+  for (let i = 0; i < 12 && !asked('aircraft_overhead', +ctx.currentTime.toFixed(3) - 200); i++) {
+    bus.emit('atmosphere:flyover', { p0: [-1500, 300, 100], v: [150, 0, 0], durationS: 20 });
+    settle(95);
+  }
+}, { heard: false });
+moment('artillery_far', () => {
+  for (let i = 0; i < 20 && !asked('artillery_far', +ctx.currentTime.toFixed(3) - 200); i++) { bus.emit('atmosphere:artillery', { pos: [2500, 0, 1800], size: 1 }); settle(125); }
+}, { heard: false });
+// We pull up in cover just after a hit.
+moment('in_cover', () => { theirHit({ damage: 60, targetHpAfter: 940 }); frame(); me.state.speed = 5; frame(); frame(); me.state.speed = 0; frame(); });
+// Between fights: once the battle and the net have been quiet a while, the commander keeps the crew watching, in turn
+// (still: a sector check, a hold, the gunner's "no target"; moving: a word to the driver), and after damage, the hull.
+{
+  const sinceQuiet = +ctx.currentTime.toFixed(3);
+  const quietIds = ['quiet_scan', 'quiet_hold', 'quiet_crew'];
+  for (let i = 0; i < 12 && quietIds.some((id) => !spoken(id, sinceQuiet)); i++) settle(45);
+  for (const id of quietIds) { assert.ok(spoken(id, sinceQuiet), `${id}: a quiet stretch while we stand (asked ${probe.sayLog.filter((e) => e.t >= sinceQuiet).map((e) => e.id)})`); covered.add(id); }
+  // never more than one a minute or so, and never on a net that spoke in the last 25 s
+  const quietCalls = probe.voiceLog.filter((e) => e.t >= sinceQuiet && quietIds.includes(e.id));
+  for (let i = 1; i < quietCalls.length; i++) assert.ok(quietCalls[i].t - quietCalls[i - 1].t >= 50, `quiet calls ${quietCalls[i].t - quietCalls[i - 1].t} s apart (want >= 50)`);
+  me.state.speed = 6;
+  const sinceMove = +ctx.currentTime.toFixed(3);
+  for (let i = 0; i < 12 && !spoken('quiet_move', sinceMove); i++) settle(45);
+  assert.ok(spoken('quiet_move', sinceMove), 'a quiet stretch on the move speaks to the driver');
+  covered.add('quiet_move');
+  me.state.speed = 0;
+  me.combat.hp = 600;
+  theirHit({ damage: 150, targetHpAfter: 600 });
+  const sinceHull = +ctx.currentTime.toFixed(3);
+  for (let i = 0; i < 12 && !spoken('hull_status', sinceHull); i++) settle(45);
+  assert.ok(spoken('hull_status', sinceHull), 'after damage, the next quiet call is the hull');
+  covered.add('hull_status');
+  me.combat.hp = 1000;
+}
+
 // Modes: objectives and our gunship crew's drops.
 moment('objective_captured', () => bus.emit('mode:zone_captured', { zoneId: 'b', team: 'alpha' }));
 moment('objective_lost', () => bus.emit('mode:zone_captured', { zoneId: 'b', team: 'bravo' }));
@@ -330,6 +375,17 @@ moment('ally_destroyed', () => { allies[0].combat.destroyed = true; bus.emit('ta
 // Two enemies to our two: then our last ally falls (the last tank, outnumbered two to one), and then one enemy is left.
 moment('last_tank', () => { allies[1].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'a2', killerId: 'f3', pos: [-20, 0, 40], cause: 'shot' }); frame(); });
 moment('last_enemy', () => { foes[2].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'f3', killerId: 'me', pos: [-120, 0, 120], cause: 'shot' }); frame(); }, { quiet: 8 });
+
+// An objective mode's quiet stretch on the move points the crew at the objective.
+await startBattle('zone_control');
+{
+  me.state.speed = 6;
+  const since = +ctx.currentTime.toFixed(3);
+  for (let i = 0; i < 12 && !spoken('objective_push', since); i++) settle(45);
+  assert.ok(spoken('objective_push', since), `an objective mode's quiet stretch: the objective (heard ${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
+  covered.add('objective_push');
+  me.state.speed = 0;
+}
 
 // Outnumbered: a fresh battle, our side down to one tank against four.
 await startBattle();

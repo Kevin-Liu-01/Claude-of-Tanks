@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 456 sound-effect assets, 776 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 22.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 109 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -393,7 +393,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 109 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 119 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -596,7 +596,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 109 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 119 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -798,6 +798,21 @@ crew-lines.json ─┐                    crew-voices.json
   playable vehicle's rounds and roof stations (220 vehicles, 643 rounds, 75
   stations, the M551A1 TTS's 30 mm among them) to a shipped report. The
   payload cap rose from 20 to 28 MB for this and the next rounds.
+- **2026-10-13, crew lines for the silent stretches (AU.04, AU.05).** Ten lines
+  in all 13 languages (23 takes per pack, 11,226 credits): between fights the
+  commander keeps the crew watching (`quiet_scan`, `quiet_hold`, `quiet_move`,
+  the gunner's `quiet_crew`, `objective_push` in the objective modes, and
+  `hull_status` after damage), a building coming down within 160 m
+  (`building_down`), the front's aircraft passing within 900 m
+  (`aircraft_overhead`, half the time), the far guns (`artillery_far`, a quarter
+  of the time) and pulling up in cover within 8 s of a hit (`in_cover`). The
+  quiet calls come from `QUIET_RADIO` in the engine: only once nothing over
+  118 dB has sounded for 25 s and the net has been silent as long, at most one
+  every 50–85 s, in turn rather than at random (their own seeded stream), each
+  flavour that yields to any real call, so the radio never becomes "way too much
+  audio". The first take of a new library voice in each language hit a 409
+  (`already_running`, the voice added twice at once); re-running the line fills
+  it from the cache.
 
 ### Cost
 

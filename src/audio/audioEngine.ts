@@ -585,6 +585,68 @@ export function createAudio({
     if (radio.log.at(-1)?.id === 'think_step_by_step') say('step_by_step_reply');
   }
 
+  // --------------------------------------------------------- quiet stretches ---
+
+  /**
+   * The crew between fights (AU.04, 2026-10-13; the owner, 10-12: "so its not quiet all the time"; AUD-23: never "way
+   * too much audio"). Once the battle has been quiet for a while (nothing over `loudDb` in the HDR window — no cannon
+   * within a kilometre or two, no blast) and the net has been silent as long, the commander keeps the crew watching: a
+   * sector check, a hold, a word to the driver, the gunner's "no target", a push to the objective in an objective
+   * mode, or, after we took damage, what the hull has left. One call per 50-85 s at most, each flavour that yields to
+   * any real call, in turn rather than at random (its own seeded stream keeps the battle's other draws where they were).
+   */
+  const QUIET_RADIO = Object.freeze({
+    loudDb: 118, battleQuietS: 25, netQuietS: 25,
+    firstS: Object.freeze([35, 60]) as readonly [number, number],
+    everyS: Object.freeze([50, 85]) as readonly [number, number],
+  });
+  const OBJECTIVE_MODES: ReadonlySet<string> = new Set(['capture_the_flag', 'zone_control', 'frontline_assault']);
+  const QUIET_STILL = Object.freeze(['quiet_scan', 'quiet_hold', 'quiet_crew']);
+  const QUIET_MOVING = Object.freeze(['quiet_move', 'quiet_scan', 'quiet_crew']);
+  const quietRandom = mulberry32(0x9e17a);
+  let quietLoudAt = 0;
+  let nextQuietAt = Infinity;
+  let quietTurn = 0;
+  let damagedSinceStatus = false;
+  let hitOnUsAt = -1e9;
+  let movedSinceHit = false;
+
+  function resetQuietRadio(): void {
+    quietLoudAt = 0;
+    nextQuietAt = Infinity;
+    quietTurn = 0;
+    damagedSinceStatus = false;
+    hitOnUsAt = -1e9;
+    movedSinceHit = false;
+  }
+
+  function updateQuietRadio(now: number): void {
+    if (!radio || !mixer || phase !== 'battle' || battleOver || !rolledOut || killcam || paused) return;
+    const me = latestPlayer;
+    if (!me || me.id !== playerId || me.combat?.destroyed) return;
+    const speed = Math.abs(Number(me.state?.speed) || 0);
+    // in cover: we pulled up and stopped within eight seconds of a hit
+    if (now - hitOnUsAt < 8) {
+      if (speed > 3) movedSinceHit = true;
+      else if (movedSinceHit && speed < 0.4) { movedSinceHit = false; hitOnUsAt = -1e9; say('in_cover', { delayS: 0.2 }); }
+    }
+    if (mixer.hdrTop >= QUIET_RADIO.loudDb) quietLoudAt = now;
+    if (nextQuietAt === Infinity) { nextQuietAt = now + QUIET_RADIO.firstS[0] + quietRandom() * (QUIET_RADIO.firstS[1] - QUIET_RADIO.firstS[0]); return; }
+    if (now < nextQuietAt || now - quietLoudAt < QUIET_RADIO.battleQuietS || !radio.quiet) return;
+    const last = radio.log.at(-1);
+    if (last && now - (last.t + last.dur) < QUIET_RADIO.netQuietS) return;
+    if (me.aerial?.kind === 'gunship' || me.aerial?.active) return;
+    nextQuietAt = now + QUIET_RADIO.everyS[0] + quietRandom() * (QUIET_RADIO.everyS[1] - QUIET_RADIO.everyS[0]);
+    const hp = Number(me.combat?.hp);
+    const maxHp = Number(me.combat?.maxHp);
+    const moving = speed > 2;
+    let id: string;
+    if (damagedSinceStatus && maxHp > 0 && hp / maxHp > 0.25 && hp / maxHp < 0.85) { id = 'hull_status'; damagedSinceStatus = false; }
+    else if (moving && quietTurn % 2 === 0 && OBJECTIVE_MODES.has(getGameMode?.() || 'standard')) { id = 'objective_push'; quietTurn++; }
+    else { const turn = moving ? QUIET_MOVING : QUIET_STILL; id = turn[quietTurn++ % turn.length]; }
+    say(id);
+  }
+
   function hullOptions(extra: PlayOptions = {}): PlayOptions {
     return { space: 'hull', ...extra };
   }
@@ -1004,6 +1066,7 @@ export function createAudio({
     }
     logSound('shell:hit', { id: event.shellId, kind: event.kind, targetId: event.targetId, attackerId: event.attackerId, occupied: ownHull, damage: event.damage || 0 });
     if (playerId == null) return;
+    if (event.targetId === playerId && (event.damage || 0) > 0) { damagedSinceStatus = true; hitOnUsAt = ctx?.currentTime ?? 0; movedSinceHit = false; }
     if (event.targetId === playerId) reportIncoming(event);
     else if (event.attackerId === playerId) reportOutgoing(event);
   }
@@ -2048,6 +2111,8 @@ export function createAudio({
       const y = collapse && Number.isFinite(e.baseY) && Number.isFinite(e.topY) ? e.baseY + 0.4 * (e.topY - e.baseY) : e.y;
       structureLayers(structureStageSounds(e.stage, sound), x, y, z,
         collapse ? STRUCTURE_FAR.collapse : e.stage === 'breached' ? STRUCTURE_FAR.breach : null);
+      // a building coming down near us is news to the crew
+      if (collapse && listenerValid && distanceTo(x, y, z) < 160) say('building_down', { prob: 0.7, delayS: 0.9 });
       logSound('structure:stage', { id: e.structureId, stage: e.stage, material: sound.material });
     });
     // a section falling inside a standing building (P2): the roof caving in, a storey dropping, a wall panel going
@@ -2195,13 +2260,26 @@ export function createAudio({
         if (me && Number.isFinite(sx) && Math.hypot(sx - me.pos.x, sz - me.pos.z) < 4) say('smoke_out', { delayS: 0.05 });
       }
     });
-    on<{ pos?: Vec3; size?: number }>('atmosphere:artillery', (e) => { if (e?.pos) play('distant_artillery', { ...at(e.pos), gainDb: gainToDb(clamp(e.size ?? 0.6, 0.3, 1.4)) }); });
+    on<{ pos?: Vec3; size?: number }>('atmosphere:artillery', (e) => {
+      if (!e?.pos) return;
+      play('distant_artillery', { ...at(e.pos), gainDb: gainToDb(clamp(e.size ?? 0.6, 0.3, 1.4)) });
+      // the loader hears the far guns, rarely (flavour that yields to any real call)
+      if (phase === 'battle' && !battleOver && rolledOut) say('artillery_far', { prob: 0.25, delayS: 1.2 });
+    });
     on<{ pos?: Vec3; delayS?: number }>('atmosphere:flak', (e) => { if (e?.pos) play('distant_flak', { ...at(e.pos), delayS: Math.max(0, e.delayS ?? 0) }); });
     on<{ pos?: Vec3; shots?: number; gapS?: number }>('atmosphere:aa', (e) => { if (e?.pos) play('distant_mg', at(e.pos)); });
     on<{ p0?: Vec3; v?: Vec3; durationS?: number; aircraft?: string }>('atmosphere:flyover', (e) => {
       if (!e?.p0 || !e.v) return;
       const half = clamp(e.durationS ?? 20, 4, 60) / 2;
       play(flyoverAsset(e.aircraft), { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
+      // the crew notes aircraft that pass near (the path's closest approach to us within 900 m), now and then
+      if (listenerValid && phase === 'battle' && !battleOver) {
+        const vv = e.v[0] * e.v[0] + e.v[1] * e.v[1] + e.v[2] * e.v[2];
+        const tc = vv > 1e-6 ? clamp(((frame.x - e.p0[0]) * e.v[0] + (frame.y - e.p0[1]) * e.v[1] + (frame.z - e.p0[2]) * e.v[2]) / vv, 0, half * 2) : 0;
+        if (distanceTo(e.p0[0] + e.v[0] * tc, e.p0[1] + e.v[1] * tc, e.p0[2] + e.v[2] * tc) < 900) {
+          say('aircraft_overhead', { prob: 0.5, delayS: clamp(tc - 2, 0, 5) });
+        }
+      }
     });
     on<ReloadEvent>('player:reload', onReload);
     on<{ phase?: string }>('phase:change', (e) => {
@@ -2261,6 +2339,7 @@ export function createAudio({
     on<undefined>('battle:rollout', () => {
       if (phase !== 'battle' || battleOver) return;
       rolledOut = true;
+      resetQuietRadio();
       const mode = getGameMode?.() || 'standard';
       if (mode !== 'realistic') {
         const opener = MODE_OPENER[mode] ?? 'sting_battle';
@@ -2363,6 +2442,7 @@ export function createAudio({
     mixer.update(dt);
     radio?.update();
     updateThink(now);
+    updateQuietRadio(now);
     if (list) {
       indexTanks(list, dt);
       if (playerId) {
