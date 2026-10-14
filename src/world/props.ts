@@ -113,6 +113,7 @@ import {
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
@@ -4218,17 +4219,22 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       // (round 7) a kit's tile sheet takes the biased roof hook; (round 10) a kit's walls the walls' grime
       const kitHook = tileBiased(materialKind) ? roofHook : isKitWall(materialKind) ? wallGrimeHook : null;
+      // (props lane A, #2) the baked material also folds a clutter pool's near or far form by distance (clutterKit.ts:
+      // its own program as before, one hook more; untagged geometry reads 0 and is untouched)
+      const clutterLod = materialKind === 'baked';
+      if (clutterLod) clutterLodDefaults(material);
       engineCtx.setupShadowMaterial(material, kitHook ?? (
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
             : materialKind === 'ballast' ? ballastHook
-            : materialKind === 'fieldMud' ? mudHook : grimeHook));
+            : materialKind === 'fieldMud' ? mudHook
+            : clutterLod ? (shader) => { grimeHook(shader); clutterLodHook(shader); } : grimeHook));
       // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
       // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
       // weathering)
       const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       // (round 7: a biased roof is its own program, so a map without a kit never reuses a kit map's)
-      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '');
+      const biasKey = (tileBiased(materialKind) ? '-lodb' : '') + (isKitWall(materialKind) ? '-wall' : '') + (clutterLod ? CLUTTER_LOD_KEY : '');
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : '') + biasKey; // round 75: the weathering law
     }
@@ -4420,6 +4426,9 @@ ${snowCap ? `
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
     ...periodClutterTypes(mapId),
+    // (props lane A, #2, 2026-10-14) the containers, crates, barrels and yard clutter of the map's place and period, each
+    // with its near and far form in its one pool (maps/clutterKit.ts)
+    ...clutterTypes(mapId, mobileProps),
     // the fortifications lane (2026-10-09): the field works' pillbox as the map's period built it (maps/fortKit.ts), on
     // the board-formed concrete; the old pillbox's draws spent first, so every pool after it keeps its shape. A map's
     // own variant (the sangar) still wins below.
