@@ -1525,6 +1525,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/titanGorgeHorizon.selftest.mjs',
     'src/world/copperQuarrySurface.selftest.mjs',
     'src/world/playableRelief.selftest.mjs',
+    'src/world/landformSupportBounds.selftest.mjs', // the perf stream (2026-10-13): a height sample skips landforms outside their support
     'src/world/assaultTrenchTerrain.selftest.mjs',
     'src/world/badlandsRelief.selftest.mjs',
     'src/world/redrockMaterial.selftest.mjs',
