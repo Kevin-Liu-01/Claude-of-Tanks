@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, relative, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { createSelftestCache, REPO_ROOT, SELFTEST_CACHE_VERSION } from './selftest-cache.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -261,9 +261,11 @@ assert.deepEqual(collectSelftestInputs('/* @selftest-reads: src/ */\nexport {};'
 
 rmSync(root, { recursive: true, force: true });
 
-// the real repository: the receipts that moved during batch 28 see their inputs
+// the real repository: the receipts that moved during batch 28 see their inputs (the opaque-module guard below reuses
+// this planner and its parsed modules)
+const repositoryCache = createSelftestCache({ env: {}, argv: [] });
 {
-  const cache = createSelftestCache({ env: {}, argv: [] });
+  const cache = repositoryCache;
   const has = (receipt, needle) => [...cache.closureOf(join(REPO_ROOT, receipt))].some((p) => p.endsWith(needle));
   assert.ok(has('src/vehicles/profiles/chieftain10XServiceFrame.selftest.mjs', 'profiles/chieftainXFoundation.ts'),
     'the Chieftain contract receipt observes the sources its JSON lists');
@@ -317,68 +319,70 @@ rmSync(root, { recursive: true, force: true });
     "the boot closure receipt watches src/: it reads every module src/main.ts reaches (tools/static-import-closure.mjs's @selftest-reads)");
 }
 
-// The opaque-import guard. An unmarked computed import() (`import(url)`) cannot be followed, so every receipt that executes
-// its module runs fresh every time with the whole tree as its inputs. What that costs depends on who executes the module:
+// The opaque-module guard. A module whose import() or environment read the planner cannot follow (`import(url)`,
+// `process.env[name]`, an `env = process.env` parameter, a template import() whose directory does not exist) makes every
+// receipt whose closure holds it run fresh with no proof to reuse (lookup: 'computed import/environment needs a fresh
+// run'). What that costs depends on who reaches the module:
 // - a module that more than one receipt executes spreads the cost to receipts that never chose it (src/ui/i18nDictionaries.ts
 //   alone did that to 305 of the 439 always-run receipts on 9a9ab2a7e). It needs a literal or template specifier, an
-//   `/* @selftest-external: <what it loads> */` marker when it loads something outside the repository, or an OPAQUE_IMPORTS row;
-// - a module at most one receipt executes (a receipt's own ?query variant, a tool's CLI that only its own receipt imports)
-//   costs only that receipt, which ran fresh before 2026-10-13 too. It is reported, never failed.
-// So the guard holds on any tree it lands on. As an exact list of every opaque module it went red on origin/main 9d5f98d81,
-// which gained tools/media-r5/fleet-rekey.mjs (`await import(join(ROOT, 'src/vehicles/tankFactory.ts'))` in its CLI block,
-// executed only by fleet-rekey.selftest.mjs) while the guard was in review. Rows whose module lost its opaque import
-// (deleted, renamed or made literal elsewhere) are reported for removal, not failed, for the same reason.
+//   `/* @selftest-external: <what it loads> */` marker when it loads something outside the repository, or an OPAQUE_MODULES row;
+// - a module at most one receipt executes (a receipt's own ?query variant, a tool's CLI that only its own receipt imports,
+//   like tools/media-r5/fleet-rekey.mjs on origin/main 9d5f98d81) costs only that receipt. It is reported, never failed.
+// Who reaches a module is the planner's own answer: cache.freshRunReach walks the registry by closureOf's rule and tests
+// each file with lookup's own cause test. f434d5523 picked importers by their text instead (a file that names the module's
+// stem, or matches /import\s*\(\s*`/), so `import(/* @vite-ignore */ `./zzPlugins/${name}.ts`)` added to
+// src/vehicles/materials.ts left the plugin it executes "confined" while 611 receipts ran fresh through it. It found
+// opaque modules by a first-token regex that `import /* lazy */ (url)` and `import('./x/' + name)` slip past, and never
+// asked about a template import() with no directory or an environment read, which lookup runs fresh as well. A receipt
+// that only reads a module's text runs fresh through it too once any lookup has executed it (lookup tests every
+// inspected member of a closure). That receipt is charged to the module unless a listed module already runs it fresh:
+// tools/selftest-suites.mjs names every receipt, so its readers hold every receipt's own variant. Rows whose module no
+// longer forces a fresh run (deleted, renamed, made followable) are reported for removal, not failed, so the guard holds
+// on any tree it lands on.
 const MODULE_FILE = /\.(?:[mc]?[jt]s|[jt]sx|html)$/;
-function auditOpaqueImports({ root, cache, rows, receipts, limit = 256 }) {
-  const texts = new Map(), found = new Map(), external = [], declared = [];
+function auditOpaqueModules({ root, cache, rows, receipts }) {
+  const reach = cache.freshRunReach([...receipts]), at = (name) => join(root, name);
+  const causes = reach.causes.map((file) => relative(root, file));
+  // The receipts a listed module already runs fresh: reading another module's text costs them nothing more.
+  const covered = new Set(causes.filter((name) => rows.has(name)).flatMap((name) => [...reach.holding(at(name))]));
+  // A module's cost: every receipt that executes it, and every one that only reads it and that nothing listed runs fresh.
+  const charge = (name) => {
+    const executing = reach.executing(at(name));
+    return [...reach.holding(at(name))].filter((receipt) => executing.has(receipt) || !covered.has(receipt)).sort();
+  };
+  const unlisted = causes.filter((name) => !rows.has(name)).map((name) => ({ name, receipts: charge(name) }));
+  // The markers, from every module file of the repository the planner sees (each top-level entry Git does not ignore).
+  // Both are comments, so a file whose text lacks the marker declares none.
+  const external = [], declared = [];
   const visit = (file, entry) => {
-    // the tracked tree: dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
+    // dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
     if (entry.name.startsWith('.') || ['node_modules', 'dist', '__pycache__'].includes(entry.name) || entry.name.startsWith('tmp-')) return;
     if (entry.isDirectory()) {
       for (const child of readdirSync(file, { withFileTypes: true })) visit(join(file, child.name), child);
       return;
     }
     if (!entry.isFile() || !MODULE_FILE.test(entry.name)) return;
-    const text = readFileSync(file, 'utf8'), name = relative(root, file);
-    texts.set(file, text);
-    if (text.includes('@selftest-reads')) for (const path of collectSelftestInputs(text, file).reads) declared.push([name, path]);
-    if (!/\bimport\s*\(\s*[^'"`\s)]/.test(text)) return; // only a non-literal first token can be opaque
-    const info = collectSelftestInputs(text, file);
-    if (info.opaqueImport) found.set(name, info);
+    const text = readFileSync(file, 'utf8');
+    if (!text.includes('@selftest-reads') && !text.includes('@selftest-external')) return;
+    const info = collectSelftestInputs(text, file), name = relative(root, file);
+    for (const path of info.reads) declared.push([name, path]);
     for (const reason of info.external) external.push([name, reason]);
   };
-  // The whole repository as the planner sees it (each top-level entry Git does not ignore), so an importer in api/,
-  // cloudflare/ or middleware.ts is followed too.
   const entries = new Set(cache.repositoryEntries);
-  for (const entry of readdirSync(root, { withFileTypes: true })) if (entries.has(join(root, entry.name))) visit(join(root, entry.name), entry);
-  // Who executes a module, by the planner's own edges (cache.modulesOf): a module whose import names it, so its text holds
-  // the file's stem, or one whose template import() can reach it.
-  const templated = new Set([...texts].filter(([, text]) => /\bimport\s*\(\s*`/.test(text)).map(([file]) => file));
-  const importersOf = (file) => {
-    const stem = basename(file).replace(/\.[^.]+$/, '');
-    return [...texts].filter(([other, text]) => other !== file && (templated.has(other) || text.includes(stem))
-      && cache.modulesOf(other).has(file)).map(([other]) => other);
-  };
-  // The registered receipts that execute a module, itself or through any chain of importers; it stops at two. A module
-  // that more than `limit` modules execute is shared whatever the count.
-  const executedBy = (name) => {
-    const start = join(root, name), seen = new Set([start]), queue = [start], hits = new Set();
-    while (queue.length && hits.size < 2 && seen.size <= limit) {
-      const file = queue.shift();
-      if (receipts.has(relative(root, file))) hits.add(relative(root, file));
-      for (const importer of importersOf(file)) if (!seen.has(importer)) { seen.add(importer); queue.push(importer); }
-    }
-    return { receipts: [...hits].sort(), shared: hits.size > 1 || seen.size > limit };
-  };
-  const unlisted = [...found.keys()].filter((name) => !rows.has(name)).sort().map((name) => ({ name, ...executedBy(name) }));
-  return { found, external, declared, executedBy, shared: unlisted.filter((row) => row.shared),
-    confined: unlisted.filter((row) => !row.shared), stale: [...rows.keys()].filter((name) => !found.has(name)).sort() };
+  for (const entry of readdirSync(root, { withFileTypes: true })) if (entries.has(at(entry.name))) visit(at(entry.name), entry);
+  return { reach, causes, charge, external, declared, shared: unlisted.filter(({ receipts: by }) => by.length > 1),
+    confined: unlisted.filter(({ receipts: by }) => by.length <= 1),
+    // a CLI no receipt runs is no cause in the walk, but keeps its row while its import stays opaque
+    stale: [...rows.keys()].filter((name) => !causes.includes(name) && !cache.isFreshRunCause(at(name))).sort() };
 }
 // The rules on a synthetic tree. It has what main can land beside this receipt: a tool whose CLI imports by a rooted path
-// and that only its own receipt imports (the fleet-rekey shape), a receipt's own variant import, a CLI no receipt runs, a
-// listed module that was deleted, and the shared cases that must still fail: a library two receipts reach through
-// another module, a template import()'s directory member, a helper two receipts import directly, and a module reached
-// only through a root file (middleware.ts) outside src/, server/ and tools/.
+// and that only its own receipt imports (the fleet-rekey shape), a receipt's own variant import that a registry names, a
+// CLI no receipt runs, and a listed module that was deleted. Each shared case must fail, with the two receipts that
+// reach it: a library re-exported to them; the plugin a template import() executes, with a comment before the template
+// (the counterexample); `import /* … */ (url)`; a concatenated specifier; a template whose directory does not exist; an
+// environment read; a module imported by an escaped specifier (its importer's text never names it); a module reached
+// only through a root file; a tool one receipt executes whose path a JSON catalog lists to two receipts that read it; and a
+// loader two receipts execute that a listed module already runs fresh.
 {
   const tree = mkdtempSync(join(tmpdir(), 'cot-selftest-opaque-'));
   const put = (rel, text) => { mkdirSync(join(tree, rel, '..'), { recursive: true }); writeFileSync(join(tree, rel), text); };
@@ -390,35 +394,71 @@ function auditOpaqueImports({ root, cache, rows, receipts, limit = 256 }) {
     put('tools/rekey.selftest.mjs', "import { step } from './rekey.mjs';\nconsole.log(step('a'));\n");
     put('src/variant.selftest.mjs', "const url = new URL('./factory.ts', import.meta.url);\nawait import(url.href + '?before');\n");
     put('tools/cli-only.mjs', 'await import(process.argv[2]);\n');
+    // The registry names every receipt (one of them gone). Its two readers run fresh anyway through a listed helper, so
+    // reading a receipt's own variant costs them nothing; a plugin loader they both execute is still theirs to pay for.
+    put('tools/env-helper.mjs', 'export const settings = (env = process.env) => env;\n');
+    put('tools/plugin-loader.mjs', 'export const plugin = (url) => import(url);\n');
+    put('tools/suites.mjs', "export const SUITES = ['src/variant.selftest.mjs', 'tools/rekey.selftest.mjs', 'src/gone.selftest.mjs'];\n");
+    put('tools/suites.selftest.mjs', "import { SUITES } from './suites.mjs';\nimport { settings } from './env-helper.mjs';\nimport './plugin-loader.mjs';\n");
+    put('tools/runner.selftest.mjs', "import './suites.mjs';\nimport './env-helper.mjs';\nimport { plugin } from './plugin-loader.mjs';\n");
+    const pair = (name, from) => {
+      put(`src/${name}-a.selftest.mjs`, `import '${from}';\n`); put(`src/${name}-b.selftest.mjs`, `export * from '${from}';\n`);
+      return [`src/${name}-a.selftest.mjs`, `src/${name}-b.selftest.mjs`];
+    };
     put('src/hub.ts', 'export const load = (url) => import(url);\n'); put('src/panel.ts', "export { load } from './hub.ts';\n");
-    put('src/one.selftest.mjs', "import { load } from './panel.ts';\n"); put('src/two.selftest.mjs', "import './panel.ts';\n");
     put('src/plugins/alpha.ts', 'export const fetchPlugin = (url) => import(url);\n');
-    put('src/registry.ts', 'export const plugin = (name) => import(`./plugins/${name}.ts`);\n');
-    put('src/three.selftest.mjs', "import { plugin } from './registry.ts';\n"); put('src/four.selftest.mjs', "import './registry.ts';\n");
-    put('src/lib/index.ts', 'export const any = (url) => import(url);\n');
-    put('src/five.selftest.mjs', "import './lib/index.ts';\n"); put('src/six.selftest.mjs', "import { any } from './lib/index.ts';\n");
+    put('src/registry.ts', 'export const plugin = (name) => import(/* @vite-ignore */ `./plugins/${name}.ts`);\n');
+    put('src/spaced.ts', 'export const lazy = (url) => import /* lazy */ (url);\n');
+    put('src/concat.ts', "export const fromDir = (name) => import('./plugins/' + name);\n");
+    put('src/unresolved.ts', 'export const fromBase = (base) => import(`${base}/x.ts`);\n');
+    put('src/environment.ts', 'export const setting = (name) => process.env[name];\n');
+    put('src/escaped.ts', 'export const any = (url) => import(url);\n'); put('src/escape-importer.ts', "export * from './\\u0065scaped.ts';\n");
     put('src/edge.ts', 'export const edge = (url) => import(url);\n'); put('middleware.ts', "export { edge } from './src/edge.ts';\n");
-    put('src/seven.selftest.mjs', "import '../middleware.ts';\n"); put('tools/eight.selftest.mjs', "import { edge } from '../middleware.ts';\n");
-    const receipts = new Set(['tools/rekey.selftest.mjs', 'src/variant.selftest.mjs', 'src/one.selftest.mjs', 'src/two.selftest.mjs',
-      'src/three.selftest.mjs', 'src/four.selftest.mjs', 'src/five.selftest.mjs', 'src/six.selftest.mjs', 'src/seven.selftest.mjs',
-      'tools/eight.selftest.mjs']);
-    const shared = ['src/edge.ts', 'src/hub.ts', 'src/lib/index.ts', 'src/plugins/alpha.ts'];
-    const audit = (rows, options = {}) => auditOpaqueImports({ root: tree, rows: new Map(rows.map((row) => [row, 'fixture'])), receipts,
-      cache: createSelftestCache({ root: tree, cacheDir: join(tree, '.cache'), env: {}, argv: [], nodeVersion: 'v-test' }), ...options });
-    const open = audit([]);
-    assert.deepEqual([...open.found.keys()].sort(), [...shared, 'src/variant.selftest.mjs', 'tools/cli-only.mjs', 'tools/rekey.mjs'],
-      'every unmarked computed import() is found, the CLI-block one included');
+    put('src/tool.mjs', 'await import(process.argv[2]);\n'); put('src/tool.selftest.mjs', "import './tool.mjs';\n");
+    put('src/catalog.json', JSON.stringify({ tools: ['src/tool.mjs'] }));
+    put('src/catalog-a.selftest.mjs', "readFileSync(new URL('./catalog.json', import.meta.url));\n");
+    put('src/catalog-b.selftest.mjs', "readFileSync(new URL('./catalog.json', import.meta.url));\n");
+    const sharedBy = {
+      'src/hub.ts': pair('one', './panel.ts'), 'src/plugins/alpha.ts': pair('plugin', './registry.ts'),
+      'src/spaced.ts': pair('spaced', './spaced.ts'), 'src/concat.ts': pair('concat', './concat.ts'),
+      'src/unresolved.ts': pair('unresolved', './unresolved.ts'), 'src/environment.ts': pair('environment', './environment.ts'),
+      'src/escaped.ts': pair('escaped', './escape-importer.ts'), 'src/edge.ts': pair('edge', '../middleware.ts'),
+      'src/tool.mjs': ['src/catalog-a.selftest.mjs', 'src/catalog-b.selftest.mjs', 'src/tool.selftest.mjs'],
+      'tools/plugin-loader.mjs': ['tools/runner.selftest.mjs', 'tools/suites.selftest.mjs'],
+    };
+    const receipts = new Set(['tools/rekey.selftest.mjs', 'src/variant.selftest.mjs', 'tools/suites.selftest.mjs', 'tools/runner.selftest.mjs',
+      ...Object.values(sharedBy).flat()]);
+    const fresh = () => createSelftestCache({ root: tree, cacheDir: join(tree, '.cache'), env: {}, argv: [], nodeVersion: 'v-test' });
+    const audit = (rows, cache = fresh()) => auditOpaqueModules({ root: tree, cache, receipts,
+      rows: new Map(['tools/env-helper.mjs', ...rows].map((row) => [row, 'fixture'])) });
+    const cache = fresh(), open = audit([], cache);
+    assert.deepEqual(open.causes, [...Object.keys(sharedBy), 'src/variant.selftest.mjs', 'tools/env-helper.mjs', 'tools/rekey.mjs'].sort(),
+      'every module the planner runs fresh is a cause: each import() and environment form, the CLI-block one included (an unrun CLI is none)');
+    // The planner agrees: a receipt's closure holds a cause exactly when the reach says so, and lookup runs exactly those
+    // fresh (after the walk every cause is inspected, which is the most any lookup order sees).
+    for (const receipt of receipts) {
+      const closure = cache.closureOf(join(tree, receipt));
+      for (const cause of open.causes) {
+        assert.equal(open.reach.holding(join(tree, cause)).has(receipt), closure.has(join(tree, cause)), `${receipt} holds ${cause}: reach = closureOf`);
+      }
+      assert.equal(cache.lookup(receipt).reason === 'computed import/environment needs a fresh run',
+        open.causes.some((cause) => open.reach.holding(join(tree, cause)).has(receipt)), `${receipt}: lookup runs fresh exactly where the reach says`);
+    }
     assert.deepEqual(open.confined.map(({ name, receipts: by }) => [name, by]), [['src/variant.selftest.mjs', ['src/variant.selftest.mjs']],
-      ['tools/cli-only.mjs', []], ['tools/rekey.mjs', ['tools/rekey.selftest.mjs']]],
-    "a module at most one receipt executes needs no row: a receipt's own variant, a CLI no receipt runs, a tool only its own receipt imports");
-    assert.deepEqual(open.shared.map(({ name, receipts: by }) => [name, by]), [['src/edge.ts', ['src/seven.selftest.mjs', 'tools/eight.selftest.mjs']],
-      ['src/hub.ts', ['src/one.selftest.mjs', 'src/two.selftest.mjs']], ['src/lib/index.ts', ['src/five.selftest.mjs', 'src/six.selftest.mjs']],
-      ['src/plugins/alpha.ts', ['src/four.selftest.mjs', 'src/three.selftest.mjs']]],
-    'a module two receipts execute is shared: through a root file, a re-exporting module or a template import(), or directly');
-    const listed = audit([...shared, 'tools/retired.mjs']);
-    assert.deepEqual([listed.shared, listed.stale], [[], ['tools/retired.mjs']], 'rows admit shared modules; a deleted row is only reported');
-    assert.deepEqual(audit(shared, { limit: 1 }).shared.map(({ name }) => name), ['tools/rekey.mjs'],
-      'a module more than `limit` modules execute counts as shared');
+      ['tools/rekey.mjs', ['tools/rekey.selftest.mjs']]],
+    "a module at most one receipt executes needs no row: a receipt's own variant (its registry's readers run fresh anyway), a tool only its own receipt imports");
+    assert.deepEqual(Object.fromEntries(open.shared.map(({ name, receipts: by }) => [name, by])),
+      Object.fromEntries(Object.entries(sharedBy).map(([name, by]) => [name, [...by].sort()])),
+    'a module two receipts reach is shared: re-exported, a commented template import()\'s plugin, import /* … */ (url), a concatenated or '
+      + 'unresolved specifier, an environment read, an escaped importer, a root file, a catalog its readers hold, or a loader receipts '
+      + 'that run fresh anyway execute');
+    const listed = audit([...Object.keys(sharedBy), 'tools/retired.mjs', 'tools/cli-only.mjs']);
+    assert.deepEqual([listed.shared, listed.stale], [[], ['tools/retired.mjs']],
+      'rows admit shared modules; a deleted row is only reported, and a CLI no receipt runs keeps its row');
+    // Without the registry readers' listed helper, they are charged to the variant they read.
+    assert.deepEqual(auditOpaqueModules({ root: tree, cache: fresh(), receipts, rows: new Map() }).shared
+      .find(({ name }) => name === 'src/variant.selftest.mjs')?.receipts,
+    ['src/variant.selftest.mjs', 'tools/runner.selftest.mjs', 'tools/suites.selftest.mjs'], 'a reader nothing listed runs fresh is charged');
   } finally { rmSync(tree, { recursive: true, force: true }); }
 }
 // Known opaque modules and why. A row is required for a shared one (above); the confined ones are recorded here as well.
@@ -427,8 +467,10 @@ const IN_PAGE = 'browser census: the import runs inside the page, with the modul
 const CANVAS = 'loads the native @napi-rs/canvas module from --canvas-module or require.resolve';
 const VARIANT = 'loads a source module again through a loader hook or a ?query instance (a before/after variant, exposed internals)';
 const ROOTED = 'imports repository modules by a path joined from the checkout root (or a --root/--out-dir flag), a table or a source scan';
-const ELSEWHERE = 'imports a module outside this checkout: a prior-revision snapshot, a baseline or source root flag, or a temp file';
-const OPAQUE_IMPORTS = new Map(Object.entries({
+const ELSEWHERE = 'imports a module outside this checkout: a prior-revision snapshot, a baseline or source root flag, a temp file or a data: URL';
+const ENVIRONMENT = 'takes its environment as a parameter defaulting to process.env (`env = process.env`), so a test can pass its own';
+const CHILD_ENVIRONMENT = "passes its own environment on to a child process with a name or two changed (`{ ...process.env, X: '1' }`)";
+const OPAQUE_MODULES = new Map(Object.entries({
   [PLAYWRIGHT]: ['battle-hud-layout.browser', 'battle-load-layout.browser', 'battle-reports.browser', 'crew-voice.browser',
     'custom-select.browser', 'end-screen-presentation.browser', 'environment-motion-probe', 'field-guide.browser',
     'gallery-damage.browser', 'garage-mobile.browser', 'hud-editor.browser', 'manual-reference.browser',
@@ -444,8 +486,9 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
     'horizonMesaTexture', 'maps/beachedBoat', 'maps/railCoalStockpiles', 'maps/regional/choufEarthRoof',
     'maps/riverReedContact', 'palmStemDirection', 'playableRelief', 'roadBorderCorridor', 'roadContinuity', 'roadCrownLift',
     'roadCutRecovery', 'roadInheritedGrades', 'roadLookupGrid', 'shrubGrowthPlacement', 'sourcedImageCache',
-    'sourcedTerrainPreparation', 'sourcedTextureCompositionAdoption', 'sourcedTextures', 'terraceBenches', 'treeAttachments',
-    'woodyRootOrientation', 'wreckEraReceipt'].map((name) => `src/world/${name}.selftest.mjs`),
+    'sourcedTerrainPreparation', 'sourcedTextureCompositionAdoption', 'sourcedTextures', 'structureCollisionMergeKeys',
+    'structureCollisionRaster', 'structureCollisionReuse', 'structureCollisionVertexCache', 'terraceBenches', 'treeAttachments',
+    'wallSpanPlacement', 'woodyRootOrientation', 'wreckEraReceipt'].map((name) => `src/world/${name}.selftest.mjs`),
   'src/world/roadHistoryTestOracle.mjs', 'src/world/shorelineContinuity.test-support.mjs'],
   [ROOTED]: ['src/engine/hazeLaw.selftest.mjs', 'src/game/garageSkyPresets.selftest.mjs',
     'src/vehicles/suppliedSourceArmorInitialization.test-support.mjs', ...['base-shell-surface-audit', 'battle-entry-sweep',
@@ -453,27 +496,38 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
       'media-r5/studio-ui', 'mission-dock-seats', 'native-playables-audit', 'record-town-plan', 'strip-nc-registry-probe',
       'visual-census', 'wreck-build-profile', 'wreck-paint-bench'].map((name) => `tools/${name}.mjs`)],
   [ELSEWHERE]: ['tools/export-first-party-preservation.mjs', 'tools/physical-bore-air.selftest.mjs', 'tools/props-build-profile.mjs',
-    'tools/road-border-corridor-pilot.mjs'],
+    'tools/road-border-corridor-pilot.mjs', 'src/world/terrainMaterialOwnership.selftest.mjs'],
+  [ENVIRONMENT]: ['api/jev.ts', 'api/telemetry.ts', ...['appVersion.ts', 'capture-lock.mjs', 'release.mjs', 'run-selftests.mjs',
+    'selftest-cache-dir.mjs', 'selftest-cache.mjs', 'telemetry-report.mjs'].map((name) => `tools/${name}`)],
+  [CHILD_ENVIRONMENT]: ['server/collisionManifestCodec.selftest.mjs', 'server/collisionManifestDrift.selftest.mjs',
+    'tools/release.selftest.mjs', 'tools/run-selftests.selftest.mjs', 'tools/shared-main-preflight.selftest.mjs'],
 }).flatMap(([reason, files]) => files.map((file) => [file, reason])));
 {
-  const audit = auditOpaqueImports({ root: REPO_ROOT, cache: createSelftestCache({ env: {}, argv: [] }), rows: OPAQUE_IMPORTS,
+  const audit = auditOpaqueModules({ root: REPO_ROOT, cache: repositoryCache, rows: OPAQUE_MODULES,
     receipts: new Set(Object.values(SELFTEST_SUITES).flat()) });
   // A @selftest-reads path that names nothing would add no input and hide the read it was written for.
   assert.ok(audit.declared.some(([file]) => file === 'tools/static-import-closure.mjs'), 'the source walker declares what it reads');
   for (const [file, path] of audit.declared) {
     assert.ok(statSync(join(REPO_ROOT, path), { throwIfNoEntry: false }), `${file}: @selftest-reads names an existing path (${path})`);
   }
-  assert.deepEqual(audit.shared.map(({ name, receipts }) => `${name} (executed by ${receipts.join(', ')})`), [],
-    'a computed import() that more than one receipt executes: give it a literal specifier, a @selftest-external marker, or an OPAQUE_IMPORTS row');
+  assert.deepEqual(audit.shared.map(({ name, receipts }) => `${name} (runs ${receipts.length} receipts fresh: ${receipts.slice(0, 3).join(', ')}${receipts.length > 3 ? ', …' : ''})`), [],
+    'a computed import() or environment read that more than one receipt reaches: give it a literal specifier, a @selftest-external marker, or an OPAQUE_MODULES row');
   for (const { name, receipts } of audit.confined) {
-    console.log(`selftest-cache: note: ${name} has a computed import() with no OPAQUE_IMPORTS row; it keeps ${receipts[0] ?? 'no receipt'} running fresh`);
+    console.log(`selftest-cache: note: ${name} has a computed import() or environment read with no OPAQUE_MODULES row; it keeps ${receipts[0] ?? 'no receipt'} running fresh`);
   }
-  if (audit.stale.length) console.log(`selftest-cache: note: OPAQUE_IMPORTS rows with no opaque import left (remove them): ${audit.stale.join(', ')}`);
-  assert.ok(!audit.found.has('src/ui/i18nDictionaries.ts'), 'the i18n runtime stays followable (305 receipts ran fresh every time through it)');
-  // The guard is not vacuous on this tree: the module that started it counts as shared, so an unmarked import() there fails.
-  assert.equal(audit.executedBy('src/ui/i18nDictionaries.ts').shared, true, 'the i18n runtime is shared: an opaque import there would fail');
-  assert.deepEqual(audit.executedBy('tools/selftest-cache.selftest.mjs'), { receipts: ['tools/selftest-cache.selftest.mjs'], shared: false },
-    'a receipt nothing imports is confined to itself');
+  if (audit.stale.length) console.log(`selftest-cache: note: OPAQUE_MODULES rows that no longer force a fresh run (remove them): ${audit.stale.join(', ')}`);
+  assert.ok(!audit.causes.includes('src/ui/i18nDictionaries.ts'), 'the i18n runtime stays followable (305 receipts ran fresh every time through it)');
+  // The guard is not vacuous on this tree: an unmarked import() in the module that started it, or in the vehicle materials
+  // module (where a commented template import() went unseen), would be charged to hundreds of receipts and fail.
+  for (const name of ['src/ui/i18nDictionaries.ts', 'src/vehicles/materials.ts']) {
+    assert.ok(audit.charge(name).length > 100, `${name} reaches hundreds of receipts, so an opaque import there fails (${audit.charge(name).length})`);
+  }
+  assert.deepEqual(audit.charge('tools/selftest-cache.selftest.mjs'), ['tools/selftest-cache.selftest.mjs'], 'a receipt nothing imports is confined to itself');
+  // The reach is the planner's: each cause is in the closure of a receipt charged to it.
+  for (const name of audit.causes) {
+    const [receipt] = audit.reach.holding(join(REPO_ROOT, name));
+    if (receipt) assert.ok(repositoryCache.closureOf(join(REPO_ROOT, receipt)).has(join(REPO_ROOT, name)), `${receipt}'s closure holds ${name}`);
+  }
   assert.ok(audit.external.some(([file]) => file === 'src/ui/i18nDictionaries.ts'), 'its page catalog chunks are the external imports');
   for (const [file, reason] of audit.external) assert.ok(reason.length >= 12, `${file}: a @selftest-external marker says what it loads`);
 }

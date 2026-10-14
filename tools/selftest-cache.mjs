@@ -230,17 +230,25 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     for (const dynamic of info.dynamic) addDynamicInput(file, dynamic, found, modules);
     return found;
   };
+  // A closure follows a file's own dependencies when the receipt executes it (the receipt, an import, a template import's
+  // member) or when it is JSON (a listed path names more inputs). Any other file it holds is read, an input only.
+  const expands = (file, execute) => !isDir(file) && (execute || extname(file) === '.json');
   const closureOf = file => {
     if (closures.has(file)) return closures.get(file);
     const seen = new Set(), expanded = new Set(), stack = [[file, true]];
     while (stack.length) {
       const [current, execute] = stack.pop(); seen.add(current);
-      if (isDir(current) || expanded.has(current) || (!execute && extname(current) !== '.json')) continue;
+      if (expanded.has(current) || !expands(current, execute)) continue;
       expanded.add(current);
       for (const dependency of dependenciesOf(current)) stack.push([dependency, executableEdges.get(current)?.has(dependency)]);
     }
     closures.set(file, seen); return seen;
   };
+  // A module whose import() or environment read the parser cannot follow, or whose template import() names no existing
+  // directory: every receipt whose closure holds it runs fresh. lookup and freshRunReach (the opaque-module guard in
+  // tools/selftest-cache.selftest.mjs) both ask this, so the guard cannot disagree with the planner.
+  const forcesFreshRun = file => Boolean(metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment
+    || unresolvedImports.has(file));
   const inputKey = receipt => {
     const closure = closureOf(resolve(root, receipt));
     const rows = [...closure].map(file => `${isDir(file) ? 'dir' : 'file'}:${relative(root, file)}:${isDir(file) ? fingerprintDir(file) : hashFile(file)}`).sort();
@@ -265,7 +273,7 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     if ([...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
       return { skip: false, reason: 'browser or Git state must be checked live' };
     }
-    if ([...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
+    if ([...closure].some(forcesFreshRun)) {
       return { skip: false, reason: 'computed import/environment needs a fresh run' };
     }
     const { key, inputs } = inputKey(receipt);
@@ -292,8 +300,45 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     atomicJson(edgeStorePath, edgeStore); edgeStoreDirty = false;
   };
-  // The modules a file executes (its imports, a template import's directory members): the edges closureOf follows.
-  const modulesOf = file => { dependenciesOf(file); return executableEdges.get(file); };
-  return { enabled, cacheDir, lookup, recordPass, inputKey, closureOf, dependenciesOf, modulesOf, persist,
+  // Whether a file forces a fresh run on the receipts that hold it (it is parsed if no closure has expanded it yet).
+  const isFreshRunCause = file => { dependenciesOf(file); return forcesFreshRun(file); };
+  // Which of `receipts` each file reaches, by closureOf's own rule, answered backwards so a registry costs one walk:
+  // - one walk expands every file that any of the receipts' closures expands;
+  // - `executing(file)`: the receipts whose closure expands the file (runs it, or reads the paths a JSON file lists);
+  // - `holding(file)`: the receipts whose closure holds it at all, read as text included. lookup tests every inspected
+  //   member of a closure, so a receipt that only reads a cause runs fresh once a lookup in the same process has expanded
+  //   it: holding is that bound over every lookup order.
+  // `causes` are the expanded files that force a fresh run. The opaque-module guard charges each one its receipts.
+  const freshRunReach = receipts => {
+    const receiptOf = new Map(receipts.map(receipt => [resolve(root, receipt), receipt]));
+    const expanded = new Set(), holders = new Map(), runners = new Map(), stack = [...receiptOf.keys()].map(file => [file, true]);
+    const link = (edges, to, from) => { if (!edges.has(to)) edges.set(to, new Set()); edges.get(to).add(from); };
+    while (stack.length) {
+      const [file, execute] = stack.pop();
+      if (expanded.has(file) || !expands(file, execute)) continue;
+      expanded.add(file);
+      for (const dependency of dependenciesOf(file)) {
+        const runs = executableEdges.get(file).has(dependency);
+        link(holders, dependency, file); if (runs) link(runners, dependency, file);
+        stack.push([dependency, runs]);
+      }
+    }
+    // Back from the files whose expansion puts the target in a closure: a JSON file expands wherever it is held, any
+    // other file where it is executed. Every receipt met is one whose closure has it.
+    const back = starts => {
+      const seen = new Set(starts), queue = [...seen], found = new Set();
+      while (queue.length) {
+        const file = queue.pop();
+        if (receiptOf.has(file)) found.add(receiptOf.get(file));
+        for (const from of (extname(file) === '.json' ? holders : runners).get(file) ?? []) {
+          if (!seen.has(from)) { seen.add(from); queue.push(from); }
+        }
+      }
+      return found;
+    };
+    return { causes: [...expanded].filter(forcesFreshRun).sort(), executing: file => back([file]),
+      holding: file => back([file, ...holders.get(file) ?? []]) };
+  };
+  return { enabled, cacheDir, lookup, recordPass, inputKey, closureOf, dependenciesOf, isFreshRunCause, freshRunReach, persist,
     repositoryEntries: [...broadInputs] };
 }
