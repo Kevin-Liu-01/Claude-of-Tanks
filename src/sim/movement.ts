@@ -752,6 +752,23 @@ let _supportOnRecord = false;
 /** Whether the hull stands on a roof's deck this step (MovementHeightField.standingDeck; structureBoxSupportY). */
 let _standsOnDeck = false;
 /**
+ * The hull on its shell (physics stream F5, 2026-10-14; the coordinator: "when the hull's up vector is past about 70
+ * degrees, the track springs shouldn't push, and contact should go through the hull shell's restitution and friction
+ * only"). Past SHELL_UP_Y the loaded ride is the shell's (constrainShellRide): no springs and no dampers. The ground the
+ * shell rests on is still: what rises under the hull as it rolls over is its own turn, so it lifts the root out of the
+ * ground and hands it no speed; a fall into the ground rebounds by the ruleset's restitution or stops. A hull on its side
+ * sliding off a 52-degree gable took its root's kinematic rise (the springs damped toward the support's rate) as upward
+ * speed and was thrown 7-19 m/s off the neighbouring roofs.
+ */
+let _rideOnShell = false;
+let _shellRestitution = 0;
+let _shellBounceMin = 0;
+let _shellBounceMaxHeight = Infinity;
+/** The hull's up vector this far from vertical or more (cos 70 degrees): it rests on its shell, not its tracks. */
+const SHELL_UP_Y = Math.cos(70 * Math.PI / 180);
+/** Half the run over which a hull on its shell reads the ground's grade along its heading (m). */
+const SHELL_GRADE_PROBE_M = 1;
+/**
  * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
  * hull's pitch radius of gyration squared (facePushGrade, the floor's turn at a leading station).
@@ -2117,16 +2134,19 @@ function advanceAirborneRide(
   if (state._body.tumbling || Math.cos(state.visualPitch) * Math.cos(state.visualRoll) <= TUMBLE_ENTER_UP_Y) {
     // A hull coming down on its shell (tumbling, on its side, on its roof) has no springs under it: the armour rebounds
     // at once by the ruleset's restitution, or stops the closing at the contact.
+    // (on its shell, past SHELL_UP_Y, the ground it lands on is still: the support's rate under a turning hull is its own
+    // turn, which it is not handed as speed — constrainShellRide)
+    const shell = Math.cos(state.visualPitch) * Math.cos(state.visualRoll) < SHELL_UP_Y;
     if (rebound > bounceMin) {
       const rest = (1 - fraction) * dt;
-      const vOut = ride.groundV + rebound;
+      const vOut = (shell ? 0 : ride.groundV) + rebound;
       ride.v = vOut - gravity * rest;
       ride.y = Math.max(seat, seat + vOut * rest - 0.5 * gravity * rest * rest);
       ride.bounces = (ride.bounces || 0) + 1;
       return false;
     }
     ride.y = seat;
-    if (closing > LANDING_STOP_MPS && ride.v < ride.groundV) ride.v = ride.groundV;
+    if (closing > LANDING_STOP_MPS && ride.v < (shell ? 0 : ride.groundV)) ride.v = shell ? 0 : ride.groundV;
     ride.bounces = 0;
     return true;
   }
@@ -2209,6 +2229,34 @@ function rigidStrikeImpulse(
   return _strike;
 }
 
+/**
+ * The ride of a hull on its shell (see _rideOnShell): gravity, the ground pushing the shell out of it by position (at
+ * most FLOOR_LIFT_MAX_M_PER_STEP a step, the rest the next), a fall into it rebounding by the ruleset's restitution or
+ * stopping there, and never a push the ground did not make. True while the shell rests on its ground.
+ */
+function constrainShellRide(ride: RideState, top: number, dt: number, gravity: number): boolean {
+  ride.rebound = 0;
+  ride.stroke = 0;
+  ride.airTime = 0;
+  const yStart = ride.y;
+  ride.v -= gravity * dt;
+  ride.y += ride.v * dt;
+  if (ride.y >= top) return ride.y - top <= RIDE_DETACH_CLEARANCE_M;
+  const lifted = Math.min(top, yStart + FLOOR_LIFT_MAX_M_PER_STEP);
+  if (lifted > ride.y) ride.y = lifted;
+  if (ride.v < 0) {
+    const rebound = Math.min(-ride.v * _shellRestitution, Math.sqrt(2 * gravity * _shellBounceMaxHeight));
+    if (rebound > _shellBounceMin) {
+      ride.v = rebound;
+      ride.bounces = (ride.bounces || 0) + 1;
+      return false;
+    }
+    ride.v = 0;
+  }
+  ride.bounces = 0;
+  return true;
+}
+
 function constrainLoadedRide(
   ride: RideState,
   supportY: number,
@@ -2219,6 +2267,7 @@ function constrainLoadedRide(
   slopeFollowMps: number,
   pitchV: number,
 ): boolean {
+  if (_rideOnShell) return constrainShellRide(ride, contactY - RIDE_DROOP_M, dt, gravity);
   let hang = ride.y - contactY;
   // A hull running down a grade keeps its tracks on it: the ground falls away under it at its own travel's rate over
   // the slope, and it follows that much as surface, not as a fall (physics lane, 2026-10-03). Only ground that curves
@@ -2534,6 +2583,10 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   // (a record's top under the hull: a rock's tier, a roof; a terrain face — a trench's far wall — lifts as before: easing
   // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
   _edgeEase = _supportOnRecord;
+  _rideOnShell = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < SHELL_UP_Y;
+  _shellRestitution = drive.restitution;
+  _shellBounceMin = drive.bounceMin;
+  _shellBounceMaxHeight = drive.bounceMaxHeight;
   const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
@@ -4683,6 +4736,15 @@ function prepareDriveStep(
   drive.rightX = Math.cos(state.yaw);
   drive.rightZ = -Math.sin(state.yaw);
   drive.terrainPitch = feltGrade(state._terr.pitch);
+  if (drive.grounded && Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < SHELL_UP_Y) {
+    // (physics stream F5, 2026-10-14) a hull on its shell slides on the ground's own grade along its heading: the plane fit
+    // through its track samples reads its own turned frame (an inverted hull read the grade backwards, and its shell slid
+    // up a 60-degree roof at 6 m/s), so the ground under its root is read across the probe instead
+    const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
+    const ahead = hAt(state.pos.x + drive.forwardX * SHELL_GRADE_PROBE_M, state.pos.z + drive.forwardZ * SHELL_GRADE_PROBE_M);
+    const behind = hAt(state.pos.x - drive.forwardX * SHELL_GRADE_PROBE_M, state.pos.z - drive.forwardZ * SHELL_GRADE_PROBE_M);
+    if (Number.isFinite(ahead) && Number.isFinite(behind)) drive.terrainPitch = Math.atan2(ahead - behind, 2 * SHELL_GRADE_PROBE_M);
+  }
   drive.speedMultiplier = clamp(
     Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
     0.25,

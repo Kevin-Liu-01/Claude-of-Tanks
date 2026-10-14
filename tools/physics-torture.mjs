@@ -1221,8 +1221,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     // a landing's rebound is returned by its springs as they extend (movement.ts constrainLoadedRide): read it off the
     // line, where the bounce is counted
     if (lastLanding && (state._ride.bounces ?? 0) > pre.bounces) {
-      const allowed = lastLanding.closing * physics.restitution;
-      const rebound = state._ride.v - (state._ride.groundV ?? 0);
+      // (a hull on its shell rebounds off still ground, its support's rate its own turn, and may strike it again while it
+      // slides, its closing the fall it had just made — movement.ts constrainShellRide)
+      const onShell = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < Math.cos(70 * Math.PI / 180);
+      const allowed = Math.max(lastLanding.closing, onShell ? -(prev?.rideV ?? 0) : 0) * physics.restitution;
+      const rebound = state._ride.v - (onShell ? 0 : (state._ride.groundV ?? 0));
       metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
     }
     if (state.grounded) airRun = 0;

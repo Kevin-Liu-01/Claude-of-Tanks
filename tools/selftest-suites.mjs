@@ -1116,6 +1116,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/rock-drawn-top.selftest.mjs',
     // 2026-10-13 (physics stream F2): a roof rides its building's movement record as a floor-only deck
     'tools/roof-decks.selftest.mjs',
+    // 2026-10-14 (physics stream F5): a hull on its shell rests and rebounds off still ground, no springs
+    'tools/shell-contact.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
