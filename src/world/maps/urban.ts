@@ -398,6 +398,8 @@ export default {
     sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x736f69 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a central European town's light coal-smoke haze — a soft grey band, a mild blue overhead
+    atmosphere: { horizonTintHex: 0xd4d4d0, horizonTintAmount: 0.35, horizonBandDeg: 10, zenithTintHex: 0x6f94c4, zenithTintAmount: 0.15 },
   },
 
   minimap: {

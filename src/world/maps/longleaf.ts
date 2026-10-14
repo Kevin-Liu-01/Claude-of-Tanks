@@ -177,7 +177,10 @@ export default {
   // toward the sun, past the silhouette law's 0.65 (horizonPanoramaRelight.selftest); at 0.00085 they stand at 0.62-0.63)
   sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00085, fogTintHex: 0xa1a89f, fogMix: 0.6,
     cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.5,
-    lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 } },
+    lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Southern pine country's humid haze
+    atmosphere: { horizonTintHex: 0xdee0d4, horizonTintAmount: 0.4, horizonBandDeg: 10, zenithTintHex: 0x6a92c2, zenithTintAmount: 0.2 },
+  },
   minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48] },
   shot: { pos: [-244, 50, -250], look: [50, 1, 100] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

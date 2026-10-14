@@ -200,6 +200,8 @@ export default {
     sunIntensity: 4.1, sunColorHex: 0xfbeed6, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.55 / 0xffe7c5 / 0.42); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x61694b },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a humid river delta — a milky jade-white haze band, a washed pale blue overhead
+    atmosphere: { horizonTintHex: 0xdfe4d8, horizonTintAmount: 0.5, horizonBandDeg: 12, zenithTintHex: 0x84a4c6, zenithTintAmount: 0.3 },
   },
   minimap: {
     base: [63, 100, 55], hard: [105, 98, 74], soft: [48, 77, 62],

@@ -404,6 +404,8 @@ export default {
     sunIntensity: 4.3, sunColorHex: 0xffe6bd, hemiIntensity: 0.30,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x817359 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Lorraine autumn — a warm, mellow haze band over the fields
+    atmosphere: { horizonTintHex: 0xe2dac8, horizonTintAmount: 0.35, horizonBandDeg: 9, zenithTintHex: 0x6c92c2, zenithTintAmount: 0.15 },
   },
 
   minimap: {

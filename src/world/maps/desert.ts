@@ -576,6 +576,8 @@ export default {
     postExposure: 0.90, // lighting_post r4: keep the raised sun from re-blowing the sand top end
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xad9b7c },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a North African wadi under the sirocco — a buff dust band low on the horizon, a deep dry blue overhead
+    atmosphere: { horizonTintHex: 0xe4c8a2, horizonTintAmount: 0.45, horizonBandDeg: 8, zenithTintHex: 0x4f80c2, zenithTintAmount: 0.2 },
   },
 
   minimap: {

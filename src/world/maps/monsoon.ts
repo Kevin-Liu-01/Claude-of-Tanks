@@ -158,6 +158,8 @@ export default {
     sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, postExposure: 0.96, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.9 / 0xffdfc0 / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x61694b },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a monsoon ridge — a heavy grey-green humid band, a slate blue under the storm
+    atmosphere: { horizonTintHex: 0xc6cec8, horizonTintAmount: 0.45, horizonBandDeg: 12, zenithTintHex: 0x7c94aa, zenithTintAmount: 0.3 },
   },
   minimap: {
     base: [51, 84, 59], hard: [82, 82, 70], soft: [37, 65, 55],

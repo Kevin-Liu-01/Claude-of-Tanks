@@ -245,6 +245,8 @@ export default {
     sunIntensity: 4.15, sunColorHex: 0xffc89b, hemiIntensity: 0.28, postExposure: 0.93,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xaa8161 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): the Colorado Plateau — a rose-buff dust band, a deep clean blue
+    atmosphere: { horizonTintHex: 0xe6ccaa, horizonTintAmount: 0.45, horizonBandDeg: 6, zenithTintHex: 0x3c6ebc, zenithTintAmount: 0.3 },
   },
   minimap: {
     base: [132, 70, 47], hard: [137, 91, 65], soft: [102, 57, 43],

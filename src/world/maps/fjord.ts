@@ -181,7 +181,9 @@ export default {
     // (2026-10-13: the baked decks the phones show match the cumulus — the cirrus veil 0.9 -> 0.6 and the deck 1.15 -> 1.05,
     // Verdant's; the deck tint a near-white 0xf2f5f6 (was the grey 0xd9e1e2), which the layer's albedo reads by day too)
     cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xf2f5f6,
-    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Norwegian fjord's crisp sea air — a cool silver band, a clean northern blue
+    atmosphere: { horizonTintHex: 0xd6e0e6, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x5a86c4, zenithTintAmount: 0.2 },
   },
   minimap: {
     base: [68, 82, 76], hard: [92, 96, 94], soft: [42, 66, 68],
