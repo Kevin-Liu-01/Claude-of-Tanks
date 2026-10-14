@@ -439,6 +439,8 @@ export interface MovementHeightField {
   getDriveGroundType?(x: number, z: number): string;
   /** A support field's count of reads a record's top answered (structureSupport.ts recordReads; EDGE_CLIMB_*). */
   readonly recordReads?: number;
+  /** Whether the hull this field was begun for stands on a roof's deck (structureSupport.ts StandingDecks). */
+  readonly standingDeck?: boolean;
 }
 
 export type MovementCollisionResolver = (
@@ -747,6 +749,8 @@ let _edgeEase = false;
 let _climbPaceMps = 0;
 /** Whether this step's support solve stood the hull on a record's top somewhere (MovementHeightField.recordReads). */
 let _supportOnRecord = false;
+/** Whether the hull stands on a roof's deck this step (MovementHeightField.standingDeck; structureBoxSupportY). */
+let _standsOnDeck = false;
 /**
  * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
@@ -1190,6 +1194,11 @@ function reachableTrackGroundAt(x: number, z: number): number {
   const across = dx * _trackForwardZ - dz * _trackForwardX;
   const line = _trackLineY + along * _trackRisePerM + across * _trackSinRoll;
   if (!(ground - line > FACE_CLIMB_MAX_M)) return ground;
+  // (physics stream F4, 2026-10-13) a structure's top over the terrain is a floor by the support field's standing rule,
+  // as reachableGroundAt reads it: the sheer faces are the terrain's. Scanned on the terrain, a roof's deck a metre over a
+  // level hull's track line was the top of a sheer face whose foot was the street under the building: a hull set down
+  // level on a 30-degree roof read its uphill half 10 m down, fitted a nose-up attitude and was thrown 3-16 m off it.
+  if (_reachTerrainH !== _reachBaseH && ground > _reachTerrainH!(x, z) + 1e-4) return ground;
   const foot = sheerFaceFoot(_reachTerrainH!, x, z, ground, _reachRootX, _reachRootZ);
   return foot < ground ? foot : ground;
 }
@@ -1828,6 +1837,11 @@ function structureBoxSupportY(
   // (the ground the hull can reach, hAt, as every sample reads it: a roof the root has left behind is a wall, not a
   // floor, so a hull off a roof's edge falls; a terrain-only field has no structure to stand on)
   if (!contact || terrainAt === supportAt) return -Infinity;
+  // (physics stream F4, 2026-10-13) a hull whose root stands on a roof's deck rests on its tracks there, the roof read as
+  // terrain is (structureSupport.ts StandingDecks): the box is for a hull whose tracks have left the roof. Set down on a
+  // 40-degree roof, its box corner struck the roof behind it before its tracks settled, the strike tipped it, a tipping
+  // hull holds nothing but sliding friction, and it slid off a roof it holds as terrain (the friction angle is 42 degrees).
+  if (_standsOnDeck) return -Infinity;
   const rect = tankContactRect(spec);
   const y = (contact.bottomYM || 0) + BOX_CORNER_LIFT_M;
   let supportY = -Infinity;
@@ -4096,6 +4110,10 @@ function groundIsPlanar(count: number): boolean {
   const det = czz * cxx - czx * czx;
   if (!(det > 1e-9)) return false;
   const a = (czh * cxx - cxh * czx) / det, b = (cxh * czz - czh * czx) / det;
+  // (physics stream F4, 2026-10-13) a plane steeper than a wall (WALL_GRADE_FULL) is no ground a hull lies on: two track
+  // lines either side of a roof's edge, one on the roof and one 7.5 m down the mansard under it, are always coplanar,
+  // and the hull, its centre of mass a metre and a half inside the edge, rolled toward the 64-degree "face" between them
+  if (a * a + b * b > WALL_GRADE_FULL * WALL_GRADE_FULL) return false;
   const residual = (chh - a * czh - b * cxh) / count;
   return residual < PLANAR_RESIDUAL_M * PLANAR_RESIDUAL_M;
 }
@@ -4315,6 +4333,18 @@ function updateTerrainFitAndPerch(
       terr.roll = _contactFit.roll;
       terr.tipPitch = _contactFit.tipPitch;
       terr.tipRoll = _contactFit.tipRoll;
+      return;
+    }
+  } else if (!groundedAtStart && !Number.isFinite(state._body.restSupportY) && !state._body.tumbling && !state.overturned) {
+    // (physics stream F4, 2026-10-13) a hull in flight comes down on the ground it lands on, the samples within the
+    // droop's reach of its highest contact, not on the plane of all of them: one landing on a roof's edge with a corner
+    // over the street (15 m under it) fitted a 90-degree pitch and roll from that corner, and the landing spring turned
+    // it over at 9 rad/s off the roof. Ground that is one plane under the whole hull keeps the full fit, bit for bit.
+    const gravityScale = clamp(Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1, 0.1, 3);
+    if (contactAwareFit(spec, state, samples, halfWidth, gravityScale) === FIT_PARTIAL) {
+      terr.fitPitch = _contactFit.pitch;
+      terr.pitch = _contactFit.pitch;
+      terr.roll = _contactFit.roll;
       return;
     }
   }
@@ -5200,6 +5230,7 @@ export function updateTank(
   // must re-solve immediately with the yield zeroed, not sit on a stale
   // yielded height with rigid wheels in the dirt.
   const recordReadsBefore = heightField.recordReads ?? 0;
+  _standsOnDeck = heightField.standingDeck === true;
   solveSupportHeight(
     entity,
     hAt,

@@ -11,11 +11,11 @@
  * those contacts. Pure and allocation-free per tick; solo and authoritative sims share it.
  */
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
-import { driveGroundTypeAt } from './terrainMobility.ts';
+import { CLIFF_GRADE, driveGroundTypeAt } from './terrainMobility.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import {
-  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartTopAt, collisionRecordHasDrawnTop, createHullFootprint, hullFootprint,
-  hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
+  HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, collisionPartClimbAt, collisionPartIsDeck, collisionPartTopAt, collisionRecordHasDrawnTop,
+  createHullFootprint, hullFootprint, hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
 } from '../world/collision.ts';
 
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
@@ -25,6 +25,8 @@ export const SUPPORT_STEP_UP_M = HULL_STEP_UP_M;
 export const SUPPORT_MIN_HEIGHT_M = HULL_STANDABLE_HEIGHT_M;
 /** Query margin around the hull for candidate primitives. */
 const SUPPORT_QUERY_MARGIN_M = 6;
+/** The steepest underside (rise per metre, 60 degrees) the pose's floor rule reads; past it the root's belly decides. */
+const POSED_RISE_MAX = Math.tan(Math.PI / 3);
 
 interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
@@ -57,6 +59,8 @@ export interface StructureSupportField extends SupportHeightField {
   beginHull(x: number, z: number, bellyY: number, pose?: HullSupportPose | null): void;
   /** Number of primitives considered for the current hull (probes / receipts). */
   readonly candidateCount: number;
+  /** Whether the current hull's root stands on a roof's deck (StandingDecks). */
+  readonly standingDeck: boolean;
   /**
    * Reads so far that a primitive's top answered over the ground (destruction stream, 2026-10-13): the movement takes a
    * step whose support solve raised it for a step on a record (a rock's tier, a roof), where an edge is climbed at the
@@ -71,11 +75,29 @@ function partTop(record: CollisionRecord, part: SimpleCollisionShape | null, x: 
   return collisionPartTopAt(record, part, x, z);
 }
 
+/**
+ * The roof's deck the hull stands on (beginHull): the highest top under its root no more than a step over its belly,
+ * when that top is a deck, and its top there (physics stream F4, 2026-10-13; the coordinator: "a roof the hull could
+ * climb as terrain must hold it"). A deck is one plane, so the rest of it is the ground the hull stands on, read by the
+ * terrain's reach (movement.ts groundReachable): a floor up to the step plus CLIFF_GRADE times its distance from the
+ * root, and past that the reach itself (a face steeper than CLIFF_GRADE is read at the last of it the hull reaches).
+ * Judged against the hull's own track plane alone, a level hull set on a 45-degree roof read the deck's uphill half as a
+ * wall and the street under it, fitted an 88-degree attitude and was thrown 2-16 m off it (a T-90M pivoting on a
+ * 54-degree mansard, 9 m); terrain of the same grade it holds, or slides down past its tracks' grip.
+ */
+interface StandingDecks {
+  x: number;
+  z: number;
+  parts: Array<SimpleCollisionShape | null>;
+  tops: Float64Array;
+}
+
 /** Highest standable top under (x, z) among the candidates, or -Infinity. `floors` (beginHull's pose rule) holds each
- * candidate's own belly line; without it every candidate uses `bellyY`. */
+ * candidate's own belly line; without it every candidate uses `bellyY`. `stand` (beginHull) holds the deck piece the
+ * hull stands on, a floor within the terrain's reach of the root. */
 export function structureTopAt(
   candidates: readonly CollisionRecord[], count: number, x: number, z: number, bellyY: number,
-  floors: Float64Array | null = null, plane: SupportPlane | null = null,
+  floors: Float64Array | null = null, plane: SupportPlane | null = null, stand: StandingDecks | null = null,
 ): number {
   let best = -Infinity;
   // (physics stream, 2026-10-13) a drawn top (a stone's surface) is a floor wherever it is not a wall: where its climb
@@ -92,10 +114,27 @@ export function structureTopAt(
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
     const shape = record.shape2;
     if (shape && shape.kind === 'compound') {
+      const standing = stand ? stand.parts[i] : null;
       for (const part of shape.parts) {
-        const top = partTop(record, part, x, z);
+        let top = partTop(record, part, x, z);
         if (top <= best) continue;
-        if (top > ceiling && !(part.kind === 'convex' && part.tp && plane && collisionPartClimbAt(record, part, x, z) < planeCeiling)) continue;
+        if (top > ceiling && !(part.kind === 'convex' && part.tp && plane && collisionPartClimbAt(record, part, x, z) < planeCeiling)) {
+          if (!standing) continue;
+          // (the roof the hull stands on reads as terrain does, within the reach of the root's deck: its own deck, and the
+          // decks of the same roof no more than a step over its plane carried on — a gable's far pitch over the ridge — though
+          // not a chimney, a dormer or a cupola standing out of it (floor-only, they are passed through as before); past the
+          // reach, its own deck is the last of it the hull reaches, as the terrain's wall rule reads a face, never the street
+          // or the attic floor under the roof)
+          const own = part === standing;
+          if (!own && !(collisionPartIsDeck(record, part)
+            && top <= collisionPartTopAt(record, standing, x, z) + SUPPORT_STEP_UP_M)) continue;
+          const reach = stand!.tops[i] + SUPPORT_STEP_UP_M + CLIFF_GRADE * Math.hypot(x - stand!.x, z - stand!.z);
+          if (top > reach) {
+            if (!own) continue;
+            top = reach;
+          }
+          if (top <= best) continue;
+        }
         if (pointInsideCollisionRecord(record, part, x, z)) best = top;
       }
     } else {
@@ -137,6 +176,8 @@ export function createStructureSupportField(
   let belly = -Infinity;
   let floors = new Float64Array(16);
   let posed = false;
+  const stand: StandingDecks = { x: 0, z: 0, parts: [], tops: new Float64Array(16) };
+  let standing = false;
   const plane: SupportPlane = { y: 0, cx: 0, cz: 0, slopeX: 0, slopeZ: 0 };
   const terrainAt = terrain.getHeightAt.bind(terrain);
   const terrainFast = terrain.getHeightAtFast ? terrain.getHeightAtFast.bind(terrain) : terrainAt;
@@ -144,7 +185,7 @@ export function createStructureSupportField(
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
-    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null, posed ? plane : null);
+    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null, posed ? plane : null, standing ? stand : null);
     if (top > ground + 0.02) { recordReads++; return top; }
     return top > ground ? top : ground;
   };
@@ -173,8 +214,40 @@ export function createStructureSupportField(
         }
       }
       count = candidates.length;
-      posed = !!pose;
-      if (!pose) return;
+      // (physics stream F4, 2026-10-13) a hull pitched or rolled past 60 degrees is on its shell, not its tracks: its
+      // underside is no floor line (its rise per metre runs away toward the vertical) and the root's belly decides, as
+      // it does for every hull without a pose. A tumbling hull falling nose-first past a building's wall read a
+      // 34-per-metre underside over the eave as the line a step under it, stood its shell on the eave 4 m over its root
+      // and was thrown up at 22 m/s.
+      posed = !!pose && Math.abs(pose.riseAlong) <= POSED_RISE_MAX && Math.abs(pose.riseAcross) <= POSED_RISE_MAX;
+      // the deck the hull stands on (StandingDecks): the highest top under its root no more than a step over its belly,
+      // when that top is a roof's deck (a deck under a building's solid top, hidden in it, is not what the hull stands on)
+      standing = false;
+      stand.x = x; stand.z = z;
+      if (stand.tops.length < count) stand.tops = new Float64Array(Math.max(count, stand.tops.length * 2));
+      stand.parts.length = count;
+      let best = -Infinity, bestRecord = -1;
+      let bestPart: SimpleCollisionShape | null = null;
+      for (let i = 0; i < count; i++) {
+        const record = candidates[i];
+        stand.parts[i] = null;
+        const shape = record.shape2;
+        if (!shape || shape.kind !== 'compound' || record.crushed || record.dead || record.crushable) continue;
+        if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+        for (const part of shape.parts) {
+          const top = collisionPartTopAt(record, part, x, z);
+          if (top <= best || top > bellyY + SUPPORT_STEP_UP_M || !pointInsideCollisionRecord(record, part, x, z)) continue;
+          best = top;
+          bestRecord = i;
+          bestPart = part;
+        }
+      }
+      if (bestPart && collisionPartIsDeck(candidates[bestRecord], bestPart)) {
+        stand.parts[bestRecord] = bestPart;
+        stand.tops[bestRecord] = best;
+        standing = true;
+      }
+      if (!posed || !pose) return;
       plane.y = bellyY + pose.centerRise; plane.cx = pose.centerX; plane.cz = pose.centerZ;
       plane.slopeX = pose.riseAlong * pose.forwardX + pose.riseAcross * pose.rightX;
       plane.slopeZ = pose.riseAlong * pose.forwardZ + pose.riseAcross * pose.rightZ;
@@ -184,6 +257,7 @@ export function createStructureSupportField(
       }
     },
     get candidateCount() { return count; },
+    get standingDeck() { return standing; },
     get recordReads() { return recordReads; },
   };
 }
