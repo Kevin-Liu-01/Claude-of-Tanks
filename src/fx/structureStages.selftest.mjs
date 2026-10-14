@@ -128,16 +128,30 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     'the breach\'s rim and room fall with the building');
   // (b5: the room drew in the world's glossy 'dark' window material: the sky's reflection filled the hole) the room is
   // matte, in the builder's own interior tint, and folds with its building (the mask's patch)
+  // (2026-10-12, the owner's "big flat untextured grey-blue rectangles": one untextured box per hole, lit by the whole sky)
+  // the storey's one interior, in the building's own bucket texture, a bound share of the sky's light
   const rooms = debris.group.children.filter((m) => m.isMesh && /^fx-structure-room/.test(m.name));
   assert.ok(rooms.length > 0, 'a breach lays its room');
+  const interior = rooms.filter((m) => m.userData.runOwner?.section === -1);
+  assert.ok(interior.length >= 1, 'the storey\'s interior is laid at its first hole');
+  {
+    // inward-facing walls inside the footprint, behind the walls' thickness: a hole looks onto the far side
+    const P = interior.flatMap((m) => Array.from(m.geometry.getAttribute('position').array));
+    for (let i = 0; i < P.length; i += 3) {
+      const wx = P[i] - placement.x, wz = P[i + 2] - placement.z;
+      const bx = wx * c - wz * s, bzz = wx * s + wz * c;
+      assert.ok(Math.abs(bx) < 5 - 0.2 && Math.abs(bzz) < 4 - 0.2, 'the interior stands inside the walls');
+    }
+  }
   for (const room of rooms) {
     const mat = room.material;
     assert.ok(mat.name === 'fx-structure-room' && mat.vertexColors === true && mat.roughness === 1 && mat.metalness === 0
-      && mat.envMapIntensity === 0, 'the room is matte and takes its interior tint');
+      && mat.envMapIntensity < 0.5 && mat.map, 'the room is matte, textured in its bucket, and takes its interior tint');
+    assert.ok(typeof mat.onBeforeCompile === 'function', 'its share of the sky\'s light is bound (three ignores it otherwise)');
     assert.ok(typeof mat.customProgramCacheKey === 'function' && /struct/i.test(mat.customProgramCacheKey()),
       'the room material carries the mask patch (it falls and folds with the building)');
     const col = room.geometry.getAttribute('color');
-    assert.ok(col && col.array[0] < 0.2 && col.array[1] < 0.2 && col.array[2] < 0.2, 'the room is dark');
+    assert.ok(col && col.array[0] < 0.5 && col.array[1] < 0.5 && col.array[2] < 0.5, 'the room is dim');
   }
 }
 
@@ -368,7 +382,10 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(trimFlat('canopy') && trimFlat('windowBox'), 'the canopy and the window box fall with their panel');
   assert.ok(trimYs('jamb').every((y) => y <= 1 + 1e-4) && trimYs('jamb').some((y) => Math.abs(y - 1) < 1e-4), 'the jamb down to the stub');
   assert.ok(trimStands('sill'), 'the jetty\'s sill beam over the panel stands');
-  assert.ok(groundFront.every((m) => !m.visible), 'the fallen panel\'s hole goes with it: its rim and room');
+  // (2026-10-12) the storey's interior (laid at its first hole) stands while the storey does: the fallen panel opens onto it
+  const isInterior = (m) => m.userData.runOwner?.section === -1;
+  assert.ok(groundFront.filter((m) => !isInterior(m)).every((m) => !m.visible), 'the fallen panel\'s hole goes with it: its rim');
+  assert.ok(groundFront.filter(isInterior).every((m) => m.visible), 'the storey\'s interior stands while its storey does');
   assert.ok(groundRight.every((m) => m.visible) && upperFront.every((m) => m.visible), 'the standing walls keep their holes');
   // 2. the upper storey's last face falls with storeyDown, the roof still on it: every vertex of the band down to the
   // floor line whatever its part (the buttress up both storeys in one part), a part wholly in the band flattened (no
@@ -433,7 +450,8 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   // a dropped run stays down when the debris shows its delayed runs
   now += 5;
   debris.update();
-  assert.ok(groundFront.every((m) => !m.visible) && upperFront.every((m) => !m.visible), 'a dropped run is never shown again');
+  assert.ok(groundFront.filter((m) => !isInterior(m)).every((m) => !m.visible) && upperFront.every((m) => !m.visible),
+    'a dropped run is never shown again');
   // 3. the roof falls: the kit's hide (its covering's pieces thrown)
   stages.breach({ ...sBase, section: 8, sectionKind: 'roof', x: placement.x, y: placement.y + 4, z: placement.z,
     y0: placement.y + 3, y1: placement.y + 5.4 }, seam);
@@ -647,4 +665,44 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.ok(seen.size >= 3, `the stages drew runs, pieces and the room (${seen.size} programs)`);
 }
 
-console.log('structureStages selftest: damaged glass hidden and restored, breach cut on the struck face, a collapse touched every frame it falls, settled and jumped stages, holes kept to the ring, the combat warm draws every program a first collapse asks for — ok');
+// ---- a later hole opens through an earlier hole's rim (2026-10-12, the owner's Steinburg strips: the rim of the wall's own
+// units is a run no hole cuts, so a strike beside an earlier one left those units hanging in the new opening as strips of
+// brick): the runs' triangles inside the new cut fold away; the new hole's own rim and the rooms behind stand
+{
+  const m3 = createStructureMask(64);
+  let t3 = 900;
+  const d3 = createStructureDebris({ now: () => t3, groundY: () => 2 });
+  const st3 = createStructureStages({ mask: m3, debris: d3, now: () => t3, materialFor: (bucket) => (bucket === 'stone' ? worldStone : null) });
+  const seam3 = fresh();
+  const [ax, , az] = toWorld(-1.2, 2, 4.0), [bx, , bz] = toWorld(0.3, 2, 4.0);
+  st3.strike(7, seam3, ax, 3.5, az, 0, 1, 'he', 4); t3 += 0.2; st3.update();
+  const live = (mesh) => { const ix = mesh.geometry.getIndex().array; let n = 0; for (let t = 0; t + 2 < ix.length; t += 3) if (!(ix[t] === ix[t + 1] && ix[t + 1] === ix[t + 2])) n++; return n; };
+  const firstRims = d3.group.children.filter((mm) => mm.isMesh && /fx-structure-rim/.test(mm.name));
+  assert.ok(firstRims.length >= 1, 'the first hole laid its rim');
+  const before = firstRims.reduce((n, mm) => n + live(mm), 0);
+  // the second hole, 1.5 m along the face: its cut covers part of the first's rim
+  st3.strike(7, seam3, bx, 3.5, bz, 0, 1, 'he', 4); t3 += 0.2; st3.update();
+  const holes = [];
+  { const T3 = STRUCT_STRIDE * 4, b0 = 7 * T3, dd = m3.texture.image.data; const n = dd[b0 + 4 * 1 + 3];
+    for (let i = 0; i < n; i++) { const c0 = b0 + (2 + i * 2) * 4; holes.push({ x: dd[c0], y: dd[c0 + 1], z: dd[c0 + 2], r: Math.abs(dd[c0 + 3]) }); } }
+  // (a rendered wall's breach cuts its render ring and then its hole: the newest cut is the second hole's)
+  assert.equal(holes.length, 4, `two holes cut, each with its render ring (${holes.length})`);
+  const after = firstRims.reduce((n, mm) => n + live(mm), 0);
+  assert.ok(after < before, `the second hole took the first rim's units inside its cut (${before} -> ${after})`);
+  // nothing of the first rim is left standing within the second cut's inner edge
+  const h = holes[3];
+  for (const mm of firstRims) {
+    const P = mm.geometry.getAttribute('position'), ix = mm.geometry.getIndex().array;
+    for (let t = 0; t + 2 < ix.length; t += 3) {
+      if (ix[t] === ix[t + 1] && ix[t + 1] === ix[t + 2]) continue;
+      const cx = (P.getX(ix[t]) + P.getX(ix[t + 1]) + P.getX(ix[t + 2])) / 3 - h.x, cy = (P.getY(ix[t]) + P.getY(ix[t + 1]) + P.getY(ix[t + 2])) / 3 - h.y;
+      const cz = (P.getZ(ix[t]) + P.getZ(ix[t + 1]) + P.getZ(ix[t + 2])) / 3 - h.z;
+      assert.ok(Math.hypot(cx, cy, cz) >= h.r * 0.85 * 0.48 - 1e-6, 'no unit of the first rim hangs in the second hole');
+    }
+  }
+  const newest = d3.group.children.filter((mm) => mm.isMesh && /fx-structure-rim/.test(mm.name) && !firstRims.includes(mm));
+  assert.ok(newest.length >= 1 && newest.every((mm) => live(mm) > 0), 'the second hole keeps its own rim');
+  assert.ok(d3.group.children.filter((mm) => mm.isMesh && /fx-structure-room/.test(mm.name)).every((mm) => live(mm) > 0), 'the rooms behind stand');
+}
+
+console.log('structureStages selftest: damaged glass hidden and restored, breach cut on the struck face, a collapse touched every frame it falls, settled and jumped stages, holes kept to the ring, the combat warm draws every program a first collapse asks for, a later hole opens through an earlier rim — ok');

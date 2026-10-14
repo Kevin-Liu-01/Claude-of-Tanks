@@ -14,37 +14,37 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.2,
         "pos": [
-          -1.56255,
-          1.4112864,
-          0.3469592
+          -1.6195955,
+          1.3289969,
+          1.5031564
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          -0.1379502,
+          -0.6935198,
+          -0.1379502,
+          0.6935198
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "griffin_viper",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0167582
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.2,
         "pos": [
-          -1.5480973,
-          1.4112864,
-          2.2095592
+          -1.5360001,
+          1.777824,
+          1.37469
         ],
         "quaternion": [
           0,
-          -0.7165984,
+          -0.7071068,
           0,
-          0.697486
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "griffin_viper",

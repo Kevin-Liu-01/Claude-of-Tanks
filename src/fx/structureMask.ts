@@ -70,6 +70,35 @@ export function collapseFrontTime(h: number, heightM: number): number {
   return FRONT_T0 + FRONT_T * Math.pow(k, 1 / 1.5);
 }
 /**
+ * How far over the crumble front a wall's vertex may stand on the desktop tiers (m): over the front's ragged band (the
+ * cut keeps fragments to 0.78 m over it) and no further. The destruction stream (2026-10-13, the owner's "these big
+ * rectangles pop up", filmed on the Steinburg fire station and a town house): a triangle with a vertex under the eave
+ * band and the others over it is spared the cut (it reaches the roof, wave 322), but only its roof vertices rode down —
+ * its wall vertex stood where it was, and the triangle hung from it as a flat panel of slate roof or dark glazing from
+ * the eaves to the heap until the fold took it 4.2 s after the blow. Brought down to just over the front, a wall vertex
+ * changes nothing the cut shows and nothing hangs.
+ */
+export const FOLD_ABOVE_FRONT_M = 1;
+/**
+ * The crumble's height law on one vertex (the vertex patch's collapse branch, a house's, not a shaft's): `py` m over
+ * the base, `t` s into the fall, the eaves `eaveM` over the base. Returns its height then and whether the patch takes it
+ * for roof (riding the front down, spared the cut). `side` (0..1) is the share of the blow's side the vertex stands on,
+ * `mid` how far into the roof's middle it lies (the sag). A receipt's and the destruction check's twin of the GLSL.
+ */
+export function crumbleVertexY(py: number, t: number, eaveM: number, holes = true, side = 0, mid = 0): { y: number; roof: boolean } {
+  const u = Math.min(1, Math.max(0, ((t - FRONT_T0 * (1 - side)) / FRONT_T) * (1 + 0.8 * side)));
+  const front = eaveM * (1 - Math.pow(u, 1.5));
+  const roof = py >= eaveM - 0.05;
+  if (!(t > 0)) return { y: py, roof };
+  if (roof) {
+    const tr = Math.max(0, t - 0.2);
+    const drop = 4.9 * tr * tr + 1.4 * mid * Math.min(1, Math.max(0, tr / 0.5)) ** 2 * (3 - 2 * Math.min(1, Math.max(0, tr / 0.5)));
+    return { y: Math.max(py - drop, front + (py - eaveM) * 0.75 * (1 - u * u) - 1.2 * u * u), roof };
+  }
+  const cap = holes ? front + FOLD_ABOVE_FRONT_M : front;
+  return { y: py > cap ? cap : py, roof };
+}
+/**
  * A shaft topples (dcore 2026-10-09, wave 294b: "the stack telescopes straight down into the ground... it never actually
  * topples"): a stack, a water tower, a minaret or a tower breaks a metre or two over its foot and goes over whole, about
  * the leading edge of its foot, in the blow's direction — slow at first, then fast (a rod falling about its base,
@@ -209,7 +238,13 @@ vStructRoof = 0.0;` : ''}
           // (wave 326: "the back-wall remnant disappears" — the gable and the roof stood a metre and more over the heap
           // until the fold took them) their pitch closes as the front comes down: at the base they lie on the heap
           p.y = max( p.y - drop, front + ( p.y - eave ) * 0.75 * ( 1.0 - u * u ) - 1.2 * u * u );
-        }${holes ? '' : `
+        }${holes ? `
+        else if ( p.y > front + ${FOLD_ABOVE_FRONT_M.toFixed(2)} ) {
+          // (destruction stream 2026-10-13: a triangle reaching the roof is spared the cut, and with this vertex fixed it
+          // hung from it as a flat panel down to the riding roof until the fold) a wall's vertex comes down to just over
+          // the front's ragged band: what the cut shows is unchanged, nothing hangs (FOLD_ABOVE_FRONT_M)
+          p.y = front + ${FOLD_ABOVE_FRONT_M.toFixed(2)};
+        }` : `
         else if ( p.y > front ) {
           // the phone tier cuts nothing: the wall above the front folds down onto it
           p.y = front;

@@ -185,6 +185,13 @@ export interface RoofGeometry {
   gable: Array<[number, number]> | null;
   /** half length of the ridge line */
   ridgeHalf: number;
+  /**
+   * the hips' slope (rise per run), present only where it differs from the authored pitch: a hip whose authored run
+   * would pass the ridge's middle (the body wider across its ridge than along it) closes on a steeper hip
+   */
+  hipTan?: number;
+  /** the hip ends' overhang past the end walls when it differs from the authored verge (a steeper hip, level eaves) */
+  hipVerge?: number;
   /** roof top surface height above (x, z), or null outside the roof */
   topAt(x: number, z: number): number | null;
 }
@@ -553,9 +560,10 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
   const ridgeY = eaveY + s * tanP;
   const cosP = Math.cos(roof.pitchDeg * DEG);
   const tTop = roof.thickness / cosP;
-  const D = halfD + roof.verge;
+  let D = halfD + roof.verge;
   let gable: Array<[number, number]> | null = null;
   let hipCut = ridgeY, hipRun = 0;
+  let hipTanEff: number | undefined, hipVerge: number | undefined;
   if (roof.kind === 'halfhip' || roof.kind === 'hip') {
     const hipTan = Math.tan((roof.hipPitchDeg ?? (roof.kind === 'hip' ? roof.pitchDeg : 62)) * DEG);
     if (roof.kind === 'hip') {
@@ -566,7 +574,22 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
       hipCut = ridgeY - (ridgeY - eaveY) * frac;
       hipRun = (ridgeY - hipCut) / hipTan;
     }
-    const wallTop = hipCut + roof.verge * hipTan; // the hip underside on the gable wall plane
+    // (the buildings stream, 2026-10-12; the owner on Steinburg's gate towers: the pyramid roof stood over the walls
+    // with sky between and its dormers floating in the gap) a hip whose run passes the ridge's middle — the body wider
+    // across its ridge than along it — closes on a steeper hip, from the end wall's top line to the apex. At its
+    // authored pitch the clamped ridge left the hip's foot metres over the end walls.
+    if (hipRun > D + 1e-6) {
+      hipTanEff = roof.kind === 'hip' ? (ridgeY - eaveY) / Math.max(1e-6, halfD) : (ridgeY - hipCut) / D;
+      if (roof.kind === 'hip') {
+        // its eave level with the side eaves all round: the steeper end face runs out from the wall only until it has
+        // fallen to their line (at the authored verge it hung a metre and more lower, over the gate towers' clocks)
+        hipVerge = roof.eave * tanP / hipTanEff;
+        D = halfD + hipVerge;
+        hipCut = eaveY - hipVerge * hipTanEff;
+      }
+      hipRun = D;
+    }
+    const wallTop = hipCut + (hipVerge ?? roof.verge) * (hipTanEff ?? hipTan); // the hip underside on the gable wall plane
     if (wallTop > eaveY + 0.05) {
       const xc = Math.max(0, s - (wallTop - eaveY) / tanP);
       gable = [[-s, eaveY], [s, eaveY], [xc, wallTop], [-xc, wallTop]];
@@ -578,6 +601,8 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
   const hipTanFinal = roof.kind === 'gable' ? 0 : (ridgeY - hipCut) / Math.max(1e-6, hipRun);
   return {
     kind: roof.kind, s, halfD, tanP, eaveY, ridgeY, ridgeTopY: ridgeY + tTop, gable, ridgeHalf,
+    ...(hipTanEff !== undefined ? { hipTan: hipTanEff } : {}),
+    ...(hipVerge !== undefined ? { hipVerge } : {}),
     topAt(x, z) {
       if (Math.abs(x) > s + roof.eave + 1e-6 || Math.abs(z) > D + 1e-6) return null;
       let y = ridgeY - Math.abs(x) * tanP;
@@ -603,6 +628,16 @@ function weatheredSheet(c: Rgb, lo: number, hi: number): (p: Vec3) => Rgb {
     const f = (k: number) => (c[k] + (grey - c[k]) * fade) * lift;
     return [f(0) + (RUST[0] - f(0)) * rust, f(1) + (RUST[1] - f(1)) * rust, f(2) + (RUST[2] - f(2)) * rust];
   };
+}
+
+/**
+ * The gable ends a bare roof leaves open (the buildings stream, 2026-10-12, the integrity check: a shop's tin roof or a
+ * granary's thatch drawn with emitRoof alone showed sky through its ends): the roof's gable polygon run through from end
+ * to end under the slabs, so both ends close and the roof's inside is solid. Dressing (decor) unless told otherwise.
+ */
+export function closeGables(sink: PartSink, rg: RoofGeometry, bucket: RegionalBucket, opts: EmitOptions = {}): void {
+  if (!rg.gable) return;
+  sink.prism(bucket, rg.gable.map(([u, yy]): Vec3 => [u, yy, -rg.halfD]), [0, 0, 1], 2 * rg.halfD, { decor: true, ...opts });
 }
 
 /** Emit the roof slabs, ridge and hip caps. */
@@ -636,7 +671,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     }
     return;
   }
-  const e = roof.eave, D = halfD + roof.verge;
+  const e = roof.eave, D = halfD + (rg.hipVerge ?? roof.verge);
   const lo = eaveY - e * tanP;
   if (roof.kind === 'shed') {
     // one plane rising from +x (low) to -x (high)
@@ -650,16 +685,22 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   const ridgeHalf = rg.ridgeHalf;
   // the hip cut on the verge plane (z = ±D) and its x on the main slope
   let yC = ridgeY, xC = 0;
+  // a steeper hip (RoofGeometry.hipTan) meets the side eave short of the verge: its hip line ends on the eave at z = ±zH
+  // and the end face wraps the corner down to its own eave line at yC (-1: the hip line ends on the verge plane)
+  let zH = -1;
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
-    const hipTan = (roof.kind === 'hip') ? Math.tan((roof.hipPitchDeg ?? roof.pitchDeg) * DEG)
-      : Math.tan((roof.hipPitchDeg ?? 62) * DEG);
+    const hipTan = rg.hipTan ?? ((roof.kind === 'hip') ? Math.tan((roof.hipPitchDeg ?? roof.pitchDeg) * DEG)
+      : Math.tan((roof.hipPitchDeg ?? 62) * DEG));
     yC = ridgeY - (D - ridgeHalf) * hipTan;
-    xC = Math.min(s + e, (ridgeY - yC) / tanP);
+    const exitX = (ridgeY - yC) / tanP;
+    if (rg.hipTan !== undefined && exitX > s + e + 1e-4) { zH = ridgeHalf + (s + e) * tanP / hipTan; xC = s + e; }
+    else xC = Math.min(s + e, exitX);
   }
+  const zEave = zH >= 0 ? zH : D;
   for (const side of [1, -1]) {
     const pts: Vec3[] = [];
-    pts.push([side * (s + e), lo, side * D]);
-    pts.push([side * (s + e), lo, -side * D]);
+    pts.push([side * (s + e), lo, side * zEave]);
+    pts.push([side * (s + e), lo, -side * zEave]);
     if (xC > 1e-4 && xC < s + e - 1e-4) pts.push([side * xC, yC, -side * D]);
     pts.push([0, ridgeY, -side * ridgeHalf]);
     if (ridgeHalf > 1e-4) pts.push([0, ridgeY, side * ridgeHalf]);
@@ -673,16 +714,20 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
     // a thatched slope's eave course and course lines (facade.ts), on its top surface from the eave to the ridge
     if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
-      thatchCourses(sink, bucket, top([side * (s + e), lo, side * D]), top([side * (s + e), lo, -side * D]),
+      thatchCourses(sink, bucket, top([side * (s + e), lo, side * zEave]), top([side * (s + e), lo, -side * zEave]),
         top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n,
         { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' && roof.thatch !== 'nipa', nipa: roof.thatch === 'nipa' });
     }
   }
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
     for (const end of [1, -1]) {
-      const pts: Vec3[] = end > 0
-        ? [[-xC, yC, D], [xC, yC, D], [0, ridgeY, ridgeHalf]]
-        : [[xC, yC, -D], [-xC, yC, -D], [0, ridgeY, -ridgeHalf]];
+      const pts: Vec3[] = zH >= 0
+        ? (end > 0
+          ? [[-xC, yC, D], [xC, yC, D], [xC, lo, zH], [0, ridgeY, ridgeHalf], [-xC, lo, zH]]
+          : [[xC, yC, -D], [-xC, yC, -D], [-xC, lo, -zH], [0, ridgeY, -ridgeHalf], [xC, lo, -zH]])
+        : (end > 0
+          ? [[-xC, yC, D], [xC, yC, D], [0, ridgeY, ridgeHalf]]
+          : [[xC, yC, -D], [-xC, yC, -D], [0, ridgeY, -ridgeHalf]]);
       const rise = ridgeY - yC, run = D - ridgeHalf;
       const len = Math.hypot(rise, run) || 1;
       const n = normalize3([0, run / len, end * rise / len]);
@@ -699,7 +744,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       // hip caps along both hip lines (round 6: bedded in mortar, lichened, as the ridge)
       for (const sx of [1, -1]) {
         const a: Vec3 = [0, ridgeY + t / cosP + 0.02, end * ridgeHalf];
-        const b: Vec3 = [sx * xC, yC + t + 0.02, end * D];
+        const b: Vec3 = zH >= 0 ? [sx * xC, lo + t + 0.02, end * zH] : [sx * xC, yC + t + 0.02, end * D];
         sink.member(bucket, a, b, 0.2, 0.1, normalize3([sx * 0.3, 1, end * 0.3]), { ...dec, ...CAP_WEATHER, uv: { kind: 'member' }, exposed: true }, 0.05);
       }
     }

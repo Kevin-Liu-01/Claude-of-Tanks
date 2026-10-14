@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { notCamouflage } from '../camouflageBounds.test-support.mjs';
 const hit=(meshes,p,d,far=10)=>new T.Raycaster(new T.Vector3(...p),
   new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
 function inside(mesh,p){
@@ -22,7 +23,9 @@ for(const quality of ['high','low']){
   const t=createTank('t90a_burlak_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];
-    t.root.traverseVisible(o=>{if(o.isMesh&&!o.userData.shadowOnly&&!o.userData.vehicleMarking)all.push(o);});
+    // camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets
+    // and garnish; do not re-add it (camouflageBounds.test-support.mjs)
+    t.root.traverseVisible(o=>{if(o.isMesh&&!o.userData.shadowOnly&&!o.userData.vehicleMarking&&notCamouflage(o))all.push(o);});
     const hull=t.root.getObjectByName('hull'),detail=t.root.getObjectByName('hullDetail');
     for(const side of [-1,1]){
       const shift=side<0?.0019:0;

@@ -926,31 +926,51 @@ export function muzzleBlast(C: BlastContext, I: MuzzleInput): void {
   }
 }
 
+// EF.01 (the owner, 2026-10-12: the dust "separated into little clouds ... instead of being continuous"): a track's skirt
+// is raised every trackSkirtSpacing() metres of its travel (trailCadence), and each body is sized against that spacing
+// so neighbours overlap from birth: born at SKIRT_BORN of its full size, wide (SKIRT_ASPECT0..+SKIRT_ASPECT_SPAN), the
+// burst flipbook's visible core ~SKIRT_CORE of the card. The ground sets how dense the dust is (k) and only a little how
+// big (k^0.25): light grass dust is a thinner veil, not a string of smaller balls.
+const SKIRT_SIZE0 = 2.3, SKIRT_SIZE_SPAN = 1.0, SKIRT_BORN = 0.6, SKIRT_ASPECT0 = 2.4, SKIRT_ASPECT_SPAN = 0.8;
+const SKIRT_CORE = 0.7, SKIRT_OVERLAP = 1.15;
+function skirtScale(intensity: number, k: number, dk: number): number {
+  return (0.7 + 0.6 * intensity) * Math.pow(Math.max(0.05, k), 0.25) * dk;
+}
+
+/** The even spacing (m) between one track's skirt bodies that keeps neighbours overlapping from birth (at the smallest
+ *  body and the narrowest card: the visible core of a newborn body spans SKIRT_OVERLAP spacings). */
+export function trackSkirtSpacing(intensity: number, k: number, dk: number): number {
+  return SKIRT_SIZE0 * skirtScale(intensity, k, dk) * SKIRT_BORN * SKIRT_ASPECT0 * SKIRT_CORE / SKIRT_OVERLAP;
+}
+
 /**
- * A moving hull's trailing dust skirt (one body; the caller rate-limits by travel): low, wide cards of the ground's own
- * dust left behind the track, rolling out and up a little and drifting off with the wind, scaled by the speed
- * (`intensity` 0..1) and the ground (`k`: heavy on sand, light on grass). Wet ground and snow take none (their spray and
- * powder are the battle's).
+ * A moving hull's trailing dust skirt (one body; the caller spaces them by travel, trackSkirtSpacing): low, wide cards
+ * of the ground's own dust left behind the track, rolling out and up a little and drifting off with the wind, scaled by
+ * the speed (`intensity` 0..1) and the ground (`k`: heavy on sand, light on grass). Wet ground and snow take none (their
+ * spray and powder are the battle's).
  */
 export function trackSkirt(C: BlastContext, x: number, gy: number, z: number, dx: number, dz: number, intensity: number,
-  surface: SurfaceKind, k: number, bo: number): void {
+  surface: SurfaceKind, k: number, bo: number, spread = 1): void {
   const L = SURFACE_LOOKS[surface];
   const R = C.rand;
   const m = C.m;
-  const dk = C.distBoost(x, gy, z);
+  // `spread`: the caller's crowding factor (bigger bodies at a wider spacing, trackSkirtSpacing's same factor)
+  const dk = C.distBoost(x, gy, z) * spread;
   const dl = Math.hypot(dx, dz) || 1;
   const fx = dx / dl, fz = dz / dl;
   const back = 0.6 + R() * 1.0;
   place(m, x - fx * 0.4 + (R() - 0.5) * 0.6, gy + 0.35 + R() * 0.25, z - fz * 0.4 + (R() - 0.5) * 0.6, bo);
   // left behind: no forward speed, a slow roll back, out and up, then the wind
   move(m, -fx * back + (R() - 0.5) * 0.8, 0.25 + R() * 0.35, -fz * back + (R() - 0.5) * 0.8, 1.5, 0.06 + R() * 0.08, 1.0, 0);
-  const life = (3.5 + R() * 2.5) * (0.7 + 0.5 * intensity) * L.hang;
-  const size1 = (1.8 + R() * 1.4) * (0.7 + 0.6 * intensity) * Math.sqrt(k) * dk;
-  shape(m, life, size1 * 0.35, size1, 2.0, R);
-  look(m, mix3(L.ejecta, L.dust, 0.65), L.dust, Math.min(0.55, (0.16 + 0.22 * intensity) * k), 0.15, 0.4);
+  // (EF.01) a shorter hang than the sparse bodies had: the trail is laid four times as densely
+  const life = (2.8 + R() * 1.8) * (0.7 + 0.5 * intensity) * L.hang;
+  const size1 = (SKIRT_SIZE0 + R() * SKIRT_SIZE_SPAN) * skirtScale(intensity, k, dk);
+  shape(m, life, size1 * SKIRT_BORN, size1, 2.0, R);
+  // neighbours overlap (1.35-3x as the bodies grow): each is a thinner veil than a lone body was
+  look(m, mix3(L.ejecta, L.dust, 0.65), L.dust, Math.min(0.42, (0.12 + 0.17 * intensity) * k), 0.15, 0.4);
   book(m, 'burst', R, life, 4);
   // a skirt lies wide and low
-  card(m, 1.8 + R() * 0.8, R, 0.05);
+  card(m, SKIRT_ASPECT0 + R() * SKIRT_ASPECT_SPAN, R, 0.05);
   heat(m, 0, 1);
   C.media(m);
 }
@@ -1050,18 +1070,38 @@ export function exhaustPuff(C: BlastContext, x: number, y: number, z: number, vx
   const R = C.rand;
   const m = C.m;
   const dk = C.distBoost(x, y, z);
+  // EF.01: under way the gas leaves the stack into the hull's wake, already spread (born wider, a card stretched across
+  // the frame) and torn apart sooner; the caller lays the puffs exhaustSpacing() apart so they join into one streak. At
+  // rest (sq 0) the puff is round 7b's to the last draw.
+  const sq = exhaustSpeedK(Math.hypot(vx, vz));
   const exit = 1.2 + R() * 0.8 + intensity * 0.8;
   place(m, x + (R() - 0.5) * 0.2, y + 0.15, z + (R() - 0.5) * 0.2, bo - R() * 0.03);
   move(m, vx * 0.85 - fx * exit + (R() - 0.5) * 0.4, 0.9 + R() * 0.6 + intensity * 0.8, vz * 0.85 - fz * exit + (R() - 0.5) * 0.4,
     1.5, 0.45 + R() * 0.35, 1.15, 0);
-  const life = sooty ? 2.6 + R() * 1.4 : 1.6 + R() * 0.9;
+  const life = (sooty ? 2.6 + R() * 1.4 : 1.6 + R() * 0.9) * (1 - EXHAUST_TEAR_K * sq);
   const size1 = (sooty ? 2.2 + R() * 1.2 : 1.6 + R() * 0.8) * (0.7 + 0.5 * intensity) * dk;
-  shape(m, life, 0.35 * dk, size1, 1.7, R);
-  if (sooty) look(m, EXHAUST_DIESEL, EXHAUST_DIESEL_AGED, Math.min(0.62, 0.3 + 0.28 * intensity), 0.05, 0.6);
-  else look(m, EXHAUST_TURBINE, EXHAUST_TURBINE, 0.1 + 0.12 * intensity, 0.08, 0.6);
+  shape(m, life, EXHAUST_BORN * dk * (1 + EXHAUST_BORN_K * sq), size1, 1.7, R);
+  if (sooty) look(m, EXHAUST_DIESEL, EXHAUST_DIESEL_AGED, Math.min(0.62, 0.3 + 0.28 * intensity) * (1 - EXHAUST_THIN_K * sq), 0.05, 0.6);
+  else look(m, EXHAUST_TURBINE, EXHAUST_TURBINE, (0.1 + 0.12 * intensity) * (1 - EXHAUST_THIN_K * sq), 0.08, 0.6);
   book(m, 'billow', R, life);
+  if (sq > 0) m.aspect = 1 + EXHAUST_ASPECT_K * sq;
   heat(m, 0, 1);
   C.media(m);
+}
+
+// EF.01: the exhaust under way (exhaustPuff and exhaustSpacing share these): full effect from EXHAUST_FULL_MPS
+const EXHAUST_FULL_MPS = 10, EXHAUST_BORN = 0.35, EXHAUST_BORN_K = 1.6, EXHAUST_ASPECT_K = 1.0, EXHAUST_TEAR_K = 0.35;
+const EXHAUST_THIN_K = 0.25, EXHAUST_CORE = 0.65;
+function exhaustSpeedK(speedMps: number): number {
+  return speedMps > 0.05 ? Math.min(1, speedMps / EXHAUST_FULL_MPS) : 0;
+}
+
+/** The even spacing (m) of a running hull's exhaust puffs along its travel: a newborn puff's visible core (born width x
+ *  the billow's core) reaches its neighbour, so the plume is one streak under way (the caller's rest rate rules at a
+ *  stand). */
+export function exhaustSpacing(speedMps: number, dk: number): number {
+  const sq = exhaustSpeedK(speedMps);
+  return EXHAUST_BORN * dk * (1 + EXHAUST_BORN_K * sq) * (1 + EXHAUST_ASPECT_K * sq) * EXHAUST_CORE;
 }
 
 const STEEL: Rgb = [0.055, 0.053, 0.05];

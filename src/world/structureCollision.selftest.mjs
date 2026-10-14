@@ -128,8 +128,9 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
 // 2026-09-19: 113 → 119 with the Mars station's six orbital destructibles
 // 2026-09-24: four detailed Olympus colony facilities join the existing 119 families.
 // 2026-10-11: the colliery colony terrace (railKit.ts makeTerrace; terraceLayout.ts) joins: 124.
-assert.equal(new Set(families).size, 124,
-  'all 124 heavyweight, site, small-building, blocking-item and sourced families are audited');
+// 2026-10-13: the village well and the square's monument become destructible blocking items (destruction stream): 126.
+assert.equal(new Set(families).size, 126,
+  'all 126 heavyweight, site, small-building, blocking-item and sourced families are audited');
 assert.ok(concaveFamilies >= 60,
   'open, stepped and recessed structures/items retain compound contact footprints across both variants');
 assert.ok(maximumParts <= 64, 'compound shell bands stay bounded for runtime narrow-phase work');

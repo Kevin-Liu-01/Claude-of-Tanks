@@ -8,8 +8,11 @@ import {createCombatState,resolveShellHit} from '../../sim/damage.ts';
 import {createShell} from '../../sim/ballistics.ts';
 import {stripActivatedEra} from '../../game/eraActivation.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { boundsWithoutCamouflage, notCamouflage } from '../camouflageBounds.test-support.mjs';
 function hit(ms,p,d,far=1){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
-function visible(t){const a=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)a.push(m);});return a;}
+// camouflage excluded on the coordinator's ruling (2026-10-11): a real vehicle's geometry never includes its nets
+// and garnish; do not re-add it (camouflageBounds.test-support.mjs)
+function visible(t){const a=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly&&notCamouflage(m))a.push(m);});return a;}
 function cradles(m){
   for(const x of [.35,.365,.38,.8])for(const[z,y]of [[-3.75,1.2561910561861],[-3.65,1.2173564802429],
     [-3.55,1.2141703952786],[-3.45,1.2411110358537],[-3.35,1.3147844502637]])
@@ -113,7 +116,7 @@ helperClosure();
 for(const quality of ['high','low']){
   const t=createTank('t90a_burlak_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const m=visible(t);cradles(m);cables(m);eyes(m);skirts(t,m);gameplay(t);physicalSeats(t);
-    const b=new THREE.Box3().setFromObject(t.root);near(b.min.x,-2.05973503,.000002,'unchanged full model left extremum');near(b.max.x,2.05073503,.000002,'unchanged full model right extremum');
+    const b=boundsWithoutCamouflage(t.root);near(b.min.x,-2.05973503,.000002,'unchanged full model left extremum');near(b.max.x,2.05073503,.000002,'unchanged full model right extremum');
   }finally{t.dispose();}
 }
 console.log('t90BurlakXRear: high/low source cassette planes and reactive strip/reset, cradle flanges, curved tow loops, true eye air and actual narrow attachment contacts pass');

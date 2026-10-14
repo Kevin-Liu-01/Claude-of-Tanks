@@ -1,6 +1,6 @@
 {
  "map": "alpine",
- "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t04-lake-pan.resolved.json",
+ "scene": "shots/media-r5/final/resolved/t04-lake-pan.resolved.json",
  "fps": 30,
  "frames": 150,
  "viewport": [

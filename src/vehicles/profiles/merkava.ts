@@ -22,6 +22,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { FITTINGS, KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -7228,6 +7229,9 @@ type MerkavaTurretConfig = DeepDefined<ReturnType<typeof createMerkavaTurretConf
 
 function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
   const P = requireTankBuilderPort(builder);
+  // 2026-10-09 (owner): the field net and garnish of the marks that carry one (ghillieFleetSuits.ts: Mk 3C, Mk 4B),
+  // laid on the assembled build
+  addVehicleGhillieSuit(P);
   const { box, cylZ } = KIT;
   const buildMerkavaMarkAssemblyStage1 = (): void => {
     merkavaChassis(P, p);

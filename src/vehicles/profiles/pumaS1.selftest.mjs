@@ -70,7 +70,12 @@ try {
     'Puma hull and turret share the same scale frame');
   assert.ok(Math.abs(gun.getObjectByName('rig_muzzle')?.position.z - 2.85 * 0.9) < 1e-6,
     'Puma muzzle and firing-effects station follows the compact gun frame');
-  const compactBounds = new Box3().setFromObject(tank.root).getSize(new Vector3());
+  // 2026-10-10 (the netting lane, the owner's order of 2026-10-09: "a ton more netting and camo leaves" on the SPz
+  // Wotan): the field net's skirt drapes hang outside the vehicle; its own width is measured without them
+  const bareBox = new Box3();
+  tank.root.updateMatrixWorld(true);
+  tank.root.traverse((o) => { if (o.isMesh && !/_ghillie_/.test(o.name)) bareBox.expandByObject(o); });
+  const compactBounds = bareBox.getSize(new Vector3());
   assert.ok(Math.abs(compactBounds.x - 4.127999782562256 * 0.9) < 0.01,
     'Puma outer width is exactly ten percent smaller');
   // 3.733 = the S1's height / 0.9: the hull, turret and gun scale by 0.9 while the ground-datum track stack

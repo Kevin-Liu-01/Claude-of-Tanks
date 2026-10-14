@@ -4,12 +4,6 @@
   "source": "The site fifty (public/media/site50-r14): takes staged in Scene Studio and rendered at 4K in the game engine, picked in tools/media-r5/site-media/picks.json",
   "hero": [
     {
-      "id": "s07-lake-shellfire",
-      "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
-      "src": "/media/site50-r14/stills/s07-lake-shellfire.webp",
-      "still": "moment"
-    },
-    {
       "id": "s21-fields-assault",
       "title": "A T-90SM wedge assaults through the burning fields",
       "src": "/media/site50-r14/stills/s21-fields-assault-close.webp",
@@ -37,6 +31,12 @@
       "id": "s18-street-knockout",
       "title": "A T-90A is knocked out at the end of a Steinburg street at night",
       "src": "/media/site50-r14/stills/s18-street-knockout.webp",
+      "still": "moment"
+    },
+    {
+      "id": "s07-lake-shellfire",
+      "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+      "src": "/media/site50-r14/stills/s07-lake-shellfire.webp",
       "still": "moment"
     }
   ],

@@ -8,9 +8,10 @@
  * before any lit material compiles.
  */
 import * as THREE from 'three';
+import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { getDeviceTier, getPreset, onPresetChange } from './quality.ts';
+import { PRESETS, getDeviceTier, getPreset, onPresetChange } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -26,7 +27,7 @@ import {
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
-import type { ShadowStaticCache } from './shadowStaticCache.ts';
+import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
@@ -68,6 +69,9 @@ interface ShadowDebugOptions {
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
    *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
   legacyBias?: boolean;
+  /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
+   *  createCascadePoseHold). */
+  noPoseHold?: boolean;
 }
 
 declare global {
@@ -108,7 +112,6 @@ const _stableCenter = new THREE.Vector3();
 const _stableOrigin = new THREE.Vector3();
 const _stableUp = new THREE.Vector3(0, 1, 0);
 const _stableDesiredCenters: THREE.Vector3[] = [];
-
 /**
  * Allocation-free CSM refit with per-cascade texel snapping.
  * Three's stock CSM.update() divides every cascade extent by the single
@@ -117,11 +120,12 @@ const _stableDesiredCenters: THREE.Vector3[] = [];
  * in half-texel increments and makes its shadows shimmer as the camera moves.
  * @returns {number} bit mask of cascades whose desired snapped pose changed
  */
-function prepareStableCascades(csm: CSM): number {
+function prepareStableCascades(csm: CSM, hold: CascadePoseHold | null = null): number {
   const camera = csm.camera;
   _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
   _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
   _stableCameraToLight.multiplyMatrices(_stableLightOrientationInverse, camera.matrixWorld);
+  const holding = !!hold && hold.begin(csm);
 
   let changedMask = 0;
   for (let i = 0; i < csm.frustums.length; i++) {
@@ -142,6 +146,7 @@ function prepareStableCascades(csm: CSM): number {
     _stableCenter.z = _stableBounds.max.z + csm.lightMargin;
     _stableCenter.x = snapShadowCoordinate(_stableCenter.x, texelWidth);
     _stableCenter.y = snapShadowCoordinate(_stableCenter.y, texelHeight);
+    if (holding) hold!.apply(i, csm, shadowCam, texelWidth, texelHeight, _stableCenter, _stableCameraToLight);
     _stableCenter.applyMatrix4(_stableLightOrientation);
 
     let desired = _stableDesiredCenters[i];
@@ -522,9 +527,20 @@ const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.m
 // receives the SELECTED depth material (shared singleton, variant clone, or
 // custom), so the flip covers all three paths and is a one-time recompile per
 // depth-material variant.
+// The perf stream (2026-10-12/13): the caster-kind settling (shadowDepthKinds.ts) is its own chunk, out of the game
+// entry: the first instanced or batched caster's shadow draw asks for it (the world, the hulls' gear batches and the
+// garage stand's instanced casters draw from the first frames), and until it lands three derives
+// its depth programs as it always did (the same maps either way; the kinds only spare the re-derivations).
+let settleDepthKind: typeof import('./shadowDepthKinds.ts').settleShadowDepthKind | null = null;
+let depthKindsRequested = false;
+function requestDepthKinds(): void {
+  depthKindsRequested = true;
+  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
+    () => { /* three's own derivation for the session */ });
+}
 function patchShadowDepthPacking(): void {
   const hook: THREE.Mesh['onBeforeShadow'] = function (
-    _renderer,
+    renderer,
     object,
     _camera,
     shadowCamera,
@@ -536,6 +552,10 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
+    // three stops re-deriving the shared depth program at every instanced / batched / plain switch
+    if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
+    else if (!depthKindsRequested && (object as { isInstancedMesh?: boolean }).isInstancedMesh) requestDepthKinds();
     // r8 cascade caster proxies (shadowCasterProxies.ts)
     casterProxies?.casterProxyBeforeShadow(object, shadowCamera);
   };
@@ -544,8 +564,19 @@ function patchShadowDepthPacking(): void {
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
+  // the perf stream (2026-10-12): three's BatchedMesh has its own onBeforeShadow (its per-instance culling for the
+  // shadow camera), so the batched casters (the tanks' articulated shadow batch, the gear batches) settle here
+  const batchedBefore = THREE.BatchedMesh.prototype.onBeforeShadow;
+  THREE.BatchedMesh.prototype.onBeforeShadow = function (renderer, object, camera, shadowCamera, geometry, depthMaterial, group) {
+    batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
+    if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
+    else if (!depthKindsRequested) requestDepthKinds();
+  };
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
+  // the perf stream (2026-10-13): three's batch-colour program check reads a property BatchedMesh lacks (every batched
+  // draw re-derived its program); the alias gives it `_colorsTexture` (batchedColorAlias.ts)
+  installBatchedColorTextureAlias();
 }
 
 /** 2026-10-03 (cloudShadeMap.ts): a sun cascade's light × the clouds' share, before its shadow. */
@@ -863,6 +894,10 @@ export function createLighting(
   // first battle world (a frozen world root in the scene), outside the boot graph; until it arrives, and if it never
   // does, every cascade renders the ordinary way. Phones keep the plain render: the copies would cost them memory.
   let staticShadowCache: ShadowStaticCache | null = null;
+  // 2026-10-13 (the perf stream, block 17): held cascade poses on every tier but Ultra. GPU-bound at Ultra's 4096 maps the
+  // cache's full-map depth copies cost about 1 ms of presented frame over re-rendering the casters (the CPU-bound tiers
+  // gain 1.5-3 ms), so Ultra keeps re-centring every cascade until a dirty-rect reuse makes the copies small
+  let poseHoldTier = preset !== PRESETS.ultra;
   let staticShadowCacheRequested = mobileTier;
   const requestStaticShadowCache = (): void => {
     staticShadowCacheRequested = true;
@@ -884,7 +919,9 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    return prepareStableCascades(csm);
+    // held cascade poses while the static cache can use them (its chunk: shadowStaticCache.ts createCascadePoseHold), on
+    // every tier but Ultra (poseHoldTier)
+    return prepareStableCascades(csm, poseHoldTier ? staticShadowCache?.poseHold ?? null : null);
   };
 
   // Stabilize the PCF sampling phase and keep the neutral CSM fade capture.
@@ -968,6 +1005,7 @@ export function createLighting(
   let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
+    poseHoldTier = p !== PRESETS.ultra;
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
     lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
     applyGroundBounce();

@@ -120,7 +120,7 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...TOS1A_TAGIL_PROFILES,
   ...GRIFFIN_VIPER_PROFILES,
-  fv510_milan_x: { build: buildFv510MilanX },
+  warrior_tes_h: { build: buildFv510MilanX },
   griffin50_x: { build: buildGriffin50X },
   ajax_x: { build: buildAjaxX },
   aft10_x: { build: buildAft10X },

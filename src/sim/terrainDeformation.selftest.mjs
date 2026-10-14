@@ -70,7 +70,28 @@ function makeBase() {
   assert.equal(rubbleHeightFor(1), 0.6, 'floored');
   overlay.addRubble(-100, 50, 5, 4, 0.4, h);
   const rubble = overlay.stamps[1];
-  near(rubbleProfile(rubble, -100, 50), h, 1e-9, 'the plateau');
+  // the crown (2026-10-13, the owner: rubble that does not "end up on a flat 2d plane"): the plateau's top leans and
+  // swells, between 0.58 h and h, never past h; another footprint raises another heap
+  {
+    const tops = [];
+    const c = Math.cos(0.4), s = Math.sin(0.4);
+    for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) {
+      const a = (i / 10) * 4 * 0.7, b = (j / 10) * 5 * 0.7;
+      tops.push(rubbleProfile(rubble, -100 + b * c + a * s, 50 - b * s + a * c));
+    }
+    const lo = Math.min(...tops), hi = Math.max(...tops);
+    assert.ok(hi <= h + 1e-9 && lo >= 0.58 * h - 1e-9, `the crown stays within 0.58-1 of the heap's height (${(lo / h).toFixed(2)}-${(hi / h).toFixed(2)})`);
+    assert.ok(hi - lo > 0.2 * h, `and is not level (${(hi - lo).toFixed(2)} m between its high and low points)`);
+    const other = createTerrainDeformation();
+    other.addRubble(-60, 50, 5, 4, 0.4, h);
+    let differs = 0;
+    for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) {
+      const a = (i / 10) * 4 * 0.7, b = (j / 10) * 5 * 0.7;
+      differs = Math.max(differs, Math.abs(rubbleProfile(rubble, -100 + b * c + a * s, 50 - b * s + a * c)
+        - rubbleProfile(other.stamps[0], -60 + b * c + a * s, 50 - b * s + a * c)));
+    }
+    assert.ok(differs > 0.1 * h, `two heaps of one footprint in two places differ (${differs.toFixed(2)} m)`);
+  }
   const falloff = rubbleFalloffM(5, 4, h);
   near(falloff, 0.3 * 4 + 3, 1e-9, 'the skirt: 0.3 of the shorter half extent plus max(3, 2.2 h)');
   // the steepest grade across the skirt, sampled outward from the plateau's edge along the footprint's across axis
@@ -184,6 +205,11 @@ function makeBase() {
 // lifted 0.38 m in a step by the heap stamped whole under it): eased over RUBBLE_GROW_S, never faster than its height's
 // share a step; with no clock set (a consumer that never steps one) or settled, it stands risen at once
 {
+  // (the risen heap's top at its centre: its crown's, under its nominal 2.4 m — a clockless heap stands risen at once)
+  const clockless = createTerrainDeformation();
+  clockless.addRubble(0, 0, 6, 8, 0.3, 2.4);
+  const risenTop = clockless.offsetAt(0, 0);
+  assert.ok(risenTop > 1 && risenTop <= 2.4 + 1e-9, `no clock: risen at once, as before (${risenTop.toFixed(3)} m)`);
   const rising = createTerrainDeformation();
   rising.setTime(10);
   rising.addRubble(0, 0, 6, 8, 0.3, 2.4);
@@ -197,17 +223,14 @@ function makeBase() {
     steepest = Math.max(steepest, h - prev);
     prev = h;
   }
-  near(prev, 2.4, 1e-9, 'risen to its height');
+  near(prev, risenTop, 1e-9, 'risen to its height');
   assert.ok(!rising.growing && rising.growthRevision > revision, 'done, its growth revision moved while it rose');
   assert.ok(steepest <= 2.4 * 1.5 / (RUBBLE_GROW_S * 60) + 1e-9, `never more than the eased share a step (${(steepest * 100).toFixed(2)} cm)`);
   near(rubbleGrowth(RUBBLE_GROW_S / 2), 0.5, 1e-12, 'half risen at half its time');
-  const clockless = createTerrainDeformation();
-  clockless.addRubble(0, 0, 6, 8, 0.3, 2.4);
-  near(clockless.offsetAt(0, 0), 2.4, 1e-9, 'no clock: risen at once, as before');
   const settled = createTerrainDeformation();
   settled.setTime(10);
   settled.addRubble(0, 0, 6, 8, 0.3, 2.4, -Infinity);
-  near(settled.offsetAt(0, 0), 2.4, 1e-9, 'a settled heap (a restored host, a late seat) stands risen');
+  near(settled.offsetAt(0, 0), risenTop, 1e-9, 'a settled heap (a restored host, a late seat) stands risen');
   assert.ok(!settled.growing, 'and does not rise');
 }
 

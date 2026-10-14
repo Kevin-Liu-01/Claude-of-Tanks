@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import type { InstancedMesh, Object3D, Scene, Vector3 } from 'three';
 import type {
   ArmorIntersection,
@@ -698,6 +699,7 @@ export function createShotViews({
     ];
     const contact = [x, Math.max(targetImpact.pos[1], attackerImpact.pos[1]) + 0.7, z + 3.55];
     killcam.stageReplayShot({
+      ...TANK_IDS.stamp(), // built from this page's entities: current ids (SSOT 2.19)
       replayKind: 'collision',
       ev: {
         kind: 'collision', cause: 'ram', shellId: null,
@@ -845,6 +847,7 @@ export function createShotViews({
       Object.entries(shooter.combat.modules || {}).map(([id, module]) => [id, module.state]),
     );
     killcam.stageReplayShot({
+      ...TANK_IDS.stamp(), // built from this page's entities: current ids (SSOT 2.19)
       replayKind: 'projectile',
       ev,
       timeS: replayTimeS,

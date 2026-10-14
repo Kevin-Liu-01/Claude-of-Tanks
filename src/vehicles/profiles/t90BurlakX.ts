@@ -12,6 +12,7 @@ import {T90_BURLAK_X_SOURCE_DATUMS} from '../t90BurlakXArmor.ts';
 import {addT90BurlakSkirtCassettes} from './t90BurlakXSkirts.ts';
 import {addT90BurlakRearFurniture} from './t90BurlakXRear.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const T90_BURLAK_X_DATUMS=T90_BURLAK_X_SOURCE_DATUMS;
 const YAW=T90_BURLAK_X_DATUMS.turretPivot,GUN=T90_BURLAK_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
@@ -234,6 +235,8 @@ function mainGun(P:TankBuilderPort):void{
   P.muzzleZ=tip-GUN[2];
 }
 export function buildT90BurlakX(P:TankBuilderPort):void{
+  // 2026-10-10 (owner): the field net and garnish (ghillieFleetSuits.ts Group C), laid on the assembled build
+  addVehicleGhillieSuit(P);
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T90_BURLAK_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);hullEra(P);deck(P);rear(P);turret(P);frontCurtain(P);bustleAndCases(P);roofEquipment(P);machineGun(P);smoke(P);mainGun(P);

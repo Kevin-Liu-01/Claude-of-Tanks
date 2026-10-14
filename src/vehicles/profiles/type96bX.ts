@@ -9,6 +9,7 @@ import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts'
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { antenna, equipment, hatch, panel, openGunTube, hullStation, optic, towEye, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 // Closed X-extruded stock from scalar plane intersections. These are authored
 // prisms, not sampled source contours or runtime source topology.
@@ -291,6 +292,8 @@ export function buildType96Turret(P: TankBuilderPort): void {
     P.muzzleZ = 4.92211;
 }
 export function buildType96bX(P: TankBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
     // Measured fixed armor extends the shadow silhouette; omit small fittings.
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],

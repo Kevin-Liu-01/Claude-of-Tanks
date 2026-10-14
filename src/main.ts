@@ -121,6 +121,7 @@ import type { GroundDisturbance } from './world/groundPressure.ts';
 import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
+import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -256,10 +257,11 @@ import { describeError, getEntryTelemetry, installEntryErrorTelemetry } from './
 import {
   bootCapabilityScreen, browserCapabilityHost, capabilitySummary, haltRefusedRenderer, runBootCapabilityGate,
 } from './engine/capabilityGate.ts';
-import { createBattleLoadScreen } from './ui/battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
+import { migrateStoredTankIds } from './game/tankIdStorageMigration.ts';
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
@@ -306,6 +308,9 @@ const {
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
+
+// Saved tank ids follow the id renames (SSOT 2.19) before anything reads them.
+migrateStoredTankIds((() => { try { return globalThis.localStorage; } catch { return null; } })());
 
 // Resolve the remembered hero and begin its exact family transfers before
 // renderer/garage construction. This overlaps network work with the staged
@@ -1344,6 +1349,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onMapSelect: (mapId: string) => {
     battleIntent.invalidateMapPlan();
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
+    // 2026-10-12 (the perf stream): the loading screen's art for the chosen battlefield, fetched and decoded in idle time
+    if (mapId !== 'random') preloadImageWhenIdle(battleBackdrop(mapId));
     // Guests can browse locally without changing the host's room map. Keep
     // that build alive until canonical room state accepts another map.
     if (!multiplayerLobby?.prepareLobby()) {
@@ -1382,6 +1389,9 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
 const battleLoad = createBattleLoadScreen();
+// 2026-10-13 (the perf stream): the Garage's decorative work (the camo picker's cold swatches) holds under the battle
+// loader, so a battle's entry keeps the main thread for its world build
+garage.setDecorativeWorkGate(() => battleLoad.covering);
 
 // STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
@@ -2277,7 +2287,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
     const runtime = createBrowserComposition({
-      clientBuild: import.meta.env.MODE,
+      // clientBuild: the composition's default, this build's match line (src/mp/wire/matchBuild.ts, the same-wire check)
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
@@ -2329,7 +2339,10 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
           tier: getDeviceTier(),
-          createIceResolver: (mode, room) => createRoomIceResolver({ mode, room }),
+          // a seat linking without a relay (a fallback, or a grant with no TURN server) leaves one `ice_degraded` note per reason
+          createIceResolver: (mode, room) => createRoomIceResolver({
+            mode, room, onDegraded: (reason) => entryTelemetry.send({ kind: 'ice_degraded', mode: 'network', code: reason }),
+          }),
         },
       },
     });
@@ -2807,6 +2820,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
+  // 2026-10-13 (the perf stream): the pending cover names the battlefield (a Random pick planned now, as the loading
+  // owner will consume it) while the loading owner itself still downloads
+  describePendingMap: (specId: string, mapId: string | null) => {
+    const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
+    return (MAP_IDS as readonly string[]).includes(resolved)
+      ? { mapId: resolved, mapName: getMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+  },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
   presentFailure: (error) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error)),
@@ -3230,6 +3250,8 @@ if (bootWorld) {
   battlePresentation.update();
 }
 await bootStage('post', async () => {
+  // The lazily loaded post passes (SMAA: engine/post.ts) take their places before any frame is warmed or shown.
+  await post.ready;
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
@@ -3504,6 +3526,10 @@ if (pendingRoomInvitePromise) {
 }
 window.__GAME_READY = true;
 pedestal.queueNeighbors();
+// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
+if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
+// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
+primeMapLqipWhenIdle();
 if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);

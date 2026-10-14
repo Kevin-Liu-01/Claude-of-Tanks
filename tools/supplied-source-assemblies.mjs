@@ -3,7 +3,7 @@
 // 2026-09-24 (round 46c): the five 20260918 recipe hashes re-pinned after the research notes moved to docs/history/research —
 // each recipe's `ownerDecision` and review `path` strings were re-rooted; no geometry, source hash or frame value changed.
 export const SUPPLIED_SOURCE_ASSEMBLIES = Object.freeze({
-  "fv510_milan_x": {
+  "warrior_tes_h": {
     "originalSha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
     "rawSha256": "5bb512734139e4beaeaa3775bdc68913431a555a2d1d46f395a47a8fa0a5ea45",
     "sha256": "f9eeb72db9039d2355912ecb85471be2d5559493400eff3d6d211ad9fc366045",

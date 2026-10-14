@@ -1,0 +1,12 @@
+{
+ "tankIdSchema": 2,
+ "table": "2026-10-13T13:47:58.384Z",
+ "files": [
+  "tools/media-r5/hull-dims.json",
+  "tools/media-r5/vehicle-takes.json",
+  "tools/media-r5/fleet-roster.json",
+  "tools/media-r5/cast.mjs",
+  "public/media/site50-r14/fleet/index.json",
+  "public/media/site50-r14/manifest.json"
+ ]
+}

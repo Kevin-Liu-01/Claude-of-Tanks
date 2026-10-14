@@ -276,11 +276,22 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (the map-revival lane, 2026-10-05) Queenstown's west coast overcast: the regime's broken stratocumulus deck (was
   // cumulus humilis at 0.20 over Arizona)
-  clouds: { regime: 'broken-stratocumulus' },
+  // 2026-10-13 (the owner on the map wall: "no more of the cloud type depicted in fjord"): Verdant's fair-weather cumulus
+  // over the dry upland — a cover near the humilis maps' (0.26), a high base (1600 m) and shallow clouds (620 m, towers
+  // 0.08) with cumulus shapes, a cirrus veil above (0.3); 7 m/s aloft as the deck had (the scene wind keeps its 4.2 m/s)
+  clouds: { regime: 'fair-weather-cumulus', windSpeed: 7, coverage: 0.26, baseM: 1600, thicknessM: 620, towers: 0.08, streets: 0.3, cirrus: 0.3, farBand: 0.2 },
   // (the map-revival lane, 2026-10-05) the west coast's wet air under its overcast: a hazier, cooler, softer light
   // (turbidity 5.6 -> 7.0, fog 0.00025 -> 0.00045 in a cool grey, the sun 4.1 -> 3.2 and paler, the sky's fill 0.36 ->
   // 0.48, the pink-grey ground's bounce); the arid preset's clear-air note below is Arizona's
-  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 7.0, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00050) */ fogDensity: 0.00045, fogTintHex: 0x9ca2a6, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.80, cloudOpacity2: 0.50, cloudTintHex: 0xf2e6d6, cloudAltM: 880, cloudHazeK: 0.00012, cloudUvM: 2700, cloudShadowAmp: 0.30, sunIntensity: 3.2, sunColorHex: 0xf2ece0, hemiIntensity: 0.48, lighting: { groundAlbedoHex: 0x9e877a } },
+  // (2026-10-13, the cumulus: the haze, the sun and the fill stay — the deck cast cloud shadows, so the light model never
+  // read it as an overcast (resolveOvercast 0 before and after); the baked deck the phones show (880 m, 2700 m masses at
+  // 0.80) is the dry-air cumulus deck the desert and the oasis carry; its tint a cleaner warm white 0xf8f1e8, was 0xf2e6d6)
+  // (2026-10-13, the coordinator on the cumulus sheet: "Copper Mesa's ground in full sun is washed out, pale and overexposed
+  // in the overview"): the deck had kept the pale conglomerate in shade; under a few cumulus it lies in the sun, so the
+  // camera closes 0.45 EV and the grade takes a touch more contrast (1.08) and saturation (1.1) — the dry upland in hard
+  // sun (live variants on the c307 dist: the day overview's ground mean 0.60 -> 0.54, its saturation 0.21 -> 0.27; -0.3
+  // and -0.6 EV bracketed it; the sunset 0.39 -> 0.32, still warm; the night is 0.45 EV darker with it)
+  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 7.0, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00050) */ fogDensity: 0.00045, fogTintHex: 0x9ca2a6, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.80, cloudOpacity2: 0.50, cloudTintHex: 0xf8f1e8, cloudAltM: 880, cloudHazeK: 0.00012, cloudUvM: 2700, cloudShadowAmp: 0.30, sunIntensity: 3.2, sunColorHex: 0xf2ece0, hemiIntensity: 0.48, lighting: { groundAlbedoHex: 0x9e877a, exposureEV: -0.45, contrast: 1.08, saturation: 1.1 } },
   minimap: { base: [124, 98, 73], hard: [133, 110, 86], soft: [83, 71, 59], forest: 'rgba(75,83,49,.8)', forestStroke: 'rgba(46,52,31,.92)', water: 'rgba(75,92,90,.8)', waterStroke: 'rgba(45,58,59,.92)', roadCasing: 'rgba(51,40,32,.94)', roadFill: 'rgba(179,156,126,.96)', buildingFill: '#c4b6a3' },
   shot: { pos: [-284, 68, -282], look: [-30, -4, 90] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

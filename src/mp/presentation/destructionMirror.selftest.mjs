@@ -52,7 +52,8 @@ assert.ok(log.every((entry) => entry.kind === 'stage' && Math.abs(entry.cx - 40)
     [['structure:stage', 2, 'damaged', false], ['structure:stage', 2, 'breached', false], ['structure:stage', 2, 'collapsed', false]]);
   assert.equal(world.obstacles[2].crushed, true, 'the collapse no longer pushes the predicted hull here');
   assert.equal(world.colliders[2].dead, true, 'nor stops this seat\'s rays');
-  assert.ok(mirror.groundField.getHeightAt(40, 0) > 1, 'the heap is under the prediction');
+  // (the heap's crown: 0.58-1 of its 1.08 m, 2026-10-13)
+  assert.ok(mirror.groundField.getHeightAt(40, 0) > 0.6, 'the heap is under the prediction');
   assert.equal(mirror.groundField.getHeightAt(-60, 0), 0, 'and nowhere else');
   // the snapshot's log names the same stages: nothing more happens
   mirror.applyLog(log, () => false);
