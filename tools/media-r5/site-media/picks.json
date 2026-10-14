@@ -979,5 +979,13 @@
   },
   "posters": {
     "trailer": 9
+  },
+  "fleetPosters": {
+    "moment": [
+      "bmp2"
+    ],
+    "loop": [
+      "type10_x"
+    ]
   }
 }

@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H } from './setups.mjs';
+import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H, frame, shockwave, smokeScreen } from './setups.mjs';
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
@@ -703,6 +703,292 @@ export const FLEET = FLEET_ROSTER.map((r) => {
   return [r.n, r.id, kind, r.title.en, set, { ...own, time: r.time, lineup: r.lineup, foes: r.foes, paint: r.paint, fleet: true,
     turretStyle: turretStyle(r.template), ...(flare ? { effects: [NIGHT_FLARE(H(-4, 40), 90), ...(film.effects ?? [])] } : {}) }, still];
 });
+// ---------------------------------------------------------------------------------------------------- the combat round
+// The combat round (owner 2026-10-13: "more shots of 1v1 tank battles or 2v2 or 1v2s, those were some cool highlight
+// shots that i like that 1. show more tanks and 2. show the actual tank combat. make these with super cool angles as we
+// have been doing, with effects all over the place"). Each take is a firefight between two to four tanks staged close
+// (38-46 m) so both sides read in one frame. The rounds go both ways: they glance off glacis plates in a fan of sparks,
+// scar turret faces, punch through, and the climax knocks a tank out with its turret thrown. A hit sits on the target's
+// armour, a plate of its hull-dims box (glacis, nose cheeks, turret face, skirts) with that plate's outward normal, seated
+// as the home stills seat theirs; a glancing round skips off on the reflected line. Every gun is laid on its target
+// (`aim`), and the lens keys off both sides, looking between them, so shooter and target share the frame as it moves.
+// Takes 225 on, after the fleet's.
+const HULL_DIMS = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'hull-dims.json'), 'utf8'));
+/** A plate on a tank, in its hull frame from its hull-dims box [half length, half width, gun reach, height]:
+ *  [[side (+ right), up, along (+ forward)], outward normal]. */
+const PLATES = {
+  glacis: ([hl, , , h]) => [[0, 0.42 * h, 0.86 * hl], [0, 0.72, 0.69]],
+  noseL: ([hl, hw, , h]) => [[-0.55 * hw, 0.36 * h, 0.92 * hl], [-0.15, 0.3, 0.94]],
+  noseR: ([hl, hw, , h]) => [[0.55 * hw, 0.36 * h, 0.92 * hl], [0.15, 0.3, 0.94]],
+  turretL: ([hl, hw, , h]) => [[-0.42 * hw, 0.68 * h, 0.4 * hl], [-0.3, 0.12, 0.95]],
+  turretR: ([hl, hw, , h]) => [[0.42 * hw, 0.68 * h, 0.4 * hl], [0.3, 0.12, 0.95]],
+  // the turret's flank (a round fired across a race strikes it side-on)
+  turretSideL: ([hl, hw, , h]) => [[-0.5 * hw, 0.7 * h, 0.05 * hl], [-1, 0.15, 0]],
+  turretSideR: ([hl, hw, , h]) => [[0.5 * hw, 0.7 * h, 0.05 * hl], [1, 0.15, 0]],
+  skirtL: ([hl, hw, , h]) => [[-0.98 * hw, 0.32 * h, 0.15 * hl], [-1, 0.12, 0]],
+  skirtR: ([hl, hw, , h]) => [[0.98 * hw, 0.32 * h, 0.15 * hl], [1, 0.12, 0]],
+  ground: () => [[0, 0.05, 0], [0, 1, 0]],
+};
+const plate = (name, id, part, out = 0.06) => {
+  const [at, normal] = PLATES[part](HULL_DIMS[id] ?? [3.5, 1.7, 5.5, 2.6]);
+  return { armor: { actor: name, at, normal, out } };
+};
+const CAL = 120;
+const strike = (target, id, part, tMs, kind, caliberMm = CAL) => ({ type: 'impact', at: plate(target, id, part), tMs, params: { kind, caliberMm } });
+/** A round glancing off: the shot, the spark fan off the plate and the round skipping off on the reflected line. */
+const glance = (shooter, target, id, part, tMs) => [fire(shooter, tMs), strike(target, id, part, tMs + 35, 'ricochet'),
+  { type: 'tracer', deflect: { at: plate(target, id, part), shooter }, tMs: tMs + 35, params: { shellType: 'APFSDS', speedMps: 700, caliberMm: CAL } }];
+/** A round that scars the plate without getting in: sparks, a scar and a spray of paint and fragments. */
+const scar = (shooter, target, id, part, tMs) => [fire(shooter, tMs), strike(target, id, part, tMs + 35, 'nonpen'),
+  debris(plate(target, id, part, 0.2), tMs + 45, { count: 14, speedMps: 11, hot: 0.5, scale: 0.6 })];
+/** A round through the armour: the penetration flash, then smoke from the wounded hull. */
+// a penetration also stamps its hole on the hull (the Studio's armor_scar, on the face toward the shooter: seatArmor)
+const holeMark = (shooter, target, tMs) => ({ type: 'armor_scar', actor: target, tMs, params: { count: 1, caliberMm: CAL, seedToward: shooter } });
+const holes = (shooter, target, id, part, tMs) => [fire(shooter, tMs), strike(target, id, part, tMs + 35, 'pen'), holeMark(shooter, target, tMs + 40),
+  debris(plate(target, id, part, 0.2), tMs + 45, { count: 18, speedMps: 13, hot: 0.7, scale: 0.7 }), smoke(target, tMs + 450)];
+/** The killing round: through the plate, the ammunition goes and the turret is thrown, then the hull burns. */
+const finish = (shooter, target, id, part, tMs) => [fire(shooter, tMs), strike(target, id, part, tMs + 35, 'pen'), holeMark(shooter, target, tMs + 40),
+  kill(target, tMs + 210), shockwave(plate(target, id, 'ground', 0), tMs + 220, { radiusM: 16, strength: 1.1 }), debris(target, tMs + 230, { count: 48, speedMps: 21, hot: 0.75, scale: 1.25 }), burn(target, tMs + 900), embers(target, tMs + 1200)];
+/** A miss: the shot and its round throwing up the ground `lat`/`lon` metres off the hero (hero frame). */
+const miss = (shooter, [lat, lon], tMs) => [fire(shooter, tMs), ...hitNear(lat, lon, tMs + 60, 'medium')];
+
+// The exchanges, by format: who fires at whom, where each round lands and when; the knockout lands at about 4.3 s, inside
+// the loop's body, and the take's still is its moment. ids: { hero, ally1, foe0, foe1 } vehicle ids. `P(target, part)`
+// moves a hit to the plate its shooter can reach (in a race, the flanks the lines turn to each other) and `M(i, spot)`
+// the i-th miss to where it lands off the hero.
+const FIGHTS = {
+  '1v1': ({ hero, foe0 }, P, M) => ({ aim: { hero: 'foe0', foe0: 'hero' }, still: 4560, effects: [
+    ...glance('foe0', 'hero', hero, P('hero', 'glacis'), 250), dust('hero', 260, 6, 0.6),
+    ...scar('hero', 'foe0', foe0, P('foe0', 'turretR'), 1250),
+    mg('foe0', 1900, 12),
+    ...holes('hero', 'foe0', foe0, P('foe0', 'noseL'), 2650),
+    ...miss('foe0', M(0, [-5, 7]), 3400),
+    ...finish('hero', 'foe0', foe0, P('foe0', 'glacis'), 4300),
+    mg('hero', 5500, 10)] }),
+  '1v2': ({ hero, foe0, foe1 }, P, M) => ({ aim: { hero: 'foe0', foe0: 'hero', foe1: 'hero' }, still: 4560, effects: [
+    ...glance('foe1', 'hero', hero, P('hero', 'turretL'), 200),
+    ...scar('hero', 'foe0', foe0, P('foe0', 'turretR'), 900),
+    ...scar('foe0', 'hero', hero, P('hero', 'noseR'), 1550),
+    ...holes('hero', 'foe0', foe0, P('foe0', 'glacis'), 2300),
+    mg('foe1', 2900, 12), ...miss('foe1', M(0, [6, 9]), 3300),
+    ...finish('hero', 'foe0', foe0, P('foe0', 'noseL'), 4300), smokeScreen('foe1', 4950, { durationS: 20 }),
+    ...glance('foe1', 'hero', hero, P('hero', 'glacis'), 5250), mg('hero', 5700, 10)] }),
+  '2v2': ({ hero, ally1, foe0, foe1 }, P, M) => ({ aim: { hero: 'foe0', ally1: 'foe1', foe0: 'hero', foe1: 'ally1' }, still: 4560, effects: [
+    ...glance('foe0', 'hero', hero, P('hero', 'glacis'), 200),
+    ...scar('ally1', 'foe1', foe1, P('foe1', 'turretL'), 700),
+    ...scar('hero', 'foe0', foe0, P('foe0', 'turretR'), 1300),
+    ...scar('foe1', 'ally1', ally1, P('ally1', 'noseL'), 1850),
+    ...finish('ally1', 'foe1', foe1, P('foe1', 'glacis'), 2500),
+    mg('foe0', 3100, 12), ...miss('foe0', M(0, [-6, 8]), 3500),
+    ...finish('hero', 'foe0', foe0, P('foe0', 'glacis'), 4300),
+    mg('ally1', 5300, 10), mg('hero', 5800, 8)] }),
+};
+// The geometries: 'front' (the lines face each other D m apart: hits on the faces, the default) and 'race' (owner
+// 2026-10-05: "tanks moving in crazy directions with a lot of speed"; coordinator 2026-10-13 on s225, s229 and s231:
+// front three-quarters, tanks moving, a lens running close to far). In a race the lines drive abreast D m apart at the
+// row's speed, the foes on side k, trading broadsides: hits land on the flanks they turn to each other, misses throw up
+// the ground beyond the hero on the foes' side (the lens leads on the other), and a knocked-out foe coasts to a halt.
+const RACE_FLANK = { glacis: 'skirt', noseL: 'skirt', noseR: 'skirt', skirtL: 'skirt', skirtR: 'skirt', turretL: 'turretSide', turretR: 'turretSide' };
+const RACE_BRAKE_M = 6;
+const geometry = (geo, k) => (geo === 'race'
+  ? { P: (target, part) => (part === 'ground' ? part : `${RACE_FLANK[part]}${(target.startsWith('foe') ? -k : k) > 0 ? 'R' : 'L'}`),
+      M: (i) => [k * (4 + 2 * i), -(8 + 3 * i)] }
+  : { P: (_target, part) => part, M: (_i, spot) => spot });
+
+// The duel lenses (camera keys for buildShot in the hero's travel frame, or `actor`'s): each is a group shot (`hold`,
+// setups.mjs holdShot) that aims between the tanks it names and opens until all of them sit inside the frame, so
+// shooter and target share it from the first round to the knockout wherever the lens flies. (The first lenses looked at
+// a fixed point between the lines: the frame check had the target out of shot for 80 % of three takes in four.)
+const K = (tMs, c) => ({ tMs, frame: 'travel', lookFrame: 'travel', ...c });
+const HOLD = (hold, spread = 0.6) => ({ hold, spread });
+// the lens flies the Studio's spline rail through its keys (moves.mjs MOTION)
+const MOTION_RAIL = { rail: 'spline', travelS: 1.5 };
+export const DUEL = {
+  /** Up the shooter's flank from behind its quarter, low, the target held across the field; out and up over the knockout. */
+  shoulder: (D, k, hold) => [
+    K(0, { side: 6 * k, along: -13, lift: 1.3, fov: 30, ...HOLD(hold, 0.62) }),
+    K(2300, { side: 7 * k, along: -10, lift: 1.5, fov: 30, ...HOLD(hold, 0.62) }),
+    K(4300, { side: 8 * k, along: -7.5, lift: 1.9, fov: 30, ...HOLD(hold, 0.62) }),
+    K('end', { side: 11 * k, along: -12, lift: 5, fov: 30, ...HOLD(hold, 0.58) })],
+  /** Round the whole fight from behind the shooter's far quarter to its flank, high, every tank held as the field turns. */
+  circle: (D, k, hold) => {
+    const at = (tMs, deg, R, lift) => K(tMs, { side: R * Math.sin(deg * Math.PI / 180) * k, along: D / 2 + R * Math.cos(deg * Math.PI / 180), lift, fov: 32, ...HOLD(hold, 0.62) });
+    return [at(0, 200, 30, 9), at(2300, 168, 31, 8), at(4300, 140, 32, 7), at('end', 122, 34, 7.5)];
+  },
+  /** Over the target's shoulder at the shooter coming on: the target big in front as the rounds come in, climbing as it dies. */
+  reverse: (D, k, hold) => [
+    K(0, { actor: 'foe0', side: -4.5 * k, along: -9, lift: 1.6, fov: 30, ...HOLD(hold) }),
+    K(3000, { actor: 'foe0', side: -5.5 * k, along: -11, lift: 3.2, fov: 30, ...HOLD(hold) }),
+    K('end', { actor: 'foe0', side: -8 * k, along: -15, lift: 7, fov: 32, ...HOLD(hold, 0.58) })],
+  /** Low over the target's shoulder at the shooter's front, easing back and staying low: down a street at the hull
+   *  coming on (coordinator 2026-10-13: s228 "from the front, low, down the street"). */
+  reverseLow: (D, k, hold) => [
+    K(0, { actor: 'foe0', side: -4 * k, along: -8, lift: 1.3, fov: 30, ...HOLD(hold) }),
+    K(3000, { actor: 'foe0', side: -4.5 * k, along: -10, lift: 1.6, fov: 30, ...HOLD(hold) }),
+    K('end', { actor: 'foe0', side: -5 * k, along: -13, lift: 2.4, fov: 30, ...HOLD(hold, 0.58) })],
+  /** Over the near target's shoulder from wide of the file on a long lens (coordinator 2026-10-13, s228: the T-90M
+   *  filled half the frame with the AbramsX a small block behind it; telephoto compresses the street so the shooter
+   *  reads): the lens in the shooter's own lane 40-43 m past the near foe (keyed off the shooter, so the foes' props nudge
+ *  cannot carry it across), 3.5-4.6 m up (the far hull rises clear of the near ones), at 7.5-13°, aimed toward the
+ *  shooter (the foe's shoulder at the frame's
+ *  edge). combat-check holds the shooter to 10 % of the frame
+   *  and the near foe to 30 % at the knockout. */
+  reverseTele: (D, k, hold) => [
+    K(0, { side: -0.75 * k, along: D + 40, lift: 3.5, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) }),
+    K(3000, { side: -1 * k, along: D + 41.5, lift: 4, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) }),
+    K('end', { side: -1.25 * k, along: D + 43, lift: 4.6, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) })],
+  /** Leading the racing hull at its front quarter on the side away from the foes (k), close and low, then running out
+   *  far and high over the knockout: both lines driving abreast at the lens, trading broadsides. */
+  race: (D, k, hold) => [
+    K(0, { side: -3 * k, along: 9, lift: 1.3, fov: 34, ...HOLD(hold, 0.62) }),
+    K(2300, { side: -5 * k, along: 13, lift: 2.2, fov: 34, ...HOLD(hold, 0.62) }),
+    K(4300, { side: -9 * k, along: 19, lift: 4.5, fov: 34, ...HOLD(hold, 0.62) }),
+    K('end', { side: -12 * k, along: 24, lift: 7, fov: 34, ...HOLD(hold, 0.6) })],
+  /** Broadside from the fight's flank, booming down from high to the ground as the knockout lands: every round crosses
+   *  the frame. */
+  broadside: (D, k, hold) => [
+    K(0, { side: 30 * k, along: D * 0.5, lift: 12, fov: 34, ...HOLD(hold, 0.66) }),
+    K(3000, { side: 27 * k, along: D * 0.52, lift: 6, fov: 34, ...HOLD(hold, 0.66) }),
+    K(4300, { side: 25 * k, along: D * 0.55, lift: 3, fov: 34, ...HOLD(hold, 0.66) }),
+    K('end', { side: 24 * k, along: D * 0.58, lift: 2.2, fov: 34, ...HOLD(hold, 0.64) })],
+  /** High over the shooter's side, craning forward over the whole fight. */
+  high: (D, k, hold) => [
+    K(0, { side: 14 * k, along: -12, lift: 13, fov: 34, ...HOLD(hold) }),
+    K(3300, { side: 16 * k, along: -6, lift: 11, fov: 34, ...HOLD(hold) }),
+    K('end', { side: 18 * k, along: 0, lift: 9, fov: 34, ...HOLD(hold) })],
+  /** Down a street from high behind the shooter, pushing up its axis between the facades: the targets at its end. */
+  street: (D, k, hold) => [
+    K(0, { side: 2.5 * k, along: -14, lift: 8, fov: 34, ...HOLD(hold, 0.55) }),
+    K(3300, { side: 3 * k, along: -10, lift: 9.5, fov: 34, ...HOLD(hold, 0.55) }),
+    K('end', { side: 3.5 * k, along: -6, lift: 11, fov: 34, ...HOLD(hold, 0.55) })],
+  /** From high behind the two targets at the shooter coming on, dropping toward them as one dies. */
+  overwatch: (D, k, hold) => [
+    K(0, { actor: 'foe0', side: -7 * k, along: -13, lift: 10, fov: 32, ...HOLD(hold) }),
+    K(3300, { actor: 'foe0', side: -6 * k, along: -11, lift: 6.5, fov: 32, ...HOLD(hold) }),
+    K('end', { actor: 'foe0', side: -5 * k, along: -10, lift: 4, fov: 32, ...HOLD(hold) })],
+};
+
+// [n, id, title, set, time, format, hero lineup, foes, D (m), lateral (m), lens, k, the tanks it holds, hero speed (m/s),
+//  shift ([lat, along] m off the set's anchor, combat-search.mjs's placement), { geo, turn, foeFormation } (the geometry,
+//  the degrees its line runs off the set's heading, and the foes' formation: setups.mjs FORMATIONS, 'pair' by default)]
+const ALL4 = ['hero', 'ally1', 'foe0', 'foe1'];
+export const COMBAT_TABLE = [
+  // (s225, s229, s231 race since the coordinator's review, 2026-10-13: s225 was seen from the rear with the T-90M lost in
+  // dust and a wayside cross over the hero; s229 and s231 were static and high-wide)
+  [225, 'verdant-duel', 'A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides', S.vFarm, 'golden', '1v1',
+    [CAST.leo], [CAST.t90m], 28, 0, 'race', 1, ['hero', 'foe0'], 6, [0, 0], { geo: 'race', turn: 0 }],
+  [226, 'church-duel', 'A Challenger 3 and a T-80U trade rounds by the onion-domed church in the snow', S.wChurch, 'day', '1v1',
+    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', 1, ['foe0', 'hero'], 2.5, [0, 0]],
+  [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
+    [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
+  // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
+  // deck; then a telephoto from the square at the street's east end, the foes in file in the right lane and the AbramsX
+  // in the left, the street 12 m wide from 10 to 62 m along: the AbramsX at 10 % of the frame and more, the near foe 30 %)
+  [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
+    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'reverseTele', 1, ['foe0', 'foe1', 'hero'], 0, [0, 14], { foeFormation: 'file' }],
+  [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, -8], { geo: 'race', turn: 0 }],
+  [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
+    [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
+  [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
+    [CAST.sepv3, CAST.sepv2], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', 1, ALL4, 6, [0, 8], { geo: 'race', turn: 0 }],
+  [232, 'village-2v2', 'A Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 in the Verdant village', S.vVillage, 'day', '2v2',
+    [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'high', -1, ALL4, 2, [3, 3]],
+  // (off the fjord: the owner banned its broken-stratocumulus sky on every map, 2026-10-13. Verdant's road set has a
+  // house beside the enemy line that filled the frame from either side, and the Frontier farm stands in woods; the
+  // orchard village's sky is Verdant's fair-weather cumulus)
+  [233, 'orchard-2v2', 'A Strv 122 and a CV90 fight a T-90 and a T-72B3 through the orchard village in the morning', S.orVillage, 'morning', '2v2',
+    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0]],
+];
+/** One combat take from its table row; `over` replaces any of { lens, k, hold, speed, D, lat, shift, geo, turn }
+ *  (combat-search.mjs). `shift` ([lat, along] m in the set's frame, the row's 15th field) moves the whole fight off the
+ *  set's anchor onto clear ground; `turn` runs it that many degrees off the set's heading. */
+export function combatTake(row, over = {}) {
+  const [n, id, title, set0, time, format, lineup, foes] = row;
+  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
+    speed: row[13], shift: row[14] ?? [0, 0], geo: 'front', turn: 0, foeFormation: 'pair', ...(row[15] ?? {}), ...over };
+  const anchor = shift[0] || shift[1] ? frame(set0.anchor, set0.heading).at(shift[0], shift[1]).map((v) => +v.toFixed(2)) : set0.anchor;
+  const set = { ...set0, anchor, heading: ((set0.heading + turn) % 360 + 360) % 360 };
+  const ids = { hero: lineup[0], ally1: lineup[1] ?? null, foe0: foes[0], foe1: foes[1] ?? null };
+  const { P, M } = geometry(geo, k);
+  const fight = FIGHTS[format](ids, P, M);
+  const race = geo === 'race';
+  // a race's foes drive abreast on side k at the hero's speed, the first halting 2 s past its knockout (and in a 2v2
+  // the second past its own); a front fight's stand D m ahead, `lat` off the line
+  const routes = {};
+  if (race) {
+    const runTo = (killMs) => speed * (killMs / 1000 - 0.1) + RACE_BRAKE_M;
+    routes.foe0 = { pts: [[k * D, 0], [k * D, runTo(4510)]], speed, stop: true, brakeM: RACE_BRAKE_M };
+    if (foes[1]) routes.foe1 = format === '2v2'
+      ? { pts: [[k * (D + 11), -9], [k * (D + 11), -9 + runTo(2710)]], speed, stop: true, brakeM: RACE_BRAKE_M }
+      : { pts: [[k * (D + 11), -9], [k * (D + 11), -9 + speed * 7 + 10]], speed };
+  }
+  const enemies = { along: race ? 0 : D, lat: race ? k * D : lat, count: foes.length, formation: foeFormation, lineup: foes, states: foes.map(() => 'intact') };
+  const kind = 'battle', flare = time === 'night' ? [NIGHT_FLARE(race ? H(k * D * 0.5, 12) : H(-6, D * 0.6), 90)] : [];
+  // a barrage walking in behind the enemy line ("effects all over the place"): 26 m past the target, 10 m across, so
+  // the nearest burst lands well clear of the second foe (9 m behind the first); in a race, out past the foes' flank.
+  // A lens on the foes' side (over their shoulder) has the line behind it, so its barrage falls behind the hero instead,
+  // framing it (s228's telephoto previz, 2026-10-13: the bursts filled half the frame from between the lens and the foes)
+  const foesSide = /^(reverse|reverseLow|reverseTele|overwatch)$/.test(lensName);
+  const guns = [barrage(race ? H(k * (D + 26), 8) : foesSide ? H(lat * 0.5, -24) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, format === '1v1' ? 4 : 5, 10)];
+  return [n, id, kind, title, { ...set, formation: lineup.length > 1 ? 'pair' : 'solo', count: lineup.length, lineup, enemies },
+    { time, speed, sun: 'side', combat: format, lens: lensName, aim: fight.aim, effects: [...flare, ...guns, ...fight.effects], cam: DUEL[lensName](D, k, hold),
+      ...(race ? { routes } : {}), ...MOTION_RAIL },
+    { tMs: fight.still, exposureMs: 2 }];
+}
+export const COMBAT = COMBAT_TABLE.map((row) => combatTake(row));
+/** An actor's pose at `tMs` as the take moves it ({ pos: [x, z], facingDeg }); its placed pose when it holds still. */
+function poseAt(scene, a, tMs) {
+  const keys = scene.storyboard?.actorTracks?.find((t) => t.actor === a.name)?.keys, out = {};
+  if (keys?.length && sampleActorTrack(keys, tMs, out)) return { pos: [out.x, out.z], facingDeg: out.facingDeg ?? a.facingDeg ?? 0 };
+  return { pos: a.pos, facingDeg: a.facingDeg ?? 0 };
+}
+const actorOf = (scene, name) => {
+  const a = scene.actors.find((x) => x.name === name);
+  if (!a) throw new Error(`${scene.meta?.id ?? '?'}: a hit on ${name}, who is not in the take`);
+  return a;
+};
+/** A plate marker's world point and its world normal, on the actor where the take has it at `tMs`. */
+function seatPlate(scene, model, m, tMs) {
+  const { pos, facingDeg } = poseAt(scene, actorOf(scene, m.actor), tMs);
+  const yaw = facingDeg * Math.PI / 180, f = [Math.sin(yaw), Math.cos(yaw)], r = [-f[1], f[0]];
+  const [side, up, along] = m.at, [ns, nu, na] = m.normal;
+  let n = [r[0] * ns + f[0] * na, nu, r[1] * ns + f[1] * na];
+  const l = Math.hypot(...n) || 1;
+  n = n.map((v) => v / l);
+  const ground = model ? (model.supportAt ?? model.heightAt)(pos[0], pos[1]) : 0;
+  return { p: [pos[0] + r[0] * side + f[0] * along + n[0] * m.out, ground + up + n[1] * m.out, pos[1] + r[1] * side + f[1] * along + n[2] * m.out], n };
+}
+/** The combat round's hits seated on their targets' armour where the take has them (an impact or sparks also steers its
+ *  shower along the plate's normal), each glancing round's tracer laid off the plate on the reflected line from the
+ *  shooter's gun, and each hole stamped on the face toward its shooter. */
+function seatArmor(scene, model) {
+  const r2 = (v) => +v.toFixed(2);
+  scene.effects = scene.effects.map((fx) => {
+    if (fx.at?.armor) {
+      const { p, n } = seatPlate(scene, model, fx.at.armor, fx.tMs);
+      return { ...fx, at: p.map(r2), params: { ...fx.params, ...(fx.type === 'impact' || fx.type === 'sparks' ? { normal: n.map(r2) } : {}) } };
+    }
+    if (fx.deflect) {
+      const { p, n } = seatPlate(scene, model, fx.deflect.at.armor, fx.tMs), { pos } = poseAt(scene, actorOf(scene, fx.deflect.shooter), fx.tMs);
+      const shooter = actorOf(scene, fx.deflect.shooter);
+      const gy = model ? (model.supportAt ?? model.heightAt)(pos[0], pos[1]) : 0, muzzleY = gy + (HULL_DIMS[shooter.id]?.[3] ?? 2.4) * 0.8;
+      let d = [p[0] - pos[0], p[1] - muzzleY, p[2] - pos[1]];
+      const dl = Math.hypot(...d) || 1;
+      d = d.map((v) => v / dl);
+      const dn = d[0] * n[0] + d[1] * n[1] + d[2] * n[2], out = d.map((v, k) => v - 2 * dn * n[k]);
+      const from = p.map((v, k) => v + n[k] * 0.25), { deflect: _d, ...rest } = fx;
+      return { ...rest, from: from.map(r2), to: from.map((v, k) => r2(v + out[k] * 400)) };
+    }
+    if (fx.params?.seedToward) {
+      const at = poseAt(scene, actorOf(scene, fx.actor), fx.tMs).pos, from = poseAt(scene, actorOf(scene, fx.params.seedToward), fx.tMs).pos;
+      const { seedToward: _s, ...params } = fx.params;
+      return { ...fx, params: { ...params, seedDeg: r2(Math.atan2(from[0] - at[0], from[1] - at[1]) * 180 / Math.PI) } };
+    }
+    return fx;
+  });
+}
+
 // The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
 // MEDIA_R5_FEATURES points at another dump (a fresh one under review).
 const models = new Map();
@@ -787,9 +1073,12 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     effects: [...(film.effects ?? []), ...choreo.effects] });
   // a routed take is placed and checked against the props by the planner (route-check.mjs propProblems): the lab's
   // spiral nudge would shift its routes off the checked lines
-  if (set.autoPlace === false || film.routes) scene.autoPlace = false;
+  // (a combat take's hits are seated on the hulls where the table puts them: the lab's nudge would leave them in the air)
+  if (set.autoPlace === false || film.routes || film.combat) scene.autoPlace = false;
   const burstWorld = film.routes ? modelOf(set.map) : null;
   if (burstWorld) clearBursts(scene, burstWorld);
+  // the combat round's hits seated on the armour of the tanks as they stand (after the props nudge)
+  if (scene.effects.some((e) => e.at?.armor || e.deflect || e.params?.seedToward)) seatArmor(scene, modelOf(set.map));
   // effects on a tank the take does not stage (2026-10-08: S38's re-plan dropped its ally to fit the route, and the ally's
   // two rounds left in its effects spun the Studio's page at 100 % CPU in two engine-review runs)
   const staged = new Set(scene.actors.map((a) => a.name));
@@ -802,7 +1091,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // the stills the finals render at 4K (lens-check.mjs stillMoments; owner 2026-10-06: "the stills from those are nice,
   // will we use them too?"): the designated moment where the hero stands centred and clear, and the close portrait
   const world = modelOf(set.map), moments = world && scene.still ? stillMoments(scene, world, scene.still.tMs) : null;
-  if (moments && moments[0] !== scene.still.tMs) scene.still = { ...scene.still, tMs: moments[0] };
+  // (a combat take's still is its knockout, where it was designated; the search's moments follow it as extras)
+  if (moments && moments[0] !== scene.still.tMs && !film.combat) scene.still = { ...scene.still, tMs: moments[0] };
   if (moments?.length > 1) scene.stillsExtra = moments.slice(1);
   // Crisp stills (owner 2026-10-06: "weird blur ... remove that"). The table's 25 to 33 ms exposures came from round
   // four's near-still cameras; round six's lens moves fast, so 25 ms smeared the whole 4K frame (more than twice the
@@ -811,7 +1101,9 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
-    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}) };
+    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}),
+    // a combat take records its format and lens (combat-check.mjs holds the telephoto's frame shares to them)
+    ...(film.combat ? { combat: { format: film.combat, lens: film.lens ?? null } } : {}) };
   return scene;
 }
 
@@ -820,7 +1112,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const only = process.argv[3]?.split(',');
   mkdirSync(out, { recursive: true });
   const manifest = [];
-  for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET]) {
+  for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET, ...COMBAT]) {
     const scene = siteScene(shot);
     if (only && !only.some(o => scene.meta.id.includes(o))) continue;
     writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));

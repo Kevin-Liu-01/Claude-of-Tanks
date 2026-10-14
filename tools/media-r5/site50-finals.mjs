@@ -6,7 +6,7 @@
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 //     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
-//     [--order=s01,s04,…] [--portrait] [--master-after] [--masters-in-flight=2]
+//     [--order=s01,s04,…] [--portrait] [--master-after] [--masters-in-flight=2] [--cache-dir=<dir>]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -28,14 +28,16 @@ import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
-import { CAPTURE_LOCK_DIR, createCaptureLock } from '../capture-lock.mjs';
+import { CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR } from '../capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
 const resolved = resolve(args.find(a => !a.startsWith('--')) ?? join(SHOTS, 'site50/review2'));
 const tag = flags.tag ? `-${flags.tag}` : '';
 const scenes = join(SHOTS, 'site50/scenes'), renders = join(SHOTS, `site50/renders${tag}`), deliver = join(SHOTS, `site50/deliver${tag}`);
-const cacheDir = join(SHOTS, '.vite-cinema');
+// --cache-dir=<dir>: the renderer's own Vite cache (combat round, 2026-10-13: a run from another export's tree keeps off the
+// cache the worktree's chains share)
+const cacheDir = flags['cache-dir'] ? resolve(flags['cache-dir']) : join(SHOTS, '.vite-cinema');
 const run = (label, cmd, cmdArgs) => {
   console.log(`[finals] ${label}: ${cmd} ${cmdArgs.join(' ')}`);
   const r = spawnSync(cmd, cmdArgs, { stdio: 'inherit', env: { ...process.env, MEDIA_R5_LIGHT: '1' } });
@@ -43,7 +45,7 @@ const run = (label, cmd, cmdArgs) => {
 };
 // cinema-jobs reads each still moment from <resolved>/<id>.scene.json: the site scenes are their own sources
 let staged = 0;
-for (const f of readdirSync(scenes).filter(f => /^s\d\d-.*\.json$/.test(f))) {
+for (const f of readdirSync(scenes).filter(f => /^s\d{2,3}-.*\.json$/.test(f))) {
   const id = f.replace(/\.json$/, '');
   if (!existsSync(join(resolved, `${id}.resolved.json`))) continue;
   copyFileSync(join(scenes, f), join(resolved, `${id}.scene.json`)); staged++;
@@ -77,8 +79,13 @@ const yieldHolds = Math.max(0, Number(flags['yield-holds'] ?? 2));
 const fifo2 = flags['yield-fifo2'] ?? null;
 const fifo2Holds = () => { try { const n = Number(JSON.parse(readFileSync(fifo2, 'utf8')).holds); return Number.isFinite(n) ? n : null; } catch { return null; } };
 let fifo2Base = null;
-const queue = createCaptureLock();
 const holdId = () => { try { const s = statSync(CAPTURE_LOCK_DIR); return `${s.ino}:${s.birthtimeMs}`; } catch { return null; } };
+// Only a normal-band hold pays a yield (2026-10-13: the fleet finals counted perf's priority-band holds as the yields
+// they owed, so for over an hour no normal ticket got the lock while chain16 ran; lab.mjs has classed holds this way
+// since 2026-10-12). A ticket's name starts with its 15-digit stamp: a priority ticket is stamped back in time, a normal
+// one at about the moment it joined. A new hold is classed by the ticket that left the queue within three seconds of it.
+const PRIORITY_AGE_MS = 24 * 3600 * 1000;
+const queueTickets = () => { try { return new Map(readdirSync(CAPTURE_QUEUE_DIR).filter((n) => n.endsWith('.t')).map((n) => [n, Number(n.slice(0, 15))])); } catch { return new Map(); } };
 // The share changes overnight without a restart (the coordinator's pacing, 2026-10-08: two holds of the capture service
 // per media hold until 05:00, one after, and none during push 7's browser receipts): renders/yield-holds, when present,
 // replaces --yield-holds at every lease, and while renders/pause exists no new lease starts.
@@ -94,32 +101,50 @@ async function waitPause() {
 }
 // (launch day, 2026-10-09: two media leases per capture-service hold) the wanted holds are a rate per lease: owed holds
 // accumulate, and a lease yields only the whole holds owed, so renders/yield-holds 0.5 yields one hold every second lease
-let yieldOwed = 0;
+let yieldOwed = 0, leaseNo = 0;
 async function yieldGpu() {
+  leaseNo++;
   yieldOwed += holdsWanted();
   const yieldHolds = Math.floor(yieldOwed + 1e-9);
-  if (!yieldHolds) return;
+  if (!yieldHolds) { console.log(`[finals] lease ${leaseNo}: no yield owed (${holdsWanted()} a lease)`); return; }
   yieldOwed -= yieldHolds;
-  const seen = new Set();
-  let freeSince = Date.now(), served = 0, readAt = 0;
+  const seen = new Set(), skipped = new Set(), pending = new Map(), began = Date.now();
+  let freeSince = Date.now(), served = 0, readAt = 0, tickets = queueTickets(), left = [];
   for (;;) {
     if (stopping) return;
-    const id = holdId();
-    if (id) { seen.add(id); freeSince = Date.now(); }
-    if (fifo2 && Date.now() - readAt > 5000) {
-      readAt = Date.now();
-      const now = fifo2Holds();
+    const id = holdId(), now = queueTickets(), t = Date.now();
+    // the tickets that left the queue in the last five seconds ([stamp, when]); a new hold is classed by the ticket
+    // that left within three seconds of it (its owner's), waiting up to three seconds for that ticket to go
+    for (const [name, at] of tickets) if (!now.has(name)) left.push([at, t]);
+    left = left.filter(([, at]) => t - at < 5000);
+    tickets = now;
+    if (id && !seen.has(id) && !skipped.has(id) && !pending.has(id)) pending.set(id, t);
+    for (const [hold, first] of pending) {
+      const owners = left.filter(([, at]) => Math.abs(at - first) < 3000);
+      if (!owners.length && t - first < 3000) continue;
+      const priority = owners.length > 0 && owners.every(([at]) => at < t - PRIORITY_AGE_MS);
+      (priority ? skipped : seen).add(hold);
+      pending.delete(hold);
+    }
+    if (id) freeSince = t;
+    if (fifo2 && t - readAt > 5000) {
+      readAt = t;
+      const count = fifo2Holds();
       // (a relaunch counts from its first look; a restarted runner counts from zero again)
-      if (now != null && (fifo2Base == null || now < fifo2Base)) fifo2Base = now;
-      served = now != null ? now - fifo2Base : 0;
+      if (count != null && (fifo2Base == null || count < fifo2Base)) fifo2Base = count;
+      served = count != null ? count - fifo2Base : 0;
     }
     if ((fifo2 ? served : seen.size) >= yieldHolds) break;
-    const free = id ? 0 : Date.now() - freeSince;
-    if ((free > 60000 && queue.waiting() === 0) || free > 300000) break;
+    // with the lock free a minute and no normal ticket waiting (five minutes at most), the finals go on
+    const free = id ? 0 : t - freeSince;
+    const normalWaiting = [...now.values()].some((at) => at >= t - PRIORITY_AGE_MS);
+    if ((free > 60000 && !normalWaiting) || free > 300000) break;
     await new Promise(resolve => setTimeout(resolve, 200));
   }
-  const yielded = fifo2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${seen.size} in all)` : `${seen.size} hold${seen.size === 1 ? '' : 's'}`;
-  console.log(`[finals] yielded to ${yielded}; rejoining the queue at ${stamp} ${new Date().toTimeString().slice(0, 8)}`);
+  const given = fifo2 ? `${served} fifo2 hold${served === 1 ? '' : 's'} (${seen.size} normal-band in all)`
+    : `${seen.size} of ${yieldHolds} normal-band hold${yieldHolds === 1 ? '' : 's'}`;
+  const passed = skipped.size ? `, ${skipped.size} priority-band hold${skipped.size === 1 ? '' : 's'} (perf, media) passed by` : '';
+  console.log(`[finals] lease ${leaseNo}: yielded to ${given}${passed} in ${((Date.now() - began) / 60000).toFixed(1)} min; rejoining the queue at ${stamp} ${new Date().toTimeString().slice(0, 8)}`);
 }
 const only = flags.only ? [`--only=${flags.only}`] : [];
 const chunk = Math.max(1, Number(flags.chunk ?? 10));

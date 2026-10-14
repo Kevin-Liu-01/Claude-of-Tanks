@@ -29,7 +29,7 @@ const load = () => (existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, 'ut
 const save = lib => writeFileSync(MANIFEST, `${JSON.stringify(lib, null, 1)}\n`);
 // the shot's code, formatted stably (one key per line, so a diff reads field by field)
 const codeOf = id => `${JSON.stringify(JSON.parse(readFileSync(join(from, `${id}.resolved.json`), 'utf8')), null, 1)}\n`;
-const currentIds = () => readdirSync(from).filter(f => /^s\d\d-.*\.resolved\.json$/.test(f)).map(f => f.replace('.resolved.json', '')).sort();
+const currentIds = () => readdirSync(from).filter(f => /^s\d{2,3}-.*\.resolved\.json$/.test(f)).map(f => f.replace('.resolved.json', '')).sort();
 const pick = spec => (spec === 'all' ? currentIds() : [...new Set(spec.split(',').flatMap(p => currentIds().filter(id => id.startsWith(p))))]);
 const head = () => execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
 const stamp = new Date().toISOString();

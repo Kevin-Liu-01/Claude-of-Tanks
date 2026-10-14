@@ -82,7 +82,8 @@ function delivery(id) {
   let found = null;
   for (const dir of ROUNDS) {
     const d = join(MEDIA, dir, id);
-    if (!existsSync(join(d, `${id}-4k.mp4`))) continue;
+    // a site take's round films it at 4K; a fleet take's (chain16) at 1080p only, its web cuts made from that
+    if (!existsSync(join(d, `${id}-4k.mp4`)) && !existsSync(join(d, `${id}.mp4`))) continue;
     const f = (name) => (existsSync(join(d, name)) ? join(d, name) : null);
     const take = { id, round: dir, current: CURRENT.includes(dir), dir: d,
       moment: f(`${id}.webp`), close: f(`${id}-close.webp`), momentPng: f(`${id}-4k.png`), closePng: f(`${id}-close-4k.png`),
@@ -223,7 +224,7 @@ function buildProxies() {
   }
   // a re-pick leaves proxies of takes no path names any more (retire.mjs would also drop them as unreferenced)
   const current = new Set(jobs.map((job) => job.path));
-  for (const name of readdirSync(PROXIES)) if (/^s\d\d-[a-z0-9-]+-mobile\.mp4$/.test(name) && !current.has(name)) rmSync(join(PROXIES, name));
+  for (const name of readdirSync(PROXIES)) if (/^s\d{2,3}-[a-z0-9-]+-mobile\.mp4$/.test(name) && !current.has(name)) rmSync(join(PROXIES, name));
   const manifest = { schemaVersion: 1, purpose: 'Mobile landing-page video proxies',
     encoding: { codec: 'h264', width: 960, height: 540, framesPerSecond: 24, audio: false },
     files: [
@@ -257,7 +258,7 @@ function frameList() {
     const png = join(dir, id, 'stills', readdirSync(join(dir, id, 'stills')).find((f) => f.endsWith('.png')));
     const scene = join(dirname(dir), 'scenes', `${id}.json`);
     const meta = existsSync(scene) ? JSON.parse(readFileSync(scene, 'utf8')).meta ?? {} : {};
-    out.push({ id, png, round: rel(dir), current: dir === dirs[0], n: meta.frame ?? Number(id.slice(1, 3)),
+    out.push({ id, png, round: rel(dir), current: dir === dirs[0], n: meta.frame ?? Number(/^s(\d+)-/.exec(id)?.[1]),
       title: meta.title ?? id, technique: meta.technique ?? '', map: meta.map ?? '', hero: meta.heroName ?? '' });
   }
   return out;
@@ -335,7 +336,13 @@ function buildFilms() {
 // 0.4-0.6 MB, where 960×540 crf 36 made ~2 MB; the panels show it a few hundred pixels wide) and a 640×360 poster (the
 // coordinator's budget, 2026-10-13: loops ≤ 0.6 MB, posters ≤ 120 KB, fleet-media.selftest), and fleet/index.json, which the Tank Gallery's
 // dossiers, the Garage's battle gallery, the manual and the Studio's Director read. A vehicle whose take is not delivered
-// yet is left out of the index (the app shows nothing for it).
+// yet is left out of the index (the app shows nothing for it). The poster is the take's close portrait (its 4K still,
+// scaled), not the loop's first frame: a take opens wide and swings in close, so its first frame leaves the vehicle
+// small (2026-10-13: the KV-2 a speck on the snow, the T-72B3 Sich behind a tree). The close portrait showed the
+// vehicle largest and clearest in 33 of the first 35 fleet takes; the key moment, the other 4K still, often puts it
+// behind dust or a bush. picks.fleetPosters.moment names the vehicles whose key moment reads better (the BMP-2's close
+// portrait leaves it small and dark in the grass), picks.fleetPosters.loop those that keep the loop's first frame (the
+// Type 10's close portrait puts it farther off in the village than its opening does).
 const FLEET_TAKES = join(ROOT, 'tools/media-r5/vehicle-takes.json'), FLEET_ROSTER = join(ROOT, 'tools/media-r5/fleet-roster.json');
 const fleetRoster = existsSync(FLEET_ROSTER) ? JSON.parse(readFileSync(FLEET_ROSTER, 'utf8')) : [];
 const fleetEntry = (takeId) => fleetRoster.find((r) => `s${r.n}-${r.id}` === takeId) ?? null;
@@ -351,19 +358,28 @@ function buildFleet() {
   const vehicles = {};
   for (const [vehicle, takeId] of Object.entries(map)) {
     const d = delivery(takeId), meta = takeTitles(takeId);
-    if (!d?.hd || !d.poster || !meta) continue;
+    if (!d?.hd || !d.momentPng || !meta) continue;
+    // a fleet take counts once its sound is muxed: the mux rewrites the film, which would make the loop encode twice
+    if (fleetEntry(takeId) && !d.sound) continue;
     const take = { take: takeId, round: d.round, vehicle };
     make(join(OUT, 'fleet', `${vehicle}.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
       '-vf', 'scale=640:360:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '48', '-b:v', '680k', '-row-mt', '1',
       '-deadline', 'good', '-cpu-used', '2', tmp]), take);
-    make(join(OUT, 'fleet', `${vehicle}.jpg`), d.poster, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.poster,
+    const posterPick = PICKS.fleetPosters ?? {};
+    const still = (posterPick.moment ?? []).includes(vehicle) ? d.momentPng
+      : (posterPick.loop ?? []).includes(vehicle) ? d.poster : (d.closePng ?? d.momentPng);
+    make(join(OUT, 'fleet', `${vehicle}.jpg`), still, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', still,
       '-vf', 'scale=640:360:flags=lanczos', '-q:v', '5', tmp]), take);
     vehicles[vehicle] = { take: takeId, map: meta.map, title: meta.title, short: meta.short,
       loop: `${BASE_URL}/fleet/${vehicle}.webm`, poster: `${BASE_URL}/fleet/${vehicle}.jpg`, scene: `${BASE_URL}/scenes/${takeId}.scene.json` };
   }
   const index = join(OUT, 'fleet', 'index.json');
   mkdirSync(dirname(index), { recursive: true });
-  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, collection: PICKS.collection, vehicles }, null, 1)}\n`);
+  // the index is keyed as vehicle-takes.json is, so it stands at the media record's tank-id schema (fleet-rekey.mjs
+  // writes tools/media-r5/tank-id-schema.json and stamps the index the same way); a tree without the record has none
+  const idRecord = join(ROOT, 'tools/media-r5/tank-id-schema.json');
+  const tankIdSchema = existsSync(idRecord) ? JSON.parse(readFileSync(idRecord, 'utf8')).tankIdSchema : null;
+  writeFileSync(index, `${JSON.stringify({ schemaVersion: 1, ...(tankIdSchema ? { tankIdSchema } : {}), collection: PICKS.collection, vehicles }, null, 1)}\n`);
   record(index, null, { vehicles: Object.keys(vehicles).length });
   return vehicles;
 }
@@ -381,11 +397,14 @@ function buildScenes(fleet = {}) {
       durationMs: scene.storyboard?.durationMs ?? null, scene: `${BASE_URL}/scenes/${id}.scene.json`,
       thumb: `${BASE_URL}/stills/${id}-thumb.webp` });
   }
-  // the fleet's takes join the Director's list as their own group, each with its vehicle (the site's own takes stay first)
+  // the fleet's takes join the Director's list as their own group, each with its vehicle (the site's own takes stay first).
+  // A fleet take's scene is the one its film was made from: the library's when the take has one there, else the scene
+  // its delivery carries (the fleet's own takes are planned from the roster and kept as their delivered scenes).
   for (const [vehicle, entry] of Object.entries(fleet)) {
     if (takes.some((t) => t.id === entry.take)) continue;
-    const source = join(library, `${entry.take}.json`);
-    if (!existsSync(source)) continue;
+    const kept = join(library, `${entry.take}.json`), filmed = join(delivery(entry.take)?.dir ?? '', `${entry.take}.scene.json`);
+    const source = existsSync(kept) ? kept : existsSync(filmed) ? filmed : null;
+    if (!source) continue;
     copy(join(OUT, 'scenes', `${entry.take}.scene.json`), source);
     const scene = JSON.parse(readFileSync(source, 'utf8'));
     takes.push({ id: entry.take, group: 'fleet', vehicle, title: entry.title, short: entry.short, map: scene.map ?? entry.map,
