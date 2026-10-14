@@ -190,16 +190,18 @@ function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: K
 const BRICK = lin([150, 104, 84]), SLATE = lin([60, 62, 70]), WHITE = lin([222, 216, 206]), STONE = lin([128, 122, 112]);
 const STEEL = lin([118, 116, 112]), CONCRETE = lin([180, 174, 160]), DARK = lin([46, 44, 42]), TAR = lin([58, 50, 44]);
 // a church tower's (the landmark): warm brick, a pale stone cornice, a pale belfry stage, a lead-grey spire
-const TOWER_BRICK = lin([186, 104, 76]), CORNICE = lin([214, 204, 184]), BELFRY = lin([200, 186, 164]), LEAD = lin([156, 158, 156]);
+// (the coordinator after the tower frames: against Polders' bright haze contrast matters more than tone — a dark slate
+// spire and dark louvres, the brick kept warm)
+const TOWER_BRICK = lin([186, 104, 76]), CORNICE = lin([214, 204, 184]), BELFRY = lin([200, 186, 164]);
+const SPIRE_SLATE = lin([44, 46, 54]), LOUVRE = lin([22, 20, 20]);
 
 /** A vertical: its form by kind at its height (heightM) and half-width (halfM). */
 function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number, kit: string | null): void {
   switch (kind) {
     case 'churchTower': case 'spire': case 'campanile': {
-      // a landmark read at 1.5–2.6 km (the coordinator on the pilot: "a wider stage and a lighter spire"): the tower's
-      // half-width at least a seventh of its height (a tenth for a town's great tower), warm brick with a pale stone band
-      // under a pale belfry stage, its spire lead-grey and as wide as the stage, so it reads against the dyke poplars
-      // and against the sky
+      // a landmark read at 1.5–2.6 km (the coordinator on the pilot): the tower's half-width at least a seventh of its
+      // height (a tenth for a town's great tower), warm brick with a pale stone band under a pale belfry stage with dark
+      // louvres, its spire dark slate and as wide as the stage, so it reads against the poplars and the bright haze
       const s = kind === 'campanile' ? half : Math.max(half, H / (H >= 70 ? 10 : 7));
       const body = kind === 'campanile' ? 0.8 : 0.6;
       const wall = kit === 'savoyard' ? STONE : TOWER_BRICK;
@@ -211,11 +213,11 @@ function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number,
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const lu = 0.3 * s, lv = 0.45 * (top - belfry);
         const cu = a * (s * 0.9 + 0.05), cw = b * (s * 0.9 + 0.05), mid = (belfry + top) / 2;
-        if (a) box(S, f, cu - 0.05, cu + 0.05, mid - lv / 2, mid + lv / 2, -lu, lu, DARK);
-        else box(S, f, -lu, lu, mid - lv / 2, mid + lv / 2, cw - 0.05, cw + 0.05, DARK);
+        if (a) box(S, f, cu - 0.05, cu + 0.05, mid - lv / 2, mid + lv / 2, -lu, lu, LOUVRE);
+        else box(S, f, -lu, lu, mid - lv / 2, mid + lv / 2, cw - 0.05, cw + 0.05, LOUVRE);
       }
       if (kind === 'campanile') prism(S, f, 4, s * 1.2, 0, top, H, lin([150, 80, 60]), Math.PI / 4);
-      else prism(S, f, 8, s * 1.02, 0, top, H, LEAD);
+      else prism(S, f, 8, s * 1.02, 0, top, H, SPIRE_SLATE);
       // the church behind its tower: its nave under a steep roof (not for a lone spire), a village church's size
       if (kind === 'churchTower' && H < 70) {
         const ns = Math.min(s, 5.2), nl = ns * 3.4, nw = ns * 1.5;

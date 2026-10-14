@@ -75,16 +75,17 @@ for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
   assert.ok(hit, `a village with its tower on the ${az}° sightline`);
   assert.ok(plan.verticals.some((v) => v.settlement === hit.id), `its tower stands (${hit.name ?? hit.id})`);
 }
-// and the rows open on the sightlines, only where a crown would hide a tower: no planned tree covers a sightline tower
-// from the edge's eyes, and the gaps stay narrow (most trees on the bearing's ±4.5° corridor still stand)
+// and the rows open on the sightlines, crown by crown: from the edge's middle eye no planned crown covers a sightline
+// tower's belfry and spire; no row loses more than SIGHTLINE_GAP_MAX_M at a stretch; most of the corridors stand
 {
-  const { sightlineBlocker } = await import('./outland.ts');
-  // (without the planner's 8 mrad margin: the planner tests on its 40 m planning heights, this on the field's own)
-  const blocks = sightlineBlocker(plan.settlements, (x, z) => field.heightAt(x, z), { marginRad: 0 });
+  const { sightlineBlocker, SIGHTLINE_GAP_MAX_M } = await import('./outland.ts');
+  // (the planner tests on the field's own heights, with its margin; this from the middle eye, without the margin)
+  const blocks = sightlineBlocker(plan.settlements, (x, z) => field.heightAt(x, z), { marginRad: 0, eyeOffsets: [0] });
   assert.ok(blocks, 'the sightline villages are known');
-  // (the planner tests on its 40 m planning heights, this on the field's own: a borderline crown or two may differ)
   const hiding = plan.trees.filter((t) => blocks(t)).length;
-  assert.ok(hiding <= 3, `no planned tree hides a sightline tower (${hiding} borderline)`);
+  assert.ok(hiding <= 3, `no planned crown hides a sightline tower's belfry from the edge (${hiding} borderline)`);
+  assert.ok(plan.sightlineGaps && plan.sightlineGaps.felled > 0, 'the sightlines felled some trees');
+  assert.ok(plan.sightlineGaps.maxRunM <= SIGHTLINE_GAP_MAX_M + 1, `no row loses more than ${SIGHTLINE_GAP_MAX_M} m (${plan.sightlineGaps.maxRunM.toFixed(0)} m)`);
   let corridor = 0;
   for (const s of plan.settlements.filter((s) => s.towerM)) {
     const az = Math.atan2(s.x, s.z), d = Math.hypot(s.x, s.z);
@@ -94,7 +95,7 @@ for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
       return da < 0.0785 && Math.hypot(t.x, t.z) < d - 60;
     }).length;
   }
-  assert.ok(corridor > 0, `the gaps are cut tree by tree, not as radial lanes (${corridor} trees still stand in the corridors)`);
+  assert.ok(corridor > 0, `the gaps are cut crown by crown, not as radial lanes (${corridor} trees still stand in the corridors)`);
 }
 
 for (const s of plan.settlements.filter((s) => s.kind === 'village')) {

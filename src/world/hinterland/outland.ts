@@ -99,6 +99,8 @@ export interface HinterlandPlan {
   trees: HinterlandTree[];
   /** Term 3: what the field levels and grades for this plan. */
   features: HinterlandPlanFeatures;
+  /** The sightlines' felling (the tower pass): trees felled and the longest felled stretch of a row (m). */
+  sightlineGaps?: { felled: number; maxRunM: number };
   ms: number;
 }
 
@@ -562,8 +564,62 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
   // along the edge, so each gap is a few trees wide with ragged ends, not a radial lane (the coordinator)
   // (on the field's own heights: the 40 m planning grid blurs a dyke's crown away from under its poplars)
   const blocks = sightlineBlocker(settlements, inputs.exactHeightAt ?? inputs.heightAt);
+  let sightlineGaps = { felled: 0, maxRunM: 0 };
   if (blocks) {
-    const kept = trees.filter((t) => !blocks(t));
+    // a row's trees stand in order in the list: a tree's neighbours within 1.8 spacings are its row; its direction says
+    // whether the row runs nearly along a sightline (then the middle five eyes), and a felled stretch longer than
+    // SIGHTLINE_GAP_MAX_M keeps the trees past the 60 m nearest the sightline's line
+    const towers = settlements.filter((s) => s.towerM).map((s) => ({ az: Math.atan2(s.x, s.z) }));
+    const near = (a: HinterlandTree, b: HinterlandTree | undefined): boolean => !!b && Math.hypot(a.x - b.x, a.z - b.z) < 16;
+    const fell = trees.map((t, i) => {
+      const prev = trees[i - 1], next = trees[i + 1];
+      const nb = near(t, next) ? next! : near(t, prev) ? prev! : null;
+      let along = false;
+      if (nb) {
+        const rowAz = Math.atan2(nb.x - t.x, nb.z - t.z);
+        for (const w of towers) {
+          let d = Math.abs(rowAz - w.az) % Math.PI;
+          if (d > Math.PI / 2) d = Math.PI - d;
+          if (d < 0.44) { along = true; break; } // (within 25°)
+        }
+      }
+      return blocks(t, along ? SIGHTLINE_EYES_ALONG : undefined);
+    });
+    // the runs of felled row trees, each capped to SIGHTLINE_GAP_MAX_M about its tree nearest a sightline's line
+    const lineOff = (t: HinterlandTree): number => {
+      let best = Infinity;
+      for (const w of towers) best = Math.min(best, Math.abs(t.x * Math.cos(w.az) - t.z * Math.sin(w.az)));
+      return best;
+    };
+    // (a run is the felled trees of one row in order, across the row's own short gaps: two felled stretches either side of
+    // a missing tree make one hole in the row, not two)
+    const sameRow = (a: HinterlandTree, b: HinterlandTree): boolean => Math.hypot(a.x - b.x, a.z - b.z) < SIGHTLINE_GAP_MAX_M;
+    const runEnd = (i: number): number => {
+      let j = i;
+      while (j + 1 < trees.length && fell[j + 1] && sameRow(trees[j], trees[j + 1])) j++;
+      return j;
+    };
+    for (let i = 0; i < trees.length; ) {
+      if (!fell[i]) { i++; continue; }
+      const j = runEnd(i);
+      // (the hole is the run and a spacing either side, so the run itself keeps within the cap less ~8 m)
+      const half = (SIGHTLINE_GAP_MAX_M - 8) / 2;
+      if (Math.hypot(trees[j].x - trees[i].x, trees[j].z - trees[i].z) > 2 * half) {
+        let c = i;
+        for (let q = i; q <= j; q++) if (lineOff(trees[q]) < lineOff(trees[c])) c = q;
+        for (let q = i; q <= j; q++) if (Math.hypot(trees[q].x - trees[c].x, trees[q].z - trees[c].z) > half) fell[q] = false;
+      }
+      i = j + 1;
+    }
+    // the longest felled stretch left (the receipt's)
+    for (let i = 0; i < trees.length; ) {
+      if (!fell[i]) { i++; continue; }
+      const j = runEnd(i);
+      sightlineGaps.maxRunM = Math.max(sightlineGaps.maxRunM, Math.hypot(trees[j].x - trees[i].x, trees[j].z - trees[i].z));
+      i = j + 1;
+    }
+    const kept = trees.filter((_, i) => !fell[i]);
+    sightlineGaps = { felled: trees.length - kept.length, maxRunM: sightlineGaps.maxRunM };
     trees.length = 0;
     trees.push(...kept);
   }
@@ -576,7 +632,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     xs: r.xs, zs: r.zs, halfWidthM: r.widthM / 2, featherM: 7, crownM: r.kind === 'dikeRoad' ? 0.8 : 0.15,
     kind: r.kind === 'rail' ? 'rail' : r.kind === 'track' ? 'track' : 'road',
   }));
-  return { settlements, roads, verticals, buildings, rows, trees, features: { pads, lines }, ms: performance.now() - started };
+  return { settlements, roads, verticals, buildings, rows, trees, features: { pads, lines }, sightlineGaps, ms: performance.now() - started };
 }
 
 /** Distance from (x, z) to a polyline (its segment and parameter into `hit`). */
@@ -628,6 +684,14 @@ export function planInputsFrom(field: HinterlandField, heightAt: (x: number, z: 
 
 export { SIDE_NAMES };
 
+/** The sightlines' eyes along the edge (m from the bearing's crossing): every 50 m over 200 m either side (the
+ * f5991e435 frames: between eyes 150 m apart a near crown slipped through); a row running nearly along its sightline
+ * is tested from the middle five, or the eyes' spread would fell a long stretch of it (the coordinator). */
+const SIGHTLINE_EYES = Object.freeze([-200, -150, -100, -50, 0, 50, 100, 150, 200]);
+const SIGHTLINE_EYES_ALONG = Object.freeze([-100, -50, 0, 50, 100]);
+/** A row's longest single gap the sightlines may cut (m): past it the row reads as damaged (the coordinator). */
+export const SIGHTLINE_GAP_MAX_M = 60;
+
 /**
  * The sightlines' test (the tower pass): for the plan's sightline villages (settlements with an authored tower height),
  * whether a tree's crown covers the upper part of one of their towers as seen from an eye 2.5 m up near the
@@ -635,26 +699,30 @@ export { SIDE_NAMES };
  * null when the plan names no sightline village.
  */
 export function sightlineBlocker(
-  settlements: readonly HinterlandSettlement[], heightAt: (x: number, z: number) => number, { marginRad = 0.008 } = {},
-): ((t: { x: number; z: number; heightM: number; crownM: number }) => boolean) | null {
-  const towers: { x: number; z: number; top: number; low: number; half: number; eyes: { x: number; z: number; y: number }[] }[] = [];
+  settlements: readonly HinterlandSettlement[], heightAt: (x: number, z: number) => number,
+  { marginRad = 0.008, eyeOffsets = SIGHTLINE_EYES as readonly number[] } = {},
+): ((t: { x: number; z: number; heightM: number; crownM: number }, eyes?: readonly number[]) => boolean) | null {
+  const towers: { x: number; z: number; low: number; half: number; eyes: Map<number, { x: number; z: number; y: number }> }[] = [];
   for (const s of settlements) {
     if (!s.towerM) continue;
     const g = heightAt(s.x, s.z);
     const az = Math.atan2(s.x, s.z), sx = Math.sin(az), sz = Math.cos(az);
-    // the bearing's crossing of the square's edge, 80 m inside, and 150 m to either side along that edge
+    // the bearing's crossing of the square's edge, 80 m inside, and the eyes along that edge
     const k = (HINTERLAND_EDGE_M - 80) / Math.max(Math.abs(sx), Math.abs(sz));
     const cx = sx * k, cz = sz * k, alongX = Math.abs(sx) > Math.abs(sz);
-    // (every 50 m over 400 m of the edge: between eyes 150 m apart a near crown slipped through — the f5991e435 frames)
-    const eyes = [-200, -150, -100, -50, 0, 50, 100, 150, 200].map((o) => {
+    const eyes = new Map<number, { x: number; z: number; y: number }>();
+    for (const o of SIGHTLINE_EYES) {
       const x = alongX ? cx : Math.max(-430, Math.min(430, cx + o)), z = alongX ? Math.max(-430, Math.min(430, cz + o)) : cz;
-      return { x, z, y: heightAt(x, z) + 2.5 };
-    });
-    towers.push({ x: s.x, z: s.z, top: g + s.towerM, low: g + s.towerM * 0.55, half: s.towerM / 7, eyes });
+      eyes.set(o, { x, z, y: heightAt(x, z) + 2.5 });
+    }
+    // (what must clear the crowns: the belfry and the spire — the stage from 60 % of the tower's height; its base may hide)
+    towers.push({ x: s.x, z: s.z, low: g + s.towerM * 0.6, half: s.towerM / 7, eyes });
   }
   if (!towers.length) return null;
-  return (t) => {
-    for (const w of towers) for (const e of w.eyes) {
+  return (t, offsets = eyeOffsets) => {
+    for (const w of towers) for (const o of offsets) {
+      const e = w.eyes.get(o);
+      if (!e) continue;
       const dTx = t.x - e.x, dTz = t.z - e.z, dT = Math.hypot(dTx, dTz);
       const dVx = w.x - e.x, dVz = w.z - e.z, dV = Math.hypot(dVx, dVz);
       if (dT >= dV - 40 || dT < 1) continue;
@@ -662,7 +730,7 @@ export function sightlineBlocker(
       let da = Math.abs(Math.atan2(dTx, dTz) - Math.atan2(dVx, dVz));
       if (da > Math.PI) da = 2 * Math.PI - da;
       if (da > t.crownM / dT + w.half / dV + marginRad) continue;
-      // elevation: the crown's top over the tower's upper part (from 55 % of its height)
+      // elevation: the crown's top over the tower's belfry and spire
       const crownTop = (heightAt(t.x, t.z) + t.heightM - e.y) / dT, towerLow = (w.low - e.y) / dV;
       if (crownTop > towerLow) return true;
     }
