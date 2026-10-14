@@ -15,6 +15,16 @@ export interface TerrainContactSampler {
    * normal's four heights.
    */
   normalAt<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
+  /**
+   * The perf stream (2026-10-13; the owner: "going into games takes a long time"): a near chunk's fine grid
+   * (terrain.ts buildFineGridSteps: `x0 + (gx - 1) * step` across, the same down, `source(x, z)` at each point) hands its
+   * heights to the lazy vertices it shares exactly — the same coordinate doubles, the same height function — so the
+   * contact queries of the build (grass seating, decals, placement) and of play stop recomputing them (~0.13–0.35 s of
+   * a battle entry). A grid of another height function, or a point that is not exactly a vertex, seeds nothing.
+   * Returns the vertices seeded.
+   */
+  seedGrid(x0: number, z0: number, step: number, pn: number, grid: ArrayLike<number>,
+    source: (x: number, z: number) => number): number;
 }
 
 export function createTerrainContactSampler(
@@ -61,6 +71,29 @@ export function createTerrainContactSampler(
     const d = vertex(ix + 1, iz + 1);
     return d + (c - d) * (1 - u) + (b - d) * (1 - v);
   }) as TerrainContactSampler;
+  /** The vertex index whose exact coordinate is `value`, or -1. */
+  const exactIndex = (value: number): number => {
+    const i = Math.round((value + HALF) / STEP);
+    return i >= 0 && i < N && exactCoordinates[i] === value ? i : -1;
+  };
+  sample.seedGrid = (x0, z0, step, pn, grid, source) => {
+    if (source !== heightAt || !(pn > 0) || grid.length < pn * pn) return 0;
+    let seeded = 0;
+    for (let gz = 0; gz < pn; gz++) {
+      const iz = exactIndex(z0 + (gz - 1) * step);
+      if (iz < 0) continue;
+      for (let gx = 0; gx < pn; gx++) {
+        const ix = exactIndex(x0 + (gx - 1) * step);
+        if (ix < 0) continue;
+        const i = iz * N + ix, byte = i >>> 3, bit = 1 << (i & 7);
+        if (ready[byte] & bit) continue;
+        heights[i] = grid[gz * pn + gx];
+        ready[byte] |= bit;
+        seeded++;
+      }
+    }
+    return seeded;
+  };
   sample.normalAt = (x, z, out) => {
     if (!Number.isFinite(x) || !Number.isFinite(z) || x < -HALF || x > HALF || z < -HALF || z > HALF) {
       out.x = 0; out.y = 1; out.z = 0;

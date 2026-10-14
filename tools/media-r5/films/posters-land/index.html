@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=3840, height=2160" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:3840px;height:2160px;overflow:hidden;background:#07090c}
+#root{position:relative;width:100%;height:100%;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bar{position:absolute;left:0;width:100%;height:277px;background:#07090c;display:flex;align-items:center;justify-content:center}
+.bar.top{top:0}.bar.bot{bottom:0}
+.bar .line{display:flex;align-items:center;gap:44px}
+.bar .line img{width:168px;height:168px}
+.bar .line span{font-weight:700;font-size:120px;letter-spacing:.1em;line-height:1}
+.bar .line em{font-style:normal;font-weight:500;color:#ffd27a;letter-spacing:.2em;margin-left:.25em}
+.scrim{position:absolute;inset:0;background:radial-gradient(70% 60% at 0% 100%, rgba(7,9,12,.7) 0%, rgba(7,9,12,0) 70%)}
+.lock{position:absolute;left:160px;bottom:192px;align-items:center;display:flex;gap:60px}
+.lock .mk{width:380px;height:380px}
+.lock .wm{display:flex;flex-direction:column;gap:12px}
+.lock .a{font-weight:700;font-size:296px;line-height:.9;letter-spacing:.02em;text-shadow:0 4px 30px rgba(7,9,12,.5)}
+.lock .b{font-weight:500;font-size:124px;letter-spacing:.3em;color:#ffd27a;text-shadow:0 2px 18px rgba(7,9,12,.5)}</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="3840" data-height="2160">
+<div id="p0" class="clip poster cinema" data-start="0" data-duration="1"><img class="art" src="assets/art/column-under-fire-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+<div id="p1" class="clip poster keyart" data-start="1" data-duration="1"><img class="art" src="assets/art/snow-push-land.png" alt=""><div class="scrim"></div><div class="lock"><img class="mk" src="assets/brand/logo-mark-metal.svg" alt=""><div class="wm"><div class="a">CLAUDE</div><div class="b">OF TANKS</div></div></div></div>
+<div id="p2" class="clip poster cinema" data-start="2" data-duration="1"><img class="art" src="assets/art/street-duel-night-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+<div id="p3" class="clip poster cinema" data-start="3" data-duration="1"><img class="art" src="assets/art/container-rows-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+<div id="p4" class="clip poster cinema" data-start="4" data-duration="1"><img class="art" src="assets/art/ice-shellfire-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+<div id="p5" class="clip poster cinema" data-start="5" data-duration="1"><img class="art" src="assets/art/harbor-run-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+<div id="p6" class="clip poster keyart" data-start="6" data-duration="1"><img class="art" src="assets/art/farm-charge-land.png" alt=""><div class="scrim"></div><div class="lock"><img class="mk" src="assets/brand/logo-mark-metal.svg" alt=""><div class="wm"><div class="a">CLAUDE</div><div class="b">OF TANKS</div></div></div></div>
+<div id="p7" class="clip poster cinema" data-start="7" data-duration="1"><img class="art" src="assets/art/gantry-advance-land.png" alt=""><div class="bar top"></div><div class="bar bot"><div class="line"><img src="assets/brand/logo-mark-metal.svg" alt=""><span>CLAUDE <em>OF TANKS</em></span></div></div></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.set({}, {}, 8);
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body></html>

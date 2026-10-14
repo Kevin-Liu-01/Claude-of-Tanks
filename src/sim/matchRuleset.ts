@@ -414,6 +414,23 @@ export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 export const HORDE_WAVE_REPAIR = 0.3;
 
 /**
+ * The numbers a mode's card, battle setup and manual quote, read from this table (`{target}`, `{gravity}`, ...), so the
+ * copy can never promise a rule the battle does not keep (2026-10-13: Zone Control's copy said 1,000 points while the
+ * mode plays to 750, and Realistic's said every tank stays visible while it plays normal spotting).
+ */
+export function modeCopyValues(mode: GameModeId): Readonly<Record<string, number>> {
+  const rules = matchRulesetFor(mode);
+  return {
+    target: RULESET_SCORE_TARGETS[mode] ?? 0,
+    gravity: rules.gravityScale,
+    minutes: rules.timeLimitS == null ? 0 : rules.timeLimitS / 60,
+    survivorHp: Math.round((rules.infection?.survivorHpScale ?? 1) * 100),
+    killsPerWeapon: rules.gunGame?.killsPerWeapon ?? 0,
+    weapons: GUN_GAME_WEAPONS.length,
+  };
+}
+
+/**
  * The post-verdict hold, read by the solo step and the authority alike: while it runs the world keeps
  * simulating with every gun silent; once it expires the step returns early and the field stands still.
  * A null verdict time means no verdict yet (never expired); the hold is clamped to ENDING_HOLD_LIMIT_S.

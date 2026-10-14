@@ -115,6 +115,7 @@ const topple = new Function('THREE', 'setToppleAxis', 'settledToppleAngle',
     const treeCrushAnims = [], _tcax = new THREE.Vector3();
     const writeTreeSlot = () => { throw new Error('Unpartitioned tree must not upload'); };
     const nearMeshes = {}, farMeshes = {};
+    let nearTierHeightVersion = 0; // (the near tier's height cache: resetToppled bumps it)
     ${source.slice(crushStart, crushEnd)}
     return { crushTree, resetToppled, treeCrushAnims };
   }`)}`)(THREE, setToppleAxis, settledToppleAngle);

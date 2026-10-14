@@ -594,6 +594,12 @@ const tradingPost: RegionalBuilder = (ctx) => {
     }
     sink.span('structureWood', sx - 0.5, floor1 - 0.08, z0 - 0.05, sx + 0.5, floor1 + 0.02, D1 / 2 - 0.4, { colour: PLANK_GREY });
     sink.member('structureWood', [sx - 0.47, 0.9, z0 - run], [sx - 0.47, floor1 + 0.95, z0], 0.06, 0.06, [1, 0, 0], { colour: PLANK, decor: true, exposed: true }, 0);
+    // (the buildings stream, 2026-10-12, the integrity check: the handrail ran up beside the stair on nothing) its posts
+    // from the stair's string at the foot, the middle and the head
+    for (const f of [0, 0.5, 1]) {
+      const yy = floor1 * f, zz = z0 - run + run * f;
+      sink.span('structureWood', sx - 0.5, yy - 0.05, zz - 0.03, sx - 0.44, yy + 0.92 + 0.05 * f, zz + 0.03, { colour: PLANK, decor: true });
+    }
   });
   // the wool room: one storey of the same stone, a wide plank door on the front, small high windows
   const W2 = Math.max(5.6, Math.min(9.6, PW - W1 - 2.9)), D2 = Math.max(6.4, Math.min(10, PD * 0.48));
@@ -664,6 +670,8 @@ const generalStore: RegionalBuilder = (ctx) => {
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, py, porch), porch));
     sink.span('structureWood', -W / 2 + 0.1, 0.0, D / 2 + 0.02, W / 2 - 0.1, 0.3, D / 2 + depth, { colour: PLANK_GREY, decor: true });
     faceBox(sink, 'structureWood', f, -W * 0.3, 0.75, 0.42, 2.0, 0.08, 0.4, { colour: PLANK, decor: true });
+    // (the integrity check, 2026-10-12: the bench's seat hung over the porch boards on nothing) its legs to the boards
+    for (const e of [-0.9, 0.9]) faceBox(sink, 'structureWood', f, -W * 0.3 + e, 0.5, 0.42, 0.07, 0.44, 0.34, { colour: PLANK, decor: true });
   });
   // the gas island under its canopy east of the store
   const gx = bx + PW / 2 - 1.75, gz = bz + PD / 2 - 2.6;
@@ -1179,7 +1187,8 @@ const ruin: RegionalBuilder = (ctx) => {
   // the fallen roof: two vigas across the floor, a heap of the mud roof's earth, the lintel log
   for (let k = 0; k < 2; k++) {
     const z = (k - 0.5) * D * 0.4;
-    sink.member('structureWood', [-W / 2 + 0.3, 0.3, z + (rng() - 0.5)], [W / 2 - 0.2, 0.3 + rng() * 1.4, z + (rng() - 0.5) * 1.5], 0.22, 0.22, [0, 1, 0],
+    // (the integrity check, 2026-10-12: the vigas' feet stood 5 cm over the floor) each from the floor
+    sink.member('structureWood', [-W / 2 + 0.3, 0.25, z + (rng() - 0.5)], [W / 2 - 0.2, 0.3 + rng() * 1.4, z + (rng() - 0.5) * 1.5], 0.22, 0.22, [0, 1, 0],
       { colour: pick(look, JUNIPER), decor: true, exposed: true }, 0);
   }
   sink.cylinder('plaster2', [W * 0.1, 0.1, -D * 0.1], 'y', 0.55, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());

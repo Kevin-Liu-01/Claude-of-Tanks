@@ -1,6 +1,6 @@
 {
  "map": "badlands",
- "scene": "/Users/kevinliu/.codex/worktrees/cot-restore-1049-visuals-20260911/shots/media-r5/final/resolved/t36-canyon-orbit.resolved.json",
+ "scene": "shots/media-r5/final/resolved/t36-canyon-orbit.resolved.json",
  "fps": 30,
  "frames": 150,
  "viewport": [

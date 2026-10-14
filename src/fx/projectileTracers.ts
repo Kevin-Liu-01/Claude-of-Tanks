@@ -269,13 +269,14 @@ void main() {
   float d = length( vec2( dx, vLocal.y ) );
   float t = vLen > 0.5 ? clamp( vLocal.x / vLen, 0.0, 1.0 ) : 1.0;
   // the smear: even along its length (a point light moving through the exposure), its tail end soft
-  float smear = smoothstep( 0.0, 0.22, t );
+  // (fx 9a) a negative bead gain marks an untapered line: a missile's command wire
+  float smear = vCore.a < 0.0 ? 1.0 : smoothstep( 0.0, 0.22, t );
   float core = 1.0 - smoothstep( max( vHalfW - 0.7, 0.0 ), vHalfW + 0.7, d );
   // the round itself: the brightest point, at the head
   float dh = length( vec2( vLocal.x - vLen, vLocal.y ) );
   float bead = exp( -dh * dh / max( vHalfW * vHalfW * 3.0, 0.6 ) );
   float halo = exp( -d * d / max( vHaloR * vHaloR, 0.25 ) ) * ( 0.45 + 0.55 * smear );
-  vec3 col = vCore.rgb * ( core * ( 0.4 + 0.6 * smear ) + bead * vCore.a ) + vHalo * halo;
+  vec3 col = vCore.rgb * ( core * ( 0.4 + 0.6 * smear ) + bead * max( vCore.a, 0.0 ) ) + vHalo * halo;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -298,6 +299,13 @@ interface ProjectileTracers {
   write(shell: TracerShell): void;
   /** close the frame: rounds not seen draw their last streak once more, then go */
   end(): void;
+  /** (fx 9a) a raw capsule this frame (call between begin and end): a missile's motor and its plume (head the motor, tail
+   *  the plume's end), core and halo radiance as given by day and night; a negative bead draws an untapered line (a
+   *  command wire) */
+  glow(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, halfWidthPx: number, haloPx: number,
+    core: readonly number[], coreK: number, halo: readonly number[], haloK: number, bead: number): void;
+  /** the scene's dark level this frame (0 day .. 1 night), for callers that scale their own capsules */
+  darkLevel(): number;
   /** a round struck at `pos` (its terrain, prop or armour hit): its last dash reaches into the strike and, when its
    *  tracer still burns, the strike throws sparks (none off water) */
   strike(id: ShellKey | undefined, pos: readonly number[], water?: boolean): void;
@@ -589,6 +597,18 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       geo.instanceCount = 0;
       mesh.visible = false;
     },
+    glow(hx, hy, hz, tx, ty, tz, halfWidthPx, haloPx, coreRgb, coreK, haloRgb, haloK, bead) {
+      if (n >= capacity) return;
+      const i = n * 4;
+      head.array[i] = hx; head.array[i + 1] = hy; head.array[i + 2] = hz; head.array[i + 3] = halfWidthPx;
+      tail.array[i] = tx; tail.array[i + 1] = ty; tail.array[i + 2] = tz; tail.array[i + 3] = haloPx;
+      core.array[i] = coreRgb[0]! * coreK; core.array[i + 1] = coreRgb[1]! * coreK; core.array[i + 2] = coreRgb[2]! * coreK;
+      core.array[i + 3] = bead;
+      halo.array[i] = haloRgb[0]! * haloK; halo.array[i + 1] = haloRgb[1]! * haloK; halo.array[i + 2] = haloRgb[2]! * haloK;
+      halo.array[i + 3] = 0;
+      n++;
+    },
+    darkLevel: () => dark,
     active: () => geo.instanceCount > 0 || sparksLive > 0,
     stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive }),
   };

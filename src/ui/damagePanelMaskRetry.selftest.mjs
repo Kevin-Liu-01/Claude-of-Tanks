@@ -8,6 +8,7 @@
 // ignores late callbacks from the old build.
 import assert from 'node:assert/strict';
 import { createDamagePanel, DAMAGE_PANEL_MASK_RETRY } from './damagePanel.ts';
+import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { createEntryTelemetry } from '../entry/telemetry.ts';
 import { validateTelemetryRecord } from '../../server/telemetryRecord.ts';
 
@@ -205,7 +206,7 @@ try {
     assert.equal(warnings.length, 1, 'exactly one console warning at the terminal failure');
     assert.match(warnings[0][0], /receipt-tank after 3 attempt\(s\) \(mask_build_error: injected compile failure\)/);
     assert.deepEqual(h.telemetry.events, [{
-      kind: 'hud_mask_failed', stage: 'damagePanel', code: 'mask_build_error', reason: 'receipt-tank',
+      kind: 'hud_mask_failed', stage: 'damagePanel', code: 'mask_build_error', reason: telemetryTankId('receipt-tank'),
       error: { message: 'injected compile failure', frames: [] },
     }], 'one hud_mask_failed event with the spec id and the pipeline code/message');
     // Telemetry v2: the event folds into one session note that the shared validator accepts.
@@ -221,7 +222,7 @@ try {
     assert.equal(bodies.length, 1, 'one session record carries the note');
     const validation = validateTelemetryRecord(bodies[0]);
     assert.equal(validation.ok, true, `the shared validator accepts the record: ${JSON.stringify(validation)}`);
-    assert.deepEqual(validation.record.notes, ['hud_mask:receipt-tank:mask_build_error'],
+    assert.deepEqual(validation.record.notes, [`hud_mask:${telemetryTankId('receipt-tank')}:mask_build_error`],
       'the spec id and the pipeline code travel as one session note');
     assert.equal(h.panel.debugState().masksReady, false);
     assert.equal(h.panel.debugState().markers.length, 0, 'no orphan markers or substitute vehicle on failure');

@@ -66,7 +66,9 @@ assert.equal(featuredShotForMap('verdant').img, hero);
 
 // 3. Every full-bleed battlefield loading surface asks through the tier.
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-assert.equal((main.match(/battleBackdrop\(mapId\)/g) || []).length, 3, 'solo, network intent and network roster loading art');
+assert.equal((main.match(/battleBackdrop\(mapId\)/g) || []).length, 4,
+  'solo, network intent and network roster loading art, and the garage pick\'s idle preload of it (2026-10-12)');
+assert.match(main, /if \(mapId !== 'random'\) preloadImageWhenIdle\(battleBackdrop\(mapId\)\);/, 'a picked battlefield\'s loading art is fetched in idle time');
 assert.doesNotMatch(main, /mapHeroes\[/, 'no loading surface requests the 4K hero directly');
 assert.match(readFileSync(new URL('./transition.ts', import.meta.url), 'utf8'), /featuredShotForMap\(o\.mapId, currentViewport\(\)\)/);
 assert.ok(existsSync(publicFile('/maps/cards')));

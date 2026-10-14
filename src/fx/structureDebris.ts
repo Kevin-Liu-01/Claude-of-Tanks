@@ -23,12 +23,21 @@ import type {
   DamageMeshWriter, DamagePieceWriter, DamageRole, DamageWriters, DebrisShape,
 } from '../world/destructionKit.ts';
 import { mulberry32 } from './particles.ts';
+import type { RubbleBodies } from './rubbleBodies.ts';
+import { ballisticLanding } from './ballisticLanding.ts';
 
 export const DEBRIS_SHAPES: readonly DebrisShape[] = Object.freeze([
   'chunk', 'brick', 'block', 'stone', 'plate', 'splinter', 'beam', 'tile', 'slate', 'sheet', 'shard', 'clod', 'straw',
   'rebar',
 ] as const);
 const VARIANTS = 4;
+/** Each palette shape's unit extents (x, y, z m before a piece's scale): a piece that lies still on a standing building
+ *  is laid as a box of these in the building's own run. */
+const SHAPE_EXTENTS: Readonly<Record<DebrisShape, readonly [number, number, number]>> = Object.freeze({
+  chunk: [0.9, 0.9, 0.9], brick: [1, 0.3, 0.5], block: [1, 0.6, 0.7], stone: [0.9, 0.9, 0.9], plate: [1, 0.12, 0.75],
+  splinter: [1, 0.07, 0.12], beam: [1, 0.18, 0.2], tile: [0.8, 0.07, 1], slate: [1, 0.05, 0.7], sheet: [1, 0.06, 0.7],
+  shard: [0.9, 0.02, 0.7], clod: [0.9, 0.63, 0.9], straw: [0.9, 0.25, 0.9], rebar: [1, 0.04, 0.04],
+});
 
 // ---------------------------------------------------------------------------------------------------------------
 // The default fracture palette: unit-sized pieces (about a metre on the longest axis), four variants each
@@ -136,7 +145,8 @@ attribute vec4 aPB;   // origin.xyz, birth
 attribute vec4 aVL;   // velocity.xyz, life
 attribute vec4 aQ;    // start orientation (unit quaternion)
 attribute vec4 aSS;   // scale.xyz, tumble rate (rad/s)
-attribute vec4 aCG;   // tint.rgb, rest height (the ground under the piece)
+attribute vec4 aCG;   // tint.rgb, rest height (the ground where the piece lands)
+attribute vec4 aLD;   // landing: age it lands at (s; past its life: never), 0, 0, 0
 uniform float uTime;
 varying vec3 vNormalW;
 varying vec3 vTint;
@@ -164,19 +174,24 @@ void main() {
     #endif
     return;
   }
-  // ballistic with a little drag; the piece stops on the ground under it
+  // ballistic with a little drag until it lands where the writer found its path meets the ground (2026-10-12, the owner's
+  // Steinburg strips: the rest height was read under the piece's SPAWN point and the piece slid on at that height, so a
+  // collapse's pieces lay in a flat ring over the heap's plateau, in the air): at its landing age it stops there, on the
+  // ground as drawn at that point
   float k = 0.35;
-  float s = ( 1.0 - exp( -k * age ) ) / k;
-  vec3 c = aPB.xyz + aVL.xyz * s + vec3( 0.0, -4.9 * age * age, 0.0 );
+  float moving = step( 0.01, dot( aVL.xyz, aVL.xyz ) );
+  float tLand = aLD.x;
+  float landed = moving * step( tLand, age );
+  float ta = moving > 0.5 ? min( age, tLand ) : age;
+  float s = ( 1.0 - exp( -k * ta ) ) / k;
+  vec3 c = aPB.xyz + aVL.xyz * s + vec3( 0.0, -4.9 * ta * ta, 0.0 );
   float halfH = 0.3 * min( aSS.x, min( aSS.y, aSS.z ) );
   float rest = aCG.w + halfH;
-  float moving = step( 0.01, dot( aVL.xyz, aVL.xyz ) );
-  float landed = moving * step( c.y, rest );
-  c.y = moving > 0.5 ? max( c.y, rest ) : c.y;
-  // tumble about an axis from the piece's own seed (its start quaternion), damped once it lies
+  c.y = landed > 0.5 ? rest : c.y;
+  // tumble about an axis from the piece's own seed (its start quaternion), stopped where it lands (no snap back)
   vec3 axisRaw = vec3( aQ.y + 0.31, aQ.z - 0.17, aQ.x + 0.23 );
   vec3 axis = axisRaw / max( length( axisRaw ), 1e-4 );
-  float ang = aSS.w * ( landed > 0.5 ? min( age, 0.6 ) : age ) * moving;
+  float ang = aSS.w * ta * moving;
   vec3 lp = position * aSS.xyz;
   // (round 7) a landed piece lies most of its life, then settles into the ground over the last third; the last few
   // percent shrink
@@ -246,7 +261,21 @@ void main() {
 }
 `;
 
-const PIECE_ATTRS = ['aPB', 'aVL', 'aQ', 'aSS', 'aCG'] as const;
+/** The piece program's drag (1/s): its flight is p + v (1 - e^(-k t)) / k + ½ g t². */
+export const PIECE_DRAG = 0.35;
+/**
+ * Where a thrown piece meets the ground (2026-10-12, the owner's Steinburg strips): its centre's flight from (ox, oy, oz)
+ * at (vx, vy, vz) under the piece program's drag and gravity, until it comes within `halfH` of `groundY` under it
+ * (fx/ballisticLanding.ts). Writes [landing age (s; Infinity when it never lands within the horizon), the ground there, x,
+ * z] to `out` and returns the landing age. The program stops the piece there, so it lies on the ground it met — a heap's
+ * slope, a crater, the street below a bank — never at the height of the ground it was thrown from.
+ */
+export function pieceLanding(ox: number, oy: number, oz: number, vx: number, vy: number, vz: number, halfH: number,
+  groundY: (x: number, z: number) => number, out: Float64Array | number[], horizonS?: number): number {
+  return ballisticLanding(ox, oy, oz, vx, vy, vz, PIECE_DRAG, halfH, groundY, out, horizonS);
+}
+
+const PIECE_ATTRS = ['aPB', 'aVL', 'aQ', 'aSS', 'aCG', 'aLD'] as const;
 type PieceAttr = typeof PIECE_ATTRS[number];
 
 interface PiecePool {
@@ -258,7 +287,29 @@ interface PiecePool {
   liveUntil: number;
   dirtyLo: number;
   dirtyHi: number;
+  /** Each slot's write count: a landing solved later for a slot the ring has since reused is dropped. */
+  gen: Uint32Array;
 }
+
+/**
+ * The landing solves a stage leaves for the frames after it (destruction stream, 2026-10-13; the coordinator's bar for
+ * deploy 223: a collapse may cost its frame at most 3 ms over production, and its hundreds of pieces each solved their
+ * landing in it). A piece born later than this, or high enough over the ground to be this long in the air, is written
+ * with no landing yet (the program flies it) and solved in a coming update, the soonest to land first; nearer ones are
+ * solved at once.
+ */
+const LANDING_DEFER_S = 0.15;
+/** Deferred landings solved per update at least (all those due within LANDING_DUE_S as well). */
+const LANDINGS_PER_UPDATE = 64;
+/**
+ * Rigid bodies a stage throws are handed to the engine over the updates after it, this many an update (and every one
+ * BODY_OVERDUE_S past its release), the soonest released and the lowest first: a collapse's fourteen bodies spawned in its frame (the same
+ * bar). Invisible: the crumble releases them over seconds, and a body is hidden until its release.
+ */
+const BODY_THROWS_PER_UPDATE = 4;
+/** A body this long past its release is thrown in the update whatever the count (a few frames late at most). */
+const BODY_OVERDUE_S = 0.1;
+const LANDING_DUE_S = 0.1;
 
 /** A structure stage's body-frame placement in the world. */
 export interface BodyPlacement { x: number; y: number; z: number; yaw: number }
@@ -275,6 +326,10 @@ export interface StageRunOptions {
   /** false: the builder throws no pieces (the pieces writer's capacity is 0), only lays its runs — a collapse after the
    *  P2 cascade, whose storeys threw theirs as they dropped. */
   pieces?: boolean;
+  /** How many of the stage's larger pieces fall as rigid bodies (rubbleBodies.ts; 0: none, the rest stay pieces). */
+  bodies?: number;
+  /** The structure throwing them (its own records are not solid to its bodies while they leave it). */
+  structure?: number;
 }
 
 export interface StructureDebrisOptions {
@@ -292,6 +347,8 @@ export interface StructureDebrisOptions {
   stageVertexCap?: number;
   /** Falling pieces per stage (the phone tier throws fewer). */
   pieceCap?: number;
+  /** The engine's bodies the stages' larger pieces fall as (null: every piece stays in the program). */
+  bodies?: RubbleBodies | null;
 }
 
 export interface StructureDebris {
@@ -386,7 +443,7 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     mesh.receiveShadow = false;
     mesh.visible = false;
     group.add(mesh);
-    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1 };
+    p = { mesh, arrays, attrs, cursor: 0, high: 0, liveUntil: -Infinity, dirtyLo: -1, dirtyHi: -1, gen: new Uint32Array(poolCapacity) };
     pools.set(key, p);
     return p;
   }
@@ -402,9 +459,15 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   let stageDepth: ((bucket: string) => THREE.Material | null) | null = null;
   let stageMeshes = true;
   let stagePiecesOn = true;
+  let stageBodies = 0;
+  let stageStructure = -1;
   // mesh runs: one growing set of arrays per (bucket, role) of the stage
   interface Run { bucket: string; role: DamageRole; pos: number[]; nrm: number[]; uv: number[]; col: number[]; idx: number[] }
   const runs: Run[] = [];
+  /** Still pieces on a standing building this stage (laid as boxes in its runs at commit). */
+  interface StillBox { bucket: string; px: number; py: number; pz: number; qx: number; qy: number; qz: number; qw: number;
+    hx: number; hy: number; hz: number; r: number; g: number; b: number }
+  const stillBoxes: StillBox[] = [];
   let current: Run | null = null;
   let runBase = 0;
   let stageVertices = 0;
@@ -450,39 +513,55 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
 
   const _q = new THREE.Quaternion();
   const _qy = new THREE.Quaternion();
+  const _land = new Float64Array(4);
   const _up = new THREE.Vector3(0, 1, 0);
   let stagePieces = 0;
   const pieceCap = Math.max(0, o.pieceCap ?? 1024);
   const pieceWriter: DamagePieceWriter = {
     push(bucket, shape, variant, px, py, pz, qx, qy, qz, qw, sx, sy, sz, r, g, b, vx, vy, vz): boolean {
+      // (2026-10-12, the owner's Steinburg strips: a damaged roof's slipped tiles, laid still in the pool, hung in the air
+      // once the roof and the building under them were gone) a piece that lies still on a standing building is part of
+      // it: laid as a box in the building's own run, it falls, folds and goes with the building, settled or live
+      if (vx * vx + vy * vy + vz * vz <= 1e-4 && stageTag > 0) {
+        if (!stageMeshes || stageVertices + 24 > stageCap) return false;
+        const e = SHAPE_EXTENTS[shape] ?? SHAPE_EXTENTS.chunk;
+        stillBoxes.push({ bucket, px, py, pz, qx, qy, qz, qw, hx: e[0] * sx * 0.5, hy: e[1] * sy * 0.5, hz: e[2] * sz * 0.5, r, g, b });
+        stageVertices += 24;
+        return true;
+      }
       // a settled stage (a late joiner, a migration) lays down its static runs only: nothing falls
       if (stageSettled || !stagePiecesOn || stagePieces >= pieceCap) return false;
+      // (the destruction check, Steppe's gantry: one of a collapse's 1036 pieces thrown with next to no speed hung where it
+      // was born, 4 m up) a piece of a fall that is not still on the ground drops to it
+      if (vx * vx + vy * vy + vz * vz <= 1e-4 && stageTag === 0
+        && place.y + py > o.groundY(place.x + px * cosY + pz * sinY, place.z - px * sinY + pz * cosY) + 0.3) vy = -0.2;
+      // (2026-10-12, the owner: one physics engine for everything that falls) the stage's larger pieces, up to its
+      // budget, are bodies in the engine: they tumble, strike the ground as drawn, the walls and each other, and rest
+      // where they come to rest
+      if (stageBodies > 0 && o.bodies && o.bodies.takes(shape, sx, sy, sz)) {
+        const wx = place.x + px * cosY + pz * sinY, wy = place.y + py, wz = place.z - px * sinY + pz * cosY;
+        const wvx = vx * cosY + vz * sinY, wvz = -vx * sinY + vz * cosY;
+        _qy.setFromAxisAngle(_up, place.yaw);
+        _q.set(qx, qy, qz, qw).normalize().premultiply(_qy);
+        // its spin: about an axis of its own (the program's law), as fast as it was thrown
+        const ax = _q.y + 0.31, ay = _q.z - 0.17, az = _q.x + 0.23, al = Math.hypot(ax, ay, az) || 1;
+        const speed = Math.hypot(wvx, vy, wvz);
+        const rate = (3 + ((stagePieces * 7919) % 100) * 0.06) * Math.min(1, speed / 3);
+        // thrown in a coming update (BODY_THROWS_PER_UPDATE), the lowest of the soonest released first; one the engine
+        // refuses then is written to the program as a piece
+        const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
+        deferThrow(bucket, mat && 'map' in mat ? (mat.map ?? null) : null, shape, variant, wx, wy, wz, _q, sx, sy, sz, wvx, vy, wvz,
+          ax / al * rate, ay / al * rate, az / al * rate, r, g, b, stageBirth, stageStructure);
+        stageBodies--;
+        stagePieces++;
+        return true;
+      }
       const mat = resolveMaterial(bucket) as (THREE.Material & { map?: THREE.Texture | null }) | null;
-      const map = mat && 'map' in mat ? (mat.map ?? null) : null;
-      const pool = poolFor(map, shape, variant);
-      const i = pool.cursor;
-      pool.cursor = (pool.cursor + 1) % poolCapacity;
-      pool.high = Math.max(pool.high, i + 1);
-      pool.mesh.geometry.instanceCount = pool.high;
-      const j = i * 4;
-      const A = pool.arrays;
-      toWorld(px, py, pz, A.aPB, j);
-      A.aPB[j + 3] = stageBirth;
-      // velocity rotates with the body
-      A.aVL[j] = vx * cosY + vz * sinY; A.aVL[j + 1] = vy; A.aVL[j + 2] = -vx * sinY + vz * cosY;
-      const moving = vx * vx + vy * vy + vz * vz > 1e-4;
-      // a thrown piece lies where it lands (round 7: they vanished at ~10 s): ~24 s, then settles in
-      A.aVL[j + 3] = moving ? 22 + (i % 7) * 0.6 : 60;
-      // orientation: body yaw, then the piece's own
       _qy.setFromAxisAngle(_up, place.yaw);
       _q.set(qx, qy, qz, qw).normalize().premultiply(_qy);
-      A.aQ[j] = _q.x; A.aQ[j + 1] = _q.y; A.aQ[j + 2] = _q.z; A.aQ[j + 3] = _q.w;
-      A.aSS[j] = sx; A.aSS[j + 1] = sy; A.aSS[j + 2] = sz; A.aSS[j + 3] = moving ? 3 + ((i * 7919) % 100) * 0.06 : 0;
-      A.aCG[j] = r; A.aCG[j + 1] = g; A.aCG[j + 2] = b;
-      A.aCG[j + 3] = o.groundY(A.aPB[j], A.aPB[j + 2]);
-      if (stageBirth + A.aVL[j + 3] > pool.liveUntil) pool.liveUntil = stageBirth + A.aVL[j + 3];
-      pool.dirtyLo = pool.dirtyLo < 0 ? i : Math.min(pool.dirtyLo, i);
-      pool.dirtyHi = Math.max(pool.dirtyHi, i + 1);
+      writePiece(mat && 'map' in mat ? (mat.map ?? null) : null, shape, variant,
+        place.x + px * cosY + pz * sinY, place.y + py, place.z - px * sinY + pz * cosY, stageBirth,
+        vx * cosY + vz * sinY, vy, -vx * sinY + vz * cosY, _q, sx, sy, sz, r, g, b);
       stagePieces++;
       return true;
     },
@@ -491,7 +570,172 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
   };
   const writers: DamageWriters = { mesh: meshWriter, pieces: pieceWriter };
 
+  /** One piece into its pool (world frame): its flight, its landing (now or deferred, LANDING_DEFER_S), its life. */
+  function writePiece(map: THREE.Texture | null, shape: DebrisShape, variant: number, wx: number, wy: number, wz: number,
+    birth: number, wvx: number, wvy: number, wvz: number, q: THREE.Quaternion, sx: number, sy: number, sz: number,
+    r: number, g: number, b: number): void {
+    const pool = poolFor(map, shape, variant);
+    const i = pool.cursor;
+    pool.cursor = (pool.cursor + 1) % poolCapacity;
+    pool.high = Math.max(pool.high, i + 1);
+    pool.mesh.geometry.instanceCount = pool.high;
+    const j = i * 4;
+    const A = pool.arrays;
+    A.aPB[j] = wx; A.aPB[j + 1] = wy; A.aPB[j + 2] = wz;
+    A.aPB[j + 3] = birth;
+    A.aVL[j] = wvx; A.aVL[j + 1] = wvy; A.aVL[j + 2] = wvz;
+    const moving = wvx * wvx + wvy * wvy + wvz * wvz > 1e-4;
+    // a thrown piece lies where it lands (round 7: they vanished at ~10 s): ~24 s, then settles in
+    A.aVL[j + 3] = moving ? 22 + (i % 7) * 0.6 : 60;
+    A.aQ[j] = q.x; A.aQ[j + 1] = q.y; A.aQ[j + 2] = q.z; A.aQ[j + 3] = q.w;
+    A.aSS[j] = sx; A.aSS[j + 1] = sy; A.aSS[j + 2] = sz; A.aSS[j + 3] = moving ? 3 + ((i * 7919) % 100) * 0.06 : 0;
+    A.aCG[j] = r; A.aCG[j + 1] = g; A.aCG[j + 2] = b;
+    pool.gen[i]++;
+    if (moving) {
+      // where its flight meets the ground as drawn (the program stops it there): at once for a piece that lands soon,
+      // in a coming update for one born later or thrown from higher (LANDING_DEFER_S)
+      const g0 = o.groundY(wx, wz);
+      const h = Math.max(0, wy - g0);
+      const due = Math.max(0, birth - o.now()) + (wvy + Math.sqrt(wvy * wvy + 19.6 * h)) / 9.8;
+      if (due > LANDING_DEFER_S) {
+        A.aLD[j] = 1e4;
+        A.aCG[j + 3] = g0;
+        deferLanding(pool, i, o.now() + due);
+      } else {
+        pieceLanding(wx, wy, wz, wvx, wvy, wvz, 0.3 * Math.min(sx, sy, sz), o.groundY, _land);
+        A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+        A.aCG[j + 3] = _land[1];
+      }
+    } else {
+      A.aLD[j] = 1e4;
+      A.aCG[j + 3] = o.groundY(wx, wz);
+    }
+    A.aLD[j + 1] = 0; A.aLD[j + 2] = 0; A.aLD[j + 3] = 0;
+    if (birth + A.aVL[j + 3] > pool.liveUntil) pool.liveUntil = birth + A.aVL[j + 3];
+    pool.dirtyLo = pool.dirtyLo < 0 ? i : Math.min(pool.dirtyLo, i);
+    pool.dirtyHi = Math.max(pool.dirtyHi, i + 1);
+  }
+
+  /** Every pool's written range to the GPU (a stage's commit, an update that wrote late pieces). */
+  function flushPools(): void {
+    for (const p of pools.values()) {
+      if (p.dirtyLo < 0) continue;
+      for (const name of PIECE_ATTRS) {
+        const attr = p.attrs[name];
+        attr.addUpdateRange(p.dirtyLo * 4, (p.dirtyHi - p.dirtyLo) * 4);
+        attr.needsUpdate = true;
+      }
+      p.dirtyLo = p.dirtyHi = -1;
+    }
+  }
+
+  // ---- deferred body throws (BODY_THROWS_PER_UPDATE): live entries in `throws`, spent ones reused
+  interface PendingThrow {
+    bucket: string; map: THREE.Texture | null; shape: DebrisShape; variant: number;
+    x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; sx: number; sy: number; sz: number;
+    vx: number; vy: number; vz: number; wx: number; wy: number; wz: number; r: number; g: number; b: number;
+    birth: number; structure: number;
+  }
+  const throws: PendingThrow[] = [];
+  const spentThrows: PendingThrow[] = [];
+  function deferThrow(bucket: string, map: THREE.Texture | null, shape: DebrisShape, variant: number, x: number, y: number,
+    z: number, q: THREE.Quaternion, sx: number, sy: number, sz: number, vx: number, vy: number, vz: number, wx: number,
+    wy: number, wz: number, r: number, g: number, b: number, birth: number, structure: number): void {
+    const e = spentThrows.pop() ?? {} as PendingThrow;
+    e.bucket = bucket; e.map = map; e.shape = shape; e.variant = variant; e.x = x; e.y = y; e.z = z;
+    e.qx = q.x; e.qy = q.y; e.qz = q.z; e.qw = q.w; e.sx = sx; e.sy = sy; e.sz = sz; e.vx = vx; e.vy = vy; e.vz = vz;
+    e.wx = wx; e.wy = wy; e.wz = wz; e.r = r; e.g = g; e.b = b; e.birth = birth; e.structure = structure;
+    throws.push(e);
+  }
+  // the soonest released first, the lowest of them first (a collapse's crumble releases its pieces top down over seconds)
+  const byRelease = (a: PendingThrow, b: PendingThrow): number => a.birth - b.birth || a.y - b.y;
+  const _tq = new THREE.Quaternion();
+  function throwDeferred(now: number): void {
+    if (!throws.length || !o.bodies) return;
+    throws.sort(byRelease);
+    let done = 0;
+    while (done < throws.length && (done < BODY_THROWS_PER_UPDATE || throws[done]!.birth + BODY_OVERDUE_S <= now)) {
+      const e = throws[done++]!;
+      spentThrows.push(e);
+      if (!o.bodies.throw(e.bucket, e.shape, e.x, e.y, e.z, e.qx, e.qy, e.qz, e.qw, e.sx, e.sy, e.sz, e.vx, e.vy, e.vz,
+        e.wx, e.wy, e.wz, e.r, e.g, e.b, Math.max(0, e.birth - now), e.structure)) {
+        // the engine refused it (a full pool of moving bodies): the program throws it as a piece
+        writePiece(e.map, e.shape, e.variant, e.x, e.y, e.z, e.birth, e.vx, e.vy, e.vz, _tq.set(e.qx, e.qy, e.qz, e.qw),
+          e.sx, e.sy, e.sz, e.r, e.g, e.b);
+      }
+    }
+    throws.copyWithin(0, done);
+    throws.length -= done;
+  }
+
+  /** A still piece as a box in its bucket's standing run (body frame, oriented by its quaternion; the wall's tile by its
+   *  local extents, so a broken brick shows brick). */
+  const _bq = new THREE.Quaternion();
+  const _bv = new THREE.Vector3();
+  const _bn = new THREE.Vector3();
+  const BOX_FACES: ReadonlyArray<readonly [number, number, number, ReadonlyArray<readonly [number, number, number]>]> = [
+    [0, 1, 0, [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]]],
+    [0, -1, 0, [[-1, -1, 1], [1, -1, 1], [1, -1, -1], [-1, -1, -1]]],
+    [1, 0, 0, [[1, -1, -1], [1, -1, 1], [1, 1, 1], [1, 1, -1]]],
+    [-1, 0, 0, [[-1, -1, 1], [-1, -1, -1], [-1, 1, -1], [-1, 1, 1]]],
+    [0, 0, 1, [[1, -1, 1], [-1, -1, 1], [-1, 1, 1], [1, 1, 1]]],
+    [0, 0, -1, [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1]]],
+  ];
+  function layStillBox(box: StillBox): void {
+    const saved = stageVertices;
+    // its vertices were counted at push; the writer counts them again as it lays them
+    stageVertices = Math.max(0, stageVertices - 24);
+    if (!meshWriter.begin(box.bucket, 'rim')) { stageVertices = saved; return; }
+    _bq.set(box.qx, box.qy, box.qz, box.qw).normalize();
+    for (const [nx, ny, nz, quad] of BOX_FACES) {
+      _bn.set(nx, ny, nz).applyQuaternion(_bq);
+      const ids = quad.map(([sx, sy, sz], i) => {
+        _bv.set(sx * box.hx, sy * box.hy, sz * box.hz);
+        const u = nx !== 0 ? _bv.z : _bv.x, v = ny !== 0 ? _bv.z : _bv.y;
+        _bv.applyQuaternion(_bq);
+        void i;
+        return meshWriter.vertex(box.px + _bv.x, box.py + _bv.y, box.pz + _bv.z, _bn.x, _bn.y, _bn.z, u * 0.5 + 0.5, v * 0.5 + 0.5,
+          box.r, box.g, box.b);
+      });
+      meshWriter.triangle(ids[0]!, ids[1]!, ids[2]!);
+      meshWriter.triangle(ids[0]!, ids[2]!, ids[3]!);
+    }
+    meshWriter.end();
+  }
+
   let showAt: { mesh: THREE.Mesh; at: number }[] = [];
+
+  // ---- deferred landings (LANDING_DEFER_S): live entries in `pending`, spent ones kept for reuse
+  interface PendingLanding { pool: PiecePool; slot: number; gen: number; due: number }
+  const pending: PendingLanding[] = [];
+  const spent: PendingLanding[] = [];
+  function deferLanding(pool: PiecePool, slot: number, due: number): void {
+    const e = spent.pop() ?? { pool, slot, gen: 0, due };
+    e.pool = pool; e.slot = slot; e.gen = pool.gen[slot]!; e.due = due;
+    pending.push(e);
+  }
+  const byDue = (a: PendingLanding, b: PendingLanding): number => a.due - b.due;
+  function solveDeferred(now: number): void {
+    if (!pending.length) return;
+    // the soonest to land first; every one due within LANDING_DUE_S, and LANDINGS_PER_UPDATE at least
+    pending.sort(byDue);
+    let done = 0;
+    while (done < pending.length && (done < LANDINGS_PER_UPDATE || pending[done]!.due <= now + LANDING_DUE_S)) {
+      const e = pending[done++]!;
+      spent.push(e);
+      const p = e.pool, i = e.slot;
+      if (p.gen[i] !== e.gen) continue;
+      const A = p.arrays, j = i * 4;
+      pieceLanding(A.aPB[j]!, A.aPB[j + 1]!, A.aPB[j + 2]!, A.aVL[j]!, A.aVL[j + 1]!, A.aVL[j + 2]!,
+        0.3 * Math.min(A.aSS[j]!, A.aSS[j + 1]!, A.aSS[j + 2]!), o.groundY, _land);
+      A.aLD[j] = Number.isFinite(_land[0]) ? _land[0] : 1e4;
+      A.aCG[j + 3] = _land[1]!;
+      p.attrs.aLD.addUpdateRange(j, 4); p.attrs.aLD.needsUpdate = true;
+      p.attrs.aCG.addUpdateRange(j, 4); p.attrs.aCG.needsUpdate = true;
+    }
+    pending.copyWithin(0, done);
+    pending.length -= done;
+  }
 
   return {
     group,
@@ -502,11 +746,14 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
       stageDepth = options.depthFor ?? null;
       stageMeshes = options.meshes !== false;
       stagePiecesOn = options.pieces !== false;
+      stageBodies = o.bodies && !settled ? Math.max(0, options.bodies ?? 0) | 0 : 0;
+      stageStructure = options.structure ?? -1;
       cosY = Math.cos(placement.yaw); sinY = Math.sin(placement.yaw);
       resolveMaterial = materialFor;
       stageDelay = settled ? 0 : delayS;
       stageBirth = o.now() + stageDelay;
       runs.length = 0;
+      stillBoxes.length = 0;
       current = null;
       stageVertices = 0;
       stagePieces = 0;
@@ -514,6 +761,10 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     },
     commit() {
       const made: THREE.Mesh[] = [];
+      if (stillBoxes.length) {
+        for (const box of stillBoxes) layStillBox(box);
+        stillBoxes.length = 0;
+      }
       for (const run of runs) {
         if (!run.idx.length) continue;
         if (!stageTag && o.baseGroundY && (run.role === 'rubble' || run.role === 'remnant')) {
@@ -548,20 +799,15 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         if (stageDelay > 0) showAt.push({ mesh, at: stageBirth });
       }
       runs.length = 0;
-      for (const p of pools.values()) {
-        if (p.dirtyLo < 0) continue;
-        for (const name of PIECE_ATTRS) {
-          const attr = p.attrs[name];
-          attr.addUpdateRange(p.dirtyLo * 4, (p.dirtyHi - p.dirtyLo) * 4);
-          attr.needsUpdate = true;
-        }
-        p.dirtyLo = p.dirtyHi = -1;
-      }
+      flushPools();
       return made;
     },
     update() {
       const now = o.now();
       uTime.value = now;
+      throwDeferred(now);
+      flushPools();
+      solveDeferred(now);
       if (showAt.length) {
         let k = 0;
         for (const s of showAt) { if (now >= s.at) s.mesh.visible = s.mesh.userData.dropped !== true; else showAt[k++] = s; }
@@ -599,8 +845,14 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         if (Number.isFinite(p.liveUntil)) p.liveUntil += delta;
       }
       for (const s of showAt) s.at += delta;
+      for (const e of pending) e.due += delta;
+      for (const e of throws) e.birth += delta;
     },
     reset() {
+      for (const e of pending) spent.push(e);
+      pending.length = 0;
+      for (const e of throws) spentThrows.push(e);
+      throws.length = 0;
       for (const m of staticMeshes) { m.removeFromParent(); m.geometry.dispose(); }
       staticMeshes.length = 0;
       totalVertices = 0;

@@ -1,0 +1,872 @@
+{
+ "title": "The Lineup — 24 tanks",
+ "bpm": 96,
+ "durationSec": 39.5,
+ "lufs": -14,
+ "musicDb": -3,
+ "sfxDb": -1,
+ "fadeOutSec": 1,
+ "progression": [
+  "Dm",
+  "Dm",
+  "Bb",
+  "Bb",
+  "F",
+  "F",
+  "C",
+  "C",
+  "Gm",
+  "Gm",
+  "A",
+  "A",
+  "Bb",
+  "C",
+  "Dm",
+  "Dm"
+ ],
+ "motif": [
+  "A4",
+  "D5",
+  "C5",
+  "A4"
+ ],
+ "sections": [
+  {
+   "name": "intro",
+   "fromBar": 0,
+   "toBar": 1,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -8
+  },
+  {
+   "name": "reveals-a",
+   "fromBar": 2,
+   "toBar": 5,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats",
+    "drone"
+   ],
+   "gainDb": -3
+  },
+  {
+   "name": "reveals-b",
+   "fromBar": 6,
+   "toBar": 9,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": -1
+  },
+  {
+   "name": "reveals-c",
+   "fromBar": 10,
+   "toBar": 13,
+   "layers": [
+    "pulse16",
+    "open",
+    "taiko2",
+    "hats16",
+    "toms",
+    "rim",
+    "pad"
+   ],
+   "gainDb": 0
+  },
+  {
+   "name": "end",
+   "fromBar": 14,
+   "toBar": 15,
+   "layers": [
+    "drone",
+    "ticks"
+   ],
+   "gainDb": -4
+  }
+ ],
+ "hits": [
+  {
+   "kind": "swell",
+   "t": 0.625,
+   "sec": 1.6
+  },
+  {
+   "kind": "riser",
+   "t": 5,
+   "sec": 3.5
+  },
+  {
+   "kind": "braam",
+   "t": 5,
+   "chord": "Dm",
+   "sec": 4.5
+  },
+  {
+   "kind": "boom",
+   "t": 5,
+   "sec": 3
+  },
+  {
+   "kind": "taiko",
+   "t": 6.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 7.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 7.5,
+   "chord": "Bb",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 8.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 10,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 10,
+   "chord": "F",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 11.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 12.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 12.5,
+   "chord": "F",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 13.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 15,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 15,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 16.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 17.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 17.5,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 18.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 20,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 20,
+   "chord": "Gm",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 21.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 22.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 22.5,
+   "chord": "Gm",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 23.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 25,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 25,
+   "chord": "A",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 26.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 27.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 27.5,
+   "chord": "A",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 28.75,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 30,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 30,
+   "chord": "Bb",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 31.25,
+   "f": 64
+  },
+  {
+   "kind": "taiko",
+   "t": 32.5,
+   "f": 56
+  },
+  {
+   "kind": "braam",
+   "t": 32.5,
+   "chord": "C",
+   "sec": 2.6,
+   "gain": 0.6
+  },
+  {
+   "kind": "taiko",
+   "t": 33.75,
+   "f": 64
+  },
+  {
+   "kind": "riser",
+   "t": 35,
+   "sec": 2.5
+  },
+  {
+   "kind": "braam",
+   "t": 35,
+   "chord": "Dm",
+   "sec": 5
+  },
+  {
+   "kind": "boom",
+   "t": 35,
+   "sec": 4,
+   "f0": 90,
+   "f1": 26,
+   "tau": 0.5
+  },
+  {
+   "kind": "stop",
+   "t": 39.1
+  }
+ ],
+ "ducks": [],
+ "sfx": [
+  {
+   "kind": "drive",
+   "t": 0,
+   "dur": 5,
+   "speed": 3.2,
+   "turbine": false,
+   "gain": 0.53
+  },
+  {
+   "kind": "he",
+   "t": 0.9,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 1.12,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 1.34,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 1.56,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 1.78,
+   "gain": 0.768,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 2,
+   "gain": 0.768,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 3.2,
+   "gain": 0.7440000000000001,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 3.42,
+   "gain": 0.7440000000000001,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 3.64,
+   "gain": 0.7440000000000001,
+   "alt": 0
+  },
+  {
+   "kind": "he",
+   "t": 3.86,
+   "gain": 0.7440000000000001,
+   "alt": 1
+  },
+  {
+   "kind": "he",
+   "t": 4.08,
+   "gain": 0.7440000000000001,
+   "alt": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 4.3,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.02,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 4.44,
+   "gain": 0.82,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 5,
+   "dur": 1.25,
+   "speed": 3.2,
+   "turbine": false,
+   "gain": 0.54
+  },
+  {
+   "kind": "cannon",
+   "t": 5.42,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.02,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 5.56,
+   "gain": 0.82,
+   "alt": 0
+  },
+  {
+   "kind": "drive",
+   "t": 6.25,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 6.67,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 7.5,
+   "dur": 1.25,
+   "speed": 2.8,
+   "turbine": true,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 7.92,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 8.06,
+   "gain": 0.78,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 10,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 10.4,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 11.1,
+   "gain": 0.77,
+   "alt": 0
+  },
+  {
+   "kind": "drive",
+   "t": 11.25,
+   "dur": 1.25,
+   "speed": 2.6,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 11.67,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 11.81,
+   "gain": 0.78,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 12.5,
+   "dur": 1.25,
+   "speed": 3.6,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "he",
+   "t": 12.94,
+   "gain": 0.93,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 13.75,
+   "dur": 1.25,
+   "speed": 2.6,
+   "turbine": true,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 14.17,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 14.31,
+   "gain": 0.78,
+   "alt": 0
+  },
+  {
+   "kind": "drive",
+   "t": 15,
+   "dur": 1.25,
+   "speed": 3,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 15.42,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 15.56,
+   "gain": 0.78,
+   "alt": 1
+  },
+  {
+   "kind": "drive",
+   "t": 16.25,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 16.67,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 17.5,
+   "dur": 1.25,
+   "speed": 2.8,
+   "turbine": false,
+   "gain": 0.49
+  },
+  {
+   "kind": "cannon",
+   "t": 17.92,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.02,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 18.75,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 19.17,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 19.31,
+   "gain": 0.78,
+   "alt": 0
+  },
+  {
+   "kind": "drive",
+   "t": 20,
+   "dur": 1.25,
+   "speed": 3,
+   "turbine": false,
+   "passAt": 0.42,
+   "d0": 12,
+   "gain": 0.9,
+   "dir": -1
+  },
+  {
+   "kind": "cannon",
+   "t": 20.42,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.02,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 21.25,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": true,
+   "gain": 0.43
+  },
+  {
+   "kind": "cannon",
+   "t": 21.67,
+   "cls": "huge",
+   "gain": 0.98,
+   "dist": 0.03,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 22.5,
+   "dur": 1.25,
+   "speed": 1.5,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 22.92,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 23.06,
+   "gain": 0.78,
+   "alt": 1
+  },
+  {
+   "kind": "cannon",
+   "t": 24.17,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 25.34,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "pen",
+   "t": 25.43,
+   "gain": 0.6480000000000001
+  },
+  {
+   "kind": "kill",
+   "t": 25.55,
+   "gain": 0.9600000000000001,
+   "pop": true
+  },
+  {
+   "kind": "cannon",
+   "t": 26.67,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 26.81,
+   "gain": 0.77,
+   "alt": 1
+  },
+  {
+   "kind": "cannon",
+   "t": 27.37,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 27.92,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 28.06,
+   "gain": 0.77,
+   "alt": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 28.52,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 29.09,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "pen",
+   "t": 29.18,
+   "gain": 0.6240000000000001
+  },
+  {
+   "kind": "kill",
+   "t": 29.3,
+   "gain": 0.93,
+   "pop": true
+  },
+  {
+   "kind": "cannon",
+   "t": 30.42,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 30.56,
+   "gain": 0.77,
+   "alt": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 30.92,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 31.67,
+   "cls": "huge",
+   "gain": 0.98,
+   "dist": 0.02,
+   "pan": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 32.27,
+   "cls": "huge",
+   "gain": 0.95,
+   "dist": 0.07,
+   "pan": 0
+  },
+  {
+   "kind": "drive",
+   "t": 32.5,
+   "dur": 1.25,
+   "speed": 2.4,
+   "turbine": false,
+   "gain": 0.55
+  },
+  {
+   "kind": "cannon",
+   "t": 32.88,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 33.02,
+   "gain": 0.78,
+   "alt": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 34.17,
+   "cls": "huge",
+   "gain": 1,
+   "dist": 0.01,
+   "pan": 0
+  },
+  {
+   "kind": "he",
+   "t": 34.31,
+   "gain": 0.77,
+   "alt": 0
+  },
+  {
+   "kind": "cannon",
+   "t": 34.77,
+   "cls": "huge",
+   "gain": 0.99,
+   "dist": 0.01,
+   "pan": 0
+  }
+ ]
+}

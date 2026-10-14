@@ -70,7 +70,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   sweden: Object.freeze([
     'strv81', 'udes03', 'strv103a', 'strv103', 'cv90', 'cv90_x', 'cv90105_tml_x', 'strv122', 'cv90_mkiv', 'cv90_mkiv_x',
   ]),
-  suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'fv510_milan_x', 'ajax_x', 'ares_apc_x']),
+  suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax_x', 'ares_apc_x']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125_x', 'kurganets25_x', 'tos1a_tagil']),
   poland: Object.freeze([
     't72m1_jaguar', 't72_rys', 'pt91_twardy', 'pl01', 'borsuk',

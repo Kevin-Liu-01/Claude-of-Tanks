@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { createBattleLoadScreen } from './battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqip } from './battleLoad.ts';
+import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
+import { MAP_LQIP } from './mapLqip.ts';
 import { t } from './i18n.ts';
 
 // Exercise the real screen adapter; geometry reads and layout-style writes
@@ -102,12 +104,88 @@ try {
   assert.equal(screen.covering, true, 'an old fade cannot uncover a newly restaged load');
   assert.equal(screen.root.classList.contains('on'), true);
   assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'), 'pending entry clears a prior mode label');
-  assert.equal(selectors.get('.art').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
+  assert.equal(selectors.get('.art-img').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
+  assert.equal(selectors.get('.art-img').classList.contains('ready'), false);
+  assert.equal(selectors.get('.art').className, 'art none', 'a pending entry keeps the neutral gradient under the art');
+  const gradientOf = (tones) => `linear-gradient(180deg,${tones[0]},${tones[1]} 48%,${tones[2]})`;
+  assert.equal(selectors.get('.art').style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT),
+    'an unknown battlefield opens on every map\'s mean tones, not near-black');
   assert.equal(fill.style.transform, 'scaleX(0.000)', 'a new load resets the previous completed fill');
   const hidden = screen.hide();
   timers.shift()();
   await hidden;
   assert.equal(screen.covering, false);
+
+  // 2026-10-12 (the perf stream; owner: "loading into some maps still shows a black screen at first"): the screen shows the
+  // map's gradient at once and its art only once decoded — the card first while the 1.5 MB hero is still on its way, the
+  // hero over it — never an undecoded background over a near-black surface; a later show supersedes a load in flight.
+  {
+    const loads = [];
+    globalThis.Image = class { constructor() { this.decoding = ''; this.fetchPriority = ''; }
+      set src(url) { loads.push({ url, image: this }); } decode() { return Promise.resolve(); } };
+    const land = async (url) => { const at = loads.findIndex((l) => l.url === url); assert.ok(at >= 0, `${url} requested`);
+      const [{ image }] = loads.splice(at, 1); await image.onload(); for (let i = 0; i < 6; i++) await Promise.resolve(); };
+    const art = selectors.get('.art'), img = selectors.get('.art-img');
+    screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
+    assert.equal(art.className, 'art verdant', 'the map\'s gradient is up with the screen');
+    assert.ok(art.style.backgroundImage.endsWith(gradientOf(MAP_ART_TONES.verdant)), 'from Verdant\'s own art tones');
+    assert.equal(img.classList.contains('ready'), false, 'no art before it is decoded');
+    assert.deepEqual(loads.map((l) => l.url).sort(), ['/maps/cards/verdant.webp', '/maps/thumbs/verdant.webp', '/maps/verdant.webp'],
+      'the hero, the card and the picker thumb are all asked for at once');
+    await land('/maps/thumbs/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/thumbs/verdant.webp)');
+    assert.equal(img.classList.contains('ready'), true, 'the picker thumb (cached by the Garage) covers the gradient first');
+    await land('/maps/cards/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/cards/verdant.webp)', 'the card replaces the thumb');
+    await land('/maps/verdant.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)', 'the hero replaces the card once decoded');
+    // a sharper image is never replaced by a softer one that arrives later
+    screen.show({ mapName: 'Monsoon', thumb: '/maps/monsoon.webp', biome: 'monsoon', allies: [], enemies: [] });
+    await land('/maps/monsoon.webp');
+    await land('/maps/thumbs/monsoon.webp');
+    await land('/maps/cards/monsoon.webp');
+    assert.equal(img.style.backgroundImage, 'url(/maps/monsoon.webp)');
+    // a decoded hero shows at once on the next entry
+    screen.show({ mapName: 'Verdant', thumb: '/maps/verdant.webp', biome: 'verdant', allies: [], enemies: [] });
+    assert.equal(img.style.backgroundImage, 'url(/maps/verdant.webp)');
+    assert.equal(loads.length, 0);
+    // a superseded load never paints over the next battlefield
+    screen.show({ mapName: 'Steinburg', thumb: '/maps/urban.webp', biome: 'urban', allies: [], enemies: [] });
+    screen.show({ mapName: 'Ironworks', thumb: '/maps/foundry.webp', biome: 'foundry', allies: [], enemies: [] });
+    await land('/maps/urban.webp');
+    await land('/maps/thumbs/urban.webp');
+    assert.equal(img.style.backgroundImage, '', 'Steinburg\'s late hero stays off Ironworks\' screen');
+    assert.equal(art.className, 'art foundry');
+    // 2026-10-13: with the lazy placeholder chunk resident (the Garage loads it in idle time), the first frame carries the
+    // map's own blurred picture over its tones, the pending cover included; a random or unknown map keeps the mean tones
+    await primeMapLqip();
+    screen.show({ mapName: 'Monsoon', thumb: '/maps/monsoon.webp', biome: 'monsoon', allies: [], enemies: [] });
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.monsoon}),${gradientOf(MAP_ART_TONES.monsoon)}`);
+    screen.showPending('railyard');
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.railyard}),${gradientOf(MAP_ART_TONES.railyard)}`,
+      'the pending cover of a chosen battlefield is already that battlefield');
+    assert.equal(img.classList.contains('ready'), false);
+    screen.showPending('random');
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    screen.showPending(null);
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    // 2026-10-13 (222's Slow 4G entry read "BATTLEFIELD" for ~1.8 s while the loading owner downloaded): the pending
+    // cover's very first frame names the chosen battlefield, over its own tones, with its art on the way
+    screen.showPending({ mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' });
+    assert.equal(selectors.get('.mapname').textContent, 'Cinder Junction', 'the first loader frame names the map');
+    assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'));
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.railyard}),${gradientOf(MAP_ART_TONES.railyard)}`);
+    assert.equal(art.className, 'art railyard');
+    screen.showPending({ mapId: 'random', mapName: 'Random' });
+    assert.equal(selectors.get('.mapname').textContent, t('battleLoad.fallbackMapName'),
+      'an unresolved Random request keeps the neutral title rather than a guess');
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    loads.length = 0;
+    delete globalThis.Image;
+    const cssText = elements.find(item => item.id === 'cot-bl-style').textContent;
+    assert.match(cssText, /\.cot-bl \.hero \.art\{[^}]*background-image:linear-gradient/, 'every map has a gradient under its art');
+    assert.match(cssText, /\.cot-bl \.hero \.art-img\{[^}]*opacity:0;/);
+  }
 
   const css = elements.find(item => item.id === 'cot-bl-style').textContent;
   assert.match(css, /\.cot-bl \.ffill\{[^}]*width:100%;[^}]*transform:scaleX\(0\);[^}]*transform-origin:left center;[^}]*transition:transform/);

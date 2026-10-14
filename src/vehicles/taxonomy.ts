@@ -46,7 +46,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'kv2', 'jpz_e100_x',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
-    'amx10p', 'amx10p_25', 'amx30_x', 'amx40_x', 't62mv1_x', 'fv510_milan_x',
+    'amx10p', 'amx10p_25', 'amx30_x', 'amx40_x', 't62mv1_x',
     'challenger1_x',
     't72bu_x',
     'chieftain5_x',
@@ -61,6 +61,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
+    // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.
+    'warrior_tes_h',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc_x',
     'leo2a6_x', 'ariete_c1_x', 'ariete_c2_x', 'strv122_x', 't72b3m_x',
@@ -113,6 +115,20 @@ const VEHICLE_ROLE_SET = new Set<string>(VEHICLE_ROLES);
 
 export function vehicleEraForId(id: RuntimeValue): VehicleEra | null {
   return ERA_BY_VEHICLE_ID.get(String(id || '')) || null;
+}
+
+/**
+ * The era a vehicle's cosmetic kit is drawn from when it differs from its gameplay era (decorations.ts decorEra).
+ * A gameplay re-classification must not restyle a vehicle: look changes stay deliberate.
+ */
+const DECOR_ERA_OVERRIDES: ReadonlyMap<string, VehicleEra> = new Map([
+  // 2026-10-13 (VEH-11): the Warrior TES(H) plays in the modern era and keeps the Cold War stowage it shipped with as
+  // the Warrior MILAN X.
+  ['warrior_tes_h', VEHICLE_ERAS.COLD_WAR],
+]);
+
+export function decorEraOverrideForId(id: RuntimeValue): VehicleEra | null {
+  return DECOR_ERA_OVERRIDES.get(String(id || '')) ?? null;
 }
 
 export function vehicleEraLabel(era: RuntimeValue, { short = false }: { short?: boolean } = {}): string {

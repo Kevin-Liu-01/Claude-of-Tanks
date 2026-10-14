@@ -7,9 +7,12 @@ import { sampleArmorRay } from './armorFaceSampling.ts';
 import { armorLoft, turretEquipment, optic, antenna, openTube, smokeBank, mirrorX } from './europeSourcePrimitives.ts';
 import { buildKf41Chassis } from './kf41LynxSourceX.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const {box,cylY,cylZ}=KIT;
 
 export function buildLrmvLynx(P: TankBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildKf41Chassis(P);
   const [px,py,pz]=P.spec.armor.turretPivot;
   P.turretG.position.set(px,py,pz);

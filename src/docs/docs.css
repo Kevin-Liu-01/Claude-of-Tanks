@@ -263,3 +263,16 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .filming-stage-button{flex:0 0 auto;white-space:nowrap}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .filming-take-grid,:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .filming-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}
 :where(body[data-cot-width='phone']) .filming-frame-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* A vehicle record's own take (src/docs/reference.ts over src/ui/fleetTakes.ts): muted and decorative, its caption the
+   take's title, its link the take's scene in the Studio. */
+.manual-take{display:grid;gap:9px;max-width:640px;margin:0 0 18px}
+.manual-take-label{color:var(--amber);font:800 8px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.manual-take .fleet-take-frame{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line2);background:#020405}
+.manual-take .fleet-take-video{display:block;width:100%;height:100%;object-fit:cover}
+.manual-take .fleet-take-toggle{position:absolute;right:8px;bottom:8px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line2);background:rgba(5,8,10,.82);color:var(--ink);cursor:pointer;transition:border-color .16s ease,color .16s ease}
+.manual-take .fleet-take-toggle svg{display:block;width:14px;height:14px}
+.manual-take .fleet-take-toggle:hover{border-color:var(--amber);color:var(--amber2)}
+.manual-take figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;color:#b7c1c3;font-size:13px;line-height:1.5}
+.manual-take .fleet-take-studio{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid var(--amber);background:#14140f;color:var(--amber2);font:800 8px/1 var(--mono);letter-spacing:.12em;text-decoration:none;text-transform:uppercase;white-space:nowrap}
+.manual-take [hidden]{display:none!important}

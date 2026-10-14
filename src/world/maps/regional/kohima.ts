@@ -4,7 +4,7 @@
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, stilts, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -61,7 +61,9 @@ function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D
   faceBox(sink, 'dark', faces[0], 0, 1.65, 0.04, W - 1.2, 2.2, 0.02, { decor: true });
   faceBox(sink, 'structureWood', faces[0], 0, 2.95, awning / 2 + 0.05, W - 1.0, 0.06, awning, { colour: shade(plank, 1.1), decor: true });
   const roof = tin(26);
-  sink.placed(0, x, 0, 0, () => emitRoof(sink, roofGeometry(W, D, 3.2, roof), roof, roofColour));
+  // (the integrity check, 2026-10-12: sky through the roof's open ends) the gables boarded under the tin
+  const rg = roofGeometry(W, D, 3.2, roof);
+  sink.placed(0, x, 0, 0, () => { emitRoof(sink, rg, roof, roofColour); closeGables(sink, rg, 'structureWood', { colour: shade(plank, 0.85) }); });
 }
 
 /** A bazaar shop: one shop on its plot. */
@@ -149,7 +151,10 @@ const granary: RegionalBuilder = (ctx) => {
   stilts(sink, W, D, 1.0, rgb(0x6a5a46), { brace: false });
   sink.span('structureWood', -W / 2 + 0.05, 1.16, -D / 2 + 0.05, W / 2 - 0.05, 2.9, D / 2 - 0.05, { colour: BAMBOO_MAT });
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 48, eave: 0.5, verge: 0.4, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'rows' };
-  emitRoof(sink, roofGeometry(W, D, 2.9, roof), roof);
+  const rg = roofGeometry(W, D, 2.9, roof);
+  emitRoof(sink, rg, roof);
+  // (the integrity check, 2026-10-12: sky through the thatch's open ends) the gables in the bin's bamboo mat
+  closeGables(sink, rg, 'structureWood', { colour: BAMBOO_MAT });
   return sink.finish();
 };
 

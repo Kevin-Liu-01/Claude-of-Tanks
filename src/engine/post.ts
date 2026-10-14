@@ -49,7 +49,7 @@ import {
   resolveTemporalAoCurrentWeight,
 } from './temporalAoPolicy.ts';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import type { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
@@ -66,7 +66,9 @@ import {
 import {
   baseDynamicScale,
   dynamicScaleFloor,
+  dynamicScaleHold,
   internalPixelRatio,
+  RCAS_MIN_SCALE,
   reconstructionMode,
   reconstructionSharpness,
   type ReconstructionMode,
@@ -165,6 +167,8 @@ interface PostWarmTiming {
 export interface PostRuntime {
   readonly lastCompletedFrame: CompletedPostFrame | null;
   composer: EffectComposer;
+  /** Settles once the lazily loaded passes (SMAA) hold their places in the chain; the boot awaits it before warming. */
+  readonly ready: Promise<void>;
   bloom: UnrealBloomPass;
   gtao: GTAOPass;
   /** Temporal anti-aliasing (2026-09-12); enabled per quality preset. */
@@ -763,6 +767,8 @@ class FsrUpscalePass extends Pass {
   inputScale: number;
   /** Temporal AA has settled the sub-pixel sparkle: RCAS may lift to its temporal floor (2026-09-13). */
   temporalAccumulation = false;
+  /** The input scale from which RCAS follows EASU: the preset's rcasMinScale (2026-10-13), else RCAS_MIN_SCALE. */
+  rcasMinScale = RCAS_MIN_SCALE;
   readonly intermediate: THREE.WebGLRenderTarget;
   readonly easuMaterial: THREE.ShaderMaterial;
   readonly rcasMaterial: THREE.ShaderMaterial;
@@ -890,7 +896,7 @@ class FsrUpscalePass extends Pass {
     const outW = this.outputSize.x, outH = this.outputSize.y;
     const upscale = inW !== outW || inH !== outH;
     const inputScale = upscale ? Math.min(inW / outW, inH / outH) : 1;
-    const mode = reconstructionMode(inputScale);
+    const mode = reconstructionMode(inputScale, this.rcasMinScale);
     const applyRcas = mode.includes('rcas');
     this.inputSize.set(inW, inH);
     this.inputScale = inputScale;
@@ -2364,19 +2370,33 @@ export function createPost(
   const grade = createOutputGradePass();
   grade.uniforms.tLightFx.value = lightFxTarget.texture;
   composer.addPass(grade); // 4. ACES + sRGB + display grade/scope treatment
-  const smaa = new SMAAPass() as ExtendedSmaaPass;
-  // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
-  // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
-  // routinely land below that threshold after tone mapping. High-preset SMAA
-  // catches those fine edges and follows longer diagonals without the memory
-  // and fill-rate cost of full-scene MSAA/supersampling.
-  if (smaa._materialEdges && smaa._materialEdges.defines) {
-    smaa._materialEdges.defines.SMAA_THRESHOLD = '0.055';
-  }
-  if (smaa._materialWeights && smaa._materialWeights.defines) {
-    smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
-  }
-  composer.addPass(smaa); // 5. edge-pattern AA (geometric silhouettes)
+  // 5. edge-pattern AA (geometric silhouettes). The perf stream (2026-10-13, the entry budget): three's SMAAPass carries
+  // its area and search lookup images as base64 (34 KB of the game entry's brotli), so it loads as its own chunk from
+  // here; a disabled slot holds its place in the chain until it lands, and the boot's post stage awaits `ready` before
+  // the first warmed frame (main.ts), so every presented frame has it as before. A failed load stays rejected: the boot
+  // fails on it and the document's chunk recovery (index.html) takes over, as for every other boot chunk.
+  const smaaSlot = new Pass();
+  smaaSlot.enabled = false;
+  smaaSlot.needsSwap = false;
+  composer.addPass(smaaSlot);
+  const smaaReady = import('three/examples/jsm/postprocessing/SMAAPass.js').then(({ SMAAPass: SmaaPass }) => {
+    const smaa = new SmaaPass() as ExtendedSmaaPass;
+    // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
+    // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
+    // routinely land below that threshold after tone mapping. High-preset SMAA
+    // catches those fine edges and follows longer diagonals without the memory
+    // and fill-rate cost of full-scene MSAA/supersampling.
+    if (smaa._materialEdges && smaa._materialEdges.defines) {
+      smaa._materialEdges.defines.SMAA_THRESHOLD = '0.055';
+    }
+    if (smaa._materialWeights && smaa._materialWeights.defines) {
+      smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
+    }
+    // the slot's place (insertPass sizes the pass to the composer as addPass did)
+    const at = composer.passes.indexOf(smaaSlot);
+    composer.removePass(smaaSlot);
+    composer.insertPass(smaa, at);
+  });
 
   // 6. Native-output spatial reconstruction. SMAA first resolves the geometric
   // pattern at internal resolution. The reconstruction ladder then chooses
@@ -2386,6 +2406,7 @@ export function createPost(
   // stretch a smaller canvas a second time.
   const upscaler = new FsrUpscalePass();
   upscaler.temporalAccumulation = taaEnabled;
+  upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
   composer.addPass(upscaler);
   {
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
@@ -2682,6 +2703,7 @@ export function createPost(
       missedFrameRatio: missRatio,
       achievedFps: windowFps,
       dynamicScaleFloor: dynamicScaleFloor(renderer.getPixelRatio(), preset),
+      dynamicScaleHold: dynamicScaleHold(renderer.getPixelRatio(), preset),
       maximumTrim: trimMax(),
       mayRaiseTier: canRecoverAutoTier(),
       gpuFrameMs: gpuFrameTimer?.takeWindow() ?? null,
@@ -2944,6 +2966,7 @@ export function createPost(
     taa.enabled = taaEnabled;
     taa.resetHistory();
     upscaler.temporalAccumulation = taaEnabled;
+    upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
     publishAAState();
     resolveLightFx();
     // perf-governor r1: a preset switch is a new baseline — release every
@@ -2953,6 +2976,9 @@ export function createPost(
 
   return {
     composer,
+
+    /** Settles once the lazily loaded passes (SMAA) hold their places in the chain; the boot awaits it before warming. */
+    ready: smaaReady,
 
     /** Last successful complete transaction; retained across skipped frames.
      * Individual warm/debug pass renders do not replace this receipt.
