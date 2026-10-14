@@ -294,10 +294,14 @@ function describeAndRun(label, builder, styleId, parts) {
     }
     let opened = 0;
     for (const f of a.storeys[0].faces) {
-      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap)
-      const aim = pieces.map((p) => ({ u: (p.c[0] - f.origin[0]) * f.u[0] + (p.c[2] - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
-        y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, Math.min(...p.top) / 2) }))
-        .filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => x.o - y.o)[0];
+      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap), where it
+      // stands tallest (E11, lane B 2026-10-14: the corner pieces the ring split reads stand low at their middles)
+      const aim = pieces.map((p) => {
+        const k = p.top.indexOf(Math.max(...p.top)), t = -p.hl + (k + 0.5) * (2 * p.hl / p.top.length);
+        const x = p.c[0] + p.along[0] * t, z = p.c[2] + p.along[2] * t;
+        return { u: (x - f.origin[0]) * f.u[0] + (z - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
+          y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, p.top[k] / 2), top: p.top[k] };
+      }).filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => (Math.abs(x.o - y.o) > 0.1 ? x.o - y.o : y.top - x.top))[0];
       const out = writers(...CAPS.breach);
       const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: aim ? aim.u : 0, y: aim ? aim.y : 1.0, radiusM: 0.6, dirX: -f.out[0], dirZ: -f.out[2],
         munition: 'he', cause: 'blast', seed: 9 + f.section }, out);

@@ -808,7 +808,9 @@ const RUINS = /ruin/i;
  */
 function describeRuin(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
   if (!RUINS.test(input.builder)) return null;
-  const pieces = readWallPieces(input.parts);
+  // (E11) the walls the ruin builder recorded as it built them, else read back off the parts
+  const own = (input.kitPlan as RegionalKitPlan | undefined)?.ruinWalls;
+  const pieces = own && own.length >= 2 ? own : readWallPieces(input.parts);
   if (!pieces) return null;
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, base = Infinity, top = -Infinity;
   for (const p of pieces) {

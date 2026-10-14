@@ -1320,20 +1320,21 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
     strip(cur, rect.u1);
   }
   // (E10) a round-headed opening: the wall back in its head's corners, a fan from each corner over the arc
-  const ARC = 10;
   const arcOf = (h: (typeof hs)[number]) => {
     const c = (h.u0 + h.u1) / 2, rr = (h.u1 - h.u0) / 2, sp = Math.min(h.spring!, h.y1 - rr);
-    return { c, rr, sp, at: (t: number): [number, number] => [c + Math.cos(t) * rr, sp + Math.sin(t) * rr] };
+    // the arc's segments by its size (a window's head in six, a carriage gate's in eight)
+    const n = rr < 0.45 ? 4 : rr < 1.1 ? 6 : 8;
+    return { c, rr, sp, n, at: (t: number): [number, number] => [c + Math.cos(t) * rr, sp + Math.sin(t) * rr] };
   };
   for (const h of hs) {
     if (h.spring === undefined) continue;
     const a = arcOf(h);
     for (const side of [-1, 1]) {
-      const corner = P(side < 0 ? h.u0 : h.u1, h.y1);
-      for (let j = 0; j < ARC / 2; j++) {
+      const corner = P(side < 0 ? h.u0 : h.u1, h.y1), q = a.n / 2;
+      for (let j = 0; j < q; j++) {
         // the quarter arc from the springer (t = 0 or π) to the crown (π/2)
-        const t0 = side > 0 ? (Math.PI / 2) * (j / (ARC / 2)) : Math.PI - (Math.PI / 2) * (j / (ARC / 2));
-        const t1 = side > 0 ? (Math.PI / 2) * ((j + 1) / (ARC / 2)) : Math.PI - (Math.PI / 2) * ((j + 1) / (ARC / 2));
+        const t0 = side > 0 ? (Math.PI / 2) * (j / q) : Math.PI - (Math.PI / 2) * (j / q);
+        const t1 = side > 0 ? (Math.PI / 2) * ((j + 1) / q) : Math.PI - (Math.PI / 2) * ((j + 1) / q);
         const [ua, ya] = a.at(t0), [ub, yb] = a.at(t1);
         sink.polygon(bucket, side > 0 ? [P(ua, ya), corner, P(ub, yb)] : [P(ua, ya), P(ub, yb), corner]);
       }
@@ -1351,14 +1352,14 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
       const a = arcOf(h), back = r - 0.004;
       sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, a.sp, r), P(h.u0, a.sp), { shade: 0.74 * dark });
       sink.quad(bucket, P(h.u1, h.y0), P(h.u1, a.sp), P(h.u1, a.sp, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
-      for (let j = 0; j < ARC; j++) {
-        const [ua, ya] = a.at(Math.PI * (j / ARC)), [ub, yb] = a.at(Math.PI * ((j + 1) / ARC));
+      for (let j = 0; j < a.n; j++) {
+        const [ua, ya] = a.at(Math.PI * (j / a.n)), [ub, yb] = a.at(Math.PI * ((j + 1) / a.n));
         sink.quad(bucket, P(ua, ya), P(ub, yb), P(ub, yb, r), P(ua, ya, r), { shade: 0.68 * dark });
       }
       sink.quad(bucket, P(h.u0, h.y0), P(h.u1, h.y0), P(h.u1, h.y0, r), P(h.u0, h.y0, r), { shade: 0.9 * dark });
       sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, a.sp, back), P(h.u0, a.sp, back), { decor: true });
       const fan: Vec3[] = [P(a.c, a.sp, back)];
-      for (let j = 0; j <= ARC; j++) { const [uu, yy] = a.at(Math.PI * (j / ARC)); fan.push(P(uu, yy, back)); }
+      for (let j = 0; j <= a.n; j++) { const [uu, yy] = a.at(Math.PI * (j / a.n)); fan.push(P(uu, yy, back)); }
       sink.polygon('dark', fan, { decor: true });
       return;
     }
@@ -1392,7 +1393,7 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
   const hs = holes.filter((h) => h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05 && h.y0 > lo - 1e-6 && h.y1 < hi);
   const cuts = [...new Set(hs.flatMap((h) => [h.y0, h.y1]))].sort((a, b) => a - b);
   const levels = [lo, ...cuts.filter((y) => y > lo + 1e-4 && y < hi - 1e-4), hi];
-  const emit = (piece: Array<[number, number]>) => { if (piece.length >= 3) wallPolygon(sink, bucket, face, piece, depth, opts); };
+  const pieces: Array<Array<[number, number]>> = [];
   for (let i = 0; i + 1 < levels.length; i++) {
     const ya = levels[i], yb = levels[i + 1];
     const band = clipFace(clipFace(poly, [0, -1, -ya]), [0, 1, yb]);
@@ -1400,14 +1401,28 @@ export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face,
     const through = hs.filter((h) => h.y0 <= ya + 1e-6 && h.y1 >= yb - 1e-6).sort((a, b) => a.u0 - b.u0);
     let rest = band;
     for (const h of through) {
-      emit(clipFace(rest, [1, 0, h.u0]));
+      const left = clipFace(rest, [1, 0, h.u0]);
+      if (left.length >= 3) pieces.push(left);
       rest = clipFace(rest, [-1, 0, -h.u1]);
     }
-    emit(rest);
+    if (rest.length >= 3) pieces.push(rest);
+  }
+  // the faces: each piece's front (the slices meet inside the wall: no faces between them; its back is the attic's,
+  // which the dark behind each opening hides), the polygon's own edges round its outside and the openings' jambs, heads
+  // and sills through its depth (wallPolygon's prism, holed)
+  const P = (u: number, y: number, o: number): Vec3 => facePoint(face, u, y, o);
+  for (const piece of pieces) sink.polygon(bucket, piece.map(([u, y]) => P(u, y, 0)), opts);
+  for (let i = 0; i < poly.length; i++) {
+    const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
+    sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts);
   }
   const back = -reveal - 0.004;
   for (const h of hs) {
-    sink.quad('dark', facePoint(face, h.u0, h.y0, back), facePoint(face, h.u1, h.y0, back), facePoint(face, h.u1, h.y1, back), facePoint(face, h.u0, h.y1, back), { decor: true });
+    sink.quad(bucket, P(h.u0, h.y0, 0), P(h.u0, h.y0, -depth), P(h.u0, h.y1, -depth), P(h.u0, h.y1, 0), { ...opts, shade: 0.74 });
+    sink.quad(bucket, P(h.u1, h.y0, 0), P(h.u1, h.y1, 0), P(h.u1, h.y1, -depth), P(h.u1, h.y0, -depth), { ...opts, shade: 0.74 });
+    sink.quad(bucket, P(h.u0, h.y1, 0), P(h.u0, h.y1, -depth), P(h.u1, h.y1, -depth), P(h.u1, h.y1, 0), { ...opts, shade: 0.66 });
+    sink.quad(bucket, P(h.u0, h.y0, 0), P(h.u1, h.y0, 0), P(h.u1, h.y0, -depth), P(h.u0, h.y0, -depth), { ...opts, shade: 0.9 });
+    sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
   }
 }
 

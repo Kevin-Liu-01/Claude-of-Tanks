@@ -159,31 +159,32 @@ export function nisan(sink: PartSink, x: number, z: number, h: number, turban: b
  */
 export function archHead(sink: PartSink, face: Face, u: number, y: number, r: number, ring: RegionalBucket | null, ringW = 0.16, segments = 7): void {
   if (!ring) return;
-  // the voussoirs: each its own wedge of stone standing 5 cm proud, a shade apart, the keystone a hand prouder
+  // the ring stands 3 cm proud of the wall: each voussoir's face a shade apart, its feet on the springers (the inner
+  // edge is the cut head's intrados); the faces only (a civic front carries fifty of them: the regional build's cap)
+  const O = 0.03, at = (t: number, rr: number, o: number) => facePoint(face, u + Math.cos(t) * rr, y + Math.sin(t) * rr, o);
+  const r1 = r + ringW;
   for (let j = 0; j < segments; j++) {
     const a = Math.PI * (j / segments), b = Math.PI * ((j + 1) / segments);
-    const r0 = r, r1 = r + ringW, key = j === Math.floor(segments / 2) && segments % 2 === 1;
-    const pts = [facePoint(face, u + Math.cos(a) * r0, y + Math.sin(a) * r0, 0), facePoint(face, u + Math.cos(a) * r1, y + Math.sin(a) * r1, 0),
-      facePoint(face, u + Math.cos(b) * r1, y + Math.sin(b) * r1, 0), facePoint(face, u + Math.cos(b) * r0, y + Math.sin(b) * r0, 0)];
-    sink.prism(ring, pts, face.out, key ? 0.09 : 0.05, { ...DECOR, shade: j % 2 ? 0.9 : 0.97, fineSides: true });
+    sink.quad(ring, at(a, r, O), at(a, r1, O), at(b, r1, O), at(b, r, O), { ...DECOR, shade: j % 2 ? 0.88 : 0.97 });
+  }
+  for (const t of [0, Math.PI]) {
+    const lo = Math.min(0, Math.cos(t)) < 0;
+    if (lo) sink.quad(ring, at(t, r1, 0), at(t, r1, O), at(t, r, O), at(t, r, 0), { ...DECOR, shade: 0.9, fine: true });
+    else sink.quad(ring, at(t, r, 0), at(t, r, O), at(t, r1, O), at(t, r1, 0), { ...DECOR, shade: 0.9, fine: true });
   }
 }
 
 /**
- * The glazing of a round head cut by the house (Opening.arch): a fanlight set back in the reveal (PartSink.recess), its
- * radial bars and its springing transom (fine joinery). (u, y) the springing line's centre, r the head's radius.
+ * The glazing of a round head cut by the house (Opening.arch): a fanlight set back in the reveal (PartSink.recess) on
+ * its springing transom (fine joinery). (u, y) the springing line's centre, r the head's radius.
  */
 export function archGlazing(sink: PartSink, face: Face, u: number, y: number, r: number, frame: Rgb): void {
-  const o = sink.recess > 0 ? -sink.recess + 0.03 : 0.02, n = 8;
+  const o = sink.recess > 0 ? -sink.recess + 0.03 : 0.02, n = r < 0.45 ? 4 : r < 1.1 ? 6 : 8;
   const fan = [facePoint(face, u, y, o)];
   for (let j = 0; j <= n; j++) fan.push(facePoint(face, u + Math.cos(Math.PI * j / n) * (r - 0.03), y + Math.sin(Math.PI * j / n) * (r - 0.03), o));
   sink.polygon('glass', fan, DECOR);
-  const bars = { colour: frame, decor: true, fine: true, exposed: true } as const;
-  for (const t of [0.25, 0.5, 0.75]) {
-    const a = Math.PI * t;
-    sink.member('structureWood', facePoint(face, u, y, o), facePoint(face, u + Math.cos(a) * (r - 0.02), y + Math.sin(a) * (r - 0.02), o), 0.035, 0.03, face.out, bars, 0);
-  }
-  faceBox(sink, 'structureWood', face, u, y, o + 0.015, 2 * r, 0.06, 0.03, { colour: frame, decor: true, fine: true });
+  // the springing transom (fine joinery: near the camera only, never on a phone)
+  faceBox(sink, 'structureWood', face, u, y + 0.03, o + 0.015, 2 * r, 0.06, 0.03, { colour: frame, decor: true, fine: true }, { ends: true, back: true });
 }
 
 /** A triangular pediment over a window (the piano nobile's hood), a thin prism proud of the wall. */
