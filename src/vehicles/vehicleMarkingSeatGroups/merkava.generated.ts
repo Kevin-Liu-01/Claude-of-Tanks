@@ -183,22 +183,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          1.8147467,
-          1.127896,
-          -1.9324999
+          1.8391329,
+          1.1283463,
+          -1.4854999
         ],
         "quaternion": [
-          0.0201783,
-          0.7068188,
-          -0.0201783,
-          0.7068188
+          -0.0063639,
+          0.7070781,
+          0.0063639,
+          0.7070781
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "merkava3c",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.001684
       }
     ]
   },
