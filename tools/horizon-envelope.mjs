@@ -230,7 +230,8 @@ export async function measureRing(world, id, { eyes = 'all', field: givenField =
   const ring = world.horizon.sampleHorizonGeometry(cfg, 1337, field);
   const columns = world.horizon.HORIZON_SEGMENTS;
   const centreY = field.getHeightAt(0, 0) + CENTRE_EYE_M;
-  const centre = skylineStats(ringColumnSkyline(ring, columns, centreY));
+  const centreSky = ringColumnSkyline(ring, columns, centreY);
+  const centre = skylineStats(centreSky);
   // C2: the p90 rise of the ring band out to 1 km over the centre ground (H1's outland rise)
   const g0 = field.getHeightAt(0, 0);
   const band = [];
@@ -275,7 +276,7 @@ export async function measureRing(world, id, { eyes = 'all', field: givenField =
   const deck = deckColumns(cfg, world.clouds.CLOUDSCAPE_REGIMES);
   const openings = world.edge.resolveSeaOpenings(horizonCfg.seaOpening, field, id).map((o) => ({ az: Math.round(o.azimuthDeg), width: Math.round(o.widthDeg), level: +o.level.toFixed(2), source: o.source }));
   return {
-    id, path: 'ring', centre, eyes: eyeRows, outlandRise, farms, villages, p1, pano, deck, openings,
+    id, path: 'ring', centre, centreSky: centreSky.elev, eyes: eyeRows, outlandRise, farms, villages, p1, pano, deck, openings,
     rimH: cfg.terrain?.rimH ?? null, fogDensity: cfg.sky?.fogDensity ?? null, style, character, far, settings: { farms: settings.farms },
     exceptions: { ...(RECORDED_EXCEPTIONS[id] ?? {}), ...(horizonCfg.envelopeExceptions ?? {}), ...(cfg.hinterland?.exceptions ?? {}) },
   };

@@ -19,7 +19,7 @@
 // scree, snow, sand, water, settlement ground, roads, rails); geologyAt gives the strata phase, the rock share and the
 // snow. No Math.random, no allocation per query (callers own their outputs).
 import { createLandFieldSample, landUseAt, resolveLandUseProfile, type LandFieldSample, type LandUseProfile } from '../landUse.ts';
-import { arcWeight, hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
+import { hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
 import { fbm2, hash12, hashString, noise2, seedOffset, smoothstep } from './noise.ts';
 
 /** The square's terrain edge (TERRAIN_HALF_EXTENT_M) and its playable edge. */
@@ -169,10 +169,20 @@ function regionLandUse(spec: HinterlandSpec, seed: number): LandUseProfile | nul
   };
 }
 
-interface ResolvedSea { arc: readonly [number, number]; coastM: number; wanderM: number; level: number; salt: number }
+/** A sea or a flood is a coast in the world, not a sector: the water lies past a coastline at `coastM` from the
+ * centre, square to the normal bearing (the arc's middle), wandering along its length, and (a channel or an estuary)
+ * a far shore `widthM` beyond it. A radial sector drew right-angle shores at its ends (D9). */
+interface ResolvedSea { nx: number; nz: number; coastM: number; wanderM: number; widthM: number; level: number; salt: number }
 interface ResolvedLake { x: number; z: number; r: number; level: number; salt: number }
 interface ResolvedChannel { xs: Float64Array; zs: Float64Array; halfW: number; levels: Float64Array; minX: number; maxX: number; minZ: number; maxZ: number; kind: number }
-interface ResolvedFlood { arc: readonly [number, number]; level: number; fromM: number }
+interface ResolvedFlood { nx: number; nz: number; level: number; fromM: number; salt: number }
+
+/** The unit normal (world XZ) of an arc's middle bearing. */
+function arcNormal(arc: readonly [number, number]): [number, number] {
+  const span = ((arc[1] - arc[0]) % 360 + 360) % 360;
+  const mid = ((arc[0] + span / 2) * Math.PI) / 180;
+  return [Math.sin(mid), Math.cos(mid)];
+}
 
 /** Distance from (x, z) to a polyline and the arc-length parameter's segment and t (written to `hit`). */
 function polylineDistance(xs: ArrayLike<number>, zs: ArrayLike<number>, x: number, z: number, hit: { i: number; t: number }): number {
@@ -274,12 +284,14 @@ export function createHinterlandField(
   spec.water.forEach((w, index) => {
     const salt = 101 + index * 17;
     if (w.kind === 'sea') {
-      seas.push({ arc: w.arc?.azDeg ?? [0, 360], coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, level: w.level ?? -1, salt });
+      const [nx, nz] = arcNormal(w.arc?.azDeg ?? [180, 180]);
+      seas.push({ nx, nz, coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, widthM: w.widthM ?? Infinity, level: w.level ?? -1, salt });
     } else if (w.kind === 'lake' && w.at) {
       const p = hinterlandPoint(w.at);
       lakes.push({ x: p.x, z: p.z, r: w.radiusM ?? 300, level: w.level ?? baseNoWater(p.x, p.z) - 0.5, salt });
     } else if (w.kind === 'flood') {
-      floods.push({ arc: w.arc?.azDeg ?? [0, 360], level: w.level ?? 0, fromM: w.coastM ?? 700 });
+      const [nx, nz] = arcNormal(w.arc?.azDeg ?? [270, 270]);
+      floods.push({ nx, nz, level: w.level ?? 0, fromM: w.coastM ?? 700, salt });
     } else if (w.kind === 'river' || w.kind === 'canal') {
       let pts: { x: number; z: number }[];
       if (w.path && w.path.length >= 2) pts = w.path.map((at) => hinterlandPoint(at, { x: 0, z: 0 }));
@@ -346,25 +358,36 @@ export function createHinterlandField(
     const edgeOut = edgeOutOf(x, z);
     if (edgeOut <= 0) return base;
     let h = base;
-    if (seas.length || floods.length) {
-      const az = hinterlandBearing(x, z), r = Math.hypot(x, z);
-      for (const sea of seas) {
-        const w = arcWeight(az, sea.arc, 9);
-        if (w <= 0) continue;
-        const coast = sea.coastM + sea.wanderM * fbm2(az / 9 + sea.salt, sea.salt * 0.7, 3);
-        // the shore shelves down from 40 m inside the coast to the floor 300 m out (a beach, then the sea floor)
-        const s = smoothstep(coast - 40, coast + 300, r) * w;
-        if (s > 0) {
-          const floor = sea.level - 1.5 - 4 * smoothstep(coast, coast + 1200, r);
-          h = h + (Math.min(h, floor) - h) * s;
-          if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h) * w; out.level = sea.level; out.kind = 1; }
-        }
+    for (const sea of seas) {
+      // the distance out along the coast's normal, and along the coast (the wander's coordinate)
+      const along = x * sea.nz - z * sea.nx, out_ = x * sea.nx + z * sea.nz;
+      if (out_ < sea.coastM - sea.wanderM - 80) continue;
+      const coast = sea.coastM + sea.wanderM * fbm2(along / 1700 + sea.salt, sea.salt * 0.7, 4);
+      // the shore shelves down from 40 m inside the coast to the floor 300 m out (a beach, then the sea floor); a
+      // channel's far shore rises the same way from its own wandering line
+      let s = smoothstep(coast - 40, coast + 300, out_);
+      if (Number.isFinite(sea.widthM)) {
+        const farCoast = coast + sea.widthM + sea.wanderM * 1.4 * fbm2(along / 2300 - sea.salt, sea.salt * 1.3, 4);
+        s *= 1 - smoothstep(farCoast - 300, farCoast + 40, out_);
       }
-      for (const flood of floods) {
-        if (r < flood.fromM) continue;
-        const w = arcWeight(az, flood.arc, 6) * smoothstep(flood.fromM, flood.fromM + 200, r);
-        if (w > 0 && h < flood.level && out && w > out.wet) { out.wet = w * smoothstep(0, 0.25, flood.level - h); out.level = flood.level; out.kind = 5; }
+      if (s > 0) {
+        const deep = Math.min(smoothstep(coast, coast + 1200, out_), Number.isFinite(sea.widthM) ? 1 - smoothstep(coast + sea.widthM - 1200, coast + sea.widthM, out_) : 1);
+        const floor = sea.level - 1.5 - 4 * deep;
+        h = h + (Math.min(h, floor) - h) * s;
+        if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h); out.level = sea.level; out.kind = 1; }
       }
+    }
+    for (const flood of floods) {
+      // the inundation past its line: every hollow under its level holds water (the land stands where it is higher)
+      const along = x * flood.nz - z * flood.nx, out_ = x * flood.nx + z * flood.nz;
+      const line = flood.fromM + 260 * fbm2(along / 1300 + flood.salt, flood.salt * 0.4, 3);
+      if (out_ < line) continue;
+      const w = smoothstep(line, line + 220, out_);
+      // the drowned polders lie a little under the water (Walcheren's fields at sea level under a metre and more of the
+      // October tide); what stands higher — a dune, a terp, a dyke, a village on its rise — keeps its height over it
+      const sunk = flood.level - 0.9 + Math.max(0, h - flood.level - 1.5) * 0.8;
+      h = h + (Math.min(h, sunk) - h) * w;
+      if (h < flood.level && out && w > out.wet) { out.wet = w * smoothstep(0, 0.25, flood.level - h); out.level = flood.level; out.kind = 5; }
     }
     for (const lake of lakes) {
       const d = Math.hypot(x - lake.x, z - lake.z);
@@ -426,16 +449,8 @@ export function createHinterlandField(
   const flatWeights = { settle: 0, road: 0, rail: 0 };
   function levelInto(x: number, z: number, h: number): number {
     flatWeights.settle = 0; flatWeights.road = 0; flatWeights.rail = 0;
-    const pads = padBuckets.at(x, z);
-    if (pads) {
-      for (const pad of pads) {
-        const d = Math.hypot(x - pad.x, z - pad.z);
-        const w = 1 - smoothstep(pad.r, pad.r + pad.featherM, d);
-        if (w <= 0) continue;
-        h += (pad.level - h) * w;
-        flatWeights.settle = Math.max(flatWeights.settle, 1 - smoothstep(pad.r * 0.9, pad.r + 2, d));
-      }
-    }
+    // the roads and rails graded first, then the yards: a building stands on a level yard whatever runs past it, and
+    // where two yards' feathers meet the nearer yard holds (never a blend of two levels under one footprint)
     const lines = lineBuckets.at(x, z);
     if (lines) {
       let seen: HinterlandGradeLine | null = null;
@@ -451,6 +466,17 @@ export function createHinterlandField(
         if (line.kind === 'rail') flatWeights.rail = Math.max(flatWeights.rail, on);
         else flatWeights.road = Math.max(flatWeights.road, on * (line.kind === 'track' ? 0.6 : 1));
       }
+    }
+    const pads = padBuckets.at(x, z);
+    if (pads) {
+      let best: (HinterlandFlatPad & { level: number }) | null = null, bestW = 0;
+      for (const pad of pads) {
+        const d = Math.hypot(x - pad.x, z - pad.z);
+        const w = 1 - smoothstep(pad.r, pad.r + pad.featherM, d);
+        if (w > bestW || (w === bestW && w > 0 && best && d < Math.hypot(x - best.x, z - best.z))) { bestW = w; best = pad; }
+        if (w > 0) flatWeights.settle = Math.max(flatWeights.settle, 1 - smoothstep(pad.r * 0.9, pad.r + 2, d));
+      }
+      if (best) h += (best.level - h) * bestW;
     }
     return h;
   }
@@ -503,10 +529,8 @@ export function createHinterlandField(
   const woodsCut = (() => {
     if (woodsShare <= 0) return Infinity;
     const samples: number[] = [];
-    for (let i = 0; i < 2048; i++) {
-      const a = (i / 2048) * Math.PI * 2 * 7.13, d = 1200 + (i % 32) * 90;
-      samples.push(woodsNoise(Math.sin(a) * d, Math.cos(a) * d));
-    }
+    // (a lattice over 12 km: the noise is stationary, so its quantile there is the share everywhere)
+    for (let j = 0; j < 64; j++) for (let i = 0; i < 64; i++) samples.push(woodsNoise(-6000 + i * 190 + 37, -6000 + j * 190 - 53));
     samples.sort((p, q) => p - q);
     return samples[Math.min(samples.length - 1, Math.floor((1 - woodsShare) * samples.length))];
   })();

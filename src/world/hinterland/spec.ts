@@ -60,10 +60,13 @@ export interface HinterlandWaterConfig {
   toAzDeg?: number;
   /** Explicit centreline points (bearing, distance) for a river or a canal. */
   path?: readonly HinterlandAt[];
+  /** A river's or a canal's width; a sea's channel width (its far shore that far beyond the coast; unset: open sea). */
   widthM?: number;
-  /** The sea's or a flood's arc (bearings, clockwise from the first to the second). */
+  /** The bearings a sea or a flood lies toward (clockwise from the first to the second): its middle is the coast's
+   * normal. The water is a coast in the world — a line square to that normal, wandering along its length — never a
+   * radial sector (a sector's ends drew right-angle shores, D9). */
   arc?: { azDeg: readonly [number, number] };
-  /** A sea's coast distance from the centre along its arc (m), and how far it wanders. */
+  /** The coast's (a flood's edge's) distance from the centre along the normal (m), and how far it wanders. */
   coastM?: number;
   coastWanderM?: number;
   /** A lake's centre and radius. */

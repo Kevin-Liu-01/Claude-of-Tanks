@@ -1561,6 +1561,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderFarmsteads.selftest.mjs',
     // the horizons stream (2026-10-13, HL-0): the Hinterland's spec, its 26 regions and its field (dark: no map has a block)
     'src/world/hinterland/hinterlandField.selftest.mjs',
+    // ... (HL-1) its pipeline: the outland plan on the Polders draft, roads run on, yards level, waters as coasts, the bake
+    'src/world/hinterland/hinterlandPlan.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
