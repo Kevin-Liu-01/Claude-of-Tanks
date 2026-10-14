@@ -106,8 +106,17 @@ export interface MatchSessionP2pOptions {
    * and offers again once it recovers (under 25 ms). Fed by `observeFrame`; false turns it off.
    */
   hostHeadroom?: HostHeadroomOptions | false;
+  /**
+   * The standby host (2026-10-14, §13.21): a seat that may host prepares a host thread — the battlefield's collision world
+   * and the roster's fleet — `delayMs` after it is welcomed as a peer (STANDBY_HOST_DELAY_MS, 20 s: after its own entry),
+   * so an election boots the actor at once. False turns it off.
+   */
+  standbyHost?: { delayMs?: number } | false;
   onLog?: (level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>) => void;
 }
+
+/** A peer prepares its standby host this long after its welcome: past its own covered entry (§13.21). */
+export const STANDBY_HOST_DELAY_MS = 20_000;
 
 export type SessionRole = 'host' | 'peer' | null;
 
@@ -222,6 +231,9 @@ export class MatchSession {
   private headroom: HostHeadroomMonitor | null = null;
   /** The elected host's entry reports while its world loads (null when none run). */
   private entryReports: { stop(reason: string): void } | null = null;
+  /** A peer's standby host thread (§13.21): prepared after its welcome, taken by the next boot of this seat's host. */
+  private standby: { port: HostPort<HostToWorkerMessage, WorkerToHostMessage>; unsubscribe: Unsubscribe; matchId: string; prepared: boolean } | null = null;
+  private standbyTimer: ReturnType<typeof setTimeout> | null = null;
   /** The host generation this seat's link (or host) runs; an election with a newer one is a migration (P1: compare generations, never the reason). */
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
@@ -404,6 +416,7 @@ export class MatchSession {
       if (this.matchClient !== client) return;
       if (this.migrationActive) this.endMigration('welcomed');
       this.withdrawReentryDecline();
+      this.scheduleStandby(client, round, welcome);
       void Promise.resolve(presentation.onWelcome?.(welcome)).then(() => {
         if (this.matchClient === client && !round.spectator && presentation.prediction) client.enablePrediction(presentation.prediction);
       }).catch(() => { /* the presentation reports its own failures */ });
@@ -557,6 +570,64 @@ export class MatchSession {
     return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.declinedForHeadroom } : null;
   }
 
+  /**
+   * The standby host (§13.21): a peer that may host prepares a host thread `delayMs` after its welcome — the world and
+   * the fleet a boot of this match needs — so an election boots its actor at once rather than loading them while every
+   * seat waits. Once per match; a later welcome (a reconnect, a migration onto another host) keeps the one it has.
+   */
+  private scheduleStandby(client: MatchClient, round: SessionRound, welcome: WelcomeMessage): void {
+    const p2p = this.p2pOptions;
+    if (!p2p || p2p.standbyHost === false || !this.canHost || this.host || round.spectator) return;
+    if (!parseP2pMatchUrl(round.matchStart.matchUrl)) return;
+    if (this.standby?.matchId === round.matchStart.matchId || this.standbyTimer !== null) return;
+    const delayMs = Math.max(0, (p2p.standbyHost ? p2p.standbyHost.delayMs : undefined) ?? STANDBY_HOST_DELAY_MS);
+    this.standbyTimer = setTimeout(() => {
+      this.standbyTimer = null;
+      if (this.disposed || this.matchClient !== client || this.currentRound !== round || this.host || !this.canHost) return;
+      this.closeStandby('replaced');
+      const plan = planFromRoster(welcome.roster, this.room.room);
+      const specIds = [...new Set([...plan.seats.filter((seat) => seat.team !== 'spectator').map((seat) => seat.specId), ...plan.bots.map((bot) => bot.specId)])];
+      let port: HostPort<HostToWorkerMessage, WorkerToHostMessage>;
+      try { port = p2p.createHostPort!(); } catch (error) {
+        this.log('warn', 'standby host thread unavailable', { error: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+      const standby = { port, unsubscribe: (() => {}) as Unsubscribe, matchId: round.matchStart.matchId, prepared: false };
+      standby.unsubscribe = port.onMessage((message) => {
+        if (message.type !== 'prepared') return;
+        standby.prepared = message.ok;
+        this.log(message.ok ? 'info' : 'warn', 'standby host prepared', { ok: message.ok, ms: message.ms, ...(message.error ? { error: message.error } : {}) });
+      });
+      this.standby = standby;
+      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, specIds } });
+    }, delayMs);
+  }
+
+  /** The standby's port for this match's boot (its listener released: the host runtime subscribes its own), or null. */
+  private takeStandby(): HostPort<HostToWorkerMessage, WorkerToHostMessage> | null {
+    const standby = this.standby;
+    this.standby = null;
+    if (!standby) return null;
+    standby.unsubscribe();
+    if (standby.matchId !== this.currentRound?.matchStart.matchId) { standby.port.close(); return null; }
+    return standby.port;
+  }
+
+  private closeStandby(reason: string): void {
+    if (this.standbyTimer !== null) { clearTimeout(this.standbyTimer); this.standbyTimer = null; }
+    const standby = this.standby;
+    this.standby = null;
+    if (!standby) return;
+    standby.unsubscribe();
+    standby.port.close();
+    this.log('info', 'standby host released', { reason });
+  }
+
+  /** Diagnostics: this seat's standby host thread (null: none). */
+  get standbyHost(): { matchId: string; prepared: boolean } | null {
+    return this.standby ? { matchId: this.standby.matchId, prepared: this.standby.prepared } : null;
+  }
+
   private withdrawReentryDecline(): void {
     if (!this.declinedForReentry) return;
     this.declinedForReentry = false;
@@ -588,7 +659,7 @@ export class MatchSession {
           throw error;
         }); },
       },
-      createPort: p2p.createHostPort!, ice: p2p.ice, createPeerConnection: p2p.createPeerConnection,
+      createPort: () => this.takeStandby() ?? p2p.createHostPort!(), ice: p2p.ice, createPeerConnection: p2p.createPeerConnection,
       ...(p2p.maxPeers !== undefined ? { maxPeers: p2p.maxPeers } : {}),
       clock: this.clock, ...(timers.setTimer ? { setTimer: timers.setTimer } : {}), ...(timers.clearTimer ? { clearTimer: timers.clearTimer } : {}),
       onLog: (level, message, fields) => this.log(level, message, fields),
@@ -835,6 +906,7 @@ export class MatchSession {
     const handedOff = this.handedOff;
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
+    this.closeStandby(`leave: ${reason}`);
     this.matchClient = null;
     this.presentation = null;
     this.currentRound = null;

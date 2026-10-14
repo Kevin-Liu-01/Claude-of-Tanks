@@ -16,6 +16,9 @@ assert.equal(report.steps.connected?.peers, 2);
 assert.equal(report.steps.migration?.generation, 2);
 assert.equal(report.steps.migration?.p2Role, 'host');
 assert.ok(report.steps.migration?.discontinuityM < 1.0, `discontinuity ${report.steps.migration?.discontinuityM} m`); // 2026-09-29: one tick of jitter under suite load (was 0.75)
+// §13.21 (2026-10-14): the elected peer hosts on the standby it prepared while it played — one host thread, its world ready
+assert.equal(report.steps.migration?.p2Cores, 1, 'p2 booted the standby it prepared, not a second host thread');
+assert.equal(report.steps.migration?.bootedPrepared, true, "p2's boot ran on the prepared world");
 assert.equal(report.steps.rejoin?.role, 'peer');
 // §13.14: the ICE of every peer connection came from the room (both sides of every link), from fewer requests than links
 assert.equal(report.steps.ice?.granted, report.steps.ice?.connections);

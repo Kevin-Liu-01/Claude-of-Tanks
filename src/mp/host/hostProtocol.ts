@@ -120,8 +120,24 @@ export interface HostCoreStats {
   resumeHold: { heldMs: number; released: 'seats' | 'timeout' | null; awaited: number; arrived: number } | null;
 }
 
+/**
+ * A standby host's preparation (2026-10-14, the MP stream): what a boot of this match will need before any actor —
+ * the battlefield's collision world (the mode's variant, from the manifests) and the roster's combat anatomy. A seat
+ * that may host prepares its host thread while it plays as a peer, so an election boots the actor at once instead of
+ * loading the thread, the world and the fleet while every seat waits (§13.21).
+ */
+export interface HostPrepareConfig {
+  mapId: string;
+  mode: string;
+  manifestBase: string | null;
+  /** The vehicles the match fields (seats and bots): the calibration groups the host loads. */
+  specIds: string[];
+}
+
 export type HostToWorkerMessage =
   | { type: 'boot'; config: HostBootConfig }
+  /** Load the world and the fleet a later boot will use (a standby host thread; ignored once a boot began). */
+  | { type: 'prepare'; prepare: HostPrepareConfig }
   | { type: 'link_open'; peer: number; label: string }
   | { type: 'link_frame'; peer: number; bytes: ArrayBuffer }
   | { type: 'link_close'; peer: number }
@@ -131,6 +147,8 @@ export type HostToWorkerMessage =
 
 export type WorkerToHostMessage =
   | { type: 'ready'; tick: number; entities: number; resumed: boolean }
+  /** A standby's preparation finished (`ok` false: the boot will build its own world); `ms` from the prepare to the end. */
+  | { type: 'prepared'; ok: boolean; ms: number; error?: string }
   | { type: 'boot_failed'; error: string }
   | { type: 'link_send'; peer: number; bytes: ArrayBuffer }
   /** The actor closed the link: the main thread sends the wire CLOSE and closes the channel. */

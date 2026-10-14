@@ -29,7 +29,7 @@ import {
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
-import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
+import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 
@@ -37,8 +37,8 @@ type TimerHandle = unknown;
 
 export interface MatchHostCoreOptions {
   port: HostPort<WorkerToHostMessage, HostToWorkerMessage>;
-  /** The world for a boot: the fetched manifest by default; the receipts answer 'terrain' or a ready world. */
-  buildWorld?: (config: HostBootConfig) => Promise<ActorWorldCollision | 'terrain'>;
+  /** The world for a boot (or a standby's preparation): the fetched manifest by default; the receipts answer 'terrain' or a ready world. */
+  buildWorld?: (config: WorldConfig) => Promise<ActorWorldCollision | 'terrain'>;
   now?: () => number;
   /** Wall clock for the seat tokens' expiry. */
   wallClock?: () => number;
@@ -69,9 +69,16 @@ export interface MatchHostCoreOptions {
  */
 export const RESUME_HOLD_MS = 3_000;
 
+/** What a world build reads from a boot or a preparation. */
+type WorldConfig = Pick<HostBootConfig, 'mapId' | 'mode' | 'manifestBase'>;
+/** The world a preparation built serves the boot of the same battlefield, variant and manifests only. */
+const worldKey = (config: WorldConfig): string => `${config.mapId}|${terrainVariantFor(config.mode) ?? ''}|${config.manifestBase ?? ''}`;
+
 export interface MatchHostCore {
   readonly actor: MatchActor | null;
   readonly booted: boolean;
+  /** The boot ran on a standby's prepared world (2026-10-14, §13.21); null before a boot. */
+  readonly bootedPrepared: boolean | null;
   readonly stopped: boolean;
   stats(): HostCoreStats | null;
   /** Force a migration keyframe now (the receipts). */
@@ -125,6 +132,9 @@ export function createMatchHostCore({
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
+  // a standby's preparation (§13.21): the world it is building and the battlefield it is for; a boot of that battlefield takes it
+  let prepared: { key: string; world: Promise<ActorWorldCollision | 'terrain'> } | null = null;
+  let bootedPrepared: boolean | null = null;
   let migrationKey: unknown = null;
   let booted = false;
   let stopped = false;
@@ -383,12 +393,35 @@ export function createMatchHostCore({
 
   // ------------------------------------------------------------ boot
 
+  /**
+   * A standby host thread (2026-10-14, §13.21): build the world and load the roster's fleet now, while this seat plays as
+   * a peer, so an election boots the actor at once. Once only, never after a boot began; a failed preparation is not an
+   * error (the boot builds its own world).
+   */
+  function prepare(next: HostPrepareConfig): void {
+    if (prepared || config || booted || stopped || disposed) return;
+    const started = now();
+    const world = buildWorld(next);
+    prepared = { key: worldKey(next), world };
+    void Promise.all([world, ensureAuthorityFleet(next.specIds.filter((specId) => typeof specId === 'string' && specId.length > 0))]).then(
+      () => post({ type: 'prepared', ok: true, ms: Math.round(now() - started) }),
+      (error: unknown) => post({ type: 'prepared', ok: false, ms: Math.round(now() - started), error: error instanceof Error ? error.message : String(error) }),
+    );
+  }
+
   async function boot(next: HostBootConfig): Promise<void> {
     if (actor || booted) throw new Error('the host core boots once');
     const generation = ++bootGeneration;
     config = next;
+    const bootStarted = now();
+    // the standby's world when it is this battlefield's (it may still be loading: the boot waits for it rather than
+    // starting over); a preparation that failed, or one for another battlefield, leaves the boot to build its own
+    const ready = prepared && prepared.key === worldKey(next) ? prepared.world : null;
+    prepared = null;
+    bootedPrepared = ready !== null;
+    const world$ = ready ? ready.catch(() => { bootedPrepared = false; return buildWorld(next); }) : buildWorld(next);
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const [world] = await Promise.all([buildWorld(next), ensureAuthorityFleet(rosterSpecIds(next))]);
+    const [world] = await Promise.all([world$, ensureAuthorityFleet(rosterSpecIds(next))]);
     // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
     if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
@@ -430,7 +463,8 @@ export function createMatchHostCore({
       created.start();
     }
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
-    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0 });
+    log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
+      bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const { peer, label, frames } of pendingOpens.splice(0)) {
       openLink(peer, label);
       for (const frame of frames) admit(peer, frame);
@@ -479,6 +513,7 @@ export function createMatchHostCore({
           post({ type: 'boot_failed', error: error instanceof Error ? error.message : String(error) });
         });
         return;
+      case 'prepare': prepare(message.prepare); return;
       case 'link_open': openLink(message.peer, message.label); return;
       case 'link_frame': admit(message.peer, new Uint8Array(message.bytes)); return;
       case 'link_close': {
@@ -497,6 +532,7 @@ export function createMatchHostCore({
   return {
     get actor() { return actor; },
     get booted() { return booted; },
+    get bootedPrepared() { return bootedPrepared; },
     get stopped() { return stopped; },
     stats,
     broadcastKeyframe,
