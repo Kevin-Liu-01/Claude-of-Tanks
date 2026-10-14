@@ -216,6 +216,39 @@ function stogBody(R: number, H: number, rng: Rng, segs: number): THREE.BufferGeo
   return turn(profile, segs, rng, tiles);
 }
 
+/**
+ * A stog's withy riders and props (props lane A #18, 2026-10-14; WORKLIST: "stogs with pole, base platform, props and
+ * withy riders"): pairs of withies bent over its crown to hold the hay down in the wind, two poles propped against its
+ * belly. Their own stream (a constant seed), so the stack's draws stay its legacy's.
+ */
+function stogRiders(R: number, H: number, sides: number): THREE.BufferGeometry[] {
+  let a = 0x570c ^ sides;
+  const o: Rng = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const parts: THREE.BufferGeometry[] = [];
+  // (over the hay: the body's own radius at the shoulder and two thirds up its crown, a hand proud)
+  const crownR = R * 1.0 + 0.04, shoulder = H * 0.64, midR = R * 0.52 + 0.12;
+  for (let k = 0; k < sides; k++) {
+    // a withy over the crown: up from the shoulder on one side to the top and down to the shoulder opposite
+    const t = (k / sides) * Math.PI + o() * 0.2, c = Math.cos(t), s = Math.sin(t);
+    const pts: Array<[number, number, number]> = [[c * crownR, shoulder, s * crownR], [c * midR, H * 0.86, s * midR], [0, H + 0.04, 0],
+      [-c * midR, H * 0.86, -s * midR], [-c * crownR, shoulder, -s * crownR]];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x0, y0, z0] = pts[i], [x1, y1, z1] = pts[i + 1];
+      const seg = pole(0.022, y0, y1, x1 - x0, z1 - z0);
+      seg.translate(x0, 0, z0);
+      parts.push(seg);
+    }
+  }
+  for (let k = 0; k < 2; k++) {
+    // a prop pole leaning on the belly from a stride out
+    const t = (k + 0.25 + o() * 0.3) * Math.PI, c = Math.cos(t), s = Math.sin(t), out = R + 0.5 + o() * 0.15;
+    const p = pole(0.045, 0, H * 0.4, -c * (out - R * 1.02), -s * (out - R * 1.02));
+    p.translate(c * out, -0.1, s * out);
+    parts.push(p);
+  }
+  return parts;
+}
+
 function bStog(rng: Rng): THREE.BufferGeometry {
   const R = 1.75 + rng() * 0.2, H = 4.3 + rng() * 0.5, segs = 18;
   const lean = 0.12;
@@ -223,6 +256,7 @@ function bStog(rng: Rng): THREE.BufferGeometry {
     stogBody(R, H, rng, segs),
     footSkirt(R, 0.32, segs, rng, Math.max(2, Math.round((Math.PI * 2 * R) / 4))),
     pole(0.06, -0.4, H + 0.9 + rng() * 0.4, (rng() - 0.5) * lean, (rng() - 0.5) * lean),
+    ...stogRiders(R, H, 2),
   ]);
 }
 
@@ -378,7 +412,21 @@ function bMeule(rng: Rng): THREE.BufferGeometry {
   const body = turn(profile, segs, rng, tiles);
   // the topknot: a twist of straw at the dome's tip
   const knot = turn([[0.16, H - 0.05, crown(0.9), 0.03], [0.1, H + 0.25, crown(0.95), 0.02], [0.02, H + 0.42, crown(1), 0]], 8, rng, 1);
-  return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot]);
+  // (props lane A #18) the straw ropes thrown over the dome against the wind, each hanging down the drum's side to a
+  // twisted end: a constant stream of their own, so the stack's draws stay its legacy's
+  const ropes: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 3; k++) {
+    const t = (k / 3) * Math.PI + 0.3, c = Math.cos(t), s = Math.sin(t);
+    const arc: Array<[number, number]> = [[R * 1.05, drum * 0.6], [R * 0.86, drum + (H - drum) * 0.4], [0, H + 0.02]];
+    const path = [...arc, ...arc.slice(0, -1).reverse().map(([r, y]) => [-r, y] as [number, number])];
+    for (let i = 0; i + 1 < path.length; i++) {
+      const [r0, y0] = path[i], [r1, y1] = path[i + 1];
+      const rope = pole(0.03, y0, y1, c * (r1 - r0), s * (r1 - r0));
+      rope.translate(c * r0, 0, s * r0);
+      ropes.push(mapToBand(rope, HAY_THATCH_V));
+    }
+  }
+  return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot, ...ropes]);
 }
 
 function bMeuleBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.3, false); }
