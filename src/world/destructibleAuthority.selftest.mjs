@@ -113,6 +113,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     createPropCrushPresentation, DESTRUCTIBLE_BUILDING_TYPES,
     // (Plan W, 2026-10-13) the build joins its pooled structure shells before it returns; none are pooled here
     joinStructureShells() {},
+    // (F2, 2026-10-13) and merges its buildings' roof decks into the records before it returns; no structures here either
+    mergeStructureDecks() {}, colliders: [],
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));
