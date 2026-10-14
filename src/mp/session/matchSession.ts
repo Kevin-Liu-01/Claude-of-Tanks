@@ -430,7 +430,9 @@ export class MatchSession {
 
   private roomSignaler(): Signaler {
     return {
-      target: () => { const hostId = this.room.hostId; return hostId ? { hostId, generation: this.room.generation } : null; },
+      // never this seat itself: an elected peer booting as host kept offering to itself every attempt until its actor ran
+      // (the e2e of 2026-10-13: 26 s of refused signal_target offers and a fresh peer connection each time)
+      target: () => { const hostId = this.room.hostId; return hostId && hostId !== this.room.playerId ? { hostId, generation: this.room.generation } : null; },
       sendSignal: (payload) => this.room.sendSignal(payload),
       onSignal: (listener) => this.room.onSignal(listener),
       recentOffers: () => this.room.recentOffers(),

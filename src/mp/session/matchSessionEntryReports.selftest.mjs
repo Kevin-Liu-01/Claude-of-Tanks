@@ -227,6 +227,18 @@ stage = 'case 7';
   assert.ok(core.actor === null, 'no actor started after the stop');
   session.dispose(); client.dispose();
 }
+// ---- the peer transport's signaler never names this seat (an elected peer booting as host offered to itself until its actor ran)
+stage = 'case 8';
+{
+  const { transport, session, client } = await seat();
+  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'other', generation: 4, since: 2000 }) } });
+  await sleep(0);
+  assert.deepEqual(session.roomSignaler().target(), { hostId: 'other', generation: 4 });
+  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'me', generation: 5, since: 3000 }) } });
+  await sleep(0);
+  assert.equal(session.roomSignaler().target(), null, 'no offer to itself: the attempt waits for another host');
+  session.dispose(); client.dispose();
+}
 for (const core of cores) core.dispose();
 await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
