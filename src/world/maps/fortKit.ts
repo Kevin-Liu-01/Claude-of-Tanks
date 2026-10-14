@@ -14,9 +14,11 @@
 //   the embrasures, moss and lichen;
 // - earth banked against three walls to the sill, turf on the roof. The bank is the battlefield's earthwork, not the
 //   destructible's (pillboxBerm; props.ts lays it with its own collision and draws it in the ground's material).
-// Its destroyed state is the same concrete broken: the walls razed to ragged stubs with their bars bent out, the slab
-// cracked into plates fallen into the room, rubble at a real volume, soot, all under BROKEN_CAP (a broken prop has no
-// collider, so nothing of it stands higher than a hull crosses); the bank stands round it, its earth face bared.
+// Its destroyed state is the same work's own pieces settled where a blow and gravity leave them (round 2;
+// fractureSettle.ts): the stubs standing with their breaks ragged and barred, a corner standing, the lifts leaning out on
+// the bank or fallen in, the slab down in cracked plates on the stubs, rubble and the bank's earth thrown over its crest
+// (a broken prop has no collider: the wreck stands no higher than its standing corner); the log-and-earth work's roof
+// logs in its pit under the slumped soil of its cover, its wall logs spilled.
 //
 // Regional forms (pillboxStyleFor): the German Regelbau casemate (western Europe 1940-45 and its relics), the Soviet
 // DOT with its rounded front under a thick earth cover, the hexagonal pillbox (the KMT lines of 1937, the Japanese and
@@ -705,8 +707,6 @@ export interface PillboxForm {
 const GRADE = 0.08; // the placed base sits 0.08 m below grade (props.ts addDestructible('bunker', y - 0.08))
 /** The room's floor, below grade: a destroyed work's slab falls into it. */
 const PIT = -0.55;
-/** Nothing of a destroyed work stands higher than this over its base (a broken prop has no collider; dcore). */
-const BROKEN_CAP = 0.58;
 const FOOT = -0.62; // the walls go on below grade so no slope shows their foot
 
 /** Which of a plan's edges is the front (+z), the rear (-z) and the flanks, by its outward normal. */
@@ -1505,7 +1505,7 @@ type Quat = [number, number, number, number];
 interface BoxAxes { o: V3; x: V3; y: V3; z: V3 }
 const AX: BoxAxes = { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
 const dot3 = (a: V3, b: V3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-/** The broken walls' stub: what a breach leaves standing (the destroyed state's razed walls, under BROKEN_CAP). */
+/** The broken walls' stub: what a breach leaves standing (an anchor; its top ragged in the destroyed state). */
 const STUB_TOP = 0.45;
 const FORT_REBAR = { pitchM: 0.2, diaM: 0.016 } as const;
 const FORT_DENSITY: Partial<Record<FractureMaterial, number>> = { concrete: 2400, metal: 7850, earth: 1600, timber: 600, rubble: 1800 };
