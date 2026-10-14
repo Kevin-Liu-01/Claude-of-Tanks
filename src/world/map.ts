@@ -43,6 +43,9 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
+import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
+import { selectHinterland } from './hinterland/select.ts';
+import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -353,11 +356,18 @@ export async function createMapAsync(
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
   // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
   // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
-  const ringSource = startHorizonRingBuild({
+  // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland in its worker instead of the ring: its
+  // file's `hinterland` block, or a lab draft under ?hinterland=1; ?hinterland=0 keeps the ring (hinterland/select.ts)
+  const pageSearch = typeof location !== 'undefined' ? location.search ?? '' : '';
+  const hinterlandSource = selectHinterland(config, pageSearch) ? startHinterlandBuild({
+    mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, search: pageSearch, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
+  }) : null;
+  const ringSource = hinterlandSource ? null : startHorizonRingBuild({
     mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
     debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
   });
-  supplyHorizonRing(ringSource);
+  if (ringSource) supplyHorizonRing(ringSource);
+  if (hinterlandSource) supplyHinterland(hinterlandSource);
   let completed = false;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
@@ -407,7 +417,8 @@ export async function createMapAsync(
     // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for
     // the load probes, beside the terrain's streaming record
     await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
-    terrain.userData.horizonRingLoad = ringSource.stats;
+    if (ringSource) terrain.userData.horizonRingLoad = ringSource.stats;
+    if (hinterlandSource) terrain.userData.hinterlandLoad = hinterlandSource.stats;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
@@ -420,8 +431,10 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
-    withdrawHorizonRing(ringSource);
-    ringSource.dispose();
+    if (ringSource) { withdrawHorizonRing(ringSource); ringSource.dispose(); }
+    // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; only a build
+    // that failed or was cancelled stops it)
+    if (hinterlandSource) { withdrawHinterland(hinterlandSource); if (!completed) hinterlandSource.dispose(); }
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
     }

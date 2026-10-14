@@ -24,6 +24,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
 import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
 import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
+import { hinterlandSupplyFor } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -8595,7 +8596,23 @@ function* terrainBuildSteps(
   // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
   // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
   const ringSource = horizonRingSupplyFor(cfg);
+  // (the horizons stream, 2026-10-13, HL-3) a migrated map — its file's `hinterland` block, or a lab draft under
+  // ?hinterland=1 — takes the Hinterland in place of the old ring: the world build supplies it (hinterlandHook.ts) and it
+  // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
+  const hinterlandSource = hinterlandSupplyFor(cfg);
+  function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField });
+    let step = steps.next();
+    while (!step.done) {
+      yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+      step = steps.next();
+    }
+    group.add(step.value as THREE.Object3D);
+    group.children.unshift(group.children.pop()!);
+    yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true];
+  }
   function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
+    if (hinterlandSource) { yield* hinterlandStage(); return; }
     let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
     if (ringSource && !ringPipeline) {
       const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {
@@ -8722,7 +8739,7 @@ function* terrainBuildSteps(
       }
     }
   }
-  if (ringSource) group.userData.finishHorizonRing = horizonRingStage;
+  if (ringSource || hinterlandSource) group.userData.finishHorizonRing = horizonRingStage;
   else yield* horizonRingStage();
   // ground lane (2026-10-08, crater-render-spec §B): the chunks for the battle's ground overlay — the world installs
   // terrainCraterMesh.ts on them (syncGroundOverlay / adoptTerrainGeometry hooks below; its lattice constants are this

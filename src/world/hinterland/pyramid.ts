@@ -12,13 +12,17 @@ import type { HinterlandField, HinterlandGround } from './field.ts';
 
 export interface HinterlandLevelSpec { texelM: number; halfM: number }
 
-/** Desktop: 4 m to 1.15 km (0.64 km past the edge), 16 m to 4 km, 96 m to 16 km, 512 m to 82 km (the limb). */
+/**
+ * Desktop: 4 m to 0.9 km (384 m past the edge), 12 m to 2.3 km, 48 m to 8 km, 256 m to 33 km, 1 km to 82 km (the limb).
+ * Each level's sample stays under ~0.25° from the eyes that see it (a 12 m sample at 2 km, 48 m at 8 km): about 450
+ * thousand samples a bake (HL-3; the first cut asked 724 thousand).
+ */
 export const HINTERLAND_LEVELS_DESKTOP: readonly HinterlandLevelSpec[] = Object.freeze([
-  { texelM: 4, halfM: 1152 }, { texelM: 16, halfM: 4096 }, { texelM: 96, halfM: 16320 }, { texelM: 512, halfM: 81920 },
+  { texelM: 4, halfM: 896 }, { texelM: 12, halfM: 2304 }, { texelM: 48, halfM: 8160 }, { texelM: 256, halfM: 32768 }, { texelM: 1024, halfM: 81920 },
 ].map((l) => Object.freeze(l)));
 /** Phones (§4.8): half the resolution, 48 km. */
 export const HINTERLAND_LEVELS_MOBILE: readonly HinterlandLevelSpec[] = Object.freeze([
-  { texelM: 8, halfM: 1152 }, { texelM: 32, halfM: 4096 }, { texelM: 192, halfM: 16320 }, { texelM: 768, halfM: 49152 },
+  { texelM: 8, halfM: 896 }, { texelM: 24, halfM: 2304 }, { texelM: 96, halfM: 8160 }, { texelM: 512, halfM: 32768 }, { texelM: 1536, halfM: 49152 },
 ].map((l) => Object.freeze(l)));
 
 export interface HinterlandLevel {
@@ -38,6 +42,8 @@ export interface HinterlandPyramid {
 
 /** The battlefield's square (no hinterland inside it): heights there are the ground's own, for continuity only. */
 const SQUARE_M = 512;
+/** How far inside the edge the bake keeps the battlefield's heights (a 256 m node's 16 m vertex row and its neighbour). */
+const INTERIOR_BAND_M = 72;
 
 /**
  * The battlefield's ground with its outland cached past `exactWithinM` of the edge on a `gridM` lattice (filled lazily,
@@ -93,8 +99,9 @@ export function bakeHinterlandPyramid(
         const k = j * n + i;
         if (finer && Math.abs(x) < inner && Math.abs(z) < inner) { heights[k] = sampleLevel(finer, x, z); continue; }
         if (Math.abs(x) < SQUARE_M - 2 * texelM && Math.abs(z) < SQUARE_M - 2 * texelM) {
-          // (the square's interior is the battlefield's: kept for the bilinear across the edge, not drawn)
-          heights[k] = ground ? ground.getHeightAt(x, z) : 0;
+          // (the square's interior is the battlefield's, never drawn: only a band inside its edge is kept, for the
+          // triangles of a coarse node that straddle the edge; deeper in, nothing is asked)
+          heights[k] = ground && Math.max(Math.abs(x), Math.abs(z)) > SQUARE_M - INTERIOR_BAND_M ? ground.getHeightAt(x, z) : 0;
           continue;
         }
         heights[k] = field.heightAt(x, z, texelM);

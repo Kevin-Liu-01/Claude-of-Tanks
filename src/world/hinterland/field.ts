@@ -246,6 +246,9 @@ export function createHinterlandField(
   const features = options.features ?? EMPTY_FEATURES;
   const landUse = regionLandUse(spec, seed);
   const outlandAt = ground.getOutlandHeightAt ? ground.getOutlandHeightAt.bind(ground) : ground.getHeightAt.bind(ground);
+  // (term 1's edge residual table, filled on its first use: residualTable below)
+  const RES_STEP = 0.5, RES_N = Math.round((2 * HINTERLAND_EDGE_M) / RES_STEP) + 1;
+  let resTable: Float32Array[] | null = null;
 
   // ---- term 1 and 2's datum: the level the battlefield's outland holds on each bearing at the hand-over (128 bearings,
   // a radial band 600–800 m past the edge, smoothed round the compass), so the region's relief sits on the map's own land
@@ -388,10 +391,32 @@ export function createHinterlandField(
    * averaged along the edge over a window that widens with the distance out, so the square's edge relief eases out as a
    * shoulder instead of running on in straight streaks square to the edge (and fanning at the corners).
    */
+  // (the residual along the four edges, tabled once at 0.5 m: a bake asks it of every sample in the 180 m band, three
+  // times each — 160 thousand of the battlefield's height queries a bake before the table)
+  function residualTable(landAt: (x: number, z: number) => number): Float32Array[] {
+    if (resTable) return resTable;
+    const E = HINTERLAND_EDGE_M;
+    resTable = [0, 1, 2, 3].map((side) => {
+      const t = new Float32Array(RES_N);
+      for (let i = 0; i < RES_N; i++) {
+        const a = -E + i * RES_STEP;
+        const [px, pz] = side === 0 ? [E, a] : side === 1 ? [-E, a] : side === 2 ? [a, E] : [a, -E];
+        t[i] = ground.getHeightAt(px, pz) - landAt(px, pz);
+      }
+      return t;
+    });
+    return resTable;
+  }
   function edgeResidual(x: number, z: number, edgeOut: number, landAt: (x: number, z: number) => number): number {
     const E = HINTERLAND_EDGE_M;
     const ex = Math.max(-E, Math.min(E, x)), ez = Math.max(-E, Math.min(E, z));
-    const at = (px: number, pz: number): number => ground.getHeightAt(px, pz) - landAt(px, pz);
+    const table = residualTable(landAt);
+    const at = (px: number, pz: number): number => {
+      const side = px >= E ? 0 : px <= -E ? 1 : pz >= E ? 2 : 3;
+      const f = ((side < 2 ? pz : px) + E) / RES_STEP, i = Math.max(0, Math.min(RES_N - 2, Math.floor(f))), t = f - i;
+      const row = table[side];
+      return row[i] + (row[i + 1] - row[i]) * t;
+    };
     const r0 = at(ex, ez);
     if (edgeOut < 2) return r0;
     // the edge's tangent at the clamped point (along z on an east or west edge, along x on a north or south one)
@@ -482,7 +507,8 @@ export function createHinterlandField(
 
   // ---- term 3: the planner's levelled pads and graded lines, bucketed
   const padBuckets = new Buckets<HinterlandFlatPad & { level: number }>(96);
-  const lineBuckets = new Buckets<{ line: HinterlandGradeLine; grade: Float64Array }>(96);
+  // (each entry one segment: a query measures only the segments in its cell, not the whole line)
+  const lineBuckets = new Buckets<{ line: HinterlandGradeLine; grade: Float64Array; i: number }>(96);
   for (const pad of features.pads) {
     const level = Number.isNaN(pad.y) ? waterInto(pad.x, pad.z, baseNoWater(pad.x, pad.z), null) : pad.y;
     const reach = pad.r + pad.featherM;
@@ -507,10 +533,9 @@ export function createHinterlandField(
     for (let i = 0; i + 1 < n; i++) {
       const minX = Math.min(line.xs[i], line.xs[i + 1]) - reach, maxX = Math.max(line.xs[i], line.xs[i + 1]) + reach;
       const minZ = Math.min(line.zs[i], line.zs[i + 1]) - reach, maxZ = Math.max(line.zs[i], line.zs[i + 1]) + reach;
-      lineBuckets.add({ line, grade }, minX, minZ, maxX, maxZ);
+      lineBuckets.add({ line, grade, i }, minX, minZ, maxX, maxZ);
     }
   }
-  const lineHit = { i: 0, t: 0 };
   /** Term 3 on a height: levelled toward each pad and line by its weight; the strongest feature's weights reported. */
   const flatWeights = { settle: 0, road: 0, rail: 0 };
   function levelInto(x: number, z: number, h: number): number {
@@ -519,16 +544,24 @@ export function createHinterlandField(
     // where two yards' feathers meet the nearer yard holds (never a blend of two levels under one footprint)
     const lines = lineBuckets.at(x, z);
     if (lines) {
-      let seen: HinterlandGradeLine | null = null;
-      for (const { line, grade } of lines) {
-        if (line === seen) continue;
-        seen = line;
-        const d = polylineDistance(line.xs, line.zs, x, z, lineHit);
-        const w = 1 - smoothstep(line.halfWidthM, line.halfWidthM + line.featherM, d);
+      // (a line's segments in this cell come together: the nearest of them is the line's distance here)
+      let k = 0;
+      while (k < lines.length) {
+        const { line, grade } = lines[k];
+        let best = Infinity, bi = 0, bt = 0;
+        for (; k < lines.length && lines[k].line === line; k++) {
+          const i = lines[k].i;
+          const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
+          const len2 = bx * bx + bz * bz;
+          const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / len2)) : 0;
+          const dd = Math.hypot(x - ax - bx * t, z - az - bz * t);
+          if (dd < best) { best = dd; bi = i; bt = t; }
+        }
+        const w = 1 - smoothstep(line.halfWidthM, line.halfWidthM + line.featherM, best);
         if (w <= 0) continue;
-        const g = grade[lineHit.i] + (grade[Math.min(grade.length - 1, lineHit.i + 1)] - grade[lineHit.i]) * lineHit.t;
+        const g = grade[bi] + (grade[Math.min(grade.length - 1, bi + 1)] - grade[bi]) * bt;
         h += (g - h) * w;
-        const on = 1 - smoothstep(line.halfWidthM * 0.8, line.halfWidthM + 0.5, d);
+        const on = 1 - smoothstep(line.halfWidthM * 0.8, line.halfWidthM + 0.5, best);
         if (line.kind === 'rail') flatWeights.rail = Math.max(flatWeights.rail, on);
         else flatWeights.road = Math.max(flatWeights.road, on * (line.kind === 'track' ? 0.6 : 1));
       }

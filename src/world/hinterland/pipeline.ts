@@ -34,8 +34,8 @@ export function registerHinterlandTerm(factory: HinterlandTermFactory): void {
   if (!TERM_FACTORIES.includes(factory)) TERM_FACTORIES.push(factory);
 }
 
-/** The planning grid: 24 m out to 3 km, enough for the sites' footprints, the roads' routes and the water. */
-const PLANNING_LEVELS: readonly HinterlandLevelSpec[] = Object.freeze([{ texelM: 24, halfM: 3072 }, { texelM: 192, halfM: 15360 }]);
+/** The planning grid: 40 m out to 3 km (the sites' footprints, the roads' routes, the water), 320 m to 15 km. */
+const PLANNING_LEVELS: readonly HinterlandLevelSpec[] = Object.freeze([{ texelM: 40, halfM: 3080 }, { texelM: 320, halfM: 15360 }]);
 
 export function buildHinterland(
   spec: HinterlandSpec, seed: number, ground: HinterlandPipelineGround,

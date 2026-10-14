@@ -1565,6 +1565,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hinterland/hinterlandPlan.selftest.mjs',
     // ... (HL-2) its landform primitives and far sectors: the stair, the tables, the sheer jebel, the massif's summits, snow and belts
     'src/world/hinterland/hinterlandLandforms.selftest.mjs',
+    // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
+    'src/world/hinterland/hinterlandMesh.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',

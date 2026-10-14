@@ -99,6 +99,7 @@ for (let i = 0; i < 64; i++) {
   const q = hinterlandPoint({ azDeg: i * 5.625, distM: 560 + (i % 8) * 900 });
   const L = levelFor(a.pyramid, q.x, q.z);
   const p = { x: Math.round((q.x + L.halfM) / L.texelM) * L.texelM - L.halfM, z: Math.round((q.z + L.halfM) / L.texelM) * L.texelM - L.halfM };
+  if (Math.max(Math.abs(p.x), Math.abs(p.z)) < 520) continue; // (inside the square the bake keeps only an edge band)
   worst = Math.max(worst, Math.abs(samplePyramid(a.pyramid, p.x, p.z) - field.heightAt(p.x, p.z, L.texelM)));
 }
 assert.ok(worst < 0.5, `pyramid against field: ${worst.toFixed(3)} m`);
