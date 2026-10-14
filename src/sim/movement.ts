@@ -447,6 +447,8 @@ export interface MovementHeightField {
   readonly recordReads?: number;
   /** Whether the hull this field was begun for stands on a roof's deck (structureSupport.ts StandingDecks). */
   readonly standingDeck?: boolean;
+  /** Where a top's outline crosses under the hull's box (structureSupport.ts topEdgeStationsIn; structureBoxSupportY). */
+  topEdgeStations?(quad: ArrayLike<number>, out: Float64Array, max: number): number;
 }
 
 export type MovementCollisionResolver = (
@@ -755,6 +757,12 @@ let _edgeEase = false;
 let _climbPaceMps = 0;
 /** Whether this step's support solve stood the hull on a record's top somewhere (MovementHeightField.recordReads). */
 let _supportOnRecord = false;
+/** The support field's top-edge stations this step, or null (MovementHeightField.topEdgeStations; structureBoxSupportY). */
+let _edgeField: MovementHeightField | null = null;
+/** At most this many top-edge stations a support solve reads (structureBoxSupportY). */
+const EDGE_STATIONS_MAX = 12;
+const _boxQuad = new Float64Array(8);
+const _edgeStations = new Float64Array(2 * EDGE_STATIONS_MAX);
 /** Whether the hull stands on a roof's deck this step (MovementHeightField.standingDeck; structureBoxSupportY). */
 let _standsOnDeck = false;
 /**
@@ -788,7 +796,9 @@ const SHELL_TURN_HOLD_S = 0.05;
  */
 const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1, overCom: 0 };
 /** The end guard the support rests on this step, when one binds (endGuardSupportY): its hull-local z and world xz. */
-const _guardHit = { deficit: -Infinity, localX: 0, localY: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0 };
+const _guardHit = { deficit: -Infinity, localX: 0, localY: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0, edge: false };
+/** A top-edge station is being read (structureBoxSupportY): one that binds is no end the hull strikes with. */
+let _readingEdgeStation = false;
 /** The most of a struck end's depth under the ground the root takes back in one step, as position (m): a deeper strike, a
  * hull flying nose-first into a wall, comes out over steps. */
 const STRIKE_PROJECT_MAX_M = 0.1;
@@ -1790,6 +1800,7 @@ function hullEndGuards(spec: MovementSpec): readonly number[] | null {
  */
 function endGuardSupportY(guards: readonly number[] | null, hAt: HeightSampler, samples: SupportSamples): number {
   _guardHit.deficit = -Infinity;
+  _guardHit.edge = false;
   _bodyCount = 0;
   if (!guards) return -Infinity;
   for (let i = 0; i + 2 < guards.length; i += 3) bodyContactSupport(guards[i], guards[i + 1], guards[i + 2], hAt, null, samples);
@@ -1836,6 +1847,7 @@ function bodyContactSupport(
   const deficit = ground - (rolledY * samples.cosNegPitch - localZ * samples.sinNegPitch);
   if (deficit > _guardHit.deficit) {
     _guardHit.deficit = deficit;
+    _guardHit.edge = _readingEdgeStation;
     _guardHit.localX = localX;
     _guardHit.localY = localY;
     _guardHit.localZ = localZ;
@@ -1901,8 +1913,39 @@ function structureBoxSupportY(
     const deficit = bodyContactSupport(x, y, z, hAt, terrainAt, samples);
     if (deficit > supportY) supportY = deficit;
   }
+  // (physics stream F8, 2026-10-14) and where a top's outline crosses under the box (structureSupport.ts
+  // topEdgeStationsIn): the roof's edge the hull tips over is a contact of its underside, not only its four corners and
+  // its track stations a metre and more behind the edge
+  if (_edgeField?.topEdgeStations && samples.cosRoll > EDGE_STATION_COS && samples.cosNegPitch > EDGE_STATION_COS) {
+    const rolledY = y * samples.cosRoll; // (the corners' rolled height before their lateral share, below)
+    for (let corner = 0; corner < 4; corner++) {
+      // round the box: rear-left, rear-right, front-right, front-left
+      const x = rect.centerX + (corner === 1 || corner === 2 ? rect.halfWidth : -rect.halfWidth);
+      const z = rect.centerZ + (corner >= 2 ? rect.halfLength : -rect.halfLength);
+      const rx = x * samples.cosRoll - y * samples.sinRoll;
+      const ry = x * samples.sinRoll + rolledY;
+      const pz = ry * samples.sinNegPitch + z * samples.cosNegPitch;
+      _boxQuad[2 * corner] = samples.worldX + rx * samples.cosYaw + pz * samples.sinYaw;
+      _boxQuad[2 * corner + 1] = samples.worldZ - rx * samples.sinYaw + pz * samples.cosYaw;
+    }
+    const count = _edgeField.topEdgeStations(_boxQuad, _edgeStations, EDGE_STATIONS_MAX);
+    _readingEdgeStation = true;
+    for (let i = 0; i < count; i++) {
+      // the station's hull-local place on the box's underside (bodyContactSupport's transform, inverted at height y)
+      const dx = _edgeStations[2 * i] - samples.worldX, dz = _edgeStations[2 * i + 1] - samples.worldZ;
+      const rx = dx * samples.cosYaw - dz * samples.sinYaw;
+      const pz = dx * samples.sinYaw + dz * samples.cosYaw;
+      const x = (rx + y * samples.sinRoll) / samples.cosRoll;
+      const z = (pz - (x * samples.sinRoll + y * samples.cosRoll) * samples.sinNegPitch) / samples.cosNegPitch;
+      const deficit = bodyContactSupport(x, y, z, hAt, terrainAt, samples);
+      if (deficit > supportY) supportY = deficit;
+    }
+    _readingEdgeStation = false;
+  }
   return supportY;
 }
+/** The box's top-edge stations are read while the hull is within 60 degrees of level about each axis. */
+const EDGE_STATION_COS = 0.5;
 
 /**
  * Sample one frame-local closed-shell point cloud against terrain after the
@@ -3407,6 +3450,9 @@ function updateRigidAttitude(
   }
 }
 
+/** A support plane this far from the hull's attitude is taken as a landing (updateSupportedAttitude). */
+const FIT_JUMP_RAD = 0.2;
+
 function updateSupportedAttitude(
   state: TankState,
   body: RigidBodyState,
@@ -3417,6 +3463,15 @@ function updateSupportedAttitude(
 ): void {
   const spring = state._spring;
   body.landingBlendS = Math.max(0, (body.landingBlendS || 0) - dt);
+  // (physics stream F8, 2026-10-14) a plane the contacts put more than FIT_JUMP_RAD from the hull's attitude is met as a
+  // landing's is, from the soft end of the blend and its turn held to the landing's cap: the contacts that carry a hull
+  // change under it in a step (a track off an eave, a box corner onto it) and the plane they fit moves with them. A T-90
+  // resting tilted at Frontier's eave read the yard's plane for one step, 0.45 rad off; the full spring turned it at
+  // 10 rad/s, its tail struck the eave at 35 m/s and the strike threw it 23 m/s up
+  if (!(body.landingBlendS > 0) && (state._terr.tipPitch || 0) === 0 && (state._terr.tipRoll || 0) === 0
+    && (Math.abs(targetPitch - spring.pitch) > FIT_JUMP_RAD || Math.abs(targetRoll - spring.roll) > FIT_JUMP_RAD)) {
+    body.landingBlendS = LANDING_CONTACT_BLEND_S;
+  }
   const settle = body.landingBlendS > 0
     ? 1 - body.landingBlendS / LANDING_CONTACT_BLEND_S
     : 1;
@@ -4712,7 +4767,8 @@ function writeSupportCache(
   cache.cg = contact;
   _supportStation.valid = !rigidGear && samples.outerMax - hydraulicYield >= supportY - 1e-9 && rigidFloor < normalFloor;
   // the hull's own nose or tail past its tracks, when that floor is the one it rests on (round 8: a body strike)
-  _supportStation.guard = !_supportStation.valid && !rigidGear && guardBinds && rigidFloor >= normalFloor;
+  // (an edge of a top the hull's underside rests on, F8, is a floor that holds it, not an end it strikes with)
+  _supportStation.guard = !_supportStation.valid && !rigidGear && guardBinds && !_guardHit.edge && rigidFloor >= normalFloor;
   if (_supportStation.guard) {
     _supportStation.valid = true;
     _supportStation.localZ = _guardHit.localZ;
@@ -4792,7 +4848,7 @@ function solveSupportHeight(
   structureBoxSupportY(spec, contact, groundAt, terrainAt, hAt, samples);
   const guardSupportY = _guardHit.deficit;
   // the ground's rise under that contact as the hull travels over it (a strike stops the end's closing on it)
-  if (Number.isFinite(guardSupportY) && dt > 0) {
+  if (Number.isFinite(guardSupportY) && dt > 0 && !_guardHit.edge) {
     const travel = state.speed * dt;
     const rise = groundAt(_guardHit.worldX + samples.sinYaw * travel, _guardHit.worldZ + samples.cosYaw * travel)
       - groundAt(_guardHit.worldX, _guardHit.worldZ);
@@ -5418,6 +5474,7 @@ export function updateTank(
   // yielded height with rigid wheels in the dirt.
   const recordReadsBefore = heightField.recordReads ?? 0;
   _standsOnDeck = heightField.standingDeck === true;
+  _edgeField = typeof heightField.topEdgeStations === 'function' ? heightField : null;
   solveSupportHeight(
     entity,
     hAt,

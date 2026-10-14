@@ -67,6 +67,11 @@ export interface StructureSupportField extends SupportHeightField {
    * hull's pace (movement.ts EDGE_CLIMB_*), rather than a terrain face (a trench's wall), which lifts as before.
    */
   readonly recordReads: number;
+  /**
+   * The places a top's outline crosses under a hull's box (physics stream F8, 2026-10-14; topEdgeStations): world (x, z)
+   * pairs into `out`, at most `max` of them, the count returned.
+   */
+  topEdgeStations(quad: ArrayLike<number>, out: Float64Array, max: number): number;
 }
 
 /** A part's top under (x, z): its drawn top where it carries one (a stone's surface: world/collision.ts
@@ -167,6 +172,104 @@ export function createHullSupportPose(): HullSupportPose {
   return createHullFootprint();
 }
 
+/** How far into a top a station on its outline is read (topEdgeStations): inside it, clear of its edge's rounding. */
+const EDGE_STATION_INSET_M = 0.03;
+const _outline = new Float64Array(64);
+
+/** The part's outline in world (x, z) pairs into _outline (a convex part's corners, a box's four), or 0 (a circle). */
+function partOutline(record: CollisionRecord, part: SimpleCollisionShape | null): number {
+  if (!part) {
+    _outline[0] = record.min[0]; _outline[1] = record.min[2]; _outline[2] = record.max[0]; _outline[3] = record.min[2];
+    _outline[4] = record.max[0]; _outline[5] = record.max[2]; _outline[6] = record.min[0]; _outline[7] = record.max[2];
+    return 4;
+  }
+  if (part.kind === 'obb') {
+    const s = Math.sin(part.yaw), c = Math.cos(part.yaw);
+    // forward (sin yaw, cos yaw) by hl, right (cos yaw, -sin yaw) by hw
+    for (let k = 0; k < 4; k++) {
+      const a = k === 0 || k === 3 ? -part.hl : part.hl, b = k < 2 ? -part.hw : part.hw;
+      _outline[2 * k] = part.cx + s * a + c * b;
+      _outline[2 * k + 1] = part.cz + c * a - s * b;
+    }
+    return 4;
+  }
+  if (part.kind !== 'convex') return 0;
+  const n = Math.min(part.points.length >> 1, _outline.length >> 1);
+  for (let k = 0; k < 2 * n; k++) _outline[k] = part.points[k];
+  return n;
+}
+
+/**
+ * The places a standable top's outline crosses under a hull's box (physics stream F8, 2026-10-14; the coordinator: "the
+ * edge-fall pop model ... body-edge-on-roof-edge strike/pivot"): where the box's sides cross the outline's edges, and the
+ * outline's corners inside the box, each read EDGE_STATION_INSET_M inside the top. Over a planar underside and a planar
+ * top the deepest point of one in the other is a corner of their overlap, and these are its corners the box's own four
+ * are not. A hull driving off a roof's edge at an angle rested on its box corners and its track stations, a metre and
+ * more behind the edge; it turned nose-down about them, its underside between them and the edge sank half a metre into
+ * the roof, and the standing rule then found it inside the building and pushed it out sideways a metre a step.
+ * `quad` holds the box's four bottom corners in world (x, z), in order round it.
+ */
+function topEdgeStationsIn(
+  candidates: readonly CollisionRecord[], count: number, quad: ArrayLike<number>, out: Float64Array, max: number,
+): number {
+  let n = 0;
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (let k = 0; k < 4; k++) {
+    const x = quad[2 * k], z = quad[2 * k + 1];
+    if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  }
+  // the quad's winding, for its inside test
+  const qs = (quad[2] - quad[0]) * (quad[5] - quad[1]) - (quad[3] - quad[1]) * (quad[4] - quad[0]) > 0 ? 1 : -1;
+  for (let i = 0; i < count && n < max; i++) {
+    const record = candidates[i];
+    if (record.crushed || record.dead || record.crushable) continue;
+    if (record.max[1] - record.min[1] < SUPPORT_MIN_HEIGHT_M && !collisionRecordHasDrawnTop(record)) continue;
+    if (record.max[0] < minX || record.min[0] > maxX || record.max[2] < minZ || record.min[2] > maxZ) continue;
+    const shape = record.shape2;
+    const parts = shape && shape.kind === 'compound' ? shape.parts.length : 1;
+    for (let p = 0; p < parts && n < max; p++) {
+      const part = shape && shape.kind === 'compound' ? shape.parts[p] : (shape as SimpleCollisionShape | null);
+      const m = partOutline(record, part);
+      if (m < 3) continue;
+      let cx = 0, cz = 0;
+      for (let k = 0; k < m; k++) { cx += _outline[2 * k]; cz += _outline[2 * k + 1]; }
+      cx /= m; cz /= m;
+      for (let k = 0; k < m && n < max; k++) {
+        const ax = _outline[2 * k], az = _outline[2 * k + 1];
+        const bx = _outline[(2 * k + 2) % (2 * m)], bz = _outline[(2 * k + 3) % (2 * m)];
+        // the outline's corner inside the box
+        let inside = true;
+        for (let q = 0; q < 4 && inside; q++) {
+          const px = quad[2 * q], pz = quad[2 * q + 1], ex = quad[(2 * q + 2) % 8] - px, ez = quad[(2 * q + 3) % 8] - pz;
+          if (qs * (ex * (az - pz) - ez * (ax - px)) < 0) inside = false;
+        }
+        if (inside) n = pushStation(out, n, ax, az, cx, cz);
+        // the outline's edge across the box's sides
+        for (let q = 0; q < 4 && n < max; q++) {
+          const px = quad[2 * q], pz = quad[2 * q + 1], ex = quad[(2 * q + 2) % 8] - px, ez = quad[(2 * q + 3) % 8] - pz;
+          const fx = bx - ax, fz = bz - az;
+          const den = ex * fz - ez * fx;
+          if (Math.abs(den) < 1e-12) continue;
+          const t = ((ax - px) * fz - (az - pz) * fx) / den;
+          const u = ((ax - px) * ez - (az - pz) * ex) / den;
+          if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+          n = pushStation(out, n, px + t * ex, pz + t * ez, cx, cz);
+        }
+      }
+    }
+  }
+  return n;
+}
+
+function pushStation(out: Float64Array, n: number, x: number, z: number, cx: number, cz: number): number {
+  if (2 * n + 1 >= out.length) return n;
+  const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz);
+  const k = d > EDGE_STATION_INSET_M ? EDGE_STATION_INSET_M / d : 0;
+  out[2 * n] = x + dx * k;
+  out[2 * n + 1] = z + dz * k;
+  return n + 1;
+}
+
 export function createStructureSupportField(
   terrain: SupportHeightField,
   source: SupportObstacleSource,
@@ -262,5 +365,6 @@ export function createStructureSupportField(
     get candidateCount() { return count; },
     get standingDeck() { return standing; },
     get recordReads() { return recordReads; },
+    topEdgeStations(quad, out, max) { return topEdgeStationsIn(candidates, count, quad, out, max); },
   };
 }

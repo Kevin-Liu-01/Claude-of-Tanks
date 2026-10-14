@@ -1049,25 +1049,44 @@ export function pushHullFromObstacle(
     const startZ = outPush.z;
     let hit = false;
     let lowest = Infinity, lowestBottom = -Infinity;
+    // (physics stream F8, 2026-10-14) the roof the hull stands on: this record's highest deck under the hull's centre,
+    // when its underside there is within a step of it. The ground-contact band of a building under a pitched roof is its
+    // walls' footprint up to their tops, and a roof dips under that near its eaves; a hull standing on the roof there is
+    // on the roof, not 0.4 m into the walls. A T-90 on Frontier's 54-degree roof tilted on it, its underside's lowest
+    // point a step under the walls' top, and was pushed out of the building 4.8 m, a metre a step, in mid-air.
+    let roofTop = -Infinity;
+    if (!ob.crushable) {
+      for (const part of sh.parts) {
+        if (!collisionPartIsDeck(ob, part) || !pointInsideCollisionRecord(ob, part, pos.x, pos.z)) continue;
+        const top = collisionPartTopAt(ob, part, pos.x, pos.z);
+        if (top > roofTop) roofTop = top;
+      }
+    }
+    const onRoof = roofTop > -Infinity && spanBottom > roofTop - HULL_STEP_UP_M;
     for (const part of sh.parts) {
       // (physics stream F2) a raised deck — a roof a hull stands on, world/structureCollision.ts structureDecks — is a
       // floor only: it is met from the side by the solids under it, the walls of the ground-contact band
       if (collisionPartIsDeck(ob, part)) continue;
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
-      if (part.y1 !== undefined && (part.kind === 'convex' && part.tp && !ob.crushable
-        ? clearBottom > part.y1 + OVERPASS_CLEARANCE_M
-        : hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable, clearBottom))) continue;
+      // (physics stream F8: theirs, as the record's top would be read — a band without its own extent under a record
+      // with a drawn top was never passed, and a hull 0.47 m over a 22 m tower at Copper Mesa was pushed off it 4.8 m)
+      const partTop = part.y1 ?? ob.max[1];
+      if (part.kind === 'convex' && part.tp && !ob.crushable
+        ? part.y1 !== undefined && clearBottom > part.y1 + OVERPASS_CLEARANCE_M
+        : hullPassesObstacleTop(spanBottom, partTop, part.y0 ?? ob.min[1], !ob.crushable, clearBottom)) continue;
+      // (and the walls under the roof the hull stands on, no more than a step over it)
+      if (onRoof && !(part.kind === 'convex' && part.tp) && partTop <= roofTop + HULL_STEP_UP_M) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
       _compoundRec.crushable = ob.crushable;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
-      const partTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
+      const bandTop = _compoundRec.max[1], partBottom = _compoundRec.min[1];
       if (pushHullFromObstacle(
         _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop, clearBottom,
-      )) { hit = true; if (partTop < lowest) { lowest = partTop; lowestBottom = partBottom; } }
+      )) { hit = true; if (bandTop < lowest) { lowest = bandTop; lowestBottom = partBottom; } }
     }
     _contactTop = hit ? lowest : -Infinity;
     _contactBottom = hit ? lowestBottom : -Infinity;
