@@ -1999,6 +1999,24 @@ the boot — the newer of the keyframe (opened with the room's host secret) and 
 host sent it — everything known is restored, nothing beyond the old host's list is invented, and the revision counts the
 restored falls within the old host's.
 
+### 13.18 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
+
+**Why.** A seat whose main thread stalls (a long frame, a busy phone, a backgrounded tab) skips the ticks it missed:
+`InputStream.dueTicks` samples only the newest four once it is more than eight behind. The authority gets no control for
+those ticks: it holds the last one for `HELD_INPUT_LEASE_TICKS` (30 ticks, 500 ms; now a shared wire constant) and then
+releases drive and fire, keeping aim (`server/match/inputBuffer.ts`). The prediction did neither: the live predictor
+jumped over the gap (the hull resumed from where the stall began), and a replay through the gap held the last control
+for its whole length. The next authority row corrected the hull by the gap: 2.1 m after a 0.3 s stall at speed; with
+the gap stepped but held throughout, 1.5 m after 1 s.
+
+**What.** `MatchClient.sampleInputs` hands the skipped ticks to `LocalPredictor.skipTicks`, which steps them (up to 3 s)
+with the held control until the lease ends and the released control after it; `replay` applies the same rule to any gap
+in the seat's own controls (`controlAt` answers the newest earlier control). The authority is unchanged.
+
+Receipt: `predictionStall.selftest` (the real sampler, the real authority input buffer and the real predictor on one
+movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
+against 2.1 m and 1.5 m for the two old behaviours).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
