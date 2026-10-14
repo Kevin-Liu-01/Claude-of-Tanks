@@ -566,26 +566,69 @@ const hoistHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A penstock run (a gantry plot): the steel pipe on concrete saddles, stiffener rings, the anchor block, a catwalk. */
+/**
+ * A penstock run (a gantry plot). Props census #3 (lane B 2026-10-14; the judges: "a capped tube on four blocks that
+ * run up into it, a block at one end, the far end closed in the air"): the welded steel pipe between its anchor block
+ * (stepped, the pipe through a flanged collar) and the thrust block where it dives under the ground, carried on ring
+ * girders whose legs stand on rocker plates on low concrete piers; its girth seams, the expansion joint's sleeve and
+ * flanges, the manway and the air valve; the catwalk along its side on brackets off the girders, a grating deck with
+ * its toe board and a two-rail handrail.
+ */
 const penstockRun: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   // the run fills the old gantry's reach (its bounds, which stand off the plot's centre)
   const R = reach(ctx), L = Math.max(8, R.W - 0.4), r = Math.max(0.8, Math.min(2.0, R.D / 2 - 0.5)), y = r + 1.0;
-  const paint = pick(rng, PENSTOCK);
+  const paint = pick(rng, PENSTOCK), dark = shade(paint, 0.8);
   sink.placed(0, R.cx, 0, R.cz, () => {
-  pipe(sink, 'structureMetal', [-L / 2 + 3.6, y, 0], [L / 2, y, 0], r, 20, { colour: paint });
-  for (let x = -L / 2 + 5.0; x < L / 2 - 1; x += 4.6) {
-    sink.span(CONCRETE, x - 0.7, -0.4, -r * 0.85, x + 0.7, y - r * 0.55, r * 0.85);
-    pipe(sink, 'structureMetal', [x - 0.12, y, 0], [x + 0.12, y, 0], r + 0.1, 20, { colour: shade(paint, 0.82), decor: true });
-  }
-  // the anchor block the run comes out of, the manway on top, the catwalk along the side
-  sink.span(CONCRETE, -L / 2, -0.4, -r - 0.6, -L / 2 + 3.6, y + r + 0.8, r + 0.6);
-  sink.cylinder('structureMetal', [L * 0.15, y + r - 0.1, 0], 'y', 0.5, 0.45, 10, { colour: shade(paint, 0.9), decor: true });
-  if (look() < 0.7) {
-    for (let x = -L / 2 + 4.2; x < L / 2; x += 3.0) sink.cylinder('structureMetal', [x, 0, r + 0.4], 'y', y + 1.0, 0.04, 5, { colour: IRON, decor: true });
-    sink.member('structureMetal', [-L / 2 + 4.2, y + 1.0, r + 0.4], [L / 2 - 0.2, y + 1.0, r + 0.4], 0.04, 0.04, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
-  }
+    const xa = -L / 2 + 3.6, xb = L / 2 - 1.8;
+    pipe(sink, 'structureMetal', [xa - 0.3, y, 0], [xb + 0.3, y, 0], r, 20, { colour: paint });
+    // the anchor block, stepped down toward the run, the pipe through its flanged collar
+    sink.span(CONCRETE, -L / 2, -0.4, -r - 0.6, -L / 2 + 2.2, y + r + 0.8, r + 0.6);
+    sink.span(CONCRETE, -L / 2 + 2.2, -0.4, -r - 0.5, xa, y + r * 0.35, r + 0.5);
+    sink.span(CONCRETE, -L / 2 + 2.1, y + r + 0.8, -r - 0.7, -L / 2 + 2.3, y + r + 0.9, r + 0.7, { decor: true, shade: 0.85 });
+    pipe(sink, 'structureMetal', [xa, y, 0], [xa + 0.12, y, 0], r + 0.16, 20, { colour: dark, decor: true });
+    // the thrust block at the far end, the pipe diving through it under the ground
+    sink.span(CONCRETE, xb, -0.4, -r - 0.5, L / 2, y + r + 0.4, r + 0.5);
+    sink.span(CONCRETE, xb - 0.1, y + r + 0.4, -r - 0.6, L / 2 + 0.1, y + r + 0.5, r + 0.6, { decor: true, shade: 0.85 });
+    pipe(sink, 'structureMetal', [xb - 0.12, y, 0], [xb, y, 0], r + 0.16, 20, { colour: dark, decor: true });
+    // the ring girders on their piers: the ring, its two legs to the rocker plates, the pier under them
+    const py = y - r - 0.3, girders: number[] = [];
+    for (let x = xa + 1.4; x < xb - 1.0; x += 4.6) girders.push(x);
+    for (const x of girders) {
+      sink.span(CONCRETE, x - 0.6, -0.4, -r - 0.25, x + 0.6, py, r + 0.25);
+      pipe(sink, 'structureMetal', [x - 0.15, y, 0], [x + 0.15, y, 0], r + 0.2, 20, { colour: dark, decor: true });
+      for (const sz of [-1, 1]) {
+        sink.span('structureMetal', x - 0.3, py, sz * r * 0.92 - 0.2, x + 0.3, py + 0.1, sz * r * 0.92 + 0.2, { colour: IRON, decor: true });
+        sink.member('structureMetal', [x, py + 0.1, sz * r * 0.92], [x, y - r * 0.35, sz * (r + 0.12)], 0.22, 0.3, [0, 0, sz], { colour: dark, decor: true, exposed: true }, 0);
+      }
+    }
+    sink.dressing(ctx.tier === 'mobile', () => {
+      // the girth seams, the expansion joint's sleeve and its flanges
+      for (let x = xa + 2.4; x < xb - 0.3; x += 2.4) pipe(sink, 'structureMetal', [x - 0.02, y, 0], [x + 0.02, y, 0], r + 0.012, 20, { colour: shade(paint, 0.9), decor: true, fine: true });
+      const xj = girders.length > 1 ? (girders[0] + girders[1]) / 2 : (xa + xb) / 2;
+      pipe(sink, 'structureMetal', [xj - 0.35, y, 0], [xj + 0.35, y, 0], r + 0.07, 20, { colour: shade(paint, 0.88), decor: true });
+      for (const dx of [-0.38, 0.38]) pipe(sink, 'structureMetal', [xj + dx - 0.04, y, 0], [xj + dx + 0.04, y, 0], r + 0.15, 20, { colour: dark, decor: true });
+      // the manway's flanged neck and cover, the air valve near the anchor
+      sink.cylinder('structureMetal', [L * 0.15, y + r - 0.1, 0], 'y', 0.42, 0.42, 10, { colour: shade(paint, 0.9), decor: true });
+      sink.cylinder('structureMetal', [L * 0.15, y + r + 0.32, 0], 'y', 0.06, 0.52, 10, { colour: dark, decor: true });
+      sink.cylinder('structureMetal', [xa + 0.9, y + r - 0.1, 0], 'y', 0.5, 0.12, 8, { colour: IRON, decor: true });
+      sink.cylinder('structureMetal', [xa + 0.9, y + r + 0.4, 0], 'y', 0.18, 0.2, 8, { colour: IRON, decor: true });
+    });
+    // the catwalk along the +z side (on most runs): its deck on brackets off the girders, toe board, posts and rails
+    if (look() < 0.7) {
+      const dy = y - 0.35, z0 = r + 0.25, z1 = r + 0.95, x0 = xa + 0.4, x1 = xb - 0.3;
+      sink.span('structureMetal', x0, dy - 0.05, z0, x1, dy, z1, { colour: shade(GALV, 0.8), decor: true });
+      sink.dressing(ctx.tier === 'mobile', () => {
+        for (let x = x0 + 0.3; x < x1; x += 0.3) sink.span('structureMetal', x - 0.01, dy, z0, x + 0.01, dy + 0.012, z1, { colour: shade(GALV, 0.6), decor: true, fine: true });
+      });
+      sink.span('structureMetal', x0, dy, z1 - 0.02, x1, dy + 0.12, z1, { colour: GALV, decor: true });
+      for (const x of girders) sink.member('structureMetal', [x, y - 0.6, r + 0.15], [x, dy - 0.05, z1 - 0.1], 0.08, 0.08, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      for (let x = x0 + 0.05; x <= x1; x += Math.max(1.8, (x1 - x0) / Math.max(1, Math.round((x1 - x0) / 2.4)))) {
+        sink.cylinder('structureMetal', [x, dy, z1 - 0.05], 'y', 1.05, 0.03, 5, { colour: GALV, decor: true });
+      }
+      for (const h of [0.55, 1.05]) sink.member('structureMetal', [x0, dy + h, z1 - 0.05], [x1, dy + h, z1 - 0.05], 0.04, 0.04, [0, 1, 0], { colour: GALV, decor: true, exposed: true }, 0);
+    }
   });
   return sink.finish();
 };
@@ -668,11 +711,19 @@ function ranchHouse(sink: PartSink, rng: () => number, look: () => number, W: nu
     gutters: rng() < 0.5 ? { colour: WHITE } : null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.14, rafters: null,
   }, dialectOf(rng, ALU, door, 0.45, rng() < 0.5 ? 'panel' : 'glazed', look));
   if (carport > 2.4) {
-    // the carport: a flat sheet roof on four steel posts against the house's side
-    const cx = W / 2 + carport / 2;
-    for (const sz of [-1, 1]) sink.cylinder('structureMetal', [W / 2 + carport - 0.2, 0, sz * (D / 2 - 0.4)], 'y', 2.5, 0.06, 8, { colour: WHITE });
-    sink.span('structureMetal', W / 2, 2.5, -D / 2 - 0.1, W / 2 + carport, 2.62, D / 2 + 0.4, { colour: pick(look, CAR_ROOF), decor: true, shadow: true });
-    void cx;
+    // the carport (props census #3, lane B 2026-10-14; the judges: "a flat slab on two sticks"): its pad, three steel
+    // posts along the outer edge to the fascia beam, the ledger on the house wall, the rafters across and the ribbed
+    // sheet roof falling outward over them
+    const x0 = W / 2, x1 = W / 2 + carport, sheet = pick(look, CAR_ROOF), hi = 2.75, lo = 2.55;
+    sink.span(CONCRETE, x0, -0.2, -D / 2 - 0.1, x1 + 0.1, 0.06, D / 2 + 0.4, { decor: true, shade: 0.92 });
+    for (const z of [-D / 2 + 0.3, 0, D / 2 + 0.1]) sink.cylinder('structureMetal', [x1 - 0.15, 0.06, z], 'y', lo - 0.2, 0.05, 8, { colour: WHITE });
+    sink.span('structureMetal', x1 - 0.22, lo - 0.2, -D / 2 - 0.1, x1 - 0.08, lo, D / 2 + 0.4, { colour: WHITE });
+    sink.span('structureWood', x0, hi - 0.2, -D / 2 - 0.1, x0 + 0.08, hi, D / 2 + 0.4, { colour: WHITE, decor: true });
+    for (let z = -D / 2 + 0.2; z < D / 2 + 0.4; z += 1.2) sink.member('structureWood', [x0 + 0.08, hi - 0.1, z], [x1 - 0.08, lo - 0.1, z], 0.05, 0.14, [0, 1, 0], { colour: WHITE, decor: true }, 0);
+    const slope = (hi - lo) / (x1 - x0);
+    sink.quad('structureMetal', [x0, hi + 0.04, D / 2 + 0.45], [x1 + 0.1, lo - slope * 0.1 + 0.04, D / 2 + 0.45], [x1 + 0.1, lo - slope * 0.1 + 0.04, -D / 2 - 0.15], [x0, hi + 0.04, -D / 2 - 0.15], { colour: sheet, shadow: true });
+    sink.quad('structureMetal', [x0, hi, -D / 2 - 0.15], [x1 + 0.1, lo - slope * 0.1, -D / 2 - 0.15], [x1 + 0.1, lo - slope * 0.1, D / 2 + 0.45], [x0, hi, D / 2 + 0.45], { colour: shade(sheet, 0.6), decor: true });
+    for (let z = -D / 2; z < D / 2 + 0.4; z += 0.6) sink.member('structureMetal', [x0, hi + 0.06, z], [x1 + 0.1, lo - slope * 0.1 + 0.06, z], 0.03, 0.03, [0, 1, 0], { colour: shade(sheet, 0.9), decor: true, fine: true }, 0);
   }
 }
 
