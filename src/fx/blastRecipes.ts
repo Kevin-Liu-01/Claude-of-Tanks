@@ -721,8 +721,10 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   const dk = C.distBoost(I.x, I.y, I.z);
   const nl = Math.hypot(I.nx, I.ny, I.nz) || 1;
   const nx = I.nx / nl, ny = I.ny / nl, nz = I.nz / nl;
-  lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.07, 1.3 * s * dk,
-    3.6 * s * dk, FLASH_WHITE, FLASH_ORANGE, 1, 0, bo);
+  // (the combat review: "the hit flash blooms the hero to pure white for several frames") a smaller, dimmer flash
+  // (the bloom's share capped), gone in two or three frames
+  lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.045, 1.0 * s * dk,
+    2.3 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.65, 0, bo);
   const fireN = Math.round(3 + s);
   for (let i = 0; i < fireN; i++) {
     const v = (3 + R() * 5) * s;
@@ -1183,7 +1185,9 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, k
   // (wave 266: the fireball barely outgrew the hull, one smooth brown ball whose billows froze after ~2 s) a fireball
   // well past the hull's size, rolling up and out in lobes of different sizes; it burns out within a second or so into
   // black soot, which keeps churning (each flipbook plays its whole life) as it climbs into the column
-  const S = rack ? 1.75 : plain ? 0.55 : kind === 'fire' ? 0.95 : 1.3;
+  // (the coordinator, media's combat review 10-13: "kill fireballs read as clusters of round orange cotton balls ... many
+  // times the size of the tank, filling 30-50 % of the frame; the kill hides its own subject") a smaller fire at the hull
+  const S = rack ? 1.25 : plain ? 0.55 : kind === 'fire' ? 0.85 : 1.0;
   const dk = C.distBoost(x, y, z);
   // the flash inside the fire: the media round the hull lit from within, falling off with the distance from its heart
   C.glow(x, y + 0.4, z, (rack ? 6.5 : plain ? 3.2 : 4.5) * dk, rack ? 1.6 : plain ? 1.0 : 1.2, rack ? 0.7 : plain ? 0.45 : 0.6, bo);
@@ -1194,7 +1198,8 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, k
     for (let i = 0; i < 2; i++) {
       place(m, x + (R() - 0.5) * 0.8, y + 0.3 + R() * 0.5, z + (R() - 0.5) * 0.8, bo - R() * 0.02);
       move(m, (R() - 0.5) * 1.5, 2.5 + R() * 2.0, (R() - 0.5) * 1.5, 2.0, 1.5, 0.3, 0);
-      const life = 0.38 + R() * 0.14;
+      // (the combat review: "a fast, bright core that collapses within about 0.3 s") a third of a second
+      const life = 0.26 + R() * 0.08;
       shape(m, life, 1.2 * dk, (2.6 + R() * 1.0) * S * 0.6 * dk, 2.2, R);
       look(m, SOOT, SOOT, 0.95, 0.0, 0.35);
       book(m, 'burst', R, life);
@@ -1204,27 +1209,30 @@ export function killFireball(C: BlastContext, x: number, y: number, z: number, k
   }
   // 1. the fire: lobes swelling fast out of the hull, hot at the heart, burnt out to soot by ~1.5 s (a plain kill's
   //    by ~0.6 s)
-  const n = rack ? 7 : plain ? 3 : 5;
+  // (the combat review: "repeated soft spheres ... the shape must break up rather than read as a stack of spheres; the fire
+  // must stay mostly at the hull, the tank readable through it") more, smaller lobes held low round the hull, each
+  // starting mid-billow and spinning (turbulent from the first frame), a little translucent, their heat gone within
+  // about 0.3 s so the fire collapses into dark, turbulent smoke climbing off the hull
+  const n = rack ? 10 : plain ? 4 : 7;
   for (let i = 0; i < n; i++) {
     // (fx 8, the killcam critics after 7d/7e: "black smoke hanging in front of the camera instead of climbing away")
     // the lobes are driven up more than out — a fireball climbs on its own heat — so nothing thrown sideways stalls
     // round a close camera
-    const a = (i / n) * TAU + (R() - 0.5) * 1.2, b = 0.3 + R() * 0.7, v = (2.5 + R() * 3.5) * S;
-    place(m, x + (R() - 0.5) * 1.8, y + (R() - 0.2) * 1.4, z + (R() - 0.5) * 1.8, bo - R() * 0.03);
-    move(m, Math.cos(a) * Math.sin(b) * v, (4.5 + R() * 4) * S, Math.sin(a) * Math.sin(b) * v, 1.8, 3.2 * S, 0.6, 0);
+    const a = (i / n) * TAU + (R() - 0.5) * 1.2, b = 0.3 + R() * 0.7, v = (1.5 + R() * 2.5) * S;
+    place(m, x + (R() - 0.5) * 1.6, y + (R() - 0.35) * 1.0, z + (R() - 0.5) * 1.6, bo - R() * 0.03);
+    move(m, Math.cos(a) * Math.sin(b) * v, (4.0 + R() * 3.5) * S, Math.sin(a) * Math.sin(b) * v, 2.0, 3.2 * S, 0.6, 0);
     // lobes of different sizes, so their union is lumpy rather than one smooth ball
-    const size1 = (5.5 + R() * 4.5) * S * dk;
-    const life = plain ? 1.6 + R() * 0.8 : 2.8 + R() * 1.2;
-    shape(m, life, size1 * 0.5, size1, 4, R);
-    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.97, 0.0, 0.5);
-    // (fx 9: "no turbulence") a cook-off's lobes start mid-billow — developed, turbulent shapes from their first frame,
+    const size1 = (3.2 + R() * 3.0) * S * dk;
+    const life = plain ? 1.6 + R() * 0.8 : 2.6 + R() * 1.2;
+    shape(m, life, size1 * 0.45, size1, 4, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.2), 0.86, 0.0, 0.5);
+    // (fx 9: "no turbulence") every kill's lobes start mid-billow — developed, turbulent shapes from their first frame,
     // never a smooth balloon — each at its own stage, and roll; every flipbook still plays its whole life
-    book(m, 'billow', R, life, rack ? 8 + Math.floor(R() * 18) : 0);
-    if (rack) m.spin = (R() - 0.5) * 0.5;
-    // orange-yellow at the heart (round 4 and b5: never white — at heat ~2 the blackbody ramp saturates), and gone
-    // fast: a long dull glow read as brown smoke; (fx 8: "a flat salmon wash over the tank at 0.6-1.8 s") an orange
-    // heart for half a second, burnt out to soot by ~1 s; a plain kill's for a third of a second
-    heat(m, (plain ? 1.05 : 1.15) + R() * 0.15, plain ? 3.2 : 2.4);
+    book(m, 'billow', R, life, 8 + Math.floor(R() * 18));
+    m.spin = (R() - 0.5) * 0.6;
+    // orange-yellow at the heart (round 4 and b5: never white), and gone fast: the heat falls to a fifth within about
+    // 0.3 s (cool 6; a plain kill's 7), so the orange is the kill's first beat, not its body
+    heat(m, (plain ? 1.05 : 1.15) + R() * 0.15, plain ? 7.0 : 6.0);
     C.media(m);
   }
   // 1b. (fx 9: "no sooty skin") a cook-off's sooty skin: dark, faintly glowing smoke torn off the fireball's outside in

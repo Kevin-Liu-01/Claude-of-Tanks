@@ -29,8 +29,13 @@ try {
   };
   const plain = run('shot'), rack = run('ammorack');
   const p0 = plain[0], r0 = rack[0];
-  assert.ok(p0.distance <= 7 && r0.distance <= 11 && r0.distance > p0.distance,
-    `a plain kill's pool reaches ${p0.distance} m, a cook-off's ${r0.distance} m (was 13 m on both)`);
+  // (the combat review 10-13: "a flat, saturated red-orange disc on the ground ... no visible edge") the pool's reach runs
+  // out where the inverse square has already faded it (at least 4.5x the light's height), and the ground straight under
+  // the light takes at most twice the sun (no flat clipped centre)
+  for (const [name, x] of [['plain', p0], ['cook-off', r0]]) {
+    assert.ok(x.distance >= 4.5 * x.y - 1e-6, `the ${name} pool's reach ${x.distance.toFixed(1)} m runs past its fade (${x.y.toFixed(1)} m high)`);
+    assert.ok(x.intensity <= 2 * 4.5 * x.y * x.y * 1.0001, `the ${name} pool's ground under it at most twice the sun (${x.intensity.toFixed(0)})`);
+  }
   assert.ok(p0.y <= 3.0 && r0.y >= 4, `the plain kill's light low over the deck (${p0.y.toFixed(1)} m), the cook-off's high (${r0.y.toFixed(1)} m)`);
   assert.ok(p0.intensity > 0 && p0.intensity < 0.4 * r0.intensity, `a plain kill's flash is the smaller (${p0.intensity.toFixed(0)} vs ${r0.intensity.toFixed(0)})`);
   const c = new THREE.Color(p0.hex), hsl = {}; c.getHSL(hsl);
@@ -42,13 +47,19 @@ try {
   assert.ok(after(plain, 0.3).distance !== p0.distance || after(plain, 0.3).intensity < 0.1 * p0.intensity, 'the plain kill\'s pool is gone by 0.3 s');
   assert.ok(after(rack, 0.55).distance !== r0.distance || after(rack, 0.55).intensity < 0.1 * r0.intensity, 'the cook-off\'s by 0.55 s');
   assert.ok(Math.max(...plain.filter((x) => x.t > 0.3).map((x) => x.intensity)) < 0.25 * p0.intensity, 'after it only the wreck\'s dim fire light');
-  // every other pulse of the pooled light keeps its 13 m reach (a ground burst's, a hit's)
+  // (the combat review) the pulse's colour temperature cools as it fades: redder and darker by its middle
+  {
+    const mid = rack.find((x) => x.t >= 0.25), h0 = {}, h1 = {};
+    new THREE.Color(r0.hex).getHSL(h0); new THREE.Color(mid.hex).getHSL(h1);
+    assert.ok(h1.h < h0.h - 0.01 || h1.l < h0.l - 0.03, `the cook-off's light cools (${r0.hex.toString(16)} -> ${mid.hex.toString(16)})`);
+  }
+  // every other pulse of the pooled light keeps its reach rule (a ground burst's, a hit's)
   {
     const fx = createFx({ anisotropy: 4 }, { getHeightAt: () => 0 }, { seed: 77 });
     const lights = []; fx.group.traverse((o) => { if (o.isPointLight) lights.push(o); });
     const light = lights.find((l) => l.distance === 13);
     fx.destruction(new THREE.Vector3(0, 0, 0), null, 'shot', null, { shellBurst: true });
-    assert.equal(light.distance, 13, 'a shell burst on open ground keeps the pooled light\'s reach');
+    assert.ok(light.distance >= 4.5 * light.position.y - 1e-6, 'a shell burst\'s pool also runs out past its fade, never an edge');
   }
   console.log(`killLight.selftest: a plain kill's pool ${p0.distance} m from ${p0.y.toFixed(1)} m, peak ${p0.intensity.toFixed(0)}, gone by 0.3 s; a cook-off's ${r0.distance} m, ${r0.intensity.toFixed(0)}, gone by 0.55 s`);
 } finally {

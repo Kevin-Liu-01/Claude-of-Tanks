@@ -9260,7 +9260,9 @@ function* createTankOwnedSteps(
     // start and its spread (a plain kill's; launchDestroyedTurret speeds a cook-off's)
     turretG.getWorldPosition(burnU.uBurnO.value);
     burnU.uBurnK.value.set(burnReachM * Math.abs(root.scale.x || 1), BURN_CHAR_DELAY_S, BURN_SPREAD_PLAIN_S, 0);
-    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
+    // (the combat review 10-13: a thrown turret read as "a red radial pinwheel on a rod": its charred face and gun glowing
+    // ember-red in flight) the kill's fire-lit glow starts at the hull's own level; a flying turret takes less of it
+    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9);
     burnU.uBurnEmber.value = emberHeat(ageS);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
     // a body-driven turret eases its gun from its last lay (wreckTurretDriver); the bake's table drops it at once
@@ -9573,7 +9575,7 @@ function* createTankOwnedSteps(
             // r7: glow tau 1.5 -> 0.9 s — the fire-lit wash must collapse with
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
-            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 1.35 : 1.0);
+            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 0.45 : 1.0);
             burnU.uBurnEmber.value = emberHeat(wreckAge) * (0.65 + 0.35 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
             mats.burnt.emissiveIntensity = 0.035 + 0.55 * decay *

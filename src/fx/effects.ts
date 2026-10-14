@@ -233,6 +233,8 @@ interface LightState {
   basePow: number;
   /** (fx 9: 8t) the pooled explosion light's reach for the pulse in flight (13 m unless the pulse sets its own) */
   range?: number;
+  /** (the combat review 10-13) the pulse's hot hue, cooling toward LIGHT_COOL_HEX as it fades */
+  hotHex?: number;
 }
 
 interface ShockRingState {
@@ -696,9 +698,16 @@ const KILL_POOL_LIGHT_HEX = 0xffa458;
 /** (fx 9: 8t, wave 405's critics on both arms: "the flat orange ground ellipse at 0.0 s") a plain kill's fire lights the
  *  hull and the ground round it in a small, brief, paler pool, the light low over the deck: the pooled explosion light's
  *  13 m reach from 3.2 m over the hull tinted a ~12 m disc of ground orange */
-const PLAIN_KILL_LIGHT = Object.freeze({ hex: 0xffc890, peakK: 0.12, durS: 0.25, rangeM: 6, overDeckM: 1.2 });
+const PLAIN_KILL_LIGHT = Object.freeze({ hex: 0xffc890, peakK: 0.1, durS: 0.25, rangeM: 11, overDeckM: 1.8 });
 /** an ammunition cook-off keeps its pool, shortened and a little nearer */
-const COOKOFF_LIGHT = Object.freeze({ peakK: 0.42, durS: 0.5, rangeM: 11 });
+const COOKOFF_LIGHT = Object.freeze({ peakK: 0.3, durS: 0.5, rangeM: 20 });
+/** (the combat review 10-13: "the blast light paints a flat, saturated red-orange disc on the ground ... it reads like a
+ *  decal, not light; it needs inverse-square-like falloff, a colour temperature that cools as it fades, and no visible
+ *  edge") a pulse's ground light is capped: the ground straight under the light never takes more than LIGHT_GROUND_CAP x
+ *  the sun's irradiance (the flat, clipped centre of the disc), its reach is at least LIGHT_REACH_K x its height (the
+ *  window's edge falls where the inverse square has already faded it to a few per cent), and its hue cools from the
+ *  pulse's own toward a deep ember red as it fades. */
+const LIGHT_GROUND_CAP = 2.0, LIGHT_REACH_K = 4.5, LIGHT_COOL_HEX = 0xb83a14;
 // 40 (was 30) + a 35 s smolder tail (r7: "battlefield shows no lasting
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
@@ -1257,6 +1266,7 @@ function* createFxSteps(
   // effects r5: 24 -> 17 + hue 0xff9a52 -> 0xff7f38 (see EXPLOSION_LIGHT_PEAK)
   // effects r6: 17 -> 13 (the static-stain fix — see EXPLOSION_LIGHT_S)
   const explosionLight = new THREE.PointLight(EXPLOSION_LIGHT_HEX, 0, 13, 2);
+  const _lightCool = new THREE.Color(LIGHT_COOL_HEX);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
@@ -1300,6 +1310,11 @@ function* createFxSteps(
       const t = particles.getTime();
       v *= 0.80 + 0.13 * Math.sin(t * 15.3) + 0.07 * Math.sin(t * 7.7 + 1.3);
     }
+    // (the combat review 10-13) a pulse's colour temperature cools as it fades: its own hue at the peak, a deep ember red
+    // at its end (the wreck's fire flicker sets its own orange after)
+    if (state.light === explosionLight && state.hotHex !== undefined && k > 0) {
+      state.light.color.setHex(state.hotHex).lerp(_lightCool, Math.min(1, (1 - k) * 1.15));
+    }
     state.light.intensity = v;
   }
 
@@ -1320,7 +1335,19 @@ function* createFxSteps(
       state.light.distance = state.range;
     }
     // (fx round 7c) a burst's pulse carries its own hue; every other use of the explosion light keeps the kill orange
-    if (state.light === explosionLight) state.light.color.setHex(hex ?? EXPLOSION_LIGHT_HEX);
+    if (state.light === explosionLight) {
+      state.hotHex = hex ?? EXPLOSION_LIGHT_HEX;
+      state.light.color.setHex(state.hotHex);
+      // (the combat review 10-13) no flat clipped disc and no visible edge: the ground under the light takes at most
+      // LIGHT_GROUND_CAP x the sun (at least a dusk sun's worth, so a night flash still lights its ground), and the reach
+      // runs out where the inverse square has already faded the pool
+      const h = Math.max(1, pos.y - groundY(pos.x, pos.z));
+      const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
+      const sunI = Math.max(2, rig?.sunIntensity ?? 4.5);
+      peak = Math.min(peak, LIGHT_GROUND_CAP * sunI * h * h);
+      state.range = Math.max(state.range ?? 13, LIGHT_REACH_K * h);
+      state.light.distance = state.range;
+    }
     state.bornAt = particles.getTime() - ageS;
     state.peak = peak;
     state.dur = durS && durS > 0 ? durS : state.baseDur;
@@ -3116,12 +3143,14 @@ function* createFxSteps(
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v + 2;
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = 0.1 + rng() * 0.1;
-      _puffO.size0 = (1.4 + rng()) * dk; _puffO.size1 = (3.2 + rng() * 1.2) * dk;
+      // (the combat review 10-13: "white-outs at the kill: the hit flash blooms the hero to pure white for several
+      // frames") two to four frames, smaller and warmer, its bloom share capped
+      _puffO.life = 0.04 + rng() * 0.03;
+      _puffO.size0 = (1.1 + rng() * 0.8) * dk; _puffO.size1 = (2.4 + rng() * 0.9) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
       // (b6: a white bulb on a kill's first frame) a hot yellow flash, not white
-      col3(0xffe2a8, _puffO.col0); col3(0xffa040, _puffO.col1);
-      _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+      col3(0xffcf8a, _puffO.col0); col3(0xff9038, _puffO.col1);
+      _puffO.alpha = 0.7; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('flash', _puffO);
     }
   }
@@ -3171,10 +3200,12 @@ function* createFxSteps(
   ): void {
     // (fx 8o, wave 356: "a flat orange hit-flash disc at 0.20-0.50 s" on a plain kill) a plain kill licks three short
     // tongues out of its media fireball, whose own heat and inner glow carry the flash with volume and falloff
-    const count = rack ? 12 : (burn ? 6 : plain ? 3 : 9);
+    // (the combat review 10-13: "clusters of round orange cotton balls") fewer, shorter, smaller tongues: the fire stays
+    // at the hull and is gone into smoke within half a second
+    const count = rack ? 7 : (burn ? 5 : plain ? 3 : 5);
     for (let i = 0; i < count; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
-      const v = (3.0 + rng() * 4.2) * fireS;
+      const v = (2.2 + rng() * 3.0) * fireS;
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.0 * fireS;
       _puffO.pos[1] = cy + (rng() - 0.55) * 1.0;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.0 * fireS;
@@ -3183,8 +3214,8 @@ function* createFxSteps(
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
       // (fx 8i, wave 334a killcam: "a cream-salmon exposure wash at 0.4 s") smaller, shorter tongues: the media
       // fireball carries the body, these only lick out of it
-      _puffO.life = plain ? 0.18 + rng() * 0.2 : 0.45 + rng() * 0.6;
-      _puffO.size0 = (1.4 + rng() * 0.8) * fireS * dk; _puffO.size1 = (3.0 + rng() * 1.5) * fireS * dk;
+      _puffO.life = plain ? 0.18 + rng() * 0.2 : 0.22 + rng() * 0.25;
+      _puffO.size0 = (1.1 + rng() * 0.6) * fireS * dk; _puffO.size1 = (2.0 + rng() * 1.0) * fireS * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
       col3(0xffd865, _puffO.col0); col3(0xd8420a, _puffO.col1);
       _puffO.alpha = 0.3 + rng() * 0.14; _puffO.grav = 1.0;
@@ -3798,9 +3829,9 @@ function* createFxSteps(
           EXPLOSION_LIGHT_PEAK * PLAIN_KILL_LIGHT.peakK, Math.max(0, -birthOffset), PLAIN_KILL_LIGHT.durS, 2.2,
           PLAIN_KILL_LIGHT.hex, PLAIN_KILL_LIGHT.rangeM);
       } else {
-        flashLight(lightStates[1], _sv.set(pos.x, cy + 3.2, pos.z),
-          EXPLOSION_LIGHT_PEAK * (burn ? 0.2 : rack ? COOKOFF_LIGHT.peakK : 0.3), Math.max(0, -birthOffset),
-          burn ? 0.9 : rack ? COOKOFF_LIGHT.durS : 0.7, 2.2, KILL_POOL_LIGHT_HEX, rack ? COOKOFF_LIGHT.rangeM : 13);
+        flashLight(lightStates[1], _sv.set(pos.x, cy + 4.0, pos.z),
+          EXPLOSION_LIGHT_PEAK * (burn ? 0.15 : rack ? COOKOFF_LIGHT.peakK : 0.22), Math.max(0, -birthOffset),
+          burn ? 0.9 : rack ? COOKOFF_LIGHT.durS : 0.7, 2.2, KILL_POOL_LIGHT_HEX, rack ? COOKOFF_LIGHT.rangeM : 20);
       }
       // the column takes hold out of the fireball's soot over the first seconds (round 2 backdated it, so a column stood
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)

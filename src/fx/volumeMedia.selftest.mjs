@@ -432,7 +432,12 @@ function captureContext(seed) {
   const frags = kf.log.chunk.filter((k) => k.heat >= 0.85);
   assert.ok(frags.length >= 14 && frags.every((k) => k.life >= 16 && k.vy > 2), `the fire throws ${frags.length} hot fragments`);
   const fire = kf.log.media.filter((m) => m.heat > 1);
-  assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
+  // (the combat review 10-13: "clusters of round orange cotton balls ... many times the size of the tank ... the kill
+  // hides its own subject") many smaller lobes held at the hull (none past ~8 m), their heat collapsing within ~0.3 s
+  assert.ok(fire.length >= 8 && Math.max(...fire.map((m) => m.size1)) <= 8.5 && Math.max(...fire.map((m) => m.size1)) >= 4,
+    `the cook-off's fire breaks into ${fire.length} lobes at the hull (largest ${Math.max(...fire.map((m) => m.size1)).toFixed(1)} m)`);
+  assert.ok(fire.filter((m) => m.heat <= 1.4).every((m) => m.cool >= 5.5 && m.heat * Math.exp(-m.cool * 0.3) < 0.3),
+    'its orange is gone into smoke within about 0.3 s');
   assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
   // orange-yellow lobes (b5: heat ~2 saturated the whole ramp white); (fx 9, wave 405 on the cook-off: "a smooth peach
   // balloon, with no white-hot core, sooty skin or turbulence") a white-hot heart of at most two short puffs, the lobes
@@ -451,7 +456,7 @@ function captureContext(seed) {
     const pk = captureContext(4);
     killFireball(pk.ctx, 0, 1, 0, 'shot', 0);
     const pf = pk.log.media.filter((m) => m.heat > 1);
-    assert.ok(pf.length <= 3 && Math.max(...pf.map((m) => m.size1)) <= 6, `a plain kill's fire is about the hull's width (${pf.length} lobes, ${Math.max(...pf.map((m) => m.size1)).toFixed(1)} m)`);
+    assert.ok(pf.length <= 4 && Math.max(...pf.map((m) => m.size1)) <= 4, `a plain kill's fire is about the hull's width (${pf.length} lobes, ${Math.max(...pf.map((m) => m.size1)).toFixed(1)} m)`);
     assert.ok(pf.every((m) => m.cool >= 3 && m.life <= 2.4), 'and burns out fast');
     assert.ok(Math.max(...pf.map((m) => m.size1)) < 0.5 * Math.max(...fire.map((m) => m.size1)), 'the big fireball is the cook-off\'s');
     assert.ok(pk.log.chunk.length <= 5 && pk.log.chunk.every((k) => k.scale <= 0.25), `a few small pieces (${pk.log.chunk.length})`);
@@ -625,7 +630,10 @@ function captureContext(seed) {
   // (fx 9, re-pinned deliberately: wave 405's critics on the kills — the cook-off's "smooth peach balloon, with no
   // white-hot core, sooty skin or turbulence" (a two-puff heart, a soot skin, lobes from mid-billow) and the dust's "flat
   // tan cutouts ... pressed onto the hull side" (killDust born at the ground outside the tracks, smooth, climbing))
-  assert.equal(`${calls.length} ${draws} ${digest}`, '125 1544 520573737c275a66',
+  // (the combat review 10-13, re-pinned deliberately: "kill fireballs read as clusters of round orange cotton balls ...
+  // many times the size of the tank" — more, smaller lobes held at the hull, turbulent from the first frame, their heat
+  // gone within ~0.3 s; the cook-off's heart a third of a second; the HE plate flash smaller and briefer)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '129 1619 a265a7302ca2f81f',
     "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
