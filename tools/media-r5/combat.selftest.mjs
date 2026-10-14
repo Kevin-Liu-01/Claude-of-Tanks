@@ -39,13 +39,14 @@ const all = [...SHOTS, ...OWNER_NINE, ...FLEET, ...COMBAT];
 assert.equal(new Set(all.map((s) => s[1])).size, all.length, 'unique ids across every take');
 const formats = COMBAT.map((s) => s[5].combat);
 for (const f of ['1v1', '1v2', '2v2']) assert.equal(formats.filter((x) => x === f).length, 3, `three ${f} takes`);
-const models = new Map();
-const modelOf = (map) => {
-  if (!models.has(map)) {
+const worlds = new Map();
+const worldOf = (map) => {
+  if (!worlds.has(map)) {
     const f = join(SHOTS_DIR, 'features', `features-${map}.json`);
-    models.set(map, existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
+    const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    worlds.set(map, { features, model: features ? worldModel(features) : null });
   }
-  return models.get(map);
+  return worlds.get(map);
 };
 let checked = 0;
 for (const shot of COMBAT) {
@@ -66,9 +67,9 @@ for (const shot of COMBAT) {
   for (const k of kos) assert.ok(k.killer && k.killer !== k.victim && k.killMs - k.shotMs <= 250, `${id}: ${k.victim} knocked out by ${k.killer}'s round`);
   if (scene.meta.time === 'night') assert.ok(scene.effects.some((e) => e.type === 'flare'), `${id}: a night fight lit by a flare`);
   // the frame check on the battlefield as dumped (shots/media-r5/features; a worktree without the dumps skips it)
-  const model = modelOf(scene.map);
+  const { model, features } = worldOf(scene.map);
   if (!model) continue;
-  const verdict = combatVerdict(scene, model);
+  const verdict = combatVerdict(scene, model, features);
   assert.ok(verdict.ok, `${id}: ${verdict.faults.join('; ')}`);
   checked++;
 }

@@ -14,13 +14,14 @@ import { worldModel } from './world-model.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
 const only = process.argv[2]?.split(',').map(Number) ?? null;
-const models = new Map();
-const modelOf = (map) => {
-  if (!models.has(map)) {
+const worlds = new Map();
+const worldOf = (map) => {
+  if (!worlds.has(map)) {
     const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-    models.set(map, existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
+    const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    worlds.set(map, { features, model: features ? worldModel(features) : null });
   }
-  return models.get(map);
+  return worlds.get(map);
 };
 /** The candidate's worth: passing first, then fewer faults, more of the cast held, the hero's front, sizes in range. */
 const score = ({ ok, faults, metrics: m }) => (ok ? 100 : 0) - 12 * faults.length + 25 * (m.held / m.count) + 12 * Math.max(0, m.heroFront)
@@ -34,7 +35,8 @@ function placeFight(row) {
   const tried = [];
   for (const shift of [row[14] ?? [0, 0], ...SHIFTS]) {
     const scene = siteScene(combatTake(row, { shift }));
-    const faults = fightFaults(scene, modelOf(scene.meta.map));
+    const { model, features } = worldOf(scene.meta.map);
+    const faults = fightFaults(scene, model, undefined, features);
     if (!faults.length) return { shift, tried };
     tried.push(`[${shift}] ${faults.slice(0, 2).join('; ')}`);
   }
@@ -52,7 +54,8 @@ for (const row of COMBAT_TABLE.filter((r) => !only || only.includes(r[0]))) {
   const tried = [];
   for (const lens of Object.keys(DUEL)) for (const k of [1, -1]) for (const hold of holds) {
     const scene = siteScene(combatTake(row, { lens, k, hold, shift: own.shift }));
-    const verdict = combatVerdict(scene, modelOf(scene.meta.map));
+    const { model, features } = worldOf(scene.meta.map);
+    const verdict = combatVerdict(scene, model, features);
     tried.push({ lens, k, hold, ...verdict, fix: scene.meta.cameraFix ?? null, value: score(verdict) });
   }
   const mine = tried.find((t) => t.lens === own.lens && t.k === own.k && t.hold.join() === own.hold.join());

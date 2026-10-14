@@ -839,7 +839,7 @@ export const COMBAT_TABLE = [
   [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
     [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
   [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
-    ['abramsx'], [CAST.t90m, CAST.t72b3], 40, 0, 'street', 1, ['hero', 'foe0', 'foe1'], 2, [0, 8]],
+    ['abramsx'], [CAST.t90m, CAST.t72b3], 40, 0, 'street', 1, ['hero', 'foe0', 'foe1'], 0, [0, 8]],
   [229, 'barn-1v2', 'A Type 10 fights off a T-90M and a T-72B3M by the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
     [CAST.type10], [CAST.t90m, CAST.t72b3m], 42, -2, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 2, [3, 3]],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
@@ -848,8 +848,11 @@ export const COMBAT_TABLE = [
     [CAST.sepv3, CAST.sepv2], [CAST.t90m, CAST.t72b3m], 40, 0, 'overwatch', -1, ALL4, 2, [0, 0]],
   [232, 'village-2v2', 'A Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 in the Verdant village', S.vVillage, 'day', '2v2',
     [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'high', -1, ALL4, 2, [3, 3]],
-  [233, 'fjord-2v2', 'A Strv 122 and a CV90 duel a T-90 and a T-72B3 in the fjord village', S.fVillage, 'morning', '2v2',
-    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'shoulder', -1, ALL4, 2, [0, 0]],
+  // (off the fjord: the owner banned its broken-stratocumulus sky on every map, 2026-10-13. Verdant's road set has a
+  // house beside the enemy line that filled the frame from either side, and the Frontier farm stands in woods; the
+  // orchard village's sky is Verdant's fair-weather cumulus)
+  [233, 'orchard-2v2', 'A Strv 122 and a CV90 fight a T-90 and a T-72B3 through the orchard village in the morning', S.orVillage, 'morning', '2v2',
+    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0]],
 ];
 /** One combat take from its table row; `over` replaces any of { lens, k, hold, speed, D, lat, shift } (combat-search.mjs).
  *  `shift` ([lat, along] m in the set's frame, the row's 15th field) moves the whole fight off the set's anchor onto

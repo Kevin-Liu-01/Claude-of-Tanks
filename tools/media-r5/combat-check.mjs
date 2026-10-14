@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { absoluteShots, lensReport } from './lens-check.mjs';
-import { hullOf } from './route-check.mjs';
+import { hullOf, routeProblems } from './route-check.mjs';
 import { CRUSH_MIN_MPS, insideRecord, sightBlockers, worldModel } from './world-model.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
@@ -80,10 +80,13 @@ export function knockouts(scene) {
  * Where the fight stands (the lab places a combat take as built, autoPlace off): every hull clear of the records with
  * 0.4 m to spare where it starts (and of the solid ones wherever it drives), on ground under 0.25 slope and dry; and
  * every round's line from the shooter's gun to where it lands clear of solid records (a wall, a house; crowns and the
- * props a round would shred are let through). Returns the faults.
+ * props a round would shred are let through). With the battlefield's features, every track also keeps route-check's
+ * rules (3 m off the buildings, out of the woods and the water, off the map's edge, hulls 7 m apart): the previz had a
+ * CV90 drive into a wood's crowns, which the records do not hold. Returns the faults.
  */
-export function fightFaults(scene, model, rows = combatFrames(scene, model)) {
+export function fightFaults(scene, model, rows = combatFrames(scene, model), features = null) {
   const faults = new Set(), contacts = [], blockers = [];
+  if (features) for (const p of routeProblems(scene, features)) faults.add(`${p.actor} ${p.what} at ${p.tMs}`);
   const pose = (name, tMs) => {
     const r = rows.reduce((best, x) => (Math.abs(x.tMs - tMs) < Math.abs(best.tMs - tMs) ? x : best), rows[0]);
     return r?.tanks[name];
@@ -125,7 +128,7 @@ export function fightFaults(scene, model, rows = combatFrames(scene, model)) {
 }
 
 /** The verdict on one take: { ok, line, faults, rows }. */
-export function combatVerdict(scene, model) {
+export function combatVerdict(scene, model, features = null) {
   const rows = combatFrames(scene, model), n = rows.length || 1, count = scene.actors.length;
   const at = (tMs) => rows.reduce((best, r) => (Math.abs(r.tMs - tMs) < Math.abs(best.tMs - tMs) ? r : best), rows[0]);
   const both = (r, a, b) => !!r && !!r.tanks[a]?.inFrame && !!r.tanks[b]?.inFrame;
@@ -136,7 +139,7 @@ export function combatVerdict(scene, model) {
   const targetSight = rows.filter((r) => r.tanks.foe0?.sight).length / n;
   const kos = knockouts(scene).map((k) => ({ ...k, shown: both(at(k.shotMs), k.killer, k.victim) && both(at(k.killMs), k.killer, k.victim) }));
   const lens = model ? lensReport(scene, model) : null, heroBlocked = lens ? lens.blocked : 0;
-  const placement = model ? fightFaults(scene, model, rows) : [];
+  const placement = model ? fightFaults(scene, model, rows, features) : [];
   const faults = [];
   if (together < PASS.together) faults.push(`hero and foe0 together ${Math.round(together * 100)} %`);
   for (const k of kos) if (!k.shown) faults.push(`${k.killer} on ${k.victim} at ${k.killMs} not both in frame`);
@@ -157,19 +160,21 @@ export function combatVerdict(scene, model) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const [dir, onlyArg] = process.argv.slice(2);
   const only = onlyArg?.split(',') ?? null;
-  const models = new Map();
-  const modelOf = (map) => {
-    if (!models.has(map)) {
+  const worlds = new Map();
+  const worldOf = (map) => {
+    if (!worlds.has(map)) {
       const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-      models.set(map, existsSync(f) ? worldModel(JSON.parse(readFileSync(f, 'utf8'))) : null);
+      const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+      worlds.set(map, { features, model: features ? worldModel(features) : null });
     }
-    return models.get(map);
+    return worlds.get(map);
   };
   const files = readdirSync(dir).filter((f) => /^s\d{2,3}-.*\.json$/.test(f) && (!only || only.some((o) => f.includes(o)))).sort();
   let failed = 0;
   for (const f of files) {
     const scene = JSON.parse(readFileSync(join(dir, f), 'utf8'));
-    const { ok, line, faults, rows } = combatVerdict(scene, modelOf(scene.map));
+    const { model, features } = worldOf(scene.map);
+    const { ok, line, faults, rows } = combatVerdict(scene, model, features);
     if (!ok) failed++;
     console.log(`${ok ? 'PASS' : 'FAIL'} ${scene.meta?.id ?? f}: ${line}${faults.length ? `\n    faults: ${faults.join('; ')}` : ''}`);
     if (process.env.COMBAT_TRACE) for (const r of rows.filter((x) => x.tMs % 600 === 0)) {
