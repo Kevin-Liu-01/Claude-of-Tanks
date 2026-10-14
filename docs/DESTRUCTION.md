@@ -977,6 +977,11 @@ stuff falling around and pieces of buildings and destruction use the same kind o
   on the same engine (`world/loosePropBodies.ts`); the traffic cone keeps its ground-constrained law.
 - **Rounds break light cover.** A round breaks the crushable props it flies through before what stops it (fences,
   crates, carts, tents, stalls, stacks, the parked cars: `sim/shellLightCover.ts`, the solo step and the authority).
+- **No pops off rough ground (s3).** A hull that ends a step inside a solid record (a rock, a bunker, a boulder) leaves
+  it over a few steps instead of being pushed out at once, and a record's top is climbed on an eased edge at no more than
+  7 m/s (`sim/obstacleDepenetration.selftest.mjs`). `tools/field-pop-trace.mjs <map> [seconds=60] [seed=8100]` plays a
+  real map with 28 bots on the authority and lists every unexplained step over 5 cm with the hull's state and the
+  records round it (the field audit's pops). Tank-to-world contact is the physics stream's from 2026-10-13.
 - **Receipts.** `tools/destruction-check.mjs` stages every destructible building kind of a map, brings it down under HE
   and judges what it left: textured runs, no rim in a later through-hole, nothing of the building hanging over the heap
   late in its fall (the crumble's law on every triangle of its spans), no still piece in the air, every thrown piece on
