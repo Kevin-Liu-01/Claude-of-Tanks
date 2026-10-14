@@ -4,7 +4,7 @@
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
 // two doors and a dormer each; the colony's terraced rows (terraceLayout.ts); a shelled brick shell.
 import { PartSink, alongPlot, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { dentilCornice, facadeOn, faceSlab, pilaster, sillStreaks, trimRing } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -284,10 +284,16 @@ const station: RegionalBuilder = (ctx) => {
         if (facadeOn()) trimRing(sink, 'stone', wing.bodies[0], wing.eaveY - 0.24, [{ h: 0.08, out: 0.05 }, { h: 0.08, out: 0.1 }, { h: 0.08, out: 0.14 }]);
       });
     }
-    // the platform canopy along the track side (+x) on cast columns
-    const canopy: RoofSpec = { kind: 'shed', pitchDeg: 6, eave: 0.2, verge: 0.3, thickness: 0.09, bucket: 'roof' };
-    sink.placed(Math.PI, W / 2 + 1.9, 0, 0, () => emitRoof(sink, roofGeometry(3.6, D, 4.3, canopy), canopy));
-    for (let z = -D / 2 + 1.2; z < D / 2; z += 3.4) sink.cylinder('structureMetal', [W / 2 + 3.3, 0, z], 'y', 4.3, 0.1, 8, { colour: IRON });
+    // the platform canopy along the track side (+x) on cast columns (props census E4, lane B 2026-10-14: it rose from
+    // the wall and its columns stopped 0.34 m under it): it falls from the wall over the platform to an iron girder on
+    // the columns' heads, the columns' feet sunk in the platform
+    const side: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const cols: number[] = [];
+    for (let z = -D / 2 + 1.2; z < D / 2; z += 3.4) cols.push(-z);
+    leanTo(sink, { face: side, u0: -D / 2, u1: D / 2, depth: 3.3, highY: 4.65,
+      roof: { pitchDeg: 6, eave: 0.4, verge: 0.3, thickness: 0.09, bucket: 'roof' },
+      posts: { at: cols, size: 0.2, bucket: 'structureMetal', colour: IRON, round: true },
+      plate: { h: 0.3, w: 0.16, bucket: 'structureMetal', colour: IRON } });
   });
   return sink.finish();
 };

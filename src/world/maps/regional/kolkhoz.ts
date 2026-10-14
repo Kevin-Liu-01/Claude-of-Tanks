@@ -9,7 +9,7 @@ import {
   PartSink, faceBox, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
@@ -152,13 +152,14 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45, skirt: { bucket: 'plaster' as const, tint: TRODDEN } } : {}),
   }, dialect(st));
   if (craft) khataDressing(sink, frame, st, craft);
-  // the porch (ganok) over the door: two posts and a small lean-to
-  const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
-  for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
-  const porch: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.12, thickness: 0.08, bucket: 'roof' };
-  const pg = roofGeometry(1.15, 1.7, y, porch);
-  // a shed rises toward -x of its own frame: turned half round, its high side meets the wall
-  sink.placed(Math.PI, -W / 2 - 0.58, 0, f.u[2] * u, () => emitRoof(sink, pg, porch));
+  // the porch (ganok) over the door: a small lean-to falling from the wall under the thatch's eave to a plate on two
+  // posts (props census E4, lane B 2026-10-14: its high edge stood in the thatch, its posts unseated)
+  const f = frame.faces.left, u = D * 0.2;
+  leanTo(sink, { face: f, u0: u - 0.85, u1: u + 0.85, depth: 1.05, highY: frame.eaveY,
+    under: { eaveY: frame.eaveY, eave: frame.spec.roof.eave, tanP: frame.roof.tanP },
+    roof: { pitchDeg: 18, eave: 0.1, verge: 0.12, thickness: 0.08, bucket: 'roof' },
+    posts: { at: [u - 0.75, u + 0.75], size: 0.12, bucket: 'structureWood', colour: PLANK },
+    plate: { h: 0.11, w: 0.12, bucket: 'structureWood', colour: shade(PLANK, 0.85) } });
 }
 
 /**

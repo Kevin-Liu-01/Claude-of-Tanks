@@ -10,7 +10,7 @@
 // over its stock tank and the chapter's water tower; the BIA day school of cut sandstone under a hipped tin roof; and
 // the abandoned camps: a roofless stone house, a fallen hogan.
 import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, leanTo, placeShed, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -1016,19 +1016,27 @@ const equipmentShed: RegionalBuilder = (ctx) => {
     sink.span('straw', x0 + W - 1.4, 0.15, za + 0.15, x0 + W - 0.35, 1.5, zb - 0.15);
   }
   const n = Math.max(3, Math.round(D / 3.6));
+  // (props census E4, lane B 2026-10-14: the front poles stopped 1.0 m under the roof, which rises to the open front)
+  // the roof falls to the back wall; the front poles carry a juniper plate under its high eave, the poles up to it
+  const shed = placeShed(sink, { cx: x0 + W / 2, cz: 0, run: W, span: D, fall: [-1, 0], highY: H + rise, roof });
+  const px = x0 + W - 0.15, plateTop = shed.undersideAt(px, 0) + 0.01, plate = pick(look, JUNIPER);
+  sink.span('structureWood', px - 0.09, plateTop - 0.18, -D / 2 - 0.05, px + 0.09, plateTop, D / 2 + 0.05, { colour: shade(plate, 0.9), uv: UV_MEMBER });
   for (let k = 0; k <= n; k++) {
     const z = -D / 2 + 0.15 + (D - 0.3) * k / n;
-    pole(sink, [x0 + W - 0.15, 0.15, z], [x0 + W - 0.15, H, z], 0.11, pick(look, JUNIPER), false);
+    pole(sink, [px, -0.3, z], [px, plateTop - 0.18, z], 0.11, pick(look, JUNIPER), false);
   }
-  sink.placed(Math.PI, x0 + W / 2, 0, 0, () => emitRoof(sink, roofGeometry(W, D, H, roof), roof));
-  // the lean-to off the front for the trucks: posts and a low tin roof
+  // the lean-to off the front for the trucks: a low tin roof falling away from the shed, hung at its high line on a
+  // ledger along the front poles and resting on a plate over its own poles
   if (lw > 1.2) {
+    const front: Face = { origin: [x0 + W, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const lean = leanTo(sink, { face: front, u0: -D / 2 + 0.1, u1: D / 2 - 0.1, from: -0.15 + 0.11, depth: lw - 0.12,
+      highY: plateTop - 0.18 - 0.2, roof: { pitchDeg: 8, eave: 0.12, verge: 0.2, thickness: 0.06, bucket: 'roof' },
+      posts: null, plate: { h: 0.15, w: 0.16, bucket: 'structureWood', colour: shade(plate, 0.95) } });
+    faceBox(sink, 'structureWood', front, 0, lean.highY - 0.07, -0.15 + 0.11 + 0.05, D, 0.14, 0.1, { colour: shade(plate, 0.85), decor: true, uv: UV_MEMBER });
     for (let k = 0; k <= n; k += 2) {
       const z = -D / 2 + 0.3 + (D - 0.6) * k / n;
-      pole(sink, [x0 + W + lw - 0.12, 0.0, z], [x0 + W + lw - 0.12, H - 0.9, z], 0.09, pick(look, JUNIPER), false);
+      pole(sink, [x0 + W + lw - 0.12, -0.3, z], [x0 + W + lw - 0.12, lean.postTop, z], 0.09, pick(look, JUNIPER), false);
     }
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: 8, eave: 0.12, verge: 0.2, thickness: 0.06, bucket: 'roof' };
-    sink.placed(Math.PI, x0 + W + lw / 2, 0, 0, () => emitRoof(sink, roofGeometry(lw, D, H - 1.05, lean), lean));
   }
   // inside: loose bales and a stack of fence posts
   sink.dressing(ctx.tier === 'mobile', () => {

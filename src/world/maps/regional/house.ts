@@ -772,6 +772,102 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   }
 }
 
+/** A shed roof laid by `placeShed`: its geometry (in its own frame) and the height of its underside over any point. */
+export interface PlacedShed {
+  rg: RoofGeometry;
+  /** the underside of the slab over (x, z) of the emitting frame (past its eaves the plane runs on) */
+  undersideAt(x: number, z: number): number;
+}
+
+/**
+ * A shed (mono-pitch) roof laid to fall the way it is told (props census E4, lane B 2026-10-14). emitRoof's shed rises
+ * toward -x of its own frame; the kits turned it half round with `sink.placed(Math.PI, …)` to face it, and cut their
+ * posts to the eave height while the turn had put the eave at the other side — the kyushu hisashi, the ruhr station
+ * canopy and the navajo equipment shed stood 0.3-1.0 m short of their roofs. Here the fall is named: (cx, cz) the
+ * middle of the roof's plan, `run` its width down the slope (eave line to eave line, the walls' or posts' lines),
+ * `span` its length along the slope's contour, `fall` the horizontal unit vector pointing downhill, `highY` the
+ * underside on the high line. Posts and plates read `undersideAt` and stand under it.
+ */
+export function placeShed(sink: PartSink, spec: { cx: number; cz: number; run: number; span: number; fall: readonly [number, number];
+  highY: number; roof: RoofSpec; colour?: Rgb }): PlacedShed {
+  const roof: RoofSpec = { ...spec.roof, kind: 'shed' };
+  const tanP = Math.tan(roof.pitchDeg * DEG);
+  const eaveY = spec.highY - spec.run * tanP;
+  const rg = roofGeometry(spec.run, spec.span, eaveY, roof);
+  // the frame's +x runs downhill: (cos yaw, -sin yaw) = fall (PartSink.framePoint)
+  const [fx, fz] = spec.fall, yaw = Math.atan2(-fz, fx);
+  sink.placed(yaw, spec.cx, 0, spec.cz, () => emitRoof(sink, rg, roof, spec.colour));
+  return {
+    rg,
+    undersideAt: (x, z) => eaveY + (spec.run / 2 - ((x - spec.cx) * fx + (z - spec.cz) * fz)) * tanP,
+  };
+}
+
+/** A lean-to against a wall: what `leanTo` lays and the heights it found. */
+export interface LeanToSpec {
+  /** the wall it leans on and its run along the wall (face u) */
+  face: Face;
+  u0: number;
+  u1: number;
+  /** the post line's distance out from the wall (the roof's low eave line); `from` its high line's (0: at the wall) */
+  depth: number;
+  from?: number;
+  /** the underside on the high line */
+  highY: number;
+  /**
+   * a roof the lean-to must pass under (the main roof's eave over the wall): its eave line height, overhang and slope.
+   * The high line drops to clear that eave's lip by the lean-to's slab and a hand.
+   */
+  under?: { eaveY: number; eave: number; tanP: number };
+  roof: Omit<RoofSpec, 'kind'>;
+  roofColour?: Rgb;
+  /** the posts at these u's, their square section, their bucket and colour; their feet sunk to `foot` (default -0.3) */
+  posts: { at: readonly number[]; size: number; bucket: RegionalBucket; colour?: Rgb; decor?: boolean; foot?: number; round?: boolean } | null;
+  /** the plate (a keta beam, a wall plate, an iron girder) along the post heads, carrying the low eave */
+  plate?: { h: number; w: number; bucket: RegionalBucket; colour?: Rgb } | null;
+}
+
+/**
+ * A lean-to roof against a wall, falling away from it, on posts and a plate (props census E4 and E3, lane B 2026-10-14):
+ * its high line meets the wall (or tucks under the eave of the roof over it), its low eave runs out past a plate along
+ * the post heads, and every post stands from its sunk foot to the plate's underside — the roof rests on the plate and
+ * the plate on the posts. Returns the heights it laid (the dialects hang their screens and boards from them).
+ */
+export function leanTo(sink: PartSink, spec: LeanToSpec): { highY: number; plateTop: number; postTop: number; shed: PlacedShed } {
+  const from = spec.from ?? 0, run = spec.depth - from;
+  let highY = spec.highY;
+  if (spec.under) {
+    // the lean-to's top stays a hand under the main eave's underside wherever the one runs under the other: both are
+    // planes, so the ends of the overlap bound it (the main eave's lip, the lean-to's back edge)
+    const u = spec.under, tanL = Math.tan(spec.roof.pitchDeg * DEG);
+    const a = Math.max(0, from - spec.roof.eave), b = Math.min(u.eave, spec.depth + spec.roof.eave);
+    for (const o of a <= b ? [a, b] : []) {
+      highY = Math.min(highY, u.eaveY - o * u.tanP - 0.05 - spec.roof.thickness + (o - from) * tanL);
+    }
+  }
+  const uc = (spec.u0 + spec.u1) / 2, f = spec.face;
+  const mid = facePoint(f, uc, 0, from + run / 2);
+  const shed = placeShed(sink, { cx: mid[0], cz: mid[2], run, span: spec.u1 - spec.u0, fall: [f.out[0], f.out[2]], highY,
+    roof: { ...spec.roof, kind: 'shed' }, ...(spec.roofColour ? { colour: spec.roofColour } : {}) });
+  const line = facePoint(f, uc, 0, spec.depth);
+  // the plate's top meets the underside over the post line (a hand's bearing buried in the slab)
+  const plateTop = shed.undersideAt(line[0], line[2]) + 0.01;
+  const ph = spec.plate?.h ?? 0, postTop = plateTop - ph;
+  if (spec.plate) {
+    const p = spec.plate, len = spec.u1 - spec.u0 + 0.1;
+    faceBox(sink, p.bucket, f, uc, plateTop - p.h / 2, spec.depth, len, p.h, p.w, { ...(p.colour ? { colour: p.colour } : {}), uv: UV_MEMBER });
+  }
+  if (spec.posts) {
+    const p = spec.posts, foot = p.foot ?? -0.3;
+    const opts: EmitOptions = { ...(p.colour ? { colour: p.colour } : {}), ...(p.decor ? { decor: true } : {}), uv: UV_MEMBER };
+    for (const u of p.at) {
+      if (p.round) sink.cylinder(p.bucket, facePoint(f, u, foot, spec.depth), 'y', postTop - foot, p.size / 2, 8, opts);
+      else faceBox(sink, p.bucket, f, u, (foot + postTop) / 2, spec.depth, p.size, postTop - foot, p.size, opts, { top: !!spec.plate });
+    }
+  }
+  return { highY, plateTop, postTop, shed };
+}
+
 /** The four faces of storey `i` of a built house (a jettied storey's faces stand proud of the ground storey's). */
 export function storeyFaces(frame: HouseFrame, i: number): Record<FaceName, Face> {
   const b = frame.bodies[Math.max(0, Math.min(frame.bodies.length - 1, i))];

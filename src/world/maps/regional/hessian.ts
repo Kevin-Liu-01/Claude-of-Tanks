@@ -10,8 +10,8 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, H,
-  type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type WallRect,
+  buildHouse, emitRoof, placeShed, roofGeometry, storeyFaces, windowRhythm, H,
+  type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -703,17 +703,21 @@ const woodshed: RegionalBuilder = (ctx) => {
   const tc = { colour: st.timber, decor: true };
   sink.span('stone', -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.22, D / 2 + 0.1);
   const hLo = 2.25, hHi = 2.95;
-  // structural posts (they carry the roof: collision keeps them)
-  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [1, 0], [-1, 0]] as const) {
-    const h = sx > 0 ? hHi : hLo;
-    sink.span(SW, sx * (W / 2 - 0.08) - 0.08, 0.2, sz * (D / 2 - 0.08) - 0.08, sx * (W / 2 - 0.08) + 0.08, 0.2 + h, sz * (D / 2 - 0.08) + 0.08, { colour: st.timber });
+  // the mono-pitch roof rising to the open front (+x) (props census E4, lane B 2026-10-14: laid by its fall, not turned
+  // half round), a wall plate along each post line under it and the posts up to the plates
+  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(hHi - hLo, W) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.12, bucket: 'roof' };
+  const shed = placeShed(sink, { cx: 0, cz: 0, run: W, span: D, fall: [-1, 0], highY: 0.2 + hHi, roof });
+  for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 - 0.08), top = shed.undersideAt(x, 0) + 0.01;
+    sink.span(SW, x - 0.08, top - 0.14, -D / 2 - 0.02, x + 0.08, top, D / 2 + 0.02, { colour: shade(st.timber, 0.92), uv: UV_MEMBER });
+    // structural posts (they carry the roof: collision keeps them)
+    for (const sz of [-1, 0, 1]) {
+      sink.span(SW, x - 0.08, 0.2, sz * (D / 2 - 0.08) - 0.08, x + 0.08, top - 0.14, sz * (D / 2 - 0.08) + 0.08, { colour: st.timber });
+    }
   }
   // the boarded back (-x) and side walls; open to +x
   sink.span('wood', -W / 2 - 0.02, 0.22, -D / 2, -W / 2 + 0.06, 0.22 + hLo, D / 2);
   for (const sz of [-1, 1]) sink.span('wood', -W / 2, 0.22, sz * D / 2 - 0.04, W / 2 - 0.16, 0.22 + hLo * 0.92, sz * D / 2 + 0.04);
-  const rg = roofGeometry(W, D, 0.2 + hLo, { kind: 'shed', pitchDeg: Math.atan2(hHi - hLo, W) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.12, bucket: 'roof' });
-  // shed roof rising toward +x: mirror the shed (which rises toward -x) by building it turned
-  sink.placed(Math.PI, 0, 0, 0, () => emitRoof(sink, rg, { kind: 'shed', pitchDeg: Math.atan2(hHi - hLo, W) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.12, bucket: 'roof' }));
   // billets: rows of logs stacked against the back wall
   const rows = st.mobile ? 2 : 4;
   for (let r = 0; r < rows; r++) {
