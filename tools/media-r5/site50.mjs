@@ -684,6 +684,25 @@ export const OWNER_NINE = OWNER_NINE_TABLE.map(([n, from, id, title, lineup, foe
   return [n, id, kind, title, setRef, { ...film, from, lineup, ...(foes ? { foes } : {}), paint: [unit, enemy],
     turretStyle: style ?? turretStyle(from) }, still];
 });
+// The fleet takes (owner 2026-10-12: "make a special video for all tanks since it shouldnt be too hard on a wider variety
+// of maps and use that everywhere"): every production vehicle that leads none of the takes above leads one of its own,
+// planned by fleet-plan.mjs into fleet-roster.json: its battlefield and set (all 33 maps), hour, template take (one of
+// the fifty's best: its action, still and kind), allies, foes, paint and titles. The template's own routes, lens and
+// placement belong to its battlefield, so a fleet take flies the motion plan the search made for its own set (keyed by
+// its number) or, until then, the template's motion without routes.
+const FLEET_FILE = join(dirname(fileURLToPath(import.meta.url)), 'fleet-roster.json');
+const FLEET_ROSTER = existsSync(FLEET_FILE) ? JSON.parse(readFileSync(FLEET_FILE, 'utf8')) : [];
+const PLACED = ['routes', 'aim', 'anchor', 'heading', 'picture', 'enemies'];
+export const FLEET = FLEET_ROSTER.map((r) => {
+  const [, , kind, , setRef, film, still] = SHOTS.find(([m]) => m === r.template);
+  const tpl = typeof setRef === 'string' ? setById(setRef) : setRef, enemies = 'enemies' in film ? film.enemies : tpl.enemies;
+  const set = stage(`fleet-${r.id}`, r.map, r.time, 700 + r.n, r.anchor, r.heading, { lineup: r.lineup,
+    ...(tpl.formation ? { formation: tpl.formation } : {}), ...(tpl.count ? { count: tpl.count } : {}), ...(enemies ? { enemies } : {}) });
+  const own = Object.fromEntries(Object.entries(film).filter(([k]) => !PLACED.includes(k)));
+  const flare = r.time === 'night' && !(film.effects ?? []).some((e) => e.type === 'flare');
+  return [r.n, r.id, kind, r.title.en, set, { ...own, time: r.time, lineup: r.lineup, foes: r.foes, paint: r.paint, fleet: true,
+    turretStyle: turretStyle(r.template), ...(flare ? { effects: [NIGHT_FLARE(H(-4, 40), 90), ...(film.effects ?? [])] } : {}) }, still];
+});
 // The battlefield as the engine holds it (world-model.mjs, from a features dump that carries its records), per map;
 // MEDIA_R5_FEATURES points at another dump (a fresh one under review).
 const models = new Map();
@@ -801,7 +820,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const only = process.argv[3]?.split(',');
   mkdirSync(out, { recursive: true });
   const manifest = [];
-  for (const shot of [...SHOTS, ...OWNER_NINE]) {
+  for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET]) {
     const scene = siteScene(shot);
     if (only && !only.some(o => scene.meta.id.includes(o))) continue;
     writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));

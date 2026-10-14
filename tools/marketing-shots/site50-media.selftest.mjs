@@ -21,7 +21,8 @@ assert.equal(manifest.round, picks.round);
 assert.equal(manifest.draft, undefined, 'the published collection is not a draft: no older round stands in');
 
 const takes = Object.entries(manifest.takes);
-assert.equal(takes.length, 50, 'the site fifty');
+// the fifty and the owner's nine (2026-10-12, s51-s59: a take each for the tanks the owner named)
+assert.equal(takes.length, 59, 'the site fifty and the owner\'s nine');
 assert.deepEqual(takes.map(([id]) => id).sort(), Object.keys(picks.takes).sort());
 for (const [id, take] of takes) {
   assert.ok(take.current, `${id} is delivered in ${picks.round}`);
@@ -97,4 +98,4 @@ for (const proxy of proxies.files) {
   assert.equal(statSync(join(ROOT, 'public/media/web-video-r1', proxy.path)).size, proxy.bytes, `${proxy.path} byte receipt`);
 }
 
-console.log(`site50-media.selftest: ${manifest.files.length} files, the fifty takes with sound, the fifty frames and the films pass`);
+console.log(`site50-media.selftest: ${manifest.files.length} files, the ${takes.length} takes with sound, the fifty frames and the films pass`);

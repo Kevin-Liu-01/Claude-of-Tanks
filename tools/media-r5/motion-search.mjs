@@ -14,7 +14,9 @@
 //   WHY=1 also prints each shot's rejection tally.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SHOTS, siteScene } from './site50.mjs';
+import { FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
+// the fifty, the owner's nine and the fleet takes (fleet-roster.json), each searched on its own set
+const TAKES = [...SHOTS, ...OWNER_NINE, ...FLEET];
 import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
@@ -274,7 +276,7 @@ const usage = new Map();
 // the same road, start and move): a route another take on the set already drives costs 1, the same route with the same
 // move costs 3, and the same move on any route 1.5, so a set's takes differ in what they show
 const setUse = new Map();
-const setKeys = (n, family, lens) => { const set = SHOTS.find((x) => x[0] === Number(n))?.[4]?.id; return [`${set}|${family}`, `${set}|${family}|${lens?.replace(/[LR]$/, '')}`, `${set}|move|${lens?.replace(/[LR]$/, '')}`]; };
+const setKeys = (n, family, lens) => { const set = TAKES.find((x) => x[0] === Number(n))?.[4]?.id; return [`${set}|${family}`, `${set}|${family}|${lens?.replace(/[LR]$/, '')}`, `${set}|move|${lens?.replace(/[LR]$/, '')}`]; };
 for (const [n, entry] of Object.entries(plan)) {
   if (!IDS.length || IDS.includes(Number(n))) continue;
   const [family, rest = ''] = (entry.note ?? '').split(' at ');
@@ -282,7 +284,7 @@ for (const [n, entry] of Object.entries(plan)) {
   for (const k of [lens?.replace(/[LR]$/, ''), family?.split(/[[+-]/)[0]]) if (k) usage.set(k, (usage.get(k) ?? 0) + 1);
   for (const k of setKeys(n, family, lens)) setUse.set(k, (setUse.get(k) ?? 0) + 1);
 }
-for (const [n, id, kind, title, set, film, still] of SHOTS) {
+for (const [n, id, kind, title, set, film, still] of TAKES) {
   if (IDS.length && !IDS.includes(n)) continue;
   const features = featuresOf(set.map);
   if (!features) { console.log(`s${n}: no features for ${set.map}, skipped`); continue; }

@@ -40,6 +40,11 @@ paint;
 controls, capture/export surface, and production archive;
 `studioPicturePanel.ts` owns its Picture section (look, grade/finish sliders,
 letterbox, depth of field), a thin view over `__STUDIO.setPicture()`;
+`fleetTakes.ts` owns every vehicle's own take (the per-vehicle index fetched once
+at first use, and the muted player that decodes only on screen) for the Gallery
+dossier, the manual's fleet reference and the Garage's battle gallery, which
+reach it only through `import()`; the Studio Director finds the same takes in
+its scenes index (`group: 'fleet'`);
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 `i18n.ts` owns locale detection and runtime formatting; the paired
