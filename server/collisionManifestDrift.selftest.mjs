@@ -6,8 +6,8 @@
 // in the last packed digit of a rare record, which the check reports and accepts. On a failure, regenerate the named
 // maps: node tools/capture-world-collision-manifests.mjs --node --maps <ids>.
 //
-// The maps split over a few child processes, each running the capture tool's --check on its share (serially:
-// `--jobs=1`, since the tool splits a multi-map Node build itself by default).
+// The maps split over a few child processes, each running the capture tool's --check on its share (serially: it pins
+// `--jobs=1`, the default, since the tool can split a multi-map Node build itself).
 //
 // 2026-10-07 (map-vehicles lane): the same builds also walk every drawn geometry of each map's props and vegetation
 // for V8's fast properties (COT_DRAWN_GEOMETRY_SHAPE; src/world/geometryStreams.ts says why a deletion costs a

@@ -520,8 +520,7 @@ phone's saving is in how a record draws, never in which records stand.
   - the regional rowhouses, whose phone builds moved their bands (Franconian on Steinburg, Sarajevan on Ruinspires):
     `visual/facades-phone-bands` c4c542d44, a phone's kit builds run their dressing muted, so the streams stay aligned.
 - With both on this core, the phone tier matched **33 of 33** shards (2026-10-08). The check: `node
-  tools/capture-world-collision-manifests.mjs --tier=mobile` (since 2026-10-13 split over four child processes by
-  default, `--jobs=N` to choose; the output is the serial run's).
+  tools/capture-world-collision-manifests.mjs --tier=mobile`.
 - **2026-10-11 (the hitbox lane): only the facades fix reached main.** `visual/scenery-phone-masses` never landed, and a
   later change brought a third cause, so main matched 23 of 33 at the phone tier. Ten maps drifted: Verdant, Desert,
   Urban, Coastal, Frontier, Badlands, Monsoon, Orchard, Saltwind, Reservoir. Three causes, all fixed on

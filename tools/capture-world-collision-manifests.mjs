@@ -27,22 +27,21 @@
  *   node tools/capture-world-collision-manifests.mjs --check
  *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
  *
- * 2026-10-13 (speed): a Node build of more than one map (a regeneration, a check, the phone tier, a variant) splits its
- * maps round-robin over `--jobs=N` child processes of this tool (1-8; default max(1, min(4, floor(cores / 4))), the
- * drift receipt's split; `--jobs=1` is the serial build). Each child builds its share, writes its shards and closes
- * with a `job-done` line naming the maps it found drifted (tools/collisionSplitBuild.mjs); the parent prints the
- * per-map lines in map order, so its stdout equals a serial run's, publishes the index itself, and exits as the serial
- * run would (a check: 1 on drift), or 2 when a child is unsound (any non-zero exit, no job-done line, a missing map).
- * A split build no longer builds neighbouring maps in one process; src/world/worldBuildIsolation.selftest.mjs is the
- * receipt that one map's build leaves nothing behind for the next, and the receipts that run this tool pass `--jobs=1`
- * (a split says so on stderr). The landing commands:
- *   node tools/capture-world-collision-manifests.mjs --check --jobs=4
- *   node tools/capture-world-collision-manifests.mjs --check --tier=mobile --jobs=4
+ * 2026-10-13 (speed): `--jobs=N` (2-8) splits a Node build of more than one map (a regeneration, a check, the phone
+ * tier, a variant) round-robin over N child processes of this tool. Each child builds its share, writes its shards and
+ * closes with a `job-done` line naming the maps it found drifted (tools/collisionSplitBuild.mjs); the parent prints the
+ * per-map lines in map order, publishes the index itself, and exits 1 on a reported drift, or 2 when a child is unsound
+ * (any non-zero exit, no job-done line, a missing map). Without `--jobs` (or with `--jobs=1`) the build is the serial
+ * one, as before: every map after every earlier map in one process, which is the only build that sees state one map's
+ * build leaves for a later one (a page that changes battlefields). A split does not, and its check says so in its
+ * summary; so the split is for regenerating, and the landing checks stay serial (docs/DEVELOPMENT.md):
+ *   node tools/capture-world-collision-manifests.mjs --node --jobs=4
  *   node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
+ *   node tools/capture-world-collision-manifests.mjs --check                         # serial
+ * A split's children never outlive it: a wall-clock alarm or a kill of the parent ends them too, before they write.
  */
 
 import { execFileSync } from 'node:child_process';
-import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -52,13 +51,20 @@ import {
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
-import { collisionJobDoneLine, runCollisionSplitBuild } from './collisionSplitBuild.mjs';
+import {
+  armCollisionJobChild, collisionBuildMode, collisionJobDoneLine, runCollisionSplitBuild,
+} from './collisionSplitBuild.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
-/** A child of a split Node build (--jobs): it builds and writes its share of the maps; its parent publishes the index. */
-const jobChild = options.node && process.env.COT_COLLISION_JOB === '1';
-const jobs = options.jobs ?? Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
-const splitBuild = options.node && jobs > 1 && options.mapIds.length > 1 && !jobChild;
+/** serial (the default), split (--jobs=N), or a split's child; a child marker this process's parent never set exits 2 */
+const build = (() => {
+  try { return collisionBuildMode(options); } catch (error) { console.error(error.message); process.exit(2); }
+})();
+/** A child of a split Node build: it builds and writes its share of the maps; its parent publishes the index. */
+const jobChild = build.mode === 'child';
+const splitBuild = build.mode === 'split';
+/** A child stops the moment its parent is gone (a watchdog thread, and this check before each map and each shard). */
+const whileParentLives = jobChild ? armCollisionJobChild(build.parent) : () => {};
 /** Two packed decimals of 4 places that round apart differ by one unit in the last place; anything more is drift. */
 const CHECK_ROUNDING_M = 2e-4;
 /** The first difference beyond rounding between two decoded manifests (null when none), and the records within it. */
@@ -129,17 +135,20 @@ function evaluate(script) {
 }
 
 function publish(mapId, data) {
+  whileParentLives();
   maps[mapId] = writeCollisionManifestShard(mapId, data);
   console.log(`${mapId}: ${data.obstacles.length} obstacles, ` +
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
   if (jobChild) console.log(`job-entry ${mapId} ${JSON.stringify(maps[mapId])}`);
 }
 
-/** A check's closing line, the serial build's and a split build's alike. */
+/** A check's closing line; a split check's says what it did not check (a map built after the other shares' maps). */
 function checkSummary(drifted) {
   const total = options.mapIds.length;
-  return options.variant ? `${total - drifted}/${total} ${options.variant} shards match the tree`
-    : `${total - drifted}/${total} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`;
+  const split = splitBuild ? ` (split over ${Math.min(build.jobs, total)} jobs: no map built after the other shares'`
+    + ' maps; the serial check without --jobs builds each after every earlier map)' : '';
+  return (options.variant ? `${total - drifted}/${total} ${options.variant} shards match the tree`
+    : `${total - drifted}/${total} collision shards match the tree${options.tier ? ` built at the ${options.tier} tier` : ''}`) + split;
 }
 
 /** Publish a variant's index entries beside the committed index's maps and other variants. */
@@ -164,7 +173,7 @@ if (splitBuild) {
     ? { index: JSON.parse(readFileSync(new URL('index.json', collisionManifestDirectory), 'utf8')), variants: readCollisionManifestVariants() }
     : null;
   const { code, drifted, entries } = await runCollisionSplitBuild({
-    tool: fileURLToPath(import.meta.url), argv: process.argv.slice(2), mapIds: options.mapIds, jobs,
+    tool: fileURLToPath(import.meta.url), argv: process.argv.slice(2), mapIds: options.mapIds, jobs: build.jobs,
     check: options.check, variant: options.variant ?? null,
   });
   if (code === 2) process.exit(2);
@@ -192,10 +201,11 @@ if (splitBuild) {
   const entries = { ...(variants[options.variant] ?? {}) };
   const drifted = [];
   for (const mapId of options.mapIds) {
-    if (jobChild) console.log(`job-map ${mapId}`);
+    if (jobChild) { whileParentLives(); console.log(`job-map ${mapId}`); }
     const data = await buildWorldCollisionData(mapId, { variant: options.variant });
     const label = `${mapId}@${options.variant}`;
     if (!options.check) {
+      whileParentLives();
       entries[mapId] = writeCollisionManifestShard(mapId, data, collisionManifestDirectory, options.variant);
       console.log(`${label}: ${data.obstacles.length} obstacles, ${data.colliders.length} colliders, ${data.concealers.length} concealers`);
       if (jobChild) console.log(`job-entry ${label} ${JSON.stringify(entries[mapId])}`);
@@ -250,7 +260,7 @@ if (splitBuild) {
       + (offenders.length ? ` (${offenders.slice(0, 6).join('; ')})` : ''));
   } : undefined;
   for (const mapId of options.mapIds) {
-    if (jobChild) console.log(`job-map ${mapId}`);
+    if (jobChild) { whileParentLives(); console.log(`job-map ${mapId}`); }
     const data = await buildWorldCollisionData(mapId, { inspect });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));

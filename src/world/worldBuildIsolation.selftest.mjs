@@ -3,15 +3,19 @@
 // state into the next would lay the next map out otherwise than a fresh page does, and the phone and the authority
 // (which plays the committed shards) would disagree about its records.
 //
-// The capture tool's serial --check used to notice such a leak by accident, building every map after the one before it
-// in one process; since tools/capture-world-collision-manifests.mjs splits its maps over child processes (--jobs), no two
-// neighbouring maps share a process there. This receipt asks the question on purpose: in one isolate it builds a probe
-// map fresh, then another map, then the probe again, and the probe's collision manifest (its sha256 and its obstacle,
-// collider and concealer counts) must be byte-identical to its fresh build. Each sequence runs in its own worker thread
-// (a fresh module graph, as a fresh page), at most four at a time (the drift receipt's split). A map that one sequence
-// builds second and another builds fresh is held to that fresh build too (frontier after badlands).
+// The capture tool's serial --check (the default, and the landing check) builds every map after every earlier map in one
+// process, so it sees a leak from an earlier map into a later one; it never builds a map after a later one, and the drift
+// receipt builds each map only after its share's earlier maps. This receipt asks the question on purpose, in both
+// directions, for a few sampled pairs: in one isolate it builds a probe map fresh, then another map, then the probe
+// again, and the probe's collision manifest (its sha256 and its obstacle, collider and concealer counts) must be
+// byte-identical to its fresh build. Each sequence runs in its own worker thread (a fresh module graph, as a fresh page),
+// at most four at a time (the drift receipt's split). A map that one sequence builds second and another builds fresh is
+// held to that fresh build too (frontier after badlands).
 //
-// The pairs are the ones that share builders and so share whatever a builder caches:
+// It is a sample, not the class: a leak can travel between any two maps that share state, and only a serial build sees
+// every earlier map before every later one (2026-10-14: an injected leak through the western1944 civilian fleet, which
+// autumn, alpine, foundry, polders and reservoir share and no pair here samples, passed this receipt and failed the
+// serial check). The sampled pairs share builders and so share whatever a builder caches:
 //   - badlands after frontier, and frontier after badlands: the coverage check's reproduction (a stale obstacle cache in
 //     createProps made the split check pass where the serial one failed); the dry maps' civilian palette and the M60A3
 //     wreck donor;

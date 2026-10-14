@@ -49,24 +49,32 @@ Before publishing:
    (`server/world-collision-manifests/<map>@assault-trenches.json`, listed under the index's `variants`): anything
    that moves a map's records moves its variant's too, so regenerate both — `--node --variant=assault-trenches`
    (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
-   Since 2026-10-13 a Node build of more than one map splits its maps over `--jobs=N` child processes of the tool
-   (1-8; default max(1, min(4, floor(cores / 4))), 4 on an 18-core machine; `--jobs=1` is the serial build). The output,
-   shard bytes, index and exit code are the serial run's; on a loaded machine the wall time is about a third (the base
-   `--check`, back to back at load 47-100 on 2026-10-14: 24.8 min serial, 8.2 min at `--jobs=4`, 585 and 461 CPU-s).
-   The shard steps of a landing that moved a map:
+   Since 2026-10-13 `--jobs=N` (2-8) splits a Node build of more than one map round-robin over N child processes of
+   the tool; without it the tool builds every map after every earlier map in one process, as before. On a loaded
+   machine a split takes about a third of the wall time (the base `--check`, back to back at load 47-100 on 2026-10-14:
+   24.8 min serial, 8.2 min at `--jobs=4`, 585 and 461 CPU-s). But a split builds no map after the other shares' maps,
+   so it cannot see state that one map's build leaves for a later one, which a page that changes battlefields reads
+   (2026-10-14: an injected western1944 footprint cache that Polders bent for Reservoir failed the serial check and
+   passed every split one). No split much faster than the serial build can build each map after all the maps before
+   it, so the checks stay serial. They write nothing and do not depend on one another, so the three may run at the
+   same time (about 7 GB each at peak: `headroom can-start --gb 21` first). The shard steps of a landing that moved a
+   map:
    ```sh
-   nice -n 15 node tools/capture-world-collision-manifests.mjs --node --jobs=4                      # regenerate (or --maps a,b)
+   nice -n 15 node tools/capture-world-collision-manifests.mjs --node --jobs=4      # regenerate (or --maps a,b)
    nice -n 15 node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
-   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --jobs=4                       # exit 1 on drift
-   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --tier=mobile --jobs=4
-   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --variant=assault-trenches --jobs=4
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check               # serial: exit 1 on drift
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --tier=mobile
+   nice -n 5 node tools/capture-world-collision-manifests.mjs --check --variant=assault-trenches
    ```
-   Each child closes with a `job-done` line naming the maps it found drifted (`tools/collisionSplitBuild.mjs`); a check
+   A split regeneration writes each map as its share's process built it. Where no build depends on the maps built
+   before it (what the serial check confirms) those are the serial run's bytes; where one does, the serial check
+   reports the dependence as drift, where a serial regeneration would have written it into the shard and passed. Each
+   child closes with a `job-done` line naming the maps it found drifted (`tools/collisionSplitBuild.mjs`); a split
    exits 1 only on such a reported drift and 2 when a child is unsound (any non-zero exit, a missing `job-done`, a map
-   without its line; its stderr's tail is printed), and a failed regeneration writes no index. A split build no longer
-   builds neighbouring maps in one process, so it cannot see state that one map's build leaves for the next (a page
-   that changes battlefields): `src/world/worldBuildIsolation.selftest.mjs` checks that on purpose, and the receipts
-   that run the tool (the drift receipt, `phoneLayoutIdentity`) pass `--jobs=1`.
+   without its line; its stderr's tail is printed), and a failed regeneration writes no index. A split check
+   (`--check --jobs=N`) is a quick look while iterating: its summary says it was split, and it never stands in for the
+   serial check. A split's children die with it: a wall-clock alarm, memcap or any kill of the parent ends them before
+   they write another shard, and the parent exits with the serial run's status.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their

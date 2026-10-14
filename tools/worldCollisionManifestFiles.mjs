@@ -55,8 +55,8 @@ export function collisionCaptureOptions(args) {
       tier = arg.slice('--tier='.length);
       if (tier !== 'mobile') throw new Error(`--tier names an unknown device tier to check: ${tier}`);
     } else if (arg.startsWith('--jobs=')) {
-      // 2026-10-13 (speed): split a Node build's maps over N child processes of the capture tool; 1 is the serial build
-      // (default: the drift receipt's max(1, min(4, floor(cores / 4))), computed by the tool)
+      // 2026-10-13 (speed): split a Node build's maps over N child processes of the capture tool; absent or 1 is the
+      // serial build (every map after every earlier map in one process), the only one a landing check uses
       if (jobs !== null) throw new Error('--jobs may be supplied only once');
       const value = arg.slice('--jobs='.length);
       if (!/^[1-8]$/.test(value)) throw new Error(`--jobs requires an integer from 1 to 8: ${value}`);

@@ -15,9 +15,9 @@
 // The whole roster (33 of 33 since 2026-10-11):
 //   node tools/capture-world-collision-manifests.mjs --tier=mobile
 //
-// 2026-10-13 (speed): the tool splits a multi-map build over child processes by default; this receipt builds its five
-// maps one after another in one process, as a phone plays them in one page, so it passes `--jobs=1` and holds the run to
-// the serial path (a split run says so on stderr).
+// 2026-10-13 (speed): the tool can split a multi-map build over child processes (`--jobs=N`); this receipt builds its
+// five maps one after another in one process, as a phone plays them in one page, so it pins `--jobs=1` (the default)
+// and holds the run to the serial path (a split run says so on stderr).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
