@@ -48,7 +48,7 @@ import {
   serializeRoom, setPlayerConnected,
 } from '../src/mp/room/roomPolicy.ts';
 import type { RoomStartPlan } from '../src/mp/room/roomPolicy.ts';
-import { electHost as electHostRule } from '../src/mp/room/p2pMatchHost.ts';
+import { electHost as electHostRule, explainElection } from '../src/mp/room/p2pMatchHost.ts';
 import { signSeatToken } from '../server/match/seatToken.ts';
 import type { SeatClaims } from '../server/match/seatToken.ts';
 
@@ -210,7 +210,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       const hostId = room.host.hostId;
       if (!hostId || !matchLive(room)) return;
       emit('host_silent', room.code, { hostId });
-      changeHost(room, 'timeout', hostId);
+      changeHost(room, 'timeout', hostId, false, 'report_deadline');
     }, reportStaleMs);
     room.reportStale.unref?.();
   };
@@ -249,7 +249,8 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     for (const [playerId, seat] of room.seats) if (!seat.socketId) armSeatLease(room, playerId);
   };
 
-  const changeHost = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', exclude: string | null, unable = false): void => {
+  const changeHost = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', exclude: string | null, unable = false,
+    detail?: 'socket_lease' | 'report_deadline'): void => {
     if (!matchLive(room)) return;
     const at = now();
     // P1b's rule: a running host's decline is its departure from hosting — the next candidate takes over at once
@@ -275,18 +276,22 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       broadcastState(room);
       return;
     }
+    // (2026-10-13) the actor's explanation, mirrored: the deadline of a timeout and the seats the ladder passed over
+    const passedOver = explainElection(snapshot(room), next, exclude, reason === 'declined' ? room.steppedDown : undefined);
     room.host = { transport: 'p2p', hostId: next, generation: room.host.generation + 1, since: at };
     room.matchUrl = p2pMatchUrl(room.code, room.host.generation);
     armReportStale(room);
-    broadcastHostChanged(room, reason);
+    broadcastHostChanged(room, reason, detail, passedOver);
     broadcastState(room);
   };
 
   /** `host_changed` to every seated socket, the secret on the host's own copy alone. */
-  const broadcastHostChanged = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start'): void => {
+  const broadcastHostChanged = (room: RoomState, reason: 'left' | 'timeout' | 'declined' | 'start', detail?: 'socket_lease' | 'report_deadline',
+    passedOver: readonly { playerId: string; why: string }[] = []): void => {
     const hostId = room.host.hostId!;
-    emit('host_changed', room.code, { hostId, generation: room.host.generation, reason, resumeTick: room.lastTick });
-    const payload = { hostId, generation: room.host.generation, resumeTick: room.lastTick, reason };
+    const extra = { ...(detail ? { detail } : {}), ...(passedOver.length ? { passedOver: passedOver.map((entry) => ({ ...entry })) } : {}) };
+    emit('host_changed', room.code, { hostId, generation: room.host.generation, reason, resumeTick: room.lastTick, ...extra });
+    const payload = { hostId, generation: room.host.generation, resumeTick: room.lastTick, reason, ...extra };
     for (const [playerId, seat] of room.seats) {
       if (!seat.socketId) continue;
       send(seat.socketId, { type: 'host_changed', payload: playerId === hostId ? { ...payload, hostSecret: room.hostSecret } : { ...payload } });
@@ -301,7 +306,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       if (!hostId || !matchLive(room)) return;
       const seat = room.seats.get(hostId);
       if (seat?.socketId) return; // back in time
-      changeHost(room, 'timeout', hostId);
+      changeHost(room, 'timeout', hostId, false, 'socket_lease');
     }, hostGraceMs);
   };
 

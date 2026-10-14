@@ -13,7 +13,7 @@
  * never host. `generation` increments on every election a host comes out of.
  */
 import { ROOM_MATCH_REPORT_STALE_AFTER_MS, p2pMatchUrl } from './protocol.ts';
-import type { RoomHostInfo, RoomMatchReportPhase, RoomPlayer, RoomResult, RoomSnapshot } from './protocol.ts';
+import type { RoomHostInfo, RoomHostPassedOver, RoomMatchReportPhase, RoomPlayer, RoomResult, RoomSnapshot } from './protocol.ts';
 import type { MatchHostBase, MatchHostStartConfig, MatchHostStatus } from './roomActor.ts';
 
 /** The host's last accepted `match_report` (the actor keeps it durable and hands it to the view). */
@@ -58,6 +58,25 @@ export function electHost(room: RoomSnapshot, exclude: string | null = null, ski
     if (!best || player.joinedAt < best.joinedAt) best = player;
   }
   return best;
+}
+
+/**
+ * Why each commander the election did not choose was passed over (2026-10-13, the MP stream: production's entry
+ * elections handed the match to C rather than B, and only the 10 %-sampled Worker log could have said why). Never the
+ * departing host, never a spectator; in the ladder's order of preference — `elected` null lists every commander.
+ */
+export function explainElection(room: RoomSnapshot, elected: string | null, exclude: string | null = null, skip?: ReadonlySet<string>): RoomHostPassedOver[] {
+  const chosen = elected ? room.players.find((player) => player.id === elected) ?? null : null;
+  const passed: RoomHostPassedOver[] = [];
+  for (const player of room.players) {
+    if (player.team === 'spectator' || player.id === exclude || player.id === elected) continue;
+    const why: RoomHostPassedOver['why'] = !player.connected ? 'disconnected'
+      : skip?.has(player.id) ? 'stepped_down'
+        : player.hostDeclined && !chosen?.hostDeclined ? 'declined'
+          : 'ranked_lower';
+    passed.push({ playerId: player.id, why });
+  }
+  return passed;
 }
 
 /** A running p2p match's host at `now`: `absent` without a room socket, `silent` past the report budget, else `alive`. */
