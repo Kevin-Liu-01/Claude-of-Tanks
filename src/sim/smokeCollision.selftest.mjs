@@ -168,17 +168,34 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
   const real = createDedicatedWorldCollision('verdant');
   const field = real.heightField;
   const g = (x, z) => field.getHeightAt(x, z);
+  const { collisionPartIsDeck } = await import('../world/collision.ts');
   // a structure standing alone: fire at its wall from 9 m out, square on, at 1.5 m
   // (a building: a structure group's movement record; its walls are its shell bands, which the ray meets) from each side
-  const records = real.getObstacles().filter((r) => r.structureIdx != null && r.max[0] - r.min[0] > 4 && r.max[2] - r.min[2] > 4);
+  // (physics stream F2, 2026-10-14) measured from its ground band's plan extent: the record also carries its roof's decks
+  // (floor-only, mergeStructureDecks), whose eaves overhang the walls and grew the record's box past them, so a shot 9 m
+  // out from the box fell short of the wall
+  const footprint = (r) => {
+    const box = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+    for (const part of r.shape2?.kind === 'compound' ? r.shape2.parts : [r.shape2]) {
+      if (!part || collisionPartIsDeck(r, part)) continue;
+      const points = part.points ?? [r.min[0], r.min[2], r.max[0], r.max[2]];
+      for (let i = 0; i < points.length; i += 2) {
+        box.x0 = Math.min(box.x0, points[i]); box.x1 = Math.max(box.x1, points[i]);
+        box.z0 = Math.min(box.z0, points[i + 1]); box.z1 = Math.max(box.z1, points[i + 1]);
+      }
+    }
+    return box;
+  };
+  const records = real.getObstacles().filter((r) => r.structureIdx != null).map((r) => footprint(r))
+    .filter((b) => b.x1 - b.x0 > 4 && b.z1 - b.z0 > 4);
   let tried = 0, struck = 0, entered = 0;
   const started = performance.now();
   for (const r of records) {
     if (tried >= 30) break;
-    const cx = (r.min[0] + r.max[0]) / 2, cz = (r.min[2] + r.max[2]) / 2;
+    const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       // 9 m out from the face the shot points at, square on, at 1.5 m over the ground there
-      const x0 = dx ? (dx > 0 ? r.min[0] - 9 : r.max[0] + 9) : cx, z0 = dz ? (dz > 0 ? r.min[2] - 9 : r.max[2] + 9) : cz;
+      const x0 = dx ? (dx > 0 ? r.x0 - 9 : r.x1 + 9) : cx, z0 = dz ? (dz > 0 ? r.z0 - 9 : r.z1 + 9) : cz;
       const y0 = g(x0, z0) + 1.5;
       const toWall = real.raycast(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(dx, 0, dz), 9.5);
       if (!toWall || toWall.kind === 'terrain' || toWall.dist < 7) continue; // the ground, or something nearer
