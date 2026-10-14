@@ -35,6 +35,8 @@ export interface HinterlandSettlement {
   vertical: HinterlandVerticalKind | null;
   /** Standing in a flood (Walcheren, October 1944): its roofs and trees stand out of the water. */
   flooded?: boolean;
+  /** Its tower's authored height (m), when a sightline village names one. */
+  towerM?: number;
   name?: string;
 }
 
@@ -277,7 +279,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     settlements.push({
       id: settlements.length, kind: 'village', x: at.x, z: at.z, yaw: nearestRoadYaw(at.x, at.z), radiusM: villageRadius,
       buildings: Math.round(Math.max(10, per[0] * 0.7) + (Math.max(14, per[1] * 0.55) - Math.max(10, per[0] * 0.7)) * rng()),
-      near, vertical: spec.region.verticals[0] ?? null, ...(a.name ? { name: a.name } : {}),
+      near, vertical: spec.region.verticals[0] ?? null, ...(a.name ? { name: a.name } : {}), ...(a.towerM ? { towerM: a.towerM } : {}),
     });
     anchored++;
   }
@@ -340,7 +342,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     const [h, half] = VERTICAL_SIZE[s.vertical];
     const off = s.kind === 'town' ? 0 : s.radiusM * 0.15;
     verticals.push({ kind: s.vertical, x: s.x + Math.sin(s.yaw + Math.PI / 2) * off, z: s.z + Math.cos(s.yaw + Math.PI / 2) * off,
-      heightM: h * (s.kind === 'town' ? 1.25 : s.near ? 1 : 0.95), halfM: half, yaw: s.yaw, settlement: s.id });
+      heightM: s.towerM ?? h * (s.kind === 'town' ? 1.25 : s.near ? 1 : 0.95), halfM: s.towerM ? Math.max(half, s.towerM / 9) : half, yaw: s.yaw, settlement: s.id });
   }
   const regionExtra = spec.region.verticals.slice(1);
   if (regionExtra.includes('windmill') && pattern === 'dykeVillage') {
@@ -581,7 +583,7 @@ function routeLine(a: { x: number; z: number }, b: { x: number; z: number }, inp
 export function planInputsFrom(field: HinterlandField, heightAt: (x: number, z: number) => number,
   exits: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[]): HinterlandPlanInputs {
   const water = { wet: 0, level: 0, kind: 0 };
-  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9 };
   return {
     heightAt,
     wetAt: (x, z) => field.waterAt(x, z, water).wet,

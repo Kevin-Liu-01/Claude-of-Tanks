@@ -26,7 +26,7 @@ export function skylineObjects(build) {
   // the planner's trees (the rows in their cohorts and gaps, the farms' groups, the avenues), each a crown
   for (const t of plan.trees ?? []) add({ x: t.x, z: t.z, r: t.crownM, h: t.heightM, crown: true }, t.x - t.crownM, t.z - t.crownM, t.x + t.crownM, t.z + t.crownM);
   // the woods' canopy (and the far country's tree lines): from the field's cover on a lazy 32 m lattice to 16 km
-  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9 };
   // (16 m to 4 km, 64 m to 16 km: a wood's edge reads at eye level)
   const lattice = (cell, half) => ({ cell, half, n: Math.ceil((2 * half) / cell) + 1, v: null });
   const L1 = lattice(16, 4096), L2 = lattice(64, 16384);

@@ -62,10 +62,15 @@ export interface HinterlandCover {
   snow: number;
   settle: number;
   road: number;
+  /** A field's signed offsets (m, the land-use grid's u / v axes) to its nearer edge across each axis (landUse.ts
+   * LandFieldSample sU / sV): the surface bake stores them so the material draws the parcels' edges straight at any
+   * distance. 1e9 where no field. */
+  edgeU: number;
+  edgeV: number;
 }
 
 export function createHinterlandCover(): HinterlandCover {
-  return { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
+  return { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9 };
 }
 
 export interface HinterlandGeologySample {
@@ -673,6 +678,7 @@ export function createHinterlandField(
   function coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number, baseHeight?: number): HinterlandCover {
     out.cls = HL_COVER.pasture; out.crop = 31; out.fieldId = 0;
     out.woods = 0; out.hedge = 0; out.wet = 0; out.rock = 0; out.scree = 0; out.snow = 0; out.settle = 0; out.road = 0;
+    out.edgeU = 1e9; out.edgeV = 1e9;
     const edgeOut = edgeOutOf(x, z);
     // (a base the caller already has — the pyramid bake's, at the drawn level of detail — saves the relief's evaluation)
     const base = baseHeight !== undefined && Number.isFinite(baseHeight) ? baseHeight : baseNoWater(x, z);
@@ -718,6 +724,7 @@ export function createHinterlandField(
         out.hedge = landSample.hedge * Math.min(1, spec.outland.hedges * 1.4);
         if (keep && landSample.crop !== 0) { out.cls = HL_COVER.field; out.crop = landSample.crop; out.fieldId = landSample.id; }
         else { out.cls = HL_COVER.pasture; out.crop = 0; out.fieldId = landSample.id; }
+        out.edgeU = landSample.sU; out.edgeV = landSample.sV;
         return out;
       }
     }

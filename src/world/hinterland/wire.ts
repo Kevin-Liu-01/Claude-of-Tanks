@@ -7,6 +7,10 @@ import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
 import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
 
+/** The surface's edge offsets' encoding (surface.ts, material.ts): (s + HL_EDGE_OFFSET_M) × HL_EDGE_SCALE in 16 bits
+ * (±256 m at 1/128 m); 65535 is "no edge". Here, where both sides read it without the page importing the field. */
+export const HL_EDGE_OFFSET_M = 256;
+export const HL_EDGE_SCALE = 128;
 export const HINTERLAND_TREE_STRIDE = 9; // x, z, height, crown, tone, leaf, species index, form index, ground height
 export const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
 export const HINTERLAND_FORMS: readonly HinterlandTree['form'][] = Object.freeze(['columnar', 'broad', 'pollard', 'conifer']);
@@ -21,8 +25,10 @@ export interface HinterlandWire {
   fogDensity: number;
   canopyM: number;
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
-  /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte), when baked. */
+  /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte, the fields' edge offsets), when baked. */
   surface: HinterlandSurfaceLevel[] | null;
+  /** The land-use grid's heading as (cos, sin) — the frame of the surface's edge offsets; null without fields. */
+  landRot: [number, number] | null;
   /** The outland's buildings, verticals and trees as geometry (outlandGeometry.ts), when built. */
   outland: HinterlandOutlandGeometry | null;
   trees: Float32Array;
@@ -62,10 +68,11 @@ export function packHinterlandPlan(
   const wire: HinterlandWire = {
     mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity,
     canopyM: spec.region.vegetation.canopyM, levels, surface, outland, trees, species, buildings, buildingKinds,
+    landRot: build.field.landUse && build.field.landUse.strength > 0 ? [Math.cos(build.field.landUse.heading), Math.sin(build.field.landUse.heading)] : null,
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,
   };
   const transfer = [trees.buffer as ArrayBuffer, buildings.buffer as ArrayBuffer, ...levels.map((l) => l.heights.buffer as ArrayBuffer)];
-  if (surface) for (const s of surface) transfer.push(s.rgba.buffer as ArrayBuffer);
+  if (surface) for (const s of surface) { transfer.push(s.rgba.buffer as ArrayBuffer); if (s.edges) transfer.push(s.edges.buffer as ArrayBuffer); }
   if (outland) {
     for (const a of [outland.buildings, outland.nearTrees, outland.farTrees]) if (a) transfer.push(a.position.buffer as ArrayBuffer, a.normal.buffer as ArrayBuffer, a.color.buffer as ArrayBuffer);
     transfer.push(outland.nearIndex.buffer as ArrayBuffer);
@@ -102,7 +109,7 @@ export function copyHinterlandWire(wire: HinterlandWire): HinterlandWire {
   return {
     ...wire,
     levels: wire.levels.map((l) => ({ ...l, heights: l.heights.slice() })),
-    surface: wire.surface ? wire.surface.map((s) => ({ ...s, rgba: s.rgba.slice() })) : null,
+    surface: wire.surface ? wire.surface.map((s) => ({ ...s, rgba: s.rgba.slice(), edges: s.edges ? s.edges.slice() : null })) : null,
     outland: wire.outland ? {
       ...wire.outland, buildings: copyShapes(wire.outland.buildings), nearTrees: copyShapes(wire.outland.nearTrees),
       farTrees: copyShapes(wire.outland.farTrees), nearIndex: wire.outland.nearIndex.slice(),

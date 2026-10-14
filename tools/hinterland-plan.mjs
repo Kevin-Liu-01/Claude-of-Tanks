@@ -51,7 +51,7 @@ function rasterInto(ctx, rect, half, build, groundAt, { exaggeration, step = 1 }
   const wpx = rect.w ?? rect.size, hpx = rect.h ?? rect.size;
   const mPerPx = (2 * half) / Math.max(wpx, hpx);
   const img = ctx.createImageData(wpx, hpx);
-  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9 };
   const water = { wet: 0, level: 0, kind: 0 };
   const hAt = (x, z) => (Math.max(Math.abs(x), Math.abs(z)) <= 512 ? groundAt(x, z) : build.sample(x, z));
   for (let py = 0; py < hpx; py += step) {
@@ -301,7 +301,7 @@ export async function renderEyes(id, build, ground, outDir, { fog, names = ['edg
   }
   if (refs.length) y0 += REF_H + 10;
   const { field, spec, plan } = build;
-  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, conifer: false };
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9, conifer: false };
   const geo = { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1, gully: 0 };
   const water = { wet: 0, level: 0, kind: 0 };
   const conifer = (spec.region.vegetation.species[0]?.[0] ?? '') .match(/pine|spruce|fir|cedar/) !== null;

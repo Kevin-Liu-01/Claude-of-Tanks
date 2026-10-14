@@ -103,7 +103,8 @@ export interface HinterlandLandmarkConfig {
 }
 
 export interface HinterlandTownConfig { azDeg: number; distM: number; size: 'small' | 'medium' | 'large'; name?: string }
-export interface HinterlandVillageAt { azDeg: number; distM: number; name?: string }
+/** A village on a sightline; `towerM` its church tower's height (a landmark must clear the dyke rows before it). */
+export interface HinterlandVillageAt { azDeg: number; distM: number; name?: string; towerM?: number }
 
 /** The block a map file carries (B-architecture §4.0). */
 export interface HinterlandConfig {

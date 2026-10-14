@@ -106,6 +106,22 @@ for (let li = 0; li < pyramid.levels.length; li++) {
 assert.equal(wire.surface?.length, wire.levels.length, 'a surface level for each height level');
 assert.equal(wire.surface[0].texelM, wire.levels[0].texelM, 'near the battlefield the surface is at the heights\' own 4 m (straight parcel edges)');
 assert.equal(wire.surface[1].texelM, wire.levels[1].texelM * 2, 'farther out at half their samples');
+// the parcels' edges: the fields' texels carry their signed offsets to the nearer edges (decoded within 1/128 m), in the
+// land-use grid's frame the wire names
+{
+  assert.ok(Array.isArray(wire.landRot) && Math.abs(Math.hypot(wire.landRot[0], wire.landRot[1]) - 1) < 1e-9, 'the grid\'s heading travels');
+  const S = wire.surface[0];
+  let fields = 0, bad = 0;
+  for (let k = 0; k < S.n * S.n; k++) {
+    const e = S.edges;
+    const u = (e[k * 4] << 8) | e[k * 4 + 1], v = (e[k * 4 + 2] << 8) | e[k * 4 + 3];
+    if (u === 65535) continue;
+    fields++;
+    const sU = u / 128 - 256, sV = v / 128 - 256;
+    if (Math.abs(sU) > 256 || Math.abs(sV) > 256) bad++;
+  }
+  assert.ok(fields > 5000 && bad === 0, `the polders' field texels carry their edges (${fields})`);
+}
 const flagSeen = { water: 0, sea: 0, woods: 0, settlement: 0, road: 0 };
 for (const S of wire.surface) for (let k = 3; k < S.rgba.length; k += 4) for (const name of Object.keys(flagSeen)) if (S.rgba[k] & HL_SURFACE_FLAG[name]) flagSeen[name]++;
 for (const [name, count] of Object.entries(flagSeen)) assert.ok(count > 0, `the polders' surface holds ${name} (${count})`);

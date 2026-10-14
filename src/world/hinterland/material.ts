@@ -6,12 +6,13 @@
 // distance fade of that detail by the pixel's footprint rather than a distance switch. Its own program (the battlefield's
 // terrain program is at its samplers' limit): the height atlas and this one, two samplers past three's own.
 import * as THREE from 'three';
-import type { HinterlandWire } from './wire.ts';
+import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
 
 export interface HinterlandSurface { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string }
 
-/** Pack the surface levels into one RGBA8 texture (the finest first in a row, the rest shelved below it). */
-function packSurface(levels: NonNullable<HinterlandWire['surface']>): { texture: THREE.DataTexture; blocks: { x0: number; y0: number; n: number; texelM: number; halfM: number }[] } {
+/** Pack the surface levels into one RGBA8 texture (the finest first in a row, the rest shelved below it), and their
+ * edge offsets into a second with the same layout. */
+function packSurface(levels: NonNullable<HinterlandWire['surface']>): { texture: THREE.DataTexture; edges: THREE.DataTexture | null; blocks: { x0: number; y0: number; n: number; texelM: number; halfM: number }[] } {
   const blocks: { x0: number; y0: number; n: number; texelM: number; halfM: number }[] = [];
   let x = 0, y = 0, shelf = 0, width = 0;
   const rowWidth = levels[0].n + (levels[1]?.n ?? 0);
@@ -21,29 +22,40 @@ function packSurface(levels: NonNullable<HinterlandWire['surface']>): { texture:
     x += level.n; shelf = Math.max(shelf, level.n); width = Math.max(width, x);
   }
   const height = y + shelf;
-  const data = new Uint8Array(width * height * 4);
-  levels.forEach((level, i) => {
-    const b = blocks[i];
-    for (let j = 0; j < level.n; j++) data.set(level.rgba.subarray(j * level.n * 4, (j + 1) * level.n * 4), ((b.y0 + j) * width + b.x0) * 4);
-  });
-  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.minFilter = THREE.NearestFilter; texture.magFilter = THREE.NearestFilter;
-  texture.generateMipmaps = false; texture.needsUpdate = true;
-  return { texture, blocks };
+  const pack = (pick: (level: (typeof levels)[number]) => Uint8Array | null, fill: number): THREE.DataTexture => {
+    const data = new Uint8Array(width * height * 4).fill(fill);
+    levels.forEach((level, i) => {
+      const b = blocks[i], src = pick(level);
+      if (!src) return;
+      for (let j = 0; j < level.n; j++) data.set(src.subarray(j * level.n * 4, (j + 1) * level.n * 4), ((b.y0 + j) * width + b.x0) * 4);
+    });
+    const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+    texture.minFilter = THREE.NearestFilter; texture.magFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false; texture.needsUpdate = true;
+    return texture;
+  };
+  const texture = pack((l) => l.rgba, 0);
+  const edges = levels.some((l) => l.edges) ? pack((l) => l.edges, 255) : null;
+  return { texture, edges, blocks };
 }
 
 /** The land's surface from the worker's atlas; null (no atlas) draws the debug albedo by slope (mesh.ts). */
 export function createHinterlandSurface(wire: HinterlandWire): HinterlandSurface | null {
   if (!wire.surface?.length) return null;
-  const { texture, blocks } = packSurface(wire.surface);
+  const { texture, edges, blocks } = packSurface(wire.surface);
   const n = blocks.length;
+  const rot = wire.landRot ?? [1, 0];
   const uniforms: Record<string, THREE.IUniform> = {
     uHlSurface: { value: texture },
+    uHlEdges: { value: edges ?? texture },
+    uHlLandRot: { value: new THREE.Vector3(rot[0], rot[1], edges && wire.landRot ? 1 : 0) },
     uHlSBlock: { value: blocks.map((b) => new THREE.Vector4(b.x0, b.y0, b.n, b.texelM)) },
     uHlSHalf: { value: blocks.map((b) => b.halfM) },
   };
   const fragmentPars = /* glsl */`
 uniform sampler2D uHlSurface;
+uniform sampler2D uHlEdges;
+uniform vec3 uHlLandRot; // the land-use grid's (cos, sin) heading; z: 1 where the edges are baked
 uniform vec4 uHlSBlock[${n}];
 uniform float uHlSHalf[${n}];
 float hlFlags = 0.0;
@@ -51,6 +63,18 @@ int hlSurfaceLevel( vec2 p ) {
   float a = max( abs( p.x ), abs( p.y ) );
   for ( int i = 0; i < ${n - 1}; i++ ) if ( a < uHlSHalf[i] - 2.0 * uHlSBlock[i].w ) return i;
   return ${n - 1};
+}
+float hlEdgeDist = 1e6;
+// a texel's field holds the point d metres (world xz) from the texel's centre: neither of its nearer edges crossed —
+// the offsets run linearly along the grid's axes, so the test is two straight lines (soft over the pixel's footprint)
+float hlInside( vec4 e, vec2 d, float fw ) {
+  if ( e.r > 0.999 && e.g > 0.999 ) return 1.0; // no field: holds anything
+  float sU = ( e.r * 65280.0 + e.g * 255.0 ) / ${HL_EDGE_SCALE.toFixed(1)} - ${HL_EDGE_OFFSET_M.toFixed(1)};
+  float sV = ( e.b * 65280.0 + e.a * 255.0 ) / ${HL_EDGE_SCALE.toFixed(1)} - ${HL_EDGE_OFFSET_M.toFixed(1)};
+  float dU = uHlLandRot.x * d.x + uHlLandRot.y * d.y, dV = -uHlLandRot.y * d.x + uHlLandRot.x * d.y;
+  float u = sign( sU ) * ( sU + dU ), v = sign( sV ) * ( sV + dV );
+  hlEdgeDist = min( hlEdgeDist, min( abs( u ), abs( v ) ) );
+  return clamp( 0.5 + u / fw, 0.0, 1.0 ) * clamp( 0.5 + v / fw, 0.0, 1.0 );
 }
 vec4 hlSurfaceAt( vec2 p ) {
   int i = hlSurfaceLevel( p );
@@ -63,7 +87,23 @@ vec4 hlSurfaceAt( vec2 p ) {
   // the flags from the nearest texel (a bitmask never blends)
   vec4 sn = t.x < 0.5 ? ( t.y < 0.5 ? s00 : s01 ) : ( t.y < 0.5 ? s10 : s11 );
   hlFlags = floor( sn.a * 255.0 + 0.5 );
-  return vec4( mix( mix( s00.rgb, s10.rgb, t.x ), mix( s01.rgb, s11.rgb, t.x ), t.y ), sn.a );
+  vec3 bil = mix( mix( s00.rgb, s10.rgb, t.x ), mix( s01.rgb, s11.rgb, t.x ), t.y );
+  hlEdgeDist = 1e6;
+  if ( uHlLandRot.z < 0.5 ) return vec4( bil, sn.a );
+  // the parcels' edges straight between the texels (the coordinator on the pilot's overview: "stair-stepped, pixelated
+  // edges"): each of the four texels weighs in only where its own field holds the point, by its bilinear weight
+  vec4 e00 = texelFetch( uHlEdges, o, 0 ), e10 = texelFetch( uHlEdges, o + ivec2( 1, 0 ), 0 );
+  vec4 e01 = texelFetch( uHlEdges, o + ivec2( 0, 1 ), 0 ), e11 = texelFetch( uHlEdges, o + ivec2( 1, 1 ), 0 );
+  vec2 d00 = ( t ) * b.w;
+  float fw = max( 0.35, length( fwidth( p ) ) );
+  float w00 = ( 1.0 - t.x ) * ( 1.0 - t.y ) * hlInside( e00, d00, fw );
+  float w10 = t.x * ( 1.0 - t.y ) * hlInside( e10, d00 - vec2( b.w, 0.0 ), fw );
+  float w01 = ( 1.0 - t.x ) * t.y * hlInside( e01, d00 - vec2( 0.0, b.w ), fw );
+  float w11 = t.x * t.y * hlInside( e11, d00 - vec2( b.w ), fw );
+  float ws = w00 + w10 + w01 + w11;
+  // (no texel's field holds it — a field narrower than the texels: the plain bilinear)
+  vec3 rgb = ws > 1e-3 ? ( s00.rgb * w00 + s10.rgb * w10 + s01.rgb * w01 + s11.rgb * w11 ) / ws : bil;
+  return vec4( rgb, sn.a );
 }
 float hlHash( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
 float hlNoise( vec2 x ) {
@@ -89,6 +129,9 @@ bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
       hlD += ( sin( vHlWorld.y * 0.9 + hlNoise( hlP * 0.02 ) * 6.0 ) * 0.08 ) * hlMid;
     }
     diffuseColor.rgb = hlAlb * clamp( 1.0 + hlD, 0.55, 1.5 );
+    // a field's boundary: its ditch and rank margin, a darker line a metre and a half wide, where a pixel resolves it
+    float hlLine = ( 1.0 - smoothstep( 0.5, 1.6, hlEdgeDist ) ) * ( 1.0 - smoothstep( 1.0, 4.0, hlFoot ) );
+    diffuseColor.rgb *= 1.0 - 0.24 * hlLine;
   }`;
   const roughness = /* glsl */`
   float roughnessFactor = roughness;

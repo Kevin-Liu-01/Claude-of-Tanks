@@ -11,12 +11,17 @@ import { HL_COVER, createHinterlandCover, createHinterlandGeology, createHinterl
 import { hash12, noise2 } from './noise.ts';
 import type { HinterlandLevel } from './pyramid.ts';
 import { HINTERLAND_SEASON_LEAF } from './spec.ts';
+import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE } from './wire.ts';
 
 /** The flags byte: what the material treats apart. */
 export const HL_SURFACE_FLAG = Object.freeze({ water: 1, woods: 2, rock: 4, snow: 8, road: 16, settlement: 32, sea: 64 });
 
-/** One level's surface: its own grid (n × n samples at texelM, centred like the heights). */
-export interface HinterlandSurfaceLevel { texelM: number; halfM: number; n: number; rgba: Uint8Array }
+/** One level's surface: its own grid (n × n samples at texelM, centred like the heights). `edges`: per texel a field's
+ * signed offsets to its nearer edges along the land-use grid's u and v (two 16-bit values, EDGE_* encoding; all ones
+ * where no field) — the material rebuilds the parcels' straight edges between texels. */
+export interface HinterlandSurfaceLevel { texelM: number; halfM: number; n: number; rgba: Uint8Array; edges: Uint8Array | null }
+
+const encodeEdge = (s: number): number => (Math.abs(s) >= HL_EDGE_OFFSET_M - 1 ? 65535 : Math.max(0, Math.min(65534, Math.round((s + HL_EDGE_OFFSET_M) * HL_EDGE_SCALE))));
 
 const srgbExact = (c: number): number => Math.round(255 * Math.max(0, Math.min(1, c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)));
 // (a 4096-entry table over the linear range: the bake converts three channels per texel)
@@ -93,6 +98,8 @@ export function bakeHinterlandSurface(
   for (let li = 0; li < levels.length; li++) {
     const H = levels[li], S = specs[li];
     const rgba = new Uint8Array(S.n * S.n * 4);
+    // (no field: both offsets all ones)
+    const edges = new Uint8Array(S.n * S.n * 4).fill(255);
     const woodsShare = woodsOut ? (woodsOut[li] = new Uint8Array(S.n * S.n)) : null;
     const inner = li > 0 ? levels[li - 1].halfM - 3 * S.texelM : -1;
     const hAt = (x: number, z: number): number => {
@@ -147,9 +154,13 @@ export function bakeHinterlandSurface(
           if (woodsShare) woodsShare[j * S.n + i] = Math.round(255 * w);
         }
         rgba[k] = linearToSrgb(albedo[0]); rgba[k + 1] = linearToSrgb(albedo[1]); rgba[k + 2] = linearToSrgb(albedo[2]); rgba[k + 3] = flags;
+        if ((cover.cls === HL_COVER.field || cover.cls === HL_COVER.pasture) && cover.edgeU < 1e8) {
+          const eu = encodeEdge(cover.edgeU), ev = encodeEdge(cover.edgeV);
+          edges[k] = eu >> 8; edges[k + 1] = eu & 255; edges[k + 2] = ev >> 8; edges[k + 3] = ev & 255;
+        }
       }
     }
-    out.push({ texelM: S.texelM, halfM: S.halfM, n: S.n, rgba });
+    out.push({ texelM: S.texelM, halfM: S.halfM, n: S.n, rgba, edges });
   }
   return out;
 }
