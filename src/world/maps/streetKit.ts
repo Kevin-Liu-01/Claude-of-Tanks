@@ -127,6 +127,11 @@ export const LAMP_FORMS: Readonly<Record<string, LampSpec>> = Object.freeze({
   ruinspires: { form: 'cobra-head-shot-out', kind: 'cobra', metal: 0x8a8c8a, broken: true },
 });
 const LAMP_DEFAULT: LampSpec = { form: 'peitschenmast', kind: 'whip', metal: 0x9aa0a0 };
+/** The map's lamp as a form (props.ts's toppled posts lie in it: streetForms.ts toppledLamp). */
+export function streetLampFormOf(mapId: string): LampForm {
+  const lamp = LAMP_FORMS[mapId] ?? LAMP_DEFAULT;
+  return { kind: lamp.kind, metal: lin(lamp.metal), glass: lin(0xf0e2b0), broken: lamp.broken };
+}
 
 // ---------------------------------------------------------------------------------------------------- rug frames
 const RUGS: Readonly<Record<string, ReadonlyArray<readonly [Hex, Hex]>>> = Object.freeze({

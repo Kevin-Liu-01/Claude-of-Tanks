@@ -114,6 +114,8 @@ import {
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
 import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
+import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
+import { streetLampFormOf } from './maps/streetKit.ts';
 import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
@@ -5625,11 +5627,12 @@ ${snowCap ? `
           if (lx < town.x0 + 4 || lx > town.x1 - 4 || lz < town.z0 + 4 || lz > town.z1 - 4) continue;
           if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
           const ly = heightField.getHeightAt(lx, lz);
-          if (frng() < 0.18) { // toppled post lying across the pavement
-            const fall = box(0.09, 0.09, 4.6, 1.4);
+          if (frng() < 0.18) { // toppled post lying across the pavement: the map's own lamp, fallen (streetKit.ts, #14)
+            const fall = toppledLamp(streetLampFormOf(mapId), mulberry32(seed + 607 + ri * 131 + i));
             fall.rotateY(frng() * Math.PI * 2);
-            fall.translate(lx, ly + 0.1, lz);
-            buckets.dark.push(fall);
+            fall.translate(lx, ly, lz);
+            conformYardPiece(fall, buckets.baked);
+            buckets.baked.push(fall);
             continue;
           }
           // world-dressing r1: standing lamps are DESTRUCTIBLE instances —
@@ -5652,7 +5655,7 @@ ${snowCap ? `
           if (noVeg(x, z)) continue;
           const y = heightField.getHeightAt(x, z);
           const cs = 0.14 + frng() * 0.34;
-          const chip = box(cs, cs * (0.4 + frng() * 0.4), cs * (0.5 + frng() * 0.8), 1.6);
+          const chip = litterChunk(cs, cs * (0.4 + frng() * 0.4), cs * (0.5 + frng() * 0.8)); // knapped, not a box (#14)
           jitterUV(chip, frng);
           chip.rotateY(frng() * Math.PI);
           chip.rotateX((frng() - 0.5) * 0.4);
@@ -9286,7 +9289,8 @@ ${snowCap ? `
             const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
             const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
             const spanned = onDeckSpan(cx, cz);
-            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
+            // (#14: kerb units of about a metre with their joints, seated on the grade as they are built)
+            const g = kerbUnits(segLen, KERB_DEPTH_M, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
             jitterUV(g, rng);
             // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
             // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
@@ -9294,7 +9298,6 @@ ${snowCap ? `
               WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
             if (spanned) { g.dispose(); walk.dispose(); continue; }
-            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
             g.rotateY(yaw);
             g.translate(px, 0, pz);
             buckets[kerbBucket].push(g);

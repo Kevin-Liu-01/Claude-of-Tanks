@@ -661,3 +661,78 @@ export function lampNear(f: LampForm, rng: Rng): { geometry: THREE.BufferGeometr
   }
   return { geometry: finish(m), glass };
 }
+
+// ------------------------------------------------------------------------------------------------------- the street's own
+// (props.ts's town dressing calls these where it built boxes; it makes the same draws and passes them in)
+
+/** Box-projected texture coordinates (a stone or roof print, `scale` repeats a metre, as propGeometry's boxes have them). */
+function boxUv(g: THREE.BufferGeometry, scale: number): void {
+  const p = g.getAttribute('position'), n = g.getAttribute('normal'), uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i));
+    const [u, v] = ay >= ax && ay >= az ? [p.getX(i), p.getZ(i)] : ax >= az ? [p.getZ(i), p.getY(i)] : [p.getX(i), p.getY(i)];
+    uv[i * 2] = u * scale; uv[i * 2 + 1] = v * scale;
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+/** A geometry for a textured bucket (position, normal, uv): the vertex colour off, the print box-projected. */
+function forPrint(g: THREE.BufferGeometry, scale: number): THREE.BufferGeometry {
+  g.deleteAttribute('color');
+  boxUv(g, scale);
+  return g;
+}
+
+/**
+ * A chunk of masonry or slate in the kerb-line litter, `w` × `h` × `d` (the box it replaces): its faces knapped, its top
+ * pitched, never a box (a hash of its size its own shape). On the stone or roof print.
+ */
+export function litterChunk(w: number, h: number, d: number): THREE.BufferGeometry {
+  const m = newMesh();
+  const k = (i: number) => 0.82 + (((Math.sin((w * 97.1 + h * 13.7 + d * 41.3) * (i + 1)) * 43758.5453) % 1 + 1) % 1) * 0.3;
+  const sec: Array<[number, number]> = [[-d / 2 * k(0), -h / 2], [d / 2 * k(1), -h / 2], [d / 2, h * (0.1 * k(2))], [d * 0.18 * k(3), h / 2], [-d / 2 * k(4), h * 0.3]];
+  extrude(m, [-w / 2, 0, 0], [w / 2 * k(5), 0, 0], sec, Z, Y, [1, 1, 1], [1, 1, 1]);
+  return forPrint(finish(m), 1.6);
+}
+
+/**
+ * A kerb run `len` long along x, `depth` across (its road face on the side away from `outward`), its top and its foot
+ * at each end by `top(end)` and `foot(end)` (end 0 its start, 1 its end), following the grade: kerb units of about a
+ * metre with their joints, each its top's road edge chamfered. On the stone print.
+ */
+export function kerbUnits(len: number, depth: number, outward: number, top: (end: 0 | 1) => number, foot: (end: 0 | 1) => number): THREE.BufferGeometry {
+  const m = newMesh();
+  const n = Math.max(1, Math.round(len / 1.0)), joint = 0.008, unit = len / n, uv: [number, number] = [0.5, 0.5];
+  const at = (x: number, f: (end: 0 | 1) => number) => { const t = (x + len / 2) / len; return f(0) * (1 - t) + f(1) * t; };
+  const zr = -outward * depth / 2, zb = outward * depth / 2, ch = 0.03 * -outward;
+  for (let k = 0; k < n; k++) {
+    const x0 = -len / 2 + k * unit + (k ? joint / 2 : 0), x1 = -len / 2 + (k + 1) * unit - (k < n - 1 ? joint / 2 : 0);
+    const ring = (x: number): V3[] => {
+      const t = at(x, top), b = at(x, foot);
+      return [[x, b, zr], [x, b, zb], [x, t, zb], [x, t, zr - ch], [x, t - 0.03, zr]];
+    };
+    const r0 = ring(x0), r1 = ring(x1);
+    for (let i = 0; i < r0.length; i++) {
+      const a = r0[i], b = r0[(i + 1) % r0.length], c = r1[(i + 1) % r0.length], d = r1[i];
+      const mid: V3 = [0, (a[1] + b[1]) / 2 - (r0[0][1] + r0[2][1]) / 2, (a[2] + b[2]) / 2];
+      m.quad(a, d, c, b, [0, mid[1], mid[2]], () => uv, () => [1, 1, 1], false);
+    }
+    for (const [r, s] of [[r0, -1], [r1, 1]] as const) for (let i = 1; i + 1 < r.length; i++) {
+      // (the joint faces: the units' ends)
+      const nn: V3 = [s, 0, 0];
+      const [a, b, c] = [r[0], r[i], r[i + 1]];
+      const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const cx = e1[1] * e2[2] - e1[2] * e2[1];
+      if (cx * s >= 0) m.tri(a, b, c, nn, nn, nn, uv, uv, uv, [1, 1, 1]); else m.tri(a, c, b, nn, nn, nn, uv, uv, uv, [1, 1, 1]);
+    }
+  }
+  return forPrint(finish(m), 1.3);
+}
+
+/** A lamp of the map's form lying where it fell across the pavement (its glass gone), its lowest point on y = 0. */
+export function toppledLamp(f: LampForm, rng: Rng): THREE.BufferGeometry {
+  const g = lampNear({ ...f, broken: true }, rng).geometry;
+  g.rotateX(-Math.PI / 2 + 0.04);
+  g.computeBoundingBox();
+  g.translate(0, -g.boundingBox!.min.y, 0);
+  return g;
+}
