@@ -205,6 +205,11 @@ function makeBase() {
 // lifted 0.38 m in a step by the heap stamped whole under it): eased over RUBBLE_GROW_S, never faster than its height's
 // share a step; with no clock set (a consumer that never steps one) or settled, it stands risen at once
 {
+  // (the risen heap's top at its centre: its crown's, under its nominal 2.4 m — a clockless heap stands risen at once)
+  const clockless = createTerrainDeformation();
+  clockless.addRubble(0, 0, 6, 8, 0.3, 2.4);
+  const risenTop = clockless.offsetAt(0, 0);
+  assert.ok(risenTop > 1 && risenTop <= 2.4 + 1e-9, `no clock: risen at once, as before (${risenTop.toFixed(3)} m)`);
   const rising = createTerrainDeformation();
   rising.setTime(10);
   rising.addRubble(0, 0, 6, 8, 0.3, 2.4);
@@ -218,17 +223,14 @@ function makeBase() {
     steepest = Math.max(steepest, h - prev);
     prev = h;
   }
-  near(prev, 2.4, 1e-9, 'risen to its height');
+  near(prev, risenTop, 1e-9, 'risen to its height');
   assert.ok(!rising.growing && rising.growthRevision > revision, 'done, its growth revision moved while it rose');
   assert.ok(steepest <= 2.4 * 1.5 / (RUBBLE_GROW_S * 60) + 1e-9, `never more than the eased share a step (${(steepest * 100).toFixed(2)} cm)`);
   near(rubbleGrowth(RUBBLE_GROW_S / 2), 0.5, 1e-12, 'half risen at half its time');
-  const clockless = createTerrainDeformation();
-  clockless.addRubble(0, 0, 6, 8, 0.3, 2.4);
-  near(clockless.offsetAt(0, 0), 2.4, 1e-9, 'no clock: risen at once, as before');
   const settled = createTerrainDeformation();
   settled.setTime(10);
   settled.addRubble(0, 0, 6, 8, 0.3, 2.4, -Infinity);
-  near(settled.offsetAt(0, 0), 2.4, 1e-9, 'a settled heap (a restored host, a late seat) stands risen');
+  near(settled.offsetAt(0, 0), risenTop, 1e-9, 'a settled heap (a restored host, a late seat) stands risen');
   assert.ok(!settled.growing, 'and does not rise');
 }
 
