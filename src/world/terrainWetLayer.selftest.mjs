@@ -77,6 +77,8 @@ function fixture({ text = source, observe = null } = {}) {
     function* buildHorizonRingSteps() { return new THREE.Group(); }
     // (2026-10-08, the ring worker) no ring supply in a sandbox build: the ring builds where it stands
     function horizonRingSupplyFor() { return null; }
+    // (2026-10-14, the Hinterland's hook, hinterlandHook.ts: no map in this slice migrates, so no build is supplied)
+    function hinterlandSupplyFor() { return null; }
     function* buildFineGridSteps() { return {}; }
     function* buildChunkGeometrySteps() { state.chunks++; return new THREE.BufferGeometry(); }
     ${declarations}

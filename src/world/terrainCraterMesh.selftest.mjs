@@ -42,6 +42,8 @@ const api = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistance',
     horizonRingGeometrySteps: function* () { return null; },
   });
   function horizonRingSupplyFor() { return null; }
+  // (2026-10-14, the Hinterland's hook, hinterlandHook.ts: no map in this slice migrates, so no build is supplied)
+  function hinterlandSupplyFor() { return null; }
   function* createSplatMaterialSteps() {
     return { material: new THREE.MeshStandardMaterial(), textures: new Set() };
   }
