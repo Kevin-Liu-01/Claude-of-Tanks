@@ -177,8 +177,9 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
     pose = { r: rotation(Math.cos(ta), 0, Math.sin(ta), tilt), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
     if (fall === 'drop') { const out = 0.3 + rng() * 1.2; pose.tx = dx * out; pose.tz = dz * out; }
   }
-  // clear of what it stood on: a piece that stood above the ground lands beyond the body's plan along its fall
-  if (high && fall !== 'slump') {
+  // clear of what it stood on: a piece that stood above the ground lands beyond the body's plan along its fall (a piece
+  // laid flat comes down under where it hung — a banner under its arch — unless its spec names a clearance)
+  if (high && fall !== 'slump' && (fall !== 'flat' || p.clear !== undefined)) {
     let near = Infinity;
     forEachVertex(p, pose, (x, _y, z) => { near = Math.min(near, x * dx + z * dz); });
     const edge = p.clear !== undefined ? cx * dx + cz * dz + p.clear : reachAlong(plan.body, dx, dz) + 0.15;

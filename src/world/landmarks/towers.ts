@@ -205,7 +205,7 @@ export const valveTower: LandmarkBuilder = (ctx) => {
  */
 function sails(sink: PartSink, y: number, z: number, length: number, width: number, turn: number, colour: Rgb, cloth: number): void {
   for (let k = 0; k < 4; k++) {
-    piece(sink, { name: `sail-${k}`, kind: 'detach', at: k === 0 ? 'damaged' : 'breached', fall: 'flat' }, (s) => sail(s, k, y, z, length, width, turn, colour, cloth));
+    piece(sink, { name: `sail-${k}`, kind: 'detach', at: k === 0 ? 'damaged' : 'breached', fall: 'flat', toward: [0, 1], clear: 1.5 }, (s) => sail(s, k, y, z, length, width, turn, colour, cloth));
   }
 }
 function sail(sink: PartSink, k: number, y: number, z: number, length: number, width: number, turn: number, colour: Rgb, cloth: number): void {
