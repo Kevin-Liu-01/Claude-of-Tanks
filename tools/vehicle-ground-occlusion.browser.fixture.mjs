@@ -4,7 +4,7 @@
 // 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, amb: number[],
+ * @param {{ glsl: string, snowGlsl?: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
@@ -33,6 +33,7 @@ uniform float uAlpha[ ${n} ];
 // the aerial pass's reading of the scene target's alpha, by its sign: a card (no sun state) under 1.5, lit over it
 float cotSunVisOf( float alpha ) { return alpha < 1.5 ? -1.0 : 1.0; }
 vec3 cotNormalAt( vec2 uv, vec3 P ) { return uNrm[ int( uv.x ) ]; }
+${input.snowGlsl ?? 'float cotSnowOf( float a ) { return 0.0; }'}
 ${input.glsl}
 out vec4 outColor;
 void main() {

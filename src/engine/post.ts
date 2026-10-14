@@ -108,8 +108,7 @@ import {
 } from './hazeLaw.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import {
-  GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, groundAoSnowWeight,
-  updateVehicleGroundOcclusionUniforms,
+  GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
@@ -2894,8 +2893,7 @@ export function createPost(
       : GROUND_AO_DEFAULT_ALBEDO;
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
       scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
-      // (2026-10-14) the snow weight reads the map's own albedo, never the bounce lever's scaled one
-      groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1), undefined, undefined, groundAoSnowWeight(groundRho));
+      groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;

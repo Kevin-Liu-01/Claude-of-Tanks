@@ -7,7 +7,7 @@
 // router's nearest-hull selection, the tier gating, the GLSL's structure and the wiring. The GLSL itself is evaluated
 // against the CPU twin by tools/vehicle-ground-occlusion.browser.selftest.mjs.
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_CONTACT_EDGE_M, GROUND_AO_CONTACT_FULL_M,
@@ -16,8 +16,8 @@ import {
   GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
-  vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_SNOW_ALBEDO, GROUND_AO_SNOW_CREASE, GROUND_AO_SNOW_CREASE_FULL_M,
-  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, groundAoSnowWeight, snowCreaseOcclusion,
+  vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_SNOW_CREASE, GROUND_AO_SNOW_CREASE_FULL_M,
+  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
 import {
@@ -347,24 +347,11 @@ let snowReport = '';
 // tools/studio-contact-gap.mjs) on snow the cap keeps the light it keeps on ordinary ground, and the run's foot stands in a
 // groove: the crease's core, a line joined past the cap. Ordinary ground keeps the round-3 law to the bit.
 {
-  // the snow weight: the map's ground albedo (the grounded light model's lever) over GROUND_AO_SNOW_ALBEDO
-  assert.deepEqual([...GROUND_AO_SNOW_ALBEDO], [0.5, 0.7]);
-  for (const rho of [0, 0.066, 0.16, 0.25, 0.338, 0.35, 0.5]) assert.equal(groundAoSnowWeight(rho), 0, `no snow weight at ${rho}`);
-  for (const rho of [0.7, 0.799, 0.95]) assert.equal(groundAoSnowWeight(rho), 1, `whole at ${rho}`);
-  for (let rho = 0, prev = 0; rho <= 1; rho += 0.01) { const w = groundAoSnowWeight(rho); assert.ok(w >= prev - 1e-12); prev = w; }
-  // every battlefield's lever: only Frosthollow's 0xe5e7ec (and Whiteout, which spreads its sky) carries the weight
-  const mapsDir = new URL('../world/maps/', import.meta.url);
-  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const levers = {};
-  for (const name of readdirSync(mapsDir).filter((f) => /^[a-z][A-Za-z]*\.ts$/.test(f))) {
-    const m = readFileSync(new URL(name, mapsDir), 'utf8').match(/groundAlbedoHex: 0x([0-9a-fA-F]{6})/);
-    if (!m) continue;
-    const [r, g, b] = [0, 2, 4].map((i) => lin(parseInt(m[1].slice(i, i + 2), 16) / 255));
-    levers[name.replace('.ts', '')] = groundAoSnowWeight(0.2126 * r + 0.7152 * g + 0.0722 * b);
-  }
-  assert.ok(Object.keys(levers).length >= 15, `the battlefields' levers read (${Object.keys(levers).length})`);
-  assert.deepEqual(Object.entries(levers).filter(([, w]) => w > 0).map(([k, w]) => `${k}:${w}`), ['winter:1'], 'snow weight on Frosthollow alone');
-  assert.match(readFileSync(new URL('whiteout.ts', mapsDir), 'utf8'), /sky: \{ \.\.\.winter\.sky,/, 'Whiteout lit as Frosthollow');
+  // (contact r2, 2026-10-14) the snow weight is each receiver's own snow cover, which the terrain writes into the scene
+  // alpha (sceneAlpha.ts, terrain.ts cotSnowCover; pinned by sceneAlpha.selftest): the block weighs the law by it, so a
+  // snowfield on any map takes it and bare ground — or any pixel that is not snowy terrain — keeps round 3
+  assert.ok(VEHICLE_GROUND_OCCLUSION_GLSL.includes('float snowW = uVehGroundSnow * cotSnowOf( alpha );'), 'the receiver\'s own snow cover');
+  assert.ok(!/uVehGroundSnow \* vert|, uVehGroundSnow \) \)/.test(VEHICLE_GROUND_OCCLUSION_GLSL), 'no map-wide weight left in the law');
   // the cap by the weight; the absolute floor: snow under its cap keeps the light ordinary ground keeps under round 3's
   near(groundAoOccMax(0), GROUND_AO_OCC_MAX, 1e-15, 'ordinary ground: round 3\'s cap');
   near(groundAoOccMax(1), GROUND_AO_OCC_MAX_SNOW, 1e-15, 'snow');
@@ -409,7 +396,7 @@ let snowReport = '';
     const r3 = combineVehicleGroundOcclusion([vehicleGroundOcclusionLocal({ x: T.xo + 0.005, y: 0, z: 0 }, UP, T, snow)], 10, 0);
     assert.ok((1 - at(T.xo + 0.005)) / (1 - r3) < 0.6, `the snow's crease keeps ${(1 - at(T.xo + 0.005)).toFixed(3)} of its sky at a face (round 3: ${(1 - r3).toFixed(3)})`);
   }
-  snowReport = `the snow cap and crease (Frosthollow/Whiteout only: a belly keeps ${(1 - combineVehicleGroundOcclusion([bellyLaw], 10, 1)).toFixed(3)} `
+  snowReport = `the snow cap and crease (on snowy terrain: a belly keeps ${(1 - combineVehicleGroundOcclusion([bellyLaw], 10, 1)).toFixed(3)} `
     + `of its sky, round 3 ${(1 - GROUND_AO_OCC_MAX).toFixed(2)}; a face ${(1 - at(T.xo + 0.005)).toFixed(3)}; ordinary ground round 3's to the bit)`;
   // the receiver's skips are the law's: the hull's own skin and its shoes take no crease
   assert.equal(snowCreaseOcclusion({ x: T.xo + 0.005, y: 0.06, z: 0 }, T, 1, true), 0, 'a shoe on the ground run');
@@ -607,10 +594,10 @@ assert.ok(g.includes(`smoothstep( ${f4(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, $
 assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );`), 'a card\'s ambient share: fixed in the open, whole under a belly');
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
-assert.ok(g.includes(`float occ = max( min( 1.0 - vis, mix( ${f4(GROUND_AO_OCC_MAX)}, ${f4(GROUND_AO_OCC_MAX_SNOW)}, uVehGroundSnow ) ), crease ) * fade;`),
+assert.ok(g.includes(`float occ = max( min( 1.0 - vis, mix( ${f4(GROUND_AO_OCC_MAX)}, ${f4(GROUND_AO_OCC_MAX_SNOW)}, snowW ) ), crease ) * fade;`),
   'the hulls\' joint share capped once (on snow by the weight), the snow crease joined past it');
 // (2026-10-14) the snow crease: inside the rim's lane branch (its spread is wider), by the rim's own vertical weight
-assert.ok(g.includes('uniform float uVehGroundSnow;') && g.includes(`crease = max( crease, ${f4(GROUND_AO_SNOW_CREASE)} * uVehGroundSnow * vert`)
+assert.ok(g.includes('uniform float uVehGroundSnow;') && g.includes(`crease = max( crease, ${f4(GROUND_AO_SNOW_CREASE)} * snowW * vert`)
   && g.includes(`* ( 1.0 - smoothstep( ${f4(GROUND_AO_SNOW_CREASE_FULL_M)}, ${f4(GROUND_AO_SNOW_CREASE_GAP_M)}, -laneD ) )`)
   && g.indexOf('crease = max( crease,') > g.indexOf(`ho = max( ho, ${f4(GROUND_AO_CONTACT_MAX)} * lane * vert );`)
   && g.indexOf('crease = max( crease,') < g.indexOf('// the belly\'s strength under the hull'), 'the snow crease in the rim\'s branch');
@@ -666,18 +653,16 @@ assert.match(post, /updateVehicleGroundOcclusionUniforms\(aerial\.uniforms as un
 assert.match(post, /const groundRho = groundModel\?\.mode === 'physical'\s*\? 0\.2126 \* groundModel\.groundAlbedo\[0\] \+ 0\.7152 \* groundModel\.groundAlbedo\[1\] \+ 0\.0722 \* groundModel\.groundAlbedo\[2\]\s*: GROUND_AO_DEFAULT_ALBEDO;/,
   'the grounded model\'s ground albedo (luminance), the default on the legacy rig');
 assert.equal(GROUND_AO_DEFAULT_ALBEDO, 0.25);
-assert.ok(post.includes("groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1), undefined, undefined, groundAoSnowWeight(groundRho));"),
-  'the snow weight from the map\'s own albedo (never the bounce lever\'s scaled one)');
+assert.ok(post.includes("groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));") && !post.includes('groundAoSnowWeight'),
+  '(contact r2) no map-wide snow weight: each receiver carries its own');
 {
   const u = createVehicleGroundOcclusionUniforms();
-  assert.equal(u.uVehGroundSnow.value, 0, 'no snow until a frame says so');
-  updateVehicleGroundOcclusionUniforms(u, [], true, 0.8);
-  assert.equal(u.uVehGroundSnow.value, 1, 'the weight of the albedo passed');
+  assert.equal(u.uVehGroundSnow.value, 0, 'no snow law until a frame says so');
   updateVehicleGroundOcclusionUniforms(u, [], true, 0.25);
-  assert.equal(u.uVehGroundSnow.value, 0, 'ordinary ground');
+  assert.equal(u.uVehGroundSnow.value, 1, 'the snow law on, on any ground (each receiver weighs it by its own cover)');
   globalThis.__LIGHT_TUNE = { GROUND_AO_SNOW: 0 };
   updateVehicleGroundOcclusionUniforms(u, [], true, 0.8);
-  assert.equal(u.uVehGroundSnow.value, 0, 'the lever restores the ordinary law on a snow map (A/B frames)');
+  assert.equal(u.uVehGroundSnow.value, 0, 'the lever restores the ordinary law (A/B frames)');
   delete globalThis.__LIGHT_TUNE;
 }
 

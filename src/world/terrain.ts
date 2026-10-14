@@ -4112,6 +4112,9 @@ function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number
 }
 const SPLAT_COMMON_FRAG = /* glsl */`
 #define MID_SWARD_GAIN 0.5
+// 2026-10-14 (the engine-cs lane): the terrain's snow cover rides the scene alpha to the aerial pass (engine/sceneAlpha.ts)
+#define COT_SNOW_COVER 1
+float cotSnowCover = 0.0;
 varying vec3 vWPos;
 varying vec3 vWNormal;
 uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;
@@ -7422,6 +7425,13 @@ void splatCompute() {
   // dimmer; dry ground and the complete legacy ice response remain unchanged.
   gSplatRough = mix(gSplatRough, 0.95, fMs * uSea);
   gSplatAlbedo *= 1.0 - fMs * uSea * 0.42;
+  // 2026-10-14 (the engine-cs lane; contact r2: "key the snow contact on LOCAL snow cover"): the share of this pixel that
+  // is snow — on a snow map (the redux climate class), its final albedo's luminance between the snow maps' bare layers
+  // (their dirt and rock sets top out at 0.37 at p99.5, the winter sward under them darker) and their snow (the Snow010A
+  // set 0.80 at p05, 0.84 its mean; scoured, trampled, slushed and folded snow keeps 0.6 and over). The aerial pass's
+  // ground occlusion takes the snow law under and beside a hull standing on it (engine/vehicleGroundOcclusion.ts); bare
+  // ground and every other map keep 0, and with it the ordinary law.
+  cotSnowCover = uReduxD.y > 1.5 ? smoothstep(0.38, 0.60, dot(gSplatAlbedo, vec3(0.2126, 0.7152, 0.0722))) : 0.0;
   gSplatNrm = n.xyz * 2.0 - 1.0;
   gSplatFar = farM;
   // steep faces beyond gameplay range: their per-texel normal shading is the

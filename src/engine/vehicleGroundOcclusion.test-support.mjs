@@ -64,6 +64,7 @@ const EXTRA_POINTS = Object.freeze([
 export async function vehicleGroundGlslCases() {
   const THREE = await import('three');
   const M = await import('./vehicleGroundOcclusion.ts');
+  const A = await import('./sceneAlpha.ts');
   const unitOf = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
   const receivers = [...UNION_POINTS.map(([label, p]) => [label, p, [0, 1, 0], false]), ...EXTRA_POINTS]
     .map(([label, p, nrm, card]) => [label, p, unitOf(nrm), card]);
@@ -92,7 +93,9 @@ export async function vehicleGroundGlslCases() {
   const shown = (occ, snowWeight = 0) => { const c = Math.min(occ, M.groundAoOccMax(snowWeight)); return c > 0.003 ? c : 0; };
   const base = { amb: [1, 1, 0, 0], fillDir: [0, 1, 0], sunDir: [0, 1, 0], points: receivers.map((r) => r[1]), normals: receivers.map((r) => r[2]),
     // the scene target's alpha: a card (no sun state) under 1.5, a lit pixel's 2 + its sun visibility
-    alphas: receivers.map((r) => (r[3] ? 1 : 2.5)) };
+    alphas: receivers.map((r) => (r[3] ? 1 : 2.5)),
+    // (2026-10-14, contact r2) the aerial pass's snow reader, the real one (the fixture stubs only the sun's)
+    snowGlsl: A.SCENE_ALPHA_SNOW_READ_GLSL };
   const vec = (a) => ({ x: a[0], y: a[1], z: a[2] });
   // a card's ambient share: 0.6 in the open, the whole of it under a belly (inside a footprint, below the belly) — of a
   // hull the pixel is a receiver of (a shoe of hull A, or the hull's own skin, takes none from it)
@@ -113,11 +116,15 @@ export async function vehicleGroundGlslCases() {
       * (card ? cardShare(vec(p)) : 1)),
   };
   const kSun = 0.65, snow = M.vehicleGroundStrengths(0.8, kSun, M.GROUND_AO_HULL_ALBEDO, M.GROUND_AO_BELLY_VIEW);
-  const snowInput = pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO), w = snowInput.snow;
+  const snowInput = pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO);
+  // (2026-10-14, contact r2) every lit receiver is snowy terrain, written in the snow band (its sun whole: the fixture's
+  // stub reads every lit alpha as visibility 1); a card carries no snow
+  const snowAlphas = receivers.map((r) => (r[3] ? 1 : A.encodeSceneAlpha(1, 1)));
   const sunlit = {
     name: 'snow under a sun, a second hull 6 m to the right (2026-10-14: the snow cap and the crease\'s core)',
-    input: { ...base, ...snowInput, sunLum: kSun },
-    expected: receivers.map(([, p, nrm, card]) => {
+    input: { ...base, ...snowInput, alphas: snowAlphas, sunLum: kSun },
+    expected: receivers.map(([, p, nrm, card], i) => {
+      const w = snowInput.snow * A.decodeSceneSnow(snowAlphas[i]);
       const q1 = { x: p[0] - 6, y: p[1], z: p[2] };
       const occ = M.combineVehicleGroundOcclusion([
         M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, snow, card),

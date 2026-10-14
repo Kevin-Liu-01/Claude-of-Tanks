@@ -8,18 +8,19 @@
 //    Whiteout slope pitched 14°): at 400 ms every bin of each drawn run along its ground run stands within 4 cm of the
 //    RENDERED ground (heightField.getContactHeightAt).
 // 2. The renderer was. On the same built hulls (measureVehicleGroundHull) the ground occlusion's round-3 joint cap left
-//    the snow under a belly 0.45 of its sky and the snow at a run's face half of it; the snow weight of the map's ground
-//    albedo lifts the cap (the belly keeps the geometry's ~0.15) and adds the crease's core at the faces (0.25), while
-//    ordinary ground (every other battlefield's lever) keeps round 3's law exactly.
+//    the snow under a belly 0.45 of its sky and the snow at a run's face half of it; on snowy terrain (contact r2: the
+//    snow cover each receiver's scene alpha carries, sceneAlpha.ts) the cap lifts (the belly keeps the geometry's ~0.15)
+//    and the crease's core darkens the faces (0.25), while bare ground keeps round 3's law exactly.
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from '../src/vehicles/canvasFixture.test-support.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import {
-  GROUND_AO_OCC_MAX, combineVehicleGroundOcclusion, createVehicleGroundOcclusionUniforms, groundAoSnowWeight,
+  GROUND_AO_OCC_MAX, combineVehicleGroundOcclusion, createVehicleGroundOcclusionUniforms,
   measureVehicleGroundHull, snowCreaseOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths,
 } from '../src/engine/vehicleGroundOcclusion.ts';
+import { decodeSceneSnow, encodeSceneAlpha } from '../src/engine/sceneAlpha.ts';
 import { replayStudioActorGaps } from './studio-contact-gap.mjs';
 
 // the scenes' first keys (shots/media-r5 site50 renders-fleet, cinema receipts of 2026-10-13)
@@ -50,12 +51,14 @@ for (const t of TAKES) {
 // ---- 2. the ground occlusion on the same hulls: the snow under a belly and at a face, round 3 against now
 installCanvasFixture();
 const SNOW = 0.799; // Frosthollow's lever 0xe5e7ec in luminance (Whiteout spreads Frosthollow's sky)
-assert.equal(groundAoSnowWeight(SNOW), 1);
+// (contact r2) the law is on in every frame; a receiver weighs it by the snow cover its own alpha carries — the snow the
+// takes' heroes stand on (the terrain's whole cover) is weight 1, bare ground 0
 const u = createVehicleGroundOcclusionUniforms();
 updateVehicleGroundOcclusionUniforms(u, [], true, SNOW);
-assert.equal(u.uVehGroundSnow.value, 1, 'the snow maps\' frames carry the weight');
-updateVehicleGroundOcclusionUniforms(u, [], true, 0.25);
-assert.equal(u.uVehGroundSnow.value, 0, 'ordinary ground does not');
+assert.equal(u.uVehGroundSnow.value, 1, 'the snow law on');
+const SNOW_W = u.uVehGroundSnow.value * decodeSceneSnow(encodeSceneAlpha(0.5, 1));
+const BARE_W = u.uVehGroundSnow.value * decodeSceneSnow(encodeSceneAlpha(0.5, 0));
+assert.equal(SNOW_W, 1, 'snowy terrain: the whole law'); assert.equal(BARE_W, 0, 'bare ground: round 3');
 const UP = { x: 0, y: 1, z: 0 };
 for (const t of TAKES) {
   await ensureAuthorityFleet([t.actor.id]);
@@ -74,8 +77,8 @@ for (const t of TAKES) {
     const points = {
       belly: [0, zMid], gap: [h.xi - 0.15, zMid], face: [h.xo + 0.01, zMid], out30: [h.xo + 0.3, zMid], out100: [h.xo + 1.0, zMid],
     };
-    const before = Object.fromEntries(Object.entries(points).map(([n, [x, z]]) => [n, kept(x, z, 0)]));
-    const after = Object.fromEntries(Object.entries(points).map(([n, [x, z]]) => [n, kept(x, z, 1)]));
+    const before = Object.fromEntries(Object.entries(points).map(([n, [x, z]]) => [n, kept(x, z, BARE_W)]));
+    const after = Object.fromEntries(Object.entries(points).map(([n, [x, z]]) => [n, kept(x, z, SNOW_W)]));
     const r3 = (n) => before[n].toFixed(2), now = (n) => after[n].toFixed(2);
     assert.ok(Math.abs(before.belly - (1 - GROUND_AO_OCC_MAX)) < 1e-9, `${t.take}: round 3 kept the cap's 0.45 under the belly`);
     assert.ok(after.belly <= 0.16 && after.gap <= 0.2, `${t.take} k ${k}: the snow under the belly reads shaded (${now('belly')}, between the runs ${now('gap')})`);
@@ -88,7 +91,7 @@ for (const t of TAKES) {
     const ordinary = vehicleGroundStrengths(0.25, k);
     for (const [x, z] of Object.values(points)) {
       const q = { x, y: 0, z }, occ = vehicleGroundOcclusionLocal(q, UP, h, ordinary);
-      assert.equal(combineVehicleGroundOcclusion([occ], 10, groundAoSnowWeight(0.25), [snowCreaseOcclusion(q, h, groundAoSnowWeight(0.25))]),
+      assert.equal(combineVehicleGroundOcclusion([occ], 10, BARE_W, [snowCreaseOcclusion(q, h, BARE_W)]),
         Math.min(1 - (1 - occ), GROUND_AO_OCC_MAX), `${t.take}: ordinary ground unchanged at (${x.toFixed(2)}, ${z.toFixed(2)})`);
     }
   }
