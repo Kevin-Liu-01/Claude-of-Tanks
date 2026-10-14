@@ -7,7 +7,7 @@
 // corrugated iron; a water tank on its timber trestle; and the town: the Empire Hotel or the company's office, two
 // storeys of brick behind a two-storey verandah of cast-iron lace; rows of weatherboard cottages under corrugated iron,
 // each with its bullnose verandah, its brick chimney and its picket fence; and the stripped frames of abandoned ones.
-import { PartSink, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -536,10 +536,19 @@ const cottageRow: RegionalBuilder = (ctx) => {
         const f = frame.faces[name];
         for (let y = 0.72; y < 3.1; y += 0.2) faceBox(sink, 'structureWood', f, 0, y, 0.014, f.width, 0.03, 0.012, { colour: shade(paint, 0.92), decor: true, fine: true });
       }
-      // the bullnose verandah: posts, the floor, a flat sheet from the wall bending down round a quarter-round edge
-      const f = frame.faces.front;
-      for (const u of [-w / 2 + 0.25, 0, w / 2 - 0.25]) faceBox(sink, 'structureWood', f, u, 1.65, deep - 0.15, 0.12, 2.3, 0.12, { colour: trim });
+      // the bullnose verandah (props census #3, lane B 2026-10-14; the judges: "every post pierces the verandah roof by
+      // 0.11 m", "a 12 cm slab with nothing under it to the ground"): the posts carry a verandah beam under the flat
+      // sheet's edge, the bullnose springing from it on curved rafters round a quarter circle to the front; the floor's
+      // joists on concrete stumps, a skirting board along its front
+      const f = frame.faces.front, beamO = deep - 0.6, beamTop = 2.78;
+      const posts = [-w / 2 + 0.25, 0, w / 2 - 0.25];
+      for (const u of posts) faceBox(sink, 'structureWood', f, u, (beamTop - 0.14 - 0.3) / 2, beamO, 0.12, beamTop - 0.14 + 0.3, 0.12, { colour: trim }, { top: true });
+      faceBox(sink, 'structureWood', f, 0, beamTop - 0.07, beamO, w - 0.2, 0.14, 0.12, { colour: shade(trim, 0.92), decor: true, uv: UV_MEMBER });
       faceBox(sink, 'structureWood', f, 0, 0.42, deep / 2, w - 0.2, 0.12, deep, { colour: TIMBER_GREY, decor: true });
+      for (let u = -w / 2 + 0.25; u <= w / 2 - 0.24; u += Math.max(0.9, (w - 0.5) / Math.max(1, Math.round((w - 0.5) / 1.2)))) {
+        for (const o of [0.35, deep - 0.18]) faceBox(sink, CONCRETE, f, u, 0.03, o, 0.16, 0.66, 0.16, { decor: true, shade: 0.85 }, { top: true });
+      }
+      faceBox(sink, 'structureWood', f, 0, 0.18, deep - 0.08, w - 0.2, 0.36, 0.025, { colour: shade(trim, 0.85), decor: true, uv: UV_MEMBER });
       const roofC = pick(look, ROOF_PAINT);
       const roofRust = { colourAt: rustBy(roofC, 1.6, 2.9, 0.35 + look() * 0.3) };
       sink.span('structureMetal', -w / 2 + 0.05, 2.78, d / 2, w / 2 - 0.05, 2.84, d / 2 + deep - 0.6, { colour: roofC, decor: true, shadow: true });
@@ -549,6 +558,11 @@ const cottageRow: RegionalBuilder = (ctx) => {
         const t0 = q / 4 * Math.PI / 2, t1 = (q + 1) / 4 * Math.PI / 2, tm = (t0 + t1) / 2;
         sink.member('structureMetal', [0, cy + rr * Math.cos(t0), cz + rr * Math.sin(t0)], [0, cy + rr * Math.cos(t1), cz + rr * Math.sin(t1)], w - 0.1, 0.05,
           [0, Math.cos(tm), Math.sin(tm)], { colour: roofC, ...roofRust, decor: true, shadow: true, exposed: true }, 0);
+        // the curved rafters under it at the posts, each bent the same way (near the camera only)
+        for (const u of posts) {
+          sink.member('structureWood', [u, cy + (rr - 0.09) * Math.cos(t0), cz + (rr - 0.09) * Math.sin(t0)], [u, cy + (rr - 0.09) * Math.cos(t1), cz + (rr - 0.09) * Math.sin(t1)],
+            0.06, 0.09, [0, Math.cos(tm), Math.sin(tm)], { colour: shade(trim, 0.9), decor: true, fine: true, ends: true }, 0);
+        }
       }
     });
   }
