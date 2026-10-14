@@ -20,8 +20,15 @@ import {
   caskBroken, caskFar, caskNear, crateBroken, crateFar, crateNear, drumFar, drumNear, palletBroken, palletFar, palletNear,
   vesselBroken, vesselFar, vesselNear, woodpileBroken, woodpileFar, woodpileNear, type PalletForm, type VesselForm, type WoodpileForm,
 } from './clutterForms.ts';
+import {
+  bottleFar, bottleNear, bucketFar, bucketNear, canFar, canNear, churnFar, churnNear, laundryBroken, laundryNear, potBroken, potFar, potNear,
+  redDrumBroken, spoolBroken, spoolNear, wheelFar, wheelNear, type BottleForm, type BucketForm, type CanForm, type ChurnForm, type LaundryForm,
+  type PotForm, type SpoolForm, type WheelForm,
+} from './clutterLooseForms.ts';
+import { MAP_SETTING_YEAR } from './periodClutterKit.ts';
 
-/** The vertex attribute that tags a clutter pool's near (1) and far (2) form; untagged geometry reads 0. */
+/** The vertex attribute that tags a clutter pool's near (1) and far (2) form, and a lean form drawn at every distance (3);
+ *  untagged geometry reads 0. */
 export const CLUTTER_LOD_ATTRIBUTE = 'aClutterLod';
 /** The distance (m, in plan from the camera to the instance's origin) past which a clutter instance draws its far form. */
 export const CLUTTER_NEAR_M = 45;
@@ -30,16 +37,33 @@ export const CLUTTER_LOD_KEY = '-clod1';
 
 /** The material hook (chained after the props' weathering hook on the baked material). */
 export function clutterLodHook(shader: { vertexShader: string }): void {
-  const common = '#include <common>', begin = '#include <begin_vertex>';
-  if (!shader.vertexShader.includes(common) || !shader.vertexShader.includes(begin)) {
-    throw new Error('clutterKit: the baked vertex shader lost its common or begin_vertex chunk');
+  const common = '#include <common>', begin = '#include <begin_vertex>', colour = '#include <color_vertex>';
+  if (!shader.vertexShader.includes(common) || !shader.vertexShader.includes(begin) || !shader.vertexShader.includes(colour)) {
+    throw new Error('clutterKit: the baked vertex shader lost its common, color_vertex or begin_vertex chunk');
   }
   shader.vertexShader = shader.vertexShader
     .replace(common, `${common}\nattribute float ${CLUTTER_LOD_ATTRIBUTE};`)
+    .replace(colour, /* glsl */`${colour}
+#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
+{
+  // (clutterKit.ts) each clutter instance a tone of its own (a stack of drums or casks never one colour): its shade and
+  // warmth from a hash of where it stands
+  if (${CLUTTER_LOD_ATTRIBUTE} > 0.5) {
+    vec4 cotTintAt = vec4(0.0, 0.0, 0.0, 1.0);
+    #ifdef USE_INSTANCING
+    cotTintAt = instanceMatrix * cotTintAt;
+    #endif
+    vec2 cotTintCell = floor(cotTintAt.xz * 4.0);
+    float cotTintA = fract(sin(dot(cotTintCell, vec2(12.9898, 78.233))) * 43758.5453);
+    float cotTintB = fract(sin(dot(cotTintCell, vec2(39.3468, 11.1351))) * 24634.6345);
+    vColor.rgb *= (0.9 + 0.2 * cotTintA) * vec3(1.0 + (cotTintB - 0.5) * 0.06, 1.0, 1.0 - (cotTintB - 0.5) * 0.08);
+  }
+}
+#endif`)
     .replace(begin, /* glsl */`${begin}
 {
-  // (clutterKit.ts) a clutter pool's near form folds away past CLUTTER_NEAR_M, its far form within it
-  if (${CLUTTER_LOD_ATTRIBUTE} > 0.5) {
+  // (clutterKit.ts) a clutter pool's near form folds away past CLUTTER_NEAR_M, its far form within it (a lean form never)
+  if (${CLUTTER_LOD_ATTRIBUTE} > 0.5 && ${CLUTTER_LOD_ATTRIBUTE} < 2.5) {
     vec4 cotClutterAt = vec4(0.0, 0.0, 0.0, 1.0);
     #ifdef USE_INSTANCING
     cotClutterAt = instanceMatrix * cotClutterAt;
@@ -56,6 +80,14 @@ export function clutterLodHook(shader: { vertexShader: string }): void {
 export function clutterLodDefaults(material: THREE.Material): void {
   const m = material as THREE.Material & { defaultAttributeValues?: Record<string, number[]> };
   m.defaultAttributeValues = { ...(m.defaultAttributeValues ?? {}), [CLUTTER_LOD_ATTRIBUTE]: [0] };
+}
+
+/** A lean form's pool geometry: drawn at every distance, its instances toned (tagged 3). */
+export function leanForm(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const flat = g.index ? g.toNonIndexed() : g;
+  flat.setAttribute(CLUTTER_LOD_ATTRIBUTE, new THREE.BufferAttribute(new Float32Array(flat.getAttribute('position').count).fill(3), 1));
+  if (flat !== g) g.dispose();
+  return flat;
 }
 
 /** One pool geometry from a near and a far form (both non-indexed after merge), each tagged. */
@@ -195,6 +227,132 @@ export const PALLET_FORMS: Readonly<Record<string, PalletSpec>> = Object.freeze(
   blackglass: BAMBOO, delta: BAMBOO, mangrove: BAMBOO, monsoon: BAMBOO, caldera: BAMBOO,
 });
 
+// ---------------------------------------------------------------------------------------------------- the loose kinds
+
+/** Each map's jerrycan (sRGB hex): the Wehrmacht pattern and its US and UK copies in the war, the NATO and civilian
+ *  steel cans after it (red for petrol), moulded plastic from the 2000s, Shanghai's square kerosene tin, the stations'
+ *  canisters. */
+interface CanSpec { form: string; kind: CanForm['kind']; body: Hex; trim: Hex; label?: Hex }
+const WEHR: CanSpec = { form: 'wehrmachtkanister', kind: 'steel', body: 0x5a5a48, trim: 0x44443a };
+const WEHR_GELB: CanSpec = { ...WEHR, body: 0x8a7e56, trim: 0x6a6044 };
+const US_CAN: CanSpec = { form: 'us-jerrycan', kind: 'steel', body: 0x4f5338, trim: 0x3e422c };
+const NATO_CAN: CanSpec = { form: 'nato-jerrycan', kind: 'steel', body: 0x4a5038, trim: 0x383d2a };
+const RED_CAN: CanSpec = { form: 'petrol-can', kind: 'steel', body: 0x9a2a20, trim: 0x6a1e18 };
+export const CAN_FORMS: Readonly<Record<string, CanSpec>> = Object.freeze({
+  fjord: { ...WEHR, body: 0x4a4c48 }, foundry: WEHR_GELB, alpine: WEHR_GELB, winter: WEHR_GELB, verdant: WEHR_GELB,
+  reservoir: US_CAN, autumn: US_CAN, polders: US_CAN, longleaf: US_CAN, monsoon: { ...US_CAN, form: 'blitz-can', body: 0x5a5a40 },
+  blackglass: { form: 'kerosene-tin', kind: 'tin', body: 0xa8a090, trim: 0x7a7468 },
+  steppe: { ...NATO_CAN, form: 'soviet-kanistra', body: 0x4a5a3a }, railyard: RED_CAN, skybridge: RED_CAN, titan_gorge: US_CAN,
+  cliffbridge: RED_CAN, copper_mesa: NATO_CAN, orchard: NATO_CAN, urban: RED_CAN, frontier: NATO_CAN, desert: { ...NATO_CAN, body: 0xa89060, trim: 0x7a6a48 },
+  whiteout: US_CAN, ruinspires: NATO_CAN, saltwind: RED_CAN, airfield: { ...NATO_CAN, form: 'ukraine-kanistra', body: 0x4a5a3a },
+  badlands: { form: 'water-can', kind: 'plastic', body: 0xd8d6d0, trim: 0x2a5aa0 }, oasis: { form: 'plastic-can', kind: 'plastic', body: 0xd8b020, trim: 0x202020 },
+  delta: { form: 'plastic-can', kind: 'plastic', body: 0x2a5aa0, trim: 0xd8d6d0 }, mangrove: { form: 'plastic-can', kind: 'plastic', body: 0xd8b020, trim: 0x202020 },
+  caldera: { form: 'poly-tank', kind: 'plastic', body: 0xb83028, trim: 0x2a4a8a }, coastal: { form: 'plastic-can', kind: 'plastic', body: 0xb0302a, trim: 0x202020 },
+  moon: { form: 'apollo-canister', kind: 'canister', body: 0xdedcd6, trim: 0x9a9a96, label: 0xd8702a },
+  mars: { form: 'store-canister', kind: 'canister', body: 0xe1e3e5, trim: 0x9ea4aa, label: 0xd97d2e },
+});
+
+/** Each map's bucket: the galvanised pail, the enamelled one of the Russian and Polish villages, the coopered pail of the
+ *  North and of Shanghai, the tyre-rubber bucket of the dry lands, the plastic bucket of the modern maps. */
+interface BucketSpec { form: string; kind: BucketForm['kind']; body: Hex; trim: Hex; inside: Hex }
+const GALV: BucketSpec = { form: 'galvanised-pail', kind: 'galv', body: 0x9aa0a0, trim: 0x7a8080, inside: 0x4a4c4c };
+const ENAMEL: BucketSpec = { form: 'enamel-pail', kind: 'enamel', body: 0xe0ded6, trim: 0x2a4a8a, inside: 0xd0cec6 };
+const WOOD_PAIL: BucketSpec = { form: 'coopered-pail', kind: 'wood', body: 0x9a7a52, trim: 0x3a3632, inside: 0x3a2a1a };
+const RUBBER: BucketSpec = { form: 'tyre-bucket', kind: 'rubber', body: 0x2a2a2a, trim: 0x1c1c1c, inside: 0x161616 };
+const plasticPail = (body: Hex): BucketSpec => ({ form: 'plastic-bucket', kind: 'plastic', body, trim: body, inside: body });
+export const BUCKET_FORMS: Readonly<Record<string, BucketSpec>> = Object.freeze({
+  verdant: ENAMEL, steppe: ENAMEL, winter: ENAMEL, fjord: WOOD_PAIL, alpine: WOOD_PAIL, blackglass: { ...WOOD_PAIL, body: 0x8a6a42 },
+  desert: RUBBER, oasis: RUBBER, badlands: RUBBER,
+  delta: plasticPail(0x2a6aa8), mangrove: plasticPail(0xc83a2a), airfield: plasticPail(0x3a6a3a), coastal: plasticPail(0x2a5aa0),
+  caldera: plasticPail(0x3a6a9a), moon: plasticPail(0xd8d6d0), mars: plasticPail(0xd8d6d0),
+  foundry: GALV, reservoir: GALV, autumn: GALV, polders: GALV, longleaf: GALV, monsoon: GALV, railyard: GALV, skybridge: GALV,
+  titan_gorge: GALV, cliffbridge: GALV, copper_mesa: GALV, orchard: GALV, urban: GALV, frontier: GALV, whiteout: GALV, ruinspires: GALV, saltwind: GALV,
+});
+
+/** Each map's gas bottle: the industrial oxygen or acetylene cylinder through the war (its country's colour), the
+ *  domestic bottle after (the Soviet red, the Spanish butano orange, Butagaz's blue, the Japanese grey LPG bottle). */
+interface BottleSpec { form: string; kind: BottleForm['kind']; body: Hex; collar: Hex; band?: Hex }
+const OXY_DE: BottleSpec = { form: 'sauerstoff', kind: 'industrial', body: 0x2a4a8a, collar: 0x5a5a5a };
+const OXY_US: BottleSpec = { form: 'oxygen-us', kind: 'industrial', body: 0x3a5a3a, collar: 0x5a5a5a };
+const OXY_UK: BottleSpec = { form: 'oxygen-uk', kind: 'industrial', body: 0x262626, collar: 0x5a5a5a, band: 0xd8d8d0 };
+const lpg = (body: Hex, form = 'lpg-bottle'): BottleSpec => ({ form, kind: 'domestic', body, collar: 0x8a8a86 });
+export const BOTTLE_FORMS: Readonly<Record<string, BottleSpec>> = Object.freeze({
+  fjord: OXY_DE, foundry: OXY_DE, alpine: OXY_DE, winter: OXY_DE, verdant: { ...OXY_DE, form: 'kislorod', body: 0x3a5a9a },
+  reservoir: OXY_US, autumn: OXY_US, polders: OXY_US, longleaf: OXY_US, monsoon: OXY_UK, blackglass: OXY_UK,
+  steppe: lpg(0xb8302a, 'propan'), railyard: lpg(0x8a8c8a), skybridge: lpg(0xc8c8c4), titan_gorge: lpg(0xc8c8c4), cliffbridge: lpg(0xe0702a, 'butano'),
+  copper_mesa: lpg(0xc8c8c4), orchard: lpg(0x6a7a8a), urban: lpg(0x8a8c8a), frontier: lpg(0xa83a2a), desert: lpg(0x8a8a86),
+  whiteout: { ...OXY_US, form: 'usaf-cylinder', body: 0xb8a030 }, ruinspires: lpg(0x5a6a7a), saltwind: lpg(0x6a7a8a), badlands: lpg(0x3a5a8a),
+  oasis: lpg(0x3a5a8a), delta: lpg(0x2a6a4a), mangrove: lpg(0x2a4a8a), caldera: lpg(0xb0b0a8), airfield: lpg(0xb8302a, 'propan'), coastal: lpg(0x2a5aa0, 'butagaz'),
+  moon: { form: 'oxygen-tank', kind: 'industrial', body: 0xdedcd6, collar: 0x9a9a96, band: 0xd8702a },
+  mars: { form: 'oxygen-tank', kind: 'industrial', body: 0xe1e3e5, collar: 0x9ea4aa, band: 0xd97d2e },
+});
+
+/** Each map's churn: the galvanised milk churn of the West, the aluminium bidon of the East and the paddies, the American
+ *  milk can, the stations' water cans. */
+interface ChurnSpec { form: string; kind: ChurnForm['kind']; body: Hex; trim: Hex }
+const CHURN: ChurnSpec = { form: 'milk-churn', kind: 'churn', body: 0xa0a4a4, trim: 0x808484 };
+const BIDON: ChurnSpec = { form: 'bidon', kind: 'bidon', body: 0xc0c4c8, trim: 0x9aa0a4 };
+const MILK_CAN: ChurnSpec = { form: 'milk-can', kind: 'can', body: 0xa8acac, trim: 0x84888a };
+export const CHURN_FORMS: Readonly<Record<string, ChurnSpec>> = Object.freeze({
+  verdant: BIDON, steppe: BIDON, winter: BIDON, blackglass: BIDON, monsoon: BIDON, delta: BIDON, mangrove: BIDON,
+  longleaf: MILK_CAN, skybridge: MILK_CAN, titan_gorge: MILK_CAN,
+  autumn: CHURN, polders: CHURN, reservoir: CHURN, alpine: CHURN, fjord: CHURN, frontier: CHURN, cliffbridge: CHURN, saltwind: CHURN,
+  coastal: CHURN, ruinspires: CHURN, orchard: CHURN,
+  moon: { form: 'water-can', kind: 'bidon', body: 0xdedcd6, trim: 0x9a9a96 }, mars: { form: 'water-can', kind: 'bidon', body: 0xe1e3e5, trim: 0x9ea4aa },
+});
+
+/** Each map's loose wheel: a cart's spoked wheel where carts still ran, a lorry's or a car's tyre on its steel wheel
+ *  (painted the army's colour in the war), the lunar rover's wire-mesh wheel. */
+interface WheelSpec { form: string; kind: WheelForm['kind']; rubber: Hex; rim: Hex; hub: Hex }
+const CART: WheelSpec = { form: 'cart-wheel', kind: 'cart', rubber: 0x7a5a3a, rim: 0x3a3632, hub: 0x5a4430 };
+const tyre = (rim: Hex): WheelSpec => ({ form: 'tyre-on-rim', kind: 'tyre', rubber: 0x262626, rim, hub: 0x3a3a36 });
+export const WHEEL_FORMS: Readonly<Record<string, WheelSpec>> = Object.freeze({
+  verdant: CART, winter: CART, steppe: CART, monsoon: CART, blackglass: CART, delta: CART, mangrove: CART,
+  fjord: tyre(0x4a4c48), foundry: tyre(0x6a6a4a), alpine: tyre(0x6a6a4a), reservoir: tyre(0x4f5338), autumn: tyre(0x4f5338), polders: tyre(0x4f5338),
+  longleaf: tyre(0x4f5338), railyard: tyre(0x7a7a76), skybridge: tyre(0x9a9a96), titan_gorge: tyre(0x9a9a96), cliffbridge: tyre(0x8a8a86),
+  copper_mesa: tyre(0x8a8a86), orchard: tyre(0x7a7a76), urban: tyre(0x9a9a96), frontier: tyre(0x4a5038), desert: tyre(0xa89060), whiteout: tyre(0x4f5338),
+  ruinspires: tyre(0x6a6a66), saltwind: tyre(0x8a8a86), badlands: tyre(0x8a8a86), oasis: tyre(0x9a9a96), caldera: tyre(0xa8a8a4), airfield: tyre(0x4a5a3a),
+  coastal: tyre(0xa8a8a4), moon: { form: 'rover-wheel', kind: 'mesh', rubber: 0xa8a8a0, rim: 0x6a6a66, hub: 0x8a8a86 },
+  mars: { form: 'rover-wheel', kind: 'mesh', rubber: 0xb8b4a8, rim: 0x7a7670, hub: 0x9a968e },
+});
+
+/** Each map's pot cluster: the Saharan zir, the Levant's and Dalmatia's storage jars, the Navajo olla, the Bengal matka. */
+interface PotSpec { form: string; kind: PotForm['kind']; body: Hex; slip: Hex }
+export const POT_FORMS: Readonly<Record<string, PotSpec>> = Object.freeze({
+  desert: { form: 'zir', kind: 'zir', body: 0xb0704a, slip: 0xd8b890 }, oasis: { form: 'zir', kind: 'zir', body: 0xa86a48, slip: 0xd0b088 },
+  badlands: { form: 'zir', kind: 'zir', body: 0xa0603e, slip: 0xc8a07a }, orchard: { form: 'jarra', kind: 'amphora', body: 0xb8805a, slip: 0xd8c0a0 },
+  saltwind: { form: 'amphora', kind: 'amphora', body: 0xa87050, slip: 0xc8a888 }, titan_gorge: { form: 'olla', kind: 'olla', body: 0xc8a07a, slip: 0x6a3a2a },
+  delta: { form: 'matka', kind: 'matka', body: 0xa05a3a, slip: 0x5a3020 }, mangrove: { form: 'matka', kind: 'matka', body: 0x9a5a3a, slip: 0x5a3020 },
+  monsoon: { form: 'matka', kind: 'matka', body: 0x985a3e, slip: 0x5a3020 },
+});
+
+/** Each map's laundry: the linen of the European and American farms, the robes of the oases, the saris and lungis of the
+ *  Bengal chars and the Mekong. */
+interface LaundrySpec { form: string; post: Hex; cloths: readonly Hex[]; long?: boolean }
+const LINEN: LaundrySpec = { form: 'linen', post: 0x6a5a48, cloths: [0xe8e4d8, 0x8a3a3a, 0x3a5a8a] };
+export const LAUNDRY_FORMS: Readonly<Record<string, LaundrySpec>> = Object.freeze({
+  verdant: { ...LINEN, cloths: [0xe0dccc, 0xb8b0a0, 0x7a3a34] }, autumn: LINEN, frontier: { ...LINEN, cloths: [0xe8e4d8, 0x5a7aa8, 0xd8c8a0] },
+  reservoir: LINEN, polders: { ...LINEN, cloths: [0xe8e4d8, 0x3a5a8a, 0xe8e4d8] }, longleaf: { ...LINEN, cloths: [0xd8ccb0, 0x6a7a9a, 0xe8e4d8] },
+  coastal: { ...LINEN, cloths: [0xe8e8e0, 0x2a4a8a, 0xc83a2a] }, orchard: { ...LINEN, cloths: [0xe8e4d8, 0xd8a83a, 0x3a7a5a] },
+  saltwind: { ...LINEN, cloths: [0xf0eee6, 0x3a6aa8, 0xe8e4d8] }, desert: { form: 'robes', post: 0x7a6650, cloths: [0xe8e2d0, 0x2a3a6a, 0xa8784a] },
+  oasis: { form: 'robes', post: 0x7a6650, cloths: [0xe8e2d0, 0x3a4a7a, 0xc8b8a0] },
+  delta: { form: 'saris', post: 0x5a4a3a, cloths: [0xc83a2a, 0xe8a030, 0x2a7a5a], long: true },
+  mangrove: { form: 'saris', post: 0x5a4a3a, cloths: [0x3a6aa8, 0xc83a5a, 0xe8d8a0], long: true },
+  monsoon: { form: 'lungis', post: 0x5a4a3a, cloths: [0x3a5a7a, 0xe8e4d8, 0x8a3a2a], long: true },
+});
+
+/** The red drum's paint by period: the war's red with its white band, the hazard-labelled drum after. */
+const RED_DRUM_WAR = { shell: 0xa82a20, hoop: 0x7a1e18, head: 0xa82a20, band: 0xd8d2c0, rust: 0.35 };
+const RED_DRUM_LATE = { shell: 0xb02a22, hoop: 0x801e18, head: 0xb02a22, band: 0xe8a020, rust: 0.2 };
+
+/** A map's cable drum: the cable lead-sheathed before 1955 (periodClutterKit MODERN_KIND_INTRODUCED), PVC black after;
+ *  the stations' steel spool and its orange cable. */
+function spoolOf(mapId: string): { form: string; spec: { cheek: Hex; cable: Hex; steel?: boolean } } {
+  if (mapId === 'moon' || mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
+  const year = MAP_SETTING_YEAR[mapId] ?? 2000;
+  return year < 1955 ? { form: 'lead-cable-drum', spec: { cheek: 0x8a6a48, cable: 0x6a6c70 } } : { form: 'cable-drum', spec: { cheek: 0x9a7a52, cable: 0x232323 } };
+}
+
 /**
  * The kinds a map draws in their lean form (≤ 120 triangles, no distance form) to keep its clutter within +45k
  * triangles of the legacy (the runtime census's instances; clutterKit.selftest pins it): Cape Dyer's 500 drums stand in
@@ -250,7 +408,7 @@ function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: Destru
     build: (rng) => {
       base.build(rng).dispose();
       const n = near(kindStream(mapId, kind));
-      return far ? withDistanceForms(n, far()) : n;
+      return far ? withDistanceForms(n, far()) : leanForm(n);
     },
     broken: base.broken && broken ? (rng) => { base.broken!(rng).dispose(); return broken(kindStream(mapId, `${kind}:broken`)); } : base.broken,
     ...(broken ? { ownBroken: true } : {}),
@@ -264,6 +422,16 @@ export function clutterFormOf(kind: string, mapId: string): string | null {
   if (kind === 'crate') return CRATE_FORMS[mapId]?.form ?? null;
   if (kind === 'firewood') return WOOD_FORMS[mapId]?.form ?? null;
   if (kind === 'pallet') return PALLET_FORMS[mapId]?.form ?? null;
+  if (kind === 'jerrycan') return CAN_FORMS[mapId]?.form ?? null;
+  if (kind === 'bucket') return BUCKET_FORMS[mapId]?.form ?? null;
+  if (kind === 'gasbottle') return BOTTLE_FORMS[mapId]?.form ?? null;
+  if (kind === 'churn') return CHURN_FORMS[mapId]?.form ?? null;
+  if (kind === 'loosewheel') return WHEEL_FORMS[mapId]?.form ?? null;
+  if (kind === 'pot') return POT_FORMS[mapId]?.form ?? null;
+  if (kind === 'laundry') return LAUNDRY_FORMS[mapId]?.form ?? null;
+  const year = MAP_SETTING_YEAR[mapId];
+  if (kind === 'drumred') return year === undefined ? null : year < 1950 ? 'red-drum-1940s' : 'red-drum-hazard';
+  if (kind === 'cablespool') return year === undefined ? null : spoolOf(mapId).form;
   return null;
 }
 
@@ -300,6 +468,52 @@ export function clutterTypes(mapId: string, _mobile: boolean): Record<string, De
     const f = { ...crate, wood: lin(crate.wood), frame: lin(crate.frame), inside: lin(crate.inside), strap: crate.strap ? lin(crate.strap) : undefined,
       stencil: crate.stencil ? lin(crate.stencil) : undefined };
     out.crate = entry('crate', mapId, 'baked', (rng) => crateNear(f, rng), () => crateFar(f), (rng) => crateBroken(f, rng));
+  }
+  const can = CAN_FORMS[mapId];
+  if (can) {
+    const f: CanForm = { kind: can.kind, body: lin(can.body), trim: lin(can.trim), label: can.label ? lin(can.label) : undefined };
+    out.jerrycan = entry('jerrycan', mapId, 'baked', (rng) => canNear(f, rng), () => canFar(f), null);
+  }
+  const bucket = BUCKET_FORMS[mapId];
+  if (bucket) {
+    const f: BucketForm = { kind: bucket.kind, body: lin(bucket.body), trim: lin(bucket.trim), inside: lin(bucket.inside) };
+    out.bucket = entry('bucket', mapId, 'baked', (rng) => bucketNear(f, rng), () => bucketFar(f), null);
+  }
+  const bottle = BOTTLE_FORMS[mapId];
+  if (bottle) {
+    const f: BottleForm = { kind: bottle.kind, body: lin(bottle.body), collar: lin(bottle.collar), band: bottle.band ? lin(bottle.band) : undefined };
+    out.gasbottle = entry('gasbottle', mapId, 'baked', (rng) => bottleNear(f, rng), () => bottleFar(f), null);
+  }
+  const churn = CHURN_FORMS[mapId];
+  if (churn) {
+    const f: ChurnForm = { kind: churn.kind, body: lin(churn.body), trim: lin(churn.trim) };
+    out.churn = entry('churn', mapId, 'baked', (rng) => churnNear(f, rng), () => churnFar(f), null);
+  }
+  const wheel = WHEEL_FORMS[mapId];
+  if (wheel) {
+    const f: WheelForm = { kind: wheel.kind, rubber: lin(wheel.rubber), rim: lin(wheel.rim), hub: lin(wheel.hub) };
+    out.loosewheel = entry('loosewheel', mapId, 'baked', (rng) => wheelNear(f, rng), () => wheelFar(f), null);
+  }
+  const pot = POT_FORMS[mapId];
+  if (pot) {
+    const f: PotForm = { kind: pot.kind, body: lin(pot.body), slip: lin(pot.slip) };
+    out.pot = entry('pot', mapId, 'baked', (rng) => potNear(f, rng), () => potFar(f), (rng) => potBroken(f, rng));
+  }
+  const laundry = LAUNDRY_FORMS[mapId];
+  if (laundry) {
+    // (the line casts its own shadow: one form at every distance)
+    const f: LaundryForm = { post: lin(laundry.post), cloths: laundry.cloths.map(lin), long: laundry.long };
+    out.laundry = entry('laundry', mapId, 'baked', (rng) => laundryNear(f, rng), null, (rng) => laundryBroken(f, rng));
+  }
+  const year = MAP_SETTING_YEAR[mapId];
+  if (year !== undefined) {
+    const r = year < 1950 ? RED_DRUM_WAR : RED_DRUM_LATE;
+    const paint = { shell: lin(r.shell), hoop: lin(r.hoop), head: lin(r.head), band: lin(r.band), rust: r.rust };
+    out.drumred = entry('drumred', mapId, 'baked', (rng) => drumNear(paint, rng), () => drumFar(paint), (rng) => redDrumBroken(paint.shell, rng));
+    // (the cable drum casts its own shadow: one form at every distance)
+    const spool = spoolOf(mapId).spec;
+    const f: SpoolForm = { cheek: lin(spool.cheek), cable: lin(spool.cable), steel: spool.steel };
+    out.cablespool = entry('cablespool', mapId, 'baked', (rng) => spoolNear(f, rng), null, (rng) => spoolBroken(f, rng));
   }
   return out;
 }
