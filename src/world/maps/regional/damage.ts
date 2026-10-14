@@ -13,7 +13,7 @@
 // hands back no plan: the core's default kit reads its parts.
 import { masonryLayout } from '../../regionalSurfaces.ts';
 import {
-  bodyMoundHeightAt, registerStructureDamageKit,
+  bodyMoundHeightAt, damageSeed, registerStructureDamageKit,
   type DamageChimney, type DamageFace, type DamageOpening, type DamageRoof, type DamageStorey, type FaceName as SeamFace,
   type FractureMaterial, type FractureSlot, type FrameMember, type MasonryLayout, type RoofKind as SeamRoofKind, type RoofSlab,
   type StructureDamageAnatomy, type StructureDamageKit, type StructureDescribeInput, type Vec3,
@@ -201,12 +201,57 @@ function seamRoofKind(kind: string): SeamRoofKind {
   return kind === 'halfhip' || kind === 'hip' || kind === 'flat' || kind === 'shed' ? kind : 'gable';
 }
 
-/** The anatomy of a house of a regional kit, from the plan its kit built it by. */
+/**
+ * A body the builder built beside its main one stands as a tower (a Schlauchturm, a bell tower, an espadaña) when it is
+ * tall over its narrow side and near square in plan: it topples in its own courses (shaft.ts) rather than settling.
+ */
+function towerBody(house: HousePlan): boolean {
+  const lo = Math.min(house.spec.w, house.spec.d), hi = Math.max(house.spec.w, house.spec.d);
+  const h = house.frame.roof.ridgeTopY;
+  return h >= 8 && h / Math.max(0.5, lo) >= 2.2 && hi / Math.max(0.5, lo) <= 1.8;
+}
+
+/** The bodies beside the main one a multi-body house carries (describeHouse; the stage builders lay each). */
+function bodiesOf(anatomy: StructureDamageAnatomy): readonly StructureDamageAnatomy[] {
+  return (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] } | undefined)?.bodies ?? [];
+}
+
+/**
+ * The anatomy of a house of a regional kit, from the plan its kit built it by. Props census E5 (lane B, 2026-10-14):
+ * the main body (the largest) is the anatomy the core reads; every other house the builder built (a farm's wing, a
+ * station's wings, a fire station's hose tower, a church's bell tower) is described as its own body beside it
+ * (kitPlan.bodies) and laid by the stage builders with it — a wing breaks and falls into its own heap, a tower topples
+ * in its own courses (shaft.ts) — where they went with the main body's fall before.
+ */
 function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
   const plan = input.kitPlan as RegionalKitPlan | undefined;
   if (!plan || plan.kind !== 'regional-house' || !plan.houses.length) return null;
-  // the main body: the largest house the builder built (a farm's wing, a lean-to, a porch go to the default reading)
-  const house = plan.houses.reduce((a, b) => (b.spec.w * b.spec.d > a.spec.w * a.spec.d ? b : a));
+  // the main body: the largest house the builder built
+  const main = plan.houses.reduce((a, b) => (b.spec.w * b.spec.d > a.spec.w * a.spec.d ? b : a));
+  const anatomy = houseBody(style, input, plan, main);
+  const others = plan.houses.filter((h) => h !== main);
+  if (others.length) {
+    const bodies = others.map((house, k) => {
+      const body = houseBody(style, { ...input, seed: damageSeed(input.seed, 0x5e, k) }, plan, house);
+      if (towerBody(house)) {
+        // its roof the crown that lies at the far end of its fall
+        const T = bodyFrame(house.place), rg = house.frame.roof, b = house.frame.bodies[house.frame.bodies.length - 1];
+        const a = T.point([b.x0, 0, b.z0]), c = T.point([b.x1, 0, b.z1]);
+        const cover = covering(style, house.spec.roof.bucket, house.spec.roof.kind, plan.tints, house.spec.roofColour);
+        const y = house.place?.y ?? 0;
+        (body.kitPlan as { damage: Record<string, unknown> }).damage.shaft = { crown: { y0: rg.eaveY + y, y1: rg.ridgeTopY + y,
+          x0: Math.min(a[0], c[0]), x1: Math.max(a[0], c[0]), z0: Math.min(a[2], c[2]), z1: Math.max(a[2], c[2]), bucket: cover.bucket, tint: cover.tint } };
+      }
+      return body;
+    });
+    (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies = bodies;
+    anatomy.h = Math.max(anatomy.h, ...bodies.map((b) => b.h));
+  }
+  return anatomy;
+}
+
+/** One house body's anatomy (describeHouse): its storeys, faces, openings, members, roof, chimneys and pile. */
+function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan: RegionalKitPlan, house: HousePlan): StructureDamageAnatomy {
   const { spec, frame } = house;
   const T = bodyFrame(house.place);
   const tints = plan.tints;
@@ -910,18 +955,37 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
       breach: (anatomy, hole, out) => (ruinPiecesOf(anatomy) ? breachRuin(anatomy, hole, out) : containersOf(anatomy) ? breachContainers(anatomy, hole, out) : cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
         ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
-      damaged: (anatomy, seed, out) => (ruinPiecesOf(anatomy) ? damagedRuin(anatomy, seed, out) : containersOf(anatomy) ? damagedContainers(anatomy, seed, out) : cellsOf(anatomy) ? damagedCluster(anatomy, seed, out)
-        : isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out)
-        : damagedHouse(anatomy, seed, out)),
+      damaged: (anatomy, seed, out) => {
+        const result = ruinPiecesOf(anatomy) ? damagedRuin(anatomy, seed, out) : containersOf(anatomy) ? damagedContainers(anatomy, seed, out) : cellsOf(anatomy) ? damagedCluster(anatomy, seed, out)
+          : isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out)
+          : damagedHouse(anatomy, seed, out);
+        // (E5) the bodies beside the main one take their damage with it
+        bodiesOf(anatomy).forEach((body, k) => {
+          const more = isSheetBody(body) ? damagedSheet(body, damageSeed(seed, 0x5e, k), out) : damagedHouse(body, damageSeed(seed, 0x5e, k), out);
+          result.cuts.push(...more.cuts);
+          result.hides.push(...more.hides);
+        });
+        return result;
+      },
       piece: (_bucket, shape, variant, rng) => debrisPiece(shape, variant, rng),
       // the pile on the sim's own heap (the world fills `anatomy.mound` from the structure table); a dome over the house
       // where none is given (an offline preview, a receipt)
       collapse: (anatomy, seed, out) => {
         const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
-        return ruinPiecesOf(anatomy) ? collapseRuin(anatomy, seed, out, mound) : containersOf(anatomy) ? collapseContainers(anatomy, seed, out, mound) : cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound)
+        const result = ruinPiecesOf(anatomy) ? collapseRuin(anatomy, seed, out, mound) : containersOf(anatomy) ? collapseContainers(anatomy, seed, out, mound) : cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound)
           : shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound)
           : isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound)
           : collapseHouse(anatomy, seed, out, mound);
+        // (E5) every body beside the main one comes down in its own way over the same mound: a wing into its own heap, a
+        // tower toppling in its courses along the fall's line
+        bodiesOf(anatomy).forEach((body, k) => {
+          const bodyMound = anatomy.mound ? mound : domeMound(body);
+          const s = damageSeed(seed, 0x5e, k);
+          const more = shaftOf(body) ? collapseShaft(body, s, out, bodyMound) : isSheetBody(body) ? collapseSheet(body, s, out, bodyMound)
+            : collapseHouse(body, s, out, bodyMound);
+          result.cuts.push(...more.cuts);
+        });
+        return result;
       },
       sectionDown: (anatomy, section, seed, out) => {
         if (ruinPiecesOf(anatomy)) return sectionDownRuin(anatomy, section, seed, out);
