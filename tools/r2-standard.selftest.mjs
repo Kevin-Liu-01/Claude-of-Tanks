@@ -4,7 +4,9 @@
 //   1. the painted-opening detector on built cases: a dark plate stuck on a wall is found; a leaf set back in a cut
 //      opening, a plate at the back of a 15 cm niche and a light plate are not; a plate framed by trims 5 cm proud is
 //      still painted; a long dark strip is a strip, not an opening;
-//   2. on a real kit: gateUnit's painted wicket (regional/openings.ts, E2's target) is found on the kolkhoz barn;
+//   2. the old painted wicket (gateUnit before E2) on a synthetic leaf stays detected; a Fachwerk wall's flush posts, rails
+//      and braces are its frame, not openings, while a dark door stuck on it is one; once E2 is on the tree no kit barn
+//      carries a painted wicket (live, every style's barn);
 //   3. the reference passes: every pillbox form (maps/fortKit.ts r2) on its bank — no painted opening, box-only share
 //      under 10 %, grounded, a wreck with volume, its fracture anatomy clean;
 //   4. the counter-examples fail for their reasons: the owner's flat shed (a box on posts, dark slits stuck on) for its
@@ -13,6 +15,7 @@
 //   5. the spec's other rules: a generic form where the place has its own, excused only with a reason; a far form over
 //      its cap; a loosened limit without its reason; a fracture anatomy that does not fit its triangles.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { boxShare, floatingMembers, paintedOpenings, r2Check, wreckVolume } from './r2-standard.mjs';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
@@ -74,15 +77,44 @@ const DARK = [0.05, 0.045, 0.04], LIGHT = [0.7, 0.66, 0.6];
   assert.equal(buckets[0].hostBucket, 'stone');
 }
 
-// ------------------------------------------------------------------------------------------- 2. a real kit: gateUnit's wicket
+// ------------------------------------------------------------------------------------------- 2. the barns' wicket; the Fachwerk
 {
-  const style = ARCHITECTURE_STYLES.find((s) => s.id === 'kolkhoz');
-  const [w, d, h] = [8.4, 12.3, 6.2];
-  const parts = buildRegionalParts(style, { structureId: 'barn', info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
-    wallBucket: 'stone', rng: streamFrom(11), variant: streamFrom(80), mapId: 'selftest', snowCap: false, tier: 'desktop' }, streamFrom(38));
-  const plates = paintedOpenings(parts);
-  const wicket = plates.find((p) => p.bucket === 'dark' && p.hostBucket === 'structureWood' && Math.abs(p.span[0] - 0.7) < 0.01 && Math.abs(p.span[1] - 1.75) < 0.01);
-  assert.ok(wicket, `the kolkhoz barn's gate leaf carries gateUnit's painted wicket (found ${JSON.stringify(plates.slice(0, 3))})`);
+  // the old painted wicket (gateUnit before Lane B's E2, regional/openings.ts): a near-black 0.7 x 1.75 m plate 2 cm thick
+  // on a leaf of boards with its battens — the fixture stays detected whatever the kits do
+  const leaf = () => [block(1.6, 2.6, 0.05, -0.8, 1.3, 0.015, [0.32, 0.24, 0.16]),
+    ...[0.31, 1.3, 2.29].map((y) => block(1.52, 0.1, 0.03, -0.8, y, 0.05, [0.3, 0.22, 0.15]))];
+  const wall = block(5, 3, 0.3, 0, 1.5, -0.15, [0.6, 0.55, 0.5]);
+  const plates = paintedOpenings({ structureWood: leaf(), stone: [wall], dark: [new THREE.BoxGeometry(0.7, 1.75, 0.02).translate(-0.8, 0.95, 0.05)] });
+  const wicket = plates.filter((p) => p.kind === 'opening' && p.bucket === 'dark' && p.hostBucket === 'structureWood');
+  assert.equal(wicket.length, 1, `the old painted wicket is a painted opening (found ${JSON.stringify(plates)})`);
+  assert.deepEqual(wicket[0].span, [0.7, 1.75]);
+
+  // a Fachwerk wall (hessian, eifel, franconian): its posts, rails and a brace laid flush in the render are its frame,
+  // never painted openings; a dark door stuck on the same wall still is
+  const timber = [0.22, 0.15, 0.1];
+  const brace = block(0.19, 2.0, 0.02, 0, 0, 0, timber);
+  brace.rotateZ(Math.PI / 4).translate(1.2, 1.4, 0.11);
+  const frame = [block(0.19, 2.8, 0.02, -2.2, 1.4, 0.11, timber), block(0.19, 2.8, 0.02, 0, 1.4, 0.11, timber),
+    block(0.19, 2.8, 0.02, 2.2, 1.4, 0.11, timber), block(4.6, 0.19, 0.02, 0, 0.1, 0.11, timber), block(4.6, 0.19, 0.02, 0, 2.7, 0.11, timber), brace];
+  const fachwerk = paintedOpenings({ regionalPlaster: [block(5, 3, 0.2, 0, 1.5, 0, [0.85, 0.82, 0.76])], structureWood: frame,
+    dark: [new THREE.BoxGeometry(0.9, 1.9, 0.02).translate(-1.1, 0.97, 0.11)] });
+  assert.equal(fachwerk.filter((p) => p.bucket === 'structureWood').length, 0, `a Fachwerk frame is no opening (found ${JSON.stringify(fachwerk)})`);
+  assert.equal(fachwerk.filter((p) => p.kind === 'opening' && p.bucket === 'dark').length, 1, 'the dark door stuck on it is');
+
+  // live, once E2 is on the tree (openings.ts no longer lays the painted wicket): no kit barn carries one
+  const openingsSource = readFileSync(new URL('../src/world/maps/regional/openings.ts', import.meta.url), 'utf8');
+  const e2 = !openingsSource.includes("faceBox(sink, 'dark', face, u - w / 4, y + 0.95, go + 0.03, 0.7, 1.75, 0.02");
+  if (e2) {
+    const [w, d, h] = [8.4, 12.3, 6.2];
+    for (const style of ARCHITECTURE_STYLES) {
+      if (!style.builders.barn) continue;
+      const parts = buildRegionalParts(style, { structureId: 'barn', info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+        wallBucket: 'stone', rng: streamFrom(11), variant: streamFrom(80), mapId: 'selftest', snowCap: false, tier: 'desktop' }, streamFrom(38));
+      const painted = paintedOpenings(parts).filter((p) => p.kind === 'opening' && p.bucket === 'dark' && p.hostBucket === 'structureWood'
+        && Math.abs(p.span[0] - 0.7) < 0.02 && Math.abs(p.span[1] - 1.75) < 0.02);
+      assert.equal(painted.length, 0, `${style.id}'s barn carries no painted wicket (E2): ${JSON.stringify(painted)}`);
+    }
+  } else console.log('r2-standard selftest: the kit barns still lay gateUnit\'s painted wicket (E2 not on this tree): the live check waits for it');
 }
 
 // ------------------------------------------------------------------------------------------- 3. the reference: the pillbox r2
