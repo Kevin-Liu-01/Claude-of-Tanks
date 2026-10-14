@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   emitBreakFx,
   emitDestroyed,
@@ -12,8 +13,16 @@ import {
 const calls = [];
 setBreakFxProvider((...args) => calls.push(['fx', ...args]));
 emitBreakFx('fence', 1, 2, 3, 4, 5, 6);
-assert.deepEqual(calls.pop(), ['fx', 'fence', 1, 2, 3, 4, 5, 6],
-  'break FX retains every authored coordinate and impulse');
+assert.deepEqual(calls.pop(), ['fx', 'fence', 1, 2, 3, 4, 5, 6, 0],
+  'break FX retains every authored coordinate and impulse; a kind without a fracture anatomy churns no ground (scar 0)');
+// (the destructible-kits lane, round 2) a pillbox breaks in its map's make and churns its ground: the scar its fracture
+// anatomy carries (fortKit groundScarM, scaled by the instance) reaches the FX provider whole
+emitBreakFx('bunker-concrete', 1, 2, 3, 4, 5, 6, 3.6);
+assert.deepEqual(calls.pop(), ['fx', 'bunker-concrete', 1, 2, 3, 4, 5, 6, 3.6], 'a pillbox passes its own make and its ground scar');
+const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+assert.match(propsSource, /const fxKind = rec\.kind === 'bunker' && fort \? \(fort\.style === 'logearth' \? 'bunker-logearth' : 'bunker-concrete'\) : rec\.kind;/,
+  'props break a pillbox in its map\'s construction (concrete or log-and-earth); every other kind as itself');
+assert.match(propsSource, /emitBreakFx\(fxKind,[^;]*scarM \* rec\.sc\);/, 'props pass the broken kind\'s own ground scar, scaled by the instance');
 setBreakFxProvider(null);
 emitBreakFx('barrel', 0, 0, 0, 0, 0, 0);
 assert.equal(calls.length, 0, 'cleared FX provider is inert');
