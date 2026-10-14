@@ -107,7 +107,9 @@ for (let i = 0; i < 400; i++) {
   if (h < 100 && h > 5) { nLow++; if (geo.snow > 0.5) snowLow++; }
   if (geo.rock > 0.5) { nSteep++; if (cover.cls === HL_COVER.rock || cover.cls === HL_COVER.snow) rockSteep++; }
 }
-assert.ok(nHigh > 10 && snowHigh / nHigh > 0.4, `snow on the tops (${snowHigh}/${nHigh})`);
+// (a third at least: the Glacier pass bares a summit's steep top and lets snow slide off past 45°, as the reference's
+// dark faces show; before it, two fifths)
+assert.ok(nHigh > 10 && snowHigh / nHigh > 0.33, `snow on the tops (${snowHigh}/${nHigh})`);
 assert.ok(snowLow / Math.max(1, nLow) < 0.2, `none on the low slopes (${snowLow}/${nLow})`);
 assert.equal(woodsHigh, 0, 'no wood over its forest belt');
 assert.ok(nSteep > 0 && rockSteep / nSteep > 0.8, 'bare rock (or snow) on the walls');

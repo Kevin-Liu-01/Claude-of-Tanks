@@ -180,6 +180,7 @@ varying vec3 vHlWorld;
 varying float vHlTrueD;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
+uniform vec3 uHlCam;
 ${HINTERLAND_PROJECT_GLSL}
 ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}
 ${surface?.fragmentPars ?? ''}`)
@@ -197,7 +198,11 @@ ${surface?.fragmentPars ?? ''}`)
   // the haze for the distance the compression took away (the post pass hazes by the drawn depth)
   {
     float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
-    float hlT = exp( -uHlHazeSigma * hlLost );
+    // (the haze thins with height, as the post pass's layer does: a summit 1,500 m over the eye stands in clearer air
+    // than the valley floor at its foot — the Glacier frames' peaks washed out under a height-blind haze; the scale
+    // height the mean of the ray's from the eye to the point, ~1.2 km)
+    float hlLift = max( 0.0, 0.5 * ( vHlWorld.y - uHlCam.y ) );
+    float hlT = exp( -uHlHazeSigma * hlLost * exp( -hlLift / 1200.0 ) );
     // (the target: the dome's sky in this direction, so the land's limb meets the sky without a line; without a
     // published sky the scene's fog colour, else a fixed blue; nothing to do inside 2.5 km)
     if ( hlT < 0.999 ) {
