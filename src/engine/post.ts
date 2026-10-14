@@ -2346,6 +2346,9 @@ export function createPost(
   let lightFxOverrides: Partial<PostLightFxFlags> | null = null;
   let lightFx: PostLightFxFlags = POST_LIGHT_FX_OFF;
   const resolveLightFx = (): void => {
+    // Ultra Low (2026-10-13; quality.ts `bloom: false`): the bloom pass is off with the preset's light effects; the
+    // emissive flashes and tracers draw unhaloed (resolved here at build and on every preset change)
+    bloom.enabled = preset.bloom !== false;
     const resolved = resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery());
     const next = lightFxOverrides ? Object.freeze({ ...resolved, ...lightFxOverrides }) : resolved;
     renderer.domElement.dataset.lightFx = ['contact', 'bounce', 'shafts', 'flare', 'cavity']

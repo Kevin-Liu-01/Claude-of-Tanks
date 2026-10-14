@@ -43,8 +43,8 @@
 import type { WebGLRenderer } from 'three';
 
 type DeviceTier = 'mobile' | 'desktop';
-type DesktopPresetName = 'low' | 'medium' | 'high' | 'ultra';
-type MobilePresetName = 'mobile-low' | 'mobile' | 'mobile-high';
+type DesktopPresetName = 'ultralow' | 'low' | 'medium' | 'high' | 'ultra';
+type MobilePresetName = 'mobile-ultralow' | 'mobile-low' | 'mobile' | 'mobile-high';
 export type PresetName = DesktopPresetName | MobilePresetName;
 type PresetChoice = 'auto' | DesktopPresetName;
 
@@ -112,6 +112,25 @@ export interface QualityPreset {
   readonly textureScale?: number;
   readonly vehicleTextureScale?: number;
   readonly textureCap?: number;
+  /**
+   * 2026-10-13 (Ultra Low; the owner: "also lets make an ultra low graphics setting LOL"): every lever below is a
+   * picture lever only. Spotting, smoke cover, collision, hits and the world's layout read none of them, so a match
+   * stays fair across presets. Each is absent (the full picture) on every other preset.
+   * - `bloom: false` turns the HDR bloom pass off (live; post.ts).
+   * - `volumetricClouds: false` keeps the baked cloud decks (the phone sky) in place of the marched layer (live;
+   *   sky.ts).
+   * - `terrainLite` takes the terrain splat's cheapest variant (live; terrain.ts uTerrainLite): one ground sampling
+   *   instead of the anti-tiling pair, the far variant from 56 m, layer means past ~150 m, detail normals within 40 m,
+   *   no 0-48 m micro-detail pass.
+   * - `lightWorld` builds the world's purely visual density the way the phone tier does (the next battlefield after a
+   *   change): fewer grass tufts with a shorter fade, a shorter near-tree band before the impostors, the sparser ground
+   *   litter, the water sheet's procedural wake in place of the FFT ocean and the reactive ripple field, no trampled
+   *   grass field.
+   */
+  readonly bloom?: boolean;
+  readonly volumetricClouds?: boolean;
+  readonly terrainLite?: boolean;
+  readonly lightWorld?: boolean;
 }
 
 /**
@@ -122,7 +141,7 @@ export interface QualityPreset {
  */
 export const DESKTOP_SHADOW_MAP_SIZES = [2048, 2048, 1024, 1024] as const;
 
-type AutoTier = 'low' | 'medium' | 'high';
+type AutoTier = 'ultralow' | 'low' | 'medium' | 'high';
 type PresetListener = (preset: QualityPreset) => void;
 type DeviceNavigator = Navigator & { deviceMemory?: number };
 
@@ -378,6 +397,52 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     shadowMapSizes: [2048, 2048, 1024, 1024],
     shadowMaxFar: 380,
   },
+  // 2026-10-13 (the owner: "also lets make an ultra low graphics setting LOL"; the perf stream's ranked costs): the
+  // floor below Low, for weak machines under load. It keeps the match readable — tanks, terrain colour, cover, sky,
+  // shots and the HUD — and gives up picture only, in the order the frame pays for it:
+  // - raster: 0.8 CSS px (0.4 of a retina panel, still above the linear-upscale band) reconstructed by EASU + RCAS;
+  //   below the retina threshold the governor may lower it to 0.6 CSS px under load;
+  // - the terrain splat's cheapest variant (the splat is 55-85 % of the frame's GPU work);
+  // - four small cascades over 200 m (the 2K/1K maps over 380 m cost 12-36 ms; the near hulls keep their proxies);
+  // - no bloom (7-12 ms) and no marched clouds (4-8 ms; the baked decks show);
+  // - a quarter of Low's tall grass, the lighter world build (see `lightWorld`).
+  ultralow: {
+    label: 'Ultra Low',
+    msaaSamples: 0,
+    tallGrass: 0.1,
+    maxPixelRatio: 0.8,
+    dynMin: 1.0,
+    nativeDynMin: 0.75,
+    rcasMinScale: 0.4,
+    aoScale: 0,
+    bloomScale: 0.35,
+    bloom: false,
+    volumetricClouds: false,
+    terrainLite: true,
+    lightWorld: true,
+    shadowMapSizes: [1024, 1024, 512, 512],
+    shadowMaxFar: 200,
+  },
+  // 2026-10-13: the phones' Ultra Low — Performance's raster (one 3D sample per CSS pixel: sub-CSS input was the blocky
+  // failure mode there), its texture budget, and the desktop Ultra Low's picture cuts: smaller cascades over a shorter
+  // range, no bloom, the cheapest terrain splat. The phone tier already keeps the baked decks and the light world.
+  'mobile-ultralow': {
+    label: 'Ultra Low',
+    msaaSamples: 0,
+    maxPixelRatio: 1.0,
+    aoScale: 0,
+    bloomScale: 0.35,
+    bloom: false,
+    volumetricClouds: false,
+    terrainLite: true,
+    lightWorld: true,
+    shadowMapSizes: [512, 512, 512, 512],
+    shadowMaxFar: 180,
+    textureScale: 0.5,
+    vehicleTextureScale: 0.75,
+    textureCap: 2048,
+    dynMin: 1.0,
+  },
   // Mobile quick-switch levels keep the constrained texture budget fixed —
   // live switching cannot (and should not) rebuild the world's texture
   // atlas. They only retarget raster, AA, bloom and shadow buffers, which are
@@ -451,8 +516,8 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
 };
 
-export const PRESET_ORDER: readonly DesktopPresetName[] = ['low', 'medium', 'high', 'ultra'];
-export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-low', 'mobile', 'mobile-high'];
+export const PRESET_ORDER: readonly DesktopPresetName[] = ['ultralow', 'low', 'medium', 'high', 'ultra'];
+export const MOBILE_PRESET_ORDER: readonly MobilePresetName[] = ['mobile-ultralow', 'mobile-low', 'mobile', 'mobile-high'];
 
 const listeners = new Set<PresetListener>();
 
@@ -476,7 +541,8 @@ const listeners = new Set<PresetListener>();
 const LS_AUTO_TIER = 'cot.gfxAutoTier';
 const LS_AUTO_POLICY = 'cot.gfxAutoTierPolicy';
 const AUTO_POLICY_VERSION = 'session-r3';
-const AUTO_ORDER: readonly AutoTier[] = ['low', 'medium', 'high']; // ultra stays explicit opt-in
+// 2026-10-13: Ultra Low is the governor's last step after Low (the hardware heuristics still start no lower than Low)
+const AUTO_ORDER: readonly AutoTier[] = ['ultralow', 'low', 'medium', 'high']; // ultra stays explicit opt-in
 let _gpuRendererString = '';
 let _autoPolicyHandled = false;
 let _sessionAutoTier: AutoTier | null = null;
@@ -555,7 +621,7 @@ export function resolveAutoTier(): AutoTier {
 /**
  * The governor's escalation path: sustained frame-budget misses with no
  * resolution lever left. Steps the AUTO tier down one notch (high → medium
- * → low) for this session and rebroadcasts the preset so every engine module
+ * → low → ultra low) for this session and rebroadcasts the preset so every engine module
  * resizes live. No-op (returns false) when the user pinned an explicit
  * preset or the tier is already at the floor.
  * @returns {boolean} true if a tier step was applied
@@ -609,7 +675,7 @@ export function getStoredChoice(): PresetChoice {
   resetSavedGraphicsIfRequested();
   try {
     const v = window.localStorage.getItem(LS_KEY);
-    if (v === 'auto' || v === 'low' || v === 'medium' || v === 'high' || v === 'ultra') return v;
+    if (v === 'auto' || PRESET_ORDER.includes(v as DesktopPresetName)) return v as PresetChoice;
   } catch (_) { /* storage blocked — fall through to auto */ }
   return 'auto';
 }
@@ -619,7 +685,7 @@ export function getMobilePresetChoice(): MobilePresetName {
   resetSavedGraphicsIfRequested();
   try {
     const v = window.localStorage.getItem(LS_MOBILE_KEY);
-    if (v === 'mobile-low' || v === 'mobile' || v === 'mobile-high') return v;
+    if (MOBILE_PRESET_ORDER.includes(v as MobilePresetName)) return v as MobilePresetName;
   } catch (_) { /* storage blocked — balanced is the safe default */ }
   return 'mobile';
 }
@@ -650,9 +716,9 @@ export function resolvePresetName(choice: PresetChoice = getStoredChoice()): Pre
     ? recovery : desired;
 }
 
-/** Apply one of the three mobile-safe live presets. */
+/** Apply one of the four mobile-safe live presets. */
 export function setMobilePresetName(name: string): void {
-  if (name !== 'mobile-low' && name !== 'mobile' && name !== 'mobile-high') return;
+  if (!MOBILE_PRESET_ORDER.includes(name as MobilePresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
   const preset = getPreset();
@@ -681,12 +747,11 @@ export function getPreset(): QualityPreset {
  * Store a new choice ('auto' or a preset name) and notify subscribers
  * (post.ts resizes the composer chain, lighting.ts reallocates shadow maps).
  * The settings UI is the intended caller.
- * @param {string} name - 'auto' | 'low' | 'medium' | 'high' | 'ultra'
+ * @param {string} name - 'auto' | 'ultralow' | 'low' | 'medium' | 'high' | 'ultra'
  * @returns {void}
  */
 export function setPresetName(name: string): void {
-  if (name !== 'auto' && name !== 'low' && name !== 'medium'
-    && name !== 'high' && name !== 'ultra') return;
+  if (name !== 'auto' && !PRESET_ORDER.includes(name as DesktopPresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
   // Every user choice starts a fresh auto-policy session. Explicit presets
@@ -706,4 +771,13 @@ export function setPresetName(name: string): void {
 export function onPresetChange(fn: PresetListener): () => boolean {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+/**
+ * 2026-10-13 (Ultra Low): whether the active preset builds the world's purely visual density the light way (grass,
+ * the near-tree band, ground litter, the water field; see QualityPreset.lightWorld). Read at world build, so a change
+ * reaches the next battlefield; never layout, collision, cover or spotting, which every preset shares.
+ */
+export function presetLightWorld(): boolean {
+  return getPreset().lightWorld === true;
 }

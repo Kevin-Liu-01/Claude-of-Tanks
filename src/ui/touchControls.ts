@@ -732,7 +732,8 @@ export function createTouchControls({
     const short = label === 'Performance' ? t('touch.gfx.perf')
       : label === 'Balanced' ? t('touch.gfx.bal')
         : label === 'Quality' ? t('touch.gfx.qual')
-          : label;
+          : label === 'Ultra Low' ? t('touch.gfx.ultraLow')
+            : label;
     graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = t('touch.gfx.label', { short });
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
     graphicsButton.title = t('touch.gfx.title', { label });

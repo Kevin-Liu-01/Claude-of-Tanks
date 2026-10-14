@@ -11373,13 +11373,15 @@ ${snowCap ? `
   // of the camera (3D, to the cell's box), hidden 15 m past it (hysteresis); the preset re-read once a second. At High
   // (900-1080 rows) a 7 cm frame is half a pixel at ~120 m.
   const FINE_DETAIL_M: Readonly<Record<string, number>> = {
-    ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+    ultra: 180, high: 120, medium: 90, low: 70, ultralow: 40, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+    'mobile-ultralow': 35, // Ultra Low (2026-10-13): the joinery within 40 m (a 7 cm frame is a pixel at 0.8 CSS px there)
   };
   // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
   // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
   // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
   const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
-    ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+    ultra: 110, high: 80, medium: 65, low: 50, ultralow: 30, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+    'mobile-ultralow': 20, // Ultra Low (2026-10-13): the wall's far form (the same wall, the same cover) from 30 m
   };
   // (b17; gauntlet wave 121, Saltwind's walls "a smooth extruded strip ... mortared, not dry-stone") within a nearer
   // distance still a cell draws its stone form (fieldWorks.ts buildFieldWallFineSteps: every stone, its joints, the
@@ -11390,7 +11392,7 @@ ${snowCap ? `
   // (at High a stone is ten pixels tall at 30 m, a cell's box within 30 m of the camera is one to four cells, 20-25 k
   // triangles each on Saltwind: the mid form takes over past it)
   const FIELD_WALL_FINE_M: Readonly<Record<string, number>> = {
-    ultra: 45, high: 30, medium: 22, low: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0,
+    ultra: 45, high: 30, medium: 22, low: 0, ultralow: 0, 'mobile-high': 0, mobile: 0, 'mobile-low': 0, 'mobile-ultralow': 0,
   };
   /** A frame's share of the stone form being built (ms). */
   const FIELD_WALL_STONE_BUDGET_MS = 2;

@@ -57,7 +57,7 @@ import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type Ti
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { getDeviceTier, texSize } from '../engine/quality.ts';
+import { getDeviceTier, presetLightWorld, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
@@ -522,6 +522,12 @@ const CARPET_CAP = 14000;              // hard upload/raster ceiling per variant
 // 6.95 → 6.06 M at chase (under the 7 M gate), fjord 9.39 → 8.03 M, each 100 m of radius ~0.8–1.2 M. The mobile
 // tier already stood at 200 / 225. `?treeNear=<m>` below is the same-build A/B.
 const TREE_NEAR_IN = 200, TREE_NEAR_OUT = 230; // hysteresis band (full-detail radius)
+// 2026-10-13 (Ultra Low on a desktop; quality.ts lightWorld): the near-tree band ends at 130 / 155 m (the crowns past it
+// are the same tree's impostor, a little flatter), the tufts thin to half and hand off to the terrain meadow by 180 m,
+// the carpet to 60 %. Picture only: the trees, bushes and their cover are the same set on every preset.
+const LIGHT_WORLD_VEG = Object.freeze({
+  treeNearIn: 130, treeNearOut: 155, grassFadeEnd: 180, grassTaperEnd: 156, grassScale: 0.5, carpetScale: 0.6,
+});
 // Round 77b: the rim-forest understorey — the stands' shrub law scaled to the rim trees (1.35–2.2 against the
 // interior 0.95–1.7: the ratio of the two ranges' means) and bounded by the rim's own extent
 const RIM_UNDERSTOREY_SCALE = 1.4;
@@ -3956,6 +3962,7 @@ function* vegetationBuildSteps(
   deferFarGrass: boolean,
 ): Generator<BuildYield, VegetationRuntime, void> {
   const mobileTier = getDeviceTier() === 'mobile';
+  const lightDesk = !mobileTier && presetLightWorld(); // Ultra Low on a desktop (LIGHT_WORLD_VEG)
   // Round 77b (2026-09-26): the far tier bakes its impostor atlas from the near trees where the engine context
   // carries a renderer (production); the receipts (no renderer) and the mobile tier keep the opaque lobe tier.
   const bakeRenderer: TreeImpostorRenderer | null = mobileTier ? null : (engineCtx.renderer ?? null);
@@ -3964,16 +3971,16 @@ function* vegetationBuildSteps(
   // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
   // silhouettes. Both transitions already use continuous density/LOD fades,
   // so this removes sub-pixel noise without introducing a distance pop.
-  const grassFadeEnd = mobileTier ? 224 : GRASS_FADE_END;
-  const grassTaperEnd = mobileTier ? 196 : 280;
-  const treeNearIn = mobileTier ? 200 : (() => {
+  const grassFadeEnd = mobileTier ? 224 : lightDesk ? LIGHT_WORLD_VEG.grassFadeEnd : GRASS_FADE_END;
+  const grassTaperEnd = mobileTier ? 196 : lightDesk ? LIGHT_WORLD_VEG.grassTaperEnd : 280;
+  const treeNearIn = mobileTier ? 200 : lightDesk ? LIGHT_WORLD_VEG.treeNearIn : (() => {
     // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
     // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is
     // TREE_NEAR_IN / TREE_NEAR_OUT; nothing else reads the query (the receipts run without a location).
     const q = typeof location !== 'undefined' ? Number((/[?&]treeNear=(\d+)(&|$)/.exec(location.search ?? '') ?? [])[1]) : NaN;
     return q >= 60 && q <= 400 ? q : TREE_NEAR_IN;
   })();
-  const treeNearOut = mobileTier ? 225 : treeNearIn + (TREE_NEAR_OUT - TREE_NEAR_IN);
+  const treeNearOut = mobileTier ? 225 : lightDesk ? LIGHT_WORLD_VEG.treeNearOut : treeNearIn + (TREE_NEAR_OUT - TREE_NEAR_IN);
   const veg: VegetationConfig = {
     species: ['pine', 'oak'],
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
@@ -3995,9 +4002,9 @@ function* vegetationBuildSteps(
   // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
   applySnowGrassLaw(veg, cfg?.id ?? null);
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
-    * (mobileTier ? 0.62 : 1));
+    * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
-    * (mobileTier ? 0.72 : 1));
+    * (mobileTier ? 0.72 : lightDesk ? LIGHT_WORLD_VEG.carpetScale : 1));
 
   const uWindTime = { value: 0 };
   // p2 trees lane (2026-10-02): the leaf transmission's strength (canopyLighting.ts), driven each frame from the

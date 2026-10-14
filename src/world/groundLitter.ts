@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, presetLightWorld } from '../engine/quality.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 
 // environment density pass (2026-09-12): the ground litter tier. The maps read
@@ -282,6 +282,8 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   const seed = options.seed ?? 2005;
   const blocked = options.blocked ?? null;
   const cellsPerUpdate = Math.max(1, options.cellsPerUpdate ?? 6);
+  // the phone tier's sparser scatter, and Ultra Low's light world build (2026-10-13), read once per battlefield
+  const lightLitter = getDeviceTier() === 'mobile' || presetLightWorld();
   const group = new THREE.Group();
   group.name = 'ground-litter';
   const geometries = makeGeometries();
@@ -319,7 +321,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   function buildCell(ix: number, iz: number): [Float32Array, Float32Array, Float32Array] {
     const rng = mulberry32(cellSeed(seed, ix, iz));
     for (const list of scratch) list.length = 0;
-    const perCell = getDeviceTier() === 'mobile' ? GROUND_LITTER.mobileCandidatesPerCell : GROUND_LITTER.candidatesPerCell;
+    const perCell = lightLitter ? GROUND_LITTER.mobileCandidatesPerCell : GROUND_LITTER.candidatesPerCell;
     const candidates = Math.round(perCell * Math.min(cfg.density, 2));
     const mixTotal = cfg.stones + cfg.clods + cfg.splinters;
     for (let i = 0; i < candidates; i++) {
