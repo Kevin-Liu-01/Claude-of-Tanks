@@ -533,6 +533,8 @@ function legEndInside(record: NavigationObstacle, x: number, z: number, margin: 
   const shape = record.shape2;
   if (!shape || shape.kind !== 'compound') return collisionFootprintContainsPoint(record as CollisionRecord, x, z, margin);
   for (let k = 0; k < shape.parts.length; k++) {
+    // (a raised deck — a roof — is a floor, never a footprint: world/collision.ts collisionPartIsDeck)
+    if (collisionPartIsDeck(record as CollisionRecord, shape.parts[k])) continue;
     if (collisionFootprintContainsPoint(legProbe(record, shape.parts[k]), x, z, margin)) return true;
   }
   return false;
