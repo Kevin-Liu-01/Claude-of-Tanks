@@ -1346,7 +1346,9 @@ ${GLSL_HULL_EDGES}
         // (round 5) a card inside the lane along the ground run stands in the running gear's own shade
         if ( sunVis < 0.0 ) gearW = max( gearW, smoothstep( 0.0, 0.02, laneD ) * smoothstep( b3.z - 0.05, b3.z + 0.05, q.z )
           * ( 1.0 - smoothstep( b3.w - 0.05, b3.w + 0.05, q.z ) ) );
-        if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = uVehGroundR5.y > 0.5 ? cotNormalAtGuarded( uv, P, normalize( m1.xyz ), dist ) : cotNormalAt( uv, P ); }
+        // (the r5 port's cost cut) one inlined normal: off the guard's lever its break lies out of reach (the best pair, as
+        // cotNormalAt)
+        if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAtGuarded( uv, P, normalize( m1.xyz ), uVehGroundR5.y > 0.5 ? dist : 1e6 ); }
         vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
         // the solid clipped at the receiver's horizon (exact for a level receiver; a wall facing the hull keeps it whole)
         float c = q.y - ${f(GROUND_AO_CLIP_SLACK_M)} * ( 1.0 - n.y );
@@ -1498,9 +1500,13 @@ ${GLSL_HULL_EDGES}
     // (round 5) the contact blend (GROUND_AO_BLEND_H_M): a vehicle pixel near a run's lower edge, in its lane along the ground
     // run, takes a share of the colour of the ground just beyond the run's outer face at its foot — the pre-pass scene there,
     // shaded as this block shades that ground — so the track's foot reads set into the turf or packed with snow; a sample that
-    // lands on a vehicle pixel (the hull, a neighbour) is never borrowed
-    vec3 cotVehicleContactBlend( vec3 rgb, vec3 P ) {
-      if ( uVehGroundR6.w <= 0.0 ) return rgb;
+    // lands on a vehicle pixel (the hull, a neighbour) is never borrowed. (2026-10-14, the r5 port's cost cut) The sample only:
+    // its weight (0: none), its screen point (gs: uv, distance, alpha), world point and colour — the aerial pass shades it with
+    // the one cotVehicleGroundShadeRgb call it makes for the ground's own pixels, so the block's largest function is compiled
+    // into the pass once (round 5 inlined a second copy here)
+    float cotVehicleContactSample( vec3 P, out vec4 gs, out vec3 gP, out vec3 gRgb ) {
+      gs = vec4( 0.0 ); gP = P; gRgb = vec3( 0.0 );
+      if ( uVehGroundR6.w <= 0.0 ) return 0.0;
       // on snow: packed snow round the foot — an uneven opaque line, its height along the ground (snowBlendNoise, world space);
       // (contact r2) the snow is the borrowed ground's own cover, so the reach is the snow's tallest until it is read
       float sn = clamp( 0.5 + 0.22 * sin( 1.9 * P.z + 0.7 * P.x + 1.7 ) + 0.16 * sin( 4.7 * P.z - 1.3 * P.x + 0.4 )
@@ -1536,9 +1542,9 @@ ${GLSL_HULL_EDGES}
           * ( 1.0 - smoothstep( b3.w - 0.05, b3.w + 0.1, q.z ) ) * mix( ${f(GROUND_AO_BLEND_MAX)}, ${f(GROUND_AO_BLEND_MAX_SNOW)}, snow ) * uVehGroundR6.w;
         if ( w <= 0.003 ) continue;
         float gd = cotDepthToDist( texture2D( tDepth, guv ).x );
-        vec3 gc = g.rgb * cotVehicleGroundShadeRgb( guv, cotWorldAtDepth( guv, gd ), g.a, gd );
-        return mix( rgb, gc, w );
+        gs = vec4( guv, gd, g.a ); gP = cotWorldAtDepth( guv, gd ); gRgb = g.rgb;
+        return w;
       }
-      return rgb;
+      return 0.0;
     }
 `;
