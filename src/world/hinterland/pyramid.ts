@@ -80,9 +80,11 @@ export function createCachedGround(ground: HinterlandGround, { gridM = 24, halfM
  * its own inside the finer level's edge) and outside the square; the rest is filled from the finer level.
  */
 export function bakeHinterlandPyramid(
-  field: Pick<HinterlandField, 'heightAt'>, levels: readonly HinterlandLevelSpec[] = HINTERLAND_LEVELS_DESKTOP,
-  { marginTexels = 3, ground = null as HinterlandGround | null } = {},
+  field: Pick<HinterlandField, 'heightAt'> & { displayHeightAt?: HinterlandField['displayHeightAt'] },
+  levels: readonly HinterlandLevelSpec[] = HINTERLAND_LEVELS_DESKTOP,
+  { marginTexels = 3, ground = null as HinterlandGround | null, display = false } = {},
 ): HinterlandPyramid {
+  const sample = display && field.displayHeightAt ? field.displayHeightAt.bind(field) : field.heightAt.bind(field);
   const started = performance.now();
   const out: HinterlandLevel[] = [];
   let evaluated = 0;
@@ -104,7 +106,7 @@ export function bakeHinterlandPyramid(
           heights[k] = ground && Math.max(Math.abs(x), Math.abs(z)) > SQUARE_M - INTERIOR_BAND_M ? ground.getHeightAt(x, z) : 0;
           continue;
         }
-        heights[k] = field.heightAt(x, z, texelM);
+        heights[k] = sample(x, z, texelM);
         evaluated++;
       }
     }

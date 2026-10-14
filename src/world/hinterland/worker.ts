@@ -9,6 +9,7 @@ import { buildHinterland } from './pipeline.ts';
 import { withSelectedHinterland } from './select.ts';
 import { resolveHinterlandSpec } from './spec.ts';
 import { packHinterlandPlan, type HinterlandWire } from './wire.ts';
+import { bakeHinterlandSurface } from './surface.ts';
 
 export interface HinterlandRequest {
   mapId: string;
@@ -31,7 +32,11 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   if (!spec) throw new Error(`hinterland: ${request.mapId} has no block for ${request.search || 'production'}`);
   const field = createHeightField(request.fieldSeed, cfg);
   const build = buildHinterland(spec, 1337, field, { tier: request.tier });
-  return packHinterlandPlan(build);
+  const t0 = performance.now();
+  const surface = bakeHinterlandSurface(build.field, build.pyramid.levels);
+  build.ms.surface = performance.now() - t0;
+  build.ms.total += build.ms.surface;
+  return packHinterlandPlan(build, surface);
 }
 
 declare const self: {

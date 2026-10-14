@@ -145,6 +145,8 @@ export interface HinterlandField {
   /** Every term: the height the mesh draws (m, planar; curvature in the shader). `texelM`: the bake's sample size
    * (far terms leave out octaves finer than it; 0 or absent: full detail). */
   heightAt(x: number, z: number, texelM?: number): number;
+  /** The height the land mesh draws: the ground, or over open water its surface (the sea, a lake, a flood stand level). */
+  displayHeightAt(x: number, z: number, texelM?: number): number;
   waterAt(x: number, z: number, out: HinterlandWaterSample): HinterlandWaterSample;
   coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number): HinterlandCover;
   geologyAt(x: number, z: number, out: HinterlandGeologySample, slopeDeg?: number, height?: number): HinterlandGeologySample;
@@ -586,6 +588,14 @@ export function createHinterlandField(
     const h = waterInto(x, z, baseNoWater(x, z, texelM), null);
     return features === EMPTY_FEATURES ? h : levelInto(x, z, h);
   }
+  const displayWater = createHinterlandWater();
+  function displayHeightAt(x: number, z: number, texelM = 0): number {
+    if (edgeOutOf(x, z) <= 0) return ground.getHeightAt(x, z);
+    let h = waterInto(x, z, baseNoWater(x, z, texelM), displayWater);
+    if (features !== EMPTY_FEATURES) h = levelInto(x, z, h);
+    // (the water's surface where it is open: its edge follows the shore's own slope as the wet weight rises)
+    return displayWater.wet > 0 && displayWater.level > h ? h + (displayWater.level - h) * Math.min(1, displayWater.wet * 1.5) : h;
+  }
   function waterAt(x: number, z: number, out: HinterlandWaterSample): HinterlandWaterSample {
     waterInto(x, z, baseNoWater(x, z), out);
     return out;
@@ -710,7 +720,7 @@ export function createHinterlandField(
   }
 
   const field: HinterlandField = {
-    spec, seed, datumAt, baseHeightAt, heightAt, waterAt, coverAt, geologyAt, features, landUse,
+    spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, features, landUse,
     withFeatures: (next) => createHinterlandField(spec, seed, ground, { ...options, features: next }),
   };
   return field;

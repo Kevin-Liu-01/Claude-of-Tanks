@@ -100,7 +100,17 @@ for (let i = 0; i < 64; i++) {
   const L = levelFor(a.pyramid, q.x, q.z);
   const p = { x: Math.round((q.x + L.halfM) / L.texelM) * L.texelM - L.halfM, z: Math.round((q.z + L.halfM) / L.texelM) * L.texelM - L.halfM };
   if (Math.max(Math.abs(p.x), Math.abs(p.z)) < 520) continue; // (inside the square the bake keeps only an edge band)
-  worst = Math.max(worst, Math.abs(samplePyramid(a.pyramid, p.x, p.z) - field.heightAt(p.x, p.z, L.texelM)));
+  worst = Math.max(worst, Math.abs(samplePyramid(a.pyramid, p.x, p.z) - field.displayHeightAt(p.x, p.z, L.texelM)));
 }
 assert.ok(worst < 0.5, `pyramid against field: ${worst.toFixed(3)} m`);
+// the drawn land stands at the water's surface over open water (a level sheet), and at the ground beside it
+let open = 0, offLevel = 0;
+for (let i = 0; i < 60; i++) {
+  const p = hinterlandPoint({ azDeg: 172 + (i % 16), distM: 4200 + 120 * Math.floor(i / 16) });
+  field.waterAt(p.x, p.z, water);
+  if (water.wet < 0.99) continue;
+  open++; offLevel = Math.max(offLevel, Math.abs(field.displayHeightAt(p.x, p.z) - water.level));
+  assert.ok(field.heightAt(p.x, p.z) < water.level, 'the floor lies under the water');
+}
+assert.ok(open >= 20 && offLevel < 1e-6, `the Westerschelde draws level (${open} open, ${offLevel.toFixed(4)} m off)`);
 console.log(`hinterlandPlan.selftest: ok — ${plan.settlements.length} settlements (${near.length} near), ${plan.buildings.length} buildings, ${plan.verticals.length} verticals, ${plan.roads.length} roads; build ${Math.round(a.ms.total)} ms`);

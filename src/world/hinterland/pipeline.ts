@@ -23,7 +23,7 @@ export interface HinterlandBuild {
   plan: HinterlandPlan;
   pyramid: HinterlandPyramid;
   /** Milliseconds per stage (field, planning grid, plan, bake). */
-  ms: { field: number; planning: number; plan: number; bake: number; total: number };
+  ms: { field: number; planning: number; plan: number; bake: number; total: number; surface?: number };
 }
 
 /** The relief terms the field adds (term 4, the landforms; term 5, the far forms). */
@@ -52,7 +52,8 @@ export function buildHinterland(
   const plan = planHinterlandOutland(spec, seed, planInputsFrom(base, (x, z) => samplePyramid(planning, x, z), exits));
   const field = base.withFeatures(plan.features);
   const t3 = performance.now();
-  const pyramid = bakeHinterlandPyramid(field, levels ?? (tier === 'mobile' ? HINTERLAND_LEVELS_MOBILE : HINTERLAND_LEVELS_DESKTOP), { ground: cached });
+  // (the drawn heights: the water's surface stands level over the sea, the lakes and the flood)
+  const pyramid = bakeHinterlandPyramid(field, levels ?? (tier === 'mobile' ? HINTERLAND_LEVELS_MOBILE : HINTERLAND_LEVELS_DESKTOP), { ground: cached, display: true });
   const t4 = performance.now();
   return { spec, field, plan, pyramid, ms: { field: t1 - t0, planning: t2 - t1, plan: t3 - t2, bake: t4 - t3, total: t4 - t0 } };
 }

@@ -83,6 +83,7 @@ assert.ok(scope.length < wide.length * 1.6, `the scope's nodes stay in budget ($
 // ---- the worker's answer in process (the Polders lab draft over its own ground), its atlas and its scene object
 const { buildHinterlandWire } = await import('./worker.ts');
 const { wirePyramid, wireTrees, copyHinterlandWire } = await import('./wire.ts');
+const { HL_SURFACE_FLAG } = await import('./surface.ts');
 const { packHinterlandHeights } = await import('./mesh.ts');
 const { createHinterlandObject } = await import('./install.ts');
 const { hinterlandSupplyFor, supplyHinterland, withdrawHinterland } = await import('../hinterlandHook.ts');
@@ -100,6 +101,13 @@ for (let li = 0; li < pyramid.levels.length; li++) {
     assert.equal(data[(blk.y0 + j) * atlas.width + blk.x0 + i], L.heights[j * L.n + i], `atlas block ${li} holds its level`);
   }
 }
+// the surface atlas: one level per height level, the square left unbaked, the polders' water, woods and settlements
+assert.equal(wire.surface?.length, wire.levels.length, 'a surface level for each height level');
+const flagSeen = { water: 0, sea: 0, woods: 0, settlement: 0, road: 0 };
+for (const S of wire.surface) for (let k = 3; k < S.rgba.length; k += 4) for (const name of Object.keys(flagSeen)) if (S.rgba[k] & HL_SURFACE_FLAG[name]) flagSeen[name]++;
+for (const [name, count] of Object.entries(flagSeen)) assert.ok(count > 0, `the polders' surface holds ${name} (${count})`);
+const S0 = wire.surface[0], mid = (S0.n >> 1) * (S0.n + 1) * 4;
+assert.deepEqual([...S0.rgba.subarray(mid, mid + 4)], [0, 0, 0, 0], 'inside the square nothing is baked');
 const object = createHinterlandObject(copy, {});
 const land = object.getObjectByName('hinterland-land');
 assert.ok(land && land.isMesh && land.geometry.isInstancedBufferGeometry && land.frustumCulled === false, 'one instanced land draw');

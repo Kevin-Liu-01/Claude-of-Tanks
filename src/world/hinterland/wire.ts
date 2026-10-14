@@ -4,6 +4,7 @@
 import type { HinterlandBuild } from './pipeline.ts';
 import type { HinterlandBuilding, HinterlandRoad, HinterlandSettlement, HinterlandTree, HinterlandVertical } from './outland.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
+import type { HinterlandSurfaceLevel } from './surface.ts';
 
 export const HINTERLAND_TREE_STRIDE = 8; // x, z, height, crown, tone, leaf, species index, form index
 export const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
@@ -17,8 +18,8 @@ export interface HinterlandWire {
   fogDensity: number;
   canopyM: number;
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
-  /** Per level a class atlas (field.ts HL_COVER per sample) and its 8-bit detail (crop, woods), when baked. */
-  surface: { classes: Uint8Array; detail: Uint8Array }[] | null;
+  /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte), when baked. */
+  surface: HinterlandSurfaceLevel[] | null;
   trees: Float32Array;
   species: string[];
   buildings: Float32Array;
@@ -54,7 +55,7 @@ export function packHinterlandPlan(build: HinterlandBuild, surface: HinterlandWi
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,
   };
   const transfer = [trees.buffer as ArrayBuffer, buildings.buffer as ArrayBuffer, ...levels.map((l) => l.heights.buffer as ArrayBuffer)];
-  if (surface) for (const s of surface) transfer.push(s.classes.buffer as ArrayBuffer, s.detail.buffer as ArrayBuffer);
+  if (surface) for (const s of surface) transfer.push(s.rgba.buffer as ArrayBuffer);
   return { wire, transfer };
 }
 
@@ -87,7 +88,7 @@ export function copyHinterlandWire(wire: HinterlandWire): HinterlandWire {
   return {
     ...wire,
     levels: wire.levels.map((l) => ({ ...l, heights: l.heights.slice() })),
-    surface: wire.surface ? wire.surface.map((s) => ({ classes: s.classes.slice(), detail: s.detail.slice() })) : null,
+    surface: wire.surface ? wire.surface.map((s) => ({ ...s, rgba: s.rgba.slice() })) : null,
     trees: wire.trees.slice(), buildings: wire.buildings.slice(),
   };
 }

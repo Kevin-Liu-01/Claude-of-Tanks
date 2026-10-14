@@ -85,7 +85,7 @@ export interface HinterlandMeshOptions {
   hazeSigma?: number;
   hazeColor?: THREE.Color;
   /** The land material's fragment patch (material.ts); absent: the debug albedo by slope and height. */
-  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string } | null;
+  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string } | null;
 }
 
 export interface HinterlandMeshHandle {
@@ -186,6 +186,7 @@ ${surface?.fragmentPars ?? ''}`)
     vec3 hlGrass = vec3( 0.10, 0.16, 0.05 ), hlRock = vec3( 0.22, 0.21, 0.19 );
     diffuseColor.rgb = mix( hlGrass, hlRock, smoothstep( 0.18, 0.4, abs( hlSlope ) ) );
   }`}`)
+      .replace('#include <roughnessmap_fragment>', surface?.roughness ?? '#include <roughnessmap_fragment>')
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   // the haze for the distance the compression took away (the post pass hazes by the drawn depth)
   {
