@@ -61,6 +61,8 @@ export interface TankMaskSpec {
     gunBarrel?: {
       lengthM?: number;
     };
+    /** A casemate (Strv 103): rig_turret stays empty by design, the gun is fused into the hull (profiles/casemate.ts). */
+    turretless?: boolean;
   };
 }
 
@@ -844,6 +846,14 @@ function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
   return { canvas: big, bounds };
 }
 
+/** A transparent layer canvas the size of every cached mask layer (a turretless build's turret layer). */
+function emptyMaskCanvas(): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = MASK_SIZE;
+  output.height = MASK_SIZE;
+  return output;
+}
+
 function downscaleMask(source: HTMLCanvasElement): HTMLCanvasElement {
   const output = document.createElement('canvas');
   output.width = MASK_SIZE;
@@ -988,7 +998,13 @@ async function renderMaskEntry(
   const hull = completedMaskPass(await hullPass.completion);
   const turret = completedMaskPass(await turretPass.completion);
   sourceLifetime?.assertAlive();
-  if (!hull || !turret) return null;
+  // (2026-10-13, the MP stream) a turretless build whose rig_turret holds nothing (the Strv 103 and 103A casemates: the
+  // gun is fused into the hull, profiles/casemate.ts) renders an empty turret pass. The entry used to come back null and
+  // the HUD damage panel ran without a mask for those two, retrying and failing every match; such a build now gets an
+  // empty turret layer. A turretless build with turret content (UDES 03, JPz E-100) keeps its rendered layer, and an
+  // empty pass on a turreted build still fails as before.
+  const turretless = !!(spec.armor && spec.armor.turretless);
+  if (!hull || (!turret && !turretless)) return null;
 
   // plan-space layout facts for the panel (meters)
   const hullCx = (hull.minX + hull.maxX) / 2;
@@ -1002,12 +1018,17 @@ async function renderMaskEntry(
       radiusM: Math.hypot((hull.maxX - hull.minX) / 2, (hull.maxZ - hull.minZ) / 2),
       widthM: hull.maxX - hull.minX, lengthM: hull.maxZ - hull.minZ,
     },
-    turret: {
+    turret: turret ? {
       canvas: turret.canvas, camX: tp[0], camZ: tp[2], halfM: turretHalf,
       // swept radius about the pivot (canvas center)
       radiusM: Math.max(
         Math.hypot(turret.minX - tp[0], turret.minZ - tp[2]),
         Math.hypot(turret.maxX - tp[0], turret.maxZ - tp[2])),
+    } : {
+      // turretless: nothing turns; the radius runs from the pivot to the hull's (fused gun's) front, so a damaged gun's
+      // state line on the panel still runs the length of the real barrel
+      canvas: emptyMaskCanvas(), camX: tp[0], camZ: tp[2], halfM: turretHalf,
+      radiusM: Math.max(0, hull.maxZ - tp[2]),
     },
     pivot: [tp[0], tp[2]],
     pxPerM: MASK_SIZE / (hullHalf * 2), // hull layer scale (turret differs)

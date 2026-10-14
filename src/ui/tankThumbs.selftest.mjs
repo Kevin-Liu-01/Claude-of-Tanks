@@ -259,6 +259,7 @@ function fakeRenderer(sources) {
   const compiledPrograms = [];
   const bindings = [];
   const readbackFailures = new Set();
+  const emptyLayers = new Set(); // `${id}:${layer}` renders no coverage (an empty rig group)
   const properties = new WeakMap();
   let targetRestoreFailure = null;
   let targetRestoreLayer = null;
@@ -304,7 +305,7 @@ function fakeRenderer(sources) {
       pack.frame = { ...currentFrame };
       const hull = currentFrame.layer === 'hull';
       const [x0, x1, y0, y1, coverage] = hull ? [80, 119, 20, 59, 120] : [160, 179, 250, 269, 200];
-      for (let row = y0; row <= y1; row++) for (let column = x0; column <= x1; column++) {
+      if (!emptyLayers.has(`${currentFrame.id}:${currentFrame.layer}`)) for (let row = y0; row <= y1; row++) for (let column = x0; column <= x1; column++) {
         pack.data[(row * width + column) * 4 + 3] = coverage;
       }
       pack.data[3] = 8; // Sub-threshold coverage must not enlarge the mask.
@@ -411,7 +412,7 @@ function fakeRenderer(sources) {
     },
     readRenderTargetPixels() { assert.fail('the mask pipeline must not perform a blocking readback'); },
   });
-  return { renderer, gl, events, buffers, syncs, destinations, compileGates, compileFailures, readbackFailures,
+  return { renderer, emptyLayers, gl, events, buffers, syncs, destinations, compileGates, compileFailures, readbackFailures,
     reflectionFailures, variantCounts, reusePrograms, compileHooks, programHooks, compiledPrograms, bindings,
     state: () => ({ target, face, mip, color: color.getHex(), alpha, pack }),
     initialPack,
@@ -1124,6 +1125,31 @@ try {
       material.dispose(); depth.dispose();
     }
   }
+  // (2026-10-13, the MP stream) a turretless casemate (Strv 103, 103A) keeps rig_turret empty by design: its turret pass
+  // renders nothing. The entry used to come back null and the damage panel ran without a mask. Now an empty turret
+  // layer, the radius from the pivot to the hull's (fused gun's) front; a turretless build with turret content (UDES 03,
+  // JPz E-100) keeps its rendered layer; an empty pass on a turreted build still fails.
+  {
+    const turretless = (id) => ({ ...spec(id), armor: { ...spec(id).armor, turretless: true } });
+    const casemate = addSource('mask-test-casemate');
+    fake.emptyLayers.add('mask-test-casemate:turret');
+    const entry = await settle(prepareTopDownMasks(turretless('mask-test-casemate'), casemate.visual));
+    assert.ok(entry?.ready, 'a turretless build with an empty turret group gets its mask');
+    assert.deepEqual([entry.turret.canvas.width, entry.turret.canvas.height], [192, 192], 'its turret layer is a layer-sized canvas');
+    assert.equal(entry.turret.canvas.context.image, null, 'and empty: nothing turns on a casemate');
+    assert.equal(entry.turret.canvas.context.draws.length, 0);
+    assert(Math.abs(entry.turret.radiusM - Math.max(0, entry.hull.cz + entry.hull.lengthM / 2 - 0.25)) < 1e-12,
+      'its radius runs from the pivot to the hull mask\'s front (the fused gun), for the damaged-gun line');
+    // a turretless build with turret content keeps the rendered layer
+    const superstructure = addSource('mask-test-superstructure');
+    const kept = await settle(prepareTopDownMasks(turretless('mask-test-superstructure'), superstructure.visual));
+    assert.equal(kept.turret.canvas.context.draws.length, 1, 'UDES 03 / JPz E-100: the rendered turret layer stays');
+    // an empty turret pass on a turreted build still fails, as before
+    const broken = addSource('mask-test-empty-turret');
+    fake.emptyLayers.add('mask-test-empty-turret:turret');
+    assert.equal(await settle(prepareTopDownMasks(spec('mask-test-empty-turret'), broken.visual)), null,
+      'a turreted build without turret pixels is still no mask');
+  }
   assert.equal(timers.size, 0, 'all scheduled tasks finish without detached polling');
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(unhandled, [], 'restoration/readback failures leave no unhandled promise rejection');
@@ -1149,4 +1175,4 @@ try {
   }
 }
 
-console.log('tankThumbs.selftest: real mask exports preserve queue, cache, pixel layout, renderer and source ownership');
+console.log('tankThumbs.selftest: real mask exports preserve queue, cache, pixel layout, renderer and source ownership; a turretless build with an empty turret group gets an empty turret layer, one with turret content keeps it');
