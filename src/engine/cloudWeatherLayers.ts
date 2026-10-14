@@ -91,7 +91,7 @@ export function createCloudWeatherUniforms(): Record<string, THREE.IUniform> {
     uContrailA: { value: Array.from({ length: CLOUD_CONTRAIL_MAX }, () => new THREE.Vector4()) },
     uContrailB: { value: Array.from({ length: CLOUD_CONTRAIL_MAX }, () => new THREE.Vector4()) },
     uContrails: { value: 0 }, uUpperDrift: { value: new THREE.Vector2() },
-    uRain: { value: new THREE.Vector4() }, uFogBank: { value: new THREE.Vector4() },
+    uRain: { value: new THREE.Vector4() }, uRainCore: { value: 0 }, uFogBank: { value: new THREE.Vector4() },
   };
 }
 

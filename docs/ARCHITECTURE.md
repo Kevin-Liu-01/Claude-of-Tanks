@@ -520,6 +520,27 @@ The owner's cloud bar (2026-10-13): Verdant's fair-weather cumulus is the refere
 ("no more of the cloud type depicted in fjord") is retired from the regime vocabulary, Fjord, Polders and Copper Mesa
 carry fair-weather cumulus tuned to their place, and `engine/cloudsBan.selftest.mjs` keeps the deck out of every map,
 time of day, weather variant, Studio plan, Garage sky and phone deck.
+Clouds 2.0 (2026-10-06, after the clouds package of Takram's three-geospatial; MIT, the port recorded in
+docs/ATTRIBUTION.md): the slab is a layered medium. `engine/cloudLayers.ts` turns the map's resolved preset into up to
+four altitude lanes (the regime's main layer and the layer aloft the meteorology puts over it), each a coverage of the
+local weather (`cloudNoise.ts` `bakeCloudLocalWeather`: cumulus fields with clearings, the elements aloft, the decks'
+stratiform field and cells, equalised, on a 48 km tile) shaped by a height function (a dome over a flat base, a deck
+flat on both faces, an anvil) into a shell that a 3.2 km Perlin–Worley shape volume and a detail volume
+(`cloudVolumeNoise.ts`, baked on the GPU at load) carve under a density profile (`cloudShaders.ts`). The shells curve
+with a parabolic Earth so the field converges at the horizon; the march (36 km on High) strides by the footprint and
+refines on entering a cloud. Each sample's optical depth to the sun is a short secondary march plus a Beer shadow map —
+two toroidal, world-anchored cascades (12 km about the camera and 40 km about the camera's point at the stack's
+middle height carried down the sun) of the same medium marched along the sun by lanes and altitude slices, a band a
+frame, read as the four texels' depths blended as transmittances —
+under the multiple-scattering octaves, a dual-lobe phase, the powder term, the sky and ground light and a deck's
+diffusion (by the vertical depth over the point — in a deck, the column over it in its own cell, so a thick core is dark
+beside a thin seam); the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's
+variance. The clouds' sun is the light model's colour (`scene.userData.lightModel`) times the air between the ground and
+the cloud, and under a closing deck the ground light the bases see is what the deck passes down (`cloudGroundLight`). The
+near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
+its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model. The dome composite,
+the history the lens flare / sun shafts / horizon panorama read and the sky beyond the medium (rain, fog bank, cirrus,
+contrails, lightning) are unchanged; the far band is gone (the curved shells carry the field to the horizon).
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column

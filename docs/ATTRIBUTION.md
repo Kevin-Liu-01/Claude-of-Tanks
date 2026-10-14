@@ -35,6 +35,7 @@ served locally from `public/`, no CDN or network fetches in game code.
 | Software | Author | Source | License | Files |
 |---|---|---|---|---|
 | FidelityFX Super Resolution 1 spatial upscaler (EASU + RCAS), adapted to Three.js `ShaderMaterial`/`EffectComposer` conventions. | Advanced Micro Devices, Inc. | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT | `src/engine/post.ts` (copyright and MIT notice retained inline) |
+| Volumetric cloud techniques ported from the clouds package of three-geospatial (2026-10-06, Clouds 2.0): the shape-altering function, the weather and media sampling (the shape and detail remaps, the density profile), the Beer shadow map's accumulation and lookup with its optical-depth tail, the multiple-scattering octaves, the powder term and the variance clipping, adapted to this project's layer uniforms, first-party weather and noise, a parabolic Earth and its own march, reprojection and shade. The noise volumes are first-party (`cloudVolumeNoise.ts`). | Shota Matsuda (Takram) | https://github.com/takram-design-engineering/three-geospatial/tree/main/packages/clouds | MIT | `src/engine/cloudShaders.ts` (copyright and MIT notice retained inline; the ported functions are marked `[ported]`) |
 
 ## Generated runtime declarations
 

@@ -947,6 +947,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
     // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
     'src/engine/cloudsBan.selftest.mjs',
+    // 2026-10-06 (Clouds 2.0): every map's preset as the layered medium's lanes and their packing
+    'src/engine/cloudLayers.selftest.mjs',
+    'src/engine/cloudBeerShadow.selftest.mjs',
+    'src/engine/cloudDeckCover.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',
@@ -957,8 +961,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
-    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
-    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
     // 2026-10-04 (the sun-bloom lane): the sun's glow a gradient toward a visible disc — only the disc HDR, the glow under the

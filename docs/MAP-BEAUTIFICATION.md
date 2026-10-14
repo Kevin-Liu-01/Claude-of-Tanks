@@ -7825,6 +7825,175 @@ shadow takes a little too much bounce (the CSM cannot tell the two shadows apart
   ACCEPT; the census identical (4,326,639 triangles, 414 draws). The first hold (GPU p25 +0.42 ± 1.04 ms, CPU p50
   −0.09 ± 0.17 ms; 4,664,349 triangles, 495 draws with the hulls shown) ran niced and is void.
 
+### 2026-10-06 — Clouds 2.0: a layered medium under a Beer shadow map (the clouds lane)
+
+**Why.** The owner wanted the clouds "improved a lot more", after takram three-geospatial's clouds (MIT). The critics'
+standing complaints on the old layer: flat hard-edged cartoon puffs at random heights, stamped repeated sprites, evenly
+spaced tufts at one altitude, a soft blurred mass beside crisp cumulus, box-cut edges, an overcast as one flat grey card.
+Branch `visual/clouds2`.
+
+**What it is.** `engine/cloudLayers.ts` resolves a map's preset into up to four altitude lanes; `cloudShaders.ts` holds
+the medium (a coverage of the 48 km local weather under a height profile, carved by a GPU-baked 3.2 km Perlin–Worley
+volume and a detail volume), the trace, the resolve and the Beer shadow map; `volumetricClouds.ts` drives them.
+- Cumulus stand on flat bases (full width a few percent over the condensation level, narrowing as 1 − h^(1/bias)) and
+  are carved into their billows (a low core under a long ramp: the shape volume makes the cloud, not just its rim).
+- Decks carry an optical depth of 10–25 (a closing deck 25), cells that always break the column and cores hanging under
+  the base; their coverage ramp and base wisps are soft (no pinhole stipple).
+- A front's towers are the cumuliform field gathered by the large-scale field as an envelope (bands of towers, never one
+  blob the size of the field's features), domed, softly carved, their footprint drifting with height; the elements aloft
+  read the large-scale field (patches of kilometres, not a confetti against the sun). A fair-weather sky carries no
+  layer aloft at all.
+- The sun reaches each sample through a short march plus the Beer shadow map: two toroidal, world-anchored cascades (12 km
+  about the camera; 40 km about its point at the stack's middle height carried down the sun) marched by lanes and
+  altitude slices, each texel's entry bisected, read as the four texels' depths blended as transmittances.
+- The ground's cloud shade is the near cascade's whole column along the sun (the contract unchanged), so a sun the trace
+  sees through a gap lights the ground under it (cloudBeerShadow.selftest: the skies lane's Frosthollow case).
+
+**Lessons.**
+- three's `readRenderTargetPixelsAsync` keeps its pack buffer bound across its await: on the hardware the atmosphere's
+  summary read fell into that window and the whole sky dropped to its Preetham fallback with the baked decks (the first
+  GPU pair was void for it). Reads go through `rgba8Readback.ts`.
+- A cascade's front depth filtered bilinearly draws facets (a 250 m far texel) and streaks along the sun (a flank beside a
+  column through the top); blend the texels' depths as transmittances, centre the far window where the cloud points'
+  projections fall, and bisect the entry.
+- Takram's semicircle profile draws a cumulus from below as a mushroom on a stem; a core of 0.56 under a ramp of 1 drew
+  smooth loaves under a bubbly fringe.
+- The SwiftShader sky-rig harness (`.qa-dev/harness`) judges structure, never tone or cost (no grade, no game post; its
+  frame times swing with the machine's load).
+
+**Measured.** SwiftShader sky rig, sky-w under a 40-frame pan at 0.12° a frame (the lab's cloud flicker meter): one-frame
+blips 0.0003 against the old layer's 0.00071 on Verdant and 0.00017 against 0.00039 on Frosthollow, no pixel of the sky
+changed by a one-pixel shift. The GPU pair (before / after frames, the hardware meters) and the rule-v3 cost holds are
+queued at the lane's stamp.
+
+### 2026-10-07 — Clouds 2.0 rounds 2–6: the scene's sun, decks lit by their own column (the clouds lane)
+
+**Why.** Wave 198 (pair B) passed the cumulus and the towers (sky +0.47, Monsoon's front the standout); wave 200 (pair
+A2) failed the decks ("airbrushed pillows and lens-shaped slabs", "flat painted sheets with scalloped, hard-edged cutout
+silhouettes"), and the coordinator's round asked for deck cells with internal structure, broken decks in bands with blue
+between, an overcast with structure, the clouds lit by the scene's own sun both ways and storms shading the field.
+
+**What changed.**
+- The clouds' sun is the light model's colour (the ground's transmittance tint, greyed by the overcast) times the air
+  between the ground and the cloud: warm or grey with the scene, never beige clouds over neutrally lit snow.
+- A broken deck is stratocumulus — lumpy domed cells on a flat base, carved whole by the shape and detail volumes, in
+  bands along the wind (1.7:1) with sky between — and reads the cumuliform field's six-kilometre cells as at least half
+  its weather (on the stratiform field's sixteen-kilometre features alone the fjord's sky-w view was clear to the
+  horizon). A closing deck stays the dense sheet.
+- A deck is lit by its own column: the diffusion and the sky through the deck take the vertical depth over the point in
+  its own cell (the sun ray's depth under a low sun averaged a kilometre of slant over several cells into one grey), so a
+  thick core sits dark beside a thin, bright seam and a hanging lump is darker than the base around it.
+- Under a closing deck the ground's light is what the deck passes down (`cloudLayers.ts` `cloudGroundLight`: the
+  diffuse share of its column raised by the ground's bounce) — the old law let the open sky's blue irradiance through a
+  closed deck untouched and lit its base blue. A broken deck and a convective sky keep the old law (over snow the new one
+  lit a broken deck's bases white).
+- A front keeps no clear zone over the camera: its towers stand over the field and shade it.
+- The cirrus is a trace of ice (0.7 of its cover, 0.6 of its depth) with a third, finer octave: not the sky's subject.
+- The low tier marches the near Beer-shadow cascade alone at 0.6 of the stack's slices and refreshes the shade every
+  four frames.
+
+**Lessons.**
+- Measure the overcast: Whiteout's sky luminance spread over the top of the sky-w frame was 2.9 of 255 on the old layer
+  and 2.5 on round 2 — one card; the local column took it to 9.8. A mottle from the point's own noise (round 5) barely
+  moved it (7.7 / 8.1 / 8.3 off, on, doubled) and was dropped rather than shipped as dead cost.
+- A physically right ground bounce is not always the brief: over snow it whitens a broken deck's bases, the look the
+  critics had already marked down.
+- Cost holds hide every bot vehicle (rule v3, amended): a bot in or out of the chase frame staged a different scene on
+  the twin page.
+
+**Measured.** Rounds 3–5 (1488dd861) passed both of their waves: wave 221 (Frosthollow, Fjord, Monsoon, Desert) sky
++0.19 (3.62 → 3.81), overall +0.05, no view down more than 0.5; wave 222 (the closed overcast, Whiteout and Titan
+Gorge) sky +0.75 (3.25 → 4.00), overall +0.38, all eight views up. Their after-frame defects drove round 6 (056edea78):
+a closing deck's lanes narrowed by its open share, a second lattice of cells against the even repetition, Whiteout's
+base at 180 m and the overcast's forward lobe at 0.45 for the sun's patch, a storm's base dark through its own column,
+the tower warp a lean rather than a twist, the cirrus dropped. The rule-v3 cost runs as four stagings (Monsoon high,
+Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establishing.
+
+**Rounds 7–8 and the cost (2026-10-07, after the scratchpad wipe; priced against the PR head 72584099e).**
+- *Merged on the PR head* (424d324eb): B prices the clouds alone. The PR head had moved Titan Gorge to fair-weather
+  cumulus (Monument Valley), so the closed-deck receipt now derives its closed decks from the presets (Whiteout).
+- *Wave 235* (Monsoon, Desert, Whiteout, Titan Gorge on 424d324eb) passed: sky +1.25 (4.00 → 5.25), mean +0.20, the four
+  Whiteout views AMATEUR → PLAUSIBLE.
+- *Round 7*: rain under a storm takes the storm's grey light (no blue streak composited in front of a tower).
+- *Round 8 — a broken deck covers the sky its map authors.* A twin of the medium (`cloudDeckCover.selftest`: cl2Weather,
+  cl2Cell, cl2Shell and cl2Media without the detail over the real weather bake and a port of the GPU shape bake) measures
+  the share of the sky dome whose optical depth passes 1 from the ground. The broken decks covered about half their
+  coverage (Frosthollow 0.40 of 0.86, the fjord 0.21 of 0.62, Railyard 0.78 of 0.92): the shell's core 0.5 under the full
+  shape erosion kept half of what the cover admitted. Their shell is now near the closed deck's (core 0.8, ramp 0.45,
+  erosion 0.85) under a cover law calibrated on the dome: Frosthollow 0.85, the fjord 0.63, Railyard 0.95.
+- *The cost (rule v3, H1: 424d324eb, high, bots hidden).* Monsoon's towers +1.7 / +3.3 / +3.1 ms GPU (chase /
+  establishing / sky-w), Whiteout's GPU at or under the old layer's; the main thread +0.3 to +0.6 ms a frame on both. The
+  first answer (c4b958ed0): one auxiliary pass a frame at most (the cascades' bands of twice the rows every 4 and 8 frames,
+  the shade every 4, each on its own phase: 0.66 a frame against about 2), the far cascade read only where it counts, the
+  clear prefix of a run skipped by the pre-test (to 28 km). The march's light budget is exposed as QA knobs (93dc3157a) for
+  the hardware to price before any becomes the law.
+- *Round 9 (409c3c780), priced on the hardware.* O1a (nice 0): the main thread passes on Monsoon (+0.12 / +0.30 / −0.16
+  ms), the GPU does not. A front's towers solid (core 0.74: wave 235's blue holes through them), its lanes aloft shed (the
+  smear over the sun and the confetti), the light on every third lit step, the march out at 0.05, the high tier's stride
+  growth 0.0125. O2 (1080p): chase +1.05, establishing +2.10, sky-w +2.12 ms of the GPU, the CPU under the line.
+- *The storm exception* (the coordinator's ruling, 2026-10-07; `$SP/cost-rule-20261006.md`): on the high tier the clouds'
+  increment at most +1.0 ms on the chase view and +2.0 ms on the sky views, the CPU under 0.38 at 8 cycles at load 150 or
+  below, the medium tier under the normal line, phones unchanged (the layer and its noise bakes never start on the mobile
+  tier), the non-storm stagings under the normal rule.
+- *Round 10 (096844ea9).* Exact: the detail's remap saturates every lane at d >= 0.5 for any modifier, so where no lane
+  lies strictly between 0 and 0.5 the step stands in for it and the detail volume is not read. The march's other cost
+  knobs (step cap, entry refinement, far-cascade bilinear read, the streets' share) are QA knobs for the screen. The
+  unwarped clear-air pre-test was dropped before it was built: the warp moves Monsoon's weather by up to 0.41
+  (`.qa-dev/warp-margin.mjs`), so a conservative margin would admit nearly every tap. P1: Monsoon medium −0.73 / +0.05 /
+  +0.15 ms GPU, CPU +0.13 / −0.08 / +0.13 (4 cycles, load under 150).
+
+- *P2 (round 10 against 72584099e, Monsoon high, 1080p, load 106–131).* chase +0.34 ± 0.28, establishing +1.13 ± 0.13,
+  sky-w +1.51 ± 0.26 ms of the GPU, the CPU −0.15 / −0.10 / −0.01 ms: inside the storm exception's caps at 4 cycles. The
+  cloud layer's own GPU timer at the same views: the old layer 1.62 ms a frame, round 10 3.26 / 3.40 ms; round 10's exact
+  detail skip cost 0.18 ms on the establishing view (its per-sample test against a cached 32³ fetch) and was dropped
+  (384119d26). The finals run on the PR head 7fa8749ca merged (af8ac770e): 8 cycles each of Monsoon high and medium,
+  Whiteout high, Verdant high and low.
+
+- *F1, the final Monsoon high* (384119d26 against the PR head 7fa8749ca, 8 cycles, 1080p, load 67–90): chase +0.84 ± 0.27,
+  establishing +0.55 ± 0.39, sky-w +1.32 ± 0.53 ms of the GPU, the CPU −0.01 / +0.09 / +0.05 ms — the storm exception's
+  caps (+1.0 / +2.0 / +2.0) held, the CPU under the normal line: ACCEPT.
+
+- *F2, the final Monsoon medium* (same arms, 8 cycles, load 48–90): chase +0.15 ± 0.44, establishing +0.56 ± 0.52, sky-w
+  +1.07 ± 0.32 ms of the GPU (the ± a standard error), the CPU −0.01 / −0.04 / −0.03 — sky-w over the normal line the
+  exception keeps for medium. A top-up to 16 would have needed its 8 new cycles under 0.13 ms, so the medium law changed
+  instead. *Round 11 (0051c45ce):* the march's light budget is per tier in `CLOUD_TIERS`: medium and low light every 4th
+  lit step, leave the march at 0.08 of the light and refine a cloud's entry with two samples at half a step (the layer's
+  timer priced the three on Monsoon's towers at high: −0.77 ms on establishing and sky-w); high and ultra keep the law the
+  waves passed and F1 measured, their path unchanged. The arms moved to the PR head e65122a84 (push 3b; the merge
+  ed0619982) for the remaining finals: F2c (Monsoon medium, a fresh 8 cycles), Whiteout high, Verdant high and low, and
+  the broken decks' frames, whose Monsoon variants are the look check on the cheaper budget.
+
+- *F2c, void twice, then the guards (2026-10-08).* The first run (one-frame census) voided 21 of 24 cycles: under the
+  live lighting the outermost cascade redraws every second frame, so one frame's draws flipped by ±62 calls on every page,
+  the twins included — the census became the mean of 24 whole frames. The re-run read B 35–45 % under A in draws, a
+  "saving" of 2–3 ms; the draw diagnostic (D1 / D2: per frame the game's own census, the shadow telemetry with the static
+  cache's counters, every draw by render target and kind, a dirty-caster diff of the frozen world roots and the perf
+  lane's probe) found the three pages drawing the same scene when it ran — B one cloud pass over A, the cache reusing on
+  every page with no content change, the cache off drawing the same — and B's deficit in the re-run equal to the four
+  cascades' draws, without the outer cascade's alternation: B's page had drawn no shadow map for a whole run. The cause
+  is lighting's static-presentation dormancy latch: the Garage's GPU warm sets it in a `finally`, a live battle frame
+  clears it, the shot runtime never does, and shot mode's forced update passes it by — the cost hook's unforced update
+  obeys it, so whichever page latched at staging froze its cascades. The lab now clears the latch at the hook's install
+  and before every pose, refuses a page without shadow maps, and guards B against A (±5 calls, 1 % of the triangles) as
+  well as A against C on the whole frame and on the scene pass (the draws into the scene pass's own target). The finals
+  re-run on the PR head 590f51aaf (push 4; the merge 307b44235) as one-cycle jobs gated by the shared v3 check.
+
+**Lessons (the cost work).**
+- A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
+  knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
+- A QA knob read when the preset is packed (the cumulus core, the lanes aloft) does not take effect when a variant only
+  changes `__LIGHT_TUNE`: the preset's key is unchanged. Knobs for a screen must be read every frame.
+- A top-up is arithmetic before it is a hold: at 8 cycles of mean m, 16 pass only if the next 8 average under
+  2 × 0.6 − m; when that sits several standard errors below m, change the law instead of buying the cycles.
+- A guard that compares only the two pages of one build cannot see the candidate's page in another state: a page that
+  drew no shadow map for a whole run read as a saving of 2–3 ms. Compare the candidate's scene with the baseline's too,
+  and when a saving looks too good, census the draws by render target before believing it.
+- A state latched outside the measured path (the Garage's shadow dormancy, cleared only by the live frame) survives into
+  a staged capture; any hook that turns a forced update into a live one must restore what the live frame restores.
+- A shader-compile check needs no game boot: build the layer's materials in Node and compile them in a blank page with
+  three's renderer on SwiftShader (`.qa-dev/glsl-check.mjs`); three checks a program's status on its first use, so touch
+  each program's uniforms after `compile()`, and prove the checker on a deliberately broken program.
+
 ### 2026-10-09 — the clouds' grain: per-pixel jitter, a longer memory that follows the wind, stills settled to the rest (the clouds lane)
 
 **Why.** The owner: "clouds will look terrible and look super grainy instead of proper". The gauntlet never saw it: every
@@ -7857,6 +8026,8 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - RMSE does not see structure: the per-pixel jitter left the error unchanged and removed the hatching the eye locks onto.
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
+- (Clouds 2.0 carries the same three changes: `cloudShaders.ts` keys the trace's blue noise on the history pixel and
+  carries the resolve's reprojection by `uWindStep`; `volumetricClouds.ts` holds the floor and the capture settle.)
 
 ## Acceptance is visual and measured
 
