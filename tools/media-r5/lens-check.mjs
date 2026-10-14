@@ -336,6 +336,9 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     // silhouette's height), and `gunRoom`, the frame left ahead of the muzzle toward the edge the gun points at (frame
     // units across, 2 wide; negative when the muzzle is past that edge; null when either point is behind the lens)
     const turretDeg = heroKeys?.length ? pose.turretDeg ?? 0 : heroActor.turretDeg ?? 0, gunDeg = heroKeys?.length ? pose.gunDeg ?? 0 : heroActor.gunDeg ?? 0;
+    // (the convention, 2026-10-14's turret-axis check: yaw 0 faces +Z and a positive turret yaw turns the gun to the
+    // hull's LEFT, +X for a hull facing +Z, since this world's right is -X; a lens ahead of the hull shows that gun on
+    // screen-RIGHT. A gun's side on screen is always the muzzle's projection below, never read off the sign)
     const gunYaw = yaw + turretDeg * Math.PI / 180, gunPitch = gunDeg * Math.PI / 180, trunnion = gy + heightM * 0.8;
     const screenOf = (q) => {
       const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
