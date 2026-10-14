@@ -265,7 +265,7 @@ export function composeMangroveFisheryWharf(mapId: string, field: Field, packet:
     bands.forEach((band, i) => {
       if (i <= last) {
         const ob = packet.records[i];
-        ob.min[1] = p.y + band.minY; ob.max[1] = p.y + band.maxY;
+        ob.min[1] = p.y + band.minY; ob.max[1] = p.y + (band.groundMaxY ?? band.maxY);
         applyStructureCollisionBand(ob, band, p.x, p.z, p.yaw, p.y);
         return;
       }

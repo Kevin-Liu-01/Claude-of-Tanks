@@ -70,6 +70,9 @@ export interface RubbleStamp {
   readonly c: number;
   readonly s: number;
   readonly falloffM: number;
+  /** When the heap began to rise (the overlay's clock, s) and how long it takes (RUBBLE_GROW_S); -Infinity: risen. */
+  readonly t0: number;
+  readonly growS: number;
 }
 
 export type TerrainStamp = CraterStamp | RubbleStamp;
@@ -105,15 +108,38 @@ export interface TerrainDeformation {
   contactOffsetAt(x: number, z: number): number;
   /** A crater; false when its buckets are full (the caller then makes it a mark). */
   addCrater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number): boolean;
-  /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high. */
-  addRubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number): void;
+  /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high, rising
+   * from `t0` (the overlay's clock; default now, or risen at once when no clock was set) over RUBBLE_GROW_S. */
+  addRubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0?: number): void;
   /** Every stamp gone (a cached world's next battle). */
   reset(): void;
+  /** The overlay's clock (s, the match's own): a heap rises with it (physics stream, 2026-10-13). */
+  setTime(timeS: number): void;
+  /** Whether a heap is still rising. */
+  readonly growing: boolean;
+  /** Grows by one with every clock step that moved a rising heap (a renderer re-reads those heaps' ground). */
+  readonly growthRevision: number;
+  /** How far stamp `index` has risen (0..1; a crater 1). */
+  stampGrowth(index: number): number;
 }
 
 function bucketIndex(value: number): number {
   const index = Math.floor((value + WORLD_HALF_M) / BUCKET_M);
   return index < 0 ? 0 : index >= BUCKETS ? BUCKETS - 1 : index;
+}
+
+/**
+ * How long a heap takes to rise (physics stream, 2026-10-13; the census: a hull rammed into a building as it fell was
+ * lifted 0.38 m in a step by the heap stamped whole under it): eased in and out over two seconds, the time its walls
+ * take to come down onto it, so a hull beside or on the footprint rides it up at under 2 m/s.
+ */
+export const RUBBLE_GROW_S = 2;
+/** The share of its height a heap stands `elapsedS` after it began to rise (smoothstep over RUBBLE_GROW_S). */
+export function rubbleGrowth(elapsedS: number, growS = RUBBLE_GROW_S): number {
+  if (!(elapsedS < growS)) return 1;
+  if (!(elapsedS > 0)) return 0;
+  const u = elapsedS / growS;
+  return u * u * (3 - 2 * u);
 }
 
 /** The rubble height for a structure of `heightM` (§7): 0.18 of its height, 0.6–2.6 m. */
@@ -168,8 +194,8 @@ export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): n
   return outside >= falloff ? 0 : height * 0.5 * (1 + Math.cos(Math.PI * outside / falloff));
 }
 
-/** A rubble mound's profile at (x, z) (§7): the plateau's height, a cosine skirt to nothing. */
-export function rubbleProfile(stamp: RubbleStamp, x: number, z: number): number {
+/** A rubble mound's profile at (x, z) (§7): the plateau's height, a cosine skirt to nothing (`scale` of it: rising). */
+export function rubbleProfile(stamp: RubbleStamp, x: number, z: number, scale = 1): number {
   const dx = x - stamp.cx, dz = z - stamp.cz;
   // forward (sin yaw, cos yaw) along hd, right (cos yaw, −sin yaw) across hw
   const along = Math.abs(dx * stamp.s + dz * stamp.c) - stamp.hd * RUBBLE_PLATEAU;
@@ -177,7 +203,7 @@ export function rubbleProfile(stamp: RubbleStamp, x: number, z: number): number 
   const ox = across > 0 ? across : 0, oz = along > 0 ? along : 0;
   const outside = Math.sqrt(ox * ox + oz * oz);
   if (outside >= stamp.falloffM) return 0;
-  return stamp.heightM * 0.5 * (1 + Math.cos(Math.PI * outside / stamp.falloffM));
+  return scale * stamp.heightM * 0.5 * (1 + Math.cos(Math.PI * outside / stamp.falloffM));
 }
 
 /** The seed's three wobble phases (deterministic, no RNG state): a crater's ragged edge, and the presentation's decal
@@ -197,6 +223,12 @@ export function createTerrainDeformation(): TerrainDeformation {
   const slots = new Int32Array(BUCKETS * BUCKETS * STAMPS_PER_BUCKET);
   let revision = 0;
   let maxRaise = 0;
+  let now = NaN;
+  let growthRevision = 0;
+  /** Rubble stamps still rising (indices into `stamps`). */
+  const rising: number[] = [];
+  const growthOf = (stamp: TerrainStamp): number =>
+    stamp.kind === 'rubble' && Number.isFinite(stamp.t0) && Number.isFinite(now) ? rubbleGrowth(now - stamp.t0, stamp.growS) : 1;
 
   function bucketsOf(x0: number, z0: number, x1: number, z1: number, visit: (bucket: number) => boolean): boolean {
     for (let bz = bucketIndex(z0); bz <= bucketIndex(z1); bz++) {
@@ -233,7 +265,7 @@ export function createTerrainDeformation(): TerrainDeformation {
         const r = Math.sqrt(dx * dx + dz * dz);
         if (r < stamp.radiusM * CRATER_REACH * 1.1) sum += craterProfile(stamp, r, Math.atan2(dz, dx));
       } else {
-        sum += rubbleProfile(stamp, x, z);
+        sum += rubbleProfile(stamp, x, z, growthOf(stamp));
       }
     }
     return sum < -MAX_DEPTH_M ? -MAX_DEPTH_M : sum > MAX_RAISE_M ? MAX_RAISE_M : sum;
@@ -275,11 +307,14 @@ export function createTerrainDeformation(): TerrainDeformation {
       if (admitted) maxRaise = Math.min(MAX_RAISE_M, maxRaise + rimM * (1 + RIM_BREAK));
       return admitted;
     },
-    addRubble(cx, cz, hw, hd, yaw, heightM) {
+    addRubble(cx, cz, hw, hd, yaw, heightM, t0) {
       const height = Math.max(0, heightM);
       const falloff = rubbleFalloffM(hw, hd, height);
+      // (no clock set — a consumer that never steps one — or a settled heap: risen at once, as before)
+      const start = t0 !== undefined ? t0 : Number.isFinite(now) ? now : -Infinity;
       const stamp: RubbleStamp = { kind: 'rubble', cx, cz, hw, hd, yaw, heightM: height,
-        c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff };
+        c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S };
+      if (Number.isFinite(start) && growthOf(stamp) < 1) rising.push(stamps.length);
       const ex = Math.abs(stamp.s) * hd + Math.abs(stamp.c) * hw + falloff;
       const ez = Math.abs(stamp.c) * hd + Math.abs(stamp.s) * hw + falloff;
       admit(stamp, cx - ex, cz - ez, cx + ex, cz + ez, true);
@@ -290,6 +325,22 @@ export function createTerrainDeformation(): TerrainDeformation {
       counts.fill(0);
       revision++;
       maxRaise = 0;
+      rising.length = 0;
+    },
+    setTime(timeS) {
+      now = timeS;
+      if (!rising.length) return;
+      growthRevision++;
+      // a heap fully risen leaves the list (its ground moves no more)
+      let kept = 0;
+      for (let i = 0; i < rising.length; i++) if (growthOf(stamps[rising[i]]) < 1) rising[kept++] = rising[i];
+      rising.length = kept;
+    },
+    get growing() { return rising.length > 0; },
+    get growthRevision() { return growthRevision; },
+    stampGrowth(index) {
+      const stamp = stamps[index];
+      return stamp ? growthOf(stamp) : 1;
     },
   };
 }

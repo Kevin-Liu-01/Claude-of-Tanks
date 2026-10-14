@@ -135,6 +135,8 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     || options.colliders.some((record) => record.structureIdx !== undefined);
   const enabled = !!rules?.structures && hasGroups;
   const ground = options.ground ?? null;
+  /** Whether restore() is applying the previous authority's log (its heaps settled). */
+  let restoring = false;
   const structures = enabled
     ? createStructureDamage(options.obstacles, options.colliders, {
       damageScale: rules!.structureDamageScale,
@@ -142,8 +144,9 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       sections: rules!.sections === true,
       // the heap over its footprint first (a hull on it rides the mound from this tick), then the caller's refresh
       onCollapse: (structure) => {
+        // (it rises on the match's clock, ground.setTime; a restored host's settled heap stands risen)
         ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
-          rubbleHeightFor(structure.topY - structure.baseY));
+          rubbleHeightFor(structure.topY - structure.baseY), restoring ? -Infinity : undefined);
         options.onCollapse?.(structure);
       },
     })
@@ -283,16 +286,21 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     restore(entries) {
       // the previous authority's log is kept verbatim (its revision continues); what this world can apply, it applies
       let applied = 0;
-      for (const entry of entries) {
-        log.push({ ...entry });
-        if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
-        if (entry.kind === 'breach' && structures && structures.restoreBreach(entry.structureId, entry.section, entry.hole,
-          entry.x, entry.y, entry.z, entry.radiusM, entry.sectionDown) >= 0) applied++;
-        if (entry.kind === 'crater') {
-          // the previous authority's crater, as it stamped it (its id continues the count; a full bucket stays a mark)
-          if (ground?.addCrater(entry.x, entry.z, entry.radiusM, entry.depthM, entry.rimM, entry.seed)) applied++;
-          craterCount = Math.max(craterCount, entry.craterId + 1);
+      restoring = true;
+      try {
+        for (const entry of entries) {
+          log.push({ ...entry });
+          if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
+          if (entry.kind === 'breach' && structures && structures.restoreBreach(entry.structureId, entry.section, entry.hole,
+            entry.x, entry.y, entry.z, entry.radiusM, entry.sectionDown) >= 0) applied++;
+          if (entry.kind === 'crater') {
+            // the previous authority's crater, as it stamped it (its id continues the count; a full bucket stays a mark)
+            if (ground?.addCrater(entry.x, entry.z, entry.radiusM, entry.depthM, entry.rimM, entry.seed)) applied++;
+            craterCount = Math.max(craterCount, entry.craterId + 1);
+          }
         }
+      } finally {
+        restoring = false;
       }
       return applied;
     },

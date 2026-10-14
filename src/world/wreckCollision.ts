@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { convexHull2, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';
+import { capPlanesOf } from './rockCollision.ts';
 import { convexSlabs, slabParts } from './slabCollision.ts';
 
 /** Small, posed solid envelopes; never include the gun, antennas or loose debris. */
@@ -102,10 +103,12 @@ export function placeWreckCollision(solids: readonly number[][], transform: THRE
   const parts: SimpleCollisionShape[] = [];
   for (const solid of solids) {
     const projected: [number, number][] = [];
+    const px: number[] = [], py: number[] = [], pz: number[] = [];
     let y0 = Infinity, y1 = -Infinity;
     for (let i = 0; i < solid.length; i += 3) {
       point.set(solid[i], solid[i + 1], solid[i + 2]).applyMatrix4(transform);
       projected.push([point.x, point.z]);
+      px.push(point.x); py.push(point.y); pz.push(point.z);
       y0 = Math.min(y0, point.y); y1 = Math.max(y1, point.y);
     }
     const points = convexHull2(projected);
@@ -114,7 +117,13 @@ export function placeWreckCollision(solids: readonly number[][], transform: THRE
     record.max[1] = Math.max(record.max[1], y1);
     let cx = 0, cz = 0;
     for (let i = 0; i < points.length; i += 2) { cx += points[i]; cz += points[i + 1]; }
-    parts.push({ kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points, y0, y1 });
+    const part: Extract<SimpleCollisionShape, { kind: 'convex' }> = { kind: 'convex', cx: cx / (points.length / 2), cz: cz / (points.length / 2), points, y0, y1 };
+    // (physics stream, 2026-10-13: the census's wreck records floated a hull 0.71 m over the drawn steel at the median —
+    // a prism to the hull's highest point) the solid's drawn top: its support planes over its plan, the glacis, the
+    // engine deck and the turret's flanks as they lean (rockCollision.ts capPlanesOf)
+    const tp = capPlanesOf(px, py, pz, points);
+    if (tp) part.tp = tp;
+    parts.push(part);
   }
   if (!parts.length) throw new Error('Wreck has no solid collision bodies');
   return setCompoundShape(record, parts);

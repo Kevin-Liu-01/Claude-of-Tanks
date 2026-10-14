@@ -695,6 +695,18 @@ function stoneCapPlanes(s: PlacedSurface, footprint: readonly number[], top: num
     const t = ra / (ra - rb);
     px.push(wx[a] + (wx[b] - wx[a]) * t); py.push(wy[a] + (wy[b] - wy[a]) * t); pz.push(wz[a] + (wz[b] - wz[a]) * t);
   }
+  void top;
+  return capPlanesOf(px, py, pz, footprint);
+}
+
+/**
+ * The drawn top of a convex body over its footprint (physics stream, 2026-10-13): its support planes in the 103 upward
+ * bearings (CAP_DIRECTIONS) through the points (px, py, pz), of which the fewest that hold the lower envelope within
+ * CAP_TOLERANCE_M of the whole set's over the footprint (at most CAP_MAX_PLANES) — collision.ts collisionPartTopAt's
+ * `tp`, [ox, oz, a, b, c, ...]. A stone's surface (stoneCapPlanes) and a wreck's hull and turret
+ * (wreckCollision.ts placeWreckCollision) both stand under it. Null for fewer than four points.
+ */
+export function capPlanesOf(px: readonly number[], py: readonly number[], pz: readonly number[], footprint: readonly number[]): number[] | null {
   if (px.length < 4 || footprint.length < 6) return null;
   let ox = 0, oz = 0;
   for (let i = 0; i < footprint.length; i += 2) { ox += footprint[i]; oz += footprint[i + 1]; }
@@ -781,7 +793,6 @@ function stoneCapPlanes(s: PlacedSurface, footprint: readonly number[], top: num
   order.sort((p, q) => p - q);
   const out = [ox, oz];
   for (const d of order) out.push(planes[3 * d], planes[3 * d + 1], planes[3 * d + 2]);
-  void top;
   return out;
 }
 
