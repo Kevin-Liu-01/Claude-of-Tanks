@@ -4,7 +4,7 @@
 // 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, snowGlsl?: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, amb: number[],
+ * @param {{ glsl: string, snowGlsl?: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, keyCount?: number, keyP?: number[], keyE?: number[], amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
@@ -60,6 +60,10 @@ void main() {
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
   // (2026-10-14) the snow weight: the joint cap and the crease's core (0 when the case packs none)
   gl.uniform1f(at('uVehGroundSnow'), input.snow ?? 0);
+  // (contact r2) the FX lamps the hulls shadow (none when the case packs none)
+  gl.uniform1f(at('uVehKeyLight'), input.keyCount ?? 0);
+  gl.uniform4fv(at('uVehKeyLightP'), new Float32Array(input.keyP ?? [0, 0, 0, 0, 0, 0, 0, 0]));
+  gl.uniform4fv(at('uVehKeyLightE'), new Float32Array(input.keyE ?? [0, 0, 0, 0, 0, 0, 0, 0]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));

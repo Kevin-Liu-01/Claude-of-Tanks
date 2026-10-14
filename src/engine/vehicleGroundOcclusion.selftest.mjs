@@ -17,7 +17,8 @@ import {
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_SNOW_CREASE, GROUND_AO_SNOW_CREASE_FULL_M,
-  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion,
+  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion, GROUND_AO_KEY_FADE, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
+  groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
 import {
@@ -592,8 +593,16 @@ assert.match(g, /float sWall = clamp\( 1\.0 - lt\.y \* \( 0\.5 \+ 0\.5 \* lt\.x 
 assert.match(g, /vis \*= 1\.0 - min\( ho, 1\.0 \) \*/, 'hulls combine as independent occluders');
 assert.ok(g.includes(`smoothstep( ${f4(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f4(GROUND_AO_RANGE_M)}, dist )`), 'the range fade');
 assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );`), 'a card\'s ambient share: fixed in the open, whole under a belly');
-assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
-assert.match(g, /return 1\.0 - occ \* ambShare;/);
+assert.ok(g.includes('float D = max( T + A + E0 + E1, 1e-4 );') && g.includes('ambShare = A / D;'),
+  'only the ambient share darkens (over the light the pixel takes, the FX lamps\' with it: contact r2)');
+assert.ok(g.includes('return 1.0 - occ * ambShare - keyCut;') && g.includes('keyCut = ( keyB0 * E0 + keyB1 * E1 ) * fade / D;'), 'the blocked lamps\' shares leave');
+// (contact r2) with no lamp the law is the old one to the bit: E0 = E1 = 0 adds nothing to the total, keyCut stays 0
+assert.ok(g.includes('float E0 = 0.0, E1 = 0.0;\n        if ( uVehKeyLight > 0.5 ) {') && g.includes('if ( occ <= 0.003 && max( keyB0, keyB1 ) <= 0.0 ) return 1.0;'),
+  'the lamps only where some are written');
+assert.ok(g.includes(`if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {`) && g.includes(`float kw = 1.0 - smoothstep( H * ${f4(GROUND_AO_KEY_FADE[0])}, H * ${f4(GROUND_AO_KEY_FADE[1])}, dOut );`)
+  && (g.match(/cotVgKeyBlock\( q, vec3\( dot\( m0\.xyz, L[01] \) \+ m0\.w, dot\( m1\.xyz, L[01] \) \+ m1\.w, dot\( m2\.xyz, L[01] \) \+ m2\.w \), b0, b1, b2 \)/g) ?? []).length === 2,
+  'each hull tests the lamps in its own frame on a lit receiver within its reach, faded over the reach\'s end');
+assert.match(g, new RegExp(`uniform vec4 uVehKeyLightP\\[ ${GROUND_AO_KEY_LIGHTS} \\];`));
 assert.ok(g.includes(`float occ = max( min( 1.0 - vis, mix( ${f4(GROUND_AO_OCC_MAX)}, ${f4(GROUND_AO_OCC_MAX_SNOW)}, snowW ) ), crease ) * fade;`),
   'the hulls\' joint share capped once (on snow by the weight), the snow crease joined past it');
 // (2026-10-14) the snow crease: inside the rim's lane branch (its spread is wider), by the rim's own vertical weight
@@ -637,6 +646,57 @@ assert.ok(!/ho = max\( ho, lane \* \( 1\.0 - smoothstep/.test(g), 'and the whole
 assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ], uVehGroundR[ i * 4 + 3 ], q.z, b3 ), c );')
   && g.includes('float loL = max( b0.w + cotVgRun( uVehGroundR[ i * 4 ], uVehGroundR[ i * 4 + 1 ], q.z, b3 ), c );'),
   'each side gap from its own run\'s drawn lower edge');
+
+// ---- 9b. (contact r2, 2026-10-14; the coordinator: "near hulls block unshadowed FX point lights on the ground beneath them";
+// s170's flare) the FX lamps: the hull's solid over its belly and its runs between a ground pixel and a lamp cuts the lamp's
+// share of the pixel's light; the gap under the belly between the runs lets a low lamp through; a lamp inside a solid is
+// never shadowed by it; the irradiance is three's punctual light's; the ambient's occlusion takes its share of the same total
+{
+  // a flare high over the hull's front left: the ground under the belly is in its shadow, the open ground beside is not
+  const flare = { x: -3, y: 40, z: 6 };
+  assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, flare, T), 1, 'under the belly: the flare is behind the hull');
+  assert.equal(hullBlocksKeyLight({ x: T.hx + 2.5, y: 0, z: 0 }, flare, T), 0, 'beside the hull on the far side from it: lit');
+  assert.equal(hullBlocksKeyLight({ x: T.xo + 0.05, y: 0, z: 0 }, flare, T), 1, 'at the right run\'s foot, under the overhang: shadowed');
+  // a low lamp beside the right run: through the gap under the belly the ground between the runs sees it only under the belly
+  const low = { x: 6, y: 0.2, z: 0 };
+  assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, low, T), 1, 'the right run stands between a low lamp and the belly\'s ground');
+  assert.equal(hullBlocksKeyLight({ x: -T.hx - 1, y: 0, z: 0 }, { x: 6, y: 0.05, z: 0.1 }, T), 1, 'and the whole hull beyond');
+  assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: T.fz1 + 2 }, low, T), 0, 'a receiver off the front sees it');
+  // a muzzle against the mantlet (inside the solid's slack) shadows nothing
+  assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, { x: 0, y: T.yt + GROUND_AO_KEY_INSIDE_M * 0.5, z: T.fz1 - 0.2 }, T), 0, 'a lamp inside: none');
+  // three's punctual falloff: 1/d², the cutoff window, N·l
+  near(keyLightIrradiance({ x: 0, y: 0, z: 0 }, UP, { x: 0, y: 2, z: 0 }, 8, 0), 2, 1e-12, 'lum / d² straight overhead');
+  near(keyLightIrradiance({ x: 0, y: 0, z: 0 }, UP, { x: 0, y: 2, z: 0 }, 8, 4), 2 * (1 - (2 / 4) ** 4) ** 2, 1e-12, 'the range window');
+  assert.equal(keyLightIrradiance({ x: 0, y: 0, z: 0 }, UP, { x: 0, y: -1, z: 0 }, 8, 0), 0, 'a lamp under the receiver');
+  // the shade: with no lamp the round-3 law to the bit; a blocked dominant lamp takes the pixel down to its other light
+  for (const [occ, T0, A] of [[0.4, 0, 1], [0.55, 2, 0.5], [0.1, 0.3, 0.2]]) {
+    assert.equal(groundShadeWithKeyLights(occ, T0, A, [0, 0], [1, 1]), 1 - occ * (A / Math.max(T0 + A, 1e-4)), 'no lamp: as before');
+  }
+  near(groundShadeWithKeyLights(0.55, 0, 0.05, [2.0, 0], [1, 0]), 1 - 0.55 * 0.05 / 2.05 - 2 / 2.05, 1e-12, 'the flare-lit belly keeps its sky\'s light');
+  assert.ok(groundShadeWithKeyLights(0.55, 0, 0.05, [2.0, 0], [0, 0]) > 0.98, 'beside the hull, flare-lit and unblocked, nearly untouched');
+  assert.ok(GROUND_AO_KEY_LIGHTS === 2 && GROUND_AO_KEY_FADE[1] === GROUND_AO_REACH[1], 'two lamps; the cut fades out where the reach ends');
+}
+// the packing: the strongest lit lamps near the packed hulls, none when the lever drops them
+{
+  const L = (x, y, z, intensity, distance = 0) => {
+    const parent = new THREE.Group(); const light = new THREE.PointLight(0xffffff, intensity, distance, 2);
+    light.position.set(x, y, z); parent.add(light); return light;
+  };
+  const root = new THREE.Group(); root.updateMatrixWorld(true);
+  root.userData.groundAoShape = T; root.userData.groundAoShapeFor = null;
+  const u = createVehicleGroundOcclusionUniforms();
+  const lamps = [L(0, 40, 0, 50000), L(5, 1, 0, 200, 13), L(400, 1, 0, 9e6, 13), L(2, 2, 0, 0)];
+  updateVehicleGroundOcclusionUniforms(u, [{ root }], true, 0.25, undefined, undefined, 1, lamps);
+  assert.equal(u.uVehKeyLight.value, 2, 'two lit lamps in range (the far blast and the dark lamp skipped)');
+  const packed = u.uVehKeyLightP.value.slice(0, 2).map((v) => v.toArray());
+  assert.deepEqual(packed.map((p) => p[0]).sort((a, b) => a - b), [0, 5], 'the flare and the near blast');
+  globalThis.__LIGHT_TUNE = { GROUND_AO_KEY_LIGHTS: 0 };
+  updateVehicleGroundOcclusionUniforms(u, [{ root }], true, 0.25, undefined, undefined, 1, lamps);
+  assert.equal(u.uVehKeyLight.value, 0, 'the lever drops them (A/B frames)');
+  delete globalThis.__LIGHT_TUNE;
+  updateVehicleGroundOcclusionUniforms(u, [], true, 0.25, undefined, undefined, 1, lamps);
+  assert.equal(u.uVehKeyLight.value, 0, 'no hull, no lamp');
+}
 
 // ---- 10. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
 const post = here('./post.ts'), lighting = here('./lighting.ts');

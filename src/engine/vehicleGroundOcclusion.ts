@@ -46,6 +46,7 @@
  */
 import * as THREE from 'three';
 import { lightTune } from './lightModelCore.ts';
+import { groundKeyLights } from './groundKeyLights.ts';
 
 /** At most this many hulls (the shadow router's near selection: NEAR_VEHICLE_SHADOW_MAX). */
 export const GROUND_AO_MAX_HULLS = 4;
@@ -495,6 +496,66 @@ export function hullSunShadow(q: Vec3Like, h: VehicleGroundHull, s: Vec3Like): n
     || rayMeetsBox(q, s, [-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]) ? 1 : 0;
 }
 
+/**
+ * Contact r2 (2026-10-14; the coordinator: "near hulls block unshadowed FX point lights on the ground beneath them, cheaply
+ * ... no shadow maps"; media wave f1, s170: a Studio illumination flare lit the sand under a Centurion as brightly as the
+ * open ground). The FX lights cast no shadow (groundKeyLights.ts: the muzzle flash, the blast, the light the cinematic FX
+ * borrow for a flare or a fire). Each frame the strongest GROUND_AO_KEY_LIGHTS of them at the near hulls reach the block;
+ * a lit ground pixel within a hull's reach whose segment to a lamp meets the hull's solid over its belly or either run
+ * (the gap under the belly between the runs lets a low lamp through) loses that lamp's share of its light, E / (T + A + ΣE)
+ * with E the lamp's irradiance as three draws it (intensity × colour luminance × N·l × the distance falloff and its
+ * cutoff); the ambient's occlusion takes its share over the same total, so a pixel the lamp dominates keeps its lamp light
+ * where the hull does not stand between them. A lamp inside a solid (a muzzle against the mantlet) is never shadowed by it,
+ * and the cut fades out over the reach's last third (a low lamp's long shadow ends softly, not at the reach's edge).
+ */
+export const GROUND_AO_KEY_LIGHTS = 2;
+/** A lamp within this far (m) of a solid's faces counts as inside it. */
+export const GROUND_AO_KEY_INSIDE_M = 0.15;
+/** The cut fades out between these multiples of the hull's height from its footprint (its reach ends at REACH[1]). */
+export const GROUND_AO_KEY_FADE = Object.freeze([2, 3] as const);
+
+/** The segment q → k (the hull frame) meets the box [lo, hi] (the GLSL's cotVgSegBox). */
+function segmentMeetsBox(q: Vec3Like, k: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean {
+  const o = [q.x, q.y, q.z], d = [k.x - q.x, k.y - q.y, k.z - q.z];
+  let tn = -Infinity, tf = Infinity;
+  for (let a = 0; a < 3; a++) {
+    const inv = 1 / (d[a] + 1e-7);
+    const t0 = (lo[a] - o[a]) * inv, t1 = (hi[a] - o[a]) * inv;
+    tn = Math.max(tn, Math.min(t0, t1)); tf = Math.min(tf, Math.max(t0, t1));
+  }
+  return tf >= Math.max(tn, 0) && tn <= 1;
+}
+const insideBox = (p: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean =>
+  p.x > lo[0] - GROUND_AO_KEY_INSIDE_M && p.y > lo[1] - GROUND_AO_KEY_INSIDE_M && p.z > lo[2] - GROUND_AO_KEY_INSIDE_M
+  && p.x < hi[0] + GROUND_AO_KEY_INSIDE_M && p.y < hi[1] + GROUND_AO_KEY_INSIDE_M && p.z < hi[2] + GROUND_AO_KEY_INSIDE_M;
+
+/** 1 when the hull's solid over its belly or either run stands between a receiver at q and a lamp at k (both the hull
+ * frame), 0 otherwise or when the lamp sits inside one of them. */
+export function hullBlocksKeyLight(q: Vec3Like, k: Vec3Like, h: VehicleGroundHull): number {
+  const boxes: readonly (readonly [readonly number[], readonly number[]])[] = [
+    [[-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1]], [[h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1]], [[-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]],
+  ];
+  if (boxes.some(([lo, hi]) => insideBox(k, lo, hi))) return 0;
+  return boxes.some(([lo, hi]) => segmentMeetsBox(q, k, lo, hi)) ? 1 : 0;
+}
+
+/** A lamp's irradiance (luminance) at a receiver as three's punctual light draws it: lum × N·l × 1 / max(d^decay, 0.01),
+ * times (1 − (d / range)⁴)² inside a range (0: none). */
+export function keyLightIrradiance(P: Vec3Like, N: Vec3Like, lamp: Vec3Like, lum: number, range: number, decay = 2): number {
+  const lx = lamp.x - P.x, ly = lamp.y - P.y, lz = lamp.z - P.z, d = Math.hypot(lx, ly, lz);
+  let fall = 1 / Math.max(d ** decay, 0.01);
+  if (range > 0) { const r = clamp01(1 - (d / range) ** 4); fall *= r * r; }
+  return lum * fall * Math.max((N.x * lx + N.y * ly + N.z * lz) / Math.max(d, 1e-4), 0);
+}
+
+/** The cut a lit receiver takes: from its light T + A + ΣE, the ambient's occluded share and the blocked lamps' shares. */
+export function groundShadeWithKeyLights(occ: number, T: number, A: number, E: readonly number[], blocked: readonly number[]): number {
+  let sum = 0, cut = 0;
+  for (let i = 0; i < E.length; i++) { sum += E[i]; cut += (blocked[i] ?? 0) * E[i]; }
+  const D = Math.max(T + A + sum, 1e-4);
+  return 1 - occ * (A / D) - cut / D;
+}
+
 export interface VehicleGroundOcclusionUniforms {
   /** The hulls written this frame (0: the block is skipped). */
   uVehGround: THREE.IUniform<number>;
@@ -508,6 +569,10 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
   /** (2026-10-14, contact r2) The snow law's switch: each receiver's weight is its own snow cover (the scene alpha's). */
   uVehGroundSnow: THREE.IUniform<number>;
+  /** (contact r2) The FX key lamps written this frame (0: none), each (world position, range) and (luminance, decay). */
+  uVehKeyLight: THREE.IUniform<number>;
+  uVehKeyLightP: THREE.IUniform<THREE.Vector4[]>;
+  uVehKeyLightE: THREE.IUniform<THREE.Vector4[]>;
 }
 
 export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
@@ -519,6 +584,9 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGroundR: { value: Array.from({ length: GROUND_AO_MAX_HULLS * 4 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
     uVehGroundSnow: { value: 0 },
+    uVehKeyLight: { value: 0 },
+    uVehKeyLightP: { value: Array.from({ length: GROUND_AO_KEY_LIGHTS }, () => new THREE.Vector4()) },
+    uVehKeyLightE: { value: Array.from({ length: GROUND_AO_KEY_LIGHTS }, () => new THREE.Vector4()) },
   };
 }
 
@@ -801,6 +869,8 @@ export function updateVehicleGroundOcclusionUniforms(
   // (2026-10-14, contact r2) the snow law's switch (each receiver weighs it by its own snow cover; QA:
   // __LIGHT_TUNE.GROUND_AO_SNOW = 0 restores the ordinary law for an A/B frame)
   snowLaw = 1,
+  // (contact r2) the FX lamps the hulls shadow (QA: __LIGHT_TUNE.GROUND_AO_KEY_LIGHTS = 0 drops them for an A/B frame)
+  keyLights: Iterable<THREE.PointLight> = groundKeyLights(),
 ): void {
   u.uVehGroundLight.value.set(Math.min(Math.max(groundAlbedo, 0), 0.95), clamp01(hullAlbedo), clamp01(bellyView), GROUND_AO_UNDER_GROUND);
   u.uVehGroundSnow.value = clamp01(lightTune('GROUND_AO_SNOW', snowLaw));
@@ -822,10 +892,49 @@ export function updateVehicleGroundOcclusionUniforms(
       u.uVehGroundB.value[n * 4 + 2].set(h.hr, h.hf, h.xi, h.xo);
       u.uVehGroundB.value[n * 4 + 3].set(h.sr, h.sf, h.cz0, h.cz1);
       writeRunKnots(root, h, u.uVehGroundR.value, n * 4);
+      _hullAt[n].setFromMatrixPosition(_world);
       n++;
     }
   }
   u.uVehGround.value = n;
+  packGroundKeyLights(u, n, enabled && lightTune('GROUND_AO_KEY_LIGHTS', 1) > 0, keyLights);
+}
+
+const _hullAt = Array.from({ length: GROUND_AO_MAX_HULLS }, () => new THREE.Vector3());
+const _lampAt = new THREE.Vector3();
+const _picks: { light: THREE.PointLight; score: number; x: number; y: number; z: number }[] = [];
+
+/** (contact r2) The strongest lamps at the packed hulls: lit, in a scene, within their range (and a hull's reach) of one. */
+function packGroundKeyLights(u: VehicleGroundOcclusionUniforms, hulls: number, enabled: boolean,
+  lights: Iterable<THREE.PointLight>): void {
+  let count = 0;
+  if (enabled && hulls > 0) {
+    let picked = 0;
+    for (const light of lights) {
+      if (!(light.intensity > 1e-3) || !light.visible || !light.parent) continue;
+      _lampAt.copy(light.position);
+      light.parent.updateWorldMatrix(true, false);
+      _lampAt.applyMatrix4(light.parent.matrixWorld);
+      let near = Infinity;
+      for (let i = 0; i < hulls; i++) near = Math.min(near, _lampAt.distanceTo(_hullAt[i]));
+      if (light.distance > 0 && near > light.distance + 8) continue;
+      const lum = light.intensity * (0.2126 * light.color.r + 0.7152 * light.color.g + 0.0722 * light.color.b);
+      const score = lum / Math.max(near * near, 1);
+      if (picked < _picks.length) Object.assign(_picks[picked], { light, score, x: _lampAt.x, y: _lampAt.y, z: _lampAt.z });
+      else _picks.push({ light, score, x: _lampAt.x, y: _lampAt.y, z: _lampAt.z });
+      picked++;
+    }
+    for (let k = 0; k < GROUND_AO_KEY_LIGHTS && k < picked; k++) {
+      let best = k;
+      for (let i = k + 1; i < picked; i++) if (_picks[i].score > _picks[best].score) best = i;
+      if (best !== k) { const t = _picks[k]; _picks[k] = _picks[best]; _picks[best] = t; }
+      const p = _picks[k], L = p.light;
+      u.uVehKeyLightP.value[k].set(p.x, p.y, p.z, Math.max(L.distance, 0));
+      u.uVehKeyLightE.value[k].set(L.intensity * (0.2126 * L.color.r + 0.7152 * L.color.g + 0.0722 * L.color.b), L.decay, 0, 0);
+      count++;
+    }
+  }
+  u.uVehKeyLight.value = count;
 }
 
 const f = (x: number): string => x.toFixed(4);
@@ -852,6 +961,9 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     uniform vec4 uVehGroundR[ ${GROUND_AO_MAX_HULLS * 4} ];
     uniform vec4 uVehGroundLight;
     uniform float uVehGroundSnow;
+    uniform float uVehKeyLight;
+    uniform vec4 uVehKeyLightP[ ${GROUND_AO_KEY_LIGHTS} ];
+    uniform vec4 uVehKeyLightE[ ${GROUND_AO_KEY_LIGHTS} ];
     // the drawn run's travel at z (root frame): its eight knots k0, k1 evenly over the ground run b3.z..b3.w, linear
     // between (hat weights), held past its ends
     float cotVgRun( vec4 k0, vec4 k1, float z, vec4 b3 ) {
@@ -866,6 +978,34 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
       float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
       return tf >= max( tn, 0.0 ) ? 1.0 : 0.0;
+    }
+    // (contact r2) the segment q → q + d meets the box; a lamp k inside a solid (within GROUND_AO_KEY_INSIDE_M) is never
+    // shadowed by it; the hull blocks a lamp when its solid over the belly or either run stands between (hullBlocksKeyLight)
+    float cotVgSegBox( vec3 q, vec3 d, vec3 lo, vec3 hi ) {
+      vec3 inv = 1.0 / ( d + vec3( 1e-7 ) );
+      vec3 t0 = ( lo - q ) * inv, t1 = ( hi - q ) * inv;
+      vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
+      float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
+      return tf >= max( tn, 0.0 ) && tn <= 1.0 ? 1.0 : 0.0;
+    }
+    float cotVgInBox( vec3 p, vec3 lo, vec3 hi ) {
+      return all( greaterThan( p, lo - ${f(GROUND_AO_KEY_INSIDE_M)} ) ) && all( lessThan( p, hi + ${f(GROUND_AO_KEY_INSIDE_M)} ) ) ? 1.0 : 0.0;
+    }
+    float cotVgKeyBlock( vec3 q, vec3 k, vec4 b0, vec4 b1, vec4 b2 ) {
+      vec3 lo0 = vec3( -b0.x, b0.y, b1.x ), hi0 = vec3( b0.x, b0.z, b1.y );
+      vec3 lo1 = vec3( b2.z, b0.w, b1.x ), hi1 = vec3( b2.w, b0.y, b1.y );
+      vec3 lo2 = vec3( -b2.w, b0.w, b1.x ), hi2 = vec3( -b2.z, b0.y, b1.y );
+      if ( cotVgInBox( k, lo0, hi0 ) + cotVgInBox( k, lo1, hi1 ) + cotVgInBox( k, lo2, hi2 ) > 0.0 ) return 0.0;
+      vec3 d = k - q;
+      return max( cotVgSegBox( q, d, lo0, hi0 ), max( cotVgSegBox( q, d, lo1, hi1 ), cotVgSegBox( q, d, lo2, hi2 ) ) );
+    }
+    // a lamp's irradiance (luminance) at P with normal N as three's punctual light draws it (keyLightIrradiance)
+    float cotVgKeyE( vec4 p, vec4 e, vec3 P, vec3 N ) {
+      vec3 lv = p.xyz - P;
+      float d = length( lv );
+      float fall = 1.0 / max( pow( d, e.y ), 0.01 );
+      if ( p.w > 0.0 ) { float r = clamp( 1.0 - pow( d / p.w, 4.0 ), 0.0, 1.0 ); fall *= r * r; }
+      return e.x * fall * max( dot( N, lv / max( d, 1e-4 ) ), 0.0 );
     }
     float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {
       vec3 inv = 1.0 / ( s + vec3( 1e-7 ) );
@@ -932,6 +1072,7 @@ ${GLSL_HULL_EDGES}
       float vis = 1.0;
       float under = 0.0; // a card in a hull's own shadow (no sun reaches it there): its light is all ambient
       float crease = 0.0; // (2026-10-14) the snow crease's core: the runs' feet sunk in packed snow, joined past the cap
+      float keyB0 = 0.0, keyB1 = 0.0; // (contact r2) the FX lamps a hull stands in front of, faded over the reach's end
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
@@ -1004,6 +1145,16 @@ ${GLSL_HULL_EDGES}
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
+        // (contact r2) the FX lamps this hull shadows on a lit receiver (the lamp in the hull frame)
+        if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {
+          float kw = 1.0 - smoothstep( H * ${f(GROUND_AO_KEY_FADE[0])}, H * ${f(GROUND_AO_KEY_FADE[1])}, dOut );
+          vec3 L0 = uVehKeyLightP[ 0 ].xyz;
+          keyB0 = max( keyB0, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L0 ) + m0.w, dot( m1.xyz, L0 ) + m1.w, dot( m2.xyz, L0 ) + m2.w ), b0, b1, b2 ) );
+          if ( uVehKeyLight > 1.5 ) {
+            vec3 L1 = uVehKeyLightP[ 1 ].xyz;
+            keyB1 = max( keyB1, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L1 ) + m0.w, dot( m1.xyz, L1 ) + m1.w, dot( m2.xyz, L1 ) + m2.w ), b0, b1, b2 ) );
+          }
+        }
         // a card (no sun state) takes the whole ambient share only in the hull's own shadow (round 3: inside the footprint
         // below the belly it did so sunlit too — a near-black band of sunlit grass under a skirt); with the sun under the
         // horizon, inside the footprint below the belly as before
@@ -1014,15 +1165,24 @@ ${GLSL_HULL_EDGES}
       // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly; on snow
       // (2026-10-14) the cap keeps the light it keeps on ordinary ground, and the crease's core joins past it
       float occ = max( min( 1.0 - vis, mix( ${f(GROUND_AO_OCC_MAX)}, ${f(GROUND_AO_OCC_MAX_SNOW)}, snowW ) ), crease ) * fade;
-      if ( occ <= 0.003 ) return 1.0;
+      if ( occ <= 0.003 && max( keyB0, keyB1 ) <= 0.0 ) return 1.0;
       // a card has no sun state: half in sun in the open, all ambient in a hull's own shadow
       float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
+      float keyCut = 0.0;
       if ( sunVis >= 0.0 ) {
         float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
         float A = mix( uContactAmb.y, uContactAmb.x, N.y * 0.5 + 0.5 ) + uContactAmb.z
           + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
-        ambShare = A / max( T + A, 1e-4 );
+        // (contact r2) the FX lamps' light joins the total; the blocked lamps' shares leave it (groundShadeWithKeyLights)
+        float E0 = 0.0, E1 = 0.0;
+        if ( uVehKeyLight > 0.5 ) {
+          E0 = cotVgKeyE( uVehKeyLightP[ 0 ], uVehKeyLightE[ 0 ], P, N );
+          if ( uVehKeyLight > 1.5 ) E1 = cotVgKeyE( uVehKeyLightP[ 1 ], uVehKeyLightE[ 1 ], P, N );
+        }
+        float D = max( T + A + E0 + E1, 1e-4 );
+        ambShare = A / D;
+        keyCut = ( keyB0 * E0 + keyB1 * E1 ) * fade / D;
       }
-      return 1.0 - occ * ambShare;
+      return 1.0 - occ * ambShare - keyCut;
     }
 `;

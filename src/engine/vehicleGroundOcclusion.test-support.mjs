@@ -79,14 +79,15 @@ export async function vehicleGroundGlslCases() {
     return { root };
   };
   let packedRuns = null;
-  const pack = (roots, rho, hullAlbedo) => {
+  const pack = (roots, rho, hullAlbedo, lamps = []) => {
     const u = M.createVehicleGroundOcclusionUniforms();
-    M.updateVehicleGroundOcclusionUniforms(u, roots, true, rho, hullAlbedo, M.GROUND_AO_BELLY_VIEW);
+    M.updateVehicleGroundOcclusionUniforms(u, roots, true, rho, hullAlbedo, M.GROUND_AO_BELLY_VIEW, 1, lamps);
     const knots = u.uVehGroundR.value.flatMap((v) => v.toArray());
     packedRuns = { left: knots.slice(0, 8), right: knots.slice(8, 16) };
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
       solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray(),
-      snow: u.uVehGroundSnow.value };
+      snow: u.uVehGroundSnow.value, keyCount: u.uVehKeyLight.value,
+      keyP: u.uVehKeyLightP.value.flatMap((v) => v.toArray()), keyE: u.uVehKeyLightE.value.flatMap((v) => v.toArray()) };
   };
   // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX; on snow,
   // 2026-10-14, GROUND_AO_OCC_MAX_SNOW by the snow weight, which the combine applies with the crease's core)
@@ -148,5 +149,35 @@ export async function vehicleGroundGlslCases() {
     expected: receivers.map(([, p, nrm, card]) => shown(M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, { belly: 1, wall: 1 }, card, runs))
       * (card ? cardShare(vec(p), runs) : 1)),
   };
-  return { labels: receivers.map((r) => r[0]), cases: [geometry, sunlit, drawn], glsl: M.VEHICLE_GROUND_OCCLUSION_GLSL };
+  // (contact r2, 2026-10-14) a night flare high over the hull's front left and a low blast off its right: the ground the hull
+  // stands between and each lamp loses that lamp's share; the night's sky its ambient share (no sun)
+  const lamp = (x, y, z, intensity, distance) => {
+    const parent = new THREE.Group(); const light = new THREE.PointLight(0xffffff, intensity, distance, 2);
+    light.position.set(x, y, z); parent.add(light); return light;
+  };
+  const lamps = [lamp(-3, 12, 6, 220, 0), lamp(5.5, 0.6, -1, 30, 13)];
+  const keyInput = pack([rootAt(0)], 0.25, 0, lamps);
+  const H = T90M.yt - T90M.y0;
+  const keyed = {
+    name: '(contact r2) a night flare and a low blast, one hull: the lamps it stands in front of',
+    input: { ...base, ...keyInput, sunLum: 0 },
+    expected: receivers.map(([, p, nrm, card]) => {
+      const occ = shown(M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, { belly: 1, wall: 1 }, card));
+      if (card) return occ * cardShare(vec(p));
+      const q = vec(p), dx = Math.abs(q.x) - T90M.hx, dz = Math.abs(q.z - 0.5 * (T90M.fz0 + T90M.fz1)) - 0.5 * (T90M.fz1 - T90M.fz0);
+      const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
+      const skipped = dOut > H * M.GROUND_AO_REACH[1] || q.y > T90M.yt || q.y < T90M.y0 - H * M.GROUND_AO_REACH[1]
+        || (q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M);
+      const kw = 1 - smooth(H * M.GROUND_AO_KEY_FADE[0], H * M.GROUND_AO_KEY_FADE[1], dOut);
+      const E = [], blocked = [];
+      for (let i = 0; i < keyInput.keyCount; i++) {
+        const P4 = keyInput.keyP.slice(i * 4, i * 4 + 4), E4 = keyInput.keyE.slice(i * 4, i * 4 + 4);
+        E.push(M.keyLightIrradiance(q, vec(nrm), { x: P4[0], y: P4[1], z: P4[2] }, E4[0], P4[3], E4[1]));
+        blocked.push(skipped ? 0 : kw * M.hullBlocksKeyLight(q, { x: P4[0], y: P4[1], z: P4[2] }, T90M));
+      }
+      const shade = (occ <= 0.003 && Math.max(...blocked) <= 0) ? 1 : M.groundShadeWithKeyLights(occ, 0, 1, E, blocked);
+      return 1 - shade;
+    }),
+  };
+  return { labels: receivers.map((r) => r[0]), cases: [geometry, sunlit, drawn, keyed], glsl: M.VEHICLE_GROUND_OCCLUSION_GLSL };
 }
