@@ -1674,6 +1674,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
+    'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
