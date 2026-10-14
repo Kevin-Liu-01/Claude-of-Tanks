@@ -13,7 +13,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
-import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe } from './audioEngine.ts';
+import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe, AudioWorld } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
@@ -29,6 +29,7 @@ interface AudioMixerModule {
     getTerrain?: () => AudioTerrainProbe | null;
     getLandmarks?: () => readonly AudioLandmark[] | null;
     getStructureMakeup?: (structureId: number) => AudioStructureMakeup | null;
+    getWorld?: () => AudioWorld | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -44,6 +45,8 @@ interface LazyAudioOptions {
   getLandmarks?(): readonly AudioLandmark[] | null;
   /** What a structure is made of (the world's damage anatomy): a building breaks as its walls are built. */
   getStructureMakeup?(structureId: number): AudioStructureMakeup | null;
+  /** The battlefield (its landmarks and structures), read by the mixer where a narrower getter is not given. */
+  getWorld?(): AudioWorld | null;
   hasStickyActivation?(): boolean;
 }
 
@@ -77,12 +80,6 @@ function storedMasterVolume(): number {
 }
 
 export function createLazyAudio({
-  getMapId,
-  getGameMode,
-  getObjectiveTeam,
-  getTerrain,
-  getLandmarks,
-  getStructureMakeup,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
@@ -94,6 +91,8 @@ export function createLazyAudio({
     const AC = scope.AudioContext || scope.webkitAudioContext;
     return AC ? new AC({ latencyHint: 'interactive' }) : null;
   },
+  // the world and game getters (map, mode, objective side, terrain, the world), handed to the mixer
+  ...world
 }: LazyAudioOptions = {}): LazyAudio {
   let context: AudioContext | null = null;
   let real: AudioMixer | null = null;
@@ -108,8 +107,6 @@ export function createLazyAudio({
   let muted = false;
   let masterVolume = storedMasterVolume();
   let garageStingPending = false;
-  /** The press that loads the engine, replayed to it once (its control's own click; AU.07). */
-  let firstPress: { target: EventTarget | null; atMs: number } | null = null;
   let loadingRevision = 0;
   let gestureBound = false;
 
@@ -148,11 +145,6 @@ export function createLazyAudio({
       garageStingPending = false;
       real.playGarageSting();
     }
-    if (firstPress) {
-      const press = firstPress;
-      firstPress = null;
-      if (!muted && masterVolume > 0) real.playFirstPress?.(press.target, press.atMs);
-    }
     return real;
   };
 
@@ -177,7 +169,7 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getObjectiveTeam, getTerrain, getLandmarks, getStructureMakeup, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ ...world, context, preparedBuffers, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -253,11 +245,9 @@ export function createLazyAudio({
       // mixer, so neither waits for a first battle.
       if (!gestureBound && typeof document !== 'undefined') {
         gestureBound = true;
-        const onGesture = (event: Event): void => {
+        const onGesture = (): void => {
           document.removeEventListener('pointerdown', onGesture, true);
           document.removeEventListener('keydown', onGesture, true);
-          // the press that loads the engine: it hears its own click once the engine has it (AU.07, 2026-10-13)
-          if (event.type === 'pointerdown' && !real) firstPress = { target: event.target, atMs: performance.now() };
           if (!muted && masterVolume > 0) resume();
         };
         document.addEventListener('pointerdown', onGesture, true);

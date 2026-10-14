@@ -88,8 +88,16 @@ interface AudioMixerOptions {
    * building breaks, falls and takes a round as its walls are built (destructionSounds.ts structureSoundOf).
    */
   getStructureMakeup?(structureId: number): AudioStructureMakeup | null;
+  /** The battlefield the two getters above read when they are not given (main.ts hands the world itself). */
+  getWorld?(): AudioWorld | null;
   initialPhase?: string;
   tier?: DeviceTier;
+}
+
+/** The slice of the world runtime the mixer reads: its buildings and set pieces, and each structure's damage anatomy. */
+export interface AudioWorld {
+  getMinimapFeatures?(): { readonly buildings?: readonly AudioLandmark[] | null };
+  structureDamage?(structureId: number): { readonly anatomy?: AudioStructureMakeup | null } | null;
 }
 
 /** A structure's make-up as the world's damage anatomy carries it (fields beyond these are ignored). */
@@ -116,11 +124,6 @@ export interface AudioMixer {
   loadingOn(active: boolean): void;
   warmBattleEvents(roster?: readonly string[]): Promise<void> | void;
   ambientOn(active: boolean): void;
-  /**
-   * The press that loaded this engine (the boot facade's first gesture): its control's sound, once the interface set
-   * has decoded, if that is soon enough to still belong to the press.
-   */
-  playFirstPress?(target: unknown, pressedAtMs: number): void;
 }
 
 // ---------------------------------------------------------------- entities ---
@@ -366,11 +369,14 @@ export function createAudio({
   getGameMode,
   getObjectiveTeam,
   getTerrain,
-  getLandmarks,
-  getStructureMakeup,
+  getLandmarks: givenLandmarks,
+  getStructureMakeup: givenMakeup,
+  getWorld,
   initialPhase = 'garage',
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
+  const getLandmarks = givenLandmarks ?? (getWorld ? () => getWorld()?.getMinimapFeatures?.().buildings ?? null : undefined);
+  const getStructureMakeup = givenMakeup ?? (getWorld ? (id: number) => getWorld()?.structureDamage?.(id)?.anatomy ?? null : undefined);
   const tier: DeviceTier = forcedTier ?? detectTier();
   const budget = BUDGETS[tier];
   let ctx: AudioContext | null = initialContext;
@@ -2073,9 +2079,48 @@ export function createAudio({
     return true;
   }
 
+  const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  /** The engine's first press: one interface sound may wait for its recording, until this deadline (ms). */
+  let firstPressUntil = nowMs() + FIRST_PRESS_MS;
+  let firstPressPending = false;
+
   function interfaceSound(sound: InterfaceSound, inMenu: boolean): void {
-    if (!ready() || (phase === 'battle' && !inMenu) || !interfaceOnce()) return;
-    play(INTERFACE_ASSET[sound]);
+    if (!ready() || (phase === 'battle' && !inMenu)) return;
+    const asset = INTERFACE_ASSET[sound];
+    // AU.07 (2026-10-13): the press that loads this engine, or the first after it, finds its recording still decoding
+    // (it was silent: a known limit). That one sound waits for its decode, if it lands within FIRST_PRESS_MS of the
+    // engine's start; a late click would read as lag, so past that it stays silent, and only ever once.
+    if (lastInterfaceAt < 0 && library && !library.has(asset)) {
+      if (firstPressPending || nowMs() > firstPressUntil) return;
+      firstPressPending = true;
+      void library.load([asset]).then(() => {
+        firstPressPending = false;
+        if (lastInterfaceAt < 0 && nowMs() <= firstPressUntil && interfaceOnce()) play(asset);
+      });
+      return;
+    }
+    if (!interfaceOnce()) return;
+    play(asset);
+  }
+
+  /**
+   * The press that loaded this engine came before its delegated listener existed: a control that press focused, while
+   * the page's user activation is still live, is it. Its sound plays as the first press's (above), once the engine runs.
+   */
+  function replayLoadingPress(): void {
+    if (typeof document === 'undefined') return;
+    const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { userActivation?: { isActive?: boolean } } : null;
+    const el = document.activeElement as unknown as Parameters<typeof classifyInterfaceTarget>[0];
+    if (!nav?.userActivation?.isActive || !el || (el as unknown) === document.body || typeof el.closest !== 'function') return;
+    const hit = classifyInterfaceTarget(el);
+    if (!hit) return;
+    firstPressUntil = nowMs() + FIRST_PRESS_MS;
+    const attempt = (): void => {
+      if (lastInterfaceAt >= 0 || nowMs() > firstPressUntil) return;
+      if (ready()) interfaceSound(hit.sound, hit.inMenu);
+      else setTimeout(attempt, 40);
+    };
+    setTimeout(attempt, 0);
   }
 
   let detachTurretLanding: (() => void) | null = null;
@@ -2663,6 +2708,7 @@ export function createAudio({
 
   // Every control in the garage and the menus sounds (not the battle controls).
   if (typeof document !== 'undefined') bindInterfaceSounds(document, (hit) => interfaceSound(hit.sound, hit.inMenu));
+  replayLoadingPress();
 
   return {
     resume,
@@ -2691,19 +2737,6 @@ export function createAudio({
       if (!ready() || !ambience) return;
       if (on) applyScene();
       else if (phase === 'battle') ambience.stop(0.5);
-    },
-    playFirstPress(target, pressedAtMs) {
-      // AU.07 (2026-10-13): the first press anywhere loads this engine, so that press's own click was never heard (the
-      // delegated listener did not exist yet). It plays once its recording has decoded, if that is within FIRST_PRESS_MS
-      // of the press (a late click would read as lag); never if another interface sound has played since.
-      const el = target as Parameters<typeof classifyInterfaceTarget>[0];
-      const hit = el && typeof el.closest === 'function' && typeof el.getAttribute === 'function' ? classifyInterfaceTarget(el) : null;
-      if (!hit || !library || lastInterfaceAt >= 0) return;
-      const asset = INTERFACE_ASSET[hit.sound];
-      const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : pressedAtMs);
-      void library.load([asset]).then(() => {
-        if (lastInterfaceAt < 0 && nowMs() - pressedAtMs <= FIRST_PRESS_MS) interfaceSound(hit.sound, hit.inMenu);
-      });
     },
   };
 }
