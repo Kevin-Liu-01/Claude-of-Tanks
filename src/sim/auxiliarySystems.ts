@@ -1,7 +1,7 @@
 import { createSmokeCanister, smokeCloudBanks, smokeCanisterPosition, type SmokePoint, type SmokeWorld, type SmokeWorldHit } from './smokeBallistics.ts';
 import { smokeClip } from './smokeScreen.ts';
 import { Euler, Matrix4, Vector3, Quaternion } from 'three';
-import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
+import { auxiliaryCapabilities, type AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import type { DamageShellSpec, CombatState } from './damage.ts';
@@ -11,6 +11,13 @@ export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 import type { SmokeScreen } from './smokeScreen.ts';
 export type { SmokeScreen } from './smokeScreen.ts';
 export { SMOKE_DURATION_S, smokeBlocks } from './smokeScreen.ts';
+/** One extra roof station's own aim and bursts (stations after the first; VH.02, the M551A1 TTS's roof M2). */
+export interface AuxiliaryStationState {
+  gunYaw: number;
+  gunPitch: number;
+  nextShot: number;
+  shots: number;
+}
 export interface AuxiliaryState {
   lights: -1 | 0 | 1;
   gunOn: boolean;
@@ -21,6 +28,9 @@ export interface AuxiliaryState {
   smokeCharges: number;
   smokeReadyAt: number;
   smoke: SmokeScreen | null;
+  /** The vehicle's second and later roof stations (guns[1..]), present only on a multi-station vehicle. The first
+   * station keeps gunYaw/gunPitch/nextShot/shots above; on/off, damage and the roofGun module are shared. */
+  stations?: AuxiliaryStationState[];
 }
 export interface AuxiliaryEntity {
   id: string;
@@ -33,12 +43,17 @@ export interface AuxiliaryEntity {
 }
 export const SMOKE_COOLDOWN_S = 28;
 export const ROOF_GUN_SHELL: DamageShellSpec = auxiliaryWeaponProfile(12.7).shell;
+const stationState = (): AuxiliaryStationState => ({ gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0 });
 export function createAuxiliaryState(spec: { id?: string }): AuxiliaryState {
+  const guns = auxiliaryCapabilities(spec)?.guns;
   return {
-    lights: -1, gunOn: !!auxiliaryCapabilities(spec)?.guns.length, gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0,
+    lights: -1, gunOn: !!guns?.length, gunYaw: 0, gunPitch: 0, nextShot: 0, shots: 0,
     smokeCharges: 3, smokeReadyAt: 0, smoke: null,
+    ...(guns && guns.length > 1 ? { stations: guns.slice(1).map(stationState) } : {}),
   };
 }
+/** How many roof stations the vehicle's roof-gun system drives (guns[0] first, heaviest calibre). */
+export function roofStationCount(spec: { id?: string }): number { return auxiliaryCapabilities(spec)?.guns.length ?? 0; }
 export function auxiliaryState(entity: Pick<AuxiliaryEntity, 'combat' | 'spec'>): AuxiliaryState {
   return entity.combat.auxiliary ??= createAuxiliaryState(entity.spec);
 }
@@ -101,6 +116,28 @@ interface GunContext {
   clear(a: Vector3, b: Vector3): boolean;
 }
 const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
+type RoofGunMount = AuxiliaryInventory['guns'][number];
+/** The yaw a station would need for a target, in its arc's unwrapped range, or NaN outside it (module scratch). */
+let arcMount: RoofGunMount | null = null;
+const arcLocal = new Vector3();
+function arcYaw(arc: readonly [number, number], yaw: number): number {
+  if (yaw > arc[1]) yaw -= Math.PI * 2; else if (yaw < arc[0]) yaw += Math.PI * 2;
+  return yaw >= arc[0] && yaw <= arc[1] ? yaw : NaN;
+}
+/** The deepest depression a station may take at a yaw: the weapon's, or less where the mount's table says the roof
+ * below the barrel allows less (between two samples the smaller holds). */
+function depressionAt(gun: RoofGunMount, yaw: number, weapon: number): number {
+  const table = gun.depressionByYaw;
+  if (!table?.length || yaw < table[0]![0] || yaw > table[table.length - 1]![0]) return weapon;
+  for (let i = 1; i < table.length; i++) if (yaw <= table[i]![0]) return Math.min(weapon, table[i - 1]![1], table[i]![1]);
+  return Math.min(weapon, table[table.length - 1]![1]);
+}
+/** selectRoofTarget's filter for a station with a traverse arc: the target's bearing from the mount lies inside it. */
+function withinStationArc(target: AuxiliaryEntity): boolean {
+  if (!arcMount?.yawArc) return true;
+  arcLocal.set(target.state.pos.x, target.state.pos.y + (target.spec.dims?.heightM ?? 2.5) * .5, target.state.pos.z).applyMatrix4(inverse);
+  return !Number.isNaN(arcYaw(arcMount.yawArc, Math.atan2(arcLocal.x, arcLocal.z)));
+}
 /** Independent weapon-specific bursts. Only spotted enemies with a clear firing lane qualify. */
 export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, context: GunContext): boolean {
   if (entity.aerial?.kind === 'gunship') return false;
@@ -111,24 +148,52 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;
   const damage = entity.combat.modules?.roofGun?.state;
   if (damage === 'red') { state.gunOn = false; return false; }
+  const fired = stepStation(entity, gun, state, damage, now, dt, context);
+  entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
+  return fired;
+}
+/** VH.02 (the owner's "no non-functional guns"): station `index` (1 or later) of a multi-station vehicle — the M551A1
+ * TTS's roof M2 beside its 30 mm — aims, picks its own target and fires its own bursts. On/off (the B toggle, the bots'
+ * toggle), damage and the roofGun module are the vehicle's one roof-gun system, so a red module silences every station.
+ * Fills auxiliaryShot when it fires; station 0 is stepRoofGun. */
+export function stepRoofStation(entity: AuxiliaryEntity, index: number, now: number, dt: number, context: GunContext): boolean {
+  if (index < 1 || entity.aerial?.kind === 'gunship') return false;
+  const guns = auxiliaryCapabilities(entity.spec)?.guns, gun = guns?.[index], state = entity.combat.auxiliary;
+  if (!gun || !state?.gunOn || entity.combat.destroyed || entity.modeActive === false) return false;
+  const damage = entity.combat.modules?.roofGun?.state;
+  if (damage === 'red') return false;
+  const station = (state.stations ??= guns.slice(1).map(stationState))[index - 1];
+  return !!station && stepStation(entity, gun, station, damage, now, dt, context);
+}
+/** One station's aim and burst (AuxiliaryState is its own first station: the same four fields). A station with a
+ * traverse arc (gun.yawArc, mount-local radians, unwrapped) only takes targets inside it and turns the long way round
+ * rather than through the stock the arc keeps it clear of. */
+function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: AuxiliaryStationState, damage: string | undefined,
+  now: number, dt: number, context: GunContext): boolean {
   const handling = damage === 'yellow' ? .5 : 1;
   const profile=auxiliaryWeaponProfile(gun.caliberMm,entity.spec.id);
   base.copy(mountFrame(entity, gun.owner));
   gunMatrix.compose(targetPoint.fromArray(gun.position),quaternion.fromArray(gun.rotation),one);base.multiply(gunMatrix);
   inverse.copy(base).invert();pivot.fromArray(gun.pivot);mountScale.fromArray(gun.scale);
   origin.copy(pivot).multiply(mountScale).applyMatrix4(base);
-  const target = selectRoofTarget(entity, context, profile.rangeM);
+  const arc = gun.yawArc;
+  arcMount = arc ? gun : null;
+  const target = selectRoofTarget(entity, context, profile.rangeM, origin, arc ? withinStationArc : undefined);
+  arcMount = null;
   if(!target)return false;
   direction.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z).sub(origin);
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
-  const desiredYaw=Math.atan2(localTarget.x,localTarget.z);
-  localTarget.applyAxisAngle(yAxis,-desiredYaw).divide(mountScale).sub(pivot);
+  const bearing=Math.atan2(localTarget.x,localTarget.z), desiredYaw=arc?arcYaw(arc,bearing):bearing;
+  if(Number.isNaN(desiredYaw))return false;
+  localTarget.applyAxisAngle(yAxis,-bearing).divide(mountScale).sub(pivot);
   const desiredPitch=Math.atan2(localTarget.y,Math.hypot(localTarget.x,localTarget.z));
-  if(desiredPitch < -profile.depressionRad || desiredPitch > profile.elevationRad)return false;
-  const turn=wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
-  state.gunYaw=wrap(state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn)));
+  if(desiredPitch < -depressionAt(gun,desiredYaw,profile.depressionRad) || desiredPitch > profile.elevationRad)return false;
+  const turn=arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
+  const step=state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn));
+  state.gunYaw=arc?Math.min(arc[1],Math.max(arc[0],step)):wrap(step);
   state.gunPitch+=Math.max(-dt*handling*profile.pitchRateRadS,Math.min(dt*handling*profile.pitchRateRadS,pitch));
-  entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
+  // crossing the shallow sector depressed, the barrel lifts clear of the roof first
+  if(gun.depressionByYaw)state.gunPitch=Math.max(state.gunPitch,-depressionAt(gun,state.gunYaw,profile.depressionRad));
   if(Math.abs(turn)>.035||Math.abs(pitch)>.035||now<state.nextShot)return false;
   const cp=Math.cos(state.gunPitch);
   // THREE applies local scale before the animated yaw. Doing the reverse
@@ -151,11 +216,13 @@ const roofCandidates: AuxiliaryEntity[] = [], roofCandidateDistance: number[] = 
  * are ordered by distance before any lane test, so the tests (a smoke check and a world ray each) stop at the first
  * that passes: the target the one-pass scan chose, with fewer rays (2026-10-13, the MP stream: the authority's tick —
  * every bot's roof gun scans every tick). */
-export function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext, rangeM:number, from: Vector3 = origin): AuxiliaryEntity | null {
+export function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext, rangeM:number, from: Vector3 = origin,
+  accept?: (target: AuxiliaryEntity) => boolean): AuxiliaryEntity | null {
   const range2=rangeM*rangeM;
   let count=0;
   for (const other of context.entities) {
     if(other===entity || other.team===entity.team || other.combat.destroyed || other.modeActive===false || !context.visible(other,entity)) continue;
+    if(accept && !accept(other)) continue;
     targetPoint.set(other.state.pos.x,other.state.pos.y+(other.spec.dims?.heightM??2.5)*.5,other.state.pos.z);
     const distance=from.distanceToSquared(targetPoint);
     if(!(distance < range2)) continue;
