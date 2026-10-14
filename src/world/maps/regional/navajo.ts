@@ -1133,33 +1133,81 @@ const trailer: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The hay shed (a gantry plot): a long pole barn of juniper posts under a low tin gable, bales stacked under it. */
+/**
+ * The hay shed (a gantry plot): a long pole barn of juniper posts under a low tin gable, bales stacked under it. (Props
+ * census #3, lane B 2026-10-14; the judges: "the counter-example's posts and slab roof at barn size ... the slab
+ * underside in full view; the bales one solid straw span per bay".) The posts carry plates along each side on knee
+ * braces; pole trusses across at every post pair carry the purlins; the roof is corrugated sheets in laps over them with
+ * a ridge cap, a sheet or two lifted; the bales stacked one by one, offset course on course.
+ */
 const hayShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   // the shed fills the old gantry's reach (its bounds, which stand off the plot's centre)
   const bb = ctx.bounds;
   const L = Math.max(12, bb.maxX - bb.minX - 0.8), Dd = Math.max(4.0, bb.maxZ - bb.minZ - 0.6), H = 4.3;
   const n = Math.max(4, Math.round(L / 3.3));
+  const pitch = 12 * Math.PI / 180, half = Dd / 2 - 0.15, rise = half * Math.tan(pitch);
   sink.placed(0, (bb.maxX + bb.minX) / 2, 0, (bb.maxZ + bb.minZ) / 2, () => {
   // the ground under the shed worn bare and dark (dressing)
   groundCourse(sink, -L / 2, -Dd / 2, L / 2, Dd / 2, 0, false, 0.5);
+  const xs: number[] = [];
   for (let k = 0; k <= n; k++) {
     const x = -L / 2 + 0.15 + (L - 0.3) * k / n;
-    for (const z of [-Dd / 2 + 0.15, Dd / 2 - 0.15]) pole(sink, [x, -0.3, z], [x + (look() - 0.5) * 0.08, H, z], 0.12, pick(look, JUNIPER), false);
+    xs.push(x);
+    for (const z of [-half, half]) pole(sink, [x, -0.3, z], [x + (look() - 0.5) * 0.08, H - 0.25, z], 0.12, pick(look, JUNIPER), false);
   }
-  for (const z of [-Dd / 2 + 0.15, Dd / 2 - 0.15]) sink.span('structureWood', -L / 2, H - 0.25, z - 0.1, L / 2, H, z + 0.1, { colour: JUNIPER_DARK });
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.45, verge: 0.4, thickness: 0.07, bucket: 'roof', ridge: 'saddle' };
-  sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(Dd, L, H, roof), roof));
-  // the bales: stacks two to five high in most bays (one solid stack each: structure, the same on every tier)
+  for (const z of [-half, half]) sink.span('structureWood', -L / 2, H - 0.25, z - 0.1, L / 2, H, z + 0.1, { colour: JUNIPER_DARK });
+  sink.dressing(mobile, () => {
+    for (const x of xs) {
+      // the knee braces from each post to the plate, both ways along it
+      for (const z of [-half, half]) for (const dx of [-0.7, 0.7]) {
+        if (x + dx < -L / 2 || x + dx > L / 2) continue;
+        pole(sink, [x, H - 1.0, z], [x + dx, H - 0.25, z], 0.05, pick(look, JUNIPER), true);
+      }
+      // the truss across: its tie, its rafters to the ridge, a king post
+      pole(sink, [x, H - 0.05, -half], [x, H - 0.05, half], 0.06, JUNIPER_DARK, true);
+      for (const z of [-half, half]) pole(sink, [x, H, z], [x, H + rise, 0], 0.06, JUNIPER_DARK, true);
+      pole(sink, [x, H - 0.05, 0], [x, H + rise - 0.05, 0], 0.05, JUNIPER_DARK, true);
+    }
+    // the purlins along the rafters
+    for (const t of [0.15, 0.5, 0.85]) for (const side of [-1, 1]) {
+      const z = side * half * (1 - t), y = H + rise * t + 0.06;
+      sink.span('structureWood', -L / 2, y, z - 0.05, L / 2, y + 0.08, z + 0.05, { colour: JUNIPER_DARK, decor: true });
+    }
+  });
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.45, verge: 0.4, thickness: 0.03, bucket: 'roof', ridge: 'saddle' };
+  sink.placed(Math.PI / 2, 0, 0.14, 0, () => emitRoof(sink, roofGeometry(Dd, L, H, roof), roof));
+  sink.dressing(mobile, () => {
+    // the sheets' laps across each slope, a sheet lifted at the windward eave
+    for (let x = -L / 2 - 0.4 + 0.86; x < L / 2 + 0.4; x += 0.86) {
+      for (const side of [-1, 1]) {
+        sink.member('roof', [x, H + 0.14 + 0.035 - (Dd / 2 + 0.45 - 0.02) * Math.tan(pitch) + rise * 0, side * (Dd / 2 + 0.45)], [x, H + 0.14 + rise + 0.035 + (0.15) * Math.tan(pitch), 0],
+          0.06, 0.02, [0, Math.cos(pitch), side * Math.sin(pitch)], { decor: true, fine: true, exposed: true }, 0);
+      }
+    }
+    if (look() < 0.6) {
+      const x = -L / 2 + 1 + look() * (L - 2);
+      sink.member('roof', [x - 0.42, H + 0.24 - 0.1, Dd / 2 + 0.3], [x - 0.42, H + 0.24 + 0.55, Dd / 2 - 1.6], 0.82, 0.02, [0, 0.95, 0.3], { decor: true, exposed: true }, 0);
+    }
+  });
+  // the bales: stacks two to five high in most bays, each bale its own block, the courses laid crosswise and offset
+  // (the stack's core solid: structure, the same on every tier)
   for (let k = 0; k < n; k++) {
     if (ctx.rng() < 0.25) continue;
     const x0 = -L / 2 + 0.4 + (L - 0.3) * k / n, h = 2 + Math.floor(ctx.rng() * 4), x1 = x0 + Math.min(2.6, (L - 0.8) / n - 0.3);
-    sink.span('straw', x0, 0, -0.9, x1, h * 0.46, 1.2);
-    // the courses' joints and a loose bale on top (dressing)
-    sink.dressing(ctx.tier === 'mobile', () => {
-      for (let r = 1; r < h; r++) sink.span('straw', x0 - 0.02, r * 0.46 - 0.015, -0.92, x1 + 0.02, r * 0.46 + 0.015, 1.22, { decor: true });
-      if (look() < 0.5) sink.span('straw', x0 + 0.3, h * 0.46, -0.4, x0 + 1.3, h * 0.46 + 0.46, 0.5, { decor: true });
+    sink.span('straw', x0 + 0.05, 0, -0.85, x1 - 0.05, h * 0.46 - 0.04, 1.15);
+    sink.dressing(mobile, () => {
+      for (let r = 0; r < h; r++) {
+        const y0 = r * 0.46, cross = r % 2 === 1, bl = cross ? 0.46 : 0.92, off = cross ? 0 : (r % 4 === 2 ? 0.46 : 0);
+        for (let x = x0 + off; x + bl <= x1 + 0.01; x += bl) {
+          for (let z = -0.9; z < 1.2; z += cross ? 0.7 : 1.05) {
+            const zl = cross ? 0.7 : 1.05, z1 = Math.min(1.2, z + zl);
+            sink.span('straw', x + 0.01, y0 + 0.01, z + 0.01, x + bl - 0.01, y0 + 0.45, z1 - 0.01, { decor: true, shade: 0.9 + look() * 0.15 });
+          }
+        }
+      }
+      if (look() < 0.5) sink.span('straw', x0 + 0.3, h * 0.46, -0.4, x0 + 1.22, h * 0.46 + 0.45, 0.4, { decor: true });
     });
   }
   });
