@@ -980,27 +980,25 @@ async function renderMaskEntry(
 
   // turret pass (hull hidden), centered on the PIVOT; the frustum must reach
   // the muzzle: gun length from the pivot + bustle margin
+  turretG.visible = true;
+  hullG.visible = false;
   const gunReach = Math.max(
     (spec.armor && spec.armor.gunBarrel && spec.armor.gunBarrel.lengthM) || 4,
     overall - (dims.hullLengthM || overall) / 2 - tp[2]);
   const turretHalf = Math.max(2.2, gunReach + 1.6) + MASK_MARGIN_M;
-  // (2026-10-13, the MP stream) a turretless casemate (the Strv 103 and 103A) keeps rig_turret empty by design, its gun
-  // fused into the hull: the turret pass rendered nothing, the entry came back null, and the HUD damage panel ran
-  // without a mask for those two — retrying and failing every match. Its turret layer is now an empty canvas with
-  // no pass; the hull mask carries the gun.
-  const turretless = !!(spec.armor && spec.armor.turretless);
-  let turretPass: PendingMaskPass | null = null;
-  if (!turretless) {
-    turretG.visible = true;
-    hullG.visible = false;
-    // Hull pixels are already captured in its own PBO. Reuse the framebuffer
-    // while that copy waits; only this transaction may change clone visibility.
-    turretPass = await submitMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
-    passes.push(turretPass);
-  }
+  // Hull pixels are already captured in its own PBO. Reuse the framebuffer
+  // while that copy waits; only this transaction may change clone visibility.
+  const turretPass = await submitMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
+  passes.push(turretPass);
   const hull = completedMaskPass(await hullPass.completion);
-  const turret = turretPass ? completedMaskPass(await turretPass.completion) : null;
+  const turret = completedMaskPass(await turretPass.completion);
   sourceLifetime?.assertAlive();
+  // (2026-10-13, the MP stream) a turretless build whose rig_turret holds nothing (the Strv 103 and 103A casemates: the
+  // gun is fused into the hull, profiles/casemate.ts) renders an empty turret pass. The entry used to come back null and
+  // the HUD damage panel ran without a mask for those two, retrying and failing every match; such a build now gets an
+  // empty turret layer. A turretless build with turret content (UDES 03, JPz E-100) keeps its rendered layer, and an
+  // empty pass on a turreted build still fails as before.
+  const turretless = !!(spec.armor && spec.armor.turretless);
   if (!hull || (!turret && !turretless)) return null;
 
   // plan-space layout facts for the panel (meters)
