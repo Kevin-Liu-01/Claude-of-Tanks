@@ -515,10 +515,13 @@ export const GROUND_AO_KEY_INSIDE_M = 0.15;
 export const GROUND_AO_KEY_FADE = Object.freeze([2, 3] as const);
 /**
  * The boxes stand in for a hull whose edges are rounded, chamfered and hung with stowage: a lamp's shadow takes the chord
- * its ray cuts through a box, whole from GROUND_AO_KEY_SOFT_M (smoothstep), so the shadow's edge — where the rays graze
- * a box — is a soft fringe, never a ruled rectangle (the owner's "super super dark rectangular shadows under tracks").
+ * its ray cuts through a box grown GROUND_AO_KEY_GROW_M across (x and z), whole from GROUND_AO_KEY_SOFT_M (smoothstep), so
+ * the shadow's edge — where the rays graze a box — is a soft fringe a few decimetres wide on the ground even under a steep
+ * lamp, never a ruled rectangle (the owner's "super super dark rectangular shadows under tracks"; the first night capture's
+ * 0.35 m chord on the bare boxes left a 7 cm edge under the flare).
  */
-export const GROUND_AO_KEY_SOFT_M = 0.35;
+export const GROUND_AO_KEY_SOFT_M = 0.5;
+export const GROUND_AO_KEY_GROW_M = 0.12;
 
 /** How much the segment q → k (the hull frame) is shadowed by the box [lo, hi]: the chord it cuts through the box,
  * whole from GROUND_AO_KEY_SOFT_M (the GLSL's cotVgSegBox). */
@@ -544,7 +547,8 @@ export function hullBlocksKeyLight(q: Vec3Like, k: Vec3Like, h: VehicleGroundHul
     [[-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1]], [[h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1]], [[-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]],
   ];
   if (boxes.some(([lo, hi]) => insideBox(k, lo, hi))) return 0;
-  return Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, lo, hi)));
+  const g = GROUND_AO_KEY_GROW_M;
+  return Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, [lo[0] - g, lo[1], lo[2] - g], [hi[0] + g, hi[1], hi[2] + g])));
 }
 
 /** A lamp's irradiance (luminance) at a receiver as three's punctual light draws it: lum × N·l × 1 / max(d^decay, 0.01),
@@ -1005,8 +1009,8 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       vec3 lo1 = vec3( b2.z, b0.w, b1.x ), hi1 = vec3( b2.w, b0.y, b1.y );
       vec3 lo2 = vec3( -b2.w, b0.w, b1.x ), hi2 = vec3( -b2.z, b0.y, b1.y );
       if ( cotVgInBox( k, lo0, hi0 ) + cotVgInBox( k, lo1, hi1 ) + cotVgInBox( k, lo2, hi2 ) > 0.0 ) return 0.0;
-      vec3 d = k - q;
-      return max( cotVgSegBox( q, d, lo0, hi0 ), max( cotVgSegBox( q, d, lo1, hi1 ), cotVgSegBox( q, d, lo2, hi2 ) ) );
+      vec3 d = k - q, g = vec3( ${f(GROUND_AO_KEY_GROW_M)}, 0.0, ${f(GROUND_AO_KEY_GROW_M)} );
+      return max( cotVgSegBox( q, d, lo0 - g, hi0 + g ), max( cotVgSegBox( q, d, lo1 - g, hi1 + g ), cotVgSegBox( q, d, lo2 - g, hi2 + g ) ) );
     }
     // a lamp's irradiance (luminance) at P with normal N as three's punctual light draws it (keyLightIrradiance)
     float cotVgKeyE( vec4 p, vec4 e, vec3 P, vec3 N ) {

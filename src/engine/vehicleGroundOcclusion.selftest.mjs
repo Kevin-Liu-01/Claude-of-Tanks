@@ -673,7 +673,18 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
       prev = v;
     }
     assert.ok(worst < 0.1 && partial >= 8, `a soft fringe, no step (worst 1 cm change ${worst.toFixed(3)}, ${partial} cm partial)`);
-    assert.ok(GROUND_AO_KEY_SOFT_M >= 0.2 && GROUND_AO_KEY_SOFT_M <= 0.5);
+    assert.ok(GROUND_AO_KEY_SOFT_M >= 0.3 && GROUND_AO_KEY_SOFT_M <= 0.6);
+  }
+  // under a steep lamp (the flare 70° up) the fringe still spans decimetres on the ground: the first night capture's bare
+  // 0.35 m chord left a 7 cm edge
+  {
+    const steep = { x: -12, y: 33, z: 0 };
+    let partial = 0;
+    for (let x = T.hx - 1; x <= T.hx + 1.5; x += 0.01) {
+      const v = hullBlocksKeyLight({ x, y: 0, z: 0 }, steep, T);
+      if (v > 0.05 && v < 0.95) partial++;
+    }
+    assert.ok(partial >= 12, `a steep lamp's fringe spans ${partial} cm`);
   }
   // a muzzle against the mantlet (inside the solid's slack) shadows nothing
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, { x: 0, y: T.yt + GROUND_AO_KEY_INSIDE_M * 0.5, z: T.fz1 - 0.2 }, T), 0, 'a lamp inside: none');
