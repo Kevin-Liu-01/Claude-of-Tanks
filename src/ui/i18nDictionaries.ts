@@ -58,7 +58,7 @@ let lazyWanted = false;
 function loadLazyLocale(locale: CatalogLocale): Promise<void> {
   const url = lazyCatalogUrl(locale);
   if (!url || !loaded[locale]) return Promise.resolve();
-  return lazyLoads[locale] ??= (import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }>).then((module) => {
+  return lazyLoads[locale] ??= (import(/* @vite-ignore */ /* @selftest-external: page's built lazy catalog chunk (lazyCatalogUrl from document meta); null in Node */ url) as Promise<{ default: Dictionary }>).then((module) => {
     loaded[locale] = { ...loaded[locale], ...module.default };
   }, (error: unknown) => {
     delete lazyLoads[locale]; // a later import() retries
@@ -99,7 +99,9 @@ export function localeDictionary(locale: CatalogLocale): Dictionary | undefined 
 export function loadLocaleDictionary(locale: CatalogLocale): Promise<void> {
   if (loaded[locale]) return Promise.resolve();
   const url = pageCatalogUrl(locale);
-  return pending[locale] ??= (url ? import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }> : FULL_CATALOGS[locale]())
+  return pending[locale] ??= (url
+    ? import(/* @vite-ignore */ /* @selftest-external: page's built catalog chunk (pageCatalogUrl from document meta); null in Node */ url) as Promise<{ default: Dictionary }>
+    : FULL_CATALOGS[locale]())
     .then((module) => {
       loaded[locale] = module.default;
       // (a locale switched to in place after a lazy module loaded takes the page's lazy chunk too; English for those

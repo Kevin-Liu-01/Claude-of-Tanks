@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { createSelftestCache, REPO_ROOT, SELFTEST_CACHE_VERSION } from './selftest-cache.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
 
@@ -44,6 +44,45 @@ assert.equal(collectSelftestInputs('// puppeteer keyboard.press\nexport const va
 assert.equal(collectSelftestInputs('const message = "puppeteer";', 'input.ts').browser, false,
   'a literal mention does not execute a browser');
 assert.equal(collectSelftestInputs('import browser from "puppeteer";', 'probe.mjs').browser, true);
+
+// Planner precision (2026-10-13): three parser rules each widened hundreds of receipts to the whole tree.
+// 1. A computed import() marked `@selftest-external` loads something outside the repository (a built page chunk): it is
+//    recorded, not treated as "could be any file". Only the argument's own comments count; unmarked stays opaque.
+{
+  const marked = collectSelftestInputs('export const load = (url) => import(/* @vite-ignore */ /* @selftest-external: a built page chunk */ url);', 'marked.ts');
+  assert.deepEqual([marked.broad, marked.opaqueImport, marked.external], [false, false, ['a built page chunk']], 'a marked computed import is external');
+  const nextLine = collectSelftestInputs('void import(\n  // @selftest-external: the page chunk\n  url);', 'next-line.ts');
+  assert.deepEqual([nextLine.opaqueImport, nextLine.external], [false, ['the page chunk']], 'a marker on its own line before the argument counts');
+  for (const source of ['void import(/* @vite-ignore */ url);', 'void import(url /* @selftest-external: after */);',
+    '// @selftest-external: above\nvoid import(url);', 'void import(/* @selftest-externally */ url);']) {
+    const unmarked = collectSelftestInputs(source, 'unmarked.ts');
+    assert.deepEqual([unmarked.broad, unmarked.opaqueImport, unmarked.external], [true, true, []], `still opaque: ${source}`);
+  }
+}
+// 2. A JSON key or value is a path only as a whole string; prose that links a docs URL names no input. TS keeps the scan.
+{
+  const json = value => collectSelftestInputs(JSON.stringify(value), 'catalog.json').specifiers;
+  assert.deepEqual(json({ 'help.docs': 'Read https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ARCHITECTURE.md first.' }), [],
+    'catalog prose with a GitHub docs URL names no file');
+  assert.deepEqual(json({ url: 'https://example.com/src/a.ts', trace: 'at f (file://src/a.ts:3:9)', cmd: 'node src/a.ts --x' }), [],
+    'URLs, stack frames and shell commands are not paths');
+  assert.deepEqual(json({ sources: { 'src/contract-target.ts': 'sha' }, page: '/tools/page.html', near: '../b.json' }),
+    ['src/contract-target.ts', '/tools/page.html', '../b.json'], 'whole-string keys and values that are paths stay inputs');
+  assert.ok(collectSelftestInputs("const page = 'http://127.0.0.1:5173/src/a.ts';", 'probe.mjs').specifiers.includes('/src/a.ts'),
+    'a dev-server URL in code still names its source');
+}
+// 3. Only node:path's join/resolve name a path: Array#join('') used to make a module depend on its own directory.
+{
+  const joined = source => collectSelftestInputs(source, 'probe.mjs').joined;
+  assert.deepEqual(joined("const html = parts.join(''); const csv = [a, b].join(','); Promise.resolve('x');"), [],
+    'string joins and Promise.resolve are not paths');
+  assert.deepEqual(joined("import { join } from './strings.ts'; join(dir, 'a.ts');"), [], 'a join from elsewhere is not path.join');
+  assert.deepEqual(joined("import { join as at, resolve } from 'node:path'; at(dir, 'a.ts'); resolve(dir, 'b.ts'); at(dir, '');"),
+    [['a.ts'], ['b.ts']], 'node:path join/resolve (aliased too) keep their literal segments; an empty segment list names nothing');
+  assert.deepEqual(joined("import * as p from 'path'; import q from 'node:path/posix'; import { posix as x } from 'node:path';\n"
+    + "p.join(dir, 'a.ts'); q.resolve('b.ts'); x.join('c.ts'); p.posix.join('d.ts'); path.join(root, 'e.ts');"),
+  [['a.ts'], ['b.ts'], ['c.ts'], ['d.ts'], ['e.ts']], 'namespace, default, posix and conventional path bindings');
+}
 assert.deepEqual(rel(make(), 'src/simple.selftest.mjs'), ['src/a.ts', 'src/b.ts', 'src/simple.selftest.mjs'], 'static imports follow recursively');
 assert.ok(rel(make(), 'src/lazy.selftest.mjs').includes('src/profiles'), 'a template dynamic import pulls in its directory');
 assert.deepEqual(rel(make(), 'src/contract.selftest.mjs'), ['docs/contract.json', 'src/contract-target.ts', 'src/contract.selftest.mjs'],
@@ -112,6 +151,13 @@ assert.notEqual(make({ env: { MODE: 'one' } }).inputKey('src/environment.selftes
   make({ env: { MODE: 'two' } }).inputKey('src/environment.selftest.mjs').key, 'observed environment values change the proof');
 write('src/opaque.selftest.mjs', 'await import(process.env.MODULE);');
 assert.equal(make().lookup('src/opaque.selftest.mjs').key, undefined, 'unresolved imports do not receive reusable proofs');
+write('src/chunk.ts', "export const chunk = (url) => import(/* @vite-ignore */ /* @selftest-external: a built page chunk */ url);\n");
+write('src/chunk.selftest.mjs', "import { chunk } from './chunk.ts';\nconsole.log(typeof chunk);\n");
+assert.deepEqual(rel(make(), 'src/chunk.selftest.mjs'), ['src/chunk.selftest.mjs', 'src/chunk.ts'],
+  'an external chunk import neither widens the closure to the tree');
+assert.ok(make().lookup('src/chunk.selftest.mjs').key, '...nor forces a fresh run');
+write('src/strings.selftest.mjs', "const html = ['<b>', '</b>'].join('');\nconsole.log(html);\n");
+assert.deepEqual(rel(make(), 'src/strings.selftest.mjs'), ['src/strings.selftest.mjs'], "Array#join('') is not the module's own directory");
 write('src/environment-destructured.selftest.mjs', 'const { MODE: value } = process.env; console.log(value);');
 assert.notEqual(make({ env: { MODE: 'one' } }).inputKey('src/environment-destructured.selftest.mjs').key,
   make({ env: { MODE: 'two' } }).inputKey('src/environment-destructured.selftest.mjs').key,
@@ -179,5 +225,75 @@ rmSync(root, { recursive: true, force: true });
     'the icon audit observes its templated icon files without pulling in unrelated maps');
   assert.ok(!cache.lookup('tools/selftest-cache.selftest.mjs').skip || cache.lookup('tools/selftest-cache.selftest.mjs').key,
     'lookup returns a key for the running receipt');
+  // Planner precision (2026-10-13): the three rules above, on the modules that put most receipts in every landing.
+  assert.notEqual(cache.lookup('server/battlePacing.selftest.mjs').reason, 'computed import/environment needs a fresh run',
+    'battle pacing (2035 s in the deploy-222 closure) reuses a PASS: the i18n chunk imports are external, not opaque');
+  assert.ok(![...cache.dependenciesOf(join(REPO_ROOT, 'src/ui/i18nCatalog.en-US.json'))]
+    .some((p) => p.startsWith(join(REPO_ROOT, 'docs') + sep) && p.endsWith('.md')), "the catalog's docs links are prose, not inputs");
+  assert.equal(cache.dependenciesOf(join(REPO_ROOT, 'src/vehicles/materials.ts')).has(join(REPO_ROOT, 'src/vehicles')), false,
+    "materials.ts's join('') is a string join, not the whole vehicles directory");
+}
+
+// Every src|server|tools module with a computed import() the planner cannot follow, and why. Each one widens every
+// receipt that reaches it to the whole tree and runs it fresh every time (src/ui/i18nDictionaries.ts alone did that
+// to 305 of the 439 always-run receipts on 9a9ab2a7e). A new one gets a literal or template specifier, an `/* @selftest-external: <what it loads> */` marker when
+// it loads something outside the repository, or a row here.
+const PLAYWRIGHT = 'browser tool: the Playwright/Puppeteer driver comes from --playwright-module or require.resolve';
+const IN_PAGE = 'browser census: the import runs inside the page, with the module URL its caller passes';
+const CANVAS = 'loads the native @napi-rs/canvas module from --canvas-module or require.resolve';
+const VARIANT = 'loads a source module again through a loader hook or a ?query instance (a before/after variant, exposed internals)';
+const ROOTED = 'imports repository modules by a path joined from the checkout root (or a --root/--out-dir flag), a table or a source scan';
+const ELSEWHERE = 'imports a module outside this checkout: a prior-revision snapshot, a baseline or source root flag, or a temp file';
+const OPAQUE_IMPORTS = new Map(Object.entries({
+  [PLAYWRIGHT]: ['battle-hud-layout.browser', 'battle-load-layout.browser', 'battle-reports.browser', 'crew-voice.browser',
+    'custom-select.browser', 'end-screen-presentation.browser', 'environment-motion-probe', 'field-guide.browser',
+    'gallery-damage.browser', 'garage-mobile.browser', 'hud-editor.browser', 'manual-reference.browser',
+    'minimap-contacts.browser', 'mobile-multiplayer-layout.browser', 'mobile-surfaces.browser', 'objective-banner.browser',
+    'penetration-dock.browser', 'rapid-fire-feedback.browser', 'service-record-layout.browser', 'service-record.browser',
+    'sourced-image-composition-probe', 'vehicle-status.browser', 'weapon-readout.browser'].map((name) => `tools/${name}.mjs`),
+  [IN_PAGE]: ['tools/night-fixture-census.mjs', 'tools/night-window-census.mjs', 'tools/tank-energy.browser.mjs'],
+  [CANVAS]: ['src/world/iceSurfaceDetail.selftest.mjs', 'src/world/mangroveWaterPalette.selftest.mjs',
+    'src/world/plasterSurfaceSharing.selftest.mjs', 'src/world/propsTextureRows.selftest.mjs', 'tools/horizon-construction-bench.mjs'],
+  [VARIANT]: ['src/vehicles/tankFactoryStaging.selftest.mjs', ...['autumnHeadlands', 'autumnLeafSprays', 'autumnSeasonalPalette',
+    'badlandsRelief', 'birchCrownForm', 'borderLandform', 'broadleafBranchlets', 'bushOverlappingSprays', 'canals',
+    'cropBiomeIdentity', 'environmentSurfaceColor', 'foundryMasonry', 'foundryServiceCourt', 'grassBladeShape',
+    'horizonMesaTexture', 'maps/beachedBoat', 'maps/railCoalStockpiles', 'maps/regional/choufEarthRoof',
+    'maps/riverReedContact', 'palmStemDirection', 'playableRelief', 'roadBorderCorridor', 'roadContinuity', 'roadCrownLift',
+    'roadCutRecovery', 'roadInheritedGrades', 'roadLookupGrid', 'shrubGrowthPlacement', 'sourcedImageCache',
+    'sourcedTerrainPreparation', 'sourcedTextureCompositionAdoption', 'sourcedTextures', 'terraceBenches', 'treeAttachments',
+    'woodyRootOrientation', 'wreckEraReceipt'].map((name) => `src/world/${name}.selftest.mjs`),
+  'src/world/roadHistoryTestOracle.mjs', 'src/world/shorelineContinuity.test-support.mjs'],
+  [ROOTED]: ['src/engine/hazeLaw.selftest.mjs', 'src/game/garageSkyPresets.selftest.mjs',
+    'src/vehicles/suppliedSourceArmorInitialization.test-support.mjs', ...['base-shell-surface-audit', 'battle-entry-sweep',
+      'gen-interior-fills', 'i18n-page-catalogs', 'i18n-page-catalogs.selftest', 'map-environment-audit', 'media-r5/lab',
+      'media-r5/studio-ui', 'mission-dock-seats', 'native-playables-audit', 'record-town-plan', 'strip-nc-registry-probe',
+      'visual-census', 'wreck-build-profile', 'wreck-paint-bench'].map((name) => `tools/${name}.mjs`)],
+  [ELSEWHERE]: ['tools/export-first-party-preservation.mjs', 'tools/physical-bore-air.selftest.mjs', 'tools/props-build-profile.mjs',
+    'tools/road-border-corridor-pilot.mjs'],
+}).flatMap(([reason, files]) => files.map((file) => [file, reason])));
+{
+  const found = new Map(), external = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      // the tracked tree: dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
+      if (entry.name.startsWith('.') || ['node_modules', 'dist', '__pycache__'].includes(entry.name) || entry.name.startsWith('tmp-')) continue;
+      const file = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(file); continue; }
+      if (!/\.(?:[mc]?[jt]s|[jt]sx|html)$/.test(entry.name)) continue;
+      const text = readFileSync(file, 'utf8');
+      if (!/\bimport\s*\(\s*[^'"`\s)]/.test(text)) continue; // only a non-literal first token can be opaque
+      const info = collectSelftestInputs(text, file), name = relative(REPO_ROOT, file);
+      if (info.opaqueImport) found.set(name, info);
+      for (const reason of info.external) external.push([name, reason]);
+    }
+  };
+  for (const dir of ['src', 'server', 'tools']) walk(join(REPO_ROOT, dir));
+  assert.deepEqual([...found.keys()].filter((file) => !OPAQUE_IMPORTS.has(file)).sort(), [],
+    'a computed import() the planner cannot follow: give it a literal specifier, a @selftest-external marker, or an OPAQUE_IMPORTS row');
+  assert.deepEqual([...OPAQUE_IMPORTS.keys()].filter((file) => !found.has(file)).sort(), [],
+    'OPAQUE_IMPORTS rows whose module no longer has an opaque import (remove the row)');
+  assert.ok(!found.has('src/ui/i18nDictionaries.ts'), 'the i18n runtime stays followable (305 receipts ran fresh every time through it)');
+  assert.ok(external.some(([file]) => file === 'src/ui/i18nDictionaries.ts'), 'its page catalog chunks are the external imports');
+  for (const [file, reason] of external) assert.ok(reason.length >= 12, `${file}: a @selftest-external marker says what it loads`);
 }
 console.log('selftest-cache: dependency closure rules, keys, lookup/record round trip and the batch-28 receipts pass');

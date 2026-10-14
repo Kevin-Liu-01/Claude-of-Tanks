@@ -4,7 +4,12 @@ import ts from 'typescript-compiler-api';
 // Puppeteer in input.ts used to invalidate hundreds of checks on any doc edit.
 const FILE_LITERAL = /^(?:\.{1,2}\/|\/?(?:src|tools|docs|public|server|scripts|shots|tests|cloudflare|node_modules)\/)|^[\w.-]+\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js)$/;
 const URL_PATH = /\/(?:src|tools|public|docs)\/[\w./-]+\.[\w]+/g;
+const URL_SCHEME = /^[a-z][a-z\d+.-]*:/i;
 const BROAD_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync', 'readdirSync', 'readdir', 'glob', 'globSync', 'createServer']);
+// `import(/* @selftest-external: <what it loads> */ url)` names a module outside the repository (a built page chunk).
+// It is not an input, so it neither widens the closure nor forces a fresh run; unmarked computed imports still do.
+const EXTERNAL_IMPORT = /@selftest-external\b:?\s*/;
+const PATH_MODULE = /^(?:node:)?path(?:\/posix)?$/;
 const nameOf = node => ts.isIdentifier(node) ? node.text
   : ts.isPropertyAccessExpression(node) ? node.name.text : '';
 const literal = node => node && ts.isStringLiteralLike(node) ? node.text : null;
@@ -12,17 +17,21 @@ const isEnvironment = value => ts.isPropertyAccessExpression(value)
   && ts.isIdentifier(value.expression) && value.expression.text === 'process' && value.name.text === 'env';
 
 export function collectSelftestInputs(text, filename) {
-  const specifiers = new Set(), imports = new Set(), environment = new Set(), joined = [], dynamic = [];
+  const specifiers = new Set(), imports = new Set(), environment = new Set(), joined = [], dynamic = [], external = [];
   let broad = false, browser = false, git = false, opaqueImport = false, opaqueEnvironment = false;
   const addLiteral = value => {
     if (FILE_LITERAL.test(value)) specifiers.add(value);
     for (const match of value.matchAll(URL_PATH)) specifiers.add(match[0]);
   };
+  // A JSON key or value is a path only as a whole string: catalog prose that links a GitHub docs URL is not an input.
+  const addJsonLiteral = value => {
+    if (!/\s/.test(value) && !URL_SCHEME.test(value) && FILE_LITERAL.test(value)) specifiers.add(value);
+  };
   if (filename.endsWith('.json')) {
     const visit = value => {
-      if (typeof value === 'string') addLiteral(value);
+      if (typeof value === 'string') addJsonLiteral(value);
       else if (value && typeof value === 'object') {
-        for (const [key, child] of Object.entries(value)) { addLiteral(key); visit(child); }
+        for (const [key, child] of Object.entries(value)) { addJsonLiteral(key); visit(child); }
       }
     };
     try { visit(JSON.parse(text)); } catch { broad = true; }
@@ -33,7 +42,7 @@ export function collectSelftestInputs(text, filename) {
       child.specifiers.forEach(value => specifiers.add(value));
       child.imports.forEach(value => imports.add(value));
       child.environment.forEach(value => environment.add(value));
-      joined.push(...child.joined); dynamic.push(...child.dynamic);
+      joined.push(...child.joined); dynamic.push(...child.dynamic); external.push(...child.external);
       broad ||= child.broad; browser ||= child.browser; git ||= child.git;
       opaqueImport ||= child.opaqueImport; opaqueEnvironment ||= child.opaqueEnvironment;
     }
@@ -54,12 +63,45 @@ export function collectSelftestInputs(text, filename) {
       return clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings)
         && bindings.elements.length && bindings.elements.every(item => item.isTypeOnly));
     };
+    // The argument's own comments: TypeScript files those on the `import(` line as trailing ranges, later lines' as leading.
+    const externalReason = arg => {
+      for (const range of [...ts.getTrailingCommentRanges(text, arg.pos) ?? [], ...ts.getLeadingCommentRanges(text, arg.pos) ?? []]) {
+        const comment = text.slice(range.pos, range.end);
+        const marker = EXTERNAL_IMPORT.exec(comment);
+        if (marker) return comment.slice(marker.index + marker[0].length).replace(/\s*\*\/$/, '').trim();
+      }
+      return null;
+    };
     const readImportCall = arg => {
       const value = literal(arg);
       if (value != null) imported(value);
       else if (arg && ts.isTemplateExpression(arg)) {
         dynamic.push({ prefix: arg.head.text, suffix: arg.templateSpans.at(-1).literal.text, execute: true });
-      } else { broad = true; opaqueImport = true; }
+      } else {
+        const reason = arg ? externalReason(arg) : null;
+        if (reason != null) external.push(reason);
+        else { broad = true; opaqueImport = true; }
+      }
+    };
+    // Only node:path's join/resolve name repository paths; Array#join('') and Promise.resolve(x) do not.
+    const pathFunctions = new Set(), pathNamespaces = new Set(['path', 'posix']);
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement) || !PATH_MODULE.test(literal(statement.moduleSpecifier) ?? '')) continue;
+      const clause = statement.importClause, bindings = clause?.namedBindings;
+      if (clause?.name) pathNamespaces.add(clause.name.text);
+      if (bindings && ts.isNamespaceImport(bindings)) pathNamespaces.add(bindings.name.text);
+      if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) {
+        const original = (element.propertyName ?? element.name).text;
+        if (original === 'join' || original === 'resolve') pathFunctions.add(element.name.text);
+        if (original === 'posix') pathNamespaces.add(element.name.text);
+      }
+    }
+    const isPathCall = callee => {
+      if (ts.isIdentifier(callee)) return pathFunctions.has(callee.text);
+      if (!ts.isPropertyAccessExpression(callee) || !['join', 'resolve'].includes(callee.name.text)) return false;
+      const owner = callee.expression;
+      return (ts.isIdentifier(owner) && pathNamespaces.has(owner.text))
+        || (ts.isPropertyAccessExpression(owner) && owner.name.text === 'posix');
     };
     const readCall = node => {
       const name = nameOf(node.expression);
@@ -67,9 +109,9 @@ export function collectSelftestInputs(text, filename) {
       if (['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'exec'].includes(name)
         && /^git(?:\s|$)/.test(literal(node.arguments[0]) ?? '')) git = true;
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) readImportCall(node.arguments[0]);
-      if (name === 'join' || name === 'resolve') {
+      if (isPathCall(node.expression)) {
         const segments = node.arguments.map(literal).filter(value => value !== null);
-        if (segments.length) joined.push(segments);
+        if (segments.some(value => value !== '')) joined.push(segments);
       }
     };
     const readEnvironmentBinding = pattern => {
@@ -113,5 +155,5 @@ export function collectSelftestInputs(text, filename) {
     if (source.parseDiagnostics.length) broad = true;
   }
   return { specifiers: [...specifiers], imports: [...imports], environment: [...environment],
-    joined, dynamic, broad, browser, git, opaqueImport, opaqueEnvironment };
+    joined, dynamic, external, broad, browser, git, opaqueImport, opaqueEnvironment };
 }
