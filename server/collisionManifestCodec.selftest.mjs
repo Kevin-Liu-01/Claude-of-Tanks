@@ -236,7 +236,11 @@ for (const id of MAP_IDS) {
 }
 assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical exact dictionary encoding');
 // 2026-09-19 hitbox pass: 57637660 bytes captured with per-part vertical extents (+10 % headroom); was 36936381
-assert.ok(publishedBytes <= 63401426, 'complete roster storage cannot exceed the frozen published budget');
+// 2026-10-14 deploy 224: 65390916 bytes (+5 % headroom, the coordinator's ruling); was 63401426. Causes over main's
+// 60268739: F3 stones under drawn tops +2825679, F2 roof decks and wreck tops +1685869, the builders +445114, the
+// bunkers +381381, the gates +90858, Steinburg +23790, bld-integrity-r2 -325595, the wells -4919. A 225 shard diet
+// (compact stone planes and deck encodings) aims back under 63.4 MB.
+assert.ok(publishedBytes <= 68660462, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
 const temporary = mkdtempSync(join(tmpdir(), 'cot-collision-codec-'));
