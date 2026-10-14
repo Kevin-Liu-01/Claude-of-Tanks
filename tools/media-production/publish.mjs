@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -23,7 +23,19 @@ for(const {file} of mapStills)requireNative4kPng(file.path);
 const stage=mkdtempSync(join(tmpdir(),'cot-media-publish-'));
 const paths=[];
 const target=path=>{const file=join(stage,path);mkdirSync(dirname(file),{recursive:true});paths.push(path);return file;};
-const webp=(file,path,w,h)=>execFileSync('cwebp',['-quiet','-m','6','-sharp_yuv','-q','88','-resize',String(w),String(h),file,'-o',target(path)]);
+// (the owner's light-media rule, 2026-10-14; the coordinator: a published picture no larger than the file it replaces) a
+// derivative that would outweigh the public file at its path steps its quality down from 88 until it does not; under
+// 76 the batch stops for a person to decide, and nothing is published
+const QUALITIES=[88,85,82,79,76];
+const webp=(file,path,w,h)=>{
+  const out=target(path),old=join(process.cwd(),'public',path),limit=existsSync(old)?statSync(old).size:Infinity;
+  for(const q of QUALITIES){
+    execFileSync('cwebp',['-quiet','-m','6','-sharp_yuv','-q',String(q),'-resize',String(w),String(h),file,'-o',out]);
+    const bytes=statSync(out).size;
+    if(bytes<=limit){if(q!==QUALITIES[0])console.log(`[media] ${path}: q ${q}, ${bytes} bytes (the file it replaces ${limit})`);return;}
+  }
+  throw Error(`${path}: ${statSync(out).size} bytes at q ${QUALITIES.at(-1)}, over the ${limit} bytes of the file it replaces`);
+};
 const prefix='/media/production-r1';
 const manifest={version:1,created:new Date().toISOString(),sourceDigest:receipt.sourceDigest,revision:receipt.revision,shots:[],films:[],media:{},recipes:{},assets:[],review:{reviewedAt:review.reviewedAt,notes:review.notes,maps:review.maps}};
 function recipe(id,scene,uris){manifest.recipes[id]=scene;for(const uri of uris)manifest.media[uri]=id;}
