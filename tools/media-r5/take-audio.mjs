@@ -42,7 +42,7 @@ const run = (cmd, args) => {
   return r.stdout;
 };
 
-const ids = readdirSync(deliver).filter((d) => /^s\d\d-/.test(d) && existsSync(join(deliver, d, `${d}.scene.json`)) && existsSync(join(deliver, d, `${d}.mp4`)))
+const ids = readdirSync(deliver).filter((d) => /^s\d{2,3}-/.test(d) && existsSync(join(deliver, d, `${d}.scene.json`)) && existsSync(join(deliver, d, `${d}.mp4`)))
   .filter((d) => !only || only.some((o) => d.startsWith(o))).sort();
 const index = existsSync(join(deliver, 'audio-index.json')) ? JSON.parse(readFileSync(join(deliver, 'audio-index.json'), 'utf8')) : { takes: {} };
 let done = 0, kept = 0;

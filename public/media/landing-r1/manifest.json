@@ -230,69 +230,117 @@
     }
   ],
   "studio": {
-    "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
-    "poster": "/media/landing-r1/studio-leclerc-knockout.jpg",
+    "video": "/media/site50-r14/home/features/studio.mp4",
+    "poster": "/media/site50-r14/home/features/studio.jpg",
     "width": 1920,
     "height": 1080,
-    "durationMs": 6867,
-    "videoBytes": 7187726,
-    "posterBytes": 579052,
+    "durationMs": 6600,
+    "videoBytes": 2066099,
+    "posterBytes": 525119,
     "captureMode": "studio-ui",
     "actors": [
       {
-        "id": "strv122",
+        "id": "type10_x",
         "name": "shooter"
       },
       {
-        "id": "leclerc",
+        "id": "k2_x",
+        "name": "ally1"
+      },
+      {
+        "id": "t90m_x",
         "name": "victim"
+      },
+      {
+        "id": "t72b3m_x",
+        "name": "foe1"
       }
     ],
     "effects": [
       {
-        "type": "dust",
-        "actor": "shooter",
-        "tMs": 250
+        "type": "burning",
+        "actor": "foe1",
+        "tMs": 0
+      },
+      {
+        "type": "engine_smoke",
+        "actor": "foe1",
+        "tMs": 0
+      },
+      {
+        "type": "embers",
+        "actor": "foe1",
+        "tMs": 0
+      },
+      {
+        "type": "fire_field",
+        "actor": null,
+        "tMs": 0
+      },
+      {
+        "type": "embers",
+        "actor": null,
+        "tMs": 0
+      },
+      {
+        "type": "fire",
+        "actor": "victim",
+        "tMs": 840
+      },
+      {
+        "type": "explosion",
+        "actor": null,
+        "tMs": 950
+      },
+      {
+        "type": "debris",
+        "actor": null,
+        "tMs": 980
       },
       {
         "type": "fire",
         "actor": "shooter",
-        "tMs": 1120
+        "tMs": 1900
       },
       {
         "type": "impact",
         "actor": "victim",
-        "tMs": 1450
-      },
-      {
-        "type": "sparks",
-        "actor": "victim",
-        "tMs": 1520
-      },
-      {
-        "type": "fire",
-        "actor": "victim",
-        "tMs": 2720
-      },
-      {
-        "type": "sparks",
-        "actor": "shooter",
-        "tMs": 2960
-      },
-      {
-        "type": "fire",
-        "actor": "shooter",
-        "tMs": 3580
-      },
-      {
-        "type": "detrack",
-        "actor": "victim",
-        "tMs": 3740
+        "tMs": 1990
       },
       {
         "type": "tank_kill",
         "actor": "victim",
-        "tMs": 3980
+        "tMs": 2110
+      },
+      {
+        "type": "debris",
+        "actor": "victim",
+        "tMs": 2130
+      },
+      {
+        "type": "explosion",
+        "actor": null,
+        "tMs": 2850
+      },
+      {
+        "type": "debris",
+        "actor": null,
+        "tMs": 2880
+      },
+      {
+        "type": "fire",
+        "actor": "ally1",
+        "tMs": 4100
+      },
+      {
+        "type": "explosion",
+        "actor": null,
+        "tMs": 4650
+      },
+      {
+        "type": "debris",
+        "actor": null,
+        "tMs": 4680
       }
     ]
   }

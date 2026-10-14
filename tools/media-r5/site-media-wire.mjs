@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // site-media-wire.mjs — wires the public site and the game to the site fifty's media (public/media/site50-r14, built
 // by site-media.mjs from tools/media-r5/site-media/picks.json): the landing page's hero, screenshot rail, feature
-// reel, destruction loop, camera-path grid, mosaic and closing image; the manual's hero, trailer, chapter cards, battle
+// reel, destruction loop, camera-path grid, mosaic and closing image, and its own shots (the Garage, multiplayer and
+// kill-cam images, the Scene Studio loop, the mechanic and mode cards: each its delivered shot under home/, or its
+// stand-in still until that is delivered); the manual's hero, trailer, chapter cards, battle
 // takes, contact sheets and archive; each topic's hero loop and figures; the game's featured stills (boot splash, Garage
 // gallery, loading screens), its JSON-LD screenshots, the 404 page, the HUD editor's backdrop and the social cards'
 // sources; the landing contract (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
@@ -69,6 +71,77 @@ function swapText(path, key, value, html = false) {
     (_, open, close) => `${open}${html ? value : esc(value)}${close}`, `copy ${key}`);
 }
 
+// --- the landing page's own shots (home r2, 2026-10-12) -------------------------------------------------------------
+// picks.home.features / mechanics / modes: { id, alt: { en, zh }, standIn: { id, still }, size?, sizes? }. A slot whose
+// shot site-media.mjs built (home/<group>/<id>.webp and its -640 preview) shows it with the slot's own alt text
+// (media.home.<group>.<id>); until then it shows its stand-in still with the take's title. Each <img data-home-slot>
+// in home.html is rewritten whole, so the page's srcset, sizes and alt always follow the media.
+const HOME_GROUPS = Object.freeze({ features: [1920, 1080], mechanics: [1280, 720], modes: [1280, 720] });
+// how wide each group's images draw (home.css: the features beside their copy, the cards four to a row on a laptop,
+// two on a tablet, one at a time in the phone rails)
+const HOME_SIZES = Object.freeze({
+  features: '(max-width: 1099px) 100vw, 72vw',
+  mechanics: '(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw',
+  modes: '(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw',
+});
+const homeAltKey = (group, id) => `media.home.${group}.${camel(id)}`;
+function homeImage(group, entry) {
+  const [w, h] = entry.size ?? HOME_GROUPS[group];
+  const sizes = entry.sizes ?? HOME_SIZES[group];
+  const own = `${C}/home/${group}/${entry.id}.webp`;
+  if (BUILT.has(own)) {
+    const preview = built(`${C}/home/${group}/${entry.id}-640.webp`);
+    return { src: own, srcset: `${preview} 640w, ${own} ${w}w`, sizes, width: w, height: h, alt: entry.alt.en, altKey: homeAltKey(group, entry.id) };
+  }
+  // no stand-in may show the wrong subject (the coordinator, 2026-10-13): a slot whose stand-in is null hides until its
+  // shot lands (wireHomeShots marks its card hidden)
+  if (!entry.standIn) return null;
+  const { id, still: kind } = entry.standIn;
+  const full = still(id, kind);
+  const preview = built(`${C}/stills/${id}${kind === 'close' ? '-close' : ''}-thumb.webp`);
+  return { src: full, srcset: `${preview} 640w, ${full} 1920w`, sizes, width: 1920, height: 1080, alt: take(id).en, altKey: titleKey(id) };
+}
+const homeImageTag = (slot, im) => `<img data-home-slot="${slot}" src="${im.src}" srcset="${im.srcset}" sizes="${im.sizes}" width="${im.width}" height="${im.height}" alt="${esc(im.alt)}" data-i18n-alt="${im.altKey}" loading="lazy" decoding="async">`;
+/** A slot waiting for its shot: the plain panel in the page's own tones (home.css .v5-slot-pending), no image fetched. */
+const homePendingTag = (slot) => `<div data-home-slot="${slot}" class="v5-slot-pending" data-home-pending aria-hidden="true"></div>`;
+// the Scene Studio card's loop: the delivered recording (home/features/studio.mp4, its poster and receipt) or, until
+// then, picks.home.studio.standIn (the landing-r1 recording)
+function homeStudio() {
+  const own = `${C}/home/features/studio.mp4`;
+  if (!BUILT.has(own)) return { ...PICKS.home.studio.standIn, own: false };
+  return { video: own, poster: built(`${C}/home/features/studio.jpg`), mobile: '/media/web-video-r1/home-studio-mobile.mp4',
+    label: PICKS.home.studio.label, own: true };
+}
+function wireHomeShots(H) {
+  const slots = new Set(['features/studio']);
+  for (const group of Object.keys(HOME_GROUPS)) {
+    for (const entry of PICKS.home[group] ?? []) {
+      const slot = `${group}/${entry.id}`;
+      slots.add(slot);
+      // with its shot or a stand-in the slot shows its image (and a standalone section that waited hidden shows again);
+      // with neither, a mechanic or mode card keeps its title and copy over the plain panel, and a feature's own
+      // section (an <article> or <figure>) hides until its shot lands
+      const im = homeImage(group, entry), quoted = slot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const element = `(?:<img data-home-slot="${quoted}"[^>]*>|<div data-home-slot="${quoted}"[^>]*></div>)`;
+      const waited = new RegExp(`(<(?:article|figure)\\b[^>]*?) hidden>(?=<(?:img|div) data-home-slot="${quoted}")`);
+      if (im || group !== 'features') {
+        swap(H, new RegExp(element), () => (im ? homeImageTag(slot, im) : homePendingTag(slot)), `home slot ${slot}${im ? '' : ' (the plain panel)'}`);
+        if (waited.test(get(H))) swap(H, waited, (_, open) => `${open}>`, `home slot ${slot} shown`);
+      } else {
+        swap(H, new RegExp(`(<(?:article|figure)\\b[^>]*?)(?: hidden)?>${element}`), (_, open) => `${open} hidden>${homePendingTag(slot)}`,
+          `home slot ${slot} (no shot and no stand-in: its section must be an article or a figure to hide)`);
+      }
+    }
+  }
+  const v = homeStudio();
+  swap(H, /<video data-home-slot="features\/studio" [^\n]*?<\/video>/,
+    () => `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${v.poster}" data-autoplay-video data-label="${esc(v.label)}" aria-hidden="true"><source data-src="${v.video}" data-type="video/mp4" data-mobile-src="${v.mobile}" data-mobile-type="video/mp4"></video>`,
+    'home slot features/studio');
+  // every slot on the page is a pick: a card added to home.html without one would keep whatever it was written with
+  const orphans = [...get(H).matchAll(/data-home-slot="([^"]+)"/g)].map((m) => m[1]).filter((slot) => !slots.has(slot));
+  if (orphans.length) throw new Error(`${H}: slots without a pick in picks.home: ${orphans.join(', ')}`);
+}
+
 // --- the landing page ---------------------------------------------------------------------------------------------
 const loopVideo = (id) => `<video muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-autoplay-video data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}.webm`)}" data-type="video/webm" data-mobile-src="/media/web-video-r1/${id}-mobile.mp4" data-mobile-type="video/mp4"></video>`;
 function wireHome() {
@@ -96,6 +169,7 @@ function wireHome() {
   swap(H, /(<section class="v5-cta">)<img [^>]*>/,
     (_, open) => `${open}<img src="${still(cta.id, cta.still)}" alt="${esc(take(cta.id).en)}" data-i18n-alt="${titleKey(cta.id)}" loading="lazy">`, 'closing image');
   for (const key of ['home.reel.title', 'home.reel.lede', 'home.reel.cta', 'home.shots.lede', 'home.mosaic.lede']) swapText(H, key, COPY.en[key]);
+  wireHomeShots(H);
 }
 
 // --- the manual ---------------------------------------------------------------------------------------------------
@@ -249,7 +323,7 @@ function wireReadme() {
   swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
     () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
   swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
-    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's fifty takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
+    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
   const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
   const p = PICKS.home.paths;
   swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/[^"]+\.webm">[\s\S]*?<\/tr>\n<\/table>/,
@@ -299,9 +373,18 @@ function wireLandingManifest() {
     rails: PICKS.home.paths.map((id) => ({ id, title: take(id).en, video: built(`${C}/loops/${id}.webm`), poster: built(`${C}/loops/${id}.jpg`) })),
     destructionRail: built(`${C}/loops/${PICKS.home.destruction}.webm`),
     mosaic: PICKS.home.mosaic.map((m) => ({ id: m.id, title: take(m.id).en, still: m.still, src: still(m.id, m.still) })),
-    studio: old.studio,
+    studio: homeStudio().own ? studioContract() : old.studio,
   };
   texts.set(path, `${JSON.stringify(next, null, 2)}\n`);
+}
+// the delivered Studio loop's contract: its built files and the recorder's receipt (record-studio-action-loop.mjs)
+function studioContract() {
+  const video = BUILT.get(`${C}/home/features/studio.mp4`);
+  const poster = BUILT.get(built(`${C}/home/features/studio.jpg`));
+  const receipt = JSON.parse(readFileSync(join(ROOT, 'public', built(`${C}/home/features/studio.json`)), 'utf8'));
+  return { video: `/${video.path}`, poster: `/${poster.path}`, width: video.width, height: video.height,
+    durationMs: receipt.durationMs ?? Math.round(video.seconds * 1000), videoBytes: video.bytes, posterBytes: poster.bytes,
+    captureMode: receipt.captureMode ?? 'studio-ui', actors: receipt.actors ?? [], effects: receipt.effects ?? [] };
 }
 
 // --- the catalogs -------------------------------------------------------------------------------------------------
@@ -328,7 +411,7 @@ const COPY = {
     'docs.studio.framesHead': 'The fifty frames',
     'docs.studio.framesSheets': '{count} frames // {sheets} review sheets',
     'docs.studio.framesNote': "Open any sheet at full resolution. Each frame is a 4K render of a moving scene, exposed like a camera's shutter, so motion blurs as it would on film.",
-    'docs.archive.lede': "The fifty frames and the stills of the site's fifty takes: the game's own vehicles, maps and effects, rendered at 4K.",
+    'docs.archive.lede': "The fifty frames and the stills of the site's takes: the game's own vehicles, maps and effects, rendered at 4K.",
     'docs.topic.ai.media1': 'A T-90M column driving into the fight, each bot holding its lane and spacing',
     'docs.topic.ai.media2': 'A Type 90 and a Type 89 fighting through a farm village, keeping their spacing under fire',
     'docs.topic.audio.media1': 'A TOS-1A ripple salvo at night: every launch and every impact has its own sound',
@@ -358,7 +441,7 @@ const COPY = {
     'docs.studio.framesHead': '五十帧',
     'docs.studio.framesSheets': '{count} 帧 // {sheets} 张审核拼版',
     'docs.studio.framesNote': '任意拼版都可以全分辨率打开。每一帧都是运动场景的 4K 渲染，像相机快门一样曝光，因此运动会像在胶片上一样模糊。',
-    'docs.archive.lede': '五十帧画面与网站五十个镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。',
+    'docs.archive.lede': '五十帧画面与网站各镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。',
     'docs.topic.ai.media1': '驶入战斗的 T-90M 纵队，每个机器人都保持自己的路线与间距',
     'docs.topic.ai.media2': 'Type 90 与 Type 89 穿过农庄作战，在炮火下保持间距',
     'docs.topic.audio.media1': '夜间 TOS-1A 连续齐射：每一次发射、每一次落点都有自己的声音',
@@ -383,6 +466,10 @@ function wireCatalogs() {
     }
     Object.assign(catalog, COPY[locale]);
     for (const s of sheets) catalog[`docs.media.alt.framesSheet${s.sheet}`] = SHEET_ALT[locale](s);
+    // the home page's own shots describe themselves once delivered (a stand-in uses its take's title)
+    for (const group of Object.keys(HOME_GROUPS)) {
+      for (const entry of PICKS.home[group] ?? []) catalog[homeAltKey(group, entry.id)] = entry.alt[locale];
+    }
     texts.set(file, `${JSON.stringify(catalog, null, 2)}\n`);
   }
 }

@@ -55,7 +55,7 @@ const GIF = [
 const SHARE_GIF_MAX = 15e6, SHARE_LADDER = [[560, 18, 'bayer:bayer_scale=4'], [480, 16, 'bayer:bayer_scale=4'], [400, 15, 'bayer:bayer_scale=4']];
 mkdirSync(deliver, { recursive: true });
 const rows = [];
-for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders, 'films')) : []).filter(d => /^s\d\d-/.test(d)).sort()) {
+for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders, 'films')) : []).filter(d => /^s\d{2,3}-/.test(d)).sort()) {
   if (only && !only.some(o => id.includes(o))) continue;
   const filmMaster = pick(join(renders, 'films', id, 'films'), /-master\.mov$/);
   const master = filmMaster ?? pick(join(renders, 'films', id, 'films'), /-proxy\.mp4$/);
@@ -160,7 +160,7 @@ const index = join(deliver, 'deliver-index.json');
 const KEYS = { master: '-loop-master.mov', mp4k: '-4k.mp4', mp4: '.mp4', webm: '.webm', mobile: '-mobile.mp4', gif: '.gif', gifShare: '-share.gif',
   poster: '.jpg', still4k: '-4k.png', still4kJpg: '-4k.jpg', still: '.webp', close4k: '-close-4k.png', close4kJpg: '-close-4k.jpg',
   close: '-close.webp', scene: '.scene.json' };
-const merged = readdirSync(deliver).filter(d => /^s\d\d-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
+const merged = readdirSync(deliver).filter(d => /^s\d{2,3}-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
   const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(deliver, id, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
   const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
   return { id, loopS, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, statSync(join(deliver, f)).size])) };

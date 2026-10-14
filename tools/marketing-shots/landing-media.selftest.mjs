@@ -131,7 +131,9 @@ assert.ok(manifest.studio.width >= 1920 && manifest.studio.height >= 1080, 'Stud
 assert.ok(manifest.studio.durationMs >= 6500 && manifest.studio.durationMs <= 7000,
   'Studio loop includes the complete 6.5-second storyboard and UI settle frame');
 assert.equal(manifest.studio.captureMode, 'studio-ui', 'Studio loop records the live production interface');
-assert.ok(manifest.studio.actors.some((actor) => actor.id === 'leclerc' && actor.name === 'victim'));
+// home r2 (2026-10-12): the Studio card's loop is re-recorded on the current interface (shots/media-r5/home-r2/shot-list.json,
+// features/studio), so its cast may change; a victim and a shooter's kill stay the contract
+assert.ok(manifest.studio.actors.some((actor) => actor.name === 'victim'), 'the Studio loop stages a victim');
 assert.ok(manifest.studio.effects.some((effect) => effect.type === 'fire' && effect.actor === 'shooter'));
 assert.ok(manifest.studio.effects.some((effect) => effect.type === 'tank_kill' && effect.actor === 'victim'));
 assert.equal(home.includes(`src="${manifest.studio.video}"`), true, 'Studio loop is mounted on the landing page');

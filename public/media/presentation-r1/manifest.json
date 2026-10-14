@@ -3,12 +3,12 @@
   "generatedAt": "2026-08-19",
   "renderer": "Claude of Tanks Scene Studio and deterministic game harness",
   "firstPartyRuntimeOnly": true,
-  "review": "Compatibility subset of the authoritative showcase-r1 library",
+  "review": "Compatibility subset kept for the manual's interface figures; the site fifty (site50-r14) is the authoritative library since showcase-r1 retired",
   "battleShotCount": 0,
   "studioShotCount": 0,
   "interfaceShotCount": 10,
   "totalShotCount": 9,
-  "authoritativeManifest": "/media/showcase-r1/manifest.json",
+  "authoritativeManifest": "/media/site50-r14/manifest.json",
   "shots": [
     {
       "id": "ui_battlefield_foundry",

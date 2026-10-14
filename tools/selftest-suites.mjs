@@ -291,6 +291,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    'src/game/studioSuspensionAim.selftest.mjs',
     'src/game/studioFxSettings.selftest.mjs',
     'src/game/studioTrackDust.selftest.mjs',
     'src/fx/cinematicFx.selftest.mjs',
@@ -1777,6 +1778,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
+    // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
+    'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',

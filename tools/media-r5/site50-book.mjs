@@ -50,7 +50,7 @@ for (const [id, entry] of Object.entries(lib.shots)) {
     ['renders', (entry.renders ?? []).map(r => `${r.round}${r.superseded ? ' (superseded)' : ''} by ${r.renderer}`).join(', ') || 'none yet'],
   ];
   cards.push(`<article id="${id}">
-<h2><span class="n">${esc(id.slice(1, 3))}</span> ${esc(m.title)}</h2>
+<h2><span class="n">${esc(/^s(\d+)-/.exec(id)?.[1] ?? id)}</span> ${esc(m.title)}</h2>
 <div class="pics">${pics.map(p => `<figure class="${p.old ? 'old' : ''}"><img loading="lazy" src="${esc(p.src)}" alt=""><figcaption>${esc(p.label)}</figcaption></figure>`).join('') || '<p class="none">not rendered yet</p>'}</div>
 <dl>${code.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
 <details><summary>effects timeline (${fx.length})</summary><pre>${esc(fx.join('\n'))}</pre></details>

@@ -887,6 +887,1162 @@
    "durationMs": 6600,
    "scene": "/media/site50-r14/scenes/s59-strv103b-farm-charge.scene.json",
    "thumb": "/media/site50-r14/stills/s59-strv103b-farm-charge-thumb.webp"
+  },
+  {
+   "id": "s195-m1a2-airfield",
+   "group": "fleet",
+   "vehicle": "m1a2",
+   "title": {
+    "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
+    "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "M1A1 Abrams HC, Kestrel Airfield",
+    "zh": "M1A1 Abrams HC，红隼机场"
+   },
+   "map": "airfield",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s195-m1a2-airfield.scene.json",
+   "thumb": "/media/site50-r14/fleet/m1a2.jpg"
+  },
+  {
+   "id": "s198-m1a2-tusk-copper-mesa",
+   "group": "fleet",
+   "vehicle": "m1a2_tusk",
+   "title": {
+    "en": "An M1A1 Abrams SA leads the column through Copper Mesa Mine",
+    "zh": "一辆 M1A1 Abrams SA 率领纵队穿过铜台地矿场"
+   },
+   "short": {
+    "en": "M1A1 Abrams SA, Copper Mesa Mine",
+    "zh": "M1A1 Abrams SA，铜台地矿场"
+   },
+   "map": "copper_mesa",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s198-m1a2-tusk-copper-mesa.scene.json",
+   "thumb": "/media/site50-r14/fleet/m1a2_tusk.jpg"
+  },
+  {
+   "id": "s196-m1a2-sepv2-badlands",
+   "group": "fleet",
+   "vehicle": "m1a2_sepv2",
+   "title": {
+    "en": "An M1A1 Abrams AIM returns fire across Redrock Divide in the evening light",
+    "zh": "傍晚，一辆 M1A1 Abrams AIM 在红岩分界还击"
+   },
+   "short": {
+    "en": "M1A1 Abrams AIM, Redrock Divide",
+    "zh": "M1A1 Abrams AIM，红岩分界"
+   },
+   "map": "badlands",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s196-m1a2-sepv2-badlands.scene.json",
+   "thumb": "/media/site50-r14/fleet/m1a2_sepv2.jpg"
+  },
+  {
+   "id": "s197-m1a2-sepv3-airfield",
+   "group": "fleet",
+   "vehicle": "m1a2_sepv3",
+   "title": {
+    "en": "An M1A1 Abrams FEP knocks out a T-72B3M at Kestrel Airfield in the evening light",
+    "zh": "傍晚，一辆 M1A1 Abrams FEP 在红隼机场击毁一辆 T-72B3M"
+   },
+   "short": {
+    "en": "M1A1 Abrams FEP, Kestrel Airfield",
+    "zh": "M1A1 Abrams FEP，红隼机场"
+   },
+   "map": "airfield",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s197-m1a2-sepv3-airfield.scene.json",
+   "thumb": "/media/site50-r14/fleet/m1a2_sepv3.jpg"
+  },
+  {
+   "id": "s191-abramsx-airfield",
+   "group": "fleet",
+   "vehicle": "abramsx",
+   "title": {
+    "en": "An AbramsX knocks out a T-72B3M at Kestrel Airfield",
+    "zh": "一辆 AbramsX 在红隼机场击毁一辆 T-72B3M"
+   },
+   "short": {
+    "en": "AbramsX, Kestrel Airfield",
+    "zh": "AbramsX，红隼机场"
+   },
+   "map": "airfield",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s191-abramsx-airfield.scene.json",
+   "thumb": "/media/site50-r14/fleet/abramsx.jpg"
+  },
+  {
+   "id": "s211-t62mv1-foundry",
+   "group": "fleet",
+   "vehicle": "t62mv1",
+   "title": {
+    "en": "A T-62 obr. 1975 leads the column through Ironworks",
+    "zh": "一辆 T-62 obr. 1975 率领纵队穿过钢铁厂"
+   },
+   "short": {
+    "en": "T-62 obr. 1975, Ironworks",
+    "zh": "T-62 obr. 1975，钢铁厂"
+   },
+   "map": "foundry",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s211-t62mv1-foundry.scene.json",
+   "thumb": "/media/site50-r14/fleet/t62mv1.jpg"
+  },
+  {
+   "id": "s181-t84-frontier",
+   "group": "fleet",
+   "vehicle": "t84",
+   "title": {
+    "en": "A T-84 Oplot knocks out a T-90M at Frontier Basin",
+    "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "T-84 Oplot, Frontier Basin",
+    "zh": "T-84 Oplot，边疆盆地"
+   },
+   "map": "frontier",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s181-t84-frontier.scene.json",
+   "thumb": "/media/site50-r14/fleet/t84.jpg"
+  },
+  {
+   "id": "s221-t90-alpine",
+   "group": "fleet",
+   "vehicle": "t90",
+   "title": {
+    "en": "A T-90 obr. 1992 leads the column through Glacier Pass in the evening light",
+    "zh": "傍晚，一辆 T-90 obr. 1992 率领纵队穿过冰川关"
+   },
+   "short": {
+    "en": "T-90 obr. 1992, Glacier Pass",
+    "zh": "T-90 obr. 1992，冰川关"
+   },
+   "map": "alpine",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s221-t90-alpine.scene.json",
+   "thumb": "/media/site50-r14/fleet/t90.jpg"
+  },
+  {
+   "id": "s223-t90a-burlak-oasis",
+   "group": "fleet",
+   "vehicle": "t90a_burlak",
+   "title": {
+    "en": "A T-90A Burlak Prototype fires across Sunscar Oasis",
+    "zh": "一辆 T-90A Burlak Prototype 在日痕绿洲开火"
+   },
+   "short": {
+    "en": "T-90A Burlak Prototype, Sunscar Oasis",
+    "zh": "T-90A Burlak Prototype，日痕绿洲"
+   },
+   "map": "oasis",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s223-t90a-burlak-oasis.scene.json",
+   "thumb": "/media/site50-r14/fleet/t90a_burlak.jpg"
+  },
+  {
+   "id": "s224-t90ms-reservoir",
+   "group": "fleet",
+   "vehicle": "t90ms",
+   "title": {
+    "en": "A T-90MS obr. 2011 leads the column through Highland Reservoir",
+    "zh": "一辆 T-90MS obr. 2011 率领纵队穿过高地水库"
+   },
+   "short": {
+    "en": "T-90MS obr. 2011, Highland Reservoir",
+    "zh": "T-90MS obr. 2011，高地水库"
+   },
+   "map": "reservoir",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s224-t90ms-reservoir.scene.json",
+   "thumb": "/media/site50-r14/fleet/t90ms.jpg"
+  },
+  {
+   "id": "s160-cv90-fjord",
+   "group": "fleet",
+   "vehicle": "cv90",
+   "title": {
+    "en": "A CV90 leads the column through Nordhavn Fjord at sunset",
+    "zh": "日落时分，一辆 CV90 率领纵队穿过诺德港峡湾"
+   },
+   "short": {
+    "en": "CV90, Nordhavn Fjord",
+    "zh": "CV90，诺德港峡湾"
+   },
+   "map": "fjord",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s160-cv90-fjord.scene.json",
+   "thumb": "/media/site50-r14/fleet/cv90.jpg"
+  },
+  {
+   "id": "s163-cv90-x-fjord",
+   "group": "fleet",
+   "vehicle": "cv90_x",
+   "title": {
+    "en": "A CV9040C knocks out a T-72B3M at Nordhavn Fjord at night",
+    "zh": "夜间，一辆 CV9040C 在诺德港峡湾击毁一辆 T-72B3M"
+   },
+   "short": {
+    "en": "CV9040C, Nordhavn Fjord",
+    "zh": "CV9040C，诺德港峡湾"
+   },
+   "map": "fjord",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s163-cv90-x-fjord.scene.json",
+   "thumb": "/media/site50-r14/fleet/cv90_x.jpg"
+  },
+  {
+   "id": "s164-cv90105-tml-x-whiteout",
+   "group": "fleet",
+   "vehicle": "cv90105_tml_x",
+   "title": {
+    "en": "A CV90105 fires on the move at Whiteout Station",
+    "zh": "一辆 CV90105 在白茫站行进间射击"
+   },
+   "short": {
+    "en": "CV90105, Whiteout Station",
+    "zh": "CV90105，白茫站"
+   },
+   "map": "whiteout",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s164-cv90105-tml-x-whiteout.scene.json",
+   "thumb": "/media/site50-r14/fleet/cv90105_tml_x.jpg"
+  },
+  {
+   "id": "s161-cv90-mkiv-fjord",
+   "group": "fleet",
+   "vehicle": "cv90_mkiv",
+   "title": {
+    "en": "A CV90 Mk 4 Concept knocks out a T-90M at Nordhavn Fjord",
+    "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "CV90 Mk 4 Concept, Nordhavn Fjord",
+    "zh": "CV90 Mk 4 Concept，诺德港峡湾"
+   },
+   "map": "fjord",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s161-cv90-mkiv-fjord.scene.json",
+   "thumb": "/media/site50-r14/fleet/cv90_mkiv.jpg"
+  },
+  {
+   "id": "s162-cv90-mkiv-x-whiteout",
+   "group": "fleet",
+   "vehicle": "cv90_mkiv_x",
+   "title": {
+    "en": "A CV90 Mk IV fires across Whiteout Station",
+    "zh": "一辆 CV90 Mk IV 在白茫站开火"
+   },
+   "short": {
+    "en": "CV90 Mk IV, Whiteout Station",
+    "zh": "CV90 Mk IV，白茫站"
+   },
+   "map": "whiteout",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s162-cv90-mkiv-x-whiteout.scene.json",
+   "thumb": "/media/site50-r14/fleet/cv90_mkiv_x.jpg"
+  },
+  {
+   "id": "s210-kv2-alpine",
+   "group": "fleet",
+   "vehicle": "kv2",
+   "title": {
+    "en": "A KV-2 leads the column through Glacier Pass",
+    "zh": "一辆 KV-2 率领纵队穿过冰川关"
+   },
+   "short": {
+    "en": "KV-2, Glacier Pass",
+    "zh": "KV-2，冰川关"
+   },
+   "map": "alpine",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s210-kv2-alpine.scene.json",
+   "thumb": "/media/site50-r14/fleet/kv2.jpg"
+  },
+  {
+   "id": "s174-challenger2-coastal",
+   "group": "fleet",
+   "vehicle": "challenger2",
+   "title": {
+    "en": "A Challenger 2 knocks out a T-90A at Saltmere Bay",
+    "zh": "一辆 Challenger 2 在盐沼湾击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "Challenger 2, Saltmere Bay",
+    "zh": "Challenger 2，盐沼湾"
+   },
+   "map": "coastal",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s174-challenger2-coastal.scene.json",
+   "thumb": "/media/site50-r14/fleet/challenger2.jpg"
+  },
+  {
+   "id": "s172-challenger-3x-saltwind",
+   "group": "fleet",
+   "vehicle": "challenger_3x",
+   "title": {
+    "en": "A Challenger 3 fires across Saltwind Narrows",
+    "zh": "一辆 Challenger 3 在盐风海峡开火"
+   },
+   "short": {
+    "en": "Challenger 3, Saltwind Narrows",
+    "zh": "Challenger 3，盐风海峡"
+   },
+   "map": "saltwind",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s172-challenger-3x-saltwind.scene.json",
+   "thumb": "/media/site50-r14/fleet/challenger_3x.jpg"
+  },
+  {
+   "id": "s157-k2-delta",
+   "group": "fleet",
+   "vehicle": "k2",
+   "title": {
+    "en": "An XK2 Black Panther crosses Jade River Delta through shellfire in the evening light",
+    "zh": "傍晚，一辆 XK2 Black Panther 冒着炮火穿越翡翠江三角洲"
+   },
+   "short": {
+    "en": "XK2 Black Panther, Jade River Delta",
+    "zh": "XK2 Black Panther，翡翠江三角洲"
+   },
+   "map": "delta",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s157-k2-delta.scene.json",
+   "thumb": "/media/site50-r14/fleet/k2.jpg"
+  },
+  {
+   "id": "s156-k1a1-titan-gorge",
+   "group": "fleet",
+   "vehicle": "k1a1",
+   "title": {
+    "en": "A K1E1 leads the column through Titan Gorge in the evening light",
+    "zh": "傍晚，一辆 K1E1 率领纵队穿过泰坦峡谷"
+   },
+   "short": {
+    "en": "K1E1, Titan Gorge",
+    "zh": "K1E1，泰坦峡谷"
+   },
+   "map": "titan_gorge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s156-k1a1-titan-gorge.scene.json",
+   "thumb": "/media/site50-r14/fleet/k1a1.jpg"
+  },
+  {
+   "id": "s116-stb1-skybridge",
+   "group": "fleet",
+   "vehicle": "stb1",
+   "title": {
+    "en": "An STB-1 returns fire across Skybridge Chasm in the evening light",
+    "zh": "傍晚，一辆 STB-1 在天桥裂谷还击"
+   },
+   "short": {
+    "en": "STB-1, Skybridge Chasm",
+    "zh": "STB-1，天桥裂谷"
+   },
+   "map": "skybridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s116-stb1-skybridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/stb1.jpg"
+  },
+  {
+   "id": "s117-type10-mangrove",
+   "group": "fleet",
+   "vehicle": "type10",
+   "title": {
+    "en": "A Type 10 prototype knocks out a T-90A at Mangrove Reach in the morning",
+    "zh": "清晨，一辆 Type 10 原型车在红树林水道击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "Type 10 prototype, Mangrove Reach",
+    "zh": "Type 10 原型车，红树林水道"
+   },
+   "map": "mangrove",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s117-type10-mangrove.scene.json",
+   "thumb": "/media/site50-r14/fleet/type10.jpg"
+  },
+  {
+   "id": "s118-type10b-skybridge",
+   "group": "fleet",
+   "vehicle": "type10b",
+   "title": {
+    "en": "A Type 10B returns fire across Skybridge Chasm",
+    "zh": "一辆 Type 10B 在天桥裂谷还击"
+   },
+   "short": {
+    "en": "Type 10B, Skybridge Chasm",
+    "zh": "Type 10B，天桥裂谷"
+   },
+   "map": "skybridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s118-type10b-skybridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/type10b.jpg"
+  },
+  {
+   "id": "s209-bmp2-reservoir",
+   "group": "fleet",
+   "vehicle": "bmp2",
+   "title": {
+    "en": "A BMP-2 leads the column through Highland Reservoir in the morning",
+    "zh": "清晨，一辆 BMP-2 率领纵队穿过高地水库"
+   },
+   "short": {
+    "en": "BMP-2, Highland Reservoir",
+    "zh": "BMP-2，高地水库"
+   },
+   "map": "reservoir",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s209-bmp2-reservoir.scene.json",
+   "thumb": "/media/site50-r14/fleet/bmp2.jpg"
+  },
+  {
+   "id": "s121-type89-light-tiger-mars",
+   "group": "fleet",
+   "vehicle": "type89_light_tiger",
+   "title": {
+    "en": "A Raijū IFV fires across Olympus Basin",
+    "zh": "一辆 Raijū IFV 在奥林匹斯盆地开火"
+   },
+   "short": {
+    "en": "Raijū IFV, Olympus Basin",
+    "zh": "Raijū IFV，奥林匹斯盆地"
+   },
+   "map": "mars",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s121-type89-light-tiger-mars.scene.json",
+   "thumb": "/media/site50-r14/fleet/type89_light_tiger.jpg"
+  },
+  {
+   "id": "s115-lrmv-lynx-caldera",
+   "group": "fleet",
+   "vehicle": "lrmv_lynx",
+   "title": {
+    "en": "An LRMV Lynx returns fire across Obsidian Caldera in the evening light",
+    "zh": "傍晚，一辆 LRMV Lynx 在黑曜石火山口还击"
+   },
+   "short": {
+    "en": "LRMV Lynx, Obsidian Caldera",
+    "zh": "LRMV Lynx，黑曜石火山口"
+   },
+   "map": "caldera",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s115-lrmv-lynx-caldera.scene.json",
+   "thumb": "/media/site50-r14/fleet/lrmv_lynx.jpg"
+  },
+  {
+   "id": "s109-ariete-cliffbridge",
+   "group": "fleet",
+   "vehicle": "ariete",
+   "title": {
+    "en": "A C1 Ariete Preserie fires on the move at Aegis Crossing",
+    "zh": "一辆 C1 Ariete Preserie 在Aegis Crossing行进间射击"
+   },
+   "short": {
+    "en": "C1 Ariete Preserie, Aegis Crossing",
+    "zh": "C1 Ariete Preserie，Aegis Crossing"
+   },
+   "map": "cliffbridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s109-ariete-cliffbridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/ariete.jpg"
+  },
+  {
+   "id": "s110-ariete-c1-cliffbridge",
+   "group": "fleet",
+   "vehicle": "ariete_c1",
+   "title": {
+    "en": "A C1 Ariete Prototype (Serie 1) holds its ground at Aegis Crossing",
+    "zh": "一辆 C1 Ariete Prototype (Serie 1) 在Aegis Crossing坚守阵地"
+   },
+   "short": {
+    "en": "C1 Ariete Prototype (Serie 1), Aegis Crossing",
+    "zh": "C1 Ariete Prototype (Serie 1)，Aegis Crossing"
+   },
+   "map": "cliffbridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s110-ariete-c1-cliffbridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/ariete_c1.jpg"
+  },
+  {
+   "id": "s111-ariete-c2-cliffbridge",
+   "group": "fleet",
+   "vehicle": "ariete_c2",
+   "title": {
+    "en": "A C2 Ariete Prototype knocks out a T-90A at Aegis Crossing",
+    "zh": "一辆 C2 Ariete Prototype 在Aegis Crossing击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "C2 Ariete Prototype, Aegis Crossing",
+    "zh": "C2 Ariete Prototype，Aegis Crossing"
+   },
+   "map": "cliffbridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s111-ariete-c2-cliffbridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/ariete_c2.jpg"
+  },
+  {
+   "id": "s112-ariete-c2-x-cliffbridge",
+   "group": "fleet",
+   "vehicle": "ariete_c2_x",
+   "title": {
+    "en": "A C2 Ariete knocks out a T-80U at Aegis Crossing",
+    "zh": "一辆 C2 Ariete 在Aegis Crossing击毁一辆 T-80U"
+   },
+   "short": {
+    "en": "C2 Ariete, Aegis Crossing",
+    "zh": "C2 Ariete，Aegis Crossing"
+   },
+   "map": "cliffbridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s112-ariete-c2-x-cliffbridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/ariete_c2_x.jpg"
+  },
+  {
+   "id": "s85-leo2-revolution-proto-frontier",
+   "group": "fleet",
+   "vehicle": "leo2_revolution_proto",
+   "title": {
+    "en": "A Leopard 2 Revolution Proto knocks out a T-80U at Frontier Basin at night",
+    "zh": "夜间，一辆 Leopard 2 Revolution Proto 在边疆盆地击毁一辆 T-80U"
+   },
+   "short": {
+    "en": "Leopard 2 Revolution Proto, Frontier Basin",
+    "zh": "Leopard 2 Revolution Proto，边疆盆地"
+   },
+   "map": "frontier",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s85-leo2-revolution-proto-frontier.scene.json",
+   "thumb": "/media/site50-r14/fleet/leo2_revolution_proto.jpg"
+  },
+  {
+   "id": "s79-leclerc-orchard",
+   "group": "fleet",
+   "vehicle": "leclerc",
+   "title": {
+    "en": "A Leclerc S2 leads the column through Orchard Valley",
+    "zh": "一辆 Leclerc S2 率领纵队穿过果园谷"
+   },
+   "short": {
+    "en": "Leclerc S2, Orchard Valley",
+    "zh": "Leclerc S2，果园谷"
+   },
+   "map": "orchard",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s79-leclerc-orchard.scene.json",
+   "thumb": "/media/site50-r14/fleet/leclerc.jpg"
+  },
+  {
+   "id": "s80-leclerc-xlr-orchard",
+   "group": "fleet",
+   "vehicle": "leclerc_xlr",
+   "title": {
+    "en": "A Leclerc SXXI fires across Orchard Valley",
+    "zh": "一辆 Leclerc SXXI 在果园谷开火"
+   },
+   "short": {
+    "en": "Leclerc SXXI, Orchard Valley",
+    "zh": "Leclerc SXXI，果园谷"
+   },
+   "map": "orchard",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s80-leclerc-xlr-orchard.scene.json",
+   "thumb": "/media/site50-r14/fleet/leclerc_xlr.jpg"
+  },
+  {
+   "id": "s78-amx56-verdant",
+   "group": "fleet",
+   "vehicle": "amx56",
+   "title": {
+    "en": "A Leclerc S1 knocks out a T-72B3 at Verdant Fields",
+    "zh": "一辆 Leclerc S1 在翠野原击毁一辆 T-72B3"
+   },
+   "short": {
+    "en": "Leclerc S1, Verdant Fields",
+    "zh": "Leclerc S1，翠野原"
+   },
+   "map": "verdant",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s78-amx56-verdant.scene.json",
+   "thumb": "/media/site50-r14/fleet/amx56.jpg"
+  },
+  {
+   "id": "s63-type100-titan-gorge",
+   "group": "fleet",
+   "vehicle": "type100",
+   "title": {
+    "en": "A Type 100 IFV knocks out a Type 10 at Titan Gorge at night",
+    "zh": "夜间，一辆 Type 100 IFV 在泰坦峡谷击毁一辆 Type 10"
+   },
+   "short": {
+    "en": "Type 100 IFV, Titan Gorge",
+    "zh": "Type 100 IFV，泰坦峡谷"
+   },
+   "map": "titan_gorge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s63-type100-titan-gorge.scene.json",
+   "thumb": "/media/site50-r14/fleet/type100.jpg"
+  },
+  {
+   "id": "s82-kf51-longleaf",
+   "group": "fleet",
+   "vehicle": "kf51",
+   "title": {
+    "en": "A KF51 EVO fires across Longleaf Crossing",
+    "zh": "一辆 KF51 EVO 在长叶渡口开火"
+   },
+   "short": {
+    "en": "KF51 EVO, Longleaf Crossing",
+    "zh": "KF51 EVO，长叶渡口"
+   },
+   "map": "longleaf",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s82-kf51-longleaf.scene.json",
+   "thumb": "/media/site50-r14/fleet/kf51.jpg"
+  },
+  {
+   "id": "s83-kf51b-urban",
+   "group": "fleet",
+   "vehicle": "kf51b",
+   "title": {
+    "en": "A KF51-U knocks out a T-90A at Steinburg in the evening light",
+    "zh": "傍晚，一辆 KF51-U 在斯泰因堡击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "KF51-U, Steinburg",
+    "zh": "KF51-U，斯泰因堡"
+   },
+   "map": "urban",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s83-kf51b-urban.scene.json",
+   "thumb": "/media/site50-r14/fleet/kf51b.jpg"
+  },
+  {
+   "id": "s169-ares-apc-x-saltwind",
+   "group": "fleet",
+   "vehicle": "ares_apc_x",
+   "title": {
+    "en": "An Ares knocks out a T-90M at Saltwind Narrows at night",
+    "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "Ares, Saltwind Narrows",
+    "zh": "Ares，盐风海峡"
+   },
+   "map": "saltwind",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s169-ares-apc-x-saltwind.scene.json",
+   "thumb": "/media/site50-r14/fleet/ares_apc_x.jpg"
+  },
+  {
+   "id": "s102-merkava3c-desert",
+   "group": "fleet",
+   "vehicle": "merkava3c",
+   "title": {
+    "en": "A Merkava Mk 3C returns fire across Sirocco Wadi",
+    "zh": "一辆 Merkava Mk 3C 在西罗科旱谷还击"
+   },
+   "short": {
+    "en": "Merkava Mk 3C, Sirocco Wadi",
+    "zh": "Merkava Mk 3C，西罗科旱谷"
+   },
+   "map": "desert",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s102-merkava3c-desert.scene.json",
+   "thumb": "/media/site50-r14/fleet/merkava3c.jpg"
+  },
+  {
+   "id": "s103-merkava3d-oasis",
+   "group": "fleet",
+   "vehicle": "merkava3d",
+   "title": {
+    "en": "A Merkava Mk 3 Baz knocks out a T-90M at Sunscar Oasis",
+    "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "Merkava Mk 3 Baz, Sunscar Oasis",
+    "zh": "Merkava Mk 3 Baz，日痕绿洲"
+   },
+   "map": "oasis",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s103-merkava3d-oasis.scene.json",
+   "thumb": "/media/site50-r14/fleet/merkava3d.jpg"
+  },
+  {
+   "id": "s106-merkava4b-badlands",
+   "group": "fleet",
+   "vehicle": "merkava4b",
+   "title": {
+    "en": "A Merkava Mk 4B knocks out a T-90A at Redrock Divide",
+    "zh": "一辆 Merkava Mk 4B 在红岩分界击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "Merkava Mk 4B, Redrock Divide",
+    "zh": "Merkava Mk 4B，红岩分界"
+   },
+   "map": "badlands",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s106-merkava4b-badlands.scene.json",
+   "thumb": "/media/site50-r14/fleet/merkava4b.jpg"
+  },
+  {
+   "id": "s105-merkava4-trophy-copper-mesa",
+   "group": "fleet",
+   "vehicle": "merkava4_trophy",
+   "title": {
+    "en": "A Merkava Mk 4 Trophy holds its ground at Copper Mesa Mine",
+    "zh": "一辆 Merkava Mk 4 Trophy 在铜台地矿场坚守阵地"
+   },
+   "short": {
+    "en": "Merkava Mk 4 Trophy, Copper Mesa Mine",
+    "zh": "Merkava Mk 4 Trophy，铜台地矿场"
+   },
+   "map": "copper_mesa",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s105-merkava4-trophy-copper-mesa.scene.json",
+   "thumb": "/media/site50-r14/fleet/merkava4_trophy.jpg"
+  },
+  {
+   "id": "s104-merkava4-barak-caldera",
+   "group": "fleet",
+   "vehicle": "merkava4_barak",
+   "title": {
+    "en": "A Merkava Mk 4 Barak charges through artillery at Obsidian Caldera",
+    "zh": "一辆 Merkava Mk 4 Barak 冒着炮击冲过黑曜石火山口"
+   },
+   "short": {
+    "en": "Merkava Mk 4 Barak, Obsidian Caldera",
+    "zh": "Merkava Mk 4 Barak，黑曜石火山口"
+   },
+   "map": "caldera",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s104-merkava4-barak-caldera.scene.json",
+   "thumb": "/media/site50-r14/fleet/merkava4_barak.jpg"
+  },
+  {
+   "id": "s170-centurion3-saltwind",
+   "group": "fleet",
+   "vehicle": "centurion3",
+   "title": {
+    "en": "A Centurion Mk 3 knocks out a T-64BV1 at Saltwind Narrows at night",
+    "zh": "夜间，一辆 Centurion Mk 3 在盐风海峡击毁一辆 T-64BV1"
+   },
+   "short": {
+    "en": "Centurion Mk 3, Saltwind Narrows",
+    "zh": "Centurion Mk 3，盐风海峡"
+   },
+   "map": "saltwind",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s170-centurion3-saltwind.scene.json",
+   "thumb": "/media/site50-r14/fleet/centurion3.jpg"
+  },
+  {
+   "id": "s171-centurion5-coastal",
+   "group": "fleet",
+   "vehicle": "centurion5",
+   "title": {
+    "en": "A Centurion Mk 5/2 fires on the move at Saltmere Bay",
+    "zh": "一辆 Centurion Mk 5/2 在盐沼湾行进间射击"
+   },
+   "short": {
+    "en": "Centurion Mk 5/2, Saltmere Bay",
+    "zh": "Centurion Mk 5/2，盐沼湾"
+   },
+   "map": "coastal",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s171-centurion5-coastal.scene.json",
+   "thumb": "/media/site50-r14/fleet/centurion5.jpg"
+  },
+  {
+   "id": "s182-ua-m1a1-steppe",
+   "group": "fleet",
+   "vehicle": "ua_m1a1",
+   "title": {
+    "en": "An M1A1 SA (Ukraine) charges through artillery at Tarkhan Steppe",
+    "zh": "一辆 M1A1 SA (Ukraine) 冒着炮击冲过塔尔罕草原"
+   },
+   "short": {
+    "en": "M1A1 SA (Ukraine), Tarkhan Steppe",
+    "zh": "M1A1 SA (Ukraine)，塔尔罕草原"
+   },
+   "map": "steppe",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s182-ua-m1a1-steppe.scene.json",
+   "thumb": "/media/site50-r14/fleet/ua_m1a1.jpg"
+  },
+  {
+   "id": "s141-object695-x-blackglass",
+   "group": "fleet",
+   "vehicle": "object695_x",
+   "title": {
+    "en": "An Object 695 crosses Suzhou Creek through shellfire",
+    "zh": "一辆 Object 695 冒着炮火穿越苏州河"
+   },
+   "short": {
+    "en": "Object 695, Suzhou Creek",
+    "zh": "Object 695，苏州河"
+   },
+   "map": "blackglass",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s141-object695-x-blackglass.scene.json",
+   "thumb": "/media/site50-r14/fleet/object695_x.jpg"
+  },
+  {
+   "id": "s130-pl01-autumn",
+   "group": "fleet",
+   "vehicle": "pl01",
+   "title": {
+    "en": "A PL-01 fires on the move at Amberford",
+    "zh": "一辆 PL-01 在安伯福行进间射击"
+   },
+   "short": {
+    "en": "PL-01, Amberford",
+    "zh": "PL-01，安伯福"
+   },
+   "map": "autumn",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s130-pl01-autumn.scene.json",
+   "thumb": "/media/site50-r14/fleet/pl01.jpg"
+  },
+  {
+   "id": "s125-borsuk-winter",
+   "group": "fleet",
+   "vehicle": "borsuk",
+   "title": {
+    "en": "A Borsuk fires on the move at Frosthollow",
+    "zh": "一辆 Borsuk 在霜谷行进间射击"
+   },
+   "short": {
+    "en": "Borsuk, Frosthollow",
+    "zh": "Borsuk，霜谷"
+   },
+   "map": "winter",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s125-borsuk-winter.scene.json",
+   "thumb": "/media/site50-r14/fleet/borsuk.jpg"
+  },
+  {
+   "id": "s159-k2b-monsoon",
+   "group": "fleet",
+   "vehicle": "k2b",
+   "title": {
+    "en": "A K2B leads the column through Monsoon Ridge at sunset",
+    "zh": "日落时分，一辆 K2B 率领纵队穿过季风雨脊"
+   },
+   "short": {
+    "en": "K2B, Monsoon Ridge",
+    "zh": "K2B，季风雨脊"
+   },
+   "map": "monsoon",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s159-k2b-monsoon.scene.json",
+   "thumb": "/media/site50-r14/fleet/k2b.jpg"
+  },
+  {
+   "id": "s155-bmp3-rok-titan-gorge",
+   "group": "fleet",
+   "vehicle": "bmp3_rok",
+   "title": {
+    "en": "A BMP-3 (ROK) fires across Titan Gorge in the morning",
+    "zh": "清晨，一辆 BMP-3 (ROK) 在泰坦峡谷开火"
+   },
+   "short": {
+    "en": "BMP-3 (ROK), Titan Gorge",
+    "zh": "BMP-3 (ROK)，泰坦峡谷"
+   },
+   "map": "titan_gorge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s155-bmp3-rok-titan-gorge.scene.json",
+   "thumb": "/media/site50-r14/fleet/bmp3_rok.jpg"
+  },
+  {
+   "id": "s137-bmp3m-dragun125-x-foundry",
+   "group": "fleet",
+   "vehicle": "bmp3m_dragun125_x",
+   "title": {
+    "en": "A BMP-3M Dragun knocks out a Challenger 1 at Ironworks",
+    "zh": "一辆 BMP-3M Dragun 在钢铁厂击毁一辆 Challenger 1"
+   },
+   "short": {
+    "en": "BMP-3M Dragun, Ironworks",
+    "zh": "BMP-3M Dragun，钢铁厂"
+   },
+   "map": "foundry",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s137-bmp3m-dragun125-x-foundry.scene.json",
+   "thumb": "/media/site50-r14/fleet/bmp3m_dragun125_x.jpg"
+  },
+  {
+   "id": "s140-kurganets25-x-blackglass",
+   "group": "fleet",
+   "vehicle": "kurganets25_x",
+   "title": {
+    "en": "A Kurganets-25 leads the assault across Suzhou Creek in the evening light",
+    "zh": "傍晚，一辆 Kurganets-25 率队突击苏州河"
+   },
+   "short": {
+    "en": "Kurganets-25, Suzhou Creek",
+    "zh": "Kurganets-25，苏州河"
+   },
+   "map": "blackglass",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s140-kurganets25-x-blackglass.scene.json",
+   "thumb": "/media/site50-r14/fleet/kurganets25_x.jpg"
+  },
+  {
+   "id": "s158-k21-x-titan-gorge",
+   "group": "fleet",
+   "vehicle": "k21_x",
+   "title": {
+    "en": "A K21 crosses Titan Gorge through shellfire",
+    "zh": "一辆 K21 冒着炮火穿越泰坦峡谷"
+   },
+   "short": {
+    "en": "K21, Titan Gorge",
+    "zh": "K21，泰坦峡谷"
+   },
+   "map": "titan_gorge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s158-k21-x-titan-gorge.scene.json",
+   "thumb": "/media/site50-r14/fleet/k21_x.jpg"
+  },
+  {
+   "id": "s214-t72b-1987-x-blackglass",
+   "group": "fleet",
+   "vehicle": "t72b_1987_x",
+   "title": {
+    "en": "A T-72B advances through Suzhou Creek at night",
+    "zh": "夜间，一辆 T-72B 穿过苏州河推进"
+   },
+   "short": {
+    "en": "T-72B, Suzhou Creek",
+    "zh": "T-72B，苏州河"
+   },
+   "map": "blackglass",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s214-t72b-1987-x-blackglass.scene.json",
+   "thumb": "/media/site50-r14/fleet/t72b_1987_x.jpg"
+  },
+  {
+   "id": "s222-t90-x-urban",
+   "group": "fleet",
+   "vehicle": "t90_x",
+   "title": {
+    "en": "A T-90 leads the column through Steinburg in the evening light",
+    "zh": "傍晚，一辆 T-90 率领纵队穿过斯泰因堡"
+   },
+   "short": {
+    "en": "T-90, Steinburg",
+    "zh": "T-90，斯泰因堡"
+   },
+   "map": "urban",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s222-t90-x-urban.scene.json",
+   "thumb": "/media/site50-r14/fleet/t90_x.jpg"
+  },
+  {
+   "id": "s192-griffin-viper-airfield",
+   "group": "fleet",
+   "vehicle": "griffin_viper",
+   "title": {
+    "en": "A Griffin Viper returns fire across Kestrel Airfield in the evening light",
+    "zh": "傍晚，一辆 Griffin Viper 在红隼机场还击"
+   },
+   "short": {
+    "en": "Griffin Viper, Kestrel Airfield",
+    "zh": "Griffin Viper，红隼机场"
+   },
+   "map": "airfield",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s192-griffin-viper-airfield.scene.json",
+   "thumb": "/media/site50-r14/fleet/griffin_viper.jpg"
+  },
+  {
+   "id": "s122-type89-x-monsoon",
+   "group": "fleet",
+   "vehicle": "type89_x",
+   "title": {
+    "en": "A Type 89 knocks out a T-72B3M at Monsoon Ridge in the evening light",
+    "zh": "傍晚，一辆 Type 89 在季风雨脊击毁一辆 T-72B3M"
+   },
+   "short": {
+    "en": "Type 89, Monsoon Ridge",
+    "zh": "Type 89，季风雨脊"
+   },
+   "map": "monsoon",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s122-type89-x-monsoon.scene.json",
+   "thumb": "/media/site50-r14/fleet/type89_x.jpg"
+  },
+  {
+   "id": "s189-ua-t80u-modern-winter",
+   "group": "fleet",
+   "vehicle": "ua_t80u_modern",
+   "title": {
+    "en": "A T-80U Zoria (Concept) fires on the move at Frosthollow",
+    "zh": "一辆 T-80U Zoria (Concept) 在霜谷行进间射击"
+   },
+   "short": {
+    "en": "T-80U Zoria (Concept), Frosthollow",
+    "zh": "T-80U Zoria (Concept)，霜谷"
+   },
+   "map": "winter",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s189-ua-t80u-modern-winter.scene.json",
+   "thumb": "/media/site50-r14/fleet/ua_t80u_modern.jpg"
+  },
+  {
+   "id": "s186-ua-t72b3m-modern-winter",
+   "group": "fleet",
+   "vehicle": "ua_t72b3m_modern",
+   "title": {
+    "en": "A T-72B3M Hetman (Concept) leads the column through Frosthollow at sunset",
+    "zh": "日落时分，一辆 T-72B3M Hetman (Concept) 率领纵队穿过霜谷"
+   },
+   "short": {
+    "en": "T-72B3M Hetman (Concept), Frosthollow",
+    "zh": "T-72B3M Hetman (Concept)，霜谷"
+   },
+   "map": "winter",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s186-ua-t72b3m-modern-winter.scene.json",
+   "thumb": "/media/site50-r14/fleet/ua_t72b3m_modern.jpg"
+  },
+  {
+   "id": "s185-ua-t72b3-modern-frontier",
+   "group": "fleet",
+   "vehicle": "ua_t72b3_modern",
+   "title": {
+    "en": "A T-72B3 Sich (Concept) fires across Frontier Basin in the morning",
+    "zh": "清晨，一辆 T-72B3 Sich (Concept) 在边疆盆地开火"
+   },
+   "short": {
+    "en": "T-72B3 Sich (Concept), Frontier Basin",
+    "zh": "T-72B3 Sich (Concept)，边疆盆地"
+   },
+   "map": "frontier",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s185-ua-t72b3-modern-frontier.scene.json",
+   "thumb": "/media/site50-r14/fleet/ua_t72b3_modern.jpg"
+  },
+  {
+   "id": "s127-pl-t72b3-modern-winter",
+   "group": "fleet",
+   "vehicle": "pl_t72b3_modern",
+   "title": {
+    "en": "A T-72B3 Zubr (Concept) leads the column through Frosthollow at sunset",
+    "zh": "日落时分，一辆 T-72B3 Zubr (Concept) 率领纵队穿过霜谷"
+   },
+   "short": {
+    "en": "T-72B3 Zubr (Concept), Frosthollow",
+    "zh": "T-72B3 Zubr (Concept)，霜谷"
+   },
+   "map": "winter",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s127-pl-t72b3-modern-winter.scene.json",
+   "thumb": "/media/site50-r14/fleet/pl_t72b3_modern.jpg"
+  },
+  {
+   "id": "s62-cn-t80u-modern-skybridge",
+   "group": "fleet",
+   "vehicle": "cn_t80u_modern",
+   "title": {
+    "en": "A T-80U Yun (Concept) crosses Skybridge Chasm through shellfire",
+    "zh": "一辆 T-80U Yun (Concept) 冒着炮火穿越天桥裂谷"
+   },
+   "short": {
+    "en": "T-80U Yun (Concept), Skybridge Chasm",
+    "zh": "T-80U Yun (Concept)，天桥裂谷"
+   },
+   "map": "skybridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s62-cn-t80u-modern-skybridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/cn_t80u_modern.jpg"
+  },
+  {
+   "id": "s61-cn-t72b3m-modern-skybridge",
+   "group": "fleet",
+   "vehicle": "cn_t72b3m_modern",
+   "title": {
+    "en": "A T-72B3M Kunlun (Concept) knocks out a K2 Black Panther at Skybridge Chasm at sunset",
+    "zh": "日落时分，一辆 T-72B3M Kunlun (Concept) 在天桥裂谷击毁一辆 K2 Black Panther"
+   },
+   "short": {
+    "en": "T-72B3M Kunlun (Concept), Skybridge Chasm",
+    "zh": "T-72B3M Kunlun (Concept)，天桥裂谷"
+   },
+   "map": "skybridge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s61-cn-t72b3m-modern-skybridge.scene.json",
+   "thumb": "/media/site50-r14/fleet/cn_t72b3m_modern.jpg"
+  },
+  {
+   "id": "s60-cn-t72b3-modern-mangrove",
+   "group": "fleet",
+   "vehicle": "cn_t72b3_modern",
+   "title": {
+    "en": "A T-72B3 Qilin (Concept) fires across Mangrove Reach in the morning",
+    "zh": "清晨，一辆 T-72B3 Qilin (Concept) 在红树林水道开火"
+   },
+   "short": {
+    "en": "T-72B3 Qilin (Concept), Mangrove Reach",
+    "zh": "T-72B3 Qilin (Concept)，红树林水道"
+   },
+   "map": "mangrove",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s60-cn-t72b3-modern-mangrove.scene.json",
+   "thumb": "/media/site50-r14/fleet/cn_t72b3_modern.jpg"
+  },
+  {
+   "id": "s144-ru-t80u-modern-steppe",
+   "group": "fleet",
+   "vehicle": "ru_t80u_modern",
+   "title": {
+    "en": "A T-80U Bars-M (Concept) charges through artillery at Tarkhan Steppe",
+    "zh": "一辆 T-80U Bars-M (Concept) 冒着炮击冲过塔尔罕草原"
+   },
+   "short": {
+    "en": "T-80U Bars-M (Concept), Tarkhan Steppe",
+    "zh": "T-80U Bars-M (Concept)，塔尔罕草原"
+   },
+   "map": "steppe",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s144-ru-t80u-modern-steppe.scene.json",
+   "thumb": "/media/site50-r14/fleet/ru_t80u_modern.jpg"
+  },
+  {
+   "id": "s143-ru-t72b3m-modern-mars",
+   "group": "fleet",
+   "vehicle": "ru_t72b3m_modern",
+   "title": {
+    "en": "A T-72B3M Bulat-M (Concept) leads the assault across Olympus Basin",
+    "zh": "一辆 T-72B3M Bulat-M (Concept) 率队突击奥林匹斯盆地"
+   },
+   "short": {
+    "en": "T-72B3M Bulat-M (Concept), Olympus Basin",
+    "zh": "T-72B3M Bulat-M (Concept)，奥林匹斯盆地"
+   },
+   "map": "mars",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s143-ru-t72b3m-modern-mars.scene.json",
+   "thumb": "/media/site50-r14/fleet/ru_t72b3m_modern.jpg"
+  },
+  {
+   "id": "s142-ru-t72b3-modern-whiteout",
+   "group": "fleet",
+   "vehicle": "ru_t72b3_modern",
+   "title": {
+    "en": "A T-72B3 Bastion-M (Concept) fires on the move at Whiteout Station in the morning",
+    "zh": "清晨，一辆 T-72B3 Bastion-M (Concept) 在白茫站行进间射击"
+   },
+   "short": {
+    "en": "T-72B3 Bastion-M (Concept), Whiteout Station",
+    "zh": "T-72B3 Bastion-M (Concept)，白茫站"
+   },
+   "map": "whiteout",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s142-ru-t72b3-modern-whiteout.scene.json",
+   "thumb": "/media/site50-r14/fleet/ru_t72b3_modern.jpg"
   }
  ]
 }
