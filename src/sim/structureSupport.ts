@@ -63,13 +63,15 @@ function partTop(record: CollisionRecord, part: SimpleCollisionShape | null): nu
   return part?.y1 ?? record.max[1];
 }
 
-/** Highest standable top under (x, z) among the candidates, or -Infinity. `floors` (beginHull's pose rule) holds each
- * candidate's own belly line; without it every candidate uses `bellyY`. */
+/** Highest standable top under (x, z) among the candidates over `floor`, or `floor` (-Infinity: none). `floors`
+ * (beginHull's pose rule) holds each candidate's own belly line; without it every candidate uses `bellyY`. The support
+ * field passes the ground as the floor (physics stream, 2026-10-13, the MP stream's tick profile): a part no higher than
+ * the ground there can never be its answer, so its containment test is skipped — the same answer, exactly. */
 export function structureTopAt(
   candidates: readonly CollisionRecord[], count: number, x: number, z: number, bellyY: number,
-  floors: Float64Array | null = null,
+  floors: Float64Array | null = null, floor = -Infinity,
 ): number {
-  let best = -Infinity;
+  let best = floor;
   for (let i = 0; i < count; i++) {
     const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
     const record = candidates[i];
@@ -121,8 +123,7 @@ export function createStructureSupportField(
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
-    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null);
-    return top > ground ? top : ground;
+    return structureTopAt(candidates, count, x, z, belly, posed ? floors : null, ground);
   };
   const getHeightAt = sample(terrainAt);
   const getHeightAtFast = sample(terrainFast);
