@@ -1083,16 +1083,16 @@
    "vehicle": "chieftain5_x"
   },
   {
-   "path": "media/site50-r14/fleet/fv510_milan_x.jpg",
+   "path": "media/site50-r14/fleet/warrior_tes_h.jpg",
    "bytes": 37341,
    "sha256": "0583fd565af344de68dd0775b118f59006c1fca9b6f69228f1dbe922886bb9ca",
    "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.jpg",
    "take": "s24-ice-duel",
    "round": "shots/media-r5/site50/deliver-r14",
-   "vehicle": "fv510_milan_x"
+   "vehicle": "warrior_tes_h"
   },
   {
-   "path": "media/site50-r14/fleet/fv510_milan_x.webm",
+   "path": "media/site50-r14/fleet/warrior_tes_h.webm",
    "bytes": 432148,
    "sha256": "4882c3e1d263f4b0c8b35af5e32611b8a71d23a97b140dcf9502e0caf107fc86",
    "width": 640,
@@ -1103,7 +1103,7 @@
    "source": "shots/media-r5/site50/deliver-r14/s24-ice-duel/s24-ice-duel.mp4",
    "take": "s24-ice-duel",
    "round": "shots/media-r5/site50/deliver-r14",
-   "vehicle": "fv510_milan_x"
+   "vehicle": "warrior_tes_h"
   },
   {
    "path": "media/site50-r14/fleet/griffin50_x.jpg",
@@ -1130,8 +1130,8 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 28212,
-   "sha256": "ad70bc02ed1786538a3beabe9ca5c0bedbc0ca820e797114b45f61587dd09cf9",
+   "bytes": 28232,
+   "sha256": "78cfce8a84a38a253a8efd61cac533585536131d36bbb05502687f43b9de1d42",
    "source": null,
    "vehicles": 55
   },
