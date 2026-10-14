@@ -26,8 +26,11 @@
  *  1. regional form: every map resolves a form (`resolve(mapId).form`), and none resolves 'generic' unless `genericOk`
  *     names the map with its reason (the place's real object is the generic one);
  *  2. painted openings (paintedOpenings): no dark plate stuck on a face — an island (welded at 1 mm) at most 10 cm
- *     thick and no thicker than half its face, spanning 6 cm or more each way (a rail as deep as it is tall is a
- *     member), with a host face right behind it (within 6 cm of its back at three of five sample points: nothing cut
+ *     thick and no thicker than half its face, spanning 6 cm or more each way along its own axes in the face (a rail as
+ *     deep as it is tall is a member; timber laid flush in a wall is its frame, never an opening — a timber five or
+ *     more times as long as it is wide; on render, one three times as long or no wider than a timber (26 cm); posts,
+ *     rails and braces welded into one frame that covers under 60 % of its box: Fachwerk), with a host face right
+ *     behind it (within 6 cm of its back at three of five sample points: nothing cut
  *     behind), the host running on round it (four of eight points just outside its outline: not a leaf set back in a
  *     cut opening), no reveal closing it in from 10 cm in front (not the back of an embrasure or a niche), and darker
  *     than its host (in the dark, glass or curtain bucket over another bucket, or a vertex colour at most 62 % of the
@@ -63,7 +66,7 @@ import { checkKitFracture, FRACTURE_PIECE_CAP } from '../src/world/fractureAnato
 export const R2 = Object.freeze({
   weldM: 0.001,
   plate: Object.freeze({
-    maxThickM: 0.10, flat: 0.5, minSpanM: 0.06, minAreaM2: 0.012, maxNy: 0.35, aspect: 12,
+    maxThickM: 0.10, flat: 0.5, minSpanM: 0.06, minAreaM2: 0.012, maxNy: 0.35, aspect: 12, memberAspect: 5, frameAspect: 3, frameFill: 0.6, memberWidthM: 0.26,
     behindM: 0.06, hits: 3, aroundM: 0.03, around: 4, revealM: 0.10, revealReachM: 0.3, darkRel: 0.62, darkAbs: 0.05,
   }),
   boxShareMax: 0.6,
@@ -76,6 +79,8 @@ export const R2 = Object.freeze({
 });
 
 const DARK_BUCKETS = new Set(['dark', 'glass', 'curtain']);
+/** The timber buckets a flush frame member draws in (structureWood, the plain wood print). */
+const TIMBER_BUCKETS = new Set(['structureWood', 'wood']);
 
 // --------------------------------------------------------------------------------------------- parts and the soup
 /** A build's result as parts: [{ geometry, bucket }]. */
@@ -309,18 +314,46 @@ export function paintedOpenings(input, opts = {}) {
       const dn = x * nx + y * ny + z * nz, du = x * ux + y * uy + z * uz, dv = x * vx + y * vy + z * vz;
       n0 = Math.min(n0, dn); n1 = Math.max(n1, dn); u0 = Math.min(u0, du); u1 = Math.max(u1, du); v0 = Math.min(v0, dv); v1 = Math.max(v1, dv);
     }
-    const thick = n1 - n0, w = u1 - u0, h = v1 - v0;
+    const thick = n1 - n0;
+    const bucket = parts[isl.part].bucket;
+    // its own axes in the face plane (a Fachwerk brace runs diagonal): the principal axis of its corners in the plane
+    const uc = (u0 + u1) / 2, vc = (v0 + v1) / 2;
+    let suu = 0, svv = 0, suv = 0;
+    for (const t of isl.tris) for (let j = 0; j < 3; j++) {
+      const x = P[t * 9 + j * 3], y = P[t * 9 + j * 3 + 1], z = P[t * 9 + j * 3 + 2];
+      const du = x * ux + y * uy + z * uz - uc, dv = x * vx + y * vy + z * vz - vc;
+      suu += du * du; svv += dv * dv; suv += du * dv;
+    }
+    const theta = 0.5 * Math.atan2(2 * suv, suu - svv);
+    let A = [Math.cos(theta), Math.sin(theta)], B = [-Math.sin(theta), Math.cos(theta)];
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+    for (const t of isl.tris) for (let j = 0; j < 3; j++) {
+      const x = P[t * 9 + j * 3], y = P[t * 9 + j * 3 + 1], z = P[t * 9 + j * 3 + 2];
+      const du = x * ux + y * uy + z * uz - uc, dv = x * vx + y * vy + z * vz - vc;
+      const da = du * A[0] + dv * A[1], db = du * B[0] + dv * B[1];
+      a0 = Math.min(a0, da); a1 = Math.max(a1, da); b0 = Math.min(b0, db); b1 = Math.max(b1, db);
+    }
+    let la = a1 - a0, lb = b1 - b0, am = (a0 + a1) / 2, bm = (b0 + b1) / 2;
+    if (lb > la) { [la, lb] = [lb, la]; [am, bm] = [bm, am]; [A, B] = [B, A]; }
     // a plate: thin, and thin against its face (a rail or a girt as deep as it is tall is a member, not a plate)
-    if (thick > S.maxThickM || thick > S.flat * Math.min(w, h) || w < S.minSpanM || h < S.minSpanM || w * h < S.minAreaM2) return;
-    const nm = (n0 + n1) / 2, um = (u0 + u1) / 2, vm = (v0 + v1) / 2;
-    const at = (dn, du, dv) => [nx * dn + ux * du + vx * dv, ny * dn + uy * du + vy * dv, nz * dn + uz * du + vz * dv];
+    if (thick > S.maxThickM || thick > S.flat * lb || lb < S.minSpanM || la * lb < S.minAreaM2) return;
+    // a long slender timber laid flush in a wall is its frame (Fachwerk posts, rails and braces: structural), never a
+    // painted opening
+    const timber = TIMBER_BUCKETS.has(bucket);
+    if (timber && la >= S.memberAspect * lb) return;
+    const nm = (n0 + n1) / 2;
+    /** A point of the plate's plane: `dn` along its normal, (sa, sb) along its own long and short axes from its centre. */
+    const at = (dn, sa, sb) => {
+      const du = uc + A[0] * (am + sa) + B[0] * (bm + sb), dv = vc + A[1] * (am + sa) + B[1] * (bm + sb);
+      return [nx * dn + ux * du + vx * dv, ny * dn + uy * du + vy * dv, nz * dn + uz * du + vz * dv];
+    };
     const samples = [[0, 0], [-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]];
     const around = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
     for (const sign of [1, -1]) {
       const dx = -sign * nx, dy = -sign * ny, dz = -sign * nz; // into the host: the plate's outward normal is sign * n
       let hits = 0, hostLum = 0, hostLumN = 0, hostBucket = null;
       for (const [a, b] of samples) {
-        const [ox, oy, oz] = at(nm, um + a * w, vm + b * h);
+        const [ox, oy, oz] = at(nm, a * la, b * lb);
         const hit = cast(ox, oy, oz, dx, dy, dz, thick / 2 + S.behindM, ii, nx, ny, nz);
         if (hit < 0) continue;
         hits++;
@@ -328,19 +361,29 @@ export function paintedOpenings(input, opts = {}) {
         hostBucket = parts[part[hit]].bucket;
       }
       if (hits < S.hits) continue;
+      if (timber) {
+        // a frame of timbers welded at their joints (a Fachwerk panel's posts, rails and braces in one island) covers a
+        // fraction of its box; a short rail between posts on render is a member too (a plate of timber on render, three
+        // times as long as it is wide or no wider than a timber, is the frame's, never a door)
+        let front = 0;
+        for (const t of isl.tris) if (nrm[t * 3] * nx * sign + nrm[t * 3 + 1] * ny * sign + nrm[t * 3 + 2] * nz * sign > 0.7) front += area[t];
+        if (front < S.frameFill * la * lb) break;
+        if (!TIMBER_BUCKETS.has(hostBucket) && (la >= S.frameAspect * lb || lb <= S.memberWidthM)) break;
+      }
       // the host face runs on round the plate (a plate in a recess — a set-back leaf, an embrasure's throat — has none)
       const front = sign > 0 ? n1 + 0.01 : n0 - 0.01;
       let round = 0;
       for (const [a, b] of around) {
-        const [ox, oy, oz] = at(front, um + a * (w / 2 + S.aroundM), vm + b * (h / 2 + S.aroundM));
+        const [ox, oy, oz] = at(front, a * (la / 2 + S.aroundM), b * (lb / 2 + S.aroundM));
         if (cast(ox, oy, oz, dx, dy, dz, thick + S.behindM + 0.01, ii, nx, ny, nz) >= 0) round++;
       }
       if (round < S.around) continue;
       // nor at the back of a reveal: from `revealM` in front of it, faces across the plate's normal close it in on three
       // of four sides (an embrasure's stepped throat, a niche's back) — a trim proud of the face is no reveal
-      const [cx, cy, cz] = at(front + sign * S.revealM, um, vm);
+      const [cx, cy, cz] = at(front + sign * S.revealM, 0, 0);
       let sides = 0;
-      for (const [du, dv, half] of [[1, 0, w / 2], [-1, 0, w / 2], [0, 1, h / 2], [0, -1, h / 2]]) {
+      for (const [da, db, half] of [[1, 0, la / 2], [-1, 0, la / 2], [0, 1, lb / 2], [0, -1, lb / 2]]) {
+        const du = A[0] * da + B[0] * db, dv = A[1] * da + B[1] * db;
         const rx = ux * du + vx * dv, ry = uy * du + vy * dv, rz = uz * du + vz * dv;
         if (castAcross(cx, cy, cz, rx, ry, rz, half + S.revealReachM, nx, ny, nz) >= 0) sides++;
       }
@@ -352,18 +395,19 @@ export function paintedOpenings(input, opts = {}) {
         if (!Number.isNaN(L[t])) { pl += L[t]; pn++; }
       }
       const plateLum = pn ? pl / pn : NaN, hLum = hostLumN ? hostLum / hostLumN : NaN;
-      const bucket = parts[isl.part].bucket;
       let dark = false;
       if (DARK_BUCKETS.has(bucket)) dark = !DARK_BUCKETS.has(hostBucket);
       else if (!Number.isNaN(plateLum) && !Number.isNaN(hLum)) dark = plateLum <= S.darkRel * hLum;
       else if (!Number.isNaN(plateLum)) dark = plateLum <= S.darkAbs;
       if (!dark) continue;
+      // its size across (along the face's level) and up, as an opening is read
+      const across = Math.abs(A[0]) >= Math.abs(A[1]);
       const plate = {
-        // an opening is no longer than `aspect` times its width; a longer one is a strip (a timber or a band laid flat on
-        // the wall: rule 2's overlay, reported apart)
-        kind: Math.max(w, h) > S.aspect * Math.min(w, h) ? 'strip' : 'opening',
-        part: isl.part, bucket, hostBucket, thick: +thick.toFixed(3), span: [+w.toFixed(3), +h.toFixed(3)],
-        centre: at(nm, um, vm).map((x) => +x.toFixed(3)),
+        // an opening is no longer than `aspect` times its width; a longer one is a strip (a band laid flat on the wall:
+        // rule 2's overlay, reported apart)
+        kind: la > S.aspect * lb ? 'strip' : 'opening',
+        part: isl.part, bucket, hostBucket, thick: +thick.toFixed(3), span: (across ? [la, lb] : [lb, la]).map((x) => +x.toFixed(3)),
+        centre: at(nm, 0, 0).map((x) => +x.toFixed(3)),
         normal: [sign * nx, sign * ny, sign * nz].map((x) => +x.toFixed(3)),
         lum: Number.isNaN(plateLum) ? null : +plateLum.toFixed(4), hostLum: Number.isNaN(hLum) ? null : +hLum.toFixed(4),
       };
