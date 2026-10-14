@@ -10451,7 +10451,7 @@ ${snowCap ? `
     for (const p of plan.placements) {
       let built = families.get(p.family);
       if (!built) {
-        built = buildYardFamily(p.family);
+        built = buildYardFamily(p.family, mapId); // props lane A #2: the map's own yard forms
         if (built.material === 'steel') ensureSteelAtlas('yard:' + p.family);
         families.set(p.family, built);
       }

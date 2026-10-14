@@ -279,7 +279,7 @@ export const YARD_FAMILY_TRIANGLE_CAP: Readonly<Record<YardFamily, number>> = Ob
 });
 
 /** Build one family's geometry (the caller owns and disposes it; one per family per battlefield). */
-export function buildYardFamily(family: YardFamily): YardFamilyGeometry {
+export function buildYardFamily(family: YardFamily, _mapId?: string): YardFamilyGeometry {
   const geometry = BUILDERS[family]();
   const position = geometry.getAttribute('position');
   return { family, material: YARD_FAMILY_MATERIAL[family], geometry, triangles: Math.floor((geometry.index?.count ?? position.count) / 3) };
