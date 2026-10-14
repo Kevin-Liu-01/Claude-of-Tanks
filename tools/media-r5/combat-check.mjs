@@ -21,7 +21,7 @@ import { hullOf, routeProblems } from './route-check.mjs';
 import { CRUSH_MIN_MPS, insideRecord, sightBlockers, worldModel } from './world-model.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
-const PASS = { together: 0.75, held: { 2: 2, 3: 2, 4: 3 }, heightShare: 0.05, clearM: 1.5, targetSight: 0.9 };
+const PASS = { together: 0.75, held: { 2: 2, 3: 2, 4: 3 }, heightShare: 0.05, clearM: 1.5, targetSight: 0.9, wireTop: Number(process.env.WIRE_TOP ?? 0.35) };
 const LOW_COVER_M = 1.2;
 
 /** One take: per `stepMs`, each tank's box projected through the lens, its share of the frame and the lens's clearance. */
@@ -178,6 +178,20 @@ export function combatVerdict(scene, model, features = null) {
   };
   const shrineIn = (f) => (f.shrine ?? 0) >= 0.05 ? f.shrineKind : ROADSIDE_SHRINE.test(f.kind ?? '') && (f.share ?? 0) >= 0.1 ? f.kind : null;
   for (const f of [runOf((f) => ((f.cover ?? 0) >= 0.25 ? f.coverKind : null)), runOf(shrineIn)]) if (f) faults.push(f);
+  // the overhead wires (2026-10-14, the coordinator on the 224 review: wires and cables are occluders; s225 and s226
+  // ended under a telephone line): one passing across the hero, or one conductor reading across WIRE_TOP of the frame's
+  // upper half, for 0.3 s or more (lens-check's wire and wireHero)
+  const wireRun = (hit, what) => {
+    let run = 0, worst = 0, kind = null, until = null;
+    for (const p of lens?.perSample ?? []) {
+      const k = hit(p);
+      run = k ? run + 1 : 0;
+      if (run > worst) { worst = run; kind = k; until = p.tMs; }
+    }
+    return worst >= 3 ? `a ${kind} ${what} for ${worst * 100} ms (to ${until})` : null;
+  };
+  for (const f of [wireRun((p) => p.wireHero, 'crosses the hero'), wireRun((p) => ((p.wire ?? 0) >= PASS.wireTop ? p.wireKind : null), `crosses ${Math.round(PASS.wireTop * 100)} % of the frame's top`)]) if (f) faults.push(f);
+  const wireMost = Math.max(0, ...(lens?.perSample ?? []).map((p) => p.wire ?? 0));
   faults.push(...placement);
   // the hero half behind a nearer tank at its knockout shot or for a second of the take (2026-10-13: s228's file put
   // the T-72B3 across the AbramsX on the telephoto)
@@ -199,7 +213,8 @@ export function combatVerdict(scene, model, features = null) {
   }
   const line = `together ${Math.round(together * 100)} %, holds ${held.toFixed(2)}/${count}, knockouts ${kos.map((k) => `${k.killer}>${k.victim}@${k.killMs} ${k.shown ? 'shown' : 'MISSED'}`).join(' ')}, `
     + `hero ${(mean('hero') * 100).toFixed(1)} % / foe0 ${(mean('foe0') * 100).toFixed(1)} % of the height, nearest hull ${nearest.toFixed(1)} m, `
-    + `foe0 in sight ${Math.round(targetSight * 100)} %, hero blocked ${Math.round(heroBlocked * 100)} %${tele}`;
+    + `foe0 in sight ${Math.round(targetSight * 100)} %, hero blocked ${Math.round(heroBlocked * 100)} %${tele}`
+    + (wireMost > 0 ? `, wires up to ${Math.round(wireMost * 100)} % across the top` : '');
   const heroFront = rows.reduce((sum, r) => sum + (r.tanks.hero?.front ?? 0), 0) / n;
   return { ok: !faults.length, line, faults, rows, metrics: { together, held, count, hero: mean('hero'), foe0: mean('foe0'), nearest, targetSight, heroBlocked, heroFront } };
 }
@@ -221,6 +236,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   for (const f of files) {
     const scene = JSON.parse(readFileSync(join(dir, f), 'utf8'));
     const { model, features } = worldOf(scene.map);
+    // (a check without its battlefield cannot pass: the frames and the lens need the dump's ground and records)
+    if (!model) { failed++; console.log(`FAIL ${scene.meta?.id ?? f}: no features dump for ${scene.map}`); continue; }
     const { ok, line, faults, rows } = combatVerdict(scene, model, features);
     if (!ok) failed++;
     console.log(`${ok ? 'PASS' : 'FAIL'} ${scene.meta?.id ?? f}: ${line}${faults.length ? `\n    faults: ${faults.join('; ')}` : ''}`);

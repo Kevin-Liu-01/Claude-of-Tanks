@@ -25,6 +25,9 @@ export const FORE_ZONE = 0.03;
  *  second while the sightline test passed it, thin as it is): a cross, calvary, shrine, statue, monument, obelisk or
  *  grave in front of the hull counts toward the foreground's cover of it however low or crushable. */
 export const ROADSIDE_SHRINE = /cross|calvary|shrine|statue|monument|obelisk|grave/i;
+// a conductor counts across the frame's top where it is this many pixels across at 1080p or more (2026-10-14: at 2 px
+// the crane over s232's village counted the telephone line lying against the fields, which barely reads)
+const WIRE_TOP_PX = Number(process.env.WIRE_TOP_PX ?? 3);
 /** A lens looking down more than this many degrees flattens a hull into its roof (composition wave c1). */
 export const STEEP_DEG = 30;
 
@@ -70,6 +73,18 @@ export function absoluteShots(scene, model) {
   });
 }
 
+/** A 2D segment clipped to an axis-aligned box (Liang-Barsky): the part inside, or null. */
+function clipSegment(p, q, x0, y0, x1, y1) {
+  let t0 = 0, t1 = 1;
+  const dx = q[0] - p[0], dy = q[1] - p[1];
+  for (const [pp, qq] of [[-dx, p[0] - x0], [dx, x1 - p[0]], [-dy, p[1] - y0], [dy, y1 - p[1]]]) {
+    if (pp === 0) { if (qq < 0) return null; continue; }
+    const r = qq / pp;
+    if (pp < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  return [[p[0] + t0 * dx, p[1] + t0 * dy], [p[0] + t1 * dx, p[1] + t1 * dy]];
+}
+
 /**
  * The lens's view of the hero over the take: { blocked, outOfFrame, samples, worst, blockedAt, perSample } where blocked
  * and outOfFrame are fractions of the samples, worst lists the first blocked moments ({ tMs, by }), blockedAt every
@@ -81,7 +96,8 @@ export function absoluteShots(scene, model) {
  * roadside shrine however low), at (the hull's [x, z]), eye
  * (the lens), pitchDeg (the lens's look up or down; composition wave c1, 2026-10-07: a 40-60° look-down makes the tanks
  * roof plans), heightM (the lens over the ground under it) and facing (the nose's screen x less the tail's: + the hull
- * faces right) }.
+ * faces right), wire/wireKind (the longest overhead conductor reading 2 px or more across the frame's upper half, in
+ * frame widths) and wireHero (the kind of a wire passing across the hull's visible box nearer the lens, else null) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
@@ -306,7 +322,35 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
         if (top[1] > box[3] && foot[1] < box[3]) { merger = 1; mergerKind = r.kind; break; }
       }
     }
+    // the overhead wires (2026-10-14, the coordinator on the combat round's 224 review: s225 and s226 ended under a
+    // telephone line): each conductor's polyline through the lens, cut at the near plane and clipped to the frame. A
+    // stretch reads as a line where it is a pixel or more across at 1080p (radius x 1080 / (depth x ty)); `wire` is the
+    // longest single conductor reading 2 px or more across the frame's upper half, in frame widths, and `wireHero` the
+    // kind of one reading at all that passes across the hull's visible box nearer the lens than the hull
+    let wire = 0, wireKind = null, wireHero = null;
+    const toLens = (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z]; return [d[0] * right[0] + d[1] * right[1] + d[2] * right[2], d[0] * up[0] + d[1] * up[1] + d[2] * up[2], d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2]]; };
+    for (const w of model.wires ?? []) {
+      const nx = Math.max(w.min[0], Math.min(cam.x, w.max[0])), ny = Math.max(w.min[1], Math.min(cam.y, w.max[1])), nz = Math.max(w.min[2], Math.min(cam.z, w.max[2]));
+      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > w.r * 1080 / ty) continue;
+      let upper = 0;
+      for (let i = 0; i + 1 < w.pts.length; i++) {
+        let a = toLens(w.pts[i]), b = toLens(w.pts[i + 1]);
+        if (a[2] <= 0.3 && b[2] <= 0.3) continue;
+        if (a[2] <= 0.3 || b[2] <= 0.3) {
+          const f = (0.3 - a[2]) / (b[2] - a[2]), cut = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 0.3];
+          if (a[2] <= 0.3) a = cut; else b = cut;
+        }
+        const depth = (a[2] + b[2]) / 2, px = w.r * 1080 / (depth * ty);
+        if (px < 1) continue;
+        const s0 = [a[0] / a[2] / tx, a[1] / a[2] / ty], s1 = [b[0] / b[2] / tx, b[1] / b[2] / ty];
+        const inFrame = clipSegment(s0, s1, -1, -1, 1, 1);
+        if (inFrame && px >= WIRE_TOP_PX && (inFrame[0][1] + inFrame[1][1]) / 2 > 0) upper += Math.hypot(inFrame[1][0] - inFrame[0][0], inFrame[1][1] - inFrame[0][1]) / 2;
+        if (inFrame && seenBox && depth < distM && clipSegment(inFrame[0], inFrame[1], seenBox[0], seenBox[1], seenBox[2], seenBox[3])) wireHero = w.kind;
+      }
+      if (upper > wire) { wire = upper; wireKind = w.kind; }
+    }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
+      wire: +wire.toFixed(3), wireKind, wireHero,
       muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, overlap: +overlap.toFixed(3), turretOverlap: +turretOverlap.toFixed(3), merger, mergerKind,
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind, cover: +cover.toFixed(3), coverKind, shrine: +shrine.toFixed(3), shrineKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,

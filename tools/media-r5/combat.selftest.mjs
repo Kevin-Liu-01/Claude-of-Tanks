@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { COMBAT, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
+import { COMBAT, COMBAT_TABLE, FLEET, OWNER_NINE, SHOTS, combatTake, siteScene } from './site50.mjs';
 import { holdShot } from './setups.mjs';
 import { combatVerdict, knockouts } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
+import { powerLinesOf, powerWires, telephoneWires } from './wire-model.mjs';
 import { absoluteShots } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -44,7 +45,8 @@ for (const f of ['1v1', '1v2', '2v2']) assert.equal(formats.filter((x) => x === 
 const worlds = new Map();
 const worldOf = (map) => {
   if (!worlds.has(map)) {
-    const f = join(SHOTS_DIR, 'features', `features-${map}.json`);
+    // (the battlefields a tree's own review dumped, MEDIA_R5_FEATURES, as combat-check reads them)
+    const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
     const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
     worlds.set(map, { features, model: features ? worldModel(features) : null });
   }
@@ -115,4 +117,31 @@ for (const shot of COMBAT) {
     assert.ok(!verdict.ok && verdict.faults.some((f) => /hero blocked|in sight/.test(f)), `a birch's crown across the crane's sightline fails s232 (${verdict.faults.join('; ') || 'no fault'})`);
   }
 }
-console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown`);
+// --- the overhead wires (wire-model.mjs; the coordinator on the 224 review, 2026-10-14: wires are occluders) ---------
+{
+  // the telephone line: consecutive poles 6-52 m apart strung with two conductors 0.6 m either side, 6.5 m up, hanging
+  // 0.45 m + 0.8 % of the span at its middle; a span past 52 m is left unstrung
+  const pole = (x, z) => [x, 2, z, 0.45, 7.4, 'pole', 0];
+  const wires = telephoneWires({ crushables: [pole(0, 0), pole(30, 0), pole(90, 0), [95, 2, 3, 0.3, 0.9, 'barrel', 0]] });
+  assert.equal(wires.length, 2, 'one span strung (30 m), the 60 m gap left bare: two conductors');
+  const [w] = wires, mid = w.pts[(w.pts.length - 1) / 2];
+  assert.ok(Math.abs(w.pts[0][1] - 8.5) < 1e-9 && Math.abs(Math.abs(w.pts[0][2]) - 0.6) < 1e-9, 'a conductor leaves 6.5 m over the pole\'s foot, 0.6 m off the line');
+  assert.ok(Math.abs(8.5 - mid[1] - (0.45 + 30 * 0.008)) < 1e-9, 'it hangs 0.69 m at the middle of a 30 m span');
+  // the high-voltage lines: Verdant's 110 kV line as its map authors it, its towers raised until the lowest conductor
+  // clears the ground by 12 m at the middle of the longest span
+  const [line] = powerLinesOf('verdant');
+  assert.deepEqual([line.towers.length, line.heightM], [4, 30], 'Verdant\'s 110 kV line: four towers, 30 m');
+  const hv = powerWires('verdant', () => 0);
+  assert.equal(hv.length, 3 * 5, 'three spans of four phases and the earth wire');
+  const lowest = Math.min(...hv.flatMap((x) => x.pts.map((p) => p[1])));
+  assert.ok(Math.abs(lowest - 12 + 0.15) < 0.05, `the lowest conductor clears flat ground by 12 m (${lowest.toFixed(2)} m)`);
+}
+// s226 as first staged, the lens climbing to 7 m through the telephone line by the church, fails on its own battlefield
+{
+  const row = COMBAT_TABLE.find((r) => r[0] === 226), scene = siteScene(combatTake(row, { camEnd: { lift: 7 } })), { model, features } = worldOf(scene.map);
+  if (model) {
+    const verdict = combatVerdict(scene, model, features);
+    assert.ok(!verdict.ok && verdict.faults.some((f) => /telephone wire/.test(f)), `s226 climbing through the wires fails (${verdict.faults.join('; ') || 'no fault'})`);
+  }
+}
+console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown, the overhead wires strung and caught`);
