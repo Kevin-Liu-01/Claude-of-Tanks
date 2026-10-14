@@ -13,7 +13,8 @@
 // hands back no plan: the core's default kit reads its parts.
 import { masonryLayout } from '../../regionalSurfaces.ts';
 import {
-  bodyMoundHeightAt, damageSeed, registerStructureDamageKit,
+  bodyMoundHeightAt, damageRng, damageSeed, registerStructureDamageKit,
+  type DamagePieceWriter, type DamageStageResult,
   type DamageChimney, type DamageFace, type DamageOpening, type DamageRoof, type DamageStorey, type FaceName as SeamFace,
   type FractureMaterial, type FractureSlot, type FrameMember, type MasonryLayout, type RoofKind as SeamRoofKind, type RoofSlab,
   type StructureDamageAnatomy, type StructureDamageKit, type StructureDescribeInput, type Vec3,
@@ -23,7 +24,7 @@ import { storeyFaces, type HousePlan } from './house.ts';
 import type { RegionalKitPlan } from './index.ts';
 import type { ArchitectureStyle } from './types.ts';
 import { WEATHER_ROUTE, wallWeather, type WeatherTints } from './weather.ts';
-import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, storeyDownHouse, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
+import { breachHouse, collapseHouse, damagedHouse, domeMound, sectionDownHouse, storeyDownHouse, throwPieceAt, type FaceSurface, type HouseDamageExtras } from './fracture.ts';
 import { debrisPiece } from './debris.ts';
 import { readCells, readShaft, readShell, readWallPieces } from './shell.ts';
 import { breachRuin, collapseRuin, damagedRuin, ruinPiecesOf, ruinRubble, sectionDownRuin } from './ruin.ts';
@@ -390,8 +391,47 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
     // a masonry ground storey leaves its walls to a metre and its corners standing; a framed or render-over-rubble
     // one falls lower; the chimney stacks stand
     remnant: { stubHeightM: ground === 'stone' || ground === 'brick' ? 1.1 : framedAny ? 0.5 : 0.8, corners: ground === 'stone' || ground === 'brick', chimneys: true },
-    kitPlan: { regional: plan, damage: { kind: 'house-damage', surfaces } satisfies HouseDamageExtras },
+    kitPlan: { regional: plan, damage: { kind: 'house-damage', surfaces } satisfies HouseDamageExtras,
+      // (E7) the roof's crowns in the building's frame: they go with the roof's section
+      crowns: house.crowns.map((c): RoofCrownBox => {
+        const a = T.point([c.x0, c.y0, c.z0]), b = T.point([c.x1, c.y1, c.z1]);
+        return { piece: c.piece, kind: c.kind, x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), z0: Math.min(a[2], b[2]), z1: Math.max(a[2], b[2]),
+          y0: a[1], y1: b[1], bucket: routed(c.bucket), tint: c.tint ?? tintOf(tints, c.bucket) };
+      }) },
   };
+}
+
+/** A roof crown as the anatomy carries it (house.ts HouseCrown in the building's frame, its bucket routed). */
+interface RoofCrownBox {
+  piece: string; kind: string;
+  x0: number; x1: number; z0: number; z1: number; y0: number; y1: number;
+  bucket: string; tint: Rgb;
+}
+function crownsOf(anatomy: StructureDamageAnatomy): readonly RoofCrownBox[] {
+  return (anatomy.kitPlan as { crowns?: RoofCrownBox[] } | undefined)?.crowns ?? [];
+}
+
+/**
+ * (E7) The roof's section falls and its crowns with it: each crown's parts hidden by its piece (structureStages
+ * DamageHide.piece) and thrown as its own pieces — its posts and boards, its walls' blocks, its spire's slates — down
+ * off the ridge from where it stood.
+ */
+function dropCrowns(anatomy: StructureDamageAnatomy, seed: number, out: { pieces: DamagePieceWriter }, result: DamageStageResult): void {
+  const crowns = crownsOf(anatomy);
+  if (!crowns.length) return;
+  const rng = damageRng(damageSeed(seed, 0xc7));
+  for (const c of crowns) {
+    result.hides.push({ section: null, partClass: null, piece: c.piece });
+    const w = c.x1 - c.x0, d = c.z1 - c.z0, h = c.y1 - c.y0;
+    const n = Math.min(14, Math.max(5, Math.round(w * d * h * 1.5)));
+    for (let k = 0; k < n; k++) {
+      const p: Vec3 = [c.x0 + w * (0.2 + rng() * 0.6), c.y0 + h * rng() * 0.7, c.z0 + d * (0.2 + rng() * 0.6)];
+      const plank = rng() < 0.45;
+      if (!throwPieceAt(out.pieces, rng, plank ? 'structureWood' : c.bucket, plank ? 'beam' : 'block', p,
+        plank ? [0.08, 0.04, 0.5 + rng() * 0.5] : [0.16 + rng() * 0.16, 0.12 + rng() * 0.12, 0.16 + rng() * 0.16],
+        plank ? [0.4, 0.3, 0.2] : c.tint, 2.5)) break;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------- a shell
@@ -992,7 +1032,12 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
         if (containersOf(anatomy)) return sectionDownContainers(anatomy, section, seed, out);
         if (cellsOf(anatomy)) return sectionDownCluster(anatomy, section, seed, out);
         if (anatomy.roof && section === anatomy.roof.section) {
-          return anatomy.roof.covering.material === 'metal' && isSheetBody(anatomy) ? roofDownSheet(anatomy, seed, out) : sectionDownHouse(anatomy, section, seed, out);
+          // (the crowns' pieces first: the roof's covering fills the writer's cap)
+          const crowns: DamageStageResult = { cuts: [], hides: [] };
+          dropCrowns(anatomy, seed, out, crowns);
+          const result = anatomy.roof.covering.material === 'metal' && isSheetBody(anatomy) ? roofDownSheet(anatomy, seed, out) : sectionDownHouse(anatomy, section, seed, out);
+          result.hides.push(...crowns.hides);
+          return result;
         }
         const face = anatomy.storeys[Math.floor(section / 4)]?.faces.find((f) => f.section === section);
         return isSheetFace(face) ? sectionDownSheet(anatomy, section, seed, out) : sectionDownHouse(anatomy, section, seed, out);

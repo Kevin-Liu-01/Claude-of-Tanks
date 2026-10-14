@@ -10,7 +10,7 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, placeShed, roofGeometry, storeyFaces, windowRhythm, H,
+  buildHouse, emitRoof, placeShed, roofCrown, roofGeometry, storeyFaces, windowRhythm, H,
   type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
@@ -610,18 +610,44 @@ export function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): vo
   if (facadeOn()) innEmblem(sink, face, u, y - 0.62, 0.8, 0.03, 0.62, 0.55);
 }
 
-/** A small slate-capped roof turret (Dachreiter) on the ridge: the school and chapel bell. */
+/**
+ * A small slate-capped roof turret (Dachreiter) on the ridge: the school and chapel bell. (Props census E7 and E2, lane B
+ * 2026-10-14: its bell openings were dark plates on a solid box, and it stood in the air over a fallen roof.) Its foot
+ * and head in the infill, between them the bell chamber open on every side: oak corner posts, louvre boards sloping
+ * down and out between them, the dark of the chamber behind and its bell; the slate spire and finial over it. It is the
+ * roof's crown (house.ts roofCrown): it falls with the roof in its own pieces.
+ */
 export function roofTurret(sink: PartSink, frame: HouseFrame, st: HessianState, zFrac: number): void {
   const rg = frame.roof, z = rg.halfD * zFrac;
   const top = rg.topAt(0, z) ?? rg.ridgeTopY;
   const s = 0.62;
   const low = (rg.topAt(s, z) ?? top) - 0.12;
-  sink.span(st.infill, -s, low, z - s, s, top + 1.4, z + s);
-  for (const side of [-1, 1]) {
-    faceBox(sink, 'dark', { origin: [0, 0, z + side * s], u: [side, 0, 0], out: [0, 0, side], width: 2 * s }, 0, top + 0.75, 0.01, 0.44, 0.7, 0.02, { decor: true });
-  }
-  sink.cylinder('roof', [0, top + 1.4, z], 'y', 2.2, s * 1.3, 8, {}, 0.04);
-  sink.cylinder('dark', [0, top + 3.55, z], 'y', 0.5, 0.025, 4, { decor: true });
+  const b0 = top + 0.36, b1 = top + 1.2;
+  roofCrown(sink, frame, { kind: 'turret', x0: -s * 1.3, x1: s * 1.3, z0: z - s * 1.3, z1: z + s * 1.3, y0: low, y1: top + 3.6, bucket: st.infill }, () => {
+    sink.span(st.infill, -s, low, z - s, s, b0, z + s);
+    sink.span(st.infill, -s, b1, z - s, s, top + 1.4, z + s);
+    const post = { colour: st.timber, uv: UV_MEMBER };
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      sink.span(SW, sx * s - (sx > 0 ? 0.14 : 0), b0, z + sz * s - (sz > 0 ? 0.14 : 0), sx * s + (sx < 0 ? 0.14 : 0), b1, z + sz * s + (sz < 0 ? 0.14 : 0), post);
+    }
+    sink.span('dark', -s + 0.15, b0, z - s + 0.15, s - 0.15, b1, z + s - 0.15, { decor: true });
+    const sides: Face[] = [
+      { origin: [0, 0, z + s], u: [1, 0, 0], out: [0, 0, 1], width: 2 * s }, { origin: [s, 0, z], u: [0, 0, -1], out: [1, 0, 0], width: 2 * s },
+      { origin: [0, 0, z - s], u: [-1, 0, 0], out: [0, 0, -1], width: 2 * s }, { origin: [-s, 0, z], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * s },
+    ];
+    const slat = { colour: shade(st.timber, 0.82), decor: true, exposed: true, uv: UV_MEMBER };
+    for (const f of sides) {
+      const n: Vec3 = [f.out[0] * 0.75, 0.66, f.out[2] * 0.75];
+      for (let y = b0 + 0.12; y < b1 - 0.08; y += 0.17) {
+        sink.member(SW, H.facePoint(f, -s + 0.14, y, -0.06), H.facePoint(f, s - 0.14, y, -0.06), 0.15, 0.018, n, slat, 0);
+      }
+    }
+    // the bell in the chamber, hung from its yoke
+    sink.cylinder('structureMetal', [0, b0 + 0.12, z], 'y', 0.42, 0.24, 10, { colour: [0.42, 0.33, 0.2], decor: true }, 0.12);
+    sink.span(SW, -0.3, b0 + 0.54, z - 0.05, 0.3, b0 + 0.62, z + 0.05, { colour: shade(st.timber, 0.8), decor: true });
+    sink.cylinder('roof', [0, top + 1.4, z], 'y', 2.2, s * 1.3, 8, {}, 0.04);
+    sink.cylinder('dark', [0, top + 3.55, z], 'y', 0.5, 0.025, 4, { decor: true });
+  });
 }
 
 /** The Hessian farmhouse: the dwelling (door on the -x eaves side) with a stone-and-timber stable wing on +x. */

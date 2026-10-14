@@ -920,6 +920,30 @@ export interface HousePlan {
   members: HouseMember[];
   /** the frame's timber colour (the first member's), or null for an unframed house */
   timber: Rgb | null;
+  /** the roof's crowns (roofCrown): ridge turrets, belfries, drums, bell-cotes, each its own damage piece */
+  crowns: HouseCrown[];
+}
+
+/**
+ * A feature standing on a house's roof — a ridge turret (Dachreiter), a belfry, a drum, a bell-cote, a lantern (props
+ * census E7, lane B 2026-10-14): its box in the house's frame (the frame buildHouse built it in), the bucket and tint
+ * of its walls, and the damage piece its parts are drawn as (geometry.ts PartSink.piece). The damage kit throws it with
+ * the roof's section and hides its parts (damage.ts), so a turret never stands in the air over a fallen roof.
+ */
+export interface HouseCrown {
+  piece: string;
+  kind: 'turret' | 'belfry' | 'drum' | 'bellcote' | 'lantern';
+  x0: number; x1: number; z0: number; z1: number; y0: number; y1: number;
+  bucket: RegionalBucket;
+  tint: Rgb | null;
+}
+
+/** Draw a roof's crown (`body`) as its own damage piece and record it in the house's plan (HouseCrown). */
+export function roofCrown(sink: PartSink, frame: HouseFrame, crown: Omit<HouseCrown, 'piece' | 'tint'> & { tint?: Rgb | null }, body: () => void): void {
+  const plans = planSink, plan = plans?.find((p) => p.frame === frame) ?? null;
+  const name = `crown:${plans && plan ? plans.indexOf(plan) : 0}:${plan ? plan.crowns.length : 0}`;
+  if (plan) plan.crowns.push({ ...crown, tint: crown.tint ?? null, piece: name });
+  sink.piece(name, body);
 }
 
 interface HouseMember {
@@ -1008,7 +1032,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   };
   const faces = frameFaces(bodies[0]);
   const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal, gableReveal: Math.min(0.28, Math.max(0.12, reveal)) };
-  const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null } : null;
+  const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null, crowns: [] } : null;
   if (plan) planSink!.push(plan);
   if (facadeOn()) groundSkirt(sink, spec, faces);
   const roofPatch = wearHouse(spec, rg);

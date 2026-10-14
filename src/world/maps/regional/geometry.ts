@@ -183,8 +183,21 @@ export class PartSink {
     return pl ? [p[0] * pl.cos + p[2] * pl.sin + pl.x, p[1] + pl.y, -p[0] * pl.sin + p[2] * pl.cos + pl.z] : [p[0], p[1], p[2]];
   }
 
+  /**
+   * Inside `piece`: every emission goes into geometries of their own named for the damage seam (userData.damagePiece,
+   * structureDamageSeam StructureSpan.piece), so a stage can hide that piece alone (a roof's crown: a ridge turret, a
+   * belfry, a bell-cote falls with the roof; props census E7, lane B 2026-10-14). The merge draws them as before.
+   */
+  private pieceName: string | null = null;
+  piece<T>(name: string, body: () => T): T {
+    const prior = this.pieceName;
+    this.pieceName = name;
+    try { return body(); } finally { this.pieceName = prior; }
+  }
+
   private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false): Accumulator {
-    const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`;
+    const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`
+      + (this.pieceName ? `|p=${this.pieceName}` : '');
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -398,7 +411,8 @@ export class PartSink {
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
-      const [bucket, role, place] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 'n' | 's', 'g' | undefined];
+      const [bucket, role, ...rest] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 'n' | 's', ...string[]];
+      const place = rest.includes('g') ? 'g' : undefined, piece = rest.find((r) => r.startsWith('p='))?.slice(2);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
@@ -413,6 +427,7 @@ export class PartSink {
       if (role === 'f' || role === 'n') geometry.userData.fine = true;
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
+      if (piece) geometry.userData.damagePiece = piece;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);
