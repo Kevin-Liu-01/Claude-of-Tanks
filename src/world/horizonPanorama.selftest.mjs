@@ -725,11 +725,63 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   renderer.render = (scene, camera) => { drawn.push(scene.children[0].material.fragmentShader); render(scene, camera); };
   assert.equal(handle.ensureBaked(renderer), true);
   assert.deepEqual(drawn, compiled.slice(0, drawn.length).map((c) => c.fragment), 'the bake draws the prepared shaders, in order');
+  // (2026-10-14) the hold ends once the parallel compile has settled too (the next block): here it already had
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(disposedPrepared, compiled.length, 'released after the bake has drawn');
   assert.equal(handle.prepareBake(renderer), false, 'a baked panorama prepares nothing');
   handle.dispose();
   const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
   assert.match(mapSource, /horizonPanorama\.prepareBake\(panoramaRenderer\)/, 'the world prepares the bake when it assembles');
+}
+
+// --- 2026-10-14 (the engine-cs lane): the Studio's "Cannot read properties of undefined (reading 'isReady')", on main too ----
+// three's compileAsync (WebGLRenderer, r18x) polls every material it compiled from a 10 ms timer its promise does not guard:
+// properties.get(material).currentProgram.isReady(). A material disposed meanwhile has its properties removed, the next poll
+// reads currentProgram of a fresh empty record and throws from the timer — the page error, once per map: the bake drew and
+// released the prepared hold before the driver had linked the six programs. The stub below is three's compileAsync to the
+// line (its properties map, its dispose listener, its timer); the hold must outlive the poll.
+{
+  const handle = createHorizonPanorama(options, new THREE.Object3D());
+  const renderer = recordingRenderer();
+  const properties = new WeakMap();
+  const getProps = (m) => { let p = properties.get(m); if (!p) { p = {}; properties.set(m, p); } return p; };
+  let linked = false, polls = 0, disposedEarly = 0, disposed = 0;
+  renderer.compileAsync = (scene) => {
+    const materials = new Set();
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      getProps(m).currentProgram = { isReady: () => linked };
+      m.addEventListener('dispose', () => { properties.delete(m); disposed++; if (!linked) disposedEarly++; });
+      materials.add(m);
+    });
+    return new Promise((resolve) => {
+      function checkMaterialsReady() {
+        polls++;
+        materials.forEach((material) => { if (getProps(material).currentProgram.isReady()) materials.delete(material); });
+        if (materials.size === 0) { resolve(scene); return; }
+        setTimeout(checkMaterialsReady, 10);
+      }
+      checkMaterialsReady();
+    });
+  };
+  const thrown = [];
+  const onError = (error) => { thrown.push(String(error?.message ?? error)); };
+  process.on('uncaughtException', onError);
+  assert.equal(handle.prepareBake(renderer), true);
+  // the world is covered and the bake draws at once, the driver still linking
+  assert.equal(handle.ensureBaked(renderer), true);
+  await new Promise((resolve) => setTimeout(resolve, 35));
+  const early = disposedEarly, pollsWhileLinking = polls;
+  linked = true;
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  // (the handler off before any assert: an assertion thrown under it would be swallowed as an uncaught exception)
+  process.off('uncaughtException', onError);
+  assert.deepEqual(thrown, [], 'no isReady of an undefined program from the poll\'s timer');
+  assert.equal(early, 0, 'no prepared material is disposed while the parallel compile still polls it');
+  assert.ok(pollsWhileLinking >= 3, `the poll ran on (${pollsWhileLinking})`);
+  assert.ok(disposed >= 5, `the hold released once the compile settled (${disposed})`);
+  handle.dispose();
 }
 
 console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes, the bake contract and the far country\'s cloud shade (the aux pass, the share, the square) PASS');
