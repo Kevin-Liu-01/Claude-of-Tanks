@@ -87,6 +87,16 @@ function stateFor(ctx: RegionalBuildContext): AndalusianState {
 }
 
 /**
+ * The fine ironwork's bucket (Aegis's cost trim, the coordinator's (a), 2026-10-07): the grilles' bars, the balconies'
+ * balusters and the cierros' bars. props.ts draws a fine piece only within the fine-detail distance when its bucket is
+ * one of the celled ones (structureWood, regionalStone); structureMetal's fine pieces went into its always-drawn
+ * receive-only mesh (the draw census: 81 k triangles of structureMetal-detail in the chase frame, the far town's
+ * included). In structureWood, in the iron's colour, they join the fine cells; the grilles' coarse frames, returns and
+ * hoods, the balconies' rails, posts and brackets stay structureMetal, drawn at every distance.
+ */
+const FINE_IRON = 'structureWood' as const;
+
+/**
  * A wrought-iron window grille over the opening (u, y bottom-centre, w × h): the frame of flats, the square bars (fine
  * joinery: a long view reads the frame), two horizontal flats; the box reja stands out from the wall on four returns
  * and carries a little tile hood.
@@ -96,8 +106,11 @@ function reja(sink: PartSink, face: Face, u: number, y: number, w: number, h: nu
   const out = box ? 0.2 : 0.04;
   const x0 = u - w / 2 - 0.06, x1 = u + w / 2 + 0.06, y0 = y - 0.06, y1 = y + h + 0.06;
   const cu = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, cy, out, 0.035, y1 - y0, 0.035, c);
-  for (const yy of [y0, y1]) faceBox(sink, 'structureMetal', face, cu, yy, out, x1 - x0 + 0.035, 0.035, 0.035, c, 'ends');
+  // (round 4, gauntlet wave 160: "iron rejas on only a minority of street facades") the frame's flats 5 cm, so the
+  // grille reads from the street's far end (at 3.5 cm it was under a pixel past ~40 m, where the bars, fine joinery, go)
+  const flat = 0.05;
+  for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, cy, out, flat, y1 - y0, flat, c);
+  for (const yy of [y0, y1]) faceBox(sink, 'structureMetal', face, cu, yy, out, x1 - x0 + flat, flat, flat, c, 'ends');
   if (box) {
     for (const yy of [y0, y1]) for (const x of [x0, x1]) faceBox(sink, 'structureMetal', face, x, yy, out / 2, 0.03, 0.03, out, c);
     // the tile hood over the box: a short slab of the roof's tiles falling outward
@@ -108,9 +121,9 @@ function reja(sink: PartSink, face: Face, u: number, y: number, w: number, h: nu
   }
   const bars = Math.max(3, Math.round((x1 - x0) / 0.12));
   for (let k = 1; k < bars; k++) {
-    faceBox(sink, 'structureMetal', face, x0 + (x1 - x0) * k / bars, cy, out, 0.02, y1 - y0, 0.02, { ...c, fine: true }, 'caps');
+    faceBox(sink, FINE_IRON, face, x0 + (x1 - x0) * k / bars, cy, out, 0.02, y1 - y0, 0.02, { ...c, fine: true }, 'caps');
   }
-  for (const t of [0.34, 0.68]) faceBox(sink, 'structureMetal', face, cu, y0 + (y1 - y0) * t, out + 0.012, x1 - x0, 0.03, 0.01, { ...c, fine: true }, 'ends');
+  for (const t of [0.34, 0.68]) faceBox(sink, FINE_IRON, face, cu, y0 + (y1 - y0) * t, out + 0.012, x1 - x0, 0.03, 0.01, { ...c, fine: true }, 'ends');
 }
 
 /**
@@ -130,9 +143,9 @@ function balcony(sink: PartSink, face: Face, u: number, floorY: number, w: numbe
   }
   const fine = { ...c, fine: true };
   const n = Math.max(4, Math.round(w / 0.13));
-  for (let k = 1; k < n; k++) faceBox(sink, 'structureMetal', face, u - w / 2 + w * k / n, floorY + 0.55, d, 0.018, 0.84, 0.018, fine, 'caps');
+  for (let k = 1; k < n; k++) faceBox(sink, FINE_IRON, face, u - w / 2 + w * k / n, floorY + 0.55, d, 0.018, 0.84, 0.018, fine, 'caps');
   const m = Math.max(2, Math.round(d / 0.13));
-  for (const s of [-1, 1]) for (let k = 1; k < m; k++) faceBox(sink, 'structureMetal', face, u + s * (w / 2 - 0.02), floorY + 0.55, d * k / m, 0.018, 0.84, 0.018, fine, 'caps');
+  for (const s of [-1, 1]) for (let k = 1; k < m; k++) faceBox(sink, FINE_IRON, face, u + s * (w / 2 - 0.02), floorY + 0.55, d * k / m, 0.018, 0.84, 0.018, fine, 'caps');
   if (look() < 0.7) sink.dressing(mobile, () => {
     for (const s of [-1, 1]) {
       if (look() < 0.35) continue;
@@ -322,7 +335,12 @@ function dialect(st: AndalusianState, look: () => number): HouseDialect {
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
         st.rng, loft ? 0 : st.litShare);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
-      if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
+      if (!loft && o.storey > 0) {
+        // (round 4: "iron rejas on only a minority of street facades") an upper window without its esparto blind has a
+        // flat grille on two houses in three
+        if (look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
+        else if (st.reja && look() < 0.66) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, false);
+      }
     },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
@@ -511,7 +529,7 @@ function cierro(sink: PartSink, face: Face, u: number, y: number, w: number, h: 
   for (const t of [0.42, 0.72]) faceBox(sink, 'structureWood', face, u, base + (top - base) * t, depth - 0.02, W - 0.06, 0.035, 0.03, fine, 'ends');
   for (const k of [-1, 0, 1]) faceBox(sink, 'structureWood', face, u + k * W / 3, (base + top) / 2, depth - 0.02, 0.035, top - base - 0.16, 0.03, fine, 'caps');
   const iron = { colour: IRON, decor: true, fine: true } as const;
-  for (let k = 1; k < 9; k++) faceBox(sink, 'structureMetal', face, u - W / 2 + W * k / 9, base + 0.35, depth + 0.01, 0.018, 0.5, 0.018, iron, 'caps');
+  for (let k = 1; k < 9; k++) faceBox(sink, FINE_IRON, face, u - W / 2 + W * k / 9, base + 0.35, depth + 0.01, 0.018, 0.5, 0.018, iron, 'caps');
 }
 
 /**

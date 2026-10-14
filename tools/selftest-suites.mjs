@@ -1618,6 +1618,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/mooredHullMotion.selftest.mjs',
     'src/world/maps/railWashout.selftest.mjs',
     'src/world/maps/railCoalStockpiles.selftest.mjs',
+    'src/world/maps/puenteNuevo.selftest.mjs', // 2026-10-14 (maps lane): Aegis's Puente Nuevo in its own module, the arched bridge's law, mapKits hands off
     'src/world/railBallast.selftest.mjs', // ground lane (2026-10-08, waves 234/278/285): the rail kit's ballast bed
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',

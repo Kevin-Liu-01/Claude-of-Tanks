@@ -217,6 +217,8 @@ export interface BridgeDeckPlane {
   approachM: number;
   /** The road route the deck carries (the kit's ford posts skip it). */
   route: number;
+  /** map revival lane 2 (round 4): an authored bridge row's elevation, carried to the map kit (absent: the arched bridge) */
+  profile?: 'puente';
 }
 /** Round 61: the abutment depth inside the span — the terrain climbs from the bed to the deck through it. */
 const BRIDGE_ABUTMENT_M = 3;
@@ -327,6 +329,24 @@ interface LandformConfig {
    * (a few incommensurate sines of the distance along it), the two walls together, never wider than authored, the
    * middle 30 m either side on the authored line. Absent = straight. */
   meander?: number;
+  /** Gorges only (map revival lane 2, round 4, 2026-10-06): the floor drawn as the river's dry bed — the ground mask's soil
+   * channel (the D layer: gravel and dust, patchy) out to the walls' foot, fading over the last fifth of it. The heights,
+   * and so every placement stream, are untouched. Absent = the floor's ground as the map draws it. */
+  bed?: boolean;
+  /** Gorges only (map revival lane 2, round 5, 2026-10-07; gauntlet wave 242 on Aegis: "a shallow, wide, flat-floored
+   * trench" where the Tajo is a slot): the gorge's waist — within `innerM` of its centre along it the rim stands
+   * `halfWidthM` from the axis, the wall's foot and every step in from it in proportion, opening out to the authored line
+   * by `outerM` (a smoothstep). Absent = the authored width the whole length. */
+  waist?: { halfWidthM: number; innerM: number; outerM: number };
+}
+
+/** Round 5 (map revival lane 2): a gorge's waist — the share of its authored cross-section at `lx` along it (1 without). */
+function gorgeWaist(form: LandformConfig, lx: number): number {
+  const waist = form.waist;
+  if (!waist) return 1;
+  const rim = (form.width || 90) * (form.wall ? form.wall[1] : 1);
+  const least = Math.min(1, waist.halfWidthM / Math.max(1, rim));
+  return least + (1 - least) * smoothstep(waist.innerM, waist.outerM, Math.abs(lx));
 }
 
 interface DuneConfig {
@@ -359,7 +379,9 @@ interface TerrainSettings {
    */
   canals?: readonly CanalConfig[];
   /** Dry viaducts: deck and approaches share one support plane with collision/navigation. */
-  bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number }[];
+  bridges?: readonly { x: number; z: number; yawDeg: number; spanM: number; widthM: number; approachM: number; route: number;
+    /** map revival lane 2 (round 4): the elevation the map kit builds (mapKits.ts; absent: the arched bridge) */
+    profile?: 'puente' }[];
   hillScale: number;
   microScale: number;
   rimH: number;
@@ -1237,7 +1259,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   const height = form.height || 0;
   if (form.kind === 'gorge') {
     const along = 1 - smoothstep((form.length || 700) * .36, (form.length || 700) * .5, Math.abs(lx));
-    if (!form.wall && !form.meander) {
+    if (!form.wall && !form.meander && !form.waist) {
       const across = 1 - smoothstep((form.width || 90) * .65, form.width || 90, Math.abs(lz));
       return height * along * across;
     }
@@ -1247,7 +1269,9 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     // keeps its abutments), the steps growing over 30 m either side
     const wave = 0.55 * Math.sin(lx / 41 + 0.7) + 0.3 * Math.sin(lx / 17.3 + 2.3) + 0.15 * Math.sin(lx / 7.9 + 4.1);
     const wander = -(form.meander || 0) * smoothstep(0, 30, Math.abs(lx)) * (0.5 + 0.5 * wave);
-    const across = 1 - smoothstep(w * foot + wander, w * top + wander, Math.abs(lz));
+    // round 5: the waist draws the whole section in toward the axis, its buttresses and bays with it
+    const k = gorgeWaist(form, lx);
+    const across = 1 - smoothstep(k * (w * foot + wander), k * (w * top + wander), Math.abs(lz));
     return height * along * across;
   }
   if (form.kind === 'ridge') {
@@ -3963,6 +3987,30 @@ export function makeMaskTexture(
   }
   if (layout.terrain.yardWear?.length) {
     stampYardWearMask(px, s, MAP_SIZE, layout.terrain.yardWear, seedNoi);
+  }
+  // map revival lane 2 (round 4): a gorge's dry bed (LandformConfig.bed) in the soil channel, inside its walls' foot (the
+  // same meander the height kernel steps the walls in by) and along its level reach
+  const beds = layout.terrain.landforms.filter((form) => form.kind === 'gorge' && form.bed);
+  if (beds.length) {
+    for (let tz = 0; tz < s; tz++) {
+      const z = (tz + 0.5) / T - HALF;
+      for (let tx = 0; tx < s; tx++) {
+        const x = (tx + 0.5) / T - HALF, j = (tz * s + tx) * 4;
+        if (px[j]) continue; // a road's texels keep their own response
+        let cover = 0;
+        for (const form of beds) {
+          const dx = x - form.x, dz = z - form.z, c = form._c ?? 1, sn = form._s ?? 0;
+          const lx = dx * c + dz * sn, lz = -dx * sn + dz * c;
+          const length = form.length || 700, w = form.width || 90, foot = form.wall ? form.wall[0] : 0.65;
+          const along = 1 - smoothstep(length * 0.3, length * 0.38, Math.abs(lx));
+          if (along <= 0) continue;
+          const wave = 0.55 * Math.sin(lx / 41 + 0.7) + 0.3 * Math.sin(lx / 17.3 + 2.3) + 0.15 * Math.sin(lx / 7.9 + 4.1);
+          const edge = gorgeWaist(form, lx) * (w * foot - (form.meander || 0) * smoothstep(0, 30, Math.abs(lx)) * (0.5 + 0.5 * wave));
+          cover = Math.max(cover, along * (1 - smoothstep(edge * 0.8, edge, Math.abs(lz))));
+        }
+        if (cover > 0) px[j + 3] = Math.max(px[j + 3], cover * 255);
+      }
+    }
   }
   // DataTexture, NOT canvas: this texture carries DATA in its channels with
   // alpha (village wear) near 0 over most of the map — the 2D canvas backing

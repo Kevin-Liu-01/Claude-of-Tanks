@@ -48,6 +48,7 @@ import {
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
+import { addPuenteBridge } from './puenteNuevo.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 
 type Rng = () => number;
@@ -87,6 +88,8 @@ interface DressingBridgeDeck {
   bedY: number;
   waterY: number;
   route: number;
+  /** map revival lane 2 (round 4): a bridge row's elevation (absent: the arched bridge); 'puente' — Aegis's Puente Nuevo */
+  profile?: 'puente';
 }
 
 interface LayoutDisc {
@@ -1974,6 +1977,7 @@ function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext,
 ): void {
+  if (deck.profile === 'puente') { addPuenteBridge(deck, heightField, rng, buckets, ctx); return; }
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
   const width = halfWidth * 2;

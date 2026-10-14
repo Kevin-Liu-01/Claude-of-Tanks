@@ -176,7 +176,9 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   reservoir: { forest: 0.5, fields: 0.15, farms: 6 },
   mars: { forest: 0, hedgerows: 0, fields: 0, farms: 0 },
   moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0, farms: 0 },
-  cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65, farms: 9 },
+  // (map revival lane 2, Aegis's cost trim (b), 2026-10-07: the draw census put the Andalusian cortijos and their hamlet
+  // church past the edge at +38 k triangles in the chase frame) six farmsteads round the campiña, was nine
+  cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65, farms: 6 },
 };
 
 export function resolveBorderLandform(
