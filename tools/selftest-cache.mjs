@@ -292,5 +292,8 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     atomicJson(edgeStorePath, edgeStore); edgeStoreDirty = false;
   };
-  return { enabled, cacheDir, lookup, recordPass, inputKey, closureOf, dependenciesOf, persist };
+  // The modules a file executes (its imports, a template import's directory members): the edges closureOf follows.
+  const modulesOf = file => { dependenciesOf(file); return executableEdges.get(file); };
+  return { enabled, cacheDir, lookup, recordPass, inputKey, closureOf, dependenciesOf, modulesOf, persist,
+    repositoryEntries: [...broadInputs] };
 }

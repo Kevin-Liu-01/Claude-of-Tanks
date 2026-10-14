@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, utimesSync, statSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative, sep } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { createSelftestCache, REPO_ROOT, SELFTEST_CACHE_VERSION } from './selftest-cache.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
+import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
 // Fast checks (2026-09-15): the result cache skips a receipt only when every input it can
 // observe is byte-identical to its last PASS. These fixtures pin the dependency rules on a
@@ -287,17 +288,24 @@ rmSync(root, { recursive: true, force: true });
     "materials.ts's join('') is a string join, not the whole vehicles directory");
   // Read coverage (2026-10-13): the receipts that skipped as "identical inputs passed" on the planner-precision branch
   // and failed when run. Each reads these files at runtime (a traced sweep pins every receipt's reads inside its key).
+  // The files each receipt reads come from its own text, so a page or facade renamed on main moves with the receipt.
   const closure = (receipt) => cache.closureOf(join(REPO_ROOT, receipt));
-  const publicNav = closure('src/presentation/publicNav.selftest.mjs');
-  for (const page of ['home', 'gallery', 'docs', 'docs-topic', 'docs-ai', 'docs-filming']) {
-    assert.ok(publicNav.has(join(REPO_ROOT, `site/${page}.html`)), `publicNav observes site/${page}.html`);
+  const named = (receipt, pattern) => collectSelftestInputs(readFileSync(join(REPO_ROOT, receipt), 'utf8'), receipt)
+    .specifiers.filter((value) => pattern.test(value));
+  for (const receipt of ['src/presentation/publicNav.selftest.mjs', 'src/productStats.selftest.mjs']) {
+    const pages = named(receipt, /^site\/[\w.-]+\.html$/), observed = closure(receipt);
+    assert.ok(pages.length, `${receipt} names the site pages it reads`);
+    for (const page of pages) assert.ok(observed.has(join(REPO_ROOT, page)), `${receipt} observes ${page}`);
   }
   assert.ok(closure('src/ui/localeRouting.selftest.mjs').has(join(REPO_ROOT, 'site')), 'locale routing observes every site page it localizes');
-  assert.ok(closure('src/productStats.selftest.mjs').has(join(REPO_ROOT, 'site/home.html')), 'product stats observes the pages it renders');
   assert.ok(closure('src/docs/topics.selftest.mjs').has(join(REPO_ROOT, 'site')), 'topics watches site/docs-${id}.html (deleting a page)');
-  for (const facade of ['tankFactory.ts', 'fleetFactory.ts', 'authorityFleet.ts', 'fleetRegistration.ts']) {
-    assert.ok(closure('src/vehicles/arieteModernSpecs.selftest.mjs').has(join(REPO_ROOT, 'src/vehicles', facade)),
-      `arieteModernSpecs observes the sibling it reads by bare name (${facade})`);
+  {
+    const receipt = 'src/vehicles/arieteModernSpecs.selftest.mjs', observed = closure(receipt);
+    const facades = named(receipt, /^[\w.-]+\.ts$/).filter((name) => statSync(join(REPO_ROOT, 'src/vehicles', name), { throwIfNoEntry: false }));
+    assert.ok(facades.length, 'arieteModernSpecs names the facades it reads by bare name');
+    for (const facade of facades) {
+      assert.ok(observed.has(join(REPO_ROOT, 'src/vehicles', facade)), `arieteModernSpecs observes the sibling it reads by bare name (${facade})`);
+    }
   }
   const broad = cache.dependenciesOf(join(REPO_ROOT, 'src/vehicles/combatAnatomyAudit.test-support.mjs'));
   for (const entry of ['site', 'api', 'src', 'vercel.json', 'package.json']) {
@@ -309,10 +317,111 @@ rmSync(root, { recursive: true, force: true });
     "the boot closure receipt watches src/: it reads every module src/main.ts reaches (tools/static-import-closure.mjs's @selftest-reads)");
 }
 
-// Every src|server|tools module with a computed import() the planner cannot follow, and why. Each one widens every
-// receipt that reaches it to the whole tree and runs it fresh every time (src/ui/i18nDictionaries.ts alone did that
-// to 305 of the 439 always-run receipts on 9a9ab2a7e). A new one gets a literal or template specifier, an `/* @selftest-external: <what it loads> */` marker when
-// it loads something outside the repository, or a row here.
+// The opaque-import guard. An unmarked computed import() (`import(url)`) cannot be followed, so every receipt that executes
+// its module runs fresh every time with the whole tree as its inputs. What that costs depends on who executes the module:
+// - a module that more than one receipt executes spreads the cost to receipts that never chose it (src/ui/i18nDictionaries.ts
+//   alone did that to 305 of the 439 always-run receipts on 9a9ab2a7e). It needs a literal or template specifier, an
+//   `/* @selftest-external: <what it loads> */` marker when it loads something outside the repository, or an OPAQUE_IMPORTS row;
+// - a module at most one receipt executes (a receipt's own ?query variant, a tool's CLI that only its own receipt imports)
+//   costs only that receipt, which ran fresh before 2026-10-13 too. It is reported, never failed.
+// So the guard holds on any tree it lands on. As an exact list of every opaque module it went red on origin/main 9d5f98d81,
+// which gained tools/media-r5/fleet-rekey.mjs (`await import(join(ROOT, 'src/vehicles/tankFactory.ts'))` in its CLI block,
+// executed only by fleet-rekey.selftest.mjs) while the guard was in review. Rows whose module lost its opaque import
+// (deleted, renamed or made literal elsewhere) are reported for removal, not failed, for the same reason.
+const MODULE_FILE = /\.(?:[mc]?[jt]s|[jt]sx|html)$/;
+function auditOpaqueImports({ root, cache, rows, receipts, limit = 256 }) {
+  const texts = new Map(), found = new Map(), external = [], declared = [];
+  const visit = (file, entry) => {
+    // the tracked tree: dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
+    if (entry.name.startsWith('.') || ['node_modules', 'dist', '__pycache__'].includes(entry.name) || entry.name.startsWith('tmp-')) return;
+    if (entry.isDirectory()) {
+      for (const child of readdirSync(file, { withFileTypes: true })) visit(join(file, child.name), child);
+      return;
+    }
+    if (!entry.isFile() || !MODULE_FILE.test(entry.name)) return;
+    const text = readFileSync(file, 'utf8'), name = relative(root, file);
+    texts.set(file, text);
+    if (text.includes('@selftest-reads')) for (const path of collectSelftestInputs(text, file).reads) declared.push([name, path]);
+    if (!/\bimport\s*\(\s*[^'"`\s)]/.test(text)) return; // only a non-literal first token can be opaque
+    const info = collectSelftestInputs(text, file);
+    if (info.opaqueImport) found.set(name, info);
+    for (const reason of info.external) external.push([name, reason]);
+  };
+  // The whole repository as the planner sees it (each top-level entry Git does not ignore), so an importer in api/,
+  // cloudflare/ or middleware.ts is followed too.
+  const entries = new Set(cache.repositoryEntries);
+  for (const entry of readdirSync(root, { withFileTypes: true })) if (entries.has(join(root, entry.name))) visit(join(root, entry.name), entry);
+  // Who executes a module, by the planner's own edges (cache.modulesOf): a module whose import names it, so its text holds
+  // the file's stem, or one whose template import() can reach it.
+  const templated = new Set([...texts].filter(([, text]) => /\bimport\s*\(\s*`/.test(text)).map(([file]) => file));
+  const importersOf = (file) => {
+    const stem = basename(file).replace(/\.[^.]+$/, '');
+    return [...texts].filter(([other, text]) => other !== file && (templated.has(other) || text.includes(stem))
+      && cache.modulesOf(other).has(file)).map(([other]) => other);
+  };
+  // The registered receipts that execute a module, itself or through any chain of importers; it stops at two. A module
+  // that more than `limit` modules execute is shared whatever the count.
+  const executedBy = (name) => {
+    const start = join(root, name), seen = new Set([start]), queue = [start], hits = new Set();
+    while (queue.length && hits.size < 2 && seen.size <= limit) {
+      const file = queue.shift();
+      if (receipts.has(relative(root, file))) hits.add(relative(root, file));
+      for (const importer of importersOf(file)) if (!seen.has(importer)) { seen.add(importer); queue.push(importer); }
+    }
+    return { receipts: [...hits].sort(), shared: hits.size > 1 || seen.size > limit };
+  };
+  const unlisted = [...found.keys()].filter((name) => !rows.has(name)).sort().map((name) => ({ name, ...executedBy(name) }));
+  return { found, external, declared, executedBy, shared: unlisted.filter((row) => row.shared),
+    confined: unlisted.filter((row) => !row.shared), stale: [...rows.keys()].filter((name) => !found.has(name)).sort() };
+}
+// The rules on a synthetic tree. It has what main can land beside this receipt: a tool whose CLI imports by a rooted path
+// and that only its own receipt imports (the fleet-rekey shape), a receipt's own variant import, a CLI no receipt runs, a
+// listed module that was deleted, and the shared cases that must still fail: a library two receipts reach through
+// another module, a template import()'s directory member, a helper two receipts import directly, and a module reached
+// only through a root file (middleware.ts) outside src/, server/ and tools/.
+{
+  const tree = mkdtempSync(join(tmpdir(), 'cot-selftest-opaque-'));
+  const put = (rel, text) => { mkdirSync(join(tree, rel, '..'), { recursive: true }); writeFileSync(join(tree, rel), text); };
+  try {
+    put('src/factory.ts', 'export const factory = 1;\n');
+    put('tools/rekey.mjs', "import { dirname, join } from 'node:path';\nimport { fileURLToPath, pathToFileURL } from 'node:url';\n"
+      + 'export const step = (id) => id;\nif (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {\n'
+      + "  const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');\n  await import(join(ROOT, 'src/factory.ts'));\n}\n");
+    put('tools/rekey.selftest.mjs', "import { step } from './rekey.mjs';\nconsole.log(step('a'));\n");
+    put('src/variant.selftest.mjs', "const url = new URL('./factory.ts', import.meta.url);\nawait import(url.href + '?before');\n");
+    put('tools/cli-only.mjs', 'await import(process.argv[2]);\n');
+    put('src/hub.ts', 'export const load = (url) => import(url);\n'); put('src/panel.ts', "export { load } from './hub.ts';\n");
+    put('src/one.selftest.mjs', "import { load } from './panel.ts';\n"); put('src/two.selftest.mjs', "import './panel.ts';\n");
+    put('src/plugins/alpha.ts', 'export const fetchPlugin = (url) => import(url);\n');
+    put('src/registry.ts', 'export const plugin = (name) => import(`./plugins/${name}.ts`);\n');
+    put('src/three.selftest.mjs', "import { plugin } from './registry.ts';\n"); put('src/four.selftest.mjs', "import './registry.ts';\n");
+    put('src/lib/index.ts', 'export const any = (url) => import(url);\n');
+    put('src/five.selftest.mjs', "import './lib/index.ts';\n"); put('src/six.selftest.mjs', "import { any } from './lib/index.ts';\n");
+    put('src/edge.ts', 'export const edge = (url) => import(url);\n'); put('middleware.ts', "export { edge } from './src/edge.ts';\n");
+    put('src/seven.selftest.mjs', "import '../middleware.ts';\n"); put('tools/eight.selftest.mjs', "import { edge } from '../middleware.ts';\n");
+    const receipts = new Set(['tools/rekey.selftest.mjs', 'src/variant.selftest.mjs', 'src/one.selftest.mjs', 'src/two.selftest.mjs',
+      'src/three.selftest.mjs', 'src/four.selftest.mjs', 'src/five.selftest.mjs', 'src/six.selftest.mjs', 'src/seven.selftest.mjs',
+      'tools/eight.selftest.mjs']);
+    const shared = ['src/edge.ts', 'src/hub.ts', 'src/lib/index.ts', 'src/plugins/alpha.ts'];
+    const audit = (rows, options = {}) => auditOpaqueImports({ root: tree, rows: new Map(rows.map((row) => [row, 'fixture'])), receipts,
+      cache: createSelftestCache({ root: tree, cacheDir: join(tree, '.cache'), env: {}, argv: [], nodeVersion: 'v-test' }), ...options });
+    const open = audit([]);
+    assert.deepEqual([...open.found.keys()].sort(), [...shared, 'src/variant.selftest.mjs', 'tools/cli-only.mjs', 'tools/rekey.mjs'],
+      'every unmarked computed import() is found, the CLI-block one included');
+    assert.deepEqual(open.confined.map(({ name, receipts: by }) => [name, by]), [['src/variant.selftest.mjs', ['src/variant.selftest.mjs']],
+      ['tools/cli-only.mjs', []], ['tools/rekey.mjs', ['tools/rekey.selftest.mjs']]],
+    "a module at most one receipt executes needs no row: a receipt's own variant, a CLI no receipt runs, a tool only its own receipt imports");
+    assert.deepEqual(open.shared.map(({ name, receipts: by }) => [name, by]), [['src/edge.ts', ['src/seven.selftest.mjs', 'tools/eight.selftest.mjs']],
+      ['src/hub.ts', ['src/one.selftest.mjs', 'src/two.selftest.mjs']], ['src/lib/index.ts', ['src/five.selftest.mjs', 'src/six.selftest.mjs']],
+      ['src/plugins/alpha.ts', ['src/four.selftest.mjs', 'src/three.selftest.mjs']]],
+    'a module two receipts execute is shared: through a root file, a re-exporting module or a template import(), or directly');
+    const listed = audit([...shared, 'tools/retired.mjs']);
+    assert.deepEqual([listed.shared, listed.stale], [[], ['tools/retired.mjs']], 'rows admit shared modules; a deleted row is only reported');
+    assert.deepEqual(audit(shared, { limit: 1 }).shared.map(({ name }) => name), ['tools/rekey.mjs'],
+      'a module more than `limit` modules execute counts as shared');
+  } finally { rmSync(tree, { recursive: true, force: true }); }
+}
+// Known opaque modules and why. A row is required for a shared one (above); the confined ones are recorded here as well.
 const PLAYWRIGHT = 'browser tool: the Playwright/Puppeteer driver comes from --playwright-module or require.resolve';
 const IN_PAGE = 'browser census: the import runs inside the page, with the module URL its caller passes';
 const CANVAS = 'loads the native @napi-rs/canvas module from --canvas-module or require.resolve';
@@ -347,36 +456,25 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
     'tools/road-border-corridor-pilot.mjs'],
 }).flatMap(([reason, files]) => files.map((file) => [file, reason])));
 {
-  const found = new Map(), external = [], declared = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      // the tracked tree: dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
-      if (entry.name.startsWith('.') || ['node_modules', 'dist', '__pycache__'].includes(entry.name) || entry.name.startsWith('tmp-')) continue;
-      const file = join(dir, entry.name);
-      if (entry.isDirectory()) { walk(file); continue; }
-      if (!/\.(?:[mc]?[jt]s|[jt]sx|html)$/.test(entry.name)) continue;
-      const text = readFileSync(file, 'utf8');
-      if (text.includes('@selftest-reads')) {
-        for (const path of collectSelftestInputs(text, file).reads) declared.push([relative(REPO_ROOT, file), path]);
-      }
-      if (!/\bimport\s*\(\s*[^'"`\s)]/.test(text)) continue; // only a non-literal first token can be opaque
-      const info = collectSelftestInputs(text, file), name = relative(REPO_ROOT, file);
-      if (info.opaqueImport) found.set(name, info);
-      for (const reason of info.external) external.push([name, reason]);
-    }
-  };
-  for (const dir of ['src', 'server', 'tools']) walk(join(REPO_ROOT, dir));
+  const audit = auditOpaqueImports({ root: REPO_ROOT, cache: createSelftestCache({ env: {}, argv: [] }), rows: OPAQUE_IMPORTS,
+    receipts: new Set(Object.values(SELFTEST_SUITES).flat()) });
   // A @selftest-reads path that names nothing would add no input and hide the read it was written for.
-  assert.ok(declared.some(([file]) => file === 'tools/static-import-closure.mjs'), 'the source walker declares what it reads');
-  for (const [file, path] of declared) {
+  assert.ok(audit.declared.some(([file]) => file === 'tools/static-import-closure.mjs'), 'the source walker declares what it reads');
+  for (const [file, path] of audit.declared) {
     assert.ok(statSync(join(REPO_ROOT, path), { throwIfNoEntry: false }), `${file}: @selftest-reads names an existing path (${path})`);
   }
-  assert.deepEqual([...found.keys()].filter((file) => !OPAQUE_IMPORTS.has(file)).sort(), [],
-    'a computed import() the planner cannot follow: give it a literal specifier, a @selftest-external marker, or an OPAQUE_IMPORTS row');
-  assert.deepEqual([...OPAQUE_IMPORTS.keys()].filter((file) => !found.has(file)).sort(), [],
-    'OPAQUE_IMPORTS rows whose module no longer has an opaque import (remove the row)');
-  assert.ok(!found.has('src/ui/i18nDictionaries.ts'), 'the i18n runtime stays followable (305 receipts ran fresh every time through it)');
-  assert.ok(external.some(([file]) => file === 'src/ui/i18nDictionaries.ts'), 'its page catalog chunks are the external imports');
-  for (const [file, reason] of external) assert.ok(reason.length >= 12, `${file}: a @selftest-external marker says what it loads`);
+  assert.deepEqual(audit.shared.map(({ name, receipts }) => `${name} (executed by ${receipts.join(', ')})`), [],
+    'a computed import() that more than one receipt executes: give it a literal specifier, a @selftest-external marker, or an OPAQUE_IMPORTS row');
+  for (const { name, receipts } of audit.confined) {
+    console.log(`selftest-cache: note: ${name} has a computed import() with no OPAQUE_IMPORTS row; it keeps ${receipts[0] ?? 'no receipt'} running fresh`);
+  }
+  if (audit.stale.length) console.log(`selftest-cache: note: OPAQUE_IMPORTS rows with no opaque import left (remove them): ${audit.stale.join(', ')}`);
+  assert.ok(!audit.found.has('src/ui/i18nDictionaries.ts'), 'the i18n runtime stays followable (305 receipts ran fresh every time through it)');
+  // The guard is not vacuous on this tree: the module that started it counts as shared, so an unmarked import() there fails.
+  assert.equal(audit.executedBy('src/ui/i18nDictionaries.ts').shared, true, 'the i18n runtime is shared: an opaque import there would fail');
+  assert.deepEqual(audit.executedBy('tools/selftest-cache.selftest.mjs'), { receipts: ['tools/selftest-cache.selftest.mjs'], shared: false },
+    'a receipt nothing imports is confined to itself');
+  assert.ok(audit.external.some(([file]) => file === 'src/ui/i18nDictionaries.ts'), 'its page catalog chunks are the external imports');
+  for (const [file, reason] of audit.external) assert.ok(reason.length >= 12, `${file}: a @selftest-external marker says what it loads`);
 }
 console.log('selftest-cache: dependency closure rules, keys, lookup/record round trip and the batch-28 receipts pass');
