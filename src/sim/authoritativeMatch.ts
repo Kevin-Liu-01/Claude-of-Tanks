@@ -139,7 +139,8 @@ import type {
 import { shellHitsWater } from './shellSurface.ts';
 import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
-import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
+import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM } from './terrainDeformation.ts';
+import { structureRubbleHeightM } from './structureDamage.ts';
 import { fellConcealersAt } from './spotting.ts';
 
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
@@ -834,7 +835,7 @@ export function createAuthoritativeMatch({
     ground,
     // the bots' grid re-reads the ground round the heap (botRoutePlanner refreshArea), as the solo step's does
     onCollapse: (structure) => {
-      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
       const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
       const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
       botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
