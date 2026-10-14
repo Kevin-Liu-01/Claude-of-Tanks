@@ -937,9 +937,11 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
   reuses the cache, but regenerating without it produces different takes.
 - The renderings were written for each army's register and checked by
   speech-to-text, not by native speakers or veterans; corrections go in
-  `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
-  Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
-  the transcriber spells differently.
+  `crew-lines.json`. The two takes flagged until 2026-10-13 are re-rolled: the
+  near-miss call's delivery no longer asks for an exhale (the Chinese pack
+  rebuilt with it), and the Hebrew goal call is two words in both takes ("גול
+  נכבש", "שער לטובתנו"). Homophones the transcriber spells differently remain
+  flagged and are harmless (the Chinese "近失弹" heard as "进食蛋").
 - The first garage click loads the engine; its click plays once the engine has
   decoded it, within 900 ms of the press, else that one click stays silent.
 - The jungle and mangrove beds still carry most of their energy above 6 kHz

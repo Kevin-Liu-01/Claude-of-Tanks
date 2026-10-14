@@ -4296,8 +4296,8 @@
         "Punkt dla nas."
       ],
       "he": [
-        "גול.",
-        "שער."
+        "גול נכבש.",
+        "שער לטובתנו."
       ]
     },
     {
@@ -5211,7 +5211,7 @@
     {
       "id": "near_miss",
       "role": "driver",
-      "delivery": "exhale, steady",
+      "delivery": "steady, low, relieved",
       "context": "An enemy shell just missed us.",
       "en-US": [
         "Close one.",
