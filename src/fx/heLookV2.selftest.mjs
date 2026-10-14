@@ -76,4 +76,8 @@ const parts = await readFile(new URL('./particles.ts', import.meta.url), 'utf8')
 assert.match(parts, /a \*= mix\( 1\.0, smoothstep\( 0\.28 \+ 0\.12 \* vT, 0\.62 \+ 0\.12 \* vT, en \), rim \);/, 'the pooled puffs\' rims torn by noise');
 assert.match(parts, /vSeed = fract\( aPB\.w \* 1\.6180339 \+ aPB\.x \* 0\.0713 \+ aPB\.z \* 0\.1131 \);/, 'each puff its own seed');
 assert.match(parts, /vEmit = selfLit \* aC0\.rgb \* exp\( -3\.2 \* age \);/, 'a fire-lit puff\'s glow is gone in a third of a second, whatever its life');
+// the billow pool's blackbody interior (the cinematic fireball's lobes, the phone tier's kill) burns out by age
+assert.match(parts, /float h2 = heat \* \( 1\.0 - vT \* 0\.95 \) \* exp\( -7\.0 \* vAge \);/, 'a fireball lobe\'s orange heart is gone by ~0.3 s, whatever its life');
+assert.match(parts, /vAge = age;/);
+{ const h = (age) => Math.exp(-7 * age); assert.ok(h(0.2) < 0.25 && h(0.35) < 0.09, 'the heat at 0.2 s and 0.35 s'); }
 console.log('heLookV2: fire gone by ~0.3 s, spikes and a sooty heart, short cook-off pops, snow powder settling, pooled clouds earthen, rims torn — ok');

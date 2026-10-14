@@ -266,6 +266,7 @@ varying float vT;
 varying vec2 vShade;
 varying float vParticleDepth;
 varying float vSeed;
+varying float vAge;
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
 #endif
@@ -280,7 +281,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
-    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0;
+    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0; vAge = 0.0;
     vParticleDepth = 1e9;
     #ifdef FX_LIGHT_TINT
       vEmit = vec3( 0.0 );
@@ -291,8 +292,9 @@ void main() {
   }
   float t = age / life;
   vT = t;
-  // (HE look v2) each puff's own place in the silhouette noise
+  // (HE look v2) each puff's own place in the silhouette noise, and its age in seconds (the billow's fire)
   vSeed = fract( aPB.w * 1.6180339 + aPB.x * 0.0713 + aPB.z * 0.1131 );
+  vAge = age;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
   float size = mix( aSR.x, aSR.y, t );
   float ang = aSR.z + aSR.w * age;
@@ -482,6 +484,7 @@ varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
+varying float vAge;
 ${FOG_PARS_F}
 ${SOFT_DEPTH_GLSL}
 ${LIGHT_TINT_PUFF_F}
@@ -513,7 +516,10 @@ void main() {
   // the tight 0.30-0.72 orange gate left a hard red ring where it met the
   // 0.06-0.32 band (r4 "hard red banding at the rim"). The overlapping
   // gates now walk soot -> ember -> orange -> near-white as one gradient.
-  float h2 = heat * ( 1.0 - vT * 0.95 );
+  // (HE look v2, the coordinator: the bursts "still orange 1-2 s later ... nothing peach or orange after ~0.3 s except
+  // embers") the blackbody interior burns out by the card's AGE, not its life fraction: a 2-3 s fireball lobe held its
+  // orange heart for 1-1.5 s; now its heat falls to a quarter by 0.2 s and leaves only a dim ember red by ~0.35 s
+  float h2 = heat * ( 1.0 - vT * 0.95 ) * exp( -7.0 * vAge );
   vec3 col = mix( vColor.rgb, vec3( 0.46, 0.10, 0.03 ), smoothstep( 0.04, 0.40, h2 ) );
   col = mix( col, vec3( 1.0, 0.44, 0.07 ), smoothstep( 0.25, 0.85, h2 ) );
   col = mix( col, vec3( 1.28, 1.08, 0.80 ), smoothstep( 0.80, 0.99, h2 ) );
