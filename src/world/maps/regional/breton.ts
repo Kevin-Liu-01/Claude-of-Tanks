@@ -9,7 +9,7 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm,
   type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -116,7 +116,9 @@ function dormer(sink: PartSink, frame: HouseFrame, side: 1 | -1, zc: number, st:
     : { origin: [-s, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * a };
   const uc = side > 0 ? -zc : zc;
   // the front wall continues the facade up into a little gable
-  wallPolygon(sink, st.wall, face, [[uc - a, eave - foot], [uc + a, eave - foot], [uc + a, eave + hD], [uc, eave + apex], [uc - a, eave + hD]], 0.36);
+  // (props census E2, lane B 2026-10-14: its window was glass laid on the stone) the window cut through it
+  const hole = { u0: uc - 0.33, u1: uc + 0.33, y0: eave + 0.32, y1: eave + 1.27 };
+  holedPolygon(sink, st.wall, face, [[uc - a, eave - foot], [uc + a, eave - foot], [uc + a, eave + hD], [uc, eave + apex], [uc - a, eave + hD]], [hole], 0.36, 0.22);
   // its cheeks run back until the main roof swallows them
   const depth = (apex + 0.2) / rg.tanP + 0.3;
   for (const dz of [-a + 0.1, a - 0.1]) {
@@ -128,7 +130,10 @@ function dormer(sink: PartSink, frame: HouseFrame, side: 1 | -1, zc: number, st:
   const dr: RoofSpec = { kind: 'gable', pitchDeg: 50, eave: 0.08, verge: 0.04, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
   const dg = roofGeometry(2 * a, len, eave + hD, dr);
   sink.placed(Math.PI / 2, side * (s - len / 2 + 0.05), 0, zc, () => emitRoof(sink, dg, dr));
-  windowUnit(sink, face, uc, eave + 0.32, 0.66, 0.95, { ...st.window, shutters: null }, st.rng, st.litShare);
+  sink.recess = 0.22;
+  try {
+    windowUnit(sink, face, uc, eave + 0.32, 0.66, 0.95, { ...st.window, shutters: null }, st.rng, st.litShare);
+  } finally { sink.recess = 0; }
 }
 
 /**
@@ -313,11 +318,17 @@ const barn: RegionalBuilder = (ctx) => {
       { face: 'left', storey: 0, kind: 'loft', u: 0, w: 0.55, y0: 1.9, h: 0.6 },
     ],
     chimneys: [], gutters: null, verge: null, reveal: 0.36,
-  }, dialect({ ...st, litShare: 0 }));
+    // the loft door high in the street gable (props census E2, lane B 2026-10-14: a plank leaf laid flat on the granite),
+    // cut through the gable over its foot
+  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (face) => (face.out[2] > 0 ? [{ u0: -0.5, u1: 0.5, y0: 3.36, y1: 4.3 }] : []) });
   gableParapets(sink, frame, 0, st.rng);
-  // the loft door high in the street gable and its granite lintel
+  // its ledged leaf hung at the back of the reveal, a granite sill and lintel
   const f = frame.faces.front;
-  faceBox(sink, 'structureWood', f, 0, 3.75, 0.02, 1.0, 1.1, 0.05, { colour: shade(st.paint, 0.7), decor: true });
+  sink.recess = frame.gableReveal;
+  try {
+    doorUnit(sink, f, 0, 3.36, 1.0, 0.94, { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: null, leafKind: 'plank' });
+  } finally { sink.recess = 0; }
+  faceBox(sink, 'stone', f, 0, 3.3, 0.04, 1.3, 0.12, 0.16, { decor: true });
   faceBox(sink, 'stone', f, 0, 4.45, 0.05, 1.5, 0.28, 0.12, { decor: true });
   quoins(sink, frame);
   return sink.finish();

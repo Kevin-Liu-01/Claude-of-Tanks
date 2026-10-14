@@ -11,7 +11,7 @@ import {
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, placeShed, roofGeometry, storeyFaces, windowRhythm, H,
-  type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
+  type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type WallRect,
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -283,6 +283,17 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
   sink.dressing(st.mobile, () => framedGable(sink, face, st, base, s, top, h, apexY, collar, halfAt));
 }
 
+/**
+ * The framed gable's two windows (framedGable lays them; the house cuts them first, HouseDialect.gableOpenings): either
+ * side of the king post a quarter of the way out, their sills 0.55 m over the gable's sill, on a gable over 2.4 m.
+ */
+function gableWindowHoles(poly: Array<[number, number]>): HoleRect[] {
+  const base = poly[0][1], s = Math.abs(poly[1][0]), top = Math.max(...poly.map(([, y]) => y));
+  if (top - base <= 2.4) return [];
+  const wy = base + 0.55;
+  return [-1, 1].map((side) => ({ u0: side * s * 0.25 - 0.25, u1: side * s * 0.25 + 0.25, y0: wy, y1: wy + 0.62 }));
+}
+
 /** The framed gable's members, joints and windows on a desktop (fachwerkGable). */
 function framedGable(sink: PartSink, face: Face, st: HessianState, base: number, s: number, top: number, h: number,
   apexY: number, collar: number, halfAt: (y: number) => number): void {
@@ -400,6 +411,7 @@ export function hessianDialect(st: HessianState): HouseDialect {
     },
     dressWall: (sink, face, rect, openings) => fachwerkWall(sink, face, rect, openings, st),
     dressGable: (sink, face, poly) => fachwerkGable(sink, face, poly, st),
+    gableOpenings: (_face, poly, frame) => (frame.spec.gableFramed ? gableWindowHoles(poly) : []),
     dressJetty: (sink, face, u0, u1, y, depth) => {
       if (st.mobile) return;
       for (let u = u0 + 0.35; u < u1 - 0.2; u += 0.62) {

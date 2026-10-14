@@ -152,6 +152,8 @@ export interface HouseFrame {
   roof: RoofGeometry;
   /** the openings' reveal depth (HouseSpec.reveal) */
   reveal: number;
+  /** the gable openings' reveal depth (HouseDialect.gableOpenings): the reveal's, within the gable wall's 0.32 m */
+  gableReveal: number;
 }
 
 export interface HouseDialect {
@@ -163,6 +165,13 @@ export interface HouseDialect {
   dressWall?(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], frame: HouseFrame): void;
   /** a framed gable: the members inside the gable polygon (u, y pairs on the face) */
   dressGable?(sink: PartSink, face: Face, polygon: Array<[number, number]>, frame: HouseFrame): void;
+  /**
+   * the openings a gable carries (its loft windows, a pitching hole, a vent), as rectangles inside the gable polygon:
+   * the house cuts them through the gable wall with their reveals before it dresses the gable, and dressGable's units
+   * stand set back in them (PartSink.recess). Props census E2 (lane B, 2026-10-14): gable windows drawn on the solid
+   * gable were glass stuck on the plaster. The same on every tier (the gable is collision).
+   */
+  gableOpenings?(face: Face, polygon: Array<[number, number]>, frame: HouseFrame): HoleRect[];
   /** under-jetty beam ends and sill beams */
   dressJetty?(sink: PartSink, face: Face, u0: number, u1: number, y: number, depth: number, frame: HouseFrame): void;
 }
@@ -998,7 +1007,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     return f;
   };
   const faces = frameFaces(bodies[0]);
-  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
+  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal, gableReveal: Math.min(0.28, Math.max(0.12, reveal)) };
   const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null } : null;
   if (plan) planSink!.push(plan);
   if (facadeOn()) groundSkirt(sink, spec, faces);
@@ -1055,10 +1064,16 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         // the gable polygon is symmetric in u, and each face's own u axis mirrors it into place
         const poly = rg.gable.map(([u, yy]): [number, number] => [u, yy]);
         // a gable hung with roof slate or tile courses its tiles downward (roof UVs run v down the slope)
-        wallPolygon(sink, gableBucket, face, poly, 0.32, gableBucket === 'roof'
-          ? { uv: { kind: 'plane', origin: facePoint(face, 0, 0, 0), u: face.u, v: [0, -1, 0] } } : {});
+        const gopts: EmitOptions = gableBucket === 'roof' ? { uv: { kind: 'plane', origin: facePoint(face, 0, 0, 0), u: face.u, v: [0, -1, 0] } } : {};
+        const gHoles = dialect.gableOpenings?.(face, poly, frame) ?? [];
+        const gReveal = frame.gableReveal;
+        if (gHoles.length) holedPolygon(sink, gableBucket, face, poly, gHoles, 0.32, gReveal, gopts);
+        else wallPolygon(sink, gableBucket, face, poly, 0.32, gopts);
         if (spec.gableFramed && dialect.dressGable) {
-          capturingMembers(plan, spec.storeys.length, name, eaveY, rg.ridgeTopY, () => dialect.dressGable!(sink, face, poly, frame));
+          sink.recess = gHoles.length ? gReveal : 0;
+          try {
+            capturingMembers(plan, spec.storeys.length, name, eaveY, rg.ridgeTopY, () => dialect.dressGable!(sink, face, poly, frame));
+          } finally { sink.recess = 0; }
         }
       }
       if (spec.verge) {
@@ -1287,6 +1302,37 @@ export function wallPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, 
   const inward: Vec3 = [-face.out[0], -face.out[1], -face.out[2]];
   // prism(): points ccw seen from +dir (from inside) — the outside-ccw polygon reversed
   sink.prism(bucket, pts.reverse(), inward, depth, opts);
+}
+
+/**
+ * A convex wall polygon (a gable) with rectangular openings cut through it (HouseDialect.gableOpenings): the polygon
+ * sliced at the openings' sills and heads, each slice cut at their jambs, every piece its own prism `depth` deep — the
+ * pieces' sides at an opening are its jambs, head and sill, the full depth of the wall; the room behind is the dark
+ * quad holedFace sets at the reveal's back, which the unit then stands in front of.
+ */
+export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Array<[number, number]>, holes: readonly HoleRect[],
+  depth: number, reveal: number, opts: EmitOptions = {}): void {
+  const ys = poly.map(([, y]) => y), lo = Math.min(...ys), hi = Math.max(...ys);
+  const hs = holes.filter((h) => h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05 && h.y0 > lo - 1e-6 && h.y1 < hi);
+  const cuts = [...new Set(hs.flatMap((h) => [h.y0, h.y1]))].sort((a, b) => a - b);
+  const levels = [lo, ...cuts.filter((y) => y > lo + 1e-4 && y < hi - 1e-4), hi];
+  const emit = (piece: Array<[number, number]>) => { if (piece.length >= 3) wallPolygon(sink, bucket, face, piece, depth, opts); };
+  for (let i = 0; i + 1 < levels.length; i++) {
+    const ya = levels[i], yb = levels[i + 1];
+    const band = clipFace(clipFace(poly, [0, -1, -ya]), [0, 1, yb]);
+    if (band.length < 3) continue;
+    const through = hs.filter((h) => h.y0 <= ya + 1e-6 && h.y1 >= yb - 1e-6).sort((a, b) => a.u0 - b.u0);
+    let rest = band;
+    for (const h of through) {
+      emit(clipFace(rest, [1, 0, h.u0]));
+      rest = clipFace(rest, [-1, 0, -h.u1]);
+    }
+    emit(rest);
+  }
+  const back = -reveal - 0.004;
+  for (const h of hs) {
+    sink.quad('dark', facePoint(face, h.u0, h.y0, back), facePoint(face, h.u1, h.y0, back), facePoint(face, h.u1, h.y1, back), facePoint(face, h.u0, h.y1, back), { decor: true });
+  }
 }
 
 function shadeRgb(c: Rgb, k: number): Rgb {

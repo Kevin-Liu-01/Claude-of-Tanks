@@ -7,7 +7,7 @@ import {
   PartSink, faceBox, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { facadeOn, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -105,6 +105,12 @@ function zeelandEaves(sink: PartSink, frame: HouseFrame): void {
   }
 }
 
+/** The attic light in a brick gable over 2 m tall (brickHouse lays its unit; the house cuts it, gableOpenings). */
+function atticLight(poly: Array<[number, number]>): HoleRect[] {
+  const base = poly[0][1], top = Math.max(...poly.map(([, y]) => y));
+  return top - base > 2.0 ? [{ u0: -0.31, u1: 0.31, y0: base + 0.55, y1: base + 1.35 }] : [];
+}
+
 /** The labourer's cottage / farmhouse: brick, one storey and attic, gable to the road, pantiles. */
 function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?: number } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
@@ -127,14 +133,18 @@ function brickHouse(ctx: RegionalBuildContext, opts: { farm?: boolean; storeys?:
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: sts, roof, gableBucket: 'stone', openings,
     chimneys: [], gutters: { colour: rgb(0x7d8183) }, verge: roof.kind === 'gable' ? { colour: WHITE, bucket: 'structureWood' } : null,
-  }, dialect(st));
+    // (props census E2, lane B 2026-10-14: the attic lights were glass laid on the gable's brick) cut through the gable
+  }, { ...dialect(st), gableOpenings: (_face, poly) => atticLight(poly) });
   gableStacks(sink, frame.roof, opts.farm === true || rng() < 0.4, frame.eaveY);
   if (facadeOn()) zeelandEaves(sink, frame);
   if (frame.roof.gable) {
     const g = frame.roof.gable, top = Math.max(...g.map(([, y]) => y));
     if (top - frame.eaveY > 2.0) {
       for (const name of ['front', 'back'] as const) {
-        windowUnit(sink, frame.faces[name], 0, frame.eaveY + 0.55, 0.62, 0.8, { ...st.window, shutters: null }, st.rng, 0.25);
+        sink.recess = frame.gableReveal;
+        try {
+          windowUnit(sink, frame.faces[name], 0, frame.eaveY + 0.55, 0.62, 0.8, { ...st.window, shutters: null }, st.rng, 0.25);
+        } finally { sink.recess = 0; }
       }
     }
   }
@@ -162,7 +172,19 @@ const schuur: RegionalBuilder = (ctx) => {
   // doors: the high cart doors in the street end and a stable door on the side, framed white
   gateUnit(sink, faces[0], 0, 0.35, 3.0, 2.85, TAR, { bucket: 'structureWood', width: 0.14, out: 0.07, colour: WHITE });
   doorUnit(sink, faces[1], -D * 0.25, 0.35, 1.0, 1.9, { leaf: TAR, frame: { bucket: 'structureWood', width: 0.1, out: 0.06, colour: WHITE }, steps: null, leafKind: 'plank' });
-  for (const u of [D * 0.05, D * 0.3]) windowUnit(sink, faces[1], u, 1.7, 0.7, 0.6, { ...st.window, shutters: null, bars: 'cross' }, st.rng, 0);
+  // the stall hatches (props census E2, lane B 2026-10-14: glass laid on the boards): a white frame round two tarred
+  // ledged leaves shut, their strap hinges and the bar across them (the boarded wall is the barn's structure)
+  for (const u of [D * 0.05, D * 0.3]) {
+    st.rng(); // (the glazed unit's pane draw, kept: the build stream after it is unchanged)
+    const f = faces[1], y = 1.7, w = 0.7, h = 0.6, fo = { colour: WHITE, decor: true, fineSides: true as const };
+    for (const side of [-1, 1]) {
+      faceBox(sink, 'structureWood', f, u + side * (w / 2 + 0.045), y + h / 2, 0.045, 0.09, h + 0.18, 0.05, fo);
+      faceBox(sink, 'structureWood', f, u + side * w / 4, y + h / 2, 0.035, w / 2 - 0.01, h, 0.03, { colour: shade(TAR, 0.95 + side * 0.04), decor: true, uv: UV_MEMBER });
+      for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', f, u + side * (w / 2 - 0.14), y + h * t, 0.055, 0.26, 0.04, 0.01, { colour: [0.15, 0.14, 0.13], decor: true, fine: true });
+    }
+    for (const dy of [-0.045, h + 0.045]) faceBox(sink, 'structureWood', f, u, y + dy, 0.045, w + 0.18, 0.09, 0.05, fo);
+    faceBox(sink, 'structureWood', f, u, y + h * 0.5, 0.06, w + 0.1, 0.07, 0.03, { colour: shade(TAR, 0.85), decor: true, uv: UV_MEMBER });
+  }
   // the roof: a steep hipped thatch above a pantile foot at the eaves
   const eaveY = 0.35 + wallH;
   const foot: RoofSpec = { kind: 'hip', pitchDeg: 48, eave: 0.45, verge: 0.45, thickness: 0.12, bucket: 'roof', ridge: null };

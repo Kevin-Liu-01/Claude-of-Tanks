@@ -6,10 +6,10 @@
 // Orthodox church with green onion domes; and, after the fighting, burnt khatas of which only the stove and its
 // chimney stand.
 import {
-  PartSink, faceBox, pick, rgb, shade,
+  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, leanTo, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
@@ -241,7 +241,14 @@ function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): v
       hole.push([Math.cos(a) * 0.3, vy + Math.sin(a) * 0.3]);
     }
     faceSlab(sink, wall === 'stone' ? 'stone' : wall, face, ring, 0, 0.03, { fine: true });
-    faceSlab(sink, 'dark', face, hole, 0.03, 0.004);
+    // (props census E2, lane B 2026-10-14: the vent was a dark disc on the gable) the vent is cut through the gable
+    // (korovnik's gableOpenings) and its louvres stand in it, boards sloping down and out
+    void hole;
+    for (const dy of [-0.18, -0.06, 0.06, 0.18]) {
+      const half = Math.sqrt(Math.max(0, 0.3 * 0.3 - dy * dy)) + 0.04;
+      sink.member('structureWood', facePoint(face, -half, vy + dy + 0.04, -0.07), facePoint(face, half, vy + dy + 0.04, -0.07), 0.1, 0.025,
+        normalize3([face.out[0], 1.1, face.out[2]]), { colour: shade(PLANK, 0.7), decor: true, exposed: true }, 0);
+    }
     for (const o of frame.spec.openings) {
       if (o.face !== name || o.kind !== 'gate') continue;
       windowHead(sink, face, o.u, base + o.y0 + o.h + 0.12, o.w + 0.24, { kind: 'segment', bucket: wall, h: 0.12, out: 0.05, ext: 0.1, rise: 0.22 });
@@ -263,10 +270,15 @@ const korovnik: RegionalBuilder = (ctx) => {
   for (const face of ['left', 'right'] as const) {
     for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 0.55, sill: 1.75, spacing: 1.9, margin: 1.0 })) openings.push({ ...o, kind: 'loft' });
   }
+  // the round vent in each gable (shedMasonry rings it), cut through the gable: its square hole under the ring
+  const ventHole = (poly: Array<[number, number]>): HoleRect[] => {
+    const base = poly[0][1], vy = base + (Math.max(...poly.map(([, y]) => y)) - base) * 0.52;
+    return [{ u0: -0.29, u1: 0.29, y0: vy - 0.29, y1: vy + 0.29 }];
+  };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
     roof: shifer(26), gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
+  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (_face, poly) => ventHole(poly) });
   if (facadeOn()) shedMasonry(sink, frame, wall);
   // ventilation stacks on the ridge: boarded boxes with little gabled caps
   const rg = frame.roof;
