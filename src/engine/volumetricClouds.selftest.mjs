@@ -518,6 +518,23 @@ assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), clo
 }
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');
+// 2026-10-11 (the garage lane; waves 408 and 419: "a blue sky disc with hard curved seams against pale corners"): the
+// Garage's camera, 2.1 km out, pulls the dome just far enough to keep every ray inside its far plane; every battle camera
+// (the playable square's corners lie 665 m out) stays inside the gate and leaves the dome at the origin
+assert.match(layerSource, /const CLOUD_DOME_FOLLOW_GATE_M = 1200;/, 'the follow gate lies beyond every battle camera');
+assert.match(layerSource, /const reach = Math\.max\(0, camera\.far - CLOUD_DOME_RADIUS_M - 100\);\s*const off = Math\.hypot\(at\.x, at\.z\);\s*const follow = off > CLOUD_DOME_FOLLOW_GATE_M && off > reach \? \(off - reach\) \/ off : 0;\s*this\.dome\.position\.set\(at\.x \* follow, 0, at\.z \* follow\);/,
+  'the dome follows a far-off camera just enough to stay inside its far plane');
+assert.match(layerSource, /export const CLOUD_DOME_RADIUS_M = 3400;/, 'the dome radius the follow rule is measured with');
+{
+  const far = 4000, R = 3400, reach = far - R - 100, gate = 1200;
+  assert.ok(Math.hypot(470, 470) + 60 < gate, 'a chase camera behind a tank in the playable corner is inside the gate');
+  for (const [x, z, battle] of [[0, 0, true], [300, -200, true], [470, 470, true], [-1488, -1490, false]]) {
+    const off = Math.hypot(x, z), follow = off > gate && off > reach ? (off - reach) / off : 0;
+    if (battle) { assert.equal(follow, 0, `a battle camera at (${x}, ${z}) keeps the dome at the origin`); continue; }
+    const worst = R + Math.hypot(x - x * follow, z - z * follow);
+    assert.ok(worst < far, `every ray from the Garage (${x}, ${z}) meets the dome inside the far plane (${worst.toFixed(0)} m)`);
+  }
+}
 assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDetail;[\s\S]*uniform sampler3D tCurl;/, 'the volumes are 3D textures');
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);

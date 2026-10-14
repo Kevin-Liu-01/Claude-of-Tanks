@@ -36,11 +36,19 @@ import {
   getGarageFacilityTerraces,
 } from './garageFacilityDetails.ts';
 import {
+  GARAGE_HARDSTAND_FEATHER_M,
+  GARAGE_HARDSTAND_PROGRAM_KEY,
+  garageHardstandGradedHook,
+  garageHardstandGrainTexture,
+} from './garageHardstandProgram.ts';
+import {
   GARAGE_HARDSTAND_STYLES,
+  GARAGE_SHEETING_TILE_M,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
   garageHardstandNormal,
   garageHardstandNormalKind,
+  garageSheeting,
 } from './garageYardWear.ts';
 import {
   addGarageApproachDetails,
@@ -49,7 +57,7 @@ import {
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?(material: THREE.Material): void;
+  setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
 }
 
 interface GarageEnvironmentStats {
@@ -73,6 +81,9 @@ interface GarageEnvironmentStats {
   readonly backdropLayers: number;
   readonly horizonStyle: GarageEnvironmentRecipe['horizonStyle'] | 'none';
   readonly horizonMaxHeightM: number;
+  /** The built horizon's tallest building mass and slender accent (0 where the biome has none). */
+  readonly builtHorizonMassTopM: number;
+  readonly builtHorizonAccentTopM: number;
   readonly groundCover: number;
   readonly structures: number;
   readonly facilityProps: number;
@@ -490,198 +501,518 @@ function createBackdropGeometry(
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
 ): THREE.BufferGeometry {
-  // Five map-derived bands close the terrain without becoming the opaque,
-  // one-height wall that previously swallowed half the outdoor view. Relief
-  // is authored by biome: rail/coastal/urban facilities stay low and broad,
-  // mesas terrace, and only the alpine recipe receives a mountain skyline.
-  // The exact sampled patch still perturbs every crest, so the result remains
-  // grounded in its source battlefield rather than becoming generic scenery.
-  const segments = 96;
+  // Five map-derived bands close the terrain. Relief is authored by biome: mesas terrace, dunes crest and only the alpine
+  // recipe receives a mountain skyline; the exact sampled patch still perturbs every crest, so the result stays grounded
+  // in its source battlefield.
+  //
+  // Each band is a landform, not a fence (2026-10-11, waves 393, 398 and 402: "flat grey trapezoid mountains",
+  // "cardboard mountains", "uniform orange slabs", "smooth tan humps"): nine rows from its foot to its crest on a face
+  // that slopes away from the yard, coloured by height and slope for its biome, lit by its own surface under one fixed
+  // low sun, and hazed toward the horizon with distance and toward the foot with valley mist. The coast carries its sea.
+  //
+  // Round 5d-2 (waves 408 and 419: "flat untextured grey trapezoid slabs", "flat grey-blue blocks", "huge flat pale-blue
+  // slabs meant as mountains", "mountains standing on a straight snow line", "smooth flat-tan walls with no strata"):
+  // the town, the steelworks and the railway no longer stand as stepped slabs in a silhouette tint. Their bands are low
+  // land, and the built horizon is real building masses behind the first band (blocks with windows, gables and a spire;
+  // sawtooth mill halls, chimneys and tanks; engine sheds, a water tower and signal gantries), lit by face and hazed by
+  // distance. Finer bands carry patches at two scales; the near bands keep their colour; Frosthollow's hills are snow
+  // with conifer woods, the pass has a forested foot that grows out of its snowfield, the mesas carry strata, varnish
+  // and shaded cliffs, and the sea darkens toward the shore and fades into the horizon. One unlit vertex-colour program.
+  // the near bands carry the most columns; the far, hazed ones need fewer (the pack's 50k-triangle budget)
+  const LAYER_SEGMENTS = [160, 160, 104, 80, 80] as const;
+  const segments = 120;
+  const ROWS = 8;
   const layers = [
-    { radius: 44, base: -5.4, height: 0.26, relief: 0.10 },
-    { radius: 54, base: -6.2, height: 0.44, relief: 0.16 },
-    { radius: 66, base: -7.0, height: 0.62, relief: 0.22 },
-    { radius: 80, base: -8.0, height: 0.82, relief: 0.28 },
-    { radius: 96, base: -9.2, height: 1.00, relief: 0.34 },
+    { radius: 44, base: -5.4, height: 0.26, relief: 0.10, slant: 5 },
+    { radius: 54, base: -6.2, height: 0.44, relief: 0.16, slant: 7 },
+    { radius: 66, base: -7.0, height: 0.62, relief: 0.22, slant: 9 },
+    { radius: 80, base: -8.0, height: 0.82, relief: 0.28, slant: 11 },
+    { radius: 96, base: -9.2, height: 1.00, relief: 0.34, slant: 13 },
   ] as const;
-  const verticesPerLayer = (segments + 1) * 2;
-  const positions = new Float32Array(verticesPerLayer * layers.length * 3);
-  const colors = new Float32Array(verticesPerLayer * layers.length * 3);
-  const indices = new Uint16Array(segments * layers.length * 6);
+  const style = recipe.horizonStyle;
+  const snowy = recipe.terrainSurface === 'snow';
+  const tropical = recipe.treeSpecies.includes('palm') && recipe.terrainSurface === 'grass';
+  const builtKind: 'town' | 'steelworks' | 'railway' | null = style === 'urban' ? 'town'
+    : recipe.approach.style === 'foundry-haul-road' ? 'steelworks'
+      : recipe.approach.style === 'rail-fan' ? 'railway' : null;
   const phase = ((seed >>> 8) % 6283) / 1000;
   const datum = samplePatch(patch, values, 0, 0);
-  const low = new THREE.Color(atmosphere.silhouette)
-    .lerp(new THREE.Color(atmosphere.horizon), 0.34)
-    .multiplyScalar(0.78);
-  const high = new THREE.Color(atmosphere.silhouette);
   const horizon = new THREE.Color(atmosphere.horizon);
+  const silhouette = new THREE.Color(atmosphere.silhouette);
+  const terrainTone = new THREE.Color(recipe.terrainTint);
+  // a value noise in (angle, height) for patches of wood, scree and snow
+  const noiseGrid = (() => {
+    let state = seed >>> 0;
+    return Float32Array.from({ length: 128 * 16 }, () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    });
+  })();
+  const noise = (u: number, v: number): number => {
+    const x = (((u % 1) + 1) % 1) * 128, y = THREE.MathUtils.clamp(v, 0, 0.999) * 15;
+    const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
+    const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 128 + (cx % 128)];
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+  };
+  const crestProfile = (angle: number, layerIndex: number, layer: typeof layers[number]): number => {
+    const broad = Math.sin(angle * 2 + phase) * 0.22
+      + Math.sin(angle * 5 - phase * 0.6) * 0.12
+      + Math.sin(angle * 9 + phase * 0.34) * 0.055;
+    const fine = (noise(angle / (Math.PI * 2) * 4, 0.3 + layerIndex * 0.11) - 0.5) * 0.12;
+    switch (style) {
+      case 'alpine': {
+        const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
+        const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
+        const crag = Math.pow(Math.max(0, Math.sin(angle * 11 + phase * 1.4)), 5.0);
+        const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
+        return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.2 + fine * 1.5 - passCut * 0.18;
+      }
+      case 'dune': {
+        const layerPhase = phase + layerIndex * 1.93;
+        const skewed = (lobes: number, offset: number): number => {
+          const x = angle * lobes + offset;
+          return x + 0.55 * Math.sin(x);
+        };
+        const ridgeA = Math.pow(1 - Math.abs(Math.sin(skewed(4, layerPhase))), 1.8);
+        const ridgeB = Math.pow(1 - Math.abs(Math.sin(skewed(9, -layerPhase * 0.7))), 2.4);
+        const shoulder = THREE.MathUtils.smoothstep(Math.cos(angle - phase * 0.5 - 2.4), 0.55, 0.86);
+        const reach = 0.36 + layer.height * 0.64;
+        return (ridgeA * 0.62 + ridgeB * 0.2 + broad * 0.25 - 0.2) * reach
+          + shoulder * 0.5 * layer.height * layer.height - layer.height * 0.5;
+      }
+      case 'mesa': {
+        // flat-topped tablelands broken by canyons, with buttes standing off them
+        const shelf = Math.sin(angle * 2 + phase) * 0.52 + Math.sin(angle * 4 - phase) * 0.20;
+        const canyon = Math.pow(Math.max(0, Math.sin(angle * 3 - phase * 0.7 + layerIndex)), 10);
+        const butte = Math.pow(Math.max(0, Math.cos(angle * 5 + phase + layerIndex * 0.8)), 14);
+        const notch = Math.pow(Math.max(0, Math.sin(angle * 13 + phase * 2 + layerIndex * 1.7)), 24);
+        return Math.round(shelf * 4) / 4 + broad * 0.18 - canyon * 0.42 + butte * 0.46 - notch * 0.2 + fine * 0.4;
+      }
+      case 'rolling': {
+        const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
+        return broad * 1.30 + woodedShoulder + fine;
+      }
+      case 'coastal': {
+        const headland = Math.pow(Math.max(0, Math.sin(angle * 2.2 + phase)), 4) * 0.38;
+        return broad * 0.25 - 0.12 + headland + fine * 0.5;
+      }
+      default: // the town, the steelworks and the railway: low land behind which their buildings stand
+        return broad * 0.34 + fine - 0.04;
+    }
+  };
+  /** The band's ground colour at one point: biome, height above the datum, height up its own face, slope and patches. */
+  const ground = (out: THREE.Color, t: number, y: number, slope: number, u: number, layerIndex: number): THREE.Color => {
+    const n = noise(u * 5, t * 0.8 + layerIndex * 0.11);
+    const m = noise(u * 23 + layerIndex * 0.37, t * 1.7);
+    const H = recipe.horizonHeightM;
+    switch (style) {
+      case 'alpine': {
+        // a forested foot grows out of the snowfield, then rock bands and snow by height and slope
+        if (t < 0.16) return out.copy(terrainTone).lerp(new THREE.Color(0x2c3a31), t / 0.16 * (0.4 + n * 0.5));
+        const snowLine = H * (0.42 + (n - 0.5) * 0.18);
+        if (y > snowLine && slope < 0.85) return out.setHex(0xe9eef2).lerp(new THREE.Color(0xa9b8c4), Math.min(1, slope * 0.8 + m * 0.2));
+        if (y > H * 0.24 || slope > 0.85) return out.setHex(m > 0.5 ? 0x6e7275 : 0x50565a).lerp(new THREE.Color(0x3d4245), n * 0.5);
+        return out.setHex(m > 0.45 ? 0x24322a : 0x34432f);
+      }
+      case 'mesa': {
+        if (t < 0.36) return out.setHex(0x7d5240).lerp(new THREE.Color(0x9a6a4c), n * 0.6).lerp(new THREE.Color(0x5c3a2c), m * 0.25);
+        const band = Math.floor((y + 40) / 0.75 + n * 0.8) % 5;
+        const strata = [0xa35f40, 0xc98a5e, 0x8a4a33, 0xd8a074, 0x9b5a3c][band];
+        // desert varnish runs down the cliff in streaks
+        const streak = Math.pow(noise(u * 61, 0.5), 3) * 0.5;
+        return out.setHex(strata).lerp(new THREE.Color(0x4a2c22), streak + Math.max(0, (n - 0.62)) * 0.6);
+      }
+      case 'dune': return out.setHex(0xd7b585).lerp(new THREE.Color(0xc29a68), n * 0.7).lerp(new THREE.Color(0xe6caa0), m * 0.2);
+      case 'rolling': {
+        if (snowy) {
+          // snowbound hills: conifer woods and grey outcrops through the snow
+          if (n > 0.6 && t < 0.85) return out.setHex(m > 0.5 ? 0x26332c : 0x34423a);
+          if (slope > 0.7) return out.setHex(0x7d8486);
+          return out.setHex(0xe4ebef).lerp(new THREE.Color(0xc4d0d8), m * 0.5 + slope * 0.3);
+        }
+        if (tropical) return out.setHex(n > 0.5 ? 0x24452a : 0x3e6a34).lerp(new THREE.Color(0x587c3a), m * 0.35);
+        return out.setHex(n > 0.58 ? 0x2f4a2b : 0x4f6d3c).lerp(new THREE.Color(0x6b7f4a), t * 0.25 + m * 0.15);
+      }
+      case 'coastal': {
+        if (slope > 0.75) return out.setHex(0x7f8580).lerp(new THREE.Color(0x5d6460), n * 0.5);
+        return out.setHex(n > 0.55 ? 0x41583f : 0x5a734e).lerp(new THREE.Color(0x6f7f56), m * 0.3);
+      }
+      default: {
+        // town: allotments, scrub and rail embankments; steelworks and railway: moor, spoil and scrub
+        if (builtKind === 'town') return out.setHex(n > 0.55 ? 0x46573a : 0x5f6b48).lerp(new THREE.Color(0x6e6a5a), m * 0.4);
+        return out.setHex(n > 0.5 ? 0x4a4a3a : 0x5c5844).lerp(new THREE.Color(0x3c3832), m * 0.45).lerp(silhouette, 0.12);
+      }
+    }
+  };
+
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
   let maxHeightM = -Infinity;
-  let vertex = 0;
-  let indexCursor = 0;
+  const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
+  const colour = new THREE.Color();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), normal = new THREE.Vector3();
+  const rugged = style === 'mesa' || style === 'alpine';
+  const columns = segments + 1;
   layers.forEach((layer, layerIndex) => {
-    const crest = high.clone().lerp(horizon, 0.34 + layerIndex * 0.12)
-      .multiplyScalar(0.90 + layerIndex * 0.035);
+    const segments = LAYER_SEGMENTS[layerIndex];
+    const columns = segments + 1;
+    const crestHeights = new Float32Array(columns);
     for (let segment = 0; segment <= segments; segment += 1) {
       const angle = (segment / segments) * Math.PI * 2;
       const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
-      const sampled = THREE.MathUtils.clamp(
-        samplePatch(patch, values, sourceX, sourceZ) - datum,
-        -2.4,
-        4.8,
+      const sampled = THREE.MathUtils.clamp(samplePatch(patch, values, sourceX, sourceZ) - datum, -2.4, 4.8);
+      const nominal = recipe.horizonHeightM * layer.height * (builtKind ? 0.55 : 1);
+      const crest = THREE.MathUtils.clamp(
+        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM,
+        -0.15, recipe.horizonHeightM,
       );
-      const broad = Math.sin(angle * 2 + phase) * 0.22
-        + Math.sin(angle * 5 - phase * 0.6) * 0.12
-        + Math.sin(angle * 9 + phase * 0.34) * 0.055;
-      const wrappedSegment = segment === segments ? 0 : segment;
-      const skylineCell = Math.floor(wrappedSegment / segments * 24);
-      const skylineHash = (() => {
-        let value = Math.imul(skylineCell + 17 + layerIndex * 29, 0x45d9f3b);
-        value = Math.imul(value ^ value >>> 16, 0x45d9f3b);
-        return ((value ^ value >>> 16) >>> 0) / 4294967295;
-      })();
-      const profile = (() => {
-        switch (recipe.horizonStyle) {
-          case 'alpine': {
-            const peakA = Math.pow(Math.max(0, Math.sin(angle * 3 + phase)), 2.2);
-            const peakB = Math.pow(Math.max(0, Math.sin(angle * 5 - phase * 0.7)), 3.0);
-            const crag = Math.pow(Math.max(0, Math.sin(angle * 11 + phase * 1.4)), 5.0);
-            const passCut = Math.pow(Math.max(0, Math.cos(angle * 2 - phase * 0.4)), 8.0);
-            return broad * 1.35 + peakA * 0.62 + peakB * 0.38 + crag * 0.20 - passCut * 0.18;
-          }
-          case 'dune': {
-            // Sharp-crested dunes (2026-10-10): 1 - |sin| peaks at a ridge and rounds into its trough, and the
-            // monotone skew steepens one flank into a slip face. Each band takes its own phase so crests stagger
-            // instead of stacking into parallel cutouts, near bands keep low dunes, and the far ring carries the
-            // source excerpt's one mesa shoulder.
-            const layerPhase = phase + layerIndex * 1.93;
-            const skewed = (lobes: number, offset: number): number => {
-              const x = angle * lobes + offset;
-              return x + 0.55 * Math.sin(x);
-            };
-            const ridgeA = Math.pow(1 - Math.abs(Math.sin(skewed(4, layerPhase))), 1.8);
-            const ridgeB = Math.pow(1 - Math.abs(Math.sin(skewed(9, -layerPhase * 0.7))), 2.4);
-            const shoulder = THREE.MathUtils.smoothstep(Math.cos(angle - phase * 0.5 - 2.4), 0.55, 0.86);
-            const reach = 0.36 + layer.height * 0.64;
-            // The bands' nominal climbs to the full ceiling on the far ring, where every crest would clamp flat;
-            // dunes give back half of it so their ridgelines, not the ceiling, draw the skyline.
-            return (ridgeA * 0.62 + ridgeB * 0.2 + broad * 0.25 - 0.2) * reach
-              + shoulder * 0.5 * layer.height * layer.height - layer.height * 0.5;
-          }
-          case 'mesa': {
-            const shelf = Math.sin(angle * 2 + phase) * 0.52
-              + Math.sin(angle * 4 - phase) * 0.20;
-            const canyon = Math.pow(Math.max(0, Math.sin(angle * 3 - phase * 0.7)), 10);
-            const butte = Math.pow(Math.max(0, Math.cos(angle * 5 + phase)), 14);
-            return Math.round(shelf * 3) / 3 + broad * 0.28 - canyon * 0.30 + butte * 0.42;
-          }
-          case 'rolling': {
-            const woodedShoulder = Math.pow(Math.max(0, Math.sin(angle * 4 + phase)), 3) * 0.20;
-            return broad * 1.30 + woodedShoulder;
-          }
-          case 'urban': {
-            const tower = 0.08 + skylineHash * 0.62;
-            const ruined = skylineCell % 7 === 0 ? -0.18 : 0;
-            const aerial = skylineCell % 11 === 0 ? 0.22 : 0;
-            return tower + ruined + aerial + broad * 0.12;
-          }
-          case 'coastal': {
-            const headland = Math.pow(Math.max(0, Math.sin(angle * 2.2 + phase)), 4) * 0.38;
-            return broad * 0.25 - 0.12 + headland;
-          }
-          default: {
-            if (recipe.approach.style === 'rail-fan') {
-              const shedRoof = skylineCell % 5 < 3 ? 0.22 : 0.05;
-              const waterTower = skylineCell % 13 === 0 ? 0.66 : 0;
-              return shedRoof + waterTower + broad * 0.16;
-            }
-            if (recipe.approach.style === 'foundry-haul-road') {
-              const sawtooth = skylineCell % 3 === 0 ? 0.34 : 0.15;
-              const stack = skylineCell % 9 === 0 ? 0.78 : 0;
-              return sawtooth + stack + broad * 0.12;
-            }
-            return broad * 0.42;
-          }
-        }
-      })();
-      const nominal = recipe.horizonHeightM * layer.height;
-      const shoulder = THREE.MathUtils.clamp(
-        nominal + sampled * layer.relief + profile * recipe.horizonHeightM,
-        -0.15,
-        recipe.horizonHeightM,
-      );
-      maxHeightM = Math.max(maxHeightM, shoulder);
-      const x = Math.cos(angle) * layer.radius;
-      const z = Math.sin(angle) * layer.radius;
-      positions.set([x, layer.base, z, x, shoulder, z], vertex * 3);
-      low.toArray(colors, vertex * 3);
-      crest.toArray(colors, (vertex + 1) * 3);
-      if (segment < segments) {
-        const base = layerIndex * verticesPerLayer + segment * 2;
-        indices.set([base, base + 1, base + 2, base + 2, base + 1, base + 3], indexCursor);
-        indexCursor += 6;
+      crestHeights[segment] = crest;
+      maxHeightM = Math.max(maxHeightM, crest);
+    }
+    const first = positions.length / 3;
+    // positions: rows from foot (k = 0) to crest (k = ROWS - 1); the face slopes back from the yard
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const angle = (segment / segments) * Math.PI * 2;
+      const crest = crestHeights[segment];
+      for (let k = 0; k < ROWS; k += 1) {
+        const t = k / (ROWS - 1);
+        let shape = 1 - Math.pow(1 - t, 1.35);
+        if (style === 'mesa') shape = t < 0.36 ? t * 0.7 : 0.252 + (t - 0.36) / 0.64 * 0.748; // a talus, then the cliff
+        const y = layer.base + (crest - layer.base) * shape;
+        const radius = layer.radius - layer.slant * (1 - t) * (style === 'mesa' && t >= 0.36 ? 0.12 : 1);
+        positions.push(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+        colors.push(0, 0, 0);
       }
-      vertex += 2;
+    }
+    // colours: biome by height and slope, lit by the band's own surface, hazed with distance and toward the foot
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const wrapped = segment === segments ? 0 : segment;
+      const prev = (wrapped + segments - 1) % segments, next = (wrapped + 1) % segments;
+      for (let k = 0; k < ROWS; k += 1) {
+        const t = k / (ROWS - 1);
+        const at = (s: number, kk: number): THREE.Vector3 => a.fromArray(positions, (first + s * ROWS + kk) * 3);
+        const along = b.copy(at(next, k)).sub(at(prev, k));
+        const up = c.copy(at(wrapped, Math.min(ROWS - 1, k + 1))).sub(at(wrapped, Math.max(0, k - 1)));
+        normal.crossVectors(up, along).normalize();
+        // the face must look at the yard (inward)
+        const p = at(wrapped, k);
+        if (normal.x * -p.x + normal.z * -p.z < 0) normal.negate();
+        const slope = 1 - Math.max(0, Math.min(1, normal.y * 1.4));
+        ground(colour, t, p.y, slope, segment / segments, layerIndex);
+        const sunlit = Math.max(0, normal.dot(sun));
+        const lit = rugged ? 0.46 + 0.86 * sunlit + 0.1 * Math.max(0, normal.y) : 0.56 + 0.64 * sunlit + 0.1 * Math.max(0, normal.y);
+        colour.multiplyScalar(lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16));
+        const haze = Math.min(0.8, 0.07 + layerIndex * 0.12 + (1 - t) * 0.16);
+        colour.lerp(horizon, haze);
+        colour.toArray(colors, (first + segment * ROWS + k) * 3);
+      }
+    }
+    for (let segment = 0; segment < segments; segment += 1) {
+      for (let k = 0; k < ROWS - 1; k += 1) {
+        const i0 = first + segment * ROWS + k, i1 = i0 + 1, i2 = i0 + ROWS, i3 = i2 + 1;
+        indices.push(i0, i1, i2, i2, i1, i3);
+      }
     }
   });
-  {
-    // Bands lit like landforms (2026-10-10, wave 338: "smooth cardboard ridges", "a steep faceted dune wall"; wave
-    // 377: "flat untextured hills", "untextured polygon mountains"). The bands stay one unlit vertex-colour program; each
-    // crest takes a Lambert term from a pseudo-normal
-    // (inward, up, and tilted against the crest's slope along the ring) under one fixed low sun, so a flank
-    // that climbs toward the sun is lit, its slip face falls into shade, and a mesa riser darkens under its shelf.
-    const sun = new THREE.Vector3(0.53, 0.5, -0.63).normalize();
-    const normal = new THREE.Vector3();
-    for (let layerIndex = 0; layerIndex < layers.length; layerIndex += 1) {
-      const first = layerIndex * verticesPerLayer;
-      const arc = (Math.PI * 2 * layers[layerIndex].radius) / segments;
-      const crestHeight = (segment: number): number => positions[(first + segment * 2 + 1) * 3 + 1];
+  if (style === 'coastal') {
+    // the sea from the shore to the horizon: deep green-teal at the shore, swell bands across it, the horizon's haze far
+    // (wave 408: "a flat, uniform teal plane meeting the grass")
+    const first = positions.length / 3;
+    const rings = [34, 46, 62, 84, 116, 170, 260];
+    rings.forEach((r, ringIndex) => {
+      const far = ringIndex / (rings.length - 1);
       for (let segment = 0; segment <= segments; segment += 1) {
         const angle = (segment / segments) * Math.PI * 2;
-        const wrapped = segment === segments ? 0 : segment;
-        const slope = (crestHeight((wrapped + 1) % segments) - crestHeight((wrapped + segments - 1) % segments))
-          / (2 * arc);
-        // inward radial (toward the yard), up, and the ring tangent turned against the slope
-        normal.set(
-          -Math.cos(angle) + Math.sin(angle) * slope * 2.2,
-          0.9,
-          -Math.sin(angle) - Math.cos(angle) * slope * 2.2,
-        ).normalize();
-        // a little per-segment variation (woods, scree, roofs) so no band reads as one flat cut-out
-        const jitterSeed = Math.sin((segment + 1) * 12.9898 + layerIndex * 78.233) * 43758.5453;
-        const jitter = 1 + ((jitterSeed - Math.floor(jitterSeed)) - 0.5) * 0.12;
-        const lit = (0.74 + 0.5 * Math.max(0, normal.dot(sun))) * jitter;
-        const crestAt = (first + segment * 2 + 1) * 3;
-        const baseAt = crestAt - 3;
-        for (let channel = 0; channel < 3; channel += 1) {
-          colors[crestAt + channel] = Math.min(1, colors[crestAt + channel] * lit);
-          colors[baseAt + channel] = Math.min(1, colors[baseAt + channel] * (0.5 + lit * 0.5));
-        }
+        positions.push(Math.cos(angle) * r, -2.3, Math.sin(angle) * r);
+        const swell = noise(segment / segments * 31 + ringIndex * 0.21, 0.2 + ringIndex * 0.1);
+        colour.setHex(0x274f57).lerp(new THREE.Color(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.3)
+          .lerp(horizon, Math.min(0.92, 0.12 + far * far * 0.85));
+        colors.push(colour.r, colour.g, colour.b);
+      }
+    });
+    for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
+      for (let segment = 0; segment < segments; segment += 1) {
+        const i0 = first + ringIndex * columns + segment, i1 = i0 + 1, i2 = i0 + columns, i3 = i2 + 1;
+        indices.push(i0, i2, i1, i1, i2, i3);
       }
     }
   }
+  let accentTopM = 0;
+  let massTopM = 0;
+  if (builtKind) {
+    const built = addBuiltHorizon(builtKind, seed, horizon, sun, positions, colors, indices);
+    massTopM = built.massTopM;
+    accentTopM = built.accentTopM;
+  }
+  const vertexCount = positions.length / 3;
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(new THREE.BufferAttribute(vertexCount > 65535 ? new Uint32Array(indices) : new Uint16Array(indices), 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   geometry.userData.horizonStyle = recipe.horizonStyle;
+  geometry.userData.builtHorizon = builtKind;
+  geometry.userData.accentTopM = Number(accentTopM.toFixed(3));
+  geometry.userData.massTopM = Number(massTopM.toFixed(3));
   geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
   return geometry;
+}
+
+/**
+ * The built horizon behind a town, a steelworks or a railway yard (round 5d-2): building masses between the first and
+ * the third band, each turned to face the yard, every face flat-shaded by the same low sun as the bands and hazed by its
+ * distance. Their feet stand behind the first band's crest. The town: blocks of four to seven storeys with window rows
+ * (a few lit), pitched-roof houses, a church spire and a factory chimney. The steelworks: sawtooth mill halls, chimneys,
+ * gas holders and a blast furnace stack. The railway: engine sheds, a water tower, coaling stage and signal gantries.
+ * The masses stay under the biome ceiling (13.2 m); only slender accents (stacks, the spire, the furnace, the water
+ * tower) rise past it. Returns both tops.
+ */
+function addBuiltHorizon(
+  kind: 'town' | 'steelworks' | 'railway',
+  seed: number,
+  horizon: THREE.Color,
+  sun: THREE.Vector3,
+  positions: number[],
+  colors: number[],
+  indices: number[],
+): { massTopM: number; accentTopM: number } {
+  let state = (seed ^ 0x9e3779b9) >>> 0;
+  const rng = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const colour = new THREE.Color();
+  const n = new THREE.Vector3();
+  let tallest = 0;
+  let accentTop = 0;
+  let accent = false; // set while an accent is drawn: its tops count apart from the masses'
+  /** one flat-shaded quad (corners counter-clockwise seen from outside) in a tone lit by its normal and hazed by `haze` */
+  const quad = (p: readonly THREE.Vector3[], tone: number, haze: number): void => {
+    n.subVectors(p[1], p[0]).cross(new THREE.Vector3().subVectors(p[3], p[0])).normalize();
+    const lit = 0.5 + 0.7 * Math.max(0, n.dot(sun)) + 0.12 * Math.max(0, n.y);
+    const base = positions.length / 3;
+    for (const v of p) {
+      // walls darken toward their feet (grime, the ground's shade)
+      colour.setHex(tone).multiplyScalar(lit * (v.y < 1 ? 0.72 : 1)).lerp(horizon, haze);
+      positions.push(v.x, v.y, v.z); colors.push(colour.r, colour.g, colour.b);
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
+  /** a flat panel on a front face at z0: a doorway, a louvre band or a row of glazing */
+  const panel = (at: (x: number, y: number, z: number) => THREE.Vector3, x0: number, x1: number, z0: number, y0: number,
+    y1: number, tone: number, haze: number): void => {
+    quad([at(x0, y0, z0 - 0.06), at(x1, y0, z0 - 0.06), at(x1, y1, z0 - 0.06), at(x0, y1, z0 - 0.06)], tone, haze);
+  };
+  const tri = (p: readonly THREE.Vector3[], tone: number, haze: number): void => {
+    n.subVectors(p[1], p[0]).cross(new THREE.Vector3().subVectors(p[2], p[0])).normalize();
+    const lit = 0.5 + 0.7 * Math.max(0, n.dot(sun)) + 0.12 * Math.max(0, n.y);
+    colour.setHex(tone).multiplyScalar(lit).lerp(horizon, haze);
+    const base = positions.length / 3;
+    for (const v of p) { positions.push(v.x, v.y, v.z); colors.push(colour.r, colour.g, colour.b); }
+    indices.push(base, base + 1, base + 2);
+  };
+  /** a frame turned to face the yard at (angle, radius): x across (to the right seen from the yard), z away from it */
+  const frame = (angle: number, radius: number) => {
+    const out = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const across = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+    const origin = out.clone().multiplyScalar(radius);
+    return (x: number, y: number, z: number): THREE.Vector3 => origin.clone().addScaledVector(across, x).addScaledVector(out, z).setY(y);
+  };
+  const FOOT = -3.5;
+  /** a box: front face toward the yard; walls in `wall`, flat roof in `roof` */
+  const box = (at: ReturnType<typeof frame>, x0: number, x1: number, z0: number, z1: number, top: number,
+    wall: number, roof: number, haze: number, flat = true): void => {
+    const P = (x: number, y: number, z: number) => at(x, y, z);
+    quad([P(x0, FOOT, z0), P(x1, FOOT, z0), P(x1, top, z0), P(x0, top, z0)], wall, haze); // front (faces the yard: -z)
+    quad([P(x1, FOOT, z0), P(x1, FOOT, z1), P(x1, top, z1), P(x1, top, z0)], wall, haze);
+    quad([P(x0, FOOT, z1), P(x0, FOOT, z0), P(x0, top, z0), P(x0, top, z1)], wall, haze);
+    quad([P(x1, FOOT, z1), P(x0, FOOT, z1), P(x0, top, z1), P(x1, top, z1)], wall, haze);
+    if (flat) quad([P(x0, top, z0), P(x1, top, z0), P(x1, top, z1), P(x0, top, z1)], roof, haze);
+    if (accent) accentTop = Math.max(accentTop, top); else tallest = Math.max(tallest, top);
+  };
+  /** a pitched roof over a box, its ridge across the frame (gable ends left and right) */
+  const gable = (at: ReturnType<typeof frame>, x0: number, x1: number, z0: number, z1: number, eave: number, ridge: number,
+    wall: number, roof: number, haze: number): void => {
+    const P = (x: number, y: number, z: number) => at(x, y, z);
+    const zm = (z0 + z1) / 2;
+    quad([P(x0, eave, z0), P(x1, eave, z0), P(x1, ridge, zm), P(x0, ridge, zm)], roof, haze);
+    quad([P(x1, eave, z1), P(x0, eave, z1), P(x0, ridge, zm), P(x1, ridge, zm)], roof, haze);
+    tri([P(x1, eave, z0), P(x1, eave, z1), P(x1, ridge, zm)], wall, haze);
+    tri([P(x0, eave, z1), P(x0, eave, z0), P(x0, ridge, zm)], wall, haze);
+    if (accent) accentTop = Math.max(accentTop, ridge); else tallest = Math.max(tallest, ridge);
+  };
+  /** window rows on a front face at z0 (dark glass, a few lit) */
+  const windows = (at: ReturnType<typeof frame>, x0: number, x1: number, z0: number, top: number, haze: number): void => {
+    const P = (x: number, y: number, z: number) => at(x, y, z);
+    for (let floor = 1.2; floor + 1.4 < top - 0.6; floor += 3) {
+      for (let x = x0 + 1.1; x + 1.3 < x1 - 0.6; x += 2.6) {
+        const lit = rng() < 0.12;
+        quad([P(x, floor, z0 - 0.06), P(x + 1.3, floor, z0 - 0.06), P(x + 1.3, floor + 1.5, z0 - 0.06), P(x, floor + 1.5, z0 - 0.06)],
+          lit ? 0xd9c48f : 0x2c3339, haze * (lit ? 0.6 : 1));
+      }
+    }
+  };
+  /** a round tank, stack or tower: a prism of `sides` from FOOT (or `foot`) to `top` with a darker cap */
+  const prism = (at: ReturnType<typeof frame>, x: number, z: number, radius: number, top: number, tone: number, cap: number,
+    haze: number, sides = 10, foot = FOOT): void => {
+    const P = (px: number, y: number, pz: number) => at(px, y, pz);
+    const rise = Math.min(radius * 0.25, 1.2);
+    for (let i = 0; i < sides; i += 1) {
+      const a0 = (i / sides) * Math.PI * 2, a1 = ((i + 1) / sides) * Math.PI * 2;
+      const [x0, z0, x1, z1] = [x + Math.cos(a0) * radius, z + Math.sin(a0) * radius, x + Math.cos(a1) * radius, z + Math.sin(a1) * radius];
+      quad([P(x1, foot, z1), P(x0, foot, z0), P(x0, top, z0), P(x1, top, z1)], tone, haze);
+      tri([P(x, top + rise, z), P(x1, top, z1), P(x0, top, z0)], cap, haze);
+    }
+    if (accent) accentTop = Math.max(accentTop, top + rise); else tallest = Math.max(tallest, top + rise);
+  };
+  const hazeAt = (radius: number): number => THREE.MathUtils.clamp(0.1 + (radius - 50) / 40 * 0.22, 0.08, 0.34);
+  const pick = <T,>(list: readonly T[]): T => list[Math.floor(rng() * list.length)];
+  if (kind === 'town') {
+    const walls = [0x8a5a44, 0x9c6b52, 0xb9b0a0, 0xa39a8a, 0x8c8f8f, 0x7a6a5c];
+    const roofs = [0x4a4f55, 0x7a4a3a, 0x5a5048];
+    let angle = rng() * 0.2;
+    while (angle < Math.PI * 2) {
+      const radius = 52 + rng() * 26;
+      const at = frame(angle, radius);
+      const roll = rng();
+      const width = 7 + rng() * 9;
+      if (roll < 0.62) {
+        const top = 9 + rng() * 4;
+        box(at, -width / 2, width / 2, 0, 8 + rng() * 5, top, pick(walls), 0x3e4246, hazeAt(radius));
+        windows(at, -width / 2, width / 2, 0, top, hazeAt(radius));
+      } else if (roll < 0.9) {
+        const eave = 6 + rng() * 2.5;
+        const depth = 7 + rng() * 3;
+        box(at, -width / 2, width / 2, 0, depth, eave, pick(walls), 0x3e4246, hazeAt(radius), false);
+        gable(at, -width / 2 - 0.3, width / 2 + 0.3, -0.4, depth + 0.4, eave, eave + 2.8 + rng() * 1.2, pick(walls), pick(roofs), hazeAt(radius));
+        windows(at, -width / 2, width / 2, 0, eave, hazeAt(radius));
+      } else if (roll < 0.95) {
+        // a church: nave and a spire
+        box(at, -5, 5, 0, 14, 8.6, 0xa59d8c, 0x4a4f55, hazeAt(radius), false);
+        gable(at, -5.3, 5.3, -0.3, 14.3, 8.6, 12.8, 0xa59d8c, 0x4a4f55, hazeAt(radius));
+        accent = true;
+        box(at, -2, 2, -2.5, 1.5, 16, 0xa59d8c, 0x4a4f55, hazeAt(radius), false);
+        prism(at, 0, -0.5, 2.3, 24, 0x4a4f55, 0x3a3f44, hazeAt(radius), 4, 16);
+        accent = false;
+      } else {
+        accent = true;
+        prism(at, 0, 4, 1.4, 20 + rng() * 5, 0x7b4e3c, 0x2a2624, hazeAt(radius), 8);
+        accent = false;
+        box(at, -6, 6, 0, 12, 8, 0x8a6a54, 0x3e4246, hazeAt(radius));
+      }
+      angle += (width + 4 + rng() * 6) / radius;
+    }
+  } else if (kind === 'steelworks') {
+    let angle = rng() * 0.3;
+    while (angle < Math.PI * 2) {
+      const radius = 54 + rng() * 22;
+      const at = frame(angle, radius);
+      const roll = rng();
+      const width = 14 + rng() * 14;
+      if (roll < 0.55) {
+        // a mill hall with a sawtooth roof
+        const eave = 7 + rng() * 2.6;
+        const depth = 16 + rng() * 10;
+        const wall = pick([0x6f7478, 0x5d6266, 0x7a5a48, 0x6a5f55]);
+        box(at, -width / 2, width / 2, 0, depth, eave, wall, 0x3a3d40, hazeAt(radius), false);
+        panel(at, -width / 2 + 0.6, width / 2 - 0.6, 0, eave - 1.6, eave - 0.6, 0x2b2e30, hazeAt(radius)); // louvres
+        panel(at, -2.6, 2.6, 0, 0, Math.min(6, eave - 2), 0x1f2224, hazeAt(radius)); // the bay door
+        const teeth = Math.max(2, Math.round(depth / 5));
+        for (let i = 0; i < teeth; i += 1) {
+          const za = (i / teeth) * depth, zb = ((i + 1) / teeth) * depth;
+          const P = (x: number, y: number, z: number) => at(x, y, z);
+          quad([P(width / 2, eave, za), P(-width / 2, eave, za), P(-width / 2, eave + 3.2, za), P(width / 2, eave + 3.2, za)], 0x8a9298, hazeAt(radius) * 0.9);
+          quad([P(-width / 2, eave, zb), P(width / 2, eave, zb), P(width / 2, eave + 3.2, za), P(-width / 2, eave + 3.2, za)], 0x3d4144, hazeAt(radius));
+        }
+        tallest = Math.max(tallest, eave + 3.2);
+      } else if (roll < 0.75) {
+        accent = true;
+        prism(at, 0, 3, 1.3 + rng() * 0.6, 20 + rng() * 6, pick([0x6e4434, 0x8a8a86]), 0x1c1a19, hazeAt(radius), 8);
+        prism(at, 5, 6, 1.1, 16 + rng() * 5, 0x6e4434, 0x1c1a19, hazeAt(radius), 8);
+        accent = false;
+      } else if (roll < 0.9) {
+        // gas holders and storage tanks
+        prism(at, 0, 6, 6 + rng() * 3, 8 + rng() * 3.5, pick([0x8a6e52, 0x9a9c9a, 0x6a6e70]), 0x55595b, hazeAt(radius), 14);
+      } else {
+        // a blast furnace: a stack in a frame with its downcomer
+        accent = true;
+        prism(at, 0, 5, 3.4, 19, 0x4d4a48, 0x2a2826, hazeAt(radius), 10);
+        box(at, -6, -4.6, 2, 8, 22, 0x5a5552, 0x3a3836, hazeAt(radius));
+        box(at, 4.6, 6, 2, 8, 22, 0x5a5552, 0x3a3836, hazeAt(radius));
+        box(at, -6, 6, 2, 8, 22.8, 0x5a5552, 0x3a3836, hazeAt(radius));
+        accent = false;
+      }
+      angle += (width + 5 + rng() * 8) / radius;
+    }
+  } else {
+    let angle = rng() * 0.3;
+    let placedTower = false;
+    while (angle < Math.PI * 2) {
+      const radius = 54 + rng() * 22;
+      const at = frame(angle, radius);
+      const roll = rng();
+      const width = 12 + rng() * 12;
+      if (roll < 0.55) {
+        // an engine shed: brick walls, a pitched roof with a smoke vent along its ridge
+        const eave = 6.5 + rng() * 1.8;
+        const depth = 20 + rng() * 14;
+        const wall = pick([0x7e5240, 0x6c4a3a, 0x5c6064]);
+        box(at, -width / 2, width / 2, 0, depth, eave, wall, 0x3a3d40, hazeAt(radius), false);
+        // the road doors on the yard face and a row of arched windows above them
+        for (let door = -1; door <= 1; door += 2) panel(at, door * width / 4 - 2, door * width / 4 + 2, 0, 0, 5, 0x1d1f20, hazeAt(radius));
+        for (let x = -width / 2 + 1; x + 1.2 < width / 2 - 0.5; x += 2.2) panel(at, x, x + 1.2, 0, eave - 2.4, eave - 0.9, 0x2c3339, hazeAt(radius));
+        gable(at, -width / 2 - 0.4, width / 2 + 0.4, -0.5, depth + 0.5, eave, eave + 3.6, wall, 0x45494c, hazeAt(radius));
+        box(at, -1.2, 1.2, depth * 0.2, depth * 0.8, eave + 4.4, 0x2f3133, 0x2a2c2e, hazeAt(radius));
+      } else if (roll < 0.7 && !placedTower) {
+        placedTower = true;
+        // the water tower on its trestle
+        accent = true;
+        for (const [lx, lz] of [[-2.2, 1], [2.2, 1], [-2.2, 5], [2.2, 5]]) box(at, lx - 0.25, lx + 0.25, lz - 0.25, lz + 0.25, 11, 0x4a3e34, 0x4a3e34, hazeAt(radius));
+        prism(at, 0, 3, 3.2, 15.5, 0x6b5a48, 0x3e3a36, hazeAt(radius), 12, 11);
+        accent = false;
+      } else if (roll < 0.85) {
+        // a signal gantry over the running lines
+        box(at, -width / 2, -width / 2 + 0.5, 0, 0.5, 8, 0x2f3133, 0x2f3133, hazeAt(radius));
+        box(at, width / 2 - 0.5, width / 2, 0, 0.5, 8, 0x2f3133, 0x2f3133, hazeAt(radius));
+        box(at, -width / 2, width / 2, 0, 0.5, 8.6, 0x2f3133, 0x2f3133, hazeAt(radius));
+      } else {
+        // the coaling stage and a works chimney
+        box(at, -8, 8, 0, 9, 11, 0x4a4440, 0x2e2b29, hazeAt(radius));
+        accent = true;
+        prism(at, 10, 5, 1.2, 19 + rng() * 5, 0x6e4434, 0x1c1a19, hazeAt(radius), 8);
+        accent = false;
+      }
+      angle += (width + 6 + rng() * 10) / radius;
+    }
+  }
+  return { massTopM: tallest, accentTopM: accentTop };
 }
 
 function createGroundCoverGeometry(): THREE.BufferGeometry {
   const positions: number[] = [];
   const colors: number[] = [];
-  for (let blade = 0; blade < 3; blade += 1) {
-    const angle = blade * Math.PI / 3;
-    const dx = Math.cos(angle) * 0.12;
-    const dz = Math.sin(angle) * 0.12;
-    positions.push(-dx, 0, -dz, dx, 0, dz, 0, 0.72, 0);
-    // A darker base and a lit tip. The material reads vertex colours; without this attribute every tuft drew black
-    // (wave 338's "black spikes" across the lawn and sand).
-    colors.push(0.62, 0.62, 0.62, 0.62, 0.62, 0.62, 1, 1, 1);
+  // A clump of seven narrow blades of different heights, leaning out from the root (waves 408 and 419 read the old
+  // three-blade tufts as "teal cone spikes"): a darker base and a lit tip. The material reads vertex colours; without
+  // this attribute every tuft drew black (wave 338's "black spikes" across the lawn and sand).
+  for (let blade = 0; blade < 7; blade += 1) {
+    const angle = blade * 2.4;
+    const lean = 0.08 + (blade % 3) * 0.07;
+    const height = 0.42 + ((blade * 37) % 7) / 7 * 0.32;
+    const bx = Math.cos(angle) * 0.04, bz = Math.sin(angle) * 0.04;
+    const half = 0.03;
+    const sx = -Math.sin(angle) * half, sz = Math.cos(angle) * half;
+    positions.push(bx - sx, 0, bz - sz, bx + sx, 0, bz + sz, bx + Math.cos(angle) * lean, height, bz + Math.sin(angle) * lean);
+    colors.push(0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.95, 0.95, 0.95);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -722,7 +1053,15 @@ function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: numb
   return garageViewPoint(side, depth);
 }
 
-function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array): THREE.BufferGeometry {
+/**
+ * Metres per texture repeat on the terrain, per surface (2026-10-11, wave 398: "a hugely over-scaled cobblestone
+ * texture whose setts are nearly a soldier's height across"): every surface used to repeat about every 9.6 m.
+ */
+const TERRAIN_TILE_M: Readonly<Partial<Record<GarageSurfaceKey, number>>> = Object.freeze({
+  cobble: 1.8, grass: 4, rock: 6, sand: 8, snow: 8,
+});
+
+function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array, tileM = 9.6): THREE.BufferGeometry {
   const positions = new Float32Array(patch.width * patch.height * 3);
   const uvs = new Float32Array(patch.width * patch.height * 2);
   let vertex = 0;
@@ -732,8 +1071,8 @@ function createTerrainGeometry(patch: GarageTerrainPatch, values: Float32Array):
       positions[vertex * 3] = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
       positions[vertex * 3 + 1] = values[index];
       positions[vertex * 3 + 2] = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      uvs[vertex * 2] = (column / (patch.width - 1)) * 10;
-      uvs[vertex * 2 + 1] = (row / (patch.height - 1)) * 9;
+      uvs[vertex * 2] = ((column / (patch.width - 1)) * patch.sizeXM) / tileM;
+      uvs[vertex * 2 + 1] = ((row / (patch.height - 1)) * patch.sizeZM) / tileM;
       vertex += 1;
     }
   }
@@ -816,6 +1155,30 @@ export function buildGarageEnvironment(
     }
   };
   applyReliefScale();
+  // Saltmere's quay and shore (2026-10-11, waves 393, 398 and 402: "Saltmere never shows its sea", "a featureless green
+  // bank hides the sea"): behind the yard the bank is cut back to a level quay at the datum, and past the quay edge the
+  // ground falls to the waterline under the coastal backdrop's sea, so the opening view looks over the quay to open
+  // water. A building standing past the edge keeps the quay's level under it (the lighthouse on its point).
+  const shapeQuayAndShore = (): void => {
+    if (recipe.horizonStyle !== 'coastal') return;
+    const keep = recipe.structures.filter((placement) => placement.depth > 12);
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const { side, depth } = garageWorldPointToView(x, z);
+        if (depth < 9 || Math.abs(side) > 44) continue;
+        const index = row * patch.width + column;
+        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 34, 44));
+        const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
+        const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
+        const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
+        const target = THREE.MathUtils.lerp(0, -3.4, drop);
+        heights[index] = THREE.MathUtils.lerp(heights[index], target, Math.max(quay, drop));
+      }
+    }
+  };
+  shapeQuayAndShore();
   const root = new THREE.Group();
   root.name = `garage_environment_${variant.architecture}`;
   root.userData.perfOwner = 'garage/environment';
@@ -1100,6 +1463,7 @@ export function buildGarageEnvironment(
   };
   reseatFacilityTerraces();
 
+
   const measurePlacementQuality = (): {
     readonly placementOverlaps: number;
     readonly maxGroundContactErrorM: number;
@@ -1140,7 +1504,7 @@ export function buildGarageEnvironment(
   };
   const { placementOverlaps, maxGroundContactErrorM } = measurePlacementQuality();
 
-  const terrainGeometry = track(createTerrainGeometry(patch, heights));
+  const terrainGeometry = track(createTerrainGeometry(patch, heights, TERRAIN_TILE_M[recipe.terrainSurface] ?? 9.6));
   const terrain = new THREE.Mesh(terrainGeometry, texturedMaterial(recipe.terrainSurface, {
     color: recipe.terrainTint, roughness: 0.94, metalness: 0,
   }));
@@ -1152,60 +1516,105 @@ export function buildGarageEnvironment(
   // the old 29 x 24 m box's corner standing proud over a dip). Inside the podium's terrain-clear ring it lies at the
   // canonical ground surface as before; beyond, 2 cm over the terrain, so no edge ever floats. Paved slabs under the
   // four fleet exhibits' pads join it in the same mesh and mapping (wave 338: "bay lines painted onto grass").
-  const apronHeightAt = (x: number, z: number): number => (
-    Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02
-  );
+  // Where the ground rises more than 0.45 m above the datum the pavement stops: its vertices there sink 6 cm under the
+  // terrain, so the visible edge is the line where the two surfaces cross, following the slope's contour (2026-10-11,
+  // wave 398: the old cut left "jagged polygon edges" and "blotchy slabs with ragged hard rims").
+  const APRON_RISE_LIMIT_M = 0.45;
+  const apronHeightAt = (x: number, z: number): number => {
+    const ground = samplePatch(patch, heights, x, z);
+    if (ground > APRON_RISE_LIMIT_M) return ground - 0.06;
+    return Math.max(ground, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02;
+  };
   const apronGeometry = new THREE.PlaneGeometry(29, 24, 29, 24);
   apronGeometry.rotateX(-Math.PI / 2);
   {
+    // The worked yard thins out into the terrain (wave 408: "a ruler-straight seam ... where the textured foreground
+    // snow meets a flat, pale, untextured snow plane"): each vertex's share of worked ground falls to nothing over the
+    // apron's outer 2.4 m and as the ground climbs toward the rise limit, so neither the rectangle's edge nor the
+    // slope's crossing line shows; garageHardstandGradedHook breaks the ramp into an irregular margin.
     const positions = apronGeometry.getAttribute('position');
+    const blend = new Float32Array(positions.count);
     for (let index = 0; index < positions.count; index += 1) {
-      positions.setY(index, apronHeightAt(positions.getX(index), positions.getZ(index)));
+      const x = positions.getX(index), z = positions.getZ(index);
+      positions.setY(index, apronHeightAt(x, z));
+      const edge = Math.min(14.5 - Math.abs(x), 12 - Math.abs(z)) / GARAGE_HARDSTAND_FEATHER_M;
+      const ground = samplePatch(patch, heights, x, z);
+      const rise = 1 - THREE.MathUtils.smoothstep(ground, 0.18, APRON_RISE_LIMIT_M - 0.01);
+      blend[index] = THREE.MathUtils.clamp(edge, 0, 1) * rise;
     }
+    apronGeometry.setAttribute('hardstandBlend', new THREE.BufferAttribute(blend, 1));
   }
   const slabGeometries: THREE.BufferGeometry[] = [];
+  // Every fleet exhibit stands on worked ground (wave 408, Ironworks' K2: "an open-earth yard still needs a compacted
+  // working surface ... graded into the terrain, with no hard slab edge"): the yard's own floor reaches 1.32 radii over
+  // each pad, draped on the levelled core and its feather, and thins out from 0.9 radii (the slab kinds' joints, the
+  // earth kinds' ruts and grit). The old pads were cut discs (wave 402: "a hard-edged darker sand patch").
+  const PAD_REACH = 1.32;
+  const PAD_RINGS = [[0, 1], [0.5, 1], [0.68, 1], [0.84, 0.45], [1, 0]] as const;
   for (const terrace of terraceRecords) {
     if (!terrace.label.startsWith('fleet-service-')) continue;
-    // the pad's flat full-strength core is 1.2 radii; the slab covers 1.12, on the pad's datum
-    const slab = new THREE.CircleGeometry(1, 40);
-    slab.rotateX(-Math.PI / 2);
-    {
-      // a worn, irregular slab edge rather than a cut disc (wave 377: "a hard-edged disc of dirt cut into a lawn")
-      const ring = slab.getAttribute('position');
-      for (let index = 1; index < ring.count; index += 1) {
-        const angle = Math.atan2(ring.getZ(index), ring.getX(index));
-        const wobble = 1 + 0.07 * Math.sin(angle * 3 + terrace.side) + 0.05 * Math.sin(angle * 7 + terrace.depth)
-          + 0.03 * Math.sin(angle * 13);
-        ring.setXYZ(index, ring.getX(index) * wobble, 0, ring.getZ(index) * wobble);
+    const segments = 48;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const blends: number[] = [];
+    const ringPoint = (ring: number, segment: number): [number, number, number, number] => {
+      const angle = (segment / segments) * Math.PI * 2;
+      // a broad, even irregularity only (wave 398: no ragged rim)
+      const wobble = 1 + 0.05 * Math.sin(angle * 2 + terrace.side) + 0.025 * Math.sin(angle * 3 + terrace.depth);
+      const [radius, share] = PAD_RINGS[ring];
+      const lx = Math.cos(angle) * radius * wobble * terrace.radiusSide * PAD_REACH;
+      const lz = Math.sin(angle) * radius * wobble * terrace.radiusDepth * PAD_REACH;
+      const cos = Math.cos(GARAGE_CAMERA_AZIMUTH_RAD), sin = Math.sin(GARAGE_CAMERA_AZIMUTH_RAD);
+      const x = terrace.x + lx * cos + lz * sin;
+      const z = terrace.z - lx * sin + lz * cos;
+      return [x, z, share, radius];
+    };
+    const push = ([x, z, share, radius]: [number, number, number, number]): void => {
+      // the level core (1.2 radii, wobble included) lies on the pad's datum; the margin drapes over the terrain's feather
+      const y = (radius * PAD_REACH * 1.075 <= 1.2 ? terrace.y : samplePatch(patch, heights, x, z)) + 0.02;
+      positions.push(x, y, z);
+      uvs.push(x / 29 + 0.5, 0.5 - z / 24);
+      blends.push(share);
+    };
+    for (let ring = 0; ring < PAD_RINGS.length - 1; ring += 1) {
+      for (let segment = 0; segment < segments; segment += 1) {
+        const a = ringPoint(ring, segment), b = ringPoint(ring, segment + 1);
+        const c = ringPoint(ring + 1, segment), d = ringPoint(ring + 1, segment + 1);
+        // counter-clockwise seen from above, so the floor faces up
+        if (ring > 0) { push(a); push(b); push(c); }
+        push(b); push(d); push(c);
       }
     }
-    slab.scale(terrace.radiusSide * 1.08, 1, terrace.radiusDepth * 1.08);
-    slab.rotateY(GARAGE_CAMERA_AZIMUTH_RAD);
-    slab.translate(terrace.x, terrace.y + 0.02, terrace.z);
-    const uv = slab.getAttribute('uv');
-    const positions = slab.getAttribute('position');
-    for (let index = 0; index < positions.count; index += 1) {
-      uv.setXY(index, positions.getX(index) / 29 + 0.5, 0.5 - positions.getZ(index) / 24);
-    }
-    slabGeometries.push(slab.toNonIndexed());
-    slab.dispose();
+    const slab = new THREE.BufferGeometry();
+    slab.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    slab.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    slab.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(positions.length), 3));
+    slab.setAttribute('hardstandBlend', new THREE.Float32BufferAttribute(blends, 1));
+    slabGeometries.push(slab);
   }
   // The pavement stops at the foot of a rise (2026-10-10, wave 357: Saltmere's draped apron climbed a hill behind the
-  // hero as "a shapeless grey tarp heap"): an apron cell whose ground stands more than 0.45 m above the datum is
-  // left to the terrain.
+  // hero as "a shapeless grey tarp heap"): above 0.45 m the apron sinks under the terrain (apronHeightAt), so the slope
+  // keeps its own ground and the pavement's edge follows its contour.
   const apronNonIndexed = (() => {
     const flat = apronGeometry.toNonIndexed();
     const positions = flat.getAttribute('position');
     const uvs = flat.getAttribute('uv');
+    const blends = flat.getAttribute('hardstandBlend');
     const keptPositions: number[] = [];
     const keptUvs: number[] = [];
+    const keptBlends: number[] = [];
     for (let triangle = 0; triangle < positions.count; triangle += 3) {
       let highest = -Infinity;
-      for (let corner = 0; corner < 3; corner += 1) highest = Math.max(highest, positions.getY(triangle + corner));
-      if (highest > 0.45 + 0.02) continue;
+      let worked = 0;
+      for (let corner = 0; corner < 3; corner += 1) {
+        highest = Math.max(highest, positions.getY(triangle + corner));
+        worked = Math.max(worked, blends.getX(triangle + corner));
+      }
+      if (highest > 6 || worked === 0) continue; // a cliff cell or ground the yard never reaches: nothing to pave
       for (let corner = 0; corner < 3; corner += 1) {
         keptPositions.push(positions.getX(triangle + corner), positions.getY(triangle + corner), positions.getZ(triangle + corner));
         keptUvs.push(uvs.getX(triangle + corner), uvs.getY(triangle + corner));
+        keptBlends.push(blends.getX(triangle + corner));
       }
     }
     flat.dispose();
@@ -1213,6 +1622,7 @@ export function buildGarageEnvironment(
     trimmed.setAttribute('position', new THREE.Float32BufferAttribute(keptPositions, 3));
     trimmed.setAttribute('uv', new THREE.Float32BufferAttribute(keptUvs, 2));
     trimmed.setAttribute('normal', new THREE.Float32BufferAttribute(new Float32Array(keptPositions.length), 3));
+    trimmed.setAttribute('hardstandBlend', new THREE.Float32BufferAttribute(keptBlends, 1));
     return trimmed;
   })();
   apronGeometry.dispose();
@@ -1230,8 +1640,18 @@ export function buildGarageEnvironment(
     engineCtx.anisotropy ?? 4);
   const hardstandNormalKind = garageHardstandNormalKind(hardstandStyle);
   const hardstandNormal = garageHardstandNormal(hardstandNormalKind, engineCtx.anisotropy ?? 4);
+  // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
+  // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
+  const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
+    const material = new THREE.MeshStandardMaterial({ ...options, transparent: true, depthWrite: false });
+    // the grain is subtler on packed snow than on earth and concrete
+    const grainStrength = hardstandNormalKind === 'snow' ? 0.32 : hardstandNormalKind === 'slab' ? 0.5 : 0.62;
+    engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(engineCtx.anisotropy ?? 4), grainStrength) as THREE.Material['onBeforeCompile']);
+    material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
+    return track(material);
+  };
   const hardstandMaterial = hardstandAlbedo && hardstandNormal
-    ? plainMaterial({
+    ? gradedMaterial({
       map: track(hardstandAlbedo), normalMap: hardstandNormal,
       normalScale: hardstandNormalKind === 'slab' ? new THREE.Vector2(0.6, 0.6)
         : hardstandNormalKind === 'snow' ? new THREE.Vector2(0.3, 0.3) : new THREE.Vector2(0.45, 0.45),
@@ -1243,7 +1663,9 @@ export function buildGarageEnvironment(
   hardstandMaterial.polygonOffsetUnits = -1;
   const hardstand = new THREE.Mesh(hardstandGeometry, hardstandMaterial);
   hardstand.name = 'connected_service_hardstand';
+  hardstand.renderOrder = -1;
   hardstand.userData.drapedOnTerrain = true;
+  hardstand.userData.gradedEdges = hardstandMaterial.transparent;
   hardstand.userData.fleetPadSlabs = slabGeometries.length;
   hardstand.userData.hardstandStyle = hardstandStyle;
   root.userData.serviceYardWear = hardstandStyle;
@@ -1274,7 +1696,7 @@ export function buildGarageEnvironment(
       groundCoverCount,
     );
     groundCover.name = 'static_battlefield_ground_cover';
-    const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(0.03, 0.05, -0.08)
+    const coverBase = recipe.terrainSurface === 'grass' ? new THREE.Color(recipe.terrainTint).offsetHSL(-0.03, 0.04, -0.1)
       : recipe.terrainSurface === 'snow' ? new THREE.Color(0x716d58)
         : recipe.terrainSurface === 'sand' ? new THREE.Color(0x8d744d)
           : recipe.terrainSurface === 'rock' ? new THREE.Color(0x705d49)
@@ -1416,6 +1838,12 @@ export function buildGarageEnvironment(
           )) as Parameters<typeof addGarageFacilityDetails>[0]['surfaceMaps'],
           groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
           variant,
+          // building surfaces at their real size: trapezoidal sheeting (render and planks join the pack's own plaster and
+          // wood buckets, so they add no draw)
+          surfaces: {
+            sheeting: { color: garageSheeting('albedo', anisotropy), normal: garageSheeting('normal', anisotropy) },
+          },
+          sheetingTileM: GARAGE_SHEETING_TILE_M,
         });
     const approachDetails: GarageApproachStats = variant.architecture === 'field_shed'
       ? Object.freeze({
@@ -1516,18 +1944,12 @@ export function buildGarageEnvironment(
     const up = new THREE.Vector3(0, 1, 0);
     const groveCount = Math.ceil(recipe.treeCount / 2);
     const grovePoints: Array<{ x: number; z: number }> = [];
-    for (let attempt = 0;
-      attempt < groveCount * 80 && grovePoints.length < groveCount;
-      attempt += 1) {
-      const angle = rng() * Math.PI * 2;
-      const radiusScale = 0.90 + rng() * 0.10;
-      const x = Math.cos(angle) * 42 * radiusScale;
-      const z = Math.sin(angle) * 36 * radiusScale;
+    const groveSiteFree = (x: number, z: number, self: { x: number; z: number } | null = null): boolean => {
       const { side, depth } = garageWorldPointToView(x, z);
       // Preserve only the narrow canonical approach lane. The old whole-half-
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
-      if (depth < 5 && Math.abs(side) < 16) continue;
+      if (depth < 5 && Math.abs(side) < 16) return false;
       const nearStructure = structureRecords.some((record) => {
         const radius = Math.hypot(
           record.dimensions.w * record.placement.scale,
@@ -1539,21 +1961,65 @@ export function buildGarageEnvironment(
         Math.hypot(x - terrace.x, z - terrace.z)
           < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
       ));
-      if (nearStructure || nearFacility
-          || grovePoints.some((point) => Math.hypot(x - point.x, z - point.z) < 7.0)) continue;
+      return !nearStructure && !nearFacility
+        && !grovePoints.some((point) => point !== self && Math.hypot(x - point.x, z - point.z) < 7.0);
+    };
+    for (let attempt = 0;
+      attempt < groveCount * 80 && grovePoints.length < groveCount;
+      attempt += 1) {
+      const angle = rng() * Math.PI * 2;
+      const radiusScale = 0.90 + rng() * 0.10;
+      const x = Math.cos(angle) * 42 * radiusScale;
+      const z = Math.sin(angle) * 36 * radiusScale;
+      if (!groveSiteFree(x, z)) continue;
       grovePoints.push({ x, z });
     }
+    // No grove stands straight behind a fleet exhibit (2026-10-11, wave 408: "a leafy plant sprouts straight through
+    // the left side of the turret", a birch 25 m behind the Leopard): seen from a point 45 % of the way out from the
+    // turntable to the exhibit, where its bay camera stands (the opening camera sees none of the exhibits), a grove
+    // inside the exhibit's silhouette turns along its ring to the nearest clear site, keeping every other rule, or stays
+    // out.
+    const exhibits = terraceRecords.filter((terrace) => terrace.label.startsWith('fleet-service-'));
+    const behindExhibit = (x: number, z: number): boolean => exhibits.some((exhibit) => {
+      const viewX = exhibit.x * 0.45, viewZ = exhibit.z * 0.45;
+      const reach = Math.hypot(exhibit.x - viewX, exhibit.z - viewZ);
+      if (Math.hypot(x - viewX, z - viewZ) < reach) return false;
+      const gap = Math.atan2(z - viewZ, x - viewX) - Math.atan2(exhibit.z - viewZ, exhibit.x - viewX);
+      // the hull's half-length: a tree anywhere behind the hull rises out of its silhouette
+      return Math.abs(Math.atan2(Math.sin(gap), Math.cos(gap))) < Math.atan2(3.6, reach) + 0.04;
+    });
+    let grovesTurned = 0;
+    for (const point of grovePoints) {
+      if (!behindExhibit(point.x, point.z)) continue;
+      const radius = Math.hypot(point.x, point.z);
+      const start = Math.atan2(point.z, point.x);
+      search: for (let step = 1; step <= 90; step += 1) {
+        for (const sign of [1, -1]) {
+          const angle = start + sign * step * 0.035;
+          const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+          if (behindExhibit(x, z) || !groveSiteFree(x, z, point)) continue;
+          point.x = x;
+          point.z = z;
+          grovesTurned += 1;
+          break search;
+        }
+      }
+    }
+    root.userData.grovesTurnedFromExhibits = grovesTurned;
     for (let index = 0; index < groveCount; index += 1) {
       const fallbackSide = THREE.MathUtils.lerp(-31, 31,
         groveCount <= 1 ? 0.5 : index / (groveCount - 1));
       const fallbackDepth = 38 + Math.sin((index / Math.max(1, groveCount - 1)) * Math.PI) * 7;
       const fallback = cameraPoint(fallbackSide, fallbackDepth);
       const { x, z } = grovePoints[index] || fallback;
-      const y = samplePatch(patch, heights, x, z);
       const size = 0.82 + rng() * 0.26;
+      const heading = rng() * Math.PI * 2;
+      const stretch = 0.94 + rng() * 0.12;
+      if (behindExhibit(x, z)) continue; // it could not turn clear
+      const y = samplePatch(patch, heights, x, z);
       position.set(x, y, z);
-      quaternion.setFromAxisAngle(up, rng() * Math.PI * 2);
-      scale.set(size, size * (0.94 + rng() * 0.12), size);
+      quaternion.setFromAxisAngle(up, heading);
+      scale.set(size, size * stretch, size);
       matrices[index % treeKits.length].push(matrix.compose(position, quaternion, scale).clone());
     }
     treeKits.forEach((kit, kitIndex) => {
@@ -1616,6 +2082,8 @@ export function buildGarageEnvironment(
     backdropLayers: 5,
     horizonStyle: recipe.horizonStyle,
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
+    builtHorizonMassTopM: Number(horizon.geometry.userData.massTopM || 0),
+    builtHorizonAccentTopM: Number(horizon.geometry.userData.accentTopM || 0),
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],

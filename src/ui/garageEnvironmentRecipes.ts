@@ -157,8 +157,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // a water tower, not a minaret, behind the hero (2026-10-10, waves 338, 357, 377: the round white tower with
       // its balcony and cap read as "a lighthouse standing among the dunes" in every frame)
       at(makeWaterTower, 'wadi water tower', -30, -30, 0.7),
-      at(makeShed, 'forward shade bay', -7, -36, 0.82),
-      at(makeDepot, 'wadi supply depot', 18, -34, 0.68),
+      // flat-roofed and containerised (wave 398: "no European pitched-roof houses in desert or alpine sites")
+      at(makeContainerRow, 'forward container line', -7, -36, 0.62),
+      at(MARKET_BUILDERS.compound, 'wadi supply compound', 18, -34, 0.5),
       at(makeCaravanserai, 'outer adobe court', 36, -14, 0.56),
       at(makeBathhouse, 'wadi crew hammam', 40, -11, 0.66),
       at(makeMinaret, 'outer-route watchtower', 6, 38, 0.58),
@@ -203,7 +204,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'heated recovery schoolhouse', 'avalanche command post', 'snowbound chapel cluster'],
   },
   brick_arsenal: {
-    terrainSurface: 'cobble', terrainTint: 0x8a8881, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
+    // the banks round the arsenal are dusty grass embankments; only its boulevard is cobbled (waves 408 and 419: "a huge
+    // cobblestone embankment curls up around the bay like the inside of a bowl")
+    terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
     structures: [
       at(makeFactory, 'urban factory', -36, -6, 0.76),
       at(makeFireStation, 'Steinburg fire station', -30, -30, 0.78),
@@ -243,8 +246,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     treeSpecies: ['cedar', 'pine'], treeCount: 22,
     horizonStyle: 'coastal', horizonHeightM: 5.8,
     approach: {
+      // the causeway ends at the quay edge, where the shore falls to the sea (2026-10-11)
       style: 'drydock-lane', label: 'reinforced drydock causeway', surface: 'cobble', width: 8.6,
-      waypoints: [[0, 10], [-2, 27], [-1, 47]], lanes: [-3.0, 3.0],
+      waypoints: [[0, 10], [-2, 22], [-1.5, 32]], lanes: [-3.0, 3.0],
     },
     terrainProfile: 'actual Saltmere Bay spawn excerpt with wind-cut maritime ground',
     serviceFrame: 'harbor work apron, fishery dock and drydock service shelter',
@@ -312,15 +316,16 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   rock_cavern: {
     terrainSurface: 'snow', terrainTint: 0xd7e0e1, hardstandTint: 0x9da7a8, buildingTint: 0xb8b6aa,
     structures: [
-      at(makeRangerLodge, 'glacier lodge', -36, -6, 0.8),
-      at(makeAlpine, 'pass chalet', -30, -30, 0.78),
-      at(makeChapel, 'ridge chapel', -7, -36, 0.72),
+      // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
+      at(makeWarehouse, 'glacier vehicle store', -36, -6, 0.6),
+      at(makeContainerRow, 'pass container line', -30, -30, 0.55),
+      at(makeFireStation, 'pass plant house', -7, -36, 0.5),
       at(makeShed, 'pass service shelter', 18, -34, 0.72),
-      at(makeLogCabin, 'glacier outpost', 36, -14, 0.62),
-      at(makeOnionChurch, 'high-pass memorial', 40, -11, 0.52),
-      at(makeRangerLodge, 'avalanche patrol lodge', 6, 38, 0.62),
-      at(makeAlpine, 'cliff rescue chalet', -41, 23, 0.56),
-      at(makeChapel, 'high-pass rescue chapel', 31, 31, 0.52),
+      at(makeContainerRow, 'glacier outpost containers', 36, -14, 0.45),
+      at(makeWaterTower, 'high-pass water tank', 40, -11, 0.6),
+      at(makeWarehouse, 'avalanche patrol garage', 6, 38, 0.5),
+      at(makeDepot, 'cliff rescue depot', -41, 23, 0.5),
+      at(makeContainerRow, 'high-pass rescue containers', 31, 31, 0.5),
     ],
     treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
@@ -347,7 +352,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(MARKET_BUILDERS.compound, 'salvage fortification', -41, 23, 0.50),
       at(makeGantry, 'canyon recovery bridge', 31, 31, 0.56),
     ],
-    treeSpecies: ['acacia', 'cedar'], treeCount: 16, reliefScale: 0.72,
+    // acacia and scrub oak only: a cedar read as "a stray spruce instead of badlands" (wave 408)
+    treeSpecies: ['acacia', 'oak'], treeCount: 12, reliefScale: 0.72,
     horizonStyle: 'mesa', horizonHeightM: 11.8,
     approach: {
       style: 'recovery-trail', label: 'tracked recovery trail', surface: 'rock', width: 8.0,
