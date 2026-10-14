@@ -800,19 +800,87 @@ export const RECIPES = {
     hud: 'hidden',
     storage: { 'cot.game.teams.v1': JSON.stringify({ standard: { allies: 13, enemies: 14 } }) },
     async run(ctx) {
+      // r2 (the lead: tanks bigger, the power cables out of frame). r1's crane stood 95-115 m out and 48-62 m up, and
+      // Frontier Basin's 380 kV line (towers 36 m tall through the basin) crossed the frame. The lines now close to
+      // 140 m; the crane stands 45-75 m out and 16-26 m up, at the first bearing whose camera and sight line keep clear
+      // of the map's pylon spans (read from its scenery: src/world/maps/<id>.ts powerLines) and of the roadside
+      // telegraph poles (world.crushables carrying a wire), and alternates with a raised three-quarter follow on the
+      // front-line bot.
+      const { readFileSync } = await import('node:fs');
+      const { resolve } = await import('node:path');
+      const mapId = await ctx.eval(() => window.__DEBUG?.game?.mapId ?? window.__DEBUG?.world?.mapId ?? null);
+      let powerLines = [];
+      try {
+        const src = readFileSync(resolve(process.cwd(), 'src/world/maps', `${mapId || 'frontier'}.ts`), 'utf8');
+        for (const m of src.matchAll(/towers:\s*(\[\s*\[[\s\S]*?\]\s*\])\s*,\s*heightM:\s*([\d.]+)/g)) {
+          try { powerLines.push({ towers: JSON.parse(m[1]), heightM: Number(m[2]) }); } catch { /* not a plain list */ }
+        }
+      } catch { powerLines = []; }
+      ctx.log('power lines', JSON.stringify({ mapId, lines: powerLines.length }));
       const span = await ctx.until(() => {
         const c = window.__MB.H.sel('fightCenter');
-        return c && c.spanM < 320 ? { spanM: Math.round(c.spanM), x: Math.round(c.x), z: Math.round(c.z) } : null;
-      }, { ffStepS: 2, timeoutS: 200, label: 'the lines in contact' });
+        return c && c.spanM < 140 ? { spanM: Math.round(c.spanM), x: Math.round(c.x), z: Math.round(c.z) } : null;
+      }, { ffStepS: 2, timeoutS: 220, label: 'the lines within 140 m' });
       ctx.log('fight', JSON.stringify(span));
+      const crane = await ctx.eval((lines) => {
+        const H = window.__MB.H, D = H.D(), c = H.sel('fightCenter');
+        if (!c) return null;
+        const segDist2D = (px, pz, ax, az, bx, bz) => {
+          const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+          const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+          return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+        };
+        // do the 2-D segments a-b and c-d cross (or come within m metres)?
+        const near = (a, b, p, q, m) => {
+          const ccw = (A, B, C) => (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0]);
+          if (ccw(a, p, q) !== ccw(b, p, q) && ccw(a, b, p) !== ccw(a, b, q)) return true;
+          return Math.min(segDist2D(a[0], a[1], p[0], p[1], q[0], q[1]), segDist2D(b[0], b[1], p[0], p[1], q[0], q[1]),
+            segDist2D(p[0], p[1], a[0], a[1], b[0], b[1]), segDist2D(q[0], q[1], a[0], a[1], b[0], b[1])) < m;
+        };
+        const poles = (D.world.crushables || []).filter((k) => k.wirePoleIndex != null && !k.toppled).map((k) => [k.x, k.z]);
+        for (const distM of [55, 45, 65, 75]) {
+          for (const heightM of [20, 16, 26]) {
+            for (const deg of [90, -90, 45, -45, 135, -135, 0, 180, 67, -67, 112, -112]) {
+              const bearing = (c.yaw || 0) + (deg * Math.PI) / 180;
+              const cam = [c.x + Math.sin(bearing) * distM, c.z + Math.cos(bearing) * distM], at = [c.x, c.z];
+              if (Math.abs(cam[0]) > 440 || Math.abs(cam[1]) > 440) continue;
+              // the pylon spans (25-36 m up) stay above a lens this low that looks down at the fight; they enter the frame
+              // near the lens or across the background, so: no span within 35 m of the camera, and none across the view
+              // beyond the fight (250 m on from it)
+              const len = Math.hypot(at[0] - cam[0], at[1] - cam[1]) || 1;
+              const far = [at[0] + ((at[0] - cam[0]) / len) * 250, at[1] + ((at[1] - cam[1]) / len) * 250];
+              let clear = true;
+              for (const line of lines) {
+                for (let i = 0; i + 1 < line.towers.length && clear; i++) {
+                  const [p, q] = [line.towers[i], line.towers[i + 1]];
+                  if (segDist2D(cam[0], cam[1], p[0], p[1], q[0], q[1]) < 35 || near(at, far, p, q, 0)) clear = false;
+                }
+              }
+              if (!clear) continue;
+              // the telegraph wires (about 6 m up between poles some 32 m apart): no pole within 18 m of the sight line
+              if (poles.some((pq) => segDist2D(pq[0], pq[1], cam[0], cam[1], at[0], at[1]) < 18)) continue;
+              return { azimuthDeg: Math.round((bearing * 180) / Math.PI), distM, heightM, rel: deg, poles: poles.length };
+            }
+          }
+        }
+        return null;
+      }, powerLines);
+      ctx.log('crane', JSON.stringify(crane));
+      if (!crane) ctx.note('no crane bearing clear of the power lines and telegraph wires was found; the crane takes the fight axis side-on');
+      // the front-line bot: the live non-player tank closest to the other side
+      await define(ctx, 'frontBot', `const p = H.player(); let best = null, bd = Infinity;
+        for (const t of H.liveTanks()) { if (t === p) continue; for (const e of H.liveTanks()) { if (e.team === t.team) continue;
+          const d = H.dist(t.state.pos, e.state.pos); if (d < bd) { bd = d; best = t; } } }
+        return H.info(best);`);
       await settle(ctx, 2);
       await ctx.capture({
         cameras: [
-          { kind: 'crane', center: 'fightCenter', azimuthDeg: 90, relative: 'subject', distM: 115, heightM: 62, fov: 40, smoothS: 1.2, hud: 'hidden' },
-          { kind: 'crane', center: 'fightCenter', azimuthDeg: 135, relative: 'subject', distM: 95, heightM: 48, fov: 42, smoothS: 1.2, hud: 'hidden' },
+          { kind: 'crane', center: 'fightCenter', azimuthDeg: crane ? crane.azimuthDeg : 90, relative: crane ? undefined : 'subject',
+            distM: crane ? crane.distM : 60, heightM: crane ? crane.heightM : 20, lookAtHeightM: 1.5, fov: 40, smoothS: 1.0, hud: 'hidden' },
+          { kind: 'follow', subject: 'frontBot', azimuthDeg: 35, distM: 26, heightM: 9, lookAtHeightM: 1.5, fov: 40, smoothS: 0.6, hud: 'hidden' },
         ],
-        cameraEvery: 6,
-        triggers: [T.anyFireOnScreen([35, 90], 450), T.hitOnScreen([30, 80], 450), T.killOnScreen()],
+        cameraEvery: 4,
+        triggers: [T.anyFireOnScreen([35, 90], 300), T.hitOnScreen([30, 80], 300), T.killOnScreen()],
       });
     },
   },
