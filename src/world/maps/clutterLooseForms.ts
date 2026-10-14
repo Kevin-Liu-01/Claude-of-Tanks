@@ -261,7 +261,7 @@ export interface PotForm { kind: 'zir' | 'amphora' | 'olla' | 'matka'; body: Rgb
 function potProfile(kind: PotForm['kind'], r: number): Array<[number, number]> {
   switch (kind) {
     case 'zir': return [[r * 0.35, 0], [r * 0.8, r * 0.5], [r, r * 1.15], [r * 0.85, r * 1.7], [r * 0.5, r * 2.05], [r * 0.56, r * 2.2], [r * 0.48, r * 2.18]];
-    case 'amphora': return [[r * 0.3, 0], [r * 0.7, r * 0.35], [r * 0.95, r * 1.0], [r, r * 1.4], [r * 0.7, r * 1.9], [r * 0.38, r * 2.1], [r * 0.42, r * 2.3], [r * 0.34, r * 2.28]];
+    case 'amphora': return [[r * 0.3, 0], [r * 0.75, r * 0.4], [r, r * 1.25], [r * 0.7, r * 1.9], [r * 0.38, r * 2.1], [r * 0.42, r * 2.3], [r * 0.34, r * 2.28]];
     case 'olla': return [[r * 0.45, 0], [r * 0.9, r * 0.45], [r, r * 0.85], [r * 0.8, r * 1.3], [r * 0.5, r * 1.5], [r * 0.55, r * 1.62], [r * 0.47, r * 1.6]];
     case 'matka': return [[r * 0.4, 0], [r * 0.85, r * 0.3], [r, r * 0.75], [r * 0.85, r * 1.2], [r * 0.45, r * 1.42], [r * 0.5, r * 1.55], [r * 0.42, r * 1.53]];
   }
@@ -345,12 +345,12 @@ export function redDrumBroken(shell: Rgb, rng: Rng): THREE.BufferGeometry {
 export interface LaundryForm { post: Rgb; cloths: readonly Rgb[]; long?: boolean }
 
 /** A cloth hung over the line at x: `w` wide, `h` long, pinned at both corners, sagging between them, its hem swung. */
-function cloth(m: ReturnType<typeof newMesh>, x: number, y: number, w: number, h: number, col: Rgb, swing: number): void {
+function cloth(m: ReturnType<typeof newMesh>, x: number, y: number, z0: number, w: number, h: number, col: Rgb, swing: number): void {
   const uv: [number, number] = [0.5, 0.5];
   const cols = 3, rows = 2;
   const P = (i: number, j: number): V3 => {
     const u = i / cols, v = j / rows, sag = Math.sin(u * Math.PI) * 0.035;
-    return [x - w / 2 + u * w, y - sag - v * h, Math.sin(u * Math.PI * 2 + swing) * 0.03 * v + swing * 0.05 * v];
+    return [x - w / 2 + u * w, y - sag * (j ? 1 : 0) - v * h, z0 + Math.sin(u * Math.PI * 2 + swing) * 0.03 * v + swing * 0.05 * v];
   };
   for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
     const k = 0.92 + ((i + j) % 2) * 0.08;
@@ -372,8 +372,9 @@ export function laundryNear(f: LaundryForm, rng: Rng): THREE.BufferGeometry {
   const n = f.cloths.length;
   for (let k = 0; k < n; k++) {
     const w = f.long && k === 1 ? 1.1 : 0.55 + rng() * 0.3, h = f.long && k === 1 ? 1.3 : 0.55 + rng() * 0.45;
-    cloth(m, -1.25 + (k + 0.5) * 2.5 / n, 1.83, w, h, f.cloths[k], (rng() - 0.5) * 2);
-    for (const e of [-1, 1]) bar(m, [-1.25 + (k + 0.5) * 2.5 / n + e * w * 0.45, 1.81, -0.012], [-1.25 + (k + 0.5) * 2.5 / n + e * w * 0.45, 1.87, -0.012], 0.012, 0.012, X, hexLin(0xc8b89a), 0, true);
+    const x = -1.25 + (k + 0.5) * 2.5 / n, z = k % 2 ? -0.15 : 0.15;
+    cloth(m, x, 1.83, z, w, h, f.cloths[k], (rng() - 0.5) * 2);
+    for (const e of [-1, 1]) bar(m, [x + e * w * 0.45, 1.8, z - 0.012], [x + e * w * 0.45, 1.86, z - 0.012], 0.012, 0.012, X, hexLin(0xc8b89a), 0, true);
   }
   return finish(m);
 }
@@ -429,11 +430,14 @@ export function spoolNear(f: SpoolForm, rng: Rng): THREE.BufferGeometry {
 /** The drum broken: its cheeks off and lying, the cable's coil slumped where it stood, planks of the cheeks round it. */
 export function spoolBroken(f: SpoolForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
+  // one cheek lying flat, the other leaning on the coil
   for (let k = 0; k < 2; k++) {
     const from = m.mark;
     lathe(m, [[0.09, 0], [0.7, 0], [0.7, 0.1], [0.09, 0.1]], 10, (s, b) => (b === 1 ? f.cheek : mul(f.cheek, s % 3 === 0 ? 0.85 : 1)), {});
-    tip(m, from, [0, 0, 0], X, (rng() - 0.5) * 0.25);
-    place(m, from, rng() * 3, (k ? 1 : -1) * (0.75 + rng() * 0.2), 0.02, (rng() - 0.5) * 0.6);
+    if (k) {
+      tip(m, from, [0.7, 0, 0], Z, -(1.05 + rng() * 0.15));
+      place(m, from, 0, -1.25, 0, (rng() - 0.5) * 0.3);
+    } else place(m, from, rng() * 3, 0.85 + rng() * 0.2, 0.0, (rng() - 0.5) * 0.6);
   }
   lathe(m, [[0.6, 0], [0.62, 0.12], [0.5, 0.22], [0.35, 0.18], [0.3, 0.05]], 10, (s) => mul(f.cable, 0.9 + (s % 2) * 0.1), { capTop: true });
   for (let k = 0; k < 4; k++) {

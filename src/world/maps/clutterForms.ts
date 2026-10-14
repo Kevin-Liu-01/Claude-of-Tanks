@@ -711,7 +711,8 @@ export function woodpileBroken(f: WoodpileForm, rng: Rng): THREE.BufferGeometry 
   if (f.kind === 'holzhausen' || f.kind === 'dung') {
     lathe(m, [[D * 0.62, 0], [D * 0.5, H * 0.22], [D * 0.25, H * 0.36], [0.04, H * 0.4]], 9, (k) => mul(heap, 0.9 + (k % 3) * 0.06), { faceted: true, capTop: true });
   } else {
-    prismX(m, [[-D * 0.75, 0], [D * 0.75, 0], [D * 0.4, H * 0.32], [-D * 0.15, H * 0.38], [-D * 0.5, H * 0.26]], -L * 0.42, L * 0.42, heap, mul(heap, 0.85));
+    const k = f.kind === 'leanto' ? 1.45 : 1;
+    prismX(m, [[-D * 0.75, 0], [D * 0.75, 0], [D * 0.4, H * 0.32 * k], [-D * 0.15, H * 0.38 * k], [-D * 0.5, H * 0.26 * k]], -L * 0.42, L * 0.42, heap, mul(heap, 0.85));
   }
   const n = f.kind === 'dung' ? 0 : 12;
   for (let k = 0; k < n; k++) {
