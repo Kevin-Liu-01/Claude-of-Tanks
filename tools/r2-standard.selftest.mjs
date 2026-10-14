@@ -20,7 +20,7 @@ import * as THREE from 'three';
 import { boxShare, floatingMembers, paintedOpenings, r2Check, wreckVolume } from './r2-standard.mjs';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 installWorldBuildFixture();
-const { FORT_MAPS, buildPillbox, fortFor, pillboxBerm } = await import('../src/world/maps/fortKit.ts');
+const { FORT_GRADE, FORT_MAPS, buildPillbox, fortFor, pillboxBerm } = await import('../src/world/maps/fortKit.ts');
 const { DESTRUCTIBLE_TYPES } = await import('../src/world/maps/inhabitKit.ts');
 const { DESTRUCTIBLE_BUILDING_TYPES } = await import('../src/world/maps/structureKit.ts');
 const { ARCHITECTURE_STYLES, buildRegionalParts } = await import('../src/world/maps/regional/index.ts');
@@ -126,14 +126,14 @@ const reference = r2Check({
   maps: Object.keys(FORT_MAPS),
   resolve: (mapId) => {
     const f = fortFor(mapId);
+    // (its bank, and the grade: props.ts seats the pillbox FORT_GRADE under the terrain, so grade stands there in its frame)
     return { form: f.style, build: () => buildPillbox(f.style, f.tones, f.seed, false), broken: () => buildPillbox(f.style, f.tones, f.seed, true),
-      support: () => [pillboxBerm(f.style, f.tones, f.seed)] };
+      support: () => [pillboxBerm(f.style, f.tones, f.seed), FORT_GRADE] };
   },
   route: 'settle', fortified: true,
-  // (the reference's own numbers, reported to the looks lane: its settled heaps run 1.56-1.73x the intact triangles,
-  // over the standard's 1.5x; the hexagonal form's rear entrance bags stand 7 cm over the prop's grade)
+  // (the reference's settled heaps run 1.56-1.73x the intact triangles on this tree; the looks lane's E1 caps them at
+  // 1.39-1.47x, under the standard's 1.5x — tighten this to the default once E1 is on the tree)
   caps: { near: 9000, wreckRatio: 1.8 },
-  allowFloating: (island) => (island.min[2] < -2.8 && island.min[1] < 0.08 && island.max[1] < 0.7 ? 'the rear entrance bag pile (fortKit; reported)' : null),
 });
 assert.ok(reference.ok, `the pillbox r2 meets its own standard:\n  ${reference.problems.join('\n  ')}`);
 for (const f of reference.forms) {

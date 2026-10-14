@@ -1677,6 +1677,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
+    'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',

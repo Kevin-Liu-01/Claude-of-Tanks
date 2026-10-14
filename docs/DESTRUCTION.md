@@ -97,7 +97,7 @@ the records alone, identically in the solo world (the rendered build) and on the
 | footprint | minimum-area oriented rectangle around the contact record's parts (rotating calipers over their convex hull): centre `cx, cz`, half extents `hw, hd`, `yaw` |
 | `baseY`, `topY` | contact record's `min[1]`; highest shell band's `max[1]` |
 | built volume `V` | Σ over shell bands of (part area × band height), m³ |
-| mass class | `fixed` role → indestructible; `setpiece` role or `V ≥ 20,000 m³` → `landmark`; `V < 200` → `shed`; `V < 2,500` → `house`; else `large` |
+| mass class | `fixed` role → indestructible; `setpiece` role with `V ≥ 200 m³`, or `V ≥ 20,000 m³` → `landmark`; a `setpiece` under 200 m³ → `shed` (a light set piece, below); `V < 200` → `shed`; `V < 2,500` → `house`; else `large` |
 | hit points | `HP = 0.72·V^0.72` structure points (SP), floor 10: shed 60 m³ → 13.7, house 600 m³ → 72, warehouse 7,200 m³ → 431, landmark 50,000 m³ → 1,742 (tuned to the feel targets in §5) |
 | records | indices of its contact/movement records (obstacles) and shell bands (colliders) |
 
@@ -111,6 +111,24 @@ reaches `breached` and stops there: its integrity floors at 5 %, it never collap
 P2 lets its sections fall (a spire's upper floor, a roof) without removing the whole. Reason: a landmark is a map's
 anchor and its routes' reference; flattening one changes the map, and its collapse would be the largest single sim
 and render spike in the game.
+
+**Light set pieces come down** (props lane A, E12, 2026-10-14; the owner: "make sure all props below a certain size are
+destructible whether from ramming or shooting"). A set piece under 200 m³ of built volume (`LIGHT_SETPIECE_MAX_M3`: a
+statue, a stele, a fountain, a guyed mast, a fire lookout's frame, a troposcatter frame, an arch over a track) takes
+damage as a shed and collapses like a house: its records swap, the bots' grid refreshes round it. Its material is no
+softer than masonry (`lightSetPieceMaterial`: stone, bronze, iron, never a timber shed's 30 kJ scuff), it takes no
+slender tower's factor, and its heap is its volume spread over its plan (`structureRubbleHeightM`: a third of `V / plan`,
+0.3 m at least, at most the height law's), so a felled mast leaves a low spread of steel, not a 2.6 m mound. On the 33
+shards (2026-10-14) 15 of 63 set pieces are light: six guyed masts, four troposcatter frames, the fire lookout, two
+fountains, the kolkhoz arch and an airstrip piece. Every other set piece stays breach-only.
+
+**Set pieces break by their own pieces** (E12; `src/world/landmarks/pieces.ts`, `damage.ts`). A builder names the pieces
+that come off (a figure, a finial, merlons, sails, a cap, a crest and banner, dishes, a crown, sheaves) and the vessels
+that rupture (tanks, a radome); the landmark kit takes them at their stage — `damaged`, the breach stage's hole (slot 0),
+or the collapse — hiding each by name (`DamageHide.piece`) and laying its own triangles where it rests on the ground the
+composer sampled round it. An open frame (a guyed mast, a fire lookout, a headframe, a troposcatter, a conveyor) takes no
+spall and no round hole, and a light one goes over whole along the shaft topple's line. A set piece with neither keeps the
+reading it had. Strikes between stages take nothing off, so a late joiner's settled stages lay the same.
 
 ### 3.3 Stages
 

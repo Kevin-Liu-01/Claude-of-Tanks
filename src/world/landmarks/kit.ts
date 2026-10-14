@@ -12,6 +12,7 @@ import {
   type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, wallPolygon } from '../maps/regional/house.ts';
+import { addLandmarkModule } from './pieces.ts';
 
 /** The lift of an arch ring over the piers it springs from: they stay separate solids (the passage stays open). */
 export const ARCH_GAP_M = 0.002;
@@ -370,6 +371,10 @@ export function star(sink: PartSink, bucket: RegionalBucket, x: number, y: numbe
 
 // ---------------------------------------------------------------------------------------------------------- iron and timber
 
+/** A ground railing's fence module (inhabitKit fenceiron: hl 1.25), and the railings laid as modules: on the ground or
+ *  a dwarf wall (base under this), no taller than this. */
+const RAILING_MODULE_M = 2.5, RAILING_MODULE_BASE_M = 1.0, RAILING_MODULE_HEIGHT_M = 1.6;
+
 /** A free member between two points (a strut, a lattice bar, a rail), square `t` thick, every face kept. */
 export function bar(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, t: number, opts: EmitOptions = {}): void {
   const d = normalize3([b[0] - a[0], b[1] - a[1], b[2] - a[2]]);
@@ -381,10 +386,13 @@ export function bar(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, t:
 
 /**
  * A wrought-iron railing from a to b on the ground: posts with finials every `pitch`, a top and a bottom rail and the
- * bars between (the bars are fine joinery: a long view reads the rails and the posts).
+ * bars between (the bars are fine joinery: a long view reads the rails and the posts). On the ground or on its dwarf
+ * wall, and no taller than a fence (props lane A, E12, 2026-10-14: WORKLIST E12 "railings collidable fence modules"),
+ * it is laid as the props' iron fence modules ('fenceiron', landmarks/pieces.ts landmarkModulesOf) — a hull breaks it
+ * as it breaks any other fence — and the builder finishes with finishLandmark; a gallery's or a deck's stays dressing.
  */
 export function railing(sink: PartSink, a: readonly [number, number], b: readonly [number, number], height: number, colour: Rgb,
-  opts: { pitch?: number; base?: number; plinth?: RegionalBucket | null } = {}): void {
+  opts: { pitch?: number; base?: number; plinth?: RegionalBucket | null; module?: boolean } = {}): void {
   const pitch = opts.pitch ?? 2.4, base = opts.base ?? 0;
   const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz);
   if (len < 0.2) return;
@@ -392,6 +400,15 @@ export function railing(sink: PartSink, a: readonly [number, number], b: readonl
   if (opts.plinth) {
     // a low dwarf wall the railing stands on, footed below the ground (0.32 wide; a hull rolls over it like a kerb)
     sink.member(opts.plinth, [a[0], -0.3, a[1]], [b[0], -0.3, b[1]], 0.32, base + 0.35, [0, 1, 0], { decor: true, exposed: true }, 0);
+  }
+  if (opts.module !== false && base < RAILING_MODULE_BASE_M && height <= RAILING_MODULE_HEIGHT_M && len >= 0.8) {
+    const n = Math.max(1, Math.round(len / RAILING_MODULE_M)), step = len / n, ux = dx / len, uz = dz / len;
+    const yawDeg = Math.atan2(ux, uz) * 180 / Math.PI, scale = Math.min(1.2, Math.max(0.8, step / RAILING_MODULE_M));
+    for (let k = 0; k < n; k++) {
+      const t = step * (k + 0.5);
+      addLandmarkModule(sink, { kind: 'fenceiron', x: a[0] + ux * t, z: a[1] + uz * t, yawDeg, scale, lift: Math.max(0, base) });
+    }
+    return;
   }
   const posts = Math.max(1, Math.round(len / pitch));
   for (let k = 0; k <= posts; k++) {
