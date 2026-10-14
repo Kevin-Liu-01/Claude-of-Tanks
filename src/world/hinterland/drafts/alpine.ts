@@ -21,9 +21,10 @@ const DRAFT: HinterlandConfig = {
   // treeline, and the church village returns under the cirque at edge-n, its tower clear of the woods)
   outland: { woods: 0.34, settle: { villages: 1, hamlets: 3, farms: 3, works: 0,
     // (round 4, the coordinator on edge-n: the ring's church read larger — its border village stood ~300 m from the eye
-    // in front of the cirque's dark rock; Les Tavernettes comes in to 740 m on the flat before the knoll, eighteen
-    // houses, its slim pale tower 42 m, read whole from the edge)
-    villagesAt: [{ azDeg: 2, distM: 740, name: 'Les Tavernettes', towerM: 42, buildings: 18, slim: true }] } },
+    // in front of the cirque's dark rock; Les Tavernettes stands on the knoll's flank ~400 m from the edge-n eye,
+    // eighteen houses, its slim pale tower 46 m seen whole over the rim's swell (6.5°, the ring's church 6.7°) — on the
+    // flat at 740 m the swell 200 m out hid the lower part of it; ../hzwork/sightline.mjs measures it)
+    villagesAt: [{ azDeg: 358, distM: 840, name: 'Les Tavernettes', towerM: 46, buildings: 18, slim: true }] } },
   landforms: [
     // the near walls (the coordinator on the first Glacier frames: "drama at the right distance" — at Mont-Cenis the walls
     // rise some 1,000 m within 2–3 km of the lake; the ring's wall subtended 12–20° from the edge eyes, so the cirque,
