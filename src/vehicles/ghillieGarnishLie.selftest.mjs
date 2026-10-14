@@ -6,7 +6,7 @@
 // For representative field suits (ghillieFleetSuits.ts and the Ukrainian concept hulls), built HIGH, this receipt reads
 // every garnish card (24 vertices, vehicleFoliage.ts FoliageCardBuffer.push) of each owner against its roof and deck
 // nets (the net mesh's leading GHILLIE_TOP_VERTICES) and checks:
-//   1. a roof or deck card (the leading GHILLIE_TOP_CARDS of its mesh) stands no more than 12 cm (and 2 cm of the net's
+//   1. a roof or deck card (the leading GHILLIE_TOP_CARDS of its mesh) stands no more than 8 cm (and 2 cm of the net's
 //      own interpolation) over the roof net under it anywhere along it (the highest roof-net point under each vertex,
 //      within 25 cm under the card's stem: a deck far below a roof's edge is not the net it lies on); where it spills past
 //      the net's edge or over a gap in it, no point of it stands more than 12 cm over its stem;
@@ -26,7 +26,15 @@
 //   6. (netting-proper round 2) no three roof cards fan out of one point: among cards whose stems lie within 3 cm of
 //      each other, no three point more than 40 degrees apart in plan (the Mk 4B carried seven such fans of 3 or 4
 //      boughs and strips, each turned its own way where a clump's bare seat took them all).
+//   (netting-225, 2026-10-14; the critics on the flattened suits: "small bumps still break the eye-level roofline", sheaves
+//   "along the rear bustle edge where they stand against the sky") check 1's 12 cm -> 8 cm, and:
+//   7. past its net's edge a roof card lies over its owner (the owner's own meshes beneath it in plan, within 4 cm and 2 cm
+//      of the receipt's cells): no bough reaches out into the air past the turret's or hull's outline (the KF51's reached
+//      0.5 m off its bustle, its tip 34 cm over the hull's deck; the Type 10's stood 39 cm out from the turret's flank);
+//   8. every point of a drape card lies within 8 cm (and 2 cm) of its owner's drape cloth (the Hetman's turret-cage drapes
+//      stood boughs 10 to 28 cm out from the cloth, sideways at eye level).
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
 installCanvasFixture();
@@ -37,7 +45,7 @@ const IDS = process.env.GARNISH_LIE_DEBUG ? [process.env.GARNISH_LIE_DEBUG] : ['
 // netting-pl (2026-10-13; the owner: "also add a bunch of ghillie on the husarz and zubr polish tanks"): the Polish field
 // suits (nationalPolandProtectionConfig.ts, hung on the slat screens) lay theirs the same way
 if (!process.env.GARNISH_LIE_DEBUG) IDS.push('pl_t80u_modern', 'pl_t72b3_zubr_ii');
-const LIFT_M = 0.12, LIFT_TOL_M = 0.02, OWN_NET_M = 0.25, EDGE_RISE_M = 0.12;
+const LIFT_M = 0.08, LIFT_TOL_M = 0.02, OWN_NET_M = 0.25, EDGE_RISE_M = 0.12, OUTLINE_M = 0.06, DRAPE_OFF_M = 0.08, DRAPE_OFF_TOL_M = 0.02;
 // GARNISH_LIE_DEBUG=<id>: list that hull's tilted roof cards
 const DEBUG_ID = process.env.GARNISH_LIE_DEBUG;
 const TILT_DEG = 25, TILT_SHARE = 0.9, TILT_MAX_DEG = 60, STEEP_SHARE = 0.02, DRAPE_RISE_DEG = 20;
@@ -108,6 +116,67 @@ function planCells(pos, from, to, cells) {
     }
   }
   return cells;
+}
+
+/**
+ * netting-225: an owner's outline in plan (2 cm cells under its own meshes, the suit aside, in the suit mesh's frame) and
+ * whether a point lies within OUTLINE_M of it.
+ */
+function ownerOutline(group, frame) {
+  const C = COVER_CELL_M, cells = new Set(), inv = new THREE.Matrix4().copy(frame.matrixWorld).invert(), m = new THREE.Matrix4();
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  group.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || /_ghillie_/.test(o.name || '') || !o.geometry?.attributes?.position) return;
+    for (let q = o; q && q !== group; q = q.parent) if (q.visible === false) return;
+    m.multiplyMatrices(inv, o.matrixWorld);
+    const pos = o.geometry.attributes.position, idx = o.geometry.index, n = idx ? idx.count : pos.count;
+    for (let k = 0; k + 2 < n; k += 3) {
+      a.fromBufferAttribute(pos, idx ? idx.getX(k) : k).applyMatrix4(m);
+      b.fromBufferAttribute(pos, idx ? idx.getX(k + 1) : k + 1).applyMatrix4(m);
+      c.fromBufferAttribute(pos, idx ? idx.getX(k + 2) : k + 2).applyMatrix4(m);
+      const d = (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z);
+      for (let i = Math.floor(Math.min(a.x, b.x, c.x) / C); i <= Math.floor(Math.max(a.x, b.x, c.x) / C); i++) {
+        for (let j = Math.floor(Math.min(a.z, b.z, c.z) / C); j <= Math.floor(Math.max(a.z, b.z, c.z) / C); j++) {
+          if (Math.abs(d) < 1e-10) { cells.add(i * 100003 + j); continue; }
+          const x = (i + 0.5) * C, z = (j + 0.5) * C;
+          const l1 = ((b.z - c.z) * (x - c.x) + (c.x - b.x) * (z - c.z)) / d, l2 = ((c.z - a.z) * (x - c.x) + (a.x - c.x) * (z - c.z)) / d;
+          if (l1 >= -0.5 && l2 >= -0.5 && l1 + l2 <= 1.5) cells.add(i * 100003 + j);
+        }
+      }
+    }
+  });
+  const R = Math.ceil(OUTLINE_M / C);
+  return (p) => {
+    const i0 = Math.floor(p[0] / C), j0 = Math.floor(p[2] / C);
+    for (let i = i0 - R; i <= i0 + R; i++) for (let j = j0 - R; j <= j0 + R; j++) if (cells.has(i * 100003 + j)) return true;
+    return false;
+  };
+}
+
+/** netting-225: the distance from a point to an owner's drape cloth (its net past the leading `top` roof vertices), to 0.3 m. */
+function drapeDistance(net, top) {
+  const pos = net.geometry.attributes.position, C = 0.1, cells = new Map();
+  for (let t = top - (top % 3); t + 2 < pos.count; t += 3) {
+    const tri = new THREE.Triangle(new THREE.Vector3().fromBufferAttribute(pos, t), new THREE.Vector3().fromBufferAttribute(pos, t + 1),
+      new THREE.Vector3().fromBufferAttribute(pos, t + 2));
+    const box = new THREE.Box3().setFromPoints([tri.a, tri.b, tri.c]);
+    for (let i = Math.floor(box.min.x / C); i <= Math.floor(box.max.x / C); i++) for (let j = Math.floor(box.min.y / C); j <= Math.floor(box.max.y / C); j++)
+      for (let k = Math.floor(box.min.z / C); k <= Math.floor(box.max.z / C); k++) {
+        const key = `${i},${j},${k}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(tri);
+      }
+  }
+  const q = new THREE.Vector3(), c = new THREE.Vector3();
+  return (p) => {
+    q.set(p[0], p[1], p[2]);
+    let best = 0.3;
+    const i0 = Math.floor(p[0] / C), j0 = Math.floor(p[1] / C), k0 = Math.floor(p[2] / C);
+    for (let i = i0 - 3; i <= i0 + 3; i++) for (let j = j0 - 3; j <= j0 + 3; j++) for (let k = k0 - 3; k <= k0 + 3; k++) {
+      for (const tri of cells.get(`${i},${j},${k}`) ?? []) best = Math.min(best, tri.closestPointToPoint(q, c).distanceTo(q));
+    }
+    return best;
+  };
 }
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -198,6 +267,7 @@ for (const id of IDS) {
   const DEBUG = DEBUG_ID === id;
   const steep = [], coverage = [];
   let roofCards = 0, tilted = 0, unseated = 0, drapeCards = 0, worstLift = 0, worstTilt = 0, worstRise = -90, worstReach = 0;
+  let outsideCards = 0, worstOff = 0;
   tank.root.traverse((o) => {
     if (!o.isMesh || !/_ghillie_.*_leaves$/.test(o.name)) return;
     const net = o.parent.children.find((c) => c.isMesh && c.name === o.name.replace(/_leaves$/, '_net'));
@@ -208,6 +278,7 @@ for (const id of IDS) {
     const topCards = (o.userData[GHILLIE_TOP_CARDS] ?? [0, 24])[0];
     const V = (i) => [pos.getX(i), pos.getY(i), pos.getZ(i)];
     const cloth = drapeCloth(net, top);
+    const outline = ownerOutline(o.parent, o), offCloth = drapeDistance(net, top);
     const stems = [];
     for (let k = 0, card = 0; k + 23 < pos.count; k += 24, card++) {
       // the spine (its root and tip rows' middles) and the middle row's edges
@@ -217,6 +288,11 @@ for (const id of IDS) {
         const rise = deg(Math.asin(Math.max(-1, Math.min(1, axis[1]))));
         worstRise = Math.max(worstRise, rise);
         if (rise > DRAPE_RISE_DEG) failures.push(`${o.name} drape card ${card}: its spine rises ${rise.toFixed(0)} deg (from ${s0.map((v) => v.toFixed(2))})`);
+        // 8. it hugs its cloth
+        let off = 0;
+        for (const i of [0, 1, 7, 12, 13, 19, 17, 14, 20]) off = Math.max(off, offCloth(V(k + i)));
+        worstOff = Math.max(worstOff, off);
+        if (off > DRAPE_OFF_M + DRAPE_OFF_TOL_M) failures.push(`${o.name} drape card ${card}: stands ${(off * 100).toFixed(0)} cm off its cloth (from ${s0.map((v) => v.toFixed(2))})`);
         // 5. tucked where its drape lies level (a roll over a roof's edge, a net over a cage's top) and laid within 30
         // degrees of level (a bough hanging over the roll's edge down the drape is the drape's), its face lies over the
         // cloth in plan, within DRAPE_PLAN_REACH_M of it (a fan standing straight out of a level roll reached half a
@@ -233,11 +309,17 @@ for (const id of IDS) {
       assert.ok(top > 0, `${net.name}: marks its roof and deck carriers`);
       stems.push([s0, Math.atan2(s2[0] - s0[0], s2[2] - s0[2])]);
       const face = norm(cross(axis, norm(sub(V(k + 19), V(k + 12)))));
-      let lift = -Infinity, edge = -Infinity;
+      let lift = -Infinity, edge = -Infinity, outside = false;
       for (let v = k; v < k + 24; v++) {
         const p = V(v), u = under(p[0], p[1], p[2]);
-        if (u !== null && s0[1] - u < OWN_NET_M) lift = Math.max(lift, p[1] - u); else edge = Math.max(edge, p[1] - s0[1]);
+        if (u !== null && s0[1] - u < OWN_NET_M) lift = Math.max(lift, p[1] - u);
+        else {
+          edge = Math.max(edge, p[1] - s0[1]);
+          // 7. past its net, over its owner
+          if (!outline(p)) outside = true;
+        }
       }
+      if (outside) { outsideCards++; failures.push(`${o.name} roof card ${card}: reaches past its owner's outline (from ${s0.map((v) => v.toFixed(2))})`); }
       if (lift > LIFT_M + LIFT_TOL_M) {
         failures.push(`${o.name} roof card ${card}: stands ${(lift * 100).toFixed(1)} cm over its net (from ${s0.map((v) => v.toFixed(2))})`);
       }
@@ -297,7 +379,7 @@ for (const id of IDS) {
   // a card where two nets meet (or at a net drawn steeply up over a fitting) reads steep: two in a hundred may
   if (steep.length > Math.max(1, Math.floor(STEEP_SHARE * roofCards))) failures.push(...steep);
   if (tilted > (1 - TILT_SHARE) * roofCards) failures.push(`${id}: ${tilted} of ${roofCards} roof cards stand more than ${TILT_DEG} deg off the net`);
-  summary.push(`${id} ${roofCards}/${drapeCards} cards, lift <= ${(worstLift * 100).toFixed(1)} cm, ${tilted} tilted > ${TILT_DEG} deg (worst ${worstTilt.toFixed(0)}, ${steep.length} over ${TILT_MAX_DEG}), drape rise <= ${worstRise.toFixed(0)} deg, drape reach <= ${(worstReach * 100).toFixed(0)} cm, ${unseated} untied${coverage.length ? `, ${coverage.join(', ')}` : ''}`);
+  summary.push(`${id} ${roofCards}/${drapeCards} cards, lift <= ${(worstLift * 100).toFixed(1)} cm, ${tilted} tilted > ${TILT_DEG} deg (worst ${worstTilt.toFixed(0)}, ${steep.length} over ${TILT_MAX_DEG}), drape rise <= ${worstRise.toFixed(0)} deg, drape reach <= ${(worstReach * 100).toFixed(0)} cm, drape off cloth <= ${(worstOff * 100).toFixed(0)} cm, ${outsideCards} past the outline, ${unseated} untied${coverage.length ? `, ${coverage.join(', ')}` : ''}`);
   tank.dispose?.();
 }
 assert.deepEqual(failures, [], `field garnish lies on its net:\n${failures.slice(0, 40).join('\n')}`);
