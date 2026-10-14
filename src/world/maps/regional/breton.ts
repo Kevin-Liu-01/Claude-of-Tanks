@@ -630,8 +630,10 @@ const netYard: RegionalBuilder = (ctx) => {
   // the lobster pots of willow stacked by the loft's door, two buoys
   const willow = rgb(0x8a7550);
   for (let k = 0; k < 6; k++) {
-    const px = bb.minX + 0.5 + (k % 3) * 0.75, pz = bb.minZ + LD + 0.9 + Math.floor(k / 3) * 0.02, py = Math.floor(k / 3) * 0.48;
-    sink.cylinder('structureWood', [px, py, pz - 0.3], 'z', 0.6, 0.3, 8, { colour: shade(willow, 0.9 + rng() * 0.2) }, 0.3, true, 0, Math.PI);
+    // (each pot a dome of willow over its flat base, the second row's bases on the first row's crowns: the half drum was
+    // stood on its side, its open face a hole from the yard)
+    const px = bb.minX + 0.5 + (k % 3) * 0.75, pz = bb.minZ + LD + 0.9 + Math.floor(k / 3) * 0.02, py = Math.floor(k / 3) * 0.3;
+    sink.cylinder('structureWood', [px, py, pz - 0.3], 'z', 0.6, 0.3, 8, { colour: shade(willow, 0.9 + rng() * 0.2) }, 0.3, true, -Math.PI / 2, Math.PI);
     sink.span('structureWood', px - 0.3, py, pz - 0.3, px + 0.3, py + 0.04, pz + 0.3, { colour: shade(willow, 0.8), decor: true });
   }
   for (const [bx, bz, col] of [[bb.maxX - 1.0, bb.maxZ - 0.8, rgb(0xb8452e)], [bb.maxX - 1.6, bb.maxZ - 0.6, rgb(0xd8c8a0)]] as const) {

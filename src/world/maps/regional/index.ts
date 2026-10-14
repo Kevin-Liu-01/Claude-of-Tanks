@@ -12,7 +12,7 @@
 // regenerates its collision shard (tools/capture-world-collision-manifests.mjs --node --maps <id>).
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
-import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
+import { dropSliverTriangles, hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
 import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { registerHouseDamageKits } from './damage.ts';
@@ -171,7 +171,9 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
   const [built, houses] = withHousePlans(() => withWear(wear, () => builder(ctx)));
-  const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy });
+  // (the looks lane, 2026-10-14, the 225 integrity ledger: a war-worn window's thin strips and the damp band's cut at a
+  // sill that lies a float's breadth under it leave zero-area and sliver triangles; they cover nothing, so they go)
+  const parts = dropSliverTriangles(weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy }));
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was

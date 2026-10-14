@@ -53,11 +53,13 @@ function gunLoop(sink: PartSink, face: Face, u: number, y: number, h: number): v
   faceBox(sink, 'dark', face, u, y + 0.1, 0.045, 0.2, 0.2, 0.01, DECOR);
 }
 
-/** The putlog holes the scaffold left: small dark squares in rows up a face. */
-function putlogs(sink: PartSink, face: Face, y0: number, y1: number, rows: number, rng: () => number): void {
-  const half = face.width / 2 - 0.45;
+/**
+ * The putlog holes the scaffold left: small dark squares in rows up a face, each row on the face of the storey it
+ * stands in (a storey set back from the one under it: the 225 integrity ledger found a row floating off the shaft).
+ */
+function putlogs(sink: PartSink, faceAt: (y: number) => Face, y0: number, y1: number, rows: number, rng: () => number): void {
   for (let r = 0; r < rows; r++) {
-    const y = y0 + (r + 0.5) * (y1 - y0) / rows;
+    const y = y0 + (r + 0.5) * (y1 - y0) / rows, face = faceAt(y), half = face.width / 2 - 0.45;
     for (let u = -half; u <= half + 1e-6; u += Math.max(0.9, (2 * half) / 3)) {
       if (rng() < 0.25) continue;
       faceBox(sink, 'dark', face, u + (rng() - 0.5) * 0.12, y, 0.004, 0.13, 0.13, 0.01, DECOR);
@@ -115,7 +117,8 @@ const mauerturm: RegionalBuilder = (ctx) => {
   for (const [face, i, u, y] of loops) gunLoop(sink, storeyFaces(frame, i)[face], u, frame.floors[i] + y, 0.95);
   const b0 = frame.bodies[0], stoneTop = frame.floors[hoarding ? 2 : 3] ?? frame.eaveY;
   quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.75, stoneTop - 0.05);
-  for (const face of ['front', 'right', 'back', 'left'] as const) putlogs(sink, storeyFaces(frame, 0)[face], 1.6, stoneTop - 0.3, 3, rng);
+  const storeyAt = (y: number): number => { let i = 0; while (i + 1 < frame.floors.length && frame.floors[i + 1] <= y) i++; return i; };
+  for (const face of ['front', 'right', 'back', 'left'] as const) putlogs(sink, (y) => storeyFaces(frame, storeyAt(y))[face], 1.6, stoneTop - 0.3, 3, rng);
   // the string course where the hoarding sails out
   if (hoarding) {
     for (const face of ['front', 'right', 'back', 'left'] as const) {

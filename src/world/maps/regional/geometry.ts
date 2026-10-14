@@ -36,6 +36,39 @@ export const BUCKET_UV_DENSITY: Readonly<Record<RegionalBucket, number>> = Objec
 });
 
 export type RegionalParts = Record<RegionalBucket, THREE.BufferGeometry[]>;
+/**
+ * Drops the zero-area and sliver triangles (longer than 0.5 m with an altitude under 1/1000 of their length: the rule of
+ * tools/building-integrity-core.mjs) a wall's cutting leaves where two openings' edges meet. They cover nothing, so the
+ * build looks the same; the integrity ledger reads none (the looks lane, 2026-10-14: the works' 4 slivers).
+ */
+export function dropSliverTriangles(parts: RegionalParts): RegionalParts {
+  for (const list of Object.values(parts)) {
+    for (const g of list) {
+      if (g.index) continue;
+      const pos = g.getAttribute('position');
+      const keep: number[] = [];
+      for (let t = 0; t + 2 < pos.count; t += 3) {
+        const ax = pos.getX(t), ay = pos.getY(t), az = pos.getZ(t);
+        const bx = pos.getX(t + 1) - ax, by = pos.getY(t + 1) - ay, bz = pos.getZ(t + 1) - az;
+        const cx = pos.getX(t + 2) - ax, cy = pos.getY(t + 2) - ay, cz = pos.getZ(t + 2) - az;
+        const L = Math.max(Math.hypot(bx, by, bz), Math.hypot(cx, cy, cz), Math.hypot(cx - bx, cy - by, cz - bz));
+        const area = Math.hypot(by * cz - bz * cy, bz * cx - bx * cz, bx * cy - by * cx) / 2;
+        const bad = L >= 1e-3 && (area < 1e-7 || (L > 0.5 && (2 * area) / L < L / 1000));
+        if (!bad) keep.push(t);
+      }
+      if (keep.length * 3 === pos.count) continue;
+      for (const [name, attr] of Object.entries(g.attributes)) {
+        const a = attr as THREE.BufferAttribute, size = a.itemSize, src = a.array as ArrayLike<number> & { constructor: new (n: number) => ArrayLike<number> };
+        const out = new (src.constructor as new (n: number) => Float32Array)(keep.length * 3 * size);
+        let o = 0;
+        for (const t of keep) for (let v = 0; v < 3; v++) for (let c = 0; c < size; c++) out[o++] = src[(t + v) * size + c];
+        g.setAttribute(name, new THREE.BufferAttribute(out, size, a.normalized));
+      }
+    }
+  }
+  return parts;
+}
+
 export function newRegionalParts(): RegionalParts {
   return Object.fromEntries(REGIONAL_BUCKETS.map((name) => [name, []])) as unknown as RegionalParts;
 }
