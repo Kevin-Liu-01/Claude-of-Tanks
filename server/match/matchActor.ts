@@ -14,6 +14,7 @@ import type { DestructionLogEntry } from '../../src/sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
+import { createSpawnTerrainWarm } from './spawnTerrainWarm.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
@@ -804,8 +805,23 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     try { onVerdict?.(verdict); } catch (error) { actorLog.error('verdict callback failed', { error: String(error) }); }
   }
 
+  // The perf stream (2026-10-13): the countdown's idle ticks warm the terrain the first minute will read, a slice a tick
+  // (spawnTerrainWarm.ts); the grids hold the same values whenever they are filled, so the warm changes no result.
+  let terrainWarm: Iterator<number> | null = countdownS > 0 ? createSpawnTerrainWarm(authority.heightField, authority.entities) : null;
+  const TERRAIN_WARM_SLICE_MS = 4;
+
   function onTick(tick: number, dt: number): void {
     if (stopped) return;
+    if (terrainWarm) {
+      if (authority.phase !== 'countdown') terrainWarm = null;
+      else {
+        const sliceStart = now();
+        // a bounded count as well as the clock: a frozen test clock still ends the slice
+        for (let unit = 0; unit < 6 && now() - sliceStart < TERRAIN_WARM_SLICE_MS; unit++) {
+          if (terrainWarm.next().done) { terrainWarm = null; break; }
+        }
+      }
+    }
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.

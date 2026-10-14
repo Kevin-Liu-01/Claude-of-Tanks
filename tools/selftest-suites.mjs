@@ -1079,6 +1079,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/spawnTerrainWarm.selftest.mjs', // the perf stream (2026-10-13): the countdown warms the spawns' terrain grids
     'server/match/interestTiers.selftest.mjs',
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
