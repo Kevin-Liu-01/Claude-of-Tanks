@@ -1304,6 +1304,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
     'tools/map-layout-metrics.selftest.mjs',
+    // the horizons stream (2026-10-13, HB-1a): the horizon envelope reproduces H1's ring skylines (Verdant 1.72°, Titan 12.25°, Polders 0.71°)
+    'tools/horizon-envelope.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
