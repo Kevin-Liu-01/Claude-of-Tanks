@@ -1284,6 +1284,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',
+    // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
+    // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
+    'src/vehicles/ghillieGarnishLie.selftest.mjs',
     // 2026-10-11 (netting lane): the runtime keeps camouflage out of hits, scars, contact and LOD, as the receipts do
     'src/vehicles/camouflageRuntime.selftest.mjs',
     'src/vehicles/accessoryMaterials.selftest.mjs',
