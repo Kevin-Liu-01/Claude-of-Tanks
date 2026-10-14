@@ -991,6 +991,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/match/snapshotRate.selftest.mjs',

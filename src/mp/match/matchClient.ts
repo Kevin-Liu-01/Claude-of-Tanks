@@ -934,7 +934,11 @@ export class MatchClient {
     const serverNow = this.serverClock.serverNow(nowMs);
     const oneWayMs = (this.serverClock.rttMs ?? 0) / 2;
     const targetTick = this.tickClock.tickAt(serverNow + oneWayMs) + this.inputStream.lead;
+    const skippedFrom = this.inputStream.pendingTick;
     const due = this.inputStream.dueTicks(targetTick, MAX_TICKS_PER_FRAME, CATCH_UP_LIMIT_TICKS);
+    // a stall: the sampler jumped over ticks the authority will hold and then release; the prediction steps them the same way
+    const skipped = this.inputStream.pendingTick - skippedFrom;
+    if (skipped > 0) this.predictor?.skipTicks(skippedFrom, skipped);
     for (let index = 0; index < due; index++) {
       const tick = this.inputStream.pendingTick;
       const sample = this.controls?.(tick) ?? NEUTRAL_CONTROL;

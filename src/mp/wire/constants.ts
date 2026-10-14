@@ -147,6 +147,13 @@ export const ENTITY_FLAGS = Object.freeze({
 } as const);
 export const ENTITY_FLAG_BITS = 9;
 
+/**
+ * The authority holds a seat's last control this many ticks past its last fresh one, then releases drive and fire
+ * (keeping aim and ammunition): v1's 500 ms (server/match/inputBuffer.ts). The seat's prediction replays a gap in its
+ * own controls on the same rule (prediction.ts), so a stall longer than the hold does not snap the hull back.
+ */
+export const HELD_INPUT_LEASE_TICKS = 30;
+
 /** Per-tick control flags. */
 export const CONTROL_FLAGS = Object.freeze({
   FIRE_HELD: 1 << 0,
