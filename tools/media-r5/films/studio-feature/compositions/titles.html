@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.ttl{pointer-events:none}
+.ttl .inner{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end}
+.ttl-section .inner,.ttl-stat .inner,.ttl-line .inner,.ttl-tank .inner{padding:0 0 64px 96px}
+.ttl-section.right .inner{align-items:flex-end;padding-right:96px}
+.ttl-section .word{display:flex;overflow:hidden;font-weight:700;font-size:208px;line-height:.9;letter-spacing:-.02em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.45)}
+.ttl-section .lt,.ttl-tank .lt{display:block}
+.ttl-stat .num{font-weight:700;font-size:184px;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;display:flex;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-stat .lab{font-weight:700;font-size:72px;letter-spacing:.1em;text-transform:uppercase;margin-top:6px;text-shadow:0 4px 30px rgba(7,9,12,.5)}
+.ttl-line.center .inner{align-items:center;justify-content:center;padding:0}
+.ttl-line .ln{font-weight:700;font-size:88px;letter-spacing:.03em;text-transform:uppercase;line-height:1.02;max-width:1728px;text-wrap:balance;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-line.center .ln{text-align:center}
+.ttl-logo .dim{position:absolute;inset:0;background:#07090c}
+.ttl-logo .lockup{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:40px}
+.ttl-logo .mk{width:200px;height:200px}
+.ttl-logo .wm{display:flex;flex-direction:column;gap:8px}
+.ttl-logo .wm span{display:inline-block}
+.ttl-logo .a{font-weight:700;font-size:156px;line-height:.9;letter-spacing:.02em}
+.ttl-logo .b{font-weight:500;font-size:64px;line-height:1;letter-spacing:.34em;color:#ffd27a}
+.ttl-tank .word{display:flex;overflow:hidden;font-weight:700;font-size:152px;line-height:.92;letter-spacing:-.01em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+</style>
+<div id="root" data-composition-id="titles" data-width="1920" data-height="1080" data-duration="30">
+<div id="t0" class="clip ttl ttl-line left" data-start="0.313" data-duration="4.063"><div class="inner"><div class="ln">Scene Studio</div></div></div>
+<div id="t1" class="clip ttl ttl-line left" data-start="5.156" data-duration="2.25"><div class="inner"><div class="ln">Stage any of 217 tanks</div></div></div>
+<div id="t2" class="clip ttl ttl-line left" data-start="7.813" data-duration="4.375"><div class="inner"><div class="ln">Any hour of the day</div></div></div>
+<div id="t3" class="clip ttl ttl-line left" data-start="12.813" data-duration="4.375"><div class="inner"><div class="ln">Grade it like film</div></div></div>
+<div id="t4" class="clip ttl ttl-line left" data-start="17.656" data-duration="2.25"><div class="inner"><div class="ln">Track. Pan. Crane. Orbit.</div></div></div>
+<div id="t5" class="clip ttl ttl-line left" data-start="22.656" data-duration="2.25"><div class="inner"><div class="ln">Real motion blur</div></div></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#t0 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 0.313);
+tl.fromTo('#t0 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 4.055);
+tl.fromTo('#t1 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 5.156);
+tl.fromTo('#t1 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 7.086);
+tl.fromTo('#t2 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 7.813);
+tl.fromTo('#t2 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 11.868);
+tl.fromTo('#t3 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 12.813);
+tl.fromTo('#t3 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 16.868);
+tl.fromTo('#t4 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 17.656);
+tl.fromTo('#t4 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 19.586);
+tl.fromTo('#t5 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 22.656);
+tl.fromTo('#t5 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 24.586);
+window.__timelines["titles"] = tl;
+</script>
+</template>
+</body></html>

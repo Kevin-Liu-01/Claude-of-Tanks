@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+.ttl{pointer-events:none}
+.ttl .inner{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end}
+.ttl-section .inner,.ttl-stat .inner,.ttl-line .inner,.ttl-tank .inner{padding:0 0 405px 192px}
+.ttl-section.right .inner{align-items:flex-end;padding-right:192px}
+.ttl-section .word{display:flex;overflow:hidden;font-weight:700;font-size:416px;line-height:.9;letter-spacing:-.02em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.45)}
+.ttl-section .lt,.ttl-tank .lt{display:block}
+.ttl-stat .num{font-weight:700;font-size:368px;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;display:flex;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-stat .lab{font-weight:700;font-size:144px;letter-spacing:.1em;text-transform:uppercase;margin-top:12px;text-shadow:0 4px 30px rgba(7,9,12,.5)}
+.ttl-line.center .inner{align-items:center;justify-content:center;padding:0}
+.ttl-line .ln{font-weight:700;font-size:176px;letter-spacing:.03em;text-transform:uppercase;line-height:1.02;max-width:3456px;text-wrap:balance;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+.ttl-line.center .ln{text-align:center}
+.ttl-logo .dim{position:absolute;inset:0;background:#07090c}
+.ttl-logo .lockup{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:80px}
+.ttl-logo .mk{width:400px;height:400px}
+.ttl-logo .wm{display:flex;flex-direction:column;gap:16px}
+.ttl-logo .wm span{display:inline-block}
+.ttl-logo .a{font-weight:700;font-size:312px;line-height:.9;letter-spacing:.02em}
+.ttl-logo .b{font-weight:500;font-size:128px;line-height:1;letter-spacing:.34em;color:#ffd27a}
+.ttl-tank .word{display:flex;overflow:hidden;font-weight:700;font-size:304px;line-height:.92;letter-spacing:-.01em;color:#e8edf2;text-shadow:0 6px 40px rgba(7,9,12,.5)}
+</style>
+<div id="root" data-composition-id="titles" data-width="3840" data-height="2160" data-duration="30">
+<div id="t0" class="clip ttl ttl-logo" data-start="2.5" data-duration="2.4"><div class="dim"></div><div class="lockup"><img class="mk" src="assets/brand/logo-mark-metal.svg" alt=""><div class="wm"><div class="a"><span class="l">C</span><span class="l">L</span><span class="l">A</span><span class="l">U</span><span class="l">D</span><span class="l">E</span></div><div class="b"><span class="l">O</span><span class="l">F</span><span class="l">&nbsp;</span><span class="l">T</span><span class="l">A</span><span class="l">N</span><span class="l">K</span><span class="l">S</span></div></div></div></div>
+<div id="t1" class="clip ttl ttl-section left" data-start="5.313" data-duration="2.188"><div class="inner"><div class="word"><span class="lt">M</span><span class="lt">O</span><span class="lt">R</span><span class="lt">N</span><span class="lt">I</span><span class="lt">N</span><span class="lt">G</span></div></div></div>
+<div id="t2" class="clip ttl ttl-stat left" data-start="10.313" data-duration="2.188"><div class="inner"><div class="num">000</div><div class="lab">Tanks</div></div></div>
+<div id="t3" class="clip ttl ttl-line left" data-start="15.313" data-duration="2.188"><div class="inner"><div class="ln">Physical ballistics. Real armor.</div></div></div>
+<div id="t4" class="clip ttl ttl-stat left" data-start="20.313" data-duration="2.188"><div class="inner"><div class="num">00</div><div class="lab">Battlefields</div></div></div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#t0 .dim', {opacity:0}, {opacity:0.62, duration:0.12, ease:'none'}, 2.5);
+tl.fromTo('#t0 .mk', {scale:1.35, opacity:0}, {scale:1, opacity:1, duration:0.22, ease:'expo.out'}, 2.5);
+tl.fromTo('#t0 .a span', {opacity:0, y:80}, {opacity:1, y:0, duration:0.4, ease:'expo.out', stagger:0.03}, 2.55);
+tl.fromTo('#t0 .b span', {opacity:0, y:-48}, {opacity:1, y:0, duration:0.4, ease:'expo.out', stagger:0.03}, 2.62);
+tl.fromTo('#t0 .lockup', {scale:1.0}, {scale:1.04, duration:2.4, ease:'none'}, 2.5);
+tl.to('#t0 .lockup, #t0 .dim', {opacity:0, duration:0.3, ease:'power2.in'}, 4.6);
+tl.fromTo('#t1 .lt', {yPercent:110}, {yPercent:0, duration:0.55, ease:'expo.out', stagger:0.045}, 5.353);
+tl.fromTo('#t1 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.3, ease:'power3.in'}, 7.18);
+tl.to({ v: 0 }, { v: 220, duration: 0.9, ease: 'power4.out', onUpdate() { document.querySelector('#t2 .num').textContent = String(Math.round(this.targets()[0].v)).padStart(3, '0'); } }, 10.313);
+tl.fromTo('#t2 .num', {opacity:0}, {opacity:1, duration:0.12, ease:'none'}, 10.313);
+tl.fromTo('#t2 .lab', {opacity:0, x:-20}, {opacity:1, x:0, duration:0.35, ease:'power3.out'}, 10.563);
+tl.fromTo('#t2 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.28, ease:'power3.in'}, 12.18);
+tl.fromTo('#t3 .ln', {opacity:0, scale:1.07, color:'#ffffff'}, {opacity:1, scale:1, color:'#e8edf2', duration:0.16, ease:'expo.out'}, 15.313);
+tl.fromTo('#t3 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.26, ease:'power3.in'}, 17.18);
+tl.to({ v: 0 }, { v: 33, duration: 0.9, ease: 'power4.out', onUpdate() { document.querySelector('#t4 .num').textContent = String(Math.round(this.targets()[0].v)).padStart(2, '0'); } }, 20.313);
+tl.fromTo('#t4 .num', {opacity:0}, {opacity:1, duration:0.12, ease:'none'}, 20.313);
+tl.fromTo('#t4 .lab', {opacity:0, x:-20}, {opacity:1, x:0, duration:0.35, ease:'power3.out'}, 20.563);
+tl.fromTo('#t4 .inner', {clipPath:'inset(0 0 0 0%)'}, {clipPath:'inset(0 0 0 100%)', duration:0.28, ease:'power3.in'}, 22.18);
+window.__timelines["titles"] = tl;
+</script>
+</template>
+</body></html>

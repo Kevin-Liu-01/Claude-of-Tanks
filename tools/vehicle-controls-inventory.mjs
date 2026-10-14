@@ -46,6 +46,13 @@ for(const id of ALL_TANK_IDS){
    guns.push({collisionParts,name:o.name,owner,position:round(new THREE.Vector3().setFromMatrixPosition(m).toArray()),caliberMm:o.userData.caliberMm||12.7,muzzle:o.userData.auxiliaryMuzzle??[0,o.userData.barrelAxisLocalY,o.userData.muzzleLocalZ],pivot:o.userData.auxiliaryPivot,scale:new THREE.Vector3().setFromMatrixScale(m).toArray(),rotation:new THREE.Quaternion().setFromRotationMatrix(m.clone().extractRotation(m)).toArray()});
   }
  });
+ // The working roof gun is a vehicle's heaviest station. The sim, the presentation, combat anatomy, bots and the HUD
+ // drive only guns[0], which was the first station in scene-graph order, so build order alone picked it. On the
+ // M551A1 TTS (the only vehicle with two stations) the 12.7 mm roof M2 was built first and fired, while the 30 mm never
+ // aimed or fired. 2026-10-12 owner order: "make the big roof autocannon on the m551 tts the autocannon, not the tiny
+ // machine gun in front of the cupola". The sort is stable, so equal calibres keep build order and every one-station
+ // vehicle is unchanged.
+ guns.sort((a,b)=>b.caliberMm-a.caliberMm);
  if(FUNCTIONAL_SMOKE_PIN[id]!==undefined){
   if(smoke.length<FUNCTIONAL_SMOKE_PIN[id])throw new Error(`${id}: ${smoke.length} smoke sockets, below its functional pin ${FUNCTIONAL_SMOKE_PIN[id]}`);
   smoke.length=FUNCTIONAL_SMOKE_PIN[id];

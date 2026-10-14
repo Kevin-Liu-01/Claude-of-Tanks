@@ -13,7 +13,7 @@ import type {
 type WarmYield = (force?: boolean) => Promise<void>;
 
 type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>
-  & Partial<Pick<ThreeWebGLProgram, 'getAttributes' | 'id'>>;
+  & Partial<Pick<ThreeWebGLProgram, 'getAttributes' | 'id' | 'name' | 'cacheKey'>>;
 
 interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
@@ -53,7 +53,7 @@ function firstPendingProgram(
     if (!capturedProgramIsLive(context.renderer, entry) || reuseReflectedProgram(context, entry)) continue;
     const queryAt = timing ? diagnosticNow(now) : NaN;
     let pending = false;
-    try { pending = gl.getProgramParameter(entry.handle, completionToken) === false; }
+    try { pending = gl.getProgramParameter(entry.handle, completionToken) === false; entry.lastLinked = !pending; }
     finally {
       if (timing) {
         const elapsed = diagnosticNow(now) - queryAt;
@@ -123,6 +123,8 @@ export interface ForwardProgramCompileTiming {
   uniformYields?: number;
   /** Still-live captured programs not successfully reflected, including failed calls. */
   uniformPending?: number;
+  /** A strict preparation that ended incomplete: its pending programs, named (at most 64; PendingProgramNote). */
+  pendingPrograms?: PendingProgramNote[];
 }
 
 export interface ForwardProgramWarmOwner {
@@ -138,6 +140,21 @@ export interface ForwardProgramWarmOwner {
     signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
   invalidate(): void;
 }
+
+/**
+ * One program a strict preparation left pending (2026-10-13, the MP stream): its material name, Three's program cache
+ * key, and the newest link-completion answer the preparation read for it (null when it never queried one: no
+ * KHR_parallel_shader_compile, or the budget ended first). Diagnostics only, in the timing's `pendingPrograms` when a
+ * strict preparation ends incomplete: the MP entry logs them at deferral to name the programs that never link
+ * (production rejoins ended "deferred, pending 36" in every window).
+ */
+export interface PendingProgramNote {
+  name: string;
+  cacheKey: string;
+  linked: boolean | null;
+}
+/** At most this many notes ride one result (the 2026-10 rejoins left 36). */
+const PENDING_PROGRAM_NOTES = 64;
 
 export type ProgramPreparationResult =
   | { status: 'complete'; pending: 0 }
@@ -168,6 +185,8 @@ interface CapturedProgram {
   initialized: boolean;
   failed: boolean;
   failureReason?: 'query' | 'reflection';
+  /** The newest link-completion answer this preparation read (diagnostics: PendingProgramNote.linked). */
+  lastLinked?: boolean;
 }
 
 type ProgramBatchCheckpoint = () => Generator<void, boolean, void>;
@@ -266,7 +285,7 @@ function diagnosticNow(now: () => number): number {
 
 function recordCompileTiming(
   timing: ForwardProgramCompileTiming | undefined,
-  field: keyof ForwardProgramCompileTiming,
+  field: Exclude<keyof ForwardProgramCompileTiming, 'pendingPrograms'>,
   value: number,
   mode: 'add' | 'max' | 'set' = 'add',
 ): void {
@@ -582,7 +601,7 @@ function queryCapturedProgram(
   extension: ParallelShaderCompileExtension,
 ): boolean {
   const startedAt = diagnosticNow(now);
-  try { return gl.getProgramParameter(entry.handle, extension.COMPLETION_STATUS_KHR) === true; }
+  try { return (entry.lastLinked = gl.getProgramParameter(entry.handle, extension.COMPLETION_STATUS_KHR) === true); }
   finally {
     const elapsed = diagnosticNow(now) - startedAt;
     recordCompileTiming(timing, 'queryMs', elapsed);
@@ -767,6 +786,15 @@ function materialPreparationResult(
   return incompletePreparation(pending.find((entry) => entry.failureReason)?.failureReason ?? 'budget', pending.length);
 }
 
+/** The pending programs, named (PendingProgramNote) from what the preparation already read: no further native query. */
+function pendingProgramNotes(pending: readonly CapturedProgram[]): PendingProgramNote[] {
+  return pending.slice(0, PENDING_PROGRAM_NOTES).map((entry) => ({
+    name: typeof entry.wrapper.name === 'string' && entry.wrapper.name ? entry.wrapper.name : 'program',
+    cacheKey: typeof entry.wrapper.cacheKey === 'string' ? entry.wrapper.cacheKey : '',
+    linked: typeof entry.lastLinked === 'boolean' ? entry.lastLinked : null,
+  }));
+}
+
 /** Budget native queries and reflection together; indivisible native calls can exceed one slice. */
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
@@ -799,10 +827,14 @@ function acquirePreparationExtension(context: FirstUseWarmContext): void {
 }
 
 function recordUnfinishedPreparation(context: FirstUseWarmContext, cohort: MaterialProgramCohort): void {
-  const pending = context.valid() ? [...cohort.values()]
-    .filter((entry) => !entry.initialized && capturedProgramIsLive(context.renderer, entry)).length : 0;
-  if (pending) recordCompileTiming(context.timing, 'uniformPending', pending, 'set');
-  else {
+  const entries = context.valid() ? [...cohort.values()]
+    .filter((entry) => !entry.initialized && capturedProgramIsLive(context.renderer, entry)) : [];
+  const pending = entries.length;
+  if (pending) {
+    recordCompileTiming(context.timing, 'uniformPending', pending, 'set');
+    try { if (context.timing) context.timing.pendingPrograms = pendingProgramNotes(entries); }
+    catch { /* Frozen optional diagnostics never control strict completion. */ }
+  } else {
     // Unsubmitted or invalidated work has no complete-scene pending count.
     // Do not leave a prior drained batch's zero as a misleading final receipt.
     try { if (context.timing) delete context.timing.uniformPending; }

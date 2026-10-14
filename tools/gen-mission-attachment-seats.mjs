@@ -3,6 +3,7 @@ import path from 'node:path';
 import {Matrix4,Quaternion,Vector3} from 'three';
 import {createTank} from '../src/vehicles/tankFactory.ts';
 import {TANK_SPECS} from '../src/vehicles/specs.ts';
+import {TANK_IDS} from '../src/vehicles/tankIdAliases.ts';
 import {ensureInteriorFills} from '../src/vehicles/interiorFills.ts';
 import {MISSION_ATTACHMENT_SEATS} from '../src/sim/missionAttachmentSeats.generated.ts';
 import {MISSION_DOCK_SEATS_PATH,missionDockSeatsSource} from './mission-dock-seats.mjs';
@@ -29,7 +30,11 @@ const hintRises=new Map(hintRows.filter(r=>r.riseM!==undefined).map(r=>{
  return [r.id,r.riseM];
 }));
 const stockPool=new Map();
-const records={...MISSION_ATTACHMENT_SEATS},report={schemaVersion:1,seeds,qualities,mode:check?'check':dryRun?'dry-run':'update',rows:[]};
+// A row under an id the tank id alias layer renamed moves to the new id unchanged; a row no spec carries is dropped
+// (SSOT 2.19).
+const records=Object.fromEntries(Object.entries(MISSION_ATTACHMENT_SEATS)
+  .map(([id,record])=>[Object.hasOwn(TANK_SPECS,id)?id:TANK_IDS.resolveIncoming(id),record])
+  .filter(([id])=>Object.hasOwn(TANK_SPECS,id))),report={schemaVersion:1,seeds,qualities,mode:check?'check':dryRun?'dry-run':'update',rows:[]};
 function ensureCase(cases,id,quality,seed){
  const key=quality+':'+seed;
  if(!cases.has(key)){

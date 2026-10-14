@@ -1,0 +1,38 @@
+[
+ {
+  "id": "column-under-fire",
+  "fmt": "square",
+  "treatment": "cinema",
+  "at": 0.5
+ },
+ {
+  "id": "snow-push",
+  "fmt": "square",
+  "treatment": "keyart",
+  "at": 1.5
+ },
+ {
+  "id": "street-duel-night",
+  "fmt": "square",
+  "treatment": "cinema",
+  "at": 2.5
+ },
+ {
+  "id": "container-rows",
+  "fmt": "square",
+  "treatment": "cinema",
+  "at": 3.5
+ },
+ {
+  "id": "farm-charge",
+  "fmt": "square",
+  "treatment": "keyart",
+  "at": 4.5
+ },
+ {
+  "id": "gantry-advance",
+  "fmt": "square",
+  "treatment": "cinema",
+  "at": 5.5
+ }
+]

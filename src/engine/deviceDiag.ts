@@ -26,6 +26,7 @@
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
 
 interface DeviceDiagResult {
@@ -68,6 +69,10 @@ interface SceneBandTiming {
   restoreMs?: number;
   programsBeforeRender?: number;
   programsAfterRender?: number;
+  /** Programs still linking when the probe began, the wait for them between tasks, and those still linking after it. */
+  linkPending?: number;
+  linkWaitMs?: number;
+  linkLeft?: number;
   error?: string;
 }
 
@@ -468,6 +473,23 @@ function timedSceneProbeStep<T>(
  * brighten a failed lit pipeline into a pass. No shader defines/light counts
  * change, and no temporary radiance is retained across an async checkpoint.
  */
+/**
+ * 2026-10-12 (the perf stream, black screen on entry): a probe draw sees the frame the scene pass draws — the camera's
+ * layers without the late-FX layer (sceneSourcePass.ts), as the forward program warm compiles them (main.ts, "do not
+ * compile late FX under ordinary scene lights"). The probe used to render with the camera's full mask, so the late-FX
+ * layer's effects and lights joined the ordinary scene: every one of those materials, and every lit material under the
+ * extra lights, linked a program variant no battle frame uses (36 on the MP lane's traced entry, 199 -> 235 programs,
+ * one synchronous 21.7 s frame on the loaded harness) — inside the covered entry, before the reveal.
+ */
+function withSceneProbeLayers<T>(camera: THREE.Camera, render: () => T): T {
+  const layers = (camera as { layers?: THREE.Layers }).layers;
+  if (!layers) return render();
+  const mask = layers.mask;
+  layers.disable(LATE_FX_LAYER);
+  try { return render(); }
+  finally { layers.mask = mask; }
+}
+
 function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: () => T): T {
   if (scale === 1) return render();
   if (!Number.isFinite(scale) || scale <= 0 || scale > 1) {
@@ -679,7 +701,7 @@ function createSceneBandProbe(
         });
         recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
         timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
-          scene, radianceScale, () => renderer.render(scene, camera)));
+          scene, radianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
         recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
         timedSceneProbeStep(timing, 'readbackMs', () => {
           renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
@@ -705,7 +727,7 @@ function createSceneBandProbe(
       const prevMip = renderer.getActiveMipmapLevel();
       try {
         renderer.setRenderTarget(rt);
-        renderer.compile(scene, camera);
+        withSceneProbeLayers(camera, () => renderer.compile(scene, camera));
         return true;
       } finally {
         renderer.setRenderTarget(prev, prevFace, prevMip);
@@ -961,6 +983,55 @@ async function tryWatchdogStagesAsync(
   }
 }
 
+/** The covered probe's allowance for programs that are still linking (the main thread stays free while it waits). */
+const PROBE_LINK_WAIT_MS = 20000;
+const PROBE_LINK_POLL_MS = 16;
+
+/**
+ * 2026-10-12 (the perf stream; railyard at load 326: the covered probe draw was one 3,953 ms task, the watchdog stage
+ * 9.3 s, the loading cover frozen): when the covered entry's optional program warm stops short (its budget), the
+ * programs it submitted are still linking under KHR_parallel_shader_compile, and the probe's draw — the first draw to
+ * use them — waits for every link on the main thread. Wait for them between tasks first, as the rescue ladder does for
+ * its stages (prepareStagePrograms): a ready program answers from three's own cache without a query, a pending one is
+ * polled until it completes or the allowance ends (the draw then links whatever is left, as before). Without the
+ * extension three reports every program ready and nothing waits.
+ */
+type ProgramLinkLike = { isReady?: () => boolean };
+
+/** The renderer's programs still linking (three caches a ready answer, so a ready program costs no query). */
+function pendingProgramLinks(renderer: THREE.WebGLRenderer): ProgramLinkLike[] {
+  try {
+    return ((renderer.info?.programs ?? []) as unknown as ProgramLinkLike[])
+      .filter((program) => typeof program.isReady === 'function' && !program.isReady());
+  } catch {
+    return []; // an unavailable program list is not evidence of anything: the probe draws as before
+  }
+}
+
+/** Wait between tasks until `pending` link or the allowance ends; records the wait on the watchdog's link receipt. */
+async function awaitProgramLinks(
+  renderer: THREE.WebGLRenderer,
+  pending: ProgramLinkLike[],
+  receipt: { linkPending?: number; linkWaitMs?: number; linkLeft?: number },
+  signal?: AbortSignal,
+  isCurrent?: () => boolean,
+): Promise<void> {
+  receipt.linkPending = pending.length;
+  const startedAt = sceneProbeClock();
+  const deadline = Number.isFinite(startedAt) ? startedAt + PROBE_LINK_WAIT_MS : Infinity;
+  try {
+    while (pending.length && sceneProbeClock() < deadline) {
+      await new Promise<void>((resolve) => { setTimeout(resolve, PROBE_LINK_POLL_MS); });
+      assertSceneWatchdogOwner(signal, isCurrent);
+      if (renderer.getContext?.()?.isContextLost?.()) break;
+      pending = pending.filter((program) => !program.isReady!());
+    }
+  } finally {
+    receipt.linkWaitMs = sceneProbeClock() - startedAt;
+    receipt.linkLeft = pending.length;
+  }
+}
+
 /** Own just the async measurement; never mutate compatibility settings. */
 async function measureSceneBandAsync(
   renderer: THREE.WebGLRenderer,
@@ -988,7 +1059,7 @@ async function measureSceneBandAsync(
       });
       recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
       timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
-        scene, nightRadianceScale, () => renderer.render(scene, camera)));
+        scene, nightRadianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
       recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
       if (timing) timing.readbackSteps = {};
       readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
@@ -1111,6 +1182,7 @@ export async function runSceneBlackWatchdogAsync(
 ): Promise<SceneWatchdogResult> {
   const measurements: SceneBandTiming[] | undefined = options.measureTimings ? [] : undefined;
   let observedMeasurements = measurements;
+  const linkReceipt: Pick<SceneBandTiming, 'linkPending' | 'linkWaitMs' | 'linkLeft'> = {};
   try {
     assertSceneWatchdogOwner(signal, isCurrent);
     if (FORCE === 'blackscene' || FORCE === 'blackout') {
@@ -1119,11 +1191,19 @@ export async function runSceneBlackWatchdogAsync(
       observedMeasurements = forced.measurements;
       return forced;
     }
+    // links still pending from a covered warm that stopped short are awaited between tasks first (none pending: the
+    // probe is submitted synchronously, as before)
+    const pendingLinks = pendingProgramLinks(renderer);
+    if (pendingLinks.length) {
+      await awaitProgramLinks(renderer, pendingLinks, linkReceipt, signal, isCurrent);
+      assertSceneWatchdogOwner(signal, isCurrent);
+    }
     const shadow = renderer.shadowMap.enabled;
     const environment = scene.environment;
     const fog = scene.fog;
     const { before, rendererRestored } = await measureSceneBandAsync(
       renderer, scene, camera, signal, measurements, options.nightRadianceScale);
+    if (measurements?.[0] && linkReceipt.linkPending !== undefined) Object.assign(measurements[0], linkReceipt);
     const radianceReceipt = options.nightRadianceScale === undefined ? {} : { nightRadianceScale: options.nightRadianceScale };
     // The room may have closed and disposed its scene while the fence was pending.
     assertSceneWatchdogOwner(signal, isCurrent);

@@ -1,0 +1,6010 @@
+[
+ {
+  "n": 60,
+  "id": "cn-t72b3-modern-mangrove",
+  "hero": "cn_t72b3_modern",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "mangrove",
+  "time": "morning",
+  "anchor": [
+   -114.6,
+   -384.1
+  ],
+  "heading": 349.4,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "cn_t72b3_modern",
+   "type100"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_type99a",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A T-72B3 Qilin (Concept) fires across Mangrove Reach in the morning",
+   "zh": "清晨，一辆 T-72B3 Qilin (Concept) 在红树林水道开火"
+  },
+  "short": {
+   "en": "T-72B3 Qilin (Concept), Mangrove Reach",
+   "zh": "T-72B3 Qilin (Concept)，红树林水道"
+  }
+ },
+ {
+  "n": 61,
+  "id": "cn-t72b3m-modern-skybridge",
+  "hero": "cn_t72b3m_modern",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "skybridge",
+  "time": "sunset",
+  "anchor": [
+   -11.5,
+   -88.4
+  ],
+  "heading": 254.2,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "cn_t72b3m_modern",
+   "type96_72m_lei"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_type99a",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A T-72B3M Kunlun (Concept) knocks out a K2 Black Panther at Skybridge Chasm at sunset",
+   "zh": "日落时分，一辆 T-72B3M Kunlun (Concept) 在天桥裂谷击毁一辆 K2 Black Panther"
+  },
+  "short": {
+   "en": "T-72B3M Kunlun (Concept), Skybridge Chasm",
+   "zh": "T-72B3M Kunlun (Concept)，天桥裂谷"
+  }
+ },
+ {
+  "n": 62,
+  "id": "cn-t80u-modern-skybridge",
+  "hero": "cn_t80u_modern",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "skybridge",
+  "time": "day",
+  "anchor": [
+   42.8,
+   204
+  ],
+  "heading": 150.8,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "cn_t80u_modern",
+   "type96_72_long",
+   "cn_t72b3m_modern"
+  ],
+  "foes": [
+   "m1a2_x",
+   "type10_x"
+  ],
+  "paint": [
+   "service_type99a",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-80U Yun (Concept) crosses Skybridge Chasm through shellfire",
+   "zh": "一辆 T-80U Yun (Concept) 冒着炮火穿越天桥裂谷"
+  },
+  "short": {
+   "en": "T-80U Yun (Concept), Skybridge Chasm",
+   "zh": "T-80U Yun (Concept)，天桥裂谷"
+  }
+ },
+ {
+  "n": 63,
+  "id": "type100-titan-gorge",
+  "hero": "type100",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "titan_gorge",
+  "time": "night",
+  "anchor": [
+   30,
+   188
+  ],
+  "heading": 253.8,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "type100",
+   "type96b_x"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "sig_type100",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A Type 100 IFV knocks out a Type 10 at Titan Gorge at night",
+   "zh": "夜间，一辆 Type 100 IFV 在泰坦峡谷击毁一辆 Type 10"
+  },
+  "short": {
+   "en": "Type 100 IFV, Titan Gorge",
+   "zh": "Type 100 IFV，泰坦峡谷"
+  }
+ },
+ {
+  "n": 64,
+  "id": "type59-monsoon",
+  "hero": "type59",
+  "nation": "China",
+  "era": "cold-war",
+  "map": "monsoon",
+  "time": "morning",
+  "anchor": [
+   -18,
+   210
+  ],
+  "heading": 245.1,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "type59",
+   "ztz85_iii"
+  ],
+  "foes": [
+   "type74",
+   "m48"
+  ],
+  "paint": [
+   "sig_type59",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A Type 59 crosses Monsoon Ridge through shellfire in the morning",
+   "zh": "清晨，一辆 Type 59 冒着炮火穿越季风雨脊"
+  },
+  "short": {
+   "en": "Type 59, Monsoon Ridge",
+   "zh": "Type 59，季风雨脊"
+  }
+ },
+ {
+  "n": 65,
+  "id": "type96-72-long-mangrove",
+  "hero": "type96_72_long",
+  "nation": "China",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "day",
+  "anchor": [
+   33.6,
+   156
+  ],
+  "heading": 218.7,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "type96_72_long",
+   "cn_t72b3_modern",
+   "ztz100_prototype"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_type99a",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A Type 96-72 Lóng (Concept) fires across Mangrove Reach",
+   "zh": "一辆 Type 96-72 Lóng (Concept) 在红树林水道开火"
+  },
+  "short": {
+   "en": "Type 96-72 Lóng (Concept), Mangrove Reach",
+   "zh": "Type 96-72 Lóng (Concept)，红树林水道"
+  }
+ },
+ {
+  "n": 66,
+  "id": "type96-80-feng-skybridge",
+  "hero": "type96_80_feng",
+  "nation": "China",
+  "era": "modern",
+  "map": "skybridge",
+  "time": "day",
+  "anchor": [
+   183.2,
+   -50.7
+  ],
+  "heading": 335.4,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "type96_80_feng"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "service_type99a",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A Type 96-80 Fēng (Concept) knocks out a Type 10 at Skybridge Chasm",
+   "zh": "一辆 Type 96-80 Fēng (Concept) 在天桥裂谷击毁一辆 Type 10"
+  },
+  "short": {
+   "en": "Type 96-80 Fēng (Concept), Skybridge Chasm",
+   "zh": "Type 96-80 Fēng (Concept)，天桥裂谷"
+  }
+ },
+ {
+  "n": 67,
+  "id": "type99a-titan-gorge",
+  "hero": "type99a",
+  "nation": "China",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "night",
+  "anchor": [
+   -42.2,
+   -217
+  ],
+  "heading": 23.2,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "type99a",
+   "type96b_x"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_type99a",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A ZTZ-99 Longwei advances through Titan Gorge at night",
+   "zh": "夜间，一辆 ZTZ-99 Longwei 穿过泰坦峡谷推进"
+  },
+  "short": {
+   "en": "ZTZ-99 Longwei, Titan Gorge",
+   "zh": "ZTZ-99 Longwei，泰坦峡谷"
+  }
+ },
+ {
+  "n": 68,
+  "id": "ztz100-prototype-delta",
+  "hero": "ztz100_prototype",
+  "nation": "China",
+  "era": "next-generation",
+  "map": "delta",
+  "time": "golden",
+  "anchor": [
+   -204,
+   -383
+  ],
+  "heading": 25.7,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "ztz100_prototype",
+   "aft10_x",
+   "type96b_x"
+  ],
+  "foes": [
+   "type10_x",
+   "k2_x"
+  ],
+  "paint": [
+   "sig_ztz100_x",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A ZTZ-100 Prototype crosses Jade River Delta through shellfire in the evening light",
+   "zh": "傍晚，一辆 ZTZ-100 Prototype 冒着炮火穿越翡翠江三角洲"
+  },
+  "short": {
+   "en": "ZTZ-100 Prototype, Jade River Delta",
+   "zh": "ZTZ-100 Prototype，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 69,
+  "id": "ztz85-iii-mangrove",
+  "hero": "ztz85_iii",
+  "nation": "China",
+  "era": "cold-war",
+  "map": "mangrove",
+  "time": "sunset",
+  "anchor": [
+   -198.5,
+   -100.5
+  ],
+  "heading": 211.3,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "ztz85_iii",
+   "type59"
+  ],
+  "foes": [
+   "type74",
+   "m48"
+  ],
+  "paint": [
+   "sig_ztz85_iii",
+   "service_type10"
+  ],
+  "title": {
+   "en": "A ZTZ-85-III knocks out a Type 74 at Mangrove Reach at sunset",
+   "zh": "日落时分，一辆 ZTZ-85-III 在红树林水道击毁一辆 Type 74"
+  },
+  "short": {
+   "en": "ZTZ-85-III, Mangrove Reach",
+   "zh": "ZTZ-85-III，红树林水道"
+  }
+ },
+ {
+  "n": 70,
+  "id": "ztz99a2-monsoon",
+  "hero": "ztz99a2",
+  "nation": "China",
+  "era": "modern",
+  "map": "monsoon",
+  "time": "day",
+  "anchor": [
+   -42,
+   3
+  ],
+  "heading": 344,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "ztz99a2",
+   "cn_t72b3_modern",
+   "type96_72_long"
+  ],
+  "foes": [
+   "m1a2_x",
+   "type10_x"
+  ],
+  "paint": [
+   "sig_ztz99a2",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A ZTZ-99A2 crosses Monsoon Ridge through shellfire",
+   "zh": "一辆 ZTZ-99A2 冒着炮火穿越季风雨脊"
+  },
+  "short": {
+   "en": "ZTZ-99A2, Monsoon Ridge",
+   "zh": "ZTZ-99A2，季风雨脊"
+  }
+ },
+ {
+  "n": 71,
+  "id": "ztz99a2-prototype-titan-gorge",
+  "hero": "ztz99a2_prototype",
+  "nation": "China",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "day",
+  "anchor": [
+   259.4,
+   -199.4
+  ],
+  "heading": 336.9,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "ztz99a2_prototype",
+   "vt4a1",
+   "type96b_x"
+  ],
+  "foes": [
+   "k2_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_ztz99a2_prototype",
+   "service_bmp3_rok"
+  ],
+  "title": {
+   "en": "A ZTZ-99A knocks out a K2 Black Panther at Titan Gorge",
+   "zh": "一辆 ZTZ-99A 在泰坦峡谷击毁一辆 K2 Black Panther"
+  },
+  "short": {
+   "en": "ZTZ-99A, Titan Gorge",
+   "zh": "ZTZ-99A，泰坦峡谷"
+  }
+ },
+ {
+  "n": 72,
+  "id": "amx10p-orchard",
+  "hero": "amx10p",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "orchard",
+  "time": "day",
+  "anchor": [
+   13,
+   -39
+  ],
+  "heading": 125.3,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "amx10p",
+   "amx10p_25"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "sig_amx10p",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An AMX-10P knocks out a T-72B at Orchard Valley",
+   "zh": "一辆 AMX-10P 在果园谷击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "AMX-10P, Orchard Valley",
+   "zh": "AMX-10P，果园谷"
+  }
+ },
+ {
+  "n": 73,
+  "id": "amx10p-25-coastal",
+  "hero": "amx10p_25",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "morning",
+  "anchor": [
+   121,
+   96.2
+  ],
+  "heading": 271.3,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "amx10p_25",
+   "amx30b2"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "sig_amx10p_25",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An AMX-10P 25 fires on the move at Saltmere Bay in the morning",
+   "zh": "清晨，一辆 AMX-10P 25 在盐沼湾行进间射击"
+  },
+  "short": {
+   "en": "AMX-10P 25, Saltmere Bay",
+   "zh": "AMX-10P 25，盐沼湾"
+  }
+ },
+ {
+  "n": 74,
+  "id": "amx30-verdant",
+  "hero": "amx30",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "verdant",
+  "time": "day",
+  "anchor": [
+   3,
+   -42
+  ],
+  "heading": 267,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "amx30"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_leclerc_xlr",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An AMX-30 knocks out a T-64BV1 at Verdant Fields",
+   "zh": "一辆 AMX-30 在翠野原击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "AMX-30, Verdant Fields",
+   "zh": "AMX-30，翠野原"
+  }
+ },
+ {
+  "n": 75,
+  "id": "amx30b2-autumn",
+  "hero": "amx30b2",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "autumn",
+  "time": "sunset",
+  "anchor": [
+   -5.9,
+   146.7
+  ],
+  "heading": 254.5,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "amx30b2",
+   "amx30_x",
+   "amx40_x"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_leclerc_xlr",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An AMX-30B2 knocks out a T-62MV-1 at Amberford at sunset",
+   "zh": "日落时分，一辆 AMX-30B2 在安伯福击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "AMX-30B2, Amberford",
+   "zh": "AMX-30B2，安伯福"
+  }
+ },
+ {
+  "n": 76,
+  "id": "amx40-autumn",
+  "hero": "amx40",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "autumn",
+  "time": "morning",
+  "anchor": [
+   60,
+   -190
+  ],
+  "heading": 251.6,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "amx40",
+   "amx30b2"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_leclerc_xlr",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An AMX-40 Prototype knocks out a T-64BV1 at Amberford in the morning",
+   "zh": "清晨，一辆 AMX-40 Prototype 在安伯福击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "AMX-40 Prototype, Amberford",
+   "zh": "AMX-40 Prototype，安伯福"
+  }
+ },
+ {
+  "n": 77,
+  "id": "amx40-x-coastal",
+  "hero": "amx40_x",
+  "nation": "France",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "golden",
+  "anchor": [
+   -88.1,
+   192
+  ],
+  "heading": 179.1,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "amx40_x",
+   "amx40"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leclerc_xlr",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An AMX-40 knocks out a T-72B at Saltmere Bay in the evening light",
+   "zh": "傍晚，一辆 AMX-40 在盐沼湾击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "AMX-40, Saltmere Bay",
+   "zh": "AMX-40，盐沼湾"
+  }
+ },
+ {
+  "n": 78,
+  "id": "amx56-verdant",
+  "hero": "amx56",
+  "nation": "France",
+  "era": "modern",
+  "map": "verdant",
+  "time": "day",
+  "anchor": [
+   363,
+   3
+  ],
+  "heading": 12,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "amx56",
+   "leclerc_xlr"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "sig_amx56",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leclerc S1 knocks out a T-72B3 at Verdant Fields",
+   "zh": "一辆 Leclerc S1 在翠野原击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "Leclerc S1, Verdant Fields",
+   "zh": "Leclerc S1，翠野原"
+  }
+ },
+ {
+  "n": 79,
+  "id": "leclerc-orchard",
+  "hero": "leclerc",
+  "nation": "France",
+  "era": "modern",
+  "map": "orchard",
+  "time": "day",
+  "anchor": [
+   97.7,
+   -57.3
+  ],
+  "heading": 286.7,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "leclerc",
+   "leclerc_classic_x",
+   "leclerc_xlr"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_leclerc",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leclerc S2 leads the column through Orchard Valley",
+   "zh": "一辆 Leclerc S2 率领纵队穿过果园谷"
+  },
+  "short": {
+   "en": "Leclerc S2, Orchard Valley",
+   "zh": "Leclerc S2，果园谷"
+  }
+ },
+ {
+  "n": 80,
+  "id": "leclerc-xlr-orchard",
+  "hero": "leclerc_xlr",
+  "nation": "France",
+  "era": "modern",
+  "map": "orchard",
+  "time": "day",
+  "anchor": [
+   -87,
+   93
+  ],
+  "heading": 92,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "leclerc_xlr",
+   "leclerc"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_leclerc_xlr",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leclerc SXXI fires across Orchard Valley",
+   "zh": "一辆 Leclerc SXXI 在果园谷开火"
+  },
+  "short": {
+   "en": "Leclerc SXXI, Orchard Valley",
+   "zh": "Leclerc SXXI，果园谷"
+  }
+ },
+ {
+  "n": 81,
+  "id": "jpz-e100-x-ruinspires",
+  "hero": "jpz_e100_x",
+  "nation": "Germany",
+  "era": "ww2",
+  "map": "ruinspires",
+  "time": "day",
+  "anchor": [
+   25,
+   0
+  ],
+  "heading": 180,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "jpz_e100_x",
+   "leo1a5",
+   "mbt70"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Jagdpanzer E100 fires across Ruinspires",
+   "zh": "一辆 Jagdpanzer E100 在废墟尖塔开火"
+  },
+  "short": {
+   "en": "Jagdpanzer E100, Ruinspires",
+   "zh": "Jagdpanzer E100，废墟尖塔"
+  }
+ },
+ {
+  "n": 82,
+  "id": "kf51-longleaf",
+  "hero": "kf51",
+  "nation": "Germany",
+  "era": "next-generation",
+  "map": "longleaf",
+  "time": "day",
+  "anchor": [
+   -62.7,
+   20
+  ],
+  "heading": 94.3,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "kf51",
+   "leo2a7v"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A KF51 EVO fires across Longleaf Crossing",
+   "zh": "一辆 KF51 EVO 在长叶渡口开火"
+  },
+  "short": {
+   "en": "KF51 EVO, Longleaf Crossing",
+   "zh": "KF51 EVO，长叶渡口"
+  }
+ },
+ {
+  "n": 83,
+  "id": "kf51b-urban",
+  "hero": "kf51b",
+  "nation": "Germany",
+  "era": "next-generation",
+  "map": "urban",
+  "time": "golden",
+  "anchor": [
+   20,
+   -60
+  ],
+  "heading": 180,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "kf51b",
+   "leo2a5_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_kf51b",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A KF51-U knocks out a T-90A at Steinburg in the evening light",
+   "zh": "傍晚，一辆 KF51-U 在斯泰因堡击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "KF51-U, Steinburg",
+   "zh": "KF51-U，斯泰因堡"
+  }
+ },
+ {
+  "n": 84,
+  "id": "leo1a5-polders",
+  "hero": "leo1a5",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "polders",
+  "time": "day",
+  "anchor": [
+   -8.9,
+   15.7
+  ],
+  "heading": 157,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "leo1a5",
+   "jpz_e100_x",
+   "mbt70",
+   "marder1a3"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Leopard 1A5 leads the assault across Tidegate Polders",
+   "zh": "一辆 Leopard 1A5 率队突击潮闸圩田"
+  },
+  "short": {
+   "en": "Leopard 1A5, Tidegate Polders",
+   "zh": "Leopard 1A5，潮闸圩田"
+  }
+ },
+ {
+  "n": 85,
+  "id": "leo2-revolution-proto-frontier",
+  "hero": "leo2_revolution_proto",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "frontier",
+  "time": "night",
+  "anchor": [
+   0,
+   0
+  ],
+  "heading": 352.4,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "leo2_revolution_proto"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2 Revolution Proto knocks out a T-80U at Frontier Basin at night",
+   "zh": "夜间，一辆 Leopard 2 Revolution Proto 在边疆盆地击毁一辆 T-80U"
+  },
+  "short": {
+   "en": "Leopard 2 Revolution Proto, Frontier Basin",
+   "zh": "Leopard 2 Revolution Proto，边疆盆地"
+  }
+ },
+ {
+  "n": 86,
+  "id": "leo2a4-longleaf",
+  "hero": "leo2a4",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "longleaf",
+  "time": "day",
+  "anchor": [
+   224.3,
+   312.9
+  ],
+  "heading": 209.9,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "leo2a4",
+   "jpz_e100_x"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Leopard 2A2 fires across Longleaf Crossing",
+   "zh": "一辆 Leopard 2A2 在长叶渡口开火"
+  },
+  "short": {
+   "en": "Leopard 2A2, Longleaf Crossing",
+   "zh": "Leopard 2A2，长叶渡口"
+  }
+ },
+ {
+  "n": 87,
+  "id": "leo2a4-otco-polders",
+  "hero": "leo2a4_otco",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "polders",
+  "time": "sunset",
+  "anchor": [
+   -6.3,
+   185.7
+  ],
+  "heading": 78.3,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "leo2a4_otco",
+   "leo2a7v_x"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_leo2a4_otco",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A3 knocks out a T-90M at Tidegate Polders at sunset",
+   "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "Leopard 2A3, Tidegate Polders",
+   "zh": "Leopard 2A3，潮闸圩田"
+  }
+ },
+ {
+  "n": 88,
+  "id": "leo2a4m-ruinspires",
+  "hero": "leo2a4m",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "ruinspires",
+  "time": "sunset",
+  "anchor": [
+   -200,
+   0
+  ],
+  "heading": 0,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "leo2a4m",
+   "kf51b",
+   "kf51"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A4M CAN crosses Ruinspires through shellfire at sunset",
+   "zh": "日落时分，一辆 Leopard 2A4M CAN 冒着炮火穿越废墟尖塔"
+  },
+  "short": {
+   "en": "Leopard 2A4M CAN, Ruinspires",
+   "zh": "Leopard 2A4M CAN，废墟尖塔"
+  }
+ },
+ {
+  "n": 89,
+  "id": "leo2a5-polders",
+  "hero": "leo2a5",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "polders",
+  "time": "day",
+  "anchor": [
+   -104.9,
+   -170.1
+  ],
+  "heading": 9.2,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "leo2a5",
+   "leo2a6m_x"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A4 V fires across Tidegate Polders",
+   "zh": "一辆 Leopard 2A4 V 在潮闸圩田开火"
+  },
+  "short": {
+   "en": "Leopard 2A4 V, Tidegate Polders",
+   "zh": "Leopard 2A4 V，潮闸圩田"
+  }
+ },
+ {
+  "n": 90,
+  "id": "leo2a5-a5nl-frontier",
+  "hero": "leo2a5_a5nl",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "frontier",
+  "time": "day",
+  "anchor": [
+   -132,
+   -87
+  ],
+  "heading": 97,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "leo2a5_a5nl",
+   "leo2a4_otco"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A4M fires across Frontier Basin",
+   "zh": "一辆 Leopard 2A4M 在边疆盆地开火"
+  },
+  "short": {
+   "en": "Leopard 2A4M, Frontier Basin",
+   "zh": "Leopard 2A4M，边疆盆地"
+  }
+ },
+ {
+  "n": 91,
+  "id": "leo2a6-longleaf",
+  "hero": "leo2a6",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "longleaf",
+  "time": "golden",
+  "anchor": [
+   93,
+   3
+  ],
+  "heading": 340,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "leo2a6",
+   "leo2a6m"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A4 knocks out a T-72B3 at Longleaf Crossing in the evening light",
+   "zh": "傍晚，一辆 Leopard 2A4 在长叶渡口击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "Leopard 2A4, Longleaf Crossing",
+   "zh": "Leopard 2A4，长叶渡口"
+  }
+ },
+ {
+  "n": 92,
+  "id": "leo2a6m-urban",
+  "hero": "leo2a6m",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "urban",
+  "time": "morning",
+  "anchor": [
+   -150,
+   4
+  ],
+  "heading": 94.6,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "leo2a6m",
+   "kf51b",
+   "spz_puma",
+   "kf51"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A4 OTCO leads the assault across Steinburg in the morning",
+   "zh": "清晨，一辆 Leopard 2A4 OTCO 率队突击斯泰因堡"
+  },
+  "short": {
+   "en": "Leopard 2A4 OTCO, Steinburg",
+   "zh": "Leopard 2A4 OTCO，斯泰因堡"
+  }
+ },
+ {
+  "n": 93,
+  "id": "leo2a7v-ruinspires",
+  "hero": "leo2a7v",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "ruinspires",
+  "time": "day",
+  "anchor": [
+   200,
+   0
+  ],
+  "heading": 180,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "leo2a7v",
+   "kf51_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2 Improved fires on the move at Ruinspires",
+   "zh": "一辆 Leopard 2 Improved 在废墟尖塔行进间射击"
+  },
+  "short": {
+   "en": "Leopard 2 Improved, Ruinspires",
+   "zh": "Leopard 2 Improved，废墟尖塔"
+  }
+ },
+ {
+  "n": 94,
+  "id": "leopard2-proto-longleaf",
+  "hero": "leopard2_proto",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "longleaf",
+  "time": "night",
+  "anchor": [
+   -87,
+   -222
+  ],
+  "heading": 12,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "leopard2_proto"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2 Prototype knocks out a T-72B at Longleaf Crossing at night",
+   "zh": "夜间，一辆 Leopard 2 Prototype 在长叶渡口击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "Leopard 2 Prototype, Longleaf Crossing",
+   "zh": "Leopard 2 Prototype，长叶渡口"
+  }
+ },
+ {
+  "n": 95,
+  "id": "marder1a3-ruinspires",
+  "hero": "marder1a3",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "ruinspires",
+  "time": "day",
+  "anchor": [
+   -42,
+   138
+  ],
+  "heading": 196,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "marder1a3",
+   "leopard2_proto"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Schützenpanzer Marder 1A3 fires on the move at Ruinspires",
+   "zh": "一辆 Schützenpanzer Marder 1A3 在废墟尖塔行进间射击"
+  },
+  "short": {
+   "en": "Schützenpanzer Marder 1A3, Ruinspires",
+   "zh": "Schützenpanzer Marder 1A3，废墟尖塔"
+  }
+ },
+ {
+  "n": 96,
+  "id": "marder2-autumn",
+  "hero": "marder2",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "autumn",
+  "time": "day",
+  "anchor": [
+   -23.3,
+   -210
+  ],
+  "heading": 79.4,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "marder2",
+   "leo2a5_x",
+   "leo2_revolution"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Marder 2 crosses Amberford through shellfire",
+   "zh": "一辆 Marder 2 冒着炮火穿越安伯福"
+  },
+  "short": {
+   "en": "Marder 2, Amberford",
+   "zh": "Marder 2，安伯福"
+  }
+ },
+ {
+  "n": 97,
+  "id": "spz-puma-polders",
+  "hero": "spz_puma",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "polders",
+  "time": "golden",
+  "anchor": [
+   212.1,
+   211.7
+  ],
+  "heading": 86,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "spz_puma"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Schützenpanzer Puma charges through artillery at Tidegate Polders in the evening light",
+   "zh": "傍晚，一辆 Schützenpanzer Puma 冒着炮击冲过潮闸圩田"
+  },
+  "short": {
+   "en": "Schützenpanzer Puma, Tidegate Polders",
+   "zh": "Schützenpanzer Puma，潮闸圩田"
+  }
+ },
+ {
+  "n": 98,
+  "id": "spz-puma-s1-ruinspires",
+  "hero": "spz_puma_s1",
+  "nation": "Germany",
+  "era": "modern",
+  "map": "ruinspires",
+  "time": "night",
+  "anchor": [
+   138,
+   138
+  ],
+  "heading": 163,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "spz_puma_s1",
+   "spz_puma"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_leo2a6m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An SPz Wotan knocks out a T-72B3M at Ruinspires at night",
+   "zh": "夜间，一辆 SPz Wotan 在废墟尖塔击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "SPz Wotan, Ruinspires",
+   "zh": "SPz Wotan，废墟尖塔"
+  }
+ },
+ {
+  "n": 99,
+  "id": "merkava1b-caldera",
+  "hero": "merkava1b",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   -9.3,
+   -72.2
+  ],
+  "heading": 279.6,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "merkava1b",
+   "merkava2d"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "sig_merkava1b",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Merkava Mk 1B knocks out a T-64BV1 at Obsidian Caldera",
+   "zh": "一辆 Merkava Mk 1B 在黑曜石火山口击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "Merkava Mk 1B, Obsidian Caldera",
+   "zh": "Merkava Mk 1B，黑曜石火山口"
+  }
+ },
+ {
+  "n": 100,
+  "id": "merkava2b-badlands",
+  "hero": "merkava2b",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "day",
+  "anchor": [
+   6.6,
+   -5.7
+  ],
+  "heading": 193.5,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "merkava2b",
+   "merkava1b"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "sig_merkava2b",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Merkava Mk 2B fires across Redrock Divide",
+   "zh": "一辆 Merkava Mk 2B 在红岩分界开火"
+  },
+  "short": {
+   "en": "Merkava Mk 2B, Redrock Divide",
+   "zh": "Merkava Mk 2B，红岩分界"
+  }
+ },
+ {
+  "n": 101,
+  "id": "merkava2d-copper-mesa",
+  "hero": "merkava2d",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "night",
+  "anchor": [
+   218,
+   90
+  ],
+  "heading": 356.2,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "merkava2d",
+   "merkava2b"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "sig_merkava2d",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Merkava Mk 2D knocks out a T-64BV1 at Copper Mesa Mine at night",
+   "zh": "夜间，一辆 Merkava Mk 2D 在铜台地矿场击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "Merkava Mk 2D, Copper Mesa Mine",
+   "zh": "Merkava Mk 2D，铜台地矿场"
+  }
+ },
+ {
+  "n": 102,
+  "id": "merkava3c-desert",
+  "hero": "merkava3c",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "desert",
+  "time": "day",
+  "anchor": [
+   0,
+   0
+  ],
+  "heading": 118.4,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "merkava3c",
+   "namer_ifv",
+   "merkava4_barak"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_merkava3c",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Merkava Mk 3C returns fire across Sirocco Wadi",
+   "zh": "一辆 Merkava Mk 3C 在西罗科旱谷还击"
+  },
+  "short": {
+   "en": "Merkava Mk 3C, Sirocco Wadi",
+   "zh": "Merkava Mk 3C，西罗科旱谷"
+  }
+ },
+ {
+  "n": 103,
+  "id": "merkava3d-oasis",
+  "hero": "merkava3d",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "oasis",
+  "time": "day",
+  "anchor": [
+   81.8,
+   20.8
+  ],
+  "heading": 241,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "merkava3d",
+   "merkava4_x"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_merkava3d",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Merkava Mk 3 Baz knocks out a T-90M at Sunscar Oasis",
+   "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "Merkava Mk 3 Baz, Sunscar Oasis",
+   "zh": "Merkava Mk 3 Baz，日痕绿洲"
+  }
+ },
+ {
+  "n": 104,
+  "id": "merkava4-barak-caldera",
+  "hero": "merkava4_barak",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   -63.2,
+   136.4
+  ],
+  "heading": 280.7,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "merkava4_barak"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_merkava4_barak",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Merkava Mk 4 Barak charges through artillery at Obsidian Caldera",
+   "zh": "一辆 Merkava Mk 4 Barak 冒着炮击冲过黑曜石火山口"
+  },
+  "short": {
+   "en": "Merkava Mk 4 Barak, Obsidian Caldera",
+   "zh": "Merkava Mk 4 Barak，黑曜石火山口"
+  }
+ },
+ {
+  "n": 105,
+  "id": "merkava4-trophy-copper-mesa",
+  "hero": "merkava4_trophy",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "copper_mesa",
+  "time": "day",
+  "anchor": [
+   93,
+   3
+  ],
+  "heading": 74,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "merkava4_trophy",
+   "merkava3d_x"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_merkava4_trophy",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Merkava Mk 4 Trophy holds its ground at Copper Mesa Mine",
+   "zh": "一辆 Merkava Mk 4 Trophy 在铜台地矿场坚守阵地"
+  },
+  "short": {
+   "en": "Merkava Mk 4 Trophy, Copper Mesa Mine",
+   "zh": "Merkava Mk 4 Trophy，铜台地矿场"
+  }
+ },
+ {
+  "n": 106,
+  "id": "merkava4b-badlands",
+  "hero": "merkava4b",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "badlands",
+  "time": "day",
+  "anchor": [
+   -40.7,
+   -176
+  ],
+  "heading": 26,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "merkava4b",
+   "sabra_mk2_x",
+   "merkava4_barak"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_merkava4b",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Merkava Mk 4B knocks out a T-90A at Redrock Divide",
+   "zh": "一辆 Merkava Mk 4B 在红岩分界击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "Merkava Mk 4B, Redrock Divide",
+   "zh": "Merkava Mk 4B，红岩分界"
+  }
+ },
+ {
+  "n": 107,
+  "id": "namer-ifv-desert",
+  "hero": "namer_ifv",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "desert",
+  "time": "morning",
+  "anchor": [
+   -132,
+   138
+  ],
+  "heading": 103,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "namer_ifv",
+   "merkava4_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_namer_ifv",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Namer IFV fires on the move at Sirocco Wadi in the morning",
+   "zh": "清晨，一辆 Namer IFV 在西罗科旱谷行进间射击"
+  },
+  "short": {
+   "en": "Namer IFV, Sirocco Wadi",
+   "zh": "Namer IFV，西罗科旱谷"
+  }
+ },
+ {
+  "n": 108,
+  "id": "sabra-mk2-x-caldera",
+  "hero": "sabra_mk2_x",
+  "nation": "Israel",
+  "era": "modern",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   155.2,
+   -123.6
+  ],
+  "heading": 303.8,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "sabra_mk2_x"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_sabra_mk2_x",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Sabra Mk 2 charges through artillery at Obsidian Caldera",
+   "zh": "一辆 Sabra Mk 2 冒着炮击冲过黑曜石火山口"
+  },
+  "short": {
+   "en": "Sabra Mk 2, Obsidian Caldera",
+   "zh": "Sabra Mk 2，黑曜石火山口"
+  }
+ },
+ {
+  "n": 109,
+  "id": "ariete-cliffbridge",
+  "hero": "ariete",
+  "nation": "Italy",
+  "era": "modern",
+  "map": "cliffbridge",
+  "time": "day",
+  "anchor": [
+   0,
+   -110
+  ],
+  "heading": 180,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "ariete",
+   "ariete_c2"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_ariete_c1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A C1 Ariete Preserie fires on the move at Aegis Crossing",
+   "zh": "一辆 C1 Ariete Preserie 在Aegis Crossing行进间射击"
+  },
+  "short": {
+   "en": "C1 Ariete Preserie, Aegis Crossing",
+   "zh": "C1 Ariete Preserie，Aegis Crossing"
+  }
+ },
+ {
+  "n": 110,
+  "id": "ariete-c1-cliffbridge",
+  "hero": "ariete_c1",
+  "nation": "Italy",
+  "era": "modern",
+  "map": "cliffbridge",
+  "time": "day",
+  "anchor": [
+   0,
+   135
+  ],
+  "heading": 0,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "ariete_c1",
+   "ariete_c1_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_ariete_c1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A C1 Ariete Prototype (Serie 1) holds its ground at Aegis Crossing",
+   "zh": "一辆 C1 Ariete Prototype (Serie 1) 在Aegis Crossing坚守阵地"
+  },
+  "short": {
+   "en": "C1 Ariete Prototype (Serie 1), Aegis Crossing",
+   "zh": "C1 Ariete Prototype (Serie 1)，Aegis Crossing"
+  }
+ },
+ {
+  "n": 111,
+  "id": "ariete-c2-cliffbridge",
+  "hero": "ariete_c2",
+  "nation": "Italy",
+  "era": "next-generation",
+  "map": "cliffbridge",
+  "time": "day",
+  "anchor": [
+   -130,
+   265.5
+  ],
+  "heading": 276.7,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "ariete_c2",
+   "ariete_c2_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_ariete_c2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A C2 Ariete Prototype knocks out a T-90A at Aegis Crossing",
+   "zh": "一辆 C2 Ariete Prototype 在Aegis Crossing击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "C2 Ariete Prototype, Aegis Crossing",
+   "zh": "C2 Ariete Prototype，Aegis Crossing"
+  }
+ },
+ {
+  "n": 112,
+  "id": "ariete-c2-x-cliffbridge",
+  "hero": "ariete_c2_x",
+  "nation": "Italy",
+  "era": "modern",
+  "map": "cliffbridge",
+  "time": "day",
+  "anchor": [
+   -132,
+   48
+  ],
+  "heading": 81,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "ariete_c2_x",
+   "ariete_c2"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_ariete_c2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A C2 Ariete knocks out a T-80U at Aegis Crossing",
+   "zh": "一辆 C2 Ariete 在Aegis Crossing击毁一辆 T-80U"
+  },
+  "short": {
+   "en": "C2 Ariete, Aegis Crossing",
+   "zh": "C2 Ariete，Aegis Crossing"
+  }
+ },
+ {
+  "n": 113,
+  "id": "carro45t-caldera",
+  "hero": "carro45t",
+  "nation": "Italy",
+  "era": "cold-war",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   -204.7,
+   -148.9
+  ],
+  "heading": 58.4,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "carro45t"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_ariete_c1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Carro 45t leads the column through Obsidian Caldera",
+   "zh": "一辆 Carro 45t 率领纵队穿过黑曜石火山口"
+  },
+  "short": {
+   "en": "Carro 45t, Obsidian Caldera",
+   "zh": "Carro 45t，黑曜石火山口"
+  }
+ },
+ {
+  "n": 114,
+  "id": "dardo-orchard",
+  "hero": "dardo",
+  "nation": "Italy",
+  "era": "modern",
+  "map": "orchard",
+  "time": "morning",
+  "anchor": [
+   93,
+   93
+  ],
+  "heading": 172,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "dardo",
+   "ariete_c2_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_dardo",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Dardo leads the column through Orchard Valley in the morning",
+   "zh": "清晨，一辆 Dardo 率领纵队穿过果园谷"
+  },
+  "short": {
+   "en": "Dardo, Orchard Valley",
+   "zh": "Dardo，果园谷"
+  }
+ },
+ {
+  "n": 115,
+  "id": "lrmv-lynx-caldera",
+  "hero": "lrmv_lynx",
+  "nation": "Italy",
+  "era": "next-generation",
+  "map": "caldera",
+  "time": "golden",
+  "anchor": [
+   248.7,
+   112.6
+  ],
+  "heading": 350.1,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "lrmv_lynx",
+   "ariete_c1",
+   "ariete_c2"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_lrmv_lynx",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An LRMV Lynx returns fire across Obsidian Caldera in the evening light",
+   "zh": "傍晚，一辆 LRMV Lynx 在黑曜石火山口还击"
+  },
+  "short": {
+   "en": "LRMV Lynx, Obsidian Caldera",
+   "zh": "LRMV Lynx，黑曜石火山口"
+  }
+ },
+ {
+  "n": 116,
+  "id": "stb1-skybridge",
+  "hero": "stb1",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "skybridge",
+  "time": "golden",
+  "anchor": [
+   142.4,
+   136.5
+  ],
+  "heading": 30.7,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "stb1",
+   "type90a",
+   "type74"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An STB-1 returns fire across Skybridge Chasm in the evening light",
+   "zh": "傍晚，一辆 STB-1 在天桥裂谷还击"
+  },
+  "short": {
+   "en": "STB-1, Skybridge Chasm",
+   "zh": "STB-1，天桥裂谷"
+  }
+ },
+ {
+  "n": 117,
+  "id": "type10-mangrove",
+  "hero": "type10",
+  "nation": "Japan",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "morning",
+  "anchor": [
+   222,
+   -138
+  ],
+  "heading": 213.7,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "type10"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 10 prototype knocks out a T-90A at Mangrove Reach in the morning",
+   "zh": "清晨，一辆 Type 10 原型车在红树林水道击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "Type 10 prototype, Mangrove Reach",
+   "zh": "Type 10 原型车，红树林水道"
+  }
+ },
+ {
+  "n": 118,
+  "id": "type10b-skybridge",
+  "hero": "type10b",
+  "nation": "Japan",
+  "era": "next-generation",
+  "map": "skybridge",
+  "time": "day",
+  "anchor": [
+   -73.9,
+   235.8
+  ],
+  "heading": 26.3,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "type10b",
+   "type10_x",
+   "type89_light_tiger"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_type10b",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 10B returns fire across Skybridge Chasm",
+   "zh": "一辆 Type 10B 在天桥裂谷还击"
+  },
+  "short": {
+   "en": "Type 10B, Skybridge Chasm",
+   "zh": "Type 10B，天桥裂谷"
+  }
+ },
+ {
+  "n": 119,
+  "id": "type74-mangrove",
+  "hero": "type74",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "mangrove",
+  "time": "golden",
+  "anchor": [
+   203.5,
+   222.9
+  ],
+  "heading": 185.1,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "type74",
+   "stb1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Type 74 fires across Mangrove Reach in the evening light",
+   "zh": "傍晚，一辆 Type 74 在红树林水道开火"
+  },
+  "short": {
+   "en": "Type 74, Mangrove Reach",
+   "zh": "Type 74，红树林水道"
+  }
+ },
+ {
+  "n": 120,
+  "id": "type89-skybridge",
+  "hero": "type89",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "skybridge",
+  "time": "day",
+  "anchor": [
+   -321.2,
+   -257.2
+  ],
+  "heading": 26.9,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "type89",
+   "type90",
+   "type74"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Hayate IFV leads the column through Skybridge Chasm",
+   "zh": "一辆 Hayate IFV 率领纵队穿过天桥裂谷"
+  },
+  "short": {
+   "en": "Hayate IFV, Skybridge Chasm",
+   "zh": "Hayate IFV，天桥裂谷"
+  }
+ },
+ {
+  "n": 121,
+  "id": "type89-light-tiger-mars",
+  "hero": "type89_light_tiger",
+  "nation": "Japan",
+  "era": "next-generation",
+  "map": "mars",
+  "time": "day",
+  "anchor": [
+   -32,
+   65.9
+  ],
+  "heading": 81.5,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "type89_light_tiger",
+   "type10"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Raijū IFV fires across Olympus Basin",
+   "zh": "一辆 Raijū IFV 在奥林匹斯盆地开火"
+  },
+  "short": {
+   "en": "Raijū IFV, Olympus Basin",
+   "zh": "Raijū IFV，奥林匹斯盆地"
+  }
+ },
+ {
+  "n": 122,
+  "id": "type89-x-monsoon",
+  "hero": "type89_x",
+  "nation": "Japan",
+  "era": "next-generation",
+  "map": "monsoon",
+  "time": "golden",
+  "anchor": [
+   3,
+   93
+  ],
+  "heading": 359,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "type89_x",
+   "type10_x",
+   "type90_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_type10",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 89 knocks out a T-72B3M at Monsoon Ridge in the evening light",
+   "zh": "傍晚，一辆 Type 89 在季风雨脊击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "Type 89, Monsoon Ridge",
+   "zh": "Type 89，季风雨脊"
+  }
+ },
+ {
+  "n": 123,
+  "id": "type90-cliffbridge",
+  "hero": "type90",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "cliffbridge",
+  "time": "sunset",
+  "anchor": [
+   138,
+   -42
+  ],
+  "heading": 9,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "type90",
+   "type74"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "sig_type90",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 90 (Kyū-maru) fires on the move at Aegis Crossing at sunset",
+   "zh": "日落时分，一辆 Type 90 (Kyū-maru) 在Aegis Crossing行进间射击"
+  },
+  "short": {
+   "en": "Type 90 (Kyū-maru), Aegis Crossing",
+   "zh": "Type 90 (Kyū-maru)，Aegis Crossing"
+  }
+ },
+ {
+  "n": 124,
+  "id": "type90a-cliffbridge",
+  "hero": "type90a",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "cliffbridge",
+  "time": "sunset",
+  "anchor": [
+   -132,
+   -222
+  ],
+  "heading": 356,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "type90a"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "sig_type90a",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 90A knocks out a T-72B at Aegis Crossing at sunset",
+   "zh": "日落时分，一辆 Type 90A 在Aegis Crossing击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "Type 90A, Aegis Crossing",
+   "zh": "Type 90A，Aegis Crossing"
+  }
+ },
+ {
+  "n": 125,
+  "id": "borsuk-winter",
+  "hero": "borsuk",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "winter",
+  "time": "day",
+  "anchor": [
+   0,
+   4
+  ],
+  "heading": 81.5,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "borsuk",
+   "pl_t80u_modern"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_borsuk",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Borsuk fires on the move at Frosthollow",
+   "zh": "一辆 Borsuk 在霜谷行进间射击"
+  },
+  "short": {
+   "en": "Borsuk, Frosthollow",
+   "zh": "Borsuk，霜谷"
+  }
+ },
+ {
+  "n": 126,
+  "id": "bwp1-winter",
+  "hero": "bwp1",
+  "nation": "Poland",
+  "era": "cold-war",
+  "map": "winter",
+  "time": "night",
+  "anchor": [
+   150,
+   -24
+  ],
+  "heading": 291.8,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "bwp1"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "sig_bwp1",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A BWP-1 (Bojowy Wóz Piechoty 1) advances through Frosthollow at night",
+   "zh": "夜间，一辆 BWP-1 (Bojowy Wóz Piechoty 1) 穿过霜谷推进"
+  },
+  "short": {
+   "en": "BWP-1 (Bojowy Wóz Piechoty 1), Frosthollow",
+   "zh": "BWP-1 (Bojowy Wóz Piechoty 1)，霜谷"
+  }
+ },
+ {
+  "n": 127,
+  "id": "pl-t72b3-modern-winter",
+  "hero": "pl_t72b3_modern",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "winter",
+  "time": "sunset",
+  "anchor": [
+   -107,
+   135
+  ],
+  "heading": 282.3,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "pl_t72b3_modern",
+   "pl01_105",
+   "borsuk"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72B3 Zubr (Concept) leads the column through Frosthollow at sunset",
+   "zh": "日落时分，一辆 T-72B3 Zubr (Concept) 率领纵队穿过霜谷"
+  },
+  "short": {
+   "en": "T-72B3 Zubr (Concept), Frosthollow",
+   "zh": "T-72B3 Zubr (Concept)，霜谷"
+  }
+ },
+ {
+  "n": 128,
+  "id": "pl-t72b3-zubr-ii-moon",
+  "hero": "pl_t72b3_zubr_ii",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "moon",
+  "time": "day",
+  "anchor": [
+   -28.5,
+   2.8
+  ],
+  "heading": 95.7,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "pl_t72b3_zubr_ii",
+   "pl_t72b3_modern"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72B3 Zubr II (Concept) knocks out a T-72B3 at Earthrise Basin",
+   "zh": "一辆 T-72B3 Zubr II (Concept) 在Earthrise Basin击毁一辆 T-72B3"
+  },
+  "short": {
+   "en": "T-72B3 Zubr II (Concept), Earthrise Basin",
+   "zh": "T-72B3 Zubr II (Concept)，Earthrise Basin"
+  }
+ },
+ {
+  "n": 129,
+  "id": "pl-t72b3m-modern-moon",
+  "hero": "pl_t72b3m_modern",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "moon",
+  "time": "day",
+  "anchor": [
+   48,
+   -150
+  ],
+  "heading": 341.1,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "pl_t72b3m_modern",
+   "upior"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72B3M Wilk (Concept) fires across Earthrise Basin",
+   "zh": "一辆 T-72B3M Wilk (Concept) 在Earthrise Basin开火"
+  },
+  "short": {
+   "en": "T-72B3M Wilk (Concept), Earthrise Basin",
+   "zh": "T-72B3M Wilk (Concept)，Earthrise Basin"
+  }
+ },
+ {
+  "n": 130,
+  "id": "pl01-autumn",
+  "hero": "pl01",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "autumn",
+  "time": "day",
+  "anchor": [
+   -42,
+   48
+  ],
+  "heading": 16,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "pl01",
+   "pl_t80u_modern"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PL-01 fires on the move at Amberford",
+   "zh": "一辆 PL-01 在安伯福行进间射击"
+  },
+  "short": {
+   "en": "PL-01, Amberford",
+   "zh": "PL-01，安伯福"
+  }
+ },
+ {
+  "n": 131,
+  "id": "pt91-twardy-longleaf",
+  "hero": "pt91_twardy",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "longleaf",
+  "time": "day",
+  "anchor": [
+   -132,
+   228
+  ],
+  "heading": 180,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "pt91_twardy",
+   "pl01"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_pt91_twardy",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-91A Twardy knocks out a T-72B3M at Longleaf Crossing",
+   "zh": "一辆 PT-91A Twardy 在长叶渡口击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "PT-91A Twardy, Longleaf Crossing",
+   "zh": "PT-91A Twardy，长叶渡口"
+  }
+ },
+ {
+  "n": 132,
+  "id": "pt91m-polders",
+  "hero": "pt91m",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "polders",
+  "time": "day",
+  "anchor": [
+   -286,
+   -137.3
+  ],
+  "heading": 189.2,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "pt91m",
+   "upior",
+   "borsuk",
+   "pl01"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "sig_pt91m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A PT-91M Pendekar leads the assault across Tidegate Polders",
+   "zh": "一辆 PT-91M Pendekar 率队突击潮闸圩田"
+  },
+  "short": {
+   "en": "PT-91M Pendekar, Tidegate Polders",
+   "zh": "PT-91M Pendekar，潮闸圩田"
+  }
+ },
+ {
+  "n": 133,
+  "id": "t72-rys-polders",
+  "hero": "t72_rys",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "polders",
+  "time": "day",
+  "anchor": [
+   -42,
+   -312
+  ],
+  "heading": 198,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "t72_rys",
+   "pl_t80u_modern",
+   "pl01_105"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_pl01",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72 Ryś (Concept) leads the column through Tidegate Polders",
+   "zh": "一辆 T-72 Ryś (Concept) 率领纵队穿过潮闸圩田"
+  },
+  "short": {
+   "en": "T-72 Ryś (Concept), Tidegate Polders",
+   "zh": "T-72 Ryś (Concept)，潮闸圩田"
+  }
+ },
+ {
+  "n": 134,
+  "id": "t72m1-jaguar-longleaf",
+  "hero": "t72m1_jaguar",
+  "nation": "Poland",
+  "era": "modern",
+  "map": "longleaf",
+  "time": "golden",
+  "anchor": [
+   34,
+   79
+  ],
+  "heading": 48.9,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "t72m1_jaguar",
+   "pl_t72b3_zubr_ii"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "sig_t72m1_jaguar",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72M1 Jaguar leads the column through Longleaf Crossing in the evening light",
+   "zh": "傍晚，一辆 T-72M1 Jaguar 率领纵队穿过长叶渡口"
+  },
+  "short": {
+   "en": "T-72M1 Jaguar, Longleaf Crossing",
+   "zh": "T-72M1 Jaguar，长叶渡口"
+  }
+ },
+ {
+  "n": 135,
+  "id": "upior-polders",
+  "hero": "upior",
+  "nation": "Poland",
+  "era": "next-generation",
+  "map": "polders",
+  "time": "golden",
+  "anchor": [
+   -267,
+   183
+  ],
+  "heading": 256,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "upior",
+   "t72m1_jaguar",
+   "pl_t72b3_modern"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_upior",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An Upiór IFV knocks out a T-72B3M at Tidegate Polders in the evening light",
+   "zh": "傍晚，一辆 Upiór IFV 在潮闸圩田击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "Upiór IFV, Tidegate Polders",
+   "zh": "Upiór IFV，潮闸圩田"
+  }
+ },
+ {
+  "n": 136,
+  "id": "bmp3-steppe",
+  "hero": "bmp3",
+  "nation": "Russia",
+  "era": "cold-war",
+  "map": "steppe",
+  "time": "golden",
+  "anchor": [
+   -41,
+   -181.3
+  ],
+  "heading": 280.3,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "bmp3"
+  ],
+  "foes": [
+   "chieftain5",
+   "leo1a5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A BMP-3 leads the column through Tarkhan Steppe in the evening light",
+   "zh": "傍晚，一辆 BMP-3 率领纵队穿过塔尔罕草原"
+  },
+  "short": {
+   "en": "BMP-3, Tarkhan Steppe",
+   "zh": "BMP-3，塔尔罕草原"
+  }
+ },
+ {
+  "n": 137,
+  "id": "bmp3m-dragun125-x-foundry",
+  "hero": "bmp3m_dragun125_x",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   53.7,
+   0
+  ],
+  "heading": 90,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "bmp3m_dragun125_x",
+   "kurganets25_x"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A BMP-3M Dragun knocks out a Challenger 1 at Ironworks",
+   "zh": "一辆 BMP-3M Dragun 在钢铁厂击毁一辆 Challenger 1"
+  },
+  "short": {
+   "en": "BMP-3M Dragun, Ironworks",
+   "zh": "BMP-3M Dragun，钢铁厂"
+  }
+ },
+ {
+  "n": 138,
+  "id": "bmpt-t90-whiteout",
+  "hero": "bmpt_t90",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "whiteout",
+  "time": "day",
+  "anchor": [
+   -100,
+   -104
+  ],
+  "heading": 180,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "bmpt_t90",
+   "t14"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_bmpt_t90",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A BMPT T-90 holds its ground at Whiteout Station",
+   "zh": "一辆 BMPT T-90 在白茫站坚守阵地"
+  },
+  "short": {
+   "en": "BMPT T-90, Whiteout Station",
+   "zh": "BMPT T-90，白茫站"
+  }
+ },
+ {
+  "n": 139,
+  "id": "bmpt-terminator2-railyard",
+  "hero": "bmpt_terminator2",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "railyard",
+  "time": "golden",
+  "anchor": [
+   24,
+   34
+  ],
+  "heading": 20.6,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "bmpt_terminator2",
+   "t90a_vladimir"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A BMPT Terminator 2 fires across Cinder Junction in the evening light",
+   "zh": "傍晚，一辆 BMPT Terminator 2 在灰渣枢纽开火"
+  },
+  "short": {
+   "en": "BMPT Terminator 2, Cinder Junction",
+   "zh": "BMPT Terminator 2，灰渣枢纽"
+  }
+ },
+ {
+  "n": 140,
+  "id": "kurganets25-x-blackglass",
+  "hero": "kurganets25_x",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "blackglass",
+  "time": "golden",
+  "anchor": [
+   -104.2,
+   145
+  ],
+  "heading": 319.5,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "kurganets25_x",
+   "t72b3m_x",
+   "t90m_x",
+   "t90sm"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A Kurganets-25 leads the assault across Suzhou Creek in the evening light",
+   "zh": "傍晚，一辆 Kurganets-25 率队突击苏州河"
+  },
+  "short": {
+   "en": "Kurganets-25, Suzhou Creek",
+   "zh": "Kurganets-25，苏州河"
+  }
+ },
+ {
+  "n": 141,
+  "id": "object695-x-blackglass",
+  "hero": "object695_x",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "blackglass",
+  "time": "day",
+  "anchor": [
+   93,
+   183
+  ],
+  "heading": 18,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "object695_x",
+   "t90a_x",
+   "t14"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_object695_x",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "An Object 695 crosses Suzhou Creek through shellfire",
+   "zh": "一辆 Object 695 冒着炮火穿越苏州河"
+  },
+  "short": {
+   "en": "Object 695, Suzhou Creek",
+   "zh": "Object 695，苏州河"
+  }
+ },
+ {
+  "n": 142,
+  "id": "ru-t72b3-modern-whiteout",
+  "hero": "ru_t72b3_modern",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "whiteout",
+  "time": "morning",
+  "anchor": [
+   -102.1,
+   120.9
+  ],
+  "heading": 175.2,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "ru_t72b3_modern",
+   "t90m_proryv"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-72B3 Bastion-M (Concept) fires on the move at Whiteout Station in the morning",
+   "zh": "清晨，一辆 T-72B3 Bastion-M (Concept) 在白茫站行进间射击"
+  },
+  "short": {
+   "en": "T-72B3 Bastion-M (Concept), Whiteout Station",
+   "zh": "T-72B3 Bastion-M (Concept)，白茫站"
+  }
+ },
+ {
+  "n": 143,
+  "id": "ru-t72b3m-modern-mars",
+  "hero": "ru_t72b3m_modern",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "mars",
+  "time": "day",
+  "anchor": [
+   37.3,
+   256
+  ],
+  "heading": 185.9,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "ru_t72b3m_modern",
+   "t90a_x",
+   "t90a_vladimir_x",
+   "bmp3m_dragun125_x"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-72B3M Bulat-M (Concept) leads the assault across Olympus Basin",
+   "zh": "一辆 T-72B3M Bulat-M (Concept) 率队突击奥林匹斯盆地"
+  },
+  "short": {
+   "en": "T-72B3M Bulat-M (Concept), Olympus Basin",
+   "zh": "T-72B3M Bulat-M (Concept)，奥林匹斯盆地"
+  }
+ },
+ {
+  "n": 144,
+  "id": "ru-t80u-modern-steppe",
+  "hero": "ru_t80u_modern",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   -54.1,
+   211.4
+  ],
+  "heading": 5.6,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "ru_t80u_modern"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-80U Bars-M (Concept) charges through artillery at Tarkhan Steppe",
+   "zh": "一辆 T-80U Bars-M (Concept) 冒着炮击冲过塔尔罕草原"
+  },
+  "short": {
+   "en": "T-80U Bars-M (Concept), Tarkhan Steppe",
+   "zh": "T-80U Bars-M (Concept)，塔尔罕草原"
+  }
+ },
+ {
+  "n": 145,
+  "id": "t14-steppe",
+  "hero": "t14",
+  "nation": "Russia",
+  "era": "next-generation",
+  "map": "steppe",
+  "time": "night",
+  "anchor": [
+   -190,
+   -158
+  ],
+  "heading": 98.1,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "t14"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "An Object 148 Proto knocks out an M1A2 Abrams at Tarkhan Steppe at night",
+   "zh": "夜间，一辆 Object 148 Proto 在塔尔罕草原击毁一辆 M1A2 Abrams"
+  },
+  "short": {
+   "en": "Object 148 Proto, Tarkhan Steppe",
+   "zh": "Object 148 Proto，塔尔罕草原"
+  }
+ },
+ {
+  "n": 146,
+  "id": "t72b3-x-foundry",
+  "hero": "t72b3_x",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   -66.3,
+   102.7
+  ],
+  "heading": 119,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "t72b3_x",
+   "bmpt_t90"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-72B3 knocks out a Leopard 2A6 at Ironworks",
+   "zh": "一辆 T-72B3 在钢铁厂击毁一辆 Leopard 2A6"
+  },
+  "short": {
+   "en": "T-72B3, Ironworks",
+   "zh": "T-72B3，钢铁厂"
+  }
+ },
+ {
+  "n": 147,
+  "id": "t72b3m-whiteout",
+  "hero": "t72b3m",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "whiteout",
+  "time": "morning",
+  "anchor": [
+   255,
+   -11
+  ],
+  "heading": 1.8,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "t72b3m",
+   "ru_t80u_modern"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-72B3M obr. 2022 knocks out a Leopard 2A6 at Whiteout Station in the morning",
+   "zh": "清晨，一辆 T-72B3M obr. 2022 在白茫站击毁一辆 Leopard 2A6"
+  },
+  "short": {
+   "en": "T-72B3M obr. 2022, Whiteout Station",
+   "zh": "T-72B3M obr. 2022，白茫站"
+  }
+ },
+ {
+  "n": 148,
+  "id": "t72b3m-x-railyard",
+  "hero": "t72b3m_x",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "railyard",
+  "time": "morning",
+  "anchor": [
+   -38.7,
+   -108.7
+  ],
+  "heading": 3.6,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "t72b3m_x",
+   "t90a_x",
+   "bmp3m_dragun125_x"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-72B3M crosses Cinder Junction through shellfire in the morning",
+   "zh": "清晨，一辆 T-72B3M 冒着炮火穿越灰渣枢纽"
+  },
+  "short": {
+   "en": "T-72B3M, Cinder Junction",
+   "zh": "T-72B3M，灰渣枢纽"
+  }
+ },
+ {
+  "n": 149,
+  "id": "t90a-blackglass",
+  "hero": "t90a",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "blackglass",
+  "time": "day",
+  "anchor": [
+   224.4,
+   -97.6
+  ],
+  "heading": 98.7,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "t90a",
+   "ru_t80u_modern",
+   "t90sm",
+   "ru_t72b3_modern"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_t90a",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-90A obr. 2004 leads the assault across Suzhou Creek",
+   "zh": "一辆 T-90A obr. 2004 率队突击苏州河"
+  },
+  "short": {
+   "en": "T-90A obr. 2004, Suzhou Creek",
+   "zh": "T-90A obr. 2004，苏州河"
+  }
+ },
+ {
+  "n": 150,
+  "id": "t90a-vladimir-steppe",
+  "hero": "t90a_vladimir",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   130,
+   -208
+  ],
+  "heading": 277.6,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "t90a_vladimir"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "sig_t90a_vladimir",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-90A obr. 2006 knocks out a Challenger 1 at Tarkhan Steppe",
+   "zh": "一辆 T-90A obr. 2006 在塔尔罕草原击毁一辆 Challenger 1"
+  },
+  "short": {
+   "en": "T-90A obr. 2006, Tarkhan Steppe",
+   "zh": "T-90A obr. 2006，塔尔罕草原"
+  }
+ },
+ {
+  "n": 151,
+  "id": "t90a-x-blackglass",
+  "hero": "t90a_x",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "blackglass",
+  "time": "golden",
+  "anchor": [
+   281.5,
+   161.6
+  ],
+  "heading": 279.2,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "t90a_x",
+   "t72b3m_x"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-90A leads the column through Suzhou Creek in the evening light",
+   "zh": "傍晚，一辆 T-90A 率领纵队穿过苏州河"
+  },
+  "short": {
+   "en": "T-90A, Suzhou Creek",
+   "zh": "T-90A，苏州河"
+  }
+ },
+ {
+  "n": 152,
+  "id": "t90m-whiteout",
+  "hero": "t90m",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "whiteout",
+  "time": "golden",
+  "anchor": [
+   87.8,
+   157.4
+  ],
+  "heading": 261.8,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "t90m",
+   "ru_t72b3m_modern"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x"
+  ],
+  "paint": [
+   "sig_t90m",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-90AM fires across Whiteout Station in the evening light",
+   "zh": "傍晚，一辆 T-90AM 在白茫站开火"
+  },
+  "short": {
+   "en": "T-90AM, Whiteout Station",
+   "zh": "T-90AM，白茫站"
+  }
+ },
+ {
+  "n": 153,
+  "id": "t90m-proryv-blackglass",
+  "hero": "t90m_proryv",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "blackglass",
+  "time": "golden",
+  "anchor": [
+   3,
+   3
+  ],
+  "heading": 198,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "t90m_proryv",
+   "t72b3_x"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "sig_t90m_proryv",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-90M Proryv knocks out a Challenger 1 at Suzhou Creek in the evening light",
+   "zh": "傍晚，一辆 T-90M Proryv 在苏州河击毁一辆 Challenger 1"
+  },
+  "short": {
+   "en": "T-90M Proryv, Suzhou Creek",
+   "zh": "T-90M Proryv，苏州河"
+  }
+ },
+ {
+  "n": 154,
+  "id": "t90sm-steppe",
+  "hero": "t90sm",
+  "nation": "Russia",
+  "era": "modern",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   270.2,
+   -95.1
+  ],
+  "heading": 175.9,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "t90sm",
+   "t72b3m_x",
+   "t72b3m"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "sig_t90sm",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-90SM obr. 2013 leads the column through Tarkhan Steppe",
+   "zh": "一辆 T-90SM obr. 2013 率领纵队穿过塔尔罕草原"
+  },
+  "short": {
+   "en": "T-90SM obr. 2013, Tarkhan Steppe",
+   "zh": "T-90SM obr. 2013，塔尔罕草原"
+  }
+ },
+ {
+  "n": 155,
+  "id": "bmp3-rok-titan-gorge",
+  "hero": "bmp3_rok",
+  "nation": "South Korea",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "morning",
+  "anchor": [
+   242.3,
+   267.9
+  ],
+  "heading": 215.9,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "bmp3_rok",
+   "k2_x",
+   "k1a1_x"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_bmp3_rok",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A BMP-3 (ROK) fires across Titan Gorge in the morning",
+   "zh": "清晨，一辆 BMP-3 (ROK) 在泰坦峡谷开火"
+  },
+  "short": {
+   "en": "BMP-3 (ROK), Titan Gorge",
+   "zh": "BMP-3 (ROK)，泰坦峡谷"
+  }
+ },
+ {
+  "n": 156,
+  "id": "k1a1-titan-gorge",
+  "hero": "k1a1",
+  "nation": "South Korea",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "golden",
+  "anchor": [
+   3,
+   3
+  ],
+  "heading": 340,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "k1a1",
+   "k2b",
+   "k2_x"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_k1a1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A K1E1 leads the column through Titan Gorge in the evening light",
+   "zh": "傍晚，一辆 K1E1 率领纵队穿过泰坦峡谷"
+  },
+  "short": {
+   "en": "K1E1, Titan Gorge",
+   "zh": "K1E1，泰坦峡谷"
+  }
+ },
+ {
+  "n": 157,
+  "id": "k2-delta",
+  "hero": "k2",
+  "nation": "South Korea",
+  "era": "modern",
+  "map": "delta",
+  "time": "golden",
+  "anchor": [
+   -42,
+   138
+  ],
+  "heading": 264,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "k2",
+   "k1a1",
+   "k1a1_x"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_k2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An XK2 Black Panther crosses Jade River Delta through shellfire in the evening light",
+   "zh": "傍晚，一辆 XK2 Black Panther 冒着炮火穿越翡翠江三角洲"
+  },
+  "short": {
+   "en": "XK2 Black Panther, Jade River Delta",
+   "zh": "XK2 Black Panther，翡翠江三角洲"
+  }
+ },
+ {
+  "n": 158,
+  "id": "k21-x-titan-gorge",
+  "hero": "k21_x",
+  "nation": "South Korea",
+  "era": "modern",
+  "map": "titan_gorge",
+  "time": "day",
+  "anchor": [
+   -132,
+   93
+  ],
+  "heading": 75,
+  "template": 7,
+  "action": "shellfire",
+  "lineup": [
+   "k21_x",
+   "k1a1",
+   "k2_x"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_bmp3_rok",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A K21 crosses Titan Gorge through shellfire",
+   "zh": "一辆 K21 冒着炮火穿越泰坦峡谷"
+  },
+  "short": {
+   "en": "K21, Titan Gorge",
+   "zh": "K21，泰坦峡谷"
+  }
+ },
+ {
+  "n": 159,
+  "id": "k2b-monsoon",
+  "hero": "k2b",
+  "nation": "South Korea",
+  "era": "modern",
+  "map": "monsoon",
+  "time": "sunset",
+  "anchor": [
+   -87,
+   93
+  ],
+  "heading": 82,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "k2b",
+   "k2",
+   "k1a1_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_k2b",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A K2B leads the column through Monsoon Ridge at sunset",
+   "zh": "日落时分，一辆 K2B 率领纵队穿过季风雨脊"
+  },
+  "short": {
+   "en": "K2B, Monsoon Ridge",
+   "zh": "K2B，季风雨脊"
+  }
+ },
+ {
+  "n": 160,
+  "id": "cv90-fjord",
+  "hero": "cv90",
+  "nation": "Sweden",
+  "era": "modern",
+  "map": "fjord",
+  "time": "sunset",
+  "anchor": [
+   57.4,
+   -61.9
+  ],
+  "heading": 252.1,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "cv90",
+   "cv90105_tml_x",
+   "strv122"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV90 leads the column through Nordhavn Fjord at sunset",
+   "zh": "日落时分，一辆 CV90 率领纵队穿过诺德港峡湾"
+  },
+  "short": {
+   "en": "CV90, Nordhavn Fjord",
+   "zh": "CV90，诺德港峡湾"
+  }
+ },
+ {
+  "n": 161,
+  "id": "cv90-mkiv-fjord",
+  "hero": "cv90_mkiv",
+  "nation": "Sweden",
+  "era": "next-generation",
+  "map": "fjord",
+  "time": "day",
+  "anchor": [
+   190.4,
+   218.2
+  ],
+  "heading": 348.6,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "cv90_mkiv",
+   "cv90"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV90 Mk 4 Concept knocks out a T-90M at Nordhavn Fjord",
+   "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "CV90 Mk 4 Concept, Nordhavn Fjord",
+   "zh": "CV90 Mk 4 Concept，诺德港峡湾"
+  }
+ },
+ {
+  "n": 162,
+  "id": "cv90-mkiv-x-whiteout",
+  "hero": "cv90_mkiv_x",
+  "nation": "Sweden",
+  "era": "next-generation",
+  "map": "whiteout",
+  "time": "day",
+  "anchor": [
+   -98.3,
+   -257.3
+  ],
+  "heading": 359.4,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "cv90_mkiv_x",
+   "cv90105_tml_x",
+   "strv122_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV90 Mk IV fires across Whiteout Station",
+   "zh": "一辆 CV90 Mk IV 在白茫站开火"
+  },
+  "short": {
+   "en": "CV90 Mk IV, Whiteout Station",
+   "zh": "CV90 Mk IV，白茫站"
+  }
+ },
+ {
+  "n": 163,
+  "id": "cv90-x-fjord",
+  "hero": "cv90_x",
+  "nation": "Sweden",
+  "era": "modern",
+  "map": "fjord",
+  "time": "night",
+  "anchor": [
+   93,
+   93
+  ],
+  "heading": 106,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "cv90_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV9040C knocks out a T-72B3M at Nordhavn Fjord at night",
+   "zh": "夜间，一辆 CV9040C 在诺德港峡湾击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "CV9040C, Nordhavn Fjord",
+   "zh": "CV9040C，诺德港峡湾"
+  }
+ },
+ {
+  "n": 164,
+  "id": "cv90105-tml-x-whiteout",
+  "hero": "cv90105_tml_x",
+  "nation": "Sweden",
+  "era": "modern",
+  "map": "whiteout",
+  "time": "day",
+  "anchor": [
+   48,
+   -132
+  ],
+  "heading": 267,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "cv90105_tml_x",
+   "strv122_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV90105 fires on the move at Whiteout Station",
+   "zh": "一辆 CV90105 在白茫站行进间射击"
+  },
+  "short": {
+   "en": "CV90105, Whiteout Station",
+   "zh": "CV90105，白茫站"
+  }
+ },
+ {
+  "n": 165,
+  "id": "strv103a-whiteout",
+  "hero": "strv103a",
+  "nation": "Sweden",
+  "era": "cold-war",
+  "map": "whiteout",
+  "time": "day",
+  "anchor": [
+   -267,
+   93
+  ],
+  "heading": 92,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "strv103a",
+   "strv103",
+   "udes03"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Stridsvagn 103A returns fire across Whiteout Station",
+   "zh": "一辆 Stridsvagn 103A 在白茫站还击"
+  },
+  "short": {
+   "en": "Stridsvagn 103A, Whiteout Station",
+   "zh": "Stridsvagn 103A，白茫站"
+  }
+ },
+ {
+  "n": 166,
+  "id": "strv122-winter",
+  "hero": "strv122",
+  "nation": "Sweden",
+  "era": "modern",
+  "map": "winter",
+  "time": "morning",
+  "anchor": [
+   153.3,
+   190
+  ],
+  "heading": 284.4,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "strv122",
+   "cv90_x",
+   "cv90"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Stridsvagn 121 returns fire across Frosthollow in the morning",
+   "zh": "清晨，一辆 Stridsvagn 121 在霜谷还击"
+  },
+  "short": {
+   "en": "Stridsvagn 121, Frosthollow",
+   "zh": "Stridsvagn 121，霜谷"
+  }
+ },
+ {
+  "n": 167,
+  "id": "strv81-longleaf",
+  "hero": "strv81",
+  "nation": "Sweden",
+  "era": "cold-war",
+  "map": "longleaf",
+  "time": "day",
+  "anchor": [
+   -36,
+   94.3
+  ],
+  "heading": 0,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "strv81",
+   "udes03"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Stridsvagn 81 knocks out a T-62MV-1 at Longleaf Crossing",
+   "zh": "一辆 Stridsvagn 81 在长叶渡口击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "Stridsvagn 81, Longleaf Crossing",
+   "zh": "Stridsvagn 81，长叶渡口"
+  }
+ },
+ {
+  "n": 168,
+  "id": "udes03-fjord",
+  "hero": "udes03",
+  "nation": "Sweden",
+  "era": "cold-war",
+  "map": "fjord",
+  "time": "night",
+  "anchor": [
+   -132,
+   -87
+  ],
+  "heading": 109,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "udes03"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_strv122",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An UDES 03 knocks out a T-64BV1 at Nordhavn Fjord at night",
+   "zh": "夜间，一辆 UDES 03 在诺德港峡湾击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "UDES 03, Nordhavn Fjord",
+   "zh": "UDES 03，诺德港峡湾"
+  }
+ },
+ {
+  "n": 169,
+  "id": "ares-apc-x-saltwind",
+  "hero": "ares_apc_x",
+  "nation": "UK",
+  "era": "modern",
+  "map": "saltwind",
+  "time": "night",
+  "anchor": [
+   5.9,
+   5
+  ],
+  "heading": 343.8,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "ares_apc_x",
+   "challenger2"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_ares_apc_x",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An Ares knocks out a T-90M at Saltwind Narrows at night",
+   "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "Ares, Saltwind Narrows",
+   "zh": "Ares，盐风海峡"
+  }
+ },
+ {
+  "n": 170,
+  "id": "centurion3-saltwind",
+  "hero": "centurion3",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "night",
+  "anchor": [
+   237,
+   37.3
+  ],
+  "heading": 21.1,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "centurion3",
+   "vickers_mk1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Centurion Mk 3 knocks out a T-64BV1 at Saltwind Narrows at night",
+   "zh": "夜间，一辆 Centurion Mk 3 在盐风海峡击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "Centurion Mk 3, Saltwind Narrows",
+   "zh": "Centurion Mk 3，盐风海峡"
+  }
+ },
+ {
+  "n": 171,
+  "id": "centurion5-coastal",
+  "hero": "centurion5",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "day",
+  "anchor": [
+   -305.2,
+   -143
+  ],
+  "heading": 276.8,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "centurion5",
+   "chieftain5_x"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Centurion Mk 5/2 fires on the move at Saltmere Bay",
+   "zh": "一辆 Centurion Mk 5/2 在盐沼湾行进间射击"
+  },
+  "short": {
+   "en": "Centurion Mk 5/2, Saltmere Bay",
+   "zh": "Centurion Mk 5/2，盐沼湾"
+  }
+ },
+ {
+  "n": 172,
+  "id": "challenger-3x-saltwind",
+  "hero": "challenger_3x",
+  "nation": "UK",
+  "era": "next-generation",
+  "map": "saltwind",
+  "time": "day",
+  "anchor": [
+   -12.5,
+   240.9
+  ],
+  "heading": 260.6,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "challenger_3x",
+   "challenger2"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_challenger_3x",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Challenger 3 fires across Saltwind Narrows",
+   "zh": "一辆 Challenger 3 在盐风海峡开火"
+  },
+  "short": {
+   "en": "Challenger 3, Saltwind Narrows",
+   "zh": "Challenger 3，盐风海峡"
+  }
+ },
+ {
+  "n": 173,
+  "id": "challenger1-saltwind",
+  "hero": "challenger1",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "day",
+  "anchor": [
+   3,
+   -222
+  ],
+  "heading": 101,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "challenger1",
+   "warrior_tes_h",
+   "chieftain5_x"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Challenger 1 Mk 2 leads the column through Saltwind Narrows",
+   "zh": "一辆 Challenger 1 Mk 2 率领纵队穿过盐风海峡"
+  },
+  "short": {
+   "en": "Challenger 1 Mk 2, Saltwind Narrows",
+   "zh": "Challenger 1 Mk 2，盐风海峡"
+  }
+ },
+ {
+  "n": 174,
+  "id": "challenger2-coastal",
+  "hero": "challenger2",
+  "nation": "UK",
+  "era": "modern",
+  "map": "coastal",
+  "time": "day",
+  "anchor": [
+   3,
+   318
+  ],
+  "heading": 281,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "challenger2",
+   "chieftain_mk10_x"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Challenger 2 knocks out a T-90A at Saltmere Bay",
+   "zh": "一辆 Challenger 2 在盐沼湾击毁一辆 T-90A"
+  },
+  "short": {
+   "en": "Challenger 2, Saltmere Bay",
+   "zh": "Challenger 2，盐沼湾"
+  }
+ },
+ {
+  "n": 175,
+  "id": "chieftain-mk10-saltwind",
+  "hero": "chieftain_mk10",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "sunset",
+  "anchor": [
+   262.2,
+   -307
+  ],
+  "heading": 128.7,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "chieftain_mk10",
+   "chieftain5_x",
+   "fv510"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Chieftain Mk 9 fires across Saltwind Narrows at sunset",
+   "zh": "日落时分，一辆 Chieftain Mk 9 在盐风海峡开火"
+  },
+  "short": {
+   "en": "Chieftain Mk 9, Saltwind Narrows",
+   "zh": "Chieftain Mk 9，盐风海峡"
+  }
+ },
+ {
+  "n": 176,
+  "id": "chieftain5-coastal",
+  "hero": "chieftain5",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "golden",
+  "anchor": [
+   273,
+   228
+  ],
+  "heading": 352,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "chieftain5",
+   "challenger1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Chieftain Mk 3 holds its ground at Saltmere Bay in the evening light",
+   "zh": "傍晚，一辆 Chieftain Mk 3 在盐沼湾坚守阵地"
+  },
+  "short": {
+   "en": "Chieftain Mk 3, Saltmere Bay",
+   "zh": "Chieftain Mk 3，盐沼湾"
+  }
+ },
+ {
+  "n": 177,
+  "id": "fv4034-railyard",
+  "hero": "fv4034",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "railyard",
+  "time": "sunset",
+  "anchor": [
+   -172,
+   118
+  ],
+  "heading": 135,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "fv4034",
+   "centurion5"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An FV4034 leads the column through Cinder Junction at sunset",
+   "zh": "日落时分，一辆 FV4034 率领纵队穿过灰渣枢纽"
+  },
+  "short": {
+   "en": "FV4034, Cinder Junction",
+   "zh": "FV4034，灰渣枢纽"
+  }
+ },
+ {
+  "n": 178,
+  "id": "fv510-coastal",
+  "hero": "fv510",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "coastal",
+  "time": "morning",
+  "anchor": [
+   -357,
+   -357
+  ],
+  "heading": 356,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "fv510",
+   "warrior_tes_h",
+   "fv4034"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An FV510 Warrior leads the column through Saltmere Bay in the morning",
+   "zh": "清晨，一辆 FV510 Warrior 率领纵队穿过盐沼湾"
+  },
+  "short": {
+   "en": "FV510 Warrior, Saltmere Bay",
+   "zh": "FV510 Warrior，盐沼湾"
+  }
+ },
+ {
+  "n": 179,
+  "id": "fv510-milan-saltwind",
+  "hero": "fv510_milan",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "day",
+  "anchor": [
+   270.5,
+   304.1
+  ],
+  "heading": 350.2,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "fv510_milan",
+   "vickers_mk1"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An FV510 Warrior MILAN fires across Saltwind Narrows",
+   "zh": "一辆 FV510 Warrior MILAN 在盐风海峡开火"
+  },
+  "short": {
+   "en": "FV510 Warrior MILAN, Saltwind Narrows",
+   "zh": "FV510 Warrior MILAN，盐风海峡"
+  }
+ },
+ {
+  "n": 180,
+  "id": "vickers-mk1-saltwind",
+  "hero": "vickers_mk1",
+  "nation": "UK",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "day",
+  "anchor": [
+   -132,
+   -87
+  ],
+  "heading": 6,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "vickers_mk1",
+   "chieftain5"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_challenger_3",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Vickers MBT Mk 1 knocks out a T-62MV-1 at Saltwind Narrows",
+   "zh": "一辆 Vickers MBT Mk 1 在盐风海峡击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "Vickers MBT Mk 1, Saltwind Narrows",
+   "zh": "Vickers MBT Mk 1，盐风海峡"
+  }
+ },
+ {
+  "n": 181,
+  "id": "t84-frontier",
+  "hero": "t84",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "frontier",
+  "time": "day",
+  "anchor": [
+   -132,
+   93
+  ],
+  "heading": 109,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "t84",
+   "ua_challenger2"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_t84",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-84 Oplot knocks out a T-90M at Frontier Basin",
+   "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "T-84 Oplot, Frontier Basin",
+   "zh": "T-84 Oplot，边疆盆地"
+  }
+ },
+ {
+  "n": 182,
+  "id": "ua-m1a1-steppe",
+  "hero": "ua_m1a1",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   -305.8,
+   -62.4
+  ],
+  "heading": 175.8,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "ua_m1a1"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_ua_m1a1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A1 SA (Ukraine) charges through artillery at Tarkhan Steppe",
+   "zh": "一辆 M1A1 SA (Ukraine) 冒着炮击冲过塔尔罕草原"
+  },
+  "short": {
+   "en": "M1A1 SA (Ukraine), Tarkhan Steppe",
+   "zh": "M1A1 SA (Ukraine)，塔尔罕草原"
+  }
+ },
+ {
+  "n": 183,
+  "id": "ua-m2a3-bradley-steppe",
+  "hero": "ua_m2a3_bradley",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   48,
+   93
+  ],
+  "heading": 98,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "ua_m2a3_bradley",
+   "t84",
+   "leo2a6_ua"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "service_ua_m2a3_bradley",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M2A3 Bradley (Ukraine) leads the column through Tarkhan Steppe",
+   "zh": "一辆 M2A3 Bradley (Ukraine) 率领纵队穿过塔尔罕草原"
+  },
+  "short": {
+   "en": "M2A3 Bradley (Ukraine), Tarkhan Steppe",
+   "zh": "M2A3 Bradley (Ukraine)，塔尔罕草原"
+  }
+ },
+ {
+  "n": 184,
+  "id": "ua-t64bv-frontier",
+  "hero": "ua_t64bv",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "frontier",
+  "time": "day",
+  "anchor": [
+   183,
+   48
+  ],
+  "heading": 96,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "ua_t64bv",
+   "leo2a6_ua"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "sig_ua_t64bv",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-64BV Donbas fires on the move at Frontier Basin",
+   "zh": "一辆 T-64BV Donbas 在边疆盆地行进间射击"
+  },
+  "short": {
+   "en": "T-64BV Donbas, Frontier Basin",
+   "zh": "T-64BV Donbas，边疆盆地"
+  }
+ },
+ {
+  "n": 185,
+  "id": "ua-t72b3-modern-frontier",
+  "hero": "ua_t72b3_modern",
+  "nation": "Ukraine",
+  "era": "next-generation",
+  "map": "frontier",
+  "time": "morning",
+  "anchor": [
+   -267,
+   3
+  ],
+  "heading": 165,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "ua_t72b3_modern",
+   "ua_t80u_kursk"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_ua_m2a3_bradley",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72B3 Sich (Concept) fires across Frontier Basin in the morning",
+   "zh": "清晨，一辆 T-72B3 Sich (Concept) 在边疆盆地开火"
+  },
+  "short": {
+   "en": "T-72B3 Sich (Concept), Frontier Basin",
+   "zh": "T-72B3 Sich (Concept)，边疆盆地"
+  }
+ },
+ {
+  "n": 186,
+  "id": "ua-t72b3m-modern-winter",
+  "hero": "ua_t72b3m_modern",
+  "nation": "Ukraine",
+  "era": "next-generation",
+  "map": "winter",
+  "time": "sunset",
+  "anchor": [
+   -177,
+   -87
+  ],
+  "heading": 350,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "ua_t72b3m_modern",
+   "ua_m2a3_bradley",
+   "ua_t72b3_modern"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_ua_m2a3_bradley",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-72B3M Hetman (Concept) leads the column through Frosthollow at sunset",
+   "zh": "日落时分，一辆 T-72B3M Hetman (Concept) 率领纵队穿过霜谷"
+  },
+  "short": {
+   "en": "T-72B3M Hetman (Concept), Frosthollow",
+   "zh": "T-72B3M Hetman (Concept)，霜谷"
+  }
+ },
+ {
+  "n": 187,
+  "id": "ua-t80bv-winter",
+  "hero": "ua_t80bv",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "winter",
+  "time": "golden",
+  "anchor": [
+   89.3,
+   -1.8
+  ],
+  "heading": 103.5,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "ua_t80bv"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_ua_t80bv",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-80BV (Ukraine) charges through artillery at Frosthollow in the evening light",
+   "zh": "傍晚，一辆 T-80BV (Ukraine) 冒着炮击冲过霜谷"
+  },
+  "short": {
+   "en": "T-80BV (Ukraine), Frosthollow",
+   "zh": "T-80BV (Ukraine)，霜谷"
+  }
+ },
+ {
+  "n": 188,
+  "id": "ua-t80u-kursk-frontier",
+  "hero": "ua_t80u_kursk",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "frontier",
+  "time": "day",
+  "anchor": [
+   3,
+   318
+  ],
+  "heading": 265,
+  "template": 36,
+  "action": "kill",
+  "lineup": [
+   "ua_t80u_kursk",
+   "ua_t84_oplot_m"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_ua_t80u_kursk",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-80U Kursk knocks out a T-72B3M at Frontier Basin",
+   "zh": "一辆 T-80U Kursk 在边疆盆地击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "T-80U Kursk, Frontier Basin",
+   "zh": "T-80U Kursk，边疆盆地"
+  }
+ },
+ {
+  "n": 189,
+  "id": "ua-t80u-modern-winter",
+  "hero": "ua_t80u_modern",
+  "nation": "Ukraine",
+  "era": "next-generation",
+  "map": "winter",
+  "time": "day",
+  "anchor": [
+   214,
+   -36.7
+  ],
+  "heading": 262.1,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "ua_t80u_modern",
+   "ua_t84_oplot_m"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_ua_m2a3_bradley",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-80U Zoria (Concept) fires on the move at Frosthollow",
+   "zh": "一辆 T-80U Zoria (Concept) 在霜谷行进间射击"
+  },
+  "short": {
+   "en": "T-80U Zoria (Concept), Frosthollow",
+   "zh": "T-80U Zoria (Concept)，霜谷"
+  }
+ },
+ {
+  "n": 190,
+  "id": "ua-t84-oplot-m-frontier",
+  "hero": "ua_t84_oplot_m",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "frontier",
+  "time": "morning",
+  "anchor": [
+   -120,
+   10
+  ],
+  "heading": 95.7,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "ua_t84_oplot_m",
+   "ua_m1a1",
+   "ua_t80u_modern"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "sig_ua_t84_oplot_m",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A T-84BM Oplot-M knocks out a T-90M at Frontier Basin in the morning",
+   "zh": "清晨，一辆 T-84BM Oplot-M 在边疆盆地击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "T-84BM Oplot-M, Frontier Basin",
+   "zh": "T-84BM Oplot-M，边疆盆地"
+  }
+ },
+ {
+  "n": 191,
+  "id": "abramsx-airfield",
+  "hero": "abramsx",
+  "nation": "USA",
+  "era": "next-generation",
+  "map": "airfield",
+  "time": "day",
+  "anchor": [
+   56,
+   92
+  ],
+  "heading": 235.3,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "abramsx",
+   "m1a2_sepv3_x"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "sig_abramsx",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An AbramsX knocks out a T-72B3M at Kestrel Airfield",
+   "zh": "一辆 AbramsX 在红隼机场击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "AbramsX, Kestrel Airfield",
+   "zh": "AbramsX，红隼机场"
+  }
+ },
+ {
+  "n": 192,
+  "id": "griffin-viper-airfield",
+  "hero": "griffin_viper",
+  "nation": "USA",
+  "era": "modern",
+  "map": "airfield",
+  "time": "golden",
+  "anchor": [
+   -136.7,
+   -97.3
+  ],
+  "heading": 268.4,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "griffin_viper",
+   "m1a2_tusk",
+   "m1a2_sepv2_x"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Griffin Viper returns fire across Kestrel Airfield in the evening light",
+   "zh": "傍晚，一辆 Griffin Viper 在红隼机场还击"
+  },
+  "short": {
+   "en": "Griffin Viper, Kestrel Airfield",
+   "zh": "Griffin Viper，红隼机场"
+  }
+ },
+ {
+  "n": 193,
+  "id": "m1a1-copper-mesa",
+  "hero": "m1a1",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "day",
+  "anchor": [
+   3,
+   -177
+  ],
+  "heading": 250,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "m1a1",
+   "m1a1ha"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams leads the column through Copper Mesa Mine",
+   "zh": "一辆 M1A1 Abrams 率领纵队穿过铜台地矿场"
+  },
+  "short": {
+   "en": "M1A1 Abrams, Copper Mesa Mine",
+   "zh": "M1A1 Abrams，铜台地矿场"
+  }
+ },
+ {
+  "n": 194,
+  "id": "m1a1ha-desert",
+  "hero": "m1a1ha",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "desert",
+  "time": "day",
+  "anchor": [
+   93,
+   228
+  ],
+  "heading": 356,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "m1a1ha",
+   "m47_patton",
+   "m60a2"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams HA fires across Sirocco Wadi",
+   "zh": "一辆 M1A1 Abrams HA 在西罗科旱谷开火"
+  },
+  "short": {
+   "en": "M1A1 Abrams HA, Sirocco Wadi",
+   "zh": "M1A1 Abrams HA，西罗科旱谷"
+  }
+ },
+ {
+  "n": 195,
+  "id": "m1a2-airfield",
+  "hero": "m1a2",
+  "nation": "USA",
+  "era": "modern",
+  "map": "airfield",
+  "time": "morning",
+  "anchor": [
+   206.7,
+   98
+  ],
+  "heading": 90,
+  "template": 24,
+  "action": "kill",
+  "lineup": [
+   "m1a2",
+   "m551a1_tts",
+   "m1a3"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
+   "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+  },
+  "short": {
+   "en": "M1A1 Abrams HC, Kestrel Airfield",
+   "zh": "M1A1 Abrams HC，红隼机场"
+  }
+ },
+ {
+  "n": 196,
+  "id": "m1a2-sepv2-badlands",
+  "hero": "m1a2_sepv2",
+  "nation": "USA",
+  "era": "modern",
+  "map": "badlands",
+  "time": "golden",
+  "anchor": [
+   -182.5,
+   107.7
+  ],
+  "heading": 6.7,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "m1a2_sepv2",
+   "m1a2_tusk",
+   "m1a2_tusk_x"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams AIM returns fire across Redrock Divide in the evening light",
+   "zh": "傍晚，一辆 M1A1 Abrams AIM 在红岩分界还击"
+  },
+  "short": {
+   "en": "M1A1 Abrams AIM, Redrock Divide",
+   "zh": "M1A1 Abrams AIM，红岩分界"
+  }
+ },
+ {
+  "n": 197,
+  "id": "m1a2-sepv3-airfield",
+  "hero": "m1a2_sepv3",
+  "nation": "USA",
+  "era": "modern",
+  "map": "airfield",
+  "time": "golden",
+  "anchor": [
+   -270,
+   0
+  ],
+  "heading": 90,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "m1a2_sepv3",
+   "m1a2_sepv2"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams FEP knocks out a T-72B3M at Kestrel Airfield in the evening light",
+   "zh": "傍晚，一辆 M1A1 Abrams FEP 在红隼机场击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "M1A1 Abrams FEP, Kestrel Airfield",
+   "zh": "M1A1 Abrams FEP，红隼机场"
+  }
+ },
+ {
+  "n": 198,
+  "id": "m1a2-tusk-copper-mesa",
+  "hero": "m1a2_tusk",
+  "nation": "USA",
+  "era": "modern",
+  "map": "copper_mesa",
+  "time": "day",
+  "anchor": [
+   48,
+   183
+  ],
+  "heading": 3,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "m1a2_tusk",
+   "m1a2_sepv2",
+   "m1a2_sepv3"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A1 Abrams SA leads the column through Copper Mesa Mine",
+   "zh": "一辆 M1A1 Abrams SA 率领纵队穿过铜台地矿场"
+  },
+  "short": {
+   "en": "M1A1 Abrams SA, Copper Mesa Mine",
+   "zh": "M1A1 Abrams SA，铜台地矿场"
+  }
+ },
+ {
+  "n": 199,
+  "id": "m1a2-x-desert",
+  "hero": "m1a2_x",
+  "nation": "USA",
+  "era": "modern",
+  "map": "desert",
+  "time": "day",
+  "anchor": [
+   138,
+   -312
+  ],
+  "heading": 105,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "m1a2_x",
+   "m551a1_tts"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M1A2 Abrams leads the column through Sirocco Wadi",
+   "zh": "一辆 M1A2 Abrams 率领纵队穿过西罗科旱谷"
+  },
+  "short": {
+   "en": "M1A2 Abrams, Sirocco Wadi",
+   "zh": "M1A2 Abrams，西罗科旱谷"
+  }
+ },
+ {
+  "n": 200,
+  "id": "m2a2-bradley-badlands",
+  "hero": "m2a2_bradley",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "morning",
+  "anchor": [
+   -36.8,
+   210
+  ],
+  "heading": 102.9,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "m2a2_bradley",
+   "m1a1",
+   "m60a3"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "summer",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M2A2 Bradley fires across Redrock Divide in the morning",
+   "zh": "清晨，一辆 M2A2 Bradley 在红岩分界开火"
+  },
+  "short": {
+   "en": "M2A2 Bradley, Redrock Divide",
+   "zh": "M2A2 Bradley，红岩分界"
+  }
+ },
+ {
+  "n": 201,
+  "id": "m3a3-bradley-desert",
+  "hero": "m3a3_bradley",
+  "nation": "USA",
+  "era": "modern",
+  "map": "desert",
+  "time": "day",
+  "anchor": [
+   48,
+   273
+  ],
+  "heading": 348,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "m3a3_bradley"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M3A3 Bradley CFV charges through artillery at Sirocco Wadi",
+   "zh": "一辆 M3A3 Bradley CFV 冒着炮击冲过西罗科旱谷"
+  },
+  "short": {
+   "en": "M3A3 Bradley CFV, Sirocco Wadi",
+   "zh": "M3A3 Bradley CFV，西罗科旱谷"
+  }
+ },
+ {
+  "n": 202,
+  "id": "m46-patton-copper-mesa",
+  "hero": "m46_patton",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "golden",
+  "anchor": [
+   228,
+   -87
+  ],
+  "heading": 161,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "m46_patton",
+   "m1a1"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "summer",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M46 Patton fires on the move at Copper Mesa Mine in the evening light",
+   "zh": "傍晚，一辆 M46 Patton 在铜台地矿场行进间射击"
+  },
+  "short": {
+   "en": "M46 Patton, Copper Mesa Mine",
+   "zh": "M46 Patton，铜台地矿场"
+  }
+ },
+ {
+  "n": 203,
+  "id": "m47-patton-badlands",
+  "hero": "m47_patton",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "morning",
+  "anchor": [
+   198,
+   -112
+  ],
+  "heading": 186.7,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "m47_patton",
+   "m46_patton"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "summer",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M47 Patton knocks out a T-64BV1 at Redrock Divide in the morning",
+   "zh": "清晨，一辆 M47 Patton 在红岩分界击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "M47 Patton, Redrock Divide",
+   "zh": "M47 Patton，红岩分界"
+  }
+ },
+ {
+  "n": 204,
+  "id": "m48-airfield",
+  "hero": "m48",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "airfield",
+  "time": "day",
+  "anchor": [
+   355,
+   0
+  ],
+  "heading": 270,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "m48"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "summer",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M48A5 Patton knocks out a T-62MV-1 at Kestrel Airfield",
+   "zh": "一辆 M48A5 Patton 在红隼机场击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "M48A5 Patton, Kestrel Airfield",
+   "zh": "M48A5 Patton，红隼机场"
+  }
+ },
+ {
+  "n": 205,
+  "id": "m551-sheridan-airfield",
+  "hero": "m551_sheridan",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "airfield",
+  "time": "night",
+  "anchor": [
+   -271.9,
+   -230
+  ],
+  "heading": 298.6,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "m551_sheridan",
+   "m2a2_bradley"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "sig_m551_sheridan",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M551 Sheridan knocks out a T-62MV-1 at Kestrel Airfield at night",
+   "zh": "夜间，一辆 M551 Sheridan 在红隼机场击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "M551 Sheridan, Kestrel Airfield",
+   "zh": "M551 Sheridan，红隼机场"
+  }
+ },
+ {
+  "n": 206,
+  "id": "m60a1-desert",
+  "hero": "m60a1",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "desert",
+  "time": "day",
+  "anchor": [
+   48,
+   363
+  ],
+  "heading": 194,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "m60a1",
+   "m47_patton",
+   "m48"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M60A1 Patton fires across Sirocco Wadi",
+   "zh": "一辆 M60A1 Patton 在西罗科旱谷开火"
+  },
+  "short": {
+   "en": "M60A1 Patton, Sirocco Wadi",
+   "zh": "M60A1 Patton，西罗科旱谷"
+  }
+ },
+ {
+  "n": 207,
+  "id": "m60a2-badlands",
+  "hero": "m60a2",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "day",
+  "anchor": [
+   148,
+   232
+  ],
+  "heading": 107,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "m60a2",
+   "m2a2_bradley"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An M60A2 Starship fires across Redrock Divide",
+   "zh": "一辆 M60A2 Starship 在红岩分界开火"
+  },
+  "short": {
+   "en": "M60A2 Starship, Redrock Divide",
+   "zh": "M60A2 Starship，红岩分界"
+  }
+ },
+ {
+  "n": 208,
+  "id": "m60a3-copper-mesa",
+  "hero": "m60a3",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "day",
+  "anchor": [
+   375.4,
+   -235.7
+  ],
+  "heading": 5.9,
+  "template": 27,
+  "action": "kill",
+  "lineup": [
+   "m60a3",
+   "m60a2"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M60A3 knocks out a T-64BV1 at Copper Mesa Mine",
+   "zh": "一辆 M60A3 在铜台地矿场击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "M60A3, Copper Mesa Mine",
+   "zh": "M60A3，铜台地矿场"
+  }
+ },
+ {
+  "n": 209,
+  "id": "bmp2-reservoir",
+  "hero": "bmp2",
+  "nation": "USSR",
+  "era": "cold-war",
+  "map": "reservoir",
+  "time": "morning",
+  "anchor": [
+   -177,
+   -87
+  ],
+  "heading": 0,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "bmp2",
+   "kv2"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3",
+   "chieftain5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A BMP-2 leads the column through Highland Reservoir in the morning",
+   "zh": "清晨，一辆 BMP-2 率领纵队穿过高地水库"
+  },
+  "short": {
+   "en": "BMP-2, Highland Reservoir",
+   "zh": "BMP-2，高地水库"
+  }
+ },
+ {
+  "n": 210,
+  "id": "kv2-alpine",
+  "hero": "kv2",
+  "nation": "USSR",
+  "era": "ww2",
+  "map": "alpine",
+  "time": "day",
+  "anchor": [
+   -43.5,
+   -163.1
+  ],
+  "heading": 101.8,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "kv2",
+   "bmp2"
+  ],
+  "foes": [
+   "chieftain5",
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_ww2",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A KV-2 leads the column through Glacier Pass",
+   "zh": "一辆 KV-2 率领纵队穿过冰川关"
+  },
+  "short": {
+   "en": "KV-2, Glacier Pass",
+   "zh": "KV-2，冰川关"
+  }
+ },
+ {
+  "n": 211,
+  "id": "t62mv1-foundry",
+  "hero": "t62mv1",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   0,
+   -144.4
+  ],
+  "heading": 0,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "t62mv1",
+   "t64bv1",
+   "t72bu"
+  ],
+  "foes": [
+   "m60a3",
+   "chieftain5",
+   "leo1a5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-62 obr. 1975 leads the column through Ironworks",
+   "zh": "一辆 T-62 obr. 1975 率领纵队穿过钢铁厂"
+  },
+  "short": {
+   "en": "T-62 obr. 1975, Ironworks",
+   "zh": "T-62 obr. 1975，钢铁厂"
+  }
+ },
+ {
+  "n": 212,
+  "id": "t62mv1-x-blackglass",
+  "hero": "t62mv1_x",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "blackglass",
+  "time": "day",
+  "anchor": [
+   -87,
+   -132
+  ],
+  "heading": 177,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "t62mv1_x",
+   "t72bu"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-62MV-1 knocks out a Leopard 1A5 at Suzhou Creek",
+   "zh": "一辆 T-62MV-1 在苏州河击毁一辆 Leopard 1A5"
+  },
+  "short": {
+   "en": "T-62MV-1, Suzhou Creek",
+   "zh": "T-62MV-1，苏州河"
+  }
+ },
+ {
+  "n": 213,
+  "id": "t64bv1-foundry",
+  "hero": "t64bv1",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "foundry",
+  "time": "sunset",
+  "anchor": [
+   -175.7,
+   0
+  ],
+  "heading": 270,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "t64bv1",
+   "t80u",
+   "t80",
+   "t80b"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3",
+   "chieftain5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-64BV1 leads the assault across Ironworks at sunset",
+   "zh": "日落时分，一辆 T-64BV1 率队突击钢铁厂"
+  },
+  "short": {
+   "en": "T-64BV1, Ironworks",
+   "zh": "T-64BV1，钢铁厂"
+  }
+ },
+ {
+  "n": 214,
+  "id": "t72b-1987-x-blackglass",
+  "hero": "t72b_1987_x",
+  "nation": "USSR/Russia",
+  "era": "modern",
+  "map": "blackglass",
+  "time": "night",
+  "anchor": [
+   93,
+   -177
+  ],
+  "heading": 168,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "t72b_1987_x",
+   "t90a_burlak"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-72B advances through Suzhou Creek at night",
+   "zh": "夜间，一辆 T-72B 穿过苏州河推进"
+  },
+  "short": {
+   "en": "T-72B, Suzhou Creek",
+   "zh": "T-72B，苏州河"
+  }
+ },
+ {
+  "n": 215,
+  "id": "t72bu-foundry",
+  "hero": "t72bu",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   157.1,
+   -171.3
+  ],
+  "heading": 104,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "t72bu"
+  ],
+  "foes": [
+   "m60a3",
+   "chieftain5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-72BU obr. 1989 knocks out an M60A3 at Ironworks",
+   "zh": "一辆 T-72BU obr. 1989 在钢铁厂击毁一辆 M60A3"
+  },
+  "short": {
+   "en": "T-72BU obr. 1989, Ironworks",
+   "zh": "T-72BU obr. 1989，钢铁厂"
+  }
+ },
+ {
+  "n": 216,
+  "id": "t72bu-x-foundry",
+  "hero": "t72bu_x",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   254.3,
+   0
+  ],
+  "heading": 90,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "t72bu_x",
+   "t80bv"
+  ],
+  "foes": [
+   "m60a3",
+   "chieftain5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-72BU fires across Ironworks",
+   "zh": "一辆 T-72BU 在钢铁厂开火"
+  },
+  "short": {
+   "en": "T-72BU, Ironworks",
+   "zh": "T-72BU，钢铁厂"
+  }
+ },
+ {
+  "n": 217,
+  "id": "t80-foundry",
+  "hero": "t80",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "foundry",
+  "time": "day",
+  "anchor": [
+   -160.4,
+   -207.2
+  ],
+  "heading": 84.6,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "t80",
+   "t80b"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-80 leads the column through Ironworks",
+   "zh": "一辆 T-80 率领纵队穿过钢铁厂"
+  },
+  "short": {
+   "en": "T-80, Ironworks",
+   "zh": "T-80，钢铁厂"
+  }
+ },
+ {
+  "n": 218,
+  "id": "t80b-reservoir",
+  "hero": "t80b",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "reservoir",
+  "time": "night",
+  "anchor": [
+   -177,
+   3
+  ],
+  "heading": 167,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "t80b",
+   "t72bu"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-80B knocks out a Leopard 1A5 at Highland Reservoir at night",
+   "zh": "夜间，一辆 T-80B 在高地水库击毁一辆 Leopard 1A5"
+  },
+  "short": {
+   "en": "T-80B, Highland Reservoir",
+   "zh": "T-80B，高地水库"
+  }
+ },
+ {
+  "n": 219,
+  "id": "t80bv-oasis",
+  "hero": "t80bv",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "oasis",
+  "time": "day",
+  "anchor": [
+   -87,
+   138
+  ],
+  "heading": 98,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "t80bv",
+   "t72bu_x",
+   "t64bv1"
+  ],
+  "foes": [
+   "m60a3",
+   "chieftain5",
+   "leo1a5"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-80BV returns fire across Sunscar Oasis",
+   "zh": "一辆 T-80BV 在日痕绿洲还击"
+  },
+  "short": {
+   "en": "T-80BV, Sunscar Oasis",
+   "zh": "T-80BV，日痕绿洲"
+  }
+ },
+ {
+  "n": 220,
+  "id": "t80u-alpine",
+  "hero": "t80u",
+  "nation": "USSR/Russia",
+  "era": "cold-war",
+  "map": "alpine",
+  "time": "day",
+  "anchor": [
+   -336.1,
+   -215.3
+  ],
+  "heading": 189.1,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "t80u",
+   "t72bu_x"
+  ],
+  "foes": [
+   "leo1a5",
+   "m60a3"
+  ],
+  "paint": [
+   "service_soviet_coldwar",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-80UK leads the column through Glacier Pass",
+   "zh": "一辆 T-80UK 率领纵队穿过冰川关"
+  },
+  "short": {
+   "en": "T-80UK, Glacier Pass",
+   "zh": "T-80UK，冰川关"
+  }
+ },
+ {
+  "n": 221,
+  "id": "t90-alpine",
+  "hero": "t90",
+  "nation": "USSR/Russia",
+  "era": "modern",
+  "map": "alpine",
+  "time": "golden",
+  "anchor": [
+   -87,
+   3
+  ],
+  "heading": 345,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "t90",
+   "t90a_burlak_x",
+   "t80u_x"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "sig_t90",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-90 obr. 1992 leads the column through Glacier Pass in the evening light",
+   "zh": "傍晚，一辆 T-90 obr. 1992 率领纵队穿过冰川关"
+  },
+  "short": {
+   "en": "T-90 obr. 1992, Glacier Pass",
+   "zh": "T-90 obr. 1992，冰川关"
+  }
+ },
+ {
+  "n": 222,
+  "id": "t90-x-urban",
+  "hero": "t90_x",
+  "nation": "USSR/Russia",
+  "era": "modern",
+  "map": "urban",
+  "time": "golden",
+  "anchor": [
+   -47.1,
+   -215
+  ],
+  "heading": 357.5,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "t90_x",
+   "t72b_1987_x",
+   "t90"
+  ],
+  "foes": [
+   "leo2a6_x",
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "service_t90m",
+   "service_leo2a6m"
+  ],
+  "title": {
+   "en": "A T-90 leads the column through Steinburg in the evening light",
+   "zh": "傍晚，一辆 T-90 率领纵队穿过斯泰因堡"
+  },
+  "short": {
+   "en": "T-90, Steinburg",
+   "zh": "T-90，斯泰因堡"
+  }
+ },
+ {
+  "n": 223,
+  "id": "t90a-burlak-oasis",
+  "hero": "t90a_burlak",
+  "nation": "USSR/Russia",
+  "era": "modern",
+  "map": "oasis",
+  "time": "day",
+  "anchor": [
+   93,
+   183
+  ],
+  "heading": 356,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "t90a_burlak",
+   "t80u_x"
+  ],
+  "foes": [
+   "m1a2_x",
+   "challenger1_x"
+  ],
+  "paint": [
+   "sig_t90a_burlak",
+   "service_usa_desert"
+  ],
+  "title": {
+   "en": "A T-90A Burlak Prototype fires across Sunscar Oasis",
+   "zh": "一辆 T-90A Burlak Prototype 在日痕绿洲开火"
+  },
+  "short": {
+   "en": "T-90A Burlak Prototype, Sunscar Oasis",
+   "zh": "T-90A Burlak Prototype，日痕绿洲"
+  }
+ },
+ {
+  "n": 224,
+  "id": "t90ms-reservoir",
+  "hero": "t90ms",
+  "nation": "USSR/Russia",
+  "era": "modern",
+  "map": "reservoir",
+  "time": "day",
+  "anchor": [
+   -132,
+   48
+  ],
+  "heading": 353,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "t90ms",
+   "t90_x"
+  ],
+  "foes": [
+   "challenger1_x",
+   "leo2a6_x"
+  ],
+  "paint": [
+   "sig_t90ms",
+   "service_challenger_3"
+  ],
+  "title": {
+   "en": "A T-90MS obr. 2011 leads the column through Highland Reservoir",
+   "zh": "一辆 T-90MS obr. 2011 率领纵队穿过高地水库"
+  },
+  "short": {
+   "en": "T-90MS obr. 2011, Highland Reservoir",
+   "zh": "T-90MS obr. 2011，高地水库"
+  }
+ }
+]

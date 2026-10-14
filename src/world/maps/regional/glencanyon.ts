@@ -337,7 +337,9 @@ const surgeTower: RegionalBuilder = (ctx) => {
     const hd = RR.D / 2;
     sink.cylinder(CONCRETE, [0, -0.5, 0], 'y', 4.6, R + 1.2, 24, {}, R + 1.0);
     sink.cylinder('structureMetal', [0, 4.1, 0], 'y', H, R, 24, { colour: paint });
-    for (let y = 4.1 + 3.8; y < 4.1 + H - 1; y += 3.8) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.22, R + 0.06, 24, { colour: shade(paint, 0.82), decor: true }, R + 0.06, false);
+    // (the integrity check, 2026-10-12: the stiffener rings stood 6 cm off the shell on nothing, open top and bottom) each
+    // ring closed against the shell: its top and bottom ledges reach in to the drum
+    for (let y = 4.1 + 3.8; y < 4.1 + H - 1; y += 3.8) sink.cylinder('structureMetal', [0, y, 0], 'y', 0.22, R + 0.06, 24, { colour: shade(paint, 0.82), decor: true }, R + 0.06);
     sink.cylinder('structureMetal', [0, 4.1 + H, 0], 'y', 2.2, R + 0.15, 24, { colour: shade(paint, 0.92) }, 0.9);
     sink.cylinder('structureMetal', [0, 6.3 + H, 0], 'y', 1.0, 0.7, 8, { colour: IRON, decor: true }, 0.7);
     // the ladder and its cage up the east side (the connectivity sweep: the stiles stood a third of a metre off the drum

@@ -1,0 +1,129 @@
+{
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "duration": 30,
+ "letterbox": 0,
+ "audio": "assets/audio/mix.wav",
+ "grain": 0.04,
+ "shots": [
+  {
+   "id": "ui-feature-stage",
+   "src": "assets/shots/ui-feature-stage.mp4",
+   "start": 0,
+   "dur": 5,
+   "in": 0
+  },
+  {
+   "id": "x05-leo2a7v",
+   "src": "assets/shots/x05-leo2a7v.mp4",
+   "start": 5,
+   "dur": 2.5,
+   "in": 0.2
+  },
+  {
+   "id": "ui-feature-time",
+   "src": "assets/shots/ui-feature-time.mp4",
+   "start": 7.5,
+   "dur": 5,
+   "in": 0
+  },
+  {
+   "id": "ui-trailer",
+   "src": "assets/shots/ui-trailer.mp4",
+   "start": 12.5,
+   "dur": 5,
+   "in": 0
+  },
+  {
+   "id": "t05-lake-track",
+   "src": "assets/shots/t05-lake-track.mp4",
+   "start": 17.5,
+   "dur": 2.5,
+   "in": 0.3
+  },
+  {
+   "id": "t36-canyon-orbit",
+   "src": "assets/shots/t36-canyon-orbit.mp4",
+   "start": 20,
+   "dur": 2.5,
+   "in": 0.2
+  },
+  {
+   "id": "b01-pan-runway",
+   "src": "assets/shots/b01-pan-runway.mp4",
+   "start": 22.5,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "t34-runway-pan",
+   "src": "assets/shots/t34-runway-pan.mp4",
+   "start": 25,
+   "dur": 2.5,
+   "in": 0.4
+  }
+ ],
+ "titles": [
+  {
+   "kind": "line",
+   "text": "Scene Studio",
+   "start": 0.3125,
+   "dur": 4.0625
+  },
+  {
+   "kind": "line",
+   "text": "Stage any of 217 tanks",
+   "start": 5.1563,
+   "dur": 2.25
+  },
+  {
+   "kind": "line",
+   "text": "Any hour of the day",
+   "start": 7.8125,
+   "dur": 4.375
+  },
+  {
+   "kind": "line",
+   "text": "Grade it like film",
+   "start": 12.8125,
+   "dur": 4.375
+  },
+  {
+   "kind": "line",
+   "text": "Track. Pan. Crane. Orbit.",
+   "start": 17.6563,
+   "dur": 2.25
+  },
+  {
+   "kind": "line",
+   "text": "Real motion blur",
+   "start": 22.6563,
+   "dur": 2.25
+  }
+ ],
+ "flashes": [
+  {
+   "t": 5,
+   "frames": 2,
+   "peak": 0.5
+  },
+  {
+   "t": 12.5,
+   "frames": 2,
+   "peak": 0.5
+  },
+  {
+   "t": 22.5,
+   "frames": 3
+  },
+  {
+   "t": 27.5,
+   "frames": 3
+  }
+ ],
+ "endcard": {
+  "start": 27.5,
+  "url": "cot.kevinliu.studio"
+ }
+}

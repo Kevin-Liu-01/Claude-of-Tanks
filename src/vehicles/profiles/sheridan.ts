@@ -1470,8 +1470,11 @@ const TTS_ROOF_Y = 0.804;
  * The pedestal stands at the anchor's depth and as near it as the roof allows: the roof sight's window behind the
  * hatch looks forward through x 0.29-0.60 m at y 0.94-1.08 m, so the pedestal stands just right of that lane (x 0.645)
  * and its short post lifts the gun's receiver over it (every gun vertex inside the lane's width above 1.08 m); the gun's
- * left edge stays right of the 30 mm station's sight head (x 0.07); the hatches keep their discs and rings. Gameplay
- * unchanged: functional roof guns 2 (the 30 mm and this M2).
+ * left edge stays right of the 30 mm station's sight head (x 0.07); the hatches keep their discs and rings. Both the
+ * 30 mm and this M2 are registered remote stations, but the roof-gun system drives one working station per vehicle
+ * (guns[0] of the controls inventory). Since 2026-10-12 (owner order: "make the big roof autocannon on the m551 tts the
+ * autocannon, not the tiny machine gun in front of the cupola") tools/vehicle-controls-inventory.mjs lists the heaviest
+ * station first, so the 30 mm is the working gun and this M2 stays on its pedestal at rest.
  */
 function addTtsRoofM2Station(P: SheridanBuilderPort): void {
   const { box, cylY } = KIT;

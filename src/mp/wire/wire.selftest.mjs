@@ -446,10 +446,11 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   // a row from the future is a producer error; a mask past 18 bits is rejected on decode
   assert.throws(() => buildSnapshotPacket({ ...key, entities: [{ ...fresh, tick: 107 }] }, null), (error) => error instanceof WireError && error.code === 'range');
   const oneRow = encodeMessage(buildSnapshotPacket({ ...key, entities: [fresh] }, null));
-  // header 2 + snapshot fields 22 + meta 13 + destroyed varint 1 + entity count 1 + entity id 1 = 40: the mask varint starts here
-  assert.equal(oneRow[38], 1, 'one entity');
-  assert.equal(oneRow[39], 4, 'entity 4');
-  const wideMask = new Uint8Array([...oneRow.slice(0, 40), 0x80, 0x80, 0x10, ...oneRow.slice(42)]);
+  // header 2 + snapshot fields 22 + meta 13 + destroyed set 2 (wire 6: form byte, count) + entity count 1 + entity id 1 = 41:
+  // the mask varint starts here
+  assert.equal(oneRow[39], 1, 'one entity');
+  assert.equal(oneRow[40], 4, 'entity 4');
+  const wideMask = new Uint8Array([...oneRow.slice(0, 41), 0x80, 0x80, 0x10, ...oneRow.slice(43)]);
   const rejected = decodeMessage(wideMask);
   assert.ok(!rejected.ok && rejected.error.code === 'range', `a 19-bit row mask is rejected (${rejected.ok ? 'accepted' : rejected.error.code})`);
   // the resume hint round-trips

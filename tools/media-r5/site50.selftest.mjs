@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { CAST } from './cast.mjs';
 import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
-import { BEAT_MS, DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, beatCoverage, siteScene } from './site50.mjs';
+import { BEAT_MS, DUR, KINDS, LOOP_MS, OWNER_NINE, PAINT, SHOTS, XFADE_MS, beatCoverage, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
@@ -26,6 +26,13 @@ const ids = SHOTS.map(s => s[1]);
 assert.equal(new Set(ids).size, 50, 'unique ids');
 const byKind = Object.fromEntries(KINDS.map(k => [k, SHOTS.filter(s => s[2] === k).length]));
 for (const k of KINDS) assert.ok(byKind[k] >= 9, `at least nine ${k} shots (${byKind[k]})`);
+// the owner's nine (2026-10-12): takes 51 to 59 after the fifty, each led by one of the vehicles the owner named, held to
+// every bar below with the fifty
+const NINE_HEROES = ['leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a4m_x', 'leo2a5_x', 'kf41_lynx_x', 'spz_puma_s1_x', 'mbt70', 'strv103'];
+assert.deepEqual(OWNER_NINE.map(s => s[0]), Array.from({ length: 9 }, (_, i) => i + 51), 'the nine numbered 51..59 in order');
+assert.equal(new Set([...ids, ...OWNER_NINE.map(s => s[1])]).size, 59, 'unique ids across the fifty and the nine');
+assert.deepEqual(OWNER_NINE.map(s => siteScene(s).meta.hero), NINE_HEROES, 'each of the nine led by its own vehicle from the owner\'s list');
+const TAKES = [...SHOTS, ...OWNER_NINE];
 assert.equal(XFADE_MS < LOOP_MS / 4 && DUR === LOOP_MS + XFADE_MS, true, 'the take is the loop plus its crossfade');
 
 const BATTLEFIELDS = new Set(['urban', 'verdant', 'alpine', 'oasis', 'fjord', 'monsoon', 'railyard', 'foundry', 'frontier', 'delta', 'winter', 'orchard', 'reservoir']);
@@ -35,7 +42,7 @@ const ONE_SHOT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage',
 const COMBAT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage', 'mg_burst']);
 const BURNING = new Set(['burning', 'engine_smoke', 'fire_field']);
 const maps = new Set(), times = new Set();
-for (const shot of SHOTS) {
+for (const shot of TAKES) {
   const [n, id, kind, title] = shot;
   assert.ok(KINDS.includes(kind), `${id}: kind`);
   assert.ok(/^[A-Z]/.test(title) && title.length >= 12 && !/[.]$/.test(title), `${id}: a plain sentence-case title`);
@@ -103,8 +110,8 @@ const NOT_FIELD_PAINT = new Set(['auto', 'factory', 'signature', 'urban', 'norma
 const SNOW = new Set(['winter', 'washworn', 'winterbands', 'merdcwinter', 'ardennes44']), SNOW_MAPS = new Set(['alpine', 'winter']);
 const fieldPaint = p => isBuiltInCamoId(p) && !NOT_FIELD_PAINT.has(p) && !p.startsWith('national_');
 const units = new Set();
-for (const shot of SHOTS) {
-  const [n, id] = shot, scene = siteScene(shot), [unit, enemy] = PAINT[n] ?? [];
+for (const shot of TAKES) {
+  const [n, id] = shot, scene = siteScene(shot), [unit, enemy] = shot[5].paint ?? PAINT[n] ?? [];
   assert.ok(fieldPaint(unit), `${id}: the unit wears field paint from the catalog (${unit})`);
   assert.ok(!units.has(unit), `${id}: ${unit} already dresses another shot`); units.add(unit);
   assert.ok(!SNOW.has(unit) || SNOW_MAPS.has(scene.map), `${id}: a snow scheme off the snow (${unit} on ${scene.map})`);
@@ -122,7 +129,7 @@ for (const shot of SHOTS) {
   }
   assert.deepEqual(scene.meta.paint, { unit, enemy: foes.length ? enemy : null }, `${id}: the scene records its paint`);
 }
-assert.equal(units.size, SHOTS.length, 'fifty schemes for fifty shots');
+assert.equal(units.size, TAKES.length, 'a scheme of its own for every take (the fifty and the nine)');
 
 // Turrets (owner 2026-10-03: "experiment with turrets being at unique angles and rotations"; turret-choreo.mjs): every
 // allied turret is keyed; a turret's pose at t matches t + LOOP_MS through the crossfade (the loop never doubles a
@@ -131,7 +138,7 @@ assert.equal(units.size, SHOTS.length, 'fifty schemes for fifty shots');
 const wrap = d => ((d % 360) + 540) % 360 - 180;
 const trackAt = (keys, t, f) => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; const a = keys[i], b = keys[i + 1] ?? a; const u = Math.min(1, Math.max(0, (t - a.tMs) / Math.max(1, b.tMs - a.tMs))); return a[f] + (b[f] - a[f]) * u; };
 let flankSwings = 0, wideWingmen = 0, lensAngles = 0;
-for (const shot of SHOTS) {
+for (const shot of TAKES) {
   const [n, id] = shot, scene = siteScene(shot), tracks = scene.storyboard.actorTracks ?? [];
   assert.ok(['sectors', 'flank', 'lens'].includes(scene.meta.turrets?.style), `${id}: a turret style`);
   // the Studio drops keys past its caps without a word (a 100 ms lens grid froze the camera at 3.1 s, 2026-10-03)
@@ -183,7 +190,7 @@ assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least fou
 {
   let covered = 0, total = 0;
   const models = new Map();
-  for (const shot of SHOTS) {
+  for (const shot of TAKES) {
     const scene = siteScene(shot);
     if (!models.has(scene.map)) { const f = featuresOf(scene.map); models.set(scene.map, f ? worldModel(f) : null); }
     const world = models.get(scene.map);
@@ -194,7 +201,7 @@ assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least fou
   }
   // every effect fires: the Studio names an unnamed effect fx<n> as it loads them in time order (an explicit fx<n> moves
   // its counter on) and fires each name once (studio.ts makeEffectRecord, nextPendingEffect), so no two may share a name
-  for (const shot of SHOTS) {
+  for (const shot of TAKES) {
     const scene = siteScene(shot);
     let seq = 1;
     const names = [...(scene.effects ?? [])].sort((a, b) => (a.tMs ?? 0) - (b.tMs ?? 0)).map((e) => {
@@ -209,4 +216,4 @@ assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least fou
   // another tank or left their column cut by the frame went; 112 of 150 beats carry one)
   if (total) assert.ok(covered / total >= 0.7, `a burst in the frame at 70 % of the beats (${covered}/${total})`);
 }
-console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);
+console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) and the owner's ${OWNER_NINE.length} on ${maps.size} battlefields at ${[...times].join(', ')}`);

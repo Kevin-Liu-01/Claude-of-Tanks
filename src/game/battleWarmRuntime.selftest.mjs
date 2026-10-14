@@ -325,6 +325,9 @@ assert.deepEqual(shellOrigin?.toArray(), [12, 4.4, -4],
 assert.equal(combatFx.group.visible, true);
 assert.ok(combatFx.calls.includes('update:1'), 'the live tracer ribbon is allocated');
 assert.ok(combatFx.calls.includes('prop:drumblast'), 'rare prop pools are included');
+// (EF.04) a solo battle's first missile launch compiled the missile body and smoke ribbon programs mid-battle
+assert.ok(combatFx.calls.indexOf('projectile-presentation') > combatFx.calls.indexOf('update:1'),
+  'the missile body and smoke ribbon join the covered render, after the update');
 submission.restore();
 assert.equal(combatFx.group.visible, false, 'FX root visibility is restored exactly');
 assert.equal(combatCamera.layers.mask, combatMask, 'combat staging restores camera layers');

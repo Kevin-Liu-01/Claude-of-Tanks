@@ -170,3 +170,37 @@ export function syncAssetProjectionSource(source, ids, manifest, live, anchors, 
   }
   return updated;
 }
+
+/**
+ * Move every anchor and projection row whose id the tank id alias layer renamed (`rename`, tankIdAliases.ts
+ * resolveIncoming) to its new id, keeping the measured values and the generated formatting exactly and the rows in
+ * id order (SSOT 2.19). An id rename moves no vehicle, so it needs no capture.
+ */
+export function rekeyPresentationSource(source, rename) {
+  const lines = source.split('\n');
+  const out = [];
+  let block = null;
+  for (const line of lines) {
+    if (/^export const TANK_PRESENTATION_(ANCHORS|PROJECTIONS): /.test(line)) { out.push(line); block = []; continue; }
+    if (block && line === '});') {
+      block.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const seen = new Set();
+      for (const row of block) {
+        if (seen.has(row.id)) throw new Error(`${row.id}: two presentation rows after the rename`);
+        seen.add(row.id);
+        out.push(row.text);
+      }
+      out.push(line); block = null; continue;
+    }
+    if (block) {
+      const match = /^  ([a-z0-9_]+): (Object\.freeze\(.*)$/.exec(line);
+      if (!match) throw new Error(`unexpected presentation source line: ${line}`);
+      const id = rename(match[1]);
+      block.push({ id, text: `  ${id}: ${match[2]}` });
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join('\n');
+}
+

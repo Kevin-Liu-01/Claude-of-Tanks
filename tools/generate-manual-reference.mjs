@@ -7,7 +7,7 @@ import {viewRangeOf} from '../src/sim/spotting.ts';
 import {auxiliaryCapabilities} from '../src/vehicles/auxiliaryInventory.ts';
 import {MAP_IDS,getMapName,RANDOM_BATTLE_MAP_IDS} from '../src/world/maps/mapIds.ts';
 import {GAME_MODE_IDS} from '../src/sim/matchModes.ts';
-import {matchRulesetFor,RULESET_SCORE_TARGETS} from '../src/sim/matchRuleset.ts';
+import {matchRulesetFor,modeCopyValues,RULESET_SCORE_TARGETS} from '../src/sim/matchRuleset.ts';
 const data={
   vehicles:PRODUCTION_TANK_IDS.map(id=>{const s=TANK_SPECS[id],a=auxiliaryCapabilities(s);return {
     id,name:s.name,nation:s.nation,role:s.role,tier:tankTier(id),hp:s.hp,
@@ -21,6 +21,8 @@ const data={
     id,clock:r.timeLimitS,respawn:r.respawnS,score:RULESET_SCORE_TARGETS[id]??null,
     speed:r.speedMultiplier,hp:r.hpScale,reload:r.reloadScale,ammo:r.ammo,
     equipment:r.equipmentSlots,consumables:r.consumables,jump:r.jumpMps,
+    // the numbers the mode's copy quotes ({target}, {gravity}, ...), from the ruleset
+    copy:modeCopyValues(id),
   };}),
 };
 const path=new URL('../src/docs/reference.generated.json',import.meta.url);
