@@ -119,40 +119,12 @@
   "floating": 0,
   "dangling": 1
  },
- "light:deserttent/intact": {
-  "floating": 0,
-  "dangling": 4
- },
- "light:fieldhospital/intact": {
-  "floating": 3,
-  "dangling": 0
- },
  "light:greenhouse/broken": {
   "floating": 6,
   "dangling": 0
  },
- "light:guardpost/intact": {
-  "floating": 4,
-  "dangling": 0
- },
- "light:huntingblind/intact": {
-  "floating": 6,
-  "dangling": 0
- },
- "light:quonsethut/intact": {
-  "floating": 2,
-  "dangling": 0
- },
  "light:solararray/intact": {
   "floating": 3,
-  "dangling": 0
- },
- "light:stilthouse/intact": {
-  "floating": 6,
-  "dangling": 2
- },
- "light:transformershed/intact": {
-  "floating": 14,
   "dangling": 0
  },
  "regional-light:kohima:longhouse/intact": {
