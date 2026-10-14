@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "renderer": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "scene": "shots/media-r5/home-r2/studio-loop/scene.json",
+  "source": "/media/site50-r14/scenes/s36-barn-knockout.scene.json (hero -> shooter, foe0 -> victim, golden hour)",
+  "master": "studio.webm",
+  "durationMs": 6600,
+  "mimeType": "video/webm",
+  "bytes": 9482408,
+  "captureMode": "studio-ui",
+  "workspace": "director",
+  "actors": [
+    {
+      "id": "type10_x",
+      "name": "shooter"
+    },
+    {
+      "id": "k2_x",
+      "name": "ally1"
+    },
+    {
+      "id": "t90m_x",
+      "name": "victim"
+    },
+    {
+      "id": "t72b3m_x",
+      "name": "foe1"
+    }
+  ],
+  "effects": [
+    {
+      "type": "burning",
+      "actor": "foe1",
+      "tMs": 0
+    },
+    {
+      "type": "engine_smoke",
+      "actor": "foe1",
+      "tMs": 0
+    },
+    {
+      "type": "embers",
+      "actor": "foe1",
+      "tMs": 0
+    },
+    {
+      "type": "fire_field",
+      "actor": null,
+      "tMs": 0
+    },
+    {
+      "type": "embers",
+      "actor": null,
+      "tMs": 0
+    },
+    {
+      "type": "fire",
+      "actor": "victim",
+      "tMs": 840
+    },
+    {
+      "type": "explosion",
+      "actor": null,
+      "tMs": 950
+    },
+    {
+      "type": "debris",
+      "actor": null,
+      "tMs": 980
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 1900
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 1990
+    },
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 2110
+    },
+    {
+      "type": "debris",
+      "actor": "victim",
+      "tMs": 2130
+    },
+    {
+      "type": "explosion",
+      "actor": null,
+      "tMs": 2850
+    },
+    {
+      "type": "debris",
+      "actor": null,
+      "tMs": 2880
+    },
+    {
+      "type": "fire",
+      "actor": "ally1",
+      "tMs": 4100
+    },
+    {
+      "type": "explosion",
+      "actor": null,
+      "tMs": 4650
+    },
+    {
+      "type": "debris",
+      "actor": null,
+      "tMs": 4680
+    }
+  ],
+  "sha256": "15b1c4a4d91f45fef3234174d01bbb6b4f1727d78089b0c6db1919374cff3b82",
+  "frames": 200,
+  "alt": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
+  "deliveredAt": "2026-10-14T02:44:19+00:00"
+}

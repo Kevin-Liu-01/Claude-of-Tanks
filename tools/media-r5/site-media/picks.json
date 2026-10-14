@@ -646,7 +646,7 @@
       }
     ],
     "studio": {
-      "label": "Scene Studio staging a Type 10 knocking out a T-90M at Frontier Basin, with the Director workspace and its storyboard",
+      "label": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
       "posterS": 2.4,
       "standIn": {
         "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
@@ -659,8 +659,8 @@
       {
         "id": "armor",
         "alt": {
-          "en": "The scoped armor flashlight paints an angled T-90M's plates red, amber and green by the loaded shell's chance to penetrate",
-          "zh": "瞄准镜中的装甲透视按当前弹种的击穿概率，把侧斜的 T-90M 各块装甲涂成红、琥珀与绿色"
+          "en": "Armor flashlight on Verdant Fields by day: through a Leopard 2A7V's sight at x16, an angled T-90M Proryv 275 m away is painted green where the loaded APFSDS round penetrates and red where it does not, in front of a brick farmhouse.",
+          "zh": "白天的翠野原，装甲手电：透过 Leopard 2A7V 的 16 倍瞄准镜，275 米外一辆斜置的 T-90M Proryv 被染上颜色，已装填的 APFSDS 弹能击穿处为绿色，不能击穿处为红色，背后是一座砖砌农舍。"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
@@ -692,16 +692,16 @@
       {
         "id": "missiles",
         "alt": {
-          "en": "An MBT-70's guided Shillelagh streaks low across the Tarkhan Steppe at sunset, its motor glowing",
-          "zh": "日落时分的塔尔罕草原，MBT-70 发射的 Shillelagh 制导导弹贴着草地飞行，尾焰发亮"
+          "en": "Guided missile on Tarkhan Steppe at sunset: an MBT-70's Shillelagh streaks over the autumn grassland toward the lens, its glowing trail running back to the launch behind a low rise and its rocket motor flaring at the right.",
+          "zh": "日落时分的塔尔罕草原，制导导弹：MBT-70 发射的 Shillelagh 掠过秋日草原飞向镜头，发光的尾迹一直延伸到低矮山坡后的发射点，右侧火箭发动机喷焰闪亮。"
         },
         "standIn": null
       },
       {
         "id": "autoloader",
         "alt": {
-          "en": "An AbramsX engages a T-14 Armata at Sirocco Wadi at sunset, its autoloader's magazine counted beside the reticle",
-          "zh": "日落时分的西罗科旱谷，AbramsX 与一辆 T-14 Armata 交战，准星旁的弹匣指示显示自动装弹机的剩余弹数"
+          "en": "Autoloader on Sirocco Wadi at sunset: an AbramsX fires the second round of its four-round clip, the muzzle flash bright at the gun and the blast raising dust, with the Penetration card on a T-72B3M Hetman.",
+          "zh": "日落时分的西罗科旱谷，自动装弹机：一辆 AbramsX 打出四发弹匣中的第二发，炮口焰明亮，冲击波扬起尘土，画面中是对 T-72B3M Hetman 的击穿卡片。"
         },
         "standIn": null
       },
@@ -716,8 +716,8 @@
       {
         "id": "spotting",
         "alt": {
-          "en": "A Type 10 waits in a hedgerow above Verdant Fields as an enemy T-90M column is spotted on the road below",
-          "zh": "一辆 Type 10 隐蔽在翠野原高处的树篱里，下方公路上的敌方 T-90M 纵队已被点亮"
+          "en": "Spotting on Verdant Fields at sunset: a Type 10 waits on a grassy rise beside bushes while red markers float over the enemy column it has just spotted beyond the tree line, with allied green labels around it and the contacts on the minimap.",
+          "zh": "日落时分的翠野原，侦察：一辆 Type 10 在灌木旁的草坡上待命，树林线外它刚发现的敌方纵队上方浮现红色标记，周围是绿色的友军标签，小地图上显示着接触目标。"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
@@ -749,8 +749,8 @@
       {
         "id": "consumables",
         "alt": {
-          "en": "A Challenger 3 puts out an engine fire with its extinguisher, the consumables bar cooling down",
-          "zh": "一辆 Challenger 3 用灭火器扑灭发动机起火，消耗品栏正在冷却"
+          "en": "Consumables on Frontier Basin by day: flames and black smoke pour from a Challenger 3's engine deck after a hit, the HUD showing Engine Damaged, the On Fire status and the extinguisher cooling down on the consumables bar, an allied tank beside it.",
+          "zh": "白天的边疆盆地，消耗品：Challenger 3 中弹后发动机舱盖窜出火焰与黑烟，HUD 显示发动机受损与着火状态，消耗品栏上的灭火器正在冷却，旁边是一辆友军坦克。"
         },
         "standIn": null
       },
@@ -765,8 +765,8 @@
       {
         "id": "roof-guns",
         "alt": {
-          "en": "An M1A2 Abrams SEPv3's roof gun fires tracer down the market street of Sunscar Oasis",
-          "zh": "一辆 M1A2 艾布拉姆斯 SEPv3 的车顶武器朝日痕绿洲的集市街道打出曳光弹"
+          "en": "Automatic roof gun on Sunscar Oasis: from low at its front three-quarter, an M1A2 SEPv3's remote weapon station fires a burst, its muzzle flash and smoke puffs over the turret, while the main gun stays trained off to the left.",
+          "zh": "日痕绿洲，自动车顶武器：从低处的前侧方看去，M1A2 SEPv3 的遥控武器站打出一串点射，炮塔上方闪出枪口焰并冒出烟团，主炮仍指向左侧。"
         },
         "standIn": null
       },
@@ -782,16 +782,16 @@
       {
         "id": "crushing",
         "alt": {
-          "en": "A Leopard 2A7V flattens an orchard fence and fells a tree as it charges through Orchard Valley",
-          "zh": "一辆 Leopard 2A7V 冲过果园谷，压倒果园围栏并撞断一棵树"
+          "en": "Crushing on Verdant Fields by day: a Leopard 2A7V drives through a plank fence at speed, the boards splintering under its tracks in a burst of dust beside a stand of birches.",
+          "zh": "白天的翠野原，碾压：一辆 Leopard 2A7V 高速冲过木板围栏，木板在履带下碎裂，尘土飞扬，旁边是一片白桦林。"
         },
         "standIn": null
       },
       {
         "id": "map-vehicles",
         "alt": {
-          "en": "A T-90M crushes a parked car on a Steinburg street while a truck burns behind it",
-          "zh": "一辆 T-90M 在斯泰因堡的街道上压扁一辆停放的汽车，后方一辆卡车正在燃烧"
+          "en": "Map vehicles on Steinburg by day: a T-90M rolls onto a parked box truck at the roadside and crushes its cab under the tracks in a spray of dust and debris, the village on the road behind.",
+          "zh": "白天的斯泰因堡，地图车辆：一辆 T-90M 压上停在路边的厢式货车，履带碾碎驾驶室，尘土与碎片四溅，身后公路上是村庄。"
         },
         "standIn": null
       },
@@ -822,16 +822,16 @@
       {
         "id": "radio",
         "alt": {
-          "en": "The crew radio settings list the national crews and their languages over a paused battle",
-          "zh": "暂停的战斗画面上，乘员无线电设置列出各国乘员及其语言"
+          "en": "Settings over a paused battle on Verdant Fields: the Sound tab's crew-radio choice open, listing National crews and the United States, United Kingdom, Germany, Russia, Ukraine, China and France crews with their flags.",
+          "zh": "翠野原暂停的战斗上打开设置：声音选项卡中的乘员无线电选项已展开，列出各国乘员以及美国、英国、德国、俄罗斯、乌克兰、中国和法国乘员及其国旗。"
         },
         "standIn": null
       },
       {
         "id": "replays",
         "alt": {
-          "en": "The final-kill replay: a K2 Black Panther's last shot throws a T-90M's turret at sunset",
-          "zh": "最终击杀回放：日落时分，K2 Black Panther 的最后一炮掀飞了 T-90M 的炮塔"
+          "en": "Final-kill replay on Frontier Basin at sunset: the replay camera looks down as an M1A2 SEPv3's APFSDS round strikes an M2A3 Bradley's turret cheek in a fireball, with the round's trace line, the Final Blow banner and the ballistic analysis card.",
+          "zh": "日落时分的边疆盆地，最终击杀回放：回放镜头俯视 M1A2 SEPv3 的 APFSDS 弹命中 M2A3 Bradley 的炮塔侧面并爆出火球，画面中有弹道轨迹线、最终一击横幅和弹道分析卡片。"
         },
         "standIn": null,
         "sizes": "(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw"
@@ -867,16 +867,16 @@
       {
         "id": "bots",
         "alt": {
-          "en": "Bots on both sides fight across Frontier Basin at golden hour, a flanking pair breaking around the farm",
-          "zh": "金色时刻的边疆盆地，双方机器人展开交战，一对坦克绕过农场实施侧翼包抄"
+          "en": "Bots on Frontier Basin at sunset, seen from above: two bot tanks fight beside a farmhouse amid bursts of dust, a red tracer streaking in across the field, a green one beyond and a muzzle flash sparking at the right.",
+          "zh": "日落时分的边疆盆地，俯瞰机器人对战：两辆机器人坦克在农舍旁的扬尘中交火，一道红色曳光弹横穿田野飞来，远处还有一道绿色曳光，右侧闪出炮口焰。"
         },
         "standIn": null
       },
       {
         "id": "mobile",
         "alt": {
-          "en": "The touch controls on a phone: the joystick, swipe aim and the fire and scope buttons over a live battle",
-          "zh": "手机上的触控操作：实时战斗画面上的摇杆、滑动瞄准以及开火与瞄准镜按钮"
+          "en": "Phone-landscape battle on Verdant Fields by day: a T-90M in the chase view with the touch HUD (the movement stick, Fire, Scope and Auto Aim buttons, the consumables and the APFSDS selector) and a Stridsvagn 122 marked red beyond the allied line.",
+          "zh": "白天的翠野原，手机横屏战斗：追尾视角中的 T-90M 与触控 HUD（移动摇杆、开火、瞄准镜与自动瞄准按钮、消耗品和 APFSDS 弹种选择），友军阵线后方一辆 Stridsvagn 122 被标为红色。"
         },
         "standIn": null
       }
@@ -958,8 +958,8 @@
       {
         "id": "realistic",
         "alt": {
-          "en": "Realistic mode at Frosthollow: through a Stridsvagn 122's sight, a Schützenpanzer Puma's ammunition goes up in a fireball among the birches",
-          "zh": "霜谷的真实模式：透过 Stridsvagn 122 的瞄准镜，一辆 Schützenpanzer Puma 的弹药在白桦林间化作火球"
+          "en": "Realistic on Frosthollow by day: through a Stridsvagn 122's sights a Schützenpanzer Puma's ammunition erupts in a fireball between birch trunks, with the Realistic HUD's destroy-crew-or-ammo banner, a First Blood medal and the kill feed's ammo-rack kill.",
+          "zh": "白天的霜谷，真实模式：透过 Stridsvagn 122 的瞄准镜，一辆 Schützenpanzer Puma 的弹药在白桦树干之间爆成火球，画面中有真实模式 HUD 的“击杀乘员或引爆弹药”横幅、第一滴血勋章，以及击杀信息栏中的弹药架殉爆击杀。"
         },
         "standIn": null
       },
@@ -982,8 +982,8 @@
       {
         "id": "ac130",
         "alt": {
-          "en": "The AC-130's infrared view: a 152 mm round bursts among enemy tanks, the gunship's three weapons listed below",
-          "zh": "AC-130 的红外视角：一发 152 毫米炮弹在敌方坦克之间炸开，下方列出炮艇机的三种武器"
+          "en": "AC-130 on Kestrel Airfield at night: the gunship's infrared view looks down on the convoy (an M6 Linebacker, an M1A2 Abrams SEPv2, a T-90M and a T-72 Ryś) by the extraction ring as a 152 mm HE round bursts among them, with the Splash card on a Leopard 2A5 and the 30 mm, 152 mm and guided-missile selector.",
+          "zh": "夜晚的红隼机场，AC-130：炮艇机的红外视角俯视撤离圈旁的车队（一辆 M6 Linebacker、一辆 M1A2 艾布拉姆斯 SEPv2、一辆 T-90M 和一辆 T-72 Ryś），一发 152 毫米高爆弹在其中炸开，画面中有对 Leopard 2A5 的命中卡片，以及 30 毫米、152 毫米与制导导弹的武器选择。"
         },
         "standIn": null
       }
