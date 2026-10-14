@@ -31,6 +31,7 @@ import { breachRuin, collapseRuin, damagedRuin, ruinPiecesOf, ruinRubble, sectio
 import { breachCluster, cellsOf, collapseCluster, damagedCluster, sectionDownCluster } from './cluster.ts';
 import { breachContainers, collapseContainers, containersOf, damagedContainers, readContainers, sectionDownContainers } from './container.ts';
 import { collapseShaft, shaftOf } from './shaft.ts';
+import { collapseLattice, latticeOf, noLatticeDamage } from './latticeFall.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
@@ -1012,6 +1013,46 @@ function quadArea(c: readonly [Vec3, Vec3, Vec3, Vec3]): number {
   return tri(c[0], c[1], c[2]) + tri(c[0], c[2], c[3]);
 }
 
+// ---------------------------------------------------------------------------------------------------- a lattice
+
+/**
+ * The anatomy of an open lattice frame its builder laid and recorded (lattice.ts latticeFrame; props census #3, lane B
+ * 2026-10-14): the box round its legs as one band whose faces a blow passes through (no hole, no spall), its members
+ * and crown in the pile; it falls folded over along the blow (latticeFall.ts), not as a shaft's drums.
+ */
+function describeLattice(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
+  const plan = input.kitPlan as RegionalKitPlan | undefined;
+  if (!plan || plan.houses.length || !plan.lattices?.length) return null;
+  // the tallest frame the builder laid (a windmill's tower, a tank's trestle)
+  const lat = plan.lattices.reduce((a, b) => (Math.max(...b.legs.map((l) => l.head[1])) > Math.max(...a.legs.map((l) => l.head[1])) ? b : a));
+  const xs = lat.legs.map((l) => l.foot[0]), zs = lat.legs.map((l) => l.foot[2]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  const y0 = Math.min(...lat.legs.map((l) => l.foot[1])), y1 = Math.max(...lat.legs.map((l) => l.head[1]), lat.crown?.y1 ?? 0);
+  const tint: Rgb = lat.colour ?? WHITE, material: FractureMaterial = lat.bucket === 'structureWood' ? 'timber' : 'metal';
+  const slot: FractureSlot = { material, bucket: lat.bucket, tint, thicknessM: lat.size, share: 1 };
+  const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
+    { name: 'front', u: [1, 0, 0], out: [0, 0, 1] }, { name: 'right', u: [0, 0, -1], out: [1, 0, 0] },
+    { name: 'back', u: [-1, 0, 0], out: [0, 0, -1] }, { name: 'left', u: [0, 0, 1], out: [-1, 0, 0] },
+  ];
+  const faces: DamageFace[] = SIDE.map((side, f) => {
+    const origin: Vec3 = side.name === 'front' ? [(x0 + x1) / 2, y0, z1] : side.name === 'right' ? [x1, y0, (z0 + z1) / 2]
+      : side.name === 'back' ? [(x0 + x1) / 2, y0, z0] : [x0, y0, (z0 + z1) / 2];
+    return { name: side.name, section: f, origin, u: side.u, out: side.out, width: Math.abs(side.out[2]) > 0.5 ? x1 - x0 : z1 - z0, height: y1 - y0,
+      bucket: lat.bucket, layers: [{ ...slot }], openings: [], members: [], masonry: null };
+  });
+  const rubble: FractureSlot[] = lat.crown
+    ? [{ ...slot, share: 0.6 }, { material: 'metal', bucket: routed(lat.crown.bucket as RegionalBucket), tint: lat.crown.tint, thicknessM: 0.02, share: 0.4 }]
+    : [{ ...slot }];
+  return {
+    structureIdx: input.structureIdx, kit: style.id, seed: input.seed, massClass: input.massClass, placement: input.placement,
+    w: x1 - x0, d: z1 - z0, h: y1, plinth: null,
+    storeys: [{ index: 0, y0, y1, jetty: [0, 0, 0, 0], framed: false, faces, floor: null }], roof: null, chimneys: [],
+    interior: { color: ROOM, open: true }, rubble,
+    remnant: { stubHeightM: 0.4, corners: false, chimneys: false },
+    kitPlan: { regional: plan, damage: { kind: 'house-damage', surfaces: new Map(), lattice: lat } },
+  };
+}
+
 // ---------------------------------------------------------------------------------------------------- the kits
 
 /**
@@ -1023,12 +1064,13 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
     const kit: StructureDamageKit = {
       id: style.id,
       // a house from its plan; a body without one read off its parts (a hall, a works, the base set's buildings)
-      describe: (input) => describeHouse(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input)
+      describe: (input) => describeHouse(style, input) ?? describeLattice(style, input) ?? describeShell(style, input) ?? describeShaft(style, input) ?? describeCluster(style, input)
         ?? describeContainers(style, input) ?? describeRuin(style, input),
       // a sheet-clad face tears and its frame shows (sheet.ts); every other wall breaks as a house's
-      breach: (anatomy, hole, out) => (ruinPiecesOf(anatomy) ? breachRuin(anatomy, hole, out) : containersOf(anatomy) ? breachContainers(anatomy, hole, out) : cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
+      breach: (anatomy, hole, out) => (latticeOf(anatomy) ? noLatticeDamage() : ruinPiecesOf(anatomy) ? breachRuin(anatomy, hole, out) : containersOf(anatomy) ? breachContainers(anatomy, hole, out) : cellsOf(anatomy) ? breachCluster(anatomy, hole, out) : isSheetFace(anatomy.storeys[hole.storey]?.faces.find((f) => f.section === hole.section))
         ? breachSheet(anatomy, hole, out) : breachHouse(anatomy, hole, out)),
       damaged: (anatomy, seed, out) => {
+        if (latticeOf(anatomy)) return noLatticeDamage();
         const result = ruinPiecesOf(anatomy) ? damagedRuin(anatomy, seed, out) : containersOf(anatomy) ? damagedContainers(anatomy, seed, out) : cellsOf(anatomy) ? damagedCluster(anatomy, seed, out)
           : isSheetBody(anatomy) ? damagedSheet(anatomy, seed, out)
           : damagedHouse(anatomy, seed, out);
@@ -1045,6 +1087,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       // where none is given (an offline preview, a receipt)
       collapse: (anatomy, seed, out) => {
         const mound = anatomy.mound ? (x: number, z: number) => bodyMoundHeightAt(anatomy, x, z) : domeMound(anatomy);
+        if (latticeOf(anatomy)) return collapseLattice(anatomy, seed, out, mound);
         const result = ruinPiecesOf(anatomy) ? collapseRuin(anatomy, seed, out, mound) : containersOf(anatomy) ? collapseContainers(anatomy, seed, out, mound) : cellsOf(anatomy) ? collapseCluster(anatomy, seed, out, mound)
           : shaftOf(anatomy) ? collapseShaft(anatomy, seed, out, mound)
           : isSheetBody(anatomy) ? collapseSheet(anatomy, seed, out, mound)
@@ -1061,6 +1104,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
         return result;
       },
       sectionDown: (anatomy, section, seed, out) => {
+        if (latticeOf(anatomy)) return noLatticeDamage();
         if (ruinPiecesOf(anatomy)) return sectionDownRuin(anatomy, section, seed, out);
         if (containersOf(anatomy)) return sectionDownContainers(anatomy, section, seed, out);
         if (cellsOf(anatomy)) return sectionDownCluster(anatomy, section, seed, out);
@@ -1077,7 +1121,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
       },
       // (a compound's cells have no floor the sim's band could drop onto: its section falls carry it)
       // (a container stack has no floor either: an upper box falls with the collapse)
-      storeyDown: (anatomy, storey, seed, out) => (cellsOf(anatomy) || containersOf(anatomy) || ruinPiecesOf(anatomy) ? { cuts: [], hides: [] }
+      storeyDown: (anatomy, storey, seed, out) => (latticeOf(anatomy) || cellsOf(anatomy) || containersOf(anatomy) || ruinPiecesOf(anatomy) ? { cuts: [], hides: [] }
         : storeyDownHouse(anatomy, storey, seed, out)),
     };
     registerStructureDamageKit(kit);
