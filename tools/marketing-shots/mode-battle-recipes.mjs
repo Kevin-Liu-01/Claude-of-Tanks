@@ -924,12 +924,47 @@ export const RECIPES = {
     preset: null,
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 380 })));
+      // r2 (the lead: no GUN TRAVEL LIMIT label in a hero frame; a tracer or muzzle flash in flight). The label shows
+      // while the gun cannot lay on the aim: r1's target sat below the T-90M's depression. The nearest two enemies move
+      // to spots the gun reaches level (within 2.5 degrees), and the frames come only from shots and hits taken while
+      // the gun is clear of its limit; no periodic frames
+      const level = await ctx.eval(() => {
+        const H = window.__MB.H, p = H.player();
+        if (!p) return null;
+        const eye = H.turretPoint(p), discs = H.concealers(), out = [];
+        const ok = (x, z) => Math.abs(Math.atan2(H.groundY(x, z) + 1.5 - eye.y, Math.hypot(x - eye.x, z - eye.z))) < (2.5 * Math.PI) / 180;
+        const near = H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos)).slice(0, 2);
+        for (const t of near) {
+          if (ok(t.state.pos.x, t.state.pos.z)) { out.push({ id: t.id, moved: false }); continue; }
+          const d0 = H.dist(t.state.pos, p.state.pos), base = Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
+          let placed = null;
+          for (const d of [d0, d0 - 40, d0 + 40, 220, 260, 300]) {
+            for (const da of [0, 8, -8, 16, -16, 24, -24, 32, -32]) {
+              const a = base + (da * Math.PI) / 180, x = p.state.pos.x + Math.sin(a) * d, z = p.state.pos.z + Math.cos(a) * d;
+              if (!ok(x, z) || !H.openGround(x, z, 6, discs) || !H.laneClear(eye, { x, z }, 2.4, discs)) continue;
+              H.place(t, x, z, Math.atan2(p.state.pos.x - x, p.state.pos.z - z) + 0.5);
+              placed = { id: t.id, moved: true, d: Math.round(d), da };
+              break;
+            }
+            if (placed) break;
+          }
+          out.push(placed || { id: t.id, moved: false, level: false });
+        }
+        return out;
+      });
+      ctx.log('level targets', JSON.stringify(level));
       await ctx.mb('setAim', { target: 'nearestEnemyClear' });
       await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 4 });
       await settle(ctx, 1.5);
+      const clearOfLimit = '!(H.player() && H.player().state && H.player().state.gunLimitSpec)';
       await ctx.capture({
         cameras: [{ kind: 'chase', target: 'nearestEnemyClear', step: 2, hud: 'full' }],
-        triggers: [T.playerFire([35, 90]), T.enemyFireOnScreen(), T.hitOnScreen()],
+        everyS: 0,
+        triggers: [
+          { ...T.playerFire([35, 70, 120]), filter: clearOfLimit },
+          { ...T.enemyFireOnScreen(), filter: clearOfLimit },
+          { ...T.hitOnScreen(), filter: clearOfLimit },
+        ],
       });
     },
   },
