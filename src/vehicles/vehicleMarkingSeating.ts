@@ -528,7 +528,8 @@ function addProfileVehicleDecal(
         visibilitySamples: standing.visibilitySamples,
         visibilityClearSamples: standing.visibilityClearSamples,
         visibilityRatio: same ? prior.visibilityRatio : standing.visibilityRatio,
-        maximumSurfaceErrorM: same ? prior.maximumSurfaceErrorM : standing.maximumSurfaceErrorM,
+        // (a record's unbounded error is written null: it stays unbounded)
+        maximumSurfaceErrorM: same ? was : standing.maximumSurfaceErrorM,
         visibilityVerified: true,
       });
       return true;

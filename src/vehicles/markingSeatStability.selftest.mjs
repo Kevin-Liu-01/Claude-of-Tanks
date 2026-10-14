@@ -37,7 +37,8 @@ function solvedSeats(id) {
     });
   });
   visual.dispose();
-  return seats;
+  // as the generator writes them (an unbounded surface error is JSON's null)
+  return JSON.parse(JSON.stringify(seats));
 }
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
