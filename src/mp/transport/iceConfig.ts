@@ -5,9 +5,12 @@
  * session: the transports resolve per connection — each connect attempt of a peer's link, every offer its host accepts —
  * resolutions in flight share one request, and a grant younger than RELAY_GRANT_REUSE_MS is reused, so a host answering
  * an election's 27 offers asks once (the room's per-seat window assumes it). A refusal, a timeout or a room that
- * predates the request falls back to the newest grant still valid, else to host candidates: a credential never blocks a
- * connection, and nothing contacts a STUN or TURN server the room did not name. Credentials stay in memory, never logged.
+ * predates the request falls back to the newest grant still valid, else to the official STUN servers (2026-10-13, below):
+ * a credential never blocks a connection, and nothing contacts a TURN server the room did not name. Credentials stay in
+ * memory, never logged. Every degradation (a fallback, or a room whose grant carries no relay) is reported once per
+ * reason through `onDegraded` — the `ice_degraded` telemetry note, so real-world relay loss is countable.
  */
+import { OFFICIAL_STUN_URLS } from '../../officialHost.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import type { RtcIceServerLike } from './webRtcTransport.ts';
 
@@ -27,7 +30,8 @@ export interface IceConfiguration {
   iceServers: RtcIceServerLike[];
   relayOnly: boolean;
   relayAvailable: boolean;
-  source: 'lan' | 'room' | 'host-fallback';
+  /** `stun-fallback`: no grant could be had, so the official STUN servers alone (server-reflexive paths, no relay). */
+  source: 'lan' | 'room' | 'stun-fallback';
   /** Why this configuration is not a fresh answer of the room (the room's refusal code, a timeout, a malformed answer). */
   degradedReason?: string;
   expiresInSeconds?: number;
@@ -43,6 +47,15 @@ interface RoomIceResolverOptions {
   room: RoomRelaySource | null;
   reuseMs?: number;
   clock?: () => number;
+  /**
+   * Why a private room's seat links without a relay, once per distinct reason in this resolver's life (never per
+   * connection, never with a credential): a fallback's reason (the room's refusal code, `internal` for a timeout,
+   * `relay_invalid`, `relay_unconfigured`) or `no_relay` — the room answered, but its grant carries no TURN server (the
+   * rooms Worker's TURN secrets unset, or its provider down).
+   */
+  onDegraded?: (reason: string) => void;
+  /** The STUN servers a seat falls back to when no grant can be had (default: the official ones). */
+  fallbackStunUrls?: readonly string[];
 }
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
@@ -70,8 +83,17 @@ function hasTurn(servers: RtcIceServerLike[]): boolean {
   return servers.some((server) => serverUrls(server).some((url) => /^turns?:/i.test(url)));
 }
 
-function hostFallback(reason: string): IceConfiguration {
-  return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'host-fallback', degradedReason: reason };
+/**
+ * No grant to use (2026-10-13, MP-SINCE-0930 step 6a): the official STUN servers rather than none. Until this change a
+ * failed or timed-out first `room_relay` built the connection on host candidates alone, which links on a LAN but never
+ * across a NAT — 2 of 10 loaded connections linked with no servers (blackscreen ice-json-3). STUN is what every room
+ * grant carries anyway (`COT_STUN_URLS` is pinned to `OFFICIAL_STUN_URLS`), so the seat keeps its server-reflexive paths.
+ */
+function stunFallback(reason: string, urls: readonly string[]): IceConfiguration {
+  return {
+    iceServers: urls.length > 0 ? [{ urls: urls.length === 1 ? urls[0] : [...urls] }] : [],
+    relayOnly: false, relayAvailable: false, source: 'stun-fallback', degradedReason: reason,
+  };
 }
 
 /** A room's answer as a configuration; null when it is malformed (the room validated it already: defence in depth). */
@@ -98,10 +120,24 @@ const copy = (config: IceConfiguration, extra: Partial<IceConfiguration> = {}): 
 });
 
 /** The ICE resolver of one room session (see the module comment); it never rejects. */
-export function createRoomIceResolver({ mode, room, reuseMs = RELAY_GRANT_REUSE_MS, clock = () => Date.now() }: RoomIceResolverOptions): () => Promise<IceConfiguration> {
+export function createRoomIceResolver({
+  mode, room, reuseMs = RELAY_GRANT_REUSE_MS, clock = () => Date.now(), onDegraded, fallbackStunUrls = OFFICIAL_STUN_URLS,
+}: RoomIceResolverOptions): () => Promise<IceConfiguration> {
   if (!Number.isFinite(reuseMs) || reuseMs < 0 || typeof clock !== 'function') throw new TypeError('ICE resolver options are invalid');
+  if (onDegraded !== undefined && typeof onDegraded !== 'function') throw new TypeError('ICE resolver options are invalid');
+  const stunUrls = [...fallbackStunUrls].filter((url) => typeof url === 'string' && /^stun:/i.test(url));
   let latest: { config: IceConfiguration; receivedAt: number; expiresAt: number | null } | null = null;
   let inFlight: Promise<IceConfiguration> | null = null;
+  const reported = new Set<string>();
+  /** One report per reason: a reconnecting seat resolves again and again, the telemetry wants the fact, not the count. */
+  const degraded = (config: IceConfiguration): IceConfiguration => {
+    const reason = config.degradedReason ?? (config.source === 'room' && !config.relayAvailable ? 'no_relay' : null);
+    if (reason && !reported.has(reason)) {
+      reported.add(reason);
+      try { onDegraded?.(reason); } catch { /* a reporter never breaks a connection */ }
+    }
+    return config;
+  };
   /** The newest grant while it can still carry a connection (`fresh`: also inside the reuse window). */
   const usable = (nowMs: number, fresh: boolean): IceConfiguration | null => {
     if (!latest || (latest.expiresAt !== null && latest.expiresAt - nowMs < GRANT_MIN_REMAINING_MS)) return null;
@@ -127,14 +163,14 @@ export function createRoomIceResolver({ mode, room, reuseMs = RELAY_GRANT_REUSE_
       if (reason !== 'internal' || usable(clock(), false)) break;
     }
     const fallback = usable(clock(), false);
-    return fallback ? copy(fallback, { degradedReason: reason }) : hostFallback(reason);
+    return fallback ? copy(fallback, { degradedReason: reason }) : stunFallback(reason, stunUrls);
   };
   return async () => {
     if (mode === 'lan') return { iceServers: [], relayOnly: false, relayAvailable: false, source: 'lan' };
-    if (!room || typeof room.requestRelay !== 'function') return hostFallback('relay_unconfigured');
+    if (!room || typeof room.requestRelay !== 'function') return degraded(stunFallback('relay_unconfigured', stunUrls));
     const reused = usable(clock(), true);
     if (reused) return copy(reused);
     inFlight ??= ask(room).finally(() => { inFlight = null; });
-    return inFlight.then((config) => copy(config));
+    return inFlight.then((config) => degraded(copy(config)));
   };
 }

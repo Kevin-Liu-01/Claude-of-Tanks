@@ -138,6 +138,15 @@ one oversized builder contract or an eager fleet dependency.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
+Tank ids are versioned (SSOT 2.19). `tankIdAliases.ts` holds `TANK_ID_SCHEMA` and the append-only
+`TANK_ID_RENAMES`: an id stored or sent without `tankIdSchema` (or a link without `&ids=`) is schema 1 and resolves
+through every later map, so a rename may reuse an id another vehicle gave up (a swap) without misreading old data.
+Readers resolve at the boundary (`game/tankIdStorageMigration.ts` at boot, `game/tankIdBoundaries.ts` for Studio
+scenes, kill-cam payloads, gallery links and telemetry, `resolveIncoming` for room seats); writers spread
+`TANK_IDS.stamp()`. Anything that hashes an id into a vehicle's look or name hashes `tankSeedId(id)` (its schema-1
+spelling), so a rename never moves a load, a texture, an AUTO camo pick or a hull number. A rename appends a map,
+bumps the schema and `PROTOCOL_VERSION` together (`tankIdAliases.selftest.mjs` pins both); `npm run tank:ids:table`
+prints the rename table.
 A new whole-fleet check is a fleet audit (`{ check(id, tank), finish() }`) added to the fleet pass whose build it
 reads (`fleetPassDefault`, `fleetPassHigh`, `fleetPassLow`; rules in `fleetPass.test-support.mjs`), not another
 receipt that rebuilds all 217 tanks: the build is nearly all of a sweep's cost.
@@ -267,6 +276,22 @@ Vehicle foliage atlases are 512 px with their own coverage-preserving mip chain 
 canvas images). Decor branch bundles and the decor whip stay inside their old near-level triangle counts (the decor's
 first rows; the 6,000-triangle budget is full on several hulls); whips, fitting and decor, are one bowed construction
 (`whipAntennaParts`) whose foot and tip height are the straight rod's.
+The owner's fleet field nets (2026-10-09) are registry rows in `ghillieFleetSuits.ts`, one fitted entry per vehicle,
+called from each family builder (`addVehicleGhillieSuit` is idempotent per build). They use the builder's opt-in
+keep-outs: `yFromArmour`/`clipToArmour` lay a roof or deck net on the armour and end it at the armour's edges (it passes
+under a raised frame, is cut round anything standing taller than `riseLimitM`, and never falls onto the running gear),
+`autoOpeningsM` opens every lens, hatch lid and cupola and slots the net ahead of each lens, `SidePanel.cuts` keep
+drapes off dischargers, lights and exhausts (from the cut's top down to the hem), and `fieldClearanceM` keeps the whole
+suit clear of the turret's traverse both ways (the turret's swept body by radius, lowest to highest, its hollow
+included), of the main gun's swept volume (a lopsided box by station at every yaw that brings it across a point, with the
+per-yaw depression curves; flat cloth only where the bare gun already comes to within 4 cm of its own deck), of lens
+views (garnish always, cloth where it stands off the armour) and of smoke lines (each bank as `alignSmokeBanks` will
+turn it). A hull drape whose roll over the deck's edge would lie in a clearance is tied lower on its wall; a drape
+station with no roof net above it and no armour beside it hangs nothing. The decor holds such a suit to its clearances
+too: loads stay out of its drapes and from under a turret load's swing (`suit-drape`, `hull-suit`), what it draws up
+over its loads is re-tested (`GHILLIE_FIELD_OK`, ghillieDrape.ts; the cards ride the net's lift vertex by vertex), and
+its own smoke banks cut their lines of fire through the suit (`clearGhillieForSmoke`). New entries still need explicit
+openings for sight heads without glass and exhaust keep-outs.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

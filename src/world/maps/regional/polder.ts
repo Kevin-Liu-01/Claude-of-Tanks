@@ -204,7 +204,11 @@ const smockMill: RegionalBuilder = (ctx) => {
   // the cap: a boat-shaped thatched hood
   const capY = baseH + bodyH;
   const cap: RoofSpec = { kind: 'gable', pitchDeg: 55, eave: 0.3, verge: 0.4, thickness: 0.25, bucket: 'straw', ridge: 'round' };
-  emitRoof(sink, roofGeometry(R1 * 2.1, R1 * 2.4, capY, cap), cap);
+  const capRg = roofGeometry(R1 * 2.1, R1 * 2.4, capY, cap);
+  emitRoof(sink, capRg, cap);
+  // (the buildings stream, 2026-10-12, the integrity check: the hood's ends stood open, sky through the cap and the
+  // windshaft hanging in it on nothing) the cap's boarded body under the thatch, its front gable carrying the shaft
+  if (capRg.gable) sink.prism('structureWood', capRg.gable.map(([u, yy]): Vec3 => [u, yy, -capRg.halfD]), [0, 0, 1], 2 * capRg.halfD, { colour: TAR, decor: true });
   sink.cylinder('structureWood', [0, capY - 0.2, 0], 'y', 0.4, R1 + 0.05, 8, { colour: TAR }, R1 + 0.05, true, Math.PI / 8);
   // the stock and sails on +z
   const hubY = capY + 0.9, hubZ = R1 + 0.9, sailL = 11.5;

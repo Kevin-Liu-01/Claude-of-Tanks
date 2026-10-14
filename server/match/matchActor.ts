@@ -31,6 +31,7 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
+import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
 import { captureEntityRow, captureMeta, captureViewerState, createEraIndexer } from './entityRows.ts';
 import {
   INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, beginSnapshot, createViewerInterest, engageEntity, needsFreshRow, recordRow, viewerTierFor,
@@ -121,6 +122,11 @@ export interface MatchActorOptions {
   entryBackpressureGraceMs?: number;
   /** Continuous soft pressure that closes a client still in its entry grace (ENTRY_BACKPRESSURE_SUSTAINED_MS by default). */
   entryBackpressureSustainedMs?: number;
+  /**
+   * This host's build line (src/mp/wire/matchBuild.ts; default MATCH_BUILD): a HELLO whose prediction code differs is
+   * refused with PROTOCOL_VERSION and a refusal code, one whose authority alone differs is admitted and logged.
+   */
+  build?: string;
 }
 
 /** Rows the interest tiers published (refreshed) and held per tier (P3b, 2026-09-29). */
@@ -307,7 +313,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated',
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
-    endedLingerTicks, resume = null,
+    endedLingerTicks, resume = null, build = MATCH_BUILD,
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
   if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs))) {
@@ -847,6 +853,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (claims.roomId !== roomId) { link.close(CLOSE_REASON.ROOM_UNKNOWN, 'token is for another room'); return false; }
     const seatSpec = seatById.get(claims.seat);
     if (!seatSpec || seatSpec.playerId !== claims.playerId) { link.close(CLOSE_REASON.BAD_TOKEN, 'seat does not match the roster'); return false; }
+    // the same-wire build check (2026-10-13, MP plan step 13): a seat whose prediction code differs from this authority's
+    // would mispredict silently; it is refused before it can replace a live link of its seat, with words it can act on
+    const builds = compareMatchBuilds(build, hello.clientBuild);
+    if (matchBuildRefused(builds)) {
+      actorLog.warn('client refused: another build', { seat: claims.seat, player: claims.playerId, host: build.slice(0, 64), client: hello.clientBuild.slice(0, 64), newer: builds.newer });
+      // a code, worded by the joining client in its own build and locale (matchRefusalMessage, playMenu.entryRefusal.*)
+      link.close(CLOSE_REASON.PROTOCOL_VERSION, matchBuildRefusalCode(builds));
+      return false;
+    }
+    if (builds.verdict === 'authority' || builds.verdict === 'version') {
+      actorLog.info('client on another build', { seat: claims.seat, verdict: builds.verdict, host: build.slice(0, 64), client: hello.clientBuild.slice(0, 64) });
+    }
     const previous = clientBySeat.get(claims.seat);
     if (previous) detach(previous, CLOSE_REASON.REPLACED, 'seat reconnected');
     const spectator = seatSpec.team === 'spectator';

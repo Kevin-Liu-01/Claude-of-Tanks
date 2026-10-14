@@ -1,4 +1,5 @@
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
+import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation, isDroneStrike } from './killPresentation.ts';
@@ -2742,7 +2743,7 @@ export function initHud(bus: EventBus): HudRuntime {
     let nick = nickById.get(t.id);
     if (!nick) {
       const used = new Set(nickById.values());
-      let i = hashStr(String(t.id) + (t.spec ? t.spec.id : '')) % BOT_NICKS.length;
+      let i = hashStr(String(t.id) + (t.spec ? tankSeedId(t.spec.id) : '')) % BOT_NICKS.length; // schema-1 spelling
       for (let n = 0; n < BOT_NICKS.length; n++) {
         const cand = BOT_NICKS[(i + n) % BOT_NICKS.length];
         if (!used.has(cand)) { nick = cand; break; }

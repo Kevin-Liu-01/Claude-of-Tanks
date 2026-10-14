@@ -5,9 +5,10 @@
  */
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
+import { readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
 import {
   CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
-  MAX_CONTROLS_PER_INPUT, MAX_DESTROYED_PER_SNAPSHOT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
+  MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
   MAX_EVENT_JSON_BYTES, MAX_ID_BYTES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_MOVEMENT_VALUES,
   MAX_NAME_BYTES, MAX_REASON_BYTES, MAX_RULESET_JSON_BYTES, MAX_SEATS, MAX_SHELLS, MAX_TOKEN_BYTES,
   MESSAGE_TYPE, NO_SEAT, NO_TICK, SHELL_TYPE_OTHER, SHELL_TYPE_NAMES, SNAPSHOT_FLAGS,
@@ -21,7 +22,7 @@ import type {
   WireEvent, WireMessage,
 } from './messages.ts';
 import {
-  applyEntityRowPatch, diffEntityRow, readEntityRowPatch, readIndexList, writeEntityRowPatch, writeIndexList,
+  applyEntityRowPatch, diffEntityRow, readEntityRowPatch, writeEntityRowPatch,
 } from './rows.ts';
 
 export type DecodeResult =
@@ -191,7 +192,8 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   writer.u16(packet.ackedActionSeq);
   writer.i8(packet.inputMarginTicks);
   writeMeta(writer, packet.meta, hasVerdict);
-  writeIndexList(writer, packet.destroyed, MAX_DESTROYED_PER_SNAPSHOT);
+  // wire 6 (2026-10-13): the smaller of a gap list and a bitset, never a cap a long match can pass (destroyedSet.ts)
+  writeDestroyedSet(writer, packet.destroyed);
   if (packet.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   writer.u8(packet.entities.length);
   const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
@@ -443,7 +445,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const ackedActionSeq = reader.u16();
   const inputMarginTicks = reader.i8();
   const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0);
-  const destroyed = readIndexList(reader, MAX_DESTROYED_PER_SNAPSHOT);
+  const destroyed = readDestroyedSet(reader);
   const baseline = keyframe ? null : resolveBaseline(baseTick);
   const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
   const entityCount = reader.u8();

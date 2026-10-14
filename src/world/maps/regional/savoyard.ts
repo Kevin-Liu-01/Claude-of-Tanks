@@ -727,10 +727,22 @@ const ruine: RegionalBuilder = (ctx) => {
       const p = facePoint(face, (look() - 0.5) * face.width * 0.6, 0, 0.9);
       heap(p[0], p[2], 0.9 + look() * 0.6, 0.45 + look() * 0.35);
     }
+    // (the buildings stream, 2026-10-12, the integrity check: the slabs and beams hung at drawn heights over the bare
+    // floor) what lies here rests on what is under it: the floor's boards, or a heap's slope
+    const restOn = (x: number, z: number): number => {
+      let y = 0.06;
+      for (const [hx, hz, r, hgt] of heaps) {
+        const rho = Math.hypot(x - hx, z - hz), top = r * 0.28;
+        if (rho < r) y = Math.max(y, rho <= top ? hgt : -0.25 + (hgt + 0.25) * (r - rho) / (r - top));
+      }
+      return y;
+    };
     // the lauzes fallen: slabs slid against the walls and lying on the heaps
     for (let k = 0; k < 7; k++) {
-      const x = (look() - 0.5) * (W - 1.6), z = (look() - 0.5) * (D - 1.6), y = 0.25 + look() * 0.9;
+      const x = (look() - 0.5) * (W - 1.6), z = (look() - 0.5) * (D - 1.6); look();
       const lw = 0.7 + look() * 0.5, ld = 0.5 + look() * 0.4, tilt = 0.25 + look() * 0.6, th = look() * 6.28;
+      // its low edge on the floor or the heap there, its high edge raised by its tilt
+      const y = restOn(x, z) + (ld / 2) * Math.sin(tilt) + 0.05 * Math.cos(tilt) - 0.03;
       // the slab's frame: along a heading, tipped about it (ax, ay and az orthonormal)
       const c = Math.cos(th), sn = Math.sin(th), ct = Math.cos(tilt), st = Math.sin(tilt);
       const frame = new LocalFrame([c, 0, sn], [-sn * st, ct, c * st], [-sn * ct, -st, c * ct], [x, y, z]);
@@ -738,8 +750,10 @@ const ruine: RegionalBuilder = (ctx) => {
     }
     // the larch frame burnt: beams across the heaps, a rafter or two leaning from a wall head
     for (let k = 0; k < 6; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.5 + rng() * 0.5, (rng() - 0.5) * D * 0.7];
-      const b: Vec3 = [a[0] + (rng() - 0.5) * 3.2, 0.4 + rng() * 1.2, a[2] + (rng() - 0.5) * 3.2];
+      const ax = (rng() - 0.5) * W * 0.8; rng(); const az = (rng() - 0.5) * D * 0.7;
+      const bx = ax + (rng() - 0.5) * 3.2; rng(); const bz = az + (rng() - 0.5) * 3.2;
+      // each end on the floor or a heap (the member stands on its line, 2 cm into what bears it)
+      const a: Vec3 = [ax, restOn(ax, az) + 0.02, az], b: Vec3 = [bx, restOn(bx, bz) + 0.02, bz];
       sink.member('structureWood', a, b, 0.2, 0.2, [0, 1, 0], { colour: k % 2 ? char : charred, decor: true, exposed: true });
     }
     for (const sx of [-1, 1]) {

@@ -1752,6 +1752,15 @@
      "at": "2026-10-12T14:43:12.179Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
      "note": "round 14, all fifty 4K finals on the night tree (integ/night fe5621644 and deploy 208's 62b2d2455 merged; FX rounds 7c-7e, atmospherics r2, destruction in battle, the restored camouflage), each with its recorded sound (take-audio). One guarded source digest (8ba0bdd0) across all fifty; rendered at media-branch heads fae1ff042 to 06b514dd1, which differ only in tools/media-r5. Wave m3 scored it 4.91-5.74 (gauntlet/ledger.jsonl)"
+    },
+    {
+     "round": "r15",
+     "sceneVersion": "v14",
+     "sceneSha256": "4098955c06b3fdd0b387ec9a104bc88fea2f755bc521141f22657552525388f8",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
     }
    ],
    "title": "A K2 Black Panther races past the red-roofed farm at sunset",
@@ -6234,6 +6243,312 @@
    "turrets": "sectors",
    "still": {
     "tMs": 4600,
+    "exposureMs": 2
+   }
+  },
+  "s51-leo2a7v-sunset-fire": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "207acd9b5a83c3852a997f3e3831df626f4d1b28f47ab37320df08480f65abe3",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "207acd9b5a83c3852a997f3e3831df626f4d1b28f47ab37320df08480f65abe3",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+   "map": "verdant",
+   "time": "sunset",
+   "hero": "leo2a7v_x",
+   "paint": {
+    "unit": "service_leclerc_xlr",
+    "enemy": "sig_t90"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1380,
+    "exposureMs": 2
+   }
+  },
+  "s52-revolution-street-knockout": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "d9225ea931c164f67b543ad2597f8a7b660910c0fc88ef2568208856be166146",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "d9225ea931c164f67b543ad2597f8a7b660910c0fc88ef2568208856be166146",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+   "map": "urban",
+   "time": "night",
+   "hero": "leo2_revolution",
+   "paint": {
+    "unit": "sig_k2",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2060,
+    "exposureMs": 2
+   }
+  },
+  "s53-leo2a6m-assault": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "653941486c028ada56df4d0451c7ba106a62cc13a7d2c5c518a893ad718197e2",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "653941486c028ada56df4d0451c7ba106a62cc13a7d2c5c518a893ad718197e2",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Leopard 2A6M wedge assaults through the burning fields",
+   "map": "verdant",
+   "time": "day",
+   "hero": "leo2a6m_x",
+   "paint": {
+    "unit": "sig_borsuk",
+    "enemy": "sig_t90sm"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 4200,
+    "exposureMs": 2
+   }
+  },
+  "s54-leo2a5m-ice-duel": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "800521f6384a682fac5eab3859004d667928caf9ceb25e5a612e57fce61e931f",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "800521f6384a682fac5eab3859004d667928caf9ceb25e5a612e57fce61e931f",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+   "map": "alpine",
+   "time": "day",
+   "hero": "leo2a4m_x",
+   "paint": {
+    "unit": "washworn",
+    "enemy": "sig_t90a_vladimir"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1860,
+    "exposureMs": 2
+   }
+  },
+  "s55-leo2a5-water-tower": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "26ba03f0bcd63addf3c09194e549bb5f418ae6b3a16cc4290cb5bba3196cc177",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "26ba03f0bcd63addf3c09194e549bb5f418ae6b3a16cc4290cb5bba3196cc177",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Leopard 2A5 advances past the burning water tower at night",
+   "map": "railyard",
+   "time": "night",
+   "hero": "leo2a5_x",
+   "paint": {
+    "unit": "sig_amx10p_25",
+    "enemy": "sig_t90m"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3680,
+    "exposureMs": 2
+   }
+  },
+  "s56-lynx-lakeside": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "ffad2656e9df8ce47cb323b94a2be2b789e4cadc2afe7e310d24e77aaa2244b1",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "ffad2656e9df8ce47cb323b94a2be2b789e4cadc2afe7e310d24e77aaa2244b1",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A KF41 Lynx fires across the village at Highland Reservoir",
+   "map": "reservoir",
+   "time": "day",
+   "hero": "kf41_lynx_x",
+   "paint": {
+    "unit": "sig_dardo",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 2
+   }
+  },
+  "s57-puma-minaret": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "2d7d55138ea5e15a35eaa5fb2f6bb1d159c150eab315b522e93268de3d671a33",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "2d7d55138ea5e15a35eaa5fb2f6bb1d159c150eab315b522e93268de3d671a33",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Puma S1 fires at Sunscar Oasis",
+   "map": "oasis",
+   "time": "day",
+   "hero": "spz_puma_s1_x",
+   "paint": {
+    "unit": "sig_namer_ifv",
+    "enemy": "paint_amx40"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1680,
+    "exposureMs": 2
+   }
+  },
+  "s58-mbt70-orchard": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "3cf07467e7c38f476aeb2657d753c7a23ddce7f84e74e20d7309236dd183f680",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "3cf07467e7c38f476aeb2657d753c7a23ddce7f84e74e20d7309236dd183f680",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+   "map": "orchard",
+   "time": "day",
+   "hero": "mbt70",
+   "paint": {
+    "unit": "sig_mbt70",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 2
+   }
+  },
+  "s59-strv103b-farm-charge": {
+   "versions": [
+    {
+     "version": "r15",
+     "sha256": "66744cb0bf7b2cea4c2bc9a339c06e8da3c7ff106d14c4fba4d458558de36bd8",
+     "at": "2026-10-13T10:02:07.600Z",
+     "note": "round 15: s13 on the hardstand pads, and the owner's nine"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r15",
+     "sceneVersion": "r15",
+     "sceneSha256": "66744cb0bf7b2cea4c2bc9a339c06e8da3c7ff106d14c4fba4d458558de36bd8",
+     "renderer": "cf0b77612",
+     "at": "2026-10-13T10:02:07.804Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "4K finals with sound, chain15"
+    }
+   ],
+   "title": "A Stridsvagn 103B charges past the farmhouse through artillery",
+   "map": "verdant",
+   "time": "day",
+   "hero": "strv103",
+   "paint": {
+    "unit": "paint_strv81",
+    "enemy": "sig_t90a_vladimir"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4800,
     "exposureMs": 2
    }
   }

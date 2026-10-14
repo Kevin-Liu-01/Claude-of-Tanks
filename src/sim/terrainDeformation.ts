@@ -38,10 +38,24 @@ const CRATER_FADE_START = 1.6;
 const RIM_INNER = 0.3;
 const RIM_OUTER = 0.55;
 const RIM_BREAK = 0.45;
-/** Rubble: the plateau holds the inner 70 % of the footprint; the skirt runs max(3, 2.2·h) m past its edge. */
+/** Rubble: the plateau (its crown) holds the inner 70 % of the footprint; the skirt runs max(3, 2.2·h) m past its edge. */
 const RUBBLE_PLATEAU = 0.7;
 const RUBBLE_SKIRT_MIN_M = 3;
 const RUBBLE_SKIRT_PER_HEIGHT = 2.2;
+/**
+ * The heap's crown (destruction stream, 2026-10-13; the owner: a building's rubble should not "end up on a flat 2d
+ * plane"). The plateau is no longer level: its top falls by up to CROWN_DROP of the heap's height, leaning to one side
+ * (the mass slumped that way, CROWN_LEAN of the shape) and broken by two crossed swells no shorter than CROWN_WAVE_M on
+ * the ground, so the 1.333 m contact lattice and the drawn ground carry them; the skirt runs down from the crown's height
+ * at the plateau's edge. Every heap differs: its lean and swells come from a hash of its footprint's centre to the
+ * centimetre, which every peer derives from the same structure records, so the authority, each mirror and the
+ * presentation's kits (rubbleMoundHeightAt) raise the same heap. The crown never rises past `heightM` (the overlay's
+ * ceilings hold) and never steepens the skirt.
+ */
+const CROWN_DROP = 0.42;
+const CROWN_LEAN = 0.55;
+const CROWN_WAVE_M = 4.5;
+const CROWN_PARAMS = 9;
 const NORMAL_EPS_M = 1.2;
 
 export interface CraterStamp {
@@ -73,6 +87,8 @@ export interface RubbleStamp {
   /** When the heap began to rise (the overlay's clock, s) and how long it takes (RUBBLE_GROW_S); -Infinity: risen. */
   readonly t0: number;
   readonly growS: number;
+  /** Its crown (heapCrown): the lean, the swells' phases and wave numbers. */
+  readonly crown: Float64Array;
 }
 
 export type TerrainStamp = CraterStamp | RubbleStamp;
@@ -179,31 +195,61 @@ export interface RubbleMound {
 
 /**
  * The heap's height above the ground at world (x, z) — the exact profile the simulation adds to the terrain when the
- * structure collapses (the plateau over the inner 70 % of the footprint, a cosine skirt to nothing), for the
+ * structure collapses (its crown over the inner 70 % of the footprint, a cosine skirt to nothing), for the
  * presentation and the kits to seat rubble on so tracks meet what the eye sees.
  */
 export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): number {
   const height = Math.max(0, mound.heightM);
-  const falloff = rubbleFalloffM(mound.hw, mound.hd, height);
-  const c = Math.cos(mound.yaw), s = Math.sin(mound.yaw);
-  const dx = x - mound.cx, dz = z - mound.cz;
-  const along = Math.abs(dx * s + dz * c) - mound.hd * RUBBLE_PLATEAU;
-  const across = Math.abs(dx * c - dz * s) - mound.hw * RUBBLE_PLATEAU;
-  const ox = across > 0 ? across : 0, oz = along > 0 ? along : 0;
-  const outside = Math.sqrt(ox * ox + oz * oz);
-  return outside >= falloff ? 0 : height * 0.5 * (1 + Math.cos(Math.PI * outside / falloff));
+  heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, _moundCrown);
+  return heapHeight(mound.cx, mound.cz, mound.hw, mound.hd, Math.cos(mound.yaw), Math.sin(mound.yaw), height,
+    rubbleFalloffM(mound.hw, mound.hd, height), _moundCrown, x, z);
+}
+const _moundCrown = new Float64Array(CROWN_PARAMS);
+
+/** A rubble mound's profile at (x, z) (§7): its crown over the plateau, a cosine skirt to nothing (`scale` of it: rising;
+ * the heap is linear in its height, so a rising heap is the risen one scaled). */
+export function rubbleProfile(stamp: RubbleStamp, x: number, z: number, scale = 1): number {
+  return scale * heapHeight(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.c, stamp.s, stamp.heightM, stamp.falloffM, stamp.crown, x, z);
 }
 
-/** A rubble mound's profile at (x, z) (§7): the plateau's height, a cosine skirt to nothing (`scale` of it: rising). */
-export function rubbleProfile(stamp: RubbleStamp, x: number, z: number, scale = 1): number {
-  const dx = x - stamp.cx, dz = z - stamp.cz;
+/** A heap's crown from its footprint (CROWN_DROP): [lean cos, lean sin, three phases, four wave numbers]. */
+function heapCrown(cx: number, cz: number, hw: number, hd: number, out: Float64Array): Float64Array {
+  let h = Math.imul((Math.round(cx * 100) | 0) ^ 0x5bd1e995, 0x9e3779b1) ^ Math.imul((Math.round(cz * 100) | 0) ^ 0x27d4eb2f, 0x85ebca77);
+  h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d);
+  h ^= h >>> 12; h = Math.imul(h, 0x297a2d39);
+  h ^= h >>> 15;
+  const turn = (shift: number): number => (((h >>> shift) & 0xff) / 256) * Math.PI * 2;
+  const lean = turn(0);
+  out[0] = Math.cos(lean); out[1] = Math.sin(lean);
+  out[2] = turn(8); out[3] = turn(16); out[4] = turn(24);
+  // wave numbers on the plateau normalised to its edges (±1): a swell no shorter than CROWN_WAVE_M on the ground and at
+  // most a cycle and a half across the plateau; the second, oblique swell 1.3 times longer
+  const ea = Math.max(1e-3, hd * RUBBLE_PLATEAU), eb = Math.max(1e-3, hw * RUBBLE_PLATEAU);
+  out[5] = (Math.PI * 2 * ea) / Math.max(CROWN_WAVE_M, (2 * ea) / 1.5);
+  out[6] = (Math.PI * 2 * eb) / Math.max(CROWN_WAVE_M, (2 * eb) / 1.5);
+  out[7] = out[5] / 1.3; out[8] = out[6] / 1.3;
+  return out;
+}
+
+/** The heap at (x, z): the crown at the nearest plateau point, the cosine skirt from it past the plateau's edge. */
+function heapHeight(cx: number, cz: number, hw: number, hd: number, c: number, s: number, height: number, falloff: number,
+  crown: Float64Array, x: number, z: number): number {
+  const dx = x - cx, dz = z - cz;
   // forward (sin yaw, cos yaw) along hd, right (cos yaw, −sin yaw) across hw
-  const along = Math.abs(dx * stamp.s + dz * stamp.c) - stamp.hd * RUBBLE_PLATEAU;
-  const across = Math.abs(dx * stamp.c - dz * stamp.s) - stamp.hw * RUBBLE_PLATEAU;
+  const alongAt = dx * s + dz * c, acrossAt = dx * c - dz * s;
+  const ea = hd * RUBBLE_PLATEAU, eb = hw * RUBBLE_PLATEAU;
+  const along = Math.abs(alongAt) - ea, across = Math.abs(acrossAt) - eb;
   const ox = across > 0 ? across : 0, oz = along > 0 ? along : 0;
   const outside = Math.sqrt(ox * ox + oz * oz);
-  if (outside >= stamp.falloffM) return 0;
-  return scale * stamp.heightM * 0.5 * (1 + Math.cos(Math.PI * outside / stamp.falloffM));
+  if (outside >= falloff) return 0;
+  const a = ea > 1e-3 ? Math.max(-1, Math.min(1, alongAt / ea)) : 0;
+  const b = eb > 1e-3 ? Math.max(-1, Math.min(1, acrossAt / eb)) : 0;
+  const lean = (crown[0] * b + crown[1] * a) * Math.SQRT1_2;
+  const swell = 0.6 * Math.sin(crown[5] * a + crown[2]) * Math.sin(crown[6] * b + crown[3])
+    + 0.4 * Math.sin(crown[7] * a - crown[8] * b + crown[4]);
+  const g = CROWN_LEAN * lean + (1 - CROWN_LEAN) * swell;
+  const top = height * (1 - CROWN_DROP * 0.5 * (1 - g));
+  return outside > 0 ? top * 0.5 * (1 + Math.cos(Math.PI * outside / falloff)) : top;
 }
 
 /** The seed's three wobble phases (deterministic, no RNG state): a crater's ragged edge, and the presentation's decal
@@ -313,7 +359,8 @@ export function createTerrainDeformation(): TerrainDeformation {
       // (no clock set — a consumer that never steps one — or a settled heap: risen at once, as before)
       const start = t0 !== undefined ? t0 : Number.isFinite(now) ? now : -Infinity;
       const stamp: RubbleStamp = { kind: 'rubble', cx, cz, hw, hd, yaw, heightM: height,
-        c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S };
+        c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S,
+        crown: heapCrown(cx, cz, hw, hd, new Float64Array(CROWN_PARAMS)) };
       if (Number.isFinite(start) && growthOf(stamp) < 1) rising.push(stamps.length);
       const ex = Math.abs(stamp.s) * hd + Math.abs(stamp.c) * hw + falloff;
       const ez = Math.abs(stamp.c) * hd + Math.abs(stamp.s) * hw + falloff;

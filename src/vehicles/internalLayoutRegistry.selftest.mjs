@@ -50,7 +50,7 @@ for (const system of [dragun.systems.ammoRack, dragun.systems.autoloader]) {
 
 // Explicit launcher topology cannot disappear behind the legacy reload-time
 // heuristic. These exterior-backed records make no hidden-geometry claim.
-for (const id of ['fv510_milan_x', 'k21_x', 'cv90_mkiv_x']) {
+for (const id of ['warrior_tes_h', 'k21_x', 'cv90_mkiv_x']) {
   const layout = internalLayoutFor(id);
   assert.equal(layout.confidence, 'platform-inferred');
   assert.deepEqual(layout.systems.missileRack, { placement: 'turret', form: 'launcherReadyRounds' });
@@ -72,8 +72,8 @@ assert.equal(internalLayoutFor('cv90').layoutKey, 'ifvFrontTwoMan', 'legacy layo
 // Exercise the actual player lazy-loader/finalizer, not registry data alone.
 const { ensureTankBuilders } = await import('./fleetFactory.ts');
 const { getSpec } = await import('./specs.ts');
-await ensureTankBuilders(['fv510_milan_x', 'k21_x', 'cv90_mkiv_x', 'cv90105_tml_x', 'ajax_x']);
-for (const id of ['fv510_milan_x', 'k21_x', 'cv90_mkiv_x']) {
+await ensureTankBuilders(['warrior_tes_h', 'k21_x', 'cv90_mkiv_x', 'cv90105_tml_x', 'ajax_x']);
+for (const id of ['warrior_tes_h', 'k21_x', 'cv90_mkiv_x']) {
   const rack = getSpec(id).armor.modules.find(module => module.module === 'missileRack');
   assert(rack, `${id}: lazy finalization creates the actual launcher damage module`);
   assert.equal(rack.turretLocal, true, `${id}: launcher module follows turret yaw`);

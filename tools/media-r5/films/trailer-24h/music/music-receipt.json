@@ -1,0 +1,12 @@
+{
+ "model": "music_v2_5",
+ "seed": 9600,
+ "take": 0,
+ "source": "/Users/kevinliu/.cache/cot-elevenlabs/music/403d562c6ff99f49e78695e4.mp3",
+ "generatedSeconds": 80.04,
+ "filmSeconds": 80,
+ "plannedSeconds": 80,
+ "cost": 0,
+ "cached": false,
+ "provenance": "Eleven Music (ElevenLabs), generated from this film's cue sheet."
+}

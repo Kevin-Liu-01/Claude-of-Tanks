@@ -10,6 +10,8 @@
  * fans of its air-cooled AVDS-1790.
  */
 
+import { tankSeedId } from '../vehicles/tankIdAliases.ts';
+
 type EngineFamilyId =
   | 'turbine_agt'
   | 'turbine_gtd'
@@ -123,8 +125,9 @@ export function crewLanguageForNation(nation: unknown): CrewLanguage {
   return NATION_LANGUAGE[key] ?? 'en-US';
 }
 
+/** The schema-1 spelling (tankIdAliases.ts): an id rename never changes how a vehicle sounds. */
 function idOf(spec: VehicleAudioSpecInput): string {
-  return String(spec.id ?? '').toLowerCase();
+  return tankSeedId(String(spec.id ?? '')).toLowerCase();
 }
 
 function numberOr(value: unknown, fallback: number): number {

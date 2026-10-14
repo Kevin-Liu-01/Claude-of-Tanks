@@ -18,13 +18,19 @@ import {
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
 interface CvBuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
-  readonly mats: Record<string, THREE.Material>;
+  readonly mats: Record<string, THREE.Material> & {
+    readonly canvasCloth: THREE.MeshStandardMaterial;
+    readonly wheels?: THREE.MeshStandardMaterial;
+  };
+  readonly q?: boolean;
+  readonly disposables: Array<{ dispose(): void }>;
   readonly geometryReceipt?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
@@ -364,6 +370,8 @@ function buildCv90(P: CvBuilderPort): void {
     });
   }
   applyAdvancedIfvScale(P, 'cot-cv90-compact-r1');
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the scaled, assembled build
+  addVehicleGhillieSuit(P);
 }
 
 // -------------------------------------------------------------------------

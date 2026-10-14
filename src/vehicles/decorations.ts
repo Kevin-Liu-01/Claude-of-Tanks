@@ -1,5 +1,6 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -61,14 +62,14 @@ import {
   type MaterialTankSpec,
 } from './materials.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
-import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
+import { VEHICLE_ERAS, decorEraOverrideForId, isContemporaryVehicleEra } from './taxonomy.ts';
 import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
   canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
-import { drapeGhillieOverLoads } from './ghillieDrape.ts';
+import { clearGhillieForSmoke, drapeGhillieOverLoads, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { block, latheY, moldedBox, place, roundBar, sweptTube, withBoxUV } from './accessoryPrimitives.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
@@ -426,6 +427,28 @@ type SlotPlacer = (
   name: string,
 ) => boolean;
 
+/**
+ * The netting lane (2026-10-10): the smoke grenade lines of the decor's own banks in its groups for one frame (not yet
+ * attached: the resources publish them last, at the frame's own origin), as [px, py, pz, dx, dy, dz] rows in that frame,
+ * for the field suit to give way to (ghillieDrape.ts).
+ */
+function decorSmokeLines(groups: readonly THREE.Object3D[]): number[] {
+  const p = new THREE.Vector3(), d = new THREE.Vector3(), rows: number[] = [];
+  for (const group of groups) {
+    group.updateMatrixWorld(true);
+    group.traverse((o) => {
+      const sockets = o.userData?.smokeSockets as Array<{ position: number[]; direction: number[] }> | undefined;
+      if (!Array.isArray(sockets)) return;
+      for (const s of sockets) {
+        p.fromArray(s.position).applyMatrix4(o.matrixWorld);
+        d.fromArray(s.direction).transformDirection(o.matrixWorld);
+        rows.push(p.x, p.y, p.z, d.x, d.y, d.z);
+      }
+    });
+  }
+  return rows;
+}
+
 function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -447,9 +470,12 @@ function fnv1a(str: string): number {
 }
 
 function decorIdentityFor(specId: string): string {
+  // The kit is seeded from the id's schema-1 spelling, so an id rename never
+  // moves a load (SSOT 2.19, tankIdAliases.ts).
+  const seedId = tankSeedId(specId);
   // Keep the prototype hull-kit seed stable across its turret redesign.
   // Both Revolution variants choose their explicit manifests below.
-  return specId === 'leo2_revolution_proto' ? 'leo2_revolution' : specId;
+  return seedId === 'leo2_revolution_proto' ? 'leo2_revolution' : seedId;
 }
 
 const D2R = Math.PI / 180;
@@ -2402,8 +2428,10 @@ export const DECOR_KIT_INFO = {
 // ---------------------------------------------------------------------------
 
 export function decorEra(spec: FleetTankSpec): string {
-  if (spec.era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
-  return isContemporaryVehicleEra(spec.era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
+  // A pinned kit era (taxonomy.ts DECOR_ERA_OVERRIDES) outranks the gameplay era.
+  const era = decorEraOverrideForId(spec.id) ?? spec.era;
+  if (era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
+  return isContemporaryVehicleEra(era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
 }
 
 const SOVIET_RE = /USSR|Russia|China/i;
@@ -3116,8 +3144,10 @@ function probeTargets(group: THREE.Group): SurfaceMesh[] {
     if (o instanceof THREE.LOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
     if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry) {
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      // the netting lane: a field suit (ghillieSuit.ts fieldClearanceM) is no surface to seat on; the decor seats on the
+      // armour under it and the suit is drawn over the loads (ghillieDrape.ts) and cut round the smoke banks
       if (m && m.colorWrite !== false && !isDecorRunningGearName(o.name || '')
-          && !Array.isArray(o.material)) out.push(o as SurfaceMesh);
+          && !Array.isArray(o.material) && o.userData?.fieldSuit !== true) out.push(o as SurfaceMesh);
     }
     for (const c of o.children) visit(c);
   };
@@ -4499,6 +4529,52 @@ export function* attachTankDecorationsSteps(
       return { sweepR, turretMinY, bandMinY };
     }
     const { sweepR, turretMinY, bandMinY } = measureTurretSweep();
+    // 2026-10-09 (the netting lane): a hull dressed in a field suit with working clearances (ghillieSuit.ts
+    // fieldClearanceM: its meshes carry userData.fieldSuit) holds its net and garnish on the decks the turret's loads
+    // swing over; each load hung on the turret clears the suit's top at its radius by 3 cm through the traverse. The
+    // suit's top by radius from the turret's axis, turret frame, 5 cm bins (empty without such a suit).
+    const hullSuitTop = new Map<number, number>();
+    // and its hanging drapes (the net's triangles after its roof and deck carriers, owner frame): a load seated on a
+    // wall, a fender or a bustle face under one would sit inside the cloth, so it takes another seat
+    const suitDrapes: Record<DecorFrame, THREE.Triangle[]> = { hull: [], turret: [] };
+    for (const [frame, group] of [['hull', hullG], ['turret', turretG]] as const) {
+      group.updateWorldMatrix(true, true);
+      const toFrame = new THREE.Matrix4().copy(group.matrixWorld).invert(), m = new THREE.Matrix4();
+      group.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || mesh.userData?.fieldSuit !== true || !/_net$/.test(mesh.name || '')) return;
+        const pos = mesh.geometry?.attributes?.position as THREE.BufferAttribute | undefined;
+        if (!pos) return;
+        m.multiplyMatrices(toFrame, mesh.matrixWorld);
+        const top = Number(mesh.userData[GHILLIE_TOP_VERTICES]) || 0;
+        for (let i = top - (top % 3); i + 2 < pos.count; i += 3) {
+          suitDrapes[frame].push(new THREE.Triangle(
+            new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m),
+            new THREE.Vector3().fromBufferAttribute(pos, i + 1).applyMatrix4(m),
+            new THREE.Vector3().fromBufferAttribute(pos, i + 2).applyMatrix4(m)));
+        }
+      });
+    }
+    const triBox = new THREE.Box3();
+    const meetsDrape = (frame: DecorFrame, bb: THREE.Box3): boolean => suitDrapes[frame].some((t) => {
+      triBox.setFromPoints([t.a, t.b, t.c]);
+      return triBox.intersectsBox(bb) && bb.intersectsTriangle(t);
+    });
+    {
+      turretG.updateWorldMatrix(true, false);
+      const toTurret = new THREE.Matrix4().copy(turretG.matrixWorld).invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+      hullG.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || mesh.userData?.fieldSuit !== true || !mesh.geometry?.attributes?.position) return;
+        m.multiplyMatrices(toTurret, mesh.matrixWorld);
+        const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          const k = Math.floor(Math.hypot(v.x, v.z) / 0.05);
+          hullSuitTop.set(k, Math.max(hullSuitTop.get(k) ?? -Infinity, v.y));
+        }
+      });
+    }
 
     // Gun full-depression bore envelope, swept across every yaw. Hull decor
     // within reach must clear the bore cylinder.
@@ -4967,6 +5043,8 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, reason);
       }
       if (!sweepGuardOK(bb)) return rejectCommit(name, parts, 'sweep');
+      // a gameplay fitting (the smoke banks) is always seated: the field suit gives way to it instead (ghillieDrape.ts)
+      if (!FUNCTIONAL_KITS.has(name) && meetsDrape('hull', bb)) return rejectCommit(name, parts, 'suit-drape');
       return true;
     }
 
@@ -4985,6 +5063,14 @@ export function* attachTankDecorationsSteps(
         return rejectCommit(name, parts, 'turret-width');
       }
       if (rMax > sweepR + 0.55) return rejectCommit(name, parts, 'turret-reach');
+      if (hullSuitTop.size && !FUNCTIONAL_KITS.has(name)) {
+        // the piece's horizontal reach from the axis: its box's nearest approach to its farthest corner
+        const rMin = Math.hypot(Math.max(0, bb.min.x, -bb.max.x), Math.max(0, bb.min.z, -bb.max.z));
+        let under = -Infinity;
+        for (let k = Math.floor(rMin / 0.05) - 1; k <= Math.floor(rMax / 0.05) + 1; k++) under = Math.max(under, hullSuitTop.get(k) ?? -Infinity);
+        if (bb.min.y < under + 0.03) return rejectCommit(name, parts, 'hull-suit');
+      }
+      if (!FUNCTIONAL_KITS.has(name) && meetsDrape('turret', bb)) return rejectCommit(name, parts, 'suit-drape');
       sweepRLive = Math.max(sweepRLive, rMax);
       turretMinYLive = Math.min(turretMinYLive, bb.min.y);
       for (const x of [bb.min.x, bb.max.x]) {
@@ -6363,6 +6449,8 @@ export function* attachTankDecorationsSteps(
       return mesh;
     }
 
+    // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
+    const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
     function* mergeDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
@@ -6402,6 +6490,7 @@ export function* attachTankDecorationsSteps(
         yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
       resources.addGroup(parent, g);
+      decorGroups[frame].push(g);
       g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
       g.userData.decorFunctional = functional;
       return drawCalls;
@@ -6416,6 +6505,10 @@ export function* attachTankDecorationsSteps(
     // them, never laid through them (ghillieDrape.ts)
     drapeGhillieOverLoads(hullG, seatedLoads.hull);
     drapeGhillieOverLoads(turretG, seatedLoads.turret);
+    // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
+    // after the suit): its cloth and garnish in their lines of fire are cut away
+    clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
+    clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;

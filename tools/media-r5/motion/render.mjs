@@ -30,7 +30,9 @@ for (const p of projects.length ? projects : FILMS) {
     continue;
   }
   mkdirSync(join(dir, 'renders'), { recursive: true });
-  const r = run(dir, 'render', '-q', 'delivery', '-w', '3', '-o', `renders/${p}.mp4`);
+  // --gpu: the hardware encoder (VideoToolbox), for a loaded machine: on 2026-10-10 the CPU x264 encode of cut-30 ran
+  // at 0.2 fps under a load of ~100 and hit HyperFrames' encode timeout, where the same render had taken 1m40s
+  const r = run(dir, 'render', '-q', 'delivery', '-w', '3', ...('gpu' in flags ? ['--gpu'] : []), '-o', `renders/${p}.mp4`);
   console.log(`${p}: ${summary}; render ${r.ok ? 'ok' : 'FAILED'} in ${((Date.now() - t0) / 60000).toFixed(1)} min${r.ok ? '' : `\n${r.out.slice(-2000)}`}`);
   if (!r.ok) failed++;
 }

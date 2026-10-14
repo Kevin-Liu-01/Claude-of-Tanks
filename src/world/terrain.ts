@@ -592,6 +592,9 @@ export interface HeightField {
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
+  /** The perf stream (2026-10-13): a near chunk's fine grid seeds the contact surface's exact vertices (seedGrid). */
+  seedContactGrid?(x0: number, z0: number, step: number, pn: number, grid: ArrayLike<number>,
+    source: (x: number, z: number) => number): number;
   /** That triangle's unit normal into `out` (terrainContactSurface.ts normalAt): the slope the player sees. */
   getContactNormalAt?<T extends { x: number; y: number; z: number }>(x: number, z: number, out: T): T;
   warmFastTilesAround(points: readonly TerrainWarmPoint[]): Generator<number, void, void>;
@@ -2992,6 +2995,7 @@ function* heightFieldBuildSteps(
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     getContactNormalAt: getContactHeightAt.normalAt,
+    seedContactGrid: getContactHeightAt.seedGrid,
     getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
@@ -7996,6 +8000,8 @@ function* buildFineGridSteps(
         : LIVE_TERRAIN_CHECKPOINT;
     }
   }
+  // the perf stream (2026-10-13): the contact surface's lazy vertices this grid shares exactly take its heights
+  hf.seedContactGrid?.(cx0, cz0, stepF, pn, hgrid, hf.getHeightAt);
   return { hgrid, pn, stepF };
 }
 
