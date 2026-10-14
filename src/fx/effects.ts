@@ -655,6 +655,8 @@ const MUZZLE_LIGHT_RANGE = 12;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
+/** a wreck fire's reach on its own smoke (m, x the column's scale): the lit underside only a few metres round the flames */
+const LOCAL_FIRE_REACH_M = 5;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
 // the fireball sprites were at their VISUAL peak (composed ageS 0.6) — the
 // scene read as "fire barely influences lighting". 1.6 s + pow 1.6 keeps a
@@ -4218,18 +4220,26 @@ function* createFxSteps(
         LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
     }
     const blastState = lightStates[1];
+    // (the coordinator on round 2's night cook-off: "the whole column is lit, as if by day ... a warm firelit underside
+    // only within a few metres of the flames") a wreck's fire lights its smoke from the flames themselves (1.2 m over the
+    // hull, not the pooled light's 3.4 m) and only a few metres round them (LOCAL_FIRE_REACH_M x the column's scale);
+    // a burst's pulse keeps its own reach (the pooled puffs take it; the media light their pulse themselves)
     if (explosionLight.intensity > 0) {
       const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
-      addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
-        nightK * (pulse ? LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK
-          : LOCAL_FIRE_GAIN * explosionLight.intensity / 12), pulse);
+      if (pulse) {
+        addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
+          nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
+      } else {
+        addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
+          nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
+      }
     }
     // the other burning wrecks (the explosion light rides the latest column)
     for (let i = columns.length - 2; i >= 0; i--) {
       const col = columns[i];
       if (col.flame === false || !(col.ttl > 0)) continue;
       const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
-      if (!addLocalPoint(col.pos[0], col.pos[1] + 2.4, col.pos[2], 10 * col.scale, _wreckFire,
+      if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
         LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
     }
     endLocalLights();

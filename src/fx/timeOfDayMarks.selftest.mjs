@@ -29,7 +29,11 @@ assert.ok(Math.max(night.r, night.g, night.b) < 0.45, `night is dim (${night.r.t
 // dark medium never falls under a share of the sky's own light (no flat black cut-out), the level from the rig's sun
 const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
 assert.match(media, /skyC = mix\( vec3\( skyLum \), skyC, smoothstep\( 0\.15, 0\.6, cov \) \);/, 'the thin rim is lit grey by the sky');
-assert.match(media, /float floorL = skyLum \* uGrade2\.y \* 0\.55 \* \( 0\.45 \+ 0\.35 \* U \+ 0\.2 \* front \);/, 'the night floor, shaded');
+assert.match(media, /float floorL = skyLum \* uGrade2\.y \* 0\.25 \* \( 0\.45 \+ 0\.35 \* U \+ 0\.2 \* front \);\s*col = max\( col, vec3\( floorL \) \);/,
+  'the night floor: a quarter of the sky\'s light, neutral grey, shaded by top and front (round 2: "pink-beige ... as if by day")');
+const fxSrc = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+assert.match(fxSrc, /const LOCAL_FIRE_REACH_M = 5;/, 'a wreck fire lights only a few metres of its smoke');
+assert.match(fxSrc, /addLocalPoint\(col\.pos\[0\], col\.pos\[1\] \+ 1\.2, col\.pos\[2\], LOCAL_FIRE_REACH_M \* col\.scale,/, 'from the flames');
 assert.match(media, /uGrade2\.value\.y = 1 - k \* k \* \(3 - 2 \* k\);/, 'the night level from the rig');
 const nightOf = (sunI) => { const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3)); return 1 - k * k * (3 - 2 * k); };
 assert.equal(nightOf(4.5), 0, 'none by day'); assert.ok(nightOf(2.8) < 0.05, 'next to none at sunset'); assert.equal(nightOf(0.6), 1, 'full at night');

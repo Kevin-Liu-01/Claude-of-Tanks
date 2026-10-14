@@ -474,9 +474,11 @@ void main() {
   // (EF.11, DO-FX-08: "night smoke drawn as flat black cut-outs over fire") at night a dark medium still scatters the
   // sky's glow: its light never falls under a share of the sky's own, shaded by its top and its front, so a column keeps
   // a volume against the night sky instead of a flat black hole (its fire lights its underside: EF.10's local lights)
+  // (the coordinator on round 2's night cook-off: "pink-beige and too bright against the night sky ... real night smoke
+  // over a fire is dark grey to near-black") a quarter of the sky's light, neutral grey (no hue from the sky term)
   if ( uGrade2.y > 0.0 ) {
-    float floorL = skyLum * uGrade2.y * 0.55 * ( 0.45 + 0.35 * U + 0.2 * front );
-    col = max( col, mix( vec3( skyLum ), uSkyCol, 0.35 ) * ( floorL / max( skyLum, 1e-5 ) ) );
+    float floorL = skyLum * uGrade2.y * 0.25 * ( 0.45 + 0.35 * U + 0.2 * front );
+    col = max( col, vec3( floorL ) );
   }
   // (the coordinator: at sunset the low sun front-lights the low dust "too bright and opaque") a low body's lit
   // brightness is capped against the ground's own (the sun's share at its elevation, the sky's, the bounce), and it thins
