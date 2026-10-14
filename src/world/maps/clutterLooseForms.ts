@@ -406,7 +406,7 @@ export interface SpoolForm { cheek: Rgb; cable: Rgb; steel?: boolean }
  *  battens, the cable's turns on the barrel, the arbor hole. One form at every distance (it casts its shadow). Near ≤ 260. */
 export function spoolNear(f: SpoolForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
-  const R = 0.74, Rc = 0.5, seg = 10, cy = 0.68, half = 0.55;
+  const R = 0.74, Rc = 0.5, seg = 10, cy = R + 0.004, half = 0.55;
   for (const sx of [-1, 1]) {
     const from = m.mark;
     // the cheek: a disc of planks (its faces and rim), the arbor hole dark at its middle

@@ -18,7 +18,7 @@ import { DESTRUCTIBLE_TYPES, type DestructiblePropType } from './inhabitKit.ts';
 import { hexLin, type Rgb } from './craftMesh.ts';
 import {
   caskBroken, caskFar, caskNear, crateBroken, crateFar, crateNear, drumFar, drumNear, palletBroken, palletFar, palletNear,
-  vesselBroken, vesselFar, vesselNear, woodpileBroken, woodpileFar, woodpileNear, type PalletForm, type VesselForm, type WoodpileForm,
+  vesselBroken, vesselFar, vesselNear, woodpileBroken, woodpileFar, woodpileNear, type CrateForm, type PalletForm, type VesselForm, type WoodpileForm,
 } from './clutterForms.ts';
 import {
   bottleFar, bottleNear, bucketFar, bucketNear, canFar, canNear, churnFar, churnNear, laundryBroken, laundryNear, potBroken, potFar, potNear,
@@ -415,6 +415,20 @@ function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: Destru
   };
 }
 
+/** A map's crate, pallet and cable drum as forms (the yard kit stacks them: yardClutterKit.ts). */
+export function crateFormOf(mapId: string): CrateForm | null {
+  const c = CRATE_FORMS[mapId];
+  return c ? { ...c, wood: lin(c.wood), frame: lin(c.frame), inside: lin(c.inside), strap: c.strap ? lin(c.strap) : undefined, stencil: c.stencil ? lin(c.stencil) : undefined } : null;
+}
+export function palletFormOf(mapId: string): PalletForm | null {
+  const p = PALLET_FORMS[mapId];
+  return p ? { kind: p.kind, wood: lin(p.wood), dark: lin(p.dark), brand: p.brand ? lin(p.brand) : undefined } : null;
+}
+export function spoolFormOf(mapId: string): SpoolForm {
+  const s = spoolOf(mapId).spec;
+  return { cheek: lin(s.cheek), cable: lin(s.cable), steel: s.steel };
+}
+
 /** The forms a map's clutter takes (null: the kind's legacy form there). */
 export function clutterFormOf(kind: string, mapId: string): string | null {
   if (kind === 'drum') return DRUM_FORMS[mapId]?.form ?? null;
@@ -458,15 +472,13 @@ export function clutterTypes(mapId: string, _mobile: boolean): Record<string, De
     const f: WoodpileForm = { kind: wood.kind, bark: lin(wood.bark), split: lin(wood.split), end: lin(wood.end), length: wood.length, height: wood.height, depth: wood.depth };
     out.firewood = entry('firewood', mapId, 'baked', (rng) => woodpileNear(f, rng), () => woodpileFar(f), (rng) => woodpileBroken(f, rng));
   }
-  const pallet = PALLET_FORMS[mapId];
+  const pallet = palletFormOf(mapId);
   if (pallet) {
-    const f: PalletForm = { kind: pallet.kind, wood: lin(pallet.wood), dark: lin(pallet.dark), brand: pallet.brand ? lin(pallet.brand) : undefined };
+    const f = pallet;
     out.pallet = entry('pallet', mapId, 'baked', (rng) => palletNear(f, rng), () => palletFar(f), (rng) => palletBroken(f, rng));
   }
-  const crate = CRATE_FORMS[mapId];
-  if (crate) {
-    const f = { ...crate, wood: lin(crate.wood), frame: lin(crate.frame), inside: lin(crate.inside), strap: crate.strap ? lin(crate.strap) : undefined,
-      stencil: crate.stencil ? lin(crate.stencil) : undefined };
+  const f = crateFormOf(mapId);
+  if (f) {
     out.crate = entry('crate', mapId, 'baked', (rng) => crateNear(f, rng), () => crateFar(f), (rng) => crateBroken(f, rng));
   }
   const can = CAN_FORMS[mapId];
@@ -511,8 +523,7 @@ export function clutterTypes(mapId: string, _mobile: boolean): Record<string, De
     const paint = { shell: lin(r.shell), hoop: lin(r.hoop), head: lin(r.head), band: lin(r.band), rust: r.rust };
     out.drumred = entry('drumred', mapId, 'baked', (rng) => drumNear(paint, rng), () => drumFar(paint), (rng) => redDrumBroken(paint.shell, rng));
     // (the cable drum casts its own shadow: one form at every distance)
-    const spool = spoolOf(mapId).spec;
-    const f: SpoolForm = { cheek: lin(spool.cheek), cable: lin(spool.cable), steel: spool.steel };
+    const f = spoolFormOf(mapId);
     out.cablespool = entry('cablespool', mapId, 'baked', (rng) => spoolNear(f, rng), null, (rng) => spoolBroken(f, rng));
   }
   return out;

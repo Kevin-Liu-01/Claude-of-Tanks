@@ -10,6 +10,8 @@ import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { periodClutterTypes, MAP_SETTING_YEAR } from './periodClutterKit.ts';
 import { CLUTTER_LEAN, CLUTTER_LOD_ATTRIBUTE, clutterFormOf, clutterLodHook, clutterTypes } from './clutterKit.ts';
 import { destructibleCastsShadow } from '../destructibleRenderPolicy.ts';
+import { YARD_FAMILY_RADIUS } from '../yardDressing.ts';
+import { YARD_FAMILY_TRIANGLE_CAP, buildYardFamily } from './yardClutterKit.ts';
 import { r2Check } from '../../../tools/r2-standard.mjs';
 import * as THREE from 'three';
 
@@ -44,6 +46,18 @@ const CENSUS = {
   titan_gorge: [51, 58, 56, 38, 27, 3, 3, 5, 9, 6, 31, 0, 3, 5], urban: [37, 6, 16, 1, 17, 8, 5, 5, 0, 8, 0, 0, 1, 5],
   verdant: [15, 29, 32, 20, 3, 21, 5, 2, 16, 5, 0, 10, 3, 3], whiteout: [500, 58, 29, 23, 70, 15, 5, 9, 0, 8, 0, 0, 3, 1],
   winter: [17, 42, 30, 25, 2, 30, 10, 4, 5, 7, 0, 0, 1, 3],
+};
+/** The yard dressing's pieces by map (YARD order; the census counts both pallet stacks as palletStack) and the legacy
+ *  kit's triangles a piece (census trisPer, the kit before #2). */
+const YARD = ['palletStack', 'crates', 'drum', 'drumRank', 'cableDrum', 'tyres', 'fuelTank', 'skip'];
+const YARD_LEGACY = { palletStack: 282, crates: 188, drum: 104, drumRank: 298, cableDrum: 188, tyres: 187, fuelTank: 176, skip: 110 };
+const YARD_CENSUS = {
+  airfield: [20, 18, 24, 9, 0, 2, 1, 8], alpine: [2, 5, 0, 1, 0, 0, 0, 1], badlands: [2, 1, 0, 0, 0, 0, 0, 0], blackglass: [0, 3, 0, 0, 0, 0, 0, 1],
+  caldera: [23, 15, 25, 10, 16, 5, 2, 4], copper_mesa: [41, 5, 31, 14, 13, 17, 3, 2], fjord: [9, 13, 0, 1, 0, 0, 0, 3], foundry: [38, 12, 28, 16, 15, 8, 5, 13],
+  frontier: [2, 1, 0, 0, 0, 0, 0, 0], longleaf: [2, 4, 1, 0, 0, 0, 0, 2], mangrove: [2, 1, 0, 0, 0, 0, 0, 0], mars: [0, 0, 4, 11, 0, 0, 0, 0],
+  monsoon: [2, 1, 0, 0, 0, 0, 0, 0], polders: [3, 1, 2, 0, 0, 0, 0, 0], railyard: [49, 16, 25, 9, 11, 5, 2, 4], reservoir: [7, 5, 5, 0, 1, 0, 0, 3],
+  ruinspires: [10, 8, 5, 2, 0, 0, 2, 7], saltwind: [1, 1, 0, 0, 0, 0, 0, 0], skybridge: [8, 4, 4, 4, 9, 4, 0, 6], steppe: [9, 6, 12, 3, 4, 3, 0, 3],
+  titan_gorge: [8, 4, 9, 6, 3, 2, 0, 5], urban: [5, 0, 4, 0, 0, 0, 2, 3], whiteout: [13, 10, 3, 1, 2, 1, 0, 2], winter: [2, 4, 1, 0, 0, 0, 0, 1],
 };
 const MAX_DELTA = 45000;
 
@@ -123,6 +137,30 @@ for (const spec of specs) {
 }
 assert.deepEqual(problems, [], `r2Standard:\n  ${problems.join('\n  ')}`);
 
+// 2b. the yard dressing in each map's forms: bounded, on the ground, within its caps, to the standard (no broken state:
+// dressing, until #2b's crush route)
+const yardTris = {};
+for (const mapId of Object.keys(YARD_CENSUS)) {
+  for (const family of Object.keys(YARD_FAMILY_RADIUS)) {
+    const built = buildYardFamily(family, mapId), g = built.geometry;
+    assert.ok(built.triangles <= YARD_FAMILY_TRIANGLE_CAP[family], `yard ${family} on ${mapId}: ${built.triangles} triangles (cap ${YARD_FAMILY_TRIANGLE_CAP[family]})`);
+    g.computeBoundingBox();
+    const b = g.boundingBox, reach = Math.max(-b.min.x, b.max.x, -b.min.z, b.max.z);
+    assert.ok(Math.abs(b.min.y) <= 0.05 && reach <= YARD_FAMILY_RADIUS[family] + 0.05, `yard ${family} on ${mapId}: on the ground within its reach`);
+    yardTris[`${mapId}:${family}`] = built.triangles;
+    g.dispose();
+  }
+}
+for (const family of Object.keys(YARD_FAMILY_RADIUS)) {
+  const pallets = family === 'pallets' || family === 'palletsTall';
+  const r = r2Check({ kind: `yard:${family}`, maps: Object.keys(YARD_CENSUS), route: 'crush', noBroken: true, caps: { near: YARD_FAMILY_TRIANGLE_CAP[family] },
+    limits: pallets ? { boxShareMax: 0.9, reason: 'a pallet stack is boards and blocks: below the top pallet, a deck and its blocks' } : undefined,
+    resolve: (mapId) => ({ form: `${family}:${mapId}`, build: () => buildYardFamily(family, mapId).geometry }) });
+  problems.push(...r.problems);
+  forms += r.forms.length;
+}
+assert.deepEqual(problems, [], `r2Standard (yard):\n  ${problems.join('\n  ')}`);
+
 // 3. each map within +45k triangles of the legacy clutter (near and far both sent)
 const over = [];
 let worst = { mapId: '', delta: -Infinity };
@@ -134,6 +172,12 @@ for (const mapId of MAPS) {
     const key = `${mapId}:${kind}`;
     assert.ok(key in formTris, `${kind} is placed on ${mapId} (${n}) but has no form`);
     delta += n * (formTris[key] - legacyTris[key]);
+  }
+  for (const [i, family] of YARD.entries()) {
+    const n = YARD_CENSUS[mapId]?.[i] ?? 0;
+    if (!n) continue;
+    const now = family === 'palletStack' ? (yardTris[`${mapId}:pallets`] + yardTris[`${mapId}:palletsTall`]) / 2 : yardTris[`${mapId}:${family}`];
+    delta += n * (now - YARD_LEGACY[family]);
   }
   if (delta > worst.delta) worst = { mapId, delta };
   if (delta > MAX_DELTA) over.push(`${mapId} +${delta}`);
@@ -148,4 +192,4 @@ assert.match(shader.vertexShader, /aClutterLod > 0\.5 && aClutterLod < 2\.5/);
 assert.match(shader.vertexShader, /vColor\.rgb \*=/);
 assert.throws(() => clutterLodHook({ vertexShader: '#include <common>\n#include <begin_vertex>' }), /color_vertex/);
 
-console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}) PASS`);
+console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps and 9 yard families, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}) PASS`);
