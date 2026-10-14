@@ -87,8 +87,8 @@ assert.deepEqual(rel(make(), 'src/simple.selftest.mjs'), ['src/a.ts', 'src/b.ts'
 assert.ok(rel(make(), 'src/lazy.selftest.mjs').includes('src/profiles'), 'a template dynamic import pulls in its directory');
 assert.deepEqual(rel(make(), 'src/contract.selftest.mjs'), ['docs/contract.json', 'src/contract-target.ts', 'src/contract.selftest.mjs'],
   'paths listed inside a JSON contract are inputs (the Chieftain foundation case)');
-assert.deepEqual(rel(make(), 'src/joined.selftest.mjs'), ['index.html', 'main.ts', 'src/joined.selftest.mjs', 'src/main.ts'],
-  'joined paths resolve locally; ambiguous bare filenames conservatively watch the root too');
+assert.deepEqual(rel(make(), 'src/joined.selftest.mjs'), ['index.html', 'main.ts', 'src/index.html', 'src/joined.selftest.mjs', 'src/main.ts'],
+  'joined paths resolve locally; a bare filename is watched beside its module and at the root, present or not');
 assert.ok(rel(make(), 'src/listing.selftest.mjs').includes('public/icons'), 'a listed directory is an input');
 assert.ok(rel(make(), 'src/listing.selftest.mjs').includes('src'), 'a directory-listing receipt observes the source tree broadly');
 assert.ok(rel(make(), 'src/url.selftest.mjs').includes('tools/page.html'), 'a dev-server URL names its page');
@@ -166,6 +166,49 @@ write('src/environment-object.selftest.mjs', 'configure(process.env);');
 assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined,
   'passing the whole environment is conservatively checked fresh');
 
+// Read coverage (2026-10-13). Every file a receipt reads at runtime must be in its key. Two classes went missing once
+// the i18n import stopped forcing fresh runs: site/*.html (no parser rule named the site/ root) and a bare sibling
+// read through `new URL(name, import.meta.url)` (resolved against the root only). The rules are general: any top-level
+// directory of the checkout, any module directory.
+write('site/home.html', '<html>home</html>'); write('site/docs-ai.html', '<html>ai</html>');
+write('zeta/table.json', '{}');
+write('src/site.selftest.mjs', "import { readFileSync } from 'node:fs';\nimport { join } from 'node:path';\n"
+  + "for (const page of ['site/home.html', 'zeta/table.json']) readFileSync(join(ROOT, page), 'utf8');\n");
+assert.deepEqual(rel(make(), 'src/site.selftest.mjs'), ['site/home.html', 'src/site.selftest.mjs', 'zeta/table.json'],
+  'a literal under any top-level directory is an input, with no list of root names to keep current');
+write('src/site-template.selftest.mjs', "existsSync(join(ROOT, `site/docs-${id}.html`)); existsSync(`${ROOT}/zeta/${name}.json`);\n"
+  + "const mime = `image/${format}`;\n");
+assert.deepEqual(rel(make(), 'src/site-template.selftest.mjs'), ['site', 'src/site-template.selftest.mjs', 'zeta'],
+  'a templated page watches its directory, also after an interpolated base; `image/${format}` names no file and widens nothing');
+write('src/vehicles/facade.ts', "import './registration.ts';\n"); write('src/vehicles/registration.ts', 'export {};\n');
+write('src/vehicles/sibling.selftest.mjs', "import { readFileSync } from 'node:fs';\n"
+  + "for (const facade of ['facade.ts']) readFileSync(new URL(facade, import.meta.url), 'utf8');\n");
+assert.deepEqual(rel(make(), 'src/vehicles/sibling.selftest.mjs'), ['facade.ts', 'src/vehicles/facade.ts', 'src/vehicles/sibling.selftest.mjs'],
+  'a bare filename names its sibling (new URL(name, import.meta.url)) and the root file; text reads do not execute it');
+{
+  const before = make().inputKey('src/vehicles/sibling.selftest.mjs').key;
+  write('src/vehicles/facade.ts', "export {};\n");
+  assert.notEqual(make().inputKey('src/vehicles/sibling.selftest.mjs').key, before, 'editing the sibling invalidates the PASS');
+}
+write('src/relative.selftest.mjs', "readFileSync(new URL('vehicles/facade.ts', import.meta.url)); const doc = 'docs/contract.json';\n");
+assert.deepEqual(rel(make(), 'src/relative.selftest.mjs'), ['docs/contract.json', 'src/contract-target.ts', 'src/relative.selftest.mjs', 'src/vehicles/facade.ts'],
+  'a relative path without ./ resolves beside its module too, but invents no src/docs/ while that directory is absent');
+write('api/telemetry.ts', 'export default () => {};\n');
+write('src/routes.selftest.mjs', "import './a';\nconst endpoint = '/api/telemetry';\nconst include = ['src/**/*.ts'];\n");
+assert.deepEqual(rel(make(), 'src/routes.selftest.mjs'), ['src', 'src/a.ts', 'src/b.ts', 'src/routes.selftest.mjs'],
+  'only an import completes an extension (the /api/telemetry route is not api/telemetry.ts); a glob watches its directory');
+write('.gitignore', 'shots/\n.env.*\n!.env.example\n');
+write('shots/frame.png', 'png'); write('.env.local', 'SECRET=1'); write('.env.example', 'SECRET='); write('vercel.json', '{}');
+{
+  const broad = rel(make(), 'src/listing.selftest.mjs');
+  for (const entry of ['api', 'site', 'zeta', 'src', 'public', 'docs', 'tools', '.env.example', '.gitignore', 'index.html', 'vercel.json']) {
+    assert.ok(broad.includes(entry), `a directory-listing receipt observes the top-level ${entry}`);
+  }
+  for (const entry of ['shots', '.env.local', 'cache']) {
+    assert.ok(!broad.includes(entry), `ignored or cache output (${entry}) is not part of the repository a broad receipt observes`);
+  }
+}
+
 // lookup / record round trip, and the two ways to run everything
 {
   const cache = make();
@@ -205,6 +248,7 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   browser.recordPass('src/browser.selftest.mjs', key);
   assert.equal(make().lookup('src/browser.selftest.mjs').skip, false, 'real browser checks cannot be certified by a stale source-only PASS');
 }
+
 rmSync(root, { recursive: true, force: true });
 
 // the real repository: the receipts that moved during batch 28 see their inputs
@@ -232,6 +276,25 @@ rmSync(root, { recursive: true, force: true });
     .some((p) => p.startsWith(join(REPO_ROOT, 'docs') + sep) && p.endsWith('.md')), "the catalog's docs links are prose, not inputs");
   assert.equal(cache.dependenciesOf(join(REPO_ROOT, 'src/vehicles/materials.ts')).has(join(REPO_ROOT, 'src/vehicles')), false,
     "materials.ts's join('') is a string join, not the whole vehicles directory");
+  // Read coverage (2026-10-13): the receipts that skipped as "identical inputs passed" on the planner-precision branch
+  // and failed when run. Each reads these files at runtime (a traced sweep pins every receipt's reads inside its key).
+  const closure = (receipt) => cache.closureOf(join(REPO_ROOT, receipt));
+  const publicNav = closure('src/presentation/publicNav.selftest.mjs');
+  for (const page of ['home', 'gallery', 'docs', 'docs-topic', 'docs-ai', 'docs-filming']) {
+    assert.ok(publicNav.has(join(REPO_ROOT, `site/${page}.html`)), `publicNav observes site/${page}.html`);
+  }
+  assert.ok(closure('src/ui/localeRouting.selftest.mjs').has(join(REPO_ROOT, 'site')), 'locale routing observes every site page it localizes');
+  assert.ok(closure('src/productStats.selftest.mjs').has(join(REPO_ROOT, 'site/home.html')), 'product stats observes the pages it renders');
+  assert.ok(closure('src/docs/topics.selftest.mjs').has(join(REPO_ROOT, 'site')), 'topics watches site/docs-${id}.html (deleting a page)');
+  for (const facade of ['tankFactory.ts', 'fleetFactory.ts', 'authorityFleet.ts', 'fleetRegistration.ts']) {
+    assert.ok(closure('src/vehicles/arieteModernSpecs.selftest.mjs').has(join(REPO_ROOT, 'src/vehicles', facade)),
+      `arieteModernSpecs observes the sibling it reads by bare name (${facade})`);
+  }
+  const broad = cache.dependenciesOf(join(REPO_ROOT, 'src/vehicles/combatAnatomyAudit.test-support.mjs'));
+  for (const entry of ['site', 'api', 'src', 'vercel.json', 'package.json']) {
+    assert.ok(broad.has(join(REPO_ROOT, entry)), `a directory-listing module observes the top-level ${entry}`);
+  }
+  assert.ok(!broad.has(join(REPO_ROOT, 'node_modules')), 'dependencies are salted by the lockfile, not walked');
 }
 
 // Every src|server|tools module with a computed import() the planner cannot follow, and why. Each one widens every

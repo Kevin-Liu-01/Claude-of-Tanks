@@ -2,8 +2,12 @@ import ts from 'typescript-compiler-api';
 
 // Read syntax, not comments or source snippets in assertions. A mention of
 // Puppeteer in input.ts used to invalidate hundreds of checks on any doc edit.
-const FILE_LITERAL = /^(?:\.{1,2}\/|\/?(?:src|tools|docs|public|server|scripts|shots|tests|cloudflare|node_modules)\/)|^[\w.-]+\.(?:html|json|css|md|txt|webp|png|svg|xml|ts|mjs|js)$/;
-const URL_PATH = /\/(?:src|tools|public|docs)\/[\w./-]+\.[\w]+/g;
+// A literal is a path candidate by shape alone: `./x`, `../x`, `<dir>/…`, `/<dir>/…` or a bare `name.ext`. The parser
+// knows no directory names. tools/selftest-cache.mjs resolves each candidate against the checkout's own top-level
+// directories and the naming module's directory, so a new root (site/ was missed until 2026-10-13) needs no edit here.
+const FILE_LITERAL = /^(?:\.{1,2}\/|\/?[\w.-]+\/)|^[\w.-]+\.(?:html|json|jsonc|webmanifest|css|md|txt|csv|tsv|yml|yaml|xml|svg|webp|png|jpe?g|gif|avif|ico|webm|mp4|wv|ogg|mp3|wav|woff2?|glb|gltf|bin|ts|mts|cts|tsx|mjs|cjs|jsx|js|zsh|sh|py)$/;
+// `/<dir>/<…>.<ext>` inside a longer string (a dev-server URL, a GitHub docs link): every slash may start one.
+const URL_PATH = /\/[\w.-]+\/[\w./-]*\.\w+/y;
 const URL_SCHEME = /^[a-z][a-z\d+.-]*:/i;
 const BROAD_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync', 'readdirSync', 'readdir', 'glob', 'globSync', 'createServer']);
 // `import(/* @selftest-external: <what it loads> */ url)` names a module outside the repository (a built page chunk).
@@ -21,7 +25,11 @@ export function collectSelftestInputs(text, filename) {
   let broad = false, browser = false, git = false, opaqueImport = false, opaqueEnvironment = false;
   const addLiteral = value => {
     if (FILE_LITERAL.test(value)) specifiers.add(value);
-    for (const match of value.matchAll(URL_PATH)) specifiers.add(match[0]);
+    for (let at = value.indexOf('/'); at >= 0; at = value.indexOf('/', at + 1)) {
+      URL_PATH.lastIndex = at;
+      const match = URL_PATH.exec(value);
+      if (match) specifiers.add(match[0]);
+    }
   };
   // A JSON key or value is a path only as a whole string: catalog prose that links a GitHub docs URL is not an input.
   const addJsonLiteral = value => {
@@ -138,9 +146,17 @@ export function collectSelftestInputs(text, filename) {
     };
     const readTemplate = node => {
       // A URL whose port is interpolated still names a concrete fixture page.
-      if (FILE_LITERAL.test(node.head.text)) dynamic.push({ prefix: node.head.text,
-        suffix: node.templateSpans.at(-1).literal.text, execute: false });
-      for (const span of node.templateSpans) addLiteral(span.literal.text);
+      const suffix = node.templateSpans.at(-1).literal.text;
+      if (FILE_LITERAL.test(node.head.text)) dynamic.push({ prefix: node.head.text, suffix, execute: false });
+      node.templateSpans.forEach((span, index) => {
+        const text = span.literal.text;
+        addLiteral(text);
+        // `${ROOT}/site/docs-${id}.html`: a path segment between interpolations names a directory under an unknown base
+        // (the checkout root, the module's directory). Recorded as `based`, it never widens to the tree when unresolved.
+        if (index < node.templateSpans.length - 1 && /^\/?[\w.-]+\//.test(text)) {
+          dynamic.push({ prefix: text.replace(/^\//, ''), suffix, execute: false, based: true });
+        } else if (text.startsWith('/') && FILE_LITERAL.test(text.slice(1))) addLiteral(text.slice(1));
+      });
     };
     const visit = node => {
       if (isTypeOnly(node)) return;

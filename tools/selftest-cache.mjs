@@ -10,18 +10,33 @@ import { collectSelftestInputs } from './selftest-inputs.mjs';
 
 export const SELFTEST_CACHE_VERSION = 2;
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts', 'shots', 'tests', 'cloudflare', 'node_modules']);
 const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json', '.tsx', '.jsx', '.html']);
 const MODULE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.tsx', '.jsx']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
 const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs'];
 const LEAF_FILE = /(?:^|\/)(?:package-lock\.json|\.package-lock\.json|[^/]+\.lock)$|\/node_modules\//;
-const BROAD_DIRS = ['src', 'tools', 'server', 'public', 'docs', 'scripts', 'cloudflare'];
 export const sha1 = text => createHash('sha1').update(text).digest('hex');
 const parserHash = sha1(readFileSync(new URL('./selftest-inputs.mjs', import.meta.url)));
 const isDir = path => { try { return statSync(path).isDirectory(); } catch { return false; } };
 const isFile = path => { try { return statSync(path).isFile(); } catch { return false; } };
 const inside = (root, path) => path === root || path.startsWith(root + sep);
+// The root .gitignore's patterns that can name a top-level entry (`shots/`, `.qa-*/`, `.env.*`, `!.env.example`).
+const rootIgnoreRules = root => {
+  let text = '';
+  try { text = readFileSync(join(root, '.gitignore'), 'utf8'); } catch {}
+  const rules = [];
+  for (let line of text.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+    const negate = line.startsWith('!'); if (negate) line = line.slice(1);
+    const directory = line.endsWith('/'); line = line.replace(/\/+$/, '').replace(/^\//, '').replace(/^\*\*\//, '');
+    if (!line || line.includes('/')) continue;
+    const pattern = new RegExp(`^${line.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')}$`);
+    rules.push({ negate, directory, pattern });
+  }
+  return (name, directory) => rules.reduce((ignored, rule) =>
+    rule.pattern.test(name) && (directory || !rule.directory) ? !rule.negate : ignored, false);
+};
 
 export function defaultSelftestCacheDir(root, env = process.env) {
   if (env.COT_SELFTEST_CACHE_DIR) return resolve(env.COT_SELFTEST_CACHE_DIR);
@@ -48,6 +63,23 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
   const metadata = new Map();
   const unresolvedImports = new Set();
   const edgeStorePath = join(cacheDir, 'edges.json');
+  // Every top-level directory a literal can name (`site/home.html`, `/api/x.ts`), and what "the whole repository" is
+  // for a receipt that lists directories or spawns tools: each top-level entry Git does not ignore, files included.
+  const rootDirs = new Set(), broadInputs = [];
+  {
+    const ignored = rootIgnoreRules(root);
+    let entries = [];
+    try { entries = readdirSync(root, { withFileTypes: true }); } catch {}
+    for (const entry of entries) {
+      const full = join(root, entry.name);
+      if (entry.name === '.git') continue;
+      const directory = entry.isDirectory() || (entry.isSymbolicLink() && isDir(full));
+      if (directory) rootDirs.add(entry.name);
+      // A cache directory inside the checkout is the runner's own output, not an input.
+      if (!SKIP_DIRS.has(entry.name) && !ignored(entry.name, directory) && !inside(full, cacheDir)) broadInputs.push(full);
+    }
+    broadInputs.sort();
+  }
   let edgeStore;
   try { edgeStore = JSON.parse(readFileSync(edgeStorePath, 'utf8')); } catch {}
   if (edgeStore?.version !== SELFTEST_CACHE_VERSION || edgeStore?.parserHash !== parserHash) {
@@ -92,25 +124,44 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     const digest = hash.digest('hex'); dirFingerprints.set(dir, digest); return digest;
   };
-  const specifierPath = (from, specifier) => {
-    if (specifier.startsWith('./') || specifier.startsWith('../')) return resolve(dirname(from), specifier);
-    if (specifier.startsWith('/')) {
-      return ROOT_DIRS.has(specifier.split('/')[1]) ? resolve(root, specifier.slice(1)) : null;
+  // Where a specifier can point. `./` and `../` are relative to the naming module; `/<dir>/…` is a checkout path when
+  // <dir> is a top-level directory. Any other path (`site/home.html`, `authorityFleet.ts`, `maps/x.ts`) is read against
+  // whatever base the module joins it to: the checkout root (cwd, `join(ROOT, …)`) or, for a non-import, the module's
+  // own directory (`new URL(name, import.meta.url)`, `join(here, name)`). Both are watched. The own-directory candidate is
+  // watched while missing only when its directory exists, so `docs/x.md` named in src/ui/ invents no src/ui/docs/x.md.
+  const specifierPaths = (from, specifier, module) => {
+    if (specifier.startsWith('./') || specifier.startsWith('../')) return [[resolve(dirname(from), specifier), true]];
+    if (specifier.startsWith('/')) return rootDirs.has(specifier.split('/')[1]) ? [[resolve(root, specifier.slice(1)), true]] : [];
+    const paths = [];
+    if (rootDirs.has(specifier.split('/')[0]) || (!specifier.includes('/') && extname(specifier))) paths.push([resolve(root, specifier), true]);
+    if (!module && dirname(from) !== root) {
+      const local = resolve(dirname(from), specifier);
+      paths.push([local, isDir(dirname(local))]);
     }
-    return ROOT_DIRS.has(specifier.split('/')[0]) || (!specifier.includes('/') && extname(specifier))
-      ? resolve(root, specifier) : null;
+    return paths;
   };
-  const resolveSpecifier = (from, value, required = false) => {
-    if (!value || value.startsWith('node:') || value.startsWith('http') || value.includes('\n')) return null;
+  const resolveSpecifiers = (from, value, { required = false, module = false } = {}) => {
+    if (!value || value.startsWith('node:') || value.startsWith('http') || value.includes('\n')) return [];
     // Node/Vite query suffixes make a fresh module instance, not another file.
-    const path = specifierPath(from, value.split(/[?#]/, 1)[0]);
-    if (!path || !inside(root, path) || path === root) return null;
-    if (isFile(path) || isDir(path)) return path;
-    if (!extname(path)) for (const candidate of [`${path}.ts`, `${path}.mjs`, `${path}.js`, join(path, 'index.ts'), join(path, 'index.mjs')]) {
-      if (isFile(candidate)) return candidate;
+    const clean = value.split(/[?#]/, 1)[0];
+    // A glob (`src/**/*.ts` in tsconfig's include, a `*.json` listing) walks the directory before its first wildcard.
+    const wildcard = clean.search(/[*{]/);
+    if (wildcard >= 0) {
+      const slash = clean.lastIndexOf('/', wildcard);
+      return slash < 0 ? [] : resolveSpecifiers(from, clean.slice(0, slash + 1), { module }).filter(isDir);
     }
-    // Remember a missing named file too: adding it must invalidate a PASS.
-    return required || extname(path) ? path : null;
+    const found = [];
+    for (const [path, watchMissing] of specifierPaths(from, clean, module)) {
+      if (!inside(root, path) || path === root) continue;
+      if (isFile(path) || isDir(path)) { found.push(path); continue; }
+      // Only module resolution completes an extension; a read or a URL (`/api/telemetry`) names its exact path.
+      const completed = !module || extname(path) ? null
+        : [`${path}.ts`, `${path}.mjs`, `${path}.js`, join(path, 'index.ts'), join(path, 'index.mjs')].find(isFile);
+      if (completed) found.push(completed);
+      // Remember a missing named file too: adding it must invalidate a PASS.
+      else if (watchMissing && (required || extname(path))) found.push(path);
+    }
+    return found;
   };
   const inspect = file => {
     if (metadata.has(file)) return metadata.get(file);
@@ -122,36 +173,40 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     }
     metadata.set(file, value); return value;
   };
-  const addBroadDirectories = found => {
-    for (const name of BROAD_DIRS) if (isDir(join(root, name))) found.add(join(root, name));
-  };
+  const addBroadDirectories = found => { for (const path of broadInputs) found.add(path); };
   const addJoinedInputs = (file, joined, found) => {
     for (const segments of joined) for (const base of [dirname(file), root]) {
       const target = resolve(base, ...segments);
       if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) found.add(target);
     }
   };
-  const addDynamicInput = (file, { prefix, suffix, execute }, found, modules) => {
+  // A path a template names outright: relative, or under a top-level directory. Its directory must exist or the template
+  // could name anything, so the receipt watches the tree. `image/${type}` names no checkout path and adds nothing.
+  const namesCheckoutPath = prefix => /^\.{1,2}\//.test(prefix) || rootDirs.has(prefix.replace(/^\//, '').split('/')[0]);
+  const addDynamicInput = (file, { prefix, suffix, execute, based }, found, modules) => {
     if (/[?#]/.test(prefix)) {
-      const target = resolveSpecifier(file, prefix, true);
-      if (target) { found.add(target); if (execute) modules.add(target); }
+      for (const target of resolveSpecifiers(file, prefix, { required: !based, module: execute })) {
+        found.add(target); if (execute) modules.add(target);
+      }
       return;
     }
     const slash = prefix.lastIndexOf('/');
-    const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
-    if (!dir || !isDir(dir)) {
+    const dirs = slash >= 0 ? resolveSpecifiers(file, prefix.slice(0, slash + 1), { module: execute }).filter(isDir) : [];
+    if (!dirs.length) {
       if (execute) unresolvedImports.add(file);
-      addBroadDirectories(found);
+      if (execute || (!based && namesCheckoutPath(prefix))) addBroadDirectories(found);
       return;
     }
-    found.add(dir);
+    for (const dir of dirs) found.add(dir);
     if (!execute) return;
-    const members = []; walk(dir, members);
     const tail = suffix.split(/[?#]/, 1)[0], start = prefix.slice(slash + 1);
-    // Follow each possible module's imports as well as directory membership.
-    // Hashing just the directory missed helpers imported from outside it.
-    for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
-      && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
+    for (const dir of dirs) {
+      const members = []; walk(dir, members);
+      // Follow each possible module's imports as well as directory membership.
+      // Hashing just the directory missed helpers imported from outside it.
+      for (const member of members) if (isFile(member) && MODULE_EXTENSIONS.has(extname(member))
+        && relative(dir, member).startsWith(start) && member.endsWith(tail)) { found.add(member); modules.add(member); }
+    }
   };
   const dependenciesOf = file => {
     if (edges.has(file)) return edges.get(file);
@@ -159,12 +214,14 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     if (!SOURCE_EXTENSIONS.has(extname(file)) || LEAF_FILE.test(file) || !isFile(file)) return found;
     const info = inspect(file);
     for (const specifier of info.imports) {
-      const target = resolveSpecifier(file, specifier, true);
-      if (target && target !== file) { found.add(target); modules.add(target); }
+      for (const target of resolveSpecifiers(file, specifier, { required: true, module: true })) {
+        if (target !== file) { found.add(target); modules.add(target); }
+      }
     }
     for (const specifier of info.specifiers) {
-      const target = resolveSpecifier(file, specifier);
-      if (target && target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) found.add(target);
+      for (const target of resolveSpecifiers(file, specifier)) {
+        if (target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) found.add(target);
+      }
     }
     if (info.broad) addBroadDirectories(found);
     addJoinedInputs(file, info.joined, found);
