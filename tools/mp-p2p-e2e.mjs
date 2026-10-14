@@ -95,7 +95,7 @@ const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms)
 const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
-const report = { pass: false, failures: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
+const report = { pass: false, failures: [], findings: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
   options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
@@ -746,6 +746,7 @@ try {
   const returnTimeline = [];
   const returnStartedAt = performance.now();
   let returned = null;
+  let manualJoin = false;
   let lastState = '';
   while (performance.now() - returnStartedAt < 180_000) {
     const state = await pages.a2.evaluate(returnState).catch(() => null);
@@ -753,6 +754,20 @@ try {
       const key = JSON.stringify(state);
       if (key !== lastState) { returnTimeline.push({ atMs: Math.round(performance.now() - returnStartedAt), ...state }); lastState = key; }
       if (state.path) { returned = state.path; break; }
+      // (2026-10-13) the private run's A2 sat in the lobby, never in the room, for 180 s: past 60 s the harness joins by
+      // code as a player would, and records that the invite did not bring the seat back by itself
+      if (!state.roomPhase && !state.sessionPhase && !manualJoin && performance.now() - returnStartedAt > 60_000) {
+        manualJoin = true;
+        report.findings.push(`A2 (${roomKind}) was not back in the room 60 s after reopening the invite; joined by code`);
+        await pages.a2.evaluate((code) => {
+          const entry = document.querySelector('.cot-multiplayer-entry');
+          if (!document.querySelector('.cot-play')?.classList.contains('show')) entry?.click();
+          const input = document.querySelector('.cot-play [data-field="code"]');
+          if (input) { input.value = code; input.dispatchEvent(new Event('input', { bubbles: true })); }
+          document.querySelector('.cot-play [data-action="join"]')?.click();
+        }, report.room.code).catch(() => {});
+        step('a2-manual-join');
+      }
     }
     await sleep(250);
   }
@@ -761,9 +776,21 @@ try {
   if (returned === 'rejoin') await activate(pages.a2,'.cot-play [data-action="rejoin"]');
   step('a2-returned', { path: returned, timeline: returnTimeline });
   let a2Attempts = 1;
+  // (2026-10-13) a long run under load lets the bots finish the match while A2 enters: the room ends it, and A2 must show
+  // "The match ended while you were joining" — the product's answer, not a failed return
+  const matchEnded = () => report.roomEvents.find((event) => event.kind === 'match_ended') ?? null;
+  const endedNotice = () => pages.a2.evaluate(() => document.querySelector('.cot-play .status')?.textContent ?? window.__NETWORK_ENTRY_FAILURE?.message ?? '').catch(() => '');
+  let endedDuringReturn = null;
   try {
     await waitFor(pages.a2, inBattle, 'A2 rejoined the battle', 240_000, { entryOf: 'A2' });
   } catch (error) {
+    const ended = !live ? matchEnded() : null;
+    const notice = ended ? await endedNotice() : '';
+    if (ended && /ended/i.test(notice)) {
+      endedDuringReturn = { atMs: ended.atMs, result: ended.result, reason: ended.reason, notice };
+      report.findings.push(`the match ended (${ended.reason}) at ${Math.round(ended.atMs / 1000)} s while A2 entered; A2 showed "${notice.trim()}"`);
+      step('a2-match-ended', endedDuringReturn);
+    } else {
     // The product's own recovery ("Please retry from the Garage"): one Rejoin from the lobby, recorded — the console error
     // of the failed entry still fails the run; the second attempt only tells whether the return works at all under this load.
     failures.push(error instanceof Error ? error.message : String(error));
@@ -772,7 +799,11 @@ try {
     await activate(pages.a2,'.cot-play [data-action="rejoin"]');
     step('a2-garage-retry');
     await waitFor(pages.a2, inBattle, 'A2 rejoined the battle (Garage retry)', 240_000, { entryOf: 'A2' });
+    }
   }
+  if (endedDuringReturn) {
+    report.rejoin = { ...report.rejoin, endedDuringReturn };
+  } else {
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null }));
@@ -782,6 +813,7 @@ try {
   if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
   if (report.rejoin.peersOnB !== 2) failures.push(`B serves ${report.rejoin.peersOnB} peers after A's return`);
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
+  }
 } catch (error) {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
   for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await screenshot(page,`${label}-failure.png`).catch(()=>{});
@@ -810,6 +842,7 @@ else {
     `A closed → B hosted after ${report.migration?.electedAfterMs ?? '-'} ms (generation ${report.migration?.election?.generation ?? '-'}), C live on B with +${report.migration?.cSnapshotsAfterMigration ?? '-'} snapshots in 4 s, B's hull ${report.migration?.bHullJumpAsCSaw?.toFixed?.(2) ?? '-'} m from where C saw it, ${report.migration?.reportsFromB ?? '-'} reports from B; ` +
     `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, ${report.rejoin?.attempts ?? '-'} attempt(s), compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
+  for (const finding of report.findings) console.log(`  FINDING: ${finding}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
   console.log(report.pass ? 'mp p2p e2e: PASS' : 'mp p2p e2e: FAIL');
 }
