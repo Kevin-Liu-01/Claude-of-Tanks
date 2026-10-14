@@ -80,9 +80,9 @@ export function createCachedGround(ground: HinterlandGround, { gridM = 24, halfM
  * its own inside the finer level's edge) and outside the square; the rest is filled from the finer level.
  */
 export function bakeHinterlandPyramid(
-  field: Pick<HinterlandField, 'heightAt'> & { displayHeightAt?: HinterlandField['displayHeightAt'] },
+  field: Pick<HinterlandField, 'heightAt'> & Partial<Pick<HinterlandField, 'displayHeightAt' | 'lastDisplayBase'>>,
   levels: readonly HinterlandLevelSpec[] = HINTERLAND_LEVELS_DESKTOP,
-  { marginTexels = 3, ground = null as HinterlandGround | null, display = false } = {},
+  { marginTexels = 3, ground = null as HinterlandGround | null, display = false, bases = null as Float32Array[] | null } = {},
 ): HinterlandPyramid {
   const sample = display && field.displayHeightAt ? field.displayHeightAt.bind(field) : field.heightAt.bind(field);
   const started = performance.now();
@@ -92,6 +92,8 @@ export function bakeHinterlandPyramid(
     const { texelM, halfM } = levels[li];
     const n = Math.round((2 * halfM) / texelM) + 1;
     const heights = new Float32Array(n * n);
+    // (the display bake's base heights, when asked for: NaN where the field was not evaluated)
+    const levelBases = bases && display ? (bases[li] = new Float32Array(n * n).fill(NaN)) : null;
     const finer = out[li - 1] ?? null;
     const inner = finer ? finer.halfM - marginTexels * texelM : -1;
     for (let j = 0; j < n; j++) {
@@ -107,6 +109,7 @@ export function bakeHinterlandPyramid(
           continue;
         }
         heights[k] = sample(x, z, texelM);
+        if (levelBases) levelBases[k] = field.lastDisplayBase ?? NaN;
         evaluated++;
       }
     }

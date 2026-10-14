@@ -18,7 +18,10 @@ export const HL_SURFACE_FLAG = Object.freeze({ water: 1, woods: 2, rock: 4, snow
 /** One level's surface: its own grid (n × n samples at texelM, centred like the heights). */
 export interface HinterlandSurfaceLevel { texelM: number; halfM: number; n: number; rgba: Uint8Array }
 
-const linearToSrgb = (c: number): number => Math.round(255 * Math.max(0, Math.min(1, c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)));
+const srgbExact = (c: number): number => Math.round(255 * Math.max(0, Math.min(1, c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)));
+// (a 4096-entry table over the linear range: the bake converts three channels per texel)
+const SRGB_LUT = Uint8Array.from({ length: 4096 }, (_, i) => srgbExact(i / 4095));
+const linearToSrgb = (c: number): number => SRGB_LUT[Math.max(0, Math.min(4095, Math.round(c * 4095)))];
 const hexToLinear = (hex: number): [number, number, number] => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255].map((v) => {
   const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }) as [number, number, number];
@@ -52,7 +55,8 @@ export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: 
  * and outside the square.
  */
 export function bakeHinterlandSurface(
-  field: HinterlandField, levels: readonly HinterlandLevel[], { woodsOut = null as Uint8Array[] | null } = {},
+  field: HinterlandField, levels: readonly HinterlandLevel[],
+  { woodsOut = null as Uint8Array[] | null, bases = null as readonly Float32Array[] | null } = {},
 ): HinterlandSurfaceLevel[] {
   const cover = createHinterlandCover(), geo = createHinterlandGeology(), water = createHinterlandWater();
   const out: HinterlandSurfaceLevel[] = [];
@@ -85,7 +89,9 @@ export function bakeHinterlandSurface(
         const e = S.texelM;
         const h = hAt(x, z);
         const slope = Math.atan(Math.hypot(hAt(x + e, z) - hAt(x - e, z), hAt(x, z + e) - hAt(x, z - e)) / (2 * e)) * 180 / Math.PI;
-        field.coverAt(x, z, cover, slope, h);
+        // (the pyramid's base under this texel — surface texel i is height sample 2i — spares the relief's evaluation)
+        const b = bases?.[li]?.[(2 * j) * H.n + 2 * i];
+        field.coverAt(x, z, cover, slope, h, b);
         let flags = 0;
         let albedo: readonly [number, number, number];
         if (cover.cls === HL_COVER.water) {

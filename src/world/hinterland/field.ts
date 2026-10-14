@@ -147,8 +147,11 @@ export interface HinterlandField {
   heightAt(x: number, z: number, texelM?: number): number;
   /** The height the land mesh draws: the ground, or over open water its surface (the sea, a lake, a flood stand level). */
   displayHeightAt(x: number, z: number, texelM?: number): number;
+  /** The last displayHeightAt's base height (terms 1, 2, 4, 5 before the water and the levelling; NaN inside the
+   * square): the pyramid bake keeps it so the surface bake need not evaluate the relief again. */
+  readonly lastDisplayBase: number;
   waterAt(x: number, z: number, out: HinterlandWaterSample): HinterlandWaterSample;
-  coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number): HinterlandCover;
+  coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number, base?: number): HinterlandCover;
   geologyAt(x: number, z: number, out: HinterlandGeologySample, slopeDeg?: number, height?: number): HinterlandGeologySample;
   /** Term 3's features in force (empty until the planner's are given). */
   readonly features: HinterlandPlanFeatures;
@@ -589,9 +592,12 @@ export function createHinterlandField(
     return features === EMPTY_FEATURES ? h : levelInto(x, z, h);
   }
   const displayWater = createHinterlandWater();
+  let lastDisplayBase = NaN;
   function displayHeightAt(x: number, z: number, texelM = 0): number {
-    if (edgeOutOf(x, z) <= 0) return ground.getHeightAt(x, z);
-    let h = waterInto(x, z, baseNoWater(x, z, texelM), displayWater);
+    if (edgeOutOf(x, z) <= 0) { lastDisplayBase = NaN; return ground.getHeightAt(x, z); }
+    const b = baseNoWater(x, z, texelM);
+    lastDisplayBase = b;
+    let h = waterInto(x, z, b, displayWater);
     if (features !== EMPTY_FEATURES) h = levelInto(x, z, h);
     // (the water's surface where it is open: its edge follows the shore's own slope as the wet weight rises)
     return displayWater.wet > 0 && displayWater.level > h ? h + (displayWater.level - h) * Math.min(1, displayWater.wet * 1.5) : h;
@@ -664,11 +670,12 @@ export function createHinterlandField(
     return near + (far - near) * ease;
   }
 
-  function coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number): HinterlandCover {
+  function coverAt(x: number, z: number, out: HinterlandCover, slopeDeg?: number, height?: number, baseHeight?: number): HinterlandCover {
     out.cls = HL_COVER.pasture; out.crop = 31; out.fieldId = 0;
     out.woods = 0; out.hedge = 0; out.wet = 0; out.rock = 0; out.scree = 0; out.snow = 0; out.settle = 0; out.road = 0;
     const edgeOut = edgeOutOf(x, z);
-    const base = baseNoWater(x, z);
+    // (a base the caller already has — the pyramid bake's, at the drawn level of detail — saves the relief's evaluation)
+    const base = baseHeight !== undefined && Number.isFinite(baseHeight) ? baseHeight : baseNoWater(x, z);
     let h = waterInto(x, z, base, waterSample);
     if (features !== EMPTY_FEATURES) h = levelInto(x, z, h);
     else { flatWeights.settle = 0; flatWeights.road = 0; flatWeights.rail = 0; }
@@ -721,6 +728,7 @@ export function createHinterlandField(
 
   const field: HinterlandField = {
     spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, features, landUse,
+    get lastDisplayBase() { return lastDisplayBase; },
     withFeatures: (next) => createHinterlandField(spec, seed, ground, { ...options, features: next }),
   };
   return field;

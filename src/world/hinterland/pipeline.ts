@@ -22,6 +22,8 @@ export interface HinterlandBuild {
   field: HinterlandField;
   plan: HinterlandPlan;
   pyramid: HinterlandPyramid;
+  /** Per level the base height under each drawn sample (NaN where not evaluated): the surface bake's input. */
+  bases: Float32Array[];
   /** Milliseconds per stage (field, planning grid, plan, bake). */
   ms: { field: number; planning: number; plan: number; bake: number; total: number; surface?: number; outland?: number };
 }
@@ -53,7 +55,8 @@ export function buildHinterland(
   const field = base.withFeatures(plan.features);
   const t3 = performance.now();
   // (the drawn heights: the water's surface stands level over the sea, the lakes and the flood)
-  const pyramid = bakeHinterlandPyramid(field, levels ?? (tier === 'mobile' ? HINTERLAND_LEVELS_MOBILE : HINTERLAND_LEVELS_DESKTOP), { ground: cached, display: true });
+  const bases: Float32Array[] = [];
+  const pyramid = bakeHinterlandPyramid(field, levels ?? (tier === 'mobile' ? HINTERLAND_LEVELS_MOBILE : HINTERLAND_LEVELS_DESKTOP), { ground: cached, display: true, bases });
   const t4 = performance.now();
-  return { spec, field, plan, pyramid, ms: { field: t1 - t0, planning: t2 - t1, plan: t3 - t2, bake: t4 - t3, total: t4 - t0 } };
+  return { spec, field, plan, pyramid, bases, ms: { field: t1 - t0, planning: t2 - t1, plan: t3 - t2, bake: t4 - t3, total: t4 - t0 } };
 }

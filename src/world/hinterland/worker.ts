@@ -35,7 +35,7 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   const build = buildHinterland(spec, 1337, field, { tier: request.tier });
   const t0 = performance.now();
   const woods: Uint8Array[] = [];
-  const surface = bakeHinterlandSurface(build.field, build.pyramid.levels, { woodsOut: woods });
+  const surface = bakeHinterlandSurface(build.field, build.pyramid.levels, { woodsOut: woods, bases: build.bases });
   // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes)
   raiseHinterlandCanopy(build.pyramid.levels, woods, spec.region.vegetation.canopyM, 1337);
   build.ms.surface = performance.now() - t0;
