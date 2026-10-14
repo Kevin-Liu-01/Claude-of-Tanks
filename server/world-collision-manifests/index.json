@@ -358,8 +358,8 @@
         "concealers": 382
       },
       "blackglass": {
-        "bytes": 1588153,
-        "sha256": "ba33b567be2f570dda2d722b4e6e63bbbe8a3676ed73d838724033a36e518f55",
+        "bytes": 1664557,
+        "sha256": "fe6c77ce52012fb5bef82919b1e22c812d41ceb3a723282ca3529008c39bcee7",
         "obstacles": 3169,
         "colliders": 3621,
         "concealers": 1916
@@ -372,8 +372,8 @@
         "concealers": 1226
       },
       "skybridge": {
-        "bytes": 1977561,
-        "sha256": "7290b67bb7e15792fc54941c6f24965c5bce1a5f17cb31f60640d0e10c84d3cd",
+        "bytes": 2004604,
+        "sha256": "2f7e19ffd7f1304f7627932e42209f5b1f378743214b8988127ec96cd6346bc2",
         "obstacles": 3555,
         "colliders": 3497,
         "concealers": 2042
@@ -393,8 +393,8 @@
         "concealers": 944
       },
       "airfield": {
-        "bytes": 1109638,
-        "sha256": "710f72caf56658747af5078eeecef67f1f05351069d633514b177c8efff05fb7",
+        "bytes": 1142969,
+        "sha256": "45f63de0e3612fe9213718f9fe888f366efe442bda78a3e2a7cee2d5b1a19c52",
         "obstacles": 3036,
         "colliders": 3041,
         "concealers": 2435
@@ -456,8 +456,8 @@
         "concealers": 0
       },
       "moon": {
-        "bytes": 975469,
-        "sha256": "1bc84aae4b8f300db25a08718304163ecc0f9a83b75e59c0d4a76ccea2daff3c",
+        "bytes": 986859,
+        "sha256": "27811b60a6c8faeee352eab5631f4c44d9f4acaebc87daf1a0164a03b5282197",
         "obstacles": 776,
         "colliders": 579,
         "concealers": 0
