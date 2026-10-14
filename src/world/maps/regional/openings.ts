@@ -149,9 +149,10 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
         if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
-          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true });
+          // (their ends flush with the leaf's edges: hidden — the regional builds' cap, props census lane B 2026-10-14)
+          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true, ends: true });
         } else if (sh.kind === 'plank') {
-          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true });
+          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true, ends: true });
         }
       }
     }

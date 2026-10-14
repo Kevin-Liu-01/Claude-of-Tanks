@@ -169,7 +169,7 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
       window: (s, face, o, y0) => {
         windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'two' }, look, 0.04);
         if (!o.state) archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, STONE_WINDOW.frame);
-        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.18, 6);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.18, 5);
       },
       door: (s, face, o, y0) => {
         gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, door, { bucket: 'stone', width: 0.35, out: 0.12 });
