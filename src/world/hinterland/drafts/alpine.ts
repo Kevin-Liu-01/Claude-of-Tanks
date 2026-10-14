@@ -1,4 +1,4 @@
-// src/world/hinterland/drafts/alpine.ts — Glacier Pass's hinterland, a lab draft (HL-2, the horizons stream,
+// src/world/hinterland/drafts/alpine.ts — Glacier Pass's hinterland, shipped by its map file's switch (HL-2, the horizons stream,
 // 2026-10-13; C-map-briefs §3), authored from the real place rather than drafted from the old ring (whose horizon block
 // is palette only: the "tan desert-coloured slab" and the "flat white wall of haze with a hard, stepped top edge").
 //
