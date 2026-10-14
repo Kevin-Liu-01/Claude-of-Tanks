@@ -25,6 +25,9 @@ export const CAST = {
   m1a3: 'm1a3', vt4a1: 'vt4a1', type96_72m: 'type96_72m_lei',
   // the M6 Linebacker from the same list, in the fleet since the 2026-10-07 merge (it was not on 2026-10-06)
   m6: 'm6_linebacker',
+  // owner 2026-10-12 ("add videos for the leo 2a7, leopard 2 revokutuin, leopard 2a6m, leopard 2a5m, leopard 2a5, kf41
+  // lynx, puma s1, mbt 70, strv 103b"): the three of the nine the cast did not hold yet
+  leo2rev: 'leo2_revolution', mbt70: 'mbt70', strv103b: 'strv103',
 };
 /** Public names for callouts (from the fleet specs) and nations. */
 export const CAST_NAMES = {
@@ -48,6 +51,7 @@ export const CAST_NAMES = {
   ua_t72b3m_hetman_ii: ['T-72B3M Hetman II', 'Ukraine'], leo2a6_ua: ['Leopard 2A6 UA', 'Ukraine'], ua_challenger2: ['Challenger 2 UA', 'Ukraine'],
   challenger_3: ['Challenger 3 Prototype', 'UK'], challenger2e: ['Challenger 2E', 'UK'], tos1a_tagil: ['TOS-1A Tagil', 'Russia'],
   m551a1_tts: ['M551A1 TTS', 'USA'], m1a3: ['M1A3 Abrams', 'USA'], vt4a1: ['VT-4A1', 'China'], type96_72m_lei: ['Type 96-72M Léi', 'China'],
+  leo2_revolution: ['Leopard 2 Revolution', 'Germany'], mbt70: ['MBT-70', 'Germany'], strv103: ['Stridsvagn 103B', 'Sweden'],
 };
 
 const featureCache = new Map();

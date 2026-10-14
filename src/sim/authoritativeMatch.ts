@@ -998,9 +998,14 @@ export function createAuthoritativeMatch({
           for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
           return opponents;
         },
+        // A wreck is no teammate: a falling-back or retiring bot looks for support among its allies (ai.ts
+        // nearestSupport), and the authority handed it destroyed hulls too, so it could drive to a teammate's wreck.
+        // The solo step filters wrecks (game/state.ts getAllies); the authority now does the same.
         getAllies: () => {
           allies.length = 0;
-          for (const candidate of entities) if (candidate !== entity && candidate.team === entity.team) allies.push(candidate);
+          for (const candidate of entities) {
+            if (candidate !== entity && candidate.team === entity.team && !candidate.combat.destroyed) allies.push(candidate);
+          }
           return allies;
         },
         getObstacles: () => staticObstacles,

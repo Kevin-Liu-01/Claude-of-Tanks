@@ -1,0 +1,280 @@
+{
+ "map": "coastal",
+ "timeOfDay": "sunset",
+ "light": {
+  "sunAzimuthDeg": 270.1,
+  "sunElevationDeg": 3
+ },
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 410,
+ "actors": [
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "hero",
+   "pos": [
+    208,
+    94.4
+   ],
+   "facingDeg": 90.9,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2870,
+   "state": "intact"
+  },
+  {
+   "id": "griffin50_x",
+   "name": "ally1",
+   "pos": [
+    190.94,
+    98.95
+   ],
+   "facingDeg": 90.9,
+   "turretDeg": 4,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2871,
+   "state": "intact"
+  },
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "ally2",
+   "pos": [
+    170.55,
+    96.45
+   ],
+   "facingDeg": 90.9,
+   "turretDeg": -5,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2872,
+   "state": "intact"
+  },
+  {
+   "id": "griffin50_x",
+   "name": "ally3",
+   "pos": [
+    160.04,
+    97.15
+   ],
+   "facingDeg": 90.9,
+   "turretDeg": 4,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2873,
+   "state": "intact"
+  }
+ ],
+ "effects": [],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1500,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     234.04391439645863,
+     -0.361032913098349,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     234.04391439645863,
+     -0.36103291309834906,
+     96.99123964733764
+    ],
+    "lookAt": [
+     198.00123367518339,
+     1.6007678702829327,
+     94.55707317311821
+    ],
+    "fov": 30,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   234.04,
+   -0.36,
+   96.99
+  ],
+  "yawDeg": 86.14,
+  "pitchDeg": 3.11,
+  "rollDeg": 0,
+  "fov": 30,
+  "lookAt": [
+   214.12,
+   0.72,
+   95.65
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "golden-hour",
+  "contrast": 1.1,
+  "toe": 0.25,
+  "streaks": {
+   "amount": 0.2
+  },
+  "vignette": {
+   "amount": 0.32,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "grain": {
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 35,
+  "id": "b35-silhouette-sun",
+  "technique": "Silhouette",
+  "title": "SEPv3 column on the sun line at Saltmere",
+  "set": "saltmere-sunset-lighthouse",
+  "map": "coastal",
+  "time": "sunset",
+  "film": null,
+  "hero": "m1a2_sepv3_x",
+  "heroName": "M1A2 Abrams SEPv3",
+  "exposureMs": 8,
+  "tMs": 900
+ },
+ "crushes": []
+}

@@ -35,7 +35,7 @@ export function mountReference(article: HTMLElement, slug: string): void {
       <a href="/maps/${m.id}.webp" target="_blank" rel="noopener">${text('fullMap')}</a></details>`).join('');
   } else {
     records.innerHTML = data.modes.map(m => `<details class="manual-record" data-search="${escape(t(`playMenu.matchMode.${m.id}.label`))}" open>
-      <summary><strong>${escape(t(`playMenu.matchMode.${m.id}.label`))}</strong></summary><p>${escape(t(`playMenu.matchMode.${m.id}.desc`))}</p><dl>
+      <summary><strong>${escape(t(`playMenu.matchMode.${m.id}.label`))}</strong></summary><p>${escape(t(`playMenu.matchMode.${m.id}.desc`, m.copy))}</p><dl>
       ${pair('clock',m.clock == null ? text('none') : `${m.clock / 60} min`)}
       ${pair('respawn',m.respawn == null ? text('none') : `${m.respawn} s`)}
       ${pair('score',m.score ?? text('objective'))}${pair('speedScale',`${number(m.speed)}×`)}

@@ -1,0 +1,104 @@
+{
+ "fps": 30,
+ "width": 2160,
+ "height": 3840,
+ "duration": 15,
+ "letterbox": 0,
+ "safeTop": 420,
+ "safeBottom": 940,
+ "typeScale": 1.25,
+ "audio": "assets/audio/mix.wav",
+ "grain": 0.06,
+ "shots": [
+  {
+   "id": "s06-farm-charge-p",
+   "src": "assets/shots/s06-farm-charge-p.mp4",
+   "start": 0,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s01-main-street-push-p",
+   "src": "assets/shots/s01-main-street-push-p.mp4",
+   "start": 2.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s16-street-duel-p",
+   "src": "assets/shots/s16-street-duel-p.mp4",
+   "start": 3.75,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s11-container-rows-p",
+   "src": "assets/shots/s11-container-rows-p.mp4",
+   "start": 5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s27-caravanserai-kill-p",
+   "src": "assets/shots/s27-caravanserai-kill-p.mp4",
+   "start": 6.25,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s14-snow-push-p",
+   "src": "assets/shots/s14-snow-push-p.mp4",
+   "start": 7.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s33-water-tower-p",
+   "src": "assets/shots/s33-water-tower-p.mp4",
+   "start": 8.75,
+   "dur": 1.25,
+   "in": 0
+  }
+ ],
+ "titles": [
+  {
+   "kind": "logo",
+   "start": 0.15,
+   "dur": 2.2
+  },
+  {
+   "kind": "stat",
+   "num": 219,
+   "label": "Tanks",
+   "start": 2.6563,
+   "dur": 2.1875
+  },
+  {
+   "kind": "stat",
+   "num": 33,
+   "label": "Battlefields",
+   "start": 5.1563,
+   "dur": 2.1875
+  },
+  {
+   "kind": "line",
+   "text": "Every hour of the day",
+   "start": 7.6563,
+   "dur": 2.1875
+  }
+ ],
+ "flashes": [
+  {
+   "t": 2.5,
+   "frames": 2
+  },
+  {
+   "t": 10,
+   "frames": 3
+  }
+ ],
+ "endcard": {
+  "start": 10,
+  "url": "cot.kevinliu.studio"
+ }
+}

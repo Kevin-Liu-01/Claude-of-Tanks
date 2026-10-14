@@ -1,0 +1,551 @@
+{
+ "map": "urban",
+ "timeOfDay": "day",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 422,
+ "actors": [
+  {
+   "id": "m1a2_sepv3_x",
+   "name": "hero",
+   "pos": [
+    21.5,
+    -12
+   ],
+   "facingDeg": 183.7,
+   "turretDeg": -3.27,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2954,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a7v_x",
+   "name": "ally1",
+   "pos": [
+    33.06,
+    -3.73
+   ],
+   "facingDeg": 183.7,
+   "turretDeg": 5.06,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2955,
+   "state": "intact"
+  },
+  {
+   "id": "t90m_x",
+   "name": "foe0",
+   "pos": [
+    23.02,
+    -87.75
+   ],
+   "facingDeg": 0.43,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5486,
+   "state": "wrecked-burnt",
+   "stateAgeS": 30
+  }
+ ],
+ "effects": [
+  {
+   "id": "fx1",
+   "type": "fire",
+   "actor": "hero",
+   "params": {
+    "slot": 0,
+    "tracer": true,
+    "recoil": true
+   },
+   "tMs": 1170
+  }
+ ],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1800,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t100",
+    "tMs": 100,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.042118222611,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t200",
+    "tMs": 200,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.15227357405517,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t300",
+    "tMs": 300,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.30616707974923,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t400",
+    "tMs": 400,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.479499765109914,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.64797265555393,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t600",
+    "tMs": 600,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.787286776498036,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t700",
+    "tMs": 700,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.87314315335893,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-8",
+    "label": "t800",
+    "tMs": 800,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.88124281155335,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-9",
+    "label": "t900",
+    "tMs": 900,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.78728677649803,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-10",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.566976073609695,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-11",
+    "label": "t1100",
+    "tMs": 1100,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40.196011728305066,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-12",
+    "label": "t1140",
+    "tMs": 1140,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 40,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-13",
+    "label": "t1200",
+    "tMs": 1200,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 34,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-14",
+    "label": "t1260",
+    "tMs": 1260,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 28,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-15",
+    "label": "t1300",
+    "tMs": 1300,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 27.61896052431032,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-16",
+    "label": "t1400",
+    "tMs": 1400,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 27.146471574455113,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-17",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 27.176954732510286,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-18",
+    "label": "t1600",
+    "tMs": 1600,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 27.481786313062035,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-19",
+    "label": "t1700",
+    "tMs": 1700,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 27.832342630696537,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-20",
+    "label": "t1800",
+    "tMs": 1800,
+    "pos": [
+     26.067782928068002,
+     8.015493219608588,
+     -34.34133745150568
+    ],
+    "lookAt": [
+     21.370935383494086,
+     8.251477961015725,
+     -13.995831236544358
+    ],
+    "fov": 28,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   26.07,
+   8.02,
+   -34.34
+  ],
+  "yawDeg": 167,
+  "pitchDeg": 0.65,
+  "rollDeg": 0,
+  "fov": 40,
+  "lookAt": [
+   21.57,
+   8.24,
+   -14.86
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "cinematic",
+  "exposure": 0.05,
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 21,
+  "id": "b21-zoom-burst",
+  "technique": "Zoom burst",
+  "title": "Zoomed through the exposure as the SEPv3 fires: the frame bursts outward",
+  "set": "steinburg-day-crossroads",
+  "map": "urban",
+  "time": "day",
+  "film": null,
+  "hero": "m1a2_sepv3_x",
+  "heroName": "M1A2 Abrams SEPv3",
+  "exposureMs": 120,
+  "tMs": 1200
+ },
+ "crushes": []
+}

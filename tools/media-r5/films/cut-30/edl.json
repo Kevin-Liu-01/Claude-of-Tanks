@@ -1,0 +1,176 @@
+{
+ "fps": 30,
+ "width": 3840,
+ "height": 2160,
+ "duration": 30,
+ "letterbox": 2.39,
+ "letterboxIn": 0.2,
+ "audio": "assets/audio/mix.wav",
+ "grain": 0.07,
+ "shots": [
+  {
+   "id": "s16-street-duel",
+   "src": "assets/shots/s16-street-duel.mp4",
+   "start": 0,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s18-street-knockout",
+   "src": "assets/shots/s18-street-knockout.mp4",
+   "start": 1.25,
+   "dur": 1.25,
+   "in": 0.15
+  },
+  {
+   "id": "s41-church-tower",
+   "src": "assets/shots/s41-church-tower.mp4",
+   "start": 2.5,
+   "dur": 2.5,
+   "in": 0.6
+  },
+  {
+   "id": "s10-ford-shellfire",
+   "src": "assets/shots/s10-ford-shellfire.mp4",
+   "start": 5,
+   "dur": 2.5,
+   "in": 0.4
+  },
+  {
+   "id": "s01-main-street-push",
+   "src": "assets/shots/s01-main-street-push.mp4",
+   "start": 7.5,
+   "dur": 2.5,
+   "in": 0.3
+  },
+  {
+   "id": "s04-column-under-fire",
+   "src": "assets/shots/s04-column-under-fire.mp4",
+   "start": 10,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s17-crossroads-fire",
+   "src": "assets/shots/s17-crossroads-fire.mp4",
+   "start": 11.25,
+   "dur": 1.25,
+   "in": 2.6
+  },
+  {
+   "id": "s26-minaret-fire",
+   "src": "assets/shots/s26-minaret-fire.mp4",
+   "start": 12.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s21-fields-assault",
+   "src": "assets/shots/s21-fields-assault.mp4",
+   "start": 13.75,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s06-farm-charge",
+   "src": "assets/shots/s06-farm-charge.mp4",
+   "start": 15,
+   "dur": 2.5,
+   "in": 0
+  },
+  {
+   "id": "s27-caravanserai-kill",
+   "src": "assets/shots/s27-caravanserai-kill.mp4",
+   "start": 17.5,
+   "dur": 2.5,
+   "in": 0.6
+  },
+  {
+   "id": "s45-harbor-wide",
+   "src": "assets/shots/s45-harbor-wide.mp4",
+   "start": 20,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s34-furnace-salvo",
+   "src": "assets/shots/s34-furnace-salvo.mp4",
+   "start": 21.25,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s38-church-knockout",
+   "src": "assets/shots/s38-church-knockout.mp4",
+   "start": 22.5,
+   "dur": 1.25,
+   "in": 0
+  },
+  {
+   "id": "s47-ironworks-crane",
+   "src": "assets/shots/s47-ironworks-crane.mp4",
+   "start": 23.75,
+   "dur": 1.25,
+   "in": 0
+  }
+ ],
+ "titles": [
+  {
+   "kind": "logo",
+   "start": 2.5,
+   "dur": 2.4
+  },
+  {
+   "kind": "section",
+   "text": "MORNING",
+   "start": 5.3125,
+   "dur": 2.1875
+  },
+  {
+   "kind": "stat",
+   "num": 220,
+   "label": "Tanks",
+   "start": 10.3125,
+   "dur": 2.1875
+  },
+  {
+   "kind": "line",
+   "text": "Physical ballistics. Real armor.",
+   "start": 15.3125,
+   "dur": 2.1875
+  },
+  {
+   "kind": "stat",
+   "num": 33,
+   "label": "Battlefields",
+   "start": 20.3125,
+   "dur": 2.1875
+  }
+ ],
+ "flashes": [
+  {
+   "t": 2.5,
+   "frames": 3
+  },
+  {
+   "t": 10,
+   "frames": 2
+  },
+  {
+   "t": 17.5,
+   "frames": 4
+  },
+  {
+   "t": 20,
+   "frames": 2
+  },
+  {
+   "t": 25,
+   "frames": 3
+  }
+ ],
+ "endcard": {
+  "start": 25,
+  "url": "cot.kevinliu.studio"
+ }
+}

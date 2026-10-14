@@ -113,15 +113,20 @@ function verifyPowder(method = body('dust')) {
 verifyPowder();
 assert.throws(() => verifyPowder(oldDust), assert.AssertionError, 'old large earth wake is rejected');
 
-// destruction-fx (wave 265's weathering critics): on the media tier a moving hull trails its media skirt on dry earth
-// and sand in place of the dry wake's sprites; wet ground and snow keep their spray and powder, and take no skirt
+// destruction-fx (wave 265's weathering critics): on the media tier a moving hull on sand trails its media skirt over
+// the contact powder; wet ground and snow keep their spray and powder, and take no skirt.
+// EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on dry
+// earth the media tier draws the predecessor's continuous wake to the last draw (deploy 208's skirt there, 07512bb07,
+// had replaced it with separate clouds)
 {
-  const earth = recipeFixture(0, 'medium', body('dust'), false, 0, true);
-  for (let i = 0; i < 48; i++) earth.dust(pos, dir, 1);
-  assert.ok(earth.skirts.length > 0 && earth.skirts.every((k) => k.ground === 'medium' && k.surface === 0), 'dry earth trails a skirt');
-  const legacy = recipeFixture(0, 'medium', body('dust'), false, 0, false);
-  for (let i = 0; i < 48; i++) legacy.dust(pos, dir, 1);
-  assert.ok(earth.emitted.length < legacy.emitted.length, 'the skirt replaces the dry wake\'s sprites (the kick stays)');
+  for (const ground of ['hard', 'medium']) {
+    const earth = recipeFixture(0, ground, body('dust'), false, 0, true);
+    const before = recipeFixture(0, ground, oldDust, false, 0, true);
+    for (const intensity of [.2, .7, 1]) for (let i = 0; i < 24; i++) { earth.dust(pos, dir, intensity); before.dust(pos, dir, intensity); }
+    assert.equal(earth.skirts.length, 0, `${ground} earth: no media skirt`);
+    assert.deepEqual(earth.emitted, before.emitted, `${ground} earth on the media tier: the predecessor's wake, puff for puff`);
+    assert.equal(earth.tail(), before.tail(), `${ground} earth on the media tier: the predecessor's RNG tail`);
+  }
   const sand = recipeFixture(2, 'medium', body('dust'), false, 0, true);
   for (let i = 0; i < 24; i++) sand.dust(pos, dir, 1);
   assert.ok(sand.skirts.length > 0 && sand.emitted.length > 0, 'sand: the skirt and the contact powder');

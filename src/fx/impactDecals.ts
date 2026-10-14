@@ -709,19 +709,24 @@ function clampToSkin(
   _raycaster.far = 1.45; // still reaches spaced armor/skirts around the plate
   const hits = _raycaster.intersectObject(node, true);
   for (const h of hits) {
-    if (!isVisibleOpaqueSkin(node, h.object)) continue;
+    if (!isImpactDecalSkin(node, h.object)) continue;
     adoptSkinHit(node, h as THREE.Intersection<THREE.Mesh>, pos, normal);
     return true;
   }
   return false;
 }
 
-/** Exclude hidden helpers, transparent overlays, and the decal batch itself. */
-function isVisibleOpaqueSkin(
+/**
+ * Exclude hidden helpers, transparent overlays, the decal batch itself, and a camouflage suit (the netting lane,
+ * 2026-10-11: the shell struck the armour under the net; its scar belongs on that armour, never floating on a garnish
+ * card or a net fold; the suit's meshes are nonArmor open-lattice decor named <id>_ghillie_<owner>_net / _leaves).
+ */
+export function isImpactDecalSkin(
   node: THREE.Object3D,
   object: THREE.Object3D,
 ): object is THREE.Mesh {
   if (!object.visible || object.name === 'fx_impactDecals') return false;
+  if (/_ghillie_/.test(object.name) && object.userData?.continuityRole === 'open-lattice') return false;
   if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh) return false;
   for (let parent = object.parent; parent && parent !== node; parent = parent.parent) {
     if (!parent.visible) return false;
@@ -1112,7 +1117,7 @@ export function* createImpactDecalsSteps(
     _raycaster.far = 1.45;
     const hits = _raycaster.intersectObject(root, true);
     for (const h of hits) {
-      if (!isVisibleOpaqueSkin(root, h.object)) continue;
+      if (!isImpactDecalSkin(root, h.object)) continue;
       let owner: THREE.Object3D = root;
       let ownerKey: DecalNodeKey = 'hull';
       for (let p: THREE.Object3D | null = h.object; p && p !== root; p = p.parent) {

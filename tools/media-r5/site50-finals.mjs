@@ -92,9 +92,14 @@ async function waitPause() {
   }
   if (said) console.log(`[finals] resumed ${new Date().toTimeString().slice(0, 8)}`);
 }
+// (launch day, 2026-10-09: two media leases per capture-service hold) the wanted holds are a rate per lease: owed holds
+// accumulate, and a lease yields only the whole holds owed, so renders/yield-holds 0.5 yields one hold every second lease
+let yieldOwed = 0;
 async function yieldGpu() {
-  const yieldHolds = holdsWanted();
+  yieldOwed += holdsWanted();
+  const yieldHolds = Math.floor(yieldOwed + 1e-9);
   if (!yieldHolds) return;
+  yieldOwed -= yieldHolds;
   const seen = new Set();
   let freeSince = Date.now(), served = 0, readAt = 0;
   for (;;) {

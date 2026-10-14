@@ -23,6 +23,12 @@ interface AdaptiveQualityWindow {
   readonly missedFrameRatio: number;
   readonly achievedFps: number;
   readonly dynamicScaleFloor: number;
+  /**
+   * 2026-10-13 (the perf stream): the rung the raster holds at under load (renderScalePolicy.dynamicScaleHold; the
+   * floor itself where the preset declares none). A cut from above lands on it in one step; the raster goes below it
+   * only after HOLD_DOWN_STRIKES consecutive overloaded windows, and recovers to it before it recovers past it.
+   */
+  readonly dynamicScaleHold?: number;
   readonly maximumTrim: number;
   readonly mayRaiseTier: boolean;
   /**
@@ -41,6 +47,8 @@ const FPS_DECLINE_FACTOR = 0.80;
 const FPS_BASELINE_MINIMUM = 24;
 const FPS_SMOOTH_CEILING = 118;
 const TRIM_DOWN_STRIKES = 2;
+/** Consecutive overloaded windows at the hold rung (~6 s at the 1.5 s decision interval) before the raster goes below. */
+export const HOLD_DOWN_STRIKES = 4;
 const TIER_DOWN_STRIKES = 4;
 const TIER_DOWN_WARMUP_SECONDS = 8;
 const TIER_UP_STABLE_SECONDS = 45;
@@ -75,6 +83,13 @@ export const MAX_RESOLUTION_STEPS_PER_CUT = 2;
  * decides on the cadence alone, so a pessimistic timer can never hold the scale down.
  */
 export const GPU_TRUST_SHARE = 1.2;
+const RUNG_EPSILON = 1e-6;
+/** The hold rung, never below the floor nor above the full raster; the floor itself without a declared hold. */
+const holdRung = (window: AdaptiveQualityWindow): number => {
+  const hold = window.dynamicScaleHold;
+  if (typeof hold !== 'number' || !Number.isFinite(hold)) return window.dynamicScaleFloor;
+  return Math.min(1, Math.max(window.dynamicScaleFloor, hold));
+};
 const knownGpu = (window: AdaptiveQualityWindow): number | null => {
   const gpu = window.gpuFrameMs;
   if (typeof gpu !== 'number' || !Number.isFinite(gpu) || gpu <= 0) return null;
@@ -131,6 +146,7 @@ export class AdaptiveQualityPolicy {
   private trim = 0;
   private baselineFps = 0;
   private trimDownStrikes = 0;
+  private holdDownStrikes = 0;
   private tierDownStrikes = 0;
   private tierUpStrikes = 0;
   private resolutionUpBackoffSeconds = RESOLUTION_UP_BACKOFF_SECONDS;
@@ -155,6 +171,7 @@ export class AdaptiveQualityPolicy {
     this.trim = 0;
     this.baselineFps = 0;
     this.trimDownStrikes = 0;
+    this.holdDownStrikes = 0;
     this.tierDownStrikes = 0;
     this.tierUpStrikes = 0;
     this.resolutionUpBackoffSeconds = RESOLUTION_UP_BACKOFF_SECONDS;
@@ -205,6 +222,7 @@ export class AdaptiveQualityPolicy {
     );
     if (load.overloaded) return this.applyRelief(window);
     this.trimDownStrikes = 0;
+    this.holdDownStrikes = 0;
     this.tierDownStrikes = 0;
     return this.applyRecovery(window, load.clean);
   }
@@ -260,7 +278,20 @@ export class AdaptiveQualityPolicy {
       const target = this.scale * Math.sqrt((GPU_DOWN_TARGET * window.frameBudgetMs) / gpu);
       steps = Math.max(1, Math.min(MAX_RESOLUTION_STEPS_PER_CUT, Math.ceil((this.scale - target) / RESOLUTION_STEP - 1e-9)));
     }
-    this.scale = Math.max(window.dynamicScaleFloor, this.scale - RESOLUTION_STEP * steps);
+    const hold = holdRung(window);
+    if (this.scale > hold + RUNG_EPSILON) {
+      // above the hold rung: one cut lands on it, never past it
+      this.holdDownStrikes = 0;
+      this.scale = hold < window.dynamicScaleFloor + RUNG_EPSILON
+        ? Math.max(window.dynamicScaleFloor, this.scale - RESOLUTION_STEP * steps)
+        : hold;
+    } else {
+      // at the hold rung: below it only under a sustained overload
+      this.holdDownStrikes++;
+      if (this.holdDownStrikes < HOLD_DOWN_STRIKES) return 'none';
+      this.holdDownStrikes = 0;
+      this.scale = Math.max(window.dynamicScaleFloor, this.scale - RESOLUTION_STEP * steps);
+    }
     if (window.clockSeconds - this.lastResolutionUpAt < RESOLUTION_FLAP_SECONDS) {
       this.resolutionUpBackoffSeconds = Math.min(
         this.resolutionUpBackoffSeconds * 2,
@@ -286,7 +317,7 @@ export class AdaptiveQualityPolicy {
   ): AdaptiveQualityAction {
     if (clean && this.canRestoreResolution(window.clockSeconds) && this.gpuFitsStepUp(window)) {
       this.tierUpStrikes = 0;
-      this.scale = Math.min(1, this.scale + RESOLUTION_STEP);
+      this.scale = this.nextScaleUp(window);
       this.lastResolutionUpAt = window.clockSeconds;
       this.lastScaleChangeAt = window.clockSeconds;
       return 'resolution-up';
@@ -315,11 +346,22 @@ export class AdaptiveQualityPolicy {
     return 'tier-up';
   }
 
+  /** The up-step's scale: a rung below the hold climbs back to it, the hold rung returns to the full raster at once. */
+  private nextScaleUp(window: AdaptiveQualityWindow): number {
+    const hold = holdRung(window);
+    if (hold <= window.dynamicScaleFloor + RUNG_EPSILON) return Math.min(1, this.scale + RESOLUTION_STEP);
+    if (this.scale < hold - RUNG_EPSILON) {
+      const next = this.scale + RESOLUTION_STEP;
+      return next >= hold - 1e-4 ? hold : next; // the rung itself, not a float a hair under it
+    }
+    return 1;
+  }
+
   /** Without a GPU measurement the cadence rule alone decides; with one, the next step must fit the headroom. */
   private gpuFitsStepUp(window: AdaptiveQualityWindow): boolean {
     const gpu = knownGpu(window);
     if (gpu === null || !(this.scale > 0)) return true;
-    const next = Math.min(1, this.scale + RESOLUTION_STEP);
+    const next = this.nextScaleUp(window);
     return gpu * (next / this.scale) ** 2 <= window.frameBudgetMs * GPU_UP_HEADROOM;
   }
 

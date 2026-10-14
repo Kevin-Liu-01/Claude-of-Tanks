@@ -13,6 +13,7 @@ import { ARIETE_C2_X_DATUMS as D, ARIETE_X_FAMILY_SCALE as S } from './arieteXFa
 import { ARIETE_C2_ARMOR_STOCKS } from './arieteC2XArmor.ts';
 import { enlargeArieteXFamily } from './arieteXFamilyScale.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const { box, cylY, cylZ } = KIT;
 
 function optic(P: TankBuilderPort, g: THREE.BufferGeometry, x: number, y: number, z: number): void {
@@ -127,6 +128,8 @@ function reactiveArmor(P: TankBuilderPort): void {
 }
 
 export function buildArieteC2X(P: TankBuilderPort): void {
+  // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
+  addVehicleGhillieSuit(P);
   buildArieteXSupplied(P, D.boreRadiusM / S / 1.18, true);
   P.scaleBuckets(['gun', 'gunDark'], 1.18, 1.18, 1.22);
   P.muzzleZ *= 1.22;

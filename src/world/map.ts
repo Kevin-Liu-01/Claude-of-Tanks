@@ -49,7 +49,7 @@ import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import {
   createObstacleGrid,
-  nearestColliderHit,
+  nearestColliderHitAlongRay,
   type ColliderRayHit,
   type CollisionRecord,
   type ObstacleQuery,
@@ -631,14 +631,9 @@ function assembleWorld(
     dir: THREE.Vector3,
     maxDist: number,
   ): { distance: number; record: CollisionRecord | null } {
-    const endX = origin.x + dir.x * maxDist;
-    const endZ = origin.z + dir.z * maxDist;
-    queryColliders(
-      Math.min(origin.x, endX), Math.min(origin.z, endZ),
-      Math.max(origin.x, endX), Math.max(origin.z, endZ), rayCandidates);
     // destroyed records stay in the broad phase for O(1) rematch restore; a structure with openings (destruction P2)
-    // answers as a whole
-    nearestColliderHit(rayCandidates, origin, dir, maxDist, _bestNrm, _nearestHit);
+    // answers as a whole; the broad phase marches along the ray (collision.ts nearestColliderHitAlongRay: the same hit)
+    nearestColliderHitAlongRay(queryColliders, origin, dir, maxDist, _bestNrm, _nearestHit, rayCandidates);
     return { distance: _nearestHit.distance, record: _nearestHit.record };
   }
 

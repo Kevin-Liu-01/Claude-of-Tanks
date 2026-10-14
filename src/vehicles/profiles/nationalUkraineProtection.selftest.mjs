@@ -148,9 +148,19 @@ for(const quality of ['high','low'])for(const id of ids){
    assert(leaf?.geometry.attributes.position.count>(quality==='low'?150:300),id+': physical leaves tied on, not only painted net');
   }
   const cfg=NATIONAL_UKRAINE_GHILLIE[id];
-  assert.equal(cfg.hull.top,undefined,id+': hatch and engine deck remain open');
-  assert.equal(cfg.turret.top,undefined,id+': roof weapons and drone launch column remain open');
-  assert.equal(cfg.hull.side.length,6,id+': one cage bay on each flank remains uncovered for visible ERA');
+  // 2026-10-12 (cam-netting; the owner, 10-09 and again 10-12: "a ton more netting and camo leaves all over the zoria and
+  // hetman and sich"): the glacis and the turret roof are netted too (the engine deck lies inside the continuous main-gun
+  // envelope below and stays bare), each laid on the armour and opened
+  // round every hatch lid, cupola and sight (autoOpeningsM); the roof weapon's traverse is opened by the builder and the
+  // drone dock and its 12 m launch column stay clear (the seat checks below)
+  assert.equal(cfg.hull.top?.length,1,id+': the glacis carries a laid net');
+  assert.equal(cfg.turret.top?.length,1,id+': the turret roof carries a laid net');
+  for(const panel of [...cfg.hull.top,...cfg.turret.top]){
+   assert(panel.yFromArmour&&panel.clipToArmour&&panel.autoOpeningsM>0,id+': a roof or deck net lies on the armour and opens round every lid');
+  }
+  // 2026-10-09 (owner: "add a ton more netting and camo leaves all over the zoria and hetman and sich"): every cage bay
+  // on each flank is netted (the visible-ERA bay of c6b60311c is netted over)
+  assert.equal(cfg.hull.side.length,8,id+': every cage bay on each flank carries its net');
   tank.root.updateMatrixWorld(true);
   fullMainGunEnvelope(tank,TANK_SPECS[id],addedHull);
   const seat=MISSION_ATTACHMENT_SEATS[id],native=collectMissionStock(tank,seat.frame,-Infinity,false,TANK_SPECS[id]);
