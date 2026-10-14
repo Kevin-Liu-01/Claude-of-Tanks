@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H, frame, shockwave, smokeScreen } from './setups.mjs';
+import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H, frame, shockwave } from './setups.mjs';
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
@@ -18,6 +18,7 @@ import { choreograph } from './turret-choreo.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 import { worldModel } from './world-model.mjs';
 import { hullOf, waterBlocks } from './route-check.mjs';
+import { fxBodies, fxItems } from './fx-cover.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 /** A site still's longest exposure (ms): crisp at round six's camera speeds (siteScene). */
@@ -174,7 +175,7 @@ function lensAt(shots, t) {
   const rl = Math.hypot(fw[2], fw[0]) || 1, right = [-fw[2] / rl, 0, fw[0] / rl];
   const up = [right[1] * fw[2] - right[2] * fw[1], right[2] * fw[0] - right[0] * fw[2], right[0] * fw[1] - right[1] * fw[0]];
   const ty = Math.tan((cam.fov ?? 40) * Math.PI / 360), tx = ty * 16 / 9;
-  return { cam, right, screen: (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = dot(d, fw); return depth > 0.5 ? { x: dot(d, right) / depth / tx, y: dot(d, up) / depth / ty } : null; } };
+  return { cam, right, tx, ty, screen: (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z], depth = dot(d, fw); return depth > 0.5 ? { x: dot(d, right) / depth / tx, y: dot(d, up) / depth / ty, depth } : null; } };
 }
 /** Where an effect stands at `t`: its placed point, or its actor's on the timeline. */
 function effectAt(scene, e, t) {
@@ -771,7 +772,10 @@ const FIGHTS = {
     ...scar('foe0', 'hero', hero, P('hero', 'noseR'), 1550),
     ...holes('hero', 'foe0', foe0, P('foe0', 'glacis'), 2300),
     mg('foe1', 2900, 12), ...miss('foe1', M(0, [6, 9]), 3300),
-    ...finish('hero', 'foe0', foe0, P('foe0', 'noseL'), 4300), smokeScreen('foe1', 4950, { durationS: 20 }),
+    // (no smoke screen from foe1 after the knockout since the owner's word on 2026-10-14, "make sure tanks are still
+    // visible": popped at 4.95 s, its wall stood between the lens and a tank for the take's last second, then the loop
+    // wrapped it away)
+    ...finish('hero', 'foe0', foe0, P('foe0', 'noseL'), 4300),
     ...glance('foe1', 'hero', hero, P('hero', 'glacis'), 5250), mg('hero', 5700, 10)] }),
   '2v2': ({ hero, ally1, foe0, foe1 }, P, M) => ({ aim: { hero: 'foe0', ally1: 'foe1', foe0: 'hero', foe1: 'ally1' }, still: 4560, effects: [
     ...glance('foe0', 'hero', hero, P('hero', 'glacis'), 200),
@@ -881,8 +885,12 @@ export const COMBAT_TABLE = [
   // stays at 4.2 m, under the conductors, the wires under a third of the frame's top)
   [225, 'verdant-duel', 'A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides', S.vFarm, 'golden', '1v1',
     [CAST.leo], [CAST.t90m], 28, 0, 'race', 1, ['hero', 'foe0'], 6, [6, -6], { geo: 'race', turn: 0 }],
+  // (s226 and s233 since the owner's word on 2026-10-14, "make sure tanks are still visible": over the T-80U's right
+  // shoulder its knockout fireball and smoke stood between the lens and the Challenger for the take's last 1.2 s; over
+  // its left (k -1) they rise clear of it. s233's lens rises to 11 m over the knockout, above the T-90's smoke, where at
+  // 7 m the smoke stood over the CV90 for 1.2 s)
   [226, 'church-duel', 'A Challenger 3 and a T-80U trade rounds by the onion-domed church in the snow', S.wChurch, 'day', '1v1',
-    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', 1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 } }],
+    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', -1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 } }],
   [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
     [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
   // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
@@ -893,8 +901,10 @@ export const COMBAT_TABLE = [
   // (s229 on 224's world, 2026-10-14: the 8 m shift put the 380 kV line across 43 % of the frame's top for 2.6 s; at the
   // set's anchor the race clears 224's ground and the line stays under a third. The village and the line lie the same
   // way: every placement that clears the line, the race turned 45°, puts the village behind the lens)
+  // (and since the owner's word on 2026-10-14, "make sure tanks are still visible": the T-72B3M drove past the dead
+  // T-90M's smoke column in the take's last 1.4 s, 11 m out from it; on a lane 24 m out it passes clear)
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
-    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0 }],
+    [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, 0], { geo: 'race', turn: 0, foe1Out: 24 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
     [CAST.challenger2e], [CAST.t80u, CAST.t72b], 44, 2, 'high', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
   [231, 'yard-2v2', 'Two Abrams race a T-90M and a T-72B3M across the rail yard at night', S.rYard, 'night', '2v2',
@@ -905,14 +915,14 @@ export const COMBAT_TABLE = [
   // house beside the enemy line that filled the frame from either side, and the Frontier farm stands in woods; the
   // orchard village's sky is Verdant's fair-weather cumulus)
   [233, 'orchard-2v2', 'A Strv 122 and a CV90 fight a T-90 and a T-72B3 through the orchard village in the morning', S.orVillage, 'morning', '2v2',
-    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0]],
+    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0], { camEnd: { lift: 11 } }],
 ];
 /** One combat take from its table row; `over` replaces any of { lens, k, hold, speed, D, lat, shift, geo, turn }
  *  (combat-search.mjs). `shift` ([lat, along] m in the set's frame, the row's 15th field) moves the whole fight off the
  *  set's anchor onto clear ground; `turn` runs it that many degrees off the set's heading. */
 export function combatTake(row, over = {}) {
   const [n, id, title, set0, time, format, lineup, foes] = row;
-  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
+  const { D, lat, lens: lensName, k, hold, speed, shift, geo, turn, foeFormation, camEnd, foe1Lead = -9, foe1Out = 11 } = { D: row[8], lat: row[9], lens: row[10], k: row[11], hold: row[12],
     speed: row[13], shift: row[14] ?? [0, 0], geo: 'front', turn: 0, foeFormation: 'pair', ...(row[15] ?? {}), ...over };
   // `camEnd` (2026-10-14, the coordinator on the 224 review: s226's lens climbed through a telephone line): the take's
   // own values for its lens's last key, the rest of the lens as DUEL has it
@@ -929,9 +939,11 @@ export function combatTake(row, over = {}) {
   if (race) {
     const runTo = (killMs) => speed * (killMs / 1000 - 0.1) + RACE_BRAKE_M;
     routes.foe0 = { pts: [[k * D, 0], [k * D, runTo(4510)]], speed, stop: true, brakeM: RACE_BRAKE_M };
+    // (`foe1Lead` / `foe1Out`, 2026-10-14: the second foe's start off the first, along and out; the tanks in front of the
+    // fire put it ahead of the first's burning wreck where the lens saw it pass behind the smoke)
     if (foes[1]) routes.foe1 = format === '2v2'
-      ? { pts: [[k * (D + 11), -9], [k * (D + 11), -9 + runTo(2710)]], speed, stop: true, brakeM: RACE_BRAKE_M }
-      : { pts: [[k * (D + 11), -9], [k * (D + 11), -9 + speed * 7 + 10]], speed };
+      ? { pts: [[k * (D + foe1Out), foe1Lead], [k * (D + foe1Out), foe1Lead + runTo(2710)]], speed, stop: true, brakeM: RACE_BRAKE_M }
+      : { pts: [[k * (D + foe1Out), foe1Lead], [k * (D + foe1Out), foe1Lead + speed * 7 + 10]], speed };
   }
   const enemies = { along: race ? 0 : D, lat: race ? k * D : lat, count: foes.length, formation: foeFormation, lineup: foes, states: foes.map(() => 'intact') };
   const kind = 'battle', flare = time === 'night' ? [NIGHT_FLARE(race ? H(k * D * 0.5, 12) : H(-6, D * 0.6), 90)] : [];
@@ -1035,6 +1047,140 @@ function parkNudges(scene, model) {
   });
   return moved ? nudge : null;
 }
+// ------------------------------------------------------------------------------------- the tanks in front of the fire
+// (owner 2026-10-14, on the combat round: "make sure tanks are still visible and its not just a ton of explosions",
+// pointing at s186's winter sunset: the tank side-on in front, the fireball and black smoke behind it; the coordinator:
+// a nearer burst may cover a small share of a tank, beyond a flash, and the bursts sit behind or beside the tanks)
+// A placed burst (a miss's) whose body (fx-cover.mjs: the fireball, then its rising smoke) covers FIT_COVER of a living
+// tank's box from nearer the lens for longer than FIT_FLASH_MS turns round the tank it covers, at its own distance from
+// it or up to 8 m further, the smallest turn first; a barrage whose shells do walks its centre away from the lens. The
+// new spot is dry open ground, a half hull and 4 m clear of every hull through the burst, in the frame at its peak, and
+// covers no tank; the burst's debris, dust and shockwave go with it.
+const FIT_COVER = 0.25, FIT_FLASH_MS = 200;
+function fitCombatBursts(scene, world) {
+  const shots = absoluteShots(scene, world), dur = scene.storyboard?.durationMs ?? 0;
+  if (!shots.length) return null;
+  const deadAt = new Map(scene.effects.filter((e) => e.type === 'tank_kill' && e.actor).map((e) => [e.actor, e.tMs]));
+  const tracks = new Map((scene.storyboard?.actorTracks ?? []).map((t) => [t.actor, t.keys]));
+  const groundAt = (x, z) => world.heightAt(x, z);
+  const poseOf = (a, t) => {
+    const p = {}, keys = tracks.get(a.name);
+    if (keys?.length && sampleActorTrack(keys, t, p)) return [p.x, p.z, (p.facingDeg ?? 0) * Math.PI / 180];
+    return [a.pos[0], a.pos[1], (a.facingDeg ?? 0) * Math.PI / 180];
+  };
+  // every 100 ms: the lens, and each living tank's box on screen (clipped to the frame) and its depth
+  const frames = new Map();
+  for (let t = 0; t <= dur; t += 100) {
+    const l = lensAt(shots, t);
+    if (!l) continue;
+    const tanks = [];
+    for (const a of scene.actors) {
+      if (t > (deadAt.get(a.name) ?? Infinity)) continue;
+      const [x, z, yaw] = poseOf(a, t), [hl, hw, , h = 2.4] = hullOf(a.id), g = groundAt(x, z), sx = Math.sin(yaw), cz = Math.cos(yaw);
+      const pts = [];
+      for (const [u, v] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const hh of [0, h]) pts.push(l.screen([x + sx * hl * u + cz * hw * v, g + hh, z + cz * hl * u - sx * hw * v]));
+      const c = l.screen([x, g + h / 2, z]);
+      if (!c || pts.some((q) => !q)) continue;
+      const box = [Math.max(-1, Math.min(...pts.map((q) => q.x))), Math.max(-1, Math.min(...pts.map((q) => q.y))),
+        Math.min(1, Math.max(...pts.map((q) => q.x))), Math.min(1, Math.max(...pts.map((q) => q.y)))];
+      if (box[2] > box[0] && box[3] > box[1]) tanks.push({ name: a.name, x, z, box, depth: c.depth });
+    }
+    frames.set(t, { l, tanks });
+  }
+  // the longest a set of items covers one tank past FIT_COVER (ms), and which tank
+  const coverMs = (items) => {
+    const runs = new Map();
+    let worst = 0, whom = null;
+    const t0 = Math.ceil(Math.min(...items.map((it) => it.tMs)) / 100) * 100, t1 = Math.min(dur, Math.max(...items.map((it) => it.toMs)));
+    for (let t = t0; t <= t1; t += 100) {
+      const f = frames.get(t), hit = new Set();
+      if (f) for (const body of fxBodies(items, t, groundAt)) {
+        if (!body.sphere) continue;
+        const [x, y, z, r] = body.sphere, c = f.l.screen([x, y, z]);
+        if (!c) continue;
+        const ex = r / (c.depth * f.l.tx), ey = r / (c.depth * f.l.ty);
+        for (const tk of f.tanks) {
+          if (c.depth >= tk.depth - 1 || body.item.actor === tk.name) continue;
+          let n = 0;
+          for (let i = 0; i < 9; i++) for (let j = 0; j < 6; j++) {
+            const px = tk.box[0] + (tk.box[2] - tk.box[0]) * (i + 0.5) / 9, py = tk.box[1] + (tk.box[3] - tk.box[1]) * (j + 0.5) / 6;
+            if (((px - c.x) / ex) ** 2 + ((py - c.y) / ey) ** 2 <= 1) n++;
+          }
+          if (n / 54 >= FIT_COVER) hit.add(tk.name);
+        }
+      }
+      for (const name of new Set([...runs.keys(), ...hit])) {
+        const run = hit.has(name) ? (runs.get(name) ?? 0) + 100 : 0;
+        runs.set(name, run);
+        if (run > worst) { worst = run; whom = name; }
+      }
+    }
+    return { ms: worst, whom };
+  };
+  const near = [], half = (world.size ?? 1024) / 2 - 40;
+  const clearSpot = (tMs, px, pz) => {
+    if (Math.abs(px) > half || Math.abs(pz) > half || world.wetAt(px, pz) > 0.3) return false;
+    world.query(px - 3, pz - 3, px + 3, pz + 3, near);
+    if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) return false;
+    for (let t = tMs; t <= tMs + 500; t += 100) for (const a of scene.actors) {
+      const [x, z] = poseOf(a, t);
+      if (Math.hypot(x - px, z - pz) < 4 + hullOf(a.id)[0]) return false;
+    }
+    // in the frame at its peak (a burst nobody sees is no burst)
+    const f = frames.get(Math.round((tMs + 300) / 100) * 100), c = f && f.l.screen([px, world.heightAt(px, pz) + 2, pz]);
+    return !!c && Math.abs(c.x) <= 0.88 && Math.abs(c.y) <= 0.85;
+  };
+  const follow = (e, from, to) => {
+    for (const c of scene.effects) {
+      if (c === e || c.actor || !Array.isArray(c.at) || c.at.length !== 2 || !/^(debris|dust|shockwave)$/.test(c.type ?? '')) continue;
+      if (c.tMs < e.tMs || c.tMs > e.tMs + 300 || Math.hypot(c.at[0] - from[0], c.at[1] - from[1]) > 3) continue;
+      c.at = [+(c.at[0] + to[0] - from[0]).toFixed(2), +(c.at[1] + to[1] - from[1]).toFixed(2)];
+    }
+  };
+  const moved = [], left = [];
+  for (const e of scene.effects) {
+    const placedBurst = e.type === 'explosion' && !e.actor && Array.isArray(e.at) && e.at.length === 2;
+    const walking = e.type === 'barrage' && Array.isArray(e.at);
+    if (!placedBurst && !walking) continue;
+    const itemsAt = (at) => fxItems({ ...scene, effects: [{ ...e, at }] });
+    const before = coverMs(itemsAt(e.at));
+    if (before.ms <= FIT_FLASH_MS) continue;
+    const from = e.at.length >= 3 ? [e.at[0], e.at[2]] : [e.at[0], e.at[1]];
+    let spot = null;
+    if (placedBurst) {
+      // round the tank it covers, as that tank stands at the burst's peak
+      const f = frames.get(Math.round((e.tMs + 300) / 100) * 100), tk = f?.tanks.find((x) => x.name === before.whom);
+      if (tk) {
+        const vx = from[0] - tk.x, vz = from[1] - tk.z, dist = Math.max(6, Math.hypot(vx, vz)), a0 = Math.atan2(vx, vz);
+        for (let k = 1; k <= 18 && !spot; k++) for (const extra of [0, 4, 8]) {
+          const a = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 20 * Math.PI / 180, r = dist + extra;
+          const px = +(tk.x + Math.sin(a) * r).toFixed(2), pz = +(tk.z + Math.cos(a) * r).toFixed(2);
+          if (clearSpot(e.tMs, px, pz) && coverMs(itemsAt([px, pz])).ms <= FIT_FLASH_MS) { spot = [px, pz]; break; }
+        }
+      }
+    } else {
+      // the barrage's centre further from the lens, 6 m at a time, turned a little either way about the lens
+      const l = frames.get(Math.round(e.tMs / 100) * 100)?.l;
+      if (l) {
+        const vx = from[0] - l.cam.x, vz = from[1] - l.cam.z, dl = Math.hypot(vx, vz) || 1;
+        for (let m = 6; m <= 36 && !spot; m += 6) for (const deg of [0, 10, -10, 20, -20]) {
+          const d = deg * Math.PI / 180, c = Math.cos(d), s = Math.sin(d), k = (dl + m) / dl;
+          const px = +(l.cam.x + (vx * c + vz * s) * k).toFixed(2), pz = +(l.cam.z + (-vx * s + vz * c) * k).toFixed(2);
+          world.query(px - 2, pz - 2, px + 2, pz + 2, near);
+          const solid = near.some((r) => !r.crushable && r.max[1] - r.min[1] > 1.2);
+          if (!solid && Math.abs(px) <= half && Math.abs(pz) <= half && world.wetAt(px, pz) < 0.3 && coverMs(itemsAt([px, pz])).ms <= FIT_FLASH_MS) { spot = [px, pz]; break; }
+        }
+      }
+    }
+    const what = `${placedBurst ? `${e.params?.size ?? 'large'} burst` : 'barrage'} at ${e.tMs} ms over ${before.whom} (${before.ms} ms)`;
+    if (!spot) { left.push(what); continue; }
+    e.at = e.at.length >= 3 ? [spot[0], e.at[1], spot[1]] : spot;
+    follow(e, from, spot);
+    moved.push(`${what} -> ${spot.join(', ')}`);
+  }
+  return { moved, left };
+}
+
 export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // a take staged on another's set (OWNER_NINE: `from`) flies that take's motion plan unless the plan holds its own
   const planned = !ownFilm.routes ? MOTION_PLAN[n] ?? MOTION_PLAN[ownFilm.from] : null;
@@ -1093,6 +1239,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   // two rounds left in its effects spun the Studio's page at 100 % CPU in two engine-review runs)
   const staged = new Set(scene.actors.map((a) => a.name));
   scene.effects = scene.effects.filter((e) => !e.actor || staged.has(e.actor));
+  // the combat round's bursts off the tanks they would hide (fitCombatBursts)
+  const fitWorld = film.combat ? modelOf(set.map) : null, fit = fitWorld ? fitCombatBursts(scene, fitWorld) : null;
   const beats = burstWorld ? stageBeats(scene, burstWorld) : 0;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
@@ -1113,7 +1261,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
     turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}),
     // a combat take records its format and lens (combat-check.mjs holds the telephoto's frame shares to them)
-    ...(film.combat ? { combat: { format: film.combat, lens: film.lens ?? null } } : {}) };
+    ...(film.combat ? { combat: { format: film.combat, lens: film.lens ?? null } } : {}),
+    ...(fit && (fit.moved.length || fit.left.length) ? { fitCombat: fit } : {}) };
   return scene;
 }
 
