@@ -7,6 +7,7 @@
 // cascade rule); no shadow casting (the cascades end inside the battlefield).
 import * as THREE from 'three';
 import type { HinterlandShapeArrays } from './outlandGeometry.ts';
+import type { HinterlandAir } from './air.ts';
 import { HINTERLAND_PROJECT_GLSL } from './project.ts';
 import type { HinterlandPyramid } from './pyramid.ts';
 import { HINTERLAND_TREE_STRIDE, type HinterlandWire } from './wire.ts';
@@ -16,12 +17,13 @@ interface EngineLike {
 }
 
 /** The outland's material: vertex colours, the land's projection per vertex, its haze for the compressed distance. */
-function createOutlandMaterial(engine: EngineLike, hazeSigma: number, key: string, roughness: number): { material: THREE.MeshStandardMaterial; cam: THREE.Vector3 } {
+function createOutlandMaterial(engine: EngineLike, hazeSigma: number, key: string, roughness: number, air: HinterlandAir | null): { material: THREE.MeshStandardMaterial; cam: THREE.Vector3 } {
   const cam = new THREE.Vector3();
   const uniforms: Record<string, THREE.IUniform> = {
     uHlCam: { value: cam },
     uHlHazeSigma: { value: hazeSigma },
     uHlHazeColor: { value: new THREE.Color(0.62, 0.7, 0.8) },
+    ...(air?.uniforms ?? {}),
   };
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness, metalness: 0, fog: true });
   material.name = key;
@@ -43,15 +45,19 @@ ${HINTERLAND_PROJECT_GLSL}`)
 varying float vHlTrueD;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
-${HINTERLAND_PROJECT_GLSL}`)
+${HINTERLAND_PROJECT_GLSL}
+${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   {
     float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
-    #ifdef USE_FOG
-    gl_FragColor.rgb = mix( fogColor, gl_FragColor.rgb, exp( -uHlHazeSigma * hlLost ) );
-    #else
-    gl_FragColor.rgb = mix( uHlHazeColor, gl_FragColor.rgb, exp( -uHlHazeSigma * hlLost ) );
-    #endif
+    float hlT = exp( -uHlHazeSigma * hlLost );
+    if ( hlT < 0.999 ) {
+      #ifdef USE_FOG
+      gl_FragColor.rgb = mix( hlHazeTarget( fogColor ), gl_FragColor.rgb, hlT );
+      #else
+      gl_FragColor.rgb = mix( hlHazeTarget( uHlHazeColor ), gl_FragColor.rgb, hlT );
+      #endif
+    }
   }`);
   };
   if (engine.setupShadowMaterial) engine.setupShadowMaterial(material, patch);
@@ -60,14 +66,14 @@ ${HINTERLAND_PROJECT_GLSL}`)
   return { material, cam };
 }
 
-function outlandMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, cam: THREE.Vector3): THREE.Mesh {
+function outlandMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, cam: THREE.Vector3, air: HinterlandAir | null): THREE.Mesh {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.matrixAutoUpdate = false;
-  mesh.onBeforeRender = (_r, _s, camera) => { cam.copy(camera.position); };
+  mesh.onBeforeRender = (_r, scene, camera) => { cam.copy(camera.position); air?.update(scene); };
   return mesh;
 }
 
@@ -87,7 +93,7 @@ function wrap(arrays: HinterlandShapeArrays): THREE.BufferGeometry {
 }
 
 /** The outland's scene objects from the worker's answer (null when it carries no outland). */
-export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: HinterlandPyramid, engineCtx: unknown): THREE.Object3D | null {
+export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: HinterlandPyramid, engineCtx: unknown, air: HinterlandAir | null = null): THREE.Object3D | null {
   const geo = wire.outland;
   if (!geo) return null;
   const engine = (engineCtx ?? {}) as EngineLike;
@@ -96,13 +102,13 @@ export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: Hi
   group.matrixAutoUpdate = false;
   const hazeSigma = Math.max(0, wire.fogDensity) * 0.42;
   if (geo.buildings) {
-    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-built-v1', 0.9);
-    group.add(outlandMesh('hinterland-buildings', wrap(geo.buildings), material, cam));
+    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-built-v1', 0.9, air);
+    group.add(outlandMesh('hinterland-buildings', wrap(geo.buildings), material, cam, air));
   }
   if (geo.nearTrees || geo.farTrees) {
-    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-trees-v1', 1);
-    if (geo.nearTrees) group.add(outlandMesh('hinterland-trees-near', wrap(geo.nearTrees), material, cam));
-    if (geo.farTrees) group.add(outlandMesh('hinterland-trees-far', wrap(geo.farTrees), material, cam));
+    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-trees-v1', 1, air);
+    if (geo.nearTrees) group.add(outlandMesh('hinterland-trees-near', wrap(geo.nearTrees), material, cam, air));
+    if (geo.farTrees) group.add(outlandMesh('hinterland-trees-far', wrap(geo.farTrees), material, cam, air));
   }
   group.userData.hinterlandOutland = geo.stats;
   const packed = new Float32Array(geo.nearIndex.length * HINTERLAND_TREE_STRIDE);

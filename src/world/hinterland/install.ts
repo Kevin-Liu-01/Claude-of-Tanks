@@ -7,6 +7,7 @@ import { createHinterlandMesh } from './mesh.ts';
 import { wirePyramid, type HinterlandWire } from './wire.ts';
 import { createHinterlandSurface } from './material.ts';
 import { createHinterlandOutlandObjects } from './buildings.ts';
+import { createHinterlandAir } from './air.ts';
 
 interface EngineLike {
   setupShadowMaterial?: (material: THREE.Material, hook: (shader: THREE.WebGLProgramParametersWithUniforms) => void) => THREE.Material;
@@ -21,14 +22,17 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
   group.matrixAutoUpdate = false;
   const pyramid = wirePyramid(wire);
   const surface = createHinterlandSurface(wire);
+  // (one air for the land and the outland: their far haze ends in the dome's own sky)
+  const air = createHinterlandAir();
   const land = createHinterlandMesh({
     pyramid,
     surface,
+    air,
     hazeSigma: Math.max(0, wire.fogDensity) * 0.42,
     setupMaterial: engine.setupShadowMaterial ? (material, hook) => { engine.setupShadowMaterial!(material, hook); } : undefined,
   });
   group.add(land.mesh);
-  const outland = createHinterlandOutlandObjects(wire, pyramid, engine);
+  const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air);
   if (outland) group.add(outland);
   group.userData.hinterlandLand = land;
   return group;

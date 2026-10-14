@@ -262,7 +262,26 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
   }
   const per = spec.region.density.perVillage;
   const villageRadius = pattern === 'streetVillage' || pattern === 'dykeVillage' ? 170 : 130;
-  place('village', settle.villages, 650, villageRadius, [Math.max(8, Math.round(per[0] * 0.6)), Math.max(12, Math.round(per[1] * 0.5))], true);
+  // the sightlines' villages first (authored): each on its bearing, moved along it off water and out of woods, its
+  // street on the nearest road; laid out as a near village out to 2.7 km, a far one's houses beyond
+  let anchored = 0;
+  for (const a of settle.villagesAt) {
+    let at: { x: number; z: number } | null = null;
+    for (const dd of [0, 160, -160, 320, -320, 480]) {
+      const q = hinterlandPoint({ azDeg: a.azDeg, distM: a.distM + dd });
+      if (inputs.wetAt(q.x, q.z) <= 0.05 && inputs.woodsAt(q.x, q.z) < 0.3
+        && !settlements.some((s) => Math.hypot(s.x - q.x, s.z - q.z) < 600)) { at = q; break; }
+    }
+    if (!at) continue;
+    const near = a.distM <= 2700;
+    settlements.push({
+      id: settlements.length, kind: 'village', x: at.x, z: at.z, yaw: nearestRoadYaw(at.x, at.z), radiusM: villageRadius,
+      buildings: Math.round(Math.max(10, per[0] * 0.7) + (Math.max(14, per[1] * 0.55) - Math.max(10, per[0] * 0.7)) * rng()),
+      near, vertical: spec.region.verticals[0] ?? null, ...(a.name ? { name: a.name } : {}),
+    });
+    anchored++;
+  }
+  place('village', Math.max(0, settle.villages - anchored), 650, villageRadius, [Math.max(8, Math.round(per[0] * 0.6)), Math.max(12, Math.round(per[1] * 0.5))], true);
   place('works', settle.works, 500, 110, [5, 9], true);
   place('hamlet', settle.hamlets, 320, 60, [3, 8], pattern !== 'dispersedHamlets');
   place('farm', settle.farms, 230, 32, [2, 4], false);

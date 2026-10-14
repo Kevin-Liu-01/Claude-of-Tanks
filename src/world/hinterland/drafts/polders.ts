@@ -29,7 +29,17 @@ const DRAFT: HinterlandConfig = {
   season: 'lateAutumn',
   outland: {
     woods: 0.08, hedges: 0.6, fields: 0.85, links: 3,
-    settle: { villages: 3, hamlets: 4, farms: 14, works: 0, town: null },
+    settle: {
+      villages: 3, hamlets: 4, farms: 14, works: 0, town: null,
+      // (the pilot's frames: a landmark at middle distance on every sightline — a dyke village with its church tower
+      // within 1.5–2.2 km on the four edges' views, and a farther one on each diagonal)
+      villagesAt: [
+        { azDeg: 352, distM: 1550, name: "'s-Heer Arendskerke" }, { azDeg: 92, distM: 1750, name: 'Kapelle' },
+        { azDeg: 186, distM: 2050, name: 'Ellewoutsdijk' }, { azDeg: 271, distM: 1650, name: 'Nisse' },
+        { azDeg: 42, distM: 2600, name: 'Wemeldinge' }, { azDeg: 136, distM: 2500, name: 'Baarland' },
+        { azDeg: 222, distM: 2650, name: 'Borssele' }, { azDeg: 316, distM: 2500, name: 'Wolphaartsdijk' },
+      ],
+    },
   },
   landforms: [
     // the polder dykes past the edge (each a long low bank; the long ones carry a road and poplars on the crown)

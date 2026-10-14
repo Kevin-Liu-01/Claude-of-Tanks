@@ -46,15 +46,35 @@ const smooth01 = (t: number): number => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 
 /** A wood's crowns with their leaves gone (linear): grey-brown twigs over the litter. */
 const BARE_WOODS: readonly [number, number, number] = [0.07, 0.056, 0.046];
 
-/** The surface resolution for each height level: half its samples (twice its texel). */
-export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: number; halfM: number; n: number }[] {
-  return levels.map((l) => ({ texelM: l.texelM * 2, halfM: l.halfM, n: Math.round((2 * l.halfM) / (l.texelM * 2)) + 1 }));
+/**
+ * The surface resolution for each height level: the finest at its own samples (4 m on the desktop: the field parcels'
+ * edges stay straight from the air near the battlefield — the coordinator on the pilot's overview, "stair-stepped,
+ * pixelated edges"), every coarser one at half its samples (twice its texel). `step`: height samples per surface texel.
+ */
+export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: number; halfM: number; n: number; step: number }[] {
+  return levels.map((l, i) => {
+    const step = i === 0 ? 1 : 2;
+    return { texelM: l.texelM * step, halfM: l.halfM, n: Math.round((2 * l.halfM) / (l.texelM * step)) + 1, step };
+  });
 }
+
+/** The fields' mean albedo far out (linear): a far field system's contrast closes toward it (aerial texture loss). */
+const FAR_FIELD_MEAN: readonly [number, number, number] = [0.1, 0.12, 0.055];
 
 /**
  * Bake the surface over the levels: each level's texels outside the finer level's interior (the rest is never read)
  * and outside the square.
  */
+/**
+ * A field's albedo with distance: its contrast against the field system's mean closes from 600 m to 2.4 km (to 45 %),
+ * so a pale stubble or ripe crop far out reads as a field among fields, not a strip of sand (the coordinator on the
+ * pilot's edge-n frame: "that tan band reads as sand").
+ */
+function farFields(c: readonly [number, number, number], x: number, z: number): [number, number, number] {
+  const k = 1 - 0.55 * smooth01((Math.hypot(x, z) - 600) / 1800);
+  return [FAR_FIELD_MEAN[0] + (c[0] - FAR_FIELD_MEAN[0]) * k, FAR_FIELD_MEAN[1] + (c[1] - FAR_FIELD_MEAN[1]) * k, FAR_FIELD_MEAN[2] + (c[2] - FAR_FIELD_MEAN[2]) * k];
+}
+
 export function bakeHinterlandSurface(
   field: HinterlandField, levels: readonly HinterlandLevel[],
   { woodsOut = null as Uint8Array[] | null, bases = null as readonly Float32Array[] | null } = {},
@@ -90,8 +110,8 @@ export function bakeHinterlandSurface(
         const e = S.texelM;
         const h = hAt(x, z);
         const slope = Math.atan(Math.hypot(hAt(x + e, z) - hAt(x - e, z), hAt(x, z + e) - hAt(x, z - e)) / (2 * e)) * 180 / Math.PI;
-        // (the pyramid's base under this texel — surface texel i is height sample 2i — spares the relief's evaluation)
-        const b = bases?.[li]?.[(2 * j) * H.n + 2 * i];
+        // (the pyramid's base under this texel — surface texel i is height sample step·i — spares the relief's evaluation)
+        const b = bases?.[li]?.[(S.step * j) * H.n + S.step * i];
         field.coverAt(x, z, cover, slope, h, b);
         let flags = 0;
         let albedo: readonly [number, number, number];
@@ -109,12 +129,12 @@ export function bakeHinterlandSurface(
         } else if (cover.cls === HL_COVER.field && cover.crop !== 31) {
           const crop = LAND_CROP_ALBEDO[cover.crop as LandCropId] ?? CLASS_ALBEDO[HL_COVER.pasture];
           const tone = 0.9 + 0.2 * (((cover.fieldId * 2654435761) >>> 0) % 1000) / 1000;
-          albedo = [crop[0] * tone, crop[1] * tone, crop[2] * tone];
+          albedo = farFields([crop[0] * tone, crop[1] * tone, crop[2] * tone], x, z);
         } else {
           albedo = CLASS_ALBEDO[cover.cls] ?? CLASS_ALBEDO[HL_COVER.pasture];
           if (cover.cls === HL_COVER.pasture && cover.fieldId) {
             const tone = 0.85 + 0.3 * (((cover.fieldId * 2246822519) >>> 0) % 1000) / 1000;
-            albedo = [albedo[0] * tone, albedo[1] * tone, albedo[2] * tone];
+            albedo = farFields([albedo[0] * tone, albedo[1] * tone, albedo[2] * tone], x, z);
           }
         }
         if (cover.woods > 0.5) flags |= HL_SURFACE_FLAG.woods;

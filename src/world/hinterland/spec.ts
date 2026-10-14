@@ -103,6 +103,7 @@ export interface HinterlandLandmarkConfig {
 }
 
 export interface HinterlandTownConfig { azDeg: number; distM: number; size: 'small' | 'medium' | 'large'; name?: string }
+export interface HinterlandVillageAt { azDeg: number; distM: number; name?: string }
 
 /** The block a map file carries (B-architecture §4.0). */
 export interface HinterlandConfig {
@@ -115,7 +116,13 @@ export interface HinterlandConfig {
   season?: HinterlandSeason;
   outland?: {
     relief?: { riseM?: readonly [number, number]; wavelengthM?: number };
-    settle?: { villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null };
+    settle?: {
+      villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null;
+      /** Villages placed on the sightlines (each with its church: a landmark at middle distance for every eye view —
+       * the coordinator on the pilot, "place villages with spires at 1–3 km on the main sightlines"); they count
+       * toward `villages`, the planner places the rest. */
+      villagesAt?: readonly HinterlandVillageAt[];
+    };
     woods?: number;
     hedges?: number;
     fields?: number;
@@ -145,6 +152,7 @@ const num = (v: unknown): number | undefined => (typeof v === 'number' && Number
 export interface HinterlandSettleSpec {
   villages: number; hamlets: number; farms: number; works: number; perVillage: readonly [number, number];
   town: HinterlandTownConfig | null;
+  villagesAt: readonly HinterlandVillageAt[];
 }
 
 /** The resolved spec: the region's defaults under the map's overrides, every value present. */
@@ -228,6 +236,7 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
         works: settle.works ?? mid(d.works),
         perVillage: d.perVillage,
         town: settle.town ?? null,
+        villagesAt: settle.villagesAt ?? [],
       },
     },
     geology: region.geology,

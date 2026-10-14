@@ -63,6 +63,18 @@ assert.ok(plan.rows.filter((r) => r.kind === 'dike').length >= 7, 'the dykes car
 const near = plan.settlements.filter((s) => s.near);
 assert.ok(near.filter((s) => s.kind === 'village').length >= 2, 'dyke villages near the edge');
 assert.ok(near.filter((s) => s.kind === 'farm').length >= 8, 'farms past the edge');
+// a landmark at middle distance on every sightline (the coordinator on the pilot): a village with its church tower within
+// 12° of each edge's bearing and each diagonal, 1–3 km out
+for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
+  const hit = plan.settlements.find((s) => {
+    if (s.kind !== 'village' || !s.vertical) return false;
+    const d = Math.hypot(s.x, s.z), b = (Math.atan2(s.x, s.z) * 180 / Math.PI + 360) % 360;
+    const off = Math.min(Math.abs(b - az), 360 - Math.abs(b - az));
+    return d > 1000 && d < 3200 && off < 12;
+  });
+  assert.ok(hit, `a village with its tower on the ${az}° sightline`);
+  assert.ok(plan.verticals.some((v) => v.settlement === hit.id), `its tower stands (${hit.name ?? hit.id})`);
+}
 for (const s of plan.settlements.filter((s) => s.kind === 'village')) {
   assert.ok(plan.verticals.some((v) => v.settlement === s.id && v.kind === 'churchTower'), `village ${s.id} raises its church tower`);
 }

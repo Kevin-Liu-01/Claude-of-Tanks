@@ -104,6 +104,8 @@ for (let li = 0; li < pyramid.levels.length; li++) {
 }
 // the surface atlas: one level per height level, the square left unbaked, the polders' water, woods and settlements
 assert.equal(wire.surface?.length, wire.levels.length, 'a surface level for each height level');
+assert.equal(wire.surface[0].texelM, wire.levels[0].texelM, 'near the battlefield the surface is at the heights\' own 4 m (straight parcel edges)');
+assert.equal(wire.surface[1].texelM, wire.levels[1].texelM * 2, 'farther out at half their samples');
 const flagSeen = { water: 0, sea: 0, woods: 0, settlement: 0, road: 0 };
 for (const S of wire.surface) for (let k = 3; k < S.rgba.length; k += 4) for (const name of Object.keys(flagSeen)) if (S.rgba[k] & HL_SURFACE_FLAG[name]) flagSeen[name]++;
 for (const [name, count] of Object.entries(flagSeen)) assert.ok(count > 0, `the polders' surface holds ${name} (${count})`);
@@ -154,6 +156,28 @@ assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 26000
   }
   assert.ok(woodsTexels > 20 && raised / woodsTexels > 0.8, `the polders' woods stand as a canopy (${raised}/${woodsTexels})`);
 }
+// the air (air.ts): the far haze's target binds the dome's own sky each draw, and the fog colour stays without one
+{
+  const { createHinterlandAir } = await import('./air.ts');
+  const THREE = await import('three');
+  const air = createHinterlandAir();
+  const scene = new THREE.Scene();
+  air.update(scene);
+  assert.equal(air.uniforms.uHlSkyOn.value, 0, 'no published sky: the fog colour');
+  const skyView = new THREE.Texture();
+  scene.userData.atmosphere = { active: true, skyView, sunDir: { x: 0, y: 2, z: 0 }, knee: new THREE.Vector3(1, 2, 3), skyIntensity: 0.8, viewHeightKm: 0.1 };
+  const dome = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.ShaderMaterial({ uniforms: { uDeckHorizon: { value: new THREE.Vector4(0.5, 0.5, 0.5, 0.4) }, uDeckClosed: { value: 0.25 } } }));
+  dome.name = 'atmosphere-dome';
+  scene.add(dome);
+  air.update(scene);
+  assert.equal(air.uniforms.uHlSkyOn.value, 1);
+  assert.equal(air.uniforms.tAtmoSky.value, skyView, 'the dome\'s own lookup');
+  assert.equal(air.uniforms.uAtmoIntensity.value, 0.8);
+  assert.ok(Math.abs(air.uniforms.uAtmoSun.value.y - 1) < 1e-9, 'the sun normalised');
+  assert.equal(air.uniforms.uHlDeckClosed.value, 0.25, 'the deck greying the dome uses');
+  assert.match(air.fragmentPars, /vec3 hlHazeTarget\( vec3 fallback \)/);
+}
+
 // the hook: a terrain build of another map (or the trench variant) never takes this supply
 const supply = { request: { mapId: 'polders', terrainVariant: null }, pending: false, buildSteps: function* () { return null; } };
 supplyHinterland(supply);

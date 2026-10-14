@@ -15,6 +15,7 @@
 // albedo by slope and height here). The post pass hazes by the depth it reads — the compressed one — so the fragment
 // adds the extinction of the distance the compression took away (the true distance less the drawn one).
 import * as THREE from 'three';
+import type { HinterlandAir } from './air.ts';
 import { HINTERLAND_PROJECT_GLSL } from './project.ts';
 import { HINTERLAND_LOD_DESKTOP, HINTERLAND_PATCH_QUADS, selectHinterlandNodes, type HinterlandLodOptions } from './lod.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
@@ -86,6 +87,8 @@ export interface HinterlandMeshOptions {
   hazeColor?: THREE.Color;
   /** The land material's fragment patch (material.ts); absent: the debug albedo by slope and height. */
   surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string } | null;
+  /** The far haze's target: the dome's own sky (air.ts); absent, the fog colour. */
+  air?: HinterlandAir | null;
 }
 
 export interface HinterlandMeshHandle {
@@ -134,7 +137,9 @@ export function createHinterlandMesh(options: HinterlandMeshOptions): Hinterland
     uHlHazeSigma: { value: options.hazeSigma ?? 0.00026 },
     uHlHazeColor: { value: options.hazeColor ?? new THREE.Color(0.62, 0.7, 0.8) },
     ...(options.surface?.uniforms ?? {}),
+    ...(options.air?.uniforms ?? {}),
   };
+  const air = options.air ?? null;
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0, fog: true });
   material.name = 'hinterland-land';
   const heightGlsl = hinterlandHeightGlsl(atlas.blocks.length);
@@ -176,6 +181,7 @@ varying float vHlTrueD;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
 ${HINTERLAND_PROJECT_GLSL}
+${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}
 ${surface?.fragmentPars ?? ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
   // the battlefield is the square's own: the land starts a metre under its edge
@@ -192,12 +198,15 @@ ${surface?.fragmentPars ?? ''}`)
   {
     float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
     float hlT = exp( -uHlHazeSigma * hlLost );
-    // (the scene's own fog colour where it has fog, so the far land fades into the air the battlefield fades into)
-    #ifdef USE_FOG
-    gl_FragColor.rgb = mix( fogColor, gl_FragColor.rgb, hlT );
-    #else
-    gl_FragColor.rgb = mix( uHlHazeColor, gl_FragColor.rgb, hlT );
-    #endif
+    // (the target: the dome's sky in this direction, so the land's limb meets the sky without a line; without a
+    // published sky the scene's fog colour, else a fixed blue; nothing to do inside 2.5 km)
+    if ( hlT < 0.999 ) {
+      #ifdef USE_FOG
+      gl_FragColor.rgb = mix( hlHazeTarget( fogColor ), gl_FragColor.rgb, hlT );
+      #else
+      gl_FragColor.rgb = mix( hlHazeTarget( uHlHazeColor ), gl_FragColor.rgb, hlT );
+      #endif
+    }
   }`);
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
@@ -245,8 +254,9 @@ ${surface?.fragmentPars ?? ''}`)
     return out;
   };
   let nodes = 0, selectMs = 0;
-  mesh.onBeforeRender = (_renderer, _scene, camera) => {
+  mesh.onBeforeRender = (_renderer, scene, camera) => {
     const t0 = performance.now();
+    air?.update(scene);
     camera.updateMatrixWorld();
     proj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(proj);
