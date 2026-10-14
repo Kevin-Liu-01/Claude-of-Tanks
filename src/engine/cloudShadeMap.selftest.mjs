@@ -33,7 +33,8 @@ assert.match(shade, /outShade = vec4\( share \* uShadeLaw\.z, beam, 0\.0, 1\.0 \
 assert.match(shade, /float od = cl2BsmRead\( tBsm0, uBsmWindow0, xz, 1e9, 0\.0 \);/, 'the near cascade\'s whole column (a ground texel), its texels blended as transmittances (cloudBeerShadow.selftest)');
 assert.match(clouds, /uShadeLaw: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE, CLOUD_SHADOW_TAU, 1\) \}/);
 // (2026-10-05: a stratiform deck with gaps casts its cells too — a thick cell's core, by the deck's openness)
-assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*\(s\.uShadeLaw\.value as THREE\.Vector3\)\.set\(core, lightTune\('CLOUD_SHADOW_TAU', CLOUD_SHADOW_TAU\), preset\.shadowPattern\);/);
+// (2026-10-09, the shadows lane: a thin deck's cell passes CloudscapeConfig.deckBeam of the beam — its core at most 1 − it)
+assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\)\s*: Math\.min\(lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\), 1 - \(preset\.deckBeam \?\? 0\)\);\s*\(s\.uShadeLaw\.value as THREE\.Vector3\)\.set\(core, lightTune\('CLOUD_SHADOW_TAU', CLOUD_SHADOW_TAU\), preset\.shadowPattern\);/);
 assert.match(clouds, /if \(!\(preset\.shadowPattern > 0\) \|\| preset\.coverage <= 0 \|\| lookup\.w < 0\.5\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no pattern publishes none (nor a map not yet marched)');
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/, 'snapped: the shadows never swim');
 // (2026-10-07, the cost rule's CPU: the shade on its own phase of the frame counter, never in a frame with a band of the

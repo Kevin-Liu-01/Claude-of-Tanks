@@ -299,7 +299,14 @@ export default {
   // 2026-10-07 (the clouds lane, wave 222: the structured deck "too high for low Arctic stratus" — "a lower, subtler
   // deck that shows the sun's direction"): the base at 180 m
   clouds: { regime: 'low-stratus', baseM: 180, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
-    deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3 },
+    deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3,
+    // 2026-10-10 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): the closed deck cut the
+    // cascades' sun to 2 % of its beam — lit and shaded snow 1.02 : 1, "flat, shadowless snow, with buildings that look like
+    // they float on it". A thin polar stratus passes part of the low sun's beam (cloudscapes.ts deckBeam), and the closed
+    // deck widens the shadows' filter (shadowStability.ts deckPenumbraRadius): a faint, diffuse bearing under the same grey
+    // deck (wave 342a: 0.45 read "sharp sunny-day shadows" and raised the snow's relief into a marbled swirl; a quarter
+    // stays at or under the snow relief's limit until that relief is redone)
+    deckBeam: 0.25 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
     postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */ },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },

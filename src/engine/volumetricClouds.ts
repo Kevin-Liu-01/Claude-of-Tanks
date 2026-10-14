@@ -1517,7 +1517,9 @@ export class VolumetricCloudLayer {
     (s.uShadeRect.value as THREE.Vector3).copy(rect);
     // a cumulus core takes most of the beam; a deck's cells by the deck's openness (shadowPattern), closing toward the
     // light model's uniform cut
-    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
+    // (2026-10-09, the shadows lane: a thin deck — CloudscapeConfig.deckBeam — passes that share of the beam in its cells)
+    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE)
+      : Math.min(lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore), 1 - (preset.deckBeam ?? 0));
     (s.uShadeLaw.value as THREE.Vector3).set(core, lightTune('CLOUD_SHADOW_TAU', CLOUD_SHADOW_TAU), preset.shadowPattern);
     this.renderQuad(this.shadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;

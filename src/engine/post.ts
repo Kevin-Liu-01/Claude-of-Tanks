@@ -111,6 +111,9 @@ import {
   GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
+import {
+  SGO_RANGE_M, STRUCTURE_GROUND_ALPHA_MAX, STRUCTURE_GROUND_OCCLUSION_GLSL, createStructureGroundUniforms, updateStructureGroundUniforms,
+} from './structureGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
@@ -1020,6 +1023,8 @@ const AerialShader = {
     ...createVehicleOcclusionUniforms(),
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts) — uVehGround 0 skips it
     ...createVehicleGroundOcclusionUniforms(),
+    // 2026-10-09: the ground's sky beside the world's solids (structureGroundOcclusion.ts) — uSgo 0 skips it
+    ...createStructureGroundUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -1068,6 +1073,7 @@ const AerialShader = {
     ${CONTACT_SHADOW_GLSL}
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
+    ${STRUCTURE_GROUND_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
     // 2026-10-05 (AERIAL_MID_*, the law by default): the middle distances' optical depth × w(d), whole again by
     // uHazeMid.y; with uHazeMid.z the lighter veil's luminance at the full law's chromaticity (its hue shift kept)
@@ -1204,8 +1210,18 @@ const AerialShader = {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
         // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
+        // (2026-10-09: the colour before the hulls' term, so the structures' term below can read what it took)
+        float cotGroundPre = max( texel.r, max( texel.g, texel.b ) );
         if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ );
+        }
+        // 2026-10-09: the ground's sky beside the world's walls, fences, houses and stones (structureGroundOcclusion.ts):
+        // its ambient share, never a solid's own faces. Where a hull's ground term already dims the pixel the stronger of
+        // the two stands, never their product: under and beside a hull the belly hides most of what a wall would, and the
+        // two never compound into the near-black the hull's own term owns (the contact-shadow lane's pixels)
+        if ( uSgo > 0.001 && texel.a < ${STRUCTURE_GROUND_ALPHA_MAX.toFixed(1)} && -viewZ < ${SGO_RANGE_M.toFixed(1)} ) {
+          float cotHullGround = cotGroundPre > 1e-6 ? clamp( max( texel.r, max( texel.g, texel.b ) ) / cotGroundPre, 0.0, 1.0 ) : 1.0;
+          texel.rgb *= min( 1.0, cotStructureGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ ) / max( cotHullGround, 1e-3 ) );
         }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -2899,6 +2915,9 @@ export function createPost(
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
+    // (2026-10-09) the structures' ground occlusion rides the contact-shadow lever (the desktop light effects) and reads the
+    // same rig uniforms, which the line above refreshes whenever the lever is on
+    updateStructureGroundUniforms(aerial.uniforms, scene, renderer, lightFx.contactShadows);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);
