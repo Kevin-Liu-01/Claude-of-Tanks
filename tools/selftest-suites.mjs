@@ -26,6 +26,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/droneRotorWinding.selftest.mjs',
     'src/ui/droneFeedTransition.selftest.mjs',
     'src/ui/aerialMinimap.selftest.mjs',
+    'src/ui/droneAltimeter.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/droneArmor.selftest.mjs',
     'src/sim/droneAvoidance.selftest.mjs',
