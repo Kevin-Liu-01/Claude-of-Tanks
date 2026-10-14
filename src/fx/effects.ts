@@ -24,7 +24,7 @@ import type { TrackSurface } from '../world/trackSurface.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
-import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
+import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, aerialTracerBrightness, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -1765,7 +1765,9 @@ function* createFxSteps(
     printGeo.setAttribute('aSurface', printSurface);
     printGeo.setIndex(idx);
   }
-  const printUniforms = { uTime: { value: 0 }, uMap: { value: printTex } };
+  // (EF.09, MASTER 18: "snow prints and the water wake glow at night") the prints and the wake's foam take the battle
+  // pools' light tint (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), set every frame in update()
+  const printUniforms = { uTime: { value: 0 }, uMap: { value: printTex }, uTint: { value: new THREE.Color(1, 1, 1) } };
   const printMat = new THREE.ShaderMaterial({
     uniforms: printUniforms,
     vertexShader: `
@@ -1789,6 +1791,7 @@ function* createFxSteps(
       }`,
     fragmentShader: `
       uniform sampler2D uMap;
+      uniform vec3 uTint;
       varying vec2 vUv;
       varying float vFade;
       varying float vWater;
@@ -1810,7 +1813,7 @@ function* createFxSteps(
         vec3 color = mix(vec3(0.055, 0.05, 0.042), vec3(0.74, 0.84, 0.84), vWater);
         if (vSurface > 1.5) color = vSurface > 2.5
           ? vec3(0.37, 0.43, 0.49) : vec3(0.16, 0.12, 0.075);
-        gl_FragColor = vec4(color, a);
+        gl_FragColor = vec4(color * uTint, a);
       }`,
     transparent: true,
     depthWrite: false,
@@ -4587,9 +4590,10 @@ function* createFxSteps(
       widthScale *= 1 + 2.6 * alignment;
       brightness *= 1 + 0.9 * alignment;
     }
-    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5])
+    const dark = tracers.darkLevel();
+    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5], dark)
       : Math.min(preset.width * widthScale, 0.15);
-    if (aerial) brightness = aerial.brightness;
+    if (aerial) brightness = aerialTracerBrightness(aerial, dark);
     writeTracer(
       tracerIndex,
       _v2.x, _v2.y, _v2.z,
@@ -4670,7 +4674,7 @@ function* createFxSteps(
       if (!guided && !aerial) { tracers.write(shell); continue; }
       const preset = aerial ?? TRACER_PRESETS[tracerId ?? 'AP'];
       const speed = shell.vel.length();
-      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0) : Math.min(
+      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0, tracers.darkLevel()) : Math.min(
         THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
         Math.max(shell.distM || 0, 0.08),
       );
@@ -4679,7 +4683,7 @@ function* createFxSteps(
       // (fx 9a) a missile or rocket draws its own look; the gunship's keep their gimbal-readable ribbon
       if (guided && !aerial) { tracerCount = writeMissile(shell, tracerCount); continue; }
       if (guided) {
-        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5]) : 0);
+        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5], tracers.darkLevel()) : 0);
         if (tracerCount >= MAX_TRACERS) continue;
       }
       tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount, aerial);
@@ -5727,6 +5731,14 @@ function* createFxSteps(
       resolvePendingHe();
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
       if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
+      // (EF.09, MASTER 18) the unlit marks and bodies take the same light: the hull scars, the track prints and the wake's
+      // foam, and a missile's painted body (its motor's flare stays emissive)
+      {
+        const tint = particles.sharing.uLightTint.value;
+        printUniforms.uTint.value.copy(tint);
+        impactDecals.material.color.copy(tint);
+        atgmBodyMat.color.copy(tint);
+      }
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
