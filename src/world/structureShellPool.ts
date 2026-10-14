@@ -10,6 +10,8 @@
 // Workers run only in the browser's async build (createPropsAsync). The Node builds (the collision manifests, the hosts'
 // fixtures) derive inline, unless a receipt installs the deferred pool, which runs the same pooled code path in one
 // thread: it packs at post and derives from the wire at take.
+// The browser receipt tools/structure-shell-pool.browser.mjs compares the worker page with the ?inlineShells page on
+// Urban, Foundry and Blackglass (run in a perf hold, under the capture lock).
 import type { StructureCollisionRuntimeBand } from './structureCollision.ts';
 import { packStructureShellWire, type StructureShellWire } from './structureShellWire.ts';
 import type { StructureShellReply, StructureShellRequest } from './structureShellWorker.ts';
