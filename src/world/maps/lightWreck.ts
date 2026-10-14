@@ -141,6 +141,8 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     const L = Math.max(x1b - x0b, y1b - y0b, z1b - z0b);
     return L <= 1.2 ? 1.1 : L >= 3 ? 0.3 : 1.1 - (L - 1.2) / 1.8 * 0.8;
   };
+  // (cloth has no stiffness: a canvas panel comes down draped, nearly flat over what it falls on, never on its edge)
+  const drape = (i: number, tilt: number): number => (P[i].material === 'canvas' ? Math.min(0.22, tilt) : tilt);
   // the snaps the wreck can afford (the r2 standard: the wreck within 1.5 x the intact triangles; a snap costs about its
   // piece's triangles again, the faces it clips, and its two capped ends): spent on the longest members first, the rest
   // lie whole
@@ -215,7 +217,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     const body = S.body([i]);
     // a wall standing on the ground swings over about its foot; one up on a storey or a deck is laid down off it
     if (p.c[1] - tall(p) / 2 > 0.6) S.lie(body, Math.atan2(d[2], d[0]) + Math.PI / 2 + r(-0.3, 0.3), [d[0] * r(0.3, 1.2), 0, d[2] * r(0.3, 1.2)], rng() < 0.5, 0, { ceiling, maxTilt: tiltFor(body) });
-    else S.topple(body, d, r(1.25, 1.55), { ceiling, maxTilt: Math.min(0.7, tiltFor(body)) });
+    else S.topple(body, d, r(1.25, 1.55), { ceiling, maxTilt: drape(i, Math.min(0.7, tiltFor(body))) });
   }
   // 3. the roof together: its panels dropped on the heap a little down the blow, its rafters and purlins snapped
   S.together(() => {
@@ -224,7 +226,9 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       const p = P[i];
       if (p.role === 'roof') {
         const b = S.body([i]);
-        S.drop(b, r(-0.35, 0.35), [blow[0] * r(0.2, 0.9), 0, blow[2] * r(0.2, 0.9)], { ceiling, maxTilt: Math.min(0.6, tiltFor(b)) });
+        // (a canvas roof is laid down flat on what is under it, not dropped at its pitch)
+        if (p.material === 'canvas') S.lie(b, r(-0.3, 0.3), [blow[0] * r(0.1, 0.6), 0, blow[2] * r(0.1, 0.6)], false, 0, { ceiling, maxTilt: 0.22 });
+        else S.drop(b, r(-0.35, 0.35), [blow[0] * r(0.2, 0.9), 0, blow[2] * r(0.2, 0.9)], { ceiling, maxTilt: Math.min(0.6, tiltFor(b)) });
       } else {
         for (const b of lengths(i, 0x45d9)) {
           const ax = b.axes[p.scoreAxis ?? 0];
@@ -246,7 +250,8 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       for (const b of S.scatter(i)) S.lie(b, r(0, Math.PI * 2), [out[0] * r(0.4, 1.6) + r(-0.3, 0.3), 0, out[2] * r(0.4, 1.6) + r(-0.3, 0.3)], rng() < 0.3, r(-0.5, 0.5), { ceiling, maxTilt: tiltFor(b) });
     } else {
       const b = S.body([i]);
-      S.drop(b, r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], { ceiling, maxTilt: tiltFor(b) });
+      if (p.material === 'canvas') S.lie(b, r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], false, 0, { ceiling, maxTilt: 0.22 });
+      else S.drop(b, r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], { ceiling, maxTilt: tiltFor(b) });
     }
   }
   return S.finish();

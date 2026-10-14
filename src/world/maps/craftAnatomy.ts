@@ -246,6 +246,8 @@ function roleOf(s: PartShape, top: number): FractureRole {
  * parts reordered so each piece is one run, every part tagged (piece()) for craftAnatomy.
  */
 export function autoCraftPieces(parts: readonly THREE.BufferGeometry[], material: FractureMaterial, cap = 48): THREE.BufferGeometry[] {
+  // (a build that names its own pieces — hutKit's — keeps them: its parts gathered by group in first-seen order)
+  if (parts.length && parts.every((g) => g.userData[TAG])) return namedPieces(parts, cap);
   const shapes = parts.map(shapeOf);
   const top = Math.max(...shapes.map((s) => s.max.y));
   for (const s of shapes) s.role = roleOf(s, top);
@@ -320,4 +322,47 @@ export function autoCraftPieces(parts: readonly THREE.BufferGeometry[], material
     for (const s of g.members) out.push(piece(s.geo, spec, `auto-${k}`));
   });
   return out;
+}
+
+/**
+ * A build's own named pieces (every part tagged with piece(): hutKit names each part's role and group as it builds),
+ * gathered into runs by group in the order each group first appears; over the cap, the smallest group joins the nearest
+ * group of its role (else the nearest at all). Parts with no group are pieces of their own.
+ */
+function namedPieces(parts: readonly THREE.BufferGeometry[], cap: number): THREE.BufferGeometry[] {
+  interface Group { key: string; role: FractureRole; members: THREE.BufferGeometry[]; centre: THREE.Vector3; tris: number }
+  const groups: Group[] = [], byKey = new Map<string, Group>();
+  const box = new THREE.Box3(), c = new THREE.Vector3();
+  parts.forEach((g, i) => {
+    const tag = g.userData[TAG] as Tag;
+    const key = tag.group ?? `#${i}`;
+    let grp = byKey.get(key);
+    if (!grp) { grp = { key, role: tag.spec.role, members: [], centre: new THREE.Vector3(), tris: 0 }; byKey.set(key, grp); groups.push(grp); }
+    grp.members.push(g);
+    box.setFromBufferAttribute(g.getAttribute('position') as THREE.BufferAttribute);
+    grp.centre.add(box.getCenter(c));
+    grp.tris += triCount(g);
+  });
+  for (const g of groups) g.centre.divideScalar(g.members.length);
+  while (groups.length > cap) {
+    const small = groups.reduce((a, b) => (b.tris < a.tris ? b : a));
+    let best: Group | null = null, bestD = Infinity;
+    for (const sameRole of [true, false]) {
+      for (const g of groups) {
+        if (g === small || (sameRole && g.role !== small.role)) continue;
+        const d = g.centre.distanceTo(small.centre);
+        if (d < bestD) { bestD = d; best = g; }
+      }
+      if (best) break;
+    }
+    if (!best) break;
+    for (const m of small.members) {
+      const t = m.userData[TAG] as Tag;
+      m.userData[TAG] = { ...t, spec: (best.members[0].userData[TAG] as Tag).spec, group: best.key };
+    }
+    best.members.push(...small.members);
+    best.tris += small.tris;
+    groups.splice(groups.indexOf(small), 1);
+  }
+  return groups.flatMap((g) => g.members);
 }

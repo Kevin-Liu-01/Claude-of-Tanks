@@ -6,8 +6,10 @@
 
 import * as THREE from 'three';
 import { createOrbitalStructures } from './orbitalStructures.ts';
-import { autoCraftPieces, craftAnatomy } from './craftAnatomy.ts'; // props #1: a light build's pieces
+import { autoCraftPieces, craftAnatomy, piece } from './craftAnatomy.ts'; // props #1: a light build's pieces
+import { HUT_DIALECTS, HUT_KITS_PENDING, REGIONAL_HUTS, buildRegionalHut, type HutTools } from './hutKit.ts'; // props #1: the kits' huts
 import type { FractureMaterial } from '../destructionKit.ts';
+import type { FractureRole } from '../fractureAnatomy.ts';
 import { bar, buildFallenMast, buildLatticeMast, corrugatedFace, fractureRuns } from './mastKit.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { INDUSTRIAL_CLADDING, addConnectedExterior, structureBuildContext } from './exteriorDetailKit.ts';
@@ -227,12 +229,83 @@ function mbeam(a: readonly [number, number, number], b: readonly [number, number
 }
 
 /**
- * A roof sheet pitched into its plane (pitchRoofPlane / pitchSkillionRoof): its long edges eased by 6 mm only, so the
- * structure receipts' regression of its vertices reads its pitch within 0.004 rad (a 15 mm chamfer moved a shallow
- * skillion's reading by 0.005).
+ * A roof sheet pitched into its plane (pitchRoofPlane / pitchSkillionRoof): its long edges eased by 6 mm, its end caps
+ * fanned from the section's middle (mbox's symmetric section), so the structure receipts' regression of its vertices
+ * reads its pitch within 0.004 rad (0.0011 at the worst, the security office's skillion; a 15 mm chamfer fanned from a
+ * corner moved a shallow skillion's reading by 0.0067).
  */
 function mroof(w: number, h: number, d: number): THREE.BufferGeometry {
   return mbox(w, h, d, 0.006, 0.45, true);
+}
+
+/**
+ * Canvas held taut (props #1, the huts' r2 round, 2026-10-14; the r2 standard read the tents' wall cloth as plain
+ * boxes; the desert tent's clothPanel is a roof's sagging sheet, drawn both sides): a panel of cloth `span` metres
+ * across (local x), `t` thick (local z), standing from `bottom(s)` to `top(s)` at each of its `k + 1` stations along the
+ * span — a wall's bay between two uprights, a gable's triangle under the ridge. Held at its two ends, it bellies
+ * `belly` metres out of either face at mid-span, a lens and not a bow, so its hull is its own (the tents' collision
+ * bands certify on it as on the plain panel it replaces). Non-indexed, flat-shaded, wound outward.
+ */
+function canvasPanel(span: number, t: number, belly: number, top: (s: number) => number,
+  bottom: (s: number) => number = () => 0, k = 3, uv = 0.5): THREE.BufferGeometry {
+  const st: Array<{ s: number; e: number; y0: number; y1: number }> = [];
+  for (let i = 0; i <= k; i++) {
+    const s = -span / 2 + i * span / k, f = 1 - (2 * s / span) ** 2;
+    st.push({ s, e: t / 2 + belly * f, y0: bottom(s), y1: top(s) });
+  }
+  const mid = st[Math.floor(k / 2)];
+  const inside = [0, (mid.y0 + mid.y1) / 2, 0];
+  const pos: number[] = [], uvs: number[] = [];
+  const tri = (a: number[], b: number[], c: number[], plane: 'xy' | 'xz' | 'zy'): void => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    if (Math.hypot(nx, ny, nz) < 1e-9) return;
+    const cx = (a[0] + b[0] + c[0]) / 3 - inside[0], cy = (a[1] + b[1] + c[1]) / 3 - inside[1], cz = (a[2] + b[2] + c[2]) / 3 - inside[2];
+    const order = nx * cx + ny * cy + nz * cz >= 0 ? [a, b, c] : [a, c, b];
+    for (const q of order) {
+      pos.push(q[0], q[1], q[2]);
+      uvs.push((plane === 'zy' ? q[2] : q[0]) * uv, (plane === 'xz' ? q[2] : q[1]) * uv);
+    }
+  };
+  const quad = (a: number[], b: number[], c: number[], d: number[], plane: 'xy' | 'xz' | 'zy'): void => {
+    tri(a, b, c, plane); tri(a, c, d, plane);
+  };
+  for (let i = 0; i < k; i++) {
+    const p = st[i], q = st[i + 1];
+    for (const z of [1, -1]) {
+      quad([p.s, p.y0, z * p.e], [q.s, q.y0, z * q.e], [q.s, q.y1, z * q.e], [p.s, p.y1, z * p.e], 'xy');
+    }
+    quad([p.s, p.y1, p.e], [q.s, q.y1, q.e], [q.s, q.y1, -q.e], [p.s, p.y1, -p.e], 'xz');
+    quad([p.s, p.y0, p.e], [q.s, q.y0, q.e], [q.s, q.y0, -q.e], [p.s, p.y0, -p.e], 'xz');
+  }
+  for (const end of [st[0], st[k]]) quad([end.s, end.y0, -end.e], [end.s, end.y0, end.e], [end.s, end.y1, end.e], [end.s, end.y1, -end.e], 'zy');
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A canvas wall's bay: `span` along local x, `t` thick along z, `h` up from y = 0, its hem flared out `flare` either side
+ * over its foot's `skirt` metres where it is pegged and weighted (the sod cloth). One straight section along the bay, so its
+ * collision bands keep it as one part (a bellied bay's facets each counted, and the field hospital's lowest band went
+ * past its 64 parts into the raster).
+ */
+function canvasBay(span: number, h: number, t = 0.04, flare = 0.05, skirt = 0.22): THREE.BufferGeometry {
+  const shape = new THREE.Shape([
+    new THREE.Vector2(-t / 2 - flare, 0), new THREE.Vector2(t / 2 + flare, 0), new THREE.Vector2(t / 2, skirt),
+    new THREE.Vector2(t / 2, h), new THREE.Vector2(-t / 2, h), new THREE.Vector2(-t / 2, skirt),
+  ]);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: span, bevelEnabled: false });
+  // built across x (its thickness), up y, along z (its span): turned so the span runs along x and the cloth faces z
+  g.translate(0, 0, -span / 2).rotateY(Math.PI / 2);
+  return scaleUV(g.index ? g.toNonIndexed() : g, 0.5, 0.5);
+}
+
+/** A canvas gable (canvasPanel): `w` across under a ridge `rise` high, its foot at y = 0. */
+function canvasGable(w: number, rise: number, t = 0.04, belly = 0.03): THREE.BufferGeometry {
+  return canvasPanel(w, t, belly, (s) => rise * (1 - Math.abs(2 * s / w)), () => 0, 4);
 }
 
 /** A chamfered sheet or deck (mbox at the slab's UV density): a roof sheet's, a floor's eased long edges. */
@@ -1771,6 +1844,74 @@ function makeFieldHospital(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fieldhospital', out);
 }
 
+/**
+ * The field hospital (props #1, the huts' r2 round, 2026-10-14; the r2 standard read its wards as two canvas blocks under
+ * two prisms, 98 % box-only): two ward tents either side of a duckboard walk, each a frame tent — its wall cloth a bay
+ * between each pair of uprights, its hem flared over the pegs; its gables in cloth, the back
+ * one closed and the front one parted at the door with its flaps rolled up, a white field and a red cross over the door;
+ * the roof's cloth on the ridge pole and its two poles, sagging a bay at a time; the guys from the ridge to their
+ * pegs, the cots inside, the stretchers on their trestles, and the red-cross board on its pole at the walk's head.
+ */
+function makeFieldHospitalCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.canvas, t = PAL.timber, r = rng;
+  const w = 4.5, d = 8.8, wall = 1.05, rise = 2.0, bays = 4, bay = d / bays, rope = 0xb0a68a, red = 0x7b2c28, white = 0xd8d0ba;
+  const dark = 0x2c2a24;
+  for (const X of [-2.7, 2.7]) {
+    const so = Math.sign(X);
+    // the wall cloth, a length over two bays, the uprights outside it at every bay line
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 2; k++) {
+        const z = -d / 2 + (k + 0.5) * d / 2;
+        colored(out, canvasBay(d / 2 - 0.03, wall).rotateY(Math.PI / 2).translate(X + side * (w / 2 - 0.02), 0, z), k % 2 ? p[0] : p[1], r, 0.04);
+      }
+      for (let k = 0; k <= bays; k++) colored(out, box(0.07, wall + 0.05, 0.07).translate(X + side * (w / 2 + 0.02), (wall + 0.05) / 2, -d / 2 + k * bay), p[2], r, 0.03);
+    }
+    // the gables: the back closed to the ground, the front parted at the door, its flaps rolled up beside it
+    for (const zs of [-1, 1]) colored(out, canvasGable(w, rise).translate(X, wall, zs * (d / 2 - 0.02)), p[1], r, 0.04);
+    colored(out, canvasBay(w, wall).translate(X, 0, -d / 2 + 0.02), p[0], r, 0.04);
+    for (const sgn of [-1, 1]) colored(out, canvasBay(w / 2 - 0.6, wall).translate(X + sgn * (w / 4 + 0.3), 0, d / 2 - 0.02), p[0], r, 0.04);
+    colored(out, box(1.1, wall + rise * 0.5, 0.02).translate(X, (wall + rise * 0.5) / 2, d / 2 - 0.06), dark, r, 0.02);
+    for (const sgn of [-1, 1]) colored(out, cylinder(0.09, 0.09, wall + rise * 0.4, 6).translate(X + sgn * 0.62, (wall + rise * 0.4) / 2 + 0.05, d / 2 + 0.03), p[0], r, 0.04);
+    // the roof: the cloth over the ridge pole and its two poles, a sheet a slope, sagging between the bay lines the
+    // uprights pull taut (the desert tent's clothPanel); the white field and the red cross on the front gable
+    const ridgeY = wall + rise + 0.05, eaveX = w / 2 + 0.15, eaveY = wall - 0.13, z0 = -d / 2 - 0.1, z1 = d / 2 + 0.1;
+    for (const side of [-1, 1]) {
+      colored(out, clothPanel([X + side * eaveX, eaveY, z0], [X, ridgeY, z0], [X, ridgeY, z1], [X + side * eaveX, eaveY, z1], 2, 3 * bays, 0.09, [0, -1, 0], bays),
+        side > 0 ? p[1] : p[0], r, 0.012);
+    }
+    for (const [lu, lh, col, out2] of [[0.62, 0.62, white, 0.07], [0.46, 0.13, red, 0.085], [0.13, 0.46, red, 0.086]] as const) {
+      colored(out, box(lu, lh, 0.02).translate(X, wall + rise * 0.66, d / 2 - 0.02 + out2), col, r, 0.02);
+    }
+    colored(out, mbox(0.1, 0.1, d + 0.3).translate(X, wall + rise, 0), p[2], r, 0.03);
+    for (const zs of [-1, 1]) colored(out, box(0.085, wall + rise, 0.085).translate(X, (wall + rise) / 2, zs * (d / 2 - 0.06)), p[2], r, 0.03);
+    // the guys from the ridge at each gable to their pegs (the eaves are held by the uprights: a guy a bay line put the
+    // wards' lowest collision band past its 512 projected triangles into the raster)
+    for (const zs of [-1, 1]) {
+      colored(out, mbeam([X, wall + rise, zs * (d / 2 + 0.1)], [X, 0.04, zs * (d / 2 + 1.1)], 0.02, 0.02), rope, r, 0.03);
+      colored(out, box(0.05, 0.22, 0.05).translate(X, 0.1, zs * (d / 2 + 1.1)), t[2], r, 0.03);
+    }
+    // the cots down the ward, seen through the door
+    for (const z of [-2.2, 1.0]) {
+      colored(out, mbox(0.7, 0.12, 1.85).translate(X - so * 1.35, 0.42, z), PAL.steel[1], r, 0.03);
+      colored(out, box(0.6, 0.36, 0.05).translate(X - so * 1.35, 0.18, z), PAL.steel[2], r, 0.03);
+    }
+  }
+  // the duckboard walk between the wards: its two bearers and the slats
+  for (const x of [-0.32, 0.32]) colored(out, box(0.08, 0.05, 8.4).translate(x, 0.025, 0), t[2], r, 0.03);
+  for (let k = 0; k < 10; k++) colored(out, box(0.85, 0.03, 0.42).translate(0, 0.065, -4.0 + k * 8.0 / 9), t[1], r, 0.04);
+  // the stretchers on their trestles
+  for (const [x, z] of [[-0.05, 3.2], [0.05, -3.0]] as const) {
+    colored(out, mbox(0.6, 0.05, 1.9).translate(x, 0.62, z), 0x5c6348, r, 0.03);
+    for (const dz of [-0.75, 0.75]) colored(out, mbox(0.55, 0.6, 0.06).translate(x, 0.3, z + dz), t[2], r, 0.03);
+  }
+  // the red-cross board on its pole at the head of the walk
+  colored(out, box(0.08, 2.5, 0.08).translate(0.75, 1.25, 4.49), t[2], r, 0.03);
+  colored(out, mslab(1.1, 0.06, 1.1).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.55), white, r, 0.03);
+  colored(out, mbox(0.22, 0.05, 0.82).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.59), red, r, 0.02);
+  colored(out, mbox(0.82, 0.05, 0.22).rotateX(Math.PI / 2).translate(0.75, 2.0, 4.6), red, r, 0.02);
+  return mergeConnectedStructure('fieldhospital', out);
+}
+
 function makeGuardPost(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, y0 = 1.2;
   colored(out, mbox(3.2, 2.6, 3.2).translate(0, y0 + 1.3, 0), p[0], rng);
@@ -2006,7 +2147,9 @@ function makeCheckpointHutCraft(rng: Rng): THREE.BufferGeometry {
   for (const side of [-1, 1] as const) for (const axis of ['x', 'z'] as const) {
     const len = axis === 'x' ? w : d, back = axis === 'x' && side < 0, door = axis === 'x' && side > 0;
     const at = (u: number, y: number, t = 0) => (axis === 'x' ? [u, y, side * (d / 2 - 0.02 + t)] : [side * (w / 2 - 0.02 + t), y, u]) as [number, number, number];
-    const sz = (lu: number, h: number, thick = 0.05) => box(axis === 'x' ? lu : thick, h, axis === 'x' ? thick : lu);
+    // (props #1: the sheets, the rails and the band in eased members, the glass a plain pane)
+    const sz = (lu: number, h: number, thick = 0.05) => mbox(axis === 'x' ? lu : thick, h, axis === 'x' ? thick : lu);
+    const pane = (lu: number, h: number, thick: number) => box(axis === 'x' ? lu : thick, h, axis === 'x' ? thick : lu);
     // the sheet panels to the sill, ribbed; on the back the sheet runs to the head (no glazing)
     const panelTop = back ? head : sill;
     const n = Math.round(len / 0.6);
@@ -2019,7 +2162,7 @@ function makeCheckpointHutCraft(rng: Rng): THREE.BufferGeometry {
     for (const y of [sill, head]) colored(out, sz(len, 0.09, 0.09).translate(...at(0, y)), p[2], rng, 0.03);
     if (!back) {
       const glazed = door ? len - 1.15 : len - 0.3, u0 = door ? -len / 2 + glazed / 2 + 0.1 : 0;
-      colored(out, markWorldAperture(sz(glazed, head - sill - 0.1, 0.04), axis === 'x' ? [0, 0, side] : [side, 0, 0]).translate(...at(u0, (sill + head) / 2, -0.02)), glass, rng, 0.03);
+      colored(out, markWorldAperture(pane(glazed, head - sill - 0.1, 0.04), axis === 'x' ? [0, 0, side] : [side, 0, 0]).translate(...at(u0, (sill + head) / 2, -0.02)), glass, rng, 0.03);
       for (const u of [u0 - glazed / 4, u0 + glazed / 4]) colored(out, sz(0.06, head - sill, 0.07).translate(...at(u, (sill + head) / 2)), p[2], rng, 0.03);
     }
     colored(out, sz(len, top - head).translate(...at(0, (head + top) / 2)), p[0], rng, 0.04);
@@ -2198,26 +2341,25 @@ function makeHuntingBlindCraft(rng: Rng): THREE.BufferGeometry {
 function makeCommandTentCraft(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.khaki, t = PAL.timber, w = 5.8, d = 7.6, wall = 1.25, rise = 2.1;
   const bays = 4, bay = d / bays;
-  // the walls: a panel a bay, sagging a little inward at mid-bay
+  // the walls: a panel a bay between the uprights, its hem flared where it is pegged (canvasBay)
   for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
     const z = -d / 2 + (k + 0.5) * bay;
-    colored(out, mbox(0.05, wall, bay - 0.04).translate(side * (w / 2 - 0.02), wall / 2, z), k % 2 ? p[0] : p[1], rng, 0.05);
+    colored(out, canvasBay(bay - 0.04, wall).rotateY(Math.PI / 2).translate(side * (w / 2 - 0.02), 0, z), k % 2 ? p[0] : p[1], rng, 0.05);
     colored(out, mbox(0.08, wall + 0.1, 0.08).translate(side * (w / 2 + 0.02), (wall + 0.1) / 2, z - bay / 2), p[2], rng, 0.03);
   }
   // the end walls: the back's gable closed, the front's door
   for (const zs of [-1, 1]) {
-    const g = gable(w, rise, 0.05);
-    colored(out, g.translate(0, wall, zs * (d / 2 - 0.02)), p[1], rng, 0.05);
-    if (zs < 0) colored(out, mbox(w, wall, 0.05).translate(0, wall / 2, -d / 2 + 0.02), p[0], rng, 0.05);
-    else for (const sgn of [-1, 1]) colored(out, mbox(w / 2 - 0.65, wall, 0.05).translate(sgn * (w / 4 + 0.33), wall / 2, d / 2 - 0.02), p[0], rng, 0.05);
+    colored(out, canvasGable(w, rise).translate(0, wall, zs * (d / 2 - 0.02)), p[1], rng, 0.05);
+    if (zs < 0) colored(out, canvasBay(w, wall).translate(0, 0, -d / 2 + 0.02), p[0], rng, 0.05);
+    else for (const sgn of [-1, 1]) colored(out, canvasBay(w / 2 - 0.65, wall).translate(sgn * (w / 4 + 0.33), 0, d / 2 - 0.02), p[0], rng, 0.05);
   }
-  // the roof: each side in bays, every panel a shade apart, the ridge pole and the uprights carrying it
-  const slope = Math.hypot(w / 2 + 0.25, rise), ang = Math.atan2(rise, w / 2 + 0.25);
+  // the roof: each side in bays, every panel a shade apart, its cloth sagging between the bay lines the uprights and the
+  // guys pull taut (the desert tent's clothPanel); the ridge pole and the uprights carrying it
+  const ridgeY = wall + rise + 0.05, eaveX = w / 2 + 0.2, eaveY = wall - 0.13;
   for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
-    const z = -d / 2 + (k + 0.5) * bay;
-    const panel = mroof(slope, 0.05, bay + 0.02);
-    pitchRoofPlane(panel, 'x', -side as -1 | 1, ang, 'gable');
-    colored(out, panel.translate(-side * (w / 4 + 0.12), wall + rise / 2 - 0.02, z), k % 2 ? p[1] : 0x707857, rng, 0.04);
+    const z0 = -d / 2 + k * bay - (k === 0 ? 0.12 : 0), z1 = -d / 2 + (k + 1) * bay + (k === bays - 1 ? 0.12 : 0);
+    colored(out, clothPanel([side * eaveX, eaveY, z0], [0, ridgeY, z0], [0, ridgeY, z1], [side * eaveX, eaveY, z1], 2, 3, 0.09, [0, -1, 0]),
+      k % 2 ? p[1] : 0x707857, rng, 0.012);
   }
   colored(out, mbox(0.1, 0.1, d + 0.3).translate(0, wall + rise, 0), p[2], rng, 0.03);
   for (const z of [-d / 2 + 0.05, 0, d / 2 - 0.05]) colored(out, mbox(0.09, wall + rise, 0.09).translate(0, (wall + rise) / 2, z), p[2], rng, 0.03);
@@ -2506,13 +2648,14 @@ function makeQuonsetHutCraft(rng: Rng): THREE.BufferGeometry {
 
 /**
  * A cloth panel between four corners (a0 a1 along u, b0 b1 the far edge), sagging `sag` metres along `down` at its middle
- * (tension at its edges, where the poles, the ridge and the guys hold it), drawn both sides.
+ * (tension at its edges, where the poles, the ridge and the guys hold it), drawn both sides. `bays` > 1 sags it once a
+ * bay along v (one sheet over a ward's length, pulled taut at every bay line).
  */
 function clothPanel(a0: readonly number[], a1: readonly number[], b1: readonly number[], b0: readonly number[], nu: number, nv: number,
-  sag: number, down: readonly number[]): THREE.BufferGeometry {
+  sag: number, down: readonly number[], bays = 1): THREE.BufferGeometry {
   const g = new THREE.PlaneGeometry(1, 1, nu, nv), pos = g.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) {
-    const u = pos.getX(i) + 0.5, v = pos.getY(i) + 0.5, s = sag * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * v));
+    const u = pos.getX(i) + 0.5, v = pos.getY(i) + 0.5, s = sag * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.abs(Math.sin(Math.PI * v * bays)));
     const at = (k: number) => (1 - v) * ((1 - u) * a0[k] + u * a1[k]) + v * ((1 - u) * b0[k] + u * b1[k]) + s * down[k];
     pos.setXYZ(i, at(0), at(1), at(2));
   }
@@ -3071,7 +3214,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
   deserttent: lightMeta('deserttent', 'desert-camp', 3.10, 4.4, 3.4, PAL.desert, (rng) => { makeDesertTent(rng).dispose(); return makeDesertTentCraft(kindStream('deserttent')); }, 'canvas'),
   commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.43, 5.2, PAL.khaki, (rng) => { makeCommandTent(rng).dispose(); return makeCommandTentCraft(kindStream('commandtent')); }, 'canvas'),
-  fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
+  fieldhospital: lightMeta('fieldhospital', 'military-camp', 4.98, 4.75, 3.4, PAL.canvas, (rng) => { makeFieldHospital(rng).dispose(); return makeFieldHospitalCraft(kindStream('fieldhospital')); }, 'canvas'),
   // (the looks lane, 2026-10-13: the old builder's draws spent, the post built member by member on its own stream)
   guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, (rng) => { makeGuardPost(rng).dispose(); return makeGuardPostCraft(kindStream('guardpost')); }, 'metal'),
   motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, (rng) => { makeMotorPool(rng).dispose(); return makeMotorPoolCraft(kindStream('motorpool')); }, 'metal'),
@@ -3485,6 +3628,31 @@ function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('checkpointhut', out);
 }
 
+/** structureKit's members and paint for a hut built by hutKit into `out` on `rng`. */
+function hutTools(out: THREE.BufferGeometry[], rng: Rng): HutTools {
+  // (every part named as it is put: its piece of the wreck, kept by the merge's anatomy)
+  let named: { role: FractureRole; group: string | null; material: FractureMaterial } = { role: 'fitting', group: null, material: 'timber' };
+  return {
+    mbox: (w, h, d, chamfer) => mbox(w, h, d, chamfer ?? 0.02),
+    msym: (w, h, d, chamfer) => mbox(w, h, d, chamfer ?? 0.015, 0.45, true),
+    mbeam: (a, b, w, d) => mbeam(a, b, w, d),
+    box: (w, h, d) => box(w, h, d),
+    cylinder: (rt, rb, h, segments) => cylinder(rt, rb, h, segments),
+    pitch: (geo, axis, outward, angle, kind) => pitchRoofPlane(geo, axis, outward, angle, kind),
+    aperture: (geo, normal) => markWorldAperture(geo, normal),
+    put: (geo, color, jitter = 0.04) => piece(colored(out, geo, color, rng, jitter), { role: named.role, material: named.material }, named.group),
+    tag: (role, group, material) => { named = { role, group, material }; },
+    rng,
+  };
+}
+
+/** A kit's hut (hutKit.ts): built member by member on its own stream. */
+function regionalHut(kit: string, kind: string): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [];
+  buildRegionalHut(hutTools(out, kindStream(`${kind}@${kit}`)), kit, kind);
+  return mergeConnectedStructure(kind, out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -3492,46 +3660,40 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     const b = B[key];
     return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial);
   };
-  return Object.freeze({
-    bengal: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
-      fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
-    }),
-    kohima: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
-    }),
-    // the Serranía de Ronda: the bridgeheads' tollhouses, the farms' tool houses
-    andalusian: Object.freeze({
-      guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta),
-      fieldhut: variant('fieldhut', REGIONAL_PAL.cal, makeAndalusianAperos),
-    }),
-    // (the facades lane, 2026-10-08; wave 260: the generic wetland stilt house read as a Western clapboard bungalow) the
-    // stilt house the Ca Mau house on posts under rusted iron, beside the nipa long house and the pond hut
-    mekong: Object.freeze({
-      longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
-      fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
-      stilthouse: variant('stilthouse', REGIONAL_PAL.mekongPlank, makeMekongStiltHouse),
-    }),
+  // (props #1, the huts' r2 round, 2026-10-14) the kits' huts, member by member in their region's dialect (hutKit.ts).
+  // Each spends what the props stream drew for its place before — the kit's old massing build where it had one, else
+  // its family's own — so nothing placed after it moves, then builds on its own stream.
+  const LEGACY: Readonly<Record<string, LightStructureBuilder>> = {
+    'bengal/longhouse': makeBengalHomestead, 'bengal/stilthouse': makeBengalStiltHouse, 'bengal/fishershack': makeBengalFisherShed,
+    'kohima/longhouse': makeAngamiHouse, 'kohima/stilthouse': makeNagaGranary,
+    'mekong/longhouse': makeMekongLongHouse, 'mekong/fishershack': makeMekongPondHut, 'mekong/stilthouse': makeMekongStiltHouse,
+    'andalusian/fieldhut': makeAndalusianAperos, 'savoyard/huntingblind': makeSavoyardMazot,
+  };
+  const huts = (kit: string): Record<string, DestructibleBuildingType> => Object.fromEntries(Object.keys(REGIONAL_HUTS[kit]).map((kind) => {
+    const legacy = LEGACY[`${kit}/${kind}`], dp = HUT_DIALECTS[kit].paint;
+    const build: LightStructureBuilder = (rng) => {
+      (legacy ? legacy(rng) : B[kind].build(rng)).dispose();
+      return regionalHut(kit, kind);
+    };
+    return [kind, variant(kind, [dp.wall[0], dp.trim, dp.frame], build, kit === 'bengal' && kind === 'longhouse' ? 'metal' : 'wood')];
+  }));
+  const table: Record<string, Record<string, DestructibleBuildingType>> = {
+    // the Serranía de Ronda: the bridgeheads' tollhouses
+    andalusian: { guardpost: variant('guardpost', REGIONAL_PAL.cal, makeAndalusianCaseta) },
     // Queenstown (Copper Mesa Mine): the works' iron sheds for the steel shelter and the block garage
-    queenstown: Object.freeze({
+    queenstown: {
       motorpool: variant('motorpool', REGIONAL_PAL.lyellIron, makeLyellShed, 'metal'),
       servicegarage: variant('servicegarage', REGIONAL_PAL.lyellIron, makeLyellWorkshop, 'metal'),
-    }),
+    },
     // Siwa (Sunscar Oasis): the checkpoint hut stands as a kershef guard post
-    siwa: Object.freeze({
-      checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
-    }),
+    siwa: { checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut) },
     // (Wadi Rum's barrack and post are the map's own structure variants on its plaster since the Redrock lane's round 10:
     // maps/regional/wadiRumPosts.ts, named in badlands.ts props.structureVariants)
     // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
-    savoyard: Object.freeze({
-      alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
-      // (round 4) the blind on its stilts is the hamlet's mazot on its staddle stones
-      huntingblind: variant('huntingblind', REGIONAL_PAL.larch, makeSavoyardMazot),
-    }),
-  });
+    savoyard: { alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal') },
+  };
+  for (const kit of Object.keys(REGIONAL_HUTS)) if (!HUT_KITS_PENDING.has(kit)) table[kit] = { ...(table[kit] ?? {}), ...huts(kit) };
+  return Object.freeze(Object.fromEntries(Object.entries(table).map(([kit, kinds]) => [kit, Object.freeze(kinds)])));
 })();
 
 
