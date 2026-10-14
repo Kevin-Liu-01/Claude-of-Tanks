@@ -75,6 +75,16 @@ for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
   assert.ok(hit, `a village with its tower on the ${az}° sightline`);
   assert.ok(plan.verticals.some((v) => v.settlement === hit.id), `its tower stands (${hit.name ?? hit.id})`);
 }
+// and the rows open on the sightlines: no planned tree stands between the battlefield and a sightline village's tower
+for (const s of plan.settlements.filter((s) => s.towerM)) {
+  const az = Math.atan2(s.x, s.z), d = Math.hypot(s.x, s.z);
+  const blocking = plan.trees.filter((t) => {
+    let da = Math.abs(Math.atan2(t.x, t.z) - az);
+    if (da > Math.PI) da = 2 * Math.PI - da;
+    return da < 0.07 && Math.hypot(t.x, t.z) < d - 80;
+  });
+  assert.equal(blocking.length, 0, `the view to ${s.name ?? s.id} is open`);
+}
 for (const s of plan.settlements.filter((s) => s.kind === 'village')) {
   assert.ok(plan.verticals.some((v) => v.settlement === s.id && v.kind === 'churchTower'), `village ${s.id} raises its church tower`);
 }

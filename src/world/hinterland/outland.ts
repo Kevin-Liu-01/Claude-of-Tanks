@@ -554,6 +554,25 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     }
   }
 
+  // ---- the sightlines' long views (the tower pass, 2026-10-14: the pilot's eye frames lost every sightline tower
+  // behind a dyke's poplars nearer the line): where a row or an avenue crosses the view from the battlefield to a
+  // sightline village, its trees there are felled (a gap in the row, as Zeeland's rows have), so the tower stands clear
+  const sightlines = settlements.filter((s) => s.towerM).map((s) => ({ az: Math.atan2(s.x, s.z), d: Math.hypot(s.x, s.z) }));
+  if (sightlines.length) {
+    const kept = trees.filter((t) => {
+      const az = Math.atan2(t.x, t.z), d = Math.hypot(t.x, t.z);
+      for (const v of sightlines) {
+        let da = Math.abs(az - v.az);
+        if (da > Math.PI) da = 2 * Math.PI - da;
+        // (the corridor: ±4.5° about the bearing from the square's centre, which covers the views from its edges)
+        if (da < 0.0785 && d < v.d - 60) return false;
+      }
+      return true;
+    });
+    trees.length = 0;
+    trees.push(...kept);
+  }
+
   // ---- term 3: the yards levelled and the roads graded (near band only: the far band's ground is the field's own)
   const pads: HinterlandFlatPad[] = [];
   for (const b of buildings) pads.push({ x: b.x, z: b.z, r: Math.hypot(b.width, b.depth) * 0.5 + 2, featherM: 10, y: Number.NaN, kind: 'yard' });
