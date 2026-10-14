@@ -189,31 +189,48 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
   const b = frame.bodies[0];
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     const f = frame.faces[name];
-    faceBox(sink, 'structureWood', f, 0, b.y0 + 0.65, 0.02, f.width, 1.3, 0.03, { colour: rgb(0x33363a), decor: true });
-    // the pointing (Caldera round 2, wave 114: "a zigzag band where the diagonal namako tile grid should be"): the
-    // square tiles set on the diagonal, their raised white joints two families of lines at 45 degrees, 0.3 m apart,
-    // each clipped to the band's ends
-    const yb = b.y0 + 0.04, H = 1.22, half = f.width / 2;
-    for (const dir of [1, -1]) {
-      for (let c = -half - H; c < half; c += 0.3) {
-        // the line u = c + dir (y - yb) over the band, clipped to [-half, half]
-        let ua = dir > 0 ? c : c + H, ub = dir > 0 ? c + H : c, ya = yb, yy = yb + H;
-        const clip = (uEdge: number) => {
-          const t = (uEdge - ua) / (ub - ua);
-          return ya + (yy - ya) * t;
-        };
-        if (Math.max(ua, ub) <= -half || Math.min(ua, ub) >= half) continue;
-        if (ua < -half) { ya = clip(-half); ua = -half; } else if (ua > half) { ya = clip(half); ua = half; }
-        if (ub < -half) { yy = clip(-half); ub = -half; } else if (ub > half) { yy = clip(half); ub = half; }
-        if (Math.hypot(ub - ua, yy - ya) < 0.12) continue;
-        sink.member('structureWood', facePt(f, ua, ya, 0.04), facePt(f, ub, yy, 0.04), 0.045, 0.015, f.out,
-          { colour: rgb(0xe4e0d6), decor: true, fine: true, exposed: true }, 0);
+    // (props census #3, lane B 2026-10-14; the judges: "the namako band ONE dark 3 cm plate the full width of each face,
+    // laid with no regard to the door ... the lower 1.3 m of every kura doorway is boarded over") the band runs to the
+    // door's stepped frame each side and returns round it; its runs between the openings that reach down into it
+    const half = f.width / 2, gaps = frame.spec.openings.filter((o) => o.face === name && o.y0 < 1.3)
+      .map((o): [number, number] => [o.u - o.w / 2 - 0.32, o.u + o.w / 2 + 0.32]).sort((x, y) => x[0] - y[0]);
+    const runs: Array<[number, number]> = [];
+    let from = -half;
+    for (const [g0, g1] of gaps) { if (g0 > from + 0.1) runs.push([from, g0]); from = Math.max(from, g1); }
+    if (half > from + 0.1) runs.push([from, half]);
+    for (const [r0, r1] of runs) {
+      faceBox(sink, 'structureWood', f, (r0 + r1) / 2, b.y0 + 0.65, 0.02, r1 - r0, 1.3, 0.03, { colour: rgb(0x33363a), decor: true });
+      // the pointing (Caldera round 2, wave 114: "a zigzag band where the diagonal namako tile grid should be"): the
+      // square tiles set on the diagonal, their raised white joints two families of lines at 45 degrees, 0.3 m apart,
+      // each clipped to the run's ends
+      const yb = b.y0 + 0.04, H = 1.22;
+      for (const dir of [1, -1]) {
+        for (let c = -half - H; c < half; c += 0.3) {
+          // the line u = c + dir (y - yb) over the band, clipped to [r0, r1]
+          let ua = dir > 0 ? c : c + H, ub = dir > 0 ? c + H : c, ya = yb, yy = yb + H;
+          const clip = (uEdge: number) => {
+            const t = (uEdge - ua) / (ub - ua);
+            return ya + (yy - ya) * t;
+          };
+          if (Math.max(ua, ub) <= r0 || Math.min(ua, ub) >= r1) continue;
+          if (ua < r0) { ya = clip(r0); ua = r0; } else if (ua > r1) { ya = clip(r1); ua = r1; }
+          if (ub < r0) { yy = clip(r0); ub = r0; } else if (ub > r1) { yy = clip(r1); ub = r1; }
+          if (Math.hypot(ub - ua, yy - ya) < 0.12) continue;
+          sink.member('structureWood', facePt(f, ua, ya, 0.04), facePt(f, ub, yy, 0.04), 0.045, 0.015, f.out,
+            { colour: rgb(0xe4e0d6), decor: true, fine: true, exposed: true }, 0);
+        }
       }
     }
   }
   // the kura's mark: a crest plate on the gable (the family's mon), a dark disc high on the front
   const front = frame.faces.front;
-  if (rng() < 0.7) faceBox(sink, 'structureWood', front, 0, frame.eaveY + 0.9, 0.04, 0.7, 0.7, 0.03, { colour: rgb(0x2a2a2c), decor: true });
+  // (a raised plaster roundel with the mon in relief on it, dark-washed: no plate)
+  if (rng() < 0.7) {
+    const c = facePt(front, 0, frame.eaveY + 0.9, 0);
+    sink.cylinder(SHIKKUI, [c[0], c[1], c[2]], 'z', 0.05, 0.38, 12, { decor: true, shade: 0.9 }, 0.36, true);
+    sink.cylinder('structureWood', [c[0], c[1], c[2] + 0.05], 'z', 0.015, 0.27, 12, { colour: rgb(0x2a2a2c), decor: true }, 0.27, true);
+    sink.cylinder(SHIKKUI, [c[0], c[1], c[2] + 0.065], 'z', 0.012, 0.17, 12, { decor: true }, 0.17, true);
+  }
 }
 
 function facePt(f: Face, u: number, y: number, o: number): Vec3 {
