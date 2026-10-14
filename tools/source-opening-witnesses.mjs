@@ -838,7 +838,7 @@ export function sourceOpeningWitnesses(id,quality='high'){
  if(isArieteOpeningTarget(id))return arieteOpeningWitnesses(id,quality);
  if(id==='merkava4_barak')return BARAK_OPENING_WITNESSES;
  if(id==='aft10_x')return aftWitnesses();
- if(id==='fv510_milan_x')return WARRIOR_SOURCE_WITNESSES;
+ if(id==='warrior_tes_h')return WARRIOR_SOURCE_WITNESSES;
  return [];
 }
 export function requiredOpeningGuardKeys(id,quality='high'){return sourceOpeningWitnesses(id,quality).map(witness=>witness.key);}

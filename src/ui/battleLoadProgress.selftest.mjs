@@ -169,6 +169,17 @@ try {
     assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
     screen.showPending(null);
     assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
+    // 2026-10-13 (222's Slow 4G entry read "BATTLEFIELD" for ~1.8 s while the loading owner downloaded): the pending
+    // cover's very first frame names the chosen battlefield, over its own tones, with its art on the way
+    screen.showPending({ mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' });
+    assert.equal(selectors.get('.mapname').textContent, 'Cinder Junction', 'the first loader frame names the map');
+    assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'));
+    assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.railyard}),${gradientOf(MAP_ART_TONES.railyard)}`);
+    assert.equal(art.className, 'art railyard');
+    screen.showPending({ mapId: 'random', mapName: 'Random' });
+    assert.equal(selectors.get('.mapname').textContent, t('battleLoad.fallbackMapName'),
+      'an unresolved Random request keeps the neutral title rather than a guess');
+    assert.equal(art.style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT));
     loads.length = 0;
     delete globalThis.Image;
     const cssText = elements.find(item => item.id === 'cot-bl-style').textContent;

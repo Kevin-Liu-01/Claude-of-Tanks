@@ -25,7 +25,10 @@ tiers), `blastRecipes.ts` builds each munition x surface burst through it
 (`surfaceLooks.ts`, `debrisChunks.ts`), `craterMarks.ts` keeps the ground's marks,
 and `structureMask.ts` / `structureStages.ts` / `structureDebris.ts` lay a
 building's stages into the world's own geometry through the core's seam
-(docs/DESTRUCTION.md §16.4) on every tier.
+(docs/DESTRUCTION.md §16.4) on every tier. What falls lands where its flight
+meets the ground (`ballisticLanding.ts`), and a stage's larger pieces are rigid
+bodies of the one engine (`rubbleBodies.ts` over `debrisPhysics.ts`;
+docs/DESTRUCTION.md §17); `tools/destruction-check.mjs` judges the result.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

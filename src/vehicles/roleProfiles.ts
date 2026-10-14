@@ -122,7 +122,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   kf51b: { doctrine: 'flexible', viewM: 435, still: 0.181, moving: 0.121 },
   fv510: { doctrine: 'support', viewM: 425, still: 0.275, moving: 0.215 },
   fv510_milan: { doctrine: 'support', viewM: 430, still: 0.272, moving: 0.212 },
-  fv510_milan_x: { doctrine: 'support', viewM: 435, still: 0.272, moving: 0.212 },
+  warrior_tes_h: { doctrine: 'support', viewM: 435, still: 0.272, moving: 0.212 },
   ajax_x: { doctrine: 'recon', viewM: 465, still: 0.293, moving: 0.253 },
   ares_apc_x: { doctrine: 'recon', viewM: 460, still: 0.288, moving: 0.248 },
   m60a1: { doctrine: 'flexible', viewM: 390, still: 0.190, moving: 0.130 },

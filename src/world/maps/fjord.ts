@@ -245,12 +245,18 @@ export default {
     massif: false,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'broken-stratocumulus', windDirDeg: 250, scud: 0.35, farBand: 0.6, fogBank: 0.4, fogBankTopM: 90, rain: 0.3, virga: 0.15, nightGlow: 0.2, nightGlowHex: 0xffd2a0 },
+  // 2026-10-13 (the owner on the map wall: "no more of the cloud type depicted in fjord"): Verdant's fair-weather cumulus
+  // in place of the broken stratocumulus deck — a Norwegian coast's cumulus over the water, the base lower in the sea air
+  // (1100 m), drifting in on the sea wind from the fjord's mouth (250°, 7 m/s aloft as before: the trees' sway and the
+  // scene wind keep their strength); the sea fog bank and the town's glow stay; the deck's scud, drizzle and virga go
+  clouds: { regime: 'fair-weather-cumulus', windDirDeg: 250, windSpeed: 7, coverage: 0.38, baseM: 1100, thicknessM: 760, streets: 0.4, cirrus: 0.15, farBand: 0.35, fogBank: 0.4, fogBankTopM: 90, nightGlow: 0.2, nightGlowHex: 0xffd2a0 },
   sky: {
     sunElevationDeg: 20, sunAzimuthDeg: 146, turbidity: 5.4, rayleigh: 1.55,
     mieCoefficient: 0.0072, mieDirectionalG: 0.84, fogDensity: 0.00072,
     fogTintHex: 0x8299a4, fogMix: 0.62, envIntensity: 0.26,
-    cloudOpacity: 1.15, cloudOpacity2: 0.9, cloudTintHex: 0xd9e1e2,
+    // (2026-10-13: the baked decks the phones show match the cumulus — the cirrus veil 0.9 -> 0.6 and the deck 1.15 -> 1.05,
+    // Verdant's; the deck tint a near-white 0xf2f5f6 (was the grey 0xd9e1e2), which the layer's albedo reads by day too)
+    cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xf2f5f6,
     sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {

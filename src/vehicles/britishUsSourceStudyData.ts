@@ -22,8 +22,9 @@ interface SourceStudyRecord {
 
 export const BRITISH_US_SOURCE_STUDIES: readonly SourceStudyRecord[] = Object.freeze([
   {
-    id: 'fv510_milan_x', name: 'Warrior MILAN X', donor: 'fv510_milan',
-    nation: 'UK', role: 'ifv', tier: 9,
+    // VEH-11 (2026-10-13): the Warrior MILAN X is its own Warrior type, the Warrior TES(H), at tier X.
+    id: 'warrior_tes_h', name: 'Warrior TES(H)', donor: 'fv510_milan',
+    nation: 'UK', role: 'ifv', tier: 10,
     dimensions: {
       hullLengthM: 6.7793, overallLengthM: 6.7793, widthM: 4.2305, heightM: 3.13,
       silhouetteHullLengthM: 6.7793, silhouetteOverallLengthM: 6.7793,

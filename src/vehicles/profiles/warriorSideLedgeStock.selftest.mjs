@@ -63,7 +63,7 @@ const witnesses = [
   [[1.8,1.3,1.23],[-1,0,0],0.3,[1.701200008392334,1.3,1.23]],
   [[1.8,1.7,1.23],[-1,0,0],0.3,[1.701200008392334,1.7,1.23]],
 ];
-const id='fv510_milan_x';
+const id='warrior_tes_h';
 const frontMaterial=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
 const sectionMaterial=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const ray=new THREE.Raycaster();

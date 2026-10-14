@@ -583,6 +583,8 @@ interface StudioFxPort extends BattleFxPort {
   propCrush(position: Vector3, direction: Vector3, heightM: number): void;
   /** A building's first damage's programs (fx/structureStages.ts warm): laid at `position`, cleared by resetAll. */
   warmStructures?(position: Vector3): number;
+  /** (EF.04) a missile's body and smoke ribbon in the covered render (call after update()); cleared by resetAll */
+  warmProjectilePresentation?(position: Vector3, direction: Vector3): void;
 }
 
 interface BattlePostPort {
@@ -812,6 +814,9 @@ export function stageCombatFxProgramSubmission({
       warmShells.push(shell);
     }
     try { fx.update(0.016, warmShells, camera); } catch (_) { /* warm only */ }
+    // (EF.04, filmed: a solo battle's first missile launch hitched 100-125 ms, against 18-34 ms for the second) the
+    // missile body and the smoke ribbon join the covered render here too, as the network staging does (after update())
+    try { fx.warmProjectilePresentation?.(position, direction); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
     fx.group.visible = true;
