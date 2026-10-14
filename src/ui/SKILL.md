@@ -30,7 +30,8 @@ Private and LAN deployment over `src/mp/session/playMenuAdapter.ts`;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `damagePanel.ts` owns the battle-only camera-up tank schematic and its
-redraw-on-change module/crew presentation;
+redraw-on-change module/crew presentation (a wreck holds the pose of its last
+live frame: `setPose` stages, `update` commits only while the vehicle lives);
 `shotInfo.ts` owns typed resolved-hit cards, incoming-fire alerts, the bounded
 combat log, armor-diagram projection, event-derived battle statistics, and the
 killcam-aware handoff to the after-action report;

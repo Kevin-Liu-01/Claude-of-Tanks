@@ -551,6 +551,22 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   let camYawW = 0;     // camera world yaw
   const hullPhi = () => camYawW - hullYawW;
   const gunPhi = () => camYawW - hullYawW - turretYawH;
+  // A wreck's plan holds still (owner 2026-10-13: "even if im destroyed, the tank in bottom left corner can have
+  // its turret rotating, fix"). setPose only stages the frame's pose; update() commits it while the vehicle lives,
+  // so a destroyed vehicle keeps the pose of its last live frame through the death cam orbit, an ally's spectate
+  // camera, the kill cam and a respawn countdown. Its first live frame (a revive) commits again; a vehicle first
+  // seen as a wreck commits its given pose once. setState (the screenshot hook) still places a pose directly.
+  let stagedHullYawW = 0;
+  let stagedTurretYawH = 0;
+  let stagedCamYawW = 0;
+  let poseCommitted = false;
+  function commitStagedPose(destroyed: boolean): void {
+    if (destroyed && poseCommitted) return;
+    hullYawW = stagedHullYawW;
+    turretYawH = stagedTurretYawH;
+    camYawW = stagedCamYawW;
+    poseCommitted = true;
+  }
 
   // --- r9 mask layers ---------------------------------------------------------
   let masks: TopDownMaskEntry | null = null;       // tankThumbs.getTopDownMasks entry
@@ -1024,9 +1040,9 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
 
   function applyPoseSample(pose: DamagePanelPoseSample | undefined): void {
     if (!pose) return;
-    if (pose.hull != null && isFinite(pose.hull)) hullYawW = pose.hull;
-    if (pose.turret != null && isFinite(pose.turret)) turretYawH = pose.turret;
-    if (pose.cam != null && isFinite(pose.cam)) camYawW = pose.cam;
+    if (pose.hull != null && isFinite(pose.hull)) hullYawW = stagedHullYawW = pose.hull;
+    if (pose.turret != null && isFinite(pose.turret)) turretYawH = stagedTurretYawH = pose.turret;
+    if (pose.cam != null && isFinite(pose.cam)) camYawW = stagedCamYawW = pose.cam;
   }
 
   function applyModuleSamples(
@@ -1109,6 +1125,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       tints = null;
       anchors = null;
       lastDrawSig = null;
+      poseCommitted = false;
       cancelMaskRetry();
       maskRequestSerial += 1;
       maskAttempt = 0;
@@ -1126,6 +1143,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
      */
     update(c) {
       combat = c;
+      commitStagedPose(c.destroyed === true);
       refreshDom();
       const sig = drawSignature();
       if (sig !== lastDrawSig) {
@@ -1138,26 +1156,28 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
      * Feed the live pose (rad). The panel is CAMERA-UP: the hull layer
      * rotates with the hull heading relative to the camera bearing and the
      * turret+gun layer with hull+turret, so the panel gun points where the
-     * real gun points on screen. Stored only; the per-frame update() draw
-     * picks it up (hud.update calls this right before main's
-     * damagePanel.update in the same frame).
+     * real gun points on screen. Staged only; the per-frame update() commits
+     * it while the vehicle lives and draws (hud.update calls this right before
+     * main's damagePanel.update in the same frame) — a wreck holds the pose of
+     * its last live frame.
      * @param {number} hullYaw world hull yaw
      * @param {number} turretYaw hull-relative turret yaw
      * @param {number} camYaw world camera yaw
      */
     setPose(hullYaw, turretYaw, camYaw) {
-      if (hullYaw != null && isFinite(hullYaw)) hullYawW = hullYaw;
-      if (turretYaw != null && isFinite(turretYaw)) turretYawH = turretYaw;
-      if (camYaw != null && isFinite(camYaw)) camYawW = camYaw;
+      if (hullYaw != null && isFinite(hullYaw)) stagedHullYawW = hullYaw;
+      if (turretYaw != null && isFinite(turretYaw)) stagedTurretYawH = turretYaw;
+      if (camYaw != null && isFinite(camYaw)) stagedCamYawW = camYaw;
     },
 
     /**
      * Back-compat shim (pre-r9 callers): live hull-relative turret bearing
-     * only — hull/camera stay wherever the last setPose put them.
+     * only — hull/camera stay wherever the last setPose put them. Staged
+     * like setPose: a wreck's turret holds.
      * @param {number} yaw
      */
     setTurretYaw(yaw) {
-      if (yaw != null && isFinite(yaw)) turretYawH = yaw;
+      if (yaw != null && isFinite(yaw)) stagedTurretYawH = yaw;
     },
 
     /**
