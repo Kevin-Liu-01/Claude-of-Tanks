@@ -179,7 +179,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   if (!wrecked) dozerTrack(mesh, -gauge, tw, coarse, false);
   mesh.push();
   // wrecked: down on its bare right rollers, rolled toward the thrown track
-  if (wrecked) mesh.rotateZ(0.045).translate(0, -0.04, 0);
+  if (wrecked) mesh.rotateZ(0.035).translate(0, -0.04, 0);
   if (wrecked) {
     // the right side's bare rollers, sprocket and frame, the frame now on the ground
     mesh.push().translate(-gauge, 0.2, 0);
@@ -251,7 +251,7 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
   for (const sx of [1, -1]) mesh.box(sx * 0.8, roofY - 0.08, -0.97, 0.08, 0.12, 1.75, paint, 0);
   mesh.pop();
   // the blade on its push arms (the C-frame from the track frames' trunnions), the tilt brace, the lift rams
-  const bz = 2.72, bw = 3.9, bh = 1.45, bladeDrop = wrecked ? 0.12 : 0, cant = wrecked ? 0.06 : 0;
+  const bz = 2.72, bw = 3.86, bh = 1.45, bladeDrop = wrecked ? 0.12 : 0, cant = wrecked ? -0.05 : 0;
   mesh.push().translate(0, -bladeDrop, 0).translate(0, 0, bz).rotateZ(cant).translate(0, 0, -bz);
   // the moldboard: a curved plate (its section an arc concave forward), the cutting edge, the end bits, the top rail
   const nx = coarse ? 2 : 4, ny = coarse ? 4 : 8;
@@ -431,7 +431,7 @@ export function haulpak(mesh: VehicleMesh, coarse: boolean, laden: boolean, wrec
   mesh.box(0, R * 0.98, -1.75, 3.3, 0.46, 0.5, BLACK, 0.04);
   mesh.box(0, R * 0.98, -1.75, 0.9, 0.78, 0.8, BLACK, coarse ? 0 : 0.12);
   for (const sx of [1, -1]) {
-    mesh.push().translate(sx * 2.32, R * 0.98, -1.75).scale(sx, 1, 1);
+    mesh.push().translate(sx * 2.25, R * 0.98, -1.75).scale(sx, 1, 1);
     mesh.lathe([[0.0001, -0.08], [0.3, -0.08], [0.3, 0.02], [0.22, 0.1], [0.0001, 0.1]], coarse ? 8 : 10, () => (wrecked ? RUSTY : STEEL_M));
     mesh.pop();
   }
