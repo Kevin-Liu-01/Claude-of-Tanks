@@ -312,7 +312,8 @@ function hopperStiffeners(sink: PartSink, x0: number, x1: number, z0: number, z1
  * the end houses, a dark band painted down the gallery for its windows, the head tower's legs with girts and no
  * bracing"): the gallery's sheet below and above a glazed band of framed lights between mullions, its posts outside
  * the sheet at the panel points, a pitched roof with its fascia; the tail house and the head house cut sheet houses
- * (door, windows), the head house's discharge chute, its landing and cat ladder; the head tower X-braced. The bents'
+ * (door, windows), the head house's discharge chute and the ladder up inside the tower to its floor hatch; the head
+ * tower X-braced. The bents'
  * feet and the end houses are its movement record (a hull passes under the gallery between them).
  */
 export const conveyor: LandmarkBuilder = (ctx) => {
@@ -349,26 +350,21 @@ export const conveyor: LandmarkBuilder = (ctx) => {
     }
     yPrev = yy;
   }
-  // the head house on the tower: the gallery enters its back, the discharge chute leaves its front, a door on its
-  // right side to a landing and the cat ladder down to the ground
+  // the head house on the tower: the gallery enters its back, the discharge chute leaves its front; the ladder climbs
+  // inside the tower to the hatch in its floor (all inside the piece's footprint, plan.ts)
   const hhH = gh + 1.4;
   sink.span('structureMetal', -2.3, yH - 0.2, z1 - 1.7, 2.3, yH, z1 + 2.3, { colour: shade(OXIDE, 0.8) });
   sheetHouse(sink, ctx, [0, yH, z1 + 0.3], 4.4, 3.8, hhH, 0.9, [
-    { face: 'right', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 2.0 },
+    { face: 'right', storey: 0, kind: 'window', u: 0, w: 1.0, y0: 1.4, h: 0.9 },
     { face: 'left', storey: 0, kind: 'window', u: 0, w: 1.0, y0: 1.4, h: 0.9 },
     { face: 'front', storey: 0, kind: 'window', u: 1.1, w: 0.8, y0: 1.8, h: 0.7 },
   ], IRON_SHEET);
   movement.push({ kind: 'obb', cx: 0, cz: z1, hw: 1.9, hl: 1.9, yaw: 0, y0: hgz - 0.3, y1: yH + hhH + 1.0 });
-  bar(sink, 'structureMetal', [0, yH + 0.7, z1 + 2.0], [0, Math.max(hgz + 1.2, yH - 2.2), z1 + 3.9], 0.6, { colour: shade(STEEL, 0.9), decor: true });
-  const lg = g(3.05, z1 + 0.3);
-  sink.span('structureMetal', 2.2, yH - 0.08, z1 - 0.4, 3.0, yH, z1 + 1.0, { colour: shade(IRON, 1.15), decor: true });
-  for (const [ax, az, bx, bz] of [[2.97, z1 - 0.37, 2.97, z1 + 0.05], [2.2, z1 - 0.37, 2.97, z1 - 0.37], [2.2, z1 + 0.97, 2.97, z1 + 0.97]] as const) {
-    bar(sink, 'structureMetal', [ax, yH + 1.0, az], [bx, yH + 1.0, bz], 0.04, { colour: YELLOW, decor: true });
-    for (const [px, pz] of [[ax, az], [bx, bz]]) bar(sink, 'structureMetal', [px, yH, pz], [px, yH + 1.0, pz], 0.04, { colour: YELLOW, decor: true });
-  }
-  for (const z of [z1 + 0.35, z1 + 0.85]) bar(sink, 'structureMetal', [3.05, lg - 0.05, z], [3.05, yH + 1.0, z], 0.05, { colour: IRON, decor: true });
-  for (let y = lg + 0.35; y < yH - 0.05; y += 0.35) bar(sink, 'structureMetal', [3.05, y, z1 + 0.35], [3.05, y, z1 + 0.85], 0.03, { colour: IRON, decor: true, fine: true });
-  for (let y = lg + 2.4; y < yH - 0.5; y += 2.4) bar(sink, 'structureMetal', [3.05, y, z1 + 0.6], [1.6, y, z1 + 1.6], 0.05, { colour: IRON, decor: true, fine: true });
+  bar(sink, 'structureMetal', [0, yH + 0.7, z1 + 2.0], [0, Math.max(hgz + 1.2, yH - 1.6), z1 + 3.0], 0.6, { colour: shade(STEEL, 0.9), decor: true });
+  const lg = g(1.0, z1 + 1.0);
+  sink.span('structureMetal', 0.6, yH - 0.22, z1 + 0.6, 1.4, yH - 0.18, z1 + 1.4, { colour: IRON, decor: true });
+  for (const x of [0.75, 1.25]) bar(sink, 'structureMetal', [x, lg - 0.05, z1 + 1.0], [x, yH - 0.2, z1 + 1.0], 0.05, { colour: IRON, decor: true });
+  for (let y = lg + 0.35; y < yH - 0.3; y += 0.35) bar(sink, 'structureMetal', [0.75, y, z1 + 1.0], [1.25, y, z1 + 1.0], 0.03, { colour: IRON, decor: true, fine: true });
   // the gallery: segments between the bents, each a clad box truss on the incline
   const bents = Math.max(1, Math.round((z1 - z0) / 12));
   const corner = (z: number, sx: number, up: number): Vec3 => [sx * hw, yAt(z) + up, z];

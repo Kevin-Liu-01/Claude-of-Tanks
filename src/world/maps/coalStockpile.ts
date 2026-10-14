@@ -59,6 +59,35 @@ function coalFacet(
   }
 }
 
+/** A lump of coal lying on a heap's facet (a, b, c) at barycentric `w`: a low pyramid sunk 3 cm into the facet's plane. */
+function coalLump(
+  positions: number[], colors: number[], uvs: number[],
+  a: CoalVertex, b: CoalVertex, c: CoalVertex, w: readonly [number, number, number], size: number, phase: number,
+): void {
+  const at = (k: number) => a[k] * w[0] + b[k] * w[1] + c[k] * w[2];
+  const cx = at(0), cz = at(2);
+  // the facet's plane: y over (x, z)
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  const planeY = (x: number, z: number) => a[1] - (nx * (x - a[0]) + nz * (z - a[2])) / ny;
+  const ring: CoalVertex[] = [];
+  for (let k = 0; k < 5; k++) {
+    const ang = phase * 1.3 + k * Math.PI * 2 / 5, r = size * (0.75 + 0.25 * Math.sin(phase * 2.1 + k * 2.3));
+    // the ring's angle rising from x toward z, as the heap's own rings (its faces then wind up and out)
+    const x = cx + Math.cos(ang) * r, z = cz + Math.sin(ang) * r;
+    ring.push([x, planeY(x, z) - 0.03, z]);
+  }
+  const apex: CoalVertex = [cx + size * 0.15 * Math.sin(phase), planeY(cx, cz) + size * (0.8 + 0.25 * Math.sin(phase * 3.7)), cz + size * 0.15 * Math.cos(phase)];
+  for (let k = 0; k < 5; k++) {
+    const shade = 0.05 + 0.02 * Math.sin(phase * 2.9 + k * 1.9);
+    for (const vertex of [ring[k], apex, ring[(k + 1) % 5]]) {
+      positions.push(...vertex);
+      colors.push(shade * 0.95, shade, shade * 1.06);
+      uvs.push(vertex[0] * 0.6, vertex[2] * 0.6);
+    }
+  }
+}
+
 export function makeCoalStockpile(
   field: CoalGround, x: number, z: number,
   radius: number, length: number, phase: number,
@@ -80,6 +109,15 @@ export function makeCoalStockpile(
     coalFacet(positions, colors, uvs, base[i], shoulder[i], base[next], phase + i * 3);
     coalFacet(positions, colors, uvs, base[next], shoulder[i], shoulder[next], phase + i * 3 + 1);
     coalFacet(positions, colors, uvs, shoulder[i], peak, shoulder[next], phase + i * 3 + 2);
+  }
+  // (props census #3, lane B 2026-10-14; the judges: "a smooth faceted cone, no lumps, no loose coal") the lumps lying
+  // on its faces and the loose coal spilt along its toe: low five-sided pyramids sunk into the facets they lie on, every
+  // face upward, all of them inside the heap's footprint and under its peak (its collision record unchanged)
+  for (let i = 0; i < 8; i++) {
+    const next = (i + 1) % 8;
+    coalLump(positions, colors, uvs, base[next], shoulder[i], shoulder[next], [0.3, 0.35, 0.35], 0.13, phase + i * 5);
+    coalLump(positions, colors, uvs, base[i], shoulder[i], base[next], [0.36, 0.28, 0.36], 0.09, phase + i * 5 + 1);
+    if (i % 2 === 0) coalLump(positions, colors, uvs, shoulder[i], peak, shoulder[next], [0.5, 0.2, 0.3], 0.1, phase + i * 5 + 2);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.name = 'rail-coal-stockpile';

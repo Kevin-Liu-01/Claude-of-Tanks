@@ -5,8 +5,8 @@
 // belfry, the Dalmatian campanile, the fire lookout and a reservoir's valve tower with its footbridge. Sizes from the
 // type: a railway water tower of the 1880s stands 16-20 m, a smock mill's cap 10-12 m with sails of 9-10 m, a campanile
 // 25-45 m, the Roer dams' valve towers 15-20 m over the water.
-import { LocalFrame, PartSink, facePoint, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
-import { archSurround, archWindow, archedSlab, bar, prismBody, revolve, type ArchHole } from './kit.ts';
+import { LocalFrame, PartSink, faceBox, facePoint, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
+import { archSurround, archWindow, archedFace, archedSlab, bar, prismBody, revolve, type ArchHole } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 
@@ -25,12 +25,6 @@ function plankDoor(sink: PartSink, face: Face, u: number, y0: number, w: number,
 
 // ---------------------------------------------------------------------------------------------------------- water tower
 
-/**
- * The railway water tower (a Russian line's standard tower of the 1870s-1900s): an octagonal brick shaft with segmental
- * windows and a corbelled cornice, the boarded tank house overhanging it on brackets, an octagonal tent roof with a
- * vent lantern. 'rozhnovsky' is the Soviet steel tower (a riveted shaft carrying a cylindrical tank under a cone);
- * 'trestle' a timber tank on four braced legs.
- */
 /**
  * The railway water tower (a Russian line's standard tower of the 1870s-1900s): an octagonal brick shaft with segmental
  * windows and a corbelled cornice, the boarded tank house overhanging it on brackets, an octagonal tent roof with a
@@ -148,27 +142,52 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   const ground = (lx: number, lz: number) => (ctx.ground ? ctx.ground(lx, lz) : 0);
   const zT = (L - R) / 2, zS = -(L + R) / 2, bed = -0.8;
   const deckY = Math.max(2.6, ground(0, zS) + 0.05), N = 20, phase = Math.PI / N, facet = Math.cos(Math.PI / N);
-  // ---- the tower: the battered foot, the shaft, the string course at the bridge's floor, the valve chamber
+  // ---- the tower: the battered foot, the shaft, the string course at the bridge's floor
   revolve(sink, 'stone', 0, zT, [[R + 0.7, bed], [R + 0.7, 0.9], [R + 0.25, 2.1], [R, 2.4], [R, deckY - 0.35]], N, {}, phase);
   revolve(sink, 'stone', 0, zT, [[R, deckY - 0.35], [R + 0.22, deckY - 0.35], [R + 0.22, deckY - 0.05], [R, deckY - 0.05]], N, { decor: true }, phase);
-  const top = deckY + C, rTop = R - 0.12;
-  revolve(sink, 'stone', 0, zT, [[R, deckY - 0.05], [rTop, top]], N, {}, phase);
-  // the windows round the chamber (none on the bridge's side), the door at the bridge's end
+  const top = deckY + C, rTop = R;
+  // the valve chamber (props census #3, lane B 2026-10-14; the judges: "a smooth revolved drum, its windows and door
+  // flat on it"): its facets laid in ashlar courses, each block its own tone; the five round-headed windows and the door
+  // cut through their facets with deep reveals (kit.ts archedFace), their dressed surrounds, the iron door set back in
+  // its reveal under a dark fanlight. Facets on the revolve's (every 18 degrees, the vertices between).
   const face = (a: number, r: number): Face => ({ origin: [Math.sin(a) * r, 0, zT + Math.cos(a) * r], u: [Math.cos(a), 0, -Math.sin(a)],
     out: [Math.sin(a), 0, Math.cos(a)], width: 1 });
-  for (let k = -2; k <= 2; k++) {
-    // on facet centres (every 18 degrees), the five round the side away from the bridge (at 180 degrees: the door's)
-    const a = k * (Math.PI * 2 / 5), rw = (R + (rTop - R) * 0.45) * facet + 0.02;
-    const win: ArchHole = { u: 0, w: 0.95, y0: deckY + C * 0.3, spring: deckY + C * 0.62, form: 'round' };
-    archWindow(sink, face(a, rw), win, 0, FRAME_WHITE, false, { coarse: true });
-    archSurround(sink, 'stone', face(a, rw), win, 0.2, 0.07);
+  const apo = R * facet, half = R * Math.sin(Math.PI / N), course = C / Math.max(4, Math.round(C / 0.9));
+  const win = (): ArchHole => ({ u: 0, w: 0.95, y0: deckY + C * 0.3, spring: deckY + C * 0.62, form: 'round' });
+  const door: ArchHole = { u: 0, w: 1.0, y0: deckY - 0.05, spring: deckY + 2.0, form: 'round' };
+  const reveal = 0.4;
+  for (let k = 0; k < N; k++) {
+    const a = k * (Math.PI * 2 / N), f = face(a, apo);
+    const isWin = k % 4 === 0 && k !== N / 2, isDoor = k === N / 2;
+    if (isWin || isDoor) {
+      const h = isDoor ? door : win();
+      archedFace(sink, 'stone', f, { u0: -half, u1: half, y0: deckY - 0.05, y1: top }, [h], reveal, { segments: 6 });
+      archSurround(sink, 'stone', f, h, 0.16, 0.06, { keystone: true, sill: !isDoor });
+      if (isDoor) {
+        plankDoor(sink, f, 0, door.y0, door.w - 0.04, door.spring - door.y0, IRON_GREEN, -reveal + 0.05);
+        for (const y of [door.y0 + 0.45, door.spring - 0.45]) faceBox(sink, 'structureMetal', f, -0.05, y, -reveal + 0.07, door.w - 0.2, 0.07, 0.02, { colour: IRON, decor: true, fine: true });
+      } else archWindow(sink, f, h, reveal, FRAME_WHITE, false, { coarse: true });
+      continue;
+    }
+    // a plain facet: its courses, each block a shade of its own (the dressed stone's beds and tones)
+    for (let y = deckY - 0.05, i = 0; y < top - 1e-3; y += course, i++) {
+      const y1 = Math.min(top, y + course), tone = 0.9 + ((k * 7 + i * 3) % 5) * 0.03;
+      sink.quad('stone', facePoint(f, -half, y, 0), facePoint(f, half, y, 0), facePoint(f, half, y1, 0), facePoint(f, -half, y1, 0), { shade: tone });
+    }
   }
-  plankDoor(sink, face(Math.PI, R * facet + 0.02), 0, deckY, 1.3, 2.4, IRON_GREEN, 0.03);
-  // the corbelled cornice and the slated bell roof with its finial
+  // the corbelled cornice and the slated bell roof in its courses, its finial
   revolve(sink, 'stone', 0, zT, [[rTop, top], [rTop + 0.38, top + 0.3], [rTop + 0.38, top + 0.62], [rTop - 0.05, top + 0.66]], N, {}, phase);
   const roofY = top + 0.62, rr = rTop + 0.55;
-  revolve(sink, 'roof', 0, zT, [[rr, roofY], [rr * 0.9, roofY + 0.55], [rr * 0.62, roofY + R * 0.55], [rr * 0.3, roofY + R * 1.05], [0.22, roofY + R * 1.38],
-    [0, roofY + R * 1.42]], N, {}, phase);
+  const bellP: Array<[number, number]> = [[rr, roofY], [rr * 0.9, roofY + 0.55], [rr * 0.62, roofY + R * 0.55], [rr * 0.3, roofY + R * 1.05], [0.22, roofY + R * 1.38], [0, roofY + R * 1.42]];
+  // (each run of the bell split into slate courses, alternate courses a shade darker, a lead roll at the kick)
+  for (let k = 0; k + 1 < bellP.length; k++) {
+    const [r0, y0] = bellP[k], [r1, y1] = bellP[k + 1], len = Math.hypot(r1 - r0, y1 - y0), m = k + 2 < bellP.length ? Math.max(1, Math.round(len / 1.0)) : 1;
+    for (let j = 0; j < m; j++) {
+      const t0 = j / m, t1 = (j + 1) / m;
+      revolve(sink, 'roof', 0, zT, [[r0 + (r1 - r0) * t0, y0 + (y1 - y0) * t0], [r0 + (r1 - r0) * t1, y0 + (y1 - y0) * t1]], N, { shade: (j + k) % 2 ? 0.9 : 1 }, phase);
+    }
+  }
+  revolve(sink, 'structureMetal', 0, zT, [[rr * 0.9 + 0.04, roofY + 0.5], [rr * 0.9 + 0.04, roofY + 0.62]], N, { colour: shade(STEEL_GREY, 0.8), decor: true }, phase);
   const fy = roofY + R * 1.38;
   // (the finial comes off at the first damage: props lane A, E12)
   piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
@@ -179,7 +198,15 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   const spring = Math.max(bed + 1.2, deckY - 1.15 - A / 2);
   const holes: ArchHole[] = Array.from({ length: n }, (_, i) => ({ u: -Lb / 2 + pier + A / 2 + i * (A + pier), w: A, y0: bed, spring,
     form: 'round' as const }));
-  sink.placed(-Math.PI / 2, 0, 0, zMid, () => archedSlab(sink, 'stone', -Lb / 2, Lb / 2, bed, deckY, W, holes, { ends: true, top: true }));
+  sink.placed(-Math.PI / 2, 0, 0, zMid, () => {
+    archedSlab(sink, 'stone', -Lb / 2, Lb / 2, bed, deckY, W, holes, { ends: true, top: true });
+    // each arch's voussoir ring on both faces, its keystone (props census #3: the arches were cut through a plain slab)
+    const fr: Face = { origin: [0, 0, W / 2], u: [1, 0, 0], out: [0, 0, 1], width: Lb }, bk: Face = { origin: [0, 0, -W / 2], u: [-1, 0, 0], out: [0, 0, -1], width: Lb };
+    for (const h of holes) {
+      archSurround(sink, 'stone', fr, h, 0.42, 0.05, { keystone: true });
+      archSurround(sink, 'stone', bk, { ...h, u: -h.u }, 0.42, 0.05, { keystone: true });
+    }
+  });
   for (const sx of [-1, 1]) {
     const x0 = sx > 0 ? W / 2 - 0.36 : -W / 2;
     sink.span('stone', x0, deckY, zS, x0 + 0.36, deckY + 1.0, zFace);
@@ -195,6 +222,18 @@ export const valveTower: LandmarkBuilder = (ctx) => {
   sink.span('stone', -W / 2 - 0.55, deckY - 0.02, zS - abut - 0.08, W / 2 + 0.55, deckY + 0.12, zS + 0.12, { decor: true });
   for (const sx of [-1, 1]) {
     sink.span('stone', sx > 0 ? W / 2 - 0.45 : -W / 2 - 0.05, deckY, zS - 0.75, sx > 0 ? W / 2 + 0.05 : -W / 2 + 0.45, deckY + 1.35, zS + 0.1);
+  }
+  // the valve gear on the bridge's end before the door: two cast-iron headstocks, their hand wheels and spindles
+  for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 - 0.75), z = zFace - 1.3;
+    revolve(sink, 'structureMetal', x, z, [[0.22, deckY], [0.1, deckY + 0.3], [0.09, deckY + 0.85], [0.14, deckY + 0.95], [0.001, deckY + 1.0]], 6, { colour: IRON_GREEN });
+    const wy = deckY + 1.05, wr = 0.32;
+    for (let k = 0; k < 6; k++) {
+      const a0 = k * Math.PI / 3, a1 = (k + 1) * Math.PI / 3;
+      bar(sink, 'structureMetal', [x + Math.cos(a0) * wr, wy, z + Math.sin(a0) * wr], [x + Math.cos(a1) * wr, wy, z + Math.sin(a1) * wr], 0.035, { colour: IRON, decor: true });
+    }
+    for (const a of [0, Math.PI / 2]) bar(sink, 'structureMetal', [x - Math.cos(a) * wr, wy, z - Math.sin(a) * wr], [x + Math.cos(a) * wr, wy, z + Math.sin(a) * wr], 0.025, { colour: IRON, decor: true, fine: true });
+    sink.span('structureMetal', x - 0.025, wy, z - 0.025, x + 0.025, wy + 0.35, z + 0.025, { colour: STEEL_GREY, decor: true });
   }
   return { parts: finishLandmark(sink) };
 };

@@ -78,9 +78,10 @@ function coalStrip(field) {
 function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) {
   assert.equal(geometry.index, null);
   const position = geometry.attributes.position, normal = geometry.attributes.normal;
-  assert.equal(position.count,216,'72 flat-shaded triangles per stockpile versus100 on the old ellipsoid');
-  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),9504,
-    'including color, merged vertex bytes do not exceed the old 9600-byte nonindexed sphere');
+  // (props census #3, lane B 2026-10-14: the heap's 72 facets and the 20 lumps and loose coal on them, 5 faces each)
+  assert.equal(position.count,516,'172 flat-shaded triangles per stockpile: the heap\'s 72 and its lumps\' 100');
+  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),22704,
+    'including color, merged vertex bytes: 44 a vertex (position, normal, color, uv), 516 vertices');
   assert.deepEqual(collider,obstacle);assert.notEqual(collider,obstacle);
   assert.notEqual(collider.shape2,obstacle.shape2);
   assert.equal(obstacle.kind,'coal-heap');assert.equal(obstacle.shape2.kind,'convex');
