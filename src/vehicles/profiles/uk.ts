@@ -3355,7 +3355,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // owner 2026-09-22 ("fv510 warrior, warrior milan … wheels too big that go top from bottom but
     // overlap each other when road wheels should be used"): r 0.42 on the 0.76 pitch overlapped by
     // 8 cm and the 0.37/0.35 end drums sat 21 cm inside the outer road wheels. The Warrior rides
-    // six ~620 mm wheels (the fv510_milan_x source measures r 0.2991; 2R/pitch 0.82, a 14 cm gap)
+    // six ~620 mm wheels (the warrior_tes_h source measures r 0.2991; 2R/pitch 0.82, a 14 cm gap)
     // under a return run carried by three return rollers, as the measured X course records — the
     // wheels no longer span the belt from the loaded run to the upper run.
     buildRunningGear(P, {

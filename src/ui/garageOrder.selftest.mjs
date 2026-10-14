@@ -131,7 +131,8 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'UK', filler: 'challenger_3',
-    expected: ['challenger_3x', 'challenger1_x', 'chieftain_mk10_x', 'chieftain5_x'],
+    // 2026-10-13 (VEH-11): the tier-X Warrior TES(H) follows the Challenger 3.
+    expected: ['challenger_3x', 'warrior_tes_h', 'challenger1_x', 'chieftain_mk10_x', 'chieftain5_x'],
   },
   {
     nation: 'France', filler: 'leclerc',

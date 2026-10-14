@@ -11,7 +11,7 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 // exactly as the battle runtime does; in hull space no road wheel's tire may pass through the band's upper face
 // (cut) and no wheel in steady contact may float far above it (daylight — judged when the wheel's travel has settled,
 // since the gear cadence lets the band trail a fast-moving wheel for a frame), while the suspension must actually travel.
-const HIGH_LOW_IDS = ['k2', 'k2b', 'kurganets25_x', 'ztz100_x', 'fv510_milan_x', 'aft10_x',
+const HIGH_LOW_IDS = ['k2', 'k2b', 'kurganets25_x', 'ztz100_x', 'warrior_tes_h', 'aft10_x',
   'bmp3m_dragun125_x', 'griffin50_x', 'kf41_lynx_x', 'k21_x', 'cv90_mkiv_x',
   'ajax_x', 'sabra_mk2_x', 'cv90105_tml_x', 'type96b_x', 'merkava4_barak'];
 const IDS = ['t90m', 'm1a2', 'leo2a6', 'kv2', 'mbt70', 'cv90_mkiv', 'kf51_x', 't72b3m_x', 'type100', ...HIGH_LOW_IDS];

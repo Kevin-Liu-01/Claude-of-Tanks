@@ -17,9 +17,25 @@ assert.equal(sceneLinkPath(indexPath), indexPath, 'the index is a path on this s
 const index = JSON.parse(readFileSync(join(ROOT, 'public', indexPath), 'utf8'));
 const picks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/picks.json'), 'utf8'));
 assert.equal(index.collection, picks.collection, 'the index belongs to the collection the site shows');
-assert.deepEqual(index.takes.map((take) => take.id), Object.keys(picks.takes).sort(), 'every take of the site fifty, in order');
+// Every tank's own take (owner 2026-10-12, src/ui/fleetTakes.ts) may join the index as a 'fleet' entry naming its vehicle;
+// the Director reaches those through its finder and lists every other take by default.
+const siteTakes = index.takes.filter((take) => take.group !== 'fleet');
+const fleetTakes = index.takes.filter((take) => take.group === 'fleet');
+assert.equal(new Set(index.takes.map((take) => take.id)).size, index.takes.length, 'one entry per take');
+assert.deepEqual(siteTakes.map((take) => take.id), Object.keys(picks.takes).sort(), 'every take of the site fifty, in order');
 const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
-for (const take of index.takes) {
+const fleetVehicles = new Set();
+for (const take of fleetTakes) {
+  assert.ok(typeof take.vehicle === 'string' && take.vehicle && !fleetVehicles.has(take.vehicle), `${take.id}: one fleet take per vehicle`);
+  fleetVehicles.add(take.vehicle);
+  assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
+  const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
+  assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);
+  assert.ok(scene.actors?.some((actor) => actor.id === take.vehicle), `${take.id}: the take stages its vehicle`);
+  assert.ok(!take.thumb || existsSync(join(ROOT, 'public', take.thumb)), `${take.id}: its card picture ships`);
+  assert.ok(take.title.en && take.title.zh && take.short.en && take.short.zh, `${take.id}: titled in both languages`);
+}
+for (const take of siteTakes) {
   assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
   const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
   assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);
@@ -34,4 +50,6 @@ for (const take of index.takes) {
 }
 assert.match(panel, /sceneLinkPath\(take\.scene\)/, 'a preset loads only this site\'s own files, as a scene link does');
 assert.match(panel, /\.then\(\(json\) => S\.load\(json\)\)/, 'a preset stages through the Studio\'s own load, as Load JSON does');
-console.log(`studioSiteTakes.selftest: ${index.takes.length} takes, each its filmed scene, loadable from the Director workspace`);
+assert.match(panel, /if \(take\.group !== 'fleet'\) takesLibrary\.append\(takeCard\(take\)\)/, 'the default list leaves the fleet\'s takes out');
+console.log(`studioSiteTakes.selftest: ${siteTakes.length} takes and ${fleetTakes.length} tanks' own takes, each its filmed scene, `
+  + 'loadable from the Director workspace');

@@ -173,7 +173,7 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)).length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
-  .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'fv510_milan_x', 'k21_x', 'kurganets25_x', 'kurganets25_x'],
+  .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'k21_x', 'kurganets25_x', 'kurganets25_x', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
 assert.equal(guidedRounds.length, 38, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,

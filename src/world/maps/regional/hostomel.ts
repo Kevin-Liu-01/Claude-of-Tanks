@@ -361,9 +361,14 @@ const controlTower: RegionalBuilder = (ctx) => {
   sink.span('stone', -C / 2 - 0.3, y1, -C / 2 - 0.3, C / 2 + 0.3, y1 + 0.35, C / 2 + 0.3);
   // the catwalk under the cab with its rail, the mast and its beacon
   if (!mobile) {
-    const r = C / 2 + 0.2;
+    // (the buildings stream, 2026-10-12, the integrity check: the rail hung in the air 5 cm past the slab's edge, on
+    // nothing) the rail over the slab's edge, on stanchions from the slab at its corners and mid-sides
+    const r = C / 2 + 0.08;
     for (const [ax, az, bx, bz] of [[-r, -r, r, -r], [r, -r, r, r], [r, r, -r, r], [-r, r, -r, -r]]) {
       sink.member('structureMetal', [ax, Hs + 1.05, az], [bx, Hs + 1.05, bz], 0.05, 0.05, [0, 1, 0], { colour: MULLION, decor: true, exposed: true }, 0);
+    }
+    for (const [px, pz] of [[-r, -r], [0, -r], [r, -r], [r, 0], [r, r], [0, r], [-r, r], [-r, 0]]) {
+      sink.member('structureMetal', [px, y0, pz], [px, Hs + 1.08, pz], 0.045, 0.045, [Math.sign(px) || 0, 0, px ? 0 : Math.sign(pz)], { colour: MULLION, decor: true, exposed: true }, 0);
     }
   }
   const mx = (rng() - 0.5) * C * 0.4, mz = (rng() - 0.5) * C * 0.4;

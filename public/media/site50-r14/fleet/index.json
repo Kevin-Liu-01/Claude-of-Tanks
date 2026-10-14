@@ -1,0 +1,832 @@
+{
+ "schemaVersion": 1,
+ "tankIdSchema": 2,
+ "collection": "site50-r14",
+ "vehicles": {
+  "m1a3": {
+   "take": "s44-oasis-sunset",
+   "map": "oasis",
+   "title": {
+    "en": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
+    "zh": "日落时分的日痕绿洲：烟雾笼罩棕榈树与宣礼塔"
+   },
+   "short": {
+    "en": "Sunscar Oasis at sunset",
+    "zh": "日落时分的日痕绿洲"
+   },
+   "loop": "/media/site50-r14/fleet/m1a3.webm",
+   "poster": "/media/site50-r14/fleet/m1a3.jpg",
+   "scene": "/media/site50-r14/scenes/s44-oasis-sunset.scene.json"
+  },
+  "strv103": {
+   "take": "s59-strv103b-farm-charge",
+   "map": "verdant",
+   "title": {
+    "en": "A Stridsvagn 103B charges past the farmhouse through artillery",
+    "zh": "一辆 Stridsvagn 103B 冒着炮击冲过农舍"
+   },
+   "short": {
+    "en": "Strv 103B charge",
+    "zh": "Strv 103B 冲锋"
+   },
+   "loop": "/media/site50-r14/fleet/strv103.webm",
+   "poster": "/media/site50-r14/fleet/strv103.jpg",
+   "scene": "/media/site50-r14/scenes/s59-strv103b-farm-charge.scene.json"
+  },
+  "challenger2e": {
+   "take": "s28-fjord-village",
+   "map": "fjord",
+   "title": {
+    "en": "A Challenger 2E and a Challenger 3 hold the fjord village",
+    "zh": "一辆 Challenger 2E 与一辆 Challenger 3 坚守峡湾村庄"
+   },
+   "short": {
+    "en": "Challenger 2E and 3, fjord village",
+    "zh": "Challenger 2E 与 3，峡湾村庄"
+   },
+   "loop": "/media/site50-r14/fleet/challenger2e.webm",
+   "poster": "/media/site50-r14/fleet/challenger2e.jpg",
+   "scene": "/media/site50-r14/scenes/s28-fjord-village.scene.json"
+  },
+  "ua_challenger2": {
+   "take": "s20-road-return-fire",
+   "map": "verdant",
+   "title": {
+    "en": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
+    "zh": "日落时分，一辆 Challenger 2 率领乌克兰纵队隔着田野还击"
+   },
+   "short": {
+    "en": "Challenger 2 returns fire",
+    "zh": "Challenger 2 还击"
+   },
+   "loop": "/media/site50-r14/fleet/ua_challenger2.webm",
+   "poster": "/media/site50-r14/fleet/ua_challenger2.jpg",
+   "scene": "/media/site50-r14/scenes/s20-road-return-fire.scene.json"
+  },
+  "challenger_3": {
+   "take": "s17-crossroads-fire",
+   "map": "urban",
+   "title": {
+    "en": "Fire at the Steinburg crossroads at noon",
+    "zh": "正午时分，斯泰因堡十字路口燃起大火"
+   },
+   "short": {
+    "en": "Crossroads fire at noon",
+    "zh": "正午的十字路口大火"
+   },
+   "loop": "/media/site50-r14/fleet/challenger_3.webm",
+   "poster": "/media/site50-r14/fleet/challenger_3.jpg",
+   "scene": "/media/site50-r14/scenes/s17-crossroads-fire.scene.json"
+  },
+  "ariete_c1_x": {
+   "take": "s15-orchard-column",
+   "map": "orchard",
+   "title": {
+    "en": "A C1 Ariete column drives through the orchard village under fire",
+    "zh": "一支 C1 Ariete 纵队在炮火中驶过果园村庄"
+   },
+   "short": {
+    "en": "C1 Ariete column, orchard village",
+    "zh": "C1 Ariete 纵队，果园村庄"
+   },
+   "loop": "/media/site50-r14/fleet/ariete_c1_x.webm",
+   "poster": "/media/site50-r14/fleet/ariete_c1_x.jpg",
+   "scene": "/media/site50-r14/scenes/s15-orchard-column.scene.json"
+  },
+  "leo2_revolution": {
+   "take": "s52-revolution-street-knockout",
+   "map": "urban",
+   "title": {
+    "en": "A Leopard 2 Revolution knocks out a T-90A at the end of a Steinburg street at night",
+    "zh": "夜间，一辆 Leopard 2 Revolution 在斯泰因堡街道尽头击毁一辆 T-90A"
+   },
+   "short": {
+    "en": "Leopard 2 Revolution, street knockout",
+    "zh": "Leopard 2 Revolution，街头击毁"
+   },
+   "loop": "/media/site50-r14/fleet/leo2_revolution.webm",
+   "poster": "/media/site50-r14/fleet/leo2_revolution.jpg",
+   "scene": "/media/site50-r14/scenes/s52-revolution-street-knockout.scene.json"
+  },
+  "type96b_x": {
+   "take": "s31-ford-fire",
+   "map": "monsoon",
+   "title": {
+    "en": "A Type 96B fires across the river ford",
+    "zh": "一辆 Type 96B 隔着河流浅滩开火"
+   },
+   "short": {
+    "en": "Type 96B at the ford",
+    "zh": "浅滩上的 Type 96B"
+   },
+   "loop": "/media/site50-r14/fleet/type96b_x.webm",
+   "poster": "/media/site50-r14/fleet/type96b_x.jpg",
+   "scene": "/media/site50-r14/scenes/s31-ford-fire.scene.json"
+  },
+  "type96_72m_lei": {
+   "take": "s48-delta-crane",
+   "map": "delta",
+   "title": {
+    "en": "Jade River Delta: the river village under fire, mountains beyond",
+    "zh": "翡翠江三角洲：炮火下的河畔村庄，远处群山连绵"
+   },
+   "short": {
+    "en": "Jade River Delta under fire",
+    "zh": "炮火下的翡翠江三角洲"
+   },
+   "loop": "/media/site50-r14/fleet/type96_72m_lei.webm",
+   "poster": "/media/site50-r14/fleet/type96_72m_lei.jpg",
+   "scene": "/media/site50-r14/scenes/s48-delta-crane.scene.json"
+  },
+  "aft10_x": {
+   "take": "s46-river-drone",
+   "map": "monsoon",
+   "title": {
+    "en": "Monsoon Ridge: shells land along the jungle river",
+    "zh": "季风雨脊：炮弹沿丛林河流落下"
+   },
+   "short": {
+    "en": "Shells along the jungle river",
+    "zh": "丛林河畔的炮火"
+   },
+   "loop": "/media/site50-r14/fleet/aft10_x.webm",
+   "poster": "/media/site50-r14/fleet/aft10_x.jpg",
+   "scene": "/media/site50-r14/scenes/s46-river-drone.scene.json"
+  },
+  "vt4a1": {
+   "take": "s37-river-village",
+   "map": "delta",
+   "title": {
+    "en": "A VT-4A1 and a ZTZ-100 fight through the river village of the Jade River Delta",
+    "zh": "一辆 VT-4A1 与一辆 ZTZ-100 在翡翠江三角洲的河畔村庄中激战"
+   },
+   "short": {
+    "en": "VT-4A1 and ZTZ-100, river village",
+    "zh": "VT-4A1 与 ZTZ-100，河畔村庄"
+   },
+   "loop": "/media/site50-r14/fleet/vt4a1.webm",
+   "poster": "/media/site50-r14/fleet/vt4a1.jpg",
+   "scene": "/media/site50-r14/scenes/s37-river-village.scene.json"
+  },
+  "ztz100_x": {
+   "take": "s10-ford-shellfire",
+   "map": "monsoon",
+   "title": {
+    "en": "A ZTZ-100 fords the river as shells land around it",
+    "zh": "一辆 ZTZ-100 涉水渡河，炮弹在四周落下"
+   },
+   "short": {
+    "en": "ZTZ-100 fords the river",
+    "zh": "ZTZ-100 涉水渡河"
+   },
+   "loop": "/media/site50-r14/fleet/ztz100_x.webm",
+   "poster": "/media/site50-r14/fleet/ztz100_x.jpg",
+   "scene": "/media/site50-r14/scenes/s10-ford-shellfire.scene.json"
+  },
+  "mbt70": {
+   "take": "s58-mbt70-orchard",
+   "map": "orchard",
+   "title": {
+    "en": "An MBT-70 leads the column through Orchard Valley as smoke drifts over the orchards",
+    "zh": "一辆 MBT-70 率领纵队穿过果园谷，硝烟飘过果园"
+   },
+   "short": {
+    "en": "MBT-70 in Orchard Valley",
+    "zh": "果园谷中的 MBT-70"
+   },
+   "loop": "/media/site50-r14/fleet/mbt70.webm",
+   "poster": "/media/site50-r14/fleet/mbt70.jpg",
+   "scene": "/media/site50-r14/scenes/s58-mbt70-orchard.scene.json"
+  },
+  "warrior_tes_h": {
+   "take": "s24-ice-duel",
+   "map": "alpine",
+   "title": {
+    "en": "A duel on the frozen lake: a T-80U takes the hit",
+    "zh": "冰湖上的对决：一辆 T-80U 中弹"
+   },
+   "short": {
+    "en": "T-80U hit on the ice",
+    "zh": "冰面上中弹的 T-80U"
+   },
+   "loop": "/media/site50-r14/fleet/warrior_tes_h.webm",
+   "poster": "/media/site50-r14/fleet/warrior_tes_h.jpg",
+   "scene": "/media/site50-r14/scenes/s24-ice-duel.scene.json"
+  },
+  "ajax_x": {
+   "take": "s45-harbor-wide",
+   "map": "fjord",
+   "title": {
+    "en": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
+    "zh": "黄金时刻的诺德港：群山之下港口公路上的战斗"
+   },
+   "short": {
+    "en": "Nordhavn at golden hour",
+    "zh": "黄金时刻的诺德港"
+   },
+   "loop": "/media/site50-r14/fleet/ajax_x.webm",
+   "poster": "/media/site50-r14/fleet/ajax_x.jpg",
+   "scene": "/media/site50-r14/scenes/s45-harbor-wide.scene.json"
+  },
+  "merkava3d_x": {
+   "take": "s26-minaret-fire",
+   "map": "oasis",
+   "title": {
+    "en": "A Merkava Mk 3D fires at Sunscar Oasis",
+    "zh": "一辆 Merkava Mk 3D 在日痕绿洲开火"
+   },
+   "short": {
+    "en": "Merkava Mk 3D fires",
+    "zh": "Merkava Mk 3D 开火"
+   },
+   "loop": "/media/site50-r14/fleet/merkava3d_x.webm",
+   "poster": "/media/site50-r14/fleet/merkava3d_x.jpg",
+   "scene": "/media/site50-r14/scenes/s26-minaret-fire.scene.json"
+  },
+  "merkava4_x": {
+   "take": "s27-caravanserai-kill",
+   "map": "oasis",
+   "title": {
+    "en": "A T-62MV-1 is knocked out by the caravanserai",
+    "zh": "一辆 T-62MV-1 在商队驿站旁被击毁"
+   },
+   "short": {
+    "en": "T-62MV-1 knocked out",
+    "zh": "被击毁的 T-62MV-1"
+   },
+   "loop": "/media/site50-r14/fleet/merkava4_x.webm",
+   "poster": "/media/site50-r14/fleet/merkava4_x.jpg",
+   "scene": "/media/site50-r14/scenes/s27-caravanserai-kill.scene.json"
+  },
+  "leo2a6_ua": {
+   "take": "s41-church-tower",
+   "map": "urban",
+   "title": {
+    "en": "A Leopard 2A6 UA halts in Steinburg's night street fight",
+    "zh": "一辆 Leopard 2A6 UA 在斯泰因堡的夜间巷战中停下"
+   },
+   "short": {
+    "en": "Leopard 2A6 UA, night street",
+    "zh": "Leopard 2A6 UA，夜间街道"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a6_ua.webm",
+   "poster": "/media/site50-r14/fleet/leo2a6_ua.jpg",
+   "scene": "/media/site50-r14/scenes/s41-church-tower.scene.json"
+  },
+  "pl01_105": {
+   "take": "s19-roof-tiles",
+   "map": "urban",
+   "title": {
+    "en": "Roof tiles rain down as a PL-01 fires up the street",
+    "zh": "一辆 PL-01 沿街开火，屋瓦纷纷坠落"
+   },
+   "short": {
+    "en": "PL-01, falling roof tiles",
+    "zh": "PL-01，屋瓦坠落"
+   },
+   "loop": "/media/site50-r14/fleet/pl01_105.webm",
+   "poster": "/media/site50-r14/fleet/pl01_105.jpg",
+   "scene": "/media/site50-r14/scenes/s19-roof-tiles.scene.json"
+  },
+  "tos1a_tagil": {
+   "take": "s34-furnace-salvo",
+   "map": "foundry",
+   "title": {
+    "en": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
+    "zh": "夜间，TOS-1A 发射车在钢铁厂场区打出连续齐射"
+   },
+   "short": {
+    "en": "TOS-1A salvo at night",
+    "zh": "夜间 TOS-1A 齐射"
+   },
+   "loop": "/media/site50-r14/fleet/tos1a_tagil.webm",
+   "poster": "/media/site50-r14/fleet/tos1a_tagil.jpg",
+   "scene": "/media/site50-r14/scenes/s34-furnace-salvo.scene.json"
+  },
+  "m551a1_tts": {
+   "take": "s43-lake-crane",
+   "map": "alpine",
+   "title": {
+    "en": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
+    "zh": "日落时分的冰川关：烟雾在冰湖与群峰之上升起"
+   },
+   "short": {
+    "en": "Glacier Pass at sunset",
+    "zh": "日落时分的冰川关"
+   },
+   "loop": "/media/site50-r14/fleet/m551a1_tts.webm",
+   "poster": "/media/site50-r14/fleet/m551a1_tts.jpg",
+   "scene": "/media/site50-r14/scenes/s43-lake-crane.scene.json"
+  },
+  "leo2a7v_x": {
+   "take": "s51-leo2a7v-sunset-fire",
+   "map": "verdant",
+   "title": {
+    "en": "A Leopard 2A7V leads the column returning fire across the fields at sunset",
+    "zh": "日落时分，一辆 Leopard 2A7V 率领纵队隔着田野还击"
+   },
+   "short": {
+    "en": "Leopard 2A7V returns fire at sunset",
+    "zh": "日落时分 Leopard 2A7V 还击"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a7v_x.webm",
+   "poster": "/media/site50-r14/fleet/leo2a7v_x.jpg",
+   "scene": "/media/site50-r14/scenes/s51-leo2a7v-sunset-fire.scene.json"
+  },
+  "leo2a6m_x": {
+   "take": "s53-leo2a6m-assault",
+   "map": "verdant",
+   "title": {
+    "en": "A Leopard 2A6M wedge assaults through the burning fields",
+    "zh": "Leopard 2A6M 楔形编队穿过燃烧的田野发起突击"
+   },
+   "short": {
+    "en": "Leopard 2A6M wedge assault",
+    "zh": "Leopard 2A6M 楔形突击"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a6m_x.webm",
+   "poster": "/media/site50-r14/fleet/leo2a6m_x.jpg",
+   "scene": "/media/site50-r14/scenes/s53-leo2a6m-assault.scene.json"
+  },
+  "leo2a4m_x": {
+   "take": "s54-leo2a5m-ice-duel",
+   "map": "alpine",
+   "title": {
+    "en": "A duel on the frozen lake: a Leopard 2A5M knocks out a T-80U",
+    "zh": "冰湖上的对决：一辆 Leopard 2A5M 击毁一辆 T-80U"
+   },
+   "short": {
+    "en": "Leopard 2A5M, ice duel",
+    "zh": "Leopard 2A5M，冰湖对决"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a4m_x.webm",
+   "poster": "/media/site50-r14/fleet/leo2a4m_x.jpg",
+   "scene": "/media/site50-r14/scenes/s54-leo2a5m-ice-duel.scene.json"
+  },
+  "leo2a5_x": {
+   "take": "s55-leo2a5-water-tower",
+   "map": "railyard",
+   "title": {
+    "en": "A Leopard 2A5 advances past the burning water tower at night",
+    "zh": "夜间，一辆 Leopard 2A5 驶过燃烧的水塔向前推进"
+   },
+   "short": {
+    "en": "Leopard 2A5 at the water tower",
+    "zh": "水塔旁的 Leopard 2A5"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a5_x.webm",
+   "poster": "/media/site50-r14/fleet/leo2a5_x.jpg",
+   "scene": "/media/site50-r14/scenes/s55-leo2a5-water-tower.scene.json"
+  },
+  "k2_x": {
+   "take": "s13-farm-race",
+   "map": "frontier",
+   "title": {
+    "en": "A K2 Black Panther races past the red-roofed farm at sunset",
+    "zh": "日落时分，一辆 K2 Black Panther 疾驰驶过红顶农场"
+   },
+   "short": {
+    "en": "K2 Black Panther at sunset",
+    "zh": "日落中的 K2 Black Panther"
+   },
+   "loop": "/media/site50-r14/fleet/k2_x.webm",
+   "poster": "/media/site50-r14/fleet/k2_x.jpg",
+   "scene": "/media/site50-r14/scenes/s13-farm-race.scene.json"
+  },
+  "kf51_x": {
+   "take": "s06-farm-charge",
+   "map": "verdant",
+   "title": {
+    "en": "A KF51 Panther charges past the farmhouse through artillery",
+    "zh": "一辆 KF51 Panther 冒着炮击冲过农舍"
+   },
+   "short": {
+    "en": "KF51 Panther charge",
+    "zh": "KF51 Panther 冲锋"
+   },
+   "loop": "/media/site50-r14/fleet/kf51_x.webm",
+   "poster": "/media/site50-r14/fleet/kf51_x.jpg",
+   "scene": "/media/site50-r14/scenes/s06-farm-charge.scene.json"
+  },
+  "t90a_vladimir_x": {
+   "take": "s38-church-knockout",
+   "map": "winter",
+   "title": {
+    "en": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+    "zh": "夜间，一辆 Leopard 2A6 在洋葱顶教堂旁被击毁"
+   },
+   "short": {
+    "en": "Leopard 2A6 knocked out by the church",
+    "zh": "教堂旁被击毁的 Leopard 2A6"
+   },
+   "loop": "/media/site50-r14/fleet/t90a_vladimir_x.webm",
+   "poster": "/media/site50-r14/fleet/t90a_vladimir_x.jpg",
+   "scene": "/media/site50-r14/scenes/s38-church-knockout.scene.json"
+  },
+  "t90m_x": {
+   "take": "s04-column-under-fire",
+   "map": "verdant",
+   "title": {
+    "en": "A T-90M column drives into the fight on the country road",
+    "zh": "一支 T-90M 纵队沿乡间公路驶入战斗"
+   },
+   "short": {
+    "en": "T-90M column under fire",
+    "zh": "炮火下的 T-90M 纵队"
+   },
+   "loop": "/media/site50-r14/fleet/t90m_x.webm",
+   "poster": "/media/site50-r14/fleet/t90m_x.jpg",
+   "scene": "/media/site50-r14/scenes/s04-column-under-fire.scene.json"
+  },
+  "t90sm_x": {
+   "take": "s21-fields-assault",
+   "map": "verdant",
+   "title": {
+    "en": "A T-90SM wedge assaults through the burning fields",
+    "zh": "T-90SM 楔形编队穿过燃烧的田野发起突击"
+   },
+   "short": {
+    "en": "T-90SM wedge assault",
+    "zh": "T-90SM 楔形突击"
+   },
+   "loop": "/media/site50-r14/fleet/t90sm_x.webm",
+   "poster": "/media/site50-r14/fleet/t90sm_x.jpg",
+   "scene": "/media/site50-r14/scenes/s21-fields-assault.scene.json"
+  },
+  "t14_x": {
+   "take": "s05-barn-advance",
+   "map": "verdant",
+   "title": {
+    "en": "A T-14 Armata advances past the barns of Verdant Fields",
+    "zh": "一辆 T-14 Armata 驶过翠野原的谷仓向前推进"
+   },
+   "short": {
+    "en": "T-14 Armata past the barns",
+    "zh": "驶过谷仓的 T-14 Armata"
+   },
+   "loop": "/media/site50-r14/fleet/t14_x.webm",
+   "poster": "/media/site50-r14/fleet/t14_x.jpg",
+   "scene": "/media/site50-r14/scenes/s05-barn-advance.scene.json"
+  },
+  "griffin50_x": {
+   "take": "s16-street-duel",
+   "map": "urban",
+   "title": {
+    "en": "Street duel at night: a Griffin trades fire with a T-80U down a Steinburg street",
+    "zh": "夜间街道决斗：一辆 Griffin 在斯泰因堡街道上与一辆 T-80U 交火"
+   },
+   "short": {
+    "en": "Griffin vs T-80U at night",
+    "zh": "夜战：Griffin 对 T-80U"
+   },
+   "loop": "/media/site50-r14/fleet/griffin50_x.webm",
+   "poster": "/media/site50-r14/fleet/griffin50_x.jpg",
+   "scene": "/media/site50-r14/scenes/s16-street-duel.scene.json"
+  },
+  "kf41_lynx_x": {
+   "take": "s56-lynx-lakeside",
+   "map": "reservoir",
+   "title": {
+    "en": "A KF41 Lynx fires across the village at Highland Reservoir",
+    "zh": "一辆 KF41 Lynx 在高地水库隔着村庄开火"
+   },
+   "short": {
+    "en": "KF41 Lynx at the reservoir",
+    "zh": "高地水库的 KF41 Lynx"
+   },
+   "loop": "/media/site50-r14/fleet/kf41_lynx_x.webm",
+   "poster": "/media/site50-r14/fleet/kf41_lynx_x.jpg",
+   "scene": "/media/site50-r14/scenes/s56-lynx-lakeside.scene.json"
+  },
+  "leo2a6_x": {
+   "take": "s01-main-street-push",
+   "map": "urban",
+   "title": {
+    "en": "A Leopard 2A6 pushes up the main street of burning Steinburg",
+    "zh": "一辆 Leopard 2A6 沿燃烧的斯泰因堡主街推进"
+   },
+   "short": {
+    "en": "Leopard 2A6, main street",
+    "zh": "Leopard 2A6，主街"
+   },
+   "loop": "/media/site50-r14/fleet/leo2a6_x.webm",
+   "poster": "/media/site50-r14/fleet/leo2a6_x.jpg",
+   "scene": "/media/site50-r14/scenes/s01-main-street-push.scene.json"
+  },
+  "k1a1_x": {
+   "take": "s30-temple-village",
+   "map": "monsoon",
+   "title": {
+    "en": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
+    "zh": "一辆 K1A1 与一辆 K21 在季风雨脊的寺庙村庄中激战"
+   },
+   "short": {
+    "en": "K1A1 and K21, temple village",
+    "zh": "K1A1 与 K21，寺庙村庄"
+   },
+   "loop": "/media/site50-r14/fleet/k1a1_x.webm",
+   "poster": "/media/site50-r14/fleet/k1a1_x.jpg",
+   "scene": "/media/site50-r14/scenes/s30-temple-village.scene.json"
+  },
+  "amx30_x": {
+   "take": "s49-orchard-sunset",
+   "map": "orchard",
+   "title": {
+    "en": "Orchard Valley: smoke drifts over the orchards",
+    "zh": "果园谷：烟雾飘过果园"
+   },
+   "short": {
+    "en": "Smoke over Orchard Valley",
+    "zh": "果园谷上空的硝烟"
+   },
+   "loop": "/media/site50-r14/fleet/amx30_x.webm",
+   "poster": "/media/site50-r14/fleet/amx30_x.jpg",
+   "scene": "/media/site50-r14/scenes/s49-orchard-sunset.scene.json"
+  },
+  "t80u_x": {
+   "take": "s14-snow-push",
+   "map": "winter",
+   "title": {
+    "en": "A T-80U pushes through snowy Frosthollow",
+    "zh": "一辆 T-80U 在白雪覆盖的霜谷中推进"
+   },
+   "short": {
+    "en": "T-80U in the snow",
+    "zh": "雪中的 T-80U"
+   },
+   "loop": "/media/site50-r14/fleet/t80u_x.webm",
+   "poster": "/media/site50-r14/fleet/t80u_x.jpg",
+   "scene": "/media/site50-r14/scenes/s14-snow-push.scene.json"
+  },
+  "leclerc_x": {
+   "take": "s03-square-pass",
+   "map": "urban",
+   "title": {
+    "en": "A Leclerc XLR crosses the burning square",
+    "zh": "一辆 Leclerc XLR 穿过燃烧的广场"
+   },
+   "short": {
+    "en": "Leclerc XLR, burning square",
+    "zh": "Leclerc XLR，燃烧的广场"
+   },
+   "loop": "/media/site50-r14/fleet/leclerc_x.webm",
+   "poster": "/media/site50-r14/fleet/leclerc_x.jpg",
+   "scene": "/media/site50-r14/scenes/s03-square-pass.scene.json"
+  },
+  "leclerc_classic_x": {
+   "take": "s40-rooftop-smoke",
+   "map": "urban",
+   "title": {
+    "en": "Smoke columns rise over the rooftops of Steinburg",
+    "zh": "斯泰因堡的屋顶上空升起道道烟柱"
+   },
+   "short": {
+    "en": "Smoke over Steinburg",
+    "zh": "斯泰因堡上空的硝烟"
+   },
+   "loop": "/media/site50-r14/fleet/leclerc_classic_x.webm",
+   "poster": "/media/site50-r14/fleet/leclerc_classic_x.jpg",
+   "scene": "/media/site50-r14/scenes/s40-rooftop-smoke.scene.json"
+  },
+  "chieftain_mk10_x": {
+   "take": "s39-lakeside-village",
+   "map": "reservoir",
+   "title": {
+    "en": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+    "zh": "一辆 Chieftain Mk 10 在高地水库隔着村庄开火"
+   },
+   "short": {
+    "en": "Chieftain Mk 10, lakeside village",
+    "zh": "Chieftain Mk 10，湖畔村庄"
+   },
+   "loop": "/media/site50-r14/fleet/chieftain_mk10_x.webm",
+   "poster": "/media/site50-r14/fleet/chieftain_mk10_x.jpg",
+   "scene": "/media/site50-r14/scenes/s39-lakeside-village.scene.json"
+  },
+  "type10_x": {
+   "take": "s36-barn-knockout",
+   "map": "frontier",
+   "title": {
+    "en": "A Type 10 knocks out a T-90M beside the burning barn",
+    "zh": "一辆 Type 10 在燃烧的谷仓旁击毁一辆 T-90M"
+   },
+   "short": {
+    "en": "Type 10 knocks out a T-90M",
+    "zh": "Type 10 击毁 T-90M"
+   },
+   "loop": "/media/site50-r14/fleet/type10_x.webm",
+   "poster": "/media/site50-r14/fleet/type10_x.jpg",
+   "scene": "/media/site50-r14/scenes/s36-barn-knockout.scene.json"
+  },
+  "type90_x": {
+   "take": "s35-farm-village",
+   "map": "frontier",
+   "title": {
+    "en": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
+    "zh": "一辆 Type 90 与一辆 Type 89 在边疆盆地的农庄中激战"
+   },
+   "short": {
+    "en": "Type 90 and Type 89, farm village",
+    "zh": "Type 90 与 Type 89，农庄"
+   },
+   "loop": "/media/site50-r14/fleet/type90_x.webm",
+   "poster": "/media/site50-r14/fleet/type90_x.jpg",
+   "scene": "/media/site50-r14/scenes/s35-farm-village.scene.json"
+  },
+  "strv122_x": {
+   "take": "s07-lake-shellfire",
+   "map": "alpine",
+   "title": {
+    "en": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+    "zh": "一辆 Stridsvagn 122 冒着炮火穿越冰封湖面"
+   },
+   "short": {
+    "en": "Strv 122 on the frozen lake",
+    "zh": "冰湖上的 Strv 122"
+   },
+   "loop": "/media/site50-r14/fleet/strv122_x.webm",
+   "poster": "/media/site50-r14/fleet/strv122_x.jpg",
+   "scene": "/media/site50-r14/scenes/s07-lake-shellfire.scene.json"
+  },
+  "challenger1_x": {
+   "take": "s11-container-rows",
+   "map": "railyard",
+   "title": {
+    "en": "A Challenger 1 column pushes through the rail yard at Cinder Junction",
+    "zh": "一支 Challenger 1 纵队穿过灰渣枢纽的铁路编组场"
+   },
+   "short": {
+    "en": "Challenger 1 column, rail yard",
+    "zh": "Challenger 1 纵队，铁路编组场"
+   },
+   "loop": "/media/site50-r14/fleet/challenger1_x.webm",
+   "poster": "/media/site50-r14/fleet/challenger1_x.jpg",
+   "scene": "/media/site50-r14/scenes/s11-container-rows.scene.json"
+  },
+  "chieftain5_x": {
+   "take": "s50-reservoir-crane",
+   "map": "reservoir",
+   "title": {
+    "en": "Highland Reservoir at sunset: the lake beyond the burning village",
+    "zh": "日落时分的高地水库：燃烧村庄之外的湖面"
+   },
+   "short": {
+    "en": "Highland Reservoir at sunset",
+    "zh": "日落时分的高地水库"
+   },
+   "loop": "/media/site50-r14/fleet/chieftain5_x.webm",
+   "poster": "/media/site50-r14/fleet/chieftain5_x.jpg",
+   "scene": "/media/site50-r14/scenes/s50-reservoir-crane.scene.json"
+  },
+  "t90a_burlak_x": {
+   "take": "s47-ironworks-crane",
+   "map": "foundry",
+   "title": {
+    "en": "Ironworks at night: the yard burns between the smoke stacks",
+    "zh": "夜色中的钢铁厂：场区在烟囱之间燃烧"
+   },
+   "short": {
+    "en": "Ironworks at night",
+    "zh": "夜色中的钢铁厂"
+   },
+   "loop": "/media/site50-r14/fleet/t90a_burlak_x.webm",
+   "poster": "/media/site50-r14/fleet/t90a_burlak_x.jpg",
+   "scene": "/media/site50-r14/scenes/s47-ironworks-crane.scene.json"
+  },
+  "t90ms_x": {
+   "take": "s12-gantry-advance",
+   "map": "foundry",
+   "title": {
+    "en": "A T-90MS Tagil column advances under the Ironworks gantries",
+    "zh": "一支 T-90MS Tagil 纵队在钢铁厂的龙门吊下推进"
+   },
+   "short": {
+    "en": "T-90MS column under the gantries",
+    "zh": "龙门吊下的 T-90MS 纵队"
+   },
+   "loop": "/media/site50-r14/fleet/t90ms_x.webm",
+   "poster": "/media/site50-r14/fleet/t90ms_x.jpg",
+   "scene": "/media/site50-r14/scenes/s12-gantry-advance.scene.json"
+  },
+  "m1a2_tusk_x": {
+   "take": "s02-factory-road",
+   "map": "urban",
+   "title": {
+    "en": "An M1A2 Abrams TUSK rolls past the factory under fire",
+    "zh": "一辆 M1A2 Abrams TUSK 在炮火中驶过工厂"
+   },
+   "short": {
+    "en": "M1A2 Abrams TUSK, factory road",
+    "zh": "M1A2 Abrams TUSK，工厂公路"
+   },
+   "loop": "/media/site50-r14/fleet/m1a2_tusk_x.webm",
+   "poster": "/media/site50-r14/fleet/m1a2_tusk_x.jpg",
+   "scene": "/media/site50-r14/scenes/s02-factory-road.scene.json"
+  },
+  "m1a2_sepv2_x": {
+   "take": "s42-assault-above",
+   "map": "verdant",
+   "title": {
+    "en": "Verdant Fields from above as the assault rolls in",
+    "zh": "俯瞰翠野原，攻势滚滚而来"
+   },
+   "short": {
+    "en": "Verdant Fields from above",
+    "zh": "俯瞰翠野原"
+   },
+   "loop": "/media/site50-r14/fleet/m1a2_sepv2_x.webm",
+   "poster": "/media/site50-r14/fleet/m1a2_sepv2_x.jpg",
+   "scene": "/media/site50-r14/scenes/s42-assault-above.scene.json"
+  },
+  "m1a2_sepv3_x": {
+   "take": "s32-yard-salvo",
+   "map": "railyard",
+   "title": {
+    "en": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
+    "zh": "黄金时刻，M1A2 SEPv3 坦克隔着铁路编组场开火"
+   },
+   "short": {
+    "en": "SEPv3 salvo at golden hour",
+    "zh": "黄金时刻的 SEPv3 齐射"
+   },
+   "loop": "/media/site50-r14/fleet/m1a2_sepv3_x.webm",
+   "poster": "/media/site50-r14/fleet/m1a2_sepv3_x.jpg",
+   "scene": "/media/site50-r14/scenes/s32-yard-salvo.scene.json"
+  },
+  "ua_m1a1_x": {
+   "take": "s33-water-tower",
+   "map": "railyard",
+   "title": {
+    "en": "The line advances past the burning water tower at night",
+    "zh": "夜间，战线越过燃烧的水塔向前推进"
+   },
+   "short": {
+    "en": "Past the water tower at night",
+    "zh": "夜间越过水塔"
+   },
+   "loop": "/media/site50-r14/fleet/ua_m1a1_x.webm",
+   "poster": "/media/site50-r14/fleet/ua_m1a1_x.jpg",
+   "scene": "/media/site50-r14/scenes/s33-water-tower.scene.json"
+  },
+  "spz_puma_s1_x": {
+   "take": "s57-puma-minaret",
+   "map": "oasis",
+   "title": {
+    "en": "A Puma S1 fires at Sunscar Oasis",
+    "zh": "一辆 Puma S1 在日痕绿洲开火"
+   },
+   "short": {
+    "en": "Puma S1 fires",
+    "zh": "Puma S1 开火"
+   },
+   "loop": "/media/site50-r14/fleet/spz_puma_s1_x.webm",
+   "poster": "/media/site50-r14/fleet/spz_puma_s1_x.jpg",
+   "scene": "/media/site50-r14/scenes/s57-puma-minaret.scene.json"
+  },
+  "m6_linebacker": {
+   "take": "s08-market-push",
+   "map": "oasis",
+   "title": {
+    "en": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
+    "zh": "一辆 M6 Linebacker 引领 Abrams 纵队穿过日痕绿洲的集市街"
+   },
+   "short": {
+    "en": "M6 Linebacker, market street",
+    "zh": "M6 Linebacker，集市街"
+   },
+   "loop": "/media/site50-r14/fleet/m6_linebacker.webm",
+   "poster": "/media/site50-r14/fleet/m6_linebacker.jpg",
+   "scene": "/media/site50-r14/scenes/s08-market-push.scene.json"
+  },
+  "ua_t72b3m_hetman_ii": {
+   "take": "s22-walking-barrage",
+   "map": "verdant",
+   "title": {
+    "en": "Artillery walks across the fields toward the wedge at night",
+    "zh": "夜间，炮火越过田野逐步逼近楔形编队"
+   },
+   "short": {
+    "en": "Walking barrage at night",
+    "zh": "夜间徐进弹幕"
+   },
+   "loop": "/media/site50-r14/fleet/ua_t72b3m_hetman_ii.webm",
+   "poster": "/media/site50-r14/fleet/ua_t72b3m_hetman_ii.jpg",
+   "scene": "/media/site50-r14/scenes/s22-walking-barrage.scene.json"
+  },
+  "pl_t80u_modern": {
+   "take": "s23-village-crossroads",
+   "map": "verdant",
+   "title": {
+    "en": "A T-80U Husarz and a PL-01 hold the village crossroads",
+    "zh": "一辆 T-80U Husarz 与一辆 PL-01 坚守村庄十字路口"
+   },
+   "short": {
+    "en": "Husarz and PL-01 hold the crossroads",
+    "zh": "Husarz 与 PL-01 坚守十字路口"
+   },
+   "loop": "/media/site50-r14/fleet/pl_t80u_modern.webm",
+   "poster": "/media/site50-r14/fleet/pl_t80u_modern.jpg",
+   "scene": "/media/site50-r14/scenes/s23-village-crossroads.scene.json"
+  }
+ }
+}

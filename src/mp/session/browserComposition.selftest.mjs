@@ -265,7 +265,8 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     detachActiveRoom() { menu.detached++; menu.attached = null; calls.push('menu.detach'); },
     showRoomFailure(reason, mode) { menu.failures.push([reason, mode]); calls.push(`menu.failure:${reason}:${mode}`); },
     shown: [],
-    showActiveRoom(notice) { menu.shown.push(notice); calls.push(`menu.show:${notice}`); return true; },
+    shownCodes: [],
+    showActiveRoom(notice, code = null) { menu.shown.push(notice); menu.shownCodes.push(code); calls.push(`menu.show:${notice}`); return true; },
   };
   const battleLoad = {
     visible: false, progressLabels: [], shows: [],
@@ -849,15 +850,31 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   linking.composition.dispose();
 }
 
+{
+  // (a) programs link for two windows, then a window links nothing: deferred right there (no further idle windows)
+  const pendingByWindow = [40, 25, 25, 25, 25];
+  const attempts = [];
+  const flat = createHarness({ compile: async () => {
+    attempts.push(1);
+    return { preparation: { status: 'incomplete', pending: pendingByWindow[attempts.length - 1] ?? 25, reason: 'budget' } };
+  } });
+  const { entry } = await enterRound(flat);
+  assert.equal(await entry, true, 'a cohort that stops linking never refuses the entry');
+  assert.equal(attempts.length, 3, 'two windows that linked, one that did not: three windows, not six');
+  assert.deepEqual(flat.ports.trace.compile, { attempts: 3, outcome: 'deferred', pending: 25 });
+  flat.composition.dispose();
+}
+
 for (const pending of [7, null]) {
-  // (a) nothing links for COMPILE_STALL_WINDOWS windows (or the cohort never finishes submitting): the last resort
-  // reports and the entry goes on; the covered reveal links the rest under the loader
+  // (a) a window links nothing (or the cohort never finishes submitting): one stalled window is the last resort
+  // (2026-10-12: production rejoins sat 4 windows, 20 s, on a flat 36 pending); the entry goes on and the covered
+  // reveal links the rest under the loader
   const attempts = [];
   const starved = createHarness({ compile: async () => { attempts.push(1); return { preparation: { status: 'incomplete', pending, reason: 'budget' } }; } });
   const { entry } = await enterRound(starved);
   assert.equal(await entry, true, `a starved GPU never refuses the entry (pending ${pending})`);
-  assert.equal(attempts.length, 5, 'the first window, then four without progress');
-  assert.deepEqual(starved.ports.trace.compile, { attempts: 5, outcome: 'deferred', pending });
+  assert.equal(attempts.length, 2, 'the first window, then one without progress');
+  assert.deepEqual(starved.ports.trace.compile, { attempts: 2, outcome: 'deferred', pending });
   assert.deepEqual(starved.ports.slowEntries.map(({ stage, code, pending: left }) => [stage, code, left]),
     [['compile', 'extended', pending], ['compile', 'deferred', pending]], 'the extension and the last resort are both beacons');
   assert.equal(starved.ports.failure ?? null, null, 'no entry failure');
@@ -866,6 +883,29 @@ for (const pending of [7, null]) {
   assert.deepEqual(order, ['warm.fx:function:2', 'blackWatchdog', 'primeReveal', 'load.hide'],
     'the deferred compile still runs the opening warm, the watchdog and the covered reveal');
   starved.composition.dispose();
+}
+
+{
+  // 2026-10-13 (MP stream, plan step 4): a deferral names the programs left pending — the trace keeps them whole (cache
+  // keys included), one warning summarizes them by material and link state; a complete preparation names nothing
+  const programs = [
+    ...Array.from({ length: 30 }, (_, index) => ({ name: 'LateFxSmoke', cacheKey: `late-fx-${index}`, linked: null })),
+    ...Array.from({ length: 6 }, (_, index) => ({ name: 'MeshStandardMaterial', cacheKey: `mask-${index}`, linked: false })),
+  ];
+  const named = createHarness({ compile: async () => ({ pendingPrograms: programs, preparation: { status: 'incomplete', pending: 36, reason: 'budget' } }) });
+  const { entry } = await enterRound(named);
+  assert.equal(await entry, true);
+  assert.deepEqual(named.ports.trace.compile, { attempts: 2, outcome: 'deferred', pending: 36, programs });
+  const warning = named.calls.find((call) => typeof call === 'string' && call.startsWith('warn:multiplayer v2 entry:shader preparation deferred'));
+  assert.equal(warning, 'warn:multiplayer v2 entry:shader preparation deferred with 36 pending: LateFxSmoke ×30 (linked 0/unlinked 0/unqueried 30), MeshStandardMaterial ×6 (linked 0/unlinked 6/unqueried 0)',
+    `the deferral names the pending programs (${warning})`);
+  named.composition.dispose();
+  const clean = createHarness({ compile: async () => ({ pendingPrograms: undefined, preparation: { status: 'complete', pending: 0 } }) });
+  const cleanEntry = await enterRound(clean);
+  assert.equal(await cleanEntry.entry, true);
+  assert.deepEqual(clean.ports.trace.compile, { attempts: 1, outcome: 'complete', pending: 0 });
+  assert.ok(!clean.calls.some((call) => typeof call === 'string' && call.includes('shader preparation deferred')));
+  clean.composition.dispose();
 }
 
 // ------------------------------------------------------------ (b) a preparation that cannot succeed is refused at once, with what broke
@@ -1036,18 +1076,68 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   failing.composition.dispose();
 }
 
+// ------------------------------------------------------------ a host on another build refuses the entering seat (2026-10-13, the same-wire
+// check and the other-wire gate): the entry fails with the refusal's code, so the lobby words it in the player's locale
+for (const [code, words] of [
+  ['build_host_older', "Refresh the page to join: your game version differs from the host's. The host is running an older version, so ask them to refresh too."],
+  ['build_mismatch', "Refresh the page to join: your game version differs from the host's."],
+]) {
+  const refused = createHarness();
+  const refusedRoom = makeRoomSession(refused.calls);
+  const entering = refused.composition.beginRoom({ role: 'client', session: refusedRoom, lobbyState: refusedRoom.lobby });
+  const refusedOwner = refused.sessions[0];
+  await refusedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  refusedOwner.dropSeat(1, words);
+  assert.equal(await entering, false, `${code}: the entry is refused`);
+  await settle();
+  assert.equal(refused.ports.failure.reason, code, `${code}: the failure names the refusal`);
+  assert.equal(refused.ports.failure.message, words);
+  assert.deepEqual(refused.menu.shown, [words], `${code}: the lobby opens once with the English fallback`);
+  assert.deepEqual(refused.menu.shownCodes, [code], `${code}: and the code the menu localizes`);
+  assert.equal(refused.battleLoad.visible, false, 'the loader clears');
+  refused.composition.dispose();
+}
+{
+  // an unrelated lost link keeps its words and carries no refusal code
+  const plain = createHarness();
+  const plainRoom = makeRoomSession(plain.calls);
+  const entering = plain.composition.beginRoom({ role: 'client', session: plainRoom, lobbyState: plainRoom.lobby });
+  await plain.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  plain.sessions[0].setPhase('lost', 'transport exhausted');
+  assert.equal(await entering, false);
+  await settle();
+  assert.deepEqual(plain.menu.shownCodes, ['entry_failed']);
+  assert.deepEqual(plain.menu.shown, ['transport exhausted']);
+  plain.composition.dispose();
+}
+
 // ------------------------------------------------------------ the match ends while the round is still entering: refused at once
 // (2026-10-11, prod 215 run 2: a returning seat's world loaded for 150 s while the defenders fell; the match ended in a
 // defeat, and the entry waited the whole stall window for a WELCOME the ended match could not send — "did not present in
 // time" two minutes later, behind the loader)
 {
-  const ended = createHarness({ entryTimeoutMs: 60_000 });
+  // the Garage restore is the slow step under load (prod 219: a 72 s Garage task): it is held open here so the receipt can
+  // read what the player sees while it runs
+  let releaseGarage = null;
+  const ended = createHarness({ entryTimeoutMs: 60_000, enterGarage: () => new Promise((resolve) => { releaseGarage = resolve; }) });
   const endedRoom = makeRoomSession(ended.calls);
   const entering = ended.composition.beginRoom({ role: 'client', session: endedRoom, lobbyState: endedRoom.lobby });
   const endedOwner = ended.sessions[0];
   await endedOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
   // no WELCOME yet (the world still loading, the channel still opening): the match ends
   endedOwner.verdict(VERDICT.BRAVO, 'elimination');
+  await settle();
+  // 2026-10-13 (MU.03; prod 219 shown 16 s late, prod 221 not within 20 s): named at once on the loader, before the
+  // seat leaves the match and before the Garage restore — not only in the lobby after it
+  assert.ok(ended.calls.includes('enterGarage') && releaseGarage, 'the Garage restore is running (held open)');
+  const named = ended.calls.findIndex((call) => /^load\.show:The match ended while you were joining/.test(call));
+  assert.ok(named >= 0, `the loader names the refusal while the Garage restore runs (${ended.calls.filter((call) => call.startsWith('load.')).join(', ')})`);
+  assert.ok(named < ended.calls.indexOf('leaveMatch:entry_failed') && named < ended.calls.indexOf('enterGarage'), 'before the leave and the restore');
+  assert.equal(ended.battleLoad.shows.at(-1).mode, 'Deployment ended');
+  assert.deepEqual(ended.battleLoad.progressLabels.slice(-2).map(([, label]) => label), ['Returning to Garage', 'Returning to Garage'],
+    'the restore keeps the refusal on screen (no "Restoring Garage" over it)');
+  assert.equal(ended.battleLoad.visible, true, 'the cover holds while the Garage restores');
+  releaseGarage();
   const outcome = await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]);
   assert.equal(outcome, false, `a verdict before the reveal refuses the entering round at once (${outcome})`);
   assert.equal(ended.ports.failure.reason, 'match_ended');
@@ -1060,4 +1150,42 @@ assert.ok(calls.includes('client.leave'), 'disposing the composition leaves the 
   ended.composition.dispose();
 }
 
-console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends, and loads the obstacle identities of the host manifest for a world laid out otherwise');
+// ------------------------------------------------------------ the same refusal after a long rejoin (2026-10-13, deploy 222's MP window: the
+// message 18.6–18.7 s late, and once missing after a 145 s rejoin load): a returning seat welcomed, its shaders still
+// preparing 145 s into the entry (past the entry's own 120 s wait, extended because it progresses), the match ends —
+// the loader names the refusal at once, while the Garage restore is still running
+{
+  let time = 1000;
+  let releaseGarage = null;
+  let releaseCompile = null;
+  const long = createHarness({
+    clock: () => time,
+    enterGarage: () => new Promise((resolve) => { releaseGarage = resolve; }),
+    // the strict preparation is still running when the match ends (its windows outlast the entry: 145 s on the clock)
+    compile: () => new Promise((resolve) => { releaseCompile = () => resolve({ preparation: { status: 'complete', pending: 0 } }); }),
+  });
+  const longRoom = makeRoomSession(long.calls);
+  const entering = long.composition.beginRoom({ role: 'client', session: longRoom, lobbyState: longRoom.lobby });
+  const longOwner = long.sessions[0];
+  await longOwner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'playing', round: 1 }), spectator: false, playerId: 'me' });
+  await longOwner.welcome();
+  longOwner.frame(frame());
+  await settle(8);
+  assert.ok(releaseCompile, 'the seat is welcomed and preparing its shaders');
+  time += 145_000;
+  assert.ok(!long.calls.includes('load.hide'), 'still under the loader, 145 s into the entry');
+  longOwner.verdict(VERDICT.BRAVO, 'time_limit');
+  await settle();
+  assert.ok(long.calls.some((call) => /^load\.show:The match ended while you were joining/.test(call)), 'after 145 s the loader names the refusal at once');
+  assert.ok(releaseGarage, 'while the Garage restore runs');
+  assert.equal(long.battleLoad.visible, true);
+  releaseGarage();
+  releaseCompile();
+  assert.equal(await Promise.race([entering, new Promise((resolve) => setTimeout(() => resolve('still entering'), 2_000))]), false);
+  await settle();
+  assert.equal(long.ports.failure.reason, 'match_ended');
+  assert.deepEqual(long.menu.shown, [long.ports.failure.message], 'and the lobby repeats it once the loader fades');
+  long.composition.dispose();
+}
+
+console.log('browserComposition.selftest: the v2 browser launch loads, predicts, warms, activates and reveals a round, keeps the room for a rematch, routes lost links, load failures, a vanished room, an explicit leave and a start timeout to the existing surfaces, keeps preparing shaders window after window while programs link (the last resort reveals under the cover; only a preparation that cannot succeed refuses), clears the loader and offers the room again after any refused entry, rejoins under load, refuses only a stalled round on its own wait, refuses an entering round at once when its match ends (named on the loader before the Garage restore), and loads the obstacle identities of the host manifest for a world laid out otherwise');

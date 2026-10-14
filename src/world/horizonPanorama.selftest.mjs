@@ -690,4 +690,46 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   phone.dispose();
 }
 
+// --- 2026-10-13 (the perf stream): prepareBake hands the bake's own programs to the parallel compile early ----------------
+{
+  const handle = createHorizonPanorama(options, new THREE.Object3D());
+  assert.equal(handle.prepareBake(null), false, 'no renderer: nothing prepared');
+  assert.equal(handle.prepareBake(recordingRenderer()), false, 'a renderer without compileAsync: nothing prepared');
+  const renderer = recordingRenderer();
+  const compiled = [];
+  let disposedPrepared = 0;
+  renderer.compileAsync = (scene, camera) => {
+    const target = renderer.getRenderTarget();
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      compiled.push({ fragment: o.material.fragmentShader, vertex: o.material.vertexShader, target: target ? `${target.width}x${target.height}` : null,
+        depthTest: o.material.depthTest, depthWrite: o.material.depthWrite });
+      o.material.addEventListener('dispose', () => { disposedPrepared++; });
+    });
+    assert.ok(camera.isOrthographicCamera);
+    return Promise.resolve();
+  };
+  const before = renderer.state();
+  assert.equal(handle.prepareBake(renderer), true, 'a capable renderer takes the bake\'s programs');
+  assert.equal(handle.stats.prepared, true);
+  assert.deepEqual(renderer.state(), before, 'its target is restored');
+  assert.ok(compiled.every((c) => c.target === '1x1'), 'compiled with a render target bound (the bake draws into targets)');
+  const fragments = [HORIZON_PANORAMA_SHADERS.height, HORIZON_PANORAMA_SHADERS.light, HORIZON_PANORAMA_SHADERS.strip];
+  for (const f of fragments) assert.ok(compiled.some((c) => c.fragment === f), 'each pass\'s own fragment shader is prepared');
+  assert.ok(compiled.length >= 5 && compiled.every((c) => c.depthTest === false && c.depthWrite === false), 'the passes\' state');
+  assert.equal(handle.prepareBake(renderer), false, 'prepared once');
+  assert.equal(disposedPrepared, 0, 'held until the bake');
+  // the bake draws the same shaders, then lets the prepared hold go
+  const drawn = [];
+  const render = renderer.render;
+  renderer.render = (scene, camera) => { drawn.push(scene.children[0].material.fragmentShader); render(scene, camera); };
+  assert.equal(handle.ensureBaked(renderer), true);
+  assert.deepEqual(drawn, compiled.slice(0, drawn.length).map((c) => c.fragment), 'the bake draws the prepared shaders, in order');
+  assert.equal(disposedPrepared, compiled.length, 'released after the bake has drawn');
+  assert.equal(handle.prepareBake(renderer), false, 'a baked panorama prepares nothing');
+  handle.dispose();
+  const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  assert.match(mapSource, /horizonPanorama\.prepareBake\(panoramaRenderer\)/, 'the world prepares the bake when it assembles');
+}
+
 console.log('horizonPanorama.selftest: the shell, its atlas mapping, the far vocabulary, the passes, the bake contract and the far country\'s cloud shade (the aux pass, the share, the square) PASS');

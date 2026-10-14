@@ -65,7 +65,7 @@ u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_
 u32 baseTick (NO_TICK on keyframes), u32 ackedInputTick, u16 ackedFireSeq, u16 ackedActionSeq
 i8 inputMarginTicks (how many ticks early the newest input arrived; negative = late; 127 = unknown)
 u8 phase, u16 countdownMs, u32 battleTimeMs, u8 verdict, [string verdictReason if HAS_VERDICT], u32 destructibleRevision
-index list destroyed (keyframe: every destroyed obstacle index; delta: indices destroyed since the baseline)
+destroyed set (keyframe: every destroyed obstacle index; delta: indices destroyed since the baseline; wire 6: below)
 u8 entityCount, entity rows ...
 u8 removedCount, u8 entityId ... (entities in the baseline that are hidden now)
 u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 vel dm/s, u8 shellType, u8 flags (GUIDED)
@@ -74,6 +74,11 @@ u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 ve
 
 An *index list* is `varint count`, then the first index and the gaps
 (`index − previous − 1`) as varints: sorted, strictly increasing.
+
+A *destroyed set* (wire 6, 2026-10-13, `destroyedSet.ts`) is `u8 form`, then either form 0, an index list without a
+cap (indices 0..65535), or form 1, `varint byteLength` and a bitset (bit `i & 7` of byte `i >> 3` per destroyed index,
+the last byte holding a set bit) — whichever is smaller; at most 8 KB for any legal set. Wire 5 wrote an index list
+capped at 4,096 and its encoder threw past it (below Monsoon's 9,119 crushable props), failing every later keyframe.
 
 The destroyed list is settled state, not a stream of falls (world state audit, 2026-10-01): a client lays a listed
 prop it has not seen fall at its final pose, silently, and leaves a prop whose `world_prop_destroyed` it still owes

@@ -43,8 +43,9 @@ export interface DestructionMatchOptions {
   ground?: TerrainDeformation | null;
   /** A collapse was applied (records flipped, rubble raised): refresh the route grid. */
   onCollapse?(structure: StructureState): void;
-  /** A blast of `chargeKg` burst at (x, y, z): the caller fells the light props within `propFellRadiusM` of it. */
-  onBlast?(x: number, y: number, z: number, chargeKg: number): void;
+  /** A blast of `chargeKg` burst at (x, y, z): the caller fells the light props within `propFellRadiusM` of it.
+   * `sourceId`: who set it off (the shooter, the dead hull), when the caller named one. */
+  onBlast?(x: number, y: number, z: number, chargeKg: number, sourceId: string | null): void;
   /** The ground's drive type at a point (terrain.ts getGroundType): no crater on 'hard' ground (roads, decks, ice). */
   groundTypeAt?(x: number, z: number): string;
   /** The map's house walls (structureMaterial.ts): the ram's scuff energy per structure (§4.4). */
@@ -65,20 +66,20 @@ export interface DestructionMatch {
    * struck structure).
    */
   shellWorldHit(spec: MunitionShellLike, record: CollisionRecord | null | undefined,
-    x: number, y: number, z: number, dirX: number, dirZ: number, groundBurst?: boolean): number | null;
+    x: number, y: number, z: number, dirX: number, dirZ: number, groundBurst?: boolean, sourceId?: string | null): number | null;
   /** A round burst on a hull (HE splash, a shaped-charge strike): its charge as a blast on the structures near. */
-  shellBurst(spec: MunitionShellLike, x: number, y: number, z: number, dirX: number, dirZ: number): void;
+  shellBurst(spec: MunitionShellLike, x: number, y: number, z: number, dirX: number, dirZ: number, sourceId?: string | null): void;
   /** A hull's crash into `record` priced by the impact law this tick (closing speed over the crash's prior). */
   ram(record: CollisionRecord | null | undefined, massTons: number, closingMps: number, priorClosingMps: number,
-    x: number, y: number, z: number, dirX: number, dirZ: number): void;
+    x: number, y: number, z: number, dirX: number, dirZ: number, sourceId?: string | null): void;
   /**
    * A hull pressing into `record` this tick at `closingMps` (along the contact normal; `speedMps` its whole speed):
    * the share of its speed it keeps when the structure yields to the ram (it comes down), or null when it holds.
    */
   ramThrough(record: CollisionRecord | null | undefined, massTons: number, closingMps: number, speedMps: number,
-    x: number, y: number, z: number, dirX: number, dirZ: number): number | null;
+    x: number, y: number, z: number, dirX: number, dirZ: number, sourceId?: string | null): number | null;
   /** A hull died: an ammunition cook-off or a fuel fire bursts on the structures near (never on the tanks). */
-  tankDeath(cause: string, massTons: number, x: number, y: number, z: number): void;
+  tankDeath(cause: string, massTons: number, x: number, y: number, z: number, sourceId?: string | null): void;
   /** End of the fixed step: queued collapses, the log, this tick's events (drain them with `drainEvents`). */
   step(): void;
   drainEvents(out: StructureStageEvent[]): number;
@@ -161,7 +162,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   let cratersThisTick = 0;
   /** A ground burst's crater, when it deforms (the wire's quantization: mm positions, cm radius, mm depth and rim): its
    * id, or null for a mark. */
-  function dig(munition: MunitionClass, chargeKg: number, x: number, z: number): number | null {
+  function dig(munition: MunitionClass, chargeKg: number, x: number, z: number, sourceId: string | null): number | null {
     if (!cratering || craterCount >= rules!.maxCraters || cratersThisTick >= CRATERS_PER_TICK) return null;
     craterFor(chargeKg, munition, rules!.craterScale, shape);
     if (shape.radiusM < CRATER_DEFORM_MIN_RADIUS_M) return null;
@@ -171,19 +172,22 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     const craterId = craterCount++;
     cratersThisTick++;
     log.push({ kind: 'crater', craterId, x: qx, z: qz, radiusM, depthM, rimM, seed });
-    craterOutbox.push({ craterId, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true });
+    craterOutbox.push({ craterId, x: qx, z: qz, radiusM, depthM, rimM, seed, munition, deforms: true, ...(sourceId ? { sourceId } : {}) });
     return craterId;
   }
   const blow = { cause: 'blast' as StructureStageEvent['cause'], munition: null as StructureStageEvent['munition'],
-    x: 0, y: 0, z: 0, dirX: 0, dirZ: 1, holeRadiusM: 0 };
+    x: 0, y: 0, z: 0, dirX: 0, dirZ: 1, holeRadiusM: 0, sourceId: null as string | null };
+  // `sourceId` (2026-10-13): who dealt the blow, so the authority can withhold how a hidden enemy dealt it; no effect
+  // on the damage, the log or any state
   const setBlow = (cause: StructureStageEvent['cause'], munition: StructureStageEvent['munition'],
-    x: number, y: number, z: number, dirX: number, dirZ: number, holeRadiusM = 0) => {
+    x: number, y: number, z: number, dirX: number, dirZ: number, holeRadiusM = 0, sourceId: string | null = null) => {
     const length = Math.hypot(dirX, dirZ);
     blow.cause = cause; blow.munition = munition;
     blow.x = x; blow.y = y; blow.z = z;
     blow.dirX = length > 1e-9 ? dirX / length : 0;
     blow.dirZ = length > 1e-9 ? dirZ / length : 1;
     blow.holeRadiusM = holeRadiusM;
+    blow.sourceId = sourceId;
     return blow;
   };
 
@@ -191,53 +195,53 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
     enabled,
     structures,
     log,
-    shellWorldHit(spec, record, x, y, z, dirX, dirZ, groundBurst = false) {
+    shellWorldHit(spec, record, x, y, z, dirX, dirZ, groundBurst = false, sourceId = null) {
       const munition = munitionClassForShell(spec);
       const charge = munitionChargeKg(spec, munition);
-      const craterId = groundBurst && !record && charge > 0 ? dig(munition, charge, x, z) : null;
+      const craterId = groundBurst && !record && charge > 0 ? dig(munition, charge, x, z, sourceId) : null;
       if (!structures) return craterId;
       const struck = structures.structureOf(record);
       const kinetic = struck ? kineticStructurePoints(spec, munition) : 0;
       // a penetrator's hole (P2): a kinetic round's own; a shaped charge's rides its blast (the larger of the two)
       const hole = kinetic > 0 ? penetratorHoleRadiusM(spec) : 0;
       if (struck && kinetic > 0) {
-        structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ, charge > 0 ? 0 : hole));
+        structures.applyPoints(struck, kinetic, setBlow('kinetic', munition, x, y, z, dirX, dirZ, charge > 0 ? 0 : hole, sourceId));
       }
       if (charge > 0) {
-        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ, hole), struck);
-        options.onBlast?.(x, y, z, charge);
+        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ, hole, sourceId), struck);
+        options.onBlast?.(x, y, z, charge, sourceId);
       }
       return craterId;
     },
-    shellBurst(spec, x, y, z, dirX, dirZ) {
+    shellBurst(spec, x, y, z, dirX, dirZ, sourceId = null) {
       if (!structures) return;
       const munition = munitionClassForShell(spec);
       const charge = munitionChargeKg(spec, munition);
       if (charge > 0) {
-        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ));
-        options.onBlast?.(x, y, z, charge);
+        structures.applyBlast(charge, munition, setBlow('blast', munition, x, y, z, dirX, dirZ, 0, sourceId));
+        options.onBlast?.(x, y, z, charge, sourceId);
       }
     },
-    ram(record, massTons, closingMps, priorClosingMps, x, y, z, dirX, dirZ) {
+    ram(record, massTons, closingMps, priorClosingMps, x, y, z, dirX, dirZ, sourceId = null) {
       if (!structures) return;
       const struck = structures.structureOf(record);
       if (!struck) return;
-      structures.applyRam(struck, massTons, closingMps, priorClosingMps, setBlow('ram', null, x, y, z, dirX, dirZ));
+      structures.applyRam(struck, massTons, closingMps, priorClosingMps, setBlow('ram', null, x, y, z, dirX, dirZ, 0, sourceId));
     },
-    ramThrough(record, massTons, closingMps, speedMps, x, y, z, dirX, dirZ) {
+    ramThrough(record, massTons, closingMps, speedMps, x, y, z, dirX, dirZ, sourceId = null) {
       if (!structures) return null;
       const struck = structures.structureOf(record);
       if (!struck) return null;
-      return structures.yieldTo(struck, massTons, closingMps, speedMps, setBlow('ram', null, x, y, z, dirX, dirZ));
+      return structures.yieldTo(struck, massTons, closingMps, speedMps, setBlow('ram', null, x, y, z, dirX, dirZ, 0, sourceId));
     },
-    tankDeath(cause, massTons, x, y, z) {
+    tankDeath(cause, massTons, x, y, z, sourceId = null) {
       if (!structures) return;
       if (cause === 'ammo_rack' || cause === 'ammorack') {
         const charge = cookOffChargeKg(massTons);
-        structures.applyBlast(charge, 'cook_off', setBlow('blast', 'cook_off', x, y, z, 0, 0));
-        options.onBlast?.(x, y, z, charge);
+        structures.applyBlast(charge, 'cook_off', setBlow('blast', 'cook_off', x, y, z, 0, 0, 0, sourceId));
+        options.onBlast?.(x, y, z, charge, sourceId);
       } else if (cause === 'fire') {
-        structures.applyBlast(FUEL_CHARGE_KG, 'fuel', setBlow('blast', 'fuel', x, y, z, 0, 0));
+        structures.applyBlast(FUEL_CHARGE_KG, 'fuel', setBlow('blast', 'fuel', x, y, z, 0, 0, 0, sourceId));
       }
     },
     get craters() { return craterCount; },

@@ -1,3 +1,6 @@
+// The key lives with the id layer's storage migration (one chunk the Garage and the Studio both load at boot).
+import { LAST_TANK_STORAGE_KEY } from './tankIdStorageMigration.ts';
+
 interface SelectionStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -20,7 +23,7 @@ interface SelectedVehicleSelectionOptions {
 export function createSelectedVehicleSelection({
   visibleIds,
   defaultId,
-  storageKey = 'cot.lastTank.v1',
+  storageKey = LAST_TANK_STORAGE_KEY,
   getStorage = () => globalThis.localStorage,
 }: SelectedVehicleSelectionOptions): SelectedVehicleSelection {
   const visible = new Set(visibleIds);
