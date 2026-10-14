@@ -1149,6 +1149,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/roof-rest.selftest.mjs',
     // 2026-10-14 (physics stream F5): a hull on its shell rests and rebounds off still ground, no springs
     'tools/shell-contact.selftest.mjs',
+    // 2026-10-14 (physics stream F6): a hull at a roof's edge stands on it or rolls off it by its centre of mass
+    'tools/roof-edge.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',

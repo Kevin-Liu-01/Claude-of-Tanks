@@ -153,7 +153,7 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
     { ...good, version: 7 }, { ...good, version: 9 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
-    { ...good, values: sparse }, ...[-1, 2048, 1.5, NaN].map(flags => ({ ...good, flags })),
+    { ...good, values: sparse }, ...[-1, 4096, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
   for (const value of bad) {
     const target = entity().state;
@@ -163,6 +163,21 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   }
   source.state._spring.pitchV = Infinity;
   assert.equal(captureMovementPredictionState(source.state), null);
+});
+
+// (physics stream F6, 2026-10-14) flag bit 11: the support cache's last solve began in flight, and the first step on the
+// ground solves again — a replay restored without it kept the in-flight fit where the authority re-solved
+test('the support cache keeps whether its solve began in flight', () => {
+  for (const air of [true, false]) {
+    const source = entity();
+    source.state._sup.air = air;
+    const checkpoint = captureMovementPredictionState(source.state);
+    assert.equal(!!(checkpoint.flags & 2048), air);
+    const target = entity().state;
+    target._sup.air = !air;
+    assert.equal(applyMovementPredictionState(target, checkpoint), true);
+    assert.equal(target._sup.air, air);
+  }
 });
 
 // The checkpoint on the multiplayer wire and under the client's prediction: src/mp/match/movementCheckpoint.selftest.mjs.

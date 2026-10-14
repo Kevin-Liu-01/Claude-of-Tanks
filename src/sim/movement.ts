@@ -220,6 +220,9 @@ interface SupportCache {
   floorY: number;
   rigid: boolean;
   cg: MovementContactGeometry | null | undefined;
+  /** The last solve began in flight (physics stream F6): its fit was the landing fit, which reads no tip, and the first
+   * step that begins on the ground solves again. */
+  air: boolean;
 }
 
 interface GunLaySolution {
@@ -282,6 +285,12 @@ interface SupportSamples {
   /** Innermost |x| of a loaded wheel-run fan sample per side (Infinity when that side's fan lines all hang). */
   fanTouchLeftX: number;
   fanTouchRightX: number;
+  /** Wheel-run fan and belly samples recorded for groundIsPlanar's crest test (_innerX/_innerZ/_innerH). */
+  innerCount: number;
+  /** Signed hull-local x of the leftmost and rightmost belly sample whose ground carries the hull's floor (read at the
+   * tracks' level, within the droop's reach of their contact): +Infinity and -Infinity for none. */
+  bellyTouchMinX: number;
+  bellyTouchMaxX: number;
   /** The outer lines' track-bottom height over the root at the rendered attitude (sampleOuterTrackLines). */
   bottomLift: number;
 }
@@ -1535,6 +1544,9 @@ const _supportSamples: SupportSamples = {
   wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
   fanTouchRightX: Infinity,
+  innerCount: 0,
+  bellyTouchMinX: Infinity,
+  bellyTouchMaxX: -Infinity,
   bottomLift: 0,
 };
 // Physics lane (2026-10-03): the outer-line samples of one support solve (hull-local centred z, x, ground height and
@@ -1550,6 +1562,21 @@ const _bedD = new Float64Array(BED_MAX);
 const _bedX = new Float64Array(BED_MAX);
 const _bedZ = new Float64Array(BED_MAX);
 const _bedR = new Float64Array(BED_MAX);
+// (physics stream F6, 2026-10-14) the wheel-run fan and belly samples of one support solve (hull-local x, centred z and
+// ground height): the ground between the outer lines, which says whether the plane through those lines is one face
+const INNER_MAX = 8 * SUPPORT_MAX_N;
+const _innerX = new Float64Array(INNER_MAX);
+const _innerZ = new Float64Array(INNER_MAX);
+const _innerH = new Float64Array(INNER_MAX);
+/** The inner samples' deficit at the tracks' level (a belly sample's ground read against the track bottom's plane). */
+const _innerD = new Float64Array(INNER_MAX);
+// the support polygon's points and convex hull (supportOverhang): hull-local x and z
+const POLY_MAX = 2 * SUPPORT_MAX_N + FIT_BODY_MAX + INNER_MAX;
+const _polyX = new Float64Array(POLY_MAX);
+const _polyZ = new Float64Array(POLY_MAX);
+const _chainX = new Float64Array(2 * POLY_MAX + 1);
+const _chainZ = new Float64Array(2 * POLY_MAX + 1);
+const _overhang = { d: 0, nx: 0, nz: 0 };
 const _driveStep: DriveStep = {
   grounded: true,
   throttle: 0,
@@ -2005,7 +2032,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     },
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
-      y: pos.y, top: pos.y, floorY: pos.y, rigid: false, cg: null,
+      y: pos.y, top: pos.y, floorY: pos.y, rigid: false, cg: null, air: false,
     },
   };
 }
@@ -3893,6 +3920,9 @@ function resetSupportSamples(
   samples.wrapMax = -Infinity;
   samples.fanTouchLeftX = Infinity;
   samples.fanTouchRightX = Infinity;
+  samples.innerCount = 0;
+  samples.bellyTouchMinX = Infinity;
+  samples.bellyTouchMaxX = -Infinity;
   samples.bottomLift = 0;
   return samples;
 }
@@ -4024,6 +4054,14 @@ function sampleSupportFanSide(
       samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw,
     );
     const deficit = terrainY - (renderedLift + localZ * samples.sinPitch);
+    // (the ground read at the tracks' level: a belly sample's against the track bottom's plane)
+    const levelDeficit = deficit + (localY - gearBottomY) * samples.cosRoll * samples.cosPitch;
+    if (samples.innerCount < INNER_MAX) {
+      _innerX[samples.innerCount] = localX;
+      _innerZ[samples.innerCount] = localZ - samples.centerZ;
+      _innerH[samples.innerCount] = terrainY;
+      _innerD[samples.innerCount++] = levelDeficit;
+    }
     if (line.yOff === 0) {
       if (deficit > samples.fanMax) samples.fanMax = deficit;
       recordBedStation(samples, localX, localZ, deficit);
@@ -4035,8 +4073,13 @@ function sampleSupportFanSide(
       samples.settleDeficitSum += terrainY -
         (fittedLift + localZ * samples.fitSinPitch);
       samples.deficitCount += 1;
-    } else if (deficit > samples.bellyMax) {
-      samples.bellyMax = deficit;
+    } else {
+      if (deficit > samples.bellyMax) samples.bellyMax = deficit;
+      // ground under the floor at the tracks' level (within the droop's reach of their contact) carries the floor
+      if (levelDeficit >= samples.outerMax - TOUCH_REACH_M) {
+        if (localX < samples.bellyTouchMinX) samples.bellyTouchMinX = localX;
+        if (localX > samples.bellyTouchMaxX) samples.bellyTouchMaxX = localX;
+      }
     }
   }
   if (line.yOff === 0) sampleTrackWrapEnds(samples, contact, hAt, localX, gearBottomY);
@@ -4151,9 +4194,14 @@ function rigidBodySupport(
 
 /** Below this RMS residual the samples' ground is one plane (a 0.6 m step under the hull leaves 0.15 m). */
 const PLANAR_RESIDUAL_M = 0.12;
+/** Over this RMS rise of the ground between the outer lines over their plane the ground is a crest, not one face. */
+const PLANAR_CREST_M = 0.3;
 
-/** True when the ground under every outer-line sample lies on one plane within PLANAR_RESIDUAL_M. */
-function groundIsPlanar(count: number): boolean {
+/**
+ * True when the ground under every outer-line sample lies on one plane within PLANAR_RESIDUAL_M and the ground between
+ * the lines (the wheel-run fan and belly samples) does not stand over it by PLANAR_CREST_M.
+ */
+function groundIsPlanar(count: number, innerCount: number): boolean {
   if (count < 4) return false;
   let sz = 0, sx = 0, sh = 0;
   for (let i = 0; i < count; i++) { sz += _fitZ[i]; sx += _fitX[i]; sh += _fitH[i]; }
@@ -4171,7 +4219,18 @@ function groundIsPlanar(count: number): boolean {
   // and the hull, its centre of mass a metre and a half inside the edge, rolled toward the 64-degree "face" between them
   if (a * a + b * b > WALL_GRADE_FULL * WALL_GRADE_FULL) return false;
   const residual = (chh - a * czh - b * cxh) / count;
-  return residual < PLANAR_RESIDUAL_M * PLANAR_RESIDUAL_M;
+  if (!(residual < PLANAR_RESIDUAL_M * PLANAR_RESIDUAL_M)) return false;
+  // (physics stream F6, 2026-10-14; Urban's flat roofs) the two outer lines alone always span a plane across the hull:
+  // one on a roof and one over the yard 5 m under its edge read a 62-degree "face", the hull's centre of mass a metre
+  // inside the edge, and the attitude spring rolled it toward the face at 15 rad/s and threw it off the roof at 7 m/s.
+  // Ground between them that stands over their plane (the roof under the inner fan and the belly) is the crest of an
+  // edge the hull straddles, not one face: the contact-aware fit takes it
+  let crest = 0;
+  for (let i = 0; i < innerCount; i++) {
+    const over = _innerH[i] - (mh + a * (_innerZ[i] - mz) + b * (_innerX[i] - mx));
+    if (over > 0) crest += over * over;
+  }
+  return !(crest > PLANAR_CREST_M * PLANAR_CREST_M * innerCount);
 }
 
 /** A hull this slow and turning this little stands at rest on its contacts (updateTerrainFitAndPerch's latch). */
@@ -4252,6 +4311,72 @@ function dropReturns(state: TankState, samples: SupportSamples, top: number, loa
   return false;
 }
 
+/** An overhang this far off the hull's axes (sin 20 degrees) tips about the support's own edge (contactAwareFit). */
+const OBLIQUE_TIP_SIN = 0.34;
+/** A contact carries the hull when its ground lies within this of the highest (contactAwareFit's half weight). */
+const CARRY_GAP_M = 0.5 * (DROP_NEAR_M + DROP_FAR_M);
+
+function cross(ox: number, oz: number, ax: number, az: number, bx: number, bz: number): number {
+  return (ax - ox) * (bz - oz) - (az - oz) * (bx - ox);
+}
+
+/**
+ * How far the centre of mass (hull-local cx, cz) stands past the convex hull of the contacts that carry the hull — the
+ * outer-line, body, wheel-run fan and belly samples whose ground lies within CARRY_GAP_M of `top` — and the direction
+ * from the hull's nearest point toward it (_overhang). False when it stands over them (physics stream F6, 2026-10-14).
+ */
+function supportOverhang(samples: SupportSamples, top: number, cx: number, cz: number): boolean {
+  let n = 0;
+  for (let i = 0; i < samples.fitCount; i++) {
+    if (top - _fitD[i] >= CARRY_GAP_M) continue;
+    _polyX[n] = _fitX[i]; _polyZ[n++] = _fitZ[i];
+  }
+  for (let i = 0; i < samples.innerCount; i++) {
+    if (top - _innerD[i] >= CARRY_GAP_M) continue;
+    _polyX[n] = _innerX[i]; _polyZ[n++] = _innerZ[i];
+  }
+  if (n === 0) return false;
+  // sorted by x, then z (insertion: a few dozen points, no allocation), then the monotone chain
+  for (let i = 1; i < n; i++) {
+    const x = _polyX[i], z = _polyZ[i];
+    let j = i - 1;
+    while (j >= 0 && (_polyX[j] > x || (_polyX[j] === x && _polyZ[j] > z))) {
+      _polyX[j + 1] = _polyX[j]; _polyZ[j + 1] = _polyZ[j]; j--;
+    }
+    _polyX[j + 1] = x; _polyZ[j + 1] = z;
+  }
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    while (k >= 2 && cross(_chainX[k - 2], _chainZ[k - 2], _chainX[k - 1], _chainZ[k - 1], _polyX[i], _polyZ[i]) <= 0) k--;
+    _chainX[k] = _polyX[i]; _chainZ[k++] = _polyZ[i];
+  }
+  for (let i = n - 2, lower = k + 1; i >= 0; i--) {
+    while (k >= lower && cross(_chainX[k - 2], _chainZ[k - 2], _chainX[k - 1], _chainZ[k - 1], _polyX[i], _polyZ[i]) <= 0) k--;
+    _chainX[k] = _polyX[i]; _chainZ[k++] = _polyZ[i];
+  }
+  // (k - 1 vertices, counter-clockwise, the first repeated last; a single point keeps k = 1)
+  const edges = Math.max(1, k - 1);
+  let inside = k >= 4;
+  let best = Infinity, px = _chainX[0], pz = _chainZ[0];
+  for (let i = 0; i < edges; i++) {
+    const ax = _chainX[i], az = _chainZ[i];
+    const bx = k > 1 ? _chainX[i + 1] : ax, bz = k > 1 ? _chainZ[i + 1] : az;
+    if (cross(ax, az, bx, bz, cx, cz) < 0) inside = false;
+    const ex = bx - ax, ez = bz - az, len2 = ex * ex + ez * ez;
+    const t = len2 > 1e-12 ? clamp(((cx - ax) * ex + (cz - az) * ez) / len2, 0, 1) : 0;
+    const qx = ax + t * ex, qz = az + t * ez;
+    const d2 = (cx - qx) * (cx - qx) + (cz - qz) * (cz - qz);
+    if (d2 < best) { best = d2; px = qx; pz = qz; }
+  }
+  if (inside) return false;
+  const d = Math.sqrt(best);
+  if (!(d > 1e-9)) return false;
+  _overhang.d = d;
+  _overhang.nx = (cx - px) / d;
+  _overhang.nz = (cz - pz) / d;
+  return true;
+}
+
 function contactAwareFit(
   spec: MovementSpec,
   state: TankState,
@@ -4285,7 +4410,7 @@ function contactAwareFit(
   // Ground that is one plane under the whole hull (a face it hangs over at one end, a slope it is turning onto) is the
   // plane it settles on, not an edge to tip over: a hull set level on a 48-degree face read the face's far end as a drop
   // and tipped onto it for a second instead of lying on it (impactPhysics' slide).
-  if (groundIsPlanar(samples.fitCount)) return FIT_ALL_LOADED;
+  if (groundIsPlanar(samples.fitCount, samples.innerCount)) return FIT_ALL_LOADED;
   if (dropReturns(state, samples, top, zMax, zMin)) {
     // a drop the ground comes back up from (round 7): the plane lies on the samples the tracks can carry, within
     // their reach of the loaded line and fading to nothing at twice it, and the hull goes over the drop level until its
@@ -4351,15 +4476,33 @@ function contactAwareFit(
       tipPitch = gravity * leverRear * Math.cos(state._spring.pitch) / (pitchGyration + leverRear * leverRear);
     }
   }
-  // a whole side hanging (its outer line and its wheel-run fan): roll toward it about the innermost loaded line
+  // a whole side hanging (its outer line and its wheel-run fan): roll toward it about the innermost loaded line — or
+  // about the floor where the ground under the belly carries it (physics stream F6, 2026-10-14): a hull whose tracks on
+  // one side hang over a roof's edge with the roof still under its belly past its centre of mass rests on the floor
   let tipRoll = 0;
   const rollGyration = (dims.widthM * dims.widthM + dims.heightM * dims.heightM) / 12;
   if (left === 0 && samples.fanTouchLeftX === Infinity && right > 0) {
-    const lever = Math.min(halfWidth, samples.fanTouchRightX);
-    tipRoll = gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
+    const lever = Math.min(halfWidth, samples.fanTouchRightX, samples.bellyTouchMinX);
+    if (lever > TIP_DEADBAND_M) tipRoll = gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
   } else if (right === 0 && samples.fanTouchRightX === Infinity && left > 0) {
-    const lever = Math.min(halfWidth, samples.fanTouchLeftX);
-    tipRoll = -gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
+    const lever = Math.min(halfWidth, samples.fanTouchLeftX, -samples.bellyTouchMaxX);
+    if (lever > TIP_DEADBAND_M) tipRoll = -gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
+  }
+  // (physics stream F6, 2026-10-14) a centre of mass past the contacts that carry the hull where neither the fore-and-aft
+  // rule nor the side rule reads it, or reads it square to the hull when the edge runs across it at an angle — a hull
+  // standing across a roof's edge at 45 degrees, both tracks' rear runs on the roof and their fronts over the yard —
+  // tips about the support's nearest edge, by the same law about that axis (an overhang on the trailing side of a hull
+  // under way excepted, as above). It stood level 0.9 m past the edge, and then tipped tail-first only, about the rear of
+  // the track still on the roof, and hung against the wall.
+  if (supportOverhang(samples, top, 0, tankContactRect(spec).centerZ) && _overhang.d > TIP_DEADBAND_M &&
+      (travel === 0 || _overhang.nz * travel >= 0) &&
+      ((tipPitch === 0 && tipRoll === 0) ||
+        (Math.abs(_overhang.nx) > OBLIQUE_TIP_SIN && Math.abs(_overhang.nz) > OBLIQUE_TIP_SIN))) {
+    const lever = _overhang.d, nx = _overhang.nx, nz = _overhang.nz;
+    const gyration = nz * nz * (dims.hullLengthM * dims.hullLengthM + dims.heightM * dims.heightM) / 12 + nx * nx * rollGyration;
+    const alpha = gravity * lever * Math.cos(state._spring.pitch) * Math.cos(state._spring.roll) / (gyration + lever * lever);
+    tipPitch = -alpha * nz;
+    tipRoll = -alpha * nx;
   }
   _contactFit.tipPitch = tipPitch;
   _contactFit.tipRoll = tipRoll;
@@ -4600,6 +4743,7 @@ function writeSupportCache(
   cache.floorY = Math.max(normalFloor, rigidFloor);
   cache.rigid = rigidGear;
   cache.cg = contact;
+  cache.air = !groundedAtStart;
   _supportStation.valid = !rigidGear && samples.outerMax - hydraulicYield >= supportY - 1e-9 && rigidFloor < normalFloor;
   // the hull's own nose or tail past its tracks, when that floor is the one it rests on (round 8: a body strike)
   _supportStation.guard = !_supportStation.valid && !rigidGear && guardBinds && rigidFloor >= normalFloor;
@@ -4629,6 +4773,7 @@ function supportCacheIsFresh(
   pitch: number,
   roll: number,
   rigidGear: boolean,
+  groundedAtStart: boolean,
 ): boolean {
   const cache = state._sup;
   // (physics stream, 2026-10-13) a hull still climbing onto its floor is not parked: a cached solve reads no record, so
@@ -4641,7 +4786,11 @@ function supportCacheIsFresh(
     Math.abs(wrapAngle(state.yaw - cache.yaw)) < 0.0012 &&
     Math.abs(pitch - cache.pitch) < 0.0012 &&
     Math.abs(roll - cache.roll) < 0.0012 &&
-    cache.rigid === rigidGear && cache.cg === contact;
+    cache.rigid === rigidGear && cache.cg === contact &&
+    // (physics stream F6, 2026-10-14) a hull that comes down where it left the ground (a straight drop, no turn) kept
+    // the fit it took in flight, which reads no tip: set down on a roof's edge with its centre of mass past it, it
+    // stood level over the yard for as long as it stood
+    cache.air === !groundedAtStart;
 }
 
 function solveSupportHeight(
@@ -4658,7 +4807,7 @@ function solveSupportHeight(
   const { spec, state } = entity;
   const contact = trackContactOf(entity);
   const rigidGear = entity.rigidGear === true;
-  if (supportCacheIsFresh(state, contact, pitch, roll, rigidGear)) return;
+  if (supportCacheIsFresh(state, contact, pitch, roll, rigidGear, groundedAtStart)) return;
   const gearBottomY = contact?.bottomYM || 0;
   const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
   const samples = resetSupportSamples(spec, state, contact, pitch, roll);
