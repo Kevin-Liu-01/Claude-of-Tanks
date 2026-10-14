@@ -127,8 +127,7 @@ const ALOFT: Readonly<Partial<Record<string, { lift: number; thickness: number; 
   // (a front's high cumulus and anvil debris went with round 9, 2026-10-07: wave 235's critics read Monsoon's sunward as
   // "a hazy translucent smear over the sun and confetti-like popcorn fragments" — the elements aloft — and every upward
   // ray marched their band: 0.2 ms of the GPU on its sky-w)
-  // a broken deck: a thin altostratus veil far over it
-  'broken-stratocumulus': { lift: 2400, thickness: 350, coverage: 0.1, density: 0.03 },
+  // (the broken deck's thin altostratus veil went with the regime: the owner retired broken-stratocumulus, 2026-10-13)
 });
 
 /**
