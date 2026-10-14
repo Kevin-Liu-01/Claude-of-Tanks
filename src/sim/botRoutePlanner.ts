@@ -15,6 +15,7 @@ import type { TerrainMobilitySpec } from './terrainMobility.ts';
 import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
 import {
   collisionFootprintContainsPoint,
+  collisionPartIsDeck,
   hullPassesObstacleTop,
   setObbShape,
   rayCollisionFootprintEntry2,
@@ -557,6 +558,8 @@ function legMeetsSolid(
     if (shape && shape.kind === 'compound') {
       for (let k = 0; k < shape.parts.length; k++) {
         const part = shape.parts[k];
+        // (a raised deck — a roof — is a floor, never a wall: world/collision.ts collisionPartIsDeck)
+        if (collisionPartIsDeck(record as CollisionRecord, part)) continue;
         if (legMeetsFootprint(record, part, part.y0 ?? record.min[1], part.y1 ?? record.max[1], decks,
           ax, az, ah, ux, uz, length, bh, reach)) return true;
       }

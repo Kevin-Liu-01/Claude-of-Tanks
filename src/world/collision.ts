@@ -147,6 +147,17 @@ export function collisionPartSection(
   return true;
 }
 
+/** A deck's floor stands this far over its record's foot or more (a stone's drawn top stands from it). */
+const DECK_RAISED_M = 0.5;
+/**
+ * Is this part of a record a raised deck (physics stream F2, world/structureCollision.ts structureDecks): a drawn top
+ * that stands clear of the record's foot — a roof a hull stands on, which the walls under it meet from the side — and so
+ * a floor to the support and no wall to the push?
+ */
+export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crushable'>, part: SimpleCollisionShape): boolean {
+  return part.kind === 'convex' && !!part.tp && !record.crushable && part.y0 !== undefined && part.y0 > record.min[1] + DECK_RAISED_M;
+}
+
 /** setConvexShape with a drawn top (collisionPartTopAt) and its own vertical extent. */
 export function setConvexTopShape(rec: CollisionRecord, points: number[], tp: number[], y0: number, y1: number) {
   setConvexShape(rec, points);
@@ -1025,6 +1036,9 @@ export function pushHullFromObstacle(
     let hit = false;
     let lowest = Infinity, lowestBottom = -Infinity;
     for (const part of sh.parts) {
+      // (physics stream F2) a raised deck — a roof a hull stands on, world/structureCollision.ts structureDecks — is a
+      // floor only: it is met from the side by the solids under it, the walls of the ground-contact band
+      if (collisionPartIsDeck(ob, part)) continue;
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
       if (part.y1 !== undefined && (part.kind === 'convex' && part.tp && !ob.crushable

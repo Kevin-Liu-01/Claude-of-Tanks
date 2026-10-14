@@ -10326,6 +10326,8 @@ ${snowCap ? `
               cx: part.cx * record.sc,
               cz: part.cz * record.sc,
               points: part.points.map((value) => value * record.sc),
+              // (a deck's drawn top scales with it: its origin and heights, its gradients as they are)
+              ...(part.tp ? { tp: part.tp.map((value, i) => (i < 2 || (i - 2) % 3 === 2 ? value * record.sc : value)) } : {}),
               ...scaledExtent(part),
             }),
       };
