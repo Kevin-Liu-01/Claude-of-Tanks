@@ -120,6 +120,11 @@ export interface HouseSpec {
    * this far, the jambs, head and sill showing the wall's thickness (granite 0.3+, brick 0.15, a framed wall 0.1).
    */
   reveal?: number;
+  /**
+   * the core under a rendered wall when the kit's default is not this house's (damage.ts renderCore: a block house in a
+   * mud-brick village, a stone house rendered over): what a breach shows and how the house falls (props census E8)
+   */
+  core?: 'adobe' | 'brick' | 'rubble' | 'concrete' | 'stone';
   /** rafter feet showing under the eaves overhang (their colour), or none (a kit leaves them out on phones) */
   rafters?: Rgb | null;
   /**

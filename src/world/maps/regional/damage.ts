@@ -40,8 +40,22 @@ const JOIST: Rgb = [0.36, 0.27, 0.19];
 const RAFTER: Rgb = [0.3, 0.22, 0.15];
 /** the room a breach opens: an unlit interior a shade warm */
 const ROOM: Rgb = [0.032, 0.028, 0.025];
-/** the kits whose walls are earth under their render (mud brick, rammed earth; a khata's wattle and daub) */
-const EARTH_KITS: ReadonlySet<string> = new Set(['wadirum', 'ksar', 'siwa', 'navajo', 'kolkhoz']);
+/**
+ * The walls' core under their render, by kit and then by builder (props census E8, lane B 2026-10-14: it was one set of
+ * "earth kits", so Wadi Rum's concrete-block houses and stores and the patrol fort's coursed stone slumped as adobe): mud
+ * brick and rammed earth in the ksar, at Siwa, on the reservation and in a khata's wattle and daub; Wadi Rum's block,
+ * its fort and the compounds that read as it in coursed stone. A house may name its own (HouseSpec.core). A kit not
+ * named here renders over its brick or its rubble.
+ */
+const RENDER_CORE: Readonly<Record<string, Readonly<Record<string, FractureMaterial>>>> = {
+  ksar: { '*': 'adobe' }, siwa: { '*': 'adobe' }, navajo: { '*': 'adobe' }, kolkhoz: { '*': 'adobe' },
+  wadirum: { '*': 'concrete', caravanserai: 'rubble', compound: 'rubble', compoundSouk: 'rubble' },
+};
+function renderCore(style: ArchitectureStyle, builder: string, own?: FractureMaterial): FractureMaterial {
+  if (own) return own;
+  const k = RENDER_CORE[style.id];
+  return k?.[builder] ?? k?.['*'] ?? (style.surfaces.stone.kind === 'brick' ? 'brick' : 'rubble');
+}
 /** builders whose body is one open shell (a breach shows the far wall, not a room) */
 const OPEN_SHELLS: ReadonlySet<string> = new Set(['barn', 'granary', 'woodshed', 'depot', 'mill', 'warehouse', 'shed', 'boatshed']);
 
@@ -88,10 +102,13 @@ function tintOf(tints: WeatherTints, bucket: RegionalBucket): Rgb {
 
 /** a khata's daub and an earth wall under its render: clay (kolkhoz.ts CLAY), as the spalled render shows it */
 const CLAY: Rgb = [0.76, 0.6, 0.44];
+/** a concrete block's grey under a render (the core a breach shows in Wadi Rum's block houses) */
+const BLOCK: Rgb = [0.74, 0.73, 0.7];
 
 /** A storey wall's layers, outermost first (destructionKit FractureSlot). `spallTint`: what the kit's render shows where it
  *  spalls (HouseSpec.spallTint), the earth core's own paint. */
-function wallLayers(style: ArchitectureStyle, wall: RegionalBucket, framed: boolean, tints: WeatherTints, timber: Rgb | null, spallTint?: Rgb): FractureSlot[] {
+function wallLayers(style: ArchitectureStyle, wall: RegionalBucket, framed: boolean, tints: WeatherTints, timber: Rgb | null, core: FractureMaterial,
+  spallTint?: Rgb): FractureSlot[] {
   if (wall === 'stone') {
     return [{ material: stoneMaterial(style), bucket: 'regionalStone', tint: tints.stone, thicknessM: 0.45, share: 1 }];
   }
@@ -108,13 +125,14 @@ function wallLayers(style: ArchitectureStyle, wall: RegionalBucket, framed: bool
     ];
   }
   if (wall === 'plaster2' && style.surfaces.concrete) return [{ material: 'concrete', bucket: skin, tint, thicknessM: 0.25, share: 1 }];
-  // render over the region's core: mud brick in the earth kits, the kit's brick, else rubble masonry
-  const core: FractureMaterial = EARTH_KITS.has(style.id) ? 'adobe' : style.surfaces.stone.kind === 'brick' ? 'brick' : 'rubble';
+  // render over the house's core (renderCore): mud brick, concrete block, the kit's brick or its rubble masonry
   return [
     { material: 'plaster', bucket: skin, tint, thicknessM: 0.03, share: 1 },
     core === 'adobe'
       ? { material: 'adobe', bucket: skin, tint: mul3(tint, spallTint ?? CLAY), thicknessM: 0.4, share: 1 }
-      : { material: core, bucket: 'regionalStone', tint: tints.stone, thicknessM: 0.4, share: 1 },
+      : core === 'concrete'
+        ? { material: 'concrete', bucket: skin, tint: mul3(tint, BLOCK), thicknessM: 0.25, share: 1 }
+        : { material: core, bucket: 'regionalStone', tint: tints.stone, thicknessM: 0.4, share: 1 },
   ];
 }
 
@@ -278,7 +296,7 @@ function houseBody(style: ArchitectureStyle, input: StructureDescribeInput, plan
     const body = frame.bodies[i];
     const faces = storeyFaces(frame, i);
     const height = body.y1 - body.y0;
-    const layers0 = wallLayers(style, storey.wall, !!storey.framed, tints, house.timber, spec.spallTint);
+    const layers0 = wallLayers(style, storey.wall, !!storey.framed, tints, house.timber, renderCore(style, plan.builder, spec.core), spec.spallTint);
     const damageFaces: DamageFace[] = FACE_ORDER.map((name, f) => {
       const face = faces[name];
       const openings: DamageOpening[] = spec.openings.filter((o) => o.storey === i && o.face === name).map((o) => ({
@@ -441,14 +459,26 @@ function dropCrowns(anatomy: StructureDamageAnatomy, seed: number, out: { pieces
  * container stacks), a ruin's broken walls, and the tall shafts (stacks, water towers, minarets, towers) whose fall
  * is its own stage (they topple in drums, never settle as a house's heap).
  */
-const NOT_SHELLS = /gantry|market|ramada|container|ruin|stack|watertower|minaret|tower|needle|arcology|crane|silo|tent/i;
+const NOT_SHELLS = /gantry|^market$|ramada|container|ruin|stack|watertower|minaret|tower|needle|arcology|crane|silo|tent/i;
+/**
+ * (Props census E9, lane B 2026-10-14: 'market' kept every market row from the shell and shaft readings, so a row of
+ * shops broke as the default box and the ksar's ghorfa souk never reached the cell reading.) A market's stall ('market')
+ * stays out; a market row is a building: a row of shops reads as a shell, a row of cells as a cluster, and a row of
+ * open stalls (palm-rib, roadside boards) stays out as its stalls do.
+ */
+const CELL_ROWS: Readonly<Record<string, ReadonlySet<string>>> = { ksar: new Set(['marketRow']) };
+const STALL_ROWS: Readonly<Record<string, ReadonlySet<string>>> = { siwa: new Set(['marketRow']), navajo: new Set(['marketRow']) };
+function readsAsShell(style: ArchitectureStyle, builder: string): boolean {
+  return !NOT_SHELLS.test(builder) && !CELL_ROWS[style.id]?.has(builder) && !STALL_ROWS[style.id]?.has(builder);
+}
 
 /**
  * A wall bucket's layers, outermost first, in the building's own buckets (a regional kit's or the base set's), as deep
  * in all as the wall its parts show (shell.ts ShellFace.depth; the presentation clamps a fallen panel through that
  * depth, so a thicker wall box than its layers would stand through its own fall).
  */
-function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBucket: string, depth: number | null = null): FractureSlot[] {
+function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBucket: string, depth: number | null = null,
+  coreOf: FractureMaterial = renderCore(style, '')): FractureSlot[] {
   const D = depth !== null && depth >= 0.05 && depth <= 0.9 ? depth : null;
   if (bucket === 'regionalStone' || bucket === 'stone') return [{ material: stoneMaterial(style), bucket, tint, thicknessM: D ?? 0.45, share: 1 }];
   if (bucket === 'structureMetal' || bucket === 'steel') {
@@ -459,12 +489,13 @@ function shellLayers(style: ArchitectureStyle, bucket: string, tint: Rgb, coreBu
   if (bucket === 'wood' || bucket === 'structureWood' || bucket === 'dark') return [{ material: 'plank', bucket, tint, thicknessM: D ?? 0.12, share: 1 }];
   if (bucket === 'straw') return [{ material: 'thatch', bucket, tint, thicknessM: D ?? 0.3, share: 1 }];
   if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return [{ material: 'concrete', bucket, tint, thicknessM: D ?? 0.25, share: 1 }];
-  // a render over the region's core (mud brick in the earth kits, the kit's brick, else rubble masonry)
-  const core: FractureMaterial = EARTH_KITS.has(style.id) ? 'adobe' : style.surfaces.stone.kind === 'brick' ? 'brick' : 'rubble';
+  // a render over the body's core (renderCore: mud brick, concrete block, the kit's brick, else rubble masonry)
+  const core = coreOf;
   const coreT = Math.max(0.1, (D ?? 0.43) - 0.03);
   return [
     { material: 'plaster', bucket, tint, thicknessM: 0.03, share: 1 },
     core === 'adobe' ? { material: 'adobe', bucket, tint: mul3(tint, CLAY), thicknessM: coreT, share: 1 }
+      : core === 'concrete' ? { material: 'concrete', bucket, tint: mul3(tint, BLOCK), thicknessM: Math.min(coreT, 0.25), share: 1 }
       : { material: core, bucket: coreBucket, tint: coreBucket === bucket ? mul3(tint, [0.8, 0.74, 0.68]) : WHITE, thicknessM: coreT, share: 1 },
   ];
 }
@@ -502,14 +533,14 @@ function unitMasonry(material: FractureMaterial, height: number, width: number, 
 }
 
 /** A roof covering in the building's own bucket: the kit's roof kind for its tiles, else by the bucket. */
-function shellCovering(style: ArchitectureStyle, bucket: string, tint: Rgb, flat: boolean): FractureSlot {
+function shellCovering(style: ArchitectureStyle, bucket: string, tint: Rgb, flat: boolean, core: FractureMaterial = renderCore(style, '')): FractureSlot {
   if (bucket === 'straw') return { material: 'thatch', bucket, tint, thicknessM: 0.35, share: 1 };
   if (bucket === 'structureMetal' || bucket === 'steel') return { material: 'metal', bucket, tint, thicknessM: 0.01, share: 1 };
   if (bucket === 'wood' || bucket === 'structureWood') return { material: 'plank', bucket, tint, thicknessM: 0.04, share: 1 };
   if (bucket === 'baked' || (/plaster2/i.test(bucket) && style.surfaces.concrete)) return { material: 'concrete', bucket, tint, thicknessM: 0.22, share: 1 };
   // a deck of the walls' render: rammed earth over its beams in the earth kits, a cast slab elsewhere
   if (bucket !== 'roof' && bucket !== 'regionalRoof') {
-    return flat ? { material: EARTH_KITS.has(style.id) ? 'earth' : 'concrete', bucket, tint, thicknessM: EARTH_KITS.has(style.id) ? 0.3 : 0.22, share: 1 }
+    return flat ? { material: core === 'adobe' ? 'earth' : 'concrete', bucket, tint, thicknessM: core === 'adobe' ? 0.3 : 0.22, share: 1 }
       : { material: 'plaster', bucket, tint, thicknessM: 0.3, share: 1 };
   }
   const r = style.surfaces.roof.kind;
@@ -526,7 +557,7 @@ function shellCovering(style: ArchitectureStyle, bucket: string, tint: Rgb, flat
  * close into a shell (the default kit reads those).
  */
 function describeShell(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
-  if (NOT_SHELLS.test(input.builder)) return null;
+  if (!readsAsShell(style, input.builder)) return null;
   const r = readShell(input.parts);
   if (!r) return null;
   const W = r.x1 - r.x0, D = r.z1 - r.z0, wallH = r.eave - r.base;
@@ -550,7 +581,7 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   for (let i = 0; i < count; i++) {
     const y0 = r.base + i * storeyH, y1 = y0 + storeyH;
     const faces: DamageFace[] = r.faces.map((sf, f) => {
-      const layers = shellLayers(style, sf.bucket, sf.tint, coreBucket || sf.bucket, sf.depth);
+      const layers = shellLayers(style, sf.bucket, sf.tint, coreBucket || sf.bucket, sf.depth, renderCore(style, input.builder));
       const origin: Vec3 = [sf.origin[0], y0, sf.origin[2]];
       const fit = sf.uv;
       const regional = sf.bucket.startsWith('regional');
@@ -600,7 +631,7 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   }
   let roof: DamageRoof | null = null;
   if (r.roof) {
-    const cover = shellCovering(style, r.roof.bucket, r.roof.tint, r.roof.kind === 'flat');
+    const cover = shellCovering(style, r.roof.bucket, r.roof.tint, r.roof.kind === 'flat', renderCore(style, input.builder));
     const timberBucket = has('structureWood') ? 'structureWood' : 'wood';
     roof = {
       kind: r.roof.kind === 'hip' ? 'hip' : r.roof.kind === 'shed' ? 'shed' : r.roof.kind === 'flat' ? 'flat' : 'gable',
@@ -617,7 +648,7 @@ function describeShell(style: ArchitectureStyle, input: StructureDescribeInput):
   }
   const chimneys: DamageChimney[] = r.chimneys.map((c) => ({ ...c }));
   const plinth = r.plinth ? { h: r.plinth.h, out: r.plinth.out,
-    slot: { ...shellLayers(style, r.plinth.bucket, r.plinth.tint, coreBucket || r.plinth.bucket).at(-1)!, thicknessM: 0.5, share: 1 } } : null;
+    slot: { ...shellLayers(style, r.plinth.bucket, r.plinth.tint, coreBucket || r.plinth.bucket, null, renderCore(style, input.builder)).at(-1)!, thicknessM: 0.5, share: 1 } } : null;
   // the pile, as a house's: the walls' layers by volume, the roof's covering and its frame, the floors
   const pile = new Map<string, FractureSlot>();
   const add = (slot: FractureSlot, volume: number) => {
@@ -660,7 +691,7 @@ const CLUSTERS = /compound|caravanserai|souk|kasbah|ksar|medina|cluster/i;
  * core), and the cells themselves for the builders to find the one a blow reaches.
  */
 function describeCluster(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
-  if (!CLUSTERS.test(input.builder)) return null;
+  if (!CLUSTERS.test(input.builder) && !CELL_ROWS[style.id]?.has(input.builder)) return null;
   const cells = readCells(input.parts);
   if (!cells) return null;
   const x0 = Math.min(...cells.map((c) => c.x0)), x1 = Math.max(...cells.map((c) => c.x1));
@@ -674,7 +705,7 @@ function describeCluster(style: ArchitectureStyle, input: StructureDescribeInput
   const tint = cells.find((c) => c.bucket === bucket)?.tint ?? [1, 1, 1];
   const has = (b: string): boolean => !!input.parts[b]?.length;
   const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : '';
-  const layers = shellLayers(style, bucket, tint, coreBucket || bucket, null);
+  const layers = shellLayers(style, bucket, tint, coreBucket || bucket, null, renderCore(style, input.builder));
   const count = Math.max(1, Math.min(6, Math.round((top - base) / 3.2)));
   const step = (top - base) / count;
   const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
@@ -701,7 +732,7 @@ function describeCluster(style: ArchitectureStyle, input: StructureDescribeInput
   };
   for (const c of cells) {
     const area = 2 * ((c.x1 - c.x0) + (c.z1 - c.z0)) * (c.y1 - c.y0);
-    for (const l of shellLayers(style, c.bucket, c.tint, coreBucket || c.bucket, null)) add(l, area * l.thicknessM);
+    for (const l of shellLayers(style, c.bucket, c.tint, coreBucket || c.bucket, null, renderCore(style, input.builder))) add(l, area * l.thicknessM);
   }
   if (has('structureWood')) add({ material: 'timber', bucket: 'structureWood', tint: JOIST, thicknessM: 0.2, share: 0 }, cells.length * 0.4);
   const total = [...pile.values()].reduce((a, sl) => a + sl.share, 0) || 1;
@@ -795,7 +826,7 @@ function describeRuin(style: ArchitectureStyle, input: StructureDescribeInput): 
   const has = (b: string): boolean => !!input.parts[b]?.length;
   const coreBucket = has('regionalStone') ? 'regionalStone' : has('stone') ? 'stone' : bucket;
   const depth = (2 * pieces.reduce((a, p) => a + p.ht, 0)) / pieces.length;
-  const layers = shellLayers(style, bucket, tint, coreBucket, depth);
+  const layers = shellLayers(style, bucket, tint, coreBucket, depth, renderCore(style, input.builder));
   const count = Math.max(1, Math.min(6, Math.round((top - base) / 3.2)));
   const step = (top - base) / count;
   const SIDE: ReadonlyArray<{ name: SeamFace; u: Vec3; out: Vec3 }> = [
@@ -830,7 +861,7 @@ function describeRuin(style: ArchitectureStyle, input: StructureDescribeInput): 
 
 /** Builders a shaft reading leaves to others (open frames and stalls, ruins, the city's own towers with their skyline
  *  damage, cranes and tents). */
-const NOT_SHAFTS = /gantry|market|ramada|container|ruin|crane|tent|arcology|needle|megatower|terrace|broadcast/i;
+const NOT_SHAFTS = /gantry|market|ramada|container|ruin|crane|tent|arcology|needle|megatower|terrace|broadcast/i;  // (a market row is never a shaft)
 
 /**
  * The anatomy of a tall narrow body (a stack, a water tower, a minaret, a tower), read off its parts (shell.ts
@@ -857,7 +888,7 @@ function describeShaft(style: ArchitectureStyle, input: StructureDescribeInput):
       const origin: Vec3 = side.name === 'front' ? [(b.x0 + b.x1) / 2, b.y0, b.z1] : side.name === 'right' ? [b.x1, b.y0, (b.z0 + b.z1) / 2]
         : side.name === 'back' ? [(b.x0 + b.x1) / 2, b.y0, b.z0] : [b.x0, b.y0, (b.z0 + b.z1) / 2];
       const width = Math.abs(side.out[2]) > 0.5 ? b.x1 - b.x0 : b.z1 - b.z0;
-      const layers = shellLayers(style, b.bucket, b.tint, coreBucket || b.bucket, null);
+      const layers = shellLayers(style, b.bucket, b.tint, coreBucket || b.bucket, null, renderCore(style, input.builder));
       const fit = b.uv[f], axis = Math.abs(side.out[2]) > 0.5 ? 0 : 2, dStone = BUCKET_UV_DENSITY.stone;
       const regional = b.bucket.startsWith('regional');
       surfaces.set(i * 4 + f, {
