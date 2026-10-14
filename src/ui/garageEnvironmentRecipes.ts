@@ -213,8 +213,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     // cobblestone embankment curls up around the bay like the inside of a bowl")
     terrainSurface: 'grass', terrainTint: 0x8f9a74, hardstandTint: 0x787b79, buildingTint: 0xa6907e,
     structures: [
-      at(makeFactory, 'urban factory', -36, -6, 0.76),
-      at(makeFireStation, 'Steinburg fire station', -30, -30, 0.78),
+      at(makeFactory, 'urban factory', -39, -6, 0.76), // 2.1 m out: clear of the Zeughaus
+      at(makeFireStation, 'Steinburg fire station', -33, -33, 0.78), // behind the Zeughaus, 4.2 m back
       at(makeCornerShop, 'arsenal corner shop', -7, -36, 0.74),
       at(makeChurch, 'old-city church', 18, -34, 0.54),
       at(makeFactory, 'arsenal annex', 36, -14, 0.56),
