@@ -1203,9 +1203,16 @@ const AerialShader = {
         if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
+        // contact round 4 (2026-10-10): the dirt a run carries toward its foot, on the near hulls' own pixels
+        // (vehicleGroundOcclusion.ts cotVehicleGrime; none on snow)
+        if ( uVehGround > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
+          texel.rgb *= cotVehicleGrime( uCamPos + ray * rayT );
+          // contact round 5 (2026-10-11): the run's foot takes the colour of the ground beside it (set into turf, packed snow)
+          texel.rgb = cotVehicleContactBlend( texel.rgb, uCamPos + ray * rayT );
+        }
         // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
         if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
-          texel.rgb *= cotVehicleGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ );
+          texel.rgb *= cotVehicleGroundShadeRgb( vUv, uCamPos + ray * rayT, texel.a, -viewZ ); // (round 5: the snow's cool cast)
         }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -2897,6 +2904,9 @@ export function createPost(
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
       scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
+    // contact round 5 (2026-10-11): the contact blend sets a track's foot into soft ground — the battle maps' grounded rig;
+    // the Garage's turntable (the legacy rig) is a hard floor a track stands on, never sinks into
+    if (groundModel?.mode !== 'physical') (aerial.uniforms as unknown as VehicleGroundOcclusionUniforms).uVehGroundR6.value.w = 0;
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
