@@ -177,7 +177,7 @@ export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'ol
 
 /** The Tucker Sno-Cat 1544: four pontoon tracks on their steering bogies, the frame, the boxy cab with its wide windows,
  * the cargo bed behind it; the lamps and the roof rack. Wrecked: burnt out, the right front pontoon torn off its bogie and
- * lying canted beside it, the cab's glass gone and its roof caved, the drums thrown down. */
+ * dropped canted under it, the cab's glass gone and its roof caved, the drums thrown down. */
 export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   // (the map-content lane's first capture: the pontoons read as four wheels on stalks under a floating box) each pontoon
   // long and low, the track wrapped round it under an orange pontoon body, the frame and the cab sitting down on them
@@ -185,7 +185,7 @@ export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): voi
   for (const sx of [1, -1]) for (const zc of [1.45, -1.45]) {
     const x = sx * 0.92, torn = wrecked && sx < 0 && zc > 0;
     mesh.push();
-    if (torn) mesh.translate(-0.35, -0.05, 0.25).translate(x, 0, zc).rotateY(0.35).rotateZ(-0.28).translate(-x, 0, -zc);
+    if (torn) mesh.translate(0.04, -0.08, 0.06).translate(x, 0, zc).rotateY(0.12).rotateZ(-0.15).translate(-x, 0, -zc);
     belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, wrecked ? RUSTY : BLACK);
     if (!coarse) trackCleats(mesh, x, pw + 0.04, zc - 0.62, zc + 0.62, 0.0, 0.8, 6, wrecked ? RUSTY : STEEL_M);
     mesh.box(x, 0.62, zc, pw - 0.08, 0.34, 1.3, ORANGE, coarse ? 0 : 0.06);
