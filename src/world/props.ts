@@ -8231,11 +8231,10 @@ ${snowCap ? `
             || !destructibleClearOfRoad('bunker', px, pz, yawP, 1)) return null;
           return pillboxClearOfTrunks(px, pz, yawP) ? [px, pz] : 'trunk';
         };
-        let at: readonly [number, number] | null = null, barred = false;
+        let at: readonly [number, number] | null = null;
         for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
           const got = seat(ox, oz);
-          if (got === 'trunk') barred = true;
-          else if (got) { at = got; break; }
+          if (got && got !== 'trunk') { at = got; break; }
         }
         // (b40) where the trunks bar every seat the ground allows, the pillbox steps further along the line or back from
         // it, so the work keeps its pillbox (on Caldera and Saltmere the trunks barred all three usual seats); (the looks
