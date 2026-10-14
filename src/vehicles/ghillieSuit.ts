@@ -2213,7 +2213,10 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
 // in the net and only their half-length fallbacks laid). A crew laying boughs flat lays more of them, side by side, until
 // the roof is covered: a roof or deck takes FIELD_CLUMPS_TOP clumps a square metre, and a bough lies across a gap in its
 // net on the armour beneath (a torn cell, a step the net was not laid down) as it lies on the net; where the net under it
-// is lumpy (a basket's load) it is laid shorter or turned until its face lies on it. The fan was cloth hung
+// is lumpy (a basket's load) it is laid shorter or turned until its face lies on it. Nor are boughs bunched into one
+// point each turned its own way (a clump whose cards' own stems found no cloth stacked them all on its seat, and the
+// turned fallbacks fanned them out of it): one card at most takes a clump's bare seat, and no three cards whose stems
+// meet fan more than FIELD_FAN_SPREAD_DEG apart. The fan off the turret side was cloth hung
 // in the air: a drape column with no armour under its roof net's edge was hung on its authored line, here 27 cm out from
 // the sloping turret side, its hessian hanging off it; a field drape now hangs only from armour or free from its roof
 // net's edge, never from nothing. And a drape's garnish hangs where the drape falls: none on a drape's roll lying level
@@ -2324,6 +2327,9 @@ const FIELD_GAP_REACH_M = 0.15;
 const FIELD_GAP_DIP_M = 0.05;
 /** netting-proper round 2: the most a roof card's face may tilt off the net under its footprint (degrees). */
 const FIELD_FACE_TILT_DEG = 24;
+/** netting-proper round 2: roof cards whose stems lie this close (m) never fan more than FIELD_FAN_SPREAD_DEG apart. */
+const FIELD_FAN_STEM_M = 0.035;
+const FIELD_FAN_SPREAD_DEG = 36;
 /** How far under its own net a field card may pass (its foot and edges tucked under the net's folds). */
 const FIELD_UNDER_NET_M = 0.08;
 
@@ -2354,6 +2360,11 @@ interface FieldTuftContext extends TuftContext {
    * below y + 5 mm when that surface faces up, else null (nothing under it, or the point inside a solid).
    */
   readonly armourUnder?: (x: number, y: number, z: number) => number | null;
+  /**
+   * netting-proper round 2: the owner's roof cards laid so far, over all its roof and deck nets (where two nets meet,
+   * either's clumps may reach the same point): each card's tuck point and plan heading.
+   */
+  readonly laidStems?: Array<readonly [number, number, number, number]>;
 }
 
 /** The closest distance between the segment u-v and a cage member's axis. */
@@ -2615,6 +2626,29 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const n = seat ?? broadNormal(stem, [0, 1, 0]);
     return Math.abs(face[0] * n[0] + face[1] * n[1] + face[2] * n[2]) >= faceTiltCos;
   };
+  // netting-proper round 2: the roof cards laid so far (their tuck points and plan headings, over all the owner's roof
+  // and deck nets): no three of them fan more than FIELD_FAN_SPREAD_DEG apart out of one point (stems within
+  // FIELD_FAN_STEM_M), as a crew never stuffs a bunch of boughs into one mesh hole each turned its own way
+  const laidStems = ctx.laidStems ?? [];
+  const fanSpread = FIELD_FAN_SPREAD_DEG * Math.PI / 180;
+  const fansOut = (pts: readonly (readonly number[])[]): boolean => {
+    const s0 = pts[1], s2 = pts[7];
+    const me = [s0[0], s0[1], s0[2], Math.atan2(s2[0] - s0[0], s2[2] - s0[2])] as const;
+    const close = (a: readonly number[], b: readonly number[]): boolean => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < FIELD_FAN_STEM_M;
+    // every bunch this card would join: round itself and round each laid card it lies beside
+    for (const centre of [me, ...laidStems.filter((q) => close(q, me))]) {
+      const bunch = [me, ...laidStems.filter((q) => close(q, centre))];
+      if (bunch.length < 3) continue;
+      // the headings' range about the centre's (at least their spread round the circle)
+      let lo = 0, hi = 0;
+      for (const q of bunch) {
+        const d = Math.atan2(Math.sin(q[3] - centre[3]), Math.cos(q[3] - centre[3]));
+        lo = Math.min(lo, d); hi = Math.max(hi, d);
+      }
+      if (hi - lo > fanSpread) return true;
+    }
+    return false;
+  };
   let hemFloorHere = -Infinity;
   const tryCard = (make: (scale: number, liftK: number, turn: number) => FoliageCard | null,
     tries: ReadonlyArray<readonly [number, number, number]>, stem: readonly number[]): FoliageCard | null => {
@@ -2623,7 +2657,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
       if (!card) continue;
       const pts = foliageCardPoints(card);
       // the tip row first: a card that fails mostly fails where it reaches farthest
-      let quick = !top || (lyingOk(pts, stem) && faceLies(pts, stem));
+      let quick = !top || (lyingOk(pts, stem) && faceLies(pts, stem) && !fansOut(pts));
       for (let q = pts.length - 1; q >= 0 && quick; q--) {
         const p = pts[q];
         quick = Math.abs(p[0]) <= ctx.maxHalfWidth && p[1] >= ctx.hemFloor - 0.04 && p[1] >= hemFloorHere
@@ -2718,6 +2752,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const n = boughs ? FIELD_BOUGHS_PER_CLUMP[Math.floor(rng() * FIELD_BOUGHS_PER_CLUMP.length)] : 3 + Math.floor(rng() * 3);
     const strips = boughs ? (rng() < 0.75 ? 1 + Math.floor(rng() * 2) : 0) : n;
     const cards = boughs ? n + strips : n;
+    // netting-proper round 2: one card at most is tucked at the clump's bare seat (where a card's own stem, staggered
+    // across the clump, finds no cloth): several there, each turned its own way to fit, fanned out of one point
+    let seatTaken = false;
     for (let k = 0; k < cards; k++) {
       const bough = boughs && k < n;
       // every draw of this card happens here, before any fit
@@ -2738,8 +2775,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
         su += across;
         sv += along * 0.3 / vScale;
       }
-      let at = su === seatAt.u && sv === seatAt.v ? seat : (seatOk(su, sv) ? surface.sample(su, sv) : null);
+      let at: ClothPoint | null = su === seatAt.u && sv === seatAt.v ? seat : (seatOk(su, sv) ? surface.sample(su, sv) : null);
       if (!at || clothAt(at.p) > 0.006) at = seat;
+      if (at === seat && seatTaken) continue;
       // netting-proper round 2: a drape's card is never tucked where the drape lies level (its roll over a roof's edge):
       // it moves to its clump's seat, and a clump seated there is left out (after its draws: the rest keep theirs)
       if (!top && Math.abs(at.n[1]) > FIELD_DRAPE_LEVEL_N) at = seat;
@@ -2809,6 +2847,11 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
           volumeMix: bough ? [0.72, 0.18, 0.12] : [0.5, 0.38, 0.14] };
       }, top ? TOP_TRIES : DRAPE_TRIES, stem);
       if (placed) out.push(placed);
+      if (placed && at === seat) seatTaken = true;
+      if (placed && top) {
+        const q = foliageCardPoints(placed);
+        laidStems.push([q[1][0], q[1][1], q[1][2], Math.atan2(q[7][0] - q[1][0], q[7][2] - q[1][2])]);
+      }
     }
   }
 }
@@ -4957,6 +5000,7 @@ function addGhillieOwner(
       envOk, columns: clearance ? clearance.keepColumns(owner) : undefined,
       tubes: cage.flatMap((wing) => [...wing.tubes, ...wing.hinges]),
       roofUnder: field ? netHeightRaster(surfaces.filter((s) => s.kind === 'top').map((s) => s.geometry)) : undefined,
+      laidStems: [],
       // netting-proper round 2: the armour a bough lies on across a gap in its net: the first surface at or under the
       // point, facing up, with nothing standing over the point within 30 cm (inside a box, under a hood or a lip: none)
       armourUnder: field && surfacesAt ? (x, y, z) => {

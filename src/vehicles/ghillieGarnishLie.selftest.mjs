@@ -22,7 +22,10 @@
 //   5. (netting-proper round 2; a critic on the Mk 4B: "a large dark fan of long blades or strips spreads out sideways
 //      from the turret's side") a drape card tucked where its drape lies level, and laid within 30 degrees of level,
 //      lies over the cloth: in plan no point of it more than 30 cm from the owner's net (the boughs standing straight
-//      out of the Mk 4B's bustle drape where it rolled level over the basket's edge reached 34 to 38 cm past it).
+//      out of the Mk 4B's bustle drape where it rolled level over the basket's edge reached 34 to 38 cm past it);
+//   6. (netting-proper round 2) no three roof cards fan out of one point: among cards whose stems lie within 3 cm of
+//      each other, no three point more than 40 degrees apart in plan (the Mk 4B carried seven such fans of 3 or 4
+//      boughs and strips, each turned its own way where a clump's bare seat took them all).
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
@@ -35,7 +38,7 @@ const LIFT_M = 0.12, LIFT_TOL_M = 0.02, OWN_NET_M = 0.25, EDGE_RISE_M = 0.12;
 // GARNISH_LIE_DEBUG=<id>: list that hull's tilted roof cards
 const DEBUG_ID = process.env.GARNISH_LIE_DEBUG;
 const TILT_DEG = 25, TILT_SHARE = 0.9, TILT_MAX_DEG = 60, STEEP_SHARE = 0.02, DRAPE_RISE_DEG = 20;
-const COVER_CELL_M = 0.02, COVER_MIN_NET_M2 = 2, COVER_MIN_SHARE = 0.3, DRAPE_PLAN_REACH_M = 0.3;
+const COVER_CELL_M = 0.02, COVER_MIN_NET_M2 = 2, COVER_MIN_SHARE = 0.3, DRAPE_PLAN_REACH_M = 0.3, FAN_STEM_M = 0.03, FAN_SPREAD_DEG = 40;
 
 /**
  * An owner's net for its drape garnish: `level(p)`, whether the drape cloth nearest a point (within 30 cm; its net mesh
@@ -202,6 +205,7 @@ for (const id of IDS) {
     const topCards = (o.userData[GHILLIE_TOP_CARDS] ?? [0, 24])[0];
     const V = (i) => [pos.getX(i), pos.getY(i), pos.getZ(i)];
     const cloth = drapeCloth(net, top);
+    const stems = [];
     for (let k = 0, card = 0; k + 23 < pos.count; k += 24, card++) {
       // the spine (its root and tip rows' middles) and the middle row's edges
       const s0 = V(k + 1), s2 = V(k + 14), axis = norm(sub(s2, s0));
@@ -224,6 +228,7 @@ for (const id of IDS) {
       }
       roofCards++;
       assert.ok(top > 0, `${net.name}: marks its roof and deck carriers`);
+      stems.push([s0, Math.atan2(s2[0] - s0[0], s2[2] - s0[2])]);
       const face = norm(cross(axis, norm(sub(V(k + 19), V(k + 12)))));
       let lift = -Infinity, edge = -Infinity;
       for (let v = k; v < k + 24; v++) {
@@ -255,6 +260,19 @@ for (const id of IDS) {
       if (tilt > TILT_DEG) tilted++;
       if (DEBUG && tilt > TILT_DEG) console.log(`  ${o.name} ${card} tilt ${tilt.toFixed(0)} stem ${s0.map((v) => v.toFixed(2))} tip ${s2.map((v) => v.toFixed(2))} face ${face.map((v) => v.toFixed(2))} net ${seat.map((v) => v.toFixed(2))}`);
       if (tilt > TILT_MAX_DEG) steep.push(`${o.name} roof card ${card}: its face stands ${tilt.toFixed(0)} deg off the net's`);
+    }
+    // 6. no fan of three or more roof cards out of one point
+    for (let i = 0; i < stems.length; i++) {
+      const [p, h] = stems[i];
+      const near = stems.filter(([q]) => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < FAN_STEM_M);
+      if (near.length < 3) continue;
+      // the widest spread of headings among them (headings as angles round the circle)
+      const off = near.map(([, g]) => Math.atan2(Math.sin(g - h), Math.cos(g - h))).sort((a, b) => a - b);
+      const spread = deg(off[off.length - 1] - off[0]);
+      if (spread > FAN_SPREAD_DEG) {
+        failures.push(`${o.name}: ${near.length} roof cards fan ${spread.toFixed(0)} deg out of one point (${p.map((v) => v.toFixed(2))})`);
+        break;
+      }
     }
     // 4. a turret roof net's plan coverage by its own lying roof cards
     if (/_ghillie_turret_leaves$/.test(o.name)) {
