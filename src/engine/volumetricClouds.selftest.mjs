@@ -529,6 +529,18 @@ assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarg
   assert.match(trace, /return t < uDomeRadius \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
   assert.match(layerSource, /uDomeRadius: \{ value: CLOUD_DOME_RADIUS_M \}/);
 }
+{
+  // 2026-10-14 (the SKY lane; the horizons lane's Polders bird frames, 400 m up and 1.3 km off the centre: the cloud field
+  // cut by straight walls around a clear hole): the composite dome stands on the camera every frame, so each of its
+  // fragments lies CLOUD_DOME_RADIUS_M along its ray — inside the main camera's 4 km far plane from any pose (a bird, an
+  // overview, the Garage), and at the distance cloudSceneT measures the dome by
+  const layerSource = here('./volumetricClouds.ts');
+  const hook = layerSource.slice(layerSource.indexOf('  beforeSceneRender('), layerSource.indexOf('    // wind drift, bounded to the fields'));
+  assert.match(hook, /this\.dome\.position\.copy\(camera\.getWorldPosition\(this\.domeAnchor\)\);/, 'the dome follows the camera every frame');
+  const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const far = Number(mainSource.match(/new THREE\.PerspectiveCamera\(\s*60,[^\n]*\n\s*([\d.]+),\s*([\d.]+),/)?.[2]);
+  assert.ok(Number.isFinite(far) && CLOUD_DOME_RADIUS_M < far * 0.9, `the dome's radius sits inside the battle camera's far plane (${CLOUD_DOME_RADIUS_M} < 0.9 x ${far})`);
+}
 assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
 assert.ok(CLOUD_AERIAL.farStartM >= 5000 && CLOUD_AERIAL.farEndM >= 20000 && CLOUD_AERIAL.farScatterCeiling <= 0.85, 'the far scatter ramp keeps a far deck readable');
