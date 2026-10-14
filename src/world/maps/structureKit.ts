@@ -1633,7 +1633,7 @@ function makeFieldHospital(rng: Rng): THREE.BufferGeometry {
       colored(out, box(0.05, 0.22, 0.05).translate(x, 0.1, zs * 5.6), p[2], r, 0);
     }
   }
-  for (let z = -4.0; z <= 4.0; z += 0.4) colored(out, box(0.85, 0.05, 0.3).translate(0, 0.05, z), PAL.timber[1], r, 0);
+  for (let z = -4.0; z <= 4.0; z += 0.4) colored(out, box(0.85, 0.04, 0.3).translate(0, 0.02, z), PAL.timber[1], r, 0);
   for (const [x, z] of [[-3.6, 3.4], [3.6, -3.4]] as const) {
     colored(out, box(0.6, 0.05, 1.9).translate(x, 0.62, z), 0x5c6348, r, 0);
     for (const dz of [-0.75, 0.75]) colored(out, box(0.55, 0.6, 0.06).translate(x, 0.3, z + dz), PAL.timber[2], r, 0);
@@ -2157,9 +2157,15 @@ function makeLeanToCraft(rng: Rng): THREE.BufferGeometry {
   }
   for (const x of [-dx, dx]) colored(out, beam([x, 0.02, -dz + 1.0], [x, 1.6, -dz], 0.08, 0.08), p[2], rng, 0.04);
   // the billets stacked under it, their end grain to the front, and the chopping block
-  // (close-packed: each billet in the notch of the two under it, the stack's back against the boards)
-  for (let r = 0; r < 5; r++) for (let k = 0; k < 13 - r; k++) {
-    colored(out, cylinder(0.1, 0.1, 0.55, 6).rotateX(Math.PI / 2).translate(-dx + 0.35 + k * 0.2 + r * 0.1, 0.1 + r * 0.17, -dz + 0.4375), t[r % 2 ? 0 : 1], rng, 0.08);
+  // (the stack's courses, each a body of split billets stepping in a half billet at a time, its back against the boards;
+  // their end grain on the front, a disc a billet: one collision body a course, so the stack reads as the stack)
+  for (let r = 0; r < 5; r++) {
+    const n = 13 - r, x0 = -dx + 0.25 + r * 0.1;
+    colored(out, box(n * 0.2, 0.2, 0.55).translate(x0 + n * 0.1, 0.1 + r * 0.17, -dz + 0.4375), t[2], rng, 0.08);
+    for (let k = 0; k < n; k++) {
+      const disc = cylinder(0.092, 0.092, 0.03, 6); disc.rotateX(Math.PI / 2);
+      colored(out, disc.translate(x0 + 0.1 + k * 0.2, 0.1 + r * 0.17, -dz + 0.4375 + 0.29), t[r % 2 ? 0 : 1], rng, 0.08);
+    }
   }
   colored(out, cylinder(0.24, 0.26, 0.5, 8).translate(1.2, 0.25, 1.1), t[2], rng, 0.05);
   return mergeConnectedStructure('leanto', out);
@@ -2413,25 +2419,25 @@ function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
     const z0 = -d / 2 + k * bay, z1 = z0 + bay, ex = side * (w / 2), wx = side * (w / 2 + 0.05);
     // the roof cloth from the eave to the ridge, sagging between the bay lines
     colored(out, clothPanel([ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1], 4, 6, 0.09, [0, -1, 0]), k % 2 ? p[1] : p[0], r, 0.012);
-    // the wall cloth, bellied out a little between its poles
-    colored(out, clothPanel([wx, 0.02, z0], [wx, wall, z0], [wx, wall, z1], [wx, 0.02, z1], 2, 6, 0.05, [side, 0, 0]), k % 2 ? p[0] : p[1], r, 0.012);
+    // the wall cloth pegged out, leaning a little from the eave to its foot (a panel a bay)
+    const wallPanel = box(0.04, wall, bay - 0.03);
+    wallPanel.rotateZ(side * 0.1);
+    colored(out, wallPanel.translate(wx + side * 0.02, wall / 2, (z0 + z1) / 2), k % 2 ? p[0] : p[1], r, 0.03);
   }
   for (const zs of [-1, 1]) colored(out, gable(w, rise, 0.04).translate(0, wall, zs * (d / 2 - 0.02)), p[0], r, 0.05);
   colored(out, box(w, wall, 0.04).translate(0, wall / 2, -d / 2 + 0.02), p[0], r, 0.05);
   for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.55, wall, 0.04).translate(sgn * (w / 4 + 0.28), wall / 2, d / 2 - 0.02), p[0], r, 0.05);
   // the door: the dark inside, its two flaps rolled up and tied at the sides of the opening
   colored(out, box(1.1, wall + rise * 0.55, 0.02).translate(0, (wall + rise * 0.55) / 2, d / 2 - 0.05), dark, r, 0.02);
-  for (const s of [-1, 1]) colored(out, cylinder(0.08, 0.08, wall + rise * 0.45, 8).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.02), p[1], r, 0.05);
-  // the ridge pole on its uprights, the eave poles at the bay lines
+  for (const s of [-1, 1]) colored(out, box(0.15, wall + rise * 0.45, 0.13).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.03), p[1], r, 0.05);
+  // the ridge pole on its uprights (the walls' poles inside the cloth)
   colored(out, box(0.08, 0.08, d + 0.4).translate(0, ridgeY, 0), p[2], r, 0.03);
   for (const zs of [-1, 1]) colored(out, box(0.1, ridgeY + 0.35, 0.1).translate(0, (ridgeY + 0.35) / 2, zs * (d / 2 + 0.1)), p[2], r, 0.03);
   for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
     const z = -d / 2 + k * bay;
-    colored(out, box(0.06, wall + 0.1, 0.06).translate(side * (w / 2 + 0.06), (wall + 0.1) / 2, z), p[2], r, 0.03);
     // the webbing over the roof at the bay line, the guy from the eave to its peg
     colored(out, beam([side * (w / 2), wall + 0.02, z], [0, ridgeY + 0.03, z], 0.025, 0.07), web, r, 0.03);
     colored(out, beam([side * (w / 2 + 0.04), wall + 0.05, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), rope, r, 0.03);
-    colored(out, box(0.05, 0.22, 0.05).translate(side * (w / 2 + 1.0), 0.1, z), p[2], r, 0.03);
   }
   // the valance along each eave, the side windows with their flaps rolled over them
   for (const side of [-1, 1]) {
@@ -2444,7 +2450,8 @@ function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
   }
   for (const zs of [-1, 1]) colored(out, beam([0, ridgeY + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + 1.3)], 0.022, 0.022), rope, r, 0.03);
   colored(out, slab(3.4, 0.04, 1.9).translate(0, 0.05, d / 2 + 1.05), p[1], r, 0.06);
-  for (let z = -d / 2 + 0.3; z < d / 2 - 0.2; z += 0.62) colored(out, box(0.32, 0.2, 0.58).translate(-w / 2 - 0.32, 0.1, z), 0xa89a76, r, 0.08);
+  // (a long sand bag a bay and a half: the band's footprint stays in few pieces)
+  for (let k = 0; k < 6; k++) colored(out, box(0.34, 0.22, 1.12).translate(-w / 2 - 0.32, 0.11, -d / 2 + 0.6 + k * 1.16), 0xa89a76, r, 0.08);
   return mergeConnectedStructure('deserttent', out);
 }
 
