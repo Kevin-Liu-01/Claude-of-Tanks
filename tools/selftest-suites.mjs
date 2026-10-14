@@ -729,6 +729,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
     'src/ui/damagePanelEntryMasks.selftest.mjs',
+    // 2026-10-13 (owner: "even if im destroyed, the tank in bottom left corner can have its turret rotating"): a
+    // wreck's panel holds its last live pose and the frame input locks a dead player's gun
+    'src/ui/damagePanelWreckPose.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
     'src/ui/tankThumbs.selftest.mjs',

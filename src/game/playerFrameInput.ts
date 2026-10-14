@@ -181,7 +181,14 @@ export function createPlayerFrameInput({
     const aimAvailable = battleAimIsAvailable(sample);
     camera.rmb = aimAvailable && !cursorAim &&
       (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
-    if (sample.player?.input) sample.player.input.aimLocked = camera.rmb;
+    // A wreck has no gunner (owner 2026-10-13: "even if im destroyed, the tank in bottom left corner can have its
+    // turret rotating"): the camera rig keeps writing the live sight into input.aimPoint after death (a reviving
+    // mode keeps the chase view through the countdown), and the fixed step lays any unlocked gun toward it, so the
+    // dead player's turret yaw — the damage panel's and the minimap's — chased the mouse. Lock it, as the network
+    // authority does for a destroyed seat (authoritativeMatch applyNetworkInput); a revive releases it.
+    if (sample.player?.input) {
+      sample.player.input.aimLocked = camera.rmb || sample.player.combat?.destroyed === true;
+    }
     camera.aimHold = aimAvailable && rmbMode === 'hold' && rmbHeld;
     camera.shiftPressed = !sample.cameraLocked && (
       sniperToggleHeld ||
