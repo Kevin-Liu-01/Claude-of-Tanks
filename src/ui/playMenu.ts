@@ -102,7 +102,8 @@ export interface ActiveRoomAdapter {
 }
 
 export interface PlayMenuOptions {
-  /** The version refusal's Refresh button (location.reload by default; receipts inject it). */
+  /** The version refusal's Refresh button (location.reload by default; receipts inject it). The banner is checked in a
+   *  real browser by tools/mp-refusal-banner-check.mjs (in view at 1024x640, Refresh reloads, Rejoin hidden). */
   reloadPage?: () => void;
   maps?: PlayMenuMap[];
   vehicles?: PlayMenuVehicle[];
