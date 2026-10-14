@@ -551,10 +551,16 @@ const mairie: RegionalBuilder = (ctx) => {
     for (const [px, pz] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]] as const) sink.span('structureWood', px - 0.06, ry - 0.3, rz + pz - 0.06, px + 0.06, ry + 1.4, rz + pz + 0.06, { colour: rgb(0x5a4a3a) });
     const cap: RoofSpec = { kind: 'hip', pitchDeg: 45, eave: 0.12, verge: 0.12, thickness: 0.06, bucket: 'structureMetal', ridge: null };
     sink.placed(0, 0, 0, rz, () => emitRoof(sink, roofGeometry(1.0, 1.0, ry + 1.4, cap), cap, SLATE));
-    sink.cylinder('structureMetal', [0, ry + 0.55, rz], 'y', 0.45, 0.24, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.12);
+    // the bell hung from its headstock between two of the posts (kitConnectivity: it hung in the air before)
+    for (const x of [-0.45, 0.45]) sink.span('structureWood', x - 0.05, ry + 1.12, rz - 0.51, x + 0.05, ry + 1.22, rz + 0.51, { colour: rgb(0x4a3a2c), decor: true });
+    sink.span('structureWood', -0.5, ry + 1.0, rz - 0.06, 0.5, ry + 1.12, rz + 0.06, { colour: rgb(0x4a3a2c), decor: true });
+    sink.cylinder('structureMetal', [0, ry + 0.96, rz], 'y', 0.05, 0.03, 6, { colour: IRON, decor: true });
+    sink.cylinder('structureMetal', [0, ry + 0.52, rz], 'y', 0.45, 0.24, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.12);
     // the flagstaff over the door with the tricolour (dressing)
     if (look() < 0.85) {
-      sink.member('structureMetal', [0, frame.floors[1] + 0.2, D / 2 + 0.05], [0, frame.floors[1] + 1.4, D / 2 + 1.4], 0.04, 0.04, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      // (kitConnectivity: its foot in its bracket on the wall, not 5 cm off it)
+      faceBox(sink, 'structureMetal', frame.faces.front, 0, frame.floors[1] + 0.22, 0.04, 0.12, 0.16, 0.08, { colour: IRON, decor: true });
+      sink.member('structureMetal', [0, frame.floors[1] + 0.2, D / 2 + 0.02], [0, frame.floors[1] + 1.4, D / 2 + 1.4], 0.04, 0.04, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
       const colours = [rgb(0x24376e), rgb(0xe8e6e0), rgb(0xb0302a)];
       colours.forEach((c, k) => sink.span('structureWood', -0.012, frame.floors[1] + 0.55 + k * 0, D / 2 + 0.75 + k * 0.32, 0.012, frame.floors[1] + 1.25, D / 2 + 1.07 + k * 0.32, { colour: c, decor: true }));
     }
@@ -767,9 +773,11 @@ const ruine: RegionalBuilder = (ctx) => {
     const gf: Face = gz > 0 ? { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W } : { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
     const peak = 5.2 + rng() * 1.2;
     wallPolygon(sink, 'stone', gf, [[-W / 2, 0.35], [W / 2, 0.35], [W / 2, 3.6], [0.4, peak], [-0.6, peak - 0.3], [-W / 2, 3.4]], t);
+    // the fallen joists lying across the floor's rubble (kitConnectivity: each on the floor along its length, its foot
+    // a little in it; the old ones reared 2 m into the air on nothing)
     for (let k = 0; k < 5; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.45, (rng() - 0.5) * D * 0.8];
-      const b: Vec3 = [a[0] + (rng() - 0.5) * 3.4, 0.45 + rng() * 2.2, a[2] + (rng() - 0.5) * 3.4];
+      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.33, (rng() - 0.5) * D * 0.8];
+      const b: Vec3 = [a[0] + (rng() - 0.5) * 3.4, 0.33 + rng() * 0.08, a[2] + (rng() - 0.5) * 3.4];
       sink.member('structureWood', a, b, 0.2, 0.18, [0, 1, 0], { colour: k % 2 ? CHAR : PLANK, decor: true, exposed: true });
     }
   });
