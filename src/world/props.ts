@@ -85,6 +85,7 @@ import { paintStructureDetailBuffers, type StructureDetailBuffers } from './stru
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { GATE_KINDS, GATE_WIDTH, buildGate, gateKindForFence, gateStoneOf, gateStyleFor, type GateKind } from './maps/gateKit.ts'; // the looks lane: every fence family's own gate
+import { TIMBER_WELLS, buildMonument, buildWell, monumentFormFor, wellFormFor, wellStoneOf } from './maps/wellKit.ts'; // the looks lane: each place's well and monument
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
@@ -4342,6 +4343,33 @@ ${snowCap ? `
     }
     return out;
   }
+  /** The well and the monument of this map's place (wellKit.ts): a timber form on the structure wood, a stone one on the
+   *  kit's vertex-coloured stone; a map whose place builds neither keeps the destruction stream's. */
+  function wellTypes(): Record<string, PropsDestructibleMeta> {
+    const out: Record<string, PropsDestructibleMeta> = {};
+    const ctx = { stone: wellStoneOf(regionalArchitecture) };
+    const wf = wellFormFor(regionalArchitecture?.id, mapId);
+    if (wf) {
+      const timber = TIMBER_WELLS.has(wf), mat = timber ? 'structureWood' : 'regionalStone';
+      if (mats[mat]) {
+        out.well = {
+          ...DESTRUCTIBLE_TYPES.well, mat,
+          build: (rng: () => number) => { DESTRUCTIBLE_TYPES.well.build(rng).dispose(); return buildWell(wf, ctx, false); },
+          broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.well.broken!(rng).dispose(); return buildWell(wf, ctx, true); },
+        };
+      }
+    }
+    const mf = monumentFormFor(regionalArchitecture?.id, mapId);
+    if (mf) {
+      const mat = mats.regionalStone ? 'regionalStone' : 'stone';
+      out.monument = {
+        ...DESTRUCTIBLE_TYPES.monument, mat,
+        build: (rng: () => number) => { DESTRUCTIBLE_TYPES.monument.build(rng).dispose(); return buildMonument(mf, ctx, false); },
+        broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.monument.broken!(rng).dispose(); return buildMonument(mf, ctx, true); },
+      };
+    }
+    return out;
+  }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     // (b45; the coordinator, launch night: some two thousand triangles a stack is a desktop prop) a phone keeps the
     // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
@@ -4394,6 +4422,9 @@ ${snowCap ? `
     // wood; the stone wall's gate on the kit's stone, the mud wall's on its render. The farm gate's numbers, class and
     // contact; its legacy builder still runs first (it draws nothing from the stream), so every later pool keeps its shape
     ...gateTypes(),
+    // the looks lane (2026-10-13; LOOKS-BRIEF item 5): the village well and the square's monument as the map's place built
+    // them (maps/wellKit.ts), on the destruction stream's contract; the legacy builders still run first (their draws)
+    ...wellTypes(),
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
       const variant = STRUCTURE_VARIANTS[name];
