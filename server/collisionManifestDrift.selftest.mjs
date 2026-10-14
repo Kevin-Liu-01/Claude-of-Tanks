@@ -31,7 +31,7 @@ function check(maps) {
     child.stdout.on('data', (chunk) => { out += chunk; });
     child.stderr.on('data', (chunk) => { err += chunk; });
     child.on('error', reject);
-    child.on('close', (code) => resolve({ code, out, err }));
+    child.on('close', (code) => resolve({ maps, code, out, err }));
   });
 }
 
@@ -45,8 +45,12 @@ for (const { out } of results) {
     if (shape) shapes.set(shape[1], { walked: Number(shape[2]), standIns: Number(shape[3]), offenders: Number(shape[4]), first: shape[5] });
   }
 }
-for (const { code, err } of results) {
-  assert.ok(code === 0 || code === 1, `drift check exited ${code}: ${err.split('\n').filter((l) => !/warning/i.test(l)).slice(-6).join(' | ')}`);
+// 2026-10-13 (speed): a share exits 1 only when one of its maps drifted (an exit 1 from an error after its last map's line
+// is a failure, not drift), and each share builds its maps one after another in one process (--jobs=1: no split)
+for (const { maps, code, err } of results) {
+  const drift = maps.some((id) => rows.has(id) && !rows.get(id).startsWith('current'));
+  assert.equal(code, drift ? 1 : 0, `drift check of ${maps.join(',')} exited ${code}: ${err.split('\n').filter((l) => !/warning/i.test(l)).slice(-6).join(' | ')}`);
+  assert.doesNotMatch(err, /split over \d+ jobs/, `the drift check of ${maps.join(',')} builds its share serially`);
 }
 assert.deepEqual([...rows.keys()].sort(), [...MAP_IDS].sort(), 'every canonical map was rebuilt and compared');
 const drifted = [...rows.entries()].filter(([, status]) => !status.startsWith('current'));

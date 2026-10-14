@@ -60,7 +60,12 @@ Before publishing:
    nice -n 5 node tools/capture-world-collision-manifests.mjs --check --tier=mobile --jobs=4
    nice -n 5 node tools/capture-world-collision-manifests.mjs --check --variant=assault-trenches --jobs=4
    ```
-   A check exits 2 when a child fails (its stderr's tail is printed); a failed regeneration writes no index.
+   Each child closes with a `job-done` line naming the maps it found drifted (`tools/collisionSplitBuild.mjs`); a check
+   exits 1 only on such a reported drift and 2 when a child is unsound (any non-zero exit, a missing `job-done`, a map
+   without its line; its stderr's tail is printed), and a failed regeneration writes no index. A split build no longer
+   builds neighbouring maps in one process, so it cannot see state that one map's build leaves for the next (a page
+   that changes battlefields): `src/world/worldBuildIsolation.selftest.mjs` checks that on purpose, and the receipts
+   that run the tool (the drift receipt, `phoneLayoutIdentity`) pass `--jobs=1`.
 4. Run `node tools/shared-main-preflight.mjs --base=<starting-base> --validated-head=<tested-commit>`.
    This reads the actual remote main, rejects a dirty or stale candidate and
    reports overlapping paths. After reviewing those paths and running their

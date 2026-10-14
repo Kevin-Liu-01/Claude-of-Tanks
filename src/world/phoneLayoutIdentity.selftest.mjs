@@ -14,20 +14,25 @@
 //     a pavement the phone draws none of as unplaced and laid one formation more.
 // The whole roster (33 of 33 since 2026-10-11):
 //   node tools/capture-world-collision-manifests.mjs --tier=mobile
+//
+// 2026-10-13 (speed): the tool splits a multi-map build over child processes by default; this receipt builds its five
+// maps one after another in one process, as a phone plays them in one page, so it passes `--jobs=1` and holds the run to
+// the serial path (a split run says so on stderr).
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const MAPS = ['fjord', 'airfield', 'steppe', 'badlands', 'frontier'];
-let out = '';
-try {
-  out = execFileSync(process.execPath, ['tools/capture-world-collision-manifests.mjs', '--tier=mobile', `--maps=${MAPS.join(',')}`],
-    { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
-} catch (error) {
-  out = String(error.stdout ?? '') + String(error.stderr ?? '');
-  assert.fail(`a phone lays the desktop's records out otherwise:\n${out.split('\n').filter((line) => /DRIFTED|match the tree|Error/.test(line)).join('\n')}`);
+const run = spawnSync(process.execPath,
+  ['tools/capture-world-collision-manifests.mjs', '--tier=mobile', '--jobs=1', `--maps=${MAPS.join(',')}`],
+  { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+const out = String(run.stdout ?? '');
+if (run.status !== 0) {
+  const all = out + String(run.stderr ?? '') + String(run.error ?? '');
+  assert.fail(`a phone lays the desktop's records out otherwise (exit ${run.status ?? run.signal}):\n${all.split('\n').filter((line) => /DRIFTED|match the tree|Error|collision job/.test(line)).join('\n')}`);
 }
+assert.doesNotMatch(String(run.stderr ?? ''), /split over \d+ jobs/, 'the five maps build serially in one process (--jobs=1)');
 assert.match(out, /building at the mobile tier/, 'the phone tier resolved before the builds');
 assert.match(out, new RegExp(`${MAPS.length}/${MAPS.length} collision shards match the tree built at the mobile tier`));
 for (const map of MAPS) assert.match(out, new RegExp(`${map}: current`), `${map} at the phone tier`);

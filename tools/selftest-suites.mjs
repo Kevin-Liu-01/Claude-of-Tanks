@@ -1074,6 +1074,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',
+    // 2026-10-13 (speed): the capture tool's split build exits as the serial run would; a failed child is never a drift
+    'tools/collisionSplitBuild.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
@@ -1306,6 +1308,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-layout-metrics.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
+    // 2026-10-13 (speed): a map rebuilt after another map in one isolate equals its fresh build (no state leaks across builds)
+    'src/world/worldBuildIsolation.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
     'src/world/roadFootprint.selftest.mjs', // 2026-10-02: solids from the scatter passes keep their footprints out of the road core
     'tools/visual-census.selftest.mjs', // 2026-10-01: the redesign baseline census (camera set, site selection, metrics, reports)
