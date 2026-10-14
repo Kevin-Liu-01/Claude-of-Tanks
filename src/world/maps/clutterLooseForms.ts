@@ -40,9 +40,8 @@ export function canNear(f: CanForm, rng: Rng): THREE.BufferGeometry {
     bar(m, [-W / 2 - 0.004, 0.02, 0], [-W / 2 - 0.004, H - 0.02, 0], 0.012, 0.008, Z, mul(body, 0.8), 0, true);
     // the three handles over the top and the spout's cam lever beside them
     for (const x of [-0.1, 0, 0.1]) {
-      bar(m, [x, H, -0.035], [x, H + 0.085, -0.035], 0.02, 0.025, X, mul(f.trim, 0.95), 0, true);
-      bar(m, [x, H, 0.035], [x, H + 0.085, 0.035], 0.02, 0.025, X, mul(f.trim, 0.95), 0, true);
-      bar(m, [x, H + 0.095, -0.05], [x, H + 0.095, 0.05], 0.022, 0.02, X, f.trim);
+      for (const z of [-0.05, 0.05]) bar(m, [x, H, z], [x, H + 0.05, z * 0.85], 0.022, 0.02, X, mul(f.trim, 0.95), 0, true);
+      bar(m, [x, H + 0.055, -0.058], [x, H + 0.055, 0.058], 0.026, 0.018, X, f.trim);
     }
     lathe(m, [[0.032, H - 0.005], [0.03, H + 0.05], [0.036, H + 0.055], [0, H + 0.065]], 6, () => tone(f.trim, rng, 0.1), { x: W / 2 - 0.06, z: 0 });
   } else if (f.kind === 'plastic') {
