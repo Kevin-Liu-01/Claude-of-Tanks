@@ -590,6 +590,53 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
   assert.deepEqual(Array.from(hall.mesh.geometry.getAttribute('position').array), Array.from(before), 'reset stands the roof back up');
 }
 
+// ---- (props census E6, lane B 2026-10-14) a pitched sheet roof whose eaves overhang below the eaves line less 15 cm: its
+// slopes go with the roof's hide whole (the test was every corner over the line, so an overhanging slope stood)
+{
+  const walls = [part('structureMetal', 10, 6, 0.2, 0, 0, 3.9), part('structureMetal', 10, 6, 0.2, 0, 0, -3.9),
+    part('structureMetal', 0.2, 6, 8, 4.9, 0, 0), part('structureMetal', 0.2, 6, 8, -4.9, 0, 0)];
+  // two slopes, ridge along z at 7.6 m, their eaves 0.7 m past the walls at 5.4 m (0.6 m under the walls' top)
+  const slope = (side) => {
+    const xe = side * 5.7, ze = 4.4, pts = [[xe, 5.4, -ze], [0, 7.6, -ze], [0, 7.6, ze], [xe, 5.4, ze]];
+    const tri = side > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(tri.flatMap((k) => pts[k]), 3));
+    return g;
+  };
+  const slopes = [slope(1), slope(-1)];
+  const hall = merged('structureMetal', [...walls, ...slopes]);
+  const hallSpans = hall.ranges.map(([first, count]) => ({ mesh: hall.mesh, geometryId: null, instanceId: null,
+    position: hall.mesh.geometry.getAttribute('position'), bucket: 'structureMetal', partClass: 'wall', first, count }));
+  const hallAnatomy = describeDefault({ structureIdx: 12, mapId: 'verdant', builder: 'hall', style: null,
+    parts: { structureMetal: [...walls, ...slopes], regionalRoof: [part('regionalRoof', 11.4, 0.1, 8.8, 0, 6.0, 0)] },
+    w: 10, d: 8, h: 7.6, placement, massClass: 'house', seed: damageSeed(5, 3, 4) });
+  const hallSeam = createStructureDamageSeam(12, 'hall', null, hallAnatomy, hallSpans);
+  const before = Float32Array.from(hall.mesh.geometry.getAttribute('position').array);
+  hallSeam.sectionDown = () => ({ cuts: [], hides: [{ section: null, partClass: 'roof' }] });
+  stages.breach({ ...base, structureId: 12, section: hallAnatomy.roof ? hallAnatomy.roof.section : 0, sectionKind: 'roof', hole: 255, radiusM: 0,
+    sectionDown: true, x: placement.x, y: placement.y + 6.8, z: placement.z, nx: 0, ny: 1, nz: 0, y0: placement.y + 6, y1: placement.y + 7.6,
+    munition: 'he' }, hallSeam);
+  const after = hall.mesh.geometry.getAttribute('position').array;
+  const upArea = (arr, [f, n]) => {
+    let sum = 0;
+    for (let i = f; i + 2 < f + n; i += 3) {
+      const ax = arr[i * 3], ay = arr[i * 3 + 1], az = arr[i * 3 + 2];
+      const ux = arr[i * 3 + 3] - ax, uy = arr[i * 3 + 4] - ay, uz = arr[i * 3 + 5] - az;
+      const vx = arr[i * 3 + 6] - ax, vy = arr[i * 3 + 7] - ay, vz = arr[i * 3 + 8] - az;
+      const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const l = Math.hypot(cx, cy, cz);
+      if (l > 1e-9 && Math.abs(cy) / l > 0.3) sum += l / 2;
+    }
+    return sum;
+  };
+  for (const r of hall.ranges.slice(4)) {
+    assert.ok(upArea(before, r) > 20, 'a slope stands before the hide');
+    assert.ok(upArea(after, r) < 1e-6, `an overhanging slope goes with the roof's hide (${upArea(after, r).toFixed(2)} m² left)`);
+  }
+  stages.reset();
+  assert.deepEqual(Array.from(hall.mesh.geometry.getAttribute('position').array), Array.from(before), 'reset stands the slopes back up');
+}
+
 // ---- the phone tier: no hole is cut; each cut is drawn on its wall (a breach still reads as damage), and goes with
 // the building when it falls
 {

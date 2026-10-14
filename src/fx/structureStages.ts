@@ -526,8 +526,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
    *  bucket) goes with the roof's hide (facades 2026-10-08): every upward triangle of the structure (normal y > 0.3)
-   *  standing over the eaves (or the top storey's top where there is no roof) and inside the footprint plus 1.5 m
-   *  collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged buckets). */
+   *  reaching over the eaves (or the top storey's top where there is no roof) and centred inside the footprint plus
+   *  1.5 m collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged
+   *  buckets). (Props census E6, lane B 2026-10-14: the test was every corner over the eaves less 15 cm, so a slope
+   *  whose eave overhangs below that line — every pitched roof with an overhang — stood whole on roof-down; now its
+   *  highest corner over the eaves line and its centroid in the footprint.) */
   const _ta = new THREE.Vector3(), _tb = new THREE.Vector3(), _tc = new THREE.Vector3();
   const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
   function flattenRoofFaces(seam: StructureDamageSeam): boolean {
@@ -537,9 +540,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
-    const inBody = (v: THREE.Vector3): boolean => {
-      const wx = v.x - px, wz = v.z - pz;
-      return v.y - py >= eave && Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
+    // the triangle reaches over the eaves line (its highest corner) and stands in the footprint (its centroid)
+    const inBody = (ta: THREE.Vector3, tb: THREE.Vector3, tc: THREE.Vector3): boolean => {
+      if (Math.max(ta.y, tb.y, tc.y) - py < eave) return false;
+      const wx = (ta.x + tb.x + tc.x) / 3 - px, wz = (ta.z + tb.z + tc.z) / 3 - pz;
+      return Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
     };
     let changed = false;
     for (const span of seam.spans) {
@@ -558,7 +563,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const n = _e1.cross(_e2);
         const len = n.length();
         if (!(len > 1e-9) || Math.abs(n.y) / len <= 0.3) continue;
-        if (!inBody(_ta) || !inBody(_tb) || !inBody(_tc)) continue;
+        if (!inBody(_ta, _tb, _tc)) continue;
         if (!touched) { keep(span); touched = true; }
         for (let k = 1; k < 3; k++) {
           arr[(i + k) * 3] = arr[i * 3]; arr[(i + k) * 3 + 1] = arr[i * 3 + 1]; arr[(i + k) * 3 + 2] = arr[i * 3 + 2];
