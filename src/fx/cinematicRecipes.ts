@@ -231,6 +231,9 @@ function jet(
   ctx.sink.jet(J);
 }
 
+/** A chunk's heat flag for thrown earth (clods, grit): the debris pool draws it dark soil, not charred metal. */
+const EARTH = -1;
+
 function chunk(
   ctx: CineCtx, x: number, y: number, z: number, vx: number, vy: number, vz: number,
   life: number, scale: number, groundY: number, hot: number, birthOffset: number,
@@ -422,7 +425,7 @@ export function muzzleBlast(
     const ox = px + fx * (1 + r() * 2), oz = pz + fz * (1 + r() * 2);
     const g = ctx.world.groundY(ox, oz);
     chunk(ctx, ox, g + 0.15, oz, rx * (4 + r() * 6), 2 + r() * 4, rz * (4 + r() * 6),
-      0.9 + r() * 0.5, 0.025 + r() * 0.035, g, 0, 0);
+      0.9 + r() * 0.5, 0.025 + r() * 0.035, g, EARTH, 0);
   }
   // hanging haze that drifts for seconds after the shot: six broad, faint veils
   for (let i = 0; i < 6; i++) {
@@ -586,9 +589,11 @@ export function debrisBurst(
           1.2 + r() * 0.8, 0.4, (big ? 2.4 : 1.3) + r() * 0.6, tone.light, tone.dark, 0.32, -0.2, bo + t);
         break;
       }
-      if (isHot >= 1 && r() < 0.55) {
+      // (HE look v2 follow-up, 2026-10-14: round bright dots all through the cloud 0.7 s after a kill) a burning piece
+      // trails flame only while it is near the fire, fading as it flies out; then smoke alone
+      if (isHot >= 1 && t < 0.45 && r() < 0.55) {
         puff(ctx, 'fire', x + sx, py, z + sz, (r() - 0.5) * 0.4, 0.3, (r() - 0.5) * 0.4,
-          0.22 + r() * 0.18, (big ? 0.7 : 0.4) * sizeK, (big ? 0.35 : 0.2) * sizeK, FLAME_Y, FLAME_R, 0.8, 0, bo + t);
+          0.22 + r() * 0.18, (big ? 0.7 : 0.4) * sizeK, (big ? 0.35 : 0.2) * sizeK, FLAME_Y, FLAME_R, 0.8 * (1 - t / 0.6), 0, bo + t);
       }
       puff(ctx, 'smoke', x + sx, py, z + sz, (r() - 0.5) * 0.3, 0.4 + r() * 0.3, (r() - 0.5) * 0.3,
         0.9 + r() * 0.8, (big ? 0.45 : 0.25) * sizeK, (big ? 2.0 : 1.1) * sizeK,
@@ -739,7 +744,7 @@ export function heBurst(ctx: CineCtx, x: number, z: number, scale: number, delay
     const sp = (9 + r() * 12) * k;
     const vx = Math.cos(a) * Math.sin(tilt) * sp, vy = (8 + r() * 10) * k, vz = Math.sin(a) * Math.sin(tilt) * sp;
     const bo = delayS + r() * 0.03;
-    chunk(ctx, x, y, z, vx, vy, vz, 2.4, (0.07 + r() * 0.12) * k, gy, 0, bo);
+    chunk(ctx, x, y, z, vx, vy, vz, 2.4, (0.07 + r() * 0.12) * k, gy, EARTH, bo);
     for (let t = 0.06; t < 1.4; t += 0.09) {
       const py = y + dragTravel(vy, 0.12, t) - 10.8 * t * t;
       if (py < gy + 0.3) break;
@@ -1158,7 +1163,7 @@ export function trackDustPacket(
   // thrown clods on soft ground at speed
   if (!tone.snow && sp > 0.45 && r() < 0.25) {
     chunk(ctx, x, gy + 0.3, z, -dirX * (3 + r() * 3) + (r() - 0.5) * 2, 2 + r() * 2.5, -dirZ * (3 + r() * 3) + (r() - 0.5) * 2,
-      0.9, 0.035 + r() * 0.04, gy, 0, off);
+      0.9, 0.035 + r() * 0.04, gy, EARTH, off);
   }
 }
 

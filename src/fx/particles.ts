@@ -601,7 +601,23 @@ float screenNoise(vec2 p) {
   return mix(mix(screenHash(i),screenHash(i+vec2(1,0)),f.x),
              mix(screenHash(i+vec2(0,1)),screenHash(i+vec2(1,1)),f.x),f.y);
 }
+// (HE look v2 follow-up, the coordinator 2026-10-14: the wall stays as approved, with "no hard cotton edge within ~8 m
+// of the lens") a screen card near the lens loses its edge: the erosion threshold relaxes and its band widens into a long
+// soft falloff, the contact feather with the world lengthens, and the medium thins toward the lens, so a wall rolling
+// over the camera reads as fog, never a cut-out. Past ~8 m the card is exactly the approved one.
+float screenContact( float minFeather ) {
+  vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
+  float sceneDepthM = -perspectiveDepthToViewZSoft( texture2D( uSceneDepth, suv ).x, uCameraNear, uCameraFar );
+  return smoothstep( 0.0, max( clamp( vParticleDepth * 0.005, 0.65, 3.5 ), minFeather ), sceneDepthM - vParticleDepth );
+}
 void main() {`).replace(
+  `float er = vT * 0.36;
+  float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a * softDepthFade();`,
+  `float lensK = smoothstep( 1.5, 8.0, vParticleDepth );
+  float er = vT * 0.36 * lensK;
+  float a = smoothstep( er, er + 0.44 + 0.50 * vT + 0.55 * ( 1.0 - lensK ), tex ) * vColor.a
+    * screenContact( 2.5 * ( 1.0 - lensK ) ) * ( 0.35 + 0.65 * lensK );`,
+).replace(
   'vec3 col = fxLit( vColor.rgb, light );',
   `float folds=.65*screenNoise(p*3.8+vT*.25)+.35*screenNoise(p*8.3-vT*.18);
    vec3 col=fxLit(vColor.rgb,(.54+.40*sun-.16*tex+.32*(folds-.5)));`,
@@ -822,18 +838,25 @@ void main() {
   // wider anisotropy than r6 (plates vs lumps) + stronger shear: with the
   // torn-plate composite base this yields shard/scrap silhouettes, never the
   // r7 "flat orange boxes"
-  vec3 lp = position * vec3( 0.62 + h1 * 0.85, 0.42 + h2 * 0.95, 0.62 + h3 * 0.85 );
-  lp.x += lp.y * ( h2 - 0.5 ) * 0.7;
-  lp.z += lp.y * ( h1 - 0.5 ) * 0.55;
+  // (HE look v2 follow-up, the coordinator 2026-10-14: "flat cardboard shards with bright faces") the anisotropy is
+  // held to about 2:1 and the thinnest axis to 0.62 of the widest, so no chunk turns a single flat face to the lens
+  vec3 lp = position * vec3( 0.70 + h1 * 0.60, 0.62 + h2 * 0.60, 0.70 + h3 * 0.60 );
+  lp.x += lp.y * ( h2 - 0.5 ) * 0.45;
+  lp.z += lp.y * ( h1 - 0.5 ) * 0.40;
   vec3 off = rot * ( lp * aSG.x * fade );
   // r5 motion cue: velocity-aligned stretch on fast airborne chunks — a
   // tumbling slab frozen against the sky read as a static 2D card; smearing
   // the silhouette along the flight path reads as speed in every still.
+  // (HE look v2 follow-up) a small chip smears as the camera's 1/45 s exposure films it (debrisChunks' law: the smear
+  // against the piece's own size, to 4x), so a thrown chip reads as a streak of motion, never a frozen flake; the big
+  // pieces keep the mild cue
   vec3 vcur = aVL.xyz * exp( -0.12 * age ) + vec3( 0.0, -21.6 * age, 0.0 );
   float spd = length( vcur );
   if ( spd > 1.0 && grounded < 0.5 ) {
     vec3 vdir = vcur / spd;
-    off += vdir * dot( off, vdir ) * clamp( spd * 0.045, 0.0, 0.85 );
+    float smear = mix( min( spd * 0.022 / max( aSG.x, 0.02 ), 3.0 ), clamp( spd * 0.045, 0.0, 0.85 ),
+      smoothstep( 0.14, 0.30, aSG.x ) );
+    off += vdir * dot( off, vdir ) * smear;
   }
   vec3 wpos = center + off;
   vNormalW = rot * normal;
@@ -845,7 +868,16 @@ void main() {
   // blast light, tone-mapped to salmon confetti on the grass. The range now
   // tops out at dark gunmetal-brown so lit chunks stay wreckage-dark; the
   // ember pockets supply all the orange.
-  vTint = mix( vec3( 0.055, 0.052, 0.048 ), vec3( 0.115, 0.092, 0.070 ), h3 );
+  // (HE look v2 follow-up, the coordinator: the flying chunks "read as flat cardboard shards with bright faces, especially
+  // in the upper half") a piece flagged earth (hot -1: the Studio's clods and grit) is dark soil, the rest charred
+  // wreckage; both darken toward soot as they fly out from the core (the blast's soot coats them, and a piece far out
+  // against the sky is a dark speck, never a lit card)
+  float dCore = length( center - aPB.xyz );
+  float outK = smoothstep( 1.5, 7.0, dCore );
+  vec3 base = aSG.z < -0.5
+    ? mix( vec3( 0.046, 0.037, 0.028 ), vec3( 0.080, 0.062, 0.045 ), h3 )
+    : mix( vec3( 0.055, 0.052, 0.048 ), vec3( 0.115, 0.092, 0.070 ), h3 );
+  vTint = mix( base, base * vec3( 0.40, 0.38, 0.36 ) + vec3( 0.010, 0.009, 0.008 ), outK );
   // ember glow: airborne wreckage leaves the fireball HOT — near-full glow
   // through the first ~0.5 s (the r5 "flat matte-black slabs against sky"
   // window), then cools fast so grounded chunks never read orange popcorn.
@@ -857,8 +889,10 @@ void main() {
   // frames breathe) + a hard glow cut once grounded so landed chips read
   // as dying embers, never painted-on orange dots.
   float flick = 0.70 + 0.30 * sin( uTime * ( 12.0 + h1 * 11.0 ) + aSG.w * 61.0 );
-  vHot = aSG.z * exp( -max( age - 0.55, 0.0 ) * ( 2.6 + grounded * 2.4 ) )
-    * ( 0.40 + h2 * 0.60 ) * flick * mix( 1.0, 0.45, grounded );
+  // (HE look v2 follow-up) the ember glow stays with the pieces near the fire: a hot piece cools as it flies out, so
+  // no glowing flake hangs against the sky metres from the blast
+  vHot = max( aSG.z, 0.0 ) * exp( -max( age - 0.55, 0.0 ) * ( 2.6 + grounded * 2.4 ) )
+    * ( 0.40 + h2 * 0.60 ) * flick * mix( 1.0, 0.45, grounded ) * ( 1.0 - 0.9 * smoothstep( 2.0, 6.5, dCore ) );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -1303,7 +1337,9 @@ function makeChunkGeometry(count: number, rng: Rng): CapacityGeometry {
       let m = disp.get(key);
       if (m === undefined) { m = 0.55 + rng() * 0.9; disp.set(key, m); }
       // flatten to a plate, then offset/tilt off the chunk's flank
-      pos.setXYZ(i, x * m * 1.25, y * m * 0.16, z * m * 0.95);
+      // (HE look v2 follow-up) a bent plate with body (0.30 of its width, was 0.16): face-on, the 0.16 plate was a flat
+      // card catching the sun or the ember glow edge to edge
+      pos.setXYZ(i, x * m * 1.15, y * m * 0.30, z * m * 0.90);
     }
     plate.rotateZ(0.55);
     plate.rotateX(-0.35);
@@ -1931,7 +1967,8 @@ export function createParticleSystem(
     vl[j] = o.vel[0]; vl[j + 1] = o.vel[1]; vl[j + 2] = o.vel[2]; vl[j + 3] = o.life;
     ar[j] = o.axis[0]; ar[j + 1] = o.axis[1]; ar[j + 2] = o.axis[2]; ar[j + 3] = o.spin;
     // hot accepts a float (0..1) — fractional heat lets blast wreckage carry
-    // a faint fire-rim glow so airborne chunks never read matte-black cards
+    // a faint fire-rim glow so airborne chunks never read matte-black cards;
+    // -1 flags a cold piece of thrown earth (dark soil, not charred metal)
     sg[j] = o.scale; sg[j + 1] = o.groundY;
     sg[j + 2] = typeof o.hot === 'number' ? o.hot : (o.hot ? 1 : 0);
     sg[j + 3] = o.seed || 0;

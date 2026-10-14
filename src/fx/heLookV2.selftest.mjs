@@ -4,7 +4,7 @@
 // the pooled puffs' rims torn by noise.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { heBurst, fireball, cookOffs, cineRng } from './cinematicRecipes.ts';
+import { heBurst, fireball, cookOffs, debrisBurst, cineRng } from './cinematicRecipes.ts';
 import { groundBurst } from './blastRecipes.ts';
 import { makeVolumePuff } from './volumeMedia.ts';
 import { makeChunkPiece } from './debrisChunks.ts';
@@ -14,7 +14,7 @@ const cine = (snow = false) => {
   const log = [];
   const tone = (x, z, out) => { out.light = snow ? [0.82, 0.86, 0.9] : [0.42, 0.36, 0.28]; out.dark = snow ? [0.5, 0.52, 0.55] : [0.2, 0.16, 0.12]; out.snow = snow; out.wet = false; return out; };
   const ctx = {
-    sink: { puff: (pool, o) => log.push({ pool, ...structuredClone(o) }), streak: () => {}, chunk: () => {}, jet: (o) => log.push({ pool: 'jet', ...structuredClone(o) }) },
+    sink: { puff: (pool, o) => log.push({ pool, ...structuredClone(o) }), streak: () => {}, chunk: (o) => log.push({ pool: 'chunk', ...structuredClone(o) }), jet: (o) => log.push({ pool: 'jet', ...structuredClone(o) }) },
     world: { groundY: () => 0, tone, water: () => 0 }, env: { night: 0 }, rng: cineRng(4242), shift: 0,
     pulse: () => {}, addEmitter: () => {}, scorch: () => {}, shockRing: () => {},
   };
@@ -30,6 +30,10 @@ const fireEnd = (log) => Math.max(...log.filter((p) => p.pool === 'fire').map((p
   const heart = log.filter((p) => p.pool === 'smoke' && p.vel[1] > 3.5 && p.grav > 0);
   assert.ok(heart.length >= 5 && heart.every((p) => Math.max(...p.col0) < 0.3), 'a dark sooty heart rises out of the crater');
   assert.ok(log.filter((p) => p.pool === 'fire').every((p) => p.size1 <= 2.6 * 1.35), 'no big fire balls (2.6 m x the burst at most)');
+  // (follow-up 2026-10-14) a shell's clods are thrown earth: the debris pool draws them dark soil (hot -1), never lit
+  // charred-metal cards
+  const clods = log.filter((p) => p.pool === 'chunk');
+  assert.ok(clods.length >= 12 && clods.every((p) => p.hot === -1), `a burst's ${clods.length} clods flagged earth`);
 }
 {
   const { ctx, log } = cine();
@@ -72,6 +76,14 @@ const fireEnd = (log) => Math.max(...log.filter((p) => p.pool === 'fire').map((p
   const all = burst(0).concat(burst(1));
   assert.ok(all.length > 0);
 }
+{
+  // (follow-up 2026-10-14) a burning piece trails flame only near the fire (its first 0.45 s), then smoke alone
+  const { ctx, log } = cine();
+  debrisBurst(ctx, 0, 1, 0, 24, 14, 1, 1);
+  const fire = log.filter((p) => p.pool === 'fire');
+  assert.ok(fire.length > 0 && fire.every((p) => p.birthOffset <= 0.45), `flame trails end near the core (${fire.length} puffs)`);
+  assert.ok(log.filter((p) => p.pool === 'smoke').some((p) => p.birthOffset > 0.6), 'the smoke trail goes on');
+}
 const parts = await readFile(new URL('./particles.ts', import.meta.url), 'utf8');
 assert.match(parts, /a \*= mix\( 1\.0, smoothstep\( 0\.28 \+ 0\.12 \* vT, 0\.62 \+ 0\.12 \* vT, en \), rim \);/, 'the pooled puffs\' rims torn by noise');
 assert.match(parts, /vSeed = fract\( aPB\.w \* 1\.6180339 \+ aPB\.x \* 0\.0713 \+ aPB\.z \* 0\.1131 \);/, 'each puff its own seed');
@@ -79,6 +91,33 @@ assert.match(parts, /vEmit = selfLit \* aC0\.rgb \* exp\( -3\.2 \* age \);/, 'a 
 // the billow pool's blackbody interior (the cinematic fireball's lobes, the phone tier's kill) burns out by age
 assert.match(parts, /float h2 = heat \* \( 1\.0 - vT \* 0\.95 \) \* exp\( -7\.0 \* vAge \);/, 'a fireball lobe\'s orange heart is gone by ~0.3 s, whatever its life');
 assert.match(parts, /vAge = age;/);
+// (follow-up 2026-10-14, the coordinator: the flying chunks "read as flat cardboard shards with bright faces") the debris
+// pool's pieces darken to soot by their distance from the core and lose their ember glow out there; a small chip smears
+// by the 1/45 s shutter against its own size; no piece is flatter than 0.62 of its width; the torn plate has body
+assert.match(parts, /float dCore = length\( center - aPB\.xyz \);\n  float outK = smoothstep\( 1\.5, 7\.0, dCore \);/, 'debris soot by distance from the core');
+assert.match(parts, /vTint = mix\( base, base \* vec3\( 0\.40, 0\.38, 0\.36 \) \+ vec3\( 0\.010, 0\.009, 0\.008 \), outK \);/);
+assert.match(parts, /vec3 base = aSG\.z < -0\.5\n    \? mix\( vec3\( 0\.046, 0\.037, 0\.028 \)/, 'thrown earth is dark soil');
+assert.match(parts, /vHot = max\( aSG\.z, 0\.0 \) \* exp\([^;]*\* \( 1\.0 - 0\.9 \* smoothstep\( 2\.0, 6\.5, dCore \) \);/, 'embers stay near the fire');
+assert.match(parts, /float smear = mix\( min\( spd \* 0\.022 \/ max\( aSG\.x, 0\.02 \), 3\.0 \), clamp\( spd \* 0\.045, 0\.0, 0\.85 \),\n      smoothstep\( 0\.14, 0\.30, aSG\.x \) \);/, 'small chips smear');
+assert.match(parts, /vec3 lp = position \* vec3\( 0\.70 \+ h1 \* 0\.60, 0\.62 \+ h2 \* 0\.60, 0\.70 \+ h3 \* 0\.60 \);/, 'no flat chunk');
+assert.match(parts, /pos\.setXYZ\(i, x \* m \* 1\.15, y \* m \* 0\.30, z \* m \* 0\.90\);/, 'the plate has body');
+// the smoke-screen wall: a soft near-lens fade (the compiled screen shader carries it; past ~8 m the approved card)
+{
+  const THREE = await import('three');
+  const { createParticleSystem } = await import('./particles.ts');
+  const tex = () => new THREE.Texture();
+  const sys = createParticleSystem({}, { seed: 5000, poolSizes: { smoke: 4, fire: 4, billow: 4, psmoke: 4, screen: 4, dust: 4, sparks: 4, debris: 4, flash: 4, jet: 4 },
+    share: { uTime: { value: 0 }, uSceneDepth: { value: null }, uSoftViewport: { value: new THREE.Vector2(1, 1) }, uCameraNear: { value: 0.5 },
+      uCameraFar: { value: 4000 }, uLightTint: { value: new THREE.Color(1, 1, 1) },
+      textures: { smoke: tex(), fire: tex(), prop: tex(), dust: tex(), flash: tex(), jet: tex() } } });
+  const fs = sys.pools.screen.mesh.material.fragmentShader;
+  assert.match(fs, /float lensK = smoothstep\( 1\.5, 8\.0, vParticleDepth \);/, 'the screen card knows the lens');
+  assert.match(fs, /\* screenContact\( 2\.5 \* \( 1\.0 - lensK \) \) \* \( 0\.35 \+ 0\.65 \* lensK \);/, 'a soft contact and a thinner medium near the lens');
+  assert.doesNotMatch(fs, /softDepthFade\(\);/, 'the screen\'s alpha line was replaced');
+  assert.match(sys.pools.psmoke.mesh.material.fragmentShader, /float er = vT \* 0\.36;\n  float a = smoothstep\( er, er \+ 0\.44 \+ 0\.50 \* vT, tex \) \* vColor\.a \* softDepthFade\(\);/, 'the propellant smoke is untouched');
+  const lens = (d) => { const t = Math.min(1, Math.max(0, (d - 1.5) / 6.5)); const k = t * t * (3 - 2 * t); return 0.35 + 0.65 * k; };
+  assert.ok(lens(8) === 1 && lens(4) < 0.7 && lens(1.5) === 0.35, 'thin at the lens, the approved card from 8 m');
+}
 { const h = (age) => Math.exp(-7 * age); assert.ok(h(0.2) < 0.25 && h(0.35) < 0.09, 'the heat at 0.2 s and 0.35 s'); }
 // the battle's kill dust on snow: low, short, small, faint, settling
 {
@@ -97,4 +136,4 @@ assert.match(parts, /vAge = age;/);
   assert.ok(avg(snowy, (p) => p.vy) < 0.5 * avg(soil, (p) => p.vy) && snowy.every((p) => p.grav < 0), 'low and settling');
   assert.ok(avg(snowy, (p) => p.size1) < 0.75 * avg(soil, (p) => p.size1), 'smaller');
 }
-console.log('heLookV2: fire gone by ~0.3 s, spikes and a sooty heart, short cook-off pops, snow powder settling, pooled clouds earthen, rims torn — ok');
+console.log('heLookV2: fire gone by ~0.3 s, spikes and a sooty heart, short cook-off pops, snow powder settling, pooled clouds earthen, rims torn, chunks soot and soil, screen soft at the lens — ok');
