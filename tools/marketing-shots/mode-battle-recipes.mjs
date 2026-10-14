@@ -1061,10 +1061,23 @@ export const RECIPES = {
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 450 })));
       await settle(ctx, 1);
-      const shot = await ctx.eval(() => window.__DEBUG.spawnKillShell());
-      ctx.log('kill shell', shot);
-      ctx.note('the player was set to 1 HP and a real enemy shell fired into it (__DEBUG.spawnKillShell)');
       await ctx.mb('setCamera', { kind: 'game' });
+      // r2: r1's one kill shell left the player alive at 1 HP (no penetration: a non-penetrating hit deals no damage)
+      // and the window filmed the chase view. The shell is fired again, lower on the hull, until the kill lands and
+      // the kill cam starts; only then does the window open
+      let started = null;
+      for (let attempt = 0; attempt < 4 && !started; attempt++) {
+        const yFrac = [0.45, 0.32, 0.55, 0.38][attempt];
+        const shot = await ctx.eval((y) => window.__DEBUG.spawnKillShell(y), yFrac);
+        ctx.log(`kill shell ${attempt + 1}`, JSON.stringify({ fired: shot, yFrac }));
+        started = await ctx.until(() => {
+          const MB = window.__MB, p = MB.H.player();
+          const ev = MB.events.slice().reverse().find((e) => e.type === 'killcam:start' || (e.type === 'tank:destroyed' && p && e.id === p.id));
+          return ev ? { type: ev.type, seq: ev.seq } : null;
+        }, { timeoutS: 3, label: `kill shell ${attempt + 1} landing` });
+      }
+      ctx.log('kill', JSON.stringify(started));
+      ctx.note('the player was set to 1 HP and a real enemy shell fired into it (__DEBUG.spawnKillShell), again lower on the hull until it penetrated');
       await ctx.capture({ windowS: 40, everyS: 0.25, max: 50, label: 'kill cam' });
     },
   },
