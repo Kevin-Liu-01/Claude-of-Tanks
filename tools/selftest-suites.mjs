@@ -1557,6 +1557,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
     'src/world/borderFarmsteads.selftest.mjs',
+    // the horizons stream (2026-10-13, HL-0): the Hinterland's spec, its 26 regions and its field (dark: no map has a block)
+    'src/world/hinterland/hinterlandField.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
