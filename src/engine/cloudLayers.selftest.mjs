@@ -80,7 +80,9 @@ assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus la
 // popcorn fragments" — and its towers are solid, their core over the cumulus' 0.46)
 assert.ok(stacks.monsoon.lanes.length === 1, 'a front\'s towers alone, no debris aloft');
 assert.ok(Math.abs(stacks.monsoon.lanes[0].core - 0.74) < 1e-9 && stacks.verdant.lanes[0].core === 0.46, 'a front\'s towers solid, a fair-weather cumulus carved');
-assert.ok(stacks.fjord.lanes.length === 2, 'a broken deck keeps its thin veil aloft');
+// (2026-10-14, the SKY lane: the only stack with a lane aloft was the broken deck's thin veil, and the owner retired
+// broken-stratocumulus on 2026-10-13 — "no more of the cloud type depicted in fjord")
+assert.ok(Object.entries(stacks).every(([, s]) => s.lanes.length === 1), 'no battlefield carries a layer aloft');
 assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
 // the closed decks closed (the skies lane, 2026-10-06): Whiteout's stratus — and every deck its map closes (coverage 0.95
 // and over) — admits every column at its own resolved coverage; a retune that reopens a hole fails here. (Titan Gorge's
@@ -155,8 +157,11 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
     'uLayerExp', 'uLayerStreets', 'uLayerEnvelope', 'uLayerCells', 'uLayerWisp', 'uLayerFlat', 'uLayerHang', 'uLayerAnvil', 'uLayerCore', 'uLayerLumps', 'uProfA', 'uProfB', 'uProfC', 'uProfD', 'uLayerDiffuse']) u[k] = { value: new THREE.Vector4() };
   u.uLayerChannels = { value: new THREE.Matrix4() };
   u.uHeightRange = { value: new THREE.Vector2() };
-  // (the packing over a stack of two lanes: the fjord's broken deck and its veil aloft)
-  const stack = stacks.fjord;
+  // (the packing over a stack of two lanes: Frosthollow's deck under a thin veil 2.4 km over it — no shipped map carries a
+  // lane aloft since the broken deck's retirement, so the two-lane packing is pinned on this synthetic stack)
+  const deck = stacks.winter.lanes[0];
+  const veil = { ...deck, baseM: deck.topM + 2400, topM: deck.topM + 2750, cover: 0.1, density: 0.03 };
+  const stack = { ...stacks.winter, lanes: [deck, veil], highM: veil.topM };
   packCloudStack(stack, u);
   assert.equal(u.uLayerBase.value.x, stack.lanes[0].baseM);
   assert.equal(u.uLayerTop.value.y, stack.lanes[1].topM);
