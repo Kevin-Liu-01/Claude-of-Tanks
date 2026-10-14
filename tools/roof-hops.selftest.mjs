@@ -3,8 +3,9 @@
 // launch): a support rise the hull's travel does not explain is no moving ground. Two of the contact census's pivots,
 // replayed through the real network authority (tools/physics-torture.mjs runCase) on the committed shards, as the
 // census runs them:
-//  - Frontier's 54-degree roof: a T-90 hanging at the eave had a track corner cross it and its support step 2.5 m for
-//    two steps; the ground's rate took 2 m/s and it flew off at 13 m/s when the corner crossed back. No launch now.
+//  - Frontier's 54-degree roof: a T-90 slid off it hung at the eave with a track corner across it; its support stepped
+//    0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and it left the
+//    eave at 2.6 m/s. No launch now (a step past half a metre in one step is no moving ground).
 //  - Foundry's 25 m roof: a BMP-2 slides off it, falls 19 m, lands at 21 m/s and rises off the ground at 3.2 m/s, the
 //    ruleset's restitution (0.15): a rebound, which the census no longer counts as a launch.
 // And each run is exact: the same pivot twice ends on the same pose to the bit.

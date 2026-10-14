@@ -1023,9 +1023,12 @@ const WALL_PUSH_MAX_M_PER_STEP = 0.1;
 /** The ground lifts a ride at most this far in one step: a solver's correction (a support that jumped under the hull,
  * a top found under it) is spread over steps, never a teleport. */
 const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
-/** A support rise past the hull's travel larger than this in one step (its suspension's travel) is a step, not a moving
- * ground (F7a). */
-const SUPPORT_STEP_M = RIDE_COMPRESSION_M;
+/** A support rise past the hull's travel larger than this in one step is a step, not a moving ground (F7a): tracks
+ * ride a rock's face up over several steps (the contact census's rocks step a hull's support 0.2-0.6 m in one), a track
+ * corner crossing an eave or a ridge steps it 0.9-2.5 m. At the suspension's travel (0.2 m) the rule caught half the
+ * rock climbs too, and its census was worse (roofs 2517 -> 2545, terrain 369 -> 401); at half a metre both are better
+ * (2511, 365). */
+const SUPPORT_STEP_M = 0.5;
 /**
  * The whole-hull floor lift climbs at the hull's own pace (destruction stream, 2026-10-13; the owner: "tanks driving on
  * odd surfaces like rocks and other irregularities will stop being glitchy and weird"). A rock's movement tier entered
@@ -2561,8 +2564,10 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       else if (ride.solverLift > 0 && !(ride.y < floorY)) ride.solverLift *= Math.exp(-dt / SOLVER_LIFT_FORGET_S);
       // (physics stream F7a, 2026-10-14; the coordinator: "a step larger than the suspension can absorb is a strike or an
       // edge contact, not a lift") that rise, past SUPPORT_STEP_M in one step, is no moving ground: a step the hull was set
-      // onto lifts it by position (the floor, the springs), and its rate is not handed to the ride as the ground's. Frontier: a T-90 hanging at a 54-degree roof's eave had a track corner cross the eave and its support
-      // step 2.5 m for two ticks; the ground's rate took 2 m/s, and when the corner crossed back the hull flew on it.
+      // onto lifts it by position (the floor, the springs), and its rate is not handed to the ride as the ground's.
+      // Frontier: a T-90 slid off a 54-degree roof hung at its eave with a track corner across it; its support stepped
+      // 0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and the hull
+      // left the eave at 2.6 m/s.
       if (solverRise > SUPPORT_STEP_M) ride.supportY += solverRise;
     }
     const groundVStart = ride.groundV;
