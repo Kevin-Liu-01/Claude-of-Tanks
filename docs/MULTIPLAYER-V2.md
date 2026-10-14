@@ -2037,7 +2037,7 @@ entry and their stop at the actor's report; the ceiling, `host_only` and a new e
 match; the re-entry decline withdrawn at the welcome; no actor after a mid-load leave; bounded memory),
 `matchSessionP2p.selftest` (accepts the loading reports ahead of the actor's phase).
 
-### 13.19 Host choice by headroom (MP stream, plan step 10, 2026-10-13)
+### 13.18 Host choice by headroom (MP stream, plan step 10, 2026-10-13)
 
 **Why.** Every packet of a p2p match crosses the host tab's main thread, and every seat skips control ticks below
 15 fps; the room elects the admin (else the senior willing commander) without knowing how each tab runs.
@@ -2053,7 +2053,7 @@ host tab's render quality while it hosts (perf's quality tiers).
 Receipt: `hostHeadroom.selftest` (the monitor's verdicts, window and hysteresis; the real session against a scripted room
 socket: the decline and its withdrawal, none in a match, none from the mobile tier, none with the option off).
 
-### 13.20 A host that goes hands its match on at once (MP stream, plan step 11, 2026-10-13)
+### 13.19 A host that goes hands its match on at once (MP stream, plan step 11, 2026-10-13)
 
 **Why.** A hosting tab that closed, reloaded or navigated away left its peers to the room's socket lease: on the e2e of
 2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
@@ -2073,7 +2073,7 @@ socket; cases "hands on and steps down" (the decline leaves before anything is a
 restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
 nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
 
-### 13.21 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
+### 13.20 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
 
 **Why.** A seat whose main thread stalls (a long frame, a busy phone, a backgrounded tab) skips the ticks it missed:
 `InputStream.dueTicks` samples only the newest four once it is more than eight behind. The authority gets no control for
