@@ -2,11 +2,13 @@ import { createMobileFireGesture, nextQuickGraphicsPreset } from './touchControl
 import { MOBILE_PRESET_ORDER, PRESETS } from '../engine/quality.ts';
 
 if (nextQuickGraphicsPreset('low') !== 'medium' ||
-    nextQuickGraphicsPreset('ultra') !== 'low') {
+    nextQuickGraphicsPreset('ultra') !== 'ultralow' ||
+    nextQuickGraphicsPreset('ultralow') !== 'low') {
   throw new Error('desktop quick graphics cycle is not closed');
 }
 if (nextQuickGraphicsPreset('mobile', true) !== 'mobile-high' ||
-    nextQuickGraphicsPreset('mobile-high', true) !== 'mobile-low') {
+    nextQuickGraphicsPreset('mobile-high', true) !== 'mobile-ultralow' ||
+    nextQuickGraphicsPreset('mobile-ultralow', true) !== 'mobile-low') {
   throw new Error('mobile quick graphics cycle is not closed');
 }
 for (const name of MOBILE_PRESET_ORDER) {

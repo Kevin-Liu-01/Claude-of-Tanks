@@ -34,7 +34,7 @@ assert.equal(mobile.texSize(4096, 'vehicle'), 2048,
   'mobile vehicle textures retain their tier cap');
 assert.equal(mobile.shouldReleaseInactivePhaseGpu(), true,
   'mobile devices release phase-exclusive GPU resources');
-assert.deepEqual(mobile.MOBILE_PRESET_ORDER, ['mobile-low', 'mobile', 'mobile-high']);
+assert.deepEqual(mobile.MOBILE_PRESET_ORDER, ['mobile-ultralow', 'mobile-low', 'mobile', 'mobile-high']);
 
 const desktopBrowser = installBrowser('?tier=desktop');
 const desktop = await import('./quality.ts?quality-desktop-contract');
@@ -98,7 +98,13 @@ assert.equal(resetBrowser.storage.get('cot.gfxAutoTier'), undefined,
 assert.equal(resetDesktop.reportSustainedOverload(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'low',
   'a second sustained-overload decision can converge to the floor');
+// 2026-10-13: Ultra Low is the governor's last step after Low, and stable evidence brings it back up
+assert.equal(resetDesktop.reportSustainedOverload(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'ultralow', 'a third sustained overload reaches Ultra Low');
+assert.equal(resetDesktop.reportSustainedOverload(), false, 'Ultra Low is the floor');
 assert.equal(resetDesktop.canRecoverAutoTier(), true);
+assert.equal(resetDesktop.reportSustainedRecovery(), true);
+assert.equal(resetDesktop.resolvePresetName(), 'low', 'Ultra Low recovers to Low first');
 assert.equal(resetDesktop.reportSustainedRecovery(), true);
 assert.equal(resetDesktop.resolvePresetName(), 'medium',
   'stable evidence can reverse one transient session demotion');
@@ -139,7 +145,8 @@ console.log('quality.selftest: device, texture, preset, and subscription contrac
   reload.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } });
   assert.equal(reload.resolvePresetName(), 'medium', 'same-tab reload must not recreate the failing footprint');
   reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'low', 'repeated resets tighten the cap');
-  reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'low', 'relief has a floor');
+  reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'ultralow', 'Ultra Low is the last relief');
+  reload.noteGraphicsContextLoss(); assert.equal(reload.resolvePresetName(), 'ultralow', 'relief has a floor');
   reload.setPresetName('high'); assert.equal(reload.resolvePresetName(), 'high', 'explicit choice clears recovery relief');
 }
 {
@@ -192,3 +199,54 @@ console.log('quality.selftest: device, texture, preset, and subscription contrac
     assert.equal(q.PRESETS[name]?.rcasMinScale, undefined, `${name} keeps the default RCAS threshold`);
   }
 }
+// 2026-10-13 (Ultra Low; the owner: "also lets make an ultra low graphics setting LOL"): the preset below Low is a
+// player choice on both ladders, its picture levers are its own, and its raster stays inside EASU + RCAS
+{
+  const browser = installBrowser('?tier=desktop');
+  const q = await import('./quality.ts?ultra-low');
+  q.resolveDeviceTier({ capabilities: { maxTextureSize: 16384 } });
+  const { cappedPixelRatio, dynamicScaleFloor, internalPixelRatio, reconstructionMode } = await import('./renderScalePolicy.ts');
+  assert.deepEqual(q.PRESET_ORDER, ['ultralow', 'low', 'medium', 'high', 'ultra'], 'Ultra Low sits below Low');
+  assert.equal(q.presetLightWorld(), false, 'Auto builds the full world');
+  q.setPresetName('ultralow');
+  assert.equal(browser.storage.get('cot.gfxPreset'), 'ultralow');
+  assert.equal(q.getStoredChoice(), 'ultralow', 'the choice persists');
+  assert.equal(q.resolvePresetName(), 'ultralow');
+  const p = q.getPreset();
+  assert.equal(p, q.PRESETS.ultralow);
+  assert.equal(q.presetLightWorld(), true, 'Ultra Low builds the light world');
+  assert.equal(p.bloom, false); assert.equal(p.volumetricClouds, false); assert.equal(p.terrainLite, true);
+  assert.equal(p.aoScale, 0); assert.equal(p.msaaSamples, 0); assert.ok(!p.taa && !p.contactShadows && !p.sunShafts && !p.lensFlare);
+  assert.ok(p.tallGrass > 0 && p.tallGrass < q.PRESETS.low.tallGrass, 'less tall grass than Low, not none');
+  assert.ok(p.shadowMaxFar < q.PRESETS.low.shadowMaxFar && p.shadowMapSizes.every((s, i) => s <= q.PRESETS.low.shadowMapSizes[i]),
+    'smaller cascades over a shorter range than Low');
+  assert.equal(p.shadowMapSizes.length, 4, 'the desktop cascade count is unchanged (no lit program recompiles)');
+  // raster: 0.8 CSS px; 0.4 of a retina panel with RCAS on; below the retina threshold the governor may reach 0.6
+  assert.equal(cappedPixelRatio(2, p), 0.8);
+  assert.equal(dynamicScaleFloor(2, p), 1, 'a retina panel stays at 0.4 (no linear band)');
+  assert.ok(Math.abs(internalPixelRatio(1, p, 0) - 0.6) < 1e-9, 'a native-density display may fall to 0.6 CSS px');
+  assert.equal(reconstructionMode(0.4, p.rcasMinScale), 'easu+rcas', 'the retina 0.4 keeps RCAS');
+  assert.equal(reconstructionMode(0.6, p.rcasMinScale), 'easu+rcas');
+  for (const name of ['low', 'medium', 'high', 'ultra']) {
+    const other = q.PRESETS[name];
+    assert.ok(other.bloom === undefined && other.volumetricClouds === undefined && other.terrainLite === undefined
+      && other.lightWorld === undefined, `${name} keeps the full picture`);
+  }
+  q.setPresetName('low');
+  assert.equal(q.presetLightWorld(), false);
+}
+{
+  installBrowser('?tier=mobile');
+  const q = await import('./quality.ts?mobile-ultra-low');
+  q.resolveDeviceTier({ capabilities: { maxTextureSize: 8192 } });
+  q.setMobilePresetName('mobile-ultralow');
+  assert.equal(q.getMobilePresetChoice(), 'mobile-ultralow');
+  assert.equal(q.resolvePresetName(), 'mobile-ultralow');
+  const p = q.getPreset();
+  assert.equal(p.maxPixelRatio, 1, 'the phones keep one 3D sample per CSS pixel');
+  assert.equal(p.textureScale, 0.5); assert.equal(p.textureCap, 2048);
+  assert.equal(p.bloom, false); assert.equal(p.terrainLite, true);
+  q.setPresetName('ultralow');
+  assert.equal(q.resolvePresetName(), 'mobile-ultralow', 'a desktop choice never reaches the phone ladder');
+}
+console.log('quality.selftest: Ultra Low contracts passed');

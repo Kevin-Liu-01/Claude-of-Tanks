@@ -2332,6 +2332,8 @@ export function createPost(
     };
   }
   composer.addPass(bloom); // 3. HDR bloom — muzzle flash / fire pop here
+  // Ultra Low (2026-10-13; quality.ts `bloom: false`): the pass is off; the emissive flashes and tracers draw unhaloed
+  bloom.enabled = preset.bloom !== false;
 
   // Round 69 (2026-09-24): the desktop light effects (postLightFxPolicy.ts). Sun shafts and the lens flare render
   // at quarter resolution into one light target the grade adds before its tonemap; the contact shadows live in
@@ -2951,6 +2953,7 @@ export function createPost(
     taa.resetHistory();
     upscaler.temporalAccumulation = taaEnabled;
     upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
+    bloom.enabled = preset.bloom !== false;
     publishAAState();
     resolveLightFx();
     // perf-governor r1: a preset switch is a new baseline — release every
