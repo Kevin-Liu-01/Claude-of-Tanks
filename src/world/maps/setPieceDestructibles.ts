@@ -42,8 +42,9 @@ export function isDenseSetPieceKind(kind: string | undefined): boolean { return 
 export function isSetPieceKind(kind: string | undefined): boolean { return !!kind && kind.startsWith('setpiece_'); }
 
 /** The set pieces' destructible types (props.ts LOCAL_TYPES): seated on the ground under their corners, as a parked
- *  vehicle is; their own builds (the painted vertex colours, props.ts draws them with the baked family's material). */
-export function setPieceDestructibleTypes(): Record<string, DestructiblePropType> {
+ *  vehicle is; their own builds (the painted vertex colours, props.ts draws them with the baked family's material);
+ *  `mobile`: the phone tier's coarse builds. */
+export function setPieceDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
   const out: Record<string, DestructiblePropType> = {};
   for (const kind of KINDS) {
     const size = SET_PIECE_SIZE[kind], mass = SET_PIECE_MASS[kind];
@@ -51,8 +52,9 @@ export function setPieceDestructibleTypes(): Record<string, DestructiblePropType
       cls: 'break', mat: 'vehicle', contact: 'ob', collider: true,
       r: Math.hypot(size.hw, size.hl), h: size.h, hw: size.hw, hl: size.hl,
       keep: mass.keep, crushMin: mass.crushMin, groundPose: true, castShadow: true,
-      build: () => buildSetPiece(kind),
-      broken: () => buildSetPiece(kind, { wrecked: true }),
+      // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
+      build: () => buildSetPiece(kind, { coarse: mobile }),
+      broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
     };
   }
   return out;

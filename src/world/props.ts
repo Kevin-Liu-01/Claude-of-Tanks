@@ -185,7 +185,8 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
 import { setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
@@ -4439,7 +4440,7 @@ ${snowCap ? `
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
-    ...setPieceDestructibleTypes(),
+    ...setPieceDestructibleTypes(mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
@@ -8813,9 +8814,12 @@ ${snowCap ? `
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
         if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
-        const support = planGroundedObbPose(
-          heightField, x, z, footHx, footHz, yaw, 0.14,
-        );
+        // (Lane C, #8 r2) seated on its track runs (wrecks.ts seatHulk: the terrain over its ground contact alone, a
+        // least-squares plane at most 4 cm over the deepest dip), not sunk under the lowest of nine samples plus 0.14 m
+        // across a tossed turret's envelope (the census judge: hulks 0.42-0.90 m under the terrain)
+        const support = baked.contact
+          ? seatHulk(heightField, x, z, yaw, baked.contact)
+          : planGroundedObbPose(heightField, x, z, footHx, footHz, yaw, 0.14);
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
@@ -8836,16 +8840,18 @@ ${snowCap ? `
         // read without adding draw calls, animation, or live vehicle state.
         let debrisTris = 0;
         if (wCfg?.debris !== false) {
-          const debris = bakeWreckDebris(seed + 17001 + wreckSerial * 97, {
-            modern: isPostwarVehicleEra(era),
+          // (Lane C, #8 r2) built from a tank's own kinds of parts and seated piece by piece on the terrain under each
+          // (wreckDebris.ts), not boxes laid in the hulk's sunk plane (two thirds of them were wholly underground)
+          const debris = buildWreckDebris(seed + 17001 + wreckSerial * 97, {
+            modern: isPostwarVehicleEra(era), contact: baked.contact,
           });
           wreckSerial++;
-          debris.geo.rotateY(yaw);
-          debris.geo.applyQuaternion(_quat);
-          debris.geo.translate(x, y + 0.01, z);
-          wreckGeos.push(debris.geo);
-          // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
-          pushWreckDrawnFootprint(debris.geo, y, 0.05);
+          for (const piece of seatWreckDebris(debris, heightField, x, z, yaw)) {
+            wreckGeos.push(piece);
+            // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
+            piece.computeBoundingBox();
+            pushWreckDrawnFootprint(piece, piece.boundingBox!.min.y, 0.05);
+          }
           debrisTris = debris.tris;
           bakedTris += debrisTris;
         }
