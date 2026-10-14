@@ -2,8 +2,8 @@
 // 2026-10-14; extracted from arctic.ts as they were, then rebuilt here): the radar tower on the water tower's plot and
 // the Jamesway hut on the container row's plot. The kit's shared parts (the modules, their doors, stairs and windows,
 // the radome, the banks) stay in arctic.ts.
-import { PartSink, faceBox, shade, type Face, type Vec3 } from './geometry.ts';
-import { buildHouse } from './house.ts';
+import { PartSink, faceBox, rgb, shade, type Face, type Vec3 } from './geometry.ts';
+import { buildHouse, holedPolygon } from './house.ts';
 import { latticeFrame } from './lattice.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuilder } from './types.ts';
@@ -83,8 +83,16 @@ export const jamesway: RegionalBuilder = (ctx) => {
   const walk = clamp((bb.maxZ - bb.minZ) * 0.22, 1.2, 2.0);
   const x0 = bb.minX + 0.15, x1 = bb.maxX - 0.15, z0 = bb.minZ + 0.15, zH = bb.maxZ - 0.15 - walk;
   const r = (zH - z0) / 2, zc = (z0 + zH) / 2, fl = 0.5, vest = clamp((x1 - x0) * 0.12, 1.6, 2.4);
-  // the floor platform on its sleepers
-  sink.span('wood', x0, -0.3, z0, x1, fl, zH);
+  const timber = shade(PLY, 0.62);
+  // (props census #3, lane B 2026-10-14; the judges: "the floor platform ONE solid wood span ... the vestibule ONE span box
+  // under a slab roof, its door a slab standing proud with no opening ... the end window a unit stuck on the plywood")
+  // the floor: its deck on joists on sleepers laid on the snow, the deck the structure
+  sink.span('wood', x0, 0.36, z0, x1, fl, zH);
+  sink.dressing(mobile, () => {
+    for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) sink.span('structureWood', x0 - 0.1, -0.15, z - 0.1, x1 + 0.1, 0.14, z + 0.1, { colour: shade(timber, 0.8), decor: true });
+    for (let x = x0 + 0.2; x < x1; x += 0.6) sink.span('structureWood', x - 0.05, 0.14, z0 + 0.05, x + 0.05, 0.36, zH - 0.05, { colour: timber, decor: true });
+    for (let z = z0 + 0.12; z < zH; z += 0.15) sink.span('structureWood', x0, fl - 0.004, z - 0.002, x1, fl + 0.004, z + 0.002, { colour: shade(timber, 0.7), decor: true, fine: true });
+  });
   // the canvas from the far end to the vestibule, bay by bay between the ribs (in the vertex-coloured steel bucket)
   const vx0 = x1 - vest;
   const bays = Math.max(1, Math.round((vx0 - x0) / 1.2)), bayW = (vx0 - x0) / bays, sag = 0.08;
@@ -93,29 +101,56 @@ export const jamesway: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [xa, fl, zc], 'x', bayW / 2, r, 10, { colour: tone }, r - sag, false, -Math.PI / 2, Math.PI);
     sink.cylinder('structureMetal', [xa + bayW / 2, fl, zc], 'x', bayW / 2, r - sag, 10, { colour: tone }, r, false, -Math.PI / 2, Math.PI);
   }
-  const endW: Face = { origin: [x0, 0, zc], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * r };
+  // the far end wall in plywood with its window cut through it; the entrance end closed round the vestibule
+  const endW: Face = { origin: [x0 + 0.06, 0, zc], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * r };
   const pts: Array<[number, number]> = [];
-  for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10; pts.push([-Math.cos(a) * r, fl + Math.sin(a) * r]); }
-  // (round 3, wave 130: "a brick-patterned end wall": the timber bucket's plank print read as brick at range) painted
-  // plywood, the hut's own olive a shade lighter
-  sink.prism('structureWood', pts.map(([u, y]): Vec3 => [x0 + 0.06, y, zc + u]), [1, 0, 0], 0.05, { colour: shade(OLIVE, 1.25) });
-  // (round 5) the arch's entrance end closed by the same plywood round the vestibule (its open end showed the canvas's inside)
-  sink.prism('structureWood', pts.map(([u, y]): Vec3 => [vx0 - 0.11, y, zc + u]), [1, 0, 0], 0.05, { colour: shade(OLIVE, 1.25), decor: true });
-  // the vestibule: a plywood box at the entrance end with its door and a window
-  sink.span('plaster2', vx0, fl, zc - r * 0.62, x1, fl + r * 0.95, zc + r * 0.62);
-  sink.span('roof', vx0 - 0.1, fl + r * 0.95, zc - r * 0.62 - 0.1, x1 + 0.1, fl + r * 0.95 + 0.12, zc + r * 0.62 + 0.1, { colour: OLIVE });
-  const vf: Face = { origin: [x1, 0, zc], u: [0, 0, -1], out: [1, 0, 0], width: r * 1.24 };
-  faceBox(sink, 'structureMetal', vf, 0, fl + 1.0, 0.04, 0.9, 2.0, 0.06, { colour: shade(PLY, 0.7), decor: true });
-  // the ribs at the bays' ends, proud of the sagging canvas, and the window in the far end (dressing a phone draws and
-  // drops: the window draws the build stream, which the phone must draw as often as the desktop does)
+  for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10; pts.push([Math.cos(a) * r, fl + Math.sin(a) * r]); }
+  const winY = fl + r * 0.35;
+  holedPolygon(sink, 'structureWood', endW, pts,
+    [{ u0: -0.35, u1: 0.35, y0: winY, y1: winY + 0.6 }], 0.05, 0.05, { colour: shade(OLIVE, 1.25) });
+  sink.prism('structureWood', pts.map(([u, y]): Vec3 => [vx0 - 0.11, y, zc - u]), [1, 0, 0], 0.05, { colour: shade(OLIVE, 1.25), decor: true });
+  // the vestibule: a framed plywood arctic entry, its door cut with a step under it and a canopy over it
+  sink.placed(0, (vx0 + x1) / 2, fl, zc, () => {
+    const vw = r * 1.24, vd = x1 - vx0;
+    sink.paint = shade(PLY, 0.95);
+    try {
+      buildHouse(sink, {
+        w: vd, d: vw, plinth: null, storeys: [{ h: r * 0.95, wall: 'structureWood' }],
+        roof: { kind: 'shed', pitchDeg: 8, eave: 0.12, verge: 0.12, thickness: 0.1, bucket: 'roof' }, gableBucket: 'structureWood',
+        openings: [{ face: 'right', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.95 }], chimneys: [], gutters: null, verge: null, reveal: 0.08,
+      }, {
+        window: () => {},
+        door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(PLY, 0.7), frame: { bucket: 'structureWood', width: 0.08, out: 0.04, colour: shade(OLIVE, 0.9) }, steps: null, leafKind: 'plank' }),
+      });
+    } finally { sink.paint = null; }
+    sink.span('structureWood', vd / 2, -fl - 0.05, -0.6, vd / 2 + 0.5, -0.12, 0.6, { colour: timber, decor: true });
+    sink.span('structureMetal', vd / 2, 2.15, -0.7, vd / 2 + 0.6, 2.22, 0.7, { colour: OLIVE, decor: true });
+    for (const z of [-0.6, 0.6]) sink.member('structureWood', [vd / 2 + 0.02, 1.85, z], [vd / 2 + 0.55, 2.15, z], 0.05, 0.05, [0, 0, 1], { colour: timber, decor: true, exposed: true }, 0);
+  });
+  // the ribs at the bays' ends, proud of the sagging canvas, the tie-downs to their stakes, the window in the far end and
+  // the stovepipe on its guys (dressing a phone draws and drops: the window draws the build stream, which the phone must
+  // draw as often as the desktop does)
   sink.dressing(mobile, () => {
     for (let k = 1; k < bays; k++) {
-      sink.cylinder('structureWood', [x0 + k * bayW - 0.04, fl, zc], 'x', 0.08, r + 0.03, 12, { colour: shade(OLIVE, 0.75), decor: true }, r + 0.03, false, -Math.PI / 2, Math.PI);
+      const x = x0 + k * bayW;
+      sink.cylinder('structureWood', [x - 0.04, fl, zc], 'x', 0.08, r + 0.03, 12, { colour: shade(OLIVE, 0.75), decor: true }, r + 0.03, false, -Math.PI / 2, Math.PI);
+      for (const side of [-1, 1]) sink.member('structureWood', [x, fl + 0.05, zc + side * (r + 0.02)], [x, -0.05, zc + side * (r + 0.6)], 0.02, 0.02, [1, 0, 0], { colour: rgb(0x8a8270), decor: true, exposed: true, fine: true }, 0);
     }
-    windowUnit(sink, endW, 0, fl + r * 0.35, 0.7, 0.6, WINDOW, rng, 0.4);
+    sink.recess = 0.05;
+    try { windowUnit(sink, endW, 0, winY, 0.7, 0.6, WINDOW, rng, 0.4); } finally { sink.recess = 0; }
+    const px = vx0 - bayW * 0.6, py = fl + r + 0.9;
+    sink.cylinder('structureMetal', [px, fl + r - 0.1, zc + r * 0.35], 'y', 1.1, 0.08, 8, { colour: STEEL_DARK, decor: true });
+    sink.cylinder('structureMetal', [px, py, zc + r * 0.35], 'y', 0.12, 0.16, 8, { colour: STEEL_DARK, decor: true }, 0.04);
+    for (const [dx, dz] of [[1.2, 0.6], [-1.2, 0.6], [0, -1.0]] as const) {
+      sink.member('structureMetal', [px, py - 0.1, zc + r * 0.35], [px + dx, fl + r * 0.8, zc + r * 0.35 + dz], 0.012, 0.012, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
+    }
   });
-  // the boardwalk along its side
-  sink.span('wood', x0, -0.3, zH, x1, fl - 0.15, bb.maxZ - 0.15);
+  // the boardwalk along its side: boards on two stringers
+  sink.span('wood', x0, fl - 0.2, zH, x1, fl - 0.15, bb.maxZ - 0.15);
+  sink.dressing(mobile, () => {
+    for (const z of [zH + 0.2, bb.maxZ - 0.35]) sink.span('structureWood', x0, -0.3, z - 0.07, x1, fl - 0.2, z + 0.07, { colour: shade(timber, 0.85), decor: true });
+    for (let x = x0 + 0.15; x < x1; x += 0.3) sink.span('structureWood', x - 0.003, fl - 0.155, zH, x + 0.003, fl - 0.145, bb.maxZ - 0.15, { colour: shade(timber, 0.7), decor: true, fine: true });
+  });
   // the banks: along the windward side (away from the boardwalk) and against the far end
   const north = boxFace(x0, z0, x1, zH, 'n'), far = boxFace(x0, z0, x1, zH, 'w');
   bank(sink, north, -north.width / 2 - 0.6, north.width / 2 + 0.6, 1.0, 0.8, 1.8, -0.3, zc + 3.1);
