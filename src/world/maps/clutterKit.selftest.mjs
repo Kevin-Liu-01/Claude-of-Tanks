@@ -21,6 +21,8 @@ const MAPS = Object.keys(MAP_SETTING_YEAR).sort();
 const KINDS = ['drum', 'barrel', 'crate', 'firewood', 'pallet', 'bucket', 'jerrycan', 'gasbottle', 'churn', 'loosewheel', 'pot', 'laundry', 'drumred', 'cablespool'];
 /** Family #14's street furniture (streetKit.ts), through the same entry and the same rules; its own +40k a map. */
 const STREET = ['bench', 'trashcan', 'cone', 'barrier', 'roadsign', 'lamp', 'rugframe'];
+/** Family #18's farmyard (farmKit.ts): bales (the hay on the straw material, one form) and troughs; its own +30k a map. */
+const FARM = ['bale', 'trough'];
 const PHYSICS = new Set(['drum', 'bucket', 'jerrycan', 'gasbottle', 'churn', 'loosewheel', 'trashcan', 'cone']);
 /** The kinds that topple whole (no broken form of their own). */
 const TOPPLE = new Set(['roadsign', 'lamp']);
@@ -28,7 +30,9 @@ const TOPPLE = new Set(['roadsign', 'lamp']);
 const UNPLACED = { firewood: ['mars', 'moon'], churn: ['airfield', 'badlands', 'caldera', 'copper_mesa', 'desert', 'foundry', 'oasis', 'railyard', 'urban', 'whiteout'],
   pot: MAPS.filter((m) => !['desert', 'oasis', 'badlands', 'orchard', 'saltwind', 'titan_gorge', 'delta', 'mangrove', 'monsoon'].includes(m)),
   laundry: MAPS.filter((m) => !['verdant', 'autumn', 'frontier', 'reservoir', 'polders', 'orchard', 'saltwind', 'longleaf', 'desert', 'coastal', 'oasis', 'mangrove', 'delta', 'monsoon'].includes(m)),
-  bench: ['blackglass', 'mars', 'moon', 'ruinspires', 'urban'].filter(() => false) };
+  bench: ['blackglass', 'mars', 'moon', 'ruinspires', 'urban'].filter(() => false),
+  bale: MAPS.filter((m) => !['verdant', 'winter', 'autumn', 'polders', 'reservoir', 'alpine', 'monsoon', 'delta', 'mangrove', 'longleaf', 'railyard', 'cliffbridge', 'steppe', 'frontier', 'desert', 'saltwind', 'coastal'].includes(m)),
+  trough: ['blackglass', 'mars', 'moon', 'ruinspires', 'urban'] };
 const owed = (kind) => MAPS.filter((m) => !(UNPLACED[kind] ?? []).includes(m));
 
 /** The runtime census's instances of each kind (KINDS order) by map (streams/props-census/runtime-census.json, census-main
@@ -75,6 +79,14 @@ const STREET_CENSUS = {
   verdant: [14, 6, 15, 7, 4, 0, 0], whiteout: [7, 5, 15, 14, 4, 0, 0], winter: [17, 4, 19, 9, 4, 0, 0],
 };
 const STREET_MAX_DELTA = 40000;
+/** The farm kinds' instances (FARM order) by map (the same census). */
+const FARM_CENSUS = {
+  airfield: [0, 13], alpine: [5, 7], autumn: [45, 13], badlands: [0, 9], blackglass: [0, 0], caldera: [0, 22], cliffbridge: [54, 33], coastal: [24, 7], copper_mesa: [0, 14],
+  delta: [26, 3], desert: [3, 11], fjord: [0, 14], foundry: [0, 17], frontier: [49, 15], longleaf: [21, 10], mangrove: [2, 9], mars: [0, 0], monsoon: [2, 7], moon: [0, 0],
+  oasis: [0, 8], orchard: [0, 7], polders: [36, 6], railyard: [3, 17], reservoir: [24, 7], ruinspires: [0, 0], saltwind: [5, 6], skybridge: [0, 13], steppe: [50, 12],
+  titan_gorge: [0, 11], urban: [0, 0], verdant: [34, 4], whiteout: [0, 7], winter: [26, 7],
+};
+const FARM_MAX_DELTA = 30000;
 const MAX_DELTA = 45000;
 
 /** A pool geometry's tagged forms: near (1), far (2), lean (3). */
@@ -88,6 +100,7 @@ function split(g) {
     const s = new THREE.BufferGeometry();
     for (const name of ['position', 'normal', 'uv', 'color']) {
       const a = g.getAttribute(name);
+      if (!a) continue; // (the hay print's forms carry no vertex colour)
       const arr = new Float32Array(list.length * 3 * a.itemSize);
       list.forEach((v, k) => { for (let c = 0; c < 3 * a.itemSize; c++) arr[k * 3 * a.itemSize + c] = a.array[v * a.itemSize + c]; });
       s.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize));
@@ -101,7 +114,7 @@ function split(g) {
 const legacyTris = {}, formTris = {};
 for (const mapId of MAPS) {
   const types = clutterTypes(mapId, false), period = periodClutterTypes(mapId);
-  for (const kind of [...KINDS, ...STREET]) {
+  for (const kind of [...KINDS, ...STREET, ...FARM]) {
     const t = types[kind];
     if (!owed(kind).includes(mapId)) continue;
     assert.ok(t, `${kind} has no form on ${mapId}`);
@@ -124,7 +137,7 @@ for (const mapId of MAPS) {
       assert.equal(casts, false, `${kind} folds by distance but casts a dynamic shadow (the depth pass runs no fold)`);
     } else {
       assert.ok(lean && !near, `${kind} on ${mapId}: one lean form`);
-      const cap = CLUTTER_LEAN[mapId]?.includes(kind) ? 120 : kind === 'lamp' ? 600 : 300;
+      const cap = CLUTTER_LEAN[mapId]?.includes(kind) ? 120 : kind === 'lamp' ? 600 : kind === 'bale' ? 800 : 300;
       assert.ok(tris(lean) <= cap, `${kind} on ${mapId}: ${tris(lean)} triangles (cap ${cap})`);
     }
     if (PHYSICS.has(kind) || TOPPLE.has(kind)) assert.equal(t.broken, null, `${kind} stays a ${PHYSICS.has(kind) ? 'physics body' : 'topple'}`);
@@ -134,9 +147,9 @@ for (const mapId of MAPS) {
 }
 
 // 2. the bunker r2 standard, form by form
-const specs = [...KINDS, ...STREET].map((kind) => ({
+const specs = [...KINDS, ...STREET, ...FARM].map((kind) => ({
   kind: `clutter:${kind}`, maps: owed(kind), route: PHYSICS.has(kind) || TOPPLE.has(kind) ? 'crush' : undefined, noBroken: PHYSICS.has(kind) || TOPPLE.has(kind),
-  caps: { near: kind === 'lamp' ? 600 : 300, far: kind === 'trashcan' || kind === 'cone' || kind === 'bench' ? 80 : 60 },
+  caps: { near: kind === 'lamp' ? 600 : kind === 'bale' ? 800 : 300, far: kind === 'trashcan' || kind === 'cone' || kind === 'bench' ? 80 : 60 },
   // (a road sign's legend is in relief on its plate: an arrow's black head on a yellow plate is the legend, not a door)
   allowPlates: kind === 'roadsign' ? (p) => (p.centre[1] > 1.5 ? 'a road sign\'s legend in relief on its plate' : null) : undefined,
   resolve: (mapId) => {
@@ -181,7 +194,7 @@ assert.deepEqual(problems, [], `r2Standard (yard):\n  ${problems.join('\n  ')}`)
 
 // 3. each map within +45k triangles of the legacy clutter (near and far both sent)
 const over = [];
-let worst = { mapId: '', delta: -Infinity }, worstStreet = { mapId: '', delta: -Infinity };
+let worst = { mapId: '', delta: -Infinity }, worstStreet = { mapId: '', delta: -Infinity }, worstFarm = { mapId: '', delta: -Infinity };
 for (const mapId of MAPS) {
   let delta = 0;
   for (const [i, kind] of KINDS.entries()) {
@@ -209,6 +222,16 @@ for (const mapId of MAPS) {
   }
   if (street > worstStreet.delta) worstStreet = { mapId, delta: street };
   if (street > STREET_MAX_DELTA) over.push(`${mapId} street +${street}`);
+  let farm = 0;
+  for (const [i, kind] of FARM.entries()) {
+    const n = FARM_CENSUS[mapId][i];
+    if (!n) continue;
+    const key = `${mapId}:${kind}`;
+    assert.ok(key in formTris, `${kind} is placed on ${mapId} (${n}) but has no form`);
+    farm += n * (formTris[key] - legacyTris[key]);
+  }
+  if (farm > worstFarm.delta) worstFarm = { mapId, delta: farm };
+  if (farm > FARM_MAX_DELTA) over.push(`${mapId} farm +${farm}`);
 }
 assert.deepEqual(over, [], 'maps over +45k clutter triangles');
 
@@ -220,4 +243,4 @@ assert.match(shader.vertexShader, /aClutterLod > 0\.5 && aClutterLod < 2\.5/);
 assert.match(shader.vertexShader, /vColor\.rgb \*=/);
 assert.throws(() => clutterLodHook({ vertexShader: '#include <common>\n#include <begin_vertex>' }), /color_vertex/);
 
-console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps and 9 yard families, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}); street furniture worst ${worstStreet.mapId} +${worstStreet.delta} (cap +${STREET_MAX_DELTA}) PASS`);
+console.log(`clutterKit selftest: ${KINDS.length} kinds x ${MAPS.length} maps and 9 yard families, ${forms} regional forms pass r2Standard; legacy draws spent; caps 300/60 (lean 120); worst map ${worst.mapId} +${worst.delta} triangles (cap +${MAX_DELTA}); street furniture worst ${worstStreet.mapId} +${worstStreet.delta} (cap +${STREET_MAX_DELTA}); farmyard worst ${worstFarm.mapId} +${worstFarm.delta} (cap +${FARM_MAX_DELTA}) PASS`);

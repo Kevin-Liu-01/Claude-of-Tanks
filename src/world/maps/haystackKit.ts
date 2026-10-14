@@ -43,14 +43,14 @@ function sampleTable(t: Float32Array, n: number, a: number, b: number): number {
 }
 
 /** A point of a turned profile: its radius, its height, its v in the print, and how ragged the hay is there (m). */
-type ProfilePoint = readonly [r: number, y: number, v: number, rag: number];
+export type ProfilePoint = readonly [r: number, y: number, v: number, rag: number];
 
 /**
  * A turned stack: the profile round the vertical, `segs` round, its radius broken by a periodic noise of the angle and
  * the height (lumps at a metre's scale, locks and tufts at a hand's), u round it in tiles of about four metres. The seam
  * column's normals are the mean of its two sides' (no lighting seam where u wraps).
  */
-function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number): THREE.BufferGeometry {
+export function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number): THREE.BufferGeometry {
   const lumps = noiseTable(rng, 8), locks = noiseTable(rng, 24);
   const rows = profile.length, cols = segs + 1;
   const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), index: number[] = [];
@@ -84,7 +84,7 @@ function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: 
 }
 
 /** A band's v at a share of its height (0 its start, 1 its end). */
-const bandV = (band: readonly [number, number], t: number) => band[0] + (band[1] - band[0]) * Math.min(1, Math.max(0, t));
+export const bandV = (band: readonly [number, number], t: number) => band[0] + (band[1] - band[0]) * Math.min(1, Math.max(0, t));
 
 /** Each triangle wound to face away from `centre` (a convex part's own inside), its normals recomputed. */
 function faceOutward(g: THREE.BufferGeometry, centre: THREE.Vector3): THREE.BufferGeometry {
@@ -178,6 +178,7 @@ function rectSkirt(hx: number, hz: number, out: number, rng: Rng): THREE.BufferG
   return g;
 }
 
+export function hayMerge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry { return merge(parts); }
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const ready = parts.map((part) => {
     const g = part.index ? part.toNonIndexed() : part;
