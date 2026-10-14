@@ -59,6 +59,11 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
   assert.equal(text.split(merge).length, 2);
   assert.equal(text.split(dense).length, 2);
   assert.ok(band, 'runtime band boundary must exist');
+  // (physics stream F2, 2026-10-13) a deck's face groups merge once each as well (structureDecks): counted apart, so the
+  // per-solid bound below still reads the projection cache alone
+  const deckMerge = '        : mergeProjectedTriangles(projected);';
+  assert.equal(text.split(deckMerge).length, 2, 'the deck face merge boundary must exist');
+  text = text.replace(deckMerge, '        : (__reuseCounts.deckMerges++, mergeProjectedTriangles(projected));');
   text = text.replace(merge, `${merge}
     __reuseCounts.merges++;
     if (!triangles.length) __reuseCounts.empty++;
@@ -67,7 +72,7 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
     .replace(dense, `${dense} __reuseCounts.dense++;`)
     .replace(band, `${band} __reuseCounts.bands++;`);
   text += `
-    const __reuseCounts = { merges: 0, empty: 0, repeated: 0, dense: 0, bands: 0 };
+    const __reuseCounts = { merges: 0, empty: 0, repeated: 0, dense: 0, bands: 0, deckMerges: 0 };
     const __reuseInputs = new Set();
     export function reuseCounts() { return { ...__reuseCounts }; }
     export function resetReuseCounts() {
@@ -141,7 +146,7 @@ function compare(buckets, label) {
   cached.resetReuseCounts();
   const withSolids = cached.deriveRuntimeStructureCollisionWithSolids(buckets);
   assert.equal(cached.reuseCounts().repeated, 0, `${label}: WithSolids also merges each projection at most once`);
-  assert.ok(cached.reuseCounts().merges <= withSolids.solids.length);
+  assert.ok(cached.reuseCounts().merges - cached.reuseCounts().deckMerges <= withSolids.solids.length);
   assert.deepEqual(withSolids, control.deriveRuntimeStructureCollisionWithSolids(buckets),
     `${label}: consumer source solids and contactTop remain exact, with no cache field added`);
   assert.deepEqual(withSolids.profile, actual, `${label}: both runtime APIs use the same profile`);

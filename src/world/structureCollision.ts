@@ -1309,18 +1309,21 @@ function deriveRuntimeCollisionBands(solids: LocalSolid[]): StructureCollisionRu
   const projectedCache = new Map<LocalSolid, number[][]>();
   const profile = deriveCollisionBands(solids, (active, minY, maxY, ground) =>
     makeRuntimeBand(active, minY, maxY, ground, projectedCache));
-  // the decks ride on the contact record, within its part limit (the largest first)
-  const contact = profile.contact;
-  const room = PART_LIMIT - contact.parts.length;
-  if (room > 0) {
-    const decks = structureDecks(solids, new Set(contactBandSolids(solids))).slice(0, room);
-    for (const deck of decks) {
-      contact.parts.push(rangedShape(deck));
-      contact.maxY = Math.max(contact.maxY, deck.y1);
-    }
-    if (decks.length) contact.decks = decks.length;
-  }
+  addDecks(profile.contact, solids);
   return profile;
+}
+
+/** The decks ride on the contact band (structureDecks), within its part limit, the largest first. */
+function addDecks(contact: StructureCollisionRuntimeBand, solids: LocalSolid[]): StructureCollisionRuntimeBand {
+  const room = PART_LIMIT - contact.parts.length;
+  if (room <= 0) return contact;
+  const decks = structureDecks(solids, new Set(contactBandSolids(solids))).slice(0, room);
+  for (const deck of decks) {
+    contact.parts.push(rangedShape(deck));
+    contact.maxY = Math.max(contact.maxY, deck.y1);
+  }
+  if (decks.length) contact.decks = decks.length;
+  return contact;
 }
 
 /**
@@ -1350,7 +1353,8 @@ export function deriveRuntimeStructureShellBands(buckets: StructureGeometryBucke
 export function deriveRuntimeStructureContactBand(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeBand {
-  return deriveContactBand(collectSolids(buckets), makeRuntimeBand);
+  const solids = collectSolids(buckets);
+  return addDecks(deriveContactBand(solids, makeRuntimeBand), solids);
 }
 
 /** Same collision result, exposing the already-extracted solids to cosmetic admission. */
