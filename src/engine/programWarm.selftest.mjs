@@ -853,6 +853,7 @@ for (const work of ['ready', 'pending', 'failed', 'stale']) {
   assert.equal(timing.uniformYields, 120);
   assert.equal(timing.queryCount, 32 * 120);
   assert.equal(timing.uniformPending, 32);
+  assert.equal(timing.pendingPrograms, undefined, 'a non-strict drain names nothing');
 }
 
 function capturedNewFixture(count = 1) {
@@ -1570,12 +1571,20 @@ for (const remaining of ['batch', 'pass', 'empty-pass']) {
 {
   const f = firstUseFixture({ names: ['old', 'newest'], clockFrozen: true });
   f.programs.forEach((program, id) => { program.id = id; });
+  f.programs[0].cacheKey = 'MeshStandardMaterial,old-variant';
   f.state.queryMs = f.state.uniformMs = 0;
   f.state.query = () => false;
-  const result = preparationResult(f.prepare({ strict: true }));
+  const timing = {};
+  const result = preparationResult(f.prepare({ strict: true, timing }));
   assert.deepEqual(result, { status: 'incomplete', pending: 2, reason: 'budget' });
   assert.equal(f.events.filter(([kind]) => kind === 'query').length, 1024,
     'one finite strict guard permits the real five-second deadline at high refresh rates');
+  // 2026-10-13 (the MP stream): an incomplete strict preparation names what it left pending (material name, cache key,
+  // the newest link answer it read) from what it already queried — no extra native query (the count above holds)
+  assert.deepEqual(timing.pendingPrograms, [
+    { name: 'old', cacheKey: 'MeshStandardMaterial,old-variant', linked: null },
+    { name: 'newest', cacheKey: '', linked: false },
+  ], `the pending programs are named (${JSON.stringify(timing.pendingPrograms)})`);
   assert.equal(f.events.some(([kind]) => kind === 'uniform'), false,
     'negative control: generator exhaustion cannot mean the pending programs were reflected');
 }

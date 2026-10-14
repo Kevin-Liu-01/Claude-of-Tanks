@@ -187,6 +187,9 @@ function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): RegionalPart
       for (const dz of [0.9, 1.6]) {
         if (-D / 2 + dz > zb - 0.3) continue;
         sink.cylinder('structureWood', [-W / 2 + 0.4, backTop + 1.6, -D / 2 + dz], 'x', W - 0.8, 0.025, 4, { colour: rgb(0x8a7a52), decor: true, fine: true });
+        // (the buildings stream, 2026-10-12, the integrity check: the poles and their washing hung in the air) each pole
+        // on a bamboo post at either end, stood on the terrace
+        for (const px of [-W / 2 + 0.42, W / 2 - 0.42]) sink.cylinder('structureWood', [px, backTop - 0.02, -D / 2 + dz], 'y', 1.65, 0.03, 4, { colour: rgb(0x8a7a52), decor: true, fine: true });
         for (let c = 0; c < 3; c++) {
           const cx = -W / 2 + 0.8 + look() * (W - 1.6);
           faceBox(sink, 'structureWood', { origin: [0, 0, -D / 2 + dz], u: [1, 0, 0], out: [0, 0, 1], width: W }, cx, backTop + 1.2, 0.02, 0.6, 0.8, 0.02,
@@ -430,6 +433,14 @@ const ruin: RegionalBuilder = (ctx) => {
     const W = clampTo(f.w, 3, 30), D = clampTo(f.d, 3, 30), t = 0.32;
     const kind = rng();
     const wall: RegionalBucket = look() < 0.72 ? 'stone' : 'plaster';
+    // (the buildings stream, 2026-10-12, the integrity check: shell pocks hung in the air where the front had fallen)
+    // what of the front face still stands, its top along it in 10 cm cells, so the pocks mark only standing wall
+    const cells = Math.max(1, Math.ceil(W / 0.1)), frontTop = new Float32Array(cells).fill(-1);
+    const standFront = (xa: number, xb: number, top: number, z1: number) => {
+      if (z1 < D / 2 - 1e-6) return;
+      const lo = Math.min(xa, xb) + W / 2, hi = Math.max(xa, xb) + W / 2;
+      for (let i = Math.max(0, Math.ceil(lo / 0.1)); i < Math.min(cells, Math.floor(hi / 0.1)); i++) frontTop[i] = Math.max(frontTop[i], top);
+    };
     // a wall run along one edge: slices with their own broken tops, a few gone, the ends always kept
     const run = (x0: number, z0: number, x1: number, z1: number, lo: number, hi: number, gaps: number, profile?: (a: number) => number) => {
       const along = Math.abs(x1 - x0) >= Math.abs(z1 - z0), len = along ? Math.abs(x1 - x0) : Math.abs(z1 - z0);
@@ -438,7 +449,7 @@ const ruin: RegionalBuilder = (ctx) => {
         if (k > 0 && k < n - 1 && rng() < gaps) continue;
         const a = k / n, b = (k + 1) / n;
         const top = profile ? Math.max(lo, profile((a + b) / 2) * (0.82 + rng() * 0.3)) : lo + rng() * (hi - lo);
-        if (along) sink.span(wall, x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
+        if (along) { sink.span(wall, x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1); standFront(x0 + (x1 - x0) * a, x0 + (x1 - x0) * b, top, Math.max(z0, z1)); }
         else sink.span(wall, x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
       }
     };
@@ -450,7 +461,9 @@ const ruin: RegionalBuilder = (ctx) => {
       }
       for (let k = 0; k < 3; k++) {
         const x = (look() - 0.5) * (W - 2), z = (look() - 0.5) * (D - 2);
-        sink.member('structureWood', [x, 0.2, z - 1.2], [x + (look() - 0.5) * 1.5, 0.4 + look() * h, z + 1.2], 0.18, 0.16, [0, 1, 0],
+        // (the integrity check: the beams' feet stood 20 cm over the ground, on nothing) each from the ground, leaning
+        // no higher than a rubble heap's shoulder
+        sink.member('structureWood', [x, -0.02, z - 1.2], [x + (look() - 0.5) * 1.5, 0.2 + look() * h * 0.45, z + 1.2], 0.18, 0.16, [0, 1, 0],
           { colour: CHAR, decor: true, exposed: true }, 0);
       }
     };
@@ -463,10 +476,13 @@ const ruin: RegionalBuilder = (ctx) => {
       for (let k = 0; k <= nb; k++) {
         const x0 = clampTo(-W / 2 + k * bw - pw / 2, -W / 2, W / 2 - pw);
         sink.span(wall, x0, -0.3, D / 2 - t, x0 + pw, tops[k], D / 2);
+        standFront(x0, x0 + pw, tops[k], D / 2);
       }
       for (let k = 0; k < nb; k++) {
         const a = -W / 2 + k * bw + pw / 2, b = -W / 2 + (k + 1) * bw - pw / 2;
-        sink.span(wall, a, -0.3, D / 2 - t, b, 0.9 + rng() * 0.5, D / 2);
+        const sill = 0.9 + rng() * 0.5;
+        sink.span(wall, a, -0.3, D / 2 - t, b, sill, D / 2);
+        standFront(a, b, sill, D / 2);
         const low = Math.min(tops[k], tops[k + 1]);
         if (low > 4.2) {
           // the spandrel over the shop's opening, blackened by the fire that came out of it
@@ -504,7 +520,9 @@ const ruin: RegionalBuilder = (ctx) => {
       }
       rubble(1.6);
     }
-    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.3, 2.4, 6 + Math.floor(look() * 8), look, [], 'plaster3'));
+    const fallen: Array<{ u0: number; u1: number; y0: number; y1: number }> = [];
+    for (let i = 0; i < cells; i++) fallen.push({ u0: -W / 2 + i * 0.1, u1: -W / 2 + (i + 1) * 0.1, y0: frontTop[i], y1: 99 });
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, 0.3, 2.4, 6 + Math.floor(look() * 8), look, fallen, 'plaster3'));
   });
   return sink.finish();
 };

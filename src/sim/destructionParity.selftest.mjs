@@ -20,7 +20,8 @@ const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.ur
 for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'], ['authority', authority, 'destruction\\.']]) {
   assert.match(text, /createDestructionMatch\(\{\s*rules: (game\.)?ruleset\.destruction, obstacles:/, `${name}: one destruction match from the ruleset block`);
   assert.match(text, new RegExp(`${prefix}shellWorldHit\\(shell\\.spec, (hit|worldHit)\\.record,`), `${name}: a shell meeting the world`);
-  assert.match(text, new RegExp(`${prefix}shellBurst\\(shell\\.spec, strike\\.x, strike\\.y, strike\\.z, shell\\.vel\\.x, shell\\.vel\\.z\\)`),
+  // (the authority also names the shooter: the blow's source, 2026-10-13 hiddenWorldEvents)
+  assert.match(text, new RegExp(`${prefix}shellBurst\\(shell\\.spec, strike\\.x, strike\\.y, strike\\.z, shell\\.vel\\.x, shell\\.vel\\.z(, shell\\.shooterId)?\\)`),
     `${name}: a round bursting on a hull`);
   assert.match(text, new RegExp(`if \\(entity\\._ramRecord && state\\.impactSource === IMPACT_SOURCE_COLLIDER\\) \\{\\s*${prefix}ram\\(entity\\._ramRecord, entity\\.spec\\.weightTons, closing, prior,`),
     `${name}: a crash into a structure prices a ram on the closing speed it adds`);

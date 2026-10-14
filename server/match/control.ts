@@ -16,6 +16,7 @@
 import type http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { CLOSE_REASON } from '../../src/mp/wire/constants.ts';
+import { TANK_IDS } from '../../src/vehicles/tankIdAliases.ts';
 import type { ActorBotSpec, ActorSeatSpec, MatchActor } from './matchActor.ts';
 
 const ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
@@ -60,7 +61,8 @@ function readSeat(value: unknown): ActorSeatSpec | null {
   if (typeof value.specId !== 'string' || value.specId.length > 64) return null;
   const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim().slice(0, 32) : value.playerId;
   const equipment = Array.isArray(value.equipment) ? value.equipment.filter((entry): entry is string => typeof entry === 'string').slice(0, 3) : null;
-  return { seat: value.seat as number, playerId: value.playerId, name, team, specId: value.specId, equipment };
+  // A retired id (a room service on an older build) still names its vehicle (SSOT 2.19).
+  return { seat: value.seat as number, playerId: value.playerId, name, team, specId: TANK_IDS.resolveIncoming(value.specId), equipment };
 }
 
 function readBot(value: unknown): ActorBotSpec | null {
@@ -69,7 +71,7 @@ function readBot(value: unknown): ActorBotSpec | null {
   if (value.team !== 'alpha' && value.team !== 'bravo') return null;
   if (typeof value.specId !== 'string' || value.specId.length > 64) return null;
   const difficulty = value.difficulty === 'easy' || value.difficulty === 'hard' ? value.difficulty : 'normal';
-  return { playerId: value.playerId, name: typeof value.name === 'string' ? value.name.slice(0, 32) : value.playerId, team: value.team, specId: value.specId, difficulty };
+  return { playerId: value.playerId, name: typeof value.name === 'string' ? value.name.slice(0, 32) : value.playerId, team: value.team, specId: TANK_IDS.resolveIncoming(value.specId), difficulty };
 }
 
 /** Validate an untrusted start body into the actor's shapes; null when malformed. */

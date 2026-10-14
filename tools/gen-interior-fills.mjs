@@ -28,6 +28,7 @@ import { collectTriangles } from './tank-surface-collect.mjs';
 import { readdirSync, unlinkSync } from 'node:fs';
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
+import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
@@ -47,8 +48,11 @@ const MIN_FINE = Math.max(0, Number(opt('min-fine', '12')));
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // --all covers the whole registered fleet (fleetManifest), not the 27 legacy specs ids (2026-09-14 fix:
 // 80 tanks had never received fills because --all read ALL_TANK_IDS).
+// --rekey (2026-10-13, SSOT 2.19) measures nothing: it moves every record whose id the tank id alias layer renamed to
+// the new id, unchanged, so an id rename keeps the shipped fills exactly.
+const rekey = flag('rekey');
 const requestedIds = flag('all') ? Object.keys(FLEET_GROUP_BY_ID) : opt('ids', 'abramsx').split(',').filter(Boolean);
-const ids = interiorFillSelection(FLEET_GROUP_BY_ID, requestedIds);
+const ids = rekey ? [] : interiorFillSelection(FLEET_GROUP_BY_ID, requestedIds);
 // chase-to-zero (owner 2026-09-14): repeat the fill until the residual stops shrinking — boxes create new
 // enclosures between themselves and sloped plates, which the next round closes.
 const ROUNDS = Math.max(1, Number(opt('rounds', '4')));
@@ -278,6 +282,9 @@ if (!flag('stats')) {
     const prior = (await import(pathToFileURL(resolve(groupDir, name)).href)).INTERIOR_FILLS;
     if (ids.some(id => Object.hasOwn(prior, id) && FLEET_GROUP_BY_ID[id] !== group))
       byGroup.set(group, []);
+    // A group holding a record under a renamed id is rewritten so the record moves to its new id.
+    if (Object.keys(prior).some(id => !Object.hasOwn(FLEET_GROUP_BY_ID, id) && TANK_IDS.isRetired(id)))
+      byGroup.set(group, []);
   }
   const groupNames = [...byGroup.keys()].sort();
   let bytes = 0;
@@ -290,7 +297,8 @@ if (!flag('stats')) {
     const groupFile = resolve(groupDir, `${group}.generated.ts`);
     const existing = !flag('all') && existsSync(groupFile)
       ? (await import(pathToFileURL(groupFile).href)).INTERIOR_FILLS : {};
-    const records = mergeInteriorFillGroup(existing, Object.fromEntries(byGroup.get(group)), FLEET_GROUP_BY_ID, group);
+    const records = mergeInteriorFillGroup(existing, Object.fromEntries(byGroup.get(group)), FLEET_GROUP_BY_ID, group,
+      TANK_IDS.resolveIncoming);
     for (const [id, record] of Object.entries(records).sort((a, b) => a[0].localeCompare(b[0]))) {
       const parts = [`v: ${record.v}`, `o: [${record.o.join(', ')}]`, `t: [${record.t.join(', ')}]`];
       if (record.g) parts.push(`g: [${record.g.join(', ')}]`);

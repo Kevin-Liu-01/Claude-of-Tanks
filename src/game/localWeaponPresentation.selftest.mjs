@@ -72,6 +72,10 @@ const fxBindings = {
   spawnSabotPetals: () => fxCalls.push('sabot'),
   // the destruction-fx lane's record of a fired round's class and charge (its burst reads it at expiry)
   rememberMunition: () => {},
+  // (fx 9a) a missile's or rocket's launch is its own (missileLooks.ts firedIsMissile, missileRecipes.ts): its own
+  // launch beat instead of the gun's flash, and its launch point anchors its wires
+  firedIsMissile: (sound) => sound === 'missile', missileLaunchAt: new Map(), idSeed: () => 1,
+  missileLaunchFx: () => fxCalls.push('missile'),
 };
 const predictFx = await receiver('../fx/effects.ts', fxCallback('weapon:predicted'), fxBindings);
 const confirmFx = await receiver('../fx/effects.ts', fxCallback('shell:fired'), fxBindings);
@@ -86,4 +90,11 @@ confirmFx({ ...shot, shellId: 11 });
 assert.deepEqual(fxCalls, ['flash', 'sabot', 'flash', 'sabot']);
 predictFx({ ...shot, isPlayer: false });
 assert.equal(fxCalls.length, 4, 'remote speculative flash is ignored');
+// (fx 9a) a missile: its own launch beat, never the gun's flash; predicted once, not doubled by the confirmation
+const missile = { ...shot, caliberMm: 152, shellType: 'HEAT', weaponSound: 'missile' };
+predictFx(missile);
+assert.deepEqual(fxCalls.slice(4), ['missile'], 'a predicted missile launch is its own beat');
+confirmFx({ ...missile, shellId: 20, feedbackPredicted: true });
+assert.deepEqual(fxCalls.slice(4), ['missile'], 'its confirmation neither doubles the launch nor flashes the gun');
+assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(20)), shot.muzzlePos, 'its launch point anchors its wires');
 console.log('localWeaponPresentation.selftest: production audio/FX receivers isolate intent feedback and retain authority');

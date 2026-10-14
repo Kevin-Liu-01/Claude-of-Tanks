@@ -516,6 +516,10 @@ a 2.5D mid-level layer (altocumulus, altostratus, cirrocumulus, lenticular) behi
 the cirrus sheet — placed deterministically per map from the `clouds` block, with lightning in a night storm drawn in
 the composite. `cloudPresets.ts` resolves the block for the battle's time of day (the diurnal law of convective cloud,
 per-time knobs, a neutral albedo at sunset and night, the moonlight's hue, a town's glow on the bases).
+The owner's cloud bar (2026-10-13): Verdant's fair-weather cumulus is the reference; the broken stratocumulus deck
+("no more of the cloud type depicted in fjord") is retired from the regime vocabulary, Fjord, Polders and Copper Mesa
+carry fair-weather cumulus tuned to their place, and `engine/cloudsBan.selftest.mjs` keeps the deck out of every map,
+time of day, weather variant, Studio plan, Garage sky and phone deck.
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column

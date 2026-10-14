@@ -91,6 +91,10 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   f.telemetry.send({ kind: 'hud_mask_failed', stage: 'damagePanel', code: 'top_mask_source_disposed', reason: 'm1a3',
     error: { message: 'top_mask_source_disposed', frames: [] } });
   assert.equal(f.bodies.length, 1, 'a HUD mask failure (2026-09-25) is a note too');
+  // a seat linking without a relay (2026-10-13, iceConfig's onDegraded): one note per reason, never a request
+  f.telemetry.send({ kind: 'ice_degraded', mode: 'network', code: 'no_relay' });
+  f.telemetry.send({ kind: 'ice_degraded', mode: 'network', code: 'no_relay' });
+  assert.equal(f.bodies.length, 1, 'ice_degraded is a note');
   f.telemetry.send({ kind: 'entry_result', mode: 'solo', outcome: 'ok', ms: 3000.6, code: 'slow extended!' });
   assert.equal(f.bodies.length, 2, 'a battle entry after the beacon is one small follow-up');
   assert.equal(f.bodies[1].endpoint, endpoints.session);
@@ -100,7 +104,7 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   assert.equal(entry.mode, 'solo');
   assert.equal(entry.ms, 3001);
   assert.equal(entry.code, 'slow_extended', 'codes are bounded to the beacon alphabet before they leave');
-  assert.deepEqual(entry.notes, ['slow_reveal:extended', 'hud_mask:m1a3:top_mask_source_disposed'],
+  assert.deepEqual(entry.notes, ['slow_reveal:extended', 'hud_mask:m1a3:top_mask_source_disposed', 'ice_degraded:no_relay'],
     'pending notes ride on the next record, deduplicated; the HUD mask note keeps the spec id and the pipeline code');
   assert.ok(f.bodies[1].text.length < 300, `the entry follow-up is small (${f.bodies[1].text.length})`);
   f.telemetry.flush();

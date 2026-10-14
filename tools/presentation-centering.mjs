@@ -6,15 +6,27 @@
 //   node tools/presentation-centering.mjs --update
 //   node tools/presentation-centering.mjs --update --ids=a,b  # then regenerate selected images
 //   node tools/presentation-centering.mjs --sync-assets --ids=a,b
+//   node tools/presentation-centering.mjs --rekey   # move renamed ids' rows (tank id alias layer), no capture
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { presentationNumberSource as numberSource, presentationReceiptErrors, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
+import { presentationNumberSource as numberSource, presentationReceiptErrors, rekeyPresentationSource, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
+import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
+// --rekey (2026-10-13, SSOT 2.19): move the rows of ids the tank id alias layer renamed to their new ids. No capture:
+// a rename moves no vehicle.
+if (args.includes('--rekey')) {
+  const outputPath = resolve(process.cwd(), 'src/vehicles/presentationAnchors.generated.ts');
+  const before = readFileSync(outputPath, 'utf8');
+  const after = rekeyPresentationSource(before, (id) => (TANK_IDS.isRetired(id) ? TANK_IDS.resolveIncoming(id) : id));
+  if (after !== before) writeFileSync(outputPath, after);
+  console.log(`[presentation-centering] rekey: ${after === before ? 'nothing renamed' : 'renamed rows moved'}`);
+  process.exit(0);
+}
 const update = args.includes('--update');
 const check = args.includes('--check');
 const syncAssets = args.includes('--sync-assets');

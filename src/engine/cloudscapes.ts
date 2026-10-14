@@ -11,6 +11,12 @@
  * under the precipitating cores, a sea fog bank, the ground's light on the cloud bases at night — and the time of day:
  * the convective clouds follow the diurnal cycle (cloudPresets.ts CLOUD_DIURNAL) and a block may override any knob for
  * its sunset or its night.
+ *
+ * 2026-10-13 (the owner, on the site's map wall: "for clouds, the ones that have been good are the ones depicted in this
+ * verdant and bad is fjord. no more of the cloud type depicted in fjord pls"): the `broken-stratocumulus` regime — a lumpy
+ * grey deck with breaks and heavy dark bases (Nordhavn Fjord, Tidegate Polders, Copper Mesa) — is retired from the
+ * vocabulary; those maps take Verdant's fair-weather cumulus tuned to their place. cloudsBan.selftest.mjs keeps it out
+ * of every map, time of day, weather variant, Studio plan, Garage sky and phone deck.
  */
 
 export type CloudscapeRegime =
@@ -30,8 +36,6 @@ export type CloudscapeRegime =
   | 'cumulus-humilis'
   /** Smooth stationary lens caps high over the ranges, a far deck under them. */
   | 'lenticular'
-  /** A lumpy stratocumulus deck with breaks of blue. */
-  | 'broken-stratocumulus'
   /** A closed lumpy stratocumulus deck (a winter sky), diffuse light. */
   | 'stratocumulus-deck'
   /** An overcast stratus sheet with a few thin breaks. */
@@ -233,7 +237,6 @@ export const CLOUDSCAPE_REGIMES: Readonly<Record<CloudscapeRegime, CloudscapeReg
   'storm-front': row({ coverage: 0.55, baseM: 700, thicknessM: 2800, towers: 1, anvil: 1, wispiness: 0.4, windSpeed: 12, shear: 0.4, streets: 0.1, cirrus: 0.3, cirrusAltM: 11500, stratiform: 0.15, fieldMix: 0.9, density: 0.12, farBand: 0.5, scud: 0.8, type: [0.6, 1.0], sunGain: 0.8, ambientScale: 0.85, clearRadiusM: 1800, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 1 }),
   'cumulus-humilis': row({ coverage: 0.16, baseM: 1700, thicknessM: 380, towers: 0, anvil: 0, wispiness: 0.3, windSpeed: 5, shear: 0.1, streets: 0.3, cirrus: 0.45, cirrusAltM: 10500, stratiform: 0.05, fieldMix: 0, density: 0.12, farBand: 0.15, scud: 0, type: [0.3, 0.5], sunGain: 1, ambientScale: 0.9, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.3, virga: 0.85, cluster: 0, baseFlat: 1 }),
   'lenticular': row({ coverage: 0.16, baseM: 2400, thicknessM: 450, towers: 0, anvil: 0, wispiness: 0, windSpeed: 0, shear: 0, streets: 0, cirrus: 0.3, cirrusAltM: 10000, stratiform: 0.6, fieldMix: 1, density: 0.09, farBand: 0.45, scud: 0, type: [0.05, 0.3], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
-  'broken-stratocumulus': row({ coverage: 0.62, baseM: 900, thicknessM: 500, towers: 0, anvil: 0, wispiness: 0.2, windSpeed: 7, shear: 0.1, streets: 0.3, cirrus: 0.1, cirrusAltM: 9000, stratiform: 0.5, fieldMix: 0.35, density: 0.12, farBand: 0.5, scud: 0, type: [0.15, 0.45], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0.7, cellM: 1000, deckLight: 1, undulatus: 0.2, interior: 0.5, rain: 0.2, virga: 0.2 }),
   // (2026-10-03, the gauntlet's wave 27 — the decks read "a featureless off-white wash": kilometre-scale relief, broad
   // cells and strong rolls, exactly as fp14's dk3 shot it on Frosthollow and Railyard: cells 0.85 → 1, cellM 1100 → 2400,
   // undulatus 0.25 → 0.7; sky +0.25 against the plain after)

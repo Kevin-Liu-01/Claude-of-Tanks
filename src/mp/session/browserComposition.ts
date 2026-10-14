@@ -45,6 +45,7 @@ import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
+import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 type RuntimeValue = {} | null | undefined;
@@ -99,8 +100,15 @@ export interface BrowserLoadTrace {
   totalMs?: number;
   blackCheck?: RuntimeValue;
   /** The strict shader preparation: its windows, how it ended, and the programs left to link at the covered reveal. */
-  compile?: { attempts: number; outcome: 'complete' | 'deferred'; pending: number | null };
+  compile?: {
+    attempts: number; outcome: 'complete' | 'deferred'; pending: number | null;
+    /** At deferral (2026-10-13): the programs left pending, named (src/engine/programWarm.ts PendingProgramNote). */
+    programs?: readonly BrowserPendingProgram[];
+  };
 }
+
+/** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
+export interface BrowserPendingProgram { name: string; cacheKey: string; linked: boolean | null }
 
 export interface BrowserEntryFailure {
   message: string;
@@ -176,7 +184,7 @@ export interface BrowserWarmPorts {
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
-  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation } | null | undefined>;
+  compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
   openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
@@ -243,7 +251,8 @@ export interface BrowserRoomMenu {
   detachActiveRoom(): void;
   showRoomFailure(reason: string, mode?: RoomMode): void;
   /** Open the attached room's lobby (its Rejoin battle while the match runs), naming why the last entry failed. */
-  showActiveRoom?(notice?: string | null): boolean;
+  /** `code`: a known refusal (`match_ended`, `build_*`) the menu words in the player's locale; `notice` is the fallback. */
+  showActiveRoom?(notice?: string | null, code?: string | null): boolean;
 }
 
 export interface BrowserGarageRoomStatus {
@@ -354,6 +363,7 @@ export interface BrowserCompositionOptions {
   ports: BrowserCompositionPorts;
   factories?: Partial<BrowserCompositionFactories>;
   clock?: () => number;
+  /** The HELLO's build line (default: this build's, src/mp/wire/matchBuild.ts — the host's same-wire build check). */
   clientBuild?: string;
   /** How long `beginRoom` waits for the room's match_start before restoring the Garage (charter §6.4). */
   entryTimeoutMs?: number;
@@ -565,6 +575,19 @@ class MatchEndedDuringEntryError extends Error {
   }
 }
 
+/**
+ * The host refused this seat's HELLO for its build (2026-10-13, the same-wire check, or the other-wire gate): the entry
+ * fails with the refusal's code so the lobby words it in the player's locale.
+ */
+class MatchRefusedError extends Error {
+  readonly code: MatchRefusalCode;
+  constructor(code: MatchRefusalCode) {
+    super(matchRefusalMessage(code));
+    this.name = 'MatchRefusedError';
+    this.code = code;
+  }
+}
+
 class RoundSupersededError extends Error {
   readonly superseded = true;
   constructor(detail: string) { super(`multiplayer v2 round superseded: ${detail}`); this.name = 'RoundSupersededError'; }
@@ -585,7 +608,14 @@ function isSuperseded(error: RuntimeValue): boolean {
  * succeed refuses the entry: a renderer whose context was lost or replaced (`invalidated`), a failed native query or
  * program reflection.
  */
-const COMPILE_STALL_WINDOWS = 4;
+/**
+ * 2026-10-12 (the MP lane; production 218-219: every rejoin spent compile 5.0 s + compileRetry 20.1 s with the main
+ * thread idle, ending 'deferred' with the same 36 programs pending in every window): a window that links nothing is
+ * followed by more windows that link nothing, so one stalled window is the last resort. A cohort that is still linking
+ * keeps its windows (progress resets the count), and the covered reveal links whatever is left, as it already did
+ * after four.
+ */
+const COMPILE_STALL_WINDOWS = 1;
 const COMPILE_CEILING_MS = 120_000;
 /**
  * The entry's own wait (entryTimeoutMs) refuses only a round that stopped progressing: past it, a round that showed
@@ -602,6 +632,21 @@ function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWar
   const after = current?.pending ?? null;
   if (after === null) return false;
   return before === null || after < before;
+}
+
+/** "name ×count (linked n/unlinked n/unqueried n)" per material, most frequent first, bounded for a console line. */
+function pendingProgramSummary(programs: readonly BrowserPendingProgram[]): string {
+  const byName = new Map<string, { count: number; linked: number; unlinked: number; unqueried: number }>();
+  for (const program of programs) {
+    const row = byName.get(program.name) ?? { count: 0, linked: 0, unlinked: 0, unqueried: 0 };
+    row.count++;
+    if (program.linked === true) row.linked++;
+    else if (program.linked === false) row.unlinked++;
+    else row.unqueried++;
+    byName.set(program.name, row);
+  }
+  return [...byName].sort((a, b) => b[1].count - a[1].count).slice(0, 16)
+    .map(([name, row]) => `${name} ×${row.count} (linked ${row.linked}/unlinked ${row.unlinked}/unqueried ${row.unqueried})`).join(', ');
 }
 
 /** The refusal for a preparation that cannot complete, with what broke. */
@@ -653,7 +698,7 @@ export function createBrowserComposition({
   ports,
   factories = {},
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
-  clientBuild = 'dev',
+  clientBuild = MATCH_BUILD,
   entryTimeoutMs = 120_000,
   dropNoticeMs = 3000,
   schedule = (callback) => queueMicrotask(callback),
@@ -940,11 +985,11 @@ export function createBrowserComposition({
   );
 
   /** v1's `stopLoading`: reacquire opaque coverage, restore the Garage under it, then fade the loader. */
-  const stopLoading = async (): Promise<void> => {
+  const stopLoading = async (label = 'Restoring Garage'): Promise<void> => {
     if (!load.battleLoad.visible) {
       load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
     }
-    load.battleLoad.progress(1, 'Restoring Garage');
+    load.battleLoad.progress(1, label);
     lifecycle.coverRendering();
     load.audio.loadingOn(false);
     try {
@@ -987,16 +1032,25 @@ export function createBrowserComposition({
     }
     if (round !== active) { settleEntry(false); return; }
     round = null;
+    // 2026-10-13 (MU.03; prod 219: shown 16 s late, prod 221: not shown within 20 s): the refusal reached the player only
+    // through the lobby, after the covered Garage restore — which under load is the slowest step of the teardown (a 72 s
+    // Garage task in 219). The loader still covering the entry now names it at once, before the seat leaves the match and
+    // before the restore; the lobby repeats it once the loader fades.
+    const notice = !superseded && error instanceof MatchEndedDuringEntryError ? messageOf(error) : null;
+    if (notice) {
+      load.battleLoad.show({ mapName: notice, thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
+      load.battleLoad.progress(1, 'Returning to Garage');
+    }
     try {
       if (session) await session.leaveMatch(superseded ? 'superseded' : 'entry_failed');
-      await stopLoading();
+      await stopLoading(notice ? 'Returning to Garage' : undefined);
     } catch (restoreError) {
       reportError('multiplayer v2 entry', restoreError);
     } finally {
       settleEntry(false);
       if (!superseded) {
         syncMenu();
-        offerRoomAfterFailure(messageOf(error));
+        offerRoomAfterFailure(messageOf(error), reasonOf(error));
       }
     }
   };
@@ -1006,14 +1060,14 @@ export function createBrowserComposition({
    * reminder): after any refused entry the held room's lobby opens again, naming why, with Rejoin battle while its
    * match still runs. Joins syncMenu's attach on the same menu promise, so the room is attached first.
    */
-  const offerRoomAfterFailure = (message: string): void => {
+  const offerRoomAfterFailure = (message: string, code: string | null = null): void => {
     const current = roomSession;
     const menuPromise = current ? roomPorts.getMenu() : null;
     if (!current || !menuPromise) return;
     const generation = roomGeneration;
     menuPromise.then((menu) => {
       if (disposed || roomSession !== current || generation !== roomGeneration || !menuAttached || round) return;
-      menu.showActiveRoom?.(message);
+      menu.showActiveRoom?.(message, code);
     }).catch((error: RuntimeValue) => reportError('multiplayer v2 lobby', error));
   };
 
@@ -1146,14 +1200,16 @@ export function createBrowserComposition({
     let attempts = 0;
     let stalled = 0;
     let retried = false;
+    let programs: readonly BrowserPendingProgram[] | undefined;
     const finish = (outcome: 'complete' | 'deferred', pending: number | null): void => {
       markStage(active, retried ? 'compileRetry' : 'compile');
-      active.trace.compile = { attempts, outcome, pending };
+      active.trace.compile = { attempts, outcome, pending, ...(outcome === 'deferred' && programs?.length ? { programs } : {}) };
     };
     while (true) {
       attempts++;
       const compiled = await warm.compile?.(signal);
       check(retried ? 'compileRetry' : 'compile');
+      programs = Array.isArray(compiled?.pendingPrograms) ? compiled.pendingPrograms : undefined;
       const preparation = compiled?.preparation;
       if (!preparationIncomplete(preparation)) { finish('complete', 0); return; }
       if (!preparationOutOfBudget(preparation)) throw shaderPreparationFailure(preparation);
@@ -1172,6 +1228,9 @@ export function createBrowserComposition({
         // The last resort reports and goes on: the covered reveal links the rest under the loader.
         load.recordSlowEntry?.({ stage: 'compile', code: 'deferred', ms: Math.round(now() - startedAt), pending });
         finish('deferred', pending);
+        // 2026-10-13 (MP stream, plan step 4): name the programs that never link — every traced production rejoin ended
+        // "deferred, pending 36" — by material and link state; the full cache keys stay in the trace (__NETWORK_LOAD)
+        if (programs?.length) reportWarning('multiplayer v2 entry', `shader preparation deferred with ${pending ?? programs.length} pending: ${pendingProgramSummary(programs)}`);
         return;
       }
       load.battleLoad.progress(0.87, pending === null
@@ -1346,7 +1405,8 @@ export function createBrowserComposition({
       active.presentation?.endDisconnected();
       return;
     }
-    void failRound(active, new Error(detail || 'The match link was lost while loading.'), 'connect');
+    const refusal = matchRefusalCodeOf(detail);
+    void failRound(active, refusal ? new MatchRefusedError(refusal) : new Error(detail || 'The match link was lost while loading.'), 'connect');
   };
 
   const handleVerdict = (): void => {

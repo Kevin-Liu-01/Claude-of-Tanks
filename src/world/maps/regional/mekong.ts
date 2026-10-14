@@ -276,9 +276,14 @@ const collapsed: RegionalBuilder = (ctx) => {
     const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, h = 0.6 + rng() * 1.8;
     sink.member('structureWood', [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.16, 0.16, [1, 0, 0], { colour: post, exposed: true });
   }
+  // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
+  // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
+  const under = (px: number, pz: number): number => (Math.abs(px) <= W * 0.3 && Math.abs(pz) <= D * 0.25 ? 0.47 : 0.02);
   for (let k = 0; k < 4; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
-    sink.member('roof', [x - Math.cos(a) * 1.6, 0.2 + rng() * 0.5, z - Math.sin(a) * 1.6], [x + Math.cos(a) * 1.6, 0.3 + rng() * 0.9, z + Math.sin(a) * 1.6], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
+    const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
+    const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
+    sink.member('roof', [ax, under(ax, az), az], [bx, under(bx, bz), bz], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
   }
   sink.span('straw', -W * 0.3, -0.1, -D * 0.25, W * 0.3, 0.45, D * 0.25, { decor: true });
   return sink.finish();

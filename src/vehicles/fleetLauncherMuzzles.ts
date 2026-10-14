@@ -38,7 +38,7 @@ export function applyFleetLauncherMuzzles(spec: FleetTankSpec): void {
   let tips = mounts[spec.id];
   const [px, py, pz] = spec.armor.turretPivot;
   const world = (x: number, y: number, z: number, pitch = 0): LauncherMuzzle => turret(x - px, y - py, z - pz, pitch);
-  if (spec.id === 'fv510_milan_x') tips = [world(-.64, 2.955, .482)];
+  if (spec.id === 'warrior_tes_h') tips = [world(-.64, 2.955, .482)];
   if (spec.id === 'cv90_mkiv_x') tips = [-1.0525, -1.3769].map(x => world(x, 2.275 + .007 * Math.sin(.085), .303 + .007 * Math.cos(.085), .085));
   if (spec.id === 'k21_x') {
     const angle = Math.PI / 9;
