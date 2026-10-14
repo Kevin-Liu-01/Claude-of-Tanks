@@ -129,8 +129,11 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
 /** The dressings' bucket: the voussoirs, quoins, string courses, coping, merlon caps and the oriel in a smooth dressed
  * sandstone (the render surface retinted, townGate's tints) over the walls' rough ashlar, so they read from the street. */
 const DRESS_BUCKET: RegionalBucket = 'plaster3';
-/** The dressed sandstone's tint over the kit's render (pale and warm: Franconian Werkstein). */
-const DRESS_TINT: [number, number, number] = [0.96, 0.84, 0.66];
+/**
+ * The dressed sandstone's tint over the kit's render: Steinburg's plaster3 is a weathered grey-green distemper, lifted to
+ * a pale warm grey-cream (the coordinator, 2026-10-14: the first tint read olive on the arch ring).
+ */
+const DRESS_TINT: [number, number, number] = [1.34, 1.24, 1.16];
 
 /**
  * (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: the gate's "one flat, uniform sandstone tint with no coursing, quoins
