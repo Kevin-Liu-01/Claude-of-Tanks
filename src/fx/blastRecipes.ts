@@ -105,6 +105,8 @@ function mix3b(a: Rgb, b: Rgb, t: number): Rgb {
  *  read before it is written, so a mix may take its own scratch as `a` */
 const _e: [number, number, number] = [0, 0, 0];
 const _f: [number, number, number] = [0, 0, 0];
+const _g: [number, number, number] = [0, 0, 0];
+const _h: [number, number, number] = [0, 0, 0];
 function mixInto(out: [number, number, number], a: Rgb, b: Rgb, t: number): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
   return out;
@@ -276,7 +278,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     book(m, 'billow', R, life);
     // white-hot on the event frame (the blackbody ramp's top), an orange heart at +0.1 s, soot by +0.3 s; the
     // thermobaric rocket's ball rolls on
-    heat(m, thermobaric ? 1.45 : 1.55, thermobaric ? 1.6 : shaped ? 11 : heavy ? 7 : 9);
+    // (HE look v2: "nothing peach or orange after ~0.3 s except embers") the thermobaric ball's heat no longer rolls on
+    // for a second and a half: an orange heart to ~0.3 s like every other burst's
+    heat(m, thermobaric ? 1.45 : 1.55, thermobaric ? 6 : shaped ? 11 : heavy ? 7 : 9);
     C.media(m);
   }
   // the light: on the ground for a moment (a bright ground takes far less of it) and inside the burst's own medium for
@@ -312,8 +316,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // fireball's own soot and the earth column's soil inside it
   const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.45), soilC, 0.12)
     : mixInto(_e, mixInto(_e, BLAST_RESIDUE, SOOT, 0.25), soilC, 0.12);
-  const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
+  let smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
     : mixInto(_f, SMOKE_AGED, L.dust, 0.08);
+  // (HE look v2, the coordinator: "overlapping bursts must not merge into one big orange blob ... have pooled bodies take
+  // the dust look rather than the fire look") a pooled burst's cloud (the governor's fewer, larger bodies) is the ground's
+  // own dust thrown up by the salvo, not the explosive's dark smoke: up to 70 % of the way to the earth look
+  let cloudC0: Rgb = smokeC0;
+  if (crowd > 0) {
+    cloudC0 = mixInto(_g, smokeC0, mixInto(_h, L.ejecta, L.dust, 0.55), 0.7 * crowd);
+    smokeAged = mixInto(_f, smokeAged, L.dust, 0.7 * crowd);
+  }
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
@@ -331,7 +343,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk * crowdSize, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
     // (8j) a body you see into at its edges, not a wall: a little thinner
-    look(m, smokeC0, smokeAged, 0.78, 0.0, 0.33);
+    look(m, cloudC0, smokeAged, 0.78, 0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);

@@ -265,6 +265,7 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 varying float vParticleDepth;
+varying float vSeed;
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
 #endif
@@ -279,7 +280,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
-    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
+    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0;
     vParticleDepth = 1e9;
     #ifdef FX_LIGHT_TINT
       vEmit = vec3( 0.0 );
@@ -290,6 +291,8 @@ void main() {
   }
   float t = age / life;
   vT = t;
+  // (HE look v2) each puff's own place in the silhouette noise
+  vSeed = fract( aPB.w * 1.6180339 + aPB.x * 0.0713 + aPB.z * 0.1131 );
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
   float size = mix( aSR.x, aSR.y, t );
   float ang = aSR.z + aSR.w * age;
@@ -350,13 +353,26 @@ varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
+varying float vSeed;
 ${FOG_PARS_F}
 ${SOFT_DEPTH_GLSL}
 ${LIGHT_TINT_PUFF_F}
+float pHash( vec2 p ) { p = fract( p * vec2( 0.1031, 0.1030 ) ); p += dot( p, p.yx + 33.33 ); return fract( ( p.x + p.y ) * p.x ); }
+float pNoise( vec2 p ) {
+  vec2 i = floor( p ), f = fract( p );
+  f = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( pHash( i ), pHash( i + vec2( 1.0, 0.0 ) ), f.x ), mix( pHash( i + vec2( 0.0, 1.0 ) ), pHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
+}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
   float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade();
+  // (HE look v2, the coordinator: "no spheres. Break the silhouette with noise-eroded edges") the thin half of the card
+  // is torn by a two-octave noise riding the puff's own seed and drifting as it ages: where the noise is low the rim is
+  // cut away, so a puff's outline is ragged lobes, never a soft round ball; its dense body is untouched
+  float rim = 1.0 - smoothstep( 0.3, 0.9, tex );
+  float en = pNoise( vUv * 3.3 + vSeed * 23.0 ) * 0.62 + pNoise( vUv * 7.1 - vSeed * 13.0 + vec2( 0.0, vT * 1.4 ) ) * 0.38;
+  a *= mix( 1.0, smoothstep( 0.28 + 0.12 * vT, 0.62 + 0.12 * vT, en ), rim );
   if ( a < 0.004 ) discard;
   // fake directional lighting: sun-facing side of the billboard brightens,
   // opposite side falls into shadow — smoke reads volumetric, not flat.
