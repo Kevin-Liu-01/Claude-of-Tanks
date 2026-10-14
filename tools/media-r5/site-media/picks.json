@@ -639,8 +639,8 @@
       {
         "id": "killcam",
         "alt": {
-          "en": "The X-ray kill cam: a Leopard 2A7V's shell path through a T-90M's armor into its ammunition, with the hit card and the damaged modules",
-          "zh": "X 光击杀回放：Leopard 2A7V 的炮弹穿过 T-90M 的装甲直入弹药架，旁边是命中卡与受损模块"
+          "en": "X-ray kill cam on Verdant Fields by day: a T-72B3M's 3BM46 APFSDS round is traced into an X-rayed T-90M through the upper left hull side for 449 damage, with the struck modules labelled, the ballistic-analysis card and the Destroyed By card.",
+          "zh": "白天的翠野原，X 光击杀回放：T-72B3M 发射的 3BM46 APFSDS 弹被追踪着从左侧车体上部射入 X 光透视下的 T-90M，造成 449 点伤害，画面中标出被击中的模块，并有弹道分析卡片与“击毁者”卡片。"
         },
         "standIn": null
       }
@@ -700,7 +700,7 @@
       {
         "id": "autoloader",
         "alt": {
-          "en": "Autoloader on Sirocco Wadi at sunset: an AbramsX fires the second round of its four-round clip, the muzzle flash bright at the gun and the blast raising dust, with the Penetration card on a T-72B3M Hetman.",
+          "en": "Autoloader on Sirocco Wadi at sunset: an Abrams X fires the second round of its four-round clip, the muzzle flash bright at the gun and the blast raising dust, with the Penetration card on a T-72B3M Hetman.",
           "zh": "日落时分的西罗科旱谷，自动装弹机：一辆 AbramsX 打出四发弹匣中的第二发，炮口焰明亮，冲击波扬起尘土，画面中是对 T-72B3M Hetman 的击穿卡片。"
         },
         "standIn": null
@@ -875,8 +875,8 @@
       {
         "id": "mobile",
         "alt": {
-          "en": "Phone-landscape battle on Verdant Fields by day: a T-90M in the chase view with the touch HUD (the movement stick, Fire, Scope and Auto Aim buttons, the consumables and the APFSDS selector) and a Stridsvagn 122 marked red beyond the allied line.",
-          "zh": "白天的翠野原，手机横屏战斗：追尾视角中的 T-90M 与触控 HUD（移动摇杆、开火、瞄准镜与自动瞄准按钮、消耗品和 APFSDS 弹种选择），友军阵线后方一辆 Stridsvagn 122 被标为红色。"
+          "en": "Phone-landscape battle on Verdant Fields by day: a T-90M has just fired at a PT-91M Pendekar, the shot's smoke rising over its turret and the 6.4 s reload counting down by the sight, with the touch HUD (the movement stick, Fire, Scope and Auto Aim buttons, the consumables and the APFSDS selector).",
+          "zh": "白天的翠野原，手机横屏战斗：一辆 T-90M 刚向 PT-91M Pendekar 开火，炮塔上方升起硝烟，瞄准镜旁 6.4 秒的装填倒计时正在进行，画面中是触控 HUD（移动摇杆、开火、瞄准镜与自动瞄准按钮、消耗品和 APFSDS 弹种选择）。"
         },
         "standIn": null
       }

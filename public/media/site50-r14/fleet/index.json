@@ -18,6 +18,21 @@
    "poster": "/media/site50-r14/fleet/m1a2.jpg",
    "scene": "/media/site50-r14/scenes/s195-m1a2-airfield.scene.json"
   },
+  "m1a2_tusk": {
+   "take": "s198-m1a2-tusk-copper-mesa",
+   "map": "copper_mesa",
+   "title": {
+    "en": "An M1A1 Abrams SA leads the column through Copper Mesa Mine",
+    "zh": "一辆 M1A1 Abrams SA 率领纵队穿过铜台地矿场"
+   },
+   "short": {
+    "en": "M1A1 Abrams SA, Copper Mesa Mine",
+    "zh": "M1A1 Abrams SA，铜台地矿场"
+   },
+   "loop": "/media/site50-r14/fleet/m1a2_tusk.webm",
+   "poster": "/media/site50-r14/fleet/m1a2_tusk.jpg",
+   "scene": "/media/site50-r14/scenes/s198-m1a2-tusk-copper-mesa.scene.json"
+  },
   "m1a2_sepv2": {
    "take": "s196-m1a2-sepv2-badlands",
    "map": "badlands",
@@ -77,6 +92,21 @@
    "loop": "/media/site50-r14/fleet/abramsx.webm",
    "poster": "/media/site50-r14/fleet/abramsx.jpg",
    "scene": "/media/site50-r14/scenes/s191-abramsx-airfield.scene.json"
+  },
+  "t62mv1": {
+   "take": "s211-t62mv1-foundry",
+   "map": "foundry",
+   "title": {
+    "en": "A T-62 obr. 1975 leads the column through Ironworks",
+    "zh": "一辆 T-62 obr. 1975 率领纵队穿过钢铁厂"
+   },
+   "short": {
+    "en": "T-62 obr. 1975, Ironworks",
+    "zh": "T-62 obr. 1975，钢铁厂"
+   },
+   "loop": "/media/site50-r14/fleet/t62mv1.webm",
+   "poster": "/media/site50-r14/fleet/t62mv1.jpg",
+   "scene": "/media/site50-r14/scenes/s211-t62mv1-foundry.scene.json"
   },
   "t84": {
    "take": "s181-t84-frontier",
@@ -647,6 +677,21 @@
    "loop": "/media/site50-r14/fleet/vt4a1.webm",
    "poster": "/media/site50-r14/fleet/vt4a1.jpg",
    "scene": "/media/site50-r14/scenes/s37-river-village.scene.json"
+  },
+  "type100": {
+   "take": "s63-type100-titan-gorge",
+   "map": "titan_gorge",
+   "title": {
+    "en": "A Type 100 IFV knocks out a Type 10 at Titan Gorge at night",
+    "zh": "夜间，一辆 Type 100 IFV 在泰坦峡谷击毁一辆 Type 10"
+   },
+   "short": {
+    "en": "Type 100 IFV, Titan Gorge",
+    "zh": "Type 100 IFV，泰坦峡谷"
+   },
+   "loop": "/media/site50-r14/fleet/type100.webm",
+   "poster": "/media/site50-r14/fleet/type100.jpg",
+   "scene": "/media/site50-r14/scenes/s63-type100-titan-gorge.scene.json"
   },
   "ztz100_x": {
    "take": "s10-ford-shellfire",

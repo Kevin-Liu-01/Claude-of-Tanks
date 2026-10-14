@@ -906,6 +906,23 @@
    "thumb": "/media/site50-r14/fleet/m1a2.jpg"
   },
   {
+   "id": "s198-m1a2-tusk-copper-mesa",
+   "group": "fleet",
+   "vehicle": "m1a2_tusk",
+   "title": {
+    "en": "An M1A1 Abrams SA leads the column through Copper Mesa Mine",
+    "zh": "一辆 M1A1 Abrams SA 率领纵队穿过铜台地矿场"
+   },
+   "short": {
+    "en": "M1A1 Abrams SA, Copper Mesa Mine",
+    "zh": "M1A1 Abrams SA，铜台地矿场"
+   },
+   "map": "copper_mesa",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s198-m1a2-tusk-copper-mesa.scene.json",
+   "thumb": "/media/site50-r14/fleet/m1a2_tusk.jpg"
+  },
+  {
    "id": "s196-m1a2-sepv2-badlands",
    "group": "fleet",
    "vehicle": "m1a2_sepv2",
@@ -955,6 +972,23 @@
    "durationMs": 6600,
    "scene": "/media/site50-r14/scenes/s191-abramsx-airfield.scene.json",
    "thumb": "/media/site50-r14/fleet/abramsx.jpg"
+  },
+  {
+   "id": "s211-t62mv1-foundry",
+   "group": "fleet",
+   "vehicle": "t62mv1",
+   "title": {
+    "en": "A T-62 obr. 1975 leads the column through Ironworks",
+    "zh": "一辆 T-62 obr. 1975 率领纵队穿过钢铁厂"
+   },
+   "short": {
+    "en": "T-62 obr. 1975, Ironworks",
+    "zh": "T-62 obr. 1975，钢铁厂"
+   },
+   "map": "foundry",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s211-t62mv1-foundry.scene.json",
+   "thumb": "/media/site50-r14/fleet/t62mv1.jpg"
   },
   {
    "id": "s181-t84-frontier",
@@ -1431,6 +1465,23 @@
    "durationMs": 6600,
    "scene": "/media/site50-r14/scenes/s78-amx56-verdant.scene.json",
    "thumb": "/media/site50-r14/fleet/amx56.jpg"
+  },
+  {
+   "id": "s63-type100-titan-gorge",
+   "group": "fleet",
+   "vehicle": "type100",
+   "title": {
+    "en": "A Type 100 IFV knocks out a Type 10 at Titan Gorge at night",
+    "zh": "夜间，一辆 Type 100 IFV 在泰坦峡谷击毁一辆 Type 10"
+   },
+   "short": {
+    "en": "Type 100 IFV, Titan Gorge",
+    "zh": "Type 100 IFV，泰坦峡谷"
+   },
+   "map": "titan_gorge",
+   "durationMs": 6600,
+   "scene": "/media/site50-r14/scenes/s63-type100-titan-gorge.scene.json",
+   "thumb": "/media/site50-r14/fleet/type100.jpg"
   },
   {
    "id": "s82-kf51-longleaf",

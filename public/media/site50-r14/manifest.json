@@ -823,7 +823,7 @@
  "home": {
   "features/garage": "delivered",
   "features/multiplayer": "delivered",
-  "features/killcam": "hidden until delivered",
+  "features/killcam": "delivered",
   "mechanics/armor": "delivered",
   "mechanics/ricochet": "delivered",
   "mechanics/modules": "delivered",
@@ -1705,10 +1705,10 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 62546,
-   "sha256": "4763519cfad0579fee60db4ae3893bc01cdaf377d14cce301d80332f6d01cd55",
+   "bytes": 64109,
+   "sha256": "ae1efac27a5a104ec9afb5b0856c6bd5e31f99d900af4e3781c5497acb0e2e90",
    "source": null,
-   "vehicles": 120
+   "vehicles": 123
   },
   {
    "path": "media/site50-r14/fleet/k1a1_x.jpg",
@@ -2401,6 +2401,29 @@
    "vehicle": "m1a2_tusk_x"
   },
   {
+   "path": "media/site50-r14/fleet/m1a2_tusk.jpg",
+   "bytes": 42776,
+   "sha256": "4d11fbec87e9aba492210c603ecc4d18f93096d2b6503c0bd50866cd59789604",
+   "source": "shots/media-r5/site50/deliver-fleet/s198-m1a2-tusk-copper-mesa/s198-m1a2-tusk-copper-mesa-close-4k.png",
+   "take": "s198-m1a2-tusk-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "m1a2_tusk"
+  },
+  {
+   "path": "media/site50-r14/fleet/m1a2_tusk.webm",
+   "bytes": 447536,
+   "sha256": "ce5b9224f66488eca928568c6641eb60d73fb1954e1384eae3aa7f16eda9c2ba",
+   "width": 640,
+   "height": 360,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-fleet/s198-m1a2-tusk-copper-mesa/s198-m1a2-tusk-copper-mesa.mp4",
+   "take": "s198-m1a2-tusk-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "m1a2_tusk"
+  },
+  {
    "path": "media/site50-r14/fleet/m1a2.jpg",
    "bytes": 36528,
    "sha256": "e91a773acdee30d2ef591f2b7ad598b32a80896344eb815810d91de5a209fa32",
@@ -2976,6 +2999,29 @@
    "vehicle": "t14_x"
   },
   {
+   "path": "media/site50-r14/fleet/t62mv1.jpg",
+   "bytes": 26523,
+   "sha256": "9aae771465ecd4ced18740930e5bf2532d7bf7917d778bb74f3689bc6ca38b96",
+   "source": "shots/media-r5/site50/deliver-fleet/s211-t62mv1-foundry/s211-t62mv1-foundry-close-4k.png",
+   "take": "s211-t62mv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "t62mv1"
+  },
+  {
+   "path": "media/site50-r14/fleet/t62mv1.webm",
+   "bytes": 370661,
+   "sha256": "f095415b1e661db5039bc863654ec65e82dca3919f27296192c20bf0183a0236",
+   "width": 640,
+   "height": 360,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-fleet/s211-t62mv1-foundry/s211-t62mv1-foundry.mp4",
+   "take": "s211-t62mv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "t62mv1"
+  },
+  {
    "path": "media/site50-r14/fleet/t72b_1987_x.jpg",
    "bytes": 32796,
    "sha256": "2c4ef4fca53a8101c1e8ff93a608a645c6041bd590790b1ef825d8c2fddfe259",
@@ -3319,6 +3365,29 @@
    "take": "s117-type10-mangrove",
    "round": "shots/media-r5/site50/deliver-fleet",
    "vehicle": "type10"
+  },
+  {
+   "path": "media/site50-r14/fleet/type100.jpg",
+   "bytes": 32860,
+   "sha256": "87571ab92df4cc21ea2358d1d4bb75f8518197b06e2144f1afd7541a002d3948",
+   "source": "shots/media-r5/site50/deliver-fleet/s63-type100-titan-gorge/s63-type100-titan-gorge-close-4k.png",
+   "take": "s63-type100-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "type100"
+  },
+  {
+   "path": "media/site50-r14/fleet/type100.webm",
+   "bytes": 415143,
+   "sha256": "d66556c97a39c1f39f238fd9699adaa77b06c98be068dca177b6af7000b630e2",
+   "width": 640,
+   "height": 360,
+   "fps": 30,
+   "seconds": 6,
+   "audio": null,
+   "source": "shots/media-r5/site50/deliver-fleet/s63-type100-titan-gorge/s63-type100-titan-gorge.mp4",
+   "take": "s63-type100-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet",
+   "vehicle": "type100"
   },
   {
    "path": "media/site50-r14/fleet/type10b.jpg",
@@ -4598,6 +4667,20 @@
    "home": "features/garage"
   },
   {
+   "path": "media/site50-r14/home/features/killcam-640.webp",
+   "bytes": 15332,
+   "sha256": "0a77eec52d074fd05a198bd4b2b0543d65270468c268ae5d6032c6c8a8d95b06",
+   "source": "shots/media-r5/home-r2/deliver/features/killcam.png",
+   "home": "features/killcam"
+  },
+  {
+   "path": "media/site50-r14/home/features/killcam.webp",
+   "bytes": 194692,
+   "sha256": "3cdbda24f37a198f8f9c2f5b769b4827f9d3a9f54ae4430ebe17a9a5cd5a0bd0",
+   "source": "shots/media-r5/home-r2/deliver/features/killcam.png",
+   "home": "features/killcam"
+  },
+  {
    "path": "media/site50-r14/home/features/multiplayer-640.webp",
    "bytes": 23382,
    "sha256": "d985851d84b8e27d8a9c92780add31e54c7aa9b1128e0704d9e7a207dfcac076",
@@ -4849,15 +4932,15 @@
   },
   {
    "path": "media/site50-r14/home/mechanics/mobile-640.webp",
-   "bytes": 38694,
-   "sha256": "ee5e103bc8f967f0b7a7236c9a0c5401f6c3c9bb46ecb20e8af09805c47cfbc7",
+   "bytes": 40450,
+   "sha256": "2ba5363224d6ea40bf9d4faac99504db6a1fa88ec18fabcd9924ac272411adeb",
    "source": "shots/media-r5/home-r2/deliver/mechanics/mobile.png",
    "home": "mechanics/mobile"
   },
   {
    "path": "media/site50-r14/home/mechanics/mobile.webp",
-   "bytes": 126292,
-   "sha256": "59f0672cd9ce2c27f24643ca18667a39e54bde4ad52baf0fc74ce03b086be55b",
+   "bytes": 131332,
+   "sha256": "9e8a34e870f972dd48db188014c763fe947118ce960bfda4e2d46118b792760e",
    "source": "shots/media-r5/home-r2/deliver/mechanics/mobile.png",
    "home": "mechanics/mobile"
   },
@@ -5944,10 +6027,10 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 62923,
-   "sha256": "69edef069863db959a5cce08cd0181624824499f8706510690e0dcbaa9bdee1e",
+   "bytes": 64497,
+   "sha256": "7906a4d031609cf363c296d4bd366e03d401a218028f5ccad700b1875f2c0d10",
    "source": null,
-   "takes": 124
+   "takes": 127
   },
   {
    "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",
@@ -6358,6 +6441,12 @@
    "source": "shots/media-r5/site50/deliver-fleet/s197-m1a2-sepv3-airfield/s197-m1a2-sepv3-airfield.scene.json"
   },
   {
+   "path": "media/site50-r14/scenes/s198-m1a2-tusk-copper-mesa.scene.json",
+   "bytes": 91678,
+   "sha256": "5989e64891fd4e8dea012ad28f8c12bf0d6416b98d0a2140df485acc7716b676",
+   "source": "shots/media-r5/site50/deliver-fleet/s198-m1a2-tusk-copper-mesa/s198-m1a2-tusk-copper-mesa.scene.json"
+  },
+  {
    "path": "media/site50-r14/scenes/s20-road-return-fire.scene.json",
    "bytes": 107099,
    "sha256": "749179599e3b3a0155fe4ff3f00d88ca61fe5eba0ba8bbf3b20fdb73a52c0191",
@@ -6380,6 +6469,12 @@
    "bytes": 107459,
    "sha256": "c7598ff79e087517dd848db707cba389224254c99838d8785566ae69e46ca5a9",
    "source": "shots/media-r5/site50/deliver-fleet/s210-kv2-alpine/s210-kv2-alpine.scene.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s211-t62mv1-foundry.scene.json",
+   "bytes": 106012,
+   "sha256": "104a046bcac37fdcbad93c5caa3ea2c7c03e6a478baa1e1ace7a7f7644fd4ccd",
+   "source": "shots/media-r5/site50/deliver-fleet/s211-t62mv1-foundry/s211-t62mv1-foundry.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s214-t72b-1987-x-blackglass.scene.json",
@@ -6656,6 +6751,12 @@
    "bytes": 90392,
    "sha256": "273ce1708309e6c0a8ca595065aab75b59859c7d01e5c637ca4c3ba242ef8cb0",
    "source": "shots/media-r5/site50/deliver-fleet/s62-cn-t80u-modern-skybridge/s62-cn-t80u-modern-skybridge.scene.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s63-type100-titan-gorge.scene.json",
+   "bytes": 76681,
+   "sha256": "b122b4f410ee0d98a5f8d692af750627977af5ad5a915765d051fdc2fc323bc8",
+   "source": "shots/media-r5/site50/deliver-fleet/s63-type100-titan-gorge/s63-type100-titan-gorge.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s78-amx56-verdant.scene.json",
