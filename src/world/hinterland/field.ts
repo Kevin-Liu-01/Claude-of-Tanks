@@ -137,7 +137,7 @@ export interface HinterlandReliefTerm {
    * the sample the caller bakes, so a term can leave out octaves too fine to show there. */
   heightAt(x: number, z: number, base: number, texelM?: number): number;
   /** 0..1 how much of this term's own geology governs (x, z), and its cover hints, written into `out`. */
-  geologyAt?(x: number, z: number, out: HinterlandGeologySample): number;
+  geologyAt?(x: number, z: number, out: HinterlandGeologySample, slopeDeg?: number): number;
 }
 
 export interface HinterlandField {
@@ -639,7 +639,7 @@ export function createHinterlandField(
     out.rockHex = geo.rockHex;
     out.forest = -1;
     out.gully = 0;
-    for (let i = 0; i < relief.length; i++) relief[i].geologyAt?.(x, z, out);
+    for (let i = 0; i < relief.length; i++) relief[i].geologyAt?.(x, z, out, s);
     return out;
   }
 

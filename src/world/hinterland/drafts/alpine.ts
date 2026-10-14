@@ -20,7 +20,7 @@ const DRAFT: HinterlandConfig = {
   outland: { woods: 0.3, settle: { villages: 1, hamlets: 3, farms: 3, works: 0 } },
   landforms: [
     // the cirque wall north of the col and the summits over it
-    { kind: 'massif', at: { azDeg: 0, distM: 2900 }, heightM: 760, lengthM: 6400, widthM: 4200, strikeDeg: 90, name: 'the cirque wall',
+    { kind: 'massif', at: { azDeg: 0, distM: 2900 }, heightM: 560, lengthM: 6400, widthM: 4200, strikeDeg: 90, name: 'the cirque wall',
       geology: { snow: { lineM: 0 }, gullies: 0.9 }, cover: { bare: true } },
     { kind: 'massif', at: { azDeg: 342, distM: 6400 }, heightM: 1520, lengthM: 7400, widthM: 6200, strikeDeg: 70, name: 'Pointe de Ronce',
       geology: { snow: { lineM: 0 }, gullies: 0.9, erosion: 0.95 }, cover: { bare: true } },

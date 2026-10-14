@@ -44,6 +44,8 @@ interface PlacedLandform {
   profile(u: number, v: number, x: number, z: number, texelM?: number): number;
   /** 0..1 in a gully at local (u, v) (a massif's couloirs; absent: none). */
   gully?(u: number, v: number): number;
+  /** A massif's summit at local (u, v): `top` 0..1 within its top 80–150 m, `crest` 0..1 on an arête's knife edge. */
+  summit?(u: number, v: number): { top: number; crest: number };
   /** The landform's own geology, merged where it stands (null: the region's). */
   geology: HinterlandLandformConfig['geology'] | null;
   forest: readonly [number, number] | null;
@@ -145,22 +147,62 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   // (a gully's sides stand under ~30° of its own: its depth a seventh of its spacing; bigger masses, wider couloirs)
   const gullyCell = (160 + 80 * (1 - gullies)) * (1 + Math.abs(cfg.heightM) / 2000);
   const gullyDepth = Math.min(0.14 * gullyCell, 0.045 * Math.abs(cfg.heightM)) * (0.4 + 0.6 * gullies);
-  const sharp = 1.05 + 0.3 * erosion;
+  // (sharper ridged crests: arête-like lines, not swells — the coordinator on the rim-30 sheet's snow domes)
+  const sharp = 1.45 + 0.3 * erosion;
   // the dominant summits: one, or two on a long mass, on the crest at seeded places along the strike
   const summitCount = f.halfL > 1.6 * f.halfW ? 2 : 1;
   const summits: { u: number; v: number; r: number; h: number }[] = [];
+  const summitAretes: number[][] = [];
   for (let k = 0; k < summitCount; k++) {
     const a = ((salt * (0.618 + k * 0.17)) % 1);
     summits.push({ u: (summitCount === 1 ? -0.25 + 0.5 * a : (k === 0 ? -0.55 : 0.15) + 0.4 * a) * f.halfL, v: 0,
-      r: Math.max(400, Math.min(f.halfL, f.halfW) * 0.55), h: k === 0 ? 0.36 : 0.26 });
+      r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.28), h: k === 0 ? 0.5 : 0.36 });
+    // (the coordinator on the rim-30 sheet: "the massifs read as rounded snow domes ... Rochemelon and Ronce are sharp
+    // pyramidal summits with arêtes") 2–4 arêtes, one of them down the crest along the strike, the rest spread round
+    const n = 2 + Math.floor(((salt * 7.31 + k * 3.7) % 1) * 3);
+    const aretes: number[] = [];
+    for (let j = 0; j < n; j++) aretes.push((j * 2 * Math.PI) / n + (j ? (((salt * 1.37 + j * 0.71) % 1) - 0.5) * 0.6 : 0) + (k ? Math.PI : 0));
+    summitAretes.push(aretes);
   }
+  /** A summit's pyramid at local (u, v): its height (0..1 of its own), its top band and its arêtes' knife edges. */
+  const SUMMIT = { peak: 0, top: 0, crest: 0 };
+  const summitAt = (u: number, v: number): typeof SUMMIT => {
+    SUMMIT.peak = 0; SUMMIT.top = 0; SUMMIT.crest = 0;
+    for (let k = 0; k < summits.length; k++) {
+      const s = summits[k];
+      const du = (u - s.u) / s.r, dv = (v - s.v) / (s.r * 0.8);
+      const dq = Math.hypot(du, dv);
+      if (dq >= 1.4) continue;
+      // the arêtes: knife-edged spurs (the faces between them fall at 1.25× the summit's mean, the arêtes at half)
+      const phi = Math.atan2(dv, du);
+      let ridge = 0, perp = Infinity;
+      for (const a of summitAretes[k]) {
+        const c = Math.cos(phi - a);
+        if (c <= 0) continue;
+        ridge = Math.max(ridge, c ** 24);
+        perp = Math.min(perp, Math.abs(Math.sin(phi - a)) * dq * s.r);
+      }
+      const dqe = dq * (1.25 - 0.75 * ridge);
+      if (dqe >= 1) continue;
+      // a pyramid's straight faces to a sharp apex (the old (1 − q)^1.5 rounded it to a dome)
+      const p = Math.pow(1 - dqe, 0.78);
+      if (s.h * p > SUMMIT.peak) {
+        SUMMIT.peak = s.h * p;
+        // its top 80–150 m (of the mass's height), and an arête's crest within ~14 m (the cornice's line)
+        const peakM = s.h * Math.abs(cfg.heightM);
+        SUMMIT.top = smoothstep(1 - 150 / peakM, 1 - 80 / peakM, p);
+        SUMMIT.crest = dqe < 0.85 ? 1 - smoothstep(4, 14, perp) : 0;
+      }
+    }
+    return SUMMIT;
+  };
   // (a mass is a ridge with its summits along it, not one cone: its section is measured across the strike, the crest
   // running level along the middle half of its length before it falls to its ends)
   const massQ = (u: number, v: number): number => {
     const { q, theta } = roundQ(f, u, v, 0.18);
     const lu = Math.abs(u) / f.halfL, lv = Math.abs(v) / f.halfW;
     const wander = 1 + 0.18 * lobe(theta, f.salt * 0.013);
-    return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.45) / 0.55) / wander);
+    return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.3) / 0.7) / wander);
   };
   const placed = place(f, 'pos', (u, v, x, z, texelM = 0) => {
     const q = massQ(u, v);
@@ -168,7 +210,9 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     // the section: a talus apron (concave) from the toe, the steep mid-slopes, a rounded shoulder; its mean slope is the
     // massif's height over its half-width
     const t = 1 - q;
-    const section = t < 0.35 ? 0.42 * (t / 0.35) ** 1.8 : 0.42 + 0.58 * Math.sin(((t - 0.35) / 0.65) * Math.PI / 2);
+    // (above the apron the faces run nearly straight to the crest — the old sine shoulder rounded every mass into a
+    // dome under its snow)
+    const section = t < 0.35 ? 0.42 * (t / 0.35) ** 1.8 : 0.42 + 0.58 * ((t - 0.35) / 0.65) ** 0.85;
     // the ridged octaves: crests, summits and cols along the mass, their weight growing toward the top
     let sum = 0, amp = 1, weight = 1, norm = 0, qx = x / crestL + ox, qy = z / crestL + oz;
     for (let o = 0; o < 4; o++) {
@@ -182,14 +226,8 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     // (HL-2c, the coordinator: "an even plateau crest with small pyramids sprinkled on top") the skyline's hierarchy: the
     // crest line rises and falls ±30 % along the strike, its cols real dips, and one or two dominant summits stand
     // 400–800 m-class over it (a third of the mass's height), each a pyramid on the crest with its shoulders below
-    const crestLine = 0.64 * (1 + 0.3 * fbm2(u / (0.42 * f.halfL) + oz, ox * 0.37, 3));
-    let peak = 0;
-    for (let k = 0; k < summits.length; k++) {
-      const s = summits[k];
-      const du = (u - s.u) / s.r, dv = (v - s.v) / (s.r * 0.8);
-      const dq = Math.hypot(du, dv);
-      if (dq < 1) peak = Math.max(peak, s.h * Math.pow(1 - dq, 1.5) * (0.92 + 0.08 * Math.cos(Math.atan2(dv, du) * 3 + s.u)));
-    }
+    const crestLine = 0.54 * (1 + 0.3 * fbm2(u / (0.42 * f.halfL) + oz, ox * 0.37, 3));
+    const peak = summitAt(u, v).peak;
     let h = section * (crestLine + 0.36 * (ridged - 0.5) * (0.3 + 0.7 * section * section)) + peak * section;
     // the gullies: two erosion octaves across the slope (the mass's radial fall), carving the mid-slopes
     // (a bake's coarse levels leave out couloirs finer than a third of their spacing: three samples a couloir or none)
@@ -211,6 +249,7 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     return face * Math.max(0, Math.min(1, 0.5 - 0.5 * g));
   }
   placed.gully = (u, v) => { const q = massQ(u, v); return q < 1 && gullyDepth > 0 ? gullyCut(u, v, q) : 0; };
+  placed.summit = (u, v) => { const s = summitAt(u, v); return { top: s.top, crest: s.crest }; };
   return placed;
 }
 
@@ -380,7 +419,7 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
       }
       return pos * keep + neg;
     },
-    geologyAt(x: number, z: number, out: HinterlandGeologySample): number {
+    geologyAt(x: number, z: number, out: HinterlandGeologySample, slopeDeg = 30): number {
       // the landform standing highest here governs its geology (its rock, strata, snow, forest belt)
       let best: PlacedLandform | null = null, bestA = 0, bestP = 0;
       for (let i = 0; i < placed.length; i++) {
@@ -395,6 +434,23 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
       if (best.gully) {
         const uv = local(best, x, z);
         if (uv) out.gully = Math.max(out.gully, best.gully(uv[0], uv[1]));
+      }
+      if (best.summit) {
+        const uv = local(best, x, z);
+        if (uv) {
+          // a summit's top 80–150 m: bare rock where steeper than ~40°, the snow off it; its arêtes' crests hold their
+          // cornices (a white knife edge over the dark faces, as the Ronce and Rochemelon ridges read from the col)
+          const sm = best.summit(uv[0], uv[1]);
+          const bare = sm.top * smoothstep(34, 42, slopeDeg);
+          out.rock = Math.max(out.rock, bare);
+          out.snowHold *= 1 - bare;
+          out.snow *= 1 - bare;
+          if (sm.crest > 0) {
+            out.snowHold = Math.max(out.snowHold, sm.crest);
+            out.snow = Math.max(out.snow, 0.95 * sm.crest);
+            out.rock *= 1 - sm.crest;
+          }
+        }
       }
       const g = best.geology;
       if (g?.rockHex !== undefined) out.rockHex = g.rockHex;
