@@ -8,23 +8,22 @@ export const GARAGE_HARDSTAND_PROGRAM_KEY = 'garage-hardstand-graded-v2';
 /** Metres per repeat of the hardstand's grain. */
 export const GARAGE_HARDSTAND_GRAIN_TILE_M = 2;
 
-let sharedGrain: THREE.CanvasTexture | null = null;
+let sharedGrain: THREE.DataTexture | null = null;
 
 /**
  * The hardstand's grain (round 5d-2; waves 408 and 419: "a blurry, smeared texture", "stretched low-resolution
  * image"): the yard's own canvas holds its layout at 35 px/m, which blurs at a bay camera's distance, so the floor
  * multiplies in a shared tileable grain at 256 px/m: fine grit, sand and small stones turned every way, neutral grey on
  * average so its mips fade to nothing with distance. Shared by every pack and never disposed by one.
+ *
+ * Built straight into a typed array (garage round 7, 2026-10-14): the 2,600 canvas ellipses it drew, each up to nine
+ * times across the tile's edges, were the first outdoor visit's largest new cost (the switch ABBA: Sirocco's first
+ * cold visit presented 0.5 s later). The stones are stamped as antialiased ellipses with wrap-around addressing.
  */
-export function garageHardstandGrainTexture(anisotropy = 4): THREE.CanvasTexture | null {
+export function garageHardstandGrainTexture(anisotropy = 4): THREE.DataTexture | null {
   if (sharedGrain) return sharedGrain;
   if (typeof document === 'undefined') return null;
   const S = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = S;
-  canvas.height = S;
-  const g = canvas.getContext('2d');
-  if (!g) return null;
   let seed = 0x6a7e;
   const rng = (): number => {
     seed = (seed + 0x6d2b79f5) >>> 0;
@@ -33,30 +32,45 @@ export function garageHardstandGrainTexture(anisotropy = 4): THREE.CanvasTexture
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const image = g.createImageData(S, S);
-  for (let i = 0; i < S * S; i++) {
-    const v = 128 + (rng() - 0.5) * 22;
-    image.data[i * 4] = v; image.data[i * 4 + 1] = v; image.data[i * 4 + 2] = v; image.data[i * 4 + 3] = 255;
-  }
-  g.putImageData(image, 0, 0);
-  // stones from grit to pebbles, far more small than large, each drawn across the tile's edges so it repeats seamlessly
+  const grey = new Float32Array(S * S);
+  for (let i = 0; i < S * S; i++) grey[i] = 128 + (rng() - 0.5) * 22;
+  // stones from grit to pebbles, far more small than large, wrapping across the tile's edges so it repeats seamlessly
   for (let i = 0; i < 2600; i++) {
     const x = rng() * S, y = rng() * S, t = rng();
     const r = 0.8 + t * t * t * 7;
     const dark = rng() < 0.55;
     const shade = dark ? 128 - 16 - rng() * 30 : 128 + 10 + rng() * 26;
-    g.fillStyle = `rgba(${shade},${shade},${shade},${(0.5 + rng() * 0.45).toFixed(2)})`;
+    const alpha = 0.5 + rng() * 0.45;
     const squash = 0.5 + rng() * 0.45, angle = rng() * Math.PI;
-    for (const dx of [-S, 0, S]) {
-      for (const dy of [-S, 0, S]) {
-        if (x + dx < -r * 2 || x + dx > S + r * 2 || y + dy < -r * 2 || y + dy > S + r * 2) continue;
-        g.beginPath(); g.ellipse(x + dx, y + dy, r, r * squash, angle, 0, Math.PI * 2); g.fill();
+    const c = Math.cos(angle), sn = Math.sin(angle);
+    const reach = Math.ceil(r + 1);
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        const px = Math.floor(x) + dx, py = Math.floor(y) + dy;
+        const ox = px + 0.5 - x, oy = py + 0.5 - y;
+        const u = (ox * c + oy * sn) / r, v = (-ox * sn + oy * c) / (r * squash);
+        const d = Math.sqrt(u * u + v * v);
+        // a one-pixel antialiased rim, as the canvas fill had
+        const cover = Math.min(1, Math.max(0, (1 - d) * r * squash + 0.5));
+        if (cover <= 0) continue;
+        const index = (((py % S) + S) % S) * S + (((px % S) + S) % S);
+        const a = alpha * cover;
+        grey[index] = grey[index] * (1 - a) + shade * a;
       }
     }
   }
-  sharedGrain = new THREE.CanvasTexture(canvas);
+  const data = new Uint8Array(S * S * 4);
+  for (let i = 0; i < S * S; i++) {
+    const v = Math.max(0, Math.min(255, Math.round(grey[i])));
+    data[i * 4] = v; data[i * 4 + 1] = v; data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
+  }
+  sharedGrain = new THREE.DataTexture(data, S, S, THREE.RGBAFormat);
   sharedGrain.wrapS = THREE.RepeatWrapping;
   sharedGrain.wrapT = THREE.RepeatWrapping;
+  sharedGrain.magFilter = THREE.LinearFilter;
+  sharedGrain.minFilter = THREE.LinearMipmapLinearFilter;
+  sharedGrain.generateMipmaps = true;
+  sharedGrain.needsUpdate = true;
   sharedGrain.anisotropy = anisotropy;
   sharedGrain.userData.sharedGarageHardstandGrain = true;
   return sharedGrain;
