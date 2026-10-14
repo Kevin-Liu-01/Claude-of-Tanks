@@ -4118,6 +4118,9 @@ function groundIsPlanar(count: number): boolean {
   return residual < PLANAR_RESIDUAL_M * PLANAR_RESIDUAL_M;
 }
 
+/** A hull this slow and turning this little stands at rest on its contacts (updateTerrainFitAndPerch's latch). */
+const REST_FIT_SPEED_MPS = 0.05;
+const REST_FIT_YAW_RATE = 0.02;
 const FIT_ALL_LOADED = 0;
 const FIT_PARTIAL = 1;
 const FIT_NONE_LOADED = 2;
@@ -4331,6 +4334,15 @@ function updateTerrainFitAndPerch(
       // pivoting on an edge, the hull slides on its own belly (EDGE_BAND_M): the grade the slope pull reads is its pitch
       terr.pitch = _contactFit.edge ? state._spring.pitch : _contactFit.pitch;
       terr.roll = _contactFit.roll;
+      // (physics stream F4(b), 2026-10-14; the coordinator: "a contact latch") a hull at rest on part of its contacts with
+      // its centre of mass over them (no tip) stands as it is: a rigid body on the contacts that carry it has nothing to
+      // turn it. The plane of the near samples sprang a hull perched on a roof's parapet nose-down off its perch, its tail
+      // lifted, the tip set it back, and it flipped between the two every few ticks for as long as it stood (±3 mrad)
+      if (_contactFit.tipPitch === 0 && _contactFit.tipRoll === 0 && Math.abs(state.speed) < REST_FIT_SPEED_MPS &&
+          Math.abs(state.yawRate || 0) < REST_FIT_YAW_RATE) {
+        terr.pitch = state._spring.pitch;
+        terr.roll = state._spring.roll;
+      }
       terr.tipPitch = _contactFit.tipPitch;
       terr.tipRoll = _contactFit.tipRoll;
       return;
