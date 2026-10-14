@@ -42,7 +42,9 @@
  *     body, a profile or a cast section is not one; shellShare, the chunky ones' share, is reported beside it);
  *  4. grounded (floatingMembers): every member reaches the ground (its foot within 2 cm of y = 0, or sunk) through
  *     members whose convex hulls come within 2 cm (partContact.ts, GJK). A form's `support()` is ground it stands on
- *     beside y = 0 (a bank, a plinth another pass lays); `allowFloating(island)` may excuse an island with its reason;
+ *     beside y = 0 (a bank, a plinth another pass lays: geometries) and the grade's height in its frame where the props
+ *     seat the kind below the terrain (a number: the pillbox sits FORT_GRADE under it); `allowFloating(island)` may
+ *     excuse an island with its reason;
  *  5. anti-raft: the destroyed state stands at least 25 % of the intact height (the area-weighted 90th percentile of
  *     the triangles' heights, so a lone splinter does not lift a raft) and covers at least 60 % of the intact plan's
  *     cells (the triangles' plan on a grid of the intact plan's 1/48);
@@ -578,8 +580,10 @@ export function r2Check(spec) {
     if (bs.share > lim.boxShareMax) say(`${tag}: box-only share ${(bs.share * 100).toFixed(0)} % of its surface (cap ${(lim.boxShareMax * 100).toFixed(0)} %)`);
     // grounded
     if (!spec.skipGround) {
-      const floating = floatingMembers(parts, { groundM: lim.groundM, contactM: lim.contactM, support: r.support?.() ?? [],
-        allowFloating: spec.allowFloating });
+      const support = [r.support?.() ?? []].flat();
+      const grade = Math.max(0, ...support.filter((s) => typeof s === 'number'));
+      const floating = floatingMembers(parts, { groundM: grade + lim.groundM, contactM: lim.contactM,
+        support: support.filter((s) => typeof s !== 'number'), allowFloating: spec.allowFloating });
       const loose = floating.filter((f) => !f.allowed);
       metrics.floating = loose.length;
       if (floating.length - loose.length) metrics.allowedFloating = floating.length - loose.length;
