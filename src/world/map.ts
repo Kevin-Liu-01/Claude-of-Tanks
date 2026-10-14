@@ -597,6 +597,14 @@ function assembleWorld(
   // the scenery lane (b12; Fjord, wave 74: foliage cards through a boulder): and no shrub stands inside a boulder or a
   // structure the props placed after it — cosmetic, its cover disc stays (shrubClearance.ts)
   group.userData.shrubsCleared = clearShrubsFromSolids(vegetation.group, groundCoverClearance());
+  // (sealed lane 2026-10-10, the owner's map vehicles) and no shrub's crown stands inside a parked vehicle or cart: the
+  // core rule above kept a bush whose centre stood beside a truck, its cards through the cab (props.ts
+  // parkedVehicleObstacles). Cosmetic, as the seal is.
+  const parkedVehicles = (props.group.userData.parkedVehicleObstacles as CollisionRecord[] | undefined) ?? [];
+  if (parkedVehicles.length) {
+    group.userData.shrubsClearedFromVehicles = clearShrubsFromSolids(vegetation.group,
+      createGroundCoverClearance(createObstacleGrid(parkedVehicles)), 1);
+  }
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed

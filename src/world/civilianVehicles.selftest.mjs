@@ -56,7 +56,9 @@ for (const [kind, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) {
 
 // sealed lane 2026-10-10: mobile 3600 -> 3700 for the wheels' inboard back discs (+100 triangles on a coarse body: the
 // US 1941 wagon went 3,556 -> 3,656; hollow wheels showed the sky through every vehicle from under the body)
-const DESKTOP_BUDGET = 9000, MOBILE_BUDGET = 3700;
+// sealed lane 2026-10-10, round 2: the desktop ceiling 9000 -> 9500 with the trucks' running gear (springs, driveshafts,
+// the wheelbase's tanks and guards)
+const DESKTOP_BUDGET = 9500, MOBILE_BUDGET = 3700;
 function checkRole(label, kind, geometry, burnt, mobile) {
   const receipt = CIVILIAN_VEHICLE_RECEIPTS[kind];
   for (const attribute of ['position', 'normal', 'uv', 'color', 'surf']) {

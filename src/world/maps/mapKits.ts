@@ -2574,6 +2574,39 @@ const RAIL_YARD_LINES = [
   { x: -57, z0: -190, z1: 200 },
 ] as const;
 
+/** A laid line's ground in plan: the centreline from (ax, az) to (bx, bz) and the half-width its bed takes. */
+export interface RailBedSpan { ax: number; az: number; bx: number; bz: number; hw: number }
+/**
+ * Sealed lane 2026-10-11 (the owner's map vehicles: four Ironworks trucks and a Caldera handcart stood across a
+ * siding's sleepers and rails). The ground every line this kit lays takes — the yards' lines and the authored spurs:
+ * the ballast's half-width and its shoulders' 0.62 m run (layRailSpan), carried 1.5 m past each end, where a buffer
+ * stop stands (bufferStop: 0.8 m out, its struts 0.3 m behind) — as centreline segments with a half-width. The
+ * parked vehicles' and carts' seat passes keep off it (props.ts). It reads the layouts only: no draw, no dressing.
+ */
+export function railBedSpans(
+  mapId: string | undefined, extraKits: readonly string[] | null | undefined,
+  railSpurs: readonly RailSpurConfig[] | undefined,
+): RailBedSpan[] {
+  const SHOULDER_M = 0.62, PAST_END_M = 1.5, spans: RailBedSpan[] = [];
+  if ((extraKits || legacyDressingKits(mapId)).includes('rail')) {
+    const hw = RAIL_SPUR_BALLAST_M / 2 + SHOULDER_M;
+    for (const line of RAIL_YARD_LINES) spans.push({ ax: line.x, az: line.z0 - PAST_END_M, bx: line.x, bz: line.z1 + PAST_END_M, hw });
+  }
+  for (const spur of railSpurs ?? []) {
+    const hw = (spur.ballast ?? RAIL_SPUR_BALLAST_M) / 2 + SHOULDER_M, path = spur.path, last = path.length - 1;
+    for (let i = 1; i <= last; i++) {
+      let [ax, az] = path[i - 1], [bx, bz] = path[i];
+      const run = Math.hypot(bx - ax, bz - az);
+      if (run < 1e-6) continue;
+      const ux = (bx - ax) / run, uz = (bz - az) / run;
+      if (i === 1) { ax -= ux * PAST_END_M; az -= uz * PAST_END_M; }
+      if (i === last) { bx += ux * PAST_END_M; bz += uz * PAST_END_M; }
+      spans.push({ ax, az, bx, bz, hw });
+    }
+  }
+  return spans;
+}
+
 function addRailYardLines(
   heightField: DressingHeightField,
   rng: Rng,
