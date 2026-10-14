@@ -34,6 +34,9 @@ const { createTank } = await import('./tankFactory.ts');
 const { GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } = await import('./ghillieDrape.ts');
 
 const IDS = process.env.GARNISH_LIE_DEBUG ? [process.env.GARNISH_LIE_DEBUG] : ['cv90', 'merkava4b', 'ua_t72b3m_hetman_ii', 'leo2_revolution', 'griffin_viper', 'm1a3', 'strv103', 'ztz99a2'];
+// netting-pl (2026-10-13; the owner: "also add a bunch of ghillie on the husarz and zubr polish tanks"): the Polish field
+// suits (nationalPolandProtectionConfig.ts, hung on the slat screens) lay theirs the same way
+if (!process.env.GARNISH_LIE_DEBUG) IDS.push('pl_t80u_modern', 'pl_t72b3_zubr_ii');
 const LIFT_M = 0.12, LIFT_TOL_M = 0.02, OWN_NET_M = 0.25, EDGE_RISE_M = 0.12;
 // GARNISH_LIE_DEBUG=<id>: list that hull's tilted roof cards
 const DEBUG_ID = process.env.GARNISH_LIE_DEBUG;

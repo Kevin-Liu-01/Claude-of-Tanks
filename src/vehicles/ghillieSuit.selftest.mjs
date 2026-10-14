@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { addVehicleGhillieSuit, blowOffPanel, ghillieBlowOffPanels, GHILLIE_SUIT_CONFIGS, suitDockBoxes } from './ghillieSuit.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
+import { NATIONAL_POLAND_GHILLIE_CONFIGS } from './nationalPolandProtectionConfig.ts';
 import { applyCamoPatterns, setCamoOverride } from './materials.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { MISSION_ATTACHMENT_SEATS } from '../sim/missionAttachmentSeats.generated.ts';
@@ -427,8 +428,13 @@ for (const id of ['leo2a4', 'ua_t72b3m_hetman_ii', 'ua_t72b3_modern', 'ua_t80u_m
 // real suit per configured owner (net and garnish, detailed geometry), rests on its armour or hangs from its own net
 // (garnish on its net or the armour) within 15 mm, keeps its hull hems above the hull's hem floor and the track
 // corridor, fires no smoke discharger into itself, lays nothing of an owner over that owner's hatch lids and cupolas,
-// and leaves the mantlet and gun corridor open.
-for (const [id, cfg] of Object.entries(FLEET_GHILLIE_SUITS)) {
+// and leaves the mantlet and gun corridor open. 2026-10-13 (netting-pl; the owner: "also add a bunch of ghillie on the
+// husarz and zubr polish tanks"): the Husarz's and both Zubrs' field suits (nationalPolandProtectionConfig.ts, built with
+// their slat screens) are held to every rule here too.
+const POLISH_FIELD_SUITS = Object.fromEntries(Object.entries(NATIONAL_POLAND_GHILLIE_CONFIGS).filter(([, cfg]) => cfg.fieldClearanceM !== undefined));
+assert.deepEqual(Object.keys(POLISH_FIELD_SUITS), ['pl_t80u_modern', 'pl_t72b3_modern', 'pl_t72b3_zubr_ii'],
+  'the Husarz and both Zubrs wear the Polish field suit');
+for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD_SUITS })) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
   tank.root.updateMatrixWorld(true);
   const rigs = { hull: tank.root.getObjectByName('rig_hull'), turret: tank.root.getObjectByName('rig_turret'), gun: tank.root.getObjectByName('rig_gun') };
