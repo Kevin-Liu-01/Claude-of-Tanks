@@ -322,7 +322,11 @@ void main() {
     // fades over life above the constant col1 albedo (never sent in battle).
     float selfLit = step( peak, 0.0 );
     peak = abs( peak );
-    vEmit = selfLit * aC0.rgb * ( 1.0 - t ) * ( 1.0 - t );
+    // (HE look v2, the coordinator: "still orange 1-2 s later ... nothing peach or orange after ~0.3 s except embers") a
+    // self-lit puff's fire glow fades in its first third of a second, whatever its life (it faded over the whole life: a
+    // 4 s fire-lit smoke puff still glowed peach at 1-2 s); the flames keep their undersides lit by the fresh puffs they
+    // feed, the smoke above them goes dark
+    vEmit = selfLit * aC0.rgb * exp( -3.2 * age );
   #endif
   // tier-1 soft handling: alpha-in at birth, long fade-out (+ lens fade)
   float alpha = peak * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) )

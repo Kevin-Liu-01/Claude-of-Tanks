@@ -75,4 +75,5 @@ const fireEnd = (log) => Math.max(...log.filter((p) => p.pool === 'fire').map((p
 const parts = await readFile(new URL('./particles.ts', import.meta.url), 'utf8');
 assert.match(parts, /a \*= mix\( 1\.0, smoothstep\( 0\.28 \+ 0\.12 \* vT, 0\.62 \+ 0\.12 \* vT, en \), rim \);/, 'the pooled puffs\' rims torn by noise');
 assert.match(parts, /vSeed = fract\( aPB\.w \* 1\.6180339 \+ aPB\.x \* 0\.0713 \+ aPB\.z \* 0\.1131 \);/, 'each puff its own seed');
+assert.match(parts, /vEmit = selfLit \* aC0\.rgb \* exp\( -3\.2 \* age \);/, 'a fire-lit puff\'s glow is gone in a third of a second, whatever its life');
 console.log('heLookV2: fire gone by ~0.3 s, spikes and a sooty heart, short cook-off pops, snow powder settling, pooled clouds earthen, rims torn — ok');
