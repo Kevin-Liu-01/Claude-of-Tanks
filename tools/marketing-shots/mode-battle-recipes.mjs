@@ -776,16 +776,45 @@ export const RECIPES = {
   'mechanics/armor': {
     hour: 'day',
     windowS: 30,
+    // r2: r1 had no battle of its own (the entry is a shot-view) and drew a random map and tank (Suzhou Creek, M1A3)
+    battle: { specId: 'leo2a7v_x', mapId: 'verdant', gameMode: 'standard' },
     async run(ctx) {
-      ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, minRangeM: 250, dists: [320, 380, 280, 420] })));
+      const contact = await toContact(ctx, { rangeM: 420, minRangeM: 260, dists: [320, 300, 350, 380], enemies: 1 });
+      ctx.log('contact', JSON.stringify(contact));
+      // the staged target held at its angled three-quarter (about 30 degrees off the line: the staging's own yaw) on a
+      // spot the sights see clear of trees (H.sightClear), so the flashlight paints the whole hull
+      const mark = contact?.lanes?.[0]?.id || null;
+      if (mark) {
+        const sight = await ctx.eval((id) => {
+          const H = window.__MB.H, p = H.player(), t = H.g().tankById.get(id);
+          if (!p || !H.live(t)) return null;
+          const eye = H.turretPoint(p), discs = H.concealers();
+          H.freezeBot(t);
+          if (H.sightClear(eye, t.state.pos, discs)) return { clear: true, moved: false };
+          const d0 = H.dist(p.state.pos, t.state.pos), base = Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
+          for (const d of [d0, 320, 300, 350]) {
+            for (const da of [0, 8, -8, 16, -16, 24, -24, 35, -35, 50, -50]) {
+              const a = base + (da * Math.PI) / 180, x = p.state.pos.x + Math.sin(a) * d, z = p.state.pos.z + Math.cos(a) * d;
+              if (!H.openGround(x, z, 6, discs) || !H.sightClear(eye, { x, z }, discs)) continue;
+              H.place(t, x, z, Math.atan2(p.state.pos.x - x, p.state.pos.z - z) + 0.52);
+              H.freezeBot(t);
+              return { clear: true, moved: true, d: Math.round(d), bearingDeg: da };
+            }
+          }
+          return { clear: false };
+        }, mark);
+        ctx.log('sight', JSON.stringify(sight));
+      }
       // the armour flashlight is the player's setting (H toggles it; off by default)
       await ctx.eval(() => window.__DEBUG.input.setSetting('armorAimOverlay', true));
-      await ctx.mb('setAim', { target: 'nearestEnemyClear' });
+      const target = mark ? `entity:${mark}` : 'nearestEnemyClear';
+      await ctx.mb('setAim', { target, fallback: 'nearestEnemyClear' });
       await settle(ctx, 1.5);
       await ctx.capture({
+        // x16 (the increased-zoom step) fills the sight with the painted hull at 300-380 m; x8 as r1
         cameras: [
-          { kind: 'scope', target: 'nearestEnemyClear', zoom: 8, hud: 'full' },
-          { kind: 'scope', target: 'nearestEnemyClear', zoom: 4, hud: 'full' },
+          { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 16, hud: 'full' },
+          { kind: 'scope', target, fallback: 'nearestEnemyClear', zoom: 8, hud: 'full' },
         ],
         cameraEvery: 5,
         everyS: 1.2,
@@ -1526,12 +1555,17 @@ Object.assign(RECIPES, {
           return false;
         };
         let best = null;
+        // r2: shrubs, not tree groves (r1's 4 m disc was a grove and every lens sat among its trunks), and the column
+        // within spotting range (r1's 360 m column was never spotted: spotRange = viewRange - (viewRange - 50) x camo)
         for (const c of discs) {
-          if (H.dist(c, p.state.pos) > 240) continue;
+          if (H.dist(c, p.state.pos) > 240 || c.r > 4) continue;
+          const treesNear = (D.world.getObstacles?.() || []).some((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead
+            && Math.hypot((o.min[0] + o.max[0]) / 2 - c.x, (o.min[2] + o.max[2]) / 2 - c.z) < c.r + 6);
+          if (treesNear) continue;
           const sx = c.x + Math.sin(toEnemy) * c.r * 0.3, sz = c.z + Math.cos(toEnemy) * c.r * 0.3;
           if (Math.abs(sx) > 430 || Math.abs(sz) > 430) continue;
           const sy = H.groundY(sx, sz);
-          for (const dist of [300, 270, 330, 240, 360]) {
+          for (const dist of [250, 230, 270, 210]) {
             for (const lateral of [0, 45, -45, 90, -90]) {
               const px = sx + Math.sin(toEnemy) * dist + Math.cos(toEnemy) * lateral;
               const pz = sz + Math.cos(toEnemy) * dist - Math.sin(toEnemy) * lateral;
@@ -1539,7 +1573,7 @@ Object.assign(RECIPES, {
               const py = H.groundY(px, pz);
               if (H.raycastBlock({ x: sx, y: sy + 2.6, z: sz }, { x: px, y: py + 1.6, z: pz }, 3) != null) continue;
               if (canopyOnLine(sx, sz, px, pz, c)) continue;
-              const score = (sy - py) * 0.6 - Math.abs(dist - 300) / 40 - Math.abs(lateral) / 60;
+              const score = (sy - py) * 0.6 - Math.abs(dist - 240) / 40 - Math.abs(lateral) / 60;
               if (!best || score > best.score) best = { seat: { x: sx, z: sz, r: c.r }, column: { x: px, z: pz }, score, riseM: Math.round(sy - py), dist, lateral };
             }
           }
@@ -1547,6 +1581,7 @@ Object.assign(RECIPES, {
         return best;
       });
       ctx.log('spotting plan', JSON.stringify(plan));
+      let lens = null;
       if (!plan) { ctx.note('no bush with an open sight line was found; the slot falls back to a contact frame'); }
       else {
         await ctx.eval((pl) => {
@@ -1557,23 +1592,53 @@ Object.assign(RECIPES, {
           const column = H.enemies().sort((a, b) => H.dist(a.state.pos, pl.column) - H.dist(b.state.pos, pl.column)).slice(0, 3);
           column.forEach((t, i) => {
             H.place(t, pl.column.x - Math.sin(crossing) * i * 17, pl.column.z - Math.cos(crossing) * i * 17, crossing);
-            t.aiCtl = null; t.input.throttle = 0.45; t.input.steer = 0; t.input.brake = false; t.input.fire = false;
+            // held still until spotted (r1's column drove out of range first), then driven straight across
+            t.aiCtl = null; t.input.throttle = 0; t.input.steer = 0; t.input.brake = true; t.input.fire = false;
           });
           window.__MB.columnIds = column.map((t) => t.id);
         }, plan);
         await ctx.mb('defineSelector', 'columnLead', 'const id = (window.__MB.columnIds || [])[1] || (window.__MB.columnIds || [])[0]; return id ? H.info(g.tankById.get(id)) : null;');
-        ctx.note('player placed in a bush facing the enemy side; three enemy bots placed as a column crossing ~300 m below with their AI paused (driving straight)');
+        ctx.note('player placed in a bush facing the enemy side; three enemy bots placed as a column ~240 m below with their AI paused, held until spotted, then driven straight across');
         const spotted = await ctx.until(() => {
           const D = window.__DEBUG, ids = window.__MB.columnIds || [];
           const team = D.game.player?.team;
           return ids.filter((id) => D.game.spotting?.isSpotted?.(id, team)).length || null;
-        }, { timeoutS: 20, label: 'the column spotted' });
+        }, { ffStepS: 0.5, timeoutS: 30, label: 'the column spotted' });
         ctx.log('spotted', spotted);
+        await ctx.eval(() => {
+          for (const id of window.__MB.columnIds || []) {
+            const t = window.__MB.H.g().tankById.get(id);
+            if (t?.input) { t.input.throttle = 0.45; t.input.brake = false; }
+          }
+        });
+        // a raised lens behind and beside the player, outside every bush and tree disc but the seat's own, whose line to
+        // the column nothing hides: the tank half-hidden in its bush in the foreground, the column marked beyond
+        lens = await ctx.eval((pl) => {
+          const H = window.__MB.H, p = H.player(), lead = H.sel('columnLead');
+          if (!p || !lead) return null;
+          const discs = H.concealers().filter((c) => Math.hypot(c.x - pl.seat.x, c.z - pl.seat.z) > pl.seat.r + 0.5);
+          const toward = Math.atan2(lead.x - p.state.pos.x, lead.z - p.state.pos.z), ux = Math.sin(toward), uz = Math.cos(toward), px = uz, pz = -ux;
+          for (const back of [10, 13, 8, 16]) {
+            for (const side of [6, -6, 9, -9, 3, -3]) {
+              for (const h of [5, 6.5, 4, 8]) {
+                const x = p.state.pos.x - ux * back + px * side, z = p.state.pos.z - uz * back + pz * side;
+                if (discs.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + 1)) continue;
+                const eye = { x, y: H.groundY(x, z) + h, z };
+                if (!H.sightClear(eye, lead, discs)) continue;
+                const lx = p.state.pos.x + (lead.x - p.state.pos.x) * 0.55, lz = p.state.pos.z + (lead.z - p.state.pos.z) * 0.55;
+                return { kind: 'fixed', pos: [x, eye.y, z], look: [lx, null, lz], lookHeightM: 1.0, fov: 40, smoothS: 0, hud: 'noreticle', back, side, h };
+              }
+            }
+          }
+          return null;
+        }, plan);
+        ctx.log('lens', JSON.stringify(lens && { back: lens.back, side: lens.side, h: lens.h }));
+        if (!lens) ctx.note('no raised lens behind the bush saw the column clear; the frames use the over-the-shoulder poses');
       }
       await ctx.capture({
         cameras: [
-          { kind: 'between', from: 'player', to: plan ? 'columnLead' : 'nearestEnemy', backM: 8, sideM: 3, heightM: 2.0, lookAtFrac: 0.8, fov: 38, hud: 'noreticle' },
-          { kind: 'between', from: 'player', to: plan ? 'columnLead' : 'nearestEnemy', backM: 6, sideM: -2.5, heightM: 1.4, lookAtFrac: 0.85, fov: 34, hud: 'noreticle' },
+          ...(lens ? [lens] : []),
+          { kind: 'between', from: 'player', to: plan ? 'columnLead' : 'nearestEnemy', backM: 11, sideM: 5, heightM: 5.5, lookAtFrac: 0.7, fov: 40, hud: 'noreticle' },
           { kind: 'chase', target: plan ? 'columnLead' : 'nearestEnemy', step: 2, hud: 'full' },
         ],
         cameraEvery: 3,
