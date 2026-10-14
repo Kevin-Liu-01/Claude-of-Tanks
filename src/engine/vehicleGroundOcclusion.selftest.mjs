@@ -17,7 +17,7 @@ import {
   createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   hullSunShadow, runGapOcclusion, runTravelAt, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal,
   vehicleGroundStrengths, GROUND_AO_OCC_MAX_SNOW, GROUND_AO_SNOW_CREASE, GROUND_AO_SNOW_CREASE_FULL_M,
-  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion, GROUND_AO_KEY_FADE, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
+  GROUND_AO_SNOW_CREASE_GAP_M, groundAoOccMax, snowCreaseOcclusion, GROUND_AO_KEY_REACH_M, GROUND_AO_KEY_MAX, keyLightReach, GROUND_AO_KEY_LIGHTS, GROUND_AO_KEY_INSIDE_M,
   groundShadeWithKeyLights, hullBlocksKeyLight, keyLightIrradiance, GROUND_AO_KEY_SOFT_M,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
@@ -599,9 +599,9 @@ assert.ok(g.includes('return 1.0 - occ * ambShare - keyCut;') && g.includes('key
 // (contact r2) with no lamp the law is the old one to the bit: E0 = E1 = 0 adds nothing to the total, keyCut stays 0
 assert.ok(g.includes('float E0 = 0.0, E1 = 0.0;\n        if ( uVehKeyLight > 0.5 ) {') && g.includes('if ( occ <= 0.003 && max( keyB0, keyB1 ) <= 0.0 ) return 1.0;'),
   'the lamps only where some are written');
-assert.ok(g.includes(`if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {`) && g.includes(`float kw = 1.0 - smoothstep( H * ${f4(GROUND_AO_KEY_FADE[0])}, H * ${f4(GROUND_AO_KEY_FADE[1])}, dOut );`)
-  && (g.match(/cotVgKeyBlock\( q, vec3\( dot\( m0\.xyz, L[01] \) \+ m0\.w, dot\( m1\.xyz, L[01] \) \+ m1\.w, dot\( m2\.xyz, L[01] \) \+ m2\.w \), b0, b1, b2 \)/g) ?? []).length === 2,
-  'each hull tests the lamps in its own frame on a lit receiver within its reach, faded over the reach\'s end');
+assert.ok(g.includes(`if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {`) && g.includes(`float kw = ${f4(GROUND_AO_KEY_MAX)} * ( 1.0 - smoothstep( 0.0, ${f4(GROUND_AO_KEY_REACH_M)}, sd ) );`)
+  && (g.match(/cotVgKeyBlock\( q, vec3\( dot\( m0\.xyz, L[01] \) \+ m0\.w, dot\( m1\.xyz, L[01] \) \+ m1\.w, dot\( m2\.xyz, L[01] \) \+ m2\.w \), b0, b1, b2, sd \)/g) ?? []).length === 2,
+  'each hull tests the lamps in its own frame on a lit receiver near its footprint (its signed distance passed in)');
 assert.match(g, new RegExp(`uniform vec4 uVehKeyLightP\\[ ${GROUND_AO_KEY_LIGHTS} \\];`));
 assert.ok(g.includes(`float occ = max( min( 1.0 - vis, mix( ${f4(GROUND_AO_OCC_MAX)}, ${f4(GROUND_AO_OCC_MAX_SNOW)}, snowW ) ), crease ) * fade;`),
   'the hulls\' joint share capped once (on snow by the weight), the snow crease joined past it');
@@ -656,7 +656,7 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
   const flare = { x: -3, y: 40, z: 6 };
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, flare, T), 1, 'under the belly: the flare is behind the hull');
   assert.equal(hullBlocksKeyLight({ x: T.hx + 2.5, y: 0, z: 0 }, flare, T), 0, 'beside the hull on the far side from it: lit');
-  assert.equal(hullBlocksKeyLight({ x: T.xo + 0.05, y: 0, z: 0 }, flare, T), 1, 'at the right run\'s foot, under the overhang: shadowed');
+  assert.ok(hullBlocksKeyLight({ x: T.xo + 0.05, y: 0, z: 0 }, flare, T) > 0.95, 'at the right run\'s foot, under the overhang: shadowed (the footprint\'s soft edge)');
   // a low lamp beside the right run: through the gap under the belly the ground between the runs sees it only under the belly
   const low = { x: 6, y: 0.2, z: 0 };
   assert.equal(hullBlocksKeyLight({ x: 0, y: 0, z: 0 }, low, T), 1, 'the right run stands between a low lamp and the belly\'s ground');
@@ -698,7 +698,28 @@ assert.ok(g.includes('float loR = max( b0.w + cotVgRun( uVehGroundR[ i * 4 + 2 ]
   }
   near(groundShadeWithKeyLights(0.55, 0, 0.05, [2.0, 0], [1, 0]), 1 - 0.55 * 0.05 / 2.05 - 2 / 2.05, 1e-12, 'the flare-lit belly keeps its sky\'s light');
   assert.ok(groundShadeWithKeyLights(0.55, 0, 0.05, [2.0, 0], [0, 0]) > 0.98, 'beside the hull, flare-lit and unblocked, nearly untouched');
-  assert.ok(GROUND_AO_KEY_LIGHTS === 2 && GROUND_AO_KEY_FADE[1] === GROUND_AO_REACH[1], 'two lamps; the cut fades out where the reach ends');
+  assert.ok(GROUND_AO_KEY_LIGHTS === 2, 'two lamps');
+  // (the r2 final capture: s170's flare drew the boxes' projection, a near-black ruled parallelogram metres past the hull) a
+  // contact occlusion of the lamp: capped under the footprint, gone a short reach beyond its edge, never a cast slab
+  near(keyLightReach({ x: 0, y: 0, z: 0 }, T), GROUND_AO_KEY_MAX, 1e-12, 'under the belly: the cap');
+  near(keyLightReach({ x: T.hx - 0.01, y: 0, z: 1 }, T), GROUND_AO_KEY_MAX, 1e-12, 'to the footprint\'s edge');
+  assert.equal(keyLightReach({ x: T.hx + GROUND_AO_KEY_REACH_M, y: 0, z: 0 }, T), 0, 'gone its reach beside the hull');
+  assert.equal(keyLightReach({ x: 0, y: 0, z: T.fz1 + GROUND_AO_KEY_REACH_M }, T), 0, 'and ahead of it');
+  assert.ok(GROUND_AO_KEY_MAX < 1 && GROUND_AO_KEY_MAX >= 0.5 && GROUND_AO_KEY_REACH_M <= 1, 'the ground keeps a part of the lamp; a short reach');
+  {
+    // s170 at t2060: a flare high off the hull's right rear; the boxes' projection reaches 2-3 m past the left run — gone there
+    const flare = { x: 17, y: 81, z: -6 };
+    assert.ok(hullBlocksKeyLight({ x: -T.hx - 1.5, y: 0, z: 0 }, { x: 4, y: 3.5, z: 0 }, T) > 0.9, 'the low lamp\'s projection 1.5 m out');
+    assert.equal(keyLightReach({ x: -T.hx - 1.5, y: 0, z: 0 }, T), 0, 'takes no cut there');
+    const cut = (x) => keyLightReach({ x, y: 0, z: 0 }, T) * hullBlocksKeyLight({ x, y: 0, z: 0 }, flare, T);
+    // the shadow side (away from the flare): a soft falloff out from the footprint, no ruled edge on the open ground
+    let worst = 0, prev = null;
+    for (let x = 0; x >= -T.hx - 1.2; x -= 0.01) { const v = cut(x); if (prev !== null) worst = Math.max(worst, Math.abs(v - prev)); prev = v; }
+    assert.ok(worst < 0.03, `the cut's edge on the shadow side is soft (worst 1 cm change ${worst.toFixed(3)})`);
+    assert.ok(cut(-T.hx - 0.2) > 0.2 && cut(-T.hx - 0.2) < GROUND_AO_KEY_MAX && cut(-T.hx - GROUND_AO_KEY_REACH_M) === 0, 'and it ends within its reach');
+    // the lit side: the flare reaches the ground right to the hull's edge (the overhang's own), none beyond
+    assert.ok(cut(T.hx - 0.25) > 0.7 && cut(T.hx + 0.2) === 0, 'the lit side ends at the footprint\'s edge');
+  }
 }
 // the packing: the strongest lit lamps near the packed hulls, none when the lever drops them
 {

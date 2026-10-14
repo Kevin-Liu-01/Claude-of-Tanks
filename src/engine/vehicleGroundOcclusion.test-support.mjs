@@ -168,7 +168,7 @@ export async function vehicleGroundGlslCases() {
       const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
       const skipped = dOut > H * M.GROUND_AO_REACH[1] || q.y > T90M.yt || q.y < T90M.y0 - H * M.GROUND_AO_REACH[1]
         || (q.y > T90M.yb + 0.02 && dOut < M.GROUND_AO_HULL_SKIN_M);
-      const kw = 1 - smooth(H * M.GROUND_AO_KEY_FADE[0], H * M.GROUND_AO_KEY_FADE[1], dOut);
+      const kw = M.keyLightReach(q, T90M);
       const E = [], blocked = [];
       for (let i = 0; i < keyInput.keyCount; i++) {
         const P4 = keyInput.keyP.slice(i * 4, i * 4 + 4), E4 = keyInput.keyE.slice(i * 4, i * 4 + 4);
