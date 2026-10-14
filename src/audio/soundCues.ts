@@ -47,6 +47,9 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
   flyby: seed({ bus: 'impacts', space: 'world', priority: 80, maxInstances: 4, cooldownS: 0.08, refM: 6, rolloff: 1.1, maxM: 120, absorb: 1, send: 0.1, loudDb: 128, gainDb: -1 }),
   impacts: seed({ bus: 'impacts', space: 'world', priority: 78, maxInstances: 12, cooldownS: 0, refM: 15, rolloff: 0.75, maxM: 1400, absorb: 1, send: 0.2, loudDb: 138, gainDb: 0 }),
   destruction: seed({ bus: 'impacts', space: 'world', priority: 88, maxInstances: 6, cooldownS: 0, refM: 30, rolloff: 0.6, maxM: 2500, absorb: 0.7, send: 0.26, loudDb: 152, gainDb: 0, pitch: [0.95, 1.04] }),
+  // Buildings breaking and coming down (2026-10-13): big events that carry across the map (a collapse is heard as far
+  // as a gun), though under the guns' weight; the distant recordings take over past a few hundred metres.
+  buildings: seed({ bus: 'impacts', space: 'world', priority: 80, maxInstances: 8, cooldownS: 0.04, refM: 24, rolloff: 0.66, maxM: 1600, absorb: 0.8, send: 0.26, loudDb: 146, gainDb: 0, pitch: [0.95, 1.04] }),
   // Small clutter stays local: a battle of fourteen tanks is otherwise a wall of foley.
   props: seed({ bus: 'environment', space: 'world', priority: 55, maxInstances: 6, cooldownS: 0.05, refM: 10, rolloff: 1.05, maxM: 260, absorb: 1, send: 0.2, loudDb: 128, gainDb: -2 }),
   collisions: seed({ bus: 'impacts', space: 'world', priority: 70, maxInstances: 4, cooldownS: 0.12, refM: 9, rolloff: 1.05, maxM: 320, absorb: 1, send: 0.16, loudDb: 132, gainDb: -1 }),
@@ -105,6 +108,26 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   impact_far_nonpen: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
   impact_far_ricochet: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
   expl_he_small: o({ loudDb: 136 }),
+  // round 1 (2026-10-13): the distant recordings carry their distance (a quieter master, little air loss); a round
+  // through a wall is an impact, not a collapse; the glass and the heavy pieces stay nearer
+  collapse_far: o({ priority: 70, refM: 120, rolloff: 0.8, maxM: 3500, absorb: 0.4, send: 0.3, loudDb: 150 }),
+  wall_break_far: o({ priority: 60, refM: 60, rolloff: 0.75, maxM: 2600, absorb: 0.45, send: 0.3, loudDb: 140 }),
+  impact_far_building: o({ refM: 35, maxM: 2400, absorb: 0.5, send: 0.3, loudDb: 130 }),
+  impact_far_ground: o({ priority: 50, refM: 35, maxM: 2200, absorb: 0.5, send: 0.3, loudDb: 126 }),
+  shell_hit_masonry: o({ priority: 76, refM: 15, rolloff: 0.75, maxM: 1200, loudDb: 136 }),
+  shell_hit_adobe: o({ priority: 76, refM: 15, rolloff: 0.75, maxM: 1200, loudDb: 134 }),
+  blast_masonry: o({ priority: 77, refM: 20, rolloff: 0.7, maxM: 1600, loudDb: 142 }),
+  glass_cascade: o({ priority: 50, refM: 12, rolloff: 0.95, maxM: 500, loudDb: 128, gainDb: -2 }),
+  rubble_chunk_land: o({ priority: 45, refM: 12, rolloff: 0.95, maxM: 500, loudDb: 126, gainDb: -2 }),
+  ammo_explode_far: o({ refM: 140, rolloff: 0.8, maxM: 4000, absorb: 0.35, send: 0.3, loudDb: 154 }),
+  launch_far: o({ refM: 50, rolloff: 0.68, maxM: 1800, absorb: 0.55, send: 0.26, loudDb: 130 }),
+  hull_land: o({ priority: 72, maxInstances: 4, cooldownS: 0.15, refM: 10, maxM: 450, loudDb: 132 }),
+  hit_metal: o({ priority: 70, refM: 9, maxM: 400, loudDb: 132 }),
+  // the big breakables carry further than clutter: a mining truck or an aircraft going is heard across a few hundred metres
+  machine_wreck: o({ priority: 66, refM: 16, rolloff: 0.85, maxM: 700, loudDb: 136 }),
+  aircraft_crush: o({ priority: 62, refM: 14, rolloff: 0.9, maxM: 600, loudDb: 132 }),
+  truck_crush: o({ priority: 60, refM: 12, rolloff: 0.95, maxM: 450, loudDb: 130 }),
+  stone_fall: o({ priority: 58, refM: 12, rolloff: 0.95, maxM: 450, loudDb: 130 }),
   expl_he_medium: o({ refM: 22, rolloff: 0.68, maxM: 2200, absorb: 0.75, send: 0.24, loudDb: 148 }),
   expl_he_large: o({ refM: 28, rolloff: 0.62, maxM: 3000, absorb: 0.6, send: 0.28, loudDb: 154 }),
   expl_far: o({ refM: 120, rolloff: 0.8, maxM: 3500, absorb: 0.4, send: 0.3, loudDb: 150 }),

@@ -155,7 +155,7 @@ const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[mix] vite up at ${url}`);
 
 const browser = await puppeteer.launch({ headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'] });
-const report = { garage: null, bed: null, shots: {}, radio: null, density: null, drone: null, gunship: null, errors: [] };
+const report = { garage: null, bed: null, shots: {}, destruction: null, radio: null, density: null, drone: null, gunship: null, errors: [] };
 const fail = (msg) => { report.errors.push(msg); console.error('[mix] FAIL: ' + msg); };
 const consoleErrors = [];
 try {
@@ -238,6 +238,35 @@ try {
   if (report.shots.cannon_own.anatomy.atKnee > 40) fail(`our own gun rides the soft clip (${report.shots.cannon_own.anatomy.atKnee} samples at its knee)`);
   if (report.shots.cannon_own.peakOverBedDb < 22) fail(`our own gun's crack peaks only ${report.shots.cannon_own.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   await sleep(4000);
+  // 2b) Destruction and launches (the audio stream's round 1, 2026-10-13): a brick house coming down near and far, a
+  //     wall giving way, a missile leaving its tube. A collapse at 40 m stands at least 10 dB over the bed and no more
+  //     than 2 dB over a near cannon's loudest 100 ms (it is big, the guns still lead); at 450 m its distant recording
+  //     keeps it at least 3 dB over the bed; a wall at 40 m at least 8 dB; a tube launch at 30 m at least 10 dB.
+  report.destruction = {};
+  await page.evaluate(() => window.__COT_AUDIO.preload(['collapse_brick', 'collapse_far', 'wall_break_brick', 'wall_break_far',
+    'rubble_chunk_land', 'debris_dirt', 'glass_shatter', 'launch_tube', 'launch_far']));
+  await sleep(1500);
+  const stage = (stageName, dx, dz) => `(() => { const D = window.__DEBUG; const p = D.game.player.state.pos;
+    const x = p.x + ${dx}, z = p.z + ${dz};
+    D.bus.emit('structure:stage', { structureId: -1, massClass: 'house', cx: x, cz: z, hw: 5, hd: 6, yaw: 0, baseY: p.y, topY: p.y + 8,
+      stage: '${stageName}', previous: 'damaged', cause: 'blast', munition: 'he', x, y: p.y + 2, z, dirX: 1, dirZ: 0, points: 400,
+      integrity: 0 }); })()`;
+  for (const [name, stageName, dx, dz, minOverBed, ms] of [
+    ['collapse_40m', 'collapsed', 28, 28, 10, 6500], ['collapse_450m', 'collapsed', 318, 318, 3, 7000], ['wall_40m', 'breached', 28, 28, 8, 3500]]) {
+    const m = await capture(name, ms, stage(stageName, dx, dz));
+    const over = m.burstDb - report.bed.rmsDb;
+    report.destruction[name] = { ...m, overBedDb: +over.toFixed(1), overNearCannonDb: +(m.burstDb - report.shots.cannon_15m.burstDb).toFixed(1) };
+    if (over < minOverBed) fail(`${name} stands only ${over.toFixed(1)} dB over the battle bed (want ≥ ${minOverBed})`);
+    await sleep(3000);
+  }
+  if (report.destruction.collapse_40m.overNearCannonDb > 2) fail(`a collapse at 40 m is ${report.destruction.collapse_40m.overNearCannonDb} dB over a near cannon (want ≤ 2: the guns lead)`);
+  const launch = `(() => { const D = window.__DEBUG; const p = D.game.player.state.pos; const e = D.game.tanks.find((t) => t.team === 'enemy' && t.state);
+    D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: e.id, isPlayer: false, shellType: 'HEAT', shellName: 'BGM-71 TOW-2A', weaponSound: 'tow-launch',
+      caliberMm: 152, muzzlePos: [p.x, p.y + 2, p.z + 30], dir: [0, 0, 1] }); })()`;
+  const lm = await capture('launch_tube_30m', 3500, launch);
+  report.destruction.launch_tube_30m = { ...lm, overBedDb: +(lm.burstDb - report.bed.rmsDb).toFixed(1) };
+  if (report.destruction.launch_tube_30m.overBedDb < 10) fail(`a tube launch at 30 m stands only ${report.destruction.launch_tube_30m.overBedDb} dB over the bed (want ≥ 10)`);
+  await sleep(3000);
   // 3) The crew radio against a near cannon.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 }).catch(() => fail('crew pack did not decode'));
   report.radio = await capture('radio_line', 2600, '(() => { window.__COT_AUDIO.clearVoiceQueue(); window.__COT_AUDIO.sayVoice("enemy_spotted"); })()');

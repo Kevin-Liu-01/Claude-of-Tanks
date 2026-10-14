@@ -5,5 +5,7 @@
   "pole_wires": [1, 2],
   "pole_fall": [1, 2],
   "straw_crush": [1, 3],
-  "bell_orthodox": [2, 0]
+  "bell_orthodox": [2, 0],
+  "rubble_chunk_land": [0, 1],
+  "wall_break_concrete": [3, 4, 5]
 }

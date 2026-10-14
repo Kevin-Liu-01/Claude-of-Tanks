@@ -964,6 +964,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/audioMath.selftest.mjs',
     'src/audio/vehicleAudioProfiles.selftest.mjs',
     'src/audio/weaponAudio.selftest.mjs',
+    'src/audio/weaponCoverage.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',

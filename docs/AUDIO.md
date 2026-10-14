@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 418 sound-effect assets, 684 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 19.8 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 456 sound-effect assets, 776 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 22.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 109 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -773,6 +773,31 @@ crew-lines.json ─┐                    crew-voices.json
   `sfxLoudness.selftest.mjs`. The battle set now pins every prop sound (17 more
   assets, about 8 MB decoded on desktop and 3 MB on mobile), so no first crush
   of a battle is silent while it decodes.
+- **2026-10-13, destruction round 1 (AU.03).** The owner (10-12): "a lot of
+  stuff like destructions and impacts ... so its not quiet all the time". The
+  gap list (every bus event against the engine's subscriptions) found buildings
+  breaking as brick whatever they were, section falls (`structure:breach`) silent,
+  set pieces breaking as wooden crates, a hull's crash and landing a coin toss
+  between rock and wall, and every missile family on one launch bank. 38 new
+  assets and `turret_land` re-rolled to four variants (6,288 credits): a wall
+  giving way and a building coming down in each of six materials (brick, stone,
+  timber, concrete, plaster or adobe, sheet steel), read from the structure's
+  damage anatomy (`world.structureDamage(id).anatomy.rubble`, the same shares
+  the fx dust uses, through the engine's `getStructureMakeup` option); a roof
+  caving in and a storey dropping; a round through brick or mud-brick, an HE
+  burst on masonry, big windows going, heavy pieces landing on the heap; distant
+  collapses, breaches, building strikes and ground strikes crossfaded in by range
+  (`STRUCTURE_FAR`: 180–560 m in, 320–820 m out); heavy plant, an aircraft
+  fuselage, a lorry, the village well, the monument's crack and fall and the coal
+  heaps; a hull landing and a hull ramming steel (`tank:impact` now carries the
+  struck record's kind from the solo step); a far ammunition blast; and four
+  launches (tube, soft eject, rail, gun barrel) chosen by the round's name, then
+  its launch profile (`weaponAudio.missileLaunchFor`, the fx lane's families).
+  The long debris sounds use a new `debris` preset (56 kbps mono). The report
+  banks moved to `weaponAudio.ts`, and `weaponCoverage.selftest.mjs` walks every
+  playable vehicle's rounds and roof stations (220 vehicles, 643 rounds, 75
+  stations, the M551A1 TTS's 30 mm among them) to a shipped report. The
+  payload cap rose from 20 to 28 MB for this and the next rounds.
 
 ### Cost
 

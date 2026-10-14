@@ -45,7 +45,16 @@ const first = (kind) => ids(kind)[0];
 assert.equal(first('haycart'), 'cart_break', 'a haycart is a wooden cart ("cart" matched /car/)');
 assert.equal(first('handcart'), 'cart_break');
 assert.ok(ids('haycart').includes('straw_crush'), 'the haycart\'s load of hay goes down with it');
-for (const kind of ['truck', 'jeep', 'sedan', 'wagon', 'pickup', 'van', 'truckbox', 'truckflatbed']) assert.equal(first(kind), 'car_crush', `${kind} crushes as a car`);
+for (const kind of ['jeep', 'sedan', 'wagon', 'pickup', 'van']) assert.equal(first(kind), 'car_crush', `${kind} crushes as a car`);
+for (const kind of ['truck', 'truckbox', 'truckflatbed']) assert.equal(first(kind), 'truck_crush', `${kind}: a lorry's cab and frame, not a sedan`);
+// the set pieces (PR.01) break as heavy plant, the aircraft as aluminium; the small props (s7) as what they are
+for (const kind of ['setpiece_haulpak', 'setpiece_d8h', 'setpiece_stz3', 'setpiece_bv206', 'setpiece_snocat', 'setpiece_k2tram']) {
+  assert.equal(first(kind), 'machine_wreck', `${kind} is heavy plant, not a wooden crate`);
+}
+assert.equal(first('setpiece_an26'), 'aircraft_crush');
+assert.equal(first('well'), 'well_break');
+assert.deepEqual(ids('monument'), ['stone_crack', 'stone_fall'], 'the monument cracks, then lands');
+assert.equal(first('coal-heap'), 'coal_crunch', 'coal, not sandbags');
 for (const kind of ['bale', 'stook', 'haystack', 'strawstack']) assert.equal(first(kind), 'straw_crush', `${kind} is straw, not a crate`);
 for (const kind of ['tent', 'deserttent', 'commandtent', 'fieldhospital']) assert.equal(first(kind), 'tent_collapse', `${kind} is canvas`);
 assert.notEqual(first('guardpost'), 'fence_wood', 'a steel guard post is no wooden fence ("post")');

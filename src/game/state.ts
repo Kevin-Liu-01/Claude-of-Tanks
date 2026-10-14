@@ -269,6 +269,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     _impactAccumT?: number;
     /** Destruction: the structure record this hull met hard this tick (a crash prices a ram on it). */
     _ramRecord?: CollisionRecord | null;
+    /** What the hull last struck hard this step (a record kind, 'structure', 'cliff'): the crash's sound (audio). */
+    _struckKind?: string | null;
     /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
     _ramKeep?: number;
     _modeTargetX?: number;
@@ -1727,6 +1729,7 @@ function resolveObstacleCollisions(
     }
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
+    if (self) self._struckKind = obstacle.structureIdx !== undefined ? 'structure' : obstacle.kind ?? null;
     if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
@@ -2490,6 +2493,8 @@ function publishHullImpact(
     pos: [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z],
     // impact physics (2026-09-25): what the blow was and what it cost, for the HUD, the audio and the report
     cause: kind,
+    // what it struck, for the crash's sound (2026-10-13; a landing struck the ground)
+    struck: kind === 'impact' ? entity._struckKind ?? null : null,
     hard: true,
     damage,
     destroyed: !!result?.destroyed,
@@ -2542,6 +2547,7 @@ function resolveTankImpacts(
     });
     if (result || (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S)) {
       entity._lastImpactT = game.timeS;
+      if (state.impactSource === IMPACT_SOURCE_CLIFF) entity._struckKind = 'cliff';
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
     // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
@@ -2635,6 +2641,7 @@ function stepTankMovement(
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+    entity._struckKind = null;
     entity._ramRecord = null;
     entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }

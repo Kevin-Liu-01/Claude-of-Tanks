@@ -200,7 +200,7 @@ const impacts = [
 const destruction = [
   sfx('tank_explode', 'destruction', `One-shot of an armoured vehicle destroyed by an internal explosion: violent blast, metal tearing, a secondary explosion, debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('turret_land', 'destruction', `One-shot of a heavy steel tank turret crashing onto the ground: enormous metallic crunch and thud. ${NO_MUSIC}.`, 2, { variants: 2, takes: 2, proc: 'impact' }),
+  sfx('turret_land', 'destruction', `One-shot of a heavy steel tank turret crashing onto the ground: enormous metallic crunch and thud. ${NO_MUSIC}.`, 2, { variants: 4, takes: 8, proc: 'impact' }),
   sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
   sfx('cookoff_loop', 'destruction', `Seamless loop of ammunition cooking off inside a burning tank: irregular popping bangs over crackling fire. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('wreck_fire_loop', 'destruction', `Seamless loop of a large vehicle fire: roaring flames, steady crackling and popping. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
@@ -681,10 +681,78 @@ const stingers = [
   sfx('cache_drop', 'props', `One-shot of a heavy supply crate dropped by parachute landing hard on the ground: a deep thud, a crunch and the canopy rustling down. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact', punch: false }),
 ];
 
+
+// ---------------------------------------------- destruction round 1 (AU.03) ---
+// The audio stream, 2026-10-13 (the owner, 10-12: "a lot of stuff like destructions and impacts ... so its not quiet
+// all the time"). Buildings break by what they are built of (the structure anatomy's rubble materials), sections fall,
+// set pieces and small props break as what they are, hulls land and hit by what they meet, missiles leave by how they
+// launch, and the big events carry far with their own distant recordings. The long debris sounds use the compact
+// 'debris' preset (56 kbps mono): a collapse is noise, and Opus keeps it at that rate.
+const BLD = `recorded about 40 metres away outdoors. Realistic documentary field recording, not cinematic, no explosion, no gunfire, ${NO_MUSIC}`;
+const FAR = `${FIELD}, no crack, ${NO_MUSIC}`;
+const NEAR30 = `recorded 30 metres beside it. Realistic documentary field recording, not cinematic, no explosion, ${NO_MUSIC}`;
+const structures = [
+  // a wall giving way (the damaged and breached stages; a ram or a burst)
+  sfx('wall_break_brick', 'buildings', `One-shot of a section of an old brick house wall bursting apart as it is hit: bricks cracking and breaking loose, a short heavy cascade of bricks and mortar tumbling onto the ground, grit settling. ${BLD}.`, 2.6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wall_break_stone', 'buildings', `One-shot of a thick fieldstone farmhouse wall breaking apart as it is hit: heavy stone blocks cracking and grinding loose, deep heavy thuds of big stones falling onto the ground, gravel trickling. ${BLD}.`, 2.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wall_break_timber', 'buildings', `One-shot of the wooden wall of a timber barn smashed in: thick planks and beams cracking and splintering, boards clattering down, a hollow wooden boom. ${BLD}.`, 2.4, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wall_break_concrete', 'buildings', `One-shot of a reinforced concrete wall cracking open as it is hit: a hard dry crack, heavy concrete chunks breaking off and thudding down, steel rebar twanging, grit pattering. ${BLD}.`, 2.6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wall_break_plaster', 'buildings', `One-shot of a thick mud-brick wall with lime render crumbling apart as it is hit: a dull earthy crack, heavy clods and sun-dried bricks crumbling down, a hiss of dry dust and sand pouring. ${BLD}.`, 2.6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wall_break_steel', 'buildings', `One-shot of the corrugated sheet-steel wall of a shed torn open as it is hit: steel sheets buckling and tearing with a hollow metallic boom, rivets popping, panels clattering down. ${BLD}.`, 2.4, { variants: 3, takes: 6, proc: 'impact' }),
+  // the building coming down (the collapsed stage)
+  sfx('collapse_brick', 'buildings', `One-shot of a two-storey brick house collapsing: a deep groaning crack, floors and walls caving in with a long heavy roar of bricks, beams and roof tiles crashing down into a heap, rubble trickling at the end. ${BLD}.`, 6, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('collapse_stone', 'buildings', `One-shot of an old stone farmhouse collapsing: massive stone blocks breaking away and crashing down in a deep thundering roar, heavy impacts shaking the ground, stones rolling and settling at the end. ${BLD}.`, 6, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('collapse_timber', 'buildings', `One-shot of a large wooden barn collapsing: timber beams cracking and snapping one after another, the roof caving in with a long crash of planks and shingles, boards clattering and settling at the end. ${BLD}.`, 5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('collapse_concrete', 'buildings', `One-shot of a concrete apartment block collapsing: deep cracks of breaking reinforced concrete, floor slabs pancaking down in a heavy thunderous roar, rebar screeching, a long rumble of debris settling. ${BLD}.`, 6, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('collapse_plaster', 'buildings', `One-shot of a mud-brick desert house collapsing: dull heavy crumbling of sun-dried walls, the flat earth roof falling in with a deep soft thump, a long pouring hiss of sand, dust and clods settling. ${BLD}.`, 5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('collapse_steel', 'buildings', `One-shot of a steel-framed industrial shed collapsing: girders groaning and buckling, corrugated steel roof sheets folding and crashing down in a long hollow metallic roar, metal debris rattling and settling. ${BLD}.`, 5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  // a section falling inside a standing building (structure:breach sectionDown)
+  sfx('roof_fall', 'buildings', `One-shot of the tiled roof of a house caving in: rafters cracking, hundreds of clay roof tiles sliding off and smashing on the ground in a long clattering cascade. ${BLD}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('floor_fall', 'buildings', `One-shot of an upper floor crashing down inside a ruined building: one deep heavy thud of a falling floor and its beams, a burst of rubble and dust, the walls shuddering. ${BLD}.`, 3, { variants: 2, takes: 5, proc: 'impact' }),
+  // a round through a wall; a burst against one; the windows going
+  sfx('shell_hit_masonry', 'buildings', `One-shot of an armour-piercing tank shell punching through a brick wall: a sharp hard crack, bricks bursting out of the far side, a spray of brick fragments and dust. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('shell_hit_adobe', 'buildings', `One-shot of a tank shell punching through a thick mud-brick wall: a dull hard thump, earth and clods bursting out, a hiss of dust. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('blast_masonry', 'buildings', `One-shot of a high-explosive shell exploding against the wall of a stone house: a sharp powerful blast, then bricks, stones and splinters spraying out and raining down onto the street. ${FIELD}, ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('glass_cascade', 'buildings', `One-shot of the large windows of a building blown in: big panes of glass bursting and shattering, a cascade of glass shards raining down onto pavement. ${NO_MUSIC}.`, 2.2, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('rubble_chunk_land', 'buildings', `One-shot of a big chunk of masonry falling from a height and slamming onto rubble-strewn ground: one heavy dull stone thud with a short crunch of brick fragments. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 6, proc: 'impact' }),
+  // heard from far away (crossfaded in by range, as the distant armour hits are)
+  sfx('collapse_far', 'buildings', `One-shot of a large building collapsing far away, about a kilometre across a battlefield: a long deep muffled rumble of masonry coming down and a low rolling echo. ${FAR}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far' }),
+  sfx('wall_break_far', 'buildings', `One-shot of a house wall blown apart by a shell about 600 metres away: a dull distant thump and a short muffled rumble of falling masonry, outdoor echo. ${FAR}.`, 3, { variants: 2, takes: 4, proc: 'weapon-far' }),
+  sfx('impact_far_building', 'impacts', `One-shot of a tank shell striking a building about 600 metres away: a hard distant knock and a short muffled crumble of masonry, outdoor echo. ${FIELD}, ${NO_MUSIC}.`, 2.5, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-far' }),
+  sfx('impact_far_ground', 'impacts', `One-shot of a tank shell slamming into the ground about 600 metres away: a dull distant thump of earth with a short outdoor echo. ${FAR}.`, 2.2, { inf: 0.6, variants: 2, takes: 4, proc: 'weapon-far' }),
+];
+const breakables = [
+  // set pieces (PR.01): mining trucks, dozers, tractors, over-snow carriers, the tram; the transport aircraft
+  sfx('machine_wreck', 'props', `One-shot of a huge mining dump truck wrecked by a tank shell: a massive steel frame buckling with a deep metallic crunch, a hydraulic line bursting with a hiss, cab glass shattering, heavy steel parts clanging down. ${NO_MUSIC}.`, 3.5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('aircraft_crush', 'props', `One-shot of a parked transport aircraft's aluminium fuselage crushed by a tank: thin aluminium skin crumpling and tearing with a hollow booming rattle, ribs snapping, windows popping. ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('truck_crush', 'props', `One-shot of a tank rolling over a military truck: the steel cab roof folding under it with a deep metallic crunch, the frame groaning, windscreen glass bursting, a tyre popping. ${NO_MUSIC}.`, 3, { variants: 3, takes: 6, proc: 'impact' }),
+  // the village well and the square's monument (223, s7), the rail yard's coal heaps
+  sfx('well_break', 'props', `One-shot of a village stone well smashed by a tank: the stone curb cracking and stones tumbling, the small wooden roof splintering, the iron chain and bucket clattering down the shaft. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('stone_crack', 'props', `One-shot of a tall stone monument cracking at its base as a tank pushes it: a loud deep grinding crack of breaking stone and the groan of the leaning column. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('stone_fall', 'props', `One-shot of a tall stone obelisk slamming flat onto a paved square: one enormous heavy stone impact that shakes the ground, the shaft breaking in two, fragments skittering. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('coal_crunch', 'props', `One-shot of a heavy tank driving into a heap of coal: lumps of coal crunching and cracking under steel tracks, a sliding rush of coal pouring down the heap. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'impact', punch: false }),
+];
+const hullEvents = [
+  // a hull landing after a drop, and one striking a steel obstacle (tank:impact by cause and by what it struck)
+  sfx('hull_land', 'collisions', `One-shot of a 60-ton tank landing hard after driving off a drop: the suspension bottoming out with a massive steel slam, road wheels and tracks clattering, a deep ground thud. ${NO_MUSIC}.`, 1.6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('hit_metal', 'collisions', `One-shot of a tank ramming into a burnt-out steel vehicle hulk: a heavy dull steel clang and crunch of bending armour plate, grinding metal. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('ammo_explode_far', 'destruction', `One-shot of a tank's ammunition exploding far away, about a kilometre: a deep heavy boom followed by a rolling series of muffled secondary blasts and a long low echo. ${FAR}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far' }),
+];
+const missileLaunches = [
+  // how each missile family leaves its launcher (the fx lane's EF.04 launch types): a tube's charge and backblast, a
+  // soft eject whose motor lights clear of the tube, a rail, a gun barrel; and a launch heard far away
+  sfx('launch_tube', 'weapons', `Sound effect: an anti-tank guided missile fired from a launch tube on an armoured vehicle, ${NEAR30}: a sharp hard launch bang and a blast of backblast air, at once the fierce hissing roar of the rocket motor flying away and fading.`, 3, { inf: 0.6, variants: 3, takes: 6, proc: 'weapon-close' }),
+  sfx('launch_soft', 'weapons', `Sound effect: a fire-and-forget missile soft-launched from its tube, ${NEAR30}: a muffled pneumatic thump of the eject charge running straight into the sharp ignition roar of the flight motor, which screams away and fades. Continuous, no silence.`, 3, { inf: 0.6, variants: 3, takes: 6, proc: 'weapon-close' }),
+  sfx('launch_rail', 'weapons', `Sound effect: a missile fired off a launch rail, ${NEAR30}: the rocket motor igniting with a harsh tearing roar and a hiss of exhaust as the missile rips off the rail and screams away, fading.`, 3, { inf: 0.6, variants: 3, takes: 6, proc: 'weapon-close' }),
+  sfx('launch_gun', 'weapons', `Sound effect: a guided missile fired out of a tank's gun barrel, ${NEAR30}: a hard low-pressure cannon bang, softer than a full charge, at once the rushing hiss of the missile's motor flying away and fading.`, 3, { inf: 0.6, variants: 3, takes: 6, proc: 'weapon-close' }),
+  sfx('launch_far', 'weapons', `One-shot of a guided missile launched far away, about 800 metres: a soft distant thump and a fading rushing hiss of the rocket motor, outdoor echo. ${FAR}.`, 3, { variants: 2, takes: 4, proc: 'weapon-far' }),
+];
+
 export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
+  ...structures, ...breakables, ...hullEvents, ...missileLaunches,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */

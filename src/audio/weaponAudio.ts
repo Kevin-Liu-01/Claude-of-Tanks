@@ -133,6 +133,104 @@ export function resolveWeaponReport(caliberMm: number, soundProfile: string | nu
   };
 }
 
+// ------------------------------------------------------------ report banks ---
+
+/** The close (exterior) report of each class: what everyone near the gun hears. */
+export const WEAPON_CLOSE: Readonly<Record<WeaponClassId, string>> = Object.freeze({
+  mg_rifle: 'mg_rifle_close', mg_heavy: 'mg_heavy_close',
+  ac_20: 'ac_20_close', ac_25: 'ac_25_close', ac_30: 'ac_30_close', ac_40: 'ac_40_close', ac_50: 'ac_50_close',
+  gun_90: 'gun_90_close', gun_105: 'gun_105_close', gun_120: 'gun_120_close', gun_125: 'gun_125_close',
+  gun_130: 'gun_130_close', gun_152: 'gun_152_close', atgm: 'atgm_launch', rocket_heavy: 'rocket_salvo',
+  gunship_30: 'ac_30_close', gunship_howitzer: 'gun_152_close', gunship_missile: 'atgm_launch',
+});
+
+/**
+ * The crew's own gun: a dedicated report, fuller than anyone else's, as World
+ * of Tanks keeps the player's shot apart. Classes without one use their close bank.
+ */
+export const OWN_REPORT: Readonly<Partial<Record<WeaponClassId, string>>> = Object.freeze({
+  gun_90: 'gun_own_medium', gun_105: 'gun_own_medium', gun_120: 'gun_own_large', gun_125: 'gun_own_large',
+  gun_130: 'gun_own_heavy', gun_152: 'gun_own_heavy', atgm: 'missile_launch_own',
+  // The AC-130's crew hears its guns inside the cargo cabin, the missile leaving the wing pylon.
+  gunship_30: 'gunship_30mm_own', gunship_howitzer: 'gunship_howitzer_own', gunship_missile: 'gunship_missile_own',
+});
+
+/** The distant report of each class, crossfaded in by range. */
+export const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze({
+  mg_rifle: 'mg_far', mg_heavy: 'mg_far',
+  ac_20: 'ac_far_light', ac_25: 'ac_far_light', ac_30: 'ac_far_light', ac_40: 'ac_far_heavy', ac_50: 'ac_far_heavy',
+  gun_90: 'gun_far_light', gun_105: 'gun_far_light', gun_120: 'gun_far_medium', gun_125: 'gun_far_medium',
+  gun_130: 'gun_far_heavy', gun_152: 'gun_far_heavy', atgm: 'launch_far', rocket_heavy: 'gun_far_heavy',
+  gunship_30: 'gunship_30mm_far', gunship_howitzer: 'gunship_howitzer_far', gunship_missile: 'launch_far',
+});
+
+// ------------------------------------------------------- missile launches ---
+
+/**
+ * How a guided round leaves its launcher (the fx lane's EF.04 launch types, fx/missileLooks.ts on
+ * `item/fx-missile-traces`): a tube's launch charge and backblast (TOW, Konkurs, MILAN, Jyu-MAT, Kornet, Ataka), a soft
+ * eject whose motor lights clear of the tube (Spike, Javelin, LMAT, Stinger), a rail (Hellfire, HJ-10, the old MCLOS
+ * rounds, the Viper micro-missile), or a gun barrel (Arkan, Shillelagh, the MRM). Until 2026-10-13 every one of them
+ * played the one `atgm_launch` bank.
+ */
+export type MissileLaunchKind = 'tube' | 'soft' | 'rail' | 'gun';
+
+/** The round's own name -> its launch (first match; the names the fx lane reads, by family). */
+const LAUNCH_BY_NAME: readonly (readonly [RegExp, MissileLaunchKind])[] = Object.freeze([
+  [/\bTOW\b|BGM-71/i, 'tube'],
+  [/9M-695|HJ-P9/i, 'tube'],
+  [/Konkurs|9M113|Fagot|9M111|Metis|9M115|9M131|HJ-8|Red Arrow 8/i, 'tube'],
+  [/MILAN|\bHOT\b|Euromissile/i, 'tube'],
+  [/Malyutka|9M14|Sagger|SS-11|ENTAC|KAM-3|Type 64/i, 'rail'],
+  [/Jyu-MAT Kai|Type 01|LMAT|Javelin|FGM-148|Spike|MELLS|NLAW|\bMMP\b|Akeron|HJ-12|Red Arrow 12/i, 'soft'],
+  [/Jyu-MAT|Type 79|KAM-9/i, 'tube'],
+  [/Kornet|9M133|Stugna|Skif|Barrier|Bulat|Corsar/i, 'tube'],
+  [/Arkan|9M117|Bastion|Refleks|9M119|Svir|Kobra|9M112|Sheksna|Invar|LAHAT|Falarick|Konus/i, 'gun'],
+  [/Ataka|9M120|Shturm|9M114|Khrizantema|9M123/i, 'tube'],
+  [/Shillelagh|MGM-51/i, 'gun'],
+  [/Hellfire|AGM-114|HJ-10|Brimstone|JAGM|Hermes|AKD-10/i, 'rail'],
+  [/Stinger|FIM-92|Igla|Strela|Mistral|Starstreak/i, 'soft'],
+  [/MRM|XM1210|Hypersonic/i, 'gun'],
+  [/Viper micro|micro-missile/i, 'rail'],
+]);
+
+/** The launch sound profile -> its launch, for a round whose name says nothing. */
+const LAUNCH_BY_SOUND: Readonly<Record<string, MissileLaunchKind>> = Object.freeze({
+  'tow-launch': 'tube', 'konkurs-launch': 'tube', 'milan-launch': 'tube', 'jyu-mat-launch': 'tube',
+  'spike-launch': 'soft', 'arkan-launch': 'gun', 'ataka-launch': 'tube', 'shillelagh-launch': 'gun',
+});
+
+/** Each launch's recording (close; the class's distant bank carries it far). */
+export const LAUNCH_ASSET: Readonly<Record<MissileLaunchKind, string>> = Object.freeze({
+  tube: 'launch_tube', soft: 'launch_soft', rail: 'launch_rail', gun: 'launch_gun',
+});
+
+/** How a guided round leaves its launcher: by its name, then its launch sound, else a tube (the commonest kind). */
+export function missileLaunchFor(name: string | null | undefined, sound: string | null | undefined): MissileLaunchKind {
+  const n = typeof name === 'string' ? name : '';
+  if (n) for (const [re, kind] of LAUNCH_BY_NAME) if (re.test(n)) return kind;
+  const s = typeof sound === 'string' ? LAUNCH_BY_SOUND[sound] : undefined;
+  return s ?? 'tube';
+}
+
+/** Whether a sound profile names a launcher (every guided round's is a '*-launch' profile). */
+export function isLaunchProfile(soundProfile: string | null | undefined): boolean {
+  return typeof soundProfile === 'string' && !!REPORT_TRIMS[soundProfile]?.launcher;
+}
+
+/**
+ * Every recording a shot of this weapon can play outside our own hull: the close report (a launcher's by how it
+ * launches), the distant report, and our own report where the class has one. The coverage receipt
+ * (weaponCoverage.selftest.mjs) holds every station of every playable vehicle to these.
+ */
+export function weaponReportAssets(caliberMm: number, soundProfile: string | null | undefined, roundName?: string | null): {
+  cls: WeaponClassId; close: string; far: string; own: string | null;
+} {
+  const { cls } = resolveWeaponReport(caliberMm, soundProfile);
+  const close = cls.id === 'atgm' ? LAUNCH_ASSET[missileLaunchFor(roundName, soundProfile)] : WEAPON_CLOSE[cls.id];
+  return { cls: cls.id, close, far: WEAPON_FAR[cls.id], own: OWN_REPORT[cls.id] ?? null };
+}
+
 // ---------------------------------------------------------------- reloads ---
 
 export type ReloadCueType =
