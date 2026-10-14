@@ -610,6 +610,7 @@ try {
   }else{
     // (2026-10-13) after a role swap B can be the page that created the room, its focus still in the play menu's fields:
     // the game ignores keys typed into a field (the private run's B moved 0.93 m in 12 s). Blur it and bring B forward.
+    report.play.focusBefore = await pages.b.evaluate(() => ({ active: document.activeElement?.tagName ?? null, field: document.activeElement?.getAttribute?.('data-field') ?? null, hasFocus: document.hasFocus(), hidden: document.hidden })).catch(() => null);
     await pages.b.bringToFront().catch(() => {});
     await pages.b.evaluate(() => { const active = document.activeElement; if (active && active !== document.body && typeof active.blur === 'function') active.blur(); });
     await pages.b.keyboard.down('KeyW');await pages.b.keyboard.down('KeyA');
@@ -643,7 +644,7 @@ try {
   else{await pages.b.keyboard.up('KeyA');await pages.b.keyboard.up('KeyW');}
   const after = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
   const movedM = after.c.other && before.c.other ? Math.hypot(after.c.other.x - before.c.other.x, after.c.other.z - before.c.other.z) : 0;
-  report.play = { movedBAsCSaw: movedM, snapshotsC: after.c.snapshots - before.c.snapshots, snapshotsB: after.b.snapshots - before.b.snapshots, keyframesRetainedC: await pages.c.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.match ? true : null) };
+  report.play = { ...report.play, movedBAsCSaw: movedM, snapshotsC: after.c.snapshots - before.c.snapshots, snapshotsB: after.b.snapshots - before.b.snapshots, keyframesRetainedC: await pages.c.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.match ? true : null) };
   step('played', report.play);
   if (movedM < 2) failures.push(`C saw B move ${movedM.toFixed(2)} m in ${playS} s`);
   if (report.play.snapshotsC < playS * 15) failures.push(`C received ${report.play.snapshotsC} snapshots in ${playS} s`);
