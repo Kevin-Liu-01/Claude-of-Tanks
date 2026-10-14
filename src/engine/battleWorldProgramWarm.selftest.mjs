@@ -245,7 +245,12 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   const gl = { lost: false, isContextLost() { return this.lost; },
     SYNC_GPU_COMMANDS_COMPLETE: 0x9117, TIMEOUT_EXPIRED: 0x911b, ALREADY_SIGNALED: 0x911a, fences: [], deleted: 0,
     fenceSync() { const sync = { polls: 0 }; this.fences.push(sync); return sync; }, flush() {},
-    clientWaitSync(sync, flags, timeout) { assert.equal(timeout, 0, 'never a blocking wait'); return ++sync.polls > 2 ? this.ALREADY_SIGNALED : this.TIMEOUT_EXPIRED; },
+    clientWaitSync(sync, flags, timeout) {
+      assert.equal(timeout, 0, 'never a blocking wait');
+      // the first fence's wait sees a sourced image replace the grass placeholder in place
+      if (this.fences.length === 1 && sync.polls === 1) grass.needsUpdate = true;
+      return ++sync.polls > 2 ? this.ALREADY_SIGNALED : this.TIMEOUT_EXPIRED;
+    },
     deleteSync() { this.deleted++; } };
   const resident = new Map(), programUniforms = new Map();
   const texture = (name) => { const t = new THREE.Texture(); t.name = name; t.needsUpdate = true; return t; };
@@ -298,12 +303,13 @@ function harness({ final = true, linkAfter = 2, compileError = null, fenceAfter 
   assert.equal(receipt.materials, 4, 'every terrain material is submitted (the link needs no draw)');
   assert.equal(receipt.drawn, 4, 'one pipeline draw per distinct material and vertex layout, the instanced dressing left to the warm');
   assert.deepEqual(receipt.programIds, [100, 101, 102, 103], 'the receipt names the programs the battle should draw with');
-  assert.deepEqual(log.filter((entry) => entry[0] === 'upload').map((entry) => entry[1]), ['grass', 'rock'],
-    'the textures the draw binds that are not resident upload first, each once (resident, empty and render targets aside)');
+  assert.deepEqual(log.filter((entry) => entry[0] === 'upload').map((entry) => entry[1]), ['grass', 'rock', 'grass'],
+    'the textures the draw binds that are not resident upload first (resident, empty and render targets aside), and one that changed during the fence goes round again');
   assert.equal(receipt.textures, 2);
-  assert.equal(gl.fences.length, 1); assert.equal(gl.fences[0].polls, 3); assert.equal(gl.deleted, 1, 'the fence is polled until signalled, then deleted');
-  assert.equal(log.findIndex((entry) => entry[0] === 'render'), 3, 'and only then the draw');
-  const [compile, , , render] = log;
+  assert.equal(receipt.lateTextures, 1);
+  assert.equal(gl.fences.length, 2); assert.equal(gl.fences[0].polls, 3); assert.equal(gl.deleted, 2, 'each fence is polled until signalled, then deleted');
+  assert.equal(log.findIndex((entry) => entry[0] === 'render'), 4, 'and only then the draw, with nothing left to upload');
+  const [compile, , , , render] = log;
   assert.equal(compile[0], 'compile');
   assert.strictEqual(compile[1], sceneTarget, 'the programs are keyed by the scene pass\'s target');
   assert.strictEqual(compile[2], scene, 'with the scene\'s lights, fog and environment');

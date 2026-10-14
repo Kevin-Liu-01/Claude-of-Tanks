@@ -49,6 +49,8 @@ interface WorldProgramWarmReceipt {
   maxUploadMs: number;
   /** the wait for the GPU's queue to drain before the draw (its first-use program queries are synchronous) */
   fenceMs: number;
+  /** textures that changed after their upload (a sourced image replacing a placeholder) and went round again */
+  lateTextures: number;
   /** the programs' first-use queries (their uniforms and attributes: synchronous), timed apart from the draw */
   programInfoMs: number;
   /** the covered draw's own time */
@@ -118,6 +120,8 @@ const LINK_DEADLINE_MS = 20000;
 const LIGHTS_DEADLINE_MS = 60000;
 /** A GPU queue still busy after this long leaves the draw to the deployment warm. */
 const FENCE_DEADLINE_MS = 30000;
+/** Textures still changing after this many upload rounds leave the draw to the deployment warm. */
+const UPLOAD_ROUNDS_MAX = 8;
 
 interface LightLike {
   isLight?: boolean; isDirectionalLight?: boolean; isSpotLight?: boolean; isPointLight?: boolean;
@@ -158,7 +162,7 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     const own: WorldProgramWarmReceipt = receipt = {
       mapId, status: 'waiting-for-lights', startedMs: null, linkedMs: null, drawnMs: null,
       materials: 0, pending: 0, drawn: 0, signature: null, drawSignature: null, programIds: [],
-      textures: 0, uploadMs: 0, maxUploadMs: 0, fenceMs: 0, programInfoMs: 0, renderMs: 0, drawnFrom: [],
+      textures: 0, uploadMs: 0, maxUploadMs: 0, fenceMs: 0, lateTextures: 0, programInfoMs: 0, renderMs: 0, drawnFrom: [],
     };
     const current = (): boolean => stamp === generation;
     const stop = (status: WorldProgramWarmStatus, error?: unknown): WorldProgramWarmReceipt => {
@@ -209,40 +213,47 @@ export function createBattleWorldProgramWarm(ports: BattleWorldProgramWarmPorts)
     }
     own.linkedMs = since();
     if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
-    // the draw binds every texture the programs sample: any that is not resident yet is uploaded here one per poll, so
-    // no single task under the loader carries the whole set (the budgeted world texture stage finds them resident)
-    if (ports.pendingTextures && ports.upload) {
-      let textures: unknown[];
-      try { textures = ports.pendingTextures(submitted); } catch (error) { return stop('abandoned', error); }
-      own.textures = textures.length;
-      for (const texture of textures) {
+    // The draw binds every texture the programs sample. Any that is not resident is uploaded here, one per poll, so no
+    // single task under the loader carries the set; then a fence lets the GPU queue drain while the build goes on (a
+    // program's first draw makes synchronous queries that wait behind it). In the task that sees the fence signalled,
+    // the textures are checked again: a sourced image that replaced a placeholder in place meanwhile goes round once
+    // more (block 18c: a lone three-vertex draw still took 5.2 s inside three's render, with no variant switch, no light
+    // change and its program queries already answered). The draw follows in that same task, with nothing left to upload.
+    for (let round = 0; ; round++) {
+      if (ports.pendingTextures && ports.upload) {
+        let textures: unknown[];
+        try { textures = ports.pendingTextures(submitted); } catch (error) { return stop('abandoned', error); }
+        if (round === 0) own.textures = textures.length;
+        for (const texture of textures) {
+          if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+          const uploadAt = ports.now();
+          try { ports.upload(texture); } catch (error) { return stop('abandoned', error); }
+          const ms = ports.now() - uploadAt;
+          own.uploadMs = Math.round(own.uploadMs + ms);
+          own.maxUploadMs = Math.max(own.maxUploadMs, Math.round(ms));
+          await ports.wait(LINK_POLL_MS);
+        }
         if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
-        const uploadAt = ports.now();
-        try { ports.upload(texture); } catch (error) { return stop('abandoned', error); }
-        const ms = ports.now() - uploadAt;
-        own.uploadMs = Math.round(own.uploadMs + ms);
-        own.maxUploadMs = Math.max(own.maxUploadMs, Math.round(ms));
-        await ports.wait(LINK_POLL_MS);
       }
-      if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
-    }
-    // A program's first draw asks the GPU process for its uniforms and link log: synchronous queries that wait for
-    // every command issued before them. Under the world build that queue holds the build's uploads and compiles, and
-    // block 18 measured the draw blocking the main thread 5-7 s behind it. A fence polled across tasks lets the queue
-    // drain while the build goes on; the draw follows in the task that sees it signalled.
-    if (ports.fence) {
-      const fenceAt = ports.now();
-      let drained: () => boolean;
-      try { drained = ports.fence(); } catch (error) { return stop('abandoned', error); }
-      for (;;) {
-        if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
-        let done = false;
-        try { done = drained(); } catch (error) { return stop('abandoned', error); }
-        if (done) break;
-        if (ports.now() - fenceAt > FENCE_DEADLINE_MS) { own.fenceMs = Math.round(ports.now() - fenceAt); return stop('link-timeout', 'the GPU queue never drained'); }
-        await ports.wait(LINK_POLL_MS);
+      if (ports.fence) {
+        const fenceAt = ports.now();
+        let drained: () => boolean;
+        try { drained = ports.fence(); } catch (error) { return stop('abandoned', error); }
+        for (;;) {
+          if (!current() || !alive()) return stop('abandoned', alive() ? undefined : 'context lost');
+          let done = false;
+          try { done = drained(); } catch (error) { return stop('abandoned', error); }
+          if (done) break;
+          if (ports.now() - fenceAt > FENCE_DEADLINE_MS) { own.fenceMs += Math.round(ports.now() - fenceAt); return stop('link-timeout', 'the GPU queue never drained'); }
+          await ports.wait(LINK_POLL_MS);
+        }
+        own.fenceMs += Math.round(ports.now() - fenceAt);
       }
-      own.fenceMs = Math.round(ports.now() - fenceAt);
+      let stale = 0;
+      try { stale = ports.pendingTextures?.(submitted).length ?? 0; } catch (error) { return stop('abandoned', error); }
+      if (!stale) break;
+      own.lateTextures += stale;
+      if (round >= UPLOAD_ROUNDS_MAX) return stop('link-timeout', 'the textures kept changing');
     }
     own.drawSignature = ports.signature();
     // a draw under another signature would link a program synchronously on the main thread; leave it to the warm
@@ -427,11 +438,16 @@ export function createRendererWorldProgramWarm(
     const shadowMap = renderer.shadowMap;
     const shadowRender = shadowMap.render;
     const background = scene.background;
+    const matrixWorldAutoUpdate = scene.matrixWorldAutoUpdate;
     try {
       for (const object of hidden) object.visible = false;
       for (const [mesh] of swapped) mesh.material = invisibleMaterial;
       shadowMap.render = () => {};
       scene.background = null;
+      // three's render would first update every matrix in the scene graph, the cached dormant worlds included (block
+      // 18c: a lone three-vertex draw took 0.34-0.43 s every time and 5.2 s once, while scanning the visible scene took
+      // under 1 ms); the stand-ins' matrices are the identity they were made with
+      scene.matrixWorldAutoUpdate = false;
       scene.add(holder);
       const hiddenSignature = lightSignature(scene, camera);
       const scanned = performance.now();
@@ -452,6 +468,7 @@ export function createRendererWorldProgramWarm(
       restoreAt = performance.now();
     } finally {
       scene.remove(holder);
+      scene.matrixWorldAutoUpdate = matrixWorldAutoUpdate;
       scene.background = background;
       shadowMap.render = shadowRender;
       for (const object of hidden) object.visible = true;
@@ -466,7 +483,26 @@ export function createRendererWorldProgramWarm(
   return createBattleWorldProgramWarm({
     isSignatureFinal,
     signature: () => lightSignature(scene, camera),
-    compile: (root) => withTarget(getSceneTarget(), () => renderer.compile(root, camera, scene)),
+    // one representative per material, kind and vertex layout, never all of the terrain's ~200 meshes (each would cost
+    // three a parameter and cache-key pass): a compile-only view the scene never holds
+    compile: (root) => {
+      const representatives: Object3D[] = [];
+      const seen = new Set<string>();
+      root.traverse((object) => {
+        const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; isSkinnedMesh?: boolean };
+        if (!(mesh.isMesh || (object as THREE.Line).isLine || (object as THREE.Points).isPoints || (object as THREE.Sprite).isSprite)) return;
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const key = `${materials.map((material) => material?.uuid).join('+')}|${mesh.isInstancedMesh ? 'i' : ''}${mesh.isBatchedMesh ? 'b' : ''}`
+          + `${mesh.isSkinnedMesh ? 's' : ''}|${mesh.geometry ? Object.keys(mesh.geometry.attributes).sort().join(',') : ''}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        representatives.push(object);
+      });
+      const view = new THREE.Object3D();
+      view.traverseVisible = () => {}; // its lights are the target scene's
+      view.traverse = (visit) => { for (const object of representatives) visit(object); };
+      return withTarget(getSceneTarget(), () => renderer.compile(view, camera, scene));
+    },
     isLinked: (material) => {
       const program = (renderer.properties.get(material) as { currentProgram?: { isReady?(): boolean } }).currentProgram;
       return !program?.isReady || program.isReady() === true;
