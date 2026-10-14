@@ -262,6 +262,9 @@ export interface GateOptions { wicket?: boolean }
 export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb,
   frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }, options: GateOptions = {}): void {
   const steel = frame.bucket === 'structureMetal';
+  // (the iron's bucket: a timber gate's straps, hinges and latch painted iron in its own timber bucket, so a map whose
+  // buildings lay no steel draws no steel batch for them; the cost census, 2026-10-14: Verdant's korovnik gates)
+  const iron: RegionalBucket = steel ? 'structureMetal' : 'structureWood';
   const rng = streamFrom(hashSeed('gateUnit', u, y, w, h, face.out[0], face.out[2]));
   // in a cut opening (sink.recess) the leaves hang at the back of the reveal; T the board, L a ledge's depth
   const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015;
@@ -284,7 +287,7 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
       { colour, decor: true, uv: UV_MEMBER }, 0);
   };
   const strap = (u0: number, u1: number, yc: number, o: number) => {
-    faceBox(sink, 'structureMetal', face, (u0 + u1) / 2, yc, o + 0.005, Math.abs(u1 - u0), 0.05, 0.01, { colour: GATE_IRON, decor: true, fine: true });
+    faceBox(sink, iron, face, (u0 + u1) / 2, yc, o + 0.005, Math.abs(u1 - u0), 0.05, 0.01, { colour: GATE_IRON, decor: true, fine: true });
   };
   const wicketFits = options.wicket !== false && !steel && leafW >= 1.15 && h >= 2.5;
   for (const side of [-1, 1]) {
@@ -326,7 +329,7 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
       brace(wl0 + 0.08, wyb + 0.06, wl1 - 0.08, wyt - 0.06, wf, ledgeTone);
       for (const yy of [wyb, wyt]) strap(wl0 - 0.02, wl0 + 0.38, yy, wf + L);
       // the latch ring and its keeper at the wicket's free side
-      faceBox(sink, 'structureMetal', face, wl1 - 0.05, foot + (wTop - foot) * 0.52, wf + L + 0.012, 0.06, 0.09, 0.024, { colour: GATE_IRON, decor: true, fine: true });
+      faceBox(sink, iron, face, wl1 - 0.05, foot + (wTop - foot) * 0.52, wf + L + 0.012, 0.06, 0.09, 0.024, { colour: GATE_IRON, decor: true, fine: true });
     } else ledge(e0, e1, yb, front, ledgeTone);
     ledge(e0, e1, ym, front, ledgeTone);
     ledge(e0, e1, yt, front, ledgeTone);
@@ -340,7 +343,7 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
   }
   // the cover strip over the meeting stiles, on the right leaf, and the drop bolt's keeper
   faceBox(sink, 'structureWood', face, u + 0.035, y + h / 2 + 0.03, front + L + 0.01, 0.11, h - 0.06, 0.02, { colour: shade(leaf, 0.82), decor: true, uv: UV_MEMBER, fineSides: true }, { top: true });
-  faceBox(sink, 'structureMetal', face, u + 0.035, y + h * 0.48, front + L + 0.028, 0.035, 0.32, 0.016, { colour: GATE_IRON, decor: true, fine: true });
+  faceBox(sink, iron, face, u + 0.035, y + h * 0.48, front + L + 0.028, 0.035, 0.32, 0.016, { colour: GATE_IRON, decor: true, fine: true });
   // the threshold: a sill across the opening from the back of the reveal to a nose a hand proud
   const masonry = frame.bucket !== 'structureWood' && frame.bucket !== 'structureMetal';
   const sillDepth = (r > 0 ? r : 0.02) + 0.08;
