@@ -267,13 +267,29 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
   // the sightlines' villages first (authored): each on its bearing, moved along it off water and out of woods, its
   // street on the nearest road; laid out as a near village out to 2.7 km, a far one's houses beyond
   let anchored = 0;
-  for (const a of settle.villagesAt) {
-    let at: { x: number; z: number } | null = null;
-    for (const dd of [0, 160, -160, 320, -320, 480]) {
-      const q = hinterlandPoint({ azDeg: a.azDeg, distM: a.distM + dd });
-      if (inputs.wetAt(q.x, q.z) <= 0.05 && inputs.woodsAt(q.x, q.z) < 0.3
-        && !settlements.some((s) => Math.hypot(s.x - q.x, s.z - q.z) < 600)) { at = q; break; }
+  // (a landmark must be seen: the sightline from the battlefield's edge on its bearing to the village crosses no wood —
+  // the pilot's south view lost Ellewoutsdijk's tower behind a wood nearer the line)
+  const clearSight = (q: { x: number; z: number }, azDeg: number): boolean => {
+    const e = hinterlandPoint({ azDeg, distM: 530 });
+    const len = Math.hypot(q.x - e.x, q.z - e.z);
+    for (let t = 60; t < len - 120; t += 60) {
+      const x = e.x + (q.x - e.x) * (t / len), z = e.z + (q.z - e.z) * (t / len);
+      if (inputs.woodsAt(x, z) > 0.3) return false;
     }
+    return true;
+  };
+  for (const a of settle.villagesAt) {
+    let at: { x: number; z: number } | null = null, fallback: { x: number; z: number } | null = null;
+    search: for (const dd of [0, -160, 160, -320, 320, -480, 480]) {
+      for (const da of [0, -3, 3, -6, 6]) {
+        const q = hinterlandPoint({ azDeg: a.azDeg + da, distM: a.distM + dd });
+        if (inputs.wetAt(q.x, q.z) > 0.05 || inputs.woodsAt(q.x, q.z) >= 0.3
+          || settlements.some((s) => Math.hypot(s.x - q.x, s.z - q.z) < 600)) continue;
+        fallback ??= q;
+        if (clearSight(q, a.azDeg + da)) { at = q; break search; }
+      }
+    }
+    at ??= fallback;
     if (!at) continue;
     const near = a.distM <= 2700;
     settlements.push({

@@ -158,19 +158,25 @@ assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 26000
   }
   assert.ok(below / (pos.count / 37) < 0.02, `no building sinks into the land (${below})`);
 }
-// the woods stand as a canopy: a wood's heights over the bare field beside it, and never inside the battlefield's first 40 m
+// the woods: near the line (where their own trees stand) the land under them rises only by a shrub layer, never a hill
+// (the pilot's frames: trees on a smooth grassy mound); past 2.15 km they stand as the full canopy
 {
-  const S = wire.surface[0];
-  let woodsTexels = 0, raised = 0;
-  for (let j = 0; j < S.n; j += 3) for (let i = 0; i < S.n; i += 3) {
-    const k = (j * S.n + i) * 4;
-    if (!(S.rgba[k + 3] & HL_SURFACE_FLAG.woods)) continue;
-    const x = -S.halfM + i * S.texelM, z = -S.halfM + j * S.texelM;
-    if (Math.max(Math.abs(x), Math.abs(z)) < 700) continue;
-    woodsTexels++;
-    if (samplePyramid(pyramid, x, z) > 6) raised++;
-  }
-  assert.ok(woodsTexels > 20 && raised / woodsTexels > 0.8, `the polders' woods stand as a canopy (${raised}/${woodsTexels})`);
+  const check = (S, keep, test) => {
+    let woodsTexels = 0, ok = 0;
+    for (let j = 0; j < S.n; j += 2) for (let i = 0; i < S.n; i += 2) {
+      const k = (j * S.n + i) * 4;
+      if (!(S.rgba[k + 3] & HL_SURFACE_FLAG.woods)) continue;
+      const x = -S.halfM + i * S.texelM, z = -S.halfM + j * S.texelM;
+      if (!keep(x, z)) continue;
+      woodsTexels++;
+      if (test(samplePyramid(pyramid, x, z))) ok++;
+    }
+    return [ok, woodsTexels];
+  };
+  const [shrub, nearWoods] = check(wire.surface[0], (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 700, (h) => h > 1 && h < 7);
+  assert.ok(nearWoods > 20 && shrub / nearWoods > 0.8, `near woods: a shrub layer under their trees (${shrub}/${nearWoods})`);
+  const [canopy, farWoods] = check(wire.surface[2], (x, z) => Math.hypot(x, z) > 2300 && Math.hypot(x, z) < 6000, (h) => h > 8);
+  assert.ok(farWoods > 10 && canopy / farWoods > 0.6, `far woods: the canopy (${canopy}/${farWoods})`);
 }
 // the air (air.ts): the far haze's target binds the dome's own sky each draw, and the fog colour stays without one
 {

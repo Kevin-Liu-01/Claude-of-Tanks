@@ -198,10 +198,11 @@ export function raiseHinterlandCanopy(
         const crown = Math.max(28, 2.5 * L.texelM);
         const stand = 1 + 0.15 * noise2(x / 260 + ox, z / 260 - oz) + 0.12 * noise2(x / crown - oz, z / crown + ox);
         // the share sharpened about its half (a coarse level's bilinear would spread a wood over its neighbours as a
-        // hill); where the woods' own trees stand (trees.ts) the canopy is their under-storey, so their crowns break it
+        // hill); where the woods' own trees stand (trees.ts) the canopy is only their shrub layer under them
         const share = smooth01((w - 0.3) / 0.4);
         const r = Math.hypot(x, z);
-        const under = r < treesWithinM ? 0.62 : r < treesWithinM + 300 ? 0.62 + 0.38 * (r - treesWithinM) / 300 : 1;
+        // (0.15 there: a shrub layer — at 0.62 the pilot's frames showed the trees standing on a smooth grassy hill)
+        const under = r < treesWithinM ? 0.15 : r < treesWithinM + 400 ? 0.15 + 0.85 * (r - treesWithinM) / 400 : 1;
         L.heights[j * L.n + i] += canopyM * stand * ramp * share * under;
       }
     }
