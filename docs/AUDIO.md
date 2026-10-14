@@ -872,8 +872,13 @@ crew-lines.json ─┐                    crew-voices.json
   the new launch banks are 2 dB quieter than the old `atgm_launch`). The existing
   checks: cannon 19.1 / 9.5 / 6.3 dB at 15 / 150 / 400 m, our gun 19.3, radio
   17.2 over the bed and 1.9 under a near cannon, 4.5 starts/s, garage −31.4 dBFS.
-  The 150 m cannon sits 0.5 dB under its 10 dB gate; this branch changes no gun
-  report, distant bank or gun distance law (a main baseline run is the check).
+  The 150 m cannon sat 0.5 dB under its 10 dB gate, inherited from main (a CPU
+  A/B of the engine on both trees gave identical bed loops, spot rate and shot
+  voices). A6 then gave the 125 mm its distant thunder from 20 m (`farFadeM`
+  [20, 450], was [100, 450]) and its crack a longer reach (`gun_125_close`
+  refM 56, was 35): the next probe (6d7a1ebd4) read the 150 m shot 2.3 dB
+  louder (the CPU estimate was 2.29), 10.9 dB over a bed that ran 0.9 dB louder
+  than the run before, 15 m −0.5 dB and 400 m +0.5 dB, GREEN.
 
 ### Cost
 
