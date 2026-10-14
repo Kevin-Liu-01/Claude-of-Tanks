@@ -199,22 +199,24 @@ export function installModeBattleDirector() {
    * target spot `dists` out, level with the gun (within 2 degrees: no GUN TRAVEL LIMIT), that the sights see clear.
    * Moves both; the target turned `angle` rad off the line and held. Returns what moved, or null.
    */
-  H.cleanScope = (p, t, { dists = [300, 280, 320, 340], angle = 0.52, toward = null } = {}) => {
+  H.cleanScope = (p, t, { dists = [300, 280, 260, 320, 340, 240], angle = 0.52, toward = null, levelDeg = 3 } = {}) => {
     if (!H.live(p) || !H.live(t)) return null;
     const discs = H.concealers();
-    const quiet = (x, z) => discs.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 12);
+    // r2 (armor r3 found no spot with 12 m of clearance on Verdant): the sights see only a narrow cone, so only foliage
+    // round the gun itself matters (3 m clear of every disc); the line beyond is H.sightClear's
+    const quiet = (x, z) => discs.every((c) => Math.hypot(c.x - x, c.z - z) > c.r + 3);
     const base = toward ?? Math.atan2(t.state.pos.x - p.state.pos.x, t.state.pos.z - p.state.pos.z);
     const eyeH = (p.spec?.dims?.heightM ?? 2.4) * 0.92;
-    for (const r of [0, 25, 50, 80, 120]) {
-      for (let k = 0; k < (r ? 12 : 1); k++) {
-        const a0 = (k / 12) * Math.PI * 2, px = p.state.pos.x + Math.sin(a0) * r, pz = p.state.pos.z + Math.cos(a0) * r;
+    for (const r of [0, 25, 50, 80, 120, 160]) {
+      for (let k = 0; k < (r ? 16 : 1); k++) {
+        const a0 = (k / 16) * Math.PI * 2, px = p.state.pos.x + Math.sin(a0) * r, pz = p.state.pos.z + Math.cos(a0) * r;
         if (!H.openGround(px, pz, 8, discs) || !quiet(px, pz)) continue;
         const eye = { x: px, y: H.groundY(px, pz) + eyeH, z: pz };
         for (const d of dists) {
           for (const da of [0, 10, -10, 20, -20, 30, -30, 40, -40]) {
             const b = base + (da * Math.PI) / 180, tx = px + Math.sin(b) * d, tz = pz + Math.cos(b) * d;
             if (!H.openGround(tx, tz, 6, discs)) continue;
-            if (Math.abs(Math.atan2(H.groundY(tx, tz) + 1.4 - eye.y, d)) > (2 * Math.PI) / 180) continue;
+            if (Math.abs(Math.atan2(H.groundY(tx, tz) + 1.4 - eye.y, d)) > (levelDeg * Math.PI) / 180) continue;
             if (!H.sightClear(eye, { x: tx, z: tz }, discs)) continue;
             H.place(p, px, pz, b);
             H.place(t, tx, tz, Math.atan2(px - tx, pz - tz) + angle);
