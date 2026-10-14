@@ -114,9 +114,20 @@ inOrder(post, [
   'col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );',
   'if ( uNight > 0.001 ) {',
 ], 'the display grade');
-const scotopic = post.match(/float scot = uNight \* ([0-9.]+) \* \( 1\.0 - smoothstep\( ([0-9.]+), ([0-9.]+), luma \) \);\s*col = mix\( col, luma \* vec3\( ([0-9.]+), ([0-9.]+), ([0-9.]+) \), scot \);/);
-assert.ok(scotopic, 'the oracle models the night\'s scotopic shift');
-const [scotAmount, scotLo, scotHi, ...scotTint] = scotopic.slice(1).map(Number);
+// 2026-10-09 (the skies lane): the shift's law and target are post.ts's constants (uniforms with QA knobs), keyed on the
+// pixel's luma or its brightest channel weighted
+for (const line of ['float scotKey = max( luma, max( col.r, max( col.g, col.b ) ) * uScot.w );',
+  'float scot = uNight * uScot.x * ( 1.0 - smoothstep( uScot.y, uScot.z, scotKey ) );', 'col = mix( col, luma * uScotTint, scot );']) {
+  assert.ok(post.includes(line), `the oracle models the night's scotopic shift: ${line}`);
+}
+const gradeTuple = (name) => {
+  const m = post.match(new RegExp(`export const ${name}: readonly \\[[^\\]]+\\] = Object\\.freeze\\(\\[([^\\]]+)\\]\\);`));
+  assert.ok(m, `post.ts declares ${name}`);
+  return m[1].split(',').map(Number);
+};
+const [scotAmount, scotLo, scotHi, scotMaxC] = gradeTuple('GRADE_NIGHT_SCOTOPIC');
+const scotTint = gradeTuple('GRADE_NIGHT_SCOTOPIC_TINT');
+assert.ok([scotAmount, scotLo, scotHi, scotMaxC, ...scotTint].every(Number.isFinite) && scotTint.length === 3, 'the scotopic constants parse');
 assert.match(post, /u\.uSatLinear\.value = satLinear \* model\.saturation;/);
 assert.match(post, /u\.uContrast\.value = contrast \* model\.contrast;/);
 assert.match(post, /setNightEmissionExposure\(u\.uExposure\.value\);/, 'post.ts hands the lens programs the output pass\'s exposure');
@@ -142,7 +153,7 @@ function displayOf(radiance, { exposure, warmth = 0, night = 0 }) {
   c = c.map((v) => Math.max(v - BLACK_POINT, 0) / (1 - BLACK_POINT));
   const luma = lumaOf(c);
   c = c.map((v) => THREE.MathUtils.clamp(luma + DISPLAY_SAT * (v - luma), 0, 1));
-  const scot = night * scotAmount * (1 - smooth(scotLo, scotHi, luma));
+  const scot = night * scotAmount * (1 - smooth(scotLo, scotHi, Math.max(luma, Math.max(...c) * scotMaxC)));
   c = c.map((v, i) => v + (luma * scotTint[i] - v) * scot);
   return new THREE.Color(...c); // display-encoded components (read them raw: getHexString would encode again)
 }
