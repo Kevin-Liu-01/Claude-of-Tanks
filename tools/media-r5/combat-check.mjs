@@ -16,7 +16,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
-import { absoluteShots, lensReport } from './lens-check.mjs';
+import { ROADSIDE_SHRINE, absoluteShots, lensReport } from './lens-check.mjs';
 import { hullOf, routeProblems } from './route-check.mjs';
 import { CRUSH_MIN_MPS, insideRecord, sightBlockers, worldModel } from './world-model.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -149,6 +149,20 @@ export function combatVerdict(scene, model, features = null) {
   if (targetSight < PASS.targetSight) faults.push(`foe0 in sight ${Math.round(targetSight * 100)} %`);
   if (heroBlocked > 0.05) faults.push(`hero blocked ${Math.round(heroBlocked * 100)} %`);
   if (lens?.inside) faults.push(`lens inside a record ${lens.inside} samples`);
+  // a standing thing in front of the hero hiding a quarter of its visible box for 0.3 s or more, or a roadside shrine
+  // hiding a twentieth of it or filling a tenth of the frame in front of it (lens-check's cover and shrine; the wayside
+  // cross in front of s225's Leopard, 2026-10-13, filled a quarter of the frame and then crossed the hull)
+  const runOf = (hit) => {
+    let run = 0, worst = 0, kind = null, until = null;
+    for (const p of lens?.perSample ?? []) {
+      const k = hit(p.fore ?? {});
+      run = k ? run + 1 : 0;
+      if (run > worst) { worst = run; kind = k; until = p.tMs; }
+    }
+    return worst >= 3 ? `a ${kind} covers the hero for ${worst * 100} ms (to ${until})` : null;
+  };
+  const shrineIn = (f) => (f.shrine ?? 0) >= 0.05 ? f.shrineKind : ROADSIDE_SHRINE.test(f.kind ?? '') && (f.share ?? 0) >= 0.1 ? f.kind : null;
+  for (const f of [runOf((f) => ((f.cover ?? 0) >= 0.25 ? f.coverKind : null)), runOf(shrineIn)]) if (f) faults.push(f);
   faults.push(...placement);
   const line = `together ${Math.round(together * 100)} %, holds ${held.toFixed(2)}/${count}, knockouts ${kos.map((k) => `${k.killer}>${k.victim}@${k.killMs} ${k.shown ? 'shown' : 'MISSED'}`).join(' ')}, `
     + `hero ${(mean('hero') * 100).toFixed(1)} % / foe0 ${(mean('foe0') * 100).toFixed(1)} % of the height, nearest hull ${nearest.toFixed(1)} m, `

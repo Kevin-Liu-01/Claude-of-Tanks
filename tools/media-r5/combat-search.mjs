@@ -31,8 +31,27 @@ const score = ({ ok, faults, metrics: m }) => (ok ? 100 : 0) - 12 * faults.lengt
 // clear and every round flies clear (combat-check.mjs fightFaults), with the table's own lens
 const SHIFTS = [[0, 0]];
 for (const r of [4, 8, 12, 16, 20]) for (let i = 0; i < 8; i++) SHIFTS.push([Math.round(r * Math.sin(i * Math.PI / 4)), Math.round(r * Math.cos(i * Math.PI / 4))]);
+// A race (geo 'race') needs a clear run, 40 m and more, for both lines abreast: it also turns its line off the set's
+// heading (TURNS) and puts the foes on either side (k), and a placement stands only when the race lens passes the frame
+// check there too (the race has the one lens). Every placement tried is logged with its first faults.
+const TURNS = [0, 180, 90, -90, 45, -45, 135, -135];
+const RACE_SHIFTS = [[0, 0]];
+for (const r of [8, 16, 24]) for (let i = 0; i < 8; i++) RACE_SHIFTS.push([Math.round(r * Math.sin(i * Math.PI / 4)), Math.round(r * Math.cos(i * Math.PI / 4))]);
 function placeFight(row) {
-  const tried = [];
+  const tried = [], race = row[15]?.geo === 'race';
+  if (race) {
+    for (const turn of TURNS) for (const k of [row[11], -row[11]]) for (const shift of RACE_SHIFTS) {
+      const scene = siteScene(combatTake(row, { shift, turn, k }));
+      const { model, features } = worldOf(scene.meta.map);
+      const faults = fightFaults(scene, model, undefined, features);
+      if (!faults.length) {
+        const verdict = combatVerdict(scene, model, features);
+        if (verdict.ok) return { shift, turn, k, tried };
+        tried.push(`turn ${turn} k${k} [${shift}] frame: ${verdict.faults.slice(0, 2).join('; ')}`);
+      } else tried.push(`turn ${turn} k${k} [${shift}] ${faults.slice(0, 2).join('; ')}`);
+    }
+    return { shift: null, tried };
+  }
   for (const shift of [row[14] ?? [0, 0], ...SHIFTS]) {
     const scene = siteScene(combatTake(row, { shift }));
     const { model, features } = worldOf(scene.meta.map);
@@ -46,13 +65,18 @@ function placeFight(row) {
 for (const row of COMBAT_TABLE.filter((r) => !only || only.includes(r[0]))) {
   const [n, id, , , , format] = row;
   const placed = placeFight(row);
-  if (!placed.shift) { console.log(`== s${n} ${id}: no clear placement within 20 m — ${placed.tried.slice(0, 4).join(' | ')}`); continue; }
+  if (!placed.shift) { console.log(`== s${n} ${id}: no clear placement — ${placed.tried.length} tried, first: ${placed.tried.slice(0, 4).join(' | ')}`); continue; }
+  if (placed.turn != null) {
+    console.log(`== s${n} ${id}: the race runs at turn ${placed.turn}, foes on k${placed.k}, shift [${placed.shift}] (${placed.tried.length} placements tried first)`);
+    continue;
+  }
   const own = { lens: row[10], k: row[11], hold: row[12], shift: placed.shift };
   console.log(`== s${n} ${id}: the fight stands at shift [${placed.shift}]${placed.tried.length ? ` (the table's ${placed.tried[0]})` : ''}`);
   const everyone = format === '1v1' ? ['hero', 'foe0'] : format === '1v2' ? ['hero', 'foe0', 'foe1'] : ['hero', 'ally1', 'foe0', 'foe1'];
   const holds = [own.hold, everyone].filter((h, i, all) => all.findIndex((x) => x.join() === h.join()) === i);
   const tried = [];
-  for (const lens of Object.keys(DUEL)) for (const k of [1, -1]) for (const hold of holds) {
+  const lenses = process.env.LENSES ? process.env.LENSES.split(',') : Object.keys(DUEL).filter((l) => l !== 'race');
+  for (const lens of lenses) for (const k of [1, -1]) for (const hold of holds) {
     const scene = siteScene(combatTake(row, { lens, k, hold, shift: own.shift }));
     const { model, features } = worldOf(scene.meta.map);
     const verdict = combatVerdict(scene, model, features);

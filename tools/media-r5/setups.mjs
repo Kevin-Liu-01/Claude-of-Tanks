@@ -10,6 +10,8 @@ export const FORMATIONS = {
   line: [[0, 0], [-14, -2], [14, -3], [-28, -6], [28, -5]],
   echelon: [[0, 0], [11, -11], [22, -22], [33, -33], [44, -44]],
   pair: [[0, 0], [11, -9]],
+  // (combat round, 2026-10-13: two foes down a street, the second 8 m nearer the hero and across the roadway)
+  file: [[0, 0], [-3.5, 16]],
   solo: [[0, 0]],
 };
 export function frame(anchor, heading) {
