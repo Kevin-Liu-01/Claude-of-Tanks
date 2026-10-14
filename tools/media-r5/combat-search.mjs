@@ -4,7 +4,8 @@
 // check. The table's own lens is kept when it passes; otherwise the best passing candidate is printed for the table,
 // ranked by what the owner asked for: every tank held, the hero's front where the lens can show it, and neither the
 // hero nor its target a speck.
-//   MEDIA_R5_LIGHT=1 node tools/media-r5/combat-search.mjs [ids,...]   (ids: take numbers, e.g. 228,230)
+//   MEDIA_R5_LIGHT=1 node tools/media-r5/combat-search.mjs [ids,...]   (ids: take numbers, e.g. 228,230; ALL=1 prints
+//   every candidate, not the best six)
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COMBAT_TABLE, DUEL, combatTake, siteScene } from './site50.mjs';
@@ -57,7 +58,7 @@ for (const row of COMBAT_TABLE.filter((r) => !only || only.includes(r[0]))) {
   const mine = tried.find((t) => t.lens === own.lens && t.k === own.k && t.hold.join() === own.hold.join());
   tried.sort((a, b) => b.value - a.value);
   console.log(`== s${n} ${id} (${format}): the table's ${own.lens} k${own.k} ${mine?.ok ? 'PASSES' : `fails (${mine?.faults.join('; ')})`}`);
-  for (const t of tried.slice(0, 6)) {
+  for (const t of tried.slice(0, process.env.ALL ? tried.length : 6)) {
     const m = t.metrics;
     console.log(`  ${t.ok ? 'PASS' : 'fail'} ${String(t.value.toFixed(0)).padStart(4)} ${t.lens.padEnd(9)} k${t.k > 0 ? '+1' : '-1'} hold ${t.hold.join('+').padEnd(24)} `
       + `holds ${m.held.toFixed(2)}/${m.count} together ${Math.round(m.together * 100)} % front ${m.heroFront.toFixed(2)} hero ${(m.hero * 100).toFixed(0)} % foe0 ${(m.foe0 * 100).toFixed(0)} %`

@@ -847,9 +847,9 @@ export const COMBAT_TABLE = [
   [231, 'yard-2v2', 'Two Abrams trade fire with a T-90M and a T-72B3M across the rail yard at night', S.rFactory, 'night', '2v2',
     [CAST.sepv3, CAST.sepv2], [CAST.t90m, CAST.t72b3m], 40, 0, 'overwatch', -1, ALL4, 2, [0, 0]],
   [232, 'village-2v2', 'A Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 in the Verdant village', S.vVillage, 'day', '2v2',
-    [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'reverse', -1, ALL4, 2, [3, 3]],
+    [CAST.leo2a6m, CAST.puma], [CAST.t90a, CAST.t72b3], 44, 3, 'high', -1, ALL4, 2, [3, 3]],
   [233, 'fjord-2v2', 'A Strv 122 and a CV90 duel a T-90 and a T-72B3 in the fjord village', S.fVillage, 'morning', '2v2',
-    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'broadside', -1, ['hero', 'foe0', 'foe1'], 0, [0, 0]],
+    [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'shoulder', -1, ALL4, 2, [0, 0]],
 ];
 /** One combat take from its table row; `over` replaces any of { lens, k, hold, speed, D, lat, shift } (combat-search.mjs).
  *  `shift` ([lat, along] m in the set's frame, the row's 15th field) moves the whole fight off the set's anchor onto
