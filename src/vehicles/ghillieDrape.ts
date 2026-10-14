@@ -22,6 +22,13 @@ export const GHILLIE_TOP_CARDS = 'ghillieTopCards';
  */
 export const GHILLIE_FIELD_OK = 'ghillieFieldOk';
 
+/**
+ * netting-proper round 2: a field card drawn up by a load more at its tip than at its root (by DRAWN_TIP_M) whose spine
+ * then rises steeper than DRAWN_STAND_SIN (the sine of 30 degrees) is taken off.
+ */
+const DRAWN_TIP_M = 0.03;
+const DRAWN_STAND_SIN = 0.5;
+
 /** The net's loft over a load it is drawn over, and how fast it falls back to the deck past the load's edge. */
 const LOAD_LOFT_M = 0.014;
 const LOAD_FALL_K = 2.6;
@@ -159,12 +166,26 @@ export function drapeGhillieOverLoads(group: THREE.Object3D, loads: readonly THR
         // vehicleFoliage.ts FoliageCardBuffer.push): the lift for any of its vertices past the net's edge
         const far = Math.min(end - 1, k + (per >= 24 ? 7 : 1));
         const root = liftNear(net, (pos.getX(k) + pos.getX(far)) / 2, (pos.getY(k) + pos.getY(far)) / 2, (pos.getZ(k) + pos.getZ(far)) / 2) ?? 0;
+        // netting-proper round 2: the spine's root and tip rows' middles (vertices 1 and 14 of a folded card's 24)
+        const s0 = k + 1, s2 = per >= 24 ? k + 14 : -1;
+        let rootLift = 0, tipLift = 0;
         for (let v = k; v < end; v++) {
           const lift = liftNear(net, pos.getX(v), pos.getY(v), pos.getZ(v)) ?? root;
           if (lift <= 1e-4) continue;
           pos.setY(v, pos.getY(v) + lift);
           lifted[v] = 1;
           changed = true;
+          if (v === s0) rootLift = lift;
+          if (v === s2) tipLift = lift;
+        }
+        // netting-proper round 2 (as built for the Garage, the CV90's and T-90M's turret garnish laid flat beside a stowed
+        // load stood up round it, nine cards each past 30 degrees, to 48, once the net was drawn up over the load): a card
+        // the drawn net tips up past DRAWN_STAND_SIN along its spine, its tip raised more than DRAWN_TIP_M over its root,
+        // is taken off (the crew lays boughs on a load's top or beside it, never propped up its side)
+        if (s2 >= 0 && s2 < end && tipLift - rootLift > DRAWN_TIP_M) {
+          const dx = pos.getX(s2) - pos.getX(s0), dy = pos.getY(s2) - pos.getY(s0), dz = pos.getZ(s2) - pos.getZ(s0);
+          const len = Math.hypot(dx, dy, dz);
+          if (len > 1e-6 && dy / len > DRAWN_STAND_SIN) for (let v = k; v < end; v++) lifted[v] = 2;
         }
         continue;
       }
@@ -188,7 +209,8 @@ function recheckLifted(mesh: THREE.Mesh, block: number, lifted: Uint8Array, cut?
   const ok = mesh.userData[GHILLIE_FIELD_OK] as ((p: readonly number[]) => boolean) | undefined;
   if (typeof ok !== 'function' || mesh.geometry.index) return;
   const pos = mesh.geometry.attributes.position as THREE.BufferAttribute;
-  dropBlocks(mesh, block, (v) => (lifted[v] === 1 && !ok([pos.getX(v), pos.getY(v), pos.getZ(v)]))
+  // (lifted 2: a card the drawn net stood up, taken off whole)
+  dropBlocks(mesh, block, (v) => lifted[v] === 2 || (lifted[v] === 1 && !ok([pos.getX(v), pos.getY(v), pos.getZ(v)]))
     || (!!tiedTo && nearTriangles(tiedTo, pos.getX(v), pos.getY(v), pos.getZ(v), TIED_M)), undefined, cut);
 }
 
