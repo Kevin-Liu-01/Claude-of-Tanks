@@ -826,9 +826,13 @@ crew-lines.json ─┐                    crew-voices.json
   at 71 % and 75 % there with the rest from 3–6 kHz drips and under 3 kHz water
   and frogs. The oasis bed's loop seam stepped 2.8 dB; the new take steps
   0.15 dB. The first press anywhere loads the engine, so its own click was
-  silent: the engine now finds that press at its start (the control it
-  focused, while the page's user activation is live) and its first interface
-  sound waits for its decode, within 900 ms and only once.
+  silent. The facade now transfers the mixer module and decodes the
+  interface's press sounds at boot idle after the first frame, with no audio
+  device (`prepareInterfaceSounds` → `assetLibrary.predecodeAssets`, an
+  OfflineAudioContext); the engine built at the first press starts with them
+  (the library's `seed`), so that press plays at once. A press that beats the
+  decode waits for it at most 120 ms and is dropped after that: a late click
+  reads as input lag, worse than silence (`interfacePress.selftest.mjs`).
 - **2026-10-13, variety round.** 31 of the most frequent impacts, breaks,
   fires and collisions shipped one or two variants (the ground strikes, glass,
   crates, containers, sandbags, fences, cars, falling trees, debris, the HE and
@@ -948,8 +952,9 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
   rebuilt with it), and the Hebrew goal call is two words in both takes ("גול
   נכבש", "שער לטובתנו"). Homophones the transcriber spells differently remain
   flagged and are harmless (the Chinese "近失弹" heard as "进食蛋").
-- The first garage click loads the engine; its click plays once the engine has
-  decoded it, within 900 ms of the press, else that one click stays silent.
+- A press before the boot-idle warm has run (the first frame plus an idle
+  slot) stays silent; one that finds its sound still decoding waits at most
+  120 ms.
 - The jungle and mangrove beds still carry most of their energy above 6 kHz
   (drips, leaves and faint insects; 71 % and 75 %, down from 99 %).
 - Bells ring only from towers the world has placed: Verdant's church, Saltwind's

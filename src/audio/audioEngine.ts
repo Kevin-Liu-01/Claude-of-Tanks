@@ -32,7 +32,7 @@ import {
   toListenerFrame, distanceAttenuationDb, panFromRelative,
   type AtmosphereProfile, type ListenerFrame, type RelativePosition,
 } from './audioMath.ts';
-import { createAssetLibrary, type AssetLibrary } from './assetLibrary.ts';
+import { createAssetLibrary, predecodeAssets, type AssetLibrary } from './assetLibrary.ts';
 import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
@@ -50,7 +50,7 @@ import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.t
 import { cueProfile } from './soundCues.ts';
 import { onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
-import { bindInterfaceSounds, classifyInterfaceTarget, type InterfaceSound } from './interfaceSounds.ts';
+import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import {
@@ -362,6 +362,21 @@ function detectTier(): DeviceTier {
   if (!nav) return 'desktop';
   const touch = (nav.maxTouchPoints || 0) > 1 && /Android|iPhone|iPad|Mobile/i.test(nav.userAgent || '');
   return touch || (nav.deviceMemory != null && nav.deviceMemory <= 4) ? 'mobile' : 'desktop';
+}
+
+/** The garage's and menus' press sounds, decoded at boot idle before any engine exists (prepareInterfaceSounds). */
+const INTERFACE_PRESS = Object.freeze(['ui_click', 'ui_hover', 'ui_back', 'ui_confirm', 'ui_tab', 'ui_toggle', 'ui_tank_select']);
+let interfaceSeed: Map<string, AudioBuffer[]> | null = null;
+let interfaceSeeding: Promise<void> | null = null;
+
+/**
+ * Decode the interface set at boot idle (the facade calls it after the first frame, before anyone can press anything),
+ * with no audio device: the engine built at the first press starts with these sounds ready, so a click is never late.
+ */
+export function prepareInterfaceSounds(): Promise<void> {
+  const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
+  interfaceSeeding ??= predecodeAssets(INTERFACE_PRESS, { base }).then((seed) => { interfaceSeed = seed; }, () => {});
+  return interfaceSeeding;
 }
 
 export function createAudio({
@@ -2062,7 +2077,8 @@ export function createAudio({
     if (mixer) return;
     mixer = createMixer({ context: ctx, reverb: budget.reverb, channelVolumes: chan, masterVolume, muted });
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
-    library = createAssetLibrary({ context: ctx, base, lowMemory: tier === 'mobile', maxDecodedMb: budget.maxDecodedMb, maxVariants: budget.maxVariants });
+    library = createAssetLibrary({ context: ctx, base, lowMemory: tier === 'mobile', maxDecodedMb: budget.maxDecodedMb, maxVariants: budget.maxVariants,
+      seed: interfaceSeed });
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
     radio = createCrewRadio({ mixer, library, random });
@@ -2085,8 +2101,9 @@ export function createAudio({
     back: 'ui_back', confirm: 'ui_confirm', vehicle: 'ui_tank_select',
   });
   let lastInterfaceAt = -1;
-  /** How late the first press's own click may still play (it loaded the engine). */
-  const FIRST_PRESS_MS = 900;
+  /** How late a press's own click may still play (the coordinator, 2026-10-13: a late click reads as input lag, worse than
+   *  silence; the interface set decodes at boot idle, so this only covers a press that beat that decode). */
+  const FIRST_PRESS_MS = 120;
 
   /** One interface sound per press: a control's own 'ui:click' never doubles the delegated one. */
   function interfaceOnce(): boolean {
@@ -2097,22 +2114,24 @@ export function createAudio({
   }
 
   const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  /** The engine's first press: one interface sound may wait for its recording, until this deadline (ms). */
-  let firstPressUntil = nowMs() + FIRST_PRESS_MS;
-  let firstPressPending = false;
+  let pressPending = false;
 
+  /**
+   * A control's sound. The interface set decodes at boot idle (prepareInterfaceSounds), and the mixer module it loads
+   * means the engine exists before the first press's click arrives, so that press finds its sound ready. One that beat
+   * the decode waits for it only while the wait stays within FIRST_PRESS_MS of the click; later it is dropped: a late
+   * click reads as input lag, worse than silence (AU.07). A press before the boot-idle warm stays silent.
+   */
   function interfaceSound(sound: InterfaceSound, inMenu: boolean): void {
+    const pressedAt = nowMs();
     if (!ready() || (phase === 'battle' && !inMenu)) return;
     const asset = INTERFACE_ASSET[sound];
-    // AU.07 (2026-10-13): the press that loads this engine, or the first after it, finds its recording still decoding
-    // (it was silent: a known limit). That one sound waits for its decode, if it lands within FIRST_PRESS_MS of the
-    // engine's start; a late click would read as lag, so past that it stays silent, and only ever once.
-    if (lastInterfaceAt < 0 && library && !library.has(asset)) {
-      if (firstPressPending || nowMs() > firstPressUntil) return;
-      firstPressPending = true;
+    if (library && !library.has(asset)) {
+      if (pressPending || nowMs() - pressedAt > FIRST_PRESS_MS) return;
+      pressPending = true;
       void library.load([asset]).then(() => {
-        firstPressPending = false;
-        if (lastInterfaceAt < 0 && nowMs() <= firstPressUntil && interfaceOnce()) play(asset);
+        pressPending = false;
+        if (nowMs() - pressedAt <= FIRST_PRESS_MS && interfaceOnce()) play(asset);
       });
       return;
     }
@@ -2120,25 +2139,6 @@ export function createAudio({
     play(asset);
   }
 
-  /**
-   * The press that loaded this engine came before its delegated listener existed: a control that press focused, while
-   * the page's user activation is still live, is it. Its sound plays as the first press's (above), once the engine runs.
-   */
-  function replayLoadingPress(): void {
-    if (typeof document === 'undefined') return;
-    const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { userActivation?: { isActive?: boolean } } : null;
-    const el = document.activeElement as unknown as Parameters<typeof classifyInterfaceTarget>[0];
-    if (!nav?.userActivation?.isActive || !el || (el as unknown) === document.body || typeof el.closest !== 'function') return;
-    const hit = classifyInterfaceTarget(el);
-    if (!hit) return;
-    firstPressUntil = nowMs() + FIRST_PRESS_MS;
-    const attempt = (): void => {
-      if (lastInterfaceAt >= 0 || nowMs() > firstPressUntil) return;
-      if (ready()) interfaceSound(hit.sound, hit.inMenu);
-      else setTimeout(attempt, 40);
-    };
-    setTimeout(attempt, 0);
-  }
 
   let detachTurretLanding: (() => void) | null = null;
 
@@ -2725,7 +2725,6 @@ export function createAudio({
 
   // Every control in the garage and the menus sounds (not the battle controls).
   if (typeof document !== 'undefined') bindInterfaceSounds(document, (hit) => interfaceSound(hit.sound, hit.inMenu));
-  replayLoadingPress();
 
   return {
     resume,

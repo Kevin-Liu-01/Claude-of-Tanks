@@ -20,6 +20,8 @@ import { nextPaintFrame } from '../engine/frameScheduler.ts';
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
   prepareAudioBuffers?(context: AudioContext): Promise<unknown>;
+  /** Decode the interface's press sounds with no device (boot idle), so the first click finds them ready. */
+  prepareInterfaceSounds?(): Promise<void>;
   createAudio(options: {
     context: AudioContext | null;
     preparedBuffers?: unknown;
@@ -252,6 +254,9 @@ export function createLazyAudio({
         };
         document.addEventListener('pointerdown', onGesture, true);
         document.addEventListener('keydown', onGesture, true);
+        // Boot idle after the first frame (AU.07, 2026-10-13): the mixer module and the interface's press sounds, decoded
+        // with no device, so the first press anywhere is neither silent nor late.
+        void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));
       }
     },
     update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {

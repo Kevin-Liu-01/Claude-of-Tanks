@@ -33,6 +33,8 @@ interface AssetLibraryOptions {
   maxVariants?: number;
   fetchImpl?: typeof fetch;
   createDecoder?: (sampleRate: number) => DecodeContext | null;
+  /** Assets decoded before this library existed (predecodeAssets: the interface set at boot idle), ready from the start. */
+  seed?: ReadonlyMap<string, readonly AudioBuffer[]> | null;
 }
 
 export interface AssetLibrary {
@@ -93,6 +95,31 @@ function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4;
 }
 
+/**
+ * Decode assets with no audio device yet (an OfflineAudioContext per decode rate): the interface set at boot idle, so the
+ * first press anywhere finds its sound ready (2026-10-13). The files and rates are the library's own; a failure leaves
+ * that asset out (the library loads it later as usual).
+ */
+export async function predecodeAssets(ids: Iterable<string>, { base = '/', fetchImpl = (...args: Parameters<typeof fetch>) => fetch(...args),
+  createDecoder = defaultDecoder }: Pick<AssetLibraryOptions, 'base' | 'fetchImpl' | 'createDecoder'> = {}): Promise<Map<string, AudioBuffer[]>> {
+  const root = base.endsWith('/') ? base : `${base}/`;
+  const out = new Map<string, AudioBuffer[]>();
+  await Promise.all([...ids].map(async (id) => {
+    const rec = SFX_ASSETS[id];
+    const decoder = rec ? createDecoder(rec.r) : null;
+    if (!rec || !decoder) return;
+    try {
+      const buffers = await Promise.all(Array.from({ length: rec.n }, async (_, i) => {
+        const res = await fetchImpl(`${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return decoder.decodeAudioData(await res.arrayBuffer());
+      }));
+      out.set(id, buffers);
+    } catch { /* left to the library's own load */ }
+  }));
+  return out;
+}
+
 export function createAssetLibrary({
   context,
   base = '/',
@@ -101,6 +128,7 @@ export function createAssetLibrary({
   maxVariants = lowMemory ? 1 : Infinity,
   fetchImpl = (...args) => fetch(...args),
   createDecoder = defaultDecoder,
+  seed = null,
 }: AssetLibraryOptions): AssetLibrary {
   const entries = new Map<string, Entry>();
   const voiceEntries = new Map<string, Entry>();
@@ -119,6 +147,13 @@ export function createAssetLibrary({
   const waiting: (() => void)[] = [];
   const CONCURRENCY = 6;
   const root = base.endsWith('/') ? base : `${base}/`;
+  for (const [id, decoded] of seed ?? []) {
+    const buffers = decoded.slice(0, Math.max(1, maxVariants));
+    if (!SFX_ASSETS[id] || !buffers.length) continue;
+    const bytes = buffers.reduce((sum, b) => sum + bufferBytes(b), 0);
+    entries.set(id, { buffers, state: 'ready', promise: Promise.resolve(), last: performance.now(), bytes, lastVariant: -1 });
+    decodedBytes += bytes;
+  }
 
   function decoderFor(rate: number): DecodeContext {
     const r = lowMemory ? Math.min(rate, 24000) : rate;
