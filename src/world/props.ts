@@ -112,6 +112,8 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
+import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
@@ -431,6 +433,15 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
   polders: 8, coastal: 8, frontier: 8, delta: 8, longleaf: 8, reservoir: 8,
   saltwind: 7, alpine: 7, monsoon: 7, mangrove: 7,
 });
+/**
+ * How far behind its breastwork line a field work's pillbox stands, by map (default 3 m). Glacier (alpine, the looks
+ * lane, 2026-10-14): the round-2 pillbox's body is a smaller block than the old pillbox's 9.5 m box and its bank stands
+ * lower (1.4 m over grade), so at 3 m two drivable cells north of the middle work lost their cover from the south and
+ * the map's middle-band cover share fell from 0.300 to 0.299, under MAP-LAYOUT-BRIEF.md's 0.30 floor; at 5 m the work
+ * screens them again (both works' pillboxes step back, the bands all hold: tools/map-layout-metrics.mjs). Kept here
+ * rather than in the map module, whose authoring the relief receipts pin.
+ */
+export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 5 });
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -710,6 +721,8 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
   mat: string;
   airDrag?: number;
   instanceTintStrength?: number;
+  /** (E1) the kind's broken builder is its own (structureKit lightMeta's brokenBuild): never replaced by a fracture */
+  ownBroken?: boolean;
 }
 
 interface PropsCollisionRecord extends CollisionRecord {
@@ -4432,6 +4445,8 @@ ${snowCap ? `
       return [key, variant];
     })),
   };
+  /** (E1) the kinds whose broken builder is their own on this map: its structure variants and the pillbox of its make */
+  const ownBroken = new Set<string>([...Object.keys(P.structureVariants ?? {}), ...(fort ? ['bunker'] : [])]);
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
     const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
@@ -8358,6 +8373,7 @@ ${snowCap ? `
     const lx = -az, lz = ax;                // lateral along the front
     const trenchLines = [...(heightField.assaultTrenchLines?.lines ?? []), ...(heightField.fieldTrenchLines?.lines ?? [])];
     const target = richCount(P.fieldWorks, 3) + (heightField.assaultTrenchLines?.lines.length ? 2 : 0);
+    const setBack = PILLBOX_SET_BACK_M[mapId] ?? 3;
     // the carved fire trenches (assault variant) keep a 16 m berth so no work lands in a trench floor
     const nearTrench = (x: number, z: number): boolean => trenchLines.some((line) => {
       const along = (x - line.x) * line.lx + (z - line.z) * line.lz;
@@ -8434,7 +8450,7 @@ ${snowCap ? `
         // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre, and (b40) off
         // the trunks: a seat the ground or the road refuses is null, one only the trunks refuse is 'trunk'
         const seat = (ox: number, oz: number): readonly [number, number] | 'trunk' | null => {
-          const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
+          const px = cx + ox - fx * setBack, pz = cz + oz - fz * setBack;
           if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
             || !destructibleClearOfRoad('bunker', px, pz, yawP, 1)) return null;
           return pillboxClearOfTrunks(px, pz, yawP) ? [px, pz] : 'trunk';
@@ -8472,7 +8488,7 @@ ${snowCap ? `
               for (let v = 0; v <= 20; v += 2.5) {
                 const score = Math.min(Math.abs(u - first * reach), Math.abs(u + first * reach)) + v * 0.5;
                 if (score >= bestScore) continue;
-                const px = cx + lx * u - fx * (3 + v), pz = cz + lz * u - fz * (3 + v);
+                const px = cx + lx * u - fx * (setBack + v), pz = cz + lz * u - fz * (setBack + v);
                 if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
                   || !destructibleClearOfRoad('bunker', px, pz, yawP, 1) || !pillboxClearOfTrunks(px, pz, yawP, berth)) continue;
                 best = [px, pz]; bestScore = score;
@@ -10983,8 +10999,18 @@ ${snowCap ? `
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
       // the destructible stream and every later pool builds from the stream it always did
       const legacyB = meta.broken(drng);
-      const fracture = PROP_FRACTURE[kind];
-      const geoB = fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
+      // (E1, the props census, 2026-10-14) a kind whose intact build names its pieces (userData.fracture, a
+      // KitFractureAnatomy that checks against the build) breaks into the settled heap of those pieces (lightWreck.ts),
+      // not PROP_FRACTURE's flat raft; a kind that keeps its own broken builder (a map's structure variant: the ksar
+      // gate, the Wadi Rum posts, the Bedouin tents; the pillbox; lightMeta's brokenBuild) keeps it — PROP_FRACTURE is
+      // keyed by the base pool's kind and used to discard those
+      const own = ownBroken.has(kind) || meta.ownBroken === true;
+      const anatomy = own ? null : geoI.userData.fracture as KitFractureAnatomy | undefined;
+      const settled = !!anatomy && Array.isArray(anatomy.pieces)
+        && checkKitFracture(anatomy, (geoI.index ? geoI.toNonIndexed() : geoI).getAttribute('position').array).length === 0;
+      const fracture = own ? undefined : PROP_FRACTURE[kind];
+      const geoB = settled ? settleLightWreck(geoI, anatomy!, fractureSeed(seed, kind))
+        : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
       if (geoB !== legacyB) legacyB.dispose();
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
       imB.count = 0;

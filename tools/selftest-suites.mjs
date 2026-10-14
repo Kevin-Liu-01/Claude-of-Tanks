@@ -1498,6 +1498,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/maps/lightWreck.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
