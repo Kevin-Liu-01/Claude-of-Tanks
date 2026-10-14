@@ -135,6 +135,13 @@ for (const shot of COMBAT) {
   assert.equal(hv.length, 3 * 5, 'three spans of four phases and the earth wire');
   const lowest = Math.min(...hv.flatMap((x) => x.pts.map((p) => p[1])));
   assert.ok(Math.abs(lowest - 12 + 0.15) < 0.05, `the lowest conductor clears flat ground by 12 m (${lowest.toFixed(2)} m)`);
+  // with the scenery receipt's towers (a dump's pylons) the line runs between the standing ones at their built height:
+  // the second tower refused, the 50 m line strung first to third, third to fourth
+  const pylons = line.towers.map(([x, z], i) => [x, z, i === 1 ? 0 : 1, 50, 30, 'the 110 kV line']);
+  const built = powerWires('verdant', () => 0, 18, pylons);
+  assert.equal(built.length, 2 * 5, 'two spans past the refused tower');
+  const lowArm = built.find((x) => x.kind === 'power line').pts[0][1];
+  assert.ok(Math.abs(lowArm - (0.62 * 50 + 0.4 - 2.6 - 0.15)) < 1e-9, `the lower arms hang their strings at the built height (${lowArm.toFixed(2)} m)`);
 }
 // s226 as first staged, the lens climbing to 7 m through the telephone line by the church, fails on its own battlefield
 {

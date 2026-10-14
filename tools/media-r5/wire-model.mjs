@@ -6,9 +6,10 @@
 //   world's crushables in order, a utility pole being the one with an index and no kind).
 // - The high-voltage lines (scenery.ts, sceneryKit.ts buildPylon): the map's scenery.powerLines, a conductor from each
 //   insulator yoke of a tower (two crossarm pairs, the earth-wire peak) to the same yoke of the next, sagging span x
-//   0.04 as a parabola (the earth wire 0.8 of that), 0.055 m in radius (the earth wire 0.03). The tower's height is the
-//   game's rule without the crowns: the authored height, raised until the lowest conductor in its sag clears the ground
-//   under the span by 12 m, at most 70 m (a dump holds no crown tops, so over a wood the true towers stand taller).
+//   0.04 as a parabola (the earth wire 0.8 of that), 0.055 m in radius (the earth wire 0.03). A dump with `pylons` (the
+//   scenery receipt, lab.mjs since 2026-10-14) gives the standing towers and the height they were built to, exactly;
+//   an older one gets the game's rule without the crowns: the authored height, raised until the lowest conductor in its
+//   sag clears the ground under the span by 12 m, at most 70 m (over a wood the true towers stand taller).
 // Pure: features and the map's source in, wires out ({ kind, r, pts: [[x, y, z], ...], min, max }).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,11 +59,17 @@ export function powerLinesOf(map) {
   return lines;
 }
 
-/** The high-voltage conductors (scenery.ts composeScenery's power lines; sceneryKit.ts buildPylon's arms). */
-export function powerWires(map, heightAt, segments = 18) {
+/**
+ * The high-voltage conductors (scenery.ts composeScenery's power lines; sceneryKit.ts buildPylon's arms). With the
+ * dump's `pylons` (lab.mjs, the scenery receipt: [x, z, placed, heightM, authoredHeightM, name]) the line is strung
+ * between its standing towers at the height they were built to; without them, at the height the game's rule gives
+ * over the bare ground.
+ */
+export function powerWires(map, heightAt, segments = 18, pylons = null) {
   const wires = [];
   for (const line of powerLinesOf(map)) {
     const H0 = line.heightM ?? 34;
+    const built = pylons?.length ? line.towers.map(([x, z]) => pylons.find((p) => Math.abs(p[0] - x) < 0.5 && Math.abs(p[1] - z) < 0.5) ?? null) : null;
     let H = H0;
     for (let t = 0; t + 1 < line.towers.length; t++) {
       const [ax, az] = line.towers[t], [bx, bz] = line.towers[t + 1], span = Math.hypot(bx - ax, bz - az);
@@ -74,16 +81,19 @@ export function powerWires(map, heightAt, segments = 18) {
       }
     }
     H = Math.min(H, PYLON_TALLEST_M);
+    const receiptH = built?.find((p) => p && p[3] > 0)?.[3];
+    if (receiptH) H = receiptH;
     // buildPylon(rng, H, mobile, H0): the arms keep the authored tower's breadth
     const wide = H0 / 34, waistY = H * 0.62, arms = [];
     for (const [y, reach] of [[waistY + 0.4, 11.5 * wide], [waistY + (H - waistY) * 0.55, 8.2 * wide]]) {
       for (const side of [-1, 1]) arms.push([side * (reach - 0.3), y - 2.6, HV_R, 1]);
     }
     arms.push([0, H, EARTH_R, 0.8]);
+    // each tower's yaw from its authored neighbours (as scenery.ts turns it), then only the towers that stand
     const towers = line.towers.map(([x, z], t) => {
       const [px, pz] = line.towers[Math.max(0, t - 1)], [nx, nz] = line.towers[Math.min(line.towers.length - 1, t + 1)];
       return { x, z, y: heightAt(x, z) - 0.15, yaw: Math.atan2(nx - px, nz - pz) };
-    });
+    }).filter((_, t) => !built || built[t]?.[2] === 1);
     for (let t = 0; t + 1 < towers.length; t++) {
       const a = towers[t], b = towers[t + 1], span = Math.hypot(b.x - a.x, b.z - a.z);
       for (const [ax, ay, r, sagK] of arms) {
@@ -105,6 +115,6 @@ export function powerWires(map, heightAt, segments = 18) {
 /** Every overhead wire of a dump's battlefield, cached per dump. */
 export function wiresOf(features, heightAt) {
   if (!features) return [];
-  if (!cache.has(features)) cache.set(features, [...telephoneWires(features), ...powerWires(features.map, heightAt)]);
+  if (!cache.has(features)) cache.set(features, [...telephoneWires(features), ...powerWires(features.map, heightAt, 18, features.pylons ?? null)]);
   return cache.get(features);
 }

@@ -310,6 +310,12 @@ try {
         // the presentation crushables a hull topples without a collision record (utility poles, loop-class dressing):
         // [x, y, z, r, h, kind, dynamic]
         const crushables = (W.crushables ?? []).map(c => [r2(c.x), r2(c.y), r2(c.z), r2(c.r), r2(c.h), c.kind ?? (c.index != null ? 'pole' : 'prop'), c.dynamic ? 1 : 0]);
+        // the high-voltage towers as the scenery built them (2026-10-14, the coordinator: the lens check's wires exact):
+        // the props group's scenery receipt, each tower [x, z, placed 1 | refused 0, its height, the authored height, the
+        // line's name], so wire-model.mjs strings the conductors between the standing towers at their real height
+        const sceneryReceipt = (W.group?.children ?? []).map(c => c.userData?.scenery).find(Boolean);
+        const pylons = (sceneryReceipt?.features ?? []).filter(f => f.family === 'powerLine')
+          .map(f => [r2(f.x), r2(f.z), f.status === 'placed' ? 1 : 0, r2(f.heightM ?? 0), r2(f.authoredHeightM ?? 0), f.name ?? null]);
         // the shrubs (2026-10-08, composition wave c3: a bush at the lens filled S36's frame at 5 s, and the obstacle dump
         // held no shrub, for a hull drives through them): every bush and understorey instance the vegetation draws
         // (vegetation.ts userData.bush / understorey; one cleared out of a solid has a zero basis and is skipped), as
@@ -338,7 +344,7 @@ try {
           treeClusters: f.treeClusters, waterOrSoft: f.waterOrSoft.map(pick),
           spawns: [[sp.player.pos[0], sp.player.pos[2], 'ally'], ...sp.enemies.map(e => [e.pos[0], e.pos[2], 'enemy'])],
           village: v && Number.isFinite(v.cx) ? [v.cx, v.cz, v.x0, v.z0, v.x1, v.z1] : null, shot: W.config.shot ?? null,
-          sky: W.config.sky ?? null, obstacles, crushables, shrubs,
+          sky: W.config.sky ?? null, obstacles, crushables, shrubs, pylons,
           grid: { step: STEP, n, origin: h0, heightDm: b64(heights), water255: b64(wet) } };
       });
       writeFileSync(join(out, `features-${map}.json`), JSON.stringify(feats));
