@@ -182,8 +182,13 @@ for (const mapId of MAP_IDS) {
 // and no cart's footprint stands in any other obstacle (a fence, a wall, firewood, a trough, a building, rubble, a rock,
 // a tree, a hedgehog): the pass seats each cart's whole body clear by 5 cm, its collision footprint lies inside that
 let carts = 0;
+/** A record's raised deck — a roof a hull stands on (physics stream F2, world/collision.ts collisionPartIsDeck): a drawn
+ * top starting over half a metre above the record, on a building — is a floor only, no footprint a vehicle stands in. */
+const isDeck = (record, part) => Array.isArray(part) && part[0] === 'p' && part[1] > record.b[1] + 0.5 && !record.q
+  && record.k !== 'tank-wreck' && record.k !== 'tram-wreck';
 const shardPolys = (record) => shapePolygons({ min: [record.b[0], 0, record.b[2]], max: [record.b[0], 0, record.b[2]],
-  shape2: decodeShape(record.s) });
+  shape2: decodeShape(Array.isArray(record.s) && record.s[0] === 'm'
+    ? ['m', ...record.s.slice(1).filter((part) => !isDeck(record, part))] : record.s) });
 function decodeShape(s) {
   if (!s) return undefined;
   if (s[0] === 'm') return { kind: 'compound', cx: 0, cz: 0, parts: s.slice(1).map(decodeShape) };
