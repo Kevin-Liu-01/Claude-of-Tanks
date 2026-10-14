@@ -358,7 +358,9 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     const [h, half] = VERTICAL_SIZE[s.vertical];
     const off = s.kind === 'town' ? 0 : s.radiusM * 0.15;
     verticals.push({ kind: s.vertical, x: s.x + Math.sin(s.yaw + Math.PI / 2) * off, z: s.z + Math.cos(s.yaw + Math.PI / 2) * off,
-      heightM: s.towerM ?? h * (s.kind === 'town' ? 1.25 : s.near ? 1 : 0.95), halfM: s.towerM ? Math.max(half, s.towerM / 9) : half, yaw: s.yaw, settlement: s.id });
+      heightM: s.towerM ?? h * (s.kind === 'town' ? 1.25 : s.near ? 1 : 0.95),
+      // (a church tower's footprint as outlandGeometry draws it: its buildings keep clear of it)
+      halfM: s.vertical === 'churchTower' ? Math.max(half, (s.towerM ?? h) / ((s.towerM ?? h) >= 70 ? 10 : 7)) : half, yaw: s.yaw, settlement: s.id });
   }
   const regionExtra = spec.region.verticals.slice(1);
   if (regionExtra.includes('windmill') && pattern === 'dykeVillage') {
