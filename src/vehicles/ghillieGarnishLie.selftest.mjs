@@ -14,7 +14,15 @@
 //      under its face, without the net's own spikes; a card with no footprint, one standing up, is held to the net's plane
 //      round its stem) for at least 90 % of a hull's roof cards, and more than 60 degrees for at most 2 % of them (at least
 //      one: a card where two nets meet is measured against the higher);
-//   3. no drape card's spine rises more than 20 degrees (nothing stands up out of a drape past the roof line).
+//   3. no drape card's spine rises more than 20 degrees (nothing stands up out of a drape past the roof line);
+//   4. (netting-proper round 2; three critics on the Mk 4B: "the plume is gone, but nothing replaced it ... a low draped
+//      net with flat foliage is needed across the turret roof") a turret roof net of 2 m2 or more is covered in plan by
+//      its own lying roof cards over at least 30 % of it (2 cm cells; the Mk 4B's had fallen to 26 % when the fix round's
+//      boughs were first laid flat, main's standing clumps 39 %).
+//   5. (netting-proper round 2; a critic on the Mk 4B: "a large dark fan of long blades or strips spreads out sideways
+//      from the turret's side") a drape card tucked where its drape lies level, and laid within 30 degrees of level,
+//      lies over the cloth: in plan no point of it more than 30 cm from the owner's net (the boughs standing straight
+//      out of the Mk 4B's bustle drape where it rolled level over the basket's edge reached 34 to 38 cm past it).
 import assert from 'node:assert/strict';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
@@ -27,6 +35,74 @@ const LIFT_M = 0.12, LIFT_TOL_M = 0.02, OWN_NET_M = 0.25, EDGE_RISE_M = 0.12;
 // GARNISH_LIE_DEBUG=<id>: list that hull's tilted roof cards
 const DEBUG_ID = process.env.GARNISH_LIE_DEBUG;
 const TILT_DEG = 25, TILT_SHARE = 0.9, TILT_MAX_DEG = 60, STEEP_SHARE = 0.02, DRAPE_RISE_DEG = 20;
+const COVER_CELL_M = 0.02, COVER_MIN_NET_M2 = 2, COVER_MIN_SHARE = 0.3, DRAPE_PLAN_REACH_M = 0.3;
+
+/**
+ * An owner's net for its drape garnish: `level(p)`, whether the drape cloth nearest a point (within 30 cm; its net mesh
+ * after the leading `top` roof vertices) lies level (its normal within 53 degrees of vertical: a roll over a roof's edge,
+ * a net over a cage's top), and `reach(p)`, how far in plan the point lies from the nearest of the whole net's vertices
+ * and edge midpoints (searched to 0.6 m).
+ */
+function drapeCloth(net, top) {
+  const pos = net.geometry.attributes.position, C = 0.1, tris = new Map(), pts = new Map(), P = 0.05;
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    const a = [pos.getX(t), pos.getY(t), pos.getZ(t)], b = [pos.getX(t + 1), pos.getY(t + 1), pos.getZ(t + 1)];
+    const c = [pos.getX(t + 2), pos.getY(t + 2), pos.getZ(t + 2)];
+    for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+      for (const q of [u, [(u[0] + v[0]) / 2, 0, (u[2] + v[2]) / 2]]) {
+        const key = `${Math.floor(q[0] / P)},${Math.floor(q[2] / P)}`;
+        if (!pts.has(key)) pts.set(key, []);
+        pts.get(key).push([q[0], q[2]]);
+      }
+    }
+    if (t < top) continue;
+    const raw = cross(sub(b, a), sub(c, a));
+    if (Math.hypot(...raw) < 1e-12) continue;
+    const ny = Math.abs(norm(raw)[1]), m = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+    const key = `${Math.floor(m[0] / C)},${Math.floor(m[1] / C)},${Math.floor(m[2] / C)}`;
+    if (!tris.has(key)) tris.set(key, []);
+    tris.get(key).push([m, ny]);
+  }
+  return {
+    level(p) {
+      let best = 0.3, ny = 0;
+      const i0 = Math.floor(p[0] / C), j0 = Math.floor(p[1] / C), k0 = Math.floor(p[2] / C);
+      for (let i = i0 - 3; i <= i0 + 3; i++) for (let j = j0 - 3; j <= j0 + 3; j++) for (let k = k0 - 3; k <= k0 + 3; k++) {
+        for (const [m, n] of tris.get(`${i},${j},${k}`) ?? []) {
+          const d = Math.hypot(m[0] - p[0], m[1] - p[1], m[2] - p[2]);
+          if (d < best) { best = d; ny = n; }
+        }
+      }
+      return ny > 0.6;
+    },
+    reach(p) {
+      let best = 0.6;
+      const i0 = Math.floor(p[0] / P), j0 = Math.floor(p[2] / P), R = Math.ceil(0.6 / P);
+      for (let i = i0 - R; i <= i0 + R; i++) for (let j = j0 - R; j <= j0 + R; j++) {
+        for (const [x, z] of pts.get(`${i},${j}`) ?? []) best = Math.min(best, Math.hypot(x - p[0], z - p[2]));
+      }
+      return best;
+    },
+  };
+}
+
+/** The 2 cm plan cells a run of triangles (flat [x, y, z] triples, from `from` to `to` vertices) covers. */
+function planCells(pos, from, to, cells) {
+  const C = COVER_CELL_M;
+  for (let t = from; t + 2 < to; t += 3) {
+    const ax = pos.getX(t), az = pos.getZ(t), bx = pos.getX(t + 1), bz = pos.getZ(t + 1), cx = pos.getX(t + 2), cz = pos.getZ(t + 2);
+    const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+    if (Math.abs(d) < 1e-10) continue;
+    for (let i = Math.floor(Math.min(ax, bx, cx) / C); i <= Math.floor(Math.max(ax, bx, cx) / C); i++) {
+      for (let j = Math.floor(Math.min(az, bz, cz) / C); j <= Math.floor(Math.max(az, bz, cz) / C); j++) {
+        const x = (i + 0.5) * C, z = (j + 0.5) * C;
+        const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d;
+        if (l1 >= 0 && l2 >= 0 && l1 + l2 <= 1) cells.add(i * 100003 + j);
+      }
+    }
+  }
+  return cells;
+}
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -114,8 +190,8 @@ for (const id of IDS) {
   const tank = createTank(id, null, { quality: 'high', geometryReceipt: true, proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
   const DEBUG = DEBUG_ID === id;
-  const steep = [];
-  let roofCards = 0, tilted = 0, unseated = 0, drapeCards = 0, worstLift = 0, worstTilt = 0, worstRise = -90;
+  const steep = [], coverage = [];
+  let roofCards = 0, tilted = 0, unseated = 0, drapeCards = 0, worstLift = 0, worstTilt = 0, worstRise = -90, worstReach = 0;
   tank.root.traverse((o) => {
     if (!o.isMesh || !/_ghillie_.*_leaves$/.test(o.name)) return;
     const net = o.parent.children.find((c) => c.isMesh && c.name === o.name.replace(/_leaves$/, '_net'));
@@ -125,6 +201,7 @@ for (const id of IDS) {
     const { under, planeAt, fitPlane, top } = roofNet(net);
     const topCards = (o.userData[GHILLIE_TOP_CARDS] ?? [0, 24])[0];
     const V = (i) => [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const cloth = drapeCloth(net, top);
     for (let k = 0, card = 0; k + 23 < pos.count; k += 24, card++) {
       // the spine (its root and tip rows' middles) and the middle row's edges
       const s0 = V(k + 1), s2 = V(k + 14), axis = norm(sub(s2, s0));
@@ -133,6 +210,16 @@ for (const id of IDS) {
         const rise = deg(Math.asin(Math.max(-1, Math.min(1, axis[1]))));
         worstRise = Math.max(worstRise, rise);
         if (rise > DRAPE_RISE_DEG) failures.push(`${o.name} drape card ${card}: its spine rises ${rise.toFixed(0)} deg (from ${s0.map((v) => v.toFixed(2))})`);
+        // 5. tucked where its drape lies level (a roll over a roof's edge, a net over a cage's top) and laid within 30
+        // degrees of level (a bough hanging over the roll's edge down the drape is the drape's), its face lies over the
+        // cloth in plan, within DRAPE_PLAN_REACH_M of it (a fan standing straight out of a level roll reached half a
+        // metre past it)
+        if (Math.abs(axis[1]) < 0.5 && cloth.level(s0)) {
+          let reach = 0;
+          for (const i of [0, 1, 7, 12, 13, 19, 17, 14, 20]) reach = Math.max(reach, cloth.reach(V(k + i)));
+          worstReach = Math.max(worstReach, reach);
+          if (reach > DRAPE_PLAN_REACH_M) failures.push(`${o.name} drape card ${card}: juts ${(reach * 100).toFixed(0)} cm past its level cloth in plan (from ${s0.map((v) => v.toFixed(2))})`);
+        }
         continue;
       }
       roofCards++;
@@ -169,6 +256,19 @@ for (const id of IDS) {
       if (DEBUG && tilt > TILT_DEG) console.log(`  ${o.name} ${card} tilt ${tilt.toFixed(0)} stem ${s0.map((v) => v.toFixed(2))} tip ${s2.map((v) => v.toFixed(2))} face ${face.map((v) => v.toFixed(2))} net ${seat.map((v) => v.toFixed(2))}`);
       if (tilt > TILT_MAX_DEG) steep.push(`${o.name} roof card ${card}: its face stands ${tilt.toFixed(0)} deg off the net's`);
     }
+    // 4. a turret roof net's plan coverage by its own lying roof cards
+    if (/_ghillie_turret_leaves$/.test(o.name)) {
+      const netCells = planCells(net.geometry.attributes.position, 0, top, new Set());
+      const netM2 = netCells.size * COVER_CELL_M * COVER_CELL_M;
+      if (netM2 >= COVER_MIN_NET_M2) {
+        const cardCells = planCells(pos, 0, topCards * 24, new Set());
+        let both = 0;
+        for (const c of cardCells) if (netCells.has(c)) both++;
+        const share = both / netCells.size;
+        coverage.push(`turret net ${netM2.toFixed(1)} m2 ${(share * 100).toFixed(0)} % covered`);
+        if (share < COVER_MIN_SHARE) failures.push(`${id}: its turret roof net (${netM2.toFixed(1)} m2) is covered by its lying garnish over only ${(share * 100).toFixed(0)} %`);
+      }
+    }
   });
   assert.ok(roofCards > 20 && drapeCards > 10, `${id}: carries its roof and drape garnish (${roofCards} roof, ${drapeCards} drape cards)`);
   // a roof card's stem sits in its net (net enough round it to fit its plane)
@@ -176,7 +276,7 @@ for (const id of IDS) {
   // a card where two nets meet (or at a net drawn steeply up over a fitting) reads steep: two in a hundred may
   if (steep.length > Math.max(1, Math.floor(STEEP_SHARE * roofCards))) failures.push(...steep);
   if (tilted > (1 - TILT_SHARE) * roofCards) failures.push(`${id}: ${tilted} of ${roofCards} roof cards stand more than ${TILT_DEG} deg off the net`);
-  summary.push(`${id} ${roofCards}/${drapeCards} cards, lift <= ${(worstLift * 100).toFixed(1)} cm, ${tilted} tilted > ${TILT_DEG} deg (worst ${worstTilt.toFixed(0)}, ${steep.length} over ${TILT_MAX_DEG}), drape rise <= ${worstRise.toFixed(0)} deg, ${unseated} untied`);
+  summary.push(`${id} ${roofCards}/${drapeCards} cards, lift <= ${(worstLift * 100).toFixed(1)} cm, ${tilted} tilted > ${TILT_DEG} deg (worst ${worstTilt.toFixed(0)}, ${steep.length} over ${TILT_MAX_DEG}), drape rise <= ${worstRise.toFixed(0)} deg, drape reach <= ${(worstReach * 100).toFixed(0)} cm, ${unseated} untied${coverage.length ? `, ${coverage.join(', ')}` : ''}`);
   tank.dispose?.();
 }
 assert.deepEqual(failures, [], `field garnish lies on its net:\n${failures.slice(0, 40).join('\n')}`);
