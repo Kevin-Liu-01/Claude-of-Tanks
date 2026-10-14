@@ -92,14 +92,17 @@ interface StandingDecks {
   tops: Float64Array;
 }
 
-/** Highest standable top under (x, z) among the candidates, or -Infinity. `floors` (beginHull's pose rule) holds each
- * candidate's own belly line; without it every candidate uses `bellyY`. `stand` (beginHull) holds the deck piece the
- * hull stands on, a floor within the terrain's reach of the root. */
+/** Highest standable top under (x, z) among the candidates over `floor`, or `floor` (-Infinity: none). `floors`
+ * (beginHull's pose rule) holds each candidate's own belly line; without it every candidate uses `bellyY`. `stand`
+ * (beginHull) holds the deck piece the hull stands on, a floor within the terrain's reach of the root. The support field
+ * passes the ground as the floor (physics stream, 2026-10-13, the MP stream's tick profile): a part no higher than the
+ * ground there can never be its answer, so its containment test is skipped — the same answer, exactly. */
 export function structureTopAt(
   candidates: readonly CollisionRecord[], count: number, x: number, z: number, bellyY: number,
   floors: Float64Array | null = null, plane: SupportPlane | null = null, stand: StandingDecks | null = null,
+  floor = -Infinity,
 ): number {
-  let best = -Infinity;
+  let best = floor;
   // (physics stream, 2026-10-13) a drawn top (a stone's surface) is a floor wherever it is not a wall: where its climb
   // surface (collisionPartClimbAt: a face the tracks ride up, lowered by their climb past the step) lies within the step
   // of the hull's track plane at that very point — the push's own rule, so a stone is wall or floor everywhere and never
@@ -185,9 +188,9 @@ export function createStructureSupportField(
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
-    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null, posed ? plane : null, standing ? stand : null);
-    if (top > ground + 0.02) { recordReads++; return top; }
-    return top > ground ? top : ground;
+    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null, posed ? plane : null, standing ? stand : null, ground);
+    if (top > ground + 0.02) recordReads++;
+    return top;
   };
   const getHeightAt = sample(terrainAt);
   const getHeightAtFast = sample(terrainFast);
