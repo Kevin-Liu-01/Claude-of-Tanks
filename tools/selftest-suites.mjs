@@ -1013,6 +1013,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/wire/matchBuild.selftest.mjs',
@@ -1067,6 +1068,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',
+    'src/mp/session/matchSessionEntryReports.selftest.mjs', // 2026-10-13 MP plan step 8: the loading host reports until its actor does
+    'src/mp/session/hostHeadroom.selftest.mjs', // 2026-10-13 MP plan step 10: a slow tab declines to host while it waits in the room
+    'src/mp/session/matchSessionHandOff.selftest.mjs', // 2026-10-13 MP plan step 11: a hosting tab going away hands its match on at once
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',

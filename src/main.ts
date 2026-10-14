@@ -1158,6 +1158,9 @@ const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lo
   return multiplayerLobby;
 });
 const multiplayerV2 = createCompositionAccess(loadMultiplayerV2Composition);
+// Plan step 11 (2026-10-13): a hosting tab that closes, reloads or navigates away hands its match on at once instead of
+// leaving its peers to the room's socket lease (the command leaves on the room socket inside the event).
+window.addEventListener('pagehide', () => { multiplayerV2.current?.handOffHosting('pagehide'); });
 /** A network match owns the battle frame: a round loading or live. */
 const networkMatchActive = (): boolean => !!multiplayerV2.current?.active;
 /** The one network pump every phase shares. */

@@ -20,7 +20,7 @@ import type {
 } from '../../sim/movement.ts';
 import type { RulesetPhysics } from '../../sim/matchRuleset.ts';
 import {
-  ENTITY_FLAGS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
+  ENTITY_FLAGS, HELD_INPUT_LEASE_TICKS, MODULE_STATE_NAMES, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES, dequantizeAngle,
   dequantizeMultiplier, dequantizePosition, dequantizeVelocity, wrapAngle,
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
@@ -70,6 +70,9 @@ export interface CorrectionPolicy {
   maxReplayTicks: number;
 }
 
+/** The longest stall the prediction steps through when the seat wakes (3 s; a longer one is the next row's resync). */
+const MAX_STALL_STEPS = 180;
+
 export const DEFAULT_CORRECTION_POLICY: Readonly<CorrectionPolicy> = Object.freeze({
   hullTauS: 0.11,
   contactHullTauS: 0.18,
@@ -91,6 +94,8 @@ export interface PredictionStats {
   respawns: number;
   replayedTicks: number;
   skippedReplayTicks: number;
+  /** Ticks the sampler skipped (a stall) that the prediction stepped on the authority's hold-and-release rule. */
+  stallTicks: number;
   heldTicks: number;
   checkpointsApplied: number;
   checkpointsMissing: number;
@@ -273,6 +278,11 @@ export class LocalPredictor {
   private currentTick = -1;
   private lastAuthorityTick = -1;
   private lastControl: PredictionControl | null = null;
+  /** Scratch for releasedControl (no allocation in the replay loop). */
+  private readonly releasedScratch: PredictionControl = {
+    tick: 0, throttle: 0, steer: 0, brake: true, fire: false, aimLocked: true, aimYaw: 0, aimPitch: 0, aimDistance: 1000,
+    shellSlot: 0, fireSeq: 0, actionSeq: 0, actionBits: 0,
+  };
   private motionIntent = false;
   private holdingRest = false;
   private contactSmoothingS = 0;
@@ -280,7 +290,7 @@ export class LocalPredictor {
   private lastContactHits = 0;
   private hasDisplayed = false;
   private readonly stats: PredictionStats = {
-    reconciliations: 0, hardSnaps: 0, terminalSyncs: 0, respawns: 0, replayedTicks: 0, skippedReplayTicks: 0,
+    reconciliations: 0, hardSnaps: 0, terminalSyncs: 0, respawns: 0, replayedTicks: 0, skippedReplayTicks: 0, stallTicks: 0,
     heldTicks: 0, checkpointsApplied: 0, checkpointsMissing: 0, checkpointsRejected: 0, contactReconciliations: 0,
     restingHolds: 0, lastPositionErrorM: 0, maxPositionErrorM: 0, maxFreePositionErrorM: 0,
     maxContactPositionErrorM: 0, tickJumps: 0, maxCorrectionStepM: 0, maxVerticalCorrectionStepM: 0, correctionM: 0,
@@ -333,6 +343,49 @@ export class LocalPredictor {
       if (withinRestDeadzone(this.heldPose, this.currentTickPose)) this.stats.heldTicks++;
       else this.releaseRest();
     }
+  }
+
+  /**
+   * Plan step 9 (2026-10-13): the sampler skipped `count` ticks from `firstTick` (a stall: a frozen tab, a long frame —
+   * InputStream.dueTicks samples only the newest few once it is far behind), so the authority received no control for
+   * them and held the last one for HELD_INPUT_LEASE_TICKS, then released drive and fire. The prediction steps those ticks
+   * on the same rule instead of jumping over them: before, the hull resumed from where the stall began while the
+   * authority's had kept moving (or had stopped), and the next row corrected it by the whole gap — metres at speed.
+   */
+  skipTicks(firstTick: number, count: number): void {
+    if (this.terminal || !this.initialized || count <= 0) return;
+    const control = this.lastControl;
+    if (!control) return;
+    const steps = Math.min(count, MAX_STALL_STEPS);
+    for (let tick = firstTick + count - steps; tick < firstTick + count; tick++) {
+      this.step(this.heldOrReleased(control, tick));
+      this.storePose(tick);
+      this.stats.stallTicks++;
+    }
+  }
+
+  /** The control the authority applies at `tick` while it holds `control` (the newest it received). */
+  private heldOrReleased(control: PredictionControl, tick: number): PredictionControl {
+    return tick - control.tick > HELD_INPUT_LEASE_TICKS ? this.releasedControl(control) : control;
+  }
+
+  /** The authority's release of a held control (server/match/inputBuffer.ts, the lease expired): no drive, no fire, the brake, aim kept. */
+  private releasedControl(control: PredictionControl): PredictionControl {
+    const released = this.releasedScratch;
+    released.tick = control.tick;
+    released.throttle = 0;
+    released.steer = 0;
+    released.brake = true;
+    released.fire = false;
+    released.aimLocked = true;
+    released.aimYaw = control.aimYaw;
+    released.aimPitch = control.aimPitch;
+    released.aimDistance = control.aimDistance;
+    released.shellSlot = control.shellSlot;
+    released.fireSeq = control.fireSeq;
+    released.actionSeq = control.actionSeq;
+    released.actionBits = 0;
+    return released;
   }
 
   /** Record the simulation pose as tick `tick`'s (the newest). */
@@ -477,7 +530,8 @@ export class LocalPredictor {
     for (let tick = authorityTick + 1 + skipped; tick <= latestSampledTick; tick++) {
       control = controls(tick) ?? control ?? this.lastControl;
       if (!control) continue;
-      this.step(control);
+      // a gap in the seat's own controls (controls() answers the newest earlier one) replays as the authority held it (step 9)
+      this.step(this.heldOrReleased(control, tick));
       this.storePose(tick);
       this.stats.replayedTicks++;
       steppedLatest = tick === latestSampledTick;

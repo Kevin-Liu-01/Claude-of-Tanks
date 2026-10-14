@@ -268,8 +268,28 @@ export interface RoomHostChangedPayload {
   /** The authority tick the new host resumes from (the keyframe it holds), 0 for a fresh match. */
   resumeTick: number;
   reason: 'left' | 'timeout' | 'declined' | 'start';
+  /**
+   * Which deadline a `timeout` was (2026-10-13, the MP stream; MP-SINCE-0930 plan step 7b): the host's room socket stayed
+   * away past its grace (`socket_lease`), or a connected host sent no match report inside the budget (`report_deadline`
+   * — a host still deep in its own entry). Absent on every other reason and from rooms before it; `reason` keeps its
+   * four values, so an older client reads the message unchanged.
+   */
+  detail?: RoomHostChangedDetail;
+  /** The commanders the election passed over and why (absent when none; never spectators or the departing host). */
+  passedOver?: RoomHostPassedOver[];
   /** P1 rooms lane (2026-09-28): the per-match host secret — present only on the elected host's own copy. */
   hostSecret?: string;
+}
+
+export type RoomHostChangedDetail = 'socket_lease' | 'report_deadline';
+/**
+ * `declined`: the seat said it would rather not host (`host_decline`, sticky for the match — a seat that declined while
+ * its own entry was loading stays passed over); `stepped_down`: it declined while hosting this match; `disconnected`: no
+ * room socket; `ranked_lower`: willing and connected, but the admin or an earlier joiner came first.
+ */
+export interface RoomHostPassedOver {
+  playerId: string;
+  why: 'declined' | 'stepped_down' | 'disconnected' | 'ranked_lower';
 }
 
 /** The `match_start` payload one seat receives: its own token, never another seat's. */
@@ -633,11 +653,18 @@ export function isRelayedRoomSignal(value: unknown): value is RoomSignalPayload 
   try { readRoomSignalPayload(value); return true; } catch { return false; }
 }
 
+const HOST_CHANGED_DETAIL_SET: ReadonlySet<string> = new Set(['socket_lease', 'report_deadline']);
+const PASSED_OVER_WHY_SET: ReadonlySet<string> = new Set(['declined', 'stepped_down', 'disconnected', 'ranked_lower']);
+
 export function isRoomHostChangedPayload(value: unknown): value is RoomHostChangedPayload {
   if (!isRecord(value)) return false;
   return typeof value.hostId === 'string' && ROOM_ID_RE.test(value.hostId) && isSafeUnsigned(value.generation) &&
     isSafeUnsigned(value.resumeTick) && typeof value.reason === 'string' && HOST_CHANGED_REASON_SET.has(value.reason) &&
-    (value.hostSecret === undefined || typeof value.hostSecret === 'string');
+    (value.hostSecret === undefined || typeof value.hostSecret === 'string') &&
+    (value.detail === undefined || (typeof value.detail === 'string' && HOST_CHANGED_DETAIL_SET.has(value.detail))) &&
+    (value.passedOver === undefined || (Array.isArray(value.passedOver) && value.passedOver.length <= ROOM_MAX_SEATS &&
+      value.passedOver.every((entry) => isRecord(entry) && typeof entry.playerId === 'string' && ROOM_ID_RE.test(entry.playerId) &&
+        typeof entry.why === 'string' && PASSED_OVER_WHY_SET.has(entry.why))));
 }
 
 /** A validated `match_report` (identity against the room is the actor's check). */
