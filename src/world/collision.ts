@@ -465,10 +465,17 @@ export function hullYieldingRecord(record: { crushable?: boolean; kind?: string 
   return record.crushable === true && !isFortifiedCoverKind(record.kind);
 }
 
+/** (2026-10-14, item 7 on main, Lane C) the heavy vehicle set pieces (maps/setPieceDestructibles.ts SET_PIECE_MASS dense):
+ *  real cover that stops a round, and, as every crushable a round stops on, the stop wrecks them (both authorities'
+ *  world-hit resolve). A receipt keeps this list and the mass table together (setPieceDestructibles.selftest). */
+export const DENSE_SET_PIECE_KINDS: ReadonlySet<string> = new Set([
+  'setpiece_stz3', 'setpiece_bv206', 'setpiece_snocat', 'setpiece_an26', 'setpiece_d8h', 'setpiece_k2tram', 'setpiece_haulpak',
+]);
+
 function isDenseCrushableCover(kind: string | undefined): boolean {
   return kind === 'wallstone' || kind === 'walladobe' ||
     kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
-    || isFortifiedCoverKind(kind);
+    || isFortifiedCoverKind(kind) || (kind != null && DENSE_SET_PIECE_KINDS.has(kind));
 }
 
 /**
