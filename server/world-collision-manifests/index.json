@@ -5,11 +5,11 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 2082620,
-      "sha256": "6a03908f9bd6d99b6d808be9185ef1f2e2d953f584f92c830f13860f77571406",
-      "obstacles": 6797,
-      "colliders": 6465,
-      "concealers": 7364
+      "bytes": 2238082,
+      "sha256": "827ceae0113523a670e716d211d8fd428332f561ee135540c684cb7c0ca57cc2",
+      "obstacles": 6816,
+      "colliders": 6679,
+      "concealers": 7332
     },
     "desert": {
       "bytes": 1536753,
@@ -239,11 +239,11 @@
   "variants": {
     "assault-trenches": {
       "verdant": {
-        "bytes": 2166640,
-        "sha256": "f788a6e2307a3c98420e2dbe77cc06625c96eba2375b3ee7da8c14feff7ac205",
-        "obstacles": 6803,
-        "colliders": 6378,
-        "concealers": 7228
+        "bytes": 2470161,
+        "sha256": "71694d8479b39d0f0e206d1ac7bcd78bdbf0381855ae8fff7d1261147ad6cf58",
+        "obstacles": 6824,
+        "colliders": 6594,
+        "concealers": 7204
       },
       "desert": {
         "bytes": 1732782,
