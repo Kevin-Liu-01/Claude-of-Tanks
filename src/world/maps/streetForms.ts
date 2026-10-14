@@ -8,7 +8,7 @@
 // (streetKit.ts) choose the form and its paint by map and period.
 import * as THREE from 'three';
 import { mix, mul, type Rgb, type V3 } from './craftMesh.ts';
-import { bar, easedBoard, extrude, finish, lathe, newMesh, place, pole, tip, tone, waneyBoard } from './clutterForms.ts';
+import { bar, easedBoard, extrude, faceTri, finish, lathe, newMesh, place, pole, tip, tone, waneyBoard } from './clutterForms.ts';
 
 type Rng = () => number;
 const X: V3 = [1, 0, 0], Y: V3 = [0, 1, 0], Z: V3 = [0, 0, 1];
@@ -430,4 +430,224 @@ export function rugFrameBroken(f: RugFrameForm, rng: Rng): THREE.BufferGeometry 
   m.quad([x - 0.45, 0.02, z - 0.5], [x + 0.45, 0.02, z - 0.5], [x + 0.45, 0.07, z + 0.1], [x - 0.45, 0.07, z + 0.1], Y, () => uv, () => g1, false);
   m.quad([x - 0.45, 0.07, z + 0.1], [x + 0.45, 0.07, z + 0.1], [x + 0.42, 0.02, z + 0.7], [x - 0.42, 0.02, z + 0.7], Y, () => uv, () => mul(g1, 0.9), false);
   return finish(m);
+}
+
+// ------------------------------------------------------------------------------------------------------- road signs
+
+/** A road sign's make by national standard and period: a direction plate on a galvanised post (its colours and its
+ *  pointed end by country), a warning triangle, a US route shield, a bilingual plate, and the period's fingerpost,
+ *  Michelin's concrete post, the ANWB's paddenstoel, the Wehrmacht's tactical boards, a Soviet board, a PWD milestone. */
+export interface SignForm {
+  kind: 'direction' | 'warning' | 'shield' | 'bilingual' | 'fingerpost' | 'michelin' | 'paddenstoel' | 'tactical' | 'board' | 'milestone';
+  plate: Rgb; legend: Rgb; border: Rgb; post: Rgb; pointed?: boolean;
+}
+/**
+ * A sign plate facing +z at (cx, cy, z): its face `w` × `h` with its corners rounded off (pointed on +x when asked),
+ * `t` thick, its folded rim a band of `rim` round the face's edge and down its sides, its back the rim's. One piece: the
+ * face, the rim and the back share their edges (a printed border, not a plate on the plate).
+ */
+function plate(m: M, cx: number, cy: number, z: number, w: number, h: number, t: number, face: Rgb, rim: Rgb, pointed: boolean | 'triangle' = false, band = 0.035): void {
+  const c = Math.min(w, h) * 0.08;
+  const outline = (inset: number): Array<[number, number]> => {
+    const W = w / 2 - inset, H = h / 2 - inset, cc = Math.max(0.005, c - inset * 0.4);
+    if (pointed === 'triangle') {
+      // a warning triangle on its base, its corners rounded off (inset along the bisectors)
+      const Wt = w / 2 - inset * 1.7, Hb = -h / 2 + inset, Ht = h / 2 - inset * 2, k = cc * 1.4;
+      return [[-Wt + k, Hb], [Wt - k, Hb], [Wt - k * 0.5, Hb + k * 0.85], [k * 0.5, Ht - k * 0.85], [-k * 0.5, Ht - k * 0.85], [-Wt + k * 0.5, Hb + k * 0.85]];
+    }
+    return pointed
+      ? [[-W + cc, -H], [W - h * 0.35, -H], [W - inset * 0.4, 0], [W - h * 0.35, H], [-W + cc, H], [-W, H - cc], [-W, -H + cc]]
+      : [[-W + cc, -H], [W - cc, -H], [W, -H + cc], [W, H - cc], [W - cc, H], [-W + cc, H], [-W, H - cc], [-W, -H + cc]];
+  };
+  const o = outline(0), i = outline(band), n = o.length, uv: [number, number] = [0.5, 0.5];
+  const P = (q: [number, number], zz: number): V3 => [cx + q[0], cy + q[1], zz];
+  for (let k = 0; k < n; k++) {
+    const a = o[k], b = o[(k + 1) % n], ia = i[k], ib = i[(k + 1) % n];
+    const out: V3 = [b[1] - a[1], -(b[0] - a[0]), 0];
+    m.quad(P(a, z - t), P(b, z - t), P(b, z), P(a, z), out, () => uv, () => mul(rim, 0.85), false);
+    m.quad(P(a, z), P(b, z), P(ib, z), P(ia, z), Z, () => uv, () => rim, false);
+  }
+  for (let k = 1; k + 1 < n; k++) {
+    faceTri(m, P(i[0], z), P(i[k], z), P(i[k + 1], z), Z, face);
+    faceTri(m, P(o[0], z - t), P(o[k], z - t), P(o[k + 1], z - t), [0, 0, -1], mul(rim, 0.7));
+  }
+}
+/** A legend in relief on a plate's face: an arrow (a shaft and its head) and lines of lettering as raised strokes. */
+function legend(m: M, cx: number, cy: number, z: number, w: number, h: number, col: Rgb, rng: Rng, arrow = true, lines = 2): void {
+  if (arrow) {
+    bar(m, [cx + w * 0.12, cy, z + 0.006], [cx + w * 0.36, cy, z + 0.006], h * 0.12, 0.008, Z, col, 0, false);
+    extrude(m, [0, 0, z], [0, 0, z + 0.012], [[cx + w * 0.34, cy - h * 0.2], [cx + w * 0.44, cy], [cx + w * 0.34, cy + h * 0.2]], X, Y, col, col);
+  }
+  for (let l = 0; l < lines; l++) {
+    const y = cy + h * (lines > 1 ? 0.22 - l * 0.44 : 0) * (arrow ? 1 : 0.8), x0 = cx - w * 0.4, x1 = cx + (arrow ? w * 0.05 : w * 0.38) - rng() * w * 0.12;
+    bar(m, [x0, y, z + 0.006], [x1, y, z + 0.006], h * 0.13, 0.008, Z, col, 0, false);
+  }
+}
+
+/** The sign (about 2.8 m tall, its post at the origin). One form (it casts its shadow). Near ≤ 260 triangles. */
+export function signNear(f: SignForm, rng: Rng): THREE.BufferGeometry {
+  const m = newMesh();
+  const post = tone(f.post, rng, 0.06);
+  switch (f.kind) {
+    case 'direction': case 'bilingual': case 'warning': case 'shield': {
+      // the galvanised post and its cap; the plate's back rails on two U-bolt clamps; the plate, its rim, its legend
+      pole(m, [0, -0.1, 0], [0, 2.82, 0], 0.035, 6, post);
+      lathe(m, [[0.04, 2.82], [0.04, 2.84], [0, 2.86]], 6, () => mul(post, 0.85), {});
+      const W = f.kind === 'warning' ? 0.9 : f.kind === 'shield' ? 0.62 : 1.18, H = f.kind === 'warning' ? 0.8 : f.kind === 'shield' ? 0.66 : f.kind === 'bilingual' ? 0.86 : 0.7;
+      const cy = 2.72 - H / 2, z = 0.06, cx = f.kind === 'direction' || f.kind === 'bilingual' ? 0.08 : 0;
+      for (const y of [cy - H * 0.28, cy + H * 0.28]) {
+        bar(m, [cx - W * 0.4, y, z - 0.035], [cx + W * 0.4, y, z - 0.035], 0.04, 0.03, Z, mul(post, 0.8), 0, false);
+        bar(m, [-0.05, y, -0.045], [0.05, y, -0.045], 0.03, 0.02, Z, mul(post, 0.7), 0, false);
+        bar(m, [-0.05, y, -0.045], [-0.05, y, 0.03], 0.03, 0.02, X, mul(post, 0.7), 0, true);
+        bar(m, [0.05, y, -0.045], [0.05, y, 0.03], 0.03, 0.02, X, mul(post, 0.7), 0, true);
+      }
+      if (f.kind === 'warning') {
+        // a triangle on its point up, its red border printed round its white face, its symbol in relief
+        plate(m, cx, cy, z, W, H, 0.02, f.plate, f.border, 'triangle', 0.09);
+        bar(m, [cx, cy - H * 0.22, z + 0.012], [cx, cy + H * 0.05, z + 0.012], 0.05, 0.008, Z, f.legend, 0, false);
+        bar(m, [cx - 0.025, cy - H * 0.3, z + 0.012], [cx + 0.025, cy - H * 0.3, z + 0.012], 0.05, 0.008, Z, f.legend, 0, false);
+      } else if (f.kind === 'shield') {
+        // the route shield: its outline, its white face, the route's number in relief
+        extrude(m, [0, 0, z - 0.02], [0, 0, z], [[cx - 0.2, cy - 0.33], [cx + 0.2, cy - 0.33], [cx + 0.31, cy - 0.05], [cx + 0.31, cy + 0.25], [cx + 0.2, cy + 0.33],
+          [cx - 0.2, cy + 0.33], [cx - 0.31, cy + 0.25], [cx - 0.31, cy - 0.05]], X, Y, f.border, f.border);
+        extrude(m, [0, 0, z], [0, 0, z + 0.005], [[cx - 0.17, cy - 0.29], [cx + 0.17, cy - 0.29], [cx + 0.27, cy - 0.04], [cx + 0.27, cy + 0.21], [cx + 0.17, cy + 0.27],
+          [cx - 0.17, cy + 0.27], [cx - 0.27, cy + 0.21], [cx - 0.27, cy - 0.04]], X, Y, f.plate, f.plate);
+        legend(m, cx, cy - 0.04, z + 0.004, 0.42, 0.36, f.legend, rng, false, 1);
+      } else {
+        plate(m, cx, cy, z, W, H, 0.02, f.plate, f.border, f.pointed === true);
+        legend(m, cx, cy, z, W, H, f.legend, rng, f.kind === 'direction', f.kind === 'bilingual' ? 2 : 2);
+      }
+      break;
+    }
+    case 'fingerpost': {
+      // a squared timber post, its pyramid cap, two finger boards pointing the roads' ways, a place plate under them
+      bar(m, [0, -0.1, 0], [0, 2.7, 0], 0.12, 0.12, X, post, 0.015, false);
+      lathe(m, [[0.085, 2.7], [0, 2.82]], 4, () => mul(post, 0.85), { phase: Math.PI / 4 });
+      const a = (rng() - 0.5) * 0.6;
+      for (const [y, yaw, len] of [[2.5, a, 0.95 + rng() * 0.2], [2.24, a + Math.PI + (rng() - 0.5) * 0.9, 0.85 + rng() * 0.2]] as const) {
+        const from = m.mark;
+        // the finger: its enamel faces, its dark edges, its pointed end
+        extrude(m, [0.06, y, 0], [0.06 + len, y, 0], [[-0.015, -0.1], [0.015, -0.1], [0.015, 0.1], [-0.015, 0.1]], Z, Y, (e) => (e % 2 ? f.plate : f.border), f.border);
+        extrude(m, [0, 0, -0.015], [0, 0, 0.015], [[0.06 + len, y - 0.1], [0.06 + len + 0.12, y], [0.06 + len, y + 0.1]], X, Y, f.plate, f.plate);
+        for (const sz of [-1, 1]) bar(m, [0.12, y, sz * 0.018], [0.06 + len * 0.8, y, sz * 0.018], 0.05, 0.004, [0, 0, sz], f.legend, 0, true);
+        place(m, from, yaw, 0, 0, 0);
+      }
+      plate(m, 0, 1.86, 0.065, 0.34, 0.24, 0.01, f.plate, f.border);
+      break;
+    }
+    case 'michelin': {
+      // the Michelin post: a concrete block with its rounded head, the enamel plates on its faces
+      extrude(m, [0, 0, -0.14], [0, 0, 0.14], [[-0.2, -0.05], [0.2, -0.05], [0.2, 0.95], [0.14, 1.12], [0, 1.18], [-0.14, 1.12], [-0.2, 0.95]], [-1, 0, 0], Y, post, mul(post, 0.92));
+      for (const sz of [-1, 1]) {
+        const from = m.mark;
+        plate(m, 0, 0.82, 0.146, 0.34, 0.22, 0.008, f.plate, f.border);
+        legend(m, 0, 0.82, 0.146, 0.34, 0.22, f.legend, rng, false, 2);
+        if (sz < 0) place(m, from, Math.PI, 0, 0, 0);
+      }
+      break;
+    }
+    case 'paddenstoel': {
+      // the ANWB mushroom: its white foot and its domed head, the place names on its blue bands
+      lathe(m, [[0.13, -0.05], [0.13, 0.42], [0.42, 0.46], [0.42, 0.62], [0.34, 0.72], [0.12, 0.78], [0, 0.79]], 10, (_k, b) => (b === 2 ? f.legend : f.plate), {});
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), sn = Math.sin(a);
+        bar(m, [c * 0.425 - sn * 0.1, 0.54, sn * 0.425 + c * 0.1], [c * 0.425 + sn * 0.1, 0.54, sn * 0.425 - c * 0.1], 0.04, 0.006, [c, 0, sn], f.border, 0, true);
+      }
+      break;
+    }
+    case 'tactical': {
+      // a pole with the units' boards nailed to it at their heights: arrows, their emblems, a stencilled code
+      pole(m, [0, -0.1, 0], [0, 2.6, 0], 0.045, 6, post, false);
+      const boards = 4;
+      for (let k = 0; k < boards; k++) {
+        const y = 1.2 + k * 0.28, yaw = (rng() - 0.5) * 0.5 + (k % 2 ? Math.PI : 0), w = 0.36 + rng() * 0.2, from = m.mark;
+        plate(m, 0.05 + w / 2, y, 0.05, w, 0.18, 0.015, k % 3 === 0 ? f.plate : mix(f.plate, f.border, 0.5), f.border, k % 2 === 0);
+        bar(m, [0.12, y, 0.062], [0.12 + w * 0.5, y, 0.062], 0.04, 0.006, Z, f.legend, 0, false);
+        place(m, from, yaw, 0, 0, 0);
+      }
+      break;
+    }
+    case 'board': {
+      // a painted board between two posts, its lettering raised
+      for (const x of [-0.5, 0.5]) bar(m, [x, -0.1, 0], [x, 2.3, 0], 0.08, 0.08, X, post, 0.01, false);
+      plate(m, 0, 1.95, 0.05, 1.1, 0.52, 0.025, f.plate, f.border);
+      legend(m, 0, 1.95, 0.05, 1.1, 0.52, f.legend, rng, false, 3);
+      break;
+    }
+    case 'milestone': {
+      // the PWD milestone: a squat stone, its rounded head painted, the distance cut in its face
+      extrude(m, [0, 0, -0.12], [0, 0, 0.12], [[-0.22, -0.05], [0.22, -0.05], [0.22, 0.4], [-0.22, 0.4]], [-1, 0, 0], Y, post, mul(post, 0.9), 0);
+      extrude(m, [0, 0, -0.12], [0, 0, 0.12], [[-0.22, 0.4], [0.22, 0.4], [0.2, 0.52], [0.12, 0.6], [0, 0.63], [-0.12, 0.6], [-0.2, 0.52]], [-1, 0, 0], Y, f.plate, mul(f.plate, 0.9));
+      bar(m, [-0.1, 0.28, 0.122], [0.1, 0.28, 0.122], 0.06, 0.006, Z, f.legend, 0, false);
+      bar(m, [-0.06, 0.16, 0.122], [0.06, 0.16, 0.122], 0.05, 0.006, Z, f.legend, 0, false);
+      break;
+    }
+  }
+  return finish(m);
+}
+
+// ------------------------------------------------------------------------------------------------------- lamps
+
+/** A street lamp's make: the Victorian column and its glazed lantern (Shanghai's Bund), the German gas lantern on its
+ *  cast mast, the railway yard's floodlight mast, the West German whip mast, the Yugoslav cobra-head (shot out on a
+ *  besieged street). The glass carries the night mask (its lantern lights at dusk). */
+export interface LampForm { kind: 'victorian' | 'gas' | 'yard' | 'whip' | 'cobra'; metal: Rgb; glass: Rgb; broken?: boolean }
+
+/** The lamp (about 4.7 m; its mast at the origin). One form (it casts its shadow). Near ≤ 400 triangles. Returns the
+ *  geometry and the vertex ranges of its glass (streetKit.ts writes the night mask over them). */
+export function lampNear(f: LampForm, rng: Rng): { geometry: THREE.BufferGeometry; glass: Array<[number, number]> } {
+  const m = newMesh();
+  const glass: Array<[number, number]> = [];
+  const metal = tone(f.metal, rng, 0.06);
+  const glazed = (body: () => void) => { const a = m.mark / 3; body(); glass.push([a, m.mark / 3]); };
+  switch (f.kind) {
+    case 'victorian': case 'gas': {
+      // the cast base with its door, the fluted column in sections with collars, the ladder bar, the lantern: its
+      // glazing bars round the panes, its roof and finial
+      const H = f.kind === 'victorian' ? 3.6 : 3.4;
+      lathe(m, [[0.2, -0.05], [0.2, 0.5], [0.16, 0.6], [0.12, 0.75], [0.1, 1.0], [0.11, 1.05], [0.085, 1.1], [0.07, H * 0.6], [0.085, H * 0.6 + 0.04], [0.06, H * 0.6 + 0.08], [0.055, H - 0.1], [0.08, H - 0.05], [0.08, H]],
+        8, (k, b) => mul(metal, b === 4 || b === 7 || b === 10 ? 1.15 : 0.95 + (k % 2) * 0.06), { faceted: f.kind === 'victorian' });
+      bar(m, [-0.012, 0.18, 0.19], [-0.012, 0.42, 0.19], 0.14, 0.012, Z, mul(metal, 0.8), 0, false);
+      if (f.kind === 'gas') pole(m, [-0.32, H - 0.25, 0], [0.32, H - 0.25, 0], 0.018, 4, metal, true);
+      // the lantern: four panes in their bars, tapering to the roof
+      const y0 = H, y1 = H + 0.55, r0 = 0.14, r1 = 0.22;
+      glazed(() => lathe(m, [[r0, y0], [r1, y1]], 4, () => f.glass, { phase: Math.PI / 4 }));
+      for (let k = 0; k < 4; k++) {
+        const a = Math.PI / 4 + k * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
+        pole(m, [c * r0 * 1.02, y0, sn * r0 * 1.02], [c * r1 * 1.02, y1, sn * r1 * 1.02], 0.012, 3, metal, false);
+      }
+      lathe(m, [[0.16, y0 - 0.02], [0.16, y0 + 0.02], [0, y0 + 0.02]], 4, () => metal, { phase: Math.PI / 4 });
+      lathe(m, [[0.3, y1], [0.3, y1 + 0.03], [0.12, y1 + 0.2], [0.03, y1 + 0.25], [0.03, y1 + 0.32], [0, y1 + 0.36]], 4, () => metal, { phase: Math.PI / 4 });
+      break;
+    }
+    case 'yard': case 'whip': case 'cobra': {
+      // the tapered mast on its foot, the arm out (a whip's curve, a cobra's swan neck, the yard's crossarm of floods)
+      const H = f.kind === 'yard' ? 4.9 : 4.4;
+      lathe(m, [[0.11, -0.05], [0.11, 0.35], [0.075, 0.42], [0.05, H]], 7, (k) => mul(metal, 0.95 + (k % 2) * 0.06), { capTop: true });
+      if (f.kind === 'yard') {
+        // the crossarm and its two floods, their glass faces down toward the yard
+        pole(m, [-0.5, H - 0.1, 0], [0.5, H - 0.1, 0], 0.03, 4, metal, true);
+        const floods = m.mark;
+        for (const x of [-0.4, 0.4]) {
+          lathe(m, [[0.18, 0], [0.16, 0.16], [0.04, 0.22]], 6, () => metal, { x, z: 0.05 });
+          if (!f.broken) glazed(() => lathe(m, [[0, 0.002], [0.17, 0.002]], 6, () => f.glass, { x, z: 0.05 }));
+          pole(m, [x, 0.2, 0.05], [x, 0.38, 0], 0.02, 3, metal);
+        }
+        place(m, floods, 0, 0, H - 0.48, 0);
+      } else {
+        const pts: V3[] = f.kind === 'whip'
+          ? [[0, H, 0], [0.05, H + 0.35, 0], [0.3, H + 0.6, 0], [0.8, H + 0.68, 0], [1.4, H + 0.62, 0]]
+          : [[0, H, 0], [0.1, H + 0.3, 0], [0.4, H + 0.45, 0], [1.1, H + 0.42, 0]];
+        for (let i = 0; i + 1 < pts.length; i++) pole(m, pts[i], pts[i + 1], 0.035, 5, metal, false);
+        const end = pts[pts.length - 1];
+        // the head: its housing over the arm's end, the bowl of glass under it (gone from a shot-out lamp)
+        const head = m.mark;
+        lathe(m, [[0.18, 0], [0.17, 0.06], [0.1, 0.12], [0, 0.14]], 6, () => metal, {});
+        if (!f.broken) glazed(() => lathe(m, [[0, -0.05], [0.12, -0.035], [0.17, 0.001]], 6, () => f.glass, {}));
+        place(m, head, 0, end[0] + 0.1, end[1] - 0.1, 0);
+      }
+      break;
+    }
+  }
+  return { geometry: finish(m), glass };
 }
