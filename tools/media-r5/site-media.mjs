@@ -21,7 +21,8 @@
 //   frames/<b>.webp, frames/<b>-thumb.webp         the fifty frames (R181) at 1920×1080 and 640×360
 //   frames/sheet-<n>.webp                          contact sheets, ten frames each (2400 × 540)
 //   films/trailer.mp4, films/trailer.jpg           the trailer at 1920×1080 with its score
-//   films/reel.mp4, films/reel.jpg                 the picked takes crossfaded at 1920×1080, silent (the home page's loop)
+//   films/reel.webm, films/reel.jpg                the picked takes crossfaded, 1600×900 VP9, silent (the home page's film)
+//   films/reel.mp4                                 the same at 1600×900 H.264 (the fallback for a browser without VP9)
 //   home/<group>/<id>.webp, <id>-640.webp          the home page's feature, mechanic and mode shots (home r2,
 //                                                  2026-10-12), from the delivered PNG <sources.home>/<group>/<id>.png;
 //                                                  a slot not yet delivered keeps its stand-in still (site-media-wire)
@@ -75,8 +76,11 @@ const HOME_STUDIO_PROXY = 'home-studio-mobile.mp4';
 const WEB = Object.freeze({
   loop: { codec: 'vp9', size: [1920, 1080], audio: 'keep', floor: 93, capFloor: 90, crfs: [34, 36, 38, 40, 42, 44, 46], capKbps: 8000 },
   loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, crfs: [36, 39, 42, 45, 48, 51], capKbps: 2000 },
-  reel: { codec: 'h264', size: [1920, 1080], audio: 'none', floor: 93, capFloor: 90, crfs: [20, 22, 24, 26, 28], capKbps: 4000 },
-  trailer: { codec: 'h264', size: [1920, 1080], audio: 'keep', floor: 93, capFloor: 90, crfs: [20, 22, 24, 26, 28], capKbps: 4000 },
+  // the reel (the home page's third section, a full-bleed film under a shade, loaded before the first scroll): 900p VP9
+  // under 4.3 Mbit/s, about 14.5 MB for 28 s (VMAF 93 at 1080p needed about 20 MB; the coordinator's ruling)
+  reel: { codec: 'vp9', size: [1600, 900], audio: 'none', floor: 93, capFloor: 90, crfs: [38, 40, 42, 44, 46], capKbps: 4300 },
+  // its H.264 twin at the same size and cap, for a browser that plays no VP9 (the page's fallback source)
+  reelMp4: { codec: 'h264', size: [1600, 900], audio: 'none', floor: 93, capFloor: 85, crfs: [20, 22, 24, 26, 28], capKbps: 4300 },
 });
 const WEB_RECORD = join(MEDIA, 'tools/media-r5/site-media/web-encodes.json');
 const webRecord = existsSync(WEB_RECORD) ? JSON.parse(readFileSync(WEB_RECORD, 'utf8')) : {};
@@ -387,7 +391,11 @@ function buildFilms() {
   const trailer = join(MEDIA, PICKS.sources.trailer);
   const poster = PICKS.posters ?? { trailer: 3 };
   if (existsSync(trailer)) {
-    webMake(join(OUT, 'films', 'trailer.mp4'), trailer, WEB.trailer, { film: 'trailer-24h' });
+    // (the trailer plays on a click, preload=metadata: its encode is unchanged)
+    make(join(OUT, 'films', 'trailer.mp4'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', trailer,
+      '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
+      '-maxrate', '4.5M', '-bufsize', '9M', '-profile:v', 'high', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', tmp]),
+    { film: 'trailer-24h' });
     make(join(OUT, 'films', 'trailer.jpg'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(poster.trailer),
       '-i', trailer, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), { film: 'trailer-24h' });
   }
@@ -411,7 +419,8 @@ function buildFilms() {
       run('ffmpeg', ['-v', 'error', '-y', ...takes.flatMap((d) => ['-i', d.hd]), '-filter_complex', `${chain.join(';')};${label}format=yuv420p[out]`,
         '-map', '[out]', '-an', '-c:v', 'libx264', '-preset', 'medium', '-crf', '10', '-movflags', '+faststart', master]);
     }
-    webMake(join(OUT, 'films', 'reel.mp4'), master, WEB.reel, extra);
+    webMake(join(OUT, 'films', 'reel.webm'), master, WEB.reel, extra);
+    webMake(join(OUT, 'films', 'reel.mp4'), master, WEB.reelMp4, extra);
     copy(join(OUT, 'films', 'reel.jpg'), takes[0].poster, extra);
   }
 }
