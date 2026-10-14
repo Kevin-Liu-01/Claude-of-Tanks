@@ -20,7 +20,10 @@ const DRAFT: HinterlandConfig = {
   // (the coordinator on the first Glacier frames: the battlefield's spruce woods carry on into the outland below the
   // treeline, and the church village returns under the cirque at edge-n, its tower clear of the woods)
   outland: { woods: 0.34, settle: { villages: 1, hamlets: 3, farms: 3, works: 0,
-    villagesAt: [{ azDeg: 8, distM: 900, name: 'Les Tavernettes', towerM: 34 }] } },
+    // (round 4, the coordinator on edge-n: the ring's church read larger — its border village stood ~300 m from the eye
+    // in front of the cirque's dark rock; Les Tavernettes comes in to 740 m on the flat before the knoll, eighteen
+    // houses, its slim pale tower 42 m, read whole from the edge)
+    villagesAt: [{ azDeg: 2, distM: 740, name: 'Les Tavernettes', towerM: 42, buildings: 18, slim: true }] } },
   landforms: [
     // the near walls (the coordinator on the first Glacier frames: "drama at the right distance" — at Mont-Cenis the walls
     // rise some 1,000 m within 2–3 km of the lake; the ring's wall subtended 12–20° from the edge eyes, so the cirque,
@@ -43,8 +46,10 @@ const DRAFT: HinterlandConfig = {
     { kind: 'ridge', at: { azDeg: 148, distM: 1450 }, heightM: 190, lengthM: 1300, widthM: 520, strikeDeg: 148, name: 'the Variselle spur',
       geology: { erosion: 0.75, gullies: 0.6, snow: { lineM: 0 } }, cover: { bare: true } },
     // west: Mont Froid and the Petit Mont-Cenis; east: the slopes up to the Lamet
+    // (round 4, the coordinator on edge-w: "Mont Froid reads as a flat-topped table mountain" — its summit stands just
+    // north of the west view's middle, a shoulder either side, the crest falling from it to both ends)
     { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 620, lengthM: 3400, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
-      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 150] } },
+      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 150] }, peak: { along: -0.15, share: 0.5 } },
     { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 560, lengthM: 4200, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
       geology: { snow: { lineM: 0 } }, cover: { forest: [0, 200] } },
     // south: the col's own shoulder over the Grande Croix, wooded, standing over the rim so the south view keeps a dark

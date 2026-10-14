@@ -25,6 +25,9 @@ export interface HinterlandWire {
   fogDensity: number;
   /** The region's air (regions.ts far.air): the far haze's scale, 1 by default, under it in clear mountain air. */
   air?: number;
+  /** The region's rock for the steep faces' strata (material.ts): its linear albedo, whether its ledges hold snow, the
+   * slope (deg) past which bare rock shows, and the beds' dip (deg). */
+  rock?: { rgb: [number, number, number]; snowy: boolean; slopeDeg: number; dipDeg: number };
   canopyM: number;
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
   /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte, the fields' edge offsets), when baked. */
@@ -42,6 +45,13 @@ export interface HinterlandWire {
   verticals: HinterlandVertical[];
   ms: HinterlandBuild['ms'];
   evaluated: number;
+}
+
+/** The wire's rock from a geology (sRGB hex to linear). */
+function rockOf(g: HinterlandBuild['field']['spec']['geology']): NonNullable<HinterlandWire['rock']> {
+  const lin = (v: number): number => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return { rgb: [lin((g.rockHex >> 16) & 255), lin((g.rockHex >> 8) & 255), lin(g.rockHex & 255)], snowy: g.snow.lineM < -100,
+    slopeDeg: g.rockSlopeDeg, dipDeg: g.strata.dipDeg };
 }
 
 /** Pack a build (the worker's side). */
@@ -69,6 +79,7 @@ export function packHinterlandPlan(
   const levels = pyramid.levels.map((l) => ({ texelM: l.texelM, halfM: l.halfM, n: l.n, heights: l.heights }));
   const wire: HinterlandWire = {
     mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity, air: spec.region.far.air ?? 1,
+    rock: rockOf(build.field.spec.geology),
     canopyM: spec.region.vegetation.canopyM, levels, surface, outland, trees, species, buildings, buildingKinds,
     landRot: build.field.landUse && build.field.landUse.strength > 0 ? [Math.cos(build.field.landUse.heading), Math.sin(build.field.landUse.heading)] : null,
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,

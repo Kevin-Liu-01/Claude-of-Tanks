@@ -152,15 +152,24 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   // the dominant summits: one, or two on a long mass, on the crest at seeded places along the strike
   // (one on a compact mass; along a long wall one every ~1.8 km, so its skyline breaks into peaks and cols — the near
   // walls of the Glacier frames read as table tops with one summit)
-  const summitCount = Math.max(2, Math.min(4, Math.round(f.halfL / 900)));
+  // (an authored peak: the main summit where the map wants it and a lower shoulder either side, round 4)
+  const authored = cfg.peak ?? null;
+  const summitCount = authored ? 3 : Math.max(2, Math.min(4, Math.round(f.halfL / 900)));
   const summits: { u: number; v: number; r: number; h: number }[] = [];
   const summitAretes: number[][] = [];
   for (let k = 0; k < summitCount; k++) {
     const a = ((salt * (0.618 + k * 0.17)) % 1);
-    const along = summitCount === 2 ? (k === 0 ? -0.55 : 0.15) + 0.4 * a
-      : -0.72 + 1.44 * (k + 0.5) / summitCount + (a - 0.5) * (0.9 / summitCount);
-    summits.push({ u: along * f.halfL, v: 0,
-      r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.28), h: [0.5, 0.36, 0.3, 0.26][k] });
+    if (authored) {
+      const main = Math.max(-0.8, Math.min(0.8, authored.along));
+      const along = k === 0 ? main : k === 1 ? Math.max(-0.85, main - 0.5) : Math.min(0.85, main + 0.55);
+      summits.push({ u: along * f.halfL, v: 0, r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.3),
+        h: k === 0 ? (authored.share ?? 0.5) : k === 1 ? 0.3 : 0.24 });
+    } else {
+      const along = summitCount === 2 ? (k === 0 ? -0.55 : 0.15) + 0.4 * a
+        : -0.72 + 1.44 * (k + 0.5) / summitCount + (a - 0.5) * (0.9 / summitCount);
+      summits.push({ u: along * f.halfL, v: 0,
+        r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.28), h: [0.5, 0.36, 0.3, 0.26][k] });
+    }
     // (the coordinator on the rim-30 sheet: "the massifs read as rounded snow domes ... Rochemelon and Ronce are sharp
     // pyramidal summits with arêtes") 2–4 arêtes, one of them down the crest along the strike, the rest spread round
     const n = 2 + Math.floor(((salt * 7.31 + k * 3.7) % 1) * 3);
@@ -186,10 +195,12 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
         ridge = Math.max(ridge, c ** 24);
         perp = Math.min(perp, Math.abs(Math.sin(phi - a)) * dq * s.r);
       }
-      const dqe = dq * (1.25 - 0.75 * ridge);
+      // (an authored peak, seen broadside, is its arête along the crest: that arête falls at four-fifths of its faces'
+      // mean, not half, and its faces run straight to the apex — the round-4 Mont Froid rounded to a dome at 0.78)
+      const dqe = dq * (1.25 - (authored ? 0.45 : 0.75) * ridge);
       if (dqe >= 1) continue;
       // a pyramid's straight faces to a sharp apex (the old (1 − q)^1.5 rounded it to a dome)
-      const p = Math.pow(1 - dqe, 0.78);
+      const p = authored ? 1 - dqe : Math.pow(1 - dqe, 0.78);
       if (s.h * p > SUMMIT.peak) {
         SUMMIT.peak = s.h * p;
         // its top 80–150 m (of the mass's height), and an arête's crest within ~14 m (the cornice's line)
@@ -202,10 +213,13 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   };
   // (a mass is a ridge with its summits along it, not one cone: its section is measured across the strike, the crest
   // running level along the middle half of its length before it falls to its ends)
+  // (an authored peak's mass has no level middle: its crest falls from the summit to either end, round 4)
+  const uPeak = authored ? summits[0].u : 0;
   const massQ = (u: number, v: number): number => {
     const { q, theta } = roundQ(f, u, v, 0.18);
     const lu = Math.abs(u) / f.halfL, lv = Math.abs(v) / f.halfW;
     const wander = 1 + 0.18 * lobe(theta, f.salt * 0.013);
+    if (authored) return Math.hypot(lv, (u - uPeak) / (u >= uPeak ? f.halfL - uPeak : f.halfL + uPeak)) / wander;
     return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.3) / 0.7) / wander);
   };
   const placed = place(f, 'pos', (u, v, x, z, texelM = 0) => {

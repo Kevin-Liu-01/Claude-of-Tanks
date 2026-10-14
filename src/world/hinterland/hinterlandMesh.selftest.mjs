@@ -142,9 +142,12 @@ const land = object.getObjectByName('hinterland-land');
   const ls = patched(land.material);
   for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
     [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
-    [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target']]) {
+    [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
+    [/hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'the steep faces\' strata'], [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky']]) {
     assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
   }
+  // (the polders' rock travels; their ledges hold no snow)
+  assert.ok(wire.rock && wire.rock.rgb.every((c) => c > 0 && c < 1) && wire.rock.snowy === false, 'the region\'s rock travels for the strata');
   const built = object.getObjectByName('hinterland-buildings');
   const bs = patched(built.material);
   assert.doesNotMatch(ls.fragmentShader + bs.fragmentShader, /gl_FragDepth/, 'the land and the outland keep early depth (the remap is geometry)');
