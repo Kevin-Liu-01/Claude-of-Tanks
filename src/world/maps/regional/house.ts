@@ -1323,7 +1323,7 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   const arcOf = (h: (typeof hs)[number]) => {
     const c = (h.u0 + h.u1) / 2, rr = (h.u1 - h.u0) / 2, sp = Math.min(h.spring!, h.y1 - rr);
     // the arc's segments by its size (a window's head in six, a carriage gate's in eight)
-    const n = rr < 0.45 ? 4 : rr < 1.1 ? 6 : 8;
+    const n = rr < 0.8 ? 4 : rr < 1.3 ? 6 : 8;
     return { c, rr, sp, n, at: (t: number): [number, number] => [c + Math.cos(t) * rr, sp + Math.sin(t) * rr] };
   };
   for (const h of hs) {

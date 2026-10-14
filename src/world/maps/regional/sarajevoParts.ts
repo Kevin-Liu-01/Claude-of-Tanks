@@ -179,7 +179,7 @@ export function archHead(sink: PartSink, face: Face, u: number, y: number, r: nu
  * its springing transom (fine joinery). (u, y) the springing line's centre, r the head's radius.
  */
 export function archGlazing(sink: PartSink, face: Face, u: number, y: number, r: number, frame: Rgb): void {
-  const o = sink.recess > 0 ? -sink.recess + 0.03 : 0.02, n = r < 0.45 ? 4 : r < 1.1 ? 6 : 8;
+  const o = sink.recess > 0 ? -sink.recess + 0.03 : 0.02, n = r < 0.8 ? 4 : r < 1.3 ? 6 : 8;
   const fan = [facePoint(face, u, y, o)];
   for (let j = 0; j <= n; j++) fan.push(facePoint(face, u + Math.cos(Math.PI * j / n) * (r - 0.03), y + Math.sin(Math.PI * j / n) * (r - 0.03), o));
   sink.polygon('glass', fan, DECOR);
