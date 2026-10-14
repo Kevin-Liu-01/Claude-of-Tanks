@@ -115,7 +115,7 @@ export function mapToBand<T extends THREE.BufferGeometry>(g: T, band: readonly [
 }
 
 /** A timber pole (the wood band, its grain along it): from y0 to y1, leaning by (lx, lz) over its length. */
-function pole(r: number, y0: number, y1: number, lx: number, lz: number): THREE.BufferGeometry {
+export function pole(r: number, y0: number, y1: number, lx: number, lz: number): THREE.BufferGeometry {
   const len = y1 - y0;
   const g = new THREE.CylinderGeometry(r * 0.85, r, len, 6, 1, true);
   const uv = g.attributes.uv as THREE.BufferAttribute;

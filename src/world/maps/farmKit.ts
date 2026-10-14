@@ -19,13 +19,15 @@ export type FarmEntry = (kind: string, mapId: string, near: Build, far: (() => T
   mat: DestructiblePropType['mat']) => DestructiblePropType;
 const lin = (hex: Hex): Rgb => hexLin(hex);
 
-interface BaleSpec { form: string; kind: BaleForm['kind']; film?: Hex; tape?: Hex }
+interface BaleSpec { form: string; kind: BaleForm['kind']; cock?: BaleForm['cock']; film?: Hex; tape?: Hex }
 const COCK: BaleSpec = { form: 'hay-cock', kind: 'cock' };
 const SQUARE: BaleSpec = { form: 'square-ricklet', kind: 'square' };
 const ROUND: BaleSpec = { form: 'round-bale', kind: 'round' };
 export const BALE_FORMS: Readonly<Record<string, BaleSpec>> = Object.freeze({
-  verdant: { ...COCK, form: 'kopna' }, winter: { ...COCK, form: 'kopka' }, autumn: COCK, polders: COCK, reservoir: COCK, alpine: COCK, monsoon: COCK,
-  delta: { ...COCK, form: 'rice-straw-cock' }, mangrove: { ...COCK, form: 'rice-straw-cock' },
+  // Prokhorovka's kopna; the Podhale's hay hung up its ostrewki; the rice straw of Kohima's terraces and the Jamuna's chars
+  verdant: { ...COCK, form: 'kopna', cock: 'kopna' }, winter: { ...COCK, form: 'ostrewka', cock: 'ostrewka' },
+  autumn: COCK, polders: COCK, reservoir: COCK, alpine: COCK,
+  monsoon: { ...COCK, form: 'rice-straw-stack', cock: 'rice' }, delta: { ...COCK, form: 'rice-straw-stack', cock: 'rice' }, mangrove: { ...COCK, form: 'rice-straw-stack', cock: 'rice' },
   longleaf: SQUARE, railyard: SQUARE, cliffbridge: SQUARE, steppe: SQUARE,
   frontier: ROUND, desert: ROUND, saltwind: ROUND,
   coastal: { form: 'silage-wrapped', kind: 'silage', film: 0x1c1e1c, tape: 0xd8d8d0 },
@@ -58,7 +60,7 @@ export function farmTypes(mapId: string, entry: FarmEntry): Record<string, Destr
   const out: Record<string, DestructiblePropType> = {};
   const bale = BALE_FORMS[mapId];
   if (bale) {
-    const f: BaleForm = { kind: bale.kind, film: bale.film ? lin(bale.film) : undefined, tape: bale.tape ? lin(bale.tape) : undefined };
+    const f: BaleForm = { kind: bale.kind, cock: bale.cock, film: bale.film ? lin(bale.film) : undefined, tape: bale.tape ? lin(bale.tape) : undefined };
     out.bale = f.kind === 'silage'
       ? entry('bale', mapId, (r) => silageNear(f, r), null, (r) => baleBroken(f, r), 'baked')
       : entry('bale', mapId, (r) => baleNear(f, r), null, (r) => baleBroken(f, r), 'straw');

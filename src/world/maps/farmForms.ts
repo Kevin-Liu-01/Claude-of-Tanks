@@ -9,7 +9,7 @@
 // legacy kind's extent: the bale's drum (1.45 m long, 0.72 m round, lying along x), the trough's 2.0 × 0.72 m.
 import * as THREE from 'three';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V } from '../hayPrint.ts';
-import { bandV, hayMerge, turn, type ProfilePoint } from './haystackKit.ts';
+import { bandV, hayMerge, pole as hayPole, turn, type ProfilePoint } from './haystackKit.ts';
 import { mix, mul, hexLin, type Rgb, type V3 } from './craftMesh.ts';
 import { bar, extrude, finish, lathe, newMesh, place, pole, tip, tone } from './clutterForms.ts';
 
@@ -18,9 +18,12 @@ const X: V3 = [1, 0, 0], Y: V3 = [0, 1, 0], Z: V3 = [0, 0, 1];
 
 // ------------------------------------------------------------------------------------------------------- bales
 
-/** A bale's make: the loose hay cock (a kopna) of the hand-mown maps, the twine-tied rectangular bales of the 1940s to
- *  the 1970s stacked in a ricklet, the round bale with its net or twine, the round bale wrapped in silage film. */
-export interface BaleForm { kind: 'cock' | 'square' | 'round' | 'silage'; film?: Rgb; tape?: Rgb }
+/** A bale's make: the loose hay cock of the hand-mown maps, the twine-tied rectangular bales of the 1940s to the 1970s
+ *  stacked in a ricklet, the round bale with its net or twine, the round bale wrapped in silage film. A cock's `cock` is
+ *  its place's build: the raked dome ('hay'), the Russian kopna (bigger, coned, its top twisted into a knot), the
+ *  Podhale ostrewka (hay hung up a spruce pole whose lopped branches poke through it), the monsoon belt's rice-straw
+ *  stack (packed round a bamboo pole, its cap thatched and tied, the pole standing out of it). */
+export interface BaleForm { kind: 'cock' | 'square' | 'round' | 'silage'; cock?: 'hay' | 'kopna' | 'ostrewka' | 'rice'; film?: Rgb; tape?: Rgb }
 
 /** A drum along x: its side the packed band round it (u), its ends the face band's spiral layers, twine raised. */
 function roundBale(rng: Rng): THREE.BufferGeometry {
@@ -63,18 +66,73 @@ function smallBale(rng: Rng): THREE.BufferGeometry {
   g.rotateZ(Math.PI / 2);
   return g;
 }
-/** The hay cock: a dome of hay drawn down in locks, a hat of hay twisted at its top, the loose hay at its foot. */
-function hayCock(rng: Rng): THREE.BufferGeometry {
-  const R = 0.72, H = 1.2 + rng() * 0.15, face = (y: number) => bandV(HAY_FACE_V, y / H);
-  const body = turn([[R * 0.98, -0.05, face(0), 0.04], [R, 0.12, face(0.12), 0.06], [R * 0.96, H * 0.35, face(H * 0.35), 0.08], [R * 0.78, H * 0.6, face(H * 0.6), 0.09],
-    [R * 0.5, H * 0.82, face(H * 0.82), 0.08], [R * 0.2, H * 0.95, bandV(HAY_THATCH_V, 0.5), 0.05], [0.03, H, bandV(HAY_THATCH_V, 1), 0.02]], 12, rng, 2);
-  const skirt = turn([[R * 1.25, -0.02, face(0), 0.05], [R * 1.12, 0.04, face(0.05), 0.04], [R * 0.98, 0.08, face(0.08), 0.02]], 12, rng, 2);
-  return hayMerge([body, skirt]);
+/** The hay cock: a dome of hay drawn down in locks, a hat of hay twisted at its top, the loose hay at its foot. The kopna
+ *  is the bigger Russian cock, coned higher, its top twisted into a knot of thatch. */
+function hayCock(rng: Rng, kopna: boolean): THREE.BufferGeometry {
+  const R = kopna ? 0.86 : 0.72, H = (kopna ? 1.75 : 1.2) + rng() * 0.15, face = (y: number) => bandV(HAY_FACE_V, y / H);
+  const body = kopna
+    ? turn([[R * 0.98, -0.05, face(0), 0.04], [R, 0.12, face(0.12), 0.06], [R * 0.93, H * 0.3, face(H * 0.3), 0.08], [R * 0.72, H * 0.55, face(H * 0.55), 0.09],
+      [R * 0.44, H * 0.78, face(H * 0.78), 0.08], [R * 0.2, H * 0.92, bandV(HAY_THATCH_V, 0.4), 0.05], [0.04, H, bandV(HAY_THATCH_V, 0.8), 0.02]], 12, rng, 2)
+    : turn([[R * 0.98, -0.05, face(0), 0.04], [R, 0.12, face(0.12), 0.06], [R * 0.96, H * 0.35, face(H * 0.35), 0.08], [R * 0.78, H * 0.6, face(H * 0.6), 0.09],
+      [R * 0.5, H * 0.82, face(H * 0.82), 0.08], [R * 0.2, H * 0.95, bandV(HAY_THATCH_V, 0.5), 0.05], [0.03, H, bandV(HAY_THATCH_V, 1), 0.02]], 12, rng, 2);
+  const parts = [body, cockSkirt(R, H, rng)];
+  if (kopna) {
+    // the knot: a fist of hay twisted up out of the crown and bent over
+    const knot = turn([[0.16, H - 0.1, bandV(HAY_THATCH_V, 0.6), 0.02], [0.12, H + 0.08, bandV(HAY_THATCH_V, 0.8), 0.03], [0.06, H + 0.22, bandV(HAY_THATCH_V, 0.95), 0.02],
+      [0.02, H + 0.3, bandV(HAY_THATCH_V, 1), 0.01]], 6, rng, 1);
+    knot.translate(0, -H, 0); knot.rotateZ(0.35); knot.translate(0, H, 0);
+    parts.push(knot);
+  }
+  return hayMerge(parts);
+}
+function cockSkirt(R: number, H: number, rng: Rng): THREE.BufferGeometry {
+  const face = (y: number) => bandV(HAY_FACE_V, y / H);
+  return turn([[R * 1.25, -0.02, face(0), 0.05], [R * 1.12, 0.04, face(0.05), 0.04], [R * 0.98, 0.08, face(0.08), 0.02]], 12, rng, 2);
+}
+/** A stub of a lopped branch along +x from the pole, rising by `rise` over its length, turned to `yaw`, at height y. */
+function stub(len: number, rise: number, yaw: number, y: number): THREE.BufferGeometry {
+  const g = hayPole(0.022, 0, len, 0, 0);
+  g.rotateZ(-Math.PI / 2 + Math.atan2(rise, len));
+  g.rotateY(yaw);
+  g.translate(0, y, 0);
+  return g;
+}
+/** The Podhale ostrewka: a lopped spruce pole set in the meadow, the hay hung up it in a slim stack, the branch stubs
+ *  poking out through the hay and standing bare over its top. */
+function ostrewka(rng: Rng): THREE.BufferGeometry {
+  const R = 0.56, H = 1.9 + rng() * 0.15, face = (y: number) => bandV(HAY_FACE_V, y / H);
+  const body = turn([[R * 0.95, -0.05, face(0), 0.04], [R, 0.16, face(0.16), 0.06], [R * 1.02, H * 0.36, face(H * 0.36), 0.08], [R * 0.9, H * 0.62, face(H * 0.62), 0.08],
+    [R * 0.68, H * 0.82, face(H * 0.82), 0.07], [R * 0.32, H * 0.95, bandV(HAY_THATCH_V, 0.6), 0.04], [0.05, H, bandV(HAY_THATCH_V, 1), 0.02]], 10, rng, 2);
+  const parts = [body, cockSkirt(R, H, rng), hayPole(0.045, -0.3, H + 0.5, (rng() - 0.5) * 0.06, (rng() - 0.5) * 0.06)];
+  // through the hay: the stubs reach a hand past its face (its radius at that height, read off the profile above)
+  for (const [t, r] of [[0.3, R * 1.02], [0.55, R * 0.95], [0.78, R * 0.72]] as const) {
+    const yaw = rng() * Math.PI * 2;
+    parts.push(stub(r + 0.14, 0.06, yaw, H * t));
+  }
+  // over the top: two bare stubs on the pole, cocked up
+  for (const [dy, len] of [[0.16, 0.24], [0.34, 0.18]] as const) parts.push(stub(len, len * 0.5, rng() * Math.PI * 2, H + dy));
+  return hayMerge(parts);
+}
+/** The monsoon belt's rice-straw stack: the straw packed round a bamboo pole in a drum, its cap thatched down and tied
+ *  with a straw rope, the pole standing out of the top. */
+function riceStack(rng: Rng): THREE.BufferGeometry {
+  const R = 0.8, H = 1.95 + rng() * 0.15, face = (y: number) => bandV(HAY_FACE_V, y / H), cap = (t: number) => bandV(HAY_THATCH_V, t);
+  const body = turn([[R * 0.95, -0.05, face(0), 0.03], [R, 0.1, face(0.1), 0.04], [R * 1.04, H * 0.3, face(H * 0.3), 0.05], [R, H * 0.58, face(H * 0.58), 0.05],
+    [R * 0.9, H * 0.68, cap(0.1), 0.06], [R * 0.52, H * 0.82, cap(0.45), 0.06], [R * 0.22, H * 0.93, cap(0.8), 0.04], [0.04, H, cap(1), 0.02]], 12, rng, 2);
+  // the tie: a straw rope round the cap where it closes on the pole
+  const yt = H * 0.9, rt = R * 0.3;
+  const rope = turn([[rt + 0.02, yt - 0.05, cap(0.9), 0], [rt + 0.06, yt, cap(0.95), 0], [rt + 0.01, yt + 0.05, cap(1), 0]], 10, rng, 1);
+  return hayMerge([body, rope, cockSkirt(R, H, rng), hayPole(0.04, -0.3, H + 0.7, (rng() - 0.5) * 0.05, (rng() - 0.5) * 0.05)]);
+}
+function cockOf(f: BaleForm, rng: Rng): THREE.BufferGeometry {
+  if (f.cock === 'ostrewka') return ostrewka(rng);
+  if (f.cock === 'rice') return riceStack(rng);
+  return hayCock(rng, f.cock === 'kopna');
 }
 
 /** The bale: a round bale, a ricklet of five small ones, a cock. On the hay print (position, normal, uv). Near ≤ 700. */
 export function baleNear(f: BaleForm, rng: Rng): THREE.BufferGeometry {
-  if (f.kind === 'cock') return hayCock(rng);
+  if (f.kind === 'cock') return cockOf(f, rng);
   if (f.kind === 'square') {
     // two side by side on two, a fifth across them, each its own lie
     const parts: THREE.BufferGeometry[] = [];
@@ -130,6 +188,18 @@ export function baleBroken(f: BaleForm, rng: Rng): THREE.BufferGeometry {
     const wad = turn([[r, -0.02, face(0), 0.03], [r * 0.8, r * 0.4, face(0.3), 0.04], [0.02, r * 0.6, face(0.5), 0.01]], 7, rng, 1);
     wad.translate(Math.cos(a) * d, 0, Math.sin(a) * d);
     parts.push(wad);
+  }
+  // the rice straw falls as packed sheaves: a higher heap than loose hay's
+  if (f.cock === 'rice') parts[0].scale(1.05, 1.35, 1.05);
+  if (f.cock === 'ostrewka' || f.cock === 'rice') {
+    // the pole snapped: its foot still standing out of the heap, askew, the top thrown down across the straw
+    const r = f.cock === 'rice' ? 0.04 : 0.045, yaw = rng() * Math.PI * 2;
+    parts.push(hayPole(r, -0.3, 0.95, Math.cos(yaw) * 0.12, Math.sin(yaw) * 0.12));
+    const down = hayPole(r * 0.9, 0, f.cock === 'rice' ? 1.6 : 1.3, 0, 0);
+    down.rotateZ(-Math.PI / 2 + 0.2);
+    down.rotateY(yaw + 0.5);
+    down.translate(Math.cos(yaw) * 0.3, 0.2, -Math.sin(yaw) * 0.3);
+    parts.push(down);
   }
   if (f.kind === 'square') {
     // two of the small bales still whole, lying where they fell
