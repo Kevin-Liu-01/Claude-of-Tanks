@@ -84,6 +84,9 @@ const seatPauses = argValue('seat-pause', '').split(',').map(Number).filter((ms)
 const forceRelay = argValue('ice', '') === 'relay';
 // the §7 side-by-side (2026-10-14): --shoot=<s> the host and a peer press fire for that long (shot-to-hit feedback);
 // --profile=<s> a CPU profile of the host's and a peer's main thread (the MP path's frame cost); both off by default
+// --dist=<dir> (2026-10-14): a built site (vite build, no VITE_ROOMS_URL) served by vite preview on 127.0.0.1, its pages
+// on the room double at the LAN helper's port (8792, endpoint.ts), so join and rejoin are timed on production bundles
+const distDir = argValue('dist', '') ? resolve(argValue('dist', '')) : '';
 const shootS = Number(argValue('shoot', 0));
 const profileS = Number(argValue('profile', 0));
 
@@ -100,7 +103,7 @@ const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = { pass: false, failures: [], findings: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
-  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay },
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
@@ -631,12 +634,18 @@ try {
     process.env.VITE_ROOMS_URL = roomsUrl;
     step('rooms-live', { url: roomsUrl, graceMs });
   } else {
-    rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
+    rooms = await createP2pRoomDouble({ host: '127.0.0.1', port: distDir ? 8792 : 0, seatSecret: randomBytes(24).toString('hex'), hostGraceMs: graceMs, onEvent: (event) => report.roomEvents.push({ atMs: elapsedMs(), ...event }) });
     process.env.VITE_ROOMS_URL = rooms.url;
     step('rooms-double', { url: rooms.url, graceMs });
   }
   let origin = siteUrl;
-  if (!siteUrl) {
+  if (!siteUrl && distDir) {
+    const { preview } = await import('vite');
+    const previewPort = requestedVitePort > 0 ? requestedVitePort : await freePort();
+    vite = await preview({ root, logLevel: 'error', build: { outDir: distDir }, preview: { host: '127.0.0.1', port: previewPort, strictPort: true } });
+    origin = `http://127.0.0.1:${previewPort}`;
+    step('preview', { origin, dist: distDir });
+  } else if (!siteUrl) {
     const vitePort = requestedVitePort > 0 ? requestedVitePort : await freePort();
     vite = await createViteServer({ root, cacheDir, logLevel: 'error', server: { host: '127.0.0.1', port: vitePort, strictPort: true, hmr: false } });
     await vite.listen();
