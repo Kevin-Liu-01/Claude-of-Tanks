@@ -199,6 +199,8 @@ interface TankInfo {
   nation: string;
   alive: boolean;
   spotted: boolean;
+  /** Wears a field net and garnish (its visual's userData.fieldSuit; null until a visual has been seen). */
+  suited: boolean | null;
 }
 
 function toEntity(value: RuntimeValue): AudioEntity | null {
@@ -295,7 +297,7 @@ const CORE_BATTLE = [
   'radio_interference', 'ui_alert',
   'blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub',
   // round 1 (2026-10-13): hull landings and steel strikes, the far ammunition blast and ground thump, every launch
-  'hull_land', 'hit_metal', 'ammo_explode_far', 'impact_far_ground', 'launch_far',
+  'hull_land', 'hit_metal', 'ammo_explode_far', 'impact_far_ground', 'launch_far', 'net_rustle_loop',
   'launch_tube', 'launch_soft', 'launch_rail', 'launch_gun',
   ...DESTRUCTION_SOUND_IDS,
   'gear_whine_loop', 'electric_drive_loop', 'turbo_whistle_loop',
@@ -512,7 +514,7 @@ export function createAudio({
   };
   const rigFrame: RigFrame = {
     dtS: 0, rel: { right: 0, up: 0, ahead: 0, distance: 0 }, x: 0, y: 0, z: 0, own: false, scoped: false,
-    surface: 'earth', waterDepthM: 0, atmosphere, occluded: 0, doppler: 1, turretRate: 0, pitchRate: 0, cabin: 0, input,
+    surface: 'earth', waterDepthM: 0, atmosphere, occluded: 0, doppler: 1, turretRate: 0, pitchRate: 0, cabin: 0, suited: false, input,
   };
 
   function logSound(type: string, data: Record<string, unknown> = {}): void {
@@ -1683,6 +1685,18 @@ export function createAudio({
     return resolveVehicleAudioIdentity({ ...spec, id: entity.specId ?? spec.id });
   }
 
+  /**
+   * Whether a hull wears a field net (V7): one walk of its visual the first time one is there (ghillieSuit.ts marks the
+   * net and garnish meshes userData.fieldSuit); null while no visual has been built.
+   */
+  function fieldSuitOf(value: RuntimeValue): boolean | null {
+    const root = (value as { visual?: { root?: { traverse?(fn: (o: { userData?: { fieldSuit?: unknown } }) => void): void } } | null } | null)?.visual?.root;
+    if (!root || typeof root.traverse !== 'function') return null;
+    let suited = false;
+    root.traverse((o) => { if (o.userData?.fieldSuit === true) suited = true; });
+    return suited;
+  }
+
   function indexTanks(list: readonly RuntimeValue[], dt: number): void {
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
@@ -1692,7 +1706,7 @@ export function createAudio({
       if (!info) {
         info = {
           team: String(entity.team ?? ''), isPlayer: !!entity.isPlayer, pos: p, lastX: p.x, lastY: p.y, lastZ: p.z,
-          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false,
+          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false, suited: null,
         };
         tanks.set(entity.id, info);
       }
@@ -1710,6 +1724,7 @@ export function createAudio({
       }
       info.lastX = p.x; info.lastY = p.y; info.lastZ = p.z;
       info.alive = !entity.combat?.destroyed;
+      if (info.suited == null) info.suited = fieldSuitOf(list[i]);
       if (entity.isPlayer && playerId !== entity.id) {
         playerId = entity.id;
         playerTeam = info.team;
@@ -1848,6 +1863,7 @@ export function createAudio({
       rigFrame.atmosphere = atmosphere;
       rigFrame.occluded = cached.occluded;
       rigFrame.doppler = rigFrame.own ? 1 : dopplerRatio(radial, atmosphere);
+      rigFrame.suited = info.suited === true;
       if (rigFrame.own) {
         const pitch = entity.state.gunPitch ?? 0;
         rigFrame.pitchRate = lastPitch != null && dt > 1e-4 ? (pitch - lastPitch) / dt : 0;
@@ -2643,6 +2659,7 @@ export function createAudio({
         // Effective lowpass: the rig's air absorption under the snapshot's world/hull filter.
         cutoffHz: Math.min(rig.lastCutoff, mixer ? SNAPSHOTS[mixer.snapshot][rig.lod === 'own' ? 'ownHz' : 'worldHz'] : 20000),
         rpm: +rig.state.rpm.toFixed(3), gear: rig.state.gear, load: +rig.state.load.toFixed(2), scrub: +rig.state.scrub.toFixed(2),
+        net: +rig.netGain.toFixed(3),
       })).sort((a, b) => a.dist - b.dist),
       aerialState: () => ({
         drones: [...droneRigs.entries()].map(([id, rig]) => ({ id, gain: +rig.lastGain.toFixed(4), rate: +rig.lastRate.toFixed(3) })),

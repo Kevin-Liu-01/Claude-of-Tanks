@@ -68,6 +68,8 @@ export interface RigFrame {
   turretRate: number;
   pitchRate: number;
   cabin: number;
+  /** The hull wears a field net and garnish (ghillieSuit.ts userData.fieldSuit): it rustles as it moves (V7). */
+  suited: boolean;
   input: VehicleAudioInput;
 }
 
@@ -81,6 +83,8 @@ interface Layer {
 }
 
 const BAND_NAMES = ['idle', 'low', 'mid', 'high'] as const;
+/** The field net's rustle (V7). */
+const NET_ASSET = 'net_rustle_loop';
 /** Slow/fast track loop centres, m/s of track speed. */
 const TRACK_CENTRES: readonly number[] = [2.5, 10];
 
@@ -106,6 +110,8 @@ export interface VehicleRig {
   readonly lastCutoff: number;
   /** The air-absorption part of that lowpass alone, Hz. */
   readonly lastAirHz: number;
+  /** The field net's rustle level last set (0: no net, or standing still). */
+  readonly netGain: number;
   setLod(lod: RigLod): void;
   setBurning(burning: boolean): void;
   startEngine(): void;
@@ -128,6 +134,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   let surface: SurfaceId | null = null;
   let engineStartAt = 0;
   let burning = false;
+  let netGain = 0;
 
   // ---- output chain.
   const output = ctx.createGain();
@@ -421,6 +428,14 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     if (wade) setLayer(wade, clamp(frame.waterDepthM / 1.1, 0, 1) * clamp(0.25 + speed / 7, 0, 1), 0.9 + speed * 0.02);
     const knock = gearLayers.get('engine_knock_loop');
     if (knock) setLayer(knock, state.rough * running * 0.8, clamp(0.85 + state.rpm * 0.4, 0.7, 1.4));
+    // ---- a field net and garnish rustling and flapping in the wind of the hull's motion (V7, 2026-10-13); the near LOD
+    // only, under the running gear, a touch nearer on our own hull (heard from the hatch)
+    let net = gearLayers.get(NET_ASSET);
+    const wantNet = frame.suited && lod !== 'far';
+    if (wantNet && !net) { net = makeLayer(NET_ASSET, gearSum); gearLayers.set(NET_ASSET, net); library.load([NET_ASSET]); }
+    else if (!wantNet && net) { dropLayer(net); gearLayers.delete(NET_ASSET); net = undefined; }
+    netGain = net ? clamp((speed - 0.8) / 7, 0, 1) * (lod === 'own' ? 0.5 : 0.38) : 0;
+    if (net) setLayer(net, netGain, 0.9 + clamp(speed, 0, 14) * 0.015);
 
     // ---- occupied-hull machinery.
     if (lod === 'own') {
@@ -462,6 +477,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     get lastDistance() { return lastDistance; },
     get lastCutoff() { return lastCutoff; },
     get lastAirHz() { return lastAirHz; },
+    get netGain() { return netGain; },
     setLod(next) {
       if (next !== lod && !dead) applyLod(next);
     },

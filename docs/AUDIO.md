@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 478 sound-effect assets, 850 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.4 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -848,6 +848,11 @@ crew-lines.json ─┐                    crew-voices.json
   what was struck (a building by its walls, a prop by its kind, hard ground as
   stone), with no ricochet whine. A hull shoving a burnt-out wreck strikes dead
   steel (`hit_metal`), not a live tank's ram.
+  The field nets and garnish on 75 hulls (`ghillieSuit.ts`, which marks their
+  meshes `userData.fieldSuit`) rustle as the hull moves: the engine walks a
+  hull's visual once to find a suit, and the vehicle rig plays
+  `net_rustle_loop` (200 credits) under the running gear by speed, on every
+  suited hull in the near LOD, a touch nearer on our own.
 
 ### Cost
 

@@ -1547,6 +1547,21 @@
    }
   ]
  },
+ "net_rustle_loop": {
+  "group": "vehicle",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a67d27ada2a421337028244a3e46ab39255cbee29aa78255f21e286e2c1acc19",
+    "bytes": 39463,
+    "durS": 5.091,
+    "mMax": -15.5,
+    "integrated": -18.5,
+    "truePeak": -0.5
+   }
+  ]
+ },
  "pole_fall": {
   "group": "props",
   "preset": "impact",

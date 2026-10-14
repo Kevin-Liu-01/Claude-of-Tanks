@@ -289,6 +289,7 @@ export const SFX_ASSETS: Readonly<Record<string, SfxAssetRecord>> = {
   "mode_juggernaut": {"g":"stingers","n":1,"d":[4],"c":2,"r":24000,"kb":50},
   "mode_turbo_horn": {"g":"stingers","n":1,"d":[3.48],"c":2,"r":24000,"kb":57},
   "mud_suck": {"g":"vehicle","n":2,"d":[1.48,1.48],"c":1,"r":48000,"kb":27},
+  "net_rustle_loop": {"g":"vehicle","n":1,"d":[5.0907],"c":1,"r":48000,"l":[0.085333,5.005333],"kb":39},
   "nonpen_heavy": {"g":"impacts","n":3,"d":[1.76,1.76,1.5],"c":1,"r":24000,"kb":52},
   "nonpen_interior": {"g":"impacts","n":2,"d":[2,1.122],"c":1,"r":24000,"kb":30},
   "overturned_groan": {"g":"edge","n":1,"d":[3],"c":1,"r":24000,"kb":23},

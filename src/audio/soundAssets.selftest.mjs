@@ -46,7 +46,7 @@ for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MOD
 }
 // the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
 for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
-for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
+for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
   'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);

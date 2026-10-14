@@ -75,6 +75,23 @@ assert.equal(probe.crewLanguage, 'ru', 'a Russian hull carries a Russian crew');
 assert.ok(fetched.some((p) => p.startsWith('audio/voice/ru/')), 'the national pack loads');
 assert.equal(probe.ambientState().bed, 'amb_urban', 'Steinburg plays its ruined-town scene');
 
+// V7 (2026-10-13): a hull wearing a field net (its visual's meshes marked userData.fieldSuit) rustles as it moves, by
+// speed; a bare hull and a parked suited one do not.
+{
+  const suit = { root: { traverse: (fn) => { fn({ userData: {} }); fn({ userData: { fieldSuit: true } }); } } };
+  const bare = { root: { traverse: (fn) => fn({ userData: {} }) } };
+  const netted = { ...tank('netted', { x: 20, z: 30, specId: 'cv90', nation: 'Sweden', speed: 8, throttle: 1 }), visual: suit };
+  const parked = { ...tank('parked', { x: -20, z: 30, specId: 'cv90', nation: 'Sweden' }), visual: suit };
+  const plain = { ...tank('plain', { x: 25, z: 25, specId: 'leo2a6', nation: 'Germany', speed: 8, throttle: 1 }), visual: bare };
+  const withNets = [...tanks, netted, parked, plain];
+  for (let i = 0; i < 30; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, withNets); }
+  const rigs = Object.fromEntries(probe.engineState().map((e) => [e.id, e]));
+  assert.ok(rigs.netted?.net > 0.2, `a netted hull moving at 8 m/s rustles (${rigs.netted?.net})`);
+  assert.equal(rigs.parked?.net ?? 0, 0, 'a parked netted hull is quiet');
+  assert.equal(rigs.plain?.net ?? 0, 0, 'a bare hull has no net');
+  for (let i = 0; i < 4; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, tanks); }
+}
+
 // HDR baseline: a rifle round into the dirt ten metres away, before any gun has fired.
 let since = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
 bus.emit('shell:expired', { shellId: 90, pos: [6, 0, 8], hitTerrain: true, caliberMm: 7.62 });

@@ -779,6 +779,11 @@ const hullEvents = [
   sfx('hit_metal', 'collisions', `One-shot of a tank ramming into a burnt-out steel vehicle hulk: a heavy dull steel clang and crunch of bending armour plate, grinding metal. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
   sfx('ammo_explode_far', 'destruction', `One-shot of a tank's ammunition exploding far away, about a kilometre: a deep heavy boom followed by a rolling series of muffled secondary blasts and a long low echo. ${FAR}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far' }),
 ];
+// V7 (2026-10-13): the field nets and garnish on 75 hulls (ghillieSuit.ts) rustle as the hull moves: a layer of the
+// vehicle rig, by speed, on every suited hull within the near LOD.
+const netting = [
+  sfx('net_rustle_loop', 'vehicle', `Seamless loop of camouflage netting and cut branches lashed over a moving armoured vehicle: the coarse net rustling and flapping in the wind of its motion, leaves shivering, twigs scraping on steel. Steady and continuous. No engine sound, no track noise, ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+];
 // Machine-gun rounds into what they strike (2026-10-13): with the roof stations armed on 75 vehicles, bullets hit
 // walls, wrecks, cars and timber all battle, and every one of them landed as a puff of dirt. No ricochet whine (the
 // 2026-10-03 "boing" lesson): the strike itself.
@@ -801,7 +806,7 @@ export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
-  ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes,
+  ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes, ...netting,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */
