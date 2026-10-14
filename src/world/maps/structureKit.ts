@@ -2701,10 +2701,11 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     dish: { leg: 1, level: 0.72, radius: 0.42 },
   }, (geo, color, piece) => put(geo, color, piece, 0.025));
   // (the looks lane, 2026-10-14: "a plain clad box") a barred window in a deep surround on each side with its sill, a
-  // hood over the vents on two brackets
+  // hood over the vents on two brackets. The relay hut is unmanned: its glass stays dark at night (no aperture mark;
+  // the beacon alone glows, worldNightFixtureInstances)
   for (const side of [-1, 1] as const) {
     const f = onFace('x', side, w / 2);
-    put(markWorldAperture(f(1.0, 0.8, 0.04, -1.2, 2.5, 0.06), [side, 0, 0]), 0x3c4a50, 'hut-windows', 0.02);
+    put(f(1.0, 0.8, 0.04, -1.2, 2.5, 0.06), 0x3c4a50, 'hut-windows', 0.02);
     for (const s of [-1, 1]) put(f(0.1, 1.0, 0.14, -1.2 + s * 0.55, 2.5, 0.07), p[2], 'hut-windows', 0.02);
     for (const s of [-1, 1]) put(f(1.2, 0.1, 0.14, -1.2, 2.5 + s * 0.45, 0.07), p[2], 'hut-windows', 0.02);
     put(f(1.3, 0.07, 0.24, -1.2, 1.97, 0.12), RELAY_CONCRETE, 'hut-windows', 0.02);
