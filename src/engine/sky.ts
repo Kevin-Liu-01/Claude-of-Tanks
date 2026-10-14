@@ -1780,7 +1780,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   };
   updateCloudDecks();
   // Ultra Low (2026-10-13): a quality change swaps the marched layer and the baked decks live
-  if (volumetricClouds) onPresetChange(() => updateCloudDecks());
+  onPresetChange(updateCloudDecks);
 
   let pmrem: THREE.PMREMGenerator | null = null;
   /**

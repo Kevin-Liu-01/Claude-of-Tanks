@@ -430,7 +430,6 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     label: 'Ultra Low',
     msaaSamples: 0,
     maxPixelRatio: 1.0,
-    adaptiveBasePixelRatio: 1.0,
     aoScale: 0,
     bloomScale: 0.35,
     bloom: false,
@@ -676,7 +675,7 @@ export function getStoredChoice(): PresetChoice {
   resetSavedGraphicsIfRequested();
   try {
     const v = window.localStorage.getItem(LS_KEY);
-    if (v === 'auto' || v === 'ultralow' || v === 'low' || v === 'medium' || v === 'high' || v === 'ultra') return v;
+    if (v === 'auto' || PRESET_ORDER.includes(v as DesktopPresetName)) return v as PresetChoice;
   } catch (_) { /* storage blocked — fall through to auto */ }
   return 'auto';
 }
@@ -686,7 +685,7 @@ export function getMobilePresetChoice(): MobilePresetName {
   resetSavedGraphicsIfRequested();
   try {
     const v = window.localStorage.getItem(LS_MOBILE_KEY);
-    if (v === 'mobile-ultralow' || v === 'mobile-low' || v === 'mobile' || v === 'mobile-high') return v;
+    if (MOBILE_PRESET_ORDER.includes(v as MobilePresetName)) return v as MobilePresetName;
   } catch (_) { /* storage blocked — balanced is the safe default */ }
   return 'mobile';
 }
@@ -719,7 +718,7 @@ export function resolvePresetName(choice: PresetChoice = getStoredChoice()): Pre
 
 /** Apply one of the four mobile-safe live presets. */
 export function setMobilePresetName(name: string): void {
-  if (name !== 'mobile-ultralow' && name !== 'mobile-low' && name !== 'mobile' && name !== 'mobile-high') return;
+  if (!MOBILE_PRESET_ORDER.includes(name as MobilePresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
   const preset = getPreset();
@@ -752,8 +751,7 @@ export function getPreset(): QualityPreset {
  * @returns {void}
  */
 export function setPresetName(name: string): void {
-  if (name !== 'auto' && name !== 'ultralow' && name !== 'low' && name !== 'medium'
-    && name !== 'high' && name !== 'ultra') return;
+  if (name !== 'auto' && !PRESET_ORDER.includes(name as DesktopPresetName)) return;
   clearGraphicsRecovery();
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
   // Every user choice starts a fresh auto-policy session. Explicit presets
