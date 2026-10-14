@@ -101,6 +101,21 @@ assert.match(parts, /vHot = max\( aSG\.z, 0\.0 \) \* exp\([^;]*\* \( 1\.0 - 0\.9
 assert.match(parts, /float smear = mix\( min\( spd \* 0\.022 \/ max\( aSG\.x, 0\.02 \), 3\.0 \), clamp\( spd \* 0\.045, 0\.0, 0\.85 \),\n      smoothstep\( 0\.14, 0\.30, aSG\.x \) \);/, 'small chips smear');
 assert.match(parts, /vec3 lp = position \* vec3\( 0\.70 \+ h1 \* 0\.60, 0\.62 \+ h2 \* 0\.60, 0\.70 \+ h3 \* 0\.60 \);/, 'no flat chunk');
 assert.match(parts, /pos\.setXYZ\(i, x \* m \* 1\.15, y \* m \* 0\.30, z \* m \* 0\.90\);/, 'the plate has body');
+// the battle's thrown pieces (debrisChunks: a kill's hull plates and fittings, also drawn in the Studio's kills): hot-born
+// wreckage takes the soot by its distance from the core and its glow stays near the fire; a cold piece keeps its colour;
+// the bent sheet is crumpled (no view of it is one flat face)
+{
+  const src = await readFile(new URL('./debrisChunks.ts', import.meta.url), 'utf8');
+  assert.match(src, /float sootK = smoothstep\( 1\.5, 7\.0, dCore \) \* clamp\( aCH\.w \* 2\.0, 0\.0, 1\.0 \);/, 'wreckage soot by distance');
+  assert.match(src, /vHeat = aCH\.w \* exp\( -age \* 1\.6 \) \* \( 1\.0 - grounded \* 0\.6 \) \* \( 1\.0 - 0\.9 \* smoothstep\( 2\.0, 6\.5, dCore \) \);/, 'glow near the fire');
+  const { createDebrisChunks } = await import('./debrisChunks.ts');
+  const chunks = createDebrisChunks({ seed: 3, now: () => 0 });
+  const sheet = chunks.group.children.find((m) => m.name === 'fx-chunks-sheet');
+  const n = sheet.geometry.getAttribute('normal');
+  const dirs = new Set();
+  for (let i = 0; i < n.count; i += 3) dirs.add(`${n.getX(i).toFixed(2)}|${n.getY(i).toFixed(2)}|${n.getZ(i).toFixed(2)}`);
+  assert.ok(dirs.size >= 8, `the sheet shows ${dirs.size} facet directions, never one flat face`);
+}
 // the smoke-screen wall: a soft near-lens fade (the compiled screen shader carries it; past ~8 m the approved card)
 {
   const THREE = await import('three');
