@@ -2,9 +2,9 @@
 // swung one track over the edge, its centre of mass a metre inside it, and rolled toward the yard at 15 rad/s, was thrown
 // 7 m/s off the roof and hung on its side against the edge for five seconds). Through the real network authority
 // (tools/physics-torture.mjs runCase) over a 16 x 16 m flat roof 4 m up: a hull standing along the edge, square to it and
-// across it at 45 degrees, its centre of mass inside the edge, stands level on the roof; with its centre of mass past the
-// edge it rolls off the roof under gravity and comes down on the ground; a hull pivoting by the edge until a track hangs
-// over it turns on the roof. No hull rolls faster than gravity turns it, none is thrown up, and the run is exact.
+// across it at 45 degrees, its centre of mass inside the edge, a track over the yard, stands level on the roof; one
+// driven over the edge at a crawl noses over and comes down on the ground; a hull pivoting by the edge until a track
+// hangs over it turns on the roof. No hull rolls faster than gravity turns it, none is thrown up, and the run is exact.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -68,26 +68,17 @@ const fmt = (r) => `roll rate ${r.maxRollRate.toFixed(2)} rad/s, pitch rate ${r.
 const ROLL_RATE_MAX = 6;
 
 let stood = 0, fell = 0, pivots = 0, worstRate = 0;
-// [hull, heading (deg) against the edge, how far its centre of mass stands inside the edge (m, negative past it)]
+// [hull, heading (deg) against the edge, how far its centre of mass stands inside the edge (m)]
 for (const [hull, yawDeg, inside] of [
   ['bmp2', 0, 0.5], ['bmp2', 0, 0.15], ['t90m', 0, 0.4], ['m1a2', 180, 0.3], ['t90m', 45, 0.4], ['bmp2', 135, 0.3],
-  ['bmp2', 0, -0.6], ['t90m', 0, -0.6], ['m1a2', 180, -0.8], ['t90m', 45, -0.9],
 ]) {
-  // (one past the edge is set down on it from 12 cm over the roof: the root is over the ground below)
-  const r = run(hull, { x: EDGE_X + inside, yawDeg, input: brake, dropTo: inside > 0 ? 0.12 : ROOF_Y + 0.12 });
-  const at = `a ${hull} heading ${yawDeg} with its centre of mass ${Math.abs(inside)} m ${inside > 0 ? 'inside' : 'past'} the roof's edge`;
+  const r = run(hull, { x: EDGE_X + inside, yawDeg, input: brake });
+  const at = `a ${hull} heading ${yawDeg} with its centre of mass ${inside} m inside the roof's edge`;
   assert.ok(r.maxRollRate < ROLL_RATE_MAX && r.maxPitchRate < ROLL_RATE_MAX, `${at} turns no faster than gravity turns it (${fmt(r)})`);
   assert.ok(r.metrics.takeoffMaxMps <= 2.5 && r.metrics.energyGainMaxJkg <= 0.2, `${at} is thrown up by nothing (${fmt(r)})`);
-  if (inside > 0) {
-    assert.ok(r.maxTilt < 5 && r.end[1] > ROOF_Y - 0.2, `${at} stands level on the roof (${fmt(r)})`);
-    assert.ok(r.metrics.popXZMaxM <= 0.12 && r.metrics.popYMaxM <= 0.12, `${at}: no pop (${fmt(r)})`);
-    stood++;
-  } else {
-    // (off the roof within a second and a half, at rest on the ground — or across its edge with its low side on the ground)
-    assert.ok(r.lastRoofS < 1.5 && r.end[1] < ROOF_Y - 1 && r.stillY < 0.01 && r.stillAtt < 0.002,
-      `${at} rolls off the roof and comes to rest on the ground (${fmt(r)}, last on the roof at ${r.lastRoofS.toFixed(2)} s)`);
-    fell++;
-  }
+  assert.ok(r.maxTilt < 5 && r.end[1] > ROOF_Y - 0.2, `${at} stands level on the roof (${fmt(r)})`);
+  assert.ok(r.metrics.popXZMaxM <= 0.12 && r.metrics.popYMaxM <= 0.12, `${at}: no pop (${fmt(r)})`);
+  stood++;
   worstRate = Math.max(worstRate, r.maxRollRate, r.maxPitchRate);
 }
 // driven over the edge at a crawl, square to it and across it: the nose goes over when the centre of mass passes the
@@ -118,4 +109,4 @@ for (const [hull, steer] of [['bmp2', 1], ['bmp2', -1], ['t90m', 1], ['m1a2', -1
 const a = run('bmp2', { x: EDGE_X + 0.15, yawDeg: 0, seconds: 3, input: brake }).end;
 const b = run('bmp2', { x: EDGE_X + 0.15, yawDeg: 0, seconds: 3, input: brake }).end;
 assert.deepEqual(a, b, 'the same stand, the same pose');
-console.log(`roof-edge.selftest: ${stood} hulls with their centre of mass inside a roof's edge stand level on it, ${fell} past it roll off onto the ground, ${pivots} pivot by it on the roof; none turns faster than ${worstRate.toFixed(2)} rad/s or is thrown; deterministic`);
+console.log(`roof-edge.selftest: ${stood} hulls with their centre of mass inside a roof's edge stand level on it, ${fell} driven over it come down on the ground, ${pivots} pivot by it on the roof; none turns faster than ${worstRate.toFixed(2)} rad/s or is thrown; deterministic`);

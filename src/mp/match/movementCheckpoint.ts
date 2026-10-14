@@ -61,7 +61,7 @@ const VERSION_7_VALUES = VERSION_6_VALUES + ROCK.length * 2;
 const STOP_V8 = ['c', 'cv'] as const;
 export const MOVEMENT_CHECKPOINT_VALUES = VERSION_7_VALUES + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
-const MAX_FLAGS = 4095;
+const MAX_FLAGS = 2047;
 
 export interface MovementCheckpoint {
   version: number;
@@ -115,8 +115,7 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
-    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
-    Number(state._sup.air) << 11;
+    Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
   return { version: MOVEMENT_CHECKPOINT_VERSION, values, flags };
 }
 
@@ -157,7 +156,6 @@ export function applyMovementCheckpoint(
   state._sup.x = flags & 256 ? values[offset + 3]! : NaN;
   state._sup.z = flags & 256 ? values[offset + 4]! : NaN;
   state._sup.rigid = !!(flags & 512);
-  state._sup.air = !!(flags & 2048);
   state._sup.cg = contact;
   // the roof the hull rests on: no contact pass runs in the replay, so it holds until the next checkpoint clears it
   state._body.restSupportY = flags & 1024 ? values[offset + 5]! : NaN;
