@@ -33,6 +33,7 @@ git('init', '-q');
 write('src/a.ts', [
   "export const LIST = ['leo2a6m', 'leo2a6m_x', 't90sm_x'];",
   "export const LABEL = 'leo2a6m-front-mudguard'; // a slug, never an id",
+  "export const OLD = 'leo2a6m'; // a schema-2 fixture, tank-ids:keep",
   '// spacer one', '// spacer two', '// spacer three', '',
 ].join('\n'));
 write('src/b.ts', "export const PICK = 'leo2a6m';\n");
@@ -45,6 +46,7 @@ let run = codemod('--apply', '--initial');
 assert.equal(run.status, 0, run.stderr);
 assert.equal(read('src/a.ts').split('\n')[0], "export const LIST = ['leo2a4_otco', 'leo2a6m', 't90sm'];", 'swaps rename once');
 assert.match(read('src/a.ts'), /'leo2a6m-front-mudguard'/, 'a hyphenated slug keeps its spelling');
+assert.match(read('src/a.ts'), /OLD = 'leo2a6m'; \/\/ a schema-2 fixture/, 'a line marked tank-ids:keep keeps its ids');
 assert.equal(read('src/b.ts'), "export const PICK = 'leo2a4_otco';\n");
 let before = snapshot();
 run = codemod('--apply', '--initial');

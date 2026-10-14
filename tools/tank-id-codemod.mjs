@@ -50,9 +50,11 @@
 // names), SVG files (path data such as `m1a2` is a moveto and an arc), Studio
 // scenes (public/field-guide, tools/marketing-shots: unstamped scenes resolve
 // as schema 1 at load), a link's `id=` parameter (links without `ids=` are read
-// as schema 1 and resolve themselves), and the files in SKIP_EXACT whose id
-// vocabulary is schema 1 on purpose (they test tankSeedId(id), so a rename never
-// changes how a vehicle sounds or is built).
+// as schema 1 and resolve themselves), any line carrying the marker
+// `tank-ids:keep` (an old id kept on purpose, or a token that only looks like
+// an id), and the files in SKIP_EXACT whose id vocabulary is schema 1 on
+// purpose (they test tankSeedId(id), so a rename never changes how a vehicle
+// sounds or is built).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, statSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -99,7 +101,7 @@ const SKIP_EXACT = new Set([
   // The alias layer and its receipts name old ids on purpose.
   'src/vehicles/tankIdAliases.ts', 'src/vehicles/tankIdAliases.selftest.mjs', 'src/game/tankIdBoundaries.selftest.mjs',
   'tools/tank-id-rename-table.mjs', 'tools/tank-id-rename-table.selftest.mjs', 'tools/tank-id-codemod.mjs',
-  'tools/tank-id-codemod.selftest.mjs',
+  'tools/tank-id-codemod.selftest.mjs', 'tools/tank-id-move-files.selftest.mjs',
   // Generated or re-keyed by their own tools / later steps.
   'docs/VEHICLE-ROSTER.md', 'docs/FLEET-FREEZE-CURRENT.json', 'src/vehicles/camoProductionBaseline.json',
   // Schema-1 id vocabulary, matched against tankSeedId(id).
@@ -133,12 +135,13 @@ function rewrite(text) {
   });
   return { out, count };
 }
-/** Rewrite only the lines (0-based) for which `convert(line)` is true. */
-function rewriteLines(text, convert) {
+const KEEP = 'tank-ids:keep';
+/** Rewrite only the lines (0-based) for which `convert(line)` is true; a line marked `tank-ids:keep` never. */
+function rewriteLines(text, convert = () => true) {
   const lines = text.split('\n');
   let count = 0;
   for (let i = 0; i < lines.length; i += 1) {
-    if (!convert(i)) continue;
+    if (!convert(i) || lines[i].includes(KEEP)) continue;
     const r = rewrite(lines[i]);
     lines[i] = r.out;
     count += r.count;
@@ -194,7 +197,7 @@ if (initial) {
     if (generated(rel)) { regenerate.add(rel); continue; }
     const text = readText(rel);
     if (text == null) continue;
-    const { out, count } = rewrite(text);
+    const { out, count } = rewriteLines(text);
     record(rel, count, out);
   }
 } else {
@@ -218,8 +221,8 @@ if (initial) {
         unresolved.push(rel); continue;
       }
       const files = ['ours', 'base', 'theirs'].map((name) => join(scratch, `${name}-${rel.replace(/[\\/]/g, '__')}`));
-      writeFileSync(files[0], rewrite(ours).out);
-      writeFileSync(files[1], rewrite(base).out);
+      writeFileSync(files[0], rewriteLines(ours).out);
+      writeFileSync(files[1], rewriteLines(base).out);
       writeFileSync(files[2], theirs);
       let merged; let conflicts = 0;
       try {
@@ -254,7 +257,7 @@ if (initial) {
       if (skipped(rel) || BINARY_RE.test(rel) || unmerged.has(rel) || remerged.has(rel)) continue;
       const text = readText(rel);
       if (text == null) continue;
-      if (!rewrite(text).count) continue; // no old-id token at all
+      if (!rewriteLines(text).count) continue; // no old-id token at all
       if (generated(rel)) { regenerate.add(rel); continue; }
       let blame;
       try {

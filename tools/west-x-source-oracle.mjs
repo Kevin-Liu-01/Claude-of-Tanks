@@ -19,7 +19,7 @@ globalThis.FileReader = class {
   readAsDataURL(blob) { blob.arrayBuffer().then(b => {this.result='data:application/octet-stream;base64,'+Buffer.from(b).toString('base64');this.onloadend?.();}); }
 };
 const id=process.argv[2],file=process.argv[3];
-const ids={mk4:'merkava4_x',mk3d:'merkava3d_x',k2:'k2_x',kf51:'kf51_x'};
+const ids={mk4:'merkava4_x',mk3d:'merkava3d_x',k2:'k2_x',kf51:'kf51_x'}; // schema-1 source file stems (SSOT 2.19), tank-ids:keep
 if(!Object.hasOwn(ids,id)||!file)throw new Error('Expected candidate key and unpacked local FBX, OBJ or GLB input');
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cot-west-x-oracle-'));
 const repo=fileURLToPath(new URL('../',import.meta.url));
