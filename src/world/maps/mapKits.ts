@@ -1156,8 +1156,9 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
+  buildings,
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, buildings,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
