@@ -154,8 +154,10 @@ const DECK_RAISED_M = 0.5;
  * that stands clear of the record's foot — a roof a hull stands on, which the walls under it meet from the side — and so
  * a floor to the support and no wall to the push?
  */
-export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crushable'>, part: SimpleCollisionShape): boolean {
-  return part.kind === 'convex' && !!part.tp && !record.crushable && part.y0 !== undefined && part.y0 > record.min[1] + DECK_RAISED_M;
+export function collisionPartIsDeck(record: Pick<CollisionRecord, 'min' | 'crushable' | 'kind'>, part: SimpleCollisionShape): boolean {
+  // (a building's alone: a wreck's turret stands on its hull under a drawn top too, and is steel the push meets)
+  return record.kind === 'structure' && part.kind === 'convex' && !!part.tp && !record.crushable && part.y0 !== undefined
+    && part.y0 > record.min[1] + DECK_RAISED_M;
 }
 
 /** setConvexShape with a drawn top (collisionPartTopAt) and its own vertical extent. */

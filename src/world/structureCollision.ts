@@ -774,132 +774,60 @@ function rangedShape(item: RangedPolygon): SimpleCollisionShape {
 const DECK_MIN_AREA = 0.6;
 /** An upward face: its normal at most ~78 degrees off vertical. */
 const DECK_UP_NY = 0.2;
-const DECK_MAX_PLANES = 12;
-/** A support plane may sit this far under the drawn top at a sample and still bound it (float noise). */
-const DECK_PLANE_TOLERANCE_M = 0.01;
-
-interface UpFace { tri: number[]; a: number; b: number; c: number }
-
-/** A solid's upward faces as planes y = a·x + b·z + c (structure-local). */
-function upwardFaces(solid: LocalSolid): UpFace[] {
-  const faces: UpFace[] = [];
-  for (const t of solid.triangles) {
-    const ux = t[3] - t[0], uy = t[4] - t[1], uz = t[5] - t[2];
-    const vx = t[6] - t[0], vy = t[7] - t[1], vz = t[8] - t[2];
-    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const length = Math.hypot(nx, ny, nz);
-    if (length < 1e-9) continue;
-    // (either winding: an underside counts too, and lies under the top side wherever both cover a point — faceTopAt
-    // takes the higher, and no underside plane bounds the top from above, so none is chosen)
-    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
-    if (ny < DECK_UP_NY * length) continue;
-    const a = -nx / ny, b = -nz / ny, c = t[1] - a * t[0] - b * t[2];
-    faces.push({ tri: t, a, b, c });
-  }
-  return faces;
-}
-
-/** The highest upward face over (x, z), or -Infinity where none covers it. */
-function faceTopAt(faces: readonly UpFace[], x: number, z: number): number {
-  let top = -Infinity;
-  for (const f of faces) {
-    const t = f.tri;
-    const x0 = t[0], z0 = t[2], x1 = t[3], z1 = t[5], x2 = t[6], z2 = t[8];
-    const d = (z1 - z2) * (x0 - x2) + (x2 - x1) * (z0 - z2);
-    if (Math.abs(d) < 1e-12) continue;
-    const l0 = ((z1 - z2) * (x - x2) + (x2 - x1) * (z - z2)) / d;
-    const l1 = ((z2 - z0) * (x - x2) + (x0 - x2) * (z - z2)) / d;
-    if (l0 < -1e-6 || l1 < -1e-6 || l0 + l1 > 1 + 1e-6) continue;
-    const y = f.a * x + f.b * z + f.c;
-    if (y > top) top = y;
-  }
-  return top;
-}
 
 /**
- * A deck piece's drawn top: the fewest planes of the solid's upward faces whose lower envelope bounds its drawn top from
- * above at every sample over the piece (each a support plane there), chosen greedily by the error they leave (L1). Null
- * where the top is level (the piece's flat y1 says it) or no face plane bounds it (a valley: the flat top stands).
+ * The decks of a structure: every roof covering and every solid clear of the ground, face by face — its upward faces
+ * grouped by the plane they lie in (a gable's two pitches, a hip's four, a flat roof's one), each group's plan merged
+ * into convex pieces, each piece under its own plane (structure-local, largest first). A face plane bounds its own piece
+ * exactly, so the top is the drawn surface, eaves to ridge, dormer and valley alike (one envelope of a whole roof's planes
+ * floated over dormers and valleys). Faces wound downward (a slab's underside) are left out unless a solid has no other.
  */
-function deckTopPlanes(points: number[], faces: readonly UpFace[], y1: number): number[] | null {
-  let ox = 0, oz = 0;
-  const n = points.length / 2;
-  for (let i = 0; i < points.length; i += 2) { ox += points[i]; oz += points[i + 1]; }
-  ox /= n; oz /= n;
-  // samples: the corners pulled 3 % in, the centroid, and a grid over the piece's box
-  const samples: number[] = [];
-  for (let i = 0; i < points.length; i += 2) samples.push(ox + (points[i] - ox) * 0.97, oz + (points[i + 1] - oz) * 0.97);
-  samples.push(ox, oz);
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (let i = 0; i < points.length; i += 2) {
-    minX = Math.min(minX, points[i]); maxX = Math.max(maxX, points[i]);
-    minZ = Math.min(minZ, points[i + 1]); maxZ = Math.max(maxZ, points[i + 1]);
-  }
-  for (let gx = 1; gx < 6; gx++) for (let gz = 1; gz < 6; gz++) {
-    const x = minX + (maxX - minX) * gx / 6, z = minZ + (maxZ - minZ) * gz / 6;
-    if (pointInPolygon(x, z, points)) samples.push(x, z);
-  }
-  const tops: number[] = [];
-  const at: number[] = [];
-  for (let i = 0; i < samples.length; i += 2) {
-    const top = faceTopAt(faces, samples[i], samples[i + 1]);
-    if (Number.isFinite(top)) { at.push(samples[i], samples[i + 1]); tops.push(top); }
-  }
-  if (tops.length < 3) return null;
-  if (Math.max(...tops) - Math.min(...tops) < 0.03 && y1 - Math.max(...tops) < 0.03) return null;
-  // candidate planes: the faces' own, one per distinct plane, each a support plane over every sample
-  const candidates: Array<[number, number, number]> = [];
-  const seen = new Set<string>();
-  for (const f of faces) {
-    const key = `${Math.round(f.a * 1e3)},${Math.round(f.b * 1e3)},${Math.round(f.c * 1e2)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    let ok = true;
-    for (let k = 0; k < tops.length && ok; k++) if (f.a * at[2 * k] + f.b * at[2 * k + 1] + f.c < tops[k] - DECK_PLANE_TOLERANCE_M) ok = false;
-    if (ok) candidates.push([f.a, f.b, f.c]);
-  }
-  if (!candidates.length) return null;
-  const chosen: Array<[number, number, number]> = [];
-  const env = tops.map(() => y1);
-  for (let round = 0; round < DECK_MAX_PLANES; round++) {
-    let best = -1, bestGain = 1e-4;
-    for (let c = 0; c < candidates.length; c++) {
-      const [a, b, cc] = candidates[c];
-      let gain = 0;
-      for (let k = 0; k < tops.length; k++) {
-        const y = a * at[2 * k] + b * at[2 * k + 1] + cc;
-        if (y < env[k]) gain += env[k] - Math.max(y, tops[k]);
-      }
-      if (gain > bestGain) { bestGain = gain; best = c; }
-    }
-    if (best < 0) break;
-    const [a, b, cc] = candidates[best];
-    chosen.push(candidates[best]);
-    candidates.splice(best, 1);
-    for (let k = 0; k < tops.length; k++) env[k] = Math.min(env[k], a * at[2 * k] + b * at[2 * k + 1] + cc);
-  }
-  if (!chosen.length) return null;
-  // about the piece's centroid; heights rounded up a millimetre (never under the drawn top)
-  const tp = [ox, oz];
-  for (const [a, b, c] of chosen) tp.push(a, b, Math.ceil((a * ox + b * oz + c) * 1000 + 1) / 1000);
-  return tp;
-}
-
-/** The decks of a structure: every roof covering and every solid clear of the ground with an upward face, piece by
- * piece over its plan (structure-local), largest first. */
-function structureDecks(
-  solids: LocalSolid[], contact: ReadonlySet<LocalSolid>, projectedCache?: Map<LocalSolid, number[][]>,
-): RangedPolygon[] {
+function structureDecks(solids: LocalSolid[], contact: ReadonlySet<LocalSolid>): RangedPolygon[] {
   const decks: RangedPolygon[] = [];
   for (const solid of solids) {
     if (contact.has(solid)) continue;
-    const faces = upwardFaces(solid);
-    if (!faces.length) continue;
-    for (const points of solidProjection(solid, projectedCache)) {
-      if (Math.abs(polygonArea(points)) < DECK_MIN_AREA || points.length > 2 * PACKED_POLYGON_VERTICES) continue;
-      const tp = deckTopPlanes(points, faces, solid.maxY);
-      // every deck carries a drawn top (a level one is its own plane), so a deck is known by it in the shards too
-      decks.push({ points, y0: solid.minY, y1: solid.maxY, tp: tp ?? [0, 0, 0, 0, solid.maxY] });
+    // (either winding: a face is taken by the plane it lies in, and a piece another face of the solid covers from above
+    // at its centre — a slab's underside, a lower face under an upper one — is left out)
+    const groups = new Map<string, { a: number; b: number; c: number; projected: number[][] }>();
+    for (const t of solid.triangles) {
+      const ux = t[3] - t[0], uy = t[4] - t[1], uz = t[5] - t[2];
+      const vx = t[6] - t[0], vy = t[7] - t[1], vz = t[8] - t[2];
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const length = Math.hypot(nx, ny, nz);
+      if (length < 1e-9) continue;
+      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      if (ny < DECK_UP_NY * length) continue;
+      const a = -nx / ny, b = -nz / ny, c = t[1] - a * t[0] - b * t[2];
+      const key = `${Math.round(a * 1e3)},${Math.round(b * 1e3)},${Math.round(c * 1e2)}`;
+      let group = groups.get(key);
+      if (!group) groups.set(key, group = { a, b, c, projected: [] });
+      const projected = [t[0], t[2], t[3], t[5], t[6], t[8]];
+      if (Math.abs(polygonArea(projected)) >= 1e-6) group.projected.push(projected);
+    }
+    const pieces: Array<{ points: number[]; a: number; b: number; c: number; ox: number; oz: number; at: number; top: number }> = [];
+    for (const { a, b, c, projected } of groups.values()) {
+      // (a dense scanned face group skips the quadratic merge: its plan's hull stands for it)
+      const merged = projected.length > DENSE_SOURCE_LIMIT
+        ? [convexHull2(projected.flatMap((t) => [[t[0], t[1]], [t[2], t[3]], [t[4], t[5]]] as Array<[number, number]>))]
+        : mergeProjectedTriangles(projected);
+      for (const points of merged) {
+        if (Math.abs(polygonArea(points)) < DECK_MIN_AREA || points.length > 2 * PACKED_POLYGON_VERTICES) continue;
+        let ox = 0, oz = 0, top = -Infinity;
+        for (let i = 0; i < points.length; i += 2) {
+          ox += points[i]; oz += points[i + 1];
+          top = Math.max(top, a * points[i] + b * points[i + 1] + c);
+        }
+        ox /= points.length / 2; oz /= points.length / 2;
+        pieces.push({ points, a, b, c, ox, oz, at: a * ox + b * oz + c, top });
+      }
+    }
+    for (const piece of pieces) {
+      const covered = pieces.some((other) => other !== piece && other.a * piece.ox + other.b * piece.oz + other.c > piece.at + 0.01
+        && pointInPolygon(piece.ox, piece.oz, other.points));
+      if (covered) continue;
+      // about the piece's centroid; its height rounded up a millimetre (never under the drawn face)
+      const tp = [piece.ox, piece.oz, Math.round(piece.a * 1e4) / 1e4, Math.round(piece.b * 1e4) / 1e4, Math.ceil(piece.at * 1000 + 1) / 1000];
+      decks.push({ points: piece.points, y0: solid.minY, y1: Math.min(solid.maxY, piece.top + 0.002), tp });
     }
   }
   return decks.sort((a, b) => Math.abs(polygonArea(b.points)) - Math.abs(polygonArea(a.points)));
@@ -1385,7 +1313,7 @@ function deriveRuntimeCollisionBands(solids: LocalSolid[]): StructureCollisionRu
   const contact = profile.contact;
   const room = PART_LIMIT - contact.parts.length;
   if (room > 0) {
-    const decks = structureDecks(solids, new Set(contactBandSolids(solids)), projectedCache).slice(0, room);
+    const decks = structureDecks(solids, new Set(contactBandSolids(solids))).slice(0, room);
     for (const deck of decks) {
       contact.parts.push(rangedShape(deck));
       contact.maxY = Math.max(contact.maxY, deck.y1);
