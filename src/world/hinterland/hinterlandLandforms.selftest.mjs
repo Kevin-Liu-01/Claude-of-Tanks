@@ -107,9 +107,9 @@ for (let i = 0; i < 400; i++) {
   if (h < 100 && h > 5) { nLow++; if (geo.snow > 0.5) snowLow++; }
   if (geo.rock > 0.5) { nSteep++; if (cover.cls === HL_COVER.rock || cover.cls === HL_COVER.snow) rockSteep++; }
 }
-// (a third at least: the Glacier pass bares a summit's steep top and lets snow slide off past 45°, as the reference's
-// dark faces show; before it, two fifths)
-assert.ok(nHigh > 10 && snowHigh / nHigh > 0.33, `snow on the tops (${snowHigh}/${nHigh})`);
+// (a quarter at least: the Glacier pass bares a summit's steep top, bands its steep upper faces with rock and lets snow
+// slide off past 45°, as the reference's dark faces show; before it, two fifths)
+assert.ok(nHigh > 10 && snowHigh / nHigh > 0.25, `snow on the tops (${snowHigh}/${nHigh})`);
 assert.ok(snowLow / Math.max(1, nLow) < 0.2, `none on the low slopes (${snowLow}/${nLow})`);
 assert.equal(woodsHigh, 0, 'no wood over its forest belt');
 assert.ok(nSteep > 0 && rockSteep / nSteep > 0.8, 'bare rock (or snow) on the walls');
@@ -165,7 +165,7 @@ for (let i = 0; i < 400; i++) {
   hash.update(`${pinRelief.heightAt(p.x, p.z, 0).toFixed(3)};${alp.heightAt(p.x * 3, p.z * 3, 0, 0).toFixed(3)};`);
 }
 const pin = hash.digest('hex').slice(0, 16);
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '1b02fb380cac2019';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '26ecad08bfa82075';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandLandforms pin: ${pin}`);
 else assert.equal(pin, PIN, 'the landform or far law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 console.log(`hinterlandLandforms.selftest: ok — massif crest ${summits} summits, ${ledges} ledges, jebel wall ${(Math.atan(jWall) * 180 / Math.PI).toFixed(0)}°, alpine far ${maxAlp.toFixed(0)} m`);

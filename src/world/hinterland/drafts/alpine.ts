@@ -17,11 +17,18 @@ const DRAFT: HinterlandConfig = {
     + 'their forts, the col falling south toward the Val di Susa',
   region: 'alpineCol',
   lab: true,
-  outland: { woods: 0.3, settle: { villages: 1, hamlets: 3, farms: 3, works: 0 } },
+  // (the coordinator on the first Glacier frames: the battlefield's spruce woods carry on into the outland below the
+  // treeline, and the church village returns under the cirque at edge-n, its tower clear of the woods)
+  outland: { woods: 0.34, settle: { villages: 1, hamlets: 3, farms: 3, works: 0,
+    villagesAt: [{ azDeg: 8, distM: 1150, name: 'Les Tavernettes', towerM: 30 }] } },
   landforms: [
-    // the cirque wall north of the col and the summits over it
-    { kind: 'massif', at: { azDeg: 0, distM: 2900 }, heightM: 560, lengthM: 6400, widthM: 4200, strikeDeg: 90, name: 'the cirque wall',
+    // the near walls (the coordinator on the first Glacier frames: "drama at the right distance" — at Mont-Cenis the walls
+    // rise some 1,000 m within 2–3 km of the lake; the ring's wall subtended 12–20° from the edge eyes, so the cirque,
+    // the Ronce shoulder and Mont Froid stand 0.8–1.5 km past the edge, their rock banded, snow on the ledges)
+    { kind: 'massif', at: { azDeg: 0, distM: 2050 }, heightM: 640, lengthM: 5000, widthM: 2300, strikeDeg: 90, name: 'the cirque wall',
       geology: { snow: { lineM: 0 }, gullies: 0.9 }, cover: { bare: true } },
+    { kind: 'massif', at: { azDeg: 330, distM: 2300 }, heightM: 700, lengthM: 2600, widthM: 2000, strikeDeg: 60, name: 'the Ronce shoulder',
+      geology: { snow: { lineM: 0 }, gullies: 0.9, erosion: 0.9 }, cover: { bare: true } },
     { kind: 'massif', at: { azDeg: 342, distM: 6400 }, heightM: 1520, lengthM: 7400, widthM: 6200, strikeDeg: 70, name: 'Pointe de Ronce',
       geology: { snow: { lineM: 0 }, gullies: 0.9, erosion: 0.95 }, cover: { bare: true } },
     { kind: 'massif', at: { azDeg: 24, distM: 8200 }, heightM: 1480, lengthM: 7000, widthM: 6000, strikeDeg: 110, name: 'Rochemelon',
@@ -34,10 +41,10 @@ const DRAFT: HinterlandConfig = {
     { kind: 'ridge', at: { azDeg: 148, distM: 1450 }, heightM: 190, lengthM: 1300, widthM: 520, strikeDeg: 148, name: 'the Variselle spur',
       geology: { erosion: 0.75, gullies: 0.6, snow: { lineM: 0 } }, cover: { bare: true } },
     // west: Mont Froid and the Petit Mont-Cenis; east: the slopes up to the Lamet
-    { kind: 'massif', at: { azDeg: 282, distM: 3400 }, heightM: 720, lengthM: 4600, widthM: 4000, strikeDeg: 10, name: 'Mont Froid',
+    { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 620, lengthM: 3400, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
       geology: { snow: { lineM: 0 } }, cover: { bare: true } },
-    { kind: 'massif', at: { azDeg: 92, distM: 3200 }, heightM: 640, lengthM: 4800, widthM: 3800, strikeDeg: 170, name: 'the Lamet slopes',
-      geology: { snow: { lineM: 0 } }, cover: { bare: true } },
+    { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 560, lengthM: 4200, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
+      geology: { snow: { lineM: 0 } } },
     // south: the col falls away toward the Val di Susa — the valley drops some 1,500 m in 10 km between its walls (the
     // Rocciamelone's shoulder east, the Ambin's west), so from the col the eye runs down into it and over it to the
     // Italian ranges layered beyond
@@ -59,7 +66,7 @@ const DRAFT: HinterlandConfig = {
     { kind: 'pylonLine', from: 'exit:s', azDeg: 186, name: 'the line down to Susa' },
   ],
   exceptions: {
-    C1: 'the Col du Mont-Cenis is a saddle under Ronce and Rochemelon, 1,500 m above it within 8 km: a high skyline is true here',
+    C1: 'the Col du Mont-Cenis is a saddle under Ronce and Rochemelon, 1,500 m above it within 8 km, its walls rising some 1,000 m within 2–3 km of the lake: a high near skyline is the place (the near wall is its character)',
     C2: 'the cirque wall and the spurs stand over the col within 500 m of the edge',
     C3: "the col's own shoulders, the battlefield's pass climbing to its north and south edges, stand the near skyline on a quarter of the bearings; the cirque and the Susa ranges stand over them",
   },

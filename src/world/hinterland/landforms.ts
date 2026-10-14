@@ -150,13 +150,17 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
   // (sharper ridged crests: arête-like lines, not swells — the coordinator on the rim-30 sheet's snow domes)
   const sharp = 1.45 + 0.3 * erosion;
   // the dominant summits: one, or two on a long mass, on the crest at seeded places along the strike
-  const summitCount = f.halfL > 1.6 * f.halfW ? 2 : 1;
+  // (one on a compact mass; along a long wall one every ~1.8 km, so its skyline breaks into peaks and cols — the near
+  // walls of the Glacier frames read as table tops with one summit)
+  const summitCount = Math.max(2, Math.min(4, Math.round(f.halfL / 900)));
   const summits: { u: number; v: number; r: number; h: number }[] = [];
   const summitAretes: number[][] = [];
   for (let k = 0; k < summitCount; k++) {
     const a = ((salt * (0.618 + k * 0.17)) % 1);
-    summits.push({ u: (summitCount === 1 ? -0.25 + 0.5 * a : (k === 0 ? -0.55 : 0.15) + 0.4 * a) * f.halfL, v: 0,
-      r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.28), h: k === 0 ? 0.5 : 0.36 });
+    const along = summitCount === 2 ? (k === 0 ? -0.55 : 0.15) + 0.4 * a
+      : -0.72 + 1.44 * (k + 0.5) / summitCount + (a - 0.5) * (0.9 / summitCount);
+    summits.push({ u: along * f.halfL, v: 0,
+      r: Math.max(300, Math.min(f.halfL, f.halfW) * 0.28), h: [0.5, 0.36, 0.3, 0.26][k] });
     // (the coordinator on the rim-30 sheet: "the massifs read as rounded snow domes ... Rochemelon and Ronce are sharp
     // pyramidal summits with arêtes") 2–4 arêtes, one of them down the crest along the strike, the rest spread round
     const n = 2 + Math.floor(((salt * 7.31 + k * 3.7) % 1) * 3);
@@ -226,9 +230,11 @@ function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: numbe
     // (HL-2c, the coordinator: "an even plateau crest with small pyramids sprinkled on top") the skyline's hierarchy: the
     // crest line rises and falls ±30 % along the strike, its cols real dips, and one or two dominant summits stand
     // 400–800 m-class over it (a third of the mass's height), each a pyramid on the crest with its shoulders below
-    const crestLine = 0.54 * (1 + 0.3 * fbm2(u / (0.42 * f.halfL) + oz, ox * 0.37, 3));
+    const crestLine = 0.48 * (1 + 0.4 * fbm2(u / (0.3 * f.halfL) + oz, ox * 0.37, 3));
     const peak = summitAt(u, v).peak;
-    let h = section * (crestLine + 0.36 * (ridged - 0.5) * (0.3 + 0.7 * section * section)) + peak * section;
+    // (the ridged term carries more weight at the crest: a long wall's skyline breaks into teeth and notches, not a
+    // table top — the Glacier CPU sheets)
+    let h = section * (crestLine + 0.5 * (ridged - 0.5) * (0.3 + 0.7 * section * section)) + peak * section;
     // the gullies: two erosion octaves across the slope (the mass's radial fall), carving the mid-slopes
     // (a bake's coarse levels leave out couloirs finer than a third of their spacing: three samples a couloir or none)
     if (gullyDepth > 0 && q > 0.12 && q < 0.95 && !(texelM > gullyCell * 0.34)) h -= (gullyDepth / Math.abs(cfg.heightM || 1)) * gullyCut(u, v, q, texelM);
@@ -450,6 +456,27 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
             out.snow = Math.max(out.snow, 0.95 * sm.crest);
             out.rock *= 1 - sm.crest;
           }
+        }
+      }
+      // a bare mountain's steep upper faces: bands of dark rock, a few tens of metres a bed, snow lying on the ledges
+      // between them (the coordinator on the first Glacier frames: "rock bands and cliffs ... dark, stratified, with
+      // snow on the ledges — right now there are only blotches")
+      if (best.bare && (best.cfg.kind === 'massif' || best.cfg.kind === 'ridge')) {
+        const H = Math.abs(best.cfg.heightM) || 1;
+        const w = smoothstep(0.16 * H, 0.3 * H, bestA) * smoothstep(36, 44, slopeDeg);
+        if (w > 0) {
+          // (irregular beds: their height wanders ±40 m over a few hundred metres, their ledges narrow and widen, and no
+          // snow holds on a ledge of a cliff past ~52°)
+          const sx = best.salt * 0.37, sz = best.salt * 0.21;
+          const ph = (bestA + 28 * noise2(x / 240 + sx, z / 240 - sz) + 12 * noise2(x / 70 - sz, z / 70 + sx)) / 55;
+          const fr = ph - Math.floor(ph);
+          const lw = 0.4 + 0.15 * noise2(x / 150 + sz, z / 150 + sx);
+          const ledge = (1 - smoothstep(lw - 0.06, lw + 0.06, fr)) * (1 - smoothstep(48, 56, slopeDeg));
+          const band = w * (1 - ledge);
+          out.rock = Math.max(out.rock, band);
+          out.snow = Math.max(out.snow * (1 - band), w * ledge * 0.95);
+          out.snowHold = Math.max(out.snowHold * (1 - band), w * ledge);
+          out.strata = ph;
         }
       }
       const g = best.geology;

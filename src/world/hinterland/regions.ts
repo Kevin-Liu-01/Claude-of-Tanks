@@ -208,12 +208,15 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     land: 'upland', fields: 0.05, settlement: 'hillVillage',
     density: { villages: r([0, 1]), hamlets: r([2, 4]), farms: r([2, 4]), works: r([0, 1]), perVillage: r([8, 20]) },
     kit: 'savoyard', verticals: ['churchTower', 'pylonLine', 'mast'],
-    vegetation: { habit: 'forest', woods: 0.32, hedges: 0, species: [['pine', 0.4], ['spruce', 0.32], ['fir', 0.28]], canopyM: 20 },
+    // (spruce first, as the battlefield's rim: the outland's woods continue its stands)
+    vegetation: { habit: 'forest', woods: 0.32, hedges: 0, species: [['spruce', 0.58], ['fir', 0.28], ['pine', 0.14]], canopyM: 20 },
     outland: { riseM: r([40, 140]), wavelengthM: 600, flat: false },
     // (the col stands above the treeline: the larch and pine belts only far down the valleys; April snow to the floor —
     // its line 400 m under the outland's datum, so no near field shows green beside the battlefield's snow: the Glacier
     // frames, 2026-10-14)
-    geology: { rock: 'schist', rockHex: 0x6f6c66, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -400, maxSlopeDeg: 45, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 40, forestBandM: r([-1500, -140]), sand: 0, varnish: 0 },
+    // (the treeline 170 m over the col's datum: the woods on the valley sides round it, thinning to krummholz; dark
+    // schist, its bands and cliffs against the snow — the coordinator on the first Glacier frames)
+    geology: { rock: 'schist', rockHex: 0x4f4c49, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -400, maxSlopeDeg: 45, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 40, forestBandM: r([-1500, 170]), sand: 0, varnish: 0 },
     far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0 },
   }),
   saharaOasis: region({
