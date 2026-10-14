@@ -61,6 +61,7 @@ const DRAFT: HinterlandConfig = {
   exceptions: {
     C1: 'the Col du Mont-Cenis is a saddle under Ronce and Rochemelon, 1,500 m above it within 8 km: a high skyline is true here',
     C2: 'the cirque wall and the spurs stand over the col within 500 m of the edge',
+    C3: "the col's own shoulders, the battlefield's pass climbing to its north and south edges, stand the near skyline on a quarter of the bearings; the cirque and the Susa ranges stand over them",
   },
 };
 
