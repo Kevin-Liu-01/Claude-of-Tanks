@@ -940,9 +940,51 @@ export const RECIPES = {
     async run(ctx) {
       ctx.log('contact', JSON.stringify(await toContact(ctx, { rangeM: 520, throttle: 0.5 })));
       await settle(ctx, 1);
+      // r2 (the lead: visible flames on the engine deck as well as the smoke). A burning tank's fire column is born at
+      // the point where the tank was last struck (fx lastKnownPos, set by a shell hit) and its flame licks rise a
+      // metre over it; r1's staged fire came with no hit on the deck, so its flames sat inside the hull and only the
+      // smoke rose. A real round now strikes the engine deck first: the nearest enemy, set 70 m off the player's rear
+      // quarter with its AI paused, lays on the engine and fires (HE when it carries any) until a round lands.
+      const shooter = await ctx.eval(() => {
+        const H = window.__MB.H, p = H.player();
+        const e = p && H.enemies().sort((a, b) => H.dist(a.state.pos, p.state.pos) - H.dist(b.state.pos, p.state.pos))[0];
+        if (!p || !e) return null;
+        p.combat.hp = p.combat.maxHp;
+        const back = p.state.yaw + Math.PI + 0.45, x = p.state.pos.x + Math.sin(back) * 70, z = p.state.pos.z + Math.cos(back) * 70;
+        H.place(e, x, z, Math.atan2(p.state.pos.x - x, p.state.pos.z - z));
+        e.aiCtl = null; e.input.throttle = 0; e.input.steer = 0; e.input.brake = true; e.input.fire = false;
+        const he = (e.spec?.gun?.shells || []).findIndex((s) => /^HE/.test(s.type || ''));
+        if (he >= 0) e.input.shellSlot = he;
+        window.__MB.deckShooter = e.id;
+        return { id: e.id, specId: e.specId, he: he >= 0 };
+      });
+      ctx.log('deck shooter', JSON.stringify(shooter));
+      if (shooter) {
+        await ctx.mb('setOnFrame', `
+          const p = H.player(), e = H.g().tankById.get(MB.deckShooter); if (!p || !e || !H.live(e)) return;
+          const st = MB.onFrameState; st.t0 = st.t0 || performance.now();
+          const m = H.moduleWorld(p, 'engine') || { x: p.state.pos.x, y: p.state.pos.y + 1.4, z: p.state.pos.z };
+          if (e.input.aimPoint && e.input.aimPoint.set) e.input.aimPoint.set(m.x, m.y + 0.6, m.z);
+          for (const ev of MB.events) {
+            if (ev.seq <= (st.seq || 0)) continue;
+            st.seq = ev.seq;
+            if (ev.type === 'shell:hit' && ev.targetId === p.id && (ev.attackerId ?? ev.shooterId) === e.id) st.hit = ev.kind || 'hit';
+          }
+          e.input.fire = !st.hit && performance.now() - st.t0 > 1800;`);
+        const hit = await ctx.until(() => window.__MB.onFrameState?.hit || null, { timeoutS: 10, label: 'a round on the engine deck' });
+        ctx.log('deck hit', JSON.stringify(hit));
+        await ctx.mb('setOnFrame', null);
+        await ctx.eval(() => {
+          const H = window.__MB.H, e = H.g().tankById.get(window.__MB.deckShooter), p = H.player();
+          if (e) H.freezeBot(e);
+          if (p) p.combat.hp = Math.max(p.combat.hp, Math.round(p.combat.maxHp * 0.8));
+        });
+        if (hit) ctx.note('a real enemy round struck the engine deck first (the fire column and its flames are born over the last hit), from 70 m off the rear quarter with the shooter\'s AI paused');
+      }
+      // raised lenses (the deck sits behind the turret): a front three-quarter over the turret and a rear three-quarter
       const cams = [
-        { kind: 'follow', subject: 'player', azimuthDeg: 34, distM: 12, heightM: 1.6, lookAtHeightM: 1.8, fov: 44, hud: 'noreticle' },
-        { kind: 'follow', subject: 'player', azimuthDeg: 150, distM: 11, heightM: 2.6, lookAtHeightM: 1.6, fov: 46, hud: 'noreticle' },
+        { kind: 'follow', subject: 'player', azimuthDeg: 35, distM: 12, heightM: 5.0, lookAtHeightM: 2.0, fov: 44, hud: 'noreticle' },
+        { kind: 'follow', subject: 'player', azimuthDeg: 145, distM: 12, heightM: 4.5, lookAtHeightM: 2.0, fov: 44, hud: 'noreticle' },
       ];
       for (let round = 0; round < 2; round++) {
         await ctx.mb('setCamera', cams[round % cams.length]);
@@ -954,7 +996,7 @@ export const RECIPES = {
         await ctx.capture({ windowS: 2.5, everyS: 0, max: 5, label: `extinguished ${round + 1}` });
         // a second fire while the extinguisher cools down: the bar shows the cooldown under live flames
         await ctx.eval(() => window.__MB.H.igniteEngine(window.__MB.H.player(), { modules: ['engine'] }));
-        await ctx.capture({ windowS: 4, everyS: 0.9, max: 5, label: `cooling ${round + 1}` });
+        await ctx.capture({ windowS: 6, everyS: 0.7, max: 8, label: `cooling ${round + 1}` });
       }
     },
   },
