@@ -9,7 +9,7 @@ import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { convexHull2 } from './collision.ts';
-import { appendStructureCollisionBand, certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
+import { appendStructureCollisionBand, certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile, mergeStructureDecks } from './structureCollision.ts';
 import { certifyGroundedStructureParts, measureBoundsJoint } from './structureConnectivity.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
 import { fisheryWharfClearance } from './fisheryWharfSite.ts';
@@ -369,6 +369,9 @@ function actualBudgetAndSupport() {
   assert.ok(certification.minimumScore > 90, `unchanged strict production collision certification: ${certification.minimumScore}`);
   const expected = [];
   for (const band of [profile.contact, ...profile.shell]) appendStructureCollisionBand(expected, band, pose.x, pose.y, pose.z, pose.yaw);
+  // (physics stream F2, 2026-10-14) the props join each record's held decks once the world is laid out
+  // (props.ts mergeStructureDecks): the committed records carry their roofs' decks, and so does the profile's
+  mergeStructureDecks(expected);
   // 2026-09-19: the height-clipped 0.5 m band ladder can outnumber the placement's record allocation; the wharf
   // packs every surplus band into its last record, whose parts keep their own vertical extents.
   assert.ok(expected.length >= packet.records.length, 'the adapted profile never has fewer bands than records');
