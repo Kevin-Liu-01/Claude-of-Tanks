@@ -613,13 +613,21 @@ const tartak: RegionalBuilder = (ctx) => {
     sink.span('structureWood', -0.9, -0.2, -0.3, 0.9, 0.6, 0.3, { colour: LOG_DARK });
     for (const s of [-1, 1]) sink.span('structureWood', s * 0.75 - 0.12, 0.6, -0.15, s * 0.75 + 0.12, 2.8, 0.15, { colour: LOG_DARK, decor: true });
     sink.span('structureWood', -0.9, 2.7, -0.18, 0.9, 2.95, 0.18, { colour: LOG_DARK, decor: true });
-    sink.cylinder('structureWood', [0, 0.95, -D * 0.35], 'z', D * 0.6, 0.32, 8, { colour: shade(LOG, 1.15), decor: true, shadow: true });
+    // (kitConnectivity: the log lay 3 cm over the saw's bed) the carriage's two rails under the log its whole length, the
+    // log resting on them
+    for (const x of [-0.3, 0.3]) sink.span('structureWood', x - 0.07, -0.1, -D * 0.35, x + 0.07, 0.62, D * 0.25, { colour: LOG_DARK, decor: true });
+    sink.cylinder('structureWood', [0, 0.93, -D * 0.35], 'z', D * 0.6, 0.32, 8, { colour: shade(LOG, 1.15), decor: true, shadow: true });
     if (ctx.tier !== 'mobile') {
-      // the boards stacked in stickered piles along the open side
+      // the boards stacked in stickered piles along the open side: the bearers on the ground, then each layer of boards on
+      // its stickers (kitConnectivity: the layers floated 6 cm apart on nothing)
       for (const z of [-D * 0.3, D * 0.05, D * 0.32]) {
         for (let k = 0; k < 6; k++) {
           const y = 0.15 + k * 0.16;
           sink.span('structureWood', W / 2 + 0.4, y, z - 1.6, W / 2 + 1.5, y + 0.1, z + 1.6, { colour: shade(PALE, 0.85 + look() * 0.15), decor: true, shadow: true });
+          for (const dz of [-1.35, 0, 1.35]) {
+            const y0 = k === 0 ? 0 : y - 0.06;
+            sink.span('structureWood', W / 2 + 0.38, y0, z + dz - 0.04, W / 2 + 1.52, y, z + dz + 0.04, { colour: LOG_DARK, decor: true });
+          }
         }
       }
     }
@@ -682,8 +690,9 @@ const spalona: RegionalBuilder = (ctx) => {
       const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
       sink.span('structureWood', x - 0.14, 0.55, z - 0.14, x + 0.14, 0.55 + h, z + 0.14, { colour: CHAR });
     }
+    // the burnt logs fallen across the foundation, lying on it (kitConnectivity: they reared up on nothing)
     for (let k = 0; k < 5; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W, 0.65, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3.5, 0.65 + rng() * 0.9, a[2] + (rng() - 0.5) * 3.5];
+      const a: Vec3 = [(rng() - 0.5) * W, 0.5, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3.5, 0.5 + rng() * 0.1, a[2] + (rng() - 0.5) * 3.5];
       sink.member('structureWood', a, b, 0.22, 0.22, [0, 1, 0], { colour: CHAR, decor: true, exposed: true });
     }
   });
