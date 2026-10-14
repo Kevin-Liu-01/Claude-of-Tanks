@@ -6,6 +6,7 @@ import { holdShot } from './setups.mjs';
 import { combatVerdict, knockouts } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
 import { powerLinesOf, powerWires, telephoneWires } from './wire-model.mjs';
+import { fxBodies, fxCoverAt } from './fx-cover.mjs';
 import { absoluteShots } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -143,12 +144,25 @@ for (const shot of COMBAT) {
   const lowArm = built.find((x) => x.kind === 'power line').pts[0][1];
   assert.ok(Math.abs(lowArm - (0.62 * 50 + 0.4 - 2.6 - 0.15)) < 1e-9, `the lower arms hang their strings at the built height (${lowArm.toFixed(2)} m)`);
 }
-// s226 as first staged, the lens climbing to 7 m through the telephone line by the church, fails on its own battlefield
+// s226 as first staged, the lens climbing to 7 m through the telephone line by the church over the T-80U's right shoulder
+// (k 1; it looks over the left since 2026-10-14), fails on its own battlefield
 {
-  const row = COMBAT_TABLE.find((r) => r[0] === 226), scene = siteScene(combatTake(row, { camEnd: { lift: 7 } })), { model, features } = worldOf(scene.map);
+  const row = COMBAT_TABLE.find((r) => r[0] === 226), scene = siteScene(combatTake(row, { k: 1, camEnd: { lift: 7 } })), { model, features } = worldOf(scene.map);
   if (model) {
     const verdict = combatVerdict(scene, model, features);
     assert.ok(!verdict.ok && verdict.faults.some((f) => /telephone wire/.test(f)), `s226 climbing through the wires fails (${verdict.faults.join('; ') || 'no fault'})`);
   }
 }
-console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown, the overhead wires strung and caught`);
+// the tanks in front of the fire (fx-cover.mjs, owner 2026-10-14): a straight-ahead lens at the origin (screen x = x/z,
+// y = y/z), a hull box 20 m off; a large burst at its peak 10 m off covers it, the same burst 30 m off is behind it, and a
+// tank's own knockout never covers it
+{
+  const view = { proj: ([x, y, z]) => (z > 0.5 ? [x / z, y / z, z] : null), tx: 1, ty: 1 };
+  const tank = [{ name: 'foe0', box: [-0.1, -0.05, 0.1, 0.05], depth: 20 }];
+  const burst = (z, actor = null) => fxBodies([{ kind: 'large burst', actor, tMs: 0, x: 0, z, R: 3.5, life: 'burst', toMs: 2800 }], 400, () => -2.45);
+  assert.ok(fxCoverAt(burst(10), tank, view).cover.foe0.share >= 0.25, 'a burst nearer the lens covers the tank');
+  assert.equal(fxCoverAt(burst(30), tank, view).cover.foe0.share, 0, 'a burst behind the tank covers nothing of it');
+  assert.equal(fxCoverAt(burst(10, 'foe0'), tank, view).cover.foe0.share, 0, "a tank's own knockout never covers it");
+  assert.equal(fxCoverAt(burst(10), tank, view).bursts, 1, 'the burst in its fireball counts once');
+}
+console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown, the overhead wires strung and caught, the fire kept off the tanks`);

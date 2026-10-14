@@ -896,8 +896,13 @@ export const COMBAT_TABLE = [
   // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
   // deck; then a telephoto from the square at the street's east end, the foes in file in the right lane and the AbramsX
   // in the left, the street 12 m wide from 10 to 62 m along: the AbramsX at 10 % of the frame and more, the near foe 30 %)
+  // (and since the owner's word on 2026-10-14, "make sure tanks are still visible": down the 12 m street the foes stood in
+  // file and every lens stacked them in depth, the T-90M's knockout fireball and smoke over the T-72B3 and the AbramsX
+  // for the take's last 2 s, 900 stagings tried. The fight moves 62 m on, the AbramsX coming out of the street's end into
+  // the square (62-80 m across from 65 to 130 m), the foes side by side there, the lens high behind them dropping as
+  // the T-90M dies: the AbramsX head-on, nothing over any tank)
   [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
-    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'reverseTele', 1, ['foe0', 'foe1', 'hero'], 0, [0, 14], { foeFormation: 'file' }],
+    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 0, [0, 62], { foeFormation: 'pair' }],
   // (s229 on 224's world, 2026-10-14: the 8 m shift put the 380 kV line across 43 % of the frame's top for 2.6 s; at the
   // set's anchor the race clears 224's ground and the line stays under a third. The village and the line lie the same
   // way: every placement that clears the line, the race turned 45°, puts the village behind the lens)
