@@ -3173,10 +3173,17 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
 //    wreck ember timer in tankFactory.syncFromState).
 // One shared uniforms object per tank drives every clone, so the whole wreck
 // animates in lockstep and stepped/frozen captures land mid-sweep correctly.
+// (fx 8p, 2026-10-10, wave 356: "a material swap, not fire damage") the front no
+// longer sweeps the vehicle top-down in ~2 s: it spreads out of the fire (the
+// turret ring) by distance over seconds once the fire has taken hold, behind a
+// grey soot edge, glowing only near the fire in its first second; the gun's
+// overhang chars last and least; the finished wreck is r7's.
 
 const BURN_COMMON_GLSL = `
 uniform float uBurnT;
 uniform float uBurnSeed;
+uniform vec3 uBurnO;
+uniform vec4 uBurnK;
 uniform float uBurnLo;
 uniform float uBurnHi;
 uniform float uBurnGlow;
@@ -3203,29 +3210,47 @@ const BURN_DIFFUSE_GLSL = `
 float brnM = 0.0;
 float brnBand = 0.0;
 float brnKeep = 0.0;
+float brnNear = 0.0;
+float brnAge = -1.0;
 if ( uBurnT >= 0.0 ) {
   vec3 bp = vBrnW * 1.9 + vec3( uBurnSeed );
   float brnN = brnNoise( bp ) * 0.62 + brnNoise( bp * 2.9 + 11.3 ) * 0.38;
-  // 0 at the turret roof -> 1 at the tracks: fire starts topside (the blast
-  // and the rack cook-off live there) and eats DOWN the hull
-  float brnH = clamp( ( uBurnHi - vBrnW.y ) / max( uBurnHi - uBurnLo, 0.5 ), 0.0, 1.0 );
-  // sweep tune (r6 verify): /2.1 with a 0.60 height span charred the whole
-  // deck by 0.6 s and put half the hull inside the glow band at once — the
-  // staged explosion showed BLEACHED pale flanks. /2.4 + 0.80 span keeps the
-  // front spatially tight: deck chars under the fireball, flanks follow over
-  // ~1.5 s, running gear last (~3 s).
-  float brnProg = uBurnT / 2.4;
-  float brnX = brnProg - ( brnH * 0.80 + brnN * 0.50 - 0.12 );
+  // (fx 8p, wave 356: "a blotchy dissolve ... orange patches over the camouflage, gun included ... uniformly rust by
+  // 2 s ... a material swap"; r6/r7 swept one top-down front over the whole vehicle in 2.4 s from the kill) the char
+  // spreads out of the fire: from the turret ring (uBurnO, where a kill's fire burns) across the hull by distance,
+  // ragged with the noise, a little sooner upward (fire and soot climb) and later down the running gear; it starts once
+  // the fire has taken hold (uBurnK.y s: the kill and a cook-off's toss read in the vehicle's own paint) and reaches the
+  // hull's far end (uBurnK.x m out) over uBurnK.z s (~5 s a cook-off, ~8 s a plain kill or a burn-out)
+  vec3 brnV = vBrnW - uBurnO;
+  float brnR = max( uBurnK.x, 0.5 );
+  float brnD01 = length( vec3( brnV.x, brnV.y * ( brnV.y > 0.0 ? 0.6 : 1.4 ), brnV.z ) ) / brnR;
+  // what reaches out past the hull's footprint at and above the deck (the gun's overhang) chars last and least
+  float brnLimb = smoothstep( 1.0, 1.3, length( brnV.xz ) / brnR ) * smoothstep( -0.6, 0.0, brnV.y );
+  // the front: quick round the fire, slowing as it reaches across the hull (all of it by uBurnK.z s after the fire takes
+  // hold); a coherent front with a ragged edge (the noise a quarter of the reach: r6's half of a 0.8 span made the char a
+  // blotchy dissolve), the soot's lead (0.2) keeping everything in its own paint until the fire takes hold. (fx 9, wave
+  // 405: "char comes late and all at once") its reach grows as the root of the time, so the charred AREA grows steadily
+  // from the fire's first moment rather than sweeping most of the hull in its last second and a half
+  float brnTau = max( uBurnT - uBurnK.y, 0.0 ) / max( uBurnK.z, 0.5 );
+  float brnThr = brnD01 + brnN * 0.25 + 0.2 + 0.3 * brnLimb;
+  float brnX = 1.7 * sqrt( brnTau ) - brnThr;
   brnM = smoothstep( 0.0, 0.24, brnX );
-  // the ignition FRONT: a NARROW ragged glowing edge right where the sweep
-  // is eating (wide band + flat gain was the pale-flank wash)
+  // the char follows a grey soot edge: the paint greys and darkens ahead of it, never an orange line across the paint
+  float brnSoot = smoothstep( 0.0, 0.24, brnX + 0.2 );
+  // seconds since the char reached this point (< 0: not yet): an ember crack's own clock
+  brnAge = ( brnTau - ( brnThr / 1.7 ) * ( brnThr / 1.7 ) ) * uBurnK.z;
+  // the fire's own neighbourhood, the only place the front glows
+  brnNear = 1.0 - smoothstep( 0.8, 2.6, length( brnV ) );
+  // the ignition FRONT: a NARROW ragged edge right where the char is eating (it glows only near the fire: the emissive)
   brnBand = smoothstep( -0.035, 0.005, brnX ) * ( 1.0 - smoothstep( 0.02, 0.14, brnX ) )
     * ( 0.25 + 0.75 * smoothstep( 0.35, 0.78, brnNoise( vBrnW * 5.7 + vec3( uBurnSeed * 2.9 ) ) ) );
   // ~30% survivor panels: low-frequency noise caps the char so patches of
-  // desaturated scorched paint survive the full burn (WoT wreck read)
+  // desaturated scorched paint survive the full burn (WoT wreck read); (fx 8p) the overhang keeps half its paint
   brnKeep = smoothstep( 0.60, 0.86, brnNoise( vBrnW * 0.85 + vec3( uBurnSeed * 1.7 + 5.1 ) ) );
-  brnM *= 1.0 - 0.46 * brnKeep;
-  if ( brnM > 0.001 ) {
+  float brnCap = ( 1.0 - 0.46 * brnKeep ) * ( 1.0 - 0.5 * brnLimb );
+  brnM *= brnCap;
+  brnSoot *= brnCap;
+  if ( brnSoot > 0.001 ) {
     float brnLum = dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) );
     // r7 char rework (critic: "real wrecks char DARK while retaining surface
     // detail"): the char MULTIPLIES the panel's own albedo toward charcoal
@@ -3239,7 +3264,10 @@ if ( uBurnT >= 0.0 ) {
     float brnTone = brnNoise( vBrnW * 3.1 + vec3( uBurnSeed * 2.3 ) );
     vec3 brnChar = diffuseColor.rgb * mix( vec3( 0.105, 0.090, 0.078 ), vec3( 0.27, 0.235, 0.20 ), brnTone )
       + vec3( 0.021, 0.018, 0.015 );
-    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( brnLum ) * 0.62, brnM * 0.55 );
+    // (fx 8p) the soot greys the paint ahead of the char (to the same scorched grey the char always passed through) and
+    // darkens it in the band where the soot leads (gone once the char catches up: the finished wreck is r7's exactly)
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( brnLum ) * 0.62, max( brnM, brnSoot ) * 0.55 );
+    diffuseColor.rgb *= 1.0 - 0.35 * max( brnSoot - brnM, 0.0 );
     diffuseColor.rgb = mix( diffuseColor.rgb, brnChar, brnM );
   }
 }
@@ -3247,8 +3275,13 @@ if ( uBurnT >= 0.0 ) {
 
 const BURN_EMISSIVE_GLSL = `
 if ( uBurnT >= 0.0 ) {
-  // sweeping ignition edge: ember-hot rim light on the panel being eaten
-  totalEmissiveRadiance += vec3( 1.35, 0.38, 0.065 ) * brnBand * uBurnGlow
+  // sweeping ignition edge: ember-hot rim light on the panel being eaten; (fx 8p, wave 356: "orange patches over the
+  // camouflage") only near the fire (brnNear) and only in the fire's first second (from the char's start there, brnT0:
+  // the front reaching the threshold 0.2, (0.2 / 1.7)^2 of the spread after the fire takes hold); everywhere else the
+  // front is the soot edge
+  float brnT0 = uBurnK.y + 0.0138 * uBurnK.z;
+  float brnFire = smoothstep( brnT0 - 0.25, brnT0, uBurnT ) * exp( -max( uBurnT - brnT0, 0.0 ) );
+  totalEmissiveRadiance += vec3( 1.35, 0.38, 0.065 ) * brnBand * brnNear * brnFire * 1.2
     * ( 0.45 + 0.55 * brnNoise( vBrnW * 6.3 + vec3( uBurnSeed * 3.1 ) ) );
   // fireball wash: while the blast burns, charred surfaces carry a warm fill
   // so the popped turret / fresh wreck reads fire-lit, never a black cutout.
@@ -3263,11 +3296,26 @@ if ( uBurnT >= 0.0 ) {
   // FLOODED the whole wreck uniform orange for seconds (probe destroy_2_5s);
   // the wash must fire-light the toss beat, then hand the surface back to
   // the charred diffuse (uBurnGlow also decays 1.5 s -> 0.9 s, tankFactory).
-  totalEmissiveRadiance += vec3( 0.95, 0.34, 0.10 ) * uBurnGlow * 0.34 * pow( brnM, 0.4 );
+  // fx 8g (the killcam critics after FX 7d/7e: "a flat salmon wash over the tank at 0.6-1.8 s"): the wash follows the
+  // fireball's own heat — the square of the glow, so it lights the toss beat (~1.3 at +0.2 s) and is gone by ~1 s instead
+  // of holding a salmon coat to ~1.8 s — and it flickers across the panels as fire light does (never one flat tone)
+  totalEmissiveRadiance += vec3( 1.0, 0.42, 0.12 ) * uBurnGlow * uBurnGlow * 0.26 * pow( brnM, 0.4 )
+    * ( 0.3 + 0.7 * brnNoise( vBrnW * 1.3 + vec3( uBurnSeed * 0.7 + uBurnT * 1.7 ) ) );
   // ember pockets smoldering in seams of the finished char (throb + cool)
   // r7: tighter pocket gate + ~half gain — pockets are seams, not a coat
-  float brnPk = smoothstep( 0.80, 0.97, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
-  totalEmissiveRadiance += vec3( 0.72, 0.16, 0.028 ) * brnPk * brnM * uBurnEmber * ( 1.0 - brnKeep );
+  // fx 8i (wave 334a killcam: "flat orange polka-dot embers on the hull"): the pockets are cracks, not dots — the product
+  // of two noises at different scales (ragged, elongated), gated tighter, deep red in their thin parts, and each one
+  // breathing on its own phase rather than the whole hull pulsing as one
+  float brnPkA = brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) );
+  float brnPkB = brnNoise( vBrnW * vec3( 11.0, 3.1, 11.0 ) + vec3( uBurnSeed * 2.3 + 9.1 ) );
+  float brnPk = smoothstep( 0.62, 0.9, brnPkA * brnPkB * 1.35 );
+  float brnPkLive = 0.55 + 0.45 * sin( uBurnT * 2.1 + brnPkA * 19.0 );
+  // (fx 8p, carrying dcore's wave 350 fix: "embers should glow and fade, not sit as static dots") a crack flares as the
+  // char reaches it and cools over ~2.2 s, over a dull seam glow, all while the hull is hot (uBurnEmber: nothing before
+  // the fire takes hold, cooling to nothing): a cold wreck has no glowing specks
+  float brnPkGlow = brnAge > 0.0 ? smoothstep( 0.0, 0.25, brnAge ) * exp( -brnAge / 2.2 ) : 0.0;
+  totalEmissiveRadiance += mix( vec3( 0.42, 0.05, 0.01 ), vec3( 0.8, 0.22, 0.04 ), brnPk ) * brnPk * brnM * uBurnEmber
+    * brnPkLive * ( 1.0 - brnKeep ) * ( 0.35 + 1.6 * brnPkGlow );
   // shadow-side albedo floor: charred flanks keep their soot/panel gradients
   // readable from any angle (matches the old burnt material's wreck floor)
   // r7: 0.11 -> 0.19 — with the darker multiply-char albedo the shaded side
@@ -3287,6 +3335,11 @@ export function makeBurnUniforms(seed: number) {
   return {
     uBurnT: { value: -1 },
     uBurnSeed: { value: (seed % 1000) * 0.37 + 3.1 },
+    // (fx 8p) the fire's place (world m, the turret ring at the kill) and the char's clock: x the hull's reach from it
+    // (m), y the seconds before the fire takes hold, z the seconds its front takes to reach the hull's far end
+    // (tankFactoryCore.ts startWreckPresentation sets both at the kill)
+    uBurnO: { value: new THREE.Vector3() },
+    uBurnK: { value: new THREE.Vector4(5, 1, 8, 0) },
     uBurnLo: { value: 0 },
     uBurnHi: { value: 2.6 },
     uBurnGlow: { value: 0 },

@@ -170,9 +170,17 @@ function updateEmitter(
   if (state.emitter.kind === 'headlight') {
     if (state.emitter.direction) state.direction.fromArray(state.emitter.direction);
     else state.direction.set(0, -.08, 1);
-    state.direction.transformDirection(state.anchor.matrixWorld);
+    // (EF.11, DO-FX-08: "barrels glowing gold at night") a driving lamp is a low beam: dropped in its own vehicle's
+    // frame, so the cone's upper edge passes under the gun barrel above the lamps instead of flooding it gold
+    state.direction.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(state.direction.x, state.direction.z);
+    state.direction.normalize().transformDirection(state.anchor.matrixWorld);
   }
 }
+
+/** (EF.11) the low beam: the lamp's aim dropped by this slope (in its vehicle's frame; the authored -0.08 becomes -0.13,
+ *  the centre ray meeting the road ~9 m ahead of a 1.1 m lamp instead of 14 m) under a 19-degree cone (was 24.6), whose
+ *  upper edge (+11.5 degrees) leaves the gun barrel over the lamps dark; the road ahead keeps the beam. */
+export const HEADLIGHT_LOW_BEAM_DROP = .05, HEADLIGHT_CONE_RAD = .33;
 
 /** Which side of its vehicle a lamp sits on (authored anchor-local x): −1 left, +1 right, 0 centreline. */
 function lampSide(source: EmitterState): number {
@@ -231,7 +239,7 @@ function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState
 
 function createSpots(group: THREE.Group, count: number): LightSlot<THREE.SpotLight>[] {
   return Array.from({ length: count }, (_, index) => {
-    const light = new THREE.SpotLight(0xffe2ad, 0, 42, .43, .7, 2);
+    const light = new THREE.SpotLight(0xffe2ad, 0, 42, HEADLIGHT_CONE_RAD, .7, 2);
     light.name = `night-headlight-${index}`; light.castShadow = false;
     group.add(light, light.target);
     return { light, source: null };

@@ -40,6 +40,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
     'src/fx/aerialTracers.selftest.mjs',
+    'src/fx/timeOfDayMarks.selftest.mjs',
+    'src/fx/localLights.selftest.mjs',
+    'src/fx/worldWindPalette.selftest.mjs',
+    'src/fx/salvoGovernor.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
@@ -292,6 +296,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/cinematicFx.selftest.mjs',
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
+    'src/fx/killLight.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
     // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
@@ -1282,6 +1287,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
+    'src/vehicles/wreckBurn.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',

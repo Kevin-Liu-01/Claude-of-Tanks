@@ -6,7 +6,7 @@ import {
   transferVehicleNightLenses, finalizeVehicleNightLighting, vehicleNightLightEmittersFor,
 } from './vehicleNightLighting.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
-import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
+import { createNightLightingRuntime, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 
 const close = (actual, expected, message) => assert.ok(actual.distanceTo(expected) < 2e-6, message);
 const material = new THREE.MeshStandardMaterial({ emissive: 0x010203, emissiveIntensity: .2 });
@@ -54,7 +54,10 @@ runtime.update(tank.position);
 const spot = runtime.lights.find(light => light.isSpotLight && light.intensity > 0);
 assert.ok(spot, 'authored headlamp activates within bounded runtime');
 close(spot.position, new THREE.Vector3().fromArray(lamps[0].position).applyMatrix4(mesh.matrixWorld), 'upside-down hull and turret yaw keep light seated');
-close(spot.target.position.clone().sub(spot.position).normalize(), new THREE.Vector3().fromArray(lamps[0].direction).transformDirection(mesh.matrixWorld), 'beam follows rotated lens, not global or inferred tank forward');
+// (EF.11) the runtime drops a driving lamp's authored aim to a low beam in its own frame (HEADLIGHT_LOW_BEAM_DROP)
+const lowBeam = new THREE.Vector3().fromArray(lamps[0].direction);
+lowBeam.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(lowBeam.x, lowBeam.z);
+close(spot.target.position.clone().sub(spot.position).normalize(), lowBeam.normalize().transformDirection(mesh.matrixWorld), 'beam follows rotated lens, not global or inferred tank forward');
 alive = false; runtime.update(tank.position);
 assert.ok(runtime.lights.every(light => light.intensity === 0), 'destroyed tank has no active light');
 assert.deepEqual(material.emissive.toArray(), oldColor.toArray());
@@ -172,7 +175,10 @@ function assertM1A3RoadBeams(root, label) {
         `${label}/pose${poseIndex}: center ray reaches the owner's road plane ahead, within the existing 42m range`);
       const actualSpot = spots.find(spot => spot.position.distanceTo(point) < 2e-6);
       assert.ok(actualSpot, `${label}: runtime still seats a pooled spot on this real aperture`);
-      close(actualSpot.target.position.clone().sub(actualSpot.position).normalize(), beam, 'runtime transforms housing-local road aim with pitch/roll/mirroring');
+      const low = new THREE.Vector3().fromArray(lamp.direction);
+      low.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(low.x, low.z);
+      close(actualSpot.target.position.clone().sub(actualSpot.position).normalize(), low.normalize().transformDirection(owner.matrixWorld),
+        'runtime transforms housing-local road aim (dropped to the low beam) with pitch/roll/mirroring');
       // Actual rejected M1A3 optical direction was the decorative lens's +.12
       // rake. It misses the same road plane ahead under every owner transform.
       const oldUp = new THREE.Vector3(0, Math.sin(.12), Math.cos(.12)).transformDirection(ownerPose);

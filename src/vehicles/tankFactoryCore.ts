@@ -9258,8 +9258,14 @@ function* createTankOwnedSteps(
     for (const decal of decalMeshes) decal.visible = false;
     wreckAge = ageS;
     burnU.uBurnT.value = ageS;
-    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9) * 1.35;
-    burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS / 8);
+    // (fx 8p) the fire: the turret ring at the kill (before a cook-off throws the turret); the char's reach from it, its
+    // start and its spread (a plain kill's; launchDestroyedTurret speeds a cook-off's)
+    turretG.getWorldPosition(burnU.uBurnO.value);
+    burnU.uBurnK.value.set(burnReachM * Math.abs(root.scale.x || 1), BURN_CHAR_DELAY_S, BURN_SPREAD_PLAIN_S, 0);
+    // (the combat review 10-13: a thrown turret read as "a red radial pinwheel on a rod": its charred face and gun glowing
+    // ember-red in flight) the kill's fire-lit glow starts at the hull's own level; a flying turret takes less of it
+    burnU.uBurnGlow.value = Math.exp(-ageS / 0.9);
+    burnU.uBurnEmber.value = emberHeat(ageS);
     mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS / 8);
     // a body-driven turret eases its gun from its last lay (wreckTurretDriver); the bake's table drops it at once
     if (!turretDriver?.drives) gunG.rotation.x = 0.12;
@@ -9268,7 +9274,28 @@ function* createTankOwnedSteps(
     popYaw0 = turretG.rotation.y;
   }
 
+  // (declared after startWreckPresentation, which only runs at a kill, long after the visual's build has run these)
+  /** (fx 8p, wave 356's critic on a plain kill: the burn read "a material swap, not fire damage") the kill's char waits
+   *  for the fire to take hold, then spreads out of the turret ring across the hull, a cook-off's fire faster than a
+   *  plain kill's or a burn-out's (materials.ts BURN_DIFFUSE_GLSL reads uBurnO and uBurnK) */
+  // (fx 9, wave 405: "char comes late and all at once") the fire takes hold in under half a second; the front then grows
+  // steadily (materials.ts: its reach as the root of the time)
+  const BURN_CHAR_DELAY_S = 0.4, BURN_SPREAD_COOKOFF_S = 5.4, BURN_SPREAD_PLAIN_S = 8.4;
+  /** The hull's reach from the turret ring (m): its footprint's farthest corner. */
+  const burnReachM = Math.hypot(0.5 * spec.dims.hullLengthM + Math.abs(armor.turretPivot[2]),
+    0.5 * spec.dims.widthM + Math.abs(armor.turretPivot[0]));
+  /** The burn's heat (after dcore's wave 350 fix: "embers should glow and fade, not sit as static dots"): none until the
+   *  fire takes hold, up as the char comes, then cooling to nothing (no floor: a cold wreck has no glowing specks). */
+  function emberHeat(ageS: number): number {
+    const t = ageS - BURN_CHAR_DELAY_S;
+    if (!(t > 0)) return 0;
+    return 0.95 * Math.min(1, t / 0.8) * Math.exp(-t / 7);
+  }
+
   function launchDestroyedTurret(pop: boolean, ageS: number, explicitAge: boolean): void {
+    // (fx 8p) a cook-off's fire spreads its char faster than a plain kill's or a burn-out's, whether its turret then
+    // flies as a body (the turret driver) or on the table's arc
+    burnU.uBurnK.value.z = pop ? BURN_SPREAD_COOKOFF_S : BURN_SPREAD_PLAIN_S;
     if (turretDriver) {
       turretFlying = false;
       turretDriver.begin(pop, wreckSeat, explicitAge ? ageS : null);
@@ -9538,10 +9565,11 @@ function* createTankOwnedSteps(
           if (popActive) { popT += adv; applyPop(); }
           else if (turretDriver?.active) turretFlying = turretDriver.update(Math.max(0, wreckAge + adv), adv);
           // r6 burn-front + ember drive: the whole wreck's char/glow rides the
-          // shared burn uniforms (see burnU note) — the front sweeps for
-          // ~2.1 s, its ignition edge glows hot while it eats (uBurnGlow, also
-          // the "fireball lights the tumbling turret" warm term), and the
-          // finished char keeps a throbbing, cooling ember pulse in its seams.
+          // shared burn uniforms (see burnU note); (fx 8p) the front spreads out
+          // of the turret ring over seconds once the fire has taken hold
+          // (uBurnO/uBurnK, set at the kill), its edge glowing only near the
+          // fire, and its ember cracks flare as it reaches them and cool while
+          // the hull's heat (emberHeat) cools to nothing.
           if (wreckAge >= 0) {
             wreckAge += adv;
             burnU.uBurnT.value = wreckAge;
@@ -9549,9 +9577,8 @@ function* createTankOwnedSteps(
             // r7: glow tau 1.5 -> 0.9 s — the fire-lit wash must collapse with
             // the fireball; at 1.5 s it held the whole darker char uniform
             // orange into the 2-3 s window (probe destroy_2_5s flood).
-            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 1.35 : 1.0);
-            burnU.uBurnEmber.value = 0.10 + 0.85 * decay *
-              (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
+            burnU.uBurnGlow.value = Math.exp(-wreckAge / 0.9) * (popActive || turretFlying ? 0.45 : 1.0);
+            burnU.uBurnEmber.value = emberHeat(wreckAge) * (0.65 + 0.35 * Math.sin(wreckAge * 2.4 + emberPhase));
             // legacy shared-burnt fallback (non-standard materials only)
             mats.burnt.emissiveIntensity = 0.035 + 0.55 * decay *
               (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));

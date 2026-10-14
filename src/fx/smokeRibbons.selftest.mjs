@@ -97,4 +97,16 @@ assert.match(mat.vertexShader, /float early = 1\.0 - smoothstep\( 0\.7, 1\.6, aS
   const s2 = r2.mesh.geometry.getAttribute('aS').array;
   assert.deepEqual([s2[3], s2[7], s2[11]].map((v) => +v.toFixed(2)), [0.4, 0.4, 2.2], 'each point carries its flight time');
 }
-console.log('smokeRibbons.selftest: continuous ribbons, ring order, per-point uploads, slot reuse, time shift, reset, no allocation');
+// (EF.04, the Kornet probe 10-13) the covered warm draws what a launch draws: the missile body, a short ribbon and one
+// motor glow on the projectile tracers (the solo warm's update has no shells: the tracers' program compiled at the first
+// launch, one 60 Hz frame)
+{
+  const { readFile } = await import('node:fs/promises');
+  const fx = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+  const warm = fx.slice(fx.indexOf('    warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void {'));
+  const body = warm.slice(0, warm.indexOf('\n    },'));
+  assert.match(body, /writeGuidedBody\(pos, dir\);/, 'the missile body');
+  assert.match(body, /tracers\.begin\(\);\s*tracers\.glow\([^)]*\);\s*tracers\.end\(\);/, 'one motor glow on the projectile tracers');
+  assert.match(body, /ribbons\.begin\(WARM_RIBBON_KEY, WARM_RIBBON, 0\.5\);/, 'a short ribbon');
+}
+console.log('smokeRibbons.selftest: continuous ribbons, ring order, per-point uploads, slot reuse, time shift, reset, no allocation; the launch warm');

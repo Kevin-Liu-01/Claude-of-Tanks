@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { VOLUME_ATLAS, createVolumeMedia, makeVolumePuff, volumePositionAt } from './volumeMedia.ts';
 import { createDebrisChunks, makeChunkPiece, CHUNK_SHAPES } from './debrisChunks.ts';
-import { groundBurst, kineticStrike, muzzleBlast, killFireball, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
+import { groundBurst, kineticStrike, muzzleBlast, killFireball, killDust, columnPuff, dustSurge, isExplosive, blastScale, craterEjecta,
   trackSkirt, exhaustPuff, armorHit, plateBurst, smolderPuff, fragmentStrike } from './blastRecipes.ts';
 import { SURFACE_KINDS, SURFACE_LOOKS, classifyTerrain, surfaceForMaterial, linearHex } from './surfaceLooks.ts';
 import { mulberry32 } from './particles.ts';
@@ -93,6 +93,27 @@ assert.ok(gpuMB <= 16, `the media atlases stay within the 16 MB desktop budget (
   media.update(camera);
   const st = media.stats();
   assert.equal(st.live, 64, 'the ring holds its capacity (the oldest are overwritten)');
+  // (fx 8e) under pressure the pool takes free slots first and steals the puff nearest its end, never a fresh body by
+  // ring order: a long-lived puff survives a burst of short ones that overfills the ring
+  {
+    let tnow = 0;
+    const pool = createVolumeMedia({ soft, now: () => tnow, capacity: 32 });
+    const q = makeVolumePuff();
+    q.x = 0; q.y = 1; q.z = -10; q.vx = 0; q.vy = 0; q.vz = 0; q.drag = 1; q.rise = 0; q.windK = 0; q.grav = 0; q.birthOffset = 0;
+    q.life = 30; q.size0 = 7.77; q.size1 = 7.77;
+    pool.emit(q);
+    q.life = 2; q.size0 = 1; q.size1 = 1;
+    for (let k = 0; k < 31; k++) pool.emit(q);
+    tnow = 3;
+    for (let k = 0; k < 40; k++) pool.emit(q);
+    tnow = 3.5;
+    pool.update(camera);
+    const sz = pool.group.children[0].geometry.getAttribute('aSZ').array;
+    let kept = false;
+    for (let k = 0; k < pool.stats().drawn; k++) if (Math.abs(sz[k * 4] - 7.77) < 1e-4) kept = true;
+    assert.ok(kept, 'the long-lived puff outlives an overfilled burst of short ones');
+    pool.dispose?.();
+  }
   assert.equal(st.drawn, 64, 'every live puff is drawn');
   assert.equal(media.group.children[0].visible, true, 'a live pool draws');
   // read the sorted instance origins back: depth along the view must not increase
@@ -248,7 +269,8 @@ function captureContext(seed) {
   }
   // the ring: many low wide cards racing out, stalling and thinning within ~2-3 s (no old surge of mounds)
   for (const [name, log, n] of [['125 mm', a, 16], ['ATGM', atgmLog, 10]]) {
-    const ring = log.media.filter((m) => m.aspect >= 2.8 && m.grav === 0);
+    // (fx 8) the lingering ground sheet is as wide but outlives the ring: the ring is the cards gone within ~3.5 s
+    const ring = log.media.filter((m) => m.aspect >= 2.8 && m.grav === 0 && m.life <= 3.5);
     assert.ok(ring.length >= n, `${name}: a ring of ${ring.length} cards`);
     assert.ok(ring.every((m) => Math.hypot(m.vx, m.vz) >= 7 && m.drag >= 3 && m.density <= 0.5 && m.life <= 3.5),
       `${name}: it races out, stalls, and thins within ~3 s`);
@@ -273,14 +295,20 @@ function captureContext(seed) {
     const sm = log.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.rise >= 0.3 && m.life >= 5);
     assert.ok(sm.length >= n, `${name}: ${sm.length} puffs of the explosive's lasting smoke`);
     assert.ok(sm.every((m) => lum0(m) < 0.1 && m.vy > 1.5), `${name}: its smoke is dark and climbs`);
-    assert.ok(Math.max(...sm.map((m) => m.rise)) > 1.3 * Math.min(...sm.map((m) => m.rise)), `${name}: its upper puffs climb faster`);
+    // (fx 8, the critics after 7d/7e: "the HE cloud splitting into brown balls and separate blue-grey balls") its upper
+    // puffs climb a little faster, so the cloud stretches into lobes, but within one band: no second cloud sails off
+    const riseK = Math.max(...sm.map((m) => m.rise)) / Math.min(...sm.map((m) => m.rise));
+    assert.ok(riseK > 1.1 && riseK < 1.45, `${name}: its upper puffs climb a little faster, as one cloud (${riseK.toFixed(2)})`);
+    assert.ok(new Set(sm.map((m) => m.windK)).size === 1, `${name}: every puff of its smoke takes one share of the wind`);
   }
   // (wave 293: "separate brown and blue-grey balls ... one lobed grey-brown cloud growing about eight-fold by +2 s") the
   // HE smoke swells most in its first seconds, and all its smoke ages to one colour
   {
     const sm = a.media.filter((m) => m.medium === 'billow' && m.heat > 0 && m.heat < 1 && m.life >= 5);
     const at = (m, t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
-    assert.ok(sm.every((m) => at(m, 2) - m.size0 > 0.4 * (m.size1 - m.size0)), 'the smoke swells early');
+    // (fx 8f: the probe of 8a's cloud read 4.3x its event-frame area at +2 s against the real ~8x) most of its growth by +2 s
+    assert.ok(sm.every((m) => at(m, 2) - m.size0 > 0.6 * (m.size1 - m.size0)), 'the smoke swells early');
+    assert.ok(sm.length >= 12 && sm.every((m) => m.size1 >= 1.3 * ball(a)), 'into a cloud well past the fireball\'s width');
     const aged = new Set([...sm, ...coldSmoke(a)].map((m) => [m.r1, m.g1, m.b1].map((v) => v.toFixed(4)).join()));
     assert.equal(aged.size, 1, 'every smoke puff ages to one grey-brown');
   }
@@ -289,11 +317,20 @@ function captureContext(seed) {
     const at = (t) => m.size0 + (m.size1 - m.size0) * (1 - Math.pow(1 - Math.min(1, t / m.life), m.growExp));
     assert.ok(m.life >= 5 && at(4.4) > 1.25 * at(1.4), 'the ATGM column keeps growing');
   }
-  // the footprint dust is a low wide haze, never a mound: wider than tall, at most ~0.6 dense, not lifting off
-  const haze = a.media.filter((m) => m.medium === 'billow' && m.aspect >= 1.3 && m.aspect < 1.9 && m.grav === 0);
-  assert.ok(haze.length >= 7 && haze.every((m) => m.density <= 0.45 && m.rise <= 0.15), `a low haze of ${haze.length} wide puffs`);
-  // (wave 293: "a tan haystack mound with a crisp rim") the soil's dark, in the soft-edged medium, gone within ~7 s
-  assert.ok(haze.every((m) => lum0(m) < 0.12 && m.life <= 7), 'the footprint haze is a thin dark soil-coloured sheet');
+  // the footprint dust is a thin sheet lying along the ground, never a mound (wave 293: "a tan haystack mound with a
+  // crisp rim"; fx 8, the critics after 7d/7e: still "tan haystack dust mounds"; DVIDS 954922: a pale sheet hugging the
+  // ground, wider than the cloud by +2 s and still lying there at +4 s): short wide cards centred low, thin, in the
+  // soft-edged medium, thrown out past the fireball, lingering for seconds without lifting off
+  const sheet = a.media.filter((m) => m.medium === 'billow' && m.aspect >= 3 && m.grav === 0 && m.life > 3.5);
+  assert.ok(sheet.length >= 7, `a ground sheet of ${sheet.length} cards`);
+  assert.ok(sheet.every((m) => m.density <= 0.3 && m.rise <= 0.06 && m.size1 <= 3.5 && m.y <= 0.3 * m.size1 + 1e-6),
+    'the sheet is thin, short and centred low (its lower half in the ground)');
+  assert.ok(sheet.every((m) => Math.hypot(m.vx, m.vz) >= 5 && m.life >= 4.5 && m.life <= 9),
+    'it races out past the fireball and lingers four to nine seconds');
+  assert.ok(sheet.every((m) => lum0(m) < 0.12), 'in the soil\'s own dark');
+  // nothing cold stands up off the ground as a mound: every cold dust or smoke card taller than ~3 m is up the column
+  const mound = a.media.filter((m) => m.heat === 0 && m.grav === 0 && m.aspect < 3 && m.size1 > 3 && m.y < 1.5);
+  assert.equal(mound.length, 0, `no dust mound at the burst's foot (${mound.length})`);
   assert.ok(a.media.filter((m) => m.medium === 'burst' && m.aspect >= 1 && m.aspect < 1.5 && m.grav === 0 && m.life > 5)
     .every((m) => m.rise <= 0.25), 'the dust cloud does not lift off');
   assert.ok(atgmLog.media.some((m) => m.medium === 'billow' && m.r0 < 0.06 && m.heat < 1), 'a shaped charge is born in its own dark smoke');
@@ -336,6 +373,20 @@ function captureContext(seed) {
     assert.ok(era.chunk.length === 6 && era.chunk.some((k) => k.shape === 'brick'), 'and its cassette\'s fragments');
     assert.deepEqual(hit('pen'), hit('pen'), 'seeded: the same hit twice');
   }
+  // (round 8, DVIDS 930318) a burst in water: a column of many puffs filling it from the water to its top, falling back,
+  // and a spiky crown; no stack of big balls
+  {
+    const c = captureContext(12);
+    groundBurst(c.ctx, { x: 0, y: 0, z: 0, munition: 'he', chargeKg: 3.5, surface: 'water' });
+    const col = c.log.media.filter((m) => m.grav <= -9 && Math.hypot(m.vx, m.vz) <= Math.tan(0.13) * m.vy + 1e-6);
+    assert.ok(col.length >= 20 && col.every((m) => m.size1 <= 3.8), `a water column of ${col.length} overlapping puffs, none a big ball`);
+    const kd = (m) => Math.max(m.drag, 1e-3);
+    const top = (m) => { let y = -1e9; for (let t = 0; t <= m.life; t += 0.02) y = Math.max(y, m.y + (m.vy) * (1 - Math.exp(-kd(m) * t)) / kd(m) - 4.9 * t * t); return y; };
+    const tops = col.map(top);
+    assert.ok(Math.min(...tops) < 0.5 * Math.max(...tops) && Math.max(...tops) > 9, `it fills from the water to ${Math.max(...tops).toFixed(1)} m`);
+    const crown = c.log.media.filter((m) => m.grav <= -9 && Math.hypot(m.vx, m.vz) > Math.tan(0.07) * m.vy && m.size1 < 1.8);
+    assert.ok(crown.length >= 6, `a spiky crown of ${crown.length} jets`);
+  }
   const mg = captureContext(9);
   kineticStrike(mg.ctx, { x: 0, y: 0, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 12.7, munition: 'small_arms', surface: 'soil' });
   assert.ok(mg.log.media.length <= 3 && Math.max(...mg.log.media.map((m) => m.size1)) < 1, 'a bullet kicks a fist of dust');
@@ -357,8 +408,21 @@ function captureContext(seed) {
   const mzHigh = captureContext(2);
   muzzleBlast(mzHigh.ctx, { x: 0, y: 9, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'sand' });
   assert.ok(!mzHigh.log.media.some((m) => m.medium === 'burst'), 'a high muzzle lifts none');
+  // (round 8, DVIDS 883259 / 966637) on dry ground the blast raises a cloud that climbs and rolls on, sand most; grass none
+  {
+    const cloud = (log) => log.media.filter((m) => m.medium === 'burst' && m.rise >= 0.3 && m.life >= 3);
+    const sandC = cloud(mz.log);
+    assert.ok(sandC.length >= 5 && Math.max(...sandC.map((m) => m.size1)) > 5 && Math.max(...sandC.map((m) => m.life)) > 6,
+      `a 120 mm on sand raises a climbing cloud (${sandC.length} puffs)`);
+    const soilMz = captureContext(2);
+    muzzleBlast(soilMz.ctx, { x: 0, y: 2.2, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'soil' });
+    const grassMz = captureContext(2);
+    muzzleBlast(grassMz.ctx, { x: 0, y: 2.2, z: 0, dx: 1, dy: 0, dz: 0, caliberMm: 120, surface: 'grass' in SURFACE_LOOKS ? 'grass' : 'mud' });
+    assert.ok(cloud(soilMz.log).length < sandC.length && cloud(soilMz.log).length >= 2, 'dirt a smaller one');
+    assert.equal(cloud(grassMz.log).length, 0, 'wet or grassed ground only its sheet');
+  }
   const kf = captureContext(4);
-  killFireball(kf.ctx, 0, 1, 0, true, 0);
+  killFireball(kf.ctx, 0, 1, 0, 'ammorack', 0);
   columnPuff(kf.ctx, 0, 0, 0, 1, 1.3, 0);
   dustSurge(kf.ctx, 0, 0, 0, 2, 'soil', 0);
   assert.ok(kf.log.media.some((m) => m.heat > 1), 'the fireball burns inside its media');
@@ -368,9 +432,49 @@ function captureContext(seed) {
   const frags = kf.log.chunk.filter((k) => k.heat >= 0.85);
   assert.ok(frags.length >= 14 && frags.every((k) => k.life >= 16 && k.vy > 2), `the fire throws ${frags.length} hot fragments`);
   const fire = kf.log.media.filter((m) => m.heat > 1);
-  assert.ok(fire.length >= 5 && Math.max(...fire.map((m) => m.size1)) >= 12, 'an ammo rack fireball outgrows the hull');
+  // (the combat review 10-13: "clusters of round orange cotton balls ... many times the size of the tank ... the kill
+  // hides its own subject") many smaller lobes held at the hull (none past ~8 m), their heat collapsing within ~0.3 s
+  assert.ok(fire.length >= 8 && Math.max(...fire.map((m) => m.size1)) <= 8.5 && Math.max(...fire.map((m) => m.size1)) >= 4,
+    `the cook-off's fire breaks into ${fire.length} lobes at the hull (largest ${Math.max(...fire.map((m) => m.size1)).toFixed(1)} m)`);
+  assert.ok(fire.filter((m) => m.heat <= 1.4).every((m) => m.cool >= 5.5 && m.heat * Math.exp(-m.cool * 0.3) < 0.3),
+    'its orange is gone into smoke within about 0.3 s');
   assert.ok(fire.every((m) => m.cool >= 0.9), 'its glow is gone within a second or two (a long dull glow read brown)');
-  assert.ok(fire.every((m) => m.heat <= 1.4), 'orange-yellow at the heart, never white (b5: heat ~2 saturated the ramp)');
+  // orange-yellow lobes (b5: heat ~2 saturated the whole ramp white); (fx 9, wave 405 on the cook-off: "a smooth peach
+  // balloon, with no white-hot core, sooty skin or turbulence") a white-hot heart of at most two short puffs, the lobes
+  // churning, a soot skin torn off the outside in the first fifth of a second
+  const core = fire.filter((m) => m.heat > 1.4);
+  assert.ok(core.length >= 1 && core.length <= 2 && core.every((m) => m.heat <= 1.56 && m.life <= 0.55), `a short white-hot heart (${core.length} puffs)`);
+  assert.ok(fire.filter((m) => m.heat <= 1.4).every((m) => m.startFrame >= 8), 'the cook-off\'s lobes start mid-billow: turbulent from their first frame, never a smooth balloon');
+  const skin = kf.log.media.filter((m) => m.heat > 0.2 && m.heat < 0.5 && m.birthOffset <= 0.2 && m.r0 < 0.06);
+  assert.ok(skin.length >= 3, `a sooty skin round the fire (${skin.length} puffs)`);
+  assert.ok(kf.log.glows === 1 && kf.log.glowR >= 6, 'a cook-off\'s flash lights the media round the hull from inside');
+  // (fx 8o, wave 356's critics on a plain kill: "far too big for a kill without an ammunition explosion", "a flat orange
+  // hit-flash disc at 0.20-0.50 s", "a flat, lingering dust sheet at 3-4 s") a plain kill's fire is a short flash about
+  // the hull's width that burns out within half a second and lights the media round it from inside; its dust rolls up
+  // into billows that thin out within a few seconds
+  {
+    const pk = captureContext(4);
+    killFireball(pk.ctx, 0, 1, 0, 'shot', 0);
+    const pf = pk.log.media.filter((m) => m.heat > 1);
+    assert.ok(pf.length <= 4 && Math.max(...pf.map((m) => m.size1)) <= 4, `a plain kill's fire is about the hull's width (${pf.length} lobes, ${Math.max(...pf.map((m) => m.size1)).toFixed(1)} m)`);
+    assert.ok(pf.every((m) => m.cool >= 3 && m.life <= 2.4), 'and burns out fast');
+    assert.ok(Math.max(...pf.map((m) => m.size1)) < 0.5 * Math.max(...fire.map((m) => m.size1)), 'the big fireball is the cook-off\'s');
+    assert.ok(pk.log.chunk.length <= 5 && pk.log.chunk.every((k) => k.scale <= 0.25), `a few small pieces (${pk.log.chunk.length})`);
+    assert.ok(pk.log.glows === 1 && pk.log.glowR <= 3.5 && pk.log.glowDur <= 0.5, 'its flash lights the media round the hull from inside');
+    const dust = (s) => { const c = captureContext(6); killDust(c.ctx, 0, 0, 0, s, 'soil', 0); return c.log.media; };
+    const kd = dust(0.8), cd = dust(0.65 * Math.cbrt(14));
+    // (fx 9, wave 405: "flat tan cutouts with jagged, star-shaped edges, pressed onto the hull side at hull height")
+    // round, smooth billows born at the ground just outside the tracks, fading in, climbing as they swell
+    assert.ok(kd.every((m) => m.medium === 'burst' && m.aspect <= 1.25 && m.fadeIn >= 0.1), 'a kill\'s dust: round billows in the smooth medium that fade in');
+    assert.ok(kd.every((m) => m.y <= 0.3 && m.size0 <= 0.6 && Math.hypot(m.x, m.z) >= 1.7), 'born at the ground just outside the tracks, small');
+    assert.ok(kd.every((m) => m.vy >= 1.4 && m.rise >= 0.6), 'and climbs off the ground as it swells');
+    // (fx 8s, the w6p film: 8o's dust read as nothing) dense enough to read, tan, out past the hull's sides; thinning from
+    // under half its life, gone within five seconds
+    assert.ok(kd.every((m) => m.density >= 0.45 && m.density <= 0.62 && m.fadeOut <= 0.5 && m.life <= 5.5), 'it reads, then thins and is gone within five seconds');
+    assert.ok(kd.every((m) => Math.hypot(m.x + m.vx / m.drag, m.z + m.vz / m.drag) >= 2.4), 'it rolls out past the hull\'s sides');
+    assert.ok(kd.every((m) => m.size1 >= 2.6) && kd.length >= 8, `billows big enough to see (${kd.length})`);
+    assert.ok(kd.length < cd.length && Math.max(...kd.map((m) => m.size1)) < Math.max(...cd.map((m) => m.size1)), 'a plain kill raises less than a cook-off');
+  }
   const soot = kf.log.media.filter((m) => m.heat < 1 && m.birthOffset > 0.15 && m.r0 < 0.1);
   assert.ok(soot.length >= 4, 'black soot rolls out of the fire after it');
   for (const m of kf.log.media.filter((q) => q.medium === 'billow')) {
@@ -398,6 +502,67 @@ function captureContext(seed) {
     assert.match(mat.vertexShader, /\* \( 0\.050 \* size \* min\( age, 4\.0 \) \);/, 'eddies push a puff about by its size as it ages');
     assert.match(mat.fragmentShader, /vec2 warp = wn \* tileSize \* uWarpK \* \( 0\.5 \+ 0\.8 \* vT \);/, 'the lookup is warped: no clean round ball');
     assert.match(mat.fragmentShader, /float core = smoothstep\( 0\.3, 0\.85, tb \);/, 'a hot core inside a sooty shell');
+    // (fx 8c) a bright medium's shade lit by the ground as by the sky (the critics: "a cool white wall in the desert that
+    // ignores warm light"); (fx 8q, wave 381's pack: the same collapse and strike puffs rendered dark olive-brown in B
+    // against sunlit walls on Caldera and urban scenes) the media take NO cloud shade on their sun (8c's per-vertex fetch
+    // took the sun off them where the world stayed lit), and only the near-white media take the ground's hue: masonry
+    // powder (held under 0.4) and earth shade exactly as the reference
+    assert.ok(!/cotCloudSun|vSunVis|tCotCloudShade/.test(mat.vertexShader + mat.fragmentShader), 'no cloud shade on the media\'s sun');
+    assert.match(mat.fragmentShader, /float sunL = \( vW\.x \* R \+ vW\.y \* L \+ vW\.z \* U \+ vW\.w \* D \+ vWfb\.x \* front \+ vWfb\.y \* back \* uGrade\.z \)\s*\* \( 0\.88 \+ 0\.24 \* dn \);/,
+      'the sun term is the reference\'s');
+    assert.ok(!('tCotCloudShade' in mat.uniforms), 'no cloud-shade sampler on the media');
+    // (fx 8r) an unheated puff by a wall asks for a wider soft-depth feather (a negative cool, its scale 1-3); a heated one
+    // keeps its cooling, and every puff that asks nothing keeps the feather it had
+    assert.match(mat.vertexShader, /vHeat = aHT\.x > 0\.0 \? aHT\.x \* exp\( -aHT\.y \* age \) : 0\.0;/, 'only a heated puff burns');
+    assert.match(mat.vertexShader, /float featherK = aHT\.x > 0\.0 \? 1\.0 : clamp\( -aHT\.y, 1\.0, 3\.0 \);[\s\S]*?vFeather = clamp\( size \* \( 0\.22 \+ 0\.33 \* lowB \) \* featherK, 0\.5 \+ 0\.7 \* lowB, 6\.0 \* featherK \);/,
+      'the wall feather, opt-in');
+    assert.match(mat.fragmentShader, /vec3 amb = mix\( amb0, amb1 \* \( lum0 \/ max\( lum1, 1e-5 \) \), smoothstep\( 0\.45, 0\.65, albedoL \) \* warmG \* uGrade2\.x \);/,
+      'a near-white medium takes the ground light\'s hue at the shade\'s own luminance, from a warm ground only (fx 8k, 8q)');
+    assert.match(mat.fragmentShader, /float warmG = smoothstep\( 0\.02, 0\.16, \( uGroundCol\.r - uGroundCol\.g \)/,
+      'never from green turf (wave 354a: "murky olive")');
+    {
+      // the weight by albedo: the smoke screens' whites take the hue, masonry powder (dustOf caps it at 0.4) never does
+      const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+      const lumOf = (h) => { const c = [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+      assert.ok(sm(0.45, 0.65, lumOf(0xdfdcd5)) > 0.95 && sm(0.45, 0.65, lumOf(0xc9c5be)) > 0.5, 'a smoke screen creams over sand, fresh and aged');
+      assert.equal(sm(0.45, 0.65, 0.4), 0, 'masonry powder keeps the reference\'s shade');
+    }
+    // (the coordinator: the billow "reads as a cut-out cloud with a defined lobed silhouette") the billow's rim thins and
+    // its outer lobes fall away on a noisy radius; its lobes' shading is pulled toward their mean; the burst keeps its rim
+    assert.match(mat.vertexShader, /vSoft = vec3\( local, band < 1\.0 - 0\.5 \? 1\.0 \+ step\( 1\.5, aHT\.z \) : 0\.0 \);/,
+      'the billow (band 0) is marked, its low bodies apart');
+    assert.match(mat.fragmentShader, /float covS = mix\( covE, pow\( covE, 1\.6 \+ 0\.6 \* lowS \) \* fall, sb \);/,
+      'its density thins toward the rim, more on a low body');
+    assert.match(mat.fragmentShader, /float fall = 1\.0 - smoothstep\( 0\.4 - 0\.14 \* lowS \+ \( 0\.36 \+ 0\.14 \* lowS \) \* edgeN, 1\.02, rr \);/,
+      'its outer lobes fall away on a noisy radius (no extra fetch), wider and noisier on a low body');
+    assert.match(mat.fragmentShader, /float lb = 0\.42 \* sb;/, 'its lobes blend into one another');
+    // the battle's media port flags a billow body born under ~1.5 m over the ground; the record packs it into the
+    // fade-out start (+2), which the vertex shader unpacks
+    const fxSrc = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+    assert.match(fxSrc, /media: \(p\) => \{ p\.low = p\.medium === 'billow' && p\.y - groundY\(p\.x, p\.z\) < 1\.5; vol\.emit\(p\); \},/,
+      'low billow bodies are flagged at emit');
+    assert.match(mat.vertexShader, /vFade = smoothstep\( aHT\.z - 2\.0 \* lowB, 1\.0, t \);/, 'the flag leaves the fade-out start intact');
+    assert.match(mat.fragmentShader, /float sb = min\( vSoft\.z, 1\.0 \) \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
+      'a burning fireball keeps its lobes; it softens as it cools into smoke');
+    // (the coordinator, the sunset chase: low bodies near the camera "read as flat tan cut-outs") a low body melts into
+    // the ground over a deeper soft-depth band, thins hard when it fills the screen within ~15 m, and its lit brightness is
+    // capped against the ground's at a low sun (a veil, not a sheet)
+    assert.match(mat.vertexShader, /float big = lowB \* smoothstep\( 0\.15, 0\.45, scr \) \* \( 1\.0 - smoothstep\( 12\.0, 18\.0, distance\( center, cameraPosition \) \) \);/,
+      'a low body filling the screen near the camera is marked');
+    assert.match(mat.vertexShader, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \);/, 'and thins hard');
+    assert.match(mat.fragmentShader, /col \*= mix\( 1\.0, min\( 1\.0, 2\.0 \* bgL \/ max\( cL, 1e-4 \) \), lowS \);/,
+      'a low body is never lit brighter than twice the ground');
+    assert.match(mat.fragmentShader, /a \*= 1\.0 - 0\.3 \* lowS \* \( 1\.0 - smoothstep\( 0\.12, 0\.4, uSunDir\.y \) \);/,
+      'and thins as the sun drops');
+    // a 4 m low body 10 m off at the chase camera's 55 degree view thins to ~0.4 of its opacity; at 20 m it is untouched
+    {
+      const sst = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+      const p11 = 1 / Math.tan((55 / 2) * Math.PI / 180);
+      const thin = (size, d) => 1 - 0.75 * sst(0.15, 0.45, 0.5 * size * p11 / d) * (1 - sst(12, 18, d));
+      assert.ok(thin(4, 10) < 0.45 && thin(4, 10) > 0.3, `near low body thins (${thin(4, 10).toFixed(2)})`);
+      assert.equal(thin(4, 20), 1, 'a far one does not');
+      assert.ok(thin(1, 10) > 0.95, `a small one barely does (${thin(1, 10).toFixed(2)})`);
+    }
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
     rec[1] = 2; rec[5] = 4; rec[8] = 1; rec[9] = 1; rec[10] = 1;
@@ -442,18 +607,34 @@ function captureContext(seed) {
     media: rec('media'), chunk: rec('chunk'), flash: rec('flash'), fire: rec('fire'), sparks: rec('sparks'), jet: rec('jet'),
     shockRing: rec('ring'), lightPulse: rec('pulse'), glow: rec('glow') };
   const G = 3.019;
-  killFireball(C, 190, G + 1.2, 390, true, 0);
-  dustSurge(C, 190, G, 390, 0.65 * Math.cbrt(14), 'soil', 0);
+  killFireball(C, 190, G + 1.2, 390, 'ammorack', 0);
+  killDust(C, 190, G, 390, 0.65 * Math.cbrt(14), 'soil', 0);
   plateBurst(C, { x: 190.3, y: G + 1.2, z: 391.9, nx: 0, ny: 0.2, nz: 1, munition: 'he', chargeKg: 3.4, ground: 'soil', birthOffset: 0 });
   for (let i = 0; i < 3; i++) columnPuff(C, 190, G, 390, 1, 1.3, 0.7 + i * 0.45);
   columnPuff(C, 190, G, 390, 2, 1.3, 0);
   smolderPuff(C, 190, G + 1, 390, 0.7, 0);
   exhaustPuff(C, 187, G + 1.6, 390, 0, 0, 1, 0, 0.15, true, 0);
   fragmentStrike(C, 190, G + 1, 390, 1, 0, 0, 0);
-  killFireball(C, 190, G + 1.2, 390, false, 0);
+  killFireball(C, 190, G + 1.2, 390, 'shot', 0);
   const digest = createHash('sha256').update(JSON.stringify(calls)).digest('hex').slice(0, 16);
-  assert.equal(`${calls.length} ${draws} ${digest}`, '131 1628 ff1a722a5e1070b2',
-    "the killcam's recipes are round 7c's to the last draw (re-pin only for a deliberate change to the kill path)");
+  // (fx 8, re-pinned deliberately: the killcam critics after 7d/7e — "a flat salmon wash over the tank at 0.6-1.8 s",
+  // "black smoke hanging in front of the camera instead of climbing away" — the kill fireball cools within a second and
+  // its soot climbs away; the HE hit's light on the hull is the flash's quarter second. Same calls, same draws.)
+  // (fx 8h, re-pinned deliberately: the burning column leaves the hull at 3.2-4.8 m/s and starts narrower, so it climbs
+  // out of the killcam's frame instead of standing round it)
+  // (fx 8o, re-pinned deliberately: wave 356's critics on a plain kill — "far too big for a kill without an ammunition
+  // explosion", "a flat orange hit-flash disc", "a flat, lingering dust sheet" — the plain kill's fireball is a short
+  // flash about the hull's width, every kill's flash glows inside the media, and a kill's dust is killDust's billows)
+  // (fx 8s, re-pinned deliberately: the w6p film showed 8o's kill dust as nothing — killDust rolls out past the hull's
+  // sides, tan, dense enough to read, a cook-off's a full ring)
+  // (fx 9, re-pinned deliberately: wave 405's critics on the kills — the cook-off's "smooth peach balloon, with no
+  // white-hot core, sooty skin or turbulence" (a two-puff heart, a soot skin, lobes from mid-billow) and the dust's "flat
+  // tan cutouts ... pressed onto the hull side" (killDust born at the ground outside the tracks, smooth, climbing))
+  // (the combat review 10-13, re-pinned deliberately: "kill fireballs read as clusters of round orange cotton balls ...
+  // many times the size of the tank" — more, smaller lobes held at the hull, turbulent from the first frame, their heat
+  // gone within ~0.3 s; the cook-off's heart a third of a second; the HE plate flash smaller and briefer)
+  assert.equal(`${calls.length} ${draws} ${digest}`, '129 1619 a265a7302ca2f81f',
+    "the killcam's recipes are round 8's to the last draw (re-pin only for a deliberate change to the kill path)");
 }
 
 // ---- 5. surfaces --------------------------------------------------------------------------------------------------
