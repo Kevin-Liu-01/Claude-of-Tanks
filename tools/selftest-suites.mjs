@@ -1362,6 +1362,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/map-probe-runtime.selftest.mjs',
     'tools/map-metrics.selftest.mjs',
     'tools/map-layout-metrics.selftest.mjs',
+    // the horizons stream (2026-10-13, HB-1a): the horizon envelope reproduces H1's ring skylines (Verdant 1.72°, Titan 12.25°, Polders 0.71°)
+    'tools/horizon-envelope.selftest.mjs',
     'src/world/mapLayoutBrief.selftest.mjs',
     'server/collisionManifestDrift.selftest.mjs',
     'src/world/wreckBakePlanDrift.selftest.mjs', // 2026-10-08: the wreck bake plan holds every map, tier and terrain the tree builds
@@ -1620,6 +1622,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
     'src/world/borderFarmsteads.selftest.mjs',
+    // the horizons stream (2026-10-13, HL-0): the Hinterland's spec, its 26 regions and its field (dark: no map has a block)
+    'src/world/hinterland/hinterlandField.selftest.mjs',
+    // ... (HL-1) its pipeline: the outland plan on the Polders draft, roads run on, yards level, waters as coasts, the bake
+    'src/world/hinterland/hinterlandPlan.selftest.mjs',
+    // ... (HL-2) its landform primitives and far sectors: the stair, the tables, the sheer jebel, the massif's summits, snow and belts
+    'src/world/hinterland/hinterlandLandforms.selftest.mjs',
+    // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
+    'src/world/hinterland/hinterlandMesh.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',

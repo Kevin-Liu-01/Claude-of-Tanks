@@ -45,8 +45,9 @@ assert.deepEqual(closure.filter((file) => FLEET_PAYLOAD.test(file)), [], 'no fle
 // visual horizon, its border farmsteads and the regional building kits are not authority inputs. terrain.ts reaches the
 // horizon only through horizonRingHook.ts (2026-10-08: terrain.ts → maps/horizon.ts → borderFarmsteads.ts →
 // maps/regional/index.ts had put every regional kit, 1.9 MB of 7.07 MB, into the Worker).
-const VISUAL_WORLD = /^src\/world\/(?:maps\/horizon|borderFarmsteads|horizonPanorama|horizonVista)\.ts$|^src\/world\/maps\/regional\//;
-assert.deepEqual(closure.filter((file) => VISUAL_WORLD.test(file)), [], 'no visual horizon, farmstead or regional building kit in the host Worker');
+// (2026-10-13, HL-0: the Hinterland that replaces the ring is client-only visual too, B-architecture §4.4)
+const VISUAL_WORLD = /^src\/world\/(?:maps\/horizon|borderFarmsteads|horizonPanorama|horizonVista)\.ts$|^src\/world\/maps\/regional\/|^src\/world\/hinterland\//;
+assert.deepEqual(closure.filter((file) => VISUAL_WORLD.test(file)), [], 'no visual horizon, hinterland, farmstead or regional building kit in the host Worker');
 for (const file of ['server/match/matchActor.ts', 'src/vehicles/authorityFleet.ts', 'src/vehicles/fleetRegistration.ts']) {
   assert.ok(closure.includes(file), `the host Worker registers the fleet through ${file}`);
 }
