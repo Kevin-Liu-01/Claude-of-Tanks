@@ -16,7 +16,10 @@
 import * as THREE from 'three';
 import { DESTRUCTIBLE_TYPES, type DestructiblePropType } from './inhabitKit.ts';
 import { hexLin, type Rgb } from './craftMesh.ts';
-import { caskBroken, caskFar, caskNear, crateBroken, crateFar, crateNear, drumFar, drumNear } from './clutterForms.ts';
+import {
+  caskBroken, caskFar, caskNear, crateBroken, crateFar, crateNear, drumFar, drumNear, palletBroken, palletFar, palletNear,
+  vesselBroken, vesselFar, vesselNear, woodpileBroken, woodpileFar, woodpileNear, type PalletForm, type VesselForm, type WoodpileForm,
+} from './clutterForms.ts';
 
 /** The vertex attribute that tags a clutter pool's near (1) and far (2) form; untagged geometry reads 0. */
 export const CLUTTER_LOD_ATTRIBUTE = 'aClutterLod';
@@ -131,8 +134,73 @@ export const CASK_FORMS: Readonly<Record<string, CaskSpec>> = Object.freeze({
   verdant: { ...OAK, form: 'bochka', wood: 0x6a5238 }, steppe: { ...OAK, form: 'bochka', wood: 0x6e5a40 }, winter: { ...OAK, form: 'beczka', wood: 0x705438 },
   railyard: OAK, foundry: OAK, urban: OAK, frontier: OAK, reservoir: OAK, alpine: { ...OAK, form: 'larch-cask', wood: 0x8a6440 }, ruinspires: OAK,
   blackglass: { ...OAK, form: 'soy-cask', wood: 0x5a4632, hoops: 3, bilge: 0.02 }, monsoon: { ...OAK, form: 'rum-cask' },
-  whiteout: WHISKEY, airfield: OAK, moon: WHISKEY,
+  whiteout: WHISKEY, airfield: OAK,
 });
+
+/** Where the barrel is no cask: a turned vessel (sRGB hex) — the Saharan zir, the blue HDPE drum of the 2000s, the
+ *  glazed martaban jars of the Mekong and the Jamuna, the store canisters of the stations off the Earth. */
+interface VesselSpec { form: string; kind: VesselForm['kind']; body: Hex; trim: Hex; band?: Hex; height: number; radius: number }
+const HDPE: VesselSpec = { form: 'hdpe-220l', kind: 'hdpe', body: 0x2a62a0, trim: 0x214f84, height: 0.93, radius: 0.29 };
+const JAR: VesselSpec = { form: 'martaban-jar', kind: 'jar', body: 0x5a3a24, trim: 0x3a2a1e, band: 0x7a5a30, height: 0.8, radius: 0.3 };
+export const VESSEL_FORMS: Readonly<Record<string, VesselSpec>> = Object.freeze({
+  desert: { form: 'zir', kind: 'khabia', body: 0xb0704a, trim: 0x8a5a3a, height: 0.9, radius: 0.32 },
+  oasis: HDPE, badlands: { ...HDPE, body: 0x2d5ea8, trim: 0x224a86 },
+  delta: JAR, mangrove: { ...JAR, body: 0x6a4a2a, band: 0x8a6a3a },
+  moon: { form: 'apollo-canister', kind: 'canister', body: 0xdedcd6, trim: 0x9a9a96, band: 0xd8702a, height: 0.9, radius: 0.28 },
+  mars: { form: 'store-canister-2100', kind: 'canister', body: 0xe1e3e5, trim: 0x9ea4aa, band: 0xd97d2e, height: 0.9, radius: 0.28 },
+});
+
+/** A woodpile's make and its woods by map (sRGB hex): the birch polennitsa of the Russian, Polish and Ukrainian villages,
+ *  the spruce lean-to stacks and holzhausen of the Alps and the North, the oak and pine ricks of the West, the
+ *  brushwood bundles of the dry lands and the paddies, the dung stacks of the Bengal chars. */
+interface WoodSpec { form: string; kind: WoodpileForm['kind']; bark: Hex; split: Hex; end: Hex; length: number; height: number; depth: number }
+const BIRCH = { bark: 0xcfc8b8, split: 0xd2b488, end: 0xdcc08c };
+const SPRUCE = { bark: 0x5a4636, split: 0xd0b080, end: 0xdcc08c };
+const OAK_WOOD = { bark: 0x5a5248, split: 0xb89a70, end: 0xc4a478 };
+const PINE = { bark: 0x6a4a36, split: 0xc8a474, end: 0xd6b47e };
+const BRUSH = { bark: 0x6a5a40, split: 0x8a7650, end: 0xb8a070 };
+const POLENNITSA: WoodSpec = { form: 'polennitsa', kind: 'polennitsa', ...BIRCH, length: 1.62, height: 0.92, depth: 1.0 };
+const RICK: WoodSpec = { form: 'rick', kind: 'rick', ...OAK_WOOD, length: 1.6, height: 0.92, depth: 1.0 };
+const LEANTO: WoodSpec = { form: 'lean-to', kind: 'leanto', ...SPRUCE, length: 1.56, height: 0.86, depth: 1.0 };
+const ROUND: WoodSpec = { form: 'holzhausen', kind: 'holzhausen', ...SPRUCE, length: 1.3, height: 0.95, depth: 1.3 };
+const BUNDLES: WoodSpec = { form: 'brushwood', kind: 'bundles', ...BRUSH, length: 1.5, height: 0.62, depth: 1.0 };
+export const WOOD_FORMS: Readonly<Record<string, WoodSpec>> = Object.freeze({
+  verdant: POLENNITSA, steppe: POLENNITSA, winter: POLENNITSA, airfield: POLENNITSA,
+  fjord: ROUND, frontier: { ...ROUND, ...PINE }, alpine: LEANTO, foundry: LEANTO, railyard: LEANTO, urban: LEANTO,
+  caldera: { ...LEANTO, form: 'makiba', bark: 0x6a4a3a, split: 0xc8a070 },
+  longleaf: { ...RICK, form: 'cordwood', ...PINE }, titan_gorge: { ...RICK, form: 'juniper-rick', bark: 0x7a6a5a, split: 0xc0a080, end: 0xd0b48a },
+  skybridge: { ...RICK, form: 'cordwood', ...PINE }, copper_mesa: { ...RICK, form: 'gum-rick', bark: 0x8a7a68, split: 0xb88a60, end: 0xc89a6a },
+  whiteout: { ...RICK, form: 'lumber-rick', ...PINE }, autumn: { ...RICK, form: 'stere' }, coastal: { ...RICK, form: 'stere' },
+  polders: { ...RICK, form: 'rick', ...PINE }, reservoir: RICK, cliffbridge: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a },
+  saltwind: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a }, ruinspires: RICK,
+  desert: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, oasis: { ...BUNDLES, form: 'palm-rib', bark: 0x8a7458, end: 0xa89060 },
+  badlands: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, orchard: { ...BUNDLES, form: 'prunings', bark: 0x6a6450 },
+  blackglass: BUNDLES, monsoon: BUNDLES, mangrove: { ...BUNDLES, form: 'mangrove-wood', bark: 0x5a4a3a },
+  delta: { form: 'dung-cakes', kind: 'dung', bark: 0x5a4430, split: 0x6a5038, end: 0x7a6044, length: 1.2, height: 0.8, depth: 1.2 },
+});
+
+/** A pallet's make by map: the EUR/EPAL (1961) on Europe's later maps, the American GMA stringer pallet, the rough
+ *  plank skid of the 1940s and the Russian yards, the bamboo skid of the paddy and the Yangtze. */
+interface PalletSpec { form: string; kind: PalletForm['kind']; wood: Hex; dark: Hex; brand?: Hex }
+const EUR: PalletSpec = { form: 'epal', kind: 'eur', wood: 0xc0a074, dark: 0x9a7c58, brand: 0x2a2a2a };
+const GMA: PalletSpec = { form: 'gma', kind: 'gma', wood: 0xb89a6a, dark: 0x8a7050 };
+const ROUGH: PalletSpec = { form: 'plank-skid', kind: 'rough', wood: 0x9a8058, dark: 0x6a5640 };
+const BAMBOO: PalletSpec = { form: 'bamboo-skid', kind: 'bamboo', wood: 0xc8b070, dark: 0x9a8450 };
+export const PALLET_FORMS: Readonly<Record<string, PalletSpec>> = Object.freeze({
+  railyard: EUR, cliffbridge: EUR, frontier: EUR, urban: EUR, ruinspires: { ...EUR, wood: 0xa88a62 }, saltwind: EUR, coastal: EUR,
+  airfield: EUR, orchard: EUR, desert: { ...EUR, wood: 0xb8946a }, oasis: { ...EUR, wood: 0xb8946a }, badlands: EUR,
+  longleaf: GMA, skybridge: GMA, titan_gorge: GMA, whiteout: GMA, copper_mesa: GMA, reservoir: GMA, autumn: GMA, polders: GMA,
+  moon: { form: 'aluminium-skid', kind: 'gma', wood: 0xc8c8c4, dark: 0x9a9a96 }, mars: { form: 'composite-skid', kind: 'gma', wood: 0xd8d6d0, dark: 0x9ea4aa },
+  steppe: ROUGH, winter: ROUGH, fjord: ROUGH, verdant: ROUGH, foundry: ROUGH, alpine: ROUGH,
+  blackglass: BAMBOO, delta: BAMBOO, mangrove: BAMBOO, monsoon: BAMBOO, caldera: BAMBOO,
+});
+
+/**
+ * The kinds a map draws in their lean form (≤ 120 triangles, no distance form) to keep its clutter within +45k
+ * triangles of the legacy (the runtime census's instances; clutterKit.selftest pins it): Cape Dyer's 500 drums stand in
+ * its caches' rows, where only the tops and the outer ring show.
+ */
+export const CLUTTER_LEAN: Readonly<Record<string, readonly string[]>> = Object.freeze({ whiteout: ['drum'] });
 
 /** A crate's make by map. */
 interface CrateSpec { form: string; w: number; h: number; d: number; boards: number; gap: number; wood: Hex; frame: Hex; inside: Hex;
@@ -174,12 +242,16 @@ const lin = (hex: Hex): Rgb => hexLin(hex);
 
 /** A kind's entry: the legacy builders run first (their draws), then the map's form near and far in one pool. */
 function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: DestructiblePropType['mat'],
-  near: (rng: () => number) => THREE.BufferGeometry, far: () => THREE.BufferGeometry,
+  near: (rng: () => number) => THREE.BufferGeometry, far: (() => THREE.BufferGeometry) | null,
   broken: ((rng: () => number) => THREE.BufferGeometry) | null): DestructiblePropType {
   const base = DESTRUCTIBLE_TYPES[kind] as DestructiblePropType;
   return {
     ...base, mat,
-    build: (rng) => { base.build(rng).dispose(); return withDistanceForms(near(kindStream(mapId, kind)), far()); },
+    build: (rng) => {
+      base.build(rng).dispose();
+      const n = near(kindStream(mapId, kind));
+      return far ? withDistanceForms(n, far()) : n;
+    },
     broken: base.broken && broken ? (rng) => { base.broken!(rng).dispose(); return broken(kindStream(mapId, `${kind}:broken`)); } : base.broken,
     ...(broken ? { ownBroken: true } : {}),
   };
@@ -188,8 +260,10 @@ function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: Destru
 /** The forms a map's clutter takes (null: the kind's legacy form there). */
 export function clutterFormOf(kind: string, mapId: string): string | null {
   if (kind === 'drum') return DRUM_FORMS[mapId]?.form ?? null;
-  if (kind === 'barrel') return CASK_FORMS[mapId]?.form ?? null;
+  if (kind === 'barrel') return CASK_FORMS[mapId]?.form ?? VESSEL_FORMS[mapId]?.form ?? null;
   if (kind === 'crate') return CRATE_FORMS[mapId]?.form ?? null;
+  if (kind === 'firewood') return WOOD_FORMS[mapId]?.form ?? null;
+  if (kind === 'pallet') return PALLET_FORMS[mapId]?.form ?? null;
   return null;
 }
 
@@ -199,12 +273,27 @@ export function clutterTypes(mapId: string, _mobile: boolean): Record<string, De
   const drum = DRUM_FORMS[mapId];
   if (drum) {
     const paint = { shell: lin(drum.shell), hoop: lin(drum.hoop), head: lin(drum.head), band: drum.band ? lin(drum.band) : undefined, rust: drum.rust };
-    out.drum = entry('drum', mapId, 'baked', (rng) => drumNear(paint, rng), () => drumFar(paint), null);
+    const lean = CLUTTER_LEAN[mapId]?.includes('drum') ?? false;
+    out.drum = entry('drum', mapId, 'baked', (rng) => drumNear(paint, rng, lean), lean ? null : () => drumFar(paint), null);
   }
-  const cask = CASK_FORMS[mapId];
+  const cask = CASK_FORMS[mapId], vessel = VESSEL_FORMS[mapId];
   if (cask) {
     const f = { ...cask, wood: lin(cask.wood), hoop: lin(cask.hoop), head: lin(cask.head) };
     out.barrel = entry('barrel', mapId, 'baked', (rng) => caskNear(f, rng), () => caskFar(f), (rng) => caskBroken(f, rng));
+  } else if (vessel) {
+    const f: VesselForm = { kind: vessel.kind, body: lin(vessel.body), trim: lin(vessel.trim), band: vessel.band ? lin(vessel.band) : undefined,
+      height: vessel.height, radius: vessel.radius };
+    out.barrel = entry('barrel', mapId, 'baked', (rng) => vesselNear(f, rng), () => vesselFar(f), (rng) => vesselBroken(f, rng));
+  }
+  const wood = WOOD_FORMS[mapId];
+  if (wood) {
+    const f: WoodpileForm = { kind: wood.kind, bark: lin(wood.bark), split: lin(wood.split), end: lin(wood.end), length: wood.length, height: wood.height, depth: wood.depth };
+    out.firewood = entry('firewood', mapId, 'baked', (rng) => woodpileNear(f, rng), () => woodpileFar(f), (rng) => woodpileBroken(f, rng));
+  }
+  const pallet = PALLET_FORMS[mapId];
+  if (pallet) {
+    const f: PalletForm = { kind: pallet.kind, wood: lin(pallet.wood), dark: lin(pallet.dark), brand: pallet.brand ? lin(pallet.brand) : undefined };
+    out.pallet = entry('pallet', mapId, 'baked', (rng) => palletNear(f, rng), () => palletFar(f), (rng) => palletBroken(f, rng));
   }
   const crate = CRATE_FORMS[mapId];
   if (crate) {
