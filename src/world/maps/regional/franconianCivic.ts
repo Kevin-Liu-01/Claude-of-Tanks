@@ -57,12 +57,16 @@ function gunLoop(sink: PartSink, face: Face, u: number, y: number, h: number): v
  * The putlog holes the scaffold left: small dark squares in rows up a face, each row on the face of the storey it
  * stands in (a storey set back from the one under it: the 225 integrity ledger found a row floating off the shaft).
  */
-function putlogs(sink: PartSink, faceAt: (y: number) => Face, y0: number, y1: number, rows: number, rng: () => number): void {
+function putlogs(sink: PartSink, faceAt: (y: number) => Face, y0: number, y1: number, rows: number, rng: () => number,
+  open: (u: number, y: number) => boolean = () => false): void {
   for (let r = 0; r < rows; r++) {
     const y = y0 + (r + 0.5) * (y1 - y0) / rows, face = faceAt(y), half = face.width / 2 - 0.45;
     for (let u = -half; u <= half + 1e-6; u += Math.max(0.9, (2 * half) / 3)) {
       if (rng() < 0.25) continue;
-      faceBox(sink, 'dark', face, u + (rng() - 0.5) * 0.12, y, 0.004, 0.13, 0.13, 0.01, DECOR);
+      const uu = u + (rng() - 0.5) * 0.12;
+      // (the 225 integrity ledger: a hole fell in the wall walk's doorway, 16 cm off any wall; none in an opening)
+      if (open(uu, y)) continue;
+      faceBox(sink, 'dark', face, uu, y, 0.004, 0.13, 0.13, 0.01, DECOR);
     }
   }
 }
@@ -118,7 +122,9 @@ const mauerturm: RegionalBuilder = (ctx) => {
   const b0 = frame.bodies[0], stoneTop = frame.floors[hoarding ? 2 : 3] ?? frame.eaveY;
   quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.75, stoneTop - 0.05);
   const storeyAt = (y: number): number => { let i = 0; while (i + 1 < frame.floors.length && frame.floors[i + 1] <= y) i++; return i; };
-  for (const face of ['front', 'right', 'back', 'left'] as const) putlogs(sink, (y) => storeyFaces(frame, storeyAt(y))[face], 1.6, stoneTop - 0.3, 3, rng);
+  const inOpening = (face: string) => (u: number, y: number): boolean => openings.some((o) => o.face === face
+    && Math.abs(u - o.u) < o.w / 2 + 0.45 && y > frame.floors[o.storey] + o.y0 - 0.3 && y < frame.floors[o.storey] + o.y0 + o.h + 0.5);
+  for (const face of ['front', 'right', 'back', 'left'] as const) putlogs(sink, (y) => storeyFaces(frame, storeyAt(y))[face], 1.6, stoneTop - 0.3, 3, rng, inOpening(face));
   // the string course where the hoarding sails out
   if (hoarding) {
     for (const face of ['front', 'right', 'back', 'left'] as const) {

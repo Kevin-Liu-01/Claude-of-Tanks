@@ -1632,7 +1632,7 @@
   },
   "breton/boatshed": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1875,7 +1875,7 @@
   },
   "eifel/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2082,7 +2082,7 @@
   },
   "franconian/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2325,7 +2325,7 @@
   },
   "ruhr/terrace": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2334,7 +2334,7 @@
   },
   "ruhr/warehouse": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3627,7 +3627,70 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "franconian/factory": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.065,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "ruhr/factory": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.673,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/firestation": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.763,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "breton/netyard": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.086,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "eifel/watertower": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/tower": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-13T17:23:48.113Z"
+ "updatedAt": "2026-10-14T18:59:44.331Z"
 }
