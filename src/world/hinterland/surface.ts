@@ -8,7 +8,9 @@
 // slope taken from the baked heights themselves (no further height queries).
 import { LAND_CROP_ALBEDO, type LandCropId } from '../landUse.ts';
 import { HL_COVER, createHinterlandCover, createHinterlandGeology, createHinterlandWater, type HinterlandField } from './field.ts';
+import { hash12, noise2 } from './noise.ts';
 import type { HinterlandLevel } from './pyramid.ts';
+import { HINTERLAND_SEASON_LEAF } from './spec.ts';
 
 /** The flags byte: what the material treats apart. */
 export const HL_SURFACE_FLAG = Object.freeze({ water: 1, woods: 2, rock: 4, snow: 8, road: 16, settlement: 32, sea: 64 });
@@ -36,6 +38,10 @@ const CLASS_ALBEDO: Readonly<Record<number, readonly [number, number, number]>> 
   [HL_COVER.heath]: [0.12, 0.11, 0.07],
 });
 
+const CONIFERS = new Set(['pine', 'spruce', 'fir', 'cedar', 'cypress', 'larch']);
+/** A wood's crowns with their leaves gone (linear): grey-brown twigs over the litter. */
+const BARE_WOODS: readonly [number, number, number] = [0.07, 0.056, 0.046];
+
 /** The surface resolution for each height level: half its samples (twice its texel). */
 export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: number; halfM: number; n: number }[] {
   return levels.map((l) => ({ texelM: l.texelM * 2, halfM: l.halfM, n: Math.round((2 * l.halfM) / (l.texelM * 2)) + 1 }));
@@ -45,14 +51,24 @@ export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: 
  * Bake the surface over the levels: each level's texels outside the finer level's interior (the rest is never read)
  * and outside the square.
  */
-export function bakeHinterlandSurface(field: HinterlandField, levels: readonly HinterlandLevel[]): HinterlandSurfaceLevel[] {
+export function bakeHinterlandSurface(
+  field: HinterlandField, levels: readonly HinterlandLevel[], { woodsOut = null as Uint8Array[] | null } = {},
+): HinterlandSurfaceLevel[] {
   const cover = createHinterlandCover(), geo = createHinterlandGeology(), water = createHinterlandWater();
   const out: HinterlandSurfaceLevel[] = [];
   const specs = surfaceLevelsFor(levels);
   const rockLinear = hexToLinear(field.spec.geology.rockHex);
+  // the woods' colour in the season: a broadleaf wood's crowns go grey-brown as its leaves fall, a conifer's keep
+  let conifer = 0, total = 0;
+  for (const [sp, w] of field.spec.region.vegetation.species) { total += w; if (CONIFERS.has(sp)) conifer += w; }
+  const leaf = HINTERLAND_SEASON_LEAF[field.spec.season] ?? 1;
+  const keep = total > 0 ? conifer / total + (1 - conifer / total) * leaf : leaf;
+  const leafy = CLASS_ALBEDO[HL_COVER.woods];
+  const woodsAlbedo: [number, number, number] = [0, 1, 2].map((c) => BARE_WOODS[c] + (leafy[c] - BARE_WOODS[c]) * keep) as [number, number, number];
   for (let li = 0; li < levels.length; li++) {
     const H = levels[li], S = specs[li];
     const rgba = new Uint8Array(S.n * S.n * 4);
+    const woodsShare = woodsOut ? (woodsOut[li] = new Uint8Array(S.n * S.n)) : null;
     const inner = li > 0 ? levels[li - 1].halfM - 3 * S.texelM : -1;
     const hAt = (x: number, z: number): number => {
       const fx = Math.max(0, Math.min(H.n - 1.001, (x + H.halfM) / H.texelM)), fz = Math.max(0, Math.min(H.n - 1.001, (z + H.halfM) / H.texelM));
@@ -99,8 +115,9 @@ export function bakeHinterlandSurface(field: HinterlandField, levels: readonly H
         if (cover.settle > 0.5) flags |= HL_SURFACE_FLAG.settlement;
         // the woods' share is carried in the albedo too: a wood's floor under its canopy, darker for a closed one
         if (cover.woods > 0.05 && !(flags & HL_SURFACE_FLAG.water)) {
-          const w = Math.min(1, cover.woods), c = CLASS_ALBEDO[HL_COVER.woods];
+          const w = Math.min(1, cover.woods), c = woodsAlbedo;
           albedo = [albedo[0] + (c[0] - albedo[0]) * w, albedo[1] + (c[1] - albedo[1]) * w, albedo[2] + (c[2] - albedo[2]) * w];
+          if (woodsShare) woodsShare[j * S.n + i] = Math.round(255 * w);
         }
         rgba[k] = linearToSrgb(albedo[0]); rgba[k + 1] = linearToSrgb(albedo[1]); rgba[k + 2] = linearToSrgb(albedo[2]); rgba[k + 3] = flags;
       }
@@ -108,4 +125,37 @@ export function bakeHinterlandSurface(field: HinterlandField, levels: readonly H
     out.push({ texelM: S.texelM, halfM: S.halfM, n: S.n, rgba });
   }
   return out;
+}
+
+/**
+ * The woods' canopy raised over the drawn heights (HL-2b: "a flat canopy at 18–25 m with an irregular edge"): each
+ * height sample past the battlefield's own border gains the region's canopy height × the woods' share there (the
+ * surface bake's, bilinear on its grid), the canopy's top broken by a stand-scale noise. The battlefield's trees hold
+ * the first metres past the line, so the canopy rises from 40 m to 150 m out. In place on the levels' heights.
+ */
+export function raiseHinterlandCanopy(levels: readonly HinterlandLevel[], woods: readonly Uint8Array[], canopyM: number, seed: number): void {
+  if (!(canopyM > 0)) return;
+  const specs = surfaceLevelsFor(levels);
+  const ox = hash12(seed * 0.013 + 0.7, 3.1) * 400, oz = hash12(seed * 0.029 + 1.9, 5.3) * 400;
+  for (let li = 0; li < levels.length; li++) {
+    const L = levels[li], S = specs[li], W = woods[li];
+    if (!W) continue;
+    for (let j = 0; j < L.n; j++) {
+      const z = -L.halfM + j * L.texelM;
+      const fz = (z + S.halfM) / S.texelM, sj = Math.min(S.n - 2, Math.max(0, Math.floor(fz))), tz = fz - sj;
+      for (let i = 0; i < L.n; i++) {
+        const x = -L.halfM + i * L.texelM;
+        const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
+        if (edgeOut < 40) continue;
+        const fx = (x + S.halfM) / S.texelM, si = Math.min(S.n - 2, Math.max(0, Math.floor(fx))), tx = fx - si;
+        const k = sj * S.n + si;
+        const w = ((W[k] * (1 - tx) + W[k + 1] * tx) * (1 - tz) + (W[k + S.n] * (1 - tx) + W[k + S.n + 1] * tx) * tz) / 255;
+        if (w <= 0.02) continue;
+        const ramp = edgeOut >= 150 ? 1 : (edgeOut - 40) / 110;
+        // (a stand's own height: ±15 % over a few hundred metres, and the crowns' roughness in its top)
+        const stand = 1 + 0.15 * noise2(x / 260 + ox, z / 260 - oz) + 0.05 * noise2(x / 31 - oz, z / 31 + ox);
+        L.heights[j * L.n + i] += canopyM * stand * ramp * Math.min(1, w * 1.25);
+      }
+    }
+  }
 }

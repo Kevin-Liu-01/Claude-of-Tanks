@@ -9,6 +9,7 @@ import type { HinterlandBuildContext, HinterlandSupply } from '../hinterlandHook
 import { createHinterlandObject } from './install.ts';
 import type { HinterlandJob, HinterlandReply, HinterlandRequest } from './worker.ts';
 import { copyHinterlandWire, type HinterlandWire } from './wire.ts';
+import { applyHinterlandTreeImpostors, hinterlandTreeBinding } from './trees.ts';
 
 export type { HinterlandRequest } from './worker.ts';
 
@@ -93,6 +94,9 @@ export function startHinterlandBuild(
         const object = createHinterlandObject(wire, context.engineCtx);
         root.add(object);
         object.updateMatrixWorld(true);
+        // (the world assembled first: its impostor atlas draws the near trees — trees.ts)
+        const binding = hinterlandTreeBinding(root);
+        if (binding) applyHinterlandTreeImpostors(object, binding);
         stats.attachedMs = Math.round(now() - t0);
         wire = null; // (the scene holds what it needs; the kept copy serves a rematch)
       };

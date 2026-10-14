@@ -23,7 +23,7 @@ export interface HinterlandBuild {
   plan: HinterlandPlan;
   pyramid: HinterlandPyramid;
   /** Milliseconds per stage (field, planning grid, plan, bake). */
-  ms: { field: number; planning: number; plan: number; bake: number; total: number; surface?: number };
+  ms: { field: number; planning: number; plan: number; bake: number; total: number; surface?: number; outland?: number };
 }
 
 /** The relief terms the field adds (term 4, the landforms; term 5, the far forms). */

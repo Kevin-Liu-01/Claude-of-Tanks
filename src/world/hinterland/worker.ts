@@ -9,7 +9,8 @@ import { buildHinterland } from './pipeline.ts';
 import { withSelectedHinterland } from './select.ts';
 import { resolveHinterlandSpec } from './spec.ts';
 import { packHinterlandPlan, type HinterlandWire } from './wire.ts';
-import { bakeHinterlandSurface } from './surface.ts';
+import { bakeHinterlandSurface, raiseHinterlandCanopy } from './surface.ts';
+import { buildHinterlandOutlandGeometry } from './outlandGeometry.ts';
 
 export interface HinterlandRequest {
   mapId: string;
@@ -33,10 +34,16 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   const field = createHeightField(request.fieldSeed, cfg);
   const build = buildHinterland(spec, 1337, field, { tier: request.tier });
   const t0 = performance.now();
-  const surface = bakeHinterlandSurface(build.field, build.pyramid.levels);
+  const woods: Uint8Array[] = [];
+  const surface = bakeHinterlandSurface(build.field, build.pyramid.levels, { woodsOut: woods });
+  // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes)
+  raiseHinterlandCanopy(build.pyramid.levels, woods, spec.region.vegetation.canopyM, 1337);
   build.ms.surface = performance.now() - t0;
-  build.ms.total += build.ms.surface;
-  return packHinterlandPlan(build, surface);
+  // the outland's buildings, verticals and trees on the drawn land (the page only wraps the arrays)
+  const outland = buildHinterlandOutlandGeometry(build.plan, build.pyramid, spec.kit);
+  build.ms.outland = outland.stats.ms;
+  build.ms.total += build.ms.surface + build.ms.outland;
+  return packHinterlandPlan(build, surface, outland);
 }
 
 declare const self: {

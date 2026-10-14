@@ -5,6 +5,7 @@ import type { HinterlandBuild } from './pipeline.ts';
 import type { HinterlandBuilding, HinterlandRoad, HinterlandSettlement, HinterlandTree, HinterlandVertical } from './outland.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
+import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
 
 export const HINTERLAND_TREE_STRIDE = 8; // x, z, height, crown, tone, leaf, species index, form index
 export const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
@@ -20,6 +21,8 @@ export interface HinterlandWire {
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
   /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte), when baked. */
   surface: HinterlandSurfaceLevel[] | null;
+  /** The outland's buildings, verticals and trees as geometry (outlandGeometry.ts), when built. */
+  outland: HinterlandOutlandGeometry | null;
   trees: Float32Array;
   species: string[];
   buildings: Float32Array;
@@ -32,7 +35,9 @@ export interface HinterlandWire {
 }
 
 /** Pack a build (the worker's side). */
-export function packHinterlandPlan(build: HinterlandBuild, surface: HinterlandWire['surface'] = null): { wire: HinterlandWire; transfer: ArrayBuffer[] } {
+export function packHinterlandPlan(
+  build: HinterlandBuild, surface: HinterlandWire['surface'] = null, outland: HinterlandOutlandGeometry | null = null,
+): { wire: HinterlandWire; transfer: ArrayBuffer[] } {
   const { plan, pyramid, spec } = build;
   const species: string[] = [];
   const trees = new Float32Array(plan.trees.length * HINTERLAND_TREE_STRIDE);
@@ -51,11 +56,15 @@ export function packHinterlandPlan(build: HinterlandBuild, surface: HinterlandWi
   const levels = pyramid.levels.map((l) => ({ texelM: l.texelM, halfM: l.halfM, n: l.n, heights: l.heights }));
   const wire: HinterlandWire = {
     mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity,
-    canopyM: spec.region.vegetation.canopyM, levels, surface, trees, species, buildings, buildingKinds,
+    canopyM: spec.region.vegetation.canopyM, levels, surface, outland, trees, species, buildings, buildingKinds,
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,
   };
   const transfer = [trees.buffer as ArrayBuffer, buildings.buffer as ArrayBuffer, ...levels.map((l) => l.heights.buffer as ArrayBuffer)];
   if (surface) for (const s of surface) transfer.push(s.rgba.buffer as ArrayBuffer);
+  if (outland) {
+    for (const a of [outland.buildings, outland.nearTrees, outland.farTrees]) if (a) transfer.push(a.position.buffer as ArrayBuffer, a.normal.buffer as ArrayBuffer, a.color.buffer as ArrayBuffer);
+    transfer.push(outland.nearIndex.buffer as ArrayBuffer);
+  }
   return { wire, transfer };
 }
 
@@ -89,6 +98,14 @@ export function copyHinterlandWire(wire: HinterlandWire): HinterlandWire {
     ...wire,
     levels: wire.levels.map((l) => ({ ...l, heights: l.heights.slice() })),
     surface: wire.surface ? wire.surface.map((s) => ({ ...s, rgba: s.rgba.slice() })) : null,
+    outland: wire.outland ? {
+      ...wire.outland, buildings: copyShapes(wire.outland.buildings), nearTrees: copyShapes(wire.outland.nearTrees),
+      farTrees: copyShapes(wire.outland.farTrees), nearIndex: wire.outland.nearIndex.slice(),
+    } : null,
     trees: wire.trees.slice(), buildings: wire.buildings.slice(),
   };
+}
+
+function copyShapes(a: HinterlandShapeArrays | null): HinterlandShapeArrays | null {
+  return a ? { position: a.position.slice(), normal: a.normal.slice(), color: a.color.slice() } : null;
 }

@@ -46,6 +46,7 @@ import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
+import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -499,6 +500,15 @@ function assembleWorld(
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+    });
+  }
+  // the horizons stream (2026-10-13): the Hinterland's near trees draw from the same atlas (hinterland/trees.ts), now
+  // or when its worker answers
+  const hinterlandRoot = terrain.getObjectByName('hinterland-root');
+  if (hinterlandRoot && vegetation._treeImpostors) {
+    bindHinterlandTreeImpostors(hinterlandRoot, {
+      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
+      setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
     });
   }
   // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with

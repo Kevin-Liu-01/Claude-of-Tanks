@@ -84,6 +84,7 @@ assert.ok(scope.length < wide.length * 1.6, `the scope's nodes stay in budget ($
 const { buildHinterlandWire } = await import('./worker.ts');
 const { wirePyramid, wireTrees, copyHinterlandWire } = await import('./wire.ts');
 const { HL_SURFACE_FLAG } = await import('./surface.ts');
+const { samplePyramid } = await import('./pyramid.ts');
 const { packHinterlandHeights } = await import('./mesh.ts');
 const { createHinterlandObject } = await import('./install.ts');
 const { hinterlandSupplyFor, supplyHinterland, withdrawHinterland } = await import('../hinterlandHook.ts');
@@ -111,6 +112,36 @@ assert.deepEqual([...S0.rgba.subarray(mid, mid + 4)], [0, 0, 0, 0], 'inside the 
 const object = createHinterlandObject(copy, {});
 const land = object.getObjectByName('hinterland-land');
 assert.ok(land && land.isMesh && land.geometry.isInstancedBufferGeometry && land.frustumCulled === false, 'one instanced land draw');
+// the outland (HZ.11): the buildings and verticals in one draw, the trees in two, each standing on the drawn land
+const outland = object.getObjectByName('hinterland-outland');
+const built = outland?.getObjectByName('hinterland-buildings');
+assert.ok(built && outland.getObjectByName('hinterland-trees-near') && outland.getObjectByName('hinterland-trees-far'), 'buildings, near and far trees');
+const ostats = outland.userData.hinterlandOutland;
+assert.ok(ostats.buildingTris > 4000 && ostats.nearTrees > 500 && ostats.farTrees > 200, `the outland draws (${JSON.stringify(ostats)})`);
+assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 260000, 'the outland stays inside its triangle budget');
+{
+  const pos = built.geometry.getAttribute('position');
+  let below = 0;
+  for (let i = 0; i < pos.count; i += 37) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    if (pos.getY(i) < samplePyramid(pyramid, x, z) - 12) below++;
+  }
+  assert.ok(below / (pos.count / 37) < 0.02, `no building sinks into the land (${below})`);
+}
+// the woods stand as a canopy: a wood's heights over the bare field beside it, and never inside the battlefield's first 40 m
+{
+  const S = wire.surface[0];
+  let woodsTexels = 0, raised = 0;
+  for (let j = 0; j < S.n; j += 3) for (let i = 0; i < S.n; i += 3) {
+    const k = (j * S.n + i) * 4;
+    if (!(S.rgba[k + 3] & HL_SURFACE_FLAG.woods)) continue;
+    const x = -S.halfM + i * S.texelM, z = -S.halfM + j * S.texelM;
+    if (Math.max(Math.abs(x), Math.abs(z)) < 700) continue;
+    woodsTexels++;
+    if (samplePyramid(pyramid, x, z) > 10) raised++;
+  }
+  assert.ok(woodsTexels > 20 && raised / woodsTexels > 0.8, `the polders' woods stand as a canopy (${raised}/${woodsTexels})`);
+}
 // the hook: a terrain build of another map (or the trench variant) never takes this supply
 const supply = { request: { mapId: 'polders', terrainVariant: null }, pending: false, buildSteps: function* () { return null; } };
 supplyHinterland(supply);
