@@ -2373,6 +2373,8 @@
   "playMenu.roomFailure.accessDenied.detail": "该房间未接受连接。请与主机确认邀请。",
   "playMenu.roomFailure.connectionFailed.title": "房间连接失败",
   "playMenu.roomFailure.connectionFailed.detail": "连接未能完成。请检查你的网络和邀请，然后重试或返回车库。",
+  "playMenu.versionRefusal.title": "刷新页面后加入本场比赛",
+  "playMenu.versionRefusal.refresh": "刷新页面",
   "playMenu.entryRefusal.matchEnded": "你加入时比赛已经结束。",
   "playMenu.entryRefusal.buildMismatch": "请刷新页面后加入：你的游戏版本与主机不同。",
   "playMenu.entryRefusal.buildHostOlder": "请刷新页面后加入：你的游戏版本与主机不同。主机运行的是旧版本，请让主机也刷新页面。",
