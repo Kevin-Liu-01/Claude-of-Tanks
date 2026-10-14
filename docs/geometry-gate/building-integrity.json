@@ -403,7 +403,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 1.622,
+   "gapM2": 1.29,
    "invertedM2": 0
   },
   "generic/compound": {
@@ -501,7 +501,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 4.146,
+   "insideM2": 4.122,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -771,8 +771,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.794,
-   "gapM2": 0,
+   "insideM2": 3.11,
+   "gapM2": 2.707,
    "invertedM2": 0
   },
   "mekong/marketRow": {
@@ -834,7 +834,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.736,
+   "insideM2": 2.584,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1969,7 +1969,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 1.608,
    "invertedM2": 0
   },
   "bengal/market": {
@@ -3701,5 +3701,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-14T14:19:00.339Z"
+ "updatedAt": "2026-10-14T17:49:23.676Z"
 }

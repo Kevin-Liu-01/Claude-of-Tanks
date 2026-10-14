@@ -292,6 +292,11 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     const hingeU = side < 0 ? l0 : l1, meetU = side < 0 ? l1 : l0, inward = -side;
     const n = Math.max(steel ? 2 : 3, Math.round(leafW / boardW)), bw = leafW / n;
     const ledgeTone = shade(leaf, 0.9), wicket = wicketFits && side < 0;
+    // the leaf's back: one face over its boards (a gate in a gateway is seen from the court behind it as well)
+    {
+      const bo = go - T / 2, P = (uu: number, yy: number) => facePoint(face, uu, yy, bo);
+      sink.quad('structureWood', P(l1, foot), P(l0, foot), P(l0, y + h), P(l1, y + h), { colour: shade(leaf, 0.8), decor: true, uv: UV_MEMBER });
+    }
     // the wicket: whole boards in the leaf's middle, a man's height, its head under the leaf's middle ledge
     const nb = wicket ? Math.min(n - 2, Math.max(4, Math.round(0.82 / bw))) : 0, k0 = Math.floor((n - nb) / 2);
     const wu0 = l0 + k0 * bw, wu1 = wu0 + nb * bw, wTop = foot + Math.min(1.85, leafH - 0.75), cut = 0.014;
