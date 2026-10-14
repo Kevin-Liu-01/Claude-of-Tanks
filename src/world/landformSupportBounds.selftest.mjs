@@ -6,9 +6,9 @@
 // 2. The box is not empty: each form with height is non-zero somewhere inside it.
 // 3. The skip stands before the form's sample in applyMacroTerrain.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createLayout, sampleLandformHeight } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 let forms = 0, unbounded = 0, outside = 0, inside = 0;
 let seed = 2024;
@@ -53,7 +53,7 @@ for (const mapId of MAP_IDS) {
 }
 assert.equal(unbounded, 0, 'every landform on every map is bounded today (an authored relief or an inverted gorge wall would not be)');
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const macro = source.slice(source.indexOf('  function applyMacroTerrain('), source.indexOf('  function applyHeightConstraints('));
 const skipAt = macro.indexOf('if (bounds && (x < bounds[0] || x > bounds[1] || z < bounds[2] || z > bounds[3])) continue;');
 assert.ok(skipAt > 0 && skipAt < macro.indexOf('sampleLandformHeight(form, x, z, landformPhase)'), 'the skip stands before the sample');

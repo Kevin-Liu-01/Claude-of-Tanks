@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { HARDSTAND_PAINT_SPILL_M, createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
 import { createHeightField } from './terrain.ts';
 import airfield from './maps/airfield.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const size = 65, mapSize = 256;
 const distances = new Float32Array(size * size).fill(1000);
@@ -185,7 +186,7 @@ assert.equal(lakeField._noVeg(300, 340), false);
 // snow on a snow map) without lanes, ruts or crown; a paved map's pads paved; the shoulder's own dirt stands down on it
 {
   const { readFileSync } = await import('node:fs');
-  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrain = terrainSourceText();
   assert.ok(terrain.includes('float padK = (1.0 - smoothstep(0.05, 0.25, mk.g)) * (1.0 - step(0.5, gRoadTex));')
     && terrain.includes('float apronK = smoothstep(0.50, 0.90, mk.r) * padK;') && terrain.includes('float apronRim = smoothstep(0.04, 0.50, mk.r) * padK;'),
     'a pad is the stamp\'s coverage away from any centreline, on an unpaved map — its body and its feather');
@@ -202,7 +203,7 @@ assert.equal(lakeField._noVeg(300, 340), false);
 // slush on a snow map, grooved in the light — with churned patches along them
 {
   const { readFileSync } = await import('node:fs');
-  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrain = terrainSourceText();
   assert.ok(terrain.includes('apronK = smoothstep(0.30, 0.85, mk.r + (apronN - 0.5) * 0.60 * tileVis(4.8)) * padK;'), 'the pad\'s edge: into the spill, ragged');
   assert.ok(terrain.includes('rut = max(rut, padRut * rutAmp * 1.2);'), 'its ruts are the road\'s for the puddles');
   assert.ok(terrain.includes('a.rgb *= 1.0 - padRut * 0.24;') && terrain.includes('n.xy -= padRutN * 0.22;'), 'they darken its ground and groove it (a worn yard: R1b)');

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { roadLaneSharpness } from './roadMaskProfile.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // road pass 2026-09-12: the terrain mask's G byte carries the road centreline
 // distance field (12 m -> 0, 0 m -> 255) and the shader evaluates the
@@ -77,7 +78,7 @@ assert.equal(roadLaneSharpness(256), 0, 'the 4 m mobile mask uses the plateau fa
 assert.ok(worstEdge < 0.13, `the carriageway edge does not scallop (variation ${worstEdge.toFixed(3)})`);
 
 // The painter and the shader consume the same encoding.
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 assert.equal(terrain.split('px[j + 1] = Math.max(0, 1 - d / 12) * 255;').length, 2, 'unique distance-field painter');
 assert.equal(terrain.split('float dRoad = (1.0 - mk.g) * 12.0;').length, 2, 'unique distance-field decode');
 assert.match(terrain, /if \(d >= 13\) return;/, 'the painter still stops at the historical 13 m apron');

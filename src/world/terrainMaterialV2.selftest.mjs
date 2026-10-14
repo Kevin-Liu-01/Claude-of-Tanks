@@ -22,8 +22,9 @@ import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProf
 import { MAP_IDS } from './maps/catalog.ts';
 import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
 import { terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 function shaderOf(text) {
   const start = text.indexOf('const SPLAT_COMMON_FRAG');
@@ -262,7 +263,7 @@ let bedLawNote = '';
 // constants (gBedWob, the uFormation step), stay inside their amplitudes and wander — the scenery lane's bedrock skin
 // stripes by them, so its beds and the terrain's strata are one rock
 {
-  const shader = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const shader = terrainSourceText();
   assert.ok(shader.includes('gBedWob = (nz(wp.xz, 0.0050, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0147, vec2(0.71, 0.19)).g - 0.5) * 1.1;'),
     'the shader\'s bed wander is the twin\'s law');
   assert.ok(shader.includes('(nz(wp.xz, 0.0071, vec2(0.83, 0.41)).g - 0.5) * 2.0 * uFormation.y'), 'the formation boundary\'s wander is the twin\'s law');

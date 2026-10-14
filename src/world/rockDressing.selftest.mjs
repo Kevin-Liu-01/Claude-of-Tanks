@@ -23,6 +23,7 @@ import {
   boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
   makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const noise = new SimplexNoise({ random: mulberry32(1337 + 7) });
@@ -591,7 +592,7 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // (wave 74, Coastal boulder-a: a patch conformed to the analytic height floated over a bank's drawn lip): the patch lies
 // on the nearest terrain mesh — its grid and its diagonal those terrain.ts draws
 {
-  const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrainSource = terrainSourceText();
   assert.match(terrainSource, /const MAP_SIZE = 1024;/);
   assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
   assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,

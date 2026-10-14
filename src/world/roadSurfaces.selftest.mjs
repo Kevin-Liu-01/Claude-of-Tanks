@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { ROAD_FRAME_ARC_UNITS, createHeightField, makeMaskTexture, mulberry32, stackLandUseBake } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getMapConfig } from './maps/index.ts';
@@ -8,6 +7,7 @@ import {
   MAP_PATH_SURFACES, MAP_PAVED_SURFACES, ROAD_SURFACE_BY_CLIMATE, ROAD_SURFACE_CODE, ROAD_SURFACE_MAP_OVERRIDES,
   pavedSurfaceUniforms, roadSurfaceUniforms,
 } from './roadSurfaces.ts';
+import { terrainSourceText } from './terrainSourceText.mjs';
 
 // Roads lane (2026-10-09; owner: "make sure roads and stuff are really good", then: the roads "need to look a lot better,
 // especially paved ones"). Pins: the catalogue's surfaces are real classes on real maps' paths; the owner's protected maps
@@ -136,7 +136,7 @@ assert.equal(32768 / ROAD_FRAME_ARC_UNITS, 512, 'the running length wraps at 512
 }
 
 // the material: one exact fetch of the frame; the paved classes and the worked carriageway read their uniforms
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+const source = terrainSourceText().replace(/\s+/g, ' '); // (terrain.ts with the road chunks of roadSurfaceShader.ts in place)
 for (const line of [
   'uniform vec4 uRoadFrame;',
   'vec4 fc = texelFetch(uMask, ft + ivec2(0, int(uRoadFrame.y + 0.5)), 0);',
@@ -161,7 +161,7 @@ assert.ok(source.includes('if (uLandTier < 0.5) pCls = gRoadClass > 0.5 && gRoad
 // the Low tier (the phones' default) keeps every old road term: the styled paths' old code verbatim, no kerbed pave-out, no
 // square wear, the old tone and lane swing (the phone pair checks the frames)
 {
-  const main = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const main = terrainSourceText();
   const lowAt = main.indexOf('} else if (uLandTier < 0.5) {');
   assert.ok(lowAt > 0, 'the Low branch of the paved surfaces');
   const lowBlock = main.slice(lowAt, main.indexOf('\n      } else {\n', lowAt));

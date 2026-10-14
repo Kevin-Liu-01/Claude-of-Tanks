@@ -877,6 +877,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/normalMapOrientation.selftest.mjs',
     'src/world/roadPathStyles.selftest.mjs',
     'src/world/roadSurfaces.selftest.mjs',
+    'src/world/roadSurfaceShader.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
     'src/world/groundContrastStep2.selftest.mjs',
     'src/world/snowRockSlope.selftest.mjs',

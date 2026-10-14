@@ -5,11 +5,11 @@
 // trees standing in it. Now a flooded paddy keeps its water only where its floor is level (PADDY_LEVEL_M); elsewhere the
 // rice grows green. The height field's profile is the one the material bakes and every CPU reader shares.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { LAND_CROP, PADDY_LEVEL_M, createLandFieldSample, landUseAt, resolveLandUseProfile, withLevelPaddies } from './landUse.ts';
 import { deploymentFrame } from '../sim/deployment.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 const sample = createLandFieldSample();
 for (const id of ['delta', 'caldera']) {
@@ -62,7 +62,7 @@ const verdant = resolveLandUseProfile('verdant');
 assert.equal(withLevelPaddies(verdant, () => 0, 512), verdant, 'a profile without paddies is untouched');
 assert.equal(withLevelPaddies(null, () => 0, 512), null);
 // The material bakes the height field's own profile (the land use every CPU reader shares).
-const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrainSource = terrainSourceText();
 assert.match(terrainSource, /heightField\._landUseProfile \?\? null,\n\s*\);\n\s*let materialStep = materialSteps\.next\(\);/, 'the build hands its profile to the material');
 assert.match(terrainSource, /const landUseProfile = landUseProfileOverride \?\? resolveLandUseProfile\(mapId\);/, 'the material bakes it');
 console.log('paddyFloodLevel: flooded paddies only on level floors; the material and every CPU reader share the profile');

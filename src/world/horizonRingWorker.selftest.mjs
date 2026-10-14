@@ -25,6 +25,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from '../../tools/headlessWorldCollision.mjs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 installWorldBuildFixture();
 // (part 5's child: the page's realm on a phone — the tier resolved to 'mobile' — prints its pipelines' wire digests)
@@ -268,7 +269,7 @@ for (const mapId of ['verdant', 'badlands', 'coastal']) {
 }
 
 // --- 4. the wiring -----------------------------------------------------------------------------------------------------
-const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrainSource = terrainSourceText();
 const rows = terrainSource.indexOf('  for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);');
 const ring = terrainSource.indexOf("buildHorizonRingSteps(engineCtx, cfg, 1337, heightField, { terrainBound: true, geometry: ringPipeline })");
 const bind = terrainSource.indexOf('bindAutumnHorizonGround(horizonMesh, mat, splatTextures');

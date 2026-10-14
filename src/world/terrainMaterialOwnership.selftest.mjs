@@ -2,8 +2,9 @@ import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracl
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { landUseTierOf } from './landUse.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 // ground lane (2026-10-03): the land use's field layout is declared in landUse.ts and spliced into the splat fragment
 // (`${'$'}{LAND_USE_GLSL}`); its uniform declarations count as the material's own
 const landUseSource = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
@@ -337,7 +338,7 @@ console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G 
 // Ultra Low (2026-10-13): uTerrainLite follows the live preset (both Ultra Low presets), is released with the material,
 // and every lite term is a uniform branch — the other presets keep their program and their picture
 {
-  const text = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const text = terrainSourceText();
   const c = (x) => x.replace(/\s+/g, ' ');
   assert.ok(c(text).includes(c("const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };")), 'the lite flag reads the live preset');
   assert.ok(c(text).includes(c("const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });")), 'and follows its changes');
