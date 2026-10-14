@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { LOCAL_LIGHT_SLOTS, LOCAL_LIGHT_GLSL, localLightUniforms as U, beginLocalLights, addLocalPoint, addLocalSpot,
-  endLocalLights } from './localLights.ts';
+  endLocalLights, LOCAL_LIGHTS_DEFINE, registerLocalLightMaterial, localLightsForPreset, setLocalLightsCompiled,
+  localLightsCompiled } from './localLights.ts';
 
 const white = new THREE.Color(1, 1, 1);
 beginLocalLights();
@@ -44,4 +45,30 @@ assert.match(media, /\.\.\.localLightUniforms,/, 'the media material holds the s
 const fx = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
 assert.match(fx, /updateWreckLight\(\);\s*writeLocalLights\(\);/, 'gathered every frame after the wreck light');
 assert.match(fx, /nightPool = scene\.getObjectByName\('night-light-pool'\) \?\? null;/, 'the headlights come from the night pool');
-console.log('localLights: slots, the beam and fall-off, and the puff, media and per-frame readers — ok');
+// tier gating (the coordinator: Low and Ultra Low compile the loop out, a variant, never a runtime branch)
+for (const p of ['ultralow', 'low', 'mobile-low', 'mobile-ultralow']) assert.equal(localLightsForPreset(p), false, `${p} skips the loop`);
+for (const p of ['medium', 'high', 'ultra', 'mobile', 'mobile-high']) assert.equal(localLightsForPreset(p), true, `${p} compiles it`);
+const mat = new THREE.ShaderMaterial({ defines: { FX_LIGHT_TINT: '' } });
+registerLocalLightMaterial(mat);
+assert.ok(LOCAL_LIGHTS_DEFINE in mat.defines && 'FX_LIGHT_TINT' in mat.defines, 'compiled in by default, other defines kept');
+const v0 = mat.version;
+assert.equal(setLocalLightsCompiled(false), true);
+assert.ok(!(LOCAL_LIGHTS_DEFINE in mat.defines) && 'FX_LIGHT_TINT' in mat.defines && mat.version > v0, 'compiled out: a new variant');
+assert.equal(localLightsCompiled(), false);
+assert.equal(setLocalLightsCompiled(false), false, 'no change, no recompile');
+const late = new THREE.ShaderMaterial({});
+registerLocalLightMaterial(late);
+assert.ok(!late.defines || !(LOCAL_LIGHTS_DEFINE in late.defines), 'a material made on Low starts compiled out');
+setLocalLightsCompiled(true);
+assert.ok(LOCAL_LIGHTS_DEFINE in mat.defines && LOCAL_LIGHTS_DEFINE in late.defines, 'back in on every material');
+// the loop and every read of it sit under the define in both shaders; the per-frame gathering stops when it is out
+assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the puff shader declares the loop only in the variant');
+assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*vEmit \+= vColor\.rgb \* localLightAt\( wpos, 0\.0 \);\s*#endif/, 'and reads it only there');
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*varying vec3 vLocal;[^#]*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the media declare it only in the variant');
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*vLocal = localLightAt\( wpos, 1\.0 \);\s*#endif/);
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*col \+= vColor\.rgb \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);\s*#endif/);
+assert.match(media, /registerLocalLightMaterial\(material\);/);
+assert.match(parts, /registerLocalLightMaterial\(mat\);/);
+assert.match(fx, /setLocalLightsCompiled\(localLightsForPreset\(resolvePresetName\(\)\)\);\s*onPresetChange\(/, 'the preset picks the variant, and every change');
+assert.match(fx, /if \(!localLightsCompiled\(\)\) \{ endLocalLights\(\); return; \}/, 'no gathering when compiled out');
+console.log('localLights: slots, the beam and fall-off, the readers, and the Low / Ultra Low variant — ok');

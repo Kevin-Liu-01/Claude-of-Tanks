@@ -42,7 +42,8 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } 
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { battleLightTintFromRig } from './sceneLightTint.ts';
-import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights } from './localLights.ts';
+import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights, localLightsCompiled, localLightsForPreset,
+  setLocalLightsCompiled } from './localLights.ts';
 import { refreshWorldWind, worldWind } from './worldWind.ts';
 import { mapTintHex, setMapGroundAlbedo } from './mapPalette.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
@@ -66,7 +67,7 @@ import type { StructureDamageSeam, StructureMaterialInfo } from '../world/struct
 import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEvent, type StructureStageEvent, type TerrainCraterEvent } from '../sim/destructionEvents.ts';
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, onPresetChange, resolvePresetName } from '../engine/quality.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -519,6 +520,8 @@ export interface FxRuntime {
     caliberMm: number,
   ): void;
   impactDecalStats(): object;
+  /** (EF.10) compile the local light loop in or out (the preset decides; a cost A/B flips it). True when it changed. */
+  setLocalLights(on: boolean): boolean;
   clearVehicleDecals(visual: FxDecalVisual): void;
   destruction(
     pos: THREE.Vector3,
@@ -1065,6 +1068,9 @@ function* createFxSteps(
   // smoke and debris take the scene's light (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), every
   // frame in update() below; the emissive pools (fire's core, sparks, flashes) never do
   particles.setLightTintShading(true);
+  // (EF.10) the local light loop compiles in only above Low and Ultra Low (a variant per preset, never a runtime branch)
+  setLocalLightsCompiled(localLightsForPreset(resolvePresetName()));
+  onPresetChange(() => { setLocalLightsCompiled(localLightsForPreset(resolvePresetName())); });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
   // (the clock advances by render dt); frozen/stepped captures now hold and
@@ -4134,6 +4140,8 @@ function* createFxSteps(
   const _wreckFire = new THREE.Color(EXPLOSION_LIGHT_HEX);
   function writeLocalLights(): void {
     beginLocalLights();
+    // Low and Ultra Low compile the loop out: nothing reads the slots
+    if (!localLightsCompiled()) { endLocalLights(); return; }
     const now = particles.getTime();
     const scene = engineCtx.scene ?? null;
     if (scene && !nightPool && now - nightPoolLookedAt > 2) {
@@ -6461,6 +6469,7 @@ function* createFxSteps(
 
     /** @returns {object} live impact-decal counters (probes/perf gates) */
     impactDecalStats() { return impactDecals.stats(); },
+    setLocalLights(on: boolean) { return setLocalLightsCompiled(on); },
 
     /**
      * Clear one vehicle's impact decals; the per-battle warm

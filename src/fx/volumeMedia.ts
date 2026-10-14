@@ -32,7 +32,7 @@
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
-import { LOCAL_LIGHT_GLSL, localLightUniforms } from './localLights.ts';
+import { LOCAL_LIGHT_GLSL, localLightUniforms, registerLocalLightMaterial } from './localLights.ts';
 import { refreshWorldWind, worldWind } from './worldWind.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -194,8 +194,10 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying vec2 vDetail;
+#ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;      // (EF.10) the local lights at this corner: headlights, the muzzle, burning wrecks
 ${LOCAL_LIGHT_GLSL}
+#endif
 ${FOG_PARS_V}
 void main() {
   float life = aVL.w;
@@ -203,7 +205,10 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0; vGlow = 0.0; vLocal = vec3( 0.0 );
+    vFeather = 1.0; vGlow = 0.0;
+    #ifdef FX_LOCAL_LIGHTS
+      vLocal = vec3( 0.0 );
+    #endif
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -288,8 +293,11 @@ void main() {
     gl += gk.y * q * q * exp( -dot( gd, gd ) / max( gk.x * gk.x, 1e-3 ) );
   }
   vGlow = gl;
-  // (EF.10, MASTER 19) headlights, the muzzle and burning wrecks light the medium (a burst's own pulse is uGlow's)
-  vLocal = localLightAt( wpos, 1.0 );
+  // (EF.10, MASTER 19) headlights, the muzzle and burning wrecks light the medium (a burst's own pulse is uGlow's;
+  // compiled out on Low and Ultra Low)
+  #ifdef FX_LOCAL_LIGHTS
+    vLocal = localLightAt( wpos, 1.0 );
+  #endif
   // (fx 8q, wave 381's pack: the collapse dust "darker and browner than A's warm lit tan"; full-resolution crops showed the
   // same puffs dark olive-brown in B against walls in full sun) no cloud shade on the media: 8c's per-vertex cloud shade
   // took the sun off the puffs on Caldera and urban scenes where the world itself stayed sunlit; the media take the sun
@@ -340,7 +348,9 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying float vGlow;
+#ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;
+#endif
 ${FOG_PARS_F}
 float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
@@ -449,7 +459,9 @@ void main() {
   if ( vGlow > 0.002 ) col += ( vColor.rgb * 0.6 + vec3( 0.55, 0.2, 0.05 ) ) * vGlow * ( 0.35 + 0.65 * cov ) * uGrade.y;
   // (EF.10) the local lights scatter in the medium's own colour, the thick body more than its thin rim (a headlight's
   // beam shows in the dust it drives through; a burning wreck lights its smoke's underside)
-  col += vColor.rgb * vLocal * ( 0.35 + 0.65 * cov );
+  #ifdef FX_LOCAL_LIGHTS
+    col += vColor.rgb * vLocal * ( 0.35 + 0.65 * cov );
+  #endif
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -673,6 +685,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     blending: THREE.NormalBlending,
     fog: true,
   });
+  // (EF.10) the local light loop compiles in only above Low (localLights.ts)
+  registerLocalLightMaterial(material);
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = 'fx-volume-media';
   mesh.frustumCulled = false;

@@ -51,6 +51,43 @@ vec3 localLightAt( vec3 p, float skipBursts ) {
 }
 `;
 
+/**
+ * (EF.10, the coordinator: "Ultra Low and Low must skip the light loop entirely by compiling a variant, not by branching
+ * at runtime") the loop compiles only under FX_LOCAL_LIGHTS. Every material that reads the slots registers here; the
+ * define is set or removed on all of them together (a recompile, at a preset change, never per frame).
+ */
+export const LOCAL_LIGHTS_DEFINE = 'FX_LOCAL_LIGHTS';
+const materials = new Set<THREE.ShaderMaterial>();
+let compiled = true;
+function applyDefine(mat: THREE.ShaderMaterial): void {
+  const has = !!mat.defines && LOCAL_LIGHTS_DEFINE in mat.defines;
+  if (has === compiled) return;
+  const next: Record<string, unknown> = { ...(mat.defines ?? {}) };
+  if (compiled) next[LOCAL_LIGHTS_DEFINE] = ''; else delete next[LOCAL_LIGHTS_DEFINE];
+  mat.defines = next;
+  mat.needsUpdate = true;
+}
+/** A material whose shader reads the slots under FX_LOCAL_LIGHTS: it takes the current variant now and at every change. */
+export function registerLocalLightMaterial(mat: THREE.ShaderMaterial): void {
+  materials.add(mat);
+  applyDefine(mat);
+}
+/** The presets that compile the loop: every one but Low and Ultra Low (desktop and phone). */
+export function localLightsForPreset(preset: string | null | undefined): boolean {
+  return !preset || !/(^|-)(ultra)?low$/.test(preset);
+}
+/** Compile the loop in (true) or out (false) on every registered material. True when it changed. */
+export function setLocalLightsCompiled(on: boolean): boolean {
+  if (on === compiled) return false;
+  compiled = on;
+  for (const mat of materials) applyDefine(mat);
+  return true;
+}
+/** Whether the loop is compiled (effects.ts skips gathering the lights when it is not). */
+export function localLightsCompiled(): boolean {
+  return compiled;
+}
+
 let cursor = 0;
 
 /** Start a frame's lights (every slot emptied). */
