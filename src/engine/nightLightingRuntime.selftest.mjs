@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { createNightLightingRuntime, registerNightLightEmitters } from './nightLightingRuntime.ts';
+import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD } from './nightLightingRuntime.ts';
+// (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
+const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
 
 const scene = new THREE.Scene(), player = new THREE.Group(), turret = new THREE.Group();
 const building = new THREE.Group(), otherTank = new THREE.Group();
@@ -61,7 +63,7 @@ try {
   assert.equal(white.emissiveIntensity, 2); assert.equal(red.emissiveIntensity, 1.4);
   assert.equal(warm.emissiveIntensity, 1.1);
   near(lights[0].position, player.localToWorld(new THREE.Vector3(...left.position)), 'headlamp starts on authored lens');
-  const expectedDirection = new THREE.Vector3(...left.direction).transformDirection(player.matrixWorld);
+  const expectedDirection = lowBeam(left.direction).transformDirection(player.matrixWorld);
   near(lights[0].target.position.clone().sub(lights[0].position), expectedDirection, 'world-space beam follows authored direction');
 
   player.rotation.set(.2, .7, Math.PI); turret.rotation.y = -.8;
@@ -72,9 +74,13 @@ try {
     'rolled hull transforms its lamps instead of leaving a floating upright beam');
   for (const light of lights.slice(0, 2)) {
     near(light.target.position.clone().sub(light.position),
-      new THREE.Vector3(...left.direction).transformDirection(player.matrixWorld), 'rolled light direction');
+      lowBeam(left.direction).transformDirection(player.matrixWorld), 'rolled light direction');
   }
   assert.equal(sceneAdds, 0, 'no per-update scene additions');
+  // (EF.11) the low beam's cone: its upper edge about 11 degrees over the horizon for an authored -0.08 slope, so a barrel
+  // 1 m over the lamps reaches no closer than its last 0.5 m to the cone (the rest of the barrel, steeper, sits outside)
+  assert.ok(lights[0].angle === HEADLIGHT_CONE_RAD && HEADLIGHT_CONE_RAD < .43, 'a narrower cone');
+  { const up = Math.atan(-.08 - HEADLIGHT_LOW_BEAM_DROP) + HEADLIGHT_CONE_RAD; assert.ok(up < Math.atan(1 / 4.5), `the cone's upper edge ${(up * 180 / Math.PI).toFixed(1)} deg passes under the barrel`); }
   assert.deepEqual(runtime.group.children, objects, 'constant night light/target object count');
   assert.deepEqual(runtime.lights, lights);
   lights.forEach((light, index) => {

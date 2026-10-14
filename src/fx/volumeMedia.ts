@@ -316,7 +316,7 @@ uniform vec3 uSunCol;     // sun irradiance / pi (gained)
 uniform vec3 uSkyCol;     // sky irradiance / pi, desaturated (gained)
 uniform vec3 uGroundCol;  // ground pole / pi
 uniform vec4 uGrade;      // alpha gain, emission gain, back-scatter gain, multiple-scatter lift
-uniform vec4 uGrade2;     // ground-bounce gain, unused...
+uniform vec4 uGrade2;     // ground-bounce gain, (EF.11) the night level (0 day .. 1 night), unused...
 uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
 uniform float uCameraNear;
@@ -405,6 +405,10 @@ void main() {
   // smoke read as blue ghosts), bright dust keeps a little of it
   float skyLum = dot( uSkyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 skyC = mix( vec3( skyLum ), uSkyCol, smoothstep( 0.04, 0.3, albedoL ) );
+  // (EF.11, DO-FX-08: "a bright blue-cyan fringe" on smoke edges against the sky) the thin rim, where the sun's share of
+  // the baked light falls away first, was lit by the sky's blue alone: it takes the sky's light at its luminance, grey,
+  // and the body keeps the hue
+  skyC = mix( vec3( skyLum ), skyC, smoothstep( 0.15, 0.6, cov ) );
   // the shade's light: the sky over it, the ground's under it (the reference every medium has always taken)
   vec3 amb0 = skyC * skyL + uGroundCol * ( 0.35 * D + 0.1 );
   // (fx 8c, the critics after atmos r2: "a cool white wall in the desert that ignores warm light"; fx 8k, wave 354a: a
@@ -422,6 +426,13 @@ void main() {
   float lum0 = dot( amb0, vec3( 0.2126, 0.7152, 0.0722 ) ), lum1 = dot( amb1, vec3( 0.2126, 0.7152, 0.0722 ) );
   vec3 amb = mix( amb0, amb1 * ( lum0 / max( lum1, 1e-5 ) ), smoothstep( 0.45, 0.65, albedoL ) * warmG * uGrade2.x );
   vec3 col = vColor.rgb * ( uSunCol * sunL + amb );
+  // (EF.11, DO-FX-08: "night smoke drawn as flat black cut-outs over fire") at night a dark medium still scatters the
+  // sky's glow: its light never falls under a share of the sky's own, shaded by its top and its front, so a column keeps
+  // a volume against the night sky instead of a flat black hole (its fire lights its underside: EF.10's local lights)
+  if ( uGrade2.y > 0.0 ) {
+    float floorL = skyLum * uGrade2.y * 0.55 * ( 0.45 + 0.35 * U + 0.2 * front );
+    col = max( col, mix( vec3( skyLum ), uSkyCol, 0.35 ) * ( floorL / max( skyLum, 1e-5 ) ) );
+  }
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float tb = B.g * B.g;
   float h = clamp( tb * vHeat, 0.0, 1.6 );
@@ -802,6 +813,9 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     }
     uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
     uGrade2.value.x = tune.ground;
+    // (EF.11) the night level: the rig's sun (Verdant: day 4.5, sunset 2.8, night 0.6) under ~2.2 fades in the night floor
+    { const sunI = rig ? (rig.sunIntensity ?? 4.5) : 4.5; const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3));
+      uGrade2.value.y = 1 - k * k * (3 - 2 * k); }
     uDetailK.value = tune.detail;
     uWarpK.value = tune.warp;
     const surfaceWind = ud?.surfaceWind;

@@ -25,4 +25,12 @@ assert.ok(noon.r > 0.99 && noon.g > 0.99 && noon.b > 0.99, 'noon is white');
 const night = battleLightTintForRig({ sunIntensity: 0.6, sunColor: lin(0x9fb4e0), hemiIntensity: 0.75, hemiSky: lin(0x1c2a4a),
   hemiGround: lin(0x0e1014), fillIntensity: 0.2, fillColor: lin(0x2a3a5a) }, new THREE.Color());
 assert.ok(Math.max(night.r, night.g, night.b) < 0.45, `night is dim (${night.r.toFixed(2)} ${night.g.toFixed(2)} ${night.b.toFixed(2)})`);
-console.log('timeOfDayMarks: prints, wake foam, hull scars and missile bodies take the time of day; flares stay emissive — ok');
+// (EF.11, DO-FX-08) the media's night and rim defects: a thin rim takes the sky's light grey (no cyan fringe); at night a
+// dark medium never falls under a share of the sky's own light (no flat black cut-out), the level from the rig's sun
+const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
+assert.match(media, /skyC = mix\( vec3\( skyLum \), skyC, smoothstep\( 0\.15, 0\.6, cov \) \);/, 'the thin rim is lit grey by the sky');
+assert.match(media, /float floorL = skyLum \* uGrade2\.y \* 0\.55 \* \( 0\.45 \+ 0\.35 \* U \+ 0\.2 \* front \);/, 'the night floor, shaded');
+assert.match(media, /uGrade2\.value\.y = 1 - k \* k \* \(3 - 2 \* k\);/, 'the night level from the rig');
+const nightOf = (sunI) => { const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3)); return 1 - k * k * (3 - 2 * k); };
+assert.equal(nightOf(4.5), 0, 'none by day'); assert.ok(nightOf(2.8) < 0.05, 'next to none at sunset'); assert.equal(nightOf(0.6), 1, 'full at night');
+console.log('timeOfDayMarks: prints, wake foam, hull scars and missile bodies take the time of day (flares emissive); the media rim and night floor — ok');
