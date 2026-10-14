@@ -132,6 +132,8 @@ export interface HostPrepareConfig {
   manifestBase: string | null;
   /** The vehicles the match fields (seats and bots): the calibration groups the host loads. */
   specIds: string[];
+  /** The match fields bots: the authority's bot navigation grid is built too (the dearest part of its creation). */
+  bots?: boolean;
 }
 
 export type HostToWorkerMessage =

@@ -32,6 +32,7 @@ import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
+import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
 
 type TimerHandle = unknown;
 
@@ -401,7 +402,11 @@ export function createMatchHostCore({
   function prepare(next: HostPrepareConfig): void {
     if (prepared || config || booted || stopped || disposed) return;
     const started = now();
-    const world = buildWorld(next);
+    // with bots, the authority's navigation grid and ground on this world too (sim/authoritativeMatch.ts prepareAuthorityGround)
+    const world = buildWorld(next).then((built) => {
+      if (next.bots && built !== 'terrain' && !stopped && !disposed) prepareAuthorityGround(built);
+      return built;
+    });
     prepared = { key: worldKey(next), world };
     void Promise.all([world, ensureAuthorityFleet(next.specIds.filter((specId) => typeof specId === 'string' && specId.length > 0))]).then(
       () => post({ type: 'prepared', ok: true, ms: Math.round(now() - started) }),

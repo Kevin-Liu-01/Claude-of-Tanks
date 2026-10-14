@@ -2175,14 +2175,20 @@ world and loaded the roster's combat anatomy (ed655f9de) while every seat waited
 **What.** A seat that may host (a host thread, not the mobile tier, not "never host") prepares a standby host thread
 `STANDBY_HOST_DELAY_MS` (20 s) after it is welcomed as a peer of a p2p match — past its own covered entry: the session
 spawns the port and posts `prepare { mapId, mode, manifestBase, specIds }`; the core builds the world (`buildWorld`) and
-loads the fleet (`ensureAuthorityFleet`) and answers `prepared { ok, ms }`, and starts no actor. When the room elects this
+loads the fleet (`ensureAuthorityFleet`) and, when the match fields bots, the authority's ground and bot navigation grid
+on that world (`prepareAuthorityGround`: the grid was 1.2 s of a 1.8 s authority creation on Verdant, 39 ms on 09-30 —
+the edge steepness and hull edge passes), answers `prepared { ok, ms }`, and starts no actor. When the room elects this
 seat, `createHost` takes that port, and the core's `boot` takes the prepared world when it is the same battlefield,
-variant and manifests (one in flight is awaited, not rebuilt); a failed preparation or another battlefield builds afresh,
-as before. Once per match; leaving the match (or the session) closes it; a seat that hosted and stepped down prepares a new
+variant and manifests (one in flight is awaited, not rebuilt); the first authority on that world takes the prepared
+ground once (only its own world object, with the same obstacles and query); a failed preparation or another battlefield
+builds afresh, as before. Measured in Node on Verdant with 3 seats and 3 bots (cold, load ~100): the boot from 'boot' to
+'ready' 3.4-4.3 s on main, 0.46 s prepared (09-30: 1.25-1.97 s). Once per match; leaving the match (or the session) closes it; a seat that hosted and stepped down prepares a new
 one after its next welcome. `p2p.standbyHost: false` turns it off; `{ delayMs }` sets the delay. The cost is one idle
 Worker holding the battlefield's collision world on each host-capable peer for the match's length.
 
-Receipts: `hostStandby.selftest` (the core through its port: one world build when the boot follows a preparation,
+Receipts: `preparedAuthorityGround.selftest` (two Verdant worlds, one prepared: six bots play 30 s digest for digest the
+same; taken once, by its own world only; a world whose obstacles changed builds its own), `hostStandby.selftest` (the
+core through its port: one world build when the boot follows a preparation,
 a preparation in flight awaited, a different battlefield or a failed preparation built afresh, nothing prepared after a
 boot or a stop), `mp-p2p-headless.selftest` (the elected peer hosts on the one thread it prepared: `p2Cores` 1,
 `bootedPrepared`).

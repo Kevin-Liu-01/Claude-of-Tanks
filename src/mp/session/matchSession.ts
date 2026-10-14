@@ -599,7 +599,7 @@ export class MatchSession {
         this.log(message.ok ? 'info' : 'warn', 'standby host prepared', { ok: message.ok, ms: message.ms, ...(message.error ? { error: message.error } : {}) });
       });
       this.standby = standby;
-      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, specIds } });
+      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, specIds, bots: plan.bots.length > 0 } });
     }, delayMs);
   }
 
