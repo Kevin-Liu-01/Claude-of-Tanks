@@ -573,7 +573,7 @@ function endCap(m: Mesh, c: V3, out: V3, r: number, spin: number, col: Rgb): voi
 }
 
 /** The colour between a pile's billets (their bark and their shadow). */
-const between = (f: WoodpileForm): Rgb => mul(mix(f.bark, f.end, 0.25), 0.42);
+const between = (f: WoodpileForm): Rgb => mix(hexLin(0x2a2119), f.bark, 0.16);
 /** A round pile's profile: a holzhausen's wall and its bark crown, a dung stack's dome of cakes. */
 function roundProfile(f: WoodpileForm, R: number, H: number): Array<[number, number]> {
   return f.kind === 'dung'
@@ -643,12 +643,12 @@ export function woodpileNear(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   }
   if (f.kind === 'polennitsa') {
     // the crossed cribs at each end: billets laid in pairs, each pair across the last, to the pile's height
-    const layers = 4, step = H / layers;
+    const layers = 5, step = H / layers;
     for (const sx of [-1, 1]) for (let layer = 0; layer < layers; layer++) {
       const y = step * layer, along = layer % 2 === 0;
       for (const s2 of [-1, 1]) {
         const c: V3 = along ? [sx * (L / 2 - 0.08), y, s2 * (D / 2 - 0.1)] : [sx * (L / 2 - 0.08) + s2 * 0.07, y, 0];
-        billet(m, c, along ? [1, 0, 0] : [0, 0, 1], along ? 0.32 : D * 1.02, step * 0.5, along ? 0 : Math.PI, f, rng);
+        billet(m, c, along ? [1, 0, 0] : [0, 0, 1], along ? 0.3 : D * 1.02, step * 0.52, along ? 0 : Math.PI, f, rng);
       }
     }
   } else {
@@ -681,7 +681,7 @@ export function woodpileFar(f: WoodpileForm): THREE.BufferGeometry {
     lathe(m, [[D / 2, 0], [D / 2, H * 0.6], [0.04, H]], 6, (_k, b) => (f.kind === 'dung' ? mul(f.split, 0.92) : b ? f.bark : mix(f.end, between(f), 0.62)),
       { faceted: true, capTop: true });
   } else {
-    const c = f.kind === 'bundles' ? f.bark : mix(f.end, between(f), 0.68);
+    const c = f.kind === 'bundles' ? f.bark : mix(f.end, between(f), 0.74);
     prismX(m, [[-D / 2, 0], [D / 2, 0], [D / 2, H * 0.95], [0, H], [-D / 2, H * 0.95]], -L / 2, L / 2, c, mul(f.bark, 0.8));
   }
   return finish(m);
@@ -691,7 +691,7 @@ export function woodpileFar(f: WoodpileForm): THREE.BufferGeometry {
 export function woodpileBroken(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
   const L = f.length, H = f.height, D = f.depth;
-  const heap = f.kind === 'dung' ? mul(f.split, 0.8) : mix(f.end, between(f), 0.72);
+  const heap = f.kind === 'dung' ? mul(f.split, 0.8) : mix(f.bark, between(f), 0.55);
   if (f.kind === 'bundles') {
     // the bundles knocked apart and strewn, one burst into its sticks
     for (let k = 0; k < 3; k++) {
@@ -714,7 +714,14 @@ export function woodpileBroken(f: WoodpileForm, rng: Rng): THREE.BufferGeometry 
     const k = f.kind === 'leanto' ? 1.45 : 1;
     prismX(m, [[-D * 0.75, 0], [D * 0.75, 0], [D * 0.4, H * 0.32 * k], [-D * 0.15, H * 0.38 * k], [-D * 0.5, H * 0.26 * k]], -L * 0.42, L * 0.42, heap, mul(heap, 0.85));
   }
-  const n = f.kind === 'dung' ? 0 : 12;
+  if (f.kind !== 'dung' && f.kind !== 'holzhausen') {
+    // billets left lying over the slumped heap, every way
+    for (let k = 0; k < 7; k++) {
+      const x = (rng() - 0.5) * L * 0.7, z = (rng() - 0.5) * D * 0.7, yaw = rng() * Math.PI, k2 = f.kind === 'leanto' ? 1.45 : 1;
+      billet(m, [x, H * 0.3 * k2 * (1 - Math.abs(z) / D), z], [Math.cos(yaw), 0, Math.sin(yaw)], 0.4 + rng() * 0.15, 0.07, rng() * 2, f, rng);
+    }
+  }
+  const n = f.kind === 'dung' ? 0 : 10;
   for (let k = 0; k < n; k++) {
     const a = rng() * Math.PI * 2, d = 0.25 + rng() * 0.55, yaw = rng() * Math.PI;
     const r = Math.max(L, D) * 0.5;
