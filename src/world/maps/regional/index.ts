@@ -16,6 +16,7 @@ import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './ge
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherTints } from './weather.ts';
 import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { withRuinWalls, type WallPieceReading } from './shell.ts';
+import { withLattices, type LatticeReading } from './lattice.ts';
 import { registerHouseDamageKits } from './damage.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
@@ -143,6 +144,8 @@ export interface RegionalKitPlan {
   info: { w: number; d: number; h: number };
   /** a ruin builder's standing walls as it built them (shell.ts ruinWall; props census E11) */
   ruinWalls?: WallPieceReading[];
+  /** the open lattice frames the builder laid (lattice.ts latticeFrame; props census #3) */
+  lattices?: LatticeReading[];
 }
 const KIT_PLANS = new WeakMap<object, RegionalKitPlan>();
 /** The plan a regional build (buildRegionalParts, rebuildRegionalStructure) handed back beside these parts. */
@@ -173,10 +176,10 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
     const a = ctx.sunAzimuthDeg * Math.PI / 180, wx = Math.sin(a), wz = Math.cos(a), yaw = ctx.yaw ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
     return [wx * c - wz * s, wx * s + wz * c] as const;
   })() : null;
-  const [[built, houses], ruinWalls] = withRuinWalls(() => withHousePlans(() => withWear(wear, () => builder(ctx))));
+  const [[[built, houses], ruinWalls], lattices] = withLattices(() => withRuinWalls(() => withHousePlans(() => withWear(wear, () => builder(ctx)))));
   const parts = weatherRegionalParts(built, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint, sun, legacy });
   KIT_PLANS.set(parts, { kind: 'regional-house', style: style.id, builder: ctx.structureId, houses, tints, info: ctx.info,
-    ...(ruinWalls.length ? { ruinWalls } : {}) });
+    ...(ruinWalls.length ? { ruinWalls } : {}), ...(lattices.length ? { lattices } : {}) });
   // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
   // often; absent, every UV stays as it was
   const relief = style.surfaces.relief;
