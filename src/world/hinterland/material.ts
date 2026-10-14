@@ -128,7 +128,7 @@ uniform vec4 uHlStrata; // cos of the slope where the strata begin and where the
 float hlLedge = 0.0;
 // the steep faces' strata (round 4, the coordinator on Glacier's edge-n: "the ring's wall wins because its strata are
 // CRISP: thin, dark, regular beds with bright snow on every ledge"; the atlas's texels on the walls are 24–96 m): beds of
-// about 15–40 m by world height, wandering and dipping gently, each a tone of its own, a dark joint at its foot and a snow
+// 13–28 m by world height, wandering and dipping gently, each a tone of its own, a dark joint at its foot and a snow
 // ledge along its top broken along the strike, streaked down the fall line; under a pixel that holds several beds they
 // average out to the face's tone (no shimmer). n: the world normal.
 vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
@@ -136,30 +136,36 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
   // (the beds wander over hundreds of metres, and a few metres over tens: no bed runs as a drawn contour)
   float hb = w.y + ( hlNoise( q * 0.0035 ) - 0.5 ) * 70.0 + ( hlNoise( q * 0.016 + 3.7 ) - 0.5 ) * 10.0
     + ( hlNoise( q * 0.07 + 1.3 ) - 0.5 ) * 4.0 + dot( q, vec2( 0.8, 0.6 ) ) * uHlStrata.w;
-  // (a bed 14–40 m: the phase runs at 1/21 m, swung over 230 m and 57 m of height)
-  float ph = hb / 21.0 + 0.45 * sin( hb / 37.0 ) + 0.1 * sin( hb / 9.1 + 1.7 );
+  // (a bed 13–28 m: the phase runs at 1/18 m, swung over 230 m and 57 m of height)
+  float ph = hb / 18.0 + 0.4 * sin( hb / 37.0 ) + 0.09 * sin( hb / 9.1 + 1.7 );
   float k = floor( ph ), fr = ph - k;
   float e = max( fwidth( ph ), 0.015 );
   float crisp = 1.0 - smoothstep( 0.22, 0.6, e );
-  float tone = 0.5 + 0.5 * hlHash( vec2( k, 7.13 ) );
-  // the along-strike coordinate: a bed's laminae smear along it
+  float tone = 0.45 + 0.6 * hlHash( vec2( k, 7.13 ) );
+  // the along-strike coordinate: a bed's laminae smear along it, the fall line's streaks cross it
   vec2 sd = normalize( vec2( -n.z, n.x ) + vec2( 1e-4, 0.0 ) );
   float a = dot( q, sd );
-  float lam = ( hlNoise( vec2( a / 24.0, hb / 2.4 ) ) - 0.5 ) * ( 1.0 - smoothstep( 0.3, 0.8, fwidth( hb / 2.4 ) ) );
+  // (laminae of ~5 m, read at two kilometres; under a pixel that holds several they average out)
+  float lam = ( hlNoise( vec2( a / 30.0, hb / 5.0 ) ) - 0.5 ) * ( 1.0 - smoothstep( 0.35, 0.9, fwidth( hb / 5.0 ) ) );
   // the joint under each bed: a dark line
   float joint = 1.0 - smoothstep( 0.03, 0.09 + e, fr );
-  // the ledge on its top: thin, and broken into dashes 10–40 m long (a third to a half of each bed's top)
-  float lw = 0.07 + 0.09 * hlHash( vec2( k, 3.71 ) );
-  float run = smoothstep( 0.5, 0.6, 0.6 * hlNoise( q * 0.03 + vec2( k * 3.1, k * 1.7 ) ) + 0.4 * hlNoise( q * 0.1 + vec2( k * 5.3, k * 2.9 ) ) );
+  // the ledge on its top: thin, broken into dashes of 8–60 m (over half of each bed's top), a bench bed's wider; and a
+  // second, sparser ledge mid-bed on some beds
+  float bench = step( 0.82, hlHash( vec2( k, 11.9 ) ) );
+  float lw = 0.08 + 0.12 * hlHash( vec2( k, 3.71 ) ) + 0.12 * bench;
+  float run = smoothstep( 0.45, 0.57, 0.55 * hlNoise( q * 0.02 + vec2( k * 3.1, k * 1.7 ) ) + 0.45 * hlNoise( q * 0.09 + vec2( k * 5.3, k * 2.9 ) ) );
+  float mid = step( 0.55, hlHash( vec2( k, 5.27 ) ) ) * smoothstep( 0.55, 0.65, hlNoise( q * 0.05 + vec2( k * 7.7, 3.3 ) ) );
   // (the steepest walls hold little)
   float hold = smoothstep( 0.12, 0.32, n.y );
-  ledge = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * run * hold * uHlStrata.z * crisp;
-  // the fall line's streaks (the water's varnish down the face)
-  float streak = hlNoise( vec2( a / 6.0, hb / 80.0 ) ) * ( 1.0 - smoothstep( 0.3, 0.8, fwidth( a / 6.0 ) ) );
-  // (a dark schist: three-quarters of the region's rock, each bed its own tone)
-  vec3 rockC = uHlRock.rgb * 0.75 * mix( 0.75, tone * ( 1.0 - 0.6 * joint ) * ( 1.0 + 0.5 * lam ), crisp ) * ( 1.0 - 0.4 * streak );
+  float top = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * run;
+  float sub = ( smoothstep( 0.46 - e, 0.46 + e, fr ) - smoothstep( 0.52 - e, 0.52 + e, fr ) ) * mid;
+  ledge = max( top, sub ) * hold * uHlStrata.z * crisp;
+  // the fall line's streaks (the water's varnish down the face): dark, here and there
+  float streak = smoothstep( 0.5, 0.85, hlNoise( vec2( a / 10.0, hb / 120.0 ) ) ) * ( 1.0 - smoothstep( 0.3, 0.8, fwidth( a / 10.0 ) ) );
+  // (a dark schist: two-thirds of the region's rock, each bed its own tone, its laminae and streaks)
+  vec3 rockC = uHlRock.rgb * 0.65 * mix( 0.72, tone * ( 1.0 - 0.6 * joint ) * ( 1.0 + 0.6 * lam ), crisp ) * ( 1.0 - 0.45 * streak );
   vec3 snowC = vec3( 0.72, 0.79, 0.88 );
-  return mix( mix( rockC, snowC, ( 1.0 - crisp ) * uHlStrata.z * hold * 0.1 ), snowC, ledge );
+  return mix( mix( rockC, snowC, ( 1.0 - crisp ) * uHlStrata.z * hold * 0.14 ), snowC, ledge );
 }
 `;
   const albedo = /* glsl */`{
@@ -183,7 +189,12 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
     // beds' footprint is well defined at the slope's edge)
     if ( uHlRock.w > 0.5 ) {
       vec3 hlNW = normalize( ( vec4( vNormal, 0.0 ) * viewMatrix ).xyz );
-      float hlSteep = ( 1.0 - smoothstep( uHlStrata.y, uHlStrata.x, hlNW.y ) ) * ( hlFlag( 1.0 ) ? 0.0 : 1.0 );
+      // (and the atlas's bare rock at any slope — a rock texel's grey core by the bilinear albedo, not the scree's pale
+      // grey or a rock-and-snow blend — so a summit's rock and the bands read as beds, not soft grey blotches)
+      float hlLum = dot( hlAlb, vec3( 0.2126, 0.7152, 0.0722 ) );
+      float hlSat = ( max( hlAlb.r, max( hlAlb.g, hlAlb.b ) ) - min( hlAlb.r, min( hlAlb.g, hlAlb.b ) ) ) / max( 1e-3, max( hlAlb.r, max( hlAlb.g, hlAlb.b ) ) );
+      float hlRockCore = ( 1.0 - smoothstep( 0.1, 0.2, hlLum ) ) * ( 1.0 - smoothstep( 0.2, 0.35, hlSat ) ) * ( hlFlag( 4.0 ) ? 0.85 : 0.0 );
+      float hlSteep = max( 1.0 - smoothstep( uHlStrata.y, uHlStrata.x, hlNW.y ), hlRockCore ) * ( hlFlag( 1.0 ) ? 0.0 : 1.0 );
       float hlL;
       vec3 hlSt = hlStrataAt( vHlWorld, hlNW, hlL );
       diffuseColor.rgb = mix( diffuseColor.rgb, hlSt, hlSteep );

@@ -13,6 +13,7 @@ import { bakeHinterlandSurface, plantHinterlandWoods, raiseHinterlandCanopy } fr
 import { buildHinterlandOutlandGeometry, HINTERLAND_NEAR_TREE_M } from './outlandGeometry.ts';
 import { samplePyramid } from './pyramid.ts';
 import { sightlineBlocker } from './outland.ts';
+import { hinterlandSnowCovered } from './regions.ts';
 
 export interface HinterlandRequest {
   mapId: string;
@@ -52,7 +53,7 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   raiseHinterlandCanopy(build.pyramid.levels, woods, spec.region.vegetation.canopyM, 1337, { treesWithinM: request.tier !== 'mobile' ? HINTERLAND_NEAR_TREE_M : 0 });
   build.ms.surface = performance.now() - t0;
   // the outland's buildings, verticals and trees on the drawn land (the page only wraps the arrays)
-  const outland = buildHinterlandOutlandGeometry(build.plan, build.pyramid, spec.kit, trees, spec.geology.snow.lineM < -100);
+  const outland = buildHinterlandOutlandGeometry(build.plan, build.pyramid, spec.kit, trees, hinterlandSnowCovered(spec.geology));
   build.ms.outland = outland.stats.ms;
   build.ms.total += build.ms.surface + build.ms.outland;
   return packHinterlandPlan(build, surface, outland, trees);

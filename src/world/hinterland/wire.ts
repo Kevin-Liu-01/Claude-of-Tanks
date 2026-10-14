@@ -50,7 +50,7 @@ export interface HinterlandWire {
 /** The wire's rock from a geology (sRGB hex to linear). */
 function rockOf(g: HinterlandBuild['field']['spec']['geology']): NonNullable<HinterlandWire['rock']> {
   const lin = (v: number): number => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  return { rgb: [lin((g.rockHex >> 16) & 255), lin((g.rockHex >> 8) & 255), lin(g.rockHex & 255)], snowy: g.snow.lineM < -100,
+  return { rgb: [lin((g.rockHex >> 16) & 255), lin((g.rockHex >> 8) & 255), lin(g.rockHex & 255)], snowy: g.snow.lineM <= -100, // (regions.ts hinterlandSnowCovered: the page's side keeps the regions out)
     slopeDeg: g.rockSlopeDeg, dipDeg: g.strata.dipDeg };
 }
 

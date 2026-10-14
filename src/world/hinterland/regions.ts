@@ -134,6 +134,12 @@ function region(def: HinterlandRegion): HinterlandRegion {
   });
 }
 
+/** A snow-covered place (its snow line at or under 100 m below the map's ground: the Glacier's col, the Tatra's and
+ * Hostomel's winters, the polar station): its roads packed snow, its yards trodden snow, its ledges holding snow. */
+export function hinterlandSnowCovered(geology: Pick<HinterlandGeology, 'snow'>): boolean {
+  return geology.snow.lineM <= -100;
+}
+
 export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandRegion>> = Object.freeze({
   forestSteppe: region({
     id: 'forestSteppe', place: 'Kursk forest-steppe: black-earth plateau, balkas, shelterbelts, kolkhoz villages along the valleys',

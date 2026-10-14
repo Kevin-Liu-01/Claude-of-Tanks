@@ -11,6 +11,7 @@ import { HL_COVER, createHinterlandCover, createHinterlandGeology, createHinterl
 import { hash12, noise2 } from './noise.ts';
 import type { HinterlandLevel } from './pyramid.ts';
 import { HINTERLAND_SEASON_LEAF } from './spec.ts';
+import { hinterlandSnowCovered } from './regions.ts';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE } from './wire.ts';
 
 /** The flags byte: what the material treats apart. */
@@ -90,7 +91,7 @@ export function bakeHinterlandSurface(
   const specs = surfaceLevelsFor(levels);
   const rockLinear = hexToLinear(field.spec.geology.rockHex);
   // (a snow-covered place: its roads packed snow and its yards trodden snow, not a lowland's tarmac and earth)
-  const snowy = field.spec.geology.snow.lineM < -100;
+  const snowy = hinterlandSnowCovered(field.spec.geology);
   const SNOW_ROAD: readonly [number, number, number] = [0.5, 0.54, 0.6], SNOW_YARD: readonly [number, number, number] = [0.56, 0.6, 0.66];
   // the woods' colour in the season: a broadleaf wood's crowns go grey-brown as its leaves fall, a conifer's keep
   let conifer = 0, total = 0;
