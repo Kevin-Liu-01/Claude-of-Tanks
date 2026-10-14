@@ -2127,45 +2127,6 @@ function makeCommandTentCraft(rng: Rng): THREE.BufferGeometry {
 }
 
 /**
- * The field tent of a desert camp: a ridge tent of sand canvas on its two poles and ridge pole, the low side walls
- * pegged out, the roof in bays sagging between the rafters' lines, the guy ropes to their pegs, the door's flap tied
- * back, a sand-bag skirt along its windward wall, its ground sheet before the door.
- */
-function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = PAL.desert, w = 4.8, d = 7.0, wall = 0.8, rise = 1.95, bays = 3, bay = d / bays;
-  for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
-    const z = -d / 2 + (k + 0.5) * bay;
-    const wallPanel = box(0.04, wall, bay - 0.03);
-    wallPanel.rotateZ(side * 0.12);
-    colored(out, wallPanel.translate(side * (w / 2 + 0.05), wall / 2, z), k % 2 ? p[0] : p[1], rng, 0.05);
-    const slope = Math.hypot(w / 2, rise), ang = Math.atan2(rise, w / 2);
-    const panel = slab(slope, 0.04, bay + 0.02);
-    pitchRoofPlane(panel, 'x', -side as -1 | 1, ang, 'gable');
-    colored(out, panel.translate(-side * (w / 4), wall + rise / 2 - 0.03, z), k % 2 ? p[1] : p[0], rng, 0.05);
-  }
-  for (const zs of [-1, 1]) {
-    colored(out, gable(w, rise, 0.04).translate(0, wall, zs * (d / 2 - 0.02)), p[0], rng, 0.05);
-    if (zs < 0) colored(out, box(w, wall, 0.04).translate(0, wall / 2, -d / 2 + 0.02), p[0], rng, 0.05);
-    else for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.55, wall, 0.04).translate(sgn * (w / 4 + 0.28), wall / 2, d / 2 - 0.02), p[0], rng, 0.05);
-  }
-  colored(out, box(0.08, 0.08, d + 0.4).translate(0, wall + rise, 0), p[2], rng, 0.03);
-  for (const zs of [-1, 1]) colored(out, box(0.1, wall + rise + 0.35, 0.1).translate(0, (wall + rise + 0.35) / 2, zs * (d / 2 + 0.1)), p[2], rng, 0.03);
-  // the door's flap tied back, the ground sheet
-  colored(out, cylinder(0.09, 0.09, 1.2, 8).translate(0.55, wall + 0.6, d / 2 + 0.03), p[1], rng, 0.05);
-  colored(out, slab(3.4, 0.04, 1.9).translate(0, 0.05, d / 2 + 1.05), p[1], rng, 0.06);
-  // the guy ropes and pegs, the ridge's guys from the pole heads
-  for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
-    const z = -d / 2 + k * bay;
-    colored(out, beam([side * (w / 2 + 0.02), wall - 0.02, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), 0x8a7c62, rng, 0.03);
-    colored(out, box(0.05, 0.22, 0.05).translate(side * (w / 2 + 1.0), 0.1, z), p[2], rng, 0.03);
-  }
-  for (const zs of [-1, 1]) colored(out, beam([0, wall + rise + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + 1.3)], 0.022, 0.022), 0x8a7c62, rng, 0.03);
-  // the sand-bag skirt along the windward wall
-  for (let z = -d / 2 + 0.3; z < d / 2 - 0.2; z += 0.62) colored(out, box(0.32, 0.2, 0.58).translate(-w / 2 - 0.32, 0.1, z), 0xa89a76, rng, 0.08);
-  return mergeConnectedStructure('deserttent', out);
-}
-
-/**
  * The lean-to: four posts and their plates, rafters falling to the front, the roof boards on them, a back wall of
  * vertical boards on its rails, the braces, firewood stacked in billets under it and a chopping block.
  */
@@ -2202,6 +2163,289 @@ function makeLeanToCraft(rng: Rng): THREE.BufferGeometry {
   }
   colored(out, cylinder(0.24, 0.26, 0.5, 8).translate(1.2, 0.25, 1.1), t[2], rng, 0.05);
   return mergeConnectedStructure('leanto', out);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// (the looks lane, 2026-10-14; the coordinator after the builders sheet: "still FLAT at eye level") the service garage,
+// the security office, the Quonset hut and the desert tent rebuilt member by member, each on its own stream after the
+// legacy build has spent the props stream's draws (kindStream), the relay station's hut given windows and a hood.
+
+/** Map a part laid out on a wall face (u along the face, y up, n out of it) into the building's frame. */
+function onFace(axis: 'x' | 'z', side: 1 | -1, at: number) {
+  return (su: number, sy: number, sn: number, u: number, y: number, n: number): THREE.BoxGeometry => (axis === 'z'
+    ? box(su, sy, sn).translate(u, y, side * (at + n))
+    : box(sn, sy, su).translate(side * (at + n), y, u));
+}
+
+/**
+ * A window with depth on a wall face: the surround standing 14 cm proud, the pane set back inside it (a night aperture),
+ * the sill and the head projecting, a mullion, and `bars` security bars across it.
+ */
+function framedWindow(out: THREE.BufferGeometry[], axis: 'x' | 'z', side: 1 | -1, at: number, u: number, y: number,
+  ww: number, wh: number, frame: number, pane: number, r: Rng, bars = 0): void {
+  const f = onFace(axis, side, at), normal: [number, number, number] = axis === 'z' ? [0, 0, side] : [side, 0, 0];
+  colored(out, markWorldAperture(f(ww, wh, 0.04, u, y, 0.03), normal), pane, r, 0.03);
+  for (const s of [-1, 1]) colored(out, f(0.1, wh + 0.2, 0.14, u + s * (ww / 2 + 0.05), y, 0.07), frame, r, 0.02);
+  for (const s of [-1, 1]) colored(out, f(ww + 0.2, 0.1, 0.14, u, y + s * (wh / 2 + 0.05), 0.07), frame, r, 0.02);
+  colored(out, f(ww + 0.34, 0.07, 0.26, u, y - wh / 2 - 0.135, 0.13), 0xb9bab4, r, 0.02);
+  colored(out, f(ww + 0.3, 0.1, 0.2, u, y + wh / 2 + 0.15, 0.1), frame, r, 0.02);
+  colored(out, f(0.05, wh, 0.07, u, y, 0.075), frame, r, 0.02);
+  for (let k = 0; k < bars; k++) colored(out, f(0.025, wh, 0.025, u - ww / 2 + (k + 1) * ww / (bars + 1), y, 0.12), 0x2a2d30, r, 0.02);
+}
+
+/**
+ * The service garage: a sheet-clad shed on its concrete plinth under a skillion deck — its two sectional doors (five
+ * panels each with their pressed ribs, a row of lights, the frame with its guide rails, the head, the handle), the steel
+ * lintel over them, the concrete aprons and the yellow bollards, the fascia and verge boards, the gutter and downpipes on
+ * the low eave, the side door with its canopy, frame and step, the side windows in their surrounds, the compressor and
+ * the vent stack at the back.
+ */
+function makeServiceGarageCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 9.6, d = 11.2, h = 5.0, r = rng;
+  const conc = 0x8a8780, leaf = 0x6d7478, leaf2 = 0x737a7e, rib = 0x7f868a, reveal = 0x23282b, yellow = 0xc9a227, pane = 0x58737b;
+  const fz = d / 2, floor = 0.35;
+  colored(out, box(w + 0.2, floor, d + 0.2).translate(0, floor / 2, 0), conc, r, 0.04);
+  colored(out, box(w, h - floor, d).translate(0, floor + (h - floor) / 2, 0), p[0], r, 0.06);
+  // the deck falling to +x, the fascia boards on its front and back edges, the verge on its high side
+  const fall = 0.055, yAt = (x: number) => h + 0.1 - x * Math.sin(fall), ex = w / 2 + 0.35;
+  colored(out, pitchRoofPlane(slab(w + 0.7, 0.22, d + 0.7), 'x', 1, fall, 'skillion').translate(0, h + 0.1, 0), p[1], r, 0.04);
+  for (const zs of [-1, 1]) colored(out, beam([-ex, yAt(-ex) - 0.06, zs * (d / 2 + 0.38)], [ex, yAt(ex) - 0.06, zs * (d / 2 + 0.38)], 0.3, 0.06), p[2], r, 0.02);
+  colored(out, box(0.06, 0.3, d + 0.76).translate(-(w / 2 + 0.38), yAt(-ex) - 0.06, 0), p[2], r, 0.02);
+  // the cladding's ribs down the sides and the back, a band of sheet over the doors
+  for (const side of [-1, 1]) for (let z = -d / 2 + 0.35; z < d / 2 - 0.2; z += 0.5) colored(out, box(0.05, h - floor - 0.3, 0.07).translate(side * (w / 2 + 0.02), floor + (h - floor) / 2, z), p[1], r, 0.02);
+  for (let x = -w / 2 + 0.35; x < w / 2 - 0.2; x += 0.5) colored(out, box(0.07, h - floor - 0.3, 0.05).translate(x, floor + (h - floor) / 2, -fz - 0.02), p[1], r, 0.02);
+  for (const x of [-4.62, -0.32, 4.1, 4.55]) colored(out, box(0.07, h - floor - 0.3, 0.05).translate(x, floor + (h - floor) / 2, fz + 0.02), p[1], r, 0.02);
+  // the sectional doors
+  const dw = 3.4, dh = 3.5, sections = 5, sh = dh / sections;
+  for (const x of [-2.55, 2.0]) {
+    colored(out, box(dw, dh, 0.03).translate(x, floor + dh / 2, fz + 0.015), reveal, r, 0.02);
+    for (let k = 0; k < sections; k++) {
+      const y = floor + (k + 0.5) * sh;
+      colored(out, box(dw - 0.12, sh - 0.045, 0.06).translate(x, y, fz + 0.06), k % 2 ? leaf : leaf2, r, 0.03);
+      for (const t of [-0.22, 0.22]) colored(out, box(dw - 0.24, 0.035, 0.03).translate(x, y + t * sh, fz + 0.1), rib, r, 0.02);
+    }
+    for (let i = 0; i < 4; i++) colored(out, markWorldAperture(box(0.55, 0.3, 0.03), [0, 0, 1]).translate(x - dw / 2 + 0.55 + i * ((dw - 1.1) / 3), floor + 3.5 * sh, fz + 0.1), pane, r, 0.02);
+    for (const s of [-1, 1]) {
+      colored(out, box(0.2, dh + 0.25, 0.2).translate(x + s * (dw / 2 + 0.1), floor + (dh + 0.25) / 2, fz + 0.1), p[2], r, 0.02);
+      colored(out, box(0.05, dh, 0.1).translate(x + s * (dw / 2 - 0.03), floor + dh / 2, fz + 0.08), reveal, r, 0.02);
+      colored(out, cylinder(0.09, 0.09, 1.0, 8).translate(x + s * (dw / 2 + 0.45), 0.5, fz + 0.8), yellow, r, 0.03);
+    }
+    colored(out, box(dw + 0.4, 0.22, 0.22).translate(x, floor + dh + 0.12, fz + 0.11), p[2], r, 0.02);
+    colored(out, box(0.32, 0.05, 0.05).translate(x, floor + 0.95, fz + 0.12), 0x2a2c2e, r, 0.02);
+    colored(out, box(dw + 0.4, floor, 1.3).translate(x, floor / 2, fz + 0.75), conc, r, 0.04);
+  }
+  // the steel lintel over both openings
+  colored(out, box(w - 0.3, 0.32, 0.18).translate(0, floor + dh + 0.42, fz + 0.09), p[2], r, 0.02);
+  // the gutter under the low eave and its downpipes to the ground against the wall
+  colored(out, box(0.3, 0.14, d + 0.5).translate(w / 2 + 0.22, 4.7, 0), p[2], r, 0.02);
+  for (const z of [-d / 2 + 0.3, d / 2 - 0.3]) colored(out, box(0.1, 4.7, 0.1).translate(w / 2 + 0.06, 2.35, z), p[2], r, 0.02);
+  // the side door on +x: its leaf, frame, handle, the canopy on two brackets, the step
+  const sx = w / 2, dz = 2.4;
+  colored(out, box(0.06, 2.2, 0.95).translate(sx + 0.05, floor + 1.1, dz), p[2], r, 0.03);
+  for (const z of [dz - 0.55, dz + 0.55]) colored(out, box(0.14, 2.35, 0.12).translate(sx + 0.07, floor + 1.175, z), p[1], r, 0.02);
+  colored(out, box(0.14, 0.14, 1.22).translate(sx + 0.07, floor + 2.35, dz), p[1], r, 0.02);
+  colored(out, box(0.04, 0.04, 0.16).translate(sx + 0.11, floor + 1.05, dz - 0.3), 0xb3b8b9, r, 0.02);
+  colored(out, pitchSkillionRoof(slab(0.7, 0.06, 1.6), 'x', 1, 0.12).translate(sx + 0.35, floor + 2.78, dz), p[1], r, 0.03);
+  for (const z of [dz - 0.7, dz + 0.7]) colored(out, beam([sx + 0.02, floor + 2.25, z], [sx + 0.62, floor + 2.72, z], 0.05, 0.05), p[2], r, 0.02);
+  colored(out, box(0.7, floor, 1.3).translate(sx + 0.35, floor / 2, dz), conc, r, 0.04);
+  // the side windows in their surrounds
+  for (const side of [-1, 1] as const) framedWindow(out, 'x', side, w / 2, -2.2, 3.05, 2.2, 1.3, p[2], pane, r);
+  // the compressor on its pad at the back, its louvres; the vent stack through the deck with its cowl
+  colored(out, box(2.6, 1.0, 1.45).translate(-3.25, 0.5, -fz - 0.66), p[1], r, 0.03);
+  for (let k = 0; k < 5; k++) colored(out, box(2.3, 0.06, 0.04).translate(-3.25, 0.2 + k * 0.16, -fz - 1.4), p[2], r, 0.02);
+  colored(out, box(0.22, 5.85, 0.22).translate(3.65, 2.92, -4.45), p[2], r, 0.02);
+  colored(out, cylinder(0.3, 0.3, 0.24, 10).translate(3.65, 5.9, -4.45), p[1], r, 0.02);
+  return mergeConnectedStructure('servicegarage', out);
+}
+
+/**
+ * The security office: a panel-clad cabin on its concrete plinth — the panel seams all round, windows set in deep
+ * surrounds with sills and heads (bars on the back), the door under a canopy on two posts with its fascia and sign, the
+ * service counter at the front window, awnings over the side windows on brackets, a parapet with its coping round a
+ * gravel deck, the rooftop unit with its louvres and vents, downpipes at the corners, the wall unit, the lamp, the steps
+ * and the condenser on its pad at the back.
+ */
+function makeSecurityOfficeCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.urbanSteel, w = 7.2, d = 8.6, h = 4.4, r = rng;
+  const conc = 0x8a8780, pane = 0x58737b, frame = 0x2f3437, seam = 0x474e52, gravel = 0x6f7275;
+  const pl = 0.45;
+  colored(out, box(w + 0.3, pl, d + 0.3).translate(0, pl / 2, 0), conc, r, 0.04);
+  colored(out, box(w, h - pl, d).translate(0, pl + (h - pl) / 2, 0), p[0], r, 0.06);
+  for (const y of [1.15, 2.95]) {
+    for (const s of [-1, 1]) colored(out, box(w + 0.04, 0.04, 0.04).translate(0, y, s * (d / 2 + 0.01)), seam, r, 0.02);
+    for (const s of [-1, 1]) colored(out, box(0.04, 0.04, d + 0.04).translate(s * (w / 2 + 0.01), y, 0), seam, r, 0.02);
+  }
+  // the parapet and its coping round the gravel deck; the rooftop unit, its louvres, two vents
+  for (const s of [-1, 1]) {
+    colored(out, box(w + 0.1, 0.55, 0.2).translate(0, h + 0.275, s * (d / 2 - 0.05)), p[0], r, 0.05);
+    colored(out, box(0.2, 0.55, d + 0.1).translate(s * (w / 2 - 0.05), h + 0.275, 0), p[0], r, 0.05);
+    colored(out, box(w + 0.34, 0.08, 0.36).translate(0, h + 0.59, s * (d / 2 - 0.05)), 0xb9bab4, r, 0.02);
+    colored(out, box(0.36, 0.08, d + 0.34).translate(s * (w / 2 - 0.05), h + 0.59, 0), 0xb9bab4, r, 0.02);
+  }
+  colored(out, slab(w - 0.1, 0.08, d - 0.1).translate(0, h + 0.04, 0), gravel, r, 0.06);
+  colored(out, box(1.6, 0.8, 1.2).translate(1.4, h + 0.48, -1.6), p[1], r, 0.03);
+  for (let k = 0; k < 5; k++) colored(out, box(1.4, 0.05, 0.04).translate(1.4, h + 0.2 + k * 0.13, -2.22), p[2], r, 0.02);
+  for (const [x, z] of [[-1.8, 1.4], [-2.4, -2.6]] as const) colored(out, cylinder(0.11, 0.11, 0.7, 8).translate(x, h + 0.39, z), p[2], r, 0.02);
+  // the windows: two at the front (the counter at the right one), two at the back with bars, two each side under awnings
+  for (const x of [-2.3, 2.3]) framedWindow(out, 'z', 1, d / 2, x, 2.05, 1.4, 1.3, frame, pane, r);
+  colored(out, box(1.6, 0.06, 0.5).translate(2.3, 1.18, d / 2 + 0.25), 0xb9bab4, r, 0.02);
+  for (const x of [1.75, 2.85]) colored(out, beam([x, 0.95, d / 2 + 0.01], [x, 1.15, d / 2 + 0.42], 0.04, 0.04), frame, r, 0.02);
+  for (const x of [-1.8, 1.8]) framedWindow(out, 'z', -1, d / 2, x, 2.05, 1.3, 1.2, frame, pane, r, 3);
+  for (const side of [-1, 1] as const) for (const z of [-2.0, 2.0]) {
+    framedWindow(out, 'x', side, w / 2, z, 2.05, 1.4, 1.2, frame, pane, r);
+    colored(out, pitchSkillionRoof(slab(0.62, 0.05, 1.8), 'x', side, 0.2).translate(side * (w / 2 + 0.31), 3.08, z), p[1], r, 0.03);
+    for (const dz of [-0.75, 0.75]) colored(out, beam([side * (w / 2 + 0.01), 2.72, z + dz], [side * (w / 2 + 0.56), 3.02, z + dz], 0.04, 0.04), frame, r, 0.02);
+  }
+  // the door in its frame with its transom, the canopy on two posts with its fascia and the sign, the lamp, the steps
+  colored(out, box(1.2, 2.3, 0.06).translate(0, pl + 1.15, d / 2 + 0.03), p[2], r, 0.03);
+  for (const s of [-1, 1]) colored(out, box(0.12, 2.75, 0.14).translate(s * 0.66, pl + 1.375, d / 2 + 0.07), frame, r, 0.02);
+  colored(out, box(1.44, 0.12, 0.14).translate(0, pl + 2.32, d / 2 + 0.07), frame, r, 0.02);
+  colored(out, markWorldAperture(box(1.2, 0.3, 0.04), [0, 0, 1]).translate(0, pl + 2.53, d / 2 + 0.03), pane, r, 0.02);
+  colored(out, box(1.44, 0.1, 0.14).translate(0, pl + 2.73, d / 2 + 0.07), frame, r, 0.02);
+  colored(out, box(0.05, 0.16, 0.04).translate(0.45, pl + 1.05, d / 2 + 0.08), 0xb3b8b9, r, 0.02);
+  colored(out, pitchSkillionRoof(slab(3.0, 0.12, 1.5), 'z', 1, 0.07).translate(0, 3.42, d / 2 + 0.75), p[1], r, 0.03);
+  for (const x of [-1.3, 1.3]) colored(out, box(0.12, 3.36, 0.12).translate(x, 1.68, d / 2 + 1.38), p[2], r, 0.02);
+  colored(out, box(3.04, 0.22, 0.05).translate(0, 3.33, d / 2 + 1.5), p[2], r, 0.02);
+  colored(out, box(1.8, 0.36, 0.04).translate(0, 3.6, d / 2 + 1.5), 0x2f4a5c, r, 0.02);
+  colored(out, box(0.14, 0.2, 0.18).translate(0.95, 2.6, d / 2 + 0.09), 0xd8cf9a, r, 0.02);
+  colored(out, box(1.6, pl, 0.7).translate(0, pl / 2, d / 2 + 0.5), conc, r, 0.04);
+  // the downpipes at the corners from the parapet's scuppers, the wall unit, the condenser on its pad at the back
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) colored(out, box(0.11, h + 0.3, 0.11).translate(sx * (w / 2 + 0.07), (h + 0.3) / 2, sz * (d / 2 - 0.25)), frame, r, 0.02);
+  colored(out, box(0.28, 0.45, 0.7).translate(w / 2 + 0.14, 3.0, -3.4), 0x9a9d98, r, 0.02);
+  colored(out, box(1.2, 0.12, 0.8).translate(1.8, 0.06, -d / 2 - 0.55), conc, r, 0.03);
+  colored(out, box(1.0, 0.85, 0.6).translate(1.8, 0.545, -d / 2 - 0.55), 0x9a9d98, r, 0.03);
+  colored(out, beam([1.8, 0.8, -d / 2 - 0.25], [1.8, 1.4, -d / 2 + 0.0], 0.06, 0.06), frame, r, 0.02);
+  return mergeConnectedStructure('securityoffice', out);
+}
+
+/**
+ * The Quonset hut: the corrugated arch with its ribs standing proud every bay and its seams along the length, and each
+ * end a framed wall in the arch — the edge rib round it, the studs, the girt, the front's double doors in their frame with
+ * their braces and hinges, the windows each side in surrounds with sills, the louvred vent under the crown; the base
+ * skirts, the threshold plate, the stovepipe through the shell.
+ */
+function makeQuonsetHutCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8, r = rng;
+  const end = 0x5b6264, frame = 0x2c3236, pane = 0x6f8790, rib = 0x3b4246;
+  const R = w / 2, H = h - 0.12, archY = (x: number) => H * Math.sqrt(Math.max(0, 1 - (x / R) ** 2));
+  colored(out, archShellSheet(w, h, d), p[0], r, 0.1);
+  for (let z = -d / 2 + 0.6; z < d / 2 - 0.3; z += 1.15) colored(out, archShell(w + 0.26, h + 0.16, 0.13).translate(0, 0, z), rib, r, 0.04);
+  // the sheet seams along the length
+  for (const a of [0.42, 0.85, 1.25, 1.57, 1.89, 2.29, 2.72]) {
+    colored(out, box(0.05, 0.05, d - 0.05).translate(Math.cos(a) * (R + 0.02), Math.sin(a) * (H + 0.02), 0), p[1], r, 0.02);
+  }
+  for (const zs of [-1, 1]) {
+    const ez = zs * (d / 2);
+    const f = onFace('z', zs as 1 | -1, d / 2);
+    // the end's edge rib round the arch
+    for (let i = 0; i < 12; i++) {
+      const a0 = Math.PI - i * Math.PI / 12, a1 = Math.PI - (i + 1) * Math.PI / 12;
+      colored(out, beam([Math.cos(a0) * (R + 0.04), Math.sin(a0) * (H + 0.04), ez + zs * 0.05], [Math.cos(a1) * (R + 0.04), Math.sin(a1) * (H + 0.04), ez + zs * 0.05], 0.14, 0.12), frame, r, 0.02);
+    }
+    // the studs and the girt
+    for (const x of [-2.6, -1.35, 1.35, 2.6]) {
+      const top = archY(x) - 0.05;
+      colored(out, f(0.1, top, 0.08, x, top / 2, 0.04), end, r, 0.02);
+    }
+    const gy = 2.55, gx = R * Math.sqrt(1 - (gy / H) ** 2) - 0.05;
+    colored(out, f(2 * gx, 0.1, 0.08, 0, gy, 0.04), end, r, 0.02);
+    // the louvred vent under the crown
+    colored(out, f(0.9, 0.55, 0.06, 0, H - 0.75, 0.05), frame, r, 0.02);
+    for (let k = 0; k < 4; k++) colored(out, f(0.8, 0.05, 0.1, 0, H - 0.95 + k * 0.13, 0.08), end, r, 0.02);
+    // the windows either side
+    for (const x of [-2.0, 2.0]) framedWindow(out, 'z', zs as 1 | -1, d / 2, x, 1.75, 0.75, 0.8, frame, pane, r);
+    if (zs > 0) {
+      // the double doors: the frame, two leaves with their ledges and braces, hinges and the bar
+      colored(out, f(0.16, 2.6, 0.16, -1.36, 1.3, 0.08), frame, r, 0.02);
+      colored(out, f(0.16, 2.6, 0.16, 1.36, 1.3, 0.08), frame, r, 0.02);
+      colored(out, f(2.88, 0.16, 0.16, 0, 2.6, 0.08), frame, r, 0.02);
+      for (const s of [-1, 1]) {
+        const cx = s * 0.64;
+        colored(out, f(1.24, 2.45, 0.06, cx, 1.24, 0.05), end, r, 0.03);
+        for (const y of [0.35, 1.25, 2.15]) colored(out, f(1.18, 0.12, 0.05, cx, y, 0.1), frame, r, 0.02);
+        colored(out, beam([cx - 0.52, 0.4, ez + zs * 0.1], [cx + 0.52, 1.2, ez + zs * 0.1], 0.08, 0.04), frame, r, 0.02);
+        colored(out, beam([cx - 0.52, 1.3, ez + zs * 0.1], [cx + 0.52, 2.1, ez + zs * 0.1], 0.08, 0.04), frame, r, 0.02);
+        for (const y of [0.5, 2.0]) colored(out, f(0.3, 0.05, 0.03, s * 1.18, y, 0.1), 0x1f2326, r, 0.02);
+      }
+      colored(out, f(0.5, 0.06, 0.05, 0, 1.25, 0.13), 0x1f2326, r, 0.02);
+      colored(out, box(3.6, 0.1, 0.9).translate(0, 0.05, ez + 0.5), 0x6f7275, r, 0.03);
+    }
+  }
+  for (const side of [-1, 1]) colored(out, box(0.08, 0.34, d - 0.1).translate(side * (w / 2 - 0.02), 0.17, 0), p[2], r, 0.03);
+  const flueX = 1.5, flueZ = -d * 0.28, shellY = archY(flueX);
+  colored(out, cylinder(0.09, 0.09, 0.8, 8).translate(flueX, shellY + 0.2, flueZ), p[2], r, 0.03);
+  colored(out, cylinder(0.16, 0.16, 0.12, 8).translate(flueX, shellY + 0.64, flueZ), p[2], r, 0.03);
+  return mergeConnectedStructure('quonsethut', out);
+}
+
+/**
+ * A cloth panel between four corners (a0 a1 along u, b0 b1 the far edge), sagging `sag` metres along `down` at its middle
+ * (tension at its edges, where the poles, the ridge and the guys hold it), drawn both sides.
+ */
+function clothPanel(a0: readonly number[], a1: readonly number[], b1: readonly number[], b0: readonly number[], nu: number, nv: number,
+  sag: number, down: readonly number[]): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(1, 1, nu, nv), pos = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const u = pos.getX(i) + 0.5, v = pos.getY(i) + 0.5, s = sag * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * v));
+    const at = (k: number) => (1 - v) * ((1 - u) * a0[k] + u * a1[k]) + v * ((1 - u) * b0[k] + u * b1[k]) + s * down[k];
+    pos.setXYZ(i, at(0), at(1), at(2));
+  }
+  g.computeVertexNormals();
+  const back = g.clone(), idx = back.index!.array as Uint16Array | Uint32Array;
+  for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+  back.computeVertexNormals();
+  const both = mergeGeometries([g.toNonIndexed(), back.toNonIndexed()], false)!;
+  g.dispose(); back.dispose();
+  return both;
+}
+
+/**
+ * The desert tent: canvas on its frame, held taut where it is held — the ridge pole on its two uprights, the eave poles
+ * and the guys at every bay line pulling the cloth there, the roof and the walls sagging between them; the webbing over
+ * the roof at the bay lines, the valance along the eaves, the gables, the door with its flaps rolled up and tied, the side
+ * windows' flaps rolled over them, the guy lines to their pegs, the ground sheet before the door, the sandbag skirt.
+ */
+function makeDesertTentCraft(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.desert, w = 4.8, d = 7.0, wall = 0.8, rise = 1.95, bays = 3, bay = d / bays, r = rng;
+  const rope = 0x8a7c62, web = 0x7c6c50, dark = 0x2c2620;
+  const ridgeY = wall + rise;
+  for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
+    const z0 = -d / 2 + k * bay, z1 = z0 + bay, ex = side * (w / 2), wx = side * (w / 2 + 0.05);
+    // the roof cloth from the eave to the ridge, sagging between the bay lines
+    colored(out, clothPanel([ex, wall, z0], [0, ridgeY, z0], [0, ridgeY, z1], [ex, wall, z1], 4, 6, 0.09, [0, -1, 0]), k % 2 ? p[1] : p[0], r, 0.012);
+    // the wall cloth, bellied out a little between its poles
+    colored(out, clothPanel([wx, 0.02, z0], [wx, wall, z0], [wx, wall, z1], [wx, 0.02, z1], 2, 6, 0.05, [side, 0, 0]), k % 2 ? p[0] : p[1], r, 0.012);
+  }
+  for (const zs of [-1, 1]) colored(out, gable(w, rise, 0.04).translate(0, wall, zs * (d / 2 - 0.02)), p[0], r, 0.05);
+  colored(out, box(w, wall, 0.04).translate(0, wall / 2, -d / 2 + 0.02), p[0], r, 0.05);
+  for (const sgn of [-1, 1]) colored(out, box(w / 2 - 0.55, wall, 0.04).translate(sgn * (w / 4 + 0.28), wall / 2, d / 2 - 0.02), p[0], r, 0.05);
+  // the door: the dark inside, its two flaps rolled up and tied at the sides of the opening
+  colored(out, box(1.1, wall + rise * 0.55, 0.02).translate(0, (wall + rise * 0.55) / 2, d / 2 - 0.05), dark, r, 0.02);
+  for (const s of [-1, 1]) colored(out, cylinder(0.08, 0.08, wall + rise * 0.45, 8).translate(s * 0.6, (wall + rise * 0.45) / 2 + 0.05, d / 2 + 0.02), p[1], r, 0.05);
+  // the ridge pole on its uprights, the eave poles at the bay lines
+  colored(out, box(0.08, 0.08, d + 0.4).translate(0, ridgeY, 0), p[2], r, 0.03);
+  for (const zs of [-1, 1]) colored(out, box(0.1, ridgeY + 0.35, 0.1).translate(0, (ridgeY + 0.35) / 2, zs * (d / 2 + 0.1)), p[2], r, 0.03);
+  for (const side of [-1, 1]) for (let k = 0; k <= bays; k++) {
+    const z = -d / 2 + k * bay;
+    colored(out, box(0.06, wall + 0.1, 0.06).translate(side * (w / 2 + 0.06), (wall + 0.1) / 2, z), p[2], r, 0.03);
+    // the webbing over the roof at the bay line, the guy from the eave to its peg
+    colored(out, beam([side * (w / 2), wall + 0.02, z], [0, ridgeY + 0.03, z], 0.025, 0.07), web, r, 0.03);
+    colored(out, beam([side * (w / 2 + 0.04), wall + 0.05, z], [side * (w / 2 + 1.0), 0.04, z], 0.022, 0.022), rope, r, 0.03);
+    colored(out, box(0.05, 0.22, 0.05).translate(side * (w / 2 + 1.0), 0.1, z), p[2], r, 0.03);
+  }
+  // the valance along each eave, the side windows with their flaps rolled over them
+  for (const side of [-1, 1]) {
+    colored(out, box(0.05, 0.16, d).translate(side * (w / 2 + 0.03), wall - 0.02, 0), p[2], r, 0.04);
+    for (const z of [-bay, bay]) {
+      colored(out, box(0.02, 0.32, 0.9).translate(side * (w / 2 + 0.1), 0.48, z), dark, r, 0.02);
+      const roll = cylinder(0.06, 0.06, 1.0, 8); roll.rotateX(Math.PI / 2);
+      colored(out, roll.translate(side * (w / 2 + 0.13), 0.7, z), p[1], r, 0.04);
+    }
+  }
+  for (const zs of [-1, 1]) colored(out, beam([0, ridgeY + 0.3, zs * (d / 2 + 0.1)], [0, 0.04, zs * (d / 2 + 1.3)], 0.022, 0.022), rope, r, 0.03);
+  colored(out, slab(3.4, 0.04, 1.9).translate(0, 0.05, d / 2 + 1.05), p[1], r, 0.06);
+  for (let z = -d / 2 + 0.3; z < d / 2 - 0.2; z += 0.62) colored(out, box(0.32, 0.2, 0.58).translate(-w / 2 - 0.32, 0.1, z), 0xa89a76, r, 0.08);
+  return mergeConnectedStructure('deserttent', out);
 }
 
 function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
@@ -2433,6 +2677,18 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
     guys: { anchors, levels: [0.5, 0.94] },
     dish: { leg: 1, level: 0.72, radius: 0.42 },
   }, (geo, color, piece) => put(geo, color, piece, 0.025));
+  // (the looks lane, 2026-10-14: "a plain clad box") a barred window in a deep surround on each side with its sill, a
+  // hood over the vents on two brackets
+  for (const side of [-1, 1] as const) {
+    const f = onFace('x', side, w / 2);
+    put(markWorldAperture(f(1.0, 0.8, 0.04, -1.2, 2.5, 0.06), [side, 0, 0]), 0x3c4a50, 'hut-windows', 0.02);
+    for (const s of [-1, 1]) put(f(0.1, 1.0, 0.14, -1.2 + s * 0.55, 2.5, 0.07), p[2], 'hut-windows', 0.02);
+    for (const s of [-1, 1]) put(f(1.2, 0.1, 0.14, -1.2, 2.5 + s * 0.45, 0.07), p[2], 'hut-windows', 0.02);
+    put(f(1.3, 0.07, 0.24, -1.2, 1.97, 0.12), RELAY_CONCRETE, 'hut-windows', 0.02);
+    for (let k = 0; k < 4; k++) put(f(0.025, 0.8, 0.025, -1.575 + k * 0.25, 2.5, 0.12), 0x2a2d30, 'hut-windows', 0.02);
+  }
+  put(pitchSkillionRoof(slab(5.4, 0.06, 0.55), 'z', 1, 0.15).translate(0, 3.05, d / 2 + 0.275), p[1], 'hut-hood', 0.03);
+  for (const x of [-2.6, 2.55]) put(bar([x, 2.7, d / 2 + 0.01], [x, 2.99, d / 2 + 0.48], 0.05, 0.05), p[2], 'hut-hood', 0.02);
   const geometry = mergeConnectedStructure('relaystation', out);
   geometry.userData.fracture = relayFractureHooks(out, pieces);
   return geometry;
@@ -2445,6 +2701,7 @@ function relayFractureHooks(parts: readonly THREE.BufferGeometry[], pieces: read
   const links: Array<[string, string, 'rest' | 'bolt' | 'cast' | 'weld']> = [
     ['hut-walls', 'hut-plinth', 'bolt'], ['hut-vents', 'hut-walls', 'bolt'], ['hut-door', 'hut-walls', 'bolt'],
     ['hut-roof', 'hut-walls', 'bolt'], ['hut-cable', 'hut-roof', 'bolt'], ['mast-pad', 'hut-roof', 'cast'],
+    ['hut-windows', 'hut-walls', 'bolt'], ['hut-hood', 'hut-walls', 'bolt'],
     ['mast-base', 'mast-pad', 'bolt'],
   ];
   const sections = runs.filter((run) => run.piece.startsWith('mast-section-')).length;
@@ -2673,11 +2930,11 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   // (the looks lane, 2026-10-13: the old builder's draws spent, the post built member by member on its own stream)
   guardpost: lightMeta('guardpost', 'military', 2.02, 1.98, 4.1, PAL.steel, (rng) => { makeGuardPost(rng).dispose(); return makeGuardPostCraft(kindStream('guardpost')); }, 'metal'),
   motorpool: lightMeta('motorpool', 'military', 4.91, 6.18, 4.2, PAL.steel, (rng) => { makeMotorPool(rng).dispose(); return makeMotorPoolCraft(kindStream('motorpool')); }, 'metal'),
-  quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, makeQuonsetHut, 'metal', makeQuonsetHutBroken),
+  quonsethut: lightMeta('quonsethut', 'industrial', 3.49, 5.86, 4.0, PAL.steel, (rng) => { makeQuonsetHut(rng).dispose(); return makeQuonsetHutCraft(kindStream('quonsethut')); }, 'metal', makeQuonsetHutBroken),
   transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, (rng) => { makeTransformerShed(rng).dispose(); return makeTransformerShedCraft(kindStream('transformershed')); }, 'metal'),
   checkpointhut: lightMeta('checkpointhut', 'military', 2.40, 3.7, 3.3, PAL.steel, (rng) => { makeCheckpointHut(rng).dispose(); return makeCheckpointHutCraft(kindStream('checkpointhut')); }, 'metal'),
-  securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, makeSecurityOffice, 'metal'),
-  servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
+  securityoffice: lightMeta('securityoffice', 'urban', 3.95, 5.1, 5.2, PAL.urbanSteel, (rng) => { makeSecurityOffice(rng).dispose(); return makeSecurityOfficeCraft(kindStream('securityoffice')); }, 'metal'),
+  servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, (rng) => { makeServiceGarage(rng).dispose(); return makeServiceGarageCraft(kindStream('servicegarage')); }, 'metal'),
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal', makeRelayStationBroken),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
   // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
