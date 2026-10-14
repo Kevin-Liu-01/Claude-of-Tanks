@@ -119,6 +119,8 @@ interface DestructibleBuildingType {
   build: LightStructureBuilder;
   instanceTintStrength: number;
   broken: LightStructureBuilder;
+  /** (E1) its broken builder is its own (lightMeta's brokenBuild): props never replace it with a fracture */
+  ownBroken?: true;
 }
 
 const _color = new THREE.Color();
@@ -2946,6 +2948,7 @@ function lightMeta(
     // (the facades lane, 2026-10-08) a structure with its own broken state (the Quonset's buckled arch, the greenhouse's
     // stripped ribs) keeps it; the rest the shared debris
     broken: brokenBuild ?? ((rng: Rng) => debris(base, pal, rng, debrisMaterial)),
+    ...(brokenBuild ? { ownBroken: true as const } : {}),
   };
 }
 
