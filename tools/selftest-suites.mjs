@@ -950,6 +950,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
+    // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
+    'tools/studio-snow-contact.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
     'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule

@@ -4,7 +4,7 @@
 // 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], amb: number[],
+ * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
@@ -57,6 +57,8 @@ void main() {
   // (2026-10-08) the runs as drawn, eight knots a side; zero (the rest pose) when the case packs none
   gl.uniform4fv(at('uVehGroundR'), new Float32Array(input.runs ?? new Array(input.solids.length).fill(0)));
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
+  // (2026-10-14) the snow weight: the joint cap and the crease's core (0 when the case packs none)
+  gl.uniform1f(at('uVehGroundSnow'), input.snow ?? 0);
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));

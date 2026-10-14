@@ -84,10 +84,12 @@ export async function vehicleGroundGlslCases() {
     const knots = u.uVehGroundR.value.flatMap((v) => v.toArray());
     packedRuns = { left: knots.slice(0, 8), right: knots.slice(8, 16) };
     return { hullCount: u.uVehGround.value, rows: u.uVehGroundM.value.flatMap((v) => v.toArray()),
-      solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray() };
+      solids: u.uVehGroundB.value.flatMap((v) => v.toArray()), runs: knots, light: u.uVehGroundLight.value.toArray(),
+      snow: u.uVehGroundSnow.value };
   };
-  // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX)
-  const shown = (occ) => { const c = Math.min(occ, M.GROUND_AO_OCC_MAX); return c > 0.003 ? c : 0; };
+  // the block skips a pixel it barely touches; the hulls' joint share is capped (round 3: GROUND_AO_OCC_MAX; on snow,
+  // 2026-10-14, GROUND_AO_OCC_MAX_SNOW by the snow weight, which the combine applies with the crease's core)
+  const shown = (occ, snowWeight = 0) => { const c = Math.min(occ, M.groundAoOccMax(snowWeight)); return c > 0.003 ? c : 0; };
   const base = { amb: [1, 1, 0, 0], fillDir: [0, 1, 0], sunDir: [0, 1, 0], points: receivers.map((r) => r[1]), normals: receivers.map((r) => r[2]),
     // the scene target's alpha: a card (no sun state) under 1.5, a lit pixel's 2 + its sun visibility
     alphas: receivers.map((r) => (r[3] ? 1 : 2.5)) };
@@ -111,14 +113,17 @@ export async function vehicleGroundGlslCases() {
       * (card ? cardShare(vec(p)) : 1)),
   };
   const kSun = 0.65, snow = M.vehicleGroundStrengths(0.8, kSun, M.GROUND_AO_HULL_ALBEDO, M.GROUND_AO_BELLY_VIEW);
+  const snowInput = pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO), w = snowInput.snow;
   const sunlit = {
-    name: 'snow under a sun, a second hull 6 m to the right',
-    input: { ...base, ...pack([rootAt(0), rootAt(6)], 0.8, M.GROUND_AO_HULL_ALBEDO), sunLum: kSun },
+    name: 'snow under a sun, a second hull 6 m to the right (2026-10-14: the snow cap and the crease\'s core)',
+    input: { ...base, ...snowInput, sunLum: kSun },
     expected: receivers.map(([, p, nrm, card]) => {
+      const q1 = { x: p[0] - 6, y: p[1], z: p[2] };
       const occ = M.combineVehicleGroundOcclusion([
         M.vehicleGroundOcclusionLocal(vec(p), vec(nrm), T90M, snow, card),
-        M.vehicleGroundOcclusionLocal({ x: p[0] - 6, y: p[1], z: p[2] }, vec(nrm), T90M, snow, card)], 0);
-      return shown(occ) * (card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)));
+        M.vehicleGroundOcclusionLocal(q1, vec(nrm), T90M, snow, card)], 0, w,
+      [M.snowCreaseOcclusion(vec(p), T90M, w, card), M.snowCreaseOcclusion(q1, T90M, w, card)]);
+      return shown(occ, w) * (card ? cardShare(vec(p)) : 1 / (1 + kSun * Math.max(nrm[1], 0)));
     }),
   };
   // the gear's (z, travel) pairs a side, hull-local: the right run climbing from its rear to 9 cm up at its front wheel,
