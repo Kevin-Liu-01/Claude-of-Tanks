@@ -53,6 +53,7 @@ function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
   return new Function(...Object.keys(dependencies), `return (${stripTypeScriptTypes(`
     function* build(heightField, cfg, mobileTier, overrideTrees) {
+      const lightDesk = false; // (Ultra Low, 2026-10-13) the light-world vegetation is a desktop preset's; the default here
       const seed = 2001, TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290;
       // trees round 5: the field law's constants (vegetation.ts module scope), read from the source
       const FIELD_TREE_LAW = ${/const FIELD_TREE_LAW = (true|false);/.exec(source)[1]};

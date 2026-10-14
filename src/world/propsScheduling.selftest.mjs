@@ -185,6 +185,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       // prefetch, supplied to the terrain build through the ring's hook: none here
       worldBuildConfig: () => ({ id: 'urban', splat: {} }), getDeviceTier: () => 'desktop',
       startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
+      // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland instead of the ring; Urban keeps the ring
+      selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
