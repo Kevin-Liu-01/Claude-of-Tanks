@@ -1826,9 +1826,14 @@ function bodyContactSupport(
   const towardX = samples.worldX - worldX, towardZ = samples.worldZ - worldZ;
   const reach = Math.sqrt(towardX * towardX + towardZ * towardZ);
   const pointY = samples.worldY + rolledY * samples.cosNegPitch - localZ * samples.sinNegPitch;
+  // (physics stream F6, 2026-10-14) all the way back to the root: a hull that tipped off a roof's edge with its tail in
+  // the building's footprint, 4 m under the roof, read the roof under its tail as a floor (the face is more than
+  // BODY_FACE_BACK_M back from a point that deep in), and was lifted up the wall at 9 m/s onto the roof it fell from
   if (reach > BODY_FACE_BACK_M && ground - pointY > FACE_DEPTH_M) {
-    const back = hAt(worldX + towardX / reach * BODY_FACE_BACK_M, worldZ + towardZ / reach * BODY_FACE_BACK_M);
-    if (ground - back > WALL_GRADE_FULL * BODY_FACE_BACK_M) return -Infinity;
+    for (let back = BODY_FACE_BACK_M; back < reach; back += BODY_FACE_BACK_M) {
+      const there = hAt(worldX + towardX / reach * back, worldZ + towardZ / reach * back);
+      if (ground - there > WALL_GRADE_FULL * back) return -Infinity;
+    }
   }
   const deficit = ground - (rolledY * samples.cosNegPitch - localZ * samples.sinNegPitch);
   if (deficit > _guardHit.deficit) {
