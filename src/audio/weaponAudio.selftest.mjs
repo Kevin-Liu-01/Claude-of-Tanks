@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { WEAPON_CLASSES, resolveReloadCuePlan, resolveWeaponReport, weaponClassForCaliber } from './weaponAudio.ts';
+import {
+  LAUNCH_ASSET, WEAPON_CLASSES, isLaunchProfile, missileLaunchFor, resolveReloadCuePlan, resolveWeaponReport, weaponClassForCaliber,
+  weaponReportAssets,
+} from './weaponAudio.ts';
 
 // Bore classes across the fleet's calibres.
 const bores = [
@@ -31,6 +34,22 @@ assert.equal(resolveWeaponReport(140, 'konkurs-launch').cls.id, 'atgm', 'launche
 assert.equal(resolveWeaponReport(220, 'konkurs-launch').cls.id, 'rocket_heavy', 'TOS-1A salvo');
 assert.equal(resolveWeaponReport(120, null).cls.id, 'gun_120');
 assert.equal(resolveWeaponReport(100, 'bmp3-100mm').gainDb < 0, true, 'the low-pressure 2A70 is softer');
+
+// Missiles leave their launchers as their families do (2026-10-13): by the round's name, then its launch profile.
+assert.equal(missileLaunchFor('BGM-71 TOW-2A', 'tow-launch'), 'tube');
+assert.equal(missileLaunchFor('Spike LR2', 'spike-launch'), 'soft');
+assert.equal(missileLaunchFor('Kornet-EM', 'konkurs-launch'), 'tube', 'a beam rider leaves a tube');
+assert.equal(missileLaunchFor('9M117M1 Arkan', 'arkan-launch'), 'gun', 'a gun-launched round');
+assert.equal(missileLaunchFor('MGM-51C Shillelagh', 'shillelagh-launch'), 'gun');
+assert.equal(missileLaunchFor('HJ-10', 'konkurs-launch'), 'rail', 'the HJ-10 is a rail missile, whatever its profile');
+assert.equal(missileLaunchFor('Viper micro-missile', 'konkurs-launch'), 'rail');
+assert.equal(missileLaunchFor('FIM-92 Stinger', null), 'soft');
+assert.equal(missileLaunchFor(null, 'spike-launch'), 'soft', 'no name: the launch profile');
+assert.equal(missileLaunchFor(null, null), 'tube', 'neither: the commonest launch');
+assert.equal(weaponReportAssets(152, 'spike-launch', 'Spike ER2').close, LAUNCH_ASSET.soft);
+assert.equal(weaponReportAssets(120, null).close, 'gun_120_close');
+assert.equal(weaponReportAssets(152, 'tow-launch', 'TOW-2B').far, 'launch_far', 'a launch carries as a launch');
+assert.ok(isLaunchProfile('konkurs-launch') && !isLaunchProfile('2a42') && !isLaunchProfile(null));
 
 // Reload choreography.
 assert.equal(resolveReloadCuePlan(0.3, 'shell', 30).profile, 'rapid', 'per-shot autocannon cycles have no cues');

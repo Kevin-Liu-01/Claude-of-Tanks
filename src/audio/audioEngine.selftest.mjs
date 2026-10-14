@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
-import { emitTurretLanding } from '../fx/clock.ts';
+import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -74,6 +75,23 @@ assert.equal(byId.far?.lod, 'far', 'a 700 m tank keeps one engine band');
 assert.equal(probe.crewLanguage, 'ru', 'a Russian hull carries a Russian crew');
 assert.ok(fetched.some((p) => p.startsWith('audio/voice/ru/')), 'the national pack loads');
 assert.equal(probe.ambientState().bed, 'amb_urban', 'Steinburg plays its ruined-town scene');
+
+// V7 (2026-10-13): a hull wearing a field net (its visual's meshes marked userData.fieldSuit) rustles as it moves, by
+// speed; a bare hull and a parked suited one do not.
+{
+  const suit = { root: { traverse: (fn) => { fn({ userData: {} }); fn({ userData: { fieldSuit: true } }); } } };
+  const bare = { root: { traverse: (fn) => fn({ userData: {} }) } };
+  const netted = { ...tank('netted', { x: 20, z: 30, specId: 'cv90', nation: 'Sweden', speed: 8, throttle: 1 }), visual: suit };
+  const parked = { ...tank('parked', { x: -20, z: 30, specId: 'cv90', nation: 'Sweden' }), visual: suit };
+  const plain = { ...tank('plain', { x: 25, z: 25, specId: 'leo2a6', nation: 'Germany', speed: 8, throttle: 1 }), visual: bare };
+  const withNets = [...tanks, netted, parked, plain];
+  for (let i = 0; i < 30; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, withNets); }
+  const rigs = Object.fromEntries(probe.engineState().map((e) => [e.id, e]));
+  assert.ok(rigs.netted?.net > 0.2, `a netted hull moving at 8 m/s rustles (${rigs.netted?.net})`);
+  assert.equal(rigs.parked?.net ?? 0, 0, 'a parked netted hull is quiet');
+  assert.equal(rigs.plain?.net ?? 0, 0, 'a bare hull has no net');
+  for (let i = 0; i < 4; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, tanks); }
+}
 
 // HDR baseline: a rifle round into the dirt ten metres away, before any gun has fired.
 let since = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
@@ -212,6 +230,46 @@ names = logSince(since).map((e) => e.n);
 for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'blast_sub']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
 assert.equal(names.filter((n) => n === 'turret_land').length, 1, 'the hard landing is heard, the settling bump is not');
 assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
+// B7 (2026-10-13): a collapse's rubble lands where its bodies hit: heavy pieces thud, light or slow ones do not, and a
+// heap's burst of landings is thinned to one per 0.15 s
+{
+  const rubbleSince = mark();
+  ctx.advance(1);
+  emitDebrisLanding(20, 0, 40, 6, 120);
+  emitDebrisLanding(21, 0, 41, 7, 200);
+  emitDebrisLanding(22, 0, 42, 6, 8);
+  ctx.advance(0.3);
+  emitDebrisLanding(23, 0, 43, 1.5, 300);
+  emitDebrisLanding(24, 0, 44, 5, 60);
+  const thuds = logSince(rubbleSince).filter((e) => e.n === 'rubble_chunk_land').length;
+  assert.equal(thuds, 2, `heavy landings thud, thinned; a brick and a slow settle are silent (${thuds})`);
+}
+// P7 (2026-10-13): a burst's near miss on a parked car is its glass going and its body denting, not the car crushed
+{
+  const nearSince = mark();
+  ctx.advance(1);
+  bus.emit('prop:destroyed', { kind: 'sedan', pos: [15, 1, 20], cause: 'blast', nearMiss: 0.8 });
+  bus.emit('prop:destroyed', { kind: 'van', pos: [17, 1, 21], cause: 'blast', nearMiss: 0.5 });
+  const near = logSince(nearSince).map((e) => e.n);
+  assert.ok(near.includes('glass_shatter') && near.includes('hit_metal'), `a near miss: glass and dent (${near})`);
+  assert.ok(!near.includes('car_crush'), 'a near miss does not crush the car');
+  assert.equal(near.filter((n) => n === 'glass_shatter').length, 1, 'one shell\'s near miss on two cars is one sound');
+  // Multiplayer: the near miss is client-derived from a detonation this viewer already presents, never a server event.
+  // nearMiss is raised only in props.ts blastNear, which runs only from destructibles.notifyBlast, which fx/effects.ts
+  // calls only on munition:blast; in a network battle battlePresentation raises that only from shell_impact, shell_hit
+  // and tank_destroyed, which the authority's canObserveEvent hands a viewer only when it may see the shooter, target or
+  // hull. Nothing of it is on the wire, so a parked car's glass cannot place a hidden enemy's round.
+  const src = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const tree = (dir) => readdirSync(new URL(dir, import.meta.url), { recursive: true }).filter((f) => /\.(ts|mjs)$/.test(f) && !/selftest/.test(f))
+    .map((f) => src(`${dir}${f}`)).join('\n');
+  const props = src('../world/props.ts');
+  const blastNearBody = props.slice(props.indexOf('function blastNear('), props.indexOf('const registerDestructibles'));
+  assert.ok(
+    (props.match(/nearMiss:/g) || []).length === 1 && blastNearBody.includes('nearMiss:')
+      && (src('../fx/effects.ts').match(/notifyBlast\(/g) || []).length === 1 && /DESTRUCTION_BUS_EVENTS\.blast[\s\S]{0,1200}notifyBlast\(/.test(src('../fx/effects.ts'))
+      && !/nearMiss/.test(tree('../mp/') + tree('../sim/') + tree('../../server/')),
+    'a near miss is raised only by blastNear from a presented munition:blast, and nothing named nearMiss rides the wire or the authority');
+}
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);

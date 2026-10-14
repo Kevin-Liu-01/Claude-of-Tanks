@@ -51,7 +51,7 @@ function clippedRun(file) {
 const PUNCHY = new Set(['weapon-close', 'gunshot', 'punch', 'sub', 'impact', 'foley', 'ui', 'radio']);
 // Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
 // Loading machinery is judged on weight plus a clean steel transient: dark, but not dull.
-const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact', 'sub']);
+const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact', 'sub', 'debris']);
 const DARK_GROUPS = new Set(['ui', 'stingers', 'equipment', 'edge']);
 const MECHANICAL = new Set(['mechanism']);
 /** Groups whose takes may pause between events: animal calls and distant spot sounds, beds, stings. */

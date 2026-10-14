@@ -1410,8 +1410,8 @@ const audio = await bootStage('audio', () => {
   getObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null),
-  // The churches, belfries and campanile the bells ring from (read when a toll falls due, once per scene).
-  getLandmarks: () => currentWorld()?.getMinimapFeatures().buildings ?? null });
+  // The world: the churches, belfries and campanile the bells ring from, and what each structure is built of.
+  getWorld: currentWorld });
   a.bindBus(bus);
   return a;
 });

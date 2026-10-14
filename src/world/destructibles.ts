@@ -35,6 +35,9 @@ export interface DestroyedPropEvent {
   cause: 'ram' | 'shell' | 'blast';
   /** A loose prop (a drum, a bucket, a bin) knocked about, not destroyed: the audio layer plays its knock (2026-10-06). */
   loose?: boolean;
+  /** A map vehicle's near miss (props.ts blastNear: dented, its glass blown, shoved), not destroyed: its strength 0..1;
+   *  the audio layer plays the glass and the dent (2026-10-13, P7). */
+  nearMiss?: number;
 }
 
 interface ShellImpactOptions {

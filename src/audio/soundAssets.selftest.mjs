@@ -7,6 +7,7 @@ import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
+import { LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR } from './weaponAudio.ts';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -28,7 +29,10 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
   }
   assert.ok(rec.r === 24000 || rec.r === 48000, `${id}: decode rate`);
 }
-assert.ok(bytes < 20 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 20 MB`);
+// 20 MB until 2026-10-13; the owner asked for many more sounds (AUD-25, "the more the better"), so the cap rose to
+// 28 MB for the destruction, ambience and impact rounds. Files load per battle (the battle set) or on first use, never
+// at boot; the long debris and spot sounds ship at 48-56 kbps mono to keep the rise small.
+assert.ok(bytes < 28 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 28 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');
@@ -40,10 +44,9 @@ for (const source of [engine, rig, radio]) for (const m of source.matchAll(liter
 for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MODE_SET|RADIO_SET) = \[([\s\S]*?)\];/g)) {
   for (const m of block[1].matchAll(/'([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
-for (const block of engine.matchAll(/const WEAPON_(?:CLOSE|FAR)[^=]*= Object\.freeze\(\{([\s\S]*?)\}\);/g)) {
-  for (const m of block[1].matchAll(/: '([a-z0-9_]+)'/g)) referenced.add(m[1]);
-}
-for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
+// the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
+for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
+for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
   'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);

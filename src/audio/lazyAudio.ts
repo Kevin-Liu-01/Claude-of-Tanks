@@ -13,13 +13,15 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
-import type { AudioLandmark, AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
+import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe, AudioWorld } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
   prepareAudioBuffers?(context: AudioContext): Promise<unknown>;
+  /** Decode the interface's press sounds with no device (boot idle), so the first click finds them ready. */
+  prepareInterfaceSounds?(): Promise<void>;
   createAudio(options: {
     context: AudioContext | null;
     preparedBuffers?: unknown;
@@ -28,6 +30,8 @@ interface AudioMixerModule {
     getObjectiveTeam?: () => string | null;
     getTerrain?: () => AudioTerrainProbe | null;
     getLandmarks?: () => readonly AudioLandmark[] | null;
+    getStructureMakeup?: (structureId: number) => AudioStructureMakeup | null;
+    getWorld?: () => AudioWorld | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -41,6 +45,10 @@ interface LazyAudioOptions {
   getTerrain?(): AudioTerrainProbe | null;
   /** The battlefield's buildings and set pieces (the bells ring from its churches, belfries and campanile). */
   getLandmarks?(): readonly AudioLandmark[] | null;
+  /** What a structure is made of (the world's damage anatomy): a building breaks as its walls are built. */
+  getStructureMakeup?(structureId: number): AudioStructureMakeup | null;
+  /** The battlefield (its landmarks and structures), read by the mixer where a narrower getter is not given. */
+  getWorld?(): AudioWorld | null;
   hasStickyActivation?(): boolean;
 }
 
@@ -74,11 +82,6 @@ function storedMasterVolume(): number {
 }
 
 export function createLazyAudio({
-  getMapId,
-  getGameMode,
-  getObjectiveTeam,
-  getTerrain,
-  getLandmarks,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
@@ -90,6 +93,8 @@ export function createLazyAudio({
     const AC = scope.AudioContext || scope.webkitAudioContext;
     return AC ? new AC({ latencyHint: 'interactive' }) : null;
   },
+  // the world and game getters (map, mode, objective side, terrain, the world), handed to the mixer
+  ...world
 }: LazyAudioOptions = {}): LazyAudio {
   let context: AudioContext | null = null;
   let real: AudioMixer | null = null;
@@ -166,7 +171,7 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getObjectiveTeam, getTerrain, getLandmarks, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ ...world, context, preparedBuffers, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -249,6 +254,9 @@ export function createLazyAudio({
         };
         document.addEventListener('pointerdown', onGesture, true);
         document.addEventListener('keydown', onGesture, true);
+        // Boot idle after the first frame (AU.07, 2026-10-13): the mixer module and the interface's press sounds, decoded
+        // with no device, so the first press anywhere is neither silent nor late.
+        void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));
       }
     },
     update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {

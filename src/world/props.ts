@@ -11542,6 +11542,8 @@ ${snowCap ? `
         const d = Math.max(0, Math.hypot(rec.x - x, rec.z - z) - rec.r * 0.6);
         const strength = Math.pow(Math.max(0, 1 - d / reach), 1.2);
         if (strength > 0.05) crushPress.blast(idx, x, y, z, strength);
+        // (the audio stream, P7) a real near miss is heard: the glass going and the body denting (audioEngine onProp)
+        if (strength > 0.3) emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y + 0.5 * rec.h, rec.z], cause: 'blast', nearMiss: strength });
       }
     }
   }
