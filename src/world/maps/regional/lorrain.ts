@@ -293,7 +293,14 @@ function maison(ctx: RegionalBuildContext, opts: HouseOpts): RegionalParts {
       if (opts.fascia) {
         // the café's or shop's painted fascia board over its front, a lantern by the door
         faceBox(sink, 'structureWood', f, 0, frame.floors[1] - 0.32, 0.06, F * 0.62, 0.42, 0.06, { colour: opts.fascia, decor: true });
-        if (look() < 0.8) wallLantern(sink, f, -F * 0.34, 2.5);
+        // (building-integrity: the lantern by the door hung over the shop window's opening, 13 cm off any wall: it goes
+        // where the front is solid at its height)
+        if (look() < 0.8) {
+          const solid = (u: number): boolean => !openings.some((o) => o.face === 'left' && o.storey === 0 && Math.abs(u - o.u) < o.w / 2 + 0.35
+            && 2.5 > o.y0 - 0.4 && 2.5 < o.y0 + o.h + 0.6);
+          const at = [-F * 0.34, F * 0.34, -F * 0.45, F * 0.45, -F * 0.2, F * 0.2].find(solid);
+          if (at !== undefined) wallLantern(sink, f, at, 2.5);
+        }
       }
       // the woodpile against the front by the barn and the bench under the dwelling's window (dressing)
       const cart = opts.bays.indexOf('cart');
