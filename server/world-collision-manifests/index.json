@@ -103,11 +103,11 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1845209,
-      "sha256": "d4733a8a0d923582a92c19994c9d0e6ea1cf4d582f6866df7a4ac4d91af6b070",
-      "obstacles": 2519,
-      "colliders": 2394,
-      "concealers": 1080
+      "bytes": 1840729,
+      "sha256": "1338e9be8a9700947c4aeeb27e5c08b46884e6287331012732d6c7206ee1ca4a",
+      "obstacles": 2476,
+      "colliders": 2351,
+      "concealers": 1035
     },
     "foundry": {
       "bytes": 2079819,
@@ -337,11 +337,11 @@
         "concealers": 1139
       },
       "caldera": {
-        "bytes": 2028849,
-        "sha256": "6e0b2a3c5c27b4147a8b41578186abacc30ad1d0a4efe55cf1caba8b86ee2fe1",
-        "obstacles": 2642,
-        "colliders": 2446,
-        "concealers": 1080
+        "bytes": 1997512,
+        "sha256": "8eaf190cc1271423ce3931f7c2e297c435cec3b31478c9831f768f7921377bd2",
+        "obstacles": 2577,
+        "colliders": 2380,
+        "concealers": 1035
       },
       "foundry": {
         "bytes": 2079819,
