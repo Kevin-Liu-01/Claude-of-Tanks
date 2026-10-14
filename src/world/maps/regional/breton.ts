@@ -571,6 +571,75 @@ const halles: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * (the looks lane, 2026-10-13; LOOKS-BRIEF section 6: Saltmere Bay's net yards drawn by the generic builder) the net yard
+ * of a Breton harbour (Le Guilvinec's, Saint-Guénolé's): the granite net loft under its slate roof, its plank door in the
+ * boat's paint; the drying poles in two rows, their crossbars hung with the bark-tanned nets and the blue ones, the cork
+ * floats along their head ropes; the lobster pots (casiers) of willow stacked by the loft, a pair of buoys.
+ */
+const netYard: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = { ...stateFor(ctx), wall: 'stone' as RegionalBucket };
+  const rng = st.rng, bb = ctx.bounds;
+  const W = bb.maxX - bb.minX, D = bb.maxZ - bb.minZ;
+  // the net loft against the plot's back corner
+  const LW = Math.min(3.4, W * 0.38), LD = Math.min(3.0, D * 0.45);
+  sink.placed(0, bb.minX + 0.3 + LW / 2, 0, bb.minZ + 0.3 + LD / 2, () => {
+    const frame = buildHouse(sink, {
+      w: LW, d: LD, plinth: null, storeys: [{ h: 2.3, wall: 'stone' }], roof: slate(46), gableBucket: 'stone',
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: -LW * 0.12, w: 0.95, y0: 0, h: 1.95 }],
+      chimneys: [], gutters: null, verge: null,
+    }, dialect({ ...st, litShare: 0 }));
+    gableParapets(sink, frame, 0, rng);
+  });
+  // the drying poles: two rows of three, crossbars at their heads, the nets hung over them
+  const tan = rgb(0x6e4a34), blue = rgb(0x3e6a86), pole = rgb(0x5c5246), cork = rgb(0xb59a6e);
+  const x0 = bb.minX + LW + 1.1, x1 = bb.maxX - 0.6;
+  for (let row = 0; row < 2; row++) {
+    const z = bb.minZ + 1.0 + row * (D - 2.2) * 0.55 + (row ? 0.6 : 0);
+    const net = row === 0 ? tan : blue;
+    for (let k = 0; k < 3; k++) {
+      const x = x0 + k * (x1 - x0) / 2;
+      sink.span('structureWood', x - 0.07, -0.3, z - 0.07, x + 0.07, 2.6, z + 0.07, { colour: pole });
+      sink.span('structureWood', x - 0.06, 2.45, z - 0.5, x + 0.06, 2.55, z + 0.5, { colour: pole, decor: true });
+    }
+    sink.span('structureWood', x0 - 0.1, 2.55, z - 0.04, x1 + 0.1, 2.62, z + 0.04, { colour: pole, decor: true });
+    // the net over the rail: two falls either side, sagging between the poles, frayed at the foot
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 2; k++) {
+        const xa = x0 + k * (x1 - x0) / 2 + 0.1, xb = x0 + (k + 1) * (x1 - x0) / 2 - 0.1, sag = 0.12 + rng() * 0.12;
+        const foot = 0.3 + rng() * 0.35, out = side * (0.06 + rng() * 0.05);
+        const a: Vec3 = [xa, 2.55, z + side * 0.05], b: Vec3 = [xb, 2.55, z + side * 0.05];
+        const c: Vec3 = [xb, foot, z + out * 3.5], d: Vec3 = [xa, foot + 0.1, z + out * 3.5];
+        const m1: Vec3 = [(xa + xb) / 2, 2.55 - sag, z + side * 0.08];
+        const mf: Vec3 = [(xa + xb) / 2, foot - 0.05, z + out * 3.8];
+        // (each fall's face turned out from the rail: the far side's quads wound the other way)
+        const q1: Vec3[] = side < 0 ? [a, m1, mf, d] : [d, mf, m1, a], q2: Vec3[] = side < 0 ? [m1, b, c, mf] : [mf, c, b, m1];
+        const tone1 = shade(net, 0.92 + rng() * 0.12), tone2 = shade(net, 0.92 + rng() * 0.12);
+        sink.quad('structureWood', q1[0], q1[1], q1[2], q1[3], { colour: tone1, decor: true });
+        sink.quad('structureWood', q2[0], q2[1], q2[2], q2[3], { colour: tone2, decor: true });
+        // the mesh's inner face, a centimetre in toward the rail (seen between the falls), wound back
+        const inward = (v: Vec3): Vec3 => [v[0], v[1], v[2] - side * 0.012];
+        sink.quad('structureWood', inward(q1[3]), inward(q1[2]), inward(q1[1]), inward(q1[0]), { colour: shade(tone1, 0.8), decor: true });
+        sink.quad('structureWood', inward(q2[3]), inward(q2[2]), inward(q2[1]), inward(q2[0]), { colour: shade(tone2, 0.8), decor: true });
+      }
+    }
+    // the cork floats along the head rope
+    for (let x = x0 + 0.3; x < x1 - 0.2; x += 0.42) sink.span('structureWood', x - 0.06, 2.42, z - 0.1, x + 0.06, 2.5, z + 0.1, { colour: cork, decor: true });
+  }
+  // the lobster pots of willow stacked by the loft's door, two buoys
+  const willow = rgb(0x8a7550);
+  for (let k = 0; k < 6; k++) {
+    const px = bb.minX + 0.5 + (k % 3) * 0.75, pz = bb.minZ + LD + 0.9 + Math.floor(k / 3) * 0.02, py = Math.floor(k / 3) * 0.48;
+    sink.cylinder('structureWood', [px, py, pz - 0.3], 'z', 0.6, 0.3, 8, { colour: shade(willow, 0.9 + rng() * 0.2) }, 0.3, true, 0, Math.PI);
+    sink.span('structureWood', px - 0.3, py, pz - 0.3, px + 0.3, py + 0.04, pz + 0.3, { colour: shade(willow, 0.8), decor: true });
+  }
+  for (const [bx, bz, col] of [[bb.maxX - 1.0, bb.maxZ - 0.8, rgb(0xb8452e)], [bb.maxX - 1.6, bb.maxZ - 0.6, rgb(0xd8c8a0)]] as const) {
+    sink.cylinder('structureWood', [bx, 0, bz], 'y', 0.5, 0.24, 10, { colour: col, decor: true }, 0.18);
+  }
+  return sink.finish();
+};
+
 export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
@@ -580,6 +649,8 @@ export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   fishery: cannery,
   // the base market plot: the generic canvas stall becomes the covered market
   market: halles,
+  // (the looks lane, 2026-10-13) the harbour's net yards
+  netyard: netYard,
 });
 
 export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

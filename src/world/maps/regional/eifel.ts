@@ -104,10 +104,57 @@ const stoneHall: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * (the looks lane, 2026-10-13; LOOKS-BRIEF section 6: Highland Reservoir's water tower drawn by the generic builder) the
+ * waterworks' tower of the Rur and Urft dams' villages (a Wasserturm of about 1905): an octagonal shaft of greywacke
+ * rubble on a battered plinth with dressed quoins at its angles, its door and its stair slits; a corbel table under the
+ * tank house, hung with Moselle slate; the conical slate cap with its lantern and finial.
+ */
+const waterTower: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const half = Math.min(ctx.info.w, ctx.info.d) / 2;
+  const R = Math.max(1.7, Math.min(2.4, half - 0.8)), H = 10.5, ph = Math.PI / 8;
+  sink.cylinder('stone', [0, -0.4, 0], 'y', 1.2, R + 0.35, 8, {}, R + 0.18, true, ph);
+  sink.cylinder('stone', [0, 0.8, 0], 'y', H - 0.8, R, 8, {}, R * 0.92, true, ph);
+  // the dressed quoins at the shaft's angles (the stone a shade lighter: the dressing render)
+  for (let k = 0; k < 8; k++) {
+    const a = ph + k * Math.PI / 4;
+    for (let y = 1.0, j = 0; y < H - 0.6; y += 0.6, j++) {
+      const rr = R * (1 - (y / H) * 0.08) + 0.02, l = j % 2 ? 0.22 : 0.36;
+      sink.span(DRESSING, Math.cos(a) * rr - l / 2, y, Math.sin(a) * rr - l / 2, Math.cos(a) * rr + l / 2, y + 0.5, Math.sin(a) * rr + l / 2, { decor: true });
+    }
+  }
+  // the corbel table and the tank house hung with slate, wider than the shaft
+  const T = Math.max(R + 0.45, Math.min(3.2, half - 0.3)), ty = H + 0.35, th = 3.4;
+  sink.cylinder('stone', [0, H - 0.1, 0], 'y', 0.45, R * 0.93, 8, { decor: true }, T * 0.98, true, ph);
+  sink.cylinder('roof', [0, ty, 0], 'y', th, T, 8, {}, T, true, ph);
+  for (let k = 0; k < 8; k++) {
+    const a = ph / 2 + k * Math.PI / 4 + ph / 2, f: Face = { origin: [Math.cos(a) * T * 0.93, 0, Math.sin(a) * T * 0.93], u: [-Math.sin(a), 0, Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
+    if (k % 2 === 0) windowUnit(sink, f, 0, ty + 1.2, 0.5, 0.9, { ...WINDOW, shutters: null, bars: 'cross' }, rng, 0.2);
+  }
+  // the conical cap, the lantern and its finial
+  sink.cylinder('roof', [0, ty + th, 0], 'y', 3.2, T + 0.25, 8, {}, 0.45, true, ph);
+  sink.cylinder('roof', [0, ty + th + 3.2, 0], 'y', 0.9, 0.42, 8, {}, 0.42, true, ph);
+  sink.cylinder('roof', [0, ty + th + 4.1, 0], 'y', 0.9, 0.55, 8, {}, 0.04, true, ph);
+  sink.cylinder('dark', [0, ty + th + 4.9, 0], 'y', 0.9, 0.03, 5, { decor: true });
+  // the door and its stair slits
+  const door: Face = { origin: [0, 0, R * Math.cos(ph) + 0.01], u: [1, 0, 0], out: [0, 0, 1], width: 1.4 };
+  doorUnit(sink, door, 0, 0.8, 1.05, 2.2, { leaf: rgb(0x3e4a42), frame: { bucket: DRESSING, width: 0.22, out: 0.07, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.8);
+  // (on the tapering shaft's face at their height)
+  for (const y of [4.0, 6.6]) {
+    const at = R * (1 - 0.08 * (y - 0.8) / (H - 0.8)) * Math.cos(ph);
+    faceBox(sink, 'dark', { ...door, origin: [0, 0, at] }, 0.2, y, 0.005, 0.14, 0.7, 0.02, { decor: true });
+  }
+  return sink.finish();
+};
+
 export const EIFEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   ...bindFachwerk(EIFEL_PALETTE, ['cottage', 'tavern', 'farmhouse', 'barn', 'granary', 'woodshed', 'depot', 'ruin', 'church', 'chapel', 'rangerlodge']),
   foundryoffice: companyOffice,
   warehouse: stoneHall,
+  // (the looks lane, 2026-10-13) the waterworks' tower
+  watertower: waterTower,
 });
 
 export const EIFEL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
