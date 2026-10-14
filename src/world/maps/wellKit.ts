@@ -341,31 +341,42 @@ function granite(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
 
 function desertWell(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   const m = meshFor(false, ctx), r = stream(0xde5e + (ctx.seed ?? 0));
-  // rough stones laid dry in three courses, each stone its own, a little irregular
-  for (let c = 0; c < (broken ? 2 : 3); c++) {
-    const n = 9 + c, y0 = -0.1 + c * 0.24;
+  // the stones in courses: standing, four dressed courses close-jointed and broken in bond under a coping of flat slabs
+  // (the lip, proud of the ring); thrown down, two courses of loose rough stones (the coordinator, 2026-10-14: the
+  // intact ring must not read as already broken)
+  for (let c = 0; c < (broken ? 2 : 4); c++) {
+    const n = broken ? 9 + c : 12, ch = broken ? 0.24 : 0.2, y0 = -0.1 + c * ch;
     for (let k = 0; k < n; k++) {
       if (broken && c === 1 && r() < 0.5) continue;
-      const a0 = (k + 0.08 + c * 0.5) / n * Math.PI * 2, a1 = (k + 0.92 + c * 0.5) / n * Math.PI * 2, am = (a0 + a1) / 2, rm = 0.82 + (r() - 0.5) * 0.06;
-      member(m, [Math.cos(a0) * rm, y0 + 0.12, Math.sin(a0) * rm], [Math.cos(a1) * rm, y0 + 0.12, Math.sin(a1) * rm], 0.34, 0.22 + r() * 0.04,
-        [Math.cos(am), 0, Math.sin(am)], [1, 1, 1], MASON, { chamfer: 0.04, shade: damp(ctx, 0.9 + r() * 0.15) });
+      const gap = broken ? 0.08 : 0.025, jit = broken ? 0.06 : 0;
+      const a0 = (k + gap + c * 0.5) / n * Math.PI * 2, a1 = (k + 1 - gap + c * 0.5) / n * Math.PI * 2, am = (a0 + a1) / 2, rm = 0.82 + (r() - 0.5) * jit;
+      member(m, [Math.cos(a0) * rm, y0 + ch / 2, Math.sin(a0) * rm], [Math.cos(a1) * rm, y0 + ch / 2, Math.sin(a1) * rm], 0.34, broken ? 0.22 + r() * 0.04 : ch - 0.012,
+        [Math.cos(am), 0, Math.sin(am)], [1, 1, 1], MASON, { chamfer: broken ? 0.04 : 0.015, shade: damp(ctx, broken ? 0.9 + r() * 0.15 : 0.96 + r() * 0.06) });
+    }
+  }
+  if (!broken) {
+    for (let k = 0; k < 10; k++) {
+      const a0 = (k + 0.015) / 10 * Math.PI * 2, a1 = (k + 0.985) / 10 * Math.PI * 2, am = (a0 + a1) / 2;
+      member(m, [Math.cos(a0) * 0.86, 0.75, Math.sin(a0) * 0.86], [Math.cos(a1) * 0.86, 0.75, Math.sin(a1) * 0.86], 0.48, 0.1,
+        [Math.cos(am), 0, Math.sin(am)], [1.06, 1.04, 1.0], MASON, { chamfer: 0.02, shade: damp(ctx, 1.02) });
     }
   }
   waterDisc(m, 0.62, 0.15, 10);
   const post = hexLin(0x6b5640);
   if (!broken) {
     for (const s of [-1, 1]) {
-      member(m, [s * 0.98, -0.2, 0], [s * 0.98, 1.85, 0], 0.13, 0.12, Z, post, FLAT, { chamfer: 0.02 });
-      for (const t of [-1, 1]) member(m, [s * 0.98, 1.75, 0], [s * 0.98 + t * 0.1, 2.05, 0], 0.06, 0.06, Z, post, FLAT);
+      // (the forked posts stand front and back of the lip, the trough's side kept clear)
+      member(m, [0, -0.2, s * 1.14], [0, 1.85, s * 1.14], 0.13, 0.12, X, post, FLAT, { chamfer: 0.02 });
+      for (const t of [-1, 1]) member(m, [0, 1.75, s * 1.14], [0, 2.05, s * 1.14 + t * 0.1], 0.06, 0.06, X, post, FLAT);
     }
-    member(m, [-1.1, 1.97, 0], [1.1, 1.97, 0], 0.1, 0.1, Y, mul(post, 0.9), FLAT);
+    member(m, [0, 1.97, -1.26], [0, 1.97, 1.26], 0.1, 0.1, Y, mul(post, 0.9), FLAT);
     for (let k = 0; k < 8; k++) {
       const a0 = k / 8 * Math.PI * 2, a1 = (k + 1) / 8 * Math.PI * 2;
-      member(m, [-0.04, 1.7 + Math.sin(a0) * 0.2, Math.cos(a0) * 0.2], [-0.04, 1.7 + Math.sin(a1) * 0.2, Math.cos(a1) * 0.2], 0.05, 0.05, X, mul(post, 0.8), FLAT);
+      member(m, [Math.cos(a0) * 0.2, 1.7 + Math.sin(a0) * 0.2, -0.04], [Math.cos(a1) * 0.2, 1.7 + Math.sin(a1) * 0.2, -0.04], 0.05, 0.05, Z, mul(post, 0.8), FLAT);
     }
-    member(m, [0, 1.9, 0], [0, 1.7, 0], 0.04, 0.04, Z, IRON, FLAT);
-    member(m, [0, 1.7, 0.2], [0, 0.85, 0.2], 0.014, 0.014, Z, ROPE, FLAT);
-    bucketFlat(m, [0, 0.52, 0.2]);
+    member(m, [0, 1.9, 0], [0, 1.7, 0], 0.04, 0.04, X, IRON, FLAT);
+    member(m, [0.2, 1.7, 0], [0.2, 0.85, 0], 0.014, 0.014, X, ROPE, FLAT);
+    bucketFlat(m, [0.2, 0.52, 0]);
   } else {
     member(m, [0.7, 0.08, 0.9], [2.1, 0.08, 1.5], 0.13, 0.12, Y, post, FLAT);
     member(m, [-0.6, 0.06, -1.0], [-0.9, 0.06, -2.3], 0.1, 0.1, Y, mul(post, 0.9), FLAT);
