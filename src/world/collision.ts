@@ -1934,6 +1934,29 @@ const _marchNormal: MutableVector3Like = {
   set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
 };
 const byMarchKey = (a: CollisionRecord, b: CollisionRecord): number => _marchKey.get(a)! - _marchKey.get(b)!;
+/** Where a ray enters a record's footprint box in plan (its xz slab; 0 from inside, Infinity when it misses it). */
+function footprintEntry(origin: Vector3Like, dir: Vector3Like, r: CollisionRecord): number {
+  let t0 = 0, t1 = Infinity;
+  if (Math.abs(dir.x) < 1e-12) {
+    if (origin.x < r.min[0] || origin.x > r.max[0]) return Infinity;
+  } else {
+    const inv = 1 / dir.x;
+    let a = (r.min[0] - origin.x) * inv, b = (r.max[0] - origin.x) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  if (Math.abs(dir.z) < 1e-12) {
+    if (origin.z < r.min[2] || origin.z > r.max[2]) return Infinity;
+  } else {
+    const inv = 1 / dir.z;
+    let a = (r.min[2] - origin.z) * inv, b = (r.max[2] - origin.z) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  return t0 <= t1 ? t0 : Infinity;
+}
 
 /**
  * nearestColliderHit over everything one broad-phase box around the whole ray finds — the world raycasts' prop phase
@@ -1993,6 +2016,22 @@ export function nearestColliderHitAlongRay(
     if (t1 >= maxDist || running <= t1) break;
     t0 = t1;
   }
+  // (physics stream, 2026-10-13, the MP stream's tick profile: the final pass judged every record the march found a second
+  // time, half the ray's narrow phase) no hit at all: the whole box meets nothing either
+  if (!(running < Infinity)) {
+    _marchFresh.length = 0;
+    return nearestColliderHit(_marchFresh, origin, dir, maxDist, outNormal, out);
+  }
+  // only a record whose footprint box the ray enters at or before the nearest hit can meet it as near (the point of a hit
+  // at t lies inside the record's box, so the box is entered at t or before); a structure with openings is judged as a
+  // whole and kept. The rest cannot change the winner, its normal or a tie's order.
+  let kept = 0;
+  const reachLimit = running + MARCH_PAD_M;
+  for (let i = 0; i < _marchUnion.length; i++) {
+    const r = _marchUnion[i];
+    if (r.openings || footprintEntry(origin, dir, r) <= reachLimit) _marchUnion[kept++] = r;
+  }
+  _marchUnion.length = kept;
   // the whole box's visitation order: the first cell of the record inside the box (z-major), then its cell slot
   const inv = order.inv;
   const cx0 = Math.floor(minX * inv), cz0 = Math.floor(minZ * inv);
