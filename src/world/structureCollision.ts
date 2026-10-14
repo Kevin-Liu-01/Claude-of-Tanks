@@ -789,10 +789,10 @@ function upwardFaces(solid: LocalSolid): UpFace[] {
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const length = Math.hypot(nx, ny, nz);
     if (length < 1e-9) continue;
+    // (either winding: an underside counts too, and lies under the top side wherever both cover a point — faceTopAt
+    // takes the higher, and no underside plane bounds the top from above, so none is chosen)
     if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
     if (ny < DECK_UP_NY * length) continue;
-    // keep a face only where it is the solid's top side (the upper of a slab's two horizontal faces): a face whose
-    // centroid has another face of the solid over it is an underside
     const a = -nx / ny, b = -nz / ny, c = t[1] - a * t[0] - b * t[2];
     faces.push({ tri: t, a, b, c });
   }
