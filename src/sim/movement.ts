@@ -4240,6 +4240,8 @@ function groundIsPlanar(count: number, innerCount: number): boolean {
   return !(crest > PLANAR_CREST_M * PLANAR_CREST_M * innerCount);
 }
 
+/** A hull whose carrying contacts span this share of its length is carried at both ends (contactAwareFit). */
+const BRIDGED_SPAN = 0.75;
 /** A hull this slow and turning this little stands at rest on its contacts (updateTerrainFitAndPerch's latch). */
 const REST_FIT_SPEED_MPS = 0.05;
 const REST_FIT_YAW_RATE = 0.02;
@@ -4380,7 +4382,14 @@ function contactAwareFit(
   // Ground that is one plane under the whole hull (a face it hangs over at one end, a slope it is turning onto) is the
   // plane it settles on, not an edge to tip over: a hull set level on a 48-degree face read the face's far end as a drop
   // and tipped onto it for a second instead of lying on it (impactPhysics' slide).
-  if (groundIsPlanar(samples.fitCount, samples.innerCount)) return FIT_ALL_LOADED;
+  // (physics stream F7, 2026-10-14) Not while the hull is carried at both ends with a body contact one of them
+  // (appendBodyContact; BRIDGED_SPAN of its length between the contacts that carry it): its tracks read the ground they
+  // hang over, the contact the top it rests on, and the plane is the line through the contacts that carry it (the fit
+  // below). Reservoir's roof edge: a T-90 leaning from the roof's edge (its tail guard)
+  // to the yard (its nose) read the yard's 9-degree plane under its tracks every third step, its pitch 0.85 rad off the
+  // lean, the perched spring kicked it nose-up at 3.5 rad/s into the roof's edge, and the strike threw it at 13 m/s.
+  const bridged = samples.bodyTop > samples.outerMax && zMax - zMin >= BRIDGED_SPAN * 2 * samples.halfLength;
+  if (!bridged && groundIsPlanar(samples.fitCount, samples.innerCount)) return FIT_ALL_LOADED;
   if (dropReturns(state, samples, top, zMax, zMin)) {
     // a drop the ground comes back up from (round 7): the plane lies on the samples the tracks can carry, within
     // their reach of the loaded line and fading to nothing at twice it, and the hull goes over the drop level until its
