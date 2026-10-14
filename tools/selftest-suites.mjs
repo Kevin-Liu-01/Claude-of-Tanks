@@ -1175,6 +1175,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionParity.selftest.mjs',
     // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
     'src/sim/fortifiedCover.selftest.mjs',
+    'src/sim/setPieceShellBreak.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',

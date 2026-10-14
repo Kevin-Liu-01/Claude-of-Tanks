@@ -472,6 +472,16 @@ export const DENSE_SET_PIECE_KINDS: ReadonlySet<string> = new Set([
   'setpiece_stz3', 'setpiece_bv206', 'setpiece_snocat', 'setpiece_an26', 'setpiece_d8h', 'setpiece_k2tram', 'setpiece_haulpak',
 ]);
 
+/** The smallest calibre (mm) that wrecks heavy plant where it stops: a gun or autocannon round does; a machine-gun
+ *  bullet (12.7 / 14.5 mm and below) stops on the steel and leaves the machine standing. */
+export const SET_PIECE_WRECK_MIN_CALIBER_MM = 20;
+
+/** Whether a round that stops on this record leaves it standing: heavy plant under the calibre floor (both authorities
+ *  ask it beside the pillbox's ledger before they break the crushable a round stops on). */
+export function shellSparesStoppedRecord(record: { kind?: string } | null | undefined, caliberMm: number | undefined): boolean {
+  return record?.kind != null && DENSE_SET_PIECE_KINDS.has(record.kind) && !((caliberMm ?? 0) >= SET_PIECE_WRECK_MIN_CALIBER_MM);
+}
+
 function isDenseCrushableCover(kind: string | undefined): boolean {
   return kind === 'wallstone' || kind === 'walladobe' ||
     kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
