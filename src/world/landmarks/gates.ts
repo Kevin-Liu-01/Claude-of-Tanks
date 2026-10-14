@@ -126,6 +126,12 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
 
 // ---------------------------------------------------------------------------------------------------------- town gate
 
+/** The dressings' bucket: the voussoirs, quoins, string courses, coping, merlon caps and the oriel in a smooth dressed
+ * sandstone (the render surface retinted, townGate's tints) over the walls' rough ashlar, so they read from the street. */
+const DRESS_BUCKET: RegionalBucket = 'plaster3';
+/** The dressed sandstone's tint over the kit's render (pale and warm: Franconian Werkstein). */
+const DRESS_TINT: [number, number, number] = [0.96, 0.84, 0.66];
+
 /**
  * (the looks lane, 2026-10-13; LOOKS-BRIEF item 3: the gate's "one flat, uniform sandstone tint with no coursing, quoins
  * or string courses") the passage arch's voussoirs: wedge stones round the arch line on a face, long and short by turns,
@@ -217,8 +223,8 @@ export const townGate: LandmarkBuilder = (ctx) => {
     archSurround(sink, wall, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.4, 0.12, { sill: false });
     archSurround(sink, wall, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.4, 0.12, { sill: false });
     // (the looks lane) the voussoirs over the surround, each its own stone, the keystone proud
-    voussoirs(sink, wall, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.14);
-    voussoirs(sink, wall, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.14);
+    voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.2);
+    voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.2);
   });
   // the upper storeys of the tower
   const top = H - Math.max(4, W * 0.55);
@@ -234,10 +240,10 @@ export const townGate: LandmarkBuilder = (ctx) => {
   moulding(sink, wall, W, D, blockTop - 0.2, 0.25, 0.1);
   // (the looks lane) the tower's rusticated quoins from its plinth to the eaves, a string course at each storey, the
   // gatekeeper's oriel over the passage on the town side
-  towerQuoins(sink, wall, W, D, 0.62, top - 0.15);
-  for (const y of [blockTop + 3.3, top - 3.2]) if (y > blockTop + 1.5 && y < top - 1.2) moulding(sink, wall, W, D, y, 0.18, 0.08, { decor: true });
-  moulding(sink, wall, W, D, top - 0.32, 0.3, 0.16, { decor: true });
-  oriel(sink, wall, -D / 2, blockTop + 1.35, FRAME_WHITE);
+  towerQuoins(sink, DRESS_BUCKET, W, D, 0.62, top - 0.15);
+  for (const y of [blockTop + 3.3, top - 3.2]) if (y > blockTop + 1.5 && y < top - 1.2) moulding(sink, DRESS_BUCKET, W, D, y, 0.18, 0.08, { decor: true });
+  moulding(sink, DRESS_BUCKET, W, D, top - 0.32, 0.3, 0.16, { decor: true });
+  oriel(sink, DRESS_BUCKET, -D / 2, blockTop + 1.35, FRAME_WHITE);
   // the clock under the roof on the field side
   const cf = f.front, cy = top - 0.9;
   const disc: Vec3[] = [], ring: Vec3[] = [];
@@ -270,16 +276,16 @@ export const townGate: LandmarkBuilder = (ctx) => {
     const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
     sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
     // (the looks lane) the parapet's coping, the merlons each under its own capstone, a loop through every other one
-    sink.span(wall, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
+    sink.span(DRESS_BUCKET, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
     for (let x = lo + 0.3, k = 0; x + 0.9 < hi; x += 1.8, k++) {
       sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
-      sink.span(wall, x - 0.05, wh + 0.9, 0.0, x + 0.95, wh + 1.02, 0.65, { decor: true });
+      sink.span(DRESS_BUCKET, x - 0.05, wh + 0.9, 0.0, x + 0.95, wh + 1.02, 0.65, { decor: true });
       if (k % 2 === 0) sink.span('dark', x + 0.4, wh + 0.25, 0.6, x + 0.5, wh + 0.75, 0.62, { decor: true });
     }
     sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
     for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: sink.finish() };
+  return { parts: sink.finish(), tints: { plaster3: DRESS_TINT } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- triumphal arch
