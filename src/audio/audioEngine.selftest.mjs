@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
-import { emitTurretLanding } from '../fx/clock.ts';
+import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -229,6 +229,20 @@ names = logSince(since).map((e) => e.n);
 for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'blast_sub']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
 assert.equal(names.filter((n) => n === 'turret_land').length, 1, 'the hard landing is heard, the settling bump is not');
 assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
+// B7 (2026-10-13): a collapse's rubble lands where its bodies hit: heavy pieces thud, light or slow ones do not, and a
+// heap's burst of landings is thinned to one per 0.15 s
+{
+  const rubbleSince = mark();
+  ctx.advance(1);
+  emitDebrisLanding(20, 0, 40, 6, 120);
+  emitDebrisLanding(21, 0, 41, 7, 200);
+  emitDebrisLanding(22, 0, 42, 6, 8);
+  ctx.advance(0.3);
+  emitDebrisLanding(23, 0, 43, 1.5, 300);
+  emitDebrisLanding(24, 0, 44, 5, 60);
+  const thuds = logSince(rubbleSince).filter((e) => e.n === 'rubble_chunk_land').length;
+  assert.equal(thuds, 2, `heavy landings thud, thinned; a brick and a slow settle are silent (${thuds})`);
+}
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);

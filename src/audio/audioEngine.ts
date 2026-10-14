@@ -48,7 +48,7 @@ import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTie
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
-import { onTurretLanding } from '../fx/clock.ts';
+import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
@@ -2157,6 +2157,8 @@ export function createAudio({
 
 
   let detachTurretLanding: (() => void) | null = null;
+  let detachDebrisLanding: (() => void) | null = null;
+  let lastRubbleAt = -1;
 
   function uiClick(): void {
     if (!interfaceOnce()) return;
@@ -2172,6 +2174,15 @@ export function createAudio({
     detachTurretLanding = onTurretLanding((x, y, z, speed) => {
       if (!ready() || speed < 3) return;
       play('turret_land', { x, y, z, gainDb: Math.max(-9, Math.min(0, (speed - 9) * 0.9)) });
+    });
+    // B7 (2026-10-13): a collapse's heavy rubble lands where its rigid body hits (fx/rubbleBodies.ts reports the debris
+    // pool's hard landings): a masonry thud for a piece of 20 kg or more at 2.5 m/s or more, one per 0.15 s at most (a
+    // heap is dozens of landings in a second), louder for a heavier, faster piece
+    detachDebrisLanding?.();
+    detachDebrisLanding = onDebrisLanding((x, y, z, speed, mass) => {
+      if (!ready() || !ctx || speed < 2.5 || mass < 20 || ctx.currentTime - lastRubbleAt < 0.15) return;
+      lastRubbleAt = ctx.currentTime;
+      play('rubble_chunk_land', { x, y, z, gainDb: clamp(-10 + 4 * Math.log10(mass / 20) + (speed - 2.5) * 0.8, -10, 0) });
     });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
       if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));

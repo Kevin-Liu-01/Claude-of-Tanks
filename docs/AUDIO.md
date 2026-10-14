@@ -853,6 +853,12 @@ crew-lines.json ─┐                    crew-voices.json
   hull's visual once to find a suit, and the vehicle rig plays
   `net_rustle_loop` (200 credits) under the running gear by speed, on every
   suited hull in the near LOD, a touch nearer on our own.
+  A collapse's rubble is rigid bodies (`fx/rubbleBodies.ts`, deploy 223): the
+  debris pool reports each hard landing through `fx/clock.ts`
+  `emitDebrisLanding`, and a piece of 20 kg or more landing at 2.5 m/s or more
+  thuds where it lands (`rubble_chunk_land`, louder for heavier and faster
+  pieces, one per 0.15 s at most). The one-line report sits on
+  `item/audio-rubble-hook` (from `item/destruct-all`).
 
 ### Cost
 

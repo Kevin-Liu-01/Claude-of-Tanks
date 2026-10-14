@@ -112,3 +112,27 @@ export function onTurretLanding(fn: TurretLandingListener): () => void {
 export function emitTurretLanding(x: number, y: number, z: number, speedMps: number): void {
   for (let i = 0; i < turretLandingListeners.length; i++) turretLandingListeners[i](x, y, z, speedMps);
 }
+
+// ---------------------------------------------------------------------------
+// Debris landing bridge (the audio stream, 2026-10-13: B7)
+// ---------------------------------------------------------------------------
+// The rubble of a collapse is rigid bodies (fx/rubbleBodies.ts on its debris pool); the pool reports each hard landing
+// (debrisPhysics onImpact) here, where it happens, so a heavy piece's thud plays where it lands. Any number of listeners
+// (the audio); none is a no-op.
+
+type DebrisLandingListener = (x: number, y: number, z: number, speedMps: number, massKg: number) => void;
+const debrisLandingListeners: DebrisLandingListener[] = [];
+
+/** Listen for debris landings; returns the unsubscribe. */
+export function onDebrisLanding(fn: DebrisLandingListener): () => void {
+  debrisLandingListeners.push(fn);
+  return () => {
+    const index = debrisLandingListeners.indexOf(fn);
+    if (index >= 0) debrisLandingListeners.splice(index, 1);
+  };
+}
+
+/** A piece of debris of `massKg` hit the ground (or the heap) at x, y, z at `speedMps`. */
+export function emitDebrisLanding(x: number, y: number, z: number, speedMps: number, massKg: number): void {
+  for (let i = 0; i < debrisLandingListeners.length; i++) debrisLandingListeners[i](x, y, z, speedMps, massKg);
+}
