@@ -52,6 +52,8 @@ export function combatFrames(scene, model, { stepMs = 100, aspect = 16 / 9 } = {
       const centre = box ? [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2] : null;
       const inFrame = !!centre && Math.abs(centre[0]) < 0.95 && Math.abs(centre[1]) < 0.95 && pts.length === corners.length;
       const share = box ? (Math.min(1, box[3]) - Math.max(-1, box[1])) / 2 : 0;
+      // area: the hull's box clipped to the frame, as a share of the frame
+      const area = box ? Math.max(0, Math.min(1, box[2]) - Math.max(-1, box[0])) * Math.max(0, Math.min(1, box[3]) - Math.max(-1, box[1])) / 4 : 0;
       // the lens off the hull's contact box, the gun's reach ahead of it: in the hull's frame [across, along]
       const dx = cam.x - x, dz = cam.z - z, across = dx * cz - dz * sx, ahead = dx * sx + dz * cz;
       const u = Math.abs(across) - hw, v = ahead > 0 ? ahead - Math.max(hl, reach) : -ahead - hl;
@@ -61,7 +63,20 @@ export function combatFrames(scene, model, { stepMs = 100, aspect = 16 / 9 } = {
       const by = sight ? null : `${blockers[0].kind ?? 'record'}${blockers[0].canopyR ? ' crown' : ''} at ${Math.round((blockers[0].min[0] + blockers[0].max[0]) / 2)},${Math.round((blockers[0].min[2] + blockers[0].max[2]) / 2)} up to ${blockers[0].max[1].toFixed(1)}`;
       // front: the cosine between the hull's nose and the lens (1 head-on, 0 broadside, −1 from behind)
       const front = (dx * sx + dz * cz) / (Math.hypot(dx, dz) || 1);
-      row.tanks[a.name] = { inFrame, share: Math.max(0, share), clear, sight, by, front, centre, at: [x, z], yawDeg: yaw * 180 / Math.PI };
+      const seen = box ? [Math.max(-1, box[0]), Math.max(-1, box[1]), Math.min(1, box[2]), Math.min(1, box[3])] : null;
+      row.tanks[a.name] = { inFrame, share: Math.max(0, share), area, clear, sight, by, front, centre, at: [x, z], yawDeg: yaw * 180 / Math.PI,
+        seen, depthM: Math.hypot(x - cam.x, z - cam.z) };
+    }
+    // the hero hidden by a nearer tank: the largest share of its visible box another hull's box covers
+    const h = row.tanks.hero;
+    row.heroBehind = 0;
+    if (h?.seen && h.seen[2] > h.seen[0] && h.seen[3] > h.seen[1]) {
+      const heroArea = (h.seen[2] - h.seen[0]) * (h.seen[3] - h.seen[1]);
+      for (const [name, o] of Object.entries(row.tanks)) {
+        if (name === 'hero' || !o.seen || o.depthM >= h.depthM) continue;
+        const ow = Math.min(o.seen[2], h.seen[2]) - Math.max(o.seen[0], h.seen[0]), oh = Math.min(o.seen[3], h.seen[3]) - Math.max(o.seen[1], h.seen[1]);
+        if (ow > 0 && oh > 0) row.heroBehind = Math.max(row.heroBehind, (ow * oh) / heroArea);
+      }
     }
     rows.push(row);
   }
@@ -164,9 +179,27 @@ export function combatVerdict(scene, model, features = null) {
   const shrineIn = (f) => (f.shrine ?? 0) >= 0.05 ? f.shrineKind : ROADSIDE_SHRINE.test(f.kind ?? '') && (f.share ?? 0) >= 0.1 ? f.kind : null;
   for (const f of [runOf((f) => ((f.cover ?? 0) >= 0.25 ? f.coverKind : null)), runOf(shrineIn)]) if (f) faults.push(f);
   faults.push(...placement);
+  // the hero half behind a nearer tank at its knockout shot or for a second of the take (2026-10-13: s228's file put
+  // the T-72B3 across the AbramsX on the telephoto)
+  const heroKoShot = kos.find((k) => k.killer === 'hero');
+  if (heroKoShot && at(heroKoShot.killMs).heroBehind >= 0.35) faults.push(`a nearer tank hides ${Math.round(at(heroKoShot.killMs).heroBehind * 100)} % of the hero at its knockout`);
+  let behindRun = 0, behindWorst = 0;
+  for (const r of rows) { behindRun = r.heroBehind >= 0.5 ? behindRun + 1 : 0; behindWorst = Math.max(behindWorst, behindRun); }
+  if (behindWorst >= 10) faults.push(`a nearer tank hides half the hero for ${behindWorst * 100} ms`);
+  // the telephoto over a near foe's shoulder (coordinator 2026-10-13, s228): at the hero's knockout the shooter holds at
+  // least 10 % of the frame and the nearest foe at most 30 %
+  const heroKo = kos.find((k) => k.killer === 'hero');
+  let tele = '';
+  if (scene.meta?.combat?.lens === 'reverseTele' && heroKo) {
+    const r = at(heroKo.killMs), foes = Object.entries(r.tanks).filter(([name]) => name.startsWith('foe'));
+    const near = foes.reduce((best, [, t]) => Math.max(best, t.area), 0), hero = r.tanks.hero?.area ?? 0;
+    tele = `, at the knockout the hero holds ${Math.round(hero * 100)} % of the frame and the near foe ${Math.round(near * 100)} %`;
+    if (hero < 0.1) faults.push(`the hero holds ${Math.round(hero * 100)} % of the frame at the knockout (10 % at least)`);
+    if (near > 0.3) faults.push(`the near foe fills ${Math.round(near * 100)} % of the frame at the knockout (30 % at most)`);
+  }
   const line = `together ${Math.round(together * 100)} %, holds ${held.toFixed(2)}/${count}, knockouts ${kos.map((k) => `${k.killer}>${k.victim}@${k.killMs} ${k.shown ? 'shown' : 'MISSED'}`).join(' ')}, `
     + `hero ${(mean('hero') * 100).toFixed(1)} % / foe0 ${(mean('foe0') * 100).toFixed(1)} % of the height, nearest hull ${nearest.toFixed(1)} m, `
-    + `foe0 in sight ${Math.round(targetSight * 100)} %, hero blocked ${Math.round(heroBlocked * 100)} %`;
+    + `foe0 in sight ${Math.round(targetSight * 100)} %, hero blocked ${Math.round(heroBlocked * 100)} %${tele}`;
   const heroFront = rows.reduce((sum, r) => sum + (r.tanks.hero?.front ?? 0), 0) / n;
   return { ok: !faults.length, line, faults, rows, metrics: { together, held, count, hero: mean('hero'), foe0: mean('foe0'), nearest, targetSight, heroBlocked, heroFront } };
 }

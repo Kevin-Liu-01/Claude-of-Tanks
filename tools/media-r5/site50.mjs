@@ -826,6 +826,17 @@ export const DUEL = {
     K(0, { actor: 'foe0', side: -4 * k, along: -8, lift: 1.3, fov: 30, ...HOLD(hold) }),
     K(3000, { actor: 'foe0', side: -4.5 * k, along: -10, lift: 1.6, fov: 30, ...HOLD(hold) }),
     K('end', { actor: 'foe0', side: -5 * k, along: -13, lift: 2.4, fov: 30, ...HOLD(hold, 0.58) })],
+  /** Over the near target's shoulder from wide of the file on a long lens (coordinator 2026-10-13, s228: the T-90M
+   *  filled half the frame with the AbramsX a small block behind it; telephoto compresses the street so the shooter
+   *  reads): the lens in the shooter's own lane 40-43 m past the near foe (keyed off the shooter, so the foes' props nudge
+ *  cannot carry it across), 3.5-4.6 m up (the far hull rises clear of the near ones), at 7.5-13°, aimed toward the
+ *  shooter (the foe's shoulder at the frame's
+ *  edge). combat-check holds the shooter to 10 % of the frame
+   *  and the near foe to 30 % at the knockout. */
+  reverseTele: (D, k, hold) => [
+    K(0, { side: -0.75 * k, along: D + 40, lift: 3.5, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) }),
+    K(3000, { side: -1 * k, along: D + 41.5, lift: 4, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) }),
+    K('end', { side: -1.25 * k, along: D + 43, lift: 4.6, fov: 7.5, fovMax: 13, bias: 0.4, ...HOLD(hold, 0.6) })],
   /** Leading the racing hull at its front quarter on the side away from the foes (k), close and low, then running out
    *  far and high over the knockout: both lines driving abreast at the lens, trading broadsides. */
   race: (D, k, hold) => [
@@ -870,9 +881,11 @@ export const COMBAT_TABLE = [
     [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', 1, ['foe0', 'hero'], 2.5, [0, 0]],
   [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
     [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
-  // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine deck)
+  // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
+  // deck; then a telephoto from the square at the street's east end, the foes in file in the right lane and the AbramsX
+  // in the left, the street 12 m wide from 10 to 62 m along: the AbramsX at 10 % of the frame and more, the near foe 30 %)
   [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
-    ['abramsx'], [CAST.t90m, CAST.t72b3], 28, 1.5, 'reverseLow', -1, ['foe0', 'foe1', 'hero'], 0, [0, 8], { foeFormation: 'file' }],
+    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'reverseTele', 1, ['foe0', 'foe1', 'hero'], 0, [0, 14], { foeFormation: 'file' }],
   [229, 'barn-1v2', 'A Type 10 races a T-90M and a T-72B3M past the farm village of Frontier Basin', S.frVillage, 'golden', '1v2',
     [CAST.type10], [CAST.t90m, CAST.t72b3m], 28, 0, 'race', -1, ['hero', 'foe0', 'foe1'], 6, [0, -8], { geo: 'race', turn: 0 }],
   [230, 'reservoir-1v2', 'A Challenger 2E fights a T-80U and a T-72B by the reservoir', S.reVillage, 'day', '1v2',
@@ -913,10 +926,13 @@ export function combatTake(row, over = {}) {
   const enemies = { along: race ? 0 : D, lat: race ? k * D : lat, count: foes.length, formation: foeFormation, lineup: foes, states: foes.map(() => 'intact') };
   const kind = 'battle', flare = time === 'night' ? [NIGHT_FLARE(race ? H(k * D * 0.5, 12) : H(-6, D * 0.6), 90)] : [];
   // a barrage walking in behind the enemy line ("effects all over the place"): 26 m past the target, 10 m across, so
-  // the nearest burst lands well clear of the second foe (9 m behind the first); in a race, out past the foes' flank
-  const guns = [barrage(race ? H(k * (D + 26), 8) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, format === '1v1' ? 4 : 5, 10)];
+  // the nearest burst lands well clear of the second foe (9 m behind the first); in a race, out past the foes' flank.
+  // A lens on the foes' side (over their shoulder) has the line behind it, so its barrage falls behind the hero instead,
+  // framing it (s228's telephoto previz, 2026-10-13: the bursts filled half the frame from between the lens and the foes)
+  const foesSide = /^(reverse|reverseLow|reverseTele|overwatch)$/.test(lensName);
+  const guns = [barrage(race ? H(k * (D + 26), 8) : foesSide ? H(lat * 0.5, -24) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, format === '1v1' ? 4 : 5, 10)];
   return [n, id, kind, title, { ...set, formation: lineup.length > 1 ? 'pair' : 'solo', count: lineup.length, lineup, enemies },
-    { time, speed, sun: 'side', combat: format, aim: fight.aim, effects: [...flare, ...guns, ...fight.effects], cam: DUEL[lensName](D, k, hold),
+    { time, speed, sun: 'side', combat: format, lens: lensName, aim: fight.aim, effects: [...flare, ...guns, ...fight.effects], cam: DUEL[lensName](D, k, hold),
       ...(race ? { routes } : {}), ...MOTION_RAIL },
     { tMs: fight.still, exposureMs: 2 }];
 }
@@ -1085,7 +1101,9 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
-    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}) };
+    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}),
+    // a combat take records its format and lens (combat-check.mjs holds the telephoto's frame shares to them)
+    ...(film.combat ? { combat: { format: film.combat, lens: film.lens ?? null } } : {}) };
   return scene;
 }
 
