@@ -47,7 +47,11 @@ ${HINTERLAND_PROJECT_GLSL}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   {
     float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
+    #ifdef USE_FOG
+    gl_FragColor.rgb = mix( fogColor, gl_FragColor.rgb, exp( -uHlHazeSigma * hlLost ) );
+    #else
     gl_FragColor.rgb = mix( uHlHazeColor, gl_FragColor.rgb, exp( -uHlHazeSigma * hlLost ) );
+    #endif
   }`);
   };
   if (engine.setupShadowMaterial) engine.setupShadowMaterial(material, patch);

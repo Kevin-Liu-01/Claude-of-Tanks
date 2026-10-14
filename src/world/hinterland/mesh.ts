@@ -192,7 +192,12 @@ ${surface?.fragmentPars ?? ''}`)
   {
     float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
     float hlT = exp( -uHlHazeSigma * hlLost );
+    // (the scene's own fog colour where it has fog, so the far land fades into the air the battlefield fades into)
+    #ifdef USE_FOG
+    gl_FragColor.rgb = mix( fogColor, gl_FragColor.rgb, hlT );
+    #else
     gl_FragColor.rgb = mix( uHlHazeColor, gl_FragColor.rgb, hlT );
+    #endif
   }`);
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
