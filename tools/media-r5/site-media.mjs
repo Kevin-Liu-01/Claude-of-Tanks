@@ -67,15 +67,16 @@ const HOME_STUDIO_PROXY = 'home-studio-mobile.mp4';
 
 // The site's videos at the weight they need (owner 2026-10-14: "we dont need them all to be super duuper highh quality
 // 4k, they can be good quality but shouldnt be too heavy on storage or take a long time to load in"; the coordinator:
-// VMAF 93 at least for the loops and the reel, 90 for the 960 px loops, against their masters). Each is web-encode.mjs's
-// two-pass file at the lowest rate of its ladder that holds its floor (the loops had been the deliveries' own VP9 at
-// 22-32 Mbit/s, 9-24 MB for 6 s, and the reel 8 Mbit/s); the record of each (its rate, VMAF and settings) is kept in
-// site-media/web-encodes.json, and a file is encoded again when its source is newer, its settings change, or --force.
+// VMAF 93 at least for the loops and the reel, 90 for the 960 px loops, against their masters; the heaviest action at
+// its cap holds 90). Each is web-encode.mjs's constrained-quality file at the highest CRF of its ladder that holds its
+// floor, under its bitrate cap (the loops had been the deliveries' own VP9 at 22-32 Mbit/s, 9-24 MB for 6 s, and the
+// reel 8 Mbit/s); the record of each (its CRF, rate, VMAF and settings) is kept in site-media/web-encodes.json, and a
+// file is encoded again when its source is newer, its settings change, or --force.
 const WEB = Object.freeze({
-  loop: { codec: 'vp9', size: [1920, 1080], audio: 'keep', floor: 93, rates: [6000, 4800, 3800, 3000, 2400, 1900, 1500] },
-  loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, rates: [2000, 1600, 1250, 1000, 800, 600] },
-  reel: { codec: 'h264', size: [1920, 1080], audio: 'none', floor: 93, rates: [7000, 5800, 4800, 4000, 3300, 2700] },
-  trailer: { codec: 'h264', size: [1920, 1080], audio: 'keep', floor: 93, rates: [5000, 4200, 3500, 2900, 2400] },
+  loop: { codec: 'vp9', size: [1920, 1080], audio: 'keep', floor: 93, capFloor: 90, crfs: [34, 36, 38, 40, 42, 44, 46], capKbps: 8000 },
+  loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, crfs: [36, 39, 42, 45, 48, 51], capKbps: 2000 },
+  reel: { codec: 'h264', size: [1920, 1080], audio: 'none', floor: 93, capFloor: 90, crfs: [20, 22, 24, 26, 28], capKbps: 4000 },
+  trailer: { codec: 'h264', size: [1920, 1080], audio: 'keep', floor: 93, capFloor: 90, crfs: [20, 22, 24, 26, 28], capKbps: 4000 },
 });
 const WEB_RECORD = join(MEDIA, 'tools/media-r5/site-media/web-encodes.json');
 const webRecord = existsSync(WEB_RECORD) ? JSON.parse(readFileSync(WEB_RECORD, 'utf8')) : {};
@@ -243,12 +244,12 @@ function webMake(out, source, settings, extra = {}) {
     const tmp = `${out}.tmp${out.slice(out.lastIndexOf('.'))}`;
     const r = webEncode({ src: source, out: tmp, ...settings });
     renameSync(tmp, out);
-    webRecord[key] = { settings, source: rel(source), kbps: r.kbps, vmaf: r.vmaf, bytes: r.bytes, tried: r.tried };
+    webRecord[key] = { settings, source: rel(source), crf: r.crf, kbps: r.kbps, vmaf: r.vmaf, bytes: r.bytes, tried: r.tried, ...(r.capped ? { capped: true } : {}) };
     webChanged = true;
-    console.log(`[site-media] ${key}: ${r.kbps} kbit/s, VMAF ${r.vmaf.mean} (worst frame ${r.vmaf.min}), ${(r.bytes / 1048576).toFixed(2)} MB (tried ${r.tried.map(([k, v]) => `${k}:${v}`).join(' ')})`);
+    console.log(`[site-media] ${key}: CRF ${r.crf}, ${r.kbps} kbit/s, VMAF ${r.vmaf.mean} (worst frame ${r.vmaf.min})${r.capped ? ' at the cap' : ''}, ${(r.bytes / 1048576).toFixed(2)} MB (tried ${r.tried.map(([c, k, v]) => `crf ${c}: ${k} kbit/s ${v}`).join(', ')})`);
   }
   const w = webRecord[key];
-  record(out, source, { ...extra, encode: { kbps: w.kbps, vmaf: w.vmaf.mean, vmafMin: w.vmaf.min } });
+  record(out, source, { ...extra, encode: { crf: w.crf, kbps: w.kbps, vmaf: w.vmaf.mean, vmafMin: w.vmaf.min, ...(w.capped ? { capped: true } : {}) } });
 }
 function saveWebRecord() {
   if (!webChanged) return;

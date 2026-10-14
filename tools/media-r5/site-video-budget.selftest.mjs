@@ -33,7 +33,9 @@ for (const f of files) {
   seen[rule.what]++;
   bytes += size;
   assert.ok(size <= rule.max, `${f.path}: ${(size / MB).toFixed(2)} MB, at most ${(rule.max / MB).toFixed(1)} MB for a ${rule.what}`);
-  assert.ok((f.encode?.vmaf ?? 0) >= rule.floor, `${f.path}: VMAF ${f.encode?.vmaf ?? 'unrecorded'} against its master, ${rule.floor} at least`);
+  // (a file at its ladder's cap holds the lower floor, capFloor: the heaviest action loops)
+  const floor = f.encode?.capped ? rule.capFloor ?? rule.floor : rule.floor;
+  assert.ok((f.encode?.vmaf ?? 0) >= floor, `${f.path}: VMAF ${f.encode?.vmaf ?? 'unrecorded'} against its master, ${floor} at least`);
 }
 assert.ok(seen.loop > 0 && seen.reel === 1, `the manifest names the loops and the reel (${JSON.stringify(seen)})`);
 // the home page before a scroll: its first two desktop sources, in document order
