@@ -308,6 +308,9 @@ interface LandformConfig {
   /** Final authored surface; original fields still define road/water/pad support initialization. */
   relief?: PlayableRelief;
   _relief?: PreparedPlayableRelief;
+  /** The world-plan box [minX, maxX, minZ, maxZ] outside which the form adds exactly nothing (landformSupportBounds);
+   * absent when it cannot be bounded. */
+  _bounds?: readonly [number, number, number, number] | null;
   /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
    * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
   geology?: LandformGeology;
@@ -1065,8 +1068,11 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
   const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
-    if (form.relief) return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) };
-    return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+    const prepared: LandformConfig = form.relief
+      ? { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) }
+      : { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+    prepared._bounds = landformSupportBounds(prepared);
+    return prepared;
   });
   const village = { ...DEFAULT_TERRAIN.village, ...(t.village || {}) };
   const spawnsSrc = (cfg && cfg.spawns) || DEFAULT_SPAWNS;
@@ -1171,6 +1177,54 @@ function raiseMounds(x: number, z: number, h: number,
 }
 
 /** Pure analytical height contribution for an authored tactical landform. */
+/**
+ * The world-plan box outside which sampleLandformHeight is exactly zero for a prepared form (its _c/_s set), with a metre
+ * of margin; null when the form cannot be bounded (an authored relief, or edges that do not close). Each kind's bound is
+ * read off its own formula: a gorge's and a smooth ridge's end and side weights are 1 - smoothstep(a, b, |v|) with a < b,
+ * zero from b on; a smooth knoll's or basin's weight is zero from q = 1; the geology knoll returns 0 past
+ * (1 + outline)(1 + reach) + 0.01 of its radii, and the geology ridge past width (1 + outline) + 0.5 across (and, nosed,
+ * as far past its nose's centre along). (2026-10-13, the perf stream: every height sample used to visit every landform.)
+ */
+export function landformSupportBounds(form: LandformConfig): [number, number, number, number] | null {
+  if (form._relief) return null;
+  let ex: number, ez: number;
+  if (form.kind === 'gorge') {
+    const length = form.length || 700, w = form.width || 90;
+    if (!(length > 0) || !(w > 0)) return null;
+    ex = length * 0.5;
+    if (!form.wall && !form.meander) ez = w;
+    else {
+      const foot = form.wall ? form.wall[0] : .65, top = form.wall ? form.wall[1] : 1;
+      if (!(top > foot)) return null;
+      // the wander only moves both edges inward (by up to the meander), never past w * top
+      ez = w * top + Math.max(0, -(form.meander || 0));
+    }
+  } else if (form.kind === 'ridge') {
+    const half = Math.max(1, (form.length || 100) * 0.5), width = Math.max(1, form.width || 45);
+    ex = half; ez = width;
+    if (form.geology) {
+      const outline = Math.max(0, Math.min(0.35, form.geology.outline ?? 0));
+      ez = width * (1 + outline) + 0.5;
+      if (form.geology.cliffEnd === 'nose') ex = Math.max(half, Math.max(0, half - width * (1 + outline)) + ez);
+    }
+  } else {
+    const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
+    let reachQ = 1;
+    if (form.geology) {
+      const geology = form.geology;
+      const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
+      const fans = geology.fans && geology.gullies && (form.height || 0) > 0 ? geology.fans : null;
+      const reach = fans ? Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3)) : 0;
+      reachQ = (1 + outline) * (1 + reach) + 0.01;
+    }
+    ex = rx * reachQ; ez = rz * reachQ;
+  }
+  const c = Math.abs(form._c ?? 1), s = Math.abs(form._s ?? 0);
+  const hx = c * ex + s * ez + 1, hz = s * ex + c * ez + 1;
+  if (!Number.isFinite(hx) || !Number.isFinite(hz)) return null;
+  return [form.x - hx, form.x + hx, form.z - hz, form.z + hz];
+}
+
 export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
   if (phase === 'authored-relief' && form._relief) return (form.height || 0) * samplePlayableRelief(form._relief, x, z);
@@ -1708,6 +1762,9 @@ function* heightFieldBuildSteps(
     let unionTop = 0;
     for (let li = 0; li < T.landforms.length; li++) {
       const form = T.landforms[li];
+      // outside its support box a form adds exactly zero (landformSupportBounds): skipping it leaves h as it was
+      const bounds = form._bounds;
+      if (bounds && (x < bounds[0] || x > bounds[1] || z < bounds[2] || z > bounds[3])) continue;
       const corridorScale = form.corridorScale ?? 0.62;
       const settlementScale = form.settlementScale ?? 0.45;
       const wetScale = form.wetScale ?? 0.30;
