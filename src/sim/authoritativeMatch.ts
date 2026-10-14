@@ -1236,15 +1236,17 @@ export function createAuthoritativeMatch({
       if (obstacle.crushed) continue;
       foot.centerX = centerX + outPush.x - startX;
       foot.centerZ = centerZ + outPush.z - startZ;
-      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
-      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      const clearBottom = foot.clearBottom;
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
+      // (the plan reject first, then the underside it costs to read: either rejects the record alone, physics stream
+      // 2026-10-13, the MP stream's tick profile)
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
       const dx = foot.centerX - closestX;
       const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      const clearBottom = foot.clearBottom;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
