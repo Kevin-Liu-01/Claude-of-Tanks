@@ -275,6 +275,9 @@ function recordingRebuild(style, structureId, base, info, wallBucket, context, x
   return out;
 }
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
+  // Plan W (2026-10-13): the structure shell pool belongs to the browser's async build; this Node build derives every
+  // structure's shells inline, as the manifests and hosts do (no pool, no sourced-texture worker)
+  structureShellPoolFor: () => null, sourceApplication: {},
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,

@@ -91,6 +91,9 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
 }
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
+  // Plan W (2026-10-13): the structure shell pool belongs to the browser's async build; this Node build derives every
+  // structure's shells inline, as the manifests and hosts do (no pool, no sourced-texture worker)
+  structureShellPoolFor: () => null, sourceApplication: {},
   // the carriageway post-pass packs a building's chimney tops with it (props.ts roadBuildingClearance, 2026-10-03)
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
