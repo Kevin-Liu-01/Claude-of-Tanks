@@ -356,10 +356,11 @@ function chalupa(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Retur
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, s * (w / 2 - 0.04), y + 0.5, depth - 0.05, 0.1, 1.0, 0.1, c);
       for (let k = 1; k < Math.round(w / 0.16); k++) faceBox(sink, 'structureWood', f, -w / 2 + k * 0.16, y + 0.5, depth - 0.05, 0.05, 0.86, 0.03, { ...c, fine: true }, 'caps');
     }
-    if (!st.mobile) {
+    // (phoneIdentity: a phone draws every stream the desktop does; the woodpile is dressing it leaves out)
+    sink.dressing(st.mobile, () => {
       const side = rng() < 0.5 ? frame.faces.right : frame.faces.left;
       woodpile(sink, side, -side.width / 2 + 0.5, side.width / 2 - 0.5, 1.2 + look() * 0.5, look);
-    }
+    });
   });
   return sink.finish();
 }
@@ -578,10 +579,10 @@ const drewutnia: RegionalBuilder = (ctx) => {
     const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.18, thickness: 0.12, bucket: 'roof' };
     emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
     if (ctx.snowCap) roofSnowOn(sink, W, D, hLo, lean);
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       const back: Face = { origin: [-W / 2 + 0.1, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
       woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.5 + look() * 0.4, look);
-    }
+    });
   });
   return sink.finish();
 };
@@ -617,9 +618,9 @@ const tartak: RegionalBuilder = (ctx) => {
     // log resting on them
     for (const x of [-0.3, 0.3]) sink.span('structureWood', x - 0.07, -0.1, -D * 0.35, x + 0.07, 0.62, D * 0.25, { colour: LOG_DARK, decor: true });
     sink.cylinder('structureWood', [0, 0.93, -D * 0.35], 'z', D * 0.6, 0.32, 8, { colour: shade(LOG, 1.15), decor: true, shadow: true });
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       // the boards stacked in stickered piles along the open side: the bearers on the ground, then each layer of boards on
-      // its stickers (kitConnectivity: the layers floated 6 cm apart on nothing)
+      // its stickers (kitConnectivity: the layers floated 6 cm apart on nothing); a phone draws their tones and leaves them
       for (const z of [-D * 0.3, D * 0.05, D * 0.32]) {
         for (let k = 0; k < 6; k++) {
           const y = 0.15 + k * 0.16;
@@ -630,7 +631,7 @@ const tartak: RegionalBuilder = (ctx) => {
           }
         }
       }
-    }
+    });
   });
   return sink.finish();
 };
