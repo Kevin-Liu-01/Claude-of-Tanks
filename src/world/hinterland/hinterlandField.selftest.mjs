@@ -126,7 +126,7 @@ const pinOf = (field) => {
 };
 const pinA = pinOf(sf), pinB = pinOf(createHinterlandField(synthSpec, 1337, synth));
 assert.equal(pinA, pinB, 'two builds of one spec agree');
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : 'f726caff327f7a54';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '2137054372afc89d';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandField pin: ${pinA}`);
 else assert.equal(pinA, PIN, 'the hinterland law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 

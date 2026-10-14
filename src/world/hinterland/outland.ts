@@ -73,12 +73,24 @@ export interface HinterlandTreeRow {
   kind: 'dike' | 'avenue' | 'shelterbelt' | 'hedge';
 }
 
+/** One tree the outland stands (the vegetation tier draws them as impostors; the envelope reads them as objects). */
+export interface HinterlandTree {
+  x: number; z: number;
+  species: string;
+  /** Its height and its crown's radius (m). */
+  heightM: number; crownM: number;
+  /** 0..1 its foliage's turn (an older or more exposed tree turns first in autumn; a tone within its species). */
+  tone: number;
+}
+
 export interface HinterlandPlan {
   settlements: HinterlandSettlement[];
   roads: HinterlandRoad[];
   verticals: HinterlandVertical[];
   buildings: HinterlandBuilding[];
   rows: HinterlandTreeRow[];
+  /** Every tree of the rows, the avenues and the farms' shelter groups. */
+  trees: HinterlandTree[];
   /** Term 3: what the field levels and grades for this plan. */
   features: HinterlandPlanFeatures;
   ms: number;
@@ -407,6 +419,87 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     }
   }
 
+  // ---- the trees (HL-2b, the coordinator on the first eye sheets: "one unbroken wall of trees all round, at a single
+  // height, every row the same dark green"): a row is planted in cohorts — segments of a few hundred metres, each its own
+  // age and height (a young poplar 12 m, an old one 30), some segments felled or never planted, a willow or an oak reach
+  // here and there — and single trees go missing; the farms stand in their shelter groups; some roads run between
+  // avenues. Long views open between them where no row stands.
+  const trees: HinterlandTree[] = [];
+  const species = spec.region.vegetation.species.length ? spec.region.vegetation.species : [['oak', 1] as const];
+  const pickSpecies = (u: number): string => {
+    let acc = 0; const total = species.reduce((a, [, w]) => a + w, 0);
+    for (const [name, w] of species) { acc += w / total; if (u < acc) return name; }
+    return species[species.length - 1][0];
+  };
+  const sizeOf = (name: string, age: number): [number, number] => {
+    const canopy = spec.region.vegetation.canopyM || 18;
+    if (name === 'poplar') return [12 + 18 * age, 2.4 + 1.4 * age];
+    if (name === 'willow') return [6 + 4 * age, 3 + 1.8 * age];
+    if (name === 'pine' || name === 'spruce' || name === 'fir' || name === 'larch' || name === 'cedar') return [canopy * (0.55 + 0.6 * age), 2.4 + 1.6 * age];
+    if (name === 'palm') return [8 + 10 * age, 3 + 1 * age];
+    return [canopy * (0.5 + 0.55 * age), 3.5 + 3 * age];
+  };
+  for (const row of rows) {
+    let segLeft = 0, present = true, age = 0.5, segSpecies = row.species;
+    let carry = 0;
+    for (let i = 0; i + 1 < row.xs.length; i++) {
+      const ax = row.xs[i], az = row.zs[i], bx = row.xs[i + 1], bz = row.zs[i + 1], len = Math.hypot(bx - ax, bz - az);
+      for (let t = carry; t < len; t += row.spacingM) {
+        if (segLeft <= 0) {
+          segLeft = 80 + 320 * rng();
+          present = rng() < 0.7;
+          age = rng();
+          segSpecies = rng() < 0.12 ? (row.species === 'poplar' ? 'willow' : 'poplar') : row.species;
+        }
+        segLeft -= row.spacingM;
+        carry = t + row.spacingM - len;
+        if (!present || rng() < 0.08) continue;
+        const x = bx === ax && bz === az ? ax : ax + (bx - ax) * (t / len) + (rng() - 0.5) * 1.2;
+        const z = bx === ax && bz === az ? az : az + (bz - az) * (t / len) + (rng() - 0.5) * 1.2;
+        const [h, c] = sizeOf(segSpecies, Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.25)));
+        trees.push({ x, z, species: segSpecies, heightM: h, crownM: c, tone: Math.max(0, Math.min(1, age * 0.7 + rng() * 0.3)) });
+      }
+    }
+  }
+  // the farms' and hamlets' shelter groups, the villages' edges
+  for (const st of settlements) {
+    if (!st.near || st.kind === 'works') continue;
+    const n = st.kind === 'farm' ? 4 + Math.floor(rng() * 6) : st.kind === 'hamlet' ? 6 + Math.floor(rng() * 6) : 10 + Math.floor(rng() * 10);
+    for (let k = 0; k < n; k++) {
+      const a = rng() * Math.PI * 2, r = st.radiusM * (0.7 + rng() * 0.6) + 10;
+      const x = st.x + Math.sin(a) * r, z = st.z + Math.cos(a) * r;
+      if (inputs.wetAt(x, z) > 0.05 || !clearOfRoads(x, z, 3) || !footprintClear(x, z, 2)) continue;
+      const name = pickSpecies(rng()), [h, c] = sizeOf(name, 0.3 + rng() * 0.7);
+      trees.push({ x, z, species: name, heightM: h, crownM: c, tone: rng() });
+    }
+  }
+  // avenues: some stretches of the roads that run on (not the dyke crowns: their rows are the dykes')
+  const avenues = spec.region.vegetation.habit === 'shelterbelt' || spec.region.vegetation.habit === 'hedgerow' || spec.region.vegetation.habit === 'dikeRows';
+  if (avenues) {
+    for (const road of roads) {
+      if (road.kind === 'dikeRoad' || road.kind === 'rail') continue;
+      let on = false, left = 0;
+      const name = pickSpecies(rng()), age = rng();
+      for (let i = 0; i + 1 < road.xs.length; i++) {
+        const ax = road.xs[i], az = road.zs[i], bx = road.xs[i + 1], bz = road.zs[i + 1], len = Math.hypot(bx - ax, bz - az) || 1;
+        const nx = -(bz - az) / len, nz = (bx - ax) / len;
+        for (let t = 0; t < len; t += 11) {
+          if (left <= 0) { on = rng() < 0.4; left = 150 + rng() * 350; }
+          left -= 11;
+          if (!on) continue;
+          const px = ax + (bx - ax) * (t / len), pz = az + (bz - az) * (t / len);
+          if (Math.max(Math.abs(px), Math.abs(pz)) < HINTERLAND_EDGE_M + 30) continue;
+          for (const side of [-1, 1]) {
+            const x = px + nx * side * (road.widthM / 2 + 4), z = pz + nz * side * (road.widthM / 2 + 4);
+            if (inputs.wetAt(x, z) > 0.05 || rng() < 0.07) continue;
+            const [h, c] = sizeOf(name, Math.max(0, Math.min(1, age + (rng() - 0.5) * 0.2)));
+            trees.push({ x, z, species: name, heightM: h, crownM: c, tone: age });
+          }
+        }
+      }
+    }
+  }
+
   // ---- term 3: the yards levelled and the roads graded (near band only: the far band's ground is the field's own)
   const pads: HinterlandFlatPad[] = [];
   for (const b of buildings) pads.push({ x: b.x, z: b.z, r: Math.hypot(b.width, b.depth) * 0.5 + 2, featherM: 10, y: Number.NaN, kind: 'yard' });
@@ -415,7 +508,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     xs: r.xs, zs: r.zs, halfWidthM: r.widthM / 2, featherM: 7, crownM: r.kind === 'dikeRoad' ? 0.8 : 0.15,
     kind: r.kind === 'rail' ? 'rail' : r.kind === 'track' ? 'track' : 'road',
   }));
-  return { settlements, roads, verticals, buildings, rows, features: { pads, lines }, ms: performance.now() - started };
+  return { settlements, roads, verticals, buildings, rows, trees, features: { pads, lines }, ms: performance.now() - started };
 }
 
 /** Distance from (x, z) to a polyline (its segment and parameter into `hit`). */

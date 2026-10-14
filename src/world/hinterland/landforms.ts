@@ -7,8 +7,8 @@
 // faces, scree under the walls, snow on the slopes that hold it, forest belts by altitude. The primitives, harvested
 // from the ring and the battlefield so near and far are one geology (P1):
 //   ridge / swell     a crest line along its strike, its summits and saddles, gullies down its flanks;
-//   massif            a mountain mass eroded by the mountains lane's drainage (horizonMassif.ts createMassifField: smooth
-//                     base, Clay John's erosion octaves, concavity), domed under its footprint;
+//   massif            a mountain mass at mountain slopes: a domed section with its talus apron, the ridged multifractal's
+//                     crests and cols, Clay John's erosion octaves (horizonMassif.ts) carving its couloirs;
 //   escarpment        a bed stair along its strike (horizonEscarpment.ts's beds: ledge, riser, talus), the plateau behind;
 //   mesa / butte      a caprock table on a talus apron (landformGeology.ts inselbergSection with a rim and bedding tiers);
 //   inselberg         a bornhardt (inselbergSection without a rim); jebel: a sheer fluted jebel with a bossed cap
@@ -22,7 +22,7 @@
 // scale the positive forms down inside them, so authoring order never matters. Each primitive is pure and allocation-
 // free; its geology hook tells the land material where its own rock, strata, snow and forest belt govern.
 import { inselbergSection } from '../landformGeology.ts';
-import { createMassifField, erosionOctave, type MassifField } from '../horizonMassif.ts';
+import { erosionOctave } from '../horizonMassif.ts';
 import type { HinterlandGeologySample, HinterlandReliefTerm } from './field.ts';
 import { fbm2, hashString, noise2, seedOffset, smoothstep } from './noise.ts';
 import { hinterlandPoint, type HinterlandLandformConfig, type HinterlandSpec } from './spec.ts';
@@ -42,6 +42,8 @@ interface PlacedLandform {
   mode: 'pos' | 'neg' | 'notch';
   /** Profile at world (x, z) and local (u, v): 0..1 (times h). */
   profile(u: number, v: number, x: number, z: number): number;
+  /** 0..1 in a gully at local (u, v) (a massif's couloirs; absent: none). */
+  gully?(u: number, v: number): number;
   /** The landform's own geology, merged where it stands (null: the region's). */
   geology: HinterlandLandformConfig['geology'] | null;
   forest: readonly [number, number] | null;
@@ -126,38 +128,68 @@ function placeRidge(cfg: HinterlandLandformConfig, salt: number, erosion: number
 }
 
 /**
- * A massif: Quilez's eroded multifractal under a domed mask — the ridged octaves give its crests, spurs and summits
- * (the panorama's macro field, so a near massif and the far ranges are one law), and the mountains lane's drainage
- * (horizonMassif.ts createMassifField: Clay John's erosion octaves turned by the slope) cuts its couloirs and gullies.
+ * A massif: a mountain mass whose faces stand at mountain slopes, not curtains (HL-2b, the coordinator on the first
+ * eye sheets: "the massif faces read as vertical curtains"; measured, their median slope was 66–76°, three quarters of
+ * them over 60°). The mass is a broad domed section — a concave talus apron at its foot, its steepest slopes at
+ * mid-height, a rounded shoulder under the crest — on which a ridged multifractal of falling slope (each octave half the
+ * wavelength and under half the height) lays its crest lines, summits and cols, and Clay John's erosion octaves turned
+ * by the slope cut the couloirs and gullies as a carving of a few tens of metres (never a multiplier on the whole
+ * height: that stood every gully as a wall hundreds of metres high). A summit may still stand as a horn where the ridged
+ * octaves meet; cliff bands are the escarpment's and the geology's (strata, bare rock on the steep), not the mass's.
  */
-function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: number, gullies: number, seed: number): PlacedLandform {
+function placeMassif(cfg: HinterlandLandformConfig, salt: number, erosion: number, gullies: number): PlacedLandform {
   const f = frame(cfg, salt);
-  const dist = cfg.at.distM;
-  const span = Math.max(f.halfL, f.halfW);
-  const crestL = Math.max(500, Math.min(2200, Math.min(f.halfL, f.halfW) * 0.9));
+  const crestL = Math.max(450, Math.min(f.halfL, f.halfW) * 0.7);
   const [ox, oz] = seedOffset(salt, 21);
-  const field: MassifField = createMassifField((seed ^ salt) >>> 0, {
-    baseWavelengthM: Math.max(420, crestL * 0.6), gullyWavelengthM: 140 + 90 * (1 - gullies), gullyOctaves: 3, gullyGain: 0.5,
-    slopeStrength: 2.8, branch: 2.2, erosion: 0.45 + 0.4 * erosion, concavity: 1.2 + 0.4 * erosion, contrast: 0.45 + 0.3 * gullies, smoothM: 0,
-  }, [Math.max(0, dist - span), dist + span]);
-  return place(f, 'pos', (u, v, x, z) => {
-    const { q } = roundQ(f, u, v, 0.22);
+  const e = new Float64Array(3);
+  // (a gully's sides stand under ~30° of its own: its depth a seventh of its spacing; bigger masses, wider couloirs)
+  const gullyCell = (160 + 80 * (1 - gullies)) * (1 + Math.abs(cfg.heightM) / 2000);
+  const gullyDepth = Math.min(0.14 * gullyCell, 0.045 * Math.abs(cfg.heightM)) * (0.4 + 0.6 * gullies);
+  const sharp = 1.05 + 0.3 * erosion;
+  // (a mass is a ridge with its summits along it, not one cone: its section is measured across the strike, the crest
+  // running level along the middle half of its length before it falls to its ends)
+  const massQ = (u: number, v: number): number => {
+    const { q, theta } = roundQ(f, u, v, 0.18);
+    const lu = Math.abs(u) / f.halfL, lv = Math.abs(v) / f.halfW;
+    const wander = 1 + 0.18 * lobe(theta, f.salt * 0.013);
+    return Math.min(q, Math.hypot(lv, Math.max(0, lu - 0.45) / 0.55) / wander);
+  };
+  const placed = place(f, 'pos', (u, v, x, z) => {
+    const q = massQ(u, v);
     if (q >= 1) return 0;
-    const dome = Math.pow(1 - q * q, 0.9);
-    // the ridged multifractal (sharper with erosion): crest lines with summits and cols between them
+    // the section: a talus apron (concave) from the toe, the steep mid-slopes, a rounded shoulder; its mean slope is the
+    // massif's height over its half-width
+    const t = 1 - q;
+    const section = t < 0.35 ? 0.42 * (t / 0.35) ** 1.8 : 0.42 + 0.58 * Math.sin(((t - 0.35) / 0.65) * Math.PI / 2);
+    // the ridged octaves: crests, summits and cols along the mass, their weight growing toward the top
     let sum = 0, amp = 1, weight = 1, norm = 0, qx = x / crestL + ox, qy = z / crestL + oz;
-    const sharp = 1.15 + 0.5 * erosion;
-    for (let o = 0; o < 5; o++) {
+    for (let o = 0; o < 4; o++) {
       let r = 1 - Math.abs(noise2(qx, qy));
       r = Math.pow(r, sharp) * weight;
-      weight = Math.max(0, Math.min(1, r * 1.2));
-      sum += r * amp; norm += amp; amp *= 0.5;
+      weight = Math.max(0, Math.min(1, r * 1.1));
+      sum += r * amp; norm += amp; amp *= 0.42;
       const nx = 1.6 * qx - 1.2 * qy, ny = 1.2 * qx + 1.6 * qy; qx = nx; qy = ny;
     }
     const ridged = sum / norm;
-    const shape = dome * (0.3 + 0.95 * Math.pow(ridged, 1.3)) * (0.75 + 0.25 * smoothstep(1, 0.3, q));
-    return shape * field.multiplier(x, z);
+    let h = section * (0.74 + 0.42 * (ridged - 0.5) * (0.3 + 0.7 * section * section));
+    // the gullies: two erosion octaves across the slope (the mass's radial fall), carving the mid-slopes
+    if (gullyDepth > 0 && q > 0.12 && q < 0.95) h -= (gullyDepth / Math.abs(cfg.heightM || 1)) * gullyCut(u, v, q);
+    return Math.max(0, h);
   });
+  /** 0..1: how deep in a couloir (local u, v) at its radius q (0 on the spurs between them). */
+  function gullyCut(u: number, v: number, q: number): number {
+    const lu = u / f.halfL, lv = v / f.halfW, rl = Math.hypot(lu, lv) || 1;
+    // (the fall line is radial: the waves run across it, so their crests run down the face)
+    const dx = (lu / rl) * 2.4, dz = (lv / rl) * 2.4;
+    erosionOctave(u / gullyCell + ox, v / gullyCell + oz, -dz, dx, (salt * 7919) >>> 0, e);
+    let g = e[0];
+    erosionOctave(u / (gullyCell * 0.5) + oz, v / (gullyCell * 0.5) + ox, -dz * 2, dx * 2, (salt * 104729) >>> 0, e);
+    g += 0.5 * e[0];
+    const face = smoothstep(0.12, 0.35, q) * (1 - smoothstep(0.8, 0.95, q));
+    return face * Math.max(0, Math.min(1, 0.5 - 0.5 * g));
+  }
+  placed.gully = (u, v) => { const q = massQ(u, v); return q < 1 && gullyDepth > 0 ? gullyCut(u, v, q) : 0; };
+  return placed;
 }
 
 /** An escarpment: a bed stair along its strike, rising toward +v to the plateau behind; its edge wanders in alcoves
@@ -286,7 +318,7 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
     switch (cfg.kind) {
       case 'dike': placed.push(placeDike(cfg, salt)); break;
       case 'ridge': placed.push(placeRidge(cfg, salt, erosion, gullies)); break;
-      case 'massif': placed.push(placeMassif(cfg, salt, erosion, gullies, seed)); break;
+      case 'massif': placed.push(placeMassif(cfg, salt, erosion, gullies)); break;
       case 'escarpment': placed.push(placeEscarpment(cfg, salt, bedM || 8)); break;
       case 'mesa': case 'butte': case 'inselberg': case 'jebel': placed.push(placeTable(cfg, salt, cfg.kind)); break;
       case 'cone': placed.push(placeCone(cfg, salt)); break;
@@ -334,6 +366,10 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
         if (p * L.h > bestA) { bestA = p * L.h; best = L; bestP = p; }
       }
       if (!best) return 0;
+      if (best.gully) {
+        const uv = local(best, x, z);
+        if (uv) out.gully = Math.max(out.gully, best.gully(uv[0], uv[1]));
+      }
       const g = best.geology;
       if (g?.rockHex !== undefined) out.rockHex = g.rockHex;
       if (g?.strata?.bedM) out.strata = (bestA + (g.strata.dipDeg ?? 0) * 0.01 * (x - best.cx)) / g.strata.bedM;
@@ -344,7 +380,8 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
         out.forest = smoothstep(lo - 10, lo + 10, bestA) * (1 - smoothstep(hi - 25, hi + 25, bestA));
       }
       if (g?.snow?.lineM !== undefined) {
-        out.snow = Math.max(out.snow, smoothstep(g.snow.lineM - 30, g.snow.lineM + 40, bestA));
+        // (held by the slope like the region's: a landform's snow never lies on its walls, HL-2b)
+        out.snow = Math.max(out.snow, smoothstep(g.snow.lineM - 30, g.snow.lineM + 40, bestA) * out.snowHold);
       }
       return bestP;
     },

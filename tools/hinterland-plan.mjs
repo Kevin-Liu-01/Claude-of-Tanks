@@ -223,92 +223,118 @@ function drawSkyline(ctx, rect, { near, far, old, eyes, verticals, centre }) {
   });
 }
 
-/** A colour for a cover sample (display sRGB). */
-function coverRgb(cover, water, field, x, z, geo) {
-  if (cover.cls === 7) { field.waterAt(x, z, water); return water.kind === 1 ? [52, 88, 112] : water.kind === 5 ? [100, 128, 138] : [70, 104, 124]; }
-  if (cover.cls === 5 || cover.snow > 0.55) return [232, 236, 240];
-  if (cover.cls === 3) { const r = (geo.rockHex >> 16) & 255, g = (geo.rockHex >> 8) & 255, b = geo.rockHex & 255; const band = 0.9 + 0.12 * Math.sin(geo.strata * 6.283); return [r * band, g * band, b * band]; }
-  return cover.cls === 0 || (cover.cls === 1 && cover.crop !== 31) ? CROP_RGB[cover.crop] ?? CLASS_RGB[0] : CLASS_RGB[cover.cls] ?? [255, 0, 255];
-}
-
 /**
- * An eye-level view on the CPU (a voxel-space march: each column's ray steps out to 80 km, filling the rows its rising
- * angle uncovers, front to back): the field's height and cover, the planner's objects (trees, buildings, towers), lit by a
- * key from the south-west, hazed by the map's fog under the haze law, the earth's curvature applied. Not the game's
- * renderer: a look at the land's form and layering before any GPU time.
+ * The EYE8 spots with the census's clearance (visual-census-views.mjs selectBorderSite's order: insets 80, 70, 90, 60,
+ * 100 m and offsets along the edge): the first spot whose own ground ahead does not rise over the eye — an eye never
+ * stands against a bank or inside a slope.
  */
-function renderEye(ctx, rect, build, ground, eye, { fovDeg = 100, fog = 0.00062, elev = [-2.5, 9] } = {}) {
-  const { field } = build;
-  const W = rect.w, Hh = rect.h;
-  const img = ctx.createImageData(W, Hh);
-  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
-  const water = { wet: 0, level: 0, kind: 0 };
-  const geo = { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1 };
-  const objects = skylineObjects(build);
-  const hAt = (x, z) => (Math.max(Math.abs(x), Math.abs(z)) <= 512 ? ground.getHeightAt(x, z) : build.sample(x, z));
-  const sigma = fog * 0.42;
-  const sun = [-0.55, 0.62, -0.56]; // from the south-west, 38° up (x east, y up, z north)
-  const sky = (e) => { const t = Math.max(0, Math.min(1, (e + 2) / 14)); return [168 - 70 * t, 192 - 52 * t, 214 - 22 * t]; };
-  const rowOf = (e) => (1 - (e - elev[0]) / (elev[1] - elev[0])) * Hh;
-  for (let col = 0; col < W; col++) {
-    const az = (eye.faceDeg + ((col + 0.5) / W - 0.5) * fovDeg) * Math.PI / 180;
-    const sx = Math.sin(az), sz = Math.cos(az);
-    let low = Hh; // the lowest row not yet filled (rows fill upward)
-    for (let d = 12; d < 80000 && low > 0; d += Math.max(2, d * 0.006)) {
-      const x = eye.x + sx * d, z = eye.z + sz * d;
-      const ground0 = hAt(x, z);
-      const obj = objects(x, z, d);
-      const top = Math.max(ground0, obj);
-      const drop = d * d / (2 * 7_300_000);
-      const e = Math.atan2(top - drop - eye.y, d) * 180 / Math.PI;
-      const row = Math.max(0, Math.floor(rowOf(e)));
-      if (row >= low) continue;
-      let rgb;
-      if (obj > ground0 + 0.5) rgb = obj - ground0 > 26 ? [120, 92, 80] : [46, 70, 40];
-      else {
-        const ee = Math.max(2, d * 0.004);
-        const nx = -(hAt(x + ee, z) - hAt(x - ee, z)) / (2 * ee), nz = -(hAt(x, z + ee) - hAt(x, z - ee)) / (2 * ee);
-        const len = Math.hypot(nx, 1, nz), slope = Math.atan(Math.hypot(nx, nz)) * 180 / Math.PI;
-        field.coverAt(x, z, cover, slope, ground0);
-        field.geologyAt(x, z, geo, slope, ground0);
-        rgb = coverRgb(cover, water, field, x, z, geo);
-        const lit = Math.max(0, (nx * sun[0] + sun[1] + nz * sun[2]) / len);
-        const k = cover.cls === 7 ? 0.95 : 0.42 + 0.78 * lit;
-        rgb = [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+function clearEyeSpots(ground) {
+  const base = eye8Spots((x, z) => ground.getHeightAt(x, z));
+  return base.map((eye) => {
+    const a = eye.faceDeg * Math.PI / 180, fx = Math.sin(a), fz = Math.cos(a), px = Math.cos(a), pz = -Math.sin(a);
+    const corner = eye.name.startsWith('corner');
+    for (const inset of [80, 70, 90, 60, 100]) for (const off of corner ? [0] : [0, 40, -40, 80, -80, 120, -120]) {
+      const k = 512 - inset;
+      const x = corner ? Math.sign(fx) * k : fx * k + px * off, z = corner ? Math.sign(fz) * k : fz * k + pz * off;
+      const y = ground.getHeightAt(x, z) + 2.5;
+      let blocked = false;
+      for (let d = 6; d <= 140 && !blocked; d += 4) for (const da of [-0.6, 0, 0.6]) {
+        const ex = x + Math.sin(a + da) * d, ez = z + Math.cos(a + da) * d;
+        if (Math.max(Math.abs(ex), Math.abs(ez)) > 512) continue;
+        if (Math.atan2(ground.getHeightAt(ex, ez) - y, d) > 0.14) { blocked = true; break; }
       }
-      // the haze law: Beer–Lambert by the true distance through the layer (a crest in thinner air than its foot)
-      const a1 = Math.max(0, top - drop) / 400, a0 = eye.y / 400;
-      const mean = Math.abs(a0 - a1) < 1e-3 ? Math.exp(-0.5 * (a0 + a1)) : (Math.exp(-a1) - Math.exp(-a0)) / (a0 - a1);
-      const T = Math.exp(-sigma * d * Math.max(0.05, mean));
-      const hz = sky(0.5);
-      for (let r = row; r < low; r++) {
-        const k4 = (r * W + col) * 4;
-        img.data[k4] = rgb[0] * T + hz[0] * (1 - T); img.data[k4 + 1] = rgb[1] * T + hz[1] * (1 - T); img.data[k4 + 2] = rgb[2] * T + hz[2] * (1 - T); img.data[k4 + 3] = 255;
-      }
-      low = row;
+      if (!blocked) return { ...eye, x, z, y };
     }
-    for (let r = 0; r < low; r++) {
-      const e = elev[1] - (r / Hh) * (elev[1] - elev[0]), c = sky(e), k4 = (r * W + col) * 4;
-      img.data[k4] = c[0]; img.data[k4 + 1] = c[1]; img.data[k4 + 2] = c[2]; img.data[k4 + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, rect.x, rect.y);
-  ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(rect.x + 6, rect.y + 6, 270, 20);
-  ctx.fillStyle = '#111'; ctx.font = 'bold 13px sans-serif';
-  ctx.fillText(`${eye.name}, 2.5 m, looking ${Math.round(eye.faceDeg)}° (CPU preview)`, rect.x + 12, rect.y + 21);
+    return eye;
+  });
 }
 
-/** The eye-level sheet: four EYE8 views at tank eye height over the border, rendered on the CPU. */
+/** Reference photographs of each place (the gauntlet's real set, ~/cot-launch-state/gauntlet-refs-20261012/real). */
+const REFERENCES = {
+  polders: [['real_scheldt_polders_2.jpg', 'Zeeland: a tower mill on the dyke over the creek, bare trees, low far horizon'],
+    ['real_zeeland_1.jpg', 'Zeeland: a dyke road toward the Oosterschelde']],
+  alpine: [['real_mont_cenis_1.jpg', 'Col du Mont-Cenis: the lake under snow below the Petit Mont-Cenis, March']],
+  verdant: [['real_prokhorovka_1.jpg', 'Prokhorovka: the forest-steppe'], ['real_prokhorovka_2.jpg', 'Prokhorovka']],
+};
+const REF_DIR = path.join(process.env.HOME ?? '', 'cot-launch-state/gauntlet-refs-20261012/real');
+
+/** The eye-level sheet: the place's reference photographs, then four EYE8 views at tank eye height (CPU preview). */
 export async function renderEyes(id, build, ground, outDir, { fog, names = ['edge-n', 'edge-s', 'corner-ne', 'edge-w'], elev } = {}) {
-  const W = 1800, EH = 300;
-  const canvas = createCanvas(W, EH * names.length + 10 * (names.length + 1));
+  const { renderEyeBuffer, CROP_RGB: CR, CLASS_RGB: CL } = await import('./hinterland-eye.mjs');
+  const { loadImage } = await import('@napi-rs/canvas');
+  const W = 1800, EH = 300, REF_H = 320;
+  const refs = REFERENCES[id] ?? [];
+  const canvas = createCanvas(W, (refs.length ? REF_H + 10 : 0) + EH * names.length + 10 * (names.length + 1));
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ece9e1'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const eyes = eye8Spots((x, z) => ground.getHeightAt(x, z));
-  names.forEach((name, i) => {
+  let y0 = 10, x0 = 10;
+  for (const [file, caption] of refs) {
+    try {
+      const img = await loadImage(path.join(REF_DIR, file));
+      const w = Math.round(img.width * (REF_H / img.height));
+      ctx.drawImage(img, x0, y0, w, REF_H);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(x0 + 6, y0 + REF_H - 26, Math.min(w - 12, ctx.measureText(caption).width + 20), 20);
+      ctx.fillStyle = '#111'; ctx.font = '12px sans-serif'; ctx.fillText(`reference — ${caption}`, x0 + 12, y0 + REF_H - 12);
+      x0 += w + 10;
+    } catch { /* (a missing reference leaves its slot empty) */ }
+  }
+  if (refs.length) y0 += REF_H + 10;
+  const { field, spec, plan } = build;
+  const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, conifer: false };
+  const geo = { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1, gully: 0 };
+  const water = { wet: 0, level: 0, kind: 0 };
+  const conifer = (spec.region.vegetation.species[0]?.[0] ?? '') .match(/pine|spruce|fir|cedar/) !== null;
+  const surfaceAt = (x, z) => (Math.max(Math.abs(x), Math.abs(z)) <= 512 ? ground.getHeightAt(x, z) : build.sample(x, z));
+  // (the battlefield inside the red line is the game's own material: the preview leaves it a neutral tone, unjudged)
+  const coverAt = (x, z, slope, h) => {
+    cover.inside = Math.max(Math.abs(x), Math.abs(z)) <= 512;
+    if (!cover.inside) field.coverAt(x, z, cover, slope, h);
+    cover.conifer = conifer; return cover;
+  };
+  const colourOf = (c, x, z) => {
+    if (c.cls === 7) { field.waterAt(x, z, water); return water.kind === 1 ? [56, 92, 116] : water.kind === 5 ? [108, 132, 140] : [74, 106, 124]; }
+    if (c.cls === 5 || c.snow > 0.55) return [236, 240, 246];
+    if (c.cls === 3 || c.cls === 4) {
+      field.geologyAt(x, z, geo);
+      const r = (geo.rockHex >> 16) & 255, g = (geo.rockHex >> 8) & 255, b = geo.rockHex & 255;
+      const band = 0.9 + 0.12 * Math.sin(geo.strata * 6.283) * Math.min(1, 40 / (1 + Math.hypot(x, z) / 60));
+      return c.cls === 4 ? [r * 1.15, g * 1.15, b * 1.12] : [r * band, g * band, b * band];
+    }
+    const tone = c.fieldId ? 0.9 + 0.2 * (((c.fieldId * 2654435761) >>> 0) % 1000) / 1000 : 1;
+    const rgb = c.cls === 0 || (c.cls === 1 && c.crop !== 31) ? CR[c.crop] ?? CL[0] : CL[c.cls] ?? [255, 0, 255];
+    return [rgb[0] * tone, rgb[1] * tone, rgb[2] * tone];
+  };
+  const autumn = /autumn|october|november/i.test(spec.place);
+  // the woods on a lazy lattice (8 m to 3 km, 32 m to 16 km), bilinear so a wood's edge thins
+  const lat = (cell, half) => ({ cell, half, n: Math.ceil((2 * half) / cell) + 1, v: null });
+  const L1 = lat(8, 3072), L2 = lat(32, 16384);
+  const wc = { ...cover };
+  const cell = (L, i, j) => {
+    L.v ??= new Float32Array(L.n * L.n).fill(-1);
+    const k = j * L.n + i;
+    if (L.v[k] < 0) { const x = -L.half + i * L.cell, z = -L.half + j * L.cell; field.coverAt(x, z, wc, 2); L.v[k] = wc.cls === 7 ? 0 : wc.woods; }
+    return L.v[k];
+  };
+  const woodsAt = (x, z) => {
+    if (Math.max(Math.abs(x), Math.abs(z)) < 512) return 0;
+    const L = Math.abs(x) < L1.half - 16 && Math.abs(z) < L1.half - 16 ? L1 : L2;
+    const fx = (x + L.half) / L.cell, fz = (z + L.half) / L.cell, i = Math.floor(fx), j = Math.floor(fz);
+    if (i < 0 || j < 0 || i + 1 >= L.n || j + 1 >= L.n) return 0;
+    const tx = fx - i, tz = fz - j;
+    return (cell(L, i, j) * (1 - tx) + cell(L, i + 1, j) * tx) * (1 - tz) + (cell(L, i, j + 1) * (1 - tx) + cell(L, i + 1, j + 1) * tx) * tz;
+  };
+  const eyes = clearEyeSpots(ground);
+  for (const name of names) {
     const eye = eyes.find((e) => e.name === name);
-    renderEye(ctx, { x: 10, y: 10 + i * (EH + 10), w: W - 20, h: EH }, build, ground, eye, { fog, elev });
-  });
+    const buf = renderEyeBuffer({ w: W - 20, h: EH, eye, elev, fog, surfaceAt, coverAt, colourOf, woodsAt, conifer, canopyM: spec.region.vegetation.canopyM || 18,
+      trees: plan.trees ?? [], verticals: plan.verticals, buildings: plan.buildings, autumn });
+    const img = ctx.createImageData(buf.w, buf.h); img.data.set(buf.data);
+    ctx.putImageData(img, 10, y0);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(16, y0 + 6, 300, 20);
+    ctx.fillStyle = '#111'; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(`${name}, 2.5 m, looking ${Math.round(eye.faceDeg)}° (CPU preview)`, 22, y0 + 21);
+    y0 += EH + 10;
+  }
   const file = path.join(outDir, `${id}-eyes.png`);
   writeFileSync(file, canvas.toBuffer('image/png'));
   return file;

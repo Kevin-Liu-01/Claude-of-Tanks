@@ -23,20 +23,8 @@ export function skylineObjects(build) {
   for (const b of plan.buildings) { const r = Math.min(b.width, b.depth) * 0.5; add({ x: b.x, z: b.z, r, h: 8.5 }, b.x - r, b.z - r, b.x + r, b.z + r); }
   for (const s of plan.settlements) if (!s.near) { const r = s.radiusM * 0.6; add({ x: s.x, z: s.z, r, h: 9, soft: true }, s.x - r, s.z - r, s.x + r, s.z + r); }
   const canopy = spec.region.vegetation.canopyM || 18;
-  // the rows' trees at their spacing along the line (a poplar a narrow column, a willow or an oak a rounder crown)
-  for (const row of plan.rows) {
-    const poplar = row.species === 'poplar', r = poplar ? 3.2 : 5.5, ht = poplar ? canopy * 1.05 : canopy * 0.7;
-    let carry = 0;
-    for (let i = 0; i + 1 < row.xs.length; i++) {
-      const ax = row.xs[i], az = row.zs[i], len = Math.hypot(row.xs[i + 1] - ax, row.zs[i + 1] - az);
-      for (let t = carry; t < len; t += row.spacingM) {
-        const jitter = ((Math.sin((ax + t) * 12.9898 + az * 78.233) * 43758.5453) % 1 + 1) % 1;
-        const x = ax + (row.xs[i + 1] - ax) * (t / len), z = az + (row.zs[i + 1] - az) * (t / len);
-        add({ x, z, r, h: ht * (0.82 + 0.3 * jitter), crown: true }, x - r, z - r, x + r, z + r);
-        carry = t + row.spacingM - len;
-      }
-    }
-  }
+  // the planner's trees (the rows in their cohorts and gaps, the farms' groups, the avenues), each a crown
+  for (const t of plan.trees ?? []) add({ x: t.x, z: t.z, r: t.crownM, h: t.heightM, crown: true }, t.x - t.crownM, t.z - t.crownM, t.x + t.crownM, t.z + t.crownM);
   // the woods' canopy (and the far country's tree lines): from the field's cover on a lazy 32 m lattice to 16 km
   const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
   // (16 m to 4 km, 64 m to 16 km: a wood's edge reads at eye level)

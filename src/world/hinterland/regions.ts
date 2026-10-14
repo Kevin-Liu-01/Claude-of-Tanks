@@ -210,7 +210,8 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     kit: 'savoyard', verticals: ['churchTower', 'pylonLine', 'mast'],
     vegetation: { habit: 'forest', woods: 0.32, hedges: 0, species: [['pine', 0.4], ['spruce', 0.32], ['fir', 0.28]], canopyM: 20 },
     outland: { riseM: r([40, 140]), wavelengthM: 600, flat: false },
-    geology: { rock: 'schist', rockHex: 0x7c7a72, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: 180, maxSlopeDeg: 40, scour: 0.5 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 30, forestBandM: r([-60, 260]), sand: 0, varnish: 0 },
+    // (the col stands above the treeline: the larch and pine belts only far down the valleys; April snow to the floor)
+    geology: { rock: 'schist', rockHex: 0x6f6c66, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -80, maxSlopeDeg: 48, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 44, forestBandM: r([-1500, -140]), sand: 0, varnish: 0 },
     far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0 },
   }),
   saharaOasis: region({
@@ -288,7 +289,7 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     land: 'polder', fields: 0.8, settlement: 'dykeVillage',
     density: { villages: r([2, 2]), hamlets: r([3, 6]), farms: r([10, 15]), works: r([0, 1]), perVillage: r([20, 40]) },
     kit: 'polder', verticals: ['churchTower', 'windmill', 'waterTower', 'lighthouse', 'pylonLine'],
-    vegetation: { habit: 'dikeRows', woods: 0.08, hedges: 0.6, species: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.1]], canopyM: 22 },
+    vegetation: { habit: 'dikeRows', woods: 0.08, hedges: 0.6, species: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.1]], canopyM: 17 },
     outland: { riseM: r([0.5, 1.6]), wavelengthM: 1400, flat: true },
     geology: { rock: 'clay', rockHex: 0x7d7564, strata: { bedM: 0, dipDeg: 0, contrast: 0 }, scree: 0, snow: NO_SNOW, gullies: 0, erosion: 0, rockSlopeDeg: 70, forestBandM: r([-10, 40]), sand: 0.15, varnish: 0 },
     far: { form: 'plain', reliefM: 4, distKm: r([4, 15]), layers: 0, treesM: 20 },

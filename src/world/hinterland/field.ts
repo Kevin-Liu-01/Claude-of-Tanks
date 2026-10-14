@@ -24,6 +24,8 @@ import { fbm2, hash12, hashString, noise2, seedOffset, smoothstep } from './nois
 
 /** The square's terrain edge (TERRAIN_HALF_EXTENT_M) and its playable edge. */
 export const HINTERLAND_EDGE_M = 512;
+/** Terms 4 and 5 rise from the edge at no more than this slope (tan 32°). */
+const RELIEF_EDGE_SLOPE = 0.62;
 /** Term 1: the battlefield's residual fades out over this many metres past the edge (continuedGroundAt's law). */
 export const HINTERLAND_RESIDUAL_FADE_M = 180;
 /** Term 2: the battlefield's own outland holds to this far past the edge, then eases into the region's relief. */
@@ -79,10 +81,14 @@ export interface HinterlandGeologySample {
   rockHex: number;
   /** 0..1 where a landform's forest belt allows woods (-1: the region's altitude band governs). */
   forest: number;
+  /** 0..1 in a gully or a couloir (the woods leave gaps down them, the snow lingers in them). */
+  gully: number;
+  /** 0..1 where snow can lie at all here (off the steep faces and the scoured crags): a landform's snow line is held by it. */
+  snowHold: number;
 }
 
 export function createHinterlandGeology(): HinterlandGeologySample {
-  return { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1 };
+  return { strata: 0, rock: 0, snow: 0, sand: 0, rockHex: 0, forest: -1, gully: 0, snowHold: 1 };
 }
 
 export interface HinterlandWaterSample {
@@ -399,10 +405,17 @@ export function createHinterlandField(
   /** Terms 4 and 5: the landforms and the far forms, each fading in from 20–120 m past the edge. */
   function addRelief(x: number, z: number, h: number, edgeOut: number, texelM: number): number {
     if (!relief.length) return h;
-    const inW = smoothstep(20, 120, edgeOut);
     let add = 0;
     for (let i = 0; i < relief.length; i++) add += relief[i].heightAt(x, z, h, texelM);
-    return h + add * inW;
+    // (HL-2b: a landform reaching to the edge — a spur coming down into a corner — rises from the edge at no more than a
+    // mountain slope, ~32°: faded in over a fixed 100 m, the Turra spur stood 260 m within the band, a wall over the
+    // corner eye with its snowy top as a white slab)
+    if (add > 0) {
+      const room = Math.max(0, edgeOut - 20) * RELIEF_EDGE_SLOPE;
+      // (a soft minimum: the landform's own height where there is room, the ramp's where there is not)
+      add = room <= 0 ? 0 : add / Math.pow(1 + (add / room) ** 4, 0.25);
+    } else add *= smoothstep(20, 120, edgeOut);
+    return h + add;
   }
 
   /** Term 6 applied to a base height: the floor under the water, and the water sample. */
@@ -562,14 +575,16 @@ export function createHinterlandField(
     const crag = 0.5 + 0.5 * noise2(x / 60 + coz, z / 60 + cox);
     out.rock = smoothstep(geo.rockSlopeDeg - 8, geo.rockSlopeDeg + 6, s + 6 * (crag - 0.5));
     const line = geo.snow.lineM;
+    // where snow can lie at all: off the steep (it slides), less on the wind-scoured crags
+    out.snowHold = (1 - smoothstep(geo.snow.maxSlopeDeg - 6, geo.snow.maxSlopeDeg + 4, s)) * (1 - 0.6 * geo.snow.scour * smoothstep(0.2, 0.9, crag));
     if (Number.isFinite(line)) {
       const lineHere = line + 40 * noise2(x / 420 + cox, z / 420 - coz);
-      const hold = 1 - smoothstep(geo.snow.maxSlopeDeg - 6, geo.snow.maxSlopeDeg + 4, s);
-      out.snow = smoothstep(lineHere - 30, lineHere + 50, rel) * hold * (1 - 0.6 * geo.snow.scour * smoothstep(0.2, 0.9, crag));
+      out.snow = smoothstep(lineHere - 30, lineHere + 50, rel) * out.snowHold;
     } else out.snow = 0;
     out.sand = geo.sand * (1 - out.rock) * (1 - smoothstep(4, 18, s));
     out.rockHex = geo.rockHex;
     out.forest = -1;
+    out.gully = 0;
     for (let i = 0; i < relief.length; i++) relief[i].geologyAt?.(x, z, out);
     return out;
   }
@@ -578,6 +593,8 @@ export function createHinterlandField(
   const landSample: LandFieldSample = createLandFieldSample();
   const waterSample = createHinterlandWater();
   const geoSample = createHinterlandGeology();
+  // (a flat region's woodlots are small: the patches' scale halves)
+  const woodsScale = spec.outland.flat ? 0.45 : 1;
   const woodsShare = Math.max(0, Math.min(1, spec.outland.woods));
   // the woods field past the near band (the battlefield's own woods hold near): patches at ~600 m and ~200 m, leaning
   // onto the low ground for the wet regions and onto the slopes for the uplands, cut to the region's share
@@ -590,11 +607,15 @@ export function createHinterlandField(
     return samples[Math.min(samples.length - 1, Math.floor((1 - woodsShare) * samples.length))];
   })();
   function woodsNoise(x: number, z: number): number {
-    return noise2(x / 620 + wox, z / 620 - woz) * 0.62 + noise2(x / 210 - woz, z / 210 + wox) * 0.3 + noise2(x / 55 + 3.3, z / 55 - 1.7) * 0.08;
+    const s = woodsScale;
+    return noise2(x / (620 * s) + wox, z / (620 * s) - woz) * 0.62 + noise2(x / (210 * s) - woz, z / (210 * s) + wox) * 0.3 + noise2(x / 55 + 3.3, z / 55 - 1.7) * 0.08;
   }
+  // (a flat place keeps the battlefield's border woods only near the edge, where they continue its own; past that its
+  // woodlots are the region's — small, so the eye runs out over the polder between them — HL-2b's long views)
+  const nearWoodsHold = flat ? [220, 320] : [HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M];
   function woodsAt(x: number, z: number, edgeOut: number): number {
-    const near = ground.getBorderWoodsAt && edgeOut < HINTERLAND_NEAR_EASE_M ? ground.getBorderWoodsAt(x, z) : 0;
-    const ease = smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M, edgeOut);
+    const near = ground.getBorderWoodsAt && edgeOut < nearWoodsHold[1] ? ground.getBorderWoodsAt(x, z) : 0;
+    const ease = smoothstep(nearWoodsHold[0], nearWoodsHold[1], edgeOut);
     if (ease <= 0 || !Number.isFinite(woodsCut)) return near * (1 - ease);
     const far = smoothstep(woodsCut - 0.03, woodsCut + 0.03, woodsNoise(x, z));
     return near + (far - near) * ease;
@@ -625,10 +646,17 @@ export function createHinterlandField(
     // the forest's altitude band (the treeline)
     const rel = hh - datumAt(hinterlandBearing(x, z));
     const band = spec.geology.forestBandM;
-    const inBand = band[1] > band[0] ? smoothstep(band[0] - 20, band[0] + 10, rel) * (1 - smoothstep(band[1] - 40, band[1] + 30, rel)) : 0;
+    // the treeline is ragged (it wanders ±45 m over a few hundred metres) and the wood thins out under it
+    const ragged = 45 * noise2(x / 190 + cox, z / 190 - coz) + 20 * noise2(x / 60 - coz, z / 60 + cox);
+    const inBand = band[1] > band[0] ? smoothstep(band[0] - 20, band[0] + 10, rel) * (1 - smoothstep(band[1] - 70, band[1] + 10, rel - ragged)) : 0;
     // (a landform's own forest belt governs on it: the belt between its heights, bare above)
     const allow = geoSample.forest >= 0 ? geoSample.forest : (inBand > 0 ? inBand : (band[1] > band[0] ? 0 : 1));
-    out.woods = woodsAt(x, z, edgeOut) * allow;
+    let woods = woodsAt(x, z, edgeOut) * Math.min(1, allow * 1.6);
+    // krummholz: where the belt thins toward its top, the wood breaks into clumps (a finer noise must clear a rising cut)
+    if (allow < 0.95 && woods > 0) woods *= smoothstep(1 - allow - 0.1, 1 - allow + 0.1, 0.5 + 0.5 * noise2(x / 38 + coz, z / 38 - cox));
+    // gaps down the gullies and couloirs (avalanche tracks, screes)
+    woods *= 1 - smoothstep(0.35, 0.65, geoSample.gully);
+    out.woods = woods;
     if (out.scree > 0.5) { out.cls = HL_COVER.scree; return out; }
     if (out.woods > 0.5) { out.cls = HL_COVER.woods; return out; }
     if (geoSample.sand > 0.5) { out.cls = HL_COVER.sand; return out; }

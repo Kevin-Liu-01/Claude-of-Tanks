@@ -134,7 +134,7 @@ for (let i = 0; i < 400; i++) {
   hash.update(`${pinRelief.heightAt(p.x, p.z, 0).toFixed(3)};${alp.heightAt(p.x * 3, p.z * 3, 0, 0).toFixed(3)};`);
 }
 const pin = hash.digest('hex').slice(0, 16);
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '28eddc0a343a1c8f';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : 'd3efca3203d2b7ed';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandLandforms pin: ${pin}`);
 else assert.equal(pin, PIN, 'the landform or far law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 console.log(`hinterlandLandforms.selftest: ok — massif crest ${summits} summits, ${ledges} ledges, jebel wall ${(Math.atan(jWall) * 180 / Math.PI).toFixed(0)}°, alpine far ${maxAlp.toFixed(0)} m`);
