@@ -106,7 +106,8 @@ function compare(a, b) {
   for (const tankA of a.tanks) {
     const tankB = b.tanks.find((entry) => entry.id === tankA.id);
     const row = { id: tankA.id, msA: tankA.ms, msB: tankB?.ms ?? null, programsA: tankA.programsAdded, programsB: tankB?.programsAdded ?? null };
-    if (!tankB || tankA.error || tankB.error) { rows.push({ ...row, verdict: 'error', errorA: tankA.error, errorB: tankB?.error ?? 'missing' }); continue; }
+    // errorB 'missing' only when B has no row for the tank; null when B built it (2026-10-13: 'missing' read as B's failure)
+    if (!tankB || tankA.error || tankB.error) { rows.push({ ...row, verdict: 'error', errorA: tankA.error, errorB: tankB ? tankB.error : 'missing' }); continue; }
     for (const part of ['hull', 'turret']) {
       const pa = tankA[part], pb = tankB[part];
       const geometry = Object.keys(pa).filter((key) => !['alpha', 'rgb', 'width', 'height'].includes(key)).every((key) => JSON.stringify(pa[key]) === JSON.stringify(pb[key]));
