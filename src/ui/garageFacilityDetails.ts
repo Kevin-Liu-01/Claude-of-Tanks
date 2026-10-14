@@ -811,22 +811,46 @@ export function addGarageFacilityDetails({
   /** The back wall in brick to `height` with tall round-headed windows high in it, and a gable stepped up to `ridgeY`. */
   const brickBackWall = (cluster: FacilityCluster, height: number, ridgeY: number, windows: readonly number[],
     stone: THREE.Color): void => {
+    // The windows are cut through the wall (2026-10-14, the props standard: openings with depth; round 6a painted them
+    // on its face): the wall stands as a band under the sills, a band over the heads and piers between, so each opening
+    // shows the wall's 0.38 m in its reveals; an iron frame with a mullion and a transom stands 0.14 m back from the
+    // yard face, its lights glazed dark behind it; a stone sill and a brick relieving arch over a flat head.
     const back = -BAY_HALF_L - 0.24;
-    clusterSurface(cluster, 'brick', 0, back, height / 2, 2 * BAY_HALF_W, height, 0.38);
+    const thickness = 0.38, halfOpening = 0.65, sillY = 2.3, headY = 4.6;
+    const yardFace = back + thickness / 2;
+    clusterSurface(cluster, 'brick', 0, back, sillY / 2, 2 * BAY_HALF_W, sillY, thickness);
+    clusterSurface(cluster, 'brick', 0, back, (headY + height) / 2, 2 * BAY_HALF_W, height - headY, thickness);
+    const edges = [-BAY_HALF_W, ...[...windows].sort((a, b) => a - b).flatMap((lateral) => [lateral - halfOpening, lateral + halfOpening]),
+      BAY_HALF_W];
+    for (let index = 0; index < edges.length; index += 2) {
+      const a = edges[index], b = edges[index + 1];
+      if (b - a > 0.02) clusterSurface(cluster, 'brick', (a + b) / 2, back, (sillY + headY) / 2, b - a, headY - sillY, thickness);
+    }
+    const iron = new THREE.Color(0x2b2f31);
+    const pane = new THREE.Color(0x1b2226);
     for (const lateral of windows) {
-      clusterBox(cluster, lateral, back + 0.2, 3.45, 1.3, 2.3, 0.04, new THREE.Color(0x232a2e), 'painted'); // glazing
-      clusterBox(cluster, lateral, back + 0.24, 2.26, 1.5, 0.12, 0.16, stone, 'masonry'); // sill
+      const frameAt = yardFace - 0.14, bar = 0.06;
+      const transomY = sillY + (headY - sillY) * 0.62;
+      for (const side of [-1, 1]) {
+        clusterBox(cluster, lateral + side * (halfOpening - bar / 2), frameAt, (sillY + headY) / 2, bar, headY - sillY, 0.08, iron, 'painted');
+      }
+      clusterBox(cluster, lateral, frameAt, headY - bar / 2, 2 * halfOpening, bar, 0.08, iron, 'painted');
+      clusterBox(cluster, lateral, frameAt, sillY + bar / 2, 2 * halfOpening, bar, 0.08, iron, 'painted');
+      clusterBox(cluster, lateral, frameAt, (sillY + headY) / 2, 0.045, headY - sillY - 2 * bar, 0.06, iron, 'painted'); // mullion
+      clusterBox(cluster, lateral, frameAt, transomY, 2 * halfOpening - 2 * bar, 0.045, 0.06, iron, 'painted'); // transom
+      clusterBox(cluster, lateral, frameAt - 0.05, (sillY + headY) / 2, 2 * halfOpening - 0.04, headY - sillY - 0.04, 0.012, pane, 'painted');
+      clusterBox(cluster, lateral, yardFace + 0.05, sillY - 0.04, 2 * halfOpening + 0.2, 0.12, 0.2, stone, 'masonry'); // sill
       for (let v = 0; v < 5; v += 1) {
-        // the brick arch head: five voussoirs round the window's top
-        const a = Math.PI * (v + 0.5) / 5;
-        clusterBox(cluster, lateral + Math.cos(a) * 0.76, back + 0.21, 4.6 + Math.sin(a) * 0.5, 0.34, 0.22, 0.1,
-          new THREE.Color(0x6e3f30), 'masonry', a - Math.PI / 2);
+        // the brick relieving arch over the head: five voussoirs proud of the face
+        const angle = Math.PI * (v + 0.5) / 5;
+        clusterBox(cluster, lateral + Math.cos(angle) * 0.76, yardFace + 0.02, headY + 0.06 + Math.sin(angle) * 0.46, 0.34, 0.22, 0.06,
+          new THREE.Color(0x6e3f30), 'masonry', angle - Math.PI / 2);
       }
     }
     for (let step = 0; step < 4; step += 1) {
       const y0 = height + step * (ridgeY - height) / 4, y1 = height + (step + 1) * (ridgeY - height) / 4;
       const half = BAY_HALF_W * (1 - (y1 - height) / (ridgeY - height)) + 0.25;
-      clusterSurface(cluster, 'brick', 0, back, (y0 + y1) / 2, 2 * Math.max(0.35, half), y1 - y0, 0.38);
+      clusterSurface(cluster, 'brick', 0, back, (y0 + y1) / 2, 2 * Math.max(0.35, half), y1 - y0, thickness);
     }
   };
   /** Lattice roof trusses across the bay (top chords to the ridge, a bottom chord at the eaves, diagonal webs). */
