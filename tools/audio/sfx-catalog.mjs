@@ -423,10 +423,7 @@ const AMBIENCE_EVEN = {
   steppe: 'a vast windswept steppe: a deep steady wind rumbling across the open plain and hissing softly through dry grass',
   forest: 'a dense temperate forest: a low wind moving through the canopy, deep creaking trunks and branches, leaves rustling softly, a distant crow',
   pine: 'a pine forest: a low wind sighing through the pines, deep creaking trunks, a distant woodpecker',
-  jungle: 'a humid tropical jungle: a low dense insect drone, water dripping from leaves, distant animal calls, heavy humid air',
-  mangrove: 'a mangrove swamp: water lapping between the roots, frogs, a low insect drone',
   desert: 'a hot desert: a low dry wind gusting, sand hissing softly, desolate silence',
-  oasis: 'a desert oasis: palm fronds rustling in a dry wind, a trickling spring, open desert silence',
   canyon: 'a deep rocky canyon: a low wind moaning between the cliffs, a distant river, falling pebbles',
   airfield: 'a military airfield: open wind across the runway, a distant jet engine idling steadily, flags snapping',
   // The 2.0 revival (2026-10-06): the sheltered waters that amb_coastal's breaking surf misdescribed — the Ofotfjord's
@@ -434,6 +431,17 @@ const AMBIENCE_EVEN = {
   // stay spots: asked for in the bed, every take came back as one steady 6–8 kHz shrill (99 % of its energy over 4 kHz).
   fjord: 'a sheltered northern fjord shore in spring: calm cold water lapping gently against a stony beach and wooden pilings, a light breeze off the water, deep quiet',
   adriatic: 'a sheltered Mediterranean bay in summer: small waves lapping and washing over a pebble shore close by, a warm dry breeze moving through scrub and pine branches, no insects',
+};
+
+/**
+ * AU.07 (2026-10-13): the three beds every earlier take got wrong — the jungle and the mangrove were mostly insect hiss,
+ * the oasis stepped 2.8 dB at its loop seam. Water, leaves and animals lead; insects only faint and low under them; the
+ * oasis asks for one steady wind and spring from start to end. Six takes each, so the seam and spectrum scoring can pick.
+ */
+const AMBIENCE_REDONE = {
+  jungle: 'a dense tropical jungle by day: water dripping steadily from broad leaves, a slow stream, leaves rustling in a warm breeze, distant bird calls and frogs; insects only faint and low in the background, no high-pitched whine',
+  mangrove: 'a mangrove swamp at high tide: water lapping and gurgling between the roots, frogs croaking, a heron far off, a soft breeze in the leaves; insects only faint and low, no high-pitched whine',
+  oasis: 'a desert oasis at midday: one steady warm wind through date palm fronds, a small spring trickling into a stone pool, doves cooing far off, the same from start to end',
 };
 
 /** Water and machinery layers placed under a bed on the maps that have them. */
@@ -458,6 +466,9 @@ const ambience = [
   ...Object.entries(AMBIENCE_EVEN).map(([biome, desc]) => sfx(`amb_${biome}`, 'ambience',
     `Seamless loop of the ambience of ${desc}. Continuous at an even level from start to end, rich and detailed, wide stereo, no engines, no gunfire, ${NO_MUSIC}.`,
     20, { inf: 0.4, loop: true, variants: 1, takes: 4, proc: 'ambience', ch: 'stereo' })),
+  ...Object.entries(AMBIENCE_REDONE).map(([biome, desc]) => sfx(`amb_${biome}`, 'ambience',
+    `Seamless loop of the ambience of ${desc}. Continuous at an even level, rich and detailed, wide stereo, no engines, no gunfire, ${NO_MUSIC}.`,
+    20, { inf: 0.4, loop: true, variants: 1, takes: 6, proc: 'ambience', ch: 'stereo' })),
   sfx('amb_distant_battle', 'ambience', `Seamless loop of a distant battle far beyond the horizon: occasional muffled artillery booms, faint machine gun bursts, low rumble. ${NO_MUSIC}.`, 20, { loop: true, variants: 1, takes: 1, proc: 'ambience', ch: 'stereo' }),
   sfx('amb_garage', 'ambience', `Seamless loop of the inside of a huge military vehicle hangar: a deep reverberant room tone, ventilation, distant mechanics at work with tools, a far-off generator hum, occasional echoing clanks. ${NO_MUSIC}.`, 16, { loop: true, variants: 1, takes: 2, proc: 'ambience', ch: 'stereo' }),
   sfx('distant_artillery', 'ambience', `One-shot of a distant artillery shell exploding many kilometres away: deep rolling rumble. ${NO_MUSIC}.`, 4, { variants: 3, takes: 3, proc: 'weapon-far' }),
@@ -528,6 +539,34 @@ const SPOTS_REVIVAL = [
   ['boat_creak', 'a moored wooden fishing boat creaking against a quay, its ropes straining and water slapping its hull', 3, 2],
 ];
 
+/**
+ * AU.06 (2026-10-13; the owner: "so its not quiet all the time"): the battle's distant life. The far war plays on every
+ * inhabited battlefield (environmentScenes WAR_SPOTS) — a tank column, a brew-up, a machine-gun duel, mortars, a town
+ * collapsing, an engine behind a hill, all a kilometre or more away; each place adds its own life (livestock, loose
+ * shutters and roofing, branches, ravens, monkeys, a cold wind). Spots at the spot level and rate (48 kbps mono).
+ */
+const SPOTS_LIFE = [
+  ['far_tank_column', 'a column of heavy tanks moving far away, about a kilometre off: tracks clanking and squealing, engines droning, slowly fading', 6, 2],
+  ['far_brewup', 'a tank blowing up far away across a valley, about two kilometres off: one deep muffled boom, then a few smaller popping secondary explosions', 5, 2],
+  ['far_mg_duel', 'two machine guns trading short bursts far away, about a kilometre off, the bursts echoing back and forth across fields', 5, 2],
+  ['far_mortar', 'three mortar rounds landing far away, about a kilometre off: dull thumps one after another with a short echo', 5, 2],
+  ['far_collapse', 'a building collapsing far away in a town, about a kilometre off: a long muffled rumble of falling masonry', 5, 1],
+  ['far_engine', 'a tank engine revving and its gears grinding far away behind a hill, then fading', 5, 2],
+  ['cattle', 'a cow lowing in a field', 3, 2],
+  ['sheep', 'a few sheep bleating in a field', 3, 1],
+  ['horse', 'a nervous horse neighing and snorting', 2.5, 1],
+  ['rooster', 'a rooster crowing far away in a village', 3, 1],
+  ['goats', 'goats bleating on a rocky slope', 3, 1],
+  ['camel', 'a camel groaning and grumbling', 3, 1],
+  ['shutter_bang', 'a loose wooden window shutter banging against a stone wall in the wind', 3, 2],
+  ['tin_roof', 'loose corrugated iron sheets on a roof rattling and banging in a gust of wind', 3, 2],
+  ['branch_fall', 'a dead branch cracking and falling through a tree onto the forest floor', 3, 2],
+  ['raven', 'a raven croaking deeply', 2, 2],
+  ['monkeys', 'howler monkeys roaring far away in a jungle canopy', 4, 1],
+  ['hornbill', 'the heavy wingbeats and honking call of a hornbill flying past', 3, 1],
+  ['wind_howl', 'a long cold wind howling across a snowy ridge', 4, 2],
+];
+
 // The garage hangar's workshop, placed a few metres away by the indoor garage scene.
 const GARAGE_SPOTS = [
   ['garage_compressor', 'an air compressor starting up, running briefly and shutting off with a hiss', 4, 1],
@@ -545,6 +584,8 @@ const spots = [
     `One-shot of ${desc}, inside a large concrete military hangar with a long echo. ${NO_MUSIC}.`, dur, { variants, takes: variants + 1, proc: 'spot' })),
   ...SPOTS_REVIVAL.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
     `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants + 1, proc: 'spot' })),
+  ...SPOTS_LIFE.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
+    `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants + 2, proc: 'spot' })),
   // A landmark's bell (2026-10-06): one strike, tolled by the ambience director from the map's church, belfry or
   // campanile in a quiet stretch; the engine pitches it by the tower and repeats it one to three times.
   sfx('bell_toll', 'spots', `One-shot of a single large bronze church bell tolled once, recorded outdoors in the churchyard below the tower: the dull strike of the clapper, then a deep solemn tone ringing on and fading away slowly over five seconds. One strike only, no other bells. ${NO_MUSIC}.`, 6, { variants: 2, takes: 8, proc: 'spot' }),

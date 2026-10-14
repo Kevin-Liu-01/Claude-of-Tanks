@@ -48,74 +48,92 @@ const PISTON = fly(['flyover_piston', 1]);
 const BOMBERS = fly(['flyover_bomber', 1]);
 const PISTON_AND_BOMBERS = fly(['flyover_piston', 1], ['flyover_bomber', 1]);
 
-function scene(value: SceneSeed): EnvironmentScene {
-  return Object.freeze({
-    bedDb: 0,
-    layer: null,
-    spots: Object.freeze([]),
-    spotEveryS: Object.freeze([9, 20]) as readonly [number, number],
-    tail: 'open' as GunTail,
-    reverb: 'open' as ReverbId,
-    war: 0.35,
-    indoor: false,
-    bells: null,
-    flyovers: JETS,
-    ...value,
-  });
-}
-
-const L = (asset: string, db: number) => Object.freeze({ asset: `layer_${asset}`, db });
 // A battlefield's spots are mostly wind, crows, hawks, gulls, rubble and
 // machinery; songbirds, bees and a distant siren can be among them.
 const spots = (...entries: (readonly [string, number])[]) => Object.freeze(entries.map(([id, w]) => Object.freeze([`spot_${id}`, w] as const)));
 
+/**
+ * The far war (AU.06, 2026-10-13; the owner: "so its not quiet all the time"): every inhabited battlefield hears the
+ * battle beyond its edge between its own fights — a tank column, a brew-up, a machine-gun duel, mortars, a town coming
+ * down, an engine behind a hill, each recorded a kilometre or more away. They join a scene whose distant-war bed plays
+ * (war > 0), at WAR_SHARE of the place's own spot weight, so about a third of the spots are the war's.
+ */
+const WAR_SPOTS = spots(['far_tank_column', 1], ['far_brewup', 1], ['far_mg_duel', 1], ['far_mortar', 1], ['far_collapse', 1], ['far_engine', 1]);
+const WAR_SHARE = 0.5;
+
+function withWar(own: readonly (readonly [string, number])[], war: number): readonly (readonly [string, number])[] {
+  const weight = own.reduce((sum, [, w]) => sum + w, 0);
+  if (!(war > 0) || !(weight > 0)) return own;
+  const each = +(weight * WAR_SHARE / WAR_SPOTS.length).toFixed(3);
+  return Object.freeze([...own, ...WAR_SPOTS.map(([id]) => Object.freeze([id, each] as const))]);
+}
+
+function scene(value: SceneSeed): EnvironmentScene {
+  const war = value.war ?? 0.35;
+  return Object.freeze({
+    bedDb: 0,
+    layer: null,
+    spotEveryS: Object.freeze([9, 20]) as readonly [number, number],
+    tail: 'open' as GunTail,
+    reverb: 'open' as ReverbId,
+    indoor: false,
+    bells: null,
+    flyovers: JETS,
+    ...value,
+    war,
+    spots: withWar(value.spots ?? Object.freeze([]), war),
+  });
+}
+
+const L = (asset: string, db: number) => Object.freeze({ asset: `layer_${asset}`, db });
+
 export const MAP_SCENES: Readonly<Record<string, EnvironmentScene>> = Object.freeze({
   // Prokhorovka, 1943: the Il-2s and Ju 87s over the fields, the village church's Orthodox bells
-  verdant: scene({ bed: 'amb_field', spots: spots(['crow', 5], ['hawk', 2], ['wind_gust', 2], ['dog', 1], ['songbird', 3], ['lark', 2]), bells: 'orthodox', flyovers: PISTON }),
-  desert: scene({ bed: 'amb_desert', spots: spots(['hawk', 2], ['wind_gust', 3], ['dust_devil', 1], ['rockfall', 1]), reverb: 'desert', spotEveryS: [10, 20] }),
+  verdant: scene({ bed: 'amb_field', spots: spots(['crow', 5], ['hawk', 2], ['wind_gust', 2], ['dog', 1], ['songbird', 3], ['lark', 2], ['cattle', 2], ['horse', 1], ['rooster', 1]), bells: 'orthodox', flyovers: PISTON }),
+  desert: scene({ bed: 'amb_desert', spots: spots(['hawk', 2], ['wind_gust', 3], ['dust_devil', 1], ['rockfall', 1], ['camel', 1], ['goats', 1]), reverb: 'desert', spotEveryS: [10, 20] }),
   // the Podhale, January 1945: the wooden churches' and the belfry's bells under the Il-2s and Bf 109s
-  winter: scene({ bed: 'amb_alpine', spots: spots(['crow', 2], ['snow_slide', 2], ['ice_crack', 2], ['wind_gust', 2]), reverb: 'snow', bells: 'western', flyovers: PISTON }),
-  urban: scene({ bed: 'amb_urban', spots: spots(['siren_far', 1], ['dog', 1], ['debris_settle', 5], ['fire_crackle', 2], ['radio_far', 1], ['crow', 1]), tail: 'urban', reverb: 'urban', war: 0.45, bells: 'western' }),
-  coastal: scene({ bed: 'amb_coastal', layer: L('surf', -8), spots: spots(['gulls', 3], ['foghorn', 2], ['wave_crash', 2]) }),
-  autumn: scene({ bed: 'amb_forest', layer: L('river', -14), spots: spots(['crow', 4], ['woodpecker', 2], ['wind_gust', 2], ['songbird', 1]), tail: 'forest', reverb: 'forest', flyovers: PISTON_AND_BOMBERS }),
-  steppe: scene({ bed: 'amb_steppe', spots: spots(['hawk', 5], ['wind_gust', 3], ['lark', 3]) }),
-  railyard: scene({ bed: 'amb_railyard', spots: spots(['train_horn', 2], ['wagon_clank', 3], ['steam_hiss', 2], ['metal_groan', 1], ['crow', 1]), tail: 'urban', reverb: 'urban', war: 0.4 }),
-  frontier: scene({ bed: 'amb_field', spots: spots(['hawk', 2], ['dog', 1], ['windmill', 1], ['wind_gust', 2], ['crow', 1], ['songbird', 1]), bells: 'western' }),
+  winter: scene({ bed: 'amb_alpine', spots: spots(['crow', 2], ['snow_slide', 2], ['ice_crack', 2], ['wind_gust', 2], ['wind_howl', 2], ['raven', 1]), reverb: 'snow', bells: 'western', flyovers: PISTON }),
+  urban: scene({ bed: 'amb_urban', spots: spots(['siren_far', 1], ['dog', 1], ['debris_settle', 5], ['fire_crackle', 2], ['radio_far', 1], ['crow', 1], ['shutter_bang', 2], ['tin_roof', 1]), tail: 'urban', reverb: 'urban', war: 0.45, bells: 'western' }),
+  coastal: scene({ bed: 'amb_coastal', layer: L('surf', -8), spots: spots(['gulls', 3], ['foghorn', 2], ['wave_crash', 2], ['shutter_bang', 1]) }),
+  autumn: scene({ bed: 'amb_forest', layer: L('river', -14), spots: spots(['crow', 4], ['woodpecker', 2], ['wind_gust', 2], ['songbird', 1], ['branch_fall', 2], ['raven', 1]), tail: 'forest', reverb: 'forest', flyovers: PISTON_AND_BOMBERS }),
+  steppe: scene({ bed: 'amb_steppe', spots: spots(['hawk', 5], ['wind_gust', 3], ['lark', 3], ['horse', 1], ['sheep', 1]) }),
+  railyard: scene({ bed: 'amb_railyard', spots: spots(['train_horn', 2], ['wagon_clank', 3], ['steam_hiss', 2], ['metal_groan', 1], ['crow', 1], ['tin_roof', 2]), tail: 'urban', reverb: 'urban', war: 0.4 }),
+  frontier: scene({ bed: 'amb_field', spots: spots(['hawk', 2], ['dog', 1], ['windmill', 1], ['wind_gust', 2], ['crow', 1], ['songbird', 1], ['cattle', 1], ['sheep', 1], ['rooster', 1]), bells: 'western' }),
   // Bjerkvik at the head of the Herjangsfjord, May 1940: calm water at the quays (not amb_coastal's breaking surf),
   // the oystercatchers on the shore, the fishing boats at their moorings, the He 111s and Ju 87s overhead
-  fjord: scene({ bed: 'amb_fjord', layer: L('waterfall', -12), spots: spots(['gulls', 3], ['oystercatcher', 2], ['boat_creak', 2], ['eagle', 1], ['foghorn', 1]), tail: 'mountain', reverb: 'mountain', flyovers: PISTON_AND_BOMBERS }),
+  fjord: scene({ bed: 'amb_fjord', layer: L('waterfall', -12), spots: spots(['gulls', 3], ['oystercatcher', 2], ['boat_creak', 2], ['eagle', 1], ['foghorn', 1], ['shutter_bang', 1]), tail: 'mountain', reverb: 'mountain', flyovers: PISTON_AND_BOMBERS }),
   // the Jamuna's chars: the country boats tied at the landings
-  delta: scene({ bed: 'amb_wetland', layer: L('river', -14), spots: spots(['frog', 3], ['heron', 3], ['cicadas', 2], ['tropical_bird', 1], ['boat_creak', 1]), tail: 'forest', reverb: 'forest' }),
+  delta: scene({ bed: 'amb_wetland', layer: L('river', -14), spots: spots(['frog', 3], ['heron', 3], ['cicadas', 2], ['tropical_bird', 1], ['boat_creak', 1], ['cattle', 1]), tail: 'forest', reverb: 'forest' }),
   // Wadi Rum: a dry wind in the sand valleys (amb_canyon is a steady distant river), the jebels' echo
-  badlands: scene({ bed: 'amb_desert', spots: spots(['hawk', 2], ['eagle', 1], ['rockfall', 2], ['wind_gust', 2]), tail: 'mountain', reverb: 'canyon' }),
-  monsoon: scene({ bed: 'amb_jungle', spots: spots(['heron', 3], ['cicadas', 2], ['frog', 2], ['tropical_bird', 3]), tail: 'forest', reverb: 'forest', spotEveryS: [8, 16], flyovers: PISTON }),
+  badlands: scene({ bed: 'amb_desert', spots: spots(['hawk', 2], ['eagle', 1], ['rockfall', 2], ['wind_gust', 2], ['goats', 1]), tail: 'mountain', reverb: 'canyon' }),
+  monsoon: scene({ bed: 'amb_jungle', spots: spots(['heron', 3], ['cicadas', 2], ['frog', 2], ['tropical_bird', 3], ['monkeys', 2], ['hornbill', 1]), tail: 'forest', reverb: 'forest', spotEveryS: [8, 16], flyovers: PISTON }),
   // Mont-Cenis, April 1945: the hospice's and the Grande Croix's bells, the Thunderbolts and Typhoons
-  alpine: scene({ bed: 'amb_alpine', spots: spots(['eagle', 1], ['rockfall', 2], ['ice_crack', 1], ['snow_slide', 1], ['wind_gust', 3]), tail: 'mountain', reverb: 'mountain', bells: 'western', flyovers: PISTON }),
+  alpine: scene({ bed: 'amb_alpine', spots: spots(['eagle', 1], ['rockfall', 2], ['ice_crack', 1], ['snow_slide', 1], ['wind_gust', 3], ['wind_howl', 2], ['raven', 1]), tail: 'mountain', reverb: 'mountain', bells: 'western', flyovers: PISTON }),
   caldera: scene({ bed: 'amb_volcanic', spots: spots(['vent_hiss', 3], ['geo_rumble', 2], ['rockfall', 2]), tail: 'mountain', reverb: 'canyon' }),
-  foundry: scene({ bed: 'amb_foundry', layer: L('machinery', -12), spots: spots(['forge_hammer', 3], ['steam_hiss', 2], ['crane_chain', 2], ['metal_groan', 1]), tail: 'urban', reverb: 'urban', war: 0.4, flyovers: PISTON_AND_BOMBERS }),
-  ruinspires: scene({ bed: 'amb_industrial', spots: spots(['debris_settle', 4], ['metal_groan', 2], ['wind_gust', 2], ['crow', 1]), tail: 'urban', reverb: 'urban', war: 0.45 }),
+  foundry: scene({ bed: 'amb_foundry', layer: L('machinery', -12), spots: spots(['forge_hammer', 3], ['steam_hiss', 2], ['crane_chain', 2], ['metal_groan', 1], ['tin_roof', 1]), tail: 'urban', reverb: 'urban', war: 0.4, flyovers: PISTON_AND_BOMBERS }),
+  ruinspires: scene({ bed: 'amb_industrial', spots: spots(['debris_settle', 4], ['metal_groan', 2], ['wind_gust', 2], ['crow', 1], ['shutter_bang', 2], ['tin_roof', 2]), tail: 'urban', reverb: 'urban', war: 0.45 }),
   // Suzhou Creek, 1937: the creek's water at the embankments, sampans at their moorings, steamers' horns on the
   // Huangpu, the G3Ms overhead
-  blackglass: scene({ bed: 'amb_urban', layer: L('creek', -15), spots: spots(['metal_groan', 1], ['debris_settle', 5], ['siren_far', 1], ['fire_crackle', 1], ['radio_far', 1], ['boat_creak', 2], ['foghorn', 1]), tail: 'urban', reverb: 'urban', war: 0.45, flyovers: BOMBERS }),
+  blackglass: scene({ bed: 'amb_urban', layer: L('creek', -15), spots: spots(['metal_groan', 1], ['debris_settle', 5], ['siren_far', 1], ['fire_crackle', 1], ['radio_far', 1], ['boat_creak', 2], ['foghorn', 1], ['shutter_bang', 1], ['tin_roof', 1]), tail: 'urban', reverb: 'urban', war: 0.45, flyovers: BOMBERS }),
   // Monument Valley: desert wind over the valley floor and its dry washes; no river runs there
-  titan_gorge: scene({ bed: 'amb_desert', spots: spots(['eagle', 2], ['rockfall', 2], ['wind_gust', 2], ['crow', 1]), tail: 'mountain', reverb: 'canyon' }),
-  skybridge: scene({ bed: 'amb_highwind', spots: spots(['cable_hum', 3], ['wind_gust', 3], ['eagle', 1]), tail: 'mountain', reverb: 'canyon' }),
-  polders: scene({ bed: 'amb_wetland', spots: spots(['windmill', 3], ['geese', 2], ['frog', 2], ['gulls', 1]), flyovers: PISTON_AND_BOMBERS }),
-  copper_mesa: scene({ bed: 'amb_mine', spots: spots(['conveyor', 2], ['rockfall', 2], ['metal_groan', 1], ['hawk', 1], ['steam_hiss', 1]), tail: 'mountain', reverb: 'canyon' }),
-  airfield: scene({ bed: 'amb_airfield', spots: spots(['jet_taxi', 2], ['flag_flap', 2], ['radio_far', 2], ['hawk', 1], ['wind_gust', 1], ['lark', 1]) }),
-  oasis: scene({ bed: 'amb_oasis', spots: spots(['hawk', 1], ['dust_devil', 1], ['wind_gust', 2], ['crow', 1], ['songbird', 1]), reverb: 'desert', spotEveryS: [10, 20] }),
+  titan_gorge: scene({ bed: 'amb_desert', spots: spots(['eagle', 2], ['rockfall', 2], ['wind_gust', 2], ['crow', 1], ['raven', 1]), tail: 'mountain', reverb: 'canyon' }),
+  skybridge: scene({ bed: 'amb_highwind', spots: spots(['cable_hum', 3], ['wind_gust', 3], ['eagle', 1], ['raven', 1]), tail: 'mountain', reverb: 'canyon' }),
+  polders: scene({ bed: 'amb_wetland', spots: spots(['windmill', 3], ['geese', 2], ['frog', 2], ['gulls', 1], ['cattle', 2], ['sheep', 1]), flyovers: PISTON_AND_BOMBERS }),
+  copper_mesa: scene({ bed: 'amb_mine', spots: spots(['conveyor', 2], ['rockfall', 2], ['metal_groan', 1], ['hawk', 1], ['steam_hiss', 1], ['tin_roof', 1]), tail: 'mountain', reverb: 'canyon' }),
+  airfield: scene({ bed: 'amb_airfield', spots: spots(['jet_taxi', 2], ['flag_flap', 2], ['radio_far', 2], ['hawk', 1], ['wind_gust', 1], ['lark', 1], ['tin_roof', 1]) }),
+  oasis: scene({ bed: 'amb_oasis', spots: spots(['hawk', 1], ['dust_devil', 1], ['wind_gust', 2], ['crow', 1], ['songbird', 1], ['camel', 2], ['goats', 1]), reverb: 'desert', spotEveryS: [10, 20] }),
   // DYE-M at Cape Dyer: the plateau's wind, and the station's generators droning behind their steel walls
-  whiteout: scene({ bed: 'amb_polar', layer: L('station', -15), spots: spots(['wind_gust', 3], ['ice_crack', 2], ['metal_groan', 1], ['radio_far', 1]), reverb: 'snow' }),
-  orchard: scene({ bed: 'amb_orchard', spots: spots(['bees', 2], ['crow', 4], ['woodpecker', 1], ['dog', 1], ['songbird', 3]), tail: 'forest', reverb: 'forest' }),
-  longleaf: scene({ bed: 'amb_pine', spots: spots(['woodpecker', 3], ['crow', 3], ['songbird', 1]), tail: 'forest', reverb: 'forest', flyovers: PISTON }),
-  mangrove: scene({ bed: 'amb_mangrove', spots: spots(['frog', 3], ['heron', 4], ['cicadas', 1], ['tropical_bird', 3]), tail: 'forest', reverb: 'forest', spotEveryS: [8, 16] }),
+  whiteout: scene({ bed: 'amb_polar', layer: L('station', -15), spots: spots(['wind_gust', 3], ['ice_crack', 2], ['metal_groan', 1], ['radio_far', 1], ['wind_howl', 3]), reverb: 'snow' }),
+  orchard: scene({ bed: 'amb_orchard', spots: spots(['bees', 2], ['crow', 4], ['woodpecker', 1], ['dog', 1], ['songbird', 3], ['cattle', 1], ['branch_fall', 1], ['rooster', 1]), tail: 'forest', reverb: 'forest' }),
+  longleaf: scene({ bed: 'amb_pine', spots: spots(['woodpecker', 3], ['crow', 3], ['songbird', 1], ['branch_fall', 2], ['raven', 1]), tail: 'forest', reverb: 'forest', flyovers: PISTON }),
+  mangrove: scene({ bed: 'amb_mangrove', spots: spots(['frog', 3], ['heron', 4], ['cicadas', 1], ['tropical_bird', 3], ['monkeys', 1], ['hornbill', 1]), tail: 'forest', reverb: 'forest', spotEveryS: [8, 16] }),
   // a sheltered Dalmatian bay: small waves on the pebbles (not the open coast's surf), cicadas in the pines, the
   // fishing boats at the quay, and the campanile's great bell
-  saltwind: scene({ bed: 'amb_adriatic', spots: spots(['gulls', 3], ['cicadas', 3], ['boat_creak', 2], ['wind_gust', 1]), bells: 'western' }),
-  reservoir: scene({ bed: 'amb_forest', layer: L('spillway', -13), spots: spots(['crow', 2], ['eagle', 1], ['woodpecker', 1], ['songbird', 2]), tail: 'mountain', reverb: 'mountain', flyovers: PISTON }),
+  saltwind: scene({ bed: 'amb_adriatic', spots: spots(['gulls', 3], ['cicadas', 3], ['boat_creak', 2], ['wind_gust', 1], ['goats', 1], ['shutter_bang', 1]), bells: 'western' }),
+  reservoir: scene({ bed: 'amb_forest', layer: L('spillway', -13), spots: spots(['crow', 2], ['eagle', 1], ['woodpecker', 1], ['songbird', 2], ['branch_fall', 1], ['raven', 1]), tail: 'mountain', reverb: 'mountain', flyovers: PISTON }),
   mars: scene({ bed: 'amb_mars', spots: spots(['dust_devil', 2], ['wind_gust', 2], ['geo_rumble', 1]), reverb: 'mars', war: 0, spotEveryS: [9, 18] }),
   moon: scene({ bed: 'amb_moon', spots: Object.freeze([]), tail: 'none', reverb: 'none', war: 0 }),
-  cliffbridge: scene({ bed: 'amb_highwind', spots: spots(['cable_hum', 2], ['wind_gust', 3], ['eagle', 1], ['gulls', 1]), tail: 'mountain', reverb: 'canyon' }),
+  cliffbridge: scene({ bed: 'amb_highwind', spots: spots(['cable_hum', 2], ['wind_gust', 3], ['eagle', 1], ['gulls', 1], ['raven', 1], ['wind_howl', 1]), tail: 'mountain', reverb: 'canyon' }),
 });
 
 /**

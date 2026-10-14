@@ -50,7 +50,7 @@ import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.t
 import { cueProfile } from './soundCues.ts';
 import { onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
-import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
+import { bindInterfaceSounds, classifyInterfaceTarget, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import {
@@ -116,6 +116,11 @@ export interface AudioMixer {
   loadingOn(active: boolean): void;
   warmBattleEvents(roster?: readonly string[]): Promise<void> | void;
   ambientOn(active: boolean): void;
+  /**
+   * The press that loaded this engine (the boot facade's first gesture): its control's sound, once the interface set
+   * has decoded, if that is soon enough to still belong to the press.
+   */
+  playFirstPress?(target: unknown, pressedAtMs: number): void;
 }
 
 // ---------------------------------------------------------------- entities ---
@@ -2057,6 +2062,8 @@ export function createAudio({
     back: 'ui_back', confirm: 'ui_confirm', vehicle: 'ui_tank_select',
   });
   let lastInterfaceAt = -1;
+  /** How late the first press's own click may still play (it loaded the engine). */
+  const FIRST_PRESS_MS = 900;
 
   /** One interface sound per press: a control's own 'ui:click' never doubles the delegated one. */
   function interfaceOnce(): boolean {
@@ -2684,6 +2691,19 @@ export function createAudio({
       if (!ready() || !ambience) return;
       if (on) applyScene();
       else if (phase === 'battle') ambience.stop(0.5);
+    },
+    playFirstPress(target, pressedAtMs) {
+      // AU.07 (2026-10-13): the first press anywhere loads this engine, so that press's own click was never heard (the
+      // delegated listener did not exist yet). It plays once its recording has decoded, if that is within FIRST_PRESS_MS
+      // of the press (a late click would read as lag); never if another interface sound has played since.
+      const el = target as Parameters<typeof classifyInterfaceTarget>[0];
+      const hit = el && typeof el.closest === 'function' && typeof el.getAttribute === 'function' ? classifyInterfaceTarget(el) : null;
+      if (!hit || !library || lastInterfaceAt >= 0) return;
+      const asset = INTERFACE_ASSET[hit.sound];
+      const nowMs = (): number => (typeof performance !== 'undefined' ? performance.now() : pressedAtMs);
+      void library.load([asset]).then(() => {
+        if (lastInterfaceAt < 0 && nowMs() - pressedAtMs <= FIRST_PRESS_MS) interfaceSound(hit.sound, hit.inMenu);
+      });
     },
   };
 }

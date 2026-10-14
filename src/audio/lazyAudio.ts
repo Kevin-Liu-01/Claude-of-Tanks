@@ -108,6 +108,8 @@ export function createLazyAudio({
   let muted = false;
   let masterVolume = storedMasterVolume();
   let garageStingPending = false;
+  /** The press that loads the engine, replayed to it once (its control's own click; AU.07). */
+  let firstPress: { target: EventTarget | null; atMs: number } | null = null;
   let loadingRevision = 0;
   let gestureBound = false;
 
@@ -145,6 +147,11 @@ export function createLazyAudio({
     if (garageStingPending) {
       garageStingPending = false;
       real.playGarageSting();
+    }
+    if (firstPress) {
+      const press = firstPress;
+      firstPress = null;
+      if (!muted && masterVolume > 0) real.playFirstPress?.(press.target, press.atMs);
     }
     return real;
   };
@@ -246,9 +253,11 @@ export function createLazyAudio({
       // mixer, so neither waits for a first battle.
       if (!gestureBound && typeof document !== 'undefined') {
         gestureBound = true;
-        const onGesture = (): void => {
+        const onGesture = (event: Event): void => {
           document.removeEventListener('pointerdown', onGesture, true);
           document.removeEventListener('keydown', onGesture, true);
+          // the press that loads the engine: it hears its own click once the engine has it (AU.07, 2026-10-13)
+          if (event.type === 'pointerdown' && !real) firstPress = { target: event.target, atMs: performance.now() };
           if (!muted && masterVolume > 0) resume();
         };
         document.addEventListener('pointerdown', onGesture, true);

@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 456 sound-effect assets, 776 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 22.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 475 sound-effect assets, 806 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 22.7 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -813,6 +813,22 @@ crew-lines.json ─┐                    crew-voices.json
   audio". The first take of a new library voice in each language hit a 409
   (`already_running`, the voice added twice at once); re-running the line fills
   it from the cache.
+- **2026-10-13, ambience variety and the known limits (AU.06, AU.07).** 19 new
+  spots and three beds regenerated (6,155 credits). The far war
+  (`environmentScenes.ts` `WAR_SPOTS`: a tank column, a brew-up, a machine-gun
+  duel, mortars, a town coming down, an engine behind a hill, each recorded a
+  kilometre or more away) joins every scene whose distant-war bed plays, at half
+  the place's own spot weight, so about a third of the spots are the war's; each
+  place adds its own life (cattle, sheep, horses, a rooster, goats, camels, loose
+  shutters and roofing, falling branches, ravens, howler monkeys, a hornbill, a
+  cold wind). The jungle and mangrove beds were 99 % 6–12 kHz insect hiss; asked
+  for water, leaves and animals with insects only faint and low, they come back
+  at 71 % and 75 % there with the rest from 3–6 kHz drips and under 3 kHz water
+  and frogs. The oasis bed's loop seam stepped 2.8 dB; the new take steps
+  0.15 dB. The first press anywhere loads the engine, so its own click was
+  silent: the boot facade now hands that press to the engine
+  (`playFirstPress`), which plays its control's sound once it has decoded,
+  within 900 ms of the press and only if nothing else has sounded.
 
 ### Cost
 
@@ -915,9 +931,10 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
   `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
   Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
   the transcriber spells differently.
-- The first garage click loads the engine, so that click itself is silent.
-- The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
-  mostly insect hiss; every take generated for them was like that.
+- The first garage click loads the engine; its click plays once the engine has
+  decoded it, within 900 ms of the press, else that one click stays silent.
+- The jungle and mangrove beds still carry most of their energy above 6 kHz
+  (drips, leaves and faint insects; 71 % and 75 %, down from 99 %).
 - Bells ring only from towers the world has placed: Verdant's church, Saltwind's
   campanile and the Podhale belfry arrive with the landmarks lane, and a map
   without a tower in earshot stays silent. The front's flyover event does not
