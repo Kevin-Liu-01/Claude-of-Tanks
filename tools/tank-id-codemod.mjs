@@ -21,7 +21,10 @@
 //
 // What it renames: a whole id token ([A-Za-z0-9_]+ run equal to an old id) in a
 // text file. What it leaves: a token inside a path (after '/'), a file name
-// (followed by .md/.json/.glb/.png/.webp), a link's `id=` parameter (links
+// (followed by a file extension), a hyphenated slug (mesh labels, media file
+// names), SVG files (path data such as `m1a2` is a moveto and an arc), Studio
+// scenes (public/field-guide, tools/marketing-shots: unstamped scenes resolve
+// as schema 1 at load), a link's `id=` parameter (links
 // without `ids=` are read as schema 1 and resolve themselves), and the files in
 // SKIP_EXACT whose id vocabulary is schema 1 on purpose (they test
 // tankSeedId(id), so a rename never changes how a vehicle sounds or is built).
@@ -44,7 +47,7 @@ if (!pairs.size) { console.error('no renames given'); process.exit(2); }
 for (const [from, to] of pairs) if (!/^[a-z0-9_]+$/.test(from) || !/^[a-z0-9_]+$/.test(to)) throw new Error(`bad id pair ${from}=${to}`);
 
 const SKIP_PREFIX = ['docs/history/', 'docs/qa/', 'docs/references/', 'docs/tank-generation/', 'docs/geometry-gate/',
-  'public/media/', 'public/models/', 'public/icons/', 'tools/media-r5/', 'tools/marketing-shots/'];
+  'public/media/', 'public/models/', 'public/icons/', 'public/field-guide/', 'tools/media-r5/', 'tools/marketing-shots/'];
 const SKIP_EXACT = new Set([
   // The alias layer and its receipts name old ids on purpose.
   'src/vehicles/tankIdAliases.ts', 'src/vehicles/tankIdAliases.selftest.mjs', 'src/game/tankIdBoundaries.selftest.mjs',
@@ -57,7 +60,7 @@ const SKIP_EXACT = new Set([
 const GENERATED = /\.generated\.|tank-assets\.json$|fleet-geometry-ledger\.json$/;
 const PATHSPEC = ['--', '.', ...SKIP_PREFIX.map((p) => `:(exclude)${p}`), ':(exclude,glob)**/*.generated.*',
   ':(exclude)public/icons/tank-assets.json',
-  ...['png', 'webp', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'mov', 'glb', 'gltf', 'bin', 'wav', 'mp3', 'ogg', 'opus', 'ktx2',
+  ...['svg', 'png', 'webp', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'mov', 'glb', 'gltf', 'bin', 'wav', 'mp3', 'ogg', 'opus', 'ktx2',
     'woff', 'woff2', 'ttf', 'pdf', 'zip'].map((ext) => `:(exclude,glob)**/*.${ext}`)];
 
 const scratch = mkdtempSync(join(tmpdir(), 'tank-id-codemod-'));
@@ -73,7 +76,7 @@ try {
 const files = listed.split('\n').filter(Boolean);
 
 const TOKEN = /[A-Za-z0-9_]+/g;
-const FILE_EXT = /^\.(?:md|json|glb|png|webp)\b/;
+const FILE_EXT = /^\.(?:md|json|glb|gltf|png|webp|jpe?g|svg|mp4|webm|ts|mjs|js|html|css|txt|csv|generated|LICENSE)\b/;
 function rewrite(text) {
   let count = 0;
   const out = text.replace(TOKEN, (token, offset) => {
@@ -81,6 +84,9 @@ function rewrite(text) {
     if (to === undefined) return token;
     if (text[offset - 1] === '/') return token; // inside a path
     if (text.slice(Math.max(0, offset - 3), offset) === 'id=') return token; // a link parameter (schema 1)
+    // A hyphen next to the token makes it part of a slug, never an id: a mesh label (`t90-front-mudguard`), a media
+    // file name (`studio-leclerc-knockout.jpg`) or a CSS class.
+    if (text[offset - 1] === '-' || text[offset + token.length] === '-') return token;
     if (FILE_EXT.test(text.slice(offset + token.length, offset + token.length + 6))) return token; // a file name
     count += 1;
     return to;
