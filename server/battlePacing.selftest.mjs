@@ -30,7 +30,8 @@ const MAPS = process.env.COT_PACING_MAPS
 const PARTIAL = MAPS.length < MAP_IDS.length;
 const JOBS = Math.floor(Number(process.env.COT_PACING_JOBS))
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
-// Each worker's old-generation cap: max(2048, 1.5 x the one-thread run's peak), measured on 9a9ab2a7e.
+// Each worker's old-generation cap: max(2048, 1.5 x the one-thread run's peak heap). That run's whole-process max RSS,
+// an upper bound on its heap, was 1,118 MB over all 33 maps (2026-10-13), and a worker plays at most 9 of them.
 const WORKER_HEAP_MB = 2048;
 
 // Deterministic default private-lobby rosters per battlefield. The human remains idle deliberately: this is the
