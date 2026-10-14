@@ -13,6 +13,7 @@
  * createParticleSystem().
  */
 import * as THREE from 'three';
+import { LOCAL_LIGHT_GLSL, localLightUniforms } from './localLights.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 
 type Rng = () => number;
@@ -266,6 +267,7 @@ varying vec2 vShade;
 varying float vParticleDepth;
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
+${LOCAL_LIGHT_GLSL}
 #endif
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
@@ -323,6 +325,8 @@ void main() {
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
   #ifdef FX_LIGHT_TINT
     if ( selfLit > 0.5 ) vColor.rgb = aC1.rgb;
+    // (EF.10) the local lights (headlights, the muzzle, bursts, burning wrecks) on the puff's own colour
+    vEmit += vColor.rgb * localLightAt( wpos, 0.0 );
   #endif
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
@@ -1711,7 +1715,7 @@ export function createParticleSystem(
         uCameraNear,
         uCameraFar,
         uLightTint,
-      }),
+      }, localLightUniforms),
       transparent: true,
       depthWrite: false,
       depthTest: true,

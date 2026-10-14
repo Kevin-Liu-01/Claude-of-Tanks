@@ -42,6 +42,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } 
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { battleLightTintFromRig } from './sceneLightTint.ts';
+import { addLocalPoint, addLocalSpot, beginLocalLights, endLocalLights } from './localLights.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, craterEjecta, dustSurge, fragmentStrike, groundBurst, isExplosive,
@@ -643,6 +644,9 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // with quadratic decay, so the r5 "20 m road wash" cannot return.
 const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
+/** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
+ *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
+const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
 // the fireball sprites were at their VISUAL peak (composed ageS 0.6) — the
 // scene read as "fire barely influences lighting". 1.6 s + pow 1.6 keeps a
@@ -4114,6 +4118,55 @@ function* createFxSteps(
     columns.length = live;
   }
 
+  // (EF.10, MASTER 19: "headlights and fires light the smoke") the local lights the smoke and dust take, every frame
+  // (localLights.ts): the night pool's headlight spots, the muzzle flash, the explosion light (a burst's pulse, which the
+  // volume media light themselves, or the latest wreck's fire) and the other burning wrecks' fires. By day the fires
+  // and flashes light their smoke at a third (the sun outshines them); a headlight burns only at night.
+  let nightPool: THREE.Object3D | null | undefined;
+  let nightPoolLookedAt = -1e9;
+  const _wreckFire = new THREE.Color(EXPLOSION_LIGHT_HEX);
+  function writeLocalLights(): void {
+    beginLocalLights();
+    const now = particles.getTime();
+    const scene = engineCtx.scene ?? null;
+    if (scene && !nightPool && now - nightPoolLookedAt > 2) {
+      nightPool = scene.getObjectByName('night-light-pool') ?? null;
+      nightPoolLookedAt = now;
+    }
+    if (nightPool) {
+      const kids = nightPool.children;
+      for (let i = 0; i < kids.length; i++) {
+        const L = kids[i] as THREE.SpotLight;
+        if (!L.isSpotLight || !(L.intensity > 0)) continue;
+        const p = L.position, t = L.target.position;
+        addLocalSpot(p.x, p.y, p.z, L.distance || 42, L.color, LOCAL_HEADLIGHT_GAIN, t.x - p.x, t.y - p.y, t.z - p.z,
+          Math.cos(L.angle), Math.cos(L.angle * (1 - L.penumbra)));
+      }
+    }
+    const nightK = 0.35 + 0.65 * tracers.darkLevel();
+    if (muzzleLight.intensity > 0) {
+      const p = muzzleLight.position;
+      addLocalPoint(p.x, p.y, p.z, MUZZLE_LIGHT_RANGE * 1.5, muzzleLight.color,
+        LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
+    }
+    const blastState = lightStates[1];
+    if (explosionLight.intensity > 0) {
+      const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
+      addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
+        nightK * (pulse ? LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK
+          : LOCAL_FIRE_GAIN * explosionLight.intensity / 12), pulse);
+    }
+    // the other burning wrecks (the explosion light rides the latest column)
+    for (let i = columns.length - 2; i >= 0; i--) {
+      const col = columns[i];
+      if (col.flame === false || !(col.ttl > 0)) continue;
+      const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
+      if (!addLocalPoint(col.pos[0], col.pos[1] + 2.4, col.pos[2], 10 * col.scale, _wreckFire,
+        LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
+    }
+    endLocalLights();
+  }
+
   function updateClockDrivenLights(): void {
     for (const st of lightStates) applyLight(st);
     for (const ring of shockRings) applyShockRing(ring);
@@ -5760,6 +5813,7 @@ function* createFxSteps(
       updateClockDrivenLights();
       sweepImpactDecals(dt);
       updateWreckLight();
+      writeLocalLights();
       advanceTimedFx(tickDt);
       sweepShellsThroughProps(shells);
       let tracerCount = writeLiveShellTracers(shells, camera);
