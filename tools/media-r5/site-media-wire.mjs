@@ -323,7 +323,7 @@ function wireReadme() {
   swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
     () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
   swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
-    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's fifty takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
+    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
   const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
   const p = PICKS.home.paths;
   swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/[^"]+\.webm">[\s\S]*?<\/tr>\n<\/table>/,
@@ -411,7 +411,7 @@ const COPY = {
     'docs.studio.framesHead': 'The fifty frames',
     'docs.studio.framesSheets': '{count} frames // {sheets} review sheets',
     'docs.studio.framesNote': "Open any sheet at full resolution. Each frame is a 4K render of a moving scene, exposed like a camera's shutter, so motion blurs as it would on film.",
-    'docs.archive.lede': "The fifty frames and the stills of the site's fifty takes: the game's own vehicles, maps and effects, rendered at 4K.",
+    'docs.archive.lede': "The fifty frames and the stills of the site's takes: the game's own vehicles, maps and effects, rendered at 4K.",
     'docs.topic.ai.media1': 'A T-90M column driving into the fight, each bot holding its lane and spacing',
     'docs.topic.ai.media2': 'A Type 90 and a Type 89 fighting through a farm village, keeping their spacing under fire',
     'docs.topic.audio.media1': 'A TOS-1A ripple salvo at night: every launch and every impact has its own sound',
@@ -441,7 +441,7 @@ const COPY = {
     'docs.studio.framesHead': '五十帧',
     'docs.studio.framesSheets': '{count} 帧 // {sheets} 张审核拼版',
     'docs.studio.framesNote': '任意拼版都可以全分辨率打开。每一帧都是运动场景的 4K 渲染，像相机快门一样曝光，因此运动会像在胶片上一样模糊。',
-    'docs.archive.lede': '五十帧画面与网站五十个镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。',
+    'docs.archive.lede': '五十帧画面与网站各镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。',
     'docs.topic.ai.media1': '驶入战斗的 T-90M 纵队，每个机器人都保持自己的路线与间距',
     'docs.topic.ai.media2': 'Type 90 与 Type 89 穿过农庄作战，在炮火下保持间距',
     'docs.topic.audio.media1': '夜间 TOS-1A 连续齐射：每一次发射、每一次落点都有自己的声音',
