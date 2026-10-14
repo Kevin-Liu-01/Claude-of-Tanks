@@ -200,6 +200,15 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       S.lie(b, Math.atan2(blow[2], blow[0]) + r(-0.4, 0.4), [blow[0] * r(0.6, 1.4) + out[0] * 0.5, 0, blow[2] * r(0.6, 1.4) + out[2] * 0.5], false, 0, { maxTilt: 0.5, ceiling });
     }
   }
+  // (a masonry wall breaks where it stands: its foot stays to a third or more of its height, ragged, the rest gone into the
+  // heap; a timber or sheet wall goes over whole)
+  const MASONRY: ReadonlySet<string> = new Set(['brick', 'stone', 'adobe', 'plaster', 'rubble', 'concrete']);
+  for (const i of idx) {
+    const p = P[i];
+    if (S.isLaid(i) || !PANEL.has(p.role) || !MASONRY.has(p.material) || tall(p) < 0.8 || p.c[1] - tall(p) / 2 > 1.4) continue;
+    const foot = p.c[1] - tall(p) / 2, top = foot + tall(p) * r(0.32, 0.6), phase = r(0, 6.28);
+    S.cut(i, (x, z) => top + Math.sin(x * 2.1 + z * 1.9 + phase) * 0.22, 0.88);
+  }
   // 2. the rest of the uprights and the walls go over about their feet, outward (the blown side down the blow)
   for (const i of idx) {
     if (S.isLaid(i)) continue;

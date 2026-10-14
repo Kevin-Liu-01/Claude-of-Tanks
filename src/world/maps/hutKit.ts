@@ -96,7 +96,7 @@ export interface HutOpening {
   y: number;
   w: number;
   h: number;
-  kind: 'door' | 'window' | 'slit';
+  kind: 'door' | 'window' | 'slit' | 'garage' | 'louvre';
 }
 
 export interface HutForm {
@@ -122,6 +122,11 @@ export interface HutForm {
   plinth?: number;
   /** the battens' spacing (a long hall's wider, its triangles within the kind's budget) */
   battens?: number;
+  /** the eaves and verges past the walls when the kind's differ from its dialect's */
+  eave?: number;
+  verge?: number;
+  /** a masonry skillion's walls carried this far over its high edge all round, the roof inside them on its fall */
+  parapet?: number;
 }
 
 /** What a build knows of itself once its frame stands: the kind's gear is placed from it. */
@@ -209,6 +214,9 @@ function around(u0: number, u1: number, y0: number, y1: number, holes: readonly 
 }
 
 const tone = (tones: readonly number[], i: number) => tones[((i % tones.length) + tones.length) % tones.length];
+
+/** How far a sunk post goes into the ground (the families' height band starts 5 cm under it). */
+const SUNK = 0.04;
 
 /** The walls' material for the break. */
 const wallMat = (d: HutDialect): FractureMaterial => d.wallMaterial ?? ({ batten: 'plank', lap: 'plank', log: 'timber', mat: 'infill', sheet: 'metal',
@@ -373,12 +381,29 @@ function dressOpening(k: HutTools, d: HutDialect, f: Face, o: HutOpening, floor:
   else k.tag('wall', d.cladding === 'log' ? `wall|${f.id}|${Math.floor((o.y + o.h / 2) / d.course / 3)}` : d.cladding === 'render' ? `wall|${f.id}` : wallGroup(f, o.u), wallMat(d));
   if (!mass || o.kind !== 'door') {
     // the casing: jambs, head (and a window's sill below)
-    for (const s of [-1, 1]) put(k, faceBox(k, f, cw, o.h + cw * 2, ct), at(f, o.u + s * (o.w / 2 + cw / 2), yc, out + ct / 2), p.trim, 0.03);
+    // (a door's jambs stand on its threshold, a window's run past its sill)
+    const jy0 = y0 - (o.y > 0.05 ? cw : 0), jy1 = y0 + o.h + cw;
+    for (const s of [-1, 1]) put(k, faceBox(k, f, cw, jy1 - jy0, ct), at(f, o.u + s * (o.w / 2 + cw / 2), (jy0 + jy1) / 2, out + ct / 2), p.trim, 0.03);
     put(k, faceMember(k, f, o.w + cw * 2 + 0.06, cw, ct + 0.02), at(f, o.u, y0 + o.h + cw / 2, out + ct / 2 + 0.01), p.trim, 0.03);
   }
   if (mass) {
     // the reveal's head: a timber lintel through the wall
     put(k, faceMember(k, f, o.w + 0.3, 0.14, 0.3), at(f, o.u, y0 + o.h + 0.07, -0.15), p.frame, 0.04);
+  }
+  if (o.kind === 'garage') {
+    // the roller door down in its opening, its slats stepping out, its guides either side
+    k.tag('door', `door|${f.id}|${o.u}`, 'metal');
+    const back = mass ? -0.22 : -0.03;
+    put(k, onto(lapPanel(o.w - 0.04, o.h - 0.02, 0.2, 0.028), f), at(f, o.u, y0, back), p.door, 0.04);
+    for (const s of [-1, 1]) put(k, faceBox(k, f, 0.06, o.h, 0.08), at(f, o.u + s * (o.w / 2 - 0.03), yc, back + 0.02), 0x3c3f42, 0.03);
+    return;
+  }
+  if (o.kind === 'louvre') {
+    // a vent's blades in its frame, the dark behind them
+    put(k, faceBox(k, f, o.w - 0.04, o.h - 0.04, 0.02), at(f, o.u, yc, mass ? -0.2 : -0.04), p.dark, 0.02);
+    const n = Math.max(3, Math.round(o.h / 0.16));
+    for (let q = 0; q < n; q++) put(k, faceBox(k, f, o.w + 0.04, 0.05, 0.09), at(f, o.u, y0 + (q + 0.5) * o.h / n, mass ? -0.12 : out / 2), p.door, 0.03);
+    return;
   }
   if (o.kind === 'door') {
     // the ledged and braced leaf set back in its frame, the ledges and the brace inside out to the weather, the straps
@@ -497,7 +522,9 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
       }
       // the boarded deck (its pitch receipt) under felt and a tile's bed; sheets, shingles, slabs and thatch lie on the
       // rafters' battens, their own courses closing the roof
-      const decked = d.covering === 'felt' || d.covering === 'tile';
+      // (under snow a sheet's or a tile's courses are the snow's: their deck alone)
+      const hidden = !!d.snow && (d.covering === 'sheet' || d.covering === 'tile' || d.covering === 'felt');
+      const decked = d.covering === 'felt' || d.covering === 'tile' || hidden;
       const lift0 = decked ? 0.025 : 0;
       if (decked) {
         const deck = slopeGeo(k, sl, sl.len, 0.025, sw + 0.01, 'msym', 0.006);
@@ -505,7 +532,7 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
           .translate(sl.mid[0] + sl.n[0] * 0.0125, sl.mid[1] + sl.n[1] * 0.0125, sl.mid[2] + sl.n[2] * 0.0125), sl, cm), d.covering === 'thatch' ? tone2 : tone1, 0.04);
       }
       let lift = decked ? 0.025 : 0;
-      switch (d.covering) {
+      switch (hidden ? 'none' : d.covering) {
         case 'felt': {
           // the felt's laps: a strip every 1.2 m down the slope
           const n = Math.max(2, Math.round(sl.len / 1.2));
@@ -519,7 +546,8 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
         case 'slab': {
           // the courses from the eave up, each butt standing proud over the one below (under snow only the eaves' and the
           // verges' few show: the courses there are the snow's)
-          const c = (d.covering === 'slab' ? 0.46 : 0.38) * (d.snow ? 1.6 : 1), t = d.covering === 'slab' ? 0.055 : 0.03, n = Math.max(2, Math.round(sl.len / c));
+          const c = Math.max((d.covering === 'slab' ? 0.46 : 0.38) * (d.snow ? 1.6 : 1), sl.len / 9), t = d.covering === 'slab' ? 0.055 : 0.03;
+          const n = Math.max(2, Math.round(sl.len / c));
           for (let q = 0; q < n; q++) {
             const a = sl.len / 2 - (q + 0.5) * sl.len / n;
             const strip = slopeGeo(k, sl, sl.len / n + 0.08, t, sw + 0.03, 'mbox', d.covering === 'slab' ? 0.025 : 0.012);
@@ -609,6 +637,9 @@ function roof(k: HutTools, form: HutForm, d: HutDialect, top: number): void {
 
 /** Build a hut of `form` in `dialect`; returns its frame for the kind's gear. */
 export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
+  const mass = d.cladding === 'render', parapet = mass && form.roof === 'skillion' ? form.parapet ?? 0 : 0;
+  // (a parapet's roof lies inside its walls)
+  d = { ...d, eave: parapet ? -0.3 : form.eave ?? d.eave, verge: parapet ? -0.3 : form.verge ?? d.verge };
   const p = d.paint, { w, d: dd } = form;
   k.tag('fitting', null, 'timber');
   const ids: FaceId[] = ['front', 'back', 'left', 'right'];
@@ -640,7 +671,7 @@ export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
   if (d.footing === 'plinth') {
     for (const id of ids) {
       const f = faces[id];
-      put(k, faceMember(k, f, 2 * f.half + 0.36, plinth + 0.1, 0.36, 0.03), at(f, 0, (plinth - 0.1) / 2, -0.06), p.foot, 0.06);
+      put(k, faceMember(k, f, 2 * f.half + 0.36, plinth + 0.04, 0.36, 0.03), at(f, 0, (plinth - 0.04) / 2, -0.06), p.foot, 0.06);
     }
   } else {
     for (const [x, z] of posts) {
@@ -662,15 +693,15 @@ export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
         put(k, k.cylinder(0.34, 0.34, 0.1, 9), [x, form.lift - 0.05, z], p.foot, 0.05);
         return;
       }
-      const h = form.lift + (d.footing === 'sunk' ? 0.15 : 0) - (d.footing === 'pads' ? 0.12 : 0);
+      const h = form.lift + (d.footing === 'sunk' ? SUNK : 0) - (d.footing === 'pads' ? 0.12 : 0);
       const leg = d.round ? k.cylinder(post / 2, post / 2 + 0.01, h, 5) : k.mbox(post, h, post);
       put(k, leg, [x, form.lift - h / 2, z], p.frame, 0.05);
     });
     if (vz > 0) for (const sx of [-1, 1]) {
       k.tag('post', `vleg|${sx}`, 'timber');
-      const h = form.lift + (d.footing === 'sunk' ? 0.15 : 0);
+      const h = form.lift + (d.footing === 'sunk' ? SUNK : 0);
       const leg = d.round ? k.cylinder(post / 2, post / 2 + 0.01, h + 1.0, 5) : k.mbox(post, h + 1.0, post);
-      put(k, leg, [sx * (w / 2 - 0.1), form.lift + 0.5 - h / 2 + (d.footing === 'sunk' ? -0.075 : 0), dd / 2 + vz - 0.1], p.frame, 0.05);
+      put(k, leg, [sx * (w / 2 - 0.1), form.lift + 1.0 - (h + 1.0) / 2, dd / 2 + vz - 0.1], p.frame, 0.05);
     }
     k.tag('slab', 'deck', 'plank');
     put(k, k.msym(w + 0.3, 0.08, dd + 0.3 + vz, 0.015), [0, form.lift - 0.04, vz / 2], p.wall[2], 0.05);
@@ -686,14 +717,25 @@ export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
   // the frame: a mat's posts standing outside it, the others' corner posts flush with the cladding (its corner boards);
   // the sill and the plates inside the cladding (a log or a render wall carries itself)
   const skillion = form.roof === 'skillion';
-  const faceTop = (id: FaceId) => (skillion && id === 'back' ? top + form.rise : top);
+  const faceTop = (id: FaceId) => (parapet ? top + form.rise + parapet : skillion && id === 'back' ? top + form.rise : top);
+  // (an open face's posts carry the roof over it: every one stands, a masonry kit's as piers)
+  const onOpen = (x: number, z: number): boolean => (form.open ?? []).some((id) => (id === 'front' ? z > dd / 2 - 1e-6 : id === 'back' ? z < -dd / 2 + 1e-6
+    : id === 'left' ? x < -w / 2 + 1e-6 : x > w / 2 - 1e-6));
+  if (d.cladding === 'render' || d.cladding === 'log') {
+    for (const [i, [x, z]] of posts.entries()) {
+      if (!onOpen(x, z)) continue;
+      k.tag('post', `pier|${i}`, wallMat(d));
+      const h = roofTop(form, d, top, x, z) - floor;
+      put(k, k.mbox(0.36, h, 0.36, 0.02), [x - Math.sign(x) * 0.18, floor + h / 2, z - Math.sign(z) * 0.18], p.wall[0], 0.04);
+    }
+  }
   if (d.cladding !== 'render' && d.cladding !== 'log') {
     const inset = d.cladding === 'mat' ? 0 : post / 2 - 0.035;
     for (const [i, [x, z]] of posts.entries()) {
       const corner = Math.abs(Math.abs(x) - w / 2) < 1e-6 && Math.abs(Math.abs(z) - dd / 2) < 1e-6;
-      if (!corner && d.cladding !== 'mat') continue;
+      if (!corner && d.cladding !== 'mat' && !onOpen(x, z)) continue;
       k.tag('post', `post|${i}`, 'timber');
-      const foot = stilts ? form.lift : d.footing === 'sunk' ? -0.15 : d.footing === 'pads' ? 0.16 : plinth;
+      const foot = stilts ? form.lift : d.footing === 'sunk' ? -SUNK : d.footing === 'pads' ? 0.16 : plinth;
       const h = roofTop(form, d, top, x, z) - foot - 0.02;
       const g = d.round ? k.cylinder(post / 2, post / 2 + 0.01, h, 5) : k.mbox(post, h, post);
       const px = x === 0 ? 0 : x - Math.sign(x) * (Math.abs(Math.abs(x) - w / 2) < 1e-6 ? inset : 0);
@@ -749,6 +791,13 @@ export function buildHut(k: HutTools, form: HutForm, d: HutDialect): HutFrame {
           put(k, faceBox(k, f, 0.05, hh, 0.022), at(f, g2, top + hh / 2, o + 0.026), p.wall[1], 0.04);
         }
       }
+    }
+  } else if (parapet) {
+    // the parapet's coping on the walls' heads
+    k.tag('wall', 'coping', wallMat(d));
+    for (const id of ids) {
+      const f = faces[id], len = 2 * f.half + (id === 'front' || id === 'back' ? 0.36 : -0.24);
+      put(k, faceMember(k, f, len, 0.07, 0.38, 0.015), at(f, 0, faceTop(id) + 0.035, -0.15), p.foot, 0.04);
     }
   } else {
     for (const id of ['left', 'right'] as const) {
@@ -813,6 +862,62 @@ export function woodpile(k: HutTools, f: Face, u: number, len: number, courses: 
     const n = Math.max(2, Math.round(len / 0.2) - r);
     put(k, faceBox(k, f, n * 0.2, 0.18, 0.45), at(f, u, y + 0.09 + r * 0.17, 0.25), color, 0.08);
   }
+}
+
+
+/** A course of sandbags a bag deep along a line from (x0, z0) to (x1, z1), `courses` high, each course a half bag along. */
+export function sandbags(k: HutTools, x0: number, z0: number, x1: number, z1: number, courses: number, color = 0x8e7f5e): void {
+  k.tag('fitting', `bags|${x0.toFixed(1)}|${z0.toFixed(1)}`, 'earth');
+  const len = Math.hypot(x1 - x0, z1 - z0), yaw = Math.atan2(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.58));
+  for (let r = 0; r < courses; r++) {
+    for (let i = 0; i < n - (r % 2); i++) {
+      const t = (i + 0.5 + (r % 2) * 0.5) / n, bag = k.box(0.34, 0.19, 0.56);
+      bag.rotateY(yaw + (k.rng() - 0.5) * 0.12);
+      put(k, bag, [x0 + (x1 - x0) * t, 0.095 + r * 0.18, z0 + (z1 - z0) * t], color, 0.09);
+    }
+  }
+}
+
+/** A checkpoint's boom across the lane before `face`: its post and counterweight, the striped arm, the rest post. */
+function boom(k: HutTools, h: HutFrame, face: FaceId, u: number, out: number, len: number, sign: 1 | -1): void {
+  k.tag('fitting', `boom|${face}`, 'metal');
+  const f = h.face(face), red = 0xa8322a, white = 0xd8d6cf, y = 1.0;
+  put(k, k.mbox(0.2, y + 0.15, 0.2), at(f, u, (y + 0.15) / 2, out), 0x3c3f42, 0.03);
+  put(k, faceBox(k, f, 0.42, 0.36, 0.28), at(f, u + -sign * 0.32, y, out), 0x3c3f42, 0.03);
+  const n = Math.max(3, Math.round(len / 0.6));
+  for (let i = 0; i < n; i++) put(k, faceBox(k, f, len / n, 0.1, 0.1), at(f, u + sign * (0.09 + (i + 0.5) * len / n), y + 0.08, out), i % 2 ? white : red, 0.03);
+  put(k, k.box(0.1, y - 0.05, 0.1), at(f, u + sign * (0.09 + len - 0.1), (y - 0.05) / 2, out), 0x3c3f42, 0.03);
+}
+
+/** Oil drums standing in a cluster at (x, z). */
+function drums(k: HutTools, x: number, z: number, n: number, color = 0x5a3a2a): void {
+  k.tag('fitting', `drums|${x}|${z}`, 'metal');
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4, r = i ? 0.62 : 0;
+    put(k, k.cylinder(0.29, 0.29, 0.88, 8), [x + Math.cos(a) * r, 0.44, z + Math.sin(a) * r], i % 2 ? 0x3f4a3a : color, 0.08);
+  }
+}
+
+/** A transformer's bushings on its roof: three posts, their insulator stacks, the cable risers down the back. */
+function bushings(k: HutTools, h: HutFrame): void {
+  // (on a flat roof; a gabled kiosk's cables go in underground)
+  if (h.form.roof !== 'skillion') return;
+  k.tag('fitting', 'bushings', 'metal');
+  const y = h.roofAt(0) + 0.06, z = -h.form.d * 0.2;
+  for (const x of [-1.2, 0, 1.2]) {
+    put(k, k.box(0.2, 0.7, 0.2), [x, y + 0.35, z], 0x5f4f3a, 0.03);
+    for (let i = 0; i < 4; i++) put(k, k.cylinder(0.15, 0.15, 0.06, 8), [x, y + 0.78 + i * 0.12, z], 0x7b735d, 0.03);
+    put(k, k.cylinder(0.05, 0.05, 0.62, 5), [x, y + 0.95, z], 0x7b735d, 0.02);
+  }
+}
+
+/** A shade of palm ribs (or reed mats) on four poles before `face`. */
+function shade(k: HutTools, h: HutFrame, face: FaceId, u: number, w: number, depth: number, y: number): void {
+  k.tag('fitting', `shade|${face}`, 'timber');
+  const f = h.face(face), p = h.dialect.paint;
+  for (const s of [-1, 1]) put(k, k.cylinder(0.07, 0.08, y, 5), at(f, u + s * (w / 2 - 0.1), y / 2, depth), p.frame, 0.05);
+  put(k, faceBox(k, f, w, 0.1, 0.1), at(f, u, y + 0.05, depth), p.frame, 0.04);
+  put(k, faceMember(k, f, w + 0.2, 0.05, depth + 0.1), at(f, u, y + 0.13, depth / 2), 0xa8956f, 0.12);
 }
 
 /** A bench of two trestles and a plank against a face. */
@@ -943,6 +1048,54 @@ export const HUT_FORMS: Readonly<Record<string, HutVariant>> = {
       woodpile(k, h.face('back'), -1.3, 2.4, 5, 0, h.dialect.paint.frame);
     },
   },
+  // ---- the military and industrial kinds (their forms dressed by the kit's dialect)
+  // the guard post: a cabin raised on four braced legs, windows on three sides, its door and ladder at the back
+  guardpost: {
+    form: { id: 'guardpost', w: 2.3, d: 2.3, wallH: 1.95, lift: 1.25, roof: 'skillion', rise: 0.25, eave: 0.22, verge: 0.18, battens: 0.55,
+      openings: [win('front', 0, 1.5, 0.75, 1.0), win('left', 0, 1.1, 0.75, 1.0), win('right', 0, 1.1, 0.75, 1.0), door('back', 0.35, 0.7, 1.85)] },
+    gear: (k, h) => {
+      const p = h.dialect.paint, y = h.form.lift;
+      if (y > 0.3) for (const sz of [-1, 1]) {
+        k.tag('brace', `xbrace|${sz}`, 'timber');
+        const len = Math.hypot(h.form.w, y - 0.3), lean = Math.atan2(h.form.w, y - 0.3);
+        for (const s of [-1, 1]) {
+          const b = k.box(0.06, len, 0.05);
+          b.rotateZ(s * lean);
+          put(k, b, [0, 0.15 + (y - 0.3) / 2, sz * (h.form.d / 2 + 0.05)], p.frame, 0.04);
+        }
+      }
+      ladder(k, h.face('back'), 0.35, h.floor, 0.62, p.frame, h.dialect.round, 0.15);
+    },
+  },
+  // the checkpoint booth: glazed on three sides over a sheet dado, its door at the side, the boom across the lane
+  checkpointhut: {
+    form: { id: 'checkpointhut', w: 3.0, d: 3.8, wallH: 2.3, lift: 0, roof: 'skillion', rise: 0.2, eave: 0.35, verge: 0.25,
+      openings: [win('front', 0, 2.0, 1.0, 1.0), win('right', 0.5, 1.4, 1.0, 1.0), door('left', 0.9, 0.85, 2.0), win('left', -0.8, 0.8, 0.8, 1.15)] },
+    gear: (k, h) => boom(k, h, 'front', 1.2, 1.55, 2.4, -1),
+  },
+  // the transformer kiosk: its double steel door, the louvres, the bushings on the roof
+  transformershed: {
+    form: { id: 'transformershed', w: 4.4, d: 4.0, wallH: 2.7, lift: 0, roof: 'skillion', rise: 0.12, eave: 0.3, verge: 0.3, parapet: 0.25,
+      openings: [door('left', 0, 1.6, 2.2), { face: 'front', u: -1.0, y: 1.3, w: 0.9, h: 0.7, kind: 'louvre' },
+        { face: 'front', u: 1.0, y: 1.3, w: 0.9, h: 0.7, kind: 'louvre' }, { face: 'back', u: 0, y: 1.3, w: 0.9, h: 0.7, kind: 'louvre' }] },
+    gear: bushings,
+  },
+  // the service garage: its roller door and the side door, windows down the sides, a louvre at the back, drums by it
+  servicegarage: {
+    form: { id: 'servicegarage', w: 8.4, d: 10.2, wallH: 3.4, lift: 0, roof: 'gable', rise: 1.3, battens: 0.9,
+      openings: [{ face: 'front', u: -1.6, y: 0, w: 3.2, h: 3.0, kind: 'garage' }, door('front', 2.7, 0.9, 2.1), win('left', 0, 1.2, 0.8, 1.5),
+        win('right', 0, 1.2, 0.8, 1.5), { face: 'back', u: 0, y: 2.0, w: 1.0, h: 0.8, kind: 'louvre' }] },
+    gear: (k, h) => drums(k, h.form.w / 2 + 0.5, h.form.d / 2 - 1.0, 3),
+  },
+  // the motor pool: an open-fronted shed under its skillion, posts along the open side, drums and crates under it
+  motorpool: {
+    form: { id: 'motorpool', w: 8.6, d: 10.6, wallH: 3.0, lift: 0, roof: 'skillion', rise: 0.6, open: ['front'], openings: [], battens: 0.9 },
+    gear: (k, h) => {
+      drums(k, -h.form.w / 2 + 1.0, -h.form.d / 2 + 1.0, 4);
+      k.tag('fitting', 'crates', 'plank');
+      for (const [x, z, y, s] of [[2.6, -3.9, 0, 1], [3.6, -3.7, 0, 0.8], [2.6, -3.9, 0.7, 0.7]] as const) put(k, k.box(0.9 * s, 0.7 * s, 0.9 * s), [x, y + 0.35 * s, z], 0x6a5a40, 0.08);
+    },
+  },
 };
 
 // --------------------------------------------------------------------------------------------------------- dialects
@@ -1002,6 +1155,47 @@ export const HUT_DIALECTS: Readonly<Record<string, HutDialect>> = {
   // the Maurienne: larch boards under lauzes and their snow on a stone sill
   savoyard: dialect('batten', 'slab', 'plinth', paint([0x6b5a48, 0x857055, 0x5d4e3e], 0x3d3329, 0x4a3d31, [0x5c5f63, 0x6a6d70, 0x50545a], 0x7b7d7e, 0x3a2f25),
     { snow: 0.14, eave: 0.4, verge: 0.35, roofMaterial: 'stone' }),
+  // ---- the kits of the military and industrial kinds
+  // Hostomel, 2022: silicate brick under asbestos-cement sheets on a concrete sill
+  hostomel: dialect('render', 'sheet', 'plinth', paint([0xcfcac0, 0xc4bfb4, 0xb9b3a8], 0x8a8c88, 0x4a4a46, SHIFER, 0x8e8c86, 0x4a5a4a, { dado: 0xa9a49a }),
+    { dado: 0.4, wallMaterial: 'brick', footMaterial: 'concrete' }),
+  // Kyushu: steel cubicles in their cream and green panels under galvanised sheet on a concrete sill
+  kyushu: dialect('panel', 'sheet', 'plinth', paint([0xc9c7b8, 0xbfbdae, 0xd3d1c3], 0x8a8c8e, 0x5a5c5e, GALVANISED, 0x9a9890, 0x5a6a72),
+    { footMaterial: 'concrete', eave: 0.2, verge: 0.15 }),
+  // Shanghai, 1937: grey brick under dark tiles
+  shanghai: dialect('render', 'tile', 'sunk', paint([0x6e6c68, 0x77756f, 0x65635f], 0x3a3a38, 0x4a3a2a, [0x4a4a48, 0x545452, 0x403f3d], 0x5a5856, 0x5a3a2a,
+    { dado: 0x5a5856 }), { dado: 0.35, wallMaterial: 'brick', roofMaterial: 'tile' }),
+  // Queenstown: corrugated iron walls and roofs gone to rust on timber posts sunk in the tailings
+  queenstown: dialect('sheet', 'sheet', 'sunk', paint([0x8c8478, 0x7d6a5a, 0x948a7e], 0x5a4a3a, 0x5a4a3a, RUSTED_TIN, 0x6a6258, 0x5a4a3a)),
+  // the ksar: rammed earth and mud brick with its parapets, the roof of palm beams and earth
+  ksar: dialect('render', 'felt', 'sunk', paint([0xb07a4e, 0xa87248, 0xb8845a], 0x6a4a30, 0x5a3e28, [0x8a6a4a, 0x7e6044, 0x96744f], 0x8a6a4a, 0x5a3a28),
+    { wallMaterial: 'adobe', roofMaterial: 'earth', eave: 0.1, verge: 0.1 }),
+  // Siwa: kershef, salt-crusted mud, its parapets and palm-trunk beams
+  siwa: dialect('render', 'felt', 'sunk', paint([0x9a8a74, 0xa39480, 0x8e7f6a], 0x5e5243, 0x5e5243, [0x86786a, 0x7c6f62, 0x908272], 0x8a7c68, 0x3b2f24),
+    { wallMaterial: 'adobe', roofMaterial: 'earth', eave: 0.1, verge: 0.1 }),
+  // the Chouf, 1982: concrete block under a slab, steel shutters
+  chouf: dialect('render', 'felt', 'sunk', paint([0xa8a294, 0x9d978a, 0xb0aa9c], 0x6a6e70, 0x5a5c5c, [0x8a8780, 0x807d76, 0x948f88], 0x8a867c, 0x4a4e52),
+    { wallMaterial: 'concrete', roofMaterial: 'concrete', shutters: true, eave: 0.12, verge: 0.12 }),
+  // the Saar's works: red brick under galvanised sheet on a concrete sill
+  saar: dialect('render', 'sheet', 'plinth', paint([0x7a4232, 0x84483a, 0x6e3a2c], 0x9a9890, 0x4a4440, GALVANISED, 0x8e8c86, 0x3a4a3a, { dado: 0x5e3428 }),
+    { dado: 0.5, wallMaterial: 'brick', footMaterial: 'concrete' }),
+  // the Ruhr's railway: dark red brick under tarred felt
+  ruhr: dialect('render', 'felt', 'plinth', paint([0x6e3a2e, 0x7a4234, 0x643428], 0x8a8a84, 0x3e3632, TAR_FELT, 0x7e7c76, 0x4a3a2a, { dado: 0x56302a }),
+    { dado: 0.5, wallMaterial: 'brick', footMaterial: 'concrete' }),
+  // Sarajevo: rendered brick under red tiles, a grey dado
+  sarajevo: dialect('render', 'tile', 'sunk', paint([0xc8bba2, 0xbfb299, 0xb3a68d], 0x8a8478, 0x5a4a3a, [0x9a4e34, 0xa65838, 0x8c4630], 0x8a8478, 0x5a4a3a,
+    { dado: 0x8a8478 }), { dado: 0.5, wallMaterial: 'brick', roofMaterial: 'tile' }),
+  // Glen Canyon, 1966: concrete block under a gravelled flat roof
+  glencanyon: dialect('render', 'felt', 'sunk', paint([0xb4ad9f, 0xaaa395, 0xbdb6a8], 0x8a8c88, 0x5a5650, [0x7a7a74, 0x86857e, 0x6e6e68], 0x9a958a, 0x5a6670),
+    { wallMaterial: 'concrete', roofMaterial: 'concrete', eave: 0.2, verge: 0.2 }),
+  // the Navajo trading post: weathered boards on pine poles under rusted tin
+  navajo: dialect('batten', 'sheet', 'sunk', paint([0x8a7a64, 0x96866e, 0x7c6c58], 0x5c4c3a, 0x5a4a38, RUSTED_TIN, 0x7a6a58, 0x5a4a38), { round: true }),
+  // Franconia, 1984: prefab panels in their beige and grey on a concrete sill under a dark felted flat roof
+  franconian: dialect('panel', 'felt', 'plinth', paint([0xc4bfae, 0xb8b3a2, 0xcfcab9], 0x8a8c88, 0x5a5856, [0x3a3a38, 0x444442, 0x323230], 0x8e8c86, 0x6a4a30),
+    { footMaterial: 'concrete', eave: 0.15, verge: 0.12 }),
+  // the arctic station: red insulated panels under sheet and its snow, on timber sleepers
+  arctic: dialect('panel', 'sheet', 'pads', paint([0xa23a2c, 0xa8402f, 0x963428], 0xd8d8d0, 0x3a3a3a, GALVANISED, 0x5a4a3a, 0x3a3a3a),
+    { snow: 0.2, eave: 0.25, verge: 0.2 }),
   // the Virgin Lands: whitewashed saman under asbestos-cement sheets, blue casings
   tselina: dialect('render', 'sheet', 'sunk', paint([0xd8d0bc, 0xcfc6b0, 0xc4bba4], 0x6a8a9a, 0x5a4a38, SHIFER, 0x8a7a62, 0x4a6a7a,
     { dado: 0x8a7a62 }), { dado: 0.4, eave: 0.3, verge: 0.25, wallMaterial: 'adobe' }),
@@ -1027,7 +1221,8 @@ const notchedLog = (face: FaceId, u: number): Gear => (k, h) => {
   k.tag('fitting', 'notchedlog', 'timber');
   const log = k.mbox(0.3, len, 0.26, 0.08);
   if (f.n[0] !== 0) log.rotateZ(f.n[0] * lean); else log.rotateX(-f.n[2] * lean);
-  put(k, log, at(f, u, y / 2, out / 2 + 0.1), h.dialect.paint.frame, 0.05);
+  // (its foot's corner on the ground, not in it)
+  put(k, log, at(f, u, y / 2 + 0.08, out / 2 + 0.1), h.dialect.paint.frame, 0.05);
   for (let i = 1; i <= 3; i++) {
     const yy = (i / 4) * y;
     put(k, faceBox(k, f, 0.34, 0.05, 0.12), at(f, u, yy, out * (1 - yy / y) + 0.2), h.dialect.paint.frame, 0.04);
@@ -1036,7 +1231,7 @@ const notchedLog = (face: FaceId, u: number): Gear => (k, h) => {
 
 /** A ladder up to a door on `face` at `u`. */
 const ladderTo = (face: FaceId, u: number): Gear => (k, h) =>
-  ladder(k, h.face(face), u, h.form.lift, 0.7, h.dialect.paint.frame, h.dialect.round, face === 'front' ? h.form.veranda ?? 0 : 0.15);
+  ladder(k, h.face(face), u, h.floor, 0.7, h.dialect.paint.frame, h.dialect.round, face === 'front' ? h.form.veranda ?? 0 : 0.15);
 
 /**
  * The char homestead's earthen plinth above the flood line, wider on the yard side for the veranda: bamboo posts on it,
@@ -1045,7 +1240,7 @@ const ladderTo = (face: FaceId, u: number): Gear => (k, h) =>
 const bengalVeranda: Gear = (k, h) => {
   const f = h.face('right'), p = h.dialect.paint, y0 = h.floor, top = y0 + 2.3, w = h.form.w, d = h.form.d;
   k.tag('footing', 'earth', 'earth');
-  put(k, k.mbox(w + 1.45, y0 + 0.08, d + 1.2, 0.12), [0.43, (y0 - 0.02) / 2 - 0.04, 0], p.foot, 0.06);
+  put(k, k.mbox(w + 1.45, y0 + 0.02, d + 1.2, 0.12), [0.43, (y0 - 0.02) / 2 - 0.01, 0], p.foot, 0.06);
   for (const u of [-4.0, -1.35, 1.35, 4.0]) {
     k.tag('post', `vpost|${u}`, 'timber');
     put(k, k.cylinder(0.07, 0.08, top - y0, 6), at(f, u, (y0 + top) / 2, 0.85), p.frame, 0.05);
@@ -1083,6 +1278,29 @@ export interface RegionalHut {
   extra?: Gear;
 }
 
+/** A masonry guard post: a tower on its solid base, slits on three sides under a parapet, the ladder up to its door. */
+const towerPost = (more: Partial<HutForm> = {}): RegionalHut => ({
+  dialect: { footing: 'plinth' },
+  form: { lift: 0, plinth: 1.2, rise: 0.12, parapet: 0.5, openings: [{ face: 'front', u: 0, y: 1.0, w: 1.1, h: 0.28, kind: 'slit' },
+    { face: 'left', u: 0, y: 1.0, w: 0.8, h: 0.28, kind: 'slit' }, { face: 'right', u: 0, y: 1.0, w: 0.8, h: 0.28, kind: 'slit' },
+    door('back', 0.35, 0.7, 1.75)], ...more },
+});
+/** A booth on the ground (a toll house, a kiosk): the guard post's cabin without its legs, its door at the front. */
+const groundPost = (more: Partial<HutForm> = {}): RegionalHut => ({
+  form: { lift: 0, openings: [door('front', -0.5, 0.8, 1.95), win('front', 0.55, 0.7, 0.8, 1.05), win('left', 0, 1.1, 0.8, 1.05),
+    win('right', 0, 1.1, 0.8, 1.05)], ...more },
+  gear: () => {},
+});
+/** A flat-roofed kind: its skillion barely falling, a parapet over masonry. */
+const flat = (more: Partial<HutForm> = {}): Partial<HutForm> => ({ roof: 'skillion', rise: 0.3, parapet: 0.4, battens: 0.9, ...more });
+/** Sandbags round a kind's foot: before its front and along its sides. */
+const bagged: Gear = (k, h) => {
+  const x = h.form.w / 2 + 0.35, z = h.form.d / 2 + 0.35;
+  sandbags(k, -x, z, x, z, 3);
+  sandbags(k, -x, -z + 0.3, -x, z - 0.3, 2);
+};
+
+
 /**
  * The kits' huts: kit -> family -> its regional form (the kind's form and gear in the kit's dialect, with the numbers
  * and gear the region changes). structureKit's REGIONAL_DESTRUCTIBLE_TYPES builds each through buildRegionalHut.
@@ -1090,10 +1308,20 @@ export interface RegionalHut {
 export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, RegionalHut>>>> = {
   kolkhoz: { fieldhut: {}, leanto: {}, huntingblind: {} },
   lorrain: { fieldhut: {}, leanto: {}, longhouse: {} },
-  hessian: { fieldhut: {}, huntingblind: {} },
-  eifel: { fieldhut: {}, huntingblind: {} },
-  polder: { fieldhut: {}, fishershack: {}, huntingblind: {} },
-  dalmatian: { fieldhut: {}, fishershack: {} },
+  hessian: { fieldhut: {}, huntingblind: {}, checkpointhut: {} },
+  eifel: {
+    fieldhut: {}, huntingblind: {},
+    // (the substation and the depot's garage in greywacke under slates)
+    transformershed: { dialect: { cladding: 'render', wallMaterial: 'stone', paint: { wall: [0x6b6a64, 0x74726b, 0x625f59], dado: 0x55534e } } },
+    servicegarage: { dialect: { cladding: 'render', wallMaterial: 'stone', paint: { wall: [0x6b6a64, 0x74726b, 0x625f59], dado: 0x55534e } } },
+  },
+  polder: {
+    fieldhut: {}, fishershack: {}, huntingblind: {},
+    // the transformer house in brick under its pantiles
+    transformershed: { dialect: { cladding: 'render', wallMaterial: 'brick', paint: { wall: [0x7a3e30, 0x84463a, 0x70382c], dado: 0x5c2e24 } },
+      form: { roof: 'gable', rise: 1.0, parapet: 0 } },
+  },
+  dalmatian: { fieldhut: {}, fishershack: {}, guardpost: {}, checkpointhut: {} },
   nordland: {
     fishershack: {}, saunahut: {},
     alpinerefuge: { dialect: { footing: 'plinth' } },
@@ -1117,6 +1345,8 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
     },
   },
   andalusian: {
+    // the bridgehead's toll house (caseta de consumos) on the ground under its tiles
+    guardpost: groundPost({ roof: 'gable', rise: 0.7 }),
     // the farm's tool house (caseta de aperos): a low tile gable, its wide door, a small high window
     fieldhut: { form: { w: 3.8, d: 5.6, wallH: 2.4, rise: 1.0, stove: undefined,
       openings: [door('front', 0, 1.1, 1.9), win('right', -1.2, 0.55, 0.55, 1.4)] }, gear: (k, h) => bench(k, h.face('back'), 0, 0, h.dialect.paint.foot) },
@@ -1126,11 +1356,32 @@ export const REGIONAL_HUTS: Readonly<Record<string, Readonly<Record<string, Regi
       openings: [{ face: 'front', u: 0, y: 0.9, w: 1.2, h: 0.22, kind: 'slit' }, door('back', 0, 0.7, 1.3)] }, gear: () => {} },
   },
   breton: {
+    // the customs men's granite hut under its slates
+    guardpost: groundPost({ roof: 'gable', rise: 1.0, w: 2.4, d: 2.6 }),
     fishershack: {},
     // the bread-oven house: a small granite outbuilding, its stack on the gable
     saunahut: { form: { stove: undefined }, extra: chimney(0, -1.6) },
     leanto: {},
   },
+  hostomel: { motorpool: {}, guardpost: { ...towerPost(), extra: bagged } },
+  kyushu: { transformershed: {}, motorpool: {}, guardpost: {}, servicegarage: { form: flat() } },
+  shanghai: { motorpool: {}, transformershed: { form: { roof: 'gable', rise: 0.9, parapet: 0 } }, checkpointhut: {}, servicegarage: {} },
+  queenstown: { guardpost: {}, motorpool: {}, servicegarage: {} },
+  ksar: { guardpost: towerPost() },
+  // (Siwa's toll post under its palm-rib shade)
+  siwa: { guardpost: towerPost(), checkpointhut: { form: { parapet: 0.35, rise: 0.1 }, extra: (k, h) => shade(k, h, 'front', -0.2, 2.4, 0.95, 2.25) } },
+  chouf: {
+    guardpost: { ...towerPost(), extra: bagged },
+    checkpointhut: { form: { parapet: 0.35, rise: 0.1 }, extra: bagged },
+    transformershed: {},
+  },
+  saar: { transformershed: {}, motorpool: {}, checkpointhut: {}, servicegarage: {} },
+  ruhr: { transformershed: {}, motorpool: {}, guardpost: groundPost({ roof: 'gable', rise: 0.8 }) },
+  sarajevo: { guardpost: { ...towerPost(), extra: bagged }, transformershed: {}, motorpool: {}, servicegarage: {} },
+  glencanyon: { motorpool: {}, transformershed: {}, guardpost: groundPost({ parapet: 0.3, rise: 0.1 }), servicegarage: { form: flat() } },
+  navajo: { motorpool: {}, checkpointhut: {} },
+  franconian: { guardpost: groundPost(), checkpointhut: {}, transformershed: {}, motorpool: {}, servicegarage: { form: flat() } },
+  arctic: { motorpool: {}, servicegarage: {} },
   longleaf: { leanto: {}, huntingblind: { form: { lift: 2.8 } }, fishershack: {}, stilthouse: { form: { lift: 1.2, veranda: 1.6 } } },
   tselina: { longhouse: { form: { stove: undefined }, extra: chimney(1.4, -3.0) } },
   // the Jamuna's chars
