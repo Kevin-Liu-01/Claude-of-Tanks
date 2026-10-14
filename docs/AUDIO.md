@@ -859,6 +859,11 @@ crew-lines.json ─┐                    crew-voices.json
   thuds where it lands (`rubble_chunk_land`, louder for heavier and faster
   pieces, one per 0.15 s at most). The one-line report sits on
   `item/audio-rubble-hook` (from `item/destruct-all`).
+  A burst's near miss on a parked vehicle (`props.ts` `blastNear`: dented, its
+  glass blown, shoved) is heard: past a strength of 0.3 the world reports it on
+  the destroyed-prop seam with `nearMiss`, and the engine plays the glass and a
+  steel dent by its strength, one per 0.1 s (a car park's worth from one shell
+  is one sound), never the car crushed.
 
 ### Cost
 

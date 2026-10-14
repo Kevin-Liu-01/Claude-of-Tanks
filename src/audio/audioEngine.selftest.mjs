@@ -243,6 +243,17 @@ assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confi
   const thuds = logSince(rubbleSince).filter((e) => e.n === 'rubble_chunk_land').length;
   assert.equal(thuds, 2, `heavy landings thud, thinned; a brick and a slow settle are silent (${thuds})`);
 }
+// P7 (2026-10-13): a burst's near miss on a parked car is its glass going and its body denting, not the car crushed
+{
+  const nearSince = mark();
+  ctx.advance(1);
+  bus.emit('prop:destroyed', { kind: 'sedan', pos: [15, 1, 20], cause: 'blast', nearMiss: 0.8 });
+  bus.emit('prop:destroyed', { kind: 'van', pos: [17, 1, 21], cause: 'blast', nearMiss: 0.5 });
+  const near = logSince(nearSince).map((e) => e.n);
+  assert.ok(near.includes('glass_shatter') && near.includes('hit_metal'), `a near miss: glass and dent (${near})`);
+  assert.ok(!near.includes('car_crush'), 'a near miss does not crush the car');
+  assert.equal(near.filter((n) => n === 'glass_shatter').length, 1, 'one shell\'s near miss on two cars is one sound');
+}
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);

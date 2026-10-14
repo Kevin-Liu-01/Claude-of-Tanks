@@ -265,7 +265,7 @@ interface ModuleStateEvent { id: string; module: string; state: string; source?:
 interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number; cause?: string; struck?: string | null }
 interface TankRamEvent { aId?: string; bId?: string; aIsPlayer?: boolean; bIsPlayer?: boolean; pos: Vec3; closingMps?: number; dmgA?: number; dmgB?: number }
 /** `loose`: a loose prop (a drum, a bucket) knocked about rather than destroyed (props.ts kickLooseRecord). */
-interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number; loose?: boolean }
+interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number; loose?: boolean; nearMiss?: number }
 interface ReloadEvent { total?: number; kind?: string; caliberMm?: number; t?: number; progress?: number; done?: boolean }
 interface VolumeEvent { master?: number; engine?: number; combat?: number; ambience?: number; ui?: number; voice?: number; alarmHeartbeat?: boolean; crewVoice?: string; concussion?: boolean }
 interface SmokeScreen { born?: number; x?: number; y?: number; z?: number; source?: readonly unknown[] }
@@ -1301,6 +1301,17 @@ export function createAudio({
   function onProp(event: PropEvent, destroyed: boolean): void {
     if (!event?.pos) return;
     const [x, y, z] = event.pos;
+    // P7 (2026-10-13): a burst's near miss on a map vehicle (not destroyed): its glass blown and its body dented, louder
+    // the nearer the burst; at most one every 0.1 s (one shell's near miss on a car park)
+    if (typeof event.nearMiss === 'number') {
+      if (!ctx || ctx.currentTime - lastNearMissAt < 0.1) return;
+      lastNearMissAt = ctx.currentTime;
+      const k = clamp(event.nearMiss, 0, 1);
+      play('glass_shatter', { x, y, z, delayS: 0.03, gainDb: -10 + 8 * k });
+      play('hit_metal', { x, y, z, gainDb: -14 + 8 * k });
+      logSound('prop:nearMiss', { kind: event.kind, strength: +k.toFixed(2) });
+      return;
+    }
     const kind = String(event.kind || 'tree');
     const layers = propSoundRecipe(kind, event.h ?? 0);
     const trimDb = destroyed ? 0 : -1;
@@ -2159,6 +2170,7 @@ export function createAudio({
   let detachTurretLanding: (() => void) | null = null;
   let detachDebrisLanding: (() => void) | null = null;
   let lastRubbleAt = -1;
+  let lastNearMissAt = -1;
 
   function uiClick(): void {
     if (!interfaceOnce()) return;
