@@ -22,7 +22,7 @@ export interface HinterlandOutlandGeometry {
   farTrees: HinterlandShapeArrays | null;
   /** The near trees' indices into the plan's trees (the impostors' set, trees.ts). */
   nearIndex: Uint32Array;
-  stats: { buildingTris: number; nearTreeTris: number; farTreeTris: number; nearTrees: number; farTrees: number; ms: number };
+  stats: { buildingTris: number; roadTris: number; nearTreeTris: number; farTreeTris: number; nearTrees: number; farTrees: number; ms: number };
 }
 
 type V3 = [number, number, number];
@@ -357,9 +357,50 @@ function treeColor(species: string, form: string, tone: number, leaf: number): V
   return lin(mixC.map((c) => Math.min(255, c * v)));
 }
 
+/** The roads' surfaces (linear): Zeeland's clinker and tarmac, a farm track's gravel and earth, a line's ballast. */
+const ROAD_COLOR: Readonly<Record<string, V3>> = {
+  road: lin([78, 76, 72]), dikeRoad: lin([88, 84, 78]), track: lin([118, 104, 84]), rail: lin([66, 60, 54]),
+};
+
+/**
+ * A road's ribbon over the drawn land: resampled every 6 m near the battlefield and coarser with distance (1 % of it),
+ * lifted a little over the land (more with distance, where the land's patches are coarser than its samples), its
+ * normal up. Nothing inside the battlefield's square (its own roads run there).
+ */
+function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM: number, color: V3, ground: (x: number, z: number) => number): void {
+  const half = Math.max(1.5, widthM / 2);
+  const up = (): V3 => [0, 1, 0];
+  let px = NaN, pz = NaN, pl: V3 | null = null, pr: V3 | null = null;
+  const emit = (x: number, z: number, dx: number, dz: number): void => {
+    const d = Math.hypot(x, z);
+    if (Math.max(Math.abs(x), Math.abs(z)) < 516) { pl = pr = null; return; }
+    const l = Math.hypot(dx, dz) || 1, nx = -dz / l * half, nz = dx / l * half;
+    const lift = 0.25 + d * 0.00035;
+    const L: V3 = [x + nx, ground(x + nx, z + nz) + lift, z + nz], R: V3 = [x - nx, ground(x - nx, z - nz) + lift, z - nz];
+    if (pl && pr) {
+      const inside: V3 = [(x + px) / 2, -1e6, (z + pz) / 2];
+      S.tri(pl, pr, R, inside, color, up); S.tri(pl, R, L, inside, color, up);
+    }
+    pl = L; pr = R; px = x; pz = z;
+  };
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const ax = xs[i], az = zs[i], bx = xs[i + 1], bz = zs[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 1e-3) continue;
+    let t = 0;
+    while (t < len) {
+      const x = ax + (bx - ax) * (t / len), z = az + (bz - az) * (t / len);
+      emit(x, z, bx - ax, bz - az);
+      t += Math.max(6, Math.hypot(x, z) * 0.01);
+    }
+  }
+  if (xs.length >= 2) { const n = xs.length - 1; emit(xs[n], zs[n], xs[n] - xs[n - 1], zs[n] - zs[n - 1]); }
+}
+
 /** Build the outland's geometry over the drawn land (the worker's side). */
 export function buildHinterlandOutlandGeometry(
-  plan: Pick<HinterlandPlan, 'buildings' | 'settlements' | 'verticals' | 'trees'>, pyramid: HinterlandPyramid, kit: string | null,
+  plan: Pick<HinterlandPlan, 'buildings' | 'settlements' | 'verticals' | 'trees'> & Partial<Pick<HinterlandPlan, 'roads'>>,
+  pyramid: HinterlandPyramid, kit: string | null,
 ): HinterlandOutlandGeometry {
   const t0 = performance.now();
   const ground = (x: number, z: number): number => samplePyramid(pyramid, x, z);
@@ -398,6 +439,10 @@ export function buildHinterlandOutlandGeometry(
     const y = footBase(frame(v.x, 0, v.z, v.yaw), v.halfM, v.halfM);
     addVertical(S, frame(v.x, y, v.z, v.yaw), v.kind, v.heightM, v.halfM, kit);
   }
+  // ---- the roads: ribbons draped on the drawn land (the atlas alone smudges a 6 m road over two 8 m texels)
+  let roadTris = S.triangles;
+  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
+  roadTris = S.triangles - roadTris;
   // ---- the trees: near (the impostors may draw them instead) and far
   const near = new Shapes(), far = new Shapes();
   const nearIndex: number[] = [];
@@ -409,6 +454,6 @@ export function buildHinterlandOutlandGeometry(
   });
   return {
     buildings: S.arrays(), nearTrees: near.arrays(), farTrees: far.arrays(), nearIndex: new Uint32Array(nearIndex),
-    stats: { buildingTris: S.triangles, nearTreeTris: near.triangles, farTreeTris: far.triangles, nearTrees: nearIndex.length, farTrees: plan.trees.length - nearIndex.length, ms: performance.now() - t0 },
+    stats: { buildingTris: S.triangles, roadTris, nearTreeTris: near.triangles, farTreeTris: far.triangles, nearTrees: nearIndex.length, farTrees: plan.trees.length - nearIndex.length, ms: performance.now() - t0 },
   };
 }
