@@ -2053,6 +2053,20 @@ host tab's render quality while it hosts (perf's quality tiers).
 Receipt: `hostHeadroom.selftest` (the monitor's verdicts, window and hysteresis; the real session against a scripted room
 socket: the decline and its withdrawal, none in a match, none from the mobile tier, none with the option off).
 
+### 13.20 A host that goes hands its match on at once (MP stream, plan step 11, 2026-10-13)
+
+**Why.** A hosting tab that closed, reloaded or navigated away left its peers to the room's socket lease: on the e2e of
+2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
+
+**What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session, and a seat hosting a
+running match sends `host_decline { declined: true, unable: true }` on the room socket inside the event (synchronous,
+nothing awaited), once. The room elects the next seat at once (its declined path), or ends the match when nobody can
+host; the peers resume from the keyframes they hold. A reload lands the same way it did after the lease (the reloaded
+tab holds no state and enters as a peer), only sooner. Leaving the match afterwards does not decline twice.
+
+Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
+socket: the decline leaves before anything is awaited, once; none from a peer or the lobby; no actor outlives its core).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

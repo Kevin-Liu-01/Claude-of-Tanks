@@ -330,6 +330,8 @@ export interface SessionOwner {
   update(nowMs: number, elapsedS: number): MatchFrame | null;
   /** One foreground display frame (ms): the host choice by headroom reads it (plan step 10). Optional for doubles. */
   observeFrame?(frameMs: number): void;
+  /** The hosting tab is going away: tell the room now (plan step 11). Optional for doubles. */
+  handOffHosting?(reason: string): boolean;
   leaveMatch(reason?: string): Promise<void>;
   dispose(): void;
   stats(): MatchSessionStats;
@@ -410,6 +412,8 @@ export interface BrowserComposition {
   pump(dtSeconds: number, nowMs: number): void;
   /** The hidden-tab cadence: the socket keeps its pings and acks. */
   pumpBackground(nowMs: number): void;
+  /** The page is going away (pagehide): a hosting seat hands its match on at once (plan step 11). True when it did. */
+  handOffHosting(reason: string): boolean;
   queueConsumable(slot: number): void;
   queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   /** The Garage return's network port: keep the room across the return? */
@@ -1433,6 +1437,8 @@ export function createBrowserComposition({
     paintStatus(nowMs);
   };
 
+  const handOffHosting = (reason: string): boolean => session?.handOffHosting?.(reason) ?? false;
+
   const pumpBackground = (nowMs: number): void => {
     const elapsedS = lastPumpMs === null ? 0 : Math.max(0, Math.min(0.25, (nowMs - lastPumpMs) / 1000));
     lastPumpMs = nowMs;
@@ -1461,6 +1467,7 @@ export function createBrowserComposition({
     get session() { return session; },
     pump,
     pumpBackground,
+    handOffHosting,
     queueConsumable: (slot) => { round?.controls.queueConsumable(slot); },
     queueAction: (action) => { round?.controls.queueAction(action); },
     shouldPreserveRoom: () => !!roomSession && roomSession.client.phase !== 'closed',

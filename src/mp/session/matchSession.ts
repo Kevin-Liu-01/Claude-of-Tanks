@@ -217,6 +217,8 @@ export class MatchSession {
   private declinedForReentry = false;
   /** This seat declined because its frames ran too slow to host well (plan step 10); recovered, it offers again. */
   private declinedForHeadroom = false;
+  /** The hosting tab already told the room it is going (pagehide): leaving the match must not decline twice. */
+  private handedOff = false;
   private headroom: HostHeadroomMonitor | null = null;
   /** The elected host's entry reports while its world loads (null when none run). */
   private entryReports: { stop(reason: string): void } | null = null;
@@ -523,6 +525,23 @@ export class MatchSession {
     }
   }
 
+  /**
+   * Plan step 11 (2026-10-13; MU.07): the hosting tab is going away (the browser's pagehide: a close, a reload, a
+   * navigation). The room waited out the socket lease for a vanished host (10 s on the e2e of 2026-10-13, 13.75 s from the
+   * close to the new host's first report): this seat now tells the room at once that it cannot host any more
+   * (`host_decline`, unable), and the room elects the next seat while the peers still hold fresh keyframes. Synchronous by
+   * design: the command leaves on the room socket inside the event; nothing is awaited. True when it was sent.
+   */
+  handOffHosting(reason: string): boolean {
+    const host = this.host;
+    if (!host || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
+    if (this.room.phase !== 'joined' || this.room.hostId !== this.room.playerId) return false;
+    this.handedOff = true;
+    this.log('info', 'hosting tab going away: handing the match on', { reason, generation: this.room.generation });
+    void this.room.declineHost(true, { unable: true }).catch(() => { /* the page is going; the socket lease still covers it */ });
+    return true;
+  }
+
   /** The tab's frame headroom as the host choice reads it (diagnostics). */
   get hostHeadroom(): { weak: boolean; p50FrameMs: number | null; declined: boolean } | null {
     return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.declinedForHeadroom } : null;
@@ -822,7 +841,8 @@ export class MatchSession {
       // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
       // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).
       host.stop(CLOSE_REASON.CLIENT_LEAVE, reason);
-      if (this.room.phase === 'joined') void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+      if (this.room.phase === 'joined' && !this.handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+      this.handedOff = false;
       this.declinedHosting = true;
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
     }
