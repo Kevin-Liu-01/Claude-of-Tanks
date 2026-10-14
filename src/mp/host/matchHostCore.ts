@@ -386,7 +386,8 @@ export function createMatchHostCore({
     config = next;
     migrationKey = await deriveMigrationKey(next.hostSecret);
     const [world] = await Promise.all([buildWorld(next), ensureAuthorityFleet(rosterSpecIds(next))]);
-    if (bootGeneration !== generation || disposed) return;
+    // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
+    if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
     const created = createMatchActor({
       roomId: next.roomId, mapId: next.mapId, mode: next.mode, seed: next.seed,
@@ -452,6 +453,7 @@ export function createMatchHostCore({
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
     if (stopped) return;
     stopped = true;
+    pendingOpens.length = 0; // links opened during the world load die with the core (boot returns on `stopped`)
     if (housekeeping !== null) { clearTimer(housekeeping); housekeeping = null; }
     if (hold) { if (hold.timer !== null) clearTimer(hold.timer); hold = null; }
     for (const gate of gates.values()) if (gate.timer !== null) clearTimer(gate.timer);

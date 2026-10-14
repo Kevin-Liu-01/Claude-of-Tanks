@@ -1042,6 +1042,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',
+    'src/mp/session/matchSessionEntryReports.selftest.mjs', // 2026-10-13 MP plan step 8: the loading host reports until its actor does
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',

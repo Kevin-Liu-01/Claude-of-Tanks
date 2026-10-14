@@ -2014,6 +2014,29 @@ the boot — the newer of the keyframe (opened with the room's host secret) and 
 host sent it — everything known is restored, nothing beyond the old host's list is invented, and the revision counts the
 restored falls within the old host's.
 
+### 13.17 A loading host keeps the match (MP stream, plan step 8, 2026-10-13)
+
+**Why.** The room replaces a p2p host whose reports stop for `ROOM_MATCH_REPORT_STALE_AFTER_MS` (30 s), counted from its
+election, and an elected host's actor boots only after its presentation has built the world (`MatchSession.enterMatch`:
+`createPresentation`, then `openPeerToPeer`). A slow entry (a cold program compile, a busy machine) cost the match its
+host before it began, and the peers a migration onto a seat that was loading too (MP-SINCE-0930 MP-S03; the rooms Worker
+now says why: `host_changed.detail` `report_deadline`).
+
+**What.** From the match_start until its actor's first report, the elected host's tab reports `loading` (tick 0) every
+`ROOM_MATCH_REPORT_INTERVAL_MS`, for at most `ENTRY_REPORT_CEILING_MS` (150 s: the slowest measured entries fit). A tab
+whose main thread is wedged sends nothing and is replaced as before; the reports stop at the actor's own report, on
+`host_only`, and when the room elects another seat. Only a fresh match's host: a running match's re-entry still declines
+so a peer with the keyframe resumes, and that seat withdraws the decline (`host_decline { declined: false }`) once it is
+welcomed, so a later election may name it again. Client-only: the room already accepts `loading` reports.
+
+**Also.** `matchHostCore.boot` honours a stop that arrived during the world load (the same branch carries
+`fix/mp-host-stop-race`): a seat leaving mid-load no longer leaves a running actor in a Node host.
+
+Receipts: `matchSessionEntryReports.selftest` (the real session against a scripted room socket: reports through a slow
+entry and their stop at the actor's report; the ceiling, `host_only` and a new election; none from a peer or a running
+match; the re-entry decline withdrawn at the welcome; no actor after a mid-load leave; bounded memory),
+`matchSessionP2p.selftest` (accepts the loading reports ahead of the actor's phase).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
