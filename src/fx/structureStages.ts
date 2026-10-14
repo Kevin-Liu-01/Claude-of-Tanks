@@ -510,6 +510,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       changed = true;
     }
     for (const hide of result.hides ?? []) {
+      // a set piece's named piece (landmarks/pieces.ts: a figure, a merlon, a sail) goes by its own spans
+      if (hide.piece) {
+        for (const span of seam.spans) if (span.piece === hide.piece) { flattenSpan(span); changed = true; }
+        continue;
+      }
       // the whole structure (a collapse) is the mask's fall; a section's hide waits for sections on the spans (P2)
       if (hide.partClass === null || hide.section !== null) continue;
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
