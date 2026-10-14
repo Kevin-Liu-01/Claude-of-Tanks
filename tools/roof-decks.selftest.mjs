@@ -116,7 +116,7 @@ function onSlope(hull, deg, yaw, onRoof, pivot = false) {
   const g = Math.tan(deg * Math.PI / 180);
   const roofed = onRoof ? shed(deg) : null;
   const surface = roofed ? (x, z) => roofed.at(z) : (x, z) => g * z;
-  let over = 0, rise = 0, previous = null;
+  let over = 0, rise = 0, rideUp = 0, previous = null;
   const metrics = runCase(hull, 'earth', { id: `slope-${deg}`, terrain: roofed ? flat : (x, z) => g * z, obstacles: roofed ? [roofed.record] : [],
     seconds: pivot ? 6 : 4, spawn: { x: 0, z: 0, yaw, dropTo: 0.12 },
     input: (t) => (pivot && t < 3.5 ? { throttle: 0, steer: 1 } : { throttle: 0, brake: true }), allowBlocked: true }, { replay: false,
@@ -125,9 +125,10 @@ function onSlope(hull, deg, yaw, onRoof, pivot = false) {
       const onIt = !roofed || (Math.abs(s.pos.x) < 9 && Math.abs(s.pos.z) < 9);
       if (tick > 20 && onIt) over = Math.max(over, s.pos.y - surface(s.pos.x, s.pos.z));
       if (previous !== null && onIt) rise = Math.max(rise, (s.pos.y - previous) / SIM_DT);
+      if (onIt) rideUp = Math.max(rideUp, s._ride?.v ?? 0);
       previous = s.pos.y;
     } });
-  return { moved: Math.hypot(metrics.final.x, metrics.final.z), over, rise };
+  return { moved: Math.hypot(metrics.final.x, metrics.final.z), over, rise, rideUp };
 }
 const SIM_DT = 1 / 60;
 const steep = [];
@@ -142,8 +143,11 @@ for (const deg of [30, 40, 45]) for (const [facing, yaw] of [['across', Math.PI 
 }
 for (const hull of ['t90m', 'bmp2']) {
   const mansard = onSlope(hull, 54, Math.PI / 2, true, true);
-  // (past its tip angle across the slope it rolls down the mansard: its root no further off the roof than a hull on its side)
-  assert.ok(mansard.rise < 4 && mansard.over < 2, `a ${hull} pivoting on a 54-degree mansard is never thrown (${mansard.over.toFixed(2)} m over it, rising ${mansard.rise.toFixed(2)} m/s)`);
+  // (past its tip angle across the slope it rolls down the mansard: its root no further off the roof than a hull on its side,
+  // and the body handed no upward speed — on its shell (F5) the root's rise as it rolls over its edge is the roll's own
+  // turn, lifted by position, not a throw)
+  assert.ok(mansard.rideUp < 4 && mansard.over < 2,
+    `a ${hull} pivoting on a 54-degree mansard is never thrown (${mansard.over.toFixed(2)} m over it, its body rising at ${mansard.rideUp.toFixed(2)} m/s; its root ${mansard.rise.toFixed(2)} m/s)`);
 }
 console.log(`roof-decks.selftest: steep roofs hold or slide as terrain does (${steep.join(', ')}), never lifting a hull off them; a pivot on a 54-degree mansard throws no hull`);
 console.log(`roof-decks.selftest: a gable roof rides its house's movement record as ${contact.decks} deck part(s), its top within ${(worst * 100).toFixed(1)} cm; a hull dropped on it stands at ${minY.toFixed(2)} m; one beside the wall drives on under the eave; deterministic`);

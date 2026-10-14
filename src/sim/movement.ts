@@ -766,6 +766,9 @@ let _shellBounceMin = 0;
 let _shellBounceMaxHeight = Infinity;
 /** The hull's up vector this far from vertical or more (cos 70 degrees): it rests on its shell, not its tracks. */
 const SHELL_UP_Y = Math.cos(70 * Math.PI / 180);
+/** The most the ground lifts a shell out of it in one step (m, 6 m/s): under the pop receipt's 0.12 m, the rest the next
+ * steps (a hull rolling over its side edge turns its root up faster than that only for a step or two). */
+const SHELL_LIFT_MAX_M_PER_STEP = 0.1;
 /** Half the run over which a hull on its shell reads the ground's grade along its heading (m). */
 const SHELL_GRADE_PROBE_M = 1;
 /**
@@ -2231,7 +2234,7 @@ function rigidStrikeImpulse(
 
 /**
  * The ride of a hull on its shell (see _rideOnShell): gravity, the ground pushing the shell out of it by position (at
- * most FLOOR_LIFT_MAX_M_PER_STEP a step, the rest the next), a fall into it rebounding by the ruleset's restitution or
+ * most SHELL_LIFT_MAX_M_PER_STEP a step, the rest the next), a fall into it rebounding by the ruleset's restitution or
  * stopping there, and never a push the ground did not make. True while the shell rests on its ground.
  */
 function constrainShellRide(ride: RideState, top: number, dt: number, gravity: number): boolean {
@@ -2242,7 +2245,7 @@ function constrainShellRide(ride: RideState, top: number, dt: number, gravity: n
   ride.v -= gravity * dt;
   ride.y += ride.v * dt;
   if (ride.y >= top) return ride.y - top <= RIDE_DETACH_CLEARANCE_M;
-  const lifted = Math.min(top, yStart + FLOOR_LIFT_MAX_M_PER_STEP);
+  const lifted = Math.min(top, yStart + SHELL_LIFT_MAX_M_PER_STEP);
   if (lifted > ride.y) ride.y = lifted;
   if (ride.v < 0) {
     const rebound = Math.min(-ride.v * _shellRestitution, Math.sqrt(2 * gravity * _shellBounceMaxHeight));
