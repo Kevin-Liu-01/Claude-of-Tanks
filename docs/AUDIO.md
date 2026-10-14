@@ -864,6 +864,16 @@ crew-lines.json ─┐                    crew-voices.json
   the destroyed-prop seam with `nearMiss`, and the engine plays the glass and a
   steel dent by its strength, one per 0.1 s (a car park's worth from one shell
   is one sound), never the car crushed.
+  Measured on `tools/audio-mix-balance.mjs` (2026-10-13, this branch at
+  06f2c6e96, `report.json`): bed −35.3 dBFS; a brick house collapsing at 40 m
+  19.9 dB over it and 0.7 dB over a near cannon's loudest 100 ms (the guns still
+  lead within 2 dB), at 450 m 5.9 dB over it on its distant recording; a wall
+  giving way at 40 m 19.9 dB; a tube launch at 30 m 24.6 dB (its sustained roar;
+  the new launch banks are 2 dB quieter than the old `atgm_launch`). The existing
+  checks: cannon 19.1 / 9.5 / 6.3 dB at 15 / 150 / 400 m, our gun 19.3, radio
+  17.2 over the bed and 1.9 under a near cannon, 4.5 starts/s, garage −31.4 dBFS.
+  The 150 m cannon sits 0.5 dB under its 10 dB gate; this branch changes no gun
+  report, distant bank or gun distance law (a main baseline run is the check).
 
 ### Cost
 
