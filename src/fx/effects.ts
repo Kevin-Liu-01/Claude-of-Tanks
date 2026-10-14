@@ -4742,6 +4742,9 @@ function* createFxSteps(
   function propBreakFamily(kind: string): PropBreakFamily {
     if (kind === 'drumblast') return 'drumblast';
     if (kind === 'vehicleburn') return 'vehicleburn';
+    // (the destructible-kits lane, 2026-10-11: a pillbox threw planks; props.ts names the map's make on the bunker's
+    // break, 'bunker-concrete' or 'bunker-logearth': cast concrete breaks as masonry, a log-and-earth work as timber)
+    if (/^bunker/.test(kind)) return kind === 'bunker-logearth' ? 'wood' : 'masonry';
     if (/fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind)) return 'woodbuilding';
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
@@ -6546,11 +6549,13 @@ function* createFxSteps(
   {
     const _bkPos = new THREE.Vector3();
     const _bkDir = new THREE.Vector3();
-    setBreakFxProvider((kind, x, y, z, dx, dz, h) => {
+    setBreakFxProvider((kind, x, y, z, dx, dz, h, scarM = 0) => {
       if (frozen) return; // screenshot pins stay deterministic
       _bkPos.set(x, y, z);
       _bkDir.set(dx, 0, dz);
       fx.propBreak(kind, _bkPos, _bkDir, h);
+      // (a fracture-ready kind's churned ground: its anatomy's groundScarM, the charred decal under its wreck)
+      if (scarM > 0) spawnScorch(x, z, scarM);
     });
   }
 

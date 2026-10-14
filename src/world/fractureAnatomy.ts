@@ -85,6 +85,9 @@ export interface KitFractureAnatomy {
   kind: string;
   pieces: readonly FracturePiece[];
   links: readonly FractureLink[];
+  /** The churned ground its fall leaves (m, a radius about its centre): the charred decal and torn cover under the
+   *  wreck, live and settled alike; absent: none. Presentation only. */
+  groundScarM?: number;
 }
 
 /** Pieces a kind may carry: a light kind (a shed, a hide, a hut) or a fortified one (a pillbox). */

@@ -29,6 +29,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sandbagBag } from './sceneryKit.ts';
+import { FractureSettle, edgeRuns, type SettleTris } from './fractureSettle.ts';
 import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
 import type {
   FractureFace, FractureLink, FractureLinkKind, FracturePiece, FractureRole, KitFractureAnatomy,
@@ -429,35 +430,6 @@ function grow(plan: Plan, d: number): Plan {
   });
 }
 
-/** A prism of a plan from y0 to y1: its walls (no openings), top and bottom optional. */
-function prism(m: Mesh, plan: Plan, y0: number, y1: number, shadeWall: Shade, shadeTop: Shade | null, shadeBottom: Shade | null, printed = true, cell = 0.3): void {
-  const k = plan.length;
-  for (let i = 0; i < k; i++) {
-    const a = plan[i], b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
-    if (printed) wallFace(m, [a[0], 0, a[1]], u, len, y0, () => y1, [], shadeWall, cell);
-    else m.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], shadeWall, false);
-  }
-  if (shadeTop) cap(m, plan, y1, shadeTop, true, printed);
-  if (shadeBottom) cap(m, plan, y0, shadeBottom, false, printed);
-}
-
-/** A plan's horizontal face at y in concentric rings (vertices for the weather), facing up or down. */
-function cap(m: Mesh, plan: Plan, y: number, shade: Shade, up: boolean, printed: boolean, rings = 4): void {
-  const cx = plan.reduce((s, p) => s + p[0], 0) / plan.length, cz = plan.reduce((s, p) => s + p[1], 0) / plan.length;
-  const k = plan.length;
-  const at = (i: number, r: number): V3 => [cx + (plan[i % k][0] - cx) * r, y, cz + (plan[i % k][1] - cz) * r];
-  const n: V3 = up ? [0, 1, 0] : [0, -1, 0];
-  for (let j = 0; j < rings; j++) {
-    const r0 = j / rings, r1 = (j + 1) / rings;
-    for (let i = 0; i < k; i++) {
-      const a = at(i, r0), b = at(i + 1, r0), c = at(i + 1, r1), d = at(i, r1);
-      // the plans run so that walls face out; seen from above that is clockwise: up faces take (a d c b)
-      if (up) m.quad(a, d, c, b, shade, printed, n); else m.quad(a, b, c, d, shade, printed, n);
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // the weather on the concrete
 
@@ -788,192 +760,6 @@ function concreteLayout(style: 'regelbau' | 'dot' | 'hex'): ConcreteLayout {
   return { plan, wallTop, slab, overhang, slits, slitList, doorEdge, doorS, doorLen };
 }
 
-/**
- * The Regelbau casemate (and the hexagonal and DOT forms through `form`): the body with its embrasures, the slab, the
- * entrance, the berm and the roof's turf. `broken`: the destroyed state of the same work.
- */
-function buildConcretePillbox(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
-  const m = new Mesh();
-  const rng = mulberry32(O.seed);
-  const T = O.tones;
-  const L = concreteLayout(style);
-  const { plan, wallTop, slab, overhang, slits, slitList, doorEdge, doorS, doorLen } = L;
-  const k = plan.length;
-  const W: Weather = { tones: T, drip: wallTop, slits, grade: GRADE, seed: (O.seed * 31) ^ 0x51ab, burn: O.broken ? 1 : 0 };
-  const conc = concreteShade(W);
-  const reveal = revealShade(W, conc);
-  const plateTone: Rgb = mix([0.05, 0.052, 0.055], [0.09, 0.05, 0.03], T.age * 0.6);
-  const doorW = 0.88, doorH = 1.66;
-
-  // ---- the body
-  // a broken work: the front blown in to a ragged stub, the flanks broken down toward it, the rear standing
-  const ragged = (edge: number, len: number) => {
-    if (!O.broken) return () => wallTop;
-    const a = plan[edge], b = plan[(edge + 1) % k];
-    const nx = -(b[1] - a[1]) / len, nz = (b[0] - a[0]) / len;
-    const role = edgeRole(nx, nz);
-    return (s: number) => {
-      const x = a[0] + (b[0] - a[0]) * (s / len), z = a[1] + (b[1] - a[1]) * (s / len);
-      const jag = (vnoise(x * 5.1, 0, z * 5.1, 0.35, O.seed + 61) - 0.5) * 0.5 + (hash3(Math.round(x * 9), 0, Math.round(z * 9), O.seed) - 0.5) * 0.18;
-      // the blast's bowl: lowest in front of the main embrasure, rising toward the rear corners
-      const front = clamp01((z + 2.2) / 4.4);
-      let top: number;
-      // razed: a broken prop has no collider, so no stub stands higher than a hull crosses (dcore's rule, ~0.5 m)
-      if (role === 'front') top = 0.2 + Math.abs(x) * 0.05;
-      else if (role === 'flank') top = 0.48 - front * 0.22;
-      else top = 0.5;
-      return Math.max(GRADE + 0.08, Math.min(BROKEN_CAP, top + jag * 0.45));
-    };
-  };
-  for (let i = 0; i < k; i++) {
-    const a = plan[i], b = plan[(i + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
-    const ops: Opening[] = [];
-    for (const sl of slitList) if (sl.edge === i) ops.push({ s0: sl.s - sl.w / 2, s1: sl.s + sl.w / 2, t0: sl.y - sl.h / 2, t1: sl.y + sl.h / 2 });
-    if (i === doorEdge) ops.push({ s0: doorS - doorW / 2, s1: doorS + doorW / 2, t0: GRADE, t1: GRADE + doorH });
-    const top = ragged(i, len);
-    wallFace(m, [a[0], 0, a[1]], u, len, FOOT, top, O.broken ? ops.filter((op) => op.t1 < top(op.s0) - 0.05 && op.t1 < top(op.s1) - 0.05) : ops, conc);
-    if (O.broken) {
-      // the break's top: the wall's thickness across the ragged line, and the bars bent out of it
-      const thick = 0.85;
-      const n: V3 = [-u[2], 0, u[0]];
-      const steps = Math.max(2, Math.round(len / 0.22));
-      for (let j = 0; j < steps; j++) {
-        const s0 = (j / steps) * len, s1 = ((j + 1) / steps) * len, t0 = top(s0), t1 = top(s1);
-        if (t0 >= wallTop - 0.01 && t1 >= wallTop - 0.01) continue;
-        const p0: V3 = [a[0] + u[0] * s0, t0, a[1] + u[2] * s0], p1: V3 = [a[0] + u[0] * s1, t1, a[1] + u[2] * s1];
-        const q0 = add(p0, scl(n, -thick)), q1 = add(p1, scl(n, -thick));
-        const freshCore: Shade = (p) => mul(mix(T.concrete, mix(T.earth, [0.2, 0.19, 0.17], 0.5), 0.35 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 71) * 0.4), 0.72);
-        m.quad(p0, p1, add(q1, [0, -0.04, 0]), add(q0, [0, -0.04, 0]), freshCore, false, [0, 1, 0]);
-        // the inner face below the break (the room's wall, sooted)
-        const inner: Shade = (p) => mul(T.concrete, 0.28 + vnoise(p[0], p[1], p[2], 0.4, O.seed + 73) * 0.12);
-        m.quad(q1, q0, [q0[0], PIT, q0[2]], [q1[0], PIT, q1[2]], inner, false, scl(n, -1));
-        // the bars: the outer and inner mats' verticals, bent out and over where the blast tore the concrete off them
-        if (hash3(j, i, 3, O.seed) < 0.26) {
-          const rust: Shade = () => mix([0.12, 0.05, 0.025], [0.05, 0.035, 0.03], hash3(j, i, 5, O.seed));
-          const off = hash3(j, i, 4, O.seed) < 0.5 ? 0.09 : thick - 0.09, out = off < thick / 2 ? 1 : -0.6;
-          const base = add(p0, scl(n, -off));
-          const len1 = Math.min(0.14 + hash3(j, i, 7, O.seed) * 0.3, BROKEN_CAP + 0.24 - t0);
-          const bend = add(base, [n[0] * len1 * 0.45 * out + u[0] * (hash3(j, 9, i, O.seed) - 0.5) * 0.25, len1, n[2] * len1 * 0.45 * out + u[2] * (hash3(j, 9, i, O.seed) - 0.5) * 0.25]);
-          const tip = add(bend, [n[0] * 0.22 * out, -0.05 - hash3(j, i, 11, O.seed) * 0.25, n[2] * 0.22 * out]);
-          bar(m, base, bend, rust); bar(m, bend, tip, rust);
-        }
-      }
-    }
-  }
-  // the embrasures (a broken work keeps only those under its ragged line)
-  for (const sl of slitList) {
-    const a = plan[sl.edge], b = plan[(sl.edge + 1) % k], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
-    if (O.broken) {
-      const top = ragged(sl.edge, len);
-      if (!(sl.y + sl.h / 2 < top(sl.s - sl.w / 2) - 0.05 && sl.y + sl.h / 2 < top(sl.s + sl.w / 2) - 0.05)) continue;
-    }
-    const c: V3 = [a[0] + u[0] * sl.s, sl.y, a[1] + u[2] * sl.s];
-    const thick = style === 'dot' ? 1.05 : 0.9;
-    embrasure(m, c, u, sl.w, sl.h, sl.steps, sl.w * 0.11, sl.h * 0.1, 0.16, thick, reveal, sl.plate ? plateTone : null, sl.w * 0.32, 0.1);
-    // the DOT's main embrasure under its cast visor (the hood over the opening, against splinters and the rain)
-    if (style === 'dot' && sl.w > 1 && !O.broken) {
-      const n: V3 = [-u[2], 0, u[0]];
-      const vy = sl.y + sl.h / 2 + 0.03, depth = 0.18, vw = sl.w + 0.3;
-      solid(m, c[0] + n[0] * depth / 2, vy, c[2] + n[2] * depth / 2, vw, 0.1, depth, Math.atan2(n[0], n[2]), conc, true);
-    }
-  }
-  // the door: its reveal and the steel leaf set in it
-  if (doorEdge >= 0) {
-    const a = plan[doorEdge], b = plan[(doorEdge + 1) % k], len = doorLen || Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const u: V3 = [(b[0] - a[0]) / len, 0, (b[1] - a[1]) / len];
-    const n: V3 = [-u[2], 0, u[0]];
-    const c: V3 = [a[0] + u[0] * doorS, GRADE, a[1] + u[2] * doorS];
-    const P = (du: number, y: number, dep: number): V3 => [c[0] + u[0] * du - n[0] * dep, y, c[2] + u[2] * du - n[2] * dep];
-    const hw = doorW / 2, D = 0.32;
-    if (!O.broken) {
-    m.quad(P(-hw, GRADE + doorH, 0), P(-hw, GRADE, 0), P(-hw, GRADE, D), P(-hw, GRADE + doorH, D), reveal, true, u);
-    m.quad(P(hw, GRADE, 0), P(hw, GRADE + doorH, 0), P(hw, GRADE + doorH, D), P(hw, GRADE, D), reveal, true, scl(u, -1));
-    m.quad(P(hw, GRADE + doorH, 0), P(-hw, GRADE + doorH, 0), P(-hw, GRADE + doorH, D), P(hw, GRADE + doorH, D), reveal, true, [0, -1, 0]);
-    m.quad(P(-hw, GRADE + 0.005, 0), P(hw, GRADE + 0.005, 0), P(hw, GRADE + 0.005, D), P(-hw, GRADE + 0.005, D), reveal, true, [0, 1, 0]);
-    const leaf: Shade = (p) => mix(plateTone, [0.1, 0.045, 0.02], smooth(0.55, 0.8, vnoise(p[0], p[1], p[2], 0.3, O.seed + 81)) * (0.3 + T.age));
-    {
-      m.quad(P(-hw, GRADE, D), P(hw, GRADE, D), P(hw, GRADE + doorH, D), P(-hw, GRADE + doorH, D), leaf, false, n);
-      // the leaf's frame and hinges, a little proud
-      for (const y of [GRADE + 0.3, GRADE + doorH - 0.3]) solid(m, c[0] + u[0] * (-hw + 0.05) - n[0] * (D - 0.03), y, c[2] + u[2] * (-hw + 0.05) - n[2] * (D - 0.03), 0.06, 0.12, 0.05, Math.atan2(u[0], u[2]) - Math.PI / 2, leaf, false);
-    }
-    }
-    // the blast wall: an L before the door, the way in from the left (as seen leaving)
-    const bwDist = 1.25, bwLen = 2.5, bwT = 0.36, bwH = style === 'hex' ? 1.62 : 1.72;
-    const yaw = Math.atan2(n[0], n[2]);
-    const bcx = c[0] + n[0] * (bwDist + bwT / 2) + u[0] * 0.35, bcz = c[2] + n[2] * (bwDist + bwT / 2) + u[2] * 0.35;
-    const bwTop = O.broken ? 0.42 : bwH;
-    blastWall(m, [bcx, 0, bcz], u, n, bwLen, bwT, FOOT, bwTop, conc, O);
-    // its return to the body, on the right
-    const rx = c[0] + u[0] * (0.35 + bwLen / 2 - bwT / 2) + n[0] * (bwDist / 2), rz = c[2] + u[2] * (0.35 + bwLen / 2 - bwT / 2) + n[2] * (bwDist / 2);
-    blastWall(m, [rx, 0, rz], n, scl(u, -1), bwDist + 0.02, bwT, FOOT, bwTop, conc, O);
-    void yaw;
-    // sandbags at the mouth (and a course on the blast wall's top)
-    const bagShade = T.bag;
-    const mouthX = c[0] + u[0] * (0.35 - bwLen / 2 - 0.45) + n[0] * (bwDist + 0.3), mouthZ = c[2] + u[2] * (0.35 - bwLen / 2 - 0.45) + n[2] * (bwDist + 0.3);
-    const brng = mulberry32(O.seed + 91);
-    const bagCourses = O.broken ? 0 : 3;
-    for (let course = 0; course < bagCourses; course++) {
-      for (let j = 0; j < 3 - course; j++) {
-        const along = (j - (2 - course) / 2) * 0.58;
-        placeBag(m, brng, mouthX + n[0] * along, GRADE + 0.1 + course * 0.19, mouthZ + n[2] * along, Math.atan2(n[0], n[2]), bagShade, course);
-      }
-    }
-    if (!O.broken) {
-      for (let j = 0; j < 4; j++) {
-        const along = (j - 1.5) * 0.6;
-        placeBag(m, brng, bcx + u[0] * along, bwTop + 0.1, bcz + u[2] * along, Math.atan2(u[0], u[2]), bagShade, 2);
-      }
-    } else {
-      for (let j = 0; j < 7; j++) placeBag(m, brng, mouthX + (brng() - 0.5) * 2.4, GRADE + 0.06, mouthZ + (brng() - 0.5) * 2.4, brng() * Math.PI, bagShade, 0);
-    }
-  }
-
-  // ---- the roof slab: its underside under the overhang, the edge with its drip groove, the chamfer, the top
-  const sPlan = grow(plan, overhang), chamf = 0.07;
-  const sTop = wallTop + slab;
-  const slabShade = conc;
-  if (!O.broken) {
-    cap(m, sPlan, wallTop, slabShade, false, true, 2);
-    // drip groove: a 4 cm step up 6 cm in from the edge
-    const dPlan = grow(plan, overhang - 0.06);
-    prism(m, dPlan, wallTop - 0.0, wallTop + 0.04, slabShade, null, null, true, 0.5);
-    prism(m, sPlan, wallTop + 0.04, sTop - chamf, slabShade, null, null, true, 0.3);
-    const cPlan = grow(plan, overhang - chamf);
-    // the chamfer: from the edge's top in to the top face
-    for (let i = 0; i < sPlan.length; i++) {
-      const a = sPlan[i], b = sPlan[(i + 1) % sPlan.length], c2 = cPlan[(i + 1) % cPlan.length], d = cPlan[i];
-      const el = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      m.quad([a[0], sTop - chamf, a[1]], [b[0], sTop - chamf, b[1]], [c2[0], sTop, c2[1]], [d[0], sTop, d[1]], slabShade, true,
-        undefined, [-(b[1] - a[1]) / el, 1, (b[0] - a[0]) / el]);
-    }
-    cap(m, cPlan, sTop, slabShade, true, true, 5);
-    // the turf and earth over the roof, inset from the edge, a ragged rim
-    roofCover(m, plan, sTop, style === 'dot' ? 0.5 : style === 'hex' ? 0.12 : 0.24, style === 'dot' ? 0.1 : 0.38, T, O.seed + 101);
-    // vent pipe and its cap, the periscope stub
-    const vent: Shade = () => mix([0.06, 0.06, 0.062], [0.11, 0.05, 0.025], 0.4 + T.age * 0.5);
-    const vx = plan[0][0] * 0.0 - 1.35, vz = -1.05;
-    if (style !== 'dot') {
-      log(m, [vx, sTop - 0.05, vz], [vx, sTop + 0.48, vz], 0.075, 8, vent, vent);
-      solid(m, vx, sTop + 0.48, vz, 0.26, 0.05, 0.26, 0.3, vent, false);
-    }
-  } else {
-    // (round 2, wave 370: "no slab mass, rubble volume, rebar or concrete colour", "a translucent ghost panel": the old
-    // plates lay sunk below the ground) the slab broken up into its own fragments, heaped in the shell and over the
-    // breach above the ground, its earth and turf on some, the bars out of their broken faces
-    slabRubble(m, sPlan, slab, slabShade, O, rng);
-  }
-
-  // (the bank is not the destructible's: props.ts lays it as a static earthwork, pillboxBerm, so it outlives the
-  // concrete and keeps its collision)
-
-  // ---- the destroyed state's rubble, at a real volume, in the concrete's own colours (none higher than a hull crosses)
-  if (O.broken) rubble(m, plan, O, rng);
-
-  return m.geometry();
-}
-
 /** A concrete form's berm: to the sill in front (cut down under each embrasure), higher on the flanks, open behind. */
 function concreteBermSpec(style: 'regelbau' | 'dot' | 'hex', L: ConcreteLayout, T: FortTones, seed: number, broken: boolean): BermSpec {
   const { plan, slits } = L;
@@ -1135,119 +921,6 @@ function tuft(m: Mesh, x: number, y: number, z: number, h: number, tone: Rgb, se
     m.vertex(p0, n, null, col(p0)); m.vertex(p1, n, null, col(p1)); m.vertex(tip, n, null, col(tip));
     const nb = scl(n, -1);
     m.vertex(p1, nb, null, col(p1)); m.vertex(p0, nb, null, col(p0)); m.vertex(tip, nb, null, col(tip));
-  }
-}
-
-/**
- * The slab fallen in (round 2): broken up into a dozen and more of its own fragments — each a convex block of the slab's
- * concrete, its top the roof's face (some with their earth and turf still on), its sides fresh broken grey with the bars
- * out of them — heaped in the shell and spilled over the blown front, every one resting above the ground and under
- * BROKEN_CAP (a broken prop has no collider).
- */
-function slabRubble(m: Mesh, sPlan: Plan, slab: number, shade: Shade, O: BuildOpts, rng: Rng): void {
-  const T = O.tones;
-  const xs = sPlan.map((p) => p[0]), zs = sPlan.map((p) => p[1]);
-  const X0 = Math.min(...xs) + 0.3, X1 = Math.max(...xs) - 0.3, Z0 = Math.min(...zs) + 0.3, Z1 = Math.max(...zs) - 0.3;
-  const core: Shade = (p) => mul(mix(T.concrete, [0.24, 0.23, 0.2], 0.4 + vnoise(p[0], p[1], p[2], 0.15, O.seed + 137) * 0.35), 0.82);
-  const turf: Shade = (p) => mul(mix(T.turf, T.earth, smooth(0.4, 0.7, fbm(p[0], 0, p[2], 0.4, O.seed + 139))), 0.8 + vnoise(p[0], 0, p[2], 0.15, O.seed + 141) * 0.3);
-  const rust: Shade = () => [0.1, 0.045, 0.022];
-  const count = 16;
-  for (let i = 0; i < count; i++) {
-    // where it lies: most in the shell, the front ones thrown over the breach
-    const u = rng(), v = rng();
-    const x = X0 + (X1 - X0) * u, z = Z0 + (Z1 - Z0) * v + (v > 0.7 ? 0.9 : 0);
-    const w = 0.55 + rng() * 0.75, d = 0.45 + rng() * 0.6, th = Math.min(slab, 0.34 + rng() * 0.1);
-    const yaw = rng() * Math.PI, tiltX = (rng() - 0.5) * 0.7, tiltZ = (rng() - 0.5) * 0.7;
-    const cy = Math.cos(yaw), sy = Math.sin(yaw);
-    const rot = (lx: number, ly: number, lz: number): V3 => {
-      // tilt about x then z, then yaw
-      const y1 = ly * Math.cos(tiltX) - lz * Math.sin(tiltX), z1 = ly * Math.sin(tiltX) + lz * Math.cos(tiltX);
-      const x2 = lx * Math.cos(tiltZ) - y1 * Math.sin(tiltZ), y2 = lx * Math.sin(tiltZ) + y1 * Math.cos(tiltZ);
-      return [x + x2 * cy + z1 * sy, y2, z - x2 * sy + z1 * cy];
-    };
-    // a ragged convex outline in its plane (6-8 corners), its top and bottom faces and the broken sides
-    const k = 6 + Math.floor(rng() * 3);
-    const outline: Array<[number, number]> = [];
-    for (let j = 0; j < k; j++) {
-      const a = (j / k) * Math.PI * 2 + (rng() - 0.5) * 0.5;
-      outline.push([Math.cos(a) * w / 2 * (0.75 + rng() * 0.35), Math.sin(a) * d / 2 * (0.75 + rng() * 0.35)]);
-    }
-    const top = outline.map(([ox, oz]) => rot(ox, th / 2, oz)), bot = outline.map(([ox, oz]) => rot(ox, -th / 2, oz));
-    // sit it on the heap: its lowest corner a little into the rubble, its highest under the cap
-    const lo = Math.min(...top.map((q) => q[1]), ...bot.map((q) => q[1])), hi = Math.max(...top.map((q) => q[1]), ...bot.map((q) => q[1]));
-    const inShell = Math.abs(x) < X1 - 0.2 && z < Z1;
-    const bed = GRADE + (inShell ? 0.18 + rng() * 0.12 : 0.02);
-    const lift = Math.min(bed - lo, BROKEN_CAP - 0.03 - hi);
-    for (const q of [...top, ...bot]) q[1] += lift;
-    const up = norm(sub(rot(0, 1, 0), rot(0, 0, 0)));
-    const ctr = rot(0, 0, 0); ctr[1] += lift;
-    const covered = rng() < 0.4;
-    for (let j = 0; j < k; j++) {
-      const j1 = (j + 1) % k;
-      const tc: V3 = scl(add(add(top[0], top[j]), top[j1]), 1 / 3);
-      void tc;
-      m.tri(top[0], top[j], top[j1], covered ? turf : shade, !covered, undefined, up);
-      m.tri(bot[0], bot[j1], bot[j], (p, n) => mul(core(p, n), 0.6), true, undefined, scl(up, -1));
-      const mid = scl(add(add(top[j], top[j1]), add(bot[j], bot[j1])), 0.25);
-      m.quad(top[j], top[j1], bot[j1], bot[j], core, true, undefined, sub(mid, ctr));
-      // the bars out of the broken side
-      if (hash3(i, j, 29, O.seed) < 0.3) {
-        const base = scl(add(top[j], bot[j1]), 0.5), out = norm(sub(mid, ctr));
-        const len = 0.14 + hash3(i, j, 31, O.seed) * 0.3;
-        const tip: V3 = [base[0] + out[0] * len, Math.min(BROKEN_CAP + 0.18, base[1] + out[1] * len + 0.06), base[2] + out[2] * len];
-        bar(m, base, tip, rust);
-      }
-    }
-  }
-}
-
-/** The rubble of a blown front: a low heap in the concrete's colours, chunks on it and round it, all under 0.5 m. */
-function rubble(m: Mesh, plan: Plan, O: BuildOpts, rng: Rng): void {
-  const T = O.tones;
-  const zs = plan.map((p) => p[1]);
-  const front = Math.max(...zs);
-  const dust: Rgb = mix(T.concrete, T.earth, 0.35);
-  const heapShade: Shade = (p) => mul(mix(dust, T.concrete, vnoise(p[0], 0, p[2], 0.3, O.seed + 151)), 0.75 + vnoise(p[0], 0, p[2], 0.12, O.seed + 157) * 0.35);
-  // the heap: a dome over the shell and the breach, spilling out of the front (round 2: at a real volume)
-  const xs = plan.map((p) => p[0]), backZ = Math.min(...zs);
-  const cx = 0, cz = (front + backZ) / 2 + 0.35, rx = (Math.max(...xs) - Math.min(...xs)) / 2 + 0.7, rz = (front - backZ) / 2 + 0.9, H = 0.46;
-  const SEG = 20, RING = 5;
-  const pt = (k: number, r: number): V3 => {
-    const ph = (k / SEG) * Math.PI * 2, t = r / RING;
-    const wob = 1 + (vnoise(Math.cos(ph) * 3, 0, Math.sin(ph) * 3, 0.8, O.seed + 161) - 0.5) * 0.4;
-    const x = cx + Math.cos(ph) * rx * t * wob, z = cz + Math.sin(ph) * rz * t * wob;
-    const h = H * Math.pow(1 - t * t, 1.4) + (t < 1 ? (vnoise(x * 3, 0, z * 3, 0.4, O.seed + 163) - 0.5) * 0.12 : -0.08);
-    return [x, GRADE + h, z];
-  };
-  for (let k = 0; k < SEG; k++) for (let r = 0; r < RING; r++) {
-    const a = pt(k, r), b = pt(k + 1, r), c = pt(k + 1, r + 1), d = pt(k, r + 1);
-    if (r === 0) m.tri(a, c, d, heapShade, false, undefined, [0, 1, 0]);
-    else { m.tri(a, c, d, heapShade, false, undefined, [0, 1, 0]); m.tri(a, b, c, heapShade, false, undefined, [0, 1, 0]); }
-  }
-  // chunks: slabs of the wall with their boards (printed), blocks, a few with bars
-  const chunkShade: Shade = (p, n) => mul(mix(mul(T.concrete, 0.66), mix(dust, [0.16, 0.15, 0.13], 0.5), vnoise(p[0], p[1], p[2], 0.25, O.seed + 171) * 0.75),
-    (n[1] > 0.5 ? 0.95 : 0.78) * (0.85 + hash3(Math.round(p[0] * 3), Math.round(p[2] * 3), 1, O.seed) * 0.25));
-  const rust: Shade = () => [0.1, 0.045, 0.022];
-  for (let i = 0; i < 40; i++) {
-    const ang = rng() * Math.PI * 2, rr = Math.sqrt(rng());
-    const x = cx + Math.cos(ang) * rx * 1.15 * rr, z = cz + 0.3 + Math.sin(ang) * rz * 1.2 * rr;
-    const s = 0.16 + rng() * rng() * 0.62;
-    const heapY = GRADE + Math.max(0, H * (1 - rr * rr)) * 0.75;
-    const h = Math.min(0.42, s * (0.45 + rng() * 0.4), Math.max(0.1, (BROKEN_CAP - heapY) / 0.9));
-    lump(m, x, heapY + h * 0.25, z, s * (1 + rng() * 0.8), h, s * (0.8 + rng() * 0.6), rng, chunkShade, true, rng() * Math.PI, 0.7, BROKEN_CAP - 0.02);
-    if (s > 0.45 && rng() < 0.6) bar(m, [x, heapY + h * 0.5, z], [x + (rng() - 0.5) * 0.7, Math.min(BROKEN_CAP + 0.2, heapY + h * 0.5 + rng() * 0.35), z + (rng() - 0.5) * 0.7], rust);
-  }
-  // inside the shell: the floor heaped with the fallen ceiling's fragments
-  for (let i = 0; i < 18; i++) {
-    const x = (rng() - 0.5) * 3.6, z = (rng() - 0.5) * 3.0 - 0.2, s = 0.2 + rng() * 0.4;
-    lump(m, x, GRADE + 0.2, z, s, Math.min(0.35, s * 0.6), s, rng, chunkShade, true, rng() * Math.PI, 0.4, BROKEN_CAP - 0.02);
-  }
-  // the earth of the bank and the roof thrown out with it: clods round the heap
-  const clod: Shade = (p) => mul(T.earth, 0.7 + vnoise(p[0], p[1], p[2], 0.2, O.seed + 181) * 0.35);
-  for (let i = 0; i < 22; i++) {
-    const ang = rng() * Math.PI * 2, rr = 0.8 + rng() * 0.5;
-    const x = cx + Math.cos(ang) * rx * rr, z = cz + Math.sin(ang) * rz * rr, sz = 0.12 + rng() * 0.25;
-    lump(m, x, GRADE + sz * 0.2, z, sz * 1.4, sz * 0.6, sz, rng, clod, false, rng() * Math.PI, 0.5, BROKEN_CAP - 0.1);
   }
 }
 
@@ -1479,7 +1152,8 @@ class FortPieces {
   }
   anatomy(kind: string): KitFractureAnatomy {
     if (this.open) throw new Error('fortKit: unfinished piece');
-    return { kind, pieces: this.pieces.slice(), links: this.links.slice() };
+    // (the churned ground a pillbox's fall leaves: about its earthwork's crest)
+    return { kind, pieces: this.pieces.slice(), links: this.links.slice(), groundScarM: 3.6 };
   }
 }
 
@@ -2058,6 +1732,147 @@ export function fortFractureEdge(material: FractureMaterial, piece: FracturePiec
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// the settled wreck of a concrete work (round 2)
+
+/**
+ * The destroyed concrete work for the broken pool (round 2; wave 370: "crater, spoil, splintered logs and rebar at real
+ * volume"), settled from its own pieces (fractureSettle.ts) in its earthwork: the room's floor and every wall's stub
+ * stand, their breaks ragged and barred; the corner farthest from the blow stands; the lifts lean out against the bank,
+ * or fall in where the blow struck, some cracked through with their bars between; the slab comes down in its plates
+ * onto what stands, tipped, its earth and turf on it, its broken edges barred; the door is thrown, the blast wall goes
+ * over, the bags scatter; fresh-grey rubble at the feet of the breaks and over the floor, the bank's earth thrown over
+ * the crest. The broken pool has no collider: the wreck stands no higher than its standing corner.
+ */
+function buildConcreteWreck(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): THREE.BufferGeometry {
+  const intact = buildConcretePillboxPieces(style, { ...O, broken: false });
+  const anatomy = intact.userData.fracture as KitFractureAnatomy;
+  const field = pillboxBankField(style, O.tones, O.seed);
+  const S = new FractureSettle(intact, anatomy, {
+    cell: 0.1, margin: 3, dust: 0.8,
+    ground: (x, z) => { const h = field.lift(x, z); return Number.isNaN(h) ? PIT : Math.max(GRADE, h); },
+  });
+  const rng = mulberry32((O.seed ^ 0x3ec7a11) >>> 0);
+  const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();
+  const T = O.tones;
+  const P = anatomy.pieces;
+  const L = concreteLayout(style);
+  const az = rng() * Math.PI * 2;
+  const blow: V3 = [Math.cos(az), 0, Math.sin(az)]; // the way the blow pushes
+  const idx = P.map((_, i) => i);
+  const flat = (v: V3): V3 => norm([v[0], 0, v[2]]);
+  const nearCorner = (p: FracturePiece): boolean => L.plan.some(([x, z]) => Math.hypot(p.c[0] - x, p.c[2] - z) < 0.75);
+  const inPlan = (p: FracturePiece): boolean => Math.max(...L.plan.map(([x, z]) => Math.hypot(x, z))) + 0.6 > Math.hypot(p.c[0], p.c[2]);
+  const up = (p: FracturePiece): FracturePiece => ({ ...p, scoreAxis: 1 });
+  // a stub's ragged top and a lift's ragged foot (the edge art across the joint between them)
+  const stubTop = (i: number): SettleTris | undefined => edgeRuns(fortFractureEdge, up(P[i]), P[i].h[1] - 0.03, O.seed ^ (i * 31))[0];
+  const liftFoot = (i: number): SettleTris | undefined => edgeRuns(fortFractureEdge, up(P[i]), -P[i].h[1] + 0.03, O.seed ^ (i * 37))[1];
+  // 1. the floor and every stub stand, their breaks ragged
+  for (const i of idx) {
+    if (!P[i].anchor) continue;
+    S.stay(i, 0.86);
+    if (P[i].role === 'wall') { const cap = stubTop(i); if (cap) S.extra(cap, 0.9); }
+  }
+  // 2. the corner farthest from the blow stands
+  const corners = idx.filter((i) => P[i].role === 'wall' && !P[i].anchor && nearCorner(P[i]) && inPlan(P[i]));
+  const standing = corners.length ? corners.reduce((a, b) => (dot3(flat(P[a].c as V3), blow) >= dot3(flat(P[b].c as V3), blow) ? a : b)) : -1;
+  if (standing >= 0) S.cut(standing, () => P[standing].c[1] + P[standing].h[1] - r(0, 0.22), 0.86);
+  // 3. the slab down in its plates onto the stubs and the floor, cracked and tipped, its broken edges barred
+  const plates = idx.filter((i) => P[i].role === 'slab' && !P[i].anchor).sort((a, b) => P[a].c[1] - P[b].c[1]);
+  S.together(() => { for (const i of plates) {
+    const p = P[i];
+    // its broken inner edges (toward the slab's middle) ragged and barred, then cracked across at its score
+    const edges: SettleTris[] = [];
+    for (const k of [0, 2] as const) {
+      const sign = Math.sign(p.c[k]) || 1;
+      const runs = edgeRuns(fortFractureEdge, { ...p, scoreAxis: k }, -sign * (p.h[k] - 0.04), O.seed ^ (i * 53 + k));
+      const run = sign > 0 ? runs[1] : runs[0];
+      if (run) edges.push(run);
+    }
+    const parts = S.snap(i, fortFractureEdge, p.scores, O.seed ^ (i * 59));
+    for (const e of edges) {
+      // (each ragged edge goes with the length it lies against)
+      let best = parts[0], bestD = Infinity;
+      const ec = [0, 0, 0];
+      for (let k = 0; k < e.p.length; k += 3) { ec[0] += e.p[k]; ec[2] += e.p[k + 2]; }
+      ec[0] /= e.p.length / 3; ec[2] /= e.p.length / 3;
+      for (const b of parts) { const d = Math.hypot(b.centre[0] - ec[0], b.centre[2] - ec[2]); if (d < bestD) { bestD = d; best = b; } }
+      S.addTo(best, e);
+    }
+    for (const b of parts) S.drop(b, r(-0.15, 0.15), [blow[0] * r(0.1, 0.35), 0, blow[2] * r(0.1, 0.35)], { maxTilt: 1.3, ceiling: 3.0 });
+  } });
+  // 4. the walls' lifts blown off the slab's fall: in where the blow struck them, out on the bank elsewhere; some cracked
+  const lifts = idx.filter((i) => P[i].role === 'wall' && !P[i].anchor && i !== standing && inPlan(P[i]));
+  lifts.sort((a, b) => P[a].c[1] - P[b].c[1]);
+  for (const i of lifts) {
+    const p = P[i];
+    const out = flat(p.c as V3);
+    const struck = dot3(out, blow) < -0.3;
+    const foot = liftFoot(i);
+    const scores = (p.scores ?? []).filter(() => rng() < 0.5);
+    const parts = nearCorner(p) ? [S.body([i])] : S.snap(i, fortFractureEdge, scores, O.seed ^ (i * 41));
+    for (const b of parts) {
+      if (foot) {
+        // (each length keeps the part of the ragged foot under it)
+        const cut = { p: [] as number[], n: [] as number[], t: [] as number[], c: [] as number[] };
+        let lo = Infinity, hi = -Infinity;
+        const A = norm(sub([b.centre[0], 0, b.centre[2]], [p.c[0], 0, p.c[2]]));
+        for (let k = 0; k < b.tris.p.length; k += 3) {
+          const s = (b.tris.p[k] - b.centre[0]) * A[0] + (b.tris.p[k + 2] - b.centre[2]) * A[2];
+          lo = Math.min(lo, s); hi = Math.max(hi, s);
+        }
+        for (let t = 0; t < foot.p.length / 9; t++) {
+          const cx = (foot.p[t * 9] + foot.p[t * 9 + 3] + foot.p[t * 9 + 6]) / 3, cz = (foot.p[t * 9 + 2] + foot.p[t * 9 + 5] + foot.p[t * 9 + 8]) / 3;
+          const s = parts.length === 1 ? 0 : (cx - b.centre[0]) * A[0] + (cz - b.centre[2]) * A[2];
+          if (parts.length > 1 && (s < lo - 0.02 || s > hi + 0.02)) continue;
+          cut.p.push(...foot.p.slice(t * 9, t * 9 + 9)); cut.n.push(...foot.n.slice(t * 9, t * 9 + 9));
+          cut.t.push(...foot.t.slice(t * 6, t * 6 + 6)); cut.c.push(...foot.c.slice(t * 9, t * 9 + 9));
+        }
+        S.addTo(b, cut);
+      }
+      // (cast lifts stay on their hinge: leaning out on the bank, or swung in onto the floor where the blow struck)
+      if (nearCorner(p)) S.topple(b, out, r(0.35, 0.8), { minSwing: 0.2, hinged: true });
+      else if (struck) S.topple(b, scl(out, -1), r(0.8, 1.4), { minSwing: 0.3, hinged: true });
+      else S.topple(b, out, r(0.5, 1.15), { minSwing: 0.3, hinged: true });
+    }
+  }
+  // 5. the door thrown, the blast wall and its return over, the bags scattered
+  for (const i of idx) {
+    if (S.isLaid(i)) continue;
+    const p = P[i];
+    const out = flat(p.c as V3);
+    if (p.role === 'door') S.lie(S.body([i]), r(0, Math.PI * 2), [out[0] * r(0.8, 1.8), 0, out[2] * r(0.8, 1.8)], rng() < 0.5, r(-0.2, 0.2), { ceiling: 1.2 });
+    else if (p.role === 'wall') S.topple(S.body([i]), out, r(0.6, 1.45), { minSwing: 0.3, hinged: true });
+    else if (p.role === 'bag') {
+      const a = r(0, Math.PI * 2), d = r(0.2, 1.6);
+      S.lie(S.body([i]), r(0, Math.PI * 2), [Math.cos(a) * d + out[0] * 0.4, 0, Math.sin(a) * d + out[2] * 0.4], false, r(-0.3, 0.3), { ceiling: 0.9 });
+    } else S.lie(S.body([i]), r(0, Math.PI * 2), [out[0] * r(0.3, 1), 0, out[2] * r(0.3, 1)], false, 0, { ceiling: 1.4 });
+  }
+  // 6. rubble at the breaks' feet and over the floor, bars out of it, the bank's earth thrown over the crest
+  const m = new Mesh();
+  const dust: Rgb = mix(T.concrete, T.earth, 0.3);
+  const chunk: Shade = (q, n) => mul(mix(mul(T.concrete, 0.7), mix(dust, [0.42, 0.4, 0.36], 0.5), vnoise(q[0], q[1], q[2], 0.25, O.seed + 171) * 0.8),
+    (n[1] > 0.5 ? 0.95 : 0.8) * (0.85 + hash3(Math.round(q[0] * 3), Math.round(q[2] * 3), 1, O.seed) * 0.25));
+  const rust: Shade = () => [0.1, 0.045, 0.022];
+  const ext = Math.max(...L.plan.map(([x, z]) => Math.hypot(x, z)));
+  for (let k = 0; k < 30; k++) {
+    const a = r(0, Math.PI * 2), rr = k < 18 ? ext * r(0.75, 1.12) : ext * Math.sqrt(rng()) * 0.7;
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr, s = 0.14 + rng() * rng() * 0.5;
+    const y = S.heightAt(x, z);
+    lump(m, x, y + s * 0.18, z, s * (1 + rng() * 0.7), s * (0.5 + rng() * 0.4), s * (0.8 + rng() * 0.5), rng, chunk, true, r(0, Math.PI), 0.7);
+    if (s > 0.32 && rng() < 0.55) bar(m, [x, y + s * 0.3, z], [x + r(-0.4, 0.4), y + s * 0.3 + r(0.2, 0.6), z + r(-0.4, 0.4)], rust);
+  }
+  const clod: Shade = (q) => mul(T.earth, 0.65 + vnoise(q[0], q[1], q[2], 0.2, O.seed + 181) * 0.4);
+  for (let k = 0; k < 26; k++) {
+    const a = r(0, Math.PI * 2), rr = ext + r(0.4, 2.6) + Math.max(0, Math.cos(a) * blow[0] + Math.sin(a) * blow[2]) * r(0, 1.2);
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr, s = 0.1 + rng() * 0.22;
+    lump(m, x, S.heightAt(x, z) + s * 0.12, z, s * 1.4, s * 0.55, s, rng, clod, false, r(0, Math.PI), 0.5);
+  }
+  S.extra({ p: m.p, n: m.n, t: m.t, c: m.c }, 1);
+  intact.dispose();
+  return S.finish();
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // public
 
 function mulberry32(a: number): Rng {
@@ -2068,7 +1883,7 @@ function mulberry32(a: number): Rng {
 export function buildPillbox(style: PillboxStyle, tones: FortTones, seed: number, broken: boolean): THREE.BufferGeometry {
   const O = { tones, seed, broken };
   // (round 2: the intact concrete work in the destruction core's pieces; the destroyed state is the settled heap)
-  const g = style === 'logearth' ? buildLogEarthPillbox(O) : broken ? buildConcretePillbox(style, O) : buildConcretePillboxPieces(style, O);
+  const g = style === 'logearth' ? buildLogEarthPillbox(O) : broken ? buildConcreteWreck(style, O) : buildConcretePillboxPieces(style, O);
   return g;
 }
 

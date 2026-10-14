@@ -11177,8 +11177,11 @@ ${snowCap ? `
       // debris inherits the rammer's velocity: dir magnitude carries energy
       // (1 = shell-grade break; a 14 m/s overrun throws ~2.6x as hard)
       const throwK = 1 + Math.min(speed, 14) * 0.115;
-      emitBreakFx(rec.kind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
-        (dx / l) * throwK, (dz / l) * throwK, rec.h);
+      // (the destructible-kits lane, round 2: a pillbox breaks in the map's make; a fracture-ready kind churns its ground)
+      const fxKind = rec.kind === 'bunker' && fort ? (fort.style === 'logearth' ? 'bunker-logearth' : 'bunker-concrete') : rec.kind;
+      const scarM = (pool?.imI?.geometry.userData.fracture as { groundScarM?: number } | undefined)?.groundScarM ?? 0;
+      emitBreakFx(fxKind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
+        (dx / l) * throwK, (dz / l) * throwK, rec.h, scarM * rec.sc);
     }
     // audio seam (DESTRUCTIBLES r1): every destruction reports on the bus
     emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause });

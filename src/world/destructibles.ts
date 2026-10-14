@@ -25,6 +25,8 @@ type BreakFxProvider = (
   directionX: number,
   directionZ: number,
   heightM: number,
+  /** A fracture-ready kind's churned ground (its anatomy's groundScarM), 0 for none. */
+  scarM?: number,
 ) => void;
 
 export interface DestroyedPropEvent {
@@ -75,8 +77,9 @@ export function emitBreakFx(
   dx: number,
   dz: number,
   h: number,
+  scarM = 0,
 ): void {
-  if (fxProvider) fxProvider(kind, x, y, z, dx, dz, h);
+  if (fxProvider) fxProvider(kind, x, y, z, dx, dz, h, scarM);
 }
 
 // DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any
