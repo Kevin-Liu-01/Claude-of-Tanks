@@ -1628,14 +1628,24 @@ Object.assign(RECIPES, {
     hour: 'sunset',
     windowS: 35,
     async run(ctx) {
-      // a bush on the player's side with an open sight line ~300 m toward the enemy, preferring a seat above the column
+      // r6: r2-r5 searched seats within 320 m of the player's spawn, which on Verdant is woodland: every raised lens
+      // stood among trunks and the frames fell back to over-the-shoulder views. The seat is now searched over the whole
+      // map: a shrub (1.5-5 m, no tree within 3 m) in open country (at most 3 trees within 25 m), a column spot 160-200 m
+      // out on open ground along any of eight bearings on a line no foliage disc crosses (the strict test that got r4's
+      // column spotted), and a raised lens behind the seat that sees the column (the lens is part of the choice)
       const plan = await ctx.eval(() => {
         const H = window.__MB.H, D = H.D(), p = H.player();
-        const discs = (D.world.getConcealment?.() || []).filter((c) => !c.dead && c.r >= 1.5 && c.r <= 9);
-        const enemies = H.enemies();
-        const ex = enemies.reduce((a, t) => a + t.state.pos.x, 0) / Math.max(1, enemies.length);
-        const ez = enemies.reduce((a, t) => a + t.state.pos.z, 0) / Math.max(1, enemies.length);
-        const toEnemy = Math.atan2(ex - p.state.pos.x, ez - p.state.pos.z);
+        const all = (D.world.getConcealment?.() || []).filter((c) => !c.dead);
+        const discs = all.filter((c) => c.r >= 1.5 && c.r <= 9);
+        const trees = (D.world.getObstacles?.() || []).filter((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead && o.min && o.max)
+          .map((o) => ({ x: (o.min[0] + o.max[0]) / 2, z: (o.min[2] + o.max[2]) / 2 }));
+        const cell = 25, grid = new Map();
+        for (const t of trees) { const k = `${Math.floor(t.x / cell)},${Math.floor(t.z / cell)}`; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(t); }
+        const treesWithin = (x, z, r) => {
+          let n = 0; const cx = Math.floor(x / cell), cz = Math.floor(z / cell), span = Math.ceil(r / cell);
+          for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) for (const t of grid.get(`${cx + i},${cz + j}`) || []) if (Math.hypot(t.x - x, t.z - z) < r) n++;
+          return n;
+        };
         const canopyOnLine = (sx, sz, px, pz, skip) => {
           const dx = px - sx, dz = pz - sz, len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
           for (const q of discs) {
@@ -1645,23 +1655,73 @@ Object.assign(RECIPES, {
           }
           return false;
         };
-        let best = null;
-        // r2: shrubs, not tree groves (r1's 4 m disc was a grove and every lens sat among its trunks), and the column
-        // within spotting range (r1's 360 m column was never spotted: spotRange = viewRange - (viewRange - 50) x camo)
-        // r3: r2's filter (discs to 4 m, no tree within 6 m, 240 m) left no seat on Verdant at all; shrubs to 5 m with no
-        // tree within 3 m, 320 m out, and the line to the column tested as the sights see it (H.sightClear: trunks
-        // anywhere, foliage near either end) instead of every disc along it
-        const treeRecs = (D.world.getObstacles?.() || []).filter((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead);
+        // a raised lens behind the seat: terrain and buildings on its line to the column (the world raycast), no foliage in
+        // its first 15 m outside the seat's own cluster, no trunk within 8 m of it; framed with the tank low in the
+        // foreground and the column beyond
+        const lensFor = (seat, col, c) => {
+          const others = all.filter((q) => Math.hypot(q.x - seat.x, q.z - seat.z) > c.r + 8);
+          const toward = Math.atan2(col.x - seat.x, col.z - seat.z), ux = Math.sin(toward), uz = Math.cos(toward), px = uz, pz = -ux;
+          for (const back of [13, 10, 16, 20]) {
+            for (const side of [6, -6, 9, -9, 3, -3]) {
+              for (const h of [6, 8, 5, 10]) {
+                const x = seat.x - ux * back + px * side, z = seat.z - uz * back + pz * side;
+                if (Math.abs(x) > 440 || Math.abs(z) > 440) continue;
+                if (all.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + 1)) continue;
+                if (treesWithin(x, z, 8) > 0) continue;
+                const eye = { x, y: H.groundY(x, z) + h, z };
+                if (H.raycastBlock(eye, { x: col.x, y: H.groundY(col.x, col.z) + 1.6, z: col.z }, 2) != null) continue;
+                const dx = col.x - x, dz = col.z - z, len = Math.hypot(dx, dz) || 1, lx2 = dx / len, lz2 = dz / len;
+                if (others.some((q) => { const wx = q.x - x, wz = q.z - z, along = wx * lx2 + wz * lz2; return along > 0 && along < 15 && Math.abs(wx * lz2 - wz * lx2) < q.r + 1; })) continue;
+                const lx = seat.x + (col.x - seat.x) * 0.35, lz = seat.z + (col.z - seat.z) * 0.35;
+                return { kind: 'fixed', pos: [x, eye.y, z], look: [lx, null, lz], lookHeightM: 1.0, fov: 44, smoothS: 0, hud: 'noreticle', back, side, h };
+              }
+            }
+          }
+          return null;
+        };
+        const cands = [];
+        for (const c of discs) {
+          if (c.r > 5 || Math.abs(c.x) > 400 || Math.abs(c.z) > 400) continue;
+          if (treesWithin(c.x, c.z, c.r + 3) > 0) continue;
+          const open = treesWithin(c.x, c.z, 25);
+          if (open > 3) continue;
+          cands.push({ c, open });
+        }
+        cands.sort((a, b) => a.open - b.open || H.dist(a.c, p.state.pos) - H.dist(b.c, p.state.pos));
+        let best = null, tested = 0;
+        for (const { c, open } of cands.slice(0, 150)) {
+          for (let k = 0; k < 8; k++) {
+            const dir = (k / 8) * Math.PI * 2;
+            const sx = c.x + Math.sin(dir) * c.r * 0.3, sz = c.z + Math.cos(dir) * c.r * 0.3, sy = H.groundY(sx, sz);
+            for (const dist of [180, 160, 200]) {
+              const px = sx + Math.sin(dir) * dist, pz = sz + Math.cos(dir) * dist;
+              if (Math.abs(px) > 420 || Math.abs(pz) > 420) continue;
+              if (!H.openGround(px, pz, 8, all)) continue;
+              const py = H.groundY(px, pz);
+              const score = (sy - py) * 0.6 - Math.abs(dist - 180) / 40 - open * 1.5;
+              if (best && score <= best.score) continue;
+              tested++;
+              if (H.raycastBlock({ x: sx, y: sy + 2.6, z: sz }, { x: px, y: py + 1.6, z: pz }, 3) != null) continue;
+              if (canopyOnLine(sx, sz, px, pz, c)) continue;
+              const lens = lensFor({ x: sx, z: sz }, { x: px, z: pz }, c);
+              if (!lens) continue;
+              best = { seat: { x: sx, z: sz, r: c.r }, column: { x: px, z: pz }, score, riseM: Math.round(sy - py), dist, open, strict: true, lens };
+            }
+          }
+          if (best && best.score > 3) break;
+        }
+        if (best) return { ...best, tested, candidates: cands.length, whole: true };
+        // r5's search near the spawn as the fallback (no lens chosen with it)
+        const enemies = H.enemies();
+        const ex = enemies.reduce((a, t) => a + t.state.pos.x, 0) / Math.max(1, enemies.length);
+        const ez = enemies.reduce((a, t) => a + t.state.pos.z, 0) / Math.max(1, enemies.length);
+        const toEnemy = Math.atan2(ex - p.state.pos.x, ez - p.state.pos.z);
         for (const c of discs) {
           if (H.dist(c, p.state.pos) > 320 || c.r > 5) continue;
-          const treesNear = treeRecs.some((o) => Math.hypot((o.min[0] + o.max[0]) / 2 - c.x, (o.min[2] + o.max[2]) / 2 - c.z) < c.r + 3);
-          if (treesNear) continue;
+          if (treesWithin(c.x, c.z, c.r + 3) > 0) continue;
           const sx = c.x + Math.sin(toEnemy) * c.r * 0.3, sz = c.z + Math.cos(toEnemy) * c.r * 0.3;
           if (Math.abs(sx) > 430 || Math.abs(sz) > 430) continue;
           const sy = H.groundY(sx, sz);
-          // r4: r3's column at 266 m was never spotted: the spotting model adds the foliage along the line to the
-          // target's camo, and r3's relaxed line test let mid-field shrubs in. The column now stands 150-210 m out on a
-          // line no foliage disc crosses at all (r1's strict test), falling back to H.sightClear's line only at a cost
           for (const dist of [190, 170, 210, 150]) {
             for (const lateral of [0, 40, -40, 80, -80]) {
               const px = sx + Math.sin(toEnemy) * dist + Math.cos(toEnemy) * lateral;
@@ -1676,9 +1736,9 @@ Object.assign(RECIPES, {
             }
           }
         }
-        return best;
+        return best ? { ...best, tested, candidates: cands.length, whole: false } : null;
       });
-      ctx.log('spotting plan', JSON.stringify(plan));
+      ctx.log('spotting plan', JSON.stringify(plan && { ...plan, lens: plan.lens ? { back: plan.lens.back, side: plan.lens.side, h: plan.lens.h } : null }));
       let lens = null;
       if (!plan) { ctx.note('no bush with an open sight line was found; the slot falls back to a contact frame'); }
       else {
@@ -1696,7 +1756,9 @@ Object.assign(RECIPES, {
           window.__MB.columnIds = column.map((t) => t.id);
         }, plan);
         await ctx.mb('defineSelector', 'columnLead', 'const id = (window.__MB.columnIds || [])[1] || (window.__MB.columnIds || [])[0]; return id ? H.info(g.tankById.get(id)) : null;');
-        ctx.note('player placed in a bush facing the enemy side; three enemy bots placed as a column 150-210 m below with their AI paused, driving slowly straight across');
+        ctx.note(plan.whole
+          ? `player placed in a shrub in open country (${plan.open} trees within 25 m), three enemy bots placed as a column ${plan.dist} m out with their AI paused, driving slowly straight across`
+          : 'player placed in a bush facing the enemy side; three enemy bots placed as a column 150-210 m below with their AI paused, driving slowly straight across');
         const spotted = await ctx.until(() => {
           const D = window.__DEBUG, ids = window.__MB.columnIds || [];
           const team = D.game.player?.team;
@@ -1705,7 +1767,7 @@ Object.assign(RECIPES, {
         ctx.log('spotted', spotted);
         // a raised lens behind and beside the player, outside every bush and tree disc but the seat's own, whose line to
         // the column nothing hides: the tank half-hidden in its bush in the foreground, the column marked beyond
-        lens = await ctx.eval((pl) => {
+        lens = plan.lens || await ctx.eval((pl) => {
           const H = window.__MB.H, p = H.player(), lead = H.sel('columnLead');
           if (!p || !lead) return null;
           // the seat's own hedge cluster (within 8 m of it) may stand in the foreground: the tank half hidden in it.
