@@ -8,7 +8,7 @@
 // the sawmill's open shed and its board store; the shepherds' huts (bacówki) on the meadows; the houses burnt in the
 // January fighting, their stacks standing in the snow.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -110,34 +110,166 @@ const gont = (pitch: number, eave: number, verge: number, kind: RoofSpec['kind']
   ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.14, bucket: 'roof', ridge: 'saddle', hipFrac: 0.3, hipPitchDeg: 60 });
 
 /**
- * The log courses of the timber storeys: the joints between the logs as dark seams on every face (broken at the
- * openings), and the log ends crossing out at the four corners, the long and the short walls' logs alternating.
+ * The hewn logs (the props census, 2026-10-14; the judges: "real log courses — each course its own hewn or round log,
+ * with saddle-notched ends and openings cut through the courses"; the seams painted on a flat wall read as boards).
+ * Each course is its own spruce log, hewn flat on its face and standing LOG_PROUD out of the wall plane, its arrises
+ * chamfered off top and bottom so the groove between two logs reads as the logs' own; the gable walls' logs lie half a
+ * log above or below the eave walls' (the saddle notch: each log sits in the one crossing under it), so at every corner
+ * the logs of both walls run on past the corner, LOG_END and a little, a comb of log ends with their pale end grain.
+ * The openings are cut through the courses: a log runs to the unit's surround or frame (unitOutline) and stops there
+ * on its sawn end. Every log is a decor part (the storey body under it keeps the collision); the ends cast.
  */
-function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, course = 0.27): void {
-  for (const i of storeys) {
-    const b = frame.bodies[i], faces = storeyFaces(frame, i);
-    for (const name of ['front', 'right', 'back', 'left'] as const) {
-      const face = faces[name];
-      const holes = frame.spec.openings.filter((o) => o.face === name && o.storey === i)
-        .map((o) => [o.u - o.w / 2 - 0.16, o.u + o.w / 2 + 0.16, b.y0 + o.y0 - 0.12, b.y0 + o.y0 + o.h + 0.22] as const);
-      for (let y = b.y0 + course; y < b.y1 - 0.08; y += course) {
-        let cur = -face.width / 2;
-        const cuts = holes.filter(([, , y0, y1]) => y > y0 && y < y1).map(([a, c]) => [a, c] as const).sort((p, q) => p[0] - q[0]);
-        for (const [a, c] of [...cuts, [face.width / 2, face.width / 2] as const]) {
-          if (a - cur > 0.15) faceBox(sink, 'structureWood', face, (cur + a) / 2, y, 0.008, a - cur, 0.03, 0.016, { colour: LOG_DARK, decor: true, fine: true }, 'ends');
-          cur = Math.max(cur, c);
-        }
-      }
+const LOG_PROUD = 0.045, LOG_ARRIS = 0.04, LOG_DEPTH = 0.2, LOG_END = 0.3;
+/** the logs' face, spruce silvered and smoked by the winters (the kit's wood tone, l x 0.64, s x 0.6), and its end grain */
+const LOG_AGED = rgb(0x544538), END_GRAIN = rgb(0x8a7556);
+
+/** What a unit covers of its wall round the opening (its surround or frame and its sill): the logs stop there. */
+interface UnitOutline { side: number; below: number; above: number }
+function unitOutline(o: Opening, win: WindowStyle): UnitOutline {
+  if (o.state) return { side: 0, below: 0, above: 0 };
+  if (o.kind === 'door') return { side: 0.14, below: 0, above: 0.14 };
+  if (o.kind === 'gate') return { side: 0.16, below: 0, above: 0.16 };
+  const s = o.kind === 'loft' ? null : win.surround;
+  return { side: s ? s.width : 0, below: win.sill ? 0.09 : 0, above: s ? s.lintel ?? s.width : 0 };
+}
+
+/**
+ * One length of hewn log on a face: from u0 to u1 along it, yb to yt up it, `depth` back from the wall plane to LOG_PROUD
+ * out of it. A chamfered edge (`chamB`, `chamT`) is the log's own arris; a flat one is sawn (a half log, a cut over an
+ * opening). Its ends are capped where `capL` / `capR`; `inner` draws the back face (a log end past the corner).
+ */
+function hewnLog(sink: PartSink, face: Face, u0: number, u1: number, yb: number, yt: number,
+  shape: { chamB: boolean; chamT: boolean; capL: boolean; capR: boolean; depth: number; inner: boolean; under?: boolean;
+    hideB?: boolean; hideT?: boolean },
+  tone: Rgb, opts: { shadow?: boolean; mobile: boolean }): void {
+  if (u1 - u0 < 0.02 || yt - yb < 0.02) return;
+  const P = LOG_PROUD, d = -shape.depth;
+  const a = Math.min(LOG_ARRIS, (yt - yb) * 0.3);
+  const cb = shape.chamB && !opts.mobile ? a : 0, ct = shape.chamT && !opts.mobile ? a : 0;
+  const base = { decor: true, ...(opts.shadow ? { shadow: true } : {}) } as const;
+  const at = (u: number, y: number, o: number): Vec3 => facePoint(face, u, y, o);
+  // the grain runs along the log (the timber tile's grain runs along v)
+  const uv = { kind: 'plane' as const, origin: facePoint(face, 0, 0, 0), u: [0, 1, 0] as Vec3, v: face.u };
+  const q = (p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, colour: Rgb): void => sink.quad('structureWood', p0, p1, p2, p3, { ...base, colour, uv });
+  // the hewn face, its arrises (the lower one in the groove's shade) or a sawn edge; a phone draws the face alone where
+  // the next log lies against it, and nothing draws an edge that sits on the plinth or under the eaves (hideB / hideT)
+  q(at(u0, yb + cb, P), at(u1, yb + cb, P), at(u1, yt - ct, P), at(u0, yt - ct, P), tone);
+  if (cb) q(at(u0, yb, 0), at(u1, yb, 0), at(u1, yb + cb, P), at(u0, yb + cb, P), shade(tone, 0.62));
+  else if (!shape.chamB && !shape.hideB) q(at(u0, yb, d), at(u1, yb, d), at(u1, yb, P), at(u0, yb, P), shade(tone, 0.7));
+  if (ct) q(at(u0, yt - ct, P), at(u1, yt - ct, P), at(u1, yt, 0), at(u0, yt, 0), shade(tone, 1.08));
+  else if (!shape.chamT && !shape.hideT) q(at(u0, yt, P), at(u1, yt, P), at(u1, yt, d), at(u0, yt, d), shade(tone, 1.05));
+  // a log end past the corner: its back face, and its underside where nothing lies under it
+  if (shape.inner) {
+    q(at(u1, yb, d), at(u0, yb, d), at(u0, yt, d), at(u1, yt, d), shade(tone, 0.8));
+    if (shape.under && shape.chamB) q(at(u0, yb, d), at(u1, yb, d), at(u1, yb, cb ? 0 : P), at(u0, yb, cb ? 0 : P), shade(tone, 0.55));
+  }
+  // the sawn ends: the log's section, its end grain paler than its weathered face
+  const section = (u: number): Vec3[] => {
+    const pts: Vec3[] = [at(u, yb, d)];
+    if (cb && d < 0) pts.push(at(u, yb, 0));
+    pts.push(at(u, yb + cb, P), at(u, yt - ct, P));
+    if (ct && d < 0) pts.push(at(u, yt, 0));
+    pts.push(at(u, yt, d));
+    return pts;
+  };
+  const grain = { ...base, colour: shade(END_GRAIN, 0.8 + 0.4 * (tone[0] / LOG_AGED[0] - 0.8)) };
+  if (shape.capL) sink.polygon('structureWood', section(u0), grain);
+  if (shape.capR) sink.polygon('structureWood', section(u1).reverse(), grain);
+}
+
+/** Subtract `cuts` (y ranges) from [y0, y1]: the free ranges left, each at least `min` tall. */
+function freeRanges(y0: number, y1: number, cuts: ReadonlyArray<readonly [number, number]>, min = 0.04): Array<[number, number]> {
+  let out: Array<[number, number]> = [[y0, y1]];
+  for (const [c0, c1] of cuts) {
+    const next: Array<[number, number]> = [];
+    for (const [a, b] of out) {
+      if (c1 <= a || c0 >= b) { next.push([a, b]); continue; }
+      if (c0 > a) next.push([a, c0]);
+      if (c1 < b) next.push([c1, b]);
     }
-    // the crossing log ends: on each corner, a stub out of one wall then the other, course by course
-    let k = 0;
-    for (let y = b.y0 + course / 2; y < b.y1 - 0.05; y += course, k++) {
-      const tone = shade(LOG_DARK, 0.9 + look() * 0.25);
-      for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1]] as const) {
-        const sx = Math.sign(x), sz = Math.sign(z), along = k % 2 === 0;
-        const ox = along ? 0.32 : 0.14, oz = along ? 0.14 : 0.32;
-        sink.span('structureWood', x - (sx < 0 ? ox : 0.02), y - course * 0.42, z - (sz < 0 ? oz : 0.02),
-          x + (sx > 0 ? ox : 0.02), y + course * 0.42, z + (sz > 0 ? oz : 0.02), { colour: tone, decor: true, shadow: true });
+    out = next;
+  }
+  return out.filter(([a, b]) => b - a >= min);
+}
+
+/**
+ * The log walls of the timber storeys (the props census, 2026-10-14): every face of the listed storeys laid in hewn
+ * logs, course by course (hewnLog), cut at the openings' units, the logs of both walls running out past every corner.
+ * `look` keeps the old seams' draws (one a course a storey): those draws are the courses' tones, so what the builder
+ * draws after the walls keeps its look.
+ */
+function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, win: WindowStyle,
+  mobile: boolean, course = 0.27): void {
+  const tones: number[] = [];
+  for (const i of storeys) {
+    const b = frame.bodies[i];
+    for (let y = b.y0 + course / 2; y < b.y1 - 0.05; y += course) tones.push(look());
+  }
+  if (!tones.length) return;
+  const jitter = streamFrom(hashSeed('goral:logs', ...tones.slice(0, 4).map((t) => Math.floor(t * 1e6))));
+  // the storeys a log wall runs through unbroken: contiguous bodies of one footprint
+  const groups: number[][] = [];
+  for (const i of [...storeys].sort((p, q) => p - q)) {
+    const g = groups[groups.length - 1], prev = g ? frame.bodies[g[g.length - 1]] : null, b = frame.bodies[i];
+    if (prev && Math.abs(prev.y1 - b.y0) < 1e-4 && Math.abs(prev.x0 - b.x0) < 1e-4 && Math.abs(prev.x1 - b.x1) < 1e-4
+      && Math.abs(prev.z0 - b.z0) < 1e-4 && Math.abs(prev.z1 - b.z1) < 1e-4) g.push(i);
+    else groups.push([i]);
+  }
+  let t = 0;
+  for (const g of groups) {
+    const Y0 = frame.bodies[g[0]].y0, Y1 = frame.bodies[g[g.length - 1]].y1;
+    const n = Math.max(2, Math.round((Y1 - Y0) / course)), c = (Y1 - Y0) / n;
+    const faces = storeyFaces(frame, g[0]);
+    for (const name of ['front', 'right', 'back', 'left'] as const) {
+      const face = faces[name], W = face.width;
+      // the eave walls' logs lie half a log off the gable walls' (each wall's logs sit in the notches of the other's)
+      const lift = name === 'right' || name === 'left' ? c / 2 : 0;
+      const rects = frame.spec.openings.filter((o) => o.face === name && g.includes(o.storey)).map((o) => {
+        const m = unitOutline(o, win), oy = frame.bodies[o.storey].y0 + o.y0;
+        return { u0: o.u - o.w / 2 - m.side, u1: o.u + o.w / 2 + m.side, y0: oy - m.below, y1: oy + o.h + m.above };
+      });
+      for (let k = 0; k <= n; k++) {
+        const raw0 = Y0 - lift + k * c, raw1 = raw0 + c;
+        const yb = Math.max(Y0, raw0), yt = Math.min(Y1, raw1);
+        if (yt - yb < 0.03) continue;
+        const natB = raw0 >= Y0 - 1e-6, natT = raw1 <= Y1 + 1e-6;
+        const tone = shade(LOG_AGED, 0.82 + tones[t++ % tones.length] * 0.32);
+        // the face cut where the units stand: breakpoints at the cuts' sides, each span's free heights
+        const hit = rects.filter((r) => r.y0 < yt - 1e-3 && r.y1 > yb + 1e-3);
+        const cutsU = [...new Set([-W / 2, W / 2, ...hit.flatMap((r) => [r.u0, r.u1]).map((u) => clamp(u, -W / 2, W / 2))])].sort((p, q) => p - q);
+        const spans: Array<{ u0: number; u1: number; free: Array<[number, number]> }> = [];
+        for (let s = 0; s + 1 < cutsU.length; s++) {
+          const u0 = cutsU[s], u1 = cutsU[s + 1];
+          if (u1 - u0 < 1e-4) continue;
+          const um = (u0 + u1) / 2;
+          const free = freeRanges(yb, yt, hit.filter((r) => um > r.u0 && um < r.u1).map((r) => [r.y0, r.y1] as const));
+          const last = spans[spans.length - 1];
+          if (last && JSON.stringify(last.free) === JSON.stringify(free)) last.u1 = u1;
+          else spans.push({ u0, u1, free });
+        }
+        const covers = (span: { free: Array<[number, number]> } | undefined, a: number, b: number): boolean =>
+          !!span && span.free.some(([p, q]) => p <= a + 1e-4 && q >= b - 1e-4);
+        spans.forEach((span, s) => {
+          for (const [a, b] of span.free) {
+            const atL = span.u0 <= -W / 2 + 1e-4, atR = span.u1 >= W / 2 - 1e-4;
+            hewnLog(sink, face, span.u0, span.u1, a, b, {
+              chamB: natB && a <= yb + 1e-4, chamT: natT && b >= yt - 1e-4,
+              capL: !atL && !covers(spans[s - 1], a, b), capR: !atR && !covers(spans[s + 1], a, b),
+              depth: 0, inner: false, hideB: a <= Y0 + 1e-4, hideT: b >= Y1 - 1e-4,
+            }, tone, { mobile });
+            // the log runs on past the corner (only a whole course: a log cut short by a unit at the corner stops)
+            if (a > yb + 1e-4 || b < yt - 1e-4) continue;
+            for (const [end, sign] of [[atL, -1], [atR, 1]] as const) {
+              if (!end) continue;
+              const reach = LOG_END + (jitter() - 0.5) * 0.07;
+              const from = sign * W / 2, to = from + sign * reach;
+              hewnLog(sink, face, Math.min(from, to), Math.max(from, to), a, b, {
+                chamB: natB, chamT: natT, capL: sign < 0, capR: sign > 0, depth: LOG_DEPTH, inner: true, under: yb <= Y0 + 1e-4,
+                hideT: yt >= Y1 - 1e-4,
+              }, tone, { shadow: true, mobile });
+            }
+          }
+        });
       }
     }
   }
@@ -212,7 +344,7 @@ function chalupa(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Retur
       gutters: null, verge: null, reveal: 0.22, spall: null,
     }, dialect(st));
     if (ctx.snowCap) roofSnow(sink, frame);
-    logWork(sink, frame, big ? [0, 1] : [0], look);
+    logWork(sink, frame, big ? [0, 1] : [0], look, st.window, st.mobile);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
     sunburst(sink, f, frame.eaveY + 0.12, Math.min(1.5, W * 0.22), st.mobile);
@@ -267,7 +399,7 @@ const willa: RegionalBuilder = (ctx) => {
         { x: W * 0.2, z: D * 0.18, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' }],
     }, dialect(st));
     if (ctx.snowCap) roofSnow(sink, frame);
-    logWork(sink, frame, [0], look);
+    logWork(sink, frame, [0], look, st.window, st.mobile);
     const f = frame.faces.front;
     if (!st.mobile) { gableBoards(sink, f, frame); gableBoards(sink, frame.faces.back, frame); }
     sunburst(sink, f, frame.eaveY + 2.2, 1.6, st.mobile);
@@ -313,7 +445,7 @@ const szkola: RegionalBuilder = (ctx) => {
       chimneys: [{ x: 0, z: -D * 0.25, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'slab' }],
     }, dialect(st));
     if (ctx.snowCap) roofSnow(sink, frame);
-    logWork(sink, frame, [0, 1], look);
+    logWork(sink, frame, [0, 1], look, st.window, st.mobile);
     const f = frame.faces.front;
     if (!st.mobile) gableBoards(sink, f, frame);
     sunburst(sink, f, frame.eaveY + 0.15, 1.8, st.mobile);
@@ -341,6 +473,10 @@ const kosciol: RegionalBuilder = (ctx) => {
   const nz1 = zFront - tower + 0.4, D = clamp(nz1 - (bb.minZ + 0.4), 6.0, 9.0);
   const openings: Opening[] = [];
   for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 1.4, sill: 1.6, spacing: 2.4, margin: 1.2, max: 3 })) openings.push(o);
+  const naveWindow: WindowStyle = {
+    frame: WHITE, frameWidth: 0.05, frameOut: 0.03, bars: 'six', surround: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: PALE },
+    sill: { bucket: 'structureWood', out: 0.08, colour: PALE }, shutters: null,
+  };
   sink.placed(0, 0, 0, nz1 - D / 2, () => {
     const frame = buildHouse(sink, {
       // (round 2, wave 110b: the shingle-clad walls read as "a brick-textured church") the nave's hewn logs
@@ -348,14 +484,11 @@ const kosciol: RegionalBuilder = (ctx) => {
       // (round 3, wave 128: the church's half-hip gable in shingle read as brick from the street) the gable boarded, as the
       // houses' are
       roof: gont(55, 0.55, 0.4, 'halfhip'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
-    }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
-      frame: WHITE, frameWidth: 0.05, frameOut: 0.03, bars: 'six', surround: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: PALE },
-      sill: { bucket: 'structureWood', out: 0.08, colour: PALE }, shutters: null,
-    }, st.rng, 0.3) });
+    }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, naveWindow, st.rng, 0.3) });
     if (ctx.snowCap) roofSnow(sink, frame);
     // (round 4, wave 190: the church's walls "a staggered brown block texture that reads as brickwork"): the nave's hewn
-    // logs drawn as the houses' are, the seams between the courses and the log ends crossing at the corners
-    logWork(sink, frame, [0], ctx.variant, 0.3);
+    // logs laid as the houses' are, a little heavier, their ends crossing out at the corners
+    logWork(sink, frame, [0], ctx.variant, naveWindow, st.mobile, 0.3);
     // the turret on the ridge: a little boarded lantern and its bulb
     const ry = frame.roof.ridgeY, tzz = -D * 0.15;
     sink.span('wood', -0.4, ry - 0.4, tzz - 0.4, 0.4, ry + 1.0, tzz + 0.4);
@@ -401,7 +534,7 @@ const kosciol: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The hay barn (stodoła): plank walls on a stone footing, a steep shingle roof, the wide double doors in the long side. */
+/** The hay barn (stodoła): hewn log walls on a stone footing, a steep shingle roof, the wide double doors in the long side. */
 const stodola: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
@@ -417,18 +550,11 @@ const stodola: RegionalBuilder = (ctx) => {
       roof: gont(48, 0.5, 0.45, 'gable'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
     }, dialect({ ...st, litShare: 0 }));
     if (ctx.snowCap) roofSnow(sink, frame);
-    // the boards' battens down every face, broken at the doors
-    if (!st.mobile) {
-      const faces = storeyFaces(frame, 0);
-      for (const name of ['front', 'right', 'back', 'left'] as const) {
-        const face = faces[name], gates = openings.filter((o) => o.face === name).map((o) => [o.u - o.w / 2 - 0.1, o.u + o.w / 2 + 0.1] as const);
-        for (let u = -face.width / 2 + 0.25; u < face.width / 2 - 0.1; u += 0.3) {
-          if (gates.some(([a, b]) => u > a && u < b)) continue;
-          faceBox(sink, 'structureWood', face, u, frame.floors[0] + 1.8, 0.012, 0.06, 3.5, 0.024, { colour: LOG_DARK, decor: true, fine: true }, 'caps');
-        }
-      }
-      gableBoards(sink, frame.faces.front, frame);
-    }
+    // (the props census, 2026-10-14; the judges: the village's, the barn's and the school's walls wait on real log
+    // courses) the stodoła's walls in hewn logs as the Podhale barns stand, a heavier course than the houses', the wide
+    // gates cut through them; the gable over them boarded
+    logWork(sink, frame, [0], ctx.variant, st.window, st.mobile, 0.32);
+    if (!st.mobile) gableBoards(sink, frame.faces.front, frame);
   });
   return sink.finish();
 };
