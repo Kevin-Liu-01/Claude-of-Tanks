@@ -60,6 +60,8 @@ export interface TankMaskSpec {
     gunBarrel?: {
       lengthM?: number;
     };
+    /** A casemate (Strv 103): rig_turret stays empty by design, the gun is fused into the hull (profiles/casemate.ts). */
+    turretless?: boolean;
   };
 }
 
@@ -842,6 +844,14 @@ function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
   return { canvas: big, bounds };
 }
 
+/** A transparent layer canvas the size of every cached mask layer (a turretless build's turret layer). */
+function emptyMaskCanvas(): HTMLCanvasElement {
+  const output = document.createElement('canvas');
+  output.width = MASK_SIZE;
+  output.height = MASK_SIZE;
+  return output;
+}
+
 function downscaleMask(source: HTMLCanvasElement): HTMLCanvasElement {
   const output = document.createElement('canvas');
   output.width = MASK_SIZE;
@@ -970,20 +980,28 @@ async function renderMaskEntry(
 
   // turret pass (hull hidden), centered on the PIVOT; the frustum must reach
   // the muzzle: gun length from the pivot + bustle margin
-  turretG.visible = true;
-  hullG.visible = false;
   const gunReach = Math.max(
     (spec.armor && spec.armor.gunBarrel && spec.armor.gunBarrel.lengthM) || 4,
     overall - (dims.hullLengthM || overall) / 2 - tp[2]);
   const turretHalf = Math.max(2.2, gunReach + 1.6) + MASK_MARGIN_M;
-  // Hull pixels are already captured in its own PBO. Reuse the framebuffer
-  // while that copy waits; only this transaction may change clone visibility.
-  const turretPass = await submitMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
-  passes.push(turretPass);
+  // (2026-10-13, the MP stream) a turretless casemate (the Strv 103 and 103A) keeps rig_turret empty by design, its gun
+  // fused into the hull: the turret pass rendered nothing, the entry came back null, and the HUD damage panel ran
+  // without a mask for those two — retrying and failing every match. Its turret layer is now an empty canvas with
+  // no pass; the hull mask carries the gun.
+  const turretless = !!(spec.armor && spec.armor.turretless);
+  let turretPass: PendingMaskPass | null = null;
+  if (!turretless) {
+    turretG.visible = true;
+    hullG.visible = false;
+    // Hull pixels are already captured in its own PBO. Reuse the framebuffer
+    // while that copy waits; only this transaction may change clone visibility.
+    turretPass = await submitMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
+    passes.push(turretPass);
+  }
   const hull = completedMaskPass(await hullPass.completion);
-  const turret = completedMaskPass(await turretPass.completion);
+  const turret = turretPass ? completedMaskPass(await turretPass.completion) : null;
   sourceLifetime?.assertAlive();
-  if (!hull || !turret) return null;
+  if (!hull || (!turret && !turretless)) return null;
 
   // plan-space layout facts for the panel (meters)
   const hullCx = (hull.minX + hull.maxX) / 2;
@@ -997,12 +1015,17 @@ async function renderMaskEntry(
       radiusM: Math.hypot((hull.maxX - hull.minX) / 2, (hull.maxZ - hull.minZ) / 2),
       widthM: hull.maxX - hull.minX, lengthM: hull.maxZ - hull.minZ,
     },
-    turret: {
+    turret: turret ? {
       canvas: turret.canvas, camX: tp[0], camZ: tp[2], halfM: turretHalf,
       // swept radius about the pivot (canvas center)
       radiusM: Math.max(
         Math.hypot(turret.minX - tp[0], turret.minZ - tp[2]),
         Math.hypot(turret.maxX - tp[0], turret.maxZ - tp[2])),
+    } : {
+      // turretless: nothing turns; the radius runs from the pivot to the hull's (fused gun's) front, so a damaged gun's
+      // state line on the panel still runs the length of the real barrel
+      canvas: emptyMaskCanvas(), camX: tp[0], camZ: tp[2], halfM: turretHalf,
+      radiusM: Math.max(0, hull.maxZ - tp[2]),
     },
     pivot: [tp[0], tp[2]],
     pxPerM: MASK_SIZE / (hullHalf * 2), // hull layer scale (turret differs)

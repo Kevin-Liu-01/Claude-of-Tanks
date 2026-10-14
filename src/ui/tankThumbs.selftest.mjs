@@ -1121,6 +1121,31 @@ try {
       material.dispose(); depth.dispose();
     }
   }
+  // (2026-10-13, the MP stream) a turretless casemate (Strv 103, 103A) keeps rig_turret empty by design: its turret pass
+  // used to render nothing, the entry came back null and the damage panel ran without a mask. Now: the hull pass alone,
+  // an empty turret layer, the radius from the pivot to the hull's (fused gun's) front.
+  {
+    const casemate = addSource('mask-test-casemate');
+    const casemateSpec = { ...spec('mask-test-casemate'), armor: { ...spec('mask-test-casemate').armor, turretless: true } };
+    const before = fake.events.length;
+    const entry = await settle(prepareTopDownMasks(casemateSpec, casemate.visual));
+    assert.ok(entry?.ready, 'a turretless build gets its mask');
+    const layers = fake.events.slice(before).filter((event) => event.id === 'mask-test-casemate' && event.kind === 'read').map((event) => event.layer);
+    assert.deepEqual(layers, ['hull'], 'the hull pass alone: no turret pass for a turretless build');
+    assert.deepEqual([entry.turret.canvas.width, entry.turret.canvas.height], [192, 192], 'the turret layer is a layer-sized canvas');
+    assert.equal(entry.turret.canvas.context.image, null, 'and empty: nothing turns on a casemate');
+    assert.equal(entry.turret.canvas.context.draws.length, 0);
+    assert(Math.abs(entry.turret.radiusM - Math.max(0, entry.hull.cz + entry.hull.lengthM / 2 - 0.25)) < 1e-12,
+      'its radius runs from the pivot to the hull mask\'s front (the fused gun), for the damaged-gun line');
+    assert.deepEqual(entry.pivot, [0.5, 0.25]);
+    // the same spec without the flag still takes both passes
+    const turreted = addSource('mask-test-turreted');
+    const beforeTurreted = fake.events.length;
+    const turretedEntry = await settle(prepareTopDownMasks(spec('mask-test-turreted'), turreted.visual));
+    assert.ok(turretedEntry?.ready);
+    assert.deepEqual(fake.events.slice(beforeTurreted).filter((event) => event.id === 'mask-test-turreted' && event.kind === 'read').map((event) => event.layer),
+      ['hull', 'turret'], 'a turreted build keeps both passes');
+  }
   assert.equal(timers.size, 0, 'all scheduled tasks finish without detached polling');
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(unhandled, [], 'restoration/readback failures leave no unhandled promise rejection');
@@ -1146,4 +1171,4 @@ try {
   }
 }
 
-console.log('tankThumbs.selftest: real mask exports preserve queue, cache, pixel layout, renderer and source ownership');
+console.log('tankThumbs.selftest: real mask exports preserve queue, cache, pixel layout, renderer and source ownership; a turretless casemate gets its mask from the hull pass alone');
