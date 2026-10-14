@@ -126,12 +126,12 @@ assert.match(parts, /pos\.setXYZ\(i, x \* m \* 1\.15, y \* m \* 0\.30, z \* m \*
       uCameraFar: { value: 4000 }, uLightTint: { value: new THREE.Color(1, 1, 1) },
       textures: { smoke: tex(), fire: tex(), prop: tex(), dust: tex(), flash: tex(), jet: tex() } } });
   const fs = sys.pools.screen.mesh.material.fragmentShader;
-  assert.match(fs, /float lensK = smoothstep\( 1\.5, 8\.0, vParticleDepth \);/, 'the screen card knows the lens');
-  assert.match(fs, /\* screenContact\( 2\.5 \* \( 1\.0 - lensK \) \) \* \( 0\.35 \+ 0\.65 \* lensK \);/, 'a soft contact and a thinner medium near the lens');
+  assert.match(fs, /float lensK = smoothstep\( 1\.5, 10\.0, vParticleDepth \);/, 'the screen card knows the lens');
+  assert.match(fs, /\* screenContact\( mix\( 2\.5, 0\.65, smoothstep\( 6\.0, 16\.0, vParticleDepth \) \) \) \* \( 0\.35 \+ 0\.65 \* lensK \);/, 'a soft contact and a thinner medium near the lens');
   assert.doesNotMatch(fs, /softDepthFade\(\);/, 'the screen\'s alpha line was replaced');
   assert.match(sys.pools.psmoke.mesh.material.fragmentShader, /float er = vT \* 0\.36;\n  float a = smoothstep\( er, er \+ 0\.44 \+ 0\.50 \* vT, tex \) \* vColor\.a \* softDepthFade\(\);/, 'the propellant smoke is untouched');
-  const lens = (d) => { const t = Math.min(1, Math.max(0, (d - 1.5) / 6.5)); const k = t * t * (3 - 2 * t); return 0.35 + 0.65 * k; };
-  assert.ok(lens(8) === 1 && lens(4) < 0.7 && lens(1.5) === 0.35, 'thin at the lens, the approved card from 8 m');
+  const lens = (d) => { const t = Math.min(1, Math.max(0, (d - 1.5) / 8.5)); const k = t * t * (3 - 2 * t); return 0.35 + 0.65 * k; };
+  assert.ok(lens(10) === 1 && lens(4) < 0.6 && lens(1.5) === 0.35, 'thin at the lens, the full medium from 10 m');
 }
 { const h = (age) => Math.exp(-7 * age); assert.ok(h(0.2) < 0.25 && h(0.35) < 0.09, 'the heat at 0.2 s and 0.35 s'); }
 // the battle's kill dust on snow: low, short, small, faint, settling

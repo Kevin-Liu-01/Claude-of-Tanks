@@ -603,8 +603,9 @@ float screenNoise(vec2 p) {
 }
 // (HE look v2 follow-up, the coordinator 2026-10-14: the wall stays as approved, with "no hard cotton edge within ~8 m
 // of the lens") a screen card near the lens loses its edge: the erosion threshold relaxes and its band widens into a long
-// soft falloff, the contact feather with the world lengthens, and the medium thins toward the lens, so a wall rolling
-// over the camera reads as fog, never a cut-out. Past ~8 m the card is exactly the approved one.
+// soft falloff (to 10 m), the contact feather with the ground and the hulls lengthens to 2.5 m (from 16 m in: the wall's
+// foot was a hard cotton line at 8-12 m), and the medium thins toward the lens, so a wall rolling over the camera reads
+// as fog, never a cut-out. Past 16 m the card is exactly the approved one.
 float screenContact( float minFeather ) {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
   float sceneDepthM = -perspectiveDepthToViewZSoft( texture2D( uSceneDepth, suv ).x, uCameraNear, uCameraFar );
@@ -613,10 +614,10 @@ float screenContact( float minFeather ) {
 void main() {`).replace(
   `float er = vT * 0.36;
   float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a * softDepthFade();`,
-  `float lensK = smoothstep( 1.5, 8.0, vParticleDepth );
+  `float lensK = smoothstep( 1.5, 10.0, vParticleDepth );
   float er = vT * 0.36 * lensK;
   float a = smoothstep( er, er + 0.44 + 0.50 * vT + 0.55 * ( 1.0 - lensK ), tex ) * vColor.a
-    * screenContact( 2.5 * ( 1.0 - lensK ) ) * ( 0.35 + 0.65 * lensK );`,
+    * screenContact( mix( 2.5, 0.65, smoothstep( 6.0, 16.0, vParticleDepth ) ) ) * ( 0.35 + 0.65 * lensK );`,
 ).replace(
   'vec3 col = fxLit( vColor.rgb, light );',
   `float folds=.65*screenNoise(p*3.8+vT*.25)+.35*screenNoise(p*8.3-vT*.18);
