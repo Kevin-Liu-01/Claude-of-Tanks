@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT, FITTINGS } from './kit.ts';
+import { addPintleReceiver, createPintleLayout } from '../machineGunGeometry.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { blindTube, cappedTube } from './measuredPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -210,7 +211,38 @@ function exactL111A1(P: TankBuilderPort): void {
   // the standard pitching gunMount bucket and the barrel to the recoil
   // bucket. Besides preserving the real articulation hierarchy, those two
   // authored solids are the inputs for the bounded moving shadow proxy.
-  P.add('gunMount', part(box(0.22, 0.20, 0.70), 'l111a1-receiver'), 0, -0.01, -0.11);
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics on the Ares station: "a featureless grey pipe coming out
+  // of a soft-cornered green box, with no receiver, flash hider or feed, while a loose belt of rounds lies on top of the
+  // housing"): the L111A1 is the fleet's M2HB receiver in its remote form (feed cover and feedway, back plate, solenoid
+  // housing) in weapon steel, its bore on the barrel's axis and its front at the barrel support, where the camouflaged
+  // receiver block and its top cover stood; a hinged feed chute carries the belt from the box into its feedway, and a
+  // conical flash hider sleeves the barrel a centimetre short of its carved mouth (the bore stays the barrel's own).
+  {
+    const sink = { add(): void {} };
+    const options = { cls: 'm2', scale: 1, remote: true, ammo: false, mount: 'external-cradle', feed: 'left' } as const;
+    const probe = createPintleLayout(options, sink);
+    const dy = 0.01 - probe.trunY, dz = 0.28 - probe.trunZ;
+    const receiver = createPintleLayout(options, {
+      add(slot: string, geometry: THREE.BufferGeometry, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): void {
+        if (slot !== 'shadow') P.add('gunMountDark', part(KIT.xform(geometry, px, py, pz, rx, ry, rz), 'l111a1-receiver'), 0, dy, dz);
+      },
+    });
+    addPintleReceiver(receiver);
+    // the feed chute: hinged links from the ammunition box's inner top edge up over to the receiver's left feedway
+    const p0 = [0.17, 0.125, 0.04], p3 = [receiver.bodyW / 2 + 0.012, dy + receiver.bodyH * 0.62, dz + receiver.recZ];
+    const apex = Math.max(p0[1], p3[1]) + 0.05;
+    const at = (t: number): number[] => {
+      const u = 1 - t, p1 = [p0[0], apex, p0[2]], p2 = [p3[0] + 0.05, apex, p3[2]];
+      return [0, 1, 2].map((k) => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
+    };
+    for (let index = 0; index < 7; index++) {
+      const a = at(index / 7), b = at((index + 1) / 7);
+      const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], run = Math.hypot(d[0], d[2]);
+      const link = box(0.07, 0.018, Math.hypot(run, d[1]) + 0.008).toNonIndexed()
+        .rotateX(-Math.atan2(d[1], run)).rotateY(Math.atan2(d[0], d[2]));
+      P.add('gunMountDark', part(link, 'l111a1-feed-chute'), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+    }
+  }
   P.add('gunMount', part(cylX(0.055, 0.54, P.q ? 18 : 8), 'l111a1-trunnion'),
     0, -0.07, 0.04);
   // Owner 2026-09-22 ("the point of adding holes instead of carving them into
@@ -221,25 +253,21 @@ function exactL111A1(P: TankBuilderPort): void {
     0, 0.01, 0.77);
   P.add('gunDark', part(cylZ(0.052, 0.20, P.q ? 18 : 8), 'l111a1-jacket'),
     0, 0.01, 0.38);
+  {
+    const muzzleZ = ARES_APC_X_DATUMS.muzzleZ - ARES_APC_X_DATUMS.trunnion[2];
+    const profile = [[0.0305, -0.11], [0.040, -0.10], [0.044, -0.03], [0.041, -0.01], [0.0305, -0.01], [0.0305, -0.11]]
+      .map(([r, z]) => new THREE.Vector2(r, z));
+    const hider = new THREE.LatheGeometry(profile, P.q ? 20 : 10).rotateX(Math.PI / 2);
+    P.add('gun', part(hider, 'l111a1-flash-hider'), 0, 0.01, muzzleZ);
+  }
   P.add('gunMount', part(box(0.539, 0.396, 0.221), 'l111a1-ammo-box'),
     0.43, -0.07, 0.02);
   P.add('gunMount', part(box(0.24, 0.10, 0.18), 'l111a1-feed-bridge'),
     0.23, 0.01, 0.27, 0, -0.20);
-  // The Ares carries an exposed ready-use disintegrating-link belt between
-  // the side box and receiver. Keep each cartridge physically round and
-  // merge the complete belt into the single articulated mount draw.
-  const beltRounds = P.q ? 22 : 7;
-  for (let index = 0; index < beltRounds; index++) {
-    const t = index / (beltRounds - 1);
-    P.add('gunMountDark', part(cylZ(0.009, 0.11, P.q ? 8 : 5), 'l111a1-ready-round'),
-      0.055 + 0.42 * t, 0.128 + 0.008 * Math.sin(t * Math.PI), 0.19 + 0.035 * t,
-      0, 0.10, 0);
-  }
 
   // The source-measured external weapon fittings remain a visible exact
   // group for the fleet fitting census. They share gunG with gunMount, so
   // the top cover and EO head pitch with the receiver/feed assembly.
-  add(part(box(0.20, 0.025, 0.64), 'l111a1-top-cover'), P.mats.detail, 0, 0.105, -0.10);
   add(part(box(0.36, 0.46, 0.82), 'rws-optic-head'), P.mats.detail, 0.02, -0.16, 0.02);
   add(part(box(0.20, 0.13, 0.012), 'rws-optic-aperture'), P.mats.glass, 0.02, -0.12, 0.436);
   group.name = 'aresL111A1ExactRemoteWeapon';

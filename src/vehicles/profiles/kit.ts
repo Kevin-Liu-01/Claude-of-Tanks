@@ -214,6 +214,8 @@ interface FittingOptions {
   // the complete weapon/trunnion assembly, never on barrel vertices alone.
   elev?: number;
   ring?: boolean | { r?: number; stubs?: number };
+  /** The American M2's mount ring and its brackets: 'detail' paints them with the vehicle (default 'dark'). */
+  ringSlot?: 'dark' | 'detail';
   ammo?: boolean;
   ammoSlot?: string;
   ammoSide?: number;
@@ -1564,11 +1566,15 @@ function addAmericanM2Ring(context: AmericanM2BuildContext): void {
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.235) * s;
+    // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the M1A1: "a flat dark grey ring that does not
+    // match the tan hull", "the roof gun's toothed ring and cradle ... share none of the hull's paint"): a host can paint
+    // the race and its brackets with the vehicle, as a mount is painted; the gun stays weapon steel.
+    const ringSlot = opts.ringSlot === 'detail' ? 'detail' : 'dark';
     // 2026-10-07 (round 4): a flat machined race on its brackets, not a round dark tube (the critics' "rubber hose")
-    parts.add('dark', machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
+    parts.add(ringSlot, machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
     for (let index = 0; index < (ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
-      parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
+      parts.add(ringSlot, box(0.030 * s, 0.045 * s, 0.030 * s),
         Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
       }
   }
@@ -1848,13 +1854,26 @@ function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
 }
 
 function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { body, headY, parts, recY, s } = context;
-  // M2 receiver is nested into the head roof; side coffin and feed are one
-  // connected protected assembly rather than a floating generic gun.
-  parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
-  parts.add('dark', box(0.215 * s, 0.018 * s, 0.41 * s),
-    0, recY + 0.080 * s, 0.16 * s);
+  const { box } = KIT;
+  const { body, headY, headH, parts, recY, s } = context;
+  // 2026-10-11 (fleet-weapons lane, round 3b; wave 348b's critics on the SEPv3's station: "flat untextured grey boxes
+  // with a plain rod barrel"): the M2 is the fleet's Browning construction in its remote form (receiver with feed cover
+  // and feedway, solenoid at the back plate, perforated barrel support, heavy barrel, flash hider), its receiver centred
+  // where the receiver block stood (z 0.16 s) on the station's bore line, its muzzle at the published 1.223 s, carried by
+  // a cradle saddle on the head's roof; it was a receiver box, a cover plate and two plain tubes.
+  const probe = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left'},{add(){}});
+  const dz = 0.16 * s - probe.recZ, dy = recY - probe.trunY;
+  const barrelLength = 1.223 * s - dz - probe.trunZ - 0.10 * probe.s - MG_CLASSES.m2.flashL * probe.s - 0.011;
+  const gun = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',barrelLength},{
+    add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+      parts.add(slot === 'shadow' ? 'shadow' : 'dark',KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+    },
+  });
+  addPintleReceiver(gun);
+  addPintleBarrel(gun);
+  const headTop = headY + headH / 2, receiverBottom = dy + gun.bodyBottom;
+  parts.add('dark', box(0.16 * s, receiverBottom - headTop + 0.004, 0.40 * s),
+    0, (receiverBottom + headTop) / 2, 0.16 * s);
   parts.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
     -0.29 * s, headY + 0.02 * s, -0.01 * s);
   parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
@@ -1890,12 +1909,6 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
     0.205 * s, serviceY + 0.113 * s, -0.065 * s);
   parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
-  parts.add('dark', cylZ(0.030 * s, 0.72 * s, 14),
-    0, recY, 0.74 * s);
-  parts.add('dark', cylZ(0.050 * s, 0.105 * s, 14),
-    0, recY, 1.1525 * s);
-  parts.add('dark', cylZ(0.017 * s, 0.018 * s, 10),
-    0, recY, 1.214 * s);
 }
 
 function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
@@ -2074,7 +2087,12 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
       side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
   if (context.hasWeapon) parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
-  else parts.add('dark',cylX(0.024 * s,0.36 * s,12),0,yokeCenterY,-0.015 * s);
+  else {
+    // round 4 (2026-10-11; wave 386's critics on the Puma S1 and Type 89 sight towers: "a black tube skewered through its
+    // column"): the sensor head's pitch shaft stays inside the head; only its trunnion caps show, on the fork arms'
+    // outer faces (round 3's slim spindle ran visibly across the whole fork).
+    for (const side of [-1,1]) parts.add('dark',cylX(0.034 * s,0.022 * s,12),side * 0.208 * s,yokeCenterY,-0.015 * s);
+  }
 }
 
 function addOpenYokeWeapon(context: OpenYokeBuildContext): void {

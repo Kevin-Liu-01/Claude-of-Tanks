@@ -14,6 +14,7 @@ import { addLeopardA5XSourceDetails } from './leopardA5XDetails.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
 import { lineUpperReturnBand } from '../upperReturnBandStock.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
+import { machinedRing } from '../machineGunGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
@@ -304,6 +305,11 @@ function driver(P: TankBuilderPort, y: number, x: number, z: number): void {
 
 function roofHatch(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, r = .32): void {
   equip(P, d, 'turretDark', cylY(r + .027, r + .027, .025, 28), x, y + .012, z);
+  // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the Leopard 2A7V: the hatch rings "broken chains of
+  // separate dark grey blocks with gaps between them ... loose beads", "chains of loose dark-grey rectangular blocks lying
+  // in arcs on the deck ... like rubble"): the periscope heads stand in a continuous armoured collar round the hatch, so
+  // they read as the vision blocks of one ring. The collar stays under the heads' tops and inside the roof's envelope.
+  equip(P, d, 'turretDetail', machinedRing(r + .03, r + .145, .05, .008, 32), x, y, z);
   P.addHatch('turretHatch', cylY(r, r, .032, 28), x - d.turretPivot[0], y + .039 - d.turretPivot[1], z - d.turretPivot[2]);
   equip(P, d, 'turretDetail', box(.16, .034, .035), x, y + .074, z);
   equip(P, d, 'turretDetail', box(.24, .040, .083), x, y + .041, z - r + .025);

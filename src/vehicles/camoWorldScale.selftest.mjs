@@ -34,13 +34,23 @@ assert.equal(camoPatchWorldScale(NaN), 1, 'a broken density falls back to the re
 // (type74 took the 0.6 seat when tiger1 retired with the hidden fleet, 2026-09-23).
 const HULLS = ['t90m', 'm1a2', 'type74', 'spz_puma_s1'];
 const AXIS = { x: (p, i) => [p.getZ(i), p.getY(i)], y: (p, i) => [p.getX(i), p.getZ(i)], z: (p, i) => [p.getX(i), p.getY(i)] };
-function measureUvDensity(mesh) {
+// 2026-10-11: a builder may opt into per-triangle projection (TankBuilderPort.camoFaceProjection, faceBoxUV): the axis
+// comes from the triangle's face normal, so a rounded box's blended bevel normals cannot smear one block to a flat tone.
+const FACE_PROJECTED = new Set(['t90m']);
+function measureUvDensity(mesh, faceAxes = false) {
   const p = mesh.geometry.attributes.position, n = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv;
   assert.ok(p && n && uv, `${mesh.name}: position, normal and uv`);
+  assert.ok(!faceAxes || !mesh.geometry.index, `${mesh.name}: face projection runs on the non-indexed merge`);
   const ratios = [];
   const ref = { x: null, y: null, z: null };
+  const faceAxis = (i) => {
+    const o = i - (i % 3), a = [p.getX(o), p.getY(o), p.getZ(o)];
+    const e1 = [p.getX(o + 1) - a[0], p.getY(o + 1) - a[1], p.getZ(o + 1) - a[2]];
+    const e2 = [p.getX(o + 2) - a[0], p.getY(o + 2) - a[1], p.getZ(o + 2) - a[2]];
+    return [Math.abs(e1[1] * e2[2] - e1[2] * e2[1]), Math.abs(e1[2] * e2[0] - e1[0] * e2[2]), Math.abs(e1[0] * e2[1] - e1[1] * e2[0])];
+  };
   for (let i = 0; i < p.count; i++) {
-    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
+    const [nx, ny, nz] = faceAxes ? faceAxis(i) : [Math.abs(n.getX(i)), Math.abs(n.getY(i)), Math.abs(n.getZ(i))];
     const axis = ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
     const [u, v] = AXIS[axis](p, i);
     // exact projection contract: uv = position * density along the box axes
@@ -66,7 +76,7 @@ try {
       for (const name of ['hull', 'turret']) {
         const mesh = tank.root.getObjectByName(name);
         assert.ok(mesh?.isMesh, `${id}: merged ${name} mesh`);
-        const density = measureUvDensity(mesh);
+        const density = measureUvDensity(mesh, FACE_PROJECTED.has(id));
         near(density, CAMO_UV_REPEATS_PER_M, 0.01, `${id}: ${name} UV repeats per metre (authored camoScale ${authored[id]})`);
         projected++;
       }
@@ -253,6 +263,7 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
 // --- source pins: no per-hull UV density survives anywhere on the camo path ----------------------------------------
 const core = source('./tankFactoryCore.ts');
 assert.ok(/boxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the hull/turret merge projects at the constant');
+assert.ok(/faceBoxUV\(merged, CAMO_UV_REPEATS_PER_M\);/.test(core), 'the per-face projection opt-in projects at the same constant');
 assert.ok(!/camoScale \?\? 0?\.34/.test(core), 'no legacy per-hull UV density in the factory core');
 const mats = source('./materials.ts');
 assert.ok(/const camoUvScale = CAMO_UV_REPEATS_PER_M;/.test(mats), 'fittings publish the constant density');
