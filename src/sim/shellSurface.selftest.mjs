@@ -31,6 +31,7 @@ assert.match(fx, /case 'terrain':\s*if \(mediaGroundHit\(pos, [^,]+, shellPointO
   'direct terrain impacts respect the water mask');
 const audio = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
 assert.match(audio, /event\.surfaceKind === 'water'/, 'audio plays a splash for water expiries');
-assert.match(audio, /water \? 'bullet_water' : 'bullet_dirt'/, 'small-arms splashes keep the water mask');
+// (2026-10-13) a bullet off the water strikes what it hit (bulletStrikeAsset: masonry, steel, timber or dirt)
+assert.match(audio, /water \? 'bullet_water' : (?:'bullet_dirt'|bulletStrikeAsset\()/, 'small-arms splashes keep the water mask');
 assert.match(audio, /caliber >= 61 \? 'water_big' : 'water_small'/, 'shells splash by size in open water');
 console.log('shellSurface.selftest: water classification, shore feather, prop/record precedence and the three consumers pass');
