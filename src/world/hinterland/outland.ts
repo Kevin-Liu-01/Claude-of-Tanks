@@ -556,7 +556,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
 
   // ---- the sightlines' long views (the tower pass, 2026-10-14: the pilot's eye frames lost every sightline tower
   // behind a dyke's poplars nearer the line): a tree that would hide a sightline village's tower from an eye at the
-  // battlefield's edge is felled — only the crowns that actually cover the tower's upper part, from any of three eyes
+  // battlefield's edge is felled — only the crowns that actually cover the tower's upper part, from any of nine eyes
   // along the edge, so each gap is a few trees wide with ragged ends, not a radial lane (the coordinator)
   const blocks = sightlineBlocker(settlements, inputs.heightAt);
   if (blocks) {
@@ -627,7 +627,7 @@ export { SIDE_NAMES };
 /**
  * The sightlines' test (the tower pass): for the plan's sightline villages (settlements with an authored tower height),
  * whether a tree's crown covers the upper part of one of their towers as seen from an eye 2.5 m up near the
- * battlefield's edge on the tower's bearing (the crossing point and 150 m to either side along the edge, 80 m inside).
+ * battlefield's edge on the tower's bearing (every 50 m over 200 m either side of the crossing point, 80 m inside).
  * null when the plan names no sightline village.
  */
 export function sightlineBlocker(
@@ -641,7 +641,8 @@ export function sightlineBlocker(
     // the bearing's crossing of the square's edge, 80 m inside, and 150 m to either side along that edge
     const k = (HINTERLAND_EDGE_M - 80) / Math.max(Math.abs(sx), Math.abs(sz));
     const cx = sx * k, cz = sz * k, alongX = Math.abs(sx) > Math.abs(sz);
-    const eyes = [-150, 0, 150].map((o) => {
+    // (every 50 m over 400 m of the edge: between eyes 150 m apart a near crown slipped through — the f5991e435 frames)
+    const eyes = [-200, -150, -100, -50, 0, 50, 100, 150, 200].map((o) => {
       const x = alongX ? cx : Math.max(-430, Math.min(430, cx + o)), z = alongX ? Math.max(-430, Math.min(430, cz + o)) : cz;
       return { x, z, y: heightAt(x, z) + 2.5 };
     });
@@ -656,7 +657,7 @@ export function sightlineBlocker(
       // azimuth: the crown's half-angle and the tower's
       let da = Math.abs(Math.atan2(dTx, dTz) - Math.atan2(dVx, dVz));
       if (da > Math.PI) da = 2 * Math.PI - da;
-      if (da > t.crownM / dT + w.half / dV) continue;
+      if (da > t.crownM / dT + w.half / dV + 0.008) continue;
       // elevation: the crown's top over the tower's upper part (from 55 % of its height)
       const crownTop = (heightAt(t.x, t.z) + t.heightM - e.y) / dT, towerLow = (w.low - e.y) / dV;
       if (crownTop > towerLow) return true;
