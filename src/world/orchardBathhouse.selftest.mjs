@@ -13,7 +13,7 @@ import { jitterUV } from './propGeometry.ts';
 import { mulberry32 } from './props.ts';
 import { createHeightField } from './terrain.ts';
 import { sampleObbGround } from './propPlacement.ts';
-import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from './structureCollision.ts';
+import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand, mergeStructureDecks } from './structureCollision.ts';
 import { certifyGroundedStructureParts, measureBoundsJoint } from './structureConnectivity.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
@@ -374,6 +374,36 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   return { buckets, obstacles, colliders, buildingFeatures, placedB, next: rng(), detail: detailUvRng() };
 }`)}`)(...Object.values(dependencies));
 
+/**
+ * (physics stream F2, 2026-10-14; the coordinator's ruling (B)) The ground-contact band without its decks: the footprint
+ * the timber frontage must keep. Decks are the roofs and upper tops a hull stands on (structureDecks), so a building's
+ * decks follow its own roof: the domed civic bathhouse and the timber variant are two buildings with two roofs.
+ */
+function groundContact(contact) {
+  const decks = contact.decks ?? 0;
+  const { decks: _decks, groundMaxY, ...band } = contact;
+  return decks ? { ...band, maxY: groundMaxY, parts: contact.parts.slice(0, contact.parts.length - decks) } : band;
+}
+/** The decks the authority's record for the building carries once laid out and joined (mergeStructureDecks). */
+function authorityDecks(contact) {
+  const record = appendStructureCollisionBand([], contact, 0, 0, 0, 0);
+  mergeStructureDecks([record]);
+  const parts = record.shape2?.kind === 'compound' ? record.shape2.parts : [record.shape2];
+  return { parts: parts.slice(parts.length - (contact.decks ?? 0)), top: record.max[1] };
+}
+function assertOwnDecks(label, buckets, contact) {
+  const decks = contact.decks ?? 0;
+  assert.ok(decks > 0, `${label}: its roof is a deck a hull stands on`);
+  const authority = authorityDecks(contact);
+  // (a gradient laid out at no turn reads 0 where the band's reads -0: the same deck)
+  const same = (parts) => JSON.parse(JSON.stringify(parts));
+  assert.deepEqual(same(authority.parts), same(contact.parts.slice(contact.parts.length - decks)),
+    `${label}: the authority's record carries exactly the building's own decks`);
+  assert.equal(authority.top, contact.maxY, `${label}: the record's top is its highest deck`);
+  assert.deepEqual(deriveRuntimeStructureCollisionProfile(buckets).contact, contact,
+    `${label}: the same drawn roof derives the same decks again (every build of the building agrees)`);
+}
+
 function placed(config, field, seed) {
   const iterator = makePlacement(config, field, seed);
   let step = iterator.next();
@@ -410,7 +440,9 @@ for (const seed of [1337, 2025, 7719]) {
     assert.ok(newBounds.max.y < oldBounds.max.y);
     const oldProfile = deriveRuntimeStructureCollisionProfile(oldBuckets);
     const newProfile = deriveRuntimeStructureCollisionProfile(newBuckets);
-    assert.deepEqual(newProfile.contact, oldProfile.contact, 'exact authoritative movement footprint survives');
+    assert.deepEqual(groundContact(newProfile.contact), groundContact(oldProfile.contact), 'exact authoritative movement footprint survives');
+    assertOwnDecks(`civic bathhouse ${seed}`, oldBuckets, oldProfile.contact);
+    assertOwnDecks(`timber bathhouse ${seed}`, newBuckets, newProfile.contact);
     assert.notDeepEqual(newProfile.shell, oldProfile.shell, 'shell fixture must follow the actual new roof, not stale domes');
   } finally { dispose(oldBuckets); dispose(newBuckets); }
   const field = createHeightField(seed, orchard);
@@ -419,7 +451,12 @@ for (const seed of [1337, 2025, 7719]) {
     assert.equal(after.buildingFeatures.length, 1, `${seed}: actual source road placement accepts the first landmark`);
     assert.deepEqual(after.buildingFeatures, before.buildingFeatures);
     assert.deepEqual(after.placedB, before.placedB);
-    assert.deepEqual(after.obstacles, before.obstacles, 'actual placed movement-contact records stay exact');
+    // (the ground-contact records stay exact; each record's held decks — its own roof's — replay exactly, the authority's
+    // placement read twice)
+    const grounded = (records) => records.map(({ deckParts: _decks, ...record }) => record);
+    assert.deepEqual(grounded(after.obstacles), grounded(before.obstacles), 'actual placed movement-contact records stay exact');
+    assert.deepEqual(after.obstacles, replay.obstacles, 'the placed records\' decks are the timber roof\'s own, every placement');
+    assert.ok(after.obstacles.some((record) => record.deckParts?.length), 'the placed bathhouse holds its roof decks');
     assert.notDeepEqual(after.colliders, before.colliders, 'actual shell bands reflect the changed roof/entry solids');
     assert.equal(after.next, before.next, 'placement + wall picker + complete real UV pass preserves the RNG tail');
     assert.equal(after.detail, before.detail, 'connected exterior detail keeps its independent RNG tail');
