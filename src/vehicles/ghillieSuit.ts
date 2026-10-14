@@ -17,6 +17,7 @@ import {
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 
 type Point2 = readonly [number, number];
@@ -2387,6 +2388,80 @@ function segmentGap(u: THREE.Vector3, v: THREE.Vector3, m: CageMember): number {
     }
   }
   return Math.hypot(u.x + d1x * s - (m.a[0] + d2x * t), u.y + d1y * s - (m.a[1] + d2y * t), u.z + d1z * s - (m.a[2] + d2z * t));
+}
+
+/**
+ * netting-proper (2026-10-13; the coordinator on the fleet pass: the CV9040C's designation 3/9 clear and the Type 96B X's
+ * 4/9 under the lying garnish): a field suit's garnish keeps the vehicle's national markings readable. The vehicle's own
+ * release-verified marking seats (vehicleMarkingSeatRegistry.ts, registered before the build: fleetFactory.ts in the
+ * browser, tankFactory.ts fleet-wide for the tools), each as the rays the marking receipts cast down its normal
+ * (vehicleMarkingSeating.ts markingVisibilityReceipt: 8 m out, at offsets of 0.28 of its size) on a 5 x 5 grid over the
+ * whole marking, brought into the suit owner's frame. A garnish card crossing one is laid another way or left out.
+ */
+const MARK_RAY_OFFSETS = [-0.5, -0.28, 0, 0.28, 0.5] as const;
+const MARK_RAY_LENGTH_M = 2.5;
+/** The net's cut round a marking: its footprint and this much more on every side (one net cell), out along its normal. */
+const MARK_CLOTH_MARGIN_M = 0.08;
+interface MarkingRays {
+  readonly rays: readonly THREE.Ray[];
+  readonly box: THREE.Box3;
+  /** Whether cloth at an owner-local point lies in a marking's sight (its footprint widened by MARK_CLOTH_MARGIN_M). */
+  clothHides(p: readonly number[]): boolean;
+}
+function markingRaysOf(P: GhillieBuilderPort, owner: THREE.Object3D): MarkingRays | null {
+  const seats = vehicleMarkingSeats(P.spec.id);
+  if (!seats?.length) return null;
+  owner.updateWorldMatrix(true, false);
+  const toOwner = new THREE.Matrix4().copy(owner.matrixWorld).invert();
+  const rays: THREE.Ray[] = [], box = new THREE.Box3();
+  const prisms: Array<{ c: THREE.Vector3; t: THREE.Vector3; b: THREE.Vector3; n: THREE.Vector3; ht: number; hb: number }> = [];
+  for (const seat of seats) {
+    const { kind, parent, pos, quaternion, size } = seat as { kind?: unknown; parent?: unknown; pos?: unknown; quaternion?: unknown; size?: unknown };
+    if ((kind !== 'insignia' && kind !== 'designation') || !Array.isArray(pos) || pos.length !== 3 || !Array.isArray(quaternion)
+      || quaternion.length !== 4 || typeof size !== 'number') continue;
+    const group = parent === 'turret' ? P.turretG : P.hullG;
+    group.updateWorldMatrix(true, false);
+    const m = new THREE.Matrix4().multiplyMatrices(toOwner, group.matrixWorld), lin = new THREE.Matrix3().setFromMatrix4(m);
+    const q = new THREE.Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
+    const c = new THREE.Vector3(pos[0], pos[1], pos[2]).applyMatrix4(m);
+    const t = new THREE.Vector3(1, 0, 0).applyQuaternion(q).applyMatrix3(lin).multiplyScalar(size);
+    const b = new THREE.Vector3(0, 1, 0).applyQuaternion(q).applyMatrix3(lin).multiplyScalar(size);
+    const n = new THREE.Vector3(0, 0, 1).applyQuaternion(q).applyMatrix3(lin).normalize();
+    const tl = t.length(), bl = b.length();
+    prisms.push({ c, t: t.clone().divideScalar(tl), b: b.clone().divideScalar(bl), n, ht: tl / 2 + MARK_CLOTH_MARGIN_M, hb: bl / 2 + MARK_CLOTH_MARGIN_M });
+    for (const u of MARK_RAY_OFFSETS) for (const v of MARK_RAY_OFFSETS) {
+      const foot = c.clone().addScaledVector(t, u).addScaledVector(b, v);
+      const origin = foot.clone().addScaledVector(n, MARK_RAY_LENGTH_M);
+      rays.push(new THREE.Ray(origin, n.clone().negate()));
+      box.expandByPoint(foot).expandByPoint(origin);
+    }
+  }
+  if (!rays.length) return null;
+  return {
+    rays, box: box.expandByScalar(0.02),
+    clothHides: (p) => prisms.some(({ c, t, b, n, ht, hb }) => {
+      const dx = p[0] - c.x, dy = p[1] - c.y, dz = p[2] - c.z, w = dx * n.x + dy * n.y + dz * n.z;
+      return w > -0.01 && w < MARK_RAY_LENGTH_M && Math.abs(dx * t.x + dy * t.y + dz * t.z) <= ht && Math.abs(dx * b.x + dy * b.y + dz * b.z) <= hb;
+    }),
+  };
+}
+
+/** Whether a card's face (its eight triangles, folded or flat) crosses a marking's sight rays (above the paint). */
+function cardHidesMarking(card: FoliageCard, marks: MarkingRays): boolean {
+  const g = foliageCardPoints(card);
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (const p of g) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); z0 = Math.min(z0, p[2]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); z1 = Math.max(z1, p[2]); }
+  if (x1 < marks.box.min.x || x0 > marks.box.max.x || y1 < marks.box.min.y || y0 > marks.box.max.y || z1 < marks.box.min.z || z0 > marks.box.max.z) return false;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), hit = new THREE.Vector3();
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+    const a = g[r * 3 + c], b = g[r * 3 + c + 1], d = g[(r + 1) * 3 + c], e = g[(r + 1) * 3 + c + 1];
+    for (const [p, q, w] of [[a, b, e], [a, e, d]] as const) {
+      A.set(p[0], p[1], p[2]); B.set(q[0], q[1], q[2]); C.set(w[0], w[1], w[2]);
+      // the ray runs from its origin down to 2 cm under the paint (a card tucked under the paint's own plate is no cover)
+      for (const ray of marks.rays) if (ray.intersectTriangle(A, B, C, false, hit) && hit.distanceTo(ray.origin) <= MARK_RAY_LENGTH_M + 0.02) return true;
+    }
+  }
+  return false;
 }
 
 /** Whether a card's face (its eight triangles, folded or flat) passes through a cage member (a tube of radius r). */
@@ -4860,8 +4935,12 @@ function addGhillieOwner(
     for (const h of probe?.surfacesAt?.(p[0], p[2]) ?? []) if (h.up && h.y <= p[1] + 0.005) return p[1] - h.y < within;
     return false;
   };
+  // netting-proper: the vehicle's national markings stay readable through a field suit: its net is cut round each and its
+  // garnish keeps out of their sight
+  const markRays = isFieldNet(cfg) ? markingRaysOf(P, parent) : null;
   const coverOk = clearance
-    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p)) : undefined;
+    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p))
+      && (!markRays || !markRays.clothHides(p)) : undefined;
   const coverEdgesOk = clearance
     ? (a: readonly number[], b: readonly number[], c: readonly number[]): boolean => {
       for (const [p, q] of [[a, b], [b, c], [c, a]] as const) {
@@ -5013,6 +5092,7 @@ function addGhillieOwner(
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
+          && (!markRays || !cardHidesMarking(card, markRays))
         : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
