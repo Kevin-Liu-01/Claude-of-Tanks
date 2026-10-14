@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
-import { LAST_TANK_STORAGE_KEY } from '../game/selectedVehicleSelection.ts';
+import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { t } from './i18n.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains

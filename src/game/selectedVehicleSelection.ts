@@ -1,5 +1,5 @@
-/** Where the Garage remembers the tank last selected (the Studio Director also offers that tank's own take). */
-export const LAST_TANK_STORAGE_KEY = 'cot.lastTank.v1';
+// The key lives with the id layer's storage migration (one chunk the Garage and the Studio both load at boot).
+import { LAST_TANK_STORAGE_KEY } from './tankIdStorageMigration.ts';
 
 interface SelectionStorage {
   getItem(key: string): string | null;

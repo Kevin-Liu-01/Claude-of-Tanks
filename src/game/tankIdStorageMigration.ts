@@ -14,7 +14,8 @@ export const TANK_ID_STORAGE_SCHEMA_KEY = 'cot.tankIds.schema';
 
 /** Keys whose suffix is a tank id. */
 const ID_KEYED_PREFIXES = Object.freeze(['cot.camo.', 'cot.camoCustom.v1.', 'cot.equip.']);
-const LAST_TANK_KEY = 'cot.lastTank.v1';
+/** Where the Garage remembers the tank last selected (selectedVehicleSelection; the Studio Director offers its take). */
+export const LAST_TANK_STORAGE_KEY = 'cot.lastTank.v1';
 const NATION_TANK_KEY = 'cot.garage.nationTank.v1';
 const PROFILE_KEY = 'cot.profile.v2';
 const SERVICE_KEY = 'cot.service.v1';
@@ -67,8 +68,8 @@ export function planTankIdStorageMigration(
   for (const [source] of moves) writes.set(source, null);
   for (const [, target, value] of moves) writes.set(target, value);
 
-  const lastTank = storage.getItem(LAST_TANK_KEY);
-  if (lastTank && id(lastTank) !== lastTank) writes.set(LAST_TANK_KEY, String(id(lastTank)));
+  const lastTank = storage.getItem(LAST_TANK_STORAGE_KEY);
+  if (lastTank && id(lastTank) !== lastTank) writes.set(LAST_TANK_STORAGE_KEY, String(id(lastTank)));
 
   const nations = parse(storage.getItem(NATION_TANK_KEY));
   if (isRecord(nations)) {

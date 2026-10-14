@@ -3,7 +3,7 @@ import { PRODUCTION_PRESETS, type ProductionFormat } from '../game/studioProduct
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import { getLocale, t } from './i18n.ts';
-import { LAST_TANK_STORAGE_KEY } from '../game/selectedVehicleSelection.ts';
+import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 
 /**
  * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the

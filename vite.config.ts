@@ -382,6 +382,11 @@ export default defineConfig({
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
             // chunk of their own, one more game boot request for code the Studio only reuses. The group takes exactly
             // these six, not their dependencies (which would pull three itself in): the one chunk they formed before.
+            // 2026-10-14 (integrator 223; tank id schema 2): the id alias layer (schema map, boundaries, storage migration)
+            // rides with the fleet's spec registry, a leaf chunk the game and the gallery both load at boot. The vehicle code,
+            // the gallery and main all import it, so on its own it became one more boot request on every page. The group takes
+            // exactly these four modules, none of their dependencies.
+            { name: 'fleetSpecRegistry', test: /[\\/]src[\\/](?:vehicles[\\/](?:fleetSpecRegistry|tankIdAliases)|game[\\/](?:tankIdBoundaries|tankIdStorageMigration))\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },
