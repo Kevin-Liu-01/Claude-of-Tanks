@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
 
-export interface HinterlandSurface { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string }
+export interface HinterlandSurface { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string; normal: string }
 
 /** Pack the surface levels into one RGBA8 texture (the finest first in a row, the rest shelved below it), and their
  * edge offsets into a second with the same layout. */
@@ -76,10 +76,20 @@ float hlInside( vec4 e, vec2 d, float fw ) {
   hlEdgeDist = min( hlEdgeDist, min( abs( u ), abs( v ) ) );
   return clamp( 0.5 + u / fw, 0.0, 1.0 ) * clamp( 0.5 + v / fw, 0.0, 1.0 );
 }
+float hlHash( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
+float hlNoise( vec2 x ) {
+  vec2 i = floor( x ), f = fract( x ), u = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( hlHash( i ), hlHash( i + vec2( 1.0, 0.0 ) ), u.x ), mix( hlHash( i + vec2( 0.0, 1.0 ) ), hlHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
 vec4 hlSurfaceAt( vec2 p ) {
   int i = hlSurfaceLevel( p );
   vec4 b = uHlSBlock[i];
-  vec2 f = clamp( ( p + uHlSHalf[i] ) / b.w, vec2( 0.0 ), vec2( b.z - 1.001 ) );
+  // the lookup wanders ~0.6 texel off the grid on a smooth field, so a boundary that is no parcel's edge (snow and rock,
+  // a wood's, the water's) runs as a natural line, not the texel grid's blocks (the coordinator on the Glacier frames);
+  // a parcel's edges below are rebuilt from the exact point, so they stay straight
+  vec2 jq = p / ( 2.1 * b.w );
+  vec2 pj = p + ( vec2( hlNoise( jq ), hlNoise( jq + vec2( 17.3, -9.1 ) ) ) - 0.5 ) * 1.2 * b.w;
+  vec2 f = clamp( ( pj + uHlSHalf[i] ) / b.w, vec2( 0.0 ), vec2( b.z - 1.001 ) );
   ivec2 c = ivec2( floor( f ) ), o = ivec2( b.xy ) + c;
   vec2 t = f - vec2( c );
   vec4 s00 = texelFetch( uHlSurface, o, 0 ), s10 = texelFetch( uHlSurface, o + ivec2( 1, 0 ), 0 );
@@ -94,7 +104,7 @@ vec4 hlSurfaceAt( vec2 p ) {
   // edges"): each of the four texels weighs in only where its own field holds the point, by its bilinear weight
   vec4 e00 = texelFetch( uHlEdges, o, 0 ), e10 = texelFetch( uHlEdges, o + ivec2( 1, 0 ), 0 );
   vec4 e01 = texelFetch( uHlEdges, o + ivec2( 0, 1 ), 0 ), e11 = texelFetch( uHlEdges, o + ivec2( 1, 1 ), 0 );
-  vec2 d00 = ( t ) * b.w;
+  vec2 d00 = ( p + uHlSHalf[i] ) - vec2( c ) * b.w;
   float fw = max( 0.35, length( fwidth( p ) ) );
   float w00 = ( 1.0 - t.x ) * ( 1.0 - t.y ) * hlInside( e00, d00, fw );
   float w10 = t.x * ( 1.0 - t.y ) * hlInside( e10, d00 - vec2( b.w, 0.0 ), fw );
@@ -104,11 +114,6 @@ vec4 hlSurfaceAt( vec2 p ) {
   // (no texel's field holds it — a field narrower than the texels: the plain bilinear)
   vec3 rgb = ws > 1e-3 ? ( s00.rgb * w00 + s10.rgb * w10 + s01.rgb * w01 + s11.rgb * w11 ) / ws : bil;
   return vec4( rgb, sn.a );
-}
-float hlHash( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
-float hlNoise( vec2 x ) {
-  vec2 i = floor( x ), f = fract( x ), u = f * f * ( 3.0 - 2.0 * f );
-  return mix( mix( hlHash( i ), hlHash( i + vec2( 1.0, 0.0 ) ), u.x ), mix( hlHash( i + vec2( 0.0, 1.0 ) ), hlHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
 }
 bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
 `;
@@ -138,5 +143,21 @@ bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
   if ( hlFlag( 1.0 ) ) roughnessFactor = hlFlag( 64.0 ) ? 0.12 : 0.2;
   else if ( hlFlag( 8.0 ) ) roughnessFactor = 0.7;
 `;
-  return { uniforms, fragmentPars, albedo, roughness };
+  // the ground's own relief under a pixel that resolves it: drifts and hummocks a few metres to a few tens across tilt
+  // the normal, so the outland reads as textured ground from the air as the battlefield's does (the coordinator on the
+  // Glacier bird view: "the playable square reads as a distinct lighter, textured tile against a flat outland")
+  const normal = /* glsl */`
+  {
+    float hlFootN = length( fwidth( vHlWorld.xz ) );
+    float hlBumpW = ( 1.0 - smoothstep( 2.0, 9.0, hlFootN ) ) * ( hlFlag( 8.0 ) ? 1.0 : 0.6 ) * ( hlFlag( 1.0 ) ? 0.0 : 1.0 );
+    if ( hlBumpW > 0.0 ) {
+      vec2 q = vHlWorld.xz;
+      float n0 = hlNoise( q * 0.11 ) + 0.6 * hlNoise( q * 0.034 );
+      float nx = hlNoise( ( q + vec2( 1.5, 0.0 ) ) * 0.11 ) + 0.6 * hlNoise( ( q + vec2( 1.5, 0.0 ) ) * 0.034 );
+      float nz = hlNoise( ( q + vec2( 0.0, 1.5 ) ) * 0.11 ) + 0.6 * hlNoise( ( q + vec2( 0.0, 1.5 ) ) * 0.034 );
+      vec3 hlTilt = vec3( n0 - nx, 0.0, n0 - nz ) * ( 2.4 * hlBumpW );
+      normal = normalize( normal + ( viewMatrix * vec4( hlTilt, 0.0 ) ).xyz );
+    }
+  }`;
+  return { uniforms, fragmentPars, albedo, roughness, normal };
 }

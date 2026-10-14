@@ -17,6 +17,8 @@ interface PublishedAtmosphere {
 }
 
 export interface HinterlandAir {
+  /** The region's air clarity (regions.ts far.air): the haze the Hinterland adds is scaled by it. */
+  clarity: number;
   uniforms: Record<string, THREE.IUniform>;
   /** Fragment declarations: the atmosphere's lookup and `vec3 hlHazeTarget( vec3 fallback )`. Needs vViewPosition. */
   fragmentPars: string;
@@ -24,7 +26,7 @@ export interface HinterlandAir {
   update(scene: THREE.Object3D): void;
 }
 
-export function createHinterlandAir(): HinterlandAir {
+export function createHinterlandAir(clarity = 1): HinterlandAir {
   const uniforms: Record<string, THREE.IUniform> = {
     tAtmoSky: { value: null },
     uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
@@ -65,6 +67,7 @@ vec3 hlHazeTarget( vec3 fallback ) {
   let domeScene: THREE.Object3D | null = null;
   let dome: THREE.Object3D | undefined;
   return {
+    clarity,
     uniforms,
     fragmentPars,
     update(scene) {

@@ -374,6 +374,8 @@ function treeColor(species: string, form: string, tone: number, leaf: number): V
 }
 
 /** The roads' surfaces (linear): Zeeland's clinker and tarmac, a farm track's gravel and earth, a line's ballast. */
+/** A snowy place's roads: packed snow between their banks (the Glacier bird view's black slashes). */
+const SNOW_ROAD_COLOR: V3 = lin([196, 204, 214]);
 const ROAD_COLOR: Readonly<Record<string, V3>> = {
   road: lin([78, 76, 72]), dikeRoad: lin([88, 84, 78]), track: lin([118, 104, 84]), rail: lin([66, 60, 54]),
 };
@@ -419,6 +421,8 @@ export function buildHinterlandOutlandGeometry(
   pyramid: HinterlandPyramid, kit: string | null,
   /** The trees with their ground (the worker's list: the plan's, then the woods' own); absent, the plan's on the land. */
   trees: readonly (HinterlandTree & { y?: number; woods?: boolean })[] = plan.trees,
+  /** A snow-covered place (its roads packed snow). */
+  snowy = false,
 ): HinterlandOutlandGeometry {
   const t0 = performance.now();
   const ground = (x: number, z: number): number => samplePyramid(pyramid, x, z);
@@ -459,7 +463,7 @@ export function buildHinterlandOutlandGeometry(
   }
   // ---- the roads: ribbons draped on the drawn land (the atlas alone smudges a 6 m road over two 8 m texels)
   let roadTris = S.triangles;
-  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
+  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, snowy ? SNOW_ROAD_COLOR : ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
   roadTris = S.triangles - roadTris;
   // ---- the trees: near (the impostors may draw them instead) and far
   const near = new Shapes(), far = new Shapes();

@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { HinterlandShapeArrays } from './outlandGeometry.ts';
 import type { HinterlandAir } from './air.ts';
-import { HINTERLAND_PROJECT_GLSL } from './project.ts';
+import { HINTERLAND_DEPTH_GLSL, HINTERLAND_DEPTH_WRITE_GLSL, HINTERLAND_HAZE_DISTANCES_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_WRITE_DEPTH } from './project.ts';
 import type { HinterlandPyramid } from './pyramid.ts';
 import { HINTERLAND_TREE_STRIDE, type HinterlandWire } from './wire.ts';
 
@@ -17,10 +17,12 @@ interface EngineLike {
 }
 
 /** The outland's material: vertex colours, the land's projection per vertex, its haze for the compressed distance. */
-function createOutlandMaterial(engine: EngineLike, hazeSigma: number, key: string, roughness: number, air: HinterlandAir | null): { material: THREE.MeshStandardMaterial; cam: THREE.Vector3 } {
-  const cam = new THREE.Vector3();
+function createOutlandMaterial(engine: EngineLike, hazeSigma: number, key: string, roughness: number, air: HinterlandAir | null): { material: THREE.MeshStandardMaterial; cam: THREE.Vector3; proj: THREE.Matrix4 } {
+  const cam = new THREE.Vector3(), proj = new THREE.Matrix4();
   const uniforms: Record<string, THREE.IUniform> = {
     uHlCam: { value: cam },
+    uHlProj: { value: proj },
+    uHlAir: { value: air?.clarity ?? 1 },
     uHlHazeSigma: { value: hazeSigma },
     uHlHazeColor: { value: new THREE.Color(0.62, 0.7, 0.8) },
     ...(air?.uniforms ?? {}),
@@ -46,11 +48,18 @@ varying float vHlTrueD;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
 ${HINTERLAND_PROJECT_GLSL}
+${HINTERLAND_DEPTH_GLSL}
+float hlHazeD = 0.0, hlDrawnR = 0.0;
+uniform float uHlAir;
 ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+${HINTERLAND_DEPTH_WRITE_GLSL}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   {
-    float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
-    float hlT = exp( -uHlHazeSigma * hlLost );
+    // (the land's law: the haze for the distance the written depth no longer covers — project.ts)
+${HINTERLAND_HAZE_DISTANCES_GLSL}
+    float hlLost = max( 0.0, vHlTrueD - hlDrawnR );
+    float hlT = exp( -uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR ) - uHlHazeSigma * hlLost );
     if ( hlT < 0.999 ) {
       #ifdef USE_FOG
       gl_FragColor.rgb = mix( hlHazeTarget( fogColor ), gl_FragColor.rgb, hlT );
@@ -62,18 +71,18 @@ ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback
   };
   if (engine.setupShadowMaterial) engine.setupShadowMaterial(material, patch);
   else material.onBeforeCompile = patch;
-  material.customProgramCacheKey = () => key;
-  return { material, cam };
+  material.customProgramCacheKey = () => `${key}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  return { material, cam, proj };
 }
 
-function outlandMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, cam: THREE.Vector3, air: HinterlandAir | null): THREE.Mesh {
+function outlandMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, cam: THREE.Vector3, air: HinterlandAir | null, proj: THREE.Matrix4): THREE.Mesh {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   mesh.matrixAutoUpdate = false;
-  mesh.onBeforeRender = (_r, scene, camera) => { cam.copy(camera.position); air?.update(scene); };
+  mesh.onBeforeRender = (_r, scene, camera) => { cam.copy(camera.position); proj.copy(camera.projectionMatrix); air?.update(scene); };
   return mesh;
 }
 
@@ -100,17 +109,19 @@ export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: Hi
   const group = new THREE.Group();
   group.name = 'hinterland-outland';
   group.matrixAutoUpdate = false;
-  const hazeSigma = Math.max(0, wire.fogDensity) * 0.42;
+  const hazeSigma = Math.max(0, wire.fogDensity) * 0.42 * (wire.air ?? 1);
   if (geo.buildings) {
-    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-built-v1', 0.9, air);
-    group.add(outlandMesh('hinterland-buildings', wrap(geo.buildings), material, cam, air));
+    const { material, cam, proj } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-built-v2', 0.9, air);
+    group.add(outlandMesh('hinterland-buildings', wrap(geo.buildings), material, cam, air, proj));
   }
   if (geo.nearTrees || geo.farTrees) {
-    const { material, cam } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-trees-v1', 1, air);
-    if (geo.nearTrees) group.add(outlandMesh('hinterland-trees-near', wrap(geo.nearTrees), material, cam, air));
-    if (geo.farTrees) group.add(outlandMesh('hinterland-trees-far', wrap(geo.farTrees), material, cam, air));
+    const { material, cam, proj } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-trees-v2', 1, air);
+    if (geo.nearTrees) group.add(outlandMesh('hinterland-trees-near', wrap(geo.nearTrees), material, cam, air, proj));
+    if (geo.farTrees) group.add(outlandMesh('hinterland-trees-far', wrap(geo.farTrees), material, cam, air, proj));
   }
   group.userData.hinterlandOutland = geo.stats;
+  // (the impostor trees take the same written depth and haze: trees.ts)
+  group.userData.hinterlandHaze = { sigma: hazeSigma, air };
   const packed = new Float32Array(geo.nearIndex.length * HINTERLAND_TREE_STRIDE);
   geo.nearIndex.forEach((t, i) => packed.set(wire.trees.subarray(t * HINTERLAND_TREE_STRIDE, (t + 1) * HINTERLAND_TREE_STRIDE), i * HINTERLAND_TREE_STRIDE));
   group.userData.hinterlandNearTrees = { trees: packed, species: wire.species, pyramid } satisfies HinterlandNearTrees;

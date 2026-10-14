@@ -23,6 +23,8 @@ export interface HinterlandWire {
   kit: string | null;
   season: string;
   fogDensity: number;
+  /** The region's air (regions.ts far.air): the far haze's scale, 1 by default, under it in clear mountain air. */
+  air?: number;
   canopyM: number;
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
   /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte, the fields' edge offsets), when baked. */
@@ -66,7 +68,7 @@ export function packHinterlandPlan(
   });
   const levels = pyramid.levels.map((l) => ({ texelM: l.texelM, halfM: l.halfM, n: l.n, heights: l.heights }));
   const wire: HinterlandWire = {
-    mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity,
+    mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity, air: spec.region.far.air ?? 1,
     canopyM: spec.region.vegetation.canopyM, levels, surface, outland, trees, species, buildings, buildingKinds,
     landRot: build.field.landUse && build.field.landUse.strength > 0 ? [Math.cos(build.field.landUse.heading), Math.sin(build.field.landUse.heading)] : null,
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,

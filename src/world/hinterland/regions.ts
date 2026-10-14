@@ -79,6 +79,8 @@ export interface HinterlandFarDefault {
   distKm: readonly [number, number];
   /** Successive ridgelines (0–3) placed at authored distances behind the near frame. */
   layers: number;
+  /** The air's clarity for the far haze (1 the default; under 1 a clear mountain air, its ranges crisp at 10 km). */
+  air?: number;
   /** The canopy (m) standing on the far ground (the flat countries' skyline is their trees). */
   treesM: number;
 }
@@ -217,7 +219,7 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     // (the treeline 170 m over the col's datum: the woods on the valley sides round it, thinning to krummholz; dark
     // schist, its bands and cliffs against the snow — the coordinator on the first Glacier frames)
     geology: { rock: 'schist', rockHex: 0x4f4c49, strata: { bedM: 5, dipDeg: 28, contrast: 0.08 }, scree: 0.8, snow: { lineM: -400, maxSlopeDeg: 45, scour: 0.25 }, gullies: 0.8, erosion: 0.8, rockSlopeDeg: 40, forestBandM: r([-1500, 170]), sand: 0, varnish: 0 },
-    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0 },
+    far: { form: 'alpine', reliefM: 1700, distKm: r([4, 18]), layers: 2, treesM: 0, air: 0.35 },
   }),
   saharaOasis: region({
     id: 'saharaOasis', place: 'Southern Tunisia and Siwa: the cuesta and its scarp, ksour on the spurs, palm gardens at the springs, salt and erg',
