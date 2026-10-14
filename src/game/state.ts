@@ -126,6 +126,7 @@ import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
 import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
+import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
 import {
   createWreckEnvironment, createWreckTurrets, wreckGroundSampler, type WreckTurrets,
 } from '../sim/wreckTurrets.ts';
@@ -348,6 +349,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _destruction?: DestructionMatch | null;
   /** Popped and unseated turrets as rigid bodies (physics lane; sim/wreckTurrets.ts). */
   _wreckTurrets?: WreckTurrets | null;
+  /** The pillboxes' damage this battle (sim/fortifiedCover.ts), as the authority keeps it. */
+  _fortified?: FortifiedCoverLedger | null;
   _destructionEvents?: StructureStageEvent[];
   _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
@@ -1248,6 +1251,7 @@ export function setupBattle(
     // the map's walls price a ram (§4.4), as the authority reads them
     wallMaterial: wallMaterialForStyle(architectureStyleOf(getMapConfig(game.mapId))),
   });
+  game._fortified = createFortifiedCoverLedger();
   game._destructionEvents = [];
   game._destructionBreaches = [];
   game._destructionCraters = [];
@@ -1617,9 +1621,19 @@ function shouldCrushObstacle(
   obstacle: SoloObstacle,
   speed: number,
   spanBottom: number,
+  pushX: number,
+  pushZ: number,
 ): boolean {
-  // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
   const state = self.state;
+  // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
+  // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
+  if (isFortifiedCoverRecord(obstacle)) {
+    const length = Math.hypot(pushX, pushZ);
+    if (length <= 1e-9) return false;
+    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    return game._fortified?.ram(obstacle, self.spec.weightTons, closing, game.timeS) ?? false;
+  }
+  // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove; the authority's rule)
   if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
       obstacleContactBottom())) return true;
   if (speed > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
@@ -1718,7 +1732,7 @@ function resolveObstacleCollisions(
       clearBottom,
     )) continue;
     if (obstacle.crushable && self &&
-        shouldCrushObstacle(game, self, obstacle, selfSpeed, spanBottom)) {
+        shouldCrushObstacle(game, self, obstacle, selfSpeed, spanBottom, outPush.x - beforeX, outPush.z - beforeZ)) {
       queueCrush(obstacle, self, pendingCrush);
       outPush.x = beforeX;
       outPush.z = beforeZ;
@@ -2185,9 +2199,12 @@ function crushWorldPropFromShell(
   bus: EventBus,
   shell: DamageShell,
   hit: SoloWorldHit,
+  fortified: FortifiedCoverLedger | null | undefined,
 ): void {
   const record = hit.record;
   if (!record?.crushable || !world.crushObstacle) return;
+  // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the authority's
+  if (isFortifiedCoverRecord(record) && !fortified?.shellHit(record, shell.spec)) return;
   const crushed = world.crushObstacle(
     record,
     _seg.x,
@@ -2221,7 +2238,8 @@ function crushLightCoverAlong(world: SoloWorld, bus: EventBus, shell: DamageShel
     _lightCoverHit.dist = distance;
     _lightCoverHit.point.copy(shell.prevPos).addScaledVector(_seg, distance);
     _lightCoverHit.record = record as SoloObstacle;
-    crushWorldPropFromShell(world, bus, shell, _lightCoverHit);
+    // (integ/224: the sweep never visits a pillbox, dense cover that stops the round, so no fortified ledger here)
+    crushWorldPropFromShell(world, bus, shell, _lightCoverHit, null);
   });
   _lightCoverHit.record = null;
 }
@@ -2251,7 +2269,7 @@ function traceBlockingWorldShellHit(
     // A drone is an airframe, not a slug: light cover that a shell punches through stops it (it detonates there).
     if (shell.spec.tracer === 'DRONE' || !shellPassesThroughCollisionRecord(hit.record)) return { hit, distance };
 
-    crushWorldPropFromShell(world, bus, shell, hit);
+    crushWorldPropFromShell(world, bus, shell, hit, null);
     const advance = Math.min(
       remaining,
       Math.max(SHELL_PASS_THROUGH_EPSILON_M, localDistance + SHELL_PASS_THROUGH_EPSILON_M),
@@ -2276,7 +2294,7 @@ function resolveWorldShellImpact(
   } else {
     shell.dead = true;
   }
-  crushWorldPropFromShell(world, bus, shell, hit);
+  crushWorldPropFromShell(world, bus, shell, hit, game._fortified);
   // destruction: the struck structure takes the strike and the round's blast (docs/DESTRUCTION.md §4); a burst on the
   // ground (not on water) may dig a crater (§7, P3)
   const craterId = game._destruction?.shellWorldHit(shell.spec, hit.record, hit.point.x, hit.point.y, hit.point.z, _seg.x, _seg.z,
@@ -3154,7 +3172,8 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
     world.queryObstacles(x - radius, z - radius, x + radius, z + radius, _blastCandidates);
     _blastFelled.length = 0;
     for (const obstacle of _blastCandidates) {
-      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius) continue;
+      // a pillbox takes a burst on its face as a hit (crushWorldPropFromShell), never a fall to a burst beside it
+      if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
       const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
       if (Math.hypot(cx - x, cz - z) <= radius) _blastFelled.push(obstacle);
     }

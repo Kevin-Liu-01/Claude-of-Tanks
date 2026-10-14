@@ -1164,6 +1164,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureDamage.selftest.mjs',
     'src/sim/shellLightCover.selftest.mjs', // 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars)
     'src/sim/destructionParity.selftest.mjs',
+    // 2026-10-09 (destruction core lane): the pillbox stops every round and falls only to accumulated heavy blows.
+    'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
@@ -1179,6 +1181,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
+    'src/world/fractureAnatomy.selftest.mjs',
     // 2026-10-08 (destruction core lane, layout identity): a phone places the desktop's records, index for index
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
@@ -1483,6 +1486,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/recordClearance.selftest.mjs', // 2026-10-13 (the perf stream): the street kits' clearance from a grid, as the walk
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
+    // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
+    'src/world/maps/fortKit.selftest.mjs',
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',

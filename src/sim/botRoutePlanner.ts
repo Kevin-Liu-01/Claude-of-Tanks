@@ -16,6 +16,7 @@ import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
 import {
   collisionFootprintContainsPoint,
   hullPassesObstacleTop,
+  hullYieldingRecord,
   setObbShape,
   rayCollisionFootprintEntry2,
   type CollisionRecord,
@@ -107,6 +108,7 @@ interface NavigationObstacle {
   shape2?: CollisionShape;
   crushed?: boolean;
   crushable?: boolean;
+  kind?: string;
   dead?: boolean;
 }
 
@@ -327,7 +329,8 @@ function isSolidObstacleAt(
   z: number,
 ): boolean {
   for (const obstacle of obstacles) {
-    if (obstacle.crushed || obstacle.crushable) continue;
+    // a crushable is driven through; a pillbox is not (world/collision.ts hullYieldingRecord)
+    if (obstacle.crushed || hullYieldingRecord(obstacle)) continue;
     if (x < obstacle.min[0] - 3.5 || x > obstacle.max[0] + 3.5
       || z < obstacle.min[2] - 3.5 || z > obstacle.max[2] + 3.5) continue;
     if (collisionFootprintContainsPoint(obstacle as CollisionRecord, x, z, 3.5)) return true;
@@ -547,7 +550,7 @@ function legMeetsSolid(
   const ux = dx / length, uz = dz / length;
   for (let i = 0; i < obstacles.length; i++) {
     const record = obstacles[i];
-    if (record.crushed || record.crushable || record.dead) continue;
+    if (record.crushed || hullYieldingRecord(record) || record.dead) continue;
     if (Math.max(ax, bx) < record.min[0] - margin || Math.min(ax, bx) > record.max[0] + margin
       || Math.max(az, bz) < record.min[2] - margin || Math.min(az, bz) > record.max[2] + margin) continue;
     // an end already inside the record's margin only has to keep the leg off the record itself
