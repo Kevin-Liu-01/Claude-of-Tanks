@@ -1264,5 +1264,5 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   },
   wear: 0.18,
   // the yards: stone garden walls round a kitchen garden and the bread oven, a gate (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gatestone', shed: 'woodshed', shedSize: [3.2, 2.8], garden: true },
 });

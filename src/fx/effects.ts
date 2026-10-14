@@ -5302,7 +5302,8 @@ function* createFxSteps(
     if (/deserttent|commandtent|fieldhospital/.test(kind)) return 'canvasbuilding';
     if (/guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind)) return 'metalbuilding';
     // (2026-10-09: the pillbox is concrete — it fell through to 'wood' and broke into splinters and wood dust)
-    if (/^wall|rubble|small-rock|^bunker$|pillbox/.test(kind)) return 'masonry';
+    // (the looks lane: the stone and mud walls' gates break as their piers do)
+    if (/^wall|rubble|small-rock|^bunker$|pillbox|^gatestone$|^gateadobe$/.test(kind)) return 'masonry';
     if (/^sandbag/.test(kind)) return 'sandbag';
     if (/truck|jeep/.test(kind)) return 'vehicle';
     if (kind === 'tent') return 'canvas';

@@ -311,7 +311,8 @@ check('churchyard grounds', () => {
     const [hw, hl] = landmarkFootprint({ kind: 'churchyard', x: 0, z: 0, params });
     const { destructibles = [], parts } = build('churchyard', params);
     for (const d of destructibles) assert.ok(Math.abs(d.x) <= hw && Math.abs(d.z) <= hl, `${JSON.stringify(params)}: ${d.kind} at (${d.x.toFixed(2)}, ${d.z.toFixed(2)}) inside the footprint`);
-    const gates = destructibles.filter((d) => d.kind === 'gate');
+    // (a fence family's own gate since the looks lane's gates, 2026-10-13: gate, gatepicket, gatewattle, gatestone, gateadobe)
+    const gates = destructibles.filter((d) => /^gate/.test(d.kind));
     assert.equal(gates.length, params.holyGate === false ? 1 : 0, `${JSON.stringify(params)}: a plain gate only without the holy gateway`);
     if (params.holyGate !== false) assert.ok(!hasStructure(parts) || deriveRuntimeStructureCollisionProfile(parts).contact.parts.length >= 1, 'the holy gateway stands');
     assert.ok(destructibles.filter((d) => d.kind === resolved.fence).length >= 8, `${JSON.stringify(params)}: the fence runs round the open sides`);

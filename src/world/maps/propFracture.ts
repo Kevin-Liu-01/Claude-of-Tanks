@@ -223,7 +223,8 @@ export function fractureProp(intact: THREE.BufferGeometry, plan: FracturePlan, s
 export const PROP_FRACTURE: Readonly<Record<string, FracturePlan>> = Object.freeze({
   crate: WOOD_FRACTURE, pallet: WOOD_FRACTURE, bench: WOOD_FRACTURE, trough: WOOD_FRACTURE, stall: WOOD_FRACTURE,
   firewood: WOOD_FRACTURE, rugframe: WOOD_FRACTURE, laundry: WOOD_FRACTURE, ammobox: WOOD_FRACTURE, tent: WOOD_FRACTURE,
-  cablespool: WOOD_FRACTURE, gate: WOOD_FRACTURE,
+  cablespool: WOOD_FRACTURE,
+  // (the looks lane, 2026-10-13: the gates break as their own members off their hinges, gateKit.ts's broken builds)
   fenceplank: FENCE_FRACTURE, fencepicket: FENCE_FRACTURE, fencewattle: FENCE_FRACTURE, fencerail: FENCE_FRACTURE,
   // the small buildings on the shared debris builder (structureKit.ts lightMeta; the Quonset and the greenhouse keep the
   // facades lane's own broken states)
