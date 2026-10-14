@@ -21,8 +21,9 @@
 // Gun bores are open by design (2026-10-14, coordinator: the netting drape moved type10b's and leo2a7v_x's framing and
 // single pixels inside their muzzle bores failed the hull). Every physical mouth the factory publishes (userData
 // .physicalMouth with its muzzleSeatReceipt radius and depth, the frames the muzzle-bore probes measure) masks its bore:
-// a hole or inside-out pixel whose visible surface lies inside that bore cylinder, grown by one pixel's footprint, is
-// counted as borePx and is never an opening. --no-bore-mask restores the raw census.
+// a hole or inside-out pixel whose visible surface lies inside that bore cylinder, or on the muzzle face out to the
+// tube's outer radius (the carved rim's seam with the outer wall), each grown by one pixel's footprint, is counted as
+// borePx and is never an opening. --no-bore-mask restores the raw census.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
@@ -101,19 +102,22 @@ function collectBores(root) {
     if (!o.userData?.physicalMouth || !seat) return;
     const r = Number(seat.physicalInnerRadiusM ?? seat.innerRadiusM), depth = Number(seat.physicalBoreDepthM);
     if (!(r > 0) || !(depth > 0)) return;
+    const outer = Math.max(r, Number(seat.outerRadiusM ?? seat.measuredOuterRadiusM) || r);
     const scale = o.getWorldScale(new THREE.Vector3());
-    bores.push({ name: o.name, inv: o.matrixWorld.clone().invert(), r, depth, worldScale: Math.max(1e-6, Math.abs(scale.x)) });
+    bores.push({ name: o.name, inv: o.matrixWorld.clone().invert(), r, outer, depth, worldScale: Math.max(1e-6, Math.abs(scale.x)) });
   });
   return bores;
 }
 const _boreLocal = new THREE.Vector3();
-/** True when a world point lies inside a bore cylinder grown by `tolM` metres (radially and at both ends). */
+/** True when a world point lies inside a bore cylinder, or on its muzzle face out to the tube's outer radius, each
+ * grown by `tolM` metres. */
 function insideBore(bores, x, y, z, tolM) {
   for (const b of bores) {
     _boreLocal.set(x, y, z).applyMatrix4(b.inv);
     const tol = tolM / b.worldScale;
     if (_boreLocal.z > tol || _boreLocal.z < -(b.depth + tol)) continue;
-    if (Math.hypot(_boreLocal.x, _boreLocal.y) <= b.r + tol) return true;
+    const radial = Math.hypot(_boreLocal.x, _boreLocal.y);
+    if (radial <= b.r + tol || (Math.abs(_boreLocal.z) <= tol && radial <= b.outer + tol)) return true;
   }
   return false;
 }
@@ -239,15 +243,18 @@ if (flag('self-test')) {
   const insideOut = evaluate('inside-out box');
   box.geometry = new THREE.BoxGeometry(2, 1, 3); box.scale.x = -1; // mirrored placement renders correctly on the GPU
   const mirrored = evaluate('mirrored box');
-  // A gun bore: an inside-out open tube in front of the closed box reads as an opening from every view that sees it,
+  // A gun bore: an inside-out open tube (and an inside-out rim annulus on its muzzle face) in front of the closed box
+  // reads as an opening from every view that sees it,
   // until a physical mouth frame (radius and depth in its seat receipt, -Z into the bore) masks it. The same frame
   // moved 0.5 m aside masks nothing, so the mask is the bore and only the bore.
   box.scale.x = 1;
   const tube = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 16, 1, true).rotateX(Math.PI / 2);
   const tubeIndex = tube.index; for (let i = 0; i < tubeIndex.count; i += 3) { const b = tubeIndex.getX(i + 1); tubeIndex.setX(i + 1, tubeIndex.getX(i + 2)); tubeIndex.setX(i + 2, b); }
   const barrel = new THREE.Mesh(tube, material); barrel.name = 'boreTube'; barrel.position.set(0, 0, 1.65); root.add(barrel);
+  // the carved rim's seam: an inside-out annulus on the muzzle face out to the tube's outer radius
+  const rim = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.09, 16).rotateY(Math.PI), material); rim.name = 'boreRim'; rim.position.set(0, 0, 1.8); root.add(rim);
   const mouth = new THREE.Object3D(); mouth.name = 'muzzleBoreShadowFallback'; mouth.position.set(0, 0, 1.8);
-  mouth.userData.physicalMouth = true; mouth.userData.muzzleSeatReceipt = { physicalInnerRadiusM: 0.06, physicalBoreDepthM: 0.3 };
+  mouth.userData.physicalMouth = true; mouth.userData.muzzleSeatReceipt = { physicalInnerRadiusM: 0.06, outerRadiusM: 0.09, physicalBoreDepthM: 0.3 };
   const boreCase = (label, withMouth) => {
     if (withMouth) root.add(mouth); else root.remove(mouth);
     const { tris, meshes } = collectTriangles(root); const sphere = boundingSphere(tris); const bores = collectBores(root);
