@@ -5,6 +5,8 @@ import { COMBAT, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 import { holdShot } from './setups.mjs';
 import { combatVerdict, knockouts } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
+import { absoluteShots } from './lens-check.mjs';
+import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
 // The combat round (owner 2026-10-13: "more shots of 1v1 tank battles or 2v2 or 1v2s ... 1. show more tanks and 2. show
@@ -73,4 +75,44 @@ for (const shot of COMBAT) {
   assert.ok(verdict.ok, `${id}: ${verdict.faults.join('; ')}`);
   checked++;
 }
-console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields`);
+// A single birch between the lens and the hero fails the take (coordinator 2026-10-13: the FX lane's lens check read
+// merged forest bounds and could not tell a tree in front of the lens from a stand; this one reads the battlefield's
+// per-tree records, trunk and crown): one birch planted on s226's sightline, 15 % of the way from the lens to the hero
+// at the middle of the take, and the frame check must name it.
+{
+  const shot = COMBAT.find((s) => s[0] === 226), scene = siteScene(shot), { features } = worldOf(scene.map);
+  if (features) {
+    const model0 = worldModel(features), cam = {}, pose = {};
+    sampleCameraRail(absoluteShots(scene, model0), 3300, cam);
+    let [hx, hz] = scene.actors.find((a) => a.name === 'hero').pos;
+    const keys = scene.storyboard.actorTracks.find((t) => t.actor === 'hero')?.keys;
+    if (keys?.length && sampleActorTrack(keys, 3300, pose)) { hx = pose.x; hz = pose.z; }
+    const bx = cam.x + (hx - cam.x) * 0.15, bz = cam.z + (hz - cam.z) * 0.15, gy = model0.heightAt(bx, bz);
+    const birch = { k: 'tree', b: [bx - 0.25, gy, bz - 0.25, bx + 0.25, gy + 11, bz + 0.25], c: 0, s: ['c', bx, bz, 0.25], t: 1, cr: 2.6 };
+    const withBirch = { ...features, obstacles: [...features.obstacles, birch] };
+    assert.ok(combatVerdict(scene, model0, features).ok, 's226 passes on its own battlefield');
+    const verdict = combatVerdict(scene, worldModel(withBirch), withBirch);
+    assert.ok(!verdict.ok && verdict.faults.some((f) => /hero blocked|in sight/.test(f)), `a single birch on the sightline fails s226 (${verdict.faults.join('; ') || 'no fault'})`);
+  }
+}
+// and its crown alone: a birch whose trunk stands 1.8 m off s232's crane sightline (the lens 9-13 m up) where the line
+// runs through the crown's height, 6 % of the way out
+{
+  const shot = COMBAT.find((s) => s[0] === 232), scene = siteScene(shot), { features } = worldOf(scene.map);
+  if (features) {
+    const model0 = worldModel(features), cam = {}, pose = {};
+    sampleCameraRail(absoluteShots(scene, model0), 3300, cam);
+    let [hx, hz] = scene.actors.find((a) => a.name === 'hero').pos;
+    const keys = scene.storyboard.actorTracks.find((t) => t.actor === 'hero')?.keys;
+    if (keys?.length && sampleActorTrack(keys, 3300, pose)) { hx = pose.x; hz = pose.z; }
+    const dx = hx - cam.x, dz = hz - cam.z, dl = Math.hypot(dx, dz), px = -dz / dl, pz = dx / dl;
+    const lx = cam.x + dx * 0.06, lz = cam.z + dz * 0.06, gy = model0.heightAt(lx, lz), lineY = cam.y + (model0.heightAt(hx, hz) + 1.4 - cam.y) * 0.06;
+    const bx = lx + px * 1.8, bz = lz + pz * 1.8, top = lineY - gy + 1; // the crown spans the line's height (top - 0.3 cr .. top + 1.7 cr)
+    const birch = { k: 'tree', b: [bx - 0.25, gy, bz - 0.25, bx + 0.25, gy + top, bz + 0.25], c: 0, s: ['c', bx, bz, 0.25], t: 1, cr: 2.6 };
+    const withBirch = { ...features, obstacles: [...features.obstacles, birch] };
+    assert.ok(combatVerdict(scene, model0, features).ok, 's232 passes on its own battlefield');
+    const verdict = combatVerdict(scene, worldModel(withBirch), withBirch);
+    assert.ok(!verdict.ok && verdict.faults.some((f) => /hero blocked|in sight/.test(f)), `a birch's crown across the crane's sightline fails s232 (${verdict.faults.join('; ') || 'no fault'})`);
+  }
+}
+console.log(`combat selftest: ${COMBAT.length} takes, ${checked} frame-checked on their battlefields, a lone birch caught by its trunk and by its crown`);
