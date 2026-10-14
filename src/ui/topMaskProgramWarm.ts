@@ -25,6 +25,12 @@ interface TopMaskProgramWarmOptions {
   /** May shorten, but never extend, the 5000 ms ownership limit. */
   timeoutMs?: number;
   pollIntervalMs?: number;
+  /**
+   * Give up (top_mask_program_timeout) once no captured program has finished linking for this long (2 s; 0 turns it off).
+   * 2026-10-14, the MP stream: deploy 223's rejoin waited the whole 5 s for mask programs that linked only at the first
+   * real draw; a slow mask link already goes on to the damage panel's retry ladder, which now sees it 3 s sooner.
+   */
+  stallMs?: number;
 }
 
 interface CapturedMaskProgram {
@@ -113,6 +119,7 @@ export async function waitForTopMaskPrograms(
 ): Promise<TopMaskProgramPreparation> {
   const timeout = options.timeoutMs ?? 5000;
   const interval = options.pollIntervalMs ?? 4;
+  const stallMs = options.stallMs ?? 2000;
   if (!Number.isFinite(timeout) || timeout <= 0 || !Number.isFinite(interval) || interval <= 0) {
     throw new Error('top_mask_program_invalid_timing');
   }
@@ -126,8 +133,10 @@ export async function waitForTopMaskPrograms(
   receipt.assertCurrent();
   remainingTime(deadline, now);
   let checkpoints = 2048; // A frozen clock stays finite; 4 ms polls can still reach the real 5 s limit.
+  let lastProgressAt = now();
   const checkpoint = async (): Promise<void> => {
     if (checkpoints-- <= 0) throw new Error('top_mask_program_timeout');
+    if (stallMs > 0 && now() - lastProgressAt >= stallMs) throw new Error('top_mask_program_timeout');
     await delay(Math.min(interval, remainingTime(deadline, now)));
     receipt.assertCurrent();
     remainingTime(deadline, now);
@@ -139,6 +148,7 @@ export async function waitForTopMaskPrograms(
     let visits = 0;
     for (let index = 0; index < pending.length; index++) {
       const ready = initializeReadyProgram(pending[index], context, deadline, now);
+      if (ready) lastProgressAt = now();
       if (!ready && newestFirst) break;
       visits++;
       if (index + 1 < pending.length && (visits >= 32 || now() - sliceAt >= 4)) {
