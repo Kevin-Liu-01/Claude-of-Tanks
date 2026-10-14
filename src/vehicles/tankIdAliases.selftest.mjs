@@ -27,10 +27,11 @@ const shownName = (id) => TANK_SPECS[id]?.label?.displayName ?? TANK_SPECS[id]?.
 // sha256 of JSON.stringify(map) for every landed map, in order. Append a row with each rename; never edit one.
 const LANDED_MAP_SHA256 = [
   '9c6b9d486a0f2b82d519a5cbdffb5f3f775e3fb8f371b5d2a5cd4979ef129dec', // schema 2 (2026-10-13): fv510_milan_x -> warrior_tes_h
+  'c28c92b974a74bedf6e088c36dd082ab6d6eaedb7d39cc277bee3f224950c9ed', // schema 3 (ID.04/05): the 130 renames of the 2026-10-13 table
 ];
 // The PROTOCOL_VERSION that first carried each tank id schema. A new schema needs a higher protocol, so builds of
 // two schemas never share a match.
-const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7 };
+const PROTOCOL_FOR_SCHEMA = { 1: 6, 2: 7, 3: 8 };
 assert.equal(TANK_ID_SCHEMA, TANK_ID_RENAMES.length + 1, 'one rename map per schema step');
 assert.deepEqual(
   TANK_ID_RENAMES.map((map) => createHash('sha256').update(JSON.stringify(map)).digest('hex')),
@@ -155,6 +156,9 @@ const SEEDED = {
   '../ui/garage.ts': /\$\{spec\?\.id \? tankSeedId\(spec\.id\) : 'tank'\}:\$\{pid \|\| 'factory'\}/,
   '../ui/hud.ts': /hashStr\(String\(t\.id\) \+ \(t\.spec \? tankSeedId\(t\.spec\.id\) : ''\)\)/,
   '../audio/vehicleAudioProfiles.ts': /return tankSeedId\(String\(spec\.id \?\? ''\)\)\.toLowerCase\(\)/,
+  // Schema-1 id vocabulary tables (ID.04/05 prep): a rename keeps launcher arcs and suspension families.
+  'smokeFan.ts': /const seedId = tankSeedId\(String\(id\)\);\s+for \(const arc of FAMILY_ARCS\) if \(arc\.pattern\.test\(seedId\)\)/,
+  'suspensionPatterns.ts': /const id = tankSeedId\(String\(spec\?\.id \|\| ''\)\)\.toLowerCase\(\);/,
 };
 for (const [file, pattern] of Object.entries(SEEDED)) {
   assert.match(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8'), pattern, `${file} seeds from tankSeedId`);

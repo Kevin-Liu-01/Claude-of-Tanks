@@ -22,7 +22,8 @@ export const WIRE_VERSION = 5;
 // 4: complete module health uses a 32-bit word (wire layout 3).
 // 7 (2026-10-13, SSOT 2.19): tank id schema 2 (src/vehicles/tankIdAliases.ts). Builds of two id schemas never share a
 // match: a swapped id would name another vehicle on the other side.
-export const PROTOCOL_VERSION = 7; // aerial supply actions and expanded mode checkpoints; tank id schema 2
+// 8 (ID.04/05, SSOT 2.19): tank id schema 3, the bulk rename (130 ids, 27 swaps).
+export const PROTOCOL_VERSION = 8; // aerial supply actions and expanded mode checkpoints; tank id schema 3
 
 export const TICK_HZ = 60;
 /**
