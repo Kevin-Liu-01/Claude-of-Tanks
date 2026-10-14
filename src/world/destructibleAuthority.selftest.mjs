@@ -110,6 +110,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     structurePlacements: new Map(), structureDamage: new Map(), structureSpans: new Map(), structureMaterials: [],
     // (destruction core, 2026-10-10) the hull's crush presses the map vehicles, huts, stalls and tents (propCrushPresentation)
     createPropCrushPresentation, DESTRUCTIBLE_BUILDING_TYPES,
+    // (Plan W, 2026-10-13) the build joins its pooled structure shells before it returns; none are pooled here
+    joinStructureShells() {},
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));

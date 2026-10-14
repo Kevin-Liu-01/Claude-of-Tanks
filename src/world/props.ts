@@ -11642,8 +11642,7 @@ ${snowCap ? `
   }
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
-  return { structureShellStats: shellPool ? { ...shellPool.stats } : null,
-    group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
+  return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),
     setCrushSweeps: (on: boolean) => crushPress.setSweeps(on),
@@ -11651,5 +11650,7 @@ ${snowCap ? `
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles, waterContacts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
-    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
+    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors },
+    // (Plan W) last, so the runtime's return still opens `{ group, obstacles, colliders,` (destructibleAuthority's anchor)
+    structureShellStats: shellPool ? { ...shellPool.stats } : null };
 }
