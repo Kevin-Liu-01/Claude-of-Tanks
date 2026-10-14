@@ -133,6 +133,13 @@ function hull(points) {
   for (const q of p.reverse()) { while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), q) <= 0) upper.pop(); upper.push(q); }
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
+/** A packed primitive's plan corners: after a 'w''s vertical extent, after a 'p''s extent, origin and planes (the drawn
+ * tops of physics stream F3/F2, 2026-10-13: y0, y1, ox, oz, k, k plane triples, then the corners). */
+function plan(shape) {
+  if (shape[0] === 'w') return shape.slice(3);
+  if (shape[0] === 'p') return shape.slice(6 + 3 * shape[5]);
+  return shape.slice(1);
+}
 function shapePoints(shape) {
   if (!shape) return [];
   if (shape[0] === 'm') return shape.slice(1).flatMap(shapePoints);
@@ -140,7 +147,7 @@ function shapePoints(shape) {
     const [, cx, cz, hw, hl, yaw] = shape, s = Math.sin(yaw), c = Math.cos(yaw);
     return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [cx + u * hw * c + v * hl * s, cz - u * hw * s + v * hl * c]);
   }
-  const numbers = shape[0] === 'w' ? shape.slice(3) : shape.slice(1);
+  const numbers = plan(shape);
   const out = [];
   for (let i = 0; i + 1 < numbers.length; i += 2) out.push([numbers[i], numbers[i + 1]]);
   return out;
@@ -175,14 +182,19 @@ for (const mapId of MAP_IDS) {
 // and no cart's footprint stands in any other obstacle (a fence, a wall, firewood, a trough, a building, rubble, a rock,
 // a tree, a hedgehog): the pass seats each cart's whole body clear by 5 cm, its collision footprint lies inside that
 let carts = 0;
+/** A record's raised deck — a roof a hull stands on (physics stream F2, world/collision.ts collisionPartIsDeck): a drawn
+ * top starting over half a metre above the record, on a building — is a floor only, no footprint a vehicle stands in. */
+const isDeck = (record, part) => Array.isArray(part) && part[0] === 'p' && part[1] > record.b[1] + 0.5 && !record.q
+  && record.k !== 'tank-wreck' && record.k !== 'tram-wreck';
 const shardPolys = (record) => shapePolygons({ min: [record.b[0], 0, record.b[2]], max: [record.b[0], 0, record.b[2]],
-  shape2: decodeShape(record.s) });
+  shape2: decodeShape(Array.isArray(record.s) && record.s[0] === 'm'
+    ? ['m', ...record.s.slice(1).filter((part) => !isDeck(record, part))] : record.s) });
 function decodeShape(s) {
   if (!s) return undefined;
   if (s[0] === 'm') return { kind: 'compound', cx: 0, cz: 0, parts: s.slice(1).map(decodeShape) };
   if (s[0] === 'o') return { kind: 'obb', cx: s[1], cz: s[2], hw: s[3], hl: s[4], yaw: s[5] };
   if (s[0] === 'c') return { kind: 'circle', cx: s[1], cz: s[2], r: s[3] };
-  return { kind: 'convex', cx: 0, cz: 0, points: s[0] === 'w' ? s.slice(3) : s.slice(1) };
+  return { kind: 'convex', cx: 0, cz: 0, points: plan(s) };
 }
 // 2026-10-08 (the map-vehicles lane's placement audit over the merge): the parked vehicles too stand clear of every
 // other obstacle — the seating pass takes them after the lampposts, the sandbags, the hulks, the rubble and the kerbs
