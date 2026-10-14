@@ -139,6 +139,9 @@ export interface RigidShapeOptions {
   angularDrag?: number;
   /** At most this many contact spheres (default 64): a dense face grid widens until it fits. */
   maxSpheres?: number;
+  /** A body that never settles sleeps anyway after this long (s; default FORCE_SLEEP_STEPS' 25 s): cosmetic rubble asks
+   *  for less, so a creeping piece in a heap leaves the solver where it lies. */
+  forceSleepS?: number;
 }
 
 /** An immutable shape: mass properties about the centre of mass, its contact spheres and solids. */
@@ -165,6 +168,8 @@ export interface RigidShape {
   readonly rolls: boolean;
   readonly linearDrag: number;
   readonly angularDrag: number;
+  /** Steps after which a body of this shape sleeps whatever it does (RigidShapeOptions.forceSleepS). */
+  readonly forceSleepSteps: number;
 }
 
 /** What the bodies stand on and hit. */
@@ -505,6 +510,8 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
     rolls: !!options.rolls,
     linearDrag: Math.max(0, options.linearDrag ?? 0.02),
     angularDrag: Math.max(0, options.angularDrag ?? 0.08),
+    forceSleepSteps: options.forceSleepS !== undefined && options.forceSleepS > 0
+      ? Math.max(SLEEP_STEPS * 2, Math.round(options.forceSleepS / RIGID_STEP_S)) : FORCE_SLEEP_STEPS,
   });
 }
 
@@ -1468,7 +1475,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       if (restSteps[i] === 0) { restV2[i] = v2; restW2[i] = w2; }
       if (restSteps[i] < 65535) restSteps[i]++;
     } else restSteps[i] = 0;
-    if (age[i] >= FORCE_SLEEP_STEPS) { putToSleep(i); return; }
+    if (age[i] >= (shapes[i]?.forceSleepSteps ?? FORCE_SLEEP_STEPS)) { putToSleep(i); return; }
     if (restSteps[i] < SLEEP_STEPS) return;
     if (w2 > REST_GROWTH * restW2[i] + REST_FLOOR_RADS * REST_FLOOR_RADS
       || v2 > REST_GROWTH * restV2[i] + REST_FLOOR_MPS * REST_FLOOR_MPS) {
@@ -1492,7 +1499,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     asleep[i] = 0;
     restSteps[i] = 0;
     // a body woken in the middle of a long life gets its full time again before the force-sleep
-    if (age[i] >= FORCE_SLEEP_STEPS) age[i] = FORCE_SLEEP_STEPS - SLEEP_STEPS * 8;
+    const force = shapes[i]?.forceSleepSteps ?? FORCE_SLEEP_STEPS;
+    if (age[i] >= force) age[i] = Math.max(0, force - SLEEP_STEPS * 8);
   }
 
   // ---- the step ----

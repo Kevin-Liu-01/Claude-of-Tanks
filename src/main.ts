@@ -261,6 +261,7 @@ import { createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
+import { migrateStoredTankIds } from './game/tankIdStorageMigration.ts';
 import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRuntime.ts';
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
@@ -307,6 +308,9 @@ const {
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
+
+// Saved tank ids follow the id renames (SSOT 2.19) before anything reads them.
+migrateStoredTankIds((() => { try { return globalThis.localStorage; } catch { return null; } })());
 
 // Resolve the remembered hero and begin its exact family transfers before
 // renderer/garage construction. This overlaps network work with the staged
@@ -2283,7 +2287,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
     const runtime = createBrowserComposition({
-      clientBuild: import.meta.env.MODE,
+      // clientBuild: the composition's default, this build's match line (src/mp/wire/matchBuild.ts, the same-wire check)
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
@@ -2335,7 +2339,10 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
           tier: getDeviceTier(),
-          createIceResolver: (mode, room) => createRoomIceResolver({ mode, room }),
+          // a seat linking without a relay (a fallback, or a grant with no TURN server) leaves one `ice_degraded` note per reason
+          createIceResolver: (mode, room) => createRoomIceResolver({
+            mode, room, onDegraded: (reason) => entryTelemetry.send({ kind: 'ice_degraded', mode: 'network', code: reason }),
+          }),
         },
       },
     });
@@ -2813,6 +2820,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
+  // 2026-10-13 (the perf stream): the pending cover names the battlefield (a Random pick planned now, as the loading
+  // owner will consume it) while the loading owner itself still downloads
+  describePendingMap: (specId: string, mapId: string | null) => {
+    const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
+    return (MAP_IDS as readonly string[]).includes(resolved)
+      ? { mapId: resolved, mapName: getMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+  },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
   presentFailure: (error) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error)),
@@ -3236,6 +3250,8 @@ if (bootWorld) {
   battlePresentation.update();
 }
 await bootStage('post', async () => {
+  // The lazily loaded post passes (SMAA: engine/post.ts) take their places before any frame is warmed or shown.
+  await post.ready;
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;

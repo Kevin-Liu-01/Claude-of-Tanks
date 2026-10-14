@@ -138,7 +138,7 @@ assert.match(headlessSource, /nearestRecordHitAlongRay\(queryColliders, origin, 
 for (const source of [mapSource, headlessSource]) assert.doesNotMatch(source, /rayCollisionRecord\(/, 'no narrow phase of its own');
 assert.match(solo, /destruction\.drainBreaches\(breaches\);\s*for \(const breach of breaches\) bus\.emit\(DESTRUCTION_BUS_EVENTS\.breach, breach\);/,
   'the solo step raises structure:breach');
-assert.match(authority, /destruction\.drainBreaches\(breachEvents\);\s*for \(const event of breachEvents\) emit\('structure_breach', \{ \.\.\.event \}\);/,
+assert.match(authority, /destruction\.drainBreaches\(breachEvents\);\s*for \(const \{ sourceId, \.\.\.event \} of breachEvents\) emitFrom\(sourceId \?\? null, 'structure_breach', event\);/,
   'the authority sends structure_breach');
 
 console.log(`destructionSections: an M1A2's HE round holed the south wall (r ${heHole.radiusM} m), its APFSDS round passed the `

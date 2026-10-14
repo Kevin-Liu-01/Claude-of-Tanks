@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { presentationNumberSource, presentationReceiptErrors, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
+import { presentationNumberSource, presentationReceiptErrors, rekeyPresentationSource, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 
 // Actual saved/runtime disagreement from frozen nine-tank release 74d189dfa.
 const cases = [
@@ -204,5 +204,20 @@ for(const args of [['--update','--ids='],['--update','--ids']]){
   assert.equal(rejected.status,2,`empty explicit scope cannot become a full-fleet rewrite: ${rejected.stderr}`);
   assert.match(rejected.stderr,/explicit --ids scope must not be empty/);
   assert.equal(rejected.stdout,'','invalid CLI scope exits before browser launch');
+}
+// 2026-10-13 (SSOT 2.19): an id rename moves both rows of the renamed id, values and formatting exact, in id order.
+{
+  const source = ['export const TANK_PRESENTATION_ANCHORS: X = Object.freeze({',
+    '  alpha: Object.freeze({ xM: 0.1, zM: 0.2 }),', '  old_x: Object.freeze({ xM: -0.0088, zM: 0.1474 }),',
+    '  zulu: Object.freeze({ xM: 0, zM: 0 }),', '});', '',
+    'export const TANK_PRESENTATION_PROJECTIONS: Y = Object.freeze({',
+    '  alpha: Object.freeze({ centerYM: 1, topHalfM: 2, sideHalfM: 3 }),',
+    '  old_x: Object.freeze({ centerYM: 1.9925, topHalfM: 3.7585, sideHalfM: 2.132 }),', '});', ''].join('\n');
+  const moved = rekeyPresentationSource(source, (id) => (id === 'old_x' ? 'new_name' : id));
+  assert.equal(moved, source.replace('  old_x: Object.freeze({ xM: -0.0088, zM: 0.1474 }),\n', '')
+    .replace('  zulu:', '  new_name: Object.freeze({ xM: -0.0088, zM: 0.1474 }),\n  zulu:')
+    .replace('  old_x: Object.freeze({ centerYM', '  new_name: Object.freeze({ centerYM'));
+  assert.equal(rekeyPresentationSource(source, (id) => id), source, 'nothing renamed, nothing moves');
+  assert.throws(() => rekeyPresentationSource(source, (id) => (id === 'old_x' ? 'alpha' : id)), /two presentation rows/);
 }
 console.log(`presentation-receipt: existing capture framing, original stale-Y failures, ${negatives} rejected mutations, hash-verified atomic scoped sync and both preflight consumers PASS`);

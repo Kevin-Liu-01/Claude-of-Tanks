@@ -54,6 +54,8 @@ export interface MatchHostCoreOptions {
   endedLingerTicks?: number;
   /** The longest a migrated host holds its world still for the awaited seats (RESUME_HOLD_MS; 0 = never hold). */
   resumeHoldMs?: number;
+  /** This host's build line for the same-wire check (the actor's default, MATCH_BUILD, otherwise). */
+  build?: string;
 }
 
 /**
@@ -119,6 +121,7 @@ export function createMatchHostCore({
   helloTimeoutMs = HELLO_TIMEOUT_MS,
   endedLingerTicks,
   resumeHoldMs = RESUME_HOLD_MS,
+  build,
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
@@ -386,7 +389,8 @@ export function createMatchHostCore({
     config = next;
     migrationKey = await deriveMigrationKey(next.hostSecret);
     const [world] = await Promise.all([buildWorld(next), ensureAuthorityFleet(rosterSpecIds(next))]);
-    if (bootGeneration !== generation || disposed) return;
+    // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
+    if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
     const created = createMatchActor({
       roomId: next.roomId, mapId: next.mapId, mode: next.mode, seed: next.seed,
@@ -397,6 +401,7 @@ export function createMatchHostCore({
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
+      ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },
     });
     let restored = 0;
@@ -452,6 +457,7 @@ export function createMatchHostCore({
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
     if (stopped) return;
     stopped = true;
+    pendingOpens.length = 0; // links opened during the world load die with the core (boot returns on `stopped`)
     if (housekeeping !== null) { clearTimer(housekeeping); housekeeping = null; }
     if (hold) { if (hold.timer !== null) clearTimer(hold.timer); hold = null; }
     for (const gate of gates.values()) if (gate.timer !== null) clearTimer(gate.timer);

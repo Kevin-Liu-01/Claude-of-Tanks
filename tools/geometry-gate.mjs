@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -132,7 +133,11 @@ const ledgerPath = path.join(OUT, 'ledger.json');
 const byId = new Map();
 if (requested && fs.existsSync(ledgerPath)) {
   try {
-    for (const r of JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).rows || []) byId.set(r.id, r);
+    // A row under an id the tank id alias layer renamed carries over to the new id (SSOT 2.19).
+    for (const r of JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).rows || []) {
+      const id = TANK_IDS.isRetired(r.id) ? TANK_IDS.resolveIncoming(r.id) : r.id;
+      byId.set(id, { ...r, id });
+    }
   } catch { /* corrupted ledger rebuilds from this run */ }
 }
 for (const r of rows) byId.set(r.id, {
