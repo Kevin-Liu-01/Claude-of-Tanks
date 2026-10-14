@@ -29,7 +29,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 
 import type { RockForm, RockGeology } from './sceneryPlan.ts';
-import { formationCollisionProfile, rockGroundAt, type FormationCollisionProfile } from './rockCollision.ts';
+import { formationCollisionProfile, rockGroundAt, ROCK_DRIVE_OVER_M, type FormationCollisionProfile } from './rockCollision.ts';
 import { convexHull2 } from './collision.ts';
 
 type Rng = () => number;
@@ -68,6 +68,8 @@ interface RockMass {
   y0: number;
   y1: number;
   profile: FormationCollisionProfile;
+  /** The formation's fallen blocks and talus rather than its standing stone (buildRockFormation). */
+  fallen?: boolean;
 }
 
 interface RockFormationBuild {
@@ -308,7 +310,7 @@ function downhill(ground: RockGround, x: number, z: number, step: number): [numb
 function massOf(pieces: Piece[], ground: RockGround, floor: number): RockMass | null {
   // (2026-10-08) the stone's rise over the ground a hull meets and the eye sees: the rendered triangles, which part from
   // the 1 m grid by metres at a cliff's foot (rockCollision.ts rockGroundAt)
-  const profile = formationCollisionProfile(pieces.filter((piece) => piece.standing).map((piece) => piece.geometry), rockGroundAt(ground));
+  const profile = formationCollisionProfile(pieces.map((piece) => piece.geometry), rockGroundAt(ground));
   if (!profile) return null;
   const corners: Array<[number, number]> = [];
   for (const outline of profile.contact) for (let i = 0; i < outline.length; i += 2) corners.push([outline[i], outline[i + 1]]);
@@ -1306,14 +1308,41 @@ export function buildRockFormation(
     }
     return laid;
   };
-  const pieces = lay(rng, mobile);
+  const own = lay(rng, mobile);
   // (the collision: the desktop's pieces, laid from a fresh copy of the stream when this tier lays others)
-  const desk = collision && collision.mobile !== mobile ? lay(collision.stream(), collision.mobile) : pieces;
-  const mass = massOf(desk, ground, min);
+  const desk = collision && collision.mobile !== mobile ? lay(collision.stream(), collision.mobile) : own;
+  // (physics stream, 2026-10-13, after the hitbox lane's held round 3: the tank-world census's rock-gap pass found eight
+  // scenery masses whose records held under half the stone a hull meets — their fallen blocks and talus, which carried no
+  // collider, so a hull drove into stone it saw) the desktop's loose pieces that rise past the drive-over line carry a
+  // fallen mass of their own, each under its drawn top (rockCollision.ts stoneCapPlanes); a phone draws those of the
+  // desktop's loose stones where the desktop draws them, so its colliders and its stone agree
+  const groundAt = rockGroundAt(ground);
+  const rises = (piece: Piece): number => {
+    const p = piece.geometry.attributes.position;
+    let rise = -Infinity;
+    for (let i = 0; i < p.count; i++) rise = Math.max(rise, p.getY(i) - groundAt(p.getX(i), p.getZ(i)));
+    return rise;
+  };
+  const solid = new Set(desk.filter((piece) => !piece.standing && rises(piece) >= ROCK_DRIVE_OVER_M));
+  const masses: RockMass[] = [];
+  const standing = massOf(desk.filter((piece) => piece.standing), ground, min);
+  if (standing) masses.push(standing);
+  const fallen = solid.size ? massOf([...solid], ground, min) : null;
+  if (fallen) { fallen.fallen = true; masses.push(fallen); }
   const laid = desk.length > 0;
-  if (desk !== pieces) for (const piece of desk) piece.geometry.dispose();
-  const count = pieces.length;
-  const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
+  let drawn = own;
+  if (desk !== own) {
+    // a phone draws its own standing stone and the desktop's loose stones that carry a collider, with two in five of the
+    // desktop's other loose stones (its lean scatter)
+    let rest = 0;
+    const loose = desk.filter((piece) => !piece.standing && (solid.has(piece) || rest++ % 5 < 2));
+    const kept = new Set(loose);
+    for (const piece of own) if (!piece.standing) piece.geometry.dispose();
+    for (const piece of desk) if (!kept.has(piece)) piece.geometry.dispose();
+    drawn = [...own.filter((piece) => piece.standing), ...loose];
+  }
+  const count = drawn.length;
+  const geometry = count ? finish(drawn, spec.geology, spec.tone, ground, noise, spec.x * 0.013 + spec.z * 0.007) : null;
   const triangles = geometry ? geometry.attributes.position.count / 3 : 0;
-  return { geometry, masses: mass ? [mass] : [], pieces: count, triangles, laid };
+  return { geometry, masses, pieces: count, triangles, laid };
 }

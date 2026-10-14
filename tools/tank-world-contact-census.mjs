@@ -68,9 +68,11 @@ function mulberry32(seed) {
 }
 /** Up to `count` candidates in a seeded order, each at least `spacing` metres from those already taken. */
 function spreadPick(candidates, count, spacing, seed) {
-  const random = mulberry32(seed);
-  const keyed = candidates.map((c) => ({ c, k: random() }));
-  keyed.sort((a, b) => a.k - b.k);
+  // (2026-10-13) each candidate's key is a hash of its place (its 2 m cell), not of its index in the list: a tree whose
+  // records differ (a stone's record redrawn, a formation's fallen mass added) picks the same stones where both have them,
+  // so a run id names the same stone on main and on a fix and the ledger's pairs compare like with like
+  const keyed = candidates.map((c) => ({ c, k: placeKey(seed, c.x, c.z) }));
+  keyed.sort((a, b) => a.k - b.k || a.c.x - b.c.x || a.c.z - b.c.z);
   const out = [];
   for (const { c } of keyed) {
     if (out.length >= count) break;
@@ -78,6 +80,14 @@ function spreadPick(candidates, count, spacing, seed) {
     out.push(c);
   }
   return out;
+}
+
+/** A deterministic key in [0, 1) for a place (its 2 m cell) under a seed. */
+function placeKey(seed, x, z) {
+  let h = (seed ^ Math.imul(Math.round(x / 2) | 0, 73856093) ^ Math.imul(Math.round(z / 2) | 0, 19349663)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
 // ---- record geometry ----------------------------------------------------------------------------------------------
@@ -157,6 +167,9 @@ function solidAt(records, x, z, y = -Infinity) {
 }
 
 // ---- the world one map's runs share -----------------------------------------------------------------------------
+/** The census's world, loader and drive plans, for scripts that replay one maneuver (the film's authority traces). */
+export const censusInternals = { loadWorld: (mapId, variant = 'base') => loadWorld(mapId, variant), resetWorld: (world) => resetWorld(world),
+  driveAcross: (opts) => driveAcross(opts), WORLD_HALF_M };
 async function loadWorld(mapId, variant) {
   const { createDedicatedWorldCollision } = await import('../server/dedicatedWorldCollision.ts');
   const worldCollision = createDedicatedWorldCollision(mapId, { variant: variant === 'base' ? null : variant });
@@ -747,7 +760,7 @@ const KEEP = ['nan', 'popXZMaxM', 'popsXZ', 'popYMaxM', 'popsY', 'snapMaxRad', '
   'hullPenMaxM', 'roofSinkMaxM', 'gearCompMaxM', 'longestStuckS', 'stuckS', 'pushFlips', 'overturnedS', 'tumblingS', 'maxLandingMps',
   'energyGainMaxJkg', 'reboundExcessMps', 'closingExcessMps', 'liftM', 'longestAirS', 'perchedS', 'progressM', 'joltYMaxM', 'joltsY6',
   'joltsY12', 'joltXZMaxM', 'joltsXZ6', 'joltAt', 'tiltMaxDeg', 'fellThroughM', 'insideSolidM', 'insideSolidS', 'outOfWorld',
-  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp', 'insideDrawnS', 'insideDrawnM', 'liftOverGroundM', 'onStoneShare', 'overStoneS'];
+  'takeoffMaxMps', 'launches', 'rest', 'final', 'bodyPenAt', 'fallDamageHp', 'impactDamageHp', 'insideDrawnS', 'insideDrawnM', 'liftOverGroundM', 'onStoneShare', 'overStoneS', 'obstaclePenS', 'obstaclePenRunS', 'bodyPenS', 'bodyPenRunS'];
 function compact(metrics) {
   const out = {};
   for (const key of KEEP) {
@@ -769,9 +782,11 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
     list.forEach((site, siteIndex) => {
       const plans = maneuvers(world, site, seed + siteIndex * 97 + Math.max(0, CLASSES.indexOf(cls)));
       plans.forEach(([maneuver, plan], planIndex) => {
-        const hullId = CENSUS_HULLS[(siteIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
+        // (the hull by the site's place, as the site is picked, so main and a fix send the same hull at the same stone)
+        const placeIndex = Number.isFinite(site.x) && Number.isFinite(site.z) ? Math.floor(placeKey(4049, site.x, site.z) * 1024) : siteIndex;
+        const hullId = CENSUS_HULLS[(placeIndex + planIndex + Math.max(0, CLASSES.indexOf(cls))) % CENSUS_HULLS.length];
         const id = `${mapId}${variant === 'base' ? '' : `@${variant}`}/${cls}/${site.sub}/${siteIndex}/${maneuver}`;
-        if (only && id !== only) return;
+        if (only && !(only instanceof Set ? only.has(id) : id === only)) return;
         resetWorld(world);
         // (the records the metrics read: those round the site, without the trees, which every hull fells on contact)
         const near = world.query(site.x, site.z, 40).filter((r) => r.treeIdx == null && r.kind !== 'tree');
@@ -903,11 +918,16 @@ export function ledger(rows, baseRows = null) {
   ranked.sort((a, b) => b.score - a.score);
   let compare = null;
   if (baseRows) {
-    const baseById = new Map(baseRows.map((r) => [`${r.id}|${r.hull}`, r]));
+    // (runs pair by class, sub-class, maneuver, place and hull: a run id's site index shifts when one tree's records add a
+    // stone to a bin)
+    const pairKey = (r) => (r.site && Number.isFinite(r.site.x)
+      ? `${r.map}|${r.variant}|${r.cls}|${r.sub}|${r.maneuver}|${Math.round(r.site.x / 2)},${Math.round(r.site.z / 2)}|${r.hull}`
+      : `${r.id}|${r.hull}`);
+    const baseById = new Map(baseRows.map((r) => [pairKey(r), r]));
     compare = { matched: 0, fixed: {}, regressed: {}, regressedRuns: [] };
     for (const row of rows) {
-      const base = baseById.get(`${row.id}|${row.hull}`);
-      if (!base) continue;
+      const base = baseById.get(pairKey(row));
+      if (!base) { compare.unpaired = (compare.unpaired ?? 0) + 1; continue; }
       compare.matched++;
       for (const d of base.defects) if (!row.defects.includes(d)) compare.fixed[d] = (compare.fixed[d] ?? 0) + 1;
       for (const d of row.defects) {
@@ -984,7 +1004,7 @@ export function ledgerMarkdown(report, { title = 'Tank-world contact census', no
     lines.push(`| ${map} | ${m.runs} | ${m.withDefect} | ${m.score} |`);
   }
   if (report.compare) {
-    lines.push('', '## Against the base census', '', `${report.compare.matched} runs matched by id and hull.`, '',
+    lines.push('', '## Against the base census', '', `${report.compare.matched} runs paired by class, maneuver, place and hull${report.compare.unpaired ? ` (${report.compare.unpaired} with no pair in the base, left out)` : ''}.`, '',
       `Fixed: ${Object.entries(report.compare.fixed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`, '',
       `New: ${Object.entries(report.compare.regressed).map(([d, n]) => `${d} ${n}`).join(', ') || 'none'}`);
     for (const r of report.compare.regressedRuns.slice(0, 30)) lines.push(`- \`${r.id}\` ${r.hull}: ${r.defect} ${r.base} -> ${r.now}`);
@@ -1042,7 +1062,10 @@ async function main() {
   for (const mapId of maps) {
     for (const variant of variants) {
       const started = performance.now();
-      const rows = await censusMap(mapId, { variant, classes, sites, world: args.world ?? 'earth', only: args.only ?? null,
+      // (--only takes one run id, or several comma-separated; --only-file a JSON list of ids)
+      const onlyList = args['only-file'] ? JSON.parse(readFileSync(args['only-file'], 'utf8')) : typeof args.only === 'string' ? args.only.split(',') : null;
+      const only = onlyList ? (onlyList.length === 1 ? onlyList[0] : new Set(onlyList)) : null;
+      const rows = await censusMap(mapId, { variant, classes, sites, world: args.world ?? 'earth', only,
         trace: args.trace ?? null,
         onRow: args.quiet ? null : (r) => console.log(`${r.id.padEnd(58)} ${r.hull.padEnd(11)} ${r.defects.length ? r.defects.join(',') : 'ok'}`
           + ` jolt${(r.m.joltYMaxM ?? 0).toFixed(3)} pop${(r.m.popXZMaxM ?? 0).toFixed(2)}/${(r.m.popYMaxM ?? 0).toFixed(2)}`

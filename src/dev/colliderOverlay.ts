@@ -13,7 +13,7 @@
 // InstancedInterleavedBuffer into the shared three.core chunk every page preloads, though only this lazy overlay used
 // them (the gallery 1,461 B over its budget). The classes used here are already in that chunk (the gallery's overlays).
 import * as THREE from 'three';
-import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
+import { collisionPartSection, collisionPartTopAt, type CollisionRecord, type SimpleCollisionShape } from '../world/collision.ts';
 
 interface OverlayWorld {
   getObstacles?(): CollisionRecord[];
@@ -110,12 +110,53 @@ export function recordSegments(record: CollisionRecord, groundAt: ((x: number, z
       for (let i = 0; i < n; i++) lowest = Math.min(lowest, groundAt(outline[i * 2], outline[i * 2 + 1]));
       if (Number.isFinite(lowest)) y0 = Math.max(y0, Math.min(lowest, y1));
     }
+    if (part && part.kind === 'convex' && part.tp) {
+      drawnTopSegments(record, part, outline, y0, out);
+      continue;
+    }
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
       const ax = outline[i * 2], az = outline[i * 2 + 1], bx = outline[j * 2], bz = outline[j * 2 + 1];
       out.push(ax, y0, az, bx, y0, bz, ax, y1, az, bx, y1, bz);
       // posts at every other corner of a many-sided outline (a circle's or a stone's), at every corner of a box
       if (n <= 8 || i % 2 === 0) out.push(ax, y0, az, ax, y1, az);
+    }
+  }
+}
+
+const _contour: number[] = [];
+/**
+ * A part with a drawn top (a stone: world/collision.ts collisionPartTopAt) drawn as the hull meets it: its outline at
+ * its foot, the top's edge over that outline following the stone, posts at every other corner, and the contours a
+ * quarter, half and three quarters up its rise (the stone's own section there, collisionPartSection).
+ */
+function drawnTopSegments(
+  record: CollisionRecord, part: Extract<SimpleCollisionShape, { kind: 'convex' }>, outline: readonly number[], y0: number,
+  out: number[],
+): void {
+  const n = outline.length / 2;
+  let peak = y0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ax = outline[i * 2], az = outline[i * 2 + 1], bx = outline[j * 2], bz = outline[j * 2 + 1];
+    out.push(ax, y0, az, bx, y0, bz);
+    const ta = collisionPartTopAt(record, part, ax, az);
+    if (n <= 8 || i % 2 === 0) out.push(ax, y0, az, ax, ta, az);
+    for (let k = 0; k < 4; k++) {
+      const u0 = k / 4, u1 = (k + 1) / 4;
+      const x0 = ax + (bx - ax) * u0, z0 = az + (bz - az) * u0, x1 = ax + (bx - ax) * u1, z1 = az + (bz - az) * u1;
+      out.push(x0, collisionPartTopAt(record, part, x0, z0), z0, x1, collisionPartTopAt(record, part, x1, z1), z1);
+    }
+    peak = Math.max(peak, ta);
+  }
+  peak = Math.max(peak, collisionPartTopAt(record, part, part.cx, part.cz));
+  for (const share of [0.25, 0.5, 0.75]) {
+    const h = y0 + (peak - y0) * share;
+    if (!collisionPartSection(part, h, _contour)) continue;
+    const m = _contour.length / 2;
+    for (let i = 0; i < m; i++) {
+      const j = (i + 1) % m;
+      out.push(_contour[i * 2], h, _contour[i * 2 + 1], _contour[j * 2], h, _contour[j * 2 + 1]);
     }
   }
 }
