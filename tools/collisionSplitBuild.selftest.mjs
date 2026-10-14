@@ -11,9 +11,9 @@
 //     pass --jobs=1 and assert that line's absence.
 // 2026-10-14 (the second coverage check's counterexamples, each of which this receipt now fails on the code it found):
 //   - nothing splits unless --jobs=N asks: a bare --check (the landing chains' command), --node, --tier=mobile and
-//     --variant build serially, every map after every earlier map in one process, the one build that sees state a map's
-//     build leaves for a later one (the f20e0796b default split hid an injected western1944 cache leak, polders into
-//     reservoir); the tool decides only through collisionBuildMode;
+//     --variant build serially, every map after every earlier map in one process, as a page that changes battlefields
+//     builds them (the f20e0796b default split hid an injected western1944 cache leak, polders into reservoir); the tool
+//     decides only through collisionBuildMode;
 //   - the child marker binds a child to its parent's pid: a hand-set or inherited COT_COLLISION_JOB (it used to turn a
 //     drifted check into exit 0 with no summary, and skip a regeneration's index) is refused with exit 2 by the real
 //     tool, and a child deletes the marker so nothing it starts inherits it;
@@ -21,8 +21,16 @@
 //     house-rule perl alarm's SIGALRM, an uncatchable SIGKILL), the parent dies of that signal as the serial run does
 //     (SIGHUP used to exit 143) and every child is gone within seconds, even one busy in a long synchronous build (they
 //     used to run on with PPID 1 and rewrite shards after the time limit), while a live parent's children keep writing.
+// 2026-10-14 (the third coverage check's counterexample, which this receipt now fails on the code it found):
+//   - a split regenerates every map or nothing: the documented `--node --jobs=4 --maps polders,reservoir` built the two
+//     maps apart, wrote what the serial check builds and so hid an injected cache through which Polders bent Reservoir,
+//     which origin/main's serial regeneration of the two (Reservoir right after Polders) wrote and its serial check then
+//     reported. A sweep over every selection shape holds the invariant (whatever splits and writes is the whole roster,
+//     whose serial order is the check's); the real tool refuses the partial split before it writes; and every command in
+//     DEVELOPMENT.md's code blocks and the tool's usage block parses, its checks serial, no option hidden in a comment.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -31,6 +39,7 @@ import {
   collisionBuildMode, collisionJobArgs, collisionJobDoneLine, collisionJobShares, runCollisionSplitBuild,
 } from './collisionSplitBuild.mjs';
 import { collisionCaptureOptions } from './worldCollisionManifestFiles.mjs';
+import { MAP_IDS } from '../src/world/maps/catalog.ts';
 
 assert.deepEqual(collisionJobShares(['a', 'b', 'c', 'd', 'e'], 2), [['a', 'c', 'e'], ['b', 'd']], 'round-robin shares');
 assert.deepEqual(collisionJobShares(['a', 'b'], 4), [['a'], ['b']], 'no empty share');
@@ -46,8 +55,46 @@ for (const args of [['--check'], ['--node'], ['--tier=mobile'], ['--variant=assa
   assert.deepEqual(mode(args), { mode: 'serial', jobs: 1 }, `${args.join(' ')} builds every map after the one before it in one process`);
 }
 assert.deepEqual(mode(['--check', '--jobs=4']), { mode: 'split', jobs: 4 });
-assert.deepEqual(mode(['--node', '--jobs=2', '--maps', 'desert,whiteout']), { mode: 'split', jobs: 2 });
+assert.deepEqual(mode(['--node', '--jobs=2']), { mode: 'split', jobs: 2 });
+assert.deepEqual(mode(['--variant=assault-trenches', '--jobs=4']), { mode: 'split', jobs: 4 });
 assert.deepEqual(mode(['--tier=mobile', '--jobs=3']), { mode: 'split', jobs: 3 });
+assert.deepEqual(mode(['--check', '--jobs=2', '--maps', 'polders,reservoir']), { mode: 'split', jobs: 2 }, 'a check of some maps may split');
+
+// 2026-10-14 (the third coverage check): a split regenerates every map or nothing. A serial regeneration of some maps
+// builds each after the selected maps before it, an order the serial check never builds, so the check can report a
+// build that depends on them; a split builds them apart and writes what the check builds. With an injected cache through
+// which Polders bent Reservoir, origin/main's serial `--node --maps polders,reservoir` and serial check failed, and the
+// documented `--node --jobs=4 --maps polders,reservoir` and the same check passed. The invariant, over every selection
+// shape the tool takes: whatever it splits and writes is the whole roster, whose serial order is the check's own (so a
+// split regeneration can only add drift), and the only refusal is a split regeneration of some maps.
+const pairs = MAP_IDS.slice(1).map((id, index) => `${MAP_IDS[index]},${id}`);
+const selections = [null, ...MAP_IDS, ...pairs, 'autumn,alpine,foundry,polders,reservoir', MAP_IDS.join(',')];
+const kinds = [['--node'], ['--check'], ['--variant=assault-trenches'], ['--check', '--variant=assault-trenches'], ['--tier=mobile']];
+let sweeps = 0;
+for (const kind of kinds) for (const selection of selections) for (const jobs of [null, 1, 2, 4, 8]) {
+  const args = [...kind, ...(selection === null ? [] : ['--maps', selection]), ...(jobs === null ? [] : [`--jobs=${jobs}`])];
+  const regeneration = !kind.includes('--check') && !kind.includes('--tier=mobile');
+  const refused = regeneration && selection !== null && jobs > 1;
+  let options;
+  try { options = collisionCaptureOptions(args); } catch (error) {
+    assert.ok(refused, `${args.join(' ')} is refused only as a split regeneration of some maps: ${error.message}`);
+    assert.match(error.message, /splits a regeneration of every map only: regenerate some maps serially/);
+    sweeps++;
+    continue;
+  }
+  assert.ok(!refused, `${args.join(' ')} (a split regeneration of some maps) is refused`);
+  const built = collisionBuildMode(options, { env: {}, ppid: 4242 });
+  if (!options.check) {
+    if (built.mode === 'split') assert.deepEqual(options.mapIds, MAP_IDS, `${args.join(' ')} splits a regeneration of every map only`);
+    if (options.partial) assert.equal(built.mode, 'serial', `${args.join(' ')} regenerates some maps serially`);
+  }
+  sweeps++;
+}
+// collisionBuildMode holds the invariant itself, for options that never met the parser
+assert.throws(() => collisionBuildMode({ node: true, check: false, partial: true, jobs: 4, mapIds: ['polders', 'reservoir'] }, { env: {} }),
+  /a split regeneration rebuilds every map: regenerate some maps serially/);
+assert.deepEqual(collisionBuildMode({ node: true, check: true, partial: true, jobs: 4, mapIds: ['polders', 'reservoir'] }, { env: {} }),
+  { mode: 'split', jobs: 4 });
 // the child marker holds the parent's pid; any other value (inherited, hand-set, a parent that died first) is refused
 assert.deepEqual(mode(['--check', '--maps', 'desert'], { COT_COLLISION_JOB: '4242' }), { mode: 'child', parent: 4242 });
 assert.deepEqual(mode(['--node', '--jobs=4'], { COT_COLLISION_JOB: '4242' }), { mode: 'child', parent: 4242 }, 'a child never splits again');
@@ -67,6 +114,55 @@ const handSet = spawnSync(process.execPath, [tool, '--check', '--maps', 'moon'],
 assert.equal(handSet.status, 2, `a hand-set child marker exits 2 (it exited ${handSet.status ?? handSet.signal}): ${handSet.stderr}`);
 assert.match(handSet.stderr, /COT_COLLISION_JOB=1 marks a split build's child, but this process's parent is \d+/);
 assert.equal(handSet.stdout, '', 'nothing was built or reported');
+// the documented split regeneration of some maps (DEVELOPMENT.md's old "(or --maps a,b)" beside --jobs=4) is refused by
+// the real tool before it builds or writes anything: the two shards and the index keep their bytes
+const shardDirectory = new URL('../server/world-collision-manifests/', import.meta.url);
+const shardDigests = () => ['index.json', 'polders.json', 'reservoir.json']
+  .map((name) => createHash('sha256').update(readFileSync(new URL(name, shardDirectory))).digest('hex'));
+const shardsBefore = shardDigests();
+const { COT_COLLISION_JOB: _inherited, ...unmarked } = process.env;
+const partialSplit = spawnSync(process.execPath, [tool, '--node', '--jobs=4', '--maps', 'polders,reservoir'],
+  { encoding: 'utf8', timeout: 120_000, env: unmarked });
+assert.notEqual(partialSplit.status, 0, `a split regeneration of some maps fails (it exited ${partialSplit.status ?? partialSplit.signal})`);
+assert.match(partialSplit.stderr, /--jobs=4 splits a regeneration of every map only: regenerate some maps serially/);
+assert.equal(partialSplit.stdout, '', 'no map was built');
+assert.doesNotMatch(partialSplit.stderr, /split over \d+ jobs/, 'no child was started');
+assert.deepEqual(shardDigests(), shardsBefore, 'no shard and no index was written');
+
+// Every command the landing procedure (docs/DEVELOPMENT.md's code blocks) and the tool's usage block give is one the
+// tool takes, as given: every documented check is serial (the landing checks never split), and an option the procedure
+// offers sits in a command line this receipt parses, never in a comment (the old "# regenerate (or --maps a,b)" beside
+// --jobs=4 offered the refused split regeneration of some maps). The procedure says what a passing serial check shows.
+const development = readFileSync(new URL('../docs/DEVELOPMENT.md', import.meta.url), 'utf8');
+const documented = [];
+let fenced = false;
+for (const line of development.split('\n')) {
+  if (/^\s*```/.test(line)) fenced = !fenced;
+  else if (fenced && line.includes('tools/capture-world-collision-manifests.mjs')) documented.push(['docs/DEVELOPMENT.md', line]);
+}
+assert.ok(documented.length >= 5, `the landing procedure's shard steps (the regenerations and the three checks) are in a code block (${documented.length} found)`);
+for (const line of toolSource.split('\n')) {
+  if (/^ \*   node tools\/capture-world-collision-manifests\.mjs /.test(line)) documented.push(['the tool\'s usage', line]);
+}
+for (const [where, line] of documented) {
+  const hash = line.indexOf(' #');
+  const command = (hash < 0 ? line : line.slice(0, hash)).trim().split(/\s+/);
+  const comment = hash < 0 ? '' : line.slice(hash);
+  assert.doesNotMatch(comment, /(?:^|[\s(])--[a-z]/, `${where}: a comment offers no option of its own (${line.trim()})`);
+  const args = command.slice(command.indexOf('tools/capture-world-collision-manifests.mjs') + 1);
+  let options;
+  assert.doesNotThrow(() => { options = collisionCaptureOptions(args); }, `${where}: the tool takes ${args.join(' ')}`);
+  const built = collisionBuildMode(options, { env: {}, ppid: 4242 });
+  if (options.check) assert.equal(built.mode, 'serial', `${where}: a documented check is serial (${args.join(' ')})`);
+  if (built.mode === 'split') assert.deepEqual(options.mapIds, MAP_IDS, `${where}: a documented split regenerates every map`);
+}
+assert.ok(documented.some(([, line]) => /--node --jobs=\d/.test(line)), 'the procedure regenerates every map split');
+assert.ok(documented.some(([where, line]) => where === 'docs/DEVELOPMENT.md' && /--node --maps \S+ /.test(line)),
+  'the procedure regenerates some maps serially');
+const prose = development.replace(/\s+/g, ' ');
+assert.match(prose, /A regeneration of some maps never splits: the tool refuses `--jobs` with `--maps` there/);
+assert.match(prose, /A passing serial check does not show that no build depends on the maps before it/);
+assert.doesNotMatch(prose, /what the serial check confirms/, 'a passing serial check confirms no independence of the builds');
 
 // The stub child: its share comes in --maps as the tool's does; STUB_SCENARIO says what each map does.
 // It arms itself as the tool's children do (the marker check, the watchdog and the check before each write are the real
@@ -239,4 +335,4 @@ const orphans = await Promise.all([
   orphanCase('SIGHUP', 'hang'), orphanCase('SIGTERM', 'hang'), orphanCase('SIGINT', 'hang'),
   orphanCase('SIGALRM', 'busy'), orphanCase('SIGKILL', 'busy'), orphanCase('SIGALRM', 'hang'),
 ]);
-console.log(`collisionSplitBuild.selftest: nothing splits without --jobs; a child marker its parent did not set exits 2; the split build prints the serial order, exits 1 only on a reported drift and 2 on any unsound child (exit 1 after its lines, no job-done, a disagreeing job-done, a dropped map or entry, a signal); a parent killed by SIGHUP, SIGTERM, SIGINT, SIGALRM or SIGKILL dies of it and takes its children (${orphans.join(', ')}) PASS`);
+console.log(`collisionSplitBuild.selftest: nothing splits without --jobs; a split regenerates every map or nothing (${sweeps} option sets swept, the real tool refuses --jobs=4 --maps polders,reservoir, ${documented.length} documented commands parse and check serially); a child marker its parent did not set exits 2; the split build prints the serial order, exits 1 only on a reported drift and 2 on any unsound child (exit 1 after its lines, no job-done, a disagreeing job-done, a dropped map or entry, a signal); a parent killed by SIGHUP, SIGTERM, SIGINT, SIGALRM or SIGKILL dies of it and takes its children (${orphans.join(', ')}) PASS`);

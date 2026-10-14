@@ -4,12 +4,20 @@
 // in map order and returns the verdict; the tool prints the check's summary or publishes the index from the children's
 // entries.
 //
-// What a split gives up (2026-10-14, the coverage check's counterexamples): the serial build makes every map after every
-// earlier map in one process, so it sees state one map's build leaves behind for a later one (a cache entry a builder
-// mutates; a page that changes battlefields reads it). A split builds each map after its share's earlier maps only, and
-// no split that is much faster than the serial build can build every map after all the maps before it. So the tool
-// builds serially unless --jobs=N asks for a split (collisionBuildMode), a split check says so in its summary, and the
-// landing check stays the serial `--check`.
+// What a split gives up (2026-10-14, the coverage checks' counterexamples): a map's build can depend on the maps built
+// before it in the same process (a cache entry a builder mutates; a page that changes battlefields reads it). The serial
+// build makes every map after every earlier map; a split makes each map after its share's earlier maps only, and no
+// split much faster than the serial build can build every map after all the maps before it. No check proves that no
+// build depends on earlier maps: a check compares its own build of each map with the bytes the regeneration wrote, so a
+// dependence shows as drift only where the regeneration built the map in another order and the two orders give
+// different bytes. A regeneration of some maps is such a second order (each map after the selected maps before it: the
+// third check's leak, Polders bending Reservoir, failed origin/main's serial check that way); a split of those maps
+// would build them apart and write what the check builds. A regeneration of every map serially is the check's own
+// order, so a split of it can only add drift. Hence:
+//   - the tool builds serially unless --jobs=N asks for a split (collisionBuildMode);
+//   - a split regenerates every map or nothing: collisionCaptureOptions refuses --jobs with --maps on a regeneration,
+//     and collisionBuildMode never returns a split regeneration of some maps;
+//   - a split check (a quick look) says so in its summary, and the landing checks stay the serial `--check`s.
 //
 // The child protocol (tools/collisionSplitBuild.selftest.mjs drives it with stub children):
 //   job-map <id>              before each map's build; the map's lines follow it
@@ -60,8 +68,8 @@ export function collisionJobArgs(argv) {
 
 /**
  * How the tool runs: `serial` (every map one after another in this process: the default, and always for a browser
- * capture or one map), `split` over `jobs` children (only when --jobs=N asks for more than one), or `child` of the split
- * build whose pid the marker holds. A marker that names any other process throws (the tool exits 2): the protocol's
+ * capture, one map or a regeneration of some maps), `split` over `jobs` children (only when --jobs=N asks for more than
+ * one, and for a regeneration only of every map), or `child` of the split build whose pid the marker holds. A marker that names any other process throws (the tool exits 2): the protocol's
  * quiet exit (drift reported in job-done, exit 0, no summary, no index) is taken only when the marker names this process's
  * own parent, never on an inherited variable, a stale one, or one set by hand to anything else.
  */
@@ -75,7 +83,14 @@ export function collisionBuildMode(options, { env = process.env, ppid = process.
       + ' variable: unset it to run the tool)');
   }
   const jobs = options.jobs ?? 1;
-  return options.node && jobs > 1 && options.mapIds.length > 1 ? { mode: 'split', jobs } : { mode: 'serial', jobs: 1 };
+  const split = options.node && jobs > 1 && options.mapIds.length > 1;
+  // collisionCaptureOptions refuses it first: a split regeneration of some maps builds them apart, where the serial one
+  // builds each after the selected maps before it (an order the serial check never builds, so it reports a build that
+  // depends on them); a split regeneration of every map can only add drift to the serial one's
+  if (split && !options.check && options.partial) {
+    throw new Error('a split regeneration rebuilds every map: regenerate some maps serially (without --jobs)');
+  }
+  return split ? { mode: 'split', jobs } : { mode: 'serial', jobs: 1 };
 }
 
 /**

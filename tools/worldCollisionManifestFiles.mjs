@@ -78,6 +78,16 @@ export function collisionCaptureOptions(args) {
   if (tier !== null) { if (variant !== null) throw new Error('--tier checks the base maps only'); node = true; check = true; }
   if (node && (headless || session !== null)) throw new Error('--node builds without a browser session');
   if (jobs !== null && !node) throw new Error('--jobs splits a Node build (--node, --check, --variant, --tier), never a browser capture');
+  // 2026-10-14 (speed, the third coverage check): a split regenerates the whole roster only. A serial regeneration of
+  // some maps builds each one after the selected maps before it, an order the serial check never builds, so a build
+  // that depends on an earlier map's (Polders bending Reservoir through a cache) is written into the shard and shows as
+  // drift at the check; a split builds the maps apart, writes what the check builds and hides it. Regenerating every
+  // map, the serial run's order is the check's, and a split can only add drift. (A check of some maps may split: it is
+  // a quick look, never the landing check.)
+  if (jobs !== null && jobs > 1 && !check && selected !== null) {
+    throw new Error(`--jobs=${jobs} splits a regeneration of every map only: regenerate some maps serially (without --jobs),`
+      + ' so each is built after the selected maps before it and the serial --check can report a build that depends on them');
+  }
   return { session: session || 'cot-manifest', partial: selected !== null, headless, cacheDir, node, check,
     ...(jobs !== null ? { jobs } : {}),
     ...(variant !== null ? { variant } : {}),

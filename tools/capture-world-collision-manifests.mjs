@@ -27,17 +27,22 @@
  *   node tools/capture-world-collision-manifests.mjs --check
  *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
  *
- * 2026-10-13 (speed): `--jobs=N` (2-8) splits a Node build of more than one map (a regeneration, a check, the phone
- * tier, a variant) round-robin over N child processes of this tool. Each child builds its share, writes its shards and
- * closes with a `job-done` line naming the maps it found drifted (tools/collisionSplitBuild.mjs); the parent prints the
- * per-map lines in map order, publishes the index itself, and exits 1 on a reported drift, or 2 when a child is unsound
- * (any non-zero exit, no job-done line, a missing map). Without `--jobs` (or with `--jobs=1`) the build is the serial
- * one, as before: every map after every earlier map in one process, which is the only build that sees state one map's
- * build leaves for a later one (a page that changes battlefields). A split does not, and its check says so in its
- * summary; so the split is for regenerating, and the landing checks stay serial (docs/DEVELOPMENT.md):
+ * 2026-10-13 (speed): `--jobs=N` (2-8) splits a Node build of more than one map (a regeneration of every map, a check,
+ * the phone tier, a variant) round-robin over N child processes of this tool. Each child builds its share, writes its
+ * shards and closes with a `job-done` line naming the maps it found drifted (tools/collisionSplitBuild.mjs); the parent
+ * prints the per-map lines in map order, publishes the index itself, and exits 1 on a reported drift, or 2 when a child
+ * is unsound (any non-zero exit, no job-done line, a missing map). Without `--jobs` (or with `--jobs=1`) the build is
+ * the serial one, as before: every map after every earlier map in one process, as a page that changes battlefields
+ * builds them. A split builds each map after its share's earlier maps only, and its check says so in its summary. So
+ * the split is for regenerating every map, and the landing checks stay serial (docs/DEVELOPMENT.md). 2026-10-14: a
+ * regeneration of some maps never splits (collisionCaptureOptions refuses --jobs with --maps there). Serially it builds
+ * each map after the selected maps before it, an order the serial check never builds, so the check can report a build
+ * that depends on them; a split would build them apart and write what the check builds (Polders bending Reservoir
+ * through an injected cache passed that way and failed origin/main's serial procedure).
  *   node tools/capture-world-collision-manifests.mjs --node --jobs=4
  *   node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
- *   node tools/capture-world-collision-manifests.mjs --check                         # serial
+ *   node tools/capture-world-collision-manifests.mjs --node --maps polders,reservoir      # some maps: always serial
+ *   node tools/capture-world-collision-manifests.mjs --check                              # serial
  * A split's children never outlive it: a wall-clock alarm or a kill of the parent ends them too, before they write.
  */
 

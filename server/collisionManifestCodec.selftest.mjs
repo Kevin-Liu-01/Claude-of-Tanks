@@ -92,6 +92,22 @@ for (const args of [['--check', '--jobs=0'], ['--check', '--jobs=x'], ['--check'
   ['--jobs=2'], ['--check', '--jobs', '2']]) {
   assert.throws(() => collisionCaptureOptions(args), /jobs|argument/, `${args.join(' ')} is refused`);
 }
+// 2026-10-14 (the third coverage check): a split regenerates every map or nothing. A serial regeneration of some maps
+// builds each after the selected maps before it, an order the serial check never builds, so the check can report a
+// build that depends on them (origin/main failed Polders bending Reservoir that way); a split of them would hide it
+assert.deepEqual(collisionCaptureOptions(['--node', '--jobs=4']), {
+  session: 'cot-manifest', mapIds: MAP_IDS, partial: false, headless: false, cacheDir: null, node: true, check: false, jobs: 4,
+}, 'a regeneration of every map may split');
+for (const args of [['--node', '--jobs=4', '--maps', 'polders,reservoir'], ['--node', '--maps=polders,reservoir', '--jobs=2'],
+  ['--node', '--jobs=2', '--maps', 'desert'], ['--variant=assault-trenches', '--jobs=4', '--maps', 'autumn,alpine,foundry,polders,reservoir'],
+  ['--node', '--variant=assault-trenches', '--maps', 'polders,reservoir', '--jobs=8'], ['--node', '--jobs=3', '--maps', MAP_IDS.join(',')]]) {
+  assert.throws(() => collisionCaptureOptions(args), /--jobs=\d splits a regeneration of every map only: regenerate some maps serially/,
+    `${args.join(' ')} (a split regeneration of some maps) is refused`);
+}
+for (const args of [['--node', '--jobs=1', '--maps', 'polders,reservoir'], ['--check', '--jobs=4', '--maps', 'polders,reservoir'],
+  ['--tier=mobile', '--jobs=2', '--maps', 'fjord,airfield'], ['--check', '--variant=assault-trenches', '--jobs=2', '--maps', 'polders,reservoir']]) {
+  assert.doesNotThrow(() => collisionCaptureOptions(args), `${args.join(' ')}: a serial regeneration, or a check, of some maps`);
+}
 for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'], ['--cache-dir=/tmp/warm'],
   ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
