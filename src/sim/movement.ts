@@ -4219,29 +4219,26 @@ const _contactFit = { pitch: 0, roll: 0, tipPitch: 0, tipRoll: 0, edge: false };
  * its springs snapped it 70 degrees nose-down at 12 rad/s, past the vault, and it turned over onto its back). Up to
  * FIT_EXACT_FROM of rise a metre (a hull lying on 44 degrees) the fit is the sine's, bit for bit; from FIT_EXACT_FULL it is
  * the plane's own grade, the rise over that cosine (and across, the cross grade over the roll's cosine less the grade
- * along that a rolled and pitched station picks up), blended between. Past FIT_STACKED_COS the stations stack over the
- * root (a hull near vertical, or turned over: the rise reads backwards), and world probes either side of the root read the
- * ground instead (stackedGrade).
+ * along that a rolled and pitched station picks up), blended between.
  */
 function planePitch(risePerZ: number, samples: SupportSamples): number {
-  const c = samples.cosNegPitch;
-  if (!(c >= FIT_STACKED_COS)) return Math.atan(stackedGrade(samples, samples.sinYaw, samples.cosYaw));
   const sine = Math.asin(clamp(risePerZ, -1, 1));
   const w = exactShare(risePerZ);
-  return w === 0 ? sine : sine + w * (Math.atan(risePerZ / c) - sine);
+  if (w === 0) return sine;
+  // (a hull turned past 90 degrees reads its rise over a negative cosine: the plane's own grade still)
+  const exact = Math.atan(risePerZ / samples.cosNegPitch);
+  return Number.isFinite(exact) ? sine + w * (exact - sine) : sine;
 }
 function planeRoll(risePerX: number, pitch: number, samples: SupportSamples): number {
   const cosPitch = Math.cos(pitch);
-  if (!(samples.cosRoll >= FIT_STACKED_COS) || !(samples.cosNegPitch >= FIT_STACKED_COS)) {
-    return Math.atan(stackedGrade(samples, samples.cosYaw, -samples.sinYaw) * cosPitch);
-  }
   const read = risePerX / Math.max(cosPitch, 0.1);
   const sine = Math.asin(clamp(read, -1, 1));
   const w = exactShare(read);
   if (w === 0) return sine;
   // the cross grade: the rise per local metre across less the grade along the heading its station's forward lean picks up
   const across = (risePerX - Math.tan(pitch) * samples.sinRoll * samples.sinNegPitch) / samples.cosRoll;
-  return sine + w * (Math.atan(across * cosPitch) - sine);
+  const exact = Math.atan(across * cosPitch);
+  return Number.isFinite(exact) ? sine + w * (exact - sine) : sine;
 }
 /** The exact plane's share of the fit for a read of `rise` (0 up to FIT_EXACT_FROM, 1 from FIT_EXACT_FULL). */
 function exactShare(rise: number): number {
@@ -4250,18 +4247,6 @@ function exactShare(rise: number): number {
 }
 const FIT_EXACT_FROM = 0.7;
 const FIT_EXACT_FULL = 0.95;
-/** Below this cosine of the sampling pitch or roll the plane is read by world probes (planePitch). */
-const FIT_STACKED_COS = 0.25;
-/** Half the run of those probes (m). */
-const FIT_STACKED_PROBE_M = 1.5;
-/** The ground's grade along the world direction (dx, dz) through the root, by the reachable ground either side. */
-function stackedGrade(samples: SupportSamples, dx: number, dz: number): number {
-  const hAt = _reachBaseH;
-  if (!hAt) return 0;
-  const d = FIT_STACKED_PROBE_M;
-  const grade = (hAt(samples.worldX + dx * d, samples.worldZ + dz * d) - hAt(samples.worldX - dx * d, samples.worldZ - dz * d)) / (2 * d);
-  return Number.isFinite(grade) ? grade : 0;
-}
 /**
  * The grade the drivetrain feels on ground the hull lies on at `pitch`. Its climb, grip and slide were calibrated while
  * the attitude fit read the arctangent of the rise per hull-local metre and the two-point settle carried it half way back
