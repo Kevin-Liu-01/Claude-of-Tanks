@@ -755,7 +755,9 @@ export function collisionFootprintContainsPoint(
       && z >= record.min[2] - margin && z <= record.max[2] + margin;
   }
   if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, margin);
-  return shape.parts.some((part) => simpleFootprintContainsPoint(part, x, z, margin));
+  // (physics stream F2, 2026-10-14) a raised deck — a roof a hull stands on — is a floor only, no footprint: its eaves
+  // over a carriageway or a yard are no building standing there (the bots' parking and leg ends, the layout metrics)
+  return shape.parts.some((part) => !collisionPartIsDeck(record, part) && simpleFootprintContainsPoint(part, x, z, margin));
 }
 
 function rayCircleEntry2(

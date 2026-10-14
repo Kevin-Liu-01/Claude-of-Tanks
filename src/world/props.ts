@@ -431,6 +431,15 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
   polders: 8, coastal: 8, frontier: 8, delta: 8, longleaf: 8, reservoir: 8,
   saltwind: 7, alpine: 7, monsoon: 7, mangrove: 7,
 });
+/**
+ * How far behind its breastwork line a field work's pillbox stands, by map (default 3 m). Glacier (alpine, the looks
+ * lane, 2026-10-14): the round-2 pillbox's body is a smaller block than the old pillbox's 9.5 m box and its bank stands
+ * lower (1.4 m over grade), so at 3 m two drivable cells north of the middle work lost their cover from the south and
+ * the map's middle-band cover share fell from 0.300 to 0.299, under MAP-LAYOUT-BRIEF.md's 0.30 floor; at 5 m the work
+ * screens them again (both works' pillboxes step back, the bands all hold: tools/map-layout-metrics.mjs). Kept here
+ * rather than in the map module, whose authoring the relief receipts pin.
+ */
+export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 5 });
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -8358,6 +8367,7 @@ ${snowCap ? `
     const lx = -az, lz = ax;                // lateral along the front
     const trenchLines = [...(heightField.assaultTrenchLines?.lines ?? []), ...(heightField.fieldTrenchLines?.lines ?? [])];
     const target = richCount(P.fieldWorks, 3) + (heightField.assaultTrenchLines?.lines.length ? 2 : 0);
+    const setBack = PILLBOX_SET_BACK_M[mapId] ?? 3;
     // the carved fire trenches (assault variant) keep a 16 m berth so no work lands in a trench floor
     const nearTrench = (x: number, z: number): boolean => trenchLines.some((line) => {
       const along = (x - line.x) * line.lx + (z - line.z) * line.lz;
@@ -8434,7 +8444,7 @@ ${snowCap ? `
         // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre, and (b40) off
         // the trunks: a seat the ground or the road refuses is null, one only the trunks refuse is 'trunk'
         const seat = (ox: number, oz: number): readonly [number, number] | 'trunk' | null => {
-          const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
+          const px = cx + ox - fx * setBack, pz = cz + oz - fz * setBack;
           if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
             || !destructibleClearOfRoad('bunker', px, pz, yawP, 1)) return null;
           return pillboxClearOfTrunks(px, pz, yawP) ? [px, pz] : 'trunk';
@@ -8472,7 +8482,7 @@ ${snowCap ? `
               for (let v = 0; v <= 20; v += 2.5) {
                 const score = Math.min(Math.abs(u - first * reach), Math.abs(u + first * reach)) + v * 0.5;
                 if (score >= bestScore) continue;
-                const px = cx + lx * u - fx * (3 + v), pz = cz + lz * u - fz * (3 + v);
+                const px = cx + lx * u - fx * (setBack + v), pz = cz + lz * u - fz * (setBack + v);
                 if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
                   || !destructibleClearOfRoad('bunker', px, pz, yawP, 1) || !pillboxClearOfTrunks(px, pz, yawP, berth)) continue;
                 best = [px, pz]; bestScore = score;

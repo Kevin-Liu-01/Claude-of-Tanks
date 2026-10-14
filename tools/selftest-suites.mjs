@@ -1112,6 +1112,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',
+    // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
+    'server/collisionManifestIndex.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',

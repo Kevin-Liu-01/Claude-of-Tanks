@@ -22,12 +22,14 @@ for (const [id, [group, variants]] of Object.entries(FILM_SFX)) {
 }
 for (let mm = 5; mm <= 220; mm += 0.5) assert.equal(filmWeaponClass(mm), weaponClassForCaliber(mm), `${mm} mm reads as the engine's class`);
 const engine = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
+// the report banks live in weaponAudio.ts since 2026-10-13 (the coverage receipt reads them there)
+const banks = readFileSync(new URL('../audio/weaponAudio.ts', import.meta.url), 'utf8');
 for (const [id, weapon] of Object.entries(FILM_WEAPONS)) {
   const source = WEAPON_CLASSES[id];
   assert.deepEqual([weapon.family, weapon.closeFadeM, weapon.farFadeM, weapon.tailRate, weapon.tailGain],
     [source.family, source.closeFadeM, source.farFadeM, source.tailRate, source.tailGain], `${id} as weaponAudio.ts`);
-  assert.match(engine, new RegExp(`\\b${id}: '${weapon.close}'`), `${id}'s close bank as audioEngine.ts`);
-  assert.match(engine, new RegExp(`\\b${id}: '${weapon.far}'`), `${id}'s distant bank as audioEngine.ts`);
+  assert.match(banks, new RegExp(`\\b${id}: '${weapon.close}'`), `${id}'s close bank as weaponAudio.ts`);
+  assert.match(banks, new RegExp(`\\b${id}: '${weapon.far}'`), `${id}'s distant bank as weaponAudio.ts`);
   assert.ok(FILM_SFX[weapon.close] && FILM_SFX[weapon.far], `${id}'s banks are listed`);
 }
 assert.match(engine, /BLAST_DB[^=]*= Object\.freeze\(\{ cannon: -6, autocannon: -16, mg: -19 \}\)/, 'the punch levels as audioEngine.ts');
