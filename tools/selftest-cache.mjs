@@ -223,6 +223,8 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
         if (target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) found.add(target);
       }
     }
+    // A declared computed read (a `@selftest-reads: <path>` comment) resolves like a literal.
+    for (const declared of info.reads ?? []) for (const target of resolveSpecifiers(file, declared)) found.add(target);
     if (info.broad) addBroadDirectories(found);
     addJoinedInputs(file, info.joined, found);
     for (const dynamic of info.dynamic) addDynamicInput(file, dynamic, found, modules);

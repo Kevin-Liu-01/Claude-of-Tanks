@@ -13,6 +13,9 @@ const BROAD_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync', 'readdirSy
 // `import(/* @selftest-external: <what it loads> */ url)` names a module outside the repository (a built page chunk).
 // It is not an input, so it neither widens the closure nor forces a fresh run; unmarked computed imports still do.
 const EXTERNAL_IMPORT = /@selftest-external\b:?\s*/;
+// A comment `@selftest-reads: <path> — <why>` declares a path a module reads through computed names the parser cannot
+// follow (a source walker that reads each module its entry imports). It only ever adds an input.
+const READS_MARKER = /@selftest-reads:\s*([\w./-]+)/g;
 const PATH_MODULE = /^(?:node:)?path(?:\/posix)?$/;
 const nameOf = node => ts.isIdentifier(node) ? node.text
   : ts.isPropertyAccessExpression(node) ? node.name.text : '';
@@ -22,6 +25,7 @@ const isEnvironment = value => ts.isPropertyAccessExpression(value)
 
 export function collectSelftestInputs(text, filename) {
   const specifiers = new Set(), imports = new Set(), environment = new Set(), joined = [], dynamic = [], external = [];
+  const reads = new Set();
   let broad = false, browser = false, git = false, opaqueImport = false, opaqueEnvironment = false;
   const addLiteral = value => {
     if (FILE_LITERAL.test(value)) specifiers.add(value);
@@ -51,6 +55,7 @@ export function collectSelftestInputs(text, filename) {
       child.imports.forEach(value => imports.add(value));
       child.environment.forEach(value => environment.add(value));
       joined.push(...child.joined); dynamic.push(...child.dynamic); external.push(...child.external);
+      child.reads.forEach(value => reads.add(value));
       broad ||= child.broad; browser ||= child.browser; git ||= child.git;
       opaqueImport ||= child.opaqueImport; opaqueEnvironment ||= child.opaqueEnvironment;
     }
@@ -169,7 +174,20 @@ export function collectSelftestInputs(text, filename) {
     };
     visit(source);
     if (source.parseDiagnostics.length) broad = true;
+    if (text.includes('@selftest-reads')) {
+      // Comments only: a fixture string that mentions the marker declares nothing.
+      const seen = new Set();
+      const readComments = node => {
+        for (const range of [...ts.getLeadingCommentRanges(text, node.pos) ?? [], ...ts.getTrailingCommentRanges(text, node.end) ?? []]) {
+          if (seen.has(range.pos)) continue;
+          seen.add(range.pos);
+          for (const match of text.slice(range.pos, range.end).matchAll(READS_MARKER)) reads.add(match[1]);
+        }
+        ts.forEachChild(node, readComments);
+      };
+      readComments(source);
+    }
   }
   return { specifiers: [...specifiers], imports: [...imports], environment: [...environment],
-    joined, dynamic, external, broad, browser, git, opaqueImport, opaqueEnvironment };
+    joined, dynamic, external, reads: [...reads], broad, browser, git, opaqueImport, opaqueEnvironment };
 }

@@ -5,6 +5,9 @@
 // declarations (`import type`, `export type`) are erased by the compiler and are not edges.
 // `import { type X } from` is kept: under verbatimModuleSyntax it compiles to a side-effect
 // import, so it is a real runtime edge. Non-JS targets (JSON, CSS) are leaves.
+//
+// @selftest-reads: src/ — the walk reads every module its entry reaches (its callers walk src/ entries), by names the
+// self-test planner cannot follow; a caller's proof watches the source tree.
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { parseAst } from 'rolldown/parseAst';

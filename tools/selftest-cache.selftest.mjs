@@ -208,6 +208,15 @@ write('shots/frame.png', 'png'); write('.env.local', 'SECRET=1'); write('.env.ex
     assert.ok(!broad.includes(entry), `ignored or cache output (${entry}) is not part of the repository a broad receipt observes`);
   }
 }
+// A walker that reads modules by names it computes (tools/static-import-closure.mjs reads every module src/main.ts
+// reaches) declares what it reads; the traced sweep found boot-static-closure reading 488 src/ modules outside its key.
+write('tools/walker.mjs', "// @selftest-reads: src/ — reads each module its entry imports\n"
+  + "import { readFileSync } from 'node:fs';\nexport const walk = (file) => readFileSync(file, 'utf8');\n"
+  + "export const note = '// @selftest-reads: docs/ inside a string declares nothing';\n");
+write('tools/walker.selftest.mjs', "import { walk } from './walker.mjs';\nwalk(entry);\n");
+assert.deepEqual(rel(make(), 'tools/walker.selftest.mjs'), ['src', 'tools/walker.mjs', 'tools/walker.selftest.mjs'],
+  'a @selftest-reads comment adds its path to every caller; the same text in a string adds nothing');
+assert.deepEqual(collectSelftestInputs('/* @selftest-reads: src/ */\nexport {};', 'block.mjs').reads, ['src/'], 'block comments declare too');
 
 // lookup / record round trip, and the two ways to run everything
 {
@@ -294,7 +303,10 @@ rmSync(root, { recursive: true, force: true });
   for (const entry of ['site', 'api', 'src', 'vercel.json', 'package.json']) {
     assert.ok(broad.has(join(REPO_ROOT, entry)), `a directory-listing module observes the top-level ${entry}`);
   }
-  assert.ok(!broad.has(join(REPO_ROOT, 'node_modules')), 'dependencies are salted by the lockfile, not walked');
+  // (not join(REPO_ROOT, 'node_modules'): that call would itself make this receipt hash the dependency tree)
+  assert.ok(![...broad].some((path) => relative(REPO_ROOT, path) === 'node_modules'), 'dependencies are salted by the lockfile, not walked');
+  assert.ok(closure('tools/boot-static-closure.selftest.mjs').has(join(REPO_ROOT, 'src')),
+    "the boot closure receipt watches src/: it reads every module src/main.ts reaches (tools/static-import-closure.mjs's @selftest-reads)");
 }
 
 // Every src|server|tools module with a computed import() the planner cannot follow, and why. Each one widens every
@@ -335,7 +347,7 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
     'tools/road-border-corridor-pilot.mjs'],
 }).flatMap(([reason, files]) => files.map((file) => [file, reason])));
 {
-  const found = new Map(), external = [];
+  const found = new Map(), external = [], declared = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       // the tracked tree: dot directories, dependencies, builds and tools/tmp-* scratch are ignored by Git
@@ -344,6 +356,9 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
       if (entry.isDirectory()) { walk(file); continue; }
       if (!/\.(?:[mc]?[jt]s|[jt]sx|html)$/.test(entry.name)) continue;
       const text = readFileSync(file, 'utf8');
+      if (text.includes('@selftest-reads')) {
+        for (const path of collectSelftestInputs(text, file).reads) declared.push([relative(REPO_ROOT, file), path]);
+      }
       if (!/\bimport\s*\(\s*[^'"`\s)]/.test(text)) continue; // only a non-literal first token can be opaque
       const info = collectSelftestInputs(text, file), name = relative(REPO_ROOT, file);
       if (info.opaqueImport) found.set(name, info);
@@ -351,6 +366,11 @@ const OPAQUE_IMPORTS = new Map(Object.entries({
     }
   };
   for (const dir of ['src', 'server', 'tools']) walk(join(REPO_ROOT, dir));
+  // A @selftest-reads path that names nothing would add no input and hide the read it was written for.
+  assert.ok(declared.some(([file]) => file === 'tools/static-import-closure.mjs'), 'the source walker declares what it reads');
+  for (const [file, path] of declared) {
+    assert.ok(statSync(join(REPO_ROOT, path), { throwIfNoEntry: false }), `${file}: @selftest-reads names an existing path (${path})`);
+  }
   assert.deepEqual([...found.keys()].filter((file) => !OPAQUE_IMPORTS.has(file)).sort(), [],
     'a computed import() the planner cannot follow: give it a literal specifier, a @selftest-external marker, or an OPAQUE_IMPORTS row');
   assert.deepEqual([...OPAQUE_IMPORTS.keys()].filter((file) => !found.has(file)).sort(), [],
