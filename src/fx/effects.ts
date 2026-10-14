@@ -5838,6 +5838,12 @@ function* createFxSteps(
       liveAtgmCount = 0;
       writeGuidedBody(pos, dir);
       commitAtgmInstances();
+      // (EF.04, the Kornet probe 10-13: the first launch still compiled one program in its frame — the projectile
+      // tracers' own: the solo warm's update ran with no shells, so the tracer mesh drew nothing in the covered render)
+      // one motor glow, as a launch draws it, so the tracers' program compiles with the others; the next update clears it
+      tracers.begin();
+      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WIRE_RGB, 0.5, WIRE_RGB, 0.2, 1);
+      tracers.end();
       // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
       // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
       if (ribbons && vol) {
