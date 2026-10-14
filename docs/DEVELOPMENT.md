@@ -355,7 +355,11 @@ and superseded probes remain available through Git history instead of shipping
 in every public checkout.
 Generators must preserve typed output: `tools/map-thumbs.mjs`, for example,
 writes `src/ui/mapThumbs.ts` so regeneration cannot restore a deleted `.js`
-owner.
+owner. After new map art is published (map thumbs or media cards), run
+`node tools/map-lqip.mjs`: it writes the battle loading screen's blurred
+per-map placeholders (`src/ui/mapLqip.ts`, a lazy chunk) and the art's band
+colours (`src/ui/mapArtTones.ts`, the gradient under the art), checked by
+`src/ui/mapLqip.selftest.mjs`.
 
 This covers performance instrumentation, renderer recovery helpers, audio,
 the wire codecs, the room protocol, the match client and its presentation,

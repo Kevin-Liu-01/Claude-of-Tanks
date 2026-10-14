@@ -91,7 +91,7 @@ function hullBody(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const D = ARES_APC_X_DATUMS;
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK IFV nation
-    // construction (fv510_milan_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+    // construction (warrior_tes_h, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelR, wheelW: 0.354, wheelY: D.wheelY,
     wheelZs: [...D.wheelStations], xc: D.trackX, roadWheelOutsetM: 0.031,

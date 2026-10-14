@@ -932,7 +932,12 @@ waited out the whole stall window for a WELCOME the ended match could not send (
 two minutes behind the loader). A verdict that reaches a round before its reveal now refuses it at once with "The
 match ended while you were joining." — a warning, not an entry error — and the room's lobby opens naming it. Receipt:
 `browserComposition.selftest` (a verdict before the WELCOME refuses the entering round within the receipt's 2 s; on main
-it is still entering).
+it is still entering). **Named at once (2026-10-13, MU.03).** The lobby could name it only after the covered Garage
+restore, the slowest step of the teardown under load: production 219 showed it 16 s late (a 72 s Garage task), 221 not
+within 20 s. The loader still covering the entry now carries it as its title ("Deployment ended" · "Returning to
+Garage") before the seat leaves the match and before the restore, and the lobby repeats it once the loader fades
+(`browserComposition.selftest`: with the Garage restore held open, the loader already names the refusal; on main it does
+not).
 
 **The collision source (decision).** The host fetches the same manifest the match container loads:
 `vite.config.ts` emits `server/world-collision-manifests` under `/mp-collision` (`index.json` revalidated; every map
@@ -1256,6 +1261,36 @@ protocol 1 is unchanged (`WIRE_VERSION` stays 1): a mismatch between builds is c
 first byte, and a host refuses a HELLO of another wire as `bad_version` with a CLOSE the other build cannot decode. So
 the client reads the first byte of any frame it cannot decode before its WELCOME, ends the join as `PROTOCOL_VERSION`
 and tells the player the host is older or newer and to refresh: `matchBuildGate.selftest`.) A held row costs 0 B on a delta and 2 B on a keyframe (`wire.selftest`).
+
+**Same wire, other code (2026-10-13, MP stream plan step 13).** The first byte names the layout, not the code behind it:
+deploys 219-222 all speak wire 5 / protocol 6, so a tab left open on one build can host a seat of the next, and after
+every deploy the peer-to-peer host is often an old tab. The host's authority and the seat's prediction both run
+`src/sim`'s movement; when they differ the seat mispredicts silently. Every build now stamps the HELLO's free-form
+`clientBuild` with one line, `<app version> t<commit seconds, base36> p<12 hex> a<12 hex>` (`src/mp/wire/matchBuild.ts`;
+`tools/matchBuild.ts` computes it at build time and `vite.config.ts` defines `__COT_MATCH_BUILD__`, which reaches the page
+and the host Worker alike). `p` hashes the source closure of the seat's prediction (`prediction.ts`, `predictionWorld.ts`,
+`matchClient.ts`, the vehicle specs: about 52 files, no render, FX, audio or UI code), `a` the host's authority
+(`matchActor.ts`, `matchHostCore.ts`: about 430 files); type-only imports and packages are not followed. The actor
+compares the HELLO with its own line after the token checks and before the seat's live link is replaced: another `p` is
+refused with `PROTOCOL_VERSION` and a refusal code as the CLOSE detail (`build_mismatch`, or `build_host_older` /
+`build_host_newer` when the commit times order them). The joining client words the code in its own build ("Refresh the
+page to join: your game version differs from the host's." plus "The host is running an older version, so ask them to
+refresh too." or "A newer version of the game is out."), the entry fails with the code (`MatchRefusedError`), and the
+lobby shows it in the player's locale (`playMenu.entryRefusal.*` in both catalogs; the other-wire gate and "the match
+ended while you were joining" use the same path). A refused seat only fails its own entry: it is a peer, so its
+`leaveMatch` sends no `host_decline`, and the room elects nobody. Another `a` or another version alone is admitted and
+logged (the host is authoritative; the seat predicts the same). An unstamped side (a build
+before this check sent its vite mode, `production`; Node, dev and headless runs send `dev`) is admitted as before, so the
+check takes effect between two builds that both carry it. Of the deploys 214-222, the prediction closure changed in
+215 (`matchObjectiveLayouts`), 217 and 218 (`matchClient`), 219 (wire 5, which the first byte already caught) and 222
+(`matchModes`, `matchRuleset`, `collision.ts`).
+Receipts: `matchBuild.selftest` (the line and its bounds; the verdicts and refusal codes, their words and both catalogs'
+keys; the closures on a scratch tree — an authority-only edit moves `a` alone, shared movement both, a type-only
+dependency neither; this tree's closures; the actor refusing before it replaces a live link, admitting and logging an
+authority-only seat; the client wording the host's code; in a room of the signaling double, a refused seat is never a
+`host_decline` and never an election — the host keeps generation 1 and its match), `browserComposition.selftest` (the
+entry fails with the code, the lobby gets the code and the English fallback), `playMenu.selftest` (the codes map to
+catalog keys).
 
 **The client.** `RemoteInterpolator` presents each entity between its own two nearest distinct samples (rows of the
 same tick are one sample however many frames carry them) and continues an entity from its own newest sample when the
@@ -1807,6 +1842,35 @@ one-shot effect is gone (1 impact and 1 hit in the final run's reconnect and hos
 presentations carry no actors (the fleet factory configures once per process), so own-shot feedback is receipted, not
 measured, here.
 
+**Hidden enemies and world events (2026-10-13, MP stream; MP-SINCE-0930 §5b C).** `world_prop_destroyed`,
+`structure_stage`, `structure_breach` and `terrain_crater` went to every viewer with the cause, the heading and speed of
+the hull that rammed (a prop's `directionX/Z`, `speedMps`; a stage's `dirX/Z` and its blow point, the hull's contact),
+the shot's bearing and the munition: a hidden tank crushing a tree or ramming a wall told every seat where it was and
+which way it went, against the rule that a hidden enemy's coordinates are never sent. The authority now keeps each world
+event's source (the rammer, the shooter, the dead hull; threaded through `destructionMatch` / `structureDamage` as
+`StructureBlow.sourceId`, never in the log or on the wire) and `eventsForViewer` hands a viewer whose team does not see
+that source one shared copy without those fields (docs/DESTRUCTION.md §8.1 lists them). The fall, the stage, the hole
+and the crater still reach every seat when they happen, and the persistent state (the destroyed list, the destruction
+log) is one for every viewer, so rejoins and migrations are unchanged; the presentation lays a withheld event with
+neutral values. Delaying the events until observable was not done: the list and the log name the same state at the next
+snapshot anyway, so a delay would hide nothing and only make the fall arrive late. Receipts:
+`hiddenWorldEvents.selftest` (structures, a rammed fence, a shot tree: hidden, spotted, teammate, spectator; one log;
+fails on main), `mp-world-events-audit` (36 of 155 world-event deliveries withheld in its 4v4 run, all presented, no
+missing or late), `sim-determinism-audit`, the destruction receipts (`destructionShard` and `destructionCraters` now
+read the hidden viewer's events as withheld).
+
+**Wire 6: the destroyed set never caps a match (2026-10-13, the MP stream; MP-SINCE-0930 §5b D).** Every keyframe — the
+interval keyframe, a late joiner's, a rejoin's, a reconnect's and the sealed migration keyframe — carries the whole
+destroyed-prop list, and wire 5 capped it at 4,096 indices with an encoder that threw past it: the actor's loop logged
+`tick failed`, the viewers behind the throwing one got nothing that tick, and every keyframe failed from then on. The
+densest battlefields hold more crushable props than that (Monsoon 9,119, Verdant 6,645; `tools/mp-wire-capacity.mjs`
+bounds every battlefield; a 28-bot Monsoon match with its score target lifted felled 1,260 by minute 5). The set now
+travels as the smaller of a gap list and a bitset over the obstacle index (`src/mp/wire/destroyedSet.ts`; README
+"destroyed set"): Monsoon with every crushable prop down is a 2.6 KB keyframe with 28 hulls. A layout change, so
+`WIRE_VERSION` 6 (the build gate names an other-wire host with "refresh"). Receipt: `destroyedSet.selftest` (round
+trips and form choice, every legal set up to 65,536 indices in 8,195 B, typed refusals of malformed frames, the worst
+battlefield's every crushable prop through a real 14v14 keyframe and the migration keyframe; fails on wire 5).
+
 ### 13.14 Relay credentials from the room (lane `mp/room-relay-credentials`, 2026-10-02)
 
 **Why.** `/api/ice` (a Vercel function) minted one-hour Cloudflare TURN credentials for any request that passed its origin
@@ -1847,7 +1911,7 @@ admitted request) and the LAN helper (`server/rooms/main.ts`, the same names fro
 room client the seat holds; `src/main.ts` wires it). A LAN room asks nothing; a private room's resolutions in flight share
 one request and a grant younger than `RELAY_GRANT_REUSE_MS` (30 s) is reused — a host answering a 14v14 election's 27
 offers asks once, which is what the seat window assumes; a refusal, a timeout or a room that predates the request falls
-back to the newest grant with at least a minute left, else to host candidates; it never rejects. The transports still
+back to the newest grant with at least a minute left, else (since 2026-10-13) to the official STUN servers; it never rejects. The transports still
 resolve per connection (`WebRtcTransport.connect`, `createRtcHostAcceptor`), from the room now. `resolveIceConfigUrl` and
 `VITE_ICE_CONFIG_URL` are gone.
 
@@ -1862,6 +1926,16 @@ the TURN secrets on cot-rooms (`COT_CLOUDFLARE_TURN_KEY_ID`, `COT_CLOUDFLARE_TUR
 Worker's `COT_STUN_URLS` alone, so a symmetric NAT still cannot connect. Receipt: `iceConfig.selftest` (a timed-out
 first request asked again and its grant used; a silent room costs one retry, then host candidates; a refusal answered
 once; a held grant answers a timeout; on main the timed-out first request goes straight to host candidates).
+
+**No grant falls back to STUN, and every degradation is counted (2026-10-13, MP stream step 6).** A seat with no grant
+to use (a refusal, a timeout after its retry, a room that predates the request) used to link on host candidates alone,
+which never crosses a NAT; it now links with `OFFICIAL_STUN_URLS` (`source: 'stun-fallback'`), the servers every room
+grant names anyway, so a strict-NAT seat keeps its server-reflexive paths. TURN still comes only from the room. The
+resolver reports each degradation once per reason through `onDegraded` (`src/main.ts` sends it as the `ice_degraded`
+telemetry note, folded into the session record): the fallback's reason, or `no_relay` when the room's grant carries no
+TURN server — every private-room seat while the rooms Worker's TURN secrets are unset — so real-world relay loss is
+countable in cot-telemetry. Receipts: `iceConfig.selftest` (the STUN fallback, never an empty list; once per reason;
+LAN and relayed grants silent; a throwing reporter never breaks a connection), `telemetry.selftest` (the note).
 
 **`/api/ice`: retired, kept one release as a credential-free STUN answer.** Deleting it outright would leave every tab
 loaded before the site deploy with host candidates only — its `loadIceConfiguration` falls back to an empty server list

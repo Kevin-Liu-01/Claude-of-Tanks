@@ -109,4 +109,42 @@ const roof = createStructureSupportField(field, { getObstacles: () => [
 ] });
 roof.beginHull(0, 0, 3.2);
 assert.equal(roof.getContactHeightAt(0, 0), 3, 'roof still overrides the terrain contact surface');
+// 2026-10-13 (the perf stream): a near chunk's fine grid seeds the contact surface's lazy vertices it shares exactly
+// (the same coordinate doubles, the same height function); every contact height and normal is what the unseeded
+// surface computes, and a grid of another function seeds nothing
+{
+  let seededTotal = 0, compared = 0;
+  for (const mapId of ['verdant', 'urban', 'fjord']) {
+    const seeded = createHeightField(1337, getMapConfig(mapId));
+    const plain = createHeightField(1337, getMapConfig(mapId));
+    for (const [cx, cz] of [[-128, -128], [0, 0], [256, 384], [384, 384]]) {
+      drain(api.buildFineGridSteps(seeded, cx, cz));
+    }
+    let k = 0;
+    const out1 = new THREE.Vector3(), out2 = new THREE.Vector3();
+    for (let i = 0; i < 4000; i++) {
+      // points in and around the seeded chunks, on vertices, on their edges and inside cells
+      const x = -140 + ((i * 7919) % 660) + ((i % 3) === 0 ? 0 : ((i * 13) % 97) / 97);
+      const z = -140 + ((i * 104729) % 660) + ((i % 5) === 0 ? 0 : ((i * 31) % 89) / 89);
+      assert.equal(seeded.getContactHeightAt(x, z), plain.getContactHeightAt(x, z), `${mapId} (${x}, ${z}): the unseeded height`);
+      seeded.getContactNormalAt(x, z, out1); plain.getContactNormalAt(x, z, out2);
+      assert.ok(out1.equals(out2), `${mapId} (${x}, ${z}): the unseeded normal`);
+      k++;
+    }
+    compared += k;
+    // a fresh surface: the grid seeds its own vertices
+    const fresh = createHeightField(1337, getMapConfig(mapId));
+    const fine = drain(api.buildFineGridSteps(createHeightField(1337, getMapConfig(mapId)), 0, 0));
+    const n = fresh.seedContactGrid(0, 0, fine.stepF, fine.pn, fine.hgrid, fresh.getHeightAt);
+    // the chunk's own 97 x 97 vertices always match; a padding point lands on its neighbour's vertex only where the two
+    // coordinate expressions round to the same double (here they do not: it is left to that neighbour's own grid)
+    assert.ok(n >= (fine.pn - 2) ** 2 && n <= fine.pn ** 2, `${mapId}: the chunk's ${(fine.pn - 2) ** 2} vertices seed (${n})`);
+    assert.equal(fresh.seedContactGrid(0, 0, fine.stepF, fine.pn, fine.hgrid, fresh.getHeightAt), 0, 'seeded once');
+    assert.equal(fresh.seedContactGrid(128, 0, fine.stepF, fine.pn, fine.hgrid, (x, z) => fresh.getHeightAt(x, z)), 0,
+      'another height function seeds nothing');
+    seededTotal += n;
+  }
+  assert.match(source, /hf\.seedContactGrid\?\.\(cx0, cz0, stepF, pn, hgrid, hf\.getHeightAt\);/, 'the fine grid seeds');
+  console.log(`  seeded contact surface: ${compared} heights and normals equal the unseeded surface's (${seededTotal} vertices seeded)`);
+}
 console.log(`terrainContactSurface.selftest: ${MAP_IDS.length} maps, ${checked} real mesh raycasts pass; old gap ${(worstOldGap * 100).toFixed(1)} cm`);

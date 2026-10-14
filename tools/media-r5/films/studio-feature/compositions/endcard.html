@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500;}
+@font-face{font-family:'Monument';src:url('assets/fonts/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700;}
+#root{position:absolute;inset:0;overflow:hidden;font-family:'Monument',sans-serif;color:#e8edf2}
+.clip{position:absolute;inset:0}
+#end-bg{position:absolute;inset:0;background:#0b0e11}
+#end-glow{position:absolute;left:50%;top:44%;width:1400px;height:900px;margin:-450px 0 0 -700px;background:radial-gradient(closest-side,rgba(240,161,46,.22),rgba(240,161,46,0))}
+#crest{position:absolute;left:50%;top:130px;width:300px;height:300px;margin-left:-150px}
+#dial{position:absolute;left:50%;top:80px;width:400px;height:400px;margin-left:-200px}
+#dial .ring{fill:none;stroke:rgba(240,161,46,.85);stroke-width:3;stroke-dasharray:1282}
+#dial .tk{stroke:#9fb0bf;stroke-width:2}
+#dial .tk.major{stroke:#ffd27a;stroke-width:3}
+#wordmark{position:absolute;left:0;right:0;top:508px;display:flex;flex-direction:column;align-items:center;gap:12px}
+#wordmark span{display:inline-block}
+#w1{font-weight:700;font-size:132px;line-height:1;letter-spacing:.06em}
+#w2{font-weight:500;font-size:56px;line-height:1;letter-spacing:.24em;color:#ffd27a}
+#url{position:absolute;left:0;right:0;top:799px;text-align:center;font-weight:700;font-size:56px;letter-spacing:.08em;color:#f0a12e}
+</style>
+<div id="root" data-composition-id="endcard" data-width="1920" data-height="1080" data-duration="2.5">
+<div id="end-bg"></div><div id="end-glow"></div>
+<svg id="dial" viewBox="0 0 440 440"><circle class="ring" cx="220" cy="220" r="204"/><line x1="220.0" y1="34.0" x2="220.0" y2="14.0" class="tk major"/><line x1="270.7" y1="30.7" x2="273.3" y2="21.0" class="tk"/><line x1="318.0" y1="50.3" x2="323.0" y2="41.6" class="tk"/><line x1="358.6" y1="81.4" x2="365.7" y2="74.3" class="tk"/><line x1="389.7" y1="122.0" x2="398.4" y2="117.0" class="tk"/><line x1="409.3" y1="169.3" x2="419.0" y2="166.7" class="tk"/><line x1="406.0" y1="220.0" x2="426.0" y2="220.0" class="tk major"/><line x1="409.3" y1="270.7" x2="419.0" y2="273.3" class="tk"/><line x1="389.7" y1="318.0" x2="398.4" y2="323.0" class="tk"/><line x1="358.6" y1="358.6" x2="365.7" y2="365.7" class="tk"/><line x1="318.0" y1="389.7" x2="323.0" y2="398.4" class="tk"/><line x1="270.7" y1="409.3" x2="273.3" y2="419.0" class="tk"/><line x1="220.0" y1="406.0" x2="220.0" y2="426.0" class="tk major"/><line x1="169.3" y1="409.3" x2="166.7" y2="419.0" class="tk"/><line x1="122.0" y1="389.7" x2="117.0" y2="398.4" class="tk"/><line x1="81.4" y1="358.6" x2="74.3" y2="365.7" class="tk"/><line x1="50.3" y1="318.0" x2="41.6" y2="323.0" class="tk"/><line x1="30.7" y1="270.7" x2="21.0" y2="273.3" class="tk"/><line x1="34.0" y1="220.0" x2="14.0" y2="220.0" class="tk major"/><line x1="30.7" y1="169.3" x2="21.0" y2="166.7" class="tk"/><line x1="50.3" y1="122.0" x2="41.6" y2="117.0" class="tk"/><line x1="81.4" y1="81.4" x2="74.3" y2="74.3" class="tk"/><line x1="122.0" y1="50.3" x2="117.0" y2="41.6" class="tk"/><line x1="169.3" y1="30.7" x2="166.7" y2="21.0" class="tk"/></svg>
+<img id="crest" src="assets/brand/logo-mark-metal.svg" alt="">
+<div id="wordmark"><div id="w1"><span>C</span><span>L</span><span>A</span><span>U</span><span>D</span><span>E</span></div><div id="w2"><span>O</span><span>F</span><span>&nbsp;</span><span>T</span><span>A</span><span>N</span><span>K</span><span>S</span></div></div>
+<div id="url">cot.kevinliu.studio</div>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#end-bg', {opacity:0}, {opacity:1, duration:0.5, ease:'power2.inOut'}, 0);
+tl.fromTo('#end-glow', {opacity:0, scale:0.8}, {opacity:1, scale:1, duration:2.4, ease:'power2.out'}, 0.2);
+tl.fromTo('#crest', {opacity:0, scale:1.18, filter:'blur(14px)'}, {opacity:1, scale:1, filter:'blur(0px)', duration:0.9, ease:'expo.out'}, 0.25);
+tl.fromTo('#dial .ring', {strokeDashoffset:1282}, {strokeDashoffset:0, duration:1.4, ease:'power3.inOut'}, 0.15);
+tl.fromTo('#dial .tk', {opacity:0}, {opacity:1, duration:0.2, ease:'none', stagger:0.03}, 0.25);
+tl.fromTo('#w1 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*46}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.6);
+tl.fromTo('#w2 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*30}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.75);
+tl.fromTo('#url', {opacity:0, y:14}, {opacity:1, y:0, duration:0.6, ease:'power3.out'}, 1.6);
+window.__timelines["endcard"] = tl;
+</script>
+</template>
+</body></html>

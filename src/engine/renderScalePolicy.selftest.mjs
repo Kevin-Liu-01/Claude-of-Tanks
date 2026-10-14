@@ -3,9 +3,11 @@ import {
   baseDynamicScale,
   cappedPixelRatio,
   dynamicScaleFloor,
+  dynamicScaleHold,
   internalPixelRatio,
   overloadReliefLever,
   reconstructionMode,
+  RCAS_MIN_SCALE,
   reconstructionSharpness,
   TEMPORAL_RECONSTRUCTION_SHARPNESS,
 } from './renderScalePolicy.ts';
@@ -106,6 +108,21 @@ assert.equal(reconstructionMode(0.4), 'easu',
 assert.equal(reconstructionMode(0.6), 'easu+rcas',
   'the exact EASU/RCAS boundary restores contrast');
 assert.equal(reconstructionMode(1), 'native-rcas');
+// 2026-10-13 (the perf stream): the RCAS threshold is a preset's (High 0.49: a 1.0 raster on a DPR-2 panel keeps RCAS);
+// the default keeps phones' 0.42-0.47 on EASU alone, and the linear floor below 0.4 is not the preset's to move
+assert.equal(RCAS_MIN_SCALE, 0.6);
+assert.equal(reconstructionMode(0.5), 'easu', 'the default threshold is unchanged');
+assert.equal(reconstructionMode(0.5, 0.49), 'easu+rcas');
+assert.equal(reconstructionMode(0.467, 0.49), 'easu', 'a phone ratio stays on EASU alone even at High\'s threshold');
+assert.equal(reconstructionMode(0.35, 0.2), 'linear', 'a threshold below 0.4 cannot reach under the linear floor');
+assert.equal(reconstructionMode(0.5, Number.NaN), 'easu', 'an invalid threshold falls back to the default');
+// the hold rung: a retina preset's declared hold, clamped into [floor, 1]; the floor without one or below retina
+const autoHigh = { ...high, dynMin: 0.667, nativeDynMin: 0.67, dynHold: 0.8334 };
+assert.equal(dynamicScaleHold(2, autoHigh), 0.8334);
+assert.equal(dynamicScaleHold(1.5, autoHigh), 0.67, 'below the retina threshold there is no hold');
+assert.equal(dynamicScaleHold(2, high), 0.9, 'no declared hold: the floor');
+assert.equal(dynamicScaleHold(2, { ...autoHigh, dynHold: 0.5 }), 0.667, 'a hold under the floor is the floor');
+assert.equal(dynamicScaleHold(2, { ...autoHigh, dynHold: 1.4 }), 1);
 assert.equal(reconstructionMode(2), 'native-rcas');
 assert.equal(reconstructionMode(Number.NaN), 'linear');
 

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
+import { t } from './i18n.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
 // outside this test: only user intent, asynchronous locking and exact export
@@ -41,6 +43,15 @@ const siteIndex = { takes: [
   { id: 's02-foreign', title: { en: 'Elsewhere', zh: '别处' }, short: { en: 'Elsewhere', zh: '别处' },
     map: 'desert', durationMs: 6600, scene: 'https://example.com/take.scene.json', thumb: '/media/site50-r14/stills/s02-foreign-thumb.webp' },
 ] };
+// Every tank's own take (owner 2026-10-12): fleet entries join the same index (group 'fleet', the vehicle's spec id) and
+// are reached by the Director's finder, never listed with the site's takes. Seven Leopards exceed one page of results.
+const SPEC_NAMES = { t90sm: 'T-90SM', m1a2: 'M1A2 Abrams', leo1: 'Leopard 1', leo2a4: 'Leopard 2A4', leo2a5: 'Leopard 2A5',
+  leo2a6: 'Leopard 2A6', leo2a7v: 'Leopard 2A7V', leo2pl: 'Leopard 2PL', leo2a8: 'Leopard 2A8' };
+const fleetEntry = (vehicle, index) => ({ id: `s${60 + index}-fleet-${vehicle}`, group: 'fleet', vehicle,
+  title: { en: `A ${SPEC_NAMES[vehicle]} in action`, zh: `${SPEC_NAMES[vehicle]} 实战` }, short: { en: SPEC_NAMES[vehicle], zh: SPEC_NAMES[vehicle] },
+  map: index % 2 ? 'fjord' : 'verdant', durationMs: 6600, scene: `/media/site50-r14/scenes/s${60 + index}-fleet-${vehicle}.scene.json`,
+  ...(vehicle === 'leo2a8' ? {} : { thumb: `/media/site50-r14/fleet/${vehicle}.jpg` }) });
+siteIndex.takes.push(...Object.keys(SPEC_NAMES).map(fleetEntry));
 const takeScene = { map: 'urban', actors: [{ id: 'leo2a6', name: 'hero' }] };
 const fetches = [];
 const fetch = (url) => {
@@ -48,13 +59,17 @@ const fetch = (url) => {
   const body = url.endsWith('/scenes/index.json') ? siteIndex : takeScene;
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 };
-const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath };
+const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm']]); // the tank last selected in the Garage
+const localStorage = { getItem: (key) => stored.get(key) ?? null };
+const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath,
+  t, LAST_TANK_STORAGE_KEY, localStorage };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel;`, context);
 const calls = [];
 let resolveStage, rejectStage;
 const S = {
   productionFormat: 'landscape',
-  TANK_IDS: ['m1a2'], getMapInfo: id => ({ name: id }), getSpecInfo: id => ({ name: id }),
+  TANK_IDS: ['m1a2'], getMapInfo: id => ({ name: id }),
+  getSpecInfo: id => { if (!SPEC_NAMES[id]) throw new Error(`unknown vehicle ${id}`); return { name: SPEC_NAMES[id] }; },
   _internal: { actors: [{}] }, fxTimeMs: 0, durationMs: 12000, playing: false, selectedShotId: 'a',
   recordingStatus: () => ({ active: false, supported: true }),
   getStoryboard: () => ({ shots: [{ id: 'a', label: 'Opening', tMs: 0 }, { id: 'b', label: 'Tracking', tMs: 4000 }] }),
@@ -125,6 +140,49 @@ assert.ok(all().some(element => element.textContent === 'Take staged as filmed. 
 byData('siteTake', 's02-foreign').fire('click'); await tick(); await tick();
 assert.ok(!fetches.includes('https://example.com/take.scene.json'), 'a scene on another origin is refused');
 assert.equal(calls.filter(call => call[0] === 'load').length, 1);
+// Every tank's own take: the fleet entries stay out of the site's list and are reached through the finder, a page of
+// cards at a time; with no query it offers the take of the Director's featured tank, else the Garage's last tank.
+const siteLibrary = all().find(element => element.className === 'production-library' && element.children.includes(streetTake));
+assert.deepEqual(siteLibrary.children.map(card => card.dataset.siteTake), ['s01-street', 's02-foreign'], 'the default list is the site\'s takes');
+const fleetSection = all().find(element => element.className === 'production-takes production-fleet');
+assert.equal(fleetSection.hidden, false, 'an index with fleet takes shows the finder');
+assert.ok(fleetSection.children.some(child => child.textContent === t('studio.director.fleet.intro', { count: 9 })), 'it counts the tanks');
+const fleetCards = () => all().filter(element => element.dataset.siteTake?.includes('-fleet-'));
+const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-status').textContent;
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm'], 'the Garage tank\'s take, alone');
+assert.equal(fleetStatus(), t('studio.director.fleet.yourTank'));
+const search = byData('fleetSearch');
+search.value = 'Leopard'; search.fire('input');
+assert.equal(fleetCards().length, 6, 'a search shows one page of cards');
+assert.equal(fleetStatus(), t('studio.director.fleet.more', { shown: 6, count: 7 }), 'and says how many more match');
+search.value = 'fjord'; search.fire('input');
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s61-fleet-m1a2', 's63-fleet-leo2a4', 's65-fleet-leo2a6', 's67-fleet-leo2pl'],
+  'a map finds the takes filmed on it');
+assert.equal(fleetStatus(), '');
+search.value = '2A8'; search.fire('input');
+assert.equal(fleetCards()[0].children[0].src, '/maps/cards/verdant.webp', 'a take without a card picture shows its map');
+search.value = 'zzz'; search.fire('input');
+assert.equal(fleetCards().length, 0);
+assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
+search.value = ''; search.fire('input');
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm']);
+const featuredTank = byData('productionTank');
+featuredTank.value = 'leo2a6'; featuredTank.fire('change');
+assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a6'], 'the Director\'s featured tank comes first');
+featuredTank.value = ''; featuredTank.fire('change');
+stored.clear(); search.fire('input');
+assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
+assert.equal(fleetStatus(), t('studio.director.fleet.hint'), 'but a hint');
+stored.set(LAST_TANK_STORAGE_KEY, 't90sm'); search.fire('input');
+const loadsBefore = calls.filter(call => call[0] === 'load').length;
+fleetCards()[0].fire('click'); await tick(); await tick();
+assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s60-fleet-t90sm.scene.json', 'a fleet card fetches its own scene');
+assert.equal(calls.filter(call => call[0] === 'load').length, loadsBefore + 1, 'and stages it as filmed');
+assert.equal(fleetCards()[0].attributes['aria-pressed'], 'true');
+search.value = 'T-90'; search.fire('input');
+assert.equal(fleetCards()[0].attributes['aria-pressed'], 'true', 'the staged take stays marked through a new search');
+assert.equal(streetTake.attributes['aria-pressed'], 'false');
+search.value = ''; search.fire('input');
 panel.setVisible(true); panel.setVisible(false); await tick();
 assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1, 'reopening the Studio does not fetch the index again');
 byData('productionPreset', 'two').fire('click');
@@ -155,7 +213,8 @@ S.recordingStatus = () => ({ active: true, supported: true }); panel.refresh();
 assert.equal(stage.disabled, true); assert.equal(byText('Stop recording').disabled, false);
 assert.equal(byText('Hide controls').disabled, true, 'recording keeps a stable native canvas size');
 assert.equal(byData('siteTake', 's01-street').disabled, true, 'a take cannot be loaded over a recording');
+assert.ok(fleetCards().length && fleetCards().every(card => card.disabled), 'nor a tank\'s own take');
 S.productionFormat = 'square'; panel.refresh();
 assert.equal(frame.value, 'square', 'loading or scripting a different format synchronizes the export selector');
 locale = 'zh-CN'; assert.equal(context.label('director'), '导演台');
-console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, staging races, exports, transport, recording locks and localization passed');
+console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, every tank\'s take, staging races, exports, transport, recording locks and localization passed');

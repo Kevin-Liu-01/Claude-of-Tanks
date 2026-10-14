@@ -103,6 +103,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   ]),
   UK: Object.freeze([
     'challenger_3x',
+    'warrior_tes_h', // VEH-11 (2026-10-13): the tier-X Warrior type follows the Challenger 3
     'challenger1_x',
     'chieftain_mk10_x',
     'chieftain5_x',

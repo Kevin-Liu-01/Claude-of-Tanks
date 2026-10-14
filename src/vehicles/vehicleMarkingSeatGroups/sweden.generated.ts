@@ -220,7 +220,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.6676509
+        "maximumSurfaceErrorM": 0.5846692
       }
     ]
   },
@@ -255,7 +255,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.24,
         "pos": [
           -1.689,
-          1.053,
+          0.9693,
           -0.2970001
         ],
         "quaternion": [

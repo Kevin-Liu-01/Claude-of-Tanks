@@ -5,8 +5,10 @@ import type {
   SoloBattleLoadingStartOptions,
 } from './soloBattleLoadingRuntime.ts';
 
+import type { PendingBattlefield } from '../ui/battleLoad.ts';
+
 interface EntryLoadScreen {
-  showPending(): void;
+  showPending(map?: string | PendingBattlefield | null): void;
   hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -32,6 +34,9 @@ interface SoloBattleEntryRuntimeOptions {
   isVisibleSpecId(specId: string): boolean;
   getSelectedSpecId(): string;
   getSelectedMapId(): string;
+  /** The battlefield this entry will load (a Random pick resolved the way the loading owner will consume it), so the
+   * pending cover names it from its first frame; null when it cannot be known before the loading owner runs. */
+  describePendingMap?(specId: string, mapId: string | null): PendingBattlefield | null;
   reportError?(message: string, error: RuntimeValue): void;
   /**
    * Entry resilience (2026-09-25): show the player why the battle did not
@@ -69,6 +74,7 @@ export function createSoloBattleEntryRuntime({
   isVisibleSpecId,
   getSelectedSpecId,
   getSelectedMapId,
+  describePendingMap = () => null,
   reportError = (message, error) => console.error(message, error),
   presentFailure = () => {},
   onFailure = () => {},
@@ -88,7 +94,9 @@ export function createSoloBattleEntryRuntime({
     try {
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
-      battleLoad.showPending();
+      let pending: PendingBattlefield | string | null = mapId;
+      try { pending = describePendingMap(specId, mapId) ?? mapId; } catch { /* the cover never waits on a name */ }
+      battleLoad.showPending(pending);
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {

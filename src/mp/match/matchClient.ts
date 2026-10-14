@@ -12,6 +12,7 @@ import { usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
  */
 import type { MovementSpec } from '../../sim/movement.ts';
 import { TRANSPORT_CLOSE } from '../transport/transport.ts';
+import { matchRefusalCodeOf, matchRefusalMessage } from '../wire/matchBuild.ts';
 import type { Transport, TransportStateChange, TransportStats } from '../transport/transport.ts';
 import {
   CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ,
@@ -224,11 +225,12 @@ const VIEWER_GUN_MOUNT_INDEX = VIEWER_MODULES.indexOf('gunMount');
 
 function u32(value: number): number { return Math.round(value) >>> 0; }
 
-/** The words a player sees when the host runs another build: what happened and what to do (refresh). */
+/**
+ * The words a player sees when the host runs another build: what happened and what to do (refresh). One vocabulary
+ * with the same-wire check's refusals (src/mp/wire/matchBuild.ts; the lobby localizes them by code).
+ */
 export function matchBuildMismatchMessage(peerWire: number): string {
-  return peerWire < WIRE_VERSION
-    ? 'The host is running an older version of the game. Ask them to refresh their page, then join again.'
-    : 'A newer version of the game is out. Refresh this page to update, then join again.';
+  return matchRefusalMessage(peerWire < WIRE_VERSION ? 'build_host_older' : 'build_host_newer');
 }
 
 export class MatchClient {
@@ -682,10 +684,12 @@ export class MatchClient {
           break;
         }
         this.closeReason = message.reason;
-        this.closeDetail = message.detail;
+        // the same-wire build check (2026-10-13): the host names a refusal by code; this build words it
+        this.closeDetail = message.reason === CLOSE_REASON.PROTOCOL_VERSION && matchRefusalCodeOf(message.detail)
+          ? matchRefusalMessage(matchRefusalCodeOf(message.detail)!) : message.detail;
         if (this.recovery.current !== 'left') this.recovery.end('closed');
-        this.transport.close(TRANSPORT_CLOSE.SERVER, message.detail || String(message.reason));
-        this.notifyPhase('closed', message.detail);
+        this.transport.close(TRANSPORT_CLOSE.SERVER, this.closeDetail || String(message.reason));
+        this.notifyPhase('closed', this.closeDetail);
         break;
       default:
         // Client-to-server types never arrive here; the decoder already validated the frame.

@@ -1,0 +1,279 @@
+{
+ "map": "blackglass",
+ "timeOfDay": "day",
+ "productionFormat": "landscape",
+ "fx": {
+  "quality": "cinematic"
+ },
+ "seed": 423,
+ "actors": [
+  {
+   "id": "kf51_x",
+   "name": "hero",
+   "pos": [
+    -98.04,
+    35.64
+   ],
+   "facingDeg": 50,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2961,
+   "state": "intact"
+  },
+  {
+   "id": "leo2a7v_x",
+   "name": "ally1",
+   "pos": [
+    -109.97,
+    32.64
+   ],
+   "facingDeg": 50,
+   "turretDeg": 6.34,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 2962,
+   "state": "intact"
+  },
+  {
+   "id": "t72b3m_x",
+   "name": "foe0",
+   "pos": [
+    -27.06,
+    87.85
+   ],
+   "facingDeg": -130,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 5499,
+   "state": "wrecked-burnt",
+   "stateAgeS": 30
+  }
+ ],
+ "effects": [],
+ "storyboard": {
+  "version": 2,
+  "durationMs": 1600,
+  "shots": [
+   {
+    "id": "cam-0",
+    "label": "t0",
+    "tMs": 0,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-1",
+    "label": "t250",
+    "tMs": 250,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-2",
+    "label": "t500",
+    "tMs": 500,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-3",
+    "label": "t750",
+    "tMs": 750,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-4",
+    "label": "t1000",
+    "tMs": 1000,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-5",
+    "label": "t1250",
+    "tMs": 1250,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942018,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-6",
+    "label": "t1500",
+    "tMs": 1500,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942018,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   },
+   {
+    "id": "cam-7",
+    "label": "t1600",
+    "tMs": 1600,
+    "pos": [
+     -94.0913380021732,
+     1.4477652746942016,
+     41.045559367378004
+    ],
+    "lookAt": [
+     -98.0421667069481,
+     3.597664118295364,
+     35.641768795425136
+    ],
+    "fov": 88,
+    "rollDeg": 0,
+    "handleIn": null,
+    "handleOut": null,
+    "transition": "linear"
+   }
+  ],
+  "cameraCues": [],
+  "actorTracks": []
+ },
+ "camera": {
+  "mode": "fly",
+  "pos": [
+   -94.09,
+   1.45,
+   41.05
+  ],
+  "yawDeg": 36.17,
+  "pitchDeg": 17.81,
+  "rollDeg": 0,
+  "fov": 88,
+  "lookAt": [
+   -105.33,
+   7.56,
+   25.67
+  ]
+ },
+ "fxTime": 0,
+ "timeScale": 0,
+ "film": {
+  "fps": 30,
+  "shutterDeg": 60,
+  "samples": 8,
+  "maxSamples": 48,
+  "filter": "gaussian",
+  "shake": 1,
+  "speed": []
+ },
+ "picture": {
+  "preset": "cinematic",
+  "exposure": 0.05,
+  "chromaticAberration": 0,
+  "vignette": {
+   "amount": 0.32
+  },
+  "grain": {
+   "amount": 0.08,
+   "size": 1.1,
+   "color": 0.15
+  }
+ },
+ "meta": {
+  "frame": 40,
+  "id": "b40-ultrawide",
+  "technique": "Ultra-wide worm",
+  "title": "KF51 Panther gun tube over an ultra-wide lens, towers behind",
+  "set": "blackglass-day-towers",
+  "map": "blackglass",
+  "time": "day",
+  "film": null,
+  "hero": "kf51_x",
+  "heroName": "KF51 Panther",
+  "exposureMs": 8,
+  "tMs": 1000
+ },
+ "crushes": []
+}

@@ -115,7 +115,8 @@ for (const id of SAVED_TANK_IDS) {
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [],
   'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
 // 2026-09-23: 54 -> 50 when the m26_pershing / m45_patton / is7 / object279 notes retired with their hulls.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 50,
+// 2026-10-13: 50 -> 51 with the Tier X Warrior TES(H) envelope (coordinator ruling on VEH-11).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 51,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -199,7 +200,7 @@ const missileVelocityByVehicle = new Map([
   ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
-  ['kurganets25_x', 240], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
+  ['kurganets25_x', 240], ['warrior_tes_h', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
   ['object695_x', 380], ['griffin_viper', 400], ['ztz100_prototype', 320], // owner-authored missile concepts
   // 2026-09-25 IFV identity batch: MELLS and the Type 79 replica racks keep their originals' speeds; the
   // Borsuk's Spike LR is authored at 180 m/s in europePhotoIfvSpecs.ts.

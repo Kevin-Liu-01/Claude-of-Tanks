@@ -168,7 +168,7 @@ function gear(P:TankBuilderPort):void {
   // Source Object_25: the steel dish is 122 mm behind the tire face.
   // These scalar stations preserve that recess through native suspension.
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the UK IFV nation
-    // construction (fv510_milan_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+    // construction (warrior_tes_h, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',trackPattern:'compact-ifv',
     wheelR:.324,wheelW:.340,wheelY:.391,

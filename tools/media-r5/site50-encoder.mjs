@@ -3,10 +3,15 @@
 // never waits on the CPU's). Every take whose film and stills are complete gets its master from the kept frames
 // (film-master.mjs) and its formats (site-loops.mjs, which keeps the proxy and drops the master), one take at a time, at
 // nice 15. While <renders>/pause-encodes exists no new take starts. It ends once <renders>/encoder-done exists and no take
-// is pending.
-//   node tools/media-r5/site50-encoder.mjs <renders> <deliver> [--poll=60]
+// is pending. --audio gives each delivered take its sound (take-audio.mjs: the game's recorded world, muxed into every
+// video format; owner 2026-10-09, "make sure our videos have audio").
+// Encoders can share a round (2026-10-10: one encoder at nice 20 took over an hour a take while the GPU rendered three
+// an hour). Each takes a take, or a take's master, by claiming <renders>/films/<id>/.encoding: a directory made
+// atomically, holding its pid; a dead pid's claim is taken over. No encoder starts a take that a site-loops process
+// is already encoding.
+//   node tools/media-r5/site50-encoder.mjs <renders> <deliver> [--poll=60] [--audio]
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { TOOL } from './paths.mjs';
 
@@ -25,20 +30,52 @@ const ready = () => {
   return readdirSync(films).filter((id) => /^s\d\d-/.test(id)).sort().filter((id) => complete(receipt(join(films, id)), 'films')
     && complete(receipt(join(renders, 'stills', id)), 'stills'));
 };
-// done when its landscape loop is newer than the take's film receipt and its 4K still is delivered
+// done when its landscape loop is newer than the take's render and its 4K still is delivered. The render's time is its
+// newest kept frame (the review frames stay after the master): the film receipt is no clock, since cinema re-saves every
+// receipt of a batch when the batch ends (launch day: S04's loop, encoded during its own lease, read as undelivered and
+// spent its second try). A take with no kept frames falls back to its receipt.
+const newestFrameMs = (id) => {
+  let newest = 0;
+  const dir = join(renders, 'films', id, 'films');
+  if (!existsSync(dir)) return 0;
+  for (const d of readdirSync(dir, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue;
+    for (const f of readdirSync(join(dir, d.name))) if (/^frame-\d{5}\.png$/.test(f)) newest = Math.max(newest, statSync(join(dir, d.name, f)).mtimeMs);
+  }
+  return newest;
+};
 const delivered = (id) => {
   const mp4 = join(deliver, id, `${id}.mp4`), rec = join(renders, 'films', id, 'cinema-receipt.json');
-  return existsSync(mp4) && existsSync(rec) && statSync(mp4).mtimeMs > statSync(rec).mtimeMs && existsSync(join(deliver, id, `${id}-4k.png`));
+  if (!existsSync(mp4) || !existsSync(join(deliver, id, `${id}-4k.png`))) return false;
+  const rendered = newestFrameMs(id) || (existsSync(rec) ? statSync(rec).mtimeMs : 0);
+  return rendered > 0 && statSync(mp4).mtimeMs > rendered;
 };
 // a take's master, or its kept frames (more than the review frames cinema keeps)
 const filmsOf = (id) => join(renders, 'films', id, 'films');
 const hasMaster = (id) => existsSync(filmsOf(id)) && readdirSync(filmsOf(id)).some((f) => f.endsWith('-master.mov'));
 const hasFrames = (id) => existsSync(filmsOf(id)) && readdirSync(filmsOf(id), { withFileTypes: true }).some((d) => d.isDirectory()
   && readdirSync(join(filmsOf(id), d.name)).filter((f) => /^frame-\d{5}\.png$/.test(f)).length > 20);
-const nice = (script, args) => spawnSync('nice', ['-n', '15', 'node', join(TOOL, script), ...args], { stdio: 'inherit' }).status;
+// --nice=<n>: the children's increment over the encoder's own niceness (15 by default; nice adds, and caps at 20)
+const nice = (script, args) => spawnSync('nice', ['-n', String(flags.nice ?? 15), 'node', join(TOOL, script), ...args], { stdio: 'inherit' }).status;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-console.log(`[encoder] ${renders} -> ${deliver} ${stamp()}`);
-const failed = new Map();
+// claims: a take is this encoder's while its .encoding directory holds this pid
+const claimDir = (id) => join(renders, 'films', id, '.encoding');
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+const loopsRunning = (id) => spawnSync('ps', ['-axo', 'command'], { encoding: 'utf8' }).stdout.split('\n')
+  .some((line) => line.includes('site-loops.mjs') && line.includes(id) && !line.includes('ps -axo'));
+function claim(id) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { mkdirSync(claimDir(id)); writeFileSync(join(claimDir(id), 'pid'), String(process.pid)); return true; } catch { /* held */ }
+    let pid = 0;
+    try { pid = Number(readFileSync(join(claimDir(id), 'pid'), 'utf8')); } catch { /* being written */ }
+    if (!pid || alive(pid)) return false;
+    rmSync(claimDir(id), { recursive: true, force: true }); // a dead encoder's claim
+  }
+  return false;
+}
+const release = (id) => rmSync(claimDir(id), { recursive: true, force: true });
+console.log(`[encoder] ${renders} -> ${deliver} ${stamp()} pid ${process.pid}`);
+const failed = new Map(), audioFailed = new Map();
 for (;;) {
   const pending = ready().filter((id) => !delivered(id) && (failed.get(id) ?? 0) < 2);
   if (!pending.length) {
@@ -48,13 +85,35 @@ for (;;) {
   }
   // masters first, for every ready take: each turns ~3.8 GB of kept frames into a ~0.77 GB master, and the takes render
   // faster than their formats encode (the pause holds the formats only: the masters free the disk)
-  const unmastered = pending.filter((id) => !hasMaster(id) && hasFrames(id));
-  if (unmastered.length) { console.log(`[encoder] masters for ${unmastered.join(', ')} ${stamp()}`); nice('film-master.mjs', [renders, unmastered.join(',')]); }
+  for (const id of pending.filter((id) => !hasMaster(id) && hasFrames(id))) {
+    if (!claim(id)) continue;
+    console.log(`[encoder] master for ${id} ${stamp()}`);
+    nice('film-master.mjs', [renders, id]);
+    release(id);
+  }
   if (existsSync(join(renders, 'pause-encodes'))) { await sleep(POLL_MS); continue; }
-  const id = pending[0];
+  // a delivered take still silent (its encoder stopped before its sound): its sound first
+  if ('audio' in flags) {
+    const silent = ready().find((id) => delivered(id) && !existsSync(join(deliver, id, `${id}.audio.json`)) && (audioFailed.get(id) ?? 0) < 2
+      && !loopsRunning(id) && claim(id));
+    if (silent) {
+      console.log(`[encoder] ${silent}: its sound ${stamp()}`);
+      const a = nice('take-audio.mjs', [deliver, silent]);
+      if (a !== 0) { audioFailed.set(silent, (audioFailed.get(silent) ?? 0) + 1); console.log(`[encoder] ${silent}: take-audio ${a}`); }
+      release(silent);
+      continue;
+    }
+  }
+  const id = pending.find((id) => hasMaster(id) && !loopsRunning(id) && claim(id));
+  if (!id) { await sleep(POLL_MS); continue; }
   console.log(`[encoder] ${id} ${stamp()}`);
   const l = nice('site-loops.mjs', [renders, deliver, id, '--drop-film-masters']);
   if (l !== 0 || !delivered(id)) { failed.set(id, (failed.get(id) ?? 0) + 1); console.log(`[encoder] ${id}: formats ${l}; tried ${failed.get(id)} time(s)`); }
+  else if ('audio' in flags) {
+    const a = nice('take-audio.mjs', [deliver, id]);
+    if (a !== 0) console.log(`[encoder] ${id}: take-audio ${a}; its formats stay silent until take-audio.mjs runs again`);
+  }
+  release(id);
 }
 const left = ready().filter((id) => !delivered(id));
 console.log(`[encoder] done ${stamp()}${left.length ? `; not delivered: ${left.join(', ')}` : ''}`);

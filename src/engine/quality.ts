@@ -85,6 +85,26 @@ export interface QualityPreset {
    * (renderScalePolicy.RETINA_PIXEL_RATIO). Absent keeps the native fence (never below 1 CSS pixel per axis).
    */
   readonly nativeDynMin?: number;
+  /**
+   * 2026-10-12 (the perf stream; the owner: "im averaging 11 fps"): the governor's floor on a retina display while the
+   * player leaves quality on Auto. Under a sustained overload the raster falls this far before the auto tier steps
+   * down (High → Medium drops the grass, the shadow reach and the light effects, and lands on the same 1.0 raster).
+   * An explicit preset keeps `dynMin`; absent means none (dynMin).
+   */
+  readonly autoDynMin?: number;
+  /**
+   * 2026-10-13 (the perf stream; the coordinator's DPR ruling): on Auto, the rung a retina raster holds at under load
+   * (renderScalePolicy.dynamicScaleHold): one cut from the full raster lands on it, and it goes below only under a
+   * sustained overload. getPreset() carries it as `dynHold` on the Auto variant; an explicit preset has none.
+   */
+  readonly autoDynHold?: number;
+  /** The governor's hold rung in effect (set on the Auto variant from autoDynHold). */
+  readonly dynHold?: number;
+  /**
+   * 2026-10-13: the input/output scale from which the final FSR pass sharpens with RCAS after EASU
+   * (renderScalePolicy.reconstructionMode; absent keeps RCAS_MIN_SCALE, 0.6, which keeps phones on EASU alone).
+   */
+  readonly rcasMinScale?: number;
   readonly aoScale: number;
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
@@ -316,6 +336,12 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // two thirds per axis there — FSR1's quality ratio, reconstructed by EASU + RCAS to the native canvas — and
     // raise it again only when the measured GPU time predicts room (adaptiveQualityPolicy.ts). Retina keeps 0.9.
     nativeDynMin: 0.67,
+    // 2026-10-12 (the perf stream): on Auto the retina raster may fall to 1.0 (0.667 of 1.5) before the tier steps down
+    autoDynMin: 0.667,
+    // 2026-10-13: ... but it holds at 1.25 (0.8334 of 1.5) while it can, and below 1.35 RCAS keeps sharpening down to
+    // the 1.0 raster on a DPR-2 panel (input scale 0.5; 0.49 absorbs the composer's pixel rounding)
+    autoDynHold: 0.8334,
+    rcasMinScale: 0.49,
     aoScale: 0,
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
@@ -633,9 +659,22 @@ export function setMobilePresetName(name: string): void {
   for (const fn of listeners) fn(preset);
 }
 
-/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */
+const autoVariants = new Map<PresetName, QualityPreset>();
+/** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object (on Auto, with its autoDynMin floor) */
 export function getPreset(): QualityPreset {
-  return PRESETS[resolvePresetName()];
+  const name = resolvePresetName();
+  const preset = PRESETS[name];
+  if (preset.autoDynMin === undefined || getStoredChoice() !== 'auto') return preset;
+  let variant = autoVariants.get(name);
+  if (!variant) {
+    variant = Object.freeze({
+      ...preset,
+      dynMin: Math.min(preset.dynMin, preset.autoDynMin),
+      ...(preset.autoDynHold !== undefined ? { dynHold: preset.autoDynHold } : {}),
+    });
+    autoVariants.set(name, variant);
+  }
+  return variant;
 }
 
 /**

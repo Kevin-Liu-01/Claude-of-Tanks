@@ -5,7 +5,11 @@
 // (weaponAudio.ts), the hero's engine family and track set (vehicleAudioProfiles.ts), and the map's gun-echo tail
 // and ambience bed (environmentScenes.ts), one bed per cut. The hero's crew calls its gun's work over the radio in
 // its own nation's language (owner 2026-10-05: "we have voices and stuff now"; docs/AUDIO.md "Crew radio").
-//   node sfx-cues.mjs <edl.json> <sceneDir> <cues-in.json> <cues-out.json>
+// --take scores one site-fifty take, whose lens tracks the fight (owner 2026-10-09: "make sure our videos have audio"):
+// every sound pans against the camera's right at its instant, every moving hull (the hero and its three nearest) runs
+// its own engine and tracks with level and pan following the lens, and burning wrecks and fire fields crackle with
+// the game's own fire loops.
+//   node sfx-cues.mjs <edl.json> <sceneDir> <cues-in.json> <cues-out.json> [--take]
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 await import('../../../src/vehicles/fleetRegistration.ts');
@@ -26,15 +30,30 @@ function gunOf(id) {
 // the ground under the tracks, by battlefield (the game reads it from the terrain under each road wheel)
 const SURFACE = { desert: 'sand', oasis: 'sand', badlands: 'sand', winter: 'snow', alpine: 'snow', whiteout: 'snow',
   monsoon: 'mud', delta: 'mud', mangrove: 'mud', urban: 'hard', railyard: 'hard', foundry: 'hard' };
-const [edlFile, sceneDir, cuesIn, cuesOut] = process.argv.slice(2);
+const TAKE = process.argv.includes('--take');
+const [edlFile, sceneDir, cuesIn, cuesOut] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const edl = JSON.parse(readFileSync(edlFile, 'utf8')), cues = JSON.parse(readFileSync(cuesIn, 'utf8'));
 const lerp = (a, b, t) => a + (b - a) * t;
-const camAt = (sb, tMs) => {
+/** A camera key's field (pos or lookAt) at tMs, linear between the storyboard's keys. */
+const keyAt = (sb, tMs, field) => {
   const s = sb.shots; if (!s?.length) return null;
-  if (tMs <= s[0].tMs) return s[0].pos;
-  for (let i = 1; i < s.length; i++) if (tMs <= s[i].tMs) { const u = (tMs - s[i - 1].tMs) / Math.max(1, s[i].tMs - s[i - 1].tMs); return s[i - 1].pos.map((v, k) => lerp(v, s[i].pos[k], u)); }
-  return s.at(-1).pos;
+  if (tMs <= s[0].tMs) return s[0][field];
+  for (let i = 1; i < s.length; i++) if (tMs <= s[i].tMs) { const u = (tMs - s[i - 1].tMs) / Math.max(1, s[i].tMs - s[i - 1].tMs); return s[i - 1][field].map((v, k) => lerp(v, s[i][field][k], u)); }
+  return s.at(-1)[field];
 };
+const camAt = (sb, tMs) => keyAt(sb, tMs, 'pos');
+/**
+ * Where a source at [x, z] sits across the frame at tMs: -1 hard left, 1 hard right, softened to ±0.85 so nothing
+ * leaves one ear. The camera's right is forward × up (three's convention), forward from its position to its look-at.
+ */
+const panAt = (sb, tMs, at) => {
+  const c = camAt(sb, tMs), l = keyAt(sb, tMs, 'lookAt');
+  if (!c || !l || !at) return 0;
+  const fx = l[0] - c[0], fz = l[2] - c[2], fl = Math.hypot(fx, fz) || 1, dx = at[0] - c[0], dz = at[1] - c[2], dl = Math.hypot(dx, dz) || 1;
+  return +Math.max(-0.85, Math.min(0.85, (dx * -fz + dz * fx) / (fl * dl) * 0.85)).toFixed(2);
+};
+/** A source's distance from the lens at tMs (m, across the ground). */
+const distAt = (sb, tMs, at) => { const c = camAt(sb, tMs); return c && at ? Math.hypot(c[0] - at[0], c[2] - at[1]) : 40; };
 const actorAt = (scene, name, tMs) => {
   const k = scene.storyboard?.actorTracks?.find(t => t.actor === name)?.keys;
   if (k?.length >= 2) {
@@ -65,31 +84,138 @@ function propAsset(kind, height = 0) {
 const sfx = [], calls = [];
 const seedOf = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 /**
- * The hero crew's calls in one cut, as crewRadio.ts would make them: the gunner's "firing" as the round goes, the
- * result once it lands (target destroyed, penetration, non-penetration, ricochet), a near miss when a shell bursts
- * close, an ally's kill. Candidates only: the radio discipline below places them.
+ * The hero crew's calls in one cut, as crewRadio.ts would make them, written as slots: each slot lists the lines that
+ * fit its moment equally. The commander's contact report (ahead, left, right, behind, several) or the gunner's
+ * lock-on before the first shot; "firing" (a launcher's "missile away") as the round goes; the loader's call for the
+ * next round after it; the result once it lands (target destroyed, an ammunition-rack kill, a double kill,
+ * penetration or a critical hit, non-penetration, ricochet); "reloaded" once the gun is ready again; a near miss when
+ * a shell bursts close; an ally's kill; the hull on the move before it engages. Which line a slot speaks, and which recorded take of it, is chosen in the
+ * radio discipline below from the voice ledger, so the fifty takes and the films spread across the crew's whole
+ * repertoire instead of three lines (owner 2026-10-12: "our videos need to use different voice lines").
  */
 function crewCalls(scene, cut, cutIndex, inMs, outMs, rate) {
   const heroId = scene.actors.find((a) => a.name === 'hero')?.id ?? '', spec = specOf(heroId);
   const lang = spec ? resolveVehicleAudioIdentity(spec).crew : 'en-US';
   const fx = (scene.effects ?? []).filter((e) => e.tMs >= inMs - 400 && e.tMs < outMs).sort((a, b) => a.tMs - b.tMs);
   const at = (tMs) => +(cut.start + (tMs - inMs) / 1000 / rate).toFixed(3);
-  const out = [], call = (line, tMs) => out.push({ line, lang, t: at(tMs), cutStart: cut.start, cutEnd: cut.start + cut.dur, cutIndex });
+  const out = [], call = (lines, tMs, slot) => out.push({ lines: [].concat(lines), slot, lang, t: at(tMs), cutStart: cut.start, cutEnd: cut.start + cut.dur, cutIndex });
+  const calibre = spec?.gun?.caliberMm ?? 120, launcher = /rocket|missile|mlrs|launcher|thermobaric/i.test(`${spec?.gun?.soundProfile ?? ''} ${spec?.gun?.kind ?? ''} ${heroId}`) || /^tos1/.test(heroId);
+  // the loader's next round: a main gun names its ammunition, a launcher its missile, an autocannon reloads its box
+  const reloadLines = launcher ? ['load_missile', 'reloading'] : calibre >= 90 ? ['load_kinetic', 'load_heat', 'load_he', 'reloading'] : calibre >= 60 ? ['load_he', 'reloading'] : [];
+  const heroAt = (tMs) => actorAt(scene, 'hero', tMs);
+  const facingAt = (tMs) => {
+    const k = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys ?? [];
+    const key = k.find((x) => x.tMs >= tMs) ?? k.at(-1);
+    return ((key?.facingDeg ?? scene.actors.find((a) => a.name === 'hero')?.facingDeg ?? 0) * Math.PI) / 180;
+  };
+  /** Where a point lies from the hero at tMs, as the commander calls it (forward is +Z turned by the hull's yaw). */
+  const bearing = (p, tMs) => {
+    const h = heroAt(tMs); if (!h || !p) return 'spotted_front';
+    const yaw = facingAt(tMs), fx2 = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
+    const dx = p[0] - h[0], dz = p[1] - h[1], ahead = dx * fx2 + dz * fz, side = dx * rx + dz * rz;
+    return ahead >= Math.abs(side) ? 'spotted_front' : ahead <= -Math.abs(side) ? 'spotted_rear' : side > 0 ? 'spotted_right' : 'spotted_left';
+  };
+  const heroShots = fx.filter((e) => e.type === 'fire' && e.actor === 'hero');
+  const foes = scene.actors.filter((a) => a.name.startsWith('foe') && !/destroyed|wreck|burning/i.test(a.state ?? ''));
+  // contact as the cut opens, before shells start landing round the hull; a hero that fires within two seconds gets the
+  // gunner's lock-on or the commander's bearing just before the round instead
+  if (foes.length) {
+    const first = heroShots[0], early = first && first.tMs < inMs + 2000;
+    const tContact = early ? Math.max(inMs + 100, first.tMs - 1100) : inMs + 150;
+    const nearest = foes.map((a) => actorAt(scene, a.name, tContact)).filter(Boolean)
+      .sort((p, q) => Math.hypot(p[0] - (heroAt(tContact)?.[0] ?? 0), p[1] - (heroAt(tContact)?.[1] ?? 0)) - Math.hypot(q[0] - (heroAt(tContact)?.[0] ?? 0), q[1] - (heroAt(tContact)?.[1] ?? 0)))[0];
+    call(early ? ['target_locked', bearing(nearest, tContact)] : ['enemy_spotted', bearing(nearest, tContact), ...(foes.length > 1 ? ['spotted_multiple'] : []), ...(first ? ['target_locked'] : [])], tContact, 'contact');
+  }
+  // the hull on the move before it engages
+  const k0 = heroAt(inMs), k1 = heroAt(inMs + 1000);
+  if (k0 && k1 && Math.hypot(k1[0] - k0[0], k1[1] - k0[1]) > 4 && !heroShots.some((f) => f.tMs < inMs + 2600)) call(['on_the_move'], inMs + 700, 'move');
   for (const f of fx.filter((e) => e.type === 'fire')) {
     const after = fx.filter((e) => e.tMs > f.tMs && e.tMs <= f.tMs + 1600 && (e.actor ?? '').startsWith('foe'));
     const kill = after.find((e) => e.type === 'tank_kill'), hit = after.find((e) => e.type === 'impact');
     if (f.actor === 'hero') {
-      call('firing', f.tMs - 520);
-      if (kill) call('target_destroyed', kill.tMs + 380);
-      else if (hit) call({ pen: 'penetration', nonpen: 'nonpen', ricochet: 'ricochet' }[hit.params?.kind] ?? 'penetration', hit.tMs + 280);
-    } else if (kill && (f.actor ?? '').startsWith('ally')) call('ally_kill', kill.tMs + 420);
+      call(launcher ? ['missile_away', 'firing'] : ['firing'], f.tMs - 520, 'fire');
+      if (kill) {
+        const double = fx.some((e) => e.type === 'tank_kill' && e !== kill && Math.abs(e.tMs - kill.tMs) < 3000);
+        call(['target_destroyed', ...(kill.params?.pop ? ['enemy_ammo_rack'] : []), ...(double ? ['double_kill'] : [])], kill.tMs + 380, 'result');
+      } else if (hit) call({ pen: ['penetration', 'enemy_crit'], nonpen: ['nonpen'], ricochet: ['ricochet'] }[hit.params?.kind] ?? ['penetration', 'enemy_crit'], hit.tMs + 280, 'result');
+      if (reloadLines.length) call(reloadLines, f.tMs + 1350, 'reload');
+      // the gun ready again ("reloaded", as audioEngine.ts says it when a reload of 1.25 s or more ends): before the
+      // hero's next round, or after its reload when no other round follows inside the cut
+      const next = heroShots.find((s) => s.tMs > f.tMs);
+      const readyMs = next ? next.tMs - 700 : f.tMs + 1000 * (spec?.gun?.autoloader?.intraClipS ?? spec?.gun?.reloadS ?? 99);
+      if (readyMs - f.tMs >= 2600 && readyMs < outMs - 300) call(['reloaded'], readyMs, 'ready');
+    } else if (kill && (f.actor ?? '').startsWith('ally')) call(['ally_kill'], kill.tMs + 420, 'ally');
   }
-  const heroAt = (tMs) => actorAt(scene, 'hero', tMs);
   for (const e of fx.filter((x) => x.type === 'explosion' && Array.isArray(x.at))) {
     const h = heroAt(e.tMs);
-    if (h && Math.hypot(e.at[0] - h[0], e.at[1] - h[1]) < 16) call('near_miss', e.tMs + 260);
+    if (h && Math.hypot(e.at[0] - h[0], e.at[1] - h[1]) < 16) call(['near_miss'], e.tMs + 260, 'incoming');
   }
   return out;
+}
+/**
+ * A take's running gear: every hull that runs more than 1 m/s through the cut (the hero first, then the three nearest
+ * the lens) plays its own family's recorded engine, at its family's pitch, over its track set's loop. The keys give
+ * its distance and pan against the lens every 100 ms, and score.mjs --gameLaw levels each loop by its cue's law on the
+ * vehicles bus, as the game does. A held lens that a hull passes within 18 m gets the Doppler pass-by instead.
+ */
+function takeDrives(scene, cut, inMs, outMs, rate) {
+  const sb = scene.storyboard ?? {}, sh = sb.shots ?? [];
+  const held = sh.length > 1 && Math.hypot(sh[0].pos[0] - sh.at(-1).pos[0], sh[0].pos[2] - sh.at(-1).pos[2]) < 0.5;
+  const movers = [];
+  for (const track of sb.actorTracks ?? []) {
+    if (!(track.keys?.length >= 2)) continue;
+    // the path run, not the displacement: a hull that turns still runs
+    let path = 0, prev = actorAt(scene, track.actor, inMs), best = { d: Infinity, t: inMs };
+    for (let tm = inMs; tm <= outMs; tm += 20) {
+      const p = actorAt(scene, track.actor, tm), d = distAt(sb, tm, p);
+      path += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p;
+      if (d < best.d) best = { d, t: tm };
+    }
+    const speed = path / Math.max(0.1, (outMs - inMs) / 1000);
+    if (speed > 1) movers.push({ name: track.actor, speed, best });
+  }
+  movers.sort((a, b) => (b.name === 'hero') - (a.name === 'hero') || a.best.d - b.best.d);
+  for (const m of movers.slice(0, 4)) {
+    const id = scene.actors.find((a) => a.name === m.name)?.id ?? '', spec = specOf(id);
+    const identity = spec ? resolveVehicleAudioIdentity(spec) : null;
+    const ev = { kind: 'drive', actor: m.name, t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), speed: +m.speed.toFixed(1),
+      engine: identity?.engine ?? (TURBINE.test(id) ? 'turbine_agt' : 'diesel_v12_modern'), pitch: +(identity?.enginePitch ?? 1).toFixed(4),
+      tracks: identity?.tracks ?? 'heavy', surface: SURFACE[scene.map] ?? 'earth' };
+    if (held && m.best.d < 18) {
+      const c = camAt(sb, m.best.t), fx = sh[0].lookAt[0] - c[0], fz = sh[0].lookAt[2] - c[2];
+      const a = actorAt(scene, m.name, m.best.t - 50), b2 = actorAt(scene, m.name, m.best.t + 50);
+      const dir = Math.sign(-(b2[0] - a[0]) * fz + (b2[1] - a[1]) * fx) || 1;
+      Object.assign(ev, { passAt: +((m.best.t - inMs) / 1000 / rate).toFixed(3), d0: +m.best.d.toFixed(1), dir });
+    } else {
+      const keys = [];
+      for (let tm = inMs; tm <= outMs + 1e-6; tm += 100) {
+        const p = actorAt(scene, m.name, tm);
+        keys.push([+((tm - inMs) / 1000 / rate).toFixed(3), +distAt(sb, tm, p).toFixed(1), panAt(sb, tm, p)]);
+      }
+      ev.keys = keys;
+    }
+    sfx.push(ev);
+  }
+}
+/**
+ * A take's fires as audioEngine.ts voices them: a burning wreck's wreck_fire_loop, a fire field's fire_small_loop
+ * (louder with its intensity, 4 dB a decade). Each runs from its effect's start (or the cut's) to its end, or to the
+ * cut's end. The keys give its distance and pan against the lens every 100 ms; score.mjs --gameLaw levels it by its
+ * cue's law on the environment bus.
+ */
+function fireLoop(scene, cut, e, inMs, outMs, rate) {
+  const start = e.tMs ?? 0, from = Math.max(inMs, start);
+  const until = e.params?.durationS ? Math.min(outMs, start + e.params.durationS * 1000) : outMs;
+  if (until - from < 200) return;
+  const sb = scene.storyboard ?? {}, wreck = e.type === 'burning', keys = [];
+  for (let tm = from; tm <= until + 1e-6; tm += 100) {
+    const at = e.at ?? (e.actor ? actorAt(scene, e.actor, tm) : null);
+    if (!at) return;
+    keys.push([+((tm - from) / 1000 / rate).toFixed(3), +distAt(sb, tm, at).toFixed(1), panAt(sb, tm, at)]);
+  }
+  const level = wreck ? 1 : +Math.pow(10, 4 * Math.log10(Math.max(0.25, e.params?.intensity ?? 1)) / 20).toFixed(3);
+  sfx.push({ kind: 'loop', asset: wreck ? 'wreck_fire_loop' : 'fire_small_loop', actor: e.actor ?? null, t: +(cut.start + (from - inMs) / 1000 / rate).toFixed(3),
+    dur: +((until - from) / 1000 / rate).toFixed(3), fadeIn: from > inMs ? 0.4 : 0, level, keys });
 }
 for (const cut of edl.shots) {
   const id = basename(cut.src, '.mp4').replace(/-p$/, ''); // portrait clips share the landscape scene's timing
@@ -98,9 +224,11 @@ for (const cut of edl.shots) {
   if (!existsSync(f)) continue;
   const scene = JSON.parse(readFileSync(f, 'utf8'));
   const rate = cut.rate ?? 1, inMs = (cut.in ?? 0) * 1000, outMs = inMs + cut.dur * 1000 * rate;
-  // engines: a moving hero gets a running-gear bed, or a Doppler pass-by when a held camera sees it go past
+  // engines: a moving hero gets a running-gear bed, or a Doppler pass-by when a held camera sees it go past (a take:
+  // every moving hull near the lens, takeDrives)
   const hk = scene.storyboard?.actorTracks?.find(t => t.actor === 'hero')?.keys;
-  if (hk?.length >= 2) {
+  if (TAKE) takeDrives(scene, cut, inMs, outMs, rate);
+  else if (hk?.length >= 2) {
     const p0 = actorAt(scene, 'hero', inMs), p1 = actorAt(scene, 'hero', outMs), moved = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
     const speed = moved / Math.max(0.1, (outMs - inMs) / 1000);
     if (speed > 1) {
@@ -129,24 +257,26 @@ for (const cut of edl.shots) {
     if (c.tMs < inMs || c.tMs >= outMs) continue;
     if (c.kind === 'pole') continue; // the battle topples a utility pole silently (crushNearbyProps emits no sound event)
     const cam = camAt(scene.storyboard ?? {}, c.tMs), d = cam ? Math.hypot(cam[0] - c.pos[0], cam[2] - c.pos[2]) : 40;
-    sfx.push({ kind: 'prop', t: +(cut.start + (c.tMs - inMs) / 1000 / rate).toFixed(3), ...propAsset(c.kind, c.heightM), distM: +d.toFixed(1) });
+    const P = TAKE ? { pan: panAt(scene.storyboard ?? {}, c.tMs, [c.pos[0], c.pos[2]]) } : {};
+    sfx.push({ kind: 'prop', t: +(cut.start + (c.tMs - inMs) / 1000 / rate).toFixed(3), ...propAsset(c.kind, c.heightM), distM: +d.toFixed(1), ...P });
   }
   for (const e of scene.effects ?? []) {
+    if (TAKE && (e.type === 'burning' || e.type === 'fire_field')) { fireLoop(scene, cut, e, inMs, outMs, rate); continue; }
     if (e.tMs < inMs || e.tMs >= outMs) continue;
     const t = +(cut.start + (e.tMs - inMs) / 1000 / rate).toFixed(3);
     const cam = camAt(scene.storyboard ?? {}, e.tMs), pos = e.at ?? (e.actor ? actorAt(scene, e.actor, e.tMs) : null);
     const d = cam && pos ? Math.hypot(cam[0] - pos[0], cam[2] - pos[1]) : 40;
-    const distM = +d.toFixed(1), pan = 0, shooter = scene.actors.find(a => a.name === (e.actor ?? 'hero'))?.id ?? '';
-    const heavy = gunOf(shooter).caliberMm >= 100;
+    const distM = +d.toFixed(1), pan = TAKE ? panAt(scene.storyboard ?? {}, e.tMs, pos) : 0, shooter = scene.actors.find(a => a.name === (e.actor ?? 'hero'))?.id ?? '';
+    const heavy = gunOf(shooter).caliberMm >= 100, P = TAKE ? { pan } : {};
     if (e.type === 'fire') sfx.push({ kind: 'cannon', t, ...gunOf(shooter), distM, tail: env.tail, pan });
-    else if (e.type === 'tank_kill') sfx.push({ kind: 'kill', t, distM, pop: e.params?.pop !== false });
-    else if (e.type === 'impact' && e.params?.kind === 'pen') sfx.push({ kind: 'pen', t, distM, heavy });
-    else if (e.type === 'impact' && e.params?.kind === 'nonpen') sfx.push({ kind: 'nonpen', t, distM });
-    else if (e.type === 'impact' && e.params?.kind === 'ricochet') sfx.push({ kind: 'ricochet', t, distM, heavy });
-    else if (e.type === 'sparks') sfx.push({ kind: 'ricochet', t, distM, heavy: false, gain: 0.8 });
-    else if (e.type === 'explosion') sfx.push({ kind: 'he', t, distM, size: e.params?.size ?? 'medium' });
-    else if (e.type === 'barrage') for (let k = 0; k < (e.params?.count ?? 5); k++) sfx.push({ kind: 'he', t: +(t + k * 0.22).toFixed(3), distM: distM + 30, size: 'medium', gain: 0.8 });
-    else if (e.type === 'mg_burst') for (let k = 0; k < Math.min(9, e.params?.count ?? 7); k++) sfx.push({ kind: 'mg', t: +(t + k * 0.075).toFixed(3), cls: 'mg_heavy', caliberMm: 12.7, distM, tail: env.tail, burstHead: k === 0, gain: 0.8 });
+    else if (e.type === 'tank_kill') sfx.push({ kind: 'kill', t, distM, pop: e.params?.pop !== false, ...P });
+    else if (e.type === 'impact' && e.params?.kind === 'pen') sfx.push({ kind: 'pen', t, distM, heavy, ...P });
+    else if (e.type === 'impact' && e.params?.kind === 'nonpen') sfx.push({ kind: 'nonpen', t, distM, ...P });
+    else if (e.type === 'impact' && e.params?.kind === 'ricochet') sfx.push({ kind: 'ricochet', t, distM, heavy, ...P });
+    else if (e.type === 'sparks') sfx.push({ kind: 'ricochet', t, distM, heavy: false, gain: 0.8, ...P });
+    else if (e.type === 'explosion') sfx.push({ kind: 'he', t, distM, size: e.params?.size ?? 'medium', ...P });
+    else if (e.type === 'barrage') for (let k = 0; k < (e.params?.count ?? 5); k++) sfx.push({ kind: 'he', t: +(t + k * 0.22).toFixed(3), distM: distM + 30, size: 'medium', gain: 0.8, ...P });
+    else if (e.type === 'mg_burst') for (let k = 0; k < Math.min(9, e.params?.count ?? 7); k++) sfx.push({ kind: 'mg', t: +(t + k * 0.075).toFixed(3), cls: 'mg_heavy', caliberMm: 12.7, distM, tail: env.tail, burstHead: k === 0, gain: 0.8, ...P });
   }
 }
 // The radio discipline (crewRadio.ts): one transmission at a time with a breath between, the more urgent call placed
@@ -154,23 +284,51 @@ for (const cut of edl.shots) {
 // inside its own cut, since the next cut may be another nation's crew. A transmission is the key-up, the take, the
 // release (score.mjs plays all three from the recorded library).
 const KEY_LEAD_S = 0.1, KEY_TAIL_S = 0.32;
+// The voice ledger (VOICE_LEDGER=<file>, shared by every take and film of a round): how often each line, and each
+// recorded take of it in each language, has gone out already. A slot speaks its least-used line that the crew's
+// language has, in its least-used take; ties go by a hash of the cut, so a lone run still varies.
+const LEDGER_FILE = process.env.VOICE_LEDGER;
+const ledger = LEDGER_FILE && existsSync(LEDGER_FILE) ? JSON.parse(readFileSync(LEDGER_FILE, 'utf8')) : { lines: {}, takes: {} };
+// A fair share: a line already above 22 % of the round's calls (counted as at least a dozen) stays off the air, so the commonest
+// moment (a shell bursting near the hull: "near miss") cannot fill every take's radio and the other calls get through.
+// (a dozen calls' worth of prior, so the share holds from the round's first take: without it the first takes said
+// "near miss" eight times in sixteen calls before the cap began)
+const overShare = (l) => {
+  const total = Object.values(ledger.lines).reduce((a, b) => a + b, 0);
+  return (ledger.lines[l] ?? 0) / Math.max(total, 12) > 0.22;
+};
+const choose = (c) => {
+  const lines = c.lines.filter((l) => VOICE_LINES[l] && VOICE_PACKS[c.lang]?.[l]?.length && !overShare(l));
+  if (!lines.length) return null;
+  const tie = (l) => seedOf(`${edlFile}|${c.cutIndex}|${c.slot}|${l}`);
+  const line = [...lines].sort((a, b) => (ledger.lines[a] ?? 0) - (ledger.lines[b] ?? 0) || tie(a) - tie(b))[0];
+  const durs = VOICE_PACKS[c.lang][line];
+  const take = [...durs.keys()].sort((a, b) => (ledger.takes[`${c.lang}/${line}/${a}`] ?? 0) - (ledger.takes[`${c.lang}/${line}/${b}`] ?? 0) || tie(`${line}${a}`) - tie(`${line}${b}`))[0];
+  return { ...c, line, take, meta: VOICE_LINES[line] };
+};
 const placed = [];
-for (const c of calls.map((c) => ({ ...c, meta: VOICE_LINES[c.line] })).filter((c) => c.meta && VOICE_PACKS[c.lang]?.[c.line]?.length)
-  .sort((a, b) => b.meta.pri - a.meta.pri || a.t - b.t)) {
-  const takes = VOICE_PACKS[c.lang][c.line], take = seedOf(`${edlFile}|${c.cutIndex}|${c.line}`) % takes.length;
+// ordered by the first choice's priority; each call then chooses again with this take's earlier placements counted,
+// so two calls of one take do not speak the same line
+for (const first of calls.map(choose).filter(Boolean).sort((a, b) => b.meta.pri - a.meta.pri || a.t - b.t)) {
+  const c = choose(first);
+  if (!c) continue;
+  const takes = VOICE_PACKS[c.lang][c.line], take = c.take;
   const span = KEY_LEAD_S + takes[take] + KEY_TAIL_S;
   for (let s = Math.max(c.t, c.cutStart + 0.15); s <= c.t + c.meta.staleS; s += 0.05) {
     if (s + span > c.cutEnd + 0.25) break;
     if (placed.some((p) => s < p.t + p.span + RADIO_DISCIPLINE.gapS && p.t < s + span + RADIO_DISCIPLINE.gapS)) continue;
     placed.push({ kind: 'radio', t: +s.toFixed(3), lang: c.lang, line: c.line, take, voiceDur: takes[take], span: +span.toFixed(3) });
+    ledger.lines[c.line] = (ledger.lines[c.line] ?? 0) + 1;
+    ledger.takes[`${c.lang}/${c.line}/${take}`] = (ledger.takes[`${c.lang}/${c.line}/${take}`] ?? 0) + 1;
     break;
   }
 }
+if (LEDGER_FILE) writeFileSync(LEDGER_FILE, `${JSON.stringify(ledger, null, 1)}\n`);
 sfx.push(...placed);
 sfx.sort((a, b) => a.t - b.t);
 // thin dense clusters: keep the nearest one-shot within 60 ms of the same kind (beds and drives stay)
 const loud = (e) => (e.gain ?? 1) / Math.max(25, e.distM ?? 30);
-const thinned = sfx.filter((e, i) => e.kind === 'bed' || e.kind === 'drive' || e.kind === 'mg' || e.kind === 'radio' || !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (loud(o) > loud(e) || (loud(o) === loud(e) && j < i))));
+const thinned = sfx.filter((e, i) => e.kind === 'bed' || e.kind === 'drive' || e.kind === 'loop' || e.kind === 'mg' || e.kind === 'radio' || !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (loud(o) > loud(e) || (loud(o) === loud(e) && j < i))));
 if (unknown.size) console.warn(`sfx-cues: no spec for ${[...unknown].join(', ')} (their guns read as 120 mm)`);
 writeFileSync(cuesOut, JSON.stringify({ ...cues, sfx: thinned }, null, 1));
 const langs = [...new Set(placed.map((p) => p.lang))];

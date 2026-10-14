@@ -145,15 +145,30 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   return true;
 }
 
-function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext, rangeM:number): AuxiliaryEntity | null {
-  let target: AuxiliaryEntity | null = null, best=rangeM*rangeM;
+/** The roof gun's candidates, nearest first (module scratch, one scan at a time). */
+const roofCandidates: AuxiliaryEntity[] = [], roofCandidateDistance: number[] = [];
+/** The nearest spotted enemy in range with a clear lane from `from` (ties: the first in entity order). The candidates
+ * are ordered by distance before any lane test, so the tests (a smoke check and a world ray each) stop at the first
+ * that passes: the target the one-pass scan chose, with fewer rays (2026-10-13, the MP stream: the authority's tick —
+ * every bot's roof gun scans every tick). */
+export function selectRoofTarget(entity: AuxiliaryEntity, context: GunContext, rangeM:number, from: Vector3 = origin): AuxiliaryEntity | null {
+  const range2=rangeM*rangeM;
+  let count=0;
   for (const other of context.entities) {
     if(other===entity || other.team===entity.team || other.combat.destroyed || other.modeActive===false || !context.visible(other,entity)) continue;
     targetPoint.set(other.state.pos.x,other.state.pos.y+(other.spec.dims?.heightM??2.5)*.5,other.state.pos.z);
-    const distance=origin.distanceToSquared(targetPoint);
-    if(distance < best && friendlyLaneClear(entity,other,context.entities,origin,targetPoint) && context.clear(origin,targetPoint)){target=other;best=distance;}
+    const distance=from.distanceToSquared(targetPoint);
+    if(!(distance < range2)) continue;
+    let slot=count++;
+    for(;slot>0&&roofCandidateDistance[slot-1]!>distance;slot--){roofCandidates[slot]=roofCandidates[slot-1]!;roofCandidateDistance[slot]=roofCandidateDistance[slot-1]!;}
+    roofCandidates[slot]=other;roofCandidateDistance[slot]=distance;
   }
-  return target;
+  for (let index=0;index<count;index++) {
+    const other=roofCandidates[index]!;
+    targetPoint.set(other.state.pos.x,other.state.pos.y+(other.spec.dims?.heightM??2.5)*.5,other.state.pos.z);
+    if(friendlyLaneClear(entity,other,context.entities,from,targetPoint) && context.clear(from,targetPoint))return other;
+  }
+  return null;
 }
 
 function friendlyLaneClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity,entities:readonly AuxiliaryEntity[],a:Vector3,b:Vector3):boolean{

@@ -163,6 +163,11 @@ export interface StructureStageEvent extends StructureIdentity {
   sections?: boolean;
   /** State older than this viewer's view (a late joiner, a reconnect, a migration): lay it at its final pose. */
   settled?: boolean;
+  /**
+   * The entity that dealt it, on the authority only (2026-10-13): the host withholds how a hidden enemy dealt a blow
+   * from a viewer whose team does not see it (authoritativeMatch.ts viewerWorldEvent); never on the wire or in the log.
+   */
+  sourceId?: string;
 }
 
 /**
@@ -199,6 +204,11 @@ export interface StructureBreachEvent extends StructureIdentity {
    * faces — everything above its floor line `y0` is gone, its floor slab with it (the ground storey keeps its stubs). */
   storeyDown?: boolean;
   settled?: boolean;
+  /**
+   * The entity that dealt it, on the authority only (2026-10-13): the host withholds how a hidden enemy dealt a blow
+   * from a viewer whose team does not see it (authoritativeMatch.ts viewerWorldEvent); never on the wire or in the log.
+   */
+  sourceId?: string;
 }
 
 // ---- Ground ----------------------------------------------------------------------------------------------------
@@ -230,6 +240,11 @@ export interface TerrainCraterEvent {
   /** A settled crater's age in seconds, when its source knows it (crater round 3: the Studio's settled fields set it per
    * crater so the presentation weathers them by age; a late joiner's restore leaves it out). */
   ageS?: number;
+  /**
+   * The entity that dealt it, on the authority only (2026-10-13): the host withholds how a hidden enemy dealt a blow
+   * from a viewer whose team does not see it (authoritativeMatch.ts viewerWorldEvent); never on the wire or in the log.
+   */
+  sourceId?: string;
 }
 
 /**

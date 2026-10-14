@@ -1442,6 +1442,9 @@ export function setupBattle(
       ent.input.brake = false;
       ent.input.fire = false;
       ent.input.shellSlot = 0;
+      // the frame input locks a dead player's gun (playerFrameInput); the revived hull settles with a free gun, as
+      // the authority's fresh input does
+      ent.input.aimLocked = false;
       ent.input.aimPoint.copy(ent.state.aimPoint);
       ent._destroyedAnnounced = false;
       ent.visual?.resetDestroyed?.();

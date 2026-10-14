@@ -96,6 +96,7 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
+  AMMOBOX_LEGACY,
   DESTRUCTIBLE_TYPES,
   DRY_STONE_KIND,
   FENCE_SEG,
@@ -195,6 +196,7 @@ import {
 } from './sourcedStructureTypes.ts';
 import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
+import { createLoosePropBodies } from './loosePropBodies.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
@@ -4267,6 +4269,10 @@ ${snowCap ? `
     return out;
   }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
+    // (b45; the coordinator, launch night: some two thousand triangles a stack is a desktop prop) a phone keeps the
+    // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
+    // builder's draws), no collider either way (a crushable 'loop' contact), so every host places the same stacks
+    ...(mobileProps ? { ammobox: { ...DESTRUCTIBLE_TYPES.ammobox, mat: 'baked' as const, build: AMMOBOX_LEGACY.build, broken: AMMOBOX_LEGACY.broken } } : {}),
     sandbagbig: {
       cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
@@ -10774,6 +10780,17 @@ ${snowCap ? `
     return looseObstacleScratch;
   }
 
+  // (2026-10-12, the owner: one physics engine for everything that falls) the kicked clutter runs on the engine the turret
+  // pops and the rubble run on (loosePropBodies.ts); the cone keeps its ground-constrained law
+  const looseBodies = createLoosePropBodies({
+    groundAt: (x, z) => (heightField.getContactHeightAt ? heightField.getContactHeightAt(x, z) : heightField.getHeightAt(x, z)),
+    queryStatic: (minX, minZ, maxX, maxZ, out) => {
+      out.length = 0;
+      for (const ob of queryLooseObstacles((minX + maxX) / 2, (minZ + maxZ) / 2, Math.max(maxX - minX, maxZ - minZ) / 2)) out.push(ob);
+      return out;
+    },
+  });
+
   // hinge-topple animation state (effects_combat r1 pole pattern, generalized
   // world-dressing r1): every entry rebuilds its instance matrix per tick from
   // the ORIGINAL placement so the hinge never compounds. Poles and topple-
@@ -10842,6 +10859,7 @@ ${snowCap ? `
     const rec = destructibles[idx];
     if (!rec?.body || rec.looseIndex == null || rec.looseListed == null
       || !kickLooseProp(rec.body, dx, dz, speed, cause)) return false;
+    if (looseBodies.handles(rec.body)) looseBodies.wake(rec.body, rec.kind);
     ensureLooseActive(rec as LooseDestructibleRecord);
     // audio seam (2026-10-06): a knocked drum, bucket or bin clangs (the body's own kick cooldown spaces the reports)
     emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause, loose: true });
@@ -11185,21 +11203,40 @@ ${snowCap ? `
 
   let looseAcc = 0;
   function integrateLooseProps(): void {
+    let engine = false;
     for (let i = activeLoose.length - 1; i >= 0; i--) {
       const rec = activeLoose[i], b = rec.body;
+      if (looseBodies.handles(b)) {
+        // (a prop the engine let go of for room is kicked back in where it lies)
+        if (!looseBodies.has(b)) looseBodies.wake(b, rec.kind);
+        engine = true;
+        continue;
+      }
       stepLoosePropBody(b, LOOSE_PROP_STEP_S,
         heightField.getHeightAt, heightField.getNormalAt);
       for (const ob of queryLooseObstacles(b.x, b.z, b.radius + 0.08)) {
         resolveLoosePropObstacle(b, ob);
       }
     }
+    if (engine) looseBodies.step();
   }
   function resolveLoosePropPairs(): void {
     for (let i = 0; i < activeLoose.length; i++) {
       const rec = activeLoose[i], a = rec.body;
+      const onEngine = looseBodies.handles(a);
       for (let j = 0; j < looseRecords.length; j++) {
         const other = looseRecords[j];
         if (other === rec || (other.body.active && other.looseIndex < rec.looseIndex)) continue;
+        if (onEngine && looseBodies.handles(other.body)) {
+          // the engine's own contact: a prop at rest within reach enters it asleep, so the moving one strikes it
+          if (!looseBodies.has(other.body)) {
+            const reach = a.radius + other.body.radius + Math.hypot(a.vx, a.vz) * LOOSE_PROP_STEP_S * 4 + 0.15;
+            if (Math.hypot(other.body.x - a.x, other.body.z - a.z) < reach && looseBodies.admitResting(other.body, other.kind)) {
+              ensureLooseActive(other);
+            }
+          }
+          continue;
+        }
         const wakes = resolveLoosePropPair(a, other.body);
         if ((wakes & 1) && !rec.looseListed) ensureLooseActive(rec);
         if (wakes & 2) ensureLooseActive(other);
@@ -11209,6 +11246,7 @@ ${snowCap ? `
   function syncAndRetireLooseProps(): void {
     for (let i = activeLoose.length - 1; i >= 0; i--) {
       const rec = activeLoose[i];
+      if (looseBodies.handles(rec.body) && looseBodies.has(rec.body)) looseBodies.sync(rec.body);
       syncLooseRecord(rec);
       if (!rec.body.active) {
         rec.looseListed = false;
@@ -11478,6 +11516,7 @@ ${snowCap ? `
     crushAnims.length = 0;
     pendingBlasts.length = 0;
     activeLoose.length = 0;
+    looseBodies.reset();
     looseAcc = 0;
     for (const rec of destructibles) restoreDestructibleRecord(rec);
     resetBrokenPools();

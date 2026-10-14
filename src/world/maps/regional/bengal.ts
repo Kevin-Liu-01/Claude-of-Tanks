@@ -5,7 +5,7 @@
 // and a signboard; a whitewashed mosque with small domes and a slender minaret; round clay-and-bamboo rice granaries
 // (gola) under conical thatch; the river ghat's boat sheds.
 import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, closeGables, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, sheetWall, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -71,7 +71,11 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   });
   // the roof: four-slope char-chala (or two-slope), sheet with its own livery
   const roof: RoofSpec = { kind: rng() < 0.6 ? 'hip' : 'gable', pitchDeg: 24 + rng() * 6, eave: 0.55, verge: 0.55, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
-  emitRoof(sink, roofGeometry(W, D, plinth + wallH, roof), roof, sheetColour(rng));
+  const rg = roofGeometry(W, D, plinth + wallH, roof);
+  emitRoof(sink, rg, roof, sheetColour(rng));
+  // (the buildings stream, 2026-10-12, the integrity check: sky through a two-slope roof's open ends over the walls) the
+  // gables sheeted in the walls' livery
+  closeGables(sink, rg, 'structureMetal', { colour: walls });
   const front: Face = turned ? { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
   veranda(sink, front, plinth, plinth + wallH - 0.1, turned ? D : W, 1.5, rgb(0x9a8a62), { bucket: 'structureMetal', colour: sheetColour(rng) }, false);
 }

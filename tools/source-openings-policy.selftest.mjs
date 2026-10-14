@@ -8,7 +8,7 @@ const valid={id,configuration,sourceReceipt,scan:{holeCells:1,gridW:4,gridH:4,bo
 assert.equal(sourceOpeningsVerdict(valid).passed,true);
 for(const key of ['sourceAir','nativeAir'])assert.equal(sourceOpeningsVerdict({...valid,samples:[{...sample,[key]:false}]}).passed,false,'occupied source or native air cannot pass');
 for(const change of [{x:0},{z:0},{gx:13},{sourceAir:undefined}])assert.equal(sourceOpeningsVerdict({...valid,samples:[{...sample,...change}]}).passed,false);
-for(const change of [{id:'fv510_milan_x'},{sha256:'b'.repeat(64)},{path:'other.glb'},{verified:false}])assert.equal(sourceOpeningsVerdict({...valid,sourceReceipt:{...sourceReceipt,...change}}).passed,false);
+for(const change of [{id:'warrior_tes_h'},{sha256:'b'.repeat(64)},{path:'other.glb'},{verified:false}])assert.equal(sourceOpeningsVerdict({...valid,sourceReceipt:{...sourceReceipt,...change}}).passed,false);
 for(const change of [{samples:[]},{guards:[]},{guards:[{passed:false}]},{scan:{holeCells:0,samples:[]}},{scan:{holeCells:NaN}}])assert.equal(sourceOpeningsVerdict({...valid,...change}).passed,false);
 assert.equal(sourceOpeningsVerdict({id:'unknown',scan:{holeCells:1}}).passed,false,'unregistered holes retain zero requirement');
 assert.equal(sourceOpeningsVerdict({id:'unknown',scan:{holeCells:0}}).passed,true);
@@ -28,8 +28,8 @@ for(const slot of AFT_SOURCE_SLOTS){
  assert.equal(approvedOpeningRegion(id,slot.x,slot.z),true);
  assert.equal(approvedOpeningRegion(id,slot.x+slot.width/2+.001,slot.z),false,'finite surrounding plate is outside the approved air');
 }
-assert.equal(approvedOpeningRegion('fv510_milan_x',1.8,0),true);
-for(const [x,z]of[[0,0],[1.8,3],[2,0]])assert.equal(approvedOpeningRegion('fv510_milan_x',x,z),false,'hull, ends and outer armor stay unexempted');
+assert.equal(approvedOpeningRegion('warrior_tes_h',1.8,0),true);
+for(const [x,z]of[[0,0],[1.8,3],[2,0]])assert.equal(approvedOpeningRegion('warrior_tes_h',x,z),false,'hull, ends and outer armor stay unexempted');
 console.log('source-openings-policy: exact raster/source binding, bounded exterior air, required stock and negative controls pass');
 
 // Actual corrected bow raster, kept distinct from the historical 20-cell failure.

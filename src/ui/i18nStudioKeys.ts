@@ -16,6 +16,8 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studioPanel.fxParam.',
   // the Plan view (studioPlanView.ts, 2026-10-05)
   'studioPanel.plan.',
+  // the Director's finder for every tank's own take (studioProductionPanel.ts, 2026-10-12)
+  'studio.director.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

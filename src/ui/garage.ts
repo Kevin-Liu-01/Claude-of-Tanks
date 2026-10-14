@@ -1,4 +1,5 @@
 import { createCustomSelect } from './customSelect.ts';
+import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
@@ -62,7 +63,7 @@ import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import {
-  isWaveMode, matchRulesetFor, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -78,8 +79,11 @@ import type { GarageVariant } from '../game/garageVariants.ts';
 import type { CamoTagId, CamoCollectionId, CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
+import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
 
 type BattleMode = PlayMode;
+// The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
+type FleetTakesModule = typeof import('./fleetTakes.ts');
 type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo' | 'hull' | 'turret' | 'accuracy' | 'bloom';
 type StatRange = Record<StatRangeKey, [number, number]>;
 
@@ -187,6 +191,7 @@ export interface GarageRuntime {
   show(selected?: string): void;
   hide(): void;
   drainThumbs(): void;
+  setDecorativeWorkGate(covered: () => boolean): void;
   getStageRect(): { x: number; y: number; w: number; h: number };
   setSelected(specId: string): void;
   getSelected(): string;
@@ -431,7 +436,7 @@ function paintCamoSwatchPlaceholder(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   let hash = 2166136261;
-  for (const ch of `${spec?.id || 'tank'}:${pid || 'factory'}`) {
+  for (const ch of `${spec?.id ? tankSeedId(spec.id) : 'tank'}:${pid || 'factory'}`) { // schema-1 spelling (SSOT 2.19)
     hash ^= ch.charCodeAt(0);
     hash = Math.imul(hash, 16777619);
   }
@@ -451,6 +456,13 @@ function paintCamoSwatchPlaceholder(
   ctx.fillRect(0, 0, W, H);
 }
 
+// 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
+// (camoSwatchPainter.ts setCamoSwatchDrainGate); main.ts adds the battle loader's cover through setDecorativeWorkGate.
+let garageSwatchOpen = false;
+let garageSwatchCover: () => boolean = () => false;
+let swatchGateInstalled = false;
+const swatchDrainOpen = (): boolean => garageSwatchOpen && !garageSwatchCover();
+
 function queueExactCamoSwatch(
   canvas: HTMLCanvasElement,
   spec: GarageTankSpec,
@@ -462,6 +474,10 @@ function queueExactCamoSwatch(
   paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
+    if (!swatchGateInstalled) {
+      swatchGateInstalled = true;
+      loaded.setCamoSwatchDrainGate(swatchDrainOpen);
+    }
     // Round 35: the exact swatch is a crop of the REAL pattern tile (4.5 ms a cold tile); resident recipes paint
     // at once, cold ones drain under the painter's per-frame budget so opening the picker never stalls.
     loaded.queueCamoSwatch(canvas, spec, pid, auto);
@@ -786,9 +802,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // r9.5: the list moved to featuredShots.ts — ONE copy shared with the boot
   // splash and the transition screens (hand-synced copies drifted from disk
   // twice; r9.1 was the "always the same picture" bug that caused).
-  (() => {
+  // The selected tank's own take (owner 2026-10-12, fleetTakes.ts): once the
+  // Garage is playable (or on intent) and the panel is on screen, the fleet
+  // index loads; while it has the selected tank, the panel shows that take's
+  // poster and silent loop in place of the rotation, which returns for a tank
+  // without one. Nothing loads and no video decodes while the panel is hidden
+  // (short or narrow layouts, battle): its loop pauses, then is released.
+  const featuredPanel = (() => {
     const col = root.querySelector<HTMLElement>('.cot-leftcol');
-    if (!col || !FEATURED_SHOTS.length) return;
+    if (!col || !FEATURED_SHOTS.length) return null;
     const panel = document.createElement('div');
     panel.className = 'cot-featured';
     panel.innerHTML =
@@ -807,6 +829,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let idx = -1;
     let front = 0;
     let timer: ReturnType<typeof setInterval> | 0 = 0;
+    let engaged = false;
+    let vehicleId = '';
+    let vehicleTake: FleetTake | null = null;
+    let fleet: FleetTakesModule | null = null;
+    let fleetIndex: FleetTakeIndex | null = null;
+    let fleetRequest: Promise<void> | null = null;
+    let player: FleetTakePlayer | null = null;
     const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
       front ^= 1;
       layers[front].style.backgroundImage = `url("${imageUrl}")`;
@@ -821,10 +850,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         if (url) cb(url);
       });
     };
-    const jump = (i: number, priority: ImagePriority = 'high') => preload(i, (url) => show(i, url), priority);
-    const advance = (priority: ImagePriority = 'low') => jump(
-      (idx + 1) % FEATURED_SHOTS.length, priority);
-    const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
+    const jump = (i: number, priority: ImagePriority = 'high') => preload(i, (url) => {
+      if (!vehicleTake) show(i, url);
+    }, priority);
+    const advance = (priority: ImagePriority = 'low') => {
+      if (!vehicleTake) jump((idx + 1) % FEATURED_SHOTS.length, priority);
+    };
+    const arm = () => { if (!timer && !vehicleTake) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
     // the frame away right after the user picked one
     const rearm = () => { if (timer) { clearInterval(timer); timer = 0; } arm(); };
@@ -834,11 +866,52 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // of unrelated marketing art while its 3D scene becomes interactive.
     const first = 0;
     let activated = false;
+    const showFirst = (priority: ImagePriority): void => {
+      const preview = FEATURED_SHOTS[first].bootImg || FEATURED_SHOTS[first].img;
+      preloadImage(preview, { priority }).then((url) => { if (url && !vehicleTake && idx < 0) show(first, url); });
+    };
+    const applyVehicleTake = (): void => {
+      const take = fleetIndex?.get(vehicleId) ?? null;
+      if (take === vehicleTake) return;
+      vehicleTake = take;
+      panel.classList.toggle('vehicle', !!take);
+      if (take && fleet) {
+        if (timer) { clearInterval(timer); timer = 0; }
+        player ??= fleet.createFleetTakePlayer(shotEl, () => activated);
+        capEl.textContent = fleet.fleetTakeText(take, 'short');
+        shotEl.title = fleet.fleetTakeText(take, 'title');
+      } else {
+        shotEl.removeAttribute('title');
+        if (idx >= 0) capEl.textContent = t(FEATURED_SHOTS[idx].capKey, FEATURED_SHOTS[idx].capVars);
+        else if (activated) showFirst('low');
+        if (engaged) arm();
+      }
+      player?.show(take);
+    };
+    // The panel is on screen only on tall layouts while the Garage is open.
+    let panelVisible = typeof IntersectionObserver !== 'function';
+    const requestFleetTakes = (): Promise<void> => {
+      if (!panelVisible) return Promise.resolve();
+      fleetRequest ??= import('./fleetTakes.ts').then(async (module) => {
+        fleet = module;
+        fleetIndex = await module.loadFleetTakes();
+        applyVehicleTake();
+      }, () => { fleetRequest = null; });
+      return fleetRequest;
+    };
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver((entries) => {
+        panelVisible = entries.some((entry) => entry.isIntersecting);
+        if (panelVisible && activated) void requestFleetTakes();
+      }).observe(shotEl);
+    }
     const activate = (priority: ImagePriority = 'low') => {
       if (activated) return;
       activated = true;
-      const preview = FEATURED_SHOTS[first].bootImg || FEATURED_SHOTS[first].img;
-      preloadImage(preview, { priority }).then((url) => { if (url) show(first, url); });
+      void requestFleetTakes().then(() => {
+        if (vehicleTake) player?.sync(); // the tank's own take stands in for the stills
+        else showFirst(priority);
+      });
     };
     const activateWhenPlayable = () => {
       if (window.__GAME_READY === true) {
@@ -850,10 +923,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       setTimeout(activateWhenPlayable, 120);
     };
     activateWhenPlayable();
-    const engageGallery = () => { activate('high'); arm(); };
+    const engageGallery = () => { engaged = true; activate('high'); arm(); };
     shotEl.addEventListener('pointerenter', engageGallery, { once: true });
     shotEl.addEventListener('focusin', engageGallery, { once: true });
-    shotEl.addEventListener('click', () => { activate('high'); advance('high'); rearm(); });
+    shotEl.addEventListener('click', () => {
+      activate('high');
+      if (vehicleTake) { player?.toggle(); return; }
+      advance('high');
+      rearm();
+    });
     requiredElement<HTMLButtonElement>(panel, '.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
       jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
@@ -865,6 +943,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);
+    return {
+      /** The selected tank changed: its own take where the index has one, the rotation otherwise. */
+      setVehicle(specId: string): void {
+        vehicleId = specId;
+        applyVehicleTake();
+      },
+    };
   })();
 
   const statsEl = requiredElement<HTMLElement>(root, '.stats');
@@ -2730,6 +2815,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     queueCarouselAffordances();
     renderStats(spec);
+    featuredPanel?.setVehicle(specId); // the battle gallery shows this tank's own take where there is one
     battleBtn.disabled = false;
     requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t('garage.battle');
     camosEl.style.display = '';
@@ -3018,9 +3104,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
     setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
     setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
       : solo ? `playMenu.matchMode.${battleGameMode}.desc`
-      : `garage.battle.${battleMode}SetupDescription`);
+      : `garage.battle.${battleMode}SetupDescription`, solo ? modeCopyValues(battleGameMode) : undefined);
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
     timeOptions.hidden = shown;
     galaxySky.hidden = !shown;
@@ -3301,6 +3388,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
+      garageSwatchOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);
       statsEl.scrollTop = 0;
       // The hidden garage reports a zero-width rail during initial creation.
@@ -3321,10 +3409,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
+      garageSwatchOpen = false;
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); },
+
+    /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
+    setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
     /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
     getStageRect() {
