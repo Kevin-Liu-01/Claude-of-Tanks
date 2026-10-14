@@ -31,7 +31,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { spawnSync } from 'node:child_process';
 import {
-  appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, writeFileSync,
+  appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, closeSync, statSync, writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -184,14 +184,36 @@ if (opt('sheet')) {
 
 // ------------------------------------------------------------------------------------------------ machine guards
 const MEMGUARD = join(homedir(), 'cot-launch-state', 'memguard');
+// The coordinator's quiet window (2026-10-14): ~/cot-launch-state/QUIET ("<epoch> <owner> <reason>"), refreshed while it
+// stands, stale after 35 minutes untouched (the same rule as shots/media-r5/tmp/quiet-wait.zsh). While it is live no new
+// browser run starts: the gate waits without a ticket, an acquisition gives its turn back, and a hold ends at the next
+// slot boundary.
+const QUIET = join(homedir(), 'cot-launch-state', 'QUIET');
+function quietLive() {
+  try { return Date.now() - statSync(QUIET).mtimeMs < 35 * 60 * 1000; } catch { return false; }
+}
+function quietLabel() {
+  try { return readFileSync(QUIET, 'utf8').trim().slice(0, 80); } catch { return ''; }
+}
 async function machineGate(label, gb) {
+  let quietWaited = 0;
   for (let waited = 0; ; waited += 30) {
     if (existsSync(join(MEMGUARD, 'PAUSE'))) throw Object.assign(new Error('memory guard PAUSE: stopping'), { code: 'PAUSE' });
     const warn = existsSync(join(MEMGUARD, 'WARN'));
+    const quiet = quietLive();
     let headroomOk = true;
     const headroom = spawnSync('headroom', ['can-start', '--gb', String(gb), '--label', label], { encoding: 'utf8' });
     if (!headroom.error && headroom.status === 1) headroomOk = false;
-    if (!warn && headroomOk) return;
+    if (!quiet && quietWaited) { log(`quiet window over after ${quietWaited}s`); quietWaited = 0; }
+    if (!warn && headroomOk && !quiet) return;
+    if (quiet) {
+      // a quiet window is the coordinator's and does not count against --gate-wait-min
+      if (quietWaited % 600 === 0) log(`waiting: quiet window live (${quietLabel()}) (${quietWaited}s)`);
+      quietWaited += 30;
+      waited -= 30;
+      await sleep(30000);
+      continue;
+    }
     // a WARN can last hours on a shared machine (swap from other sessions): wait it out without a ticket or a server
     const limitS = Number(opt('gate-wait-min', '240')) * 60;
     if (waited >= limitS) throw Object.assign(new Error(`machine busy for ${limitS / 60} min (WARN ${warn}, headroom ${headroomOk ? 'ok' : 'hold'})`), { code: 'BUSY' });
@@ -239,8 +261,8 @@ async function takeLock(label) {
     await machineGate(label, Number(opt('headroom-gb', '8')));
     log(`queueing for the capture lock (normal ticket) for ${label}`);
     const asked = Date.now();
+    // the stamped place is kept until a hold actually starts: a turn given back (quiet window, WARN) rejoins at it
     const place = firstTicketStamp ? { ticket: ticketAt(firstTicketStamp) } : {};
-    firstTicketStamp = null;
     await lock.acquire(Number(opt('lock-timeout-min', '600')) * 60 * 1000, place);
     heldSince = Date.now();
     lockRefresh = setInterval(() => lock.refresh(), 30000);
@@ -250,7 +272,8 @@ async function takeLock(label) {
       await dropLock('memory guard PAUSE at acquisition');
       throw Object.assign(new Error('memory guard PAUSE at acquisition'), { code: 'PAUSE' });
     }
-    if (!existsSync(join(MEMGUARD, 'WARN'))) return;
+    if (quietLive()) { await dropLock(`quiet window at acquisition (${quietLabel()})`); continue; }
+    if (!existsSync(join(MEMGUARD, 'WARN'))) { firstTicketStamp = null; return; }
     await dropLock('memory guard WARN at acquisition');
   }
 }
@@ -362,6 +385,7 @@ try {
     log(`${slot}: ${result.count ?? 0} candidates in ${result.wallS} s${result.error ? ' (ERROR)' : ''}${result.notes?.length ? `; notes: ${result.notes.join(' | ')}` : ''}`);
     if (existsSync(join(MEMGUARD, 'PAUSE'))) { stopReason = 'memory guard PAUSE'; break; }
     if (existsSync(join(MEMGUARD, 'WARN'))) await dropLock('memory guard WARN');
+    else if (quietLive()) await dropLock(`quiet window (${quietLabel()})`);
   }
 } finally {
   await dropLock('run end');
