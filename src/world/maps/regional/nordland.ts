@@ -585,7 +585,8 @@ const naust: RegionalBuilder = (ctx) => {
       for (let u = -W / 2 + 0.85; u < W / 2 - 0.7; u += 0.32) {
         if (Math.abs(u) < dw / 2 + 0.15) continue;
         const h = wallH + (W / 2 - Math.abs(u)) * tanP - 0.15;
-        faceBox(sink, 'structureWood', front, u, h / 2 + 0.05, 0.075, 0.05, h - 0.1, 0.03, { colour: shade(PAINT_RGB[st.paint], 0.78), decor: true, fine: true }, 'caps');
+        // (building-integrity: the battens stood 6 cm off the boards: on them)
+        faceBox(sink, 'structureWood', front, u, h / 2 + 0.05, 0.015, 0.05, h - 0.1, 0.03, { colour: shade(PAINT_RGB[st.paint], 0.78), decor: true, fine: true }, 'caps');
       }
     }
     const roof = skifer(pitch, 0.32, 0.28);

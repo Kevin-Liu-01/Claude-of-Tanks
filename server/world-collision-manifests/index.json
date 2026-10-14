@@ -68,11 +68,11 @@
       "concealers": 8087
     },
     "fjord": {
-      "bytes": 2161088,
-      "sha256": "0a3d4d8b403252e9110be735c509513c19979ba388475e3f1fdbfa72fdc15fd0",
-      "obstacles": 6764,
-      "colliders": 6733,
-      "concealers": 6836
+      "bytes": 2084242,
+      "sha256": "9dcee78914f002c6843faa668ccf317b9edf8abb680a00406d3b843042e2243b",
+      "obstacles": 6793,
+      "colliders": 6797,
+      "concealers": 6837
     },
     "delta": {
       "bytes": 2052920,
@@ -302,11 +302,11 @@
         "concealers": 8058
       },
       "fjord": {
-        "bytes": 2265854,
-        "sha256": "aaac173f5e557f5f35ce0c8f11c4f4df9338cf8bf789f725a10af85631891758",
-        "obstacles": 6836,
-        "colliders": 6757,
-        "concealers": 6836
+        "bytes": 2202291,
+        "sha256": "5b0f03a9b3e9a92226479609020473bc7897c01d63a5603edce5918cf2e2e22a",
+        "obstacles": 6865,
+        "colliders": 6821,
+        "concealers": 6837
       },
       "delta": {
         "bytes": 2211632,
