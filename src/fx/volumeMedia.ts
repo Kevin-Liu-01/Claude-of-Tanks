@@ -95,6 +95,9 @@ export interface VolumePuff {
   /** heat at birth (emission gain), cooling rate (1/s), fade-out start (life fraction), slow spin (rad/s); (fx 8r) an
    *  unheated puff (heat 0) may give a NEGATIVE cool: its soft-depth feather scale (1-3), for a puff meeting a wall */
   heat: number; cool: number; fadeOut: number; spin: number;
+  /** a billow body born low over the ground (centre under ~1.5 m): its silhouette softened further (the emitter's
+   *  context decides it per emit; packed into the fade-out start, which stays below 1) */
+  low?: boolean;
 }
 
 export function makeVolumePuff(): VolumePuff {
@@ -194,6 +197,7 @@ varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
 varying vec2 vDetail;
+varying vec3 vSoft;       // card-local uv, 1 for the billow medium (its softened silhouette)
 #ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;      // (EF.10) the local lights at this corner: headlights, the muzzle, burning wrecks
 ${LOCAL_LIGHT_GLSL}
@@ -205,7 +209,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0; vGlow = 0.0;
+    vFeather = 1.0; vGlow = 0.0; vSoft = vec3( 0.5, 0.5, 0.0 );
     #ifdef FX_LOCAL_LIGHTS
       vLocal = vec3( 0.0 );
     #endif
@@ -254,6 +258,7 @@ void main() {
   float f1 = min( f0 + 1.0, frames - 1.0 );
   vBlend = fpos - f0;
   vec2 local = vec2( mirror < 0.0 ? 1.0 - uv.x : uv.x, uv.y );
+  vSoft = vec3( local, band < ${VOLUME_ATLAS.media.billow.firstBand + VOLUME_ATLAS.media.billow.variants}.0 - 0.5 ? 1.0 + step( 1.5, aHT.z ) : 0.0 );
   float cols = uAtlas.x, rows = uAtlas.y;
   vec2 tileA = vec2( mod( f0, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f0 / cols ) ) );
   vec2 tileB = vec2( mod( f1, cols ), rows - 1.0 - ( band * uAtlas.z + floor( f1 / cols ) ) );
@@ -273,12 +278,19 @@ void main() {
   float fadeIn = aCB.w > 0.0 ? smoothstep( 0.0, aCB.w, age ) : 1.0;
   // the fade-out dissolves the medium from its thin edges inward (the fragment shader's erosion), so a dying puff never
   // lingers as a uniformly faded ghost of its own silhouette
-  vFade = smoothstep( aHT.z, 1.0, t );
+  // the fade-out start carries the low-body flag (+2)
+  float lowB = step( 1.5, aHT.z );
+  vFade = smoothstep( aHT.z - 2.0 * lowB, 1.0, t );
   // (2026-10-08, the owner's "black screens") the medium thins as the camera enters it, judged from the puff's centre
   // against its own size: a corner's distance let a big dark puff round the camera (the 7c smoke reaches ~11 m on a
   // 125 mm burst, ~19 m on a 152 mm) draw one flat dark card over the whole frame for seconds
   float near = smoothstep( uNearFade.x + 0.25 * size, uNearFade.y + 0.6 * size, distance( center, cameraPosition ) );
-  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near );
+  // (the coordinator, chase range at sunset: low ground bodies near the camera "read as flat tan cut-outs") a low body
+  // that covers a large part of the screen within ~15 m thins hard: its radius against the half-height of the view
+  vec4 mvC = viewMatrix * vec4( center, 1.0 );
+  float scr = 0.5 * size * projectionMatrix[1][1] / max( -mvC.z, 0.5 );
+  float big = lowB * smoothstep( 0.15, 0.45, scr ) * ( 1.0 - smoothstep( 12.0, 18.0, distance( center, cameraPosition ) ) );
+  vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) );
   vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * age ) : 0.0;
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
   // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
@@ -306,7 +318,9 @@ void main() {
   // wall asks for a wider soft fade into the scene's depth (a negative cool: the scale, VolumePuff); every other puff
   // keeps the feather it had
   float featherK = aHT.x > 0.0 ? 1.0 : clamp( -aHT.y, 1.0, 3.0 );
-  vFeather = clamp( size * 0.22 * featherK, 0.5, 6.0 * featherK );
+  // (billow round 3) a low body melts into the grass and the ground over a deeper band (its lower half thins where the
+  // ground nears it)
+  vFeather = clamp( size * ( 0.22 + 0.33 * lowB ) * featherK, 0.5 + 0.7 * lowB, 6.0 * featherK );
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   vParticleDepth = -mvPosition.z;
   #ifdef USE_FOG
@@ -326,6 +340,7 @@ uniform vec3 uSkyCol;     // sky irradiance / pi, desaturated (gained)
 uniform vec3 uGroundCol;  // ground pole / pi
 uniform vec4 uGrade;      // alpha gain, emission gain, back-scatter gain, multiple-scatter lift
 uniform vec4 uGrade2;     // ground-bounce gain, (EF.11) the night level (0 day .. 1 night), unused...
+uniform vec3 uSunDir;
 uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
 uniform float uCameraNear;
@@ -351,6 +366,7 @@ varying float vGlow;
 #ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;
 #endif
+varying vec3 vSoft;
 ${FOG_PARS_F}
 float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
@@ -391,7 +407,20 @@ void main() {
   float dn = texture2D( uDetail, vDetail ).r * 0.62 + texture2D( uDetail, vDetail * 2.31 + 0.37 ).r * 0.38;
   float er = uDetailK * ( 1.0 - smoothstep( 0.2, 0.9, cov ) ) * dn;
   covE = clamp( ( covE - er ) / max( 1.0 - er, 0.05 ), 0.0, 1.0 );
-  float a = covE * vColor.a * ( 1.0 - k * k ) * uGrade.x;
+  // (the coordinator, at chase range: the billow "still reads as a cut-out cloud with a defined lobed silhouette") the
+  // billow's density thins toward its rim (a gentler coverage response) and the card's outer lobes fall away on a
+  // noisy radius (the warp's own low-frequency noise: no extra fetch), so its silhouette dissolves into the air rather
+  // than ending on a drawn lobe line; the burst medium (dust, soil) keeps its torn rim, and a fireball keeps its lobes
+  // while it burns (the softening comes in as its heat dies into smoke)
+  // (the coordinator, chase range: the low ground puffs "still show a cut-out silhouette") a body born low over the
+  // ground (vSoft.z 2) takes a stronger rim falloff and a noisier, wider-swinging edge
+  float sb = min( vSoft.z, 1.0 ) * ( 1.0 - smoothstep( 0.05, 0.4, vHeat ) );
+  float lowS = max( vSoft.z - 1.0, 0.0 ) * sb;
+  float rr = length( vSoft.xy - 0.5 ) * 2.0;
+  float edgeN = wn.x + 0.5 + lowS * ( dn - 0.5 ) * 0.9;
+  float fall = 1.0 - smoothstep( 0.4 - 0.14 * lowS + ( 0.36 + 0.14 * lowS ) * edgeN, 1.02, rr );
+  float covS = mix( covE, pow( covE, 1.6 + 0.6 * lowS ) * fall, sb );
+  float a = covS * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
   if ( a < 0.003 ) discard;
@@ -400,6 +429,11 @@ void main() {
   float R = vMirror > 0.0 ? rx : lx;
   float L = vMirror > 0.0 ? lx : rx;
   float U = A.g * A.g, D = B.r * B.r;
+  // the billow's lobes blend into one another: their six-way shading pulled a third of the way to its mean (each lobe's
+  // light kept, the hard step between neighbouring lobes softened)
+  float m4 = 0.25 * ( R + L + U + D );
+  float lb = 0.42 * sb;
+  R = mix( R, m4, lb ); L = mix( L, m4, lb ); U = mix( U, m4, lb ); D = mix( D, m4, lb );
   float tau = -log( max( 1.0 - cov * 0.995, 1e-3 ) );
   float front = 1.0 - 0.5 * cov;
   float back = clamp( tau * ( 1.0 - cov ) / max( cov, 1e-3 ), 0.0, 1.0 );
@@ -443,6 +477,16 @@ void main() {
   if ( uGrade2.y > 0.0 ) {
     float floorL = skyLum * uGrade2.y * 0.55 * ( 0.45 + 0.35 * U + 0.2 * front );
     col = max( col, mix( vec3( skyLum ), uSkyCol, 0.35 ) * ( floorL / max( skyLum, 1e-5 ) ) );
+  }
+  // (the coordinator: at sunset the low sun front-lights the low dust "too bright and opaque") a low body's lit
+  // brightness is capped against the ground's own (the sun's share at its elevation, the sky's, the bounce), and it thins
+  // as the sun drops: dust over the grass stays a veil, not a sheet
+  if ( lowS > 0.0 ) {
+    const vec3 LUMA = vec3( 0.2126, 0.7152, 0.0722 );
+    float bgL = 0.3 * ( dot( uSunCol, LUMA ) * max( uSunDir.y, 0.0 ) + dot( uSkyCol, LUMA ) ) + dot( uGroundCol, LUMA );
+    float cL = dot( col, LUMA );
+    col *= mix( 1.0, min( 1.0, 2.0 * bgL / max( cL, 1e-4 ) ), lowS );
+    a *= 1.0 - 0.3 * lowS * ( 1.0 - smoothstep( 0.12, 0.4, uSunDir.y ) );
   }
   // fire inside the medium: the baked temperature x the puff's heat, on a blackbody ramp; the soot it lights
   float tb = B.g * B.g;
@@ -783,7 +827,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     rec[o + 16] = p.r0; rec[o + 17] = p.g0; rec[o + 18] = p.b0; rec[o + 19] = p.density;
     rec[o + 20] = p.r1; rec[o + 21] = p.g1; rec[o + 22] = p.b1; rec[o + 23] = p.fadeIn;
     rec[o + 24] = bandOf(p); rec[o + 25] = (p.mirror ? -1 : 1) * Math.min(4, Math.max(0.25, p.aspect > 0 ? p.aspect : 1)); rec[o + 26] = p.playSeconds; rec[o + 27] = p.startFrame;
-    rec[o + 28] = p.heat; rec[o + 29] = p.cool; rec[o + 30] = p.fadeOut; rec[o + 31] = p.spin;
+    rec[o + 28] = p.heat; rec[o + 29] = p.cool; rec[o + 30] = Math.min(0.999, p.fadeOut) + (p.low ? 2 : 0); rec[o + 31] = p.spin;
     if (birth + p.life > liveUntil) liveUntil = birth + p.life;
   }
 

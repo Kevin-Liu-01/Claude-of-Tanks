@@ -509,7 +509,7 @@ function captureContext(seed) {
     // (fx 8r) an unheated puff by a wall asks for a wider soft-depth feather (a negative cool, its scale 1-3); a heated one
     // keeps its cooling, and every puff that asks nothing keeps the feather it had
     assert.match(mat.vertexShader, /vHeat = aHT\.x > 0\.0 \? aHT\.x \* exp\( -aHT\.y \* age \) : 0\.0;/, 'only a heated puff burns');
-    assert.match(mat.vertexShader, /float featherK = aHT\.x > 0\.0 \? 1\.0 : clamp\( -aHT\.y, 1\.0, 3\.0 \);\s*vFeather = clamp\( size \* 0\.22 \* featherK, 0\.5, 6\.0 \* featherK \);/,
+    assert.match(mat.vertexShader, /float featherK = aHT\.x > 0\.0 \? 1\.0 : clamp\( -aHT\.y, 1\.0, 3\.0 \);[\s\S]*?vFeather = clamp\( size \* \( 0\.22 \+ 0\.33 \* lowB \) \* featherK, 0\.5 \+ 0\.7 \* lowB, 6\.0 \* featherK \);/,
       'the wall feather, opt-in');
     assert.match(mat.fragmentShader, /vec3 amb = mix\( amb0, amb1 \* \( lum0 \/ max\( lum1, 1e-5 \) \), smoothstep\( 0\.45, 0\.65, albedoL \) \* warmG \* uGrade2\.x \);/,
       'a near-white medium takes the ground light\'s hue at the shade\'s own luminance, from a warm ground only (fx 8k, 8q)');
@@ -521,6 +521,42 @@ function captureContext(seed) {
       const lumOf = (h) => { const c = [(h >> 16) & 255, (h >> 8) & 255, h & 255].map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
       assert.ok(sm(0.45, 0.65, lumOf(0xdfdcd5)) > 0.95 && sm(0.45, 0.65, lumOf(0xc9c5be)) > 0.5, 'a smoke screen creams over sand, fresh and aged');
       assert.equal(sm(0.45, 0.65, 0.4), 0, 'masonry powder keeps the reference\'s shade');
+    }
+    // (the coordinator: the billow "reads as a cut-out cloud with a defined lobed silhouette") the billow's rim thins and
+    // its outer lobes fall away on a noisy radius; its lobes' shading is pulled toward their mean; the burst keeps its rim
+    assert.match(mat.vertexShader, /vSoft = vec3\( local, band < 1\.0 - 0\.5 \? 1\.0 \+ step\( 1\.5, aHT\.z \) : 0\.0 \);/,
+      'the billow (band 0) is marked, its low bodies apart');
+    assert.match(mat.fragmentShader, /float covS = mix\( covE, pow\( covE, 1\.6 \+ 0\.6 \* lowS \) \* fall, sb \);/,
+      'its density thins toward the rim, more on a low body');
+    assert.match(mat.fragmentShader, /float fall = 1\.0 - smoothstep\( 0\.4 - 0\.14 \* lowS \+ \( 0\.36 \+ 0\.14 \* lowS \) \* edgeN, 1\.02, rr \);/,
+      'its outer lobes fall away on a noisy radius (no extra fetch), wider and noisier on a low body');
+    assert.match(mat.fragmentShader, /float lb = 0\.42 \* sb;/, 'its lobes blend into one another');
+    // the battle's media port flags a billow body born under ~1.5 m over the ground; the record packs it into the
+    // fade-out start (+2), which the vertex shader unpacks
+    const fxSrc = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
+    assert.match(fxSrc, /media: \(p\) => \{ p\.low = p\.medium === 'billow' && p\.y - groundY\(p\.x, p\.z\) < 1\.5; vol\.emit\(p\); \},/,
+      'low billow bodies are flagged at emit');
+    assert.match(mat.vertexShader, /vFade = smoothstep\( aHT\.z - 2\.0 \* lowB, 1\.0, t \);/, 'the flag leaves the fade-out start intact');
+    assert.match(mat.fragmentShader, /float sb = min\( vSoft\.z, 1\.0 \) \* \( 1\.0 - smoothstep\( 0\.05, 0\.4, vHeat \) \);/,
+      'a burning fireball keeps its lobes; it softens as it cools into smoke');
+    // (the coordinator, the sunset chase: low bodies near the camera "read as flat tan cut-outs") a low body melts into
+    // the ground over a deeper soft-depth band, thins hard when it fills the screen within ~15 m, and its lit brightness is
+    // capped against the ground's at a low sun (a veil, not a sheet)
+    assert.match(mat.vertexShader, /float big = lowB \* smoothstep\( 0\.15, 0\.45, scr \) \* \( 1\.0 - smoothstep\( 12\.0, 18\.0, distance\( center, cameraPosition \) \) \);/,
+      'a low body filling the screen near the camera is marked');
+    assert.match(mat.vertexShader, /aCA\.w \* fadeIn \* near \* \( 1\.0 - 0\.75 \* big \) \);/, 'and thins hard');
+    assert.match(mat.fragmentShader, /col \*= mix\( 1\.0, min\( 1\.0, 2\.0 \* bgL \/ max\( cL, 1e-4 \) \), lowS \);/,
+      'a low body is never lit brighter than twice the ground');
+    assert.match(mat.fragmentShader, /a \*= 1\.0 - 0\.3 \* lowS \* \( 1\.0 - smoothstep\( 0\.12, 0\.4, uSunDir\.y \) \);/,
+      'and thins as the sun drops');
+    // a 4 m low body 10 m off at the chase camera's 55 degree view thins to ~0.4 of its opacity; at 20 m it is untouched
+    {
+      const sst = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+      const p11 = 1 / Math.tan((55 / 2) * Math.PI / 180);
+      const thin = (size, d) => 1 - 0.75 * sst(0.15, 0.45, 0.5 * size * p11 / d) * (1 - sst(12, 18, d));
+      assert.ok(thin(4, 10) < 0.45 && thin(4, 10) > 0.3, `near low body thins (${thin(4, 10).toFixed(2)})`);
+      assert.equal(thin(4, 20), 1, 'a far one does not');
+      assert.ok(thin(1, 10) > 0.95, `a small one barely does (${thin(1, 10).toFixed(2)})`);
     }
     // the CPU twin carries the shear (the sort's depth)
     const rec = new Float32Array(32);
