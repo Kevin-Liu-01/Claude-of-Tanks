@@ -111,3 +111,17 @@ export function latticeFrame(sink: PartSink, spec: LatticeSpec, crown: LatticeRe
   }
   return [at(0, spec.y1), at(1, spec.y1), at(2, spec.y1), at(3, spec.y1)];
 }
+
+/**
+ * Record a frame a builder laid member by member itself (a headframe's battered legs and back-legs): its legs' feet
+ * and heads and its crown in the emitting frame, so it falls as its frame (damage.ts describeLattice).
+ */
+export function recordLattice(sink: PartSink, legs: Array<{ foot: Vec3; head: Vec3 }>, girts: number[], size: number, bucket: RegionalBucket,
+  colour: Rgb | null, crown: LatticeReading['crown']): void {
+  if (!latticeSink) return;
+  const c = crown ? (() => {
+    const a = sink.framePoint([crown.x0, crown.y0, crown.z0]), b = sink.framePoint([crown.x1, crown.y1, crown.z1]);
+    return { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: a[1], y1: b[1], z0: Math.min(a[2], b[2]), z1: Math.max(a[2], b[2]), bucket: crown.bucket, tint: crown.tint };
+  })() : null;
+  latticeSink.push({ legs: legs.map((l) => ({ foot: sink.framePoint(l.foot), head: sink.framePoint(l.head) })), girts, size, bucket, colour, crown: c });
+}

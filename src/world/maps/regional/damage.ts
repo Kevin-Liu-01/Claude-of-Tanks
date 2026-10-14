@@ -32,6 +32,7 @@ import { breachCluster, cellsOf, collapseCluster, damagedCluster, sectionDownClu
 import { breachContainers, collapseContainers, containersOf, damagedContainers, readContainers, sectionDownContainers } from './container.ts';
 import { collapseShaft, shaftOf } from './shaft.ts';
 import { collapseLattice, latticeOf, noLatticeDamage } from './latticeFall.ts';
+import type { LatticeReading } from './lattice.ts';
 import { breachSheet, collapseSheet, damagedSheet, isSheetBody, isSheetFace, roofDownSheet, sectionDownSheet } from './sheet.ts';
 
 const FACE_ORDER: readonly SeamFace[] = ['front', 'right', 'back', 'left'];
@@ -250,6 +251,13 @@ function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput):
   const main = plan.houses.reduce((a, b) => (b.spec.w * b.spec.d > a.spec.w * a.spec.d ? b : a));
   const anatomy = houseBody(style, input, plan, main);
   const others = plan.houses.filter((h) => h !== main);
+  // (props census #3) an open frame the builder laid beside its house (a headframe beside its winding house) falls as its
+  // members, one more body
+  const frames = (plan.lattices ?? []).map((lat, k) => latticeAnatomy(style, { ...input, seed: damageSeed(input.seed, 0x1a, k) }, plan, lat));
+  if (frames.length) {
+    (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies = [...((anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies ?? []), ...frames];
+    anatomy.h = Math.max(anatomy.h, ...frames.map((b) => b.h));
+  }
   if (others.length) {
     const bodies = others.map((house, k) => {
       const body = houseBody(style, { ...input, seed: damageSeed(input.seed, 0x5e, k) }, plan, house);
@@ -264,7 +272,7 @@ function describeHouse(style: ArchitectureStyle, input: StructureDescribeInput):
       }
       return body;
     });
-    (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies = bodies;
+    (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies = [...((anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies ?? []), ...bodies];
     anatomy.h = Math.max(anatomy.h, ...bodies.map((b) => b.h));
   }
   return anatomy;
@@ -1025,6 +1033,11 @@ function describeLattice(style: ArchitectureStyle, input: StructureDescribeInput
   if (!plan || plan.houses.length || !plan.lattices?.length) return null;
   // the tallest frame the builder laid (a windmill's tower, a tank's trestle)
   const lat = plan.lattices.reduce((a, b) => (Math.max(...b.legs.map((l) => l.head[1])) > Math.max(...a.legs.map((l) => l.head[1])) ? b : a));
+  return latticeAnatomy(style, input, plan, lat);
+}
+
+/** One recorded lattice frame's anatomy (describeLattice; a house's frame beside it is one of its bodies, E5). */
+function latticeAnatomy(style: ArchitectureStyle, input: StructureDescribeInput, plan: RegionalKitPlan, lat: LatticeReading): StructureDamageAnatomy {
   const xs = lat.legs.map((l) => l.foot[0]), zs = lat.legs.map((l) => l.foot[2]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
   const y0 = Math.min(...lat.legs.map((l) => l.foot[1])), y1 = Math.max(...lat.legs.map((l) => l.head[1]), lat.crown?.y1 ?? 0);
@@ -1076,6 +1089,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
           : damagedHouse(anatomy, seed, out);
         // (E5) the bodies beside the main one take their damage with it
         bodiesOf(anatomy).forEach((body, k) => {
+          if (latticeOf(body)) return;
           const more = isSheetBody(body) ? damagedSheet(body, damageSeed(seed, 0x5e, k), out) : damagedHouse(body, damageSeed(seed, 0x5e, k), out);
           result.cuts.push(...more.cuts);
           result.hides.push(...more.hides);
@@ -1097,7 +1111,7 @@ export function registerHouseDamageKits(styles: readonly ArchitectureStyle[]): v
         bodiesOf(anatomy).forEach((body, k) => {
           const bodyMound = anatomy.mound ? mound : domeMound(body);
           const s = damageSeed(seed, 0x5e, k);
-          const more = shaftOf(body) ? collapseShaft(body, s, out, bodyMound) : isSheetBody(body) ? collapseSheet(body, s, out, bodyMound)
+          const more = latticeOf(body) ? collapseLattice(body, s, out, bodyMound) : shaftOf(body) ? collapseShaft(body, s, out, bodyMound) : isSheetBody(body) ? collapseSheet(body, s, out, bodyMound)
             : collapseHouse(body, s, out, bodyMound);
           result.cuts.push(...more.cuts);
         });
