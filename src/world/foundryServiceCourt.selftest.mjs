@@ -146,12 +146,13 @@ const hook=registerHooks({load(url,context,next){
   let text=replaceOnce(String(result.source),'export function mulberry32(a: number): Rng',
     'function producerMulberry32(a: number): Rng');
   // Capture the final accepted pose, after optional frontage correction.
-  const plannedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);';
+  // (Plan W, 2026-10-13: the shell pool's packetNow sits between the record marks and addStructureCollision)
+  const plannedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    // (Plan W) a building whose packet moves or reads its records below derives them all now\n    const packetNow = !!carriageway || (mapId';
   text=replaceOnce(text,plannedBlock,plannedBlock.replace('    const obstacleStart =',
     '    globalThis.__courtPlanned(bi,structureId,px,pz,rot,fit,info,tmp);\n    const obstacleStart ='));
   // 2026-10-03 (the owner's town-plan ruling): Ironworks replays its recorded plan (props.ts placeRecordedBuilding), so
   // the capture hooks that path as well, at the same point of each building's build
-  const recordedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);';
+  const recordedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    // (Plan W) a building whose packet moves or reads its records below derives them all now\n    const packetNow = !!carriageway\n      || !!(foundryDonors';
   text=replaceOnce(text,recordedBlock,recordedBlock.replace('    const obstacleStart =',
     '    globalThis.__courtPlanned(entry.planIndex,entry.structure,entry.x,entry.z,entry.rot,fit,info,tmp);\n    const obstacleStart ='));
   text=replaceOnce(text,'    const receipt = composeFoundryServiceCourt(',

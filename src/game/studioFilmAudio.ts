@@ -50,9 +50,10 @@ export const FILM_SFX: Readonly<Record<string, readonly [string, number]>> = Obj
   tail_open: ['weapons', 2], tail_forest: ['weapons', 2], tail_urban: ['weapons', 2], tail_mountain: ['weapons', 2],
   pen_heavy: ['impacts', 3], pen_light: ['impacts', 3], hull_thud_sub: ['impacts', 3], nonpen_heavy: ['impacts', 3],
   ricochet_heavy: ['impacts', 4], ricochet_light: ['impacts', 4], era_det: ['impacts', 2], ground_dirt: ['impacts', 3],
-  expl_he_small: ['impacts', 3], expl_he_medium: ['impacts', 3], expl_he_large: ['impacts', 2], blast_sub: ['impacts', 3],
-  burnout_blast: ['destruction', 1], debris_metal: ['destruction', 2], tank_explode: ['destruction', 2],
-  tank_explode_ammo: ['destruction', 2], turret_land: ['destruction', 2],
+  expl_he_small: ['impacts', 3], expl_he_medium: ['impacts', 3], expl_he_large: ['impacts', 3], blast_sub: ['impacts', 3],
+  // (the audio stream's variety round, 2026-10-13: the shipped takes kept first, a new one added after them)
+  burnout_blast: ['destruction', 2], debris_metal: ['destruction', 3], tank_explode: ['destruction', 3],
+  tank_explode_ammo: ['destruction', 3], turret_land: ['destruction', 4],
 });
 
 type WeaponFamily = 'mg' | 'autocannon' | 'cannon' | 'launcher';
@@ -68,7 +69,7 @@ interface FilmWeapon {
 }
 const W = (family: WeaponFamily, closeFadeM: readonly [number, number], farFadeM: readonly [number, number], tailRate: number, tailGain: number,
   close: string, far: string): FilmWeapon => Object.freeze({ family, closeFadeM, farFadeM, tailRate, tailGain, close, far });
-/** weaponAudio.ts WEAPON_CLASSES with audioEngine.ts WEAPON_CLOSE / WEAPON_FAR, by class id. */
+/** weaponAudio.ts WEAPON_CLASSES with its WEAPON_CLOSE / WEAPON_FAR (in audioEngine.ts until 2026-10-13), by class id. */
 export const FILM_WEAPONS: Readonly<Record<string, FilmWeapon>> = Object.freeze({
   mg_rifle: W('mg', [30, 140], [40, 160], 1.45, 0.12, 'mg_rifle_close', 'mg_far'),
   mg_heavy: W('mg', [40, 190], [50, 220], 1.3, 0.18, 'mg_heavy_close', 'mg_far'),
@@ -80,7 +81,7 @@ export const FILM_WEAPONS: Readonly<Record<string, FilmWeapon>> = Object.freeze(
   gun_90: W('cannon', [140, 330], [90, 360], 0.96, 0.62, 'gun_90_close', 'gun_far_light'),
   gun_105: W('cannon', [145, 360], [95, 400], 0.93, 0.72, 'gun_105_close', 'gun_far_light'),
   gun_120: W('cannon', [150, 390], [100, 440], 0.9, 0.82, 'gun_120_close', 'gun_far_medium'),
-  gun_125: W('cannon', [150, 400], [100, 450], 0.88, 0.86, 'gun_125_close', 'gun_far_medium'),
+  gun_125: W('cannon', [150, 400], [20, 450], 0.88, 0.86, 'gun_125_close', 'gun_far_medium'),
   gun_130: W('cannon', [155, 420], [110, 480], 0.85, 0.92, 'gun_130_close', 'gun_far_heavy'),
   gun_152: W('cannon', [160, 450], [120, 520], 0.8, 1, 'gun_152_close', 'gun_far_heavy'),
   rocket_heavy: W('launcher', [80, 360], [100, 460], 0.9, 0.85, 'rocket_salvo', 'gun_far_heavy'),
