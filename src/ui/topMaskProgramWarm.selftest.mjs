@@ -294,4 +294,30 @@ for (const remaining of [false, true]) {
   assert.deepEqual([old.uniforms, newest.uniforms], [1, 1], 'scheduling never drops retained older variants');
 }
 
+// 2026-10-14 (the MP stream; deploy 223's rejoin waited the whole 5 s for mask programs that linked only at the first
+// real draw): no program finishing for 2 s is the same slow-link timeout, 3 s sooner; one that finishes resets the count
+{
+  const f = fixture();
+  const options = { ...f.options, timeoutMs: 5000, stallMs: 2000 };
+  const a = program(), b = program();
+  const rejected = assert.rejects(waitForTopMaskPrograms([a, b], f.context, options), /top_mask_program_timeout/);
+  for (let elapsed = 0; elapsed < 1500; elapsed += 4) await f.resume(4);
+  a.ready = true;                       // one finishes at 1.5 s: the 2 s count starts again
+  await f.resume(4);
+  for (let elapsed = 0; elapsed < 1900; elapsed += 4) await f.resume(4);
+  assert.ok(f.waits.length === 1, 'still waiting 1.9 s after the last finished link');
+  await f.resume(200);                  // past 2 s since a finished, with b still linking
+  await rejected;
+  assert.ok(b.probes > 0 && b.uniforms === 0);
+  const f2 = fixture();
+  const steady = [program(), program(), program()];
+  const done = waitForTopMaskPrograms(steady, f2.context, { ...f2.options, timeoutMs: 5000, stallMs: 2000 });
+  for (const entry of steady) {         // one finishes every 1.5 s: never stalls, completes in 4.5 s
+    for (let elapsed = 0; elapsed < 1500; elapsed += 4) await f2.resume(4);
+    entry.ready = true;
+  }
+  while (f2.waits.length) await f2.resume(4);
+  await done;
+  assert.ok(steady.every((entry) => entry.uniforms === 1), 'a steadily linking set completes past 2 s');
+}
 console.log('[topMaskProgramWarm] exact program preparation, bounded reflection and safe failure passed');

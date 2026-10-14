@@ -2420,6 +2420,8 @@
   "playMenu.roomFailure.accessDenied.detail": "This room is not accepting the connection. Check the invite with the host.",
   "playMenu.roomFailure.connectionFailed.title": "Room connection failed",
   "playMenu.roomFailure.connectionFailed.detail": "The connection could not finish. Check your network and invite, then try again or return to the garage.",
+  "playMenu.versionRefusal.title": "Refresh to join this match",
+  "playMenu.versionRefusal.refresh": "Refresh page",
   "playMenu.entryRefusal.matchEnded": "The match ended while you were joining.",
   "playMenu.entryRefusal.buildMismatch": "Refresh the page to join: your game version differs from the host's.",
   "playMenu.entryRefusal.buildHostOlder": "Refresh the page to join: your game version differs from the host's. The host is running an older version, so ask them to refresh too.",

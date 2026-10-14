@@ -796,16 +796,41 @@ function pendingProgramNotes(pending: readonly CapturedProgram[]): PendingProgra
 }
 
 /** Budget native queries and reflection together; indivisible native calls can exceed one slice. */
+/**
+ * A strict drain stops waiting once no program of its cohort has finished for this long (2026-10-14, the MP stream:
+ * deploy 223's rejoin spent its compile window and the retry window, 5 s each, with the main thread idle and the same
+ * 37 programs never reporting a finished link; they linked only at the first real draw, under the loader). A cohort
+ * that keeps linking keeps its window; a stalled one returns `budget` at once, and the caller's next window or the
+ * covered reveal links the rest exactly as before.
+ */
+const STRICT_DRAIN_STALL_MS = 2_000;
+
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
   cohort: MaterialProgramCohort,
   extension: ParallelShaderCompileExtension | null,
   sliceMs = 4,
   operationBudget?: ProgramPreparationBudget,
+  stallMs?: number,
 ): Generator<void, ProgramPreparationResult, void> {
   const entries = [...cohort.values()];
   const newestFirst = !!extension && orderRecentProgramLinks(entries);
-  const budget = operationBudget ?? createProgramPreparationBudget(context.now, 120);
+  const operation = operationBudget ?? createProgramPreparationBudget(context.now, 120);
+  // the stall cutoff (strict drains only): progress is a program of this cohort reflected since the last check
+  let reflected = 0;
+  for (const entry of entries) if (entry.initialized) reflected++;
+  let lastProgressAt = diagnosticNow(context.now);
+  const stalled = (): boolean => {
+    if (!stallMs) return false;
+    let count = 0;
+    for (const entry of entries) if (entry.initialized) count++;
+    const at = diagnosticNow(context.now);
+    if (count > reflected) { reflected = count; lastProgressAt = at; }
+    return at - lastProgressAt >= stallMs;
+  };
+  const budget: ProgramPreparationBudget = stallMs
+    ? { expired: () => operation.expired() || stalled(), takeRound: () => operation.takeRound() }
+    : operation;
   const slice = createFirstUseSliceBudget(context.now, sliceMs);
   for (const field of ['uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformReused'] as const) {
     recordCompileTiming(context.timing, field, 0);
@@ -873,7 +898,7 @@ function* drainStrictPrograms(
   const pending = new Map([...cohort].filter(([, entry]) => !entry.initialized));
   try {
     const result = yield* initializeMaterialProgramSteps(
-      context, pending, context.lifetime.parallelCompile ?? null, sliceMs, budget);
+      context, pending, context.lifetime.parallelCompile ?? null, sliceMs, budget, STRICT_DRAIN_STALL_MS);
     if (context.valid()) recordFirstUsePending(context, [...cohort.values()]);
     return result.status === 'complete' ? materialPreparationResult(context, [...cohort.values()]) : result;
   } finally { pending.clear(); }

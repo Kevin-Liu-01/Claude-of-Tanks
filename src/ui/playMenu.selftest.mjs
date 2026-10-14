@@ -63,8 +63,8 @@ assert.match(source, /<button class="action" data-action="rejoin" type="button" 
   'the lobby carries a Rejoin battle control, hidden until a running match can be re-entered');
 assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
   'rejoin needs a room in a match and a match_start for this seat');
-assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\);/, 'the control follows every lobby render');
-assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\)\) beginNetworkHandoff\(state, role\);/,
+assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\) \|\| !!versionRefusal;/, 'the control follows every lobby render (hidden under a version refusal)');
+assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role\);/,
   'rejoin hands the room back through the same network start');
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
@@ -196,4 +196,26 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
   const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));
   assert.match(notice, /const key = code \? ENTRY_REFUSAL_KEYS\[code\] : undefined;\s*const text = key \? t\(key\) : notice;/, 'a known code is localized, anything else keeps its words');
 }
-console.log('playMenu.selftest: separate multiplayer intent, keyboard containment, single failure presentation and localized entry refusals');
+// 2026-10-14 (deploy 223's MP window): a refusal only a refresh resolves is a banner at the top of the menu with Refresh,
+// not the lobby's status line (out of view at 1024x640), and Rejoin battle goes while it stands
+{
+  const { readFile: read } = await import('node:fs/promises');
+  assert.match(source, /const VERSION_REFUSAL_CODES: ReadonlySet<string> = new Set\(\['build_mismatch', 'build_host_older', 'build_host_newer'\]\);/);
+  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
+    'the banner lives inside the menu header, above every room section');
+  assert.match(source, /\.cot-play \.play-head\{position:sticky;/, 'which stays in view while the panel scrolls (nothing can cover its Refresh)');
+  const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));
+  assert.match(notice, /if \(code && VERSION_REFUSAL_CODES\.has\(code\) && text\) \{ setStatus\(''\); setVersionRefusal\(text\); return true; \}/,
+    'a version refusal takes the banner, not the status line');
+  assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\) \|\| !!versionRefusal;/, 'Rejoin battle hides while a version refusal stands');
+  assert.match(source, /if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role\);/, 'and cannot fire');
+  assert.match(source, /refreshBtn\.addEventListener\('click', \(\) => reloadPage\(\)\);/);
+  assert.match(source, /reloadPage = \(\) => \{ location\.reload\(\); \},/, 'Refresh reloads the page');
+  assert.match(source, /if \(!keepRequest\) requestGeneration\+\+;\s*setVersionRefusal\(null\);/, 'leaving the room ends the refusal');
+  assert.match(source.slice(source.indexOf('  function detachActiveRoom()')), /session = null;\s*setVersionRefusal\(null\);/, 'so does a detached room');
+  for (const catalog of ['i18nCatalog.en-US.json', 'i18nCatalog.zh-CN.json']) {
+    const strings = JSON.parse(await read(new URL(`./${catalog}`, import.meta.url), 'utf8'));
+    for (const key of ['playMenu.versionRefusal.title', 'playMenu.versionRefusal.refresh']) assert.ok(strings[key], `${catalog}: ${key}`);
+  }
+}
+console.log('playMenu.selftest: separate multiplayer intent, keyboard containment, single failure presentation, localized entry refusals, and a version refusal banner with Refresh (no Rejoin while it stands)');

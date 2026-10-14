@@ -1600,6 +1600,30 @@ for (const remaining of ['batch', 'pass', 'empty-pass']) {
   assert.ok(queries > 120 && queries < 1024, 'the elapsed deadline, not a one-second round cap, governs normal cadence');
 }
 
+// 2026-10-14 (the MP stream; deploy 223's rejoin idled through its 5 s compile window and the 5 s retry with the same 37
+// programs never finishing): a strict drain stops 2 s after its last finished link; a cohort that keeps linking keeps
+// its window
+{
+  const run = (linkAt) => {
+    const f = firstUseFixture({ names: Object.keys(linkAt) });
+    f.state.queryMs = 0;
+    f.state.query = (name) => f.now() >= linkAt[name];
+    const result = preparationResult(f.prepare({ strict: true }), () => f.advance(9));
+    return { result, elapsed: f.now() };
+  };
+  const never = run({ a: Infinity, b: Infinity });
+  assert.deepEqual(never.result, { status: 'incomplete', pending: 2, reason: 'budget' });
+  assert.ok(never.elapsed >= 2000 && never.elapsed < 2200, `nothing links: the drain stops after 2 s, not 5 (${never.elapsed} ms)`);
+  const steady = run({ a: 1500, b: 3000, c: 4400 });
+  assert.deepEqual(steady.result, { status: 'complete', pending: 0 }, 'a link every 1.5 s keeps the window past 2 s');
+  assert.ok(steady.elapsed >= 4400, `steady linking ran to the last link (${steady.elapsed} ms)`);
+  const gap = run({ a: 1000, b: Infinity });
+  assert.deepEqual(gap.result, { status: 'incomplete', pending: 1, reason: 'budget' });
+  assert.ok(gap.elapsed >= 3000 && gap.elapsed < 3200, `the 2 s count from the last finished link (${gap.elapsed} ms)`);
+  const late = run({ a: 4800 });
+  assert.equal(late.result.reason, 'budget', 'a first link later than the cutoff is left to the next window or the covered reveal');
+}
+
 {
   const f = firstUseFixture({ names: Array.from({ length: 158 }, (_, index) => `retained-${index}`),
     clockFrozen: true });
