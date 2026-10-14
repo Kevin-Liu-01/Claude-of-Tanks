@@ -125,12 +125,16 @@ export function smokeBankBase(screen: SmokeScreen, bank: number, x: number, z: n
   return ground(x, z);
 }
 
-/** Five overlapping, staggered lobes form a shallow arc. A small fixed breeze
- * advects the complete screen; age is match time, never render frame count. */
-export function smokeVolume(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume,ground?:SmokeGround):SmokeVolume{
+/** What the bank's height needs once its footprint is placed (bankFootprint → bankHeight; module scratch, one bank at a time). */
+const footing = { shot: false, restY: 0, rise: 0 };
+
+/** A bank's footprint at `now` — x, z, radius, height and density — everything but its standing height over the ground,
+ * which costs a ground lookup (two for a canister bank). False when the bank holds no smoke (a canister bank whose
+ * canister is missing). bankHeight completes out.y with the same arithmetic smokeVolume always used. */
+function bankFootprint(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume):boolean{
   const age=now-screen.born;
   const shot=screen.canisters?.[screen.banks?.[bank+2] ?? -1];
-  if(screen.canisters&&!shot){out.density=0;return out;}
+  if(screen.canisters&&!shot){out.density=0;return false;}
   if(shot){
     smokeCanisterPosition(shot,shot[6],out);
     const landedAge=Math.max(0,age-shot[6]);
@@ -140,12 +144,12 @@ export function smokeVolume(screen:SmokeScreen,now:number,bank:number,out:SmokeV
       const drift=Math.min(WIND*landedAge,Math.max(0,wallDistance(clip,WIND_UX,WIND_UZ)-WALL_MARGIN_M-1));
       out.x+=WIND_UX*drift;out.z+=WIND_UZ*drift;
     }else{out.x+=SMOKE_WIND_X*landedAge;out.z+=SMOKE_WIND_Z*landedAge;}
-    out.y=(ground ? smokeBankBase(screen,bank,out.x,out.z,ground)+1.4 : out.y+1.32)+landedAge*.055;
+    footing.shot=true;footing.restY=out.y;footing.rise=landedAge*.055;
     const growth=smooth(landedAge/2.2);
     out.radius=1.2+growth*9.3;
     out.height=.8+growth*3.2;
     out.density=growth*(1-smooth((age-13.5)/4.5));
-    return out;
+    return true;
   }
   const growth=smooth((age-.85-Math.abs(bank)*.06)/2.2);
   const fade=1-smooth((age-13.5)/4.5);
@@ -153,13 +157,33 @@ export function smokeVolume(screen:SmokeScreen,now:number,bank:number,out:SmokeV
   const fore=-bank*bank*.45;
   out.x=screen.x+Math.cos(screen.yaw)*side+Math.sin(screen.yaw)*fore+SMOKE_WIND_X*Math.max(0,age-1);
   out.z=screen.z-Math.sin(screen.yaw)*side+Math.cos(screen.yaw)*fore+SMOKE_WIND_Z*Math.max(0,age-1);
-  out.y=(ground ? ground(out.x,out.z)+1.4 : screen.y)+Math.max(0,age-1)*.055;
+  footing.shot=false;footing.restY=screen.y;footing.rise=Math.max(0,age-1)*.055;
   out.radius=1.2+growth*(4.4+Math.sin(bank*2.7)*.35);
   out.height=.8+growth*3.2;
   out.density=growth*fade;
+  return true;
+}
+
+/** The footprint's standing height (out.y), after bankFootprint of the same bank. */
+function bankHeight(screen:SmokeScreen,bank:number,out:SmokeVolume,ground?:SmokeGround):void{
+  if(footing.shot)out.y=(ground ? smokeBankBase(screen,bank,out.x,out.z,ground)+1.4 : footing.restY+1.32)+footing.rise;
+  else out.y=(ground ? ground(out.x,out.z)+1.4 : footing.restY)+footing.rise;
+}
+
+/** Five overlapping, staggered lobes form a shallow arc. A small fixed breeze
+ * advects the complete screen; age is match time, never render frame count. */
+export function smokeVolume(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume,ground?:SmokeGround):SmokeVolume{
+  if(!bankFootprint(screen,now,bank,out))return out;
+  bankHeight(screen,bank,out,ground);
   return out;
 }
 const volume:SmokeVolume={x:0,y:0,z:0,radius:0,height:0,density:0};
+/** The least horizontal distance from (px, pz) to the segment a→b. */
+function segmentPointDistanceXZ(a:{x:number;z:number},b:{x:number;z:number},px:number,pz:number):number{
+  const dx=b.x-a.x,dz=b.z-a.z,length=dx*dx+dz*dz;
+  const t=length>0?clamp(((px-a.x)*dx+(pz-a.z)*dz)/length):0;
+  return Math.hypot(a.x+t*dx-px,a.z+t*dz-pz);
+}
 /** Samples along a sight line's chord through a walled bank's full envelope, each held to the bank's reach. */
 const WALLED_SAMPLES = 8;
 /** Optical cover only: no shell collision or mobility effect. Segment against
@@ -169,8 +193,13 @@ export function smokeBlocks(screens:Iterable<SmokeScreen>,a:{x:number;y:number;z
   for(const screen of screens){
     if(now<screen.born || now-screen.born>SMOKE_DURATION_S)continue;
     for(let bank=-2;bank<smokeBankCount(screen)-2;bank++){
-      smokeVolume(screen,now,bank,volume,ground);
-      if(volume.density<.22)continue;
+      // (2026-10-13, the MP stream: the host's tick) the footprint first, no ground lookup: a bank too thin to block, or
+      // one whose radius the line's horizontal path never comes within, cannot block it — the ellipsoid test below needs
+      // the horizontal term under 1, and a walled bank's reach never exceeds its radius. Only a bank the line passes
+      // over pays its ground lookups, which were most of a 28-bot authority tick (roof guns test every target).
+      if(!bankFootprint(screen,now,bank,volume)||volume.density<.22)continue;
+      if(segmentPointDistanceXZ(a,b,volume.x,volume.z)>=volume.radius*(1+1e-9)+1e-9)continue;
+      bankHeight(screen,bank,volume,ground);
       const ax=(a.x-volume.x)/volume.radius,ay=(a.y-volume.y)/volume.height,az=(a.z-volume.z)/volume.radius;
       const dx=(b.x-a.x)/volume.radius,dy=(b.y-a.y)/volume.height,dz=(b.z-a.z)/volume.radius;
       const length=dx*dx+dy*dy+dz*dz;

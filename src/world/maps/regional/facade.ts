@@ -656,10 +656,14 @@ export function roofDormers(sink: PartSink, roof: { s: number; halfD: number; ta
         orientedPrism(sink, style.covering, pts, n, t);
       } else {
         const rise = dw * 0.42, over = 0.2;
+        // (the buildings stream, 2026-10-12, the integrity check: the dormer roof stopped where its eaves met the slope,
+        // its ridge standing clear of the main roof, so a view from the ridge looked into the dormer through the open
+        // triangle at its back) the slopes run back until the ridge meets the main roof, their eaves buried in it
+        const xr = Math.max(0, Math.min(xb, (roof.ridgeTopY - yt - rise) / roof.tanP));
         for (const end of [-1, 1]) {
           const eave = (x: number): Vec3 => [x, yt, zc + end * (dw / 2 + 0.12)];
           const ridge = (x: number): Vec3 => [x, yt + rise, zc];
-          const pts: Vec3[] = [eave(side * (xf + over)), eave(side * xb), ridge(side * xb), ridge(side * (xf + over))];
+          const pts: Vec3[] = [eave(side * (xf + over)), eave(side * xr), ridge(side * xr), ridge(side * (xf + over))];
           const n = normalize3([0, dw / 2, end * rise]);
           orientedPrism(sink, style.covering, pts, n, 0.09);
         }

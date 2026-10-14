@@ -29,6 +29,7 @@ import { renderProductStats } from './src/productStats.ts';
 import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
+import { resolveMatchBuild } from './tools/matchBuild.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
@@ -37,6 +38,8 @@ import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './t
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
+/** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
+const matchBuild = resolveMatchBuild(dirname(fileURLToPath(import.meta.url)), appVersion);
 
 /** The telemetry sink origin for the inline watchdog: an http(s) origin without a trailing slash, else empty (the Vercel fallback). */
 function telemetrySinkOrigin(value: string | undefined): string {
@@ -203,6 +206,9 @@ function forceNotFoundStatus(res: ServerResponse): void {
 }
 
 export default defineConfig({
+  // 2026-10-13 (MP plan step 13): the same-wire build check's line — the page and the match host Worker read the same
+  // constant (src/mp/wire/matchBuild.ts MATCH_BUILD), so a host can refuse a seat whose prediction code differs.
+  define: { __COT_MATCH_BUILD__: JSON.stringify(matchBuild) },
   // Workers Vite still bundles on their own (the match host, the material painter, the sky/cloud/schematic/texture
   // workers) keep ES modules so their donor families stay on-demand imports, and their chunks take the same base36
   // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
@@ -376,6 +382,11 @@ export default defineConfig({
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
             // chunk of their own, one more game boot request for code the Studio only reuses. The group takes exactly
             // these six, not their dependencies (which would pull three itself in): the one chunk they formed before.
+            // 2026-10-14 (integrator 223; tank id schema 2): the id alias layer (schema map, boundaries, storage migration)
+            // rides with the fleet's spec registry, a leaf chunk the game and the gallery both load at boot. The vehicle code,
+            // the gallery and main all import it, so on its own it became one more boot request on every page. The group takes
+            // exactly these four modules, none of their dependencies.
+            { name: 'fleetSpecRegistry', test: /[\\/]src[\\/](?:vehicles[\\/](?:fleetSpecRegistry|tankIdAliases)|game[\\/](?:tankIdBoundaries|tankIdStorageMigration))\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },

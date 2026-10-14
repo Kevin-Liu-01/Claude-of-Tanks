@@ -278,7 +278,9 @@ assert.deepEqual(table, {
   steppe: { regime: 'cloud-streets', coverage: 0.34, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.9, cirrus: 0.2, farBand: 0.35, contrails: 0, rain: 0.2, virga: 0, fogBank: 0 },
   railyard: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   frontier: { regime: 'cloud-streets', coverage: 0.4, baseM: 1400, thicknessM: 660, shadow: true, streets: 0.85, cirrus: 0.15, farBand: 0.35, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
-  fjord: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.6, contrails: 0, rain: 0.3, virga: 0.15, fogBank: 0.4 },
+  // (2026-10-13, the owner: "no more of the cloud type depicted in fjord" — fjord, polders and copper_mesa leave the broken
+  // stratocumulus deck for Verdant's fair-weather cumulus tuned to their place; cloudsBan.selftest.mjs keeps it out)
+  fjord: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1100, thicknessM: 760, shadow: true, streets: 0.4, cirrus: 0.15, farBand: 0.35, contrails: 0, rain: 0, virga: 0, fogBank: 0.4 },
   delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.9, fogBank: 0 },
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
@@ -291,9 +293,10 @@ assert.deepEqual(table, {
   // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley under fair-weather cumulus, the deck opened)
   titan_gorge: { regime: 'fair-weather-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
-  polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, contrails: 3, rain: 0.2, virga: 0.2, fogBank: 0.35 },
-  // (2026-10-05, the map-revival lane: Copper Mesa is Queenstown under the west coast's broken stratocumulus)
-  copper_mesa: { regime: 'broken-stratocumulus', coverage: 0.62, baseM: 900, thicknessM: 500, shadow: true, streets: 0.3, cirrus: 0.1, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.2, fogBank: 0 },
+  polders: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 900, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.35, contrails: 3, rain: 0, virga: 0, fogBank: 0.35 },
+  // (2026-10-05, the map-revival lane: Copper Mesa is Queenstown under the west coast's broken stratocumulus; 2026-10-13: the
+  // dry upland's fair-weather cumulus near the humilis cover)
+  copper_mesa: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1600, thicknessM: 620, shadow: true, streets: 0.3, cirrus: 0.3, farBand: 0.2, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   airfield: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 6, rain: 0, virga: 0, fogBank: 0 },
   oasis: { regime: 'cumulus-humilis', coverage: 0.17, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   whiteout: { regime: 'low-stratus', coverage: 1, baseM: 300, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -307,7 +310,8 @@ assert.deepEqual(table, {
 }, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus; 2026-10-01: the layered sky — contrails, rain and virga, fog banks)');
 {
   // the regime rows are complete and sane; every regime name resolves
-  assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 20, 'eighteen round-71 regimes and the two of round 76 (industrial-stratocumulus, altocumulus)');
+  // (2026-10-13: 20 -> 19 — the owner retired broken-stratocumulus, "no more of the cloud type depicted in fjord")
+  assert.equal(CLOUDSCAPE_REGIME_NAMES.length, 19, 'seventeen round-71 regimes (broken-stratocumulus retired 2026-10-13) and the two of round 76 (industrial-stratocumulus, altocumulus)');
   for (const name of CLOUDSCAPE_REGIME_NAMES) {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.coverage >= 0 && row.coverage <= 0.97 && row.thicknessM > 0 && row.density > 0, `${name} row`);
@@ -327,7 +331,8 @@ assert.deepEqual(table, {
     const row = CLOUDSCAPE_REGIMES[name];
     assert.ok(row.cells > 0 && row.deckLight === 1 && row.undulatus > 0, `${name}: a cellular deck lit by what its columns transmit`);
   }
-  assert.ok(CLOUDSCAPE_REGIMES['broken-stratocumulus'].deckLight === 1 && CLOUDSCAPE_REGIMES['broken-stratocumulus'].interior > 0, 'a broken stratocumulus takes the deck lighting whole (the blend paid both lighting paths: polders 1.7 ms) and the interior octave');
+  // (2026-10-13: the broken stratocumulus row — the deck lighting whole and the interior octave — is retired with its regime)
+  assert.ok(!isCloudscapeRegime('broken-stratocumulus') && !Object.hasOwn(CLOUDSCAPE_REGIMES, 'broken-stratocumulus'), 'the owner\'s banned broken stratocumulus is no regime (2026-10-13)');
   assert.ok(CLOUDSCAPE_REGIMES.altocumulus.cellM < 700 && CLOUDSCAPE_REGIMES.altocumulus.baseM >= 2500 && CLOUDSCAPE_REGIMES.altocumulus.stratiform < 0.5, 'altocumulus: small elements high, cumuliform enough to keep lit borders');
   // the monsoon front keeps the sky over the camera open (round 68's ruling) with scud and anvils; the
   // white-out ceiling is a sheet at its authored altitude; the winter deck is a lumpy stratocumulus

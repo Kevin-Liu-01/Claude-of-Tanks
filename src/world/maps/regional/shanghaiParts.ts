@@ -231,7 +231,9 @@ export function sandbags(sink: PartSink, face: Face, u: number, y: number, w: nu
     for (let k = 0; k < per; k++) {
       const bu = u - w / 2 + (k + 0.5 + (r % 2) * 0.25) * (w / per);
       if (bu > u + w / 2 - 0.15) continue;
-      faceBox(sink, 'structureWood', face, bu, y + 0.105 + r * 0.2, 0.32, w / per * 0.94, 0.19, 0.5,
+      // (the buildings stream, 2026-10-12, the integrity check: the stack stood 7 cm proud of the wall on nothing) the
+      // bags packed against the wall
+      faceBox(sink, 'structureWood', face, bu, y + 0.105 + r * 0.2, 0.27, w / per * 0.94, 0.19, 0.5,
         { colour: shade(HESSIAN, 0.86 + look() * 0.22), decor: true });
     }
   }

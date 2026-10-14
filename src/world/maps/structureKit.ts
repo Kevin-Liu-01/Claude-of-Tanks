@@ -1191,6 +1191,16 @@ export function makeCivicHall(_rng: Rng, buckets: GeometryBuckets, wallBucket = 
   out.roof.push(slab(w - 1.0, 0.45, 4.8).translate(0, 8.5, d / 2 + 1.2));
   const dome = new THREE.SphereGeometry(6.8, 18, 9, 0, Math.PI * 1.55, 0, Math.PI / 2);
   dome.scale(1, 0.52, 1); dome.translate(-3.0, h, -1.0); out.roof.push(dome);
+  // (the buildings stream, 2026-10-12, the integrity check: through the missing quarter the dome's inside was its culled
+  // back, so the far half vanished) the shell's inner face, 10 cm in
+  const shell = new THREE.SphereGeometry(6.7, 18, 9, 0, Math.PI * 1.55, 0, Math.PI / 2);
+  const index = shell.index!;
+  for (let i = 0; i < index.count; i += 3) { const b = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b); }
+  const normal = shell.getAttribute('normal');
+  for (let i = 0; i < normal.count; i++) normal.setXYZ(i, -normal.getX(i), -normal.getY(i), -normal.getZ(i));
+  // (new to the placement stream: it takes none of its UV draws, props.ts jitterBuildingUvs)
+  shell.userData.uvJitter = 'none';
+  shell.scale(1, 0.51, 1); shell.translate(-3.0, h, -1.0); out.roof.push(shell);
   // Missing dome quarter and exposed ribs are suggested with black blast
   // panels and leaning steel members rather than overlapping alpha geometry.
   out.dark.push(box(5.2, 3.2, 0.18).rotateZ(-0.22).translate(1.8, h + 2.0, 4.1));

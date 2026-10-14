@@ -69,6 +69,10 @@ interface SceneBandTiming {
   restoreMs?: number;
   programsBeforeRender?: number;
   programsAfterRender?: number;
+  /** Programs still linking when the probe began, the wait for them between tasks, and those still linking after it. */
+  linkPending?: number;
+  linkWaitMs?: number;
+  linkLeft?: number;
   error?: string;
 }
 
@@ -979,6 +983,55 @@ async function tryWatchdogStagesAsync(
   }
 }
 
+/** The covered probe's allowance for programs that are still linking (the main thread stays free while it waits). */
+const PROBE_LINK_WAIT_MS = 20000;
+const PROBE_LINK_POLL_MS = 16;
+
+/**
+ * 2026-10-12 (the perf stream; railyard at load 326: the covered probe draw was one 3,953 ms task, the watchdog stage
+ * 9.3 s, the loading cover frozen): when the covered entry's optional program warm stops short (its budget), the
+ * programs it submitted are still linking under KHR_parallel_shader_compile, and the probe's draw — the first draw to
+ * use them — waits for every link on the main thread. Wait for them between tasks first, as the rescue ladder does for
+ * its stages (prepareStagePrograms): a ready program answers from three's own cache without a query, a pending one is
+ * polled until it completes or the allowance ends (the draw then links whatever is left, as before). Without the
+ * extension three reports every program ready and nothing waits.
+ */
+type ProgramLinkLike = { isReady?: () => boolean };
+
+/** The renderer's programs still linking (three caches a ready answer, so a ready program costs no query). */
+function pendingProgramLinks(renderer: THREE.WebGLRenderer): ProgramLinkLike[] {
+  try {
+    return ((renderer.info?.programs ?? []) as unknown as ProgramLinkLike[])
+      .filter((program) => typeof program.isReady === 'function' && !program.isReady());
+  } catch {
+    return []; // an unavailable program list is not evidence of anything: the probe draws as before
+  }
+}
+
+/** Wait between tasks until `pending` link or the allowance ends; records the wait on the watchdog's link receipt. */
+async function awaitProgramLinks(
+  renderer: THREE.WebGLRenderer,
+  pending: ProgramLinkLike[],
+  receipt: { linkPending?: number; linkWaitMs?: number; linkLeft?: number },
+  signal?: AbortSignal,
+  isCurrent?: () => boolean,
+): Promise<void> {
+  receipt.linkPending = pending.length;
+  const startedAt = sceneProbeClock();
+  const deadline = Number.isFinite(startedAt) ? startedAt + PROBE_LINK_WAIT_MS : Infinity;
+  try {
+    while (pending.length && sceneProbeClock() < deadline) {
+      await new Promise<void>((resolve) => { setTimeout(resolve, PROBE_LINK_POLL_MS); });
+      assertSceneWatchdogOwner(signal, isCurrent);
+      if (renderer.getContext?.()?.isContextLost?.()) break;
+      pending = pending.filter((program) => !program.isReady!());
+    }
+  } finally {
+    receipt.linkWaitMs = sceneProbeClock() - startedAt;
+    receipt.linkLeft = pending.length;
+  }
+}
+
 /** Own just the async measurement; never mutate compatibility settings. */
 async function measureSceneBandAsync(
   renderer: THREE.WebGLRenderer,
@@ -1129,6 +1182,7 @@ export async function runSceneBlackWatchdogAsync(
 ): Promise<SceneWatchdogResult> {
   const measurements: SceneBandTiming[] | undefined = options.measureTimings ? [] : undefined;
   let observedMeasurements = measurements;
+  const linkReceipt: Pick<SceneBandTiming, 'linkPending' | 'linkWaitMs' | 'linkLeft'> = {};
   try {
     assertSceneWatchdogOwner(signal, isCurrent);
     if (FORCE === 'blackscene' || FORCE === 'blackout') {
@@ -1137,11 +1191,19 @@ export async function runSceneBlackWatchdogAsync(
       observedMeasurements = forced.measurements;
       return forced;
     }
+    // links still pending from a covered warm that stopped short are awaited between tasks first (none pending: the
+    // probe is submitted synchronously, as before)
+    const pendingLinks = pendingProgramLinks(renderer);
+    if (pendingLinks.length) {
+      await awaitProgramLinks(renderer, pendingLinks, linkReceipt, signal, isCurrent);
+      assertSceneWatchdogOwner(signal, isCurrent);
+    }
     const shadow = renderer.shadowMap.enabled;
     const environment = scene.environment;
     const fog = scene.fog;
     const { before, rendererRestored } = await measureSceneBandAsync(
       renderer, scene, camera, signal, measurements, options.nightRadianceScale);
+    if (measurements?.[0] && linkReceipt.linkPending !== undefined) Object.assign(measurements[0], linkReceipt);
     const radianceReceipt = options.nightRadianceScale === undefined ? {} : { nightRadianceScale: options.nightRadianceScale };
     // The room may have closed and disposed its scene while the fence was pending.
     assertSceneWatchdogOwner(signal, isCurrent);

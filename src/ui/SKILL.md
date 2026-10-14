@@ -30,7 +30,8 @@ Private and LAN deployment over `src/mp/session/playMenuAdapter.ts`;
 `hud.ts` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
 coalescing, stale-world rejection, and the procedural cartography fallback;
 `damagePanel.ts` owns the battle-only camera-up tank schematic and its
-redraw-on-change module/crew presentation;
+redraw-on-change module/crew presentation (a wreck holds the pose of its last
+live frame: `setPose` stages, `update` commits only while the vehicle lives);
 `shotInfo.ts` owns typed resolved-hit cards, incoming-fire alerts, the bounded
 combat log, armor-diagram projection, event-derived battle statistics, and the
 killcam-aware handoff to the after-action report;
@@ -40,6 +41,11 @@ paint;
 controls, capture/export surface, and production archive;
 `studioPicturePanel.ts` owns its Picture section (look, grade/finish sliders,
 letterbox, depth of field), a thin view over `__STUDIO.setPicture()`;
+`fleetTakes.ts` owns every vehicle's own take (the per-vehicle index fetched once
+at first use, and the muted player that decodes only on screen) for the Gallery
+dossier, the manual's fleet reference and the Garage's battle gallery, which
+reach it only through `import()`; the Studio Director finds the same takes in
+its scenes index (`group: 'fleet'`);
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
 `i18n.ts` owns locale detection and runtime formatting; the paired

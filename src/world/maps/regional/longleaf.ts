@@ -673,7 +673,9 @@ const burnt: RegionalBuilder = (ctx) => {
     // the chimney standing whole, a corner of the wall frame, the fallen roof sheet
     sink.span('stone', -0.35, -0.5, -0.35, 0.35, 5.6 + rng(), 0.35);
     sink.member('structureWood', [-W / 2 + 0.15, 0.85, D / 2 - 0.15], [-W / 2 + 0.15, 2.4 + rng() * 0.8, D / 2 - 0.15], 0.12, 0.12, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
-    sink.member('structureMetal', [W * 0.1, 0.9, -D * 0.3], [W * 0.35, 1.9, D * 0.2], 2.2, 0.04, [0.3, 1, 0], { colour: RUST, decor: true, exposed: true }, 0);
+    // (the buildings stream, 2026-10-12, the integrity check: the sheet hung over the burnt-out floor on nothing) the
+    // fallen sheet lying across the front corner from the side sill to the front one, clear of the stack
+    sink.member('structureMetal', [W / 2 - 0.12, 0.86, 0.45], [0.5, 0.86, D / 2 - 0.12], 1.6, 0.04, [0, 1, 0], { colour: RUST, decor: true, exposed: true }, 0);
   });
   return sink.finish();
 };
