@@ -307,10 +307,12 @@ function hus(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): RegionalP
     const f = frame.faces.front;
     if (two) veranda(sink, f, frame, porch, st);
     else if (porch) bislag(sink, f, 0, porch, st);
-    if (!st.mobile && look() < 0.7) {
+    // (phoneIdentity: dressing a phone leaves out but draws, sink.dressing)
+    sink.dressing(st.mobile, () => {
+      if (look() >= 0.7) return;
       const side = look() < 0.5 ? frame.faces.right : frame.faces.left;
       woodpile(sink, side, -side.width / 2 + 0.6, -side.width / 2 + 0.6 + Math.min(2.4, side.width * 0.35), 1.1 + look() * 0.4, look);
-    }
+    });
   });
   return sink.finish();
 }
@@ -435,9 +437,10 @@ const sjohus: RegionalBuilder = (ctx) => {
     sink.span('wood', -W / 2 - 0.1, 0.55, fz, W / 2 + 0.1, 0.8, fz + deck);
     sink.span('stone', -W / 2 - 0.1, -0.6, fz, W / 2 + 0.1, 0.55, fz + deck);
     for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * W * 0.3, 0.8, fz + deck - 0.45], 'y', 0.55, 0.16, 8, { colour: IRON, decor: true, shadow: true });
-    if (!st.mobile && look() < 0.7) {
+    sink.dressing(st.mobile, () => {
+      if (look() >= 0.7) return;
       for (let k = 0; k < 3; k++) sink.cylinder('structureWood', [W * 0.15 + k * 0.62, 0.8, fz + 0.7 + (k % 2) * 0.3], 'y', 0.85, 0.28, 10, { colour: shade(BOARD, 0.9 + k * 0.08), decor: true, shadow: true });
-    }
+    });
   });
   return sink.finish();
 };
@@ -533,7 +536,7 @@ const fiskebruk: RegionalBuilder = (ctx) => {
     for (let x = x0 + 0.3; x <= x1 - 0.2; x += (x1 - x0 - 0.5) / Math.max(2, Math.round((x1 - x0) / 2.6))) {
       sink.span('wood', x - 0.14, -1.2, fz + deck - 0.4, x + 0.14, 0.32, fz + deck - 0.12);
     }
-    if (!st.mobile) {
+    sink.dressing(st.mobile, () => {
       // the fish boxes stacked by the doors, a row of barrels, the derrick at the deck's edge
       for (let k = 0; k < 5; k++) {
         const bx = -W * 0.4 + (k % 3) * 0.75, by = 0.52 + Math.floor(k / 3) * 0.32;
@@ -545,7 +548,7 @@ const fiskebruk: RegionalBuilder = (ctx) => {
       sink.member('structureWood', [mx, 1.2, mz], [mx + 3.2, 4.6, mz - 0.2], 0.16, 0.16, [0, 0, 1], { colour: shade(BOARD, 0.75), decor: true, shadow: true, exposed: true });
       // the derrick's topping lift from the mast head to the boom's end (kitConnectivity: the boom's end hung on nothing)
       sink.member('structureMetal', [mx + 0.06, 5.32, mz + 0.04], [mx + 3.16, 4.66, mz - 0.14], 0.03, 0.03, [0, 0, 1], { colour: IRON, decor: true, exposed: true, fine: true }, 0.04);
-    }
+    });
   });
   return sink.finish();
 };
@@ -625,7 +628,7 @@ const hjell: RegionalBuilder = (ctx) => {
   for (const zr of [z0 + (z1 - z0) * 0.22, z1 - (z1 - z0) * 0.22]) {
     sink.span('structureWood', x0, 1.85, zr - 0.05, x1, 1.95, zr + 0.05, { colour: pole, decor: true });
   }
-  if (!mobile) {
+  sink.dressing(mobile, () => {
     // the fish: pairs hung over the rails, every 22 cm, a few gaps where a bundle was taken down
     for (const [zr, yr, half] of [[zc, h - 0.05, 0.07], [z0 + (z1 - z0) * 0.22, 1.9, 0.05], [z1 - (z1 - z0) * 0.22, 1.9, 0.05]] as const) {
       for (let x = x0 + 0.3; x < x1 - 0.25; x += 0.22) {
@@ -635,7 +638,7 @@ const hjell: RegionalBuilder = (ctx) => {
       }
     }
     for (let k = 0; k < 4; k++) sink.span('structureWood', x1 - 0.9, k * 0.32, z1 - 1.1 + (k % 2) * 0.05, x1 - 0.2, k * 0.32 + 0.3, z1 - 0.55 + (k % 2) * 0.05, { colour: shade(BOARD, 0.95 + look() * 0.15), decor: true, shadow: true });
-  }
+  });
   return sink.finish();
 };
 
@@ -801,10 +804,10 @@ const vedskjul: RegionalBuilder = (ctx) => {
     for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.14, -0.2, sz * (D / 2 - 0.1) - 0.07, W / 2, hLo, sz * (D / 2 - 0.1) + 0.07, { colour: WHITE });
     const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.18, thickness: 0.1, bucket: 'roof' };
     emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-    if (ctx.tier !== 'mobile') {
+    sink.dressing(ctx.tier === 'mobile', () => {
       const back: Face = { origin: [-W / 2 + 0.12, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
       woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.4 + look() * 0.4, look);
-    }
+    });
   });
   return sink.finish();
 };
