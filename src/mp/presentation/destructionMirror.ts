@@ -65,6 +65,8 @@ const finite = (value: unknown, fallback = 0): number => (typeof value === 'numb
 
 export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBus | null): DestructionMirror {
   const ground = createTerrainDeformation();
+  /** Whether the stage being applied is settled state (the log), not an event (destructionMirror apply). */
+  let applyingSettled = false;
   const obstacles = world?.getObstacles?.() ?? [];
   const colliders = world?.getColliders?.() ?? [];
   // a cached world comes back from its last battle (solo or another round): its buildings stand again first
@@ -72,8 +74,10 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
   const hasGroups = obstacles.some((record) => record.structureIdx !== undefined);
   const structures = hasGroups
     ? createStructureDamage(obstacles, colliders, {
+      // (a heap rises on this world's clock from when its collapse lands here, setTime by the presentation; a settled one —
+      // the log a late seat catches up on — stands risen)
       onCollapse: (structure) => ground.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
-        rubbleHeightFor(structure.topY - structure.baseY)),
+        rubbleHeightFor(structure.topY - structure.baseY), applyingSettled ? -Infinity : undefined),
       // a structure's sections are derived when the authority first opens one (nothing costs until then)
       sections: true,
     })
@@ -191,7 +195,10 @@ export function createDestructionMirror(world: MirrorWorld | null, bus: MirrorBu
     const target = STAGE_ORDER.indexOf(stage);
     if (target < 0 || target <= structure.stage) return false;
     const previous = STAGE_ORDER[structure.stage]!;
-    if (!structures!.restoreStage(structure.id, stage)) return false;
+    applyingSettled = settled;
+    const restored = structures!.restoreStage(structure.id, stage);
+    applyingSettled = false;
+    if (!restored) return false;
     emit(structure, stage, previous, settled, payload);
     return true;
   }

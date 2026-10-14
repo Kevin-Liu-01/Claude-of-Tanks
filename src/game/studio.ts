@@ -2789,7 +2789,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           sh.dead = true;
         }
       }
-      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus)
+      // the Studio's destruction steps after the rounds, as the solo step's does (stages, breaches on the bus); its ground
+      // on the timeline's clock, so a collapsed structure's heap rises as the battle's does (terrainDeformation)
+      studioGround?.setTime(clockMs / 1000);
       studioSim?.step();
       // continuous per-actor emitters. Live battle quality keeps one pulse
       // per step; a film's sub-sample steps pulse once per 1/60 s timeline

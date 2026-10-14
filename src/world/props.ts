@@ -165,7 +165,7 @@ const _hedgehogBeam = new THREE.Matrix4(), _hedgehogTilt = new THREE.Matrix4();
 // (the fortifications lane, 2026-10-09, with the hitbox lane: and the pillbox, its berm's slope and its body met as drawn)
 export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'sandbagsmall', 'sandbagwall', 'bunker']);
 import {
-  appendStructureCollisionBand, applyStructureCollisionBand,
+  appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
   deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands,
 } from './structureCollision.ts';
@@ -5692,7 +5692,7 @@ ${snowCap ? `
       for (const geometries of Object.values(packet.buckets)) for (const geometry of geometries) geometry.applyMatrix4(transform);
       [packet.profile.contact, ...packet.profile.shell].forEach((band, i) => {
         const record = packet.records[i];
-        record.min[1] = y + band.minY; record.max[1] = y + band.maxY;
+        record.min[1] = y + band.minY; record.max[1] = y + (band.groundMaxY ?? band.maxY);
         applyStructureCollisionBand(record, band, target.x, target.z, source.rot, y);
       });
       Object.assign(packet.feature, { x: target.x, z: target.z });
@@ -10785,6 +10785,8 @@ ${snowCap ? `
               cx: part.cx * record.sc,
               cz: part.cz * record.sc,
               points: part.points.map((value) => value * record.sc),
+              // (a deck's drawn top scales with it: its origin and heights, its gradients as they are)
+              ...(part.tp ? { tp: part.tp.map((value, i) => (i < 2 || (i - 2) % 3 === 2 ? value * record.sc : value)) } : {}),
               ...scaledExtent(part),
             }),
       };
@@ -11960,6 +11962,9 @@ ${snowCap ? `
     if (entry.feature) { placement.x = entry.feature.x; placement.z = entry.feature.z; placement.yaw = entry.feature.rot; }
     placement.y = entry.contact.min[1] - entry.contactMinY;
   }
+  // (physics stream F2) the buildings' decks join their movement records now the world is laid out: every placement above
+  // read the ground band alone, as before decks existed (structureCollision.ts mergeStructureDecks)
+  mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials,

@@ -777,6 +777,8 @@ export function createBattlePresentation({
     if (!mounted) mount();
     publishRoster();
     game.timeS = frame.meta.battleTimeMs / 1000;
+    // this world's ground on the battle's clock: a heap rises from when its collapse lands here (terrainDeformation)
+    destruction.ground.setTime(game.timeS);
     if(lastSmokeJson !== (frame.meta.smokeJson||'')){
       lastSmokeJson=frame.meta.smokeJson||'';
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });

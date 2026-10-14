@@ -1153,6 +1153,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/physics-torture.selftest.mjs',
     // 2026-10-13 (physics stream): a stone under its drawn top is climbed or stops a hull by its face grade and height
     'tools/rock-drawn-top.selftest.mjs',
+    // 2026-10-13 (physics stream F2): a roof rides its building's movement record as a floor-only deck
+    'tools/roof-decks.selftest.mjs',
     'src/sim/tankContactShape.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',

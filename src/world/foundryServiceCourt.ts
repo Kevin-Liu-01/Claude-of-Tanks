@@ -129,7 +129,7 @@ function commitSeat({ donor, pose, transform, box, support }: Seat) {
   const bands = [donor.profile.contact, ...donor.profile.shell];
   bands.forEach((band, i) => {
     const record = donor.records[i];
-    record.min[1] = pose.y + band.minY; record.max[1] = pose.y + band.maxY;
+    record.min[1] = pose.y + band.minY; record.max[1] = pose.y + (band.groundMaxY ?? band.maxY);
     applyStructureCollisionBand(record, band, pose.x, pose.z, pose.yaw, pose.y);
   });
   Object.assign(donor.feature, { x: pose.x, z: pose.z, rot: pose.yaw });

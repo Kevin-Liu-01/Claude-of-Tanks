@@ -553,8 +553,10 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
       // a compound record part by part, each at its own vertical extent (a viaduct span's slab, parapets and pier)
       for (const part of shape.parts) {
         const top = part.tp ? partTopAt(record, part, x, z) : part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
-        // (a drawn top — a stone's surface — is solid wherever it stands: a shell point under it is in the stone)
-        if (!part.tp && (top - bottom < 0.9 || top > limit)) continue;
+        // (a drawn top standing from the ground — a stone's surface — is solid wherever it stands: a shell point under it
+        // is in the stone; a raised one — a building's deck — is a floor by the rule, a hull under its eave is not in it)
+        const grounded = part.tp && bottom <= record.min[1] + 0.05;
+        if (!grounded && ((!part.tp && top - bottom < 0.9) || top > limit)) continue;
         if (pointInsideCollisionRecord(record, part, x, z) && top > best) best = top;
       }
       continue;

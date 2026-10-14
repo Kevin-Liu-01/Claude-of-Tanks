@@ -2474,6 +2474,8 @@ export function createAuthoritativeMatch({
     // past the ruleset's post-verdict hold the field stands still (snapshots keep publishing the frozen state)
     if (endingHoldExpired(ruleset, resultTimeS, timeS)) return;
     timeS += dt;
+    // the match's ground on the match's clock: a collapsed structure's heap rises over RUBBLE_GROW_S (terrainDeformation)
+    ground.setTime(timeS);
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
     for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell, aerialWorld);
