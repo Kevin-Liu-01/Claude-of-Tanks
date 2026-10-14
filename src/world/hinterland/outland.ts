@@ -105,6 +105,8 @@ export interface HinterlandPlan {
 /** What the planner reads besides the spec: heights (the pyramid's, cheap) and water and woods from the field. */
 export interface HinterlandPlanInputs {
   heightAt(x: number, z: number): number;
+  /** The field's own height (not the planning grid's): where a few metres matter — a dyke's crown under its row. */
+  exactHeightAt?(x: number, z: number): number;
   wetAt(x: number, z: number): number;
   /** The water's kind there (field.ts HinterlandWaterSample.kind: 5 a flood). */
   waterKindAt?(x: number, z: number): number;
@@ -558,7 +560,8 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
   // behind a dyke's poplars nearer the line): a tree that would hide a sightline village's tower from an eye at the
   // battlefield's edge is felled — only the crowns that actually cover the tower's upper part, from any of nine eyes
   // along the edge, so each gap is a few trees wide with ragged ends, not a radial lane (the coordinator)
-  const blocks = sightlineBlocker(settlements, inputs.heightAt);
+  // (on the field's own heights: the 40 m planning grid blurs a dyke's crown away from under its poplars)
+  const blocks = sightlineBlocker(settlements, inputs.exactHeightAt ?? inputs.heightAt);
   if (blocks) {
     const kept = trees.filter((t) => !blocks(t));
     trees.length = 0;
@@ -615,6 +618,7 @@ export function planInputsFrom(field: HinterlandField, heightAt: (x: number, z: 
   const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0, edgeU: 1e9, edgeV: 1e9 };
   return {
     heightAt,
+    exactHeightAt: (x, z) => field.heightAt(x, z),
     wetAt: (x, z) => field.waterAt(x, z, water).wet,
     waterKindAt: (x, z) => field.waterAt(x, z, water).kind,
     woodsAt: (x, z) => { field.coverAt(x, z, cover, 2, heightAt(x, z)); return cover.woods; },
@@ -631,7 +635,7 @@ export { SIDE_NAMES };
  * null when the plan names no sightline village.
  */
 export function sightlineBlocker(
-  settlements: readonly HinterlandSettlement[], heightAt: (x: number, z: number) => number,
+  settlements: readonly HinterlandSettlement[], heightAt: (x: number, z: number) => number, { marginRad = 0.008 } = {},
 ): ((t: { x: number; z: number; heightM: number; crownM: number }) => boolean) | null {
   const towers: { x: number; z: number; top: number; low: number; half: number; eyes: { x: number; z: number; y: number }[] }[] = [];
   for (const s of settlements) {
@@ -657,7 +661,7 @@ export function sightlineBlocker(
       // azimuth: the crown's half-angle and the tower's
       let da = Math.abs(Math.atan2(dTx, dTz) - Math.atan2(dVx, dVz));
       if (da > Math.PI) da = 2 * Math.PI - da;
-      if (da > t.crownM / dT + w.half / dV + 0.008) continue;
+      if (da > t.crownM / dT + w.half / dV + marginRad) continue;
       // elevation: the crown's top over the tower's upper part (from 55 % of its height)
       const crownTop = (heightAt(t.x, t.z) + t.heightM - e.y) / dT, towerLow = (w.low - e.y) / dV;
       if (crownTop > towerLow) return true;

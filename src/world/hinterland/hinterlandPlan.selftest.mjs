@@ -79,7 +79,8 @@ for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
 // from the edge's eyes, and the gaps stay narrow (most trees on the bearing's ±4.5° corridor still stand)
 {
   const { sightlineBlocker } = await import('./outland.ts');
-  const blocks = sightlineBlocker(plan.settlements, (x, z) => field.heightAt(x, z));
+  // (without the planner's 8 mrad margin: the planner tests on its 40 m planning heights, this on the field's own)
+  const blocks = sightlineBlocker(plan.settlements, (x, z) => field.heightAt(x, z), { marginRad: 0 });
   assert.ok(blocks, 'the sightline villages are known');
   // (the planner tests on its 40 m planning heights, this on the field's own: a borderline crown or two may differ)
   const hiding = plan.trees.filter((t) => blocks(t)).length;
