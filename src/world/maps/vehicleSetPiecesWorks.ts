@@ -24,6 +24,11 @@ const LAMP = material('lamp', [0.8, 0.78, 0.7], 0.2, 0, 0, 0.3);
 const LAMP_AMBER = material('lampAmber', [0.8, 0.45, 0.08], 0.3, 0, 0, 0.3);
 const DARK = material('trim', [0.03, 0.03, 0.032], 0.55, 0, 0, 0.6);
 const ORE_LOAD = material('cargo', linearHex(0x6e4430), 0.95, 0, 0, 1);
+// (Lane C, #8 r2) the ore's darker lumps, the glass's rubber, the seats, the engine seen through an open panel
+const HAUL_ORE_DARK = material('cargo', linearHex(0x4e3122), 0.95, 0, 0, 1);
+const GASKET = material('rubber', [0.025, 0.025, 0.025], 0.85, 0, 0, 0.6);
+const SEAT = material('interior', linearHex(0x2f2a24), 0.85, 0, 0, 0.6);
+const ENGINE = material('under', [0.05, 0.048, 0.045], 0.7, 0.3, 0, 1);
 
 /** A wheel (axis along x) at (x, y, z): tyre, rim and hub. */
 function wheel(mesh: VehicleMesh, x: number, y: number, z: number, r: number, w: number, coarse: boolean, tyre: Mat = RUBBER, rim: Mat = STEEL_M): void {
@@ -52,71 +57,192 @@ function belt(mesh: VehicleMesh, x: number, width: number, zr: number, rr: numbe
 
 // ------------------------------------------------------------------------------------------------------------ Bv 206
 
-/** The Bv 206: the front car (engine and cab, its windscreen and doors) and the rear car (the personnel box), each on two
- * rubber band tracks, joined by the steering unit; the roof rack and the lamps. */
-export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'olive'): void {
-  const paint = livery === 'olive' ? OLIVE : ORANGE, tw = 0.62, tx = 0.93 - tw / 2;
-  for (const [zc, len] of [[1.75, 2.9], [-1.85, 2.9]] as const) {
-    for (const sx of [1, -1]) belt(mesh, sx * tx, tw, zc - len / 2 + 0.3, 0.3, 0.32, zc + len / 2 - 0.3, 0.3, 0.36, coarse, RUBBER);
-    mesh.box(0, 0.55, zc, 1.0, 0.3, len - 0.4, BLACK, 0.02);
+// (Lane C, #8 r2, 2026-10-14) the Bv 206 and the Sno-Cat rebuilt to the r2 bar within Whiteout's budget: the band tracks'
+// cleats and road wheels, glass set into gaskets behind framed openings, doors with hinges and handles, lamps in bezels,
+// the roof rack on stanchions; each with a wreck of its own (see below).
+
+/** The cleats across a band track's ground and top runs (rubber on the Bv 206, steel on the Sno-Cat's pontoons). */
+function trackCleats(mesh: VehicleMesh, x: number, width: number, z0: number, z1: number, yLow: number, yTop: number, n: number, m: Mat): void {
+  for (let k = 0; k < n; k++) {
+    const z = z0 + (k + 0.5) * ((z1 - z0) / n);
+    mesh.box(x, yLow, z, width, 0.04, 0.06, m, 0);
+    mesh.box(x, yTop, z, width, 0.04, 0.06, m, 0);
   }
-  // the front car: the bonnet sloping to the windscreen, the cab
-  mesh.box(0, 1.25, 2.55, 1.84, 0.95, 1.3, paint, coarse ? 0 : 0.08);
-  mesh.box(0, 1.55, 1.25, 1.84, 1.55, 1.4, paint, coarse ? 0 : 0.08);
-  mesh.box(0, 2.36, 1.25, 1.7, 0.08, 1.3, paint, 0.02);
-  mesh.dressing(() => {
-    mesh.box(0, 1.95, 1.96, 1.6, 0.6, 0.02, GLASS, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.925, 1.95, 1.25, 0.02, 0.55, 1.1, GLASS, 0);
-    mesh.box(0, 1.25, 3.21, 1.2, 0.35, 0.02, DARK, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.7, 1.45, 3.21, 0.2, 0.16, 0.03, LAMP, 0);
-    mesh.box(0, 2.45, 1.25, 0.12, 0.1, 0.12, LAMP_AMBER, 0);
+}
+
+/** The Bv 206: the front car (engine and cab, its windscreen and doors) and the rear car (the personnel box), each on two
+ * rubber band tracks, joined by the steering unit; the roof rack and the lamps. Wrecked: burnt out, the tracks burnt off
+ * the road wheels, the glass gone, the front car's door down on the snow, the rear car twisted on the steering unit with
+ * its roof sagging. */
+export function bv206(mesh: VehicleMesh, coarse: boolean, livery: 'orange' | 'olive', wrecked = false): void {
+  const paint = livery === 'olive' ? OLIVE : ORANGE, tw = 0.62, tx = 0.93 - tw / 2;
+  const cars: [number, number, number][] = [[1.75, 2.9, 0], [-1.85, 2.9, wrecked ? 0.07 : 0]];
+  for (const [zc, len, roll] of cars) {
+    mesh.push().translate(0, 0, zc).rotateZ(roll).translate(0, 0, -zc);
+    for (const sx of [1, -1]) {
+      if (!wrecked) {
+        belt(mesh, sx * tx, tw, zc - len / 2 + 0.3, 0.3, 0.32, zc + len / 2 - 0.3, 0.3, 0.36, coarse, RUBBER);
+        if (!coarse) trackCleats(mesh, sx * tx, tw, zc - len / 2 + 0.3, zc + len / 2 - 0.3, 0.02, 0.68, 9, RUBBER);
+      } else {
+        // the band burnt away: the road wheels and the sprocket bare on the snow, a strip of the belt's steel cord
+        for (let k = 0; k < 4; k++) {
+          mesh.push().translate(sx * tx, 0.24, zc - len / 2 + 0.45 + k * (len - 0.9) / 3);
+          mesh.lathe([[0.0001, -0.1], [0.24, -0.1], [0.24, 0.1], [0.0001, 0.1]], coarse ? 6 : 10, () => RUSTY);
+          mesh.pop();
+        }
+        if (!coarse) mesh.box(sx * tx, 0.02, zc, tw * 0.8, 0.02, len - 0.6, RUSTY, 0);
+      }
+    }
+    mesh.box(0, 0.55 - (wrecked ? 0.08 : 0), zc, 1.0, 0.3, len - 0.4, BLACK, 0.02);
+    mesh.pop();
+  }
+  const sink = wrecked ? 0.08 : 0;
+  mesh.push().translate(0, -sink, 0);
+  // the front car: the bonnet sloping down to the grille, the cab behind it with its glass and doors
+  mesh.box(0, 1.2, 2.6, 1.84, 0.85, 1.2, paint, coarse ? 0 : 0.08);
+  mesh.push().translate(0, 1.63, 2.45).rotateX(0.18);
+  mesh.box(0, 0, 0, 1.8, 0.06, 0.95, paint, 0.02);
+  mesh.pop();
+  const cz = 1.25, cw = 1.84, cd = 1.4, c0 = 0.78, belt0 = 1.6, roof = 2.32;
+  mesh.box(0, (c0 + belt0) / 2, cz, cw, belt0 - c0, cd, paint, coarse ? 0 : 0.06);
+  for (const [px, pz] of [[0.88, 0.66], [-0.88, 0.66], [0.88, -0.66], [-0.88, -0.66]] as const) {
+    strut(mesh, [px, belt0, cz + pz], [px, roof, cz + pz], 0.08, 0.08, paint);
+  }
+  mesh.box(0, roof + 0.04, cz, 1.84, 0.08, 1.4, paint, 0.03);
+  const gy = (belt0 + roof) / 2;
+  glazed(mesh, 0, gy, cz + cd / 2, 'z', 1.6, roof - belt0 - 0.12, 1, 0.03, !wrecked);
+  for (const sx of [1, -1] as const) glazed(mesh, sx * cw / 2, gy, cz, 'x', 1.2, roof - belt0 - 0.12, sx, 0.03, !wrecked);
+  // the doors (the right one down on the snow in the wreck), their hinges and handles; the grille and the lamps
+  if (!coarse) mesh.dressing(() => {
+    for (const sx of [1, -1]) {
+      if (wrecked && sx < 0) continue;
+      const x = sx * (cw / 2 + 0.006);
+      for (const z of [cz - 0.55, cz + 0.55]) mesh.box(x, (c0 + 0.1 + roof) / 2, z, 0.012, roof - c0 - 0.15, 0.016, DARK, 0);
+      for (const y of [c0 + 0.35, roof - 0.3]) mesh.box(x + sx * 0.012, y, cz + 0.55, 0.025, 0.09, 0.05, BLACK, 0);
+      mesh.box(x + sx * 0.015, belt0 - 0.08, cz - 0.4, 0.03, 0.04, 0.12, STEEL_M, 0);
+    }
   });
-  // the steering unit between the cars
+  mesh.box(0, 1.15, 3.21, 1.2, 0.36, 0.04, DARK, 0);
+  if (!coarse) for (let k = 0; k < 4; k++) mesh.box(0, 1.03 + k * 0.08, 3.23, 1.1, 0.025, 0.03, wrecked ? RUSTY : BLACK, 0);
+  for (const sx of [1, -1]) {
+    mesh.push().translate(sx * 0.7, 1.45, 3.2).rotateY(-Math.PI / 2);
+    mesh.lathe([[0.0001, -0.02], [0.09, -0.02], [0.09, 0.05], [0.0001, 0.05]], coarse ? 6 : 10, () => (wrecked ? DARK : LAMP));
+    mesh.pop();
+  }
+  mesh.box(0, 0.78, 3.24, 1.7, 0.14, 0.14, BLACK, 0.02);
+  mesh.tube([[-0.8, 1.0, 2.1], [-0.95, 1.5, 2.1], [-0.95, 2.5, 2.1]], 0.04, coarse ? 5 : 8, wrecked ? RUSTY : BLACK, { caps: true });
+  if (!wrecked) mesh.dressing(() => mesh.box(0, roof + 0.13, cz, 0.12, 0.1, 0.12, LAMP_AMBER, 0));
+  // the steering unit between the cars: its housing and the two steering rams
   mesh.box(0, 0.85, -0.1, 0.5, 0.45, 0.6, BLACK, 0.02);
-  // the rear car: the personnel box with its windows and rear door, the roof rack
-  mesh.box(0, 1.45, -1.85, 1.84, 1.75, 2.75, paint, coarse ? 0 : 0.08);
-  mesh.dressing(() => {
-    for (const sx of [1, -1]) for (const z of [-1.2, -2.3]) mesh.box(sx * 0.925, 1.85, z, 0.02, 0.45, 0.7, GLASS, 0);
-    mesh.box(0, 1.5, -3.23, 0.9, 1.2, 0.02, DARK, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.75, 0.95, -3.23, 0.14, 0.12, 0.03, LAMP_AMBER, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.82, 2.42, -1.85, 0.05, 0.08, 2.5, BLACK, 0);
-    for (let k = 0; k < 5; k++) mesh.box(0, 2.42, -2.9 + k * 0.52, 1.64, 0.05, 0.05, BLACK, 0);
+  for (const sx of [1, -1]) mesh.tube([[sx * 0.3, 0.9, 0.2], [sx * 0.35, 0.85, -0.4]], 0.04, coarse ? 5 : 8, STEEL_M, { caps: true });
+  mesh.pop();
+  // the rear car: the personnel box, its windows set in, the rear door with its window, the roof rack on stanchions;
+  // wrecked, twisted on the steering unit with its roof sagging
+  const rz = -1.85, rl = 2.75, r0 = 0.72, rTop = 2.32, sag = wrecked ? 0.18 : 0;
+  mesh.push().translate(0, -sink, rz).rotateZ(wrecked ? 0.07 : 0).translate(0, 0, -rz);
+  mesh.box(0, (r0 + 1.6) / 2, rz, 1.84, 1.6 - r0, rl, paint, coarse ? 0 : 0.06);
+  for (const sx of [1, -1]) for (const z of [rz + rl / 2 - 0.06, rz - rl / 2 + 0.06, rz]) strut(mesh, [sx * 0.88, 1.6, z], [sx * 0.88, rTop - (z === rz ? sag : 0), z], 0.08, 0.08, paint);
+  // the roof: its two halves meeting low over the middle when it sags
+  for (const half of [1, -1]) {
+    const zA = rz + half * rl / 2, zB = rz;
+    mesh.push().translate(0, rTop + 0.04, (zA + zB) / 2).rotateX(half * Math.atan2(sag, rl / 2));
+    mesh.box(0, -sag / 2, 0, 1.84, 0.08, rl / 2 + 0.02, paint, 0.02);
+    mesh.pop();
+  }
+  for (const sx of [1, -1] as const) for (const z of [rz + 0.62, rz - 0.62]) glazed(mesh, sx * 0.92, (1.6 + rTop) / 2 - sag / 3, z, 'x', 1.0, rTop - 1.6 - 0.14, sx, 0.03, !wrecked);
+  glazed(mesh, 0, (1.6 + rTop) / 2, rz - rl / 2, 'z', 0.7, 0.42, -1, 0.03, !wrecked);
+  if (!coarse) mesh.dressing(() => {
+    // the rear door's seams, hinges and handle
+    for (const x of [-0.45, 0.45]) mesh.box(x, 1.45, rz - rl / 2 - 0.006, 0.016, 1.45, 0.012, DARK, 0);
+    for (const y of [1.0, 1.9]) mesh.box(-0.47, y, rz - rl / 2 - 0.02, 0.05, 0.1, 0.03, BLACK, 0);
+    mesh.box(0.35, 1.45, rz - rl / 2 - 0.02, 0.12, 0.04, 0.03, STEEL_M, 0);
+    for (const sx of [1, -1]) mesh.box(sx * 0.75, 0.95, rz - rl / 2 - 0.01, 0.14, 0.12, 0.03, wrecked ? DARK : LAMP_AMBER, 0);
+  });
+  // the rack: stanchions, rails and slats
+  if (!wrecked) {
+    for (const sx of [1, -1]) for (const z of [rz - 1.1, rz, rz + 1.1]) strut(mesh, [sx * 0.8, rTop + 0.08, z], [sx * 0.8, rTop + 0.22, z], 0.04, 0.04, BLACK);
+    for (const sx of [1, -1]) mesh.box(sx * 0.8, rTop + 0.24, rz, 0.05, 0.05, 2.4, BLACK, 0);
+    if (!coarse) for (let k = 0; k < 5; k++) mesh.box(0, rTop + 0.24, rz - 1.04 + k * 0.52, 1.6, 0.035, 0.04, BLACK, 0);
+  }
+  mesh.pop();
+  if (wrecked) mesh.dressing(() => {
+    // the right door, down on the snow beside the cab
+    mesh.push().translate(-1.42, 0.05, 1.4).rotateY(0.3).rotateZ(1.53);
+    mesh.box(0, 0, 0, 0.05, 1.1, 1.0, paint, 0.01);
+    mesh.pop();
   });
 }
 
 // ------------------------------------------------------------------------------------------------------------ Sno-Cat
 
 /** The Tucker Sno-Cat 1544: four pontoon tracks on their steering bogies, the frame, the boxy cab with its wide windows,
- * the cargo bed behind it; the lamps and the roof rack. */
-export function snocat(mesh: VehicleMesh, coarse: boolean): void {
+ * the cargo bed behind it; the lamps and the roof rack. Wrecked: burnt out, the right front pontoon torn off its bogie and
+ * lying canted beside it, the cab's glass gone and its roof caved, the drums thrown down. */
+export function snocat(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   // (the map-content lane's first capture: the pontoons read as four wheels on stalks under a floating box) each pontoon
   // long and low, the track wrapped round it under an orange pontoon body, the frame and the cab sitting down on them
   const pw = 0.62;
   for (const sx of [1, -1]) for (const zc of [1.45, -1.45]) {
-    const x = sx * 0.92;
-    belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, BLACK);
+    const x = sx * 0.92, torn = wrecked && sx < 0 && zc > 0;
+    mesh.push();
+    if (torn) mesh.translate(-0.35, -0.05, 0.25).translate(x, 0, zc).rotateY(0.35).rotateZ(-0.28).translate(-x, 0, -zc);
+    belt(mesh, x, pw, zc - 0.62, 0.36, 0.38, zc + 0.62, 0.38, 0.40, coarse, wrecked ? RUSTY : BLACK);
+    if (!coarse) trackCleats(mesh, x, pw + 0.04, zc - 0.62, zc + 0.62, 0.0, 0.8, 6, wrecked ? RUSTY : STEEL_M);
     mesh.box(x, 0.62, zc, pw - 0.08, 0.34, 1.3, ORANGE, coarse ? 0 : 0.06);
-    mesh.box(x * 0.55, 0.86, zc, 0.6, 0.16, 0.3, BLACK, 0.02);
+    if (!torn) mesh.box(x * 0.55, 0.86, zc, 0.6, 0.16, 0.3, BLACK, 0.02);
+    mesh.pop();
   }
+  const sink = wrecked ? 0.06 : 0;
+  mesh.push();
+  if (wrecked) mesh.translate(0, -sink, 0).rotateZ(-0.05).rotateX(0.03);
   mesh.box(0, 0.98, 0, 1.2, 0.26, 4.4, BLACK, 0.02);
-  // the cab forward, its windows; the bed behind with its low sides
-  mesh.box(0, 1.72, 0.85, 2.3, 1.22, 2.3, ORANGE, coarse ? 0 : 0.07);
-  mesh.box(0, 2.36, 0.85, 2.2, 0.06, 2.2, WHITE, 0.02);
-  mesh.box(0, 1.22, -1.45, 2.3, 0.22, 2.2, ORANGE, 0.03);
-  for (const sx of [1, -1]) mesh.box(sx * 1.12, 1.48, -1.45, 0.06, 0.32, 2.2, ORANGE, 0.01);
-  mesh.box(0, 1.48, -2.52, 2.3, 0.32, 0.06, ORANGE, 0.01);
-  mesh.dressing(() => {
-    mesh.box(0, 1.98, 2.01, 2.0, 0.56, 0.02, GLASS, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 1.155, 1.98, 0.85, 0.02, 0.5, 1.8, GLASS, 0);
-    for (const sx of [1, -1]) mesh.box(sx * 0.8, 1.45, 2.01, 0.2, 0.16, 0.03, LAMP, 0);
-    mesh.box(0, 2.45, 0.85, 0.14, 0.12, 0.14, LAMP_AMBER, 0);
+  // the cab: lower panels, the pillars, the roof (caved in the wreck), its wide windows set in behind gaskets
+  const cz = 0.85, cw = 2.3, cd = 2.3, c0 = 1.11, beltY = 1.62, roof = 2.33, cave = wrecked ? 0.2 : 0;
+  mesh.box(0, (c0 + beltY) / 2, cz, cw, beltY - c0, cd, ORANGE, coarse ? 0 : 0.05);
+  for (const [px, pz] of [[1.1, 1.1], [-1.1, 1.1], [1.1, -1.1], [-1.1, -1.1]] as const) strut(mesh, [px, beltY, cz + pz], [px, roof, cz + pz], 0.09, 0.09, ORANGE);
+  mesh.push().translate(0, roof + 0.03, cz);
+  mesh.box(0, 0, 0, cw, 0.06, cd, WHITE, 0.02);
+  if (cave) mesh.box(0, -cave / 2, 0, cw * 0.6, cave, cd * 0.6, WHITE, 0);
+  mesh.pop();
+  const gy = (beltY + roof) / 2;
+  glazed(mesh, 0, gy, cz + cd / 2, 'z', 2.0, roof - beltY - 0.12, 1, 0.03, !wrecked);
+  glazed(mesh, 0, gy, cz - cd / 2, 'z', 1.4, roof - beltY - 0.2, -1, 0.03, !wrecked);
+  for (const sx of [1, -1] as const) glazed(mesh, sx * cw / 2, gy, cz, 'x', 1.9, roof - beltY - 0.12, sx, 0.03, !wrecked);
+  if (!coarse) mesh.dressing(() => {
+    for (const sx of [1, -1]) {
+      const x = sx * (cw / 2 + 0.006);
+      for (const z of [cz - 0.2, cz + 0.85]) mesh.box(x, (c0 + roof) / 2, z, 0.012, roof - c0 - 0.1, 0.016, DARK, 0);
+      mesh.box(x + sx * 0.015, beltY - 0.08, cz - 0.05, 0.03, 0.04, 0.12, STEEL_M, 0);
+    }
   });
-  // fuel drums standing in the bed
-  for (const sx of [1, -1]) for (const z of [-1.0, -1.9]) {
-    mesh.push().translate(sx * 0.5, 1.33, z).rotateZ(Math.PI / 2);
+  for (const sx of [1, -1]) {
+    mesh.push().translate(sx * 0.8, 1.45, cz + cd / 2 + 0.01).rotateY(-Math.PI / 2);
+    mesh.lathe([[0.0001, -0.02], [0.1, -0.02], [0.1, 0.05], [0.0001, 0.05]], coarse ? 6 : 10, () => (wrecked ? DARK : LAMP));
+    mesh.pop();
+  }
+  if (!wrecked) mesh.dressing(() => mesh.box(0, 2.45, 0.85, 0.14, 0.12, 0.14, LAMP_AMBER, 0));
+  // the bed behind the cab, its low sides; the drums standing in it (thrown down in the wreck)
+  mesh.box(0, 1.22, -1.45, 2.3, 0.22, 2.2, ORANGE, 0.03);
+  for (const sx of [1, -1]) mesh.box(sx * 1.12, 1.48, -1.45, 0.06, 0.32, 2.2, ORANGE, 0);
+  mesh.box(0, 1.48, -2.52, 2.3, 0.32, 0.06, ORANGE, 0);
+  if (!coarse) for (const sx of [1, -1]) for (const z of [-0.75, -1.45, -2.15]) mesh.box(sx * 1.16, 1.48, z, 0.05, 0.36, 0.06, BLACK, 0);
+  const drums: [number, number, number, number][] = wrecked
+    ? [[0.5, 1.33, -1.0, 0], [-0.55, 1.62, -1.8, 1]]
+    : [[0.5, 1.33, -1.0, 0], [0.5, 1.33, -1.9, 0], [-0.5, 1.33, -1.0, 0], [-0.5, 1.33, -1.9, 0]];
+  for (const [x, y, z, lying] of drums) {
+    mesh.push().translate(x, y, z).rotateZ(Math.PI / 2);
+    if (lying) mesh.rotateY(Math.PI / 2);
     mesh.lathe([[0.0001, 0.0], [0.29, 0.0], [0.29, 0.86], [0.0001, 0.86]], coarse ? 8 : 12, () => RUSTY);
     mesh.pop();
   }
+  mesh.pop();
+  if (wrecked) mesh.dressing(() => {
+    for (const [x, z, a] of [[-1.7, -1.9, 0.6], [1.75, -2.3, -0.3]] as const) {
+      mesh.push().translate(x, 0.29, z).rotateY(a);
+      mesh.lathe([[0.0001, -0.43], [0.29, -0.43], [0.29, 0.43], [0.0001, 0.43]], coarse ? 8 : 12, () => RUSTY);
+      mesh.pop();
+    }
+  });
 }
 
 // -------------------------------------------------------------------------------------------------------------- D8H
@@ -310,10 +436,6 @@ export function dozer(mesh: VehicleMesh, coarse: boolean, wrecked = false): void
 // down on them and rolled, the glass gone from a cab burnt hollow with its roof sagging, the hood's side panel off on
 // the ground, a hoist ram failed with the body half raised and twisted, the load spilt.
 
-const HAUL_ORE_DARK = material('cargo', linearHex(0x4e3122), 0.95, 0, 0, 1);
-const GASKET = material('rubber', [0.025, 0.025, 0.025], 0.85, 0, 0, 0.6);
-const SEAT = material('interior', linearHex(0x2f2a24), 0.85, 0, 0, 0.6);
-const ENGINE = material('under', [0.05, 0.048, 0.045], 0.7, 0.3, 0, 1);
 
 /** An earthmover tyre with its lugs (axis along x) and its bolted disc rim, its disc on the outboard side (`side`);
  *  burnt: the rim and the bead's wire only. */

@@ -525,8 +525,8 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
   else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
-  else if (kind === 'bv206') bv206(mesh, coarse, 'orange');
-  else if (kind === 'snocat') snocat(mesh, coarse);
+  else if (kind === 'bv206') bv206(mesh, coarse, 'orange', !!opts.wrecked);
+  else if (kind === 'snocat') snocat(mesh, coarse, !!opts.wrecked);
   else if (kind === 'd8h') dozer(mesh, coarse, !!opts.wrecked);
   else if (kind === 'haulpak') haulpak(mesh, coarse, true, !!opts.wrecked);
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
