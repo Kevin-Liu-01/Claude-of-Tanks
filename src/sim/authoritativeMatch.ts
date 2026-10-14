@@ -1273,15 +1273,17 @@ export function createAuthoritativeMatch({
       if (obstacle.crushed) continue;
       foot.centerX = centerX + outPush.x - startX;
       foot.centerZ = centerZ + outPush.z - startZ;
-      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
-      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      const clearBottom = foot.clearBottom;
-      if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
+      // (the plan reject first, then the underside it costs to read: either rejects the record alone, physics stream
+      // 2026-10-13, the MP stream's tick profile; the underside's plane, _underPlane, is the push's for this record alone)
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
       const dx = foot.centerX - closestX;
       const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      const clearBottom = foot.clearBottom;
+      if (hullPassesRecordTop(obstacle, spanBottom, clearBottom)) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
@@ -1344,6 +1346,14 @@ export function createAuthoritativeMatch({
     if (closing > 0) pendingRams.push({ a: entity, b: other, closing, nx, nz, vAn, vBn, vertical: false });
   }
 
+  /** The most any hull's contact rect reaches from its root (its half-diagonal and its centre's offset), over every hull,
+   * for the movement step (advanceTankMovement); Infinity outside it (no bound, no early rejection). */
+  let pairReachMaxM = Infinity;
+  function pairReachOf(entity: AuthoritativeEntity): number {
+    const rect = tankContactRect(entity.spec);
+    return Math.hypot(rect.halfLength, rect.halfWidth) + Math.abs(rect.centerX) + Math.abs(rect.centerZ);
+  }
+
   function collideWithEntities(
     entity: AuthoritativeEntity,
     centerX: number,
@@ -1358,8 +1368,16 @@ export function createAuthoritativeMatch({
   ): void {
     // Match the local simulation's exact-shell OBB contact. Shared geometry
     // keeps private rooms and solo from disagreeing at rectangular shoulders.
+    // (physics stream, 2026-10-13, the MP stream's tick profile: this pair loop was a fifth of the movement step) a hull
+    // whose root lies further than the two rects' half-diagonals and the other's rect offset can meet none of them: the
+    // movement step's bound over every hull (pairReachMaxM) rejects it before its rect, trig and hypot are read, exactly
+    // where the full test below would reject it too
+    const ownReach = Math.hypot(halfL, halfW) + pairReachMaxM;
+    const ownReach2 = ownReach * ownReach;
     for (const other of entities) {
       if (other === entity || other.modeActive === false || !other.state) continue;
+      const rootDX = centerX - other.state.pos.x, rootDZ = centerZ - other.state.pos.z;
+      if (rootDX * rootDX + rootDZ * rootDZ > ownReach2) continue;
       const otherRect = tankContactRect(other.spec);
       const otherHalfW = otherRect.halfWidth;
       const otherHalfL = otherRect.halfLength;
@@ -2367,6 +2385,16 @@ export function createAuthoritativeMatch({
       ? worldCollision.getObstacles.bind(worldCollision) : undefined,
   });
   function advanceTankMovement(dt: number): void {
+    let reach = 0;
+    for (const entity of entities) if (entity.state && entity.spec) reach = Math.max(reach, pairReachOf(entity));
+    pairReachMaxM = reach;
+    try {
+      advanceEachTankMovement(dt);
+    } finally {
+      pairReachMaxM = Infinity;
+    }
+  }
+  function advanceEachTankMovement(dt: number): void {
     for (const entity of entities) {
       // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
