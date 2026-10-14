@@ -33,6 +33,9 @@ const GROUND_TOL_M = 0.08;
 const MIN_CLUSTER_M2 = 0.01;
 const MIN_FLOATING_M2 = 0.004;
 const GROUND_OPENING_M = 1.2;
+/** A piece narrower than this across both its narrow sides is a stick (a rail's slat, a post, a bar): it closes no
+ * envelope, so a wall seen between a balcony's slats is outside, not inside a pocket the slats closed. */
+const STICK_M = 0.17;
 
 export function viewDirections(elevations = DEFAULT_ELEVATIONS, azimuths = 8, overhead = true) {
   const views = [];
@@ -276,7 +279,14 @@ export function floatingParts(pos, flags, bucketOf, buckets, ground) {
       buckets: [...s.buckets.entries()].sort((u, v) => v[1] - u[1]).slice(0, 3).map(([n]) => n) });
   }
   out.sort((u, v) => v.areaM2 - u.areaM2);
-  return { pieces, floating: out, setOfTri };
+  // the sticks: pieces whose box is under STICK_M across both its narrow sides (rail slats, posts, bars, rafters)
+  const stickTri = new Uint8Array(triCount);
+  for (let c = 0; c < pieces; c++) {
+    const d = [box[c * 6 + 3] - box[c * 6], box[c * 6 + 4] - box[c * 6 + 1], box[c * 6 + 5] - box[c * 6 + 2]].sort((u, v) => u - v);
+    if (d[1] >= STICK_M) continue;
+    for (let i = triStart[c]; i < triStart[c + 1]; i++) stickTri[triList[i]] = 1;
+  }
+  return { pieces, floating: out, setOfTri, stickTri };
 }
 
 /**
@@ -559,11 +569,18 @@ export function analyseBuilding(own, { occluders = null, groundFn = () => 0, ele
   const ground = groundGrid(groundFn, b[0] - 2, b[3] + 2, b[2] - 2, b[5] + 2, 0.5);
   const quality = triangleQuality(own.pos);
   const t0 = performance.now();
-  const { pieces, floating, setOfTri } = floatingParts(own.pos, own.flags, own.bucketOf, own.buckets, ground);
+  const { pieces, floating, setOfTri, stickTri } = floatingParts(own.pos, own.flags, own.bucketOf, own.buckets, ground);
   const t1 = performance.now();
   const result = { tris: own.pos.length / 9, pieces, floating, ...quality, views: 0, kinds: {}, ms: { floating: Math.round(t1 - t0) } };
   if (skipViews) return result;
-  const envelope = closedEnvelope(own.pos, ground);
+  // the envelope closes over the building's surfaces less its sticks
+  let sticks = 0; for (let t = 0; t < stickTri.length; t++) sticks += stickTri[t];
+  let skin = own.pos;
+  if (sticks && sticks < stickTri.length) {
+    skin = new Float32Array((stickTri.length - sticks) * 9);
+    for (let t = 0, o = 0; t < stickTri.length; t++) if (!stickTri[t]) { skin.set(own.pos.subarray(t * 9, t * 9 + 9), o); o += 9; }
+  }
+  const envelope = closedEnvelope(skin, ground);
   const t2 = performance.now(); result.ms.envelope = Math.round(t2 - t1);
   const c = [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2];
   const r = Math.max(0.5, Math.hypot(b[3] - b[0], b[4] - b[1], b[5] - b[2]) / 2) * 1.05;
