@@ -783,7 +783,7 @@ crew-lines.json ─┐                    crew-voices.json
   giving way and a building coming down in each of six materials (brick, stone,
   timber, concrete, plaster or adobe, sheet steel), read from the structure's
   damage anatomy (`world.structureDamage(id).anatomy.rubble`, the same shares
-  the fx dust uses, through the engine's `getStructureMakeup` option); a roof
+  the fx dust uses; main.ts hands the mixer the world through `getWorld`); a roof
   caving in and a storey dropping; a round through brick or mud-brick, an HE
   burst on masonry, big windows going, heavy pieces landing on the heap; distant
   collapses, breaches, building strikes and ground strikes crossfaded in by range
@@ -826,9 +826,9 @@ crew-lines.json ─┐                    crew-voices.json
   at 71 % and 75 % there with the rest from 3–6 kHz drips and under 3 kHz water
   and frogs. The oasis bed's loop seam stepped 2.8 dB; the new take steps
   0.15 dB. The first press anywhere loads the engine, so its own click was
-  silent: the boot facade now hands that press to the engine
-  (`playFirstPress`), which plays its control's sound once it has decoded,
-  within 900 ms of the press and only if nothing else has sounded.
+  silent: the engine now finds that press at its start (the control it
+  focused, while the page's user activation is live) and its first interface
+  sound waits for its decode, within 900 ms and only once.
 
 ### Cost
 
