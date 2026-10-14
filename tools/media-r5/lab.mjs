@@ -230,23 +230,32 @@ try {
   const first = maps[0] ?? 'verdant';
   // the boot, three tries on a fresh page 20 s apart (2026-10-08: under a load average of 500 a cold boot's prop archive
   // fetch failed and its frame detached, ending a 13-map survey the moment its lease was taken; another timed out)
-  for (let attempt = 1; ; attempt++) {
-    page = await browser.newPage();
-    page.on('pageerror', e => errors.push(String(e)));
-    page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
-    await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
-    try {
-      await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${first}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-      await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
-      break;
-    } catch (error) {
-      if (attempt >= 3 || stopping) throw error;
-      console.error(`[lab] boot ${attempt} failed (${String(error?.message ?? error).split('\n')[0]}); a fresh page in 20 s`);
-      await page.close().catch(() => {});
-      errors.length = 0;
-      await new Promise((r) => setTimeout(r, 20000));
+  let pageMap = null, pageUsed = false;
+  const openPage = async (map) => {
+    for (let attempt = 1; ; attempt++) {
+      page = await browser.newPage();
+      page.on('pageerror', e => errors.push(String(e)));
+      page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
+      await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
+      try {
+        await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+        await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
+        pageMap = map; pageUsed = false;
+        return;
+      } catch (error) {
+        if (attempt >= 3 || stopping) throw error;
+        console.error(`[lab] boot ${attempt} failed (${String(error?.message ?? error).split('\n')[0]}); a fresh page in 20 s`);
+        await page.close().catch(() => {});
+        errors.length = 0;
+        await new Promise((r) => setTimeout(r, 20000));
+      }
     }
-  }
+  };
+  await openPage(first);
+  // a film on a page of its own (2026-10-14, the coordinator's audit MED-02: a take filmed after another on one page
+  // began in the light the one before it left; cinema.mjs --fresh-page): a film job that would follow another scene, or
+  // play on a page booted on another map, opens a fresh page on its map first; --fresh-page=0 keeps the one page
+  const FRESH_FILMS = args['fresh-page'] !== '0';
   // a budget lease starts at the boot's own acquisition and runs on into the first maps (2026-10-06: releasing after
   // the boot cost a whole trip round a 30-ticket line before the first map); --lease=map and job keep their release
   if (PER_JOB || (PER_MAP && !BUDGET_MS)) lock.release();
@@ -362,6 +371,13 @@ try {
       // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
       if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
       try {
+        if (FRESH_FILMS && args.film && job.scene.storyboard && (pageUsed || pageMap !== map)) {
+          await page.close().catch(() => {});
+          await openPage(map);
+          await ready();
+          console.log(`[lab] ${job.name}: a fresh page on ${map}`);
+        }
+        pageUsed = true;
         if (args.format) { job.scene.__format = args.format; const k = lensFor(job.name); if (k != null) job.scene.__lensK = k; }
         await page.evaluate(scene => {
           const H = (x, z) => window.__DEBUG.world.heightField.getHeightAt(x, z);
