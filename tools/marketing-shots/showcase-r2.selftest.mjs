@@ -35,8 +35,8 @@ for (const [route, routeIds] of Object.entries(config.pageAssignments)) {
 }
 
 const preserved = config.shots.filter((shot) => shot.preservePublic);
-assert.deepEqual(preserved.map((shot) => shot.id), ['18_live_spectator'],
-  'the archived spectator evidence is the only retained R2 frame');
+assert.deepEqual(preserved.map((shot) => shot.id), [],
+  'every R2 frame is recaptured from the current game (r14b, owner 2026-10-12: "anything with ui should be new too")');
 const vehicleShots = config.shots.filter((shot) => shot.vehicleId);
 assert.ok(new Set(vehicleShots.map((shot) => shot.vehicleId)).size >= 10,
   'refreshed UI must show a broad vehicle mix');
