@@ -279,7 +279,7 @@ const CABBAGE: Rgb = rgb(0x7f9a74);
  * The kitchen garden (dressing): a bed of dug soil edged with boards, rows of crops along its width (cabbage and
  * potato rows as low green ridges with gaps, a row of beans on canes), centred on the origin, its rows along local x.
  */
-export function gardenParts(w: number, d: number, look: () => number, drop = 0): RegionalParts {
+export function gardenParts(w: number, d: number, look: () => number, drop = 0, _mapId?: string): RegionalParts {
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
   const soil = SOIL[Math.floor(look() * SOIL.length) % SOIL.length];
@@ -339,7 +339,7 @@ const IRON: Rgb = rgb(0x1e1c1a);
  * bed with its marker at the head — a slab with a shouldered top, a stone cross on a plinth, or an iron cross — and an
  * empty plot here and there; the paths between the rows left as the yard's ground. The stone takes the kit's masonry.
  */
-export function graveParts(w: number, d: number, look: () => number, drop = 0): RegionalParts {
+export function graveParts(w: number, d: number, look: () => number, drop = 0, _mapId?: string): RegionalParts {
   const sink = new PartSink([look() * 5.3, look() * 3.1]);
   const dec = { decor: true } as const;
   const rows = Math.max(1, Math.floor((d - 0.4) / 2.1)), per = Math.max(1, Math.floor((w - 0.4) / 1.15));
