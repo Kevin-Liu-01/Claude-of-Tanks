@@ -43,6 +43,7 @@ import {
   programTextureUnits,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { SCENE_ALPHA_SNOW_WRITE_GLSL } from './sceneAlpha.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
@@ -753,9 +754,17 @@ uniform float uCotReceiverOnly;
   if (!opaque.includes(opaqueAnchor)) {
     throw new Error('lighting.ts: alpha anchor not found in opaque_fragment');
   }
+  // (2026-10-14, the engine-cs lane: the ground occlusion's snow law reads each receiver's own snow) the terrain — the one
+  // material that defines COT_SNOW_COVER and sets cotSnowCover (terrain.ts) — writes a snowy pixel's visibility in the
+  // snow band between the lit band and the vehicles' (sceneAlpha.ts); every other material writes 2 + v as before
   THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
 #if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
+#ifdef COT_SNOW_COVER
+{${SCENE_ALPHA_SNOW_WRITE_GLSL}
+}
+#else
 gl_FragColor.a = 2.0 + cotSunVis;
+#endif
 #endif`);
 }
 

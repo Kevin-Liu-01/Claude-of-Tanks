@@ -46,6 +46,7 @@
  */
 import * as THREE from 'three';
 import { lightTune } from './lightModelCore.ts';
+import { groundKeyLights } from './groundKeyLights.ts';
 
 /** At most this many hulls (the shadow router's near selection: NEAR_VEHICLE_SHADOW_MAX). */
 export const GROUND_AO_MAX_HULLS = 4;
@@ -134,6 +135,36 @@ export const GROUND_AO_CONTACT_MAX = 0.6;
  * 0.7 the strip under a skirt, sun-shadowed and all ambient, still read 0.3 of the shadow beside it).
  */
 export const GROUND_AO_OCC_MAX = 0.55;
+/**
+ * 2026-10-14 (the engine-cs lane; media wave f1, 27 of its 63 "hull hovers: no contact shadow" notes on Frosthollow and
+ * Whiteout: "no contact shadow under the tracks, bright snow beneath the track runs"). The hulls stand on the snow (the
+ * Studio support solve seats every drawn run within ±3 cm of the rendered ground: tools/studio-contact-gap.mjs), but the
+ * cap above is a floor on the RATIO of the light a receiver keeps, and the owner's slab it answers was dark ground: on
+ * grass or soil (ρ ≈ 0.25) 0.45 of a shaded ground already lands near the curve's toe. On snow (ρ ≈ 0.8) the same 0.45
+ * leaves the ground under a belly a mid grey — brighter than the open ground of an ordinary map — and the belly reads
+ * lifted. The cap keeps, in absolute terms, what it keeps on ordinary ground: 0.45 · 0.25 / 0.8 ≈ 0.14 of the snow's
+ * light, which is the geometry's own value there (the solid hides 0.87 of a snowy belly's sky after the interreflection),
+ * so on snow the law stands uncapped up to GROUND_AO_OCC_MAX_SNOW.
+ *
+ * Contact r2 (2026-10-14; the coordinator: "key the snow contact on LOCAL snow coverage, not the map's albedo lever"):
+ * the snow weight is the receiver's own snow cover — the terrain writes it with its sun visibility into the scene
+ * alpha (terrain.ts cotSnowCover: a snow map's final albedo between its bare layers and its snow; engine/sceneAlpha.ts),
+ * so Alpine's snowfields (its lever 0.35) take the snow law, a yard or a rock rib on Frosthollow keeps the ordinary
+ * one, and every pixel that is not snowy terrain (every other map, a card, the legacy rig's ground) keeps today's law to
+ * the bit. uVehGroundSnow is the law's switch (1; __LIGHT_TUNE.GROUND_AO_SNOW = 0 restores round 3 for an A/B frame).
+ */
+export const GROUND_AO_OCC_MAX_SNOW = 0.85;
+/**
+ * On snow the run sinks: its foot stands in a groove of packed snow whose walls hide most of the sky the run's face leaves
+ * (the solid gives the ground at a face about half its sky, 0.5, the same on any ground). The crease's core: at most
+ * GROUND_AO_SNOW_CREASE of the receiver's sky — whole inside the shoes' lane and within GROUND_AO_SNOW_CREASE_FULL_M of
+ * either face, gone GROUND_AO_SNOW_CREASE_GAP_M out (a line at the track's foot, never a band: the rim's soft spread
+ * stays) — by the receiver's height against the run's drawn lower edge as the rim reads it, its ends at the hull's;
+ * joined past the joint cap by the larger (a line under the cap's floor, never a slab), times the snow weight.
+ */
+export const GROUND_AO_SNOW_CREASE = 0.75;
+export const GROUND_AO_SNOW_CREASE_FULL_M = 0.02;
+export const GROUND_AO_SNOW_CREASE_GAP_M = 0.09;
 export const GROUND_AO_CONTACT_SPREAD_M = 0.15;
 export const GROUND_AO_CONTACT_RISE_M = 0.25;
 /** The drawn run's travel reaches the shader at this many knots evenly along each ground run (linear between; two vec4). */
@@ -336,11 +367,40 @@ export function underTrackOcclusion(q: Vec3Like, h: VehicleGroundHull, runs?: Ve
   const out = 1 - smoothstep(0, GROUND_AO_CONTACT_SPREAD_M, -laneD);
   const lane = out * out * smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
   if (lane <= 0) return 0;
+  return GROUND_AO_CONTACT_MAX * lane * runContactVert(q, h, runs);
+}
+
+/** The contact's vertical weight: the receiver's height against the run's drawn lower edge (the floor raised by the run's
+ * travel, the wraps' ramp past the ground run) — whole within GROUND_AO_CONTACT_FULL_M under it, gone
+ * GROUND_AO_CONTACT_GAP_M under it, gone GROUND_AO_CONTACT_RISE_M over it. */
+function runContactVert(q: Vec3Like, h: VehicleGroundHull, runs?: VehicleGroundRuns | null): number {
   const past = Math.max(h.cz0 - q.z, q.z - h.cz1, 0);
   const dv = q.y - (h.y0 + runTravelAt(q.x, q.z, h, runs) + (q.z < h.cz0 ? h.sr : h.sf) * past);
-  const vert = dv >= 0 ? 1 - smoothstep(0, GROUND_AO_CONTACT_RISE_M, dv)
+  return dv >= 0 ? 1 - smoothstep(0, GROUND_AO_CONTACT_RISE_M, dv)
     : 1 - smoothstep(GROUND_AO_CONTACT_FULL_M, GROUND_AO_CONTACT_GAP_M, -dv);
-  return GROUND_AO_CONTACT_MAX * lane * vert;
+}
+
+/** (2026-10-14) The hulls' joint cap at a snow weight: GROUND_AO_OCC_MAX on ordinary ground, GROUND_AO_OCC_MAX_SNOW on snow. */
+export function groundAoOccMax(snowWeight: number): number {
+  const w = clamp01(snowWeight);
+  return GROUND_AO_OCC_MAX + (GROUND_AO_OCC_MAX_SNOW - GROUND_AO_OCC_MAX) * w;
+}
+
+/**
+ * (2026-10-14) The crease's core one hull's runs give a receiver on snow (GROUND_AO_SNOW_CREASE): whole in the shoes'
+ * lane and within GROUND_AO_SNOW_CREASE_FULL_M of a face, gone GROUND_AO_SNOW_CREASE_GAP_M out, by the contact's vertical
+ * weight, its ends at the hull's, times the snow weight. The receiver's skips are the law's (vehicleGroundOcclusionLocal).
+ */
+export function snowCreaseOcclusion(
+  q: Vec3Like, h: VehicleGroundHull, snowWeight: number, card = false, runs: VehicleGroundRuns | null = null,
+): number {
+  const w = clamp01(snowWeight);
+  if (!(w > 0) || receiverSkipped(q, h, card, runs)) return 0;
+  const laneD = 0.5 * (h.xo - h.xi) - Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo));
+  const crease = w * (1 - smoothstep(GROUND_AO_SNOW_CREASE_FULL_M, GROUND_AO_SNOW_CREASE_GAP_M, -laneD))
+    * smoothstep(0, GROUND_AO_CONTACT_EDGE_M, Math.min(q.z - h.fz0, h.fz1 - q.z));
+  if (crease <= 0) return 0;
+  return GROUND_AO_SNOW_CREASE * crease * runContactVert(q, h, runs);
 }
 
 /**
@@ -377,9 +437,7 @@ export function vehicleGroundOcclusionLocal(
   const H = h.yt - h.y0;
   const dx = Math.abs(q.x) - h.hx, dz = Math.abs(q.z - 0.5 * (h.fz0 + h.fz1)) - 0.5 * (h.fz1 - h.fz0);
   const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
-  if (dOut > H * GROUND_AO_REACH[1] || q.y > h.yt || q.y < h.y0 - H * GROUND_AO_REACH[1]) return 0;
-  if (q.y > h.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return 0;
-  if (isRunShoe(q, h, card, runs)) return 0;
+  if (receiverSkipped(q, h, card, runs)) return 0;
   const c = q.y - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
   const reach = 1 - smoothstep(H * GROUND_AO_REACH[0], H * GROUND_AO_REACH[1], dOut);
   const occ = Math.max(reach * (hullSkyOcclusion(q, n, h, c) + runGapOcclusion(q, n, h, c, runs)), underTrackOcclusion(q, h, runs));
@@ -388,12 +446,29 @@ export function vehicleGroundOcclusionLocal(
   return Math.min(occ, 1) * s;
 }
 
-/** Several hulls hide the sky as independent occluders, the joint share capped at GROUND_AO_OCC_MAX; the selection's range
- * fade on the result. */
-export function combineVehicleGroundOcclusion(perHull: readonly number[], distance: number): number {
+/** A receiver no hull darkens: out of the hull's reach, or the vehicle itself — its skin over the belly, a shoe (the GLSL's
+ * `continue`s, in its order). */
+function receiverSkipped(q: Vec3Like, h: VehicleGroundHull, card: boolean, runs: VehicleGroundRuns | null): boolean {
+  const H = h.yt - h.y0;
+  const dx = Math.abs(q.x) - h.hx, dz = Math.abs(q.z - 0.5 * (h.fz0 + h.fz1)) - 0.5 * (h.fz1 - h.fz0);
+  const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
+  if (dOut > H * GROUND_AO_REACH[1] || q.y > h.yt || q.y < h.y0 - H * GROUND_AO_REACH[1]) return true;
+  if (q.y > h.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return true;
+  return isRunShoe(q, h, card, runs);
+}
+
+/** Several hulls hide the sky as independent occluders, the joint share capped at GROUND_AO_OCC_MAX (on snow up to
+ * GROUND_AO_OCC_MAX_SNOW by the snow weight, 2026-10-14); the snow crease's core (each hull's snowCreaseOcclusion) joins past
+ * the cap by the larger; the selection's range fade on the result. */
+export function combineVehicleGroundOcclusion(
+  perHull: readonly number[], distance: number, snowWeight = 0, creases: readonly number[] = [],
+): number {
   let vis = 1;
   for (const occ of perHull) vis *= 1 - clamp01(occ);
-  return Math.min(1 - vis, GROUND_AO_OCC_MAX) * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
+  let crease = 0;
+  for (const c of creases) crease = Math.max(crease, c);
+  return Math.max(Math.min(1 - vis, groundAoOccMax(snowWeight)), crease)
+    * (1 - smoothstep(GROUND_AO_RANGE_M - GROUND_AO_FADE_M, GROUND_AO_RANGE_M, distance));
 }
 
 /**
@@ -421,6 +496,78 @@ export function hullSunShadow(q: Vec3Like, h: VehicleGroundHull, s: Vec3Like): n
     || rayMeetsBox(q, s, [-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]) ? 1 : 0;
 }
 
+/**
+ * Contact r2 (2026-10-14; the coordinator: "near hulls block unshadowed FX point lights on the ground beneath them, cheaply
+ * ... no shadow maps"; media wave f1, s170: a Studio illumination flare lit the sand under a Centurion as brightly as the
+ * open ground). The FX lights cast no shadow (groundKeyLights.ts: the muzzle flash, the blast, the light the cinematic FX
+ * borrow for a flare or a fire). Each frame the strongest GROUND_AO_KEY_LIGHTS of them at the near hulls reach the block;
+ * a lit ground pixel within a hull's reach whose segment to a lamp meets the hull's solid over its belly or either run
+ * (the gap under the belly between the runs lets a low lamp through) loses that lamp's share of its light, E / (T + A + ΣE)
+ * with E the lamp's irradiance as three draws it (intensity × colour luminance × N·l × the distance falloff and its
+ * cutoff); the ambient's occlusion takes its share over the same total, so a pixel the lamp dominates keeps its lamp light
+ * where the hull does not stand between them. A lamp inside a solid (a muzzle against the mantlet) is never shadowed by it,
+ * and the cut fades out over the reach's last third (a low lamp's long shadow ends softly, not at the reach's edge).
+ */
+export const GROUND_AO_KEY_LIGHTS = 2;
+/** A lamp within this far (m) of a solid's faces counts as inside it. */
+export const GROUND_AO_KEY_INSIDE_M = 0.15;
+/** The cut fades out between these multiples of the hull's height from its footprint (its reach ends at REACH[1]). */
+export const GROUND_AO_KEY_FADE = Object.freeze([2, 3] as const);
+/**
+ * The boxes stand in for a hull whose edges are rounded, chamfered and hung with stowage: a lamp's shadow takes the chord
+ * its ray cuts through a box grown GROUND_AO_KEY_GROW_M across (x and z), whole from GROUND_AO_KEY_SOFT_M (smoothstep), so
+ * the shadow's edge — where the rays graze a box — is a soft fringe a few decimetres wide on the ground even under a steep
+ * lamp, never a ruled rectangle (the owner's "super super dark rectangular shadows under tracks"; the first night capture's
+ * 0.35 m chord on the bare boxes left a 7 cm edge under the flare).
+ */
+export const GROUND_AO_KEY_SOFT_M = 0.5;
+export const GROUND_AO_KEY_GROW_M = 0.12;
+
+/** How much the segment q → k (the hull frame) is shadowed by the box [lo, hi]: the chord it cuts through the box,
+ * whole from GROUND_AO_KEY_SOFT_M (the GLSL's cotVgSegBox). */
+function segmentBoxShadow(q: Vec3Like, k: Vec3Like, lo: readonly number[], hi: readonly number[]): number {
+  const o = [q.x, q.y, q.z], d = [k.x - q.x, k.y - q.y, k.z - q.z];
+  let tn = -Infinity, tf = Infinity;
+  for (let a = 0; a < 3; a++) {
+    const inv = 1 / (d[a] + 1e-7);
+    const t0 = (lo[a] - o[a]) * inv, t1 = (hi[a] - o[a]) * inv;
+    tn = Math.max(tn, Math.min(t0, t1)); tf = Math.min(tf, Math.max(t0, t1));
+  }
+  const chord = (Math.min(tf, 1) - Math.max(tn, 0)) * Math.hypot(d[0], d[1], d[2]);
+  return smoothstep(0, GROUND_AO_KEY_SOFT_M, chord);
+}
+const insideBox = (p: Vec3Like, lo: readonly number[], hi: readonly number[]): boolean =>
+  p.x > lo[0] - GROUND_AO_KEY_INSIDE_M && p.y > lo[1] - GROUND_AO_KEY_INSIDE_M && p.z > lo[2] - GROUND_AO_KEY_INSIDE_M
+  && p.x < hi[0] + GROUND_AO_KEY_INSIDE_M && p.y < hi[1] + GROUND_AO_KEY_INSIDE_M && p.z < hi[2] + GROUND_AO_KEY_INSIDE_M;
+
+/** How much the hull's solid over its belly or either run stands between a receiver at q and a lamp at k (both the hull
+ * frame): 1 through its body, a soft fringe where the ray grazes it, 0 off it or when the lamp sits inside a box. */
+export function hullBlocksKeyLight(q: Vec3Like, k: Vec3Like, h: VehicleGroundHull): number {
+  const boxes: readonly (readonly [readonly number[], readonly number[]])[] = [
+    [[-h.hx, h.yb, h.fz0], [h.hx, h.yt, h.fz1]], [[h.xi, h.y0, h.fz0], [h.xo, h.yb, h.fz1]], [[-h.xo, h.y0, h.fz0], [-h.xi, h.yb, h.fz1]],
+  ];
+  if (boxes.some(([lo, hi]) => insideBox(k, lo, hi))) return 0;
+  const g = GROUND_AO_KEY_GROW_M;
+  return Math.max(...boxes.map(([lo, hi]) => segmentBoxShadow(q, k, [lo[0] - g, lo[1], lo[2] - g], [hi[0] + g, hi[1], hi[2] + g])));
+}
+
+/** A lamp's irradiance (luminance) at a receiver as three's punctual light draws it: lum × N·l × 1 / max(d^decay, 0.01),
+ * times (1 − (d / range)⁴)² inside a range (0: none). */
+export function keyLightIrradiance(P: Vec3Like, N: Vec3Like, lamp: Vec3Like, lum: number, range: number, decay = 2): number {
+  const lx = lamp.x - P.x, ly = lamp.y - P.y, lz = lamp.z - P.z, d = Math.hypot(lx, ly, lz);
+  let fall = 1 / Math.max(d ** decay, 0.01);
+  if (range > 0) { const r = clamp01(1 - (d / range) ** 4); fall *= r * r; }
+  return lum * fall * Math.max((N.x * lx + N.y * ly + N.z * lz) / Math.max(d, 1e-4), 0);
+}
+
+/** The cut a lit receiver takes: from its light T + A + ΣE, the ambient's occluded share and the blocked lamps' shares. */
+export function groundShadeWithKeyLights(occ: number, T: number, A: number, E: readonly number[], blocked: readonly number[]): number {
+  let sum = 0, cut = 0;
+  for (let i = 0; i < E.length; i++) { sum += E[i]; cut += (blocked[i] ?? 0) * E[i]; }
+  const D = Math.max(T + A + sum, 1e-4);
+  return 1 - occ * (A / D) - cut / D;
+}
+
 export interface VehicleGroundOcclusionUniforms {
   /** The hulls written this frame (0: the block is skipped). */
   uVehGround: THREE.IUniform<number>;
@@ -432,6 +579,12 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundR: THREE.IUniform<THREE.Vector4[]>;
   /** The interreflection's inputs: the ground's albedo, the hull's, the belly's view of open ground, the shaded ground. */
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
+  /** (2026-10-14, contact r2) The snow law's switch: each receiver's weight is its own snow cover (the scene alpha's). */
+  uVehGroundSnow: THREE.IUniform<number>;
+  /** (contact r2) The FX key lamps written this frame (0: none), each (world position, range) and (luminance, decay). */
+  uVehKeyLight: THREE.IUniform<number>;
+  uVehKeyLightP: THREE.IUniform<THREE.Vector4[]>;
+  uVehKeyLightE: THREE.IUniform<THREE.Vector4[]>;
 }
 
 export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
@@ -442,6 +595,10 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGroundB: { value: rows(4) },
     uVehGroundR: { value: Array.from({ length: GROUND_AO_MAX_HULLS * 4 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uVehGroundLight: { value: new THREE.Vector4(GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_HULL_ALBEDO, GROUND_AO_BELLY_VIEW, GROUND_AO_UNDER_GROUND) },
+    uVehGroundSnow: { value: 0 },
+    uVehKeyLight: { value: 0 },
+    uVehKeyLightP: { value: Array.from({ length: GROUND_AO_KEY_LIGHTS }, () => new THREE.Vector4()) },
+    uVehKeyLightE: { value: Array.from({ length: GROUND_AO_KEY_LIGHTS }, () => new THREE.Vector4()) },
   };
 }
 
@@ -721,8 +878,14 @@ export function updateVehicleGroundOcclusionUniforms(
   // (QA: __LIGHT_TUNE.GROUND_AO_HULL_ALBEDO / GROUND_AO_BELLY_VIEW tune the interreflection without a rebuild)
   groundAlbedo = GROUND_AO_DEFAULT_ALBEDO, hullAlbedo = lightTune('GROUND_AO_HULL_ALBEDO', GROUND_AO_HULL_ALBEDO),
   bellyView = lightTune('GROUND_AO_BELLY_VIEW', GROUND_AO_BELLY_VIEW),
+  // (2026-10-14, contact r2) the snow law's switch (each receiver weighs it by its own snow cover; QA:
+  // __LIGHT_TUNE.GROUND_AO_SNOW = 0 restores the ordinary law for an A/B frame)
+  snowLaw = 1,
+  // (contact r2) the FX lamps the hulls shadow (QA: __LIGHT_TUNE.GROUND_AO_KEY_LIGHTS = 0 drops them for an A/B frame)
+  keyLights: Iterable<THREE.PointLight> = groundKeyLights(),
 ): void {
   u.uVehGroundLight.value.set(Math.min(Math.max(groundAlbedo, 0), 0.95), clamp01(hullAlbedo), clamp01(bellyView), GROUND_AO_UNDER_GROUND);
+  u.uVehGroundSnow.value = clamp01(lightTune('GROUND_AO_SNOW', snowLaw));
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
@@ -741,10 +904,49 @@ export function updateVehicleGroundOcclusionUniforms(
       u.uVehGroundB.value[n * 4 + 2].set(h.hr, h.hf, h.xi, h.xo);
       u.uVehGroundB.value[n * 4 + 3].set(h.sr, h.sf, h.cz0, h.cz1);
       writeRunKnots(root, h, u.uVehGroundR.value, n * 4);
+      _hullAt[n].setFromMatrixPosition(_world);
       n++;
     }
   }
   u.uVehGround.value = n;
+  packGroundKeyLights(u, n, enabled && lightTune('GROUND_AO_KEY_LIGHTS', 1) > 0, keyLights);
+}
+
+const _hullAt = Array.from({ length: GROUND_AO_MAX_HULLS }, () => new THREE.Vector3());
+const _lampAt = new THREE.Vector3();
+const _picks: { light: THREE.PointLight; score: number; x: number; y: number; z: number }[] = [];
+
+/** (contact r2) The strongest lamps at the packed hulls: lit, in a scene, within their range (and a hull's reach) of one. */
+function packGroundKeyLights(u: VehicleGroundOcclusionUniforms, hulls: number, enabled: boolean,
+  lights: Iterable<THREE.PointLight>): void {
+  let count = 0;
+  if (enabled && hulls > 0) {
+    let picked = 0;
+    for (const light of lights) {
+      if (!(light.intensity > 1e-3) || !light.visible || !light.parent) continue;
+      _lampAt.copy(light.position);
+      light.parent.updateWorldMatrix(true, false);
+      _lampAt.applyMatrix4(light.parent.matrixWorld);
+      let near = Infinity;
+      for (let i = 0; i < hulls; i++) near = Math.min(near, _lampAt.distanceTo(_hullAt[i]));
+      if (light.distance > 0 && near > light.distance + 8) continue;
+      const lum = light.intensity * (0.2126 * light.color.r + 0.7152 * light.color.g + 0.0722 * light.color.b);
+      const score = lum / Math.max(near * near, 1);
+      if (picked < _picks.length) Object.assign(_picks[picked], { light, score, x: _lampAt.x, y: _lampAt.y, z: _lampAt.z });
+      else _picks.push({ light, score, x: _lampAt.x, y: _lampAt.y, z: _lampAt.z });
+      picked++;
+    }
+    for (let k = 0; k < GROUND_AO_KEY_LIGHTS && k < picked; k++) {
+      let best = k;
+      for (let i = k + 1; i < picked; i++) if (_picks[i].score > _picks[best].score) best = i;
+      if (best !== k) { const t = _picks[k]; _picks[k] = _picks[best]; _picks[best] = t; }
+      const p = _picks[k], L = p.light;
+      u.uVehKeyLightP.value[k].set(p.x, p.y, p.z, Math.max(L.distance, 0));
+      u.uVehKeyLightE.value[k].set(L.intensity * (0.2126 * L.color.r + 0.7152 * L.color.g + 0.0722 * L.color.b), L.decay, 0, 0);
+      count++;
+    }
+  }
+  u.uVehKeyLight.value = count;
 }
 
 const f = (x: number): string => x.toFixed(4);
@@ -770,6 +972,10 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     uniform vec4 uVehGroundB[ ${GROUND_AO_MAX_HULLS * 4} ];
     uniform vec4 uVehGroundR[ ${GROUND_AO_MAX_HULLS * 4} ];
     uniform vec4 uVehGroundLight;
+    uniform float uVehGroundSnow;
+    uniform float uVehKeyLight;
+    uniform vec4 uVehKeyLightP[ ${GROUND_AO_KEY_LIGHTS} ];
+    uniform vec4 uVehKeyLightE[ ${GROUND_AO_KEY_LIGHTS} ];
     // the drawn run's travel at z (root frame): its eight knots k0, k1 evenly over the ground run b3.z..b3.w, linear
     // between (hat weights), held past its ends
     float cotVgRun( vec4 k0, vec4 k1, float z, vec4 b3 ) {
@@ -784,6 +990,35 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
       float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
       return tf >= max( tn, 0.0 ) ? 1.0 : 0.0;
+    }
+    // (contact r2) how much the box shadows the segment q → q + d (its chord); a lamp k inside a solid (within
+    // GROUND_AO_KEY_INSIDE_M) is never shadowed by it; the hull's solid over the belly and its runs (hullBlocksKeyLight)
+    float cotVgSegBox( vec3 q, vec3 d, vec3 lo, vec3 hi ) {
+      vec3 inv = 1.0 / ( d + vec3( 1e-7 ) );
+      vec3 t0 = ( lo - q ) * inv, t1 = ( hi - q ) * inv;
+      vec3 tmin = min( t0, t1 ), tmax = max( t0, t1 );
+      float tn = max( max( tmin.x, tmin.y ), tmin.z ), tf = min( min( tmax.x, tmax.y ), tmax.z );
+      // the chord the segment cuts through the box, whole from GROUND_AO_KEY_SOFT_M: a soft fringe where it grazes
+      return smoothstep( 0.0, ${f(GROUND_AO_KEY_SOFT_M)}, ( min( tf, 1.0 ) - max( tn, 0.0 ) ) * length( d ) );
+    }
+    float cotVgInBox( vec3 p, vec3 lo, vec3 hi ) {
+      return all( greaterThan( p, lo - ${f(GROUND_AO_KEY_INSIDE_M)} ) ) && all( lessThan( p, hi + ${f(GROUND_AO_KEY_INSIDE_M)} ) ) ? 1.0 : 0.0;
+    }
+    float cotVgKeyBlock( vec3 q, vec3 k, vec4 b0, vec4 b1, vec4 b2 ) {
+      vec3 lo0 = vec3( -b0.x, b0.y, b1.x ), hi0 = vec3( b0.x, b0.z, b1.y );
+      vec3 lo1 = vec3( b2.z, b0.w, b1.x ), hi1 = vec3( b2.w, b0.y, b1.y );
+      vec3 lo2 = vec3( -b2.w, b0.w, b1.x ), hi2 = vec3( -b2.z, b0.y, b1.y );
+      if ( cotVgInBox( k, lo0, hi0 ) + cotVgInBox( k, lo1, hi1 ) + cotVgInBox( k, lo2, hi2 ) > 0.0 ) return 0.0;
+      vec3 d = k - q, g = vec3( ${f(GROUND_AO_KEY_GROW_M)}, 0.0, ${f(GROUND_AO_KEY_GROW_M)} );
+      return max( cotVgSegBox( q, d, lo0 - g, hi0 + g ), max( cotVgSegBox( q, d, lo1 - g, hi1 + g ), cotVgSegBox( q, d, lo2 - g, hi2 + g ) ) );
+    }
+    // a lamp's irradiance (luminance) at P with normal N as three's punctual light draws it (keyLightIrradiance)
+    float cotVgKeyE( vec4 p, vec4 e, vec3 P, vec3 N ) {
+      vec3 lv = p.xyz - P;
+      float d = length( lv );
+      float fall = 1.0 / max( pow( d, e.y ), 0.01 );
+      if ( p.w > 0.0 ) { float r = clamp( 1.0 - pow( d / p.w, 4.0 ), 0.0, 1.0 ); fall *= r * r; }
+      return e.x * fall * max( dot( N, lv / max( d, 1e-4 ) ), 0.0 );
     }
     float cotVgSunShadow( vec3 q, vec3 s, vec4 b0, vec4 b1, vec4 b2 ) {
       vec3 inv = 1.0 / ( s + vec3( 1e-7 ) );
@@ -836,6 +1071,8 @@ ${GLSL_HULL_EDGES}
     float cotVehicleGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
       float fade = 1.0 - smoothstep( ${f(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f(GROUND_AO_RANGE_M)}, dist );
       float sunVis = cotSunVisOf( alpha );
+      // (2026-10-14, contact r2) the receiver's own snow cover weighs the snow law (the terrain's, in the scene alpha)
+      float snowW = uVehGroundSnow * cotSnowOf( alpha );
       // what a blocked direction keeps of its darkening: one minus the occluder's own light over the sky's (first-order
       // interreflection) — the belly lit by the open ground it glimpses, a wall by half sky and half ground
       float aUp = uContactAmb.x + uContactAmb.z + uContactAmb.w * max( uContactFillDir.y, 0.0 );
@@ -847,6 +1084,8 @@ ${GLSL_HULL_EDGES}
       bool haveN = false;
       float vis = 1.0;
       float under = 0.0; // a card in a hull's own shadow (no sun reaches it there): its light is all ambient
+      float crease = 0.0; // (2026-10-14) the snow crease's core: the runs' feet sunk in packed snow, joined past the cap
+      float keyB0 = 0.0, keyB1 = 0.0; // (contact r2) the FX lamps a hull stands in front of, faded over the reach's end
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
@@ -909,11 +1148,26 @@ ${GLSL_HULL_EDGES}
           float vert = dv >= 0.0 ? 1.0 - smoothstep( 0.0, ${f(GROUND_AO_CONTACT_RISE_M)}, dv )
             : 1.0 - smoothstep( ${f(GROUND_AO_CONTACT_FULL_M)}, ${f(GROUND_AO_CONTACT_GAP_M)}, -dv );
           ho = max( ho, ${f(GROUND_AO_CONTACT_MAX)} * lane * vert );
+          // (2026-10-14) on snow the run's foot stands in a groove of packed snow: the crease's core, a line within a few
+          // centimetres of either face (inside the rim's spread, so only here), by the same vertical weight
+          crease = max( crease, ${f(GROUND_AO_SNOW_CREASE)} * snowW * vert
+            * ( 1.0 - smoothstep( ${f(GROUND_AO_SNOW_CREASE_FULL_M)}, ${f(GROUND_AO_SNOW_CREASE_GAP_M)}, -laneD ) )
+            * smoothstep( 0.0, ${f(GROUND_AO_CONTACT_EDGE_M)}, min( q.z - b1.x, b1.y - q.z ) ) );
         }
         // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
         float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
         vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside );
+        // (contact r2) the FX lamps this hull shadows on a lit receiver (the lamp in the hull frame)
+        if ( uVehKeyLight > 0.5 && sunVis >= 0.0 ) {
+          float kw = 1.0 - smoothstep( H * ${f(GROUND_AO_KEY_FADE[0])}, H * ${f(GROUND_AO_KEY_FADE[1])}, dOut );
+          vec3 L0 = uVehKeyLightP[ 0 ].xyz;
+          keyB0 = max( keyB0, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L0 ) + m0.w, dot( m1.xyz, L0 ) + m1.w, dot( m2.xyz, L0 ) + m2.w ), b0, b1, b2 ) );
+          if ( uVehKeyLight > 1.5 ) {
+            vec3 L1 = uVehKeyLightP[ 1 ].xyz;
+            keyB1 = max( keyB1, kw * cotVgKeyBlock( q, vec3( dot( m0.xyz, L1 ) + m0.w, dot( m1.xyz, L1 ) + m1.w, dot( m2.xyz, L1 ) + m2.w ), b0, b1, b2 ) );
+          }
+        }
         // a card (no sun state) takes the whole ambient share only in the hull's own shadow (round 3: inside the footprint
         // below the belly it did so sunlit too — a near-black band of sunlit grass under a skirt); with the sun under the
         // horizon, inside the footprint below the belly as before
@@ -921,17 +1175,27 @@ ${GLSL_HULL_EDGES}
           ? cotVgSunShadow( q, vec3( dot( m0.xyz, uSunDir ), dot( m1.xyz, uSunDir ), dot( m2.xyz, uSunDir ) ), b0, b1, b2 )
           : inside * step( q.y, b0.y ) );
       }
-      // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly
-      float occ = min( 1.0 - vis, ${f(GROUND_AO_OCC_MAX)} ) * fade;
-      if ( occ <= 0.003 ) return 1.0;
+      // (2026-10-10, round 3) the hulls' joint share capped: the ground keeps a part of its sky under any belly; on snow
+      // (2026-10-14) the cap keeps the light it keeps on ordinary ground, and the crease's core joins past it
+      float occ = max( min( 1.0 - vis, mix( ${f(GROUND_AO_OCC_MAX)}, ${f(GROUND_AO_OCC_MAX_SNOW)}, snowW ) ), crease ) * fade;
+      if ( occ <= 0.003 && max( keyB0, keyB1 ) <= 0.0 ) return 1.0;
       // a card has no sun state: half in sun in the open, all ambient in a hull's own shadow
       float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
+      float keyCut = 0.0;
       if ( sunVis >= 0.0 ) {
         float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
         float A = mix( uContactAmb.y, uContactAmb.x, N.y * 0.5 + 0.5 ) + uContactAmb.z
           + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
-        ambShare = A / max( T + A, 1e-4 );
+        // (contact r2) the FX lamps' light joins the total; the blocked lamps' shares leave it (groundShadeWithKeyLights)
+        float E0 = 0.0, E1 = 0.0;
+        if ( uVehKeyLight > 0.5 ) {
+          E0 = cotVgKeyE( uVehKeyLightP[ 0 ], uVehKeyLightE[ 0 ], P, N );
+          if ( uVehKeyLight > 1.5 ) E1 = cotVgKeyE( uVehKeyLightP[ 1 ], uVehKeyLightE[ 1 ], P, N );
+        }
+        float D = max( T + A + E0 + E1, 1e-4 );
+        ambShare = A / D;
+        keyCut = ( keyB0 * E0 + keyB1 * E1 ) * fade / D;
       }
-      return 1.0 - occ * ambShare;
+      return 1.0 - occ * ambShare - keyCut;
     }
 `;

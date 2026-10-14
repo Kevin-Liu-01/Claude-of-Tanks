@@ -4,7 +4,7 @@
 // 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], amb: number[],
+ * @param {{ glsl: string, snowGlsl?: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, keyCount?: number, keyP?: number[], keyE?: number[], amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
@@ -33,6 +33,7 @@ uniform float uAlpha[ ${n} ];
 // the aerial pass's reading of the scene target's alpha, by its sign: a card (no sun state) under 1.5, lit over it
 float cotSunVisOf( float alpha ) { return alpha < 1.5 ? -1.0 : 1.0; }
 vec3 cotNormalAt( vec2 uv, vec3 P ) { return uNrm[ int( uv.x ) ]; }
+${input.snowGlsl ?? 'float cotSnowOf( float a ) { return 0.0; }'}
 ${input.glsl}
 out vec4 outColor;
 void main() {
@@ -57,6 +58,12 @@ void main() {
   // (2026-10-08) the runs as drawn, eight knots a side; zero (the rest pose) when the case packs none
   gl.uniform4fv(at('uVehGroundR'), new Float32Array(input.runs ?? new Array(input.solids.length).fill(0)));
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
+  // (2026-10-14) the snow weight: the joint cap and the crease's core (0 when the case packs none)
+  gl.uniform1f(at('uVehGroundSnow'), input.snow ?? 0);
+  // (contact r2) the FX lamps the hulls shadow (none when the case packs none)
+  gl.uniform1f(at('uVehKeyLight'), input.keyCount ?? 0);
+  gl.uniform4fv(at('uVehKeyLightP'), new Float32Array(input.keyP ?? [0, 0, 0, 0, 0, 0, 0, 0]));
+  gl.uniform4fv(at('uVehKeyLightE'), new Float32Array(input.keyE ?? [0, 0, 0, 0, 0, 0, 0, 0]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));

@@ -31,7 +31,7 @@
  * The mobile tier and `?fx=off` never enter the block (uContact 0); a preset without the lever likewise.
  */
 import * as THREE from 'three';
-import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
+import { SCENE_ALPHA_OPAQUE, SCENE_ALPHA_READ_GLSL, decodeSceneSunVis } from './sceneAlpha.ts';
 
 export const CONTACT_SHADOW_STEPS = 12;
 export const CONTACT_SHADOW_MAX_SCREEN_PX = 8;
@@ -46,7 +46,7 @@ export const CONTACT_SHADOW_STRENGTH = 0.92;
 /** The last part of the ray fades so the shadow has no cut-off line at its length. */
 export const CONTACT_SHADOW_TAIL_FADE = 0.55;
 /** Scene-target alpha at or above this decodes as 2 + CSM sun visibility of an opaque lit surface. */
-export const CONTACT_SHADOW_ALPHA_OPAQUE = 1.5;
+export const CONTACT_SHADOW_ALPHA_OPAQUE = SCENE_ALPHA_OPAQUE;
 /**
  * An occluder counts only when the depth this many pixels either side of the hit lies on the same surface (within
  * WIDTH_M + WIDTH_PER_M × distance): wires, rails and far poles — a few pixels wide, never cascade casters — are
@@ -130,8 +130,8 @@ export interface ContactShadowAmbient {
  * vehicle pixel carries 4 + its visibility (vehicleOcclusion.ts), every other opaque lit pixel 2 + its visibility.
  */
 export function contactShadowSunVisibility(alpha: number): number {
-  if (alpha >= VEHICLE_ALPHA_MIN) return THREE.MathUtils.clamp(alpha - 4, 0, 1);
-  return alpha >= CONTACT_SHADOW_ALPHA_OPAQUE ? THREE.MathUtils.clamp(alpha - 2, 0, 1) : -1;
+  // (2026-10-14) a snowy terrain pixel writes its visibility in the snow band (sceneAlpha.ts): one decode for every reader
+  return decodeSceneSunVis(alpha);
 }
 
 export function contactShadowSunShare(
@@ -239,13 +239,7 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     vec3 cotWorldAt( vec2 uv ) {
       return cotWorldAtDepth( uv, cotDepthToDist( texture2D( tDepth, uv ).x ) );
     }
-    // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface (4 + it on a vehicle,
-    // vehicleOcclusion.ts), below 1.5 anything else
-    float cotSunVisOf( float a ) {
-      if ( a >= ${f(VEHICLE_ALPHA_MIN)} ) return clamp( a - 4.0, 0.0, 1.0 );
-      return a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ? clamp( a - 2.0, 0.0, 1.0 ) : -1.0;
-    }
-    // best-pair normal from the depth neighbours (the smaller step on each axis stays on the surface)
+${SCENE_ALPHA_READ_GLSL}    // best-pair normal from the depth neighbours (the smaller step on each axis stays on the surface)
     vec3 cotNormalAt( vec2 uv, vec3 P ) {
       vec3 px1 = cotWorldAt( uv + vec2( uInvSize.x, 0.0 ) );
       vec3 px0 = cotWorldAt( uv - vec2( uInvSize.x, 0.0 ) );
