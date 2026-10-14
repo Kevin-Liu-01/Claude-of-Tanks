@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Merkava family procedural profiles — FROM-SCRATCH curve-driven rebuild.
 // Owned by the Merkava agent.
@@ -10224,7 +10225,7 @@ function merkavaSourceFinish(
           // These remain gameplay ERA rather than permanent decorative boxes.
           // Base and cover are captured by the same authored range and disappear
           // together, while their support cradle remains on the turret.
-          const sector = `merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`;
+          const sector = `merkava_${tankSeedId(id)}_turret_era_${s > 0 ? 'R' : 'L'}`; // schema-1 name (tankIdAliases.ts)
           layeredEraSectors.push(sector);
           P.destructibleCluster(sector, () => {
             for (const cell of eraCells) addLayeredEraCassette(cell);

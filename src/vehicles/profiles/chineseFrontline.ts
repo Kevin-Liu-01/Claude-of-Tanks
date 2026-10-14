@@ -6,6 +6,7 @@
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { tankSeedId } from '../tankIdAliases.ts';
 import { latheY, place } from '../accessoryPrimitives.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
@@ -343,7 +344,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
     const stock=closedIntegratedChevron(chevronStations, side);
     if (variant==='vt4a1') addChineseThroatStock(P,stock); else P.add('turret',stock);
   }
-  P.visualEraCluster(`${variant}-integrated-chevron-front`, 'turret', () => {
+  P.visualEraCluster(`${tankSeedId(variant)}-integrated-chevron-front`, 'turret', () => { // schema-1 name (tankIdAliases.ts)
     for (const side of [-1, 1] as const) {
       for (const [startT, endT] of panelBands) {
         const startX = THREE.MathUtils.lerp(chevronStations[0].x,

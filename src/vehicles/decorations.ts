@@ -2544,7 +2544,8 @@ function appendDefaultHullManifest(
  * historical manifest and jitter streams: their stowage stays exactly as authored.
  */
 function isSourceStudy(spec: FleetTankSpec): boolean {
-  return /_x$/.test(spec.id) || spec.id === 'leo2_revolution_proto';
+  // The `_x` suffix is schema-1 vocabulary (tankIdAliases.ts): a rename that drops it never changes the gate.
+  return /_x$/.test(tankSeedId(spec.id)) || spec.id === 'leo2_revolution_proto';
 }
 
 /**

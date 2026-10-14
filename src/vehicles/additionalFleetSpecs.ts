@@ -2,6 +2,7 @@
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import {T72BU_X_SOURCE_DATUMS,createT72BUXArmorZones} from './t72buXArmor.ts';
 import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
 import {
@@ -75,7 +76,9 @@ function armorWithoutEra(
   return armor;
 }
 
-function abramsReactiveArmor(baseId: string, prefix: string): ArmorEnvelope {
+function abramsReactiveArmor(baseId: string, idPrefix: string): ArmorEnvelope {
+  // Plate names keep their schema-1 spelling (tankIdAliases.ts), so a rename never renames a hit zone.
+  const prefix = tankSeedId(idPrefix);
   const armor = copy(requireFleetSpec(baseId).armor);
   // The donor M1A2 now owns live ERA zones for its visible cassette arrays.
   // Derivative marks replace those zones with their own namespace rather
@@ -628,8 +631,9 @@ for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d
   const spec = SPECS.find((candidate) => candidate.id === id);
   if (!spec) throw new Error(`Additional fleet spec missing: ${id}`);
   spec.armor.turretPlates.push(
-    reactivePlate(`merkava_${id}_turret_era_R`, 'right'),
-    reactivePlate(`merkava_${id}_turret_era_L`, 'left'),
+    // Schema-1 names (tankIdAliases.ts): the X rebuilds' visual clusters name these plates literally.
+    reactivePlate(`merkava_${tankSeedId(id)}_turret_era_R`, 'right'),
+    reactivePlate(`merkava_${tankSeedId(id)}_turret_era_L`, 'left'),
   );
 }
 
