@@ -531,18 +531,22 @@ export class MatchSession {
    * (10 s on the e2e of 2026-10-13, 13.75 s from the close to the new host's first report): when another seat can take
    * the match, this seat now declines inside the event (`host_decline`, a preference: with no candidate after all the
    * room keeps it, and its lease runs as before) and steps down at once — its actor stopped, the seat a peer — so a page
-   * restored from the back-forward cache never thinks it still hosts. When no other seat is willing (a solo room with
-   * bots, every other seat declined, unable or gone), nothing is sent: the lease and the resume hold run as they did, so
-   * the same player can come back. Synchronous by design: nothing is awaited. True when it handed the match on.
+   * restored from the back-forward cache never thinks it still hosts. "Another seat" is the room's own candidate set: any
+   * connected commander, a seat that declined hosting included (2026-10-14): the room's ladder takes a declined
+   * commander as the last resort, at once on this decline and after the lease without it, so waiting out the lease
+   * elected the same seat 8 s later — and a slow machine declines in the lobby (host headroom, §13.18), so under load
+   * every other seat had declined and the hand-off never ran. With no other connected commander (a solo room with bots,
+   * the others gone or spectating), nothing is sent: the lease and the resume hold run as they did, so the same player
+   * can come back. Synchronous by design: nothing is awaited. True when it handed the match on.
    */
   handOffHosting(reason: string): boolean {
     const host = this.host;
     if (!host || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
     if (this.room.phase !== 'joined' || this.room.hostId !== this.room.playerId) return false;
     const me = this.room.playerId;
-    const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected && !player.hostDeclined) ?? false;
+    const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected) ?? false;
     if (!successor) {
-      this.log('info', 'hosting tab going away with no other seat willing to host: the room keeps it (the lease)', { reason });
+      this.log('info', 'hosting tab going away with no other commander connected: the room keeps it (the lease)', { reason });
       return false;
     }
     this.handedOff = true;
