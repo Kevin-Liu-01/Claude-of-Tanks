@@ -76,9 +76,9 @@ and your converted side against main's side: a conflict that was only the
 rename resolves and is staged, and a real one keeps its markers for you. It
 then converts every line that `git blame` gives to your own commits from
 before the rename; lines from main or from the rename, and uncommitted lines,
-are never touched. The map has swaps (`leo2a6m_x` becomes `leo2a6m` while
-`leo2a6m` becomes `leo2a4_otco`), so this provenance rule is what makes the tool
-idempotent: run it again during or after the merge and it changes nothing. On a
+are never touched. The map has swaps (one vehicle's new id is the id another
+vehicle gave up), so this provenance rule is what makes the tool idempotent:
+run it again during or after the merge and it changes nothing. On a
 branch without the rename it refuses and changes nothing. It never edits
 generated files, icons, media or dated records: it lists the generated files
 to regenerate with their own tools. Review the diff before committing. The
