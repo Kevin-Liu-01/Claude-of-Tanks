@@ -608,6 +608,10 @@ try {
     await pages.b.touchscreen.touchStart(x,y);
     await pages.b.touchscreen.touchMove(x-24,y-40);
   }else{
+    // (2026-10-13) after a role swap B can be the page that created the room, its focus still in the play menu's fields:
+    // the game ignores keys typed into a field (the private run's B moved 0.93 m in 12 s). Blur it and bring B forward.
+    await pages.b.bringToFront().catch(() => {});
+    await pages.b.evaluate(() => { const active = document.activeElement; if (active && active !== document.body && typeof active.blur === 'function') active.blur(); });
     await pages.b.keyboard.down('KeyW');await pages.b.keyboard.down('KeyA');
   }
   const throttles = [];
