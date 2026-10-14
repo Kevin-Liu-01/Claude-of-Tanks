@@ -35,6 +35,8 @@ import type { RoomClient } from '../room/roomClient.ts';
 import { parseP2pMatchUrl, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomSnapshot } from '../room/protocol.ts';
 import { createMatchHost } from '../host/matchHost.ts';
+import { createHostHeadroomMonitor } from './hostHeadroom.ts';
+import type { HostHeadroomMonitor, HostHeadroomOptions } from './hostHeadroom.ts';
 import type { MatchHost } from '../host/matchHost.ts';
 import { planFromRoster, planHostBoot } from '../host/hostPlan.ts';
 import type { HostBootConfig, HostCoreStats, HostPort, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
@@ -98,6 +100,12 @@ export interface MatchSessionP2pOptions {
   entryReportIntervalMs?: number;
   /** ... and for at most this long (ENTRY_REPORT_CEILING_MS, 150 s): a host whose entry never ends is still replaced. */
   entryReportCeilingMs?: number;
+  /**
+   * Host choice by headroom (plan step 10): a tab whose display frames run slow while it waits in the room (p50 past
+   * 33 ms) declines to host, as a preference — the room names a willing seat and keeps this one as the last resort —
+   * and offers again once it recovers (under 25 ms). Fed by `observeFrame`; false turns it off.
+   */
+  hostHeadroom?: HostHeadroomOptions | false;
   onLog?: (level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>) => void;
 }
 
@@ -207,6 +215,9 @@ export class MatchSession {
   private declinedHosting = false;
   /** This seat declined only because it re-entered a running match without its state; its welcome withdraws the decline. */
   private declinedForReentry = false;
+  /** This seat declined because its frames ran too slow to host well (plan step 10); recovered, it offers again. */
+  private declinedForHeadroom = false;
+  private headroom: HostHeadroomMonitor | null = null;
   /** The elected host's entry reports while its world loads (null when none run). */
   private entryReports: { stop(reason: string): void } | null = null;
   /** The host generation this seat's link (or host) runs; an election with a newer one is a migration (P1: compare generations, never the reason). */
@@ -484,6 +495,37 @@ export class MatchSession {
    * grace) holds the match's state once it is welcomed as a peer: it withdraws the decline, so a later election may
    * name it again (plan step 8). A seat that cannot host never declined this way.
    */
+  /**
+   * One display frame of this tab (the app calls it from its foreground frame loop; a hidden tab's frames are not a
+   * measure). Plan step 10: a seat whose frames run too slow to host well declines to host while it waits in the room,
+   * and offers again when they recover. Never during a match: a hosting seat's decline hands the match on mid-battle.
+   */
+  observeFrame(frameMs: number): void {
+    const p2p = this.p2pOptions;
+    if (!p2p || p2p.hostHeadroom === false || !this.canHost) return;
+    this.headroom ??= createHostHeadroomMonitor(p2p.hostHeadroom ?? {});
+    this.headroom.frame(frameMs);
+    if (this.currentPhase !== 'lobby' || this.host || this.room.phase !== 'joined') return;
+    const weak = this.headroom.weak;
+    if (weak && !this.declinedHosting) {
+      this.declinedHosting = true;
+      this.declinedForHeadroom = true;
+      this.log('info', 'frames too slow to host well: declining to host', { p50FrameMs: this.headroom.p50FrameMs });
+      this.p2pListeners.emit({ kind: 'declined' });
+      void this.room.declineHost(true).catch(() => { this.declinedHosting = false; this.declinedForHeadroom = false; });
+    } else if (!weak && this.declinedForHeadroom) {
+      this.declinedHosting = false;
+      this.declinedForHeadroom = false;
+      this.log('info', 'frames recovered: willing to host again', { p50FrameMs: this.headroom.p50FrameMs });
+      void this.room.declineHost(false).catch(() => { /* the room may predate the command */ });
+    }
+  }
+
+  /** The tab's frame headroom as the host choice reads it (diagnostics). */
+  get hostHeadroom(): { weak: boolean; p50FrameMs: number | null; declined: boolean } | null {
+    return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.declinedForHeadroom } : null;
+  }
+
   private withdrawReentryDecline(): void {
     if (!this.declinedForReentry) return;
     this.declinedForReentry = false;

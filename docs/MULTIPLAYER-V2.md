@@ -2037,6 +2037,22 @@ entry and their stop at the actor's report; the ceiling, `host_only` and a new e
 match; the re-entry decline withdrawn at the welcome; no actor after a mid-load leave; bounded memory),
 `matchSessionP2p.selftest` (accepts the loading reports ahead of the actor's phase).
 
+### 13.19 Host choice by headroom (MP stream, plan step 10, 2026-10-13)
+
+**Why.** Every packet of a p2p match crosses the host tab's main thread, and every seat skips control ticks below
+15 fps; the room elects the admin (else the senior willing commander) without knowing how each tab runs.
+
+**What.** While it waits in the room, a tab reads its own foreground display frames (`browserComposition`'s pump →
+`MatchSession.observeFrame` → `hostHeadroom.ts`): p50 frame time over about four seconds past 33 ms (under 30 fps) makes
+it decline to host as a preference (`host_decline { declined: true }`, not `unable`: the room names a willing seat and
+keeps this one as the last resort); under 25 ms (over 40 fps) it offers again (`declined: false`). Never during a match
+(a hosting seat's decline hands the match on mid-battle), never from a seat that cannot host, and off with
+`p2p.hostHeadroom: false`. Client-only: the room's ladder already honours a preference decline. Not done: capping the
+host tab's render quality while it hosts (perf's quality tiers).
+
+Receipt: `hostHeadroom.selftest` (the monitor's verdicts, window and hysteresis; the real session against a scripted room
+socket: the decline and its withdrawal, none in a match, none from the mobile tier, none with the option off).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

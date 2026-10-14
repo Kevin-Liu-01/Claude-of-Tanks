@@ -328,6 +328,8 @@ export interface SessionOwner {
   onVerdict(listener: (change: { verdict: VerdictId; reason: string; matchId: string }) => void): Unsubscribe;
   onFrame(listener: (frame: MatchFrame) => void): Unsubscribe;
   update(nowMs: number, elapsedS: number): MatchFrame | null;
+  /** One foreground display frame (ms): the host choice by headroom reads it (plan step 10). Optional for doubles. */
+  observeFrame?(frameMs: number): void;
   leaveMatch(reason?: string): Promise<void>;
   dispose(): void;
   stats(): MatchSessionStats;
@@ -1425,6 +1427,8 @@ export function createBrowserComposition({
 
   const pump = (dtSeconds: number, nowMs: number): void => {
     lastPumpMs = nowMs;
+    // plan step 10: the foreground frames say whether this tab can host well (pumpBackground's are not a measure)
+    session?.observeFrame?.(dtSeconds * 1000);
     session?.update(nowMs, Math.max(0, Math.min(0.25, dtSeconds)));
     paintStatus(nowMs);
   };
