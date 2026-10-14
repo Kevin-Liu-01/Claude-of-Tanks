@@ -1330,7 +1330,9 @@ export function createAudio({
     if (!event?.pos) return;
     const closing = Math.max(0, Number(event.closingMps) || 0);
     const heavy = closing > 5.5 || Math.max(Number(event.dmgA) || 0, Number(event.dmgB) || 0) > 120;
-    play(heavy ? 'ram_heavy' : 'ram_light', { ...at(event.pos), gainDb: -6 + clamp(closing / 11, 0, 1) * 6, ...(cinematic ? { bus: 'cinematic' as const } : {}) });
+    // a hull shoving a burnt-out wreck strikes dead steel, not a live tank's suspension and running gear (2026-10-13)
+    const wreck = (event.aId != null && tanks.get(event.aId)?.alive === false) || (event.bId != null && tanks.get(event.bId)?.alive === false);
+    play(wreck ? 'hit_metal' : heavy ? 'ram_heavy' : 'ram_light', { ...at(event.pos), gainDb: -6 + clamp(closing / 11, 0, 1) * 6, ...(cinematic ? { bus: 'cinematic' as const } : {}) });
     const occupied = !cinematic && (event.aIsPlayer || event.bIsPlayer || isOwn(event.aId) || isOwn(event.bId));
     if (occupied) {
       play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -8 + clamp(closing / 11, 0, 1) * 6 }));
