@@ -80,10 +80,13 @@ for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'
   ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
 }
-assert.equal(packed.encoding, 'primitive-kind-dict-v2');
+assert.equal(packed.encoding, 'primitive-kind-dict-v3');
 assert.deepEqual(packed.kinds, ['crate']);
 assert.equal(packed.obstacles[0].k, 0, 'kind reference zero is valid');
-assert.deepEqual(packed.shapes, [shape], 'only repeated exact primitives are interned');
+// (v3: the interned primitive in integers of 1/10000 m, its corners as steps from the one before)
+assert.deepEqual(packed.shapes, [['V', 1234, 0, 30016, 0, -31250, 45678]], 'only repeated exact primitives are interned');
+assert.deepEqual(packed.obstacles[0].B, [0, 0, 0, 40000, 20000, 50000], 'exact bounds in integers of 1/10000 m');
+assert.equal(Object.hasOwn(packed.obstacles[0], 'b'), false);
 assert.equal(packed.obstacles[0].s, 0, 'reference zero is valid');
 assert.equal(packed.obstacles[1].s[1], 0, 'compound children use the same primitive table');
 const restored = decodeCollisionManifest(packed);
@@ -115,11 +118,52 @@ const metadataFixture = {
 const metadataEncoded = encodeCollisionManifest(metadataFixture);
 assert.deepEqual(metadataEncoded.kinds, ['frequent', 'first', '', 'second'],
   'frequent kinds receive short IDs and equal-count ties retain first-seen order');
-for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2']) {
+for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2', 'primitive-kind-dict-v3']) {
   const encoded = encodeCollisionManifest(metadataFixture, encoding);
   assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(encoded))),
     { ...metadataFixture, concealers: undefined },
     `${encoding} preserves missing/null/empty kinds, shapeless records and every metadata value`);
+}
+
+// (2026-10-14, the shards' storage budget) v3 is exact or it is v2: every primitive kind and its corners round-trip bit
+// for bit through integers of 1/10000 m; a number with more decimals, or bounds with one, stays as v2 wrote it; an
+// existing v2 shard stays readable and re-encodes byte-stable as v2
+const v3Fixture = {
+  obstacles: [
+    { b: [-12.5, 0.25, -3.0001, 12.5, 6.4416, 3], k: 'structure', q: 1,
+      s: ['m', ['w', 0.3416, 60.8416, -161.45, -47.95, -138.55, -47.95, -138.55, -34.769, -161.45, -34.769],
+        ['p', 60.8416, 61.4416, -150, -41.3595, 2, 0.0302, -0.2421, 61.4436, 0, 0, 3.25, -161.65, -48.15, -138.35, -48.15, -138.35, -34.569],
+        ['c', 2.5, -3.75, 0.9, 0, 1.2], ['o', 1, 2, 0.5, 0.25, 0.7854, -0.5, 2]] },
+    { b: [0, 0, 0, 1, 1, 1], s: ['v', 0.1, 0.2, 1.000001, 0.2, 1, 1] },
+    { b: [0.123456, 0, 0, 1, 1, 1], s: ['c', 0, 0, 1] },
+  ],
+  colliders: [{ b: [-1, -2, -3, 1, 2, 3], s: ['v', -1, -3, 1, -3, 1, 3, -1, 3] }],
+  concealers: [[1.125, 2.375, 3.625, 0.75]],
+};
+const v3 = encodeCollisionManifest(v3Fixture);
+assert.equal(v3.encoding, 'primitive-kind-dict-v3');
+assert.deepEqual(v3.obstacles[0].s.slice(1).map((part) => part[0]), ['W', 'P', 'C', 'O'], 'every primitive kind compacts');
+assert.equal(v3.obstacles[1].s[0], 'v', 'a primitive with a number of more than four decimals stays as v2 wrote it');
+assert.ok(Object.hasOwn(v3.obstacles[2], 'b') && !Object.hasOwn(v3.obstacles[2], 'B'), 'and so do such bounds');
+assert.deepEqual(Object.keys(v3.obstacles[0]), ['B', 'k', 'q', 's'], 'the compact bounds take the key\'s place');
+const v3Back = decodeCollisionManifest(JSON.parse(JSON.stringify(v3)));
+assert.deepEqual(v3Back, v3Fixture, 'v3 decodes bit for bit');
+assert.deepEqual(Object.keys(v3Back.obstacles[0]), Object.keys(v3Fixture.obstacles[0]), 'in the record\'s key order');
+assert.deepEqual(encodeCollisionManifest(v3Back), v3, 'v3 re-encodes byte-stable');
+const v2 = encodeCollisionManifest(v3Fixture, 'primitive-kind-dict-v2');
+assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(v2))), v3Fixture, 'v2 shards remain readable');
+assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(v2), 'primitive-kind-dict-v2'), v2, 'and re-encode byte-stable as v2');
+for (const corrupt of [
+  (value) => { value.obstacles[0].b = [0, 0, 0, 1, 1, 1]; },
+  (value) => { value.obstacles[0].B = [0, 0, 0, 1, 1]; },
+  (value) => { value.obstacles[0].B[2] = 0.5; },
+  (value) => { value.obstacles[0].s[1][3] = 1.5; },
+  (value) => { value.obstacles[0].s[1] = ['W', 1, 2, 3]; },
+  (value) => { value.colliders[0].s = ['V', 0, 0, 1]; },
+]) {
+  const value = structuredClone(v3);
+  corrupt(value);
+  assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject a corrupt compact record or primitive');
 }
 
 // No terrain bake is needed to prove mutable match inflation is independent.
