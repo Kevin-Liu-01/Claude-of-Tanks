@@ -351,6 +351,8 @@ live preview at the native aspect, progress, time left and **Cancel**.
                                 //   | wrecked-burnt | turret-popped
       "stateAgeS": 60,          // optional wreck age (char sweep / settle)
       "recoilAgeS": 0.05,       // optional: freeze the recuperator at this stroke age
+      "suspensionAimDeg": 10,   // optional, siege vehicles (Strv 103): the hull aimed through
+                                //   setHydropneumaticAim at load; state() saves it
       "smoking": true,          // optional additive layers over any mesh state
       "burning": true           //   (engine-deck smoke / keyed fire column)
     }

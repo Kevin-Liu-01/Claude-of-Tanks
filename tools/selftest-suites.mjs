@@ -287,6 +287,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-production/campaignArtwork.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
+    'src/game/studioSuspensionAim.selftest.mjs',
     'src/game/studioFxSettings.selftest.mjs',
     'src/game/studioTrackDust.selftest.mjs',
     'src/fx/cinematicFx.selftest.mjs',
