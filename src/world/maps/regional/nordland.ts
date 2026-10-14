@@ -9,14 +9,14 @@
 // drying racks (hjell). The white chapel with its tower and spire; the houses burnt in the fighting of May 1940, their
 // stacks standing on the granite footings.
 import {
-  PartSink, faceBox, facePoint, facePanel, pick, rgb, shade,
-  type Face, type Rgb,
+  PartSink, faceBox, facePoint, facePanel, pick, rgb, shade, UV_MEMBER,
+  type Face, type RegionalBucket, type Rgb,
 } from './geometry.ts';
 import {
   buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec, type WallRect,
 } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import type { RegionalParts } from './geometry.ts';
@@ -136,6 +136,67 @@ function gableCladding(sink: PartSink, face: Face, polygon: Array<[number, numbe
   }
 }
 
+/**
+ * A boathouse's or a store's double doors (the props census, 2026-10-14: the fiskebruk's and the naust's painted wickets,
+ * gateUnit's dark panel): two plank leaves at the back of the reveal (or a little proud of a face with none), each with
+ * its ledges and its brace rising from the hinge side, the iron strap hinges, the white frame; and in a leaf wide and tall
+ * enough, the wicket as joinery — its frame standing out of the leaf, its own boards set back in it, its hinges and ring.
+ */
+function boatDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb,
+  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }): void {
+  const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015, half = w / 2 - 0.02;
+  const lc = { colour: leaf, decor: true, uv: UV_MEMBER } as const, fine = { decor: true, fine: true } as const;
+  const ledge = shade(leaf, 0.84);
+  const wicket = half >= 1.05 && h >= 2.2;
+  const ww = Math.min(0.78, half - 0.3), wh = Math.min(1.85, h - 0.45), wu = u - w / 4 + 0.05, wy = y + 0.2, ft = 0.06;
+  for (const side of [-1, 1]) {
+    const cu = u + side * w / 4;
+    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, half, h, 0.05, lc);
+    const holed = wicket && side < 0;
+    for (const t of [0.12, 0.5, 0.88]) {
+      const by = y + h * t;
+      const runs: Array<[number, number]> = holed && by > wy - 0.06 && by < wy + wh + 0.06
+        ? [[cu - half / 2 + 0.05, wu - ww / 2 - ft], [wu + ww / 2 + ft, cu + half / 2 - 0.05]] : [[cu - half / 2 + 0.05, cu + half / 2 - 0.05]];
+      for (const [a, b] of runs) if (b - a > 0.08) faceBox(sink, 'structureWood', face, (a + b) / 2, by, go + 0.035, b - a, 0.11, 0.025, { colour: ledge, ...fine });
+      const edge = cu + side * half / 2;
+      faceBox(sink, 'structureMetal', face, edge - side * 0.32, by + 0.08, go + 0.03, 0.62, 0.045, 0.01, { colour: IRON, ...fine });
+    }
+    // the brace between the ledges, rising from the hinge side toward the meeting stile (not across the wicket)
+    if (!holed) {
+      const a = facePoint(face, cu + side * (half / 2 - 0.12), y + h * 0.12 + 0.06, go + 0.035);
+      const b = facePoint(face, cu - side * (half / 2 - 0.12), y + h * 0.5 - 0.06, go + 0.035);
+      sink.member('structureWood', a, b, 0.1, 0.025, face.out, { colour: ledge, ...fine }, 0);
+    }
+  }
+  if (wicket) {
+    const wc = { colour: shade(leaf, 0.9), decor: true, fineSides: true, uv: UV_MEMBER } as const;
+    for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, wu + side * (ww / 2 + ft / 2), wy + wh / 2, go + 0.03, ft, wh + 2 * ft, 0.03, wc);
+    faceBox(sink, 'structureWood', face, wu, wy + wh + ft / 2, go + 0.03, ww, ft, 0.03, wc);
+    faceBox(sink, 'structureWood', face, wu, wy - ft / 2, go + 0.035, ww, ft, 0.04, wc);
+    faceBox(sink, 'structureWood', face, wu, wy + wh / 2, go + 0.028, ww - 0.01, wh - 0.01, 0.012, { colour: shade(leaf, 1.07), decor: true, uv: UV_MEMBER });
+    for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', face, wu - ww / 2 + 0.17, wy + wh * t, go + 0.04, 0.3, 0.04, 0.01, { colour: IRON, ...fine });
+    faceBox(sink, 'structureMetal', face, wu + ww / 2 - 0.12, wy + wh * 0.5, go + 0.045, 0.1, 0.1, 0.012, { colour: IRON, ...fine });
+  }
+  const fo = { decor: true, ...(frame.colour ? { colour: frame.colour } : {}) };
+  faceBox(sink, frame.bucket, face, u - w / 2 - frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
+  faceBox(sink, frame.bucket, face, u + w / 2 + frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
+  faceBox(sink, frame.bucket, face, u, y + h + frame.width / 2, frame.out / 2, w + 2 * frame.width, frame.width, frame.out, fo);
+}
+
+/**
+ * A belfry's louvred opening in its reveal (cut by the house): sloped white boards across it, seated in the jambs, the
+ * dark of the belfry between them.
+ */
+function belfryLouvres(sink: PartSink, face: Face, u: number, y: number, w: number, h: number): void {
+  const r = sink.recess, back = r > 0 ? -r * 0.5 : 0.02, n = Math.max(4, Math.round(h / 0.26));
+  for (let k = 0; k < n; k++) {
+    const yy = y + (k + 0.6) * h / (n + 0.2);
+    const a = facePoint(face, u - w / 2 - 0.02, yy + 0.06, back - 0.06), b = facePoint(face, u + w / 2 + 0.02, yy + 0.06, back - 0.06);
+    const c = facePoint(face, u + w / 2 + 0.02, yy - 0.06, back + 0.06), d = facePoint(face, u - w / 2 - 0.02, yy - 0.06, back + 0.06);
+    sink.quad('structureWood', d, c, b, a, { colour: WHITE, decor: true });
+  }
+}
+
 function dialect(st: NordState): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
@@ -143,7 +204,7 @@ function dialect(st: NordState): HouseDialect {
       st.rng, o.kind === 'loft' ? 0.1 : st.litShare),
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
-        gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, shade(PAINT_RGB[st.paint], 0.82), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: st.trim });
+        boatDoor(sink, face, o.u, y0 + o.y0, o.w, o.h, shade(PAINT_RGB[st.paint], 0.82), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: st.trim });
         return;
       }
       if (o.kind === 'shopfront') {
@@ -463,7 +524,7 @@ const fiskebruk: RegionalBuilder = (ctx) => {
     // the shed's body: its end profile run through its depth (low on the outer side, high against the hall)
     const end: Face = { origin: [ax0 + annex / 2, 0, sz0 + sd], u: [1, 0, 0], out: [0, 0, 1], width: annex };
     wallPolygon(sink, 'plaster2', end, [[-annex / 2, 0.35], [annex / 2, 0.35], [annex / 2, h1], [-annex / 2, h0]], sd);
-    gateUnit(sink, side, sd * 0.2, 0.35, 1.8, 1.9, shade(RED, 0.8), { bucket: 'structureWood', width: 0.12, out: 0.04, colour: WHITE });
+    boatDoor(sink, side, sd * 0.2, 0.35, 1.8, 1.9, shade(RED, 0.8), { bucket: 'structureWood', width: 0.12, out: 0.04, colour: WHITE });
     const lean: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(h1 - h0, annex) * 180 / Math.PI, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' };
     sink.placed(Math.PI, ax0 + annex / 2, 0, sz0 + sd / 2, () => emitRoof(sink, roofGeometry(annex, sd, h0, lean), lean));
     // the deck on piles before the gable, the length of the plot, its edge beam
@@ -514,7 +575,7 @@ const naust: RegionalBuilder = (ctx) => {
     for (const s of [-1, 1]) faceBox(sink, st.paint, front, s * (W / 2 - 0.6 + dw / 2) / 2, (wallH - 0.3) / 2, -0.06, W / 2 - 0.6 - dw / 2, wallH + 0.3, 0.12, {});
     faceBox(sink, st.paint, front, 0, (dh + wallH) / 2, -0.06, dw, wallH - dh, 0.12, {});
     wallPolygon(sink, st.paint, front, [[-W / 2, wallH], [W / 2, wallH], [0, wallH + rise]], 0.12);
-    gateUnit(sink, front, 0, 0, dw, dh, shade(PAINT_RGB[st.paint], 0.8), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: WHITE });
+    boatDoor(sink, front, 0, 0, dw, dh, shade(PAINT_RGB[st.paint], 0.8), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: WHITE });
     if (!st.mobile) {
       for (let u = -W / 2 + 0.85; u < W / 2 - 0.7; u += 0.32) {
         if (Math.abs(u) < dw / 2 + 0.15) continue;
@@ -607,27 +668,34 @@ const kapell: RegionalBuilder = (ctx) => {
         wallPolygon(sink, 'structureWood', face, [[o.u - o.w / 2 - 0.1, y], [o.u + o.w / 2 + 0.1, y], [o.u, y + 0.45]], 0.04, { colour: WHITE, decor: true });
       }
     }
-    // the tower on the front gable: the boarded shaft, the belfry with its louvres, the spire
-    const z0 = Dn / 2 - 0.1, z1 = z0 + td, H = frame.eaveY + 2.4;
-    sink.span('stone', -tw / 2 - 0.04, -0.3, z0, tw / 2 + 0.04, 0.45, z1 + 0.04);
-    sink.span('plaster', -tw / 2, 0.45, z0, tw / 2, H, z1);
-    const tf: Face = { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: tw };
-    doorUnit(sink, tf, 0, 0.45, 1.0, 2.2, {
-      leaf: shade(TAR, 1.4), frame: { bucket: 'structureWood', width: 0.12, out: 0.05, colour: WHITE },
-      steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
-    }, 0.45);
-    const belfry: Face[] = [tf, { origin: [tw / 2, 0, (z0 + z1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: td },
-      { origin: [-tw / 2, 0, (z0 + z1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: td }];
-    for (const f of belfry) {
-      // the belfry's louvred openings
-      faceBox(sink, 'dark', f, 0, H - 0.75, 0.01, Math.min(0.9, f.width - 0.6), 0.9, 0.02, { decor: true });
-      if (!st.mobile) for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, H - 1.1 + k * 0.22, 0.04, Math.min(0.9, f.width - 0.6), 0.05, 0.06, { colour: WHITE, decor: true, fine: true }, 'ends');
-    }
+    // the tower on the front gable (the props census, 2026-10-14: "the kapell tower boarded and given a fracture"): a
+    // house body of its own (its own plan, for the damage to read apart from the nave) in two boarded storeys on the
+    // granite footing — the shaft with the door in its foot, the belfry with its openings cut through three faces and
+    // white louvres in them — under the slender slate spire (the body's own hip roof) and its cross
+    const z0 = Dn / 2 - 0.1, z1 = z0 + td, H = frame.eaveY + 2.4, belfryH = 2.2;
+    const towerOpenings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 2.2 }];
+    for (const face of ['front', 'right', 'left'] as const) towerOpenings.push({ face, storey: 1, kind: 'loft', u: 0, w: Math.min(0.9, (face === 'front' ? tw : td) - 0.6), y0: 0.45, h: 1.1 });
     const spire: RoofSpec = { kind: 'hip', pitchDeg: 76, eave: 0.12, verge: 0.12, thickness: 0.1, bucket: 'roof', ridge: null };
-    sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(tw, td, H, spire), spire));
-    const tip = H + (Math.min(tw, td) / 2) * Math.tan(76 * Math.PI / 180);
-    sink.span('structureMetal', -0.035, tip - 0.1, (z0 + z1) / 2 - 0.035, 0.035, tip + 1.0, (z0 + z1) / 2 + 0.035, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.28, tip + 0.62, (z0 + z1) / 2 - 0.03, 0.28, tip + 0.68, (z0 + z1) / 2 + 0.03, { colour: IRON, decor: true });
+    const tst = { ...st, boards: 'standing' as const };
+    sink.placed(0, 0, 0, (z0 + z1) / 2, () => {
+      const tower = buildHouse(sink, {
+        w: tw, d: td, plinth: footing(0.45), storeys: [{ h: H - 0.45 - belfryH, wall: 'plaster', framed: true }, { h: belfryH, wall: 'plaster', framed: true }],
+        roof: spire, openings: towerOpenings, chimneys: [], gutters: null, verge: null, reveal: 0.16, spall: null, skirt: null,
+      }, {
+        ...dialect(tst),
+        window: (s2, face, o, y0) => belfryLouvres(s2, face, o.u, y0 + o.y0, o.w, o.h),
+        door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: shade(TAR, 1.4), frame: { bucket: 'structureWood', width: 0.12, out: 0.05, colour: WHITE },
+          steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
+        }, y0),
+      });
+      // the belfry's floor band, a white board where the shaft meets it
+      const b = tower.bodies[1];
+      sink.band('structureWood', b.x0 - 0.04, b.y0 - 0.08, b.z0 - 0.04, b.x1 + 0.04, b.y0 + 0.08, b.z1 + 0.04, { colour: WHITE, decor: true });
+      const tip = tower.roof.ridgeTopY;
+      sink.span('structureMetal', -0.035, tip - 0.1, -0.035, 0.035, tip + 1.0, 0.035, { colour: IRON, decor: true });
+      sink.span('structureMetal', -0.28, tip + 0.62, -0.03, 0.28, tip + 0.68, 0.03, { colour: IRON, decor: true });
+    });
   });
   return sink.finish();
 };
