@@ -68,6 +68,9 @@ export interface BlastContext {
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
   /** camera-distance size boost (1 inside ~90 m) so far blasts still read */
   distBoost(x: number, y: number, z: number): number;
+  /** (the salvo governor) how crowded this burst's patch is with other bursts in the last second (0..1); it records this
+   *  burst. Absent (captures, receipts): 0. */
+  crowd?(x: number, z: number): number;
   /** 1 on desktop; the phone tier never builds this context */
   readonly tier: number;
   readonly m: VolumePuff;
@@ -286,7 +289,13 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // explosive's smoke: puffs born out of the cooling fireball and driven up by its heat, the upper ones faster so the
   // cloud stretches into a lobed column, each glowing a moment at its heart
   // (7d: separate blue-grey lobes from ~2.4 s) more, smaller puffs overlapping into one lobed mass
-  const smokeN = thermobaric || heavy ? 16 : shaped ? 6 : 14;
+  // (the salvo governor, the EF.03 cost: a 24-rocket salvo's clouds cost +1.4 ms presented at its peak) a burst landing in
+  // a 25 m cell that already took two in the same second pools its cloud into the salvo's: up to 70 % fewer bodies, each
+  // up to 35 % larger and a quarter shorter-lived, so the salvo's smoke keeps its mass with far fewer overlapping cards;
+  // a lone burst (and a pair) is untouched. Decided by burst count, never by frame time.
+  const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
+  const smokeN = Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
+  const crowdSize = 1 + 0.35 * crowd, crowdLife = 1 - 0.25 * crowd;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
   const soilC = snowy ? UNDER_SNOW_SOIL : L.ejecta;
@@ -314,10 +323,10 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     // leans as one lobed mass through +4 s instead of its upper puffs sailing off downwind as a second cloud
     move(m, Math.cos(a) * out, lift, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
     // (DVIDS 954922: still a thin grey cloud drifting high at +7 s) it thins out over ten seconds or so
-    const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1);
+    const life = (9 + 4 * R()) * (heavy ? 1.3 : 1) * (shaped ? 0.8 : 1) * crowdLife;
     // (wave 293 and fx 8: the real cloud has grown about eight-fold in area by +2 s) born at a third of the fireball's
     // width and swelling fast: most of its growth in its first two seconds
-    shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk, 6, R);
+    shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk * crowdSize, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
     // (8j) a body you see into at its edges, not a wall: a little thinner
     look(m, smokeC0, smokeAged, 0.78, 0.0, 0.33);
