@@ -197,7 +197,7 @@ export function drumNear(p: DrumPaint, rng: Rng, lean = false): THREE.BufferGeom
 
 export function drumFar(p: DrumPaint): THREE.BufferGeometry {
   const m = newMesh();
-  lathe(m, [[0.298, 0], [0.298, 0.88]], 6, () => (p.band ? mix(p.shell, p.band, 0.25) : p.shell), { capTop: true, capColour: p.head });
+  lathe(m, [[0.298, 0], [0.298, 0.88]], 6, () => (p.band ? mix(p.shell, p.band, 0.1) : p.shell), { capTop: true, capColour: p.head });
   return finish(m);
 }
 
