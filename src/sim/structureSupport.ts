@@ -235,6 +235,9 @@ export function createStructureSupportField(
         if (!shape || shape.kind !== 'compound' || record.crushed || record.dead || record.crushable) continue;
         if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
         for (const part of shape.parts) {
+          // (a part tops out at its y1 and starts at its y0: one wholly under the best so far or over the reach is skipped
+          // before its planes are read)
+          if (!part || (part.y1 !== undefined && part.y1 <= best) || (part.y0 !== undefined && part.y0 > bellyY + SUPPORT_STEP_UP_M)) continue;
           const top = collisionPartTopAt(record, part, x, z);
           if (top <= best || top > bellyY + SUPPORT_STEP_UP_M || !pointInsideCollisionRecord(record, part, x, z)) continue;
           best = top;
