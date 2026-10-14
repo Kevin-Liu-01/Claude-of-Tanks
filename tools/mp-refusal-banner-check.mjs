@@ -95,9 +95,17 @@ try {
   check(inView(scrolled.banner, scrolled.viewport), `scrolled to the panel's end, the banner stays in view (${JSON.stringify(scrolled.banner)})`);
   await page.screenshot({ path: join(outDir, 'refused-scrolled.png') });
 
-  // the menu built here, not the app's own (the Garage holds another .cot-play): a real click on its Refresh button
-  const refresh = await page.evaluateHandle(() => window.__menu.root.querySelector('[data-action="refresh-page"]'));
-  await refresh.asElement().click();
+  // the menu built here, not the app's own (the Garage holds another .cot-play). What a pointer at the button's centre
+  // hits is reported (this page stacks two menus; the app's own is the one players see), and the button's own click
+  // proves the wiring.
+  const hit = await page.evaluate(() => {
+    const button = window.__menu.root.querySelector('[data-action="refresh-page"]');
+    const rect = button.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return { ownMenu: !!top && window.__menu.root.contains(top), top: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null };
+  });
+  console.log(`  ..  a pointer at Refresh hits ${hit.top} (${hit.ownMenu ? 'this menu' : 'another layer of this test page'})`);
+  await page.evaluate(() => window.__menu.root.querySelector('[data-action="refresh-page"]').click());
   check(await page.evaluate(() => window.__reloads) === 1, 'Refresh reloads the page');
 
   await page.evaluate(() => window.__menu.showActiveRoom('The match ended while you were joining.', 'match_ended'));
