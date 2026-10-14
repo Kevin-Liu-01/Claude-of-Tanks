@@ -57,7 +57,7 @@ export function lightEdge(material: FractureMaterial, piece: FracturePiece, scor
   const hb = piece.h[others[0]], hc = piece.h[others[1]];
   const centre: V3 = [piece.c[0] + A[0] * score, piece.c[1] + A[1] * score, piece.c[2] + A[2] * score];
   const rng = stream(seed);
-  // the rim: eight points round the section (corners and mid-sides), each drawn in a little and splintered along A
+  // the rim: six points round the section (its corners and two mid-sides), each drawn in a little and splintered along A
   const rim: Array<[number, number]> = [[-1, -1], [1, -1], [1, 0], [1, 1], [-1, 1], [-1, 0]];
   const reach = material === 'timber' || material === 'plank' ? Math.min(0.09, 0.35 * Math.max(hb, hc) + 0.02) : 0.025;
   const jag = rim.map(([b, c]) => ({ b: b * hb * (0.82 + 0.16 * rng()), c: c * hc * (0.82 + 0.16 * rng()), s: reach * (0.25 + 0.75 * rng()) }));
@@ -128,14 +128,28 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     const ys = [0, 1, 2].map((k) => Math.abs(quatRotate(p.q, k === 0 ? [1, 0, 0] : k === 1 ? [0, 1, 0] : [0, 0, 1])[1]) * p.h[k]);
     return 2 * Math.max(...ys);
   };
-  const ceiling = Math.max(1.0, top * 0.72);
-  // the snaps the wreck can afford (the r2 standard: the wreck within 1.5 x the intact triangles; a snap costs its
-  // clipped faces and two capped ends, about 30 triangles): spent on the longest members first, the rest lie whole
+  const ceiling = Math.max(1.0, top * 0.55);
+  // how far a body may tip as it settles: a stick a long way, a wall or a roof panel only a little (a long body tipped
+  // steeply onto the heap stands up out of it)
+  const tiltFor = (b: { tris: { p: number[] } }): number => {
+    let x0b = Infinity, x1b = -Infinity, y0b = Infinity, y1b = -Infinity, z0b = Infinity, z1b = -Infinity;
+    const q = b.tris.p;
+    for (let k = 0; k < q.length; k += 3) {
+      x0b = Math.min(x0b, q[k]); x1b = Math.max(x1b, q[k]); y0b = Math.min(y0b, q[k + 1]); y1b = Math.max(y1b, q[k + 1]);
+      z0b = Math.min(z0b, q[k + 2]); z1b = Math.max(z1b, q[k + 2]);
+    }
+    const L = Math.max(x1b - x0b, y1b - y0b, z1b - z0b);
+    return L <= 1.2 ? 1.1 : L >= 3 ? 0.3 : 1.1 - (L - 1.2) / 1.8 * 0.8;
+  };
+  // the snaps the wreck can afford (the r2 standard: the wreck within 1.5 x the intact triangles; a snap costs about its
+  // piece's triangles again, the faces it clips, and its two capped ends): spent on the longest members first, the rest
+  // lie whole
   const intactTris = (intact.index ? intact.index.count : intact.getAttribute('position').count) / 3;
-  let budget = Math.floor((0.42 * intactTris) / 30);
+  let budget = Math.floor(0.4 * intactTris);
   const snapped = new Set<number>();
-  for (const i of idx.filter((k) => (P[k].scores?.length ?? 0) > 0).sort((a, b) => Math.max(...P[b].h) - Math.max(...P[a].h))) {
-    const cost = P[i].scores!.length;
+  for (const i of idx.filter((k) => (P[k].scores?.length ?? 0) > 0 && !(P[k].scoreAxis === 1 && Math.min(...P[k].h) >= 0.45))
+    .sort((a, b) => Math.max(...P[b].h) - Math.max(...P[a].h))) {
+    const cost = P[i].scores!.length * (P[i].triN + 12);
     if (cost > budget) continue;
     budget -= cost;
     snapped.add(i);
@@ -146,12 +160,43 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
   // (what stands on the ground or on the floor: an upright or a wall whose foot is within 0.6 m of the ground)
   const standing = idx.filter((i) => !S.isLaid(i) && UPRIGHT.has(P[i].role) && P[i].c[1] - tall(P[i]) / 2 < 0.6)
     .sort((a, b) => lee(P[b].c) - lee(P[a].c));
-  const keep = new Set(standing.slice(0, Math.max(2, Math.ceil(standing.length * 0.5))));
+  // a cabin or a floor raised on legs (a watch post, a stilt house): two legs of the lee side stand, low, so the floor
+  // tips off them onto the ground instead of riding its stubs
+  const raised = idx.filter((i) => P[i].role === 'slab' && !P[i].anchor && P[i].c[1] - P[i].h[1] > 0.6);
+  // (a tent's poles go down with its canvas: one stands, low)
+  const canvas = P.filter((p) => p.material === 'canvas').length > P.length / 3;
+  const keep = new Set(raised.length
+    ? standing.filter((i) => lee(P[i].c) > 0.2).slice(0, 2)
+    : canvas ? standing.slice(0, 1) : standing.slice(0, Math.max(2, Math.ceil(standing.length * 0.5))));
+  // (a body's shell comes down to its foot band: nothing standing over it holds the bands it drops, so the uprights
+  // break off no higher than that band's top)
+  const isShell = (p: FracturePiece): boolean => p.scoreAxis === 1 && Math.min(...p.h) >= 0.45 && (p.scores?.length ?? 0) > 0;
+  const shellTop = Math.min(Infinity, ...P.filter(isShell).filter((p) => p.c[1] - p.h[1] <= 0.8).map((p) => p.c[1] - p.h[1] + 2 * p.h[1] * 0.38));
   for (const i of standing) {
     if (!keep.has(i)) continue;
     const p = P[i], foot = p.c[1] - tall(p) / 2, h = tall(p);
-    const frac = r(0.45, 0.85), wander = r(0.08, 0.22), phase = r(0, 6.28);
-    S.cut(i, (x, z) => foot + h * frac + Math.sin(x * 9.1 + z * 7.3 + phase) * wander * h * 0.3, 0.9);
+    const frac = raised.length || canvas ? r(0.3, 0.55) : r(0.45, 0.85), wander = r(0.08, 0.22), phase = r(0, 6.28);
+    const top = Math.min(foot + h * frac, shellTop);
+    S.cut(i, (x, z) => top + Math.sin(x * 9.1 + z * 7.3 + phase) * wander * Math.min(h, top - foot) * 0.3, 0.9);
+  }
+  // the raised floors down first, tipped off what stands toward the blow
+  for (const i of raised) S.drop(S.body([i]), r(-0.25, 0.25), [blow[0] * r(0.3, 0.9), 0, blow[2] * r(0.3, 0.9)], { ceiling, maxTilt: 1.5 });
+  // the shells (a solid body block, a tent's canvas mass) come down after the raised floors: a grounded one stands broken
+  // off at two fifths to a half of its height, its top ragged (what was over it is gone into the heap); a raised one (a
+  // house on stilts, a tent's canvas mass) is laid down whole on its flattest side, off the heap
+  for (const i of idx) {
+    const p = P[i];
+    if (S.isLaid(i) || !isShell(p)) continue;
+    // (grounded: on the ground or on its plinth)
+    const foot = p.c[1] - p.h[1];
+    if (foot <= 0.8) {
+      const top = foot + 2 * p.h[1] * r(0.38, 0.5), phase = r(0, 6.28);
+      S.cut(i, (x, z) => top + Math.sin(x * 2.3 + z * 1.7 + phase) * 0.18, 0.86);
+    } else {
+      // (laid on its flattest side, off the heap down the blow: a raised body or a tent's canvas mass comes to the ground)
+      const b = S.body([i]), out = outward(p.c);
+      S.lie(b, Math.atan2(blow[2], blow[0]) + r(-0.4, 0.4), [blow[0] * r(0.6, 1.4) + out[0] * 0.5, 0, blow[2] * r(0.6, 1.4) + out[2] * 0.5], false, 0, { maxTilt: 0.5, ceiling });
+    }
   }
   // 2. the rest of the uprights and the walls go over about their feet, outward (the blown side down the blow)
   for (const i of idx) {
@@ -163,11 +208,14 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     const d: V3 = struck ? [out[0] * 0.6 + blow[0] * 0.4, 0, out[2] * 0.6 + blow[2] * 0.4] : rng() < 0.6 ? [-out[0], 0, -out[2]] : out;
     if (UPRIGHT.has(p.role) && snapped.has(i)) {
       for (const b of lengths(i, 0x2f6b)) {
-        S.lie(b, Math.atan2(d[2], d[0]) + r(-0.7, 0.7), [d[0] * r(0.2, 1.0), 0, d[2] * r(0.2, 1.0)], false, r(0, Math.PI), { ceiling, maxTilt: 1.0 });
+        S.lie(b, Math.atan2(d[2], d[0]) + r(-0.7, 0.7), [d[0] * r(0.2, 1.0), 0, d[2] * r(0.2, 1.0)], false, r(0, Math.PI), { ceiling, maxTilt: tiltFor(b) });
       }
       continue;
     }
-    S.topple(S.body([i]), d, r(1.25, 1.55), { ceiling, maxTilt: 1.2 });
+    const body = S.body([i]);
+    // a wall standing on the ground swings over about its foot; one up on a storey or a deck is laid down off it
+    if (p.c[1] - tall(p) / 2 > 0.6) S.lie(body, Math.atan2(d[2], d[0]) + Math.PI / 2 + r(-0.3, 0.3), [d[0] * r(0.3, 1.2), 0, d[2] * r(0.3, 1.2)], rng() < 0.5, 0, { ceiling, maxTilt: tiltFor(body) });
+    else S.topple(body, d, r(1.25, 1.55), { ceiling, maxTilt: Math.min(0.7, tiltFor(body)) });
   }
   // 3. the roof together: its panels dropped on the heap a little down the blow, its rafters and purlins snapped
   S.together(() => {
@@ -176,11 +224,11 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       const p = P[i];
       if (p.role === 'roof') {
         const b = S.body([i]);
-        S.drop(b, r(-0.35, 0.35), [blow[0] * r(0.2, 0.9), 0, blow[2] * r(0.2, 0.9)], { ceiling, maxTilt: 0.9 });
+        S.drop(b, r(-0.35, 0.35), [blow[0] * r(0.2, 0.9), 0, blow[2] * r(0.2, 0.9)], { ceiling, maxTilt: Math.min(0.6, tiltFor(b)) });
       } else {
         for (const b of lengths(i, 0x45d9)) {
           const ax = b.axes[p.scoreAxis ?? 0];
-          S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.5, 0.5), [blow[0] * r(0, 0.8), 0, blow[2] * r(0, 0.8)], false, r(0, Math.PI), { ceiling, maxTilt: 0.9 });
+          S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.5, 0.5), [blow[0] * r(0, 0.8), 0, blow[2] * r(0, 0.8)], false, r(0, Math.PI), { ceiling, maxTilt: tiltFor(b) });
         }
       }
     }
@@ -192,12 +240,13 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     if (MEMBER.has(p.role) || UPRIGHT.has(p.role) || PANEL.has(p.role)) {
       for (const b of lengths(i, 0x6c8b)) {
         const ax = b.axes[p.scoreAxis ?? 0];
-        S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.6, 0.6), [out[0] * r(0, 0.7), 0, out[2] * r(0, 0.7)], false, r(0, Math.PI), { ceiling, maxTilt: 1.0 });
+        S.lie(b, Math.atan2(ax[2], ax[0]) + r(-0.6, 0.6), [out[0] * r(0, 0.7), 0, out[2] * r(0, 0.7)], false, r(0, Math.PI), { ceiling, maxTilt: tiltFor(b) });
       }
     } else if (p.role === 'fitting' || p.role === 'bag' || p.role === 'chimney') {
-      for (const b of S.scatter(i)) S.lie(b, r(0, Math.PI * 2), [out[0] * r(0.4, 1.6) + r(-0.3, 0.3), 0, out[2] * r(0.4, 1.6) + r(-0.3, 0.3)], rng() < 0.3, r(-0.5, 0.5), { ceiling });
+      for (const b of S.scatter(i)) S.lie(b, r(0, Math.PI * 2), [out[0] * r(0.4, 1.6) + r(-0.3, 0.3), 0, out[2] * r(0.4, 1.6) + r(-0.3, 0.3)], rng() < 0.3, r(-0.5, 0.5), { ceiling, maxTilt: tiltFor(b) });
     } else {
-      S.drop(S.body([i]), r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], { ceiling });
+      const b = S.body([i]);
+      S.drop(b, r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], { ceiling, maxTilt: tiltFor(b) });
     }
   }
   return S.finish();
