@@ -308,6 +308,28 @@ export function structureMassClass(volumeM3: number, role: StructureState['role'
   return 'large';
 }
 
+/**
+ * A slender body (a wall tower, a minaret, a stack: its height over the root of its footprint past 2.5) in a masonry or
+ * concrete town is built of the town's stone and carries its mass in thick walls round a small footprint, where the
+ * volume law prices it by the room it encloses (the coordinator, 2026-10-14: Steinburg's stone Mauerturm, 122 m³, was
+ * classed a timber shed and fell to two 125 mm HE rounds where the Kapelle took four). Such a body is a house, never a
+ * shed, and its points rise by 1.25 a unit of slenderness past 2.5, at most fourfold. Timber, sheet and adobe towns
+ * keep the volume law.
+ */
+const SLENDER_FROM = 2.5;
+const SLENDER_RATE = 1.25;
+const SLENDER_MAX = 4;
+/** Height over the root of the footprint's area (0 for no footprint). */
+export function structureSlenderness(heightM: number, hw: number, hd: number): number {
+  const area = 4 * hw * hd;
+  return area > 0 && heightM > 0 ? heightM / Math.sqrt(area) : 0;
+}
+/** The points factor a slender masonry or concrete body takes over the volume law (1 for every other). */
+export function slenderMasonryFactor(material: StructureMaterial, slenderness: number): number {
+  if (material !== 'masonry' && material !== 'concrete') return 1;
+  return Math.min(SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
+}
+
 /** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
 export function structureHitPoints(volumeM3: number): number {
   return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
@@ -350,10 +372,14 @@ function buildState(id: number, group: Group, wallMaterial: StructureMaterial): 
   if (!group.colliders.length) {
     for (const record of group.obstacles) volume += bandVolume(record);
   }
-  const massClass = structureMassClass(volume, role);
-  const maxHp = structureHitPoints(volume);
+  const slender = structureSlenderness(Number.isFinite(baseY) && Number.isFinite(topY) ? topY - baseY : 0, footprint.hw, footprint.hd);
+  let massClass = structureMassClass(volume, role);
+  // a slender body in a stone town is a tower of the town's stone, not a timber shed
+  if (massClass === 'shed' && slender >= SLENDER_FROM && (wallMaterial === 'masonry' || wallMaterial === 'concrete')) massClass = 'house';
+  const material = structureMaterialFor(massClass, wallMaterial);
+  const maxHp = structureHitPoints(volume) * slenderMasonryFactor(material, slender);
   return {
-    id, role, massClass, material: structureMaterialFor(massClass, wallMaterial),
+    id, role, massClass, material,
     destructible: role !== 'fixed',
     collapsible: role !== 'fixed' && massClass !== 'landmark',
     cx: footprint.cx, cz: footprint.cz, hw: footprint.hw, hd: footprint.hd, yaw: footprint.yaw,
