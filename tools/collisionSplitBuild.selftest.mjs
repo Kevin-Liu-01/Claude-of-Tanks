@@ -5,7 +5,8 @@
 //   - a child that exits 1 after printing every one of its maps' lines (an uncaught error in its summary, say) fails the
 //     run with 2 — the serial run exits 1 there, and the old aggregator, which read any exit 1 as drift, exited 0;
 //   - so does a child that exits 0 without its job-done line, one whose job-done disagrees with its lines, one that
-//     drops a map, a regeneration child that reports no index entry, and one killed by a signal;
+//     drops a map or writes an unreadable protocol line, a regeneration child that reports no index entry, and one killed
+//     by a signal;
 //   - every split says so on stderr; the receipts that must build serially (phoneLayoutIdentity, the drift receipt)
 //     pass --jobs=1 and assert that line's absence.
 import assert from 'node:assert/strict';
@@ -46,7 +47,8 @@ for (const map of share) {
 }
 console.error('stderr of ' + share.join(','));
 if (on('exitBeforeDone')) { console.error('Error: thrown after the last map'); process.exit(1); }
-if (!on('noDone')) {
+if (on('garbledDone')) console.log('job-done {"maps": [');
+else if (!on('noDone')) {
   const told = on('hideDrift') ? [] : on('claimDrift') ? [share[0]] : drifted;
   console.log('job-done ' + JSON.stringify({ maps: share, drifted: told }));
 }
@@ -87,6 +89,7 @@ for (const [name, scenario, reason] of [
   ['exit 0 without its job-done line', { noDone: ['desert'] }, /collision job desert,coastal closed without its job-done line/],
   ['a drift its job-done hides', { drift: ['desert'], hideDrift: ['desert'] }, /reported drift \[\] where its lines show \["desert"\]/],
   ['a drift its lines do not show', { claimDrift: ['desert'] }, /reported drift \["desert"\] where its lines show \[\]/],
+  ['an unreadable job-done line', { garbledDone: ['desert'] }, /collision job desert,coastal wrote an unreadable protocol line/],
   ['a map without its result line', { skip: ['coastal'] }, /no result for coastal/],
   ['killed by a signal', { killSelf: ['desert'] }, /collision job desert,coastal exited SIGKILL/],
 ]) {

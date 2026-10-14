@@ -81,7 +81,7 @@ export async function runCollisionSplitBuild({
         return;
       }
       const entry = /^job-entry ([a-z_]+)(?:@[a-z-]+)? (\{.*\})$/.exec(line);
-      if (entry) { entries.set(entry[1], JSON.parse(entry[2])); return; }
+      if (entry) { try { entries.set(entry[1], JSON.parse(entry[2])); } catch { malformed = line; } return; }
       if (line.startsWith('job-done ')) {
         try { done = JSON.parse(line.slice('job-done '.length)); } catch { malformed = line; }
         if (current) current.done = true;
@@ -101,7 +101,7 @@ export async function runCollisionSplitBuild({
       const reasons = child.stopped ? ['stopped after another job failed'] : [];
       if (!child.stopped) {
         if (code !== 0) reasons.push(`exited ${code ?? signal}`);
-        if (malformed) reasons.push(`wrote an unreadable closing line (${malformed.slice(0, 80)})`);
+        if (malformed) reasons.push(`wrote an unreadable protocol line (${malformed.slice(0, 80)})`);
         else if (!done) reasons.push('closed without its job-done line');
         else if (JSON.stringify(done.maps) !== JSON.stringify(share)) reasons.push(`reported maps ${JSON.stringify(done.maps)}`);
         const missing = share.filter((mapId) => !blocks.get(mapId)?.lines.some((line) => result(mapId, line))
