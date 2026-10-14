@@ -95,7 +95,9 @@ try {
   check(inView(scrolled.banner, scrolled.viewport), `scrolled to the panel's end, the banner stays in view (${JSON.stringify(scrolled.banner)})`);
   await page.screenshot({ path: join(outDir, 'refused-scrolled.png') });
 
-  await page.click('.cot-play [data-action="refresh-page"]');
+  // the menu built here, not the app's own (the Garage holds another .cot-play): a real click on its Refresh button
+  const refresh = await page.evaluateHandle(() => window.__menu.root.querySelector('[data-action="refresh-page"]'));
+  await refresh.asElement().click();
   check(await page.evaluate(() => window.__reloads) === 1, 'Refresh reloads the page');
 
   await page.evaluate(() => window.__menu.showActiveRoom('The match ended while you were joining.', 'match_ended'));
