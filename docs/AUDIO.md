@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 475 sound-effect assets, 806 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 22.7 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 475 sound-effect assets, 838 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.3 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -829,6 +829,15 @@ crew-lines.json ─┐                    crew-voices.json
   silent: the engine now finds that press at its start (the control it
   focused, while the page's user activation is live) and its first interface
   sound waits for its decode, within 900 ms and only once.
+- **2026-10-13, variety round.** 31 of the most frequent impacts, breaks,
+  fires and collisions shipped one or two variants (the ground strikes, glass,
+  crates, containers, sandbags, fences, cars, falling trees, debris, the HE and
+  tank blasts, the wreck's creak, hull knocks). Each now ships two or three: the
+  shipped takes kept by pin (`sfx-picks.json`) and the best new take added
+  (2,073 credits); snow strikes stay at two (every new take sat 9-21 LU under
+  the impact preset). The loudness receipt now covers 26 of them; five keep
+  older variants outside their preset (two ground strikes, the snow, the wire
+  snag's and the metal debris's true peaks) and stay unrecorded as before.
 
 ### Cost
 

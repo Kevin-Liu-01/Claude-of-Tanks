@@ -176,56 +176,56 @@ const impacts = [
   sfx('bullet_dirt', 'impacts', `One-shot of one single bullet impact in dirt: short dull thud and puff. ${NO_MUSIC}.`, 1, { inf: 0.7, variants: 3, takes: 4, proc: 'impact' }),
   sfx('bullet_water', 'impacts', `One-shot of one single bullet hitting water: small sharp splash. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('ground_dirt', 'impacts', `One-shot of a solid tank shell slamming into earth: heavy thump, clods of dirt raining down. ${NO_MUSIC}.`, 2, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('ground_rock', 'impacts', `One-shot of a shell striking rock: sharp crack and stone fragments scattering. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_sand', 'impacts', `One-shot of a shell hitting deep sand: soft heavy whump and a hiss of falling sand. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_snow', 'impacts', `One-shot of a shell hitting deep snow: muffled crunchy thud and snow spray. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_mud', 'impacts', `One-shot of a shell plunging into thick mud: wet heavy splat. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_concrete', 'impacts', `One-shot of a shell hitting a concrete wall: sharp crack and chunks of debris. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_wood', 'impacts', `One-shot of a shell smashing through timber: loud splintering crack. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('ground_metal', 'impacts', `One-shot of a shell hitting a steel shipping container: loud hollow clang and crumpling metal. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('water_big', 'impacts', `One-shot of a tank shell plunging into a lake: big heavy splash, the water column falling back. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('water_small', 'impacts', `One-shot of a small projectile splashing into water. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'impact' }),
+  sfx('ground_rock', 'impacts', `One-shot of a shell striking rock: sharp crack and stone fragments scattering. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('ground_sand', 'impacts', `One-shot of a shell hitting deep sand: soft heavy whump and a hiss of falling sand. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('ground_snow', 'impacts', `One-shot of a shell hitting deep snow: muffled crunchy thud and snow spray. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 6, proc: 'impact' }),
+  sfx('ground_mud', 'impacts', `One-shot of a shell plunging into thick mud: wet heavy splat. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('ground_concrete', 'impacts', `One-shot of a shell hitting a concrete wall: sharp crack and chunks of debris. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('ground_wood', 'impacts', `One-shot of a shell smashing through timber: loud splintering crack. ${NO_MUSIC}.`, 1.6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('ground_metal', 'impacts', `One-shot of a shell hitting a steel shipping container: loud hollow clang and crumpling metal. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('water_big', 'impacts', `One-shot of a tank shell plunging into a lake: big heavy splash, the water column falling back. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 5, proc: 'impact' }),
+  sfx('water_small', 'impacts', `One-shot of a small projectile splashing into water. ${NO_MUSIC}.`, 1, { variants: 3, takes: 5, proc: 'impact' }),
   sfx('expl_he_small', 'impacts', `One-shot of an autocannon high-explosive round exploding on the ground: sharp bang and a small spray of debris. ${NO_MUSIC}.`, 2, { variants: 3, takes: 4, proc: 'impact' }),
   sfx('expl_he_medium', 'impacts', `One-shot of a tank high-explosive shell exploding on the ground nearby: powerful blast, dirt and debris raining down. ${FIELD}, ${NO_MUSIC}.`, 3.5, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('expl_he_large', 'impacts', `One-shot of a heavy artillery-size explosion: enormous blast, deep rumble, heavy debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('expl_far', 'impacts', `One-shot of an explosion far in the distance, about a kilometre: deep muffled boom with a rolling echo. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 2, takes: 3, proc: 'weapon-far' }),
+  sfx('expl_he_large', 'impacts', `One-shot of a heavy artillery-size explosion: enormous blast, deep rumble, heavy debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('expl_far', 'impacts', `One-shot of an explosion far in the distance, about a kilometre: deep muffled boom with a rolling echo. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 5, proc: 'weapon-far' }),
   // Generated recordings are thin below ~80 Hz: these low-passed layers (the 'sub' preset) carry the weight
   // under a blast or a hit on our own hull (2026-10-03, replacing a synthesized falling sine).
   sfx('blast_sub', 'impacts', `Sound effect: the deep sub-bass shock of a large explosion felt through the ground from a hundred metres away: one massive low thump and a short deep rumble rolling away. Only deep bass: no crack, no debris, no crackle, no high frequencies, no echo. ${NO_MUSIC}.`, 2.5, { inf: 0.6, variants: 3, takes: 5, proc: 'sub' }),
   sfx('hull_thud_sub', 'impacts', `Sound effect: a heavy shell slamming into a tank's thick steel armour, heard and felt from inside the crew compartment: one deep, dull, heavy thud through the hull, felt in the chest. Only the low thud: no ringing, no clang, no debris, no high frequencies. ${NO_MUSIC}.`, 1.2, { inf: 0.6, variants: 3, takes: 5, proc: 'sub' }),
-  sfx('debris_dirt', 'impacts', `One-shot of dirt, gravel and small stones raining down onto the ground after an explosion. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
+  sfx('debris_dirt', 'impacts', `One-shot of dirt, gravel and small stones raining down onto the ground after an explosion. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
 ];
 
 // ----------------------------------------------------------- destruction ---
 const destruction = [
-  sfx('tank_explode', 'destruction', `One-shot of an armoured vehicle destroyed by an internal explosion: violent blast, metal tearing, a secondary explosion, debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 2, takes: 3, proc: 'impact' }),
+  sfx('tank_explode', 'destruction', `One-shot of an armoured vehicle destroyed by an internal explosion: violent blast, metal tearing, a secondary explosion, debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('turret_land', 'destruction', `One-shot of a heavy steel tank turret crashing onto the ground: enormous metallic crunch and thud. ${NO_MUSIC}.`, 2, { variants: 4, takes: 8, proc: 'impact' }),
-  sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
+  sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   sfx('cookoff_loop', 'destruction', `Seamless loop of ammunition cooking off inside a burning tank: irregular popping bangs over crackling fire. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('wreck_fire_loop', 'destruction', `Seamless loop of a large vehicle fire: roaring flames, steady crackling and popping. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('fire_small_loop', 'destruction', `Seamless loop of an engine compartment fire: hissing flames and crackling. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('fire_ignite', 'destruction', `One-shot of fuel suddenly igniting: a whoosh into roaring flames. ${NO_MUSIC}.`, 2, { variants: 2, takes: 2, proc: 'impact', punch: false }),
-  sfx('metal_creak', 'destruction', `One-shot of hot steel of a burnt-out tank creaking and ticking as it cools. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('burnout_blast', 'destruction', `One-shot of a muffled internal explosion in a burning tank: deep heavy whump. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 2, proc: 'impact' }),
+  sfx('fire_ignite', 'destruction', `One-shot of fuel suddenly igniting: a whoosh into roaring flames. ${NO_MUSIC}.`, 2, { variants: 3, takes: 5, proc: 'impact', punch: false }),
+  sfx('metal_creak', 'destruction', `One-shot of hot steel of a burnt-out tank creaking and ticking as it cools. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'foley' }),
+  sfx('burnout_blast', 'destruction', `One-shot of a muffled internal explosion in a burning tank: deep heavy whump. ${NO_MUSIC}.`, 3.5, { variants: 2, takes: 4, proc: 'impact' }),
 ];
 
 // ---------------------------------------------------------------- props ---
 const props = [
   sfx('tree_snap', 'props', `One-shot of a tree trunk snapping as a tank pushes it over: loud wood crack and splintering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('tree_fall', 'props', `One-shot of a tree falling and crashing through branches onto the ground. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
-  sfx('fence_wood', 'props', `One-shot of a wooden fence smashed by a heavy vehicle: planks breaking and splintering. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('fence_metal', 'props', `One-shot of a metal fence crushed by a heavy vehicle: rattling, scraping and bending steel. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact' }),
+  sfx('tree_fall', 'props', `One-shot of a tree falling and crashing through branches onto the ground. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
+  sfx('fence_wood', 'props', `One-shot of a wooden fence smashed by a heavy vehicle: planks breaking and splintering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('fence_metal', 'props', `One-shot of a metal fence crushed by a heavy vehicle: rattling, scraping and bending steel. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('wall_brick', 'props', `One-shot of a brick wall collapsing: crumbling bricks and dust. ${NO_MUSIC}.`, 3, { variants: 2, takes: 3, proc: 'impact', punch: false }),
   sfx('building_collapse', 'props', `One-shot of a small building collapsing: heavy crumbling masonry, cracking timber, rubble pouring down. ${NO_MUSIC}.`, 5, { variants: 2, takes: 2, proc: 'impact', punch: false }),
-  sfx('car_crush', 'props', `One-shot of a tank crushing a car: metal crunching and glass shattering. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('glass_shatter', 'props', `One-shot of window glass shattering. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 2, proc: 'impact' }),
-  sfx('container_crush', 'props', `One-shot of a steel shipping container being rammed and dented: hollow booming metal. ${NO_MUSIC}.`, 2, { variants: 1, takes: 2, proc: 'impact' }),
-  sfx('crate_break', 'props', `One-shot of a wooden crate smashed to pieces. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 2, proc: 'impact' }),
+  sfx('car_crush', 'props', `One-shot of a tank crushing a car: metal crunching and glass shattering. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('glass_shatter', 'props', `One-shot of window glass shattering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('container_crush', 'props', `One-shot of a steel shipping container being rammed and dented: hollow booming metal. ${NO_MUSIC}.`, 2, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('crate_break', 'props', `One-shot of a wooden crate smashed to pieces. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('rubble_crunch', 'props', `One-shot of rubble and stones crunching under heavy steel tracks. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact', punch: false }),
-  sfx('hedgehog_clang', 'props', `One-shot of a steel anti-tank obstacle knocked over: heavy clanging steel beams. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
-  sfx('sandbag_thump', 'props', `One-shot of a stack of sandbags pushed over: heavy soft thumps. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
-  sfx('wire_snag', 'props', `One-shot of barbed wire dragged and snapping under a vehicle: metallic twangs and scrapes. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'impact' }),
+  sfx('hedgehog_clang', 'props', `One-shot of a steel anti-tank obstacle knocked over: heavy clanging steel beams. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('sandbag_thump', 'props', `One-shot of a stack of sandbags pushed over: heavy soft thumps. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('wire_snag', 'props', `One-shot of barbed wire dragged and snapping under a vehicle: metallic twangs and scrapes. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
   // The 2.0 revival (2026-10-06): the crushables that were silent or wrong. A telegraph pole snaps, its wires
   // whip, and it lands (the hinge topple lands 0.8 s after the crush); carts, straw, tents, steel posts, clay
   // pots and loose drums each sound of what they are (src/audio/propSounds.ts maps every world kind).
@@ -245,9 +245,9 @@ const props = [
 // ----------------------------------------------------------- collisions ---
 const collisions = [
   sfx('ram_heavy', 'collisions', `One-shot of two heavy tanks colliding: massive steel impact and grinding metal. ${NO_MUSIC}.`, 2, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('ram_light', 'collisions', `One-shot of an armoured vehicle bumping into another: heavy metal thud. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('hit_rock', 'collisions', `One-shot of a tank hull hitting a large boulder: heavy dull thud and a scrape. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'impact' }),
-  sfx('hit_wall', 'collisions', `One-shot of a tank hitting a concrete wall: heavy impact and crumbling. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact' }),
+  sfx('ram_light', 'collisions', `One-shot of an armoured vehicle bumping into another: heavy metal thud. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 5, proc: 'impact' }),
+  sfx('hit_rock', 'collisions', `One-shot of a tank hull hitting a large boulder: heavy dull thud and a scrape. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 5, proc: 'impact' }),
+  sfx('hit_wall', 'collisions', `One-shot of a tank hitting a concrete wall: heavy impact and crumbling. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 5, proc: 'impact' }),
   sfx('scrape_loop', 'collisions', `Seamless loop of heavy steel scraping and grinding along stone. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
 ];
 
