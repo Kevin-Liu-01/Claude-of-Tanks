@@ -23,8 +23,19 @@ export function skylineObjects(build) {
   for (const b of plan.buildings) { const r = Math.min(b.width, b.depth) * 0.5; add({ x: b.x, z: b.z, r, h: 8.5 }, b.x - r, b.z - r, b.x + r, b.z + r); }
   for (const s of plan.settlements) if (!s.near) { const r = s.radiusM * 0.6; add({ x: s.x, z: s.z, r, h: 9, soft: true }, s.x - r, s.z - r, s.x + r, s.z + r); }
   const canopy = spec.region.vegetation.canopyM || 18;
+  // the rows' trees at their spacing along the line (a poplar a narrow column, a willow or an oak a rounder crown)
   for (const row of plan.rows) {
-    for (let i = 0; i < row.xs.length; i++) add({ x: row.xs[i], z: row.zs[i], r: 6, h: canopy * 0.95 }, row.xs[i] - 6, row.zs[i] - 6, row.xs[i] + 6, row.zs[i] + 6);
+    const poplar = row.species === 'poplar', r = poplar ? 3.2 : 5.5, ht = poplar ? canopy * 1.05 : canopy * 0.7;
+    let carry = 0;
+    for (let i = 0; i + 1 < row.xs.length; i++) {
+      const ax = row.xs[i], az = row.zs[i], len = Math.hypot(row.xs[i + 1] - ax, row.zs[i + 1] - az);
+      for (let t = carry; t < len; t += row.spacingM) {
+        const jitter = ((Math.sin((ax + t) * 12.9898 + az * 78.233) * 43758.5453) % 1 + 1) % 1;
+        const x = ax + (row.xs[i + 1] - ax) * (t / len), z = az + (row.zs[i + 1] - az) * (t / len);
+        add({ x, z, r, h: ht * (0.82 + 0.3 * jitter), crown: true }, x - r, z - r, x + r, z + r);
+        carry = t + row.spacingM - len;
+      }
+    }
   }
   // the woods' canopy (and the far country's tree lines): from the field's cover on a lazy 32 m lattice to 16 km
   const cover = { cls: 0, crop: 31, fieldId: 0, woods: 0, hedge: 0, wet: 0, rock: 0, scree: 0, snow: 0, settle: 0, road: 0 };
@@ -46,11 +57,12 @@ export function skylineObjects(build) {
     const list = cells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (list) for (const o of list) {
       const dd = Math.hypot(x - o.x, z - o.z);
-      if (dd <= o.r) h = Math.max(h, field.heightAt(o.x, o.z) + o.h * (o.soft ? 1 - dd / o.r : 1));
+      if (dd <= o.r) h = Math.max(h, field.heightAt(o.x, o.z) + o.h * (o.soft ? 1 - dd / o.r : o.crown ? Math.sqrt(1 - (dd / o.r) ** 2) : 1));
     }
     if (Math.max(Math.abs(x), Math.abs(z)) > 512) {
       const w = woodsAt(x, z);
-      if (w) h = Math.max(h, build.sample(x, z) + canopy);
+      // (a wood's canopy rolls: crowns of different heights, lower at its edge)
+      if (w) h = Math.max(h, build.sample(x, z) + canopy * (0.78 + 0.22 * Math.sin(x * 0.21 + Math.cos(z * 0.17) * 3) * Math.cos(z * 0.19 + x * 0.05)));
       else if (d > 4000 && farTrees > 0) h = Math.max(h, build.sample(x, z) + farTrees * 0.35);
     }
     return h;
