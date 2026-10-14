@@ -247,7 +247,7 @@ function twoFamilyHouse(ctx: RegionalBuildContext): RegionalParts {
       ...windowRhythm('right', 0, L, { w: 1.1, h: 1.35, sill: 0.85, spacing: 2.4, margin: 1.2 }),
     ];
     sink.placed(0, xb, 0, 0, () => {
-      const frame = buildHouse(sink, {
+      buildHouse(sink, {
         w: Wb - 0.12, d: L - 0.12, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.8, wall }],
         roof, roofColour: sheet ? livery : undefined, gableBucket: wall, openings,
         chimneys: doors.map((z) => ({ x: (rng() - 0.5) * 0.6, z: z * 0.8, sx: 0.55, sz: 0.62, above: 0.75, bucket: 'stone' as const, cap: 'slab' as const })),
