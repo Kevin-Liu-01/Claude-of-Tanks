@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { HinterlandShapeArrays } from './outlandGeometry.ts';
 import type { HinterlandAir } from './air.ts';
-import { HINTERLAND_DEPTH_GLSL, HINTERLAND_DEPTH_WRITE_GLSL, HINTERLAND_HAZE_DISTANCES_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_WRITE_DEPTH } from './project.ts';
+import { HINTERLAND_DEPTH_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_REMAP_DEFINE, HINTERLAND_WRITE_DEPTH } from './project.ts';
 import type { HinterlandPyramid } from './pyramid.ts';
 import { HINTERLAND_TREE_STRIDE, type HinterlandWire } from './wire.ts';
 
@@ -35,31 +35,39 @@ function createOutlandMaterial(engine: EngineLike, hazeSigma: number, key: strin
       .replace('#include <common>', `#include <common>
 uniform vec3 uHlCam;
 varying float vHlTrueD;
+varying float vHlDrawnR0;
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}`)
       .replace('#include <begin_vertex>', `
-  float hlTrueD;
-  vec3 transformed = hinterlandProject( position, uHlCam, hlTrueD );
-  vHlTrueD = hlTrueD;`)
+  float hlTrueD, hlR0;
+  vec3 transformed = hinterlandProjectDrawn( position, uHlCam, hlTrueD, hlR0 );
+  vHlTrueD = hlTrueD;
+  vHlDrawnR0 = hlR0;`)
       .replace('#include <color_vertex>', `#include <color_vertex>
   vColor.rgb *= vColor.rgb;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 varying float vHlTrueD;
+varying float vHlDrawnR0;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}
 ${HINTERLAND_DEPTH_GLSL}
 float hlHazeD = 0.0, hlDrawnR = 0.0;
 uniform float uHlAir;
 ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}`)
-      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-${HINTERLAND_DEPTH_WRITE_GLSL}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   {
     // (the land's law: the haze for the distance the written depth no longer covers — project.ts)
-${HINTERLAND_HAZE_DISTANCES_GLSL}
+    hlHazeD = length( vViewPosition ); hlDrawnR = vHlDrawnR0;
+#ifdef HL_REMAP
+    float hlSeg = uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR );
+#else
+    float hlSeg = 0.0;
+#endif
     float hlLost = max( 0.0, vHlTrueD - hlDrawnR );
-    float hlT = exp( -uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR ) - uHlHazeSigma * hlLost );
+    float hlT = exp( -hlSeg - uHlHazeSigma * hlLost );
     if ( hlT < 0.999 ) {
       #ifdef USE_FOG
       gl_FragColor.rgb = mix( hlHazeTarget( fogColor ), gl_FragColor.rgb, hlT );

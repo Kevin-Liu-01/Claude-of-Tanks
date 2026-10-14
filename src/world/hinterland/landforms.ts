@@ -461,7 +461,7 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
       // a bare mountain's steep upper faces: bands of dark rock, a few tens of metres a bed, snow lying on the ledges
       // between them (the coordinator on the first Glacier frames: "rock bands and cliffs ... dark, stratified, with
       // snow on the ledges — right now there are only blotches")
-      if (best.bare && (best.cfg.kind === 'massif' || best.cfg.kind === 'ridge')) {
+      if (best.cfg.kind === 'massif' || best.cfg.kind === 'ridge') {
         const H = Math.abs(best.cfg.heightM) || 1;
         const w = smoothstep(0.16 * H, 0.3 * H, bestA) * smoothstep(36, 44, slopeDeg);
         if (w > 0) {

@@ -696,7 +696,9 @@ export function createHinterlandField(
     geologyAt(x, z, geoSample, s, hh);
     out.rock = geoSample.rock; out.snow = geoSample.snow;
     out.scree = geo.scree * smoothstep(geo.rockSlopeDeg - 18, geo.rockSlopeDeg - 6, s) * (1 - geoSample.rock);
-    if (geoSample.snow > 0.55) { out.cls = HL_COVER.snow; return out; }
+    // (rock and a settlement first; the woods before the snow — a wood stands dark over the snow on its floor, as the
+    // Glacier frames' battlefield spruce do, so a snow-covered place keeps its forests: the coordinator's "continuity of
+    // life")
     if (geoSample.rock > 0.55) { out.cls = HL_COVER.rock; return out; }
     if (out.settle > 0.5) { out.cls = HL_COVER.settlement; return out; }
     // the forest's altitude band (the treeline)
@@ -712,9 +714,12 @@ export function createHinterlandField(
     if (allow < 0.95 && woods > 0) woods *= smoothstep(1 - allow - 0.1, 1 - allow + 0.1, 0.5 + 0.5 * noise2(x / 38 + coz, z / 38 - cox));
     // gaps down the gullies and couloirs (avalanche tracks, screes)
     woods *= 1 - smoothstep(0.35, 0.65, geoSample.gully);
+    // (no wood on the steep: where rock nearly bares, the trees thin out)
+    woods *= 1 - smoothstep(0.3, 0.55, geoSample.rock);
     out.woods = woods;
-    if (out.scree > 0.5) { out.cls = HL_COVER.scree; return out; }
     if (out.woods > 0.5) { out.cls = HL_COVER.woods; return out; }
+    if (geoSample.snow > 0.55) { out.cls = HL_COVER.snow; return out; }
+    if (out.scree > 0.5) { out.cls = HL_COVER.scree; return out; }
     if (geoSample.sand > 0.5) { out.cls = HL_COVER.sand; return out; }
     // the map's own field system carried on past the line (its crops, boundaries and hedges)
     if (landUse && spec.outland.fields > 0) {

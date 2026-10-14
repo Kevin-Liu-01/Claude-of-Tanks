@@ -49,6 +49,12 @@ export function compressPoint(px: number, py: number, pz: number, cx: number, cy
   return d;
 }
 
+/** Past the battlefield square's exit (plus this margin) the Hinterland is drawn at this fraction of its compressed
+ * distance (the remap: geometry along exact directions, so early depth testing stays — a written depth cost 9–15 ms of
+ * GPU timer in the Glacier perf A/B). */
+export const HINTERLAND_DEPTH_MARGIN_M = 60;
+export const HINTERLAND_DEPTH_RATE = 0.2;
+
 /** GLSL: the compression, the curvature and the inverse (the shaders' twin of the functions above). */
 export const HINTERLAND_PROJECT_GLSL = /* glsl */`
 const float HL_FROM = ${HINTERLAND_COMPRESS_FROM_M.toFixed(1)};
@@ -73,15 +79,40 @@ vec3 hinterlandProject( vec3 p, vec3 c, out float trueD ) {
   trueD = d;
   return d > 1e-6 ? c + v * ( hinterlandCompress( d ) / d ) : p;
 }
+// the ray's exit from the battlefield square (|x|, |z| <= 512) along w from c (its length; 0 when it never crosses it)
+float hinterlandSquareExit( vec3 c, vec3 w ) {
+  float len = length( w );
+  vec2 d = w.xz;
+  vec2 inv = vec2( abs( d.x ) > 1e-6 ? 1.0 / d.x : 1e9, abs( d.y ) > 1e-6 ? 1.0 / d.y : 1e9 );
+  vec2 t0 = ( vec2( -512.0 ) - c.xz ) * inv, t1 = ( vec2( 512.0 ) - c.xz ) * inv;
+  vec2 tmin = min( t0, t1 ), tmax = max( t0, t1 );
+  float enter = max( tmin.x, tmin.y ), leave = min( tmax.x, tmax.y );
+  return leave > max( enter, 0.0 ) ? clamp( leave, 0.0, 1.0 ) * len : 0.0;
+}
+// the drawn point: the compression, then (HL_REMAP) past the square's exit and its margin a fifth of the rest — drawn
+// nearer along its exact direction, so the post pass's depth haze leaves a range at 3 km as it left the old ring's shell
+// at 0.5–1 km; drawnR0 the compressed distance before that (the haze makes up the difference)
+vec3 hinterlandProjectDrawn( vec3 p, vec3 c, out float trueD, out float drawnR0 ) {
+  vec2 dh = p.xz - c.xz;
+  p.y -= dot( dh, dh ) / ( 2.0 * HL_EARTH_R );
+  vec3 v = p - c;
+  float d = length( v );
+  trueD = d;
+  if ( d < 1e-6 ) { drawnR0 = d; return p; }
+  float r = hinterlandCompress( d );
+  drawnR0 = r;
+#ifdef HL_REMAP
+  float start = hinterlandSquareExit( c, v * ( r / d ) ) + ${HINTERLAND_DEPTH_MARGIN_M.toFixed(1)};
+  if ( r > start ) r = start + ( r - start ) * ${HINTERLAND_DEPTH_RATE.toFixed(3)};
+#endif
+  return c + v * ( r / d );
+}
 `;
 
 /** The post pass's depth-haze density at the ground and its layer's scale height (post.ts AERIAL_HAZE_DENSITY,
  * hazeLaw.ts HAZE_LAYER_SCALE_M): the Hinterland adds back what its remapped depth takes from that pass. */
 export const HINTERLAND_POST_HAZE_SIGMA = 0.00092;
 export const HINTERLAND_HAZE_LAYER_M = 400;
-/** Past the battlefield square's exit (plus this margin) the Hinterland's written depth runs at this fraction. */
-export const HINTERLAND_DEPTH_MARGIN_M = 60;
-export const HINTERLAND_DEPTH_RATE = 0.2;
 
 /** The haze distance a Hinterland pixel writes as its depth (JS twin of the GLSL below): the ray's own drawn distance up
  * to the battlefield square's exit and a margin, then a fifth of the rest — monotonic along every ray, behind everything
@@ -95,6 +126,9 @@ export function hazeDistance(drawnR: number, exitR: number): number {
 /** Whether the Hinterland writes its remapped depth (the perf A/B's switch: `?hlDepth=0` keeps the drawn depth, and
  * with it the post pass's own haze over the whole drawn distance). Read once on the page; the worker never draws. */
 export const HINTERLAND_WRITE_DEPTH = !(typeof location !== 'undefined' && /[?&]hlDepth=0(?:&|$)/.test(location.search ?? ''));
+
+/** The remap's define for a shader that draws through hinterlandProjectDrawn (the land, the outland). */
+export const HINTERLAND_REMAP_DEFINE = HINTERLAND_WRITE_DEPTH ? '#define HL_REMAP' : '';
 
 /** The fragment's distances for the haze, with or without the remap (`HL_WRITE_DEPTH` defined when it is written). */
 export const HINTERLAND_HAZE_DISTANCES_GLSL = /* glsl */`

@@ -16,7 +16,7 @@
 // adds the extinction of the distance the compression took away (the true distance less the drawn one).
 import * as THREE from 'three';
 import type { HinterlandAir } from './air.ts';
-import { HINTERLAND_DEPTH_GLSL, HINTERLAND_DEPTH_WRITE_GLSL, HINTERLAND_HAZE_DISTANCES_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_WRITE_DEPTH } from './project.ts';
+import { HINTERLAND_DEPTH_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_REMAP_DEFINE, HINTERLAND_WRITE_DEPTH } from './project.ts';
 import { HINTERLAND_LOD_DESKTOP, HINTERLAND_PATCH_QUADS, selectHinterlandNodes, type HinterlandLodOptions } from './lod.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 
@@ -154,7 +154,9 @@ attribute vec4 aHlNode;
 uniform vec3 uHlCam;
 varying vec3 vHlWorld;
 varying float vHlTrueD;
+varying float vHlDrawnR0;
 ${heightGlsl}
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}`)
       .replace('#include <beginnormal_vertex>', `
   // CDLOD: the patch vertex in its node, morphed toward the coarser grid near its range, at its pyramid height
@@ -173,16 +175,19 @@ ${HINTERLAND_PROJECT_GLSL}`)
   vec3 objectTangent = vec3( 1.0, 0.0, 0.0 );
   #endif`)
       .replace('#include <begin_vertex>', `
-  float hlTrueD;
-  vec3 transformed = hinterlandProject( vHlWorld, uHlCam, hlTrueD );
-  vHlTrueD = hlTrueD;`);
+  float hlTrueD, hlR0;
+  vec3 transformed = hinterlandProjectDrawn( vHlWorld, uHlCam, hlTrueD, hlR0 );
+  vHlTrueD = hlTrueD;
+  vHlDrawnR0 = hlR0;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 varying vec3 vHlWorld;
 varying float vHlTrueD;
+varying float vHlDrawnR0;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
 uniform vec3 uHlCam;
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}
 ${HINTERLAND_DEPTH_GLSL}
 float hlHazeD = 0.0, hlDrawnR = 0.0;
@@ -201,14 +206,18 @@ ${surface?.fragmentPars ?? ''}`)
       .replace('#include <roughnessmap_fragment>', surface?.roughness ?? '#include <roughnessmap_fragment>')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 ${surface?.normal ?? ''}`)
-      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-${HINTERLAND_DEPTH_WRITE_GLSL}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   // the haze for the distance the compression took away (the post pass hazes by the drawn depth)
   {
     // the distance the post pass's depth haze does not cover: past the remapped depth it writes (project.ts)
-${HINTERLAND_HAZE_DISTANCES_GLSL}
+    // (drawn nearer by the remap, project.ts: the post pass hazes it to its drawn distance; this adds the rest up to
+    // the compressed distance, at that pass's own density and layer, scaled by the region's air)
+    hlHazeD = length( vViewPosition ); hlDrawnR = vHlDrawnR0;
+#ifdef HL_REMAP
     float hlSeg = uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR );
+#else
+    float hlSeg = 0.0;
+#endif
     float hlLost = max( 0.0, vHlTrueD - hlDrawnR );
     // (the haze thins with height, as the post pass's layer does: a summit 1,500 m over the eye stands in clearer air
     // than the valley floor at its foot — the Glacier frames' peaks washed out under a height-blind haze; the scale

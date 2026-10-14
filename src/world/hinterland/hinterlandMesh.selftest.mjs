@@ -140,15 +140,15 @@ const land = object.getObjectByName('hinterland-land');
     return shader;
   };
   const ls = patched(land.material);
-  for (const [re, what] of [[/hinterlandProject\( vHlWorld/, 'the projection'], [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
-    [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/gl_FragDepth = hinterlandDepthAt/, 'the written depth'], [/#define HL_WRITE_DEPTH/, 'the depth write switched on (no ?hlDepth=0 in Node)'],
+  for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
+    [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
     [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target']]) {
     assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
   }
   const built = object.getObjectByName('hinterland-buildings');
   const bs = patched(built.material);
-  assert.match(bs.fragmentShader, /gl_FragDepth = hinterlandDepthAt/, 'the outland writes the same depth as its land');
-  assert.match(bs.vertexShader, /hinterlandProject\( position/, 'the outland draws through the projection');
+  assert.doesNotMatch(ls.fragmentShader + bs.fragmentShader, /gl_FragDepth/, 'the land and the outland keep early depth (the remap is geometry)');
+  assert.match(bs.vertexShader, /hinterlandProjectDrawn\( position/, 'the outland draws through the same remapped projection');
   // the remap: the drawn distance to the square's exit and a margin, a fifth of the rest; monotonic, never past the drawn
   let prev = 0;
   for (let r = 0; r <= 3300; r += 50) {
