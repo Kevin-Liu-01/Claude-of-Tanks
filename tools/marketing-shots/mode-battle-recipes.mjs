@@ -1708,16 +1708,30 @@ Object.assign(RECIPES, {
         lens = await ctx.eval((pl) => {
           const H = window.__MB.H, p = H.player(), lead = H.sel('columnLead');
           if (!p || !lead) return null;
-          // the seat's own hedge cluster (within 8 m of it) may stand in the foreground: the tank half hidden in it
+          // the seat's own hedge cluster (within 8 m of it) may stand in the foreground: the tank half hidden in it.
+          // r5: a raised lens looks over the woodland's trunks and mid-field shrubs (r3-r4's H.sightClear test failed
+          // every position in Verdant's woods): only terrain and buildings on the line (the world raycast), foliage in
+          // the lens's first 15 m and trunks within 8 m of it count
           const all = H.concealers(), discs = all.filter((c) => Math.hypot(c.x - pl.seat.x, c.z - pl.seat.z) > pl.seat.r + 8);
+          const trees = (H.D().world.getObstacles?.() || []).filter((o) => (o.kind === 'tree' || o.treeIdx != null) && !o.crushed && !o.dead && o.min && o.max)
+            .map((o) => ({ x: (o.min[0] + o.max[0]) / 2, z: (o.min[2] + o.max[2]) / 2 }));
+          const lensClear = (eye, to) => {
+            if (H.raycastBlock(eye, { x: to.x, y: H.groundY(to.x, to.z) + 1.6, z: to.z }, 2) != null) return false;
+            const dx = to.x - eye.x, dz = to.z - eye.z, len = Math.hypot(dx, dz) || 1, ux2 = dx / len, uz2 = dz / len;
+            for (const c of discs) {
+              const wx = c.x - eye.x, wz = c.z - eye.z, along = wx * ux2 + wz * uz2;
+              if (along > 0 && along < 15 && Math.abs(wx * uz2 - wz * ux2) < c.r + 1) return false;
+            }
+            return trees.every((t) => Math.hypot(t.x - eye.x, t.z - eye.z) > 8);
+          };
           const toward = Math.atan2(lead.x - p.state.pos.x, lead.z - p.state.pos.z), ux = Math.sin(toward), uz = Math.cos(toward), px = uz, pz = -ux;
-          for (const back of [10, 13, 8, 16, 20]) {
+          for (const back of [10, 13, 8, 16, 20, 24]) {
             for (const side of [6, -6, 9, -9, 3, -3, 12, -12]) {
-              for (const h of [5, 6.5, 4, 8, 10]) {
+              for (const h of [6, 8, 5, 10, 12]) {
                 const x = p.state.pos.x - ux * back + px * side, z = p.state.pos.z - uz * back + pz * side;
                 if (all.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + 1)) continue;
                 const eye = { x, y: H.groundY(x, z) + h, z };
-                if (!H.sightClear(eye, lead, discs)) continue;
+                if (!lensClear(eye, lead)) continue;
                 const lx = p.state.pos.x + (lead.x - p.state.pos.x) * 0.55, lz = p.state.pos.z + (lead.z - p.state.pos.z) * 0.55;
                 return { kind: 'fixed', pos: [x, eye.y, z], look: [lx, null, lz], lookHeightM: 1.0, fov: 40, smoothS: 0, hud: 'noreticle', back, side, h };
               }
