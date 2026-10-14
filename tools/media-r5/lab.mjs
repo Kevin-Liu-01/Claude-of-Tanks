@@ -231,12 +231,16 @@ try {
   // the boot, three tries on a fresh page 20 s apart (2026-10-08: under a load average of 500 a cold boot's prop archive
   // fetch failed and its frame detached, ending a 13-map survey the moment its lease was taken; another timed out)
   let pageMap = null, pageUsed = false;
-  const openPage = async (map) => {
+  // `reuse` (a film's fresh page, below) reloads the page in place, as cinema.mjs --fresh-page does: closing the page and
+  // booting a new one beside it (2026-10-14, combat review 4) lost the new page's context during its readiness wait
+  const openPage = async (map, reuse = false) => {
     for (let attempt = 1; ; attempt++) {
-      page = await browser.newPage();
-      page.on('pageerror', e => errors.push(String(e)));
-      page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
-      await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
+      if (!reuse || !page) {
+        page = await browser.newPage();
+        page.on('pageerror', e => errors.push(String(e)));
+        page.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
+        await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
+      }
       try {
         await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
         await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
@@ -246,6 +250,7 @@ try {
         if (attempt >= 3 || stopping) throw error;
         console.error(`[lab] boot ${attempt} failed (${String(error?.message ?? error).split('\n')[0]}); a fresh page in 20 s`);
         await page.close().catch(() => {});
+        page = null;
         errors.length = 0;
         await new Promise((r) => setTimeout(r, 20000));
       }
@@ -284,6 +289,8 @@ try {
     if (PER_JOB || (PER_MAP && !holding)) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
     try {
     const t0 = Date.now();
+    // a page a failed fresh load left without its Studio boots again on this map (2026-10-14: review 4's lab ended there)
+    if (!(await page.evaluate(() => !!window.__STUDIO?.active).catch(() => false))) await openPage(map, true);
     await page.evaluate(map => window.__STUDIO.load({ map, actors: [], effects: [], fxTime: 0, timeScale: 0 }), map);
     await ready();
     if (PER_JOB) { lock.release(); holding = false; }
@@ -372,9 +379,13 @@ try {
       if (BUDGET_MS && !holding) { await take(LOCK_WAIT); holding = true; heldSince = Date.now(); }
       try {
         if (FRESH_FILMS && args.film && job.scene.storyboard && (pageUsed || pageMap !== map)) {
-          await page.close().catch(() => {});
-          await openPage(map);
-          await ready();
+          // a reload that loses its page to a navigation during the readiness wait gets one more reload
+          for (let t = 1; ; t++) {
+            try { await openPage(map, true); await ready(); break; } catch (error) {
+              if (t >= 2 || !/context was destroyed|detached|Target closed/i.test(String(error?.message))) throw error;
+              console.error(`[lab] ${job.name}: the fresh page navigated during its readiness wait; once more`);
+            }
+          }
           console.log(`[lab] ${job.name}: a fresh page on ${map}`);
         }
         pageUsed = true;
