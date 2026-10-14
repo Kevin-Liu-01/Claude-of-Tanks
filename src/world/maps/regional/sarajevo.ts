@@ -238,7 +238,8 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   // the street front ('left'): the entrance or the carriage passage, the shops, the casements above
   const openings: Opening[] = [];
   const doorU = (rng() - 0.5) * len * 0.3;
-  const entrance: Opening = passage ? { face: 'left', storey: 0, kind: 'gate', u: doorU, w: 2.6, y0: 0, h: 3.3 }
+  // (E10) the carriage passage's round head, cut: it springs over the leaves (the dialect's gate is h - 0.6 tall)
+  const entrance: Opening = passage ? { face: 'left', storey: 0, kind: 'gate', u: doorU, w: 2.6, y0: 0, h: 3.3, arch: { spring: 3.3 - 0.58 } }
     : { face: 'left', storey: 0, kind: 'door', u: doorU, w: 1.4, y0: 0, h: 2.9 };
   openings.push(entrance);
   for (const side of [-1, 1]) {

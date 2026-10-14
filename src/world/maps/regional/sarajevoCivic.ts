@@ -22,7 +22,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, COPPER, DARK_FRAME, DOOR_LEAVES, IRON, LEAD, TIMBER, ZINC,
-  archHead, choose, clampTo, fillOf, nisan, pediment, shellHole, shellPocks,
+  archGlazing, archHead, choose, clampTo, fillOf, nisan, pediment, shellHole, shellPocks,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -156,22 +156,25 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
     const W = clampTo(f.w - 0.92 * tr, 6, 60), D = clampTo(f.d - 0.92 * tr, 6, 60);
     const sts = [5.0, 4.4, 4.4];
     const door = choose(rng(), DOOR_LEAVES);
-    const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'gate', u: 0, w: 3.0, y0: 0, h: 3.6 }];
+    const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'gate', u: 0, w: 3.0, y0: 0, h: 3.6, arch: {} }];
     for (let i = 0; i < 3; i++) {
       const w = i === 0 ? 1.4 : 1.3, h = i === 0 ? 2.3 : 2.0, sill = i === 0 ? 1.2 : 0.8;
-      for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, i, W, { w, h, sill, spacing: 3.3, margin: 2.0, avoid: face === 'left' && i === 0 ? [[-2.2, 2.2]] : [] })) openings.push(o);
-      for (const face of ['front', 'back'] as const) for (const o of windowRhythm(face, i, D, { w, h, sill, spacing: 3.3, margin: 2.0 })) openings.push(o);
+      // (E10) round-headed windows: the house cuts their heads
+      for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, i, W, { w, h, sill, spacing: 3.3, margin: 2.0, avoid: face === 'left' && i === 0 ? [[-2.2, 2.2]] : [] })) openings.push({ ...o, arch: {} });
+      for (const face of ['front', 'back'] as const) for (const o of windowRhythm(face, i, D, { w, h, sill, spacing: 3.3, margin: 2.0 })) openings.push({ ...o, arch: {} });
     }
     // the fire: most of the upper storeys' windows gutted
     for (const o of openings) if (o.storey > 0 && o.kind === 'window' && look() < 0.55) o.state = 'burnt';
     const dialect: HouseDialect = {
       window: (s, face, o, y0) => {
         windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'two' }, look, 0.04);
+        if (!o.state) archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, STONE_WINDOW.frame);
         archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.18, 6);
       },
       door: (s, face, o, y0) => {
         gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, door, { bucket: 'stone', width: 0.35, out: 0.12 });
-        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2 + 0.15, 'stone', 0.4, 8);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, shade(door, 0.8));
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.4, 9);
       },
     };
     sink.placed(Math.PI / 2, 0, 0, 0, () => {
@@ -356,11 +359,12 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     const door = choose(rng(), DOOR_LEAVES);
     const nl = nz1 - nz0;
     const openings: Opening[] = [];
-    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, nl, { w: 0.85, h: 2.4, sill: 2.0, spacing: 2.6, margin: 1.4 })) openings.push(o);
+    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, nl, { w: 0.85, h: 2.4, sill: 2.0, spacing: 2.6, margin: 1.4 })) openings.push({ ...o, arch: {} });
     const dialect: HouseDialect = {
       window: (s, face, o, y0) => {
         windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...STONE_WINDOW, surround: null, bars: 'two' }, look, 0.08);
-        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.16, 6);
+        if (!o.state) archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, STONE_WINDOW.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.16, 7);
       },
       door: () => {},
     };

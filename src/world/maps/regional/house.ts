@@ -77,6 +77,12 @@ export interface Opening {
   h: number;
   /** war wear: a burnt-out opening (charred void, soot plume up the wall) or one boarded over (wear pass) */
   state?: 'burnt' | 'boarded';
+  /**
+   * a round head (props census E10, lane B 2026-10-14): the opening's head is a semicircle across its width springing
+   * `spring` over its bottom (default its height), cut through the wall with the rest (holedFace) — the dialect's unit
+   * fills the rectangle under it and sarajevoParts archHead rings it
+   */
+  arch?: { spring?: number };
 }
 
 export interface ChimneySpec {
@@ -1064,6 +1070,10 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       const holes = own.map((o) => {
         // a shopfront keeps its stall riser: the glazing starts above it
         const riser = o.kind === 'shopfront' ? 0.55 : 0;
+        if (o.arch) {
+          const spring = b.y0 + o.y0 + (o.arch.spring ?? o.h);
+          return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: b.y0 + o.y0 + riser, y1: spring + o.w / 2, spring };
+        }
         return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: b.y0 + o.y0 + riser, y1: b.y0 + o.y0 + o.h };
       });
       // weathering: rain runs from each sill down the wall below it; a burnt opening's soot climbs the wall over it
@@ -1249,7 +1259,8 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   return frame;
 }
 
-export interface HoleRect { u0: number; u1: number; y0: number; y1: number }
+/** An opening cut in a wall; `spring`: a round head across its width springs there (Opening.arch), y1 its crown. */
+export interface HoleRect { u0: number; u1: number; y0: number; y1: number; spring?: number }
 /** A weathering stain on a face: the wall inside it shaded from `bottom` (at y0) to `top` (at y1). */
 export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom: number; top: number }
 
@@ -1264,7 +1275,7 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   const m = 0.04;
   const kept: number[] = [];
   const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
-    y1: Math.min(h.y1, rect.y1 - m) })).filter((h, k) => {
+    y1: Math.min(h.y1, rect.y1 - m), spring: h.spring })).filter((h, k) => {
     const ok = h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05;
     if (ok) kept.push(k);
     return ok;
@@ -1308,6 +1319,26 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
     for (const [a, b] of cuts) { strip(cur, a); cur = Math.max(cur, b); }
     strip(cur, rect.u1);
   }
+  // (E10) a round-headed opening: the wall back in its head's corners, a fan from each corner over the arc
+  const ARC = 10;
+  const arcOf = (h: (typeof hs)[number]) => {
+    const c = (h.u0 + h.u1) / 2, rr = (h.u1 - h.u0) / 2, sp = Math.min(h.spring!, h.y1 - rr);
+    return { c, rr, sp, at: (t: number): [number, number] => [c + Math.cos(t) * rr, sp + Math.sin(t) * rr] };
+  };
+  for (const h of hs) {
+    if (h.spring === undefined) continue;
+    const a = arcOf(h);
+    for (const side of [-1, 1]) {
+      const corner = P(side < 0 ? h.u0 : h.u1, h.y1);
+      for (let j = 0; j < ARC / 2; j++) {
+        // the quarter arc from the springer (t = 0 or π) to the crown (π/2)
+        const t0 = side > 0 ? (Math.PI / 2) * (j / (ARC / 2)) : Math.PI - (Math.PI / 2) * (j / (ARC / 2));
+        const t1 = side > 0 ? (Math.PI / 2) * ((j + 1) / (ARC / 2)) : Math.PI - (Math.PI / 2) * ((j + 1) / (ARC / 2));
+        const [ua, ya] = a.at(t0), [ub, yb] = a.at(t1);
+        sink.polygon(bucket, side > 0 ? [P(ua, ya), corner, P(ub, yb)] : [P(ua, ya), P(ub, yb), corner]);
+      }
+    }
+  }
   if (reveal <= 0) return;
   const r = -reveal;
   // (facade craft, desktop; wave 150: "windows set flush in the wall, with no reveal depth") the reveals a third darker,
@@ -1315,6 +1346,22 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   const deep = facadeOn() ? 0.68 : 1;
   hs.forEach((h, k) => {
     const dark = (revealShade[kept[k]] ?? 1) * deep;
+    if (h.spring !== undefined) {
+      // (E10) the jambs to the springing line, the intrados round the head, the sill; the room behind the whole shape
+      const a = arcOf(h), back = r - 0.004;
+      sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, a.sp, r), P(h.u0, a.sp), { shade: 0.74 * dark });
+      sink.quad(bucket, P(h.u1, h.y0), P(h.u1, a.sp), P(h.u1, a.sp, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
+      for (let j = 0; j < ARC; j++) {
+        const [ua, ya] = a.at(Math.PI * (j / ARC)), [ub, yb] = a.at(Math.PI * ((j + 1) / ARC));
+        sink.quad(bucket, P(ua, ya), P(ub, yb), P(ub, yb, r), P(ua, ya, r), { shade: 0.68 * dark });
+      }
+      sink.quad(bucket, P(h.u0, h.y0), P(h.u1, h.y0), P(h.u1, h.y0, r), P(h.u0, h.y0, r), { shade: 0.9 * dark });
+      sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, a.sp, back), P(h.u0, a.sp, back), { decor: true });
+      const fan: Vec3[] = [P(a.c, a.sp, back)];
+      for (let j = 0; j <= ARC; j++) { const [uu, yy] = a.at(Math.PI * (j / ARC)); fan.push(P(uu, yy, back)); }
+      sink.polygon('dark', fan, { decor: true });
+      return;
+    }
     // left jamb faces +u, right jamb -u, the head down, the sill up
     sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, h.y1, r), P(h.u0, h.y1), { shade: 0.74 * dark });
     sink.quad(bucket, P(h.u1, h.y0), P(h.u1, h.y1), P(h.u1, h.y1, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
