@@ -584,6 +584,8 @@ export function installTakramClouds(layer: VolumetricCloudLayer, renderer: THREE
         u.uSkyIntensity.value = this.atmosphere.skyIntensity;
         (u.uSunDir.value as THREE.Vector3).copy(this.atmosphere.sunDir).normalize();
         (u.uFlash.value as THREE.Vector4).set(0, 0, 0, 0);
+        // (2026-10-14, the SKY lane: the composite dome stands on the camera, as the base layer's does)
+        camera.getWorldPosition(this.dome.position);
         const inside = camera.position.y > preset.baseM ? 1 : 0;
         u.uInside.value = inside;
         if (this.domeMaterial.depthTest === !!inside) this.domeMaterial.depthTest = !inside;
