@@ -12,6 +12,7 @@ import { packHinterlandPlan, type HinterlandGroundedTree, type HinterlandWire } 
 import { bakeHinterlandSurface, plantHinterlandWoods, raiseHinterlandCanopy } from './surface.ts';
 import { buildHinterlandOutlandGeometry, HINTERLAND_NEAR_TREE_M } from './outlandGeometry.ts';
 import { samplePyramid } from './pyramid.ts';
+import { sightlineBlocker } from './outland.ts';
 
 export interface HinterlandRequest {
   mapId: string;
@@ -41,13 +42,9 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
   const groundAt = (x: number, z: number): number => samplePyramid(build.pyramid, x, z);
   const trees: HinterlandGroundedTree[] = build.plan.trees.map((t) => ({ ...t, y: groundAt(t.x, t.z) }));
   if (request.tier !== 'mobile') {
-    // (the woods keep the sightlines' long views open too, as the plan's rows do: outland.ts)
-    const sightlines = build.plan.settlements.filter((s) => s.towerM).map((s) => ({ az: Math.atan2(s.x, s.z), d: Math.hypot(s.x, s.z) }));
-    const open = (t: { x: number; z: number }): boolean => sightlines.every((v) => {
-      let da = Math.abs(Math.atan2(t.x, t.z) - v.az);
-      if (da > Math.PI) da = 2 * Math.PI - da;
-      return !(da < 0.0785 && Math.hypot(t.x, t.z) < v.d - 60);
-    });
+    // (the woods keep the sightlines' long views open too, as the plan's rows do: outland.ts sightlineBlocker)
+    const blocks = sightlineBlocker(build.plan.settlements, groundAt);
+    const open = (t: { x: number; z: number; heightM: number; crownM: number }): boolean => !blocks || !blocks(t);
     trees.push(...plantHinterlandWoods(build.field, build.pyramid.levels, woods, groundAt, { withinM: HINTERLAND_NEAR_TREE_M }).filter(open));
   }
   // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes; under

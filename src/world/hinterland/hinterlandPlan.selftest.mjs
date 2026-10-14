@@ -75,16 +75,27 @@ for (const az of [0, 45, 90, 135, 180, 225, 270, 315]) {
   assert.ok(hit, `a village with its tower on the ${az}° sightline`);
   assert.ok(plan.verticals.some((v) => v.settlement === hit.id), `its tower stands (${hit.name ?? hit.id})`);
 }
-// and the rows open on the sightlines: no planned tree stands between the battlefield and a sightline village's tower
-for (const s of plan.settlements.filter((s) => s.towerM)) {
-  const az = Math.atan2(s.x, s.z), d = Math.hypot(s.x, s.z);
-  const blocking = plan.trees.filter((t) => {
-    let da = Math.abs(Math.atan2(t.x, t.z) - az);
-    if (da > Math.PI) da = 2 * Math.PI - da;
-    return da < 0.07 && Math.hypot(t.x, t.z) < d - 80;
-  });
-  assert.equal(blocking.length, 0, `the view to ${s.name ?? s.id} is open`);
+// and the rows open on the sightlines, only where a crown would hide a tower: no planned tree covers a sightline tower
+// from the edge's eyes, and the gaps stay narrow (most trees on the bearing's ±4.5° corridor still stand)
+{
+  const { sightlineBlocker } = await import('./outland.ts');
+  const blocks = sightlineBlocker(plan.settlements, (x, z) => field.heightAt(x, z));
+  assert.ok(blocks, 'the sightline villages are known');
+  // (the planner tests on its 40 m planning heights, this on the field's own: a borderline crown or two may differ)
+  const hiding = plan.trees.filter((t) => blocks(t)).length;
+  assert.ok(hiding <= 3, `no planned tree hides a sightline tower (${hiding} borderline)`);
+  let corridor = 0;
+  for (const s of plan.settlements.filter((s) => s.towerM)) {
+    const az = Math.atan2(s.x, s.z), d = Math.hypot(s.x, s.z);
+    corridor += plan.trees.filter((t) => {
+      let da = Math.abs(Math.atan2(t.x, t.z) - az);
+      if (da > Math.PI) da = 2 * Math.PI - da;
+      return da < 0.0785 && Math.hypot(t.x, t.z) < d - 60;
+    }).length;
+  }
+  assert.ok(corridor > 0, `the gaps are cut tree by tree, not as radial lanes (${corridor} trees still stand in the corridors)`);
 }
+
 for (const s of plan.settlements.filter((s) => s.kind === 'village')) {
   assert.ok(plan.verticals.some((v) => v.settlement === s.id && v.kind === 'churchTower'), `village ${s.id} raises its church tower`);
 }
