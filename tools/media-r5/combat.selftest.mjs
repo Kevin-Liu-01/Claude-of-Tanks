@@ -158,10 +158,12 @@ for (const shot of COMBAT) {
 // tank's own knockout never covers it
 {
   const view = { proj: ([x, y, z]) => (z > 0.5 ? [x / z, y / z, z] : null), tx: 1, ty: 1 };
-  const tank = [{ name: 'foe0', box: [-0.1, -0.05, 0.1, 0.05], depth: 20 }];
+  // a tank a fifth of the frame's height and one a twentieth (small: fire behind it counts too)
+  const tank = [{ name: 'foe0', box: [-0.3, -0.2, 0.3, 0.2], depth: 20 }], small = [{ name: 'foe1', box: [-0.1, -0.05, 0.1, 0.05], depth: 20 }];
   const burst = (z, actor = null) => fxBodies([{ kind: 'large burst', actor, tMs: 0, x: 0, z, R: 3.5, life: 'burst', toMs: 2800 }], 400, () => -2.45);
   assert.ok(fxCoverAt(burst(10), tank, view).cover.foe0.share >= 0.25, 'a burst nearer the lens covers the tank');
   assert.equal(fxCoverAt(burst(30), tank, view).cover.foe0.share, 0, 'a burst behind the tank covers nothing of it');
+  assert.ok(fxCoverAt(burst(30), small, view).cover.foe1.share >= 0.25, 'a burst behind a small tank swallows it');
   assert.equal(fxCoverAt(burst(10, 'foe0'), tank, view).cover.foe0.share, 0, "a tank's own knockout never covers it");
   assert.equal(fxCoverAt(burst(10), tank, view).bursts, 1, 'the burst in its fireball counts once');
 }

@@ -13,6 +13,8 @@ const BURST_R = { small: 1.8, medium: 2.5, large: 3.5, huge: 7, mixed: 2.2 };
 
 // a burst: the fireball grows to R over 300 ms and holds to 900 ms; its smoke, 1.25 R, rises 1.5 m/s to 2.8 s
 const FIREBALL_MS = 900, SMOKE_MS = 2800, GROW_MS = 300;
+// a tank under a sixth of the frame's height (its box, in the frame's -1..1 units)
+const SMALL_TANK = 2 / 6;
 /** Every effect with a body: { kind, actor, tMs, x, z, R, life: 'burst' | 'impact' | 'column', toMs, H? }. */
 export function fxItems(scene) {
   const pose = {}, dur = scene.storyboard?.durationMs ?? 0, items = [];
@@ -110,7 +112,10 @@ export function fxCoverAt(bodies, tanks, view) {
   const cover = {};
   for (const t of tanks) {
     if (!t.box) { cover[t.name] = { share: 0, by: null }; continue; }
-    const front = shapes.filter((s) => s.depth < t.depth - 1 && s.b.item.actor !== t.name);
+    // a small tank (under a sixth of the frame's height) is lost against fire behind it as well (review 3's aftermath,
+    // 2026-10-14: the barrage behind the far Challenger, AbramsX and Strv 122 swallowed them), so any body over it counts
+    const small = t.box[3] - t.box[1] < SMALL_TANK;
+    const front = shapes.filter((s) => (small || s.depth < t.depth - 1) && s.b.item.actor !== t.name);
     let hit = 0, n = 0;
     const by = new Map();
     for (let i = 0; i < 9; i++) for (let j = 0; j < 6; j++) {

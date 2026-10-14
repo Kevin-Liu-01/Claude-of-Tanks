@@ -957,7 +957,9 @@ export function combatTake(row, over = {}) {
   // A lens on the foes' side (over their shoulder) has the line behind it, so its barrage falls behind the hero instead,
   // framing it (s228's telephoto previz, 2026-10-13: the bursts filled half the frame from between the lens and the foes)
   const foesSide = /^(reverse|reverseLow|reverseTele|overwatch)$/.test(lensName);
-  const guns = [barrage(race ? H(k * (D + 26), 8) : foesSide ? H(lat * 0.5, -24) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, format === '1v1' ? 4 : 5, 10)];
+  // (2026-10-14, the owner: "make sure tanks are still visible and its not just a ton of explosions": three small shells,
+  // where four or five mixed ones filled half of s233's frame with fire at its end)
+  const guns = [barrage(race ? H(k * (D + 26), 8) : foesSide ? H(lat * 0.5, -24) : H(lat, D + 26), format === '2v2' ? 1500 : format === '1v2' ? 1200 : 3000, 3, 10, { size: 'small' })];
   return [n, id, kind, title, { ...set, formation: lineup.length > 1 ? 'pair' : 'solo', count: lineup.length, lineup, enemies },
     { time, speed, sun: 'side', combat: format, lens: lensName, aim: fight.aim, effects: [...flare, ...guns, ...fight.effects], cam,
       ...(race ? { routes } : {}), ...MOTION_RAIL },
@@ -1105,7 +1107,8 @@ function fitCombatBursts(scene, world) {
         if (!c) continue;
         const ex = r / (c.depth * f.l.tx), ey = r / (c.depth * f.l.ty);
         for (const tk of f.tanks) {
-          if (c.depth >= tk.depth - 1 || body.item.actor === tk.name) continue;
+          // (fx-cover.mjs's rule: a tank under a sixth of the frame's height counts fire behind it too)
+          if ((tk.box[3] - tk.box[1] >= 2 / 6 && c.depth >= tk.depth - 1) || body.item.actor === tk.name) continue;
           let n = 0;
           for (let i = 0; i < 9; i++) for (let j = 0; j < 6; j++) {
             const px = tk.box[0] + (tk.box[2] - tk.box[0]) * (i + 0.5) / 9, py = tk.box[1] + (tk.box[3] - tk.box[1]) * (j + 0.5) / 6;
@@ -1168,7 +1171,7 @@ function fitCombatBursts(scene, world) {
       const l = frames.get(Math.round(e.tMs / 100) * 100)?.l;
       if (l) {
         const vx = from[0] - l.cam.x, vz = from[1] - l.cam.z, dl = Math.hypot(vx, vz) || 1;
-        for (let m = 6; m <= 36 && !spot; m += 6) for (const deg of [0, 10, -10, 20, -20]) {
+        for (let m = 6; m <= 36 && !spot; m += 6) for (const deg of [0, 10, -10, 20, -20, 30, -30, 40, -40]) {
           const d = deg * Math.PI / 180, c = Math.cos(d), s = Math.sin(d), k = (dl + m) / dl;
           const px = +(l.cam.x + (vx * c + vz * s) * k).toFixed(2), pz = +(l.cam.z + (-vx * s + vz * c) * k).toFixed(2);
           world.query(px - 2, pz - 2, px + 2, pz + 2, near);
