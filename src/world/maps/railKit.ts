@@ -68,8 +68,8 @@ function memberGeo(a: P3, b: P3, t: number, d = t): THREE.BufferGeometry {
   const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
   const len = dir.length();
   const g = box(t, d, Math.max(0.01, len), 1.0);
-  if (Math.abs(dir.y) > len * 0.999) g.rotateX(Math.PI / 2);
-  else g.lookAt(dir);
+  // (its length along z turned onto the member's direction: a near-vertical stile keeps its rake)
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize()));
   g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   return dressing(g);
 }
@@ -528,12 +528,12 @@ export function makeGantry(
     mk(boxAt(0.1, 0.12, 4.6, lx, 0.47 + 0.06, 0));
   }
   for (let x = -span / 2 + 0.6; x < span / 2 + 2.9; x += 1.4) for (const sz of [-1, 1]) mk(boxAt(0.06, girderH - 0.1, 0.06, x, legH + girderH / 2, sz * 0.78));
-  const wx0 = -span / 2 - 0.2, wx1 = span / 2 + 2.8, wz0 = 0.78, wz1 = 1.5;
+  const wx0 = -span / 2 - 0.2, wx1 = span / 2 + 2.8, wz0 = 0.74, wz1 = 1.5;
   mk(boxAt(wx1 - wx0, 0.05, wz1 - wz0, (wx0 + wx1) / 2, legH + girderH - 0.05, (wz0 + wz1) / 2));
   mk(boxAt(wx1 - wx0, 0.1, 0.02, (wx0 + wx1) / 2, legH + girderH + 0.05, wz1 - 0.01));
   for (let x = wx0 + 0.05; x <= wx1; x += 1.5) mk(boxAt(0.05, 1.0, 0.05, x, legH + girderH + 0.5, wz1 - 0.03));
   for (const h of [0.5, 1.0]) mk(boxAt(wx1 - wx0, 0.04, 0.04, (wx0 + wx1) / 2, legH + girderH + h, wz1 - 0.03));
-  for (const g of ladderGeos(-span / 2 - 0.3, -1.7, 0.6, legH + girderH, 'z', 0.42)) mk(g);
+  for (const g of ladderGeos(-span / 2 - 0.235, -1.7, 0.47, legH + 0.2, 'z', 0.42)) mk(g);
   if (buckets.glass) for (const sx of [-1, 1]) buckets.glass.push(boxAt(0.06, 0.7, 1.2, -span / 2 + 1.4 + sx * 0.81, legH - 0.65, 1.3));
   mk(boxAt(1.9, 0.08, 1.9, -span / 2 + 1.4, legH - 0.12, 1.3));
   mk(boxAt(0.05, drop, 0.05, tx + 0.3, legH - drop / 2, 0));
@@ -603,9 +603,9 @@ export function makeWaterTower(
     g.translate(0, y, 0);
     return dressing(g);
   };
-  for (const yy of [legH + 0.08, legH + tankH * 0.36, legH + tankH * 0.68, legH + tankH - 0.06]) buckets.dark.push(ring(tankR + 0.03, 0.08, yy));
+  for (const yy of [legH + 0.08, legH + tankH * 0.36, legH + tankH * 0.68, legH + tankH - 0.06]) buckets.dark.push(ring(tankR + 0.012, 0.08, yy));
   buckets.dark.push(ring(tankR + 0.05, 0.3, legH - 0.12, false));
-  const deck = new THREE.RingGeometry(tankR + 0.05, tankR + 0.75, 16, 1);
+  const deck = new THREE.RingGeometry(tankR - 0.05, tankR + 0.75, 16, 1);
   deck.rotateX(-Math.PI / 2);
   deck.translate(0, legH + 0.02, 0);
   buckets.dark.push(dressing(deck));
@@ -614,9 +614,10 @@ export function makeWaterTower(
     buckets.dark.push(boxAt(0.04, 1.0, 0.04, Math.cos(a) * (tankR + 0.72), legH + 0.52, Math.sin(a) * (tankR + 0.72)));
   }
   for (const h of [0.5, 1.0]) buckets.dark.push(ring(tankR + 0.72, 0.04, legH + h + 0.02, true, 16));
-  for (const g of ladderGeos(legAt(1, 0) + 0.25, 0, 0.4, legH, 'z', 0.42)) buckets.dark.push(g);
-  for (const g of ladderGeos(tankR + 0.12, 0, legH + 0.05, legH + tankH + 0.2, 'z', 0.4)) buckets.dark.push(g);
-  buckets.dark.push(boxAt(0.6, 0.12, 0.6, tankR * 0.55, legH + tankH + 0.62, 0));
+  for (const g of ladderGeos(legAt(1, 0) + 0.25, 0, 0, legH + 0.05, 'z', 0.42)) buckets.dark.push(g);
+  for (const g of ladderGeos(tankR + 0.12, 0, legH, legH + tankH + 0.2, 'z', 0.4)) buckets.dark.push(g);
+  for (let y = legH + 0.8; y < legH + tankH; y += 1.2) buckets.dark.push(boxAt(0.17, 0.04, 0.5, tankR + 0.05, y, 0));
+  buckets.dark.push(boxAt(0.6, 0.12, 0.6, tankR * 0.55, legH + tankH + 0.58, 0));
   const ball = new THREE.SphereGeometry(0.16, 8, 6);
   ball.translate(0, legH + tankH + 1.2, 0);
   buckets.dark.push(dressing(ball));
@@ -625,7 +626,7 @@ export function makeWaterTower(
   buckets.dark.push(memberGeo([-tankR + 0.1, sy, 0], [-tankR - 1.3, sy - 0.4, 0], 0.32));
   buckets.dark.push(memberGeo([-tankR - 1.3, sy - 0.4, 0], [-tankR - 1.45, sy - 1.2, 0], 0.28));
   buckets.dark.push(memberGeo([-tankR + 0.2, sy + 2.0, 0], [-tankR - 1.25, sy - 0.25, 0], 0.03));
-  buckets.dark.push(boxAt(0.3, 0.5, 0.3, -tankR + 0.6, sy - 0.9, 0));
+  buckets.dark.push(boxAt(0.3, 0.5, 0.3, -tankR + 0.6, legH - 0.25, 0));
   return { w: 5.4, d: 5.4, h: legH + tankH + 1.2 };
 }
 
@@ -656,7 +657,7 @@ export function makeStack(
   buckets.stone.push(jitterUV(stack, rng));
   const rAt = (y: number): number => 1.15 + (0.72 - 1.15) * Math.max(0, Math.min(1, (y - 1.4) / stackH));
   for (let y = 3.0; y < 1.4 + stackH - 1.0; y += 2.5) {
-    const band = new THREE.CylinderGeometry(rAt(y + 0.05) + 0.03, rAt(y - 0.05) + 0.03, 0.1, 10, 1, true);
+    const band = new THREE.CylinderGeometry(rAt(y + 0.05) + 0.012, rAt(y - 0.05) + 0.012, 0.1, 10, 1, true);
     band.translate(0, y, 0);
     buckets.dark.push(dressing(band));
   }
@@ -672,8 +673,9 @@ export function makeStack(
   // the ladder up the +x side on stand-offs, the conductor down the -x side
   for (const dz of [-0.2, 0.2]) buckets.dark.push(memberGeo([rAt(1.6) + 0.16, 1.6, dz], [rAt(top) + 0.16, top + 0.3, dz], 0.04));
   for (let y = 1.9; y < top; y += 0.35) buckets.dark.push(boxAt(0.03, 0.03, 0.4, rAt(y) + 0.16, y, 0));
-  for (let y = 2.5; y < top; y += 2.5) buckets.dark.push(boxAt(0.2, 0.04, 0.5, rAt(y) + 0.08, y, 0));
-  buckets.dark.push(memberGeo([-(rAt(1.6) + 0.05), 1.6, 0], [-(rAt(top) + 0.05), top + 1.6, 0], 0.025));
+  for (let y = 2.5; y < top; y += 2.5) buckets.dark.push(boxAt(0.26, 0.04, 0.5, rAt(y) + 0.05, y, 0));
+  buckets.dark.push(memberGeo([-(rAt(1.6) * 0.95 + 0.015), 1.6, 0], [-(rAt(top) * 0.95 + 0.015), top, 0], 0.025));
+  buckets.dark.push(memberGeo([-(rAt(top) * 0.95 + 0.015), top, 0], [-(rAt(top) * 1.1), top + 1.6, 0], 0.025));
   return { w: 3.4, d: 3.4, h: stackH + 2.6 };
 }
 
