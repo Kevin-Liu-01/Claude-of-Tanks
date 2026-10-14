@@ -110,6 +110,8 @@ import {
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { PROP_FRACTURE, fractureProp, fractureSeed } from './maps/propFracture.ts';
+import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
@@ -715,6 +717,8 @@ interface PropsDestructibleMeta extends Omit<DestructiblePropType, 'cls' | 'mat'
   mat: string;
   airDrag?: number;
   instanceTintStrength?: number;
+  /** (E1) the kind's broken builder is its own (structureKit lightMeta's brokenBuild): never replaced by a fracture */
+  ownBroken?: boolean;
 }
 
 interface PropsCollisionRecord extends CollisionRecord {
@@ -4348,6 +4352,8 @@ ${snowCap ? `
       return [key, variant];
     })),
   };
+  /** (E1) the kinds whose broken builder is their own on this map: its structure variants and the pillbox of its make */
+  const ownBroken = new Set<string>([...Object.keys(P.structureVariants ?? {}), ...(fort ? ['bunker'] : [])]);
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
     const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
@@ -10775,8 +10781,18 @@ ${snowCap ? `
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
       // the destructible stream and every later pool builds from the stream it always did
       const legacyB = meta.broken(drng);
-      const fracture = PROP_FRACTURE[kind];
-      const geoB = fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
+      // (E1, the props census, 2026-10-14) a kind whose intact build names its pieces (userData.fracture, a
+      // KitFractureAnatomy that checks against the build) breaks into the settled heap of those pieces (lightWreck.ts),
+      // not PROP_FRACTURE's flat raft; a kind that keeps its own broken builder (a map's structure variant: the ksar
+      // gate, the Wadi Rum posts, the Bedouin tents; the pillbox; lightMeta's brokenBuild) keeps it — PROP_FRACTURE is
+      // keyed by the base pool's kind and used to discard those
+      const own = ownBroken.has(kind) || meta.ownBroken === true;
+      const anatomy = own ? null : geoI.userData.fracture as KitFractureAnatomy | undefined;
+      const settled = !!anatomy && Array.isArray(anatomy.pieces)
+        && checkKitFracture(anatomy, (geoI.index ? geoI.toNonIndexed() : geoI).getAttribute('position').array).length === 0;
+      const fracture = own ? undefined : PROP_FRACTURE[kind];
+      const geoB = settled ? settleLightWreck(geoI, anatomy!, fractureSeed(seed, kind))
+        : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
       if (geoB !== legacyB) legacyB.dispose();
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
       imB.count = 0;
