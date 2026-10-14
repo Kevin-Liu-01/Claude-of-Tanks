@@ -2090,7 +2090,28 @@ function* createFxSteps(
   }
 
   const _pulseV = new THREE.Vector3();
+  // (EF.03 cost, 10-13: a 24-rocket salvo's bursts cost +1.4 ms presented at its peak, its media bodies +21-43 %) the
+  // salvo governor, deterministic (the coordinator: "decide by burst count per cell per second, never by frame time"):
+  // the ground is cut into 25 m cells; the bursts of the last second are kept in a ring (time on the fx clock, cell), and
+  // a burst landing in a cell that already took two or more in that second pools its cloud (blastRecipes.groundBurst
+  // reads the crowding through C.crowd: from the third burst on, fully pooled by the eighth)
+  const CROWD_SLOTS = 48, CROWD_S = 1.0, CROWD_CELL_M = 25;
+  const crowdT = new Float64Array(CROWD_SLOTS).fill(-1e9), crowdCell = new Int32Array(CROWD_SLOTS);
+  let crowdNext = 0;
+  function burstCrowd(x: number, z: number): number {
+    const now = particles.getTime();
+    const cell = (Math.floor(x / CROWD_CELL_M) & 0xffff) * 65536 + (Math.floor(z / CROWD_CELL_M) & 0xffff);
+    let n = 0;
+    for (let i = 0; i < CROWD_SLOTS; i++) {
+      const age = now - crowdT[i];
+      if (age >= 0 && age <= CROWD_S && crowdCell[i] === cell) n++;
+    }
+    crowdT[crowdNext] = now; crowdCell[crowdNext] = cell;
+    crowdNext = (crowdNext + 1) % CROWD_SLOTS;
+    return Math.min(1, Math.max(0, (n - 1) / 6));
+  }
   const blast: BlastContext | null = vol && chunks ? {
+    crowd: (x: number, z: number) => burstCrowd(x, z),
     rand: () => rng(),
     groundY: (x: number, z: number) => groundY(x, z),
     // a billow body born low over the ground softens its silhouette further (volumeMedia's `low`)
