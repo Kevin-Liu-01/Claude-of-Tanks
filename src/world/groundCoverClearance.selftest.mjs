@@ -135,18 +135,24 @@ const material = new MeshBasicMaterial({ side: DoubleSide });
 const mesh = new Mesh(guardGeometry, material);
 mesh.updateMatrixWorld(true);
 const caster = new Raycaster(new Vector3(), new Vector3(0, 1, 0));
+// (the looks lane's craft, 2026-10-14: the guard post's floor is framed — joists under the deck, their undersides at
+// 1.39 m, the deck's at 1.53 m between them — so the cabin's underside is measured, not pinned at the old box's 1.2 m)
+let underside = Infinity;
 for (const x of [-0.7, 0, 0.7]) for (const z of [-0.7, 0, 0.7]) {
   caster.ray.origin.set(x, 0, z);
   const first = caster.intersectObject(mesh)[0];
-  assert.ok(first && Math.abs(first.point.y - 1.2) < 1e-6,
+  assert.ok(first && first.point.y >= 1.2 - 1e-6,
     'actual generated cabin underside is above the entire short-tuft test footprint');
+  underside = Math.min(underside, first.point.y);
 }
+// a tuft that reaches a quarter metre past the cabin's lowest underside (the old box's 1.4 m over its 1.2 m)
+const tallTuft = underside + 0.23;
 assert.equal(attachGroundCoverSolidProfile(guard.record, detail, guard.actualMatrix.elements), true);
 assert.equal(guard.blocked(0, -0.03, 0, 0.7, 0.7), false, 'short grass survives beneath actual raised cabin');
 for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) {
   assert.equal(guard.blocked(x, -0.03, z, 0.7, 0.1), true, 'actual support post remains clear');
 }
-assert.equal(guard.blocked(0, -0.03, 0, 1.4, 0.3), true, 'taller tuft intersects cabin');
+assert.equal(guard.blocked(0, -0.03, 0, tallTuft, 0.3), true, 'taller tuft intersects cabin');
 assert.equal(guard.blocked(1.02, -0.03, 1.02, 0.7, 0.16), true, 'full card width clears post edge');
 assert.equal(guard.blocked(0, 4.2, 0, 0.7, 0.3), false, 'above all actual solids');
 assert.equal(JSON.stringify(guard.record), authoritativeBefore, 'cosmetic attachment adds no serialized record data');
@@ -163,7 +169,7 @@ for (const [yaw, instanceScale, translation] of [
   assert.equal(attachGroundCoverSolidProfile(instance.record, detail, instance.actualMatrix.elements), true);
   const worldPoint = new Vector3();
   for (const [x, z, tuftHeight, tuftRadius, expected] of [
-    [0, 0, 0.7, 0.7, false], [-1.2, 1.2, 0.7, 0.1, true], [0, 0, 1.4, 0.3, true],
+    [0, 0, 0.7, 0.7, false], [-1.2, 1.2, 0.7, 0.1, true], [0, 0, tallTuft, 0.3, true],
   ]) {
     worldPoint.set(x, -0.03, z).applyMatrix4(instance.actualMatrix);
     assert.equal(instance.blocked(worldPoint.x, worldPoint.y, worldPoint.z,
