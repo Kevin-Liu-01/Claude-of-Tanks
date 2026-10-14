@@ -2,9 +2,10 @@
 // on at once. The room used to wait out the socket lease for a vanished host (the e2e of 2026-10-13: 10 s to
 // `host_absent`, 13.75 s from the close to the new host's first report). On pagehide the hosting seat now sends
 // `host_decline` (unable) inside the event, synchronously, and the room elects the next seat at once (its 'declined'
-// path, roomActor.selftest). This receipt drives the real MatchSession hosting through the in-process host against a
-// scripted room socket: the decline leaves before anything is awaited, once; leaving afterwards does not decline again;
-// a peer and a seat in the lobby send nothing.
+// path, roomActor.selftest) — only when another seat is willing to host, and the seat steps down at once (a page restored
+// from the back-forward cache never thinks it still hosts). With no willing successor (a solo room with bots, every other
+// seat declined, unable or gone) nothing is sent and the lease runs as before. This receipt drives the real MatchSession
+// hosting through the in-process host against a scripted room socket.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomClient } from '../room/roomClient.ts';
@@ -65,29 +66,74 @@ async function seat() {
   return { client, session, transport };
 }
 let counter = 0;
-function start(transport, hostId) {
+function start(transport, hostId, players = null) {
   const matchId = `m${++counter}-0000f${counter}f0`;
   const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
   const token = signSeatToken(hostSecret, { v: 1, roomId: 'HANDOF', seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a2', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
-  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId, generation: 1, since: 2000 }) } });
+  const snapshot = snapshotWith({ transport: 'p2p', hostId, generation: 1, since: 2000 });
+  if (players) snapshot.players = players(snapshot.players);
+  transport.deliver({ type: 'room_state', payload: { room: snapshot } });
   transport.deliver({ type: 'match_start', payload: { matchId, round: counter, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl('HANDOF', 1), hostId, ...(hostId === 'me' ? { hostSecret } : {}), expiresAt: Date.now() + 3_600_000 } });
 }
 const declinesOf = (transport) => transport.outbound.filter((envelope) => envelope.payload?.command?.type === 'host_decline').map((envelope) => envelope.payload.command);
 
-// ---- the hosting seat: the decline leaves inside the call, once
+// ---- case 'hands on and steps down': a willing successor is seated — the decline (a preference) leaves inside the call, once,
+//      and the seat is a peer at once: a page restored from the back-forward cache (pagehide persisted) is no host
 {
   const { client, session, transport } = await seat();
   assert.equal(session.handOffHosting('pagehide'), false, 'nothing to hand on in the lobby');
   start(transport, 'me');
   await until(() => session.matchHost?.state === 'live', 'the host live');
+  const core = cores.at(-1);
   const before = declinesOf(transport).length;
   assert.equal(session.handOffHosting('pagehide'), true);
   const sent = declinesOf(transport);
   assert.equal(sent.length, before + 1, 'sent synchronously: on the socket before anything is awaited');
-  assert.deepEqual(sent.at(-1), { type: 'host_decline', declined: true, unable: true }, 'unable: the room elects the next seat at once, or ends the match if none can host');
+  assert.deepEqual(sent.at(-1), { type: 'host_decline', declined: true }, 'a preference: with no candidate after all the room keeps this seat and its lease runs');
+  assert.equal(session.role, 'peer', 'stepped down at once');
+  assert.equal(session.matchHost, null);
+  await until(() => core.stopped && core.actor?.stopped !== false, 'its actor stopped');
   assert.equal(session.handOffHosting('pagehide'), false, 'once');
+  // the page comes back from the back-forward cache: the room elected the other seat meanwhile — this seat follows it
+  transport.deliver({ type: 'host_changed', payload: { hostId: 'other', generation: 2, resumeTick: 120, reason: 'declined' } });
+  await sleep(30);
+  assert.equal(session.role, 'peer', 'restored, it is a peer of the new host');
+  assert.equal(session.p2p.hostId, 'other');
+  assert.equal(session.matchHost, null, 'and never hosts again on its own');
   await session.leaveMatch('page gone');
   assert.equal(declinesOf(transport).length, before + 1, 'leaving afterwards does not decline again');
+  session.dispose(); client.dispose();
+}
+
+// ---- case 'sole host keeps the lease': no willing successor — nothing is sent, the seat still hosts (main's lease and resume)
+for (const [label, players] of [
+  ['the other seat declined (or cannot host)', (list) => list.map((player) => (player.id === 'other' ? { ...player, hostDeclined: true } : player))],
+  ['the other seat is gone', (list) => list.map((player) => (player.id === 'other' ? { ...player, connected: false } : player))],
+  ['the other seat spectates', (list) => list.map((player) => (player.id === 'other' ? { ...player, team: 'spectator' } : player))],
+  ['a solo room with bots', (list) => list.filter((player) => player.id === 'me')],
+]) {
+  const { client, session, transport } = await seat();
+  start(transport, 'me', players);
+  await until(() => session.matchHost?.state === 'live', `the host live (${label})`);
+  const before = declinesOf(transport).length;
+  assert.equal(session.handOffHosting('pagehide'), false, `${label}: no hand-off`);
+  assert.equal(declinesOf(transport).length, before, `${label}: no decline`);
+  assert.equal(session.role, 'host', `${label}: still the host — the lease covers a reload or a close`);
+  await session.leaveMatch('done');
+  session.dispose(); client.dispose();
+}
+
+// ---- a seat that handed on hosts a later round normally (the hand-off is per round)
+{
+  const { client, session, transport } = await seat();
+  start(transport, 'me');
+  await until(() => session.matchHost?.state === 'live', 'round 1 host live');
+  assert.equal(session.handOffHosting('pagehide'), true);
+  await session.leaveMatch('round over');
+  start(transport, 'me');
+  await until(() => session.matchHost?.state === 'live', 'round 2 host live');
+  assert.equal(session.handOffHosting('pagehide'), true, 'a new round hands on again');
+  await session.leaveMatch('done');
   session.dispose(); client.dispose();
 }
 
@@ -103,4 +149,4 @@ const declinesOf = (transport) => transport.outbound.filter((envelope) => envelo
 for (const core of cores) core.dispose();
 await sleep(50);
 assert.ok(cores.every((core) => !core.actor || core.actor.stopped), 'no actor outlives its core');
-console.log('matchSessionHandOff.selftest: a hosting tab going away sends host_decline (unable) synchronously, once; leaving afterwards adds nothing; a peer and the lobby send nothing');
+console.log('matchSessionHandOff.selftest: hands on and steps down (a willing successor: the decline leaves synchronously, once; a back-forward-cache restore is a peer of the new host); sole host keeps the lease (declined, gone, spectating or no other seat: nothing sent, still hosting); per round; a peer and the lobby send nothing');

@@ -2058,14 +2058,20 @@ socket: the decline and its withdrawal, none in a match, none from the mobile ti
 **Why.** A hosting tab that closed, reloaded or navigated away left its peers to the room's socket lease: on the e2e of
 2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
 
-**What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session, and a seat hosting a
-running match sends `host_decline { declined: true, unable: true }` on the room socket inside the event (synchronous,
-nothing awaited), once. The room elects the next seat at once (its declined path), or ends the match when nobody can
-host; the peers resume from the keyframes they hold. A reload lands the same way it did after the lease (the reloaded
-tab holds no state and enters as a peer), only sooner. Leaving the match afterwards does not decline twice.
+**What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session. A seat hosting a running
+match, with another seat willing to host (connected, a commander, not declined), sends `host_decline { declined: true }`
+on the room socket inside the event (synchronous, nothing awaited), once, and steps down at once: its actor stops and the
+seat is a peer. The room elects the willing seat at once (its declined path); a preference decline that finds no
+candidate after all leaves this seat hosting, and its lease runs as before (roomActor.selftest: "every commander has
+stepped down … it keeps hosting"). With no willing successor (a solo room with bots, every other seat declined, unable or
+gone) nothing is sent: the lease and the resume hold run as on main, so the same player can come back. A page entering
+the back-forward cache (`pagehide` with `persisted`) is handled the same way; restored, it is a peer of whoever the room
+elected and never hosts on its own. Leaving the match afterwards does not decline twice; the hand-off is per round.
 
 Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
-socket: the decline leaves before anything is awaited, once; none from a peer or the lobby; no actor outlives its core).
+socket; cases "hands on and steps down" (the decline leaves before anything is awaited, once; the back-forward-cache
+restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
+nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
 
 ## 10. Decisions for the owner
 

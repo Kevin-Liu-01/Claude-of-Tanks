@@ -527,18 +527,28 @@ export class MatchSession {
 
   /**
    * Plan step 11 (2026-10-13; MU.07): the hosting tab is going away (the browser's pagehide: a close, a reload, a
-   * navigation). The room waited out the socket lease for a vanished host (10 s on the e2e of 2026-10-13, 13.75 s from the
-   * close to the new host's first report): this seat now tells the room at once that it cannot host any more
-   * (`host_decline`, unable), and the room elects the next seat while the peers still hold fresh keyframes. Synchronous by
-   * design: the command leaves on the room socket inside the event; nothing is awaited. True when it was sent.
+   * navigation, or a page entering the back-forward cache). The room waited out the socket lease for a vanished host
+   * (10 s on the e2e of 2026-10-13, 13.75 s from the close to the new host's first report): when another seat can take
+   * the match, this seat now declines inside the event (`host_decline`, a preference: with no candidate after all the
+   * room keeps it, and its lease runs as before) and steps down at once — its actor stopped, the seat a peer — so a page
+   * restored from the back-forward cache never thinks it still hosts. When no other seat is willing (a solo room with
+   * bots, every other seat declined, unable or gone), nothing is sent: the lease and the resume hold run as they did, so
+   * the same player can come back. Synchronous by design: nothing is awaited. True when it handed the match on.
    */
   handOffHosting(reason: string): boolean {
     const host = this.host;
     if (!host || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
     if (this.room.phase !== 'joined' || this.room.hostId !== this.room.playerId) return false;
+    const me = this.room.playerId;
+    const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected && !player.hostDeclined) ?? false;
+    if (!successor) {
+      this.log('info', 'hosting tab going away with no other seat willing to host: the room keeps it (the lease)', { reason });
+      return false;
+    }
     this.handedOff = true;
     this.log('info', 'hosting tab going away: handing the match on', { reason, generation: this.room.generation });
-    void this.room.declineHost(true, { unable: true }).catch(() => { /* the page is going; the socket lease still covers it */ });
+    void this.room.declineHost(true).catch(() => { /* the page is going; the socket lease still covers it */ });
+    this.stepDown(reason);
     return true;
   }
 
@@ -822,6 +832,8 @@ export class MatchSession {
     const client = this.matchClient;
     const presentation = this.presentation;
     const host = this.host;
+    const handedOff = this.handedOff;
+    this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
     this.matchClient = null;
     this.presentation = null;
@@ -841,8 +853,7 @@ export class MatchSession {
       // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
       // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).
       host.stop(CLOSE_REASON.CLIENT_LEAVE, reason);
-      if (this.room.phase === 'joined' && !this.handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
-      this.handedOff = false;
+      if (this.room.phase === 'joined' && !handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       this.declinedHosting = true;
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
     }
