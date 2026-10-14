@@ -369,7 +369,10 @@ export const DONOR_SPECS: TankSpecRegistry = {
  * moving the live vehicles that were cloned from it.
  */
 export function donorSpec(registry: Readonly<Record<string, FleetTankSpec>>, id: string): FleetTankSpec {
-  const spec = registry[id] ?? DONOR_SPECS[id];
+  // A donor template wins over a registered vehicle of the same name: the tank id rename (SSOT 2.19, schema 3) gives
+  // three X vehicles their template's name (merkava4_x -> merkava4, t72b3_x -> t72b3, jpz_e100_x -> jpz_e100), and an
+  // X vehicle must never become its own donor. No template name was a registered id before the rename.
+  const spec = DONOR_SPECS[id] ?? registry[id];
   if (!spec) throw new Error(`Fleet donor missing or incomplete: ${id}`);
   return spec;
 }

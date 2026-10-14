@@ -1245,6 +1245,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-id-codemod.selftest.mjs',
     // 2026-10-13 (SSOT 2.19 ID.04/05): id-named icons, thumbnails and geometry gate records move through swaps once.
     'tools/tank-id-move-files.selftest.mjs',
+    // 2026-10-14 (SSOT 2.19 ID.04/05): the tank asset manifest is keyed to the current ids; the CPU re-key reproduces
+    // the browser generator's id-bearing fields byte for byte.
+    'tools/tank-id-rekey-assets.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
