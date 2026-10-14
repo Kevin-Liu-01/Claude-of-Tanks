@@ -586,6 +586,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/world-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
+    'tools/media-r5/site-video-budget.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',

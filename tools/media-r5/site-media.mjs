@@ -35,6 +35,7 @@ import { execFileSync } from 'node:child_process';
 import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { webEncode } from './web-encode.mjs';
 
 const MEDIA = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -64,6 +65,21 @@ const HOME_GROUPS = Object.freeze({ features: [1920, 1080], mechanics: [1280, 72
 const HOME_PREVIEW_W = 640;
 const HOME_STUDIO_PROXY = 'home-studio-mobile.mp4';
 
+// The site's videos at the weight they need (owner 2026-10-14: "we dont need them all to be super duuper highh quality
+// 4k, they can be good quality but shouldnt be too heavy on storage or take a long time to load in"; the coordinator:
+// VMAF 93 at least for the loops and the reel, 90 for the 960 px loops, against their masters). Each is web-encode.mjs's
+// two-pass file at the lowest rate of its ladder that holds its floor (the loops had been the deliveries' own VP9 at
+// 22-32 Mbit/s, 9-24 MB for 6 s, and the reel 8 Mbit/s); the record of each (its rate, VMAF and settings) is kept in
+// site-media/web-encodes.json, and a file is encoded again when its source is newer, its settings change, or --force.
+const WEB = Object.freeze({
+  loop: { codec: 'vp9', size: [1920, 1080], audio: 'keep', floor: 93, rates: [6000, 4800, 3800, 3000, 2400, 1900, 1500] },
+  loop960: { codec: 'vp9', size: [960, 540], audio: 'none', floor: 90, rates: [2000, 1600, 1250, 1000, 800, 600] },
+  reel: { codec: 'h264', size: [1920, 1080], audio: 'none', floor: 93, rates: [7000, 5800, 4800, 4000, 3300, 2700] },
+  trailer: { codec: 'h264', size: [1920, 1080], audio: 'keep', floor: 93, rates: [5000, 4200, 3500, 2900, 2400] },
+});
+const WEB_RECORD = join(MEDIA, 'tools/media-r5/site-media/web-encodes.json');
+const webRecord = existsSync(WEB_RECORD) ? JSON.parse(readFileSync(WEB_RECORD, 'utf8')) : {};
+let webChanged = false;
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1 << 26 });
 const sha256 = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const want = (part) => !only || only.includes(part);
@@ -217,6 +233,28 @@ function make(out, source, build, extra) {
   record(out, source, extra);
 }
 const copy = (out, source, extra) => make(out, source, (tmp) => copyFileSync(source, tmp), extra);
+/** A web video (WEB's settings): encoded when stale (see WEB), recorded with its rate and VMAF either way. */
+function webMake(out, source, settings, extra = {}) {
+  const key = relative(join(ROOT, 'public'), out).split('\\').join('/'), prev = webRecord[key];
+  const stale = force || !existsSync(out) || statSync(out).mtimeMs < statSync(source).mtimeMs || !prev
+    || JSON.stringify(prev.settings) !== JSON.stringify(settings) || prev.bytes !== statSync(out).size;
+  mkdirSync(dirname(out), { recursive: true });
+  if (stale) {
+    const tmp = `${out}.tmp${out.slice(out.lastIndexOf('.'))}`;
+    const r = webEncode({ src: source, out: tmp, ...settings });
+    renameSync(tmp, out);
+    webRecord[key] = { settings, source: rel(source), kbps: r.kbps, vmaf: r.vmaf, bytes: r.bytes, tried: r.tried };
+    webChanged = true;
+    console.log(`[site-media] ${key}: ${r.kbps} kbit/s, VMAF ${r.vmaf.mean} (worst frame ${r.vmaf.min}), ${(r.bytes / 1048576).toFixed(2)} MB (tried ${r.tried.map(([k, v]) => `${k}:${v}`).join(' ')})`);
+  }
+  const w = webRecord[key];
+  record(out, source, { ...extra, encode: { kbps: w.kbps, vmaf: w.vmaf.mean, vmafMin: w.vmaf.min } });
+}
+function saveWebRecord() {
+  if (!webChanged) return;
+  const sorted = Object.fromEntries(Object.keys(webRecord).sort().map((k) => [k, webRecord[k]]));
+  writeFileSync(WEB_RECORD, `${JSON.stringify(sorted, null, 1)}\n`);
+}
 
 function buildStills() {
   for (const id of takeIds) {
@@ -236,15 +274,12 @@ function buildStills() {
 function buildLoops() {
   for (const id of loopIds) {
     const d = delivery(id);
-    if (!d?.webm || !d.poster) continue;
+    if (!d?.hd || !d.poster) continue;
     const take = { take: id, round: d.round };
-    copy(join(OUT, 'loops', `${id}.webm`), d.webm, take);
+    // from the delivery's 1080p master with its sound (WEB.loop), not its own VP9: that ran at 22-32 Mbit/s
+    webMake(join(OUT, 'loops', `${id}.webm`), d.hd, WEB.loop, take);
     copy(join(OUT, 'loops', `${id}.jpg`), d.poster, take);
-    if (PICKS.docs.archiveLoops.includes(id)) {
-      make(join(OUT, 'loops', `${id}-960.webm`), d.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', d.hd, '-an',
-        '-vf', 'scale=960:540:flags=lanczos', '-c:v', 'libvpx-vp9', '-crf', '33', '-b:v', '0', '-row-mt', '1',
-        '-deadline', 'good', '-cpu-used', '2', tmp]), take);
-    }
+    if (PICKS.docs.archiveLoops.includes(id)) webMake(join(OUT, 'loops', `${id}-960.webm`), d.hd, WEB.loop960, take);
   }
 }
 
@@ -351,10 +386,7 @@ function buildFilms() {
   const trailer = join(MEDIA, PICKS.sources.trailer);
   const poster = PICKS.posters ?? { trailer: 3 };
   if (existsSync(trailer)) {
-    make(join(OUT, 'films', 'trailer.mp4'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', trailer,
-      '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
-      '-maxrate', '4.5M', '-bufsize', '9M', '-profile:v', 'high', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', tmp]),
-    { film: 'trailer-24h' });
+    webMake(join(OUT, 'films', 'trailer.mp4'), trailer, WEB.trailer, { film: 'trailer-24h' });
     make(join(OUT, 'films', 'trailer.jpg'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(poster.trailer),
       '-i', trailer, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), { film: 'trailer-24h' });
   }
@@ -371,9 +403,14 @@ function buildFilms() {
       label = `[v${i}]`;
     }
     const extra = { film: 'reel', takes: takes.map((d) => d.id), crossfadeS: x };
-    make(join(OUT, 'films', 'reel.mp4'), newest.hd, (tmp) => run('ffmpeg', ['-v', 'error', '-y', ...takes.flatMap((d) => ['-i', d.hd]),
-      '-filter_complex', `${chain.join(';')};${label}format=yuv420p[out]`, '-map', '[out]', '-an', '-c:v', 'libx264', '-preset', 'slow',
-      '-crf', '20', '-maxrate', '8M', '-bufsize', '16M', '-profile:v', 'high', '-movflags', '+faststart', tmp]), extra);
+    // the crossfades cut once into a near-lossless master (the build's scratch), then the web encode from it (WEB.reel)
+    const master = join(TMP, 'reel-master.mp4');
+    mkdirSync(TMP, { recursive: true });
+    if (force || !existsSync(master) || statSync(master).mtimeMs < statSync(newest.hd).mtimeMs) {
+      run('ffmpeg', ['-v', 'error', '-y', ...takes.flatMap((d) => ['-i', d.hd]), '-filter_complex', `${chain.join(';')};${label}format=yuv420p[out]`,
+        '-map', '[out]', '-an', '-c:v', 'libx264', '-preset', 'medium', '-crf', '10', '-movflags', '+faststart', master]);
+    }
+    webMake(join(OUT, 'films', 'reel.mp4'), master, WEB.reel, extra);
     copy(join(OUT, 'films', 'reel.jpg'), takes[0].poster, extra);
   }
 }
@@ -560,6 +597,7 @@ function main() {
   if (want('scenes')) buildScenes(fleet);
   if (want('home')) buildHome();
   const proxies = want('proxies') ? buildProxies() : null;
+  saveWebRecord();
   if (only) { console.log(`[site-media] ${files.length} files (${only.join(', ')}); the manifest is written by a full run`); return; }
   // a full run keeps only what it recorded: a re-pick (2026-10-12, wave m3) leaves the loops, reels and 4K stills of
   // takes no slot names any more, and the stage copies the draft's collection forward
