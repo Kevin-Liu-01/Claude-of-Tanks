@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V } from '../hayPrint.ts';
 import { bandV, hayMerge, pole as hayPole, turn, type ProfilePoint } from './haystackKit.ts';
 import { mix, mul, hexLin, type Rgb, type V3 } from './craftMesh.ts';
-import { bar, extrude, finish, lathe, newMesh, place, pole, tip, tone } from './clutterForms.ts';
+import { bar, extrude, faceTri, finish, lathe, newMesh, place, pole, tip, tone } from './clutterForms.ts';
 
 type Rng = () => number;
 const X: V3 = [1, 0, 0], Y: V3 = [0, 1, 0], Z: V3 = [0, 0, 1];
@@ -223,34 +223,84 @@ const TL = 1.9, TW = 0.62;
 /** The water in it: a dark surface at `y` over the trough's inside (x ±hx, z ±hz), scum at its edge. */
 function water(m: ReturnType<typeof newMesh>, y: number, hx: number, hz: number, col: Rgb): void {
   const uv: [number, number] = [0.5, 0.5], scum = mix(col, hexLin(0x4a5a2a), 0.5);
-  m.quad([-hx, y, -hz], [hx, y, -hz], [hx, y, hz], [-hx, y, hz], Y, () => uv, (q) => (Math.abs(q[0]) > hx * 0.8 ? scum : col), false);
+  m.quad([-hx, y, -hz], [hx, y, -hz], [hx, y, hz], [-hx, y, hz], Y, () => uv, () => col, false);
   m.quad([-hx * 0.8, y + 0.001, -hz], [hx * 0.8, y + 0.001, -hz], [hx * 0.8, y + 0.001, -hz * 0.6], [-hx * 0.8, y + 0.001, -hz * 0.6], Y, () => uv, () => mul(scum, 0.9), false);
 }
+/** A prism of any (simple, counter-clockwise) section from a to b: its sides by `extrude`, its ends triangulated. */
+function prism(m: ReturnType<typeof newMesh>, a: V3, b: V3, sec: ReadonlyArray<readonly [number, number]>, s: V3, u: V3,
+  side: Rgb | ((edge: number) => Rgb), ends: Rgb): void {
+  extrude(m, a, b, sec, s, u, side, null);
+  const at = (o: V3, p: readonly [number, number]): V3 => [o[0] + s[0] * p[0] + u[0] * p[1], o[1] + s[1] * p[0] + u[1] * p[1], o[2] + s[2] * p[0] + u[2] * p[1]];
+  const tris = THREE.ShapeUtils.triangulateShape(sec.map(([x, y]) => new THREE.Vector2(x, y)), []);
+  const e = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(e[0], e[1], e[2]);
+  for (const [o, sign] of [[a, -1], [b, 1]] as const) {
+    const n: V3 = [e[0] / l * sign, e[1] / l * sign, e[2] / l * sign];
+    for (const [i, j, k] of tris) faceTri(m, at(o, sec[i]), at(o, sec[j]), at(o, sec[k]), n, ends);
+  }
+}
+/** Where the water went: a dark, ragged wet patch on the ground round the wreck (rx × rz). */
+function spill(m: ReturnType<typeof newMesh>, rx: number, rz: number, rng: Rng): void {
+  const n = 10, wet = hexLin(0x3a3226), pts: V3[] = [];
+  for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2, j = 0.7 + rng() * 0.4; pts.push([Math.cos(a) * rx * j, 0.004, Math.sin(a) * rz * j]); }
+  for (let k = 0; k < n; k++) faceTri(m, [0, 0.005, 0], pts[k], pts[(k + 1) % n], Y, mul(wet, 0.85 + (k % 3) * 0.06));
+}
 
-/** The trough (1.9 m along z, 0.62 m across, its rim about 0.6 m up). Near ≤ 260 triangles. */
+/** The log trough's section (round underside, flat cut top) and its hollow's (sunk in the top: lid edge first). */
+const LOG_R = 0.3, LOG_Y = 0.36, HOLLOW_W = 0.42 * LOG_R, HOLLOW_FLOOR_W = 0.32 * LOG_R, HOLLOW_D = 0.13;
+const LOG_SEC: Array<[number, number]> = [[-LOG_R * 0.86, 0.12], [-LOG_R, -0.05], [-LOG_R * 0.7, -LOG_R * 0.7], [0, -LOG_R], [LOG_R * 0.7, -LOG_R * 0.7], [LOG_R, -0.05],
+  [LOG_R * 0.86, 0.12], [LOG_R * 0.6, 0.15], [-LOG_R * 0.6, 0.15]];
+/** The hollow: its walls and floor facing into it (the section clockwise), its ends walls facing back along it. */
+function hollow(m: ReturnType<typeof newMesh>, y: number, w: number, fw: number, d: number, z0: number, z1: number, col: Rgb): void {
+  extrude(m, [0, y, z0], [0, y, z1], [[-w, 0], [w, 0], [fw, -d], [-fw, -d]], [1, 0, 0], Y, (e) => (e === 2 ? mul(col, 0.9) : col), null, 0);
+  for (const [z, sz] of [[z0, 1], [z1, -1]] as const) {
+    faceTri(m, [-w, y, z], [w, y, z], [fw, y - d, z], [0, 0, sz], mul(col, 0.95));
+    faceTri(m, [-w, y, z], [fw, y - d, z], [-fw, y - d, z], [0, 0, sz], mul(col, 0.95));
+  }
+}
+/** The walled trough's wall section (w half-thick, h high, its top edges chamfered). */
+const wallSec = (w: number, h: number): Array<[number, number]> => [[-w, 0], [w, 0], [w, h - 0.03], [w - 0.03, h], [-w + 0.03, h], [-w, h - 0.03]];
+const WALL_H = 0.58, WALL_T = 0.09;
+/** A length of the walled (stone or concrete) trough from z0 to z1, as the wreck keeps it: its two walls and its floor
+ *  (square-edged, the chamfer chipped off), and its end wall at z0 (the trough's own end). */
+function walledLength(m: ReturnType<typeof newMesh>, body: Rgb, z0: number, z1: number, rng: Rng): void {
+  const t = WALL_T, H = WALL_H, sz = Math.sign(z1 - z0), box = (w: number, h: number): Array<[number, number]> => [[-w, 0], [w, 0], [w, h], [-w, h]];
+  for (const sx of [-1, 1]) extrude(m, [sx * (TW / 2 - t / 2), 0, z0], [sx * (TW / 2 - t / 2), 0, z1], box(t / 2, H - rng() * 0.05), [-1, 0, 0], Y,
+    (e) => mul(body, 0.88 + (e % 3) * 0.06), mul(body, 0.8));
+  extrude(m, [0, 0, z0 + sz * t], [0, 0, z1], box(TW / 2 - t, 0.12), [-1, 0, 0], Y, mul(body, 0.5), mul(body, 0.7), 0);
+  extrude(m, [-TW / 2 + t, 0, z0 + sz * t / 2], [TW / 2 - t, 0, z0 + sz * t / 2], box(t / 2, H), Z, Y, mul(body, 0.95), mul(body, 0.9), 0);
+}
+/** The stock tank's shell: round ends either side of a straight middle (no vertex on the middle's line), corrugated
+ *  rings, a rolled rim and its inside down to the water. */
+const TANK_PROFILE: Array<[number, number]> = [[0.42, 0], [0.44, 0.02], [0.44, 0.15], [0.452, 0.18], [0.44, 0.21], [0.44, 0.38], [0.452, 0.41], [0.44, 0.44], [0.44, 0.58],
+  [0.46, 0.6], [0.42, 0.6], [0.42, 0.46]];
+function stretchTank(m: ReturnType<typeof newMesh>, from: number): void {
+  const p = m.p;
+  for (let i = from; i < p.length; i += 3) { p[i + 2] += Math.sign(p[i + 2]) * (TL / 2 - 0.44); p[i] *= (TW / 2 + 0.02) / 0.44; }
+}
+
+/** The trough (1.9 m along z, 0.62 m across, its rim about 0.6 m up). Near ≤ 300 triangles. */
 export function troughNear(f: TroughForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
   const body = tone(f.body, rng, 0.08);
   switch (f.kind) {
     case 'log': {
-      // a log split and hollowed: its round underside, its flat cut top with the hollow sunk in it, on two cross legs
-      const r = 0.3, y = 0.36;
-      extrude(m, [0, y, -TL / 2], [0, y, TL / 2], [[-r * 0.86, 0.12], [-r, -0.05], [-r * 0.7, -r * 0.7], [0, -r], [r * 0.7, -r * 0.7], [r, -0.05], [r * 0.86, 0.12], [r * 0.6, 0.15], [-r * 0.6, 0.15]],
-        [-1, 0, 0], Y, (e) => (e >= 7 ? mul(f.trim, 1.1) : mul(body, 0.86 + (e % 3) * 0.06)), mix(body, f.trim, 0.5));
-      // the hollow (its walls and floor dark wood, its water)
-      extrude(m, [0, y + 0.151, -TL / 2 + 0.12], [0, y + 0.151, TL / 2 - 0.12], [[-r * 0.55, -0.001], [r * 0.55, -0.001], [r * 0.45, -0.14], [-r * 0.45, -0.14]], [-1, 0, 0], Y,
-        mul(body, 0.45), mul(body, 0.4), 2);
-      water(m, y + 0.06, r * 0.5, TL / 2 - 0.14, f.water);
+      // a log split and hollowed: its round underside, its flat cut top round the hollow sunk in it, on two cross legs
+      const y = LOG_Y, r = LOG_R, top = y + 0.15, hz = TL / 2 - 0.14, uv: [number, number] = [0.5, 0.5];
+      extrude(m, [0, y, -TL / 2], [0, y, TL / 2], LOG_SEC, [-1, 0, 0], Y, (e) => mul(body, 0.86 + (e % 3) * 0.06), mix(body, f.trim, 0.5), 7);
+      const cut = mul(f.trim, 1.1);
+      for (const sx of [-1, 1]) m.quad([sx * HOLLOW_W, top, -TL / 2], [sx * r * 0.6, top, -TL / 2], [sx * r * 0.6, top, TL / 2], [sx * HOLLOW_W, top, TL / 2], Y, () => uv, () => cut, false);
+      for (const sz of [-1, 1]) m.quad([-HOLLOW_W, top, sz * hz], [HOLLOW_W, top, sz * hz], [HOLLOW_W, top, sz * TL / 2], [-HOLLOW_W, top, sz * TL / 2], Y, () => uv, () => cut, false);
+      hollow(m, top, HOLLOW_W, HOLLOW_FLOOR_W, HOLLOW_D, -hz, hz, mul(body, 0.45));
+      water(m, top - 0.05, HOLLOW_W - (HOLLOW_W - HOLLOW_FLOOR_W) * (0.05 / HOLLOW_D) - 0.003, hz - 0.003, f.water);
       for (const z of [-TL * 0.32, TL * 0.32]) for (const s of [-1, 1]) pole(m, [s * 0.36, 0, z], [-s * 0.12, y - 0.05, z], 0.05, 5, tone(f.trim, rng, 0.12), true);
       break;
     }
     case 'stone': case 'concrete': {
       // a block hollowed: its walls (the rim chamfered), its floor, its water; a concrete one's float valve and its pipe
-      const H = 0.58, t = 0.09;
-      const sec = (w: number, h: number): Array<[number, number]> => [[-w, 0], [w, 0], [w, h - 0.03], [w - 0.03, h], [-w + 0.03, h], [-w, h - 0.03]];
-      for (const sx of [-1, 1]) extrude(m, [sx * (TW / 2 - t / 2), 0, -TL / 2], [sx * (TW / 2 - t / 2), 0, TL / 2], sec(t / 2, H), [-1, 0, 0], Y,
+      const H = WALL_H, t = WALL_T;
+      for (const sx of [-1, 1]) extrude(m, [sx * (TW / 2 - t / 2), 0, -TL / 2], [sx * (TW / 2 - t / 2), 0, TL / 2], wallSec(t / 2, H), [-1, 0, 0], Y,
         (e) => mul(body, 0.88 + (e % 3) * 0.06), mul(body, 0.92));
-      for (const sz of [-1, 1]) extrude(m, [-TW / 2 + t, 0, sz * (TL / 2 - t / 2)], [TW / 2 - t, 0, sz * (TL / 2 - t / 2)], sec(t / 2, H), Z, Y, mul(body, 0.95), mul(body, 0.9));
+      for (const sz of [-1, 1]) extrude(m, [-TW / 2 + t, 0, sz * (TL / 2 - t / 2)], [TW / 2 - t, 0, sz * (TL / 2 - t / 2)], wallSec(t / 2, H), Z, Y, mul(body, 0.95), mul(body, 0.9));
       extrude(m, [-TW / 2 + t, 0, -TL / 2 + t], [TW / 2 - t, 0, -TL / 2 + t + 0.001], [[0, 0], [TL - 2 * t, 0], [TL - 2 * t, 0.12], [0, 0.12]], Z, Y, mul(body, 0.5), mul(body, 0.5));
       water(m, H - 0.12, TW / 2 - t, TL / 2 - t, f.water);
       if (f.kind === 'concrete') {
@@ -261,26 +311,20 @@ export function troughNear(f: TroughForm, rng: Rng): THREE.BufferGeometry {
       break;
     }
     case 'tank': {
-      // the galvanised stock tank: its round-ended shell in corrugated rings, its rolled rim, the water
-      const from = m.mark;
-      lathe(m, [[0.42, 0], [0.44, 0.02], [0.44, 0.15], [0.452, 0.18], [0.44, 0.21], [0.44, 0.38], [0.452, 0.41], [0.44, 0.44], [0.44, 0.58], [0.46, 0.6], [0.42, 0.6]], 12,
-        (k, b) => mul(body, (b === 3 || b === 6 || b === 9 ? 1.12 : 1) * (0.94 + (k % 3) * 0.04)), { capBottom: true });
-      // the tank is stretched long: its round ends either side of a straight middle
-      const p = m.p;
-      for (let i = from; i < p.length; i += 3) p[i + 2] = p[i + 2] * 1.0 + Math.sign(p[i + 2]) * (TL / 2 - 0.44);
-      for (let i = from; i < p.length; i += 3) p[i] *= (TW / 2 + 0.02) / 0.44;
-      water(m, 0.48, TW / 2 - 0.02, TL / 2 - 0.1, f.water);
+      // the galvanised stock tank: its round-ended shell in corrugated rings, its rolled rim, its inside, the water
+      const from = m.mark, phase = Math.PI / 12;
+      lathe(m, TANK_PROFILE, 12, (k, b) => (b === 10 ? mul(body, 0.7) : mul(body, (b === 3 || b === 6 || b === 9 ? 1.12 : 1) * (0.94 + (k % 3) * 0.04))), { phase });
+      lathe(m, [[0.42, 0.48], [0, 0.48]], 12, () => mix(f.water, hexLin(0x4a5a2a), 0.25), { phase });
+      stretchTank(m, from);
       break;
     }
     case 'tub': {
-      // two coopered tubs side by side, their hoops of bamboo, one with its dipper
+      // two coopered tubs side by side, their hoops of bamboo, their insides down to the water, one with its dipper
       for (const z of [-0.48, 0.48]) {
         const staves = Array.from({ length: 9 }, () => tone(f.body, rng, 0.2));
-        lathe(m, [[0.34, 0], [0.37, 0.12], [0.385, 0.15], [0.4, 0.46], [0.415, 0.49], [0.42, 0.56], [0.38, 0.56]], 9,
-          (k, b) => (b === 1 || b === 3 ? f.trim : staves[k]), { faceted: true, capBottom: true, z });
-        const wet = m.mark;
-        water(m, 0.48, 0.3, 0.3, f.water);
-        place(m, wet, 0, 0, 0, z);
+        lathe(m, [[0.34, 0], [0.37, 0.12], [0.385, 0.15], [0.4, 0.46], [0.415, 0.49], [0.42, 0.56], [0.38, 0.56], [0.375, 0.47]], 9,
+          (k, b) => (b === 1 || b === 3 ? f.trim : b === 6 ? mul(staves[k], 0.6) : staves[k]), { faceted: true, z });
+        lathe(m, [[0.376, 0.48], [0, 0.48]], 9, () => f.water, { faceted: true, z });
       }
       pole(m, [0.1, 0.5, -0.48], [0.35, 0.75, -0.6], 0.012, 4, f.trim);
       break;
@@ -288,23 +332,97 @@ export function troughNear(f: TroughForm, rng: Rng): THREE.BufferGeometry {
   }
   return finish(m);
 }
+/** The trough past 45 m, its own outline: the log's section, the tank's stadium, the two tubs, the walled block. */
 export function troughFar(f: TroughForm): THREE.BufferGeometry {
   const m = newMesh();
-  extrude(m, [0, 0, -TL / 2], [0, 0, TL / 2], [[-TW / 2, 0], [TW / 2, 0], [TW / 2, 0.56], [-TW / 2, 0.56]], [-1, 0, 0], Y, f.body, mul(f.body, 0.9), 0);
+  if (f.kind === 'log') extrude(m, [0, LOG_Y, -TL / 2], [0, LOG_Y, TL / 2], LOG_SEC, [-1, 0, 0], Y, (e) => mul(f.body, 0.86 + (e % 3) * 0.06), mix(f.body, f.trim, 0.5));
+  else if (f.kind === 'tank') {
+    const from = m.mark;
+    lathe(m, [[0.44, 0], [0.44, 0.6], [0, 0.6]], 8, (k, b) => (b === 1 ? mul(f.water, 1.4) : mul(f.body, 0.94 + (k % 2) * 0.06)), { phase: Math.PI / 8 });
+    stretchTank(m, from);
+  } else if (f.kind === 'tub') {
+    for (const z of [-0.48, 0.48]) lathe(m, [[0.36, 0], [0.42, 0.56], [0, 0.56]], 7, (k, b) => (b === 1 ? f.water : mul(f.body, 0.9 + (k % 2) * 0.08)), { faceted: true, z });
+  } else extrude(m, [0, 0, -TL / 2], [0, 0, TL / 2], [[-TW / 2, 0], [TW / 2, 0], [TW / 2, 0.56], [-TW / 2, 0.56]], [-1, 0, 0], Y, f.body, mul(f.body, 0.9), 0);
   return finish(m);
 }
-/** The trough broken: split along its length or its stone cracked through, its halves apart, the water gone dark into
- *  the ground. */
+/** The trough broken, each its own way, the water gone dark into the ground round it: the log split along its length,
+ *  one half rolled over and the legs knocked out; the stone or concrete cracked across, its two ends tipped apart over
+ *  the broken middle's lumps; the stock tank crushed in at one end and rolled on its side; one tub tipped over and the
+ *  other burst, its staves sprung and its hoop on the ground. */
 export function troughBroken(f: TroughForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
-  const body = tone(f.body, rng, 0.08), uv: [number, number] = [0.5, 0.5];
-  m.quad([-0.9, 0.004, -1.2], [0.9, 0.004, -1.2], [0.9, 0.004, 1.2], [-0.9, 0.004, 1.2], Y, () => uv, () => mul(hexLin(0x3a3226), 0.9), false);
-  for (const [i, s] of [-1, 1].entries()) {
-    const from = m.mark, len = TL * (0.45 + rng() * 0.1);
-    if (f.kind === 'tank' || f.kind === 'tub') lathe(m, [[0.42, 0], [0.44, 0.3], [0.44, 0.5]], 8, (k) => mul(body, 0.9 + (k % 2) * 0.08), { capBottom: true });
-    else extrude(m, [0, 0, -len / 2], [0, 0, len / 2], [[-0.3, 0], [0.3, 0], [0.3, 0.45], [0.2, 0.52], [-0.3, 0.4]], [-1, 0, 0], Y, (e) => mul(body, 0.85 + (e % 2) * 0.1), mul(body, 0.7));
-    tip(m, from, [0.3, 0, 0], Z, s * (0.25 + rng() * 0.2));
-    place(m, from, (rng() - 0.5) * 0.6, s * 0.18, 0, (i - 0.5) * 1.05);
+  const body = tone(f.body, rng, 0.08);
+  spill(m, 1.0, 1.25, rng);
+  switch (f.kind) {
+    case 'log': {
+      const r = LOG_R, half = (sx: number): Array<[number, number]> => {
+        // one half of the split log's section (counter-clockwise), the hollow's half in its top
+        const h: Array<[number, number]> = [[0, -r], [r * 0.7, -r * 0.7], [r, -0.05], [r * 0.86, 0.12], [r * 0.6, 0.15], [HOLLOW_W, 0.15], [HOLLOW_FLOOR_W, 0.15 - HOLLOW_D], [0, 0.15 - HOLLOW_D]];
+        return sx > 0 ? h : h.map(([x, y]) => [-x, y] as [number, number]).reverse();
+      };
+      const side = (e: number) => mul(body, 0.86 + (e % 3) * 0.06), heart = mul(body, 0.55);
+      // the one half lying as it fell, on its round back; the other rolled onto its split face, broken short
+      let from = m.mark;
+      prism(m, [0, 0, -TL / 2], [0, 0, TL / 2], half(-1), [-1, 0, 0], Y, side, mix(body, f.trim, 0.5));
+      tip(m, from, [0, 0, 0], Z, 0.35);
+      place(m, from, 0.12, -0.32, r * 0.95, 0.05);
+      from = m.mark;
+      const short = TL * (0.62 + rng() * 0.08);
+      prism(m, [0, 0, -short / 2], [0, 0, short / 2], half(1), [-1, 0, 0], Y, (e) => (e >= 4 && e <= 6 ? heart : side(e)), mix(body, f.trim, 0.5));
+      tip(m, from, [0, 0, 0], Z, Math.PI / 2 + 0.2);
+      place(m, from, -0.2, 0.45, 0.3, 0.3);
+      // the splinters and the legs
+      for (const [x, z, yaw] of [[0.2, -0.75, 0.4], [-0.6, 0.9, 1.9]] as const) bar(m, [x - 0.25 * Math.cos(yaw), 0.03, z - 0.25 * Math.sin(yaw)], [x + 0.25 * Math.cos(yaw), 0.05, z + 0.25 * Math.sin(yaw)], 0.04, 0.06, Y, heart);
+      for (const [x, z, yaw] of [[0.75, -0.3, 0.3], [0.65, 0.75, 2.6]] as const) pole(m, [x, 0.05, z], [x + 0.42 * Math.cos(yaw), 0.05, z + 0.42 * Math.sin(yaw)], 0.05, 5, tone(f.trim, rng, 0.12), true);
+      break;
+    }
+    case 'stone': case 'concrete': {
+      // cracked across: the two ends tipped apart, the broken middle in lumps between them
+      for (const s of [-1, 1]) {
+        const from = m.mark, len = TL * (0.34 + rng() * 0.06);
+        walledLength(m, body, -TL / 2, -TL / 2 + len, rng);
+        if (s > 0) m.turn(from, 0, 0, Math.PI);
+        tip(m, from, [0, 0, s * (TL / 2 - len)], [1, 0, 0], s * (0.22 + rng() * 0.1));
+        place(m, from, (rng() - 0.5) * 0.4, (rng() - 0.5) * 0.25, 0, s * 0.18);
+      }
+      for (let k = 0; k < 3; k++) {
+        const a = rng() * Math.PI * 2, d = 0.1 + rng() * 0.3, c = 0.12 + rng() * 0.08, tint = mul(body, 0.8 + rng() * 0.2);
+        lathe(m, [[c, 0], [c * 0.7, c * 0.8], [0, c * 0.95]], 4, () => tint, { faceted: true, x: Math.cos(a) * d, z: Math.sin(a) * d * 0.5, phase: rng() });
+      }
+      break;
+    }
+    case 'tank': {
+      // crushed in at one end, its rim buckled, rolled half onto its side
+      const from = m.mark;
+      lathe(m, TANK_PROFILE, 12, (k, b) => (b === 10 ? mul(body, 0.7) : mul(body, (b === 3 || b === 6 || b === 9 ? 1.08 : 0.96) * (0.94 + (k % 3) * 0.04))), { phase: Math.PI / 12 });
+      stretchTank(m, from);
+      const p = m.p;
+      for (let i = from; i < p.length; i += 3) {
+        const t = (p[i + 2] + TL / 2) / TL, squash = 0.42 + 0.58 * Math.min(1, t * 1.6);
+        p[i] *= 0.7 + 0.3 * squash; p[i + 1] *= squash; p[i + 1] += Math.sin(p[i + 2] * 7) * 0.02 * (1 - squash);
+      }
+      tip(m, from, [0, 0, 0], Z, 0.95);
+      place(m, from, 0.3, 0.14, 0.12, 0);
+      break;
+    }
+    case 'tub': {
+      // the one tub tipped over on its side
+      const from = m.mark;
+      lathe(m, [[0.34, 0], [0.37, 0.12], [0.385, 0.15], [0.4, 0.46], [0.415, 0.49], [0.42, 0.56], [0.38, 0.56], [0.375, 0.47]], 9,
+        (k, b) => (b === 1 || b === 3 ? f.trim : mul(f.body, 0.85 + (k % 3) * 0.08)), { faceted: true, capBottom: true });
+      tip(m, from, [0, 0, 0], X, Math.PI / 2);
+      place(m, from, 0.5, -0.15, 0.4, -0.5);
+      // the other burst: its staves sprung out round its bottom, its hoop on the ground
+      const cx = 0.1, cz = 0.5;
+      lathe(m, [[0.34, 0.01], [0, 0.04]], 9, () => mul(f.body, 0.7), { faceted: true, x: cx, z: cz });
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2 + (rng() - 0.5) * 1.6, d = 0.38 + rng() * 0.5, yaw = rng() * Math.PI;
+        const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, hl = 0.26;
+        bar(m, [x - Math.cos(yaw) * hl, 0.02, z - Math.sin(yaw) * hl], [x + Math.cos(yaw) * hl, 0.03 + rng() * 0.04, z + Math.sin(yaw) * hl], 0.025, 0.09, Y, tone(f.body, rng, 0.2));
+      }
+      lathe(m, [[0.43, 0.005], [0.45, 0.02], [0.43, 0.035]], 9, () => f.trim, { faceted: true, x: cx + 0.08, z: cz - 0.05 });
+      break;
+    }
   }
   return finish(m);
 }
