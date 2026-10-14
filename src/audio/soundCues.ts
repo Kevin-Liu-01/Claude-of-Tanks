@@ -101,6 +101,10 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   bullet_armor: o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 }),
   bullet_dirt: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
   bullet_water: o({ maxInstances: 3, refM: 4, maxM: 120, loudDb: 104, priority: 28 }),
+  // a bullet's strike on a wall, a steel body or timber: as local as one in the dirt (2026-10-13)
+  bullet_masonry: o({ maxInstances: 4, refM: 4, maxM: 140, loudDb: 108, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_metal: o({ maxInstances: 4, refM: 4, maxM: 150, loudDb: 110, cooldownS: 0.05, priority: 32, gainDb: -3 }),
+  bullet_wood: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
   ricochet_light: o({ refM: 6, maxM: 220, loudDb: 116, gainDb: -3 }),
   // Distant armour hits carry their distance in the recording: the close banks' slope,
   // shifted by their quieter master so the range crossfade stays level, with less air loss.

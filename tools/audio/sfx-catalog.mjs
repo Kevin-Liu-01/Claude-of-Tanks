@@ -779,6 +779,14 @@ const hullEvents = [
   sfx('hit_metal', 'collisions', `One-shot of a tank ramming into a burnt-out steel vehicle hulk: a heavy dull steel clang and crunch of bending armour plate, grinding metal. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
   sfx('ammo_explode_far', 'destruction', `One-shot of a tank's ammunition exploding far away, about a kilometre: a deep heavy boom followed by a rolling series of muffled secondary blasts and a long low echo. ${FAR}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far' }),
 ];
+// Machine-gun rounds into what they strike (2026-10-13): with the roof stations armed on 75 vehicles, bullets hit
+// walls, wrecks, cars and timber all battle, and every one of them landed as a puff of dirt. No ricochet whine (the
+// 2026-10-03 "boing" lesson): the strike itself.
+const bulletStrikes = [
+  sfx('bullet_masonry', 'impacts', `Sound effect: one single heavy machine-gun bullet striking a brick and stone wall: a sharp hard crack and a short spray of brick chips and grit, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 6, proc: 'impact' }),
+  sfx('bullet_metal', 'impacts', `Sound effect: one single heavy machine-gun bullet striking the thin steel body of a parked truck: a sharp metallic punch through sheet steel with a short tinny rattle, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 6, proc: 'impact' }),
+  sfx('bullet_wood', 'impacts', `Sound effect: one single heavy machine-gun bullet striking a thick wooden beam: a hard dry thock and a few splinters cracking off, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 6, proc: 'impact' }),
+];
 const missileLaunches = [
   // how each missile family leaves its launcher (the fx lane's EF.04 launch types): a tube's charge and backblast, a
   // soft eject whose motor lights clear of the tube, a rail, a gun barrel; and a launch heard far away
@@ -793,7 +801,7 @@ export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
-  ...structures, ...breakables, ...hullEvents, ...missileLaunches,
+  ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */

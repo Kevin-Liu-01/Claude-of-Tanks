@@ -281,7 +281,8 @@ interface Rig {
 const CORE_BATTLE = [
   'pen_heavy', 'pen_light', 'pen_interior', 'ricochet_heavy', 'ricochet_light', 'nonpen_heavy', 'nonpen_interior',
   'impact_far_pen', 'impact_far_nonpen', 'impact_far_ricochet',
-  'heat_impact', 'he_armor', 'era_det', 'bullet_armor', 'bullet_dirt', 'bullet_water', 'ground_dirt', 'ground_rock',
+  'heat_impact', 'he_armor', 'era_det', 'bullet_armor', 'bullet_dirt', 'bullet_water', 'bullet_masonry', 'bullet_metal', 'bullet_wood',
+  'ground_dirt', 'ground_rock',
   'ground_sand', 'ground_snow', 'ground_mud', 'ground_concrete', 'ground_wood', 'ground_metal', 'water_big', 'water_small',
   'expl_he_small', 'expl_he_medium', 'expl_he_large', 'expl_far', 'debris_dirt', 'tank_explode', 'tank_explode_ammo',
   'turret_land', 'debris_metal', 'cookoff_loop', 'wreck_fire_loop', 'fire_ignite', 'burnout_blast', 'metal_creak',
@@ -1104,7 +1105,8 @@ export function createAudio({
     // as one on the ground does — it played the prop's impact thud alone
     if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
     if (small) {
-      play(water ? 'bullet_water' : 'bullet_dirt', { x, y, z });
+      // (2026-10-13) a bullet strikes what it hit: brick and stone crack, steel punches, timber thocks (every one was dirt)
+      play(water ? 'bullet_water' : bulletStrikeAsset(event, x, z), { x, y, z });
     } else if (water) {
       play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
     } else if (event.hitKind === 'prop' && (typeof event.structureId === 'number' || event.surfaceKind === 'structure')) {
@@ -1234,6 +1236,19 @@ export function createAudio({
       }
     }
     if (far && farK > 0.03) play(far, { x, y, z, focus, gainDb: farDb + gainToDb(farK) });
+  }
+
+  /** A machine-gun round's strike by what it hit: a building by its walls, a prop by its kind, the ground by its surface. */
+  function bulletStrikeAsset(event: ShellExpiredEvent, x: number, z: number): string {
+    if (event.hitKind === 'prop') {
+      if (typeof event.structureId === 'number' || event.surfaceKind === 'structure') {
+        const m = structureSound(event.structureId).material;
+        return m === 'timber' ? 'bullet_wood' : m === 'steel' ? 'bullet_metal' : 'bullet_masonry';
+      }
+      const hit = propImpactAsset(String(event.surfaceKind || ''));
+      return hit === 'ground_metal' ? 'bullet_metal' : hit === 'ground_wood' ? 'bullet_wood' : hit === 'ground_dirt' ? 'bullet_dirt' : 'bullet_masonry';
+    }
+    return surfaceAt(x, z).surface === 'hard' ? 'bullet_masonry' : 'bullet_dirt';
   }
 
   /** What a hull struck sounds like (tank:impact): rock, masonry or steel, by the record it hit. */

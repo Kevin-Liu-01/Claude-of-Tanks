@@ -189,6 +189,123 @@
    }
   ]
  },
+ "bullet_masonry": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "de1e472152289c39e6cd19bf008f42d014a1013cca5a54a873e834d839d7c375",
+    "bytes": 3965,
+    "durS": 0.245,
+    "mMax": -12.3,
+    "integrated": -13.9,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "941fb501a7fd832d708029481cad4fb63b8d7d17e0b9c54811891aefdceffcf4",
+    "bytes": 1741,
+    "durS": 0.072,
+    "mMax": -16.9,
+    "integrated": -17,
+    "truePeak": 0
+   },
+   {
+    "sha256": "be61f57b6b209ed0f53368f33e406c0967c0f3bfd5d3bd02c1f41b301a3de5aa",
+    "bytes": 2666,
+    "durS": 0.147,
+    "mMax": -15.3,
+    "integrated": -15.3,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "aa8a41edffd4afef4e309088f8d1142814505b09eb950cd5ee2cd20e48aa91ce",
+    "bytes": 2003,
+    "durS": 0.082,
+    "mMax": -16.4,
+    "integrated": -16.5,
+    "truePeak": 0
+   }
+  ]
+ },
+ "bullet_metal": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3fa70381a7900c8a8da8c36076af662b4bc8ea4edf711fbd89623560ae940616",
+    "bytes": 9942,
+    "durS": 1,
+    "mMax": -12.2,
+    "integrated": -14.2,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "a75d35122bae29dd67aec4d5572a38b18d3a6b6f6b89605ddacbbb0ffe245c52",
+    "bytes": 10009,
+    "durS": 1,
+    "mMax": -13.1,
+    "integrated": -15.3,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "084f8d22b76d427db779ad7781a6b3451cc97787ecec7f84f08915660f3d832e",
+    "bytes": 10157,
+    "durS": 1,
+    "mMax": -11,
+    "integrated": -14.2,
+    "truePeak": 0
+   },
+   {
+    "sha256": "8107980e90f17d4c65b0fc0af95c09ef58999859611f18b0ff7120974d3c8607",
+    "bytes": 9796,
+    "durS": 1,
+    "mMax": -11.2,
+    "integrated": -14.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "bullet_wood": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0a047b7b9ec6731d51683a2923593602d914da1183f1a7e2205fac761d00a11d",
+    "bytes": 9753,
+    "durS": 1,
+    "mMax": -11.5,
+    "integrated": -14.3,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "4199b2236cde5d76330d65e814942065524dfe4a023c7355e98e87ee732aab2b",
+    "bytes": 11133,
+    "durS": 1,
+    "mMax": -13.8,
+    "integrated": -16.3,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "54a64742eba98e35b420032ef26729973942e34170e68d292ad2d7ed35c5f8d8",
+    "bytes": 2093,
+    "durS": 0.092,
+    "mMax": -16.3,
+    "integrated": -16.3,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "67a13a623dfbe35f8b0f84df29a8d8db382c75bb9f83f8f69e8f6d76a9c2b0da",
+    "bytes": 10010,
+    "durS": 1,
+    "mMax": -13,
+    "integrated": -14.6,
+    "truePeak": -0.1
+   }
+  ]
+ },
  "burnout_blast": {
   "group": "destruction",
   "preset": "impact",
