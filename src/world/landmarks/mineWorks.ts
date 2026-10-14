@@ -13,10 +13,12 @@
 // so it merges into the props' material buckets: no draw call of its own. Lattice, ropes, rails and rungs are dressing;
 // the legs, the bodies and the footings are structure.
 import type { SimpleCollisionShape } from '../collision.ts';
-import { PartSink, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, faceBox, rgb, shade, type EmitOptions, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
+import { buildHouse, type Opening } from '../maps/regional/house.ts';
+import { gateUnit, windowUnit } from '../maps/regional/openings.ts';
 
 const OXIDE = rgb(0x6e3328), GALV = rgb(0xa4a8a5), IRON_SHEET = rgb(0x8f7a68), RUST = rgb(0x6e3a24);
 const STEEL = rgb(0x5f6466), IRON = rgb(0x2c2d2e), ORE = rgb(0x7a4a32), YELLOW = rgb(0xc8a83a);
@@ -35,38 +37,53 @@ function footing(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number
 }
 
 /** A gabled corrugated-iron shed: walls from y 0 to `eave`, the ridge along z, a door on its front (+z) end. */
-function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eaveH: number, ridgeH: number, paint: Rgb, ctx: LandmarkBuildContext): number {
+/**
+ * A framed corrugated-iron engine house (props census #3, lane B 2026-10-14; the judges on the winding house: "span
+ * walls, triangle gables and zero-thickness roof quads, glass quads stuck on and the door and rope holes painted on"):
+ * the house grammar's body of painted sheet on its footing, its sliding door, windows and the rope ports cut through
+ * the front, the roof with thickness and its ridge vent, the sheet's laps. Returns the floor's height.
+ */
+function shed(sink: PartSink, cx: number, cz: number, w: number, d: number, eaveH: number, ridgeH: number, paint: Rgb, ctx: LandmarkBuildContext,
+  ports: readonly number[] = []): number {
   const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
   // (seated on the highest ground under it, its footing down past the lowest: plan.ts drapes)
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   const gs = [gl(x0, z0), gl(x1, z0), gl(x0, z1), gl(x1, z1), gl(cx, cz)], lo = Math.min(...gs), hi = Math.max(...gs);
-  const y = hi, eave = y + eaveH, ridge = y + ridgeH;
+  const y = hi;
   sink.span('stone', x0 - 0.2, Math.min(lo - 0.8, -0.6), z0 - 0.2, x1 + 0.2, y + 0.3, z1 + 0.2);
-  sink.span('structureMetal', x0, y + 0.3, z0, x1, eave, z1, { colourAt: rusting(paint, y + 0.3, eave, 0.35) });
-  // the gables (front and back) and the roof's two slopes, the eaves overhanging
-  const o = 0.35;
-  sink.polygon('structureMetal', [[x0, eave, z1], [x1, eave, z1], [cx, ridge, z1]], { colour: paint });
-  sink.polygon('structureMetal', [[x1, eave, z0], [x0, eave, z0], [cx, ridge, z0]], { colour: paint });
-  // (the buildings stream, 2026-10-12, the integrity check: each slope and its underside were wound toward each other,
-  // so a view from above saw the dark underside through the culled slope and a view from below the sheet's top) the
-  // slopes face up and out, their undersides down
-  sink.quad('roof', [cx, ridge + 0.05, z1 + o], [cx, ridge + 0.05, z0 - o], [x0 - o, eave - 0.15, z0 - o], [x0 - o, eave - 0.15, z1 + o]);
-  sink.quad('roof', [cx, ridge + 0.05, z0 - o], [cx, ridge + 0.05, z1 + o], [x1 + o, eave - 0.15, z1 + o], [x1 + o, eave - 0.15, z0 - o]);
-  // the roof's undersides (seen from below at the eaves)
-  sink.quad('structureMetal', [cx, ridge - 0.02, z0 - o], [cx, ridge - 0.02, z1 + o], [x0 - o, eave - 0.17, z1 + o], [x0 - o, eave - 0.17, z0 - o], { colour: shade(paint, 0.5), decor: true });
-  sink.quad('structureMetal', [cx, ridge - 0.02, z1 + o], [cx, ridge - 0.02, z0 - o], [x1 + o, eave - 0.17, z0 - o], [x1 + o, eave - 0.17, z1 + o], { colour: shade(paint, 0.5), decor: true });
-  // the door and a window on each long side
-  sink.quad('structureMetal', [cx - 1.2, y + 0.32, z1 + 0.03], [cx + 1.2, y + 0.32, z1 + 0.03], [cx + 1.2, y + Math.min(eaveH - 0.4, 3.6), z1 + 0.03], [cx - 1.2, y + Math.min(eaveH - 0.4, 3.6), z1 + 0.03], { colour: shade(paint, 0.55), decor: true });
-  const wy = y + eaveH * 0.55;
-  for (let k = 0; k < Math.max(1, Math.round(d / 5)); k++) {
-    const z = z0 + (k + 0.5) * d / Math.max(1, Math.round(d / 5));
-    sink.quad('glass', [x1 + 0.03, wy, z + 0.6], [x1 + 0.03, wy, z - 0.6], [x1 + 0.03, wy + 1.0, z - 0.6], [x1 + 0.03, wy + 1.0, z + 0.6], { decor: true });
-    sink.quad('glass', [x0 - 0.03, wy, z - 0.6], [x0 - 0.03, wy, z + 0.6], [x0 - 0.03, wy + 1.0, z + 0.6], [x0 - 0.03, wy + 1.0, z - 0.6], { decor: true });
+  const wallH = eaveH - 0.3, doorH = Math.min(eaveH - 0.4, 3.6) - 0.3;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.4, y0: 0, h: doorH }];
+  for (const u of ports) openings.push({ face: 'front', storey: 0, kind: 'window', u, w: 0.6, y0: 3.7, h: 0.6 });
+  const bays = Math.max(1, Math.round(d / 5));
+  for (const face of ['left', 'right'] as const) {
+    for (let k = 0; k < bays; k++) openings.push({ face, storey: 0, kind: 'window', u: -d / 2 + (k + 0.5) * d / bays, w: 1.2, y0: eaveH * 0.55 - 0.3, h: 1.0 });
   }
-  // the sheet's laps (fine vertical battens) down the long sides
-  for (const x of [x0 - 0.02, x1 + 0.02]) for (let z = z0 + 0.9; z < z1 - 0.4; z += 0.9) {
-    sink.span('structureMetal', x - 0.02, y + 0.3, z - 0.02, x + 0.02, eave, z + 0.02, { colour: shade(paint, 0.82), decor: true, fine: true });
-  }
+  const pitch = Math.atan2(ridgeH - eaveH, w / 2) * 180 / Math.PI;
+  sink.placed(0, cx, y + 0.3, cz, () => {
+    sink.paint = paint;
+    let frame: ReturnType<typeof buildHouse>;
+    try {
+      frame = buildHouse(sink, {
+        w, d, plinth: null, storeys: [{ h: wallH, wall: 'structureMetal' }],
+        roof: { kind: 'gable', pitchDeg: pitch, eave: 0.35, verge: 0.35, thickness: 0.08, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'structureMetal',
+        openings, chimneys: [], gutters: { colour: shade(paint, 0.7) }, verge: null, reveal: 0.1,
+      }, {
+        window: (s, face, o, y0) => {
+          if (o.w < 0.7) return; // the rope ports: open, the ropes through them to the drums
+          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(paint, 0.6), frameWidth: 0.06, frameOut: 0.04, bars: 'six', surround: null, sill: null, shutters: null }, ctx.variant, 0.15);
+        },
+        door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(paint, 0.85), { bucket: 'structureMetal', width: 0.12, out: 0.05, colour: shade(paint, 0.6) }),
+      });
+    } finally { sink.paint = null; }
+    // the sheet's laps down the long sides, the ridge vent along the roof (fine and dressing)
+    for (const name of ['left', 'right'] as const) {
+      const f = frame.faces[name];
+      for (let u = -f.width / 2 + 0.9; u < f.width / 2 - 0.4; u += 0.9) faceBox(sink, 'structureMetal', f, u, wallH / 2, 0.012, 0.04, wallH, 0.024, { colour: shade(paint, 0.82), decor: true, fine: true }, 'caps');
+    }
+    const rt = frame.roof.ridgeTopY;
+    sink.span('structureMetal', -0.3, rt - 0.05, -d * 0.35, 0.3, rt + 0.35, d * 0.35, { colour: shade(paint, 0.9), decor: true });
+    sink.span('structureMetal', -0.5, rt + 0.35, -d * 0.35 - 0.1, 0.5, rt + 0.42, d * 0.35 + 0.1, { colour: shade(paint, 0.8), decor: true });
+  });
   return y;
 }
 
@@ -98,9 +115,18 @@ export const headframe: LandmarkBuilder = (ctx) => {
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   const cg = [gl(-2.6, zs - 2.6), gl(2.6, zs - 2.6), gl(-2.6, zs + 2.6), gl(2.6, zs + 2.6), gl(0, zs)];
   const g0 = Math.max(...cg), gLo = Math.min(...cg), H = g0 + Hh;
-  // the shaft collar: a concrete block, the dark shaft between its timbers
-  sink.span('stone', -2.6, Math.min(gLo - 0.8, -0.6), zs - 2.6, 2.6, g0 + 1.2, zs + 2.6);
-  sink.quad('structureMetal', [-1.0, g0 + 1.22, zs + 1.5], [1.0, g0 + 1.22, zs + 1.5], [1.0, g0 + 1.22, zs - 1.5], [-1.0, g0 + 1.22, zs - 1.5], { colour: SHAFT, decor: true });
+  // the shaft collar: a concrete ring round the open shaft (props census #3, lane B 2026-10-14: was a block with the shaft
+  // painted on its top), its timber sets lining the shaft's mouth, the dark of the shaft below them, the skip at the top
+  const cb = Math.min(gLo - 0.8, -0.6);
+  sink.span('stone', -2.6, cb, zs - 2.6, 2.6, g0 + 1.2, zs - 1.5);
+  sink.span('stone', -2.6, cb, zs + 1.5, 2.6, g0 + 1.2, zs + 2.6);
+  sink.span('stone', -2.6, cb, zs - 1.5, -1.0, g0 + 1.2, zs + 1.5);
+  sink.span('stone', 1.0, cb, zs - 1.5, 2.6, g0 + 1.2, zs + 1.5);
+  sink.span('structureMetal', -1.0, g0 - 2.5, zs - 1.5, 1.0, g0 - 2.4, zs + 1.5, { colour: SHAFT, decor: true });
+  for (const [x, z, w2, d2] of [[0, zs - 1.45, 2.0, 0.12], [0, zs + 1.45, 2.0, 0.12], [-0.95, zs, 0.12, 2.9], [0.95, zs, 0.12, 2.9]] as const) {
+    sink.span('structureWood', x - w2 / 2, g0 - 1.2, z - d2 / 2, x + w2 / 2, g0 + 1.26, z + d2 / 2, { colour: rgb(0x4a3a2c), decor: true });
+  }
+  sink.span('structureMetal', -0.6, g0 + 1.3, zs - 0.9, 0.6, g0 + 3.2, zs + 0.3, { colour: shade(OXIDE, 1.2), decor: true });
   // the four legs and the raking struts
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) bar(sink, 'structureMetal', [sx * half, g0 + 1.2, zs + sz * half], [sx * half, H, zs + sz * half], 0.32, legOpts);
   const az = zs - 0.5 * Hh;
@@ -130,7 +156,7 @@ export const headframe: LandmarkBuilder = (ctx) => {
   piece(sink, { name: 'deck-rail', kind: 'lattice', at: 'damaged', fall: 'drop' }, (s) => rail(s, -half - 0.55, zs - half - 0.55, half + 0.55, zs + half + 0.55));
   // the winding house behind the struts (its own footing) and the ropes down to its drums
   const hz1 = az - 3, hd = 10;
-  const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx);
+  const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx, [-0.9, 0.9]);
   const R = Math.min(2.0, Hh * 0.085), hubY = H + 0.3 + R + 0.4;
   for (const sx of [-1, 1]) {
     const c: Vec3 = [sx * 0.9, hubY, zs - 0.2];
@@ -139,7 +165,6 @@ export const headframe: LandmarkBuilder = (ctx) => {
     bar(sink, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
     bar(sink, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
   }
-  for (const sx of [-1, 1]) sink.quad('structureMetal', [sx * 0.9 - 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.0, hz1 + 0.04], [sx * 0.9 + 0.3, hy + 4.6, hz1 + 0.04], [sx * 0.9 - 0.3, hy + 4.6, hz1 + 0.04], { colour: SHAFT, decor: true });
   // the ladder up the front leg's outer side, from the collar to the sheave deck: two stiles bracketed to the leg, the
   // rungs between them (the connectivity sweep, 217: the rungs hung 7 cm off the leg's front, inside the ore bin)
   const lx = half + 0.34, lz0 = zs + half - 0.5, lz1 = zs + half;
@@ -182,23 +207,52 @@ export const oreBin: LandmarkBuilder = (ctx) => {
   for (const sx of [-1, 1]) for (const [za, zb] of [[-hd + 0.3, 0], [0, hd - 0.3]]) {
     bar(sink, 'structureMetal', [sx * (hw - 0.3), clearY - 0.5, za], [sx * (hw - 0.3), boxY, zb], 0.12, { colour: OXIDE, decor: true });
   }
-  // the hopper and its pyramid bottom
+  // the hopper (props census #3, lane B 2026-10-14; the judges: "a plain box on a pyramid of four quads, a box on top for
+  // a head house, the walkway's floor coplanar with the hopper's lid"): its plate walls stiffened by angles every metre
+  // and a belt at mid height, the hips of its pyramid bottom angle-ribbed down to the rack-and-pinion gate
   sink.span('structureMetal', -hw, boxY, -hd, hw, top, hd, { colourAt: rusting(STEEL, boxY, top, 0.4) });
+  hopperStiffeners(sink, -hw, hw, -hd, hd, boxY, top, shade(STEEL, 0.78));
   const g = 0.7, gy = clearY;
   const rimP: Vec3[] = [[-hw, boxY, hd], [hw, boxY, hd], [hw, boxY, -hd], [-hw, boxY, -hd]];
   const gateP: Vec3[] = [[-g, gy, g], [g, gy, g], [g, gy, -g], [-g, gy, -g]];
   for (let i = 0; i < 4; i++) {
     const j = (i + 1) % 4;
     sink.quad('structureMetal', gateP[i], gateP[j], rimP[j], rimP[i], { colour: shade(STEEL, 0.72) });
+    bar(sink, 'structureMetal', [gateP[i][0] * 1.04, gateP[i][1], gateP[i][2] * 1.04], [rimP[i][0] * 1.01, rimP[i][1], rimP[i][2] * 1.01], 0.09, { colour: shade(STEEL, 0.6), decor: true });
   }
-  sink.span('structureMetal', -g - 0.1, gy - 0.6, -g - 0.1, g + 0.1, gy, g + 0.1, { colour: IRON, decor: true });
-  // the head house on top (the conveyor's delivery), its gable roof
-  sink.span('structureMetal', -hw * 0.7, top, -hd * 0.8, hw * 0.7, Ht, hd * 0.8, { colourAt: rusting(IRON_SHEET, top, Ht, 0.3) });
-  // (the integrity check, 2026-10-12: the slopes faced down into the house, open from above) wound to face up and out
-  sink.quad('roof', [0, Ht + 1.1, hd * 0.8 + 0.3], [0, Ht + 1.1, -hd * 0.8 - 0.3], [-hw * 0.7 - 0.3, Ht, -hd * 0.8 - 0.3], [-hw * 0.7 - 0.3, Ht, hd * 0.8 + 0.3]);
-  sink.quad('roof', [0, Ht + 1.1, -hd * 0.8 - 0.3], [0, Ht + 1.1, hd * 0.8 + 0.3], [hw * 0.7 + 0.3, Ht, hd * 0.8 + 0.3], [hw * 0.7 + 0.3, Ht, -hd * 0.8 - 0.3]);
-  sink.polygon('structureMetal', [[-hw * 0.7, Ht, hd * 0.8], [hw * 0.7, Ht, hd * 0.8], [0, Ht + 1.1, hd * 0.8]], { colour: IRON_SHEET });
-  sink.polygon('structureMetal', [[hw * 0.7, Ht, -hd * 0.8], [-hw * 0.7, Ht, -hd * 0.8], [0, Ht + 1.1, -hd * 0.8]], { colour: IRON_SHEET });
+  // the gate: its frame under the throat, the slide in its guides, the rack and the hand wheel on its pinion
+  sink.span('structureMetal', -g - 0.1, gy - 0.25, -g - 0.1, g + 0.1, gy, g + 0.1, { colour: IRON, decor: true });
+  sink.span('structureMetal', -g + 0.05, gy - 0.6, -g + 0.05, g - 0.05, gy - 0.25, g - 0.05, { colour: shade(IRON, 0.8), decor: true });
+  for (const sz of [-1, 1]) sink.span('structureMetal', -g - 0.25, gy - 0.32, sz * g - 0.05, g + 0.95, gy - 0.22, sz * g + 0.05, { colour: IRON, decor: true });
+  sink.span('structureMetal', g + 0.1, gy - 0.2, -0.06, g + 1.0, gy - 0.12, 0.06, { colour: shade(IRON, 1.3), decor: true, fine: true });
+  sheave(sink, [g + 1.0, gy - 0.1, g + 0.25], 0.32, 4, shade(IRON, 1.2), 0.05, { decor: true });
+  // the head house on the hopper's lid where the conveyor delivers: the house grammar's sheet walls and roof, its door
+  // to the walkway over the ladder, the conveyor's port in its front, a window on its side
+  const hhW = W * 0.7, hhD = D * 0.8, hhH = Ht - top;
+  sink.placed(0, 0, top, 0, () => {
+    sink.paint = IRON_SHEET;
+    try {
+      const frame = buildHouse(sink, {
+        w: hhW, d: hhD, plinth: null, storeys: [{ h: hhH, wall: 'structureMetal' }],
+        roof: { kind: 'gable', pitchDeg: Math.atan2(1.1, hhW / 2) * 180 / Math.PI, eave: 0.3, verge: 0.3, thickness: 0.06, bucket: 'roof', ridge: 'saddle' },
+        gableBucket: 'structureMetal', openings: [
+          { face: 'back', storey: 0, kind: 'door', u: -hhW / 2 + 0.6, w: 0.8, y0: 0, h: 1.9 },
+          { face: 'front', storey: 0, kind: 'window', u: 0, w: 1.1, y0: 0.7, h: 1.0 },
+          { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.9, y0: 1.0, h: 0.7 },
+        ], chimneys: [], gutters: null, verge: null, reveal: 0.08,
+      }, {
+        window: (s, face, o, y0) => {
+          if (o.w > 1) return; // the conveyor's port: open, the belt's head pulley inside
+          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(IRON_SHEET, 0.6), frameWidth: 0.05, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null }, ctx.variant, 0.12);
+        },
+        door: (s, face, o, y0) => gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, shade(IRON_SHEET, 0.85), { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: shade(IRON_SHEET, 0.6) }),
+      });
+      for (const name of ['left', 'right'] as const) {
+        const f = frame.faces[name];
+        for (let u = -f.width / 2 + 0.8; u < f.width / 2 - 0.3; u += 0.8) faceBox(sink, 'structureMetal', f, u, hhH / 2, 0.012, 0.04, hhH, 0.024, { colour: shade(IRON_SHEET, 0.82), decor: true, fine: true }, 'caps');
+      }
+    } finally { sink.paint = null; }
+  });
   // the ladder up the back-left leg's outer side to the walkway (its stiles from the ground to the walkway's floor, a
   // bracket to the leg every 2.4 m) and the walkway round the hopper's top, its rail on posts (the connectivity sweep,
   // 217: the rungs hung 4.5 cm off the leg, the rail a metre over the walkway on nothing)
@@ -211,6 +265,7 @@ export const oreBin: LandmarkBuilder = (ctx) => {
     const [bx, bz] = corners[(i + 1) % 4];
     const a: Vec3 = [Math.sign(ax) * (Math.abs(ax) - 0.03), top + 1.0, Math.sign(az) * (Math.abs(az) - 0.03)], b: Vec3 = [Math.sign(bx) * (Math.abs(bx) - 0.03), top + 1.0, Math.sign(bz) * (Math.abs(bz) - 0.03)];
     bar(sink, 'structureMetal', a, b, 0.05, { colour: YELLOW, decor: true });
+    bar(sink, 'structureMetal', [a[0], top + 0.5, a[2]], [b[0], top + 0.5, b[2]], 0.04, { colour: YELLOW, decor: true, fine: true });
     // the posts: one at the corner, others every metre and a half along the side
     const len = Math.hypot(b[0] - a[0], b[2] - a[2]), k = Math.max(1, Math.round(len / 1.5));
     for (let j = 0; j < k; j++) {
@@ -218,12 +273,45 @@ export const oreBin: LandmarkBuilder = (ctx) => {
       bar(sink, 'structureMetal', [px, top - 0.02, pz], [px, top + 1.0, pz], 0.05, { colour: YELLOW, decor: true });
     }
   });
-  sink.span('structureMetal', -hw - 0.5, top - 0.1, -hd - 0.5, hw + 0.5, top, hd + 0.5, { colour: IRON, decor: true });
-  // ore spilt under the gate (dressing), lying on the ground
-  const gc = gl(0, 0) + 0.03;
-  sink.polygon('structureMetal', [[-1.6, gc, 1.4], [1.6, gc, 1.4], [1.4, gc, -1.5], [-1.5, gc, -1.3]], { colour: ORE, decor: true });
+  // the walkway: a grating ring round the lid (never over it), on brackets, its toe boards and the grating's bars
+  const grate = shade(IRON, 1.15), wy0 = top - 0.1;
+  for (const [x0, z0, x1, z1] of [[-hw - 0.5, -hd - 0.5, hw + 0.5, -hd], [-hw - 0.5, hd, hw + 0.5, hd + 0.5], [-hw - 0.5, -hd, -hw, hd], [hw, -hd, hw + 0.5, hd]] as const) {
+    sink.span('structureMetal', x0, wy0, z0, x1, top - 0.02, z1, { colour: grate, decor: true });
+    const along = x1 - x0 > z1 - z0;
+    for (let t = 0.3; t < (along ? x1 - x0 : z1 - z0) - 0.1; t += 0.3) {
+      if (along) sink.span('structureMetal', x0 + t - 0.01, top - 0.02, z0, x0 + t + 0.01, top - 0.005, z1, { colour: shade(grate, 0.6), decor: true, fine: true });
+      else sink.span('structureMetal', x0, top - 0.02, z0 + t - 0.01, x1, top - 0.005, z0 + t + 0.01, { colour: shade(grate, 0.6), decor: true, fine: true });
+    }
+  }
+  for (const [x0, z0, x1, z1] of [[-hw - 0.5, -hd - 0.5, hw + 0.5, -hd - 0.47], [-hw - 0.5, hd + 0.47, hw + 0.5, hd + 0.5], [-hw - 0.5, -hd - 0.47, -hw - 0.47, hd + 0.47], [hw + 0.47, -hd - 0.47, hw + 0.5, hd + 0.47]] as const) {
+    sink.span('structureMetal', x0, top - 0.02, z0, x1, top + 0.12, z1, { colour: YELLOW, decor: true, fine: true });
+  }
+  for (const sx of [-1, 1]) for (const z of [-hd + 0.3, hd - 0.3]) bar(sink, 'structureMetal', [sx * hw, top - 0.6, z], [sx * (hw + 0.45), wy0, z], 0.06, { colour: OXIDE, decor: true });
+  // ore spilt under the gate (dressing): a low heap and its strays on the ground
+  const gc = gl(0, 0);
+  sink.cylinder('structureMetal', [0.1, gc - 0.05, 0.05], 'y', 0.45, 1.6, 7, { colour: ORE, decor: true }, 0.55, false, 0.3);
+  sink.cylinder('structureMetal', [0.9, gl(0.9, -0.9) - 0.05, -0.9], 'y', 0.25, 0.7, 6, { colour: shade(ORE, 0.9), decor: true }, 0.2, false, 0.7);
   return { parts: sink.finish() };
 };
+
+/** A plate box's stiffening: angles up its walls every metre or so, a belt round it at mid height, a cap angle at its lid. */
+function hopperStiffeners(sink: PartSink, x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, colour: Rgb): void {
+  const o = { colour, decor: true };
+  const ym = (y0 + y1) / 2, t = 0.1;
+  for (const [ax, az, bx, bz] of [[x0, z1, x1, z1], [x1, z0, x0, z0], [x1, z1, x1, z0], [x0, z0, x0, z1]] as const) {
+    const len = Math.hypot(bx - ax, bz - az), n = Math.max(2, Math.round(len / 1.1));
+    const alongX = az === bz, out = alongX ? Math.sign(az - (z0 + z1) / 2) : Math.sign(ax - (x0 + x1) / 2);
+    for (let k = 1; k < n; k++) {
+      const f = k / n, x = ax + (bx - ax) * f, z = az + (bz - az) * f;
+      if (alongX) sink.span('structureMetal', x - 0.05, y0 + 0.05, Math.min(z, z + out * t), x + 0.05, y1 - 0.05, Math.max(z, z + out * t), o);
+      else sink.span('structureMetal', Math.min(x, x + out * t), y0 + 0.05, z - 0.05, Math.max(x, x + out * t), y1 - 0.05, z + 0.05, o);
+    }
+    for (const y of [ym, y1 - 0.07]) {
+      if (alongX) sink.span('structureMetal', x0 - t, y - 0.07, Math.min(az, az + out * t * 1.2), x1 + t, y + 0.07, Math.max(az, az + out * t * 1.2), o);
+      else sink.span('structureMetal', Math.min(ax, ax + out * t * 1.2), y - 0.07, z0, Math.max(ax, ax + out * t * 1.2), y + 0.07, z1, o);
+    }
+  }
+}
 
 // ----------------------------------------------------------------------------------------------------------- conveyor
 
