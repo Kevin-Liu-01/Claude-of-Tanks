@@ -137,7 +137,29 @@ for (const mapId of Object.keys(TOWN_PLANS)) {
   assert.equal(getMapConfig(mapId).props.townPlan, TOWN_PLANS[mapId], `${mapId}: the map replays its recorded town plan`);
   assert.ok(TOWN_PLANS[mapId].length >= 1, `${mapId}: the plan is not empty`);
 }
-const footprint = (o) => ({ cx: (o.b[0] + o.b[3]) / 2, cz: (o.b[2] + o.b[5]) / 2, w: o.b[3] - o.b[0], d: o.b[5] - o.b[2] });
+/**
+ * A structure's footprint in plan: its ground band's (physics stream F2, 2026-10-14: the record also carries its roof's
+ * decks, floor-only parts raised over its base — world/collision.ts collisionPartIsDeck — whose eaves overhang the walls
+ * and grew the record's box past them; a deck is a 'p' part, a drawn top, starting over half a metre above the record).
+ */
+const DECK_RAISED_M = 0.5;
+const groundBox = (o) => {
+  if (!Array.isArray(o.s) || o.s[0] !== 'm') return o.b;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const part of o.s.slice(1)) {
+    if (part[0] === 'p' && part[1] > o.b[1] + DECK_RAISED_M) continue;
+    const from = part[0] === 'v' ? 1 : part[0] === 'w' ? 3 : part[0] === 'p' ? 6 + 3 * part[5] : -1;
+    if (from < 0) return o.b;
+    for (let i = from; i + 1 < part.length; i += 2) {
+      x0 = Math.min(x0, part[i]); x1 = Math.max(x1, part[i]); z0 = Math.min(z0, part[i + 1]); z1 = Math.max(z1, part[i + 1]);
+    }
+  }
+  return [x0, o.b[1], z0, x1, o.b[4], z1];
+};
+const footprint = (o) => {
+  const b = groundBox(o);
+  return { cx: (b[0] + b[3]) / 2, cz: (b[2] + b[5]) / 2, w: b[3] - b[0], d: b[5] - b[2] };
+};
 const summary = [];
 /**
  * A map that adopts a regional kit (props.architecture; maps/regional, the map-revival lanes, 2026-10-05). The kit
