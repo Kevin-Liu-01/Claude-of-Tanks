@@ -1240,6 +1240,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // gallery URL, room seat, telemetry) resolve swapped ids by schema.
     'src/vehicles/tankIdAliases.selftest.mjs',
     'src/game/tankIdBoundaries.selftest.mjs',
+    // 2026-10-13 (SSOT 2.19 ID.04/05): the tank id codemod renames a tree once and, as the lanes' merge helper, converts
+    // only a lane's own old-id lines and id-only conflicts; a second run changes nothing.
+    'tools/tank-id-codemod.selftest.mjs',
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
