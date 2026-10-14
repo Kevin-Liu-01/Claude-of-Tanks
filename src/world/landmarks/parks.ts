@@ -462,8 +462,65 @@ export const piazza: LandmarkBuilder = (ctx) => {
   run(-W / 2, W / 2, (t0, t1) => block(t0, t1, -D / 2, -D / 2 + K));
   run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(W / 2 - K, W / 2, t0, t1));
   run(-D / 2 + K + JOINT, D / 2 - K - JOINT, (t0, t1) => block(-W / 2, -W / 2 + K, t0, t1));
+  if (ctx.params.furnish === true) furnishSquare(sink, W, D, FLAGS, ground);
   return { parts: sink.finish(), tints: { stone: [0.98, 0.96, 0.91] } };
 };
+
+const IRON_BLACK = rgb(0x26282a), FLAG_RED = rgb(0x9e1f24), FLAG_WHITE = rgb(0xeae6dc), BRONZE = rgb(0x6e5a34), PLANTER_BOX = rgb(0x3f5a32), GILT_FLAG = rgb(0xc9a23a);
+
+/**
+ * A Dalmatian square's furniture (the landmarks lane, round 5: wave 389, the campanile "stands on a blank slab with no
+ * closed square around it"): the well-head on its stepped platform under its iron arch and pulley at the square's north
+ * end, the Venetian flag pedestal (stendardo) with its mast and flag at the south end, stone benches before the house
+ * fronts, an iron lamp at each quarter, two stone planters of box. All dressing (a hull drives through them as through
+ * the square's other dressing); each stands a step over the ground at its own seat.
+ */
+function furnishSquare(sink: PartSink, W: number, D: number, flags: number, ground: (x: number, z: number) => number): void {
+  const at = (x: number, z: number) => ground(x, z) + flags;
+  // the well-head: two octagonal steps, the carved drum, the iron arch and its pulley
+  { const x = -1, z = D * 0.31, y = at(x, z);
+    revolve(sink, 'stone', x, z, [[1.45, y - 0.3], [1.45, y + 0.16], [1.12, y + 0.16], [1.12, y + 0.32], [0.82, y + 0.32], [0.82, y + 1.15], [0.9, y + 1.2], [0.9, y + 1.3], [0.6, y + 1.3], [0.6, y + 1.0]], 8, { decor: true });
+    for (const s of [-1, 1]) sink.span('structureMetal', x + s * 0.72 - 0.04, y + 1.25, z - 0.04, x + s * 0.72 + 0.04, y + 2.6, z + 0.04, { colour: IRON_BLACK, decor: true });
+    for (let k = 0; k < 6; k++) {
+      const a0 = Math.PI * k / 6, a1 = Math.PI * (k + 1) / 6;
+      bar(sink, 'structureMetal', [x + Math.cos(a0) * 0.72, y + 2.6 + Math.sin(a0) * 0.42, z], [x + Math.cos(a1) * 0.72, y + 2.6 + Math.sin(a1) * 0.42, z], 0.06, { colour: IRON_BLACK, decor: true });
+    }
+    revolve(sink, 'structureMetal', x, z, [[0.16, y + 2.7], [0.16, y + 2.78]], 10, { colour: IRON_BLACK, decor: true });
+    sink.span('structureMetal', x - 0.02, y + 2.62, z - 0.02, x + 0.02, y + 3.02, z + 0.02, { colour: IRON_BLACK, decor: true });
+  }
+  // the stendardo: a stepped stone base, the octagonal pedestal with its bronze ring, the mast and the flag
+  { const x = -1, z = -D * 0.31, y = at(x, z);
+    sink.span('stone', x - 0.75, y - 0.3, z - 0.75, x + 0.75, y + 0.3, z + 0.75, { decor: true });
+    revolve(sink, 'stone', x, z, [[0.5, y + 0.3], [0.5, y + 0.45], [0.36, y + 0.55], [0.32, y + 1.9], [0.42, y + 2.0], [0.42, y + 2.12], [0.12, y + 2.12]], 8, { decor: true });
+    revolve(sink, 'structureMetal', x, z, [[0.335, y + 1.2], [0.335, y + 1.32]], 8, { colour: BRONZE, decor: true });
+    revolve(sink, 'structureWood', x, z, [[0.08, y + 2.1], [0.05, y + 9.5], [0.07, y + 9.6], [0.0, y + 9.75]], 8, { colour: shade(FLAG_WHITE, 0.82), decor: true });
+    // the banner of St Mark: crimson, the lion a gold field at its hoist (both faces)
+    for (const [x0, x1, y0, y1, c, dz] of [[0.06, 1.9, 8.25, 9.35, FLAG_RED, 0], [0.3, 0.95, 8.5, 9.1, GILT_FLAG, 0.004]] as const) {
+      sink.quad('structureMetal', [x + x0, y + y0, z + dz], [x + x1, y + y0 - 0.05, z + dz], [x + x1, y + y1 - 0.05, z + dz], [x + x0, y + y1, z + dz], { colour: c, decor: true });
+      sink.quad('structureMetal', [x + x1, y + y0 - 0.05, z - dz], [x + x0, y + y0, z - dz], [x + x0, y + y1, z - dz], [x + x1, y + y1 - 0.05, z - dz], { colour: c, decor: true });
+    }
+  }
+  // the benches before the house fronts: a slab on two blocks
+  for (const sz of [-1, 1]) for (const x of [-5.2, 4.2]) {
+    const z = sz * (D / 2 - 1.1), y = at(x, z);
+    for (const dx of [-0.85, 0.85]) sink.span('stone', x + dx - 0.16, y - 0.1, z - 0.18, x + dx + 0.16, y + 0.4, z + 0.18, { decor: true });
+    sink.span('stone', x - 1.15, y + 0.4, z - 0.24, x + 1.15, y + 0.52, z + 0.24, { decor: true, shade: 0.95 });
+  }
+  // an iron lamp at each quarter
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const x = sx * (W / 2 - 1.4), z = sz * D * 0.22, y = at(x, z);
+    sink.span('stone', x - 0.25, y - 0.1, z - 0.25, x + 0.25, y + 0.25, z + 0.25, { decor: true });
+    revolve(sink, 'structureMetal', x, z, [[0.09, y + 0.25], [0.06, y + 3.0], [0.1, y + 3.05]], 8, { colour: IRON_BLACK, decor: true });
+    sink.span('structureMetal', x - 0.2, y + 3.05, z - 0.2, x + 0.2, y + 3.55, z + 0.2, { colour: rgb(0x3a3c38), decor: true });
+    revolve(sink, 'structureMetal', x, z, [[0.3, y + 3.55], [0.05, y + 3.8]], 8, { colour: IRON_BLACK, decor: true });
+  }
+  // two stone planters of box, either side of the campanile's door axis
+  for (const [x, z] of [[-W * 0.3, D * 0.1], [W * 0.3, -D * 0.1]] as const) {
+    const y = at(x, z);
+    revolve(sink, 'stone', x, z, [[0.8, y - 0.1], [0.8, y + 0.5], [0.7, y + 0.5], [0.7, y + 0.42]], 10, { decor: true });
+    revolve(sink, 'structureWood', x, z, [[0.7, y + 0.42], [0.82, y + 0.85], [0.6, y + 1.25], [0.0, y + 1.4]], 9, { colour: PLANTER_BOX, decor: true });
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------- churchyard
 

@@ -182,20 +182,21 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
       // (the front's plaque rows keep clear: its streaks run in the joints between them)
       streak(f, u, yTop, len, 0.12 + ctx.variant() * 0.2, ctx.variant() < 0.6 ? [1.45, 1.42, 1.36] : [0.52, 0.5, 0.48]);
     }
-    for (const h of holes[name] ?? []) {
-      streak(f, h.u, apex + 0.55, 0.5, h.w * 0.7, [0.5, 0.48, 0.46]);
-    }
+    // (wave 389, round 2: "blocks hang in its arches" — the soot streaks over the arches' heads ran down past the
+    // pointed crowns into the openings; the arches keep the plaques' shade instead)
   }
   // the lower char-chala, the upper cella and its roof, the finial
   const h1 = S * 0.27, yRoof1 = y0 + S * 0.32;
   // (round 4: the roofs were "mushroom-cap bulges in the walls' own brick texture"): lime-plastered slopes, weathered
-  // green toward their eaves, a gentler swell, crisp terracotta rolls on the hips and the bangla cornice deep in brick
+  // green toward their eaves, a gentler swell, crisp terracotta rolls on the hips and the bangla cornice deep in brick.
+  // (wave 389, round 2: the slopes "read as thatch": the Bengal kit's plaster3 is its mud render; the lime is its plaster,
+  // and the rolls on the hips take the mud-red terracotta)
   const roofMoss = (lo: number, hi: number) => (p: Vec3): Rgb => {
     const t = Math.max(0, Math.min(1, (p[1] - lo) / Math.max(0.5, hi - lo)));
     return [0.66 + 0.36 * t, 0.74 + 0.27 * t, 0.6 + 0.36 * t];
   };
-  charChala(sink, 'plaster3', h0, y0 + 0.2, droop, h1, yRoof1, S * 0.03,
-    { fascia: wall, rib: 'plaster', fasciaH: 0.36, tintAt: roofMoss(y0 + 0.2 - droop, yRoof1) });
+  charChala(sink, 'plaster', h0, y0 + 0.2, droop, h1, yRoof1, S * 0.03,
+    { fascia: wall, rib: 'plaster3', fasciaH: 0.36, tintAt: roofMoss(y0 + 0.2 - droop, yRoof1) });
   const upperH = Math.max(1.3, S * 0.2), yUp = yRoof1 + upperH;
   sink.span(wall, -h1 + 0.05, yRoof1 - 0.3, -h1 + 0.05, h1 - 0.05, yUp, h1 - 0.05);
   for (const [u, nx, nz] of [[0, 0, 1], [0, 0, -1], [0, 1, 0], [0, -1, 0]] as const) {
@@ -205,8 +206,8 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
     sink.span(wall, x - (nz ? 0.32 : 0.02), yRoof1 + 0.1, z - (nx ? 0.32 : 0.02), x + (nz ? 0.32 : 0.02), yUp - 0.35, z + (nx ? 0.32 : 0.02), { decor: true, shade: 0.45 });
   }
   const yApex = yUp + S * 0.33;
-  charChala(sink, 'plaster3', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
-    { fascia: wall, rib: 'plaster', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) });
+  charChala(sink, 'plaster', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
+    { fascia: wall, rib: 'plaster3', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) });
   revolve(sink, 'structureMetal', 0, 0, [[0.34, yApex - 0.15], [0.42, yApex + 0.12], [0.18, yApex + 0.42], [0.3, yApex + 0.7], [0.12, yApex + 1.0], [0.03, yApex + 1.45]], 10,
     { colour: FINIAL });
   return { parts: sink.finish(), tints: { stone: [TERRACOTTA[0] * 1.55, TERRACOTTA[1] * 1.55, TERRACOTTA[2] * 1.55] } };

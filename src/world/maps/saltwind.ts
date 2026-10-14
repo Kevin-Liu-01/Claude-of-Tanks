@@ -154,7 +154,10 @@ export default {
       // market crossroads and the village square.
       // (the rows between the two zones' seats: the zone placement keeps every solid 30 m from a zone's centre on each
       // axis (sim/matchPlacement.ts blockedByWorld), so a row stands within x -92..-74 — three houses 5.6 m wide)
-      { kind: 'piazza', x: -82, z: 10, yawDeg: 0, ground: 'veto', name: "the campanile's piazza", params: { width: 18, depth: 29.0 } },
+      // round 5 (2026-10-11; wave 389: "stands on a blank slab with no closed square around it"): the square furnished —
+      // the well-head, the Venetian flag pedestal, benches before the houses, lamps, planters — and a third step round the
+      // campanile's foot (its east and west sides stay open: the zones' clearance keeps solids out of them)
+      { kind: 'piazza', x: -82, z: 10, yawDeg: 0, ground: 'veto', name: "the campanile's piazza", params: { width: 18, depth: 29.0, furnish: true } },
       { kind: 'campanile', x: -81, z: 10, yawDeg: -90, name: 'the campanile', params: { height: 34, side: 5.6 } },
       { kind: 'houseRow', x: -83, z: 28.75, yawDeg: 180, ground: 'veto', name: "the piazza's north houses", params: { kit: 'dalmatian', count: 3, width: 5.6, depth: 8.6 } },
       { kind: 'houseRow', x: -83, z: -8.75, yawDeg: 0, ground: 'veto', name: "the piazza's south houses", params: { kit: 'dalmatian', count: 3, width: 5.6, depth: 8.6 } },

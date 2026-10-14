@@ -8,7 +8,7 @@ import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type R
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
-  ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, moulding, revolve, smoothRender, star,
+  ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, cornerPilasters, moulding, revolve, smoothRender, star,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
 import { fenceRun } from './grounds.ts';
 import { letterText, measureText } from './lettering.ts';
@@ -211,13 +211,18 @@ export const townGate: LandmarkBuilder = (ctx) => {
   const P = Math.max(3.5, Number(ctx.params.passage)), H = Math.max(10, Number(ctx.params.height)), D = Math.max(5, Number(ctx.params.depth));
   const [wallsLeft, wallsRight] = gateStubs(ctx.params);
   const base = -0.6 - ctx.groundFall, wall: RegionalBucket = 'stone';
+  // (wave 389, round 2: "a single uniformly brick-skinned gate ... north and south are the same tower model") the
+  // dressings in the town's sandstone over the wall's stone — the arch rings, the quoins, the string course and the
+  // cornice — and a second form: `style: 'framed'`, the top storey timber framed and jettied on its corbels under a
+  // steeper roof with a lantern, the town's arms over the passage instead of the clock
+  const framed = String(ctx.params.style) === 'framed', DRESS: Rgb = [1.32, 1.24, 1.08];
   const W = P + 4.6, spring = Math.min(4.6, H * 0.26), passage: ArchHole = { u: 0, w: P, y0: 0, spring, form: 'round' };
   const crown = spring + archRise(passage);
   // the piers either side of the passage
   for (const sx of [-1, 1]) {
     const x0 = sx * P / 2, x1 = sx * W / 2;
     sink.span(wall, Math.min(x0, x1), base, -D / 2, Math.max(x0, x1), spring, D / 2);
-    sink.span(wall, Math.min(x0, x1) - (sx > 0 ? 0 : 0.15), base, -D / 2 - 0.15, Math.max(x0, x1) + (sx > 0 ? 0.15 : 0), 0.6, D / 2 + 0.15);
+    sink.span(wall, Math.min(x0, x1) - (sx > 0 ? 0 : 0.15), base, -D / 2 - 0.15, Math.max(x0, x1) + (sx > 0 ? 0.15 : 0), 0.6, D / 2 + 0.15, { tint: DRESS });
   }
   // the block over the passage, a separate solid
   const blockTop = crown + 1.2;
@@ -229,24 +234,67 @@ export const townGate: LandmarkBuilder = (ctx) => {
     voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { ...passage, y0: spring }, 0.2);
     voussoirs(sink, DRESS_BUCKET, { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { ...passage, y0: spring }, 0.2);
   });
-  // the upper storeys of the tower
+  // the upper storeys of the tower (a framed gate's masonry stops under its framed storey)
   const top = H - Math.max(4, W * 0.55);
+  const stoneTop = framed ? blockTop + Math.max(3.2, (top - blockTop) * 0.5) : top;
   const win = (u: number, y: number): ArchHole => ({ u, w: 0.85, y0: y, spring: y + 1.1, form: 'segmental', rise: 0.2 });
-  const holes = {
+  const holes = framed ? {
+    front: [win(-W * 0.22, blockTop + 1.2), win(W * 0.22, blockTop + 1.2)], back: [win(0, blockTop + 1.2)], left: [win(0, blockTop + 1.4)], right: [win(0, blockTop + 1.4)],
+  } : {
     front: [win(-W * 0.22, blockTop + 1.2), win(W * 0.22, blockTop + 1.2), win(0, top - 2.2)],
     back: [win(0, blockTop + 1.2), win(0, top - 2.2)], left: [win(0, blockTop + 2.0)], right: [win(0, blockTop + 2.0)],
   };
-  const f = archedBody(sink, wall, 0, 0, W, D, blockTop + ARCH_GAP_M, top, holes, 0.3);
+  const f = archedBody(sink, wall, 0, 0, W, D, blockTop + ARCH_GAP_M, stoneTop, holes, 0.3);
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     for (const h of holes[name]) archWindow(sink, f[name], h, 0.3, FRAME_WHITE, ctx.variant() < 0.2);
   }
   moulding(sink, wall, W, D, blockTop - 0.2, 0.25, 0.1);
   // (the looks lane) the tower's rusticated quoins from its plinth to the eaves, a string course at each storey, the
-  // gatekeeper's oriel over the passage on the town side
-  towerQuoins(sink, DRESS_BUCKET, W, D, 0.62, top - 0.15);
-  for (const y of [blockTop + 3.3, top - 3.2]) if (y > blockTop + 1.5 && y < top - 1.2) moulding(sink, DRESS_BUCKET, W, D, y, 0.18, 0.08, { decor: true });
-  moulding(sink, DRESS_BUCKET, W, D, top - 0.32, 0.3, 0.16, { decor: true });
+  // gatekeeper's oriel over the passage on the town side (a framed gate's quoins and courses stop under its framed storey)
+  const masonTop = framed ? stoneTop : top;
+  towerQuoins(sink, DRESS_BUCKET, W, D, 0.62, masonTop - 0.15);
+  for (const y of [blockTop + 3.3, top - 3.2]) if (y > blockTop + 1.5 && y < masonTop - 1.2) moulding(sink, DRESS_BUCKET, W, D, y, 0.18, 0.08, { decor: true });
+  if (!framed) moulding(sink, DRESS_BUCKET, W, D, top - 0.32, 0.3, 0.16, { decor: true });
   oriel(sink, DRESS_BUCKET, -D / 2, blockTop + 1.35, FRAME_WHITE);
+  if (framed) {
+    // the framed storey jettied out on its corbels: the render infill, oak posts, sill and head plates, a brace in each
+    // bay's corners, two small windows a face; the town's arms over the passage on the field side
+    const J = 0.38, fw = W + 2 * J, fd = D + 2 * J, y0 = stoneTop + 0.32;
+    for (let x = -W / 2 + 0.4; x <= W / 2 - 0.3; x += 1.25) for (const sz of [-1, 1]) {
+      sink.span('structureWood', x - 0.11, stoneTop - 0.3, sz > 0 ? D / 2 - 0.05 : -D / 2 - J, x + 0.11, stoneTop + 0.32, sz > 0 ? D / 2 + J : -D / 2 + 0.05, { colour: TIMBER_DARK, decor: true });
+    }
+    sink.span('structureWood', -fw / 2, stoneTop + 0.05, -fd / 2, fw / 2, y0, fd / 2, { colour: TIMBER_DARK });
+    sink.span('plaster', -fw / 2 + 0.04, y0, -fd / 2 + 0.04, fw / 2 - 0.04, top, fd / 2 - 0.04, {});
+    const frameFace = (origin: Vec3, u: Vec3, out: Vec3, width: number): Face => ({ origin, u, out, width });
+    const fFaces: Face[] = [frameFace([0, 0, fd / 2], [1, 0, 0], [0, 0, 1], fw), frameFace([0, 0, -fd / 2], [-1, 0, 0], [0, 0, -1], fw),
+      frameFace([fw / 2, 0, 0], [0, 0, -1], [1, 0, 0], fd), frameFace([-fw / 2, 0, 0], [0, 0, 1], [-1, 0, 0], fd)];
+    for (const face of fFaces) {
+      const half = face.width / 2, bays = Math.max(2, Math.round(face.width / 1.6));
+      const post = (u: number) => sink.member('structureWood', facePoint(face, u, y0, 0), facePoint(face, u, top, 0), 0.18, 0.06, face.out, { colour: TIMBER, decor: true }, 0.02);
+      for (let k = 0; k <= bays; k++) post(-half + 0.09 + (face.width - 0.18) * k / bays);
+      for (const y of [y0 + 0.09, top - 0.09, y0 + (top - y0) * 0.38]) {
+        sink.member('structureWood', facePoint(face, -half, y, 0), facePoint(face, half, y, 0), 0.16, 0.06, face.out, { colour: TIMBER, decor: true }, 0.02);
+      }
+      for (let k = 0; k < bays; k++) {
+        const ua = -half + 0.09 + (face.width - 0.18) * k / bays, ub = -half + 0.09 + (face.width - 0.18) * (k + 1) / bays;
+        if (k === 0 || k === bays - 1) {
+          const [p0, p1] = k === 0 ? [ua, ub] : [ub, ua];
+          sink.member('structureWood', facePoint(face, p0, y0 + 0.12, 0), facePoint(face, p1, y0 + (top - y0) * 0.36, 0), 0.14, 0.05, face.out, { colour: TIMBER, decor: true }, 0.02);
+        } else if (k % 2 === 1) {
+          const um = (ua + ub) / 2, wy = y0 + (top - y0) * 0.5;
+          sink.quad('glass', facePoint(face, um - 0.32, wy, 0.02), facePoint(face, um + 0.32, wy, 0.02), facePoint(face, um + 0.32, wy + 0.85, 0.02), facePoint(face, um - 0.32, wy + 0.85, 0.02), { decor: true });
+          sink.member('structureWood', facePoint(face, um - 0.4, wy - 0.05, 0), facePoint(face, um + 0.4, wy - 0.05, 0), 0.1, 0.08, face.out, { colour: FRAME_WHITE, decor: true }, 0.02);
+        }
+      }
+    }
+    // the arms: a shield in the town's colours on the field face over the arch ring
+    const af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, ay = crown + 0.75;
+    const shield = (s: number, dz: number): Vec3[] => [[-0.55 * s, ay + 0.65 * s], [0.55 * s, ay + 0.65 * s], [0.55 * s, ay - 0.1 * s], [0, ay - 0.7 * s], [-0.55 * s, ay - 0.1 * s]]
+      .map(([u, y]) => facePoint(af, u, y, dz));
+    sink.polygon('structureMetal', shield(1.12, 0.15), { colour: GILT, decor: true });
+    sink.polygon('structureMetal', shield(1, 0.17), { colour: rgb(0xa8261e), decor: true });
+    sink.polygon('structureMetal', [[-0.12, ay + 0.5], [0.12, ay + 0.5], [0.12, ay - 0.45], [-0.12, ay - 0.45]].map(([u, y]) => facePoint(af, u, y, 0.19)), { colour: WHITE, decor: true });
+  }
   // the clock under the roof on the field side
   const cf = f.front, cy = top - 0.9;
   const disc: Vec3[] = [], ring: Vec3[] = [];
@@ -255,14 +303,25 @@ export const townGate: LandmarkBuilder = (ctx) => {
     ring.push(facePoint(cf, Math.cos(a) * 0.75, cy + Math.sin(a) * 0.75, 0.03));
     disc.push(facePoint(cf, Math.cos(a) * 0.64, cy + Math.sin(a) * 0.64, 0.045));
   }
-  sink.polygon('structureMetal', ring, { colour: GILT, decor: true });
-  sink.polygon('structureMetal', disc, { colour: rgb(0x1f2d4a), decor: true });
-  for (const [dx, dy] of [[-0.3, 0.2], [0.42, 0.1]]) sink.member('structureMetal', facePoint(cf, 0, cy, 0.06), facePoint(cf, dx, cy + dy, 0.06), 0.06, 0.02, cf.out, { colour: GILT, decor: true }, 0);
-  // the steep hipped roof and two dormers
-  const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
-  const rg = roofGeometry(W, D, top, roof);
+  if (!framed) {
+    sink.polygon('structureMetal', ring, { colour: GILT, decor: true });
+    sink.polygon('structureMetal', disc, { colour: rgb(0x1f2d4a), decor: true });
+    for (const [dx, dy] of [[-0.3, 0.2], [0.42, 0.1]]) sink.member('structureMetal', facePoint(cf, 0, cy, 0.06), facePoint(cf, dx, cy + dy, 0.06), 0.06, 0.02, cf.out, { colour: GILT, decor: true }, 0);
+  }
+  // the steep hipped roof and two dormers (the framed gate's roof steeper over its jettied storey, with a lantern)
+  const roof: RoofSpec = framed ? { kind: 'hip', pitchDeg: 57, eave: 0.4, verge: 0.4, thickness: 0.14, bucket: 'roof', ridge: 'saddle' }
+    : { kind: 'hip', pitchDeg: 62, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
+  const rg = framed ? roofGeometry(W + 0.76, D + 0.76, top, roof) : roofGeometry(W, D, top, roof);
   emitRoof(sink, rg, roof);
-  for (const zs of [1, -1]) {
+  if (framed) {
+    // the lantern astride the ridge: its posts, its little hipped cap
+    const ly = rg.ridgeY - 0.25, lx = 0.9;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * lx - 0.08, ly, sz * 0.6 - 0.08, sx * lx + 0.08, ly + 1.5, sz * 0.6 + 0.08, { colour: TIMBER, decor: true });
+    sink.span('plaster', -lx + 0.1, ly, -0.5, lx - 0.1, ly + 0.5, 0.5, { decor: true });
+    const cap: RoofSpec = { kind: 'hip', pitchDeg: 55, eave: 0.2, verge: 0.2, thickness: 0.08, bucket: 'roof', ridge: null };
+    emitRoof(sink, roofGeometry(2 * lx + 0.16, 1.36, ly + 1.5, cap), cap);
+  }
+  if (!framed) for (const zs of [1, -1]) {
     const dRoof: RoofSpec = { kind: 'gable', pitchDeg: 50, eave: 0.12, verge: 0.12, thickness: 0.08, bucket: 'roof', ridge: null };
     sink.placed(zs > 0 ? 0 : Math.PI, 0, 0, zs * (D / 2 - 0.9), () => {
       sink.span('stone', -0.55, top + 0.6, -0.4, 0.55, top + 1.6, 0.9);
