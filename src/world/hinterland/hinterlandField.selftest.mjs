@@ -3,7 +3,7 @@
 //   - every region resolves into a complete spec, and every one of the 33 maps has a region;
 //   - the switch: a block migrates its map, a lab block only under ?hinterland=1, ?hinterland=0 always keeps the ring;
 //   - the seam: inside the square the field IS the ground, and its step across 512 m is the ground's own (term 1);
-//   - term 2: within the near hold the field is the battlefield's continued ground (continuedGroundAt's law), exactly;
+//   - term 2: within the near hold the field is the battlefield's own outland (a flat place: the edge's datum, flat);
 //   - term 3: a planner's pad levels its yard and a road grades its line; term 6: sea, lake, river and flood water;
 //   - cover: the map's own field system runs on past the line (crops), water reads as water;
 //   - determinism (two builds agree) and a pin of the hinterland's own law on a synthetic ground (no lane's map edit
@@ -16,7 +16,6 @@ const { resolveHinterlandSpec, hinterlandActive, arcWeight, bearingInArc, hinter
 const { createHinterlandField, createHinterlandCover, createHinterlandWater, HL_COVER } = await import('./field.ts');
 const { MAP_IDS, getMapConfig } = await import('../maps/index.ts');
 const { createHeightField } = await import('../terrain.ts');
-const { continuedGroundAt } = await import('../horizonSurface.ts');
 
 // ---- the region library: 26 regions, every map placed, every field present
 assert.equal(HINTERLAND_REGION_IDS.length, 26, 'B-architecture §4.0: 26 regions');
@@ -127,7 +126,7 @@ const pinOf = (field) => {
 };
 const pinA = pinOf(sf), pinB = pinOf(createHinterlandField(synthSpec, 1337, synth));
 assert.equal(pinA, pinB, 'two builds of one spec agree');
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '48e4bf51607b500c';
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : 'f726caff327f7a54';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandField pin: ${pinA}`);
 else assert.equal(pinA, PIN, 'the hinterland law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 
@@ -148,23 +147,31 @@ for (const id of ['polders', 'verdant']) {
     slope = Math.max(slope, Math.abs(ground.getHeightAt(xa, za) - ground.getHeightAt(xc, zc)));
   }
   assert.ok(step < Math.max(0.06, slope * 3), `${id}: seam step ${step.toFixed(3)} m against the ground's own ${slope.toFixed(3)} m`);
-  // term 2: the near hold is the battlefield's continued ground, exactly
-  for (let i = 0; i < 64; i++) {
-    const az = i * 5.625, d = 540 + (i % 8) * 70;
+  // term 2: the near hold is the battlefield's continued ground, exactly — except in a flat place, which does not continue
+  // the old rim's hills: there the land past the residual is the edge's datum and its creek ridges, flat to a metre or two
+  if (spec.outland.flat) {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < 256; i++) {
+      const az = i * 1.40625, pt = hinterlandPoint({ azDeg: az, distM: 760 + (i % 16) * 180 });
+      if (Math.max(Math.abs(pt.x), Math.abs(pt.z)) - 512 < 200) continue; // (the residual's 180 m eases the edge in)
+      const rel = field.baseHeightAt(pt.x, pt.z) - field.datumAt(az);
+      lo = Math.min(lo, rel); hi = Math.max(hi, rel);
+    }
+    assert.ok(lo > -spec.outland.riseM[0] - 0.05 && hi < spec.outland.riseM[1] + 0.05, `${id}: flat past the edge (${lo.toFixed(2)}..${hi.toFixed(2)} m)`);
+  } else for (let i = 0; i < 64; i++) {
+    // (past the residual's 180 m and inside the 700 m hold: the battlefield's own outland, exactly)
+    const az = i * 5.625, d = 760 + (i % 8) * 60;
     const pt = hinterlandPoint({ azDeg: az, distM: d });
-    if (Math.max(Math.abs(pt.x), Math.abs(pt.z)) - 512 > 690) continue;
-    // (continuedGroundAt's law with the residual taken at the edge itself)
-    const atEdge = { getHeightAt: (x, z) => ground.getHeightAt(Math.max(-512, Math.min(512, x === 511.5 ? 512 : x === -511.5 ? -512 : x)),
-      Math.max(-512, Math.min(512, z === 511.5 ? 512 : z === -511.5 ? -512 : z))),
-    getOutlandHeightAt: (x, z) => ground.getOutlandHeightAt(x === 511.5 ? 512 : x === -511.5 ? -512 : x, z === 511.5 ? 512 : z === -511.5 ? -512 : z) };
-    assert.ok(Math.abs(field.baseHeightAt(pt.x, pt.z) - continuedGroundAt(atEdge, pt.x, pt.z)) < 1e-9, `${id}: term 2 at ${az}°`);
+    const out = Math.max(Math.abs(pt.x), Math.abs(pt.z)) - 512;
+    if (out < 182 || out > 690) continue;
+    assert.equal(field.baseHeightAt(pt.x, pt.z), ground.getOutlandHeightAt(pt.x, pt.z), `${id}: term 2 at ${az}°`);
   }
   // far out, the region's relief round the datum, inside the region's rise
   const [lo, hi] = spec.outland.riseM;
   for (let i = 0; i < 32; i++) {
     const az = i * 11.25, pt = hinterlandPoint({ azDeg: az, distM: 3500 });
     const rel = field.baseHeightAt(pt.x, pt.z) - field.datumAt(az);
-    assert.ok(rel >= -1e-6 && rel <= hi + 1e-6, `${id}: far relief ${rel.toFixed(1)} m in [0, ${hi}]`);
+    assert.ok(rel >= -lo - 1e-6 && rel <= hi + 1e-6, `${id}: far relief ${rel.toFixed(1)} m in [${-lo}, ${hi}]`);
   }
   // the field system carries on past the line: crops past the edge
   const c = createHinterlandCover();

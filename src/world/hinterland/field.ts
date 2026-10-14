@@ -278,6 +278,22 @@ export function createHinterlandField(
     const amp = riseLo + (riseHi - riseLo) * smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M + 900, edgeOut);
     return amp * (0.5 + 0.5 * shaped);
   }
+  /**
+   * A flat place's relief (polders, deltas, mangrove coasts; region.outland.flat): pancake-flat land a few decimetres
+   * either way over kilometres, broken only by its creek ridges (Zeeland's kreekruggen: the old tidal creeks' sand beds
+   * standing a metre or two over the clay that settled round them, sinuous, a hundred metres across). The dykes and
+   * the dunes are landforms of their own; nothing else undulates.
+   */
+  const flat = spec.outland.flat;
+  const creekL = Math.max(400, spec.outland.wavelengthM * 0.6);
+  function flatRelief(x: number, z: number): number {
+    const wx = x + 0.3 * creekL * noise2(x / (creekL * 1.7) + wox, z / (creekL * 1.7) + woz);
+    const wz = z + 0.3 * creekL * noise2(x / (creekL * 1.7) - woz, z / (creekL * 1.7) + wox);
+    const n = noise2(wx / creekL + rox, wz / creekL + roz);
+    const creek = smoothstep(0.8, 0.96, 1 - Math.abs(n)) * (0.55 + 0.45 * noise2(x / 900 - roz, z / 900 + rox));
+    const swell = 0.5 * fbm2(x / 3200 + roz, z / 3200 - rox, 2);
+    return riseLo * swell + riseHi * Math.max(0, creek);
+  }
 
   // ---- term 6: the water, resolved to world geometry once
   const seas: ResolvedSea[] = [], lakes: ResolvedLake[] = [], channels: ResolvedChannel[] = [], floods: ResolvedFlood[] = [];
@@ -327,29 +343,60 @@ export function createHinterlandField(
   function baseNoWater(x: number, z: number): number {
     const edgeOut = edgeOutOf(x, z);
     if (edgeOut <= 0) return ground.getHeightAt(x, z);
+    let h: number;
+    if (flat) {
+      // a flat place does not continue the battlefield's outland: its hills are the old rim's (borderLandform's hill
+      // noise and the map's macro relief evaluated past the square), not the polder's. The land past the edge is the
+      // level the edge holds on its bearing (the datum: the old land in the west still a little higher than the new
+      // polders in the east), with the square's own edge eased into it over the residual's 180 m
+      h = datumAt(hinterlandBearing(x, z)) + flatRelief(x, z);
+      if (edgeOut < HINTERLAND_RESIDUAL_FADE_M) {
+        h += edgeResidual(x, z, edgeOut, (ex, ez) => datumAt(hinterlandBearing(ex, ez)) + flatRelief(ex, ez))
+          * (1 - smoothstep(0, HINTERLAND_RESIDUAL_FADE_M, edgeOut));
+      }
+      return addRelief(x, z, h, edgeOut);
+    }
     // term 2's ease: the battlefield's outland near, the region's relief round the datum far
     const ease = smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M, edgeOut);
-    let h: number;
     if (ease >= 1) h = datumAt(hinterlandBearing(x, z)) + regionalRelief(x, z, edgeOut);
     else {
       let near = outlandAt(x, z);
       // term 1: the battlefield's residual at the edge point this one clamps to, faded over 180 m
       if (edgeOut < HINTERLAND_RESIDUAL_FADE_M) {
-        // (clamped to the edge itself, where the battlefield's last vertices stand: the step at 512 m is zero; the ring's
-        // continuedGroundAt clamped half a metre inside, which left the shoulder's last half metre as a step)
-        const ex = Math.max(-HINTERLAND_EDGE_M, Math.min(HINTERLAND_EDGE_M, x)), ez = Math.max(-HINTERLAND_EDGE_M, Math.min(HINTERLAND_EDGE_M, z));
-        near += (ground.getHeightAt(ex, ez) - outlandAt(ex, ez)) * (1 - smoothstep(0, HINTERLAND_RESIDUAL_FADE_M, edgeOut));
+        near += edgeResidual(x, z, edgeOut, outlandAt) * (1 - smoothstep(0, HINTERLAND_RESIDUAL_FADE_M, edgeOut));
       }
       h = ease > 0 ? near + (datumAt(hinterlandBearing(x, z)) + regionalRelief(x, z, edgeOut) - near) * ease : near;
     }
-    // terms 4 and 5: the landforms and the far forms (HL-2), each fading in from 40 m past the edge
-    if (relief.length) {
-      const inW = smoothstep(20, 120, edgeOut);
-      let add = 0;
-      for (let i = 0; i < relief.length; i++) add += relief[i].heightAt(x, z, h);
-      h += add * inW;
-    }
-    return h;
+    return addRelief(x, z, h, edgeOut);
+  }
+  /**
+   * Term 1's residual: the battlefield's edge height over the land the field continues there, at the edge point (x, z)
+   * clamps to — taken at the edge itself, where the battlefield's last vertices stand, so the step at 512 m is zero (the
+   * ring's continuedGroundAt clamped half a metre inside, which left the shoulder's last half metre as a step) — and
+   * averaged along the edge over a window that widens with the distance out, so the square's edge relief eases out as a
+   * shoulder instead of running on in straight streaks square to the edge (and fanning at the corners).
+   */
+  function edgeResidual(x: number, z: number, edgeOut: number, landAt: (x: number, z: number) => number): number {
+    const E = HINTERLAND_EDGE_M;
+    const ex = Math.max(-E, Math.min(E, x)), ez = Math.max(-E, Math.min(E, z));
+    const at = (px: number, pz: number): number => ground.getHeightAt(px, pz) - landAt(px, pz);
+    const r0 = at(ex, ez);
+    if (edgeOut < 2) return r0;
+    // the edge's tangent at the clamped point (along z on an east or west edge, along x on a north or south one)
+    const alongZ = Math.abs(ex) >= E && Math.abs(ez) < E;
+    const w = Math.min(60, 0.45 * edgeOut);
+    const clampE = (v: number): number => Math.max(-E, Math.min(E, v));
+    const a = alongZ ? at(ex, clampE(ez - w)) : at(clampE(ex - w), ez);
+    const b = alongZ ? at(ex, clampE(ez + w)) : at(clampE(ex + w), ez);
+    return 0.5 * r0 + 0.25 * (a + b);
+  }
+  /** Terms 4 and 5: the landforms and the far forms, each fading in from 20–120 m past the edge. */
+  function addRelief(x: number, z: number, h: number, edgeOut: number): number {
+    if (!relief.length) return h;
+    const inW = smoothstep(20, 120, edgeOut);
+    let add = 0;
+    for (let i = 0; i < relief.length; i++) add += relief[i].heightAt(x, z, h);
+    return h + add * inW;
   }
 
   /** Term 6 applied to a base height: the floor under the water, and the water sample. */

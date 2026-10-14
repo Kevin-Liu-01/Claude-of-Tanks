@@ -25,7 +25,6 @@ const DRAFT: HinterlandConfig = {
   region: 'zeelandPolder',
   lab: true,
   outland: {
-    relief: { riseM: [1.5, 4], wavelengthM: 1600 },
     woods: 0.08, hedges: 0.6, fields: 0.85, links: 3,
     settle: { villages: 3, hamlets: 4, farms: 14, works: 0, town: null },
   },
