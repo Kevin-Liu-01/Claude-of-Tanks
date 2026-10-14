@@ -640,6 +640,9 @@ function percentile(sorted, p) {
 
 // ---- one run -------------------------------------------------------------------------------------------------------
 const NEUTRAL = Object.freeze({ throttle: 0, steer: 0, brake: false });
+/** A takeoff this soon after a landing, at no more than its restitution, is the landing's rebound (ticks; m/s). */
+const REBOUND_WINDOW_TICKS = 30;
+const REBOUND_SLACK_MPS = 0.25;
 function playerInput(control) {
   return {
     throttle: control.throttle ?? 0, steer: control.steer ?? 0, brake: !!control.brake, fire: false,
@@ -1322,7 +1325,13 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         // at speed x grade; only the excess is a throw)
         const dir = state.speed >= 0 ? 1 : -1, fx = Math.sin(state.yaw) * dir, fz = Math.cos(state.yaw) * dir;
         const rise = (world.contact(state.pos.x, state.pos.z) - world.contact(state.pos.x - fx * 1.5, state.pos.z - fz * 1.5)) / 1.5;
-        const excess = state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
+        // (physics stream F7a, 2026-10-14; the coordinator: a rebound the impact law owes is no throw) a takeoff within
+        // REBOUND_WINDOW_TICKS of a landing, no faster than the ruleset's restitution of that landing's closing (and a
+        // quarter metre a second), is the landing's rebound: Foundry's BMP-2 off a 25 m roof landed at 21 m/s and rose
+        // off it at 3.2 m/s, its restitution 0.15
+        const rebound = lastLanding && tick - lastLanding.tick <= REBOUND_WINDOW_TICKS
+          && state._ride.v <= lastLanding.closing * physics.restitution + REBOUND_SLACK_MPS;
+        const excess = rebound ? 0 : state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
         if (excess > metrics.takeoffMaxMps) metrics.takeoffMaxMps = excess;
         if (excess > 2.5) metrics.launches++;
       }
