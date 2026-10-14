@@ -2233,7 +2233,7 @@ function crushLightCoverAlong(world: SoloWorld, bus: EventBus, shell: DamageShel
     _lightCoverHit.dist = distance;
     _lightCoverHit.point.copy(shell.prevPos).addScaledVector(_seg, distance);
     _lightCoverHit.record = record as SoloObstacle;
-    crushWorldPropFromShell(world, bus, shell, _lightCoverHit);
+    crushWorldPropFromShell(world, bus, shell, _lightCoverHit, null);
   });
   _lightCoverHit.record = null;
 }
