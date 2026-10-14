@@ -398,6 +398,20 @@ function kindStream(mapId: string, kind: string): () => number {
 }
 const lin = (hex: Hex): Rgb => hexLin(hex);
 
+/** How far a standing kind's foot reaches under its seat: a pool instance stands level at its centre's height, so on a
+ *  slope its downhill side would show a gap under a crate or a woodpile (WORKLIST #2: "seat each stack on the terrain
+ *  under it, slight embed"); the vertices on its foot run this far down into the ground. A physics body keeps its foot. */
+const SKIRT_M = 0.12;
+function skirt(g: THREE.BufferGeometry, depth: number): THREE.BufferGeometry {
+  if (!(depth > 0)) return g;
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0.004) pos.setY(i, pos.getY(i) - depth);
+  pos.needsUpdate = true;
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
+  return g;
+}
+
 /** A kind's entry: the legacy builders run first (their draws), then the map's form near and far in one pool. */
 function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: DestructiblePropType['mat'],
   near: (rng: () => number) => THREE.BufferGeometry, far: (() => THREE.BufferGeometry) | null,
@@ -407,8 +421,9 @@ function entry(kind: keyof typeof DESTRUCTIBLE_TYPES, mapId: string, mat: Destru
     ...base, mat,
     build: (rng) => {
       base.build(rng).dispose();
-      const n = near(kindStream(mapId, kind));
-      return far ? withDistanceForms(n, far()) : leanForm(n);
+      const sk = base.cls === 'physics' ? 0 : SKIRT_M;
+      const n = skirt(near(kindStream(mapId, kind)), sk);
+      return far ? withDistanceForms(n, skirt(far(), sk)) : leanForm(n);
     },
     broken: base.broken && broken ? (rng) => { base.broken!(rng).dispose(); return broken(kindStream(mapId, `${kind}:broken`)); } : base.broken,
     ...(broken ? { ownBroken: true } : {}),

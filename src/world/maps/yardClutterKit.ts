@@ -199,7 +199,7 @@ export const YARD_FAMILY_MATERIAL: Readonly<Record<YardFamily, YardMaterial>> = 
 
 /** Triangle caps the receipt holds each family to (a stack of six pallets is the largest wooden piece). */
 export const YARD_FAMILY_TRIANGLE_CAP: Readonly<Record<YardFamily, number>> = Object.freeze({
-  pallets: 380, palletsTall: 560, crates: 560, drum: 210, drumRank: 340, cableDrum: 300, tyres: 300, fuelTank: 320, skip: 220,
+  pallets: 380, palletsTall: 560, crates: 620, drum: 210, drumRank: 340, cableDrum: 300, tyres: 300, fuelTank: 320, skip: 220,
 });
 
 /** Build one family's geometry in the map's forms (the caller owns and disposes it; one per family per battlefield). */

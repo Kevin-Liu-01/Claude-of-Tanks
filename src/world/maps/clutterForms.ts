@@ -386,7 +386,7 @@ export function crateNear(f: CrateForm, rng: Rng): THREE.BufferGeometry {
   } else {
     // a slat crate's corner posts are triangular battens
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-      bar(m, [sx * (w / 2 - 0.03), 0, sz * (d / 2 - 0.03)], [sx * (w / 2 - 0.03), h, sz * (d / 2 - 0.03)], 0.05, 0.05, [1, 0, 0], tone(fc, rng, 0.1), 0, true);
+      bar(m, [sx * (w / 2 - 0.03), 0, sz * (d / 2 - 0.03)], [sx * (w / 2 - 0.03), h, sz * (d / 2 - 0.03)], 0.05, 0.05, [1, 0, 0], tone(fc, rng, 0.1), 0.012, true);
     }
   }
   if (f.handles) {
