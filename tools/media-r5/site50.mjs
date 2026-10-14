@@ -12,7 +12,7 @@ import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barra
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
-import { absoluteShots, stillMoments } from './lens-check.mjs';
+import { BURST_R, EDGE_MARGIN, absoluteShots, stillMoments } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
 import { choreograph } from './turret-choreo.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -308,6 +308,101 @@ function stageBeats(scene, world) {
   }
   if (added) scene.effects.sort((a, b) => a.tMs - b.tMs);
   return added;
+}
+/**
+ * Bursts follow the lens (the coordinator, 2026-10-14, on wave f1: bursts cut by the frame's edge were the critics'
+ * commonest note, 264 of 672; option C). A placed explosion (no actor and a ground point: a round landing on open ground,
+ * never a hit or a knockout on a hull) whose fireball the lens shows cut by the safe frame at its peak (lens-check.mjs's
+ * sphere, BURST_R by its size, and its EDGE_MARGIN, every 100 ms from 100 to 500 ms after it lands) swings round the
+ * lens, at its own distance from it (then up to FIT_DEPTH_M further) and on its own beat, to the nearest bearing (a degree
+ * at a time, 25 at most) where it shows whole all through its peak (its crown may leave the top): on dry ground with
+ * nothing standing over 1.2 m within 3 m, 4 m clear of every hull,
+ * off the lens's line to the hero and off the hero's box on screen through its fireball. Its debris, dust and shockwave
+ * (within 3 m and 300 ms of it, as hitNear lays them) move with it. One with no such bearing stays as planned, and is
+ * named in `left` (its take goes on the re-film list). Returns { moved, left }.
+ */
+const FIT_DEPTH_M = 8;
+function fitBursts(scene, world) {
+  const shots = absoluteShots(scene, world), heroKeys = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
+  const heroActor = scene.actors.find((a) => a.name === 'hero');
+  if (!shots.length || !heroKeys?.length || !heroActor) return { moved: 0, left: [] };
+  const [hl, hw, reach = hl + 2.4] = hullOf(heroActor.id), safe = 1 - EDGE_MARGIN, near = [];
+  const tracks = (scene.storyboard?.actorTracks ?? []).filter((t) => t.keys?.length);
+  const parked = scene.actors.filter((a) => !tracks.some((t) => t.actor === a.name)).map((a) => a.pos);
+  const hullsAt = (t) => [...tracks.map((tr) => { const p = {}; return sampleActorTrack(tr.keys, t, p) ? [p.x, p.z] : null; }).filter(Boolean), ...parked];
+  // the fireball's sphere on screen at t: its centre R over the ground, its flanks along the lens's right and its crown
+  const sphere = (l, px, pz, R) => {
+    const g = world.heightAt(px, pz), c = l.screen([px, g + R, pz]);
+    const flanks = [-1, 1].map((k) => l.screen([px + l.right[0] * R * k, g + R, pz + l.right[2] * R * k]));
+    const top = l.screen([px, g + 2 * R, pz]), foot = l.screen([px, g, pz]);
+    return c && top && foot && flanks.every(Boolean) ? { x0: Math.min(...flanks.map((f) => f.x)), x1: Math.max(...flanks.map((f) => f.x)), y0: foot.y, y1: top.y } : null;
+  };
+  const shows = (b) => b.x0 < 1 && b.x1 > -1 && b.y0 < 1 && b.y1 > -1;
+  // whole: inside the safe frame across and at the foot; its crown may leave the top (the coordinator, 2026-10-14: a
+  // tall column cut by the top reads as real footage does, as stageBeats already lets a smoke column)
+  const inside = (b) => b.x0 >= -safe && b.x1 <= safe && b.y0 >= -safe;
+  const peak = (e) => { const out = []; for (let t = e.tMs + 100; t <= e.tMs + 500; t += 100) out.push(t); return out; };
+  const cutAt = (e, px, pz, R) => peak(e).some((t) => { const l = lensAt(shots, t), b = l && sphere(l, px, pz, R); return !!b && shows(b) && !inside(b); });
+  const wholeAt = (e, px, pz, R) => peak(e).every((t) => { const l = lensAt(shots, t), b = l && sphere(l, px, pz, R); return !!b && inside(b); });
+  // the hero's box on screen (its x span) at t, from its hull's eight corners
+  const heroSpan = (l, t) => {
+    const p = {};
+    if (!sampleActorTrack(heroKeys, t, p)) return null;
+    const yaw = (p.facingDeg ?? 0) * Math.PI / 180, sx = Math.sin(yaw), sz = Math.cos(yaw), g = world.heightAt(p.x, p.z);
+    let a0 = Infinity, a1 = -Infinity;
+    for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) for (const h of [0, 2.6]) {
+      const c = l.screen([p.x + sx * hl * a + sz * hw * b, g + h, p.z + sz * hl * a - sx * hw * b]);
+      if (c) { a0 = Math.min(a0, c.x); a1 = Math.max(a1, c.x); }
+    }
+    return a1 > a0 ? { x0: a0, x1: a1, x: p.x, z: p.z } : null;
+  };
+  const clear = (e, px, pz) => {
+    if (world.wetAt(px, pz) > 0.3) return false;
+    world.query(px - 3, pz - 3, px + 3, pz + 3, near);
+    if (near.some((r) => r.max[1] - r.min[1] > 1.2 && r.kind !== 'bridge')) return false;
+    for (const t of peak(e)) {
+      if (hullsAt(t).some(([hx, hz]) => Math.hypot(hx - px, hz - pz) < 4 + hl)) return false;
+      const l = lensAt(shots, t), span = l && heroSpan(l, t);
+      if (!l || !span) continue;
+      // off the lens's line to the hero (in front of the hull, within its reach of the line: clearBursts' rule)
+      const dx = span.x - l.cam.x, dz = span.z - l.cam.z, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+      const along = (px - l.cam.x) * ux + (pz - l.cam.z) * uz, side = -(px - l.cam.x) * uz + (pz - l.cam.z) * ux;
+      if (along < L && along > 0 && Math.abs(side) < reach + 3.5) return false;
+      const c = l.screen([px, world.heightAt(px, pz) + 2.5, pz]);
+      if (c && c.x > span.x0 - 0.05 && c.x < span.x1 + 0.05) return false;
+    }
+    return true;
+  };
+  let moved = 0;
+  const left = [];
+  for (const e of scene.effects ?? []) {
+    if (e.type !== 'explosion' || e.actor || !Array.isArray(e.at) || e.at.length !== 2) continue;
+    const R = BURST_R[e.params?.size ?? 'large'] ?? 3.5;
+    if (!cutAt(e, e.at[0], e.at[1], R)) continue;
+    const lm = lensAt(shots, e.tMs + 300);
+    if (!lm) continue;
+    const vx = e.at[0] - lm.cam.x, vz = e.at[1] - lm.cam.z;
+    let spot = null;
+    // its own distance first, then up to FIT_DEPTH_M further from the lens, a metre at a time (the coordinator,
+    // 2026-10-14: a burst a little farther off, whole beside or behind the hero, composes better than a half-frame
+    // fireball cut by the edge; on batch 4 the two allowances took the bursts moved from 10 to 29 of 95)
+    const dl = Math.hypot(vx, vz) || 1, extra = FIT_DEPTH_M;
+    for (let m = 0; m <= extra && !spot; m++) for (let k = 1; k <= 50 && !spot; k++) {
+      const d = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 180, c = Math.cos(d), s = Math.sin(d), f = (dl + m) / dl;
+      const px = lm.cam.x + (vx * c + vz * s) * f, pz = lm.cam.z + (-vx * s + vz * c) * f;
+      if (clear(e, px, pz) && wholeAt(e, px, pz, R)) spot = [+px.toFixed(2), +pz.toFixed(2)];
+    }
+    if (!spot) { left.push(`${e.params?.size ?? 'large'} burst at ${e.tMs} ms`); continue; }
+    const from = e.at;
+    e.at = spot;
+    for (const c of scene.effects) {
+      if (c === e || c.actor || !Array.isArray(c.at) || !/^(debris|dust|shockwave)$/.test(c.type ?? '')) continue;
+      if (c.tMs < e.tMs || c.tMs > e.tMs + 300 || Math.hypot(c.at[0] - from[0], c.at[1] - from[1]) > 3) continue;
+      c.at = [+(c.at[0] + spot[0] - from[0]).toFixed(2), +(c.at[1] + spot[1] - from[1]).toFixed(2)];
+    }
+    moved++;
+  }
+  return { moved, left };
 }
 const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
 // lenses: the Open Graph high three-quarter (over the hero's right shoulder, the hull big in the lower frame, the fight
@@ -795,6 +890,9 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   const staged = new Set(scene.actors.map((a) => a.name));
   scene.effects = scene.effects.filter((e) => !e.actor || staged.has(e.actor));
   const beats = burstWorld ? stageBeats(scene, burstWorld) : 0;
+  // the fleet's bursts follow its lens (fitBursts, option C, 2026-10-14); the site fifty, the owner's nine and the combat
+  // round keep the bursts they were filmed with
+  const fit = burstWorld && n >= 60 && n <= 224 ? fitBursts(scene, burstWorld) : null;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };
@@ -811,7 +909,8 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
     loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
-    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}) };
+    turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}), ...(beats ? { beats } : {}),
+    ...(fit && (fit.moved || fit.left.length) ? { fitBursts: fit } : {}) };
   return scene;
 }
 

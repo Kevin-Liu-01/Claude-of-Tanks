@@ -23,6 +23,106 @@ export const FORE_SHARE = 0.04;
 export const FORE_ZONE = 0.03;
 /** A lens looking down more than this many degrees flattens a hull into its roof (composition wave c1). */
 export const STEEP_DEG = 30;
+// a conductor counts across the frame's top where it is this many pixels across at 1080p or more (2026-10-14, the
+// coordinator's bar on the combat round: at 2 px a crane counted a telephone line lying faint against the fields)
+const WIRE_TOP_PX = Number(process.env.WIRE_TOP_PX ?? 3);
+
+// the frame-edge rule (2026-10-14, the coordinator on wave f1: 264 of the 672 critic notes on the fleet takes were
+// bursts, plumes, guns and second tanks cut by the frame's edge): the safe frame is the inner 94 % each way
+export const EDGE_MARGIN = 0.06;
+// a burst's reach at its peak as cinematicFx.ts draws it (fireball lobes 3.2-6.2 m x their scale, the smoke round them)
+export const BURST_R = { small: 1.8, medium: 2.5, large: 3.5, huge: 7, mixed: 2.2 };
+
+/**
+ * The bursts and plumes a take stages, for the frame-edge rule: each burst a sphere at its peak (an explosion by its
+ * size, a knockout's fireball over its hull, each barrage shell where cinematicFx.ts barrage() drops it: round the
+ * centre from the Studio's 23° seed, walking in over durationS), each plume a column over a burning wreck (following
+ * the wreck) or a ground fire, 8 m tall. `at(name, tMs)` is an actor's [x, z].
+ */
+function framedEffects(scene) {
+  const pose = {}, dur = scene.storyboard?.durationMs ?? 0;
+  const at = (name, tMs) => {
+    const keys = scene.storyboard?.actorTracks?.find((t) => t.actor === name)?.keys;
+    if (keys?.length && sampleActorTrack(keys, tMs, pose)) return [pose.x, pose.z];
+    const a = scene.actors.find((x) => x.name === name);
+    return a ? [a.pos[0], a.pos[1]] : null;
+  };
+  const xz = (e) => (Array.isArray(e.at) ? (e.at.length >= 3 ? [e.at[0], e.at[2]] : [e.at[0], e.at[1]]) : e.actor ? at(e.actor, e.tMs) : null);
+  const bursts = [], plumes = [];
+  for (const e of scene.effects ?? []) {
+    if (e.type === 'explosion' || e.type === 'tank_kill') {
+      const p = xz(e);
+      if (!p) continue;
+      const size = e.params?.size ?? 'large';
+      bursts.push({ kind: e.type === 'tank_kill' ? 'knockout fireball' : `${size} burst`, tMs: e.tMs, x: p[0], z: p[1],
+        R: e.type === 'tank_kill' ? 3 : BURST_R[size] ?? 3.5, fromMs: e.tMs + 100, toMs: e.tMs + 500 });
+    } else if (e.type === 'barrage' && Array.isArray(e.at)) {
+      const count = Math.max(1, Math.min(12, e.params?.count ?? 5)), radius = e.params?.radiusM ?? 10, size = e.params?.size ?? 'mixed';
+      const seed = (e.params?.seedDeg || 23) * Math.PI / 180, durS = e.params?.durationS ?? 3;
+      const [cx, cz] = e.at.length >= 3 ? [e.at[0], e.at[2]] : e.at;
+      for (let i = 0; i < count; i++) {
+        const a = seed + (i / count) * Math.PI * 2, d = radius * (0.3 + 0.7 * (((i * 37) % 10) / 10));
+        const medium = size === 'medium' || (size === 'mixed' && i % 3 === 0);
+        // (the shells' arrivals carry a ±25 % random stagger: the window covers it)
+        const delayMs = count > 1 ? (i / (count - 1)) * durS * 1000 : 0;
+        bursts.push({ kind: 'barrage shell', tMs: e.tMs + delayMs, x: cx + Math.sin(a) * d, z: cz + Math.cos(a) * d, R: medium ? 2.7 : 2.0,
+          fromMs: e.tMs + delayMs * 0.75 + 100, toMs: e.tMs + delayMs * 1.25 + 500 });
+      }
+    } else if (e.type === 'burning' || e.type === 'fire_field') {
+      const p = xz(e);
+      if (!p) continue;
+      plumes.push({ kind: e.type === 'burning' ? 'smoke column' : 'ground fire', actor: e.type === 'burning' ? e.actor ?? null : null,
+        x: p[0], z: p[1], R: e.type === 'fire_field' ? e.params?.radiusM ?? 4 : 1.5, H: 8, fromMs: e.tMs, toMs: dur });
+    }
+  }
+  return { bursts, plumes, at };
+}
+
+/**
+ * The frame-edge rule (take-bars.mjs fails these faults, motion-search.mjs rejects them; one definition), its hard
+ * part: a burst at the hero's fight cut by the safe frame at its peak in two samples or more (`burstSevere`), the
+ * hero's muzzle outside the safe frame at one of its shots, an escort a side edge slices for a second. Each fault is
+ * { key, detail }: the key names the class (the search's rejection tally), the detail the moment. (2026-10-14: every
+ * cut burst failing a take left 1 of batch 4's 39 plans standing, and the search's re-plans under it halved the takes'
+ * share in the critics' sweet spot, 0.53 -> 0.28, and stopped three heroes: the rest is frameEdgePenalty's.)
+ */
+export function frameEdgeFaults(scene, lens) {
+  const faults = [], samples = lens?.perSample ?? [];
+  if (!samples.length) return faults;
+  const cut = new Map();
+  for (const q of samples) for (const bi of q.burstSevere ?? []) cut.set(bi, (cut.get(bi) ?? 0) + 1);
+  const cutBursts = [...cut].filter(([, n]) => n >= 2).map(([bi]) => lens.bursts?.[bi]).filter(Boolean);
+  if (cutBursts.length) faults.push({ key: 'a burst at the fight cut by the frame edge', detail: cutBursts.map((b) => `${b.kind} at ${Math.round(b.tMs)} ms`).join(', ') });
+  const nearest = (tMs) => samples.reduce((b, q) => (Math.abs(q.tMs - tMs) < Math.abs(b.tMs - tMs) ? q : b), samples[0]);
+  const m = 1 - EDGE_MARGIN, outShots = (scene.effects ?? []).filter((e) => e.type === 'fire' && e.actor === 'hero')
+    .map((e) => e.tMs).filter((tMs) => { const q = nearest(tMs); return q?.muzzle && (Math.abs(q.muzzle[0]) > m || Math.abs(q.muzzle[1]) > m); });
+  if (outShots.length) faults.push({ key: 'the muzzle outside the safe frame', detail: `at ${outShots.join(', ')} ms` });
+  const slicedMs = edgeRunMs(samples, (q) => (q.sliced ?? 0) > 0);
+  if (slicedMs >= 1000) faults.push({ key: 'an escort sliced by a side edge', detail: `${slicedMs} ms` });
+  return faults;
+}
+
+/** The frame-edge rule's soft part, a cost for the motion search's score: half a point for each other burst cut at its
+ *  peak (two samples or more; at most two points), and half a point for a plume a side edge slices for a second. */
+export function frameEdgePenalty(lens) {
+  const samples = lens?.perSample ?? [], cut = new Map();
+  for (const q of samples) for (const bi of q.burstCut ?? []) cut.set(bi, (cut.get(bi) ?? 0) + 1);
+  const cutBursts = [...cut].filter(([, n]) => n >= 2).length;
+  return Math.min(2, 0.5 * cutBursts) + (edgeRunMs(samples, (q) => !!q.plumeCut) >= 1000 ? 0.5 : 0);
+}
+const edgeRunMs = (samples, hit) => { let r = 0, worst = 0; for (const q of samples) { r = hit(q) ? r + 1 : 0; worst = Math.max(worst, r); } return worst * 100; };
+
+/** A 2D segment clipped to an axis-aligned box (Liang-Barsky): the part inside, or null. */
+function clipSegment(p, q, x0, y0, x1, y1) {
+  let t0 = 0, t1 = 1;
+  const dx = q[0] - p[0], dy = q[1] - p[1];
+  for (const [pp, qq] of [[-dx, p[0] - x0], [dx, x1 - p[0]], [-dy, p[1] - y0], [dy, y1 - p[1]]]) {
+    if (pp === 0) { if (qq < 0) return null; continue; }
+    const r = qq / pp;
+    if (pp < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  return [[p[0] + t0 * dx, p[1] + t0 * dy], [p[0] + t1 * dx, p[1] + t1 * dy]];
+}
 
 /**
  * When each record the scene's hulls crush falls (ms), by the Studio's plan with each hull's contact rectangle: a
@@ -74,8 +174,10 @@ export function absoluteShots(scene, model) {
  * the frame), size (its half height), fore ({ share, kind, zone, zoneKind }: the largest thing nearer the lens than the
  * hull, as a share of the frame, and the largest inside the foreground zone, FORE_ZONE), at (the hull's [x, z]), eye
  * (the lens), pitchDeg (the lens's look up or down; composition wave c1, 2026-10-07: a 40-60° look-down makes the tanks
- * roof plans), heightM (the lens over the ground under it) and facing (the nose's screen x less the tail's: + the hull
- * faces right) }.
+ * roof plans), heightM (the lens over the ground under it), facing (the nose's screen x less the tail's: + the hull
+ * faces right), wire/wireKind (the longest overhead conductor reading WIRE_TOP_PX or more across the frame's upper
+ * half, in frame widths) and wireHero (the kind of a wire passing across the hull's visible box nearer the lens, else
+ * null) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
@@ -90,6 +192,7 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     actor: a, keys: scene.storyboard?.actorTracks?.find((t) => t.actor === a.name)?.keys ?? null, dims: hullOf(a.id), pose: {},
   }));
   let samples = 0, blocked = 0, outOfFrame = 0, insideCount = 0, now = 0;
+  const framed = framedEffects(scene);
   const crushed = (r) => (fallen.get(r) ?? Infinity) <= now;
   const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || crushed(r);
   const worst = [], blockedAt = [], perSample = [], nearby = [], nearShrubs = [];
@@ -289,7 +392,59 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
         if (top[1] > box[3] && foot[1] < box[3]) { merger = 1; mergerKind = r.kind; break; }
       }
     }
+    // the overhead wires (2026-10-14, the coordinator: wires are occluders, the combat round's rule for every take):
+    // each conductor's polyline (wire-model.mjs) through the lens, cut at the near plane and clipped to the frame; a
+    // stretch reads as a line where it is a pixel or more across at 1080p (radius x 1080 / (depth x ty))
+    let wire = 0, wireKind = null, wireHero = null;
+    const heroBox = box ? [Math.max(-1, box[0]), Math.max(-1, box[1]), Math.min(1, box[2]), Math.min(1, box[3])] : null;
+    const toLens = (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z]; return [d[0] * right[0] + d[1] * right[1] + d[2] * right[2], d[0] * up[0] + d[1] * up[1] + d[2] * up[2], d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2]]; };
+    for (const w of model.wires ?? []) {
+      const nx = Math.max(w.min[0], Math.min(cam.x, w.max[0])), ny = Math.max(w.min[1], Math.min(cam.y, w.max[1])), nz = Math.max(w.min[2], Math.min(cam.z, w.max[2]));
+      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > w.r * 1080 / ty) continue;
+      let upper = 0;
+      for (let i = 0; i + 1 < w.pts.length; i++) {
+        let a = toLens(w.pts[i]), b = toLens(w.pts[i + 1]);
+        if (a[2] <= 0.3 && b[2] <= 0.3) continue;
+        if (a[2] <= 0.3 || b[2] <= 0.3) {
+          const f = (0.3 - a[2]) / (b[2] - a[2]), cut = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 0.3];
+          if (a[2] <= 0.3) a = cut; else b = cut;
+        }
+        const depth = (a[2] + b[2]) / 2, px = w.r * 1080 / (depth * ty);
+        if (px < 1) continue;
+        const inFrame = clipSegment([a[0] / a[2] / tx, a[1] / a[2] / ty], [b[0] / b[2] / tx, b[1] / b[2] / ty], -1, -1, 1, 1);
+        if (inFrame && px >= WIRE_TOP_PX && (inFrame[0][1] + inFrame[1][1]) / 2 > 0) upper += Math.hypot(inFrame[1][0] - inFrame[0][0], inFrame[1][1] - inFrame[0][1]) / 2;
+        if (inFrame && heroBox && depth < distM && clipSegment(inFrame[0], inFrame[1], heroBox[0], heroBox[1], heroBox[2], heroBox[3])) wireHero = w.kind;
+      }
+      if (upper > wire) { wire = upper; wireKind = w.kind; }
+    }
+    // the frame-edge rule (framedEffects): each burst at its peak whose screen disc shows yet reaches past the safe frame
+    // (`burstCut`: their indices in the report's `bursts`), and a plume whose column straddles a side of the safe frame
+    // (`plumeCut`: its kind); a lens inside or behind a burst is no framing question
+    // (`burstSevere`: those of them at the hero's fight, within 20 m of the hull, half or more of their reach in the frame:
+    // a cut that is the frame's own subject; a sliver of a far burst at the edge reads as action off the frame)
+    const burstCut = [], burstSevere = [], safe = 1 - EDGE_MARGIN;
+    for (const [bi, b] of framed.bursts.entries()) {
+      if (t < b.fromMs || t > b.toMs) continue;
+      const c = toLens([b.x, model.heightAt(b.x, b.z) + b.R, b.z]);
+      if (c[2] <= b.R) continue;
+      const sx = c[0] / c[2] / tx, sy = c[1] / c[2] / ty, rx = b.R / c[2] / tx, ry = b.R / c[2] / ty;
+      const shows = sx - rx < 1 && sx + rx > -1 && sy - ry < 1 && sy + ry > -1;
+      if (!shows || (sx - rx >= -safe && sx + rx <= safe && sy - ry >= -safe && sy + ry <= safe)) continue;
+      burstCut.push(bi);
+      const seen = (Math.min(1, sx + rx) - Math.max(-1, sx - rx)) * (Math.min(1, sy + ry) - Math.max(-1, sy - ry)) / (4 * rx * ry);
+      if (seen >= 0.5 && Math.hypot(b.x - x, b.z - z) <= 20) burstSevere.push(bi);
+    }
+    let plumeCut = null;
+    for (const p of framed.plumes) {
+      if (t < p.fromMs || t > p.toMs) continue;
+      const [px, pz] = (p.actor && framed.at(p.actor, t)) || [p.x, p.z];
+      const c = toLens([px, model.heightAt(px, pz) + p.H / 2, pz]);
+      if (c[2] <= 1) continue;
+      const sx = c[0] / c[2] / tx, rx = p.R / c[2] / tx;
+      if (sx - rx < 1 && sx + rx > -1 && ((sx - rx < -safe && sx + rx > -safe) || (sx - rx < safe && sx + rx > safe))) { plumeCut = p.kind; break; }
+    }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
+      wire: +wire.toFixed(3), wireKind, wireHero, burstCut, burstSevere, plumeCut,
       muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, overlap: +overlap.toFixed(3), turretOverlap: +turretOverlap.toFixed(3), merger, mergerKind,
       box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
@@ -298,7 +453,8 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
   // inside: the share of samples with the lens inside a record (2026-10-08: the dolly zooms ran S12, S15 and S49's lenses
   // into rubble and walls for their last 0.2 s, and S30's through a longhouse, all under the 5 % blocked allowance; the
   // lens inside anything is never allowed)
-  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample };
+  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample,
+    bursts: framed.bursts };
 }
 
 /**

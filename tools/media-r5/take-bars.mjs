@@ -10,7 +10,7 @@ import { DUR, KINDS, LOOP_MS, XFADE_MS, beatCoverage, siteScene } from './site50
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { lensReport } from './lens-check.mjs';
+import { frameEdgeFaults, lensReport } from './lens-check.mjs';
 import { STUDIO_MAX_ACTOR_KEYS, STUDIO_MAX_CAMERA_SHOTS } from './setups.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
@@ -19,6 +19,10 @@ const ONE_SHOT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage',
 const COMBAT = new Set(['fire', 'tank_kill', 'impact', 'explosion', 'barrage', 'mg_burst']);
 const BURNING = new Set(['burning', 'engine_smoke', 'fire_field']);
 const wrap = (d) => ((d % 360) + 540) % 360 - 180;
+// the overhead wires' bar (combat-check.mjs's, 2026-10-14): a run of 100 ms samples, three or more, from its first to
+// past its last sample
+const WIRE_TOP = 0.35, WIRE_RUN_MS = 300;
+const wireRunMs = (samples, hit) => { let run = 0, worst = 0; for (const q of samples) { run = hit(q) ? run + 1 : 0; worst = Math.max(worst, run); } return worst * 100; };
 const trackAt = (keys, t, f) => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; const a = keys[i], b = keys[i + 1] ?? a; const u = Math.min(1, Math.max(0, (t - a.tMs) / Math.max(1, b.tMs - a.tMs))); return a[f] + (b[f] - a[f]) * u; };
 const features = new Map();
 const featuresOf = (map) => {
@@ -27,7 +31,7 @@ const featuresOf = (map) => {
 };
 
 /** The take's problems against every per-take bar; `cast` widens the tanks a non-foe may be (the fleet's own heroes). */
-export function takeBars(shot, { cast = new Set(Object.values(CAST)), scene = siteScene(shot) } = {}) {
+export function takeBars(shot, { cast = new Set(Object.values(CAST)), scene = siteScene(shot), edge = false } = {}) {
   const [n, id, kind, title] = shot, out = [], no = (ok, what) => { if (!ok) out.push(`${scene.meta?.id ?? id}: ${what}`); };
   no(KINDS.includes(kind), 'kind');
   no(/^[A-Z]/.test(title) && title.length >= 12 && !/[.]$/.test(title), 'a plain sentence-case title');
@@ -56,6 +60,16 @@ export function takeBars(shot, { cast = new Set(Object.values(CAST)), scene = si
     const lens = lensReport(scene, model);
     no(lens.blocked <= 0.05, `the lens sees the hero past the props (${(lens.blocked * 100).toFixed(0)} %: ${lens.worst.map((w) => `${w.tMs} ms ${w.by}`).join(', ')})`);
     no(lens.inside === 0, `the lens never passes inside a building, wall or prop (${(lens.inside * 100).toFixed(0)} %)`);
+    // the overhead wires (2026-10-14, the coordinator: wires are occluders): none across the hero, and none reading
+    // across 35 % of the frame's top, for 300 ms or more (lens-check's wire and wireHero; the combat round's rule)
+    no(wireRunMs(lens.perSample, (q) => !!q.wireHero) < WIRE_RUN_MS, `no wire crosses the hero (${wireRunMs(lens.perSample, (q) => !!q.wireHero)} ms)`);
+    no(wireRunMs(lens.perSample, (q) => (q.wire ?? 0) >= WIRE_TOP) < WIRE_RUN_MS, `no wire crosses ${WIRE_TOP * 100} % of the frame's top (${wireRunMs(lens.perSample, (q) => (q.wire ?? 0) >= WIRE_TOP)} ms, up to ${Math.round(Math.max(0, ...lens.perSample.map((q) => q.wire ?? 0)) * 100)} %)`);
+    // the frame-edge rule (2026-10-14, the coordinator on wave f1: 264 of the 672 critic notes were bursts, plumes, guns
+    // and second tanks cut by the frame's edge; lens-check.mjs frameEdgeFaults, which the motion search rejects): with
+    // `edge` (the chain's plan check) its faults are reported as the take's `warnings`, not failed. A take keeps its
+    // lens (re-searching a batch cost it the critics' framing: 0.53 -> 0.39 of the sweet spot), site50.mjs fitBursts
+    // moves the bursts that can show whole under it, and the rest go on the re-film list (the coordinator's ruling)
+    if (edge) out.warnings = frameEdgeFaults(scene, lens).map((f) => `${scene.meta?.id ?? id}: edge: ${f.key} (${f.detail})`);
     const cov = beatCoverage(scene, model);
     no(cov.some(Boolean), `a burst in the frame at one beat at least (${cov})`);
   }
@@ -115,9 +129,10 @@ if (process.argv[1] && toPath(import.meta.url) === process.argv[1]) {
   const cast = new Set([...Object.values(CAST), ...PRODUCTION_TANK_IDS]);
   let bad = 0;
   for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET].filter(([n]) => want.has(n))) {
-    const problems = takeBars(shot, { cast });
+    const problems = takeBars(shot, { cast, edge: true });
     bad += problems.length ? 1 : 0;
     console.log(problems.length ? problems.join('\n') : `s${String(shot[0]).padStart(2, '0')}-${shot[1]}: clear`);
+    for (const w of problems.warnings ?? []) console.log(w);
   }
   console.log(`== ${want.size - bad}/${want.size} clear`);
   process.exit(bad ? 1 : 0);
