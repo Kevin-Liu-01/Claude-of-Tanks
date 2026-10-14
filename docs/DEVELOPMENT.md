@@ -51,8 +51,9 @@ Before publishing:
    (about as long again) and `--check --variant=assault-trenches`. A base recapture keeps the index's variants.
    Since 2026-10-13 a Node build of more than one map splits its maps over `--jobs=N` child processes of the tool
    (1-8; default max(1, min(4, floor(cores / 4))), 4 on an 18-core machine; `--jobs=1` is the serial build). The output,
-   shard bytes, index and exit code are the serial run's; the wall time is about a quarter. The shard steps of a
-   landing that moved a map:
+   shard bytes, index and exit code are the serial run's; on a loaded machine the wall time is about a third (the base
+   `--check`, back to back at load 47-100 on 2026-10-14: 24.8 min serial, 8.2 min at `--jobs=4`, 585 and 461 CPU-s).
+   The shard steps of a landing that moved a map:
    ```sh
    nice -n 15 node tools/capture-world-collision-manifests.mjs --node --jobs=4                      # regenerate (or --maps a,b)
    nice -n 15 node tools/capture-world-collision-manifests.mjs --node --variant=assault-trenches --jobs=4
