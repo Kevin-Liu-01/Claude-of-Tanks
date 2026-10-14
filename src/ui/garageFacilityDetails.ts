@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { buildRockFace } from './garageRockKit.ts';
 
 interface GarageFacilityDetailStats {
   readonly facilityProps: number;
@@ -2303,47 +2304,97 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('alpine-cavern-repair');
       servicePurposeTags.add('avalanche-recovery');
-      // Open, load-bearing tunnel mouth. The earlier version was one solid
-      // 20x7 m dark cuboid, which read as a black billboard rather than a
-      // cavern. Separate rock abutments, a crown, a recessed back wall and an
-      // inner steel portal give the opening real depth and connected support.
-      const cavernRock = new THREE.Color(0x686b6b);
-      for (const offset of [-7.5, 7.5]) {
-        clusterBox(featureCluster, offset, -3.0, 3.4,
-          5.0, 6.8, 3.0, cavernRock, 'masonry');
-        clusterBox(featureCluster, offset, 0.7, 3.3,
-          1.1, 6.6, 1.0, steel, 'structure');
+      // Glacier's cavern portal (garage round 7, 2026-10-14; props census #20, garage:rock_cavern grade 0: rock boxes,
+      // a crown box and a painted black back wall). The pass road runs into a tunnel cut in a cliff of banded gneiss:
+      // a sculpted face in strata with snow on its ledges (garageRockKit.ts), a shotcrete-lined horseshoe tunnel 14 m
+      // deep on steel arch ribs with lagging over the crown, a vent duct and a row of lamps down it to a bulkhead with a
+      // lit door, a board-formed concrete portal collar, the blast door's rail and guide frame, a drainage channel
+      // across the mouth and avalanche fences on the slope above. Squared on the road's last stretch into the hill.
+      const mouthSide = -3.6, mouthDepth = 24.5;
+      const origin = cameraPoint(mouthSide, mouthDepth);
+      const roadIn = cameraPoint(mouthSide + 4 / 17, mouthDepth - 1); // back down the road toward (0, 10)
+      const yaw = Math.atan2(roadIn.x - origin.x, roadIn.z - origin.z);
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      const toWorld = (u: number, w: number): { x: number; z: number } => ({ x: origin.x + c * u + sn * w, z: origin.z - sn * u + c * w });
+      const mouthY = groundAtWorld(origin.x, origin.z);
+      const portal: FacilityCluster = { x: origin.x, z: origin.z, baseY: mouthY, yaw };
+      const half = 3.6, spring = 3.2, tunnelLength = 14;
+      buckets.baked!.push(buildRockFace({
+        x: origin.x, z: origin.z, yaw,
+        groundAt: (u, w) => { const at = toWorld(u, w); return Math.min(groundAtWorld(at.x, at.z), mouthY + 0.2 + Math.abs(u) * 0.05); },
+      }, {
+        width: 30, height: 12.5, depth: 9, seed: 0x6a1c,
+        strata: [0x6c6f70, 0x5a5e60, 0x7a7972, 0x63676a, 0x55595b],
+        snow: 0xe6ecf0,
+        opening: { u: 0, half: half + 0.25, spring, length: tunnelLength, lining: 0x8a8984 },
+      }));
+      const concrete = new THREE.Color(0x9a978f), concreteDark = new THREE.Color(0x7d7a73);
+      const ribSteel = new THREE.Color(0x3a3f42), lamp = new THREE.Color(0xf2dfb0);
+      // the portal collar: board-formed concrete jambs, a ring of segments round the arch, a parapet over it
+      for (const side of [-1, 1]) clusterBox(portal, side * (half + 0.45), 0.25, spring / 2, 0.9, spring, 1.3, concrete, 'masonry');
+      for (let i = 0; i <= 10; i += 1) {
+        const a = Math.PI * i / 10;
+        clusterBox(portal, Math.cos(a) * (half + 0.45), 0.25, spring + Math.sin(a) * (half + 0.45), 1.0, 0.9, 1.3,
+          i % 2 ? concrete : concreteDark, 'masonry', a - Math.PI / 2);
       }
-      clusterBox(featureCluster, 0, -3.0, 6.30,
-        10.2, 1.00, 3.0, cavernRock, 'masonry');
-      clusterBox(featureCluster, 0, -5.10, 2.75,
-        10.0, 5.35, 0.20, new THREE.Color(0x252b2f), 'painted');
-      clusterBox(featureCluster, 0, 1.05, 0.16,
-        12.5, 0.32, 8.5, new THREE.Color(0x626b70), 'masonry');
-      for (const offset of [-5.2, 5.2]) {
-        clusterBox(featureCluster, offset, 1.05, 3.05,
-          0.46, 5.8, 0.62, steel, 'structure');
-        clusterBeam(featureCluster,
-          [offset, 1.05, 4.65],
-          [offset > 0 ? 3.7 : -3.7, 1.05, 5.75],
-          0.22, accent, 'painted');
+      clusterBox(portal, 0, 0.1, spring + half + 1.25, 2 * half + 3.2, 0.8, 1.6, concrete, 'masonry');
+      for (let board = 0; board < 7; board += 1) { // the shuttering's boards as shallow ribs on the parapet face
+        clusterBox(portal, 0, 0.93, spring + half + 0.92 + board * 0.11, 2 * half + 3.1, 0.02, 0.04, concreteDark, 'masonry');
       }
-      clusterBox(featureCluster, 0, 1.05, 5.82,
-        10.8, 0.42, 0.72, steel, 'structure');
-      for (const offset of [-3.4, 0, 3.4]) {
-        clusterBox(featureCluster, offset, 0.66, 5.44,
-          1.20, 0.18, 0.10, accent, 'painted');
+      // steel arch ribs down the tunnel on base plates, lagging boards over the crown between them
+      for (let rib = 0; rib < 7; rib += 1) {
+        const w = -0.9 - rib * 2.0;
+        for (const side of [-1, 1]) {
+          clusterBox(portal, side * (half - 0.12), w, spring / 2, 0.2, spring, 0.18, ribSteel, 'structure');
+          clusterBox(portal, side * (half - 0.12), w, 0.03, 0.42, 0.06, 0.42, ribSteel, 'structure');
+        }
+        for (let i = 0; i < 8; i += 1) {
+          const a0 = Math.PI * i / 8, a1 = Math.PI * (i + 1) / 8, am = (a0 + a1) / 2;
+          const r = half - 0.12;
+          clusterBox(portal, Math.cos(am) * r, w, spring + Math.sin(am) * r, 2 * r * Math.sin((a1 - a0) / 2) + 0.04, 0.2, 0.18,
+            ribSteel, 'structure', am + Math.PI / 2);
+        }
+        if (rib < 6) {
+          for (let i = 2; i < 7; i += 1) { // lagging between this rib and the next over the crown
+            const am = Math.PI * (i + 0.5) / 8, r = half - 0.24;
+            clusterBox(portal, Math.cos(am) * r, w - 1.0, spring + Math.sin(am) * r, 0.36, 0.06, 1.8,
+              new THREE.Color(0x5a4a38), 'painted', am + Math.PI / 2);
+          }
+        }
       }
-      for (let index = -3; index <= 3; index += 1) {
-        clusterBox(featureCluster, index * 3.0, -6,
-          1.2 + Math.abs(index) * 0.08, 2.8, 2.4, 1.8,
-          new THREE.Color(0x6a6964), 'masonry');
+      // the floor slab, the vent duct along the crown, lamps down the tunnel, the bulkhead and its lit door
+      clusterBox(portal, 0, -tunnelLength / 2 + 0.4, 0.06, 2 * half - 0.1, 0.12, tunnelLength - 0.4, concreteDark, 'masonry');
+      clusterCylinder(portal, 0, -tunnelLength / 2, spring + half - 0.7, 0.42, tunnelLength - 1, new THREE.Color(0x8c9196), Math.PI / 2, 16);
+      for (let i = 0; i < 5; i += 1) {
+        clusterBox(portal, -half + 0.45, -1.8 - i * 2.8, spring + 0.4, 0.14, 0.12, 0.7, ribSteel, 'structure');
+        clusterBox(portal, -half + 0.47, -1.8 - i * 2.8, spring + 0.32, 0.1, 0.06, 0.62, lamp, 'painted');
       }
-      addPoweredWinch(featureCluster, -6.8, -2.1, new THREE.Color(0x758692));
-      addPartsPallet(featureCluster, 6.4, -2.15, 3);
-      addSafetyRail(featureCluster, 0, 3.8, 12.8);
-      addPartsAndFittingsCage(featureCluster, 0, 1.45, new THREE.Color(0x82909a));
-      addPlatePreparationRack(featureCluster, 0, -2.45, new THREE.Color(0x6f7d86));
+      const back = -tunnelLength + 0.4;
+      clusterBox(portal, 0, back, (spring + half) / 2, 2 * half, spring + half, 0.4, concrete, 'masonry');
+      clusterBox(portal, 1.2, back + 0.24, 1.1, 1.1, 2.2, 0.08, new THREE.Color(0x4f5a52), 'painted');
+      clusterBox(portal, 1.2, back + 0.28, 2.45, 0.4, 0.14, 0.12, lamp, 'painted');
+      // the blast door's rail across the mouth and its guide frame on the collar (the leaf stands rolled back inside)
+      clusterBox(portal, 0, 1.05, 0.05, 2 * half + 2.4, 0.1, 0.22, ribSteel, 'structure');
+      for (const side of [-1, 1]) clusterBox(portal, side * (half + 1.02), 0.95, (spring + half) / 2, 0.22, spring + half, 0.26, ribSteel, 'structure');
+      clusterBox(portal, 0, 0.95, spring + half + 0.05, 2 * half + 2.3, 0.26, 0.26, ribSteel, 'structure');
+      // a drainage channel across the mouth: a dark run with a grating over it
+      clusterBox(portal, 0, 2.2, 0.03, 2 * half + 2.2, 0.03, 0.42, dark, 'painted');
+      for (let i = 0; i < 26; i += 1) clusterBox(portal, -half - 1.0 + i * ((2 * half + 2.0) / 25), 2.2, 0.06, 0.04, 0.03, 0.42, ribSteel, 'structure');
+      // avalanche fences on the slope above the portal: posts with net panels between, two rows
+      for (const [row, y, w] of [[0, 10.4, -3.2], [1, 11.6, -5.4]] as const) {
+        for (let i = -3; i <= 3; i += 1) {
+          const u = i * 3.0 + (row ? 1.5 : 0);
+          clusterBeam(portal, [u, w, y - 0.6], [u, w + 0.5, y + 2.6], 0.09, ribSteel, 'structure');
+          if (i < 3) clusterBox(portal, u + 1.5, w + 0.3, y + 1.0, 2.9, 2.4, 0.03, new THREE.Color(0x4a4f52), 'painted', 0, -0.2);
+        }
+      }
+      structuralConnections += 40;
+      // the yard's kit stands in front of the portal, clear of the road
+      addPoweredWinch(fixedCluster(featureSide - 11.5, featureDepth - 9.5), 0, 0, new THREE.Color(0x758692));
+      addPartsPallet(fixedCluster(featureSide + 9.5, featureDepth - 9.0), 0, 0, 3);
+      addSafetyRail(fixedCluster(featureSide + 2.5, featureDepth - 12.5), 0, 0, 6.4);
+      addPartsAndFittingsCage(fixedCluster(featureSide + 12.5, featureDepth - 4.0), 0, 0, new THREE.Color(0x82909a));
+      addPlatePreparationRack(fixedCluster(featureSide - 12.5, featureDepth - 4.5), 0, 0, new THREE.Color(0x6f7d86));
   };
   const addRecoveryYard = (): void => {
       environmentSpecificAssemblies += 1;
