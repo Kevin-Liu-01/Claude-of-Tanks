@@ -981,7 +981,7 @@ function addWinterShoreReeds(
     if (!isDressingPointClear(heightField, x, z, 480, 6)) continue;
     const from = buckets.straw.length;
     winterReedClump(buckets, rng, heightField, x, z);
-    dressReedClump('frost', buckets.straw, from, buckets.baked); // #16 r2: frost-killed, snow on their heads
+    dressReedClump('frost', buckets.straw, from, buckets.plaster, false); // #16 r2: frost-killed, snow on their heads
 
   }
 }
@@ -1776,7 +1776,8 @@ function addRiverBankReeds(
       const from = buckets.straw.length;
       reedClump(buckets, rng, heightField, x, z);
       // #16 r2 (Lane C, 2026-10-14): the region's reed on the culms just laid (reedBeds.ts: no draw, no query)
-      dressReedClump(form, buckets.straw, from, buckets.baked);
+      if (form === 'phragmites') dressReedClump(form, buckets.straw, from, buckets.straw, false);
+      else dressReedClump(form, buckets.straw, from, buckets.baked);
     }
   }
 }
@@ -1885,8 +1886,9 @@ function addFordMarkerPair(
     // with its rag), its turn, lean and height from the old post's five draws; painted (the post and its plaster cap
     // where a kit has no painted bucket)
     const v = [rng(), rng(), rng(), rng(), rng()];
-    if (buckets.baked) buckets.baked.push(fordMarker(style, markerX, markerY, markerZ, v));
-    else {
+    if (buckets.baked || style === 'gauge') {
+      for (const piece of fordMarker(style, markerX, markerY, markerZ, v)) (buckets[piece.bucket] ?? buckets.wood).push(piece.geometry);
+    } else {
       const post = box(0.16, 1.5, 0.16, 1.6);
       post.rotateY(v[0] * Math.PI);
       post.translate(markerX, markerY + 0.72, markerZ);

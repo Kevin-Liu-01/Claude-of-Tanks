@@ -314,7 +314,7 @@ function sampan(sink: PartSink, look: () => number): void {
   }
   const cane = { colour: shade(HULL, 1.45), decor: true, exposed: true };
   for (const hx of [rx - roofL / 2 + 0.04, rx, rx + roofL / 2 - 0.04]) {
-    for (let i = 0; i < segs; i++) sink.member('structureWood', arc(R + 0.015, i, hx), arc(R + 0.015, i + 1, hx), 0.035, 0.035, [1, 0, 0], cane, 0);
+    for (let i = 0; i < segs; i += 2) sink.member('structureWood', arc(R + 0.015, i, hx), arc(R + 0.015, i + 2, hx), 0.035, 0.035, [1, 0, 0], cane, 0);
   }
   // the cargo under the roof: a basket or two and a bale, and the floorboards' join
   const basket = { colour: shade(MAT, 1.15), decor: true };

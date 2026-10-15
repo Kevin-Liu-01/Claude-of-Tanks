@@ -300,8 +300,8 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
     const snowBerms = built.buckets.plaster.filter(g => g.name === 'winter-pressure-berm');
     assert.deepEqual(names.filter(name => built.buckets[name].length),
       // 2026-09-23: no 80 m sheet on Frosthollow => no rowboat wood; #16 r2 (Lane C, 2026-10-14): the frost-killed reeds'
-      // snow caps and drifts in the painted bucket every one of these maps already draws (reedBeds.ts)
-      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw', 'baked'] : ['plaster', 'wood', 'straw', 'baked'],
+      // snow caps and drifts are in the plaster with the lake's snow berms (reedBeds.ts), no bucket more
+      mapId === 'whiteout' || mapId === 'winter' ? ['plaster', 'straw'] : ['plaster', 'wood', 'straw'],
       'kit reuses the already-populated plaster draw; its obsolete stone batch is eliminated');
     let mapBerms = 0, mapWedges = 0;
     for (const geometry of snowBerms) { auditBerm(geometry, built.field); mapBerms++; }
@@ -316,9 +316,8 @@ for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
       `${mapId}: every authored pressure ridge still exists`);
     assert.ok(mapWedges > 0, `${mapId}/${seed}: shoreline and crest ice plates are populated`);
     auditReeds(built.buckets.straw, built.field);
-    for (const [bucket, geometries] of Object.entries(built.buckets)) for (const geometry of geometries) {
-      // (#16 r2: the painted bucket's pieces carry their colours)
-      assert.deepEqual(Object.keys(geometry.attributes).sort(), bucket === 'baked' ? ['color', 'normal', 'position', 'uv'] : ['normal', 'position', 'uv']);
+    for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) {
+      assert.deepEqual(Object.keys(geometry.attributes).sort(), ['normal', 'position', 'uv']);
       for (const attr of Object.values(geometry.attributes)) {
         assert.ok(attr.array.every(Number.isFinite), 'merged attributes remain finite and compatible');
       }

@@ -151,12 +151,18 @@ for (const coast of ['breton', 'nordland']) {
   buoy.dispose();
 }
 for (const style of ['gauge', 'bamboo']) {
-  const m = fordMarker(style, 2, 1, -4, [0.2, 0.5, 0.5, 0.5, 0.1]);
-  finite(m);
-  m.computeBoundingBox();
-  assert.ok(Math.abs(m.boundingBox.min.y - (1 - 0.25)) < 0.02, `${style}: driven 25 cm`);
-  assert.ok(m.boundingBox.max.y > 1 + 1.4, `${style}: stands over the ford`);
-  m.dispose();
+  const pieces = fordMarker(style, 2, 1, -4, [0.2, 0.5, 0.5, 0.5, 0.1]);
+  // the gauge in the timber and plaster every river map draws (no colours), the bamboo painted
+  assert.deepEqual(pieces.map((p) => p.bucket), style === 'gauge' ? ['wood', 'plaster'] : ['baked']);
+  let lo = Infinity, hi = -Infinity;
+  for (const { bucket, geometry } of pieces) {
+    finite(geometry);
+    assert.equal(Boolean(geometry.attributes.color), bucket === 'baked', `${style}: colours only in the painted bucket`);
+    geometry.computeBoundingBox(); lo = Math.min(lo, geometry.boundingBox.min.y); hi = Math.max(hi, geometry.boundingBox.max.y);
+    geometry.dispose();
+  }
+  assert.ok(Math.abs(lo - (1 - 0.25)) < 0.02, `${style}: driven 25 cm`);
+  assert.ok(hi > 1 + 1.4, `${style}: stands over the ford`);
 }
 {
   const stake = mooringStakeGeometry();
@@ -185,12 +191,16 @@ for (const style of ['gauge', 'bamboo']) {
     const b = { straw: [], baked: [] };
     kit.probeReed(b, rng, field, 5, 7);
     const [d0, q0] = [draws, queries];
-    dressReedClump(form, b.straw, 0, b.baked);
+    // the Phragmites in the straw with the culms and the frost's snow in the plaster (no colours), kash and nipa painted
+    const painted = form === 'kash' || form === 'nipa';
+    const culms = b.straw.length;
+    dressReedClump(form, b.straw, 0, painted ? b.baked : b.straw, painted);
     assert.deepEqual([draws, queries], [d0, q0], `${form}: the dressing draws nothing and asks the ground nothing`);
-    assert.equal(b.baked.length, 1, `${form}: one painted piece a clump`);
-    const g = b.baked[0];
+    const out = painted ? b.baked : b.straw.slice(culms);
+    assert.equal(out.length, 1, `${form}: one piece a clump`);
+    const g = out[0];
     finite(g);
-    assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], 'the painted bucket\'s streams');
+    assert.deepEqual(Object.keys(g.attributes).sort(), painted ? ['color', 'normal', 'position', 'uv'] : ['normal', 'position', 'uv'], 'the bucket\'s streams');
     for (let i = 0; i < g.attributes.normal.count; i++) {
       assert.ok(Math.hypot(g.attributes.normal.getX(i), g.attributes.normal.getY(i), g.attributes.normal.getZ(i)) > 0.5, `${form}: lit (no cancelled normal)`);
     }

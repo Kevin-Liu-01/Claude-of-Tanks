@@ -139,7 +139,7 @@ export function buildMooringBuoy(coast: DriftCoast, r: number, v: readonly numbe
   // the float: a squat pear turned on a lathe, riding with 40 % of it under the surface, the weed on its bottom
   const profile = [[0.0001, -0.62], [0.45, -0.55], [0.86, -0.32], [1, -0.05], [1, 0.18], [0.82, 0.45], [0.42, 0.62], [0.0001, 0.66]]
     .map(([a, b]) => new THREE.Vector2(a * r, b * r));
-  const body = new THREE.LatheGeometry(profile, 12);
+  const body = new THREE.LatheGeometry(profile, 10);
   const red = coast === 'nordland' ? (vScheme < 0.6 ? BUOY_ORANGE : BUOY_RED) : BUOY_RED;
   const banded = coast === 'breton' && vScheme < 0.7;
   parts.push(paintBy(body, (_x, y) => (y < -0.2 * r ? WEED : banded ? (y > 0.05 * r && y < 0.32 * r ? red : BUOY_WHITE) : red), 0.12, 31));
@@ -153,7 +153,8 @@ export function buildMooringBuoy(coast: DriftCoast, r: number, v: readonly numbe
   // the chain: links of alternating lie from the float's bottom eye towards the bed, sagging into the water
   const run = 1.2 + vRun * 2.2, drop = Math.max(0.3, surface - 0.35 * r - bedY);
   const dirX = Math.cos(vRun * Math.PI * 2), dirZ = Math.sin(vRun * Math.PI * 2);
-  const links = Math.min(22, Math.ceil(Math.hypot(run, drop) / 0.11));
+  // (links of 0.2 m, at most a dozen: the chain under the water reads as a line)
+  const links = Math.min(12, Math.ceil(Math.hypot(run, drop) / 0.2));
   const start = new THREE.Vector3(0, -0.6 * r, 0);
   for (let k = 0; k < links; k++) {
     const t0 = k / links, t1 = (k + 1) / links;
@@ -199,18 +200,26 @@ export type FordStyle = 'gauge' | 'bamboo';
 /** The ford marker of a river, by its boats (the Bengal nouka's chars: bamboo; every other river: a depth gauge). */
 export function fordStyleForBoat(boatType: string): FordStyle { return boatType === 'nouka' ? 'bamboo' : 'gauge'; }
 
-const GAUGE_RED = rgb(0xa8261e), GAUGE_WHITE = rgb(0xdedbd2), POST_DARK = rgb(0x3b3127), BAMBOO = rgb(0xb5a26a),
+const BAMBOO = rgb(0xb5a26a),
   BAMBOO_NODE = rgb(0x7d6b40), RAG = rgb(0xb3321f);
 
 /**
  * A ford marker standing on the ground at (x, y, z), driven 25 cm in, from five unit draws `v` (the old post's turn
- * and UV jitter): its turn, lean and height. A 'gauge' is the depth post of a European ford: a square post painted in
- * red and white 20 cm bands over its top metre, dark and weed-stained below, capped; a 'bamboo' is the Bengal pole:
- * a bamboo culm with its nodes and a red rag tied at its head. Vertex-coloured, one geometry.
+ * and UV jitter): its turn, lean and height. A 'gauge' is the depth post of a European ford: a squared post, its top
+ * metre painted white in 20 cm bands between the bare timber's, capped; a 'bamboo' is the Bengal pole: a bamboo culm
+ * with its nodes and a red rag tied at its head. The pieces and the buckets they go into: the gauge's timber and its
+ * white paint into the timber and plaster buckets every river map draws (no colours), the bamboo painted.
  */
-export function fordMarker(style: FordStyle, x: number, y: number, z: number, v: readonly number[]): BG {
+export function fordMarker(style: FordStyle, x: number, y: number, z: number, v: readonly number[]): Array<{ bucket: 'baked' | 'wood' | 'plaster'; geometry: BG }> {
   const [turn, leanA, leanB, tall] = v;
-  let g: BG;
+  const pose = (g: BG): BG => {
+    g.rotateY(turn * Math.PI);
+    g.rotateX((leanA - 0.5) * 0.08);
+    g.rotateZ((leanB - 0.5) * 0.08);
+    g.translate(x, y, z);
+    g.userData.fordMarker = style;
+    return g;
+  };
   if (style === 'bamboo') {
     const h = 2.0 + tall * 0.5;
     const pole = new THREE.CylinderGeometry(0.03, 0.038, h + 0.25, 7, 8, false);
@@ -224,21 +233,20 @@ export function fordMarker(style: FordStyle, x: number, y: number, z: number, v:
     rag.setIndex([0, 1, 2, 2, 1, 3, 0, 2, 1, 2, 3, 1]);
     rag.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
     paintBy(rag, () => RAG, 0.2, 52);
-    g = merged([pole, rag]);
-  } else {
-    const h = 1.45 + tall * 0.2;
-    const post = new THREE.BoxGeometry(0.14, h + 0.25, 0.14, 1, 9, 1);
-    post.translate(0, (h + 0.25) / 2 - 0.25, 0);
-    paintBy(post, (_x, py) => (py < h - 1.0 ? POST_DARK : Math.floor((h - py) / 0.2) % 2 ? GAUGE_WHITE : GAUGE_RED), 0.1, 53);
-    const cap = new THREE.BoxGeometry(0.18, 0.04, 0.18);
-    cap.translate(0, h + 0.02, 0);
-    paintBy(cap, () => POST_DARK, 0.1, 54);
-    g = merged([post, cap]);
+    return [{ bucket: 'baked', geometry: pose(merged([pole, rag])) }];
   }
-  g.rotateY(turn * Math.PI);
-  g.rotateX((leanA - 0.5) * 0.08);
-  g.rotateZ((leanB - 0.5) * 0.08);
-  g.translate(x, y, z);
-  g.userData.fordMarker = style;
-  return g;
+  const h = 1.45 + tall * 0.2, half = 0.07;
+  // the timber: the post's foot to the bands and the bare bands between the painted ones, the cap
+  const timber: BG[] = [], paintCoat: BG[] = [];
+  const seg = (y0: number, y1: number, grow: number, list: BG[]) => {
+    const g = new THREE.BoxGeometry(half * 2 + grow, y1 - y0, half * 2 + grow);
+    g.translate(0, (y0 + y1) / 2, 0);
+    list.push(g);
+  };
+  seg(-0.25, h - 1.0, 0, timber);
+  for (let k = 0; k < 5; k++) seg(h - 1.0 + k * 0.2, h - 0.8 + k * 0.2, k % 2 ? 0 : 0.006, k % 2 ? timber : paintCoat);
+  const cap = new THREE.BoxGeometry(0.18, 0.04, 0.18);
+  cap.translate(0, h + 0.02, 0);
+  timber.push(cap);
+  return [{ bucket: 'wood', geometry: pose(merged(timber)) }, { bucket: 'plaster', geometry: pose(merged(paintCoat)) }];
 }

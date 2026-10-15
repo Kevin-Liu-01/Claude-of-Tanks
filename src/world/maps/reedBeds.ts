@@ -58,7 +58,10 @@ class Sheet {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((this.p.length / 3) * 2).fill(0), 2));
+    // (UVs off the position, so a textured bucket's grain runs up the pieces)
+    const uv: number[] = [];
+    for (let i = 0; i < this.p.length; i += 3) uv.push((this.p[i] + this.p[i + 2]) * 2, this.p[i + 1] * 2);
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(this.i);
     g.computeVertexNormals();
     const n = g.attributes.normal;
@@ -89,7 +92,7 @@ function culmsSince(straw: readonly BG[], from: number): Culm[] {
 /** A drooping spindle (a panicle or a plume) hung from the culm's tip, `len` long, leaning off along (lx, lz). */
 function spindle(s: Sheet, tip: THREE.Vector3, lx: number, lz: number, len: number, fat: number, droop: number, tone: readonly number[], toneTip: readonly number[]): void {
   const n = Math.hypot(lx, lz) || 1, ux = lx / n, uz = lz / n;
-  const rings = 4, sides = 4;
+  const rings = 3, sides = 3;
   const centre = (t: number) => new THREE.Vector3(tip.x + ux * len * 0.35 * t, tip.y + len * (0.15 * t) - droop * len * t * t, tip.z + uz * len * 0.35 * t);
   const first = s.p.length / 3;
   for (let r = 0; r <= rings; r++) {
@@ -166,11 +169,14 @@ function snowDrift(s: Sheet, culms: readonly Culm[]): void {
 }
 
 /**
- * Dress the culms the kit pushed into `straw` since `from` (one clump) in the region's form; the pieces go into `baked`
- * as one geometry. No draws, no ground queries: everything is read off the culms.
+ * Dress the culms the kit pushed into `straw` since `from` (one clump) in the region's form, one geometry into `into`:
+ * painted (the kash and nipa, into the baked bucket their maps already draw) or not (`painted` false: the Phragmites'
+ * panicles and blades in the straw with the culms, the frost's snow in the plaster with the lake's snow berms — a map
+ * whose painted bucket is otherwise empty takes no draw for its reeds). No draws, no ground queries: everything is read
+ * off the culms.
  */
-export function dressReedClump(form: ReedForm, straw: readonly BG[], from: number, baked: BG[] | undefined): void {
-  if (!baked) return;
+export function dressReedClump(form: ReedForm, straw: readonly BG[], from: number, into: BG[] | undefined, painted = true): void {
+  if (!into) return;
   const culms = culmsSince(straw, from);
   if (!culms.length) return;
   const salt = Math.round(culms[0].base.x * 31 + culms[0].base.z * 17);
@@ -178,16 +184,19 @@ export function dressReedClump(form: ReedForm, straw: readonly BG[], from: numbe
   culms.forEach((c, k) => {
     const lean = Math.atan2(c.tip.z - c.base.z, c.tip.x - c.base.x) + (hash(k, salt) - 0.5);
     const lx = Math.cos(lean), lz = Math.sin(lean);
+    // (the panicles, plumes and blades on the clump's tall culms: about 60 triangles a clump, the culms' own cost)
     if (form === 'phragmites') {
-      if (c.tall) spindle(s, c.tip, lx, lz, 0.4, 0.065, 0.55, PANICLE, PANICLE_TIP);
-      for (const side of [0, 1]) {
-        const a = lean + (side ? 2.1 : -2.3) + hash(k + 11 * side, salt);
-        blade(s, c, 0.35 + 0.3 * hash(k + 5 + side, salt), Math.cos(a), Math.sin(a), c.height * 0.38, 0.012, BLADE_AUTUMN);
+      if (c.tall) {
+        spindle(s, c.tip, lx, lz, 0.4, 0.065, 0.55, PANICLE, PANICLE_TIP);
+        const a = lean + 2.2 + hash(k + 11, salt);
+        blade(s, c, 0.35 + 0.3 * hash(k + 5, salt), Math.cos(a), Math.sin(a), c.height * 0.38, 0.014, BLADE_AUTUMN);
       }
     } else if (form === 'kash') {
-      if (c.tall || hash(k, salt + 3) < 0.35) spindle(s, c.tip, lx, lz, 0.6, 0.1, 0.3, KASH, KASH);
-      const a = lean + 2.4 + hash(k + 21, salt);
-      blade(s, c, 0.3, Math.cos(a), Math.sin(a), c.height * 0.45, 0.008, BLADE_GREEN);
+      if (c.tall || hash(k, salt + 3) < 0.2) spindle(s, c.tip, lx, lz, 0.6, 0.1, 0.3, KASH, KASH);
+      if (c.tall) {
+        const a = lean + 2.4 + hash(k + 21, salt);
+        blade(s, c, 0.3, Math.cos(a), Math.sin(a), c.height * 0.45, 0.01, BLADE_GREEN);
+      }
     } else if (form === 'nipa') {
       if (c.tall) frond(s, c.base, lean + (k - 1) * 2.1, 2.4 + c.height * 1.1, salt + k);
     } else {
@@ -197,7 +206,8 @@ export function dressReedClump(form: ReedForm, straw: readonly BG[], from: numbe
   if (form === 'frost') snowDrift(s, culms);
   const g = s.build();
   if (!g) return;
+  if (!painted) g.deleteAttribute('color');
   g.name = `reed-dressing-${form}`;
   g.userData.reeds = form;
-  baked.push(g);
+  into.push(g);
 }
