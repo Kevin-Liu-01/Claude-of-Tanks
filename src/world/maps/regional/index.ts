@@ -26,6 +26,7 @@ import { GORAL_STYLE } from './goral.ts';
 import { POLDER_STYLE } from './polder.ts';
 import { EIFEL_STYLE } from './eifel.ts';
 import { MEKONG_STYLE } from './mekong.ts';
+import { NORDLAND_STYLE } from './nordland.ts';
 import { BENGAL_STYLE } from './bengal.ts';
 import { FRANCONIAN_STYLE } from './franconian.ts';
 import { KSAR_STYLE, SIWA_STYLE } from './ksar.ts';
@@ -73,6 +74,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   polder: POLDER_STYLE,
   eifel: EIFEL_STYLE,
   mekong: MEKONG_STYLE,
+  nordland: NORDLAND_STYLE,
   bengal: BENGAL_STYLE,
   franconian: FRANCONIAN_STYLE,
   ksar: KSAR_STYLE,

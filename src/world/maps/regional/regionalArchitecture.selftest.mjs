@@ -56,6 +56,7 @@ const INFO = {
   // (the tselina kit's elevator, its own builder since 2026-10-10: built on the warehouse lot it stood on before)
   elevator: [16, 24, 7.5],
   rangerlodge: [12.8, 16.4, 10.7], marketRow: [12, 5.2, 3.2], fishery: [18, 20, 7], rowhouse: [9.6, 10.2, 11],
+  netyard: [8.5, 6.5, 2.4],
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
