@@ -1,5 +1,5 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
-import { withSpareTrackRun } from './spareTrackSeat.ts';
+import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -4629,11 +4629,13 @@ export function buildPuma(P: Modern3BuilderPort) {
   // engine intake louvres RIDE THE BOW PLANE right of the driver side
   // (§B8 order 2 "driver strip + louvers on it"; powerpack forward —
   // plane surface y(z) = 1.92 - (z - 1.77) * 0.2667)
-  P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
-  }
-  P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);                // exhaust grille on the left flank
+  withSeatRole(P, 'grille', (P) => {                                          // VEH-13: no seat for spare links
+    P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
+    }
+    P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);              // exhaust grille on the left flank
+  });
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.56), -1.42, 1.60 + k * 0.12, 1.95);
   // troop roof hatch seams (flush — §B2-safe)
   P.add('hullDark', box(0.66, 0.015, 1.30), -0.55, 2.09, -2.10);

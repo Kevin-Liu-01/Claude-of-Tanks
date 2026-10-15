@@ -7525,6 +7525,8 @@ function* createTankOwnedSteps(
         : bucket === 'turret' ? 'turretEquipment' : bucket;
       const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
+      // VEH-13: an optical station is no seat for spare links (spareTrackSeat.ts)
+      if (module === 'optics' && !part.userData.seatRole) part.userData.seatRole = 'sight';
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
