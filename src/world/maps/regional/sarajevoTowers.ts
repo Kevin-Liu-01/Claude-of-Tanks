@@ -105,7 +105,9 @@ function curtainFloors(sink: PartSink, plan: ReadonlyArray<readonly [number, num
     else sink.prism(slab, proud.map(([x, z]): Vec3 => [x, y, z]), [0, 1, 0], 0.32, {});
     // the floor's core: the rooms behind the glass, or the gutted bay's charred back wall
     const core = gutted ? deepPlan : shallow;
-    sink.prism(gutted ? slab : 'dark', core.map(([x, z]): Vec3 => [x, y + spH, z]), [0, 1, 0], fh - spH, gutted ? { colour: CHAR } : {});
+    // (the gutted bay's back wall charred: a colour the plaster bucket never carries, so the painted metal's; in the plaster
+    // it read white, the 08:00 stills)
+    sink.prism(gutted ? 'structureMetal' : 'dark', core.map(([x, z]): Vec3 => [x, y + spH, z]), [0, 1, 0], fh - spH, gutted ? { colour: CHAR } : {});
     if (gutted) {
       // the columns at the face line over the gutted bay, and the soot up to the next floor
       for (const [x, z] of shallow) sink.span(slab, x - 0.22, y + spH, z - 0.22, x + 0.22, y + fh, z + 0.22, {});
