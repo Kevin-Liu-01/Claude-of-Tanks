@@ -418,22 +418,30 @@ async function measureWindow(labels, seconds) {
         return { taskMsPerS: per('TaskDuration'), scriptMsPerS: per('ScriptDuration'), layoutMsPerS: per('LayoutDuration'), styleMsPerS: per('RecalcStyleDuration') }; })() : null,
     };
   }
-  const moving = [], rest = [], skew = [];
+  const moving = [], rest = [], skew = [], movingCorrected = [];
   for (const sample of samples) {
     const views = labels.map((label) => sample[label]).filter(Boolean);
     if (views.length < 2) continue;
     skew.push(Math.max(...views.map((view) => view.wallMs)) - Math.min(...views.map((view) => view.wallMs)));
     const ids = new Set(views.flatMap((view) => Object.keys(view.hulls)));
     for (const id of ids) {
-      const shown = views.map((view) => view.hulls[id]).filter((hull) => hull && hull[3]);
+      const shown = views.map((view) => (view.hulls[id] ? [...view.hulls[id], view.wallMs] : null)).filter((hull) => hull && hull[3]);
       if (shown.length < 2) continue;
-      let worst = 0;
-      for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) worst = Math.max(worst, Math.hypot(shown[i][0] - shown[j][0], shown[i][1] - shown[j][1]));
-      (Math.max(...shown.map((hull) => hull[2])) > 1 ? moving : rest).push(worst);
+      let worst = 0, worstCorrected = 0;
+      for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {
+        const d = Math.hypot(shown[i][0] - shown[j][0], shown[i][1] - shown[j][1]);
+        worst = Math.max(worst, d);
+        // (2026-10-15) less what the two pages' sampling times explain at the hull's own speed (the pages are read in
+        // parallel but not at one instant: their skew reached 1 s on a loaded run)
+        worstCorrected = Math.max(worstCorrected, Math.max(0, d - Math.max(shown[i][2], shown[j][2]) * Math.abs(shown[i][4] - shown[j][4]) / 1000));
+      }
+      const isMoving = Math.max(...shown.map((hull) => hull[2])) > 1;
+      (isMoving ? moving : rest).push(worst);
+      if (isMoving) movingCorrected.push(worstCorrected);
     }
   }
   const summary = (values) => ({ n: values.length, p50: round1(percentile(values, 0.5)), p95: round1(percentile(values, 0.95)), max: round1(values.length ? Math.max(...values) : null) });
-  return { windowS: seconds, samples: samples.length, wallSkewMs: summary(skew), divergence: { moving: summary(moving), rest: summary(rest) }, perPage };
+  return { windowS: seconds, samples: samples.length, wallSkewMs: summary(skew), divergence: { moving: summary(moving), rest: summary(rest), movingSkewCorrected: summary(movingCorrected) }, perPage };
 }
 /** A point on the page's battle canvas (the largest canvas, where a click lands on the canvas itself), or null. */
 const canvasPoint = (page) => page.evaluate(() => {
