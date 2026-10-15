@@ -464,7 +464,8 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
     const names = ['front', 'right', 'back', 'left'] as const;
     const fa = faces[attacked];
     holedBox(sink, wall, -W / 2, -D / 2, W / 2, D / 2, -0.4, roofY, { front: holes[0], right: holes[1], back: holes[2], left: holes[3] }, 0.35, rev, {},
-      { stains: mobile ? {} : { [names[attacked]]: [{ u0: -fa.width * 0.3, u1: fa.width * 0.1, y0: roofY * 0.5, y1: roofY, bottom: 1, top: 0.4 }] } });
+      // (the stain splits the wall's pieces: a phone's wall is the desktop's, so it carries it too)
+      { stains: { [names[attacked]]: [{ u0: -fa.width * 0.3, u1: fa.width * 0.1, y0: roofY * 0.5, y1: roofY, bottom: 1, top: 0.4 }] } });
     for (const unit of units) unit();
     // (E13) the warehouse in its storey bands for the damage reading
     recordBody(sink, 0, 0, W, D, roofY + 0.9, wall, false, true);
