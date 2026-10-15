@@ -172,9 +172,19 @@ console.log('spareTrackSeat.selftest: synthetic fixtures passed (gun, tube facet
   + 'casemate gun, traverse step, cloth roll, well, plane fit)');
 
 if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
+  const { readFileSync } = await import('node:fs');
   const { createTank } = await import('./tankFactory.ts');
-  const build = (id) => createTank(id, null, { proceduralOnly: true, decor: true, quality: 'high',
-    geometryQuality: 'high', camoSeed: 4242, geometryReceipt: true });
+  const { ALL_TANK_IDS } = await import('./specs.ts');
+  const { SPARE_TRACK_BUILD, spareTrackGeometryDigest } = await import('../../tools/spare-track-digest.mjs');
+  const ledger = JSON.parse(readFileSync(new URL('../../docs/geometry-gate/spare-track.json', import.meta.url), 'utf8'));
+  // the fleet ledger (tools/spare-track-placement-check.mjs): every id measured, no gated class anywhere
+  const GATED = new Set(['ON_GUN', 'IN_SWEEP', 'HANGING', 'FLOATING', 'WEIRD', 'INTERSECTING', 'BURIED']);
+  assert.deepEqual(Object.keys(ledger.rows).sort(), [...ALL_TANK_IDS].sort(), 'the spare-track ledger rows every id');
+  for (const [id, row] of Object.entries(ledger.rows)) {
+    for (const run of row.runs) assert.ok(!run.classes.some((c) => GATED.has(c)), `${id} ${run.site}: ${run.classes.join(', ')}`);
+    assert.deepEqual(row.uncovered, [], `${id}: uncovered spare-link geometry`);
+  }
+  const build = (id) => createTank(id, null, SPARE_TRACK_BUILD);
   const gunBox = (root) => {
     const box = new THREE.Box3();
     root.traverse((o) => { if (o.isMesh && /^hullGun/.test(o.name)) box.expandByObject(o); });
@@ -219,9 +229,10 @@ if (process.env.SPARE_TRACK_SEAT_SYNTHETIC_ONLY !== '1') {
       for (const run of runs) {
         assert.ok(run.support >= 80 && run.air <= 10 && run.exposure >= 30, `${id}/${run.site}: ${JSON.stringify(run)}`);
       }
+      assert.equal(spareTrackGeometryDigest(root), ledger.rows[id]?.inputHash, `${id}: the ledger row is current (not STALE)`);
     } finally {
       tank.dispose();
     }
   }
-  console.log('spareTrackSeat.selftest: strv103a, udes03 and strv103 (Strv 103B) build clean');
+  console.log(`spareTrackSeat.selftest: strv103a, udes03 and strv103 (Strv 103B) build clean; ledger ${Object.keys(ledger.rows).length} ids clean`);
 }

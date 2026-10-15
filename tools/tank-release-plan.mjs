@@ -24,6 +24,8 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     gpu('presentation-centering','--check',selected),
     gpu('module-visual-align-probe',selected,'--gate'),
     cpu('module-hit-probe',selected),
+    // VEH-13 (2026-10-15): every spare-track run measured afresh, equal to its ledger row and clean
+    cpu('spare-track-placement-check',selected,'--ledger=docs/geometry-gate/spare-track.json',...(gate?['--gate']:[])),
     gpu('tank-assets-check',selected),
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),

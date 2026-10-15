@@ -1,4 +1,5 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
+import { withSpareTrackRun } from './spareTrackSeat.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -1915,8 +1916,11 @@ function buildType10Native2026(
     P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);           // cooling exhaust grille (left)
     for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
     P.add('hullWood', box(0.308, 0.143, 0.0286), 0.33, 1.056, -3.773);            // jack block
-    P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);          // spare-link hanger rail
-    P.add('hullTrack', box(0.33, 0.176, 0.022), 1.122, 1.188, -3.7752);           // hung spare links
+    // VEH-13: the hanger rail and its links are one registered run on the rear plate (spareTrackSeat.ts)
+    withSpareTrackRun(P, { site: 'type10-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
+      P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);        // spare-link hanger rail
+      P.add('hullTrack', box(0.33, 0.176, 0.022), 1.122, 1.188, -3.7752);         // hung spare links
+    });
     P.add('hullDetail', box(0.20, 0.20, 0.020), 0.02, 1.50, -3.774);              // convoy plate
     P.add('hullDark', box(0.16, 0.16, 0.012), 0.02, 1.50, -3.782);
     P.decal('hull', 'soot', null, 0.605, [-0.682, 1.386, -3.7774], Math.PI);

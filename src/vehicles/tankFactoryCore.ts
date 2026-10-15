@@ -7423,6 +7423,9 @@ function* createTankOwnedSteps(
       // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
       // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
       // a rebuild that clears, offsets or scales that bucket by name must still find it there.
+      // VEH-13: explosive cassettes are no seat for spare links (spareTrackSeat.ts); cages and slat screens are not ERA
+      if (eraOwner && !part.userData.seatRole
+          && !(activeVisualEraCluster && /cage|slat|screen|net/i.test(activeVisualEraCluster.name))) part.userData.seatRole = 'era';
       const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
       const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);

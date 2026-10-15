@@ -144,6 +144,11 @@ let runSerial = 0;
 export function spareTrackRunTag(tag: SpareTrackRunTag): SpareTrackRunTag & { readonly id: number } {
   return { ...tag, id: ++runSerial };
 }
+/** Mark one geometry as part of `run` (for sites that draw through a local helper rather than the port). */
+export function spareTrackPart<G extends THREE.BufferGeometry>(run: SpareTrackRunTag & { readonly id: number }, geometry: G): G {
+  geometry.userData.spareTrackRun = run;
+  return geometry;
+}
 
 const TAGGED_ADDERS = new Set(['add', 'addEquipment', 'addHatch', 'addCupola', 'addExternalArmor', 'addMudguard',
   'addModuleVisual']);

@@ -1,4 +1,5 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
@@ -283,9 +284,13 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
     {z:-3.912-MK3.center-MK3.z,ring:[[-1.04,2.024+MK3.ground-MK3.y],[1.04,2.024+MK3.ground-MK3.y],[1.04,2.038+MK3.ground-MK3.y],[-1.04,2.038+MK3.ground-MK3.y]]},
     {z:-3.135-MK3.center-MK3.z,ring:[[-1.04,2.118+MK3.ground-MK3.y],[1.04,2.118+MK3.ground-MK3.y],[1.04,2.132+MK3.ground-MK3.y],[-1.04,2.132+MK3.ground-MK3.y]]},
   ]));
+  // VEH-13: each basket stack pair of links is one registered run (spareTrackSeat.ts)
+  const stackRuns=new Map<number,ReturnType<typeof spareTrackRunTag>>();
   for(const [x,y,z]of[[.354,2.14,-3.727],[.354,2.162,-3.576],[-.446,2.13,-3.805],[-.446,2.152,-3.655]]){
-    put('turretDetail',box(.64,.15,.18),x,y,z,.145);
-    for(const dx of[-.21,0,.21])put('turretDark',box(.065,.04,.188),x+dx,y+.036,z,.145);
+    const run=stackRuns.get(x)??spareTrackRunTag({site:'merkava3d-basket-links',source:'adhoc',rotation:[.145,0,0]});
+    stackRuns.set(x,run);
+    put('turretDetail',spareTrackPart(run,box(.64,.15,.18)),x,y,z,.145);
+    for(const dx of[-.21,0,.21])put('turretDark',spareTrackPart(run,box(.065,.04,.188)),x+dx,y+.036,z,.145);
   }
   chainCurtain(P,MK3,-4.04,1.04,2.06,.10);
   // Measured mounting flange, lower neck and spring base seat the whip on

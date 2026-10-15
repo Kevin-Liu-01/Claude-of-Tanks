@@ -1,4 +1,5 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
@@ -1230,10 +1231,13 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   [-1, 1].forEach((s) => {
     P.add('hull', box(0.374, 0.05, 0.40), s * 1.507, 1.40, -3.02);
   });
-  // spare-track-link rows bedded flat on the aft deck (ref top line 1.473)
+  // spare-track-link rows bedded flat on the aft deck (ref top line 1.473); VEH-13: each side's pair is one registered
+  // run (spareTrackSeat.ts), seated on the deck that had grown over it
   [-1, 1].forEach((s) => {
-    P.add('hullTrack', box(0.946, 0.08, 0.21), s * 0.583, 1.415, -2.55, 0.06, 0, 0);
-    P.add('hullTrack', box(0.858, 0.07, 0.17), s * 0.539, 1.425, -2.68, 0.08, 0, 0);
+    withSpareTrackRun(P, { site: `t62-aft-links-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [0.06, 0, 0] }, (P) => {
+      P.add('hullTrack', box(0.946, 0.08, 0.21), s * 0.583, 1.415, -2.55, 0.06, 0, 0);
+      P.add('hullTrack', box(0.858, 0.07, 0.17), s * 0.539, 1.425, -2.68, 0.08, 0, 0);
+    });
   });
   // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->
   // mask-neutral only): common kit strictly inside the certified lines.

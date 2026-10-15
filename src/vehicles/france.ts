@@ -11,6 +11,7 @@
 // tankFactoryCore's exported geometry KIT.
 
 import { KIT } from './tankFactoryCore.ts';
+import { withSpareTrackRun } from './spareTrackSeat.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
@@ -443,7 +444,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('hullDetail', box(1.10, 0.055, 0.042), -0.18, 0.78, -3.372, 0, 0, 0.08); // lower recovery/tow bar
   P.add('hullDark', box(0.055, 0.34, 0.044), -0.86, 0.86, -3.373, 0, 0, -0.34); // unequal pipe/service drops
   P.add('hullDark', box(0.055, 0.29, 0.044), 0.78, 0.84, -3.373, 0, 0, 0.28);
-  for (let k = 0; k < 3; k++) P.add('hullTrack', box(0.18, 0.18, 0.040), 1.00 + k * 0.19, 1.22, -3.375); // individually hung spare links
+  // individually hung spare links; VEH-13: one registered run on the rear plate (spareTrackSeat.ts)
+  withSpareTrackRun(P, { site: 'amx40-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
+    for (let k = 0; k < 3; k++) P.add('hullTrack', box(0.18, 0.18, 0.040), 1.00 + k * 0.19, 1.22, -3.375);
+  });
   P.decal('hull', 'soot', null, 0.5, [-0.55, 1.30, -3.392], Math.PI);
   // French registration + the Satory demonstrator skirt branding
   P.decal('hull', 'number', '675 0102', 0.16, [0, 1.142, 3.368], 0, -0.60);       // on the leaning beak face (flush — decals are mask geometry)

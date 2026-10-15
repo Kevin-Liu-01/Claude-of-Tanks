@@ -48,6 +48,7 @@
 // shadow-named muzzleBore device — timing-proof top-level spellings per the
 // kit.js cycle law.
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import type * as THREE from 'three';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link
@@ -429,14 +430,17 @@ function addKV2HullFrontHardware(P: SovietHeavyBuilderPort): void {
     }
   }
   P.add('hullDark', box(0.09, 0.05, 0.14), -1.35, 1.34, -1.845);
-  P.add('hullTrack', box(0.5, 0.045, 0.26), -0.55, 1.415, 2.60);               // spare links flush on the nose deck
-  // r4 tell 4 ("spare-links slab renders as a blank light-grey board"): link
-  // structure on the board — pin-gap seams + guide horns — and the board
-  // itself now rides the retoned rusty track family below.
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDark', box(0.014, 0.006, 0.245), -0.685 + k * 0.09, 1.4405, 2.60); // pin-gap seams (flat on the board —
-  }                                                                              // the 1.39-1.44 nose-deck ceiling holds)
-  P.add('hullDark', box(0.46, 0.006, 0.05), -0.55, 1.4405, 2.60);               // grouser shadow bar
+  // VEH-13: the board, its seams and grouser bar are one registered run (spareTrackSeat.ts)
+  withSpareTrackRun(P, { site: 'kv-nose-deck-links', source: 'adhoc', rotation: [0, 0, 0] }, (P) => {
+    P.add('hullTrack', box(0.5, 0.045, 0.26), -0.55, 1.415, 2.60);             // spare links flush on the nose deck
+    // r4 tell 4 ("spare-links slab renders as a blank light-grey board"): link
+    // structure on the board — pin-gap seams + guide horns — and the board
+    // itself now rides the retoned rusty track family below.
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDark', box(0.014, 0.006, 0.245), -0.685 + k * 0.09, 1.4405, 2.60); // pin-gap seams (flat on the board —
+    }                                                                            // the 1.39-1.44 nose-deck ceiling holds)
+    P.add('hullDark', box(0.46, 0.006, 0.05), -0.55, 1.4405, 2.60);             // grouser shadow bar
+  });
 }
 
 function addKV2EngineDeckAndRearHardware(P: SovietHeavyBuilderPort): void {
