@@ -1141,7 +1141,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.524,
-   "gapM2": 0,
+   "gapM2": 3.383,
    "invertedM2": 0
   },
   "dalmatian/cornershop": {
@@ -2139,8 +2139,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.287,
+   "gapM2": 1.005,
    "invertedM2": 0
   },
   "ksar/tower": {
@@ -3710,5 +3710,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-15T07:55:20.282Z"
+ "updatedAt": "2026-10-15T21:35:16.349Z"
 }
