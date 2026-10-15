@@ -7858,6 +7858,15 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
 
+### 2026-10-14 — Nordhavn Fjord: the valley floor farmed (the map-content fill on the nordland kit; the maps lane)
+
+**The owner, 10-10: "the nordhavn one is very bare."** The map-content lane's fill (76dc2a52f, held for an owner
+preview) on the nordland kit: twelve farm tuns on the valley floor round Bjerkvik — each a farmhouse to the road, its
+barn behind, a stabbur on its stilts beside the yard and a hay rack out in the infield — stockfish racks by the shore,
+and the valley road's 1940 traffic (trucks 8, jeeps 5, carts 4, handcarts 2), keeping the nordland rounds' choices (no
+stalls or benches, cable reels and road signs, split-rail yards). The establishing pose stands on the valley floor
+south-west of the harbour town, looking north-east over the farms and the town to the lighthouse. Lands after the
+nordland kit (looks lane, 225). Census [6793, 6797, 6837] -> [6971, 7387, 6814].
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
