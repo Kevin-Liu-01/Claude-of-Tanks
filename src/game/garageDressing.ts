@@ -2883,11 +2883,9 @@ export function createGarageDressing(
       put(G.caster, mat.steelDark, wheelX, 0.06, wheelZ,
         0, 0, Math.PI / 2, 1, jack, false);
     }
-    // 2.2 m further toward the bay's flank, wholly out of the Garage camera's frame (the garage critic panel, 2026-10-14:
-    // "a trailer is half cut off by the right frame edge (winter, coastal, monsoon, badlands)")
     addServiceRoadWheelDolly(
       legacyVerdantRoot, 't90a_burlak', roadWheelTires, roadWheelDiscs,
-      14.6, -17.2, -0.55 + Math.PI / 2,
+      12.4, -15.0, -0.55 + Math.PI / 2,
     );
 
     addBayGrime(legacyVerdantRoot, 15.6, -13.2, 13, 0.4);
@@ -3051,9 +3049,13 @@ export function createGarageDressing(
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(15.9, 0.03, 16.6);
     verdantKit('abrams_lamp_pool').add(pool);
+    // 2.2 m further along the Abrams bay's flank: in the nine outdoor yards this bay stands beside the camera and the
+    // dolly stood cut by the frame's right edge (the garage critic panel, 2026-10-14: "a trailer is half cut off by the
+    // right frame edge (winter, coastal, monsoon, badlands)"); now it lies wholly outside the frame there, and in
+    // Verdant it keeps its place in the bay's view
     addServiceRoadWheelDolly(
       legacyVerdantRoot, 'm1a2', roadWheelTires, roadWheelDiscs,
-      12.7, 17.7, -2.03 + Math.PI / 2,
+      14.5, 19.0, -2.03 + Math.PI / 2,
     );
 
     // This fixture hangs from Verdant's roof. Outdoor environments use the
