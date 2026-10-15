@@ -224,6 +224,11 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       continue;
     }
     const body = S.body([i]);
+    // (cloth has no stiffness: a canvas wall comes down flat where it stood, not swung over on its foot)
+    if (p.material === 'canvas') {
+      S.lie(body, Math.atan2(d[2], d[0]) + Math.PI / 2 + r(-0.2, 0.2), [d[0] * r(0.1, 0.5), 0, d[2] * r(0.1, 0.5)], false, 0, { ceiling, maxTilt: 0.22 });
+      continue;
+    }
     // a wall standing on the ground swings over about its foot; one up on a storey or a deck is laid down off it
     if (p.c[1] - tall(p) / 2 > 0.6) S.lie(body, Math.atan2(d[2], d[0]) + Math.PI / 2 + r(-0.3, 0.3), [d[0] * r(0.3, 1.2), 0, d[2] * r(0.3, 1.2)], rng() < 0.5, 0, { ceiling, maxTilt: tiltFor(body) });
     else S.topple(body, d, r(1.25, 1.55), { ceiling, maxTilt: drape(i, Math.min(0.7, tiltFor(body))) });
