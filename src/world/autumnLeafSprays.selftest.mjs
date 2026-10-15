@@ -155,6 +155,10 @@ try {
     const lib=api.leafLibrary(legacy(getMapConfig(id).vegetation));
     for (const species of ['birch','aspen']) {
       const palette=lib.palOf(species), seed=2001+lib.SPECIES[species].texSeed;
+      // (integ/225 with Nordhavn round 2) a birch-family species whose palette opts in paints its own leaves: fjord's birch,
+      // and its aspen, which reads the birch palette through palOf; only the rest must match the twig painter (failing
+      // here, the RGBA deepEqual's diff of two 256x256 textures ran the receipt past 12 GB)
+      if (palette.birchLeaves === true) continue;
       const a=paint((r,p)=>api.makeTwigTexture(r,p.texTone||null),seed,palette);
       const b=paint((r,p)=>lib.SPECIES[species].tex(r,p),seed,palette);
       try { identicalPaint(a,b); } finally {a.texture.dispose();b.texture.dispose();}
