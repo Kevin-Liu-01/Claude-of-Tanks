@@ -79,6 +79,265 @@ function boxAt(w: number, h: number, d: number, x: number, y: number, z: number,
   g.translate(x, y, z);
   return dressing(g);
 }
+/** A box whose UVs are laid from the world (its faces' own planes, `scale` a metre), new to the stream (dressing): pieces
+ *  of one wall keep their courses running on across the joints between them. The face `skip` (the one against the hall's
+ *  core) is left out: it would stand on the core's face, a wall turned inward. */
+function worldBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, scale: number, skip: 'px' | 'nx' | 'pz' | 'nz' | null = null): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], uvs: number[] = [], idx: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[], n: number[]) => {
+    const base = pos.length / 3;
+    for (const p of [a, b, c, d]) {
+      pos.push(...p); nor.push(...n);
+      const [u, v] = Math.abs(n[0]) > 0.5 ? [p[2], p[1]] : Math.abs(n[2]) > 0.5 ? [p[0], p[1]] : [p[0], p[2]];
+      uvs.push(u * scale, v * scale);
+    }
+    idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
+  // each face wound counter-clockwise seen from outside
+  if (skip !== 'px') quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0]);
+  if (skip !== 'nx') quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0]);
+  if (skip !== 'pz') quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1]);
+  if (skip !== 'nz') quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1]);
+  quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0]);
+  quad([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  return dressing(g);
+}
+
+/** A hole through a hall's wall: its centre along the wall (`at`: z on the ±x walls, x on the ±z walls), its width, sill
+ *  and head. */
+export interface WallHole { at: number; w: number; y0: number; y1: number }
+
+/**
+ * A rectangular hall's walls `t` thick round its core, the holes cut through them (props census #13 and #4, lane B
+ * 2026-10-15: the plan halls were one solid box with their windows and doors laid on it). Each wall stands in bands
+ * between the holes' sills and heads, each band in runs between the holes across it: closed boxes, their UVs laid from
+ * the world (the courses run on across the joints), all new to the stream. The core (the room, whose face is the back of
+ * every reveal) is returned for the caller to push: it stands in the stream where the old solid stood.
+ */
+export function cutHall(out: THREE.BufferGeometry[], w: number, d: number, h: number, t: number,
+  holes: { px?: readonly WallHole[]; nx?: readonly WallHole[]; pz?: readonly WallHole[]; nz?: readonly WallHole[] }, scale = 0.55): THREE.BufferGeometry {
+  cutWalls(out, w, d, h, t, holes, scale);
+  return box(w - 2 * t, h, d - 2 * t, scale).translate(0, h / 2, 0);
+}
+
+/** cutHall's walls alone (the pieces round the holes), for a builder that lays its core itself. */
+function cutWalls(out: THREE.BufferGeometry[], w: number, d: number, h: number, t: number,
+  holes: { px?: readonly WallHole[]; nx?: readonly WallHole[]; pz?: readonly WallHole[]; nz?: readonly WallHole[] }, scale = 0.55): void {
+  // one wall: along `axis` from a0 to a1, across from c0 to c1
+  const wall = (axis: 'x' | 'z', a0: number, a1: number, c0: number, c1: number, inward: 'px' | 'nx' | 'pz' | 'nz', list: readonly WallHole[] = []) => {
+    const ys = [...new Set([0, h, ...list.flatMap((o) => [Math.max(0, Math.min(h, o.y0)), Math.max(0, Math.min(h, o.y1))])])].sort((p, q) => p - q);
+    for (let i = 0; i + 1 < ys.length; i++) {
+      const ya = ys[i], yb = ys[i + 1];
+      if (yb - ya < 1e-4) continue;
+      const across = list.filter((o) => o.y0 <= ya + 1e-6 && o.y1 >= yb - 1e-6).map((o) => [o.at - o.w / 2, o.at + o.w / 2] as const).sort((p, q) => p[0] - q[0]);
+      let from = a0;
+      const run = (to: number) => {
+        if (to - from < 0.02) return;
+        out.push(axis === 'z' ? worldBox(c0, ya, from, c1, yb, to, scale, inward) : worldBox(from, ya, c0, to, yb, c1, scale, inward));
+      };
+      for (const [u0, u1] of across) { run(Math.max(a0, u0)); from = Math.max(from, Math.min(a1, u1)); }
+      run(a1);
+    }
+  };
+  wall('z', -d / 2, d / 2, w / 2 - t, w / 2, 'nx', holes.px);
+  wall('z', -d / 2, d / 2, -w / 2, -w / 2 + t, 'px', holes.nx);
+  wall('x', -w / 2 + t, w / 2 - t, d / 2 - t, d / 2, 'nz', holes.pz);
+  wall('x', -w / 2 + t, w / 2 - t, -d / 2, -d / 2 + t, 'pz', holes.nz);
+}
+
+export type HallHoles = { px: WallHole[]; nx: WallHole[]; pz: WallHole[]; nz: WallHole[] };
+/** A part a cut hall's opening holds (a pane, a shutter, a catalog plate): laid on the face as the old build laid it (the
+ *  catalog pass reads it there) and moved to `offset` before the core's face by settleCatalogCuts. */
+export interface HallUnit { g: THREE.BufferGeometry; side: 'px' | 'nx' | 'pz' | 'nz'; offset: number }
+type HallSide = keyof HallHoles;
+const SIDE_OF = (b: THREE.Box3, w: number, d: number): HallSide | null => {
+  const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+  if (Math.abs(cz - d / 2) < 0.35) return 'pz';
+  if (Math.abs(cz + d / 2) < 0.35) return 'nz';
+  if (Math.abs(cx - w / 2) < 0.35) return 'px';
+  if (Math.abs(cx + w / 2) < 0.35) return 'nx';
+  return null;
+};
+const boxOf = (g: THREE.BufferGeometry): THREE.Box3 => { g.computeBoundingBox(); return g.boundingBox!.clone(); };
+
+/**
+ * The catalog exterior (exteriorDetailKit addConnectedExterior) on a cut hall (props census #13, lane B 2026-10-15):
+ * its plates for openings (the parts `opening` names: an entry door, a back aperture's pane) are holes through the wall
+ * (their sills no lower than `sill`), the plates and the parts they carry (their louvres) the hall's units, moved to the
+ * back of their cuts by settleCatalogCuts after the catalog pass (it reads them where the old build laid them); the
+ * catalog's frames (jambs, heads, sills, hoods) stay round the cuts on the face. `clear` says whether a further hole would
+ * meet a catalog part on the face.
+ */
+export function catalogHoles(cat: GeometryBuckets, w: number, d: number, opening: RegExp, sill: number): {
+  holes: HallHoles; clear(side: HallSide, hole: WallHole): boolean; units: HallUnit[];
+} {
+  const holes: HallHoles = { px: [], nx: [], pz: [], nz: [] }, units: HallUnit[] = [];
+  const named = (g: THREE.BufferGeometry): string => String(g.userData?.structureSupport?.part ?? '');
+  const plates = new Map<string, HallSide>();
+  for (const list of Object.values(cat)) for (const g of list ?? []) {
+    if (!opening.test(named(g))) continue;
+    const b = boxOf(g), side = SIDE_OF(b, w, d);
+    if (!side) continue;
+    const along = side === 'pz' || side === 'nz' ? [b.min.x, b.max.x] : [b.min.z, b.max.z];
+    holes[side].push({ at: (along[0] + along[1]) / 2, w: along[1] - along[0], y0: Math.max(sill, b.min.y), y1: b.max.y });
+    plates.set(named(g), side);
+    units.push({ g, side, offset: 0.01 });
+  }
+  // the parts a plate carries (its louvres) a decimetre before it
+  for (const list of Object.values(cat)) for (const g of list ?? []) {
+    const side = plates.get(String(g.userData?.structureSupport?.support ?? ''));
+    if (side && !plates.has(named(g))) units.push({ g, side, offset: 0.11 });
+  }
+  // the face-plane reach of a hole on a side, in the catalog's frame
+  const meets = (side: HallSide, h: WallHole, b: THREE.Box3): boolean => {
+    const along = side === 'pz' || side === 'nz' ? [b.min.x, b.max.x] : [b.min.z, b.max.z];
+    const out = side === 'pz' ? b.min.z - d / 2 : side === 'nz' ? -d / 2 - b.max.z : side === 'px' ? b.min.x - w / 2 : -w / 2 - b.max.x;
+    const depth = side === 'pz' ? b.max.z - d / 2 : side === 'nz' ? -d / 2 - b.min.z : side === 'px' ? b.max.x - w / 2 : -w / 2 - b.min.x;
+    return depth > -0.45 && out < 0.3 && along[1] > h.at - h.w / 2 - 0.04 && along[0] < h.at + h.w / 2 + 0.04 && b.max.y > h.y0 - 0.04 && b.min.y < h.y1 + 0.04;
+  };
+  return {
+    holes, units,
+    clear(side, hole) {
+      for (const list of Object.values(cat)) for (const g of list ?? []) if (meets(side, hole, boxOf(g))) return false;
+      return true;
+    },
+  };
+}
+
+const WAREHOUSE_WALL_T = 0.32;
+const CUT_HALL = Symbol('cut-hall');
+interface CutHallSpec {
+  w: number; d: number; h: number; t: number; holes: HallHoles; pieces: THREE.BufferGeometry[]; bucket: string;
+  paint: number | null; units: HallUnit[]; lengths: Record<string, number>;
+}
+
+/**
+ * The marker of a cut hall's body for the catalog's envelope reading (exteriorDetailKit inferCenteredWallEnvelope reads
+ * the largest centred part of the wall buckets): the walls now stand in pieces, so this carries the old solid's bounds,
+ * exactly, as two triangles of no area (drawn as nothing), new to the stream. The catalog lays its parts as before.
+ */
+export function envelopeMarker(w: number, h: number, d: number): THREE.BufferGeometry {
+  const b = new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0);
+  b.computeBoundingBox();
+  const { min, max } = b.boundingBox!;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([min.x, min.y, min.z, min.x, min.y, min.z, min.x, min.y, min.z,
+    max.x, max.y, max.z, max.x, max.y, max.z, max.x, max.y, max.z], 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(Array.from({ length: 6 }, () => [0, 1, 0]).flat(), 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array(12).fill(0), 2));
+  g.setIndex([0, 1, 2, 3, 4, 5]);
+  return dressing(g);
+}
+
+/** Tag a plan build's buckets with its cut hall for settleCatalogCuts (after the builder pushed every part). */
+export function tagCutHall(buckets: GeometryBuckets, spec: Omit<CutHallSpec, 'lengths'>): void {
+  const lengths: Record<string, number> = {};
+  for (const key of Object.keys(buckets)) lengths[key] = buckets[key]?.length ?? 0;
+  Object.defineProperty(buckets, CUT_HALL, { value: { ...spec, lengths } satisfies CutHallSpec, enumerable: false, configurable: true });
+}
+
+/**
+ * After the catalog exterior (props.ts addCatalogExterior) on a plan build: a no-op unless the builder cut its hall
+ * (makeWarehouse tags its buckets). Then the catalog's openings (its entry door, its back apertures) are cut through the
+ * walls where they are clear of the builder's own cuts, their plates (and the louvres they carry) at the back of their
+ * cuts, the frames round them on the face; a catalog opening that would meet a cut of the builder's, its frames with it,
+ * and every other catalog part standing across a cut (a bay strip, a ladder) is folded into a stand-in sealed in the
+ * plinth's margin. No part is added or taken away and none changes its uv draws: the seeded stream, the placements and
+ * the court's support parts (the plinth, the dock, the thresholds) are the old build's. (Props census #4/#13, lane B
+ * 2026-10-15, with the coordinator's props.ts co-hold for the call.)
+ */
+export function settleCatalogCuts(tmp: GeometryBuckets): void {
+  const spec = (tmp as { [CUT_HALL]?: CutHallSpec })[CUT_HALL];
+  if (!spec) return;
+  const { w, d, t } = spec;
+  const named = (g: THREE.BufferGeometry): string => String(g.userData?.structureSupport?.part ?? '');
+  const cat: THREE.BufferGeometry[] = [];
+  for (const key of Object.keys(tmp)) for (const g of (tmp[key] ?? []).slice(spec.lengths[key] ?? 0)) cat.push(g);
+  const holes: HallHoles = { px: [...spec.holes.px], nx: [...spec.holes.nx], pz: [...spec.holes.pz], nz: [...spec.holes.nz] };
+  const overlaps = (a: WallHole, b: WallHole, m: number): boolean => a.at - a.w / 2 < b.at + b.w / 2 + m && b.at - b.w / 2 < a.at + a.w / 2 + m && a.y0 < b.y1 + m && b.y0 < a.y1 + m;
+  const holeOf = (g: THREE.BufferGeometry): { side: HallSide; hole: WallHole } | null => {
+    const b = boxOf(g), side = SIDE_OF(b, w, d);
+    if (!side) return null;
+    const along = side === 'pz' || side === 'nz' ? [b.min.x, b.max.x] : [b.min.z, b.max.z];
+    return { side, hole: { at: (along[0] + along[1]) / 2, w: along[1] - along[0], y0: Math.max(0.45, b.min.y), y1: b.max.y } };
+  };
+  const cut = new Set<string>(), hidden = new Set<THREE.BufferGeometry>();
+  // the catalog's openings: cut where clear of the builder's cuts (and of each other)
+  const plates = cat.filter((g) => /^(entry-door|aperture-pane)/.test(named(g)));
+  for (const g of plates) {
+    const o = holeOf(g);
+    if (o && !holes[o.side].some((h) => overlaps(h, o.hole, 0.3))) { holes[o.side].push(o.hole); cut.add(named(g)); continue; }
+    hidden.add(g);
+  }
+  // the frames of an opening left uncut go with it (the threshold stays: it is the ground's)
+  for (const g of plates) if (hidden.has(g)) {
+    const n = named(g);
+    const group = n.startsWith('entry') ? /^entry-(jamb|lintel|hood|lantern)/ : new RegExp(`^aperture-(left|right|head|sill)${n.slice('aperture-pane'.length)}$`);
+    for (const p of cat) if (group.test(named(p)) || String(p.userData?.structureSupport?.support ?? '') === n) hidden.add(p);
+  }
+  // every other catalog part across a cut in front of the wall
+  const across = (g: THREE.BufferGeometry): boolean => {
+    const b = boxOf(g);
+    for (const side of ['px', 'nx', 'pz', 'nz'] as const) for (const h of holes[side]) {
+      const along = side === 'pz' || side === 'nz' ? [b.min.x, b.max.x] : [b.min.z, b.max.z];
+      const out = side === 'pz' ? b.min.z - d / 2 : side === 'nz' ? -d / 2 - b.max.z : side === 'px' ? b.min.x - w / 2 : -w / 2 - b.max.x;
+      const depth = side === 'pz' ? b.max.z - d / 2 : side === 'nz' ? -d / 2 - b.min.z : side === 'px' ? b.max.x - w / 2 : -w / 2 - b.min.x;
+      // (a hood or an awning over a cut's head, a step at its sill, is no part across it)
+      if (depth > -0.05 && out < 0.35 && along[1] > h.at - h.w / 2 + 0.02 && along[0] < h.at + h.w / 2 - 0.02 && b.max.y > h.y0 + 0.15 && b.min.y < h.y1 - 0.15) return true;
+    }
+    return false;
+  };
+  for (const g of cat) {
+    const n = named(g), sup = String(g.userData?.structureSupport?.support ?? '');
+    if (hidden.has(g) || cut.has(n) || cut.has(sup) || /threshold/.test(n)) continue;
+    if (across(g)) hidden.add(g);
+  }
+  // the walls again, round every cut
+  const list = tmp[spec.bucket]!;
+  for (const g of spec.pieces) { const i = list.indexOf(g); if (i >= 0) list.splice(i, 1); }
+  const pieces: THREE.BufferGeometry[] = [];
+  cutWalls(pieces, w, d, spec.h, t, holes);
+  if (spec.paint !== null) { const r = forkRng(0.731); for (const g of pieces) paintHex(g, r, spec.paint, 1, 0.03); }
+  list.push(...pieces);
+  // the builder's units to the back of their cuts
+  const liftOf = (b: THREE.Box3, side: HallSide, off: number): number => (side === 'pz' ? b.min.z - (d / 2 - t + off) : side === 'nz' ? (-d / 2 + t - off) - b.max.z
+    : side === 'px' ? b.min.x - (w / 2 - t + off) : (-w / 2 + t - off) - b.max.x);
+  for (const u of spec.units) {
+    const lift = liftOf(boxOf(u.g), u.side, u.offset), n = u.side === 'pz' ? [0, 0, -1] : u.side === 'nz' ? [0, 0, 1] : u.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
+    u.g.translate(n[0] * lift, 0, n[2] * lift);
+  }
+  // the cut openings' plates to the back of their cuts, their louvres a decimetre before them
+  const lifts = new Map<string, { side: HallSide; lift: number }>();
+  for (const g of plates) {
+    const n = named(g);
+    if (!cut.has(n)) continue;
+    const b = boxOf(g), side = SIDE_OF(b, w, d)!;
+    lifts.set(n, { side, lift: liftOf(b, side, 0.01) });
+  }
+  for (const g of cat) {
+    const own = lifts.get(named(g)), carrier = lifts.get(String(g.userData?.structureSupport?.support ?? ''));
+    const m = own ?? (carrier ? { side: carrier.side, lift: carrier.lift - 0.1 } : null);
+    if (!m || hidden.has(g)) continue;
+    const n = m.side === 'pz' ? [0, 0, -1] : m.side === 'nz' ? [0, 0, 1] : m.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
+    g.translate(n[0] * m.lift, 0, n[2] * m.lift);
+  }
+  // the parts left out: each folded to a 2 cm stand-in sealed in the plinth under the core, on the core's foot (its draws
+  // kept)
+  let k = 0;
+  for (const g of hidden) {
+    const b = boxOf(g), c = new THREE.Vector3(), size = new THREE.Vector3();
+    b.getCenter(c); b.getSize(size);
+    g.translate(-c.x, -c.y, -c.z);
+    g.scale(0.02 / Math.max(size.x, 1e-3), 0.02 / Math.max(size.y, 1e-3), 0.02 / Math.max(size.z, 1e-3));
+    g.translate(0.3, 0, -d / 2 + t + 0.5 + (k++ % 300) * 0.05);
+  }
+}
+
 /** A ladder up from y0 to y1 at (x, z): two stiles across `span` along `along` ('x' | 'z'), rungs every 0.35 m. */
 function ladderGeos(x: number, z: number, y0: number, y1: number, along: 'x' | 'z', span = 0.45): THREE.BufferGeometry[] {
   const out: THREE.BufferGeometry[] = [];
@@ -123,13 +382,21 @@ export function makeWarehouse(
   const local = forkRng((drawnW - 13.5) / 3 * 0.61 + (drawnD - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
   parts.stone.push(box(w + 0.4, 1.1, d + 0.4).translate(0, -0.1, 0));
   const wallBucket = steelClad ? parts.structureMetal! : parts.stone;
-  const wall = box(w, wallH, d, 0.55).translate(0, wallH / 2, 0);
+  const cladHex = snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX;
+  // (props census #4/#13, lane B 2026-10-15; the Ironworks court's donor) the walls stand round the hall's core with the
+  // shutters, the clerestory and the catalog's openings cut through them (cutWalls below; settleCatalogCuts after the
+  // catalog): the core, the room's dark at the back of every cut, stands in the stream where the solid stood (on a steel
+  // hall its paint's draws taken as the solid's were)
+  const core = box(w - 2 * WAREHOUSE_WALL_T, wallH, d - 2 * WAREHOUSE_WALL_T, 0.55).translate(0, wallH / 2, 0);
+  if (steelClad) { paintHex(core.clone(), local, cladHex, 1, 0.03); core.userData.uvJitter = 'consume'; }
+  parts.dark.push(core);
   const gableA = gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16);
   const gableB = gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16);
-  for (const shell of [wall, gableA, gableB]) {
-    if (steelClad) { paintHex(shell, local, snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX, 1, 0.03); shell.userData.uvJitter = 'consume'; }
+  for (const shell of [gableA, gableB]) {
+    if (steelClad) { paintHex(shell, local, cladHex, 1, 0.03); shell.userData.uvJitter = 'consume'; }
     wallBucket.push(shell);
   }
+  const t = WAREHOUSE_WALL_T, holes: HallHoles = { px: [], nx: [], pz: [], nz: [] }, units: HallUnit[] = [];
   // (the buildings stream, 2026-10-13: each slab's underside on the gable's own slope, the hall closed under them; the
   // slabs stood 5 cm over the wall tops and buried the skylights)
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
@@ -160,7 +427,10 @@ export function makeWarehouse(
   }
   // roller shutters on the street face (+z), each between two guide posts under the old rail
   for (const dx of [-w * 0.22, w * 0.22]) {
+    // (the shutter at the back of its cut after the catalog pass, its sill on the plinth's top)
+    holes.pz.push({ at: dx, w: 3.1, y0: 0.45, y1: 3.6 });
     const shutter = box(3.1, 3.6, 0.14, 0.8).translate(dx, 1.8, d / 2 + 0.09);
+    units.push({ g: shutter, side: 'pz', offset: 0.02 });
     paintHex(shutter, local, steelClad ? WAREHOUSE_DOOR_HEX_STEEL : WAREHOUSE_DOOR_HEX, 1, 0.03);
     shutter.userData.uvJitter = 'consume'; // the timber leaf's four draws, kept
     parts.structureMetal!.push(shutter);
@@ -174,7 +444,10 @@ export function makeWarehouse(
     const zz = -d / 2 + (k + 0.5) * (d / 5);
     for (const side of [-1, 1]) {
       if (rng() < 0.15) continue;
-      pane.push(box(0.08, 1.0, 1.6).translate(side * (w / 2 + 0.05), wallH - 1.05, zz));
+      (side > 0 ? holes.px : holes.nx).push({ at: zz, w: 1.6, y0: wallH - 1.55, y1: wallH - 0.55 });
+      const glass = box(0.08, 1.0, 1.6).translate(side * (w / 2 + 0.05), wallH - 1.05, zz);
+      pane.push(glass);
+      units.push({ g: glass, side: side > 0 ? 'px' : 'nx', offset: 0.02 });
       parts.wood.push(box(0.12, 0.10, 1.75).translate(side * (w / 2 + 0.06), wallH - 1.65, zz));
     }
   }
@@ -230,11 +503,20 @@ export function makeWarehouse(
       parts.baked!.push(ledge);
     }
   }
+  const pieces: THREE.BufferGeometry[] = [];
+  cutWalls(pieces, w, d, wallH, t, holes);
+  const pieceRng = forkRng(0.731);
+  if (steelClad) for (const g of pieces) paintHex(g, pieceRng, cladHex, 1, 0.03);
+  wallBucket.push(...pieces);
+  // (a brick hall's body for the catalog's reading; a steel one's stood in no bucket it reads, and still does not)
+  if (!steelClad) wallBucket.push(envelopeMarker(w, wallH, d));
   for (const key of Object.keys(parts)) {
     const source = parts[key];
     const target = buckets[key];
     if (source && target) for (const geometry of source) target.push(geometry);
   }
+  // the hall's cut for the catalog pass that follows (settleCatalogCuts): where the catalog's openings are cut too
+  tagCutHall(buckets, { w, d, h: wallH, t, holes, pieces, bucket: steelClad ? 'structureMetal' : 'stone', paint: steelClad ? cladHex : null, units });
   return { w: w + 0.4, d: d + 3.0, h: wallH + roofH + 0.8 };
 }
 
@@ -717,6 +999,33 @@ export function makeShed(
   pitchRoofPlane(roof, 'z', -1, roofAngle, 'skillion');
   roof.translate(0, roofCenterY, 0);
   buckets.roof.push(jitterUV(roof, rng));
+  // (props census #4/#13, lane B 2026-10-15; the Ironworks court's donor: "a slab on six sticks") the frame under the
+  // roof: an eave beam along each row of posts, rafters down the slope over the posts and purlins across them, knee
+  // braces from the end posts, the posts' base plates; the sheet's ribs down the slope, the gutter along the low eave
+  // and its downpipe; all new to the stream, none on the platform's band (the court's support)
+  const under = (z: number): number => roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;
+  const frame = buckets.wood, steel = buckets.dark;
+  const xs = [-(w / 2 - 0.5), 0, w / 2 - 0.5];
+  for (const sz of [-1, 1]) {
+    const z = sz * (d / 2 - 0.5), y = under(z);
+    frame.push(memberGeo([-(w / 2 - 0.3), y - 0.11, z], [w / 2 - 0.3, y - 0.11, z], 0.18, 0.22));
+    for (const sx of [-1, 1]) {
+      const x = sx * (w / 2 - 0.5);
+      frame.push(memberGeo([x, y - 0.95, z], [x - sx * 0.8, y - 0.2, z], 0.09, 0.09));
+      frame.push(memberGeo([x, y - 0.95, z], [x, y - 0.2, z - sz * 0.75], 0.09, 0.09));
+    }
+    for (const x of xs) steel.push(boxAt(0.36, 0.05, 0.36, x, 0.575, z));
+  }
+  const za = -(d / 2 - 0.2), zb = d / 2 - 0.2;
+  for (const x of xs) frame.push(memberGeo([x, under(za) - 0.07, za], [x, under(zb) - 0.07, zb], 0.14, 0.12));
+  for (const z of [-d / 6, d / 6]) frame.push(memberGeo([-(w / 2 - 0.3), under(z) - 0.05, z], [w / 2 - 0.3, under(z) - 0.05, z], 0.08, 0.1));
+  const top = (z: number): number => roofCenterY + Math.tan(roofAngle) * z + 0.06;
+  for (let x = -(w / 2 + 0.1); x <= w / 2 + 0.1; x += 0.6) {
+    buckets.roof.push(memberGeo([x, top(-(d / 2 + 0.35)), -(d / 2 + 0.35)], [x, top(d / 2 + 0.35), d / 2 + 0.35], 0.05, 0.04));
+  }
+  const low = -(d / 2 + 0.45), gy = top(low) - 0.12;
+  steel.push(dressing(new THREE.CylinderGeometry(0.07, 0.07, w + 0.8, 7, 1).rotateZ(Math.PI / 2).translate(0, gy, low)));
+  steel.push(dressing(new THREE.CylinderGeometry(0.05, 0.05, gy - 0.55, 6, 1).translate(w / 2 + 0.3, (gy + 0.55) / 2, low)));
   for (let k = 0, n = 3 + ((rng() * 4) | 0); k < n; k++) {
     const cs = 0.55 + rng() * 0.5;
     const crate = box(cs, cs, cs, 1.0);

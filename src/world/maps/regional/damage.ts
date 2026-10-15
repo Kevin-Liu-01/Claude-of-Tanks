@@ -568,6 +568,37 @@ function shellCovering(style: ArchitectureStyle, bucket: string, tint: Rgb, flat
  * close into a shell (the default kit reads those).
  */
 function describeShell(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
+  // (props census #13, lane B 2026-10-15) the parts a plan builder tagged a shaft (userData.damageBody 'shaft': the plan
+  // factory's stack) are read apart: the shell from the rest, the shaft a body of its own beside it, falling apart from
+  // the hall (the kits' multi-body route)
+  const split = taggedShaft(input.parts);
+  if (!split) return describeShellBody(style, input);
+  const anatomy = describeShellBody(style, { ...input, parts: split.rest });
+  if (!anatomy) return null;
+  const shaft = describeShaft(style, { ...input, parts: split.shaft, seed: damageSeed(input.seed, 0x5f, 0) });
+  if (shaft) {
+    (anatomy.kitPlan as { bodies?: StructureDamageAnatomy[] }).bodies = [shaft];
+    anatomy.h = Math.max(anatomy.h, shaft.h);
+  }
+  return anatomy;
+}
+
+/** A build's parts split into those tagged a shaft (userData.damageBody 'shaft') and the rest, or null with none. */
+function taggedShaft(parts: StructureDescribeInput['parts']): { shaft: StructureDescribeInput['parts']; rest: StructureDescribeInput['parts'] } | null {
+  let any = false;
+  type Part = StructureDescribeInput['parts'][string][number];
+  const shaft: Record<string, Part[]> = {}, rest: Record<string, Part[]> = {};
+  for (const [bucket, list] of Object.entries(parts)) {
+    for (const g of list ?? []) {
+      const tagged = g.userData?.damageBody === 'shaft';
+      any ||= tagged;
+      (tagged ? (shaft[bucket] ??= []) : (rest[bucket] ??= [])).push(g);
+    }
+  }
+  return any ? { shaft, rest } : null;
+}
+
+function describeShellBody(style: ArchitectureStyle, input: StructureDescribeInput): StructureDamageAnatomy | null {
   if (!readsAsShell(style, input.builder)) return null;
   const r = readShell(input.parts);
   if (!r) return null;

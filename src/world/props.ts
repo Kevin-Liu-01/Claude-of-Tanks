@@ -133,6 +133,7 @@ import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } fro
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
+import { settleCatalogCuts } from './maps/railKit.ts';
 import {
   captureAutumnCropRow, autumnHeadlandSite, autumnHeadlandClearsRows,
   type AutumnCropRow, type AutumnHeadlandSite,
@@ -5033,6 +5034,7 @@ ${snowCap ? `
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
+    settleCatalogCuts(tmp);
     let fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     // (the buildings stream, 2026-10-13, the weird-buildings survey) a block-fill building, or a road building with no
@@ -5247,6 +5249,7 @@ ${snowCap ? `
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + entry.structure);
     addCatalogExterior(tmp, { id: entry.structure, info, variant: entry.planIndex,
       bathhouseStyle: entry.structure === 'bathhouse' ? P.bathhouseStyle : undefined });
+    settleCatalogCuts(tmp);
     jitterBuildingUvs(tmp, stream);
     const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
     // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
