@@ -1596,6 +1596,145 @@ export function addGarageFacilityDetails({
   };
 
   /**
+   * Sirocco's shade depot (garage round 7, 2026-10-14; props census #20, garage:shade_depot grade 1: the same steel shade
+   * hall as Frosthollow's and Monsoon's in a sand paint). A wadi forward depot under a shade net: six guyed steel masts
+   * carry catenary cables, and the net sags between them over the convoy road; a raked screen of palm-frond ribs (arish)
+   * on a timber frame closes the west side; HESCO bastions (mesh cells with their posts, filled with sand) revet the
+   * back; a fuel bladder lies in a bunded berm to the east; a water and a fuel bowser and a jerrycan rack stand in the
+   * shade. Squared on the road's run through it. The net is one double-sided, vertex-coloured mesh in the baked bucket.
+   */
+  const addDesertShadeDepot = (centerSide: number, centerDepth: number, roadFrom: readonly [number, number]): void => {
+    const origin = cameraPoint(centerSide, centerDepth);
+    const toward = cameraPoint(roadFrom[0], roadFrom[1]);
+    const yaw = Math.atan2(toward.x - origin.x, toward.z - origin.z);
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const baseY = groundAtWorld(origin.x, origin.z);
+    const depot: FacilityCluster = { x: origin.x, z: origin.z, baseY, yaw };
+    const atGround = (lateral: number, longitudinal: number): FacilityCluster => {
+      const x = origin.x + c * lateral + sn * longitudinal, z = origin.z - sn * lateral + c * longitudinal;
+      return { x, z, baseY: groundAtWorld(x, z), yaw };
+    };
+    const halfW = 8.6, halfL = 4.8, mastY = 6.2, sag = 1.1;
+    const mast = new THREE.Color(0x8f7a58), cable = new THREE.Color(0x3a3530);
+    const sand = new THREE.Color(0xc8ad7e), sandDark = new THREE.Color(0xa88d60), mesh = new THREE.Color(0x6e6a5e);
+    const palm = new THREE.Color(0x8a7246), palmDark = new THREE.Color(0x6a5534), timberFrame = new THREE.Color(0x5c4630);
+    // masts on footings, a cap plate and a sheave at the top; guys to ground anchors outward
+    const masts: Array<[number, number]> = [[-halfW, -halfL], [-halfW, 0], [-halfW, halfL], [halfW, -halfL], [halfW, 0], [halfW, halfL]];
+    for (const [l, f] of masts) {
+      const foot = atGround(l, f);
+      clusterBox(foot, 0, 0, 0.12, 0.7, 0.24, 0.7, dark, 'masonry');
+      clusterCylinder(foot, 0, 0, 0.24 + (mastY - 0.24) / 2, 0.11, mastY - 0.24, mast, 0, 10);
+      clusterCylinder(foot, 0, 0, mastY + 0.06, 0.16, 0.12, cable, 0, 10);
+      const out = Math.sign(l);
+      const anchor: readonly [number, number, number] = [out * 2.6, Math.sign(f) * (f === 0 ? 0 : 1.6), 0.15];
+      clusterBeam(foot, [0, 0, mastY - 0.1], anchor, 0.025, cable, 'equipment');
+      clusterBox(foot, anchor[0], anchor[1], 0.08, 0.3, 0.16, 0.3, dark, 'masonry');
+    }
+    // the net: a grid between the masts, sagging between its cables, mottled sand and khaki, seen from both sides
+    {
+      const positions: number[] = [], colors: number[] = [];
+      const cols = 24, rows = 14;
+      const heightAt = (l: number, f: number): number => {
+        const a = l / halfW, b = f / halfL;
+        // the edges hang in catenaries between the masts (lowest mid-span), the field sags most at the centre
+        const edge = Math.max(Math.abs(a), Math.abs(b));
+        const between = Math.abs(Math.sin(b * Math.PI)) * 0.35; // the long sides dip between their three masts
+        return baseY + mastY - 0.15 - sag * (1 - a * a) * (1 - b * b) - between * Math.pow(edge, 6) * (Math.abs(a) > 0.98 ? 1 : 0);
+      };
+      const tone = new THREE.Color();
+      const point = (l: number, f: number): [number, number, number] => [
+        origin.x + c * l + sn * f, heightAt(l, f), origin.z - sn * l + c * f];
+      for (let i = 0; i < cols; i += 1) {
+        for (let j = 0; j < rows; j += 1) {
+          const l0 = -halfW + (2 * halfW * i) / cols, l1 = -halfW + (2 * halfW * (i + 1)) / cols;
+          const f0 = -halfL + (2 * halfL * j) / rows, f1 = -halfL + (2 * halfL * (j + 1)) / rows;
+          const n = Math.sin(i * 1.7 + j * 0.9) * 0.5 + Math.sin(i * 0.43 - j * 1.31) * 0.5;
+          tone.copy(sand).lerp(sandDark, 0.5 + 0.5 * n);
+          const p = [point(l0, f0), point(l1, f0), point(l1, f1), point(l0, f1)];
+          for (const [a, b, d] of [[0, 2, 1], [0, 3, 2], [0, 1, 2], [0, 2, 3]] as const) {
+            positions.push(...p[a], ...p[b], ...p[d]);
+            colors.push(tone.r, tone.g, tone.b, tone.r, tone.g, tone.b, tone.r, tone.g, tone.b);
+          }
+        }
+      }
+      const net = new THREE.BufferGeometry();
+      net.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      net.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      net.computeVertexNormals();
+      buckets.baked!.push(net);
+      facilityProps += 1;
+    }
+    // the edge cables between the masts, and the ridge cable across the middle
+    for (const l of [-halfW, halfW]) for (const [f0, f1] of [[-halfL, 0], [0, halfL]] as const) {
+      clusterBeam(depot, [l, f0, mastY - 0.15], [l, (f0 + f1) / 2, mastY - 0.5], 0.03, cable, 'equipment');
+      clusterBeam(depot, [l, (f0 + f1) / 2, mastY - 0.5], [l, f1, mastY - 0.15], 0.03, cable, 'equipment');
+    }
+    for (const f of [-halfL, halfL]) {
+      clusterBeam(depot, [-halfW, f, mastY - 0.15], [0, f, mastY - 0.15 - sag * 0.5], 0.03, cable, 'equipment');
+      clusterBeam(depot, [0, f, mastY - 0.15 - sag * 0.5], [halfW, f, mastY - 0.15], 0.03, cable, 'equipment');
+    }
+    // the arish screen on the west side: a timber frame and raked palm-frond ribs
+    {
+      const l = -halfW - 0.6;
+      for (const f of [-halfL, -halfL / 3, halfL / 3, halfL]) clusterBox(atGround(l, f), 0, 0, 1.25, 0.12, 2.5, 0.12, timberFrame, 'painted');
+      for (const y of [0.5, 1.6, 2.4]) clusterBox(depot, l, 0, y, 0.08, 0.1, 2 * halfL, timberFrame, 'painted');
+      for (let k = 0; k < 44; k += 1) {
+        const f = -halfL + 0.1 + k * ((2 * halfL - 0.2) / 43);
+        clusterBox(depot, l + 0.06, f, 1.35, 0.05, 2.7 + (k % 3) * 0.12, 0.09, k % 4 ? palm : palmDark, 'painted', 0, 0.12);
+      }
+    }
+    // HESCO bastions along the back, either side of the road's way out
+    for (const [l0, l1] of [[-halfW + 0.6, -3.2], [3.2, halfW - 0.6]] as const) {
+      const cells = Math.floor((l1 - l0) / 1.05);
+      for (let k = 0; k < cells; k += 1) {
+        const l = l0 + 0.52 + k * 1.05;
+        const cell = atGround(l, -halfL - 1.4);
+        clusterBox(cell, 0, 0, 0.62, 1.0, 1.24, 1.0, k % 2 ? sand : sandDark, 'painted');
+        for (const dl of [-0.5, 0.5]) for (const df of [-0.5, 0.5]) clusterBox(cell, dl, df, 0.65, 0.035, 1.3, 0.035, mesh, 'structure');
+        for (const df of [-0.5, 0.5]) clusterBox(cell, 0, df, 1.28, 1.0, 0.03, 0.03, mesh, 'structure');
+        for (const dl of [-0.5, 0.5]) clusterBox(cell, dl, 0, 1.28, 0.03, 0.03, 1.0, mesh, 'structure');
+      }
+    }
+    // the fuel bladder in its bunded berm, east of the shade
+    {
+      const bund = atGround(halfW + 4.6, 0.6);
+      for (const [l, f, w, d] of [[0, 2.6, 6.4, 0.9], [0, -2.6, 6.4, 0.9], [3.0, 0, 0.9, 4.4], [-3.0, 0, 0.9, 4.4]] as const) {
+        clusterBox(bund, l, f, 0.32, w, 0.64, d, sandDark, 'masonry');
+      }
+      for (const dl of [-1.0, 1.0]) clusterCylinder(bund, dl, 0, 0.32, 1.25, 0.6, new THREE.Color(0x2f3a2c), 0, 16);
+      clusterBox(bund, 0, 0, 0.32, 2.0, 0.6, 2.5, new THREE.Color(0x2f3a2c), 'equipment');
+      clusterCylinder(bund, 2.4, 1.6, 0.5, 0.06, 0.6, cable, 0, 10); // the dispensing hose's riser
+      environmentSpecificAssemblies += 1;
+      servicePurposeTags.add('bulk-fuel-bladder');
+    }
+    // the bowsers in the shade: a water tanker and a fuel tanker on their single-axle chassis
+    for (const [l, f, tint] of [[-5.2, 2.2, new THREE.Color(0x7d7f72)], [5.0, -1.8, new THREE.Color(0x8a6a3a)]] as const) {
+      const bowser = atGround(l, f);
+      clusterBox(bowser, 0, 0, 0.62, 1.0, 0.16, 3.6, dark, 'structure'); // the chassis
+      clusterCylinder(bowser, 0, 0, 1.35, 0.72, 3.0, tint, Math.PI / 2, 16); // the tank
+      for (const side of [-1, 1]) clusterCylinder(bowser, side * 0.95, -0.4, 0.42, 0.42, 0.24, dark, 0, 16, Math.PI / 2); // wheels
+      clusterBox(bowser, 0, 2.2, 0.5, 0.12, 0.12, 1.2, dark, 'structure'); // the drawbar
+      clusterBox(bowser, 0, 2.6, 0.25, 0.2, 0.5, 0.2, dark, 'structure'); // its jockey leg
+      operationalMachines += 1;
+    }
+    // the jerrycan rack: a timber rack of two shelves holding twenty cans
+    {
+      const rack = atGround(-6.0, -3.2);
+      for (const dl of [-1.1, 1.1]) for (const df of [-0.3, 0.3]) clusterBox(rack, dl, df, 0.75, 0.08, 1.5, 0.08, timberFrame, 'painted');
+      for (const y of [0.25, 0.95]) {
+        clusterBox(rack, 0, 0, y, 2.3, 0.05, 0.7, timberFrame, 'painted');
+        for (let k = 0; k < 10; k += 1) {
+          clusterBox(rack, -1.0 + k * 0.22, 0, y + 0.27, 0.17, 0.47, 0.34, k % 3 ? new THREE.Color(0x4a5236) : new THREE.Color(0x5a3a2a), 'equipment');
+          looseParts += 1;
+        }
+      }
+    }
+    environmentSpecificAssemblies += 1;
+    structuralConnections += 36;
+    servicePurposeTags.add('shade-net-depot');
+  };
+
+  /**
    * Cinder's engine shed (garage round 7, GA.04, 2026-10-14; props census #20, garage:rail_roundhouse grade 0: "five open
    * portals" of painted plates square to the hero, the rail fan crossing them at 45 degrees). A Prussian three-road
    * straight shed of the 1900s in soot-dark brick, squared to the rail fan so its three roads run in through the front
@@ -2201,13 +2340,14 @@ export function addGarageFacilityDetails({
       environmentSpecificAssemblies += 1;
       servicePurposeTags.add('desert-convoy-refit');
       servicePurposeTags.add('heat-shade-logistics');
-      addShadeHall(featureSide, 17, featureDepth, new THREE.Color(0x8e6a42));
-      addDrums(featureSide - 6, featureDepth + 1, 6);
-      addCrates(featureSide + 6, featureDepth + 1, 2);
-      addServiceManifold(featureCluster, -4.8, -2.45, 4.2);
-      addPoweredWinch(featureCluster, 5.4, -2.4, new THREE.Color(0xb98536));
-      addPartsPallet(featureCluster, 0.4, -2.65, 2);
-      addTurningRollStation(featureCluster, -2.0, 0.30, new THREE.Color(0x8f6d43));
+      // the shade depot over the convoy road's run from (3, 25) toward (-5, 46); its stores and kit round it
+      addDesertShadeDepot(featureSide, featureDepth, [3.0 + 8 / 21, 25 - 1]);
+      addDrums(featureSide - 11.5, featureDepth - 6.5, 6);
+      addCrates(featureSide + 10.8, featureDepth - 7.5, 2);
+      addServiceManifold(fixedCluster(featureSide - 9.5, featureDepth - 9.5), 0, 0, 4.2);
+      addPoweredWinch(fixedCluster(featureSide + 7.5, featureDepth - 10.5), 0, 0, new THREE.Color(0xb98536));
+      addPartsPallet(fixedCluster(featureSide - 13.0, featureDepth - 1.0), 0, 0, 2);
+      addTurningRollStation(fixedCluster(featureSide + 13.5, featureDepth - 1.5), 0, 0, new THREE.Color(0x8f6d43));
   };
   const addRepairBunker = (): void => {
       environmentSpecificAssemblies += 1;
