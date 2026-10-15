@@ -8,7 +8,7 @@
 // other where the hall stands open) under a head box, or a roller curtain part raised under its drum; through the gap the
 // hall's own inside — its floor, the far wall and the portal frames — not a painted slot. Outside, the sheet's seams and
 // corner flashings, gutters and downpipes, roof lights in the slopes and a louvred ridge vent.
-import { PartSink, faceBox, rgb, shade, type Face, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, type HouseFrame, type Opening } from './house.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 
@@ -39,6 +39,9 @@ export interface HallSpec {
   gutters: boolean;
   /** dressing on desktop only */
   mobile: boolean;
+  /** the covering's bucket and paint (default the kit's roof bucket); a long side open in `bays` between posts (a naya) */
+  roof?: { bucket: RegionalBucket; colour?: Rgb };
+  openSide?: { face: 'left' | 'right'; bays: number; post: number; head: number } | null;
 }
 
 const INSIDE = rgb(0x2c2e2f), FLOOR = rgb(0x4a4844), FRAME = rgb(0x3c4144);
@@ -54,6 +57,14 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   if (spec.doors !== 'none') openings.push({ face: 'front', storey: 0, kind: 'gate', u: 0, w: spec.doorW, y0: 0, h: Math.min(spec.doorH, wall - 0.5) });
   if (spec.backDoor !== null) openings.push({ face: 'back', storey: 0, kind: 'door', u: spec.backDoor, w: 1.0, y0: 0, h: 2.2 });
   if (spec.sideDoor !== undefined && spec.sideDoor !== null) openings.push({ face: 'right', storey: 0, kind: 'door', u: spec.sideDoor, w: 1.0, y0: 0, h: 2.2 });
+  if (spec.openSide) {
+    // the open side: one hole a bay between the posts the wall leaves standing, up to the head beam under the eave
+    const o = spec.openSide, span = d / o.bays;
+    for (let k = 0; k < o.bays; k++) {
+      const u0 = -d / 2 + k * span + (k === 0 ? o.post : o.post / 2), u1 = -d / 2 + (k + 1) * span - (k === o.bays - 1 ? o.post : o.post / 2);
+      openings.push({ face: o.face, storey: 0, kind: 'loft', u: (u0 + u1) / 2, w: u1 - u0, y0: 0, h: wall - o.head });
+    }
+  }
   if (spec.clerestory) {
     for (const face of ['left', 'right'] as const) {
       for (let u = -d / 2 + 2.2; u < d / 2 - 1.6; u += 4.4) {
@@ -67,11 +78,11 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   try {
     frame = buildHouse(sink, {
       w, d, plinth: spec.kerb > 0 ? { h: spec.kerb, out: 0.05, bucket: 'stone' } : null, storeys: [{ h: wall, wall: 'structureMetal' }],
-      roof: { kind: 'gable', pitchDeg: spec.pitchDeg, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      roof: { kind: 'gable', pitchDeg: spec.pitchDeg, eave: 0.4, verge: 0.3, thickness: 0.1, bucket: spec.roof?.bucket ?? 'roof', ridge: 'saddle' }, ...(spec.roof?.colour ? { roofColour: spec.roof.colour } : {}),
       gableBucket: 'structureMetal', openings, chimneys: [], gutters: null, verge: null, reveal: 0, spall: null,
     }, {
       // the lights: translucent sheet in a thin aluminium frame
-      window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1),
+      window: (s, face, o, y0) => o.kind === 'loft' ? undefined : windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(spec.trim, 1.3), frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null }, variant, 0.1),
       door: (s, face, o, y0) => {
         if (o.kind === 'gate') return hallDoors(s, face, o, y0, spec);
         doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: spec.doorLivery, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: spec.trim }, steps: null, leafKind: 'plank' }, y0 + o.y0);
@@ -82,15 +93,18 @@ export function sheetHall(sink: PartSink, spec: HallSpec, variant: () => number)
   // the inside, seen through the open doors: the floor, the walls' inner faces and the roof's underside, the portal frames
   const ix = w / 2 - 0.06, iz = d / 2 - 0.06, top = (x: number) => eave + (w / 2 - Math.abs(x)) * tanP - 0.12;
   sink.quad('structureMetal', [-ix, y0 + 0.01, iz], [ix, y0 + 0.01, iz], [ix, y0 + 0.01, -iz], [-ix, y0 + 0.01, -iz], { colour: FLOOR, decor: true });
-  sink.quad('structureMetal', [-ix, y0, -iz], [ix, y0, -iz], [ix, eave - 0.05, -iz], [-ix, eave - 0.05, -iz], { colour: INSIDE, decor: true });
-  sink.polygon('structureMetal', [[ix, eave - 0.05, -iz], [0, top(0), -iz], [-ix, eave - 0.05, -iz]], { colour: INSIDE, decor: true });
+  const back = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
+  sink.quad('structureMetal', [-ix, y0, -iz], [ix, y0, -iz], [ix, eave - 0.05, -iz], [-ix, eave - 0.05, -iz], { colour: back, decor: true });
+  sink.polygon('structureMetal', [[ix, eave - 0.05, -iz], [0, top(0), -iz], [-ix, eave - 0.05, -iz]], { colour: back, decor: true });
+  // (an open-sided barn takes the day in: its inside a shade of its own sheet, and no liner behind its open side)
+  const inside = spec.openSide ? shade(spec.livery, 0.55) : INSIDE;
   for (const s of [-1, 1]) {
     const x = s * ix, a: Vec3 = [x, y0, s > 0 ? -iz : iz], b: Vec3 = [x, y0, s > 0 ? iz : -iz];
-    sink.quad('structureMetal', a, b, [b[0], eave - 0.05, b[2]], [a[0], eave - 0.05, a[2]], { colour: INSIDE, decor: true });
+    if (!(spec.openSide && (spec.openSide.face === 'right') === (s > 0))) sink.quad('structureMetal', a, b, [b[0], eave - 0.05, b[2]], [a[0], eave - 0.05, a[2]], { colour: inside, decor: true });
     // the roof's underside, each slope from the eave to the ridge
     const e: Vec3 = [x, eave - 0.05, -iz], f: Vec3 = [x, eave - 0.05, iz], r0: Vec3 = [0, top(0), iz], r1: Vec3 = [0, top(0), -iz];
-    if (s > 0) sink.quad('structureMetal', e, f, r0, r1, { colour: shade(INSIDE, 1.2), decor: true });
-    else sink.quad('structureMetal', f, e, r1, r0, { colour: shade(INSIDE, 1.2), decor: true });
+    if (s > 0) sink.quad('structureMetal', e, f, r0, r1, { colour: shade(back, 1.2), decor: true });
+    else sink.quad('structureMetal', f, e, r1, r0, { colour: shade(back, 1.2), decor: true });
   }
   const bays = Math.max(2, Math.round(d / 5));
   for (let k = 1; k < bays; k++) {

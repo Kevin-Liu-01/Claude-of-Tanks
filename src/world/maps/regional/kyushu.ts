@@ -13,6 +13,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { factoryStack } from './shared.ts';
 import { latticeFrame } from './lattice.ts';
+import { sheetHall } from './hall.ts';
 
 /** White lime plaster (shikkui), earth plaster (tsuchikabe), grey cement render; Aso's grey andesite; ibushi tile. */
 const SHIKKUI: RegionalBucket = 'plaster', EARTH: RegionalBucket = 'plaster2', CEMENT: RegionalBucket = 'plaster3', STONE: RegionalBucket = 'stone';
@@ -262,16 +263,18 @@ const naya: RegionalBuilder = (ctx) => {
   const tin = pick(rng, TIN), board = pick(rng, CEDAR);
   sink.placed(along ? Math.PI / 2 : 0, R.cx, 0, R.cz, () => {
     // (built along its own z, turned to lie along the reach's long side)
-    sink.span(STONE, -W / 2 - 0.05, -0.4, -L / 2 - 0.05, W / 2 + 0.05, 0.3, L / 2 + 0.05);
     // (Caldera round 2, wave 114: "the barn reads as clean painted board, not rusting tin"): the walls are corrugated tin
     // on the timber frame, the paint gone to rust at the foot, in runs from the nail lines and patches where sheets lap
     const rusty = (c: Rgb, k: number): Rgb => [c[0] * (1 - k) + 0.46 * k, c[1] * (1 - k) + 0.27 * k, c[2] * (1 - k) + 0.17 * k];
     const wallTin = rusty(tin, 0.35 + look() * 0.25);
-    sink.span('structureMetal', -W / 2, 0.3, -L / 2, -W / 2 + 0.06, 3.6, L / 2, { colour: wallTin });
-    sink.span('structureMetal', -W / 2 + 0.06, 0.3, -L / 2, W / 2, 3.6, -L / 2 + 0.06, { colour: wallTin });
-    sink.span('structureMetal', -W / 2 + 0.06, 0.3, L / 2 - 0.06, W / 2, 3.6, L / 2, { colour: wallTin });
-    for (const f of [{ origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: L } as Face,
-      { origin: [0, 0, -L / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W } as Face, { origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: W } as Face]) {
+    // (props census #4, lane B 2026-10-14; the judges: "three span slabs of tin, the open side four posts, the bale
+    // stack a straw box") the shared sheet hall (hall.ts): the tin on its frame and stone footing, the open side cut in
+    // three bays between the posts it leaves under the head beam, the barn's own floor, back wall and frames inside
+    const frame = sheetHall(sink, { w: W, d: L, eave: 3.6, pitchDeg: 22, kerb: 0.3, livery: wallTin, doorLivery: wallTin, trim: CEDAR_DARK, doors: 'none', doorW: 0, doorH: 0,
+      open: 0, backDoor: null, clerestory: false, roofLights: false, ridgeVent: false, gutters: false, mobile: ctx.tier === 'mobile',
+      roof: { bucket: 'structureMetal', colour: tin }, openSide: { face: 'right', bays: 3, post: 0.22, head: 0.35 } }, look);
+    for (const name of ['left', 'back', 'front'] as const) {
+      const f = frame.faces[name];
       // the rusted foot, then the runs and the lapped patches
       faceBox(sink, 'structureMetal', f, 0, 0.5, 0.012, f.width, 0.4, 0.01, { colour: rusty(tin, 0.85), decor: true });
       const runs = Math.round(f.width / 1.4);
@@ -281,15 +284,11 @@ const naya: RegionalBuilder = (ctx) => {
       }
       if (look() < 0.6) faceBox(sink, 'structureMetal', f, (look() - 0.5) * f.width * 0.6, 1.2 + look() * 1.6, 0.014, 0.9 + look() * 0.6, 0.6 + look() * 0.6, 0.01, { colour: rusty(tin, 0.6), decor: true });
     }
-    // the open front (+x of the barn) on posts, a straw stack and a tractor's dark bay inside
-    for (let k = 0; k <= 3; k++) sink.span('structureWood', W / 2 - 0.16, 0.3, -L / 2 + 0.06 + (L - 0.2) * k / 3 - 0.08, W / 2, 3.6, -L / 2 + 0.06 + (L - 0.2) * k / 3 + 0.08, { colour: CEDAR_DARK });
-    sink.span('straw', -W / 2 + 0.3, 0.3, -L / 2 + 0.4, W / 2 - 0.9, 1.9, -L / 2 + L * 0.42);
-    const roof: RoofSpec = { kind: 'gable', pitchDeg: 22, eave: 0.6, verge: 0.4, thickness: 0.07, bucket: 'structureMetal', ridge: 'saddle' };
-    const rg = roofGeometry(W, L, 3.6, roof);
-    emitRoof(sink, rg, roof, tin);
-    if (rg.gable) for (const z of [L / 2, -L / 2]) {
-      const pts: Vec3[] = rg.gable.map(([u, y]) => [u, y, z] as Vec3);
-      sink.prism('structureWood', z > 0 ? [...pts].reverse() : pts, [0, 0, z > 0 ? -1 : 1], 0.06, { colour: board });
+    // the straw inside, stacked in its bales against the back of the bays
+    const sy = frame.floors[0];
+    sink.span('straw', -W / 2 + 0.3, sy, -L / 2 + 0.4, W / 2 - 1.4, sy + 1.6, -L / 2 + L * 0.42);
+    if (ctx.tier !== 'mobile') {
+      for (let y = sy + 0.4; y < sy + 1.6; y += 0.4) sink.span('straw', -W / 2 + 0.28, y - 0.015, -L / 2 + 0.38, W / 2 - 1.38, y + 0.015, -L / 2 + L * 0.42 + 0.02, { decor: true, shade: 0.8 });
     }
     sink.dressing(ctx.tier === 'mobile', () => {
       for (let k = 0; k < 6; k++) {
