@@ -38,6 +38,8 @@ import {
 import {
   GARAGE_HARDSTAND_FEATHER_M,
   GARAGE_HARDSTAND_PROGRAM_KEY,
+  garageHardstandDetailTexture,
+  garageHardstandDetailUniform,
   garageHardstandGradedHook,
   garageHardstandGrainTexture,
 } from './garageHardstandProgram.ts';
@@ -46,6 +48,7 @@ import {
   GARAGE_SHEETING_TILE_M,
   garageFacilityAlbedo,
   garageHardstandAlbedo,
+  garageHardstandDetailKind,
   garageHardstandNormal,
   garageHardstandNormalKind,
   garageSheeting,
@@ -1539,8 +1542,48 @@ export function buildGarageEnvironment(
     if (ground > APRON_RISE_LIMIT_M) return ground - 0.06;
     return Math.max(ground, GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.02;
   };
-  const apronGeometry = new THREE.PlaneGeometry(29, 24, 29, 24);
-  apronGeometry.rotateX(-Math.PI / 2);
+  // The apron reaches past the camera's near ground on every side (GA.03, the garage critic panel 2026-10-14: "the graded
+  // pad ends in a hard diagonal with raw grass or scrub in the lower left"): the old 29 x 24 m rectangle's +z edge crossed
+  // the canonical frame's lower left (the camera stands 18 m out on the view axis, its frame's foot 13.5 m short of the
+  // turntable), so the yard ended in frame. At 36 x 36 m the frame's foot and both sides of its lower half lie on worked
+  // ground for every hull the showroom frames; the yard's texel layout keeps its 29 x 24 m canvas, read mirrored beyond it.
+  // The apron lies on the terrain's own grid and triangulation, 2 cm over it, so it drapes exactly (a finer grid of its
+  // own bridged the terrain's cells and stood up to 6 cm proud of a pad's feather) and costs fewer triangles.
+  const APRON_HALF_M = 18;
+  const apronGeometry = (() => {
+    const cellX = patch.sizeXM / (patch.width - 1), cellZ = patch.sizeZM / (patch.height - 1);
+    const i0 = Math.max(0, Math.floor((patch.sizeXM / 2 - APRON_HALF_M) / cellX) - 1);
+    const i1 = Math.min(patch.width - 1, Math.ceil((patch.sizeXM / 2 + APRON_HALF_M) / cellX) + 1);
+    const j0 = Math.max(0, Math.floor((patch.sizeZM / 2 - APRON_HALF_M) / cellZ) - 1);
+    const j1 = Math.min(patch.height - 1, Math.ceil((patch.sizeZM / 2 + APRON_HALF_M) / cellZ) + 1);
+    const columns = i1 - i0 + 1, rows = j1 - j0 + 1;
+    const vertices = new Float32Array(columns * rows * 3);
+    const indices: number[] = [];
+    for (let j = 0; j < rows; j += 1) {
+      for (let i = 0; i < columns; i += 1) {
+        const at = (j * columns + i) * 3;
+        vertices[at] = -patch.sizeXM / 2 + (i0 + i) * cellX;
+        vertices[at + 2] = -patch.sizeZM / 2 + (j0 + j) * cellZ;
+        if (i < columns - 1 && j < rows - 1) {
+          // the terrain's own diagonal (createTerrainGeometry), counter-clockwise seen from above
+          const a = j * columns + i, b = a + 1, c = a + columns, d = c + 1;
+          indices.push(a, c, b, b, c, d);
+        }
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(columns * rows * 2), 2));
+    geometry.setIndex(indices);
+    return geometry;
+  })();
+  {
+    const positions = apronGeometry.getAttribute('position');
+    const uvs = apronGeometry.getAttribute('uv');
+    for (let index = 0; index < positions.count; index += 1) {
+      uvs.setXY(index, positions.getX(index) / 29 + 0.5, 0.5 - positions.getZ(index) / 24);
+    }
+  }
   {
     // The worked yard thins out into the terrain (wave 408: "a ruler-straight seam ... where the textured foreground
     // snow meets a flat, pale, untextured snow plane"): each vertex's share of worked ground falls to nothing over the
@@ -1551,7 +1594,7 @@ export function buildGarageEnvironment(
     for (let index = 0; index < positions.count; index += 1) {
       const x = positions.getX(index), z = positions.getZ(index);
       positions.setY(index, apronHeightAt(x, z));
-      const edge = Math.min(14.5 - Math.abs(x), 12 - Math.abs(z)) / GARAGE_HARDSTAND_FEATHER_M;
+      const edge = (APRON_HALF_M - Math.max(Math.abs(x), Math.abs(z))) / GARAGE_HARDSTAND_FEATHER_M;
       const ground = samplePatch(patch, heights, x, z);
       const rise = 1 - THREE.MathUtils.smoothstep(ground, 0.18, APRON_RISE_LIMIT_M - 0.01);
       blend[index] = THREE.MathUtils.clamp(edge, 0, 1) * rise;
@@ -1650,17 +1693,36 @@ export function buildGarageEnvironment(
   // salt, cinders, soot, mud or dust) and the shared normal for its floor kind, on the stock map + normal program.
   const hardstandStyle = GARAGE_HARDSTAND_STYLES[variant.architecture];
   const [approachSide, approachDepth] = recipe.approach.waypoints[0];
+  // The floor fills 40 % of the Garage frame at a grazing angle (the garage critic panel, 2026-10-14: "16x anisotropic
+  // filtering"): its own textures filter at the device's best anisotropy where the device allows 8 or more (three clamps
+  // to the device's maximum); weaker devices keep the engine's setting.
+  const floorAnisotropy = (engineCtx.anisotropy ?? 4) >= 8 ? 16 : (engineCtx.anisotropy ?? 4);
   const hardstandAlbedo = garageHardstandAlbedo(hardstandStyle, garageViewPoint(approachSide, approachDepth),
-    engineCtx.anisotropy ?? 4);
+    floorAnisotropy);
   const hardstandNormalKind = garageHardstandNormalKind(hardstandStyle);
-  const hardstandNormal = garageHardstandNormal(hardstandNormalKind, engineCtx.anisotropy ?? 4);
+  const hardstandNormal = garageHardstandNormal(hardstandNormalKind, floorAnisotropy);
+  // The floor's detail layer (garageHardstandProgram.ts): this ground type's relief and albedo at a real scale. Its shared
+  // uniform starts level and sharpens every floor of the kind when the relief exists: generated at Garage idle (the
+  // stage), or here after the pack's first frame, never on the visit's critical path.
+  const hardstandDetailKind = garageHardstandDetailKind(hardstandStyle);
+  const hardstandDetail = { uniform: garageHardstandDetailUniform(hardstandDetailKind), kind: hardstandDetailKind };
+  if (typeof document !== 'undefined' && hardstandDetail.uniform.value?.userData.sharedGarageHardstandDetail !== hardstandDetailKind) {
+    const generate = (): void => {
+      garageHardstandDetailTexture(hardstandDetailKind, floorAnisotropy);
+      requestRender();
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof idle === 'function') idle(generate, { timeout: 1500 });
+    else setTimeout(generate, 600);
+  }
   // The graded floor (garageHardstandGradedHook) blends over the terrain: transparent, writing no depth, drawn before the
   // floor decals (renderOrder -1), on its own program, which garageStage.ts compiles with the outdoor seeds.
   const gradedMaterial = (options: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial => {
     const material = new THREE.MeshStandardMaterial({ ...options, transparent: true, depthWrite: false });
     // the grain is subtler on packed snow than on earth and concrete
     const grainStrength = hardstandNormalKind === 'snow' ? 0.32 : hardstandNormalKind === 'slab' ? 0.5 : 0.62;
-    engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(engineCtx.anisotropy ?? 4), grainStrength) as THREE.Material['onBeforeCompile']);
+    engineCtx.setupShadowMaterial?.(material, garageHardstandGradedHook(garageHardstandGrainTexture(floorAnisotropy), grainStrength,
+      hardstandDetail) as THREE.Material['onBeforeCompile']);
     material.customProgramCacheKey = () => GARAGE_HARDSTAND_PROGRAM_KEY;
     return track(material);
   };
