@@ -63,7 +63,7 @@ assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 // tactical map 2026-09-15: every raster was re-baked (tone curve, hillshade, union
 // shorelines), so one shared revision invalidates every cache entry at once.
-assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v18-liquid-water'); // 2026-10-14: water only where the world draws it; v17 2026-10-05: the map-revival lane's plates (Suzhou Creek); v16 2026-10-03: maps lane B's gauntlet wave 28 plates (maps lane A's twenty on the merged head: v15; lane B's gauntlet wave 11: v14; batches 7 and 8: v13; batches 5 and 6: v12; batch 1's four: v11; the pilot's three: v10; round 48: v9)
+assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v19-visible-water'); // 2026-10-15: the liquid maps' visible water; v18 2026-10-14: water only where the world draws it; v17 2026-10-05: the map-revival lane's plates (Suzhou Creek); v16 2026-10-03: maps lane B's gauntlet wave 28 plates (maps lane A's twenty on the merged head: v15; lane B's gauntlet wave 11: v14; batches 7 and 8: v13; batches 5 and 6: v12; batch 1's four: v11; the pilot's three: v10; round 48: v9)
 for (const mapId of MAP_IDS) {
   const revision = MINIMAP_RASTER_REVISION;
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
@@ -72,7 +72,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
 }
-assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v18-liquid-water');
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v19-visible-water');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
@@ -108,6 +108,9 @@ const shorelines = [];
 const paintWaterLayers = hudPainter('paintMinimapWaterLayers', 'buildMinimapBg', {
   fillMinimapPatches: fillPatches,
   paintMinimapShorelines: (context, patches, keyline, rim) => { if (patches?.length) shorelines.push({ patches, keyline, rim }); },
+  // (phase 2: a world's visible-water raster paints instead of the liquid discs; its axes are minimapLiquidWater's)
+  paintVisibleWater: () => assert.fail('no raster handed over here: the liquid discs are the fallback water'),
+  MINIMAP_WATERLINE_RIM: 'rgb(204,234,240)',
 });
 const palette = { water: '#345', waterStroke: '#123', bog: '#654', bogStroke: '#321', ice: '#9bd', iceStroke: '#68a' };
 const expectContour = (label, patch, vertices) => {

@@ -6,9 +6,9 @@ import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
-
-const GRID_STEP_M = 8;
-const MIN_COVERAGE = 0.002;
+// the sheet's grid, its cell admission and its fragment discard are the tactical map's too (visibleWater.ts: the
+// minimap paints exactly the water this sheet draws)
+import { VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat } from './visibleWater.ts';
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -512,7 +512,7 @@ export function createShallowWaterSurface(
         float swashCrest = clamp(texture2D(uOceanDisp, oceanUv(vOceanLag, 0.0)).y / max(uOceanLook.w, 0.02) * 1.4, 0.0, 1.0);
         wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * smoothstep(0.003, 0.025, wet) * (1.0 - smoothstep(0.0, 0.22, wet))));
       }
-      if (wet < 0.015) discard;
+      if (wet < ${glslFloat(VISIBLE_WATER_MIN)}) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
       waterGrazing = grazing;

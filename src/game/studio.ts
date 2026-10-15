@@ -5379,7 +5379,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (!world) return null;
       const f = world.getMinimapFeatures();
       return { size: world.heightField.size, roads: f.roads, buildings: f.buildings, treeClusters: f.treeClusters,
-        liquidPatches: f.liquidPatches, softPatches: f.softPatches, iceLake: f.iceLake };
+        liquidPatches: f.liquidPatches, softPatches: f.softPatches, iceLake: f.iceLake, visibleWater: world.getVisibleWaterRaster() };
     },
     get selectedShotId() { return selectedShotId; },
     // video output

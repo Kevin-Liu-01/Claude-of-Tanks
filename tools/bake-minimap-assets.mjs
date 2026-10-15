@@ -5,6 +5,10 @@
 // Usage:
 //   node tools/bake-minimap-assets.mjs
 //   node tools/bake-minimap-assets.mjs --maps verdant,desert --out /tmp/minimaps
+//   node tools/bake-minimap-assets.mjs --maps coastal --reference /tmp/minimap-world
+//
+// --reference DIR (2026-10-15, the Kestrel water plan's phase 2): beside each plate, the same capture with the water,
+// bog and ice paint left off (DIR/<map>-world.webp) — the world from straight above, to hold the plate's water against.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -31,6 +35,9 @@ for (const id of maps) {
 }
 const outDir = resolve(option('out', 'public/minimaps'));
 await mkdir(outDir, { recursive: true });
+const referenceOption = option('reference', '');
+const referenceDir = referenceOption ? resolve(referenceOption) : null;
+if (referenceDir) await mkdir(referenceDir, { recursive: true });
 await acquireCaptureLock(30 * 60 * 1000);
 process.on('exit', releaseCaptureLock);
 const lockRefresher = setInterval(refreshCaptureLock, 60_000);
@@ -102,6 +109,28 @@ async function bakeMap(mapId) {
   }
 }
 
+/** The map just baked, once more with its water and soft-ground paint left off (the world's own top-down capture). */
+async function bakeReference(mapId) {
+  return page.evaluate(async (id) => {
+    const world = window.__DEBUG.getWorld?.() ?? window.__DEBUG.world;
+    if (world?.mapId !== id) throw new Error(`reference for ${id} on ${world?.mapId}`);
+    const { getMinimapFeatures, getVisibleWaterRaster } = world;
+    const painted = getMinimapFeatures.call(world);
+    const strips = painted.liquidPatches.length + painted.softPatches.length + (getVisibleWaterRaster.call(world) ? 1 : 0);
+    let read = 0;
+    world.getMinimapFeatures = () => { read++; return { ...getMinimapFeatures.call(world), liquidPatches: [], softPatches: [] }; };
+    world.getVisibleWaterRaster = () => { read++; return null; };
+    try {
+      const dataUrl = await window.__DEBUG.bakeMinimapForMap(id);
+      if (read < 2) throw new Error(`reference for ${id}: the bake did not read the world it was handed`);
+      return { dataUrl, strips, mapId: window.__DEBUG.world?.mapId, capture: window.__HUD_DEBUG.getMinimapState().capture };
+    } finally {
+      world.getMinimapFeatures = getMinimapFeatures;
+      world.getVisibleWaterRaster = getVisibleWaterRaster;
+    }
+  }, mapId);
+}
+
 let failed = false;
 try {
   await openPage();
@@ -118,6 +147,15 @@ try {
     const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
     await writeFile(resolve(outDir, `${id}.webp`), bytes);
     console.log(`[minimap-assets] ${id}: ${bytes.length} bytes`);
+    if (referenceDir) {
+      const reference = await bakeReference(id);
+      if (errors.length) throw new Error(`Browser errors before ${id} reference export:\n${errors.join('\n')}`);
+      requireMinimapCapture(reference, id);
+      const referenceBytes = Buffer.from(reference.dataUrl.slice(reference.dataUrl.indexOf(',') + 1), 'base64');
+      await writeFile(resolve(referenceDir, `${id}-world.webp`), referenceBytes);
+      console.log(`[minimap-assets] ${id}: reference ${referenceBytes.length} bytes (${reference.strips} water and ground layers left off)`);
+    }
+    refreshCaptureLock();
   }
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 } catch (error) {

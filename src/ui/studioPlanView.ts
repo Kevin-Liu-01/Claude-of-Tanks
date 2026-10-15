@@ -19,6 +19,11 @@ export interface StudioPlanFeatures {
   /** The dry discs (bog, salt pan, takyr), frozen where `iceLake`. */
   readonly softPatches: ReadonlyArray<{ readonly x: number; readonly z: number; readonly r: number }>;
   readonly iceLake: boolean;
+  /**
+   * The water a player can see (World.getVisibleWaterRaster, world/visibleWater.ts: `cells`² from the square's (−x, −z)
+   * corner, 0 dry): when present it is the plan's water instead of the liquid discs, as on the HUD's plate.
+   */
+  readonly visibleWater?: { readonly size: number; readonly cells: number; readonly cellM: number; readonly water: Uint8Array } | null;
 }
 
 type PlanSide = 'hero' | 'ally' | 'foe';
@@ -129,6 +134,28 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
     const b = plan!.bounds, k = size / (2 * b.half);
     return [(b.cx + b.half - x) * k, (b.cz + b.half - z) * k] as const;
   };
+  /** The world's visible water, cell for cell, laid through toPx's own axes (a texel a raster cell). */
+  function paintVisibleWater(g: CanvasRenderingContext2D, raster: NonNullable<StudioPlanFeatures['visibleWater']>, size: number): void {
+    const n = raster.cells;
+    if (!(n > 0) || raster.water.length !== n * n) return;
+    const texels = document.createElement('canvas'); texels.width = n; texels.height = n;
+    const tg = texels.getContext('2d')!, image = tg.createImageData(n, n);
+    const tone = /rgba\((\d+),(\d+),(\d+),([\d.]+)\)/.exec(COLORS.water);
+    const [r, gr, b, alpha] = tone ? tone.slice(1).map(Number) : [70, 120, 190, 0.55];
+    for (let k = 0; k < raster.water.length; k++) {
+      if (!raster.water[k]) continue;
+      image.data[k * 4] = r; image.data[k * 4 + 1] = gr; image.data[k * 4 + 2] = b; image.data[k * 4 + 3] = 255;
+    }
+    tg.putImageData(image, 0, 0);
+    const x0 = -raster.size / 2, z0 = -raster.size / 2;
+    const [ox, oy] = toPx(x0, z0, size), [ix, iy] = toPx(x0 + raster.cellM, z0, size), [jx, jy] = toPx(x0, z0 + raster.cellM, size);
+    g.save();
+    g.setTransform(ix - ox, iy - oy, jx - ox, jy - oy, ox, oy);
+    g.globalAlpha = alpha; // the texels opaque, the water's own alpha over the whole layer (no doubled edges)
+    g.imageSmoothingEnabled = true;
+    g.drawImage(texels, 0, 0);
+    g.restore();
+  }
   /** The still layer: ground, grid, roads, water, woods, buildings — redrawn when the window or the map changes. */
   function drawBase(size: number): HTMLCanvasElement {
     const c = document.createElement('canvas'); c.width = size; c.height = size;
@@ -144,7 +171,8 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
       for (const w of list) { const [px, pz] = toPx(w.x, w.z, size); g.beginPath(); g.arc(px, pz, w.r * k, 0, Math.PI * 2); g.fill(); }
     };
     discs(features.softPatches, features.iceLake ? COLORS.ice : COLORS.bog); // dry ground (or ice) first, water over it
-    discs(features.liquidPatches, COLORS.water);
+    if (features.visibleWater) paintVisibleWater(g, features.visibleWater, size);
+    else discs(features.liquidPatches, COLORS.water);
     g.strokeStyle = COLORS.road; g.lineWidth = Math.max(1.5, 8 * k); g.lineJoin = 'round'; g.lineCap = 'round';
     for (const road of features.roads) { g.beginPath(); road.forEach(([x, z], i) => { const [px, pz] = toPx(x, z, size); if (i) g.lineTo(px, pz); else g.moveTo(px, pz); }); g.stroke(); }
     g.fillStyle = COLORS.wood;

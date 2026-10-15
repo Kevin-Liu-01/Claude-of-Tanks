@@ -52,6 +52,7 @@ import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
+import { buildVisibleWaterRaster, type VisibleWaterRaster } from './visibleWater.ts';
 import {
   createObstacleGrid,
   shellPassesThroughCollisionRecord,
@@ -272,6 +273,12 @@ export interface WorldRuntime {
     softPatches: LayoutDisc[];
     iceLake: boolean;
   };
+  /**
+   * The water a player can see (visibleWater.ts: the sheet's and the level paddies', 2 m cells), built on the first call
+   * and kept; null where the world draws no standing water. The tactical map's plate paints its water from this. Kept
+   * out of getMinimapFeatures on purpose: the battle's audio reads those mid-fight, and this is tens of milliseconds.
+   */
+  getVisibleWaterRaster(): VisibleWaterRaster | null;
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -500,6 +507,10 @@ function assembleWorld(
   let minimapWater: { readonly liquid: readonly LayoutDisc[]; readonly soft: readonly LayoutDisc[] } | null = null;
   const minimapSplat: TerrainMapConfig['splat'] = config.splat;
   const minimapIceLake = !!minimapSplat?.iceLake; // the world's wet layer is ice (terrain.ts createWetSplatLayer)
+  // The tactical map's water raster (visibleWater.ts), built on the first getVisibleWaterRaster and kept. The sheet is the
+  // terrain's liquidWater (a seaLake map without frozen marshes); a level flooded paddy holds water on any map.
+  let visibleWater: VisibleWaterRaster | null | undefined;
+  const visibleWaterSheet = !!minimapSplat?.seaLake && !layout.terrain?.frozenMarshes;
   // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
   // and the ground tiers built below (the litter, the tall grass) read the same cover
   if (vegetation._woodsMask) terrain.userData.applyWoodsMask?.(vegetation._woodsMask);
@@ -924,6 +935,13 @@ function assembleWorld(
         softPatches: minimapWater.soft.map((disc: LayoutDisc) => ({ ...disc })),
         iceLake: minimapIceLake,
       };
+    },
+    getVisibleWaterRaster: () => {
+      if (visibleWater === undefined) {
+        visibleWater = visibleWaterSheet || heightField._landUseProfile?.floodIds?.size
+          ? buildVisibleWaterRaster(heightField, visibleWaterSheet) : null;
+      }
+      return visibleWater;
     },
     /**
      * Per-frame world update: terrain LOD swap + vegetation wind/density.

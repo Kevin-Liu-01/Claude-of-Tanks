@@ -576,8 +576,10 @@ worldRuntime = createWorldActivationRuntime<
   buildMinimap: (next, textured) => {
     const hud = currentHud();
     if (!hud) return;
-    hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-      textured ? minimapSnapCtx() : null);
+    // the plate's water is the world's visible-water raster (visibleWater.ts), handed over beside the features: never
+    // inside getMinimapFeatures, which the battle's audio reads mid-fight
+    hud.buildMinimap(next.heightField, { ...next.getMinimapFeatures(), visibleWater: next.getVisibleWaterRaster() },
+      next.config.minimap, textured ? minimapSnapCtx() : null);
   },
   loadMinimapAsset: (next, url) => (
     currentHud()?.buildMinimapFromAsset(next.heightField, url) ?? false
@@ -3483,8 +3485,8 @@ if (diagnosticsRequested) {
         await awaitMapCaptureReadiness(next, currentWorld);
         const hud = currentHud();
         if (!hud) throw new Error('capture HUD is unavailable');
-        hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-          { ...minimapSnapCtx(), requireTextured: true });
+        hud.buildMinimap(next.heightField, { ...next.getMinimapFeatures(), visibleWater: next.getVisibleWaterRaster() },
+          next.config.minimap, { ...minimapSnapCtx(), requireTextured: true });
         return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
       beginBattleEntry,
