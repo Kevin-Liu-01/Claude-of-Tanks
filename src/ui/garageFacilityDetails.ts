@@ -2039,60 +2039,6 @@ export function addGarageFacilityDetails({
       0.48, 0.22, 0.18, steel, 'equipment', 0.45);
   };
 
-  const addRecoveryCrane = (centerSide: number, centerDepth: number): void => {
-    const cluster = fixedCluster(centerSide, centerDepth);
-    heavyLiftSystems += 1;
-    operationalMachines += 1;
-    structuralConnections += 26;
-    servicePurposeTags.add('connected-recovery-crane');
-    const width = 18;
-    const height = 7.7;
-    for (const sideSign of [-1, 1]) {
-      const outer = sideSign * width / 2;
-      const inner = sideSign * (width / 2 - 2.8);
-      // the gantry runs on a rail along a concrete runway beam each side (the re-judge, 2026-10-15: "gantries stand on
-      // bare dirt with no rails or footings"), its legs on wheeled end carriages, buffer stops at the runway's ends
-      clusterBox(cluster, outer, 0, 0.16, 1.0, 0.32, 11.0, plinthConcrete, 'masonry');
-      clusterBox(cluster, outer, 0, 0.38, 0.12, 0.12, 10.6, steel, 'structure');
-      for (const end of [-5.25, 5.25]) clusterBox(cluster, outer, end, 0.62, 0.7, 0.6, 0.4, safety, 'painted');
-      for (const longitudinal of [-2.7, 2.7]) {
-        clusterBox(cluster, outer, longitudinal, 0.72, 0.62, 0.5, 1.5, steel, 'structure'); // the end carriage
-        for (const dw of [-0.5, 0.5]) clusterCylinder(cluster, outer, longitudinal + dw, 0.62, 0.22, 0.14, dark, 0, 12, Math.PI / 2);
-        clusterBox(cluster, outer, longitudinal, (height + 0.97) / 2,
-          0.46, height - 0.97, 0.52, steel, 'structure');
-        clusterBeam(cluster,
-          [inner, longitudinal, 0.32],
-          [outer, longitudinal, height - 0.42],
-          0.30, safety, 'painted');
-      }
-      clusterBox(cluster, outer, 0, height - 0.20,
-        0.52, 0.40, 5.8, steel, 'structure');
-    }
-    clusterBox(cluster, 0, 0, height,
-      width + 0.8, 0.52, 0.62, steel, 'structure');
-    clusterBox(cluster, -1.2, 0, height - 0.28,
-      4.6, 0.34, 0.48, safety, 'painted');
-    clusterBox(cluster, -1.2, 0, height - 0.72,
-      0.82, 0.55, 0.78, dark, 'equipment');
-    // the crane takes a real load (2026-10-10, wave 377: "two goalpost-like gantries behind the tank lift nothing"): a
-    // hook block on twin falls carries a spreader and four chains down to a pulled tank power pack hanging clear of
-    // the deck
-    for (const offset of [-0.18, 0.18]) {
-      clusterCylinder(cluster, -1.2 + offset, 0, height - 2.2, 0.045, 2.6, steel, 0, 8);
-    }
-    clusterBox(cluster, -1.2, 0, height - 3.6, 0.62, 0.42, 0.42, dark, 'equipment');
-    clusterBox(cluster, -1.2, 0, height - 4.05, 2.4, 0.16, 0.22, safety, 'painted');
-    for (const [lateral, longitudinal] of [[-1.05, -0.4], [-1.05, 0.4], [1.05, -0.4], [1.05, 0.4]] as const) {
-      clusterBeam(cluster, [-1.2 + lateral, 0, height - 4.12], [-1.2 + lateral * 0.82, longitudinal, height - 5.0],
-        0.03, steel, 'equipment');
-    }
-    clusterBox(cluster, -1.2, 0, height - 5.45, 1.9, 0.9, 1.0, new THREE.Color(0x4b5040), 'painted');
-    clusterBox(cluster, -0.45, 0, height - 5.4, 0.62, 0.8, 1.06, dark, 'equipment');
-    for (const offset of [-0.32, 0.32]) {
-      clusterCylinder(cluster, -1.55, offset, height - 4.95, 0.22, 0.12, steel, 0, 12);
-    }
-  };
-
   // The old scene used one identical, tightly packed prop template in all
   // nine environments. Each destination now owns a different perimeter
   // layout. Equipment remains merged/instanced, but its visual rhythm follows
@@ -2539,10 +2485,18 @@ export function addGarageFacilityDetails({
       const timberC = new THREE.Color(0x6a5136), timberDark = new THREE.Color(0x4f3c28), earthTone = new THREE.Color(0x8a5a40);
       const halfSpan = 9.0, legH = 7.8, beamY = legH + 0.4;
       // the lattice legs: an A of two laced columns at each end, gussets at the knees and feet
+      // it travels on a rail along a concrete runway beam each side (the re-judge, 2026-10-15: "gantries stand on bare
+      // dirt with no rails or footings"), each leg on a wheeled end truck, buffer stops at the runway's ends
+      for (const side of [-1, 1]) {
+        clusterBox(yard, side * halfSpan, 0, 0.15, 1.1, 0.3, 12.0, plinthConcrete, 'masonry');
+        clusterBox(yard, side * halfSpan, 0, 0.36, 0.1, 0.12, 11.6, plate, 'structure');
+        for (const end of [-5.75, 5.75]) clusterBox(yard, side * halfSpan, end, 0.62, 0.7, 0.6, 0.4, new THREE.Color(0xb88a2a), 'painted');
+      }
       for (const side of [-1, 1]) {
         for (const f of [-2.4, 2.4]) {
           const foot = side * halfSpan;
-          clusterBox(yard, foot, f, 0.15, 1.2, 0.3, 1.2, plate, 'masonry');
+          clusterBox(yard, foot, f, 0.62, 0.9, 0.5, 1.5, craneRed.clone().multiplyScalar(0.8), 'structure'); // the end truck
+          for (const df of [-0.45, 0.45]) clusterCylinder(yard, foot, f + df, 0.42, 0.24, 0.16, plate, 0, 12, Math.PI / 2);
           for (const du of [-0.28, 0.28]) clusterBox(yard, foot + du, f, legH / 2 + 0.15, 0.12, legH, 0.3, craneRed, 'structure'); // chords
           for (let k = 0; k < 9; k += 1) { // the lacing
             const y0 = 0.4 + k * (legH - 0.6) / 9, y1 = y0 + (legH - 0.6) / 9;
