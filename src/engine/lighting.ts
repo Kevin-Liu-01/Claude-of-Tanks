@@ -75,6 +75,8 @@ interface ShadowDebugOptions {
   legacyBias?: boolean;
   /** 2026-10-14 (SKY shadows r2a, P1b): the front-face depth-bias law and no double-sided guard, for A/B probes. */
   frontFaceBias?: boolean;
+  /** 2026-10-15 (SKY shadows r2b, C9): nets and garnish cast through their 0.5 alpha test again, for A/B probes. */
+  netAlphaTest?: boolean;
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
@@ -554,12 +556,39 @@ function requestDepthKinds(): void {
  */
 export function guardDoubleSidedDepth(depthMaterial: THREE.Material): void {
   const legacy = typeof window !== 'undefined' && !!(window.__SHADOW_DEBUG?.legacyBias || window.__SHADOW_DEBUG?.frontFaceBias);
-  const guard = !legacy && (depthMaterial.side === THREE.DoubleSide || depthMaterial.alphaTest > 0);
+  const guard = !legacy && (depthMaterial.side === THREE.DoubleSide || depthMaterial.alphaTest > 0 || depthMaterial.alphaHash);
   if (depthMaterial.polygonOffset !== guard) depthMaterial.polygonOffset = guard;
   if (guard) {
     depthMaterial.polygonOffsetFactor = SHADOW_DOUBLE_SIDED_OFFSET.factor;
     depthMaterial.polygonOffsetUnits = SHADOW_DOUBLE_SIDED_OFFSET.units;
   }
+}
+
+/**
+ * 2026-10-15 (SKY shadows r2b, the shadow-quality plan's C9): an alpha-tested open lattice — a camouflage net, a
+ * garnish (ghillieSuit.ts marks them continuityRole 'open-lattice') — casts through a hashed alpha test instead of its
+ * 0.5 cut. Its net cells are smaller than a shadow texel, so the map's alpha there is the cells' coverage (the canvas
+ * texture's mip at the shadow raster's footprint); against 0.5 that coverage cast all or nothing in clumps that re-rolled
+ * as the hull moved. Against three's hashed threshold (Wyman & McGuire 2017: a hash on the caster's object-space
+ * position at the footprint's scale) a share of the texels equal to the coverage casts, the pattern sticks to the net
+ * as the hull moves, and the cascade's tent filters it into a partial shade. The depth clone three keeps per net material
+ * takes alphaHash and drops the alpha-test cut from its program once (three re-copies the caster's 0.5 alpha test onto
+ * it every draw: zeroing it per draw would flip its program version twice a draw); the visible net keeps its own test.
+ * A/B: __SHADOW_DEBUG.netAlphaTest, set before the battle's nets first cast.
+ */
+const HASHED_SHADOW_ALPHA_KEY = 'cotHashedShadowAlpha';
+const dropAlphaTestCut: NonNullable<MaterialCompileHook> = (shader) => {
+  // the cut first, then the hash (depth.glsl: alphatest_fragment, alphahash_fragment): the hash alone decides
+  shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', '');
+};
+export function hashOpenLatticeShadow(object: THREE.Object3D, depthMaterial: THREE.Material): void {
+  if (depthMaterial.userData[HASHED_SHADOW_ALPHA_KEY] || object.userData.continuityRole !== 'open-lattice' || !(depthMaterial.alphaTest > 0)) return;
+  if (typeof window !== 'undefined' && window.__SHADOW_DEBUG?.netAlphaTest) return;
+  depthMaterial.userData[HASHED_SHADOW_ALPHA_KEY] = true;
+  depthMaterial.alphaHash = true;
+  depthMaterial.onBeforeCompile = dropAlphaTestCut;
+  depthMaterial.customProgramCacheKey = () => HASHED_SHADOW_ALPHA_KEY;
+  depthMaterial.needsUpdate = true;
 }
 
 function patchShadowDepthPacking(): void {
@@ -576,6 +605,7 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    hashOpenLatticeShadow(object, depthMaterial);
     guardDoubleSidedDepth(depthMaterial);
     // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
     // three stops re-deriving the shared depth program at every instanced / batched / plain switch
