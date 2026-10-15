@@ -9,6 +9,7 @@
 import { PartSink, faceBox, facePanel, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedFace, wallPolygon, windowRhythm, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
+import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 
@@ -553,24 +554,23 @@ const waterTower: RegionalBuilder = (ctx) => {
 /** A shelled office block: walls broken to stubs, a floor slab fallen in across the ground storey, rebar at the breaks. */
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const W = Math.max(6, ctx.info.w - 0.3), D = Math.max(7, ctx.info.d - 0.3), t = 0.3;
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + t], [-W / 2, D / 2 - t, W / 2, D / 2], [-W / 2, -D / 2 + t, -W / 2 + t, D / 2 - t], [W / 2 - t, -D / 2 + t, W / 2, D / 2 - t]] as const) {
-    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0);
-    for (let k = 0; k < 5; k++) {
-      if (rng() < 0.3) continue;
-      const a = k / 5, b = (k + 1) / 5, top = 0.8 + rng() * 4.6;
-      if (along) sink.span('plaster', x0 + (x1 - x0) * a, -0.3, z0, x0 + (x1 - x0) * b, top, z1);
-      else sink.span('plaster', x0, -0.3, z0 + (z1 - z0) * a, x1, top, z0 + (z1 - z0) * b);
-      if (top > 2.5) for (let r = 0; r < 3; r++) {
-        const x = along ? x0 + (x1 - x0) * (a + (b - a) * rng()) : (x0 + x1) / 2, z = along ? (z0 + z1) / 2 : z0 + (z1 - z0) * (a + (b - a) * rng());
-        sink.member('structureWood', [x, top, z], [x + (rng() - 0.5) * 0.6, top + 0.5 + rng() * 0.6, z + (rng() - 0.5) * 0.6], 0.03, 0.03, [0, 0, 1], { colour: RUST, decor: true, exposed: true }, 0);
-      }
-    }
+  // (props census #7, lane B 2026-10-14; the judges: "slices to random tops") the ruin grammar: the office block's own
+  // two storeys of rendered concrete broken, its windows' ribbon cut through, the bars curling from the heads, the floor
+  // slab fallen in across the ground storey over the heaps
+  const openings: Opening[] = [];
+  for (const s of [0, 1]) for (const face of ['front', 'back', 'right', 'left'] as const) {
+    for (const o of windowRhythm(face, s, face === 'front' || face === 'back' ? W : D - 2 * t, { w: 1.4, h: 1.3, sill: 0.9, spacing: 2.2, margin: 0.9, max: 4 })) openings.push(o);
   }
-  // the fallen slab and the rubble under it
-  sink.member('stone', [-W * 0.35, 0.3, -D * 0.25], [W * 0.3, 2.6, D * 0.2], Math.min(W, D) * 0.6, 0.22, [0.3, 1, -0.2], { exposed: true });
-  sink.span('stone', -W * 0.38, -0.2, -D * 0.3, W * 0.32, 0.8, D * 0.28, { decor: true });
+  const head = (): RuinHead => ({ a: 0.8 + rng() * 4.6, b: 0.8 + rng() * 4.6, at: rng(), dip: 0.3 + rng() * 0.4, ragged: 0.35 });
+  const r = ruinHouse(sink, {
+    w: W, d: D, t, wall: 'plaster', plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [3.0, 3.0], openings,
+    heads: { front: head(), right: head(), back: head(), left: head() }, stub: 0.6, lintel: { bucket: 'plaster' }, roof: null,
+    timber: rgb(0x2e2a26), rebar: RUST, mobile: ctx.tier === 'mobile',
+  }, rng, look);
+  // the fallen slab: its low edge on the floor, its high edge on the heap
+  sink.member('stone', [-W * 0.35, r.floor + 0.1, -D * 0.25], [W * 0.3, r.restOn(W * 0.3, D * 0.2) + 0.6, D * 0.2], Math.min(W, D) * 0.6, 0.22, [0.3, 1, -0.2], { exposed: true });
   return sink.finish();
 };
 

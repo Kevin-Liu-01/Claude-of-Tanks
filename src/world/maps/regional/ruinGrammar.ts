@@ -45,6 +45,8 @@ export interface RuinSpec {
   /** the charred frame's colour (joists, rafters) */
   timber: Rgb;
   chimney?: { x: number; z: number; w: number; h: number; bucket: RegionalBucket; colour?: Rgb } | null;
+  /** a concrete or block shell's reinforcement: bars curling out of its broken heads in this rust */
+  rebar?: Rgb;
   mobile: boolean;
 }
 
@@ -253,6 +255,18 @@ export function ruinHouse(sink: PartSink, spec: RuinSpec, rng: () => number, loo
           if (tp[k] < y + 0.35 || look() < 0.35) continue;
           const len = 0.25 + look() * 0.7;
           sink.member('structureWood', facePoint(f, u, y - 0.1, -t + 0.12), facePoint(f, u, y - 0.1 - look() * 0.15, -t - len), 0.14, 0.2, [0, 1, 0], charred, 0);
+        }
+      }
+    }
+    // the bars out of a concrete shell's broken heads
+    if (spec.rebar) {
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const f = faces[name], tp = tops[name], n = tp.length - 1;
+        for (let k = 1; k < n; k += 2) {
+          if (tp[k] < floor + 1.2 || look() < 0.4) continue;
+          const u = -f.width / 2 + (f.width * k) / n, p = facePoint(f, u, tp[k] - 0.05, -t / 2);
+          sink.member('structureWood', p, [p[0] + (look() - 0.5) * 0.5, p[1] + 0.4 + look() * 0.6, p[2] + (look() - 0.5) * 0.5], 0.025, 0.025, [0, 0, 1],
+            { colour: spec.rebar, decor: true, exposed: true, fine: true }, 0);
         }
       }
     }
