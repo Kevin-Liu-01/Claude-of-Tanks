@@ -541,35 +541,44 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
     const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 8, 60), D = clampTo(f.d, 7, 60);
     const concrete = 'plaster3' as const;
+    // (props census #9) the print works, the gutted storeys and the cores built as walls round cores (they were solid
+    // spans with the windows, the gutted bays and the soot painted on): the windows cut through, the soot the walls' own
+    const wallT = 0.4, rev = wallT - 0.06;
     // the print works: three storeys along the back of the plot, its roof broken
     const bz0 = -D / 2, bz1 = bz0 + clampTo(D * 0.48, 4, 11), bh = 10.5;
-    sink.span(concrete, -W / 2, -0.4, bz0, W / 2, bh, bz1);
-    const pf: Face = { origin: [0, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    for (let f = 0; f < 3; f++) for (let k = 0; k < Math.max(2, Math.floor(W / 2.6)); k++) {
-      const n = Math.max(2, Math.floor(W / 2.6)), u = -W / 2 + W * (k + 0.5) / n;
-      panelWindow(sink, pf, u, 0.9 + f * 3.4, 1.5, 1.4, look, 0.04, bh);
-    }
-    sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
-    // the cores
     const cs = clampTo(Math.min(W, D) * 0.25, 2.5, 5.6), ch = clampTo(W * 1.75, 12, 46);
     const cz = bz1 + cs / 2 + 0.3;
     // the collapsed tower's two lowest storeys still standing round the cores' feet to the lot's front, gutted
-    const tz0 = bz1 - 0.2, tz1 = D / 2, th = 6.8;
-    if (tz1 - tz0 > 2) {
-      sink.span(concrete, -W / 2, -0.4, tz0, W / 2, th, tz1);
-      const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-      const n = Math.max(2, Math.floor(W / 2.8));
+    const tz0 = bz1 - 0.2, tz1 = D / 2, th = 6.8, stub = tz1 - tz0 > 2;
+    const pf: Face = { origin: [0, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const pHoles: HoleRect[] = [], pStains: Stain[] = [];
+    for (let f = 0; f < 3; f++) for (let k = 0; k < Math.max(2, Math.floor(W / 2.6)); k++) {
+      const n = Math.max(2, Math.floor(W / 2.6)), u = -W / 2 + W * (k + 0.5) / n, y = 0.9 + f * 3.4;
+      // (the storeys behind the gutted tower's are inside it: no openings there)
+      if (stub && y + 1.4 < th + 0.1) continue;
+      pHoles.push({ u0: u - 0.75, u1: u + 0.75, y0: y, y1: y + 1.4 });
+      panelWindow(sink, pf, u, y, 1.5, 1.4, look, 0.04, bh, { reveal: rev, stains: pStains });
+    }
+    holedBox(sink, concrete, -W / 2, bz0, W / 2, bz1, -0.4, bh, { front: pHoles }, wallT, rev, {}, { stains: { front: pStains }, edgeBreaks: DAMP_BREAKS });
+    sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
+    if (stub) {
+      // the gutted storeys: their window bays open to the burnt-out dark, the soot up the wall over them
+      const n = Math.max(2, Math.floor(W / 2.8)), tHoles: HoleRect[] = [];
       for (let fl = 0; fl < 2; fl++) for (let k = 0; k < n; k++) {
-        const u = -W / 2 + W * (k + 0.5) / n;
-        facePanel(sink, 'dark', tf, u, 1.6 + fl * 3.4, 0.01, W / n - 0.9, 1.9, { decor: true });
+        const u = -W / 2 + W * (k + 0.5) / n, bw = W / n - 0.9;
+        tHoles.push({ u0: u - bw / 2, u1: u + bw / 2, y0: 0.65 + fl * 3.4, y1: 2.55 + fl * 3.4 });
       }
-      sootBand(sink, concrete, tf, -W / 2, W / 2, 2.6, th);
+      holedBox(sink, concrete, -W / 2, tz0, W / 2, tz1, -0.4, th, { front: tHoles }, wallT, rev, {},
+        { stains: { front: [sootStain(-W / 2, W / 2, 2.6, th)] }, edgeBreaks: DAMP_BREAKS });
     }
     for (const side of [-1, 1]) {
       const cx = side * (W / 2 - cs / 2 - 0.6), h = ch * (side > 0 ? 1 : 0.86 + rng() * 0.08);
-      sink.span(concrete, cx - cs / 2, -0.4, cz - cs / 2, cx + cs / 2, h, cz + cs / 2);
       const faces = planFaces(rect(cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2));
-      for (const face of faces) sootBand(sink, concrete, face, -cs / 2, cs / 2, h * (0.3 + look() * 0.3), h);
+      // the core's walls round it, the fire's soot darkening up them to the head
+      const soot = faces.map(() => h * (0.3 + look() * 0.3));
+      const coreStain = (k: number): Stain[] => [{ u0: -cs / 2, u1: cs / 2, y0: soot[k], y1: h, bottom: 1, top: 0.42 }];
+      holedBox(sink, concrete, cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2, -0.4, h, {}, 0.3, 0.24, {},
+        { stains: { front: coreStain(0), right: coreStain(1), back: coreStain(2), left: coreStain(3) }, edgeBreaks: DAMP_BREAKS });
       // the slab stubs on the inner face at every floor, rebar at the head
       for (let y = 3.4; y < h - 1; y += 3.4) {
         const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
@@ -604,7 +613,7 @@ const oslobodjenje: RegionalBuilder = (ctx) => {
       const dx = (look() - 0.5) * 3, topY = 2.2 + look() * 2, dz = (look() - 0.5) * 3, wide = 2 + look() * 2;
       if (!mobile || k < 2) sink.member(concrete, [x, 0.8, z], [x + dx, topY, z + dz], wide, 0.24, [0, 1, 0], { decor: true, exposed: true });
     }
-    sink.dressing(mobile, () => shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 0.6, y1: bh - 0.6 }, 30, [], look, 'stone'));
+    sink.dressing(mobile, () => shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: stub ? th + 0.3 : 0.6, y1: bh - 0.6 }, 30, pHoles, look, 'stone'));
   });
   return sink.finish();
 };
