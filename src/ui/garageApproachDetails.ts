@@ -180,7 +180,6 @@ export function addGarageApproachDetails({
 }: GarageApproachBuildOptions): GarageApproachStats {
   const route = buckets.route || (buckets.route = []);
   const baked = buckets.baked || (buckets.baked = []);
-  const wood = buckets.wood || (buckets.wood = []);
   const dark = buckets.dark || (buckets.dark = []);
   const points = subdividePath(approach.waypoints.map(([side, depth]) => ({ side, depth })));
   let approachSegments = 0;
