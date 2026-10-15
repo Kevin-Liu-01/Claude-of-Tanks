@@ -2271,13 +2271,20 @@ export function addGarageFacilityDetails({
       // over the coping, and a stand of spruce under snow behind and beside it, dark against the sky (all of it right of
       // the turret's outline from the Garage camera)
       clusterCylinder(bunker, 0, 0.25, faceH + 0.55, 0.38, 2 * halfFace - 0.6, new THREE.Color(0xe6ecef), 0, 12, Math.PI / 2);
+      // the stand reads as a forest edge, not trees set on the roofline like ornaments (ticket 6, 2026-10-15): four
+      // staggered rows of spruce behind the mound, taller toward the back, close enough that their crowns run together,
+      // and a group at the mound's right flank seen to its foot
+      const stand: Array<[number, number, number]> = [];
+      for (let row = 0; row < 4; row += 1) {
+        for (let k = 0; k < 9; k += 1) {
+          const u = 1 + k * 2.7 + (row % 2) * 1.35 + Math.sin(k * 2.3 + row) * 0.5;
+          stand.push([u, -18 - row * 3.6 + Math.sin(k * 1.7 + row * 2.1) * 0.8, 14 + row * 2.2 + Math.sin(k * 3.1 + row) * 1.6]);
+        }
+      }
+      stand.push([16.4, -9.5, 9.2], [18.6, -12.4, 10.8], [20.4, -6.8, 8.6], [22.2, -10.4, 11.4]);
       buckets.baked!.push(buildConifers({
         x: origin.x, z: origin.z, yaw, groundAt: (u, w) => { const p = toWorld(u, w); return groundAtWorld(p.x, p.z); },
-      }, [
-        [0.0, -17.5, 11.5], [2.6, -20.5, 13.5], [3.6, -16.8, 10.2], [6.8, -18.6, 12.8], [9.8, -16.2, 11.0], [12.6, -19.0, 13.2],
-        [15.2, -15.6, 10.4], [17.8, -18.2, 12.0], [4.4, -24.0, 14.0], [8.4, -22.8, 13.6], [14.0, -23.2, 14.4],
-        [16.4, -9.5, 9.2], [18.6, -12.4, 10.8], [20.4, -6.8, 8.6],
-      ], 0x5f1c));
+      }, stand, 0x5f1c));
       // the facade: piers either side of the portal, a beam over it, a chamfered coping, the portal's lining
       for (const side of [-1, 1]) {
         const inner = side * portalHalf, outer = side * halfFace;

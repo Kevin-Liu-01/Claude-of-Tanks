@@ -480,7 +480,7 @@ export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [n
         // 2026-10-15: snow from the skirt up turned the stand into white cones against the sky)
         const lit = Math.cos(turn + ((k + 0.5) / sides) * Math.PI * 2 - 0.6) > -0.2;
         const mid = a.clone().lerp(tip, 0.62), midB = b.clone().lerp(tip, 0.62);
-        const cap = (lit ? snow : snowShade).clone().lerp(green, lit ? 0.35 : 0.55);
+        const cap = (lit ? snow : snowShade).clone().lerp(green, lit ? 0.6 : 0.78); // a dusting, the needles show through
         triangle(soup, a, mid, b, green, cap, green);
         triangle(soup, b, mid, midB, green, cap, cap);
         triangle(soup, mid, tip, midB, cap, green, cap);
