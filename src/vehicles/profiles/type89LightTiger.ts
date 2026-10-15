@@ -165,7 +165,7 @@ function addRunningGearSide(P: LightTigerBuilderPort, side: number): void {
     P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.76),
       side * 1.895, y, -0.34);
   }
-  P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 1.930, 0.80, -0.33);
+  // Owner markup 2026-10-14: the 5.78 m rubber strip hung along each skirt hem read as a loose black band and is gone.
   // Broad structural shoulders overlap the troop cell, fender and skirt
   // carrier. From every review angle they read as one body over the tread,
   // rather than three parallel strips with sky between them.

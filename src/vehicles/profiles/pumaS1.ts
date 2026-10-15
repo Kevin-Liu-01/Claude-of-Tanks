@@ -16,6 +16,7 @@ import {
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { hatchParts } from './fieldChest.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -226,8 +227,13 @@ function addHullShell(P: PumaS1BuilderPort): void {
 
   // Driver hatch, hull camera pods and tow/lift hardware are sunk into the
   // roof/glacis planes. Equipment uses camouflage-aware buckets.
-  P.addCupola('hull', KIT.cylY(0.32, 0.34, 0.055, 20), 0.68, 2.075, 1.48);
-  P.add('hullDark', KIT.torus(0.31, 0.014, 20), 0.68, 2.108, 1.48);
+  // Owner markup 2026-10-14: the driver's hatch was a bare disc with a dark ring. It is now a real closed hatch
+  // (coaming, lid with centre plate and stiffeners, hinge to the rear, grab handle, locking lever, seal).
+  {
+    const hatch = hatchParts(0.31, !!P.q, -1);
+    for (const g of hatch.lid) P.addCupola('hull', g, 0.68, 2.0475, 1.48);
+    for (const g of hatch.dark) P.addEquipment('hullDark', g, 0.68, 2.0475, 1.48);
+  }
   for (const x of [0.48, 0.68, 0.88]) KIT.periscope(P, 'hullDetail', x, 2.095, 1.80);
   for (const side of [-1, 1]) {
     mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
@@ -499,7 +505,9 @@ function addTurret(P: PumaS1BuilderPort): void {
   // A complete right-front rotating optic installation replaces the former
   // loose cheek apertures. A wide armored pedestal, azimuth turntable and
   // unarmed yoke make the whole assembly read as one founded subsystem.
-  P.addEquipment('turret', box(0.52, 0.20, 0.54), 0.62, 0.72, 0.52, 0, -0.05, 0);
+  // Owner markup 2026-10-14 on this pedestal's broad flat flank: the panoramic sight stands on a round armoured column
+  // under its turntable, as the Puma's commander sight does, not on a 0.5 m slab.
+  P.addEquipment('turret', KIT.cylY(0.25, 0.28, 0.20, 20), 0.62, 0.72, 0.52);
   P.addEquipment('turret', KIT.cylY(0.25, 0.27, 0.075, 18), 0.62, 0.855, 0.52);
   const pumaRoofOptics = FITTINGS.openYokeRws({
     mats: P.mats,

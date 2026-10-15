@@ -9,7 +9,7 @@
 // The coarse level keeps the body and lid only.
 import * as THREE from 'three';
 import { moldedBox } from '../accessoryPrimitives.ts';
-import { box, cylX, cylZ, xform } from '../factoryGeometry.ts';
+import { box, cylX, cylY, cylZ, xform } from '../factoryGeometry.ts';
 
 export interface FieldChestParts {
   /** painted body, lid and pressed ribs */
@@ -83,4 +83,40 @@ export function ammoCanParts(high = true): FieldChestParts {
   dark.push(xform(box(0.010, 0.10, 0.06), L / 2 + 0.008, body - 0.04, 0));
   dark.push(xform(cylZ(0.007, 0.07, 6), L / 2 + 0.006, body + 0.004, 0));
   return { paint, dark };
+}
+
+export interface HatchParts {
+  /** the coaming ring and the lid with its stiffeners (the hatch's own structural stock) */
+  readonly lid: THREE.BufferGeometry[];
+  /** hinge, pin, grab handle, locking lever and the lid's rubber seal */
+  readonly dark: THREE.BufferGeometry[];
+}
+
+/**
+ * A crew hatch as it sits closed on a deck or roof (owner markup 2026-10-14: the Type 89's and the Puma's hatches were
+ * bare discs): a low coaming ring, the armoured lid with a raised centre plate and two pressed stiffeners, the hinge
+ * block and pin on the `hinge` side (local -Z by default), a U grab handle near the opposite edge, the central locking
+ * lever and the rubber seal at the lid's edge. Origin at the deck surface under the hatch centre; lid radius `r`.
+ */
+export function hatchParts(r: number, high = true, hinge: 1 | -1 = -1): HatchParts {
+  const seg = high ? 24 : 12, coaming = 0.03, lidH = 0.045;
+  const lid: THREE.BufferGeometry[] = [
+    xform(cylY(r + 0.035, r + 0.045, coaming, seg), 0, coaming / 2, 0),
+    xform(cylY(r, r + 0.006, lidH, seg), 0, coaming + lidH / 2, 0),
+  ];
+  const dark: THREE.BufferGeometry[] = [];
+  if (!high) return { lid, dark };
+  const top = coaming + lidH;
+  lid.push(xform(cylY(r * 0.52, r * 0.56, 0.012, seg), 0, top + 0.006, 0));
+  for (const a of [0, Math.PI / 2]) lid.push(xform(box(r * 1.7, 0.008, 0.04), 0, top + 0.004, 0, 0, a, 0));
+  // hinge block and pin
+  dark.push(xform(box(r * 0.9, 0.05, 0.07), 0, coaming + 0.025, hinge * (r + 0.03)));
+  dark.push(xform(cylX(0.018, r * 1.05, 10), 0, coaming + 0.04, hinge * (r + 0.05)));
+  // grab handle opposite the hinge
+  for (const x of [-0.07, 0.07]) dark.push(xform(box(0.016, 0.034, 0.016), x, top + 0.017, -hinge * r * 0.55));
+  dark.push(xform(cylX(0.009, 0.16, 8), 0, top + 0.034, -hinge * r * 0.55));
+  // central locking lever and the seal at the lid's edge
+  dark.push(xform(box(0.13, 0.012, 0.026), 0, top + 0.018, 0, 0, 0.6, 0));
+  dark.push(xform(cylY(r + 0.008, r + 0.008, 0.010, seg, true), 0, coaming + 0.005, 0));
+  return { lid, dark };
 }
