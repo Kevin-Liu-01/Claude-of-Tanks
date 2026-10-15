@@ -651,7 +651,7 @@ export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimen
     }
     out.dark.push(box(0.1, 3.0, 3.0).translate(w / 2 + 0.03, 0.35 + 1.5, 1.8));
     out.wood.push(box(0.08, 2.9, 1.6).translate(w / 2 + 0.12, 0.35 + 1.5, 2.6));
-    out.dark.push(box(0.1, 0.1, 6.6).translate(w / 2 + 0.16, 0.35 + 3.08, 1.8));
+    out.dark.push(box(0.1, 0.1, 6.6).translate(w / 2 + 0.04, 0.35 + 3.08, 1.8)); // (the door's rail on the wall)
     const eaveY = wallH + 0.35 - 0.06, eaveX = w / 2 + 0.55;
     for (const sx of [-1, 1]) {
       out.wood.push(box(0.05, 0.24, d + 1.4).translate(sx * eaveX, eaveY - 0.02, 0));
